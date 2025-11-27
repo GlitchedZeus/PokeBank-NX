@@ -1,0 +1,37 @@
+#ifndef UI_H
+#define UI_H
+
+#include <switch.h>
+
+#include "UI/Common.h"
+#include "UI/PKSEFramebuffer.h"
+#include "UI/UIScreen.h"
+#include "UI/UserSelectionScreen.h"
+#include "UI/TitleSelectionScreen.h"
+#include "UI/BackupSelectionScreen.h"
+#include "UI/TrainerViewScreen.h"
+
+// Forward declarations
+class Trainer;
+struct PK8;
+
+// Main UI Manager
+class UIManager {
+public:
+    UIManager();
+    ~UIManager();
+
+    void run();
+
+private:
+    PKSEFramebuffer fb;
+    PadState pad;
+    bool running;
+
+    void handleUserSelection();
+    void handleTitleSelection(AccountUid userUid);
+    void handleBackupSelection(u64 titleId, const std::string& titleName);
+    void handleTrainerView(u64 titleId, const std::string& titleName, const std::string& backupDir);
+};
+
+#endif // UI_H

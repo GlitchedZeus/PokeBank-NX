@@ -1,0 +1,38 @@
+# Ignore build output
+/build/
+/*.elf
+/*.nro
+/*.nsp
+/*.nacp
+/*.lst
+/*.map
+/*.npdm
+/*.nso
+
+# Ignore VS Code settings
+/.vscode/
+
+# Ignore log files
+*.log
+PKSE.log
+debug.log
+
+# Ignore temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*.DS_Store
+
+# Ignore compiler-generated files
+*.o
+*.d
+*.a
+
+# Ignore dependency-specific files
+/dependencies/
+/libs/
+
+# Ignore ROMFS and data directories if generated dynamically
+/romfs/
+/data/
