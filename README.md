@@ -51,7 +51,7 @@ You'll need to run the download_sprites.ps1 script to download all of the necess
 
 ### 4. Configure Visual Studio Code
 
-To configure IntelliSense and build tasks in VS Code:
+To configure IntelliSense in VS Code:
 
 #### **4.1. Install Extensions**
 - C/C++ by Microsoft
