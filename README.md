@@ -1,7 +1,7 @@
-# <span style="color: yellow;">**DISCLAIMER**
-### <span style="color: yellow;">THIS IS IN ACTIVE DEVELOPMENT AND ONLY A PROTOTYPE AT THIS POINT. I AM NOT RESPONSIBLE IN ANY WAY FOR DAMAGES TO YOUR SWITCH.
-# <span style="color: red;">USE AT YOUR OWN RISK.</span>
-# <span style="color: yellow;">**THIS IS NOT A PLACE TO DISCUSS PIRACY OR HOW TO HACK/JAILBREAK/MOD A SWITCH**</span>
+# **DISCLAIMER**
+### THIS IS IN ACTIVE DEVELOPMENT AND ONLY A PROTOTYPE AT THIS POINT. I AM NOT RESPONSIBLE IN ANY WAY FOR DAMAGES TO YOUR SWITCH.
+# USE AT YOUR OWN RISK.
+# **THIS IS NOT A PLACE TO DISCUSS PIRACY OR HOW TO HACK/JAILBREAK/MOD A SWITCH**
 ---
 # **PKSE - Pokemon Save Editor**
 PKSE is a homebrew application for editing Pokemon save files on the Nintendo Switch.
@@ -43,15 +43,21 @@ Restart your terminal or run the command to apply the changes.
 
 ---
 
-### 3. Configure Visual Studio Code
+### 3. Run "download_sprites.ps1" powershell script.
+
+You'll need to run the download_sprites.ps1 script to download all of the necessary sprites. If you're on linux, you'll likely need an alternative method or manually download the sprites from https://github.com/PokeAPI/sprites/tree/master/sprites/pokemon
+
+---
+
+### 4. Configure Visual Studio Code
 
 To configure IntelliSense and build tasks in VS Code:
 
-#### **3.1. Install Extensions**
+#### **4.1. Install Extensions**
 - C/C++ by Microsoft
 - DevkitPro Tools (if available)
 
-#### **3.2. Create a c_cpp_properties.json File**
+#### **4.2. Create a c_cpp_properties.json File**
 Create or update the file in .vscode/c_cpp_properties.json with the following content:
 ```json
 {
@@ -68,7 +74,7 @@ Create or update the file in .vscode/c_cpp_properties.json with the following co
       "defines": [],
       "compilerPath": "${env:DEVKITPRO}/devkitA64/bin/aarch64-none-elf-g++.exe",
       "cStandard": "c11",
-      "cppStandard": "c++17",
+      "cppStandard": "c++20", // This version is necessary
       "intelliSenseMode": "linux-gcc-arm64"
     }
   ],
@@ -78,7 +84,7 @@ Create or update the file in .vscode/c_cpp_properties.json with the following co
 
 ---
 
-## **Building the Project**
+## **5. Build the Project**
 
 To build the project, open MSys2 (should have been included with the devkitpro toolset), navigate to the root directory and run:
 
