@@ -22,7 +22,7 @@ Ensure the following tools and dependencies are installed:
 - Ensure `Switch Development` is selected during installation.
 
 #### **1.2. zlib installation** (Optional, will implement compressed logic in future versions)
-- In the MSys2 shell, run ```bash pacman -S switch-zlib``` to install the zlib for compression support.
+- In the MSys2 shell, run ```pacman -S switch-zlib``` to install the zlib for compression support.
 
 ---
 
