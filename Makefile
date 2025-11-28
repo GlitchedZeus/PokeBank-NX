@@ -160,13 +160,19 @@ ifneq ($(ROMFS),)
 	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
 endif
 
+# Default target when you just run 'make'. Only builds.
+default: $(BUILD)
+
+# Target when you run 'make all'. Downloads sprites then builds
+all: sprites $(BUILD)
+
 #---------------------------------------------------------------------------------
-# Parallel sprite downloader – bulletproof version (works on MSYS2, Linux, macOS)
+# Sprite and icon download integration
 #---------------------------------------------------------------------------------
 SPRITE_DIR   := romfs/sprites/pokemon
 SPRITE_START := 0
 SPRITE_END   := 1025
-MAX_JOBS     := 20        # increase to 15-20 if you want it even faster
+MAX_JOBS     := 20        # increase the value if you want it to run faster
 
 sprites:
 	@printf "Checking and downloading missing Pokemon sprites...\n"
@@ -211,12 +217,7 @@ sprites:
 .PHONY: sprites
 
 #---------------------------------------------------------------------------------
-all: sprites $(BUILD)
-
 .PHONY: $(BUILD) clean all
-
-#---------------------------------------------------------------------------------
-all: $(BUILD)
 
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
@@ -230,7 +231,6 @@ ifeq ($(strip $(APP_JSON)),)
 else
 	@rm -fr $(BUILD) $(TARGET).nsp $(TARGET).nso $(TARGET).npdm $(TARGET).elf $(TARGET).lst
 endif
-
 
 #---------------------------------------------------------------------------------
 else
