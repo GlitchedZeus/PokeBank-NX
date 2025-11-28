@@ -13,8 +13,8 @@
  * - Gen 8-specific save file structure
  */
 
-#ifndef TRAINER8_H
-#define TRAINER8_H
+#ifndef TRAINER_TRAINER8_H
+#define TRAINER_TRAINER8_H
 
 #include <cstring>
 
@@ -199,4 +199,4 @@ private:
     void parseBoxLayoutBlock(const Block& block);
 };
 
-#endif // TRAINER8_H
+#endif

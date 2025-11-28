@@ -1,5 +1,5 @@
-#ifndef SPRITE_MANAGER_H
-#define SPRITE_MANAGER_H
+#ifndef UI_SPRITE_MANAGER_H
+#define UI_SPRITE_MANAGER_H
 
 #include <cstdint>
 #include <map>
@@ -50,4 +50,4 @@ private:
     }
 };
 
-#endif // SPRITE_MANAGER_H
+#endif

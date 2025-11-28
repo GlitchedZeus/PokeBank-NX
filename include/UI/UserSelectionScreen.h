@@ -1,5 +1,5 @@
-#ifndef USER_SELECTION_SCREEN_H
-#define USER_SELECTION_SCREEN_H
+#ifndef UI_USER_SELECTION_SCREEN_H
+#define UI_USER_SELECTION_SCREEN_H
 
 #include <vector>
 #include <string>
@@ -37,4 +37,4 @@ private:
     void drawUserList(PKSEFramebuffer& fb);
 };
 
-#endif // USER_SELECTION_SCREEN_H
+#endif

@@ -1,5 +1,5 @@
-#ifndef STRING_HELPERS_H
-#define STRING_HELPERS_H
+#ifndef UTILS_STRING_HELPERS_H
+#define UTILS_STRING_HELPERS_H
 
 #include <cstdint>
 #include <cstddef>

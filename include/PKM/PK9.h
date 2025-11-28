@@ -20,8 +20,8 @@
  * 0x148-0x157: Party Stats (Level, HP, Attack, Defense, etc.)
  */
 
-#ifndef PK9_H
-#define PK9_H
+#ifndef PKM_PK9_H
+#define PKM_PK9_H
 
 #include <cstdint>
 #include <span>
@@ -525,4 +525,4 @@ public:
     static std::string toHex(uint32_t value);
 };
 
-#endif // PK9_H
+#endif

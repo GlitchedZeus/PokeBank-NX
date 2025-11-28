@@ -1,5 +1,5 @@
-#ifndef SHA256_H
-#define SHA256_H
+#ifndef UTILS_SHA256_H
+#define UTILS_SHA256_H
 
 #include <cstdint>
 #include <cstring>

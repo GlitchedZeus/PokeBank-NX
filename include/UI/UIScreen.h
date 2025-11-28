@@ -15,4 +15,4 @@ public:
     virtual bool shouldExit() const { return false; }
 };
 
-#endif // UI_SCREEN_H
+#endif

@@ -8,11 +8,11 @@
 
 #include "Globals.h"
 #include "GetSaveFileContents.h"
+#include "UI/SpriteManager.h"
+#include "UI/UI.h"
 #include "Utils/Logger.h"
 #include "Utils/Utilities.h"
 #include "Utils/FileUtilities.h"
-#include "UI/SpriteManager.h"
-#include "UI/UI.h"
 
 int main()
 {

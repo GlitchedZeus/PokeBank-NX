@@ -1,5 +1,5 @@
-#ifndef FILE_UTILITIES_H
-#define FILE_UTILITIES_H
+#ifndef UTILS_FILE_UTILITIES_H
+#define UTILS_FILE_UTILITIES_H
 
 #include <cstddef>
 #include <cstdint>

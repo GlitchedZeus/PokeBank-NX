@@ -45,6 +45,7 @@ Restart your terminal or run the command to apply the changes.
 
 ### 3. Run "download_sprites.ps1" powershell script.
 
+See SPRITES_INSTRUCTIONS.md for more details.
 You'll need to run the download_sprites.ps1 script to download all of the necessary sprites. If you're on linux, you'll likely need an alternative method or manually download the sprites from https://github.com/PokeAPI/sprites/tree/master/sprites/pokemon
 
 ---
@@ -117,7 +118,8 @@ The output will generate an .nro file in the build directory, which you can depl
 ## **Credits**
 
 - PKHeX Team: Core save editing logic and Pokemon data structures are derived from the PKHeX project. Visit their official repository: https://github.com/kwsch/PKHeX.
-- libnx and devkitPro communities for Switch homebrew development tools. Visit their official website: https://devkitpro.org/wiki/Getting_Started
+- PokeAPI team
+- libnx and devkitPro communities for Switch homebrew development tools. Visit their official website: https://devkitpro.org/wiki/Getting_Started.
 
 ## **License**
 

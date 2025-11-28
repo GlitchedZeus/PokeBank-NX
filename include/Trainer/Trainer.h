@@ -9,8 +9,8 @@
  * formats, encryption, and Pokemon storage.
  */
 
-#ifndef TRAINER_H
-#define TRAINER_H
+#ifndef TRAINER_TRAINER_H
+#define TRAINER_TRAINER_H
 
 #include <cstdint>
 #include <vector>
@@ -225,4 +225,4 @@ protected:
     Trainer() = default;
 };
 
-#endif // TRAINER_H
+#endif

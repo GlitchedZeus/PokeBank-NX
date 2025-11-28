@@ -1,5 +1,5 @@
-#ifndef PARTY_POKEMON_PANEL_H
-#define PARTY_POKEMON_PANEL_H
+#ifndef UI_PANELS_PARTY_POKEMON_PANEL_H
+#define UI_PANELS_PARTY_POKEMON_PANEL_H
 
 #include <vector>
 #include <memory>
@@ -13,4 +13,4 @@ namespace Panels {
     void drawPartyPokemon(PKSEFramebuffer& fb, const std::vector<std::unique_ptr<PKM>>& party, uint32_t trainerID32, int x, int y, int width, int height, int selectedIndex = -1);
 }
 
-#endif // PARTY_POKEMON_PANEL_H
+#endif

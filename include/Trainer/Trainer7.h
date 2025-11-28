@@ -13,8 +13,8 @@
  * This class provides the structure for future implementation.
  */
 
-#ifndef TRAINER7_H
-#define TRAINER7_H
+#ifndef TRAINER_TRAINER7_H
+#define TRAINER_TRAINER7_H
 
 #include <cstring>
 
@@ -180,4 +180,4 @@ private:
     // - parseBoxLayoutBlock
 };
 
-#endif // TRAINER7_H
+#endif

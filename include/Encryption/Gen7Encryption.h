@@ -177,4 +177,4 @@ std::byte* decryptArray7(std::span<const std::byte> encryptedData);
  */
 std::byte* encryptArray7(std::span<const std::byte> decryptedData, uint32_t pv);
 
-#endif // GEN7_ENCRYPTION_H
+#endif

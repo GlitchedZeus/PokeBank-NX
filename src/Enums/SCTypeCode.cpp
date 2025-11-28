@@ -1,4 +1,4 @@
-#include "enums/SCTypeCode.h"
+#include "Enums/SCTypeCode.h"
 
 size_t getTypeSize(SCTypeCode type)
 {

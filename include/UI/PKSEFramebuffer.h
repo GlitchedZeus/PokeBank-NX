@@ -1,5 +1,5 @@
-#ifndef PKSE_FRAMEBUFFER_H
-#define PKSE_FRAMEBUFFER_H
+#ifndef UI_PKSE_FRAMEBUFFER_H
+#define UI_PKSE_FRAMEBUFFER_H
 
 #include <string>
 
@@ -34,4 +34,4 @@ private:
     u32 stride;
 };
 
-#endif // PKSE_FRAMEBUFFER_H
+#endif

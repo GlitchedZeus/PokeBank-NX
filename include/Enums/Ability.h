@@ -1,5 +1,5 @@
-#ifndef GAME_ENUMS_ABILITY_H
-#define GAME_ENUMS_ABILITY_H
+#ifndef ENUMS_ABILITY_H
+#define ENUMS_ABILITY_H
 
 /// Ability IDs for the corresponding English ability name.
 enum class Ability

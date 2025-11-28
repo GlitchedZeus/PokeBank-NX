@@ -111,4 +111,4 @@ std::byte* decryptArray9(std::span<const std::byte> encryptedData);
  */
 std::byte* encryptArray9(std::span<const std::byte> decryptedData, uint32_t pv);
 
-#endif // GEN9_ENCRYPTION_H
+#endif
