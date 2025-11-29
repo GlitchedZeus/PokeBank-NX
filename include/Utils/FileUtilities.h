@@ -12,7 +12,7 @@ uint8_t* readAllBytes(const char* path, size_t* outSize);
 bool copyDirectory(const char* srcPath, const char* destPath);
 bool copyFile(const char* srcPath, const char* destPath);
 bool backupSaveData(u64 titleId, std::string titleName);
-bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* backupDir);
+bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* backupDir, const char* saveFiles[]);
 std::string getTimestamp();
 std::vector<std::string> listBackupDirectories(const char* gameDirectory);
 void limitBackups(const char* gameDirectory, int maxBackups);

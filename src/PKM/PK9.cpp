@@ -1,5 +1,5 @@
 /**
- * PK9.cpp - Generation 8 Pokemon Data Class Implementation
+ * PK9.cpp - Generation 9 Pokemon Data Class Implementation
  *
  * Implementation of PK9 class methods including stat calculations,
  * gender determination, shiny manipulation, and PID regeneration.

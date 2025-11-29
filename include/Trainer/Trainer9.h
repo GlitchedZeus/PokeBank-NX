@@ -142,7 +142,7 @@ public:
      * @return GameVersion::SWSH (Legends: Z-A group)
      */
     GameVersion getGameGroup() const noexcept override {
-        return GameVersion::SWSH;
+        return GameVersion::ZA;
     }
 
 private:

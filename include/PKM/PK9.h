@@ -1,7 +1,7 @@
 /**
  * PK9.h - Generation 9 Pokemon Data Class
  *
- * This file defines the PK9 class for Generation 8 Pokemon games:
+ * This file defines the PK9 class for Generation 9 Pokemon games:
  * - Pokemon Scarlet/Violet
  * - Pokemon Legends: Z-A
  *
@@ -28,7 +28,7 @@
 #include <string>
 
 #include "PKM/PKM.h"
-#include "Encryption/Gen8Encryption.h"
+#include "Encryption/Gen9Encryption.h"
 #include "Utils/Utilities.h"
 #include "Utils/StringHelpers.h"
 
@@ -60,8 +60,8 @@ public:
      */
     explicit PK9(std::span<const std::byte> raw)
     {
-        // Decrypt the Gen 8 Pokemon data
-        buffer = decryptArray8(raw);
+        // Decrypt the Gen 9 Pokemon data
+        buffer = decryptArray9(raw);
         dataSize = raw.size();
         data = std::span<std::byte>(buffer, dataSize);
     }
@@ -407,7 +407,7 @@ public:
     }
 
     /**
-     * Calculates the checksum from offset 0x08 to SIZE_8STORED.
+     * Calculates the checksum from offset 0x08 to SIZE_9STORED.
      * Checksum is the sum of all 16-bit values in the encrypted blocks.
      * Party stats (0x148+) are NOT included in checksum.
      * @return Calculated checksum value
@@ -415,8 +415,8 @@ public:
     uint16_t calculateChecksum() const noexcept override {
         uint16_t checksum = 0;
 
-        // Sum all 16-bit values from offset 0x08 to SIZE_8STORED
-        const size_t checksumEnd = std::min(dataSize, SIZE_8STORED);
+        // Sum all 16-bit values from offset 0x08 to SIZE_9STORED
+        const size_t checksumEnd = std::min(dataSize, SIZE_9STORED);
         for (size_t i = 0x08; i < checksumEnd; i += 2) {
             checksum += readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + i));
         }

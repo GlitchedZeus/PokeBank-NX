@@ -265,7 +265,7 @@ bool backupSaveData(u64 titleId, std::string titleName) {
     }
 }
 
-bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* backupDir) {
+bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* backupDir, const char* saveFiles[]) {
     char buffer[LOG_BUFFER_SIZE];
 
     logInfoToFile("Restoring modified save to game", modifiedSavePath);
@@ -307,7 +307,7 @@ bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* 
     logInfoToConsole("Copying original save files to save:/", backupDir);
 
     // List of files to copy from the backup
-    const char* saveFiles[] = {"main", "backup", "poke_trade"};
+    // const char* saveFiles[] = {"main", "backup", "poke_trade"};
     bool copyAllSuccess = true;
 
     for (int i = 0; i < 3; i++) {
@@ -375,6 +375,7 @@ bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* 
 std::vector<std::string> listBackupDirectories(const char* gameDirectory) {
     std::vector<std::string> backupDirs;
 
+    // TODO: Directory listing could be empty, no save backups. We don't need to log an error in that case.
     DIR* dir = opendir(gameDirectory);
     if (!dir) {
         logErrorToFile("Failed to open game directory for backup listing", gameDirectory);
