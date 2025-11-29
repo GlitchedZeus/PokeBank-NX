@@ -5,15 +5,6 @@
 
 #define LOG_BUFFER_SIZE 1024
 
-void logErrorToConsole(const char *message);
-void logInfoToConsole(const char *message);
-void logErrorToConsole(std::string message);
-void logInfoToConsole(std::string message);
-void logErrorToConsole(const char *message, const char *context);
-void logInfoToConsole(const char *message, const char *context);
-void logErrorToConsole(const char *message, std::string context);
-void logInfoToConsole(const char *message, std::string context);
-
 void logInfoToFile(const char *message);
 void logErrorToFile(const char *message);
 void logInfoToFile(std::string message);

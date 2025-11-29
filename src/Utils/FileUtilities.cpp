@@ -57,9 +57,7 @@ bool copyDirectoryRecursive(const char* srcPath, const char* destPath) {
     DIR* dir = opendir(srcPath);
     if (!dir) {
         logErrorToFile("Failed to open source directory", srcPath);
-        logErrorToConsole("Failed to open source directory", srcPath);
         logErrorToFile("opendir error", strerror(errno));
-        logErrorToConsole("opendir error", strerror(errno));
         return false;
     }
 
@@ -77,7 +75,6 @@ bool copyDirectoryRecursive(const char* srcPath, const char* destPath) {
             // Recursively create and copy subdirectory
             if (mkdir(destFilePath, 0777) != 0 && errno != EEXIST) {
                 logErrorToFile("Failed to create subdirectory", destFilePath);
-                logErrorToConsole("Failed to create subdirectory", destFilePath);
                 overallSuccess = false;
             } else {
                 if (!copyDirectoryRecursive(srcFilePath, destFilePath)) {
@@ -89,7 +86,6 @@ bool copyDirectoryRecursive(const char* srcPath, const char* destPath) {
             unsigned char* data = readAllBytes(srcFilePath, &size);
             if (!data) {
                 logErrorToFile("Failed to read file", srcFilePath);
-                logErrorToConsole("Failed to read file", srcFilePath);
                 overallSuccess = false;
                 continue;
             }
@@ -97,7 +93,6 @@ bool copyDirectoryRecursive(const char* srcPath, const char* destPath) {
             FILE* out = fopen(destFilePath, "wb");
             if (!out) {
                 logErrorToFile("Failed to open for writing", destFilePath);
-                logErrorToConsole("Failed to open for writing", destFilePath);
                 logErrorToFile("fopen error", strerror(errno));
                 free(data);
                 overallSuccess = false;
@@ -106,13 +101,10 @@ bool copyDirectoryRecursive(const char* srcPath, const char* destPath) {
 
             if (fwrite(data, 1, size, out) != size) {
                 logErrorToFile("Failed to write complete file", destFilePath);
-                logErrorToConsole("Failed to write complete file", destFilePath);
                 overallSuccess = false;
             } else {
                 logInfoToFile("Successfully copied file", entry->d_name);
-                logInfoToConsole("Successfully copied file", entry->d_name);
                 logInfoToFile("File size (bytes)", std::to_string(size).c_str());
-                logInfoToConsole("File size (bytes)", std::to_string(size).c_str());
             }
             fclose(out);
             free(data);
@@ -126,7 +118,6 @@ bool copyDirectory(const char* srcPath, const char* destPath) {
     // Create destination directory if needed
     if (mkdir(destPath, 0777) != 0 && errno != EEXIST) {
         logErrorToFile("Failed to create destination directory", destPath);
-        logErrorToConsole("Failed to create destination directory", destPath);
         logErrorToFile("mkdir error", strerror(errno));
         return false;
     }
@@ -139,14 +130,12 @@ bool copyFile(const char* srcPath, const char* destPath) {
     unsigned char* data = readAllBytes(srcPath, &size);
     if (!data) {
         logErrorToFile("Failed to read file", srcPath);
-        logErrorToConsole("Failed to read file", srcPath);
         return false;
     }
 
     FILE* out = fopen(destPath, "wb");
     if (!out) {
         logErrorToFile("Failed to open for writing", destPath);
-        logErrorToConsole("Failed to open for writing", destPath);
         logErrorToFile("fopen error", strerror(errno));
         free(data);
         return false;
@@ -155,11 +144,9 @@ bool copyFile(const char* srcPath, const char* destPath) {
     bool success = true;
     if (fwrite(data, 1, size, out) != size) {
         logErrorToFile("Failed to write complete file", destPath);
-        logErrorToConsole("Failed to write complete file", destPath);
         success = false;
     } else {
         logInfoToFile("Successfully copied file to", destPath);
-        logInfoToConsole("Successfully copied file to", destPath);
     }
 
     fclose(out);
@@ -192,29 +179,21 @@ bool backupSaveData(u64 titleId, std::string titleName) {
     snprintf(timestampedBackupDirectory, sizeof(timestampedBackupDirectory), "%s/%s", gameDirectory, timestamp.c_str());
 
     logInfoToFile("Backup directory", timestampedBackupDirectory);
-    logInfoToConsole("Backup directory", timestampedBackupDirectory);
     logInfoToFile("Backing up save for title", titleName);
-    logInfoToConsole("Backing up save for title", titleName);
 
     if (mkdir(BASE_SAVE_DIRECTORY.c_str(), 0777) != 0 && errno != EEXIST) {
         logErrorToFile("Failed to create base directory", BASE_SAVE_DIRECTORY);
-        logErrorToConsole("Failed to create base directory", BASE_SAVE_DIRECTORY);
         logErrorToFile("mkdir error", strerror(errno));
-        logErrorToConsole("mkdir error", strerror(errno));
         return false;
     }
     if (mkdir(gameDirectory, 0777) != 0 && errno != EEXIST) {
         logErrorToFile("Failed to create game directory", gameDirectory);
-        logErrorToConsole("Failed to create game directory", gameDirectory);
         logErrorToFile("mkdir error", strerror(errno));
-        logErrorToConsole("mkdir error", strerror(errno));
         return false;
     }
     if (mkdir(timestampedBackupDirectory, 0777) != 0 && errno != EEXIST) {
         logErrorToFile("Failed to create timestamped backup directory", timestampedBackupDirectory);
-        logErrorToConsole("Failed to create timestamped backup directory", timestampedBackupDirectory);
         logErrorToFile("mkdir error", strerror(errno));
-        logErrorToConsole("mkdir error", strerror(errno));
         return false;
     }
 
@@ -224,7 +203,6 @@ bool backupSaveData(u64 titleId, std::string titleName) {
     if (R_FAILED(result)) {
         snprintf(buffer, sizeof(buffer), "accountInitialize failed: 0x%x", result);
         logErrorToFile(buffer);
-        logErrorToConsole(buffer);
         return false;
     }
 
@@ -233,7 +211,6 @@ bool backupSaveData(u64 titleId, std::string titleName) {
     if (R_FAILED(result) || (uid.uid[0] == 0 && uid.uid[1] == 0)) {
         snprintf(buffer, sizeof(buffer), "accountGetPreselectedUser failed: 0x%x", result);
         logErrorToFile(buffer);
-        logErrorToConsole(buffer);
         accountExit();
         return false;
     }
@@ -243,12 +220,10 @@ bool backupSaveData(u64 titleId, std::string titleName) {
     if (R_FAILED(result)) {
         snprintf(buffer, sizeof(buffer), "fsdevMountSaveData failed for titleId 0x%016lX: 0x%x", titleId, result);
         logErrorToFile(buffer);
-        logErrorToConsole(buffer);
         return false;
     }
 
     logInfoToFile("Successfully mounted save:/");
-    logInfoToConsole("Successfully mounted save:/");
 
     bool copySuccess = copyDirectory("save:/", timestampedBackupDirectory);
 
@@ -256,26 +231,22 @@ bool backupSaveData(u64 titleId, std::string titleName) {
 
     if (copySuccess) {
         logInfoToFile("Backup completed successfully!");
-        logInfoToConsole("Backup completed successfully!");
         return true;
     } else {
         logErrorToFile("Backup failed during file copying.");
-        logInfoToConsole("Backup failed during file copying.");
         return false;
     }
 }
 
-bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* backupDir, const char* saveFiles[]) {
+bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* backupDir, std::vector<std::string> saveFiles) {
     char buffer[LOG_BUFFER_SIZE];
 
     logInfoToFile("Restoring modified save to game", modifiedSavePath);
-    logInfoToConsole("Restoring modified save to game", modifiedSavePath);
 
     Result result = accountInitialize(AccountServiceType_Administrator);
     if (R_FAILED(result)) {
         snprintf(buffer, sizeof(buffer), "accountInitialize failed: 0x%x", result);
         logErrorToFile(buffer);
-        logErrorToConsole(buffer);
         return false;
     }
 
@@ -284,7 +255,6 @@ bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* 
     if (R_FAILED(result) || (uid.uid[0] == 0 && uid.uid[1] == 0)) {
         snprintf(buffer, sizeof(buffer), "accountGetPreselectedUser failed: 0x%x", result);
         logErrorToFile(buffer);
-        logErrorToConsole(buffer);
         accountExit();
         return false;
     }
@@ -294,32 +264,28 @@ bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* 
     if (R_FAILED(result)) {
         snprintf(buffer, sizeof(buffer), "fsdevMountSaveData failed for titleId 0x%016lX: 0x%x", titleId, result);
         logErrorToFile(buffer);
-        logErrorToConsole(buffer);
         return false;
     }
 
     logInfoToFile("Successfully mounted save:/ for restore");
-    logInfoToConsole("Successfully mounted save:/ for restore");
 
     // Copy only the save files (not subdirectories like ModifiedSave)
     // Pokemon Sword/Shield has: main, backup, poke_trade
     logInfoToFile("Copying original save files to save:/", backupDir);
-    logInfoToConsole("Copying original save files to save:/", backupDir);
 
     // List of files to copy from the backup
     // const char* saveFiles[] = {"main", "backup", "poke_trade"};
     bool copyAllSuccess = true;
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < saveFiles.size(); i++) {
         char srcPath[512];
         char destPath[512];
-        snprintf(srcPath, sizeof(srcPath), "%s/%s", backupDir, saveFiles[i]);
-        snprintf(destPath, sizeof(destPath), "save:/%s", saveFiles[i]);
+        snprintf(srcPath, sizeof(srcPath), "%s/%s", backupDir, saveFiles[i].c_str());
+        snprintf(destPath, sizeof(destPath), "save:/%s", saveFiles[i].c_str());
 
         if (!copyFile(srcPath, destPath)) {
-            snprintf(buffer, sizeof(buffer), "Failed to copy %s", saveFiles[i]);
+            snprintf(buffer, sizeof(buffer), "Failed to copy %s", saveFiles[i].c_str());
             logErrorToFile(buffer);
-            logErrorToConsole(buffer);
             copyAllSuccess = false;
             break;
         }
@@ -327,14 +293,12 @@ bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* 
 
     if (!copyAllSuccess) {
         logErrorToFile("Failed to copy original backup files");
-        logErrorToConsole("Failed to copy original backup files");
         fsdevUnmountDevice("save");
         return false;
     }
 
     // Then, overwrite the 'main' file with the modified version
     logInfoToFile("Overwriting main file with modified version");
-    logInfoToConsole("Overwriting main file with modified version");
 
     char modifiedMainPath[512];
     snprintf(modifiedMainPath, sizeof(modifiedMainPath), "%s/main", modifiedSavePath);
@@ -343,7 +307,6 @@ bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* 
 
     if (!copyModifiedSuccess) {
         logErrorToFile("Failed to restore modified main file.");
-        logErrorToConsole("Failed to restore modified main file.");
         fsdevUnmountDevice("save");
         return false;
     }
@@ -351,24 +314,20 @@ bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* 
     // CRITICAL: Commit changes to the save device before unmounting
     // Without this, changes remain in memory buffers and are never written to disk
     logInfoToFile("Committing changes to save device...");
-    logInfoToConsole("Committing changes to save device...");
 
     Result commitResult = fsdevCommitDevice("save");
     if (R_FAILED(commitResult)) {
         snprintf(buffer, sizeof(buffer), "fsdevCommitDevice failed: 0x%x", commitResult);
         logErrorToFile(buffer);
-        logErrorToConsole(buffer);
         fsdevUnmountDevice("save");
         return false;
     }
 
     logInfoToFile("Successfully committed changes to save device");
-    logInfoToConsole("Successfully committed changes to save device");
 
     fsdevUnmountDevice("save");
 
     logInfoToFile("Modified save restored successfully!");
-    logInfoToConsole("Modified save restored successfully!");
     return true;
 }
 
@@ -417,7 +376,6 @@ void limitBackups(const char* gameDirectory, int maxBackups) {
             snprintf(backupPath, sizeof(backupPath), "%s/%s", gameDirectory, backupDirs[i].c_str());
 
             logInfoToFile("Deleting old backup", backupPath);
-            logInfoToConsole("Deleting old backup", backupPath);
 
             // Delete the directory recursively
             // We'll use a simple approach: delete all files first, then the directory
