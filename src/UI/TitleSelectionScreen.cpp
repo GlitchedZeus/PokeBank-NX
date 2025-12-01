@@ -15,48 +15,6 @@ TitleSelectionScreen::TitleSelectionScreen(AccountUid userUid)
     loadTitles();
 }
 
-// /// Vector to hold pokemon title IDs
-// std::vector<u64> pokemonTitleIds = {
-//     // We only want to allow titles that are supported or being developed for integration
-    
-//     // Gen 7
-//     // 0x010003F003A34000, // Let's Go Pikachu
-//     // 0x0100187003A36000, // Let's Go Eevee
-//     // Gen 8
-//     0x0100ABF008968000, // Pokemon Sword
-//     0x01008DB008C2C000, // Pokemon Shield
-//     // 0x0100000011D90000, // Brilliant Diamond
-//     // 0x010018E011D92000, // Shining Pearl
-//     // 0x01001F5010DFA000, // Legends: Arceus
-//     // // Gen 9
-//     // TODO: CURRENTLY WORKING ON SV INTEGRATION
-//     // 0x0100A3D008C5C000, // Scarlet
-//     // 0x01008F6008C5E000, // Violet
-//     // 0x0100F43008C44000, // Legends: Z-A
-// };
-
-// /**
-//  * Checks if a title ID belongs to a mainline Pokemon game for Nintendo Switch.
-//  *
-//  * This function checks against all mainline Pokemon games available on Switch:
-//  * - Pokemon Let's Go Pikachu/Eevee (Gen 7)
-//  * - Pokemon Sword/Shield (Gen 8)
-//  * - Pokemon Brilliant Diamond/Shining Pearl (Gen 8 remakes)
-//  * - Pokemon Legends: Arceus (Gen 8)
-//  * - Pokemon Scarlet/Violet (Gen 9)
-//  * - Pokemon Legends: Z-A (Gen 9)
-//  *
-//  * @param titleId The application title ID to check
-//  * @return true if the title ID is a Pokemon game, false otherwise
-//  */
-// bool TitleSelectionScreen::isPokemonTitle(u64 titleId) const {
-//     for(int i = 0; i < pokemonTitleIds.size(); i++) {
-//         if (titleId == pokemonTitleIds[i]) { return true; }
-//     }
-
-//     return false;
-// }
-
 void TitleSelectionScreen::loadTitles() {
     titles.clear();
 

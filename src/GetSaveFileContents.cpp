@@ -284,7 +284,7 @@ bool saveTrainerInfoZA(Trainer9& trainer, const char* backupDir, u64 titleId) {
     }
 
     // Update item block with modified data
-    // trainer.updateItemBlock();
+    trainer.updateItemBlock();
 
     // Update party block with modified Pokemon data
     trainer.updatePartyBlock();

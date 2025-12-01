@@ -18,6 +18,8 @@
 #include "Utils/Logger.h"
 #include "Utils/FileUtilities.h"
 #include "Trainer/Trainer.h"
+#include "Trainer/Inventory.h"
+#include "Trainer/Inventory9.h"
 
 // UI Layout constants
 constexpr int LEFT_PANEL_X = 0;
@@ -500,14 +502,42 @@ void TrainerViewScreen::update(const PadState& pad) {
 
                 // L/R to change categories (but not when in edit dialog)
                 if (kDown & HidNpadButton_L) {
-                    selectedCategory = (selectedCategory - 1 + 9) % 9;  // 9 pouches
-                    currentPage = 0;
-                    selectedItemIndex = 0;
+                    switch(trainer.getGameGroup()) {
+                        case GameVersion::ZA: {
+                            selectedCategory = (selectedCategory - 1 + POUCH_COUNT_GEN9) % POUCH_COUNT_GEN9;
+                            currentPage = 0;
+                            selectedItemIndex = 0;
+                            break;
+                        }
+                        case GameVersion::SWSH: {
+                            selectedCategory = (selectedCategory - 1 + 9) % 9; // TODO: Need to add global variable for this value
+                            currentPage = 0;
+                            selectedItemIndex = 0;
+                            break;
+                        }
+                        default: break;
+                    }
                 }
                 if (kDown & HidNpadButton_R) {
-                    selectedCategory = (selectedCategory + 1) % 9;  // 9 pouches
-                    currentPage = 0;
-                    selectedItemIndex = 0;
+                    // selectedCategory = (selectedCategory + 1) % 9;  // 9 pouches
+                    // currentPage = 0;
+                    // selectedItemIndex = 0;
+                    
+                    switch(trainer.getGameGroup()) {
+                        case GameVersion::ZA: {
+                            selectedCategory = (selectedCategory + 1) % POUCH_COUNT_GEN9;
+                            currentPage = 0;
+                            selectedItemIndex = 0;
+                            break;
+                        }
+                        case GameVersion::SWSH: {
+                            selectedCategory = (selectedCategory + 1) % 9; // TODO: Need to add global variable for this value
+                            currentPage = 0;
+                            selectedItemIndex = 0;
+                            break;
+                        }
+                        default: break;
+                    }
                 }
             }
         }
@@ -668,13 +698,49 @@ void TrainerViewScreen::update(const PadState& pad) {
 
     // L/R to navigate categories (Items mode only, when not in detail view)
     if (selectedMode == ViewMode::Items) {
+        // if (kDown & HidNpadButton_L) {
+        //     selectedCategory = (selectedCategory - 1 + 9) % 9;  // 9 pouches
+        //     currentPage = 0;  // Reset page when changing category
+        // }
+        // if (kDown & HidNpadButton_R) {
+        //     selectedCategory = (selectedCategory + 1) % 9;  // 9 pouches
+        //     currentPage = 0;  // Reset page when changing category
+        // }
+
+        // L/R to change categories (but not when in edit dialog)
         if (kDown & HidNpadButton_L) {
-            selectedCategory = (selectedCategory - 1 + 9) % 9;  // 9 pouches
-            currentPage = 0;  // Reset page when changing category
+            switch(trainer.getGameGroup()) {
+                case GameVersion::ZA: {
+                    selectedCategory = (selectedCategory - 1 + POUCH_COUNT_GEN9) % POUCH_COUNT_GEN9;
+                    currentPage = 0;
+                    selectedItemIndex = 0;
+                    break;
+                }
+                case GameVersion::SWSH: {
+                    selectedCategory = (selectedCategory - 1 + 9) % 9; // TODO: Need to add global variable for this value
+                    currentPage = 0;
+                    selectedItemIndex = 0;
+                    break;
+                }
+                default: break;
+            }
         }
         if (kDown & HidNpadButton_R) {
-            selectedCategory = (selectedCategory + 1) % 9;  // 9 pouches
-            currentPage = 0;  // Reset page when changing category
+            switch(trainer.getGameGroup()) {
+                case GameVersion::ZA: {
+                    selectedCategory = (selectedCategory + 1) % POUCH_COUNT_GEN9;
+                    currentPage = 0;
+                    selectedItemIndex = 0;
+                    break;
+                }
+                case GameVersion::SWSH: {
+                    selectedCategory = (selectedCategory + 1) % 9; // TODO: Need to add global variable for this value
+                    currentPage = 0;
+                    selectedItemIndex = 0;
+                    break;
+                }
+                default: break;
+            }
         }
     }
 

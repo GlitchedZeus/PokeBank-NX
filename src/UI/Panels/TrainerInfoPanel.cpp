@@ -37,4 +37,4 @@ void drawTrainerInfo(PKSEFramebuffer& fb, Trainer& trainer, int x, int y, int wi
     fb.drawText(x + 20, lineY, moneyText, Colors::Text);
 }
 
-} // namespace Panels
+}

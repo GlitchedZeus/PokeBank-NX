@@ -33,4 +33,4 @@ void drawSaveConfirmDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     fb.drawText(dialogX + 20, dialogY + 135, "A: Save and Return  |  B: Cancel", Colors::TextDim);
 }
 
-} // namespace Dialogs
+}

@@ -45,4 +45,4 @@ void drawEditDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     fb.drawText(dialogX + 20, dialogY + 165, "A: Confirm  |  B: Cancel", Colors::TextDim);
 }
 
-} // namespace Dialogs
+}

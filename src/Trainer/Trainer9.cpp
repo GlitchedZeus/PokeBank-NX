@@ -9,6 +9,7 @@
 #include <cstring>
 
 #include "Trainer/Trainer9.h"
+#include "Trainer/Inventory9.h"
 #include "Utils/Logger.h"
 
 // ========================================
@@ -150,47 +151,50 @@ void Trainer9::parseMiscBlock(const Block& block)
 void Trainer9::parseItemBlock(const Block& block)
 {
     /**
-     * ITEM Block Structure:
-     * Multiple "pouches" (categories) of items:
-     * - Medicine
-     * - Balls
-     * - Battle Items
-     * - Berries
-     * - TMs/TRs
-     * - Treasures
-     * - Ingredients
-     * - Key Items
-     * - Other
+     * ITEM Block Structure (Gen 9 Legends Z-A):
+     * Items are stored BY ITEM ID as index!
+     * - Item at ID X is at offset (X * 0x10)
+     * - Block size: 0xBB80 bytes (47,872 bytes)
+     * - Each item: 0x10 bytes (16 bytes)
      *
-     * Each pouch has a fixed offset and maximum item count.
-     * Items are stored as 4-byte values: (count << 16) | itemId
+     * Structure per item (16 bytes):
+     * 0x00-0x03: Pouch ID (uint32) - which pouch this belongs to
+     * 0x04-0x07: Count (int32) - quantity
+     * 0x08-0x0B: Flags (uint32) - isNew, isFavorite, etc.
+     * 0x0C-0x0F: Padding
      */
+
     // Initialize items vector with pouches for each type
-    items.resize(static_cast<size_t>(PouchType::Count));
+    items.resize(static_cast<size_t>(POUCH_COUNT_GEN9));
 
-    // Load each pouch
-    for (int p = 0; p < static_cast<int>(PouchType::Count); p++) {
-        PouchType pouchType = static_cast<PouchType>(p);
-        const PouchInfo& info = getPouchInfo(pouchType);
+    // For each pouch, iterate through valid item IDs
+    for (int i = 0; i < static_cast<int>(POUCH_COUNT_GEN9); i++) {
+        PouchType9 pouchType = static_cast<PouchType9>(i);
+        items[i].clear();
 
-        std::vector<InventoryItem> pouch;
-        pouch.reserve(info.maxCount);
+        // Get the list of valid item IDs for this pouch
+        const auto& validIds = getValidItemIds(pouchType);
 
-        // Read items from block data
-        for (int i = 0; i < info.maxCount; i++) {
-            size_t offset = info.offset + (i * 4);
-            if (offset + 4 <= block.data.size()) {
-                uint32_t itemValue = readUInt32LittleEndian(&block.data[offset]);
-                InventoryItem item = InventoryItem::fromValue(itemValue);
+        for (uint16_t itemId : validIds) {
+            // Calculate offset: itemID * 0x10
+            size_t offset = itemId * GEN9_ITEM_SIZE;
 
-                // Only add items with valid IDs (non-zero)
-                if (item.itemId != 0) {
-                    pouch.push_back(item);
-                }
+            // Make sure we're within bounds
+            if (offset + GEN9_ITEM_SIZE > block.data.size()) {
+                continue;
             }
-        }
 
-        items[p] = std::move(pouch);
+            // Read the item data at this index
+            InventoryItem9 item9 = InventoryItem9::fromBytes(itemId, &block.data[offset]);
+
+            // Only add if count > 0
+            if (item9.count > 0) {
+                items[i].push_back(item9.toInventoryItem());
+            }
+
+            // Add all items, even with count 0
+            // items[p].push_back(item9.toInventoryItem());
+        }
     }
 }
 
@@ -423,44 +427,55 @@ void Trainer9::updateItemBlock()
      *
      * Process:
      * 1. Find the ITEM block
-     * 2. Ensure block is large enough for all pouches
-     * 3. For each pouch:
-     *    a. Write items to their designated offsets
-     *    b. Zero out remaining slots
+     * 2. Ensure block is large enough (0xBB80 bytes)
+     * 3. Write items to their indexed positions (itemID * 0x10)
+     *
+     * Gen 9 stores items BY ITEM ID as index
+     * Block size: 0xBB80 bytes (47,872 bytes)
+     * Item size: 0x10 bytes (16 bytes)
      */
+
     for (auto& block : blocks) {
         if (block.key == Gen9BlockKeys::ITEM) {
             // Ensure the block data is large enough
-            size_t maxSize = 4856; // Sum of all pouch sizes * 4 bytes per item
-            if (block.data.size() < maxSize) {
-                block.data.resize(maxSize, 0);
+            if (block.data.size() < GEN9_ITEM_BLOCK_SIZE) {
+                block.data.resize(GEN9_ITEM_BLOCK_SIZE, 0);
             }
 
-            // Write each pouch back to the block
-            for (int p = 0; p < static_cast<int>(PouchType::Count); p++) {
-                PouchType pouchType = static_cast<PouchType>(p);
-                const PouchInfo& info = getPouchInfo(pouchType);
-                const auto& pouch = items[p];
+            // First, zero out the entire block
+            std::memset(block.data.data(), 0, GEN9_ITEM_BLOCK_SIZE);
 
-                // Write items to block
-                int itemIndex = 0;
+            // Write each pouch's items to their indexed positions
+            for (int i = 0; i < static_cast<int>(POUCH_COUNT_GEN9); i++) {
+                PouchType9 pouchType = static_cast<PouchType9>(i);
+                const auto& pouch = items[i];
+
+                // Write all items from this pouch
                 for (const auto& item : pouch) {
-                    size_t offset = info.offset + (itemIndex * 4);
-                    if (offset + 4 <= block.data.size()) {
-                        uint32_t itemValue = item.toValue();
-                        writeUInt32LittleEndian(&block.data[offset], itemValue);
-                    }
-                    itemIndex++;
-                }
+                    uint16_t itemId = item.itemId;
 
-                // Zero out remaining slots in this pouch
-                for (int i = itemIndex; i < info.maxCount; i++) {
-                    size_t offset = info.offset + (i * 4);
-                    if (offset + 4 <= block.data.size()) {
-                        writeUInt32LittleEndian(&block.data[offset], 0);
+                    // Calculate offset: itemID * 0x10
+                    size_t offset = itemId * GEN9_ITEM_SIZE;
+
+                    // Make sure we're within bounds
+                    if (offset + GEN9_ITEM_SIZE > block.data.size()) {
+                        continue;
                     }
+
+                    // Create InventoryItem9 with pouch ID
+                    InventoryItem9 item9;
+                    item9.pouchId = static_cast<uint32_t>(pouchType);
+                    item9.itemId = itemId;
+                    item9.count = static_cast<int32_t>(item.count);
+                    item9.flags = 0;
+                    if (item.isNew) item9.flags |= 0x1;
+                    if (item.isFavorite) item9.flags |= 0x2;
+
+                    // Write to block at indexed position
+                    item9.toBytes(&block.data[offset]);
                 }
             }
+
             break;
         }
     }

@@ -251,4 +251,4 @@ void drawPokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         "Up/Down: Select Category  |  B: Close", Colors::TextDim);
 }
 
-} // namespace Modals
+}
