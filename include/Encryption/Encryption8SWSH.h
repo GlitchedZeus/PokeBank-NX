@@ -11,15 +11,15 @@
  * Encryption Process:
  * 1. Four data blocks (Growth, Attacks, EVs, Misc) are shuffled based on shuffle value
  * 2. Blocks are encrypted using XOR with an LCG-generated keystream
- * 3. Encryption constant (EC) is used as the seed
+ * 3. Encryption constant is used as the seed
  *
  * Decryption Process (reverse):
- * 1. XOR decryption using EC as seed
+ * 1. XOR decryption using Encryption constant as seed
  * 2. Block unshuffling to restore original order
  */
 
-#ifndef ENCRYPTION_GEN8_ENCRYPTION_H
-#define ENCRYPTION_GEN8_ENCRYPTION_H
+#ifndef ENCRYPTION_ENCRYPTION8_SWSH_H
+#define ENCRYPTION_ENCRYPTION8_SWSH_H
 
 #include <cstdint>
 #include <cstddef>
@@ -35,25 +35,25 @@
  * Number of data blocks in Pokemon structure.
  * Gen 8 uses 4 blocks: Growth, Attacks, EVs/Contest, and Misc.
  */
-constexpr size_t BLOCK_8COUNT = 4;
+constexpr size_t BLOCK_COUNT8_SWSH = 4;
 
 /**
  * Size of each block in bytes (Gen 8).
  * Each block contains 80 bytes (0x50) of Pokemon data.
  */
-constexpr size_t SIZE_8BLOCK = 0x50;
+constexpr size_t SIZE_BLOCK8_SWSH = 0x50;
 
 /**
  * Size of stored Pokemon data (Gen 8).
  * Includes 8-byte header + 4 blocks = 328 bytes (0x148).
  */
-constexpr size_t SIZE_8STORED = 8 + (BLOCK_8COUNT * SIZE_8BLOCK);
+constexpr size_t SIZE_STORED8_SWSH = 8 + (BLOCK_COUNT8_SWSH * SIZE_BLOCK8_SWSH);
 
 /**
  * Size of party Pokemon data (Gen 8).
  * Stored data + 16 bytes of party stats = 344 bytes (0x158).
  */
-constexpr size_t SIZE_8PARTY = SIZE_8STORED + 0x10;
+constexpr size_t SIZE_PARTY8_SWSH = SIZE_STORED8_SWSH + 0x10;
 
 // ========================================
 // Encryption/Decryption Functions
@@ -72,9 +72,9 @@ constexpr size_t SIZE_8PARTY = SIZE_8STORED + 0x10;
  *
  * @param data Source encrypted data (read-only)
  * @param result Destination for unshuffled data (must be same size as data)
- * @param sv Shuffle value (0-31), derived from (PV >> 13) & 31
+ * @param shuffleValue (0-31), derived from (personalityValue >> 13) & 31
  */
-void shuffleArray8(std::span<const std::byte> data, std::span<std::byte> result, uint32_t sv);
+void shuffleArray8SWSH(std::span<const std::byte> data, std::span<std::byte> result, uint32_t shuffleValue);
 
 /**
  * Decrypts a Generation 8 Pokemon byte array.
@@ -83,31 +83,31 @@ void shuffleArray8(std::span<const std::byte> data, std::span<std::byte> result,
  * block unshuffling to convert encrypted Pokemon data into readable format.
  *
  * Process:
- * 1. Extract Personality Value (PV) from first 4 bytes
- * 2. Calculate Shuffle Value (SV) from PV
- * 3. Decrypt blocks using XOR cipher (CryptPKM)
+ * 1. Extract Personality Value from first 4 bytes
+ * 2. Calculate Shuffle Value from Personality Value
+ * 3. Decrypt blocks using XOR cipher (CryptPokemon)
  * 4. Unshuffle blocks to restore original order
  *
- * @param encryptedData The encrypted Pokemon data (SIZE_8PARTY bytes)
+ * @param encryptedData The encrypted Pokemon data (SIZE_PARTY8_SWSH bytes)
  * @return Pointer to decrypted data (caller must delete[])
  */
-std::byte* decryptArray8(std::span<const std::byte> encryptedData);
+std::byte* decryptArray8SWSH(std::span<const std::byte> encryptedData);
 
 /**
  * Encrypts a Generation 8 Pokemon byte array.
  *
- * This is the reverse of decryptArray8, used when saving Pokemon data
+ * This is the reverse of decryptArray8SWSH, used when saving Pokemon data
  * back to the save file.
  *
  * Process:
- * 1. Calculate Shuffle Value (SV) from PV
+ * 1. Calculate Shuffle Value from Personality Value
  * 2. Shuffle blocks from normal order to encrypted positions
- * 3. Apply XOR cipher using PV as seed
+ * 3. Apply XOR cipher using Personality Value as seed
  *
  * @param decryptedData The decrypted Pokemon data (read-only)
- * @param pv Personality Value (encryption seed)
+ * @param personalityValue Used as encryption seed
  * @return Pointer to encrypted data (caller must delete[])
  */
-std::byte* encryptArray8(std::span<const std::byte> decryptedData, uint32_t pv);
+std::byte* encryptArray8SWSH(std::span<const std::byte> decryptedData, uint32_t personalityValue);
 
 #endif

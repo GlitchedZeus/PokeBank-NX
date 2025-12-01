@@ -24,7 +24,7 @@
 #include "Utils/Utilities.h"
 #include "Utils/StringHelpers.h"
 #include "Trainer/Inventory.h"
-#include "PKM/PKM.h"
+#include "Pokemon/Pokemon.h"
 #include "Enums/GameVersion.h"
 
 // Pokemon storage constants (common across generations)
@@ -135,11 +135,11 @@ public:
     std::vector<std::string> boxNames;
 
     /// Party Pokemon (1-6 Pokemon) - stored polymorphically
-    std::vector<std::unique_ptr<PKM>> party;
+    std::vector<std::unique_ptr<Pokemon>> party;
 
     /// Box Pokemon storage [box_index][slot_index] - stored polymorphically
     /// nullptr = empty slot
-    std::vector<std::array<std::unique_ptr<PKM>, BOX_SLOTS>> boxes;
+    std::vector<std::array<std::unique_ptr<Pokemon>, BOX_SLOTS>> boxes;
 
     // ========================================
     // Constructors and Destructor

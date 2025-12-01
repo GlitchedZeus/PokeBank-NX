@@ -1,10 +1,10 @@
 /**
  * PK8.h - Generation 8 Pokemon Data Class
  *
- * This file defines the PK8 class for Generation 8 Pokemon games:
+ * This file defines the Pokemon 8 SWSH class for Generation 8 Pokemon games:
  * - Pokemon Sword/Shield
- * - Pokemon Brilliant Diamond/Shining Pearl
- * - Pokemon Legends: Arceus (PLA uses PA8, but shares similar structure)
+ * - Pokemon Brilliant Diamond/Shining Pearl TODO: (Might include this here or in its own file?)
+ * - Pokemon Legends: Arceus TODO: (Might include this here or in its own file?)
  *
  * PK8 Format Details:
  * - Party Size: 344 bytes (0x158)
@@ -21,15 +21,15 @@
  * 0x148-0x157: Party Stats (Level, HP, Attack, Defense, etc.)
  */
 
-#ifndef PKM_PK8_H
-#define PKM_PK8_H
+#ifndef POKEMON_POKEMON8_SWSH_H
+#define POKEMON_POKEMON8_SWSH_H
 
 #include <cstdint>
 #include <span>
 #include <string>
 
-#include "PKM/PKM.h"
-#include "Encryption/Gen8Encryption.h"
+#include "Pokemon/Pokemon.h"
+#include "Encryption/Encryption8SWSH.h"
 #include "Utils/Utilities.h"
 #include "Utils/StringHelpers.h"
 
@@ -46,7 +46,7 @@
  * - Home Tracker
  * - Sociability stat
  */
-class PK8 final : public PKM
+class Pokemon8SWSH final : public Pokemon
 {
 public:
     /**
@@ -59,10 +59,10 @@ public:
      *
      * @param raw Encrypted Pokemon data (SIZE_8PARTY or SIZE_8STORED bytes)
      */
-    explicit PK8(std::span<const std::byte> raw)
+    explicit Pokemon8SWSH(std::span<const std::byte> raw)
     {
         // Decrypt the Gen 8 Pokemon data
-        buffer = decryptArray8(raw);
+        buffer = decryptArray8SWSH(raw);
         dataSize = raw.size();
         data = std::span<std::byte>(buffer, dataSize);
     }
@@ -71,15 +71,15 @@ public:
      * Destructor - cleans up decrypted data buffer.
      * The base class PKM destructor handles buffer cleanup.
      */
-    ~PK8() override = default;
+    ~Pokemon8SWSH() override = default;
 
     // Prevent copying (Pokemon data should not be accidentally copied)
-    PK8(const PK8&) = delete;
-    PK8& operator=(const PK8&) = delete;
+    Pokemon8SWSH(const Pokemon8SWSH&) = delete;
+    Pokemon8SWSH& operator=(const Pokemon8SWSH&) = delete;
 
     // Allow moving for efficient transfers
-    PK8(PK8&&) noexcept = default;
-    PK8& operator=(PK8&&) noexcept = default;
+    Pokemon8SWSH(Pokemon8SWSH&&) noexcept = default;
+    Pokemon8SWSH& operator=(Pokemon8SWSH&&) noexcept = default;
 
     // ========================================
     // Core Data Properties (Block A - Growth)
@@ -417,7 +417,7 @@ public:
         uint16_t checksum = 0;
 
         // Sum all 16-bit values from offset 0x08 to SIZE_8STORED
-        const size_t checksumEnd = std::min(dataSize, SIZE_8STORED);
+        const size_t checksumEnd = std::min(dataSize, SIZE_STORED8_SWSH);
         for (size_t i = 0x08; i < checksumEnd; i += 2) {
             checksum += readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + i));
         }

@@ -2,7 +2,7 @@
  * Gen7Encryption.h - Generation 7 Pokemon Encryption/Decryption Utilities
  *
  * This file contains encryption and decryption utilities for Generation 7 Pokemon data
- * (Pokemon Let's Go Pikachu/Eevee - PK7 format).
+ * (Pokemon Let's Go Pikachu/Eevee - Pokemon7LGPE format).
  *
  * Pokemon data in Gen 7 Let's Go is stored in an encrypted format using:
  * 1. A Linear Congruential Generator (LCG) for XOR encryption
@@ -18,8 +18,8 @@
  * 2. Block unshuffling to restore original order
  */
 
-#ifndef ENCRYPTION_GEN7_ENCRYPTION_H
-#define ENCRYPTION_GEN7_ENCRYPTION_H
+#ifndef ENCRYPTION_ENCRYPTION7_LGPE_H
+#define ENCRYPTION_ENCRYPTION7_LGPE_H
 
 #include <cstdint>
 #include <cstddef>
@@ -35,32 +35,32 @@
  * Number of data blocks in Pokemon structure.
  * Gen 7 uses 4 blocks: Growth, Attacks, EVs/Contest, and Misc.
  */
-constexpr size_t BLOCK_7COUNT = 4;
+constexpr size_t BLOCK_COUNT7_LGPE = 4;
 /**
  * Size of each block in bytes (Gen 7 format).
  * Each block contains 56 bytes (0x38) of Pokemon data.
  * This is SMALLER than Gen 8 blocks (80 bytes).
  */
-constexpr size_t SIZE_7BLOCK = 0x38;
+constexpr size_t SIZE_BLOCK7_LGPE = 0x38;
 
 /**
  * Size of stored Pokemon data (Gen 7 format).
  * Includes 8-byte header + 4 blocks = 232 bytes (0xE8).
  */
-constexpr size_t SIZE_7STORED = 0xE8;
+constexpr size_t SIZE_STORED7_LGPE = 0xE8;
 
 /**
  * Size of party Pokemon data (Gen 7 Let's Go format).
  * For PK7, both party and stored use the same size: 260 bytes (0x104).
  * This differs from Gen 8 which has separate sizes for party vs stored.
  */
-constexpr size_t SIZE_7PARTY = 0x104;
+constexpr size_t SIZE_PARTY7_LGPE = 0x104;
 
 /**
  * Size specifically for PK7 (Pokemon Let's Go) format.
  * Always 260 bytes regardless of party or stored status.
  */
-constexpr size_t SIZE_PK7 = 260;
+constexpr size_t SIZE_POKEMON7_LGPE = 260;
 
 // ========================================
 // Encryption/Decryption Functions
@@ -78,7 +78,7 @@ constexpr size_t SIZE_PK7 = 260;
  * @param data Span of bytes to encrypt/decrypt (modified in place)
  * @param seed Initial seed value (typically the Pokemon's Encryption Constant)
  */
-void cryptArray7(std::span<std::byte> data, uint32_t seed);
+void cryptArray7LGPE(std::span<std::byte> data, uint32_t seed);
 
 /**
  * Decrypts a Pokemon's data blocks and party stats.
@@ -91,9 +91,9 @@ void cryptArray7(std::span<std::byte> data, uint32_t seed);
  * and are skipped.
  *
  * @param data The encrypted Pokemon data (full SIZE_8PARTY or SIZE_8STORED)
- * @param pv Personality Value used as encryption seed
+ * @param personalityValue Used as encryption seed
  */
-void cryptPKM7(std::span<std::byte> data, uint32_t partyValue, size_t blockSize, size_t blockCount);
+void cryptPokemon7LGPE(std::span<std::byte> data, uint32_t personalityValue, size_t blockSize, size_t blockCount);
 
 /**
  * Unshuffles the 4 data blocks based on the shuffle value.
@@ -108,9 +108,9 @@ void cryptPKM7(std::span<std::byte> data, uint32_t partyValue, size_t blockSize,
  *
  * @param data Source encrypted data (read-only)
  * @param result Destination for unshuffled data (must be same size as data)
- * @param sv Shuffle value (0-31), derived from (PV >> 13) & 31
+ * @param shuffleValue (0-31), derived from (personalityValue >> 13) & 31
  */
-void shuffleArray7(std::span<const std::byte> data, std::span<std::byte> result, uint32_t sv);
+void shuffleArray7LGPE(std::span<const std::byte> data, std::span<std::byte> result, uint32_t shuffleValue);
 
 /**
  * The LCRNG algorithm is identical across generations.
@@ -125,10 +125,10 @@ void shuffleArray7(std::span<const std::byte> data, std::span<std::byte> result,
  * that needs decryption - all data is in the 260-byte structure.
  *
  * @param data The encrypted Pokemon data (modified in place)
- * @param pv Personality Value used as encryption seed
- * @param blockSize Size of each block (SIZE_6BLOCK = 56 bytes for Gen 7)
+ * @param personalityValue Used as encryption seed
+ * @param blockSize Size of each block (SIZE_BLOCK7_LGPE = 56 bytes for Gen 7)
  */
-void cryptPKM7(std::span<std::byte> data, uint32_t pv, size_t blockSize);
+void cryptPokemon7LGPE(std::span<std::byte> data, uint32_t personalityValue, size_t blockSize);
 
 /**
  * Unshuffles the 4 data blocks based on the shuffle value (Gen 7 format).
@@ -139,42 +139,42 @@ void cryptPKM7(std::span<std::byte> data, uint32_t pv, size_t blockSize);
  *
  * @param data Source encrypted data (read-only)
  * @param result Destination for unshuffled data (must be same size as data)
- * @param sv Shuffle value (0-31), derived from (PV >> 13) & 31
+ * @param shuffleValue Shuffle value (0-31), derived from (PV >> 13) & 31
  * @param blockSize Size of each block (SIZE_6BLOCK for Gen 7)
  */
-void shuffleArray7(std::span<const std::byte> data, std::span<std::byte> result, uint32_t sv, size_t blockSize);
+void shuffleArray7LGPE(std::span<const std::byte> data, std::span<std::byte> result, uint32_t shuffleValue, size_t blockSize);
 
 /**
  * Decrypts a Generation 7 Pokemon byte array.
  *
- * This is the main decryption function for PK7 (Let's Go) Pokemon.
+ * This is the main decryption function for Pokemon7LGPE (Let's Go) Pokemon.
  *
  * Process:
- * 1. Extract Personality Value (PV) from first 4 bytes
- * 2. Calculate Shuffle Value (SV) from PV
+ * 1. Extract Personality Value from first 4 bytes
+ * 2. Calculate Shuffle Value from Personality Value
  * 3. Decrypt blocks using XOR cipher (CryptPKM7)
  * 4. Unshuffle blocks to restore original order
  *
  * @param encryptedData The encrypted Pokemon data (260 bytes for PK7)
  * @return Pointer to decrypted data (caller must delete[])
  */
-std::byte* decryptArray7(std::span<const std::byte> encryptedData);
+std::byte* decryptArray7LGPE(std::span<const std::byte> encryptedData);
 
 /**
  * Encrypts a Generation 7 Pokemon byte array.
  *
- * This is the reverse of decryptArray7, used when saving PK7 Pokemon data
+ * This is the reverse of decryptArray7LGPE, used when saving Pokemon7LGPE Pokemon data
  * back to the save file.
  *
  * Process:
- * 1. Calculate Shuffle Value (SV) from PV
+ * 1. Calculate Shuffle Value from Personality Value
  * 2. Shuffle blocks from normal order to encrypted positions
- * 3. Apply XOR cipher using PV as seed
+ * 3. Apply XOR cipher using Personality Value as seed
  *
  * @param decryptedData The decrypted Pokemon data (read-only)
- * @param pv Personality Value (encryption seed)
+ * @param personalityValue Used as encryption seed
  * @return Pointer to encrypted data (caller must delete[])
  */
-std::byte* encryptArray7(std::span<const std::byte> decryptedData, uint32_t pv);
+std::byte* encryptArray7LGPE(std::span<const std::byte> decryptedData, uint32_t personalityValue);
 
 #endif

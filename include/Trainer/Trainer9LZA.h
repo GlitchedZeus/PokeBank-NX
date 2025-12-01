@@ -1,66 +1,65 @@
 /**
- * Trainer8.h - Generation 8 Trainer/Save File Data Management
+ * Generation 9 Legends: Z-A Trainer/Save File Data Management
  *
- * This file defines the Trainer8 class for Pokemon Generation 8 games:
- * - Pokemon Sword/Shield
- * - Pokemon Brilliant Diamond/Shining Pearl (BDSP)
- * - Pokemon Legends: Arceus (PLA, though it uses PA8)
+ * This file defines the Trainer9LZA class for Pokemon Generation 9 games:
+ * - Pokemon Scarlet/Violet (SV)
+ * - Pokemon Legends: Z-A (ZA)
  *
- * Trainer8 implements generation-specific logic for:
- * - PK8 Pokemon storage (party and boxes)
- * - Gen 8 block keys
- * - Gen 8 encryption (encryptArray8/decryptArray8)
- * - Gen 8-specific save file structure
+ * Trainer9LZA implements generation-specific logic for:
+ * - PK9 Pokemon storage (party and boxes)
+ * - Gen 9 block keys
+ * - Gen 9 encryption (encryptArray9/decryptArray9)
+ * - Gen 9-specific save file structure
  */
 
-#ifndef TRAINER_TRAINER8_H
-#define TRAINER_TRAINER8_H
+#ifndef TRAINER_TRAINER9_H
+#define TRAINER_TRAINER9_H
 
 #include <cstring>
 
 #include "Trainer/Trainer.h"
-#include "PKM/PK8.h"
-#include "Encryption/Gen8Encryption.h"
+#include "Pokemon/Pokemon9LZA.h"
+#include "Encryption/Encryption9LZA.h"
 
 // ========================================
-// Generation 8 Save File Block Keys
+// Generation 9 Save File Block Keys
 // ========================================
 
-namespace Gen8BlockKeys {
-    constexpr size_t MY_STATUS = 0xf25c070e;        // Trainer Details
-    constexpr size_t PARTY = 0x2985fe5d;            // Party Data
-    constexpr size_t MISC = 0x1b882b09;             // Money
-    constexpr size_t TRAINER_CARD = 0x874da6fa;     // Trainer Card
-    constexpr size_t PLAY_TIME = 0x8cbbfd90;        // Time Played
-    constexpr size_t ITEM = 0x1177c2c4;             // Items
+namespace BlockKeys9LZA {
+    constexpr size_t MY_STATUS = 0xE3E89BD1;        // Trainer Details
+    constexpr size_t PARTY = 0x3AA1A9AD;            // Party Data
+    constexpr size_t MISC = 0x4F35D0DD;             // Money
+    // constexpr size_t TRAINER_CARD = 0x874da6fa;     // Trainer Card
+    constexpr size_t PLAY_TIME = 0xEDAFF794;        // Time Played
+    constexpr size_t ITEM = 0x21C9BD44;             // Items
     constexpr size_t BOX = 0x0d66012c;              // Box Data
     constexpr size_t BOX_LAYOUT = 0x19722c89;       // Box Names
     // constexpr size_t BOX_WALLPAPERS = 0x2EB1B190;   // Box Wallpapers
 }
 
-// Generation 8 constants
-constexpr size_t BOX_COUNT_GEN8 = 32;       // Number of boxes in Sword/Shield
-constexpr size_t BOX_NAME_LENGTH_GEN8 = 0x22; // 34 bytes per box name (UTF-16LE)
+// Generation 9 constants
+constexpr size_t BOX_COUNT9_LZA = 32; // Number of boxes in Legends: Z-A
+constexpr size_t BOX_NAME_LENGTH_LZA = 0x22; // 34 bytes per box name (UTF-16LE)
 
 /**
- * Trainer8 - Generation 8 Trainer Class
+ * Trainer9LZA - Generation 9 Trainer Class
  *
- * Inherits from Trainer base class and implements Gen 8-specific save file format.
- * Handles automatic decryption on construction and provides Gen 8-specific
+ * Inherits from Trainer base class and implements Gen 9-specific save file format.
+ * Handles automatic decryption on construction and provides Gen 9-specific
  * encryption when updating blocks.
  *
- * Gen 8 Specific Features:
+ * Gen 9 Specific Features:
  * - 32 boxes with 30 slots each
- * - PK8 Pokemon format (344 bytes party, 328 bytes stored)
+ * - PK9 Pokemon format (344 bytes party, 328 bytes stored)
  * - Block-based save file structure
- * - Gen 8 encryption algorithm
+ * - Gen 9 encryption algorithm
  *
- * Save File Structure (Sword/Shield):
- * - File: "main" (approximately 1.6MB)
+ * Save File Structure (Legends: Z-A):
+ * - File: "main" (approximately 2.94MB)
  * - Format: Multiple blocks identified by key values
  * - Encryption: Block-level encryption + Pokemon encryption
  */
-class Trainer8 final : public Trainer
+class Trainer9LZA final : public Trainer
 {
 public:
     // ========================================
@@ -68,21 +67,21 @@ public:
     // ========================================
 
     /**
-     * Constructs a Trainer8 object from save file blocks.
+     * Constructs a Trainer9LZA object from save file blocks.
      *
      * Process:
      * 1. Parses blocks to extract trainer info
-     * 2. Decrypts and loads party Pokemon (PK8)
-     * 3. Decrypts and loads box Pokemon (PK8)
+     * 2. Decrypts and loads party Pokemon (PK9)
+     * 3. Decrypts and loads box Pokemon (PK9)
      * 4. Loads items and box names
      *
-     * @param blocks Save file blocks parsed from Gen 8 save file
+     * @param blocks Save file blocks parsed from Gen 9 save file
      */
-    explicit Trainer8(std::vector<Block> blocks) : Trainer(std::move(blocks))
+    explicit Trainer9LZA(std::vector<Block> blocks) : Trainer(std::move(blocks))
     {
         party.reserve(MAX_PARTY_SLOTS);
-        boxes.resize(BOX_COUNT_GEN8);
-        boxNames.resize(BOX_COUNT_GEN8);
+        boxes.resize(BOX_COUNT9_LZA);
+        boxNames.resize(BOX_COUNT9_LZA);
 
         // Parse all blocks to extract data
         for (const auto& block : this->blocks) {
@@ -91,15 +90,15 @@ public:
     }
 
     /// Destructor - cleanup handled by base class and unique_ptrs
-    ~Trainer8() override = default;
+    ~Trainer9LZA() override = default;
 
     // Delete copy operations
-    Trainer8(const Trainer8&) = delete;
-    Trainer8& operator=(const Trainer8&) = delete;
+    Trainer9LZA(const Trainer9LZA&) = delete;
+    Trainer9LZA& operator=(const Trainer9LZA&) = delete;
 
     // Allow move operations
-    Trainer8(Trainer8&&) noexcept = default;
-    Trainer8& operator=(Trainer8&&) noexcept = default;
+    Trainer9LZA(Trainer9LZA&&) noexcept = default;
+    Trainer9LZA& operator=(Trainer9LZA&&) noexcept = default;
 
     // ========================================
     // Implementation of Pure Virtual Methods
@@ -107,13 +106,13 @@ public:
 
     /**
      * Updates the PARTY_KEY block with modified Pokemon data.
-     * Uses Gen 8 encryption (encryptArray8).
+     * Uses Gen 9 encryption (encryptArray9).
      */
     void updatePartyBlock() override;
 
     /**
      * Updates the BOX_KEY block with modified Pokemon data.
-     * Uses Gen 8 encryption (encryptArray8).
+     * Uses Gen 9 encryption (encryptArray9).
      */
     void updateBoxBlock() override;
 
@@ -123,11 +122,11 @@ public:
     void updateItemBlock() override;
 
     /**
-     * Gets the number of boxes available in Gen 8.
-     * @return 32 (Sword/Shield has 32 boxes)
+     * Gets the number of boxes available in Gen 9.
+     * @return 32 (Legends: Z-A has 32 boxes)
      */
     size_t getBoxCount() const noexcept override {
-        return BOX_COUNT_GEN8;
+        return BOX_COUNT9_LZA;
     }
 
     /**
@@ -139,11 +138,11 @@ public:
     }
 
     /**
-     * Gets the game group for Gen 8 trainers.
-     * @return GameVersion::SWSH (Sword/Shield group)
+     * Gets the game group for Gen 9 trainers.
+     * @return GameVersion::SWSH (Legends: Z-A group)
      */
     GameVersion getGameGroup() const noexcept override {
-        return GameVersion::SWSH;
+        return GameVersion::ZA;
     }
 
 private:
@@ -173,12 +172,13 @@ private:
      */
     void parseMiscBlock(const Block& block);
 
-    /**
-     * Parses the TRAINER_CARD block to extract trainer name.
-     * Location: Name at offset 0x00 (26 bytes, UTF-16LE)
-     * Location: Trainer ID at offset 0x1C (4 bytes)
-     */
-    void parseTrainerCardBlock(const Block& block);
+    // THERE'S NO TRAINER CARD PARSING IN GEN 9
+    // /**
+    //  * Parses the TRAINER_CARD block to extract trainer name.
+    //  * Location: Name at offset 0x00 (26 bytes, UTF-16LE)
+    //  * Location: Trainer ID at offset 0x1C (4 bytes)
+    //  */
+    // void parseTrainerCardBlock(const Block& block);
 
     /**
      * Parses the ITEM block to extract inventory items.
@@ -188,7 +188,7 @@ private:
 
     /**
      * Parses the BOX block to extract box Pokemon.
-     * Format: 32 boxes * 30 slots * SIZE_8PARTY (344 bytes)
+     * Format: 32 boxes * 30 slots * SIZE_9PARTY (344 bytes)
      */
     void parseBoxBlock(const Block& block);
 

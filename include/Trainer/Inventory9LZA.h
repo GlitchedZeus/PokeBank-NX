@@ -1,8 +1,9 @@
-#ifndef TRAINER_INVENTORY9_H
-#define TRAINER_INVENTORY9_H
+#ifndef TRAINER_INVENTORY9_LZA_H
+#define TRAINER_INVENTORY9_LZA_H
 
 #include <cstdint>
 #include <vector>
+
 #include "Trainer/Inventory.h"
 
 /**
@@ -16,15 +17,15 @@
  */
 
 // Block size for Gen 9 item storage
-constexpr size_t GEN9_ITEM_BLOCK_SIZE = 0xBB80; // 47,872 bytes
+constexpr size_t ITEM_BLOCK_SIZE9_LZA = 0xBB80; // 47,872 bytes
 
 // Size of each item entry
-constexpr size_t GEN9_ITEM_SIZE = 0x10;  // 16 bytes per item
+constexpr size_t ITEM_SIZE9_LZA = 0x10;  // 16 bytes per item
 
 // Maximum item ID (block size / item size)
-constexpr size_t GEN9_MAX_ITEM_ID = GEN9_ITEM_BLOCK_SIZE / GEN9_ITEM_SIZE;  // 2992
+constexpr size_t MAX_ITEM_ID9_LZA = ITEM_BLOCK_SIZE9_LZA / ITEM_SIZE9_LZA;  // 2992
 
-constexpr size_t POUCH_COUNT_GEN9 = 8; // Number of pouches
+constexpr size_t POUCH_COUNT9_LZA = 8; // Number of pouches
 
 /**
  * Gen 9 Item Structure (16 bytes per item)
@@ -33,25 +34,23 @@ constexpr size_t POUCH_COUNT_GEN9 = 8; // Number of pouches
  * Offset 8-11: Flags (uint32) - isNew, isFavorite, etc.
  * Offset 12-15: Padding (uint32) - reserved
  */
-struct InventoryItem9 {
+struct InventoryItem9LZA: InventoryItem {
     uint32_t pouchId;     // Which pouch this item belongs to
-    uint16_t itemId;      // Item ID (not stored, derived from index)
-    int32_t count;        // Quantity
     uint32_t flags;       // Flags (isNew, isFavorite, etc.)
 
     // Decode from 16-byte block at given item ID
-    static InventoryItem9 fromBytes(uint16_t itemId, const uint8_t* data) {
-        InventoryItem9 item;
-        item.itemId = itemId;
+    static InventoryItem9LZA fromBytes(uint16_t itemId, const uint8_t* data) {
+        InventoryItem9LZA item;
 
         // Bytes 0-3: Pouch ID
         item.pouchId = (data[0]) | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
-
         // Bytes 4-7: Count (signed int32)
         item.count = (data[4]) | (data[5] << 8) | (data[6] << 16) | (data[7] << 24);
-
         // Bytes 8-11: Flags
         item.flags = (data[8]) | (data[9] << 8) | (data[10] << 16) | (data[11] << 24);
+
+        item.itemId = itemId;
+        item.count = static_cast<uint16_t>(item.count);
 
         return item;
     }
@@ -88,7 +87,7 @@ struct InventoryItem9 {
     bool isNew() const { return (flags & 0x1) != 0; }
     bool isFavorite() const { return (flags & 0x2) != 0; }
 
-    // Convert to old InventoryItem format
+     // Convert to old InventoryItem format
     InventoryItem toInventoryItem() const {
         InventoryItem item;
         item.itemId = itemId;
@@ -99,7 +98,7 @@ struct InventoryItem9 {
     }
 };
 
-enum class PouchType9 : uint32_t {
+enum class PouchType9LZA : uint32_t {
     Medicine = 0,
     Balls = 1,
     BattleItems = 2,
@@ -114,7 +113,7 @@ enum class PouchType9 : uint32_t {
 /**
  * Valid item IDs for each pouch
  */
-inline const std::vector<uint16_t>& getValidItemIds(PouchType9 pouch) {
+inline const std::vector<uint16_t>& getValidItemIds9LZA(PouchType9LZA pouch) {
     static const std::vector<uint16_t> medicine = {
         17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,708
     };
@@ -154,14 +153,14 @@ inline const std::vector<uint16_t>& getValidItemIds(PouchType9 pouch) {
     };
 
     switch (pouch) {
-        case PouchType9::Medicine: return medicine;
-        case PouchType9::Balls: return balls;
-        case PouchType9::Berries: return berries;
-        case PouchType9::BattleItems: return battleItems;
-        case PouchType9::Treasure: return treasure;
-        case PouchType9::KeyItems: return keyItems;
-        case PouchType9::TMs: return tms;
-        case PouchType9::MegaStones: return megaStones;
+        case PouchType9LZA::Medicine: return medicine;
+        case PouchType9LZA::Balls: return balls;
+        case PouchType9LZA::Berries: return berries;
+        case PouchType9LZA::BattleItems: return battleItems;
+        case PouchType9LZA::Treasure: return treasure;
+        case PouchType9LZA::KeyItems: return keyItems;
+        case PouchType9LZA::TMs: return tms;
+        case PouchType9LZA::MegaStones: return megaStones;
         default: {
             static const std::vector<uint16_t> empty;
             return empty;
@@ -169,21 +168,21 @@ inline const std::vector<uint16_t>& getValidItemIds(PouchType9 pouch) {
     }
 }
 
-struct PouchInfo9 {
-    PouchType9 type;
+struct PouchInfo9LZA {
+    PouchType9LZA type;
     const char* name;
 };
 
-inline const PouchInfo9& getPouchInfo9(PouchType9 type) {
-    static const PouchInfo9 pouches[] = {
-        {PouchType9::Medicine, "Medicine"},
-        {PouchType9::Balls, "Poke Balls"},
-        {PouchType9::BattleItems, "Battle Items"},
-        {PouchType9::Treasure, "Treasure"},
-        {PouchType9::KeyItems, "Key Items"},
-        {PouchType9::Berries, "Berries"},
-        {PouchType9::TMs, "TMs"},
-        {PouchType9::MegaStones, "Mega Stones"}
+inline const PouchInfo9LZA& getPouchInfo9LZA(PouchType9LZA type) {
+    static const PouchInfo9LZA pouches[] = {
+        {PouchType9LZA::Medicine, "Medicine"},
+        {PouchType9LZA::Balls, "Poke Balls"},
+        {PouchType9LZA::BattleItems, "Battle Items"},
+        {PouchType9LZA::Treasure, "Treasure"},
+        {PouchType9LZA::KeyItems, "Key Items"},
+        {PouchType9LZA::Berries, "Berries"},
+        {PouchType9LZA::TMs, "TMs"},
+        {PouchType9LZA::MegaStones, "Mega Stones"}
     };
     return pouches[static_cast<int>(type)];
 }

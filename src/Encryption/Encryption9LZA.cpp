@@ -8,7 +8,7 @@
 #include <cstring>
 
 #include "Encryption/Encryption.h"
-#include "Encryption/Gen9Encryption.h"
+#include "Encryption/Encryption9LZA.h"
 #include "Utils/Utilities.h"
 
 // ========================================
@@ -33,14 +33,14 @@ void shuffleArray9(std::span<const std::byte> data, std::span<std::byte> result,
      * - Bytes 328+:  Party stats (unchanged, if present)
      */
 
-    const uint32_t index = sv * BLOCK_9COUNT;
+    const uint32_t index = sv * BLOCK_COUNT9_LZA;
     constexpr uint32_t start = 8;
 
     // Copy first 8 bytes unchanged (encryption constant + checksum)
     std::memcpy(result.data(), data.data(), start);
 
     // Calculate end of shuffled region
-    const auto end = start + (SIZE_9BLOCK * BLOCK_9COUNT);
+    const auto end = start + (SIZE_BLOCK9_LZA * BLOCK_COUNT9_LZA);
 
     // Copy everything after shuffled blocks unchanged (party stats, if present)
     if (end < data.size())
@@ -51,15 +51,15 @@ void shuffleArray9(std::span<const std::byte> data, std::span<std::byte> result,
 
     // Unshuffle the 4 blocks
     // Read from shuffled positions, write to natural positions
-    for (uint32_t block = 0; block < BLOCK_9COUNT; block++)
+    for (uint32_t block = 0; block < BLOCK_COUNT9_LZA; block++)
     {
         // blockPosition[index + block] tells us which block is in position 'block'
         const int srcBlockIndex = blockPosition[index + block];
-        const size_t srcOffset = start + (SIZE_9BLOCK * srcBlockIndex);
-        const size_t destOffset = start + (SIZE_9BLOCK * block);
+        const size_t srcOffset = start + (SIZE_BLOCK9_LZA * srcBlockIndex);
+        const size_t destOffset = start + (SIZE_BLOCK9_LZA * block);
 
         // Copy one block from shuffled position to correct position
-        std::memcpy(result.data() + destOffset, data.data() + srcOffset, SIZE_9BLOCK);
+        std::memcpy(result.data() + destOffset, data.data() + srcOffset, SIZE_BLOCK9_LZA);
     }
 }
 
@@ -86,15 +86,15 @@ std::byte* decryptArray9(std::span<const std::byte> encryptedData)
     // SV determines how blocks were shuffled (0-31)
     const uint32_t sv = (pv >> 13) & 31;
 
-    // Step 1: Create a mutable copy for XOR decryption
+    // Create a mutable copy for XOR decryption
     std::byte* decryptedData = new std::byte[encryptedData.size()];
     std::memcpy(decryptedData, encryptedData.data(), encryptedData.size());
     std::span<std::byte> mutableSpan(decryptedData, encryptedData.size());
 
-    // Step 2: Decrypt the blocks using XOR cipher
-    cryptPKM(mutableSpan, pv, SIZE_9BLOCK, BLOCK_9COUNT);
+    // Decrypt the blocks using XOR cipher
+    cryptPokemon(mutableSpan, pv, SIZE_BLOCK9_LZA, BLOCK_COUNT9_LZA);
 
-    // Step 3: Unshuffle the blocks to their correct positions
+    // Unshuffle the blocks to their correct positions
     std::byte* unshuffledData = new std::byte[encryptedData.size()];
     std::span<std::byte> resultSpan(unshuffledData, encryptedData.size());
     shuffleArray9(mutableSpan, resultSpan, sv);
@@ -126,15 +126,15 @@ std::byte* encryptArray9(std::span<const std::byte> decryptedData, uint32_t pv)
     std::byte* shuffledData = new std::byte[decryptedData.size()];
     std::span<std::byte> shuffledSpan(shuffledData, decryptedData.size());
 
-    // Step 1: Shuffle the blocks from normal positions to encrypted positions
-    const uint32_t index = sv * BLOCK_9COUNT;
+    // Shuffle the blocks from normal positions to encrypted positions
+    const uint32_t index = sv * BLOCK_COUNT9_LZA;
     constexpr uint32_t start = 8;
 
     // Copy first 8 bytes unchanged (encryption constant + checksum)
     std::memcpy(shuffledSpan.data(), decryptedData.data(), start);
 
     // Calculate end of shuffled region
-    const auto end = start + (SIZE_9BLOCK * BLOCK_9COUNT);
+    const auto end = start + (SIZE_BLOCK9_LZA * BLOCK_COUNT9_LZA);
 
     // Copy everything after shuffled blocks unchanged (party stats, if present)
     if (end < decryptedData.size())
@@ -145,19 +145,19 @@ std::byte* encryptArray9(std::span<const std::byte> decryptedData, uint32_t pv)
 
     // Shuffle the 4 blocks (reverse of unshuffle)
     // Read from natural positions, write to shuffled positions
-    for (uint32_t block = 0; block < BLOCK_9COUNT; block++)
+    for (uint32_t block = 0; block < BLOCK_COUNT9_LZA; block++)
     {
         // blockPosition[index + block] tells us where block 'block' should go
         const int destBlockIndex = blockPosition[index + block];
-        const size_t srcOffset = start + (SIZE_9BLOCK * block);
-        const size_t destOffset = start + (SIZE_9BLOCK * destBlockIndex);
+        const size_t srcOffset = start + (SIZE_BLOCK9_LZA * block);
+        const size_t destOffset = start + (SIZE_BLOCK9_LZA * destBlockIndex);
 
         // Copy one block from decrypted position to shuffled position
-        std::memcpy(shuffledSpan.data() + destOffset, decryptedData.data() + srcOffset, SIZE_9BLOCK);
+        std::memcpy(shuffledSpan.data() + destOffset, decryptedData.data() + srcOffset, SIZE_BLOCK9_LZA);
     }
 
-    // Step 2: Apply XOR cipher (symmetric operation)
-    cryptPKM(shuffledSpan, pv, SIZE_9BLOCK, BLOCK_9COUNT);
+    // Apply XOR cipher (symmetric operation)
+    cryptPokemon(shuffledSpan, pv, SIZE_BLOCK9_LZA, BLOCK_COUNT9_LZA);
 
     return shuffledData;
 }

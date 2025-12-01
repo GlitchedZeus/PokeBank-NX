@@ -1,7 +1,7 @@
 /**
- * PK7.cpp - Generation 7 Pokemon Let's Go Data Class Implementation
+ * Pokemon7LGPE.cpp - Generation 7 Pokemon Let's Go Data Class Implementation
  *
- * Implementation of PK7 class methods including stat calculations,
+ * Implementation of Pokemon7LGPE class methods including stat calculations,
  * gender determination, and Let's Go-specific features.
  */
 
@@ -9,8 +9,8 @@
 #include <algorithm>
 #include <cmath>
 
-#include "PKM/PK7.h"
-#include "PKM/BaseStats.h"
+#include "Pokemon/Pokemon7LGPE.h"
+#include "Pokemon/BaseStats.h"
 
 // Forward declarations for external helper functions
 extern const char* getSpeciesName(uint16_t speciesId);
@@ -19,7 +19,7 @@ extern const char* getSpeciesName(uint16_t speciesId);
 // Species and Name Lookups
 // ========================================
 
-const char* PK7::species() const
+const char* Pokemon7LGPE::species() const
 {
     return getSpeciesName(speciesID());
 }
@@ -28,11 +28,10 @@ const char* PK7::species() const
 // Gender Determination
 // ========================================
 
-uint8_t PK7::gender() const
+uint8_t Pokemon7LGPE::gender() const
 {
     /**
      * Gender determination in Let's Go uses the encryption constant
-     * similar to how PK8 uses PID.
      *
      * For simplicity, we use the same logic as PK8 but with EC instead of PID.
      */
@@ -59,32 +58,32 @@ uint8_t PK7::gender() const
 // Base Stats (Species-Dependent)
 // ========================================
 
-uint8_t PK7::baseHP() const
+uint8_t Pokemon7LGPE::baseHP() const
 {
     return getBaseStats(speciesID())->hp;
 }
 
-uint8_t PK7::baseATK() const
+uint8_t Pokemon7LGPE::baseATK() const
 {
     return getBaseStats(speciesID())->atk;
 }
 
-uint8_t PK7::baseDEF() const
+uint8_t Pokemon7LGPE::baseDEF() const
 {
     return getBaseStats(speciesID())->def;
 }
 
-uint8_t PK7::baseSPE() const
+uint8_t Pokemon7LGPE::baseSPE() const
 {
     return getBaseStats(speciesID())->spe;
 }
 
-uint8_t PK7::baseSPA() const
+uint8_t Pokemon7LGPE::baseSPA() const
 {
     return getBaseStats(speciesID())->spa;
 }
 
-uint8_t PK7::baseSPD() const
+uint8_t Pokemon7LGPE::baseSPD() const
 {
     return getBaseStats(speciesID())->spd;
 }
@@ -93,7 +92,7 @@ uint8_t PK7::baseSPD() const
 // Level Calculation
 // ========================================
 
-uint8_t PK7::level() const
+uint8_t Pokemon7LGPE::level() const
 {
     /**
      * In Let's Go, level can be calculated from experience using the
@@ -119,7 +118,7 @@ uint8_t PK7::level() const
 // Calculated Stats
 // ========================================
 
-uint16_t PK7::statHPMax() const
+uint16_t Pokemon7LGPE::statHPMax() const
 {
     /**
      * HP calculation in Let's Go includes Awakening Values (AVs):
@@ -137,7 +136,7 @@ uint16_t PK7::statHPMax() const
     return static_cast<uint16_t>(std::max(1, hp));
 }
 
-uint16_t PK7::statATK() const
+uint16_t Pokemon7LGPE::statATK() const
 {
     uint8_t levelValue = level();
     if (levelValue == 0 || levelValue > 100) return 1;
@@ -157,7 +156,7 @@ uint16_t PK7::statATK() const
     return static_cast<uint16_t>(std::max(1, stat));
 }
 
-uint16_t PK7::statDEF() const
+uint16_t Pokemon7LGPE::statDEF() const
 {
     uint8_t levelValue = level();
     if (levelValue == 0 || levelValue > 100) return 1;
@@ -172,7 +171,7 @@ uint16_t PK7::statDEF() const
     return static_cast<uint16_t>(std::max(1, stat));
 }
 
-uint16_t PK7::statSPE() const
+uint16_t Pokemon7LGPE::statSPE() const
 {
     uint8_t levelValue = level();
     if (levelValue == 0 || levelValue > 100) return 1;
@@ -187,7 +186,7 @@ uint16_t PK7::statSPE() const
     return static_cast<uint16_t>(std::max(1, stat));
 }
 
-uint16_t PK7::statSPA() const
+uint16_t Pokemon7LGPE::statSPA() const
 {
     uint8_t levelValue = level();
     if (levelValue == 0 || levelValue > 100) return 1;
@@ -202,7 +201,7 @@ uint16_t PK7::statSPA() const
     return static_cast<uint16_t>(std::max(1, stat));
 }
 
-uint16_t PK7::statSPD() const
+uint16_t Pokemon7LGPE::statSPD() const
 {
     uint8_t levelValue = level();
     if (levelValue == 0 || levelValue > 100) return 1;
@@ -221,7 +220,7 @@ uint16_t PK7::statSPD() const
 // Stat Recalculation
 // ========================================
 
-void PK7::recalculateStats()
+void Pokemon7LGPE::recalculateStats()
 {
     /**
      * In Let's Go, stats are calculated and stored differently than other generations.
@@ -250,11 +249,11 @@ void PK7::recalculateStats()
 // Advanced Modification
 // ========================================
 
-void PK7::regeneratePID(uint32_t trainerID32)
+void Pokemon7LGPE::regeneratePID(uint32_t trainerID32)
 {
     /**
      * Regenerates the Encryption Constant to maintain legality.
-     * In Let's Go (PK7), the EC serves as the PID for shiny/gender calculations.
+     * In Let's Go (Pokemon7LGPE), the EC serves as the PID for shiny/gender calculations.
      *
      * This generates a new EC while preserving:
      * - Current shiny status
@@ -279,7 +278,7 @@ void PK7::regeneratePID(uint32_t trainerID32)
     refreshChecksum();
 }
 
-void PK7::setShiny(bool makeShiny, uint32_t trainerID32)
+void Pokemon7LGPE::setShiny(bool makeShiny, uint32_t trainerID32)
 {
     /**
      * Sets the Pokemon's shiny status by modifying the Encryption Constant.

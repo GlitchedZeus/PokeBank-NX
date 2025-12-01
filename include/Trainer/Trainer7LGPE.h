@@ -1,9 +1,9 @@
 /**
- * Trainer7.h - Generation 7 Let's Go Trainer/Save File Data Management
+ * Trainer7LGPE.h - Generation 7 Let's Go Trainer/Save File Data Management
  *
- * This file defines the Trainer7 class for Pokemon Let's Go Pikachu/Eevee.
+ * This file defines the Trainer7LGPE class for Pokemon Let's Go Pikachu/Eevee.
  *
- * Trainer7 implements generation-specific logic for:
+ * Trainer7LGPE implements generation-specific logic for:
  * - PK7 Pokemon storage (party and boxes)
  * - Gen 7 block keys (Let's Go format)
  * - Gen 7 encryption (encryptArray7/decryptArray7)
@@ -13,20 +13,20 @@
  * This class provides the structure for future implementation.
  */
 
-#ifndef TRAINER_TRAINER7_H
-#define TRAINER_TRAINER7_H
+#ifndef TRAINER_TRAINER7_LGPE_H
+#define TRAINER_TRAINER7_LGPE_H
 
 #include <cstring>
 
 #include "Trainer/Trainer.h"
-#include "PKM/PK7.h"
-#include "Encryption/Gen7Encryption.h"
+#include "Pokemon/Pokemon7LGPE.h"
+#include "Encryption/Encryption7LGPE.h"
 
 // ========================================
 // Generation 7 Let's Go Save File Block Keys
 // ========================================
 
-namespace Gen7BlockKeys {
+namespace BlockKeys7LGPE {
     // TODO: Define Let's Go block keys once save format is fully analyzed
     // Let's Go uses a different block structure than Sword/Shield
     // Block keys need to be determined from save file analysis
@@ -41,11 +41,11 @@ namespace Gen7BlockKeys {
 }
 
 // Generation 7 Let's Go constants
-constexpr size_t BOX_COUNT_GEN7 = 40;        // Let's Go has 40 boxes
-constexpr size_t BOX_NAME_LENGTH_GEN7 = 0x22; // Box name length (UTF-16LE)
+constexpr size_t BOX_COUNT7_LGPE = 40;        // Let's Go has 40 boxes
+constexpr size_t BOX_NAME_LENGTH7_LGPE = 0x22; // Box name length (UTF-16LE)
 
 /**
- * Trainer7 - Generation 7 Let's Go Trainer Class
+ * Trainer7LGPE - Generation 7 Let's Go Trainer Class
  *
  * Inherits from Trainer base class and implements Let's Go-specific save file format.
  * Handles automatic decryption on construction and provides Gen 7-specific
@@ -63,7 +63,7 @@ constexpr size_t BOX_NAME_LENGTH_GEN7 = 0x22; // Box name length (UTF-16LE)
  * - Format: Block-based structure (simpler than SwSh)
  * - Encryption: Gen 7 encryption algorithm
  */
-class Trainer7 final : public Trainer
+class Trainer7LGPE final : public Trainer
 {
 public:
     // ========================================
@@ -71,7 +71,7 @@ public:
     // ========================================
 
     /**
-     * Constructs a Trainer7 object from save file blocks.
+     * Constructs a Trainer7LGPE object from save file blocks.
      *
      * Process:
      * 1. Parses blocks to extract trainer info
@@ -84,11 +84,11 @@ public:
      * NOTE: Currently a placeholder implementation.
      * Full Let's Go save parsing will be implemented in future updates.
      */
-    explicit Trainer7(std::vector<Block> blocks) : Trainer(std::move(blocks))
+    explicit Trainer7LGPE(std::vector<Block> blocks) : Trainer(std::move(blocks))
     {
         party.reserve(MAX_PARTY_SLOTS);
-        boxes.resize(BOX_COUNT_GEN7);
-        boxNames.resize(BOX_COUNT_GEN7);
+        boxes.resize(BOX_COUNT7_LGPE);
+        boxNames.resize(BOX_COUNT7_LGPE);
 
         // Parse all blocks to extract data
         // TODO: Implement block parsing once Let's Go format is analyzed
@@ -98,15 +98,15 @@ public:
     }
 
     /// Destructor - cleanup handled by base class and unique_ptrs
-    ~Trainer7() override = default;
+    ~Trainer7LGPE() override = default;
 
     // Delete copy operations
-    Trainer7(const Trainer7&) = delete;
-    Trainer7& operator=(const Trainer7&) = delete;
+    Trainer7LGPE(const Trainer7LGPE&) = delete;
+    Trainer7LGPE& operator=(const Trainer7LGPE&) = delete;
 
     // Allow move operations
-    Trainer7(Trainer7&&) noexcept = default;
-    Trainer7& operator=(Trainer7&&) noexcept = default;
+    Trainer7LGPE(Trainer7LGPE&&) noexcept = default;
+    Trainer7LGPE& operator=(Trainer7LGPE&&) noexcept = default;
 
     // ========================================
     // Implementation of Pure Virtual Methods
@@ -140,7 +140,7 @@ public:
      * @return 40 (Let's Go has 40 boxes)
      */
     size_t getBoxCount() const noexcept override {
-        return BOX_COUNT_GEN7;
+        return BOX_COUNT7_LGPE;
     }
 
     /**

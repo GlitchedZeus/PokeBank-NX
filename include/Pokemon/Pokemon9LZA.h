@@ -1,11 +1,11 @@
 /**
- * PK9.h - Generation 9 Pokemon Data Class
+ * Pokemon9LZA.h - Generation 9 Pokemon Data Class
  *
- * This file defines the PK9 class for Generation 9 Pokemon games:
+ * This file defines the Pokemon9LZA class for Generation 9 Pokemon games:
  * - Pokemon Scarlet/Violet
  * - Pokemon Legends: Z-A
  *
- * PK9 Format Details:
+ * Pokemon9LZA Format Details:
  * - Party Size: 344 bytes (0x158)
  * - Stored Size: 328 bytes (0x148)
  * - Encryption: XOR cipher + block shuffling
@@ -27,13 +27,13 @@
 #include <span>
 #include <string>
 
-#include "PKM/PKM.h"
-#include "Encryption/Gen9Encryption.h"
+#include "Pokemon/Pokemon.h"
+#include "Encryption/Encryption9LZA.h"
 #include "Utils/Utilities.h"
 #include "Utils/StringHelpers.h"
 
 /**
- * PK9 - Generation 8 Pokemon Class
+ * Pokemon9LZA - Generation 8 Pokemon Class
  *
  * Inherits from PKM base class and implements Gen 8-specific data format.
  * Handles automatic decryption on construction and provides accessors for
@@ -45,11 +45,11 @@
  * - Home Tracker
  * - Sociability stat
  */
-class PK9 final : public PKM
+class Pokemon9LZA final : public Pokemon
 {
 public:
     /**
-     * Constructs a PK9 object from encrypted Pokemon data.
+     * Constructs a Pokemon9LZA object from encrypted Pokemon data.
      *
      * Process:
      * 1. Decrypts the data using Gen8 decryption algorithm
@@ -58,10 +58,10 @@ public:
      *
      * @param raw Encrypted Pokemon data (SIZE_8PARTY or SIZE_8STORED bytes)
      */
-    explicit PK9(std::span<const std::byte> raw)
+    explicit Pokemon9LZA(std::span<const std::byte> raw)
     {
         // Decrypt the Gen 9 Pokemon data
-        buffer = decryptArray9(raw);
+        buffer = decryptArray9LZA(raw);
         dataSize = raw.size();
         data = std::span<std::byte>(buffer, dataSize);
     }
@@ -70,15 +70,15 @@ public:
      * Destructor - cleans up decrypted data buffer.
      * The base class PKM destructor handles buffer cleanup.
      */
-    ~PK9() override = default;
+    ~Pokemon9LZA() override = default;
 
     // Prevent copying (Pokemon data should not be accidentally copied)
-    PK9(const PK9&) = delete;
-    PK9& operator=(const PK9&) = delete;
+    Pokemon9LZA(const Pokemon9LZA&) = delete;
+    Pokemon9LZA& operator=(const Pokemon9LZA&) = delete;
 
     // Allow moving for efficient transfers
-    PK9(PK9&&) noexcept = default;
-    PK9& operator=(PK9&&) noexcept = default;
+    Pokemon9LZA(Pokemon9LZA&&) noexcept = default;
+    Pokemon9LZA& operator=(Pokemon9LZA&&) noexcept = default;
 
     // ========================================
     // Core Data Properties (Block A - Growth)
@@ -416,7 +416,7 @@ public:
         uint16_t checksum = 0;
 
         // Sum all 16-bit values from offset 0x08 to SIZE_9STORED
-        const size_t checksumEnd = std::min(dataSize, SIZE_9STORED);
+        const size_t checksumEnd = std::min(dataSize, SIZE_STORED9_LZA);
         for (size_t i = 0x08; i < checksumEnd; i += 2) {
             checksum += readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + i));
         }

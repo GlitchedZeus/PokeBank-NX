@@ -1,9 +1,9 @@
 /**
- * PK7.h - Generation 7 Pokemon Let's Go Data Class
+ * Pokemon7LGPE.h - Generation 7 Pokemon Let's Go Data Class
  *
- * This file defines the PK7 class for Pokemon Let's Go Pikachu/Eevee games.
+ * This file defines the Pokemon7LGPE class for Pokemon Let's Go Pikachu/Eevee games.
  *
- * PK7 Format Details:
+ * Pokemon7LGPE Format Details:
  * - Fixed Size: 260 bytes (0x104) for both party and stored
  * - Encryption: XOR cipher + block shuffling (Gen 6/7 algorithm)
  * - Data Layout: 4 blocks (56 bytes each) + additional data
@@ -25,22 +25,22 @@
  * 0xE8-0x103: Extended data - CP, weight, height
  */
 
-#ifndef PKM_PK7_H
-#define PKM_PK7_H
+#ifndef POKEMON_POKEMON7_LGPE_H
+#define POKEMON_POKEMON7_LGPE_H
 
 #include <cstdint>
 #include <span>
 #include <string>
 
-#include "PKM/PKM.h"
-#include "Encryption/Gen7Encryption.h"
+#include "Pokemon/Pokemon.h"
+#include "Encryption/Encryption7LGPE.h"
 #include "Utils/Utilities.h"
 #include "Utils/StringHelpers.h"
 
 /**
- * PK7 - Pokemon Let's Go Pikachu/Eevee Pokemon Class
+ * Pokemon7LGPE - Pokemon Let's Go Pikachu/Eevee Pokemon Class
  *
- * Inherits from PKM base class and implements Let's Go-specific data format.
+ * Inherits from Pokemon base class and implements Let's Go-specific data format.
  * Handles automatic decryption on construction and provides accessors for
  * all Pokemon properties.
  *
@@ -51,11 +51,11 @@
  * - Absolute Height/Weight: Actual measurements in meters/kilograms
  * - Simpler structure than modern generations
  */
-class PK7 final : public PKM
+class Pokemon7LGPE final : public Pokemon
 {
 public:
     /**
-     * Constructs a PK7 object from encrypted Pokemon data.
+     * Constructs a Pokemon7LGPE object from encrypted Pokemon data.
      *
      * Process:
      * 1. Decrypts the data using Gen7 decryption algorithm
@@ -64,7 +64,7 @@ public:
      *
      * @param raw Encrypted Pokemon data (SIZE_PK7 = 260 bytes)
      */
-    explicit PK7(std::span<const std::byte> raw)
+    explicit Pokemon7LGPE(std::span<const std::byte> raw)
     {
         // Decrypt the Gen 7 Pokemon data
         buffer = decryptArray7(raw);
@@ -74,17 +74,17 @@ public:
 
     /**
      * Destructor - cleans up decrypted data buffer.
-     * The base class PKM destructor handles buffer cleanup.
+     * The base class Pokemon destructor handles buffer cleanup.
      */
-    ~PK7() override = default;
+    ~Pokemon7LGPE() override = default;
 
     // Prevent copying (Pokemon data should not be accidentally copied)
-    PK7(const PK7&) = delete;
-    PK7& operator=(const PK7&) = delete;
+    Pokemon7LGPE(const Pokemon7LGPE&) = delete;
+    Pokemon7LGPE& operator=(const Pokemon7LGPE&) = delete;
 
     // Allow moving for efficient transfers
-    PK7(PK7&&) noexcept = default;
-    PK7& operator=(PK7&&) noexcept = default;
+    Pokemon7LGPE(Pokemon7LGPE&&) noexcept = default;
+    Pokemon7LGPE& operator=(Pokemon7LGPE&&) noexcept = default;
 
     // ========================================
     // Core Data Properties (Block A - Growth)
@@ -174,13 +174,13 @@ public:
 
     /**
      * Gets the Personality ID (PID).
-     * Location: 0x1C (4 bytes) - Note: In PK7, nature byte is part of PID location
+     * Location: 0x1C (4 bytes) - Note: In Pokemon7LGPE, nature byte is part of PID location
      * For compatibility, we read the full 32-bit value near nature
      * @return PID value
      */
     uint32_t pid() const noexcept override
     {
-        // PK7 doesn't have a dedicated PID field like PK8
+        // Pokemon7LGPE doesn't have a dedicated PID field like PK8
         // Use Encryption Constant as PID for compatibility
         return encryptionConstant();
     }
@@ -223,7 +223,7 @@ public:
      */
     bool isEgg() const noexcept override
     {
-        // PK7 egg flag location (simplified)
+        // Pokemon7LGPE egg flag location (simplified)
         return false; // Let's Go doesn't have eggs
     }
 

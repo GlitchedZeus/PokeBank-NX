@@ -1,7 +1,7 @@
 /**
- * Trainer7.cpp - Generation 7 Let's Go Trainer Implementation
+ * Trainer7LGPE.cpp - Generation 7 Let's Go Trainer Implementation
  *
- * This file implements the Trainer7 class for Pokemon Let's Go Pikachu/Eevee
+ * This file implements the Trainer7LGPE class for Pokemon Let's Go Pikachu/Eevee
  * save files.
  *
  * NOTE: This is currently a stub implementation. Full Let's Go save file
@@ -12,14 +12,14 @@
 #include <algorithm>
 #include <cstring>
 
-#include "Trainer/Trainer7.h"
+#include "Trainer/Trainer7LGPE.h"
 #include "Utils/Logger.h"
 
 // ========================================
 // Block Parsing Methods
 // ========================================
 
-void Trainer7::parseBlock(const Block& block)
+void Trainer7LGPE::parseBlock(const Block& block)
 {
     /**
      * TODO: Implement Let's Go block parsing
@@ -44,7 +44,7 @@ void Trainer7::parseBlock(const Block& block)
 // Block Update Methods
 // ========================================
 
-void Trainer7::updatePartyBlock()
+void Trainer7LGPE::updatePartyBlock()
 {
     /**
      * TODO: Implement party block update for Let's Go
@@ -56,10 +56,10 @@ void Trainer7::updatePartyBlock()
      * - Let's Go-specific block keys
      */
 
-    logInfoToFile("Trainer7::updatePartyBlock() - Not yet implemented");
+    logInfoToFile("Trainer7LGPE::updatePartyBlock() - Not yet implemented");
 }
 
-void Trainer7::updateBoxBlock()
+void Trainer7LGPE::updateBoxBlock()
 {
     /**
      * TODO: Implement box block update for Let's Go
@@ -72,10 +72,10 @@ void Trainer7::updateBoxBlock()
      * - Let's Go-specific block keys
      */
 
-    logInfoToFile("Trainer7::updateBoxBlock() - Not yet implemented");
+    logInfoToFile("Trainer7LGPE::updateBoxBlock() - Not yet implemented");
 }
 
-void Trainer7::updateItemBlock()
+void Trainer7LGPE::updateItemBlock()
 {
     /**
      * TODO: Implement item block update for Let's Go
@@ -84,5 +84,5 @@ void Trainer7::updateItemBlock()
      * Once the format is analyzed, this will be implemented.
      */
 
-    logInfoToFile("Trainer7::updateItemBlock() - Not yet implemented");
+    logInfoToFile("Trainer7LGPE::updateItemBlock() - Not yet implemented");
 }

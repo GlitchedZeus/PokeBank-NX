@@ -1,42 +1,43 @@
 /**
- * Trainer8.cpp - Generation 8 Trainer Implementation
+ * Trainer8SWSH.cpp - Generation 8 Trainer Implementation
  *
- * This file implements the Trainer8 class for Pokemon Sword/Shield save files.
+ * This file implements the Trainer8SWSH class for Pokemon Sword/Shield save files.
  * Handles Gen 8-specific block parsing, Pokemon encryption/decryption, and
  * save file serialization.
  */
 #include <algorithm>
 #include <cstring>
 
-#include "Trainer/Trainer8.h"
+#include "Trainer/Trainer8SWSH.h"
+#include "Trainer/Inventory8SWSH.h"
 #include "Utils/Logger.h"
 
 // ========================================
 // Block Parsing Methods
 // ========================================
 
-void Trainer8::parseBlock(const Block& block)
+void Trainer8SWSH::parseBlock(const Block& block)
 {
     switch (block.key) {
-        case Gen8BlockKeys::MY_STATUS:
+        case BlockKeys8SWSH::MY_STATUS:
             parseMyStatusBlock(block);
             break;
-        case Gen8BlockKeys::PARTY:
+        case BlockKeys8SWSH::PARTY:
             parsePartyBlock(block);
             break;
-        case Gen8BlockKeys::MISC:
+        case BlockKeys8SWSH::MISC:
             parseMiscBlock(block);
             break;
-        case Gen8BlockKeys::TRAINER_CARD:
+        case BlockKeys8SWSH::TRAINER_CARD:
             parseTrainerCardBlock(block);
             break;
-        case Gen8BlockKeys::ITEM:
+        case BlockKeys8SWSH::ITEM:
             parseItemBlock(block);
             break;
-        case Gen8BlockKeys::BOX:
+        case BlockKeys8SWSH::BOX:
             parseBoxBlock(block);
             break;
-        case Gen8BlockKeys::BOX_LAYOUT:
+        case BlockKeys8SWSH::BOX_LAYOUT:
             parseBoxLayoutBlock(block);
             break;
         // Additional blocks can be handled here
@@ -46,7 +47,7 @@ void Trainer8::parseBlock(const Block& block)
     }
 }
 
-void Trainer8::parseMyStatusBlock(const Block& block)
+void Trainer8SWSH::parseMyStatusBlock(const Block& block)
 {
     /**
      * MY_STATUS Block Structure:
@@ -68,17 +69,17 @@ void Trainer8::parseMyStatusBlock(const Block& block)
     this->SID = this->ID32 / 1000000;
 }
 
-void Trainer8::parsePartyBlock(const Block& block)
+void Trainer8SWSH::parsePartyBlock(const Block& block)
 {
     /**
      * PARTY Block Structure:
      * Pokemon stored sequentially at offsets:
      * - Slot 0: offset 0
-     * - Slot 1: offset SIZE_8PARTY (344 bytes)
-     * - Slot 2: offset 2 * SIZE_8PARTY
+     * - Slot 1: offset SIZE_PARTY8_SWSH (344 bytes)
+     * - Slot 2: offset 2 * SIZE_PARTY8_SWSH
      * - ... up to 6 slots
      *
-     * Each slot is SIZE_8PARTY bytes (344 bytes for party Pokemon).
+     * Each slot is SIZE_PARTY8_SWSH bytes (344 bytes for party Pokemon).
      * Empty slots are zeroed out.
      */
     const std::span<const std::byte> blockSpan(
@@ -88,17 +89,17 @@ void Trainer8::parsePartyBlock(const Block& block)
 
     for (size_t slot = 0; slot < MAX_PARTY_SLOTS; ++slot)
     {
-        const size_t offset = slot * SIZE_8PARTY;
-        if (offset + SIZE_8PARTY > block.data.size())
+        const size_t offset = slot * SIZE_PARTY8_SWSH;
+        if (offset + SIZE_PARTY8_SWSH > block.data.size())
             break;
 
-        std::span<const std::byte> slotSpan = blockSpan.subspan(offset, SIZE_8PARTY);
+        std::span<const std::byte> slotSpan = blockSpan.subspan(offset, SIZE_PARTY8_SWSH);
 
         // Check if slot has valid Pokemon data (non-zero species)
         // The species ID is at offset 0x08 after decryption, but we can check
         // for an all-zero slot to skip empty slots
         bool isEmptySlot = true;
-        for (size_t i = 0; i < SIZE_8PARTY && i < slotSpan.size(); ++i) {
+        for (size_t i = 0; i < SIZE_PARTY8_SWSH && i < slotSpan.size(); ++i) {
             if (slotSpan[i] != std::byte{0}) {
                 isEmptySlot = false;
                 break;
@@ -106,14 +107,14 @@ void Trainer8::parsePartyBlock(const Block& block)
         }
 
         if (!isEmptySlot) {
-            // Decrypt and create PK8 object as unique_ptr
-            // PK8 constructor handles decryption automatically
-            party.push_back(std::make_unique<PK8>(slotSpan));
+            // Decrypt and create Pokemon8SWSH object as unique_ptr
+            // Pokemon8SWSH constructor handles decryption automatically
+            party.push_back(std::make_unique<Pokemon8SWSH>(slotSpan));
         }
     }
 }
 
-void Trainer8::parseMiscBlock(const Block& block)
+void Trainer8SWSH::parseMiscBlock(const Block& block)
 {
     /**
      * MISC Block Structure:
@@ -126,7 +127,7 @@ void Trainer8::parseMiscBlock(const Block& block)
     this->money = readUInt32LittleEndian(&block.data[0x04]);
 }
 
-void Trainer8::parseTrainerCardBlock(const Block& block)
+void Trainer8SWSH::parseTrainerCardBlock(const Block& block)
 {
     /**
      * TRAINER_CARD Block Structure:
@@ -143,7 +144,7 @@ void Trainer8::parseTrainerCardBlock(const Block& block)
     this->trainerName = utf16ToUtf8(getString(block.data.data(), nameLength));
 }
 
-void Trainer8::parseItemBlock(const Block& block)
+void Trainer8SWSH::parseItemBlock(const Block& block)
 {
     /**
      * ITEM Block Structure:
@@ -162,14 +163,14 @@ void Trainer8::parseItemBlock(const Block& block)
      * Items are stored as 4-byte values: (count << 16) | itemId
      */
     // Initialize items vector with pouches for each type
-    items.resize(static_cast<size_t>(PouchType::Count));
+    items8SWSH.resize(static_cast<size_t>(PouchType8SWSH::Count));
 
     // Load each pouch
-    for (int p = 0; p < static_cast<int>(PouchType::Count); p++) {
-        PouchType pouchType = static_cast<PouchType>(p);
-        const PouchInfo& info = getPouchInfo(pouchType);
+    for (int p = 0; p < static_cast<int>(PouchType8SWSH::Count); p++) {
+        PouchType8SWSH pouchType = static_cast<PouchType8SWSH>(p);
+        const PouchInfo8SWSH& info = getPouchInfo(pouchType);
 
-        std::vector<InventoryItem> pouch;
+        std::vector<InventoryItem8SWSH> pouch;
         pouch.reserve(info.maxCount);
 
         // Read items from block data
@@ -177,7 +178,7 @@ void Trainer8::parseItemBlock(const Block& block)
             size_t offset = info.offset + (i * 4);
             if (offset + 4 <= block.data.size()) {
                 uint32_t itemValue = readUInt32LittleEndian(&block.data[offset]);
-                InventoryItem item = InventoryItem::fromValue(itemValue);
+                InventoryItem8SWSH item = InventoryItem8SWSH::fromValue(itemValue);
 
                 // Only add items with valid IDs (non-zero)
                 if (item.itemId != 0) {
@@ -186,19 +187,19 @@ void Trainer8::parseItemBlock(const Block& block)
             }
         }
 
-        items[p] = std::move(pouch);
+        items8SWSH[p] = std::move(pouch);
     }
 }
 
-void Trainer8::parseBoxBlock(const Block& block)
+void Trainer8SWSH::parseBoxBlock(const Block& block)
 {
     /**
      * BOX Block Structure:
      * Pokemon stored sequentially for all boxes and slots:
      * - Box 0, Slot 0: offset 0
-     * - Box 0, Slot 1: offset SIZE_8PARTY
-     * - ... Box 0, Slot 29: offset 29 * SIZE_8PARTY
-     * - Box 1, Slot 0: offset 30 * SIZE_8PARTY
+     * - Box 0, Slot 1: offset SIZE_PARTY8_SWSH
+     * - ... Box 0, Slot 29: offset 29 * SIZE_PARTY8_SWSH
+     * - Box 1, Slot 0: offset 30 * SIZE_PARTY8_SWSH
      * - ... etc for all 32 boxes
      *
      * Total size: 32 boxes * 30 slots * 344 bytes = 331,776 bytes
@@ -208,19 +209,19 @@ void Trainer8::parseBoxBlock(const Block& block)
         block.data.size()
     );
 
-    for (size_t boxIndex = 0; boxIndex < BOX_COUNT_GEN8; ++boxIndex) {
+    for (size_t boxIndex = 0; boxIndex < BOX_COUNT8_SWSH; ++boxIndex) {
         for (size_t slot = 0; slot < BOX_SLOTS; ++slot) {
             // Calculate offset: (boxIndex * slots per box + slot) * bytes per pokemon
-            const size_t offset = (boxIndex * BOX_SLOTS + slot) * SIZE_8PARTY;
-            if (offset + SIZE_8PARTY > block.data.size()) {
+            const size_t offset = (boxIndex * BOX_SLOTS + slot) * SIZE_PARTY8_SWSH;
+            if (offset + SIZE_PARTY8_SWSH > block.data.size()) {
                 break;
             }
 
-            std::span<const std::byte> slotSpan = blockSpan.subspan(offset, SIZE_8PARTY);
+            std::span<const std::byte> slotSpan = blockSpan.subspan(offset, SIZE_PARTY8_SWSH);
 
             // Check if slot has a Pokemon (non-zero data)
             bool isEmptySlot = true;
-            for (size_t i = 0; i < SIZE_8PARTY && i < slotSpan.size(); ++i) {
+            for (size_t i = 0; i < SIZE_PARTY8_SWSH && i < slotSpan.size(); ++i) {
                 if (slotSpan[i] != std::byte{0}) {
                     isEmptySlot = false;
                     break;
@@ -228,8 +229,8 @@ void Trainer8::parseBoxBlock(const Block& block)
             }
 
             if (!isEmptySlot) {
-                // Decrypt and create PK8 object
-                boxes[boxIndex][slot] = std::make_unique<PK8>(slotSpan);
+                // Decrypt and create Pokemon8SWSH object
+                boxes[boxIndex][slot] = std::make_unique<Pokemon8SWSH>(slotSpan);
             } else {
                 // Empty slot
                 boxes[boxIndex][slot] = nullptr;
@@ -238,7 +239,7 @@ void Trainer8::parseBoxBlock(const Block& block)
     }
 }
 
-void Trainer8::parseBoxLayoutBlock(const Block& block)
+void Trainer8SWSH::parseBoxLayoutBlock(const Block& block)
 {
     /**
      * BOX_LAYOUT Block Structure:
@@ -247,15 +248,15 @@ void Trainer8::parseBoxLayoutBlock(const Block& block)
      * - Box 1 name: offset 34
      * - ... for all 32 boxes
      *
-     * Each name is BOX_NAME_LENGTH_GEN8 bytes (34 bytes).
+     * Each name is BOX_NAME_LENGTH8_SWSH bytes (34 bytes).
      */
-    for (size_t boxIndex = 0; boxIndex < BOX_COUNT_GEN8; ++boxIndex) {
-        size_t offset = boxIndex * BOX_NAME_LENGTH_GEN8;
-        if (offset + BOX_NAME_LENGTH_GEN8 <= block.data.size()) {
+    for (size_t boxIndex = 0; boxIndex < BOX_COUNT8_SWSH; ++boxIndex) {
+        size_t offset = boxIndex * BOX_NAME_LENGTH8_SWSH;
+        if (offset + BOX_NAME_LENGTH8_SWSH <= block.data.size()) {
             // Extract box name (UTF-16LE string)
             std::u16string boxNameU16 = getString(
                 block.data.data() + offset,
-                BOX_NAME_LENGTH_GEN8
+                BOX_NAME_LENGTH8_SWSH
             );
             std::string boxName = utf16ToUtf8(boxNameU16);
 
@@ -276,14 +277,14 @@ void Trainer8::parseBoxLayoutBlock(const Block& block)
 // Block Update Methods
 // ========================================
 
-void Trainer8::updatePartyBlock()
+void Trainer8SWSH::updatePartyBlock()
 {
     /**
      * Updates the PARTY block with modified Pokemon data.
      *
      * Process:
      * 1. Find the PARTY block
-     * 2. Ensure block is large enough (6 slots * SIZE_8PARTY)
+     * 2. Ensure block is large enough (6 slots * SIZE_PARTY8_SWSH)
      * 3. For each party Pokemon:
      *    a. Get encryption constant from Pokemon data
      *    b. Encrypt Pokemon data using encryptArray8
@@ -291,20 +292,20 @@ void Trainer8::updatePartyBlock()
      * 4. Zero out empty slots
      */
     for (auto& block : blocks) {
-        if (block.key == Gen8BlockKeys::PARTY) {
+        if (block.key == BlockKeys8SWSH::PARTY) {
             // Ensure the block data is large enough
-            size_t requiredSize = MAX_PARTY_SLOTS * SIZE_8PARTY;
+            size_t requiredSize = MAX_PARTY_SLOTS * SIZE_PARTY8_SWSH;
             if (block.data.size() < requiredSize) {
                 block.data.resize(requiredSize, 0);
             }
 
             // Write each party Pokemon
             for (size_t i = 0; i < party.size() && i < MAX_PARTY_SLOTS; ++i) {
-                const size_t offset = i * SIZE_8PARTY;
+                const size_t offset = i * SIZE_PARTY8_SWSH;
 
                 if (party[i] && party[i]->speciesID() != 0) {
                     // Pokemon exists - encrypt and write
-                    const PKM* pokemon = party[i].get();
+                    const Pokemon* pokemon = party[i].get();
                     uint32_t ec = readUInt32LittleEndian(
                         reinterpret_cast<const uint8_t*>(pokemon->getData().data())
                     );
@@ -316,7 +317,7 @@ void Trainer8::updatePartyBlock()
                     );
 
                     // Encrypt the Pokemon data
-                    std::byte* encryptedData = encryptArray8(decryptedSpan, ec);
+                    std::byte* encryptedData = encryptArray8SWSH(decryptedSpan, ec);
 
                     // Write encrypted data to block
                     std::memcpy(&block.data[offset], encryptedData, pokemon->getDataSize());
@@ -325,14 +326,14 @@ void Trainer8::updatePartyBlock()
                     delete[] encryptedData;
                 } else {
                     // Empty slot - write zeros
-                    std::memset(&block.data[offset], 0, SIZE_8PARTY);
+                    std::memset(&block.data[offset], 0, SIZE_PARTY8_SWSH);
                 }
             }
 
             // Zero out any remaining slots
             for (size_t i = party.size(); i < MAX_PARTY_SLOTS; ++i) {
-                const size_t offset = i * SIZE_8PARTY;
-                std::memset(&block.data[offset], 0, SIZE_8PARTY);
+                const size_t offset = i * SIZE_PARTY8_SWSH;
+                std::memset(&block.data[offset], 0, SIZE_PARTY8_SWSH);
             }
 
             break;
@@ -340,30 +341,30 @@ void Trainer8::updatePartyBlock()
     }
 }
 
-void Trainer8::updateBoxBlock()
+void Trainer8SWSH::updateBoxBlock()
 {
     /**
      * Updates the BOX block with modified Pokemon data.
      *
      * Process similar to updatePartyBlock, but for all boxes:
      * 1. Find the BOX block
-     * 2. Ensure block is large enough (32 boxes * 30 slots * SIZE_8PARTY)
+     * 2. Ensure block is large enough (32 boxes * 30 slots * SIZE_PARTY8_SWSH)
      * 3. For each box and slot:
      *    a. If Pokemon exists, encrypt and write
      *    b. If slot is empty, write zeros
      */
     for (auto& block : blocks) {
-        if (block.key == Gen8BlockKeys::BOX) {
+        if (block.key == BlockKeys8SWSH::BOX) {
             // Ensure the block data is large enough for all boxes
-            size_t requiredSize = BOX_COUNT_GEN8 * BOX_SLOTS * SIZE_8PARTY;
+            size_t requiredSize = BOX_COUNT8_SWSH * BOX_SLOTS * SIZE_PARTY8_SWSH;
             if (block.data.size() < requiredSize) {
                 block.data.resize(requiredSize, 0);
             }
 
             // Write each Pokemon back to the block
-            for (size_t boxIndex = 0; boxIndex < BOX_COUNT_GEN8; ++boxIndex) {
+            for (size_t boxIndex = 0; boxIndex < BOX_COUNT8_SWSH; ++boxIndex) {
                 for (size_t slot = 0; slot < BOX_SLOTS; ++slot) {
-                    const size_t offset = (boxIndex * BOX_SLOTS + slot) * SIZE_8PARTY;
+                    const size_t offset = (boxIndex * BOX_SLOTS + slot) * SIZE_PARTY8_SWSH;
 
                     if (boxes[boxIndex][slot]) {
                         // Pokemon exists - encrypt and write
@@ -381,7 +382,7 @@ void Trainer8::updateBoxBlock()
                         );
 
                         // Encrypt the Pokemon data
-                        std::byte* encryptedData = encryptArray8(decryptedSpan, ec);
+                        std::byte* encryptedData = encryptArray8SWSH(decryptedSpan, ec);
 
                         // Write encrypted data to block
                         std::memcpy(&block.data[offset], encryptedData, pokemon->getDataSize());
@@ -390,7 +391,7 @@ void Trainer8::updateBoxBlock()
                         delete[] encryptedData;
                     } else {
                         // Empty slot - write zeros
-                        std::memset(&block.data[offset], 0, SIZE_8PARTY);
+                        std::memset(&block.data[offset], 0, SIZE_PARTY8_SWSH);
                     }
                 }
             }
@@ -399,7 +400,7 @@ void Trainer8::updateBoxBlock()
     }
 }
 
-void Trainer8::updateItemBlock()
+void Trainer8SWSH::updateItemBlock()
 {
     /**
      * Updates the ITEM block with modified inventory data.
@@ -411,8 +412,8 @@ void Trainer8::updateItemBlock()
      *    a. Write items to their designated offsets
      *    b. Zero out remaining slots
      */
-    for (auto& block : blocks) {
-        if (block.key == Gen8BlockKeys::ITEM) {
+    for (auto& block : blocks8SWSH) {
+        if (block.key == BlockKeys8SWSH::ITEM) {
             // Ensure the block data is large enough
             size_t maxSize = 4856; // Sum of all pouch sizes * 4 bytes per item
             if (block.data.size() < maxSize) {
@@ -420,10 +421,10 @@ void Trainer8::updateItemBlock()
             }
 
             // Write each pouch back to the block
-            for (int p = 0; p < static_cast<int>(PouchType::Count); p++) {
-                PouchType pouchType = static_cast<PouchType>(p);
-                const PouchInfo& info = getPouchInfo(pouchType);
-                const auto& pouch = items[p];
+            for (int p = 0; p < static_cast<int>(PouchType8SWSH::Count); p++) {
+                PouchType8SWSH pouchType = static_cast<PouchType8SWSH>(p);
+                const PouchInfo8SWSH& info = getPouchInfo(pouchType);
+                const auto& pouch = items8SWSH[p];
 
                 // Write items to block
                 int itemIndex = 0;

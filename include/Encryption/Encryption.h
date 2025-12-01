@@ -132,6 +132,6 @@ void cryptArray(std::span<std::byte> data, uint32_t seed);
  *
  * This function decrypts both the data blocks and party stats sections.
  */
-void cryptPKM(std::span<std::byte> data, uint32_t partyValue, size_t blockSize, size_t blockCount);
+void cryptPokemon(std::span<std::byte> data, uint32_t partyValue, size_t blockSize, size_t blockCount);
 
 #endif

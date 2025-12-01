@@ -1,5 +1,5 @@
 /**
- * PKM.h - Base Pokemon Data Class
+ * Pokemon.h - Base Pokemon Data Class
  *
  * This file defines the abstract base class for all Pokemon data structures.
  * This base class provides a unified interface for accessing Pokemon data across all generations.
@@ -8,8 +8,8 @@
  * formats and storage layouts.
  */
 
-#ifndef PKM_PKM_H
-#define PKM_PKM_H
+#ifndef POKEMON_POKEMON_H
+#define POKEMON_POKEMON_H
 
 #include <cstdint>
 #include <cstddef>
@@ -36,7 +36,7 @@
  * 3. Getters/setters access decrypted data directly
  * 4. When saving, data is re-encrypted using generation-specific methods
  */
-class PKM {
+class Pokemon {
 protected:
     /**
      * Internal buffer storing the Pokemon's decrypted data.
@@ -62,7 +62,7 @@ protected:
 
 public:
     // Virtual destructor to ensure proper cleanup in derived classes
-    virtual ~PKM() {
+    virtual ~Pokemon() {
         if (buffer) {
             delete[] buffer;
             buffer = nullptr;
@@ -70,12 +70,12 @@ public:
     }
 
     // Delete copy operations to prevent accidental copies of Pokemon data
-    PKM(const PKM&) = delete;
-    PKM& operator=(const PKM&) = delete;
+    Pokemon(const Pokemon&) = delete;
+    Pokemon& operator=(const Pokemon&) = delete;
 
     // Allow move operations for efficient transfers
-    PKM(PKM&&) noexcept = default;
-    PKM& operator=(PKM&&) noexcept = default;
+    Pokemon(Pokemon&&) noexcept = default;
+    Pokemon& operator=(Pokemon&&) noexcept = default;
 
     // ========================================
     // Core Data Properties (Pure Virtual)
@@ -366,7 +366,7 @@ public:
 
 protected:
     // Default constructor for derived classes
-    PKM() = default;
+    Pokemon() = default;
 };
 
 #endif

@@ -1,14 +1,14 @@
 /**
- * PK9.cpp - Generation 9 Pokemon Data Class Implementation
+ * Pokemon8SWSH.cpp - Generation 8 Pokemon Data Class Implementation
  *
- * Implementation of PK9 class methods including stat calculations,
+ * Implementation of Pokemon8SWSH class methods including stat calculations,
  * gender determination, shiny manipulation, and PID regeneration.
  */
 
 #include <cstdio>
 #include <algorithm>
 
-#include "PKM/PK9.h"
+#include "Pokemon/Pokemon8SWSH.h"
 
 // Forward declarations for external helper functions
 // These are defined in other files and provide species/item/nature name lookups
@@ -33,7 +33,7 @@ extern const BaseStats* getBaseStats(uint16_t speciesId);
 // Species and Name Lookups
 // ========================================
 
-const char* PK9::species() const noexcept
+const char* Pokemon8SWSH::species() const noexcept
 {
     /**
      * Converts the Pokemon's Species ID to its name string.
@@ -46,7 +46,7 @@ const char* PK9::species() const noexcept
 // Gender Determination
 // ========================================
 
-uint8_t PK9::gender() const noexcept
+uint8_t Pokemon8SWSH::gender() const noexcept
 {
     /**
      * Determines the Pokemon's gender based on species and PID.
@@ -90,7 +90,7 @@ uint8_t PK9::gender() const noexcept
 // Base Stats (Species-Dependent)
 // ========================================
 
-uint8_t PK9::baseHP() const noexcept
+uint8_t Pokemon8SWSH::baseHP() const noexcept
 {
     /**
      * Looks up the base HP stat for this Pokemon's species.
@@ -99,27 +99,27 @@ uint8_t PK9::baseHP() const noexcept
     return getBaseStats(speciesID())->hp;
 }
 
-uint8_t PK9::baseATK() const noexcept
+uint8_t Pokemon8SWSH::baseATK() const noexcept
 {
     return getBaseStats(speciesID())->atk;
 }
 
-uint8_t PK9::baseDEF() const noexcept
+uint8_t Pokemon8SWSH::baseDEF() const noexcept
 {
     return getBaseStats(speciesID())->def;
 }
 
-uint8_t PK9::baseSPE() const noexcept
+uint8_t Pokemon8SWSH::baseSPE() const noexcept
 {
     return getBaseStats(speciesID())->spe;
 }
 
-uint8_t PK9::baseSPA() const noexcept
+uint8_t Pokemon8SWSH::baseSPA() const noexcept
 {
     return getBaseStats(speciesID())->spa;
 }
 
-uint8_t PK9::baseSPD() const noexcept
+uint8_t Pokemon8SWSH::baseSPD() const noexcept
 {
     return getBaseStats(speciesID())->spd;
 }
@@ -128,7 +128,7 @@ uint8_t PK9::baseSPD() const noexcept
 // Nature Modifier
 // ========================================
 
-int PK9::getNatureModifier(int statIndex) const noexcept
+int Pokemon8SWSH::getNatureModifier(int statIndex) const noexcept
 {
     /**
      * Returns the nature modifier for a given stat.
@@ -193,7 +193,7 @@ int PK9::getNatureModifier(int statIndex) const noexcept
 // Stat Recalculation
 // ========================================
 
-void PK9::recalculateStats() noexcept
+void Pokemon8SWSH::recalculateStats() noexcept
 {
     /**
      * Recalculates all battle stats based on current IVs, EVs, base stats, level, and nature.
@@ -246,7 +246,7 @@ void PK9::recalculateStats() noexcept
 // PID Regeneration
 // ========================================
 
-void PK9::regeneratePID(uint32_t trainerID32) noexcept
+void Pokemon8SWSH::regeneratePID(uint32_t trainerID32) noexcept
 {
     /**
      * Regenerates PID while maintaining gender and shininess.
@@ -322,7 +322,7 @@ void PK9::regeneratePID(uint32_t trainerID32) noexcept
 // Shiny Manipulation
 // ========================================
 
-void PK9::setShiny(bool makeShiny, uint32_t trainerID32) noexcept
+void Pokemon8SWSH::setShiny(bool makeShiny, uint32_t trainerID32) noexcept
 {
     /**
      * Sets the Pokemon's shiny status while maintaining gender.
@@ -452,7 +452,7 @@ void PK9::setShiny(bool makeShiny, uint32_t trainerID32) noexcept
 // Utility Functions
 // ========================================
 
-std::string PK9::toHex(uint32_t value)
+std::string Pokemon8SWSH::toHex(uint32_t value)
 {
     /**
      * Converts a uint32_t value to a hexadecimal string.

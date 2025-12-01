@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <cstddef>
 
-#include "PKM/BaseStats.h"
+#include "Pokemon/BaseStats.h"
 
 const BaseStats* getBaseStats(uint16_t speciesId) {
     if (speciesId >= BASE_STATS_COUNT) {
