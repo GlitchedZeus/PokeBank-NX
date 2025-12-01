@@ -28,8 +28,6 @@ constexpr size_t POUCH_COUNT_GEN9 = 8; // Number of pouches in Gen 9
 
 /**
  * Gen 9 Item Structure (16 bytes per item)
- *
- * From PKHeX InventoryItem9a.cs:
  * Offset 0-3: Pouch (uint32) - which pouch this item belongs to
  * Offset 4-7: Count (int32) - quantity of this item
  * Offset 8-11: Flags (uint32) - isNew, isFavorite, etc.
