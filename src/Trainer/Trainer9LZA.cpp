@@ -165,7 +165,17 @@ void Trainer9LZA::parseItemBlock(const Block& block)
      */
 
     // Initialize items vector with pouches for each type
-    //NEED TO CHANGE ITEMS[i] TO ITEMS9LZA AND FIX LOGIC
+
+    //-------------------------------------------------------
+    //-------------------------------------------------------
+    //-------------------------------------------------------
+    // NEED TO CHANGE ITEMS[i] TO ITEMS9LZA AND FIX LOGIC OR
+    // DO SAME toInventoryItem() CONVERSION FOR GEN 7 AND 8
+    // WE NEED TO KEEP LOGIC CONSISTENT
+    //-------------------------------------------------------
+    //-------------------------------------------------------
+    //-------------------------------------------------------
+
     items.resize(static_cast<size_t>(POUCH_COUNT9_LZA));
 
     // For each pouch, iterate through valid item IDs
