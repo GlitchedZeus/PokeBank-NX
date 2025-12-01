@@ -24,7 +24,7 @@ constexpr size_t GEN9_ITEM_SIZE = 0x10;  // 16 bytes per item
 // Maximum item ID (block size / item size)
 constexpr size_t GEN9_MAX_ITEM_ID = GEN9_ITEM_BLOCK_SIZE / GEN9_ITEM_SIZE;  // 2992
 
-constexpr size_t POUCH_COUNT_GEN9 = 8; // Number of pouches in Gen 9
+constexpr size_t POUCH_COUNT_GEN9 = 8; // Number of pouches
 
 /**
  * Gen 9 Item Structure (16 bytes per item)
