@@ -6,11 +6,17 @@
 #include <cstdint>
 
 // Forward declarations
-class PKSEFramebuffer;
-class PKM;
+namespace UI {
+    class PKSEFramebuffer;
+}
+namespace Pokemon {
+    class Pokemon;
+}
 
+namespace UI {
 namespace Panels {
-    void drawPartyPokemon(PKSEFramebuffer& fb, const std::vector<std::unique_ptr<PKM>>& party, uint32_t trainerID32, int x, int y, int width, int height, int selectedIndex = -1);
+    void drawPartyPokemon(UI::PKSEFramebuffer& fb, const std::vector<std::unique_ptr<Pokemon::Pokemon>>& party, uint32_t trainerID32, int x, int y, int width, int height, int selectedIndex = -1);
+}
 }
 
 #endif

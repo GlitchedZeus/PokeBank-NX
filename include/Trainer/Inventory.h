@@ -3,11 +3,13 @@
 
 #include <cstdint>
 
-struct InventoryItem {
-    uint16_t itemId;
-    uint16_t count;
-    bool isNew;
-    bool isFavorite;
-};
+namespace Trainer {
+    struct InventoryItem {
+        uint16_t itemId;
+        uint16_t count;
+        bool isNew;
+        bool isFavorite;
+    };
+}
 
 #endif

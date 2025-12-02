@@ -7,11 +7,11 @@
 #include <bits/stdc++.h>
 
 #include "Globals.h"
-#include "GetSaveFileContents.h"
+#include "Save/GetSaveFileContents.h"
 #include "UI/SpriteManager.h"
 #include "UI/UI.h"
 #include "Utils/Logger.h"
-#include "Utils/Utilities.h"
+#include "Utils/HelperUtilities.h"
 #include "Utils/FileUtilities.h"
 
 int main()
@@ -34,43 +34,43 @@ int main()
     }
 
     // Initialize ROMFS for accessing bundled sprites
-    logInfoToFile("Initializing ROMFS...");
+    Utils::logInfoToFile("Initializing ROMFS...");
     Result romfsInitResult = romfsInit();
     bool romfsInitialized = false;
     if (R_FAILED(romfsInitResult)) {
         logErrorToFile("Failed to initialize ROMFS - sprites will not be available");
         // Don't exit, app can still run without sprites
     } else {
-        logInfoToFile("ROMFS initialized successfully");
+        Utils::logInfoToFile("ROMFS initialized successfully");
         romfsInitialized = true;
     }
 
     // Initialize sprite manager for Pokemon images
-    logInfoToFile("Initializing Sprite Manager...");
-    SpriteManager::init();
+    Utils::logInfoToFile("Initializing Sprite Manager...");
+    UI::SpriteManager::init();
 
     // Test sprite loading
-    logInfoToFile("Testing sprite loading...");
-    Sprite* testSprite = SpriteManager::getSprite(25, false); // Pikachu
+    Utils::logInfoToFile("Testing sprite loading...");
+    UI::Sprite* testSprite = UI::SpriteManager::getSprite(25, false); // Pikachu
     if (testSprite && testSprite->data) {
-        logInfoToFile("SUCCESS: Test sprite loaded! (" +
+        logInfoToFile(("SUCCESS: Test sprite loaded! (" +
             std::to_string(testSprite->width) + "x" +
-            std::to_string(testSprite->height) + ")");
+            std::to_string(testSprite->height) + ")").c_str());
     } else {
-        logInfoToFile("WARNING: Test sprite failed to load - sprites may not be available");
+        Utils::logInfoToFile("WARNING: Test sprite failed to load - sprites may not be available");
     }
 
-    logInfoToFile("Starting UI Manager...");
+    Utils::logInfoToFile("Starting UI Manager...");
 
-    UIManager uiManager;
+    UI::UIManager uiManager;
     uiManager.run();
 
     // Cleanup
-    logInfoToFile("Cleaning up Sprite Manager...");
-    SpriteManager::cleanup();
+    Utils::logInfoToFile("Cleaning up Sprite Manager...");
+    UI::SpriteManager::cleanup();
 
     if (romfsInitialized) {
-        logInfoToFile("Cleaning up ROMFS...");
+        Utils::logInfoToFile("Cleaning up ROMFS...");
         romfsExit();
     }
 

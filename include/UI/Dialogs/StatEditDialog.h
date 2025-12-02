@@ -2,9 +2,12 @@
 #define UI_DIALOGS_STAT_EDIT_DIALOG_H
 
 // Forward declarations
-class PKSEFramebuffer;
-class TrainerViewScreen;
+namespace UI {
+    class PKSEFramebuffer;
+    class TrainerViewScreen;
+}
 
+namespace UI {
 namespace Dialogs {
     // Stat edit mode
     enum class StatEditMode {
@@ -12,7 +15,8 @@ namespace Dialogs {
         EV   // Effort Values (0-252, total max 510)
     };
 
-    void drawStatEditDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+    void drawStatEditDialog(UI::TrainerViewScreen& screen, UI::PKSEFramebuffer& fb);
+}
 }
 
 #endif

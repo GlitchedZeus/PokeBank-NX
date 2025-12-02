@@ -1,5 +1,5 @@
 /**
- * Gen8Encryption.h - Generation 8 Pokemon Encryption/Decryption Utilities
+ * Encryption8SWSH.h - Generation 8 Sword/Shield Pokemon Encryption/Decryption Utilities
  *
  * This file contains encryption and decryption utilities for Generation 8 Pokemon data
  * (Sword/Shield, Brilliant Diamond/Shining Pearl, Legends: Arceus).
@@ -27,87 +27,89 @@
 
 #include "Encryption/Encryption.h"
 
-// ========================================
-// Generation 8 Constants
-// ========================================
+namespace Encryption {
+    // ========================================
+    // Constants
+    // ========================================
 
-/**
- * Number of data blocks in Pokemon structure.
- * Gen 8 uses 4 blocks: Growth, Attacks, EVs/Contest, and Misc.
- */
-constexpr size_t BLOCK_COUNT8_SWSH = 4;
+    /**
+     * Number of data blocks in Pokemon structure.
+     * Gen 8 uses 4 blocks: Growth, Attacks, EVs/Contest, and Misc.
+     */
+    constexpr size_t BLOCK_COUNT8_SWSH = 4;
 
-/**
- * Size of each block in bytes (Gen 8).
- * Each block contains 80 bytes (0x50) of Pokemon data.
- */
-constexpr size_t SIZE_BLOCK8_SWSH = 0x50;
+    /**
+     * Size of each block in bytes (Gen 8).
+     * Each block contains 80 bytes (0x50) of Pokemon data.
+     */
+    constexpr size_t SIZE_BLOCK8_SWSH = 0x50;
 
-/**
- * Size of stored Pokemon data (Gen 8).
- * Includes 8-byte header + 4 blocks = 328 bytes (0x148).
- */
-constexpr size_t SIZE_STORED8_SWSH = 8 + (BLOCK_COUNT8_SWSH * SIZE_BLOCK8_SWSH);
+    /**
+     * Size of stored Pokemon data (Gen 8).
+     * Includes 8-byte header + 4 blocks = 328 bytes (0x148).
+     */
+    constexpr size_t SIZE_STORED8_SWSH = 8 + (BLOCK_COUNT8_SWSH * SIZE_BLOCK8_SWSH);
 
-/**
- * Size of party Pokemon data (Gen 8).
- * Stored data + 16 bytes of party stats = 344 bytes (0x158).
- */
-constexpr size_t SIZE_PARTY8_SWSH = SIZE_STORED8_SWSH + 0x10;
+    /**
+     * Size of party Pokemon data (Gen 8).
+     * Stored data + 16 bytes of party stats = 344 bytes (0x158).
+     */
+    constexpr size_t SIZE_PARTY8_SWSH = SIZE_STORED8_SWSH + 0x10;
 
-// ========================================
-// Encryption/Decryption Functions
-// ========================================
+    // ========================================
+    // Encryption/Decryption Functions
+    // ========================================
 
-/**
- * Unshuffles the 4 data blocks based on the shuffle value.
- *
- * During encryption, Pokemon data blocks are shuffled in a deterministic order
- * based on the shuffle value derived from the personality value. This function
- * reverses that shuffling to restore blocks to their natural order:
- *   Block A (Growth)    - Species, items, EVs, etc.
- *   Block B (Attacks)   - Moves, IVs, nickname
- *   Block C (EVs)       - Contest stats, ribbons
- *   Block D (Misc)      - OT info, encounter data
- *
- * @param data Source encrypted data (read-only)
- * @param result Destination for unshuffled data (must be same size as data)
- * @param shuffleValue (0-31), derived from (personalityValue >> 13) & 31
- */
-void shuffleArray8SWSH(std::span<const std::byte> data, std::span<std::byte> result, uint32_t shuffleValue);
+    /**
+     * Unshuffles the 4 data blocks based on the shuffle value.
+     *
+     * During encryption, Pokemon data blocks are shuffled in a deterministic order
+     * based on the shuffle value derived from the personality value. This function
+     * reverses that shuffling to restore blocks to their natural order:
+     *   Block A (Growth)    - Species, items, EVs, etc.
+     *   Block B (Attacks)   - Moves, IVs, nickname
+     *   Block C (EVs)       - Contest stats, ribbons
+     *   Block D (Misc)      - OT info, encounter data
+     *
+     * @param data Source encrypted data (read-only)
+     * @param result Destination for unshuffled data (must be same size as data)
+     * @param shuffleValue (0-31), derived from (personalityValue >> 13) & 31
+     */
+    void shuffleArray8SWSH(std::span<const std::byte> data, std::span<std::byte> result, uint32_t shuffleValue);
 
-/**
- * Decrypts a Generation 8 Pokemon byte array.
- *
- * This is the main decryption function that combines XOR decryption and
- * block unshuffling to convert encrypted Pokemon data into readable format.
- *
- * Process:
- * 1. Extract Personality Value from first 4 bytes
- * 2. Calculate Shuffle Value from Personality Value
- * 3. Decrypt blocks using XOR cipher (CryptPokemon)
- * 4. Unshuffle blocks to restore original order
- *
- * @param encryptedData The encrypted Pokemon data (SIZE_PARTY8_SWSH bytes)
- * @return Pointer to decrypted data (caller must delete[])
- */
-std::byte* decryptArray8SWSH(std::span<const std::byte> encryptedData);
+    /**
+     * Decrypts a Generation 8 Pokemon byte array.
+     *
+     * This is the main decryption function that combines XOR decryption and
+     * block unshuffling to convert encrypted Pokemon data into readable format.
+     *
+     * Process:
+     * 1. Extract Personality Value from first 4 bytes
+     * 2. Calculate Shuffle Value from Personality Value
+     * 3. Decrypt blocks using XOR cipher (CryptPokemon)
+     * 4. Unshuffle blocks to restore original order
+     *
+     * @param encryptedData The encrypted Pokemon data (SIZE_PARTY8_SWSH bytes)
+     * @return Pointer to decrypted data (caller must delete[])
+     */
+    std::byte* decryptArray8SWSH(std::span<const std::byte> encryptedData);
 
-/**
- * Encrypts a Generation 8 Pokemon byte array.
- *
- * This is the reverse of decryptArray8SWSH, used when saving Pokemon data
- * back to the save file.
- *
- * Process:
- * 1. Calculate Shuffle Value from Personality Value
- * 2. Shuffle blocks from normal order to encrypted positions
- * 3. Apply XOR cipher using Personality Value as seed
- *
- * @param decryptedData The decrypted Pokemon data (read-only)
- * @param personalityValue Used as encryption seed
- * @return Pointer to encrypted data (caller must delete[])
- */
-std::byte* encryptArray8SWSH(std::span<const std::byte> decryptedData, uint32_t personalityValue);
+    /**
+     * Encrypts a Generation 8 Pokemon byte array.
+     *
+     * This is the reverse of decryptArray8SWSH, used when saving Pokemon data
+     * back to the save file.
+     *
+     * Process:
+     * 1. Calculate Shuffle Value from Personality Value
+     * 2. Shuffle blocks from normal order to encrypted positions
+     * 3. Apply XOR cipher using Personality Value as seed
+     *
+     * @param decryptedData The decrypted Pokemon data (read-only)
+     * @param personalityValue Used as encryption seed
+     * @return Pointer to encrypted data (caller must delete[])
+     */
+    std::byte* encryptArray8SWSH(std::span<const std::byte> decryptedData, uint32_t personalityValue);
+}
 
 #endif

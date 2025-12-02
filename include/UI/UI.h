@@ -11,27 +11,33 @@
 #include "UI/BackupSelectionScreen.h"
 #include "UI/TrainerViewScreen.h"
 
-// Forward declarations
-class Trainer;
-struct PK8;
+namespace Trainer {
+    class Trainer;
+}
 
-// Main UI Manager
-class UIManager {
-public:
-    UIManager();
-    ~UIManager();
+namespace Pokemon {
+    struct Pokemon8SWSH;
+}
 
-    void run();
+namespace UI {
 
-private:
-    PKSEFramebuffer fb;
-    PadState pad;
-    bool running;
+    class UIManager {
+    public:
+        UIManager();
+        ~UIManager();
 
-    void handleUserSelection();
-    void handleTitleSelection(AccountUid userUid);
-    void handleBackupSelection(u64 titleId, const std::string& titleName);
-    void handleTrainerView(u64 titleId, const std::string& titleName, const std::string& backupDir);
-};
+        void run();
+
+    private:
+        PKSEFramebuffer fb;
+        PadState pad;
+        bool running;
+
+        void handleUserSelection();
+        void handleTitleSelection(AccountUid userUid);
+        void handleBackupSelection(u64 titleId, const std::string& titleName);
+        void handleTrainerView(u64 titleId, const std::string& titleName, const std::string& backupDir);
+    };
+}
 
 #endif

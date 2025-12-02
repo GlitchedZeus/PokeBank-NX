@@ -29,514 +29,525 @@
 #define POKEMON_POKEMON7_LGPE_H
 
 #include <cstdint>
+#include <cstring>
 #include <span>
 #include <string>
 
 #include "Pokemon/Pokemon.h"
 #include "Encryption/Encryption7LGPE.h"
-#include "Utils/Utilities.h"
+#include "Utils/HelperUtilities.h"
 #include "Utils/StringHelpers.h"
 
-/**
- * Pokemon7LGPE - Pokemon Let's Go Pikachu/Eevee Pokemon Class
- *
- * Inherits from Pokemon base class and implements Let's Go-specific data format.
- * Handles automatic decryption on construction and provides accessors for
- * all Pokemon properties.
- *
- * Let's Go Unique Features:
- * - Awakening Values (AVs): Stat bonuses earned through catching Pokemon (0-200 per stat)
- * - Combat Power (CP): Overall power rating like Pokemon GO
- * - Height/Weight Scalars: Individual size variations
- * - Absolute Height/Weight: Actual measurements in meters/kilograms
- * - Simpler structure than modern generations
- */
-class Pokemon7LGPE final : public Pokemon
-{
-public:
+using namespace Encryption;
+using namespace Pokemon;
+using namespace Utils;
+
+namespace Pokemon {
     /**
-     * Constructs a Pokemon7LGPE object from encrypted Pokemon data.
+     * Pokemon7LGPE - Pokemon Let's Go Pikachu/Eevee Pokemon Class
      *
-     * Process:
-     * 1. Decrypts the data using Gen7 decryption algorithm
-     * 2. Stores decrypted data in internal buffer
-     * 3. Creates span view for easy access
+     * Inherits from Pokemon base class and implements Let's Go-specific data format.
+     * Handles automatic decryption on construction and provides accessors for
+     * all Pokemon properties.
      *
-     * @param raw Encrypted Pokemon data (SIZE_PK7 = 260 bytes)
+     * Let's Go Unique Features:
+     * - Awakening Values (AVs): Stat bonuses earned through catching Pokemon (0-200 per stat)
+     * - Combat Power (CP): Overall power rating like Pokemon GO
+     * - Height/Weight Scalars: Individual size variations
+     * - Absolute Height/Weight: Actual measurements in meters/kilograms
+     * - Simpler structure than modern generations
      */
-    explicit Pokemon7LGPE(std::span<const std::byte> raw)
+    class Pokemon7LGPE final : public Pokemon
     {
-        // Decrypt the Gen 7 Pokemon data
-        buffer = decryptArray7(raw);
-        dataSize = raw.size();
-        data = std::span<std::byte>(buffer, dataSize);
-    }
-
-    /**
-     * Destructor - cleans up decrypted data buffer.
-     * The base class Pokemon destructor handles buffer cleanup.
-     */
-    ~Pokemon7LGPE() override = default;
-
-    // Prevent copying (Pokemon data should not be accidentally copied)
-    Pokemon7LGPE(const Pokemon7LGPE&) = delete;
-    Pokemon7LGPE& operator=(const Pokemon7LGPE&) = delete;
-
-    // Allow moving for efficient transfers
-    Pokemon7LGPE(Pokemon7LGPE&&) noexcept = default;
-    Pokemon7LGPE& operator=(Pokemon7LGPE&&) noexcept = default;
-
-    // ========================================
-    // Core Data Properties (Block A - Growth)
-    // ========================================
-
-    /**
-     * Gets the Pokemon's Species ID.
-     * Location: 0x08 (2 bytes)
-     * @return Species ID (e.g., 25 = Pikachu, 133 = Eevee)
-     */
-    uint16_t speciesID() const noexcept override
-    {
-        return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x08));
-    }
-
-    /**
-     * Gets the Pokemon's species name as a string.
-     * @return Species name (e.g., "Pikachu", "Eevee")
-     */
-    const char* species() const noexcept override;
-
-    /**
-     * Gets the held item ID.
-     * Location: 0x0A (2 bytes)
-     * @return Item ID (0 = no item)
-     */
-    uint16_t heldItem() const noexcept override
-    {
-        return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x0A));
-    }
-
-    /**
-     * Gets the original trainer ID (32-bit format).
-     * Location: 0x0C (4 bytes)
-     * @return Trainer ID32 value
-     */
-    uint32_t id32() const noexcept override
-    {
-        return readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x0C));
-    }
-
-    /**
-     * Gets the Pokemon's current experience points.
-     * Location: 0x10 (4 bytes)
-     * @return Experience value (determines level)
-     */
-    uint32_t exp() const noexcept override
-    {
-        return readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x10));
-    }
-
-    /**
-     * Gets the Pokemon's ability ID.
-     * Location: 0x14 (2 bytes)
-     * @return Ability ID
-     */
-    uint16_t ability() const noexcept override
-    {
-        return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x14));
-    }
-
-    /**
-     * Gets the Pokemon's nature.
-     * Location: 0x1C (1 byte)
-     * Nature affects stat growth (e.g., Adamant boosts Attack, lowers Sp. Attack)
-     * @return Nature ID (0-24)
-     */
-    uint8_t nature() const noexcept override
-    {
-        return static_cast<uint8_t>(data[0x1C]);
-    }
-
-    // ========================================
-    // Encryption and Identification
-    // ========================================
-
-    /**
-     * Gets the Encryption Constant.
-     * Location: 0x00 (4 bytes)
-     * Used as the seed for encrypting/decrypting Pokemon data.
-     * @return Encryption Constant value
-     */
-    uint32_t encryptionConstant() const noexcept override
-    {
-        return readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x00));
-    }
-
-    /**
-     * Gets the Personality ID (PID).
-     * Location: 0x1C (4 bytes) - Note: In Pokemon7LGPE, nature byte is part of PID location
-     * For compatibility, we read the full 32-bit value near nature
-     * @return PID value
-     */
-    uint32_t pid() const noexcept override
-    {
-        // Pokemon7LGPE doesn't have a dedicated PID field like PK8
-        // Use Encryption Constant as PID for compatibility
-        return encryptionConstant();
-    }
-
-    // ========================================
-    // Block B (Attacks/Nickname)
-    // ========================================
-
-    /**
-     * Gets the Pokemon's nickname (custom name set by trainer).
-     * Location: 0x40 (26 bytes, UTF-16LE)
-     * Maximum 12 characters including null terminator.
-     * @return Nickname as UTF-16 string
-     */
-    std::u16string nickname() const override
-    {
-        const uint8_t* nicknameStart = reinterpret_cast<const uint8_t*>(data.data() + 0x40);
-        return getString(nicknameStart, 26);
-    }
-
-    // ========================================
-    // Block C/D (Misc)
-    // ========================================
-
-    /**
-     * Gets the Pokemon's friendship/happiness value.
-     * Location: 0xCA (1 byte)
-     * In Let's Go, friendship affects stat calculations (10% bonus at max friendship).
-     * @return Friendship value (0-255)
-     */
-    uint8_t friendship() const noexcept override
-    {
-        return static_cast<uint8_t>(data[0xCA]);
-    }
-
-    /**
-     * Checks if the Pokemon is an egg.
-     * Egg status is stored in a flag byte.
-     * @return true if egg, false otherwise
-     */
-    bool isEgg() const noexcept override
-    {
-        // Pokemon7LGPE egg flag location (simplified)
-        return false; // Let's Go doesn't have eggs
-    }
-
-    // ========================================
-    // Shiny and Gender
-    // ========================================
-
-    /**
-     * Checks if the Pokemon is shiny (alternate coloration).
-     * Let's Go uses the same shiny calculation as Gen 8.
-     * @param trainerID32 The trainer's ID32 value
-     * @param species Species name (for logging/debugging)
-     * @return true if shiny, false otherwise
-     */
-    bool isShiny(uint32_t trainerID32, std::string species) const noexcept override
-    {
-        if (trainerID32 == 0) {
-            return false;
-        }
-        uint32_t ec = encryptionConstant();
-        uint32_t xorComponent = (ec ^ trainerID32);
-        uint32_t xorResult = (xorComponent ^ (xorComponent >> 16)) & 0xFFFF;
-        return xorResult < 16;
-    }
-
-    /**
-     * Gets the Pokemon's gender.
-     * Gender is determined by encryption constant and species gender ratio.
-     * @return 0 = Male, 1 = Female, 2 = Genderless
-     */
-    uint8_t gender() const noexcept override;
-
-    /**
-     * Gets a gender symbol string for display.
-     * @return "♂" for male, "♀" for female, "" for genderless
-     */
-    const char* genderSymbol() const noexcept override
-    {
-        uint8_t genderValue = gender();
-        if (genderValue == 0) return "♂"; // Male
-        if (genderValue == 1) return "♀"; // Female
-        return ""; // Genderless
-    }
-
-    // ========================================
-    // Stats - Effort Values (EVs)
-    // ========================================
-
-    /**
-     * Effort Values (EVs) earned through battling.
-     * Location: 0x1E-0x23 (1 byte each)
-     * Max 252 per stat, 510 total (same as other generations).
-     */
-    uint8_t evHP() const noexcept override  { return static_cast<uint8_t>(data[0x1E]); }
-    uint8_t evATK() const noexcept override { return static_cast<uint8_t>(data[0x1F]); }
-    uint8_t evDEF() const noexcept override { return static_cast<uint8_t>(data[0x20]); }
-    uint8_t evSPE() const noexcept override { return static_cast<uint8_t>(data[0x21]); }
-    uint8_t evSPA() const noexcept override { return static_cast<uint8_t>(data[0x22]); }
-    uint8_t evSPD() const noexcept override { return static_cast<uint8_t>(data[0x23]); }
-
-    /**
-     * Sets an Effort Value for a specific stat.
-     * @param statIndex 0=HP, 1=ATK, 2=DEF, 3=SPE, 4=SPA, 5=SPD
-     * @param value EV value (0-252)
-     */
-    void setEV(int statIndex, uint8_t value) noexcept override {
-        if (statIndex >= 0 && statIndex < 6) {
-            data[0x1E + statIndex] = static_cast<std::byte>(value);
-            recalculateStats();
-            refreshChecksum();
-        }
-    }
-
-    // ========================================
-    // Stats - Awakening Values (AVs) - Let's Go Unique
-    // ========================================
-
-    /**
-     * Awakening Values (AVs) - Unique to Pokemon Let's Go!
-     * Location: 0x24-0x29 (1 byte each)
-     * These provide stat bonuses similar to EVs but earned differently.
-     * Max 200 per stat, earned by catching Pokemon of the same species.
-     * Each AV point directly adds to the stat (different from EV formula).
-     */
-    uint8_t avHP() const noexcept  { return static_cast<uint8_t>(data[0x24]); }
-    uint8_t avATK() const noexcept { return static_cast<uint8_t>(data[0x25]); }
-    uint8_t avDEF() const noexcept { return static_cast<uint8_t>(data[0x26]); }
-    uint8_t avSPE() const noexcept { return static_cast<uint8_t>(data[0x27]); }
-    uint8_t avSPA() const noexcept { return static_cast<uint8_t>(data[0x28]); }
-    uint8_t avSPD() const noexcept { return static_cast<uint8_t>(data[0x29]); }
-
-    /**
-     * Sets an Awakening Value for a specific stat.
-     * @param statIndex 0=HP, 1=ATK, 2=DEF, 3=SPE, 4=SPA, 5=SPD
-     * @param value AV value (0-200)
-     */
-    void setAV(int statIndex, uint8_t value) noexcept {
-        if (statIndex >= 0 && statIndex < 6 && value <= 200) {
-            data[0x24 + statIndex] = static_cast<std::byte>(value);
-            recalculateStats();
-            refreshChecksum();
-        }
-    }
-
-    // ========================================
-    // Stats - Individual Values (IVs)
-    // ========================================
-
-    /**
-     * Gets the packed IV32 value.
-     * Location: 0x74 (4 bytes) - Different location from PK8!
-     * Contains all 6 IVs plus special flags.
-     */
-    uint32_t iv32() const noexcept { return readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x74)); }
-
-    /**
-     * Individual Values (IVs) - inherent stat potential (0-31).
-     * Same bit layout as PK8.
-     */
-    uint8_t ivHP() const noexcept override  { return (iv32() >> 0) & 0x1F; }
-    uint8_t ivATK() const noexcept override { return (iv32() >> 5) & 0x1F; }
-    uint8_t ivDEF() const noexcept override { return (iv32() >> 10) & 0x1F; }
-    uint8_t ivSPE() const noexcept override { return (iv32() >> 15) & 0x1F; }
-    uint8_t ivSPA() const noexcept override { return (iv32() >> 20) & 0x1F; }
-    uint8_t ivSPD() const noexcept override { return (iv32() >> 25) & 0x1F; }
-
-    /**
-     * Sets an Individual Value for a specific stat.
-     * @param statIndex 0=HP, 1=ATK, 2=DEF, 3=SPE, 4=SPA, 5=SPD
-     * @param value IV value (0-31)
-     */
-    void setIV(int statIndex, uint8_t value) noexcept override {
-        if (statIndex >= 0 && statIndex < 6 && value <= 31) {
-            uint32_t iv = iv32();
-            int shift = statIndex * 5;
-            uint32_t mask = ~(0x1F << shift);
-            iv = (iv & mask) | ((value & 0x1F) << shift);
-            writeUInt32LittleEndian(reinterpret_cast<uint8_t*>(data.data() + 0x74), iv);
-            recalculateStats();
-            refreshChecksum();
-        }
-    }
-
-    // ========================================
-    // Checksum Validation
-    // ========================================
-
-    /**
-     * Gets the stored checksum value.
-     * Location: 0x06 (2 bytes)
-     * @return Checksum value
-     */
-    uint16_t checksum() const noexcept override {
-        return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x06));
-    }
-
-    /**
-     * Calculates the checksum from offset 0x08 to SIZE_6STORED.
-     * @return Calculated checksum value
-     */
-    uint16_t calculateChecksum() const noexcept override {
-        uint16_t checksum = 0;
-
-        // Sum all 16-bit values from offset 0x08 to SIZE_6STORED
-        const size_t checksumEnd = std::min(dataSize, SIZE_7STORED);
-        for (size_t i = 0x08; i < checksumEnd; i += 2) {
-            checksum += readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + i));
+    public:
+        /**
+         * Constructs a Pokemon7LGPE object from encrypted Pokemon data.
+         *
+         * Process:
+         * 1. Decrypts the data using Gen7 decryption algorithm
+         * 2. Stores decrypted data in internal buffer
+         * 3. Creates span view for easy access
+         *
+         * @param raw Encrypted Pokemon data (SIZE_PK7 = 260 bytes)
+         */
+        explicit Pokemon7LGPE(std::span<const std::byte> raw)
+        {
+            // Decrypt the Gen 7 Pokemon data
+            buffer = decryptArray7LGPE(raw);
+            dataSize = raw.size();
+            data = std::span<std::byte>(buffer, dataSize);
         }
 
-        return checksum;
-    }
+        /**
+         * Destructor - cleans up decrypted data buffer.
+         * The base class Pokemon destructor handles buffer cleanup.
+         */
+        ~Pokemon7LGPE() override = default;
 
-    /**
-     * Recalculates and updates the stored checksum.
-     * MUST be called after any modification to Pokemon data.
-     */
-    void refreshChecksum() noexcept override {
-        uint16_t newChecksum = calculateChecksum();
-        writeUInt16LittleEndian(reinterpret_cast<uint8_t*>(data.data() + 0x06), newChecksum);
-    }
+        // Prevent copying (Pokemon data should not be accidentally copied)
+        Pokemon7LGPE(const Pokemon7LGPE&) = delete;
+        Pokemon7LGPE& operator=(const Pokemon7LGPE&) = delete;
 
-    /**
-     * Validates that stored checksum matches calculated checksum.
-     * @return true if valid, false if data is corrupted
-     */
-    bool checksumValid() const noexcept override {
-        return checksum() == calculateChecksum();
-    }
+        // Allow moving for efficient transfers
+        Pokemon7LGPE(Pokemon7LGPE&&) noexcept = default;
+        Pokemon7LGPE& operator=(Pokemon7LGPE&&) noexcept = default;
 
-    // ========================================
-    // Base Stats (Species-Dependent)
-    // ========================================
+        // ========================================
+        // Core Data Properties (Block A - Growth)
+        // ========================================
 
-    uint8_t baseHP() const noexcept override;
-    uint8_t baseATK() const noexcept override;
-    uint8_t baseDEF() const noexcept override;
-    uint8_t baseSPE() const noexcept override;
-    uint8_t baseSPA() const noexcept override;
-    uint8_t baseSPD() const noexcept override;
+        /**
+         * Gets the Pokemon's Species ID.
+         * Location: 0x08 (2 bytes)
+         * @return Species ID (e.g., 25 = Pikachu, 133 = Eevee)
+         */
+        uint16_t speciesID() const noexcept override
+        {
+            return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x08));
+        }
 
-    // ========================================
-    // Calculated Stats (Battle Stats)
-    // ========================================
+        /**
+         * Gets the Pokemon's species name as a string.
+         * @return Species name (e.g., "Pikachu", "Eevee")
+         */
+        const char* species() const noexcept override;
 
-    /**
-     * Gets the Pokemon's current level.
-     * Let's Go stores level in a different location than modern games.
-     * @return Level (1-100)
-     */
-    uint8_t level() const noexcept override;
+        /**
+         * Gets the held item ID.
+         * Location: 0x0A (2 bytes)
+         * @return Item ID (0 = no item)
+         */
+        uint16_t heldItem() const noexcept override
+        {
+            return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x0A));
+        }
 
-    /**
-     * Battle stats in Let's Go are calculated differently:
-     * - Include Awakening Value (AV) bonuses
-     * - Include friendship bonus (up to +10% at max friendship)
-     * - Standard IV/EV calculations still apply
-     *
-     * For simplicity, we'll calculate basic stats here.
-     * Full Let's Go formula is more complex.
-     */
-    uint16_t statHPMax() const noexcept override;
-    uint16_t statATK() const noexcept override;
-    uint16_t statDEF() const noexcept override;
-    uint16_t statSPE() const noexcept override;
-    uint16_t statSPA() const noexcept override;
-    uint16_t statSPD() const noexcept override;
+        /**
+         * Gets the original trainer ID (32-bit format).
+         * Location: 0x0C (4 bytes)
+         * @return Trainer ID32 value
+         */
+        uint32_t id32() const noexcept override
+        {
+            return readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x0C));
+        }
 
-    // ========================================
-    // Stat Recalculation
-    // ========================================
+        /**
+         * Gets the Pokemon's current experience points.
+         * Location: 0x10 (4 bytes)
+         * @return Experience value (determines level)
+         */
+        uint32_t exp() const noexcept override
+        {
+            return readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x10));
+        }
 
-    /**
-     * Recalculates all battle stats including AVs and friendship bonuses.
-     * Let's Go formula:
-     * Stat = (((2 * Base + IV + EV/4) * Level / 100) + 5) * Nature * Friendship + AV
-     *
-     * Where Friendship is a multiplier: (friendship/255 / 10 + 1) ≈ 1.0 to 1.1
-     */
-    void recalculateStats() noexcept override;
+        /**
+         * Gets the Pokemon's ability ID.
+         * Location: 0x14 (2 bytes)
+         * @return Ability ID
+         */
+        uint16_t ability() const noexcept override
+        {
+            return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x14));
+        }
 
-    // ========================================
-    // Advanced Modification
-    // ========================================
+        /**
+         * Gets the Pokemon's nature.
+         * Location: 0x1C (1 byte)
+         * Nature affects stat growth (e.g., Adamant boosts Attack, lowers Sp. Attack)
+         * @return Nature ID (0-24)
+         */
+        uint8_t nature() const noexcept override
+        {
+            return static_cast<uint8_t>(data[0x1C]);
+        }
 
-    /**
-     * Regenerates encryption constant while maintaining gender and shininess.
-     * Let's Go uses EC as PID, so this modifies the EC.
-     * Used to fix legality issues when IVs are modified.
-     * @param trainerID32 The trainer's ID32 for shiny calculation
-     */
-    void regeneratePID(uint32_t trainerID32) noexcept override;
+        // ========================================
+        // Encryption and Identification
+        // ========================================
 
-    /**
-     * Sets the shiny status of the Pokemon.
-     * Modifies encryption constant while preserving gender.
-     * @param makeShiny true to make shiny, false to make non-shiny
-     * @param trainerID32 The trainer's ID32 for shiny calculation
-     */
-    void setShiny(bool makeShiny, uint32_t trainerID32) noexcept override;
+        /**
+         * Gets the Encryption Constant.
+         * Location: 0x00 (4 bytes)
+         * Used as the seed for encrypting/decrypting Pokemon data.
+         * @return Encryption Constant value
+         */
+        uint32_t encryptionConstant() const noexcept override
+        {
+            return readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x00));
+        }
 
-    // ========================================
-    // Let's Go Unique Features
-    // ========================================
+        /**
+         * Gets the Personality ID (PID).
+         * Location: 0x1C (4 bytes) - Note: In Pokemon7LGPE, nature byte is part of PID location
+         * For compatibility, we read the full 32-bit value near nature
+         * @return PID value
+         */
+        uint32_t pid() const noexcept override
+        {
+            // Pokemon7LGPE doesn't have a dedicated PID field like PK8
+            // Use Encryption Constant as PID for compatibility
+            return encryptionConstant();
+        }
 
-    /**
-     * Gets the Combat Power (CP) value.
-     * Location: 0xFE (2 bytes)
-     * CP is similar to Pokemon GO's power rating.
-     * @return CP value (0-10000)
-     */
-    uint16_t cp() const noexcept {
-        return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0xFE));
-    }
+        // ========================================
+        // Block B (Attacks/Nickname)
+        // ========================================
 
-    /**
-     * Gets the height scalar (individual size variation).
-     * Location: 0x3A (1 byte)
-     * Used to calculate actual height.
-     * @return Height scalar (0-255)
-     */
-    uint8_t heightScalar() const noexcept {
-        return static_cast<uint8_t>(data[0x3A]);
-    }
+        /**
+         * Gets the Pokemon's nickname (custom name set by trainer).
+         * Location: 0x40 (26 bytes, UTF-16LE)
+         * Maximum 12 characters including null terminator.
+         * @return Nickname as UTF-16 string
+         */
+        std::u16string nickname() const override
+        {
+            const uint8_t* nicknameStart = reinterpret_cast<const uint8_t*>(data.data() + 0x40);
+            return getString(nicknameStart, 26);
+        }
 
-    /**
-     * Gets the weight scalar (individual size variation).
-     * Location: 0x3B (1 byte)
-     * Used to calculate actual weight.
-     * @return Weight scalar (0-255)
-     */
-    uint8_t weightScalar() const noexcept {
-        return static_cast<uint8_t>(data[0x3B]);
-    }
+        // ========================================
+        // Block C/D (Misc)
+        // ========================================
 
-    /**
-     * Gets the absolute height in meters.
-     * Location: 0x2C (4 bytes, float)
-     * @return Height in meters
-     */
-    float heightAbsolute() const noexcept {
-        uint32_t bits = readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x2C));
-        return *reinterpret_cast<const float*>(&bits);
-    }
+        /**
+         * Gets the Pokemon's friendship/happiness value.
+         * Location: 0xCA (1 byte)
+         * In Let's Go, friendship affects stat calculations (10% bonus at max friendship).
+         * @return Friendship value (0-255)
+         */
+        uint8_t friendship() const noexcept override
+        {
+            return static_cast<uint8_t>(data[0xCA]);
+        }
 
-    /**
-     * Gets the absolute weight in kilograms.
-     * Location: 0xE4 (4 bytes, float)
-     * @return Weight in kilograms
-     */
-    float weightAbsolute() const noexcept {
-        uint32_t bits = readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0xE4));
-        return *reinterpret_cast<const float*>(&bits);
-    }
-};
+        /**
+         * Checks if the Pokemon is an egg.
+         * Egg status is stored in a flag byte.
+         * @return true if egg, false otherwise
+         */
+        bool isEgg() const noexcept override
+        {
+            // Pokemon7LGPE egg flag location (simplified)
+            return false; // Let's Go doesn't have eggs
+        }
+
+        // ========================================
+        // Shiny and Gender
+        // ========================================
+
+        /**
+         * Checks if the Pokemon is shiny (alternate coloration).
+         * Let's Go uses the same shiny calculation as Gen 8.
+         * @param trainerID32 The trainer's ID32 value
+         * @param species Species name (for logging/debugging)
+         * @return true if shiny, false otherwise
+         */
+        bool isShiny(uint32_t trainerID32, std::string species) const noexcept override
+        {
+            if (trainerID32 == 0) {
+                return false;
+            }
+            uint32_t ec = encryptionConstant();
+            uint32_t xorComponent = (ec ^ trainerID32);
+            uint32_t xorResult = (xorComponent ^ (xorComponent >> 16)) & 0xFFFF;
+            return xorResult < 16;
+        }
+
+        /**
+         * Gets the Pokemon's gender.
+         * Gender is determined by encryption constant and species gender ratio.
+         * @return 0 = Male, 1 = Female, 2 = Genderless
+         */
+        uint8_t gender() const noexcept override;
+
+        /**
+         * Gets a gender symbol string for display.
+         * @return "♂" for male, "♀" for female, "" for genderless
+         */
+        const char* genderSymbol() const noexcept override
+        {
+            uint8_t genderValue = gender();
+            if (genderValue == 0) return "♂"; // Male
+            if (genderValue == 1) return "♀"; // Female
+            return ""; // Genderless
+        }
+
+        // ========================================
+        // Stats - Effort Values (EVs)
+        // ========================================
+
+        /**
+         * Effort Values (EVs) earned through battling.
+         * Location: 0x1E-0x23 (1 byte each)
+         * Max 252 per stat, 510 total (same as other generations).
+         */
+        uint8_t evHP() const noexcept override  { return static_cast<uint8_t>(data[0x1E]); }
+        uint8_t evATK() const noexcept override { return static_cast<uint8_t>(data[0x1F]); }
+        uint8_t evDEF() const noexcept override { return static_cast<uint8_t>(data[0x20]); }
+        uint8_t evSPE() const noexcept override { return static_cast<uint8_t>(data[0x21]); }
+        uint8_t evSPA() const noexcept override { return static_cast<uint8_t>(data[0x22]); }
+        uint8_t evSPD() const noexcept override { return static_cast<uint8_t>(data[0x23]); }
+
+        /**
+         * Sets an Effort Value for a specific stat.
+         * @param statIndex 0=HP, 1=ATK, 2=DEF, 3=SPE, 4=SPA, 5=SPD
+         * @param value EV value (0-252)
+         */
+        void setEV(int statIndex, uint8_t value) noexcept override {
+            if (statIndex >= 0 && statIndex < 6) {
+                data[0x1E + statIndex] = static_cast<std::byte>(value);
+                recalculateStats();
+                refreshChecksum();
+            }
+        }
+
+        // ========================================
+        // Stats - Awakening Values (AVs) - Let's Go Unique
+        // ========================================
+
+        /**
+         * Awakening Values (AVs) - Unique to Pokemon Let's Go!
+         * Location: 0x24-0x29 (1 byte each)
+         * These provide stat bonuses similar to EVs but earned differently.
+         * Max 200 per stat, earned by catching Pokemon of the same species.
+         * Each AV point directly adds to the stat (different from EV formula).
+         */
+        uint8_t avHP() const noexcept  { return static_cast<uint8_t>(data[0x24]); }
+        uint8_t avATK() const noexcept { return static_cast<uint8_t>(data[0x25]); }
+        uint8_t avDEF() const noexcept { return static_cast<uint8_t>(data[0x26]); }
+        uint8_t avSPE() const noexcept { return static_cast<uint8_t>(data[0x27]); }
+        uint8_t avSPA() const noexcept { return static_cast<uint8_t>(data[0x28]); }
+        uint8_t avSPD() const noexcept { return static_cast<uint8_t>(data[0x29]); }
+
+        /**
+         * Sets an Awakening Value for a specific stat.
+         * @param statIndex 0=HP, 1=ATK, 2=DEF, 3=SPE, 4=SPA, 5=SPD
+         * @param value AV value (0-200)
+         */
+        void setAV(int statIndex, uint8_t value) noexcept {
+            if (statIndex >= 0 && statIndex < 6 && value <= 200) {
+                data[0x24 + statIndex] = static_cast<std::byte>(value);
+                recalculateStats();
+                refreshChecksum();
+            }
+        }
+
+        // ========================================
+        // Stats - Individual Values (IVs)
+        // ========================================
+
+        /**
+         * Gets the packed IV32 value.
+         * Location: 0x74 (4 bytes) - Different location from PK8!
+         * Contains all 6 IVs plus special flags.
+         */
+        uint32_t iv32() const noexcept { return readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x74)); }
+
+        /**
+         * Individual Values (IVs) - inherent stat potential (0-31).
+         * Same bit layout as PK8.
+         */
+        uint8_t ivHP() const noexcept override  { return (iv32() >> 0) & 0x1F; }
+        uint8_t ivATK() const noexcept override { return (iv32() >> 5) & 0x1F; }
+        uint8_t ivDEF() const noexcept override { return (iv32() >> 10) & 0x1F; }
+        uint8_t ivSPE() const noexcept override { return (iv32() >> 15) & 0x1F; }
+        uint8_t ivSPA() const noexcept override { return (iv32() >> 20) & 0x1F; }
+        uint8_t ivSPD() const noexcept override { return (iv32() >> 25) & 0x1F; }
+
+        /**
+         * Sets an Individual Value for a specific stat.
+         * @param statIndex 0=HP, 1=ATK, 2=DEF, 3=SPE, 4=SPA, 5=SPD
+         * @param value IV value (0-31)
+         */
+        void setIV(int statIndex, uint8_t value) noexcept override {
+            if (statIndex >= 0 && statIndex < 6 && value <= 31) {
+                uint32_t iv = iv32();
+                int shift = statIndex * 5;
+                uint32_t mask = ~(0x1F << shift);
+                iv = (iv & mask) | ((value & 0x1F) << shift);
+                writeUInt32LittleEndian(reinterpret_cast<uint8_t*>(data.data() + 0x74), iv);
+                recalculateStats();
+                refreshChecksum();
+            }
+        }
+
+        // ========================================
+        // Checksum Validation
+        // ========================================
+
+        /**
+         * Gets the stored checksum value.
+         * Location: 0x06 (2 bytes)
+         * @return Checksum value
+         */
+        uint16_t checksum() const noexcept override {
+            return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x06));
+        }
+
+        /**
+         * Calculates the checksum from offset 0x08 to SIZE_6STORED.
+         * @return Calculated checksum value
+         */
+        uint16_t calculateChecksum() const noexcept override {
+            uint16_t checksum = 0;
+
+            // Sum all 16-bit values from offset 0x08 to SIZE_6STORED
+            const size_t checksumEnd = std::min(dataSize, SIZE_STORED7_LGPE);
+            for (size_t i = 0x08; i < checksumEnd; i += 2) {
+                checksum += readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + i));
+            }
+
+            return checksum;
+        }
+
+        /**
+         * Recalculates and updates the stored checksum.
+         * MUST be called after any modification to Pokemon data.
+         */
+        void refreshChecksum() noexcept override {
+            uint16_t newChecksum = calculateChecksum();
+            writeUInt16LittleEndian(reinterpret_cast<uint8_t*>(data.data() + 0x06), newChecksum);
+        }
+
+        /**
+         * Validates that stored checksum matches calculated checksum.
+         * @return true if valid, false if data is corrupted
+         */
+        bool checksumValid() const noexcept override {
+            return checksum() == calculateChecksum();
+        }
+
+        // ========================================
+        // Base Stats (Species-Dependent)
+        // ========================================
+
+        uint8_t baseHP() const noexcept override;
+        uint8_t baseATK() const noexcept override;
+        uint8_t baseDEF() const noexcept override;
+        uint8_t baseSPE() const noexcept override;
+        uint8_t baseSPA() const noexcept override;
+        uint8_t baseSPD() const noexcept override;
+
+        // ========================================
+        // Calculated Stats (Battle Stats)
+        // ========================================
+
+        /**
+         * Gets the Pokemon's current level.
+         * Let's Go stores level in a different location than modern games.
+         * @return Level (1-100)
+         */
+        uint8_t level() const noexcept override;
+
+        /**
+         * Battle stats in Let's Go are calculated differently:
+         * - Include Awakening Value (AV) bonuses
+         * - Include friendship bonus (up to +10% at max friendship)
+         * - Standard IV/EV calculations still apply
+         *
+         * For simplicity, we'll calculate basic stats here.
+         * Full Let's Go formula is more complex.
+         */
+        uint16_t statHPMax() const noexcept override;
+        uint16_t statATK() const noexcept override;
+        uint16_t statDEF() const noexcept override;
+        uint16_t statSPE() const noexcept override;
+        uint16_t statSPA() const noexcept override;
+        uint16_t statSPD() const noexcept override;
+
+        // ========================================
+        // Stat Recalculation
+        // ========================================
+
+        /**
+         * Recalculates all battle stats including AVs and friendship bonuses.
+         * Let's Go formula:
+         * Stat = (((2 * Base + IV + EV/4) * Level / 100) + 5) * Nature * Friendship + AV
+         *
+         * Where Friendship is a multiplier: (friendship/255 / 10 + 1) ≈ 1.0 to 1.1
+         */
+        void recalculateStats() noexcept override;
+
+        // ========================================
+        // Advanced Modification
+        // ========================================
+
+        /**
+         * Regenerates encryption constant while maintaining gender and shininess.
+         * Let's Go uses EC as PID, so this modifies the EC.
+         * Used to fix legality issues when IVs are modified.
+         * @param trainerID32 The trainer's ID32 for shiny calculation
+         */
+        void regeneratePID(uint32_t trainerID32) noexcept override;
+
+        /**
+         * Sets the shiny status of the Pokemon.
+         * Modifies encryption constant while preserving gender.
+         * @param makeShiny true to make shiny, false to make non-shiny
+         * @param trainerID32 The trainer's ID32 for shiny calculation
+         */
+        void setShiny(bool makeShiny, uint32_t trainerID32) noexcept override;
+
+        // ========================================
+        // Let's Go Unique Features
+        // ========================================
+
+        /**
+         * Gets the Combat Power (CP) value.
+         * Location: 0xFE (2 bytes)
+         * CP is similar to Pokemon GO's power rating.
+         * @return CP value (0-10000)
+         */
+        uint16_t cp() const noexcept {
+            return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0xFE));
+        }
+
+        /**
+         * Gets the height scalar (individual size variation).
+         * Location: 0x3A (1 byte)
+         * Used to calculate actual height.
+         * @return Height scalar (0-255)
+         */
+        uint8_t heightScalar() const noexcept {
+            return static_cast<uint8_t>(data[0x3A]);
+        }
+
+        /**
+         * Gets the weight scalar (individual size variation).
+         * Location: 0x3B (1 byte)
+         * Used to calculate actual weight.
+         * @return Weight scalar (0-255)
+         */
+        uint8_t weightScalar() const noexcept {
+            return static_cast<uint8_t>(data[0x3B]);
+        }
+
+        /**
+         * Gets the absolute height in meters.
+         * Location: 0x2C (4 bytes, float)
+         * @return Height in meters
+         */
+        float heightAbsolute() const noexcept {
+            uint32_t bits = readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x2C));
+            float result;
+            std::memcpy(&result, &bits, sizeof(float));
+            return result;
+        }
+
+        /**
+         * Gets the absolute weight in kilograms.
+         * Location: 0xE4 (4 bytes, float)
+         * @return Weight in kilograms
+         */
+        float weightAbsolute() const noexcept {
+            uint32_t bits = readUInt32LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0xE4));
+            float result;
+            std::memcpy(&result, &bits, sizeof(float));
+            return result;
+        }
+    };
+}
 
 #endif
