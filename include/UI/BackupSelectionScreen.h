@@ -1,5 +1,5 @@
-#ifndef BACKUP_SELECTION_SCREEN_H
-#define BACKUP_SELECTION_SCREEN_H
+#ifndef UI_BACKUP_SELECTION_SCREEN_H
+#define UI_BACKUP_SELECTION_SCREEN_H
 
 #include <vector>
 #include <string>
@@ -42,4 +42,4 @@ private:
     std::string formatTimestamp(const std::string& timestamp);
 };
 
-#endif // BACKUP_SELECTION_SCREEN_H
+#endif

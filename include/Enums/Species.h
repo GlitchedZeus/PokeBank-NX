@@ -1,5 +1,5 @@
-#ifndef GAME_ENUMS_SPECIES_H
-#define GAME_ENUMS_SPECIES_H
+#ifndef ENUMS_SPECIES_H
+#define ENUMS_SPECIES_H
 
 /// Species IDs for the corresponding English species name.
 enum class Species

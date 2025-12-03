@@ -55,7 +55,7 @@ void drawStatEditDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     // Calculate total EVs
     int totalEVs = pokemon->evHP() + pokemon->evATK() + pokemon->evDEF() +
-                   pokemon->evSPE() + pokemon->evSPA() + pokemon->evSPD();
+        pokemon->evSPE() + pokemon->evSPA() + pokemon->evSPD();
 
     // Draw title
     std::string titleText = std::string("Edit Stats - ") + currentStatName;
@@ -120,4 +120,4 @@ void drawStatEditDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     fb.drawText(dialogX + 20, lineY, "A: Confirm  |  B: Cancel", Colors::TextDim);
 }
 
-} // namespace Dialogs
+}

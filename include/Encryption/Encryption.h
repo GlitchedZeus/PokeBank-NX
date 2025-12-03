@@ -134,4 +134,4 @@ void cryptArray(std::span<std::byte> data, uint32_t seed);
  */
 void cryptPKM(std::span<std::byte> data, uint32_t partyValue, size_t blockSize, size_t blockCount);
 
-#endif // ENCRYPTION_ENCRYPTION_H
+#endif

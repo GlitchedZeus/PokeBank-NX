@@ -57,7 +57,6 @@ void Trainer8::parseMyStatusBlock(const Block& block)
      * Display SID: ID32 / 1000000
      */
     if (block.data.size() < 0xA0 + 4) {
-        logInfoToConsole("Insufficient data for UInt32 at offset 0xA0 in MY_STATUS block");
         logInfoToFile("Insufficient data for UInt32 at offset 0xA0 in MY_STATUS block");
         return;
     }

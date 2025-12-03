@@ -1,5 +1,5 @@
-#ifndef GAME_ENUMS_H
-#define GAME_ENUMS_H
+#ifndef ENUMS_ENUMS_H
+#define ENUMS_ENUMS_H
 
 /// Gender a Pokemon can have
 /// Provided to function for Encounter template values

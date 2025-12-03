@@ -1,5 +1,5 @@
-#ifndef TITLE_SELECTION_SCREEN_H
-#define TITLE_SELECTION_SCREEN_H
+#ifndef UI_TITLE_SELECTION_SCREEN_H
+#define UI_TITLE_SELECTION_SCREEN_H
 
 #include <vector>
 #include <string>
@@ -39,4 +39,4 @@ private:
     void drawTitleList(PKSEFramebuffer& fb);
 };
 
-#endif // TITLE_SELECTION_SCREEN_H
+#endif

@@ -31,4 +31,4 @@ void drawModeSelector(PKSEFramebuffer& fb, int selectedMode, int x, int y, int w
     }
 }
 
-} // namespace Panels
+}

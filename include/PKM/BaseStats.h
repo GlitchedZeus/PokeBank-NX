@@ -1048,4 +1048,4 @@ static constexpr size_t BASE_STATS_COUNT = sizeof(BASE_STATS_TABLE) / sizeof(BAS
 
 const BaseStats* getBaseStats(uint16_t speciesId);
 
-#endif // PKM_BASESTATS_H
+#endif

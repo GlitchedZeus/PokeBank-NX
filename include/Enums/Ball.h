@@ -1,5 +1,5 @@
-#ifndef GAME_ENUMS_H
-#define GAME_ENUMS_H
+#ifndef ENUMS_BALL_H
+#define ENUMS_BALL_H
 
 /// Ball IDs for the corresponding English ball name.
 enum class Ball

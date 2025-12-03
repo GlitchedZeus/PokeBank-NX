@@ -1,5 +1,5 @@
-#ifndef GAME_ENUMS_MOVE_H
-#define GAME_ENUMS_MOVE_H
+#ifndef ENUMS_MOVE_H
+#define ENUMS_MOVE_H
 
 enum class Move
 {

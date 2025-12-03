@@ -1,5 +1,5 @@
-#ifndef GAME_ENUMS_MOVE_TYPE_H
-#define GAME_ENUMS_MOVE_TYPE_H
+#ifndef ENUMS_MOVE_TYPE_H
+#define ENUMS_MOVE_TYPE_H
 
 enum class MoveType
 {

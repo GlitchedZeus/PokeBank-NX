@@ -57,7 +57,6 @@ void Trainer7::updatePartyBlock()
      */
 
     logInfoToFile("Trainer7::updatePartyBlock() - Not yet implemented");
-    logInfoToConsole("Let's Go party block update not yet implemented");
 }
 
 void Trainer7::updateBoxBlock()
@@ -74,7 +73,6 @@ void Trainer7::updateBoxBlock()
      */
 
     logInfoToFile("Trainer7::updateBoxBlock() - Not yet implemented");
-    logInfoToConsole("Let's Go box block update not yet implemented");
 }
 
 void Trainer7::updateItemBlock()
@@ -87,5 +85,4 @@ void Trainer7::updateItemBlock()
      */
 
     logInfoToFile("Trainer7::updateItemBlock() - Not yet implemented");
-    logInfoToConsole("Let's Go item block update not yet implemented");
 }

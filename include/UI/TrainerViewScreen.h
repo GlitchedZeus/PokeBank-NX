@@ -1,5 +1,5 @@
-#ifndef TRAINER_VIEW_SCREEN_H
-#define TRAINER_VIEW_SCREEN_H
+#ifndef UI_TRAINER_VIEW_SCREEN_H
+#define UI_TRAINER_VIEW_SCREEN_H
 
 #include <string>
 #include <vector>
@@ -85,4 +85,4 @@ public:
     int pokemonDetailsEditValue;  // Current edit value for stat
 };
 
-#endif // TRAINER_VIEW_SCREEN_H
+#endif

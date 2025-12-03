@@ -12,8 +12,8 @@
  * - Gen 9-specific save file structure
  */
 
-#ifndef TRAINER9_H
-#define TRAINER9_H
+#ifndef TRAINER_TRAINER9_H
+#define TRAINER_TRAINER9_H
 
 #include <cstring>
 
@@ -142,7 +142,7 @@ public:
      * @return GameVersion::SWSH (Legends: Z-A group)
      */
     GameVersion getGameGroup() const noexcept override {
-        return GameVersion::SWSH;
+        return GameVersion::ZA;
     }
 
 private:
@@ -199,4 +199,4 @@ private:
     void parseBoxLayoutBlock(const Block& block);
 };
 
-#endif // TRAINER9_H
+#endif

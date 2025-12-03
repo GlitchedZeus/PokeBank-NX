@@ -39,4 +39,4 @@ namespace Colors {
     constexpr Color TextDim(150, 150, 150);
 }
 
-#endif // UI_COMMON_H
+#endif

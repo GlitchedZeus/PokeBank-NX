@@ -44,7 +44,7 @@ DATA		:=	data
 INCLUDES	:=	include
 APP_TITLE   :=  PKSE
 APP_AUTHOR  :=  Kiasta
-APP_VERSION :=  0.0.1_Prototype_r2
+APP_VERSION :=  0.0.1_rc1
 ROMFS		:=	romfs
 
 #---------------------------------------------------------------------------------
@@ -160,24 +160,77 @@ ifneq ($(ROMFS),)
 	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: $(BUILD) clean all
+# Default target when you just run 'make'. Only builds.
+default: $(BUILD)
+
+# Target when you run 'make all'. Downloads sprites then builds
+all: sprites $(BUILD)
 
 #---------------------------------------------------------------------------------
-all: $(BUILD)
+# Sprite and icon download integration
+#---------------------------------------------------------------------------------
+SPRITE_DIR   := romfs/sprites/pokemon
+SPRITE_START := 0
+SPRITE_END   := 1025
+MAX_JOBS     := 20        # increase the value if you want it to run faster
+
+sprites:
+	@printf "Checking and downloading missing Pokemon sprites...\n"
+	@mkdir -p "$(SPRITE_DIR)"
+	@missing_list=""; \
+	for i in $$(seq $(SPRITE_START) $(SPRITE_END)); do \
+		[ -f "$(SPRITE_DIR)/$$i.png" ] && [ -f "$(SPRITE_DIR)/$${i}s.png" ] || missing_list="$$missing_list $$i"; \
+	done; \
+	if [ -z "$$missing_list" ]; then \
+		printf "All sprites already present — nothing to download.\n"; \
+		exit 0; \
+	fi; \
+	count=0; \
+	for i in $$missing_list; do count=$$((count + 1)); done; \
+	printf "Downloading %d missing sprite(s) in parallel...\n" $$count; \
+	\
+	printf "$$missing_list" | tr ' ' '\n' | \
+	xargs -n 1 -P $(MAX_JOBS) -I{} sh -c '\
+		id="{}"; \
+		dir="$(SPRITE_DIR)"; \
+		normal="$$dir/$$id.png"; \
+		shiny="$$dir/$${id}s.png"; \
+		if [ ! -f "$$normal" ]; then \
+			printf "Downloading normal sprite #%d...\n" "$$id"; \
+			if command -v curl >/dev/null 2>&1; then \
+				curl -fsSL "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$$id.png" -o "$$normal"; \
+			else \
+				wget -q "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$$id.png" -O "$$normal"; \
+			fi || { printf "Failed normal #$$id"; exit 1; } \
+		fi; \
+		if [ ! -f "$$shiny" ]; then \
+			printf "Downloading shiny sprite #%d...\n" "$$id"; \
+			if command -v curl >/dev/null 2>&1; then \
+				curl -fsSL "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/$$id.png" -o "$$shiny"; \
+			else \
+				wget -q "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/$$id.png" -O "$$shiny"; \
+			fi || { echo "Failed shiny #$$id"; exit 1; } \
+		fi'; \
+	ret=$$?; \
+	if [ $$ret -ne 0 ]; then exit $$ret; fi
+
+.PHONY: sprites
+
+#---------------------------------------------------------------------------------
+.PHONY: $(BUILD) clean all
 
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile all
 
 #---------------------------------------------------------------------------------
 clean:
-	@echo clean ...
+	@printf "clean ...\n"
 ifeq ($(strip $(APP_JSON)),)
-	@rm -fr $(BUILD) $(TARGET).nro $(TARGET).nacp $(TARGET).elf
+	@rm -fr $(BUILD) $(TARGET).nro $(TARGET).nacp $(TARGET).elf $(TARGET).lst
 else
-	@rm -fr $(BUILD) $(TARGET).nsp $(TARGET).nso $(TARGET).npdm $(TARGET).elf
+	@rm -fr $(BUILD) $(TARGET).nsp $(TARGET).nso $(TARGET).npdm $(TARGET).elf $(TARGET).lst
 endif
-
 
 #---------------------------------------------------------------------------------
 else
@@ -217,7 +270,7 @@ $(OFILES_SRC)	: $(HFILES_BIN)
 #---------------------------------------------------------------------------------
 %.bin.o	%_bin.h :	%.bin
 #---------------------------------------------------------------------------------
-	@echo $(notdir $<)
+	@printf $(notdir $<)
 	@$(bin2o)
 
 -include $(DEPENDS)

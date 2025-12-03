@@ -1,5 +1,5 @@
-#ifndef ENUMS_H
-#define ENUMS_H
+#ifndef ENUMS_SC_TYPE_CODE_H
+#define ENUMS_SC_TYPE_CODE_H
 
 #include <cstdint>
 

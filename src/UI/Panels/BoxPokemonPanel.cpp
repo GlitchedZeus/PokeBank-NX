@@ -85,8 +85,8 @@ void drawBoxPokemon(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
 
                     // Draw sprite scaled down to 50x50
                     fb.drawImageScaled(spriteX, spriteY, sprite->width, sprite->height,
-                                      SPRITE_SIZE, SPRITE_SIZE,
-                                      sprite->data, sprite->channels);
+                        SPRITE_SIZE, SPRITE_SIZE,
+                        sprite->data, sprite->channels);
 
                     spriteWidth = SPRITE_SIZE + 8;  // Add padding
                 }
@@ -128,4 +128,4 @@ void drawBoxPokemon(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
     }
 }
 
-} // namespace Panels
+}

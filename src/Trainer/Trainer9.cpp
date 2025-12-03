@@ -9,6 +9,7 @@
 #include <cstring>
 
 #include "Trainer/Trainer9.h"
+#include "Trainer/Inventory9.h"
 #include "Utils/Logger.h"
 
 // ========================================
@@ -57,7 +58,6 @@ void Trainer9::parseMyStatusBlock(const Block& block)
      * Display SID: ID32 / 1000000
      */
     if (block.data.size() < 0x00 + 4) {
-        logInfoToConsole("Insufficient data for UInt32 at offset 0x00 in MY_STATUS block");
         logInfoToFile("Insufficient data for UInt32 at offset 0x00 in MY_STATUS block");
         return;
     }
@@ -76,27 +76,27 @@ void Trainer9::parseMyStatusBlock(const Block& block)
 void Trainer9::parsePartyBlock(const Block& block)
 {
     /**
-     * PARTY Block Structure:
-     * Pokemon stored sequentially at offsets:
-     * - Slot 0: offset 0
-     * - Slot 1: offset SIZE_9PARTY (344 bytes)
-     * - Slot 2: offset 2 * SIZE_9PARTY
+     * PARTY Block Structure (Pokemon Legends Z-A):
+     * Pokemon stored with gaps between slots:
+     * - Slot 0: offset 0 (SIZE_9PARTY bytes of data + GAP_PARTY_SLOT gap)
+     * - Slot 1: offset PARTY_SLOT_SIZE (480 bytes)
+     * - Slot 2: offset 2 * PARTY_SLOT_SIZE
      * - ... up to 6 slots
      *
-     * Each slot is SIZE_9PARTY bytes (344 bytes for party Pokemon).
-     * Empty slots are zeroed out.
+     * Each slot spans PARTY_SLOT_SIZE bytes (480 bytes), but only the first
+     * SIZE_9PARTY bytes (344 bytes) contain Pokemon data. The remaining gap
+     * (GAP_PARTY_SLOT = 0x88 bytes) is unused/padding.
      */
-    const std::span<const std::byte> blockSpan(
-        reinterpret_cast<const std::byte*>(block.data.data()),
-        block.data.size()
-    );
+    const std::span<const std::byte> blockSpan(reinterpret_cast<const std::byte*>(block.data.data()), block.data.size());
 
     for (size_t slot = 0; slot < MAX_PARTY_SLOTS; ++slot)
     {
-        const size_t offset = slot * SIZE_9PARTY;
+        // Calculate offset to this slot (includes gap from previous slots)
+        const size_t offset = slot * PARTY_SLOT_SIZE;
         if (offset + SIZE_9PARTY > block.data.size())
             break;
 
+        // Extract only the Pokemon data portion (SIZE_9PARTY bytes)
         std::span<const std::byte> slotSpan = blockSpan.subspan(offset, SIZE_9PARTY);
 
         // Check if slot has valid Pokemon data (non-zero species)
@@ -151,47 +151,50 @@ void Trainer9::parseMiscBlock(const Block& block)
 void Trainer9::parseItemBlock(const Block& block)
 {
     /**
-     * ITEM Block Structure:
-     * Multiple "pouches" (categories) of items:
-     * - Medicine
-     * - Balls
-     * - Battle Items
-     * - Berries
-     * - TMs/TRs
-     * - Treasures
-     * - Ingredients
-     * - Key Items
-     * - Other
+     * ITEM Block Structure (Gen 9 Legends Z-A):
+     * Items are stored BY ITEM ID as index!
+     * - Item at ID X is at offset (X * 0x10)
+     * - Block size: 0xBB80 bytes (47,872 bytes)
+     * - Each item: 0x10 bytes (16 bytes)
      *
-     * Each pouch has a fixed offset and maximum item count.
-     * Items are stored as 4-byte values: (count << 16) | itemId
+     * Structure per item (16 bytes):
+     * 0x00-0x03: Pouch ID (uint32) - which pouch this belongs to
+     * 0x04-0x07: Count (int32) - quantity
+     * 0x08-0x0B: Flags (uint32) - isNew, isFavorite, etc.
+     * 0x0C-0x0F: Padding
      */
+
     // Initialize items vector with pouches for each type
-    items.resize(static_cast<size_t>(PouchType::Count));
+    items.resize(static_cast<size_t>(POUCH_COUNT_GEN9));
 
-    // Load each pouch
-    for (int p = 0; p < static_cast<int>(PouchType::Count); p++) {
-        PouchType pouchType = static_cast<PouchType>(p);
-        const PouchInfo& info = getPouchInfo(pouchType);
+    // For each pouch, iterate through valid item IDs
+    for (int i = 0; i < static_cast<int>(POUCH_COUNT_GEN9); i++) {
+        PouchType9 pouchType = static_cast<PouchType9>(i);
+        items[i].clear();
 
-        std::vector<InventoryItem> pouch;
-        pouch.reserve(info.maxCount);
+        // Get the list of valid item IDs for this pouch
+        const auto& validIds = getValidItemIds(pouchType);
 
-        // Read items from block data
-        for (int i = 0; i < info.maxCount; i++) {
-            size_t offset = info.offset + (i * 4);
-            if (offset + 4 <= block.data.size()) {
-                uint32_t itemValue = readUInt32LittleEndian(&block.data[offset]);
-                InventoryItem item = InventoryItem::fromValue(itemValue);
+        for (uint16_t itemId : validIds) {
+            // Calculate offset: itemID * 0x10
+            size_t offset = itemId * GEN9_ITEM_SIZE;
 
-                // Only add items with valid IDs (non-zero)
-                if (item.itemId != 0) {
-                    pouch.push_back(item);
-                }
+            // Make sure we're within bounds
+            if (offset + GEN9_ITEM_SIZE > block.data.size()) {
+                continue;
             }
-        }
 
-        items[p] = std::move(pouch);
+            // Read the item data at this index
+            InventoryItem9 item9 = InventoryItem9::fromBytes(itemId, &block.data[offset]);
+
+            // Only add if count > 0
+            if (item9.count > 0) {
+                items[i].push_back(item9.toInventoryItem());
+            }
+
+            // Add all items, even with count 0
+            // items[p].push_back(item9.toInventoryItem());
+        }
     }
 }
 
@@ -199,14 +202,18 @@ void Trainer9::parseBoxBlock(const Block& block)
 {
     /**
      * BOX Block Structure:
-     * Pokemon stored sequentially for all boxes and slots:
-     * - Box 0, Slot 0: offset 0
-     * - Box 0, Slot 1: offset SIZE_9PARTY
-     * - ... Box 0, Slot 29: offset 29 * SIZE_9PARTY
-     * - Box 1, Slot 0: offset 30 * SIZE_9PARTY
+     * Pokemon stored with gaps between slots:
+     * - Box 0, Slot 0: offset 0 (SIZE_9PARTY bytes of data + GAP_BOX_SLOT gap)
+     * - Box 0, Slot 1: offset BOX_SLOT_SIZE (408 bytes)
+     * - ... Box 0, Slot 29: offset 29 * BOX_SLOT_SIZE
+     * - Box 1, Slot 0: offset 30 * BOX_SLOT_SIZE
      * - ... etc for all 32 boxes
      *
-     * Total size: 32 boxes * 30 slots * 344 bytes = 331,776 bytes
+     * Each slot spans BOX_SLOT_SIZE bytes (408 bytes), but only the first
+     * SIZE_9PARTY bytes (344 bytes) contain Pokemon data. The remaining gap
+     * (GAP_BOX_SLOT = 0x40 bytes) is unused/padding.
+     *
+     * Total size: 32 boxes * 30 slots * 408 bytes = 391,680 bytes
      */
     const std::span<const std::byte> blockSpan(
         reinterpret_cast<const std::byte*>(block.data.data()),
@@ -215,12 +222,13 @@ void Trainer9::parseBoxBlock(const Block& block)
 
     for (size_t boxIndex = 0; boxIndex < BOX_COUNT_GEN9; ++boxIndex) {
         for (size_t slot = 0; slot < BOX_SLOTS; ++slot) {
-            // Calculate offset: (boxIndex * slots per box + slot) * bytes per pokemon
-            const size_t offset = (boxIndex * BOX_SLOTS + slot) * SIZE_9PARTY;
+            // Calculate offset: (boxIndex * slots per box + slot) * bytes per slot (including gap)
+            const size_t offset = (boxIndex * BOX_SLOTS + slot) * BOX_SLOT_SIZE;
             if (offset + SIZE_9PARTY > block.data.size()) {
                 break;
             }
 
+            // Extract only the Pokemon data portion (SIZE_9PARTY bytes)
             std::span<const std::byte> slotSpan = blockSpan.subspan(offset, SIZE_9PARTY);
 
             // Check if slot has a Pokemon (non-zero data)
@@ -288,24 +296,25 @@ void Trainer9::updatePartyBlock()
      *
      * Process:
      * 1. Find the PARTY block
-     * 2. Ensure block is large enough (6 slots * SIZE_9PARTY)
+     * 2. Ensure block is large enough (6 slots * PARTY_SLOT_SIZE)
      * 3. For each party Pokemon:
      *    a. Get encryption constant from Pokemon data
-     *    b. Encrypt Pokemon data using encryptArray8
-     *    c. Write encrypted data to block
+     *    b. Encrypt Pokemon data using encryptArray9
+     *    c. Write encrypted data to block at correct offset (with gaps)
      * 4. Zero out empty slots
      */
     for (auto& block : blocks) {
         if (block.key == Gen9BlockKeys::PARTY) {
-            // Ensure the block data is large enough
-            size_t requiredSize = MAX_PARTY_SLOTS * SIZE_9PARTY;
+            // Ensure the block data is large enough (including gaps)
+            size_t requiredSize = MAX_PARTY_SLOTS * PARTY_SLOT_SIZE;
             if (block.data.size() < requiredSize) {
                 block.data.resize(requiredSize, 0);
             }
 
             // Write each party Pokemon
             for (size_t i = 0; i < party.size() && i < MAX_PARTY_SLOTS; ++i) {
-                const size_t offset = i * SIZE_9PARTY;
+                // Calculate offset with gaps
+                const size_t offset = i * PARTY_SLOT_SIZE;
 
                 if (party[i] && party[i]->speciesID() != 0) {
                     // Pokemon exists - encrypt and write
@@ -321,23 +330,26 @@ void Trainer9::updatePartyBlock()
                     );
 
                     // Encrypt the Pokemon data
-                    std::byte* encryptedData = encryptArray8(decryptedSpan, ec);
+                    std::byte* encryptedData = encryptArray9(decryptedSpan, ec);
 
-                    // Write encrypted data to block
+                    // Write encrypted data to block (only SIZE_9PARTY bytes)
                     std::memcpy(&block.data[offset], encryptedData, pokemon->getDataSize());
+
+                    // Zero out the gap after the Pokemon data
+                    std::memset(&block.data[offset + SIZE_9PARTY], 0, GAP_PARTY_SLOT);
 
                     // Clean up encrypted buffer
                     delete[] encryptedData;
                 } else {
-                    // Empty slot - write zeros
-                    std::memset(&block.data[offset], 0, SIZE_9PARTY);
+                    // Empty slot - write zeros for entire slot (data + gap)
+                    std::memset(&block.data[offset], 0, PARTY_SLOT_SIZE);
                 }
             }
 
             // Zero out any remaining slots
             for (size_t i = party.size(); i < MAX_PARTY_SLOTS; ++i) {
-                const size_t offset = i * SIZE_9PARTY;
-                std::memset(&block.data[offset], 0, SIZE_9PARTY);
+                const size_t offset = i * PARTY_SLOT_SIZE;
+                std::memset(&block.data[offset], 0, PARTY_SLOT_SIZE);
             }
 
             break;
@@ -352,15 +364,15 @@ void Trainer9::updateBoxBlock()
      *
      * Process similar to updatePartyBlock, but for all boxes:
      * 1. Find the BOX block
-     * 2. Ensure block is large enough (32 boxes * 30 slots * SIZE_9PARTY)
+     * 2. Ensure block is large enough (32 boxes * 30 slots * BOX_SLOT_SIZE)
      * 3. For each box and slot:
      *    a. If Pokemon exists, encrypt and write
      *    b. If slot is empty, write zeros
      */
     for (auto& block : blocks) {
         if (block.key == Gen9BlockKeys::BOX) {
-            // Ensure the block data is large enough for all boxes
-            size_t requiredSize = BOX_COUNT_GEN9 * BOX_SLOTS * SIZE_9PARTY;
+            // Ensure the block data is large enough for all boxes (including gaps)
+            size_t requiredSize = BOX_COUNT_GEN9 * BOX_SLOTS * BOX_SLOT_SIZE;
             if (block.data.size() < requiredSize) {
                 block.data.resize(requiredSize, 0);
             }
@@ -368,7 +380,8 @@ void Trainer9::updateBoxBlock()
             // Write each Pokemon back to the block
             for (size_t boxIndex = 0; boxIndex < BOX_COUNT_GEN9; ++boxIndex) {
                 for (size_t slot = 0; slot < BOX_SLOTS; ++slot) {
-                    const size_t offset = (boxIndex * BOX_SLOTS + slot) * SIZE_9PARTY;
+                    // Calculate offset with gaps
+                    const size_t offset = (boxIndex * BOX_SLOTS + slot) * BOX_SLOT_SIZE;
 
                     if (boxes[boxIndex][slot]) {
                         // Pokemon exists - encrypt and write
@@ -386,16 +399,19 @@ void Trainer9::updateBoxBlock()
                         );
 
                         // Encrypt the Pokemon data
-                        std::byte* encryptedData = encryptArray8(decryptedSpan, ec);
+                        std::byte* encryptedData = encryptArray9(decryptedSpan, ec);
 
-                        // Write encrypted data to block
+                        // Write encrypted data to block (only SIZE_9PARTY bytes)
                         std::memcpy(&block.data[offset], encryptedData, pokemon->getDataSize());
+
+                        // Zero out the gap after the Pokemon data
+                        std::memset(&block.data[offset + SIZE_9PARTY], 0, GAP_BOX_SLOT);
 
                         // Clean up encrypted buffer
                         delete[] encryptedData;
                     } else {
-                        // Empty slot - write zeros
-                        std::memset(&block.data[offset], 0, SIZE_9PARTY);
+                        // Empty slot - write zeros for entire slot (data + gap)
+                        std::memset(&block.data[offset], 0, BOX_SLOT_SIZE);
                     }
                 }
             }
@@ -411,44 +427,55 @@ void Trainer9::updateItemBlock()
      *
      * Process:
      * 1. Find the ITEM block
-     * 2. Ensure block is large enough for all pouches
-     * 3. For each pouch:
-     *    a. Write items to their designated offsets
-     *    b. Zero out remaining slots
+     * 2. Ensure block is large enough (0xBB80 bytes)
+     * 3. Write items to their indexed positions (itemID * 0x10)
+     *
+     * Gen 9 stores items BY ITEM ID as index
+     * Block size: 0xBB80 bytes (47,872 bytes)
+     * Item size: 0x10 bytes (16 bytes)
      */
+
     for (auto& block : blocks) {
         if (block.key == Gen9BlockKeys::ITEM) {
             // Ensure the block data is large enough
-            size_t maxSize = 4856; // Sum of all pouch sizes * 4 bytes per item
-            if (block.data.size() < maxSize) {
-                block.data.resize(maxSize, 0);
+            if (block.data.size() < GEN9_ITEM_BLOCK_SIZE) {
+                block.data.resize(GEN9_ITEM_BLOCK_SIZE, 0);
             }
 
-            // Write each pouch back to the block
-            for (int p = 0; p < static_cast<int>(PouchType::Count); p++) {
-                PouchType pouchType = static_cast<PouchType>(p);
-                const PouchInfo& info = getPouchInfo(pouchType);
-                const auto& pouch = items[p];
+            // First, zero out the entire block
+            std::memset(block.data.data(), 0, GEN9_ITEM_BLOCK_SIZE);
 
-                // Write items to block
-                int itemIndex = 0;
+            // Write each pouch's items to their indexed positions
+            for (int i = 0; i < static_cast<int>(POUCH_COUNT_GEN9); i++) {
+                PouchType9 pouchType = static_cast<PouchType9>(i);
+                const auto& pouch = items[i];
+
+                // Write all items from this pouch
                 for (const auto& item : pouch) {
-                    size_t offset = info.offset + (itemIndex * 4);
-                    if (offset + 4 <= block.data.size()) {
-                        uint32_t itemValue = item.toValue();
-                        writeUInt32LittleEndian(&block.data[offset], itemValue);
-                    }
-                    itemIndex++;
-                }
+                    uint16_t itemId = item.itemId;
 
-                // Zero out remaining slots in this pouch
-                for (int i = itemIndex; i < info.maxCount; i++) {
-                    size_t offset = info.offset + (i * 4);
-                    if (offset + 4 <= block.data.size()) {
-                        writeUInt32LittleEndian(&block.data[offset], 0);
+                    // Calculate offset: itemID * 0x10
+                    size_t offset = itemId * GEN9_ITEM_SIZE;
+
+                    // Make sure we're within bounds
+                    if (offset + GEN9_ITEM_SIZE > block.data.size()) {
+                        continue;
                     }
+
+                    // Create InventoryItem9 with pouch ID
+                    InventoryItem9 item9;
+                    item9.pouchId = static_cast<uint32_t>(pouchType);
+                    item9.itemId = itemId;
+                    item9.count = static_cast<int32_t>(item.count);
+                    item9.flags = 0;
+                    if (item.isNew) item9.flags |= 0x1;
+                    if (item.isFavorite) item9.flags |= 0x2;
+
+                    // Write to block at indexed position
+                    item9.toBytes(&block.data[offset]);
                 }
             }
+
             break;
         }
     }

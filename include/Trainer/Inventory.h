@@ -1,5 +1,5 @@
-#ifndef INVENTORY_H
-#define INVENTORY_H
+#ifndef TRAINER_INVENTORY_H
+#define TRAINER_INVENTORY_H
 
 #include <cstdint>
 
@@ -67,4 +67,4 @@ inline const PouchInfo& getPouchInfo(PouchType type) {
     return pouches[static_cast<int>(type)];
 }
 
-#endif // INVENTORY_H
+#endif

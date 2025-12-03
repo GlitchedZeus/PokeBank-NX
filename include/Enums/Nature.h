@@ -1,5 +1,5 @@
-#ifndef GAME_ENUMS_NATURE_H
-#define GAME_ENUMS_NATURE_H
+#ifndef ENUMS_NATURE_H
+#define ENUMS_NATURE_H
 
 enum class Nature
 {

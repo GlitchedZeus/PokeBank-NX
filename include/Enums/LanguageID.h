@@ -1,5 +1,5 @@
-#ifndef GAME_ENUMS_H
-#define GAME_ENUMS_H
+#ifndef ENUMS_ENUMS_H
+#define ENUMS_ENUMS_H
 
 /// Contiguous series Game Language IDs
 enum class LanguageID

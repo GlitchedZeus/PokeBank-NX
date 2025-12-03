@@ -56,6 +56,25 @@ constexpr size_t SIZE_9STORED = 8 + (BLOCK_9COUNT * SIZE_9BLOCK);
  */
 constexpr size_t SIZE_9PARTY = SIZE_9STORED + 0x10;
 
+/**
+ * Gap sizes for Pokemon storage in Gen 9.
+ * These gaps exist between Pokemon data in party and box storage.
+ */
+constexpr size_t GAP_BOX_SLOT = 0x40;   // Gap after box Pokemon data
+constexpr size_t GAP_PARTY_SLOT = 0x88; // Gap after party Pokemon data (0x40 + 0x48)
+
+/**
+ * Size of party Pokemon slot including gaps (Gen 9).
+ * SIZE_9PARTY (344 bytes) + GAP_PARTY_SLOT (0x88) = 480 bytes per slot
+ */
+constexpr size_t PARTY_SLOT_SIZE = SIZE_9PARTY + GAP_PARTY_SLOT;
+
+/**
+ * Size of box Pokemon slot including gaps (Gen 9).
+ * SIZE_9PARTY (344 bytes) + GAP_BOX_SLOT (0x40) = 408 bytes per slot
+ */
+constexpr size_t BOX_SLOT_SIZE = SIZE_9PARTY + GAP_BOX_SLOT;
+
 // ========================================
 // Encryption/Decryption Functions
 // ========================================
@@ -111,4 +130,4 @@ std::byte* decryptArray9(std::span<const std::byte> encryptedData);
  */
 std::byte* encryptArray9(std::span<const std::byte> decryptedData, uint32_t pv);
 
-#endif // GEN9_ENCRYPTION_H
+#endif

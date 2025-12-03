@@ -110,4 +110,4 @@ std::byte* decryptArray8(std::span<const std::byte> encryptedData);
  */
 std::byte* encryptArray8(std::span<const std::byte> decryptedData, uint32_t pv);
 
-#endif // GEN8_ENCRYPTION_H
+#endif

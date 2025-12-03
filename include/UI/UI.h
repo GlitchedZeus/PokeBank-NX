@@ -1,5 +1,5 @@
-#ifndef UI_H
-#define UI_H
+#ifndef UI_UI_H
+#define UI_UI_H
 
 #include <switch.h>
 
@@ -34,4 +34,4 @@ private:
     void handleTrainerView(u64 titleId, const std::string& titleName, const std::string& backupDir);
 };
 
-#endif // UI_H
+#endif

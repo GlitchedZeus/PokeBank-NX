@@ -1,5 +1,5 @@
-#ifndef SCXORSHIFT32_H
-#define SCXORSHIFT32_H
+#ifndef UTILS_SCXORSHIFT32_H
+#define UTILS_SCXORSHIFT32_H
 
 #include <cstdint>
 

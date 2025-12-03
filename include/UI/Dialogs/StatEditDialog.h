@@ -1,5 +1,5 @@
-#ifndef STAT_EDIT_DIALOG_H
-#define STAT_EDIT_DIALOG_H
+#ifndef UI_DIALOGS_STAT_EDIT_DIALOG_H
+#define UI_DIALOGS_STAT_EDIT_DIALOG_H
 
 // Forward declarations
 class PKSEFramebuffer;
@@ -15,4 +15,4 @@ namespace Dialogs {
     void drawStatEditDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 }
 
-#endif // STAT_EDIT_DIALOG_H
+#endif

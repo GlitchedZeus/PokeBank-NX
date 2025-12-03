@@ -8,8 +8,8 @@
  * formats and storage layouts.
  */
 
-#ifndef PKM_H
-#define PKM_H
+#ifndef PKM_PKM_H
+#define PKM_PKM_H
 
 #include <cstdint>
 #include <cstddef>
@@ -369,4 +369,4 @@ protected:
     PKM() = default;
 };
 
-#endif // PKM_PKM_H
+#endif

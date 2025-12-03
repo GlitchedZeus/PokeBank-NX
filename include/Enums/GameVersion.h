@@ -1,5 +1,5 @@
-#ifndef GAME_ENUMS_GAME_VERSION_H
-#define GAME_ENUMS_GAME_VERSION_H
+#ifndef ENUMS_GAME_VERSION_H
+#define ENUMS_GAME_VERSION_H
 
 #include <string>
 

@@ -1,5 +1,5 @@
-#ifndef BOX_POKEMON_PANEL_H
-#define BOX_POKEMON_PANEL_H
+#ifndef UI_PANELS_BOX_POKEMON_PANEL_H
+#define UI_PANELS_BOX_POKEMON_PANEL_H
 
 // Forward declarations
 class PKSEFramebuffer;
@@ -9,4 +9,4 @@ namespace Panels {
     void drawBoxPokemon(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int width, int height);
 }
 
-#endif // BOX_POKEMON_PANEL_H
+#endif

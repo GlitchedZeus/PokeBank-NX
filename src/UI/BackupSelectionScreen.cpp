@@ -92,7 +92,7 @@ void BackupSelectionScreen::update(const PadState& pad) {
             createNewBackup = false;
             char backupPath[512];
             snprintf(backupPath, sizeof(backupPath), "%s/%s",
-                     gameDirectory.c_str(), backups[selectedIndex].timestamp.c_str());
+                gameDirectory.c_str(), backups[selectedIndex].timestamp.c_str());
             selectedBackupPath = backupPath;
             backupSelected = true;
         }

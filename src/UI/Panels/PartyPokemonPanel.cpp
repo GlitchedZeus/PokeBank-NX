@@ -119,4 +119,4 @@ void drawPartyPokemon(PKSEFramebuffer& fb, const std::vector<std::unique_ptr<PKM
     }
 }
 
-} // namespace Panels
+}
