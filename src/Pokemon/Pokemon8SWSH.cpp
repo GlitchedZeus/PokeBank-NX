@@ -317,6 +317,7 @@ namespace Pokemon {
 
         // Write new PID
         writeUInt32LittleEndian(reinterpret_cast<uint8_t*>(data.data() + 0x1C), newPID);
+        refreshChecksum();
     }
 
     // ========================================

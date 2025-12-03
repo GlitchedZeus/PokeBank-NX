@@ -435,6 +435,7 @@ namespace Pokemon {
         /**
          * Recalculates and updates the stored checksum.
          * MUST be called after any modification to Pokemon data.
+         * Refresh checksum since PID is part of the checksummed data.
          */
         void refreshChecksum() noexcept override {
             uint16_t newChecksum = calculateChecksum();
