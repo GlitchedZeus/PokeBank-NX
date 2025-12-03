@@ -2,13 +2,28 @@
 ### THIS IS IN ACTIVE DEVELOPMENT AND ONLY A PROTOTYPE AT THIS POINT. I AM NOT RESPONSIBLE IN ANY WAY FOR DAMAGES TO YOUR SWITCH.
 # USE AT YOUR OWN RISK.
 # **THIS IS NOT A PLACE TO DISCUSS PIRACY OR HOW TO HACK/JAILBREAK/MOD A SWITCH**
+
 ---
+
 # **PKSE - Pokemon Save Editor**
 PKSE is a homebrew application for editing Pokemon save files on the Nintendo Switch.
 
 ## **Features**
 - Backup and restore save files.
-- Edit Pokemon party, box, and item data. (Currently In development)
+- Currently you can only edit party and box Pokemon and item amounts.
+
+## **Title Compatibility**
+### Generation 7
+- Pokemon Let's Go Pikachu/Eevee (Partial implementation, non functioning)
+
+### Generation 8
+- Pokemon Sword/Shield (Fully Implemented and functioning)
+- Pokemon Brilliant Diamond/Shining Pearl (Not Implemented)
+- Pokemon Legends: Arceus (Not Implemented)
+
+### Generation 9
+- Pokemon Scarlet/Violet (Not Implemented)
+- Pokemon Legends: Z-A (Fully Implemented and functioning)
 
 ---
 
@@ -117,8 +132,8 @@ The output will generate an .nro file in the build directory, which you can depl
 
 ## **Credits**
 
-- PKHeX Team: Core save editing logic and Pokemon data structures are derived from the PKHeX project. Visit their official repository: https://github.com/kwsch/PKHeX.
-- PokeAPI team
+- PKHeX Team: core save editing logic are derived from the PKHeX project. Visit their official repository: https://github.com/kwsch/PKHeX.
+- PokeAPI Team: for their work on sprites: https://github.com/PokeAPI/sprites
 - libnx and devkitPro communities for Switch homebrew development tools. Visit their official website: https://devkitpro.org/wiki/Getting_Started.
 
 ## **License**
