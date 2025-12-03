@@ -31,7 +31,7 @@ namespace Trainer {
 
     constexpr size_t MY_STATUS8_SWSH = 0xf25c070e;          // Trainer Details
     constexpr size_t PARTY8_SWSH = 0x2985fe5d;              // Party Data
-    constexpr size_t MISC8_SWSH = 0x1b882b09;               // Money
+    constexpr size_t MONEY8_SWSH = 0x1b882b09;              // Money
     constexpr size_t TRAINER_CARD8_SWSH = 0x874da6fa;       // Trainer Card
     constexpr size_t PLAY_TIME8_SWSH = 0x8cbbfd90;          // Time Played
     constexpr size_t ITEM8_SWSH = 0x1177c2c4;               // Items
@@ -183,7 +183,7 @@ namespace Trainer {
          * Parses the MISC block to extract money.
          * Location: Money at offset 0x04 (4 bytes)
          */
-        void parseMiscBlock(const Block& block);
+        void parseMoneyBlock(const Block& block);
 
         /**
          * Parses the TRAINER_CARD block to extract trainer name.

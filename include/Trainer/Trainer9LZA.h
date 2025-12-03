@@ -31,7 +31,7 @@ namespace Trainer {
 
     constexpr size_t MY_STATUS9_LZA = 0xE3E89BD1;           // Trainer Details
     constexpr size_t PARTY9_LZA = 0x3AA1A9AD;               // Party Data
-    constexpr size_t MISC9_LZA = 0x4F35D0DD;                // Money
+    constexpr size_t MONEY9_LZA = 0x4F35D0DD;               // Money
     constexpr size_t PLAY_TIME9_LZA = 0xEDAFF794;           // Time Played
     constexpr size_t ITEM9_LZA = 0x21C9BD44;                // Items
     constexpr size_t BOX9_LZA = 0x0d66012c;                 // Box Data
@@ -171,7 +171,7 @@ namespace Trainer {
          * Parses the MISC block to extract money.
          * Location: Money at offset 0x04 (4 bytes)
          */
-        void parseMiscBlock(const Block& block);
+        void parseMoneyBlock(const Block& block);
 
         // THERE'S NO TRAINER CARD PARSING IN GEN 9
         // /**

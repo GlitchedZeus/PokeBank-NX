@@ -28,8 +28,8 @@ namespace Trainer {
             case PARTY9_LZA:
                 parsePartyBlock(block);
                 break;
-            case MISC9_LZA:
-                parseMiscBlock(block);
+            case MONEY9_LZA:
+                parseMoneyBlock(block);
                 break;
             // case TRAINER_CARD:
             //     parseTrainerCardBlock(block);
@@ -121,35 +121,19 @@ namespace Trainer {
         }
     }
 
-    void Trainer9LZA::parseMiscBlock(const Block& block)
+    void Trainer9LZA::parseMoneyBlock(const Block& block)
     {
         /**
-         * MISC Block Structure:
-         * 0x04: Money (4 bytes) - Trainer's currency amount
+         * MONEY Block (Gen 9 Legends Z-A):
+         * For Gen 9 Legends Z-A, the money value is stored directly as the block value.
+         * 0x00: Money (4 bytes)
          */
-        if (block.data.size() < 0x04 + 4) {
+        if (block.data.size() < 4) {
             return;
         }
 
-        this->money = readUInt32LittleEndian(&block.data[0x04]);
+        this->money = readUInt32LittleEndian(block.data.data());
     }
-
-    // void Trainer9LZA::parseTrainerCardBlock(const Block& block)
-    // {
-    //     /**
-    //      * TRAINER_CARD Block Structure:
-    //      * 0x00: Trainer Name (26 bytes, UTF-16LE)
-    //      * 0x1C: Trainer ID (4 bytes) - Legacy trainer ID format
-    //      */
-    //     // Parse trainer ID
-    //     this->trainerID = block.data.size() >= 0x1C + 4
-    //         ? readInt32LittleEndian(block.data.data() + 0x1C)
-    //         : 0;
-
-    //     // Parse trainer name (UTF-16LE string)
-    //     size_t nameLength = std::min(static_cast<size_t>(0x1A), block.data.size());
-    //     this->trainerName = utf16ToUtf8(getString(block.data.data(), nameLength));
-    // }
 
     void Trainer9LZA::parseItemBlock(const Block& block)
     {

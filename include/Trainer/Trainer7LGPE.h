@@ -175,7 +175,7 @@ namespace Trainer {
         // Additional parse methods will be added as Let's Go format is analyzed:
         // - parseMyStatusBlock
         // - parsePartyBlock
-        // - parseMiscBlock
+        // - parseMoneyBlock
         // - parseTrainerCardBlock
         // - parseItemBlock
         // - parseBoxBlock

@@ -30,8 +30,8 @@ namespace Trainer {
             case PARTY8_SWSH:
                 parsePartyBlock(block);
                 break;
-            case MISC8_SWSH:
-                parseMiscBlock(block);
+            case MONEY8_SWSH:
+                parseMoneyBlock(block);
                 break;
             case TRAINER_CARD8_SWSH:
                 parseTrainerCardBlock(block);
@@ -119,10 +119,10 @@ namespace Trainer {
         }
     }
 
-    void Trainer8SWSH::parseMiscBlock(const Block& block)
+    void Trainer8SWSH::parseMoneyBlock(const Block& block)
     {
         /**
-         * MISC Block Structure:
+         * MONEY Block Structure:
          * 0x04: Money (4 bytes) - Trainer's currency amount
          */
         if (block.data.size() < 0x04 + 4) {
