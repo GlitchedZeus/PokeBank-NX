@@ -2,11 +2,15 @@
 #define UI_DIALOGS_EDIT_DIALOG_H
 
 // Forward declarations
-class PKSEFramebuffer;
-class TrainerViewScreen;
+namespace UI {
+    class PKSEFramebuffer;
+    class TrainerViewScreen;
+}
 
+namespace UI {
 namespace Dialogs {
-    void drawEditDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+    void drawEditDialog(UI::TrainerViewScreen& screen, UI::PKSEFramebuffer& fb);
+}
 }
 
 #endif

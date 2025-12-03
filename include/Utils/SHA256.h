@@ -4,26 +4,28 @@
 #include <cstdint>
 #include <cstring>
 
-constexpr size_t PKSE_SHA256_BLOCK_SIZE = 64;
-constexpr size_t PKSE_SHA256_HASH_SIZE = 32;
+namespace Utils {
+    constexpr size_t PKSE_SHA256_BLOCK_SIZE = 64;
+    constexpr size_t PKSE_SHA256_HASH_SIZE = 32;
 
-class SHA256 {
-public:
-    SHA256();
-    void update(const uint8_t* data, size_t length);
-    void finalize(uint8_t* hash);
+    class SHA256 {
+    public:
+        SHA256();
+        void update(const uint8_t* data, size_t length);
+        void finalize(uint8_t* hash);
 
-private:
-    void transform();
-    void pad();
+    private:
+        void transform();
+        void pad();
 
-    uint32_t state[8];
-    uint64_t bitCount;
-    uint8_t buffer[PKSE_SHA256_BLOCK_SIZE];
-    size_t bufferSize;
-};
+        uint32_t state[8];
+        uint64_t bitCount;
+        uint8_t buffer[PKSE_SHA256_BLOCK_SIZE];
+        size_t bufferSize;
+    };
 
-// Convenience function
-void computeSHA256(const uint8_t* data, size_t length, uint8_t* hash);
+    // Convenience function
+    void computeSHA256(const uint8_t* data, size_t length, uint8_t* hash);
+}
 
-#endif // SHA256_H
+#endif

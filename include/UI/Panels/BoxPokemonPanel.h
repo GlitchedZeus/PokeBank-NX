@@ -2,11 +2,15 @@
 #define UI_PANELS_BOX_POKEMON_PANEL_H
 
 // Forward declarations
-class PKSEFramebuffer;
-class TrainerViewScreen;
+namespace UI {
+    class PKSEFramebuffer;
+    class TrainerViewScreen;
+}
 
+namespace UI {
 namespace Panels {
-    void drawBoxPokemon(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int width, int height);
+    void drawBoxPokemon(UI::TrainerViewScreen& screen, UI::PKSEFramebuffer& fb, int x, int y, int width, int height);
+}
 }
 
 #endif

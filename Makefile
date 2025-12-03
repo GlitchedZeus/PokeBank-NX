@@ -39,12 +39,12 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	PKSE
 BUILD		:=	build
-SOURCES		:=	src src/PKM src/Encryption src/Enums src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils
+SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save
 DATA		:=	data
 INCLUDES	:=	include
 APP_TITLE   :=  PKSE
 APP_AUTHOR  :=  Kiasta
-APP_VERSION :=  0.0.1_rc1
+APP_VERSION :=  0.0.1
 ROMFS		:=	romfs
 
 #---------------------------------------------------------------------------------

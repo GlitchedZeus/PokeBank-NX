@@ -7,31 +7,32 @@
 
 #include "UI/Common.h"
 
-// Framebuffer wrapper (renamed to avoid conflict with libnx Framebuffer)
-class PKSEFramebuffer {
-public:
-    PKSEFramebuffer();
-    ~PKSEFramebuffer();
+namespace UI {
+    class PKSEFramebuffer {
+    public:
+        PKSEFramebuffer();
+        ~PKSEFramebuffer();
 
-    void clear(Color color);
-    void drawPixel(int x, int y, Color color);
-    void drawRect(int x, int y, int width, int height, Color color);
-    void drawFilledRect(int x, int y, int width, int height, Color color);
-    void drawText(int x, int y, const char* text, Color color);
-    void drawText(int x, int y, const std::string& text, Color color);
-    void drawImage(int x, int y, int imgWidth, int imgHeight, const unsigned char* imageData, int channels);
-    void drawImageScaled(int x, int y, int imgWidth, int imgHeight, int destWidth, int destHeight, const unsigned char* imageData, int channels);
-    void flush();
+        void clear(Color color);
+        void drawPixel(int x, int y, Color color);
+        void drawRect(int x, int y, int width, int height, Color color);
+        void drawFilledRect(int x, int y, int width, int height, Color color);
+        void drawText(int x, int y, const char* text, Color color);
+        void drawText(int x, int y, const std::string& text, Color color);
+        void drawImage(int x, int y, int imgWidth, int imgHeight, const unsigned char* imageData, int channels);
+        void drawImageScaled(int x, int y, int imgWidth, int imgHeight, int destWidth, int destHeight, const unsigned char* imageData, int channels);
+        void flush();
 
-    int getWidth() const { return width; }
-    int getHeight() const { return height; }
+        int getWidth() const { return width; }
+        int getHeight() const { return height; }
 
-private:
-    Framebuffer fb;  // libnx framebuffer struct
-    u32* framebuf;
-    u32 width;
-    u32 height;
-    u32 stride;
-};
+    private:
+        Framebuffer fb;  // libnx framebuffer struct
+        u32* framebuf;
+        u32 width;
+        u32 height;
+        u32 stride;
+    };
+}
 
 #endif

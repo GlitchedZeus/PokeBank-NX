@@ -2,11 +2,15 @@
 #define UI_DIALOGS_SAVE_CONFIRM_DIALOG_H
 
 // Forward declarations
-class PKSEFramebuffer;
-class TrainerViewScreen;
+namespace UI {
+    class PKSEFramebuffer;
+    class TrainerViewScreen;
+}
 
+namespace UI {
 namespace Dialogs {
-    void drawSaveConfirmDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+    void drawSaveConfirmDialog(UI::TrainerViewScreen& screen, UI::PKSEFramebuffer& fb);
+}
 }
 
 #endif

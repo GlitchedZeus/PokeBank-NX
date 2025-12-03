@@ -12,6 +12,9 @@
 # Ignore VS Code settings
 /.vscode/
 
+# Ignore VS settings
+/.vs/
+
 # Ignore log files
 *.log
 PKSE.log

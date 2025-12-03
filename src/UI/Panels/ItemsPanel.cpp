@@ -5,10 +5,16 @@
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Trainer.h"
-#include "Trainer/Inventory9.h"
+#include "Trainer/Inventory9LZA.h"
+#include "Trainer/Inventory8SWSH.h"
 #include "Enums/GameVersion.h"
-#include "Utils/Utilities.h"
+#include "Utils/HelperUtilities.h"
 
+using namespace Trainer;
+using namespace Enums;
+using namespace Utils;
+
+namespace UI {
 namespace Panels {
     void drawItems(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int width, int height) {
         fb.drawFilledRect(x, y, width, height, Colors::Panel);
@@ -20,13 +26,13 @@ namespace Panels {
 
         if (gameGroup == GameVersion::ZA) {
             // Gen 9 Legends Z-A uses PouchType9
-            PouchType9 pouchType = static_cast<PouchType9>(screen.selectedCategory);
-            const PouchInfo9& info = getPouchInfo9(pouchType);
+            PouchType9LZA pouchType = static_cast<PouchType9LZA>(screen.selectedCategory);
+            const PouchInfo9LZA& info = getPouchInfo9LZA(pouchType);
             pouchName = info.name;
         } else {
             // Gen 8 use PouchType
-            PouchType pouchType = static_cast<PouchType>(screen.selectedCategory);
-            const PouchInfo& info = getPouchInfo(pouchType);
+            PouchType8SWSH pouchType = static_cast<PouchType8SWSH>(screen.selectedCategory);
+            const PouchInfo8SWSH& info = getPouchInfo8SWSH(pouchType);
             pouchName = info.name;
         }
 
@@ -105,4 +111,5 @@ namespace Panels {
             fb.drawText(x + 20, y + 80, "Invalid category", Colors::TextDim);
         }
     }
+}
 }

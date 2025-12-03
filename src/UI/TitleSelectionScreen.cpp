@@ -1,110 +1,115 @@
 #include "UI/TitleSelectionScreen.h"
 #include "UI/Common.h"
-#include "Utils/Utilities.h"
+#include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
 #include "Enums/GameVersion.h"
 
-// UI Layout constants
-constexpr int LEFT_PANEL_X = 0;
-constexpr int LEFT_PANEL_Y = 70;
-constexpr int LEFT_TITLE_SELECTION_PANEL_WIDTH = 500;
-constexpr int LEFT_TITLE_SELECTION_PANEL_HEIGHT = 500;
+using namespace Utils;
+using namespace Enums;
 
-TitleSelectionScreen::TitleSelectionScreen(AccountUid userUid)
-    : userUid(userUid), selectedIndex(0), titleSelected(false), goBack(false) {
-    loadTitles();
-}
+namespace UI {
+    // UI Layout constants
+    constexpr int LEFT_PANEL_X = 0;
+    constexpr int LEFT_PANEL_Y = 70;
+    constexpr int LEFT_TITLE_SELECTION_PANEL_WIDTH = 500;
+    constexpr int LEFT_TITLE_SELECTION_PANEL_HEIGHT = 500;
 
-void TitleSelectionScreen::loadTitles() {
-    titles.clear();
-
-    NsApplicationRecord records[100];
-    s32 recordCount = 0;
-
-    Result rc = nsListApplicationRecord(records, 100, 0, &recordCount);
-    if (R_FAILED(rc)) {
-        logErrorToFile("Failed to list application records");
-        return;
+    TitleSelectionScreen::TitleSelectionScreen(AccountUid userUid)
+        : userUid(userUid), selectedIndex(0), titleSelected(false), goBack(false) {
+        loadTitles();
     }
 
-    for (s32 i = 0; i < recordCount; i++) {
-        u64 titleId = records[i].application_id;
+    void TitleSelectionScreen::loadTitles() {
+        titles.clear();
 
-        // Filter to show only Pokemon titles using isPokemonTitle function
-        GameVersion gameVersion = getGameVersion(titleId);
-        if (gameVersion != GameVersion::Invalid) {
+        NsApplicationRecord records[100];
+        s32 recordCount = 0;
+
+        Result rc = nsListApplicationRecord(records, 100, 0, &recordCount);
+        if (R_FAILED(rc)) {
+            logErrorToFile("Failed to list application records");
+            return;
+        }
+
+        for (s32 i = 0; i < recordCount; i++) {
+            u64 titleId = records[i].application_id;
+
+            // Filter to show only Pokemon titles using isPokemonTitle function
+            GameVersion gameVersion = getGameVersion(titleId);
+            if (gameVersion != GameVersion::Invalid) {
+                TitleInfo info;
+                info.titleId = titleId;
+                // Apply sanitization and formatting to handle special characters
+                info.name = "Pokemon " + getGameVersionName(gameVersion);
+                titles.push_back(info);
+            }
+        }
+
+        if (titles.empty()) {
             TitleInfo info;
-            info.titleId = titleId;
-            // Apply sanitization and formatting to handle special characters
-            info.name = "Pokemon " + getGameVersionName(gameVersion);
+            info.titleId = 0;
+            info.name = "No Pokemon titles found";
             titles.push_back(info);
         }
     }
 
-    if (titles.empty()) {
-        TitleInfo info;
-        info.titleId = 0;
-        info.name = "No Pokemon titles found";
-        titles.push_back(info);
-    }
-}
+    void TitleSelectionScreen::update(const PadState& pad) {
+        u64 kDown = padGetButtonsDown(&pad);
 
-void TitleSelectionScreen::update(const PadState& pad) {
-    u64 kDown = padGetButtonsDown(&pad);
-
-    if (kDown & HidNpadButton_Up) {
-        selectedIndex = (selectedIndex - 1 + titles.size()) % titles.size();
-    }
-    if (kDown & HidNpadButton_Down) {
-        selectedIndex = (selectedIndex + 1) % titles.size();
-    }
-    if (kDown & HidNpadButton_A) {
-        if (!titles.empty() && titles[selectedIndex].titleId != 0) {
-            selectedTitleId = titles[selectedIndex].titleId;
-            selectedTitleName = titles[selectedIndex].name;
-            titleSelected = true;
+        if (kDown & HidNpadButton_Up) {
+            selectedIndex = (selectedIndex - 1 + titles.size()) % titles.size();
+        }
+        if (kDown & HidNpadButton_Down) {
+            selectedIndex = (selectedIndex + 1) % titles.size();
+        }
+        if (kDown & HidNpadButton_A) {
+            if (!titles.empty() && titles[selectedIndex].titleId != 0) {
+                selectedTitleId = titles[selectedIndex].titleId;
+                selectedTitleName = titles[selectedIndex].name;
+                titleSelected = true;
+            }
+        }
+        if (kDown & HidNpadButton_B || kDown & HidNpadButton_Plus) {
+            goBack = true;
         }
     }
-    if (kDown & HidNpadButton_B || kDown & HidNpadButton_Plus) {
-        goBack = true;
+
+    void TitleSelectionScreen::draw(PKSEFramebuffer& fb) {
+        fb.clear(Colors::Background);
+
+        // Draw title bar
+        fb.drawFilledRect(0, 0, fb.getWidth(), 60, Colors::Panel);
+        fb.drawText(20, 20, "PKSE - Pokemon Save Editor v0.0.1", Colors::Text);
+        fb.drawRect(0, 0, fb.getWidth(), 60, Colors::Border);
+
+        // Draw title selection panel
+        fb.drawFilledRect(LEFT_PANEL_X, LEFT_PANEL_Y, LEFT_TITLE_SELECTION_PANEL_WIDTH, LEFT_TITLE_SELECTION_PANEL_HEIGHT, Colors::Panel);
+        fb.drawRect(LEFT_PANEL_X, LEFT_PANEL_Y, LEFT_TITLE_SELECTION_PANEL_WIDTH, LEFT_TITLE_SELECTION_PANEL_HEIGHT, Colors::Border);
+
+        // Draw panel title
+        fb.drawText(LEFT_PANEL_X + 20, LEFT_PANEL_Y + 20, "Select Pokemon Title", Colors::Text);
+        fb.drawFilledRect(LEFT_PANEL_X + 20, LEFT_PANEL_Y + 45, LEFT_TITLE_SELECTION_PANEL_WIDTH - 40, 2, Colors::Border);
+
+        // Draw title list
+        drawTitleList(fb);
+
+        // Draw instructions
+        fb.drawText(LEFT_PANEL_X + 20, LEFT_PANEL_Y + LEFT_TITLE_SELECTION_PANEL_HEIGHT + 20, "Press A to select  |  Press B to go back", Colors::TextDim);
     }
-}
 
-void TitleSelectionScreen::draw(PKSEFramebuffer& fb) {
-    fb.clear(Colors::Background);
+    void TitleSelectionScreen::drawTitleList(PKSEFramebuffer& fb) {
+        int itemHeight = 50;
+        int startY = LEFT_PANEL_Y + 60;
 
-    // Draw title bar
-    fb.drawFilledRect(0, 0, fb.getWidth(), 60, Colors::Panel);
-    fb.drawText(20, 20, "PKSE - Pokemon Save Editor v0.0.1", Colors::Text);
-    fb.drawRect(0, 0, fb.getWidth(), 60, Colors::Border);
+        for (size_t i = 0; i < titles.size(); i++) {
+            int itemY = startY + (i * itemHeight);
 
-    // Draw title selection panel
-    fb.drawFilledRect(LEFT_PANEL_X, LEFT_PANEL_Y, LEFT_TITLE_SELECTION_PANEL_WIDTH, LEFT_TITLE_SELECTION_PANEL_HEIGHT, Colors::Panel);
-    fb.drawRect(LEFT_PANEL_X, LEFT_PANEL_Y, LEFT_TITLE_SELECTION_PANEL_WIDTH, LEFT_TITLE_SELECTION_PANEL_HEIGHT, Colors::Border);
+            if ((int)i == selectedIndex) {
+                fb.drawFilledRect(LEFT_PANEL_X + 10, itemY, 480, itemHeight - 5, Colors::Selected);
+            }
 
-    // Draw panel title
-    fb.drawText(LEFT_PANEL_X + 20, LEFT_PANEL_Y + 20, "Select Pokemon Title", Colors::Text);
-    fb.drawFilledRect(LEFT_PANEL_X + 20, LEFT_PANEL_Y + 45, LEFT_TITLE_SELECTION_PANEL_WIDTH - 40, 2, Colors::Border);
-
-    // Draw title list
-    drawTitleList(fb);
-
-    // Draw instructions
-    fb.drawText(LEFT_PANEL_X + 20, LEFT_PANEL_Y + LEFT_TITLE_SELECTION_PANEL_HEIGHT + 20, "Press A to select  |  Press B to go back", Colors::TextDim);
-}
-
-void TitleSelectionScreen::drawTitleList(PKSEFramebuffer& fb) {
-    int itemHeight = 50;
-    int startY = LEFT_PANEL_Y + 60;
-
-    for (size_t i = 0; i < titles.size(); i++) {
-        int itemY = startY + (i * itemHeight);
-
-        if ((int)i == selectedIndex) {
-            fb.drawFilledRect(LEFT_PANEL_X + 10, itemY, 480, itemHeight - 5, Colors::Selected);
+            std::string displayText = "> " + titles[i].name;
+            fb.drawText(LEFT_PANEL_X + 30, itemY + 15, displayText, Colors::Text);
         }
-
-        std::string displayText = "> " + titles[i].name;
-        fb.drawText(LEFT_PANEL_X + 30, itemY + 15, displayText, Colors::Text);
     }
 }
