@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <cstddef>
 
-#include "Pokemon/BaseStats.h"
+#include "Pokemon/BaseStatsGen7.h"
 
 // Forward declarations for Names namespace functions
 namespace Names {
@@ -11,24 +11,24 @@ namespace Names {
 }
 
 namespace Pokemon {
-    const BaseStats* getBaseStats(uint16_t speciesId) {
-        if (speciesId >= BASE_STATS_COUNT) {
-            static const BaseStats empty = {0, 0, 0, 0, 0, 0};
+    const BaseStatsGen7* getBaseStatsGen7(uint16_t speciesId) {
+        if (speciesId >= BASE_STATS_COUNT_GEN7) {
+            static const BaseStatsGen7 empty = {0, 0, 0, 0, 0, 0};
             return &empty;
         }
-        return &BASE_STATS_TABLE[speciesId];
+        return &BASE_STATS_TABLE_GEN7[speciesId];
     }
 
     // Wrapper functions that forward to Names namespace
-    const char* getSpeciesName(uint16_t speciesId) {
+    const char* getSpeciesNameGen7(uint16_t speciesId) {
         return Names::getSpeciesName(speciesId);
     }
 
-    const char* getItemName(uint16_t itemId) {
+    const char* getItemNameGen7(uint16_t itemId) {
         return Names::getItemName(itemId);
     }
 
-    const char* getNatureName(uint8_t natureId) {
+    const char* getNatureNameGen7(uint8_t natureId) {
         return Names::getNatureName(natureId);
     }
 }

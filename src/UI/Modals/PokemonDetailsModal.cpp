@@ -228,15 +228,15 @@ namespace Modals {
                 pokemon->statSPE() + pokemon->statSPA() + pokemon->statSPD();
 
             // Draw each stat
-            const char* statNames[] = {"HP ", "ATK", "DEF", "SPE", "SPA", "SPD"};
+            const char* statNames[] = {"HP ", "ATK", "DEF", "SPA", "SPD", "SPE"};
             uint8_t baseStats[] = {pokemon->baseHP(), pokemon->baseATK(), pokemon->baseDEF(),
-                pokemon->baseSPE(), pokemon->baseSPA(), pokemon->baseSPD()};
+                pokemon->baseSPA(), pokemon->baseSPD(), pokemon->baseSPE()};
             uint8_t ivs[] = {pokemon->ivHP(), pokemon->ivATK(), pokemon->ivDEF(),
-                pokemon->ivSPE(), pokemon->ivSPA(), pokemon->ivSPD()};
+                pokemon->ivSPA(), pokemon->ivSPD(), pokemon->ivSPE()};
             uint8_t evs[] = {pokemon->evHP(), pokemon->evATK(), pokemon->evDEF(),
-                pokemon->evSPE(), pokemon->evSPA(), pokemon->evSPD()};
+                pokemon->evSPA(), pokemon->evSPD(), pokemon->evSPE()};
             uint16_t stats[] = {pokemon->statHPMax(), pokemon->statATK(), pokemon->statDEF(),
-                pokemon->statSPE(), pokemon->statSPA(), pokemon->statSPD()};
+                pokemon->statSPA(), pokemon->statSPD(), pokemon->statSPE()};
 
             for (int i = 0; i < 6; i++) {
                 // Highlight if editing this stat

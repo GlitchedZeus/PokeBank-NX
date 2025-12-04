@@ -57,15 +57,7 @@ namespace Trainer {
     const char* getAbilityName(uint16_t abilityId);
 }
 
-// Forward declaration for Pokemon namespace
-namespace Pokemon {
-    struct BaseStats;
-}
-
 namespace Trainer {
-    /// Gets base stats for a given species ID (returns Pokemon::BaseStats)
-    const Pokemon::BaseStats* getBaseStats(uint16_t speciesId);
-
     /**
      * Trainer - Abstract base class for save file data
      *

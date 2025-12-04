@@ -106,17 +106,17 @@ namespace Panels {
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
-            snprintf(statLine, sizeof(statLine), "SpA: %03d | %02d | %03d | %03d",
+            snprintf(statLine, sizeof(statLine), "SPA: %03d | %02d | %03d | %03d",
                     pokemon->baseSPA(), pokemon->ivSPA(), pokemon->evSPA(), pokemon->statSPA());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
-            snprintf(statLine, sizeof(statLine), "SpD: %03d | %02d | %03d | %03d",
+            snprintf(statLine, sizeof(statLine), "SPD: %03d | %02d | %03d | %03d",
                     pokemon->baseSPD(), pokemon->ivSPD(), pokemon->evSPD(), pokemon->statSPD());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
-            snprintf(statLine, sizeof(statLine), "Spe: %03d | %02d | %03d | %03d",
+            snprintf(statLine, sizeof(statLine), "SPE: %03d | %02d | %03d | %03d",
                     pokemon->baseSPE(), pokemon->ivSPE(), pokemon->evSPE(), pokemon->statSPE());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
         }

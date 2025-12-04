@@ -173,15 +173,21 @@ namespace UI {
 
                     // Confirm edit
                     if (kDown & HidNpadButton_A) {
+                        // Map UI stat index to Pokemon data stat index
+                        // UI order: HP, ATK, DEF, SPA, SPD, SPE (indices 0-5)
+                        // Data order: HP, ATK, DEF, SPE, SPA, SPD (indices 0-5)
+                        int statIndexMap[] = {0, 1, 2, 4, 5, 3}; // UI index -> Data index
+                        int dataStatIndex = statIndexMap[statEditSelectedStat];
+
                         // Apply IV and EV changes if they were modified
                         bool statsModified = false;
                         if (statEditCurrentIV != statEditOriginalIV) {
-                            pokemon->setIV(statEditSelectedStat, statEditCurrentIV);
+                            pokemon->setIV(dataStatIndex, statEditCurrentIV);
                             hasUnsavedChanges = true;
                             statsModified = true;
                         }
                         if (statEditCurrentEV != statEditOriginalEV) {
-                            pokemon->setEV(statEditSelectedStat, statEditCurrentEV);
+                            pokemon->setEV(dataStatIndex, statEditCurrentEV);
                             hasUnsavedChanges = true;
                             statsModified = true;
                         }
@@ -325,9 +331,9 @@ namespace UI {
                             case 0: statEditOriginalIV = pokemon->ivHP(); statEditOriginalEV = pokemon->evHP(); break;
                             case 1: statEditOriginalIV = pokemon->ivATK(); statEditOriginalEV = pokemon->evATK(); break;
                             case 2: statEditOriginalIV = pokemon->ivDEF(); statEditOriginalEV = pokemon->evDEF(); break;
-                            case 3: statEditOriginalIV = pokemon->ivSPE(); statEditOriginalEV = pokemon->evSPE(); break;
-                            case 4: statEditOriginalIV = pokemon->ivSPA(); statEditOriginalEV = pokemon->evSPA(); break;
-                            case 5: statEditOriginalIV = pokemon->ivSPD(); statEditOriginalEV = pokemon->evSPD(); break;
+                            case 3: statEditOriginalIV = pokemon->ivSPA(); statEditOriginalEV = pokemon->evSPA(); break;
+                            case 4: statEditOriginalIV = pokemon->ivSPD(); statEditOriginalEV = pokemon->evSPD(); break;
+                            case 5: statEditOriginalIV = pokemon->ivSPE(); statEditOriginalEV = pokemon->evSPE(); break;
                         }
 
                         // Initialize current values to original values

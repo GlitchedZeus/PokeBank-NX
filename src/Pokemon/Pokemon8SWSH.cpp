@@ -9,26 +9,17 @@
 #include <algorithm>
 
 #include "Pokemon/Pokemon8SWSH.h"
+#include "Pokemon/BaseStatsGen89.h"
 
 namespace Pokemon {
     // Forward declarations for external helper functions
     // These are defined in other files and provide species/item/nature name lookups
-    extern const char* getSpeciesName(uint16_t speciesId);
-    extern const char* getItemName(uint16_t itemId);
-    extern const char* getNatureName(uint8_t natureId);
-    extern const char* getAbilityName(uint16_t abilityId);
+    extern const char* getSpeciesNameGen89(uint16_t speciesId);
+    extern const char* getItemNameGen89(uint16_t itemId);
+    extern const char* getNatureNameGen89(uint8_t natureId);
+    extern const char* getAbilityNameGen89(uint16_t abilityId);
 
-    // Base stats structure and lookup function
-    struct BaseStats {
-        uint8_t hp;
-        uint8_t atk;
-        uint8_t def;
-        uint8_t spe;
-        uint8_t spa;
-        uint8_t spd;
-    };
-
-    extern const BaseStats* getBaseStats(uint16_t speciesId);
+    extern const BaseStatsGen89* getBaseStatsGen89(uint16_t speciesId);
 
     // ========================================
     // Species and Name Lookups
@@ -40,7 +31,7 @@ namespace Pokemon {
          * Converts the Pokemon's Species ID to its name string.
          * Uses an external lookup table (defined elsewhere) to get the species name.
          */
-        return getSpeciesName(speciesID());
+        return getSpeciesNameGen89(speciesID());
     }
 
     // ========================================
@@ -97,32 +88,32 @@ namespace Pokemon {
          * Looks up the base HP stat for this Pokemon's species.
          * Base stats are fixed per species and determine stat growth.
          */
-        return getBaseStats(speciesID())->hp;
+        return getBaseStatsGen89(speciesID())->hp;
     }
 
     uint8_t Pokemon8SWSH::baseATK() const noexcept
     {
-        return getBaseStats(speciesID())->atk;
+        return getBaseStatsGen89(speciesID())->atk;
     }
 
     uint8_t Pokemon8SWSH::baseDEF() const noexcept
     {
-        return getBaseStats(speciesID())->def;
+        return getBaseStatsGen89(speciesID())->def;
     }
 
     uint8_t Pokemon8SWSH::baseSPE() const noexcept
     {
-        return getBaseStats(speciesID())->spe;
+        return getBaseStatsGen89(speciesID())->spe;
     }
 
     uint8_t Pokemon8SWSH::baseSPA() const noexcept
     {
-        return getBaseStats(speciesID())->spa;
+        return getBaseStatsGen89(speciesID())->spa;
     }
 
     uint8_t Pokemon8SWSH::baseSPD() const noexcept
     {
-        return getBaseStats(speciesID())->spd;
+        return getBaseStatsGen89(speciesID())->spd;
     }
 
     // ========================================
