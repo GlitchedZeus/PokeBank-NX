@@ -208,12 +208,17 @@ namespace UI {
         // Handle Pokemon details modal
         if (pokemonDetailsActive) {
             if (kDown & HidNpadButton_B) {
-                // Close modal
-                pokemonDetailsActive = false;
-                pokemonDetailsIsParty = false;
-                pokemonDetailsEditing = false;
-                pokemonDetailsCategory = 0;
-                pokemonDetailsSelectedStat = 0;
+                if (pokemonDetailsEditing) {
+                    // If editing, go back to category selection
+                    pokemonDetailsEditing = false;
+                } else {
+                    // Close modal
+                    pokemonDetailsActive = false;
+                    pokemonDetailsIsParty = false;
+                    pokemonDetailsEditing = false;
+                    pokemonDetailsCategory = 0;
+                    pokemonDetailsSelectedStat = 0;
+                }
                 return;
             }
 
@@ -240,11 +245,12 @@ namespace UI {
             } else if (pokemonDetailsCategory == 0) {
                 // Editing main fields
                 // Up/Down to select field
+                int fields = 14; // TODO: We need to make this more dynamic and eventually will want to modify all of the values
                 if (kDown & HidNpadButton_Up) {
-                    pokemonDetailsSelectedField = (pokemonDetailsSelectedField - 1 + 10) % 10;  // 10 fields in Main
+                    pokemonDetailsSelectedField = (pokemonDetailsSelectedField - 1 + fields) % fields;  // number of fields in Main
                 }
                 if (kDown & HidNpadButton_Down) {
-                    pokemonDetailsSelectedField = (pokemonDetailsSelectedField + 1) % 10;
+                    pokemonDetailsSelectedField = (pokemonDetailsSelectedField + 1) % fields;
                 }
 
                 // A to edit the selected field
@@ -280,11 +286,6 @@ namespace UI {
                     } else {
                         logInfoToFile("Pokemon pointer is null!");
                     }
-                }
-
-                // B to cancel editing
-                if (kDown & HidNpadButton_B) {
-                    pokemonDetailsEditing = false;
                 }
             } else if (pokemonDetailsCategory == 2) {
                 // Editing stats
@@ -338,11 +339,6 @@ namespace UI {
                         statEditValue = statEditCurrentIV;
                         statEditDialogActive = true;
                     }
-                }
-
-                // B to cancel editing
-                if (kDown & HidNpadButton_B) {
-                    pokemonDetailsEditing = false;
                 }
             }
 

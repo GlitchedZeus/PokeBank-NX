@@ -64,6 +64,7 @@ namespace Modals {
         const int contentY = modalY + 20;
         const int contentWidth = MODAL_WIDTH - CATEGORY_PANEL_WIDTH - 50;
 
+        // TODO: We need to calculate the amount of fields and then pass it to the TrainerViewScreen for iteration when active
         // Draw category content
         if (screen.pokemonDetailsCategory == 0) { // Main
             int lineY = contentY;
@@ -78,7 +79,6 @@ namespace Modals {
             lineY += lineHeight + 5;
 
             char buffer[128];
-
             // Field 0: PID
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 0) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
@@ -96,11 +96,20 @@ namespace Modals {
             lineY += lineHeight;
 
             // Field 2: Gender
+            std::string genderSymbol = pokemon->genderSymbol();
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 2) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
-            snprintf(buffer, sizeof(buffer), "Gender: %s", pokemon->genderSymbol());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            if (genderSymbol == "") {
+                std::string genderText = "Gender: Genderless";
+                fb.drawText(contentX, lineY, genderText, Colors::Text);
+            }
+            else {
+                std::string genderText = "Gender: ";
+                Color genderColor = (genderSymbol == "♂") ? Colors::Blue : Colors::Magenta;
+                fb.drawText(contentX, lineY, genderText, Colors::Text);
+                fb.drawText(contentX + 55, lineY, genderSymbol, genderColor);
+            }
             lineY += lineHeight;
 
             // Field 3: Shiny
@@ -164,18 +173,34 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
+            // Field 10: Ability
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 10) {
+                fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
+            }
             snprintf(buffer, sizeof(buffer), "Ability: %s (%d)", getAbilityName(pokemon->ability()), pokemon->ability());
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
+            // Field 11: Friendship Value (0-255)(Needs confirmation, maybe some titles have different values?)
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 11) {
+                fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
+            }
             snprintf(buffer, sizeof(buffer), "Friendship: %d", pokemon->friendship());
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
+            // Field 12: Whether this Pokemon is this an egg
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 12) {
+                fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
+            }
             snprintf(buffer, sizeof(buffer), "Is Egg: %s", pokemon->isEgg() ? "Yes" : "No");
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
+            // Field 12: Whether this Pokemon is infected, cured or has not been/is not infected with Pokerus
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 13) {
+                fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
+            }
             const char* pkrsStatus = pokemon->isPokerusInfected() ? "Infected" :
                 pokemon->isPokerusCured() ? "Cured" : "None";
             snprintf(buffer, sizeof(buffer), "Pokerus: %s", pkrsStatus);
@@ -251,8 +276,10 @@ namespace Modals {
         }
 
         // Draw footer with controls
-        fb.drawText(modalX + 20, modalY + MODAL_HEIGHT - 30,
-            "Up/Down: Select Category  |  B: Close", Colors::TextDim);
+        const char* controlText = screen.pokemonDetailsEditing
+            ? "Up/Down: Select Field  |  B: Back"
+            : "Up/Down: Select Category  |  B: Close";
+        fb.drawText(modalX + 20, modalY + MODAL_HEIGHT - 30, controlText, Colors::TextDim);
     }
 }
 }

@@ -5,7 +5,7 @@
  * managing Pokemon save file data. This base class provides a unified interface for accessing trainer data
  * across all generations.
  *
- * Derived classes (Trainer7, Trainer8, etc.) implement generation-specific data
+ * Derived classes (Trainer7LGPE, Trainer8SWSH, etc.) implement generation-specific data
  * formats, encryption, and Pokemon storage.
  */
 
@@ -81,7 +81,7 @@ namespace Trainer {
      * - Save file blocks
      *
      * Generation-Specific Data (implemented in derived classes):
-     * - Party Pokemon storage (PK7 vs PK8 vs PK9)
+     * - Party Pokemon storage (Pokemon7LGPE vs Pokemon8SWSH vs Pokemon9LZA)
      * - Box Pokemon storage
      * - Block key constants
      * - Encryption methods

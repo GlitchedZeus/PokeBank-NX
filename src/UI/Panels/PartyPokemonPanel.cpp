@@ -24,8 +24,8 @@ namespace Panels {
         int columnWidth = (width - 60) / 2;  // Dynamic column width based on panel width
 
         for (size_t i = 0; i < party.size() && i < 6; i++) {
-            const Pokemon::Pokemon* pkm = party[i].get();
-            if (!pkm) continue;
+            const Pokemon::Pokemon* pokemon = party[i].get();
+            if (!pokemon) continue;
 
             // Determine column (0 = left, 1 = right)
             int column = (i >= 3) ? 1 : 0;
@@ -40,15 +40,15 @@ namespace Panels {
                 fb.drawFilledRect(colX - 5, colY - 5, columnWidth - 10, 165, Colors::Selected);
             }
 
-            if (pkm->speciesID() == 0) {
+            if (pokemon->speciesID() == 0) {
                 std::string slotText = "Slot " + std::to_string(i + 1) + ": Empty";
                 fb.drawText(colX, colY, slotText, Colors::TextDim);
                 continue;
             }
 
             // Load and draw Pokemon sprite to the right of stats
-            bool isShiny = pkm->isShiny(trainerID32, pkm->species());
-            Sprite* sprite = SpriteManager::getSprite(pkm->speciesID(), isShiny);
+            bool isShiny = pokemon->isShiny(trainerID32, pokemon->species());
+            Sprite* sprite = SpriteManager::getSprite(pokemon->speciesID(), isShiny);
 
             if (sprite && sprite->data) {
                 // Draw sprite to the right of the stats section (around x=300)
@@ -60,13 +60,13 @@ namespace Panels {
             }
 
             // Draw header: "Slot X: Species"
-            std::string headerText = "Slot " + std::to_string(i + 1) + ": " + std::string(pkm->species());
+            std::string headerText = "Slot " + std::to_string(i + 1) + ": " + std::string(pokemon->species());
             int textX = colX;
             fb.drawText(textX, colY, headerText, Colors::Text);
             textX += headerText.length() * 8;  // Approximate character width
 
             // Draw gender symbol next to species name
-            std::string genderSymbol = pkm->genderSymbol();
+            std::string genderSymbol = pokemon->genderSymbol();
             if (genderSymbol != "?" && genderSymbol != "Genderless" && std::string(genderSymbol) != "") {
                 Color genderColor = (genderSymbol == "♂") ? Colors::Blue : Colors::Magenta;
                 fb.drawText(textX, colY, std::string(" ") + genderSymbol, genderColor);
@@ -74,13 +74,13 @@ namespace Panels {
             }
 
             // Draw shiny star in red after gender
-            if (pkm->isShiny(trainerID32, pkm->species())) {
+            if (pokemon->isShiny(trainerID32, pokemon->species())) {
                 fb.drawText(textX, colY, " ★", Colors::Red);
                 textX += 16;
             }
 
             // Draw level
-            std::string levelText = " - Lv." + std::to_string(pkm->level());
+            std::string levelText = " - Lv." + std::to_string(pokemon->level());
             fb.drawText(textX, colY, levelText, Colors::Text);
 
             colY += lineHeight;
@@ -92,32 +92,32 @@ namespace Panels {
             // Draw each stat
             char statLine[100];
             snprintf(statLine, sizeof(statLine), "HP : %03d | %02d | %03d | %03d",
-                    pkm->baseHP(), pkm->ivHP(), pkm->evHP(), pkm->statHPMax());
+                    pokemon->baseHP(), pokemon->ivHP(), pokemon->evHP(), pokemon->statHPMax());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "ATK: %03d | %02d | %03d | %03d",
-                    pkm->baseATK(), pkm->ivATK(), pkm->evATK(), pkm->statATK());
+                    pokemon->baseATK(), pokemon->ivATK(), pokemon->evATK(), pokemon->statATK());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "DEF: %03d | %02d | %03d | %03d",
-                    pkm->baseDEF(), pkm->ivDEF(), pkm->evDEF(), pkm->statDEF());
+                    pokemon->baseDEF(), pokemon->ivDEF(), pokemon->evDEF(), pokemon->statDEF());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "SpA: %03d | %02d | %03d | %03d",
-                    pkm->baseSPA(), pkm->ivSPA(), pkm->evSPA(), pkm->statSPA());
+                    pokemon->baseSPA(), pokemon->ivSPA(), pokemon->evSPA(), pokemon->statSPA());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "SpD: %03d | %02d | %03d | %03d",
-                    pkm->baseSPD(), pkm->ivSPD(), pkm->evSPD(), pkm->statSPD());
+                    pokemon->baseSPD(), pokemon->ivSPD(), pokemon->evSPD(), pokemon->statSPD());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "Spe: %03d | %02d | %03d | %03d",
-                    pkm->baseSPE(), pkm->ivSPE(), pkm->evSPE(), pkm->statSPE());
+                    pokemon->baseSPE(), pokemon->ivSPE(), pokemon->evSPE(), pokemon->statSPE());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
         }
     }
