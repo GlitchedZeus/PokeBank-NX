@@ -61,32 +61,32 @@ namespace Pokemon {
 
     uint8_t Pokemon7LGPE::baseHP() const
     {
-        return getBaseStatsGen7(speciesID())->hp;
+        return getBaseStatsGen7(speciesID(), form())->hp;
     }
 
     uint8_t Pokemon7LGPE::baseATK() const
     {
-        return getBaseStatsGen7(speciesID())->atk;
+        return getBaseStatsGen7(speciesID(), form())->atk;
     }
 
     uint8_t Pokemon7LGPE::baseDEF() const
     {
-        return getBaseStatsGen7(speciesID())->def;
+        return getBaseStatsGen7(speciesID(), form())->def;
     }
 
     uint8_t Pokemon7LGPE::baseSPE() const
     {
-        return getBaseStatsGen7(speciesID())->spe;
+        return getBaseStatsGen7(speciesID(), form())->spe;
     }
 
     uint8_t Pokemon7LGPE::baseSPA() const
     {
-        return getBaseStatsGen7(speciesID())->spa;
+        return getBaseStatsGen7(speciesID(), form())->spa;
     }
 
     uint8_t Pokemon7LGPE::baseSPD() const
     {
-        return getBaseStatsGen7(speciesID())->spd;
+        return getBaseStatsGen7(speciesID(), form())->spd;
     }
 
     // ========================================

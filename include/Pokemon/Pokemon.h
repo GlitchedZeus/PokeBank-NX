@@ -104,7 +104,13 @@ namespace Pokemon {
          * Gets the form ID.
          * @return Form ID (0 = no form)
          */
-        virtual uint16_t formID() const noexcept = 0;
+        virtual uint8_t formID() const noexcept = 0;
+
+        /**
+         * Gets the Pokemon's form/variation.
+         * @return Form ID (0 = base form)
+         */
+        virtual uint8_t form() const noexcept = 0;
 
         /**
          * Gets the Pokemon's form name as a string.

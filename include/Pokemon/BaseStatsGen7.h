@@ -1493,7 +1493,7 @@ namespace Pokemon {
     static constexpr size_t BASE_STATS_COUNT_GEN7 = sizeof(BASE_STATS_TABLE_GEN7) / sizeof(BASE_STATS_TABLE_GEN7[0]);
 
     // Function declarations
-    const BaseStatsGen7* getBaseStatsGen7(uint16_t speciesId);
+    const BaseStatsGen7* getBaseStatsGen7(uint16_t speciesId, uint8_t form = 0);
 
     // Name lookup functions (wrappers that forward to Names namespace)
     const char* getSpeciesNameGen7(uint16_t speciesId);

@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "UI/Modals/PokemonDetailsModal.h"
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
@@ -5,6 +7,7 @@
 #include "Trainer/Trainer.h"
 #include "Utils/HelperUtilities.h"
 #include "Pokemon/Pokemon.h"
+#include "Names/FormNames.h"
 
 using namespace Trainer;
 using namespace Utils;
@@ -91,15 +94,23 @@ namespace Modals {
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 1) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
-            snprintf(buffer, sizeof(buffer), "Species: %s (#%d)", pokemon->species(), pokemon->speciesID());
+            // Display form name
+            const char* formName = Names::getFormName(pokemon->speciesID(), pokemon->form());
+            if (formName && strlen(formName) > 0) {
+                snprintf(buffer, sizeof(buffer), "Species: %s (%s) (#%d)",
+                    pokemon->species(), formName, pokemon->speciesID());
+            } else {
+                snprintf(buffer, sizeof(buffer), "Species: %s (#%d)",
+                    pokemon->species(), pokemon->speciesID());
+            }
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
-            // Field 2: FormID
+            // Field 2: Form ID (debugging)
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 1) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
-            snprintf(buffer, sizeof(buffer), "FormID: %d", pokemon->formID());
+            snprintf(buffer, sizeof(buffer), "Form: %d (formID: %d)", pokemon->form(), pokemon->form());
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 

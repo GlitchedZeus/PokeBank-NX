@@ -114,12 +114,12 @@ namespace Pokemon {
 
         /**
          * Gets the Form.
-         * Location: 0x1F (1 byte)
+         * Location: 0x1D (1 byte)
          * @return Form ID (0 = no form)
          */
-        uint16_t formID() const noexcept override
+        uint8_t formID() const noexcept override
         {
-            return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x1F));
+            return static_cast<uint8_t>(data[0x1D]);
         }
 
         // /**
@@ -136,6 +136,16 @@ namespace Pokemon {
         uint16_t heldItem() const noexcept override
         {
             return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x0A));
+        }
+
+        /**
+         * Gets the Pokemon's form/variation.
+         * Location: 0x1D (1 byte)
+         * @return Form ID (0 = base form)
+         */
+        uint8_t form() const noexcept override
+        {
+            return static_cast<uint8_t>(data[0x1D]);
         }
 
         /**

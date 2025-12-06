@@ -88,32 +88,32 @@ namespace Pokemon {
          * Looks up the base HP stat for this Pokemon's species.
          * Base stats are fixed per species and determine stat growth.
          */
-        return getBaseStatsGen89(speciesID())->hp;
+        return getBaseStatsGen89(speciesID(), form())->hp;
     }
 
     uint8_t Pokemon8SWSH::baseATK() const noexcept
     {
-        return getBaseStatsGen89(speciesID())->atk;
+        return getBaseStatsGen89(speciesID(), form())->atk;
     }
 
     uint8_t Pokemon8SWSH::baseDEF() const noexcept
     {
-        return getBaseStatsGen89(speciesID())->def;
+        return getBaseStatsGen89(speciesID(), form())->def;
     }
 
     uint8_t Pokemon8SWSH::baseSPE() const noexcept
     {
-        return getBaseStatsGen89(speciesID())->spe;
+        return getBaseStatsGen89(speciesID(), form())->spe;
     }
 
     uint8_t Pokemon8SWSH::baseSPA() const noexcept
     {
-        return getBaseStatsGen89(speciesID())->spa;
+        return getBaseStatsGen89(speciesID(), form())->spa;
     }
 
     uint8_t Pokemon8SWSH::baseSPD() const noexcept
     {
-        return getBaseStatsGen89(speciesID())->spd;
+        return getBaseStatsGen89(speciesID(), form())->spd;
     }
 
     // ========================================

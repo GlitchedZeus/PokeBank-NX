@@ -96,19 +96,23 @@ namespace Pokemon {
 
         /**
          * Gets the Form.
-         * Location: 0x16 (1 byte)
+         * Location: 0x24 (1 byte)
          * @return Form ID (0 = no form)
          */
-        uint16_t formID() const noexcept override
+        uint8_t formID() const noexcept override
         {
-            return readUInt16LittleEndian(reinterpret_cast<const uint8_t*>(data.data() + 0x16));
+            return static_cast<uint8_t>(data[0x24]);
         }
 
         /**
-         * Gets the Pokemon's form name as a string.
-         * @return Form name (e.g., "Alolan", "Galarian")
+         * Gets the Pokemon's form/variation.
+         * Location: 0x24 (1 byte)
+         * @return Form ID (0 = base form)
          */
-        // const char* form() const noexcept override;
+        uint8_t form() const noexcept override
+        {
+            return static_cast<uint8_t>(data[0x24]);
+        }
 
         /**
          * Gets the held item ID.
