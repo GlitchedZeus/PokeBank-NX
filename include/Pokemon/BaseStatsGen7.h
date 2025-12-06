@@ -8,7 +8,7 @@ namespace Pokemon {
     // Base stats for Pokemon Sword/Shield
     // Each entry contains: {HP, ATK, DEF, SPA, SPD, SPE}
     struct BaseStatsGen7 {
-        uint8_t id;
+        uint16_t id;
         uint8_t hp;
         uint8_t atk;
         uint8_t def;
