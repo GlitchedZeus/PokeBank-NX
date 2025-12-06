@@ -17,7 +17,8 @@ namespace Pokemon {
         uint8_t spe;
     };
     // Pokemon Base Stats Table (National Dex #1 - #1025)
-    // Generated from https://pokemondb.net/pokedex/all
+    // Generated using my console app: https://github.com/kiasta/PokemonStatsExporter
+    // Data sourced from https://pokemondb.net/pokedex/all
     // Format: {ID, HP, ATK, DEF, SPA, SPD, SPE}, // ID Name
     static const BaseStatsGen89 BASE_STATS_TABLE_GEN89[] = {
         {   0,   0,   0,   0,   0,   0,   0 },  // 0 (placeholder)
@@ -1294,6 +1295,11 @@ namespace Pokemon {
     };
 
 
+    /*
+     * Modified from Gen 7
+     * Shield Forme DEF and SPD lowered to 140
+     * Blade Forme ATK and SPA lowered to 140
+     */
     static const BaseStatsGen89 BASE_STATS_TABLE_AEGISLASH_FORMS[] = {
         { 681,  60,  50, 140,  50, 140,  60 },  // 681 Shield Forme
         { 681,  60, 140,  50, 140,  50,  60 },  // 681 Blade Forme
