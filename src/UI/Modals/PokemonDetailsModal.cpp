@@ -106,15 +106,15 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
-            // Field 2: Form ID (debugging)
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 1) {
-                fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
-            }
-            snprintf(buffer, sizeof(buffer), "Form: %d (formID: %d)", pokemon->form(), pokemon->form());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
-            lineY += lineHeight;
+            // // Field 2: Form ID (debugging)
+            // if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 1) {
+            //     fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
+            // }
+            // snprintf(buffer, sizeof(buffer), "Form: %d (formID: %d)", pokemon->form(), pokemon->form());
+            // fb.drawText(contentX, lineY, buffer, Colors::Text);
+            // lineY += lineHeight;
 
-            // Field 3: Gender
+            // Field 2: Gender
             std::string genderSymbol = pokemon->genderSymbol();
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 2) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
@@ -131,7 +131,7 @@ namespace Modals {
             }
             lineY += lineHeight;
 
-            // Field 4: Shiny
+            // Field 3: Shiny
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 3) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
@@ -143,7 +143,7 @@ namespace Modals {
             }
             lineY += lineHeight;
 
-            // Field 5: Nickname
+            // Field 4: Nickname
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 4) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
@@ -152,7 +152,7 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
-            // Field 6: EXP
+            // Field 5: EXP
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 5) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
@@ -160,7 +160,7 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
-            // Field 7: Level
+            // Field 6: Level
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 6) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
@@ -168,7 +168,7 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
-            // Field 8: Nature
+            // Field 7: Nature
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 7) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
@@ -176,7 +176,7 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
-            // Field 9: Stat Nature
+            // Field 8: Stat Nature
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 8) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
@@ -184,7 +184,7 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
-            // Field 10: Held Item
+            // Field 9: Held Item
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 9) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
@@ -192,7 +192,7 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
-            // Field 11: Ability
+            // Field 10: Ability
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 10) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
@@ -200,7 +200,7 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
-            // Field 12: Friendship Value (0-255)(Needs confirmation, maybe some titles have different values?)
+            // Field 11: Friendship Value (0-255)(Needs confirmation, maybe some titles have different values?)
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 11) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
@@ -208,7 +208,7 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
-            // Field 13: Whether this Pokemon is this an egg
+            // Field 12: Whether this Pokemon is this an egg
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 12) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
@@ -216,7 +216,7 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::Text);
             lineY += lineHeight;
 
-            // Field 14: Whether this Pokemon is infected, cured or has not been/is not infected with Pokerus
+            // Field 13: Whether this Pokemon is infected, cured or has not been/is not infected with Pokerus
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 13) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
