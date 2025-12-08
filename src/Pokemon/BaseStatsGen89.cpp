@@ -114,73 +114,48 @@ namespace Pokemon {
                 );
                 if (stats) return stats;
             }
-            // Tauros: form 2 = Blaze Breed
-            if (speciesId == 128) {
-                const BaseStatsGen89* stats = searchFormArray(
-                    BASE_STATS_TABLE_TAUROS_FORMS,
-                    sizeof(BASE_STATS_TABLE_TAUROS_FORMS) / sizeof(BASE_STATS_TABLE_TAUROS_FORMS[0]),
-                    speciesId
-                );
-                if (stats) return &stats[1]; // Blaze Breed is second
-            }
-        }
-
-        // Form 3 for special Pokemon
-        if (form == 3) {
-            // Tauros: form 3 = Aqua Breed
-            if (speciesId == 128) {
-                const BaseStatsGen89* stats = searchFormArray(
-                    BASE_STATS_TABLE_TAUROS_FORMS,
-                    sizeof(BASE_STATS_TABLE_TAUROS_FORMS) / sizeof(BASE_STATS_TABLE_TAUROS_FORMS[0]),
-                    speciesId
-                );
-                if (stats) return &stats[2]; // Aqua Breed is third
-            }
         }
 
         // Pokemon-specific form lookups
         // Handle Pokemon with unique form mechanics (Deoxys, Rotom, Giratina, etc.)
 
         switch (speciesId) {
+            case 128:
+                return &BASE_STATS_TABLE_TAUROS_FORMS[form];
+                break;
             // Deoxys - Forms: 0=Normal, 1=Attack, 2=Defense, 3=Speed
             case 386:
-                if (form >= 0 && form <= 3) {
-                    return &BASE_STATS_TABLE_DEOXYS_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_DEOXYS_FORMS[form];
                 break;
 
             // Burmy - Forms: 0=Plant, 1=Sandy, 2=Trash
             case 412:
-                if (form >= 0 && form <= 2) {
-                    return &BASE_STATS_TABLE_BURMY_WORMADAM_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_BURMY_WORMADAM_FORMS[form];
                 break;
 
             // Wormadam - Forms: 0=Plant, 1=Sandy, 2=Trash
             case 413:
-                if (form >= 0 && form <= 2) {
-                    return &BASE_STATS_TABLE_BURMY_WORMADAM_FORMS[3 + form]; // Offset by 3 (Burmy entries)
-                }
+                return &BASE_STATS_TABLE_BURMY_WORMADAM_FORMS[3 + form]; // Offset by 3 (Burmy entries)
                 break;
 
             // Rotom - Forms: 0=Base, 1=Heat, 2=Wash, 3=Frost, 4=Fan, 5=Mow
             case 479:
-                if (form >= 1 && form <= 5) {
+                if (form > 0) {
                     return &BASE_STATS_TABLE_ROTOM_FORMS[form - 1]; // Array starts at Heat
                 }
                 break;
 
-            // Dialga - Forms: 0=Altered, 1=Origin
+            // Dialga - Forms: 0=Base, 1=Origin
             case 483:
                 if (form == 1) {
-                    return &BASE_STATS_TABLE_DIALGA_PALKIA_GIRATINA_FORMS[0];
+                    return &BASE_STATS_TABLE_DIALGA_PALKIA_GIRATINA_FORMS[0]; // Origin Forme
                 }
                 break;
 
-            // Palkia - Forms: 0=Altered, 1=Origin
+            // Palkia - Forms: 0=Base, 1=Origin
             case 484:
                 if (form == 1) {
-                    return &BASE_STATS_TABLE_DIALGA_PALKIA_GIRATINA_FORMS[1];
+                    return &BASE_STATS_TABLE_DIALGA_PALKIA_GIRATINA_FORMS[1]; // Origin Forme
                 }
                 break;
 
@@ -195,23 +170,17 @@ namespace Pokemon {
 
             // Shaymin - Forms: 0=Land, 1=Sky
             case 492:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_SHAYMIN_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_SHAYMIN_FORMS[form];
                 break;
 
             // Basculin - Forms: 0=Red-Striped, 1=Blue-Striped, 2=White-Striped
             case 550:
-                if (form >= 1 && form <= 2) {
-                    return &BASE_STATS_TABLE_BASCULIN_FORMS[form - 1];
-                }
+                return &BASE_STATS_TABLE_BASCULIN_FORMS[form];
                 break;
 
             // Tornadus - Forms: 0=Incarnate, 1=Therian
             case 641:
-                if (form == 1) {
-                    return &BASE_STATS_TABLE_TORNADUS_THUNDURUS_LANDORUS_FORMS[0];
-                }
+                return &BASE_STATS_TABLE_TORNADUS_THUNDURUS_LANDORUS_FORMS[form];
                 break;
 
             // Thundurus - Forms: 0=Incarnate, 1=Therian
@@ -230,52 +199,40 @@ namespace Pokemon {
 
             // Kyurem - Forms: 0=Base, 1=White, 2=Black
             case 646:
-                if (form >= 1 && form <= 2) {
+                if (form > 0) {
                     return &BASE_STATS_TABLE_KYUREM_FORMS[form - 1];
                 }
                 break;
 
             // Keldeo - Forms: 0=Ordinary, 1=Resolute
             case 647:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_KELDEO_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_KELDEO_FORMS[form];
                 break;
 
             // Meloetta - Forms: 0=Aria, 1=Pirouette
             case 648:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_MELOETTA_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_MELOETTA_FORMS[form];
                 break;
 
             // Meowstic - Forms: 0=Male, 1=Female
             case 678:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_MEOWSTIC_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_MEOWSTIC_FORMS[form];
                 break;
 
             // Pumpkaboo - Forms: 0=Average, 1=Small, 2=Large, 3=Super
             case 710:
-                if (form >= 0 && form <= 3) {
-                    return &BASE_STATS_TABLE_PUMPKABOO_GOURGEIST_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_PUMPKABOO_GOURGEIST_FORMS[form];
                 break;
 
             // Gourgeist - Forms: 0=Average, 1=Small, 2=Large, 3=Super
             case 711:
-                if (form >= 0 && form <= 3) {
-                    return &BASE_STATS_TABLE_PUMPKABOO_GOURGEIST_FORMS[4 + form]; // Offset by 4 (Pumpkaboo entries)
-                }
+                return &BASE_STATS_TABLE_PUMPKABOO_GOURGEIST_FORMS[4 + form]; // Offset by 4 (Pumpkaboo entries)
                 break;
 
             // Zygarde - Forms: 0=50%, 1=10%, 4=Complete (note: form 4!)
             case 718:
-                if (form == 0) {
-                    return &BASE_STATS_TABLE_ZYGARDE_FORMS[0]; // 50%
-                } else if (form == 1) {
-                    return &BASE_STATS_TABLE_ZYGARDE_FORMS[1]; // 10%
+                if (form == 0 || form == 1) {
+                    return &BASE_STATS_TABLE_ZYGARDE_FORMS[form]; // 50% and 10%
                 } else if (form == 4) {
                     return &BASE_STATS_TABLE_ZYGARDE_FORMS[2]; // Complete
                 }
@@ -283,158 +240,107 @@ namespace Pokemon {
 
             // Hoopa - Forms: 0=Confined, 1=Unbound
             case 720:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_HOOPA_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_HOOPA_FORMS[form];
                 break;
 
             // Oricorio - Forms: 0=Baile, 1=Pom-Pom, 2=Pa'u, 3=Sensu
             case 741:
-                if (form >= 0 && form <= 3) {
-                    return &BASE_STATS_TABLE_ORICORIO_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_ORICORIO_FORMS[form];
                 break;
 
             // Lycanroc - Forms: 0=Midday, 1=Midnight, 2=Dusk
             case 745:
-                if (form >= 0 && form <= 2) {
-                    return &BASE_STATS_TABLE_LYCANROC_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_LYCANROC_FORMS[form];
                 break;
 
             // Necrozma - Forms: 0=Base, 1=Dusk Mane, 2=Dawn Wings, 3=Ultra
             case 800:
-                if (form >= 1 && form <= 3) {
+                if (form > 0) {
                     return &BASE_STATS_TABLE_NECROZMA_FORMS[form - 1];
                 }
                 break;
 
             // Toxtricity - Forms: 0=Amped, 1=Low Key
             case 849:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_TOXTRICITY_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_TOXTRICITY_FORMS[form];
                 break;
 
             // Indeedee - Forms: 0=Male, 1=Female
             case 876:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_INDEEDEE_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_INDEEDEE_FORMS[form];
                 break;
 
             // Zacian - Forms: 0=Hero, 1=Crowned
             case 888:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_ZACIAN_ZAMAZENTA_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_ZACIAN_ZAMAZENTA_FORMS[form];
                 break;
 
             // Zamazenta - Forms: 0=Hero, 1=Crowned
             case 889:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_ZACIAN_ZAMAZENTA_FORMS[2 + form]; // Offset by 2 (Zacian entries)
-                }
+                return &BASE_STATS_TABLE_ZACIAN_ZAMAZENTA_FORMS[2 + form]; // Offset by 2 (Zacian entries)
                 break;
 
             // Urshifu - Forms: 0=Single Strike, 1=Rapid Strike
             case 892:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_URSHIFU_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_URSHIFU_FORMS[form];
                 break;
 
             // Calyrex - Forms: 0=Base, 1=Ice Rider, 2=Shadow Rider
             case 898:
-                if (form >= 1 && form <= 2) {
+                if (form > 0) {
                     return &BASE_STATS_TABLE_CALYREX_FORMS[form - 1];
                 }
                 break;
 
             // Ursaluna - Forms: 0=Base, 1=Bloodmoon
             case 901:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_URSALUNA_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_URSALUNA_FORMS[form];
                 break;
 
             // Basculegion - Forms: 0=Male, 1=Female
             case 902:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_BASCULEGION_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_BASCULEGION_FORMS[form];
                 break;
 
             // Enamorus - Forms: 0=Incarnate, 1=Therian
             case 905:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_ENAMORUS_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_ENAMORUS_FORMS[form];
                 break;
 
             // Oinkologne - Forms: 0=Male, 1=Female
             case 916:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_OINKOLOGNE_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_OINKOLOGNE_FORMS[form];
                 break;
 
             // Maushold - Forms: 0=Family of Four, 1=Family of Three
             case 925:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_MAUSHOLD_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_MAUSHOLD_FORMS[form];
                 break;
 
             // Squawkabilly - Forms: 0=Green, 1=Blue, 2=Yellow, 3=White
             case 931:
-                if (form >= 0 && form <= 3) {
-                    return &BASE_STATS_TABLE_SQUAWKABILLY_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_SQUAWKABILLY_FORMS[form];
                 break;
 
             // Tatsugiri - Forms: 0=Curly, 1=Droopy, 2=Stretchy
             case 978:
-                if (form >= 0 && form <= 2) {
-                    return &BASE_STATS_TABLE_TATSUGIRI_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_TATSUGIRI_FORMS[form];
                 break;
 
             // Dudunsparce - Forms: 0=Two-Segment, 1=Three-Segment
             case 982:
-                if (form >= 0 && form <= 1) {
-                    return &BASE_STATS_TABLE_DUDUNSPARCE_FORMS[form];
-                }
+                return &BASE_STATS_TABLE_DUDUNSPARCE_FORMS[form];
                 break;
 
             // Gimmighoul - Forms: 0=Chest, 1=Roaming
             case 999:
-                if (form >= 0 && form <= 1) {
-                    // Note: Both forms have same stats, so use base table
-                    break;
-                }
-                break;
-
-            // Poltchageist - Forms: 0=Counterfeit, 1=Artisan
-            case 1012:
-                // Note: Both forms have same stats
-                break;
-
-            // Sinistcha - Forms: 0=Unremarkable, 1=Masterpiece
-            case 1013:
-                // Note: Both forms have same stats
-                break;
-
-            // Ogerpon - Forms: 0=Teal Mask, 1=Wellspring, 2=Hearthflame, 3=Cornerstone
-            case 1017:
-                // Note: Terastallized forms are battle-only, base stats same
+                return &BASE_STATS_TABLE_GIMMIGHOUL_FORMS[form];
                 break;
 
             // Terapagos - Forms: 0=Normal, 1=Terastal, 2=Stellar
             case 1024:
-                if (form >= 0 && form <= 2) {
-                    // Use form-specific array when available
-                    // For now, different forms have different stats
+                if (form > 0) {
+                    return &BASE_STATS_TABLE_TERAPAGOS_FORMS[form];
                     break;
                 }
                 break;

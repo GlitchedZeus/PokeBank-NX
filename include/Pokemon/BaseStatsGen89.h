@@ -1038,7 +1038,7 @@ namespace Pokemon {
         { 1014,  88, 128, 115,  58,  86,  80 },  // 1014 Okidogi
         { 1015,  88,  75,  66, 130,  90, 106 },  // 1015 Munkidori
         { 1016,  88,  91,  82,  70, 125,  99 },  // 1016 Fezandipiti
-        { 1017, 0, 0, 0, 0, 0, 0 }, // Ogerpon Empty
+        { 1017,  80, 120,  84,  60,  96, 110 },  // 1017 Ogerpon
         { 1018,  90, 105, 130, 125,  65,  85 },  // 1018 Archaludon
         { 1019, 106,  80, 110, 120,  80,  44 },  // 1019 Hydrapple
         { 1020, 105, 115, 121,  65,  93,  91 },  // 1020 Gouging Fire
@@ -1178,12 +1178,6 @@ namespace Pokemon {
         { 128,  75, 110, 105,  30,  70, 100 },  // 128 Combat Breed
         { 128,  75, 110, 105,  30,  70, 100 },  // 128 Blaze Breed
         { 128,  75, 110, 105,  30,  70, 100 },  // 128 Aqua Breed
-    };
-
-
-    static const BaseStatsGen89 BASE_STATS_TABLE_PARTNER_FORMS[] = {
-        {  25,  45,  80,  50,  75,  60, 120 },  // 25 Pikachu
-        { 133,  65,  75,  70,  65,  85,  75 },  // 133 Eevee
     };
 
 
@@ -1339,11 +1333,6 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_ROCKRUFF_FORMS[] = {
-        { 744,  45,  65,  40,  30,  40,  60 },  // 744 Own Tempo
-    };
-
-
     static const BaseStatsGen89 BASE_STATS_TABLE_LYCANROC_FORMS[] = {
         { 745,  75, 115,  65,  55,  65, 112 },  // 745 Midday Form
         { 745,  85, 115,  75,  55,  75,  82 },  // 745 Midnight Form
@@ -1478,14 +1467,6 @@ namespace Pokemon {
     static const BaseStatsGen89 BASE_STATS_TABLE_GIMMIGHOUL_FORMS[] = {
         { 999,  45,  30,  70,  75,  70,  10 },  // 999 Chest Form
         { 999,  45,  30,  25,  75,  45,  80 },  // 999 Roaming Form
-    };
-
-
-    static const BaseStatsGen89 BASE_STATS_TABLE_OGERPON_FORMS[] = {
-        { 1017,  80, 120,  84,  60,  96, 110 },  // 1017 Teal Mask
-        { 1017,  80, 120,  84,  60,  96, 110 },  // 1017 Wellspring Mask
-        { 1017,  80, 120,  84,  60,  96, 110 },  // 1017 Hearthflame Mask
-        { 1017,  80, 120,  84,  60,  96, 110 },  // 1017 Cornerstone Mask
     };
 
 
