@@ -16,7 +16,7 @@ namespace Pokemon {
         uint8_t spd;
         uint8_t spe;
     };
-    // Pokemon Base Stats Table (National Dex #1 - #1025)
+    // Pokemon Base Stats Table (National Dex #1 - #1024)
     // Generated using my console app: https://github.com/kiasta/PokemonStatsExporter
     // Data sourced from https://pokemondb.net/pokedex/all
     // Format: {ID, HP, ATK, DEF, SPA, SPD, SPE}, // ID Name
@@ -1105,7 +1105,7 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_ALOLAN[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_ALOLAN_GEN89[] = {
         {  19,  30,  56,  35,  25,  35,  72 },  // 19 Rattata
         {  20,  75,  71,  70,  40,  80,  77 },  // 20 Raticate
         {  26,  60,  85,  50,  95,  85, 110 },  // 26 Raichu
@@ -1127,7 +1127,7 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_GALARIAN[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_GALARIAN_GEN89[] = {
         {  52,  50,  65,  55,  40,  40,  40 },  // 52 Meowth
         {  77,  50,  85,  55,  65,  65,  90 },  // 77 Ponyta
         {  78,  65, 100,  70,  80,  80, 105 },  // 78 Rapidash
@@ -1149,7 +1149,7 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_HISUIAN[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_HISUIAN_GEN89[] = {
         {  58,  60,  75,  45,  65,  50,  55 },  // 58 Growlithe
         {  59,  95, 115,  80,  95,  80,  90 },  // 59 Arcanine
         { 100,  40,  30,  50,  55,  55, 100 },  // 100 Voltorb
@@ -1169,32 +1169,32 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_PALDEAN[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_PALDEAN_GEN89[] = {
         { 194,  55,  45,  45,  25,  25,  15 },  // 194 Wooper
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_TAUROS_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_TAUROS_FORMS_GEN89[] = {
         { 128,  75, 110, 105,  30,  70, 100 },  // 128 Combat Breed
         { 128,  75, 110, 105,  30,  70, 100 },  // 128 Blaze Breed
         { 128,  75, 110, 105,  30,  70, 100 },  // 128 Aqua Breed
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_CASTFORM_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_CASTFORM_FORMS_GEN89[] = {
         { 351,  70,  70,  70,  70,  70,  70 },  // 351 Sunny Form
         { 351,  70,  70,  70,  70,  70,  70 },  // 351 Rainy Form
         { 351,  70,  70,  70,  70,  70,  70 },  // 351 Snowy Form
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_PRIMAL_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_PRIMAL_FORMS_GEN89[] = {
         { 382, 100, 150,  90, 180, 160,  90 },  // 382 Primal Kyogre
         { 383, 100, 180, 160, 150,  90,  90 },  // 383 Primal Groudon
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_DEOXYS_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_DEOXYS_FORMS_GEN89[] = {
         { 386,  50, 150,  50, 150,  50, 150 },  // 386 Normal Forme
         { 386,  50, 180,  20, 180,  20, 150 },  // 386 Attack Forme
         { 386,  50,  70, 160,  70, 160,  90 },  // 386 Defense Forme
@@ -1202,7 +1202,7 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_BURMY_WORMADAM_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_BURMY_WORMADAM_FORMS_GEN89[] = {
         { 412,  40,  29,  45,  29,  45,  36 },  // 412 Burmy Plant Cloak
         { 412,  40,  29,  45,  29,  45,  36 },  // 412 Burmy Sandy Cloak
         { 412,  40,  29,  45,  29,  45,  36 },  // 412 Burmy Trash Cloak
@@ -1212,7 +1212,7 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_ROTOM_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_ROTOM_FORMS_GEN89[] = {
         { 479,  50,  65, 107, 105, 107,  86 },  // 479 Heat
         { 479,  50,  65, 107, 105, 107,  86 },  // 479 Wash
         { 479,  50,  65, 107, 105, 107,  86 },  // 479 Frost
@@ -1221,7 +1221,7 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_DIALGA_PALKIA_GIRATINA_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_DIALGA_PALKIA_GIRATINA_FORMS_GEN89[] = {
         { 483, 100, 100, 120, 150, 120,  90 },  // 483 Dialga Origin Forme
         { 484,  90, 100, 100, 150, 120, 120 },  // 484 Palkia Origin Forme
         { 487, 150, 100, 120, 100, 120,  90 },  // 487 Giratina Altered Forme
@@ -1229,20 +1229,20 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_SHAYMIN_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_SHAYMIN_FORMS_GEN89[] = {
         { 492, 100, 100, 100, 100, 100, 100 },  // 492 Land Forme
         { 492, 100, 103,  75, 120,  75, 127 },  // 492 Sky Forme
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_BASCULIN_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_BASCULIN_FORMS_GEN89[] = {
         { 550,  70,  92,  65,  80,  55,  98 },  // 550 Red-Striped Form
         { 550,  70,  92,  65,  80,  55,  98 },  // 550 Blue-Striped Form
         { 550,  70,  92,  65,  80,  55,  98 },  // 550 White-Striped Form
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_DARMANITAN_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_DARMANITAN_FORMS_GEN89[] = {
         { 555, 105, 140,  55,  30,  55,  95 },  // 555 Standard Mode
         { 555, 105,  30, 105, 140, 105,  55 },  // 555 Zen Mode
         { 555, 105, 140,  55,  30,  55,  95 },  // 555 Galarian Standard Mode
@@ -1250,7 +1250,7 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_TORNADUS_THUNDURUS_LANDORUS_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_TORNADUS_THUNDURUS_LANDORUS_FORMS_GEN89[] = {
         { 641,  79, 115,  70, 125,  80, 111 },  // 641 Tornadus Incarnate Forme
         { 641,  79, 100,  80, 110,  90, 121 },  // 641 Tornadus Therian Forme
         { 642,  79, 115,  70, 125,  80, 111 },  // 642 Thundurus Incarnate Forme
@@ -1260,30 +1260,30 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_KYUREM_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_KYUREM_FORMS_GEN89[] = {
         { 646, 125, 120,  90, 170, 100,  95 },  // 646 White Kyurem
         { 646, 125, 170, 100, 120,  90,  95 },  // 646 Black Kyurem
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_KELDEO_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_KELDEO_FORMS_GEN89[] = {
         { 647,  91,  72,  90, 129,  90, 108 },  // 647 Ordinary Form
         { 647,  91,  72,  90, 129,  90, 108 },  // 647 Resolute Form
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_MELOETTA_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_MELOETTA_FORMS_GEN89[] = {
         { 648, 100,  77,  77, 128, 128,  90 },  // 648 Aria Forme
         { 648, 100, 128,  90,  77,  77, 128 },  // 648 Pirouette Forme
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_ASH_GRENINJA_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_ASH_GRENINJA_FORMS_GEN89[] = {
         { 658,  72, 145,  67, 153,  71, 132 },  // 658 Ash-Greninja
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_MEOWSTIC_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_MEOWSTIC_FORMS_GEN89[] = {
         { 678,  74,  48,  76,  83,  81, 104 },  // 678  Male
         { 678,  74,  48,  76,  83,  81, 104 },  // 678  Female
     };
@@ -1294,13 +1294,13 @@ namespace Pokemon {
      * Shield Forme DEF and SPD lowered to 140
      * Blade Forme ATK and SPA lowered to 140
      */
-    static const BaseStatsGen89 BASE_STATS_TABLE_AEGISLASH_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_AEGISLASH_FORMS_GEN89[] = {
         { 681,  60,  50, 140,  50, 140,  60 },  // 681 Shield Forme
         { 681,  60, 140,  50, 140,  50,  60 },  // 681 Blade Forme
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_PUMPKABOO_GOURGEIST_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_PUMPKABOO_GOURGEIST_FORMS_GEN89[] = {
         { 710,  49,  66,  70,  44,  55,  51 },  // 710 Pumpkaboo Average Size
         { 710,  44,  66,  70,  44,  55,  56 },  // 710 Pumpkaboo Small Size
         { 710,  54,  66,  70,  44,  55,  46 },  // 710 Pumpkaboo Large Size
@@ -1312,20 +1312,20 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_ZYGARDE_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_ZYGARDE_FORMS_GEN89[] = {
         { 718, 108, 100, 121,  81,  95,  95 },  // 718 50% Forme
         { 718,  54, 100,  71,  61,  85, 115 },  // 718 10% Forme
         { 718, 216, 100, 121,  91,  95,  85 },  // 718 Complete Forme
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_HOOPA_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_HOOPA_FORMS_GEN89[] = {
         { 720,  80, 110,  60, 150, 130,  70 },  // 720 Hoopa Confined
         { 720,  80, 160,  60, 170, 130,  80 },  // 720 Hoopa Unbound
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_ORICORIO_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_ORICORIO_FORMS_GEN89[] = {
         { 741,  75,  70,  70,  98,  70,  93 },  // 741 Baile Style
         { 741,  75,  70,  70,  98,  70,  93 },  // 741 Pom-Pom Style
         { 741,  75,  70,  70,  98,  70,  93 },  // 741 Pa'u Style
@@ -1333,57 +1333,57 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_LYCANROC_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_LYCANROC_FORMS_GEN89[] = {
         { 745,  75, 115,  65,  55,  65, 112 },  // 745 Midday Form
         { 745,  85, 115,  75,  55,  75,  82 },  // 745 Midnight Form
         { 745,  75, 117,  65,  55,  65, 110 },  // 745 Dusk Form
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_WISHIWASHI_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_WISHIWASHI_FORMS_GEN89[] = {
         { 746,  45,  20,  20,  25,  25,  40 },  // 746 Solo Form
         { 746,  45, 140, 130, 140, 135,  30 },  // 746 School Form
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_MINIOR_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_MINIOR_FORMS_GEN89[] = {
         { 774,  60,  60, 100,  60, 100,  60 },  // 774 Meteor Form
         { 774,  60, 100,  60, 100,  60, 120 },  // 774 Core Form
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_NECROZMA_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_NECROZMA_FORMS_GEN89[] = {
         { 800,  97, 157, 127, 113, 109,  77 },  // 800 Dusk Mane
         { 800,  97, 113, 109, 157, 127,  77 },  // 800 Dawn Wings
         { 800,  97, 167,  97, 167,  97, 129 },  // 800 Ultra
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_TOXTRICITY_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_TOXTRICITY_FORMS_GEN89[] = {
         { 849,  75,  98,  70, 114,  70,  75 },  // 849 Amped Form
         { 849,  75,  98,  70, 114,  70,  75 },  // 849 Low Key Form
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_EISCUE_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_EISCUE_FORMS_GEN89[] = {
         { 875,  75,  80, 110,  65,  90,  50 },  // 875 Ice Face
         { 875,  75,  80,  70,  65,  50, 130 },  // 875 Noice Face
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_INDEEDEE_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_INDEEDEE_FORMS_GEN89[] = {
         { 876,  60,  65,  55, 105,  95,  95 },  // 876  Male
         { 876,  70,  55,  65,  95, 105,  85 },  // 876  Female
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_MORPEKO_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_MORPEKO_FORMS_GEN89[] = {
         { 877,  58,  95,  58,  70,  58,  97 },  // 877 Full Belly Mode
         { 877,  58,  95,  58,  70,  58,  97 },  // 877 Hangry Mode
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_ZACIAN_ZAMAZENTA_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_ZACIAN_ZAMAZENTA_FORMS_GEN89[] = {
         { 888,  92, 120, 115,  80, 115, 138 },  // 888 Zacian Hero of Many Battles
         { 888,  92, 150, 115,  80, 115, 148 },  // 888 Zacian Crowned Sword
         { 889,  92, 120, 115,  80, 115, 138 },  // 889 Zamazenta Hero of Many Battles
@@ -1391,53 +1391,53 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_ETERNATUS_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_ETERNATUS_FORMS_GEN89[] = {
         { 890, 255, 115, 250, 125, 250, 130 },  // 890 Eternamax
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_URSHIFU_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_URSHIFU_FORMS_GEN89[] = {
         { 892, 100, 130, 100,  63,  60,  97 },  // 892 Single Strike Style
         { 892, 100, 130, 100,  63,  60,  97 },  // 892 Rapid Strike Style
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_CALYREX_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_CALYREX_FORMS_GEN89[] = {
         { 898, 100, 165, 150,  85, 130,  50 },  // 898 Ice Rider
         { 898, 100,  85,  80, 165, 100, 150 },  // 898 Shadow Rider
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_URSALUNA_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_URSALUNA_FORMS_GEN89[] = {
         { 901, 113,  70, 120, 135,  65,  52 },  // 901 Bloodmoon
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_BASCULEGION_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_BASCULEGION_FORMS_GEN89[] = {
         { 902, 120, 112,  65,  80,  75,  78 },  // 902 Male
         { 902, 120,  92,  65, 100,  75,  78 },  // 902 Female
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_ENAMORUS_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_ENAMORUS_FORMS_GEN89[] = {
         { 905,  74, 115,  70, 135,  80, 106 },  // 905 Incarnate Forme
         { 905,  74, 115, 110, 135, 100,  46 },  // 905 Therian Forme
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_OINKOLOGNE_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_OINKOLOGNE_FORMS_GEN89[] = {
         { 916, 110, 100,  75,  59,  80,  65 },  // 916 Male
         { 916, 115,  90,  70,  59,  90,  65 },  // 916 Female
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_MAUSHOLD_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_MAUSHOLD_FORMS_GEN89[] = {
         { 925,  74,  75,  70,  65,  75, 111 },  // 925 Family of Four
         { 925,  74,  75,  70,  65,  75, 111 },  // 925 Family of Three
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_SQUAWKABILLY_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_SQUAWKABILLY_FORMS_GEN89[] = {
         { 931,  82,  96,  51,  45,  51,  92 },  // 931 Green Plumage
         { 931,  82,  96,  51,  45,  51,  92 },  // 931 Blue Plumage
         { 931,  82,  96,  51,  45,  51,  92 },  // 931 Yellow Plumage
@@ -1445,32 +1445,32 @@ namespace Pokemon {
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_PALAFIN_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_PALAFIN_FORMS_GEN89[] = {
         { 964, 100,  70,  72,  53,  62, 100 },  // 964 Zero Form
         { 964, 100, 160,  97, 106,  87, 100 },  // 964 Hero Form
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_TATSUGIRI_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_TATSUGIRI_FORMS_GEN89[] = {
         { 978,  68,  50,  60, 120,  95,  82 },  // 978 Curly Form
         { 978,  68,  50,  60, 120,  95,  82 },  // 978 Droopy Form
         { 978,  68,  50,  60, 120,  95,  82 },  // 978 Stretchy Form
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_DUDUNSPARCE_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_DUDUNSPARCE_FORMS_GEN89[] = {
         { 982, 125, 100,  80,  85,  75,  55 },  // 982 Two-Segment Form
         { 982, 125, 100,  80,  85,  75,  55 },  // 982 Three-Segment Form
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_GIMMIGHOUL_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_GIMMIGHOUL_FORMS_GEN89[] = {
         { 999,  45,  30,  70,  75,  70,  10 },  // 999 Chest Form
         { 999,  45,  30,  25,  75,  45,  80 },  // 999 Roaming Form
     };
 
 
-    static const BaseStatsGen89 BASE_STATS_TABLE_TERAPAGOS_FORMS[] = {
+    static const BaseStatsGen89 BASE_STATS_TABLE_TERAPAGOS_FORMS_GEN89[] = {
         { 1024,  90,  65,  85,  65,  85,  60 },  // 1024 Normal Form
         { 1024,  95,  95, 110, 105, 110,  85 },  // 1024 Terastal Form
         { 1024, 160, 105, 110, 130, 110,  85 },  // 1024 Stellar Form
