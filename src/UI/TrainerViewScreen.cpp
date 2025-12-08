@@ -10,7 +10,7 @@
 #include "UI/Panels/PartyPokemonPanel.h"
 #include "UI/Panels/BoxPokemonPanel.h"
 #include "UI/Panels/ItemsPanel.h"
-#include "UI/Dialogs/EditDialog.h"
+#include "UI/Dialogs/ItemEditDialog.h"
 #include "UI/Dialogs/SaveConfirmDialog.h"
 #include "UI/Dialogs/StatEditDialog.h"
 #include "UI/Modals/PokemonDetailsModal.h"
@@ -37,8 +37,8 @@ namespace UI {
     TrainerViewScreen::TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId)
         : trainer(trainer), titleName(titleName), backupDir(backupDir), titleId(titleId), scrollOffset(0), goBack(false), exitRequested(false),
         selectedMode(ViewMode::Party), currentPage(0), totalPages(1), selectedCategory(0), selectedBoxIndex(0), selectedPartyIndex(0),
-        detailViewActive(false), selectedItemIndex(0), editDialogActive(false), editDialogValue(0),
-        editDialogOriginalValue(0), saveConfirmActive(false), hasUnsavedChanges(false),
+        detailViewActive(false), selectedItemIndex(0), itemEditDialogActive(false), itemEditDialogValue(0),
+        itemEditDialogOriginalValue(0), saveConfirmActive(false), hasUnsavedChanges(false),
         statEditDialogActive(false), statEditSelectedStat(0), statEditMode(Dialogs::StatEditMode::IV),
         statEditValue(0), statEditOriginalIV(0), statEditOriginalEV(0), statEditCurrentIV(0), statEditCurrentEV(0),
         statEditOriginalShiny(false), statEditCurrentShiny(false),
@@ -58,7 +58,7 @@ namespace UI {
 
         // Handle X button (save confirmation)
         if (kDown & HidNpadButton_X) {
-            if (!saveConfirmActive && !editDialogActive) {
+            if (!saveConfirmActive && !itemEditDialogActive) {
                 saveConfirmActive = true;
                 return;
             }
@@ -352,25 +352,25 @@ namespace UI {
         }
 
         // Handle edit dialog
-        if (editDialogActive) {
+        if (itemEditDialogActive) {
             // Adjust value with different increments
             if (kDown & HidNpadButton_Left) {
-                editDialogValue = std::max(0, editDialogValue - 1);
+                itemEditDialogValue = std::max(0, itemEditDialogValue - 1);
             }
             if (kDown & HidNpadButton_Right) {
-                editDialogValue = std::min(999, editDialogValue + 1);
+                itemEditDialogValue = std::min(999, itemEditDialogValue + 1);
             }
             if (kDown & HidNpadButton_Up) {
-                editDialogValue = std::min(999, editDialogValue + 10);
+                itemEditDialogValue = std::min(999, itemEditDialogValue + 10);
             }
             if (kDown & HidNpadButton_Down) {
-                editDialogValue = std::max(0, editDialogValue - 10);
+                itemEditDialogValue = std::max(0, itemEditDialogValue - 10);
             }
             if (kDown & HidNpadButton_ZL) {
-                editDialogValue = std::max(0, editDialogValue - 100);
+                itemEditDialogValue = std::max(0, itemEditDialogValue - 100);
             }
             if (kDown & HidNpadButton_ZR) {
-                editDialogValue = std::min(999, editDialogValue + 100);
+                itemEditDialogValue = std::min(999, itemEditDialogValue + 100);
             }
 
             // Confirm edit
@@ -379,19 +379,19 @@ namespace UI {
                 if (selectedCategory >= 0 && selectedCategory < static_cast<int>(trainer.items.size())) {
                     auto& pouch = trainer.items[selectedCategory];
                     if (selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(pouch.size())) {
-                        pouch[selectedItemIndex].count = editDialogValue;
-                        if (editDialogValue != editDialogOriginalValue) {
+                        pouch[selectedItemIndex].count = itemEditDialogValue;
+                        if (itemEditDialogValue != itemEditDialogOriginalValue) {
                             hasUnsavedChanges = true;
                         }
                     }
                 }
-                editDialogActive = false;
+                itemEditDialogActive = false;
                 return;
             }
 
             // Cancel edit
             if (kDown & HidNpadButton_B) {
-                editDialogActive = false;
+                itemEditDialogActive = false;
                 return;
             }
 
@@ -498,9 +498,9 @@ namespace UI {
                     if (kDown & HidNpadButton_A) {
                         if (!pouch.empty() && selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(pouch.size())) {
                             // Open edit dialog for selected item
-                            editDialogActive = true;
-                            editDialogValue = pouch[selectedItemIndex].count;
-                            editDialogOriginalValue = pouch[selectedItemIndex].count;
+                            itemEditDialogActive = true;
+                            itemEditDialogValue = pouch[selectedItemIndex].count;
+                            itemEditDialogOriginalValue = pouch[selectedItemIndex].count;
                         }
                     }
 
@@ -795,18 +795,58 @@ namespace UI {
         // Draw instructions
         std::string instructions;
         if (statEditDialogActive) {
-            instructions = "L/R: Switch IV/EV  |  Arrows: +/- Value  |  ZL/ZR: +/-100 (EV)  |  A: Confirm  |  B: Cancel";
-        } else if (editDialogActive) {
+            // TODO: We don't need to change the main tooltip, just the dialog
+            instructions = "L/R: Select Field  |  Arrows: +/- Value  |  ZL/ZR: +/-100 (EV Only)  |  A: Confirm  |  B: Cancel";
+        } else if (itemEditDialogActive) {
+            // TODO: We don't need to change the main tooltip, just the dialog
             instructions = "L/R: +/-1  |  Up/Down: +/-10  |  ZL/ZR: +/-100  |  A: Confirm  |  B: Cancel";
         } else if (saveConfirmActive) {
             instructions = "A: Save Changes  |  B: Cancel";
         } else if (detailViewActive) {
             if (selectedMode == ViewMode::Items) {
-                instructions = "Arrows: Select Item  |  A: Edit Amount  |  Left/Right: Column/Page  |  L/R: Category  |  B: Exit Detail  |  X: Save  |  +: Exit App";
+                instructions = "Arrows: Select Item  |  A: Edit Amount  |  Left/Right: Column/Page  |  L/R: Category  |  B: Back  |  X: Save  |  +: Exit App";
             } else if (selectedMode == ViewMode::Boxes) {
-                instructions = "Arrows: Navigate Grid  |  L/R: Change Box  |  A: View Details  |  B: Exit Detail  |  X: Save  |  +: Exit App";
-            } else {
-                instructions = "B: Exit Detail  |  X: Save  |  +: Exit App";
+                if (pokemonDetailsActive) {
+                    if (pokemonDetailsCategory == 0) { // Main
+                        instructions = pokemonDetailsEditing
+                            ? pokemonDetailsSelectedField == 3
+                                ? "Up/Down: Select Field | A: Edit Field |  B: Back  |  X: Save  |  +: Exit App"
+                                : "Up/Down: Select Field | B: Back  |  X: Save  |  +: Exit App"
+                            : "Up/Down: Select Category | A: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                    else if (pokemonDetailsCategory == 2) { // Stats
+                        instructions = pokemonDetailsEditing
+                            ? "Up/Down: Select Field  |  A: Edit Field |  B: Back  |  X: Save  |  +: Exit App"
+                            : "Up/Down: Select Category  |  A: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                    else {
+                        instructions = "Up/Down: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                }
+                else {
+                    instructions = "Arrows: Navigate Grid  |  L/R: Change Box  |  A: View Details  |  B: Back  |  X: Save  |  +: Exit App";
+                }
+            } else if(selectedMode == ViewMode::Party) { // TODO: There HAS to be a better way of doing this without all of the if/else conditionals... probably will look into this at some point.
+                if (pokemonDetailsActive) {
+                    if (pokemonDetailsCategory == 0) { // Main
+                        instructions = pokemonDetailsEditing
+                            ? pokemonDetailsSelectedField == 3
+                                ? "Up/Down: Select Field | A: Edit Field |  B: Back  |  X: Save  |  +: Exit App"
+                                : "Up/Down: Select Field | B: Back  |  X: Save  |  +: Exit App"
+                            : "Up/Down: Select Category | A: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                    else if (pokemonDetailsCategory == 2) { // Stats
+                        instructions = pokemonDetailsEditing
+                            ? "Up/Down: Select Field  |  A: Edit Field |  B: Back  |  X: Save  |  +: Exit App"
+                            : "Up/Down: Select Category  |  A: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                    else {
+                        instructions = "Up/Down: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                }
+                else {
+                    instructions = "Arrows: Navigate Grid  |  A: View Details  |  B: Back  |  X: Save  |  +: Exit App";
+                }
             }
         } else {
             instructions = "Up/Down: Select Mode  |  ";
@@ -823,8 +863,8 @@ namespace UI {
         if (pokemonDetailsActive) {
             Modals::drawPokemonDetailsModal(*this, fb);
         }
-        if (editDialogActive) {
-            Dialogs::drawEditDialog(*this, fb);
+        if (itemEditDialogActive) {
+            Dialogs::drawItemEditDialog(*this, fb);
         }
         if (statEditDialogActive) {
             Dialogs::drawStatEditDialog(*this, fb);

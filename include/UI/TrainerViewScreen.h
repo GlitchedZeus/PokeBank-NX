@@ -12,7 +12,7 @@
 #include "Panels/ModeSelectorPanel.h"
 #include "Panels/PartyPokemonPanel.h"
 #include "Panels/ItemsPanel.h"
-#include "Dialogs/EditDialog.h"
+#include "Dialogs/ItemEditDialog.h"
 #include "Dialogs/SaveConfirmDialog.h"
 #include "Dialogs/StatEditDialog.h"
 #include "Modals/PokemonDetailsModal.h"
@@ -58,9 +58,9 @@ namespace UI {
         int selectedItemIndex;  // Selected item/pokemon index in detail view (item for Items, slot for Boxes)
 
         // Item editing state
-        bool editDialogActive;  // True when editing an item's amount
-        int editDialogValue;    // Current value being edited
-        int editDialogOriginalValue;  // Original value before editing
+        bool itemEditDialogActive;  // True when editing an item's amount
+        int itemEditDialogValue;    // Current value being edited
+        int itemEditDialogOriginalValue;  // Original value before editing
 
         // Save confirmation state
         bool saveConfirmActive;  // True when showing save confirmation dialog
