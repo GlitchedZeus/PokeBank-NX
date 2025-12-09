@@ -47,6 +47,7 @@ namespace UI {
         bool exitRequested;  // True when user presses + to close app
 
         // TODO: Need to create an array to hold some of these states
+        // More TODO: These states may need some restructuring
 
         ViewMode selectedMode;
         int currentPage;

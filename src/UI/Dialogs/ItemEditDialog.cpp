@@ -41,11 +41,6 @@ namespace Dialogs {
         char valueText[32];
         snprintf(valueText, sizeof(valueText), "Amount: %d", screen.itemEditDialogValue);
         fb.drawText(dialogX + 150, dialogY + 95, valueText, Colors::Yellow);
-
-        // Draw instructions
-        // fb.drawText(dialogX + 20, dialogY + 125, "Left/Right: +/-1  |  Up/Down: +/-10", Colors::TextDim);
-        // fb.drawText(dialogX + 20, dialogY + 145, "ZL/ZR: +/-100", Colors::TextDim);
-        // fb.drawText(dialogX + 20, dialogY + 165, "A: Confirm  |  B: Cancel", Colors::TextDim);
     }
 }
 }

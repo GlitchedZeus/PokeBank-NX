@@ -107,20 +107,6 @@ void drawStatEditDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             fb.drawText(dialogX + 220, lineY, "(EXCEEDS LIMIT!)", Colors::Red);
         }
         lineY += lineHeight + 15;
-
-        // Draw instructions
-        // fb.drawText(dialogX + 20, lineY, "Controls:", Colors::Text);
-        // lineY += lineHeight - 5;
-
-        // fb.drawText(dialogX + 20, lineY, "Up/Down: Switch IV/EV  |  Left/Right: +/-1  |  L/R: +/-10", Colors::TextDim);
-        // lineY += 20;
-
-        // if (screen.statEditMode == StatEditMode::EV) {
-        //     fb.drawText(dialogX + 20, lineY, "ZL/ZR: +/-100 (EVs only)", Colors::TextDim);
-        // }
-        // lineY += 20;
-
-        // fb.drawText(dialogX + 20, lineY, "A: Confirm  |  B: Cancel", Colors::TextDim);
     }
 }
 }

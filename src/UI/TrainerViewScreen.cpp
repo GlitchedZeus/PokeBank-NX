@@ -795,11 +795,13 @@ namespace UI {
         // Draw instructions
         std::string instructions;
         if (statEditDialogActive) {
-            // TODO: We don't need to change the main tooltip, just the dialog
-            instructions = "L/R: Select Field  |  Arrows: +/- Value  |  ZL/ZR: +/-100 (EV Only)  |  A: Confirm  |  B: Cancel";
+            if (statEditMode == Dialogs::StatEditMode::EV) {
+                instructions = "L/R: Select Field  |  Arrows: +/- Value  |  ZL/ZR: +/-100  |  A: Confirm  |  B: Cancel";
+            } else {
+                instructions = "L/R: Select Field  |  Arrows: +/- Value  |  A: Confirm  |  B: Cancel";
+            }
         } else if (itemEditDialogActive) {
-            // TODO: We don't need to change the main tooltip, just the dialog
-            instructions = "L/R: +/-1  |  Up/Down: +/-10  |  ZL/ZR: +/-100  |  A: Confirm  |  B: Cancel";
+            instructions = "Left/Right: +/-1  |  Up/Down: +/-10  |  ZL/ZR: +/-100  |  A: Confirm  |  B: Cancel";
         } else if (saveConfirmActive) {
             instructions = "A: Save Changes  |  B: Cancel";
         } else if (detailViewActive) {
