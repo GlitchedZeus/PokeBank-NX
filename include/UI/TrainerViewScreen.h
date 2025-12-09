@@ -67,6 +67,8 @@ namespace UI {
         // Save confirmation state
         bool saveConfirmActive;  // True when showing save confirmation dialog
         bool hasUnsavedChanges;  // True when data has been modified
+        bool exitingWithUnsavedChanges;  // True when user is trying to exit with unsaved changes
+        bool exitingViaPlus;  // True when exiting via + button (exit app) vs B button (go back)
 
         // Stat editing state (for Pokemon EV/IV editing)
         bool statEditDialogActive;  // True when editing Pokemon stats

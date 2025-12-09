@@ -38,7 +38,7 @@ namespace UI {
         : trainer(trainer), titleName(titleName), backupDir(backupDir), titleId(titleId), userUid(userUid), scrollOffset(0), goBack(false), exitRequested(false),
         selectedMode(ViewMode::Party), currentPage(0), totalPages(1), selectedCategory(0), selectedBoxIndex(0), selectedPartyIndex(0),
         detailViewActive(false), selectedItemIndex(0), itemEditDialogActive(false), itemEditDialogValue(0),
-        itemEditDialogOriginalValue(0), saveConfirmActive(false), hasUnsavedChanges(false),
+        itemEditDialogOriginalValue(0), saveConfirmActive(false), hasUnsavedChanges(false), exitingWithUnsavedChanges(false), exitingViaPlus(false),
         statEditDialogActive(false), statEditSelectedStat(0), statEditMode(Dialogs::StatEditMode::IV),
         statEditValue(0), statEditOriginalIV(0), statEditOriginalEV(0), statEditCurrentIV(0), statEditCurrentEV(0),
         statEditOriginalShiny(false), statEditCurrentShiny(false),
@@ -50,15 +50,26 @@ namespace UI {
     void TrainerViewScreen::update(const PadState& pad) {
         u64 kDown = padGetButtonsDown(&pad);
 
-        // Handle + button (always exits application)
+        // Handle + button (exits application)
         if (kDown & HidNpadButton_Plus) {
+            // Check for unsaved changes
+            if (hasUnsavedChanges && !saveConfirmActive) {
+                // Prompt to save changes before exiting
+                exitingWithUnsavedChanges = true;
+                exitingViaPlus = true;  // Remember we're exiting via + button
+                saveConfirmActive = true;
+                return;
+            }
+            // No unsaved changes or already handled, exit immediately
             exitRequested = true;
             return;
         }
 
         // Handle X button (save confirmation)
         if (kDown & HidNpadButton_X) {
-            if (!saveConfirmActive && !itemEditDialogActive) {
+            if (!saveConfirmActive && !itemEditDialogActive && !statEditDialogActive) {
+                exitingWithUnsavedChanges = false;  // Regular save, not exiting
+                exitingViaPlus = false;
                 saveConfirmActive = true;
                 return;
             }
@@ -73,7 +84,25 @@ namespace UI {
 
                 if (saveSuccess) {
                     hasUnsavedChanges = false;
-                    goBack = true;  // Return to previous screen after successful save
+                    // goBack = true;  // Return to previous screen after successful save
+
+                    // Only exit if we were exiting with unsaved changes
+                    if (exitingWithUnsavedChanges) {
+                        if (exitingViaPlus) {
+                            // Exiting via + button - exit the app
+                            exitRequested = true;
+                        }
+                        // Always set goBack for consistency (B button case)
+                        goBack = true;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                    }
+                    // If not exiting, just stay on the screen (regular X button save)
+                    // Close dialogs/modals if there are any open and return to the View Mode selection state
+                    // detailViewActive = false;
+                    statEditDialogActive = false;
+                    pokemonDetailsActive = false;
+                    pokemonDetailsEditing = false;
                 }
                 // If save failed, stay on current screen (error logged by save function)
                 return;
@@ -81,6 +110,23 @@ namespace UI {
             if (kDown & HidNpadButton_B) {
                 // User cancelled save
                 saveConfirmActive = false;
+
+                // User cancelled or wants to discard changes
+                if (exitingWithUnsavedChanges) {
+                    // User wants to exit without saving - discard changes and exit
+                    if (exitingViaPlus) {
+                        // Exiting via + button - exit the app
+                        exitRequested = true;
+                    }
+                    // Always set goBack for consistency (B button case)
+                    goBack = true;
+                    exitingWithUnsavedChanges = false;
+                    exitingViaPlus = false;
+                    saveConfirmActive = false;
+                } else {
+                    // Regular cancel - just close the dialog
+                    saveConfirmActive = false;
+                }
                 return;
             }
             return;  // Don't process other inputs while save confirm is active
@@ -283,10 +329,8 @@ namespace UI {
                             // Toggle shiny status
                             logInfoToFile("Shiny field selected, toggling...");
                             bool currentShiny = pokemon->isShiny(trainer.ID32, pokemon->species());
-                            logInfoToFile("Current shiny status", std::to_string(currentShiny).c_str());
                             pokemon->setShiny(!currentShiny, trainer.ID32);
                             hasUnsavedChanges = true;
-                            logInfoToFile("Shiny toggle complete");
                         }
                         // Future: Handle other fields (PID, Species, Gender, Nickname, EXP, Level, Nature, Held Item, Ability)
                     } else {
@@ -670,6 +714,15 @@ namespace UI {
 
         // Normal mode navigation (not in detail view)
         if (kDown & HidNpadButton_B) {
+            // Check for unsaved changes
+            if (hasUnsavedChanges && !saveConfirmActive) {
+                // Prompt to save changes before going back
+                exitingWithUnsavedChanges = true;
+                exitingViaPlus = false;  // Exiting via B button (go back)
+                saveConfirmActive = true;
+                return;
+            }
+            // No unsaved changes or already handled, go back immediately
             goBack = true;
         }
 
