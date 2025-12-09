@@ -29,8 +29,12 @@ namespace Dialogs {
             fb.drawText(dialogX + 20, dialogY + 95, "Save anyway?", Colors::Text);
         }
 
-        // Draw instructions
-        fb.drawText(dialogX + 20, dialogY + 135, "A: Save and Return  |  B: Cancel", Colors::TextDim);
+        // Draw instructions - different text when exiting with unsaved changes
+        if (screen.exitingWithUnsavedChanges) {
+            fb.drawText(dialogX + 20, dialogY + 135, "A: Save and Exit  |  B: Discard and Exit", Colors::TextDim);
+        } else {
+            fb.drawText(dialogX + 20, dialogY + 135, "A: Save  |  B: Cancel", Colors::TextDim);
+        }
     }
 }
 }

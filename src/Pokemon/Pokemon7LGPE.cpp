@@ -10,7 +10,7 @@
 #include <cmath>
 
 #include "Pokemon/Pokemon7LGPE.h"
-#include "Pokemon/BaseStats.h"
+#include "Pokemon/BaseStatsGen7.h"
 
 namespace Pokemon {
     // Forward declarations for external helper functions
@@ -61,32 +61,32 @@ namespace Pokemon {
 
     uint8_t Pokemon7LGPE::baseHP() const
     {
-        return getBaseStats(speciesID())->hp;
+        return getBaseStatsGen7(speciesID(), form())->hp;
     }
 
     uint8_t Pokemon7LGPE::baseATK() const
     {
-        return getBaseStats(speciesID())->atk;
+        return getBaseStatsGen7(speciesID(), form())->atk;
     }
 
     uint8_t Pokemon7LGPE::baseDEF() const
     {
-        return getBaseStats(speciesID())->def;
+        return getBaseStatsGen7(speciesID(), form())->def;
     }
 
     uint8_t Pokemon7LGPE::baseSPE() const
     {
-        return getBaseStats(speciesID())->spe;
+        return getBaseStatsGen7(speciesID(), form())->spe;
     }
 
     uint8_t Pokemon7LGPE::baseSPA() const
     {
-        return getBaseStats(speciesID())->spa;
+        return getBaseStatsGen7(speciesID(), form())->spa;
     }
 
     uint8_t Pokemon7LGPE::baseSPD() const
     {
-        return getBaseStats(speciesID())->spd;
+        return getBaseStatsGen7(speciesID(), form())->spd;
     }
 
     // ========================================

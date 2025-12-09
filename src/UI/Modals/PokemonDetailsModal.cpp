@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "UI/Modals/PokemonDetailsModal.h"
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
@@ -5,6 +7,7 @@
 #include "Trainer/Trainer.h"
 #include "Utils/HelperUtilities.h"
 #include "Pokemon/Pokemon.h"
+#include "Names/FormNames.h"
 
 using namespace Trainer;
 using namespace Utils;
@@ -55,7 +58,10 @@ namespace Modals {
                 fb.drawFilledRect(modalX + 15, catY - 2, CATEGORY_PANEL_WIDTH - 10, 22, Colors::Selected);
             }
             std::string catText = std::string("> ") + categories[i];
-            fb.drawText(modalX + 25, catY, catText, Colors::Text);
+            // TODO: We need to dim categories that cannot be edited at the moment
+            // Main and Stats are the only categories, currently, that are editable
+            UI::Color color = (i == 0 || i == 2 ? Colors::Text : Colors::TextDim);
+            fb.drawText(modalX + 25, catY, catText, color);
             catY += 30;
         }
 
@@ -64,43 +70,69 @@ namespace Modals {
         const int contentY = modalY + 20;
         const int contentWidth = MODAL_WIDTH - CATEGORY_PANEL_WIDTH - 50;
 
+        // TODO: We need to calculate the amount of fields and then pass it to the TrainerViewScreen for iteration when active
         // Draw category content
         if (screen.pokemonDetailsCategory == 0) { // Main
             int lineY = contentY;
             int lineHeight = 25;
 
             fb.drawText(contentX, lineY, "=== Main ===", Colors::Text);
-            if (screen.pokemonDetailsEditing) {
-                fb.drawText(contentX + 150, lineY, "(Use Up/Down to select, A to edit)", Colors::TextDim);
-            } else {
-                fb.drawText(contentX + 150, lineY, "(Press A to edit)", Colors::TextDim);
-            }
+            // if (screen.pokemonDetailsEditing) {
+            //     fb.drawText(contentX + 150, lineY, "(Use Up/Down to select, A to edit)", Colors::TextDim);
+            // } else {
+            //     fb.drawText(contentX + 150, lineY, "(Press A to edit)", Colors::TextDim);
+            // }
             lineY += lineHeight + 5;
 
             char buffer[128];
-
+            // TODO: We set the text color to DIM if the field cannot be edited (future updates will allow editing)
             // Field 0: PID
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 0) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "PID: %08X", pokemon->pid());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
             // Field 1: Species
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 1) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
-            snprintf(buffer, sizeof(buffer), "Species: %s (#%d)", pokemon->species(), pokemon->speciesID());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            // Display form name
+            const char* formName = Names::getFormName(pokemon->speciesID(), pokemon->form());
+            if (formName && strlen(formName) > 0) {
+                snprintf(buffer, sizeof(buffer), "Species: %s (%s) (#%d)",
+                    pokemon->species(), formName, pokemon->speciesID());
+            } else {
+                snprintf(buffer, sizeof(buffer), "Species: %s (#%d)",
+                    pokemon->species(), pokemon->speciesID());
+            }
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
+            // // Field 2: Form ID (debugging)
+            // if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 1) {
+            //     fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
+            // }
+            // snprintf(buffer, sizeof(buffer), "Form: %d (formID: %d)", pokemon->form(), pokemon->form());
+            // fb.drawText(contentX, lineY, buffer, Colors::Text);
+            // lineY += lineHeight;
+
             // Field 2: Gender
+            std::string genderSymbol = pokemon->genderSymbol();
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 2) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
-            snprintf(buffer, sizeof(buffer), "Gender: %s", pokemon->genderSymbol());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            if (genderSymbol == "") {
+                std::string genderText = "Gender: Genderless";
+                fb.drawText(contentX, lineY, genderText, Colors::TextDim);
+            }
+            else {
+                std::string genderText = "Gender: ";
+                Color genderColor = (genderSymbol == "♂") ? Colors::Blue : Colors::Magenta;
+                fb.drawText(contentX, lineY, genderText, Colors::TextDim);
+                fb.drawText(contentX + 55, lineY, genderSymbol, genderColor);
+            }
             lineY += lineHeight;
 
             // Field 3: Shiny
@@ -121,7 +153,7 @@ namespace Modals {
             }
             std::string nickname = utf16ToUtf8(pokemon->nickname());
             snprintf(buffer, sizeof(buffer), "Nickname: %s", nickname.c_str());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
             // Field 5: EXP
@@ -129,7 +161,7 @@ namespace Modals {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "EXP: %u", pokemon->exp());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
             // Field 6: Level
@@ -137,7 +169,7 @@ namespace Modals {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "Level: %d", pokemon->level());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
             // Field 7: Nature
@@ -145,7 +177,7 @@ namespace Modals {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "Nature: %s (%d)", getNatureName(pokemon->nature()), pokemon->nature());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
             // Field 8: Stat Nature
@@ -153,7 +185,7 @@ namespace Modals {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "Stat Nature: %s (%d)", getNatureName(pokemon->statNature()), pokemon->statNature());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
             // Field 9: Held Item
@@ -161,25 +193,41 @@ namespace Modals {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "Held Item: %s (%d)", getItemName(pokemon->heldItem()), pokemon->heldItem());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
+            // Field 10: Ability
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 10) {
+                fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
+            }
             snprintf(buffer, sizeof(buffer), "Ability: %s (%d)", getAbilityName(pokemon->ability()), pokemon->ability());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
+            // Field 11: Friendship Value (0-255)(Needs confirmation, maybe some titles have different values?)
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 11) {
+                fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
+            }
             snprintf(buffer, sizeof(buffer), "Friendship: %d", pokemon->friendship());
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
+            // Field 12: Whether this Pokemon is this an egg
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 12) {
+                fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
+            }
             snprintf(buffer, sizeof(buffer), "Is Egg: %s", pokemon->isEgg() ? "Yes" : "No");
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
+            // Field 13: Whether this Pokemon is infected, cured or has not been/is not infected with Pokerus
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 13) {
+                fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
+            }
             const char* pkrsStatus = pokemon->isPokerusInfected() ? "Infected" :
                 pokemon->isPokerusCured() ? "Cured" : "None";
             snprintf(buffer, sizeof(buffer), "Pokerus: %s", pkrsStatus);
-            fb.drawText(contentX, lineY, buffer, Colors::Text);
+            fb.drawText(contentX, lineY, buffer, Colors::TextDim);
 
         } else if (screen.pokemonDetailsCategory == 2) { // Stats
             int lineY = contentY;
@@ -203,15 +251,15 @@ namespace Modals {
                 pokemon->statSPE() + pokemon->statSPA() + pokemon->statSPD();
 
             // Draw each stat
-            const char* statNames[] = {"HP ", "ATK", "DEF", "SPE", "SPA", "SPD"};
+            const char* statNames[] = {"HP ", "ATK", "DEF", "SPA", "SPD", "SPE"};
             uint8_t baseStats[] = {pokemon->baseHP(), pokemon->baseATK(), pokemon->baseDEF(),
-                pokemon->baseSPE(), pokemon->baseSPA(), pokemon->baseSPD()};
+                pokemon->baseSPA(), pokemon->baseSPD(), pokemon->baseSPE()};
             uint8_t ivs[] = {pokemon->ivHP(), pokemon->ivATK(), pokemon->ivDEF(),
-                pokemon->ivSPE(), pokemon->ivSPA(), pokemon->ivSPD()};
+                pokemon->ivSPA(), pokemon->ivSPD(), pokemon->ivSPE()};
             uint8_t evs[] = {pokemon->evHP(), pokemon->evATK(), pokemon->evDEF(),
-                pokemon->evSPE(), pokemon->evSPA(), pokemon->evSPD()};
+                pokemon->evSPA(), pokemon->evSPD(), pokemon->evSPE()};
             uint16_t stats[] = {pokemon->statHPMax(), pokemon->statATK(), pokemon->statDEF(),
-                pokemon->statSPE(), pokemon->statSPA(), pokemon->statSPD()};
+                pokemon->statSPA(), pokemon->statSPD(), pokemon->statSPE()};
 
             for (int i = 0; i < 6; i++) {
                 // Highlight if editing this stat
@@ -234,12 +282,12 @@ namespace Modals {
             snprintf(totalLine, sizeof(totalLine), "Tot: %03d | %03d | %03d | %03d", baseTotal, ivTotal, evTotal, statTotal);
             fb.drawText(contentX, lineY, totalLine, Colors::TextDim);
 
-            lineY += lineHeight + 10;
-            if (!screen.pokemonDetailsEditing) {
-                fb.drawText(contentX, lineY, "Press A to edit EVs/IVs", Colors::TextDim);
-            } else {
-                fb.drawText(contentX, lineY, "Left/Right: +/-1  |  Up/Down: +/-10  |  A: Confirm  |  B: Cancel", Colors::TextDim);
-            }
+            // lineY += lineHeight + 10;
+            // if (!screen.pokemonDetailsEditing) {
+            //     fb.drawText(contentX, lineY, "Press A to edit EVs/IVs", Colors::TextDim);
+            // } else {
+            //     fb.drawText(contentX, lineY, "Left/Right: +/-1  |  Up/Down: +/-10  |  A: Confirm  |  B: Cancel", Colors::TextDim);
+            // }
 
         } else { // Other categories
             int lineY = contentY;
@@ -250,9 +298,12 @@ namespace Modals {
             fb.drawText(contentX, lineY, "This category will be implemented in a future update.", Colors::TextDim);
         }
 
+        // TODO: We don't want to draw this here, but on the bottom of the screen instead.
         // Draw footer with controls
-        fb.drawText(modalX + 20, modalY + MODAL_HEIGHT - 30,
-            "Up/Down: Select Category  |  B: Close", Colors::TextDim);
+        // const char* controlText = screen.pokemonDetailsEditing
+        //     ? "Up/Down: Select Field  |  B: Back"
+        //     : "Up/Down: Select Category  |  B: Close";
+        // fb.drawText(modalX + 20, modalY + MODAL_HEIGHT - 30, controlText, Colors::TextDim);
     }
 }
 }

@@ -18,6 +18,9 @@ int main()
 {
     logInfoToFile("Initializing PKSE...");
 
+    // Clean up old log files
+    Utils::cleanupOldLogs();
+
     // Initialize the ns service
     Result nsServiceInitializeResult = nsInitialize();
     if (R_FAILED(nsServiceInitializeResult)) {

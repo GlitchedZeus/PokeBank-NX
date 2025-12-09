@@ -12,7 +12,7 @@
 #include "Panels/ModeSelectorPanel.h"
 #include "Panels/PartyPokemonPanel.h"
 #include "Panels/ItemsPanel.h"
-#include "Dialogs/EditDialog.h"
+#include "Dialogs/ItemEditDialog.h"
 #include "Dialogs/SaveConfirmDialog.h"
 #include "Dialogs/StatEditDialog.h"
 #include "Modals/PokemonDetailsModal.h"
@@ -31,7 +31,7 @@ namespace UI {
             Items
         };
 
-        TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId);
+        TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId, AccountUid userUid);
         void update(const PadState& pad) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return goBack; }
@@ -42,9 +42,13 @@ namespace UI {
         std::string titleName;
         std::string backupDir;
         u64 titleId;
+        AccountUid userUid;
         int scrollOffset;
         bool goBack;
         bool exitRequested;  // True when user presses + to close app
+
+        // TODO: Need to create an array to hold some of these states
+        // More TODO: These states may need some restructuring
 
         ViewMode selectedMode;
         int currentPage;
@@ -56,13 +60,15 @@ namespace UI {
         int selectedItemIndex;  // Selected item/pokemon index in detail view (item for Items, slot for Boxes)
 
         // Item editing state
-        bool editDialogActive;  // True when editing an item's amount
-        int editDialogValue;    // Current value being edited
-        int editDialogOriginalValue;  // Original value before editing
+        bool itemEditDialogActive;  // True when editing an item's amount
+        int itemEditDialogValue;    // Current value being edited
+        int itemEditDialogOriginalValue;  // Original value before editing
 
         // Save confirmation state
         bool saveConfirmActive;  // True when showing save confirmation dialog
         bool hasUnsavedChanges;  // True when data has been modified
+        bool exitingWithUnsavedChanges;  // True when user is trying to exit with unsaved changes
+        bool exitingViaPlus;  // True when exiting via + button (exit app) vs B button (go back)
 
         // Stat editing state (for Pokemon EV/IV editing)
         bool statEditDialogActive;  // True when editing Pokemon stats

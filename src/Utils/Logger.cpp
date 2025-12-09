@@ -5,12 +5,25 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <dirent.h>
+#include <unistd.h>
 
 #include "Utils/Logger.h"
+#include "Globals.h"
 
 namespace Utils {
-    #define LOG_DIRECTORY "sdmc:/PKSE"
-    #define LOG_FILE_PATH "sdmc:/PKSE/debug.log"
+    #define LOG_DIRECTORY "sdmc:/PKSE/logs"
+
+    // Helper function to get the current log file path with timestamp
+    static std::string getCurrentLogFilePath() {
+        time_t now = time(NULL);
+        struct tm *t = localtime(&now);
+
+        char dateBuffer[16];
+        strftime(dateBuffer, sizeof(dateBuffer), "%Y-%m-%d", t);
+
+        return std::string(LOG_DIRECTORY) + "/debug_" + dateBuffer + ".log";
+    }
 
     void logInfoToFile(const char *message)
     {
@@ -23,8 +36,11 @@ namespace Utils {
             return;
         }
 
+        // Get the current log file path with timestamp
+        std::string logFilePath = getCurrentLogFilePath();
+
         // Open the log file in append mode
-        FILE *logFile = fopen(LOG_FILE_PATH, "a");
+        FILE *logFile = fopen(logFilePath.c_str(), "a");
         if (logFile)
         {
             // Get the current time
@@ -42,7 +58,7 @@ namespace Utils {
         else
         {
             // Log to console if the file cannot be opened
-            printf("Failed to open log file: %s\n", LOG_FILE_PATH);
+            printf("Failed to open log file: %s\n", logFilePath.c_str());
         }
     }
 
@@ -57,8 +73,11 @@ namespace Utils {
             return;
         }
 
+        // Get the current log file path with timestamp
+        std::string logFilePath = getCurrentLogFilePath();
+
         // Open the log file in append mode
-        FILE *logFile = fopen(LOG_FILE_PATH, "a");
+        FILE *logFile = fopen(logFilePath.c_str(), "a");
         if (logFile)
         {
             // Get the current time
@@ -76,7 +95,7 @@ namespace Utils {
         else
         {
             // Log to console if the file cannot be opened
-            printf("Failed to open log file: %s\n", LOG_FILE_PATH);
+            printf("Failed to open log file: %s\n", logFilePath.c_str());
         }
     }
 
@@ -91,8 +110,11 @@ namespace Utils {
             return;
         }
 
+        // Get the current log file path with timestamp
+        std::string logFilePath = getCurrentLogFilePath();
+
         // Open the log file in append mode
-        FILE *logFile = fopen(LOG_FILE_PATH, "a");
+        FILE *logFile = fopen(logFilePath.c_str(), "a");
         if (logFile)
         {
             // Get the current time
@@ -110,7 +132,7 @@ namespace Utils {
         else
         {
             // Log to console if the file cannot be opened
-            printf("Failed to open log file: %s\n", LOG_FILE_PATH);
+            printf("Failed to open log file: %s\n", logFilePath.c_str());
         }
     }
 
@@ -125,8 +147,11 @@ namespace Utils {
             return;
         }
 
+        // Get the current log file path with timestamp
+        std::string logFilePath = getCurrentLogFilePath();
+
         // Open the log file in append mode
-        FILE *logFile = fopen(LOG_FILE_PATH, "a");
+        FILE *logFile = fopen(logFilePath.c_str(), "a");
         if (logFile)
         {
             // Get the current time
@@ -144,7 +169,7 @@ namespace Utils {
         else
         {
             // Log to console if the file cannot be opened
-            printf("Failed to open log file: %s\n", LOG_FILE_PATH);
+            printf("Failed to open log file: %s\n", logFilePath.c_str());
         }
     }
 
@@ -159,8 +184,11 @@ namespace Utils {
             return;
         }
 
+        // Get the current log file path with timestamp
+        std::string logFilePath = getCurrentLogFilePath();
+
         // Open the log file in append mode
-        FILE *logFile = fopen(LOG_FILE_PATH, "a");
+        FILE *logFile = fopen(logFilePath.c_str(), "a");
         if (logFile)
         {
             // Get the current time
@@ -178,7 +206,42 @@ namespace Utils {
         else
         {
             // Log to console if the file cannot be opened
-            printf("Failed to open log file: %s\n", LOG_FILE_PATH);
+            printf("Failed to open log file: %s\n", logFilePath.c_str());
         }
+    }
+
+    void cleanupOldLogs()
+    {
+        DIR* dir = opendir(LOG_DIRECTORY);
+        if (!dir) {
+            return; // Directory doesn't exist or can't be opened
+        }
+
+        time_t now = time(NULL);
+        time_t retentionTime = LOG_RETENTION_DAYS * 24 * 60 * 60; // Convert days to seconds
+
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != NULL) {
+            // Check if filename starts with "debug_" and ends with ".log"
+            std::string filename(entry->d_name);
+            if (filename.find("debug_") == 0 && filename.find(".log") == filename.length() - 4) {
+                // Build full path
+                std::string fullPath = std::string(LOG_DIRECTORY) + "/" + filename;
+
+                // Get file modification time
+                struct stat fileInfo;
+                if (stat(fullPath.c_str(), &fileInfo) == 0) {
+                    // Calculate file age in seconds
+                    time_t fileAge = now - fileInfo.st_mtime;
+
+                    // Delete if older than retention period
+                    if (fileAge > retentionTime) {
+                        unlink(fullPath.c_str());
+                    }
+                }
+            }
+        }
+
+        closedir(dir);
     }
 }

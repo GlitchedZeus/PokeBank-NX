@@ -58,14 +58,13 @@ namespace UI {
             fb.flush();
 
             if (titleScreen.hasSelectedTitle()) {
-                handleBackupSelection(titleScreen.getSelectedTitleId(),
-                                    titleScreen.getSelectedTitleName());
+                handleBackupSelection(userUid, titleScreen.getSelectedTitleId(), titleScreen.getSelectedTitleName());
                 return;
             }
         }
     }
 
-    void UIManager::handleBackupSelection(u64 titleId, const std::string& titleName) {
+    void UIManager::handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName) {
         BackupSelectionScreen backupScreen(titleId, titleName);
 
         while (appletMainLoop() && !backupScreen.shouldExit()) {
@@ -79,19 +78,12 @@ namespace UI {
                     // Create new backup from title
                     logInfoToFile("Creating new backup for", titleName.c_str());
 
-                    // if (!backupSaveData(titleId, sanitizeTitleName(titleName))) {
-                    //     logErrorToFile("Failed to back up save data");
-                    //     return;
-                    // }
-
-                    if (!backupSaveData(titleId, titleName)) {
+                    if (!backupSaveData(userUid, titleId, titleName)) {
                         logErrorToFile("Failed to back up save data");
                         return;
                     }
 
                     char gameDir[512];
-                    // snprintf(gameDir, sizeof(gameDir), "%s/%s", BASE_SAVE_DIRECTORY.c_str(),
-                    //         sanitizeTitleName(titleName).c_str());
 
                     snprintf(gameDir, sizeof(gameDir), "%s/%s", BASE_SAVE_DIRECTORY.c_str(), titleName.c_str());
                     limitBackups(gameDir, BACKUP_SAVE_LIMIT);
@@ -101,19 +93,19 @@ namespace UI {
                     if (!backupDirs.empty()) {
                         char backupPath[1024];
                         snprintf(backupPath, sizeof(backupPath), "%s/%s", gameDir, backupDirs[0].c_str());
-                        handleTrainerView(titleId, titleName, std::string(backupPath));
+                        handleTrainerView(userUid, titleId, titleName, std::string(backupPath));
                     }
                 } else {
                     // Use existing backup
                     logInfoToFile("Loading existing backup", backupScreen.getSelectedBackupPath().c_str());
-                    handleTrainerView(titleId, titleName, backupScreen.getSelectedBackupPath());
+                    handleTrainerView(userUid, titleId, titleName, backupScreen.getSelectedBackupPath());
                 }
                 return;
             }
         }
     }
 
-    void UIManager::handleTrainerView(u64 titleId, const std::string& titleName, const std::string& backupDir) {
+    void UIManager::handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName, const std::string& backupDir) {
         logInfoToFile("Loading save from", backupDir.c_str());
 
         // Read trainer data from the specified backup directory
@@ -122,7 +114,7 @@ namespace UI {
 
         // Use std::visit to extract reference and create TrainerViewScreen
         std::visit([&](auto& trainer) {
-            TrainerViewScreen trainerScreen(trainer, titleName, backupDir, titleId);
+            TrainerViewScreen trainerScreen(trainer, titleName, backupDir, titleId, userUid);
 
             while (appletMainLoop() && !trainerScreen.shouldExit() && !trainerScreen.hasRequestedExit()) {
                 padUpdate(&pad);

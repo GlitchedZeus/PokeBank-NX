@@ -14,4 +14,7 @@ inline constexpr bool SAVE_TO_TITLE = true; // TODO: We need to make this an in-
 /// Determines how many backup saves are allowed
 inline constexpr uint8_t BACKUP_SAVE_LIMIT = 5; // TODO: We can make this value modifyable by the user at a later time
 
+/// Number of days to retain debug log files
+inline constexpr uint8_t LOG_RETENTION_DAYS = 30;
+
 #endif

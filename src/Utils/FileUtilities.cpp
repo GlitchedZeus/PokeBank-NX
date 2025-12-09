@@ -163,7 +163,7 @@ namespace Utils {
         return std::string(buffer);
     }
 
-    bool backupSaveData(u64 titleId, std::string titleName) {
+    bool backupSaveData(AccountUid userUid, u64 titleId, std::string titleName) {
         char titleBuf[32];
         snprintf(titleBuf, sizeof(titleBuf), "0x%016llX", static_cast<unsigned long long>(titleId));
         logInfoToFile("Pokemon titleId: ", titleBuf);
@@ -199,24 +199,8 @@ namespace Utils {
 
         char buffer[LOG_BUFFER_SIZE];
 
-        Result result = accountInitialize(AccountServiceType_Administrator);
-        if (R_FAILED(result)) {
-            snprintf(buffer, sizeof(buffer), "accountInitialize failed: 0x%x", result);
-            logErrorToFile(buffer);
-            return false;
-        }
+        Result result = fsdevMountSaveData("save", titleId, userUid);
 
-        AccountUid uid = {0};
-        result = accountGetPreselectedUser(&uid);
-        if (R_FAILED(result) || (uid.uid[0] == 0 && uid.uid[1] == 0)) {
-            snprintf(buffer, sizeof(buffer), "accountGetPreselectedUser failed: 0x%x", result);
-            logErrorToFile(buffer);
-            accountExit();
-            return false;
-        }
-        accountExit();
-
-        result = fsdevMountSaveData("save", titleId, uid);
         if (R_FAILED(result)) {
             snprintf(buffer, sizeof(buffer), "fsdevMountSaveData failed for titleId 0x%016lX: 0x%x", titleId, result);
             logErrorToFile(buffer);
@@ -238,29 +222,12 @@ namespace Utils {
         }
     }
 
-    bool restoreModifiedSave(u64 titleId, const char* modifiedSavePath, const char* backupDir, std::vector<std::string> saveFiles) {
+    bool restoreModifiedSave(AccountUid userUid, u64 titleId, const char* modifiedSavePath, const char* backupDir, std::vector<std::string> saveFiles) {
         char buffer[LOG_BUFFER_SIZE];
-
         logInfoToFile("Restoring modified save to game", modifiedSavePath);
+        
+        Result result = fsdevMountSaveData("save", titleId, userUid);
 
-        Result result = accountInitialize(AccountServiceType_Administrator);
-        if (R_FAILED(result)) {
-            snprintf(buffer, sizeof(buffer), "accountInitialize failed: 0x%x", result);
-            logErrorToFile(buffer);
-            return false;
-        }
-
-        AccountUid uid = {0};
-        result = accountGetPreselectedUser(&uid);
-        if (R_FAILED(result) || (uid.uid[0] == 0 && uid.uid[1] == 0)) {
-            snprintf(buffer, sizeof(buffer), "accountGetPreselectedUser failed: 0x%x", result);
-            logErrorToFile(buffer);
-            accountExit();
-            return false;
-        }
-        accountExit();
-
-        result = fsdevMountSaveData("save", titleId, uid);
         if (R_FAILED(result)) {
             snprintf(buffer, sizeof(buffer), "fsdevMountSaveData failed for titleId 0x%016lX: 0x%x", titleId, result);
             logErrorToFile(buffer);

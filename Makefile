@@ -46,6 +46,7 @@ APP_TITLE   :=  PKSE
 APP_AUTHOR  :=  Kiasta
 APP_VERSION :=  0.0.1
 ROMFS		:=	romfs
+ICON		:=  icon.jpg
 
 #---------------------------------------------------------------------------------
 # options for code generation

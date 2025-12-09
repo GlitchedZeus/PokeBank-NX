@@ -187,14 +187,6 @@ namespace Trainer {
 
                     // Only add items with valid IDs (non-zero)
                     if (item.itemId != 0) {
-                    //-------------------------------------------------------
-                    //-------------------------------------------------------
-                    //-------------------------------------------------------
-                    // NEED TO CHANGE ITEMS[i] toInventoryItem() CONVERSION
-                    // FOR GEN 7 AND 8 WE NEED TO KEEP LOGIC CONSISTENT
-                    //-------------------------------------------------------
-                    //-------------------------------------------------------
-                    //-------------------------------------------------------
                         pouch.push_back(item);
                     }
                 }
@@ -425,7 +417,7 @@ namespace Trainer {
          *    a. Write items to their designated offsets
          *    b. Zero out remaining slots
          */
-        for (auto& block : blocks8SWSH) {
+        for (auto& block : blocks) {
             if (block.key == ITEM8_SWSH) {
                 // Ensure the block data is large enough
                 size_t maxSize = 4856; // Sum of all pouch sizes * 4 bytes per item
@@ -437,14 +429,23 @@ namespace Trainer {
                 for (int p = 0; p < static_cast<int>(PouchType8SWSH::Count); p++) {
                     PouchType8SWSH pouchType = static_cast<PouchType8SWSH>(p);
                     const PouchInfo8SWSH& info = getPouchInfo8SWSH(pouchType);
-                    const auto& pouch = items8SWSH[p];
+                    const auto& pouch = items[p];
 
                     // Write items to block
                     int itemIndex = 0;
                     for (const auto& item : pouch) {
                         size_t offset = info.offset + (itemIndex * 4);
                         if (offset + 4 <= block.data.size()) {
-                            uint32_t itemValue = item.toValue();
+                            // uint32_t itemValue = item.toValue();
+                            
+                            // Convert from InventoryItem (base class) to InventoryItem8SWSH
+                            InventoryItem8SWSH item8;
+                            item8.itemId = item.itemId;
+                            item8.count = item.count;
+                            item8.isNew = item.isNew;
+                            item8.isFavorite = item.isFavorite;
+
+                            uint32_t itemValue = item8.toValue();
                             writeUInt32LittleEndian(&block.data[offset], itemValue);
                         }
                         itemIndex++;

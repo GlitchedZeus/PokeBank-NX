@@ -95,6 +95,26 @@ namespace Pokemon {
         const char* species() const noexcept override;
 
         /**
+         * Gets the Form.
+         * Location: 0x24 (1 byte)
+         * @return Form ID (0 = no form)
+         */
+        uint8_t formID() const noexcept override
+        {
+            return static_cast<uint8_t>(data[0x24]);
+        }
+
+        /**
+         * Gets the Pokemon's form/variation.
+         * Location: 0x24 (1 byte)
+         * @return Form ID (0 = base form)
+         */
+        uint8_t form() const noexcept override
+        {
+            return static_cast<uint8_t>(data[0x24]);
+        }
+
+        /**
          * Gets the held item ID.
          * Location: 0x0A (2 bytes)
          * @return Item ID (0 = no item)

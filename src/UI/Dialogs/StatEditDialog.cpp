@@ -41,7 +41,7 @@ void drawStatEditDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         if (!pokemon) return;
 
         // Stat names
-        const char* statNames[] = {"HP", "ATK", "DEF", "SPE", "SPA", "SPD"};
+        const char* statNames[] = {"HP", "ATK", "DEF", "SPA", "SPD", "SPE"};
         const char* currentStatName = statNames[screen.statEditSelectedStat];
 
         // Get current EV value
@@ -51,9 +51,9 @@ void drawStatEditDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             case 0: currentEV = pokemon->evHP(); break;
             case 1: currentEV = pokemon->evATK(); break;
             case 2: currentEV = pokemon->evDEF(); break;
-            case 3: currentEV = pokemon->evSPE(); break;
-            case 4: currentEV = pokemon->evSPA(); break;
-            case 5: currentEV = pokemon->evSPD(); break;
+            case 3: currentEV = pokemon->evSPA(); break;
+            case 4: currentEV = pokemon->evSPD(); break;
+            case 5: currentEV = pokemon->evSPE(); break;
         }
 
         // Calculate total EVs
@@ -107,20 +107,6 @@ void drawStatEditDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             fb.drawText(dialogX + 220, lineY, "(EXCEEDS LIMIT!)", Colors::Red);
         }
         lineY += lineHeight + 15;
-
-        // Draw instructions
-        fb.drawText(dialogX + 20, lineY, "Controls:", Colors::Text);
-        lineY += lineHeight - 5;
-
-        fb.drawText(dialogX + 20, lineY, "Up/Down: Switch IV/EV  |  Left/Right: +/-1  |  L/R: +/-10", Colors::TextDim);
-        lineY += 20;
-
-        if (screen.statEditMode == StatEditMode::EV) {
-            fb.drawText(dialogX + 20, lineY, "ZL/ZR: +/-100 (EVs only)", Colors::TextDim);
-        }
-        lineY += 20;
-
-        fb.drawText(dialogX + 20, lineY, "A: Confirm  |  B: Cancel", Colors::TextDim);
     }
 }
 }

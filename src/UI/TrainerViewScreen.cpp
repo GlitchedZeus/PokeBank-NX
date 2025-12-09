@@ -10,7 +10,7 @@
 #include "UI/Panels/PartyPokemonPanel.h"
 #include "UI/Panels/BoxPokemonPanel.h"
 #include "UI/Panels/ItemsPanel.h"
-#include "UI/Dialogs/EditDialog.h"
+#include "UI/Dialogs/ItemEditDialog.h"
 #include "UI/Dialogs/SaveConfirmDialog.h"
 #include "UI/Dialogs/StatEditDialog.h"
 #include "UI/Modals/PokemonDetailsModal.h"
@@ -34,11 +34,11 @@ namespace UI {
     constexpr int CONTENT_PANEL_Y = LEFT_PANEL_Y;
     constexpr int CONTENT_PANEL_HEIGHT = 575;
 
-    TrainerViewScreen::TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId)
-        : trainer(trainer), titleName(titleName), backupDir(backupDir), titleId(titleId), scrollOffset(0), goBack(false), exitRequested(false),
+    TrainerViewScreen::TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId, AccountUid userUid)
+        : trainer(trainer), titleName(titleName), backupDir(backupDir), titleId(titleId), userUid(userUid), scrollOffset(0), goBack(false), exitRequested(false),
         selectedMode(ViewMode::Party), currentPage(0), totalPages(1), selectedCategory(0), selectedBoxIndex(0), selectedPartyIndex(0),
-        detailViewActive(false), selectedItemIndex(0), editDialogActive(false), editDialogValue(0),
-        editDialogOriginalValue(0), saveConfirmActive(false), hasUnsavedChanges(false),
+        detailViewActive(false), selectedItemIndex(0), itemEditDialogActive(false), itemEditDialogValue(0),
+        itemEditDialogOriginalValue(0), saveConfirmActive(false), hasUnsavedChanges(false), exitingWithUnsavedChanges(false), exitingViaPlus(false),
         statEditDialogActive(false), statEditSelectedStat(0), statEditMode(Dialogs::StatEditMode::IV),
         statEditValue(0), statEditOriginalIV(0), statEditOriginalEV(0), statEditCurrentIV(0), statEditCurrentEV(0),
         statEditOriginalShiny(false), statEditCurrentShiny(false),
@@ -50,15 +50,26 @@ namespace UI {
     void TrainerViewScreen::update(const PadState& pad) {
         u64 kDown = padGetButtonsDown(&pad);
 
-        // Handle + button (always exits application)
+        // Handle + button (exits application)
         if (kDown & HidNpadButton_Plus) {
+            // Check for unsaved changes
+            if (hasUnsavedChanges && !saveConfirmActive) {
+                // Prompt to save changes before exiting
+                exitingWithUnsavedChanges = true;
+                exitingViaPlus = true;  // Remember we're exiting via + button
+                saveConfirmActive = true;
+                return;
+            }
+            // No unsaved changes or already handled, exit immediately
             exitRequested = true;
             return;
         }
 
         // Handle X button (save confirmation)
         if (kDown & HidNpadButton_X) {
-            if (!saveConfirmActive && !editDialogActive) {
+            if (!saveConfirmActive && !itemEditDialogActive && !statEditDialogActive) {
+                exitingWithUnsavedChanges = false;  // Regular save, not exiting
+                exitingViaPlus = false;
                 saveConfirmActive = true;
                 return;
             }
@@ -68,12 +79,30 @@ namespace UI {
         if (saveConfirmActive) {
             if (kDown & HidNpadButton_A) {
                 // User confirmed save - auto-detects game version and uses appropriate save function
-                bool saveSuccess = Save::saveTrainerInfo(trainer, backupDir.c_str(), titleId);
+                bool saveSuccess = Save::saveTrainerInfo(trainer, backupDir.c_str(), titleId, userUid);
                 saveConfirmActive = false;
 
                 if (saveSuccess) {
                     hasUnsavedChanges = false;
-                    goBack = true;  // Return to previous screen after successful save
+                    // goBack = true;  // Return to previous screen after successful save
+
+                    // Only exit if we were exiting with unsaved changes
+                    if (exitingWithUnsavedChanges) {
+                        if (exitingViaPlus) {
+                            // Exiting via + button - exit the app
+                            exitRequested = true;
+                        }
+                        // Always set goBack for consistency (B button case)
+                        goBack = true;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                    }
+                    // If not exiting, just stay on the screen (regular X button save)
+                    // Close dialogs/modals if there are any open and return to the View Mode selection state
+                    // detailViewActive = false;
+                    statEditDialogActive = false;
+                    pokemonDetailsActive = false;
+                    pokemonDetailsEditing = false;
                 }
                 // If save failed, stay on current screen (error logged by save function)
                 return;
@@ -81,6 +110,23 @@ namespace UI {
             if (kDown & HidNpadButton_B) {
                 // User cancelled save
                 saveConfirmActive = false;
+
+                // User cancelled or wants to discard changes
+                if (exitingWithUnsavedChanges) {
+                    // User wants to exit without saving - discard changes and exit
+                    if (exitingViaPlus) {
+                        // Exiting via + button - exit the app
+                        exitRequested = true;
+                    }
+                    // Always set goBack for consistency (B button case)
+                    goBack = true;
+                    exitingWithUnsavedChanges = false;
+                    exitingViaPlus = false;
+                    saveConfirmActive = false;
+                } else {
+                    // Regular cancel - just close the dialog
+                    saveConfirmActive = false;
+                }
                 return;
             }
             return;  // Don't process other inputs while save confirm is active
@@ -173,15 +219,21 @@ namespace UI {
 
                     // Confirm edit
                     if (kDown & HidNpadButton_A) {
+                        // Map UI stat index to Pokemon data stat index
+                        // UI order: HP, ATK, DEF, SPA, SPD, SPE (indices 0-5)
+                        // Data order: HP, ATK, DEF, SPE, SPA, SPD (indices 0-5)
+                        int statIndexMap[] = {0, 1, 2, 4, 5, 3}; // UI index -> Data index
+                        int dataStatIndex = statIndexMap[statEditSelectedStat];
+
                         // Apply IV and EV changes if they were modified
                         bool statsModified = false;
                         if (statEditCurrentIV != statEditOriginalIV) {
-                            pokemon->setIV(statEditSelectedStat, statEditCurrentIV);
+                            pokemon->setIV(dataStatIndex, statEditCurrentIV);
                             hasUnsavedChanges = true;
                             statsModified = true;
                         }
                         if (statEditCurrentEV != statEditOriginalEV) {
-                            pokemon->setEV(statEditSelectedStat, statEditCurrentEV);
+                            pokemon->setEV(dataStatIndex, statEditCurrentEV);
                             hasUnsavedChanges = true;
                             statsModified = true;
                         }
@@ -208,12 +260,17 @@ namespace UI {
         // Handle Pokemon details modal
         if (pokemonDetailsActive) {
             if (kDown & HidNpadButton_B) {
-                // Close modal
-                pokemonDetailsActive = false;
-                pokemonDetailsIsParty = false;
-                pokemonDetailsEditing = false;
-                pokemonDetailsCategory = 0;
-                pokemonDetailsSelectedStat = 0;
+                if (pokemonDetailsEditing) {
+                    // If editing, go back to category selection
+                    pokemonDetailsEditing = false;
+                } else {
+                    // Close modal
+                    pokemonDetailsActive = false;
+                    pokemonDetailsIsParty = false;
+                    pokemonDetailsEditing = false;
+                    pokemonDetailsCategory = 0;
+                    pokemonDetailsSelectedStat = 0;
+                }
                 return;
             }
 
@@ -240,11 +297,12 @@ namespace UI {
             } else if (pokemonDetailsCategory == 0) {
                 // Editing main fields
                 // Up/Down to select field
+                int fields = 14; // TODO: We need to make this more dynamic and eventually will want to modify all of the values
                 if (kDown & HidNpadButton_Up) {
-                    pokemonDetailsSelectedField = (pokemonDetailsSelectedField - 1 + 10) % 10;  // 10 fields in Main
+                    pokemonDetailsSelectedField = (pokemonDetailsSelectedField - 1 + fields) % fields;  // number of fields in Main
                 }
                 if (kDown & HidNpadButton_Down) {
-                    pokemonDetailsSelectedField = (pokemonDetailsSelectedField + 1) % 10;
+                    pokemonDetailsSelectedField = (pokemonDetailsSelectedField + 1) % fields;
                 }
 
                 // A to edit the selected field
@@ -271,20 +329,13 @@ namespace UI {
                             // Toggle shiny status
                             logInfoToFile("Shiny field selected, toggling...");
                             bool currentShiny = pokemon->isShiny(trainer.ID32, pokemon->species());
-                            logInfoToFile("Current shiny status", std::to_string(currentShiny).c_str());
                             pokemon->setShiny(!currentShiny, trainer.ID32);
                             hasUnsavedChanges = true;
-                            logInfoToFile("Shiny toggle complete");
                         }
                         // Future: Handle other fields (PID, Species, Gender, Nickname, EXP, Level, Nature, Held Item, Ability)
                     } else {
                         logInfoToFile("Pokemon pointer is null!");
                     }
-                }
-
-                // B to cancel editing
-                if (kDown & HidNpadButton_B) {
-                    pokemonDetailsEditing = false;
                 }
             } else if (pokemonDetailsCategory == 2) {
                 // Editing stats
@@ -324,9 +375,9 @@ namespace UI {
                             case 0: statEditOriginalIV = pokemon->ivHP(); statEditOriginalEV = pokemon->evHP(); break;
                             case 1: statEditOriginalIV = pokemon->ivATK(); statEditOriginalEV = pokemon->evATK(); break;
                             case 2: statEditOriginalIV = pokemon->ivDEF(); statEditOriginalEV = pokemon->evDEF(); break;
-                            case 3: statEditOriginalIV = pokemon->ivSPE(); statEditOriginalEV = pokemon->evSPE(); break;
-                            case 4: statEditOriginalIV = pokemon->ivSPA(); statEditOriginalEV = pokemon->evSPA(); break;
-                            case 5: statEditOriginalIV = pokemon->ivSPD(); statEditOriginalEV = pokemon->evSPD(); break;
+                            case 3: statEditOriginalIV = pokemon->ivSPA(); statEditOriginalEV = pokemon->evSPA(); break;
+                            case 4: statEditOriginalIV = pokemon->ivSPD(); statEditOriginalEV = pokemon->evSPD(); break;
+                            case 5: statEditOriginalIV = pokemon->ivSPE(); statEditOriginalEV = pokemon->evSPE(); break;
                         }
 
                         // Initialize current values to original values
@@ -339,36 +390,31 @@ namespace UI {
                         statEditDialogActive = true;
                     }
                 }
-
-                // B to cancel editing
-                if (kDown & HidNpadButton_B) {
-                    pokemonDetailsEditing = false;
-                }
             }
 
             return;  // Don't process other inputs while modal is active
         }
 
         // Handle edit dialog
-        if (editDialogActive) {
+        if (itemEditDialogActive) {
             // Adjust value with different increments
             if (kDown & HidNpadButton_Left) {
-                editDialogValue = std::max(0, editDialogValue - 1);
+                itemEditDialogValue = std::max(0, itemEditDialogValue - 1);
             }
             if (kDown & HidNpadButton_Right) {
-                editDialogValue = std::min(999, editDialogValue + 1);
+                itemEditDialogValue = std::min(999, itemEditDialogValue + 1);
             }
             if (kDown & HidNpadButton_Up) {
-                editDialogValue = std::min(999, editDialogValue + 10);
+                itemEditDialogValue = std::min(999, itemEditDialogValue + 10);
             }
             if (kDown & HidNpadButton_Down) {
-                editDialogValue = std::max(0, editDialogValue - 10);
+                itemEditDialogValue = std::max(0, itemEditDialogValue - 10);
             }
             if (kDown & HidNpadButton_ZL) {
-                editDialogValue = std::max(0, editDialogValue - 100);
+                itemEditDialogValue = std::max(0, itemEditDialogValue - 100);
             }
             if (kDown & HidNpadButton_ZR) {
-                editDialogValue = std::min(999, editDialogValue + 100);
+                itemEditDialogValue = std::min(999, itemEditDialogValue + 100);
             }
 
             // Confirm edit
@@ -377,19 +423,19 @@ namespace UI {
                 if (selectedCategory >= 0 && selectedCategory < static_cast<int>(trainer.items.size())) {
                     auto& pouch = trainer.items[selectedCategory];
                     if (selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(pouch.size())) {
-                        pouch[selectedItemIndex].count = editDialogValue;
-                        if (editDialogValue != editDialogOriginalValue) {
+                        pouch[selectedItemIndex].count = itemEditDialogValue;
+                        if (itemEditDialogValue != itemEditDialogOriginalValue) {
                             hasUnsavedChanges = true;
                         }
                     }
                 }
-                editDialogActive = false;
+                itemEditDialogActive = false;
                 return;
             }
 
             // Cancel edit
             if (kDown & HidNpadButton_B) {
-                editDialogActive = false;
+                itemEditDialogActive = false;
                 return;
             }
 
@@ -496,9 +542,9 @@ namespace UI {
                     if (kDown & HidNpadButton_A) {
                         if (!pouch.empty() && selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(pouch.size())) {
                             // Open edit dialog for selected item
-                            editDialogActive = true;
-                            editDialogValue = pouch[selectedItemIndex].count;
-                            editDialogOriginalValue = pouch[selectedItemIndex].count;
+                            itemEditDialogActive = true;
+                            itemEditDialogValue = pouch[selectedItemIndex].count;
+                            itemEditDialogOriginalValue = pouch[selectedItemIndex].count;
                         }
                     }
 
@@ -668,6 +714,15 @@ namespace UI {
 
         // Normal mode navigation (not in detail view)
         if (kDown & HidNpadButton_B) {
+            // Check for unsaved changes
+            if (hasUnsavedChanges && !saveConfirmActive) {
+                // Prompt to save changes before going back
+                exitingWithUnsavedChanges = true;
+                exitingViaPlus = false;  // Exiting via B button (go back)
+                saveConfirmActive = true;
+                return;
+            }
+            // No unsaved changes or already handled, go back immediately
             goBack = true;
         }
 
@@ -793,27 +848,68 @@ namespace UI {
         // Draw instructions
         std::string instructions;
         if (statEditDialogActive) {
-            instructions = "L/R: Switch IV/EV  |  Arrows: +/- Value  |  ZL/ZR: +/-100 (EV)  |  A: Confirm  |  B: Cancel";
-        } else if (editDialogActive) {
-            instructions = "L/R: +/-1  |  Up/Down: +/-10  |  ZL/ZR: +/-100  |  A: Confirm  |  B: Cancel";
+            if (statEditMode == Dialogs::StatEditMode::EV) {
+                instructions = "L/R: Select Field  |  Arrows: +/- Value  |  ZL/ZR: +/-100  |  A: Confirm  |  B: Cancel";
+            } else {
+                instructions = "L/R: Select Field  |  Arrows: +/- Value  |  A: Confirm  |  B: Cancel";
+            }
+        } else if (itemEditDialogActive) {
+            instructions = "Left/Right: +/-1  |  Up/Down: +/-10  |  ZL/ZR: +/-100  |  A: Confirm  |  B: Cancel";
         } else if (saveConfirmActive) {
             instructions = "A: Save Changes  |  B: Cancel";
         } else if (detailViewActive) {
             if (selectedMode == ViewMode::Items) {
-                instructions = "Arrows: Select Item  |  A: Edit Amount  |  Left/Right: Column/Page  |  L/R: Category  |  B: Exit Detail  |  X: Save  |  +: Exit App";
+                instructions = "Arrows: Select Item  |  A: Edit Amount  |  Left/Right: Column/Page  |  L/R: Category  |  B: Back  |  X: Save  |  +: Exit App";
             } else if (selectedMode == ViewMode::Boxes) {
-                instructions = "Arrows: Navigate Grid  |  L/R: Change Box  |  A: View Details  |  B: Exit Detail  |  X: Save  |  +: Exit App";
-            } else {
-                instructions = "B: Exit Detail  |  X: Save  |  +: Exit App";
+                if (pokemonDetailsActive) {
+                    if (pokemonDetailsCategory == 0) { // Main
+                        instructions = pokemonDetailsEditing
+                            ? pokemonDetailsSelectedField == 3
+                                ? "Up/Down: Select Field | A: Edit Field |  B: Back  |  X: Save  |  +: Exit App"
+                                : "Up/Down: Select Field | B: Back  |  X: Save  |  +: Exit App"
+                            : "Up/Down: Select Category | A: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                    else if (pokemonDetailsCategory == 2) { // Stats
+                        instructions = pokemonDetailsEditing
+                            ? "Up/Down: Select Field  |  A: Edit Field |  B: Back  |  X: Save  |  +: Exit App"
+                            : "Up/Down: Select Category  |  A: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                    else {
+                        instructions = "Up/Down: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                }
+                else {
+                    instructions = "Arrows: Navigate Grid  |  L/R: Change Box  |  A: View Details  |  B: Back  |  X: Save  |  +: Exit App";
+                }
+            } else if(selectedMode == ViewMode::Party) { // TODO: There HAS to be a better way of doing this without all of the if/else conditionals... probably will look into this at some point.
+                if (pokemonDetailsActive) {
+                    if (pokemonDetailsCategory == 0) { // Main
+                        instructions = pokemonDetailsEditing
+                            ? pokemonDetailsSelectedField == 3
+                                ? "Up/Down: Select Field | A: Edit Field |  B: Back  |  X: Save  |  +: Exit App"
+                                : "Up/Down: Select Field | B: Back  |  X: Save  |  +: Exit App"
+                            : "Up/Down: Select Category | A: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                    else if (pokemonDetailsCategory == 2) { // Stats
+                        instructions = pokemonDetailsEditing
+                            ? "Up/Down: Select Field  |  A: Edit Field |  B: Back  |  X: Save  |  +: Exit App"
+                            : "Up/Down: Select Category  |  A: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                    else {
+                        instructions = "Up/Down: Select Category  |  B: Close  |  X: Save  |  +: Exit App";
+                    }
+                }
+                else {
+                    instructions = "Arrows: Navigate Grid  |  A: View Details  |  B: Back  |  X: Save  |  +: Exit App";
+                }
             }
         } else {
-            instructions = "Up/Down: Select Mode  |  ";
             if (selectedMode == ViewMode::Items) {
-                instructions += "L/R: Category  |  A: Enter Detail  |  ";
+                instructions = "Up/Down: Select Mode  |  L/R: Category  |  A: Enter Detail  |  B: Go Back  |  X: Save  |  +: Exit App";
             } else if (selectedMode == ViewMode::Boxes) {
-                instructions += "L/R: Change Box  |  A: Enter Detail  |  ";
+                instructions = "Up/Down: Select Mode  |  L/R: Change Box  |  A: Enter Detail  |  B: Go Back  |  X: Save  |  +: Exit App";
             }
-            instructions += "B: Go Back  |  X: Save  |  +: Exit App";
+            instructions = "Up/Down: Select Mode  |  A: Enter Detail  |  B: Go Back  |  X: Save  |  +: Exit App";
         }
         fb.drawText(50, 680, instructions, Colors::TextDim);
 
@@ -821,8 +917,8 @@ namespace UI {
         if (pokemonDetailsActive) {
             Modals::drawPokemonDetailsModal(*this, fb);
         }
-        if (editDialogActive) {
-            Dialogs::drawEditDialog(*this, fb);
+        if (itemEditDialogActive) {
+            Dialogs::drawItemEditDialog(*this, fb);
         }
         if (statEditDialogActive) {
             Dialogs::drawStatEditDialog(*this, fb);

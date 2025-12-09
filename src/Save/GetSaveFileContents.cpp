@@ -67,7 +67,7 @@ namespace Save {
         }
     }
 
-    bool saveTrainerInfo(Trainer::Trainer& trainer, const char* backupDir, u64 titleId) {
+    bool saveTrainerInfo(Trainer::Trainer& trainer, const char* backupDir, u64 titleId, AccountUid userUid) {
         /**
          * Auto-detects the game version and calls the appropriate saving function.
          * Uses virtual getGameGroup() method to determine concrete type without RTTI.
@@ -86,13 +86,13 @@ namespace Save {
 
         if (trainerGroup == GameVersion::GG) {
             // Let's Go - cast is safe because we checked the type via virtual method
-            return saveTrainerInfoLetsGo(static_cast<Trainer::Trainer7LGPE&>(trainer), backupDir, titleId);
+            return saveTrainerInfoLetsGo(static_cast<Trainer::Trainer7LGPE&>(trainer), backupDir, titleId, userUid);
         } else if (trainerGroup == GameVersion::SWSH) {
             // Sword/Shield - cast is safe because we checked the type via virtual method
-            return saveTrainerInfoSwSh(static_cast<Trainer::Trainer8SWSH&>(trainer), backupDir, titleId);
+            return saveTrainerInfoSwSh(static_cast<Trainer::Trainer8SWSH&>(trainer), backupDir, titleId, userUid);
         } else if (trainerGroup == GameVersion::ZA) {
             // Legends: Z-A - cast is safe because we checked the type via virtual method
-            return saveTrainerInfoLZA(static_cast<Trainer9LZA&>(trainer), backupDir, titleId);
+            return saveTrainerInfoLZA(static_cast<Trainer9LZA&>(trainer), backupDir, titleId, userUid);
         } else {
             logErrorToFile("Unsupported trainer type");
             return false;
@@ -145,7 +145,7 @@ namespace Save {
         return Trainer7LGPE(std::vector<Block>());
     }
 
-    bool saveTrainerInfoLetsGo(Trainer7LGPE& trainer, const char* backupDir, u64 titleId) {
+    bool saveTrainerInfoLetsGo(Trainer7LGPE& trainer, const char* backupDir, u64 titleId, AccountUid userUid) {
         /**
          * Saves Pokemon Let's Go Pikachu/Eevee save file.
          *
@@ -188,7 +188,7 @@ namespace Save {
         return trainer;
     }
 
-    bool saveTrainerInfoSwSh(Trainer8SWSH& trainer, const char* backupDir, u64 titleId) {
+    bool saveTrainerInfoSwSh(Trainer8SWSH& trainer, const char* backupDir, u64 titleId, AccountUid userUid) {
         // Create ModifiedSave directory
         char modifiedSaveDir[512];
         snprintf(modifiedSaveDir, sizeof(modifiedSaveDir), "%s/ModifiedSave", backupDir);
@@ -237,7 +237,7 @@ namespace Save {
             // Restore the modified save back to the game's save device
             logInfoToFile("Restoring modified save to game save device...");
             std::vector<std::string> saveFiles = {"main", "backup", "poke_trade"};
-            if (!restoreModifiedSave(titleId, modifiedSaveDir, backupDir, saveFiles)) {
+            if (!restoreModifiedSave(userUid, titleId, modifiedSaveDir, backupDir, saveFiles)) {
                 logErrorToFile("Failed to restore modified save to game");
                 return false;
             }
@@ -278,7 +278,7 @@ namespace Save {
         return trainer;
     }
 
-    bool saveTrainerInfoLZA(Trainer9LZA& trainer, const char* backupDir, u64 titleId) {
+    bool saveTrainerInfoLZA(Trainer9LZA& trainer, const char* backupDir, u64 titleId, AccountUid userUid) {
         // Create ModifiedSave directory
         char modifiedSaveDir[512];
         snprintf(modifiedSaveDir, sizeof(modifiedSaveDir), "%s/ModifiedSave", backupDir);
@@ -327,7 +327,7 @@ namespace Save {
             // Restore the modified save back to the game's save device
             logInfoToFile("Restoring modified save to game save device...");
             std::vector<std::string> saveFiles = {"main"};
-            if (!restoreModifiedSave(titleId, modifiedSaveDir, backupDir, saveFiles)) {
+            if (!restoreModifiedSave(userUid, titleId, modifiedSaveDir, backupDir, saveFiles)) {
                 logErrorToFile("Failed to restore modified save to game");
                 return false;
             }

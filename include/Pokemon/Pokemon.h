@@ -101,6 +101,24 @@ namespace Pokemon {
         virtual std::u16string nickname() const = 0;
 
         /**
+         * Gets the form ID.
+         * @return Form ID (0 = no form)
+         */
+        virtual uint8_t formID() const noexcept = 0;
+
+        /**
+         * Gets the Pokemon's form/variation.
+         * @return Form ID (0 = base form)
+         */
+        virtual uint8_t form() const noexcept = 0;
+
+        /**
+         * Gets the Pokemon's form name as a string.
+         * @return Form name (e.g., "Alolan", "Galarian")
+         */
+        // virtual const char* form() const noexcept = 0;
+
+        /**
          * Gets the held item ID.
          * @return Item ID (0 = no item)
          */
