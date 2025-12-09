@@ -34,8 +34,8 @@ namespace UI {
     constexpr int CONTENT_PANEL_Y = LEFT_PANEL_Y;
     constexpr int CONTENT_PANEL_HEIGHT = 575;
 
-    TrainerViewScreen::TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId)
-        : trainer(trainer), titleName(titleName), backupDir(backupDir), titleId(titleId), scrollOffset(0), goBack(false), exitRequested(false),
+    TrainerViewScreen::TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId, AccountUid userUid)
+        : trainer(trainer), titleName(titleName), backupDir(backupDir), titleId(titleId), userUid(userUid), scrollOffset(0), goBack(false), exitRequested(false),
         selectedMode(ViewMode::Party), currentPage(0), totalPages(1), selectedCategory(0), selectedBoxIndex(0), selectedPartyIndex(0),
         detailViewActive(false), selectedItemIndex(0), itemEditDialogActive(false), itemEditDialogValue(0),
         itemEditDialogOriginalValue(0), saveConfirmActive(false), hasUnsavedChanges(false),
@@ -68,7 +68,7 @@ namespace UI {
         if (saveConfirmActive) {
             if (kDown & HidNpadButton_A) {
                 // User confirmed save - auto-detects game version and uses appropriate save function
-                bool saveSuccess = Save::saveTrainerInfo(trainer, backupDir.c_str(), titleId);
+                bool saveSuccess = Save::saveTrainerInfo(trainer, backupDir.c_str(), titleId, userUid);
                 saveConfirmActive = false;
 
                 if (saveSuccess) {

@@ -49,9 +49,10 @@ namespace Save {
      * @param trainer The trainer data to save (base Trainer reference)
      * @param backupDir The backup directory to save to
      * @param titleId The game's title ID (used to detect game version)
+     * @param userUid The user account ID for save data access
      * @return true if save was successful, false otherwise
      */
-    bool saveTrainerInfo(Trainer::Trainer& trainer, const char* backupDir, u64 titleId);
+    bool saveTrainerInfo(Trainer::Trainer& trainer, const char* backupDir, u64 titleId, AccountUid userUid);
 
     // ========================================
     // Game-Specific Functions
@@ -76,9 +77,10 @@ namespace Save {
      * @param trainer The trainer data to save (Trainer7)
      * @param backupDir The backup directory to save to
      * @param titleId The game's title ID
+     * @param userUid The user account ID for save data access
      * @return true if save was successful, false otherwise
      */
-    bool saveTrainerInfoLetsGo(Trainer7LGPE& trainer, const char* backupDir, u64 titleId);
+    bool saveTrainerInfoLetsGo(Trainer7LGPE& trainer, const char* backupDir, u64 titleId, AccountUid userUid);
 
     /**
      * Reads trainer info from a Pokemon Sword/Shield save file.
@@ -99,9 +101,10 @@ namespace Save {
      * @param trainer The trainer data to save (Trainer8)
      * @param backupDir The backup directory to save to
      * @param titleId The game's title ID
+     * @param userUid The user account ID for save data access
      * @return true if save was successful, false otherwise
      */
-    bool saveTrainerInfoSwSh(Trainer8SWSH& trainer, const char* backupDir, u64 titleId);
+    bool saveTrainerInfoSwSh(Trainer8SWSH& trainer, const char* backupDir, u64 titleId, AccountUid userUid);
 
     /**
      * Reads trainer info from a Pokemon Sword/Shield save file.
@@ -122,9 +125,10 @@ namespace Save {
      * @param trainer The trainer data to save (Trainer8)
      * @param backupDir The backup directory to save to
      * @param titleId The game's title ID
+     * @param userUid The user account ID for save data access
      * @return true if save was successful, false otherwise
      */
-    bool saveTrainerInfoLZA(Trainer9LZA& trainer, const char* backupDir, u64 titleId);
+    bool saveTrainerInfoLZA(Trainer9LZA& trainer, const char* backupDir, u64 titleId, AccountUid userUid);
 }
 
 #endif

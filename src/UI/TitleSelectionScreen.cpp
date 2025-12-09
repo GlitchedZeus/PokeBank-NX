@@ -37,18 +37,26 @@ namespace UI {
             // Filter to show only Pokemon titles using isPokemonTitle function
             GameVersion gameVersion = getGameVersion(titleId);
             if (gameVersion != GameVersion::Invalid) {
-                TitleInfo info;
-                info.titleId = titleId;
-                // Apply sanitization and formatting to handle special characters
-                info.name = "Pokemon " + getGameVersionName(gameVersion);
-                titles.push_back(info);
+                // Check if the selected user has save data for this title
+                Result mountResult = fsdevMountSaveData("save_check", titleId, userUid);
+                if (R_SUCCEEDED(mountResult)) {
+                    // User has save data for this title
+                    fsdevUnmountDevice("save_check");
+
+                    TitleInfo info;
+                    info.titleId = titleId;
+                    // Apply sanitization and formatting to handle special characters
+                    info.name = "Pokemon " + getGameVersionName(gameVersion);
+                    titles.push_back(info);
+                }
+                // If mount failed, user doesn't have save data - skip this title
             }
         }
 
         if (titles.empty()) {
             TitleInfo info;
             info.titleId = 0;
-            info.name = "No Pokemon titles found";
+            info.name = "No Pokemon saves found for this user";
             titles.push_back(info);
         }
     }

@@ -35,8 +35,8 @@ namespace UI {
 
         void handleUserSelection();
         void handleTitleSelection(AccountUid userUid);
-        void handleBackupSelection(u64 titleId, const std::string& titleName);
-        void handleTrainerView(u64 titleId, const std::string& titleName, const std::string& backupDir);
+        void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName);
+        void handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName, const std::string& backupDir);
     };
 }
 

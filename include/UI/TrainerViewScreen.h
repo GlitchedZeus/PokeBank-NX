@@ -31,7 +31,7 @@ namespace UI {
             Items
         };
 
-        TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId);
+        TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId, AccountUid userUid);
         void update(const PadState& pad) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return goBack; }
@@ -42,6 +42,7 @@ namespace UI {
         std::string titleName;
         std::string backupDir;
         u64 titleId;
+        AccountUid userUid;
         int scrollOffset;
         bool goBack;
         bool exitRequested;  // True when user presses + to close app

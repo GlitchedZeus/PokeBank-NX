@@ -8,8 +8,10 @@
 namespace Utils {
     void logInfoToFile(const char *message);
     void logErrorToFile(const char *message);
+    void logErrorToFile(std::string message);
     void logInfoToFile(const char *message, const char *context);
     void logErrorToFile(const char *message, const char *context);
+    void cleanupOldLogs();
 }
 
 #endif
