@@ -138,5 +138,5 @@ The output will generate an .nro file in the build directory, which you can depl
 
 ## **License**
 
-This project is licensed under the [GNU Affero General Public License v3.0](LICENSE) or later. See `LICENSE` for details.
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE). See `LICENSE` for details.
 
