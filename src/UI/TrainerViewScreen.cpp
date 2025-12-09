@@ -851,13 +851,12 @@ namespace UI {
                 }
             }
         } else {
-            instructions = "Up/Down: Select Mode  |  ";
             if (selectedMode == ViewMode::Items) {
-                instructions += "L/R: Category  |  A: Enter Detail  |  ";
+                instructions = "Up/Down: Select Mode  |  L/R: Category  |  A: Enter Detail  |  B: Go Back  |  X: Save  |  +: Exit App";
             } else if (selectedMode == ViewMode::Boxes) {
-                instructions += "L/R: Change Box  |  A: Enter Detail  |  ";
+                instructions = "Up/Down: Select Mode  |  L/R: Change Box  |  A: Enter Detail  |  B: Go Back  |  X: Save  |  +: Exit App";
             }
-            instructions += "B: Go Back  |  X: Save  |  +: Exit App";
+            instructions = "Up/Down: Select Mode  |  A: Enter Detail  |  B: Go Back  |  X: Save  |  +: Exit App";
         }
         fb.drawText(50, 680, instructions, Colors::TextDim);
 
