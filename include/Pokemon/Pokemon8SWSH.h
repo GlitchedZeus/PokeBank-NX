@@ -168,7 +168,7 @@ namespace Pokemon {
          * the original nature. This value determines which nature affects stats.
          * @return Stat Nature ID (0-24)
          */
-        uint8_t statNature() const noexcept
+        uint8_t statNature() const noexcept override
         {
             return static_cast<uint8_t>(data[0x21]);
         }

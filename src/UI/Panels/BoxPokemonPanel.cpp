@@ -74,11 +74,12 @@ namespace Panels {
                         continue;
                     }
 
-                    // Load and draw Pokemon sprite icon (left side of cell, smaller)
-                    bool isShiny = pokemon->isShiny(screen.trainer.ID32, speciesName);
+                    // Load and draw Pokemon sprite icon
+                    // bool isShiny = pokemon->isShiny(screen.trainer.ID32, speciesName);
+                    bool isShiny = pokemon->isShiny(pokemon->id32(), speciesName);
                     Sprite* sprite = SpriteManager::getIconSprite(pokemon->speciesID(), isShiny);
 
-                    const int SPRITE_SIZE = 50;  // Scaled down sprite size (was 96x96, now 50x50)
+                    const int SPRITE_SIZE = 50;  // Scaled down sprite size to 50x50
                     int spriteWidth = 0;
                     if (sprite && sprite->data) {
                         // Position sprite on left side of cell, centered vertically
@@ -107,7 +108,7 @@ namespace Panels {
                     }
 
                     // Add shiny star in red after gender
-                    if (pokemon->isShiny(screen.trainer.ID32, speciesName)) {
+                    if (pokemon->isShiny(pokemon->id32(), speciesName)) {
                         fb.drawText(textX, slotY + 10, " ★", Colors::Red);
                     }
 
@@ -117,11 +118,6 @@ namespace Panels {
                         snprintf(levelText, sizeof(levelText), "Lv.%d", pokemon->level());
                         fb.drawText(slotX + 5 + spriteWidth, slotY + 30, levelText, Colors::TextDim);
                     }
-
-                    // // Show cursor if this slot is selected in detail view
-                    // if (screen.detailViewActive && slotIndex == screen.selectedItemIndex) {
-                    //     fb.drawText(slotX + 5, slotY + 60, "> Selected", Colors::Yellow);
-                    // }
                 } else {
                     // Empty slot
                     fb.drawText(slotX + 5, slotY + 35, "Empty", Colors::TextDim);

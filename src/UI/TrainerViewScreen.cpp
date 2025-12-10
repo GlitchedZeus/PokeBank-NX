@@ -240,7 +240,8 @@ namespace UI {
 
                         // Regenerate PID to maintain legality after IV/EV changes
                         if (statsModified) {
-                            pokemon->regeneratePID(trainer.ID32);
+                            // pokemon->regeneratePID(trainer.ID32);
+                            pokemon->regeneratePID(pokemon->id32());
                         }
 
                         statEditDialogActive = false;
@@ -328,8 +329,10 @@ namespace UI {
                         if (pokemonDetailsSelectedField == 3) {
                             // Toggle shiny status
                             logInfoToFile("Shiny field selected, toggling...");
-                            bool currentShiny = pokemon->isShiny(trainer.ID32, pokemon->species());
-                            pokemon->setShiny(!currentShiny, trainer.ID32);
+                            // bool currentShiny = pokemon->isShiny(trainer.ID32, pokemon->species());
+                            // pokemon->setShiny(!currentShiny, trainer.ID32);
+                            bool currentShiny = pokemon->isShiny(pokemon->id32(), pokemon->species());
+                            pokemon->setShiny(!currentShiny, pokemon->id32());
                             hasUnsavedChanges = true;
                         }
                         // Future: Handle other fields (PID, Species, Gender, Nickname, EXP, Level, Nature, Held Item, Ability)
