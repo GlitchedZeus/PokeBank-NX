@@ -139,7 +139,8 @@ namespace Modals {
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 3) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
-            snprintf(buffer, sizeof(buffer), "Shiny: %s", pokemon->isShiny(screen.trainer.ID32, pokemon->species()) ? "Yes" : "No");
+            // snprintf(buffer, sizeof(buffer), "Shiny: %s", pokemon->isShiny(screen.trainer.ID32, pokemon->species()) ? "Yes" : "No");
+            snprintf(buffer, sizeof(buffer), "Shiny: %s", pokemon->isShiny(pokemon->id32(), pokemon->species()) ? "Yes" : "No");
             Color shinyColor = screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 3 ? Colors::Yellow : Colors::Text;
             fb.drawText(contentX, lineY, buffer, shinyColor);
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 3) {

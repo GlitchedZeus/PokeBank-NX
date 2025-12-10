@@ -47,7 +47,8 @@ namespace Panels {
             }
 
             // Load and draw Pokemon sprite to the right of stats
-            bool isShiny = pokemon->isShiny(trainerID32, pokemon->species());
+            // bool isShiny = pokemon->isShiny(trainerID32, pokemon->species());
+            bool isShiny = pokemon->isShiny(pokemon->id32(), pokemon->species());
             Sprite* sprite = SpriteManager::getSprite(pokemon->speciesID(), isShiny);
 
             if (sprite && sprite->data) {
@@ -74,7 +75,8 @@ namespace Panels {
             }
 
             // Draw shiny star in red after gender
-            if (pokemon->isShiny(trainerID32, pokemon->species())) {
+            // if (pokemon->isShiny(trainerID32, pokemon->species())) {
+            if (pokemon->isShiny(pokemon->id32(), pokemon->species())) {
                 fb.drawText(textX, colY, " ★", Colors::Red);
                 textX += 16;
             }
