@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <ProjectGuid>{A7C8F6E2-9D3B-4B5E-8F1A-2C4D6E9F0A1B}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+    <ProjectName>PKSE</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <NMakeBuildCommandLine>make</NMakeBuildCommandLine>
+    <NMakeOutput>PKSE.nro</NMakeOutput>
+    <NMakeCleanCommandLine>make clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>make clean &amp;&amp; make</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>__SWITCH__;SWITCH;__aarch64__;ARM_ARCH_8;DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(ProjectDir)include;$(DEVKITPRO)\libnx\include;$(DEVKITPRO)\portlibs\switch\include;$(ProjectDir)build;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath>$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies>$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+    <AdditionalOptions>/std:c++20</AdditionalOptions>
+    <IncludePath>$(ProjectDir)include;$(DEVKITPRO)\libnx\include;$(DEVKITPRO)\portlibs\switch\include;$(ProjectDir)build</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <NMakeBuildCommandLine>make</NMakeBuildCommandLine>
+    <NMakeOutput>PKSE.nro</NMakeOutput>
+    <NMakeCleanCommandLine>make clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>make clean &amp;&amp; make</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>__SWITCH__;SWITCH;__aarch64__;ARM_ARCH_8;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(ProjectDir)include;$(DEVKITPRO)\libnx\include;$(DEVKITPRO)\portlibs\switch\include;$(ProjectDir)build;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath>$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies>$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+    <AdditionalOptions>/std:c++20</AdditionalOptions>
+    <IncludePath>$(ProjectDir)include;$(DEVKITPRO)\libnx\include;$(DEVKITPRO)\portlibs\switch\include;$(ProjectDir)build</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\Encryption\Encryption.cpp" />
+    <ClCompile Include="src\Encryption\Encryption7LGPE.cpp" />
+    <ClCompile Include="src\Encryption\Encryption8SWSH.cpp" />
+    <ClCompile Include="src\Encryption\Encryption9LZA.cpp" />
+    <ClCompile Include="src\Enums\SCTypeCode.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Names\AbilityNames.cpp" />
+    <ClCompile Include="src\Names\FormNames.cpp" />
+    <ClCompile Include="src\Names\ItemNames.cpp" />
+    <ClCompile Include="src\Names\NatureNames.cpp" />
+    <ClCompile Include="src\Names\SpeciesNames.cpp" />
+    <ClCompile Include="src\Pokemon\BaseStatsGen7.cpp" />
+    <ClCompile Include="src\Pokemon\BaseStatsGen89.cpp" />
+    <ClCompile Include="src\Pokemon\Pokemon7LGPE.cpp" />
+    <ClCompile Include="src\Pokemon\Pokemon8SWSH.cpp" />
+    <ClCompile Include="src\Pokemon\Pokemon9LZA.cpp" />
+    <ClCompile Include="src\Save\Block.cpp" />
+    <ClCompile Include="src\Save\GetSaveFileContents.cpp" />
+    <ClCompile Include="src\Trainer\Trainer.cpp" />
+    <ClCompile Include="src\Trainer\Trainer7LGPE.cpp" />
+    <ClCompile Include="src\Trainer\Trainer8SWSH.cpp" />
+    <ClCompile Include="src\Trainer\Trainer9LZA.cpp" />
+    <ClCompile Include="src\UI\BackupSelectionScreen.cpp" />
+    <ClCompile Include="src\UI\Dialogs\ItemEditDialog.cpp" />
+    <ClCompile Include="src\UI\Dialogs\SaveConfirmDialog.cpp" />
+    <ClCompile Include="src\UI\Dialogs\StatEditDialog.cpp" />
+    <ClCompile Include="src\UI\Modals\PokemonDetailsModal.cpp" />
+    <ClCompile Include="src\UI\Panels\BoxPokemonPanel.cpp" />
+    <ClCompile Include="src\UI\Panels\ItemsPanel.cpp" />
+    <ClCompile Include="src\UI\Panels\ModeSelectorPanel.cpp" />
+    <ClCompile Include="src\UI\Panels\PartyPokemonPanel.cpp" />
+    <ClCompile Include="src\UI\Panels\TrainerInfoPanel.cpp" />
+    <ClCompile Include="src\UI\PKSEFramebuffer.cpp" />
+    <ClCompile Include="src\UI\SpriteManager.cpp" />
+    <ClCompile Include="src\UI\TitleSelectionScreen.cpp" />
+    <ClCompile Include="src\UI\TrainerViewScreen.cpp" />
+    <ClCompile Include="src\UI\UI.cpp" />
+    <ClCompile Include="src\UI\UserSelectionScreen.cpp" />
+    <ClCompile Include="src\Utils\FileUtilities.cpp" />
+    <ClCompile Include="src\Utils\Logger.cpp" />
+    <ClCompile Include="src\Utils\SHA256.cpp" />
+    <ClCompile Include="src\Utils\StringHelpers.cpp" />
+    <ClCompile Include="src\Utils\Utilities.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\Encryption\Encryption.h" />
+    <ClInclude Include="include\Encryption\Encryption7LGPE.h" />
+    <ClInclude Include="include\Encryption\Encryption8SWSH.h" />
+    <ClInclude Include="include\Encryption\Encryption9LZA.h" />
+    <ClInclude Include="include\Enums\Ability.h" />
+    <ClInclude Include="include\Enums\Ball.h" />
+    <ClInclude Include="include\Enums\GameVersion.h" />
+    <ClInclude Include="include\Enums\Gender.h" />
+    <ClInclude Include="include\Enums\LanguageID.h" />
+    <ClInclude Include="include\Enums\Move.h" />
+    <ClInclude Include="include\Enums\MoveType.h" />
+    <ClInclude Include="include\Enums\Nature.h" />
+    <ClInclude Include="include\Enums\SCTypeCode.h" />
+    <ClInclude Include="include\Enums\Species.h" />
+    <ClInclude Include="include\Globals.h" />
+    <ClInclude Include="include\Libs\stb_image.h" />
+    <ClInclude Include="include\Names\FormNames.h" />
+    <ClInclude Include="include\Pokemon\BaseStatsGen7.h" />
+    <ClInclude Include="include\Pokemon\BaseStatsGen89.h" />
+    <ClInclude Include="include\Pokemon\Pokemon.h" />
+    <ClInclude Include="include\Pokemon\Pokemon7LGPE.h" />
+    <ClInclude Include="include\Pokemon\Pokemon8SWSH.h" />
+    <ClInclude Include="include\Pokemon\Pokemon9LZA.h" />
+    <ClInclude Include="include\Save\Block.h" />
+    <ClInclude Include="include\Save\GetSaveFileContents.h" />
+    <ClInclude Include="include\Trainer\Inventory.h" />
+    <ClInclude Include="include\Trainer\Inventory8SWSH.h" />
+    <ClInclude Include="include\Trainer\Inventory9LZA.h" />
+    <ClInclude Include="include\Trainer\Trainer.h" />
+    <ClInclude Include="include\Trainer\Trainer7LGPE.h" />
+    <ClInclude Include="include\Trainer\Trainer8SWSH.h" />
+    <ClInclude Include="include\Trainer\Trainer9LZA.h" />
+    <ClInclude Include="include\UI\BackupSelectionScreen.h" />
+    <ClInclude Include="include\UI\Common.h" />
+    <ClInclude Include="include\UI\Dialogs\ItemEditDialog.h" />
+    <ClInclude Include="include\UI\Dialogs\SaveConfirmDialog.h" />
+    <ClInclude Include="include\UI\Dialogs\StatEditDialog.h" />
+    <ClInclude Include="include\UI\Modals\PokemonDetailsModal.h" />
+    <ClInclude Include="include\UI\Panels\BoxPokemonPanel.h" />
+    <ClInclude Include="include\UI\Panels\ItemsPanel.h" />
+    <ClInclude Include="include\UI\Panels\ModeSelectorPanel.h" />
+    <ClInclude Include="include\UI\Panels\PartyPokemonPanel.h" />
+    <ClInclude Include="include\UI\Panels\TrainerInfoPanel.h" />
+    <ClInclude Include="include\UI\PKSEFramebuffer.h" />
+    <ClInclude Include="include\UI\SpriteManager.h" />
+    <ClInclude Include="include\UI\TitleSelectionScreen.h" />
+    <ClInclude Include="include\UI\TrainerViewScreen.h" />
+    <ClInclude Include="include\UI\UI.h" />
+    <ClInclude Include="include\UI\UIScreen.h" />
+    <ClInclude Include="include\UI\UserSelectionScreen.h" />
+    <ClInclude Include="include\Utils\FileUtilities.h" />
+    <ClInclude Include="include\Utils\HelperUtilities.h" />
+    <ClInclude Include="include\Utils\Logger.h" />
+    <ClInclude Include="include\Utils\SCXorShift32.h" />
+    <ClInclude Include="include\Utils\SHA256.h" />
+    <ClInclude Include="include\Utils\StringHelpers.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Makefile" />
+    <None Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="C# type conversions.txt" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
