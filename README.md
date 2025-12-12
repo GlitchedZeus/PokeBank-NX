@@ -7,13 +7,10 @@ PKSE is a homebrew application for conveniently editing Pokemon save files on th
 
 ## **Screenshots**
 
-<img src="https://i.imgur.com/x1iPnyt.jpeg" width="400">
-<img src="https://i.imgur.com/VESVs40.jpeg" width="400">
-<img src="https://i.imgur.com/bFbpTep.jpeg" width="400">
-<img src="https://i.imgur.com/teVmLmX.jpeg" width="400">
-<img src="https://i.imgur.com/jbNqmqm.jpeg" width="400">
-<img src="https://i.imgur.com/YHl5evr.jpeg" width="400">
-<img src="https://i.imgur.com/xnK8G5S.jpeg" width="400">
+<img src="https://i.imgur.com/x1iPnyt.jpeg" width="300"><img src="https://i.imgur.com/VESVs40.jpeg" width="300">  
+<img src="https://i.imgur.com/bFbpTep.jpeg" width="300"><img src="https://i.imgur.com/teVmLmX.jpeg" width="300">  
+<img src="https://i.imgur.com/jbNqmqm.jpeg" width="300"><img src="https://i.imgur.com/YHl5evr.jpeg" width="300">  
+<img src="https://i.imgur.com/xnK8G5S.jpeg" width="300">
 
 ## **Title Compatibility**
 ### Generation 7
