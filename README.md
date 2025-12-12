@@ -1,5 +1,5 @@
 # **PKSE - Pokemon Save Editor**
-PKSE is a homebrew application for conveniently editing Pokemon save files on the Nintendo Switch itself, without having to transfer save files to your PC.
+PKSE is a homebrew application for conveniently editing Pokemon save files on the Nintendo Switch, without having to transfer save files to your PC.
 
 ## **Features**
 - Backup and restore save files integrated feature.
