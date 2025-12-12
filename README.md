@@ -58,22 +58,15 @@ Restart your terminal or run the command to apply the changes.
 
 ---
 
-### 3. Run "download_sprites.ps1" powershell script.
-
-See SPRITES_INSTRUCTIONS.md for more details.
-You'll need to run the download_sprites.ps1 script to download all of the necessary sprites. If you're on linux, you'll likely need an alternative method or manually download the sprites from https://github.com/PokeAPI/sprites/tree/master/sprites/pokemon
-
----
-
-### 4. Configure Visual Studio Code
+### 3. Configure Visual Studio Code
 
 To configure IntelliSense in VS Code:
 
-#### **4.1. Install Extensions**
+#### **3.1. Install Extensions**
 - C/C++ by Microsoft
 - DevkitPro Tools (if available)
 
-#### **4.2. Create a c_cpp_properties.json File**
+#### **3.2. Create a c_cpp_properties.json File**
 Create or update the file in .vscode/c_cpp_properties.json with the following content:
 ```json
 {
@@ -100,15 +93,21 @@ Create or update the file in .vscode/c_cpp_properties.json with the following co
 
 ---
 
-## **5. Build the Project**
+## **4. Build the Project**
 
 To build the project, open MSys2 (should have been included with the devkitpro toolset), navigate to the root directory and run:
 
 ```bash
-make clean && make
+make clean && make all
 ```
 
-The output will generate an .nro file in the build directory, which you can deploy to your Nintendo Switch.
+This will download all of the necessary sprites and generate an .nro file in the build directory, which you can deploy to your Nintendo Switch.
+
+Or if you don't need to download the sprites (either you don't want to or you've already downloaded them) you can just run:
+
+```bash
+make clean && make
+```
 
 ---
 
