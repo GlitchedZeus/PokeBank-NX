@@ -1,16 +1,19 @@
-# **DISCLAIMER**
-### THIS IS IN ACTIVE DEVELOPMENT. I AM NOT RESPONSIBLE IN ANY WAY FOR DAMAGES TO YOUR SWITCH.
-# USE AT YOUR OWN RISK.
-# **THIS IS NOT A PLACE TO DISCUSS PIRACY OR HOW TO HACK/JAILBREAK/MOD A SWITCH**
-
----
-
 # **PKSE - Pokemon Save Editor**
-PKSE is a homebrew application for editing Pokemon save files on the Nintendo Switch.
+PKSE is a homebrew application for conveniently editing Pokemon save files on the Nintendo Switch itself, without having to transfer save files to your PC.
 
 ## **Features**
-- Backup and restore save files.
-- Currently you can only edit party and box Pokemon and item amounts.
+- Backup and restore save files integrated feature.
+- Currently you can edit party and box Pokemon and item amounts.
+
+## **Screenshots**
+
+<img src="https://i.imgur.com/x1iPnyt.jpeg" width="400">
+<img src="https://i.imgur.com/VESVs40.jpeg" width="400">
+<img src="https://i.imgur.com/bFbpTep.jpeg" width="400">
+<img src="https://i.imgur.com/teVmLmX.jpeg" width="400">
+<img src="https://i.imgur.com/jbNqmqm.jpeg" width="400">
+<img src="https://i.imgur.com/YHl5evr.jpeg" width="400">
+<img src="https://i.imgur.com/xnK8G5S.jpeg" width="400">
 
 ## **Title Compatibility**
 ### Generation 7
