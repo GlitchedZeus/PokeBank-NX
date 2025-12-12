@@ -298,7 +298,7 @@ namespace UI {
             } else if (pokemonDetailsCategory == 0) {
                 // Editing main fields
                 // Up/Down to select field
-                int fields = 14; // TODO: We need to make this more dynamic and eventually will want to modify all of the values
+                int fields = 15; // TODO: We need to make this more dynamic and eventually will want to make all fields editable
                 if (kDown & HidNpadButton_Up) {
                     pokemonDetailsSelectedField = (pokemonDetailsSelectedField - 1 + fields) % fields;  // number of fields in Main
                 }

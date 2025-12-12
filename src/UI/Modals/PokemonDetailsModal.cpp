@@ -4,10 +4,13 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/SpriteManager.h"
 #include "Trainer/Trainer.h"
 #include "Utils/HelperUtilities.h"
 #include "Pokemon/Pokemon.h"
+#include "Pokemon/PokemonTypes.h"
 #include "Names/FormNames.h"
+#include "Names/TypeNames.h"
 
 using namespace Trainer;
 using namespace Utils;
@@ -110,17 +113,43 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
-            // // Field 2: Form ID (debugging)
-            // if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 1) {
-            //     fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
-            // }
-            // snprintf(buffer, sizeof(buffer), "Form: %d (formID: %d)", pokemon->form(), pokemon->form());
-            // fb.drawText(contentX, lineY, buffer, Colors::Text);
-            // lineY += lineHeight;
-
-            // Field 2: Gender
-            std::string genderSymbol = pokemon->genderSymbol();
+            // Field 2: Type (non-editable)
             if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 2) {
+                fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
+            }
+            {
+                // Get Pokemon types for this species and form
+                Pokemon::TypePair types = Pokemon::getPokemonTypes(pokemon->speciesID(), pokemon->form());
+                std::string typeText = "Type: ";
+                fb.drawText(contentX, lineY, typeText, Colors::TextDim);
+
+                int typeTextWidth = typeText.length() * 8;
+                Sprite* type1Sprite = SpriteManager::getTypeSprite(types.type1);
+
+                int spriteX = contentX + typeTextWidth + 10;
+                constexpr int TYPE_SPRITE_HEIGHT = 14;
+
+                if (type1Sprite && type1Sprite->data) {
+                    int scaledWidth = (type1Sprite->width * TYPE_SPRITE_HEIGHT) / type1Sprite->height;
+                    fb.drawImageScaled(spriteX, lineY - 2, type1Sprite->width, type1Sprite->height,
+                        scaledWidth, TYPE_SPRITE_HEIGHT, type1Sprite->data, type1Sprite->channels);
+                    spriteX += scaledWidth + 5;
+                }
+
+                if (Pokemon::hasSecondType(types)) {
+                    Sprite* type2Sprite = SpriteManager::getTypeSprite(types.type2);
+                    if (type2Sprite && type2Sprite->data) {
+                        int scaledWidth = (type2Sprite->width * TYPE_SPRITE_HEIGHT) / type2Sprite->height;
+                        fb.drawImageScaled(spriteX, lineY - 2, type2Sprite->width, type2Sprite->height,
+                            scaledWidth, TYPE_SPRITE_HEIGHT, type2Sprite->data, type2Sprite->channels);
+                    }
+                }
+            }
+            lineY += lineHeight;
+
+            // Field 3: Gender
+            std::string genderSymbol = pokemon->genderSymbol();
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 3) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             if (genderSymbol == "") {
@@ -135,21 +164,20 @@ namespace Modals {
             }
             lineY += lineHeight;
 
-            // Field 3: Shiny
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 3) {
+            // Field 4: Shiny
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 4) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
-            // snprintf(buffer, sizeof(buffer), "Shiny: %s", pokemon->isShiny(screen.trainer.ID32, pokemon->species()) ? "Yes" : "No");
             snprintf(buffer, sizeof(buffer), "Shiny: %s", pokemon->isShiny(pokemon->id32(), pokemon->species()) ? "Yes" : "No");
-            Color shinyColor = screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 3 ? Colors::Yellow : Colors::Text;
+            Color shinyColor = screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 4 ? Colors::Yellow : Colors::Text;
             fb.drawText(contentX, lineY, buffer, shinyColor);
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 3) {
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 4) {
                 fb.drawText(contentX + 150, lineY, "(Press A to toggle)", Colors::TextDim);
             }
             lineY += lineHeight;
 
-            // Field 4: Nickname
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 4) {
+            // Field 5: Nickname
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 5) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             std::string nickname = utf16ToUtf8(pokemon->nickname());
@@ -157,72 +185,72 @@ namespace Modals {
             fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
-            // Field 5: EXP
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 5) {
+            // Field 6: EXP
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 6) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "EXP: %u", pokemon->exp());
             fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
-            // Field 6: Level
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 6) {
+            // Field 7: Level
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 7) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "Level: %d", pokemon->level());
             fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
-            // Field 7: Nature
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 7) {
+            // Field 8: Nature
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 8) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "Nature: %s (%d)", getNatureName(pokemon->nature()), pokemon->nature());
             fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
-            // Field 8: Stat Nature
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 8) {
+            // Field 9: Stat Nature
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 9) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "Stat Nature: %s (%d)", getNatureName(pokemon->statNature()), pokemon->statNature());
             fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
-            // Field 9: Held Item
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 9) {
+            // Field 10: Held Item
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 10) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "Held Item: %s (%d)", getItemName(pokemon->heldItem()), pokemon->heldItem());
             fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
-            // Field 10: Ability
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 10) {
+            // Field 11: Ability
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 11) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "Ability: %s (%d)", getAbilityName(pokemon->ability()), pokemon->ability());
             fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
-            // Field 11: Friendship Value (0-255)(Needs confirmation, maybe some titles have different values?)
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 11) {
+            // Field 12: Friendship Value (0-255)
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 12) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "Friendship: %d", pokemon->friendship());
             fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
-            // Field 12: Whether this Pokemon is this an egg
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 12) {
+            // Field 13: Whether this Pokemon is an egg
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 13) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             snprintf(buffer, sizeof(buffer), "Is Egg: %s", pokemon->isEgg() ? "Yes" : "No");
             fb.drawText(contentX, lineY, buffer, Colors::TextDim);
             lineY += lineHeight;
 
-            // Field 13: Whether this Pokemon is infected, cured or has not been/is not infected with Pokerus
-            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 13) {
+            // Field 14: Whether this Pokemon is infected, cured or has not been/is not infected with Pokerus
+            if (screen.pokemonDetailsEditing && screen.pokemonDetailsSelectedField == 14) {
                 fb.drawText(contentX - 15, lineY, ">", Colors::Yellow);
             }
             const char* pkrsStatus = pokemon->isPokerusInfected() ? "Infected" :
