@@ -246,69 +246,81 @@ namespace Pokemon {
          * This is useful when IVs are modified
          * that may flag the Pokemon as invalid if PID doesn't match certain criteria.
          *
-         * The algorithm:
-         * 1. Save current gender and shiny status
-         * 2. Generate a new PID based on Encryption Constant
-         * 3. Adjust PID to restore shininess if needed
-         * 4. Adjust PID to restore gender if needed
+         * The algorithm uses an iterative approach to find a PID that satisfies
+         * BOTH the shiny constraint AND the gender constraint simultaneously,
+         * rather than adjusting them sequentially (which would break shininess).
          */
 
         // Save current properties
         bool wasShiny = isShiny(trainerID32, species());
         uint8_t currentGender = gender();
+        uint32_t currentPID = pid();
+        uint8_t genderByte = currentPID & 0xFF;
 
-        // Generate a base random PID using EC as seed
+        // Generate a base PID using EC as seed
         uint32_t ec = encryptionConstant();
-        uint32_t newPID = ec ^ 0x13371337; // Simple transform of EC
+        uint32_t basePID = ec ^ 0x13371337;
 
-        // Adjust PID for shininess if needed
         if (wasShiny) {
-            // Force shiny: adjust PID so (PID ^ TID32) results in XOR < 16
-            uint32_t desiredXor = (newPID ^ trainerID32);
-            uint32_t xorValue = (desiredXor ^ (desiredXor >> 16)) & 0xFFFF;
+            // Use iterative approach to find PID that is BOTH shiny AND preserves gender
+            uint32_t baseHighWord = basePID >> 16;
+            uint32_t tidHigh = trainerID32 >> 16;
+            uint32_t tidLow = trainerID32 & 0xFFFF;
 
-            if (xorValue >= 16) {
-                // Adjust lower 16 bits to make it shiny
-                uint32_t highXor = (newPID >> 16) ^ (trainerID32 >> 16);
+            // Try different high words (start with base, then try variations)
+            for (int attempt = 0; attempt < 256; attempt++) {
+                uint32_t highWord = (baseHighWord + attempt) & 0xFFFF;
+                uint32_t H = highWord ^ tidHigh;
 
-                // Make XOR result < 16 (square shiny: XOR = 0, star shiny: XOR = 1-15)
-                uint32_t targetXor = 1; // Star shiny
-                uint32_t newLow = (highXor ^ targetXor) ^ (trainerID32 & 0xFFFF);
-                newPID = (newPID & 0xFFFF0000) | (newLow & 0xFFFF);
-            }
-        } else {
-            // Force non-shiny: ensure XOR >= 16
-            uint32_t desiredXor = (newPID ^ trainerID32);
-            uint32_t xorValue = (desiredXor ^ (desiredXor >> 16)) & 0xFFFF;
+                // Try xorResult values 1-15 (star shiny)
+                for (int targetXor = 1; targetXor < 16; targetXor++) {
+                    uint32_t L = H ^ targetXor;
+                    uint32_t lowWord = L ^ tidLow;
 
-            if (xorValue < 16) {
-                // Adjust to make non-shiny
-                newPID ^= 0x10000000; // Flip a high bit to ensure XOR >= 16
-            }
-        }
+                    // Check if this preserves gender byte
+                    if ((lowWord & 0xFF) == genderByte) {
+                        // Found a match! Construct new PID
+                        uint32_t newPID = (highWord << 16) | lowWord;
+                        writeUInt32LittleEndian(reinterpret_cast<uint8_t*>(data.data() + 0x1C), newPID);
+                        refreshChecksum();
+                        return;
+                    }
+                }
 
-        // Adjust for gender if needed (only for gendered species)
-        if (currentGender < 2) {
-            // Preserve gender by adjusting lower byte
-            // Gender is typically determined by (PID & 0xFF) vs gender ratio
-            // For 50/50 ratio: (PID & 0xFF) < 127 = male, >= 127 = female
-            uint8_t pidGenderByte = newPID & 0xFF;
-            bool pidWouldBeMale = pidGenderByte < 127;
-            bool shouldBeMale = (currentGender == 0);
-
-            if (pidWouldBeMale != shouldBeMale) {
-                // Flip the gender by adjusting lower byte
-                if (shouldBeMale) {
-                    newPID = (newPID & 0xFFFFFF00) | ((pidGenderByte - 64) & 0xFF);
-                } else {
-                    newPID = (newPID & 0xFFFFFF00) | ((pidGenderByte + 64) & 0xFF);
+                // Also try targetXor = 0 (square shiny)
+                uint32_t L = H ^ 0;
+                uint32_t lowWord = L ^ tidLow;
+                if ((lowWord & 0xFF) == genderByte) {
+                    uint32_t newPID = (highWord << 16) | lowWord;
+                    writeUInt32LittleEndian(reinterpret_cast<uint8_t*>(data.data() + 0x1C), newPID);
+                    refreshChecksum();
+                    return;
                 }
             }
-        }
 
-        // Write new PID
-        writeUInt32LittleEndian(reinterpret_cast<uint8_t*>(data.data() + 0x1C), newPID);
-        refreshChecksum();
+            // Fallback: preserve shiny status even if gender byte can't be preserved exactly
+            uint32_t highWord = baseHighWord & 0xFFFF;
+            uint32_t H = highWord ^ tidHigh;
+            uint32_t L = H ^ 1; // Star shiny
+            uint32_t lowWord = L ^ tidLow;
+            uint32_t newPID = (highWord << 16) | lowWord;
+            writeUInt32LittleEndian(reinterpret_cast<uint8_t*>(data.data() + 0x1C), newPID);
+            refreshChecksum();
+
+        } else {
+            // Non-shiny: preserve gender byte first, then ensure non-shiny
+            uint32_t newPID = (basePID & 0xFFFFFF00) | genderByte;
+
+            // Check if still shiny, if so adjust high bits (not low byte)
+            uint32_t xorValue = ((newPID >> 16) ^ (newPID & 0xFFFF) ^ (trainerID32 >> 16) ^ (trainerID32 & 0xFFFF)) & 0xFFFF;
+            if (xorValue < 16) {
+                // Flip bit 8 of low word to break shiny while preserving gender byte
+                newPID ^= 0x100;
+            }
+
+            writeUInt32LittleEndian(reinterpret_cast<uint8_t*>(data.data() + 0x1C), newPID);
+            refreshChecksum();
+        }
     }
 
     // ========================================

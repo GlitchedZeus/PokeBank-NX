@@ -99,7 +99,6 @@ namespace UI {
                     }
                     // If not exiting, just stay on the screen (regular X button save)
                     // Close dialogs/modals if there are any open and return to the View Mode selection state
-                    // detailViewActive = false;
                     statEditDialogActive = false;
                     pokemonDetailsActive = false;
                     pokemonDetailsEditing = false;
@@ -325,17 +324,15 @@ namespace UI {
                     }
 
                     if (pokemon) {
-                        // Field 3 is Shiny
-                        if (pokemonDetailsSelectedField == 3) {
+                        // Field 4 is Shiny
+                        if (pokemonDetailsSelectedField == 4) {
                             // Toggle shiny status
                             logInfoToFile("Shiny field selected, toggling...");
-                            // bool currentShiny = pokemon->isShiny(trainer.ID32, pokemon->species());
-                            // pokemon->setShiny(!currentShiny, trainer.ID32);
                             bool currentShiny = pokemon->isShiny(pokemon->id32(), pokemon->species());
                             pokemon->setShiny(!currentShiny, pokemon->id32());
                             hasUnsavedChanges = true;
                         }
-                        // Future: Handle other fields (PID, Species, Gender, Nickname, EXP, Level, Nature, Held Item, Ability)
+                        // TODO: Future: Handle other fields (PID, Species, Gender, Nickname, EXP, Level, Nature, Held Item, Ability)
                     } else {
                         logInfoToFile("Pokemon pointer is null!");
                     }
@@ -570,10 +567,6 @@ namespace UI {
                         }
                     }
                     if (kDown & HidNpadButton_R) {
-                        // selectedCategory = (selectedCategory + 1) % 9;  // 9 pouches
-                        // currentPage = 0;
-                        // selectedItemIndex = 0;
-                        
                         switch(trainer.getGameGroup()) {
                             case GameVersion::ZA: {
                                 selectedCategory = (selectedCategory + 1) % POUCH_COUNT9_LZA;
@@ -758,15 +751,6 @@ namespace UI {
 
         // L/R to navigate categories (Items mode only, when not in detail view)
         if (selectedMode == ViewMode::Items) {
-            // if (kDown & HidNpadButton_L) {
-            //     selectedCategory = (selectedCategory - 1 + 9) % 9;  // 9 pouches
-            //     currentPage = 0;  // Reset page when changing category
-            // }
-            // if (kDown & HidNpadButton_R) {
-            //     selectedCategory = (selectedCategory + 1) % 9;  // 9 pouches
-            //     currentPage = 0;  // Reset page when changing category
-            // }
-
             // L/R to change categories (but not when in edit dialog)
             if (kDown & HidNpadButton_L) {
                 switch(trainer.getGameGroup()) {
