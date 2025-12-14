@@ -77,43 +77,13 @@ namespace UI {
 
         // Handle save confirmation dialog
         if (saveConfirmActive) {
-            if (kDown & HidNpadButton_A) {
-                // User confirmed save - auto-detects game version and uses appropriate save function
-                bool saveSuccess = Save::saveTrainerInfo(trainer, backupDir.c_str(), titleId, userUid);
-                saveConfirmActive = false;
-
-                if (saveSuccess) {
-                    hasUnsavedChanges = false;
-                    // goBack = true;  // Return to previous screen after successful save
-
-                    // Only exit if we were exiting with unsaved changes
-                    if (exitingWithUnsavedChanges) {
-                        if (exitingViaPlus) {
-                            // Exiting via + button - exit the app
-                            exitRequested = true;
-                        }
-                        // Always set goBack for consistency (B button case)
-                        goBack = true;
-                        exitingWithUnsavedChanges = false;
-                        exitingViaPlus = false;
-                    }
-                    // If not exiting, just stay on the screen (regular X button save)
-                    // Close dialogs/modals if there are any open and return to the View Mode selection state
-                    // detailViewActive = false;
-                    statEditDialogActive = false;
-                    pokemonDetailsActive = false;
-                    pokemonDetailsEditing = false;
-                }
-                // If save failed, stay on current screen (error logged by save function)
-                return;
-            }
-            if (kDown & HidNpadButton_B) {
-                // User cancelled save
-                saveConfirmActive = false;
-
-                // User cancelled or wants to discard changes
-                if (exitingWithUnsavedChanges) {
-                    // User wants to exit without saving - discard changes and exit
+            if (exitingWithUnsavedChanges) {
+                // Exiting with unsaved changes - different button logic
+                // A: Discard changes and exit
+                // B: Cancel exit (stay on screen)
+                if (kDown & HidNpadButton_A) {
+                    // User chose to discard changes and exit
+                    saveConfirmActive = false;
                     if (exitingViaPlus) {
                         // Exiting via + button - exit the app
                         exitRequested = true;
@@ -122,12 +92,39 @@ namespace UI {
                     goBack = true;
                     exitingWithUnsavedChanges = false;
                     exitingViaPlus = false;
-                    saveConfirmActive = false;
-                } else {
-                    // Regular cancel - just close the dialog
-                    saveConfirmActive = false;
+                    return;
                 }
-                return;
+                if (kDown & HidNpadButton_B) {
+                    // User cancelled exit - stay on screen
+                    saveConfirmActive = false;
+                    exitingWithUnsavedChanges = false;
+                    exitingViaPlus = false;
+                    return;
+                }
+            } else {
+                // Regular save dialog (triggered by X button)
+                // A: Save changes
+                // B: Cancel
+                if (kDown & HidNpadButton_A) {
+                    // User confirmed save - auto-detects game version and uses appropriate save function
+                    bool saveSuccess = Save::saveTrainerInfo(trainer, backupDir.c_str(), titleId, userUid);
+                    saveConfirmActive = false;
+
+                    if (saveSuccess) {
+                        hasUnsavedChanges = false;
+                        // Close dialogs/modals if there are any open and return to the View Mode selection state
+                        statEditDialogActive = false;
+                        pokemonDetailsActive = false;
+                        pokemonDetailsEditing = false;
+                    }
+                    // If save failed, stay on current screen (error logged by save function)
+                    return;
+                }
+                if (kDown & HidNpadButton_B) {
+                    // User cancelled save - just close the dialog
+                    saveConfirmActive = false;
+                    return;
+                }
             }
             return;  // Don't process other inputs while save confirm is active
         }
@@ -298,7 +295,7 @@ namespace UI {
             } else if (pokemonDetailsCategory == 0) {
                 // Editing main fields
                 // Up/Down to select field
-                int fields = 14; // TODO: We need to make this more dynamic and eventually will want to modify all of the values
+                int fields = 15; // TODO: We need to make this more dynamic and eventually will want to make all fields editable
                 if (kDown & HidNpadButton_Up) {
                     pokemonDetailsSelectedField = (pokemonDetailsSelectedField - 1 + fields) % fields;  // number of fields in Main
                 }
@@ -325,17 +322,15 @@ namespace UI {
                     }
 
                     if (pokemon) {
-                        // Field 3 is Shiny
-                        if (pokemonDetailsSelectedField == 3) {
+                        // Field 4 is Shiny
+                        if (pokemonDetailsSelectedField == 4) {
                             // Toggle shiny status
                             logInfoToFile("Shiny field selected, toggling...");
-                            // bool currentShiny = pokemon->isShiny(trainer.ID32, pokemon->species());
-                            // pokemon->setShiny(!currentShiny, trainer.ID32);
                             bool currentShiny = pokemon->isShiny(pokemon->id32(), pokemon->species());
                             pokemon->setShiny(!currentShiny, pokemon->id32());
                             hasUnsavedChanges = true;
                         }
-                        // Future: Handle other fields (PID, Species, Gender, Nickname, EXP, Level, Nature, Held Item, Ability)
+                        // TODO: Future: Handle other fields (PID, Species, Gender, Nickname, EXP, Level, Nature, Held Item, Ability)
                     } else {
                         logInfoToFile("Pokemon pointer is null!");
                     }
@@ -570,10 +565,6 @@ namespace UI {
                         }
                     }
                     if (kDown & HidNpadButton_R) {
-                        // selectedCategory = (selectedCategory + 1) % 9;  // 9 pouches
-                        // currentPage = 0;
-                        // selectedItemIndex = 0;
-                        
                         switch(trainer.getGameGroup()) {
                             case GameVersion::ZA: {
                                 selectedCategory = (selectedCategory + 1) % POUCH_COUNT9_LZA;
@@ -758,15 +749,6 @@ namespace UI {
 
         // L/R to navigate categories (Items mode only, when not in detail view)
         if (selectedMode == ViewMode::Items) {
-            // if (kDown & HidNpadButton_L) {
-            //     selectedCategory = (selectedCategory - 1 + 9) % 9;  // 9 pouches
-            //     currentPage = 0;  // Reset page when changing category
-            // }
-            // if (kDown & HidNpadButton_R) {
-            //     selectedCategory = (selectedCategory + 1) % 9;  // 9 pouches
-            //     currentPage = 0;  // Reset page when changing category
-            // }
-
             // L/R to change categories (but not when in edit dialog)
             if (kDown & HidNpadButton_L) {
                 switch(trainer.getGameGroup()) {

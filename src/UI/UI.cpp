@@ -49,16 +49,24 @@ namespace UI {
     }
 
     void UIManager::handleTitleSelection(AccountUid userUid) {
-        TitleSelectionScreen titleScreen(userUid);
+        while (appletMainLoop()) {
+            TitleSelectionScreen titleScreen(userUid);
 
-        while (appletMainLoop() && !titleScreen.shouldExit()) {
-            padUpdate(&pad);
-            titleScreen.update(pad);
-            titleScreen.draw(fb);
-            fb.flush();
+            while (appletMainLoop() && !titleScreen.shouldExit()) {
+                padUpdate(&pad);
+                titleScreen.update(pad);
+                titleScreen.draw(fb);
+                fb.flush();
 
-            if (titleScreen.hasSelectedTitle()) {
-                handleBackupSelection(userUid, titleScreen.getSelectedTitleId(), titleScreen.getSelectedTitleName());
+                if (titleScreen.hasSelectedTitle()) {
+                    handleBackupSelection(userUid, titleScreen.getSelectedTitleId(), titleScreen.getSelectedTitleName());
+                    // After backup selection, loop back to title selection
+                    break;
+                }
+            }
+
+            // If user pressed B in title selection, exit to user selection
+            if (titleScreen.shouldExit()) {
                 return;
             }
         }

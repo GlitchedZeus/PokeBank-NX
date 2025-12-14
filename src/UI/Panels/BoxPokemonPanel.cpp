@@ -6,6 +6,7 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SpriteManager.h"
 #include "Trainer/Trainer.h"
+#include "Pokemon/PokemonTypes.h"
 
 using namespace Trainer;
 
@@ -74,10 +75,9 @@ namespace Panels {
                         continue;
                     }
 
-                    // Load and draw Pokemon sprite icon
-                    // bool isShiny = pokemon->isShiny(screen.trainer.ID32, speciesName);
+                    // Load and draw Pokemon sprite icon (form-aware)
                     bool isShiny = pokemon->isShiny(pokemon->id32(), speciesName);
-                    Sprite* sprite = SpriteManager::getIconSprite(pokemon->speciesID(), isShiny);
+                    Sprite* sprite = SpriteManager::getIconSprite(pokemon->speciesID(), pokemon->form(), isShiny);
 
                     const int SPRITE_SIZE = 50;  // Scaled down sprite size to 50x50
                     int spriteWidth = 0;
@@ -117,6 +117,29 @@ namespace Panels {
                         char levelText[16];
                         snprintf(levelText, sizeof(levelText), "Lv.%d", pokemon->level());
                         fb.drawText(slotX + 5 + spriteWidth, slotY + 30, levelText, Colors::TextDim);
+
+                        // Draw type sprites below level, stacked vertically (Type1 above Type2)
+                        constexpr int TYPE_SPRITE_HEIGHT = 14;
+                        Pokemon::TypePair types = Pokemon::getPokemonTypes(pokemon->speciesID(), pokemon->form());
+                        int typeX = slotX + 5 + spriteWidth;
+                        int typeY = slotY + 48;
+                        Sprite* type1Sprite = SpriteManager::getTypeSprite(types.type1);
+                        if (type1Sprite && type1Sprite->data) {
+                            int scaledWidth = (type1Sprite->width * TYPE_SPRITE_HEIGHT) / type1Sprite->height;
+                            fb.drawImageScaled(typeX, typeY, type1Sprite->width, type1Sprite->height,
+                                        scaledWidth, TYPE_SPRITE_HEIGHT,
+                                        type1Sprite->data, type1Sprite->channels);
+                            typeY += TYPE_SPRITE_HEIGHT + 2;
+                        }
+                        if (Pokemon::hasSecondType(types)) {
+                            Sprite* type2Sprite = SpriteManager::getTypeSprite(types.type2);
+                            if (type2Sprite && type2Sprite->data) {
+                                int scaledWidth = (type2Sprite->width * TYPE_SPRITE_HEIGHT) / type2Sprite->height;
+                                fb.drawImageScaled(typeX, typeY, type2Sprite->width, type2Sprite->height,
+                                            scaledWidth, TYPE_SPRITE_HEIGHT,
+                                            type2Sprite->data, type2Sprite->channels);
+                            }
+                        }
                     }
                 } else {
                     // Empty slot

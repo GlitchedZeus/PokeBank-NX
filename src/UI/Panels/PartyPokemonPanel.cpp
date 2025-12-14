@@ -7,6 +7,7 @@
 #include "UI/SpriteManager.h"
 #include "Trainer/Trainer.h"
 #include "Pokemon/Pokemon.h"
+#include "Pokemon/PokemonTypes.h"
 
 using namespace Trainer;
 
@@ -46,24 +47,14 @@ namespace Panels {
                 continue;
             }
 
-            // Load and draw Pokemon sprite to the right of stats
-            // bool isShiny = pokemon->isShiny(trainerID32, pokemon->species());
+            // Load Pokemon sprite (form-aware) - will draw later at bottom of cell
             bool isShiny = pokemon->isShiny(pokemon->id32(), pokemon->species());
-            Sprite* sprite = SpriteManager::getSprite(pokemon->speciesID(), isShiny);
-
-            if (sprite && sprite->data) {
-                // Draw sprite to the right of the stats section (around x=300)
-                // This fills the empty space better while keeping stats visible
-                int spriteX = colX + 280;
-                int spriteY = colY + 10;
-                fb.drawImage(spriteX, spriteY, sprite->width, sprite->height,
-                            sprite->data, sprite->channels);
-            }
+            Sprite* sprite = SpriteManager::getSprite(pokemon->speciesID(), pokemon->form(), isShiny);
 
             // Draw header: "Slot X: Species"
             std::string headerText = "Slot " + std::to_string(i + 1) + ": " + std::string(pokemon->species());
             int textX = colX;
-            fb.drawText(textX, colY, headerText, Colors::Text);
+            fb.drawText(colX, colY, headerText, Colors::Text);
             textX += headerText.length() * 8;  // Approximate character width
 
             // Draw gender symbol next to species name
@@ -85,6 +76,35 @@ namespace Panels {
             std::string levelText = " - Lv." + std::to_string(pokemon->level());
             fb.drawText(textX, colY, levelText, Colors::Text);
 
+            int TYPE_SPRITE_HEIGHT = 14;
+            Pokemon::TypePair types = Pokemon::getPokemonTypes(pokemon->speciesID(), pokemon->form());
+            Sprite* type1Sprite = SpriteManager::getTypeSprite(types.type1);
+            Sprite* type2Sprite = Pokemon::hasSecondType(types) ? SpriteManager::getTypeSprite(types.type2) : nullptr;
+
+            // Calculate total width needed for types
+            int type1Width = 0, type2Width = 0;
+            if (type1Sprite && type1Sprite->data) {
+                type1Width = (type1Sprite->width * TYPE_SPRITE_HEIGHT) / type1Sprite->height;
+            }
+            if (type2Sprite && type2Sprite->data) {
+                type2Width = (type2Sprite->width * TYPE_SPRITE_HEIGHT) / type2Sprite->height;
+            }
+            // int totalTypeWidth = type1Width + (type2Width > 0 ? 5 + type2Width : 0);
+
+            // Position types at fixed position
+            int typeX = colX + 280;
+            if (type1Sprite && type1Sprite->data) {
+                fb.drawImageScaled(typeX, colY, type1Sprite->width, type1Sprite->height,
+                    type1Width, TYPE_SPRITE_HEIGHT,
+                    type1Sprite->data, type1Sprite->channels);
+                typeX += type1Width + 5;
+            }
+            if (type2Sprite && type2Sprite->data) {
+                fb.drawImageScaled(typeX, colY, type2Sprite->width, type2Sprite->height,
+                    type2Width, TYPE_SPRITE_HEIGHT,
+                    type2Sprite->data, type2Sprite->channels);
+            }
+
             colY += lineHeight;
 
             // Draw stats header
@@ -94,33 +114,42 @@ namespace Panels {
             // Draw each stat
             char statLine[100];
             snprintf(statLine, sizeof(statLine), "HP : %03d | %02d | %03d | %03d",
-                    pokemon->baseHP(), pokemon->ivHP(), pokemon->evHP(), pokemon->statHPMax());
+                pokemon->baseHP(), pokemon->ivHP(), pokemon->evHP(), pokemon->statHPMax());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "ATK: %03d | %02d | %03d | %03d",
-                    pokemon->baseATK(), pokemon->ivATK(), pokemon->evATK(), pokemon->statATK());
+                pokemon->baseATK(), pokemon->ivATK(), pokemon->evATK(), pokemon->statATK());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "DEF: %03d | %02d | %03d | %03d",
-                    pokemon->baseDEF(), pokemon->ivDEF(), pokemon->evDEF(), pokemon->statDEF());
+                pokemon->baseDEF(), pokemon->ivDEF(), pokemon->evDEF(), pokemon->statDEF());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "SPA: %03d | %02d | %03d | %03d",
-                    pokemon->baseSPA(), pokemon->ivSPA(), pokemon->evSPA(), pokemon->statSPA());
+                pokemon->baseSPA(), pokemon->ivSPA(), pokemon->evSPA(), pokemon->statSPA());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "SPD: %03d | %02d | %03d | %03d",
-                    pokemon->baseSPD(), pokemon->ivSPD(), pokemon->evSPD(), pokemon->statSPD());
+                pokemon->baseSPD(), pokemon->ivSPD(), pokemon->evSPD(), pokemon->statSPD());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "SPE: %03d | %02d | %03d | %03d",
-                    pokemon->baseSPE(), pokemon->ivSPE(), pokemon->evSPE(), pokemon->statSPE());
+                pokemon->baseSPE(), pokemon->ivSPE(), pokemon->evSPE(), pokemon->statSPE());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
+
+            // Draw Pokemon sprite at bottom-right of cell
+            if (sprite && sprite->data) {
+                int cellStartY = y + 60 + (((i >= 3) ? (i - 3) : i) * 170);
+                int spriteX = colX + 280;
+                int spriteY = cellStartY + 60;
+                fb.drawImage(spriteX, spriteY, sprite->width, sprite->height,
+                    sprite->data, sprite->channels);
+            }
         }
     }
 }

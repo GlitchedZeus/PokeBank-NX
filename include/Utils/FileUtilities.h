@@ -12,6 +12,7 @@ namespace Utils {
     uint8_t* readAllBytes(const char* path, size_t* outSize);
     bool copyDirectory(const char* srcPath, const char* destPath);
     bool copyFile(const char* srcPath, const char* destPath);
+    bool deleteDirectoryRecursive(const char* path);
     bool backupSaveData(AccountUid userUid, u64 titleId, std::string titleName);
     bool restoreModifiedSave(AccountUid userUid, u64 titleId, const char* modifiedSavePath, const char* backupDir, std::vector<std::string> saveFiles);
     std::string getTimestamp();
