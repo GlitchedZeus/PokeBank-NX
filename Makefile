@@ -44,7 +44,7 @@ DATA		:=	data
 INCLUDES	:=	include
 APP_TITLE   :=  PKSE
 APP_AUTHOR  :=  Kiasta
-APP_VERSION :=  0.0.1
+APP_VERSION :=  0.0.3 		# TODO: We need to create a better way to update the version, probably setup a github action to automate releases
 ROMFS		:=	romfs
 ICON		:=  icon.jpg
 
