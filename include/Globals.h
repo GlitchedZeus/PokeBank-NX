@@ -3,6 +3,8 @@
 
 #include <string>
 
+inline constexpr std::string VERSION_STRING = "0.0.3"; // TODO: We need to create a better way to update the version, probably setup a github action to automate releases
+
 inline constexpr std::string BASE_SAVE_DIRECTORY = "sdmc:/PKSE";
 
 inline constexpr uint32_t SIZE_HASH_IN_BYTES = 32;

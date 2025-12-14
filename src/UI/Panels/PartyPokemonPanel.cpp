@@ -89,20 +89,20 @@ namespace Panels {
             if (type2Sprite && type2Sprite->data) {
                 type2Width = (type2Sprite->width * TYPE_SPRITE_HEIGHT) / type2Sprite->height;
             }
-            int totalTypeWidth = type1Width + (type2Width > 0 ? 5 + type2Width : 0);
+            // int totalTypeWidth = type1Width + (type2Width > 0 ? 5 + type2Width : 0);
 
             // Position types at fixed position
             int typeX = colX + 280;
             if (type1Sprite && type1Sprite->data) {
                 fb.drawImageScaled(typeX, colY, type1Sprite->width, type1Sprite->height,
-                            type1Width, TYPE_SPRITE_HEIGHT,
-                            type1Sprite->data, type1Sprite->channels);
+                    type1Width, TYPE_SPRITE_HEIGHT,
+                    type1Sprite->data, type1Sprite->channels);
                 typeX += type1Width + 5;
             }
             if (type2Sprite && type2Sprite->data) {
                 fb.drawImageScaled(typeX, colY, type2Sprite->width, type2Sprite->height,
-                            type2Width, TYPE_SPRITE_HEIGHT,
-                            type2Sprite->data, type2Sprite->channels);
+                    type2Width, TYPE_SPRITE_HEIGHT,
+                    type2Sprite->data, type2Sprite->channels);
             }
 
             colY += lineHeight;
@@ -114,32 +114,32 @@ namespace Panels {
             // Draw each stat
             char statLine[100];
             snprintf(statLine, sizeof(statLine), "HP : %03d | %02d | %03d | %03d",
-                    pokemon->baseHP(), pokemon->ivHP(), pokemon->evHP(), pokemon->statHPMax());
+                pokemon->baseHP(), pokemon->ivHP(), pokemon->evHP(), pokemon->statHPMax());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "ATK: %03d | %02d | %03d | %03d",
-                    pokemon->baseATK(), pokemon->ivATK(), pokemon->evATK(), pokemon->statATK());
+                pokemon->baseATK(), pokemon->ivATK(), pokemon->evATK(), pokemon->statATK());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "DEF: %03d | %02d | %03d | %03d",
-                    pokemon->baseDEF(), pokemon->ivDEF(), pokemon->evDEF(), pokemon->statDEF());
+                pokemon->baseDEF(), pokemon->ivDEF(), pokemon->evDEF(), pokemon->statDEF());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "SPA: %03d | %02d | %03d | %03d",
-                    pokemon->baseSPA(), pokemon->ivSPA(), pokemon->evSPA(), pokemon->statSPA());
+                pokemon->baseSPA(), pokemon->ivSPA(), pokemon->evSPA(), pokemon->statSPA());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "SPD: %03d | %02d | %03d | %03d",
-                    pokemon->baseSPD(), pokemon->ivSPD(), pokemon->evSPD(), pokemon->statSPD());
+                pokemon->baseSPD(), pokemon->ivSPD(), pokemon->evSPD(), pokemon->statSPD());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
             colY += lineHeight;
 
             snprintf(statLine, sizeof(statLine), "SPE: %03d | %02d | %03d | %03d",
-                    pokemon->baseSPE(), pokemon->ivSPE(), pokemon->evSPE(), pokemon->statSPE());
+                pokemon->baseSPE(), pokemon->ivSPE(), pokemon->evSPE(), pokemon->statSPE());
             fb.drawText(colX + 20, colY, statLine, Colors::Text);
 
             // Draw Pokemon sprite at bottom-right of cell
@@ -148,7 +148,7 @@ namespace Panels {
                 int spriteX = colX + 280;
                 int spriteY = cellStartY + 60;
                 fb.drawImage(spriteX, spriteY, sprite->width, sprite->height,
-                            sprite->data, sprite->channels);
+                    sprite->data, sprite->channels);
             }
         }
     }

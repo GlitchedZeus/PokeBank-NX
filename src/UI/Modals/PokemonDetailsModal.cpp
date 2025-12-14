@@ -73,6 +73,28 @@ namespace Modals {
         const int contentY = modalY + 20;
         const int contentWidth = MODAL_WIDTH - CATEGORY_PANEL_WIDTH - 50;
 
+        // Load and draw Pokemon sprite on the right side
+        bool isShiny = pokemon->isShiny(pokemon->id32(), pokemon->species());
+        Sprite* pokemonSprite = SpriteManager::getSprite(pokemon->speciesID(), pokemon->form(), isShiny);
+
+        constexpr int SPRITE_DISPLAY_SIZE = 120;  // Size to display the sprite
+        int spriteX = modalX + MODAL_WIDTH - SPRITE_DISPLAY_SIZE - 30;
+        int spriteY = modalY + 30;
+
+        if (pokemonSprite && pokemonSprite->data) {
+            // Calculate scaled dimensions to fit within SPRITE_DISPLAY_SIZE while maintaining aspect ratio
+            int scaledWidth = SPRITE_DISPLAY_SIZE;
+            int scaledHeight = (pokemonSprite->height * SPRITE_DISPLAY_SIZE) / pokemonSprite->width;
+
+            if (scaledHeight > SPRITE_DISPLAY_SIZE) {
+                scaledHeight = SPRITE_DISPLAY_SIZE;
+                scaledWidth = (pokemonSprite->width * SPRITE_DISPLAY_SIZE) / pokemonSprite->height;
+            }
+
+            fb.drawImageScaled(spriteX, spriteY, pokemonSprite->width, pokemonSprite->height,
+                scaledWidth, scaledHeight, pokemonSprite->data, pokemonSprite->channels);
+        }
+
         // TODO: We need to calculate the amount of fields and then pass it to the TrainerViewScreen for iteration when active
         // Draw category content
         if (screen.pokemonDetailsCategory == 0) { // Main
@@ -80,11 +102,6 @@ namespace Modals {
             int lineHeight = 25;
 
             fb.drawText(contentX, lineY, "=== Main ===", Colors::Text);
-            // if (screen.pokemonDetailsEditing) {
-            //     fb.drawText(contentX + 150, lineY, "(Use Up/Down to select, A to edit)", Colors::TextDim);
-            // } else {
-            //     fb.drawText(contentX + 150, lineY, "(Press A to edit)", Colors::TextDim);
-            // }
             lineY += lineHeight + 5;
 
             char buffer[128];
@@ -311,13 +328,6 @@ namespace Modals {
             snprintf(totalLine, sizeof(totalLine), "Tot: %03d | %03d | %03d | %03d", baseTotal, ivTotal, evTotal, statTotal);
             fb.drawText(contentX, lineY, totalLine, Colors::TextDim);
 
-            // lineY += lineHeight + 10;
-            // if (!screen.pokemonDetailsEditing) {
-            //     fb.drawText(contentX, lineY, "Press A to edit EVs/IVs", Colors::TextDim);
-            // } else {
-            //     fb.drawText(contentX, lineY, "Left/Right: +/-1  |  Up/Down: +/-10  |  A: Confirm  |  B: Cancel", Colors::TextDim);
-            // }
-
         } else { // Other categories
             int lineY = contentY;
             fb.drawText(contentX, lineY, categories[screen.pokemonDetailsCategory], Colors::Text);
@@ -326,13 +336,6 @@ namespace Modals {
             lineY += 30;
             fb.drawText(contentX, lineY, "This category will be implemented in a future update.", Colors::TextDim);
         }
-
-        // TODO: We don't want to draw this here, but on the bottom of the screen instead.
-        // Draw footer with controls
-        // const char* controlText = screen.pokemonDetailsEditing
-        //     ? "Up/Down: Select Field  |  B: Back"
-        //     : "Up/Down: Select Category  |  B: Close";
-        // fb.drawText(modalX + 20, modalY + MODAL_HEIGHT - 30, controlText, Colors::TextDim);
     }
 }
 }

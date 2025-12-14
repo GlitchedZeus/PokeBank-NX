@@ -154,6 +154,47 @@ namespace Utils {
         return success;
     }
 
+    bool deleteDirectoryRecursive(const char* path) {
+        DIR* dir = opendir(path);
+        if (!dir) {
+            logErrorToFile("Failed to open directory for deletion", path);
+            return false;
+        }
+
+        bool success = true;
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != NULL) {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                continue;
+            }
+
+            char fullPath[1024];
+            snprintf(fullPath, sizeof(fullPath), "%s/%s", path, entry->d_name);
+
+            if (entry->d_type == DT_DIR) {
+                // Recursively delete subdirectory
+                if (!deleteDirectoryRecursive(fullPath)) {
+                    success = false;
+                }
+            } else {
+                // Delete file
+                if (remove(fullPath) != 0) {
+                    logErrorToFile("Failed to delete file", fullPath);
+                    success = false;
+                }
+            }
+        }
+        closedir(dir);
+
+        // Remove the directory itself
+        if (rmdir(path) != 0) {
+            logErrorToFile("Failed to remove directory", path);
+            return false;
+        }
+
+        return success;
+    }
+
     std::string getTimestamp() {
         time_t now = time(nullptr);
         struct tm* timeinfo = localtime(&now);

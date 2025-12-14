@@ -253,7 +253,7 @@ namespace Pokemon {
 
         // Save current properties
         bool wasShiny = isShiny(trainerID32, species());
-        uint8_t currentGender = gender();
+        // uint8_t currentGender = gender();
         uint32_t currentPID = pid();
         uint8_t genderByte = currentPID & 0xFF;
 

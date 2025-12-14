@@ -77,42 +77,13 @@ namespace UI {
 
         // Handle save confirmation dialog
         if (saveConfirmActive) {
-            if (kDown & HidNpadButton_A) {
-                // User confirmed save - auto-detects game version and uses appropriate save function
-                bool saveSuccess = Save::saveTrainerInfo(trainer, backupDir.c_str(), titleId, userUid);
-                saveConfirmActive = false;
-
-                if (saveSuccess) {
-                    hasUnsavedChanges = false;
-                    // goBack = true;  // Return to previous screen after successful save
-
-                    // Only exit if we were exiting with unsaved changes
-                    if (exitingWithUnsavedChanges) {
-                        if (exitingViaPlus) {
-                            // Exiting via + button - exit the app
-                            exitRequested = true;
-                        }
-                        // Always set goBack for consistency (B button case)
-                        goBack = true;
-                        exitingWithUnsavedChanges = false;
-                        exitingViaPlus = false;
-                    }
-                    // If not exiting, just stay on the screen (regular X button save)
-                    // Close dialogs/modals if there are any open and return to the View Mode selection state
-                    statEditDialogActive = false;
-                    pokemonDetailsActive = false;
-                    pokemonDetailsEditing = false;
-                }
-                // If save failed, stay on current screen (error logged by save function)
-                return;
-            }
-            if (kDown & HidNpadButton_B) {
-                // User cancelled save
-                saveConfirmActive = false;
-
-                // User cancelled or wants to discard changes
-                if (exitingWithUnsavedChanges) {
-                    // User wants to exit without saving - discard changes and exit
+            if (exitingWithUnsavedChanges) {
+                // Exiting with unsaved changes - different button logic
+                // A: Discard changes and exit
+                // B: Cancel exit (stay on screen)
+                if (kDown & HidNpadButton_A) {
+                    // User chose to discard changes and exit
+                    saveConfirmActive = false;
                     if (exitingViaPlus) {
                         // Exiting via + button - exit the app
                         exitRequested = true;
@@ -121,12 +92,39 @@ namespace UI {
                     goBack = true;
                     exitingWithUnsavedChanges = false;
                     exitingViaPlus = false;
-                    saveConfirmActive = false;
-                } else {
-                    // Regular cancel - just close the dialog
-                    saveConfirmActive = false;
+                    return;
                 }
-                return;
+                if (kDown & HidNpadButton_B) {
+                    // User cancelled exit - stay on screen
+                    saveConfirmActive = false;
+                    exitingWithUnsavedChanges = false;
+                    exitingViaPlus = false;
+                    return;
+                }
+            } else {
+                // Regular save dialog (triggered by X button)
+                // A: Save changes
+                // B: Cancel
+                if (kDown & HidNpadButton_A) {
+                    // User confirmed save - auto-detects game version and uses appropriate save function
+                    bool saveSuccess = Save::saveTrainerInfo(trainer, backupDir.c_str(), titleId, userUid);
+                    saveConfirmActive = false;
+
+                    if (saveSuccess) {
+                        hasUnsavedChanges = false;
+                        // Close dialogs/modals if there are any open and return to the View Mode selection state
+                        statEditDialogActive = false;
+                        pokemonDetailsActive = false;
+                        pokemonDetailsEditing = false;
+                    }
+                    // If save failed, stay on current screen (error logged by save function)
+                    return;
+                }
+                if (kDown & HidNpadButton_B) {
+                    // User cancelled save - just close the dialog
+                    saveConfirmActive = false;
+                    return;
+                }
             }
             return;  // Don't process other inputs while save confirm is active
         }

@@ -36,10 +36,14 @@ namespace UI {
         bool createNewBackup;  // True if user wants to load from title directly
         bool goBack;
         std::string selectedBackupPath;
+        bool showDeleteConfirmation;
+        int deleteConfirmationIndex;
 
         void loadBackups();
         void drawBackupList(PKSEFramebuffer& fb);
+        void drawDeleteConfirmation(PKSEFramebuffer& fb);
         std::string formatTimestamp(const std::string& timestamp);
+        void deleteBackup(int index);
     };
 }
 

@@ -1,3 +1,4 @@
+#include "Globals.h"
 #include "UI/TitleSelectionScreen.h"
 #include "UI/Common.h"
 #include "Utils/HelperUtilities.h"
@@ -86,8 +87,9 @@ namespace UI {
         fb.clear(Colors::Background);
 
         // Draw title bar
+        std::string versionText = "PKSE - Pokemon Save Editor v" + VERSION_STRING;
         fb.drawFilledRect(0, 0, fb.getWidth(), 60, Colors::Panel);
-        fb.drawText(20, 20, "PKSE - Pokemon Save Editor v0.0.1", Colors::Text);
+        fb.drawText(20, 20,versionText.c_str(), Colors::Text);
         fb.drawRect(0, 0, fb.getWidth(), 60, Colors::Border);
 
         // Draw title selection panel
