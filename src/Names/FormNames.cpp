@@ -200,7 +200,7 @@ namespace Names {
                 break;
 
             // Hoopa - Forms
-            case 720: // Zygarde
+            case 720: // Hoopa
                 if (formId == 0) return "Confined";
                 if (formId == 1) return "Unbound";
                 break;
@@ -312,5 +312,11 @@ namespace Names {
 
         // If no match found, return empty string
         return "";
+    }
+
+    std::string getDisplayName(uint16_t speciesId, uint8_t formId, const std::string& baseName) {
+        const char* f = getFormName(speciesId, formId);
+        if (f && f[0] != '\0') return std::string(f) + " " + baseName;
+        return baseName;
     }
 }

@@ -2,28 +2,39 @@
 PKSE is a homebrew application for conveniently editing Pokemon save files on the Nintendo Switch, without having to transfer save files to your PC.
 
 ## **Features**
-- Backup and restore save files integrated feature.
-- Currently you can edit party and box Pokemon and item amounts.
+- Backup and restore save files, directly on the console.
+- Edit party and box Pokemon: species, level, stats, IVs/EVs (AVs in Let's Go), nature, ability, moves, held item, ball, OT/met/origin, shininess and gender.
+- Edit trainer info and item pouches.
+- **Pokemon creator** — build a Pokemon from scratch in any supported game's format, with legal options highlighted.
+- **Legality checker** — flags illegal values as you edit (informational; it never blocks or auto-changes anything).
+- **Cross-game bank** — PKSE-native persistent storage that every supported game shares. Deposit from one game and withdraw into another and the Pokemon is converted into the destination's format on the way out, preserving its origin (OT, IDs, met data, IVs/nature/PID). Moves the destination can't legally know are cleared, since an impossible move corrupts the Pokemon in some games.
 
 ## **Screenshots**
 
-<img src="https://i.imgur.com/GCwSUz4.jpeg" width="300"><img src="https://i.imgur.com/KGjqY9O.jpeg" width="300">  
-<img src="https://i.imgur.com/zDGBAcO.jpeg" width="300"><img src="https://i.imgur.com/teVmLmX.jpeg" width="300">  
-<img src="https://i.imgur.com/jbNqmqm.jpeg" width="300"><img src="https://i.imgur.com/YHl5evr.jpeg" width="300">  
-<img src="https://i.imgur.com/xnK8G5S.jpeg" width="300">
+<img src="https://i.imgur.com/1jPiTsC.jpeg" width="300"><img src="https://i.imgur.com/kSxSc0s.jpeg" width="300">  
+<img src="https://i.imgur.com/pzkCt5W.jpeg" width="300"><img src="https://i.imgur.com/Dvq5jKB.jpeg" width="300">  
+<img src="https://i.imgur.com/2ZchNXI.jpeg" width="300"><img src="https://i.imgur.com/2GZ72Vx.jpeg" width="300">  
+<img src="https://i.imgur.com/Kpi3MmW.jpeg" width="300"><img src="https://i.imgur.com/8idUsGD.jpeg" width="300">  
+<img src="https://i.imgur.com/M2asUM3.jpeg" width="300"><img src="https://i.imgur.com/AC6zoXd.jpeg" width="300">  
 
 ## **Title Compatibility**
-### Generation 7
-- Pokemon Let's Go Pikachu/Eevee (Partial implementation, non functioning)
 
-### Generation 8
-- Pokemon Sword/Shield (Fully Implemented and functioning)
-- Pokemon Brilliant Diamond/Shining Pearl (Not Implemented)
-- Pokemon Legends: Arceus (Not Implemented)
+All seven mainline Switch titles are implemented, and all of them interconnect through the bank.
 
-### Generation 9
-- Pokemon Scarlet/Violet (Not Implemented)
-- Pokemon Legends: Z-A (Fully Implemented and functioning)
+| Generation | Title | Status |
+|---|---|---|
+| 3 | FireRed / LeafGreen | Implemented — hardware validated |
+| 7 | Let's Go, Pikachu! / Eevee! | Implemented — hardware validated |
+| 8 | Sword / Shield | Implemented — hardware validated |
+| 8 | Brilliant Diamond / Shining Pearl | Implemented — hardware validated |
+| 8 | Legends: Arceus | Implemented — hardware validated |
+| 9 | Scarlet / Violet | Implemented — hardware validated |
+| 9 | Legends: Z-A | Implemented — hardware validated |
+
+
+### Known gaps
+- Transferring *into* Gen 3 necessarily loses data Gen 3 cannot store: nature and gender become PID-derived, and custom nicknames fall back to the species name.
+- Ribbons are counted but not individually displayed.
 
 ---
 
@@ -108,6 +119,44 @@ Or if you don't need to download the sprites (either you don't want to or you've
 ```bash
 make clean && make
 ```
+
+---
+
+## **Regenerating the data tables**
+
+Most of the game data PKSE relies on — species / move / ability / item names, learnsets, per-species info (abilities, gender ratios, forms), item-pouch contents, met-location names and move PP — lives in **generated** source files under `src/Names/` and `src/Pokemon/`. These are **committed to the repo**, so a normal build never regenerates them: `make` just compiles them, and you do **not** need any of the tools below to build PKSE.
+
+You only need to regenerate a table when its upstream data changes — a new game, a DLC that adds Pokemon / moves / items, or a correction in [PKHeX](https://github.com/kwsch/PKHeX). The generators live in `tools/` and are run **by hand, one at a time**.
+
+### PKHeX-derived tables (Python 3)
+
+These read their inputs **straight from GitHub** — only Python 3 and an internet connection are needed, no local PKHeX checkout:
+
+```bash
+python tools/gen_personal.py       # abilities / gender / friendship / forms / per-game presence
+python tools/gen_learnsets.py      # per-game learnable-move bitsets
+python tools/gen_locations.py      # met-location names
+python tools/gen_moveinfo.py       # base PP per move
+python tools/gen_movenames.py      # move display names
+python tools/gen_movepresence.py   # which moves exist in each game
+python tools/gen_itempresence.py   # which items a Pokemon may legally hold, per game
+python tools/gen_itempouches.py    # which items belong in each bag pocket
+```
+
+Each fetches its PKHeX files via `tools/pkhex_source.py` and caches them under `tools/.pkhex_cache/` (gitignored) so re-runs are offline. By default they use a **pinned PKHeX commit** — the one the committed tables were built from — so regenerating reproduces the existing tables exactly. Two overrides:
+
+- **Adopt newer PKHeX data** — set `PKHEX_REF` to a newer commit, tag, or `master`, then review the regenerated diff before committing:
+  ```bash
+  PKHEX_REF=master python tools/gen_personal.py
+  ```
+- **Read from a local PKHeX checkout** instead of the network — point `PKHEX_LOCAL` at its `PKHeX.Core` directory:
+  ```bash
+  PKHEX_LOCAL=/path/to/PKHeX/PKHeX.Core python tools/gen_learnsets.py
+  ```
+
+(From PowerShell, set the variable first, e.g. `$env:PKHEX_REF = "master"`.)
+
+After regenerating, review the diff to the affected file(s) and commit it.
 
 ---
 

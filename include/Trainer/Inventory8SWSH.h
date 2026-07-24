@@ -51,11 +51,11 @@ namespace Trainer {
     /// Get pouch info for a given type
     inline const PouchInfo8SWSH& getPouchInfo8SWSH(PouchType8SWSH type) {
         static const PouchInfo8SWSH pouches[] = {
-            {PouchType8SWSH::Medicine, "Medicine", 0, 60},
-            {PouchType8SWSH::Balls, "Poke Balls", 240, 30},
+            {PouchType8SWSH::Medicine, "Medicines", 0, 60},
+            {PouchType8SWSH::Balls, "Poké Balls", 240, 30},
             {PouchType8SWSH::Battle, "Battle Items", 360, 20},
             {PouchType8SWSH::Berries, "Berries", 440, 80},
-            {PouchType8SWSH::Items, "Items", 760, 550},
+            {PouchType8SWSH::Items, "Other Items", 760, 550},
             {PouchType8SWSH::TMs, "TMs/TRs", 2960, 210},
             {PouchType8SWSH::Treasures, "Treasures", 3800, 100},
             {PouchType8SWSH::Ingredients, "Ingredients", 4200, 100},

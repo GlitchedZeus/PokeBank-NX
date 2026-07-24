@@ -1,6 +1,9 @@
 #ifndef ENUMS_ENUMS_H
 #define ENUMS_ENUMS_H
 
+#include <cstdint>
+#include <cstddef>
+
 namespace Enums {
     /// Contiguous series Game Language IDs
     enum class LanguageID
@@ -40,6 +43,15 @@ namespace Enums {
         /// Chinese Traditional (繁體中文)
         ChineseTraditional
     };
+
+    /// Short language name for a stored language id (indices match LanguageID above).
+    inline const char* getLanguageName(uint8_t id) {
+        static const char* const names[] = {
+            "-", "Japanese", "English", "French", "Italian", "German",
+            "-", "Spanish", "Korean", "Chinese (S)", "Chinese (T)"
+        };
+        return id < (sizeof(names) / sizeof(names[0])) ? names[id] : "-";
+    }
 }
 
 #endif

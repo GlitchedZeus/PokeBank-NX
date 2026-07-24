@@ -3,7 +3,7 @@
 
 namespace Names {
     // Ability name lookup table - indexed by Ability ID
-    // This includes abilities up to Generation 8 (Sword/Shield)
+    // This includes abilities up to Generation 9 (Scarlet/Violet + DLC)
     static const char* ABILITY_NAMES[] = {
         "None",              // 0
         "Stench",            // 1
@@ -267,9 +267,58 @@ namespace Names {
         "Quick Draw",        // 259
         "Unseen Fist",       // 260
         "Curious Medicine",  // 261
+        "Transistor",        // 262
+        "Dragon’s Maw",      // 263
+        "Chilling Neigh",    // 264
+        "Grim Neigh",        // 265
+        "As One",            // 266
+        "As One",            // 267
+        "Lingering Aroma",   // 268
+        "Seed Sower",        // 269
+        "Thermal Exchange",  // 270
+        "Anger Shell",       // 271
+        "Purifying Salt",    // 272
+        "Well-Baked Body",   // 273
+        "Wind Rider",        // 274
+        "Guard Dog",         // 275
+        "Rocky Payload",     // 276
+        "Wind Power",        // 277
+        "Zero to Hero",      // 278
+        "Commander",         // 279
+        "Electromorphosis",  // 280
+        "Protosynthesis",    // 281
+        "Quark Drive",       // 282
+        "Good as Gold",      // 283
+        "Vessel of Ruin",    // 284
+        "Sword of Ruin",     // 285
+        "Tablets of Ruin",   // 286
+        "Beads of Ruin",     // 287
+        "Orichalcum Pulse",  // 288
+        "Hadron Engine",     // 289
+        "Opportunist",       // 290
+        "Cud Chew",          // 291
+        "Sharpness",         // 292
+        "Supreme Overlord",  // 293
+        "Costar",            // 294
+        "Toxic Debris",      // 295
+        "Armor Tail",        // 296
+        "Earth Eater",       // 297
+        "Mycelium Might",    // 298
+        "Hospitality",       // 299
+        "Mind’s Eye",        // 300
+        "Embody Aspect",     // 301
+        "Embody Aspect",     // 302
+        "Embody Aspect",     // 303
+        "Embody Aspect",     // 304
+        "Toxic Chain",       // 305
+        "Supersweet Syrup",  // 306
+        "Tera Shift",        // 307
+        "Tera Shell",        // 308
+        "Teraform Zero",     // 309
+        "Poison Puppeteer",  // 310
     };
 
-    constexpr size_t ABILITY_NAMES_COUNT = 262;
+    constexpr size_t ABILITY_NAMES_COUNT = sizeof(ABILITY_NAMES) / sizeof(ABILITY_NAMES[0]);
 
     const char* getAbilityName(uint16_t abilityId) {
         if (abilityId >= ABILITY_NAMES_COUNT) {

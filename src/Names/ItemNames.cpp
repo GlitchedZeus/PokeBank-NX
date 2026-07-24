@@ -2,13 +2,15 @@
 #include <cstddef>
 
 namespace Names {
-    // Total items: 2635
+    // Total items: 2685 (ids 0-2684). Regenerated from PKHeX text_Items_en.txt -- the old table
+    // stopped at 2634 and had gaps (e.g. the Z-A key items 2601-2613 were blank, and Z-A Mega
+    // Stones 2635-2650 fell past the end and read as "???").
     static const char* ITEM_NAMES[] = {
         "None",  // 0
         "Master Ball",  // 1
         "Ultra Ball",  // 2
         "Great Ball",  // 3
-        "Poke Ball",  // 4
+        "Poké Ball",  // 4
         "Safari Ball",  // 5
         "Net Ball",  // 6
         "Dive Ball",  // 7
@@ -67,7 +69,7 @@ namespace Names {
         "X Accuracy",  // 60
         "X Sp. Atk",  // 61
         "X Sp. Def",  // 62
-        "Poke Doll",  // 63
+        "Poké Doll",  // 63
         "Fluffy Tail",  // 64
         "Blue Flute",  // 65
         "Yellow Flute",  // 66
@@ -424,18 +426,18 @@ namespace Names {
         "TM90",  // 417
         "TM91",  // 418
         "TM92",  // 419
-        "HM01",  // 420
-        "HM02",  // 421
-        "HM03",  // 422
-        "HM04",  // 423
-        "HM05",  // 424
-        "HM06",  // 425
-        "???",  // 426
-        "???",  // 427
+        "TM93",  // 420  (BD/SP repurposed the legacy HM01-08 ids 420-427 as TM93-TM100;
+        "TM94",  // 421   no PKSE-supported game has HM items, so this is safe. See PKHeX
+        "TM95",  // 422   ItemStorage8BDSP.Machine. Kept across the table regen from PKHeX,
+        "TM96",  // 423   which names these HM01-HM06/??? instead.)
+        "TM97",  // 424
+        "TM98",  // 425
+        "TM99",  // 426
+        "TM100",  // 427
         "Explorer Kit",  // 428
         "Loot Sack",  // 429
         "Rule Book",  // 430
-        "Poke Radar",  // 431
+        "Poké Radar",  // 431
         "Point Card",  // 432
         "Guidebook",  // 433
         "Sticker Case",  // 434
@@ -581,7 +583,7 @@ namespace Names {
         "Liberty Pass",  // 574
         "Pass Orb",  // 575
         "Dream Ball",  // 576
-        "Poke Toy",  // 577
+        "Poké Toy",  // 577
         "Prop Case",  // 578
         "Dragon Skull",  // 579
         "Balm Mushroom",  // 580
@@ -655,7 +657,7 @@ namespace Names {
         "Luminous Moss",  // 648
         "Snowball",  // 649
         "Safety Goggles",  // 650
-        "Poke Flute",  // 651
+        "Poké Flute",  // 651
         "Rich Mulch",  // 652
         "Surprise Mulch",  // 653
         "Boost Mulch",  // 654
@@ -728,7 +730,7 @@ namespace Names {
         "Devon Parts",  // 721
         "Soot Sack",  // 722
         "Basement Key",  // 723
-        "Pokeblock Kit",  // 724
+        "Pokéblock Kit",  // 724
         "Letter",  // 725
         "Eon Ticket",  // 726
         "Scanner",  // 727
@@ -952,7 +954,7 @@ namespace Names {
         "N-Solarizer",  // 945
         "N-Lunarizer",  // 946
         "Ilima’s Normalium Z",  // 947
-        "Left Poke Ball",  // 948
+        "Left Poké Ball",  // 948
         "Roto Hatch",  // 949
         "Roto Bargain",  // 950
         "Roto Prize Money",  // 951
@@ -1626,7 +1628,7 @@ namespace Names {
         "Swap Snack",  // 1619
         "Caster Fern",  // 1620
         "Seed of Mastery",  // 1621
-        "Poke Ball",  // 1622
+        "Poké Ball",  // 1622
         "???",  // 1623
         "Eternal Ice",  // 1624
         "Uxie’s Claw",  // 1625
@@ -1644,11 +1646,11 @@ namespace Names {
         "Wood",  // 1637
         "King’s Leaf",  // 1638
         "Marsh Balm",  // 1639
-        "Poke Ball",  // 1640
+        "Poké Ball",  // 1640
         "Great Ball",  // 1641
         "Ultra Ball",  // 1642
         "Feather Ball",  // 1643
-        "Pokeshi Doll",  // 1644
+        "Pokéshi Doll",  // 1644
         "???",  // 1645
         "Smoke Bomb",  // 1646
         "Scatter Bang",  // 1647
@@ -1714,7 +1716,7 @@ namespace Names {
         "Tempting Charm Y",  // 1707
         "Candy Truffle",  // 1708
         "Cake-Lure Base",  // 1709
-        "Poke Ball",  // 1710
+        "Poké Ball",  // 1710
         "Great Ball",  // 1711
         "Ultra Ball",  // 1712
         "Feather Ball",  // 1713
@@ -1724,7 +1726,7 @@ namespace Names {
         "Smoke Bomb",  // 1717
         "???",  // 1718
         "???",  // 1719
-        "Pokeshi Doll",  // 1720
+        "Pokéshi Doll",  // 1720
         "Volcano Balm",  // 1721
         "Mountain Balm",  // 1722
         "Snow Balm",  // 1723
@@ -1790,7 +1792,7 @@ namespace Names {
         "Leaden Ball",  // 1783
         "Gigaton Ball",  // 1784
         "Strange Ball",  // 1785
-        "Pokedex",  // 1786
+        "Pokédex",  // 1786
         "Old Verse 1",  // 1787
         "Old Verse 2",  // 1788
         "Old Verse 3",  // 1789
@@ -1835,8 +1837,8 @@ namespace Names {
         "Legend Plate",  // 1828
         "Rotom Phone",  // 1829
         "Sandwich",  // 1830
-        "Koraidon’s Poke Ball",  // 1831
-        "Miraidon’s Poke Ball",  // 1832
+        "Koraidon’s Poké Ball",  // 1831
+        "Miraidon’s Poké Ball",  // 1832
         "Tera Orb",  // 1833
         "Scarlet Book",  // 1834
         "Violet Book",  // 1835
@@ -2060,7 +2062,7 @@ namespace Names {
         "Fletchling Feather",  // 2053
         "Scatterbug Powder",  // 2054
         "Litleo Tuft",  // 2055
-        "Flabebe Pollen",  // 2056
+        "Flabébé Pollen",  // 2056
         "Skiddo Leaf",  // 2057
         "Skrelp Kelp",  // 2058
         "Clauncher Claw",  // 2059
@@ -2346,7 +2348,7 @@ namespace Names {
         "Winking Pika Pick",  // 2339
         "Vee-Vee Pick",  // 2340
         "Smiling Vee Pick",  // 2341
-        "Blue Poke Ball Pick",  // 2342
+        "Blue Poké Ball Pick",  // 2342
         "",  // 2343
         "Auspicious Armor",  // 2344
         "Leader’s Crest",  // 2345
@@ -2389,8 +2391,8 @@ namespace Names {
         "Bronze Bottle",  // 2382
         "Gold Cup",  // 2383
         "Bronze Cup",  // 2384
-        "Green Poke Ball Pick",  // 2385
-        "Red Poke Ball Pick",  // 2386
+        "Green Poké Ball Pick",  // 2385
+        "Red Poké Ball Pick",  // 2386
         "Party Sparkler Pick",  // 2387
         "Heroic Sword Pick",  // 2388
         "Magical Star Pick",  // 2389
@@ -2571,8 +2573,8 @@ namespace Names {
         "Feraligite",  // 2564
         "Skarmorite",  // 2565
         "Froslassite",  // 2566
-        "",  // 2567
-        "",  // 2568
+        "Heatranite",  // 2567
+        "Darkranite",  // 2568
         "Emboarite",  // 2569
         "Excadrite",  // 2570
         "Scolipite",  // 2571
@@ -2590,7 +2592,7 @@ namespace Names {
         "Hawluchanite",  // 2583
         "Zygardite",  // 2584
         "Drampanite",  // 2585
-        "",  // 2586
+        "Zeraorite",  // 2586
         "Falinksite",  // 2587
         "Key to Room 202",  // 2588
         "Super Lumiose Galette",  // 2589
@@ -2605,19 +2607,19 @@ namespace Names {
         "Tasty Trash",  // 2598
         "Revitalizing Twig",  // 2599
         "Lida’s Things",  // 2600
-        "",  // 2601
-        "",  // 2602
-        "",  // 2603
-        "",  // 2604
-        "",  // 2605
-        "",  // 2606
-        "",  // 2607
-        "",  // 2608
-        "",  // 2609
-        "",  // 2610
-        "",  // 2611
-        "",  // 2612
-        "",  // 2613
+        "Lumiosian Butter",  // 2601
+        "Nice Butter",  // 2602
+        "Great Butter",  // 2603
+        "Amazing Butter",  // 2604
+        "Supreme Butter",  // 2605
+        "Hyperspace Butter",  // 2606
+        "Hoennian Salt",  // 2607
+        "Épice Noire",  // 2608
+        "Arboliva Oil",  // 2609
+        "Popping Candy",  // 2610
+        "Important Letter",  // 2611
+        "Cherished Ring",  // 2612
+        "Dirty Scarf",  // 2613
         "",  // 2614
         "",  // 2615
         "",  // 2616
@@ -2638,12 +2640,65 @@ namespace Names {
         "Green Canari Plush",  // 2631
         "Blue Canari Plush",  // 2632
         "Blue Canari Plush",  // 2633
-        "Blue Canari Plush"  // 2634
+        "Blue Canari Plush",  // 2634
+        "Raichunite X",  // 2635
+        "Raichunite Y",  // 2636
+        "Chimechite",  // 2637
+        "Absolite Z",  // 2638
+        "Staraptite",  // 2639
+        "Garchompite Z",  // 2640
+        "Lucarionite Z",  // 2641
+        "Golurkite",  // 2642
+        "Meowsticite",  // 2643
+        "Crabominite",  // 2644
+        "Golisopite",  // 2645
+        "Magearnite",  // 2646
+        "Scovillainite",  // 2647
+        "Baxcalibrite",  // 2648
+        "Tatsugirinite",  // 2649
+        "Glimmoranite",  // 2650
+        "Hyper Cheri Berry",  // 2651
+        "Hyper Chesto Berry",  // 2652
+        "Hyper Pecha Berry",  // 2653
+        "Hyper Rawst Berry",  // 2654
+        "Hyper Aspear Berry",  // 2655
+        "Hyper Oran Berry",  // 2656
+        "Hyper Persim Berry",  // 2657
+        "Hyper Lum Berry",  // 2658
+        "Hyper Sitrus Berry",  // 2659
+        "Hyper Pomeg Berry",  // 2660
+        "Hyper Kelpsy Berry",  // 2661
+        "Hyper Qualot Berry",  // 2662
+        "Hyper Hondew Berry",  // 2663
+        "Hyper Grepa Berry",  // 2664
+        "Hyper Tamato Berry",  // 2665
+        "Hyper Occa Berry",  // 2666
+        "Hyper Passho Berry",  // 2667
+        "Hyper Wacan Berry",  // 2668
+        "Hyper Rindo Berry",  // 2669
+        "Hyper Yache Berry",  // 2670
+        "Hyper Chople Berry",  // 2671
+        "Hyper Kebia Berry",  // 2672
+        "Hyper Shuca Berry",  // 2673
+        "Hyper Coba Berry",  // 2674
+        "Hyper Payapa Berry",  // 2675
+        "Hyper Tanga Berry",  // 2676
+        "Hyper Charti Berry",  // 2677
+        "Hyper Kasib Berry",  // 2678
+        "Hyper Haban Berry",  // 2679
+        "Hyper Colbur Berry",  // 2680
+        "Hyper Babiri Berry",  // 2681
+        "Hyper Chilan Berry",  // 2682
+        "Hyper Roseli Berry",  // 2683
+        "Canari Bread",  // 2684
     };
 
     /// Get item name by ID
     const char* getItemName(uint16_t itemId) {
-        if (itemId >= 2635) {
+        // Out of range OR a genuinely-unnamed slot (a handful of ids are blank even in PKHeX) -> a
+        // visible marker rather than an empty string, so a data gap never renders as a blank tile
+        // (the exact failure that made Z-A key items show up empty).
+        if (itemId >= 2685 || ITEM_NAMES[itemId][0] == '\0') {
             return "???";
         }
         return ITEM_NAMES[itemId];
@@ -2651,6 +2706,443 @@ namespace Names {
 
     /// Get total number of items
     size_t getItemCount() {
-        return 2635;
+        return 2685;
     }
+
+    // ------------------------------------------------------------------
+    // Gen 3 (GBA) item id <-> modern (Gen 4+) item id.
+    // ------------------------------------------------------------------
+    // The modern ITEM_NAMES table above is Gen-4-aligned (id 17 = Potion, 328 = TM01, ...), so a
+    // Gen 3 item is named by converting its id to the modern id and reusing that table. Table =
+    // PKHeX ItemConverter.Item3to4 (Gen 3 id -> Gen 4+ id); value 128 (NaN) = no modern equivalent.
+    static const uint16_t ITEM3_TO_MODERN[] = {
+          0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  17,  18,  19,
+         20,  21,  22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32,  33,  34,  35,
+         36,  37,  38,  39,  40,  41,  42,  65,  66,  67,  68,  69,  43,  44,  70,  71,
+         72,  73,  74,  75, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128,  45,
+         46,  47,  48,  49,  50,  51,  52,  53, 128,  55,  56,  57,  58,  59,  60,  61,
+         63,  64, 128,  76,  77,  78,  79, 128, 128, 128, 128, 128, 128,  80,  81,  82,
+         83,  84,  85, 128, 128, 128, 128,  86,  87, 128,  88,  89,  90,  91,  92,  93,
+        128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128,
+        128, 128, 128, 128, 128, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159,
+        160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175,
+        176, 177, 178, 179, 180, 181, 182, 183, 201, 202, 203, 204, 205, 206, 207, 208,
+        128, 128, 128, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225,
+        226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241,
+        242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257,
+        258, 259, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128,
+        128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 260, 261,
+        262, 263, 264, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128,
+        128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128,
+        128, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 342,
+        343, 344, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358,
+        359, 360, 361, 362, 363, 364, 365, 366, 367, 368, 369, 370, 371, 372, 373, 374,
+        375, 376, 377,
+    };
+    static constexpr size_t ITEM3_COUNT = sizeof(ITEM3_TO_MODERN) / sizeof(ITEM3_TO_MODERN[0]);
+    static constexpr uint16_t ITEM3_NAN = 128;   // "no modern equivalent" sentinel
+
+    uint16_t itemG3ToModern(uint16_t g3Id) {
+        if (g3Id >= ITEM3_COUNT) return 0;
+        const uint16_t m = ITEM3_TO_MODERN[g3Id];
+        return (m == ITEM3_NAN) ? 0 : m;
+    }
+
+    uint16_t itemModernToG3(uint16_t modernId) {
+        if (modernId == 0 || modernId == ITEM3_NAN) return 0;
+        for (uint16_t i = 0; i < ITEM3_COUNT; ++i)
+            if (ITEM3_TO_MODERN[i] == modernId) return i;
+        return 0;   // no Gen 3 equivalent -> drop
+    }
+
+    // Gen 3 item names indexed by Gen 3 item id (PKHeX text_ItemsG3_en, ASCII-normalized to match the
+    // modern table's style). Key items / HMs / event tickets have no modern equivalent, so Gen 3 items
+    // are named directly from here rather than via the Item3to4 conversion.
+    static const char* ITEM3_NAMES[] = {
+        "(None)",  // 0
+        "Master Ball",  // 1
+        "Ultra Ball",  // 2
+        "Great Ball",  // 3
+        "Poké Ball",  // 4
+        "Safari Ball",  // 5
+        "Net Ball",  // 6
+        "Dive Ball",  // 7
+        "Nest Ball",  // 8
+        "Repeat Ball",  // 9
+        "Timer Ball",  // 10
+        "Luxury Ball",  // 11
+        "Premier Ball",  // 12
+        "Potion",  // 13
+        "Antidote",  // 14
+        "Burn Heal",  // 15
+        "Ice Heal",  // 16
+        "Awakening",  // 17
+        "Parlyz Heal",  // 18
+        "Full Restore",  // 19
+        "Max Potion",  // 20
+        "Hyper Potion",  // 21
+        "Super Potion",  // 22
+        "Full Heal",  // 23
+        "Revive",  // 24
+        "Max Revive",  // 25
+        "Fresh Water",  // 26
+        "Soda Pop",  // 27
+        "Lemonade",  // 28
+        "Moomoo Milk",  // 29
+        "EnergyPowder",  // 30
+        "Energy Root",  // 31
+        "Heal Powder",  // 32
+        "Revival Herb",  // 33
+        "Ether",  // 34
+        "Max Ether",  // 35
+        "Elixir",  // 36
+        "Max Elixir",  // 37
+        "Lava Cookie",  // 38
+        "Blue Flute",  // 39
+        "Yellow Flute",  // 40
+        "Red Flute",  // 41
+        "Black Flute",  // 42
+        "White Flute",  // 43
+        "Berry Juice",  // 44
+        "Sacred Ash",  // 45
+        "Shoal Salt",  // 46
+        "Shoal Shell",  // 47
+        "Red Shard",  // 48
+        "Blue Shard",  // 49
+        "Yellow Shard",  // 50
+        "Green Shard",  // 51
+        "???",  // 52
+        "???",  // 53
+        "???",  // 54
+        "???",  // 55
+        "???",  // 56
+        "???",  // 57
+        "???",  // 58
+        "???",  // 59
+        "???",  // 60
+        "???",  // 61
+        "???",  // 62
+        "HP Up",  // 63
+        "Protein",  // 64
+        "Iron",  // 65
+        "Carbos",  // 66
+        "Calcium",  // 67
+        "Rare Candy",  // 68
+        "PP Up",  // 69
+        "Zinc",  // 70
+        "PP Max",  // 71
+        "???",  // 72
+        "Guard Spec.",  // 73
+        "Dire Hit",  // 74
+        "X Attack",  // 75
+        "X Defend",  // 76
+        "X Speed",  // 77
+        "X Accuracy",  // 78
+        "X Special",  // 79
+        "Poké Doll",  // 80
+        "Fluffy Tail",  // 81
+        "???",  // 82
+        "Super Repel",  // 83
+        "Max Repel",  // 84
+        "Escape Rope",  // 85
+        "Repel",  // 86
+        "???",  // 87
+        "???",  // 88
+        "???",  // 89
+        "???",  // 90
+        "???",  // 91
+        "???",  // 92
+        "Sun Stone",  // 93
+        "Moon Stone",  // 94
+        "Fire Stone",  // 95
+        "Thunder Stone",  // 96
+        "Water Stone",  // 97
+        "Leaf Stone",  // 98
+        "???",  // 99
+        "???",  // 100
+        "???",  // 101
+        "???",  // 102
+        "TinyMushroom",  // 103
+        "Big Mushroom",  // 104
+        "???",  // 105
+        "Pearl",  // 106
+        "Big Pearl",  // 107
+        "Stardust",  // 108
+        "Star Piece",  // 109
+        "Nugget",  // 110
+        "Heart Scale",  // 111
+        "???",  // 112
+        "???",  // 113
+        "???",  // 114
+        "???",  // 115
+        "???",  // 116
+        "???",  // 117
+        "???",  // 118
+        "???",  // 119
+        "???",  // 120
+        "Orange Mail",  // 121
+        "Harbor Mail",  // 122
+        "Glitter Mail",  // 123
+        "Mech Mail",  // 124
+        "Wood Mail",  // 125
+        "Wave Mail",  // 126
+        "Bead Mail",  // 127
+        "Shadow Mail",  // 128
+        "Tropic Mail",  // 129
+        "Dream Mail",  // 130
+        "Fab Mail",  // 131
+        "Retro Mail",  // 132
+        "Cheri Berry",  // 133
+        "Chesto Berry",  // 134
+        "Pecha Berry",  // 135
+        "Rawst Berry",  // 136
+        "Aspear Berry",  // 137
+        "Leppa Berry",  // 138
+        "Oran Berry",  // 139
+        "Persim Berry",  // 140
+        "Lum Berry",  // 141
+        "Sitrus Berry",  // 142
+        "Figy Berry",  // 143
+        "Wiki Berry",  // 144
+        "Mago Berry",  // 145
+        "Aguav Berry",  // 146
+        "Iapapa Berry",  // 147
+        "Razz Berry",  // 148
+        "Bluk Berry",  // 149
+        "Nanab Berry",  // 150
+        "Wepear Berry",  // 151
+        "Pinap Berry",  // 152
+        "Pomeg Berry",  // 153
+        "Kelpsy Berry",  // 154
+        "Qualot Berry",  // 155
+        "Hondew Berry",  // 156
+        "Grepa Berry",  // 157
+        "Tamato Berry",  // 158
+        "Cornn Berry",  // 159
+        "Magost Berry",  // 160
+        "Rabuta Berry",  // 161
+        "Nomel Berry",  // 162
+        "Spelon Berry",  // 163
+        "Pamtre Berry",  // 164
+        "Watmel Berry",  // 165
+        "Durin Berry",  // 166
+        "Belue Berry",  // 167
+        "Liechi Berry",  // 168
+        "Ganlon Berry",  // 169
+        "Salac Berry",  // 170
+        "Petaya Berry",  // 171
+        "Apicot Berry",  // 172
+        "Lansat Berry",  // 173
+        "Starf Berry",  // 174
+        "Enigma Berry",  // 175
+        "???",  // 176
+        "???",  // 177
+        "???",  // 178
+        "BrightPowder",  // 179
+        "White Herb",  // 180
+        "Macho Brace",  // 181
+        "Exp. Share",  // 182
+        "Quick Claw",  // 183
+        "Soothe Bell",  // 184
+        "Mental Herb",  // 185
+        "Choice Band",  // 186
+        "King's Rock",  // 187
+        "SilverPowder",  // 188
+        "Amulet Coin",  // 189
+        "Cleanse Tag",  // 190
+        "Soul Dew",  // 191
+        "DeepSeaTooth",  // 192
+        "DeepSeaScale",  // 193
+        "Smoke Ball",  // 194
+        "Everstone",  // 195
+        "Focus Band",  // 196
+        "Lucky Egg",  // 197
+        "Scope Lens",  // 198
+        "Metal Coat",  // 199
+        "Leftovers",  // 200
+        "Dragon Scale",  // 201
+        "Light Ball",  // 202
+        "Soft Sand",  // 203
+        "Hard Stone",  // 204
+        "Miracle Seed",  // 205
+        "BlackGlasses",  // 206
+        "Black Belt",  // 207
+        "Magnet",  // 208
+        "Mystic Water",  // 209
+        "Sharp Beak",  // 210
+        "Poison Barb",  // 211
+        "NeverMeltIce",  // 212
+        "Spell Tag",  // 213
+        "TwistedSpoon",  // 214
+        "Charcoal",  // 215
+        "Dragon Fang",  // 216
+        "Silk Scarf",  // 217
+        "Up-Grade",  // 218
+        "Shell Bell",  // 219
+        "Sea Incense",  // 220
+        "Lax Incense",  // 221
+        "Lucky Punch",  // 222
+        "Metal Powder",  // 223
+        "Thick Club",  // 224
+        "Stick",  // 225
+        "???",  // 226
+        "???",  // 227
+        "???",  // 228
+        "???",  // 229
+        "???",  // 230
+        "???",  // 231
+        "???",  // 232
+        "???",  // 233
+        "???",  // 234
+        "???",  // 235
+        "???",  // 236
+        "???",  // 237
+        "???",  // 238
+        "???",  // 239
+        "???",  // 240
+        "???",  // 241
+        "???",  // 242
+        "???",  // 243
+        "???",  // 244
+        "???",  // 245
+        "???",  // 246
+        "???",  // 247
+        "???",  // 248
+        "???",  // 249
+        "???",  // 250
+        "???",  // 251
+        "???",  // 252
+        "???",  // 253
+        "Red Scarf",  // 254
+        "Blue Scarf",  // 255
+        "Pink Scarf",  // 256
+        "Green Scarf",  // 257
+        "Yellow Scarf",  // 258
+        "Mach Bike",  // 259
+        "Coin Case",  // 260
+        "Itemfinder",  // 261
+        "Old Rod",  // 262
+        "Good Rod",  // 263
+        "Super Rod",  // 264
+        "S.S. Ticket",  // 265
+        "Contest Pass",  // 266
+        "???",  // 267
+        "Wailmer Pail",  // 268
+        "Devon Goods",  // 269
+        "Soot Sack",  // 270
+        "Basement Key",  // 271
+        "Acro Bike",  // 272
+        "Pokéblock Case",  // 273
+        "Letter",  // 274
+        "Eon Ticket",  // 275
+        "Red Orb",  // 276
+        "Blue Orb",  // 277
+        "Scanner",  // 278
+        "Go-Goggles",  // 279
+        "Meteorite",  // 280
+        "Rm. 1 Key",  // 281
+        "Rm. 2 Key",  // 282
+        "Rm. 4 Key",  // 283
+        "Rm. 6 Key",  // 284
+        "Storage Key",  // 285
+        "Root Fossil",  // 286
+        "Claw Fossil",  // 287
+        "Devon Scope",  // 288
+        "TM01",  // 289
+        "TM02",  // 290
+        "TM03",  // 291
+        "TM04",  // 292
+        "TM05",  // 293
+        "TM06",  // 294
+        "TM07",  // 295
+        "TM08",  // 296
+        "TM09",  // 297
+        "TM10",  // 298
+        "TM11",  // 299
+        "TM12",  // 300
+        "TM13",  // 301
+        "TM14",  // 302
+        "TM15",  // 303
+        "TM16",  // 304
+        "TM17",  // 305
+        "TM18",  // 306
+        "TM19",  // 307
+        "TM20",  // 308
+        "TM21",  // 309
+        "TM22",  // 310
+        "TM23",  // 311
+        "TM24",  // 312
+        "TM25",  // 313
+        "TM26",  // 314
+        "TM27",  // 315
+        "TM28",  // 316
+        "TM29",  // 317
+        "TM30",  // 318
+        "TM31",  // 319
+        "TM32",  // 320
+        "TM33",  // 321
+        "TM34",  // 322
+        "TM35",  // 323
+        "TM36",  // 324
+        "TM37",  // 325
+        "TM38",  // 326
+        "TM39",  // 327
+        "TM40",  // 328
+        "TM41",  // 329
+        "TM42",  // 330
+        "TM43",  // 331
+        "TM44",  // 332
+        "TM45",  // 333
+        "TM46",  // 334
+        "TM47",  // 335
+        "TM48",  // 336
+        "TM49",  // 337
+        "TM50",  // 338
+        "HM01",  // 339
+        "HM02",  // 340
+        "HM03",  // 341
+        "HM04",  // 342
+        "HM05",  // 343
+        "HM06",  // 344
+        "HM07",  // 345
+        "HM08",  // 346
+        "???",  // 347
+        "???",  // 348
+        "Oak's Parcel",  // 349
+        "Poké Flute",  // 350
+        "Secret Key",  // 351
+        "Bike Voucher",  // 352
+        "Gold Teeth",  // 353
+        "Old Amber",  // 354
+        "Card Key",  // 355
+        "Lift Key",  // 356
+        "Helix Fossil",  // 357
+        "Dome Fossil",  // 358
+        "Silph Scope",  // 359
+        "Bicycle",  // 360
+        "Town Map",  // 361
+        "Vs. Seeker",  // 362
+        "Fame Checker",  // 363
+        "TM Case",  // 364
+        "Berry Pouch",  // 365
+        "Teachy TV",  // 366
+        "Tri-Pass",  // 367
+        "Rainbow Pass",  // 368
+        "Tea",  // 369
+        "MysticTicket",  // 370
+        "AuroraTicket",  // 371
+        "Powder Jar",  // 372
+        "Ruby",  // 373
+        "Sapphire",  // 374
+        "Magma Emblem",  // 375
+        "Old Sea Map",  // 376
+    };
+    static constexpr size_t ITEM3_NAMES_COUNT = sizeof(ITEM3_NAMES) / sizeof(ITEM3_NAMES[0]);
+
+    const char* getItemNameG3(uint16_t g3Id) {
+        if (g3Id >= ITEM3_NAMES_COUNT) return "???";
+        return ITEM3_NAMES[g3Id];
+    }
+
+    size_t getItemCountG3() { return ITEM3_NAMES_COUNT; }
 }
