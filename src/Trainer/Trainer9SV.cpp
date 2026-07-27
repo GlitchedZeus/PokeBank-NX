@@ -74,9 +74,11 @@ namespace Trainer {
         this->SID16 = readUInt16LittleEndian(&block.data[0x02]);
         this->TID = this->ID32 % 1000000;
         this->SID = this->ID32 / 1000000;
-        size_t nameLength = std::min(static_cast<size_t>(0x10), static_cast<size_t>(0x1A));
-        auto nameSpan = std::span<const uint8_t>(block.data.data() + 0x10, nameLength);
-        this->trainerName = utf16ToUtf8(getString(nameSpan.data(), nameLength));
+        // OT name is a 26-byte (0x1A) field at 0x10 -- PKHeX MyStatus9.OriginalTrainerTrash =
+        // Data.Slice(0x10, 0x1A). The old min(0x10, 0x1A) mistakenly used the OFFSET (0x10 = 16 bytes =
+        // 8 code units) as the length, truncating any trainer name longer than 8 characters.
+        if (block.data.size() >= 0x10 + 0x1A)
+            this->trainerName = utf16ToUtf8(getString(&block.data[0x10], 0x1A));
         this->trainerGender = block.data[0x05] & 1;   // 0x05: gender (0=M, 1=F)
         logInfoToFile("Parsed Trainer Name", this->trainerName.c_str());
     }
