@@ -201,6 +201,109 @@ namespace Enums {
     }
 
     /**
+     * Human-readable name for a raw ORIGIN version byte (the PKM Version field). Covers EVERY
+     * game a HOME-transferred mon can carry -- Gen 1 through 9 -- not just the Switch titles
+     * PKSE itself edits, so the details modal's "Origin" row shows a transferred Sun/Moon or
+     * Gen 4/5/6 mon's real game instead of "Unknown". Ids + names match PKHeX's GameVersion enum.
+     */
+    inline std::string getOriginGameName(uint8_t version) {
+        switch (version) {
+            // Gen 3 (GBA) + GameCube
+            case 1:  return "Sapphire";
+            case 2:  return "Ruby";
+            case 3:  return "Emerald";
+            case 4:  return "FireRed";
+            case 5:  return "LeafGreen";
+            case 15: return "Colosseum/XD";
+            // Gen 4 (NDS)
+            case 7:  return "HeartGold";
+            case 8:  return "SoulSilver";
+            case 10: return "Diamond";
+            case 11: return "Pearl";
+            case 12: return "Platinum";
+            case 16: return "Battle Revolution";
+            // Gen 5 (NDS)
+            case 20: return "White";
+            case 21: return "Black";
+            case 22: return "White 2";
+            case 23: return "Black 2";
+            // Gen 6 (3DS)
+            case 24: return "X";
+            case 25: return "Y";
+            case 26: return "Alpha Sapphire";
+            case 27: return "Omega Ruby";
+            // Gen 7 (3DS)
+            case 30: return "Sun";
+            case 31: return "Moon";
+            case 32: return "Ultra Sun";
+            case 33: return "Ultra Moon";
+            case 34: return "Pokemon GO";
+            // Virtual Console (Gen 1/2)
+            case 35: return "Red";
+            case 36: return "Blue";
+            case 37: return "Blue (JP)";
+            case 38: return "Yellow";
+            case 39: return "Gold";
+            case 40: return "Silver";
+            case 41: return "Crystal";
+            // Nintendo Switch
+            case 42: return "Let's Go Pikachu";
+            case 43: return "Let's Go Eevee";
+            case 44: return "Sword";
+            case 45: return "Shield";
+            case 47: return "Legends Arceus";
+            case 48: return "Brilliant Diamond";
+            case 49: return "Shining Pearl";
+            case 50: return "Scarlet";
+            case 51: return "Violet";
+            case 52: return "Legends Z-A";
+            case 53: return "Champions";
+            default: return "Unknown";
+        }
+    }
+
+    /** Generation (1-9) of a raw origin/format version byte; 0 if unknown. Matches PKHeX's GameVersion buckets. */
+    inline int getVersionGeneration(uint8_t version) {
+        if ((version >= 1 && version <= 5) || version == 15) return 3;
+        if (version == 7 || version == 8 || (version >= 10 && version <= 12) || version == 16) return 4;
+        if (version >= 20 && version <= 23) return 5;
+        if (version >= 24 && version <= 27) return 6;
+        if ((version >= 30 && version <= 34) || version == 42 || version == 43) return 7;  // SM/USUM/GO + Let's Go
+        if (version >= 44 && version <= 49) return 8;
+        if (version >= 50 && version <= 52) return 9;
+        return 0;
+    }
+
+    /** A representative stored version byte for a storage-format game group, for location-table routing. */
+    inline uint8_t getGroupRepVersion(GameVersion group) {
+        switch (group) {
+            case GameVersion::FRLG: return 4;   // FireRed
+            case GameVersion::GG:   return 42;  // Let's Go Pikachu
+            case GameVersion::SWSH: return 44;  // Sword
+            case GameVersion::PLA:  return 47;
+            case GameVersion::BDSP: return 48;
+            case GameVersion::SV:   return 50;  // Scarlet
+            case GameVersion::ZA:   return 52;
+            default: return 50;
+        }
+    }
+
+    /**
+     * Which stored version's met-location table names a location, per PKHeX GameStrings.GetGeneration
+     * (for a Gen 5+ format): a Gen 5+ origin keeps its OWN table; a Gen 4 EGG location stays on the Gen 4
+     * table; but a Gen 3/4 MET location (and a Gen 3 egg) is remapped into the CURRENT format's numbering
+     * when the mon is transferred up, so it must be named with the format's table -- not the origin's.
+     * Without this a Platinum starter link-traded up to Scarlet/Violet reads its met as "(none)".
+     */
+    inline uint8_t locationTableVersion(uint8_t originVersion, uint8_t formatVersion, bool isEggLocation) {
+        if (originVersion == 34) return formatVersion;  // Pokemon GO: its met marker uses the current format's numbering
+        const int og = getVersionGeneration(originVersion);
+        if (og >= 5) return originVersion;
+        if (og == 4 && isEggLocation) return originVersion;
+        return formatVersion;
+    }
+
+    /**
      * Checks if a game version is currently supported by PKSE.
      *
      * Games that are supported have fully implemented save file reading/writing.

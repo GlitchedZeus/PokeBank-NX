@@ -716,7 +716,7 @@ namespace Conversion {
                     out->setRelearnMove(i, 0);   // Gen 3 has no relearn moves (remap leaves them 0)
             }
 
-            // Compact the surviving moves upward (#27). Clearing slot 2 of 4 otherwise leaves a HOLE,
+            // Compact the surviving moves upward. Clearing slot 2 of 4 otherwise leaves a HOLE,
             // and a gap mid-moveset is not a state the games produce: they pack moves from slot 1 and
             // treat the first empty slot as the end of the list. A mon that arrived as
             // [Tackle, --, Ember, --] could therefore read as knowing only Tackle. Each move carries its
