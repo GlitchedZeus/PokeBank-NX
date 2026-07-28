@@ -410,7 +410,7 @@ namespace Trainer {
         for (auto& block : blocks) {
             if (block.key != BOX_LAYOUT8_SWSH) continue;
             for (size_t boxIndex = 0; boxIndex < BOX_COUNT8_SWSH && boxIndex < boxNames.size(); ++boxIndex) {
-                if (!isBoxNameDirty(boxIndex)) continue;   // never persist a display default (#50)
+                if (!isBoxNameDirty(boxIndex)) continue;   // never persist a display default
                 const size_t offset = boxIndex * BOX_NAME_LENGTH8_SWSH;
                 if (offset + BOX_NAME_LENGTH8_SWSH > block.data.size()) break;
                 setString(block.data.data() + offset, BOX_NAME_LENGTH8_SWSH,

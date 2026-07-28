@@ -10,7 +10,7 @@
 
 #include "Trainer/Trainer9SV.h"
 #include "Trainer/Inventory9SV.h"
-#include "Names/ItemPouches.h"   // getPouchItems -- per-pouch legal ids (#41)
+#include "Names/ItemPouches.h"   // getPouchItems -- per-pouch legal ids
 #include "Utils/Logger.h"
 
 using namespace Utils;
@@ -167,7 +167,7 @@ namespace Trainer {
 
             // Legal ids for this pouch, from the generated PKHeX-derived table. This replaced a
             // hand-written list that was byte-identical to the other Gen 9 game's and wrong for
-            // both (task #41) -- it bucketed vitamins under Battle Items and claimed pockets the
+            // both -- it bucketed vitamins under Battle Items and claimed pockets the
             // game does not have. Pouch membership is display-only: the write below is keyed on
             // item id, not pouch.
             const auto validIds = Names::getPouchItems(Enums::GameVersion::SV, static_cast<size_t>(i));
@@ -427,7 +427,7 @@ namespace Trainer {
         for (auto& block : blocks) {
             if (block.key != BOX_LAYOUT9_SV) continue;
             for (size_t boxIndex = 0; boxIndex < BOX_COUNT9_SV && boxIndex < boxNames.size(); ++boxIndex) {
-                if (!isBoxNameDirty(boxIndex)) continue;   // never persist a display default (#50)
+                if (!isBoxNameDirty(boxIndex)) continue;   // never persist a display default
                 const size_t offset = boxIndex * BOX_NAME_LENGTH9_SV;
                 if (offset + BOX_NAME_LENGTH9_SV > block.data.size()) break;
                 setString(block.data.data() + offset, BOX_NAME_LENGTH9_SV,
@@ -570,12 +570,12 @@ namespace Trainer {
             //
             // PKSE places each item in a pouch by legal-list membership (getPouchItems, mirroring
             // PKHeX's spans); the GAME instead keys the bag off the pouchId in each record. A freshly
-            // CREATED item (add or change-type, #39/E10) lands in a never-held slot whose pouchId is
+            // CREATED item (add or change-type) lands in a never-held slot whose pouchId is
             // the "none" sentinel, so the game hides it even with the count set. We therefore stamp the
             // pouch's canonical pouchId (PKHeX InventoryItem9.Pouch*) on every present item -- a no-op
             // for items the game already had (same value), the fix for new ones. Index by PouchType9SV.
-            // (Earlier this wrote count only, from before item creation existed; see task #16 for why
-            // the whole block must NOT be resized/rebuilt.)
+            // (Earlier this wrote count only, from before item creation existed; the whole
+            // block must NOT be resized/rebuilt.)
             static const uint32_t POUCH_ID9_SV[POUCH_COUNT9_SV] = { 0, 1, 2, 3, 4, 5, 9, 6, 7, 8 };
             const size_t blockSize = block.data.size();
             for (int i = 0; i < static_cast<int>(POUCH_COUNT9_SV); i++) {

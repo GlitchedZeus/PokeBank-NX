@@ -106,15 +106,25 @@ Create or update the file in .vscode/c_cpp_properties.json with the following co
 
 ## **4. Build the Project**
 
-To build the project, open MSys2 (should have been included with the devkitpro toolset), navigate to the root directory and run:
+#### **4.1. Fetch the Pokemon sprites** (one time)
+
+The HD Pokemon sprites are **not** downloaded by `make`. Fetch them once from the [PokeAPI HOME renders](https://github.com/PokeAPI/sprites) and downscale them into `romfs/` with the bundled script — it needs Python 3 and [Pillow](https://pypi.org/project/Pillow/) (`pip install pillow`):
+
+```bash
+python tools/gen_hdsprites.py
+```
+
+This writes 256px PNGs into `romfs/sprites/pokemon_hd/` (every base species plus alternate forms, normal + shiny). You only need to re-run it after bumping the script's pinned PokeAPI ref or adding a new generation; pass `--force` to re-fetch everything.
+
+#### **4.2. Build**
+
+Open MSys2 (should have been included with the devkitPro toolset), navigate to the root directory and run:
 
 ```bash
 make clean && make all
 ```
 
-This will download all of the necessary sprites and generate an .nro file in the build directory, which you can deploy to your Nintendo Switch.
-
-Or if you don't need to download the sprites (either you don't want to or you've already downloaded them) you can just run:
+`make all` downloads the type icons and UI font (if they're missing), then generates the `.nro` in the build directory, which you can deploy to your Nintendo Switch. If the type icons, font and sprites are already present, skip the downloads with:
 
 ```bash
 make clean && make
