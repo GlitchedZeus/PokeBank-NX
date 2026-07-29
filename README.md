@@ -33,8 +33,8 @@ All seven mainline Switch titles are implemented, and all of them interconnect t
 
 
 ### Known gaps
-- Transferring *into* Gen 3 necessarily loses data Gen 3 cannot store: nature and gender become PID-derived, and custom nicknames fall back to the species name.
-- Ribbons are counted but not individually displayed.
+- Transferring *into* Gen 3 rebuilds the Pokemon's PID. Gen 3 derives nature, gender, shininess and ability slot from the PID, so PKSE searches for a PID that reproduces all four — those traits are preserved (the original PID is kept in the rare case no match is found). The trade-off is that the PID itself changes, and the resulting PID/IV pair won't correspond to a real Gen 3 RNG frame; PKSE warns you before the conversion. Custom nicknames also fall back to the species name.
+- Ribbons are counted but not individually displayed or editable.
 
 ---
 
