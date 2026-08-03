@@ -1,7 +1,7 @@
 /**
  * Bank.h - Persistent cross-GAME Pokemon storage ("bank")
  *
- * A PKSM-style storage bank: boxes of Pokemon that live OUTSIDE any single save file,
+ * A HOME-style storage bank: boxes of Pokemon that live OUTSIDE any single save file,
  * persisted to the SD card under sdmc:/PKSE/bank. UNIFIED across all games: every slot
  * carries its own game-group tag + native (encrypted) per-gen bytes, so Pokemon from all
  * six titles coexist in one bank. Deposit is passive (store as-is, byte-in == byte-out) --
@@ -38,7 +38,7 @@ namespace Trainer {
         bool save() const;
 
         /// True if the in-memory boxes differ from the last saved/loaded on-disk state.
-        /// Used to prompt Save/Discard when leaving the storage view (PKSM-style).
+        /// Used to prompt Save/Discard when leaving the storage view (HOME-style).
         bool hasChanged() const;
 
         size_t boxCount() const noexcept { return BANK_BOX_COUNT; }

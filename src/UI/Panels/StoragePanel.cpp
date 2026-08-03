@@ -1,9 +1,11 @@
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <memory>
 #include <string>
 
 #include "UI/Panels/StoragePanel.h"
+#include "UI/Panels/CarriedSprite.h"   // drawLiftedMon -- shared with the Boxes view
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
@@ -21,17 +23,12 @@ namespace UI {
 namespace Panels {
 
     namespace {
-        // Cursor-mode colors: red (Menu), blue (Move), green (Multi).
-        constexpr Color MenuColor(232, 92, 92);
-        constexpr Color MoveColor(86, 148, 244);
-        constexpr Color MultiColor(96, 205, 128);
-
         Color cursorColorFor(TrainerViewScreen::CursorMode mode) {
             switch (mode) {
-                case TrainerViewScreen::CursorMode::Move:  return MoveColor;
-                case TrainerViewScreen::CursorMode::Multi: return MultiColor;
+                case TrainerViewScreen::CursorMode::Move:  return Colors::CursorMove;
+                case TrainerViewScreen::CursorMode::Multi: return Colors::CursorMulti;
                 case TrainerViewScreen::CursorMode::Menu:
-                default:                                   return MenuColor;
+                default:                                   return Colors::CursorMenu;
             }
         }
 
@@ -43,6 +40,18 @@ namespace Panels {
                 default:                                   return "MENU";
             }
         }
+
+        // Cell geometry of a drawn pane, handed back so the carried block and the cursor can be
+        // drawn AFTER both panes (otherwise the second pane's card paints over a block being
+        // carried across the boundary).
+        struct PaneGeom {
+            int gridX = 0, gridTop = 0, colPitch = 0, rowPitch = 0, discR = 0, cols = 1, rows = 5;
+            int pillCx = 0, pillTop = 0;   // box-name pill, so the cursor can point at it too
+            int cellX(int slot) const { return gridX + (slot % cols) * colPitch; }
+            int cellY(int slot) const { return gridTop + (slot / cols) * rowPitch; }
+            int centerX(int slot) const { return cellX(slot) + colPitch / 2; }
+            int centerY(int slot) const { return cellY(slot) + rowPitch / 2; }
+        };
 
         // Draw one Pokemon (sprite + shiny/party markers) centered on a slot disc of radius discR.
         void drawSlotDisc(TrainerViewScreen& screen, PKSEFramebuffer& fb,
@@ -83,12 +92,12 @@ namespace Panels {
         }
 
         // Draws one storage pane in the HOME box style (rounded card + indigo header band + disc
-        // grid). Reports the cursor disc's pixel rect via outCursorRect (to lift a carried Pokemon).
+        // grid), and reports its cell geometry via outGeom.
         void drawPane(TrainerViewScreen& screen, PKSEFramebuffer& fb,
                      int px, int py, int pw, int ph, bool savePane,
                      int boxIndex, int cursorSlot, bool focused, bool entered,
                      int cols, int rows, int slotsPerBox,
-                     const std::string& label, int boxCount, int outCursorRect[4]) {
+                     const std::string& label, int boxCount, PaneGeom& outGeom) {
             fb.drawFilledRoundedRect(px, py, pw, ph, 16, Colors::Panel);
 
             // Header band (rounded top). Focused pane = accent indigo; unfocused = dim.
@@ -107,8 +116,8 @@ namespace Panels {
             fb.drawText(px + (pw - lw) / 2, pillY + (pillH - lh) / 2, label, headerFocused ? Colors::PrimaryText : Colors::Text);
 
             const int arrowY = py + (headerH - lh) / 2;
-            fb.drawSymbol(px + 18, arrowY, "\xE2\x97\x80", focused ? Colors::Text : Colors::TextDim);        // ◀
-            fb.drawSymbol(px + pw - 32, arrowY, "\xE2\x96\xB6", focused ? Colors::Text : Colors::TextDim);   // ▶
+            fb.drawSymbol(px + 18, arrowY, "\xE2\x97\x80", focused ? Colors::Text : Colors::TextDim);        // left
+            fb.drawSymbol(px + pw - 32, arrowY, "\xE2\x96\xB6", focused ? Colors::Text : Colors::TextDim);   // right
             // Tappable box arrows (special slot ids -2 = prev box, -3 = next box) and the name pill
             // (-4 = rename this box). The name target sits between the two arrow zones.
             screen.storageTouchTargets.push_back({ savePane ? 0 : 1, boxIndex, -2, px, py, 64, headerH });
@@ -123,22 +132,31 @@ namespace Panels {
             const int colPitch = gridW / cols, rowPitch = gridH / rows;
             int discR = std::min(colPitch, rowPitch) / 2 - 4;
             if (discR < 12) discR = 12;
+            outGeom = PaneGeom{gridX, gridTop, colPitch, rowPitch, discR, cols, rows,
+                               px + pw / 2, pillY};
 
             const int thisPane = savePane ? 0 : 1;
-            auto isMultiSel = [&](int i) {
-                for (const auto& s : screen.multiSel)
-                    if (s.pane == thisPane && s.box == boxIndex && s.slot == i) return true;
-                return false;
-            };
-            const Color cur = cursorColorFor(screen.cursorMode);
+
+            // The rubber-band rectangle being swept out in Multi mode: a green wash UNDER the
+            // Pokemon (so they stay readable) with a matching border on top. It spans from the
+            // anchor cell to the cell under the cursor, the way HOME's multi-select highlight does.
+            int selC0 = -1, selR0 = -1, selC1 = -1, selR1 = -1;
+            if (screen.currentlySelecting && entered && screen.selectPane == thisPane &&
+                screen.selectBox == boxIndex && cursorSlot >= 0) {
+                const int ax = screen.selectDimensions.first, ay = screen.selectDimensions.second;
+                const int cxs = cursorSlot % cols, cys = cursorSlot / cols;
+                selC0 = std::min(ax, cxs); selC1 = std::max(ax, cxs);
+                selR0 = std::min(ay, cys); selR1 = std::max(ay, cys);
+                const Color wash(Colors::CursorMulti.r, Colors::CursorMulti.g, Colors::CursorMulti.b, 64);
+                fb.drawFilledRoundedRect(gridX + selC0 * colPitch + 2, gridTop + selR0 * rowPitch + 2,
+                                         (selC1 - selC0 + 1) * colPitch - 4, (selR1 - selR0 + 1) * rowPitch - 4,
+                                         14, wash);
+            }
 
             for (int i = 0; i < slotsPerBox; ++i) {
                 const int row = i / cols, col = i % cols;
                 const int cellX = gridX + col * colPitch, cellY = gridTop + row * rowPitch;
                 const int cx = cellX + colPitch / 2, cy = cellY + rowPitch / 2;
-
-                const bool isCursor = focused && entered && i == cursorSlot;
-                const bool selected = isMultiSel(i);
 
                 // Whole-cell touch target (consumed next frame in update()).
                 screen.storageTouchTargets.push_back({thisPane, boxIndex, i, cellX, cellY, colPitch, rowPitch});
@@ -147,19 +165,71 @@ namespace Panels {
                                                       : (screen.bank ? screen.bank->boxes[boxIndex][i].get() : nullptr);
                 const bool empty = !pk || pk->speciesID() == 0;
 
-                if (isCursor) fb.drawFilledCircle(cx, cy, discR + 5, Color(cur.r, cur.g, cur.b, 70));  // mode-color halo
                 fb.drawFilledCircle(cx, cy, discR, empty ? Colors::Panel : Colors::PanelAlt);
                 if (empty) fb.drawCircle(cx, cy, discR, Colors::Border, 1);
 
                 drawSlotDisc(screen, fb, pk, savePane, boxIndex, i, cx, cy, discR);
-
-                if (selected) fb.drawCircle(cx, cy, discR + 2, MultiColor, 3);      // green multi-select ring
-                if (isCursor) {
-                    fb.drawCircle(cx, cy, discR + 2, cur, 3);                        // mode-color cursor ring
-                    outCursorRect[0] = cx - discR; outCursorRect[1] = cy - discR;
-                    outCursorRect[2] = 2 * discR;  outCursorRect[3] = 2 * discR;
-                }
             }
+
+            if (selC0 >= 0) {
+                fb.drawRoundedRect(gridX + selC0 * colPitch + 2, gridTop + selR0 * rowPitch + 2,
+                                   (selC1 - selC0 + 1) * colPitch - 4, (selR1 - selR0 + 1) * rowPitch - 4,
+                                   14, Colors::CursorMulti, 3);
+            }
+        }
+
+        // The carried block plus the pointer cursor, drawn on top of BOTH panes so a group stays
+        // fully visible while it travels across the screen and over the pane boundary.
+        void drawCarryAndCursor(TrainerViewScreen& screen, PKSEFramebuffer& fb, const PaneGeom& g, int cursorSlot) {
+            const Color cur = cursorColorFor(screen.cursorMode);
+            // Gentle vertical bob, a HOME-style pointer wobble done as a sine so it is framerate-independent.
+            const int bob = static_cast<int>(std::sin(fb.getTimeSeconds() * 3.4) * 3.0);
+            // The head is symmetric about its point, so the point goes straight on the slot's
+            // centre line -- no horizontal nudge needed.
+
+            // The box-name pill is a cursor position of its own (slot -1): navigate up off the top
+            // row onto it and A renames the box. Point at it with the same arrow so the cursor is
+            // never invisible, rather than relying on the pill's amber highlight alone.
+            if (cursorSlot < 0) {
+                fb.drawPointerCursor(g.pillCx, g.pillTop - 2 + bob, kGridCursorH, cur);
+                return;                                  // the header is unreachable while carrying
+            }
+
+            if (screen.carrying()) {
+                const int w = std::max(1, screen.selectDimensions.first);
+                const int h = std::max(1, screen.selectDimensions.second);
+                const bool fits = screen.checkPutDownBounds();
+                // A group that would hang off the grid is tinted with the warning colour, so the
+                // "must land in the exact slots" rule is visible before you press A rather than after.
+                const Color tint = fits ? cur : Colors::Warning;
+                const int baseX = g.cellX(cursorSlot), baseY = g.cellY(cursorSlot);
+                for (int y = 0; y < h; ++y) {
+                    for (int x = 0; x < w; ++x) {
+                        const size_t idx = static_cast<size_t>(y) * static_cast<size_t>(w) + static_cast<size_t>(x);
+                        if (idx >= screen.moveMon.size()) continue;
+                        const int cx = baseX + x * g.colPitch + g.colPitch / 2;
+                        const int cy = baseY + y * g.rowPitch + g.rowPitch / 2 + bob;
+                        // Backing tile marks the footprint the block will occupy -- including its
+                        // holes, which stay empty when it lands.
+                        if (w > 1 || h > 1)
+                            fb.drawFilledRoundedRect(cx - g.colPitch / 2 + 3, cy - g.rowPitch / 2 + 3,
+                                                     g.colPitch - 6, g.rowPitch - 6, 14,
+                                                     Color(tint.r, tint.g, tint.b, 70));
+                        drawLiftedMon(fb, screen.moveMon[idx].get(), cx, cy, g.discR);
+                    }
+                }
+                if (w > 1 || h > 1)
+                    fb.drawRoundedRect(baseX + 3, baseY + 3 + bob, w * g.colPitch - 6, h * g.rowPitch - 6,
+                                       14, tint, 3);
+            }
+
+            // The cursor itself, in the active mode's colour: its point rests on the top of the
+            // slot's disc rather than in the middle of it, so the Pokemon, its shiny mark and its
+            // party badge all stay visible. On the top row the body runs up over the box-name pill
+            // -- deliberately, the way HOME's cursor does; it is drawn last, so it floats over the
+            // header instead of being clipped by it.
+            const int cx = g.centerX(cursorSlot), cy = g.centerY(cursorSlot);
+            fb.drawPointerCursor(cx, cy - g.discR - 3 + bob, kGridCursorH, cur);
         }
     }
 
@@ -192,34 +262,21 @@ namespace Panels {
             : ("Box " + std::to_string(screen.stSaveBox + 1));
         std::string bankLabel = screen.bank->boxDisplayName(screen.stBankBox);
 
-        int saveCursorRect[4] = {-1, -1, -1, -1};
-        int bankCursorRect[4] = {-1, -1, -1, -1};
+        PaneGeom saveGeom, bankGeom;
 
         drawPane(screen, fb, x, y, paneW, paneH, /*savePane*/true,
                  screen.stSaveBox, screen.stSaveSlot, saveFocused, entered,
-                 saveCols, rows, saveSlots, saveLabel, static_cast<int>(screen.trainer.getBoxCount()), saveCursorRect);
+                 saveCols, rows, saveSlots, saveLabel, static_cast<int>(screen.trainer.getBoxCount()), saveGeom);
 
         drawPane(screen, fb, x + paneW + gap, y, paneW, paneH, /*savePane*/false,
                  screen.stBankBox, screen.stBankSlot, bankFocused, entered,
-                 bankCols, rows, bankSlots, bankLabel, static_cast<int>(Bank::BANK_BOX_COUNT), bankCursorRect);
+                 bankCols, rows, bankSlots, bankLabel, static_cast<int>(Bank::BANK_BOX_COUNT), bankGeom);
 
-        // Carried Pokemon: lift it over the cursor with a soft shadow (no harsh outline).
-        if (entered && screen.heldPokemon) {
-            const int* r = saveFocused ? saveCursorRect : bankCursorRect;
-            if (r[0] >= 0) {
-                const int sp = (r[2] < r[3] ? r[2] : r[3]) - 6;
-                const int hx = r[0] + (r[2] - sp) / 2;
-                const int hy = r[1] - 12;  // lifted so it reads as "in hand"
-                fb.drawFilledEllipse(r[0] + r[2] / 2, r[1] + r[3] - 8, sp / 2 - 2, 5, Color(0, 0, 0, 90));
-                if (screen.heldPokemon->isEgg()) {
-                    fb.drawEgg(hx + sp / 2, hy + sp / 2, sp);  // held egg shows as an egg
-                } else {
-                    bool shiny = screen.heldPokemon->isShiny(screen.heldPokemon->id32(), std::string(screen.heldPokemon->species()));
-                    Sprite* sprite = SpriteManager::getIconSprite(screen.heldPokemon->speciesID(), screen.heldPokemon->form(), shiny);
-                    if (sprite && sprite->data)
-                        fb.drawImageScaled(hx, hy, sprite->width, sprite->height, sp, sp, sprite->data, sprite->channels);
-                }
-            }
+        // Cursor + carried block last, over BOTH panes: a group being carried from one side to the
+        // other must not be painted over by the destination pane's card.
+        if (entered) {
+            drawCarryAndCursor(screen, fb, saveFocused ? saveGeom : bankGeom,
+                               saveFocused ? screen.stSaveSlot : screen.stBankSlot);
         }
 
         // --- Info strip ---
@@ -236,30 +293,46 @@ namespace Panels {
         fb.drawFilledCircle(x + 22, iy + infoH / 2, 8, modeCol);
         fb.drawText(x + 38, iy + infoH / 2 - 11, modeName(screen.cursorMode), Colors::Text, TextStyle::Body);
 
-        // Right side: multi-selection count (Multi mode).
-        if (!screen.multiSel.empty()) {
-            std::string sel = std::to_string(screen.multiSel.size()) + " selected";
+        // Right side: how big the group in hand (or being swept out) is, in the mode colour.
+        std::string sel;
+        if (screen.carrying() && screen.carriedCount() > 1) {
+            sel = std::to_string(screen.carriedCount()) + " in hand ("
+                + std::to_string(screen.selectDimensions.first) + "x"
+                + std::to_string(screen.selectDimensions.second) + ")";
+        } else if (screen.currentlySelecting) {
+            sel = "Selecting - A grabs the group";
+        }
+        if (!sel.empty()) {
             int sw, sh; fb.measureText(sel, sw, sh);
-            fb.drawText(x + width - 16 - sw, iy + infoH / 2 - 11, sel, MultiColor, TextStyle::Body);
+            fb.drawText(x + width - 16 - sw, iy + infoH / 2 - 11, sel, Colors::CursorMulti, TextStyle::Body);
         }
 
         // Middle: the held Pokemon, else the one under the focused cursor. When the box-name header
         // is focused (slot == -1) there is no cursor mon, so prompt the rename instead of indexing.
         const int focusSlot = saveFocused ? screen.stSaveSlot : screen.stBankSlot;
-        const Pokemon::Pokemon* focus = screen.heldPokemon.get();
+        const bool holding = screen.carrying();
+        const Pokemon::Pokemon* focus = screen.firstCarried();
         if (!focus && focusSlot >= 0) {
             focus = saveFocused ? screen.trainer.boxes[screen.stSaveBox][focusSlot].get()
                                 : screen.bank->boxes[screen.stBankBox][focusSlot].get();
         }
 
         const int tx = x + 120;
-        if (focusSlot == -1 && !screen.heldPokemon) {
+        if (focusSlot == -1 && !holding) {
             fb.drawText(tx, iy + infoH / 2 - 11, "Box name selected - press A to rename", Colors::TextDim, TextStyle::Body);
+        } else if (holding && screen.carriedCount() > 1) {
+            // A whole group in hand: name the leader and say how many ride with it, rather than
+            // pretending one Pokemon is the whole payload.
+            std::string display = Names::getDisplayName(focus->speciesID(), focus->form(), std::string(focus->species()));
+            std::string line = "Holding: " + display + " +" + std::to_string(screen.carriedCount() - 1)
+                             + (screen.checkPutDownBounds() ? "   A places them here" : "   won't fit here");
+            fb.drawText(tx, iy + infoH / 2 - 11, line,
+                        screen.checkPutDownBounds() ? Colors::Text : Colors::Warning, TextStyle::Body);
         } else if (focus && focus->speciesID() != 0) {
             std::string name(focus->species());
             const bool shiny = focus->isShiny(focus->id32(), name);
             std::string display = Names::getDisplayName(focus->speciesID(), focus->form(), name);
-            std::string line = (screen.heldPokemon ? "Holding: " : "") + display + "   Lv. " + std::to_string(focus->level());
+            std::string line = (holding ? "Holding: " : "") + display + "   Lv. " + std::to_string(focus->level());
             fb.drawText(tx, iy + infoH / 2 - 11, line, Colors::Text, TextStyle::Body);
             int lw, lh; fb.measureText(line, lw, lh, TextStyle::Body);
             int mx = tx + lw + 10;
@@ -320,16 +393,19 @@ namespace Panels {
         drawPopupMenu(screen, fb, title, items, 5, screen.storageMenuIndex, disabled);
     }
 
+    // Options for the block in hand. There is deliberately no "move" entry: a carried group is moved
+    // by carrying it to the destination and pressing A, which is what makes placement positional.
     void drawStorageGroupMenu(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-        const std::string title = std::to_string(screen.multiSel.size()) + " selected";
-        static const char* const items[] = {"Move to other side", "Release", "Clear selection", "Cancel"};
-        drawPopupMenu(screen, fb, title, items, 4, screen.groupMenuIndex);
+        const int n = screen.carriedCount();
+        const std::string title = std::to_string(n) + (n == 1 ? " in hand" : " Pokemon in hand");
+        static const char* const items[] = {"Release all", "Put back where they came from", "Cancel"};
+        drawPopupMenu(screen, fb, title, items, 3, screen.groupMenuIndex);
     }
 
     void drawStorageReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         std::string msg;
         if (screen.releaseGroup) {
-            msg = "Release " + std::to_string(screen.multiSel.size()) + " Pokémon?";
+            msg = "Release " + std::to_string(screen.carriedCount()) + " Pokémon?";
         } else {
             const Pokemon::Pokemon* pk = screen.storageSlot(screen.releasePane, screen.releaseBox, screen.releaseSlot).get();
             const std::string who = (pk && pk->speciesID() != 0)
@@ -408,7 +484,7 @@ namespace Panels {
     }
 
     void drawStorageExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-        // The bank has unsaved changes; ask before leaving (PKSM-style). Bank saving is separate
+        // The bank has unsaved changes; ask before leaving (HOME-style). Bank saving is separate
         // from the game (X) save, so this is the bank's own persistence decision.
         static const char* const items[] = {"Save & Exit", "Discard changes", "Cancel"};
         drawPopupMenu(screen, fb, "Save bank changes?", items, 3, screen.storageExitConfirmIndex);

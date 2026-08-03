@@ -373,25 +373,51 @@ namespace UI {
         }
     }
 
+    // Non-null cells in the carried block (a block can contain holes -- see moveMon).
+    int TrainerViewScreen::carriedCount() const {
+        int n = 0;
+        for (const auto& p : moveMon) if (p) ++n;
+        return n;
+    }
+
+    const Pokemon::Pokemon* TrainerViewScreen::firstCarried() const {
+        for (const auto& p : moveMon) if (p) return p.get();
+        return nullptr;
+    }
+
+    // Put the whole carried block back where it was lifted from. Each cell prefers its own original
+    // slot; if something has since filled that slot, it falls back to any empty slot in the origin
+    // pane, because a carried Pokemon must never be dropped on the floor.
     void TrainerViewScreen::returnHeldToOrigin() {
-        if (!heldPokemon) return;
-        auto place = [&](int pane, int box, int slot) -> bool {
-            if (pane == 1 && !bank) return false;
-            auto& dst = (pane == 0) ? trainer.boxes[box][slot] : bank->boxes[box][slot];
-            if (!dst || dst->speciesID() == 0) { dst = std::move(heldPokemon); return true; }
+        if (!carrying()) return;
+        const int pane = heldPane;
+        if (pane == 1 && !bank) return;
+        const int slots = (pane == 0) ? static_cast<int>(trainer.getSlotsPerBox())
+                                      : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
+        const int boxCount = (pane == 0) ? static_cast<int>(trainer.getBoxCount())
+                                         : static_cast<int>(Trainer::Bank::BANK_BOX_COUNT);
+        const int cols = (pane == 0) ? ((slots == 25) ? 5 : 6) : 6;
+        auto place = [&](int box, int slot, std::unique_ptr<Pokemon::Pokemon>& pk) -> bool {
+            if (box < 0 || box >= boxCount || slot < 0 || slot >= slots) return false;
+            if (storageSlotLocked(pane, box, slot)) return false;
+            auto& dst = storageSlot(pane, box, slot);
+            if (!dst || dst->speciesID() == 0) { dst = std::move(pk); return true; }   // species-0 = empty (S/V ghost)
             return false;
         };
-        // Prefer the exact origin; if it's since been filled, fall back to any empty slot in the
-        // origin pane so a carried Pokemon can never be dropped/lost.
-        if (place(heldPane, heldFromBox, heldFromSlot)) return;
-        const int slots = (heldPane == 0) ? static_cast<int>(trainer.getSlotsPerBox())
-                                          : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
-        for (int s = 0; s < slots; ++s) if (place(heldPane, heldFromBox, s)) return;
-        const int boxCount = (heldPane == 0) ? static_cast<int>(trainer.getBoxCount())
-                                             : static_cast<int>(Trainer::Bank::BANK_BOX_COUNT);
-        for (int b = 0; b < boxCount; ++b)
-            for (int s = 0; s < slots; ++s)
-                if (place(heldPane, b, s)) return;
+        const int w = selectDimensions.first > 0 ? selectDimensions.first : 1;
+        for (size_t i = 0; i < moveMon.size(); ++i) {
+            if (!moveMon[i]) continue;
+            const int x = static_cast<int>(i) % w, y = static_cast<int>(i) / w;
+            int box = heldFromBox, slot = heldFromSlot + x + y * cols;
+            while (slot >= slots) { slot -= slots; ++box; }        // defensive: a grab is bounds-checked to one box
+            if (place(box, slot, moveMon[i])) continue;
+            bool placed = false;
+            for (int b = 0; b < boxCount && !placed; ++b)
+                for (int s = 0; s < slots && !placed; ++s)
+                    placed = place(b, s, moveMon[i]);
+        }
+        moveMon.clear();
+        selectDimensions = {0, 0};
     }
 
     // Reference to a storage slot's unique_ptr (pane 0 = save boxes, 1 = bank). Callers must
@@ -454,11 +480,6 @@ namespace UI {
         return false;
     }
 
-    // Prepare the carried (single) mon for placement into `pane`. Thin wrapper over convertForPane.
-    bool TrainerViewScreen::prepareHeldForPane(int pane) {
-        return convertForPane(heldPokemon, pane);
-    }
-
     // True if placing `pk` into `pane` would run a Let's Go conversion (exactly one side is LGPE), which
     // resets AVs/EVs -> the user is asked to acknowledge it. Only save-pane (0) placements convert; the
     // bank (1) stores native bytes, so a deposit never resets anything.
@@ -469,13 +490,11 @@ namespace UI {
         return srcGG != dstGG;
     }
 
-    // True if any mon in the current multi-selection would run an LGPE conversion when dropped into destPane.
-    bool TrainerViewScreen::selectionInvolvesLgpe(int destPane) const {
-        if (destPane != 0 || !bank) return false;
-        for (const auto& r : multiSel) {
-            const auto& p = (r.pane == 0) ? trainer.boxes[r.box][r.slot] : bank->boxes[r.box][r.slot];
+    // True if any mon in the carried block would run an LGPE conversion when dropped into destPane.
+    bool TrainerViewScreen::blockInvolvesLgpe(int destPane) const {
+        if (destPane != 0) return false;
+        for (const auto& p : moveMon)
             if (p && lgpeConversionInvolved(destPane, p.get())) return true;
-        }
         return false;
     }
 
@@ -489,13 +508,11 @@ namespace UI {
             && pk->getGameGroup() != Enums::GameVersion::FRLG;
     }
 
-    // True if any mon in the current multi-selection would run a Gen 3 downgrade when dropped into destPane.
-    bool TrainerViewScreen::selectionInvolvesGen3Downgrade(int destPane) const {
-        if (destPane != 0 || !bank || trainer.getGameGroup() != Enums::GameVersion::FRLG) return false;
-        for (const auto& r : multiSel) {
-            const auto& p = (r.pane == 0) ? trainer.boxes[r.box][r.slot] : bank->boxes[r.box][r.slot];
+    // True if any mon in the carried block would run a Gen 3 downgrade when dropped into destPane.
+    bool TrainerViewScreen::blockInvolvesGen3Downgrade(int destPane) const {
+        if (destPane != 0 || trainer.getGameGroup() != Enums::GameVersion::FRLG) return false;
+        for (const auto& p : moveMon)
             if (p && p->getGameGroup() != Enums::GameVersion::FRLG) return true;
-        }
         return false;
     }
 
@@ -840,7 +857,7 @@ namespace UI {
         postStatus("Money set to $" + std::to_string(newMoney) + ".", 150);
     }
 
-    // A backup's leaf folder name IS its name everywhere in the UI (PKSM does the same), so this is
+    // A backup's leaf folder name IS its name everywhere in the UI, so this is
     // what the user recognises when we report where a save went.
     static std::string leafName(const std::string& path) {
         const size_t slash = path.find_last_of('/');
@@ -979,9 +996,9 @@ namespace UI {
     //     bag caps stacks at 99 and spills into fresh slots -- not Gen 3's model.
     //   * PKHeX applies no Gen 3 special-casing anywhere: PlayerBag3FRLG declares 999 like every
     //     other game, and InventoryPouch3 adds no count logic at all.
-    //   * PKSM on real Gen 3 hardware permits the full u16 (65535), confirming Gen 3 does not
-    //     enforce a low cap. We stay at PKHeX's 999 rather than matching PKSM: it is the
-    //     legality-aware bound, and nothing is gained by allowing counts no game will ever show.
+    //   * Other on-hardware Gen 3 editors permit the full u16 (65535), confirming Gen 3 does not
+    //     enforce a low cap. We stay at PKHeX's 999 anyway: it is the legality-aware bound, and
+    //     nothing is gained by allowing counts no game will ever show.
     int TrainerViewScreen::currentItemMaxCount() const {
         using GV = Enums::GameVersion;
         const int c = selectedCategory;
@@ -1025,157 +1042,286 @@ namespace UI {
         snapshotEditTarget();    // dirty-check baseline (unused for the creator: it has Keep/Discard)
     }
 
-    // Green "Move": bulk-move the multi-selection into the opposite pane, filling empty slots from
-    // that pane's current box forward. Convertible mons move; any that can't convert into the
-    // destination game or don't fit stay selected (D5), and the user is told what was left and why.
-    void TrainerViewScreen::transferSelectionToOtherPane() {
-        if (multiSel.empty() || !bank) return;
-        const int from = multiSel.front().pane;
-        const int to = 1 - from;
-        const int dSlots = (to == 0) ? static_cast<int>(trainer.getSlotsPerBox()) : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
-        const int dBoxes = (to == 0) ? static_cast<int>(trainer.getBoxCount()) : static_cast<int>(Trainer::Bank::BANK_BOX_COUNT);
-        int b = (to == 0) ? stSaveBox : stBankBox;
-        int s = 0;
-        std::vector<SlotRef> leftover;
-        int moved = 0, blocked = 0, nofit = 0;
-        std::string firstName;
-        const char* firstWhy = nullptr;
-        for (const auto& src : multiSel) {
-            auto& srcPtr = storageSlot(src.pane, src.box, src.slot);
-            if (!srcPtr) continue;
-            // Cross-game into a save: skip (keep selected) a foreign mon with no conversion route, and
-            // move the rest -- don't strand the whole group behind one blocker (D5).
-            if (to == 0 && srcPtr->getGameGroup() != trainer.getGameGroup()) {
-                Conversion::Result res;
-                if (!Conversion::canConvert(*srcPtr, trainer.getGameGroup(), res)) {
-                    ++blocked;
-                    if (!firstWhy) {
-                        firstName = Names::getDisplayName(srcPtr->speciesID(), srcPtr->form(),
-                                                          Trainer::getSpeciesName(srcPtr->speciesID()));
-                        firstWhy  = Conversion::resultMessage(res);
-                    }
-                    leftover.push_back(src);
-                    continue;
-                }
-            }
-            bool placed = false;
-            while (b < dBoxes) {
-                if (s >= dSlots) { s = 0; ++b; continue; }
-                if (!storageSlotLocked(to, b, s)) {
-                    auto& dst = storageSlot(to, b, s);
-                    // Treat a non-null species-0 "ghost" slot (an S/V encrypted-blank) as empty, same
-                    // as the single-move + returnHeldToOrigin do — otherwise a save-side box that's
-                    // full of ghosts has "no empty slot" and the moved mons get dropped.
-                    if (!dst || dst->speciesID() == 0) {
-                        convertForPane(srcPtr, to);      // verified convertible above (no-op for the bank)
-                        dst = std::move(srcPtr); ++s; placed = true; ++moved; break;
-                    }
-                }
-                ++s;
-            }
-            if (!placed) { leftover.push_back(src); ++nofit; }
-        }
-        multiSel = leftover;
-        if (moved > 0) hasUnsavedChanges = true;
+    // ---------------------------------------------------------------------------------------------
+    // HOME-style rectangle select + block carry.
+    //
+    // The model, in full: A anchors a corner, moving the cursor rubber-bands a rectangle, A again
+    // lifts every slot inside it into `moveMon` (row-major, holes kept as nulls) and snaps the cursor
+    // to the rectangle's top-left. From then on the block rides the cursor -- across boxes and across
+    // panes -- and A drops it so that cell (x, y) lands in slot `cursor + x + y*cols`. Landing is
+    // POSITIONAL, not "fill the next free slot": the arrangement you picked up is the arrangement you
+    // put down, and whatever occupied those slots comes back up into your hands (a block swap).
+    //
+    // Let's Go is the documented exception. Its storage is one gapless 1000-slot list, so a hole is
+    // not representable; the block still lands at the exact cursor slot, then compactStorage() closes
+    // any gap on the next frame, which slides the mons forward. That is the game's rule, not ours.
+    // ---------------------------------------------------------------------------------------------
 
-        // Report what stayed behind: conversion blockers first (actionable — deselect them), then a
-        // plain "didn't fit" if the destination simply filled up.
-        if (blocked > 0) {
-            storageStatus = "Moved the rest; " + std::to_string(blocked) + " can't go in this game ("
-                          + firstName + (blocked > 1 ? " +" + std::to_string(blocked - 1) : "") + ")";
-            storageStatusFrames = 180;
-        } else if (nofit > 0) {
-            storageStatus = std::to_string(nofit) + (nofit == 1 ? " mon" : " mons")
-                          + " didn't fit - the destination box is full";
-            storageStatusFrames = 180;
+    // Column count of a pane's grid. LGPE's save boxes are 5x5 (25 slots); everything else is 6x5.
+    int TrainerViewScreen::paneCols(int pane) const {
+        if (pane != 0) return 6;
+        return static_cast<int>(trainer.getSlotsPerBox()) == 25 ? 5 : 6;
+    }
+
+    int TrainerViewScreen::paneSlots(int pane) const {
+        return pane == 0 ? static_cast<int>(trainer.getSlotsPerBox())
+                         : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
+    }
+
+    int TrainerViewScreen::paneBoxes(int pane) const {
+        return pane == 0 ? static_cast<int>(trainer.getBoxCount())
+                         : static_cast<int>(Trainer::Bank::BANK_BOX_COUNT);
+    }
+
+    void TrainerViewScreen::cancelSelection() {
+        currentlySelecting = false;
+        if (!carrying()) selectDimensions = {0, 0};
+    }
+
+    // Move mode: lift the slot under the cursor as a 1x1 block. Single and multi carry share one
+    // representation, so every later step (drawing, bounds, put-down, B-to-return) is written once.
+    void TrainerViewScreen::pickupSingle() {
+        if (!bank) return;
+        const int pane = storageFocusPane;
+        const int box = (pane == 0) ? stSaveBox : stBankBox;
+        const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
+        if (slot < 0 || slot >= paneSlots(pane)) return;
+        if (storageSlotLocked(pane, box, slot)) return;      // LGPE party member: its slot is pinned
+        auto& src = storageSlot(pane, box, slot);
+        if (!src || src->speciesID() == 0) return;           // species-0 = empty (S/V ghost)
+
+        moveMon.clear();
+        moveMon.push_back(std::move(src));
+        selectDimensions = {1, 1};
+        heldPane = pane; heldFromBox = box; heldFromSlot = slot;
+    }
+
+    // Multi mode: the first A anchors the rectangle at the cursor, the second grabs it.
+    void TrainerViewScreen::pickupMulti() {
+        const int pane = storageFocusPane;
+        const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
+        if (slot < 0 || slot >= paneSlots(pane)) return;
+        if (currentlySelecting) {
+            grabSelection(true);
+            return;
+        }
+        const int cols = paneCols(pane);
+        selectDimensions   = {slot % cols, slot / cols};     // anchor cell, NOT dimensions yet
+        selectPane         = pane;
+        selectBox          = (pane == 0) ? stSaveBox : stBankBox;
+        currentlySelecting = true;
+    }
+
+    // Lift (remove = true) or copy (remove = false) every slot inside the anchored rectangle into
+    // moveMon, then snap the cursor to the rectangle's top-left so the block sits under the pointer.
+    void TrainerViewScreen::grabSelection(bool remove) {
+        if (!currentlySelecting || !bank) return;
+        const int pane = selectPane;
+        const int box = selectBox;
+        const int cols = paneCols(pane);
+        const int slots = paneSlots(pane);
+        const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
+        if (slot < 0 || slot >= slots) { cancelSelection(); return; }
+
+        const int curX = slot % cols, curY = slot / cols;
+        const int ax = selectDimensions.first, ay = selectDimensions.second;
+        const int baseX = std::min(ax, curX), baseY = std::min(ay, curY);
+        const int w = std::abs(ax - curX) + 1, h = std::abs(ay - curY) + 1;
+
+        moveMon.clear();
+        moveMon.reserve(static_cast<size_t>(w) * static_cast<size_t>(h));
+        int lockedLeft = 0;
+        for (int y = 0; y < h; ++y) {
+            for (int x = 0; x < w; ++x) {
+                const int s = (baseY + y) * cols + (baseX + x);
+                if (s >= slots) { moveMon.push_back(nullptr); continue; }
+                // A party-linked slot stays put: Let's Go's party points at box slots by INDEX, so
+                // carrying one away would leave that pointer aimed at whatever slid in behind it.
+                // It becomes a hole in the block rather than blocking the whole grab.
+                if (storageSlotLocked(pane, box, s)) { moveMon.push_back(nullptr); ++lockedLeft; continue; }
+                auto& src = storageSlot(pane, box, s);
+                if (!src || src->speciesID() == 0) { moveMon.push_back(nullptr); continue; }
+                if (remove) {
+                    moveMon.push_back(std::move(src));
+                } else {
+                    moveMon.push_back(src->clone());        // duplicate: leave the original in place
+                }
+            }
+        }
+
+        selectDimensions   = {w, h};
+        heldPane = pane; heldFromBox = box; heldFromSlot = baseY * cols + baseX;
+        currentlySelecting = false;
+
+        if (remove && carriedCount() > 0) hasUnsavedChanges = true;
+        if (lockedLeft > 0)
+            postStatus(std::to_string(lockedLeft) + " party-linked slot(s) stayed behind.", 180);
+
+        // Trim first, THEN put the cursor on the block's top-left cell -- scrunching moves that
+        // corner, and a cursor left on the untrimmed corner would draw the block offset from the
+        // Pokemon that were just lifted. A rectangle that caught nothing leaves the cursor alone.
+        postPickup();
+        if (carrying()) {
+            storageFocusPane = pane;
+            if (pane == 0) { stSaveBox = box; stSaveSlot = heldFromSlot; }
+            else           { stBankBox = box; stBankSlot = heldFromSlot; }
         }
     }
 
-    // Green move: drop the whole multi-selection into the destination pane, filling empty slots
-    // from (destBox, destSlot) forward. Sources are extracted first (in visual order) so a move
-    // within the same pane can't collide with its own sources.
-    void TrainerViewScreen::moveSelectionTo(int destPane, int destBox, int destSlot) {
-        if (multiSel.empty() || !bank) return;
-        // Keep the group's visual order at the destination, and (for a same-pane move) extract every
-        // source before writing any slot so a source can't be clobbered by an earlier placement.
-        std::vector<SlotRef> order = multiSel;
-        std::sort(order.begin(), order.end(), [](const SlotRef& a, const SlotRef& b) {
-            return a.box != b.box ? a.box < b.box : a.slot < b.slot;
-        });
-
-        // Cross-game into a save (pane 0): convert each foreign mon into the open game's format. Grab
-        // the ones that HAVE a route now and leave the rest selected in place, rather than denying the
-        // whole drop for one blocker (D5). Bank deposits (destPane 1) never block -- native bytes.
-        std::vector<std::unique_ptr<Pokemon::Pokemon>> grabbed;
-        std::vector<SlotRef> leftover;
-        int blocked = 0;
-        std::string firstName;
-        const char* firstWhy = nullptr;
-        for (const auto& r : order) {
-            auto& src = storageSlot(r.pane, r.box, r.slot);
-            if (!src) continue;
-            if (destPane == 0 && src->getGameGroup() != trainer.getGameGroup()) {
-                Conversion::Result res;
-                if (!Conversion::canConvert(*src, trainer.getGameGroup(), res)) {
-                    ++blocked;
-                    if (!firstWhy) {
-                        firstName = Names::getDisplayName(src->speciesID(), src->form(),
-                                                          Trainer::getSpeciesName(src->speciesID()));
-                        firstWhy  = Conversion::resultMessage(res);
-                    }
-                    leftover.push_back(r);
-                    continue;
-                }
-            }
-            grabbed.push_back(std::move(src));
+    // Drop a block whose every cell is null -- otherwise the hands stay "full" of nothing and the
+    // next A would put empties down over real Pokemon.
+    void TrainerViewScreen::postPickup() {
+        if (currentlySelecting) return;
+        if (carriedCount() == 0) {
+            moveMon.clear();
+            selectDimensions = {0, 0};
+            return;
         }
-        multiSel = leftover;   // blocked mons stay selected and untouched in their slots
+        scrunchSelection();
+    }
 
-        if (grabbed.empty()) {
-            // Nothing had a route -- name the first blocker so the user knows what to do.
-            if (blocked > 0) {
-                storageStatus = firstName + ": " + firstWhy
-                              + (blocked > 1 ? "  (+" + std::to_string(blocked - 1) + " more)" : "")
-                              + " - can't go in this game";
-                storageStatusFrames = 180;
-            }
+    // Trim fully-empty rows and columns off the block's edges. Selecting a loose
+    // rectangle around three Pokemon should hand you a block sized to those three, not to the box
+    // area you swept -- otherwise the bounds check refuses drops that would obviously have fitted.
+    void TrainerViewScreen::scrunchSelection() {
+        int w = selectDimensions.first, h = selectDimensions.second;
+        if (w <= 1 && h <= 1) return;
+        if (w <= 0 || h <= 0 || static_cast<int>(moveMon.size()) != w * h) return;
+
+        auto colEmpty = [&](int c) {
+            for (int r = 0; r < h; ++r) if (moveMon[r * w + c]) return false;
+            return true;
+        };
+        auto rowEmpty = [&](int r) {
+            for (int c = 0; c < w; ++c) if (moveMon[r * w + c]) return false;
+            return true;
+        };
+        int first = 0, last = w - 1;
+        while (first <= last && colEmpty(first)) ++first;
+        while (last > first && colEmpty(last)) --last;
+        int top = 0, bottom = h - 1;
+        while (top <= bottom && rowEmpty(top)) ++top;
+        while (bottom > top && rowEmpty(bottom)) --bottom;
+        if (first > last || top > bottom) return;            // all empty; postPickup already handled it
+        if (first == 0 && last == w - 1 && top == 0 && bottom == h - 1) return;
+
+        std::vector<std::unique_ptr<Pokemon::Pokemon>> packed;
+        packed.reserve(static_cast<size_t>(last - first + 1) * static_cast<size_t>(bottom - top + 1));
+        for (int r = top; r <= bottom; ++r)
+            for (int c = first; c <= last; ++c)
+                packed.push_back(std::move(moveMon[r * w + c]));
+        moveMon = std::move(packed);
+        selectDimensions = {last - first + 1, bottom - top + 1};
+        // The origin moves with the trim, so B still returns each cell to the slot it came from.
+        const int cols = paneCols(heldPane);
+        heldFromSlot += top * cols + first;
+    }
+
+    // Does the block fit in the focused pane starting at the cursor cell? A block may not hang off
+    // the right edge or past the bottom row -- that is what makes "lands in the exact slot" a rule
+    // rather than a hope.
+    bool TrainerViewScreen::checkPutDownBounds() const {
+        if (!carrying()) return false;
+        const int pane = storageFocusPane;
+        const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
+        if (slot < 0) return false;
+        const int cols = paneCols(pane);
+        const int slots = paneSlots(pane);
+        const int rows = (slots + cols - 1) / cols;
+        const int c = slot % cols, r = slot / cols;
+        return c + selectDimensions.first <= cols
+            && r + selectDimensions.second <= rows
+            && slot + (selectDimensions.first - 1) + (selectDimensions.second - 1) * cols < slots;
+    }
+
+    // Put the block down at the cursor: cell (x, y) -> slot + x + y*cols, exactly. Each cell SWAPS
+    // with whatever is in its destination, so the displaced Pokemon come back up into your hands as
+    // a block of the same shape (HOME's behaviour, and what makes a positional move reversible).
+    //
+    // Cells that cannot land -- a locked (party-linked) destination, or a cross-game mon with no
+    // conversion route into this save -- stay in the block and stay untouched, so one blocker never
+    // strands the rest of the group.
+    void TrainerViewScreen::putDownBlock() {
+        if (!carrying() || !bank) return;
+        const int pane = storageFocusPane;
+        const int box = (pane == 0) ? stSaveBox : stBankBox;
+        const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
+        const int cols = paneCols(pane);
+        const int slots = paneSlots(pane);
+        if (!checkPutDownBounds()) {
+            postStatus("That group doesn't fit here - move to a slot with room for it.", 180);
             return;
         }
 
-        // Verified convertible above; convert each foreign grabbed mon into the save's format.
-        if (destPane == 0)
-            for (auto& g : grabbed) convertForPane(g, destPane);
+        const int w = selectDimensions.first, h = selectDimensions.second;
+        int placed = 0, lockedHit = 0, blocked = 0;
+        std::string firstName;
+        const char* firstWhy = nullptr;
 
-        const int dSlots = (destPane == 0) ? static_cast<int>(trainer.getSlotsPerBox()) : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
-        const int dBoxes = (destPane == 0) ? static_cast<int>(trainer.getBoxCount()) : static_cast<int>(Trainer::Bank::BANK_BOX_COUNT);
-        int b = destBox, s = destSlot;
-        size_t idx = 0;
-        while (idx < grabbed.size() && b < dBoxes) {
-            if (s >= dSlots) { s = 0; ++b; continue; }
-            if (!storageSlotLocked(destPane, b, s)) {
-                auto& dst = storageSlot(destPane, b, s);
-                if (!dst || dst->speciesID() == 0) { dst = std::move(grabbed[idx]); ++idx; }  // species-0 = empty (S/V ghost)
-            }
-            ++s;
-        }
-        // Any leftover (destination past the start was full): drop into the first empty slot anywhere.
-        for (; idx < grabbed.size(); ++idx) {
-            bool placed = false;
-            for (int bb = 0; bb < dBoxes && !placed; ++bb)
-                for (int ss = 0; ss < dSlots && !placed; ++ss)
-                    if (!storageSlotLocked(destPane, bb, ss)) {
-                        auto& d = storageSlot(destPane, bb, ss);
-                        if (!d || d->speciesID() == 0) { d = std::move(grabbed[idx]); placed = true; }  // species-0 = empty
+        for (int y = 0; y < h; ++y) {
+            for (int x = 0; x < w; ++x) {
+                const size_t idx = static_cast<size_t>(y) * static_cast<size_t>(w) + static_cast<size_t>(x);
+                const int dSlot = slot + x + y * cols;
+                if (dSlot < 0 || dSlot >= slots) continue;
+                // Never disturb a party-linked slot -- not even with an empty cell, which would
+                // silently delete a party member out from under its pointer.
+                if (storageSlotLocked(pane, box, dSlot)) {
+                    if (moveMon[idx]) ++lockedHit;
+                    continue;
+                }
+                if (moveMon[idx]) {
+                    // Ask whether there is a route (for a species-named message), then honour what
+                    // the conversion ACTUALLY returns. Writing an unconverted foreign Pokemon into a
+                    // save is what produces a Bad Egg in game, so a failure here must not fall through.
+                    const bool foreign = (pane == 0 && moveMon[idx]->getGameGroup() != trainer.getGameGroup());
+                    Conversion::Result res{};
+                    const bool routed = !foreign || Conversion::canConvert(*moveMon[idx], trainer.getGameGroup(), res);
+                    if (!routed || !convertForPane(moveMon[idx], pane)) {
+                        ++blocked;
+                        if (!firstWhy) {
+                            firstName = Names::getDisplayName(moveMon[idx]->speciesID(), moveMon[idx]->form(),
+                                                              Trainer::getSpeciesName(moveMon[idx]->speciesID()));
+                            firstWhy  = routed ? "conversion failed" : Conversion::resultMessage(res);
+                        }
+                        continue;                                   // leave it in hand, untouched
                     }
+                    ++placed;
+                }
+                auto& dst = storageSlot(pane, box, dSlot);
+                std::swap(dst, moveMon[idx]);                       // block swap: the occupant comes up
+                if (moveMon[idx] && moveMon[idx]->speciesID() == 0) moveMon[idx] = nullptr;  // ghost -> hole
+            }
         }
-        hasUnsavedChanges = true;
 
-        // Some were left behind — say so, or a partial move reads as a full one and the user doesn't
-        // notice the blocked mons still sitting selected.
+        if (placed > 0) hasUnsavedChanges = true;
+        // The block's origin is now this drop site, so B returns the swapped-out Pokemon here.
+        heldPane = pane; heldFromBox = box; heldFromSlot = slot;
+        postPickup();                       // may trim the swapped-out leftovers, moving heldFromSlot
+        if (carrying()) {                   // keep the cursor on the leftovers' top-left corner
+            if (pane == 0) stSaveSlot = heldFromSlot; else stBankSlot = heldFromSlot;
+        }
+
         if (blocked > 0) {
-            storageStatus = "Moved the rest; " + std::to_string(blocked) + " can't go in this game ("
-                          + firstName + (blocked > 1 ? " +" + std::to_string(blocked - 1) : "") + ")";
-            storageStatusFrames = 180;
+            postStatus(firstName + ": " + (firstWhy ? firstWhy : "no transfer route")
+                       + (blocked > 1 ? "  (+" + std::to_string(blocked - 1) + " more)" : "")
+                       + " - still in hand", 240);
+        } else if (lockedHit > 0) {
+            postStatus(std::to_string(lockedHit) + " couldn't land on a party-linked slot - still in hand", 240);
+        }
+    }
+
+    // The A press in the storage grid: put the block down if hands are full,
+    // otherwise pick up according to the active mode.
+    void TrainerViewScreen::storagePickup() {
+        if (carrying()) {
+            putDownBlock();
+            return;
+        }
+        switch (cursorMode) {
+            case CursorMode::Multi: pickupMulti(); break;
+            case CursorMode::Move:  pickupSingle(); postPickup(); break;
+            case CursorMode::Menu:
+            default: break;   // handled by the caller (opens the per-Pokemon menu)
         }
     }
 
@@ -1224,54 +1370,49 @@ namespace UI {
         // Accessors that always target the currently-focused pane.
         auto curBox  = [&]() -> int& { return storageFocusPane == 0 ? stSaveBox : stBankBox; };
         auto curSlot = [&]() -> int& { return storageFocusPane == 0 ? stSaveSlot : stBankSlot; };
-        auto colsOf  = [&](int pane) { return pane == 0 ? ((static_cast<int>(trainer.getSlotsPerBox()) == 25) ? 5 : 6) : 6; };
-        auto slotsOf = [&](int pane) { return pane == 0 ? static_cast<int>(trainer.getSlotsPerBox())
-                                                        : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX); };
-        auto boxCntOf = [&](int pane) { return pane == 0 ? static_cast<int>(trainer.getBoxCount())
-                                                         : static_cast<int>(Trainer::Bank::BANK_BOX_COUNT); };
         // The focused pane's box name is renamable when it's the bank (always) or a save that stores
         // box names (LGPE does not). Gates whether Up/Down can land on the box-name header.
         auto headerRenamable = [&]() { return storageFocusPane == 1 || trainer.supportsBoxNames(); };
-        auto slotPtr = [&](int pane, int box, int slot) -> std::unique_ptr<Pokemon::Pokemon>& {
-            return pane == 0 ? trainer.boxes[box][slot] : bank->boxes[box][slot];
-        };
-        // A save-pane slot that is a party member (LGPE) is locked: removing it from storage would
-        // orphan its party pointer. No-op for SWSH/LZA (party is a separate structure -> pos 0).
-        auto isLocked = [&](int pane, int box, int slot) {
-            return pane == 0 && trainer.getPartyPosition(box, slot) > 0;
-        };
+        auto isLocked = [&](int pane, int box, int slot) { return storageSlotLocked(pane, box, slot); };
         auto occupied = [&](int pane, int box, int slot) {
-            const auto& p = slotPtr(pane, box, slot);
+            const auto& p = storageSlot(pane, box, slot);
             return p && p->speciesID() != 0;
         };
 
-        // Y: cycle mode Menu -> Move -> Multi (only with empty hands). Leaving Multi clears the selection.
-        const bool holding = (heldPokemon != nullptr);
-        if ((kDown & HidNpadButton_Y) && !holding) {
+        const bool holding = carrying();
+
+        // Y: cycle mode Menu -> Move -> Multi. Only with empty hands and no rectangle in progress,
+        // so a mode switch can never orphan a carried block or a half-drawn selection.
+        if ((kDown & HidNpadButton_Y) && !holding && !currentlySelecting) {
             cursorMode = cursorMode == CursorMode::Menu ? CursorMode::Move
                        : cursorMode == CursorMode::Move ? CursorMode::Multi : CursorMode::Menu;
-            if (cursorMode != CursorMode::Multi) multiSel.clear();
         }
 
-        // L/R: change the focused pane's box (wrap); keep the cursor slot in range.
-        if (kDown & HidNpadButton_L) curBox() = (curBox() - 1 + boxCntOf(storageFocusPane)) % boxCntOf(storageFocusPane);
-        if (kDown & HidNpadButton_R) curBox() = (curBox() + 1) % boxCntOf(storageFocusPane);
-        if (curSlot() >= slotsOf(storageFocusPane)) curSlot() = slotsOf(storageFocusPane) - 1;
+        // L/R: change the focused pane's box (wrap); keep the cursor slot in range. Changing box
+        // abandons an in-progress rectangle -- it was anchored in the box you just left.
+        if (kDown & (HidNpadButton_L | HidNpadButton_R)) {
+            const int bc = paneBoxes(storageFocusPane);
+            if (kDown & HidNpadButton_L) curBox() = (curBox() - 1 + bc) % bc;
+            if (kDown & HidNpadButton_R) curBox() = (curBox() + 1) % bc;
+            if (currentlySelecting) cancelSelection();
+        }
+        if (curSlot() >= paneSlots(storageFocusPane)) curSlot() = paneSlots(storageFocusPane) - 1;
 
         // D-pad: move within the focused pane; Left/Right cross panes at the horizontal edges.
-        const int cols = colsOf(storageFocusPane);
-        const int slots = slotsOf(storageFocusPane);
-        constexpr int rows = 5;
+        const int cols = paneCols(storageFocusPane);
+        const int slots = paneSlots(storageFocusPane);
+        const int rows = (slots + cols - 1) / cols;
         // curSlot() == -1 is the "box-name header focused" state (rename via A or a tap). Up from the
-        // top row lands on it and Down leaves it -- but only where the header is renamable and the
-        // hands are empty, so LGPE (no box names) and mid-carry keep the plain top<->bottom wrap.
+        // top row lands on it and Down leaves it -- but only where the header is renamable and nothing
+        // is in hand or being selected, so LGPE (no box names) and mid-carry keep the plain wrap.
+        const bool headerReachable = headerRenamable() && !holding && !currentlySelecting;
         if (kDown & HidNpadButton_Up) {
             if (curSlot() == -1) {
                 curSlot() = (rows - 1) * cols;                        // header -> bottom row (wrap)
                 if (curSlot() >= slots) curSlot() = slots - 1;
             } else {
                 int r = curSlot() / cols, c = curSlot() % cols;
-                if (r == 0 && headerRenamable() && !holding) {
+                if (r == 0 && headerReachable) {
                     curSlot() = -1;                                  // top row -> header
                 } else {
                     r = (r - 1 + rows) % rows;
@@ -1285,7 +1426,7 @@ namespace UI {
                 curSlot() = 0;                                        // header -> top-left
             } else {
                 int r = curSlot() / cols, c = curSlot() % cols;
-                if (r == rows - 1 && headerRenamable() && !holding) {
+                if (r == rows - 1 && headerReachable) {
                     curSlot() = -1;                                  // bottom row -> header (wrap)
                 } else {
                     r = (r + 1) % rows;
@@ -1295,55 +1436,63 @@ namespace UI {
             }
         }
         if (kDown & HidNpadButton_Left) {
-            if (curSlot() == -1) {                                    // on the header: ◀ cycles the box
-                curBox() = (curBox() - 1 + boxCntOf(storageFocusPane)) % boxCntOf(storageFocusPane);
+            if (curSlot() == -1) {                                    // on the header: the box arrow cycles the box
+                curBox() = (curBox() - 1 + paneBoxes(storageFocusPane)) % paneBoxes(storageFocusPane);
             } else {
                 int c = curSlot() % cols;
                 if (c > 0) {
                     curSlot() -= 1;
-                } else if (storageFocusPane == 1) {
+                } else if (storageFocusPane == 1 && !currentlySelecting) {
+                    // A rectangle lives in one box of one pane, so crossing panes is only allowed
+                    // when nothing is being selected. A carried block may cross freely.
                     const int r = curSlot() / cols;
                     storageFocusPane = 0;
-                    const int scols = colsOf(0);
+                    const int scols = paneCols(0);
                     stSaveSlot = r * scols + (scols - 1);
-                    if (stSaveSlot >= slotsOf(0)) stSaveSlot = slotsOf(0) - 1;
+                    if (stSaveSlot >= paneSlots(0)) stSaveSlot = paneSlots(0) - 1;
                 }
             }
         }
         if (kDown & HidNpadButton_Right) {
-            if (curSlot() == -1) {                                    // on the header: ▶ cycles the box
-                curBox() = (curBox() + 1) % boxCntOf(storageFocusPane);
+            if (curSlot() == -1) {                                    // on the header: the box arrow cycles the box
+                curBox() = (curBox() + 1) % paneBoxes(storageFocusPane);
             } else {
                 int c = curSlot() % cols;
                 if (c < cols - 1 && curSlot() + 1 < slots) {
                     curSlot() += 1;
-                } else if (storageFocusPane == 0) {
+                } else if (storageFocusPane == 0 && !currentlySelecting) {
                     const int r = curSlot() / cols;
                     storageFocusPane = 1;
-                    stBankSlot = r * colsOf(1);  // col 0 of the bank pane
+                    stBankSlot = r * paneCols(1);  // col 0 of the bank pane
                 }
             }
         }
 
         const int pane = storageFocusPane, box = curBox(), slot = curSlot();
 
-        // Minus: in Multi mode with a selection, open the group menu.
-        if ((kDown & HidNpadButton_Minus) && !holding &&
-            cursorMode == CursorMode::Multi && !multiSel.empty()) {
+        // Minus: options for the block in hand (Release all / Return to origin / Cancel).
+        if ((kDown & HidNpadButton_Minus) && holding) {
             groupMenuActive = true;
             groupMenuIndex = 0;
             return;
         }
 
-        // X: sort the focused box. Free here -- the global X-to-save handler deliberately skips
-        // the storage view, since the bank saves via its own B -> Save/Discard prompt. Suppressed while
-        // carrying a Pokemon, so a sort can never run with one held out of the grid and lose it.
-        if ((kDown & HidNpadButton_X) && !holding) {
-            sortStorageBox(storageFocusPane, storageFocusPane == 0 ? stSaveBox : stBankBox);
-            return;
+        // X: while drawing a rectangle it DUPLICATES the selection (grab a copy
+        // and leave the originals in place). Otherwise it sorts the focused box. Suppressed while
+        // carrying, so a sort can never run with Pokemon held out of the grid and lose them.
+        if (kDown & HidNpadButton_X) {
+            if (currentlySelecting) {
+                grabSelection(false);
+                if (carrying()) postStatus("Copied " + std::to_string(carriedCount()) + " - originals left in place.", 180);
+                return;
+            }
+            if (!holding) {
+                sortStorageBox(storageFocusPane, storageFocusPane == 0 ? stSaveBox : stBankBox);
+                return;
+            }
         }
 
-        // A: act. Holding overrides the mode (place/swap the carried Pokemon; menu suppressed).
+        // A: act. A full hand overrides the mode -- it always means "put the block down here".
         if (kDown & HidNpadButton_A) {
             // Box-name header focused: A renames this pane's box (save box, or bank box). Guard first
             // so the placement/menu code below never indexes storage with slot == -1.
@@ -1352,26 +1501,17 @@ namespace UI {
                 return;
             }
             if (holding) {
-                // Confirm first for a lossy conversion: a Gen 3 downgrade rebuilds the PID (always warned),
-                // or -- settings-gated -- a Let's Go cross-move that resets AVs/EVs.
-                const bool g3warn = !isLocked(pane, box, slot) && gen3DowngradeInvolved(pane, heldPokemon.get());
-                const bool lgwarn = g_lgpeMoveWarn && !isLocked(pane, box, slot) && lgpeConversionInvolved(pane, heldPokemon.get());
+                // Confirm first for a lossy conversion: a Gen 3 downgrade rebuilds the PID (always
+                // warned), or -- settings-gated -- a Let's Go cross-move that resets AVs/EVs.
+                const bool g3warn = blockInvolvesGen3Downgrade(pane);
+                const bool lgwarn = g_lgpeMoveWarn && blockInvolvesLgpe(pane);
                 if (g3warn || lgwarn) {
                     lgpePending = LgpePending::PlaceHeld;
                     lgpePendPane = pane; lgpePendBox = box; lgpePendSlot = slot;
                     moveConfirmGen3 = g3warn; lgpeMoveConfirmActive = true; lgpeMoveConfirmIndex = 1;
                     return;
                 }
-                if (!isLocked(pane, box, slot) && prepareHeldForPane(pane)) {
-                    auto& here = slotPtr(pane, box, slot);
-                    if (!occupied(pane, box, slot)) {
-                        here = std::move(heldPokemon);
-                    } else {
-                        std::swap(here, heldPokemon);
-                        heldPane = pane; heldFromBox = box; heldFromSlot = slot;
-                    }
-                    hasUnsavedChanges = true;
-                }
+                putDownBlock();
                 return;
             }
             switch (cursorMode) {
@@ -1384,7 +1524,7 @@ namespace UI {
                         storageMenuActive = true;
                         storageMenuIndex = isLocked(pane, box, slot) ? 1 : 0;
                         menuPane = pane; menuBox = box; menuSlot = slot;
-                    } else if (pane == 0 && !occupied(pane, box, slot) && !isLocked(pane, box, slot)) {
+                    } else if (pane == 0 && !isLocked(pane, box, slot)) {
                         // Empty save-pane slot: create a new Pokemon here (pick species, then edit).
                         creator.active = true; creator.pane = pane; creator.box = box; creator.slot = slot;
                         pickerKind = Dialogs::PickerKind::Species;
@@ -1394,33 +1534,8 @@ namespace UI {
                     }
                     break;
                 case CursorMode::Move:
-                    if (occupied(pane, box, slot) && !isLocked(pane, box, slot)) {
-                        heldPokemon = std::move(slotPtr(pane, box, slot));
-                        heldPane = pane; heldFromBox = box; heldFromSlot = slot;
-                    }
-                    break;
                 case CursorMode::Multi:
-                    if (occupied(pane, box, slot) && !isLocked(pane, box, slot)) {
-                        // Occupied slot: toggle it in the selection (single-pane; crossing resets it).
-                        if (!multiSel.empty() && multiSel.front().pane != pane) multiSel.clear();
-                        bool found = false;
-                        for (size_t i = 0; i < multiSel.size(); ++i)
-                            if (multiSel[i].pane == pane && multiSel[i].box == box && multiSel[i].slot == slot) {
-                                multiSel.erase(multiSel.begin() + i); found = true; break;
-                            }
-                        if (!found) multiSel.push_back({pane, box, slot});
-                    } else if (!occupied(pane, box, slot) && !isLocked(pane, box, slot) && !multiSel.empty()) {
-                        // Empty slot with a selection: move the whole group here (cross-pane = deposit/withdraw).
-                        const bool g3warn = selectionInvolvesGen3Downgrade(pane);
-                        const bool lgwarn = g_lgpeMoveWarn && selectionInvolvesLgpe(pane);
-                        if (g3warn || lgwarn) {   // confirm a lossy conversion (Gen 3 PID rebuild / LGPE AV-EV reset)
-                            lgpePending = LgpePending::GroupMoveTo;
-                            lgpePendPane = pane; lgpePendBox = box; lgpePendSlot = slot;
-                            moveConfirmGen3 = g3warn; lgpeMoveConfirmActive = true; lgpeMoveConfirmIndex = 1;
-                        } else {
-                            moveSelectionTo(pane, box, slot);
-                        }
-                    }
+                    storagePickup();
                     break;
             }
         }
@@ -1435,9 +1550,15 @@ namespace UI {
         // path returns before ever reaching the bottom -- so an end-of-update hook would silently
         // skip them, and per-site hooks are exactly the coverage gap this codebase keeps hitting.
         // A no-op on every positional game. Excluded mid-operation so the board can't shift under a
-        // Pokemon the user is currently carrying, swapping or creating.
-        if (!heldPokemon && !swapActive && !creator.active && trainer.compactStorage()) {
-            multiSel.clear();   // entries are (pane, box, slot) refs; a re-pack invalidates them
+        // Pokemon the user is currently carrying, swapping, selecting or creating.
+        //
+        // This IS the "exception for LGPE" in exact-slot placement: a block still lands on the exact
+        // slots it was dropped onto, and then this closes any gap those slots left behind, sliding
+        // the box forward. Nothing here can invalidate a selection any more -- a carried block owns
+        // its Pokemon outright rather than pointing at slots -- but an in-progress rectangle is
+        // anchored to slot indices, so it is excluded too.
+        if (!carrying() && !currentlySelecting && !swapActive && !creator.active) {
+            trainer.compactStorage();
         }
 
         // Keep the game's persisted "current box" in step with whichever box view is open, so it
@@ -2451,8 +2572,10 @@ namespace UI {
             else if (tb == 0) kDown |= HidNpadButton_B;  // tap Cancel
             if (kDown & HidNpadButton_A) {
                 if (releaseGroup) {
-                    for (const auto& s : multiSel) storageSlot(s.pane, s.box, s.slot).reset();
-                    multiSel.clear();
+                    // The group being released is the block in hand, so releasing it is simply
+                    // dropping what we are carrying -- nothing is left pointing at a stale slot.
+                    moveMon.clear();
+                    selectDimensions = {0, 0};
                 } else {
                     storageSlot(releasePane, releaseBox, releaseSlot).reset();
                 }
@@ -2500,20 +2623,14 @@ namespace UI {
             if (kDown & HidNpadButton_B) { lgpeMoveConfirmActive = false; lgpePending = LgpePending::None; return; }
             if (kDown & HidNpadButton_A) {   // Continue: run the stashed action (A always continues)
                 lgpeMoveConfirmActive = false;
-                switch (lgpePending) {
-                    case LgpePending::PlaceHeld: {
-                        const int p = lgpePendPane, b = lgpePendBox, s = lgpePendSlot;
-                        if (!storageSlotLocked(p, b, s) && prepareHeldForPane(p)) {
-                            auto& here = storageSlot(p, b, s);
-                            if (!here || here->speciesID() == 0) here = std::move(heldPokemon);
-                            else { std::swap(here, heldPokemon); heldPane = p; heldFromBox = b; heldFromSlot = s; }
-                            hasUnsavedChanges = true;
-                        }
-                        break;
-                    }
-                    case LgpePending::GroupMoveTo:   moveSelectionTo(lgpePendPane, lgpePendBox, lgpePendSlot); break;
-                    case LgpePending::GroupTransfer: transferSelectionToOtherPane(); break;
-                    default: break;
+                if (lgpePending == LgpePending::PlaceHeld) {
+                    // Re-point the cursor at the slot the drop was aimed at, then run the ordinary
+                    // put-down -- one placement path, so the confirmed move behaves identically to
+                    // the unconfirmed one (bounds, block swap, per-cell conversion and all).
+                    storageFocusPane = lgpePendPane;
+                    if (lgpePendPane == 0) { stSaveBox = lgpePendBox; stSaveSlot = lgpePendSlot; }
+                    else                   { stBankBox = lgpePendBox; stBankSlot = lgpePendSlot; }
+                    putDownBlock();
                 }
                 lgpePending = LgpePending::None;
                 return;
@@ -2536,10 +2653,13 @@ namespace UI {
             if (kDown & HidNpadButton_A) {
                 storageMenuActive = false;
                 switch (storageMenuIndex) {
-                    case 0:  // Move -> pick up (blocked on a party-linked slot)
+                    case 0:  // Move -> pick up as a 1x1 block (blocked on a party-linked slot)
                         if (menuLocked) break;
-                        heldPokemon = std::move(storageSlot(menuPane, menuBox, menuSlot));
-                        heldPane = menuPane; heldFromBox = menuBox; heldFromSlot = menuSlot;
+                        storageFocusPane = menuPane;
+                        if (menuPane == 0) { stSaveBox = menuBox; stSaveSlot = menuSlot; }
+                        else               { stBankBox = menuBox; stBankSlot = menuSlot; }
+                        pickupSingle();
+                        postPickup();
                         break;
                     case 1:  // Edit -> open the details modal
                         openStorageEditor(menuPane, menuBox, menuSlot);
@@ -2584,9 +2704,10 @@ namespace UI {
             return;
         }
 
-        // Handle the green-mode group menu (Move / Release / Clear / Cancel).
+        // Handle the carried-block menu, opened with Minus (Release all / Return / Cancel). Moving a
+        // block no longer needs a menu entry -- you carry it to where you want it and press A.
         if (groupMenuActive) {
-            constexpr int N = 4;
+            constexpr int N = 3;
             int tb = touchedButtonId(touch);
             if (tb >= 0) { groupMenuIndex = tb; kDown |= HidNpadButton_A; }  // tap a row = select + confirm
             if (kDown & HidNpadButton_Up)   groupMenuIndex = (groupMenuIndex - 1 + N) % N;
@@ -2595,20 +2716,8 @@ namespace UI {
             if (kDown & HidNpadButton_A) {
                 groupMenuActive = false;
                 switch (groupMenuIndex) {
-                    case 0: {  // Move to the other pane
-                        const int destPane = multiSel.empty() ? 1 : (1 - multiSel.front().pane);
-                        const bool g3warn = selectionInvolvesGen3Downgrade(destPane);
-                        const bool lgwarn = g_lgpeMoveWarn && selectionInvolvesLgpe(destPane);
-                        if (g3warn || lgwarn) {   // confirm a lossy conversion (Gen 3 PID rebuild / LGPE AV-EV reset)
-                            lgpePending = LgpePending::GroupTransfer;
-                            moveConfirmGen3 = g3warn; lgpeMoveConfirmActive = true; lgpeMoveConfirmIndex = 1;
-                        } else {
-                            transferSelectionToOtherPane();
-                        }
-                        break;
-                    }
-                    case 1: releaseGroup = true; releaseConfirmActive = true; break;  // Release all
-                    case 2: multiSel.clear(); break;  // Clear selection
+                    case 0: releaseGroup = true; releaseConfirmActive = true; break;  // Release all
+                    case 1: returnHeldToOrigin(); break;                              // Put it all back
                     default: break;  // Cancel
                 }
                 return;
@@ -2658,7 +2767,7 @@ namespace UI {
                     case 1:  // Discard & Exit -> revert the in-memory bank to its on-disk state.
                              // ONLY the bank: it owns what lives in the bank, not what lives in the
                              // save. Pulling a Pokemon out and then discarding therefore leaves the
-                             // copy in the save box -- intended, and what PKSM does. Undoing that half
+                             // copy in the save box -- intended, and how a HOME-style box works. Undoing that half
                              // is the GAME save's own discard, which is a separate decision.
                         if (bank) bank->load();
                         detailViewActive = false;
@@ -2678,11 +2787,12 @@ namespace UI {
         if (detailViewActive) {
             if (kDown & HidNpadButton_B) {
                 if (selectedMode == ViewMode::Storage) {
-                    // B unwinds one step: drop a carried Pokemon, then clear a multi-selection, then exit.
-                    if (heldPokemon) { returnHeldToOrigin(); return; }
-                    if (!multiSel.empty()) { multiSel.clear(); return; }
+                    // B unwinds one step: abandon a rectangle being drawn, then put a carried block
+                    // back where it came from, then leave the view.
+                    if (currentlySelecting) { cancelSelection(); return; }
+                    if (carrying()) { returnHeldToOrigin(); return; }
                     // Leaving the storage view: if the bank has unsaved changes, prompt Save / Discard /
-                    // Cancel (PKSM does the same on its storage back button). No changes -> just exit.
+                    // Cancel. No changes -> just exit.
                     // The bank is its own entity, saved here rather than with the game (X) save.
                     if (bank && bank->hasChanged()) {
                         storageExitConfirmActive = true;
@@ -2705,9 +2815,36 @@ namespace UI {
 
             // Storage view: dual-pane bank navigation + deposit/withdraw.
             if (selectedMode == ViewMode::Storage) {
-                // Touch: a tap on a slot moves the cursor there and acts like pressing A, so it
-                // works in every cursor mode (Menu opens the popup, Move picks up/places, Multi
-                // toggles/moves). Rects were captured during the previous frame's draw.
+                // Touch drag-select (Multi mode): press anchors the rectangle, sliding a finger over
+                // the grid rubber-bands it, lifting grabs the block. The same gesture the D-pad does
+                // with A / move / A -- so a rectangle can be swept out in one motion.
+                //
+                // Only the anchor's own pane and box take part: a rectangle is a region of ONE box,
+                // and the cursor slot is what the highlight and the grab both read.
+                auto slotUnderFinger = [&](int& outPane, int& outSlot) {
+                    for (const auto& t : storageTouchTargets) {
+                        if (t.slot < 0) continue;                      // header arrows / name pill
+                        if (touch.x() >= t.x && touch.x() < t.x + t.w &&
+                            touch.y() >= t.y && touch.y() < t.y + t.h) {
+                            outPane = t.pane; outSlot = t.slot; return true;
+                        }
+                    }
+                    return false;
+                };
+                if (currentlySelecting && touch.isDown() && !touch.justPressed()) {
+                    int tp = 0, ts = 0;
+                    if (slotUnderFinger(tp, ts) && tp == selectPane) {
+                        if (tp == 0) stSaveSlot = ts; else stBankSlot = ts;
+                    }
+                }
+                if (currentlySelecting && touch.justReleased() && touch.dragged()) {
+                    grabSelection(true);     // a swept-out rectangle grabs on lift
+                    return;
+                }
+
+                // A tap on a slot moves the cursor there and acts like pressing A, so it works in
+                // every cursor mode (Menu opens the popup, Move picks up/places, Multi anchors then
+                // grabs). Rects were captured during the previous frame's draw.
                 if (touch.justPressed()) {
                     for (const auto& t : storageTouchTargets) {
                         if (touch.x() >= t.x && touch.x() < t.x + t.w &&
@@ -3277,7 +3414,8 @@ namespace UI {
                     break;
                 case 2:  // Storage (bank) — start on the save pane, Menu mode, nothing held/selected.
                     detailViewActive = true; storageFocusPane = 0; stSaveSlot = 0; stBankSlot = 0;
-                    multiSel.clear(); storageMenuActive = false; groupMenuActive = false;
+                    moveMon.clear(); selectDimensions = {0, 0}; currentlySelecting = false;
+                    storageMenuActive = false; groupMenuActive = false;
                     cursorMode = CursorMode::Menu;
                     break;
                 case 3:  // Items
@@ -3542,14 +3680,18 @@ namespace UI {
                     instructions = "Up/Down: Choose  |  A: Select  |  B: Cancel";
                 } else if (releaseConfirmActive) {
                     instructions = "A: Release  |  B: Cancel";
-                } else if (heldPokemon) {
-                    instructions = "Arrows: Move (cross panes at edge)  |  L/R: Box  |  A: Drop / Swap  |  B: Return";
+                } else if (currentlySelecting) {
+                    instructions = "Arrows: Size Selection  |  A: Grab Group  |  X: Copy Group  |  B: Cancel";
+                } else if (carrying()) {
+                    instructions = carriedCount() > 1
+                        ? "Arrows: Move Group (cross panes at edge)  |  L/R: Box  |  A: Place Here  |  Minus: Options  |  B: Put Back"
+                        : "Arrows: Move (cross panes at edge)  |  L/R: Box  |  A: Drop / Swap  |  Minus: Options  |  B: Put Back";
                 } else if (cursorMode == CursorMode::Menu) {
                     instructions = "Arrows: Move  |  L/R: Box  |  Y: Mode (Menu)  |  A: Menu  |  X: Sort Box  |  B: Back";
                 } else if (cursorMode == CursorMode::Move) {
                     instructions = "Arrows: Move  |  L/R: Box  |  Y: Mode (Move)  |  A: Pick Up  |  X: Sort Box  |  B: Back";
                 } else {
-                    instructions = "Arrows: Move  |  A: Select  |  Minus: Options  |  Y: Mode (Multi)  |  X: Sort Box  |  B: Clear";
+                    instructions = "Arrows: Move  |  L/R: Box  |  Y: Mode (Multi)  |  A: Start Selection  |  X: Sort Box  |  B: Back";
                 }
             } else if (selectedMode == ViewMode::Trainer) {
                 // X saves only from the HOME menu (see the X handler), so the flow is edit -> B -> X.

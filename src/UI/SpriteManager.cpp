@@ -138,7 +138,7 @@ namespace UI {
         std::string suffix = isShiny ? "s" : "";
         std::string sid = std::to_string(spriteId);
 
-        // Prefer the HD render (transparent Pokemon HOME PNG) for this sprite id, then
+        // Prefer the HD render (transparent HOME PNG) for this sprite id, then
         // fall back to the bundled 96px sprite.
         Sprite* sprite = loadSprite("sprites/pokemon_hd/" + sid + suffix + ".png");
         if (!sprite) {
