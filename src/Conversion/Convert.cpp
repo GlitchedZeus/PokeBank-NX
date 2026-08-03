@@ -541,7 +541,7 @@ namespace Conversion {
             wr8(d, 0x125, static_cast<uint8_t>((origins & 0x7F) | (((origins >> 15) & 1) << 7)));    // MetLevel + OTgender
             wr16(d, 0x122, rd8(s, 0x45));                           // Met location (Gen 3 id -- carried)
             // Gen 3 records no met DATE, so leaving it 0 reads as "met 00/00/2000" in the destination.
-            // Emulate Pokemon HOME: PKHeX's PK3.ConvertToPK4() stamps MetDate = EncounterDate.GetDateNDS()
+            // Emulate HOME: PKHeX's PK3.ConvertToPK4() stamps MetDate = EncounterDate.GetDateNDS()
             // (the transfer date). Do the same with today's date; it rides the PK8-hub met-date region
             // (0x11C-0x11E, year stored as year-2000) out to every destination format. Skip an egg -- an
             // unhatched egg has no met date until it hatches (isEgg is iv32 bit 30, carried above).
@@ -570,7 +570,7 @@ namespace Conversion {
 
             // Gen 3 derives nature/gender/shiny/ability ALL from the PID, but the source stores nature
             // and gender EXPLICITLY -- copying the PID verbatim silently changes them (an LGPE Calm mon
-            // read as Jolly in FR/LG). Like PKSM's downgrade (PKX::getRandomPID), reroll the PID so its
+            // read as Jolly in FR/LG). The standard down-convert answer is to reroll the PID so its
             // Gen-3-derived traits match the source's: nature, gender, shiny status and ability slot are
             // preserved. IVs are NOT touched (separate field at 0x48). This DOES change the PID (the mon's
             // identity) and yields a PID/IV pair that won't match a real Gen 3 RNG frame -- the UI warns

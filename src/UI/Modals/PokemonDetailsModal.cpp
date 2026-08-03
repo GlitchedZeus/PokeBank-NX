@@ -33,7 +33,7 @@ using namespace Utils;
 namespace UI {
 namespace Modals {
 
-    // Pokemon HOME "Check Summary"-style editor page. Full-screen, three columns: the render + details
+    // HOME "Check Summary"-style editor page. Full-screen, three columns: the render + details
     // (left), the editable stat table + shiny/nature/gender (center — the navigable "Values" column),
     // and the moveset editor (right — moves + held item). Editing is handled in TrainerViewScreen; this
     // only draws + captures touch.
