@@ -220,6 +220,16 @@ namespace Trainer {
         return p;
     }
 
+    void Trainer8BDSP::updateTrainerInfoBlock()
+    {
+        // Raw-buffer game: write straight into saveData (like updateItemBlock); recomputeHash() runs
+        // after.
+        if (saveData.size() < BDSP_MYSTATUS + 0x1A) return;
+        setString(&saveData[BDSP_MYSTATUS], 0x1A, utf8ToUtf16(trainerName), 12);
+        if (saveData.size() >= BDSP_MONEY + 4)
+            writeUInt32LittleEndian(&saveData[BDSP_MONEY], money);
+    }
+
     void Trainer8BDSP::updateItemBlock()
     {
         // Write each parsed item's count (int32) in place — non-destructive: touches only known items,

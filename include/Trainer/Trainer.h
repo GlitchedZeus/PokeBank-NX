@@ -419,6 +419,48 @@ namespace Trainer {
          */
         virtual bool canStoreBoxName(const std::string& name) const { (void)name; return true; }
 
+        // ========================================
+        // Editable Trainer Info
+        // ========================================
+
+        /**
+         * Serialize the editable trainer-identity fields (money, OT name) back into this
+         * save's blocks/buffer. Mirrors updateItemBlock()/updateBoxBlock() and MUST be called from the
+         * same place in each game's save function -- BEFORE that game's checksum/hash/encrypt pass,
+         * since these fields live inside the checksummed region.
+         *
+         * Each field is written to the SAME block+offset it was parsed from, so the value the editor
+         * shows round-trips exactly. Pure virtual so a new game can't drop trainer edits: a
+         * missing override is a compile error, not a quiet no-persist.
+         * 
+         * Editing gender is intentionally disabled ATM as it needs its own research and implementation.
+         */
+        virtual void updateTrainerInfoBlock() = 0;
+
+        /**
+         * Largest money value this game stores, for the money editor's clamp. Defaults to the modern
+         * cap (PKHeX SaveFile.MaxMoney = 9,999,999); Gen 3 overrides to 999,999 (PKHeX SAV3.MaxMoney).
+         */
+        virtual uint32_t getMaxMoney() const noexcept { return 9999999; }
+
+        /**
+         * Longest OT name this game accepts, in characters. Defaults to 12 (PKHeX MaxStringLengthTrainer
+         * for every Switch title); Gen 3 overrides to 7. The Gen-3 CHARACTER-SET limit is enforced
+         * separately via canStoreBoxName() (its ~70-glyph table is shared by box and trainer names).
+         */
+        virtual size_t getMaxTrainerNameLength() const noexcept { return 12; }
+
+        /**
+         * How many DIGITS a trainer name may contain -- a separate cap from the length, and one the
+         * games enforce at name entry. PKHeX TrainerNameVerifier.GetMaxNumberCount: no limit before
+         * gen 4, four in gens 4-5, five from gen 6 on. Every Switch title is gen 6+, so 5; Gen 3
+         * overrides to "no limit". Negative means unlimited.
+         *
+         * A name no longer than the cap is exempt, so "12345" is accepted on a cap of five while
+         * "123456" is not -- see nameHasTooManyDigits() in TrainerViewScreen.cpp.
+         */
+        virtual int getMaxTrainerNameDigits() const noexcept { return 5; }
+
     protected:
         /**
          * Default constructor for derived classes.

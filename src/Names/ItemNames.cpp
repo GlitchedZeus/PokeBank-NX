@@ -127,7 +127,7 @@ namespace Names {
         "Burn Drive",  // 118
         "Chill Drive",  // 119
         "???",  // 120
-        "Pokemon Box Link",  // 121
+        "Pokémon Box Link",  // 121
         "Medicine Pocket",  // 122
         "TM Case",  // 123
         "Candy Jar",  // 124
@@ -1081,7 +1081,7 @@ namespace Names {
         "???",  // 1072
         "???",  // 1073
         "Endorsement",  // 1074
-        "Pokemon Box Link",  // 1075
+        "Pokémon Box Link",  // 1075
         "Wishing Star",  // 1076
         "Dynamax Band",  // 1077
         "???",  // 1078

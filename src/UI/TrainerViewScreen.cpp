@@ -269,7 +269,9 @@ namespace UI {
         fb.drawText(rx, ry + 8, "A: toggle     B: back", Colors::TextDim, TextStyle::Caption);
     }
 
-    // Trainer view (HOME-style ID card), reached from the HOME menu's Trainer icon.
+    // Trainer view (HOME-style ID card), reached from the HOME menu's Trainer icon. The first two
+    // rows (Name / Money) are editable; the rows below are informational -- editing TID/SID would
+    // re-own every Pokemon already in the save, so it is deliberately left out.
     static void drawTrainerView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
         Trainer::Trainer& t = screen.trainer;
         fb.drawFilledRoundedRect(x, y, w, h, 16, Colors::Panel);
@@ -279,26 +281,52 @@ namespace UI {
         fb.drawFilledRect(x, y + hH - 16, w, 16, Colors::AccentDim);
         fb.drawText(x + 22, y + (hH - fb.lineHeight(TextStyle::Heading)) / 2, "Trainer", Colors::Text, TextStyle::Heading);
 
-        const int cardW = 640, cardX = x + (w - cardW) / 2;
-        int cy = y + hH + 34;
-        { int nw, nh; fb.measureText(t.trainerName, nw, nh, TextStyle::Title);
-          fb.drawText(cardX + (cardW - nw) / 2, cy, t.trainerName, Colors::Text, TextStyle::Title);
-          cy += nh + 12; }
-        fb.drawHDivider(cardX + 20, cy, cardW - 40);
-        cy += 22;
+        screen.touchButtons.clear();
 
-        auto row = [&](const char* label, const std::string& value, Color vc) {
-            fb.drawSoftShadow(cardX, cy, cardW, 52, 12);
-            fb.drawFilledRoundedRect(cardX, cy, cardW, 52, 12, Colors::PanelAlt);
-            fb.drawText(cardX + 24, cy + (52 - fb.lineHeight(TextStyle::Body)) / 2, label, Colors::TextDim, TextStyle::Body);
-            int vw, vh; fb.measureText(value, vw, vh, TextStyle::Body);
-            fb.drawText(cardX + cardW - 24 - vw, cy + (52 - vh) / 2, value, vc, TextStyle::Body);
-            cy += 62;
+        const int cardW = 680, cardX = x + (w - cardW) / 2;
+        int cy = y + hH + 26;
+
+        // --- Editable rows (Name / Money): selectable via cursor + touch, styled like Settings.
+        // Gender is display-only, so it sits with the identity rows below rather than leaving a hole
+        // the cursor has to jump over. ---
+        constexpr int kEditRows = 2;
+        const char* labels[kEditRows] = { "Name", "Money" };
+        const std::string values[kEditRows] = {
+            t.trainerName.empty() ? "(none)" : t.trainerName,
+            "$" + std::to_string(t.money),
         };
-        row("Trainer ID", std::to_string(t.TID16) + " / " + std::to_string(t.SID16), Colors::Text);
-        row("Full TID", std::to_string(t.TID), Colors::Text);
-        row("Full SID", std::to_string(t.SID), Colors::Text);
-        row("Money", "$" + std::to_string(t.money), Colors::Primary);
+        const int rowH = 60;
+        for (int i = 0; i < kEditRows; ++i) {
+            const bool sel = (screen.trainerSelectedRow == i);
+            fb.drawSoftShadow(cardX, cy, cardW, rowH, 14);
+            fb.drawFilledRoundedRect(cardX, cy, cardW, rowH, 14, sel ? Colors::Selected : Colors::PanelAlt);
+            if (sel) fb.drawRoundedRect(cardX, cy, cardW, rowH, 14, Colors::Accent, 2);
+            fb.drawText(cardX + 24, cy + (rowH - fb.lineHeight(TextStyle::Body)) / 2, labels[i], Colors::TextDim, TextStyle::Body);
+            int vw, vh; fb.measureText(values[i], vw, vh, TextStyle::Body);
+            const int pillW = vw + 44, pillH = 38;
+            const int px = cardX + cardW - pillW - 20, py = cy + (rowH - pillH) / 2;
+            fb.drawPill(px, py, pillW, pillH, sel ? Colors::Primary : Colors::Background);
+            fb.drawText(px + (pillW - vw) / 2, py + (pillH - vh) / 2, values[i], sel ? Colors::PrimaryText : Colors::Text, TextStyle::Body);
+            screen.touchButtons.push_back({ i, cardX, cy, cardW, rowH });
+            cy += rowH + 14;
+        }
+
+        cy += 6;
+        fb.drawHDivider(cardX + 20, cy, cardW - 40);
+        cy += 20;
+
+        // --- Read-only rows (not selectable). ---
+        auto infoRow = [&](const char* label, const std::string& value) {
+            fb.drawFilledRoundedRect(cardX, cy, cardW, 46, 12, Colors::PanelAlt);
+            fb.drawText(cardX + 24, cy + (46 - fb.lineHeight(TextStyle::Body)) / 2, label, Colors::TextDim, TextStyle::Body);
+            int vw, vh; fb.measureText(value, vw, vh, TextStyle::Body);
+            fb.drawText(cardX + cardW - 24 - vw, cy + (46 - vh) / 2, value, Colors::Text, TextStyle::Body);
+            cy += 54;
+        };
+        infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
+        infoRow("Trainer ID", std::to_string(t.TID16) + " / " + std::to_string(t.SID16));
+        infoRow("Full TID", std::to_string(t.TID));
+        infoRow("Full SID", std::to_string(t.SID));
     }
 
     TrainerViewScreen::TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId, AccountUid userUid, bool loadedFromCart)
@@ -705,6 +733,111 @@ namespace UI {
         storageStatus = res.text.empty() ? "Bank box name reset to default."
                                          : ("Bank box renamed to \"" + res.text + "\".");
         storageStatusFrames = 180;
+    }
+
+    // Re-stamp the trainer identity your Pokemon store after a name edit, so they stay
+    // recognized as yours (see the header). Two independent matches per mon:
+    //   (1) OT  -- you caught it: match OT ID32 + the carried OT name.
+    //   (2) HT  -- it was traded to you (Gen 7+): match the carried HT name (HT has no TID/SID).
+    // Genuinely foreign stamps (someone else's OT/HT) are left untouched. Walks party + boxes only --
+    // the cross-game bank is deliberately excluded. Returns the count of mons actually changed.
+    int TrainerViewScreen::restampCaughtPokemonIdentity(const std::u16string& caughtName) {
+        const std::u16string newName = Utils::utf8ToUtf16(trainer.trainerName);
+        const uint8_t newGender = trainer.trainerGender;
+        const uint32_t id32 = trainer.ID32;
+        int changed = 0;
+        auto restamp = [&](Pokemon::Pokemon* pk) {
+            if (!pk || pk->speciesID() == 0) return;
+            bool did = false;
+            // (1) You are the ORIGINAL TRAINER.
+            if (pk->id32() == id32 && pk->otName() == caughtName) {
+                if (pk->otName()   != newName)   { pk->setOTName(newName);     did = true; }
+                if (pk->otGender() != newGender) { pk->setOTGender(newGender); did = true; }
+            }
+            // (2) You are the HANDLING TRAINER of a traded-in mon. FRLG has no HT (htName() is empty),
+            // so it never matches; the empty guard also stops untraded mons (empty HT) matching a
+            // cleared trainer name.
+            if (!caughtName.empty() && pk->htName() == caughtName) {
+                if (pk->htName()   != newName)   { pk->setHTName(newName);     did = true; }
+                if (pk->htGender() != newGender) { pk->setHTGender(newGender); did = true; }
+            }
+            // Trainer fields don't affect stats, so refresh the checksum only (no recalculateStats).
+            if (did) { pk->refreshChecksum(); ++changed; }
+        };
+        for (auto& pk : trainer.party) restamp(pk.get());
+        for (auto& box : trainer.boxes)
+            for (auto& pk : box) restamp(pk.get());
+        return changed;
+    }
+
+    // Append " Updated OT on N of your Pokemon." to a status line when a re-stamp touched any.
+    static std::string withOtRestampNote(std::string msg, int n) {
+        if (n > 0) msg += " Updated OT on " + std::to_string(n) + " of your Pokemon.";
+        return msg;
+    }
+
+    // Edit the trainer's OT name via the Switch keyboard. Mirrors renameBox: a cancel leaves the
+    // name untouched, an unchanged result is a no-op, and a name the game's glyph table can't store is
+    // refused rather than silently mangled (Gen 3 has ~70 glyphs; canStoreBoxName is the shared check).
+    // Mirrors PKHeX TrainerNameVerifier.ContainsTooManyNumbers. The games cap how many digits a
+    // trainer name may hold, separately from its length, and a name no longer than the cap is
+    // exempt -- so a five-digit cap accepts "12345" but not "123456". Counts characters rather than
+    // bytes (the name is UTF-8 here) and treats full-width digits as digits, matching .NET's
+    // char.IsNumber, since a Japanese keyboard produces those.
+    static bool nameHasTooManyDigits(const std::u16string& name, int maxDigits) {
+        if (maxDigits < 0) return false;                                  // generation with no cap
+        if (name.size() <= static_cast<size_t>(maxDigits)) return false;  // short enough to be exempt
+        int digits = 0;
+        for (char16_t c : name) {
+            if ((c >= u'0' && c <= u'9') || (c >= 0xFF10 && c <= 0xFF19))
+                ++digits;
+        }
+        return digits > maxDigits;
+    }
+
+    void TrainerViewScreen::editTrainerName() {
+        const std::string current = trainer.trainerName;
+        const Utils::KeyboardResult res =
+            Utils::promptText("Trainer Name", "OT name", current,
+                              static_cast<int>(trainer.getMaxTrainerNameLength()));
+        if (!res.accepted) return;          // cancel means "leave it alone", not "clear it"
+        if (res.text == current) return;
+        if (!trainer.canStoreBoxName(res.text)) {
+            Utils::logTest("TRAINERNAME new=\"" + res.text + "\" result=REFUSED_CHARSET");
+            postStatus("This game can't store those characters (A-Z, 0-9, and ! ? . - only).", 240);
+            return;
+        }
+        const int maxDigits = trainer.getMaxTrainerNameDigits();
+        if (nameHasTooManyDigits(Utils::utf8ToUtf16(res.text), maxDigits)) {
+            Utils::logTest("TRAINERNAME new=\"" + res.text + "\" result=REFUSED_DIGITS");
+            postStatus("This game allows at most " + std::to_string(maxDigits) +
+                       " numbers in a trainer name.", 240);
+            return;
+        }
+        Utils::logTest("TRAINERNAME old=\"" + current + "\" new=\"" + res.text + "\" result=OK");
+        // Match owned mons by the name they currently carry (the pre-rename name) BEFORE we change it.
+        const std::u16string caughtName = Utils::utf8ToUtf16(current);
+        trainer.trainerName = res.text;
+        const int n = restampCaughtPokemonIdentity(caughtName);
+        hasUnsavedChanges = true;
+        Utils::logTest("TRAINERNAME restamped=" + std::to_string(n));
+        postStatus(withOtRestampNote(res.text.empty() ? "Trainer name cleared." : "Trainer name updated.", n), 200);
+    }
+
+    // Edit the trainer's money via the number pad, clamped to this game's cap. promptNumber both
+    // widths the keypad to the max and clamps the returned value, so an out-of-range entry can't slip in.
+    void TrainerViewScreen::editTrainerMoney() {
+        const Utils::NumberResult res =
+            Utils::promptNumber("Money", static_cast<int>(trainer.money), 0,
+                                static_cast<int>(trainer.getMaxMoney()));
+        if (!res.accepted) return;
+        const uint32_t newMoney = static_cast<uint32_t>(res.value);
+        if (newMoney == trainer.money) return;
+        Utils::logTest("TRAINERMONEY old=" + std::to_string(trainer.money) +
+                       " new=" + std::to_string(newMoney) + " result=OK");
+        trainer.money = newMoney;
+        hasUnsavedChanges = true;
+        postStatus("Money set to $" + std::to_string(newMoney) + ".", 150);
     }
 
     // A backup's leaf folder name IS its name everywhere in the UI (PKSM does the same), so this is
@@ -1339,6 +1472,16 @@ namespace UI {
             } else {
                 renameBox(selectedBoxIndex);
             }
+            return;
+        }
+
+        // A trainer-info row (Name/Money) was activated last frame; open its blocking keyboard now that
+        // the row highlight has had a frame to draw.
+        if (pendingTrainerEdit >= 0) {
+            const int row = pendingTrainerEdit;
+            pendingTrainerEdit = -1;
+            if (row == 0)      editTrainerName();
+            else if (row == 1) editTrainerMoney();
             return;
         }
 
@@ -3026,6 +3169,20 @@ namespace UI {
                 }
             }
 
+            // Trainer info view: Name (0) / Money (1). Gender is read-only and lives with the
+            // identity rows below, so it is not in this list at all. Both rows defer one frame so
+            // the row highlight draws before the blocking swkbd opens.
+            if (selectedMode == ViewMode::Trainer) {
+                constexpr int kEditRows = 2;
+                int tb = touchedButtonId(touch);
+                if (tb >= 0 && tb < kEditRows) { trainerSelectedRow = tb; kDown |= HidNpadButton_A; }
+                if (kDown & HidNpadButton_Up)   trainerSelectedRow = (trainerSelectedRow - 1 + kEditRows) % kEditRows;
+                if (kDown & HidNpadButton_Down) trainerSelectedRow = (trainerSelectedRow + 1) % kEditRows;
+                if (kDown & HidNpadButton_A) {
+                    pendingTrainerEdit = trainerSelectedRow;   // Name (0) / Money (1): open swkbd next frame
+                }
+            }
+
             // Settings view: Up/Down select a row, A toggles it (0 = auto-backup, 1 = theme,
             // 2 = allow illegal values, 3 = Let's Go move warning, 4 = inject backups to game save).
             if (selectedMode == ViewMode::Settings) {
@@ -3395,7 +3552,8 @@ namespace UI {
                     instructions = "Arrows: Move  |  A: Select  |  Minus: Options  |  Y: Mode (Multi)  |  X: Sort Box  |  B: Clear";
                 }
             } else if (selectedMode == ViewMode::Trainer) {
-                instructions = "B: Back  |  +: Exit App";
+                // X saves only from the HOME menu (see the X handler), so the flow is edit -> B -> X.
+                instructions = "Up/Down: Select  |  A: Edit  |  B: Back  |  +: Exit App";
             }
         } else {
             // HOME main menu.

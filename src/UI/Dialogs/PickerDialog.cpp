@@ -165,7 +165,7 @@ namespace Dialogs {
             } else {
                 label = pickerOptionLabel(kind, val);
             }
-            fb.drawText(px + 28, ry + 8, label, col);
+            fb.drawText(px + 28, ry + (rowH - 4 - fb.lineHeight(TextStyle::Body)) / 2, label, col);
             screen.touchButtons.push_back({ idx, px + 12, ry, pw - 24, rowH - 4 });  // id = option row
         }
 

@@ -435,6 +435,18 @@ namespace Pokemon {
         /** Handling (current) Trainer name (0x78, 26 bytes). */
         std::u16string htName() const override { return getString(reinterpret_cast<const uint8_t*>(data.data() + 0x78), 26); }
         void setHTName(const std::u16string& value) noexcept override { setString(reinterpret_cast<uint8_t*>(data.data() + 0x78), 26, value, 12); refreshChecksum(); }
+        /** Handling Trainer gender (0 = Male, 1 = Female). Location: 0x92 (PKHeX PB7.HandlingTrainerGender),
+         *  directly before currentHandler below. This was the one HT field left on the base stub, and both
+         *  halves of that stub were wrong: the getter returned a hard 0, so every
+         *  handler displayed as Male whatever the save said, and the setter was a no-op, so a trainer gender
+         *  change could never re-stamp it. The re-stamp still counted those mons as updated (the getter's 0
+         *  never matched a Female trainer). */
+        uint8_t htGender() const noexcept override { return static_cast<uint8_t>(data[0x92]); }
+        void setHTGender(uint8_t value) noexcept override { data[0x92] = static_cast<std::byte>(value); refreshChecksum(); }
+        /** Handling Trainer friendship (0-255). Location: 0xA2. Wired alongside htGender -- same omission,
+         *  and an unwired getter that quietly returns 0 is what made the gender bug invisible. */
+        uint8_t htFriendship() const noexcept override { return static_cast<uint8_t>(data[0xA2]); }
+        void setHTFriendship(uint8_t value) noexcept override { data[0xA2] = static_cast<std::byte>(value); refreshChecksum(); }
         /** Current handler flag (0 = OT active, 1 = HT active). Location: 0x93. */
         uint8_t currentHandler() const noexcept override { return static_cast<uint8_t>(data[0x93]); }
         void setCurrentHandler(uint8_t value) noexcept override { data[0x93] = static_cast<std::byte>(value); refreshChecksum(); }

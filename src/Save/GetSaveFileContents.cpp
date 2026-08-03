@@ -219,6 +219,7 @@ namespace Save {
         delete[] file;
 
         // Patch edited blocks + recompute block checksums into the BEEF footer.
+        trainer.updateTrainerInfoBlock();   // money / OT name; mutates blocks before the copy
         writeBlocksToSaveData7LGPE(raw, trainer.getBlocks());
 
         // Write the full file to ModifiedSave/savedata.bin.
@@ -298,6 +299,7 @@ namespace Save {
         trainer.updateCurrentBoxBlock();
 
         // Encrypt the modified blocks (hash is calculated automatically)
+        trainer.updateTrainerInfoBlock();   // money / OT name; before the hash pass
         std::vector<uint8_t> encryptedData = encrypt(trainer.getBlocks());
 
         // Write to file
@@ -429,6 +431,7 @@ namespace Save {
         trainer.updateBoxBlock();
         trainer.updateBoxNameBlock();   // must precede this game's checksum/hash pass
         trainer.updateCurrentBoxBlock();
+        trainer.updateTrainerInfoBlock();   // money / OT name; before the MD5 hash pass
         trainer.recomputeHash();
         const std::vector<uint8_t>& saveData = trainer.getSaveData();
 
@@ -480,6 +483,7 @@ namespace Save {
         trainer.updateBoxBlock();
         trainer.updateBoxNameBlock();   // must precede this game's checksum/hash pass
         trainer.updateCurrentBoxBlock();
+        trainer.updateTrainerInfoBlock();   // money / OT name; before the hash pass
         std::vector<uint8_t> encryptedData = encrypt(trainer.getBlocks());
 
         char savePath[1024];
@@ -535,6 +539,7 @@ namespace Save {
         trainer.updateCurrentBoxBlock();
 
         // Encrypt the modified blocks (hash is calculated automatically)
+        trainer.updateTrainerInfoBlock();   // money / OT name; before the hash pass
         std::vector<uint8_t> encryptedData = encrypt(trainer.getBlocks());
 
         // Write to file
@@ -589,6 +594,7 @@ namespace Save {
         trainer.updateBoxBlock();
         trainer.updateBoxNameBlock();   // must precede this game's checksum/hash pass
         trainer.updateCurrentBoxBlock();
+        trainer.updateTrainerInfoBlock();   // money / OT name; before the hash pass
         std::vector<uint8_t> encryptedData = encrypt(trainer.getBlocks());
 
         char savePath[1024];
@@ -691,6 +697,7 @@ namespace Save {
         trainer.updateBoxNameBlock();   // must precede this game's checksum/hash pass
         trainer.updateCurrentBoxBlock();
         trainer.updatePartyBlock();
+        trainer.updateTrainerInfoBlock();   // money / OT name; before the sector checksums
         trainer.finalizeChecksums();
 
         const std::string name = trainer.fileName().empty() ? std::string("save.sav") : trainer.fileName();

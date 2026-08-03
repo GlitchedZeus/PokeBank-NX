@@ -149,6 +149,7 @@ namespace Trainer {
          * Updates the ITEM_KEY block with modified inventory data.
          */
         void updateItemBlock() override;
+        void updateTrainerInfoBlock() override;   // money / OT name
         bool itemsAreIdIndexed() const override { return true; }   // count at itemId * 0x10
 
         /**

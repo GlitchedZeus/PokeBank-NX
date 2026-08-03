@@ -198,6 +198,14 @@ namespace Modals {
             else          snprintf(buf, sizeof(buf), "%05u", p->id32() & 0xFFFFu);
             row("OT ID", buf);
         }
+        // Handling Trainer (Gen 7+): shown only once a mon has actually been handled by someone (htName
+        // non-empty), like the OT row above. This makes the OT/HT re-stamp verifiable on-device --
+        // change trainer gender/name, reopen a traded-in mon, and HT should track you. FireRed/LeafGreen
+        // has no handler concept, so htName() is empty there and this row stays hidden.
+        {
+            std::string ht = utf16ToUtf8(p->htName());
+            if (!ht.empty()) { ht += (p->htGender() == 0) ? " (M)" : " (F)"; row("HT", ht); }
+        }
         { snprintf(buf, sizeof(buf), "Lv. %u", p->metLevel()); editRow("Met Lv", buf, 18); }
         // Origin-generation location routing: a Gen 3/4 mon's MET id is remapped into the current
         // format's numbering when it is transferred up (Gen 5+ keep their own table), so a Gen 3/4 met
