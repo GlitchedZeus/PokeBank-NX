@@ -561,6 +561,21 @@ namespace Trainer {
         return p;
     }
 
+    void Trainer7LGPE::updateTrainerInfoBlock()
+    {
+        // Write money / OT name back to the same blocks they are parsed from. Block CRC-16/ARC
+        // checksums are recomputed later by writeBlocksToSaveData7LGPE().
+        for (auto& block : blocks) {
+            if (block.key == MY_STATUS7_LGPE) {
+                if (block.data.size() >= 0x38 + 26)
+                    setString(&block.data[0x38], 26, utf8ToUtf16(trainerName), 12);   // OT name, 12 chars
+            } else if (block.key == MISC7_LGPE) {
+                if (block.data.size() >= 0x04 + 4)
+                    writeUInt32LittleEndian(&block.data[0x04], money);
+            }
+        }
+    }
+
     void Trainer7LGPE::updateItemBlock()
     {
         /**

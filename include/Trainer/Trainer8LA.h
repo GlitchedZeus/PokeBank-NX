@@ -150,6 +150,7 @@ namespace Trainer {
          * Updates the ITEM_KEY block with modified inventory data.
          */
         void updateItemBlock() override;
+        void updateTrainerInfoBlock() override;   // money / OT name
 
         // Fixed-capacity packed pouches (KeyItems 100 / Stored 180 / Recipes 70), and the general
         // Items bag = min(675, SatchelUpgrades + 20). Enables in-pouch item creation for PLA.

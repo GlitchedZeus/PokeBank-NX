@@ -347,6 +347,19 @@ namespace Trainer {
         }
     }
 
+    void Trainer3FRLG::updateTrainerInfoBlock() {
+        // Raw sector-mapped save: OT name (g3-encoded, 7 chars @ 0x00) lives in the Small sector; money
+        // in the Large block at 0x290, XOR-keyed with the security key. finalizeChecksums() runs after.
+        // g3Encode writes 7 chars + a 0xFF terminator into 8 bytes, stopping before the gender byte at
+        // 0x08; the UI has already rejected any name the Gen-3 glyph table can't store.
+        const size_t sm = m_sectorOfs[SMALL_ID];
+        if (sm + 0x09 <= saveData.size())
+            g3Encode(this->trainerName, &saveData[sm + 0x00], 8, 7);
+        uint8_t moneyBuf[4];
+        writeUInt32LittleEndian(moneyBuf, this->money ^ m_key);
+        writeBlock(LARGE_ID, 0x290, moneyBuf, 4);
+    }
+
     void Trainer3FRLG::updateItemBlock() {
         const uint16_t key16 = static_cast<uint16_t>(m_key & 0xFFFF);
         for (size_t p = 0; p < items.size() && p < POUCH_COUNT3_FRLG; ++p) {
@@ -369,10 +382,8 @@ namespace Trainer {
                 writeBlock(LARGE_ID, pi.offset + slot * 4, entry, 4);
             }
         }
-        // Persist money (edited via trainer info); a no-op round-trip when unchanged.
-        uint8_t moneyBuf[4];
-        writeUInt32LittleEndian(moneyBuf, this->money ^ m_key);
-        writeBlock(LARGE_ID, 0x290, moneyBuf, 4);
+        // Money is written by updateTrainerInfoBlock(), which the save flow calls alongside this;
+        // keeping it there avoids a double-write of the same XOR-keyed value.
     }
 
     std::unique_ptr<::Pokemon::Pokemon> Trainer3FRLG::createBlankPokemon() const {

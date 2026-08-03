@@ -544,6 +544,21 @@ namespace Trainer {
         return p;
     }
 
+    void Trainer8SWSH::updateTrainerInfoBlock()
+    {
+        // OT name (0xB0) goes back into MyStatus8; money into its own block -- the same authoritative
+        // places parse reads them, so edits take effect in-game. encrypt() re-hashes.
+        for (auto& block : blocks) {
+            if (block.key == MY_STATUS8_SWSH) {
+                if (block.data.size() >= 0xB0 + 0x1A)
+                    setString(&block.data[0xB0], 0x1A, utf8ToUtf16(trainerName), 12);
+            } else if (block.key == MONEY8_SWSH) {
+                if (block.data.size() >= 0x04 + 4)
+                    writeUInt32LittleEndian(&block.data[0x04], money);
+            }
+        }
+    }
+
     void Trainer8SWSH::updateItemBlock()
     {
         /**

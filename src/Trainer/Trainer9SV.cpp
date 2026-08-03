@@ -547,6 +547,20 @@ namespace Trainer {
         return p;
     }
 
+    void Trainer9SV::updateTrainerInfoBlock()
+    {
+        // Write money / OT name back to the blocks parse reads them from. encrypt() re-hashes.
+        for (auto& block : blocks) {
+            if (block.key == MY_STATUS9_SV) {
+                if (block.data.size() >= 0x10 + 0x1A)
+                    setString(&block.data[0x10], 0x1A, utf8ToUtf16(trainerName), 12);
+            } else if (block.key == MONEY9_SV) {
+                if (block.data.size() >= 4)
+                    writeUInt32LittleEndian(block.data.data(), money);   // MONEY9_SV is a u32 scalar block
+            }
+        }
+    }
+
     void Trainer9SV::updateItemBlock()
     {
         /**

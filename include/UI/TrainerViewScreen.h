@@ -116,6 +116,23 @@ namespace UI {
         // Selected row in the Settings view (0-4); reached from the menu's Settings icon.
         int settingsSelectedRow = 0;
 
+        // Trainer info view: the focused editable row (0 Name, 1 Money) and a
+        // one-frame-deferred edit request. Name/Money open the blocking swkbd; deferring one frame lets
+        // the row highlight render before the applet suspends the app (same trick as pendingHeaderRename).
+        // -1 = nothing pending.
+        int trainerSelectedRow = 0;
+        int pendingTrainerEdit = -1;
+        void editTrainerName();     // swkbd edit of the OT name (charset-validated, per-game length cap)
+        void editTrainerMoney();    // numpad edit of money (clamped to the game's max)
+        // After a name edit, re-stamp the trainer identity your Pokemon store so they stay
+        // recognized as yours (party + boxes; NOT the cross-game bank). Both the OT name AND the
+        // Gen 7+ handler (HT) name are part of the identity the games match on, so a bare trainer
+        // edit would make your caught mons read as traded (obedience / traded-EXP) and your traded-in
+        // mons lose you as their handler. Matches OT by ID32 + the carried OT name, and HT by the carried
+        // HT name (the HT format has no TID/SID). `caughtName` is the pre-rename name for a rename, the
+        // unchanged name otherwise; genuinely foreign stamps are untouched. Returns count changed.
+        int restampCaughtPokemonIdentity(const std::u16string& caughtName);
+
         // Box swap (Phase 3 3.1): press Y to grab the slot under the cursor, then Y on another
         // occupied slot to swap them. swapSourceBox/Slot record the grabbed slot.
         bool swapActive = false;

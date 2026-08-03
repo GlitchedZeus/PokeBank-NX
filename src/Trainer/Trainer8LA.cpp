@@ -80,7 +80,14 @@ namespace Trainer {
         size_t nameLength = 0x1A;  // 26 bytes = 13 UTF-16LE chars
         auto nameSpan = std::span<const uint8_t>(block.data.data() + 0x20, nameLength);
         this->trainerName = utf16ToUtf8(getString(nameSpan.data(), nameLength));
-        this->trainerGender = block.data[0x15] & 1;   // 0x15: gender (0=M, 1=F)
+        // The u32 at 0x3C identifies which of the eight preset characters the player chose at the start
+        // of the game, and that choice is also what fixes the gender -- PLA has no independent gender
+        // field. Bit 1 of the code is the gender (male codes 0,1,4,5 / female 2,3,6,7). Read from here
+        // rather than the plain 0/1 byte at 0x15, which is the value PKHeX calls "Gender".
+        if (block.data.size() >= 0x3C + 4) {
+            const uint32_t code = readUInt32LittleEndian(&block.data[0x3C]);
+            this->trainerGender = static_cast<uint8_t>((code >> 1) & 1);
+        }
         logInfoToFile("Parsed Trainer Name", this->trainerName.c_str());
     }
 
@@ -492,6 +499,20 @@ namespace Trainer {
             std::span<const std::byte>(enc, SIZE_PARTY8_LA));
         delete[] enc;
         return p;
+    }
+
+    void Trainer8LA::updateTrainerInfoBlock()
+    {
+        // Write money / OT name back to the blocks parse reads them from. encrypt() re-hashes.
+        for (auto& block : blocks) {
+            if (block.key == MY_STATUS8_LA) {
+                if (block.data.size() >= 0x20 + 0x1A)
+                    setString(&block.data[0x20], 0x1A, utf8ToUtf16(trainerName), 12);
+            } else if (block.key == MONEY8_LA) {
+                if (block.data.size() >= 4)
+                    writeUInt32LittleEndian(block.data.data(), money);   // MONEY8_LA is a u32 scalar block
+            }
+        }
     }
 
     void Trainer8LA::updateItemBlock()
