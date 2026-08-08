@@ -33,7 +33,7 @@ using namespace Utils;
 namespace UI {
 namespace Modals {
 
-    // Pokemon HOME "Check Summary"-style editor page. Full-screen, three columns: the render + details
+    // HOME "Check Summary"-style editor page. Full-screen, three columns: the render + details
     // (left), the editable stat table + shiny/nature/gender (center — the navigable "Values" column),
     // and the moveset editor (right — moves + held item). Editing is handled in TrainerViewScreen; this
     // only draws + captures touch.
@@ -112,7 +112,7 @@ namespace Modals {
         }
         // Type badges under the render (icons, centered).
         {
-            Pokemon::TypePair types = Pokemon::getPokemonTypes(p->speciesID(), p->form());
+            Pokemon::TypePair types = Pokemon::getPokemonTypes(p->speciesID(), p->form(), p->getGameGroup());
             Sprite* t1 = SpriteManager::getTypeSprite(types.type1);
             Sprite* t2 = Pokemon::hasSecondType(types) ? SpriteManager::getTypeSprite(types.type2) : nullptr;
             const int th = 22;
@@ -163,13 +163,14 @@ namespace Modals {
             }
             iy += RH;
         };
-        // FireRed/LeafGreen (Gen 3) is the only format that wires none of nickname / exp / form / met
-        // date / fateful, so those rows are editable everywhere EXCEPT there (notGen3). Stat Nature
-        // (mints) and the egg-met conditions are Gen 8+ / breeding-only -> the tighter modernFmt gate.
+        // FireRed/LeafGreen (Gen 3) wires none of exp / form / met date / fateful, so those rows are
+        // editable everywhere EXCEPT there (notGen3). Stat Nature (mints) and the egg-met conditions
+        // are Gen 8+ / breeding-only -> the tighter modernFmt gate.
         const bool notGen3   = (p->getGameGroup() != Enums::GameVersion::FRLG);
         const bool modernFmt = (notGen3 && p->getGameGroup() != Enums::GameVersion::GG);
-        // Nickname leads the column -- it's the name shown in-game.
-        if (notGen3) editRow("Nickname", utf16ToUtf8(p->nickname()), 23);
+        // Nickname leads the column -- it's the name shown in-game. Gen 3 is NOT excluded: its field is
+        // shorter (10) and its character set narrower, but it is as editable as any other format's.
+        editRow("Nickname", utf16ToUtf8(p->nickname()), 23);
         editRow("Ability",    getAbilityName(p->ability()), 15);
         editRow("Friendship", std::to_string(p->friendship()), 16);
         // Form -- when the species has alternate forms AND the format can set them (Gen 3 forms are
@@ -197,6 +198,14 @@ namespace Modals {
             if (sixDigit) snprintf(buf, sizeof(buf), "%06u", p->id32() % 1000000u);
             else          snprintf(buf, sizeof(buf), "%05u", p->id32() & 0xFFFFu);
             row("OT ID", buf);
+        }
+        // Handling Trainer (Gen 7+): shown only once a mon has actually been handled by someone (htName
+        // non-empty), like the OT row above. This makes the OT/HT re-stamp verifiable on-device --
+        // change trainer gender/name, reopen a traded-in mon, and HT should track you. FireRed/LeafGreen
+        // has no handler concept, so htName() is empty there and this row stays hidden.
+        {
+            std::string ht = utf16ToUtf8(p->htName());
+            if (!ht.empty()) { ht += (p->htGender() == 0) ? " (M)" : " (F)"; row("HT", ht); }
         }
         { snprintf(buf, sizeof(buf), "Lv. %u", p->metLevel()); editRow("Met Lv", buf, 18); }
         // Origin-generation location routing: a Gen 3/4 mon's MET id is remapped into the current
@@ -376,10 +385,14 @@ namespace Modals {
             ty += statRowH;
         }
 
-        // Gender row (selectable index 8) — cycled with Left/Right (or A).
+        // Gender row (selectable index 8) — A opens the picker. READ-ONLY for a fixed-gender species
+        // (male-only Braviary, female-only Miltank, genderless Magnemite): the value still shows, but
+        // there is no highlight and no touch target, and the cursor steps over it — the same way the
+        // left column handles a read-only row by not listing it. See TrainerViewScreen::genderEditable.
         ty += 6;
         {
-            const bool s = (sel == 8);
+            const bool editable = screen.genderEditable(*p);
+            const bool s = editable && (sel == 8);
             if (s) { fb.drawFilledRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Selected);
                      fb.drawRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Accent, 2); }
             fb.drawText(nameX, ty, "Gender", s ? Colors::Text : Colors::TextDim);
@@ -388,7 +401,7 @@ namespace Modals {
             const Color gc = (gv == 0) ? Colors::Blue : (gv == 1) ? Colors::Magenta : Colors::Text;
             int gw, gh; fb.measureText(gname, gw, gh);
             fb.drawText(Cx + Cw - 18 - gw, ty, gname, gc);
-            screen.touchButtons.push_back({ 8, Cx + 8, ty - 6, Cw - 16, statRowH - 6 });
+            if (editable) screen.touchButtons.push_back({ 8, Cx + 8, ty - 6, Cw - 16, statRowH - 6 });
             ty += statRowH;
         }
 
