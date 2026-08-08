@@ -1,3 +1,11 @@
+<p align="center">
+  <img src="assets/screenshots/banner.png" alt="PKSE - Pokemon Save Editor" width="640">
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-blue.svg" alt="License: AGPL v3"></a>
+</p>
+
 # **PKSE - Pokemon Save Editor**
 PKSE is a homebrew application for conveniently editing Pokemon save files on the Nintendo Switch, without having to transfer save files to your PC.
 
@@ -11,11 +19,28 @@ PKSE is a homebrew application for conveniently editing Pokemon save files on th
 
 ## **Screenshots**
 
-<img src="https://i.imgur.com/1jPiTsC.jpeg" width="300"><img src="https://i.imgur.com/kSxSc0s.jpeg" width="300">  
-<img src="https://i.imgur.com/pzkCt5W.jpeg" width="300"><img src="https://i.imgur.com/Dvq5jKB.jpeg" width="300">  
-<img src="https://i.imgur.com/2ZchNXI.jpeg" width="300"><img src="https://i.imgur.com/2GZ72Vx.jpeg" width="300">  
-<img src="https://i.imgur.com/Kpi3MmW.jpeg" width="300"><img src="https://i.imgur.com/8idUsGD.jpeg" width="300">  
-<img src="https://i.imgur.com/M2asUM3.jpeg" width="300"><img src="https://i.imgur.com/AC6zoXd.jpeg" width="300">  
+Each row is the same screen in the dark and light themes. Click any shot for full size.
+
+<a href="assets/screenshots/0.jpg"><img src="assets/screenshots/0.jpg" alt="Title selection (dark theme)" width="380"></a>
+<a href="assets/screenshots/1.jpg"><img src="assets/screenshots/1.jpg" alt="Title selection (light theme)" width="380"></a>
+
+<a href="assets/screenshots/2.jpg"><img src="assets/screenshots/2.jpg" alt="Main menu (dark theme)" width="380"></a>
+<a href="assets/screenshots/3.jpg"><img src="assets/screenshots/3.jpg" alt="Main menu (light theme)" width="380"></a>
+
+<a href="assets/screenshots/4.jpg"><img src="assets/screenshots/4.jpg" alt="Box view (dark theme)" width="380"></a>
+<a href="assets/screenshots/5.jpg"><img src="assets/screenshots/5.jpg" alt="Box view (light theme)" width="380"></a>
+
+<a href="assets/screenshots/6.jpg"><img src="assets/screenshots/6.jpg" alt="Pokemon details (dark theme)" width="380"></a>
+<a href="assets/screenshots/7.jpg"><img src="assets/screenshots/7.jpg" alt="Pokemon details (light theme)" width="380"></a>
+
+<a href="assets/screenshots/8.jpg"><img src="assets/screenshots/8.jpg" alt="Editing a stat (dark theme)" width="380"></a>
+<a href="assets/screenshots/9.jpg"><img src="assets/screenshots/9.jpg" alt="Editing a stat (light theme)" width="380"></a>
+
+<a href="assets/screenshots/10.jpg"><img src="assets/screenshots/10.jpg" alt="Party view (dark theme)" width="380"></a>
+<a href="assets/screenshots/11.jpg"><img src="assets/screenshots/11.jpg" alt="Party view (light theme)" width="380"></a>
+
+<a href="assets/screenshots/12.jpg"><img src="assets/screenshots/12.jpg" alt="Storage and bank (dark theme)" width="380"></a>
+<a href="assets/screenshots/13.jpg"><img src="assets/screenshots/13.jpg" alt="Storage and bank (light theme)" width="380"></a>
 
 ## **Title Compatibility**
 
