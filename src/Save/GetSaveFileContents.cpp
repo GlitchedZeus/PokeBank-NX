@@ -220,6 +220,7 @@ namespace Save {
 
         // Patch edited blocks + recompute block checksums into the BEEF footer.
         trainer.updateTrainerInfoBlock();   // money / OT name; mutates blocks before the copy
+        trainer.updatePokedexBlock();       // Zukan flags for everything in storage; also before the copy
         writeBlocksToSaveData7LGPE(raw, trainer.getBlocks());
 
         // Write the full file to ModifiedSave/savedata.bin.
@@ -300,6 +301,7 @@ namespace Save {
 
         // Encrypt the modified blocks (hash is calculated automatically)
         trainer.updateTrainerInfoBlock();   // money / OT name; before the hash pass
+        trainer.updatePokedexBlock();       // Zukan flags for everything in storage; before the hash pass
         std::vector<uint8_t> encryptedData = encrypt(trainer.getBlocks());
 
         // Write to file
@@ -432,6 +434,7 @@ namespace Save {
         trainer.updateBoxNameBlock();   // must precede this game's checksum/hash pass
         trainer.updateCurrentBoxBlock();
         trainer.updateTrainerInfoBlock();   // money / OT name; before the MD5 hash pass
+        trainer.updatePokedexBlock();       // Zukan flags for everything in storage; before the hash pass
         trainer.recomputeHash();
         const std::vector<uint8_t>& saveData = trainer.getSaveData();
 
@@ -484,6 +487,7 @@ namespace Save {
         trainer.updateBoxNameBlock();   // must precede this game's checksum/hash pass
         trainer.updateCurrentBoxBlock();
         trainer.updateTrainerInfoBlock();   // money / OT name; before the hash pass
+        trainer.updatePokedexBlock();       // research + statistics entries; before the hash pass
         std::vector<uint8_t> encryptedData = encrypt(trainer.getBlocks());
 
         char savePath[1024];
@@ -540,6 +544,7 @@ namespace Save {
 
         // Encrypt the modified blocks (hash is calculated automatically)
         trainer.updateTrainerInfoBlock();   // money / OT name; before the hash pass
+        trainer.updatePokedexBlock();       // Zukan flags for everything in storage; before the hash pass
         std::vector<uint8_t> encryptedData = encrypt(trainer.getBlocks());
 
         // Write to file
@@ -595,6 +600,7 @@ namespace Save {
         trainer.updateBoxNameBlock();   // must precede this game's checksum/hash pass
         trainer.updateCurrentBoxBlock();
         trainer.updateTrainerInfoBlock();   // money / OT name; before the hash pass
+        trainer.updatePokedexBlock();       // Zukan flags for everything in storage; before the hash pass
         std::vector<uint8_t> encryptedData = encrypt(trainer.getBlocks());
 
         char savePath[1024];
@@ -697,6 +703,7 @@ namespace Save {
         trainer.updateBoxNameBlock();   // must precede this game's checksum/hash pass
         trainer.updateCurrentBoxBlock();
         trainer.updatePartyBlock();
+        trainer.updatePokedexBlock();       // seen/caught for everything now in storage; before the checksums
         trainer.updateTrainerInfoBlock();   // money / OT name; before the sector checksums
         trainer.finalizeChecksums();
 

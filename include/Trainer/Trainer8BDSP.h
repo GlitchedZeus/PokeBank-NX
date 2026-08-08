@@ -53,7 +53,8 @@ namespace Trainer {
         bool supportsBoxNames() const noexcept override { return true; }
         size_t getMaxBoxNameLength() const noexcept override { return BDSP_BOXNAME_LENGTH / 2 - 1; }
         void updateItemBlock() override;   // BDSP items deferred (no-op stub)
-        void updateTrainerInfoBlock() override;   // money / OT name
+        void updateTrainerInfoBlock() override;
+        void updatePokedexBlock() override;      // ZUKAN_WORK @ 0x7A328   // money / OT name
         uint32_t getMaxMoney() const noexcept override { return 999999; }   // BDSP keeps the Gen-4 6-digit cap
         bool itemsAreIdIndexed() const override { return true; }   // count at BDSP_ITEM_BASE + itemId*stride
 

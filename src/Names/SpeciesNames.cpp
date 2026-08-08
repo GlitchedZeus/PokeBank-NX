@@ -1,9 +1,18 @@
+// AUTO-GENERATED from PKHeX's species-name text (species id = array index).
+// Source: PKHeX.Core/Resources/text/other/en/text_Species_en.txt
+// Regenerate with tools/gen_speciesnames.py (fetches from GitHub; see tools/pkhex_source.py).
+//
+// Names are verbatim, so they carry the punctuation the games use -- hyphens (Ho-Oh),
+// periods (Mr. Mime), a colon (Type: Null), apostrophes (Farfetch'd), an accent
+// (Flabebe) and the gender signs (Nidoran). The UI font loads Noto Sans Symbols as a
+// NanoVG fallback, which is what makes the gender signs drawable.
+//
+// Index 0 is "None" (PKSE's empty slot), where PKHeX has "Egg".
 #include <cstdint>
 #include <cstddef>
 
 namespace Names {
-    // Species name lookup table - indexed by Species ID
-    static const char* SPECIES_NAMES[] = {
+    static const char* const SPECIES_NAMES[] = {
         "None",
         "Bulbasaur",
         "Ivysaur",
@@ -33,10 +42,10 @@ namespace Names {
         "Raichu",
         "Sandshrew",
         "Sandslash",
-        "NidoranF",
+        "Nidoran♀",
         "Nidorina",
         "Nidoqueen",
-        "NidoranM",
+        "Nidoran♂",
         "Nidorino",
         "Nidoking",
         "Clefairy",
@@ -87,7 +96,7 @@ namespace Names {
         "Slowbro",
         "Magnemite",
         "Magneton",
-        "Farfetchd",
+        "Farfetch’d",
         "Doduo",
         "Dodrio",
         "Seel",
@@ -126,7 +135,7 @@ namespace Names {
         "Seaking",
         "Staryu",
         "Starmie",
-        "MrMime",
+        "Mr. Mime",
         "Scyther",
         "Jynx",
         "Electabuzz",
@@ -254,7 +263,7 @@ namespace Names {
         "Pupitar",
         "Tyranitar",
         "Lugia",
-        "HoOh",
+        "Ho-Oh",
         "Celebi",
         "Treecko",
         "Grovyle",
@@ -443,7 +452,7 @@ namespace Names {
         "Bronzor",
         "Bronzong",
         "Bonsly",
-        "MimeJr",
+        "Mime Jr.",
         "Happiny",
         "Chatot",
         "Spiritomb",
@@ -478,7 +487,7 @@ namespace Names {
         "Glaceon",
         "Gliscor",
         "Mamoswine",
-        "PorygonZ",
+        "Porygon-Z",
         "Gallade",
         "Probopass",
         "Dusknoir",
@@ -673,7 +682,7 @@ namespace Names {
         "Vivillon",
         "Litleo",
         "Pyroar",
-        "Flabebe",
+        "Flabébé",
         "Floette",
         "Florges",
         "Skiddo",
@@ -776,7 +785,7 @@ namespace Names {
         "Sandygast",
         "Palossand",
         "Pyukumuku",
-        "TypeNull",
+        "Type: Null",
         "Silvally",
         "Minior",
         "Komala",
@@ -786,13 +795,13 @@ namespace Names {
         "Bruxish",
         "Drampa",
         "Dhelmise",
-        "Jangmoo",
-        "Hakamoo",
-        "Kommoo",
-        "TapuKoko",
-        "TapuLele",
-        "TapuBulu",
-        "TapuFini",
+        "Jangmo-o",
+        "Hakamo-o",
+        "Kommo-o",
+        "Tapu Koko",
+        "Tapu Lele",
+        "Tapu Bulu",
+        "Tapu Fini",
         "Cosmog",
         "Cosmoem",
         "Solgaleo",
@@ -869,8 +878,8 @@ namespace Names {
         "Obstagoon",
         "Perrserker",
         "Cursola",
-        "Sirfetchd",
-        "MrRime",
+        "Sirfetch’d",
+        "Mr. Rime",
         "Runerigus",
         "Milcery",
         "Alcremie",
@@ -988,33 +997,33 @@ namespace Names {
         "Farigiraf",
         "Dudunsparce",
         "Kingambit",
-        "GreatTusk",
-        "ScreamTail",
-        "BruteBonnet",
-        "FlutterMane",
-        "SlitherWing",
-        "SandyShocks",
-        "IronTreads",
-        "IronBundle",
-        "IronHands",
-        "IronJugulis",
-        "IronMoth",
-        "IronThorns",
+        "Great Tusk",
+        "Scream Tail",
+        "Brute Bonnet",
+        "Flutter Mane",
+        "Slither Wing",
+        "Sandy Shocks",
+        "Iron Treads",
+        "Iron Bundle",
+        "Iron Hands",
+        "Iron Jugulis",
+        "Iron Moth",
+        "Iron Thorns",
         "Frigibax",
         "Arctibax",
         "Baxcalibur",
         "Gimmighoul",
         "Gholdengo",
-        "WoChien",
-        "ChienPao",
-        "TingLu",
-        "ChiYu",
-        "RoaringMoon",
-        "IronValiant",
+        "Wo-Chien",
+        "Chien-Pao",
+        "Ting-Lu",
+        "Chi-Yu",
+        "Roaring Moon",
+        "Iron Valiant",
         "Koraidon",
         "Miraidon",
-        "WalkingWake",
-        "IronLeaves",
+        "Walking Wake",
+        "Iron Leaves",
         "Dipplin",
         "Poltchageist",
         "Sinistcha",
@@ -1024,19 +1033,19 @@ namespace Names {
         "Ogerpon",
         "Archaludon",
         "Hydrapple",
-        "GougingFire",
-        "RagingBolt",
-        "IronBoulder",
-        "IronCrown",
+        "Gouging Fire",
+        "Raging Bolt",
+        "Iron Boulder",
+        "Iron Crown",
         "Terapagos",
         "Pecharunt",
     };
-    constexpr size_t SPECIES_NAMES_COUNT = 1026;
 
+    // Out of range returns "Unknown", which the legality checker tests for by value
+    // as its unknown-species sentinel -- keep the spelling if this is ever reworked.
     const char* getSpeciesName(uint16_t speciesId) {
-        if (speciesId >= SPECIES_NAMES_COUNT) {
-            return "Unknown";
-        }
+        constexpr size_t count = sizeof(SPECIES_NAMES) / sizeof(SPECIES_NAMES[0]);
+        if (speciesId >= count) return "Unknown";
         return SPECIES_NAMES[speciesId];
     }
 }

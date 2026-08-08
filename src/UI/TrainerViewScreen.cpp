@@ -45,6 +45,8 @@
 #include "Pokemon/Pokemon.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/PersonalInfoTable.h"
+#include "Pokemon/AbilityInfo.h"       // getAbilitySlots -> the per-game legal ability list
+#include "Pokemon/FormInfo.h"          // isBattleOnlyForm -> filters the Form picker
 #include "Pokemon/LearnsetTable.h"
 #include "Conversion/Convert.h"
 #include "Utils/StringHelpers.h"
@@ -79,31 +81,164 @@ namespace UI {
         p->refreshChecksum();
     }
 
-    // Origin version byte to stamp on a Pokemon created in this save. A game GROUP deliberately
-    // collapses a version pair into one value -- it exists to say "these games share a save format" --
-    // so picking the origin from it cannot tell Violet from Scarlet, and a created mon claimed the
-    // FIRST game of the pair (Violet -> Scarlet, Shield -> Sword, Shining Pearl -> Brilliant Diamond,
-    // Let's Go Eevee -> Let's Go Pikachu, LeafGreen -> FireRed). The title id knows exactly which game
-    // is open, and the enum's per-game values ARE the stored origin bytes, so it is used directly; the
-    // group only supplies a fallback for an id we don't recognise. Gen 3 stores origin in a 4-bit
-    // field, and both its values (FR = 4, LG = 5) fit, so distinguishing them is safe.
-    static uint8_t creatorOriginVersion(Trainer::Trainer& tr, u64 titleId) {
+    // Origin version byte for the save that is open. A game GROUP deliberately collapses a version pair
+    // into one value -- it exists to say "these games share a save format" -- so picking the origin from
+    // it cannot tell Violet from Scarlet, and whatever it stamps claims the FIRST game of the pair
+    // (Violet -> Scarlet, Shield -> Sword, Shining Pearl -> Brilliant Diamond, Let's Go Eevee -> Let's Go
+    // Pikachu, LeafGreen -> FireRed). The title id knows exactly which game is open, and the enum's
+    // per-game values ARE the stored origin bytes, so it is used directly; the group only supplies a
+    // fallback for an id we don't recognise. Gen 3 stores origin in a 4-bit field, and both its values
+    // (FR = 4, LG = 5) fit, so distinguishing them is safe.
+    //
+    // Used by BOTH places that stamp an origin: the creator, and the bank's down-convert into Gen 3.
+    // They had the same bug and only the creator's was fixed; one resolver is the point.
+    static uint8_t saveOriginVersion(Trainer::Trainer& tr, u64 titleId) {
         const Enums::GameVersion v = Enums::getGameVersion(titleId);
         if (v != Enums::GameVersion::Invalid && Enums::getGameGroup(v) == tr.getGameGroup())
             return static_cast<uint8_t>(v);
         return Enums::getGroupRepVersion(tr.getGameGroup());
     }
 
+    // A game group's bit in PersonalInfo::presence. FireRed/LeafGreen has no bit (Gen 3 predates the
+    // bitmask), so it returns 0 -- callers must treat that as "no data", never as "present nowhere".
+    static uint8_t personalPresenceBit(Enums::GameVersion group) {
+        switch (group) {
+            case Enums::GameVersion::GG:   return Pokemon::PERSONAL_GAME_GG;
+            case Enums::GameVersion::SWSH: return Pokemon::PERSONAL_GAME_SWSH;
+            case Enums::GameVersion::BDSP: return Pokemon::PERSONAL_GAME_BDSP;
+            case Enums::GameVersion::PLA:  return Pokemon::PERSONAL_GAME_PLA;
+            case Enums::GameVersion::SV:   return Pokemon::PERSONAL_GAME_SV;
+            case Enums::GameVersion::ZA:   return Pokemon::PERSONAL_GAME_ZA;
+            default: return 0;
+        }
+    }
+
+    // True when ANY form of the species is flagged present in this game.
+    //
+    // Form 0 is not the question, and asking it is a bug in its own right: Legends: Arceus has no
+    // Unovan Braviary, so #628's form-0 row has the PLA bit clear while its Hisuian form-1 row has it
+    // set. A form-0-only test therefore reads "Braviary is not in this game" and drops the species
+    // whole -- which is how the creator's list came to be 226 species instead of 242. Sixteen
+    // Hisuian-only species are in that position (Growlithe, Arcanine, Voltorb, Electrode, Typhlosion,
+    // Qwilfish, Samurott, Lilligant, Basculin, Zorua, Zoroark, Braviary, Sliggoo, Goodra, Avalugg,
+    // Decidueye); PLA is the only game where any species is, but the test is wrong everywhere.
+    static bool speciesPresentIn(uint16_t species, uint8_t bit) {
+        const Pokemon::PersonalInfo& base = Pokemon::getPersonalInfo(species, 0);
+        if ((base.presence & bit) != 0) return true;
+        int count = base.formCount;
+        if (count < 1) count = 1;
+        for (int f = 1; f < count; ++f)
+            if ((Pokemon::getPersonalInfo(species, static_cast<uint8_t>(f)).presence & bit) != 0)
+                return true;
+        return false;
+    }
+
+    // The forms of `species` that `group` can actually hold, ascending. Three filters, all asking the
+    // same question -- can a save legitimately contain this? -- of three different obstacles:
+    //   * battle-only : the game overwrites it (Megas, Zen, ride builds)
+    //   * not present : the game has no such form (Unovan Braviary in Legends: Arceus)
+    //   * Lord/Lady   : the game has it and keeps it, but the player never catches a noble
+    //
+    // formCount is the UNION across every supported game, so it over-reports per game -- Braviary has
+    // two rows but Legends: Arceus only ever had the Hisuian one. Without the presence half of this
+    // filter the Form picker offered a base Braviary that game has never had.
+    //
+    // Two callers, and they MUST agree: the Form picker, and the form a newly created mon starts on.
+    // A created mon sitting on a form its own picker won't offer looks exactly like the bug above.
+    //
+    // Presence is skipped in two cases, both of which mean "the table can't answer", never "no forms":
+    // Gen 3 has no presence bit at all, and a species that is off-dex HERE has the bit clear on every
+    // one of its forms -- filtering on that would strand an already-present mon on a one-row picker.
+    static std::vector<int> selectableForms(uint16_t species, Enums::GameVersion group) {
+        int count = Pokemon::getPersonalInfo(species, 0).formCount;
+        if (count < 1) count = 1;
+        const uint8_t bit = personalPresenceBit(group);
+        const bool byPresence = (bit != 0) && speciesPresentIn(species, bit);
+        std::vector<int> out;
+        for (int f = 0; f < count; ++f) {
+            if (Pokemon::isBattleOnlyForm(species, static_cast<uint8_t>(f))) continue;
+            if (Pokemon::isLordForm(species, static_cast<uint8_t>(f))) continue;
+            if (byPresence &&
+                (Pokemon::getPersonalInfo(species, static_cast<uint8_t>(f)).presence & bit) == 0) continue;
+            out.push_back(f);
+        }
+        return out;
+    }
+
+    // The genders a species can actually be, from its personal-table gender ratio (0 = Male,
+    // 1 = Female, 2 = Genderless -- the values the entity byte stores).
+    //
+    // A fixed-gender species has exactly ONE: Braviary is male-only, Miltank female-only, Magnemite
+    // genderless. Like the form filters this is a HARD rule that "Allow illegal edits" does not lift.
+    // A 255 EV is a real number in a field that holds numbers; a female Braviary is not a thing any of
+    // these games has -- the species' gender is a property of the species, not a value with a legal
+    // range, so there is no unusual-but-storable version of it to permit.
+    //
+    // A dual-gender species likewise never includes Genderless: that value means "this species has no
+    // gender", which is false for it, and the games render it as a blank where a symbol should be.
+    //
+    // The ratio is read per FORM, not per species -- Bloodmoon Ursaluna and the cap Pikachu are
+    // male-only forms of dual-gender species, so the form must be passed in rather than defaulted
+    // to 0. But per-form is not the whole rule: for Meowstic, Indeedee, Basculegion and Oinkologne
+    // the form IS the gender, so form 0's male-only ratio is a fact about that form and not about
+    // the species. Reading it as a fixed-gender species is what locked a Meowstic to whichever
+    // gender it happened to be. Those four always offer both; the form follows the pick.
+    //
+    // Offering both unconditionally is safe because the two gendered forms carry identical presence
+    // bits -- no game has one gender of these four without the other (checked against the table).
+    // Worth re-checking if the personal table is ever regenerated for a new game.
+    static std::vector<int> selectableGenders(uint16_t species, uint8_t form) {
+        if (Pokemon::isFormGenderSpecific(species)) return { 0, 1 };
+        switch (Pokemon::getPersonalInfo(species, form).genderRatio) {
+            case 255: return { 2 };      // genderless
+            case 254: return { 1 };      // always female
+            case 0:   return { 0 };      // always male
+            default:  return { 0, 1 };   // a threshold -> either, but never genderless
+        }
+    }
+
+    // The name a mon shows when it has NO custom nickname. The games store the DISPLAY string in the
+    // nickname field itself, so "not nicknamed" still means writing the species name there -- leaving
+    // the field blank shows a blank name in-game. Gen 3 stores that default UPPERCASE, as FRLG shows it.
+    //
+    // Uppercasing the UTF-8 bytes is safe: no byte of a multi-byte sequence falls in 'a'-'z' (lead
+    // bytes are >= 0xC0, continuations 0x80-0xBF), so NIDORAN♀ and FARFETCH'D keep their sign and
+    // apostrophe intact.
+    static std::string defaultNicknameFor(const Pokemon::Pokemon& p) {
+        std::string s = p.species();
+        if (p.getGameGroup() == Enums::GameVersion::FRLG) {
+            for (char& c : s) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        }
+        return s;
+    }
+
     static std::unique_ptr<Pokemon::Pokemon> buildDefaultMon(Trainer::Trainer& tr, uint16_t species,
                                                             uint8_t version) {
         auto p = tr.createBlankPokemon();
         if (!p) return p;
-        const Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, 0);
+        // Start on the lowest form this game HAS, which is not always form 0: Legends: Arceus never had
+        // a base Braviary or a Kanto Growlithe, so creating one there has to begin on the Hisuian form.
+        // Everything below keys off this form, not off 0 -- a regional variant has its own abilities,
+        // gender ratio and friendship, and reading form 0's would quietly stamp the wrong ones.
+        const std::vector<int> forms = selectableForms(species, tr.getGameGroup());
+        const uint8_t form = forms.empty() ? 0 : static_cast<uint8_t>(forms.front());
+        const Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, form);
         p->setSpecies(species);          // first: drives the EXP growth rate + base-stat lookup
-        p->setForm(0);
+        p->setForm(form);
         p->setEncryptionConstant(Utils::rand32());
         p->setPID(Utils::rand32());
-        p->setLevel(1);                  // after species; writes EXP from growth rate + recalcs stats
+        // ...and re-apply the form's EC correlation, because the random EC above lands AFTER setForm
+        // and would otherwise undo it. Maushold and Dudunsparce read their form from EC % 100, so a
+        // freshly rolled EC has a 99-in-100 chance of contradicting the form just set. A no-op for
+        // every other species; see FormInfo.
+        p->setEncryptionConstant(
+            Pokemon::correctEncryptionConstantForForm(species, form, p->encryptionConstant()));
+        // Starting level. Gen 3 has NO level-1 Pokemon: its eggs hatch at 5 and its lowest wild
+        // encounters are 2, so level 1 is unobtainable there -- and it is the one level whose total EXP
+        // is **0**, the degenerate input to the game's level-from-EXP lookup. Gen 8+ eggs really do hatch
+        // at level 1, so every other format keeps it.
+        const uint8_t startLevel = (tr.getGameGroup() == Enums::GameVersion::FRLG) ? 5 : 1;
+        p->setLevel(startLevel);         // after species; writes EXP from growth rate + recalcs stats
         // Random nature at birth (the real and stat/mint nature start matched; the mint stays editable).
         { uint8_t nat = static_cast<uint8_t>(Utils::rand32() % 25); p->setNature(nat); p->setStatNature(nat); }
         // Random gender, constrained by the species ratio: fixed for genderless (255) / female-only (254);
@@ -112,15 +247,19 @@ namespace UI {
                     : (pi.genderRatio == 254) ? 1
                     : (((Utils::rand32() & 0xFF) < pi.genderRatio) ? 1 : 0);
           p->setGender(g); }
-        p->setAbility(pi.ability1);      // slot-1 ability id, and mark it slot 1
-        p->setAbilityNumber(1);
+        // Slot-1 ability, from the table for the game being created into (Gen 3's slot pair is
+        // its own; pi is the modern one). setAbility resolves the slot; Gen 3 also re-rolls the PID.
+        { const Pokemon::AbilitySlots slots =
+              Pokemon::getAbilitySlots(species, form, tr.getGameGroup());
+          p->setAbility(slots.slot[0]);
+          if (tr.getGameGroup() != Enums::GameVersion::FRLG) p->setAbilityNumber(1); }
         p->setFriendship(pi.baseFriendship);
         // Poké Ball -- but Legends: Arceus uses its own ball set, where the Poké Ball is id 28 (the
         // standard Poké Ball id 4 isn't one of its balls and reads as the wrong ball in-game).
         p->setBall(tr.getGameGroup() == Enums::GameVersion::PLA ? 28 : 4);
         p->setLanguage(2);               // English
         p->setOriginGame(version);
-        p->setMetLevel(1);
+        p->setMetLevel(startLevel);      // met AT the level it is, not at 1 -- Gen 3 has no met level 1 either
         // Met "here, today": a valid caught date + a real location, so the mon doesn't read as met on
         // 00/00/2000 at location 0 ("nothing" -- which BDSP renders as "hatched from an egg at Jubilife
         // City"). Date components are years-since-2000 / 1-based month / day; formats without a met date
@@ -153,47 +292,49 @@ namespace UI {
         // Clear the HOME ribbon+mark block (0x34-0x45) so a created mon owns no stray ribbon, AND reset
         // AffixedRibbon -- the byte that selects which ribbon the game DISPLAYS. On an all-zero blank it
         // is 0, and ribbon index 0 is the Kalos Champion ribbon, so a fresh mon SHOWED it even with no
-        // ribbon owned (the SV report). "None" is 0xFF (-1). Its offset differs per format; a non-zero
-        // affix also gates the whole block to the formats that carry the HOME ribbons (not FRLG / GG).
+        // ribbon owned (the SV report). "None" is 0xFF. A zero offset means the format has no such field
+        // (FRLG / GG), which also gates the ribbon-ownership clear to the formats that carry the block.
         // Both fields sit in the checksummed region, covered by the refreshChecksum() below.
-        {
-            size_t affix = 0;
-            switch (tr.getGameGroup()) {
-                case Enums::GameVersion::SV:
-                case Enums::GameVersion::ZA:   affix = 0xD4; break;  // PK9 / PA9
-                case Enums::GameVersion::BDSP:
-                case Enums::GameVersion::SWSH: affix = 0xE8; break;  // G8PKM (PK8 / PB8)
-                case Enums::GameVersion::PLA:  affix = 0xF8; break;  // PA8
-                default: break;
-            }
-            if (affix) {
-                auto d = p->getData();
-                if (d.size() >= 0x46) std::memset(d.data() + 0x34, 0, 0x46 - 0x34);
-                if (d.size() > affix) d.data()[affix] = std::byte{0xFF};   // AffixedRibbon = None
-            }
+        //
+        // The offset table is Conversion::affixedRibbonOffset, shared with the cross-gen converter --
+        // the same fact bit twice, once here and once through transfer, so it is defined once.
+        if (const size_t affix = Conversion::affixedRibbonOffset(tr.getGameGroup()); affix != 0) {
+            auto d = p->getData();
+            if (d.size() >= 0x46) std::memset(d.data() + 0x34, 0, 0x46 - 0x34);
+            if (d.size() > affix) d.data()[affix] = std::byte{Conversion::AFFIXED_RIBBON_NONE};
         }
         // First move = the species' first legal move for this game, so the created mon is legal. PLA
         // rejects an unlearnable move as a Bad Egg in-game (Pound isn't a Vulpix move there); the other
-        // games merely flag it. Fall back to Pound (id 1) if the learnset table offers nothing.
-        uint16_t defMove = 1;
+        // games merely flag it.
+        //
+        // The FORM belongs in this lookup as much as it does in the stat and ability ones above.
+        // Learnsets are keyed on (species, form) and a regional form has its own: asking for form 0
+        // got the Unovan Braviary row, which in Legends: Arceus does not exist at all. getLearnableBits
+        // returns nullptr there, every move reads "not learnable", and the old `defMove = 1` fallback
+        // turned that into POUND -- an illegal move, on a mon the creator had just built to be legal,
+        // in the one game that Bad-Eggs it. A missing table is not an empty movepool.
+        uint16_t defMove = 0;
         for (uint16_t m = 1; m < Names::getMoveCount(); ++m)
-            if (Pokemon::isLearnable(species, 0, tr.getGameGroup(), m)
+            if (Pokemon::isLearnable(species, form, tr.getGameGroup(), m)
                 && Names::isMovePresent(m, tr.getGameGroup())) { defMove = m; break; }
+        if (defMove == 0) {
+            // No learnset row for this (species, form) in this game. Every move is now a guess, so
+            // leave the slot EMPTY rather than write a plausible-looking wrong one: an empty slot is
+            // visible in the editor and harmless in-game, where a wrong move is neither. Log it --
+            // reaching here means the learnset table is missing a row the creator can offer.
+            Utils::logErrorToFile("buildDefaultMon: no learnable move for species " +
+                                  std::to_string(species) + " form " + std::to_string(form) +
+                                  " -- leaving move 1 empty");
+        }
         p->setMove(0, defMove);
-        p->setMovePP(0, Names::getMoveBasePP(defMove));   // real PP, so it isn't shown at 0 PP (#F1F2)
+        p->setMovePP(0, defMove ? Names::getMoveBasePP(defMove) : 0);   // real PP, not 0 PP (#F1F2)
         p->setMovePPUps(0, 0);
         p->setId32(tr.ID32);
         p->setOTName(Utils::utf8ToUtf16(tr.trainerName));
         p->setOTGender(tr.trainerGender);   // match the trainer -- else Gen 3 reads it as "Apparently met"
-        // Default nickname = the species name. The games store the DISPLAY string in the nickname
-        // field, so a blank field shows a BLANK name in-game (the created-mon report). isNicknamed is
-        // left false -- this is the species default, not a custom name. Gen 3 stores nicknames uppercase.
-        {
-            std::string spName = p->species();
-            if (tr.getGameGroup() == Enums::GameVersion::FRLG)
-                for (char& c : spName) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-            p->setNickname(Utils::utf8ToUtf16(spName));
-        }
+        // Default nickname = the species name (see defaultNicknameFor). isNicknamed is left false --
+        // this is the species default, not a custom name.
+        p->setNickname(Utils::utf8ToUtf16(defaultNicknameFor(*p)));
         // Let's Go stores + DISPLAYS absolute height/weight (floats at PB7 0x2C / 0xE4); PK8/PK9 keep
         // only the 0-255 scalar and derive the size on the fly. A created LGPE mon left those floats at
         // 0, so it showed 0'00" / 0.0 lbs in-game. Roll random size scalars and compute the absolutes
@@ -233,13 +374,18 @@ namespace UI {
         // The injection row names its actual scope. It does NOT govern saving a cart-loaded session
         // back to the cart -- that is always allowed. It only unlocks writing an OLDER BACKUP over
         // the live save, which is the case that can roll a game backwards.
-        const char* labels[kRows] = { "Auto-backup on load", "Theme", "Allow illegal values",
-                                      "Let's Go move warning", "Inject backups to game save" };
+        const char* labels[kRows] = {
+            "Auto-Backup on Load",
+            "Theme",
+            "Allow Illegal Values",
+            "Bank Storage Move Warning",
+            "Allow Inject Backups to Game Save"
+        };
         std::string values[kRows] = {
             g_autoBackupEnabled ? "On" : "Off",
             (g_themeMode == ThemeMode::Dark) ? "Dark" : "Light",
             g_allowIllegalEdits ? "On" : "Off",
-            g_lgpeMoveWarn ? "On" : "Off",
+            g_moveWarn ? "On" : "Off",
             g_injectToGameSave ? "On" : "Off",
         };
         const int rowW = 720, rowH = 64;
@@ -259,7 +405,7 @@ namespace UI {
             Color pillFill = Colors::Background, pillText = Colors::Text;
             if (i == 0 && g_autoBackupEnabled)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
             else if (i == 2 && g_allowIllegalEdits) { pillFill = Color(200, 80, 80); pillText = Colors::White; }
-            else if (i == 3 && g_lgpeMoveWarn)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
+            else if (i == 3 && g_moveWarn)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
             else if (i == 4 && g_injectToGameSave)  { pillFill = Color(200, 80, 80); pillText = Colors::White; }
             fb.drawPill(px, py, pillW, pillH, pillFill);
             fb.drawText(px + (pillW - vw) / 2, py + (pillH - vh) / 2, values[i], pillText, TextStyle::Body);
@@ -366,7 +512,7 @@ namespace UI {
             " inject=" + (g_injectToGameSave ? "ON" : "OFF") +
             " illegal=" + (g_allowIllegalEdits ? "ON" : "OFF") +
             " autobackup=" + (g_autoBackupEnabled ? "ON" : "OFF") +
-            " lgpewarn=" + (g_lgpeMoveWarn ? "ON" : "OFF") +
+            " movewarn=" + (g_moveWarn ? "ON" : "OFF") +
             " theme=" + (g_themeMode == ThemeMode::Dark ? "dark" : "light"));
         if (bank) {
             Utils::logTest("BANKLOAD rejects=" + std::to_string(bank->lastLoadRejects()));
@@ -452,18 +598,27 @@ namespace UI {
     bool TrainerViewScreen::convertForPane(std::unique_ptr<Pokemon::Pokemon>& pk, int destPane) {
         if (destPane != 0 || !pk) return true;                          // bank: store as-is
         if (pk->getGameGroup() == trainer.getGameGroup()) {
-            // Same game, so no conversion -- but re-checksum before it enters the save. The
-            // bank stores native bytes untouched by design, so this SHOULD be a no-op writing back
-            // the identical value; that is exactly why it is cheap insurance. A stale or damaged
-            // checksum reaching the game's box writer surfaces in-game as a Bad Egg.
-            // (Only on the way INTO a save. Deposits return above, so a banked mon is never
-            //  mutated -- see Appendix C.)
+            // Same game, so no conversion -- but repair an invalid AffixedRibbon and re-checksum
+            // before it enters the save. The re-checksum SHOULD be a no-op writing back the identical
+            // value, since the bank stores native bytes untouched; that is exactly why it is cheap
+            // insurance, because a stale checksum reaching the game's box writer is a Bad Egg in-game.
+            //
+            // The ribbon repair is NOT a no-op for legacy stock: mons banked before the creator learned
+            // to set AffixedRibbon carry 0, which the game reads as "display ribbon index 0" -- the
+            // Kalos Champion ribbon. Cross-gen withdrawals get this inside convert(); a same-group one
+            // never calls convert() at all, so without this the 0 rides straight back into the save.
+            // Repairing here rather than in the bank keeps the bank's never-mutate rule intact
+            // (see Appendix C) -- the fix lands on the way INTO a save, where it belongs.
+            Conversion::normalizeAffixedRibbon(*pk);
             pk->refreshChecksum();
             return true;
         }
         Conversion::Result res;
         const std::string species = pk->species();
-        auto converted = Conversion::convert(*pk, trainer.getGameGroup(), res);
+        // The exact destination game, not just its group: a mon transferred down into Gen 3 cannot keep a
+        // modern origin (4-bit field) and gets restamped, and "FRLG" alone can't say which half it is.
+        auto converted = Conversion::convert(*pk, trainer.getGameGroup(), res,
+                                             saveOriginVersion(trainer, titleId));
         if (converted) {
             // Cross-gen conversion is where the subtle transfer bugs have historically lived
             // (fainted arrivals, deleted moves, garbage levels), so every one gets a line.
@@ -516,55 +671,66 @@ namespace UI {
         return false;
     }
 
-    // build the Ability picker's reordered option list -- the species/form's legal abilities
-    // first (deduped; these render green + sit at the top), then every remaining ability id. Sets
-    // pickerOrder + pickerLegalCount, and pickerSel to the row that shows `current`.
-    void TrainerViewScreen::buildAbilityPickerOrder(uint16_t species, uint8_t form, uint16_t current) {
+    // build the Ability picker's option list. A species holds one of its ABILITY SLOTS (slot 1,
+    // slot 2, hidden), and most species have slot 2 == slot 1, so the deduped list is usually one
+    // or two entries -- those are the only legal picks and they render green at the top.
+    // "Allow illegal values" appends every remaining ability id after them, EXCEPT on Gen 3: a PK3
+    // stores a selector bit rather than an ability id, so nothing outside the two slots is
+    // expressible there and offering more would just be a no-op the user can't see.
+    // The mon's current ability is always listed even when it is not legal, so an existing bad
+    // value stays visible and reversible instead of vanishing from its own picker.
+    void TrainerViewScreen::buildAbilityPickerOrder(uint16_t species, uint8_t form,
+                                                   Enums::GameVersion group, uint16_t current) {
         pickerOrder.clear();
-        const Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, form);
-        const int legal[3] = { pi.ability1, pi.ability2, pi.abilityHidden };
-        for (int a : legal) {
-            bool dup = false;
-            for (int x : pickerOrder) if (x == a) { dup = true; break; }
-            if (!dup) pickerOrder.push_back(a);
-        }
+        const Pokemon::AbilitySlots slots = Pokemon::getAbilitySlots(species, form, group);
+        uint16_t legal[3];
+        const int nLegal = slots.distinct(legal);
+        for (int i = 0; i < nLegal; ++i) pickerOrder.push_back(legal[i]);
         pickerLegalCount = static_cast<int>(pickerOrder.size());
-        const int total = Dialogs::pickerOptionCount(Dialogs::PickerKind::Ability);
-        for (int a = 0; a < total; ++a) {
-            bool isLegal = false;
-            for (int i = 0; i < pickerLegalCount; ++i) if (pickerOrder[i] == a) { isLegal = true; break; }
-            if (!isLegal) pickerOrder.push_back(a);
+
+        const bool gen3 = (group == Enums::GameVersion::FRLG);
+        if (g_allowIllegalEdits && !gen3) {
+            const int total = Dialogs::pickerOptionCount(Dialogs::PickerKind::Ability);
+            for (int a = 0; a < total; ++a) {
+                bool isLegal = false;
+                for (int i = 0; i < pickerLegalCount; ++i) if (pickerOrder[i] == a) { isLegal = true; break; }
+                if (!isLegal) pickerOrder.push_back(a);
+            }
+        } else {
+            bool has = false;
+            for (int x : pickerOrder) if (x == static_cast<int>(current)) { has = true; break; }
+            if (!has) pickerOrder.push_back(current);   // keep an already-illegal value selectable
         }
+
         pickerSel = 0;
         for (int i = 0; i < static_cast<int>(pickerOrder.size()); ++i)
             if (pickerOrder[i] == static_cast<int>(current)) { pickerSel = i; break; }
     }
 
     // Creator: fill the species picker with only the species obtainable in the open game (via the
-    // personal presence bitmask), unless "allow illegal values" is on (then every species is offered).
-    // Reuses pickerOrder (row -> species id); pickerLegalCount stays 0 (no green highlight for species).
+    // personal presence bitmask). Reuses pickerOrder (row -> species id); pickerLegalCount stays 0
+    // (no green highlight for species).
+    //
+    // This is a HARD rule -- "Allow illegal edits" does not offer the rest of the dex. A game that has
+    // no entry for a species has no stats, no learnset and no name for it, so what would be created is
+    // not an unusual mon but a broken one; that toggle is for values a game can hold but shouldn't.
     void TrainerViewScreen::buildCreatorSpeciesOrder() {
         pickerOrder.clear();
         pickerLegalCount = 0;
-        uint8_t bit = 0;
-        switch (trainer.getGameGroup()) {
-            case Enums::GameVersion::GG:   bit = Pokemon::PERSONAL_GAME_GG;   break;
-            case Enums::GameVersion::SWSH: bit = Pokemon::PERSONAL_GAME_SWSH; break;
-            case Enums::GameVersion::BDSP: bit = Pokemon::PERSONAL_GAME_BDSP; break;
-            case Enums::GameVersion::PLA:  bit = Pokemon::PERSONAL_GAME_PLA;  break;
-            case Enums::GameVersion::SV:   bit = Pokemon::PERSONAL_GAME_SV;   break;
-            case Enums::GameVersion::ZA:   bit = Pokemon::PERSONAL_GAME_ZA;   break;
-            default: break;
-        }
+        const uint8_t bit = personalPresenceBit(trainer.getGameGroup());
         const int total = Dialogs::pickerOptionCount(Dialogs::PickerKind::Species);
         // FireRed/LeafGreen (Gen 3) isn't in the presence bitmask, so its bit is 0 -- filtering by it
-        // would leave the Select Species list EMPTY. Offer the Gen 3 National Dex (1-386) instead.
+        // would leave the Select Species list EMPTY. Offer the Gen 3 National Dex (1-386) instead, the
+        // honest bound there. An unrecognised group (bit 0, not Gen 3) means "no data" for the same
+        // reason and likewise must not filter down to nothing.
         const bool isFRLG = (trainer.getGameGroup() == Enums::GameVersion::FRLG);
         for (int s = 1; s < total; ++s) {  // skip 0 = None
-            bool ok;
-            if (g_allowIllegalEdits) ok = true;
-            else if (isFRLG)         ok = (s <= 386);
-            else                     ok = (Pokemon::getPersonalInfo(static_cast<uint16_t>(s), 0).presence & bit) != 0;
+            // ANY form present, not just form 0 -- see speciesPresentIn. Creating one of these picks
+            // up the right form automatically: buildDefaultMon starts a mon on the first form the
+            // game has, so a Braviary made in Legends: Arceus is Hisuian.
+            const bool ok = isFRLG    ? (s <= 386)
+                          : (bit == 0) ? true
+                          : speciesPresentIn(static_cast<uint16_t>(s), bit);
             if (ok) pickerOrder.push_back(s);
         }
         pickerSel = 0;
@@ -591,6 +757,71 @@ namespace UI {
         pickerSel = 0;
         for (int i = 0; i < static_cast<int>(pickerOrder.size()); ++i)
             if (pickerOrder[i] == static_cast<int>(current)) { pickerSel = i; break; }
+    }
+
+    // Fill the form picker with the forms this game can actually hold (row -> form id) -- see
+    // selectableForms above for the two filters and why each one is there.
+    //
+    // NEITHER filter is gated on "Allow illegal edits", for the same reason. That setting is for values
+    // the games can genuinely hold but shouldn't -- a 255 EV, an off-dex species. A form is not one of
+    // those: a temporary form gets overwritten on load, and a form the game never had is not a value
+    // that game's form byte has any meaning for. Offering either would misrepresent the save rather
+    // than permit an unusual one.
+    //
+    // pickerLegalCount stays 0 -- no green highlight, every offered row is equally valid.
+    void TrainerViewScreen::buildFormPickerOrder(uint16_t species, uint8_t current, Enums::GameVersion group) {
+        pickerOrder.clear();
+        pickerLegalCount = 0;
+        int count = Pokemon::getPersonalInfo(species, 0).formCount;
+        if (count < 1) count = 1;
+
+        const std::vector<int> offered = selectableForms(species, group);
+        for (int f = 0; f < count; ++f) {
+            bool offer = (f == static_cast<int>(current));   // see below
+            for (int o : offered) if (o == f) { offer = true; break; }
+            // The mon's CURRENT form is always listed even when temporary or absent from this game -- a
+            // save can arrive holding one, and hiding it would make the form both invisible and
+            // unfixable. This does not let such a form be applied to anything that isn't already in it.
+            if (offer) pickerOrder.push_back(f);
+        }
+        // Guard a form id past the table's formCount (corrupt buffer): keep it selectable so the
+        // row still renders and the pick is a no-op rather than an empty list.
+        if (pickerOrder.empty()) pickerOrder.push_back(current);
+        pickerSel = 0;
+        for (int i = 0; i < static_cast<int>(pickerOrder.size()); ++i)
+            if (pickerOrder[i] == static_cast<int>(current)) { pickerSel = i; break; }
+    }
+
+    // Fill the gender picker with the genders this species can be (row -> gender value 0/1/2). For a
+    // fixed-gender species that is a single row, which is the point: the row still opens and still says
+    // what the mon is, there is simply nothing else to pick. See selectableGenders for the rule.
+    void TrainerViewScreen::buildGenderPickerOrder(uint16_t species, uint8_t form, uint8_t current) {
+        pickerOrder.clear();
+        pickerLegalCount = 0;
+        pickerOrder = selectableGenders(species, form);
+        // The mon's CURRENT gender is always listed, the same rule the form picker uses: a save can
+        // arrive holding an impossible one (an older PKSE wrote them, and other tools still do), and
+        // hiding it would leave it both invisible and unfixable. Listing it is what makes it fixable.
+        bool has = false;
+        for (int g : pickerOrder) if (g == static_cast<int>(current)) { has = true; break; }
+        if (!has && current <= 2) pickerOrder.push_back(current);
+        pickerSel = 0;
+        for (int i = 0; i < static_cast<int>(pickerOrder.size()); ++i)
+            if (pickerOrder[i] == static_cast<int>(current)) { pickerSel = i; break; }
+    }
+
+    // Whether the Gender row does anything. It is read-only when there is nothing to change it TO:
+    // a male-only Braviary, a female-only Miltank, a genderless Magnemite. Offering a one-row picker
+    // there was just a dead end, so the row now shows the gender and the cursor skips it.
+    //
+    // The one exception keeps it editable: a mon that already holds a gender its species cannot have.
+    // Older PKSE builds wrote those and other tools still do, and the picker listing both the
+    // impossible current value and the legal one is the only way to correct it -- locking the row
+    // would make a female Braviary permanent.
+    bool TrainerViewScreen::genderEditable(const Pokemon::Pokemon& p) const {
+        const std::vector<int> g = selectableGenders(p.speciesID(), p.form());
+        if (g.size() > 1) return true;                                   // a real choice
+        return g.empty() || g[0] != static_cast<int>(p.gender());        // wrong gender -> fixable
     }
 
     // Resolve the Pokemon the details editor is currently targeting.
@@ -705,12 +936,12 @@ namespace UI {
         if (!res.accepted) return;          // cancel means "leave it alone", NOT "clear it"
         if (res.text == current) return;
 
-        // Refuse rather than mangle: Gen 3 can only store ~70 glyphs, so a name the keyboard was
-        // happy to produce may be unwritable there.
+        // Refuse rather than mangle: Gen 3's character set is fixed and predates Unicode, so a name
+        // the keyboard was happy to produce may be unwritable there.
         if (!trainer.canStoreBoxName(res.text)) {
             Utils::logTest("BOXNAME  box=" + std::to_string(boxIndex + 1) +
                            " new=\"" + res.text + "\" result=REFUSED_CHARSET");
-            storageStatus = "This game can't store those characters (A-Z, 0-9, and ! ? . - only).";
+            storageStatus = "This game can't store one of those characters.";
             storageStatusFrames = 240;
             return;
         }
@@ -1501,14 +1732,17 @@ namespace UI {
                 return;
             }
             if (holding) {
-                // Confirm first for a lossy conversion: a Gen 3 downgrade rebuilds the PID (always
-                // warned), or -- settings-gated -- a Let's Go cross-move that resets AVs/EVs.
+                // Confirm first for a lossy conversion. Two separate warnings (see the header): the
+                // Gen 3 down-convert is destructive and always warns; the Let's Go transfer is
+                // recoverable and obeys the Move warning setting. Gen 3 wins if the move is both.
                 const bool g3warn = blockInvolvesGen3Downgrade(pane);
-                const bool lgwarn = g_lgpeMoveWarn && blockInvolvesLgpe(pane);
+                const bool lgwarn = g_moveWarn && blockInvolvesLgpe(pane);
                 if (g3warn || lgwarn) {
-                    lgpePending = LgpePending::PlaceHeld;
-                    lgpePendPane = pane; lgpePendBox = box; lgpePendSlot = slot;
-                    moveConfirmGen3 = g3warn; lgpeMoveConfirmActive = true; lgpeMoveConfirmIndex = 1;
+                    pendingMove = PendingMove::PlaceHeld;
+                    pendingMovePane = pane; pendingMoveBox = box; pendingMoveSlot = slot;
+                    if (g3warn) gen3ConvertConfirmActive = true;
+                    else        lgpeTransferConfirmActive = true;
+                    moveConfirmIndex = 1;
                     return;
                 }
                 putDownBlock();
@@ -1557,7 +1791,17 @@ namespace UI {
         // the box forward. Nothing here can invalidate a selection any more -- a carried block owns
         // its Pokemon outright rather than pointing at slots -- but an in-progress rectangle is
         // anchored to slot indices, so it is excluded too.
-        if (!carrying() && !currentlySelecting && !swapActive && !creator.active) {
+        //
+        // An OPEN DETAILS EDITOR is anchored to slot indices in exactly the same way -- it re-resolves
+        // its target through selectedBoxIndex/selectedItemIndex every frame. The creator is how that
+        // bit: it drops a new mon on whatever slot the cursor is on, which in a gapless game is usually
+        // a gap, then clears creator.active and opens the editor. Compaction fired on the very next
+        // frame, slid the mon down to the packed position, and left the editor pointing at an empty
+        // slot -- so it drew nothing (drawPokemonDetailsModal bails on a null target) while still
+        // swallowing input, and the app looked frozen with only B and + alive.
+        //
+        // Deferring is the whole fix: the mon still compacts, just once the editor closes.
+        if (!carrying() && !currentlySelecting && !swapActive && !creator.active && !details.active) {
             trainer.compactStorage();
         }
 
@@ -1663,7 +1907,7 @@ namespace UI {
                 if (sp > 0) {
                     storageSlot(creator.pane, creator.box, creator.slot) =
                         buildDefaultMon(trainer, static_cast<uint16_t>(sp),
-                                        creatorOriginVersion(trainer, titleId));
+                                        saveOriginVersion(trainer, titleId));
                     hasUnsavedChanges = true;
                     pickerActive = false; creator.active = false;
                     openStorageEditor(creator.pane, creator.box, creator.slot);
@@ -1764,7 +2008,17 @@ namespace UI {
                         pkPick->setStatNature(static_cast<uint8_t>(pickerSel));
                         break;
                     case Dialogs::PickerKind::Gender:
-                        pkPick->setGender(static_cast<uint8_t>(pickerSel));
+                        // rows are the species' possible genders, so the row index is NOT the value
+                        if (!pickerOrder.empty() && pickerSel < static_cast<int>(pickerOrder.size())) {
+                            const uint8_t g = static_cast<uint8_t>(pickerOrder[pickerSel]);
+                            pkPick->setGender(g);
+                            // Meowstic, Indeedee, Basculegion and Oinkologne store the gender AS the
+                            // form, so the form has to move with it -- leaving a female Meowstic on
+                            // the male form is the one combination the form picker will not produce.
+                            const uint8_t nf =
+                                Pokemon::genderLinkedForm(pkPick->speciesID(), pkPick->form(), g);
+                            if (nf != pkPick->form()) pkPick->setForm(nf);
+                        }
                         break;
                     case Dialogs::PickerKind::Move: {
                         const int mv = (!pickerOrder.empty() && pickerSel < static_cast<int>(pickerOrder.size()))
@@ -1795,10 +2049,14 @@ namespace UI {
                                           ? pickerOrder[pickerSel] : pickerSel;
                         pkPick->setAbility(static_cast<uint16_t>(v));
                         // Align the ability slot when the pick is one of the species' legal abilities.
-                        const Pokemon::PersonalInfo& pai = Pokemon::getPersonalInfo(pkPick->speciesID(), pkPick->form());
-                        if (v == pai.ability1)           pkPick->setAbilityNumber(1);
-                        else if (v == pai.ability2)      pkPick->setAbilityNumber(2);
-                        else if (v == pai.abilityHidden) pkPick->setAbilityNumber(4);
+                        // Gen 3 has no ability id field -- setAbility() already resolved the slot and
+                        // re-rolled the PID there, so re-deriving the number would undo that work.
+                        if (pkPick->getGameGroup() != GameVersion::FRLG) {
+                            const Pokemon::AbilitySlots slots =
+                                Pokemon::getAbilitySlots(pkPick->speciesID(), pkPick->form(), pkPick->getGameGroup());
+                            const uint8_t an = Pokemon::getAbilityNumberForId(slots, static_cast<uint16_t>(v));
+                            if (an != 0) pkPick->setAbilityNumber(an);
+                        }
                         break;
                     }
                     case Dialogs::PickerKind::Language:
@@ -1818,7 +2076,28 @@ namespace UI {
                         }
                         break;
                     case Dialogs::PickerKind::Form:
-                        pkPick->setForm(static_cast<uint8_t>(pickerSel));  // recalculates stats + checksum internally
+                        // rows are storable forms, so the row index is NOT the form id
+                        if (!pickerOrder.empty() && pickerSel < static_cast<int>(pickerOrder.size())) {
+                            const uint8_t nf = static_cast<uint8_t>(pickerOrder[pickerSel]);
+                            pkPick->setForm(nf);   // recalculates stats + checksum internally
+                            // Gender follows the form for the species that tie the two together,
+                            // otherwise the form picker is a second door into exactly the combination
+                            // the gender picker refuses to offer. Two different ties, both real:
+                            //   - Meowstic/Indeedee/Basculegion/Oinkologne -- the form IS the gender,
+                            //     both ways, so the low bit of the new form is the new gender.
+                            //   - the cap Pikachu, Ash Greninja, Bloodmoon Ursaluna -- a single-gender
+                            //     form of a dual-gender species. One-way only: the form pins the
+                            //     gender, but there is no counterpart form to flip to, which is why
+                            //     this reads the per-form ratio instead of the low bit.
+                            if (Pokemon::isFormGenderSpecific(pkPick->speciesID())) {
+                                const uint8_t g = static_cast<uint8_t>(nf & 1);
+                                if (g != pkPick->gender()) pkPick->setGender(g);
+                            } else {
+                                const std::vector<int> g = selectableGenders(pkPick->speciesID(), nf);
+                                if (g.size() == 1 && g[0] != static_cast<int>(pkPick->gender()))
+                                    pkPick->setGender(static_cast<uint8_t>(g[0]));
+                            }
+                        }
                         break;
                     case Dialogs::PickerKind::StatNature:
                         pkPick->setStatNature(static_cast<uint8_t>(pickerSel));
@@ -2204,14 +2483,26 @@ namespace UI {
                     for (int i = 0; i < static_cast<int>(L.size()); ++i) if (L[i] == f) { pos = i; break; }
                     return L[(pos + dir + static_cast<int>(L.size())) % static_cast<int>(L.size())];
                 };
+                // Center column: 0-9 in a fixed cycle, except that a read-only Gender row (8) is
+                // stepped over -- the same treatment the left column gives a read-only row by simply
+                // not listing it. See genderEditable: locked means there is nothing to change it to.
+                const bool skipGender = pokemon && !genderEditable(*pokemon);
+                auto centerMove = [&](int dir) -> int {
+                    int nf = f;
+                    for (int i = 0; i < 10; ++i) {
+                        nf = (nf + dir + 10) % 10;
+                        if (!(nf == 8 && skipGender)) break;
+                    }
+                    return nf;
+                };
                 if (kDown & HidNpadButton_Up)
                     f = inRight ? 10 + ((f - 10 - 1 + 5) % 5)
                       : inLeft  ? leftMove(-1)
-                      :           (f - 1 + 10) % 10;
+                      :           centerMove(-1);
                 if (kDown & HidNpadButton_Down)
                     f = inRight ? 10 + ((f - 10 + 1) % 5)
                       : inLeft  ? leftMove(+1)
-                      :           (f + 1) % 10;
+                      :           centerMove(+1);
                 if (kDown & HidNpadButton_Right) {
                     if (inLeft)        f = details.lastCenterField;               // left  -> center
                     else if (!inRight) { details.lastCenterField = f; f = 10; }   // center -> right
@@ -2220,6 +2511,9 @@ namespace UI {
                     if (inRight)       f = details.lastCenterField;               // right -> center
                     else if (!inLeft)  { details.lastCenterField = f; f = L.front(); }  // center -> left
                 }
+                // Catch every other way the cursor can land on a locked Gender row -- a remembered
+                // lastCenterField, or a mon swapped out from under the cursor -- in one place.
+                if (f == 8 && skipGender) f = 7;
             }
 
             // A on an editable row opens the right editor: stat dialog (0-5), shiny toggle (6), or the
@@ -2236,10 +2530,12 @@ namespace UI {
                     pickerCount = Dialogs::pickerOptionCount(pickerKind);
                     pickerSel = pokemon->nature();
                     pickerActive = true;
-                } else if (f == 8) {          // Gender
+                } else if (f == 8 && genderEditable(*pokemon)) {   // Gender (read-only when fixed)
                     pickerKind = Dialogs::PickerKind::Gender;
-                    pickerCount = Dialogs::pickerOptionCount(pickerKind);
-                    pickerSel = pokemon->gender();
+                    // only the genders this species/form can be; a fixed-gender species never gets
+                    // here at all, so every picker opened from this row has a real choice in it
+                    buildGenderPickerOrder(pokemon->speciesID(), pokemon->form(), pokemon->gender());
+                    pickerCount = static_cast<int>(pickerOrder.size());
                     pickerActive = true;
                 } else if (f == 9) {          // Level (1-100 picker; box mons derive the level from EXP)
                     pickerKind = Dialogs::PickerKind::Level;
@@ -2267,8 +2563,10 @@ namespace UI {
                     pickerActive = true;
                 } else if (f == 15) {            // Ability
                     pickerKind = Dialogs::PickerKind::Ability;
-                    // legal abilities first (green + top); sets pickerOrder, pickerLegalCount, pickerSel.
-                    buildAbilityPickerOrder(pokemon->speciesID(), pokemon->form(), pokemon->ability());
+                    // the species' legal ability slots for the mon's own game (green + top); sets
+                    // pickerOrder, pickerLegalCount, pickerSel.
+                    buildAbilityPickerOrder(pokemon->speciesID(), pokemon->form(),
+                                            pokemon->getGameGroup(), pokemon->ability());
                     pickerCount = static_cast<int>(pickerOrder.size());
                     pickerActive = true;
                 } else if (f == 16) {            // Friendship
@@ -2279,10 +2577,11 @@ namespace UI {
                 } else if (f == 26) {            // Form (species alternate forms)
                     pickerKind = Dialogs::PickerKind::Form;
                     pickerFormSpecies = pokemon->speciesID();
-                    pickerCount = Pokemon::getPersonalInfo(pokemon->speciesID(), 0).formCount;
-                    if (pickerCount < 1) pickerCount = 1;
-                    pickerSel = pokemon->form();
-                    if (pickerSel >= pickerCount) pickerSel = 0;
+                    // The MON's game group, not the save's: a bank slot holds a foreign mon, and the
+                    // forms it can have are its own game's, not the open save's.
+                    buildFormPickerOrder(pokemon->speciesID(), pokemon->form(),
+                                         pokemon->getGameGroup());  // sets pickerOrder + pickerSel
+                    pickerCount = static_cast<int>(pickerOrder.size());
                     pickerActive = true;
                 } else if (f == 27) {            // Stat Nature (mint / effective-stat nature)
                     pickerKind = Dialogs::PickerKind::StatNature;
@@ -2291,19 +2590,30 @@ namespace UI {
                     if (pickerSel >= 25) pickerSel = pokemon->nature();
                     pickerActive = true;
                 } else if (f == 23) {            // Nickname (blocking text keyboard)
+                    // Field width is the format's, not a constant: Gen 3 holds 10 characters, the rest 12.
                     std::string cur = Utils::utf16ToUtf8(pokemon->nickname());
-                    Utils::KeyboardResult kr = Utils::promptText("Nickname", "Nickname", cur, 12);
+                    Utils::KeyboardResult kr = Utils::promptText("Nickname", "Nickname", cur,
+                                                                 pokemon->getMaxNicknameLength());
                     if (kr.accepted) {
                         if (!kr.text.empty()) {
-                            pokemon->setNickname(Utils::utf8ToUtf16(kr.text));
-                            pokemon->setIsNicknamed(true);   // deliberate custom name
+                            const std::u16string want = Utils::utf8ToUtf16(kr.text);
+                            // Refuse rather than mangle -- Gen 3's character set predates Unicode, and
+                            // its encoder would end the name at the first character it can't map.
+                            if (!pokemon->canStoreNickname(want)) {
+                                postStatus("This game can't store one of those characters.");
+                            } else {
+                                pokemon->setNickname(want);
+                                pokemon->setIsNicknamed(true);   // deliberate custom name
+                                hasUnsavedChanges = true;
+                                mirrorEditedPartyMember();
+                            }
                         } else {
                             // An empty entry resets to the species default name (not nicknamed).
-                            pokemon->setNickname(Utils::utf8ToUtf16(pokemon->species()));
+                            pokemon->setNickname(Utils::utf8ToUtf16(defaultNicknameFor(*pokemon)));
                             pokemon->setIsNicknamed(false);
+                            hasUnsavedChanges = true;
+                            mirrorEditedPartyMember();
                         }
-                        hasUnsavedChanges = true;
-                        mirrorEditedPartyMember();
                     }
                 } else if (f == 24) {            // EXP (blocking numeric keypad)
                     uint32_t maxExp = Pokemon::getExpForLevel(100, Pokemon::getGrowthRate(pokemon->speciesID()));
@@ -2614,26 +2924,28 @@ namespace UI {
             return;
         }
 
-        // Let's Go move acknowledgement: converting to/from LGPE resets AVs/EVs. Continue runs the
-        // stashed action (single place / group move / group transfer); Cancel leaves everything as-is.
-        if (lgpeMoveConfirmActive) {
+        // Lossy-move acknowledgement. The two warnings differ only in what they SAY -- both guard the
+        // same pending action and answer the same question -- so the input handling is shared here
+        // deliberately, while the notices themselves are separate dialogs. Continue runs the stashed
+        // action; Cancel leaves everything as it was.
+        if (moveConfirmActive()) {
             int tb = touchedButtonId(touch);
             if (tb == 1) kDown |= HidNpadButton_A;        // tap Continue
             else if (tb == 0) kDown |= HidNpadButton_B;   // tap Cancel
-            if (kDown & HidNpadButton_B) { lgpeMoveConfirmActive = false; lgpePending = LgpePending::None; return; }
-            if (kDown & HidNpadButton_A) {   // Continue: run the stashed action (A always continues)
-                lgpeMoveConfirmActive = false;
-                if (lgpePending == LgpePending::PlaceHeld) {
+            if (kDown & (HidNpadButton_A | HidNpadButton_B)) {
+                const bool go = (kDown & HidNpadButton_A) != 0;   // A always continues
+                gen3ConvertConfirmActive = false;
+                lgpeTransferConfirmActive = false;
+                if (go && pendingMove == PendingMove::PlaceHeld) {
                     // Re-point the cursor at the slot the drop was aimed at, then run the ordinary
                     // put-down -- one placement path, so the confirmed move behaves identically to
                     // the unconfirmed one (bounds, block swap, per-cell conversion and all).
-                    storageFocusPane = lgpePendPane;
-                    if (lgpePendPane == 0) { stSaveBox = lgpePendBox; stSaveSlot = lgpePendSlot; }
-                    else                   { stBankBox = lgpePendBox; stBankSlot = lgpePendSlot; }
+                    storageFocusPane = pendingMovePane;
+                    if (pendingMovePane == 0) { stSaveBox = pendingMoveBox; stSaveSlot = pendingMoveSlot; }
+                    else                      { stBankBox = pendingMoveBox; stBankSlot = pendingMoveSlot; }
                     putDownBlock();
                 }
-                lgpePending = LgpePending::None;
-                return;
+                pendingMove = PendingMove::None;
             }
             return;
         }
@@ -3332,7 +3644,7 @@ namespace UI {
                     if (settingsSelectedRow == 0)      g_autoBackupEnabled = !g_autoBackupEnabled;
                     else if (settingsSelectedRow == 1) applyTheme(g_themeMode == ThemeMode::Dark ? ThemeMode::Light : ThemeMode::Dark);
                     else if (settingsSelectedRow == 2) g_allowIllegalEdits = !g_allowIllegalEdits;
-                    else if (settingsSelectedRow == 3) g_lgpeMoveWarn = !g_lgpeMoveWarn;
+                    else if (settingsSelectedRow == 3) g_moveWarn = !g_moveWarn;
                     else {
                         // The master lock for writing into the real game save. Turning it ON only
                         // makes the "Game save" destination available in the save dialog -- it never
@@ -3705,16 +4017,6 @@ namespace UI {
         drawNavBar(fb, instructions);
         const int footerY = fb.getHeight() - kNavBarH;
 
-        // Transient storage status line (e.g. a refused cross-game drop), centered just above the footer.
-        if (storageStatusFrames > 0 && !storageStatus.empty()) {
-            int tw, th; fb.measureText(storageStatus, tw, th);
-            const int padX = 18, bw = tw + padX * 2, bh = th + 14;
-            const int bx = (fb.getWidth() - bw) / 2, by = footerY - bh - 12;
-            fb.drawFilledRoundedRect(bx, by, bw, bh, 8, Colors::Panel);
-            fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Accent, 2);
-            fb.drawText(bx + padX, by + 7, storageStatus, Colors::Text);
-        }
-
         // Draw dialogs on top of everything (Modals first, then dialogs)
         if (details.active) {
             Modals::drawPokemonDetailsModal(*this, fb);
@@ -3752,8 +4054,23 @@ namespace UI {
         if (creator.keepConfirmActive) {   // "Keep this new Pokemon?" overlays the creator's editor
             Panels::drawCreatorKeepConfirm(*this, fb);
         }
-        if (lgpeMoveConfirmActive) {      // "Moving to/from Let's Go resets AVs/EVs" acknowledgement
-            Panels::drawLgpeMoveConfirm(*this, fb);
+        if (gen3ConvertConfirmActive) {    // "Convert to Gen 3?" -- PID rebuild, never gated
+            Panels::drawGen3ConvertConfirm(*this, fb);
+        }
+        if (lgpeTransferConfirmActive) {   // "Moving to/from Let's Go resets AVs/EVs" -- gated by g_moveWarn
+            Panels::drawLgpeTransferConfirm(*this, fb);
+        }
+
+        // Transient status line (a refused cross-game drop, a rejected name), centered above the footer.
+        // Drawn LAST so it is not painted over: a message can be raised from inside the details modal
+        // (a nickname Gen 3 can't store), and the modal is drawn after the main body.
+        if (storageStatusFrames > 0 && !storageStatus.empty()) {
+            int tw, th; fb.measureText(storageStatus, tw, th);
+            const int padX = 18, bw = tw + padX * 2, bh = th + 14;
+            const int bx = (fb.getWidth() - bw) / 2, by = footerY - bh - 12;
+            fb.drawFilledRoundedRect(bx, by, bw, bh, 8, Colors::Panel);
+            fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Accent, 2);
+            fb.drawText(bx + padX, by + 7, storageStatus, Colors::Text);
         }
     }
 }

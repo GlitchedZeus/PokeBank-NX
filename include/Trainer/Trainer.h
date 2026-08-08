@@ -388,6 +388,24 @@ namespace Trainer {
          */
         virtual void updateCurrentBoxBlock() {}
 
+        /**
+         * Register every Pokemon now in the party and boxes as seen + caught in this game's Pokedex.
+         * Called from the same place as updateBoxNameBlock, BEFORE the checksum/hash pass.
+         *
+         * Done at SAVE time over the whole storage rather than at the point a Pokemon is created or
+         * withdrawn, deliberately: there are several ways a Pokemon can enter a save (the creator, a
+         * bank withdrawal, a bulk move, a party swap) and hooking each one is how a path gets missed.
+         * Walking storage once catches all of them, and it is self-healing -- a Pokemon an older build
+         * added without registering gets picked up the next time the save is written.
+         *
+         * Only ever SETS flags. A player's existing Pokedex is never cleared, so a game the player has
+         * legitimately progressed cannot be walked backwards by opening it in PKSE.
+         *
+         * Default is a no-op for the games whose Pokedex format is not implemented yet -- those saves
+         * are left exactly as they were rather than half-written.
+         */
+        virtual void updatePokedexBlock() {}
+
         /** Longest box name this game accepts, in characters (not bytes). 0 = renaming unsupported. */
         virtual size_t getMaxBoxNameLength() const noexcept { return 0; }
 

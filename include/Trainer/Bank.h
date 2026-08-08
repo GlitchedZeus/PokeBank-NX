@@ -23,7 +23,12 @@
 namespace Trainer {
     class Bank {
     public:
-        static constexpr size_t BANK_BOX_COUNT = 8;         // number of bank boxes
+        /// Number of bank boxes. 8 was not enough to stage a full generation for testing (Gen 3 alone
+        /// is 386 Pokemon = 13 boxes); PKSM ships 150. The on-disk record table is fixed-size so that
+        /// slot N sits at a computable offset, which makes the file grow with this constant --
+        /// 100 boxes is ~1.1 MB. Raising it is safe: the header stores the count the file was written
+        /// with, and load() honours THAT, so a smaller older bank still opens (see load()).
+        static constexpr size_t BANK_BOX_COUNT = 100;
         static constexpr size_t BANK_SLOTS_PER_BOX = 30;    // 6x5 grid per box
 
         /// Constructs the unified bank and loads any existing on-SD contents. On first run it

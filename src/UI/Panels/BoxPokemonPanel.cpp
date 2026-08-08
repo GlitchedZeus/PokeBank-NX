@@ -257,7 +257,7 @@ namespace Panels {
         }
         // Type icons, centered.
         {
-            Pokemon::TypePair types = Pokemon::getPokemonTypes(p->speciesID(), p->form());
+            Pokemon::TypePair types = Pokemon::getPokemonTypes(p->speciesID(), p->form(), p->getGameGroup());
             Sprite* t1 = SpriteManager::getTypeSprite(types.type1);
             Sprite* t2 = Pokemon::hasSecondType(types) ? SpriteManager::getTypeSprite(types.type2) : nullptr;
             const int th = 20;

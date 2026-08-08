@@ -559,13 +559,23 @@ namespace Pokemon {
         }
 
         // ========================================
-        // Stats - Effort Values (EVs)
+        // Stats - Effort Values (EVs) -- PRESENT IN THE FORMAT, UNUSED BY THE GAME
         // ========================================
 
         /**
-         * Effort Values (EVs) earned through battling.
-         * Location: 0x1E-0x23 (1 byte each)
-         * Max 252 per stat, 510 total (same as other generations).
+         * Let's Go has NO EV mechanic. It replaced EV training with Awakening Values (below), and
+         * nothing in the game reads these bytes: PB7's stat formula is AV + IV + base + level, with no
+         * EV term at all (PKHeX `PB7.LoadStats`, mirrored by computeStat()).
+         *
+         * The bytes are nonetheless real. PB7 inherits the Gen 7 layout, so 0x1E-0x23 exist and PKHeX
+         * maps `EV_HP`..`EV_SPD` onto exactly these offsets. On a legitimate Let's Go Pokemon they are
+         * always 0 -- the game never writes them, and the bank's converter deliberately leaves them 0
+         * when a Pokemon enters LGPE. A non-zero value here therefore means the Pokemon was edited by
+         * something else, which is worth being able to SEE. That is the only reason these getters
+         * exist: the legality checker reads EVs for every format, and reporting the real bytes beats
+         * reporting a hardcoded 0 that would hide the anomaly.
+         *
+         * Overriding is not optional either way -- the base declares them pure virtual.
          */
         uint8_t evHP() const noexcept override  { return static_cast<uint8_t>(data[0x1E]); }
         uint8_t evATK() const noexcept override { return static_cast<uint8_t>(data[0x1F]); }
@@ -575,17 +585,13 @@ namespace Pokemon {
         uint8_t evSPD() const noexcept override { return static_cast<uint8_t>(data[0x23]); }
 
         /**
-         * Sets an Effort Value for a specific stat.
-         * @param statIndex 0=HP, 1=ATK, 2=DEF, 3=SPE, 4=SPA, 5=SPD
-         * @param value EV value (0-252)
+         * Deliberately does nothing. Writing an EV here would change no stat the game computes, while
+         * making the Pokemon read as edited to anything that checks -- all cost, no effect. Use setAV().
+         *
+         * Nothing calls this for Let's Go today: every editor path branches on hasAwakeningValues() and
+         * routes to setAV(). This is the backstop for the one that eventually forgets.
          */
-        void setEV(int statIndex, uint8_t value) noexcept override {
-            if (statIndex >= 0 && statIndex < 6) {
-                data[0x1E + statIndex] = static_cast<std::byte>(value);
-                recalculateStats();
-                refreshChecksum();
-            }
-        }
+        void setEV(int, uint8_t) noexcept override {}
 
         // ========================================
         // Stats - Awakening Values (AVs) - Let's Go Unique

@@ -59,9 +59,12 @@ namespace UI {
         std::unique_ptr<Pokemon::Pokemon>& storageSlot(int pane, int box, int slot);  // pane 0=save,1=bank
         bool storageSlotLocked(int pane, int box, int slot);   // LGPE party members (save pane) are locked
         bool convertForPane(std::unique_ptr<Pokemon::Pokemon>& pk, int destPane);  // convert a mon in place for a dest pane (Phase B)
-        void buildAbilityPickerOrder(uint16_t species, uint8_t form, uint16_t current);  // legal abilities first (green + top)
+        void buildAbilityPickerOrder(uint16_t species, uint8_t form, Enums::GameVersion group, uint16_t current);  // the species' legal ability slots (all ids too, when illegal edits are allowed)
         void buildCreatorSpeciesOrder();  // creator: filter the species picker to the open game's dex
         void buildMovePickerOrder(uint16_t species, uint8_t form, Enums::GameVersion group, uint16_t current);  // learnable moves first
+        void buildFormPickerOrder(uint16_t species, uint8_t current, Enums::GameVersion group);  // storable forms only (drops battle-only ones + the ones this game doesn't have)
+        void buildGenderPickerOrder(uint16_t species, uint8_t form, uint8_t current);  // only the genders the species can be (one row when fixed-gender)
+        bool genderEditable(const Pokemon::Pokemon& p) const;  // false -> the Gender row is read-only (nothing to change it TO)
         void openStorageEditor(int pane, int box, int slot);   // open the details modal on a storage slot
 
         // --- HOME-style rectangle select + block carry (see moveMon below) ---
@@ -304,14 +307,25 @@ namespace UI {
             int  keepConfirmIndex = 1;           // cursor: 0 = Discard, 1 = Keep (default)
         };
         CreatorState creator;
-        // Let's Go move acknowledgement (settings-gated by g_lgpeMoveWarn): moving a mon to/from LGPE
-        // resets AVs/EVs, so the user confirms first. The pending storage action is stashed + run on Yes.
-        enum class LgpePending { None, PlaceHeld };
-        bool lgpeMoveConfirmActive = false;
-        int  lgpeMoveConfirmIndex = 1;          // cursor: 0 = Cancel, 1 = Continue (default)
-        LgpePending lgpePending = LgpePending::None;
-        bool moveConfirmGen3 = false;           // pending confirm is a Gen 3 downgrade (PID rebuild), not only an LGPE AV/EV reset
-        int lgpePendPane = 0, lgpePendBox = 0, lgpePendSlot = 0;
+        // Lossy-move acknowledgements. TWO independent warnings about two unrelated losses, kept apart
+        // because they are not the same question:
+        //
+        //   Gen 3 down-convert  -- rebuilds the PID to preserve nature, and drops nickname/ribbons/held
+        //                          item. Destructive and irreversible, so it is shown ALWAYS, whatever
+        //                          the Move warning setting says.
+        //   Let's Go transfer   -- resets AV/EV training to 0 and drops unlearnable moves. Recoverable
+        //                          by re-training, so it is gated by g_moveWarn.
+        //
+        // A move can be both (an LGPE mon into FireRed). The Gen 3 notice supersedes: it is the more
+        // severe of the two and stacking dialogs on one action reads as a bug.
+        enum class PendingMove { None, PlaceHeld };
+        bool gen3ConvertConfirmActive = false;   // "Convert to Gen 3?"     -- never gated
+        bool lgpeTransferConfirmActive = false;  // "Let's Go transfer"     -- gated by g_moveWarn
+        int  moveConfirmIndex = 1;               // cursor: 0 = Cancel, 1 = Continue (default)
+        // The action both warnings guard is the same one, so the stash they resume is shared.
+        PendingMove pendingMove = PendingMove::None;
+        int pendingMovePane = 0, pendingMoveBox = 0, pendingMoveSlot = 0;
+        bool moveConfirmActive() const noexcept { return gen3ConvertConfirmActive || lgpeTransferConfirmActive; }
 
         // Reusable selection panel (picker) for choosing a value from a list — nature, gender, move.
         bool pickerActive = false;

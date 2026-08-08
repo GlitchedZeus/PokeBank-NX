@@ -75,6 +75,7 @@ namespace Trainer {
         void updateBoxBlock() override;
         void updateBoxNameBlock() override;
         void updateCurrentBoxBlock() override;   // u8 at Storage logical offset 0
+        void updatePokedexBlock() override;      // seen (x3) + caught flag arrays
         bool supportsBoxNames() const noexcept override { return true; }
         size_t getMaxBoxNameLength() const noexcept override { return FRLG_BOX_NAME_CHARS; }
         bool canStoreBoxName(const std::string& name) const override;

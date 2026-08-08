@@ -25,8 +25,11 @@ namespace UI {
         /// Save / Discard / Cancel prompt shown when leaving the storage view with bank changes.
         void drawStorageExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb);
         void drawCreatorKeepConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb);
-        /// "Moving to/from Let's Go resets AVs/EVs" acknowledgement (gated by g_lgpeMoveWarn).
-        void drawLgpeMoveConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+        /// "Convert to Gen 3?" acknowledgement -- the PID is rebuilt and cannot be undone, so this one
+        /// is shown regardless of the Move warning setting.
+        void drawGen3ConvertConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+        /// "Moving to/from Let's Go resets AVs/EVs" acknowledgement (gated by g_moveWarn).
+        void drawLgpeTransferConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb);
     }
 }
 
