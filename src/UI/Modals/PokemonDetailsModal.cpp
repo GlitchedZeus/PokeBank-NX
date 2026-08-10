@@ -475,9 +475,10 @@ namespace Modals {
             // A freshly-created mon has no "save" -- every field is an unsaved edit until committed, so
             // X reads KEEP (commit + close); Discard still lives on the B Keep/Discard prompt.
             const std::string saveSeg = screen.creator.editing ? "X: Keep" : "X: Save";
-            // For an existing mon, B rolls back to the last Save (unsaved edits are discarded) -- so B
-            // reads "Discard" while there are unsaved changes, and plain "Close" once clean/saved.
-            const std::string backSeg = (!screen.creator.editing && screen.pokemonEditDirty()) ? "B: Discard" : "B: Close";
+            // B always reads "Close" now: with unsaved edits it raises the Save/Discard/Back prompt
+            // rather than discarding on the spot, so promising "Discard" would describe the old
+            // behaviour. Dirtiness is already signalled by the top-bar "Unsaved changes" marker.
+            const std::string backSeg = "B: Close";
             if (sel >= 15)      navHint = "A: Edit  |  Y: Ribbons  |  L: Randomize IVs  |  " + legalSeg + "Right: Values  |  " + saveSeg + "  |  " + backSeg;
             else if (sel >= 10) navHint = "A: Edit  |  Y: Ribbons  |  L: Randomize IVs  |  " + legalSeg + "Left: Values  |  " + saveSeg + "  |  " + backSeg;
             else                navHint = "A: Edit  |  Y: Ribbons  |  L: Randomize IVs  |  " + legalSeg + "Left: Details  |  Right: Moves  |  " + saveSeg + "  |  " + backSeg;
