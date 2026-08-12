@@ -41,6 +41,7 @@ namespace Utils {
 
     constexpr const char *LOG_TYPE_INFO = "INFO";
     constexpr const char *LOG_TYPE_ERROR = "ERROR";
+    constexpr const char *LOG_TYPE_EVENT = "EVENT";
 
     // One flat file, next to the backups rather than inside logs/, so it is obvious and easy to
     // grab over MTP without digging through dated debug logs.
@@ -153,6 +154,11 @@ namespace Utils {
     void logErrorToFile(const char *message, const char *context)
     {
         logToFile(LOG_TYPE_ERROR, message, context);
+    }
+
+    void logEventToFile(const std::string& line)
+    {
+        logToFile(LOG_TYPE_EVENT, line.c_str());
     }
 
     void cleanupOldLogs()

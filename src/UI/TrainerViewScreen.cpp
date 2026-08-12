@@ -32,6 +32,7 @@
 #include "Utils/HelperUtilities.h"
 #include "Utils/Keyboard.h"
 #include "Utils/Logger.h"
+#include "Utils/EventLog.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Settings.h"
 #include "Trainer/Trainer.h"
@@ -510,21 +511,27 @@ namespace UI {
         // Open the test trace with everything needed to interpret the rest of the run: which build,
         // which game, where the save came from, and the state of every setting that changes
         // behaviour. Without this a trace is a list of actions with no way to judge them.
-        Utils::logTestSession(
+        const std::string sessionInfo =
             "pkse=" + VERSION_STRING +
             " game=\"" + titleName + "\" gamever=" + (gameVersion.empty() ? "?" : gameVersion) +
             " src=" + (this->loadedFromCart ? "CART" : "BACKUP") +
             " backup=\"" + leafName(backupDir) + "\"" +
             " rev=\"" + (trainer.saveRevisionString.empty() ? "Base" : trainer.saveRevisionString) + "\"" +
+            " " + Utils::logField("ot", trainer.trainerName) +
+            " otid32=" + std::to_string(trainer.ID32) +
+            " tid=" + std::to_string(trainer.TID16) + " sid=" + std::to_string(trainer.SID16) +
             " party=" + std::to_string(trainer.getPartySize()) +
             " boxes=" + std::to_string(trainer.getBoxCount()) +
             " inject=" + (g_injectToGameSave ? "ON" : "OFF") +
             " illegal=" + (g_allowIllegalEdits ? "ON" : "OFF") +
             " autobackup=" + (g_autoBackupEnabled ? "ON" : "OFF") +
             " movewarn=" + (g_moveWarn ? "ON" : "OFF") +
-            " theme=" + (g_themeMode == ThemeMode::Dark ? "dark" : "light"));
+            " theme=" + (g_themeMode == ThemeMode::Dark ? "dark" : "light");
+        Utils::logTestSession(sessionInfo);
+        Utils::logEventToFile("SESSION " + sessionInfo);
         if (bank) {
             Utils::logTest("BANKLOAD rejects=" + std::to_string(bank->lastLoadRejects()));
+            Utils::logEventToFile("BANK action=LOAD rejects=" + std::to_string(bank->lastLoadRejects()));
         }
     }
 
@@ -1129,11 +1136,14 @@ namespace UI {
         saveConfirmActive = false;
 
         // The single most important trace line: what was written, where, and whether it worked.
-        Utils::logTest(std::string("SAVE     dest=") + (injectToTitle ? "GAME" : "BACKUP") +
-                       " folder=\"" + leafName(destDir) + "\"" +
-                       " inject=" + (injectToTitle ? "1" : "0") +
-                       " illegaldata=" + (illegalDataWritten ? "1" : "0") +
-                       " result=" + (ok ? "OK" : "FAILED"));
+        const std::string saveInfo =
+            std::string("dest=") + (injectToTitle ? "GAME" : "BACKUP") +
+            " folder=\"" + leafName(destDir) + "\"" +
+            " inject=" + (injectToTitle ? "1" : "0") +
+            " illegaldata=" + (illegalDataWritten ? "1" : "0") +
+            " result=" + (ok ? "OK" : "FAILED");
+        Utils::logTest("SAVE     " + saveInfo);
+        Utils::logEventToFile("SAVE " + saveInfo + " party=" + std::to_string(trainer.getPartySize()));
 
         if (ok) {
             hasUnsavedChanges = false;
@@ -1512,6 +1522,7 @@ namespace UI {
 
         const int w = selectDimensions.first, h = selectDimensions.second;
         int placed = 0, lockedHit = 0, blocked = 0;
+        bool converted = false;      // any cell crossed a game boundary -> noted on each MOVE event
         std::string firstName;
         const char* firstWhy = nullptr;
 
@@ -1540,12 +1551,28 @@ namespace UI {
                                                               Trainer::getSpeciesName(moveMon[idx]->speciesID()));
                             firstWhy  = routed ? "conversion failed" : Conversion::resultMessage(res);
                         }
+                        if (g_debugLogging) {
+                            Utils::logEventToFile(
+                                "MOVE result=BLOCKED " + Utils::logSlot("to", pane, box, dSlot)
+                                + " " + Utils::logField("reason", routed ? "conversion failed"
+                                                                         : Conversion::resultMessage(res))
+                                + " " + Utils::describeMon(*moveMon[idx], trainer));
+                        }
                         continue;                                   // leave it in hand, untouched
                     }
                     ++placed;
+                    converted = converted || foreign;
                 }
                 auto& dst = storageSlot(pane, box, dSlot);
                 std::swap(dst, moveMon[idx]);                       // block swap: the occupant comes up
+                if (g_debugLogging && dst) {
+                    std::string line = "MOVE result=OK " + Utils::logSlot("from", heldPane, heldFromBox, heldFromSlot)
+                                     + " " + Utils::logSlot("to", pane, box, dSlot)
+                                     + (converted ? " converted=Y" : "")
+                                     + " " + Utils::describeMon(*dst, trainer);
+                    if (moveMon[idx]) line += " displaced=[" + Utils::briefMon(*moveMon[idx]) + "]";
+                    Utils::logEventToFile(line);
+                }
                 if (moveMon[idx] && moveMon[idx]->speciesID() == 0) moveMon[idx] = nullptr;  // ghost -> hole
             }
         }
@@ -1958,6 +1985,21 @@ namespace UI {
                     if (selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(visible.size())) {
                         const int rawIdx = visible[selectedItemIndex];
                         const uint16_t keepCount = pouch[rawIdx].count;
+                        // Before the swap -- the old id is about to be overwritten or zeroed. Both
+                        // ids are logged because a retype is one of the two ways a pouch entry can
+                        // change identity, and "my Master Ball became a Potion" reads very
+                        // differently from an add followed by a remove.
+                        if (g_debugLogging) {
+                            Utils::logEventToFile(
+                                std::string("ITEM action=RETYPE ")
+                                + Utils::logField("pouch", Panels::pouchDisplayName(trainer.getGameGroup(), selectedCategory))
+                                + " " + Utils::logField("from", Utils::itemName(pouch[rawIdx].itemId, trainer.getGameGroup()))
+                                + " fromid=" + std::to_string(pouch[rawIdx].itemId)
+                                + " " + Utils::logField("to", Utils::itemName(newId, trainer.getGameGroup()))
+                                + " toid=" + std::to_string(newId)
+                                + " count=" + std::to_string(keepCount)
+                                + " mode=" + (trainer.itemsAreIdIndexed() ? "idIndexed" : "slotBased"));
+                        }
                         // The dialog we return to must show the NEW item's amount (its count carried
                         // over unchanged), so re-sync both the live value and the change-baseline.
                         itemEditDialogValue = keepCount;
@@ -2000,13 +2042,27 @@ namespace UI {
                     auto& pouch = trainer.items[selectedCategory];
                     const auto e = std::find_if(pouch.begin(), pouch.end(),
                         [id](const Trainer::InventoryItem& x) { return x.itemId == id; });
+                    const char* addVia = nullptr;
                     if (e != pouch.end()) {
                         // Present but empty -> re-activate it AND flag it new (a freshly-added
                         // item always shows the bag's "new" marker in the games that have one).
-                        if (e->count == 0) { e->count = 1; e->isNew = true; hasUnsavedChanges = true; }
+                        if (e->count == 0) { e->count = 1; e->isNew = true; hasUnsavedChanges = true; addVia = "revived"; }
                     } else if (static_cast<int>(pouch.size()) < currentPouchCapacity()) {
                         pouch.push_back(Trainer::InventoryItem{ id, 1, true, false });
                         hasUnsavedChanges = true;
+                        addVia = "appended";
+                    } else {
+                        addVia = "REFUSED_POUCH_FULL";
+                    }
+                    if (g_debugLogging && addVia) {
+                        Utils::logEventToFile(
+                            std::string("ITEM action=ADD ")
+                            + Utils::logField("pouch", Panels::pouchDisplayName(trainer.getGameGroup(), selectedCategory))
+                            + " " + Utils::logField("item", Utils::itemName(id, trainer.getGameGroup()))
+                            + " id=" + std::to_string(id)
+                            + " count=1 via=" + addVia
+                            + " pouchsize=" + std::to_string(pouch.size())
+                            + "/" + std::to_string(currentPouchCapacity()));
                     }
                     // Land the cursor on the row that was just added so A edits its amount next --
                     // and FOLLOW IT TO ITS PAGE. The list is paged, and a new item usually sorts
@@ -2418,6 +2474,19 @@ namespace UI {
                 if (kDown & HidNpadButton_B) { creator.keepConfirmActive = false; return; }  // back to editing the new mon
                 const bool discard = (kDown & HidNpadButton_Y);
                 if ((kDown & HidNpadButton_A) || discard) {
+                    // Both outcomes are logged. A kept mon is a new record entering the save and is
+                    // the thing a later "this Pokemon is illegal/corrupt" report is about, so it is
+                    // described in full; a discarded one explains why a slot the user remembers
+                    // filling is empty.
+                    if (g_debugLogging) {
+                        const auto& made = storageSlot(creator.pane, creator.box, creator.slot);
+                        if (made) {
+                            Utils::logEventToFile(
+                                std::string("CREATE result=") + (discard ? "DISCARDED" : "KEPT") + " "
+                                + Utils::logSlot("at", creator.pane, creator.box, creator.slot)
+                                + " " + Utils::describeMon(*made, trainer));
+                        }
+                    }
                     if (discard) {  // remove the just-created mon from the box
                         storageSlot(creator.pane, creator.box, creator.slot).reset();
                         hasUnsavedChanges = true;
@@ -2440,12 +2509,20 @@ namespace UI {
                 if (kDown & HidNpadButton_B) { details.discardConfirmActive = false; return; }  // keep editing
                 if (kDown & HidNpadButton_A) {          // Save: exactly what X does, then leave
                     details.discardConfirmActive = false;
+                    if (g_debugLogging && pokemonEditDirty()) {
+                        if (const Pokemon::Pokemon* t = detailsTargetPokemon())
+                            Utils::logEventToFile("MODIFY via=save-on-close " + Utils::describeMon(*t, trainer));
+                    }
                     snapshotEditTarget();               // baseline := current, so nothing rolls back
                     closeDetailsModal();                // hasUnsavedChanges + party mirror were
                     return;                             // already handled as each field was edited
                 }
                 if (kDown & HidNpadButton_Y) {          // Discard: roll back and leave
                     details.discardConfirmActive = false;
+                    if (g_debugLogging) {
+                        if (const Pokemon::Pokemon* t = detailsTargetPokemon())
+                            Utils::logEventToFile("MODIFY result=DISCARDED via=close-prompt " + Utils::briefMon(*t));
+                    }
                     restoreEditTarget();
                     closeDetailsModal();
                     return;
@@ -2484,6 +2561,10 @@ namespace UI {
             // lives on the B Keep/Discard prompt.
             if (kDown & HidNpadButton_X) {
                 if (creator.editing) { creator.editing = false; closeDetailsModal(); return; }
+                if (g_debugLogging && pokemonEditDirty()) {
+                    if (const Pokemon::Pokemon* t = detailsTargetPokemon())
+                        Utils::logEventToFile("MODIFY via=save-button " + Utils::describeMon(*t, trainer));
+                }
                 snapshotEditTarget();   // baseline := current -> pokemonEditDirty() now false
                 return;
             }
@@ -2884,6 +2965,16 @@ namespace UI {
                     std::vector<int> visible = visibleItemIndices();
                     if (selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(visible.size())) {
                         const int rawIdx = visible[selectedItemIndex];
+                        if (g_debugLogging) {
+                            Utils::logEventToFile(
+                                std::string("ITEM action=REMOVE ")
+                                + Utils::logField("pouch", Panels::pouchDisplayName(trainer.getGameGroup(), selectedCategory))
+                                + " " + Utils::logField("item", Utils::itemName(pouch[rawIdx].itemId, trainer.getGameGroup()))
+                                + " id=" + std::to_string(pouch[rawIdx].itemId)
+                                + " count=" + std::to_string(pouch[rawIdx].count)
+                                + " mode=" + (trainer.itemsAreIdIndexed() ? "zeroed" : "erased")
+                                + " via=dialog");
+                        }
                         if (trainer.itemsAreIdIndexed()) {
                             pouch[rawIdx].count = 0;   // keep the entry so its id-slot is written to 0
                         } else {
@@ -2910,6 +3001,17 @@ namespace UI {
                         // Confirming a count of 0 IS a removal. On a slot-based game erase the entry, or
                         // updateItemBlock would write a {itemId, 0} ghost slot; on an id-indexed game
                         // keep the entry at count 0 so its id-slot is written to 0.
+                        if (g_debugLogging && itemEditDialogValue != itemEditDialogOriginalValue) {
+                            const bool removing = (itemEditDialogValue == 0);
+                            Utils::logEventToFile(
+                                std::string("ITEM action=") + (removing ? "REMOVE" : "SETCOUNT") + " "
+                                + Utils::logField("pouch", Panels::pouchDisplayName(trainer.getGameGroup(), selectedCategory))
+                                + " " + Utils::logField("item", Utils::itemName(pouch[rawIdx].itemId, trainer.getGameGroup()))
+                                + " id=" + std::to_string(pouch[rawIdx].itemId)
+                                + " from=" + std::to_string(itemEditDialogOriginalValue)
+                                + " to=" + std::to_string(itemEditDialogValue)
+                                + (removing ? (trainer.itemsAreIdIndexed() ? " mode=zeroed" : " mode=erased") : ""));
+                        }
                         if (itemEditDialogValue == 0 && !trainer.itemsAreIdIndexed()) {
                             pouch.erase(pouch.begin() + rawIdx);
                         } else {
@@ -2938,12 +3040,22 @@ namespace UI {
             else if (tb == 0) kDown |= HidNpadButton_B;  // tap Cancel
             if (kDown & HidNpadButton_A) {
                 if (releaseGroup) {
+                    if (g_debugLogging) {
+                        for (const auto& m : moveMon) {
+                            if (m) Utils::logEventToFile("RELEASE source=hand " + Utils::describeMon(*m, trainer));
+                        }
+                    }
                     // The group being released is the block in hand, so releasing it is simply
                     // dropping what we are carrying -- nothing is left pointing at a stale slot.
                     moveMon.clear();
                     selectDimensions = {0, 0};
                 } else {
-                    storageSlot(releasePane, releaseBox, releaseSlot).reset();
+                    auto& slot = storageSlot(releasePane, releaseBox, releaseSlot);
+                    if (g_debugLogging && slot) {
+                        Utils::logEventToFile("RELEASE " + Utils::logSlot("from", releasePane, releaseBox, releaseSlot)
+                                              + " " + Utils::describeMon(*slot, trainer));
+                    }
+                    slot.reset();
                 }
                 hasUnsavedChanges = true;
                 releaseConfirmActive = false;
@@ -2965,6 +3077,15 @@ namespace UI {
                     std::vector<int> visible = visibleItemIndices();
                     if (selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(visible.size())) {
                         const int rawIdx = visible[selectedItemIndex];
+                        if (g_debugLogging) {
+                            Utils::logEventToFile(
+                                std::string("ITEM action=REMOVE ")
+                                + Utils::logField("pouch", Panels::pouchDisplayName(trainer.getGameGroup(), selectedCategory))
+                                + " " + Utils::logField("item", Utils::itemName(pouch[rawIdx].itemId, trainer.getGameGroup()))
+                                + " id=" + std::to_string(pouch[rawIdx].itemId)
+                                + " count=" + std::to_string(pouch[rawIdx].count)
+                                + " mode=" + (trainer.itemsAreIdIndexed() ? "zeroed" : "erased"));
+                        }
                         if (trainer.itemsAreIdIndexed()) pouch[rawIdx].count = 0;   // keep entry; id-slot written to 0
                         else pouch.erase(pouch.begin() + rawIdx);                   // slot-based: erase; region rewritten
                         hasUnsavedChanges = true;
@@ -3052,10 +3173,27 @@ namespace UI {
                                             dst = std::move(copy);
                                             hasUnsavedChanges = true;
                                             placed = true;
+                                            // A clone puts a SECOND record with the same PID/EC into
+                                            // the save, which is exactly what a later "duplicate
+                                            // Pokemon" or failed-legality report is about -- so log
+                                            // where it came from and where it landed.
+                                            if (g_debugLogging) {
+                                                Utils::logEventToFile(
+                                                    "CLONE result=OK " + Utils::logSlot("from", menuPane, menuBox, menuSlot)
+                                                    + " " + Utils::logSlot("to", menuPane, box, s)
+                                                    + " " + Utils::describeMon(*dst, trainer));
+                                            }
                                         }
                                     }
                                 }
-                                if (!placed) postStatus("No free slot to clone into.", 240);
+                                if (!placed) {
+                                    postStatus("No free slot to clone into.", 240);
+                                    if (g_debugLogging) {
+                                        Utils::logEventToFile("CLONE result=REFUSED reason=no-free-slot "
+                                                              + Utils::logSlot("from", menuPane, menuBox, menuSlot)
+                                                              + " " + Utils::briefMon(*src));
+                                    }
+                                }
                             }
                         }
                         break;
@@ -3119,10 +3257,13 @@ namespace UI {
                         // leaving the view, or the deposits vanish with no indication.
                         if (bank && !bank->save()) {
                             postStatus("Couldn't save the bank - staying in storage so nothing is lost.", 480);
+                            Utils::logEventToFile("BANK action=SAVE result=FAILED");
                             return;
                         }
                         Utils::logTest("BANKSAVE result=OK verifyfail=" +
                                        std::to_string(bank ? bank->lastVerifyFailures() : 0));
+                        Utils::logEventToFile("BANK action=SAVE result=OK verifyfail="
+                                              + std::to_string(bank ? bank->lastVerifyFailures() : 0));
                         // Written, but the round-trip check found slots that don't reproduce. That
                         // is a PKSE bug rather than a write failure, so it warns instead of blocking.
                         if (bank && bank->lastVerifyFailures() > 0) {
@@ -3137,6 +3278,8 @@ namespace UI {
                              // save. Pulling a Pokemon out and then discarding therefore leaves the
                              // copy in the save box -- intended, and how a HOME-style box works. Undoing that half
                              // is the GAME save's own discard, which is a separate decision.
+                        Utils::logEventToFile("BANK action=DISCARD result=OK scope=bank-only"
+                                              " note=withdrawn-copies-remain-in-save");
                         if (bank) bank->load();
                         detailViewActive = false;
                         answered = true;
