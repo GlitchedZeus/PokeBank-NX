@@ -370,7 +370,7 @@ namespace UI {
         fb.drawText(x + 22, y + (hH - fb.lineHeight(TextStyle::Heading)) / 2, "Settings", Colors::Text, TextStyle::Heading);
 
         screen.touchButtons.clear();
-        constexpr int kRows = 5;
+        constexpr int kRows = 6;
         // The injection row names its actual scope. It does NOT govern saving a cart-loaded session
         // back to the cart -- that is always allowed. It only unlocks writing an OLDER BACKUP over
         // the live save, which is the case that can roll a game backwards.
@@ -378,8 +378,9 @@ namespace UI {
             "Auto-Backup on Load",
             "Theme",
             "Allow Illegal Values",
-            "Bank Storage Move Warning",
-            "Allow Inject Backups to Game Save"
+            "Bank Storage LGPE Move Warning",
+            "Allow Inject Backups to Game Save",
+            "Enable Debug Logging"
         };
         std::string values[kRows] = {
             g_autoBackupEnabled ? "On" : "Off",
@@ -387,11 +388,12 @@ namespace UI {
             g_allowIllegalEdits ? "On" : "Off",
             g_moveWarn ? "On" : "Off",
             g_injectToGameSave ? "On" : "Off",
+            g_debugLogging ? "On" : "Off",
         };
         // The panel is a fixed height, so the rows have to fit inside it -- there is no scrolling
-        // here. The gap absorbed the sixth row; rowH stays at 64 because it is also the touch
-        // target. The assert is the point: add a seventh row and the build stops rather than
-        // quietly drawing it past the panel edge.
+        // here. Six rows leave 10px spare; rowH stays at 64 because it is also the touch target.
+        // The assert is the point: add a seventh row and the build stops rather than quietly
+        // drawing it past the panel edge.
         constexpr int rowW = 720, rowH = 64, rowGap = 12, rowsTop = 22, footerH = 26;
         static_assert(hH + rowsTop + kRows * (rowH + rowGap) + footerH <= CONTENT_PANEL_HEIGHT,
                       "Settings rows no longer fit the content panel -- shrink the rows or add scrolling");
@@ -413,6 +415,7 @@ namespace UI {
             else if (i == 2 && g_allowIllegalEdits) { pillFill = Color(200, 80, 80); pillText = Colors::White; }
             else if (i == 3 && g_moveWarn)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
             else if (i == 4 && g_injectToGameSave)  { pillFill = Color(200, 80, 80); pillText = Colors::White; }
+            else if (i == 5 && g_debugLogging)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
             fb.drawPill(px, py, pillW, pillH, pillFill);
             fb.drawText(px + (pillW - vw) / 2, py + (pillH - vh) / 2, values[i], pillText, TextStyle::Body);
             screen.touchButtons.push_back({ i, rx, ry, rowW, rowH });
@@ -3686,9 +3689,10 @@ namespace UI {
             }
 
             // Settings view: Up/Down select a row, A toggles it (0 = auto-backup, 1 = theme,
-            // 2 = allow illegal values, 3 = Let's Go move warning, 4 = inject backups to game save).
+            // 2 = allow illegal values, 3 = Let's Go move warning, 4 = inject backups to game save,
+            // 5 = debug logging). Keep this in step with drawSettingsView's labels/values.
             if (selectedMode == ViewMode::Settings) {
-                constexpr int kSettingsRows = 5;
+                constexpr int kSettingsRows = 6;
                 if (kDown & HidNpadButton_Up)   settingsSelectedRow = (settingsSelectedRow - 1 + kSettingsRows) % kSettingsRows;
                 if (kDown & HidNpadButton_Down) settingsSelectedRow = (settingsSelectedRow + 1) % kSettingsRows;
                 int st = touchedButtonId(touch);
@@ -3698,7 +3702,7 @@ namespace UI {
                     else if (settingsSelectedRow == 1) applyTheme(g_themeMode == ThemeMode::Dark ? ThemeMode::Light : ThemeMode::Dark);
                     else if (settingsSelectedRow == 2) g_allowIllegalEdits = !g_allowIllegalEdits;
                     else if (settingsSelectedRow == 3) g_moveWarn = !g_moveWarn;
-                    else {
+                    else if (settingsSelectedRow == 4) {
                         // The master lock for writing into the real game save. Turning it ON only
                         // makes the "Game save" destination available in the save dialog -- it never
                         // makes a save destructive on its own, so no confirmation is needed here.
@@ -3706,6 +3710,15 @@ namespace UI {
                         postStatus(g_injectToGameSave
                             ? "An older backup can now be written over your live game save."
                             : "Backups can no longer be written over your live game save.", 300);
+                    }
+                    else {
+                        // Off by default, so a normal run leaves nothing on the card. The status
+                        // names the path because the whole point of the toggle is handing that file
+                        // to someone else: turn it on, reproduce the problem, send the log.
+                        g_debugLogging = !g_debugLogging;
+                        postStatus(g_debugLogging
+                            ? "Debug logging on. Logs are written to sdmc:/PKSE/logs."
+                            : "Debug logging off. No new log files will be written.", 300);
                     }
                     Utils::saveSettings();   // persist the change to settings.cfg
                 }
