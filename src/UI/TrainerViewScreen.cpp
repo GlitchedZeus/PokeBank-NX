@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 
 #include "Names/ItemPouches.h"   // getPouchItems -> the add-item picker's per-pouch list
-#include "Names/MoveInfo.h"      // getMoveBasePP -> a created/picked move gets real PP, not 0 (#F1F2)
+#include "Names/MoveInfo.h"      // getMoveBasePP -> a created/picked move gets real PP, not 0
 #include "Names/MoveNames.h"     // getMoveCount -> scan for a created mon's first legal move
 #include "Names/MovePresence.h"  // isMovePresent -> hide moves a game doesn't have (PKHeX-style filter)
 #include "Names/LocationNames.h" // getLocationTable -> the Met Location picker's per-game list
@@ -328,7 +328,7 @@ namespace UI {
                                   " -- leaving move 1 empty");
         }
         p->setMove(0, defMove);
-        p->setMovePP(0, defMove ? Names::getMoveBasePP(defMove) : 0);   // real PP, not 0 PP (#F1F2)
+        p->setMovePP(0, Names::getMoveBasePP(defMove, tr.getGameGroup()));
         p->setMovePPUps(0, 0);
         p->setId32(tr.ID32);
         p->setOTName(Utils::utf8ToUtf16(tr.trainerName));
@@ -2107,9 +2107,9 @@ namespace UI {
                         const int mv = (!pickerOrder.empty() && pickerSel < static_cast<int>(pickerOrder.size()))
                                            ? pickerOrder[pickerSel] : pickerSel;
                         pkPick->setMove(pickerSlot, static_cast<uint16_t>(mv));
-                        // Setting a move never sets its PP (needs a base-PP table); do it here so a
-                        // picked move isn't stuck at 0 PP. PP-ups reset to 0 -> base PP (#F1F2).
-                        pkPick->setMovePP(pickerSlot, Names::getMoveBasePP(static_cast<uint16_t>(mv)));
+                        pkPick->setMovePP(pickerSlot,
+                                          Names::getMoveBasePP(static_cast<uint16_t>(mv),
+                                                               pkPick->getGameGroup()));
                         pkPick->setMovePPUps(pickerSlot, 0);
                         break;
                     }
