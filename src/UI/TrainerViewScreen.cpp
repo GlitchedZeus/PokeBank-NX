@@ -358,6 +358,7 @@ namespace UI {
         // Roll a random IV spread at birth (same routine as the L-button randomizer, which is unchanged);
         // this recalculates stats and refreshes the checksum, so it stands in for the final pass.
         randomizeIVs(p.get());
+        p->setStatHPCurrent(p->statHPMax());
         return p;
     }
 
