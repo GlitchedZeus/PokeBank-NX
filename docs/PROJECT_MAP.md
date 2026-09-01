@@ -22,11 +22,13 @@ This is the short navigation page for the project's permanent documentation and 
 
 - [`PKSM_CORE_INTEGRATION.md`](PKSM_CORE_INTEGRATION.md) — concrete PKSM-Core PK3/Sav3 integration spike and decision gate
 - [`PKHOUSE_REFERENCE.md`](PKHOUSE_REFERENCE.md) — concrete modern Switch save behavior/reference notes; reimplementation only
+- [`GAME_SUPPORT_MATRIX.md`](GAME_SUPPORT_MATRIX.md) — all 23 target identities and independent detect/read/round-trip/write/device gates
 
-## Testing / artifacts
+## Testing / artifacts / release
 
 - [`DEVICE_TEST_CHECKLIST.md`](DEVICE_TEST_CHECKLIST.md) — physical Switch test procedure
 - [`BUILD_RECORD.md`](BUILD_RECORD.md) — recovery build SHA distinction and future artifact records
+- [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) — alpha build, hashing, artifact preservation, release notes, and device-test promotion rules
 - [`.github/workflows/host-tests.yml`](../.github/workflows/host-tests.yml) — automatic host tests, ASan/UBSan, and whitespace checks on GitHub pushes/PRs
 
 ## Current GitHub issue order
