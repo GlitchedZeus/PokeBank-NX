@@ -26,6 +26,7 @@ The commits after `c618bd5` currently consist of project documentation/research 
 | Stable game identity registry | HOST TESTED | 23 unique IDs; exact Switch title-ID lookup; GBA/Switch FireRed and LeafGreen separation |
 | Platform-aware native game cards | NRO BUILDS | Native Switch build links with platform labels and embedded short commit |
 | Read-only live-save policy | HOST TESTED / NRO BUILDS | Backup-only destinations, generic save API has no injection parameter, filesystem restore rejects live writes |
+| Controller-first Pokémon Action Sheet | IMPLEMENTED / HOST TESTED / NRO BUILDS | Exact nine-action model; Party, Boxes and Storage share A-button semantics; B/Cancel/navigation are non-mutating; unsupported actions are explicit |
 | Host CI | HOST TESTED | `.github/workflows/host-tests.yml` passed on commit `49adc417` on `feature/pokebank-playable`; host tests + ASan/UBSan + whitespace check |
 | Native `.nro` | NRO BUILDS | Recovery runtime produced a 9,695,669-byte safety build, SHA-256 `0cf50b659ed5c648009e10d51a75a398bc2a3e69e4cbeb99cc0b74b9643ece07`; rebuild a fresh artifact from verified GitHub source before hardware testing |
 | Physical Switch execution | NOT DEVICE TESTED | No PokeBank NX build from this recovery has been run on hardware |
@@ -46,6 +47,14 @@ Recovery session, 2026-09-01:
 - `make -f Makefile.host host-sanitize`: PASS (AddressSanitizer and UndefinedBehaviorSanitizer; leak detection disabled in the managed recovery sandbox because it could not inspect `/proc`)
 - native `make -j1`: PASS
 - `git diff --check`: PASS at the recovered milestone
+
+Action Sheet milestone, 2026-09-01:
+
+- `make -f Makefile.host host-test`: PASS (game identity, write-policy and action-sheet suites)
+- `make -f Makefile.host host-sanitize`: PASS (AddressSanitizer and UndefinedBehaviorSanitizer)
+- native `make -j1`: PASS
+- `git diff --check`: PASS
+- physical Switch execution: NOT DEVICE TESTED
 
 GitHub CI added later on 2026-09-01:
 
@@ -77,6 +86,10 @@ The GitHub workflow intentionally does not claim to replace a native devkitPro `
 - The final filesystem restore entry point rejects live-write attempts before mounting save data.
 - A legacy `injectToGame=1` setting is ignored and rewritten as zero.
 - GitHub Actions now automatically runs the portable host safety/identity tests on pushes to `main`, `feature/pokebank-playable`, and pull requests.
+- Pressing A on an occupied Pokémon in Party, Boxes, or Storage opens one shared action sheet in the required order.
+- Opening, navigating, pressing B, and selecting Cancel never mutate the represented Pokémon.
+- `View Pokémon` opens the existing summary as a visibly read-only screen; `Edit` remains a separate deliberate selection.
+- Vault, Bank, Transfer, Clone, Make Shiny, and Provenance actions return a clear `Not yet supported` result in this milestone and cannot fall through.
 
 ### PKSE upstream foundation present in this tree
 
@@ -92,7 +105,7 @@ These upstream capabilities are a foundation, not proof that the PokeBank NX saf
 
 - Professional Home screen: native installed-title cards work; legacy/RetroArch cards are not implemented in the recovered tree.
 - Game to party/boxes: upstream flow exists for supported native titles; PokeBank platform/source integration is incomplete.
-- Pokémon action sheet: required A-button behavior is not yet implemented.
+- Pokémon action sheet: implemented and host/native verified; awaiting physical Switch testing.
 - Professional Pokémon summary screen: upstream details UI exists, but the required provenance-focused summary is incomplete.
 - Master Vault, named multi-bank storage, clone lineage and durable provenance must be reconstructed using the new written v1 contract.
 - Living Dex, Shiny Living Dex, collection generator, themes and startup polish remain planned.
@@ -211,13 +224,13 @@ Before implementing major Pokémon-format, legality, conversion, save-parsing, P
 
 ## Current task
 
-**GitHub issue #2:** build the controller-first Pokémon action sheet so pressing A on a focused Pokémon opens a deliberate menu and never performs an immediate mutation.
+Physically test the exact issue #2 Action Sheet `.nro` produced from the published milestone commit. Do not mark it DEVICE TESTED until the user reports results from that binary.
 
 ## Next priorities
 
-1. Complete issue #2 — playable A-button Pokémon action sheet without one-press mutations.
+1. Perform the physical Switch read-only/action-sheet test using issue #8 / `docs/DEVICE_TEST_CHECKLIST.md` and the exact recorded binary.
 2. Complete issue #4 — PKSM-Core Gen III (`PK3` + `Sav3`) integration spike before rebuilding historical infrastructure.
-3. Produce a fresh `.nro`, preserve the binary, and perform the first physical Switch read-only test using issue #8 / `docs/DEVICE_TEST_CHECKLIST.md` as soon as the next coherent playable build is ready.
+3. Address any device-only Action Sheet regression before starting a larger subsystem.
 4. Complete issue #3 — immutable Master Vault v1 and named Bank storage.
 5. Complete issue #9 — professional Pokémon summary and provenance view.
 6. Rebuild read-only legacy discovery/adapters (issue #6) and audit modern Switch adapters (issue #11).

@@ -79,6 +79,11 @@ namespace Modals {
         std::string sub = "Lv. " + std::to_string(subLvl) + "     No. " + dex;
         int sW, sH; fb.measureText(sub, sW, sH);
         fb.drawText(W - 90 - sW, 24, sub, Colors::TextDim);
+        if (screen.details.readOnly) {
+            const char* ro = "READ ONLY";
+            int rw, rh; fb.measureText(ro, rw, rh, TextStyle::Caption);
+            fb.drawText((W - rw) / 2, 22, ro, Colors::Accent, TextStyle::Caption);
+        }
         fb.drawFilledRect(0, 60, W, 2, Colors::Accent);
 
         // Close button (top-right).

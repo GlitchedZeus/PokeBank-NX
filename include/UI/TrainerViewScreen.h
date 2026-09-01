@@ -10,6 +10,7 @@
 
 #include "Globals.h"
 #include "Safety/WritePolicy.h"
+#include "UI/ActionSheetModel.h"
 #include "UI/UIScreen.h"
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Bank.h"
@@ -41,9 +42,9 @@ namespace UI {
         // Cursor modes for the Storage view (cycled with Y). Colors: red / blue / green -- the same
         // three-arrow scheme HOME uses, and the cursor arrow is drawn in the active mode's color.
         enum class CursorMode {
-            Menu,   // red:   A opens a per-Pokemon menu (Move / Edit / Release)
-            Move,   // blue:  A directly picks up / places / swaps one Pokemon
-            Multi   // green: A anchors a rectangle, moving expands it, A again grabs the whole block
+            Menu,   // red:   A opens the shared Pokémon action sheet
+            Move,   // blue:  X picks up one Pokémon; A still opens Actions while hands are empty
+            Multi   // green: X anchors/copies a rectangle; A grabs it after the deliberate selection
         };
         // Where the details editor's target Pokemon lives.
         enum class EditSource { Party, Box, Bank };
@@ -67,6 +68,9 @@ namespace UI {
         void buildGenderPickerOrder(uint16_t species, uint8_t form, uint8_t current);  // only the genders the species can be (one row when fixed-gender)
         bool genderEditable(const Pokemon::Pokemon& p) const;  // false -> the Gender row is read-only (nothing to change it TO)
         void openStorageEditor(int pane, int box, int slot);   // open the details modal on a storage slot
+        void openPokemonActionSheet(PokeVault::UIModel::PokemonTarget target);
+        Pokemon::Pokemon* actionSheetTargetPokemon();
+        void openActionSheetTargetDetails(bool readOnly);
 
         // --- HOME-style rectangle select + block carry (see moveMon below) ---
         int paneCols(int pane) const;      // grid columns (LGPE save boxes are 5 wide, everything else 6)
@@ -191,10 +195,10 @@ namespace UI {
         int carriedCount() const;                // non-null cells in moveMon
         const Pokemon::Pokemon* firstCarried() const;   // first non-null cell, or nullptr
 
-        // Red per-Pokemon action menu (Move / Edit / Release / Cancel).
-        bool storageMenuActive = false;
-        int storageMenuIndex = 0;
-        int menuPane = 0, menuBox = 0, menuSlot = 0;           // the slot the menu acts on
+        // One controller-first action sheet shared by Party, Boxes, and Storage. It stores only a
+        // location descriptor, never a mutable Pokemon pointer, so opening/navigating/cancelling it
+        // cannot mutate the source by construction.
+        PokeVault::UIModel::PokemonActionSheet actionSheet;
         // Group menu for the carried block (Release all / Return to origin / Cancel), opened with Minus.
         bool groupMenuActive = false;
         int groupMenuIndex = 0;
@@ -282,6 +286,7 @@ namespace UI {
         // "Unsaved changes" marker (snapshot on open, re-taken by X = Save; empty when not editing).
         struct DetailsState {
             bool active = false;
+            bool readOnly = false;                         // View action: summary navigation, no edit controls
             EditSource source = EditSource::Box;         // where the edited Pokemon lives
             int  bankBox = 0, bankSlot = 0;              // bank target (EditSource::Bank)
             int  partyIndex = 0;                         // party slot (0-5) when editing a party mon
