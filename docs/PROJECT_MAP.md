@@ -51,6 +51,14 @@ This is the short navigation page for the project's permanent documentation, cur
 
 ---
 
+## Historical session logs
+
+- [`SESSION_LOG_2026-09-01.md`](SESSION_LOG_2026-09-01.md) — recovery/docs work, UI contracts, completed Action Sheet, interrupted Session 2, issue/branch updates, and end-of-day handoff
+
+Historical logs explain how the project reached a state. They do not override `PROJECT_STATUS.md`.
+
+---
+
 ## Completed milestone
 
 ### Issue #2 — Controller-first Pokémon Action Sheet — **CLOSED / COMPLETED**
@@ -101,7 +109,7 @@ theme persistence
 focus/card/modal primitives
 ```
 
-### 2. Issue #8 — Produce and physically test a recorded `.nro`
+### 2. Issue #8 — first recorded physical PokeBank NX `.nro` test
 
 https://github.com/GlitchedZeus/PokeBank-NX/issues/8
 
