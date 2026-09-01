@@ -7,11 +7,12 @@ This is the short navigation page for the project's permanent documentation and 
 ## Read first
 
 1. [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) — current verified state and active task
-2. [`SESSION_RUNBOOK.md`](SESSION_RUNBOOK.md) — how every coding session starts/ends
-3. [`ARCHITECTURE.md`](ARCHITECTURE.md) — module boundaries and dependency direction
-4. [`CONTROLS.md`](CONTROLS.md) — Pokémon HOME-like controller map including + / - behavior
-5. [`UI_STYLE_GUIDE.md`](UI_STYLE_GUIDE.md) — visual direction, OLED Black/Dark/Light themes, game cards, summary and Pokédex layouts
-6. [`UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md) — pinned PKSE/PKSM-Core/PKHeX/AutoMod/pkHouse/pkDex/PKForge research map
+2. [`NEXT_SESSION_PLAN.md`](NEXT_SESSION_PLAN.md) — next two coding blocks: playable UI/action-sheet build, device test, then PKSM-Core spike
+3. [`SESSION_RUNBOOK.md`](SESSION_RUNBOOK.md) — how every coding session starts/ends
+4. [`ARCHITECTURE.md`](ARCHITECTURE.md) — module boundaries and dependency direction
+5. [`CONTROLS.md`](CONTROLS.md) — Pokémon HOME-like controller map including + / - behavior
+6. [`UI_STYLE_GUIDE.md`](UI_STYLE_GUIDE.md) — visual direction, OLED Black/Dark/Light themes, game cards, summary and Pokédex layouts
+7. [`UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md) — pinned PKSE/PKSM-Core/PKHeX/AutoMod/pkHouse/pkDex/PKForge research map
 
 ## Core architecture / UX specs
 
@@ -43,10 +44,10 @@ This is the short navigation page for the project's permanent documentation and 
 The first active implementation issue is the action sheet. Subsequent issues are not required to be completed strictly numerically; follow dependencies and `PROJECT_STATUS.md`.
 
 1. [#2 — Implement controller-first Pokémon action sheet](https://github.com/GlitchedZeus/PokeBank-NX/issues/2)
-2. [#4 — Audit and spike PKSM-Core Gen III integration](https://github.com/GlitchedZeus/PokeBank-NX/issues/4)
-3. [#3 — Implement Master Vault v1 and named banks](https://github.com/GlitchedZeus/PokeBank-NX/issues/3)
-4. [#8 — Produce and physically test first recovery-era `.nro`](https://github.com/GlitchedZeus/PokeBank-NX/issues/8) — produce the test artifact as soon as a useful milestone is ready; physical testing can happen while deeper architecture work continues
-5. UI/theme shell — implement the semantic OLED Black/Dark/Light theme system and HOME-like controller hint bar alongside/after the action-sheet milestone
+2. [#13 — Implement HOME-style controls and OLED/Dark/Light UI shell](https://github.com/GlitchedZeus/PokeBank-NX/issues/13) — develop shared primitives alongside #2 where they help; do not delay a playable action sheet for full-app restyling
+3. [#8 — Produce and physically test first recovery-era `.nro`](https://github.com/GlitchedZeus/PokeBank-NX/issues/8) — produce the test artifact as soon as the next useful playable milestone is ready
+4. [#4 — Audit and spike PKSM-Core Gen III integration](https://github.com/GlitchedZeus/PokeBank-NX/issues/4)
+5. [#3 — Implement Master Vault v1 and named banks](https://github.com/GlitchedZeus/PokeBank-NX/issues/3)
 6. [#9 — Build professional Pokémon summary and provenance view](https://github.com/GlitchedZeus/PokeBank-NX/issues/9)
 7. [#6 — Rebuild RetroArch discovery and read-only Gen I–III adapters](https://github.com/GlitchedZeus/PokeBank-NX/issues/6)
 8. [#11 — Audit modern Switch save adapters against pkHouse and PKHeX](https://github.com/GlitchedZeus/PokeBank-NX/issues/11)
