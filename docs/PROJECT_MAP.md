@@ -18,10 +18,16 @@ This is the short navigation page for the project's permanent documentation and 
 - [`POKEDEX_SPEC.md`](POKEDEX_SPEC.md) — Vault-driven National/Regional/Living Dex design
 - [`PKHEX_ORACLE.md`](PKHEX_ORACLE.md) — host-side PKHeX/AutoMod correctness tool
 
+## Integration / research notes
+
+- [`PKSM_CORE_INTEGRATION.md`](PKSM_CORE_INTEGRATION.md) — concrete PKSM-Core PK3/Sav3 integration spike and decision gate
+- [`PKHOUSE_REFERENCE.md`](PKHOUSE_REFERENCE.md) — concrete modern Switch save behavior/reference notes; reimplementation only
+
 ## Testing / artifacts
 
 - [`DEVICE_TEST_CHECKLIST.md`](DEVICE_TEST_CHECKLIST.md) — physical Switch test procedure
 - [`BUILD_RECORD.md`](BUILD_RECORD.md) — recovery build SHA distinction and future artifact records
+- [`.github/workflows/host-tests.yml`](../.github/workflows/host-tests.yml) — automatic host tests, ASan/UBSan, and whitespace checks on GitHub pushes/PRs
 
 ## Current GitHub issue order
 
@@ -30,12 +36,13 @@ The first active implementation issue is the action sheet. Subsequent issues are
 1. [#2 — Implement controller-first Pokémon action sheet](https://github.com/GlitchedZeus/PokeBank-NX/issues/2)
 2. [#4 — Audit and spike PKSM-Core Gen III integration](https://github.com/GlitchedZeus/PokeBank-NX/issues/4)
 3. [#3 — Implement Master Vault v1 and named banks](https://github.com/GlitchedZeus/PokeBank-NX/issues/3)
-4. [#9 — Build professional Pokémon summary and provenance view](https://github.com/GlitchedZeus/PokeBank-NX/issues/9)
-5. [#6 — Rebuild RetroArch discovery and read-only Gen I–III adapters](https://github.com/GlitchedZeus/PokeBank-NX/issues/6)
-6. [#5 — Build host-side PKHeX Oracle](https://github.com/GlitchedZeus/PokeBank-NX/issues/5)
-7. [#7 — Implement Vault-driven Pokédex and Living Dex v1](https://github.com/GlitchedZeus/PokeBank-NX/issues/7)
-8. [#10 — Implement conversion/transfer engine without live writes](https://github.com/GlitchedZeus/PokeBank-NX/issues/10)
-9. [#8 — Produce and physically test first recovery-era `.nro`](https://github.com/GlitchedZeus/PokeBank-NX/issues/8) — produce the test artifact as soon as a useful milestone is ready; physical testing can occur before later architecture issues are complete
+4. [#8 — Produce and physically test first recovery-era `.nro`](https://github.com/GlitchedZeus/PokeBank-NX/issues/8) — produce the test artifact as soon as a useful milestone is ready; physical testing can happen while deeper architecture work continues
+5. [#9 — Build professional Pokémon summary and provenance view](https://github.com/GlitchedZeus/PokeBank-NX/issues/9)
+6. [#6 — Rebuild RetroArch discovery and read-only Gen I–III adapters](https://github.com/GlitchedZeus/PokeBank-NX/issues/6)
+7. [#11 — Audit modern Switch save adapters against pkHouse and PKHeX](https://github.com/GlitchedZeus/PokeBank-NX/issues/11)
+8. [#5 — Build host-side PKHeX Oracle](https://github.com/GlitchedZeus/PokeBank-NX/issues/5)
+9. [#7 — Implement Vault-driven Pokédex and Living Dex v1](https://github.com/GlitchedZeus/PokeBank-NX/issues/7)
+10. [#10 — Implement conversion/transfer engine without live writes](https://github.com/GlitchedZeus/PokeBank-NX/issues/10)
 
 ## Architectural dependency sketch
 
@@ -47,6 +54,10 @@ Current native PKSE/PokeBank foundation
         +--> PKSM-Core audit
         |       |
         |       +--> read-only Gen I-III adapters
+        |
+        +--> modern Switch adapter audit
+        |       |
+        |       +--> read-only ZA/SV/SwSh/PLA/BDSP/LGPE/FRLG validation
         |
         +--> Master Vault v1
         |       |
@@ -67,6 +78,24 @@ Vault + adapters + Oracle
                 +--> staged-save validation
                         |
                         +--> per-adapter live-write testing much later
+```
+
+## Near-term device-test loop
+
+```text
+finish coherent playable milestone
+        ↓
+host tests + sanitizers
+        ↓
+build fresh .nro
+        ↓
+record source SHA + binary SHA-256
+        ↓
+preserve/publish artifact
+        ↓
+physical Switch test using DEVICE_TEST_CHECKLIST.md
+        ↓
+record bugs / promote only what actually passed
 ```
 
 ## Permanent safety reminder
