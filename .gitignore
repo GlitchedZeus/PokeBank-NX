@@ -1,0 +1,51 @@
+# Ignore build output
+/build/
+/*.elf
+/*.nro
+/*.nsp
+/*.nacp
+/*.lst
+/*.map
+/*.npdm
+/*.nso
+
+# Ignore VS Code settings
+/.vscode/
+
+# Ignore VS settings
+/.vs/
+*.vcxproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Ignore log files
+*.log
+PKSE.log
+debug.log
+
+# Ignore temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*.DS_Store
+
+# Ignore compiler-generated files
+*.o
+*.d
+*.a
+
+# Ignore dependency-specific files
+/dependencies/
+/libs/
+
+# Ignore ROMFS and data directories if generated dynamically
+/romfs/
+/data/
+
+# Python cache from the code-generator scripts in tools/
+tools/__pycache__/
+# PKHeX source/resource files the gen_*.py scripts fetch from GitHub (tools/pkhex_source.py)
+tools/.pkhex_cache/
