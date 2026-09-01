@@ -2,20 +2,22 @@
 
 Last updated: 2026-09-01
 
-This is the short navigation page for the project's permanent documentation, current verified state, and active GitHub work items.
+This is the short navigation page for the project's permanent documentation, current verified state, active prompts, and GitHub work items.
 
 ---
 
 ## Read first
 
 1. [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) — authoritative verified state and active task
-2. [`NEXT_SESSION_PLAN.md`](NEXT_SESSION_PLAN.md) — exact next coding blocks after the interrupted Session 2 UI/theme work
-3. [`SESSION_RUNBOOK.md`](SESSION_RUNBOOK.md) — how every coding session starts/ends
-4. [`ARCHITECTURE.md`](ARCHITECTURE.md) — module boundaries and dependency direction
-5. [`CONTROLS.md`](CONTROLS.md) — Pokémon HOME-like controller contract including `+` / `-`
-6. [`UI_FLOW.md`](UI_FLOW.md) — safe controller-first navigation/action semantics
-7. [`UI_STYLE_GUIDE.md`](UI_STYLE_GUIDE.md) — OLED Black/Dark/Light visual contract and reference-derived layouts
-8. [`UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md) — pinned PKSE/PKSM-Core/PKHeX/AutoMod/pkHouse/pkDex/PKForge research map
+2. [`NEXT_SESSION_PLAN.md`](NEXT_SESSION_PLAN.md) — exact execution order after the interrupted Session 2 UI/theme work
+3. [`PROMPT_SESSION2_RECOVERY.md`](PROMPT_SESSION2_RECOVERY.md) — ready-to-copy **HIGH** prompt for recovering/finishing issue #13
+4. [`PROMPT_SESSION3_PKSM_CORE.md`](PROMPT_SESSION3_PKSM_CORE.md) — ready-to-copy **MAX** prompt for the PKSM-Core Gen III spike after hardware feedback
+5. [`SESSION_RUNBOOK.md`](SESSION_RUNBOOK.md) — how every coding session starts/ends
+6. [`ARCHITECTURE.md`](ARCHITECTURE.md) — module boundaries and dependency direction
+7. [`CONTROLS.md`](CONTROLS.md) — Pokémon HOME-like controller contract including `+` / `-`
+8. [`UI_FLOW.md`](UI_FLOW.md) — safe controller-first navigation/action semantics
+9. [`UI_STYLE_GUIDE.md`](UI_STYLE_GUIDE.md) — OLED Black/Dark/Light visual contract and reference-derived layouts
+10. [`UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md) — pinned PKSE/PKSM-Core/PKHeX/AutoMod/pkHouse/pkDex/PKForge research map
 
 ---
 
@@ -43,17 +45,18 @@ This is the short navigation page for the project's permanent documentation, cur
 
 ## Testing / artifacts / release
 
-- [`DEVICE_TEST_CHECKLIST.md`](DEVICE_TEST_CHECKLIST.md) — physical Switch test procedure
+- [`DEVICE_TEST_CHECKLIST.md`](DEVICE_TEST_CHECKLIST.md) — physical Switch test procedure, including issue #13 controls/themes
 - [`BUILD_RECORD.md`](BUILD_RECORD.md) — source SHA / `.nro` size / SHA-256 / device-test records
 - [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) — alpha/prerelease packaging discipline
 - [`.github/workflows/host-tests.yml`](../.github/workflows/host-tests.yml) — portable host tests, ASan/UBSan, whitespace checks
 - [Issue #15](https://github.com/GlitchedZeus/PokeBank-NX/issues/15) — automate/persist device-test `.nro` artifacts
+- [Issue #17](https://github.com/GlitchedZeus/PokeBank-NX/issues/17) — reproducible Pokémon/save golden test corpus for PKSM/PKHeX/adapter comparisons
 
 ---
 
 ## Historical session logs
 
-- [`SESSION_LOG_2026-09-01.md`](SESSION_LOG_2026-09-01.md) — recovery/docs work, UI contracts, completed Action Sheet, interrupted Session 2, issue/branch updates, and end-of-day handoff
+- [`SESSION_LOG_2026-09-01.md`](SESSION_LOG_2026-09-01.md) — recovery/docs work, UI contracts, completed Action Sheet, interrupted Session 2, issue/branch updates, and handoff
 
 Historical logs explain how the project reached a state. They do not override `PROJECT_STATUS.md`.
 
@@ -91,7 +94,9 @@ https://github.com/GlitchedZeus/PokeBank-NX/issues/13
 
 **Current condition:** interrupted Session 2 reported substantial local-only implementation, but it ended before new-code tests/native build/commit/push.
 
-Next coding session must first inspect local branches/worktree/reflog/stash before resetting anything.
+Use [`PROMPT_SESSION2_RECOVERY.md`](PROMPT_SESSION2_RECOVERY.md).
+
+Next coding session must inspect local branches/worktrees/reflog/stash before resetting anything.
 
 Target reusable foundation:
 
@@ -113,13 +118,15 @@ focus/card/modal primitives
 
 https://github.com/GlitchedZeus/PokeBank-NX/issues/8
 
-The Action Sheet `.nro` already exists, but the user elected to finish issue #13 first so the next hardware pass tests the combined Action Sheet + controls/theme build.
+The Action Sheet `.nro` already exists, but the project is finishing issue #13 first so the next hardware pass tests the combined Action Sheet + controls/theme build.
 
 ### 3. Issue #4 — PKSM-Core Gen III integration spike
 
 https://github.com/GlitchedZeus/PokeBank-NX/issues/4
 
 Use **MAX/deep reasoning** after the combined UI build is tested or any blocking device regression is fixed.
+
+Use [`PROMPT_SESSION3_PKSM_CORE.md`](PROMPT_SESSION3_PKSM_CORE.md).
 
 Narrow target:
 
@@ -132,6 +139,8 @@ box + party extraction
 round-trip strategy
 integration/dependency decision
 ```
+
+Issue #17 supplies the long-term reproducible fixture/golden-corpus track. Do not let corpus perfection block the smallest useful PK3/Sav3 spike.
 
 ### 4. Issue #3 — Master Vault v1 and named Banks
 
@@ -175,11 +184,27 @@ https://github.com/GlitchedZeus/PokeBank-NX/issues/10
 
 Derived Vault entities + staged/exported destination representations first.
 
-### Infrastructure: Issue #15 — persistent device artifacts
+---
+
+## Supporting / product-integration issues
+
+### Issue #15 — persistent device artifacts
 
 https://github.com/GlitchedZeus/PokeBank-NX/issues/15
 
-Add GitHub Actions/prerelease artifact preservation without blocking product milestones.
+Automate GitHub Actions/prerelease artifact preservation without blocking product milestones.
+
+### Issue #16 — PokeBank NX branding/startup/NRO metadata
+
+https://github.com/GlitchedZeus/PokeBank-NX/issues/16
+
+Replace remaining inherited product branding, add final NRO metadata/icon, and implement real startup/loading stages. This follows the reusable issue #13 UI shell and should not delay #8/#4.
+
+### Issue #17 — reproducible golden fixture corpus
+
+https://github.com/GlitchedZeus/PokeBank-NX/issues/17
+
+Create hashed, provenance-documented fixtures for parser/conversion/adapter comparisons without committing personal saves, ROMs, keys, or other inappropriate assets.
 
 ---
 
@@ -198,6 +223,7 @@ Recovered/native PKSE-PokeBank foundation
         |
         +--> PKSM-Core Gen III spike              NEXT DEEP ENGINEERING
         |       |
+        |       +--> golden fixtures (#17)
         |       +--> read-only Gen I-III adapters
         |
         +--> Master Vault v1
@@ -214,6 +240,10 @@ Recovered/native PKSE-PokeBank foundation
                 +--> legality/conversion comparison
                 +--> generated collection data
 
+Theme shell + later product integration
+        |
+        +--> final branding/startup/NRO metadata (#16)
+
 Vault + adapters + Oracle
         |
         +--> conversion/transfer engine without live writes
@@ -228,7 +258,7 @@ Vault + adapters + Oracle
 ## Near-term execution loop
 
 ```text
-recover/finish issue #13
+HIGH: recover/finish issue #13
         ↓
 host tests + sanitizers + diff check
         ↓
@@ -238,11 +268,11 @@ record application source SHA + binary SHA-256
         ↓
 preserve/provide artifact
         ↓
-physical Switch test
+physical Switch test (#8)
         ↓
 fix device-only regression if needed
         ↓
-MAX: PKSM-Core PK3/Sav3 spike
+MAX: PKSM-Core PK3/Sav3 spike (#4)
 ```
 
 ---
