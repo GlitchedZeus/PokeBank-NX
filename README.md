@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/branding/pokebank-nx-header.png" alt="PokeBank NX" width="100%">
+<img width="1672" height="941" alt="THE FINAL" src="https://github.com/user-attachments/assets/73d50980-7930-43f9-8b5f-3ae59d86bd58" />
 </p>
 
 # PokeBank NX
