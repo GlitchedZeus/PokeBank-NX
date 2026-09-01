@@ -6,44 +6,102 @@
 
 **PokeBank NX** is an offline Pokémon storage and save-management project for Nintendo Switch homebrew.
 
-The project started from the PKSE codebase, but the goal is broader: one native Switch app for browsing Pokémon saves, keeping a permanent local collection, organizing Pokémon into banks, tracking where they came from, and eventually moving compatible Pokémon between games and generations without depending on an online service.
+The project started from the PKSE codebase, but the goal is broader: one native Switch app for browsing Pokémon saves, keeping a permanent local collection, organizing Pokémon into banks, tracking where they came from, and eventually moving compatible Pokémon between games and generations without depending on an online service for the core collection.
 
-This repository is under active development. It is not ready to be treated as a production-safe save manager yet.
+This repository is under active development. It is **not** ready to be treated as a production-safe save manager yet.
 
 ---
 
 ## Project status
 
-The public `main` branch currently contains the full **PKSE 1.1.3** source and Git history as the upstream foundation. PokeBank NX-specific development is being recovered and rebuilt on top of that base.
+PokeBank NX has moved past the initial repository-recovery stage.
 
-The rule for this project is simple: a feature only gets marked complete here after the code is present in this repository and the relevant build/tests pass.
+The interrupted PokeBank NX work that was still present was recovered, backed up, committed, and published to GitHub. The active development line is now:
 
-### What is already in the repository
+```text
+feature/pokebank-playable
+```
 
-The imported PKSE foundation gives PokeBank NX a substantial starting point:
+The latest verified remote safety milestone from the recovery session is:
 
-- native Nintendo Switch `.nro` application and build system
+```text
+c618bd5 — safety: hard-lock live game save writes
+```
+
+A native Nintendo Switch `.nro` builds successfully from the recovered development tree, and host tests plus ASan/UBSan pass. The current recovery build has **not yet been physically tested on a Switch**, so it is correctly classified as `NRO BUILDS`, not `DEVICE TESTED`.
+
+The actual `.nro` binary from the recovery runtime is not currently committed or published as a GitHub release. It should be rebuilt from the verified source before the first hardware test.
+
+For the detailed source-of-truth status, see [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+
+### Current verification snapshot
+
+| Area | Status |
+|---|---|
+| Repository recovery | **COMPLETE** |
+| 23 stable release/platform game identities | **HOST TESTED** |
+| GBA/Switch FireRed + LeafGreen identity separation | **HOST TESTED** |
+| Platform-aware native game cards | **NRO BUILDS** |
+| Host regression tests | **PASS** |
+| ASan / UBSan | **PASS** |
+| Native Switch `.nro` | **NRO BUILDS** |
+| Direct live-game save writing | **HARD DISABLED** |
+| Physical Switch execution | **NOT DEVICE TESTED** |
+| Pokémon A-button action sheet | **NEXT ACTIVE FEATURE** |
+| Master Vault / durable provenance | **REBUILD REQUIRED** |
+| RetroArch discovery / Gen I-III adapters | **REBUILD REQUIRED** |
+
+A feature is only promoted through these states when that level of verification has actually happened:
+
+```text
+IMPLEMENTED
+HOST TESTED
+NRO BUILDS
+DEVICE TESTED
+```
+
+A successful `.nro` build is not the same thing as successful testing on physical hardware.
+
+---
+
+## What is already in the repository
+
+### Recovered PokeBank NX work
+
+- stable internal game identity based on **release + platform**, not display name
+- 23 target game identities
+- separate identities for:
+  - `firered_gba`
+  - `leafgreen_gba`
+  - `firered_switch`
+  - `leafgreen_switch`
+- platform-aware native Switch title cards
+- app version + abbreviated Git commit display
+- host-side test target independent of devkitPro
+- AddressSanitizer / UndefinedBehaviorSanitizer test target
+- read-only installed-game source handling
+- backup-only save destinations during this alpha
+- a generic save API that cannot request title injection
+- a low-level filesystem guard that rejects live-title restore attempts before mounting save data
+- legacy `injectToGame=1` settings ignored and rewritten to disabled
+
+### PKSE upstream foundation
+
+The imported PKSE 1.1.3 history/source still gives PokeBank NX a substantial native Switch foundation:
+
+- Nintendo Switch `.nro` application and build system
 - controller-driven UI
-- save backup and restore infrastructure
+- save selection, backup and restore infrastructure
 - party and box browsing
-- Pokémon editing
+- Pokémon editing and creation
 - trainer and item editing
-- Pokémon creation
-- legality-related checks
-- shared cross-game bank infrastructure
+- existing legality-related UI/data
+- existing bank/conversion framework
 - Switch save access
 - generated Pokémon/game data tables
-- dark and light UI foundations
-- support in the upstream code for:
-  - Pokémon FireRed / LeafGreen on Nintendo Switch
-  - Pokémon: Let's Go, Pikachu! / Eevee!
-  - Pokémon Sword / Shield
-  - Pokémon Brilliant Diamond / Shining Pearl
-  - Pokémon Legends: Arceus
-  - Pokémon Scarlet / Violet
-  - Pokémon Legends: Z-A
+- save handlers for the Switch game families represented by PKSE 1.1.3
 
-The PokeBank NX layer will keep the useful parts of that foundation while changing the product around it.
+That upstream functionality is a foundation. It is **not** automatically considered finished PokeBank NX functionality until it has been integrated into the Vault, identity, provenance and safety model and verified accordingly.
 
 ---
 
@@ -51,19 +109,21 @@ The PokeBank NX layer will keep the useful parts of that foundation while changi
 
 The end goal is an offline Pokémon collection hub that lives on the Switch.
 
-A typical workflow should eventually look like this:
+A normal workflow should eventually look like:
 
 ```text
-Game save
-   ↓
+Game / save source
+        ↓
 Party / boxes
-   ↓
+        ↓
 Select Pokémon
-   ↓
+        ↓
+Action menu
+        ↓
 PokeBank NX
    ├── Master Vault
    ├── Named Banks
-   ├── Living Dex
+   ├── Pokédex / Living Dex
    ├── Shiny Living Dex
    └── Transfer / Export
 ```
@@ -85,22 +145,20 @@ That means:
 
 ## Design rules
 
-A few decisions are non-negotiable because they affect almost every part of the project.
-
 ### Original data stays original
 
-Imported saves and original Pokémon records should be treated as source material, not disposable working copies.
+Imported saves and original Pokémon records are source material, not disposable working copies.
 
 PokeBank NX is being designed around:
 
-- preserving original bytes where practical
+- preserving original Pokémon bytes where practical
 - keeping backups before writes
 - staging modifications before committing them
 - validating data after conversion
 - keeping rollback/recovery information
 - never silently deleting or replacing the source Pokémon
 
-Until the PokeBank NX write pipeline has been fully validated on hardware, development builds should be treated with the same caution as any experimental save editor.
+Direct live-game save writing is currently hard-disabled while the safe write pipeline is being built and tested.
 
 ### Origin and current location are different things
 
@@ -115,12 +173,11 @@ FireRed — Game Boy Advance
 Current location:
 Master Vault
 
-Previous locations:
-FireRed — Nintendo Switch
-LeafGreen — Nintendo Switch
+Transfer history:
+FireRed GBA → Vault → Sword
 ```
 
-The app should not overwrite a Pokémon's history every time it moves.
+A Pokémon's history should not disappear every time it moves.
 
 ### Every release is its own game identity
 
@@ -148,15 +205,13 @@ PokeBank NX
 FireRed — Nintendo Switch
 ```
 
-a real cross-game transfer instead of treating both releases as the same save environment.
+a real cross-game transfer instead of pretending both releases are the same save environment.
 
 ---
 
-## Planned home screen
+## Target game coverage
 
-The home screen will be built around detected game sources.
-
-The target list includes:
+Detection and full support are separate milestones. A title appearing in the catalog does not mean its parser/write path is complete.
 
 ### Game Boy / Game Boy Color
 
@@ -167,6 +222,8 @@ The target list includes:
 - Pokémon Silver
 - Pokémon Crystal
 
+Current state: stable identities exist; recovered parsers do not.
+
 ### Game Boy Advance
 
 - Pokémon Ruby
@@ -174,6 +231,8 @@ The target list includes:
 - Pokémon Emerald
 - Pokémon FireRed
 - Pokémon LeafGreen
+
+Current state: stable identities exist; recovered parsers do not.
 
 ### Nintendo DS
 
@@ -187,6 +246,8 @@ The target list includes:
 - Pokémon Black 2
 - Pokémon White 2
 
+Current state: planned expansion.
+
 ### Nintendo 3DS
 
 - Pokémon X
@@ -197,6 +258,8 @@ The target list includes:
 - Pokémon Moon
 - Pokémon Ultra Sun
 - Pokémon Ultra Moon
+
+Current state: planned expansion.
 
 ### Nintendo Switch
 
@@ -213,15 +276,17 @@ The target list includes:
 - Pokémon Violet
 - Pokémon Legends: Z-A
 
-A detected title and a fully supported title are not the same thing. Support will be added and tested game-by-game.
+Current state: platform-aware identities build; existing PKSE handlers remain present and still need full PokeBank NX integration and source-specific validation.
 
 ---
 
 ## Pokémon view and action menu
 
-Selecting a Pokémon should open a summary first, not immediately modify anything.
+The current active development feature is the controller-first Pokémon action sheet.
 
-Target action menu:
+Pressing **A** on a focused Pokémon must open a deliberate menu instead of performing an immediate mutation.
+
+Target menu:
 
 ```text
 View Pokémon
@@ -235,7 +300,7 @@ Legality & Provenance
 Cancel
 ```
 
-The A button should never silently move, delete, clone, or rewrite a Pokémon.
+The A button must never silently move, delete, clone, edit or rewrite a Pokémon.
 
 ### Summary screen
 
@@ -275,19 +340,23 @@ The **Master Vault** is the core PokeBank NX concept.
 
 It is intended to be a permanent, game-independent archive of a collection rather than another temporary PC box.
 
-A Vault record may track:
+The previous custom Vault implementation was not recoverable from the interrupted workspace, so it must be rebuilt from the project specification and tests.
+
+A Vault record should eventually track information such as:
 
 ```text
-original Pokémon bytes
-current Pokémon bytes
-record hash
+stable Vault ID
+exact original Pokémon bytes
+format / generation
+SHA-256
 
 original game
 original platform
 source save
+original box / slot
 
-current game / location
-parent record
+current location
+parent / derived record
 clone relationship
 
 transfer history
@@ -296,13 +365,13 @@ legality state
 provenance
 ```
 
-The goal is to keep enough history that a Pokémon can be traced even after it has been copied, edited, converted, or transferred.
+The original record should be immutable by default. A conversion, clone or transformation should create a derived record rather than destroy the source.
 
 ---
 
 ## Banks
 
-Alongside the Master Vault, PokeBank NX will support regular named banks for day-to-day organization.
+Named banks sit on top of the Master Vault for day-to-day organization.
 
 Examples:
 
@@ -323,39 +392,46 @@ Planned bank features:
 - unlimited named banks
 - multiple boxes per bank
 - custom box names
-- copy / move
+- copy / explicit move
 - clone
 - duplicate detection
 - search
 - filtering
 - sorting
-- favorites
+- favorites / tags
 - bulk organization
+- import / export
 
-Copying should be the safe default. Moving should only happen when the user explicitly chooses it.
+Where possible, banks should reference Vault records instead of creating unnecessary duplicate Pokémon records.
 
 ---
 
-## Living Dex
+## Pokédex and Living Dex
 
-The Vault will eventually drive collection tracking.
+The Master Vault should be authoritative for **what Pokémon the user actually owns**.
+
+The Pokédex should be a view/index over that collection rather than a second manual database that can drift out of sync.
 
 Planned views include:
 
-- National Living Dex
+- National Pokédex
+- regional Pokédexes
+- Living Dex
 - Shiny Living Dex
 - regional forms
 - permanent alternate forms
 - meaningful gender differences
+- Alpha / Shiny Alpha where applicable
+- event ownership
 - owned / missing Pokémon
 - generation completion
 - completion percentages
 
-The long-term goal is to make it obvious what is missing without maintaining a separate spreadsheet.
+The `Insektaure/pkDex` project is being tracked as a Switch Pokédex UX/data reference, while PokeBank NX will implement its own Vault-driven Pokédex.
 
 ---
 
-## Fill Master Bank — All + Shinies
+## Fill Master Vault — All + Shinies
 
 A planned convenience tool will be able to populate a collection automatically.
 
@@ -368,24 +444,26 @@ The target is:
 - meaningful permanent forms
 - meaningful gender differences
 
-The generator must not:
+Generation must be:
 
-- create duplicate floods when run twice
-- present shiny-locked Pokémon as legal shinies
-- create impossible combinations and label them legal
+- deterministic
+- duplicate-aware
+- encounter-driven
+- legality-aware
+- safe to rerun
 
-Generation should be deterministic and legality-aware where the project has enough data to verify the result.
+It must not create impossible shiny-locked Pokémon and label them legal.
 
 ---
 
 ## Legality and provenance
 
-PokeBank NX will separate two questions that are often mixed together:
+PokeBank NX separates two questions:
 
 1. **Where did this Pokémon come from?**
-2. **Is this Pokémon valid for the game/encounter it claims to come from?**
+2. **Is its data valid for the game/encounter it claims to come from?**
 
-The provenance view should show things such as:
+The provenance view should show information such as:
 
 - original game
 - original platform
@@ -396,21 +474,30 @@ The provenance view should show things such as:
 - transfer history
 - legality result
 - warnings
-- checks that are unsupported or unknown
+- unsupported / unknown checks
 
-An unknown result should stay **unknown**. It should not be displayed as legal just because no error was found.
+Legality states should remain explicit:
+
+```text
+LEGAL
+INVALID
+UNKNOWN
+```
+
+`UNKNOWN` must never silently become `LEGAL`.
 
 ---
 
 ## Make Shiny
 
-The planned **Make Shiny** action is not intended to be a simple shiny-bit toggle.
+The planned **Make Shiny** action is not a simple shiny-bit toggle.
 
 Where supported, it should account for:
 
 - shiny locks
 - event restrictions
 - PID-related rules
+- trainer ID relationships
 - game restrictions
 - form restrictions
 - legality
@@ -441,11 +528,51 @@ A future workflow involving two separate game/save identities.
 
 Store the Pokémon independently from either game.
 
-A transfer should never be reported as complete if the destination save was not actually written and verified.
+A transfer must never be reported as complete if the destination was not actually written and verified.
+
+---
+
+## Pokémon HOME bridge
+
+PokeBank NX is **not** intended to impersonate the official Pokémon HOME client or directly connect to Nintendo/Pokémon servers.
+
+The planned bridge is deliberately based on official game compatibility:
+
+```text
+PokeBank NX
+     ↓
+compatible Switch game
+     ↓
+official Pokémon HOME
+```
+
+Reverse direction:
+
+```text
+official Pokémon HOME
+     ↓
+compatible Switch game
+     ↓
+PokeBank NX
+     ↓
+Master Vault
+```
+
+Future HOME Bridge work may include:
+
+- destination compatibility selection
+- recommended bridge-game selection
+- conservative preflight validation
+- batch import/export preparation
+- preservation of HOME-related identity/provenance when it already exists
+
+PokeBank NX should not generate or forge HOME trackers, and it should not claim that generated or edited Pokémon are "ban safe" or guaranteed to pass future server checks.
 
 ---
 
 ## Save safety
+
+Direct live-game save writing is currently **hard-disabled**.
 
 Any future live-write path should follow a process similar to:
 
@@ -454,20 +581,26 @@ Read source save
       ↓
 Create backup
       ↓
+Hash / record source
+      ↓
 Create staged copy
       ↓
 Apply change
       ↓
 Repair checksums / structures
       ↓
-Validate
+Reparse + validate
       ↓
 Write destination
       ↓
-Verify result
+Read back
+      ↓
+Verify intended mutation
       ↓
 Keep recovery copy
 ```
+
+Anything failing should leave the original recoverable.
 
 Save safety matters more than convenience. A Pokémon collection can represent years of playtime.
 
@@ -475,7 +608,7 @@ Save safety matters more than convenience. A Pokémon collection can represent y
 
 ## Startup and loading
 
-The current visual direction for the app is the Route 1-style splash shown at the top of this README.
+The current visual direction for the app is the Route 1-style artwork shown at the top of this README.
 
 The planned startup sequence is:
 
@@ -486,18 +619,64 @@ Load settings
       ↓
 Initialize services
       ↓
-Load game data
+Load game registry
       ↓
-Open Vault / Banks
+Load Pokémon data
+      ↓
+Initialize sprites
+      ↓
+Open Master Vault
+      ↓
+Load Banks
       ↓
 Scan saves
       ↓
 Home
 ```
 
-Rather than a generic progress bar, the eventual loading animation may use the Pokémon shown along the bottom of the splash screen as progress milestones — each one lighting up as another initialization stage completes.
+Rather than a fake timer, startup progress should represent real initialization work.
 
-Startup progress should represent real work, not a fake timer.
+One planned visual option is to use the Pokémon along the bottom of the splash as progress milestones, lighting them up as real startup stages complete.
+
+---
+
+## Upstream and reference stack
+
+Before PokeBank NX reimplements major Pokémon-format, legality, conversion, save-parsing, Pokédex, banking or generation systems, the project now explicitly audits mature existing work first.
+
+| Project | Role in PokeBank NX |
+|---|---|
+| [PKSE](https://github.com/kiasta/PKSE) | Original native Switch foundation. Upstream only. |
+| [PKSM-Core](https://github.com/FlagBrew/PKSM-Core) | High-priority native C++ Pokémon/save engine candidate, especially Gen I-VIII. |
+| [PKHeX](https://github.com/kwsch/PKHeX) | Primary correctness/reference implementation for formats, saves, legality, encounters and conversion. |
+| [Auto Legality Mod / PKHeX-Plugins](https://github.com/santacrab2/PKHeX-Plugins) | Encounter-driven legality/generation reference and planned host-side test/generation support. |
+| [pkHouse](https://github.com/Insektaure/pkHouse) | Modern Switch save/bank behavior reference: LGPE, SwSh, BDSP, PLA, SV, Z-A, Switch FRLG, SCBlocks, Pokédex/HT behavior and more. |
+| [pkDex](https://github.com/Insektaure/pkDex) | Switch Pokédex UX/data reference. PokeBank NX builds its own Vault-driven Pokédex. |
+| [PKForge](https://github.com/sofianeelhor/PKForge) | Vault/provenance/atomic-write architecture reference and PKHeX/AutoMod integration example. |
+
+### pkHouse / pkDex policy
+
+The pkHouse author, Insektaure, explicitly encouraged using pkHouse as a reference and recommended reimplementing needed behavior rather than pure copy/paste. The author also offered to answer technical questions about how parts of pkHouse work.
+
+For PokeBank NX, pkHouse and pkDex are therefore treated as **REFERENCE ONLY** unless a future, explicit code-reuse decision is made with compatible licensing.
+
+### PKHeX Oracle
+
+A planned host-side developer tool will pin compatible revisions of PKHeX.Core and Auto Legality Mod and expose machine-readable legality, encounter, conversion and generation results.
+
+Conceptually:
+
+```text
+PKHeX.Core + AutoMod
+        ↓
+PokeBank Oracle
+        ↓
+JSON / golden test vectors
+        ↓
+compare with native C++ PokeBank NX behavior
+```
+
+The Oracle runs on the development computer. The Switch application remains native C++.
 
 ---
 
@@ -505,73 +684,98 @@ Startup progress should represent real work, not a fake timer.
 
 This roadmap tracks **PokeBank NX**, not the upstream PKSE project.
 
-### 0. Repository and recovery
+### 0. Repository recovery and safety baseline
 
 - [x] Create `GlitchedZeus/PokeBank-NX`
 - [x] Preserve/import PKSE 1.1.3 source and history
-- [x] Keep PKSE available as the upstream foundation
-- [ ] Recover and merge the interrupted PokeBank NX development workspace
-- [ ] Add `PROJECT_STATUS.md`
-- [ ] Establish repeatable milestone commits and pushes
-- [ ] Add build/version information to the app
+- [x] Keep PKSE as upstream-only
+- [x] Recover the interrupted 23-game-identity milestone
+- [x] Publish a verified recovery branch to GitHub
+- [x] Add `PROJECT_STATUS.md`
+- [x] Add host regression tests
+- [x] Add ASan / UBSan test target
+- [x] Verify native `.nro` build
+- [x] Add app version + abbreviated Git commit display
+- [x] Hard-disable live game-save writes during alpha development
+- [ ] Run the recovered build on physical Switch hardware
+- [ ] Publish a repeatable test `.nro` artifact/release
 
-### 1. PokeBank NX identity and startup
+### 1. Upstream reuse audit
+
+- [x] Track PKSE
+- [x] Track PKSM-Core
+- [x] Track PKHeX
+- [x] Track Auto Legality Mod / PKHeX-Plugins
+- [x] Track pkHouse
+- [x] Track pkDex
+- [x] Track PKForge
+- [ ] Audit PKSM-Core for direct native C++ integration/adaptation
+- [ ] Build the host-side PKHeX Oracle
+- [ ] Add golden comparison tests against PKHeX
+- [ ] Record exact upstream files/SHAs/licenses when functionality is adopted
+
+### 2. PokeBank NX identity and startup
 
 - [x] Finalize project name
 - [x] Create project splash/header artwork
-- [ ] Replace remaining PKSE branding in the app
-- [ ] Add PokeBank NX icon / NRO metadata
+- [x] Add build version + abbreviated Git commit display
+- [ ] Replace remaining PKSE/PokeVault branding in the app
+- [ ] Add final PokeBank NX icon / NRO metadata
 - [ ] Add real startup/loading screen
-- [ ] Add build version + abbreviated Git commit
 - [ ] OLED Black theme
 - [ ] Dark theme
 - [ ] Light theme
 
-### 2. Game identity and discovery
+### 3. Game identity and discovery
 
-- [ ] Stable release/platform game IDs
-- [ ] FireRed GBA
-- [ ] LeafGreen GBA
-- [ ] FireRed Switch
-- [ ] LeafGreen Switch
+- [x] Stable release/platform game IDs
+- [x] FireRed GBA identity
+- [x] LeafGreen GBA identity
+- [x] FireRed Switch identity
+- [x] LeafGreen Switch identity
+- [x] Clear platform labels on native game cards
 - [ ] RetroArch save discovery
 - [ ] Manual save import
-- [ ] Clear platform labels on game cards
+- [ ] Validate Switch FireRed/LeafGreen outer save containers
 
-### 3. Game browser
+### 4. Controller-first playable workflow
 
-- [ ] Home screen with detected games
-- [ ] Game artwork/cards
-- [ ] Party browser
-- [ ] Box browser
-- [ ] Box names / numbers
-- [ ] Pokémon grid
+- [x] Native installed-title cards
+- [ ] Pokémon A-button action sheet
+- [ ] Game → party flow under PokeBank identity/source model
+- [ ] Game → boxes flow under PokeBank identity/source model
+- [ ] Pokémon summary screen
 - [ ] Controller shortcuts
 - [ ] Handheld/docked layout pass
 
-### 4. Master Vault and banks
+### 5. Master Vault and banks
 
 - [ ] Immutable Master Vault
-- [ ] Persistent Vault database
+- [ ] Stable Vault IDs
+- [ ] Exact raw entity preservation
+- [ ] SHA-256 / integrity metadata
+- [ ] Persistent Vault database/store
 - [ ] Named banks
 - [ ] Add to Master Vault
 - [ ] Add to Bank
-- [ ] Clone
+- [ ] Clone / derived-record lineage
 - [ ] Duplicate handling
 - [ ] Provenance chain
 - [ ] Original/current-location tracking
 - [ ] Backup/recovery tools
 
-### 5. Retro save support
+### 6. Retro save support
 
+- [ ] Audit/adapt PKSM-Core before rewriting mature Gen I-VIII logic
 - [ ] Red / Blue / Yellow
 - [ ] Gold / Silver / Crystal
 - [ ] Ruby / Sapphire / Emerald
 - [ ] FireRed / LeafGreen GBA
 - [ ] Read-only import validation
+- [ ] Byte-identical no-edit round-trip tests where applicable
 - [ ] Regression tests for each parser
 
-### 6. Pokémon tools
+### 7. Pokémon tools
 
 - [ ] Full summary screen
 - [ ] Controller-friendly editor
@@ -582,21 +786,25 @@ This roadmap tracks **PokeBank NX**, not the upstream PKSE project.
 - [ ] Filter
 - [ ] Sort
 - [ ] Import / export Pokémon files
+- [ ] PKHeX Oracle comparison tests
 
-### 7. Nintendo Switch titles
+### 8. Nintendo Switch title integration
 
-- [ ] FireRed Switch adapter
-- [ ] LeafGreen Switch adapter
+- [ ] FireRed Switch adapter integration
+- [ ] LeafGreen Switch adapter integration
 - [ ] Let's Go Pikachu / Eevee integration
 - [ ] Sword / Shield integration
 - [ ] Brilliant Diamond / Shining Pearl integration
 - [ ] Legends: Arceus integration
 - [ ] Scarlet / Violet integration
 - [ ] Legends: Z-A integration
+- [ ] Handling Trainer behavior
+- [ ] Pokédex registration behavior
+- [ ] save checksum / round-trip validation
 
-The imported PKSE code already contains support for these Switch titles. This phase is about integrating that functionality into the PokeBank NX model, Vault, game identities, provenance, and safety rules rather than simply listing upstream support as finished PokeBank work.
+The imported PKSE code already contains handlers for these Switch families. This phase is about integrating that functionality into PokeBank NX's Vault, game identities, provenance and safety rules. pkHouse is tracked as a reference for modern Switch behavior, not as code to paste wholesale.
 
-### 8. DS / 3DS support
+### 9. DS / 3DS support
 
 - [ ] Diamond / Pearl / Platinum
 - [ ] HeartGold / SoulSilver
@@ -607,17 +815,31 @@ The imported PKSE code already contains support for these Switch titles. This ph
 - [ ] Sun / Moon
 - [ ] Ultra Sun / Ultra Moon
 
-### 9. Living collection
+### 10. Pokédex and living collection
 
-- [ ] National Living Dex
+- [ ] National Pokédex
+- [ ] Regional Pokédexes
+- [ ] Vault-driven ownership indexing
+- [ ] Living Dex
 - [ ] Shiny Living Dex
 - [ ] form tracking
+- [ ] meaningful gender differences
+- [ ] Alpha / Shiny Alpha tracking where applicable
+- [ ] event ownership
 - [ ] missing Pokémon views
 - [ ] completion statistics
-- [ ] Fill Master Bank
-- [ ] Fill Master Bank — All + Shinies
 
-### 10. Transfers
+### 11. Generated collection tools
+
+- [ ] Encounter-driven generator
+- [ ] Auto Legality / PKHeX reference integration in development tooling
+- [ ] shiny-lock data
+- [ ] generated-record provenance
+- [ ] Fill Master Vault
+- [ ] Fill Master Vault — All + Shinies
+- [ ] deterministic / duplicate-aware reruns
+
+### 12. Transfers
 
 - [ ] Compatibility matrix
 - [ ] Destination conversion
@@ -629,7 +851,20 @@ The imported PKSE code already contains support for these Switch titles. This ph
 - [ ] validation
 - [ ] rollback/recovery
 
-### 11. Events and advanced collection data
+### 13. Pokémon HOME bridge
+
+- [ ] HOME-compatible destination selector
+- [ ] Conservative HOME preflight validation
+- [ ] Vault → compatible Switch game → official HOME workflow
+- [ ] Official HOME → compatible Switch game → Vault workflow
+- [ ] Preserve existing HOME-related identity/provenance data
+- [ ] Recommended bridge-game selection
+- [ ] Batch HOME import/export preparation
+- [ ] External-storage adapter architecture for future official services
+
+PokeBank NX will not directly impersonate Pokémon HOME or forge HOME tracker/server history.
+
+### 14. Events and advanced collection data
 
 - [ ] Mystery Gift support
 - [ ] Wonder Cards
@@ -639,16 +874,23 @@ The imported PKSE code already contains support for these Switch titles. This ph
 - [ ] ribbons / marks
 - [ ] event collection tracking
 
-### 12. Release hardening
+### 15. Safe live writing and release hardening
 
-- [ ] crash recovery
+- [x] Hard-lock live game-save writing during early alpha
+- [ ] backup-before-mutation pipeline
+- [ ] staged save clone
+- [ ] checksum/structure repair
+- [ ] reparse + validate written save
+- [ ] read-back verification
+- [ ] rollback/recovery
 - [ ] corruption detection
 - [ ] low-space handling
 - [ ] SD-card failure handling
+- [ ] crash recovery
 - [ ] large-Vault stress testing
 - [ ] performance pass
 - [ ] complete regression suite
-- [ ] physical Switch validation
+- [ ] repeated physical Switch validation
 - [ ] release packaging
 - [ ] user documentation
 - [ ] stable v1.0
@@ -659,59 +901,44 @@ The imported PKSE code already contains support for these Switch titles. This ph
 
 PokeBank NX currently inherits the PKSE Switch build system.
 
-### Requirements
+### Host tests
 
-- devkitPro
-- devkitA64 / libnx
-- Switch development packages
-- Python 3 for asset/data generation tools
-- Pillow if regenerating HD sprites
+The recovered development branch has dedicated host-side test targets:
 
-Set `DEVKITPRO` appropriately for your system.
+```bash
+make -f Makefile.host host-clean
+make -f Makefile.host host-test
+make -f Makefile.host host-sanitize
+```
 
-### Fetch HD Pokémon sprites
+### Native Nintendo Switch build
 
-The repository contains a helper script for generating the ROMFS sprite set:
+The recovery environment used devkitPro/devkitA64 and a native `make -j1` integration build.
+
+The exact environment setup is tracked in [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+
+The existing asset/data generator remains available, including:
 
 ```bash
 python tools/gen_hdsprites.py
 ```
 
-### Build the `.nro`
-
-```bash
-make clean && make all
-```
-
-If generated/downloaded assets are already present:
-
-```bash
-make clean && make
-```
-
-The resulting native Switch build should be treated separately from host tests:
-
-```text
-IMPLEMENTED
-HOST TESTED
-NRO BUILDS
-DEVICE TESTED
-```
-
-A successful `.nro` build is not the same thing as successful testing on physical hardware.
+A native build should always be reported separately from host testing and physical hardware validation.
 
 ---
 
 ## Development workflow
 
-GitHub is intended to be the permanent project state.
+GitHub is the permanent project state. Temporary coding-agent workspaces are not.
 
-A normal development milestone should look like:
+A normal meaningful milestone should follow:
 
 ```text
 implement
    ↓
-test
+host tests
+   ↓
+sanitzer / regression checks
    ↓
 build .nro
    ↓
@@ -719,12 +946,16 @@ update PROJECT_STATUS.md
    ↓
 commit
    ↓
-push
+push to GlitchedZeus/PokeBank-NX
+   ↓
+verify remote SHA
+   ↓
+continue
 ```
 
-Important work should not be left only inside a temporary coding-agent workspace.
+The original PKSE repository remains **upstream only** and must never receive PokeBank NX-specific pushes.
 
-The original PKSE repository should remain an **upstream source**, not the destination for PokeBank NX changes.
+Before implementing major Pokémon infrastructure, contributors should also check the tracked reference projects rather than rewriting mature functionality unnecessarily.
 
 ---
 
@@ -732,38 +963,46 @@ The original PKSE repository should remain an **upstream source**, not the desti
 
 PokeBank NX is still changing quickly, so large pull requests should be discussed before replacing major architecture.
 
-The priorities are:
+Priorities:
 
 1. do not lose user data
-2. preserve provenance
-3. keep the Switch UI simple
-4. avoid regressions
-5. test save-format changes
-6. keep the build reproducible
+2. preserve original Pokémon and provenance
+3. keep live writes disabled until the safety pipeline is proven
+4. keep the Switch UI simple and controller-first
+5. avoid regressions
+6. test save-format changes
+7. prefer mature, verified research over unnecessary reinvention
+8. keep the build reproducible
+9. keep GitHub and `PROJECT_STATUS.md` current
 
-When `PROJECT_STATUS.md` is added, contributors should read it before starting work.
+Read [`PROJECT_STATUS.md`](PROJECT_STATUS.md) before starting development work.
 
 ---
 
 ## Upstream and credits
 
-PokeBank NX is derived from **PKSE — Pokémon Save Editor** and intentionally keeps its upstream Git history.
+PokeBank NX is derived from **PKSE — Pokémon Save Editor** and intentionally keeps its upstream history.
 
-The project also relies on work from the wider Pokémon and Switch homebrew communities, including:
+The project also studies or relies on work from the wider Pokémon and Switch homebrew communities, including:
 
 - [PKSE](https://github.com/kiasta/PKSE)
+- [PKSM-Core](https://github.com/FlagBrew/PKSM-Core)
 - [PKHeX](https://github.com/kwsch/PKHeX)
+- [Auto Legality Mod / PKHeX-Plugins](https://github.com/santacrab2/PKHeX-Plugins)
+- [pkHouse](https://github.com/Insektaure/pkHouse)
+- [pkDex](https://github.com/Insektaure/pkDex)
+- [PKForge](https://github.com/sofianeelhor/PKForge)
 - [PokeAPI sprites](https://github.com/PokeAPI/sprites)
 - [devkitPro](https://devkitpro.org/)
 - [libnx](https://github.com/switchbrew/libnx)
 
-Please keep applicable upstream notices and licenses intact when redistributing modified builds or source.
+Reference does not automatically mean source code is copied or included. Applicable upstream notices, attribution and license requirements must be preserved whenever code is directly reused.
 
 ---
 
 ## License
 
-The codebase is licensed under the **GNU Affero General Public License v3.0** as inherited from PKSE.
+The PokeBank NX codebase is licensed under the **GNU Affero General Public License v3.0** as inherited from PKSE.
 
 See [`LICENSE`](LICENSE) for the full license text.
 
@@ -785,9 +1024,31 @@ Always keep independent backups of important saves while using development build
 
 ## Current focus
 
-The immediate goal is not to implement every generation at once.
+The immediate goal is **not** to implement every generation at once.
 
-The first usable PokeBank NX milestone is:
+The current development path is:
+
+```text
+Verified GitHub baseline
+      ↓
+Upstream reuse audit
+      ↓
+A-button Pokémon action sheet
+      ↓
+Master Vault v1
+      ↓
+Named Banks
+      ↓
+Pokémon summary + provenance
+      ↓
+Retro read-only adapters
+      ↓
+Modern Switch integration
+      ↓
+Cross-generation conversion
+```
+
+The first genuinely useful PokeBank NX milestone remains:
 
 ```text
 Boot PokeBank NX
@@ -796,12 +1057,13 @@ Detect supported games
       ↓
 Browse party / boxes
       ↓
-Open Pokémon summary
+Open deliberate Pokémon action menu
+      ↓
+View Pokémon summary
       ↓
 Add to Master Vault / Bank
       ↓
 Persist safely
 ```
 
-Once that works reliably on a physical Switch, the rest of the roadmap becomes expansion of a functioning app rather than construction of a prototype.ails.
-
+Once that works reliably on a physical Switch, the rest of the roadmap becomes expansion of a functioning app rather than construction of a prototype.
