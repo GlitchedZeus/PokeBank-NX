@@ -5,6 +5,15 @@ Status: ACTIVE EXECUTION PLAN
 
 `PROJECT_STATUS.md` is the authoritative verified-state record. This file is the recommended order for the next coding blocks after the completed Action Sheet milestone and interrupted Session 2 UI/theme work.
 
+Ready-to-run prompts are now stored permanently in the repository:
+
+```text
+docs/PROMPT_SESSION2_RECOVERY.md   HIGH — recover/finish issue #13
+docs/PROMPT_SESSION3_PKSM_CORE.md  MAX  — hardware feedback + issue #4 PKSM-Core spike
+```
+
+Use those instead of reconstructing long prompts from chat history.
+
 ---
 
 # Current position
@@ -43,6 +52,12 @@ Important: a Session 2 coding run reported substantial **local-only** implementa
 
 # Block A — HIGH — recover and finish Session 2
 
+Use:
+
+```text
+docs/PROMPT_SESSION2_RECOVERY.md
+```
+
 ## Objective
 
 Recover the interrupted local UI/control/theme work if it still exists, finish the smallest coherent issue #13 milestone, and produce a new combined device-test `.nro`.
@@ -59,9 +74,10 @@ git rev-parse --show-toplevel
 git status
 git status --short
 git branch -avv
-git log --all --oneline --decorate --graph -30
-git reflog -30
+git log --all --oneline --decorate --graph -40
+git reflog -40
 git stash list
+git worktree list
 ```
 
 The previous coding agent explicitly reported using a preserved Session 2 branch/worktree.
@@ -69,10 +85,10 @@ The previous coding agent explicitly reported using a preserved Session 2 branch
 Look for:
 
 - uncommitted Session 2 changes;
-- local Session 2 branches;
+- local Session 2 branches/worktrees;
 - local commits not pushed to origin;
 - relevant reflog entries;
-- stashes/worktrees.
+- stashes.
 
 Do not destroy that work by immediately resetting to GitHub.
 
@@ -88,6 +104,7 @@ docs/UI_FLOW.md
 docs/UI_STYLE_GUIDE.md
 docs/ARCHITECTURE.md
 docs/SAVE_SAFETY.md
+docs/BUILD_RECORD.md
 GitHub issue #13
 ```
 
@@ -162,7 +179,7 @@ error
 info
 ```
 
-Theme choice should persist.
+Theme choice should persist. Invalid persisted values must fall back safely.
 
 Light is not simply an inverted Dark theme.
 
@@ -233,7 +250,7 @@ Stop after the coherent UI/control milestone is saved.
 
 # Between Block A and Block B — physical Switch test
 
-Use `docs/DEVICE_TEST_CHECKLIST.md`.
+Use `docs/DEVICE_TEST_CHECKLIST.md` and issue #8.
 
 Test the **new combined build**, not an unidentified older binary.
 
@@ -289,6 +306,12 @@ If hardware testing is clean enough, skip straight to Block C.
 
 # Block C — MAX — PKSM-Core Gen III spike
 
+Use:
+
+```text
+docs/PROMPT_SESSION3_PKSM_CORE.md
+```
+
 Use **MAX/deep reasoning** for this block.
 
 GitHub issue:
@@ -306,6 +329,7 @@ docs/PKSM_CORE_INTEGRATION.md
 docs/ARCHITECTURE.md
 docs/SAVE_SAFETY.md
 docs/GAME_SUPPORT_MATRIX.md
+GitHub issue #17
 ```
 
 ## Narrow first target
@@ -337,11 +361,13 @@ Base the choice on license compatibility, build/dependency cost, correctness, ma
 
 No live writes during this spike.
 
+Issue #17 tracks the reproducible fixture corpus. Build only the smallest useful fixtures needed for the first spike; do not let fixture perfection block the integration decision.
+
 ---
 
 # After PKSM-Core spike
 
-Recommended order:
+Recommended product order:
 
 ```text
 #3  Master Vault v1 + named Banks
@@ -353,7 +379,15 @@ Recommended order:
 #10 Conversion / transfer without live writes
 ```
 
-Issue #15 can improve recurring `.nro` artifact preservation in parallel when it does not block product work.
+Supporting issues:
+
+```text
+#15 persistent .nro artifact workflow
+#16 final branding/startup/NRO metadata
+#17 reproducible golden fixture corpus
+```
+
+These should be integrated when useful without derailing the current product milestone.
 
 ---
 
@@ -373,36 +407,14 @@ large visual redesign before finishing the interrupted UI milestone
 
 ---
 
-# Compact continuation prompt
+# Five-PM rule
+
+At the next coding block, do not invent a new plan.
+
+Start with:
 
 ```text
-POKEBANK NX — SESSION 2 CONTINUATION
-
-Use HIGH reasoning.
-
-Continue GlitchedZeus/PokeBank-NX on feature/pokebank-playable.
-PKSE is upstream only; never push PokeBank NX changes there.
-
-Issue #2 Action Sheet is completed. Do not redo it except for regressions.
-
-The previous issue #13 UI/theme session ran out of usage before test/build/commit/push.
-It explicitly reported preserved LOCAL Session 2 work.
-
-BEFORE reset/clean/checkout, inspect git status, local branches, reflog and stash and recover that work if it exists.
-
-Read PROJECT_STATUS.md, docs/NEXT_SESSION_PLAN.md, docs/CONTROLS.md,
-docs/UI_FLOW.md, docs/UI_STYLE_GUIDE.md, docs/ARCHITECTURE.md and issue #13.
-
-Finish the HOME-style controls + OLED Black/Dark/Light semantic theme foundation.
-Add host regressions for theme persistence/palette roles, + Options vs Exit, - Help,
-held navigation repeat, active button hints, Action Sheet safety, and live-write lock.
-
-Then run host tests, sanitizers, git diff --check, and native make -j1.
-
-Update PROJECT_STATUS.md, commit the APPLICATION SOURCE, push to origin,
-verify the remote SHA, and provide the new .nro with filename, source SHA, size and SHA-256.
-
-Do not start PKSM-Core in this session.
-Do not mark DEVICE TESTED.
-Start by finding the interrupted local Session 2 work.
+docs/PROMPT_SESSION2_RECOVERY.md
 ```
+
+and recover/finish issue #13 first.
