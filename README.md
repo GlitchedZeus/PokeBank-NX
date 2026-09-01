@@ -1,236 +1,807 @@
 <p align="center">
-  <img src="assets/banner.png" alt="PKSE - Pokemon Save Editor" width="640">
+  <img src="assets/branding/pokebank-nx-header.png" alt="PokeBank NX" width="100%">
 </p>
 
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-blue.svg" alt="License: AGPL v3"></a>
-</p>
+# PokeBank NX
 
-# **PKSE - Pokemon Save Editor**
-PKSE is a homebrew application for conveniently editing Pokemon save files on the Nintendo Switch, without having to transfer save files to your PC.
+**PokeBank NX** is an offline Pokémon storage and save-management project for Nintendo Switch homebrew.
 
-## **Features**
-- Backup and restore save files, directly on the console.
-- Edit party and box Pokemon: species, level, stats, IVs/EVs (AVs in Let's Go), nature, ability, moves, held item, ball, OT/met/origin, shininess and gender.
-- Edit trainer info and item pouches.
-- **Pokemon creator** — build a Pokemon from scratch in any supported game's format, with legal options highlighted.
-- **Legality checker** — flags illegal values as you edit (informational; it never blocks or auto-changes anything).
-- **Cross-game bank** — PKSE-native persistent storage that every supported game shares. Deposit from one game and withdraw into another and the Pokemon is converted into the destination's format on the way out, preserving its origin (OT, IDs, met data, IVs/nature/PID). Moves the destination can't legally know are cleared, since an impossible move corrupts the Pokemon in some games.
+The project started from the PKSE codebase, but the goal is broader: one native Switch app for browsing Pokémon saves, keeping a permanent local collection, organizing Pokémon into banks, tracking where they came from, and eventually moving compatible Pokémon between games and generations without depending on an online service.
 
-## **Screenshots**
-
-Each row is the same screen in the dark and light themes. Click any shot for full size.
-
-<a href="assets/screenshots/0.jpg"><img src="assets/screenshots/0.jpg" alt="Title selection (dark theme)" width="380"></a>
-<a href="assets/screenshots/1.jpg"><img src="assets/screenshots/1.jpg" alt="Title selection (light theme)" width="380"></a>
-
-<a href="assets/screenshots/2.jpg"><img src="assets/screenshots/2.jpg" alt="Main menu (dark theme)" width="380"></a>
-<a href="assets/screenshots/3.jpg"><img src="assets/screenshots/3.jpg" alt="Main menu (light theme)" width="380"></a>
-
-<a href="assets/screenshots/4.jpg"><img src="assets/screenshots/4.jpg" alt="Box view (dark theme)" width="380"></a>
-<a href="assets/screenshots/5.jpg"><img src="assets/screenshots/5.jpg" alt="Box view (light theme)" width="380"></a>
-
-<a href="assets/screenshots/6.jpg"><img src="assets/screenshots/6.jpg" alt="Pokemon details (dark theme)" width="380"></a>
-<a href="assets/screenshots/7.jpg"><img src="assets/screenshots/7.jpg" alt="Pokemon details (light theme)" width="380"></a>
-
-<a href="assets/screenshots/8.jpg"><img src="assets/screenshots/8.jpg" alt="Editing a stat (dark theme)" width="380"></a>
-<a href="assets/screenshots/9.jpg"><img src="assets/screenshots/9.jpg" alt="Editing a stat (light theme)" width="380"></a>
-
-<a href="assets/screenshots/10.jpg"><img src="assets/screenshots/10.jpg" alt="Party view (dark theme)" width="380"></a>
-<a href="assets/screenshots/11.jpg"><img src="assets/screenshots/11.jpg" alt="Party view (light theme)" width="380"></a>
-
-<a href="assets/screenshots/12.jpg"><img src="assets/screenshots/12.jpg" alt="Storage and bank (dark theme)" width="380"></a>
-<a href="assets/screenshots/13.jpg"><img src="assets/screenshots/13.jpg" alt="Storage and bank (light theme)" width="380"></a>
-
-## **Title Compatibility**
-
-All seven mainline Switch titles are implemented, and all of them interconnect through the bank.
-
-| Generation | Title | Status |
-|---|---|---|
-| 3 | FireRed / LeafGreen | Implemented — hardware validated |
-| 7 | Let's Go, Pikachu! / Eevee! | Implemented — hardware validated |
-| 8 | Sword / Shield | Implemented — hardware validated |
-| 8 | Brilliant Diamond / Shining Pearl | Implemented — hardware validated |
-| 8 | Legends: Arceus | Implemented — hardware validated |
-| 9 | Scarlet / Violet | Implemented — hardware validated |
-| 9 | Legends: Z-A | Implemented — hardware validated |
-
-
-### Known gaps
-- Transferring *into* Gen 3 rebuilds the Pokemon's PID. Gen 3 derives nature, gender, shininess and ability slot from the PID, so PKSE searches for a PID that reproduces all four — those traits are preserved (the original PID is kept in the rare case no match is found). The trade-off is that the PID itself changes, and the resulting PID/IV pair won't correspond to a real Gen 3 RNG frame; PKSE warns you before the conversion. Custom nicknames also fall back to the species name.
-- Ribbons are counted but not individually displayed or editable.
+This repository is under active development. It is not ready to be treated as a production-safe save manager yet.
 
 ---
 
-## **Prerequisites**
+## Project status
 
-### 1. Install Required Tools
-Ensure the following tools and dependencies are installed:
+The public `main` branch currently contains the full **PKSE 1.1.3** source and Git history as the upstream foundation. PokeBank NX-specific development is being recovered and rebuilt on top of that base.
 
-#### **1.1. devkitPro**
-- Download and install [devkitPro](https://devkitpro.org/wiki/Getting_Started).
-- Ensure `Switch Development` is selected during installation.
+The rule for this project is simple: a feature only gets marked complete here after the code is present in this repository and the relevant build/tests pass.
 
-#### **1.2. zlib installation** (Optional, will implement compressed logic in future versions)
-- In the MSys2 shell, run ```pacman -S switch-zlib``` to install the zlib for compression support.
+### What is already in the repository
+
+The imported PKSE foundation gives PokeBank NX a substantial starting point:
+
+- native Nintendo Switch `.nro` application and build system
+- controller-driven UI
+- save backup and restore infrastructure
+- party and box browsing
+- Pokémon editing
+- trainer and item editing
+- Pokémon creation
+- legality-related checks
+- shared cross-game bank infrastructure
+- Switch save access
+- generated Pokémon/game data tables
+- dark and light UI foundations
+- support in the upstream code for:
+  - Pokémon FireRed / LeafGreen on Nintendo Switch
+  - Pokémon: Let's Go, Pikachu! / Eevee!
+  - Pokémon Sword / Shield
+  - Pokémon Brilliant Diamond / Shining Pearl
+  - Pokémon Legends: Arceus
+  - Pokémon Scarlet / Violet
+  - Pokémon Legends: Z-A
+
+The PokeBank NX layer will keep the useful parts of that foundation while changing the product around it.
 
 ---
 
-### 2. Set Up Environmental Variables
-Set the `DEVKITPRO` environment variable to the installation path of devkitPro.
+## What PokeBank NX is trying to become
 
-#### On Windows:
-```bash
-setx DEVKITPRO "C:\devkitPro"
-```
-#### On macOS/Linux:
-Add the following line to your shell configuration file (~/.bashrc or ~/.zshrc):
-```bash
-export DEVKITPRO=/opt/devkitpro
+The end goal is an offline Pokémon collection hub that lives on the Switch.
+
+A typical workflow should eventually look like this:
+
+```text
+Game save
+   ↓
+Party / boxes
+   ↓
+Select Pokémon
+   ↓
+PokeBank NX
+   ├── Master Vault
+   ├── Named Banks
+   ├── Living Dex
+   ├── Shiny Living Dex
+   └── Transfer / Export
 ```
 
-Restart your terminal or run the command to apply the changes.
+The app should feel like a Switch application first, not a desktop editor squeezed onto a console.
+
+That means:
+
+- controller-first navigation
+- fast box browsing
+- clear game artwork and platform labels
+- a proper Pokémon summary screen
+- safe, deliberate actions
+- useful search and organization
+- simple backup/recovery
+- no subscription or online account required for the core collection
 
 ---
 
-### 3. Configure Visual Studio Code
+## Design rules
 
-To configure IntelliSense in VS Code:
+A few decisions are non-negotiable because they affect almost every part of the project.
 
-#### **3.1. Install Extensions**
-- C/C++ by Microsoft
-- DevkitPro Tools (if available)
+### Original data stays original
 
-#### **3.2. Create a c_cpp_properties.json File**
-Create or update the file in .vscode/c_cpp_properties.json with the following content:
-```json
-{
-  "configurations": [
-    {
-      "name": "Switch",
-      "includePath": [
-        "${workspaceFolder}/include/**",
-        "${workspaceFolder}/src/**",
-        "${env:DEVKITPRO}/libnx/include",
-        "${env:DEVKITPRO}/portlibs/switch/include", // We should include optional libraries here
-        "${env:DEVKITPRO}/devkitA64/aarch64-none-elf/include"
-      ],
-      "defines": [],
-      "compilerPath": "${env:DEVKITPRO}/devkitA64/bin/aarch64-none-elf-g++.exe",
-      "cStandard": "c11",
-      "cppStandard": "c++20", // This version is necessary
-      "intelliSenseMode": "linux-gcc-arm64"
-    }
-  ],
-  "version": 4
-}
+Imported saves and original Pokémon records should be treated as source material, not disposable working copies.
+
+PokeBank NX is being designed around:
+
+- preserving original bytes where practical
+- keeping backups before writes
+- staging modifications before committing them
+- validating data after conversion
+- keeping rollback/recovery information
+- never silently deleting or replacing the source Pokémon
+
+Until the PokeBank NX write pipeline has been fully validated on hardware, development builds should be treated with the same caution as any experimental save editor.
+
+### Origin and current location are different things
+
+If a Charizard was originally caught in FireRed on GBA and later moved into another game, PokeBank NX should remember both facts.
+
+Example:
+
+```text
+Original origin:
+FireRed — Game Boy Advance
+
+Current location:
+Master Vault
+
+Previous locations:
+FireRed — Nintendo Switch
+LeafGreen — Nintendo Switch
 ```
 
+The app should not overwrite a Pokémon's history every time it moves.
+
+### Every release is its own game identity
+
+PokeBank NX identifies a game by its release and platform, not just its title.
+
+For example:
+
+```text
+firered_gba
+leafgreen_gba
+
+firered_switch
+leafgreen_switch
+```
+
+Those are four different game identities.
+
+That makes a future transfer such as:
+
+```text
+FireRed — GBA
+      ↓
+PokeBank NX
+      ↓
+FireRed — Nintendo Switch
+```
+
+a real cross-game transfer instead of treating both releases as the same save environment.
+
 ---
 
-## **4. Build the Project**
+## Planned home screen
 
-#### **4.1. Fetch the Pokemon sprites** (one time)
+The home screen will be built around detected game sources.
 
-The HD Pokemon sprites are **not** downloaded by `make`. Fetch them once from the [PokeAPI HOME renders](https://github.com/PokeAPI/sprites) and downscale them into `romfs/` with the bundled script — it needs Python 3 and [Pillow](https://pypi.org/project/Pillow/) (`pip install pillow`):
+The target list includes:
+
+### Game Boy / Game Boy Color
+
+- Pokémon Red
+- Pokémon Blue
+- Pokémon Yellow
+- Pokémon Gold
+- Pokémon Silver
+- Pokémon Crystal
+
+### Game Boy Advance
+
+- Pokémon Ruby
+- Pokémon Sapphire
+- Pokémon Emerald
+- Pokémon FireRed
+- Pokémon LeafGreen
+
+### Nintendo DS
+
+- Pokémon Diamond
+- Pokémon Pearl
+- Pokémon Platinum
+- Pokémon HeartGold
+- Pokémon SoulSilver
+- Pokémon Black
+- Pokémon White
+- Pokémon Black 2
+- Pokémon White 2
+
+### Nintendo 3DS
+
+- Pokémon X
+- Pokémon Y
+- Pokémon Omega Ruby
+- Pokémon Alpha Sapphire
+- Pokémon Sun
+- Pokémon Moon
+- Pokémon Ultra Sun
+- Pokémon Ultra Moon
+
+### Nintendo Switch
+
+- Pokémon FireRed
+- Pokémon LeafGreen
+- Pokémon: Let's Go, Pikachu!
+- Pokémon: Let's Go, Eevee!
+- Pokémon Sword
+- Pokémon Shield
+- Pokémon Brilliant Diamond
+- Pokémon Shining Pearl
+- Pokémon Legends: Arceus
+- Pokémon Scarlet
+- Pokémon Violet
+- Pokémon Legends: Z-A
+
+A detected title and a fully supported title are not the same thing. Support will be added and tested game-by-game.
+
+---
+
+## Pokémon view and action menu
+
+Selecting a Pokémon should open a summary first, not immediately modify anything.
+
+Target action menu:
+
+```text
+View Pokémon
+Add to Master Vault
+Add to Bank…
+Transfer to Game…
+Edit
+Clone
+Make Shiny
+Legality & Provenance
+Cancel
+```
+
+The A button should never silently move, delete, clone, or rewrite a Pokémon.
+
+### Summary screen
+
+Where the source format supports it, the summary should include:
+
+- species and National Dex number
+- nickname
+- level
+- gender
+- shiny status
+- form
+- type
+- nature
+- ability
+- held item
+- moves
+- IVs / EVs
+- stats
+- Original Trainer
+- Trainer ID / Secret ID
+- origin game and platform
+- current location
+- met information
+- Poké Ball
+- language
+- ribbons / marks
+- legality state
+- provenance
+
+Older formats should only display information that actually exists in that generation.
+
+---
+
+## Master Vault
+
+The **Master Vault** is the core PokeBank NX concept.
+
+It is intended to be a permanent, game-independent archive of a collection rather than another temporary PC box.
+
+A Vault record may track:
+
+```text
+original Pokémon bytes
+current Pokémon bytes
+record hash
+
+original game
+original platform
+source save
+
+current game / location
+parent record
+clone relationship
+
+transfer history
+transformation history
+legality state
+provenance
+```
+
+The goal is to keep enough history that a Pokémon can be traced even after it has been copied, edited, converted, or transferred.
+
+---
+
+## Banks
+
+Alongside the Master Vault, PokeBank NX will support regular named banks for day-to-day organization.
+
+Examples:
+
+```text
+Living Dex
+Shiny Living Dex
+Events
+Competitive
+Favorites
+Gen III
+Sword & Shield
+Scarlet & Violet
+Legends: Z-A
+```
+
+Planned bank features:
+
+- unlimited named banks
+- multiple boxes per bank
+- custom box names
+- copy / move
+- clone
+- duplicate detection
+- search
+- filtering
+- sorting
+- favorites
+- bulk organization
+
+Copying should be the safe default. Moving should only happen when the user explicitly chooses it.
+
+---
+
+## Living Dex
+
+The Vault will eventually drive collection tracking.
+
+Planned views include:
+
+- National Living Dex
+- Shiny Living Dex
+- regional forms
+- permanent alternate forms
+- meaningful gender differences
+- owned / missing Pokémon
+- generation completion
+- completion percentages
+
+The long-term goal is to make it obvious what is missing without maintaining a separate spreadsheet.
+
+---
+
+## Fill Master Bank — All + Shinies
+
+A planned convenience tool will be able to populate a collection automatically.
+
+The target is:
+
+- every supported species
+- one normal version
+- one shiny version where legally possible
+- regional forms
+- meaningful permanent forms
+- meaningful gender differences
+
+The generator must not:
+
+- create duplicate floods when run twice
+- present shiny-locked Pokémon as legal shinies
+- create impossible combinations and label them legal
+
+Generation should be deterministic and legality-aware where the project has enough data to verify the result.
+
+---
+
+## Legality and provenance
+
+PokeBank NX will separate two questions that are often mixed together:
+
+1. **Where did this Pokémon come from?**
+2. **Is this Pokémon valid for the game/encounter it claims to come from?**
+
+The provenance view should show things such as:
+
+- original game
+- original platform
+- source save identity
+- current location
+- parent/clone relationship
+- edits and transformations
+- transfer history
+- legality result
+- warnings
+- checks that are unsupported or unknown
+
+An unknown result should stay **unknown**. It should not be displayed as legal just because no error was found.
+
+---
+
+## Make Shiny
+
+The planned **Make Shiny** action is not intended to be a simple shiny-bit toggle.
+
+Where supported, it should account for:
+
+- shiny locks
+- event restrictions
+- PID-related rules
+- game restrictions
+- form restrictions
+- legality
+
+The preferred workflow is to create a derived copy and preserve the source record.
+
+---
+
+## Transfers
+
+Cross-game transfers are one of the larger goals of the project.
+
+PokeBank NX should eventually distinguish between:
+
+### Copy to Game
+
+Create a destination-compatible copy while leaving the source intact.
+
+### Move to Game
+
+Write and verify the destination first, then complete the move safely.
+
+### Trade
+
+A future workflow involving two separate game/save identities.
+
+### Add to Vault
+
+Store the Pokémon independently from either game.
+
+A transfer should never be reported as complete if the destination save was not actually written and verified.
+
+---
+
+## Save safety
+
+Any future live-write path should follow a process similar to:
+
+```text
+Read source save
+      ↓
+Create backup
+      ↓
+Create staged copy
+      ↓
+Apply change
+      ↓
+Repair checksums / structures
+      ↓
+Validate
+      ↓
+Write destination
+      ↓
+Verify result
+      ↓
+Keep recovery copy
+```
+
+Save safety matters more than convenience. A Pokémon collection can represent years of playtime.
+
+---
+
+## Startup and loading
+
+The current visual direction for the app is the Route 1-style splash shown at the top of this README.
+
+The planned startup sequence is:
+
+```text
+PokeBank NX splash
+      ↓
+Load settings
+      ↓
+Initialize services
+      ↓
+Load game data
+      ↓
+Open Vault / Banks
+      ↓
+Scan saves
+      ↓
+Home
+```
+
+Rather than a generic progress bar, the eventual loading animation may use the Pokémon shown along the bottom of the splash screen as progress milestones — each one lighting up as another initialization stage completes.
+
+Startup progress should represent real work, not a fake timer.
+
+---
+
+## Roadmap
+
+This roadmap tracks **PokeBank NX**, not the upstream PKSE project.
+
+### 0. Repository and recovery
+
+- [x] Create `GlitchedZeus/PokeBank-NX`
+- [x] Preserve/import PKSE 1.1.3 source and history
+- [x] Keep PKSE available as the upstream foundation
+- [ ] Recover and merge the interrupted PokeBank NX development workspace
+- [ ] Add `PROJECT_STATUS.md`
+- [ ] Establish repeatable milestone commits and pushes
+- [ ] Add build/version information to the app
+
+### 1. PokeBank NX identity and startup
+
+- [x] Finalize project name
+- [x] Create project splash/header artwork
+- [ ] Replace remaining PKSE branding in the app
+- [ ] Add PokeBank NX icon / NRO metadata
+- [ ] Add real startup/loading screen
+- [ ] Add build version + abbreviated Git commit
+- [ ] OLED Black theme
+- [ ] Dark theme
+- [ ] Light theme
+
+### 2. Game identity and discovery
+
+- [ ] Stable release/platform game IDs
+- [ ] FireRed GBA
+- [ ] LeafGreen GBA
+- [ ] FireRed Switch
+- [ ] LeafGreen Switch
+- [ ] RetroArch save discovery
+- [ ] Manual save import
+- [ ] Clear platform labels on game cards
+
+### 3. Game browser
+
+- [ ] Home screen with detected games
+- [ ] Game artwork/cards
+- [ ] Party browser
+- [ ] Box browser
+- [ ] Box names / numbers
+- [ ] Pokémon grid
+- [ ] Controller shortcuts
+- [ ] Handheld/docked layout pass
+
+### 4. Master Vault and banks
+
+- [ ] Immutable Master Vault
+- [ ] Persistent Vault database
+- [ ] Named banks
+- [ ] Add to Master Vault
+- [ ] Add to Bank
+- [ ] Clone
+- [ ] Duplicate handling
+- [ ] Provenance chain
+- [ ] Original/current-location tracking
+- [ ] Backup/recovery tools
+
+### 5. Retro save support
+
+- [ ] Red / Blue / Yellow
+- [ ] Gold / Silver / Crystal
+- [ ] Ruby / Sapphire / Emerald
+- [ ] FireRed / LeafGreen GBA
+- [ ] Read-only import validation
+- [ ] Regression tests for each parser
+
+### 6. Pokémon tools
+
+- [ ] Full summary screen
+- [ ] Controller-friendly editor
+- [ ] Legality viewer
+- [ ] Provenance viewer
+- [ ] Make Shiny
+- [ ] Search
+- [ ] Filter
+- [ ] Sort
+- [ ] Import / export Pokémon files
+
+### 7. Nintendo Switch titles
+
+- [ ] FireRed Switch adapter
+- [ ] LeafGreen Switch adapter
+- [ ] Let's Go Pikachu / Eevee integration
+- [ ] Sword / Shield integration
+- [ ] Brilliant Diamond / Shining Pearl integration
+- [ ] Legends: Arceus integration
+- [ ] Scarlet / Violet integration
+- [ ] Legends: Z-A integration
+
+The imported PKSE code already contains support for these Switch titles. This phase is about integrating that functionality into the PokeBank NX model, Vault, game identities, provenance, and safety rules rather than simply listing upstream support as finished PokeBank work.
+
+### 8. DS / 3DS support
+
+- [ ] Diamond / Pearl / Platinum
+- [ ] HeartGold / SoulSilver
+- [ ] Black / White
+- [ ] Black 2 / White 2
+- [ ] X / Y
+- [ ] Omega Ruby / Alpha Sapphire
+- [ ] Sun / Moon
+- [ ] Ultra Sun / Ultra Moon
+
+### 9. Living collection
+
+- [ ] National Living Dex
+- [ ] Shiny Living Dex
+- [ ] form tracking
+- [ ] missing Pokémon views
+- [ ] completion statistics
+- [ ] Fill Master Bank
+- [ ] Fill Master Bank — All + Shinies
+
+### 10. Transfers
+
+- [ ] Compatibility matrix
+- [ ] Destination conversion
+- [ ] Cross-generation conversion
+- [ ] Provenance-preserving transfer history
+- [ ] FireRed GBA → FireRed Switch
+- [ ] LeafGreen GBA → LeafGreen Switch
+- [ ] staged destination writes
+- [ ] validation
+- [ ] rollback/recovery
+
+### 11. Events and advanced collection data
+
+- [ ] Mystery Gift support
+- [ ] Wonder Cards
+- [ ] Event Vault
+- [ ] event metadata
+- [ ] event legality
+- [ ] ribbons / marks
+- [ ] event collection tracking
+
+### 12. Release hardening
+
+- [ ] crash recovery
+- [ ] corruption detection
+- [ ] low-space handling
+- [ ] SD-card failure handling
+- [ ] large-Vault stress testing
+- [ ] performance pass
+- [ ] complete regression suite
+- [ ] physical Switch validation
+- [ ] release packaging
+- [ ] user documentation
+- [ ] stable v1.0
+
+---
+
+## Build
+
+PokeBank NX currently inherits the PKSE Switch build system.
+
+### Requirements
+
+- devkitPro
+- devkitA64 / libnx
+- Switch development packages
+- Python 3 for asset/data generation tools
+- Pillow if regenerating HD sprites
+
+Set `DEVKITPRO` appropriately for your system.
+
+### Fetch HD Pokémon sprites
+
+The repository contains a helper script for generating the ROMFS sprite set:
 
 ```bash
 python tools/gen_hdsprites.py
 ```
 
-This writes 256px PNGs into `romfs/sprites/pokemon_hd/` (every base species plus alternate forms, normal + shiny). You only need to re-run it after bumping the script's pinned PokeAPI ref or adding a new generation; pass `--force` to re-fetch everything.
-
-#### **4.2. Build**
-
-Open MSys2 (should have been included with the devkitPro toolset), navigate to the root directory and run:
+### Build the `.nro`
 
 ```bash
 make clean && make all
 ```
 
-`make all` downloads the type icons and UI font (if they're missing), then generates the `.nro` in the build directory, which you can deploy to your Nintendo Switch. If the type icons, font and sprites are already present, skip the downloads with:
+If generated/downloaded assets are already present:
 
 ```bash
 make clean && make
 ```
-or  
 
-```bash
-make clean && make all prod
+The resulting native Switch build should be treated separately from host tests:
+
+```text
+IMPLEMENTED
+HOST TESTED
+NRO BUILDS
+DEVICE TESTED
 ```
 
-`prod` argument ensures no debug or trace logs are being written clogging up space on the sdcard.
+A successful `.nro` build is not the same thing as successful testing on physical hardware.
 
 ---
 
-## **Regenerating the data tables**
+## Development workflow
 
-Most of the game data PKSE relies on — species / move / ability / item names, learnsets, per-species info (abilities, gender ratios, forms), item-pouch contents, met-location names, move PP and Pokedex entry placement — lives in **generated** source files under `src/Names/` and `src/Pokemon/`. These are **committed to the repo**, so a normal build never regenerates them: `make` just compiles them, and you do **not** need any of the tools below to build PKSE.
+GitHub is intended to be the permanent project state.
 
-You only need to regenerate a table when its upstream data changes — a new game, a DLC that adds Pokemon / moves / items, or a correction in [PKHeX](https://github.com/kwsch/PKHeX). The generators live in `tools/` and are run **by hand, one at a time**.
+A normal development milestone should look like:
 
-### PKHeX-derived tables (Python 3)
-
-These read their inputs **straight from GitHub** — only Python 3 and an internet connection are needed, no local PKHeX checkout:
-
-```bash
-python tools/gen_personal.py       # abilities / gender / friendship / forms / per-game presence
-python tools/gen_learnsets.py      # per-game learnable-move bitsets
-python tools/gen_locations.py      # met-location names
-python tools/gen_moveinfo.py       # base PP per move
-python tools/gen_movenames.py      # move display names
-python tools/gen_movepresence.py   # which moves exist in each game
-python tools/gen_itempresence.py   # which items a Pokemon may legally hold, per game
-python tools/gen_itempouches.py    # which items belong in each bag pocket
-python tools/gen_speciesnames.py   # species display names
-python tools/gen_swshdex.py        # which of Sword/Shield's three Pokedexes a species is in
-python tools/gen_svdex.py          # which Scarlet/Violet regional Pokedex a species+FORM is in
-python tools/gen_pladex.py         # Legends: Arceus Pokedex statistics-entry lookup
+```text
+implement
+   ↓
+test
+   ↓
+build .nro
+   ↓
+update PROJECT_STATUS.md
+   ↓
+commit
+   ↓
+push
 ```
 
-Each fetches its PKHeX files via `tools/pkhex_source.py` and caches them under `tools/.pkhex_cache/` (gitignored) so re-runs are offline. By default they use a **pinned PKHeX commit** — the one the committed tables were built from — so regenerating reproduces the existing tables exactly. Two overrides:
+Important work should not be left only inside a temporary coding-agent workspace.
 
-- **Adopt newer PKHeX data** — set `PKHEX_REF` to a newer commit, tag, or `master`, then review the regenerated diff before committing:
-  ```bash
-  PKHEX_REF=master python tools/gen_personal.py
-  ```
-- **Read from a local PKHeX checkout** instead of the network — point `PKHEX_LOCAL` at its `PKHeX.Core` directory:
-  ```bash
-  PKHEX_LOCAL=/path/to/PKHeX/PKHeX.Core python tools/gen_learnsets.py
-  ```
-
-(From PowerShell, set the variable first, e.g. `$env:PKHEX_REF = "master"`.)
-
-After regenerating, review the diff to the affected file(s) and commit it.
+The original PKSE repository should remain an **upstream source**, not the destination for PokeBank NX changes.
 
 ---
 
-## **Troubleshooting**
+## Contributing
 
-### Common Issues
+PokeBank NX is still changing quickly, so large pull requests should be discussed before replacing major architecture.
 
-- **`make` not found**:  
-  Ensure `make` is installed and in your `PATH`.
+The priorities are:
 
-- **Undefined references**:  
-  Verify that your `includePath` is correctly configured in `c_cpp_properties.json`.
+1. do not lose user data
+2. preserve provenance
+3. keep the Switch UI simple
+4. avoid regressions
+5. test save-format changes
+6. keep the build reproducible
 
-- **libnx-related errors**:  
-  Ensure `libnx` is properly installed and that `DEVKITPRO` is set correctly.
-
-- **Permission issues on Windows**:  
-  Run VS Code or your terminal as Administrator if file access errors occur.
+When `PROJECT_STATUS.md` is added, contributors should read it before starting work.
 
 ---
 
-## **Credits**
+## Upstream and credits
 
-- PKHeX Team: core save editing logic are derived from the PKHeX project. Visit their official repository: https://github.com/kwsch/PKHeX.
-- PokeAPI Team: for their work on sprites: https://github.com/PokeAPI/sprites
-- libnx and devkitPro communities for Switch homebrew development tools. Visit their official website: https://devkitpro.org/wiki/Getting_Started.
+PokeBank NX is derived from **PKSE — Pokémon Save Editor** and intentionally keeps its upstream Git history.
 
-## **License**
+The project also relies on work from the wider Pokémon and Switch homebrew communities, including:
 
-This project is licensed under the [GNU Affero General Public License v3.0](LICENSE). See `LICENSE` for details.
+- [PKSE](https://github.com/kiasta/PKSE)
+- [PKHeX](https://github.com/kwsch/PKHeX)
+- [PokeAPI sprites](https://github.com/PokeAPI/sprites)
+- [devkitPro](https://devkitpro.org/)
+- [libnx](https://github.com/switchbrew/libnx)
+
+Please keep applicable upstream notices and licenses intact when redistributing modified builds or source.
+
+---
+
+## License
+
+The codebase is licensed under the **GNU Affero General Public License v3.0** as inherited from PKSE.
+
+See [`LICENSE`](LICENSE) for the full license text.
+
+---
+
+## Disclaimer
+
+PokeBank NX is an unofficial, fan-made homebrew project.
+
+It is not affiliated with, sponsored by, or endorsed by Nintendo, The Pokémon Company, GAME FREAK, or Creatures Inc.
+
+Pokémon and related trademarks are the property of their respective owners.
+
+This repository is intended for homebrew software and management of a user's own save/Pokémon data. It does not include commercial game ROMs, Nintendo proprietary software, or other copyrighted game files that users do not have permission to redistribute.
+
+Always keep independent backups of important saves while using development builds.
+
+---
+
+## Current focus
+
+The immediate goal is not to implement every generation at once.
+
+The first usable PokeBank NX milestone is:
+
+```text
+Boot PokeBank NX
+      ↓
+Detect supported games
+      ↓
+Browse party / boxes
+      ↓
+Open Pokémon summary
+      ↓
+Add to Master Vault / Bank
+      ↓
+Persist safely
+```
+
+Once that works reliably on a physical Switch, the rest of the roadmap becomes expansion of a functioning app rather than construction of a prototype.ails.
 
