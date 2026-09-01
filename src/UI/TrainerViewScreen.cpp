@@ -921,6 +921,7 @@ namespace UI {
 
     void TrainerViewScreen::closeDetailsModal() {
         details.active = false;
+        details.readOnly = false;
         details.source = EditSource::Box;
         details.selectedField = 0;
         details.legalityOverlay = false;
@@ -1294,6 +1295,7 @@ namespace UI {
             selectedItemIndex = slot;
         }
         details.active = true;
+        details.readOnly = false;
         details.leftScroll = 0;   // start the info column at the top
         details.editing = false;
         details.category = 0;
@@ -1302,6 +1304,68 @@ namespace UI {
         details.hexMode = 0;
         creator.editing = false;  // default; the creator flow sets it true right after this call
         snapshotEditTarget();    // dirty-check baseline (unused for the creator: it has Keep/Discard)
+    }
+
+    Pokemon::Pokemon* TrainerViewScreen::actionSheetTargetPokemon() {
+        const auto& target = actionSheet.target();
+        using PokeVault::UIModel::PokemonLocation;
+        switch (target.location) {
+            case PokemonLocation::Party:
+                if (target.slot >= 0 && target.slot < static_cast<int>(trainer.party.size()))
+                    return trainer.party[target.slot].get();
+                return nullptr;
+            case PokemonLocation::Bank:
+                if (bank && target.box >= 0 && target.box < static_cast<int>(bank->boxes.size()) &&
+                    target.slot >= 0 && target.slot < static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX))
+                    return bank->boxes[target.box][target.slot].get();
+                return nullptr;
+            case PokemonLocation::SaveBox:
+                if (target.box >= 0 && target.box < static_cast<int>(trainer.boxes.size()) &&
+                    target.slot >= 0 && target.slot < static_cast<int>(trainer.getSlotsPerBox()))
+                    return trainer.boxes[target.box][target.slot].get();
+                return nullptr;
+        }
+        return nullptr;
+    }
+
+    void TrainerViewScreen::openPokemonActionSheet(PokeVault::UIModel::PokemonTarget target) {
+        actionSheet.open(target);
+        const Pokemon::Pokemon* pokemon = actionSheetTargetPokemon();
+        if (!pokemon || pokemon->speciesID() == 0) actionSheet.close();
+    }
+
+    void TrainerViewScreen::openActionSheetTargetDetails(bool readOnly) {
+        if (!actionSheetTargetPokemon()) return;
+
+        const auto& target = actionSheet.target();
+        using PokeVault::UIModel::PokemonLocation;
+        if (target.location == PokemonLocation::Party) {
+            details.source = EditSource::Party;
+            details.partyIndex = target.slot;
+        } else if (target.location == PokemonLocation::Bank) {
+            details.source = EditSource::Bank;
+            details.bankBox = target.box;
+            details.bankSlot = target.slot;
+        } else {
+            details.source = EditSource::Box;
+            selectedBoxIndex = target.box;
+            selectedItemIndex = target.slot;
+        }
+
+        details.active = true;
+        details.readOnly = readOnly;
+        details.leftScroll = 0;
+        details.editing = false;
+        details.category = 0;
+        details.selectedStat = 0;
+        details.selectedField = 0;
+        details.hexMode = 0;
+        details.legalityOverlay = false;
+        details.ribbonOverlay = false;
+        details.discardConfirmActive = false;
+        creator.editing = false;
+        if (readOnly) details.editSnapshot.clear();
+        else snapshotEditTarget();
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -1756,9 +1820,9 @@ namespace UI {
             return;
         }
 
-        // X: while drawing a rectangle it DUPLICATES the selection (grab a copy
-        // and leave the originals in place). Otherwise it sorts the focused box. Suppressed while
-        // carrying, so a sort can never run with Pokemon held out of the grid and lose them.
+        // X is the deliberate move/select control: Move picks up one Pokémon; Multi starts a
+        // rectangle and, once drawn, duplicates it. In Menu mode X retains the legacy box sort.
+        // Suppressed while carrying, so a sort can never run with Pokémon held out of the grid.
         if (kDown & HidNpadButton_X) {
             if (currentlySelecting) {
                 grabSelection(false);
@@ -1766,6 +1830,15 @@ namespace UI {
                 return;
             }
             if (!holding) {
+                if (cursorMode == CursorMode::Move) {
+                    pickupSingle();
+                    postPickup();
+                    return;
+                }
+                if (cursorMode == CursorMode::Multi) {
+                    pickupMulti();
+                    return;
+                }
                 sortStorageBox(storageFocusPane, storageFocusPane == 0 ? stSaveBox : stBankBox);
                 return;
             }
@@ -1796,17 +1869,21 @@ namespace UI {
                 putDownBlock();
                 return;
             }
+            // Regardless of the legacy cursor color/mode, A on an occupied Pokémon always opens the
+            // deliberate action sheet. Move/Multi may still operate on empty-space selection anchors,
+            // but they cannot turn a single A press on a Pokémon into an immediate mutation.
+            if (!currentlySelecting && occupied(pane, box, slot)) {
+                openPokemonActionSheet({
+                    pane == 0 ? PokeVault::UIModel::PokemonLocation::SaveBox
+                              : PokeVault::UIModel::PokemonLocation::Bank,
+                    box,
+                    slot,
+                });
+                return;
+            }
             switch (cursorMode) {
                 case CursorMode::Menu:
-                    if (occupied(pane, box, slot)) {
-                        // Party-linked (locked) slots still open the menu -- Edit and Clone are valid
-                        // there; only Move and Release are disabled (see the action handler + the
-                        // greyed rows). Start on Edit when Move is unavailable so the cursor doesn't
-                        // land on a greyed row.
-                        storageMenuActive = true;
-                        storageMenuIndex = isLocked(pane, box, slot) ? 1 : 0;
-                        menuPane = pane; menuBox = box; menuSlot = slot;
-                    } else if (pane == 0 && !isLocked(pane, box, slot)) {
+                    if (pane == 0 && !isLocked(pane, box, slot)) {
                         // Empty save-pane slot: create a new Pokemon here (pick species, then edit).
                         creator.active = true; creator.pane = pane; creator.box = box; creator.slot = slot;
                         pickerKind = Dialogs::PickerKind::Species;
@@ -1900,6 +1977,7 @@ namespace UI {
 
         // Handle + button (exits application)
         if (kDown & HidNpadButton_Plus) {
+            if (actionSheet.isOpen()) return;  // the modal owns input until A/B resolves it
             // The bank question is already on screen -- answer that first rather than stacking a
             // second exit on top of it.
             if (storageExitConfirmActive) return;
@@ -2200,7 +2278,7 @@ namespace UI {
         if (kDown & HidNpadButton_X) {
             const bool onHomeMenu = !detailViewActive;
             if (onHomeMenu && !saveConfirmActive && !itemEditDialogActive && !statEdit.dialogActive &&
-                !releaseConfirmActive && !storageMenuActive && !groupMenuActive &&
+                !releaseConfirmActive && !actionSheet.isOpen() && !groupMenuActive &&
                 !storageExitConfirmActive && !details.active) {
                 exitingWithUnsavedChanges = false;  // Regular save, not exiting
                 exitingViaPlus = false;
@@ -2525,6 +2603,15 @@ namespace UI {
                 if (pokemon && !Legality::analyze(*pokemon, pokemon->getGameGroup()).ok())
                     details.legalityOverlay = true;
                 return;
+            }
+            // View is a genuinely read-only summary. Keep navigation, ribbons, legality, and B/close,
+            // but strip every control/touch route that the inherited editor uses to change data.
+            if (details.readOnly) {
+                const bool attemptedEdit = (kDown & (HidNpadButton_A | HidNpadButton_X | HidNpadButton_L)) ||
+                                           (tb >= 0 && tb <= 31);
+                if (attemptedEdit) postStatus("Read-only view — choose Edit from Actions.", 180);
+                kDown &= ~(HidNpadButton_A | HidNpadButton_X | HidNpadButton_L);
+                if (tb >= 0 && tb <= 31) tb = -1;
             }
             // X: for an EXISTING mon, SAVE the edits -- commit the current state as the new baseline
             // (the "Unsaved changes" marker clears) and STAY on the page. This is the ONLY commit:
@@ -3100,83 +3187,36 @@ namespace UI {
             return;
         }
 
-        // Handle the red-mode per-Pokemon action menu (Move / Edit / Release / Cancel).
-        if (storageMenuActive) {
-            constexpr int N = 5;
-            int tb = touchedButtonId(touch);
-            if (tb >= 0) { storageMenuIndex = tb; kDown |= HidNpadButton_A; }  // tap a row = select + confirm
-            // On a party-linked (locked) slot, Move (0) and Release (3) are disabled -- skip them so
-            // Up/Down never land on a greyed row, and guard the actions below in case a tap slips in.
-            const bool menuLocked = storageSlotLocked(menuPane, menuBox, menuSlot);
-            auto menuDisabled = [&](int i) { return menuLocked && (i == 0 || i == 3); };
-            if (kDown & HidNpadButton_Up)   do { storageMenuIndex = (storageMenuIndex - 1 + N) % N; } while (menuDisabled(storageMenuIndex));
-            if (kDown & HidNpadButton_Down) do { storageMenuIndex = (storageMenuIndex + 1) % N; } while (menuDisabled(storageMenuIndex));
-            if (kDown & HidNpadButton_B) { storageMenuActive = false; return; }
+        // Shared Party / Boxes / Storage action sheet. The pure dispatcher owns the action order and
+        // never holds a mutable Pokemon pointer. Opening, moving focus, B, and Cancel therefore have
+        // no mutation path. Unsupported commands return one explicit result and remain on the sheet.
+        if (actionSheet.isOpen()) {
+            constexpr int count = static_cast<int>(PokeVault::UIModel::POKEMON_ACTIONS.size());
+            const int tb = touchedButtonId(touch);
+            if (tb >= 0 && tb < count) {
+                actionSheet.select(tb);
+                kDown |= HidNpadButton_A;
+            }
+            if (kDown & HidNpadButton_Up) actionSheet.navigate(-1);
+            if (kDown & HidNpadButton_Down) actionSheet.navigate(1);
+            if (kDown & HidNpadButton_B) {
+                actionSheet.close();
+                return;
+            }
             if (kDown & HidNpadButton_A) {
-                storageMenuActive = false;
-                switch (storageMenuIndex) {
-                    case 0:  // Move -> pick up as a 1x1 block (blocked on a party-linked slot)
-                        if (menuLocked) break;
-                        storageFocusPane = menuPane;
-                        if (menuPane == 0) { stSaveBox = menuBox; stSaveSlot = menuSlot; }
-                        else               { stBankBox = menuBox; stBankSlot = menuSlot; }
-                        pickupSingle();
-                        postPickup();
+                switch (actionSheet.activate()) {
+                    case PokeVault::UIModel::ActionResult::OpenView:
+                        openActionSheetTargetDetails(true);
                         break;
-                    case 1:  // Edit -> open the details modal
-                        openStorageEditor(menuPane, menuBox, menuSlot);
+                    case PokeVault::UIModel::ActionResult::OpenEditor:
+                        openActionSheetTargetDetails(false);
                         break;
-                    case 2:  // Clone -> duplicate into the first empty slot (this box first, then ANY box)
-                        if (const Pokemon::Pokemon* src = storageSlot(menuPane, menuBox, menuSlot).get()) {
-                            if (auto copy = src->clone()) {
-                                const int slots = menuPane == 0 ? static_cast<int>(trainer.getSlotsPerBox())
-                                                                : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
-                                const int boxes = menuPane == 0 ? static_cast<int>(trainer.getBoxCount())
-                                                                : static_cast<int>(Trainer::Bank::BANK_BOX_COUNT);
-                                // Search the mon's own box first, then spill into any other box. A full
-                                // box must NOT eat the clone -- on Let's Go's gapless list every box but
-                                // the last is full, so a single-box search silently dropped the copy (a
-                                // party mon in box 0 could never be cloned).
-                                bool placed = false;
-                                for (int bo = 0; bo < boxes && !placed; ++bo) {
-                                    const int box = (menuBox + bo) % boxes;
-                                    for (int s = 0; s < slots && !placed; ++s) {
-                                        auto& dst = storageSlot(menuPane, box, s);
-                                        if ((!dst || dst->speciesID() == 0) && !storageSlotLocked(menuPane, box, s)) {
-                                            dst = std::move(copy);
-                                            hasUnsavedChanges = true;
-                                            placed = true;
-                                            // A clone puts a SECOND record with the same PID/EC into
-                                            // the save, which is exactly what a later "duplicate
-                                            // Pokemon" or failed-legality report is about -- so log
-                                            // where it came from and where it landed.
-                                            if (g_debugLogging) {
-                                                Utils::logEventToFile(
-                                                    "CLONE result=OK " + Utils::logSlot("from", menuPane, menuBox, menuSlot)
-                                                    + " " + Utils::logSlot("to", menuPane, box, s)
-                                                    + " " + Utils::describeMon(*dst, trainer));
-                                            }
-                                        }
-                                    }
-                                }
-                                if (!placed) {
-                                    postStatus("No free slot to clone into.", 240);
-                                    if (g_debugLogging) {
-                                        Utils::logEventToFile("CLONE result=REFUSED reason=no-free-slot "
-                                                              + Utils::logSlot("from", menuPane, menuBox, menuSlot)
-                                                              + " " + Utils::briefMon(*src));
-                                    }
-                                }
-                            }
-                        }
+                    case PokeVault::UIModel::ActionResult::NotYetSupported:
+                        postStatus("Not yet supported in this build.", 180);
                         break;
-                    case 3:  // Release -> confirm (blocked on a party-linked slot)
-                        if (menuLocked) break;
-                        releaseGroup = false;
-                        releasePane = menuPane; releaseBox = menuBox; releaseSlot = menuSlot;
-                        releaseConfirmActive = true;
+                    case PokeVault::UIModel::ActionResult::Closed:
+                    case PokeVault::UIModel::ActionResult::None:
                         break;
-                    default: break;  // Cancel
                 }
                 return;
             }
@@ -3664,15 +3704,11 @@ namespace UI {
                         selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(BOX_SLOTS)) {
                         const auto& pokemon = trainer.boxes[selectedBoxIndex][selectedItemIndex];
                         if (pokemon && pokemon->speciesID() != 0) {   // skip empty / species-0 ghost slots
-                            details.active = true;
-                            details.leftScroll = 0;
-                            details.source = EditSource::Box;
-                            details.category = 0;
-                            details.selectedStat = 0;
-                            details.selectedField = 0;
-                            details.hexMode = 0;
-                            details.editing = false;
-                            snapshotEditTarget();   // dirty-check baseline for Save/Discard on close
+                            openPokemonActionSheet({
+                                PokeVault::UIModel::PokemonLocation::SaveBox,
+                                selectedBoxIndex,
+                                selectedItemIndex,
+                            });
                         } else if (!storageSlotLocked(0, selectedBoxIndex, selectedItemIndex) && !swapActive) {
                             // Empty slot -> create a new Pokemon here, the same flow as the Storage view:
                             // pick a species, edit it in the details modal, Keep/Discard on exit. The
@@ -3769,22 +3805,17 @@ namespace UI {
                     }
                 }
 
-                // A button to view details
+                // A button opens the same deliberate action sheet used by Boxes and Storage.
                 if (kDown & HidNpadButton_A) {
                     // Only open if there's a pokemon in the selected slot
                     if (selectedPartyIndex >= 0 && selectedPartyIndex < static_cast<int>(trainer.party.size())) {
                         const Pokemon::Pokemon* pokemon = trainer.party[selectedPartyIndex].get();
                         if (pokemon && pokemon->speciesID() != 0) {  // Not empty
-                            details.active = true;
-                            details.leftScroll = 0;
-                            details.source = EditSource::Party;
-                            details.partyIndex = selectedPartyIndex;
-                            details.category = 0;
-                            details.selectedStat = 0;
-                            details.selectedField = 0;
-                            details.hexMode = 0;
-                            details.editing = false;
-                            snapshotEditTarget();   // dirty-check baseline for Save/Discard on close
+                            openPokemonActionSheet({
+                                PokeVault::UIModel::PokemonLocation::Party,
+                                0,
+                                selectedPartyIndex,
+                            });
                         }
                     }
                 }
@@ -3902,7 +3933,7 @@ namespace UI {
                 case 2:  // Storage (bank) — start on the save pane, Menu mode, nothing held/selected.
                     detailViewActive = true; storageFocusPane = 0; stSaveSlot = 0; stBankSlot = 0;
                     moveMon.clear(); selectDimensions = {0, 0}; currentlySelecting = false;
-                    storageMenuActive = false; groupMenuActive = false;
+                    actionSheet.close(); groupMenuActive = false;
                     cursorMode = CursorMode::Menu;
                     break;
                 case 3:  // Items
@@ -4078,7 +4109,9 @@ namespace UI {
 
         // Draw instructions
         std::string instructions;
-        if (swapActive) {
+        if (actionSheet.isOpen()) {
+            instructions = "Up/Down: Choose  |  A: Select  |  B: Cancel";
+        } else if (swapActive) {
             instructions = "HOLDING  |  Arrows: Move Cursor  |  L/R: Change Box  |  Y: Drop Here  |  B: Cancel";
         } else if (statEdit.dialogActive) {
             if (statEdit.mode != Dialogs::StatEditMode::IV) {
@@ -4095,7 +4128,9 @@ namespace UI {
         } else if (releaseConfirmActive) {
             instructions = "A: Release  |  B: Cancel";
         } else if (details.active) {
-            instructions = "Up/Down: Select  |  A: Edit  |  Y: Change View  |  B: Close  |  X: Save";
+            instructions = details.readOnly
+                ? "Arrows: Browse  |  Y: Ribbons  |  R: Legality  |  B: Back  |  Read Only"
+                : "Up/Down: Select  |  A: Edit  |  Y: Change View  |  B: Close  |  X: Save";
         } else if (detailViewActive && selectedMode == ViewMode::Settings) {
             instructions = "Up/Down: Select  |  A: Toggle  |  B: Back";
         } else if (detailViewActive) {
@@ -4133,7 +4168,7 @@ namespace UI {
                         instructions = "L/R: Box  |  A: Rename  |  B: Back";
                     } else {
                         instructions = occ
-                            ? "Arrows: Navigate  |  L/R: Box  |  A: Details  |  X: Release  |  Y: Grab/Move  |  B: Back"
+                            ? "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  X: Release  |  Y: Grab/Move  |  B: Back"
                             : "Arrows: Navigate  |  L/R: Box  |  A: Create  |  B: Back";
                     }
                 }
@@ -4156,14 +4191,14 @@ namespace UI {
                     }
                 }
                 else {
-                    instructions = "Arrows: Navigate Grid  |  A: View Details  |  B: Back  |  +: Exit App";
+                    instructions = "Arrows: Navigate Grid  |  A: Actions  |  B: Back  |  +: Exit App";
                 }
             } else if (selectedMode == ViewMode::Storage) {
                 if (details.active) {
                     instructions = "Up/Down: Category  |  A: Edit  |  B: Close";
                 } else if (storageExitConfirmActive) {
                     instructions = "Up/Down: Choose  |  A: Confirm  |  B: Stay";
-                } else if (storageMenuActive || groupMenuActive) {
+                } else if (actionSheet.isOpen() || groupMenuActive) {
                     instructions = "Up/Down: Choose  |  A: Select  |  B: Cancel";
                 } else if (releaseConfirmActive) {
                     instructions = "A: Release  |  B: Cancel";
@@ -4176,9 +4211,9 @@ namespace UI {
                 } else if (cursorMode == CursorMode::Menu) {
                     instructions = "Arrows: Move  |  L/R: Box  |  Y: Mode (Menu)  |  A: Menu  |  X: Sort Box  |  B: Back";
                 } else if (cursorMode == CursorMode::Move) {
-                    instructions = "Arrows: Move  |  L/R: Box  |  Y: Mode (Move)  |  A: Pick Up  |  X: Sort Box  |  B: Back";
+                    instructions = "Arrows: Move  |  L/R: Box  |  Y: Mode (Move)  |  A: Actions  |  X: Pick Up  |  B: Back";
                 } else {
-                    instructions = "Arrows: Move  |  L/R: Box  |  Y: Mode (Multi)  |  A: Start Selection  |  X: Sort Box  |  B: Back";
+                    instructions = "Arrows: Move  |  L/R: Box  |  Y: Mode (Multi)  |  A: Actions  |  X: Select/Copy  |  B: Back";
                 }
             } else if (selectedMode == ViewMode::Trainer) {
                 // X saves only from the HOME menu (see the X handler), so the flow is edit -> B -> X.
@@ -4211,8 +4246,8 @@ namespace UI {
         if (saveConfirmActive) {
             Dialogs::drawSaveConfirmDialog(*this, fb);
         }
-        if (storageMenuActive) {
-            Panels::drawStorageActionMenu(*this, fb);
+        if (actionSheet.isOpen()) {
+            Panels::drawPokemonActionSheet(*this, fb);
         }
         if (groupMenuActive) {
             Panels::drawStorageGroupMenu(*this, fb);

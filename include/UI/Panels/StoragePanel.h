@@ -16,8 +16,8 @@ namespace UI {
          */
         void drawStorageView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int width, int height);
 
-        /// Red-mode per-Pokemon action menu (Move / Edit / Release / Cancel).
-        void drawStorageActionMenu(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+        /// Shared Party / Boxes / Storage Pokémon action sheet.
+        void drawPokemonActionSheet(TrainerViewScreen& screen, PKSEFramebuffer& fb);
         /// Options for the block in hand (Release all / Put back / Cancel), opened with Minus.
         void drawStorageGroupMenu(TrainerViewScreen& screen, PKSEFramebuffer& fb);
         /// Release confirmation (single Pokemon or the whole carried block).

@@ -445,19 +445,17 @@ namespace UI
             }
         }
 
-        void drawStorageActionMenu(TrainerViewScreen &screen, PKSEFramebuffer &fb)
+        void drawPokemonActionSheet(TrainerViewScreen &screen, PKSEFramebuffer &fb)
         {
-            const Pokemon::Pokemon *pk = screen.storageSlot(screen.menuPane, screen.menuBox, screen.menuSlot).get();
+            const Pokemon::Pokemon *pk = screen.actionSheetTargetPokemon();
             const std::string title = (pk && pk->speciesID() != 0)
                                           ? Names::getDisplayName(pk->speciesID(), pk->form(), pk->species())
                                           : "Pokémon";
-            static const char *const items[] = {"Move", "Edit", "Clone", "Release", "Cancel"};
-            // A party-linked (LGPE) slot can be edited or cloned, but not moved or released -- grey those
-            // two out. (Same lock rule as storageSlotLocked: save pane + a party member points here.)
-            const bool locked = screen.menuPane == 0 &&
-                                screen.trainer.getPartyPosition(screen.menuBox, screen.menuSlot) > 0;
-            const uint32_t disabled = locked ? ((1u << 0) | (1u << 3)) : 0u; // Move (0), Release (3)
-            drawPopupMenu(screen, fb, title, items, 5, screen.storageMenuIndex, disabled);
+            std::array<const char*, PokeVault::UIModel::POKEMON_ACTIONS.size()> items{};
+            for (std::size_t i = 0; i < items.size(); ++i)
+                items[i] = PokeVault::UIModel::actionLabel(PokeVault::UIModel::POKEMON_ACTIONS[i]).data();
+            drawPopupMenu(screen, fb, title, items.data(), static_cast<int>(items.size()),
+                          screen.actionSheet.selectedIndex());
         }
 
         // Options for the block in hand. There is deliberately no "move" entry: a carried group is moved
