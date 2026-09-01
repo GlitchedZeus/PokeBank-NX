@@ -8,7 +8,8 @@
 
 #include <switch.h>
 
-#include "Globals.h"          // g_injectToGameSave gates the save-destination picker
+#include "Globals.h"
+#include "Safety/WritePolicy.h"
 #include "UI/UIScreen.h"
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Bank.h"
@@ -229,35 +230,21 @@ namespace UI {
 
         // Save confirmation state
         bool saveConfirmActive = false;
-        // Save destination picker.
-        //   0 = this backup   1 = new named backup   2 = game save
-        //
-        // Whether "game save" is offered depends on WHERE THIS SESSION CAME FROM, not on a blanket
-        // setting:
-        //   - Loaded from the live save  -> always offered, and the default. Writing your own save
-        //     back is the ordinary thing a save editor does; gating it behind a toggle is friction
-        //     for no safety gain, because the data you'd overwrite is the data you just read.
-        //   - Loaded from an older backup -> offered only when the Settings lock is on, and it
-        //     raises an extra confirmation, because THIS is the case that rolls a game backwards.
-        //
-        // A TITLE session is also not offered "this backup". That backup is the snapshot taken
-        // automatically when the save was loaded, not a file the user chose, so presenting it
-        // beside two deliberate destinations just poses a question with no obvious answer -- and
-        // picking it silently sends the edits somewhere the game will never read. A title session
-        // gets the two answers that mean something: write it back, or file it under a new name.
-        enum SaveDest { DestThisBackup = 0, DestNewBackup = 1, DestGameSave = 2 };
+        // Save destination picker. Installed game saves are read-only during this development
+        // phase, so every session exposes only its working backup and a new named backup.
+        using SaveDest = PokeVault::Safety::SaveDestination;
+        static constexpr SaveDest DestThisBackup = SaveDest::WorkingBackup;
+        static constexpr SaveDest DestNewBackup = SaveDest::NewBackup;
         bool loadedFromCart = false;
 
-        /// Cursor into the VISIBLE rows, not a SaveDest -- the two stopped being interchangeable
-        /// once a title session dropped a row from the middle of the enum. Map with saveDestAt().
+        /// Cursor into the visible, backup-only destination list.
         int saveDestIndex = 0;
-        int saveDestCount() const { return loadedFromCart ? 2 : (g_injectToGameSave ? 3 : 2); }
-        /// Which destination a visible row means. Title sessions lead with the game save because
-        /// it is both the default and the point of the session; backup sessions keep the original
-        /// order, where row 0 is the backup already open.
+        int saveDestCount() const {
+            return static_cast<int>(PokeVault::Safety::VISIBLE_SAVE_DESTINATIONS.size());
+        }
         SaveDest saveDestAt(int row) const {
-            if (loadedFromCart) return row == 0 ? DestGameSave : DestNewBackup;
-            return static_cast<SaveDest>(row);
+            if (row < 0 || row >= saveDestCount()) return DestThisBackup;
+            return PokeVault::Safety::VISIBLE_SAVE_DESTINATIONS[static_cast<size_t>(row)];
         }
         /// The row the save dialog opens on -- the first one, in both modes.
         int defaultSaveDestRow() const { return 0; }
@@ -271,12 +258,9 @@ namespace UI {
         // Create sdmc:/PKSE/{title}/{name}/ seeded with a copy of the current backup, suffixing
         // -2, -3... if the name is taken. Returns the new path, or "" on failure.
         std::string createNamedBackupDir(const std::string& name);
-        // Last gate before overwriting the player's real save data. Reached only by choosing the
-        // "Game save" destination, which is itself only offered when the Settings lock is on.
-        bool saveInjectConfirmActive = false;
-        // Write to destDir, optionally injecting into the game. Shared by every destination so the
-        // success/failure handling can't drift between them.
-        void performSave(const std::string& destDir, bool injectToTitle);
+        // Write only to a backup/staged directory. Live title injection has no UI entry point and
+        // is also rejected in the lower save/filesystem layers.
+        void performSave(const std::string& destDir);
         bool hasUnsavedChanges = false;
         bool exitingWithUnsavedChanges = false;
         bool exitingViaPlus = false;  // True when exiting via + button (exit app) vs B button (go back)

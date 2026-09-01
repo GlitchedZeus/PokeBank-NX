@@ -107,7 +107,7 @@ namespace Save {
         }
     }
 
-    bool saveTrainerInfo(Trainer::Trainer& trainer, const char* backupDir, u64 titleId, AccountUid userUid, bool injectToTitle) {
+    bool saveTrainerInfo(Trainer::Trainer& trainer, const char* backupDir, u64 titleId, AccountUid userUid) {
         /**
          * Auto-detects the game version and calls the appropriate saving function.
          * Uses virtual getGameGroup() method to determine concrete type without RTTI.
@@ -126,20 +126,20 @@ namespace Save {
         bool ok;
         if (trainerGroup == GameVersion::GG) {
             // Let's Go - cast is safe because we checked the type via virtual method
-            ok = saveTrainerInfoLetsGo(static_cast<Trainer::Trainer7LGPE&>(trainer), backupDir, titleId, userUid, injectToTitle);
+            ok = saveTrainerInfoLetsGo(static_cast<Trainer::Trainer7LGPE&>(trainer), backupDir, titleId, userUid, false);
         } else if (trainerGroup == GameVersion::SWSH) {
             // Sword/Shield - cast is safe because we checked the type via virtual method
-            ok = saveTrainerInfoSwSh(static_cast<Trainer::Trainer8SWSH&>(trainer), backupDir, titleId, userUid, injectToTitle);
+            ok = saveTrainerInfoSwSh(static_cast<Trainer::Trainer8SWSH&>(trainer), backupDir, titleId, userUid, false);
         } else if (trainerGroup == GameVersion::ZA) {
-            ok = saveTrainerInfoLZA(static_cast<Trainer9LZA&>(trainer), backupDir, titleId, userUid, injectToTitle);
+            ok = saveTrainerInfoLZA(static_cast<Trainer9LZA&>(trainer), backupDir, titleId, userUid, false);
         } else if (trainerGroup == GameVersion::SV) {
-            ok = saveTrainerInfoSV(static_cast<Trainer9SV&>(trainer), backupDir, titleId, userUid, injectToTitle);
+            ok = saveTrainerInfoSV(static_cast<Trainer9SV&>(trainer), backupDir, titleId, userUid, false);
         } else if (trainerGroup == GameVersion::PLA) {
-            ok = saveTrainerInfoLA(static_cast<Trainer8LA&>(trainer), backupDir, titleId, userUid, injectToTitle);
+            ok = saveTrainerInfoLA(static_cast<Trainer8LA&>(trainer), backupDir, titleId, userUid, false);
         } else if (trainerGroup == GameVersion::BDSP) {
-            ok = saveTrainerInfoBDSP(static_cast<Trainer8BDSP&>(trainer), backupDir, titleId, userUid, injectToTitle);
+            ok = saveTrainerInfoBDSP(static_cast<Trainer8BDSP&>(trainer), backupDir, titleId, userUid, false);
         } else if (trainerGroup == GameVersion::FRLG) {
-            ok = saveTrainerInfoFRLG(static_cast<Trainer3FRLG&>(trainer), backupDir, titleId, userUid, injectToTitle);
+            ok = saveTrainerInfoFRLG(static_cast<Trainer3FRLG&>(trainer), backupDir, titleId, userUid, false);
         } else {
             logErrorToFile("Unsupported trainer type");
             return false;

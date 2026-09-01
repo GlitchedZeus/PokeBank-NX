@@ -10,8 +10,6 @@ namespace UI {
 namespace UI {
 namespace Dialogs {
     void drawSaveConfirmDialog(UI::TrainerViewScreen& screen, UI::PKSEFramebuffer& fb);
-    /// Final confirmation before overwriting the player's live game save.
-    void drawSaveInjectConfirm(UI::TrainerViewScreen& screen, UI::PKSEFramebuffer& fb);
 }
 }
 

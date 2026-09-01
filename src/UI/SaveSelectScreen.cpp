@@ -8,6 +8,7 @@
 #include "UI/SystemIcons.h"
 #include "UI/TouchInput.h"
 #include "Enums/GameVersion.h"
+#include "Games/GameIdentity.h"
 #include "Utils/Logger.h"
 
 using namespace Utils;
@@ -20,9 +21,9 @@ namespace UI {
     constexpr int AVATAR     = 84;
     constexpr int CHIP       = 56;    // small per-user switcher avatar
     constexpr int TILE_W     = 184;
-    constexpr int TILE_H     = 200;
-    constexpr int ICON       = 140;
-    constexpr int GAP        = 24;
+    constexpr int TILE_H     = 208;
+    constexpr int ICON       = 126;
+    constexpr int GAP        = 16;
     constexpr int MAX_COLS   = 5;
     constexpr int GRID_Y     = 208;
     // Rows of tiles that fit between the grid's top and the nav bar: (720 - 56 - 208) = 456px of
@@ -116,6 +117,8 @@ namespace UI {
                 const u64 titleId = info[i].application_id;
                 GameVersion gv = getGameVersion(titleId);
                 if (gv == GameVersion::Invalid) continue;   // not a Pokemon title PKSE knows
+                const auto* identity = PokeVault::Games::findSwitchGame(titleId);
+                if (!identity) continue;                    // supported parser without a stable release identity
 
                 // One tile per game. A title can report more than one save entry (save_data_index),
                 // and scanning two spaces can see the same save twice -- listing a game twice would
@@ -135,6 +138,8 @@ namespace UI {
                 t.titleId = titleId;
                 t.label = getGameVersionName(gv);       // short: "Shield", "Legends: Z-A", ...
                 t.name  = "Pokemon " + t.label;         // full name (backup dir + downstream compat)
+                t.gameId = std::string(identity->id);
+                t.platformLabel = std::string(PokeVault::Games::platformName(identity->platform));
                 user.titles.push_back(std::move(t));
             }
         }
@@ -223,6 +228,7 @@ namespace UI {
         selectedUserUid  = u->uid;
         selectedTitleId  = u->titles[titleIndex].titleId;
         selectedTitleName = u->titles[titleIndex].name;
+        selectedGameId = u->titles[titleIndex].gameId;
         titleSelected = true;
     }
 
@@ -284,7 +290,7 @@ namespace UI {
         userRects.clear();
 
         fb.clear(Colors::Background);
-        drawTitleBar(fb, "Pokémon Save Editor   v" + VERSION_STRING);
+        drawTitleBar(fb, "PokéVault NX   v" + VERSION_STRING + "   " + BUILD_COMMIT);
 
         const UserEntry* u = currentUser();
 
@@ -367,11 +373,16 @@ namespace UI {
                 else
                     fb.drawFilledRoundedRect(iconX, iconY, ICON, ICON, 10, Colors::PanelAlt);
 
-                // Short label centered under the icon.
+                // Release name and platform are separate lines. A FireRed tile must always say
+                // whether it is the GBA or Switch release; display names are never identity.
                 const std::string& label = u->titles[i].label;
                 int lw, lh; fb.measureText(label, lw, lh, TextStyle::Caption);
                 fb.drawText(tileX + (TILE_W - lw) / 2, iconY + ICON + 8, label,
                             sel ? Colors::Text : Colors::TextDim, TextStyle::Caption);
+                const std::string& platform = u->titles[i].platformLabel;
+                int pw, ph; fb.measureText(platform, pw, ph, TextStyle::Caption);
+                fb.drawText(tileX + (TILE_W - pw) / 2, iconY + ICON + 8 + lh + 1, platform,
+                            Colors::TextDim, TextStyle::Caption);
 
                 titleRects.push_back({tileX, tileY, TILE_W, TILE_H, i});
             }

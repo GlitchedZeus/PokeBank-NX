@@ -1,5 +1,7 @@
 # Ignore build output
 /build/
+/build-host/
+/build-deps/
 /*.elf
 /*.nro
 /*.nsp

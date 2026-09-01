@@ -373,15 +373,12 @@ namespace UI {
 
         screen.touchButtons.clear();
         constexpr int kRows = 6;
-        // The injection row names its actual scope. It does NOT govern saving a cart-loaded session
-        // back to the cart -- that is always allowed. It only unlocks writing an OLDER BACKUP over
-        // the live save, which is the case that can roll a game backwards.
         const char* labels[kRows] = {
             "Auto-Backup on Load",
             "Theme",
             "Allow Illegal Values",
             "Bank Storage LGPE Move Warning",
-            "Allow Inject Backups to Game Save",
+            "Live Game Writes",
             "Enable Debug Logging"
         };
         std::string values[kRows] = {
@@ -389,7 +386,7 @@ namespace UI {
             (g_themeMode == ThemeMode::Dark) ? "Dark" : "Light",
             g_allowIllegalEdits ? "On" : "Off",
             g_moveWarn ? "On" : "Off",
-            g_injectToGameSave ? "On" : "Off",
+            "Locked",
             g_debugLogging ? "On" : "Off",
         };
         // The panel is a fixed height, so the rows have to fit inside it -- there is no scrolling
@@ -410,20 +407,20 @@ namespace UI {
             int vw, vh; fb.measureText(values[i], vw, vh, TextStyle::Body);
             const int pillW = vw + 48, pillH = 40;
             const int px = rx + rowW - pillW - 20, py = ry + (rowH - pillH) / 2;
-            // Amber "On" for the benign toggles; RED for the two that can damage real data -- the
-            // illegal-values override and game-save injection. Colour carries the risk, not just text.
+            // Amber "On" for benign toggles; red for the illegal-values override. The live-write
+            // row is green because this alpha's compile-time safety policy is actively locked.
             Color pillFill = Colors::Background, pillText = Colors::Text;
             if (i == 0 && g_autoBackupEnabled)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
             else if (i == 2 && g_allowIllegalEdits) { pillFill = Color(200, 80, 80); pillText = Colors::White; }
             else if (i == 3 && g_moveWarn)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
-            else if (i == 4 && g_injectToGameSave)  { pillFill = Color(200, 80, 80); pillText = Colors::White; }
+            else if (i == 4)                        { pillFill = Color(50, 125, 85);  pillText = Colors::White; }
             else if (i == 5 && g_debugLogging)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
             fb.drawPill(px, py, pillW, pillH, pillFill);
             fb.drawText(px + (pillW - vw) / 2, py + (pillH - vh) / 2, values[i], pillText, TextStyle::Body);
             screen.touchButtons.push_back({ i, rx, ry, rowW, rowH });
             ry += rowH + rowGap;
         }
-        fb.drawText(rx, ry + 8, "A: toggle     B: back", Colors::TextDim, TextStyle::Caption);
+        fb.drawText(rx, ry + 8, "A: toggle / info     B: back", Colors::TextDim, TextStyle::Caption);
     }
 
     // Trainer view (HOME-style ID card), reached from the HOME menu's Trainer icon. The first two
@@ -523,7 +520,7 @@ namespace UI {
             " tid=" + std::to_string(trainer.TID16) + " sid=" + std::to_string(trainer.SID16) +
             " party=" + std::to_string(trainer.getPartySize()) +
             " boxes=" + std::to_string(trainer.getBoxCount()) +
-            " inject=" + (g_injectToGameSave ? "ON" : "OFF") +
+            " livewrites=LOCKED" +
             " illegal=" + (g_allowIllegalEdits ? "ON" : "OFF") +
             " autobackup=" + (g_autoBackupEnabled ? "ON" : "OFF") +
             " movewarn=" + (g_moveWarn ? "ON" : "OFF") +
@@ -1129,18 +1126,18 @@ namespace UI {
         return (slash == std::string::npos) ? path : path.substr(slash + 1);
     }
 
-    void TrainerViewScreen::performSave(const std::string& destDir, bool injectToTitle) {
+    void TrainerViewScreen::performSave(const std::string& destDir) {
         // The game's "current box" is kept in sync live while a box view is open (see update()), so
         // it already reflects wherever the user last was -- including a box change made in Storage
         // before backing out (Storage's own X sorts; this game save happens later). Nothing to do here.
-        const bool ok = Save::saveTrainerInfo(trainer, destDir.c_str(), titleId, userUid, injectToTitle);
+        const bool ok = Save::saveTrainerInfo(trainer, destDir.c_str(), titleId, userUid);
         saveConfirmActive = false;
 
         // The single most important trace line: what was written, where, and whether it worked.
         const std::string saveInfo =
-            std::string("dest=") + (injectToTitle ? "GAME" : "BACKUP") +
+            std::string("dest=BACKUP") +
             " folder=\"" + leafName(destDir) + "\"" +
-            " inject=" + (injectToTitle ? "1" : "0") +
+            " inject=0" +
             " illegaldata=" + (illegalDataWritten ? "1" : "0") +
             " result=" + (ok ? "OK" : "FAILED");
         Utils::logTest("SAVE     " + saveInfo);
@@ -1152,10 +1149,7 @@ namespace UI {
             details.active = false;
             details.editing = false;
             creator.editing = false; creator.keepConfirmActive = false;   // committed by the save
-            // Name the destination back to the user: with three of them, "saved" alone is ambiguous
-            // and the whole point of the picker is knowing WHERE it went.
-            postStatus(injectToTitle ? "Written to the game save."
-                                     : ("Written to backup \"" + leafName(destDir) + "\"."), 200);
+            postStatus("Written to backup \"" + leafName(destDir) + "\".", 200);
             // A new backup becomes the session's working copy, so a second save goes to the same
             // place instead of silently forking another folder off the original.
             backupDir = destDir;
@@ -2210,27 +2204,10 @@ namespace UI {
                 !storageExitConfirmActive && !details.active) {
                 exitingWithUnsavedChanges = false;  // Regular save, not exiting
                 exitingViaPlus = false;
-                saveDestIndex = defaultSaveDestRow();   // first row: game save for a title session,
-                                                        // the open backup for a backup session
+                saveDestIndex = defaultSaveDestRow();   // the session's safe working backup
                 saveConfirmActive = true;
                 return;
             }
-        }
-
-        // Injecting into the real game save — the last gate, and the only thing PKSE does that
-        // overwrites data the user cannot recover from inside the app. Handled BEFORE the save
-        // dialog because saveConfirmActive is still true underneath it.
-        if (saveInjectConfirmActive) {
-            const int tb = touchedButtonId(touch);
-            if (tb == 1)      kDown |= HidNpadButton_A;
-            else if (tb == 0) kDown |= HidNpadButton_B;
-            if (kDown & HidNpadButton_A) {
-                saveInjectConfirmActive = false;
-                performSave(backupDir, true);
-                return;
-            }
-            if (kDown & HidNpadButton_B) { saveInjectConfirmActive = false; return; }  // back to the picker
-            return;
         }
 
         // Handle save confirmation dialog
@@ -2284,13 +2261,8 @@ namespace UI {
 
                     // (The bank has its OWN persistence — it saves on storage-view exit / app exit,
                     // separate from this game-save, since it's a separate entity from the save file.)
-                    if (chosenDest == DestGameSave) {
-                        // Writing your OWN save back is the ordinary thing a save editor does -- the
-                        // data being overwritten is the data we just read -- so it goes straight
-                        // through. Only a backup-sourced session needs the extra gate, because that
-                        // is the one that rolls the game backwards.
-                        if (loadedFromCart) { performSave(backupDir, true); return; }
-                        saveInjectConfirmActive = true;
+                    if (!PokeVault::Safety::canWriteTo(chosenDest)) {
+                        postStatus("Live game writes are locked in this alpha. Save to a backup instead.", 360);
                         return;
                     }
 
@@ -2305,7 +2277,7 @@ namespace UI {
                             return;
                         }
                     }
-                    performSave(destDir, false);
+                    performSave(destDir);
                     return;
                 }
                 if (kDown & HidNpadButton_B) {
@@ -3833,7 +3805,7 @@ namespace UI {
             }
 
             // Settings view: Up/Down select a row, A toggles it (0 = auto-backup, 1 = theme,
-            // 2 = allow illegal values, 3 = Let's Go move warning, 4 = inject backups to game save,
+            // 2 = allow illegal values, 3 = Let's Go move warning, 4 = live-write policy info,
             // 5 = debug logging). Keep this in step with drawSettingsView's labels/values.
             if (selectedMode == ViewMode::Settings) {
                 constexpr int kSettingsRows = 6;
@@ -3846,15 +3818,8 @@ namespace UI {
                     else if (settingsSelectedRow == 1) applyTheme(g_themeMode == ThemeMode::Dark ? ThemeMode::Light : ThemeMode::Dark);
                     else if (settingsSelectedRow == 2) g_allowIllegalEdits = !g_allowIllegalEdits;
                     else if (settingsSelectedRow == 3) g_moveWarn = !g_moveWarn;
-                    else if (settingsSelectedRow == 4) {
-                        // The master lock for writing into the real game save. Turning it ON only
-                        // makes the "Game save" destination available in the save dialog -- it never
-                        // makes a save destructive on its own, so no confirmation is needed here.
-                        g_injectToGameSave = !g_injectToGameSave;
-                        postStatus(g_injectToGameSave
-                            ? "An older backup can now be written over your live game save."
-                            : "Backups can no longer be written over your live game save.", 300);
-                    }
+                    else if (settingsSelectedRow == 4)
+                        postStatus("Locked for this alpha: installed game saves are read-only sources.", 300);
                     else {
                         // Off by default, so a normal run leaves nothing on the card. The status
                         // names the path because the whole point of the toggle is handing that file
@@ -4245,9 +4210,6 @@ namespace UI {
         }
         if (saveConfirmActive) {
             Dialogs::drawSaveConfirmDialog(*this, fb);
-        }
-        if (saveInjectConfirmActive) {   // overlays the picker
-            Dialogs::drawSaveInjectConfirm(*this, fb);
         }
         if (storageMenuActive) {
             Panels::drawStorageActionMenu(*this, fb);

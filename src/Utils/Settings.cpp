@@ -42,7 +42,8 @@ namespace Utils {
                 // new key is written back, so it ages out on the first save.
                 g_moveWarn = (strcmp(val, "0") != 0);
             } else if (strcmp(key, "injectToGame") == 0) {
-                g_injectToGameSave = (strcmp(val, "0") != 0);
+                // Legacy PKSE setting. PokeBank NX intentionally ignores it: live title writes
+                // are a compile-time policy lock, not a user-configurable option.
             } else if (strcmp(key, "debugLogging") == 0) {
                 g_debugLogging = (strcmp(val, "0") != 0);
             }
@@ -63,7 +64,9 @@ namespace Utils {
         fprintf(f, "autoBackup=%d\n", g_autoBackupEnabled ? 1 : 0);
         fprintf(f, "allowIllegal=%d\n", g_allowIllegalEdits ? 1 : 0);
         fprintf(f, "moveWarn=%d\n", g_moveWarn ? 1 : 0);
-        fprintf(f, "injectToGame=%d\n", g_injectToGameSave ? 1 : 0);
+        // Keep writing the legacy key as zero so older builds also default to the safe state if the
+        // same SD card is used, but never read it as authority in PokeBank NX.
+        fprintf(f, "injectToGame=0\n");
         fprintf(f, "debugLogging=%d\n", g_debugLogging ? 1 : 0);
         fclose(f);
     }

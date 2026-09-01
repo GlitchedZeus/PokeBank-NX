@@ -36,10 +36,8 @@ namespace UI {
 
         void handleSaveSelection();
         void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName);
-        // loadedFromCart: true when this session was read from the LIVE game save (the "load from
-        // title" path), false when an older backup was opened. Writing back to the game is the
-        // normal, expected thing to do in the first case and a rollback in the second, so the two
-        // are gated very differently at save time.
+        // loadedFromCart records source provenance only. Installed game saves remain read-only;
+        // edits are written to the automatically created working backup or a new named backup.
         void handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
                                const std::string& backupDir, bool loadedFromCart);
     };

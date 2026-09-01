@@ -22,22 +22,14 @@
 #endif
 inline const std::string VERSION_STRING = PKSE_VERSION;
 
+#ifndef POKEVAULT_GIT_COMMIT
+#define POKEVAULT_GIT_COMMIT "unknown"
+#endif
+inline const std::string BUILD_COMMIT = POKEVAULT_GIT_COMMIT;
+
 inline constexpr std::string BASE_SAVE_DIRECTORY = "sdmc:/PKSE";
 
 inline constexpr uint32_t SIZE_HASH_IN_BYTES = 32;
-
-/// Settings lock for writing an OLDER BACKUP over the live game save, persisted. Default OFF.
-///
-/// Scope is deliberately narrow. Saving a session that was loaded FROM the live save back TO it is
-/// always allowed and needs no toggle — that is simply what a save editor does, and the data being
-/// overwritten is the data that was just read. What this gates is the other case: opening a backup
-/// from some earlier point and writing it over the current save, which rolls the game backwards and
-/// loses everything played since. That is the only thing worth a lock, and it also raises a separate
-/// confirmation at save time.
-///
-/// (Replaces a hard-coded `constexpr bool SAVE_TO_TITLE = true`, under which every save overwrote
-/// the live save with no way to opt out.)
-inline bool g_injectToGameSave = false;
 
 /// Runtime setting (toggled in the in-app Settings screen, persisted to settings.cfg): when true,
 /// "Load from Title" creates a new timestamped backup each time (kept indefinitely — backups are
