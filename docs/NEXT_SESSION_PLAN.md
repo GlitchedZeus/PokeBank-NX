@@ -1,69 +1,140 @@
 # PokeBank NX — Next Session Plan
 
-Target date: 2026-09-02  
-Status: NEXT EXECUTION PLAN
+Last updated: 2026-09-01  
+Status: ACTIVE EXECUTION PLAN
 
-This page is intentionally short. `PROJECT_STATUS.md` remains the authoritative verified status; this is the recommended split for the next two available coding blocks.
+`PROJECT_STATUS.md` is the authoritative verified-state record. This file is the recommended order for the next coding blocks after the completed Action Sheet milestone and interrupted Session 2 UI/theme work.
 
 ---
 
-# Session A — primary coding block
+# Current position
+
+Completed:
+
+```text
+Issue #2 — Controller-first Pokémon Action Sheet
+Application source: 82a0779a5143cca0690d0c7068946d84ebe9f107
+Host tests: PASS
+ASan/UBSan: PASS
+Native .nro: BUILDS
+Issue state: CLOSED / COMPLETED
+```
+
+Device-test artifact already recorded:
+
+```text
+PokeBank-NX-ActionSheet-82a0779.nro
+9,695,669 bytes
+SHA-256:
+6ff0f71c2e8f6d7fcf948a4bbc0037ba799e22bbaac433263be7cd0afac3b72b
+```
+
+That binary remains **NOT DEVICE TESTED**.
+
+Current open feature:
+
+```text
+Issue #13 — HOME-style controls and OLED/Dark/Light UI shell
+```
+
+Important: a Session 2 coding run reported substantial **local-only** implementation before usage ended. It did not complete verification/build/commit/push.
+
+---
+
+# Block A — HIGH — recover and finish Session 2
 
 ## Objective
 
-Produce the next **playable, device-testable** PokeBank NX milestone instead of disappearing into a large subsystem.
+Recover the interrupted local UI/control/theme work if it still exists, finish the smallest coherent issue #13 milestone, and produce a new combined device-test `.nro`.
 
-## Start
+Do **not** start PKSM-Core in this block.
 
-1. Fetch `GlitchedZeus/PokeBank-NX`.
-2. Checkout `feature/pokebank-playable`.
-3. Read:
-   - `PROJECT_STATUS.md`
-   - `docs/SESSION_RUNBOOK.md`
-   - `docs/CONTROLS.md`
-   - `docs/UI_FLOW.md`
-   - `docs/UI_STYLE_GUIDE.md`
-   - Issue #2
-   - Issue #13
-4. Preserve any valid work newer than the documented remote state.
-5. Run host tests/sanitizers.
-6. Build baseline native `.nro` before large edits when the devkitPro environment is available.
+## First action: preserve local work
 
-## Work order
+Before reset/clean/branch switching, run:
 
-### 1. Finish Issue #2 — Pokémon Action Sheet
-
-A on an occupied Pokémon must open:
-
-```text
-View Pokémon
-Add to Master Vault
-Add to Bank…
-Transfer to Game…
-Edit
-Clone
-Make Shiny
-Legality & Provenance
-Cancel
+```bash
+pwd
+git rev-parse --show-toplevel
+git status
+git status --short
+git branch -avv
+git log --all --oneline --decorate --graph -30
+git reflog -30
+git stash list
 ```
 
-Opening/focusing/canceling performs no mutation.
+The previous coding agent explicitly reported using a preserved Session 2 branch/worktree.
 
-Unavailable features may be visibly disabled or return a clear not-yet-supported result.
+Look for:
 
-### 2. Build only the reusable UI pieces needed to make #2 clean
+- uncommitted Session 2 changes;
+- local Session 2 branches;
+- local commits not pushed to origin;
+- relevant reflog entries;
+- stashes/worktrees.
 
-Prefer reusable components instead of one-off styling:
+Do not destroy that work by immediately resetting to GitHub.
+
+Only if the Session 2 work is genuinely absent should it be reimplemented from the docs.
+
+## Read before changing code
 
 ```text
-Theme tokens
-Focus style
-Panel/card primitive
-Modal/action-sheet primitive
-Bottom controller hint bar
+PROJECT_STATUS.md
+docs/SESSION_RUNBOOK.md
+docs/CONTROLS.md
+docs/UI_FLOW.md
+docs/UI_STYLE_GUIDE.md
+docs/ARCHITECTURE.md
+docs/SAVE_SAFETY.md
+GitHub issue #13
 ```
 
-Support or scaffold:
+Issue #2 is completed. Do not redo the Action Sheet unless fixing a regression.
+
+## Reported Session 2 local work
+
+The interrupted session reported:
+
+```text
+semantic three-theme foundation
+Select Game semantic raised/focused cards
+typed/context-aware bottom controller hints
+held D-pad / Left-Stick navigation repeat
++ no longer globally exits
+contextual + Options / Settings / compatibility / More
+- read-only Help / Controls
+persisted theme cycling
+reusable focus/card/modal helpers
+Action Sheet integration through shared primitives
+```
+
+Treat this as a recovery target, **not verified GitHub functionality**.
+
+## Required control model
+
+```text
+D-pad       precise navigation
+Left Stick  navigation / held scrolling
+A           Select / Open; Pokémon -> Action Sheet
+B           Back / Cancel
+X           Filter / Search / context
+Y           Sort / View / secondary action
+L / R       previous/next box, Pokémon, or nearby tab
+ZL / ZR     larger jumps / major navigation
++           contextual More / Options; never global Exit
+-           Help / Controls / Screen Info
+Right Stick optional fast scroll / secondary pane only
+```
+
+On Pokémon Summary, reserve/prefer:
+
+```text
++ -> Compatible Games / Transfer Compatibility
+```
+
+## Required theme foundation
 
 ```text
 OLED Black
@@ -71,187 +142,267 @@ Dark
 Light
 ```
 
-Do not spend the entire session restyling every inherited screen before #2 works.
-
-### 3. Apply HOME-like control conventions
-
-Required for this milestone:
+Use semantic tokens such as:
 
 ```text
-D-pad / Left Stick = navigation
-A                  = select/open
-B                  = cancel/back
-L/R                = box/tab navigation where relevant
-X/Y                = contextual and labeled
-+                  = Options/More where available
--                  = Help/Controls where available
+background
+surface
+surfaceRaised
+surfaceSelected
+textPrimary
+textSecondary
+textMuted
+accentPrimary
+accentSecondary
+focusBorder
+divider
+success
+warning
+error
+info
 ```
 
-The action sheet itself only needs the controls that make sense; do not overload the modal.
+Theme choice should persist.
 
-### 4. Produce fresh `.nro`
+Light is not simply an inverted Dark theme.
 
-Before ending Session A:
+## Required host regressions
+
+Add practical tests where logic can be isolated for:
 
 ```text
-host tests PASS
-sanitizers PASS
-native .nro BUILDS
-git diff --check PASS
+exact theme enumeration
+safe persisted-theme round trip
+invalid persisted-theme fallback
+required semantic palette roles
++ maps to contextual More/Options, not Exit
+- maps to Help/Screen Info
+held navigation repeat behavior
+button-hint model exposes only active bindings
+Action Sheet Session 1 behavior remains intact
+Action Sheet open/close remains non-mutating
+live-write hard lock remains enforced
+```
+
+Avoid brittle pixel-coordinate tests unless there is a strong reason.
+
+## Verification gate
+
+Run:
+
+```bash
+make -f Makefile.host host-clean
+make -f Makefile.host host-test
+make -f Makefile.host host-sanitize
+git diff --check
+make -j1
+```
+
+Fix regressions instead of deleting the new architecture merely to make the build pass.
+
+## End of Block A
+
+Required result:
+
+```text
+HOME-style controls/theme foundation: IMPLEMENTED
+host tests: PASS
+sanitizers: PASS
+git diff --check: PASS
+native .nro: BUILDS
 PROJECT_STATUS updated
-commit/push/remote SHA verified
+application-source commit pushed
+remote SHA verified
+new .nro preserved/provided
 ```
 
 Record:
 
 ```text
-source commit
-.nro filename
+filename
+exact application source SHA
 size
 SHA-256
 ```
 
-Most importantly: **preserve/provide the actual `.nro` for physical testing.**
+Do not say `DEVICE TESTED`.
 
-Do not leave the only binary in temporary `/mnt/data` storage.
+Stop after the coherent UI/control milestone is saved.
 
 ---
 
-# Between sessions — physical Switch test
+# Between Block A and Block B — physical Switch test
 
 Use `docs/DEVICE_TEST_CHECKLIST.md`.
 
-For the UI/action-sheet pass, specifically test:
+Test the **new combined build**, not an unidentified older binary.
+
+Primary checks:
 
 ```text
-launch
+launch through hbmenu
+Select Game focus/navigation
 D-pad navigation
-Left Stick navigation
-A opens action sheet
-B cancels action sheet
-no instant mutation
-L/R box navigation
-bottom button hints
-focus visibility
-OLED/Dark/Light readability if all are present
-+ behavior
-- Help behavior
+Left Stick navigation + held repeat
+A opens Action Sheet
+B/Cancel safely close Action Sheet
+Action Sheet still has correct order
+unfinished Action Sheet actions stay safe
+L/R behavior
+ZL/ZR behavior where wired
+X/Y contextual behavior where wired
++ opens More/Options and does NOT unexpectedly exit
+- opens read-only Help / Controls
+theme selection works
+OLED Black readability
+Dark readability
+Light readability
+theme preference persists after restart
+bottom button hints match actual behavior
+no source Pokémon moves/changes from browsing
+no live-save write path becomes exposed
 ```
 
-Capture:
+Record exact source SHA and `.nro` SHA-256 with the hardware report.
 
-```text
-screenshot/photo
-exact buttons pressed
-expected behavior
-actual behavior
-crash/error code if any
-```
-
-Only the exact tested build can become DEVICE TESTED.
+Only behaviors actually tested on that exact build may become `DEVICE TESTED`.
 
 ---
 
-# Session B — lunch-break block
+# Block B — HIGH if hardware fixes are needed
 
-## First priority: hardware feedback
+If the combined device build has obvious UI/input/device-only problems:
 
-If Session A was physically tested and problems were found:
+1. reproduce from the exact report;
+2. fix the smallest coherent regression set;
+3. rerun host tests/sanitizers;
+4. native build;
+5. update status;
+6. commit/push/verify;
+7. provide a replacement `.nro` if another physical pass is needed.
 
-1. reproduce from report;
-2. fix the smallest coherent set;
-3. host tests + sanitizers;
-4. rebuild `.nro`;
-5. push/verify;
-6. provide replacement test build if time permits.
+Do not ignore a crash or dangerous control problem in order to start deeper engine work.
 
-Do **not** ignore a device crash in order to start architecture work.
+If hardware testing is clean enough, skip straight to Block C.
 
-## If the device-test build is stable
+---
 
-Begin Issue #4:
+# Block C — MAX — PKSM-Core Gen III spike
+
+Use **MAX/deep reasoning** for this block.
+
+GitHub issue:
 
 ```text
-PKSM-Core Gen III integration spike
-```
-
-Focus narrowly on:
-
-```text
-PK3
-Sav3
-FireRed / LeafGreen GBA
-read-only parse
-box/party extraction
-round-trip test strategy
-adapter/dependency cost
+#4 — Audit and spike PKSM-Core Gen III integration
 ```
 
 Read:
 
 ```text
-docs/PKSM_CORE_INTEGRATION.md
+PROJECT_STATUS.md
 docs/UPSTREAM_AUDIT.md
+docs/PKSM_CORE_INTEGRATION.md
+docs/ARCHITECTURE.md
 docs/SAVE_SAFETY.md
+docs/GAME_SUPPORT_MATRIX.md
 ```
 
-Do not enable live writes.
+## Narrow first target
 
-The goal for a short Session B is an evidence-based integration decision and/or smallest working read-only spike, not a complete Gen I–VIII engine migration.
+```text
+PK3
+Sav3
+FireRed / LeafGreen GBA
+read-only parsing
+box/party extraction
+active save-slot/sector behavior
+PK3 encrypt/decrypt/checksum behavior
+untouched round-trip strategy
+adapter/dependency cost
+```
+
+Do not rewrite Gen III from scratch before testing PKSM-Core integration viability.
+
+Possible outcome classifications:
+
+```text
+DIRECT REUSE
+ADAPTER / WRAPPER
+SELECTIVE PORT
+REFERENCE ONLY
+```
+
+Base the choice on license compatibility, build/dependency cost, correctness, maintenance, testability, and overlap with existing PKSE code.
+
+No live writes during this spike.
 
 ---
 
-# Do not do tomorrow
+# After PKSM-Core spike
 
-Unless required to fix the current milestone, avoid starting all of these at once:
+Recommended order:
 
 ```text
-full Master Vault implementation
+#3  Master Vault v1 + named Banks
+#9  Professional Summary + provenance
+#6  RetroArch discovery + read-only Gen I-III adapters
+#11 Modern Switch adapter validation
+#5  PKHeX Oracle
+#7  Vault-driven Pokédex / Living Dex
+#10 Conversion / transfer without live writes
+```
+
+Issue #15 can improve recurring `.nro` artifact preservation in parallel when it does not block product work.
+
+---
+
+# Do not do prematurely
+
+Avoid starting all of these at once:
+
+```text
+full Master Vault
 full Pokédex
 full legality engine
 full event archive
-full cross-generation transfer pipeline
-live save writes
-entire UI redesign in one commit
+all generations at once
+live installed-save writing
+large visual redesign before finishing the interrupted UI milestone
 ```
-
-Those are already specified/tracked and can follow after the app has another physically testable checkpoint.
 
 ---
 
-# Compact Session A prompt
+# Compact continuation prompt
 
 ```text
-POKEBANK NX — NEXT PLAYABLE MILESTONE
+POKEBANK NX — SESSION 2 CONTINUATION
 
-Open/fetch GlitchedZeus/PokeBank-NX and checkout feature/pokebank-playable.
+Use HIGH reasoning.
+
+Continue GlitchedZeus/PokeBank-NX on feature/pokebank-playable.
 PKSE is upstream only; never push PokeBank NX changes there.
 
-Read PROJECT_STATUS.md, docs/SESSION_RUNBOOK.md, docs/CONTROLS.md,
-docs/UI_FLOW.md, docs/UI_STYLE_GUIDE.md, Issue #2 and Issue #13.
+Issue #2 Action Sheet is completed. Do not redo it except for regressions.
 
-Run baseline host tests/sanitizers and native .nro build.
+The previous issue #13 UI/theme session ran out of usage before test/build/commit/push.
+It explicitly reported preserved LOCAL Session 2 work.
 
-Primary task: finish the controller-first A-button Pokémon action sheet.
-A on a Pokémon opens a deliberate menu and never instant-mutates.
+BEFORE reset/clean/checkout, inspect git status, local branches, reflog and stash and recover that work if it exists.
 
-Use Pokémon HOME-like controls and build only the reusable visual pieces needed
-for this milestone: semantic theme tokens, strong focus state, action-sheet/modal,
-and controller hint bar. Target OLED Black, Dark and Light themes.
+Read PROJECT_STATUS.md, docs/NEXT_SESSION_PLAN.md, docs/CONTROLS.md,
+docs/UI_FLOW.md, docs/UI_STYLE_GUIDE.md, docs/ARCHITECTURE.md and issue #13.
 
-+ must have a useful contextual Options/More action; on Pokémon Summary the
-target behavior is Compatible Games / Transfer Compatibility.
-- must open Help / Controls / Screen Info.
+Finish the HOME-style controls + OLED Black/Dark/Light semantic theme foundation.
+Add host regressions for theme persistence/palette roles, + Options vs Exit, - Help,
+held navigation repeat, active button hints, Action Sheet safety, and live-write lock.
 
-Keep live game-save writing hard disabled.
+Then run host tests, sanitizers, git diff --check, and native make -j1.
 
-Before session end:
-test -> sanitize -> build .nro -> git diff --check -> update PROJECT_STATUS.md
--> commit -> push -> verify remote SHA.
+Update PROJECT_STATUS.md, commit the APPLICATION SOURCE, push to origin,
+verify the remote SHA, and provide the new .nro with filename, source SHA, size and SHA-256.
 
-Preserve/provide the actual .nro and record filename, size, SHA-256 and source commit
-so it can be tested on a physical Switch.
-
-Do not start a huge later subsystem until this playable milestone is saved.
-Start working immediately.
+Do not start PKSM-Core in this session.
+Do not mark DEVICE TESTED.
+Start by finding the interrupted local Session 2 work.
 ```
