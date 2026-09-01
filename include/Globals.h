@@ -22,6 +22,11 @@
 #endif
 inline const std::string VERSION_STRING = PKSE_VERSION;
 
+#ifndef POKEVAULT_GIT_COMMIT
+#define POKEVAULT_GIT_COMMIT "unknown"
+#endif
+inline const std::string BUILD_COMMIT = POKEVAULT_GIT_COMMIT;
+
 inline constexpr std::string BASE_SAVE_DIRECTORY = "sdmc:/PKSE";
 
 inline constexpr uint32_t SIZE_HASH_IN_BYTES = 32;

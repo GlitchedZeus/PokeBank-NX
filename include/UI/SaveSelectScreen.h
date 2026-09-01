@@ -26,12 +26,15 @@ namespace UI {
         AccountUid getSelectedUser() const { return selectedUserUid; }
         u64 getSelectedTitleId() const { return selectedTitleId; }
         const std::string& getSelectedTitleName() const { return selectedTitleName; }
+        const std::string& getSelectedGameId() const { return selectedGameId; }
 
     private:
         struct TitleEntry {
             u64 titleId;
             std::string name;    // full "Pokemon X" name (used for backup dir + downstream)
             std::string label;   // short display name under the icon (e.g. "Shield")
+            std::string gameId;  // stable release + platform identity (e.g. firered_switch)
+            std::string platformLabel;
         };
         struct UserEntry {
             AccountUid uid;
@@ -49,6 +52,7 @@ namespace UI {
         AccountUid selectedUserUid{};
         u64 selectedTitleId = 0;
         std::string selectedTitleName;
+        std::string selectedGameId;
 
         // Tap targets captured during draw(), hit-tested on the next update().
         std::vector<HitRect> titleRects;

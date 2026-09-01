@@ -1,5 +1,6 @@
 #---------------------------------------------------------------------------------
 .SUFFIXES:
+.DEFAULT_GOAL := default
 #---------------------------------------------------------------------------------
 
 ifeq ($(strip $(DEVKITPRO)),)
@@ -37,13 +38,13 @@ include $(DEVKITPRO)/libnx/switch_rules
 #   of a homebrew executable (.nro). This is intended to be used for sysmodules.
 #   NACP building is skipped as well.
 #---------------------------------------------------------------------------------
-TARGET		:=	PKSE
+TARGET		:=	PokeVaultNX
 BUILD		:=	build
-SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
+SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
 DATA		:=	data
 INCLUDES	:=	include nanovg
-APP_TITLE   :=  PKSE
-APP_AUTHOR  :=  Kiasta
+APP_TITLE   :=  PokeVault NX
+APP_AUTHOR  :=  GlitchedZeus and PKSE contributors
 # THE version, in two spellings. Both are set here and nothing downstream needs editing.
 #
 # APP_VERSION is the .nacp one -- the home menu and hbmenu read it. The name is not ours to choose:
@@ -60,8 +61,9 @@ APP_AUTHOR  :=  Kiasta
 #
 # NOTE: no trailing comment on either assignment line. Make keeps trailing whitespace in a value, so
 # "0.0.3 \t\t# ..." would have baked spaces into the .nacp version and the -D define.
-APP_VERSION :=	1.1.3
-APP_VERSION_FULL :=	1.1.3
+APP_VERSION :=	0.1.0-alpha
+APP_VERSION_FULL :=	0.1.0-alpha
+GIT_COMMIT := $(shell git rev-parse --short=8 HEAD 2>/dev/null || printf unknown)
 
 # Mirrors what switch_rules does for APP_VERSION: an unset long form falls back to the short one
 # rather than compiling in an empty version string.
@@ -78,7 +80,8 @@ ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
 # NanoVG: disable its stb_image (we feed RGBA buffers via nvgCreateImageRGBA, and SpriteManager
 # already owns the STB_IMAGE_IMPLEMENTATION) — avoids duplicate symbols. Keeps fontstash for text.
-DEFINES	:=	-DNVG_NO_STB -DPKSE_VERSION='"$(APP_VERSION_FULL)"'
+DEFINES	:=	-DNVG_NO_STB -DPKSE_VERSION='"$(APP_VERSION_FULL)"' \
+			-DPOKEVAULT_GIT_COMMIT='"$(GIT_COMMIT)"' -D_POSIX_C_SOURCE=200809L
 
 #---------------------------------------------------------------------------------
 # There is ONE build. SD-card logging is a runtime setting -- Settings -> "Enable Debug Logging",
@@ -97,8 +100,8 @@ DEFINES	:=	-DNVG_NO_STB -DPKSE_VERSION='"$(APP_VERSION_FULL)"'
 # dependency list.
 #---------------------------------------------------------------------------------
 SDL_PKGCONFIG	:=	$(DEVKITPRO)/portlibs/switch/bin/aarch64-none-elf-pkg-config
-SDL_CFLAGS	:=	$(shell $(SDL_PKGCONFIG) --cflags SDL2)
-SDL_LIBS	:=	$(shell $(SDL_PKGCONFIG) --libs --static SDL2)
+SDL_CFLAGS	:=	$(shell $(SDL_PKGCONFIG) --cflags sdl2)
+SDL_LIBS	:=	$(shell $(SDL_PKGCONFIG) --libs --static sdl2)
 
 CFLAGS	:=	-g -Wall -O2 -ffunction-sections \
 			$(ARCH) $(DEFINES)
