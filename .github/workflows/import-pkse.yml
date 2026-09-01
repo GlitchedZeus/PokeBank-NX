@@ -1,0 +1,41 @@
+name: Import PKSE upstream history
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/import-pkse.yml
+
+permissions:
+  contents: write
+
+jobs:
+  import-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PokeBank NX
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Import PKSE 1.1.3 with full ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "PokeBank NX Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git remote add pkse https://github.com/kiasta/PKSE.git
+          git fetch pkse master --tags
+          upstream_sha="$(git rev-parse pkse/master)"
+
+          if git merge-base --is-ancestor "$upstream_sha" HEAD; then
+            echo "PKSE history is already present."
+            exit 0
+          fi
+
+          git merge --allow-unrelated-histories -s ours "$upstream_sha" \
+            -m "chore: link upstream PKSE history"
+          git checkout "$upstream_sha" -- .
+          git commit -m "chore: import PKSE 1.1.3 source"
+          git push origin HEAD:main
