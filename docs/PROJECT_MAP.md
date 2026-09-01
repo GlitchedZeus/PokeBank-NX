@@ -9,12 +9,16 @@ This is the short navigation page for the project's permanent documentation and 
 1. [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) — current verified state and active task
 2. [`SESSION_RUNBOOK.md`](SESSION_RUNBOOK.md) — how every coding session starts/ends
 3. [`ARCHITECTURE.md`](ARCHITECTURE.md) — module boundaries and dependency direction
-4. [`UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md) — pinned PKSE/PKSM-Core/PKHeX/AutoMod/pkHouse/pkDex/PKForge research map
+4. [`CONTROLS.md`](CONTROLS.md) — Pokémon HOME-like controller map including + / - behavior
+5. [`UI_STYLE_GUIDE.md`](UI_STYLE_GUIDE.md) — visual direction, OLED Black/Dark/Light themes, game cards, summary and Pokédex layouts
+6. [`UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md) — pinned PKSE/PKSM-Core/PKHeX/AutoMod/pkHouse/pkDex/PKForge research map
 
 ## Core architecture / UX specs
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — UI/services/source adapters/engines/Vault/write-pipeline boundaries
-- [`UI_FLOW.md`](UI_FLOW.md) — controller conventions, A-button action sheet, Home/Game/Vault/Bank/Dex flows
+- [`UI_FLOW.md`](UI_FLOW.md) — controller-safe A-button action sheet and Home/Game/Vault/Bank/Dex flows
+- [`CONTROLS.md`](CONTROLS.md) — HOME-style controller conventions: A/B/X/Y/L/R/ZL/ZR/D-pad/sticks/+/-
+- [`UI_STYLE_GUIDE.md`](UI_STYLE_GUIDE.md) — semantic theme tokens, OLED Black/Dark/Light modes, controller hint bar, visual layout direction
 - [`MASTER_VAULT_SPEC.md`](MASTER_VAULT_SPEC.md) — immutable Vault, provenance, banks, transactions
 - [`SAVE_SAFETY.md`](SAVE_SAFETY.md) — hard-lock policy and future staged live-write gate
 - [`TRANSFER_MODEL.md`](TRANSFER_MODEL.md) — copy/move/clone/convert/HOME Bridge model
@@ -42,12 +46,13 @@ The first active implementation issue is the action sheet. Subsequent issues are
 2. [#4 — Audit and spike PKSM-Core Gen III integration](https://github.com/GlitchedZeus/PokeBank-NX/issues/4)
 3. [#3 — Implement Master Vault v1 and named banks](https://github.com/GlitchedZeus/PokeBank-NX/issues/3)
 4. [#8 — Produce and physically test first recovery-era `.nro`](https://github.com/GlitchedZeus/PokeBank-NX/issues/8) — produce the test artifact as soon as a useful milestone is ready; physical testing can happen while deeper architecture work continues
-5. [#9 — Build professional Pokémon summary and provenance view](https://github.com/GlitchedZeus/PokeBank-NX/issues/9)
-6. [#6 — Rebuild RetroArch discovery and read-only Gen I–III adapters](https://github.com/GlitchedZeus/PokeBank-NX/issues/6)
-7. [#11 — Audit modern Switch save adapters against pkHouse and PKHeX](https://github.com/GlitchedZeus/PokeBank-NX/issues/11)
-8. [#5 — Build host-side PKHeX Oracle](https://github.com/GlitchedZeus/PokeBank-NX/issues/5)
-9. [#7 — Implement Vault-driven Pokédex and Living Dex v1](https://github.com/GlitchedZeus/PokeBank-NX/issues/7)
-10. [#10 — Implement conversion/transfer engine without live writes](https://github.com/GlitchedZeus/PokeBank-NX/issues/10)
+5. UI/theme shell — implement the semantic OLED Black/Dark/Light theme system and HOME-like controller hint bar alongside/after the action-sheet milestone
+6. [#9 — Build professional Pokémon summary and provenance view](https://github.com/GlitchedZeus/PokeBank-NX/issues/9)
+7. [#6 — Rebuild RetroArch discovery and read-only Gen I–III adapters](https://github.com/GlitchedZeus/PokeBank-NX/issues/6)
+8. [#11 — Audit modern Switch save adapters against pkHouse and PKHeX](https://github.com/GlitchedZeus/PokeBank-NX/issues/11)
+9. [#5 — Build host-side PKHeX Oracle](https://github.com/GlitchedZeus/PokeBank-NX/issues/5)
+10. [#7 — Implement Vault-driven Pokédex and Living Dex v1](https://github.com/GlitchedZeus/PokeBank-NX/issues/7)
+11. [#10 — Implement conversion/transfer engine without live writes](https://github.com/GlitchedZeus/PokeBank-NX/issues/10)
 
 ## Architectural dependency sketch
 
@@ -55,6 +60,14 @@ The first active implementation issue is the action sheet. Subsequent issues are
 Current native PKSE/PokeBank foundation
         |
         +--> Action sheet
+        |       |
+        |       +--> HOME-like controls + themed modal primitives
+        |
+        +--> Theme tokens / visual shell
+        |       |
+        |       +--> OLED Black / Dark / Light
+        |       +--> Select Game cards
+        |       +--> controller hint bar
         |
         +--> PKSM-Core audit
         |       |
