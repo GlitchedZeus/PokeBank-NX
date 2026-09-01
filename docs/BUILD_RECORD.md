@@ -64,6 +64,31 @@ After future code changes, use `PROJECT_STATUS.md` and Git history as the source
 
 ---
 
+## Action Sheet device-test build
+
+```text
+Version/tag: 0.1.0-alpha
+Branch: feature/pokebank-playable
+Full commit SHA: 82a0779a5143cca0690d0c7068946d84ebe9f107
+Commit message: ui: add controller Pokemon action sheet
+Build date: 2026-09-01 UTC
+Compiler: aarch64-none-elf-g++ (devkitA64) 15.2.0
+Host test result: PASS
+Sanitizer result: PASS (ASan/UBSan; leak detection disabled in managed sandbox)
+Native build result: BUILDS
+Artifact filename: PokeBank-NX-ActionSheet-82a0779.nro
+Artifact size: 9,695,669 bytes
+Artifact SHA-256: 6ff0f71c2e8f6d7fcf948a4bbc0037ba799e22bbaac433263be7cd0afac3b72b
+Source location: GlitchedZeus/PokeBank-NX, feature/pokebank-playable
+Device tested: no
+Device-test notes/report: awaiting user test of this exact binary
+```
+
+The binary is preserved outside normal source history for direct user download. Do not mark it
+`DEVICE TESTED` until this exact SHA-256 is run on physical Switch hardware.
+
+---
+
 ## Build record template
 
 For every device-test or prerelease build, append/record:

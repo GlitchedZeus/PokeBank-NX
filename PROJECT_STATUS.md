@@ -13,6 +13,7 @@ Last updated: 2026-09-01
 - Latest verified GitHub recovery commit: `3101fc0`
 - Recovered baseline/status commit: `fabff21`
 - Latest verified remote **source safety milestone**: `c618bd5`
+- Latest verified remote **Action Sheet source commit**: `82a0779a5143cca0690d0c7068946d84ebe9f107`
 - Recovery-era exact `.nro` build source was recorded locally as short SHA `65aa52c`; that SHA is not present as a remote GitHub commit. See `docs/BUILD_RECORD.md`.
 - Local recovery commit: `afeb5da`
 - Recovery branch: `recovery/interrupted-2026-09-01`
@@ -28,7 +29,7 @@ The commits after `c618bd5` currently consist of project documentation/research 
 | Read-only live-save policy | HOST TESTED / NRO BUILDS | Backup-only destinations, generic save API has no injection parameter, filesystem restore rejects live writes |
 | Controller-first Pokémon Action Sheet | IMPLEMENTED / HOST TESTED / NRO BUILDS | Exact nine-action model; Party, Boxes and Storage share A-button semantics; B/Cancel/navigation are non-mutating; unsupported actions are explicit |
 | Host CI | HOST TESTED | `.github/workflows/host-tests.yml` passed on commit `49adc417` on `feature/pokebank-playable`; host tests + ASan/UBSan + whitespace check |
-| Native `.nro` | NRO BUILDS | Recovery runtime produced a 9,695,669-byte safety build, SHA-256 `0cf50b659ed5c648009e10d51a75a398bc2a3e69e4cbeb99cc0b74b9643ece07`; rebuild a fresh artifact from verified GitHub source before hardware testing |
+| Native `.nro` | NRO BUILDS | Action Sheet device-test build `PokeBank-NX-ActionSheet-82a0779.nro`, 9,695,669 bytes, SHA-256 `6ff0f71c2e8f6d7fcf948a4bbc0037ba799e22bbaac433263be7cd0afac3b72b`, source `82a0779a5143cca0690d0c7068946d84ebe9f107` |
 | Physical Switch execution | NOT DEVICE TESTED | No PokeBank NX build from this recovery has been run on hardware |
 | Master Vault / immutable objects | NOT RECOVERED | Earlier implementation was not present in refs, reflogs, stashes, unreachable commits, workspace archives, or GitHub; v1 is now formally specified in `docs/MASTER_VAULT_SPEC.md` |
 | RetroArch discovery / Gen 1-3 adapters | NOT RECOVERED | Earlier implementation was not present in recoverable project data; PKSM-Core integration/rebuild plan is now documented |
@@ -54,6 +55,8 @@ Action Sheet milestone, 2026-09-01:
 - `make -f Makefile.host host-sanitize`: PASS (AddressSanitizer and UndefinedBehaviorSanitizer)
 - native `make -j1`: PASS
 - `git diff --check`: PASS
+- device-test artifact: `PokeBank-NX-ActionSheet-82a0779.nro` (9,695,669 bytes; SHA-256 `6ff0f71c2e8f6d7fcf948a4bbc0037ba799e22bbaac433263be7cd0afac3b72b`)
+- exact artifact source: verified GitHub commit `82a0779a5143cca0690d0c7068946d84ebe9f107`
 - physical Switch execution: NOT DEVICE TESTED
 
 GitHub CI added later on 2026-09-01:
