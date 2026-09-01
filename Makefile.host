@@ -3,27 +3,34 @@ CXXFLAGS ?= -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2
 SANITIZE_FLAGS := -fsanitize=address,undefined -fno-omit-frame-pointer -O1
 
 HOST_BUILD := build-host
-HOST_TEST := $(HOST_BUILD)/test_game_identity
-HOST_SANITIZE_TEST := $(HOST_BUILD)/test_game_identity_sanitize
-HOST_SOURCES := tests/test_game_identity.cpp src/Games/GameIdentity.cpp
+HOST_TESTS := $(HOST_BUILD)/test_game_identity $(HOST_BUILD)/test_write_policy
+HOST_SANITIZE_TESTS := $(HOST_BUILD)/test_game_identity_sanitize $(HOST_BUILD)/test_write_policy_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
-host-test: $(HOST_TEST)
-	./$(HOST_TEST)
+host-test: $(HOST_TESTS)
+	@for test_bin in $(HOST_TESTS); do ./$$test_bin; done
 
-host-sanitize: $(HOST_SANITIZE_TEST)
+host-sanitize: $(HOST_SANITIZE_TESTS)
 	# LeakSanitizer cannot inspect /proc under the managed build sandbox. AddressSanitizer and
 	# UndefinedBehaviorSanitizer still run; leak checks remain enabled in unrestricted CI builds.
-	ASAN_OPTIONS=detect_leaks=0 ./$(HOST_SANITIZE_TEST)
+	@for test_bin in $(HOST_SANITIZE_TESTS); do ASAN_OPTIONS=detect_leaks=0 ./$$test_bin; done
 
-$(HOST_TEST): $(HOST_SOURCES)
+$(HOST_BUILD)/test_game_identity: tests/test_game_identity.cpp src/Games/GameIdentity.cpp
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $(HOST_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
 
-$(HOST_SANITIZE_TEST): $(HOST_SOURCES)
+$(HOST_BUILD)/test_write_policy: tests/test_write_policy.cpp
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(HOST_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_game_identity_sanitize: tests/test_game_identity.cpp src/Games/GameIdentity.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_write_policy_sanitize: tests/test_write_policy.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
 host-clean:
 	rm -rf $(HOST_BUILD)

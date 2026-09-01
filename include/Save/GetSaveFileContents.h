@@ -55,7 +55,7 @@ namespace Save {
      * @param userUid The user account ID for save data access
      * @return true if save was successful, false otherwise
      */
-    bool saveTrainerInfo(Trainer::Trainer& trainer, const char* backupDir, u64 titleId, AccountUid userUid, bool injectToTitle);
+    bool saveTrainerInfo(Trainer::Trainer& trainer, const char* backupDir, u64 titleId, AccountUid userUid);
 
     // ========================================
     // Game-Specific Functions

@@ -63,32 +63,22 @@ namespace Dialogs {
         // Expansion Pass can hold a Crown Tundra species traded to them and it works normally.
 
         const std::string backupName = leafOf(screen.backupDir);
-        const char* titles[3] = { "This backup", "New backup...", "Game save" };
-        const std::string subs[3] = {
+        const char* titles[2] = { "Working backup", "New backup..." };
+        const std::string subs[2] = {
             backupName,
             "name it with the keyboard",
-            // Same destination, very different act depending on where this session came from.
-            screen.loadedFromCart ? "write back to " + screen.titleName
-                                  : "REPLACES your live save with this backup",
         };
 
         screen.touchButtons.clear();
         const int rx = x + 20, rw = w - 40;
         int ry = cy + 34;
         for (int i = 0; i < rows; ++i) {
-            // A row is not its destination: a title session shows Game save / New backup, so the
-            // row index has to be mapped rather than used to index the arrays directly.
             const int d = static_cast<int>(screen.saveDestAt(i));
             const bool sel = (screen.saveDestIndex == i);
             if (sel) fb.drawSelectionHighlight(rx, ry, rw, rowH);
             else     fb.drawFilledRoundedRect(rx, ry, rw, rowH, 10, Colors::PanelAlt);
 
-            // Red only when writing to the game would DESTROY something: a backup-sourced session
-            // overwriting live progress. Saving a cart session back to its own cart is routine and
-            // shouldn't be dressed up as a hazard.
-            const bool danger = (d == TrainerViewScreen::DestGameSave) && !screen.loadedFromCart;
-            fb.drawText(rx + 18, ry + 7, titles[d],
-                        danger ? Color(235, 120, 120) : Colors::Text, TextStyle::Body);
+            fb.drawText(rx + 18, ry + 7, titles[d], Colors::Text, TextStyle::Body);
             fb.drawText(rx + 18, ry + 32, subs[d], Colors::TextDim, TextStyle::Caption);
 
             screen.touchButtons.push_back({ i, rx, ry, rw, rowH });
@@ -98,28 +88,5 @@ namespace Dialogs {
         drawDialogFooter(fb, x, y, w, h, "Up/Down: Choose  |  A: Save  |  B: Cancel");
     }
 
-    void drawSaveInjectConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-        constexpr int w = 620, h = 268;
-        const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
-
-        int cy = drawDialogFrame(fb, x, y, w, h, "Write to the game save?", Color(235, 120, 120));
-        fb.drawText(x + 24, cy,
-                    "This replaces " + screen.titleName + "'s save data", Colors::Text);
-        fb.drawText(x + 24, cy + 26,
-                    "with backup \"" + leafOf(screen.backupDir) + "\" plus your edits.", Colors::Text);
-        // Say plainly what is at risk. The user may have loaded a backup from weeks ago, in which
-        // case this rolls their game back -- and the dialog is the only place that can warn them.
-        fb.drawText(x + 24, cy + 60,
-                    "Any progress made since that backup will be lost.", Color(235, 120, 120));
-        fb.drawText(x + 24, cy + 86,
-                    "The backup itself is written either way.", Colors::TextDim, TextStyle::Caption);
-
-        screen.touchButtons.clear();
-        const int bw = (w - 60) / 2, bh = 52, by = y + h - 48 - bh - 8;
-        // Glyph ON each button (B: Cancel, A: Write to game); the destructive action stays red.
-        drawEditChoiceButton(screen, fb, x + 20,      by, bw, bh, "B", "Cancel",        0);
-        drawEditChoiceButton(screen, fb, x + 40 + bw, by, bw, bh, "A", "Write to game", 1,
-                             Color(160, 60, 60), Colors::White);
-    }
 }
 }

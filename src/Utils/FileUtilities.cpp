@@ -14,6 +14,7 @@
 #include <sys/unistd.h>
 
 #include "Globals.h"
+#include "Safety/WritePolicy.h"
 #include "Utils/Logger.h"
 
 namespace Utils {
@@ -293,6 +294,11 @@ namespace Utils {
     bool restoreBackupToTitle(AccountUid userUid, u64 titleId, const char* backupDir,
                               const std::string& primaryFile,
                               const std::vector<std::string>& optionalFiles) {
+        if (!PokeVault::Safety::canWriteTo(PokeVault::Safety::SaveDestination::LiveGame)) {
+            logErrorToFile("PokeBank NX blocked a live game-save write by policy");
+            return false;
+        }
+
         char buffer[LOG_BUFFER_SIZE];
         logInfoToFile("Restoring backup to game save", backupDir);
 
