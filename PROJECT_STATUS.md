@@ -15,7 +15,7 @@ This file is the authoritative verified-state handoff for coding sessions. Do no
 - Development branch: `feature/pokebank-playable`
 - Recovery branch: `recovery/interrupted-2026-09-01`
 
-### Important source checkpoints
+### Important application/source checkpoints
 
 ```text
 3101fc0
@@ -31,10 +31,12 @@ safety: hard-lock live game save writes
 ui: add controller Pokemon action sheet
 
 9a2151ee70c73bab4451f35a1216c495d60b57ba
-branch-history reconciliation checkpoint before today's documentation refresh
+branch-history reconciliation checkpoint before the documentation refresh
 ```
 
-The exact `.nro` produced for the Action Sheet milestone was built from **82a0779a...**, not from a later documentation commit.
+The exact `.nro` produced for the completed Action Sheet milestone was built from **82a0779a...**, not from a later documentation-only commit.
+
+`main` and `feature/pokebank-playable` are intentionally kept synchronized after documentation-only housekeeping. The current coding session must still inspect local work before assuming the remote branch is newer than an interrupted workspace.
 
 ---
 
@@ -76,6 +78,8 @@ Never say `DEVICE TESTED` unless the user physically ran the exact recorded bina
 | PKHeX Oracle | SPECIFIED | `docs/PKHEX_ORACLE.md` |
 | Vault-driven Pokédex | SPECIFIED | `docs/POKEDEX_SPEC.md` |
 | Artifact automation | PLANNED | issue #15 tracks persistent `.nro` artifact workflow |
+| Final branding/startup/NRO metadata | PLANNED | issue #16 tracks remaining product identity/startup integration |
+| Golden save/Pokémon fixture corpus | PLANNED | issue #17 supports PKSM-Core/PKHeX/adapter regression testing |
 
 ---
 
@@ -122,7 +126,7 @@ Cancel
 make -f Makefile.host host-test      PASS
 make -f Makefile.host host-sanitize  PASS
 git diff --check                     PASS
-make -j1                              PASS
+make -j1                             PASS
 ```
 
 ### Device-test artifact
@@ -144,7 +148,7 @@ Physical Switch status:
 NOT DEVICE TESTED
 ```
 
-The user elected to continue the UI/control milestone before testing so the next hardware pass can cover both the Action Sheet and the newer UI/control shell in one build.
+The project is finishing the UI/control milestone before testing so the next hardware pass can cover both the Action Sheet and the newer UI/control shell in one build.
 
 ---
 
@@ -189,7 +193,13 @@ physical hardware test
 
 Therefore none of that reported local Session 2 implementation may be claimed as remote `IMPLEMENTED`, `HOST TESTED`, or `NRO BUILDS` yet.
 
-### First action in next coding session
+### First action in the next coding session
+
+Use the permanent prompt:
+
+```text
+docs/PROMPT_SESSION2_RECOVERY.md
+```
 
 **Do not reset/clean/switch over unknown local work first.**
 
@@ -201,9 +211,10 @@ git rev-parse --show-toplevel
 git status
 git status --short
 git branch -avv
-git log --all --oneline --decorate --graph -30
-git reflog -30
+git log --all --oneline --decorate --graph -40
+git reflog -40
 git stash list
+git worktree list
 ```
 
 Find the preserved Session 2 branch/worktree/reflog state if it still exists.
@@ -237,6 +248,15 @@ Native integration:
 ```bash
 make -j1
 ```
+
+GitHub also contains:
+
+```text
+.github/pull_request_template.md
+.github/ISSUE_TEMPLATE/device_bug_report.md
+```
+
+Use those to keep future PR/device reports tied to exact source and artifact identities.
 
 ---
 
@@ -374,6 +394,11 @@ Start with:
 docs/PROJECT_MAP.md
 ```
 
+Five-PM / later-session prompts:
+
+- `docs/PROMPT_SESSION2_RECOVERY.md` — **HIGH**, recover/finish issue #13 and produce the combined `.nro`
+- `docs/PROMPT_SESSION3_PKSM_CORE.md` — **MAX**, device feedback first then issue #4 PK3/Sav3 spike
+
 Core files:
 
 - `docs/NEXT_SESSION_PLAN.md` — current execution plan
@@ -391,12 +416,20 @@ Core files:
 - `docs/POKEDEX_SPEC.md` — Vault-driven Dex design
 - `docs/BUILD_RECORD.md` — binary/source bookkeeping
 - `docs/DEVICE_TEST_CHECKLIST.md` — physical test procedure
+- `docs/RELEASE_CHECKLIST.md` — artifact/release discipline
+- `docs/SESSION_LOG_2026-09-01.md` — dated recovery/Action Sheet/interrupted Session 2 history
 
 ---
 
 ## Current task
 
-### Priority 1 — finish issue #13 safely
+### Priority 1 — HIGH: finish issue #13 safely
+
+Use:
+
+```text
+docs/PROMPT_SESSION2_RECOVERY.md
+```
 
 Recover the interrupted local Session 2 UI/control/theme implementation if it survives, then take it through:
 
@@ -426,7 +459,13 @@ Test the exact newer combined Action Sheet + UI/control `.nro`.
 
 Record exact source SHA and binary SHA-256 before promoting any behavior to `DEVICE TESTED`.
 
-### Priority 3 — Max/deep engineering, issue #4
+### Priority 3 — MAX/deep engineering, issue #4
+
+Use:
+
+```text
+docs/PROMPT_SESSION3_PKSM_CORE.md
+```
 
 If hardware feedback does not reveal a blocking UI crash/regression, begin the PKSM-Core Gen III spike:
 
@@ -440,7 +479,9 @@ round-trip strategy
 adapter/dependency decision
 ```
 
-### Later priorities
+Issue #17 tracks the reusable golden fixture corpus supporting this and later parser/adapter work.
+
+### Later product priorities
 
 1. issue #3 — Master Vault v1 + Banks;
 2. issue #9 — professional Summary + provenance;
@@ -452,7 +493,13 @@ adapter/dependency decision
 8. generated collections/events;
 9. live writes only after explicit per-adapter safety/device gates.
 
-Issue #15 separately tracks automating/persisting device-test `.nro` artifacts.
+### Supporting issues
+
+- issue #15 — automate/persist device-test `.nro` artifacts;
+- issue #16 — final PokeBank NX branding/startup/NRO metadata;
+- issue #17 — reproducible Pokémon/save golden test corpus.
+
+Supporting issues should improve product reliability without derailing the current `#13 → #8 → #4` execution path.
 
 ---
 
@@ -463,6 +510,7 @@ Issue #15 separately tracks automating/persisting device-test `.nro` artifacts.
 - Previous custom Master Vault/RetroArch implementations were not recoverable and must be rebuilt from current specs/tests.
 - pkHouse/pkDex remain reference-only under current policy.
 - Temporary runtimes can lose `.nro` artifacts; record source SHA/hash and preserve the binary before ending build sessions.
+- Golden fixtures must not become a route for committing personal saves, ROMs, console keys, credentials, or other inappropriate assets.
 
 ---
 
