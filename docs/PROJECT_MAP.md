@@ -8,10 +8,13 @@ This is the short navigation page for the project's permanent documentation and 
 
 1. [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) — current verified state and active task
 2. [`SESSION_RUNBOOK.md`](SESSION_RUNBOOK.md) — how every coding session starts/ends
-3. [`UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md) — pinned PKSE/PKSM-Core/PKHeX/AutoMod/pkHouse/pkDex/PKForge research map
+3. [`ARCHITECTURE.md`](ARCHITECTURE.md) — module boundaries and dependency direction
+4. [`UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md) — pinned PKSE/PKSM-Core/PKHeX/AutoMod/pkHouse/pkDex/PKForge research map
 
-## Core architecture specs
+## Core architecture / UX specs
 
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — UI/services/source adapters/engines/Vault/write-pipeline boundaries
+- [`UI_FLOW.md`](UI_FLOW.md) — controller conventions, A-button action sheet, Home/Game/Vault/Bank/Dex flows
 - [`MASTER_VAULT_SPEC.md`](MASTER_VAULT_SPEC.md) — immutable Vault, provenance, banks, transactions
 - [`SAVE_SAFETY.md`](SAVE_SAFETY.md) — hard-lock policy and future staged live-write gate
 - [`TRANSFER_MODEL.md`](TRANSFER_MODEL.md) — copy/move/clone/convert/HOME Bridge model
