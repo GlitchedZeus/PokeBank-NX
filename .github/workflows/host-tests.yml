@@ -1,0 +1,38 @@
+name: PokeBank NX Host Tests
+
+on:
+  push:
+    branches:
+      - main
+      - feature/pokebank-playable
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host-tests:
+    name: Host tests (GCC)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Toolchain info
+        run: |
+          g++ --version
+          make --version
+
+      - name: Check whitespace
+        run: git diff --check HEAD^ HEAD || git diff --check
+
+      - name: Clean host build
+        run: make -f Makefile.host host-clean
+
+      - name: Run host tests
+        run: make -f Makefile.host host-test
+
+      - name: Run ASan and UBSan tests
+        run: make -f Makefile.host host-sanitize
