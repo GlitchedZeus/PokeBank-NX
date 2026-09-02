@@ -2,25 +2,29 @@
 
 Last updated: 2026-09-02
 
-Short navigation/index for verified state, active prompts, hardware reports, architecture, and GitHub work.
+Short navigation/index for verified state, active prompts, hardware reports, architecture, research and the full v1.0 plan.
 
 ## Read first
 
 1. [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) — authoritative verified state
-2. [`NEXT_SESSION_PLAN.md`](NEXT_SESSION_PLAN.md) — current execution order
-3. [`BUILD_RECORD.md`](BUILD_RECORD.md) — source/artifact/device-test bookkeeping
-4. [`DEVICE_TEST_REPORT_2026-09-01.md`](DEVICE_TEST_REPORT_2026-09-01.md) — first physical Switch result
-5. [`DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md) — extended torture-test findings
-6. [`PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md`](PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md) — **HIGH**, current blocker session
-7. [`PROMPT_SESSION3_PKSM_CORE.md`](PROMPT_SESSION3_PKSM_CORE.md) — **MAX**, PKSM-Core after second hardware pass
-8. [`SESSION_RUNBOOK.md`](SESSION_RUNBOOK.md) — implementation/test/build/push discipline
-9. [`TRANSFER_MODEL.md`](TRANSFER_MODEL.md) — Copy / Move / Clone / conversion / active-location contract
-10. [`NRO_QUALITY_ROADMAP.md`](NRO_QUALITY_ROADMAP.md) — diagnostics/reliability/performance/QoL backlog
-11. [`ARCHITECTURE.md`](ARCHITECTURE.md) — module boundaries
+2. [`V1_ROADMAP.md`](V1_ROADMAP.md) — full milestone checklist through v1.0
+3. [`NEXT_SESSION_PLAN.md`](NEXT_SESSION_PLAN.md) — current execution order
+4. [`BUILD_RECORD.md`](BUILD_RECORD.md) — source/artifact/device-test bookkeeping
+5. [`DEVICE_TEST_REPORT_2026-09-01.md`](DEVICE_TEST_REPORT_2026-09-01.md) — first physical Switch result
+6. [`DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md) — extended torture-test findings
+7. [`PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md`](PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md) — **HIGH**, current blocker session
+8. [`PROMPT_SESSION3_PKSM_CORE.md`](PROMPT_SESSION3_PKSM_CORE.md) — **MAX**, PKSM-Core after second hardware gate
+9. [`SESSION_RUNBOOK.md`](SESSION_RUNBOOK.md) — implementation/test/build/push discipline
+10. [`TRANSFER_MODEL.md`](TRANSFER_MODEL.md) — Copy / Move / Clone / conversion / active-location contract
+11. [`NRO_QUALITY_ROADMAP.md`](NRO_QUALITY_ROADMAP.md) — diagnostics/reliability/performance/QoL backlog
+12. [`ARCHITECTURE.md`](ARCHITECTURE.md) — module boundaries
+13. [`SESSION_LOG_2026-09-02.md`](SESSION_LOG_2026-09-02.md) — today's historical work log
+
+Master v1.0 tracking issue: **#29**.
 
 ---
 
-## Physical hardware milestone
+# Physical hardware milestone
 
 First exact tested build:
 
@@ -31,38 +35,24 @@ SHA-256: df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
 Result: DEVICE TESTED — PARTIAL PASS / KNOWN FAILURES
 ```
 
-Original short pass established many working paths:
+Passed during the first/extended passes include boot, D-pad, Action Sheet/B/Cancel, three themes + persistence, Party/Boxes/Storage browsing and repeated Action Sheet stability.
 
-```text
-Boot
-D-pad
-A Action Sheet
-B/Cancel
-+ / -
-OLED Black
-Dark
-Light
-Theme persistence
-Party
-Boxes
-Storage
-```
-
-The longer pass on the same artifact clarified new failures/risks:
+Known current physical failures/risks from that exact old build:
 
 ```text
 Left Stick single tap / hold / diagonal   FAIL — no input/action
+visible PokeBank NX shell                 FAIL / incomplete on old build
 one old Legends Arceus save               REPRODUCIBLE CRASH
 inherited Release/Create/Move/Edit UI      PHYSICALLY REACHABLE
 app/legacy Storage persistence             PHYSICALLY OBSERVED
 live installed save write                  NOT PROVEN
 ```
 
-Issue #8 remains closed because the first test milestone itself is complete.
+Issue #8 remains closed because the first exact physical-test milestone itself is complete.
 
 ---
 
-## Current application checkpoint
+# Current application checkpoint
 
 Session 2.5 application source:
 
@@ -73,70 +63,62 @@ ui: add visible PokeBank shell and physical stick input
 
 GitHub host CI passed.
 
-This source contains the reported visible PokeBank NX shell and real-libnx analog input fix, but it has **not** been physically tested.
+This source contains the reported visible PokeBank NX shell + real-libnx analog input fix, but it is **NOT DEVICE TESTED**.
 
-The extended first-device findings mean this checkpoint is no longer automatically the final second-device artifact source.
-
-If #23/#24 require application changes, create a new application-source checkpoint and build/hash from that exact new SHA.
+The extended first-device findings mean it is no longer automatically the final second-device artifact source. If #23/#24 require app changes, create a new exact application-source checkpoint and build/hash from that source.
 
 ---
 
-## Completed milestones
+# Completed milestones
 
 ```text
-#2  Controller-first Pokemon Action Sheet              CLOSED
-#8  First exact physical PokeBank NX .nro test        CLOSED
+#2  Controller-first Pokémon Action Sheet             CLOSED
+#8  First exact physical PokeBank NX .nro test       CLOSED
 ```
+
+Foundation also includes stable 23-game identities, low-level live-write hard lock, themes/controller infrastructure and verified host/native build workflow.
 
 ---
 
-## Current blockers / near-term issues
+# Current blockers / near-term issues
 
-### #23 — inherited mutation UI safety audit — CURRENT BLOCKER
+## #23 — inherited mutation UI safety audit — CURRENT BLOCKER
 
-Trace user-reachable:
+Trace Release/Create/Move/Multi/Edit/apply/save/Storage and all reachable persistence calls. Block unsafe installed-source mutation UI while live installed-save writing remains disabled.
 
-```text
-Release
-Create Pokemon
-Move / Multi
-Edit / apply / save
-unsaved-changes flow
-legacy/app Storage move/import
-reachable Save / Commit / Restore / Inject paths
-```
+## #24 — old / malformed Legends Arceus crash — CURRENT BLOCKER
 
-Classify final persistence targets and block unsafe installed-source mutations while the current alpha live-write policy remains disabled.
+Valid supported saves should open; old/unsupported/malformed saves must fail gracefully rather than crash or auto-repair/write.
 
-### #24 — old / malformed Legends Arceus crash — CURRENT BLOCKER
+## #19 — Left Stick navigation — PHYSICAL RETEST REQUIRED
 
-One older PLA save reproducibly crashes on physical hardware. Valid supported saves should still open; old/unsupported/malformed saves must fail gracefully rather than crash or auto-repair/write.
+Old build receives no Left Stick navigation input. `361c6f55...` contains the source fix candidate.
 
-### #19 — Left Stick navigation
+## #13 — visible PokeBank NX shell — PHYSICAL RETEST REQUIRED
 
-Old device-tested build receives no Left Stick navigation input at all. `361c6f55...` contains the reported source fix; keep issue open until physical Switch retest passes single-tap, held repeat, and diagonal stability.
+Preserve Session 2.5 shell/chrome/Options/Help/Action Sheet styling and verify on the exact replacement binary.
 
-### #13 — visible PokeBank NX shell
+## #16 — branding/startup/NRO metadata
 
-Session 2.5 source is published. Preserve it while fixing blockers. Keep issue open until the exact replacement artifact passes physical visual acceptance.
+Visible identity/NRO naming has progressed. Final splash/loading/icon/NACP remains later.
 
-### #16 — branding/startup/NRO metadata
+## #25 — Pokémon visual Summary — LATER
 
-Visible identity/NRO naming has progressed; final splash/loading/icon/NACP work remains later.
+Proper sprite/artwork/render on Summary/View. Optional 3D model rotation only if practical.
 
-### #25 — Pokémon Summary visual/model support — LATER
+## #26 — controller normalization — LATER EXCEPT SAFETY
 
-Add a proper Pokémon visual to View/Summary. Optional Right Stick model rotation is only a nice-to-have if 3D rendering is practical.
+Normalize L/R, ZL/ZR, X/Y and visible hints after current blocker work.
 
-### #26 — normalize controller semantics — LATER EXCEPT SAFETY
+## #27 — legacy Storage vs Master Vault — CLASSIFY NOW / MIGRATE LATER
 
-Extended hardware testing exposed context differences such as L/R account switching, inactive ZL/ZR, X Dex-sort, and Y Menu/Move/Multi. Normalize after current blockers, except unsafe mutation shortcuts which belong to #23 now.
+Storage is physically proven writable/persistent. Determine exact semantics and preserve user data where possible during future Vault migration.
 
-### #27 — legacy Storage vs Master Vault — CLASSIFY NOW / REDESIGN LATER
+---
 
-Legacy app Storage is already writable/persistent. Determine exact storage/persistence semantics and preserve user data where possible when Master Vault v1 eventually arrives.
+# Next deep engineering after device gate #2
 
-### #4 — PKSM-Core Gen III spike — NEXT MAX AFTER SECOND DEVICE GATE
+## #4 — PKSM-Core Gen III spike
 
 ```text
 PK3
@@ -149,64 +131,44 @@ round-trip strategy
 integration decision
 ```
 
-### #3 — Master Vault v1 + named Banks
-
-Immutable raw entities, stable Vault IDs, SHA-256, provenance, active/current location, transaction journals, recovery, logical Bank references.
-
-### #9 — professional Summary + provenance
-
-Generation-aware Summary/Origin/Legality/Provenance/active-location presentation.
-
-### #6 — RetroArch + read-only Gen I-III adapters
-
-Depends heavily on PKSM-Core decision.
-
-### #11 — modern Switch adapter validation
-
-Read-only/source-specific validation before any write gates.
-
-### #5 — host-side PKHeX Oracle
-
-Correctness/legality/conversion comparison utility.
-
-### #7 — Vault-driven Pokedex / Living Dex
-
-Vault remains authoritative for collection ownership.
-
-### #10 — conversion/transfer without live writes
-
-Derived/staged/exported destination representations first.
-
-### #20 — true Move semantics — LATER
+New useful integration references:
 
 ```text
-COPY  = source remains active
-MOVE  = destination becomes active; verified source is removed/retired
-CLONE = deliberate duplicate with clone provenance
+FlagBrew/PKSM
+Universal-Team/pkmn-chest
 ```
 
-Current installed saves do not have approved live-write capability. True Move requires individually validated write adapters and is intentionally blocked until much later.
-
-### #21 — NRO reliability / diagnostics / performance / QoL
-
-Cross-cutting backlog. Implement incrementally without derailing core engine work.
+See `BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`.
 
 ---
 
-## Supporting issues
+# Core v1.0 feature issues
 
 ```text
-#15 persistent device-test .nro artifacts
-#17 reproducible Pokemon/save golden corpus
-#21 diagnostics/reliability/performance/QoL
-#25 Summary visuals/model idea
-#26 controller normalization
-#27 legacy Storage migration/clarification
+#3   Master Vault v1 + named Banks
+#4   PKSM-Core Gen III integration
+#5   host-side PKHeX Oracle
+#6   RetroArch + read-only Gen I-III adapters
+#7   Vault-driven Pokédex / Living Dex
+#9   professional Summary + provenance
+#10  conversion/transfer without live writes
+#11  modern Switch adapter validation
+#15  persistent device-test .nro artifacts
+#16  final branding/startup/icon/NACP
+#17  reproducible Pokémon/save golden corpus
+#20  true Move after verified write adapters
+#21  diagnostics/reliability/performance/QoL
+#23  inherited mutation safety audit
+#24  PLA crash hardening
+#25  Pokémon visuals/model idea
+#26  controller normalization
+#27  legacy Storage migration/clarification
+#29  v1.0 master roadmap/release gates
 ```
 
 ---
 
-## Core architecture / UX docs
+# Core architecture / UX docs
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - [`CONTROLS.md`](CONTROLS.md)
@@ -218,6 +180,7 @@ Cross-cutting backlog. Implement incrementally without derailing core engine wor
 - [`POKEDEX_SPEC.md`](POKEDEX_SPEC.md)
 - [`PKHEX_ORACLE.md`](PKHEX_ORACLE.md)
 - [`NRO_QUALITY_ROADMAP.md`](NRO_QUALITY_ROADMAP.md)
+- [`V1_ROADMAP.md`](V1_ROADMAP.md)
 
 ## Integration / research
 
@@ -225,6 +188,23 @@ Cross-cutting backlog. Implement incrementally without derailing core engine wor
 - [`PKHOUSE_REFERENCE.md`](PKHOUSE_REFERENCE.md)
 - [`GAME_SUPPORT_MATRIX.md`](GAME_SUPPORT_MATRIX.md)
 - [`UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md)
+- [`BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`](BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md)
+
+Key research stack:
+
+```text
+PKSE          = inherited native Switch foundation
+PKSM-Core     = native historical format/save candidate
+PKSM          = mature Bank/backups/events/full-app integration reference
+Pokémon Chest = second Nintendo PKSM-Core integration + Game↔Bank UX
+PHBank        = historical offline Game-PC ↔ Bank UX reference
+PHBankGBC     = secondary Gen I/II save-layout reference only
+PKHeX         = correctness oracle/reference
+Auto Legality = host/reference generation/legality tooling
+pkHouse       = modern Switch save-behavior reference
+pkDex         = Pokédex UX/data-organization reference
+PKForge       = Vault/provenance/transaction architecture reference
+```
 
 ## Testing / release
 
@@ -233,62 +213,57 @@ Cross-cutting backlog. Implement incrementally without derailing core engine wor
 - [`DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md)
 - [`BUILD_RECORD.md`](BUILD_RECORD.md)
 - [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)
+- [`V1_ROADMAP.md`](V1_ROADMAP.md)
 - [`.github/workflows/host-tests.yml`](../.github/workflows/host-tests.yml)
 
 ---
 
-## Execution dependency sketch
+# Execution dependency sketch
 
 ```text
-first physical build                              DONE
+first exact physical build                           DONE
         |
-        +--> Session 2.5 visible shell + analog source      PUBLISHED
+        +--> Session 2.5 visible shell + analog source       PUBLISHED
                  |
-                 +--> extended first-build torture test      DONE
+                 +--> extended first-build torture test       DONE
                           |
-                          +--> #23 mutation safety audit      NOW
-                          +--> #24 PLA crash hardening        NOW
+                          +--> #23 mutation safety audit       NOW
+                          +--> #24 PLA crash hardening         NOW
                           +--> preserve #19/#13/#16 work
                                    |
-                                   +--> NEW exact app source if changed
+                                   +--> new exact app source if changed
                                             |
-                                            +--> exact replacement .nro
+                                            +--> replacement .nro
                                                      |
-                                                     +--> second physical test
+                                                     +--> physical test #2
                                                               |
-                                                              +--> PKSM-Core PK3/Sav3
+                                                              +--> #4 PKSM-Core PK3/Sav3
                                                                        |
-                                                                       +--> Master Vault + Banks
-                                                                       |       |
-                                                                       |       +--> Summary/provenance
-                                                                       |       +--> Pokedex/Living Dex
-                                                                       |
-                                                                       +--> retro adapters
-                                                                       +--> modern adapter validation
-                                                                       +--> PKHeX Oracle
-                                                                               |
-                                                                               +--> conversion/staging
-                                                                                        |
-                                                                                        +--> safe per-game writes
-                                                                                                 |
-                                                                                                 +--> true Move (#20)
+                                                                       +--> Gen III read adapter
+                                                                                |
+                                                                                +--> Master Vault + Banks
+                                                                                         |
+                                                                                         +--> Summary / Oracle / retro + modern reads
+                                                                                                  |
+                                                                                                  +--> conversion / Dex / legality / events
+                                                                                                           |
+                                                                                                           +--> staged writes
+                                                                                                                    |
+                                                                                                                    +--> per-game approved writes
+                                                                                                                             |
+                                                                                                                             +--> true Move
+                                                                                                                                      |
+                                                                                                                                      +--> RC hardening / v1.0
 ```
 
-Quality issue #21 can be pulled into relevant milestones incrementally:
-
-```text
-diagnostics / logs / memory warning      early
-Vault health / recovery / search          with Vault
-virtualization / caches                    as datasets grow
-accessibility / sounds / polish            later
-```
+Quality issue #21 is pulled into milestones incrementally rather than blocking all core development at once.
 
 ---
 
-## Permanent safety reminder
+# Permanent safety reminder
 
 Live installed-game save writing is not an approved current capability until an explicitly named adapter passes `SAVE_SAFETY.md`.
 
-The extended first-device test proved that inherited mutation UI still exists above the lower-level lock. Trace and block those paths rather than assuming the low-level guard is enough.
+The extended first-device test proved inherited mutation UI exists above the lower-level lock. Trace/block those paths rather than assuming the lower-level guard is enough.
 
-Do not weaken the safety model for UI, transfer, true-Move, editor, or integration demos.
+Do not weaken the safety model for UI, transfer, true Move, editor or integration demos.
