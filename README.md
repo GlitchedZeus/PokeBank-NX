@@ -8,7 +8,7 @@
 
 The project started from the PKSE codebase, but the goal is broader: one controller-first Switch application for browsing supported Pokémon saves, keeping a permanent local Master Vault, organizing Pokémon into named Banks, tracking provenance, building Living Dex collections, and safely moving compatible Pokémon between games and generations.
 
-> **Alpha warning:** direct live installed-game save writing is intentionally hard disabled. Current development builds are read-only against installed game saves unless an explicitly documented future adapter says otherwise.
+> **Alpha warning:** live installed-game save writing is not an approved current feature. The project policy keeps installed game sources read-only until individual adapters pass explicit staged-write, backup, rollback, readback, and physical-device safety gates.
 
 ---
 
@@ -43,17 +43,17 @@ Result:
 DEVICE TESTED — PARTIAL PASS / KNOWN FAILURES
 ```
 
-Physical results:
+Original shorter physical pass:
 
 | Area | Result |
 |---|---|
 | Boot | **PASS** |
 | D-pad navigation | **PASS** |
-| Left Stick + held repeat | **FAIL** |
+| Left Stick | **FAIL** |
 | A → Pokémon Action Sheet | **PASS** |
 | B / Cancel | **PASS** |
-| L / R | **PASS** |
-| ZL / ZR | **PASS** |
+| L / R | **PASS** in exercised context |
+| ZL / ZR | **PASS** in exercised context |
 | `+` Options / More | **PASS** |
 | `-` Help / Controls | **PASS** |
 | OLED Black | **PASS** |
@@ -63,32 +63,77 @@ Physical results:
 | Party | **PASS** |
 | Boxes | **PASS** |
 | Storage | **PASS** |
-| Crashes | **NONE OBSERVED** |
 | Visible PokeBank NX identity | **FAIL / INCOMPLETE** |
 
-Permanent report: [`docs/DEVICE_TEST_REPORT_2026-09-01.md`](docs/DEVICE_TEST_REPORT_2026-09-01.md).
+First report: [`docs/DEVICE_TEST_REPORT_2026-09-01.md`](docs/DEVICE_TEST_REPORT_2026-09-01.md).
 
 Issue **#8 is complete** because the first exact physical test happened. The failures were converted into follow-up work rather than being hidden.
+
+### Extended first-device torture test
+
+A longer pass on the same exact `3be4de6b...` binary clarified the hardware state further.
+
+Extended report: [`docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md).
+
+Important new evidence:
+
+```text
+5 minutes idle                     PASS
+10 minutes normal browsing         PASS
+5 repeated relaunches              PASS
+Action Sheet heavy open/close      PASS
+held D-pad                         PASS
+Left Stick single taps             FAIL — no input/action
+Left Stick held                    FAIL — no input/action
+Left Stick diagonal                FAIL — no input/action
+one older Legends Arceus save      REPRODUCIBLE CRASH
+```
+
+The extended pass also proved that inherited PKSE mutation controls are still physically reachable in game-save views:
+
+```text
+Release
+Create Pokémon
+Menu / Move / Multi
+editable Pokémon view
+apply/save-style change flow
+```
+
+The tester also confirmed that inherited/app `Storage` is writable/persistent.
+
+Important evidence boundary:
+
+```text
+LIVE INSTALLED SAVE WRITE: NOT PROVEN
+USER-REACHABLE MUTATION UI: PROVEN
+APP STORAGE PERSISTENCE: PROVEN
+```
+
+The tester did not complete the final external check of launching the original game and proving whether the installed live title save itself changed. The project therefore does **not** claim a confirmed live-save write regression from this test.
+
+However, these mutation paths must be traced/classified and unsafe installed-source actions blocked before the second device artifact is handed over. This is tracked by **#23**.
+
+The old Legends Arceus crash is tracked by **#24**.
 
 ---
 
 ## Current Session 2.5 application checkpoint
 
-The follow-up visible-shell/physical-input session successfully pushed this application source before running out of usage:
+The follow-up visible-shell/physical-input session successfully pushed:
 
 ```text
 361c6f551496470db305948d702944c6ed9889c1
 ui: add visible PokeBank shell and physical stick input
 ```
 
-GitHub host CI passed on this exact source.
+GitHub host CI passed on that source.
 
 Reported implementation includes:
 
 ```text
 real libnx Left Stick position handling
 analog deadzone + hysteresis
-held analog navigation repeat
+single-tap + held analog navigation
 Select Game / Backups / Party / Boxes / Storage analog integration
 visible PokeBank NX header/app identity
 PokeBank NX chrome/cards
@@ -97,22 +142,13 @@ matching Action Sheet styling
 PokeBank NX NRO/window identity
 ```
 
-The coding session ended before the clean **exact-source** rebuild, final `.nro` hash/preservation, and second physical handoff.
+This source has **not** been physically tested.
 
-Therefore:
+The extended first-device findings mean `361c6f55...` is no longer automatically the final second-device artifact source. The next coding session must preserve that useful UI/input work while auditing safety and hardening the PLA crash path. If application source changes, a new exact application-source checkpoint will be created before the replacement `.nro` is built.
 
-```text
-APPLICATION SOURCE: PUBLISHED
-GITHUB HOST CI: PASS
-EXACT REPLACEMENT NRO: PENDING PACKAGE
-SECOND DEVICE TEST: NOT DONE
-```
+Current execution prompt:
 
-Next prompt:
-
-[`docs/PROMPT_SESSION2_5_FINISH.md`](docs/PROMPT_SESSION2_5_FINISH.md)
-
-The replacement device artifact must be built from exact application source `361c6f55...` unless a real source regression requires a new application-source checkpoint.
+[`docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md`](docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md)
 
 ---
 
@@ -139,17 +175,70 @@ A build being physically tested does not mean every tested feature passed.
 
 ---
 
+# Current blockers before device test #2
+
+## #19 — Left Stick navigation
+
+The first device build does not receive Left Stick navigation input at all. `361c6f55...` contains the reported source fix, but hardware retest is still required.
+
+## #23 — inherited mutation UI safety audit
+
+Before another device artifact is handed over, the project must trace these reachable paths to their real persistence targets:
+
+```text
+Release
+Create Pokémon
+Move / Multi
+Edit / apply / save
+unsaved-changes flow
+legacy/app Storage move/import
+reachable Save / Commit / Restore / Inject paths
+```
+
+Each path must be classified as:
+
+```text
+LIVE INSTALLED SAVE WRITE
+BACKUP/STAGED SAVE WRITE
+APP-OWNED STORAGE WRITE
+IN-MEMORY ONLY
+DISABLED / UNREACHABLE
+UNKNOWN — NEEDS BLOCKING
+```
+
+Current-alpha installed-game sources must not expose unsafe persistent mutations merely because a lower-level hard lock probably catches them later.
+
+## #24 — old Legends Arceus save crash
+
+Unsupported, old, malformed, or unexpected PLA saves must fail gracefully rather than crash the app or be silently repaired/written.
+
+## #13 / #16 — visible PokeBank NX identity
+
+The replacement build must preserve the new PokeBank NX shell, branding/chrome, Options/Help treatment, and NRO/window identity while removing obvious PKSE identity from the normal tested path.
+
+---
+
 # Product model
 
 ## Game saves
 
-Installed game saves are currently treated as **read-only sources**.
+Installed game saves are currently intended to be **read-only sources**.
 
 That lets PokeBank NX safely browse and import Pokémon while parsers, the Master Vault, conversion engines, staged-save validation, and per-game write adapters are being proven.
 
+The extended hardware test showed inherited mutation UI still exists, so source-level enforcement is now being tightened under #23 rather than assuming the low-level write lock alone is enough.
+
+## Legacy/app Storage
+
+The inherited app Storage area is already writable/persistent on hardware.
+
+It is **not** automatically the future Master Vault.
+
+Issue **#27** tracks whether legacy Storage becomes a migration source, compatibility area, or is retired once the real Vault exists.
+
 ## Master Vault
 
-The **Master Vault** is the permanent game-independent storage/provenance layer.
+The **Master Vault** is the planned permanent game-independent storage/provenance layer.
 
 Core principles:
 
@@ -216,8 +305,6 @@ For safety, PokeBank NX may retain immutable archival/provenance/rollback record
 
 True Move is **not enabled now**.
 
-Current installed game saves stay read-only, so early Game → Vault behavior uses safe Copy/import semantics.
-
 True Move is tracked by issue **#20** and is blocked on independently validated per-game write adapters.
 
 Specification: [`docs/TRANSFER_MODEL.md`](docs/TRANSFER_MODEL.md).
@@ -244,11 +331,13 @@ Legality & Provenance
 Cancel
 ```
 
-Opening/navigating the sheet, pressing B, or selecting Cancel performs no mutation. The Action Sheet behavior passed the first physical Switch test.
+Opening/navigating the sheet, pressing B, or selecting Cancel remained stable during heavy physical open/close testing.
+
+The extended test showed that `Edit` still reaches the inherited editable details view for some game-save sources. That installed-source behavior is now part of the #23 safety audit.
 
 ## Controller contract
 
-| Control | Behavior |
+| Control | Intended behavior |
 |---|---|
 | D-pad | precise navigation |
 | Left Stick | navigation + held repeat |
@@ -262,7 +351,15 @@ Opening/navigating the sheet, pressing B, or selecting Cancel performs no mutati
 | `-` | Help / Controls / Screen Info |
 | Right Stick | optional fast-scroll / secondary pane |
 
+The first extended hardware pass exposed inherited context differences such as L/R account switching, ZL/ZR doing nothing in one tested context, X Dex-sort, and Y Menu/Move/Multi. Issue **#26** tracks normalization after safety-critical shortcuts are handled.
+
 Full controller contract: [`docs/CONTROLS.md`](docs/CONTROLS.md).
+
+## Summary / Pokémon visuals
+
+The tested inherited `View Pokémon` screen showed data but no Pokémon image/sprite/model.
+
+Issue **#25** tracks a proper PokeBank NX visual Summary/View. Optional Right Stick model rotation is a later nice-to-have only if 3D rendering is practical and appropriate; a strong sprite/artwork presentation is acceptable.
 
 ## Themes
 
@@ -280,7 +377,7 @@ Visual direction: [`docs/UI_STYLE_GUIDE.md`](docs/UI_STYLE_GUIDE.md).
 
 # NRO quality / reliability roadmap
 
-PokeBank NX also tracks cross-cutting native-app improvements so core features do not outgrow the shell around them.
+PokeBank NX tracks cross-cutting native-app improvements so core features do not outgrow the shell around them.
 
 Detailed roadmap: [`docs/NRO_QUALITY_ROADMAP.md`](docs/NRO_QUALITY_ROADMAP.md)  
 Tracking issue: **#21**.
@@ -325,15 +422,16 @@ Recommended balance after the second UI/device milestone:
 
 # Safety
 
-**LIVE INSTALLED-GAME SAVE WRITING IS HARD DISABLED.**
+**LIVE INSTALLED-GAME SAVE WRITING IS NOT AN APPROVED CURRENT FEATURE.**
 
-Current protections include:
+Known lower-level protections include:
 
 - safe/backup destination posture;
 - generic save API cannot request title injection;
 - low-level restore rejects live-title writes before mounting save data;
-- legacy `injectToGame=1` is disabled/rewritten;
-- Action Sheet/controller navigation cannot bypass the hard lock.
+- legacy `injectToGame=1` is disabled/rewritten.
+
+The extended hardware test proved that inherited mutation UI still exists above those protections. The next blocker session therefore traces the full call chain instead of treating the low-level lock as sufficient evidence by itself.
 
 Future live writes are **per adapter**, not one global switch.
 
@@ -407,16 +505,27 @@ See [`docs/GAME_SUPPORT_MATRIX.md`](docs/GAME_SUPPORT_MATRIX.md).
 ## Immediate
 
 ```text
-finish/package exact 361c6f55 replacement .nro
+#23 audit/block inherited installed-source mutation paths
+#24 harden old/malformed PLA save handling
+preserve #19 Session 2.5 analog fix
+preserve #13/#16 PokeBank NX shell/identity
+        ↓
+commit NEW application source if code changes
+        ↓
+host tests + sanitizers + native build
+        ↓
+exact replacement .nro + SHA-256
         ↓
 second physical Switch test
-        ↓
-fix blocking device regression if needed
 ```
+
+Current HIGH prompt:
+
+[`docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md`](docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md)
 
 ## Next deep engineering
 
-Issue #4 — PKSM-Core Gen III spike:
+After the replacement build clears the second physical safety/input/UI gate, issue #4 begins the PKSM-Core Gen III spike:
 
 ```text
 PK3
@@ -445,13 +554,16 @@ Ready MAX prompt: [`docs/PROMPT_SESSION3_PKSM_CORE.md`](docs/PROMPT_SESSION3_PKS
 #20 True Move after individually proven safe-write adapters
 ```
 
-Supporting:
+Supporting/later:
 
 ```text
 #15 persistent .nro artifacts
 #16 final branding/startup/icon/NACP
 #17 golden Pokemon/save fixtures
 #21 NRO diagnostics/reliability/performance/QoL
+#25 Pokémon Summary visual/model support
+#26 controller normalization
+#27 legacy Storage migration/clarification
 ```
 
 Detailed dependency map: [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md).
@@ -484,11 +596,12 @@ Read in this order:
 2. [`docs/NEXT_SESSION_PLAN.md`](docs/NEXT_SESSION_PLAN.md)
 3. [`docs/BUILD_RECORD.md`](docs/BUILD_RECORD.md)
 4. [`docs/DEVICE_TEST_REPORT_2026-09-01.md`](docs/DEVICE_TEST_REPORT_2026-09-01.md)
-5. [`docs/PROMPT_SESSION2_5_FINISH.md`](docs/PROMPT_SESSION2_5_FINISH.md)
-6. [`docs/SESSION_RUNBOOK.md`](docs/SESSION_RUNBOOK.md)
-7. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-8. [`docs/SAVE_SAFETY.md`](docs/SAVE_SAFETY.md)
-9. the current issue-specific spec/prompt
+5. [`docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md)
+6. [`docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md`](docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md)
+7. [`docs/SESSION_RUNBOOK.md`](docs/SESSION_RUNBOOK.md)
+8. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+9. [`docs/SAVE_SAFETY.md`](docs/SAVE_SAFETY.md)
+10. the current issue-specific spec/prompt
 
 ---
 

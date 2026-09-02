@@ -73,10 +73,11 @@ Artifact SHA-256: df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc9069
 Persistent artifact location: ChatGPT Library /PokeVault NX/PokeBank-NX-UI-Theme-3be4de6.nro
 Device tested: YES
 Device result: PARTIAL PASS / KNOWN FAILURES
-Exact report: docs/DEVICE_TEST_REPORT_2026-09-01.md
+First report: docs/DEVICE_TEST_REPORT_2026-09-01.md
+Extended report: docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
 ```
 
-Physical test matrix:
+### Original shorter physical pass
 
 ```text
 BOOT                     PASS
@@ -84,8 +85,8 @@ D-PAD                    PASS
 LEFT STICK + HOLD        FAIL
 A ACTION SHEET           PASS
 B / CANCEL               PASS
-L / R                    PASS
-ZL / ZR                  PASS
+L / R                    PASS in exercised context
+ZL / ZR                  PASS in exercised context
 +                        PASS
 -                        PASS
 OLED BLACK               PASS
@@ -95,17 +96,36 @@ THEME PERSISTENCE        PASS
 PARTY                    PASS
 BOXES                    PASS
 STORAGE                  PASS
-CRASHES                  NONE
+CRASHES                  NONE DURING SHORTER PASS
 VISIBLE POKEBANK NX UI   FAIL / INCOMPLETE
+```
+
+### Extended hardware pass on the same exact artifact
+
+```text
+5 MIN IDLE                        PASS
+10 MIN NORMAL BROWSING            PASS
+5 RELAUNCHES                      PASS
+ACTION SHEET HEAVY OPEN/CLOSE     PASS
+HELD D-PAD                        PASS
+LEFT STICK SINGLE TAP             FAIL — no input/action
+LEFT STICK HOLD                   FAIL — no input/action
+LEFT STICK DIAGONAL               FAIL — no input/action
+ONE OLD LEGENDS ARCEUS SAVE       REPRODUCIBLE CRASH
+USER-REACHABLE MUTATION UI        PRESENT
+APP/LEGACY STORAGE PERSISTENCE    PRESENT
+LIVE INSTALLED SAVE WRITE         NOT PROVEN
 ```
 
 Important interpretation:
 
 - **DEVICE TESTED** means the exact binary was physically run.
 - It does not mean every tested capability passed.
-- Held Left Stick repeat failed and is tracked by issue #19.
-- The visual product shell remained overwhelmingly inherited PKSE and is tracked by reopened issue #13 plus issue #16.
-- No live installed-save write/safety regression was reported during this test.
+- The Left Stick failure is broader than the first short report; issue #19 now tracks no analog navigation at all on this artifact.
+- One older Legends Arceus save reproducibly crashes; issue #24.
+- Extended testing physically reached inherited Release/Create/Move/Multi/Edit/apply-style actions; issue #23 requires source-level persistence classification and blocking before a second device handoff.
+- Legacy/app Storage is physically writable/persistent and is not automatically the future Master Vault; issue #27.
+- The extended checklist did not finish the external original-game save verification, so a live installed-save write regression is **not proven** from this test alone.
 
 Later Session 2 build/status documentation commit:
 
@@ -116,9 +136,9 @@ docs: record Session 2 device build
 
 ---
 
-# SESSION 2.5 APPLICATION SOURCE CHECKPOINT — ARTIFACT PENDING
+# SESSION 2.5 APPLICATION SOURCE CHECKPOINT — SECOND ARTIFACT NOT YET FROZEN
 
-The visible-shell/physical-stick implementation reached a remote source checkpoint before the coding session ran out of usage.
+The visible-shell/physical-stick implementation reached a remote source checkpoint:
 
 ```text
 Version/tag: 0.1.0-alpha
@@ -127,14 +147,15 @@ Application source SHA: 361c6f551496470db305948d702944c6ed9889c1
 Application source commit message: ui: add visible PokeBank shell and physical stick input
 GitHub host CI: PASS
 Remote source: VERIFIED
+Device tested: NO
 ```
 
-Reported implementation at this source checkpoint includes:
+Reported implementation includes:
 
 ```text
 real libnx Left Stick position handling
 analog deadzone/hysteresis adapter
-sustained analog navigation repeat path
+single-tap + sustained analog navigation repeat
 Select Game / Backups / Party / Boxes / Storage analog integration
 visible PokeBank NX header/archive identity
 PokeBank NX branded chrome/cards
@@ -143,27 +164,37 @@ matching Action Sheet styling
 NRO/window identity changed to PokeBank NX
 ```
 
-The interrupted session reported host tests, sanitizers, and a native integration build passing before the source checkpoint. However, the required **clean exact-source rebuild + final artifact hash/preservation** had not been completed when the session ended.
+The interrupted Session 2.5 run reported host tests, sanitizers, and a native integration build passing before the source checkpoint.
 
-Therefore the authoritative state is:
+Originally this checkpoint was waiting only for a clean exact-source rebuild and artifact hash. The extended first-device test changed the gate.
+
+Before a second artifact is handed over, the next session must:
 
 ```text
-Application source: PUBLISHED
+#23 trace/classify/block inherited installed-source mutation paths
+#24 harden the PLA old/malformed-save crash path
+preserve #19 analog source fix
+preserve #13/#16 visible PokeBank NX shell/identity
+```
+
+Therefore current truth is:
+
+```text
+361c6f55 application source: PUBLISHED / USEFUL CHECKPOINT
 GitHub host CI: PASS
-Exact replacement .nro: PENDING
+Final second-device application source: NOT YET FROZEN
+Exact second-device .nro: PENDING
 Replacement artifact SHA-256: PENDING
 Second physical device test: NOT DONE
 ```
 
-Do not invent an artifact filename/hash from a pre-checkpoint local build.
+If #23/#24 require source changes, create a **new application-source commit** and build/hash from that exact source. Do not modify source and still label the artifact `361c6f55`.
 
 Use:
 
 ```text
-docs/PROMPT_SESSION2_5_FINISH.md
+docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md
 ```
-
-to rebuild/package this exact source and produce the replacement device-test artifact.
 
 ---
 
@@ -171,12 +202,17 @@ to rebuild/package this exact source and produce the replacement device-test art
 
 Issue #8 is complete because the first exact recorded PokeBank NX `.nro` was physically tested.
 
-Current follow-up:
+Current blockers/follow-up:
 
 ```text
-#13  OPEN — 361c6f55 source published; second device visual acceptance pending
-#19  OPEN — source fix implemented; second physical stick test pending
-#16  OPEN — visible identity improved; full startup/icon/NACP work remains
+#13  OPEN — visible shell source published; second visual acceptance pending
+#19  OPEN — full Left Stick source fix pending physical test
+#23  OPEN — inherited mutation UI safety audit; second-device blocker
+#24  OPEN — old/malformed PLA crash; second-device blocker
+#16  OPEN — visible identity improved; full startup/icon/NACP remains
+#25  OPEN — Pokémon visual Summary/View later
+#26  OPEN — controller normalization later
+#27  OPEN — legacy Storage vs Master Vault clarification
 ```
 
 ---
