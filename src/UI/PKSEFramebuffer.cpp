@@ -56,7 +56,7 @@ namespace UI {
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-        window = SDL_CreateWindow("PKSE", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        window = SDL_CreateWindow("PokeBank NX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                   width, height, SDL_WINDOW_OPENGL);
         if (!window) { logErrorToFile("SDL_CreateWindow(OPENGL) failed"); logErrorToFile(SDL_GetError()); return; }
 

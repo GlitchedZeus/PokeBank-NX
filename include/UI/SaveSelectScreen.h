@@ -30,7 +30,7 @@ namespace UI {
         const std::string& getSelectedGameId() const { return selectedGameId; }
 
     private:
-        PokeBank::UIModel::NavigationRepeat navigationRepeat;
+        PokeBank::UIModel::ControllerNavigation controllerNavigation;
         struct TitleEntry {
             u64 titleId;
             std::string name;    // full "Pokemon X" name (used for backup dir + downstream)

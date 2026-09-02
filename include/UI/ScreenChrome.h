@@ -25,6 +25,24 @@ namespace UI {
     constexpr int kHeaderH      = 64;
     constexpr int kNavBarH      = 46;
 
+    inline Color withAlpha(Color color, std::uint8_t alpha) {
+        return Color(color.r, color.g, color.b, alpha);
+    }
+
+    // Shared PokeBank NX backdrop. It leaves the OLED theme genuinely black while adding a quiet,
+    // bounded identity stripe and two low-alpha archive rings. Screens no longer begin as a flat
+    // inherited editor canvas, and no theme-specific branches are needed in screen code.
+    inline void drawAppBackdrop(PKSEFramebuffer& fb) {
+        const int w = fb.getWidth(), h = fb.getHeight();
+        fb.clear(Colors::Background);
+        fb.drawFilledRect(0, kHeaderH, 7, h - kHeaderH - kNavBarH,
+                          withAlpha(Colors::AccentPrimary, 210));
+        fb.drawFilledRect(7, kHeaderH, 3, h - kHeaderH - kNavBarH,
+                          withAlpha(Colors::AccentSecondary, 170));
+        fb.drawCircle(w - 58, 126, 112, withAlpha(Colors::AccentPrimary, 24), 18);
+        fb.drawCircle(w - 58, 126, 76, withAlpha(Colors::AccentSecondary, 20), 10);
+    }
+
     struct ControllerHint {
         std::string button;
         std::string label;
@@ -299,17 +317,39 @@ namespace UI {
 
     // --- Bars -------------------------------------------------------------------------------------
 
-    // Top title bar: "PKSE" + a subtitle on a sheet that curves along its bottom edge.
+    // PokeBank NX identity bar. The compact vector archive-ball mark avoids a required image asset,
+    // keeps every theme crisp, and removes inherited PKSE product branding from the normal path.
     inline void drawTitleBar(PKSEFramebuffer& fb, const std::string& subtitle) {
         fb.drawSoftShadow(0, -40, fb.getWidth(), kHeaderH + 40, kChromeRadius);
         fb.drawFilledRoundedRect(0, -kChromeRadius, fb.getWidth(), kHeaderH + kChromeRadius,
-                                 kChromeRadius, Colors::Panel);
-        fb.drawText(20, 8, "PKSE", Colors::Accent, TextStyle::Title);
-        int bw, bh; fb.measureText("PKSE", bw, bh, TextStyle::Title);
-        // Short accent underline beneath the wordmark. This replaces the old full-width accent rule,
-        // which can't work against a curved sheet -- a straight line would cut across the corners.
-        fb.drawFilledRoundedRect(20, 52, bw, 3, 2, Colors::Accent);
-        if (!subtitle.empty()) fb.drawText(20 + bw + 16, 24, subtitle, Colors::TextDim, TextStyle::Body);
+                                 kChromeRadius, Colors::SurfaceRaised);
+
+        constexpr int cx = 34, cy = 30, r = 19;
+        fb.drawFilledCircle(cx, cy, r, Colors::AccentPrimary);
+        fb.drawFilledRect(cx - r, cy - 2, r * 2, 5, Colors::SurfaceRaised);
+        fb.drawFilledCircle(cx, cy, 8, Colors::SurfaceRaised);
+        fb.drawCircle(cx, cy, 8, Colors::TextPrimary, 2);
+
+        constexpr int brandX = 62;
+        fb.drawText(brandX, 8, "PokeBank", Colors::TextPrimary, TextStyle::Title);
+        int brandW, brandH; fb.measureText("PokeBank", brandW, brandH, TextStyle::Title);
+        const int nxX = brandX + brandW + 8;
+        fb.drawFilledRoundedRect(nxX, 15, 40, 28, 9, Colors::AccentPrimary);
+        int nxW, nxH; fb.measureText("NX", nxW, nxH, TextStyle::Caption);
+        fb.drawText(nxX + (40 - nxW) / 2, 15 + (28 - nxH) / 2, "NX",
+                    Colors::Surface, TextStyle::Caption);
+
+        if (!subtitle.empty())
+            fb.drawText(nxX + 56, 23, subtitle, Colors::TextSecondary, TextStyle::Caption);
+
+        constexpr int badgeW = 112, badgeH = 26;
+        const int badgeX = fb.getWidth() - badgeW - 22;
+        fb.drawFilledRoundedRect(badgeX, 18, badgeW, badgeH, 10,
+                                 withAlpha(Colors::Info, 45));
+        fb.drawRoundedRect(badgeX, 18, badgeW, badgeH, 10, Colors::Info, 1);
+        int roW, roH; fb.measureText("READ ONLY", roW, roH, TextStyle::Caption);
+        fb.drawText(badgeX + (badgeW - roW) / 2, 18 + (badgeH - roH) / 2,
+                    "READ ONLY", Colors::Info, TextStyle::Caption);
     }
 
     // Bottom nav bar: a sheet that curves along its top edge, carrying the controller badges.
@@ -337,13 +377,15 @@ namespace UI {
     inline void drawInfoOverlay(PKSEFramebuffer& fb, const std::string& title,
                                 const std::vector<std::string>& lines) {
         constexpr int w = 700;
-        const int h = std::min(500, 118 + static_cast<int>(lines.size()) * 38);
+        const int h = std::min(520, 140 + static_cast<int>(lines.size()) * 38);
         const int x = (fb.getWidth() - w) / 2;
         const int y = (fb.getHeight() - h) / 2;
         drawModalSurface(fb, x, y, w, h);
-        fb.drawText(x + 28, y + 22, title, Colors::TextPrimary, TextStyle::Heading);
-        fb.drawFilledRoundedRect(x + 28, y + 65, w - 56, 3, 2, Colors::AccentPrimary);
-        int ly = y + 86;
+        fb.drawText(x + 28, y + 18, "POKEBANK NX  /  HELP", Colors::AccentPrimary,
+                    TextStyle::Caption);
+        fb.drawText(x + 28, y + 44, title, Colors::TextPrimary, TextStyle::Heading);
+        fb.drawFilledRoundedRect(x + 28, y + 86, w - 56, 3, 2, Colors::AccentPrimary);
+        int ly = y + 108;
         for (const std::string& line : lines) {
             fb.drawText(x + 30, ly, line, Colors::TextSecondary, TextStyle::Body);
             ly += 38;

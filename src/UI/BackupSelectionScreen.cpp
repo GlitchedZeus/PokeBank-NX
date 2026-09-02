@@ -84,10 +84,11 @@ namespace UI {
     }
 
     void BackupSelectionScreen::update(const PadState& pad, const TouchInput& touch) {
-        constexpr u64 navigationMask = HidNpadButton_Up | HidNpadButton_Down |
-                                       HidNpadButton_Left | HidNpadButton_Right;
-        u64 kDown = navigationRepeat.apply(padGetButtonsDown(&pad), padGetButtons(&pad),
-                                           navigationMask) | navTouchButton(touch);
+        const HidAnalogStickState stick = padGetStickPos(&pad, 0);
+        u64 kDown = controllerNavigation.apply(
+            padGetButtonsDown(&pad), padGetButtons(&pad), stick.x, stick.y,
+            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
+            | navTouchButton(touch);
         if (statusFrames > 0) --statusFrames;                          // expire the failure notice
 
         // Handle delete confirmation dialog
@@ -170,7 +171,7 @@ namespace UI {
     }
 
     void BackupSelectionScreen::draw(PKSEFramebuffer& fb) {
-        fb.clear(Colors::Background);
+        drawAppBackdrop(fb);
         drawTitleBar(fb, titleName);
 
         // Leave a real gap under the card so the nav bar's shadow falls on the background, not on

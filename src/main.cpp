@@ -30,7 +30,7 @@ int main()
     // logs. It needs no service, no ROMFS and no SDL, none of which exist yet.
     Utils::loadSettings();
 
-    logInfoToFile("Initializing PKSE...");
+    logInfoToFile("Initializing PokeBank NX...");
 
     Utils::cleanupOldLogs();
 
