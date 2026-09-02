@@ -38,12 +38,12 @@ include $(DEVKITPRO)/libnx/switch_rules
 #   of a homebrew executable (.nro). This is intended to be used for sysmodules.
 #   NACP building is skipped as well.
 #---------------------------------------------------------------------------------
-TARGET		:=	PokeVaultNX
+TARGET		:=	PokeBankNX
 BUILD		:=	build
 SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
 DATA		:=	data
 INCLUDES	:=	include nanovg
-APP_TITLE   :=  PokeVault NX
+APP_TITLE   :=  PokeBank NX
 APP_AUTHOR  :=  GlitchedZeus and PKSE contributors
 # THE version, in two spellings. Both are set here and nothing downstream needs editing.
 #

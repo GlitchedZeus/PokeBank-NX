@@ -4,9 +4,9 @@
 #include <cstdint>
 
 namespace PokeBank::UIModel {
-    // Frame-based navigation repeat for controller UIs. libnx exposes both D-pad and left-stick
-    // directions through the same digital button bits, so screens get precise taps and comfortable
-    // held scrolling without maintaining two navigation paths.
+    // Frame-based navigation repeat for controller UIs. D-pad directions arrive as button bits;
+    // libnx exposes the analog sticks separately, so AnalogNavigation below converts the left stick
+    // into the same logical directions before it reaches this repeater.
     class NavigationRepeat {
     public:
         static constexpr int INITIAL_DELAY_FRAMES = 18;
@@ -37,6 +37,104 @@ namespace PokeBank::UIModel {
     private:
         std::uint64_t heldDirections = 0;
         int heldFrames = 0;
+    };
+
+    struct AnalogNavigationSample {
+        std::uint64_t down = 0;
+        std::uint64_t held = 0;
+    };
+
+    // Converts a physical left-stick sample into one stable logical direction. Two thresholds give
+    // the stick hysteresis: it must move clearly outside the deadzone to press, but may drift closer
+    // to centre before release. Dominant-axis locking prevents diagonal noise from alternating rows
+    // and columns every frame; a deliberate turn still switches once the new axis clearly wins.
+    class AnalogNavigation {
+    public:
+        static constexpr int PRESS_THRESHOLD = 16000;
+        static constexpr int RELEASE_THRESHOLD = 9000;
+        static constexpr int AXIS_SWITCH_MARGIN = 4000;
+
+        AnalogNavigationSample sample(int x, int y,
+                                      std::uint64_t up, std::uint64_t down,
+                                      std::uint64_t left, std::uint64_t right) {
+            const std::uint64_t previous = heldDirection;
+            const Candidate candidate = dominantCandidate(x, y, up, down, left, right);
+
+            if (heldDirection != 0) {
+                const int currentStrength = directionStrength(heldDirection, x, y,
+                                                               up, down, left, right);
+                if (currentStrength < RELEASE_THRESHOLD) {
+                    heldDirection = candidate.strength >= PRESS_THRESHOLD ? candidate.direction : 0;
+                } else if (candidate.direction != 0 && candidate.direction != heldDirection &&
+                           candidate.strength >= PRESS_THRESHOLD &&
+                           candidate.strength >= currentStrength + AXIS_SWITCH_MARGIN) {
+                    heldDirection = candidate.direction;
+                }
+            } else if (candidate.strength >= PRESS_THRESHOLD) {
+                heldDirection = candidate.direction;
+            }
+
+            return {heldDirection & ~previous, heldDirection};
+        }
+
+        void reset() { heldDirection = 0; }
+
+    private:
+        struct Candidate {
+            std::uint64_t direction = 0;
+            int strength = 0;
+        };
+
+        static int magnitude(int value) { return value < 0 ? -value : value; }
+
+        static Candidate dominantCandidate(int x, int y,
+                                           std::uint64_t up, std::uint64_t down,
+                                           std::uint64_t left, std::uint64_t right) {
+            const int horizontal = magnitude(x);
+            const int vertical = magnitude(y);
+            if (horizontal > vertical)
+                return {x < 0 ? left : right, horizontal};
+            if (vertical > 0)
+                return {y < 0 ? down : up, vertical};
+            return {};
+        }
+
+        static int directionStrength(std::uint64_t direction, int x, int y,
+                                     std::uint64_t up, std::uint64_t down,
+                                     std::uint64_t left, std::uint64_t right) {
+            if (direction == left)  return -x;
+            if (direction == right) return x;
+            if (direction == up)    return y;
+            if (direction == down)  return -y;
+            return 0;
+        }
+
+        std::uint64_t heldDirection = 0;
+    };
+
+    // Shared physical-navigation path for every controller-first screen. This keeps Party, Boxes,
+    // Storage and the source pickers on identical D-pad/Left-Stick semantics.
+    class ControllerNavigation {
+    public:
+        std::uint64_t apply(std::uint64_t digitalPressed, std::uint64_t digitalHeld,
+                            int stickX, int stickY,
+                            std::uint64_t up, std::uint64_t down,
+                            std::uint64_t left, std::uint64_t right) {
+            const AnalogNavigationSample analog =
+                analogNavigation.sample(stickX, stickY, up, down, left, right);
+            const std::uint64_t mask = up | down | left | right;
+            return navigationRepeat.apply(digitalPressed | analog.down,
+                                          digitalHeld | analog.held, mask);
+        }
+
+        void reset() {
+            analogNavigation.reset();
+            navigationRepeat.reset();
+        }
+
+    private:
+        AnalogNavigation analogNavigation;
+        NavigationRepeat navigationRepeat;
     };
 }
 

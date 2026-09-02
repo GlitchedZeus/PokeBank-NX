@@ -103,9 +103,8 @@ Important interpretation:
 
 - **DEVICE TESTED** means the exact binary was physically run.
 - It does not mean every tested capability passed.
-- The physical pass verified many controller/theme/Action-Sheet paths successfully.
 - Held Left Stick repeat failed and is tracked by issue #19.
-- The visual product shell remains overwhelmingly inherited PKSE and is tracked by reopened issue #13 plus issue #16.
+- The visual product shell remained overwhelmingly inherited PKSE and is tracked by reopened issue #13 plus issue #16.
 - No live installed-save write/safety regression was reported during this test.
 
 Later Session 2 build/status documentation commit:
@@ -115,20 +114,69 @@ Later Session 2 build/status documentation commit:
 docs: record Session 2 device build
 ```
 
-Do not confuse that docs SHA with the actual application source used by the `.nro`.
+---
+
+# SESSION 2.5 APPLICATION SOURCE CHECKPOINT — ARTIFACT PENDING
+
+The visible-shell/physical-stick implementation reached a remote source checkpoint before the coding session ran out of usage.
+
+```text
+Version/tag: 0.1.0-alpha
+Branch: feature/pokebank-playable
+Application source SHA: 361c6f551496470db305948d702944c6ed9889c1
+Application source commit message: ui: add visible PokeBank shell and physical stick input
+GitHub host CI: PASS
+Remote source: VERIFIED
+```
+
+Reported implementation at this source checkpoint includes:
+
+```text
+real libnx Left Stick position handling
+analog deadzone/hysteresis adapter
+sustained analog navigation repeat path
+Select Game / Backups / Party / Boxes / Storage analog integration
+visible PokeBank NX header/archive identity
+PokeBank NX branded chrome/cards
+shared Help / Options visual treatment
+matching Action Sheet styling
+NRO/window identity changed to PokeBank NX
+```
+
+The interrupted session reported host tests, sanitizers, and a native integration build passing before the source checkpoint. However, the required **clean exact-source rebuild + final artifact hash/preservation** had not been completed when the session ended.
+
+Therefore the authoritative state is:
+
+```text
+Application source: PUBLISHED
+GitHub host CI: PASS
+Exact replacement .nro: PENDING
+Replacement artifact SHA-256: PENDING
+Second physical device test: NOT DONE
+```
+
+Do not invent an artifact filename/hash from a pre-checkpoint local build.
+
+Use:
+
+```text
+docs/PROMPT_SESSION2_5_FINISH.md
+```
+
+to rebuild/package this exact source and produce the replacement device-test artifact.
 
 ---
 
-## Device test milestone tracking
+## Device-test milestone tracking
 
-GitHub issue #8 is complete because the first exact recorded PokeBank NX `.nro` has now been physically tested.
+Issue #8 is complete because the first exact recorded PokeBank NX `.nro` was physically tested.
 
-The result intentionally created follow-up work rather than pretending the build fully passed:
+Current follow-up:
 
 ```text
-#13  REOPENED — visible PokeBank NX shell incomplete
-#19  OPEN — held Left Stick navigation repeat failure
-#16  OPEN — branding/startup/NRO metadata; elevated by hardware observation
+#13  OPEN — 361c6f55 source published; second device visual acceptance pending
+#19  OPEN — source fix implemented; second physical stick test pending
+#16  OPEN — visible identity improved; full startup/icon/NACP work remains
 ```
 
 ---
@@ -196,12 +244,6 @@ NRO BUILDS
 DEVICE TESTED
 ```
 
-For device-tested builds always record the actual result beside the claim:
+For device-tested builds always record the actual result beside the claim.
 
-```text
-DEVICE TESTED — PASS
-DEVICE TESTED — PARTIAL PASS
-DEVICE TESTED — FAIL
-```
-
-A remembered filename, local-only session report, or successful host test is never enough to claim `DEVICE TESTED`.
+A remembered filename, local-only session report, successful host test, or pre-commit binary is never enough to claim a final device artifact or `DEVICE TESTED`.

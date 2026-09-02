@@ -1,137 +1,93 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-02
+Last updated: 2026-09-02  
 Status: ACTIVE EXECUTION PLAN
 
 `PROJECT_STATUS.md` is authoritative.
 
-The first exact PokeBank NX `.nro` has now been physically tested on Nintendo Switch hardware. The result was a strong functional partial pass but exposed two blocking near-term issues: held Left Stick repeat fails, and the visible application still looks overwhelmingly like inherited PKSE.
-
-Permanent physical report:
-
-```text
-docs/DEVICE_TEST_REPORT_2026-09-01.md
-```
-
 ## Current position
 
-Completed milestones:
+Completed:
 
 ```text
-#2  Controller-first Pokémon Action Sheet
+#2  Controller-first Pokemon Action Sheet
 #8  First exact physical PokeBank NX .nro test
 ```
 
-Exact physically tested binary:
+First physically tested build:
 
 ```text
 Application source: 3be4de6b0b1ce00d5fe369cff9795c3fffbfa31a
 Artifact: PokeBank-NX-UI-Theme-3be4de6.nro
-Size: 9,707,957 bytes
 SHA-256: df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
 Result: DEVICE TESTED — PARTIAL PASS / KNOWN FAILURES
 ```
 
-Hardware passes:
+That test exposed:
 
 ```text
-BOOT
-D-PAD
-A ACTION SHEET
-B/CANCEL
-L/R
-ZL/ZR
-+
--
-OLED BLACK
-DARK
-LIGHT
-THEME PERSISTENCE
-PARTY
-BOXES
-STORAGE
-NO CRASHES
+LEFT STICK + HOLD          FAIL
+VISIBLE POKEBANK NX UI    FAIL / INCOMPLETE
 ```
 
-Hardware failures/gaps:
+Session 2.5 then produced/pushed a new application source checkpoint:
 
 ```text
-LEFT STICK + HOLD     FAIL
-VISIBLE POKEBANK NX   FAIL / INCOMPLETE
+361c6f551496470db305948d702944c6ed9889c1
+ui: add visible PokeBank shell and physical stick input
 ```
 
-Tracking:
+GitHub host CI passed on this exact source.
 
-```text
-#13 REOPENED — visible PokeBank NX shell incomplete
-#19 OPEN — held Left Stick repeat hardware bug
-#16 OPEN — branding/startup/NRO metadata; near-term visible dependency
-```
+The session ended before the clean exact-source rebuild, artifact hash/preservation, docs closeout, and second hardware handoff.
 
 ---
 
-# Block A — HIGH — Session 2.5 visible shell + device fix
+# Block A — HIGH — finish/package Session 2.5
 
 Use:
 
 ```text
-docs/PROMPT_SESSION2_5_VISUAL_SHELL.md
+docs/PROMPT_SESSION2_5_FINISH.md
 ```
 
-## Goal
+Do **not** redo the visible-shell/analog implementation unless verification finds a real regression.
 
-Produce a second device-test `.nro` that:
-
-1. fixes held Left Stick navigation repeat;
-2. immediately looks like PokeBank NX rather than PKSE;
-3. removes obvious PKSE product branding/logo from the normal tested path;
-4. visibly applies the existing semantic theme/card/modal/hint primitives;
-5. preserves every hardware behavior that passed;
-6. preserves the live-write hard lock.
-
-## Narrow visible scope
-
-Prioritize:
+Required application source for the replacement artifact:
 
 ```text
-PokeBank NX header/app identity
-Select Game / Home shell
-background/chrome/card/focus language
-bottom controller hint bar
-Options modal
-Help modal
-Action Sheet visual integration
-top-level game browser branding/chrome where small
-held Left Stick repeat
+361c6f551496470db305948d702944c6ed9889c1
 ```
 
-Do not redesign every Summary/Vault/Pokédex screen in this block.
+Required work:
 
-## Verification
-
-Run:
-
-```bash
-make -f Makefile.host host-clean
-make -f Makefile.host host-test
-make -f Makefile.host host-sanitize
+```text
+verify exact source
+host tests
+ASan/UBSan
 git diff --check
-make -j1
+clean native build from exact source
+preserve actual .nro
+record filename / embedded SHA / size / SHA-256
+update #13/#16/#19
+update build/status docs
+READY FOR SECOND DEVICE TEST
 ```
 
-Then update status/docs/issues, commit application source, push, verify remote SHA, and provide a new exact `.nro` with filename/size/SHA-256.
+Keep #13 and #19 open until physical acceptance.
 
-Do not mark that replacement build `DEVICE TESTED` until it is physically run.
+Do not merge a later docs-only SHA into the artifact identity.
 
 ---
 
-# Between Block A and Block B — second physical Switch test
+# Block B — second physical Switch test
 
-The replacement build should target:
+Target:
 
 ```text
 BOOT                              PASS
 D-PAD                             PASS
+LEFT STICK                        PASS
 LEFT STICK + HOLD                 PASS
 A/B ACTION SHEET                  PASS
 L/R + ZL/ZR                       PASS
@@ -145,39 +101,41 @@ VISIBLY POKEBANK NX               PASS
 OBVIOUS PKSE BRANDING REMOVED     PASS
 ```
 
-Only physically exercised behaviors on the exact replacement hash become device evidence.
+If the replacement build has a device-only regression, do the smallest coherent HIGH fix/build/retest loop.
 
 ---
 
-# Block B — MAX — PKSM-Core Gen III spike
+# Block C — MAX — PKSM-Core Gen III spike
 
-Use only after the Session 2.5 replacement build is stable enough on hardware:
+Start only after the Session 2.5 replacement build is stable enough on hardware.
+
+Use:
 
 ```text
 docs/PROMPT_SESSION3_PKSM_CORE.md
 ```
 
-Target issue #4:
+Issue #4 target:
 
 ```text
 PK3
 Sav3
 FireRed / LeafGreen GBA
 read-only parsing
-box/party extraction
-active save-slot/sector behavior
+party / box extraction
+active save-slot / sector behavior
 PK3 encrypt/decrypt/checksum behavior
 untouched round-trip strategy
 adapter/dependency decision
 ```
 
-Issue #17 tracks reusable golden fixtures. Do not let fixture perfection block the smallest useful PK3/Sav3 integration decision.
+Issue #17 supports reproducible fixtures. Do not let fixture perfection block the first useful integration decision.
 
-No live writes during this spike.
+No live writes.
 
 ---
 
-# Product order after PKSM-Core
+# Core product order after PKSM-Core
 
 ```text
 #3  Master Vault v1 + named Banks
@@ -185,32 +143,97 @@ No live writes during this spike.
 #6  RetroArch discovery + read-only Gen I-III adapters
 #11 Modern Switch adapter validation
 #5  PKHeX Oracle
-#7  Vault-driven Pokédex / Living Dex
+#7  Vault-driven Pokedex / Living Dex
 #10 Conversion / transfer without live writes
+#20 True Move semantics after verified safe-write adapters
 ```
 
-Supporting:
+Supporting work:
 
 ```text
-#15 persistent .nro artifacts
-#16 final branding/startup/NRO metadata
-#17 reproducible golden fixtures
+#15 persistent .nro artifact automation
+#16 final branding/startup/icon/NACP
+#17 golden fixture corpus
+#21 NRO reliability/diagnostics/performance/QoL
+```
+
+---
+
+# Transfer semantics going forward
+
+Product behavior is now explicit:
+
+```text
+COPY  = source stays active; destination representation is created
+MOVE  = destination becomes active; source stops being active after verification
+CLONE = deliberate duplicate with clone provenance
+```
+
+Current alpha remains read-only against installed games and therefore uses safe Copy/import/staged behavior.
+
+True Move is **later**, not now. It requires per-adapter backup, stage, checksum/container repair, reparse, write, readback, verification, rollback, and physical hardware gates.
+
+See:
+
+```text
+docs/TRANSFER_MODEL.md
+GitHub issue #20
+```
+
+---
+
+# NRO quality / polish plan
+
+Detailed backlog:
+
+```text
+docs/NRO_QUALITY_ROADMAP.md
+GitHub issue #21
+```
+
+High-value items include:
+
+```text
+Diagnostics + diagnostic export
+Applet/constrained-memory warning
+privacy-safe error logs
+real startup stages
+READ ONLY / Vault / staged / active-location badges
+Vault recovery + storage health
+search/filter
+Quick Jump
+Favorites
+recent items
+text sizing
+Reduced Motion
+optional original sounds/rumble
+virtualized large grids
+bounded artwork caches
+intentional missing-resource fallback
+```
+
+Recommended balance after the second device UI milestone:
+
+```text
+70% core functionality
+20% hardware testing / regression fixes
+10% polish / infrastructure
 ```
 
 ---
 
 # Do not do prematurely
 
-Do not start all of these in the same session:
+Do not begin these during the Session 2.5 packaging continuation:
 
 ```text
-full Master Vault
-full Pokédex
+PKSM-Core
+Master Vault
+full Pokedex
 full legality engine
-full event archive
-all generations
-live installed-save writing
-full application-wide visual redesign
+true Move/live writes
+all generations at once
+another large UI redesign
 ```
 
-Finish the smallest coherent milestone, build it, preserve it, and physically test it.
+Finish the exact replacement artifact and physically test it first.

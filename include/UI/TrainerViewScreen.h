@@ -200,7 +200,7 @@ namespace UI {
         // location descriptor, never a mutable Pokemon pointer, so opening/navigating/cancelling it
         // cannot mutate the source by construction.
         PokeVault::UIModel::PokemonActionSheet actionSheet;
-        PokeBank::UIModel::NavigationRepeat navigationRepeat;
+        PokeBank::UIModel::ControllerNavigation controllerNavigation;
         bool helpOverlayActive = false;
         // Group menu for the carried block (Release all / Return to origin / Cancel), opened with Minus.
         bool groupMenuActive = false;

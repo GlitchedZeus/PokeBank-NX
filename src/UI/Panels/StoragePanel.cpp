@@ -411,17 +411,23 @@ namespace UI
             // A small centered popup menu (scrim + card + title + item list). Each row is registered as
             // a touch button (id = item index) so a tap selects + confirms it.
             void drawPopupMenu(TrainerViewScreen &screen, PKSEFramebuffer &fb, const std::string &title,
-                               const char *const *items, int count, int sel, uint32_t disabledMask = 0)
+                               const char *const *items, int count, int sel, uint32_t disabledMask = 0,
+                               const std::string &eyebrow = {})
             {
                 // Touch-friendly sizing: 56px rows (TouchTargetMin) and a wide card so rows are easy to tap.
                 constexpr int w = 440, rowH = TouchTargetMin;
-                constexpr int headerH = 60;
+                const int headerH = eyebrow.empty() ? 60 : 82;
                 const int h = headerH + count * rowH + 14;
                 const int x = (fb.getWidth() - w) / 2;
                 const int y = (fb.getHeight() - h) / 2;
                 constexpr int r = Dialogs::kDialogRadius; // same card shape as every other modal
                 drawModalSurface(fb, x, y, w, h, r);
-                fb.drawText(x + 22, y + 16, title, Colors::TextPrimary, TextStyle::Heading);
+                if (!eyebrow.empty()) {
+                    fb.drawText(x + 22, y + 13, eyebrow, Colors::AccentPrimary, TextStyle::Caption);
+                    fb.drawText(x + 22, y + 36, title, Colors::TextPrimary, TextStyle::Heading);
+                } else {
+                    fb.drawText(x + 22, y + 16, title, Colors::TextPrimary, TextStyle::Heading);
+                }
                 fb.drawFilledRect(x + r, y + headerH - 4, w - r * 2, 2, Colors::AccentPrimary);
                 screen.touchButtons.clear();
                 int ry = y + headerH;
@@ -429,8 +435,7 @@ namespace UI
                 {
                     const bool disabled = (disabledMask >> i) & 1u;
                     const bool selRow = (i == sel) && !disabled;
-                    if (selRow)
-                        fb.drawSelectionHighlight(x + 10, ry + 3, w - 20, rowH - 6);
+                    drawFocusedCard(fb, x + 10, ry + 3, w - 20, rowH - 6, selRow, 11);
                     int tw, th;
                     fb.measureText(items[i], tw, th, TextStyle::Body);
                     const Color rowColor = disabled ? Colors::Divider
@@ -453,7 +458,7 @@ namespace UI
             for (std::size_t i = 0; i < items.size(); ++i)
                 items[i] = PokeVault::UIModel::actionLabel(PokeVault::UIModel::POKEMON_ACTIONS[i]).data();
             drawPopupMenu(screen, fb, title, items.data(), static_cast<int>(items.size()),
-                          screen.actionSheet.selectedIndex());
+                          screen.actionSheet.selectedIndex(), 0, "POKEBANK NX  /  POKÉMON ACTIONS");
             drawNavBar(fb, controllerHints(PokeBank::UIModel::ControllerContext::PokemonActionSheet));
         }
 

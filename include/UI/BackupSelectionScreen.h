@@ -36,7 +36,7 @@ namespace UI {
         }
 
     private:
-        PokeBank::UIModel::NavigationRepeat navigationRepeat;
+        PokeBank::UIModel::ControllerNavigation controllerNavigation;
         struct BackupInfo {
             std::string timestamp;
             std::string displayName;

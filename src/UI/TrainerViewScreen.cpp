@@ -1909,10 +1909,11 @@ namespace UI {
     }
 
     void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
-        constexpr u64 navigationMask = HidNpadButton_Up | HidNpadButton_Down |
-                                       HidNpadButton_Left | HidNpadButton_Right;
-        u64 kDown = navigationRepeat.apply(padGetButtonsDown(&pad), padGetButtons(&pad),
-                                           navigationMask) | navTouchButton(touch);
+        const HidAnalogStickState stick = padGetStickPos(&pad, 0);
+        u64 kDown = controllerNavigation.apply(
+            padGetButtonsDown(&pad), padGetButtons(&pad), stick.x, stick.y,
+            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
+            | navTouchButton(touch);
 
         // Let's Go stores its boxes as a GAPLESS list, so anything that vacated a slot last frame
         // left a hole the game can't represent. Re-pack it here rather than at each of the
@@ -3304,7 +3305,7 @@ namespace UI {
                         // is a PKSE bug rather than a write failure, so it warns instead of blocking.
                         if (bank && bank->lastVerifyFailures() > 0) {
                             postStatus(std::to_string(bank->lastVerifyFailures()) +
-                                       " bank slot(s) failed the integrity check - see the PKSE log.", 480);
+                                       " bank slot(s) failed the integrity check - see the PokeBank NX log.", 480);
                         }
                         detailViewActive = false;
                         answered = true;
@@ -4090,7 +4091,7 @@ namespace UI {
     }
 
     void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
-        fb.clear(Colors::Background);
+        drawAppBackdrop(fb);
 
         // --- Title bar: the shared chrome, with game name + version + DLC as the subtitle ---
         std::string subtitle = titleName;
@@ -4332,7 +4333,7 @@ namespace UI {
         }
 
         if (helpOverlayActive) {
-            drawInfoOverlay(fb, "Controls", {
+            drawInfoOverlay(fb, "Game Browser Controls", {
                 "D-pad / Left Stick   Navigate (hold to scroll)",
                 "A   Open or show Pokémon actions",
                 "B   Back or cancel",

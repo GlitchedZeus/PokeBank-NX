@@ -26,7 +26,7 @@ namespace UI {
     constexpr int ICON       = 126;
     constexpr int GAP        = 16;
     constexpr int MAX_COLS   = 5;
-    constexpr int GRID_Y     = 208;
+    constexpr int GRID_Y     = 216;
     // Rows of tiles that fit between the grid's top and the nav bar: (720 - 56 - 208) = 456px of
     // band against a 224px row pitch. Anything past this scrolls rather than being drawn off the
     // bottom edge, which is how titles eleven and twelve used to vanish.
@@ -236,10 +236,11 @@ namespace UI {
     void SaveSelectScreen::update(const PadState& pad, const TouchInput& touch) {
         // A tap on a nav-bar badge becomes that button's press, so every handler below is
         // reached identically whether the user pressed the button or tapped its on-screen badge.
-        constexpr u64 navigationMask = HidNpadButton_Up | HidNpadButton_Down |
-                                       HidNpadButton_Left | HidNpadButton_Right;
-        u64 kDown = navigationRepeat.apply(padGetButtonsDown(&pad), padGetButtons(&pad),
-                                           navigationMask) | navTouchButton(touch);
+        const HidAnalogStickState stick = padGetStickPos(&pad, 0);
+        u64 kDown = controllerNavigation.apply(
+            padGetButtonsDown(&pad), padGetButtons(&pad), stick.x, stick.y,
+            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
+            | navTouchButton(touch);
 
         if (overlay == Overlay::Help) {
             if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) overlay = Overlay::None;
@@ -323,8 +324,8 @@ namespace UI {
         titleRects.clear();
         userRects.clear();
 
-        fb.clear(Colors::Background);
-        drawTitleBar(fb, "PokéVault NX   v" + VERSION_STRING + "   " + BUILD_COMMIT);
+        drawAppBackdrop(fb);
+        drawTitleBar(fb, "Game Sources  /  v" + VERSION_STRING + "  /  " + BUILD_COMMIT);
 
         const UserEntry* u = currentUser();
 
@@ -395,6 +396,8 @@ namespace UI {
                 bool sel = (i == titleIndex);
 
                 drawFocusedCard(fb, tileX, tileY, TILE_W, TILE_H, sel, 16);
+                fb.drawFilledRoundedRect(tileX + 12, tileY + 8, TILE_W - 24, 5, 3,
+                                         sel ? Colors::FocusBorder : withAlpha(Colors::AccentPrimary, 90));
 
                 int iconX = tileX + (TILE_W - ICON) / 2;
                 int iconY = tileY + 16;
@@ -403,6 +406,17 @@ namespace UI {
                     fb.drawImageScaled(iconX, iconY, ic.width, ic.height, ICON, ICON, ic.data, 4);
                 else
                     fb.drawFilledRoundedRect(iconX, iconY, ICON, ICON, 10, Colors::PanelAlt);
+
+                // Source badge makes these cards read as a local archive browser, not an inherited
+                // title picker. It is intentionally presentation-only; identity remains gameId.
+                constexpr int sourceW = 76, sourceH = 22;
+                fb.drawFilledRoundedRect(tileX + TILE_W - sourceW - 10, tileY + 14,
+                                         sourceW, sourceH, 8,
+                                         withAlpha(Colors::Info, sel ? 70 : 38));
+                int sw, sh; fb.measureText("LOCAL SAVE", sw, sh, TextStyle::Caption);
+                fb.drawText(tileX + TILE_W - sourceW - 10 + (sourceW - sw) / 2,
+                            tileY + 14 + (sourceH - sh) / 2, "LOCAL SAVE",
+                            sel ? Colors::TextPrimary : Colors::TextMuted, TextStyle::Caption);
 
                 // Release name and platform are separate lines. A FireRed tile must always say
                 // whether it is the GBA or Switch release; display names are never identity.
@@ -431,7 +445,7 @@ namespace UI {
             : PokeBank::UIModel::ControllerContext::SelectGame));
 
         if (overlay == Overlay::Help) {
-            drawInfoOverlay(fb, "Select Game — Controls", {
+            drawInfoOverlay(fb, "Game Sources & Controls", {
                 "D-pad / Left Stick   Navigate (hold to scroll)",
                 "A   Open the focused game source",
                 "L / R   Previous or next Switch user",
@@ -442,13 +456,15 @@ namespace UI {
             constexpr int w = 560, h = 326, rowH = 64;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
-            fb.drawText(x + 26, y + 20, "Options", Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 26, y + 16, "POKEBANK NX  /  OPTIONS", Colors::AccentPrimary,
+                        TextStyle::Caption);
+            fb.drawText(x + 26, y + 40, "Quick Options", Colors::TextPrimary, TextStyle::Heading);
             const std::string rows[3] = {
                 "Theme: " + std::string(themeModeName(g_themeMode)),
                 "Exit PokeBank NX",
                 "Cancel"
             };
-            int ry = y + 76;
+            int ry = y + 92;
             for (int i = 0; i < 3; ++i) {
                 drawFocusedCard(fb, x + 22, ry, w - 44, rowH - 8, i == optionsIndex, 12);
                 fb.drawText(x + 44, ry + 15, rows[i],

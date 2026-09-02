@@ -1,78 +1,33 @@
 # PokeBank NX — Coding Session Runbook
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
 Use this at the start and end of every coding-agent session.
 
-Recovery is complete. Do not repeat the old forensic repository recovery workflow unless the verified GitHub project state is genuinely unavailable.
+Recovery is complete. Do not repeat the old forensic repository recovery workflow unless verified project state is genuinely unavailable.
 
 ---
 
 ## Source of truth
 
-Repository:
-
 ```text
-GlitchedZeus/PokeBank-NX
-```
-
-Writable remote:
-
-```text
-origin
-```
-
-PKSE remote:
-
-```text
-upstream
+Repository: GlitchedZeus/PokeBank-NX
+Writable remote: origin
+PKSE remote: upstream
+Development branch: feature/pokebank-playable
 ```
 
 **Never push PokeBank NX changes to PKSE upstream.**
 
-Development branch:
+Always read `PROJECT_STATUS.md` for the newest verified state and exact application-source checkpoint.
 
-```text
-feature/pokebank-playable
-```
-
-Verified safety milestone:
-
-```text
-c618bd5e44381635f92c17fc7b36c594b64aaa40
-safety: hard-lock live game save writes
-```
-
-Completed Action Sheet application milestone:
-
-```text
-82a0779a5143cca0690d0c7068946d84ebe9f107
-ui: add controller Pokemon action sheet
-```
-
-Always read `PROJECT_STATUS.md` for anything newer.
+The branch may contain documentation commits newer than the application source used to build a device artifact. Never confuse branch head with artifact source identity.
 
 ---
 
-## Recovery status
+## Preserve interrupted-session work
 
-Recovery is complete.
-
-The old requested checkpoint `1932cf0` was not found in available refs/reflogs/stashes/unreachable history/workspace archives/GitHub during the completed recovery session.
-
-The surviving 23-game identity work was recovered and published.
-
-Do **not** restart that investigation just because a later feature session was interrupted.
-
----
-
-# Critical rule: preserve interrupted-session work
-
-A coding runtime can end before work is committed/pushed. This happened during the 2026-09-01 issue #13 UI/theme session.
-
-If the previous session may contain useful local work, **do not immediately reset/clean/switch over it**.
-
-First inspect:
+Before reset/clean/branch switching over a workspace that may contain useful local work, inspect:
 
 ```bash
 pwd
@@ -92,58 +47,37 @@ Look for:
 ```text
 uncommitted modifications
 untracked project files
-local branches not on origin
-local commits not pushed
+local commits/branches not pushed
 reflog-only commits
 stashes
 secondary worktrees
 ```
 
-Do not use these commands over unknown work:
+Do not blindly run:
 
 ```text
 git reset --hard
 git clean -fd
 force push
 destructive rebase
-checkout that overwrites changes
+checkout that overwrites unknown changes
 ```
 
-If local work matters but is not ready to merge, preserve it first with a branch/commit/stash/worktree as appropriate.
-
-Only after local work is accounted for should the session synchronize with GitHub.
+Preserve legitimate newer work first.
 
 ---
 
 # Start-of-session procedure
 
-## 1. Inspect first
-
-Use the interrupted-session checks above.
-
-## 2. Fetch safely
+## 1. Inspect and fetch safely
 
 ```bash
 git fetch --all --prune
 ```
 
-Fetching is fine; destructive reset is not.
+Confirm `origin/feature/pokebank-playable` and `upstream` identities are correct.
 
-## 3. Verify remote state
-
-Confirm:
-
-```text
-origin/feature/pokebank-playable exists
-upstream points to kiasta/PKSE
-latest remote history matches PROJECT_STATUS.md or contains a clearly newer valid milestone
-```
-
-If GitHub is newer than the docs, update the docs after verifying what changed.
-
-If local work is newer than GitHub, preserve/integrate it rather than discarding it.
-
-## 4. Read documentation
+## 2. Read current state
 
 Always read:
 
@@ -151,31 +85,30 @@ Always read:
 PROJECT_STATUS.md
 docs/NEXT_SESSION_PLAN.md
 docs/SESSION_RUNBOOK.md
+docs/BUILD_RECORD.md
 ```
 
-Then read the feature-specific contracts.
+Then read the current task's specs/prompts.
 
-For UI/control work:
+### UI/control
 
 ```text
 docs/CONTROLS.md
 docs/UI_FLOW.md
 docs/UI_STYLE_GUIDE.md
-docs/ARCHITECTURE.md
 docs/SAVE_SAFETY.md
 ```
 
-For Pokémon/save-engine work:
+### Save/format engine
 
 ```text
 docs/UPSTREAM_AUDIT.md
 docs/PKSM_CORE_INTEGRATION.md
-docs/PKHOUSE_REFERENCE.md
 docs/GAME_SUPPORT_MATRIX.md
 docs/SAVE_SAFETY.md
 ```
 
-For Vault/Dex/transfer work:
+### Vault/transfer/Dex
 
 ```text
 docs/MASTER_VAULT_SPEC.md
@@ -184,191 +117,135 @@ docs/POKEDEX_SPEC.md
 docs/PKHEX_ORACLE.md
 ```
 
-## 5. Run baseline host verification
+### Cross-cutting NRO quality
+
+```text
+docs/NRO_QUALITY_ROADMAP.md
+```
+
+## 3. Baseline verification
+
+When appropriate:
 
 ```bash
 make -f Makefile.host host-clean
 make -f Makefile.host host-test
 make -f Makefile.host host-sanitize
+git diff --check
 ```
 
-If the baseline is broken before new work, diagnose/document it before piling changes on top.
-
-## 6. Native integration build
-
-Use the environment recorded in `PROJECT_STATUS.md` and run:
+Native integration:
 
 ```bash
 make -j1
 ```
 
-When building a test artifact record:
-
-```text
-application source full SHA
-filename
-size
-SHA-256
-host-test result
-sanitizer result
-native-build result
-device-tested yes/no
-```
+Diagnose a broken baseline before piling unrelated changes on top.
 
 ---
 
-# Current development order
+# Current execution order
 
-Follow `PROJECT_STATUS.md` if it contains a newer priority.
+Follow `PROJECT_STATUS.md` if newer.
 
-As of 2026-09-01:
+Current sequence:
 
 ```text
-DONE
-#2 Action Sheet
-
-CURRENT
-#13 HOME-style controls + OLED/Dark/Light UI shell
-    - recover interrupted local Session 2 work first
-    - finish tests/build/push/artifact
-
-THEN
-#8 physical Switch test of exact combined build
-
-THEN — use MAX/deep reasoning
-#4 PKSM-Core PK3/Sav3 Gen III integration spike
-
-THEN
-#3 Master Vault v1 + Banks
-#9 Summary + provenance
-#6 RetroArch/read-only Gen I-III adapters
-#11 modern Switch adapter validation
+NOW
+finish/package exact Session 2.5 application source 361c6f55
+        ↓
+second physical Switch test
+        ↓
+fix blocking device regression if needed
+        ↓
+MAX: #4 PKSM-Core PK3/Sav3
+        ↓
+#3 Master Vault + Banks
+        ↓
+#9 Summary/provenance
+#6 Retro adapters
+#11 modern adapter validation
 #5 PKHeX Oracle
-#7 Vault-driven Pokédex
-#10 conversion/transfer without live writes
+#7 Vault-driven Pokedex
+#10 conversion/staging
+        ↓
+per-adapter safe-write work
+        ↓
+#20 true Move semantics
 ```
 
-Issue #15 tracks artifact automation and can be handled when it does not block the product path.
+Supporting work:
+
+```text
+#15 artifact automation
+#16 startup/branding/icon/NACP
+#17 golden fixtures
+#21 NRO diagnostics/reliability/performance/QoL
+```
+
+Do not let supporting polish derail the current core milestone.
 
 ---
 
 # Controller/action safety rule
 
-The Action Sheet milestone is complete.
+A on a focused Pokémon opens a deliberate Action Sheet. It must never silently mutate from grid focus.
 
-Pressing A on a focused Pokémon opens:
+B/Cancel/navigation remain non-mutating.
 
-```text
-View Pokémon
-Add to Master Vault
-Add to Bank…
-Transfer to Game…
-Edit
-Clone
-Make Shiny
-Legality & Provenance
-Cancel
-```
-
-A must never silently mutate from Pokémon focus.
-
-B/Cancel/navigation must remain non-mutating.
-
-Controller/UI refactors must preserve this behavior.
+Controller/UI refactors must preserve the live-write hard lock.
 
 ---
 
-# Current UI/control contract
+# Transfer semantics
 
-Use `docs/CONTROLS.md` as canonical.
-
-High-level model:
+Canonical contract: `docs/TRANSFER_MODEL.md`.
 
 ```text
-D-pad       precise navigation
-Left Stick  navigation / repeat
-A           Select/Open
-B           Back/Cancel
-X           Filter/Search/context
-Y           Sort/View/secondary
-L/R         nearby box/Pokémon/tab navigation
-ZL/ZR       larger jumps/major navigation
-+           More/Options; never global Exit
--           Help/Controls/Screen Info
-Right Stick optional only
+COPY  = source remains active; destination is created
+MOVE  = real relocation after destination verification
+CLONE = deliberate duplicate with clone provenance
 ```
 
-Target themes:
+Current installed-game saves remain read-only. True Move is future work under #20 and must not be enabled early.
 
-```text
-OLED Black
-Dark
-Light
-```
-
-Use semantic theme tokens. Do not scatter unrelated `if dark` logic through each screen.
+Archival/provenance history is not the same as an active playable duplicate.
 
 ---
 
 # Upstream-first rule
 
-Before writing major Pokémon infrastructure from scratch, check:
+Before writing major Pokémon infrastructure from scratch, check the pinned reference stack in `docs/UPSTREAM_AUDIT.md`:
 
 ```text
 PKSE
 PKSM-Core
 PKHeX
-Auto Legality Mod / PKHeX-Plugins
+PKHeX-Plugins / Auto Legality
 pkHouse
 pkDex
 PKForge
 ```
 
-Use `docs/UPSTREAM_AUDIT.md`.
-
-Especially:
-
-- audit PKSM-Core before rebuilding historical Pokémon/save logic;
-- use PKHeX as primary technical oracle/reference;
-- keep pkHouse as reference/reimplementation, not pasted GPLv2 source;
-- keep pkDex as UX/data reference, not Vault ownership authority;
-- adapt PKForge architecture concepts rather than copying unrelated app architecture wholesale.
-
-When adopting behavior record:
+Record, where applicable:
 
 ```text
 project
-exact revision
+revision
 file/path
 language/license
 DIRECT REUSE / ADAPTER / PORT / REFERENCE ONLY
 tests/golden vectors
-required attribution
+attribution requirements
 ```
+
+pkHouse/pkDex remain reference/reimplementation sources under current policy; do not blindly paste incompatible licensed source.
 
 ---
 
-# pkHouse policy
-
-Insektaure encouraged technical reference use and specifically recommended reimplementation rather than pure copy/paste.
-
-Current PokeBank NX policy:
-
-```text
-REFERENCE ONLY
-```
-
-Do not paste pkHouse GPLv2 source into PokeBank NX.
-
-If an important format behavior is unclear, prepare a focused technical question for the author after checking PKHeX/PKSM-Core/tests first.
-
----
-
-# Current safety rule
+# Safety rule
 
 **LIVE INSTALLED-GAME SAVE WRITING REMAINS HARD DISABLED.**
-
-Do not remove/bypass the lock to make a demo look complete.
 
 Safe development targets include:
 
@@ -377,16 +254,16 @@ read-only live source
 Master Vault
 backup file
 staged save copy
-exported Pokémon representation
+exported Pokemon representation
 ```
 
-Read `docs/SAVE_SAFETY.md` before any mutation/write-path work.
+A future write capability is granted **per adapter** after `docs/SAVE_SAFETY.md` gates pass. One safe game does not unlock all games.
 
 ---
 
 # Milestone discipline
 
-For every coherent milestone:
+For every coherent application milestone:
 
 ```text
 IMPLEMENT
@@ -399,26 +276,115 @@ GIT DIFF CHECK
     ↓
 BUILD .NRO
     ↓
-UPDATE PROJECT_STATUS.md
-    ↓
 COMMIT APPLICATION SOURCE
     ↓
 PUSH
     ↓
-VERIFY REMOTE SHA
+VERIFY REMOTE SOURCE SHA
     ↓
-PRESERVE/RECORD ARTIFACT
+REBUILD/PACKAGE FROM EXACT SOURCE WHEN REQUIRED
+    ↓
+RECORD/PRESERVE ARTIFACT
+    ↓
+PHYSICAL TEST
+    ↓
+RECORD EXACT PASS/FAIL
 ```
 
-Do not accumulate large unpushed sessions if a smaller safe checkpoint is available.
+Do not accumulate large unpushed sessions when a smaller safe checkpoint exists.
 
-If a later documentation/status commit is created after the application-source commit, distinguish the two clearly.
+If documentation/status commits follow an application-source commit, distinguish them explicitly.
+
+---
+
+# Artifact discipline
+
+For every device-test `.nro` record:
+
+```text
+application source full SHA
+embedded/visible abbreviated SHA when available
+filename
+size
+SHA-256
+host-test result
+sanitizer result
+native-build result
+device-tested YES/NO
+actual device result when tested
+```
+
+Do not claim a pre-commit binary was built from the later commit merely because its source tree looked similar.
+
+Do not leave the only device binary in a temporary runtime.
+
+Issue #15 tracks durable artifact automation.
+
+---
+
+# Documentation and README freshness rule
+
+Whenever a milestone changes any of the following:
+
+```text
+current application source
+physical device status
+major known failure
+current execution order
+product semantics
+supported capability
+safety posture
+public-facing app identity
+new major issue/spec
+```
+
+review and update, where affected:
+
+```text
+PROJECT_STATUS.md
+docs/BUILD_RECORD.md
+docs/NEXT_SESSION_PLAN.md
+docs/PROJECT_MAP.md
+README.md
+relevant issue body/comment
+relevant permanent prompt/spec
+```
+
+The README must not advertise stale claims such as:
+
+```text
+NOT DEVICE TESTED after a physical test exists
+old application source as current
+closed issue as current work
+unimplemented live Move/write support
+old branding state after a verified replacement milestone
+```
+
+Do **not** churn README wording for every tiny internal refactor. Update it when the public project state or roadmap meaningfully changes.
+
+Historical reports/logs must remain historical rather than being rewritten to pretend later results existed earlier.
+
+---
+
+# NRO quality rule
+
+Use `docs/NRO_QUALITY_ROADMAP.md` as the supporting backlog.
+
+Prefer roughly:
+
+```text
+70% core functionality
+20% physical testing / regression fixing
+10% polish / infrastructure
+```
+
+after the second UI/device milestone, adjusting when a reliability blocker justifies more attention.
+
+High-leverage quality items may be pulled into the milestone that naturally owns them (for example Vault recovery with Vault transactions, large-grid virtualization with Vault/Dex, or startup diagnostics with issue #16).
 
 ---
 
 # Verification vocabulary
-
-Use:
 
 ```text
 IMPLEMENTED
@@ -427,80 +393,35 @@ NRO BUILDS
 DEVICE TESTED
 ```
 
-Do not say `DEVICE TESTED` until the user physically runs the exact recorded binary/hash on Switch hardware.
+For hardware evidence also record:
 
-A local session report is not a verification state.
+```text
+DEVICE TESTED — PASS
+DEVICE TESTED — PARTIAL PASS
+DEVICE TESTED — FAIL
+```
 
----
-
-# Build artifact discipline
-
-Temporary coding runtimes disappear.
-
-A testable `.nro` is not safely preserved merely because it existed under `/mnt/data`.
-
-For every hardware-test build:
-
-1. record application source SHA;
-2. record filename;
-3. record file size;
-4. record SHA-256;
-5. provide/preserve the actual binary before session end;
-6. update `docs/BUILD_RECORD.md`;
-7. eventually use issue #15's durable GitHub artifact/prerelease flow.
-
-Do not commit large build outputs to normal source history unless the repository explicitly changes policy.
+Never mark `DEVICE TESTED` without a human physical report tied to the exact binary/hash.
 
 ---
 
 # End-of-session procedure
 
-## 1. Stop at a coherent point
+1. Stop at a coherent checkpoint.
+2. Run relevant host/sanitizer/diff/native verification.
+3. Preserve application-source identity before docs-only commits.
+4. Push to `origin`, never upstream.
+5. Verify remote SHA.
+6. Preserve/hash any device artifact.
+7. Update status/build/issues.
+8. Apply the README freshness rule.
+9. Leave one explicit next action/prompt.
 
-Do not begin a huge subsystem if there is not enough time to reach a safe checkpoint.
-
-## 2. Verify
-
-```bash
-make -f Makefile.host host-test
-make -f Makefile.host host-sanitize
-git diff --check
-make -j1
-```
-
-## 3. Update status
-
-Record:
-
-```text
-what changed
-what passed
-what builds
-what is device tested
-application source SHA
-later docs/status SHA if different
-.nro filename/hash/size if built
-known blockers
-next task
-```
-
-## 4. Commit/push/verify
-
-Use meaningful milestone commits.
-
-Verify the exact remote SHA after publishing.
-
-## 5. Preserve user-test artifact
-
-If intended for physical testing, ensure the actual `.nro` is accessible before the workspace disappears.
-
-## 6. Leave next action explicit
-
-`PROJECT_STATUS.md` and `docs/NEXT_SESSION_PLAN.md` should make the next action obvious.
+If the session is interrupted before all steps complete, report exactly which stage was reached. Do not invent missing artifact hashes or verification states.
 
 ---
 
-# Compact generic prompt
+# Compact generic continuation prompt
 
 ```text
 POKEBANK NX — CONTINUE FROM VERIFIED STATE
@@ -508,23 +429,18 @@ POKEBANK NX — CONTINUE FROM VERIFIED STATE
 Open/fetch GlitchedZeus/PokeBank-NX.
 PKSE is upstream only; never push PokeBank NX changes there.
 
-Recovery is complete.
+Before destructive git commands, inspect status/branches/reflog/stash/worktrees for interrupted work.
 
-Before reset/clean/checkout, inspect git status, local branches, reflog, stash and worktrees for unpushed interrupted-session work.
-Preserve anything useful newer than GitHub.
+Read PROJECT_STATUS.md, docs/NEXT_SESSION_PLAN.md, docs/SESSION_RUNBOOK.md, docs/BUILD_RECORD.md, and the current task specs.
 
-Read PROJECT_STATUS.md, docs/NEXT_SESSION_PLAN.md, docs/SESSION_RUNBOOK.md,
-and the feature-specific specs for the current task.
+Keep live installed-save writing hard disabled unless the current task names an explicitly approved adapter/write gate.
 
-Run host tests/sanitizers and native .nro baseline when appropriate.
-Keep live installed-save writing hard disabled.
+Continue only the highest-priority unfinished milestone.
 
-Continue only the highest-priority unfinished task in PROJECT_STATUS.md.
+For stable application milestones:
+test -> sanitize -> diff check -> native build -> commit application source -> push -> verify source SHA -> preserve/hash artifact -> physical test -> record result.
 
-For every stable milestone:
-test -> sanitize -> diff check -> build .nro -> update status -> commit -> push -> verify remote SHA.
-
-If producing a device build, preserve/provide the actual .nro and record source SHA, size and SHA-256.
+Keep README/status/roadmap accurate when public project state changes.
 
 Do not mark DEVICE TESTED without the user's physical report for that exact binary.
 Start working immediately.
