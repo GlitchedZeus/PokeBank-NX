@@ -1,16 +1,20 @@
 # PokeBank NX — Next Session Plan
 
 Last updated: 2026-09-02  
-Status: ACTIVE EXECUTION PLAN
+Status: **ACTIVE EXECUTION PLAN**
 
-`PROJECT_STATUS.md` is authoritative.
+`PROJECT_STATUS.md` is authoritative for verified state.  
+`docs/V1_ROADMAP.md` / issue #29 describe the full road to v1.0.  
+This file describes only what to do **next**.
 
-## Current position
+---
 
-Completed:
+# Current position
+
+Completed milestones:
 
 ```text
-#2  Controller-first Pokemon Action Sheet
+#2  Controller-first Pokémon Action Sheet
 #8  First exact physical PokeBank NX .nro test
 ```
 
@@ -23,31 +27,16 @@ SHA-256: df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
 Result: DEVICE TESTED — PARTIAL PASS / KNOWN FAILURES
 ```
 
-Initial short test exposed:
-
-```text
-LEFT STICK + HOLD          FAIL
-VISIBLE POKEBANK NX UI    FAIL / INCOMPLETE
-```
-
-Session 2.5 then produced/pushed:
+Session 2.5 later published:
 
 ```text
 361c6f551496470db305948d702944c6ed9889c1
 ui: add visible PokeBank shell and physical stick input
 ```
 
-GitHub host CI passed on that source.
+That source contains the reported PokeBank NX visual shell and real libnx analog-input fix. GitHub host CI passed, but it is **NOT DEVICE TESTED**.
 
-A later extended hardware pass on the **old `3be4de6b` binary** clarified additional blockers.
-
-Permanent report:
-
-```text
-docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
-```
-
-New facts:
+The extended hardware pass on the old `3be4de6b...` binary added these facts:
 
 ```text
 LEFT STICK SINGLE TAP      FAIL — no input/action
@@ -60,13 +49,19 @@ APP STORAGE PERSISTENCE    PHYSICALLY OBSERVED
 LIVE INSTALLED SAVE WRITE  NOT PROVEN
 ```
 
-Because of these findings, the old packaging-only continuation is no longer the correct primary next step.
+Permanent report:
+
+```text
+docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
+```
+
+Because of those findings, the next session is no longer a packaging-only session.
 
 ---
 
-# Block A — HIGH — safety/crash blocker session
+# Block A — HIGH — Session 2.6 safety/crash finish
 
-Use:
+Use exactly:
 
 ```text
 docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md
@@ -75,36 +70,36 @@ docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md
 Primary issues:
 
 ```text
-#23  audit/block inherited mutation UI before second device build
-#24  old/malformed Legends Arceus save crash
-#19  preserve and retest full Left Stick navigation fix
-#13  preserve visible PokeBank NX shell
-#16  preserve current visible branding/NRO identity work
+#23 audit/block inherited mutation UI before second device build
+#24 old/malformed Legends Arceus crash
+#19 preserve/retest full Left Stick navigation fix
+#13 preserve visible PokeBank NX shell
+#16 preserve visible branding/NRO identity work
 ```
 
-Supporting findings:
+Later/supporting findings:
 
 ```text
-#25  Pokémon visual/model Summary idea — later
-#26  normalize controller semantics — later except safety-relevant shortcuts
-#27  legacy Storage vs future Master Vault/Banks — classify now, redesign later
+#25 Pokémon Summary visuals/model concept
+#26 controller normalization
+#27 legacy Storage vs future Master Vault/Banks
 ```
 
-## Required safety audit
+## Required source-level safety audit
 
-Trace these user-reachable paths to their final persistence targets:
+Trace:
 
 ```text
 Release
 Create Pokémon
 Move / Multi
-Edit/apply/save
+Edit / apply / save
 unsaved-changes prompt
 legacy/app Storage move/import
 any reachable Save / Commit / Restore / Inject path
 ```
 
-Classify each as:
+Classify each final persistence target:
 
 ```text
 LIVE INSTALLED SAVE WRITE
@@ -117,45 +112,48 @@ UNKNOWN — NEEDS BLOCKING
 
 Do not rely on UI wording.
 
-Current alpha behavior for installed-game sources must remain read-only at the user-facing level. Unsafe Release/Create/Move/Edit/save paths must not remain reachable merely because a lower-level write lock probably rejects the final write.
+While live installed-save writing remains disabled:
+
+- installed-game browsing stays read-only;
+- Release/Create must not be reachable on installed-game sources;
+- unsafe Move/Multi must not persistently mutate an installed source;
+- Edit must not commit into an installed source;
+- controller shortcuts must not bypass the read-only contract;
+- app-owned Storage may remain writable only if its separation/persistence semantics are proven and clearly labeled.
 
 ## Required PLA crash behavior
 
 ```text
 valid supported PLA save           opens
-old/unsupported/malformed save     useful error / safe return
-parser failure                     never crashes the app
+old/unsupported/malformed save     useful read-only error / safe return
+parser failure                     no crash
 failing save                       never auto-written/repaired
 ```
 
-If the exact old save is not available in the coding runtime, make source-grounded defensive fixes/tests only and keep #24 OPEN for physical retest.
+If the exact old save is unavailable to the coding runtime, make source-grounded defensive fixes/tests and keep #24 open for physical retest.
 
 ## Preserve Session 2.5 work
 
-Do not redo the visible shell/analog work from scratch.
-
-Preserve:
+Do not redo from scratch:
 
 ```text
-real libnx Left Stick position handling
+real libnx Left Stick handling
 deadzone/hysteresis
 single-tap + held repeat path
 diagonal stability
 PokeBank NX header/chrome/cards
 Options / Help styling
 Action Sheet styling
-NRO/window PokeBank NX identity
+NRO/window identity
 OLED / Dark / Light themes
 ```
 
-## Application source rule
+## Application-source rule
 
-Because #23/#24 may require source changes, `361c6f55...` is no longer automatically the final second-device artifact source.
-
-If source changes:
+If #23/#24 changes application code:
 
 ```text
-implement coherent blocker fix
+implement
 → host test
 → sanitize
 → diff check
@@ -166,35 +164,35 @@ implement coherent blocker fix
 → hash/preserve .nro
 ```
 
-Never modify source and still label the binary as `361c6f55`.
+Never change source and still label the binary `361c6f55`.
 
 ---
 
 # Block B — second physical Switch test
 
-The new replacement artifact should test:
+The replacement exact artifact should verify at minimum:
 
 ```text
-BOOT                                      PASS
-D-PAD                                     PASS
-LEFT STICK SINGLE TAP                     PASS
-LEFT STICK HELD REPEAT                    PASS
-LEFT STICK DIAGONAL                       PASS
-A/B ACTION SHEET                          PASS
-NO RELEASE ON INSTALLED SOURCE            PASS
-NO CREATE ON INSTALLED SOURCE             PASS
-NO UNSAFE MOVE/MULTI ON INSTALLED SOURCE  PASS
-EDIT CANNOT WRITE INSTALLED SOURCE        PASS
+BOOT                                      PASS/FAIL
+VISIBLY POKEBANK NX                       PASS/FAIL
+OBVIOUS PKSE BRANDING REMOVED             PASS/FAIL
+D-PAD                                     PASS/FAIL
+LEFT STICK SINGLE TAP                     PASS/FAIL
+LEFT STICK HELD REPEAT                    PASS/FAIL
+LEFT STICK DIAGONAL                       PASS/FAIL
+A/B ACTION SHEET                          PASS/FAIL
+NO RELEASE ON INSTALLED SOURCE            PASS/FAIL
+NO CREATE ON INSTALLED SOURCE             PASS/FAIL
+NO UNSAFE MOVE/MULTI ON INSTALLED SOURCE  PASS/FAIL
+EDIT CANNOT WRITE INSTALLED SOURCE        PASS/FAIL
 OLD PLA SAVE                              OPEN OR GRACEFUL ERROR / NO CRASH
-OLED BLACK / DARK / LIGHT                 PASS
-THEME PERSISTENCE                         PASS
-PARTY / BOXES / STORAGE                   PASS
-VISIBLY POKEBANK NX                       PASS
-OBVIOUS PKSE BRANDING REMOVED             PASS
-NO NEW CRASHES                            PASS
+OLED BLACK / DARK / LIGHT                 PASS/FAIL
+THEME PERSISTENCE                         PASS/FAIL
+PARTY / BOXES / STORAGE                   PASS/FAIL
+NO NEW CRASHES                            PASS/FAIL
 ```
 
-Only physically exercised behavior on the exact replacement hash becomes device evidence.
+Only behavior physically exercised on the exact replacement artifact becomes device evidence.
 
 If a device-only regression remains, do the smallest coherent HIGH fix/build/retest loop.
 
@@ -224,63 +222,59 @@ untouched round-trip strategy
 adapter/dependency decision
 ```
 
-Issue #17 supports reproducible fixtures. Do not let fixture perfection block the first useful integration decision.
+Additional integration references discovered 2026-09-02:
 
-No live writes.
+```text
+FlagBrew/PKSM
+Universal-Team/pkmn-chest
+```
+
+Both should be inspected alongside PKSM-Core to see how mature Nintendo homebrew applications wrap the core. See:
+
+```text
+docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md
+```
+
+Issue #17 supports reproducible fixtures. No live writes.
 
 ---
 
-# Core product order after PKSM-Core
+# Product order after PKSM-Core
+
+Detailed ordering lives in `docs/V1_ROADMAP.md`. Near-term sequence:
 
 ```text
-#3  Master Vault v1 + named Banks
-#9  Professional Summary + provenance
-#6  RetroArch discovery + read-only Gen I-III adapters
-#11 Modern Switch adapter validation
-#5  PKHeX Oracle
-#7  Vault-driven Pokedex / Living Dex
-#10 Conversion / transfer without live writes
-#20 True Move semantics after verified safe-write adapters
+Gen III production read adapter
+        ↓
+#3 Master Vault v1 + named Banks
+        ↓
+#9 Summary/provenance + #25 Pokémon visuals
+        ↓
+#17 golden corpus + #5 PKHeX Oracle
+        ↓
+#6 Gen I/II + RetroArch
+#11 modern Switch read validation
+        ↓
+#10 conversion/staged transfer
+        ↓
+#7 Pokédex/Living Dex
+        ↓
+legality/edit/generation/events
+        ↓
+staged-save write engine
+        ↓
+per-game approved live-write adapters
+        ↓
+#20 true Move
+        ↓
+release hardening / v1.0 (#29)
 ```
 
-Supporting/later:
-
-```text
-#15 persistent .nro artifact automation
-#16 final branding/startup/icon/NACP
-#17 golden fixture corpus
-#21 NRO reliability/diagnostics/performance/QoL
-#25 Pokémon Summary visual/model support
-#26 controller normalization
-#27 legacy Storage migration/clarification
-```
+Future Transfer Workspace UX may use the PHBank/Pokémon Chest pattern for one/multi/whole-box Game↔Vault operations, but do not implement that during the current blocker session.
 
 ---
 
-# Transfer semantics going forward
-
-Product behavior remains:
-
-```text
-COPY  = source stays active; destination representation is created
-MOVE  = destination becomes active; source stops being active after verification
-CLONE = deliberate duplicate with clone provenance
-```
-
-Current alpha does not authorize true Move/live installed-save writes.
-
-True Move is **later**, not now. It requires per-adapter backup, stage, checksum/container repair, reparse, write, readback, verification, rollback, and physical hardware gates.
-
-See:
-
-```text
-docs/TRANSFER_MODEL.md
-GitHub issue #20
-```
-
----
-
-# NRO quality / polish plan
+# NRO quality work
 
 Detailed backlog:
 
@@ -289,10 +283,10 @@ docs/NRO_QUALITY_ROADMAP.md
 GitHub issue #21
 ```
 
-High-value items include:
+High-value items:
 
 ```text
-Diagnostics + diagnostic export
+Diagnostics + export
 Applet/constrained-memory warning
 privacy-safe error logs
 real startup stages
@@ -300,15 +294,15 @@ READ ONLY / Vault / staged / active-location badges
 Vault recovery + storage health
 search/filter
 Quick Jump
-Favorites
-recent items
-text sizing
-Reduced Motion
+Favorites / recent items
+text sizing / Reduced Motion / non-color-only focus
 optional original sounds/rumble
 virtualized large grids
 bounded artwork caches
 intentional missing-resource fallback
 ```
+
+Pull these in incrementally when their dependent subsystem exists.
 
 Recommended balance after the second-device milestone:
 
@@ -320,19 +314,17 @@ Recommended balance after the second-device milestone:
 
 ---
 
-# Do not do prematurely
-
-Do not begin these during the current blocker session:
+# Do not do prematurely in Session 2.6
 
 ```text
 PKSM-Core
 Master Vault
-full Pokedex
+full Pokédex
 full legality engine
 true Move/live writes
-Pokemon 3D/model work
+Pokémon 3D/model work
 all generations at once
 another large UI redesign
 ```
 
-Finish the safety/crash blocker source, build an exact replacement artifact, and physically test it first.
+Finish the safety/crash blocker source, produce an exact replacement artifact, and physically test it first.
