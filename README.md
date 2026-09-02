@@ -365,7 +365,20 @@ Visual direction: [`docs/UI_STYLE_GUIDE.md`](docs/UI_STYLE_GUIDE.md).
 
 # Target game identities
 
-PokeBank NX currently tracks 23 stable release/platform identities.
+PokeBank NX currently has **23 host-tested identities in source**. That is the current implementation checkpoint, not the complete product target.
+
+The intended catalog is now:
+
+```text
+23 current host-tested identities
++ 9 Nintendo DS identities
++ 8 Nintendo 3DS identities
++ 2 Nintendo GameCube RPG identities
++ 2 Nintendo 64 Stadium identities
+= 44 total release/source targets
+```
+
+The DS/3DS/GameCube/N64 IDs are **planned, not yet identity-tested**. Stadium is a v1 stretch target and must not block the core release if it becomes disproportionately expensive.
 
 ### Game Boy / Game Boy Color
 
@@ -384,6 +397,53 @@ PokeBank NX currently tracks 23 stable release/platform identities.
 - FireRed
 - LeafGreen
 
+### Nintendo 64 — planned legacy/stretch
+
+- Pokémon Stadium
+- Pokémon Stadium 2
+
+PKHeX has dedicated Stadium save handlers with real box/storage/checksum behavior, so read-only import is technically realistic. Stadium support comes after the Gen I/II engine. Forward conversion from Stadium/Gen II into Gen III+ is a PokeBank NX conversion and must not be presented as an official uninterrupted historical transfer path.
+
+Tracked by **#34**.
+
+### Nintendo GameCube — planned
+
+- Pokémon Colosseum
+- Pokémon XD: Gale of Darkness
+
+These are strong targets: they contain Gen III Pokémon, historically traded with compatible GBA games, and PKHeX already understands Colosseum/XD saves plus GameCube memory-card containers.
+
+Tracked by **#33**.
+
+### Nintendo DS — planned
+
+- Diamond
+- Pearl
+- Platinum
+- HeartGold
+- SoulSilver
+- Black
+- White
+- Black 2
+- White 2
+
+Stable identities/source discovery: **#30**. Read-only Gen IV/V adapters: **#31**.
+
+### Nintendo 3DS — planned
+
+- X
+- Y
+- Omega Ruby
+- Alpha Sapphire
+- Sun
+- Moon
+- Ultra Sun
+- Ultra Moon
+
+Stable identities/source discovery: **#30**. Read-only Gen VI/VII adapters: **#32**.
+
+3DS Virtual Console R/B/Y/G/S/C should initially be treated as source/platform variants of their original GB/GBC identities unless technical evidence requires distinct IDs.
+
 ### Nintendo Switch
 
 - FireRed
@@ -401,7 +461,7 @@ PokeBank NX currently tracks 23 stable release/platform identities.
 
 GBA FireRed/LeafGreen and Switch FireRed/LeafGreen are intentionally separate identities.
 
-Detection, read parsing, conversion, staging, live writing and physical validation are separate capabilities.
+Detection, source import, parsing, conversion, staging, live writing and physical validation are separate capabilities.
 
 See [`docs/GAME_SUPPORT_MATRIX.md`](docs/GAME_SUPPORT_MATRIX.md).
 
@@ -417,7 +477,7 @@ The checklist below is intentionally visible in the README so the repository hom
 ## Foundation / playable shell
 
 - [x] Repository recovery + Git/upstream safety discipline
-- [x] Stable 23-game identity registry
+- [x] Stable 23-game current identity registry
 - [x] Low-level live installed-save write hard lock
 - [x] Controller-first Pokémon Action Sheet (#2)
 - [x] HOME-style controller/theme foundation
@@ -430,15 +490,28 @@ The checklist below is intentionally visible in the README so the repository hom
 - [ ] Exact second `.nro` packaged, hashed, preserved and physically tested
 - [ ] Final controller semantics/hints normalized (#26)
 
-## Historical Pokémon/save engine
+## Target catalog expansion
+
+- [ ] Add 9 Nintendo DS stable identities (#30)
+- [ ] Add 8 Nintendo 3DS stable identities (#30)
+- [ ] Add Pokémon Colosseum + XD GameCube identities (#33)
+- [ ] Add Pokémon Stadium + Stadium 2 N64 identities (#34)
+- [ ] Host-test uniqueness/stability of the expanded registry
+- [ ] Keep all existing 23 stable IDs unchanged
+
+## Historical / legacy Pokémon-save engine
 
 - [ ] PKSM-Core Gen III `PK3` / `Sav3` spike and integration decision (#4)
 - [ ] FireRed / LeafGreen GBA production read adapter
 - [ ] Ruby / Sapphire / Emerald read adapters
+- [ ] Colosseum / XD read-only GameCube adapter (#33)
 - [ ] Gen I Red/Blue/Yellow read adapters
 - [ ] Gen II Gold/Silver/Crystal read adapters
+- [ ] Pokémon Stadium 1/2 read-only container adapters (#34, stretch)
 - [ ] RetroArch/legacy save discovery + manual fallback (#6)
-- [ ] malformed/truncated/checksum rejection across historical adapters
+- [ ] Nintendo DS Gen IV/V read adapters (#31)
+- [ ] Nintendo 3DS Gen VI/VII read adapters (#32)
+- [ ] malformed/truncated/checksum/version rejection across legacy adapters
 
 ## Validation / regression tooling
 
@@ -447,6 +520,8 @@ The checklist below is intentionally visible in the README so the repository hom
 - [ ] PKHeX host Oracle: inspect / legality / convert (#5)
 - [ ] versioned machine-readable cross-engine comparisons
 - [ ] untouched-save round-trip expectations where the format permits them
+- [ ] GameCube memory-card / `.gci` fixture coverage
+- [ ] Stadium storage/checksum fixture coverage if #34 enters v1
 
 ## Master Vault / Banks
 
@@ -491,6 +566,8 @@ Validate individually before any writes (#11):
 
 - [ ] compatibility result: `SUPPORTED / SUPPORTED_WITH_CHANGES / UNSUPPORTED / UNKNOWN`
 - [ ] historical → later Pokémon conversion paths
+- [ ] GameCube Gen III source conversion/provenance
+- [ ] Stadium/Gen I-II forward conversion with explicit historical-break provenance
 - [ ] parent/derived provenance on conversion
 - [ ] PKHeX comparison where available
 - [ ] `.pk*` export
@@ -532,6 +609,8 @@ Validate individually before any writes (#11):
 - [ ] no private HOME/Nintendo protocol impersonation
 - [ ] no credential extraction or tracker forging
 - [ ] no guaranteed-ban-safety claims
+
+PokeBank NX may support **offline source formats that official HOME does not directly import** (for example Stadium or GameCube save files). That does not mean HOME itself supports those saves. Any path into official HOME still goes through a supported modern game and preserves genuine tracker/history rules.
 
 ## Native `.nro` reliability / diagnostics / accessibility
 
@@ -592,7 +671,9 @@ Gen III read adapter
         ↓
 Master Vault + Banks
         ↓
-Summary / Oracle / retro + modern reads
+GameCube / Gen I-II / DS / 3DS legacy reads
+        ↓
+Summary / Oracle / modern Switch reads
         ↓
 conversion / Dex / legality / events
         ↓
@@ -606,6 +687,8 @@ release hardening
         ↓
 v1.0
 ```
+
+Stadium support is intentionally allowed to slip past v1 if it is disproportionately expensive; it must not hold the rest of the project hostage.
 
 ---
 
@@ -673,7 +756,7 @@ PokeBank NX checks mature Pokémon homebrew/research projects before rebuilding 
 | [Pokémon Chest](https://github.com/Universal-Team/pkmn-chest) | Gen III–V Bank and second Nintendo-platform PKSM-Core integration reference |
 | [PHBank](https://github.com/gocario/PHBank) | Historical Game-PC ↔ offline-Bank transfer UX reference |
 | [PHBankGBC](https://github.com/0xb01u/PHBankGBC) | Secondary Gen I/II save-layout reference; verify independently |
-| [PKHeX](https://github.com/kwsch/PKHeX) | Primary correctness/reference implementation |
+| [PKHeX](https://github.com/kwsch/PKHeX) | Primary correctness/reference implementation, including Colosseum/XD/GameCube memory cards and Stadium save handlers |
 | [PKHeX-Plugins / Auto Legality](https://github.com/santacrab2/PKHeX-Plugins) | Encounter-driven legality/generation reference |
 | [pkHouse](https://github.com/Insektaure/pkHouse) | Modern Switch save-behavior reference |
 | [pkDex](https://github.com/Insektaure/pkDex) | Pokédex UX/data-organization reference |
