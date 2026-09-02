@@ -1,53 +1,101 @@
 # PokeBank NX — Transfer Model
 
 Status: DESIGN SPECIFICATION  
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
-PokeBank NX separates storage, conversion, transfer, and live save writing. A Pokémon moving between contexts should remain traceable, and a source should not disappear before the destination has been safely created and verified.
+PokeBank NX separates storage, conversion, transfer, active location, archival provenance, and live save writing.
+
+The product goal is to support **real Pokémon movement** between games and the Master Vault/Banks once the relevant save adapters are proven safe. A Move must feel like a move to the user: after success, the Pokémon is active in the destination and no longer active in the source.
+
+At the same time, no source should disappear before the destination, backup, validation, and readback have succeeded.
 
 ---
 
-## Operation types
+## Current alpha rule
 
-### Add to Master Vault
+**Installed game saves are read-only.**
 
-Store the selected Pokémon as a Vault entity while leaving the source untouched.
+Therefore current early milestones may implement/import with safe COPY semantics only:
 
 ```text
-Game/source Pokémon
-      ↓ COPY
+Game/source Pokemon
+      | COPY / IMPORT
+      v
 Master Vault
 
 Source remains unchanged
 ```
 
-This is the safest and most important first operation.
+This is temporary safety behavior while parsers, the Master Vault, conversion engines, staged-save validation, and per-game write adapters are built.
 
-### Add to Bank
+Do **not** enable true Game -> Vault or Vault -> Game Move merely because the UI has a Move command.
 
-Add a reference to an existing/new Vault entity into a named logical Bank.
+Tracking issue for later true Move: **#20**.
 
-If the Pokémon is not already in the Vault, the app should normally perform an `Add to Master Vault` transaction first, then reference the resulting Vault ID.
+---
+
+## User-facing operation types
+
+### Copy
+
+Create another playable representation while leaving the source active.
+
+```text
+COPY = source remains + destination is created
+```
+
+Copy must be explicit. It should not silently happen when the user chose Move.
+
+### Move
+
+Relocate the active Pokémon from one location to another.
+
+```text
+MOVE = destination becomes active + source stops being active
+```
+
+A Move may preserve immutable archival/provenance records behind the scenes for recovery and history, but those records are **not another active playable copy**.
 
 ### Clone
 
-Create a new Vault entity with a new Vault ID and parent provenance. Initially the bytes may be identical.
+Create an intentional duplicate with a new Vault identity and clone provenance.
+
+```text
+CLONE = deliberate duplicate
+```
+
+Clone is distinct from Copy and Move because lineage/provenance explicitly records that the new entity was created as a clone.
+
+### Add to Master Vault
+
+Current-alpha behavior: safely import/copy the selected Pokémon into the Vault while leaving a live game source untouched.
+
+Future behavior may offer both:
+
+```text
+Copy to Master Vault
+Move to Master Vault
+```
+
+when the source game's removal/write adapter has passed its safety gate.
+
+### Add to Bank
+
+Banks are logical organization over Vault identities. Adding an existing Vault Pokémon to another Bank does not create another raw payload.
+
+A Bank reference is not automatically another active Pokémon copy.
 
 ### Copy to Game
 
-Create/convert a destination-compatible representation while leaving the source entity intact.
-
-Future live writing is a separate final stage governed by `SAVE_SAFETY.md`.
+Create/convert a destination-compatible representation and, once live destination writes are supported for that game, write it while leaving the source active.
 
 ### Move to Game
 
-A move is **copy + verified destination + explicit source removal/retirement policy**.
-
-Never delete/remove the source before destination write and readback verification succeed.
+Create/convert and verify the destination first, then retire/remove the source active placement only after destination write + readback verification succeed.
 
 ### Convert
 
-Create a derived Vault entity in a different Pokémon format/generation. Conversion alone does not write any game save.
+Create a derived Vault entity in another Pokémon format/generation. Conversion alone does not write a game save and does not automatically change the active location.
 
 ### Export
 
@@ -55,64 +103,87 @@ Write a Pokémon/save representation to a user-controlled file/backup location w
 
 ---
 
+## Active location versus archival history
+
+PokeBank NX needs two separate concepts:
+
+```text
+historical/provenance record
+```
+
+and
+
+```text
+where the Pokemon is currently active from the user's point of view
+```
+
+Suggested active-location states:
+
+```text
+GAME
+VAULT
+BANK/Vault placement
+STAGED
+ARCHIVED_HISTORY
+UNKNOWN/RECOVERY
+```
+
+An immutable root entity may remain in archival history after a successful true Move. That archival record exists for recovery, provenance, hashes, and lineage; it should not appear as a second active Pikachu that the user can independently move again without an explicit Copy/Clone operation.
+
+The Summary/Provenance UI should eventually show both:
+
+```text
+Origin: FireRed — GBA
+Active location: Master Vault / Living Dex
+History: moved from FireRed on <date>
+```
+
+---
+
 ## Provenance principles
 
-Every transfer/conversion should preserve:
+Every import/transfer/conversion should preserve, where available:
 
 ```text
 root/original Vault identity
 original game/platform
-source save fingerprint/context when available
+source save fingerprint/context
+source box/slot/party slot
 parent entity
 operation type
+copy/move/clone semantics
 conversion engine/version
 source raw format
 result raw format
-destination game identity if targeted
+destination game identity
 validation/legality result
+active-location transition
 timestamp
 ```
 
-Origin is historical truth; current location is present organization/storage state.
-
-Example:
-
-```text
-Charmander root
-Origin: FireRed — Game Boy Advance
-Format: PK3
-Vault ID: A
-
-A --convert--> B
-B format: PK8
-Target compatibility: Sword
-
-B --copy-to-game--> Sword save
-
-A still exists as the immutable root
-```
+Origin is historical truth. Active/current location is present state.
 
 ---
 
 ## Generation conversion
 
-Cross-generation conversion should use explicit adapters/rules rather than pretending all `.pk*` formats are interchangeable.
+Cross-generation conversion uses explicit adapters/rules rather than pretending all `.pk*` formats are interchangeable.
 
 Target design:
 
 ```text
 source entity
-   ↓ parse
+   v parse
 canonical semantic model / engine object
-   ↓ destination conversion rules
+   v destination conversion rules
 serialize destination format
-   ↓
+   v
 validate
-   ↓
-create derived Vault entity
+   v
+create derived Vault representation
 ```
 
-Where PKSM-Core provides mature native generation conversion, audit/integrate it rather than reimplementing blindly. Validate with the PKHeX Oracle.
+Where PKSM-Core provides mature native conversion behavior, audit/integrate it rather than reimplementing blindly. Validate with the PKHeX Oracle where available.
 
 ---
 
@@ -120,19 +191,20 @@ Where PKSM-Core provides mature native generation conversion, audit/integrate it
 
 Some transfers cannot preserve every source-generation property.
 
-Before a user chooses a destination, PokeBank NX should eventually report material changes such as:
+Before a user chooses a destination, report material changes such as:
 
 ```text
 move replacement/removal
-ability/nature assignment due to later-generation representation
+ability/nature assignment
 met/origin field transformation
 ribbon/mark behavior
 form restrictions
 item incompatibility
 species unavailable in destination
+move incompatibility/replacement
 ```
 
-Early versions can be conservative: reject unsupported conversions rather than guess.
+Early versions should be conservative: reject unsupported conversions rather than guess.
 
 ---
 
@@ -153,11 +225,7 @@ special restrictions
 
 The compatibility matrix should be data-driven and versionable.
 
----
-
-## Transfer result states
-
-Use explicit states:
+Transfer result states:
 
 ```text
 SUPPORTED
@@ -166,102 +234,158 @@ UNSUPPORTED
 UNKNOWN
 ```
 
-`UNKNOWN` should not silently become `SUPPORTED`.
+`UNKNOWN` must not silently become `SUPPORTED`.
 
 ---
 
-## Safe move semantics
+## True Move: Game -> Vault / Bank
 
-A true move must follow:
+Once a specific source-game adapter has independently passed live-write safety gates, a true Move from a game should follow:
 
 ```text
-1. source exists
-2. create destination-compatible derived entity
-3. validate derived entity
-4. stage destination save
-5. validate staged save
-6. create/verify destination backup
-7. write destination if capability enabled
-8. read destination back
-9. verify Pokémon exists exactly as intended
-10. record transfer success
-11. only now apply explicit source-removal policy
+1. read source Pokemon
+2. create destination Vault entity
+3. hash + parse + validate destination entity
+4. persist transaction/provenance journal
+5. create and verify a backup of the source game
+6. stage a clone of the source save with Pokemon removed
+7. repair generation/game-specific checksums/containers
+8. reparse staged source save
+9. verify intended removal and no unrelated mutation
+10. write source only through the approved adapter
+11. read source game back
+12. verify Pokemon is absent exactly where intended
+13. mark Vault/Bank as the active user-facing location
+14. commit transfer journal
+15. retain rollback/provenance history
 ```
 
-For the Master Vault, the recommended default is to **retain immutable historical source entities** even when the user semantically "moves" a playable representation to a game.
+If any verification fails, abort/rollback and leave the Pokémon active in the source game.
 
-The UI can distinguish archived history from currently active/organized specimens without destroying provenance.
+Never delete from the source first.
 
 ---
 
-## FireRed GBA ↔ Switch FireRed example
+## True Move: Vault / Bank -> Game
 
-These are distinct game identities:
+Once a destination-game adapter is approved for writes:
 
 ```text
-firered_gba
-firered_switch
+1. select active Vault entity
+2. choose destination game/slot
+3. preflight compatibility
+4. create destination-compatible representation if needed
+5. validate derived representation
+6. create and verify destination-game backup
+7. stage destination insertion
+8. repair checksums/containers
+9. reparse/validate staged destination save
+10. write through the approved adapter
+11. read destination back
+12. verify Pokemon exists exactly as intended
+13. only now retire/remove the active Vault/Bank placement for Move
+14. preserve archival/provenance lineage
+15. commit transfer journal
 ```
 
-The planned path is:
+For **Copy to Game**, step 13 does not retire the source active placement.
+
+---
+
+## Game -> Game true Move
+
+A game-to-game Move is conceptually a coordinated destination-first operation:
+
+```text
+Game A
+  | read
+  v
+Vault/staged transfer representation
+  | validate/convert
+  v
+Game B destination write + readback verification
+  |
+  v
+only then remove from Game A through its approved adapter
+```
+
+If Game B succeeds but Game A removal cannot be safely completed, report a **partial transfer requiring recovery** rather than pretending the Move completed. Preserve enough journal state to resolve the duplicate safely.
+
+Direct Game A -> Game B choreography may be optimized later, but the safety ordering must remain destination-first.
+
+---
+
+## Banks and Move semantics
+
+Banks are organizational references over the Master Vault, not independent raw-storage silos.
+
+A Pokémon can be visible in organizational categories such as:
+
+```text
+Living Dex
+Favorites
+Gen III
+```
+
+without creating three playable copies.
+
+A true Move into or out of the Vault should update active-location/reference state transactionally.
+
+Deleting a Bank reference is not equivalent to deleting the Pokémon from the Vault or a game.
+
+---
+
+## FireRed GBA -> Switch example
+
+GBA and Switch titles are distinct game identities. Do not assume identical outer save containers.
+
+Planned high-level path:
 
 ```text
 FireRed GBA save
-    ↓ read PK3
-Master Vault root PK3
-    ↓ destination adapter
-Switch FireRed-compatible representation/container
-    ↓ staged save
-Switch FireRed
+    v read PK3
+Master Vault / transfer representation
+    v destination adapter
+Switch-compatible representation/container
+    v staged save
+Switch destination
 ```
 
-Do not assume the Switch title's outer save container is identical to a raw GBA save merely because it stores Gen III Pokémon data. Validate the platform/container separately.
-
-pkHouse is a reference for regional Switch FR/LG title IDs/save filenames and observed `pk3` slot behavior; PokeBank NX should independently implement and test the adapter.
+Current stages remain read-only/staged until each platform adapter is validated.
 
 ---
 
 ## HOME Bridge
 
-PokeBank NX does not need to implement Pokémon HOME's private server protocol.
+PokeBank NX does not need to impersonate Pokémon HOME or directly connect to private Nintendo/Pokémon protocols.
 
-Supported architecture:
+Supported concept:
 
 ```text
 PokeBank NX Vault
-     ↓
+     v
 compatible supported Switch game
-     ↓
-official Pokémon HOME application
+     v
+official Pokémon HOME
 ```
 
 Inbound:
 
 ```text
 official Pokémon HOME
-     ↓
+     v
 compatible Switch game
-     ↓
+     v
 PokeBank NX reads game
-     ↓
+     v
 Master Vault
 ```
 
-The preflight should check known game/species/form compatibility and PokeBank legality state, then use wording such as:
-
-```text
-HOME Bridge: No known compatibility issues
-```
-
-Never promise guaranteed HOME acceptance or ban immunity.
-
-Preserve genuine HOME-specific identity/tracker data when present. Do not generate/fake HOME tracker/history fields.
+Preserve genuine HOME-specific identity/tracker data when present. Do not generate/fake HOME trackers or history. Use wording such as `No known compatibility issues`, never guaranteed acceptance/ban safety.
 
 ---
 
-## Legality vs legitimacy
-
-PokeBank NX should keep the distinction clear:
+## Legality versus legitimacy
 
 ```text
 LEGAL
@@ -271,29 +395,30 @@ LEGITIMATE
 = actually obtained through the normal gameplay/distribution process claimed
 ```
 
-The app can often test legality. It generally cannot prove real-world legitimacy from bytes alone.
+PokeBank NX can often evaluate legality but generally cannot prove real-world legitimacy from bytes alone.
 
-Generated Pokémon should remain provenance-labeled as generated even if they are legal.
+Generated Pokémon remain provenance-labeled as generated even if legal.
 
 ---
 
 ## Transfer journal
 
-Each planned/finished transfer can record:
+Each operation should have an auditable journal entry.
 
-```json
-{
-  "transfer_id": "...",
-  "source_vault_id": "...",
-  "derived_vault_id": "...",
-  "source_game": "firered_gba",
-  "destination_game": "sword_switch",
-  "operation": "copy_to_game",
-  "state": "validated_not_written",
-  "conversion_engine": "...",
-  "warnings": [],
-  "created_at": "..."
-}
+Example fields:
+
+```text
+transfer_id
+source_vault_id / source game identity
+source active location
+derived_vault_id
+destination game/location
+operation: copy | move | clone | convert
+state
+conversion engine/version
+warnings
+backup identity
+created_at / completed_at
 ```
 
 Possible states:
@@ -303,10 +428,14 @@ PLANNED
 CONVERTED
 VALIDATED
 STAGED
-WRITTEN
-READBACK_VERIFIED
+DESTINATION_WRITTEN
+DESTINATION_READBACK_VERIFIED
+SOURCE_REMOVAL_STAGED
+SOURCE_REMOVED
+SOURCE_READBACK_VERIFIED
 COMPLETED
 FAILED
+PARTIAL_RECOVERY_REQUIRED
 ROLLED_BACK
 ```
 
@@ -314,41 +443,60 @@ ROLLED_BACK
 
 ## Action-sheet integration
 
-Pressing A on a Pokémon opens a menu; it does not immediately transfer.
+Pressing A on a Pokémon opens a deliberate menu; it never immediately transfers/removes.
 
-`Transfer to Game…` should lead to:
+Future transfer UI should explicitly separate:
 
 ```text
-choose destination
-   ↓
-compatibility/preflight
-   ↓
-show changes/warnings
-   ↓
-create/validate derived representation
-   ↓
-if live writing disabled:
-  allow Vault/export/staged result only
-
-if a future adapter has verified live-write capability:
-  explicit confirmation → safe-write pipeline
+Copy to Game...
+Move to Game...
+Copy to Master Vault
+Move to Master Vault
+Clone
 ```
+
+Only show/enable Move when the source and destination capabilities required for that move are actually verified.
+
+When live writing is disabled, offer only safe Vault/export/staged results and explain why Move is unavailable.
 
 ---
 
-## Minimum transfer milestone
+## Minimum pre-live-write transfer milestone
 
-Before any live writes, PokeBank NX can still complete a useful transfer-engine milestone:
+Before any true live Move is enabled, PokeBank NX can still complete:
 
 - [ ] choose Vault entity
 - [ ] select target game identity
 - [ ] compatibility result
 - [ ] convert to target Pokémon format
-- [ ] store derived Vault entity
+- [ ] store derived Vault representation
 - [ ] record parent/conversion provenance
 - [ ] validate against native engine
-- [ ] compare against PKHeX Oracle
-- [ ] export target `.pk*` representation
+- [ ] compare against PKHeX Oracle where available
+- [ ] export target `.pk*` / staged result
 - [ ] no live game save modified
 
-This should be completed before enabling direct save injection.
+---
+
+## True Move enablement gate
+
+A particular source/destination adapter may participate in true Move only after its relevant read/write safety gates are independently satisfied.
+
+One proven adapter does not authorize every game.
+
+Dependencies include, as applicable:
+
+```text
+Master Vault v1
+read-only parser validation
+untouched round-trip behavior
+conversion compatibility
+staged save mutation tests
+backup + rollback
+reparse validation
+write/readback verification
+malformed/unsupported-version rejection
+physical Switch testing
+```
+
+Until then, the project stays safe and uses COPY/import/staged semantics.
