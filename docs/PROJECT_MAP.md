@@ -2,35 +2,35 @@
 
 Last updated: 2026-09-02
 
-This page is the short navigation/index for verified state, active prompts, hardware reports, and GitHub work.
+Short navigation/index for verified state, active prompts, hardware reports, architecture, and GitHub work.
 
 ## Read first
 
 1. [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) — authoritative verified state
-2. [`DEVICE_TEST_REPORT_2026-09-01.md`](DEVICE_TEST_REPORT_2026-09-01.md) — first physical Switch hardware result
-3. [`NEXT_SESSION_PLAN.md`](NEXT_SESSION_PLAN.md) — current execution order
-4. [`PROMPT_SESSION2_5_VISUAL_SHELL.md`](PROMPT_SESSION2_5_VISUAL_SHELL.md) — **HIGH**, next visible-shell/input-fix session
-5. [`PROMPT_SESSION3_PKSM_CORE.md`](PROMPT_SESSION3_PKSM_CORE.md) — **MAX**, PKSM-Core after replacement hardware pass
-6. [`SESSION_RUNBOOK.md`](SESSION_RUNBOOK.md) — implementation/test/build/push discipline
-7. [`CONTROLS.md`](CONTROLS.md) — controller contract
-8. [`UI_FLOW.md`](UI_FLOW.md) — safe UI/action semantics
-9. [`UI_STYLE_GUIDE.md`](UI_STYLE_GUIDE.md) — PokeBank NX visual contract
+2. [`NEXT_SESSION_PLAN.md`](NEXT_SESSION_PLAN.md) — current execution order
+3. [`BUILD_RECORD.md`](BUILD_RECORD.md) — source/artifact/device-test bookkeeping
+4. [`DEVICE_TEST_REPORT_2026-09-01.md`](DEVICE_TEST_REPORT_2026-09-01.md) — first physical Switch result
+5. [`PROMPT_SESSION2_5_FINISH.md`](PROMPT_SESSION2_5_FINISH.md) — **HIGH**, finish/package exact `361c6f55` replacement build
+6. [`PROMPT_SESSION3_PKSM_CORE.md`](PROMPT_SESSION3_PKSM_CORE.md) — **MAX**, PKSM-Core after second hardware pass
+7. [`SESSION_RUNBOOK.md`](SESSION_RUNBOOK.md) — implementation/test/build/push discipline
+8. [`TRANSFER_MODEL.md`](TRANSFER_MODEL.md) — Copy / Move / Clone / conversion / active-location contract
+9. [`NRO_QUALITY_ROADMAP.md`](NRO_QUALITY_ROADMAP.md) — diagnostics/reliability/performance/QoL backlog
 10. [`ARCHITECTURE.md`](ARCHITECTURE.md) — module boundaries
-11. [`UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md) — external project/reuse map
 
-## First physical hardware milestone
+---
 
-Exact tested binary:
+## Physical hardware milestone
+
+First exact tested build:
 
 ```text
 Application source: 3be4de6b0b1ce00d5fe369cff9795c3fffbfa31a
 Artifact: PokeBank-NX-UI-Theme-3be4de6.nro
-Size: 9,707,957 bytes
 SHA-256: df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
 Result: DEVICE TESTED — PARTIAL PASS / KNOWN FAILURES
 ```
 
-Passed on physical Switch:
+Passed:
 
 ```text
 Boot
@@ -58,122 +58,128 @@ Held Left Stick repeat      FAIL
 Visible PokeBank NX shell   FAIL / INCOMPLETE
 ```
 
-Issue #8 is closed because the physical-test milestone itself is complete.
+Issue #8 is closed because the test milestone itself is complete.
+
+---
+
+## Current application checkpoint
+
+Session 2.5 application source:
+
+```text
+361c6f551496470db305948d702944c6ed9889c1
+ui: add visible PokeBank shell and physical stick input
+```
+
+GitHub host CI passed.
+
+The session ended before clean exact-source artifact packaging. Therefore:
+
+```text
+SOURCE PUBLISHED
+REPLACEMENT .NRO PENDING
+SECOND DEVICE TEST PENDING
+```
+
+Use `PROMPT_SESSION2_5_FINISH.md`; do not redo the implementation unless a regression is found.
+
+---
 
 ## Completed milestones
 
-### #2 — Controller-first Pokémon Action Sheet — CLOSED
-
-Source:
-
 ```text
-82a0779a5143cca0690d0c7068946d84ebe9f107
+#2  Controller-first Pokemon Action Sheet              CLOSED
+#8  First exact physical PokeBank NX .nro test        CLOSED
 ```
 
-Its behavior was successfully exercised on physical hardware through the combined Session 2 build.
+---
 
-### #8 — First exact physical PokeBank NX `.nro` test — CLOSED
+## Active / near-term issues
 
-The exact report is `DEVICE_TEST_REPORT_2026-09-01.md`.
+### #13 — visible PokeBank NX shell
 
-## Current active work
+Application source `361c6f55` is published. Keep issue open until the exact replacement artifact passes physical visual acceptance.
 
-### 1. #13 — HOME-style controls and PokeBank NX UI shell — REOPENED
+### #19 — held Left Stick repeat
 
-The semantic theme/control foundation exists and many parts passed hardware testing, but the application still looks substantially like PKSE.
+Source fix is published in `361c6f55`. Keep issue open until physical Switch retest passes.
 
-Next goal:
+### #16 — branding/startup/NRO metadata
 
-```text
-visibly PokeBank NX at boot/Select Game
-PokeBank NX header/app identity
-obvious PKSE product branding removed from tested path
-existing OLED/Dark/Light system visibly applied
-Options/Help/Action Sheet share one PokeBank NX visual language
-preserve controller/safety behavior
-```
+Visible identity/NRO naming has progressed in Session 2.5; final splash/loading/icon/NACP work remains later.
 
-Use:
+### #4 — PKSM-Core Gen III spike — NEXT MAX
 
-```text
-docs/PROMPT_SESSION2_5_VISUAL_SHELL.md
-```
-
-### 2. #19 — Fix held Left Stick navigation repeat — OPEN
-
-Physical Switch result on `3be4de6b`:
-
-```text
-D-pad                PASS
-Left Stick + HOLD    FAIL
-```
-
-Fix native analog/deadzone/sustained-repeat behavior and produce a replacement `.nro`.
-
-### 3. #16 — PokeBank NX branding/startup/NRO metadata — OPEN / ELEVATED
-
-Physical testing confirmed user-visible PKSE branding/logo is still present.
-
-For the next milestone, only the visible branding pieces needed to make the top-level app clearly PokeBank NX are required. Full real startup/loading-stage work may continue later.
-
-### 4. #4 — PKSM-Core Gen III integration spike — NEXT MAX ENGINEERING
-
-Start only after the Session 2.5 replacement build is stable enough on hardware.
-
-Use:
-
-```text
-docs/PROMPT_SESSION3_PKSM_CORE.md
-```
-
-Narrow target:
+After the second UI/input hardware pass:
 
 ```text
 PK3
 Sav3
 FireRed / LeafGreen GBA
 read-only parse
-box/party extraction
+party/box extraction
+active save slot/sectors
 round-trip strategy
-integration/dependency decision
+integration decision
 ```
 
-### 5. #3 — Master Vault v1 + named Banks
+### #3 — Master Vault v1 + named Banks
 
-Immutable raw entities, stable Vault IDs, SHA-256, provenance, atomic transactions, logical Bank references.
+Immutable raw entities, stable Vault IDs, SHA-256, provenance, active/current location, transaction journals, recovery, logical Bank references.
 
-### 6. #9 — Professional Summary + provenance
+### #9 — professional Summary + provenance
 
-Generation-aware Summary/Origin/Legality/Provenance presentation.
+Generation-aware Summary/Origin/Legality/Provenance/active-location presentation.
 
-### 7. #6 — RetroArch discovery + read-only Gen I-III adapters
+### #6 — RetroArch + read-only Gen I-III adapters
 
-Depends on PKSM-Core decision.
+Depends heavily on PKSM-Core decision.
 
-### 8. #11 — Modern Switch adapter audit
+### #11 — modern Switch adapter validation
 
-Validate inherited handlers against PKHeX and pkHouse reference behavior.
+Read-only/source-specific validation before any write gates.
 
-### 9. #5 — Host-side PKHeX Oracle
+### #5 — host-side PKHeX Oracle
 
 Correctness/legality/conversion comparison utility.
 
-### 10. #7 — Vault-driven Pokédex / Living Dex
+### #7 — Vault-driven Pokedex / Living Dex
 
-Vault remains authoritative for ownership.
+Vault remains authoritative for collection ownership.
 
-### 11. #10 — Conversion/transfer without live writes
+### #10 — conversion/transfer without live writes
 
-Derived Vault entities + staged/exported destination representations first.
+Derived/staged/exported destination representations first.
+
+### #20 — true Move semantics — LATER
+
+End-state semantics:
+
+```text
+COPY  = source remains active
+MOVE  = destination becomes active; verified source is removed/retired
+CLONE = deliberate duplicate with clone provenance
+```
+
+Current installed saves remain read-only. True Move requires individually validated write adapters and is intentionally blocked until much later.
+
+### #21 — NRO reliability / diagnostics / performance / QoL
+
+Cross-cutting backlog. Implement incrementally without derailing core engine work.
+
+---
 
 ## Supporting issues
 
 ```text
 #15 persistent device-test .nro artifacts
-#17 reproducible Pokémon/save golden test corpus
+#17 reproducible Pokemon/save golden corpus
+#21 diagnostics/reliability/performance/QoL
 ```
 
-## Architecture / UX docs
+---
+
+## Core architecture / UX docs
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - [`CONTROLS.md`](CONTROLS.md)
@@ -184,6 +190,7 @@ Derived Vault entities + staged/exported destination representations first.
 - [`TRANSFER_MODEL.md`](TRANSFER_MODEL.md)
 - [`POKEDEX_SPEC.md`](POKEDEX_SPEC.md)
 - [`PKHEX_ORACLE.md`](PKHEX_ORACLE.md)
+- [`NRO_QUALITY_ROADMAP.md`](NRO_QUALITY_ROADMAP.md)
 
 ## Integration / research
 
@@ -200,24 +207,50 @@ Derived Vault entities + staged/exported destination representations first.
 - [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)
 - [`.github/workflows/host-tests.yml`](../.github/workflows/host-tests.yml)
 
-## Near-term execution loop
+---
+
+## Execution dependency sketch
 
 ```text
-HIGH: #13 + #19 + visible portion of #16
-        ↓
-host tests + sanitizers + native build
-        ↓
-new exact .nro + source SHA + binary SHA-256
-        ↓
-second physical Switch test
-        ↓
-fix any blocking regression
-        ↓
-MAX: #4 PKSM-Core PK3/Sav3 spike
+first physical build                    DONE
+        |
+        +--> Session 2.5 visible shell + analog source    PUBLISHED
+                 |
+                 +--> exact artifact packaging             NOW
+                         |
+                         +--> second physical test
+                                  |
+                                  +--> PKSM-Core PK3/Sav3
+                                           |
+                                           +--> Master Vault + Banks
+                                           |       |
+                                           |       +--> Summary/provenance
+                                           |       +--> Pokedex/Living Dex
+                                           |
+                                           +--> retro adapters
+                                           +--> modern adapter validation
+                                           +--> PKHeX Oracle
+                                                   |
+                                                   +--> conversion/staging
+                                                            |
+                                                            +--> safe per-game writes
+                                                                     |
+                                                                     +--> true Move (#20)
 ```
+
+Quality issue #21 can be pulled into relevant milestones incrementally:
+
+```text
+diagnostics / logs / memory warning      early
+Vault health / recovery / search          with Vault
+virtualization / caches                    as datasets grow
+accessibility / sounds / polish            later
+```
+
+---
 
 ## Permanent safety reminder
 
-Live installed-game save writing remains hard disabled until an explicitly named adapter passes the gates in `SAVE_SAFETY.md`.
+Live installed-game save writing remains hard disabled until an explicitly named adapter passes `SAVE_SAFETY.md`.
 
-Do not weaken the lock to make UI, transfer, editor, or integration demos appear complete.
+Do not weaken the lock for UI, transfer, true-Move, editor, or integration demos.
