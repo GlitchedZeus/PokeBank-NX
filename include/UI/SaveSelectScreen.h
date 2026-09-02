@@ -7,6 +7,7 @@
 #include <switch.h>
 
 #include "UI/UIScreen.h"
+#include "UI/NavigationRepeat.h"
 #include "UI/PKSEFramebuffer.h"
 
 namespace UI {
@@ -29,6 +30,7 @@ namespace UI {
         const std::string& getSelectedGameId() const { return selectedGameId; }
 
     private:
+        PokeBank::UIModel::NavigationRepeat navigationRepeat;
         struct TitleEntry {
             u64 titleId;
             std::string name;    // full "Pokemon X" name (used for backup dir + downstream)
@@ -49,6 +51,9 @@ namespace UI {
 
         bool titleSelected = false;
         bool exitRequested = false;
+        enum class Overlay { None, Options, Help };
+        Overlay overlay = Overlay::None;
+        int optionsIndex = 0;
         AccountUid selectedUserUid{};
         u64 selectedTitleId = 0;
         std::string selectedTitleName;

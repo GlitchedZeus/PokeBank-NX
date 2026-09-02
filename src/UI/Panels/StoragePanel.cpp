@@ -420,12 +420,9 @@ namespace UI
                 const int x = (fb.getWidth() - w) / 2;
                 const int y = (fb.getHeight() - h) / 2;
                 constexpr int r = Dialogs::kDialogRadius; // same card shape as every other modal
-                fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 130));
-                fb.drawSoftShadow(x, y, w, h, r);
-                fb.drawFilledRoundedRect(x, y, w, h, r, Colors::Panel);
-                fb.drawRoundedRect(x, y, w, h, r, Colors::Border, 1);
-                fb.drawText(x + 22, y + 16, title, Colors::Text, TextStyle::Heading);
-                fb.drawFilledRect(x + r, y + headerH - 4, w - r * 2, 2, Colors::Accent);
+                drawModalSurface(fb, x, y, w, h, r);
+                fb.drawText(x + 22, y + 16, title, Colors::TextPrimary, TextStyle::Heading);
+                fb.drawFilledRect(x + r, y + headerH - 4, w - r * 2, 2, Colors::AccentPrimary);
                 screen.touchButtons.clear();
                 int ry = y + headerH;
                 for (int i = 0; i < count; ++i)
@@ -436,7 +433,8 @@ namespace UI
                         fb.drawSelectionHighlight(x + 10, ry + 3, w - 20, rowH - 6);
                     int tw, th;
                     fb.measureText(items[i], tw, th, TextStyle::Body);
-                    const Color rowColor = disabled ? Colors::Border : (selRow ? Colors::Text : Colors::TextDim);
+                    const Color rowColor = disabled ? Colors::Divider
+                                                    : (selRow ? Colors::TextPrimary : Colors::TextSecondary);
                     fb.drawText(x + 28, ry + (rowH - th) / 2, items[i], rowColor, TextStyle::Body);
                     if (!disabled)
                         screen.touchButtons.push_back({i, x + 10, ry, w - 20, rowH}); // greyed rows aren't tappable
@@ -456,6 +454,7 @@ namespace UI
                 items[i] = PokeVault::UIModel::actionLabel(PokeVault::UIModel::POKEMON_ACTIONS[i]).data();
             drawPopupMenu(screen, fb, title, items.data(), static_cast<int>(items.size()),
                           screen.actionSheet.selectedIndex());
+            drawNavBar(fb, controllerHints(PokeBank::UIModel::ControllerContext::PokemonActionSheet));
         }
 
         // Options for the block in hand. There is deliberately no "move" entry: a carried group is moved

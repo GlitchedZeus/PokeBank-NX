@@ -3,11 +3,13 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <initializer_list>
 #include <string>
 #include <vector>
 
 #include "UI/PKSEFramebuffer.h"
 #include "UI/Common.h"
+#include "UI/ControllerModel.h"
 #include "UI/TouchInput.h"
 
 namespace UI {
@@ -22,6 +24,59 @@ namespace UI {
     constexpr int kChromeRadius = 18;   // curve on the content-facing edge of both bars
     constexpr int kHeaderH      = 64;
     constexpr int kNavBarH      = 46;
+
+    struct ControllerHint {
+        std::string button;
+        std::string label;
+    };
+
+    inline std::string controllerGlyph(PokeBank::UIModel::ControllerButton button) {
+        using PokeBank::UIModel::ControllerButton;
+        switch (button) {
+            case ControllerButton::DPad:  return "Up/Down";
+            case ControllerButton::A:     return "A";
+            case ControllerButton::B:     return "B";
+            case ControllerButton::X:     return "X";
+            case ControllerButton::Y:     return "Y";
+            case ControllerButton::LR:    return "L/R";
+            case ControllerButton::ZLZR:  return "ZL/ZR";
+            case ControllerButton::Plus:  return "+";
+            case ControllerButton::Minus: return "-";
+        }
+        return {};
+    }
+
+    inline std::vector<ControllerHint> controllerHints(PokeBank::UIModel::ControllerContext context) {
+        std::vector<ControllerHint> result;
+        for (const auto& binding : PokeBank::UIModel::controllerBindings(context))
+            result.push_back({controllerGlyph(binding.button), std::string(binding.label)});
+        return result;
+    }
+
+    // Reusable semantic surfaces. New UI code chooses purpose/elevation here rather than selecting
+    // literal colors; the active OLED Black, Dark, or Light palette supplies the appearance.
+    inline void drawPanelSurface(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                                 bool raised = false, int radius = 14) {
+        if (raised) fb.drawSoftShadow(x, y, w, h, radius);
+        fb.drawFilledRoundedRect(x, y, w, h, radius,
+                                 raised ? Colors::SurfaceRaised : Colors::Surface);
+        fb.drawRoundedRect(x, y, w, h, radius, Colors::Divider, 1);
+    }
+
+    inline void drawFocusedCard(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                                bool focused, int radius = 14) {
+        if (focused) fb.drawSoftShadow(x, y, w, h, radius);
+        fb.drawFilledRoundedRect(x, y, w, h, radius,
+                                 focused ? Colors::SurfaceSelected : Colors::Surface);
+        fb.drawRoundedRect(x, y, w, h, radius,
+                           focused ? Colors::FocusBorder : Colors::Divider, focused ? 3 : 1);
+    }
+
+    inline void drawModalSurface(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                                 int radius = 18) {
+        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 150));
+        drawPanelSurface(fb, x, y, w, h, true, radius);
+    }
 
     // --- Controller-button badges -----------------------------------------------------------------
 
@@ -263,6 +318,37 @@ namespace UI {
         fb.drawSoftShadow(0, barY, W, kNavBarH + 40, kChromeRadius);
         fb.drawFilledRoundedRect(0, barY, W, kNavBarH + kChromeRadius, kChromeRadius, Colors::Panel);
         drawNavHints(fb, 0, W, barY + kNavBarH / 2, hint);
+    }
+
+    inline void drawNavBar(PKSEFramebuffer& fb, const std::vector<ControllerHint>& hints) {
+        std::string serialized;
+        for (const ControllerHint& hint : hints) {
+            if (hint.button.empty() || hint.label.empty()) continue;
+            if (!serialized.empty()) serialized += "  |  ";
+            serialized += hint.button + ": " + hint.label;
+        }
+        drawNavBar(fb, serialized);
+    }
+
+    inline void drawNavBar(PKSEFramebuffer& fb, std::initializer_list<ControllerHint> hints) {
+        drawNavBar(fb, std::vector<ControllerHint>(hints));
+    }
+
+    inline void drawInfoOverlay(PKSEFramebuffer& fb, const std::string& title,
+                                const std::vector<std::string>& lines) {
+        constexpr int w = 700;
+        const int h = std::min(500, 118 + static_cast<int>(lines.size()) * 38);
+        const int x = (fb.getWidth() - w) / 2;
+        const int y = (fb.getHeight() - h) / 2;
+        drawModalSurface(fb, x, y, w, h);
+        fb.drawText(x + 28, y + 22, title, Colors::TextPrimary, TextStyle::Heading);
+        fb.drawFilledRoundedRect(x + 28, y + 65, w - 56, 3, 2, Colors::AccentPrimary);
+        int ly = y + 86;
+        for (const std::string& line : lines) {
+            fb.drawText(x + 30, ly, line, Colors::TextSecondary, TextStyle::Body);
+            ly += 38;
+        }
+        drawNavBar(fb, {{"B", "Close"}});
     }
 
     // A HOME-style selectable list tile: rounded (stadium), soft shadow, amber when

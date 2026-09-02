@@ -383,7 +383,7 @@ namespace UI {
         };
         std::string values[kRows] = {
             g_autoBackupEnabled ? "On" : "Off",
-            (g_themeMode == ThemeMode::Dark) ? "Dark" : "Light",
+            std::string(themeModeName(g_themeMode)),
             g_allowIllegalEdits ? "On" : "Off",
             g_moveWarn ? "On" : "Off",
             "Locked",
@@ -524,7 +524,7 @@ namespace UI {
             " illegal=" + (g_allowIllegalEdits ? "ON" : "OFF") +
             " autobackup=" + (g_autoBackupEnabled ? "ON" : "OFF") +
             " movewarn=" + (g_moveWarn ? "ON" : "OFF") +
-            " theme=" + (g_themeMode == ThemeMode::Dark ? "dark" : "light");
+            " theme=" + std::string(themeModeKey(g_themeMode));
         Utils::logTestSession(sessionInfo);
         Utils::logEventToFile("SESSION " + sessionInfo);
         if (bank) {
@@ -1739,6 +1739,14 @@ namespace UI {
             if (kDown & HidNpadButton_R) curBox() = (curBox() + 1) % bc;
             if (currentlySelecting) cancelSelection();
         }
+        if (kDown & (HidNpadButton_ZL | HidNpadButton_ZR)) {
+            const int bc = paneBoxes(storageFocusPane);
+            if (bc > 0) {
+                const int jump = (kDown & HidNpadButton_ZL) ? -5 : 5;
+                curBox() = (curBox() + jump % bc + bc) % bc;
+                if (currentlySelecting) cancelSelection();
+            }
+        }
         if (curSlot() >= paneSlots(storageFocusPane)) curSlot() = paneSlots(storageFocusPane) - 1;
 
         // D-pad: move within the focused pane; Left/Right cross panes at the horizontal edges.
@@ -1813,8 +1821,8 @@ namespace UI {
 
         const int pane = storageFocusPane, box = curBox(), slot = curSlot();
 
-        // Minus: options for the block in hand (Release all / Return to origin / Cancel).
-        if ((kDown & HidNpadButton_Minus) && holding) {
+        // Plus: contextual options for the block in hand (Release all / Return / Cancel).
+        if ((kDown & HidNpadButton_Plus) && holding) {
             groupMenuActive = true;
             groupMenuIndex = 0;
             return;
@@ -1901,7 +1909,10 @@ namespace UI {
     }
 
     void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
-        u64 kDown = padGetButtonsDown(&pad) | navTouchButton(touch);   // nav-bar badges are tappable
+        constexpr u64 navigationMask = HidNpadButton_Up | HidNpadButton_Down |
+                                       HidNpadButton_Left | HidNpadButton_Right;
+        u64 kDown = navigationRepeat.apply(padGetButtonsDown(&pad), padGetButtons(&pad),
+                                           navigationMask) | navTouchButton(touch);
 
         // Let's Go stores its boxes as a GAPLESS list, so anything that vacated a slot last frame
         // left a hole the game can't represent. Re-pack it here rather than at each of the
@@ -1975,27 +1986,39 @@ namespace UI {
             return;
         }
 
-        // Handle + button (exits application)
+        if (helpOverlayActive) {
+            if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) helpOverlayActive = false;
+            return;
+        }
+
+        // Minus is contextual screen help. It never reaches a mutation handler. An already-open
+        // modal retains ownership of input so help cannot be stacked over a confirmation/editor.
+        const bool blockingOverlay = actionSheet.isOpen() || pickerActive || itemEditDialogActive ||
+            itemRemoveConfirmActive || statEdit.dialogActive || saveConfirmActive ||
+            releaseConfirmActive || storageExitConfirmActive || groupMenuActive ||
+            creator.keepConfirmActive || details.discardConfirmActive || gen3ConvertConfirmActive ||
+            lgpeTransferConfirmActive;
+        if ((kDown & HidNpadButton_Minus) && !blockingOverlay) {
+            helpOverlayActive = true;
+            return;
+        }
+
+        // Plus is More / Options. On a Pokémon summary it reports the reserved compatibility action;
+        // while carrying it opens the existing carried-block menu; elsewhere it opens Settings.
+        // None of these paths writes an installed-game save.
         if (kDown & HidNpadButton_Plus) {
-            if (actionSheet.isOpen()) return;  // the modal owns input until A/B resolves it
-            // The bank question is already on screen -- answer that first rather than stacking a
-            // second exit on top of it.
-            if (storageExitConfirmActive) return;
-            // A carried Pokemon goes home before anything is weighed up.
-            returnHeldToOrigin();
-            // The bank is its own save file and gets its own decision. Closing the app is NOT that
-            // decision, so it must not write the bank on the way out: doing that committed every
-            // transfer even when the user went on to DECLINE the game save, and the two files then
-            // disagreed. A deposit became a permanent CLONE (the bank has it, the game save still
-            // has it), a withdrawal a permanent LOSS (the bank no longer has it, the game save was
-            // never written). Ask instead, and let Discard rewind both sides and write nothing.
-            if (bank && bank->hasChanged()) {
-                storageExitConfirmActive = true;
-                storageExitConfirmIndex = 0;
-                exitAfterBankChoice = true;   // resume this exit once they've answered
+            if (blockingOverlay) return;
+            if (carrying()) {
+                groupMenuActive = true;
+                groupMenuIndex = 0;
                 return;
             }
-            beginAppExit();
+            if (details.active) {
+                postStatus("Transfer compatibility is not yet supported in this build.", 240);
+                return;
+            }
+            selectedMode = ViewMode::Settings;
+            detailViewActive = true;
             return;
         }
 
@@ -3672,6 +3695,13 @@ namespace UI {
                     int boxCount = static_cast<int>(trainer.getBoxCount());
                     selectedBoxIndex = (selectedBoxIndex + 1) % boxCount;
                 }
+                if (kDown & (HidNpadButton_ZL | HidNpadButton_ZR)) {
+                    const int boxCount = static_cast<int>(trainer.getBoxCount());
+                    if (boxCount > 0) {
+                        const int jump = (kDown & HidNpadButton_ZL) ? -5 : 5;
+                        selectedBoxIndex = (selectedBoxIndex + jump % boxCount + boxCount) % boxCount;
+                    }
+                }
 
                 // Touch: tap the ‹/› arrows to change box; tap a slot to select it, tap the
                 // already-selected slot again to open its details (maps to A). Arrow/slot rects
@@ -3846,7 +3876,7 @@ namespace UI {
                 if (st >= 0 && st < kSettingsRows) { settingsSelectedRow = st; kDown |= HidNpadButton_A; }
                 if (kDown & HidNpadButton_A) {
                     if (settingsSelectedRow == 0)      g_autoBackupEnabled = !g_autoBackupEnabled;
-                    else if (settingsSelectedRow == 1) applyTheme(g_themeMode == ThemeMode::Dark ? ThemeMode::Light : ThemeMode::Dark);
+                    else if (settingsSelectedRow == 1) applyTheme(nextThemeMode(g_themeMode));
                     else if (settingsSelectedRow == 2) g_allowIllegalEdits = !g_allowIllegalEdits;
                     else if (settingsSelectedRow == 3) g_moveWarn = !g_moveWarn;
                     else if (settingsSelectedRow == 4)
@@ -4206,8 +4236,8 @@ namespace UI {
                     instructions = "Arrows: Size Selection  |  A: Grab Group  |  X: Copy Group  |  B: Cancel";
                 } else if (carrying()) {
                     instructions = carriedCount() > 1
-                        ? "Arrows: Move Group (cross panes at edge)  |  L/R: Box  |  A: Place Here  |  Minus: Options  |  B: Put Back"
-                        : "Arrows: Move (cross panes at edge)  |  L/R: Box  |  A: Drop / Swap  |  Minus: Options  |  B: Put Back";
+                        ? "Arrows: Move Group (cross panes at edge)  |  L/R: Box  |  A: Place Here  |  +: More  |  B: Put Back"
+                        : "Arrows: Move (cross panes at edge)  |  L/R: Box  |  A: Drop / Swap  |  +: More  |  B: Put Back";
                 } else if (cursorMode == CursorMode::Menu) {
                     instructions = "Arrows: Move  |  L/R: Box  |  Y: Mode (Menu)  |  A: Menu  |  X: Sort Box  |  B: Back";
                 } else if (cursorMode == CursorMode::Move) {
@@ -4222,6 +4252,24 @@ namespace UI {
         } else {
             // HOME main menu.
             instructions = "Arrows: Navigate  |  A: Open  |  B: Go Back  |  X: Save  |  +: Exit App";
+        }
+        const bool standardScreen = !actionSheet.isOpen() && !pickerActive && !swapActive &&
+            !statEdit.dialogActive && !itemEditDialogActive && !itemRemoveConfirmActive &&
+            !saveConfirmActive && !releaseConfirmActive && !storageExitConfirmActive &&
+            !groupMenuActive && !creator.keepConfirmActive && !details.discardConfirmActive &&
+            !gen3ConvertConfirmActive && !lgpeTransferConfirmActive;
+        if (standardScreen) {
+            const std::string oldExit = "+: Exit App";
+            for (std::size_t pos = instructions.find(oldExit); pos != std::string::npos;
+                 pos = instructions.find(oldExit, pos)) {
+                instructions.replace(pos, oldExit.size(),
+                                     details.active ? "+: Compatibility" : "+: Options");
+            }
+            const bool settingsAlreadyOpen = detailViewActive && selectedMode == ViewMode::Settings;
+            if (!settingsAlreadyOpen && instructions.find("+: ") == std::string::npos)
+                instructions += details.active ? "  |  +: Compatibility" : "  |  +: Options";
+            if (instructions.find("-: ") == std::string::npos)
+                instructions += "  |  -: Help";
         }
         // --- Nav bar: the contextual controls, drawn as controller badges ---
         drawNavBar(fb, instructions);
@@ -4281,6 +4329,18 @@ namespace UI {
             fb.drawFilledRoundedRect(bx, by, bw, bh, 8, Colors::Panel);
             fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Accent, 2);
             fb.drawText(bx + padX, by + 7, storageStatus, Colors::Text);
+        }
+
+        if (helpOverlayActive) {
+            drawInfoOverlay(fb, "Controls", {
+                "D-pad / Left Stick   Navigate (hold to scroll)",
+                "A   Open or show Pokémon actions",
+                "B   Back or cancel",
+                "L / R   Previous or next box / tab",
+                "ZL / ZR   Larger jumps where available",
+                "X / Y   Labeled contextual tools",
+                "+   Options / compatibility     -   Close help"
+            });
         }
     }
 }
