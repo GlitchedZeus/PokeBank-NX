@@ -1,16 +1,19 @@
-# PokeBank NX — Alpha Release / Artifact Checklist
+# PokeBank NX — Build / Device / Release Checklist
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
-Use this checklist for every build intended for physical testing or prerelease distribution.
+Use this for every build intended for physical testing, prerelease distribution, release-candidate validation, or v1.0.
 
-The core problem this document prevents is simple: a successful `.nro` that only exists in a temporary coding runtime is not a durable/reproducible artifact.
+Issue #15 tracks persistent artifact automation.  
+`docs/V1_ROADMAP.md` / issue #29 track the full product roadmap.
 
-Issue #15 tracks automation of this process.
+The core rule this file protects:
+
+> A successful `.nro` that only existed in a temporary coding runtime is not a durable/reproducible release artifact.
 
 ---
 
-## Verification vocabulary
+# Verification vocabulary
 
 Keep these claims separate:
 
@@ -21,71 +24,59 @@ NRO BUILDS
 DEVICE TESTED
 ```
 
-A release/prerelease upload does not automatically make a build `DEVICE TESTED`.
+A prerelease upload or CI pass does **not** automatically make a build `DEVICE TESTED`.
 
----
-
-## Release naming
-
-Use explicit prerelease versions or uniquely identified development artifacts, for example:
+Physical results must include:
 
 ```text
-v0.1.0-alpha.1
-v0.1.0-alpha.2
-PokeBank-NX-UI-<short-source-sha>.nro
+DEVICE TESTED — PASS
+DEVICE TESTED — PARTIAL PASS
+DEVICE TESTED — FAIL
 ```
 
-Do not call a build stable merely because it launches.
+and identify the exact artifact hash.
 
 ---
 
-## Application source vs later documentation
+# Application source vs documentation branch HEAD
 
-A common PokeBank NX workflow is:
+Normal workflow may be:
 
 ```text
 application source commit
-    ↓
-build .nro
-    ↓
-record artifact
-    ↓
-later PROJECT_STATUS / BUILD_RECORD docs commit
+        ↓
+build exact .nro
+        ↓
+record/hash artifact
+        ↓
+later docs/status/research commits
 ```
 
-The `.nro` belongs to the **application source commit**, not the later documentation commit.
+The `.nro` belongs to the **application source commit**, not automatically the later branch HEAD.
 
-Record both when they differ.
-
-Example from the Action Sheet milestone:
-
-```text
-Application source:
-82a0779a5143cca0690d0c7068946d84ebe9f107
-
-Later status record:
-467f4b896280498bd8c36abd01eb4a0b39995863
-```
+If source changes after a checkpoint, do not reuse the old source identity for new bytes.
 
 ---
 
-## Pre-build source gate
+# Pre-build source gate
 
-Before building:
+Before a publishable/device-test build:
 
-- [ ] local work is understood;
-- [ ] interrupted-session branches/worktrees/reflog were checked before destructive cleanup;
-- [ ] exact application source branch is recorded;
-- [ ] exact application source full SHA is recorded;
-- [ ] intended changes are committed or the build is clearly labeled temporary/non-publishable;
-- [ ] live-write policy is explicitly known;
-- [ ] no unresolved merge/conflict state exists.
+- [ ] repository/worktree is understood;
+- [ ] exact development branch is recorded;
+- [ ] exact application-source full SHA is recorded;
+- [ ] intended application changes are committed;
+- [ ] no unresolved merge/conflict state exists;
+- [ ] live-write capability/policy is explicitly known;
+- [ ] unsafe temporary debug/write flags are absent;
+- [ ] current device blocker issues were checked;
+- [ ] README/status docs are not being mistaken for application source.
 
-For a publishable/testable milestone, prefer building from a committed application source SHA.
+For Session 2.6, read #23/#24/#19/#13/#16 before building.
 
 ---
 
-## Host verification gate
+# Host verification gate
 
 Run:
 
@@ -101,37 +92,42 @@ Require:
 - [ ] host tests PASS;
 - [ ] ASan/UBSan PASS;
 - [ ] `git diff --check` PASS;
-- [ ] relevant GitHub host CI PASS when available for the source commit/source-identical state.
+- [ ] relevant GitHub host CI PASS when available for the exact source/source-identical state.
+
+For parser/storage/write work, add targeted regression fixtures rather than relying only on generic suites.
 
 ---
 
-## Native build gate
+# Native build gate
 
 Build using the documented devkitPro/devkitA64 environment:
 
 ```bash
+make clean
 make -j1
 ```
 
 Require:
 
 - [ ] native build PASS;
-- [ ] exact `.nro` filename recorded;
-- [ ] file size recorded;
+- [ ] final `.nro` comes from the exact recorded application source;
+- [ ] embedded/displayed source version/SHA is correct where exposed;
+- [ ] exact artifact filename recorded;
+- [ ] byte size recorded;
 - [ ] SHA-256 recorded;
 - [ ] build environment/toolchain recorded sufficiently for reproduction.
 
 Example:
 
 ```bash
-sha256sum PokeBank-NX.nro
+sha256sum PokeBankNX.nro
 ```
 
 ---
 
-## Build record
+# Build record
 
-Append/update:
+Update:
 
 ```text
 docs/BUILD_RECORD.md
@@ -151,57 +147,81 @@ Host tests:
 Sanitizers:
 git diff --check:
 Native build:
+Embedded short SHA/version:
 Artifact filename:
 Artifact size:
 Artifact SHA-256:
 Persistent artifact location:
 Device tested: yes/no
+Device result:
+Permanent device report:
 ```
+
+Never invent a filename/hash for a build that has not actually been produced.
 
 ---
 
-## Artifact package
+# Artifact package
 
-A test/prerelease package should contain at minimum:
+A device-test/prerelease package should contain at minimum:
 
 ```text
-PokeBank-NX.nro
-release notes / README
-SHA256SUMS.txt
+PokeBank NX .nro
+SHA256SUMS.txt or equivalent recorded hash
+release/test notes identifying exact source
 ```
 
-If extra runtime assets are required, package the exact SD-card layout expected by the app.
+If runtime assets become mandatory, package/document the exact SD-card layout.
 
 Do not package:
 
-- commercial ROMs;
+- ROMs;
 - user saves;
 - console keys/credentials;
-- proprietary game files that cannot be redistributed.
+- unrelated proprietary game/system files;
+- private diagnostic contents not needed for the test.
 
 ---
 
-## Persistent artifact target
+# Persistent artifact target
 
-Preferred future flow, tracked by issue #15:
+Preferred flow (#15):
 
 ```text
-verified application source commit
+verified application-source commit
         ↓
-GitHub Actions / reproducible native build
+host verification
+        ↓
+reproducible native build
         ↓
 .nro + metadata + SHA256SUMS
         ↓
-Actions artifact or GitHub prerelease
+Actions artifact / GitHub prerelease
+        ↓
+physical device result attached later
 ```
 
-Until that is automated, the coding session must explicitly provide/preserve the `.nro` before the runtime disappears.
+Artifact automation must **never** automatically mark a build `DEVICE TESTED`.
 
-Normal source history should not accumulate `.nro` binaries unless project policy is deliberately changed.
+Until automation exists, explicitly preserve/provide the `.nro` before the coding runtime disappears.
 
 ---
 
-## Release notes template
+# Release naming
+
+Use explicit prerelease identifiers or source-addressed device builds, for example:
+
+```text
+v0.1.0-alpha.1
+v0.1.0-alpha.2
+PokeBank-NX-SecondDevice-<short-source-sha>.nro
+```
+
+Do not silently replace bytes under the same artifact/version identifier.
+
+---
+
+# Release notes template
 
 ```markdown
 # PokeBank NX v0.1.0-alpha.X
@@ -216,10 +236,10 @@ Artifact SHA-256: `<hash>`
 - ASan/UBSan: PASS
 - git diff --check: PASS
 - Native `.nro`: BUILDS
-- Physical Switch: NOT DEVICE TESTED / DEVICE TESTED
+- Physical Switch: NOT DEVICE TESTED / DEVICE TESTED — ...
 
 ## Safety posture
-Live installed-game save writing is HARD DISABLED.
+Live installed-game save writing: DISABLED / or list the exact individually approved adapter(s).
 
 ## What works
 - ...
@@ -234,47 +254,115 @@ Live installed-game save writing is HARD DISABLED.
 - ...
 ```
 
-Never publish `DEVICE TESTED` without a physical report for the exact artifact hash.
+---
+
+# Current device-test target — replacement build #2
+
+The first exact device-tested build was:
+
+```text
+Application source: 3be4de6b0b1ce00d5fe369cff9795c3fffbfa31a
+Artifact: PokeBank-NX-UI-Theme-3be4de6.nro
+SHA-256: df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
+Result: DEVICE TESTED — PARTIAL PASS / KNOWN FAILURES
+```
+
+The useful later UI/analog application checkpoint is:
+
+```text
+361c6f551496470db305948d702944c6ed9889c1
+ui: add visible PokeBank shell and physical stick input
+```
+
+That source is not yet the guaranteed final second-device artifact because the extended first-build test found:
+
+```text
+#23 inherited mutation-path safety blocker
+#24 reproducible old PLA save crash
+```
+
+Session 2.6 must preserve the shell/analog work while fixing/auditing these blockers. If application source changes, create a **new source commit** and build from it.
+
+Before second-device handoff require:
+
+- [ ] #23 mutation paths classified;
+- [ ] unsafe installed-source Release/Create/Move/Edit/save UI blocked;
+- [ ] low-level live-write hard lock intact;
+- [ ] #24 defensive PLA failure path hardened as far as available evidence permits;
+- [ ] Left Stick source fix preserved;
+- [ ] visible PokeBank NX shell preserved;
+- [ ] host tests PASS;
+- [ ] ASan/UBSan PASS;
+- [ ] `git diff --check` PASS;
+- [ ] native `.nro` BUILDS;
+- [ ] exact app-source SHA pushed/verified;
+- [ ] exact artifact filename/size/SHA-256 recorded;
+- [ ] artifact preserved/provided;
+- [ ] status says `READY FOR SECOND DEVICE TEST / NOT DEVICE TESTED`.
 
 ---
 
-## Current first-device-test target
+# Second physical Switch matrix
 
-The Action Sheet build already exists:
-
-```text
-PokeBank-NX-ActionSheet-82a0779.nro
-Source: 82a0779a5143cca0690d0c7068946d84ebe9f107
-SHA-256: 6ff0f71c2e8f6d7fcf948a4bbc0037ba799e22bbaac433263be7cd0afac3b72b
-```
-
-It remains `NOT DEVICE TESTED`.
-
-The preferred next hardware artifact is the combined issue #13 build after the interrupted local HOME-style controls/theme work is recovered, tested, built, committed, and pushed.
-
-That combined first test should cover:
+Test at minimum:
 
 ```text
-launch
-Select Game cards/focus
-D-pad + Left Stick
-held navigation repeat
-A/B Action Sheet behavior
-L/R and any ZL/ZR behavior
-+ More/Options (not Exit)
-- Help/Controls
-bottom controller hint bar
-OLED Black / Dark / Light
-theme persistence
-read-only Party/Boxes browsing
-live-write hard lock
+BOOT
+VISIBLY POKEBANK NX
+OBVIOUS PKSE BRANDING REMOVED
+D-PAD
+LEFT STICK SINGLE TAP
+LEFT STICK HELD REPEAT
+LEFT STICK DIAGONAL
+A ACTION SHEET
+B/CANCEL
+NO RELEASE ON INSTALLED SOURCE
+NO CREATE ON INSTALLED SOURCE
+NO UNSAFE MOVE/MULTI ON INSTALLED SOURCE
+EDIT CANNOT WRITE INSTALLED SOURCE
+OLD PLA SAVE OPENS OR FAILS GRACEFULLY / NO CRASH
+OLED BLACK
+DARK
+LIGHT
+THEME PERSISTENCE
+PARTY
+BOXES
+STORAGE
+NO NEW CRASHES
 ```
 
-Use `docs/DEVICE_TEST_CHECKLIST.md`.
+Only exercised behavior becomes device evidence.
+
+Use `docs/DEVICE_TEST_CHECKLIST.md` plus an issue-specific checklist if generated.
 
 ---
 
-## Installation note
+# After physical test
+
+If PASS/acceptable partial pass:
+
+- [ ] update `PROJECT_STATUS.md`;
+- [ ] update `README.md` roadmap checklist;
+- [ ] update `docs/BUILD_RECORD.md`;
+- [ ] update `docs/NEXT_SESSION_PLAN.md`;
+- [ ] update `docs/PROJECT_MAP.md`;
+- [ ] update `docs/V1_ROADMAP.md` completed/in-progress states;
+- [ ] update/close only issues whose exact acceptance gates passed;
+- [ ] mark only exercised capabilities `DEVICE TESTED`;
+- [ ] retain exact tested artifact.
+
+If FAIL:
+
+- [ ] retain the failed exact source/hash evidence;
+- [ ] update/open issue with exact reproduction;
+- [ ] do not replace bytes under the same identifier;
+- [ ] fix on a new application source;
+- [ ] produce a new artifact/hash;
+- [ ] retest.
+
+---
+
+# Installation note
 
 Target standardized layout:
 
@@ -282,53 +370,53 @@ Target standardized layout:
 /switch/PokeBank-NX/PokeBank-NX.nro
 ```
 
-If inherited target branding still produces another filename, release notes must state the actual file tested.
+If the actual tested artifact/output uses a different filename, release/test notes must state the exact file tested.
 
 ---
 
-## After physical test
+# Artifact immutability
 
-If PASS:
-
-- [ ] update `PROJECT_STATUS.md`;
-- [ ] update `docs/BUILD_RECORD.md`;
-- [ ] update issue #8 with exact source SHA + artifact SHA-256 + result;
-- [ ] mark only capabilities actually exercised as `DEVICE TESTED`;
-- [ ] retain the exact tested artifact.
-
-If FAIL:
-
-- [ ] retain failed source/hash evidence if useful;
-- [ ] update/open issue with exact reproduction steps;
-- [ ] do not replace bytes under the same version/build identifier;
-- [ ] fix on a new application source commit;
-- [ ] produce a new artifact/hash;
-- [ ] retest.
-
----
-
-## Artifact immutability
-
-Once an artifact has been identified by version/build name + SHA-256, do not silently replace its bytes.
+Once an artifact has a version/build name + SHA-256, do not silently replace its bytes.
 
 New bytes require a new identifier/hash.
 
-This keeps device reports reproducible.
+---
+
+# Beta / release-candidate gates
+
+Before calling a build beta or RC, require progressively stronger evidence:
+
+- [ ] advertised read adapters have regression coverage;
+- [ ] malformed/unsupported saves fail gracefully;
+- [ ] Master Vault durability/recovery tests exist once Vault is implemented;
+- [ ] large-Vault performance/memory tests exist;
+- [ ] conversion/staging has golden comparisons;
+- [ ] device-test artifacts are reproducibly preserved;
+- [ ] README/support matrix matches actual capability;
+- [ ] no generic/global live-write switch bypasses per-adapter safety.
 
 ---
 
-## Stable v1.0 is much later
+# Stable v1.0 release gates
 
-Stable v1.0 requires substantially more than a successful alpha launch, including:
+Detailed product sequencing: `docs/V1_ROADMAP.md` / issue #29.
 
-- broad supported-game hardware validation;
-- Master Vault durability/recovery testing;
-- corruption/low-space/SD failure handling;
-- large-Vault stress/performance testing;
-- regression/golden corpus for supported formats;
-- import/export/backup documentation;
-- any enabled live-write adapter independently satisfying `docs/SAVE_SAFETY.md`;
-- packaging/notices/licenses review;
-- repeated physical testing.
+Before a v1.0 tag/release:
 
-Until then, label builds as alpha/beta/prerelease accurately.
+- [ ] all advertised read adapters pass their defined host/device gates;
+- [ ] every advertised live-write adapter independently passes `docs/SAVE_SAFETY.md`;
+- [ ] no unsupported parser path crashes the application;
+- [ ] Vault transaction interruption/recovery is tested;
+- [ ] low-space/storage-health/index-rebuild behavior is tested;
+- [ ] large synthetic Vault soak passes;
+- [ ] handheld + docked UI passes;
+- [ ] sleep/resume/controller reconnect passes;
+- [ ] release-candidate hardware torture pass completed;
+- [ ] packaging/notices/licenses reviewed;
+- [ ] exact release source SHA frozen;
+- [ ] host tests + sanitizers + native build pass;
+- [ ] exact release `.nro` filename/size/SHA-256 preserved;
+- [ ] README/support matrix/release notes updated from actual release state;
+- [ ] v1.0 tag/release created.
+
+Until these gates are met, use alpha/beta/RC terminology accurately.
