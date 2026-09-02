@@ -1,6 +1,6 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
 This file is the authoritative verified-state handoff for coding sessions. Do not promote work based only on a chat/session report; GitHub source, test/build evidence, and physical device reports are tracked separately.
 
@@ -32,6 +32,9 @@ ui: add controller Pokemon action sheet
 
 9a2151ee70c73bab4451f35a1216c495d60b57ba
 branch-history reconciliation checkpoint before the documentation refresh
+
+3be4de6b0b1ce00d5fe369cff9795c3fffbfa31a
+Session 2 exact application source: HOME-style controls + three-theme UI foundation
 ```
 
 The exact `.nro` produced for the completed Action Sheet milestone was built from **82a0779a...**, not from a later documentation-only commit.
@@ -68,9 +71,9 @@ Never say `DEVICE TESTED` unless the user physically ran the exact recorded bina
 | Live installed-save write policy | HOST TESTED / NRO BUILDS | backup-only destinations, no generic injection argument, low-level restore rejects live-title writes |
 | Controller-first Pokémon Action Sheet | HOST TESTED / NRO BUILDS | issue #2 completed/closed; shared Party/Boxes/Storage action model |
 | Action Sheet device artifact | NRO BUILDS | exact binary/hash recorded below and in `docs/BUILD_RECORD.md` |
-| Physical Switch validation | NOT DEVICE TESTED | hardware test intentionally deferred until the newer combined UI/control build is available |
-| HOME-style controls/theme shell | INTERRUPTED LOCAL-ONLY | issue #13 session reported substantial local implementation, but it was not verified/built/committed/pushed before usage ended |
-| OLED Black / Dark / Light design | SPECIFIED | `docs/UI_STYLE_GUIDE.md` + `docs/CONTROLS.md`; reported local code not yet remote-verified |
+| Physical Switch validation | NOT DEVICE TESTED | combined Session 2 artifact is ready for the user's hardware test |
+| HOME-style controls/theme shell | HOST TESTED / NRO BUILDS | issue #13 source published at `3be4de6b`; held navigation, contextual `+`, read-only `-` Help, typed hints |
+| OLED Black / Dark / Light themes | HOST TESTED / NRO BUILDS | one semantic palette layer, safe persisted-key parsing, focused surfaces and modal/chrome integration |
 | Master Vault v1 | SPECIFIED / NOT IMPLEMENTED | `docs/MASTER_VAULT_SPEC.md` |
 | PKSM-Core Gen III integration | AUDITED / PLANNED | concrete `PK3` / `Sav3` spike in `docs/PKSM_CORE_INTEGRATION.md` |
 | RetroArch Gen I-III adapters | NOT RECOVERED / PLANNED | rebuild after PKSM-Core decision |
@@ -152,76 +155,50 @@ The project is finishing the UI/control milestone before testing so the next har
 
 ---
 
-## INTERRUPTED SESSION 2 — critical continuity note
+## Completed Session 2 UI/control foundation
 
-GitHub issue **#13 — Implement HOME-style controls and OLED/Dark/Light UI shell** is the current implementation milestone.
+GitHub issue **#13 — Implement HOME-style controls and OLED/Dark/Light UI shell** reached its coherent device-test milestone.
 
-The second coding session ran out of usage after reporting substantial changes in a **preserved local Session 2 branch/worktree**.
-
-Reported local work included:
-
-- semantic three-theme foundation;
-- OLED Black / Dark / Light palette work;
-- Select Game semantic raised/focused cards;
-- typed/context-aware bottom controller hints;
-- held D-pad / Left-Stick navigation repeat;
-- `+` no longer globally exits;
-- contextual `+` Options / Settings / compatibility / More behavior being wired;
-- read-only `-` Help / Controls behavior;
-- persisted theme cycling;
-- reusable focus/card/modal helpers;
-- Action Sheet integration through the shared UI primitives.
-
-The session ended immediately before/while adding pure host regressions.
-
-### What was NOT completed for Session 2
-
-The Session 2 implementation was **not** confirmed through:
+Exact application source:
 
 ```text
-new-code host tests
-new-code sanitizer pass
-new-code native .nro build
-git diff --check final pass
-PROJECT_STATUS update
-application-source commit
-push to origin
-verified remote SHA
-new .nro artifact
-physical hardware test
+3be4de6b0b1ce00d5fe369cff9795c3fffbfa31a
+fix: restore complete controller UI source
 ```
 
-Therefore none of that reported local Session 2 implementation may be claimed as remote `IMPLEMENTED`, `HOST TESTED`, or `NRO BUILDS` yet.
+Implemented:
 
-### First action in the next coding session
+- one semantic palette with background, surface, text, accent, focus, divider, success, warning, error and info roles;
+- OLED Black, Dark and a deliberately designed pastel Light palette;
+- persisted theme keys with safe invalid-value fallback to Dark;
+- D-pad/Left-Stick held navigation repeat shared by Select Game, Backups and the main game browser;
+- typed, context-aware controller bindings and bottom hint rendering;
+- `+` as contextual Options / Settings / Compatibility / More rather than global Exit;
+- `-` as a read-only Help / Controls overlay where advertised;
+- reusable panel, raised surface, focused-card and modal primitives;
+- Select Game focused card shell and Options/Help overlays;
+- Action Sheet rendered through shared semantic modal and typed-hint primitives;
+- ZL/ZR five-box jumps in Boxes and Storage;
+- existing Action Sheet and live-write safety regressions retained.
 
-Use the permanent prompt:
+Verification on the exact published source:
 
 ```text
-docs/PROMPT_SESSION2_RECOVERY.md
+make -f Makefile.host host-clean     PASS
+make -f Makefile.host host-test      PASS (6 suites)
+make -f Makefile.host host-sanitize  PASS (ASan/UBSan)
+git diff --check                     PASS
+make -j1                             PASS
 ```
 
-**Do not reset/clean/switch over unknown local work first.**
+Device-test artifact:
 
-Inspect:
-
-```bash
-pwd
-git rev-parse --show-toplevel
-git status
-git status --short
-git branch -avv
-git log --all --oneline --decorate --graph -40
-git reflog -40
-git stash list
-git worktree list
+```text
+PokeBank-NX-UI-Theme-3be4de6.nro
+9,707,957 bytes
+SHA-256 df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
+Physical Switch status: NOT DEVICE TESTED
 ```
-
-Find the preserved Session 2 branch/worktree/reflog state if it still exists.
-
-Only if the local Session 2 work is genuinely absent should the session reimplement that milestone from `docs/CONTROLS.md`, `docs/UI_STYLE_GUIDE.md`, and issue #13.
-
-Do **not** repeat the old full repository recovery investigation.
 
 ---
 
@@ -276,6 +253,11 @@ Use those to keep future PR/device reports tied to exact source and artifact ide
 - shared safe Pokémon Action Sheet;
 - read-only `View Pokémon` action;
 - explicit safe not-yet-supported Action Sheet actions.
+- semantic OLED Black / Dark / Light palettes with persisted selection;
+- context-aware typed controller hint model;
+- held D-pad/Left-Stick navigation repeat;
+- contextual `+` behavior and read-only `-` Help;
+- reusable focused-card, panel and modal primitives.
 
 ---
 
@@ -423,43 +405,13 @@ Core files:
 
 ## Current task
 
-### Priority 1 — HIGH: finish issue #13 safely
-
-Use:
-
-```text
-docs/PROMPT_SESSION2_RECOVERY.md
-```
-
-Recover the interrupted local Session 2 UI/control/theme implementation if it survives, then take it through:
-
-```text
-host regressions
-    ↓
-sanitizers
-    ↓
-git diff --check
-    ↓
-native .nro build
-    ↓
-PROJECT_STATUS update
-    ↓
-application-source commit
-    ↓
-push + remote SHA verification
-    ↓
-record/preserve new .nro
-```
-
-Do not start PKSM-Core before this coherent Session 2 milestone is saved.
-
-### Priority 2 — physical Switch test, issue #8
+### Priority 1 — physical Switch test, issue #8
 
 Test the exact newer combined Action Sheet + UI/control `.nro`.
 
 Record exact source SHA and binary SHA-256 before promoting any behavior to `DEVICE TESTED`.
 
-### Priority 3 — MAX/deep engineering, issue #4
+### Priority 2 — MAX/deep engineering, issue #4
 
 Use:
 
@@ -505,8 +457,7 @@ Supporting issues should improve product reliability without derailing the curre
 
 ## Known blockers / cautions
 
-- Session 2 UI/theme code may exist only in the previous local coding workspace; inspect before reset/clean.
-- No exact PokeBank NX recovery-era or Action Sheet build has yet been physically validated on Switch hardware.
+- The Session 2 source is published and its binary is preserved, but it is not physically device-tested yet.
 - Previous custom Master Vault/RetroArch implementations were not recoverable and must be rebuilt from current specs/tests.
 - pkHouse/pkDex remain reference-only under current policy.
 - Temporary runtimes can lose `.nro` artifacts; record source SHA/hash and preserve the binary before ending build sessions.

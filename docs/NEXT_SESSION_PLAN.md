@@ -1,15 +1,15 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-01  
+Last updated: 2026-09-02
 Status: ACTIVE EXECUTION PLAN
 
-`PROJECT_STATUS.md` is the authoritative verified-state record. This file is the recommended order for the next coding blocks after the completed Action Sheet milestone and interrupted Session 2 UI/theme work.
+`PROJECT_STATUS.md` is the authoritative verified-state record. Session 2 is complete; the next step is physical testing of its exact combined binary.
 
 Ready-to-run prompts are now stored permanently in the repository:
 
 ```text
-docs/PROMPT_SESSION2_RECOVERY.md   HIGH — recover/finish issue #13
-docs/PROMPT_SESSION3_PKSM_CORE.md  MAX  — hardware feedback + issue #4 PKSM-Core spike
+docs/PROMPT_SESSION2_RECOVERY.md   ARCHIVE — completed issue #13 recovery instructions
+docs/PROMPT_SESSION3_PKSM_CORE.md  MAX — hardware feedback + issue #4 PKSM-Core spike
 ```
 
 Use those instead of reconstructing long prompts from chat history.
@@ -27,6 +27,13 @@ Host tests: PASS
 ASan/UBSan: PASS
 Native .nro: BUILDS
 Issue state: CLOSED / COMPLETED
+
+Issue #13 — HOME-style controls and OLED/Dark/Light UI shell
+Application source: 3be4de6b0b1ce00d5fe369cff9795c3fffbfa31a
+Host tests: PASS (6 suites)
+ASan/UBSan: PASS
+Native .nro: BUILDS
+Issue state: COMPLETED; awaiting physical test under issue #8
 ```
 
 Device-test artifact already recorded:
@@ -40,17 +47,22 @@ SHA-256:
 
 That binary remains **NOT DEVICE TESTED**.
 
-Current open feature:
+Current device-test artifact:
 
 ```text
-Issue #13 — HOME-style controls and OLED/Dark/Light UI shell
+PokeBank-NX-UI-Theme-3be4de6.nro
+9,707,957 bytes
+SHA-256 df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
+NOT DEVICE TESTED
 ```
 
-Important: a Session 2 coding run reported substantial **local-only** implementation before usage ended. It did not complete verification/build/commit/push.
+The older Action Sheet-only binary remains recorded, but the combined Session 2 binary is now the preferred hardware-test build.
 
 ---
 
-# Block A — HIGH — recover and finish Session 2
+# Block A — COMPLETED — Session 2 recovery/UI foundation
+
+This section is retained as the historical acceptance checklist. Do not rerun it unless a regression is found.
 
 Use:
 
@@ -409,12 +421,12 @@ large visual redesign before finishing the interrupted UI milestone
 
 # Five-PM rule
 
-At the next coding block, do not invent a new plan.
+At the next coding block, first process the physical report for the exact Session 2 artifact. If no blocking regression exists, use the Session 3 prompt.
 
 Start with:
 
 ```text
-docs/PROMPT_SESSION2_RECOVERY.md
+docs/PROMPT_SESSION3_PKSM_CORE.md
 ```
 
 and recover/finish issue #13 first.

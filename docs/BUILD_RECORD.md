@@ -1,6 +1,6 @@
 # PokeBank NX — Build / Artifact Record
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
 This file distinguishes application source checkpoints, documentation commits, temporary runtime build records, and physically tested binaries.
 
@@ -73,45 +73,30 @@ Issue #2 is completed/closed. Physical testing remains tracked by issue #8.
 
 ---
 
-## Session 2 UI/theme attempt — NO BUILD RECORD YET
-
-A later coding session began issue #13 and reported substantial local work for:
+## Session 2 HOME controls and three-theme device-test build
 
 ```text
-semantic OLED Black / Dark / Light themes
-Select Game focus/card styling
-context-aware bottom hints
-held navigation repeat
-contextual + More/Options behavior
-- Help / Controls
-persisted theme cycling
-reusable focus/card/modal helpers
+Version/tag: 0.1.0-alpha
+Branch: feature/pokebank-playable
+Application source SHA: 3be4de6b0b1ce00d5fe369cff9795c3fffbfa31a
+Application source commit message: fix: restore complete controller UI source
+Build date: 2026-09-02 UTC
+Compiler: aarch64-none-elf-g++ (devkitA64) 15.2.0
+Host test result: PASS (6 suites, including Action Sheet and write policy)
+Sanitizer result: PASS (ASan/UBSan; leak detection disabled in managed sandbox)
+git diff --check: PASS
+Native build result: BUILDS
+Embedded abbreviated commit: 3be4de6b
+Artifact filename: PokeBank-NX-UI-Theme-3be4de6.nro
+Artifact size: 9,707,957 bytes
+Artifact SHA-256: df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
+Persistent artifact location: ChatGPT Library `/PokeVault NX/PokeBank-NX-UI-Theme-3be4de6.nro`
+Device tested: NO
+Device-test notes/report: READY FOR DEVICE TEST using docs/DEVICE_TEST_CHECKLIST.md
 ```
 
-The coding session ran out of usage before the new source was fully:
-
-```text
-host-tested
-sanitizer-tested
-diff-checked
-native-built
-committed
-pushed
-remote-SHA verified
-```
-
-Therefore there is currently:
-
-```text
-NO VERIFIED SESSION 2 APPLICATION SOURCE SHA
-NO VERIFIED SESSION 2 .NRO
-NO SESSION 2 BINARY SHA-256
-NO SESSION 2 DEVICE TEST
-```
-
-The next coding session must first recover the preserved local Session 2 work if it still exists, then create a proper record here after verification/build.
-
-Do not create a fake build record from the previous agent's implementation summary alone.
+This binary combines the completed issue #2 Action Sheet with issue #13's semantic themes,
+controller repeat, contextual `+`/`-`, reusable surfaces and context-aware hint foundation.
 
 ---
 
