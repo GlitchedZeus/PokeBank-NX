@@ -6,7 +6,8 @@ This matrix prevents **targeted**, **identity-tested**, **detected**, **readable
 
 ## State meanings
 
-- **V1 TARGET** — game is explicitly in the intended v1.0 catalog, but may not exist in source yet.
+- **V1 TARGET** — game/source is explicitly in the intended v1.0 catalog, but may not exist in source yet.
+- **V1 STRETCH TARGET** — worthwhile legacy source that should not block the core v1 release if implementation cost becomes disproportionate.
 - **IDENTITY TESTED** — canonical ID exists in source and registry tests pass.
 - **NATIVE SOURCE** — installed Switch title can be mapped by title ID in the recovered PokeBank layer.
 - **PLANNED SOURCE** — source identity/path/parser integration is planned but not complete.
@@ -25,10 +26,13 @@ No current game adapter is approved for PokeBank NX live installed-save writing.
 The earlier 23-game list was an **implementation checkpoint**, not the complete product goal.
 
 ```text
-Current host-tested source registry: 23 identities
-Planned Nintendo DS additions:       9 identities
-Planned Nintendo 3DS additions:      8 identities
-V1 main-series target catalog:      40 identities
+Current host-tested source registry:       23 identities
+Planned Nintendo DS additions:              9 identities
+Planned Nintendo 3DS additions:             8 identities
+Core GB/GBC/GBA/DS/3DS/Switch target:      40 identities
+Planned GameCube side-game additions:       2 identities
+Planned N64 Stadium legacy additions:       2 identities
+Total v1/v1-stretch release/source target: 44 identities
 ```
 
 Issues:
@@ -37,9 +41,11 @@ Issues:
 #30 add DS/3DS identities + source discovery
 #31 read-only Nintendo DS Gen IV/V adapters
 #32 read-only Nintendo 3DS Gen VI/VII adapters
+#33 read-only Colosseum/XD GameCube support
+#34 read-only Stadium 1/2 N64 support
 ```
 
-Do not call all 40 identities `IDENTITY TESTED` until #30 adds the 17 new IDs to source and host tests pass.
+Do not call all 44 identities `IDENTITY TESTED` until the planned IDs are actually added to source and host tests pass.
 
 ---
 
@@ -116,7 +122,46 @@ Read adapter milestone: **#32**.
 
 Red/Blue/Yellow/Gold/Silver/Crystal Virtual Console saves should initially be represented as **source/platform variants of the original GB/GBC game identities**, with provenance noting 3DS VC origin, unless technical evidence later requires distinct stable release IDs.
 
-Do not duplicate identities purely because the save was exported from a 3DS.
+---
+
+# Planned GameCube Pokémon RPG identities — issue #33
+
+These are **V1 TARGET / NOT YET IDENTITY TESTED**.
+
+| Proposed stable ID | Game | Platform | Gen | Initial source model | Current status |
+|---|---|---:|---:|---|---|
+| `colosseum_gc` | Pokémon Colosseum | Nintendo GameCube | 3 | `.gci`, memory-card image, Dolphin/manual import | V1 TARGET |
+| `xd_gale_of_darkness_gc` | Pokémon XD: Gale of Darkness | Nintendo GameCube | 3 | `.gci`, memory-card image, Dolphin/manual import | V1 TARGET |
+
+Why high value:
+
+- both contain real owned/stored Gen III Pokémon;
+- both historically traded with compatible GBA titles;
+- PKHeX has explicit `SAV3Colosseum`, `SAV3XD` and GameCube memory-card handling;
+- PokeBank NX can preserve GameCube/Shadow/Purification provenance while importing into Vault.
+
+Initial support is read-only. No GameCube save writes in #33.
+
+---
+
+# Planned N64 Stadium identities — issue #34
+
+These are **V1 STRETCH TARGET / NOT YET IDENTITY TESTED**.
+
+| Proposed stable ID | Game | Platform | Gen context | Initial source model | Current status |
+|---|---|---:|---:|---|---|
+| `stadium_n64` | Pokémon Stadium | Nintendo 64 | Gen I storage | emulator/N64 save/manual import | V1 STRETCH TARGET |
+| `stadium2_n64` | Pokémon Stadium 2 | Nintendo 64 | Gen II storage | emulator/N64 save/manual import | V1 STRETCH TARGET |
+
+PKHeX has explicit `SAV1Stadium` / `SAV2Stadium` handlers including real box/storage/checksum logic.
+
+Stadium support should follow the core Gen I/II adapter. It is primarily an additional source-container parser after PK1/PK2 behavior is understood.
+
+### Historical transfer warning
+
+There was no normal official Gen II -> Gen III direct transfer route. A Stadium Pokémon can be preserved as a legitimate Gen I/II historical entity and later converted by an explicit PokeBank NX conversion policy, but provenance must **not** imply an official uninterrupted Stadium -> HOME transfer chain.
+
+Stadium support must not block core v1 if its container/region complexity becomes disproportionate.
 
 ---
 
@@ -151,6 +196,8 @@ Each adapter/family tracks gates independently.
 | GBC G/S/C | ID only | — | — | — | — | — | — | **NO** | NO |
 | GBA R/S/E | ID only | — | — | — | — | — | — | **NO** | NO |
 | GBA FR/LG | ID only | — | — | — | — | — | — | **NO** | NO |
+| GameCube Colosseum/XD | planned file source | — | — | — | — | — | — | **NO** | NO |
+| N64 Stadium 1/2 | planned file source | — | — | — | — | — | — | **NO** | NO |
 | NDS Gen IV D/P/Pt/HG/SS | planned file source | — | — | — | — | — | — | **NO** | NO |
 | NDS Gen V B/W/B2/W2 | planned file source | — | — | — | — | — | — | **NO** | NO |
 | 3DS Gen VI X/Y/ORAS | planned decrypted/file source | — | — | — | — | — | — | **NO** | NO |
@@ -163,31 +210,20 @@ Each adapter/family tracks gates independently.
 | SV | title-ID mapping | upstream foundation | upstream foundation | upstream foundation | pending | disabled | pending | **HARD DISABLED** | NO |
 | Z-A | title-ID mapping | upstream foundation | upstream foundation | upstream foundation | pending | disabled | pending | **HARD DISABLED** | PARTIAL PATH TESTED |
 
-`upstream foundation` means inherited code contains relevant machinery; it is not proof of a PokeBank NX adapter gate.
-
 ---
 
 # Source discovery plan
 
 ## Nintendo Switch
 
-Source type:
-
 ```text
 installed title save
-```
-
-Detection:
-
-```text
 exact title ID -> canonical PokeBank game ID
 ```
 
-Current behavior must remain read-only from the PokeBank safety layer.
+Current behavior remains read-only from the PokeBank safety layer.
 
 ## GB / GBC / GBA
-
-Planned source types:
 
 ```text
 RetroArch save directories
@@ -195,9 +231,28 @@ manual imported save
 backup file
 ```
 
-## Nintendo DS
+## Nintendo GameCube
 
-Planned source types:
+```text
+.gci individual game-save exports
+.raw / .bin memory-card images
+Dolphin-compatible exports/directories where practical
+manual import
+```
+
+PokeBank NX should parse files; it does not need to run Dolphin.
+
+## Nintendo 64 Stadium
+
+```text
+validated N64 emulator/save-memory exports
+RetroArch/Mupen-compatible sources where applicable
+manual import
+```
+
+Exact save-memory/container types must be verified before advertising support. Do not infer format only from extension.
+
+## Nintendo DS
 
 ```text
 melonDS save files
@@ -206,19 +261,13 @@ conventional validated .sav exports
 manual import
 ```
 
-DS games are not native Horizon titles, so do not model them as installed Switch saves.
-
 ## Nintendo 3DS
-
-Planned source types:
 
 ```text
 decrypted Checkpoint/JKSM-style exports
 Citra/Lime3DS-compatible save files/directories where accessible
 manual imported main/save files
 ```
-
-3DS games are not native Horizon titles, so do not model them as installed Switch saves.
 
 Every discovered source should resolve to:
 
@@ -233,13 +282,13 @@ read/write capabilities
 provenance metadata
 ```
 
-Do not infer game identity from filename alone when save structure/content can verify it.
+Do not infer game identity from filename alone when structure/content can verify it.
 
 ---
 
 # Integration order
 
-The new DS/3DS catalog does **not** change the immediate Session 2.6 blocker order.
+The expanded catalog does **not** change the immediate Session 2.6 blocker order.
 
 Recommended engine sequence:
 
@@ -252,7 +301,11 @@ Gen III production read adapter
         ↓
 Master Vault foundation
         ↓
+GameCube Colosseum/XD source adapter (#33)
+        ↓
 Gen I/II legacy reads (#6)
+        ↓
+Stadium 1/2 container adapter (#34, if cost remains reasonable)
         ↓
 Nintendo DS Gen IV/V reads (#31)
         ↓
@@ -261,19 +314,19 @@ Nintendo 3DS Gen VI/VII reads (#32)
 modern Switch validation (#11)
 ```
 
-Some later phases may be parallelized once the common adapter/Vault interfaces are stable.
+Some phases can later be parallelized once common adapter/Vault interfaces stabilize.
 
 ---
 
 # Fixture priorities
 
-Initial fixture milestones should expand over time:
-
 1. Gen III FireRed/LeafGreen for #4.
-2. Gen I/II samples for #6.
-3. one valid + malformed save per DS family for #31.
-4. one valid + malformed save per 3DS family for #32.
-5. Switch family fixtures for #11.
+2. Colosseum/XD `.gci`/memory-card cases for #33.
+3. Gen I/II samples for #6.
+4. Stadium valid/malformed/region variants for #34 if pursued for v1.
+5. one valid + malformed save per DS family for #31.
+6. one valid + malformed save per 3DS family for #32.
+7. Switch family fixtures for #11.
 
 Fixtures must be generated/owned/redistributable appropriately; do not commit ROMs, keys, credentials, private user saves, or unrelated proprietary data.
 
@@ -282,7 +335,7 @@ Fixtures must be generated/owned/redistributable appropriately; do not commit RO
 # Promotion checklist for one game/family
 
 ```text
-V1 TARGET
+V1 TARGET / STRETCH TARGET
       ↓
 IDENTITY TESTED
       ↓
@@ -307,4 +360,4 @@ WRITE TEST FOR THAT SOURCE/ADAPTER (future, if applicable)
 LIVE WRITE CAPABILITY (per adapter, much later)
 ```
 
-Do not skip directly from “upstream supports this game” to “PokeBank NX supports live transfers.”
+Do not skip directly from “PKHeX/upstream supports this game” to “PokeBank NX supports live transfers.”
