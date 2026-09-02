@@ -217,22 +217,7 @@ A realtime-3D path would also require native Switch support for the model stack 
 
 ### Metadata API
 
-`Pokemon-3D-api/api-server` includes `server/json/MergedOpt.json` mapping National Dex IDs to model/form records, for example:
-
-```json
-{
-  "id": 3,
-  "forms": [
-    {"name":"Venusaur","formName":"regular"},
-    {"name":"Shiny Venusaur","formName":"shiny"},
-    {"name":"Mega Venusaur","formName":"mega"},
-    {"name":"Mega Shiny Venusaur","formName":"megaShiny"},
-    {"name":"G-Max Venusaur","formName":"gmax"}
-  ]
-}
-```
-
-This is useful as a **form/naming/coverage reference**, but PokeBank NX should not depend on the online REST API. PokeBank NX is offline-first; any runtime mapping should be local and versioned.
+`Pokemon-3D-api/api-server` includes `server/json/MergedOpt.json` mapping National Dex IDs to model/form records. This is useful as a **form/naming/coverage reference**, but PokeBank NX should not depend on the online REST API. PokeBank NX is offline-first; any runtime mapping should be local and versioned.
 
 ### History stability warning
 
@@ -294,6 +279,200 @@ HISTORICAL REFERENCE ONLY
 
 ---
 
+## 5. PokeAPI/sprites
+
+Repository:
+
+```text
+https://github.com/PokeAPI/sprites
+```
+
+GitHub currently reports the repository at roughly **1.63 GB**, so the full archive must not be bundled into PokeBank NX.
+
+The repository is exceptionally useful as a **coverage/layout reference** because its README documents a consistent tree with:
+
+```text
+sprites/pokemon/other/home/              512×512 HOME PNGs + shiny
+sprites/pokemon/other/official-artwork/  475×475 PNGs + shiny
+sprites/pokemon/other/showdown/           animated GIFs
+sprites/pokemon/versions/                 game/generation-specific PNG/GIF sets
+sprites/items/                            item sprites
+```
+
+Historical coverage documented in the repository includes Red/Blue/Yellow, Gold/Silver/Crystal, RSE/FRLG, DPPt/HGSS, BW, XY/ORAS, USUM, later icons/BDSP and Scarlet/Violet-era assets, with gender/shiny/back variants where available.
+
+### Why it is high-value
+
+For resolver design it gives us three useful visual classes in one predictable source:
+
+```text
+BOX/GRID        → compact game/icon sprite
+SUMMARY         → HOME 512×512 or official-artwork style image
+ANIMATED OPTION → Showdown/game GIF where appropriate
+```
+
+It also gives a useful naming/path model for generation-specific historical Summary styling.
+
+### Rights/licensing
+
+No root `LICENSE` file was found in the `PokeAPI/sprites` repository during this audit. Its README says applications may download/use the sprite archive, but that statement is not treated as a blanket copyright redistribution grant for Nintendo/TPC/Game Freak imagery.
+
+Do not infer sprite-asset rights from the separate `PokeAPI/pokeapi` server-code license.
+
+Classification:
+
+```text
+VISUAL COVERAGE / PATH / RESOLVER REFERENCE — VERY HIGH VALUE
+DEVELOPER-LOCAL TEST SOURCE — HIGH VALUE
+PUBLIC POKÉMON-ASSET BUNDLE — NOT APPROVED WITHOUT RIGHTS REVIEW
+FULL ARCHIVE IN .NRO — DO NOT USE
+ONLINE HOTLINK/RUNTIME DEPENDENCY — DO NOT USE
+```
+
+---
+
+## 6. PokeAPI/pokeapi
+
+Repository:
+
+```text
+https://github.com/PokeAPI/pokeapi
+```
+
+This is primarily a Pokémon data/API project, not a visual asset pack. Its server code carries a permissive BSD-style license with notice/attribution conditions.
+
+Potential PokeBank NX value:
+
+```text
+species/name/form metadata cross-checks
+canonical API naming reference
+item/ability/move metadata reference
+sprite-path relationship reference
+```
+
+PokeBank NX should remain offline-first and should **not** require the public PokéAPI service at runtime.
+
+For correctness-critical Pokémon/save data, PKHeX/PKSM-Core and our own versioned tables remain stronger primary references. PokéAPI is supplemental metadata/reference infrastructure, not a save-format oracle.
+
+Classification:
+
+```text
+SUPPLEMENTAL METADATA REFERENCE
+NO ONLINE RUNTIME DEPENDENCY
+```
+
+---
+
+## 7. msikma/PokéSprite
+
+Repository:
+
+```text
+https://github.com/msikma/pokesprite
+```
+
+Project/overview:
+
+```text
+https://msikma.github.io/pokesprite/
+https://msikma.github.io/pokesprite/overview/inventory.html
+```
+
+GitHub reports a much smaller repository than the giant 3D/full-history packs, roughly **25 MB**.
+
+PokéSprite is particularly useful for **small controller UI assets and metadata structure**. Its README documents:
+
+```text
+pokemon-gen7x/   68×56 box sprites
+pokemon-gen8/    68×56 box sprites
+items/           32×32 inventory icons
+items-outline/   32×32 Sword/Shield-style outlined icons
+misc/            ribbons/body-style/etc.
+data/pokemon.json
+data/item-map.json
+```
+
+The Pokémon data tracks forms, aliases, visible female variants, legacy/unofficial icon flags and previous-generation fallbacks. This is exactly the kind of metadata discipline our own visual resolver needs.
+
+The inventory overview maps internal-style item IDs to organized filenames and includes balls, medicine, held items and other categories. That makes it a strong UI/reference source for future Summary fields such as:
+
+```text
+Poké Ball
+held item
+ribbons/marks where matching assets exist
+```
+
+Do **not** blindly reuse its item IDs as universal save-format constants; map through PokeBank NX's generation-aware item model.
+
+### Rights/licensing
+
+PokéSprite explicitly states:
+
+```text
+sprite images = © Nintendo/Creatures Inc./GAME FREAK Inc.
+code/other project material = MIT
+```
+
+Therefore the repository is excellent for metadata/layout/reference and local prototyping, but the sprite-image copyright is not converted into MIT by the project license.
+
+Classification:
+
+```text
+BOX ICON / ITEM ICON / FORM-METADATA REFERENCE — VERY HIGH VALUE
+OPTIONAL LOCAL PACK STRUCTURE INSPIRATION — VERY HIGH VALUE
+PUBLIC GAME-SPRITE BUNDLE — NOT APPROVED WITHOUT RIGHTS REVIEW
+```
+
+---
+
+## 8. Pokémon Database sprite archive
+
+Reference:
+
+```text
+https://pokemondb.net/sprites
+```
+
+The site currently advertises sprite coverage from Generation 1 through Generation 9, including regular, shiny, back, form and gender variants where applicable, plus some spin-off material.
+
+This is a strong **human-readable visual QA/reference** when checking whether our resolver chose the expected sprite/form for a Pokémon from a specific generation/game.
+
+The site's footer states Pokémon images/names are copyrighted by Nintendo/Game Freak, and no redistribution permission for PokeBank NX was identified during this audit.
+
+Classification:
+
+```text
+VISUAL QA / COVERAGE REFERENCE — HIGH VALUE
+PUBLIC BUNDLE SOURCE — NOT APPROVED
+```
+
+Do not scrape or hotlink Pokémon Database as a runtime asset service.
+
+---
+
+## 9. Pokemon Infinite Fusion sprite page (coderobo)
+
+Reference supplied:
+
+```text
+https://pokemon-infinite-fusion.coderobo.org/pokemon-sprite/
+```
+
+During this audit the page exposed no useful downloadable dataset/license information and displayed `00 Variant` in the parsed page.
+
+More importantly, fusion sprites are not canonical main-series species/forms represented by normal PK1–PK9 entities. Treating arbitrary fan fusions as valid PokeBank NX entity visuals would corrupt our species/form model.
+
+Classification:
+
+```text
+OUT OF SCOPE FOR CANONICAL POKÉMON VISUAL RESOLVER
+NO RUNTIME USE
+```
+
+If PokeBank NX ever gains a completely separate fan/custom visualization plugin system after v1, fusion art could be reconsidered there. It should not enter the core Vault/Summary identity model.
+
+---
+
 # Recommended PokeBank NX visual plan
 
 ## Stage A — solve View Pokémon without realtime 3D
@@ -317,9 +496,24 @@ Then support small/large visuals as separate classes:
 ```text
 GRID ICON
 SUMMARY RENDER
+ITEM/BALL/RIBBON ICON
 ```
 
 Use lazy loading + bounded cache.
+
+### Preferred resolver metadata lessons
+
+Use the strongest structural ideas from PokeAPI/sprites and PokéSprite without coupling the app to either repository:
+
+```text
+canonical species/form key
+explicit shiny flag
+explicit visible-gender variant
+provider/style
+source generation/game where desired
+alias/fallback handling
+separate icon vs summary-render asset
+```
 
 ## Stage B — optional local visual packs
 
@@ -329,6 +523,7 @@ Design a documented SD-card pack format, for example:
 /switch/PokeBank-NX/assets/pokemon/<provider>/manifest.json
 /switch/PokeBank-NX/assets/pokemon/<provider>/icons/...
 /switch/PokeBank-NX/assets/pokemon/<provider>/summary/...
+/switch/PokeBank-NX/assets/items/<provider>/...
 ```
 
 Manifest should carry:
@@ -380,11 +575,22 @@ If native 3D is viable, Right Stick rotation can be reconsidered under #25.
 For v1 product planning:
 
 ```text
-DEFAULT: high-quality 2D/static or prerendered Summary visual
-OPTIONAL: animated local visual
-EXPERIMENTAL LATER: realtime 3D
+BOX/VAULT GRID:
+compact HOME/Gen-8-style box icon resolver
+
+SUMMARY/VIEW:
+high-quality HOME-style/static or prerendered visual
+
+DETAIL ICONS:
+small Ball / held-item / ribbon / mark icons where supported
+
+OPTIONAL:
+animated local visual pack
+
+EXPERIMENTAL LATER:
+realtime 3D
 ```
 
-This gives PokeBank NX a polished `View Pokémon` screen without making the whole project depend on a multi-gigabyte copyrighted model archive or a new rendering engine.
+This gives PokeBank NX a polished `View Pokémon` screen and richer Summary UI without making the whole project depend on multi-gigabyte copyrighted archives, a network service, or a new 3D rendering engine.
 
 Do not start this during Session 2.6; safety/crash/second-device work remains the immediate blocker.
