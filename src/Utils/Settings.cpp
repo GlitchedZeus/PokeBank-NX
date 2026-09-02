@@ -31,7 +31,7 @@ namespace Utils {
             const char* val = eq + 1;
 
             if (strcmp(key, "theme") == 0) {
-                UI::applyTheme(strcmp(val, "light") == 0 ? UI::ThemeMode::Light : UI::ThemeMode::Dark);
+                UI::applyTheme(UI::themeModeFromKey(val));
             } else if (strcmp(key, "autoBackup") == 0) {
                 g_autoBackupEnabled = (strcmp(val, "0") != 0);
             } else if (strcmp(key, "allowIllegal") == 0) {
@@ -60,7 +60,8 @@ namespace Utils {
             logErrorToFile("Failed to write settings file", settingsPath().c_str());
             return;
         }
-        fprintf(f, "theme=%s\n", (UI::g_themeMode == UI::ThemeMode::Light) ? "light" : "dark");
+        const std::string_view themeKey = UI::themeModeKey(UI::g_themeMode);
+        fprintf(f, "theme=%.*s\n", static_cast<int>(themeKey.size()), themeKey.data());
         fprintf(f, "autoBackup=%d\n", g_autoBackupEnabled ? 1 : 0);
         fprintf(f, "allowIllegal=%d\n", g_allowIllegalEdits ? 1 : 0);
         fprintf(f, "moveWarn=%d\n", g_moveWarn ? 1 : 0);

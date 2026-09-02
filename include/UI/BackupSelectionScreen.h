@@ -7,6 +7,7 @@
 #include <switch.h>
 
 #include "UI/UIScreen.h"
+#include "UI/NavigationRepeat.h"
 #include "UI/PKSEFramebuffer.h"
 
 namespace UI {
@@ -35,6 +36,7 @@ namespace UI {
         }
 
     private:
+        PokeBank::UIModel::NavigationRepeat navigationRepeat;
         struct BackupInfo {
             std::string timestamp;
             std::string displayName;

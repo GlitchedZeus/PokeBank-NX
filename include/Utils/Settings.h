@@ -3,7 +3,7 @@
 
 namespace Utils {
     // Persisted app settings live in sdmc:/PKSE/settings.cfg (simple key=value text).
-    // Currently: theme (dark/light) and auto-backup (on/off).
+    // Currently: theme (OLED Black/Dark/Light) and app safety/preferences.
 
     // Load settings into the runtime globals (UI::g_themeMode via applyTheme,
     // ::g_autoBackupEnabled). Safe when the file is missing — defaults are kept.

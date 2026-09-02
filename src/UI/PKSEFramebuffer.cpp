@@ -506,17 +506,17 @@ namespace UI {
     // ---- Themed helpers (compose the primitives above) ----
 
     void PKSEFramebuffer::drawCard(int x, int y, int w, int h) {
-        drawFilledRoundedRect(x, y, w, h, 14, Colors::Panel);
-        drawRoundedRect(x, y, w, h, 14, Colors::Border, 1);
+        drawFilledRoundedRect(x, y, w, h, 14, Colors::Surface);
+        drawRoundedRect(x, y, w, h, 14, Colors::Divider, 1);
     }
 
     void PKSEFramebuffer::drawSelectionHighlight(int x, int y, int w, int h) {
-        drawFilledRoundedRect(x, y, w, h, 10, Colors::Selected);
-        drawRoundedRect(x, y, w, h, 10, Colors::Accent, 2);
+        drawFilledRoundedRect(x, y, w, h, 10, Colors::SurfaceSelected);
+        drawRoundedRect(x, y, w, h, 10, Colors::FocusBorder, 2);
     }
 
     void PKSEFramebuffer::drawHDivider(int x, int y, int w) {
-        drawFilledRect(x, y, w, 2, Colors::Border);
+        drawFilledRect(x, y, w, 2, Colors::Divider);
     }
 
     int PKSEFramebuffer::drawTypeBadge(int x, int y, const std::string& typeName, Color typeColor) {

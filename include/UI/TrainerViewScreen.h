@@ -11,6 +11,7 @@
 #include "Globals.h"
 #include "Safety/WritePolicy.h"
 #include "UI/ActionSheetModel.h"
+#include "UI/NavigationRepeat.h"
 #include "UI/UIScreen.h"
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Bank.h"
@@ -199,6 +200,8 @@ namespace UI {
         // location descriptor, never a mutable Pokemon pointer, so opening/navigating/cancelling it
         // cannot mutate the source by construction.
         PokeVault::UIModel::PokemonActionSheet actionSheet;
+        PokeBank::UIModel::NavigationRepeat navigationRepeat;
+        bool helpOverlayActive = false;
         // Group menu for the carried block (Release all / Return to origin / Cancel), opened with Minus.
         bool groupMenuActive = false;
         int groupMenuIndex = 0;

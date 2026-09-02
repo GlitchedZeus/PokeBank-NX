@@ -2,6 +2,7 @@
 #define UI_COMMON_H
 
 #include <cstdint>
+#include <string_view>
 
 namespace UI {
     struct Color {
@@ -13,7 +14,93 @@ namespace UI {
         uint32_t toRGBA8() const {
             return (r << 0) | (g << 8) | (b << 16) | (a << 24);
         }
+
+        constexpr bool operator==(const Color&) const = default;
     };
+
+    enum class ThemeMode { OLEDBlack, Dark, Light };
+
+    struct ThemePalette {
+        Color background;
+        Color surface;
+        Color surfaceRaised;
+        Color surfaceSelected;
+        Color textPrimary;
+        Color textSecondary;
+        Color textMuted;
+        Color accentPrimary;
+        Color accentSecondary;
+        Color focusBorder;
+        Color divider;
+        Color success;
+        Color warning;
+        Color error;
+        Color info;
+    };
+
+    inline constexpr ThemePalette OLED_BLACK_PALETTE{
+        Color(0, 0, 0),       Color(14, 15, 20),    Color(27, 29, 38),    Color(42, 39, 66),
+        Color(244, 244, 249), Color(194, 194, 207), Color(129, 130, 147), Color(151, 132, 255),
+        Color(255, 184, 77),  Color(187, 172, 255), Color(49, 51, 64),    Color(79, 205, 137),
+        Color(255, 199, 66),  Color(255, 94, 94),   Color(87, 169, 255)
+    };
+
+    inline constexpr ThemePalette DARK_PALETTE{
+        Color(24, 27, 38),    Color(35, 39, 53),    Color(47, 52, 69),    Color(62, 61, 92),
+        Color(239, 240, 247), Color(185, 188, 204), Color(126, 130, 151), Color(139, 122, 255),
+        Color(255, 184, 77),  Color(174, 159, 255), Color(67, 72, 91),    Color(72, 190, 126),
+        Color(255, 195, 61),  Color(243, 86, 89),   Color(82, 158, 240)
+    };
+
+    // Light is intentionally designed as a warm/pastel palette, not as an inverted dark palette.
+    inline constexpr ThemePalette LIGHT_PALETTE{
+        Color(246, 247, 252), Color(255, 255, 255), Color(235, 239, 249), Color(225, 221, 249),
+        Color(29, 32, 45),    Color(75, 80, 101),   Color(113, 119, 140), Color(91, 73, 210),
+        Color(229, 142, 44),  Color(93, 72, 226),   Color(205, 210, 226), Color(35, 137, 83),
+        Color(166, 91, 0),    Color(190, 48, 52),   Color(28, 105, 184)
+    };
+
+    constexpr const ThemePalette& themePalette(ThemeMode mode) {
+        switch (mode) {
+            case ThemeMode::OLEDBlack: return OLED_BLACK_PALETTE;
+            case ThemeMode::Light:     return LIGHT_PALETTE;
+            case ThemeMode::Dark:      return DARK_PALETTE;
+        }
+        return DARK_PALETTE;
+    }
+
+    constexpr std::string_view themeModeName(ThemeMode mode) {
+        switch (mode) {
+            case ThemeMode::OLEDBlack: return "OLED Black";
+            case ThemeMode::Dark:      return "Dark";
+            case ThemeMode::Light:     return "Light";
+        }
+        return "Dark";
+    }
+
+    constexpr std::string_view themeModeKey(ThemeMode mode) {
+        switch (mode) {
+            case ThemeMode::OLEDBlack: return "oled-black";
+            case ThemeMode::Dark:      return "dark";
+            case ThemeMode::Light:     return "light";
+        }
+        return "dark";
+    }
+
+    constexpr ThemeMode themeModeFromKey(std::string_view key) {
+        if (key == "oled-black" || key == "oled" || key == "black") return ThemeMode::OLEDBlack;
+        if (key == "light") return ThemeMode::Light;
+        return ThemeMode::Dark;
+    }
+
+    constexpr ThemeMode nextThemeMode(ThemeMode mode) {
+        switch (mode) {
+            case ThemeMode::OLEDBlack: return ThemeMode::Dark;
+            case ThemeMode::Dark:      return ThemeMode::Light;
+            case ThemeMode::Light:     return ThemeMode::OLEDBlack;
+        }
+        return ThemeMode::Dark;
+    }
 
     namespace Colors {
         // --- Fixed literal colors (theme-independent, always constant) ---
@@ -33,22 +120,38 @@ namespace UI {
         // --- Semantic theme colors (runtime-swappable by applyTheme()) ---
         // These are mutable so a dark/light toggle can restyle the whole UI without
         // changing the 15+ screens that reference Colors::Text etc. Defaults = dark theme.
-        inline Color Background   = Color(28, 27, 38);    // deep indigo-tinted charcoal
-        inline Color Panel        = Color(40, 39, 54);    // elevated card surface
-        inline Color PanelAlt     = Color(48, 47, 64);    // secondary surface / hover
-        inline Color Selected     = Color(78, 70, 130);   // selection highlight (indigo)
-        inline Color Border       = Color(60, 58, 78);
-        inline Color Text         = Color(234, 233, 242);
-        inline Color TextDim      = Color(150, 148, 168);
-        inline Color Accent       = Color(139, 122, 255); // indigo/violet accent
-        inline Color AccentDim    = Color(96, 84, 178);   // muted accent (bars/underlines)
+        inline Color Background      = DARK_PALETTE.background;
+        inline Color Surface         = DARK_PALETTE.surface;
+        inline Color SurfaceRaised   = DARK_PALETTE.surfaceRaised;
+        inline Color SurfaceSelected = DARK_PALETTE.surfaceSelected;
+        inline Color TextPrimary     = DARK_PALETTE.textPrimary;
+        inline Color TextSecondary   = DARK_PALETTE.textSecondary;
+        inline Color TextMuted       = DARK_PALETTE.textMuted;
+        inline Color AccentPrimary   = DARK_PALETTE.accentPrimary;
+        inline Color AccentSecondary = DARK_PALETTE.accentSecondary;
+        inline Color FocusBorder     = DARK_PALETTE.focusBorder;
+        inline Color Divider         = DARK_PALETTE.divider;
+        inline Color Success         = DARK_PALETTE.success;
+        inline Color Warning         = DARK_PALETTE.warning;
+        inline Color Error           = DARK_PALETTE.error;
+        inline Color Info            = DARK_PALETTE.info;
+
+        // Transitional aliases keep mature screens working while all new primitives and refreshed
+        // screens use the semantic names above. They are references, so there is still one palette.
+        inline Color& Panel     = Surface;
+        inline Color& PanelAlt  = SurfaceRaised;
+        inline Color& Selected  = SurfaceSelected;
+        inline Color& Border    = Divider;
+        inline Color& Text      = TextPrimary;
+        inline Color& TextDim   = TextMuted;
+        inline Color& Accent    = AccentPrimary;
+        inline Color& AccentDim = AccentSecondary;
         // Warm secondary (HOME's "warm-on-cool" pop): selected pill / primary action / Save.
         // Indigo stays the hero; amber is used sparingly for the single primary/selected element.
         inline Color Primary      = Color(255, 184, 77);  // amber
         inline Color PrimaryText  = Color(43, 32, 10);    // dark text drawn on top of amber
         // Attention accent for warning dialog titles ("Unsaved Changes", "Delete Backup?"). Theme-aware
         // because a bright amber that reads on the dark UI is nearly invisible on light-mode white.
-        inline Color Warning      = Color(255, 199, 66);
         // Shiny marker (star / "Yes"), HOME-style red rather than yellow. Theme-aware: yellow washed
         // out on light-mode white exactly like Warning did, and red reads on both sprites and panels.
         inline Color ShinyStar    = Color(255, 96, 86);
@@ -79,8 +182,6 @@ namespace UI {
     // should be at least this tall/wide for a fingertip. Grid slots are already larger than this.
     constexpr int TouchTargetMin = 56;
 
-    enum class ThemeMode { Dark, Light };
-
     inline ThemeMode g_themeMode = ThemeMode::Dark;
 
     // Swap the semantic palette. Screens keep using Colors::Text/Panel/... and pick up
@@ -88,41 +189,28 @@ namespace UI {
     inline void applyTheme(ThemeMode mode) {
         using namespace Colors;
         g_themeMode = mode;
-        if (mode == ThemeMode::Dark) {
-            Background = Color(28, 27, 38);
-            Panel      = Color(40, 39, 54);
-            PanelAlt   = Color(48, 47, 64);
-            Selected   = Color(78, 70, 130);
-            Border     = Color(60, 58, 78);
-            Text       = Color(234, 233, 242);
-            TextDim    = Color(150, 148, 168);
-            Accent     = Color(139, 122, 255);
-            AccentDim  = Color(96, 84, 178);
-            Primary    = Color(255, 184, 77);
-            PrimaryText= Color(43, 32, 10);
-            Warning    = Color(255, 199, 66);   // bright gold, reads on the dark UI
-            ShinyStar  = Color(255, 96, 86);    // warm coral-red on the dark UI
-            CursorMenu = Color(232, 92, 92);
-            CursorMove = Color(86, 148, 244);
-            CursorMulti= Color(96, 205, 128);
-        } else { // Light
-            Background = Color(241, 241, 246);
-            Panel      = Color(255, 255, 255);
-            PanelAlt   = Color(232, 231, 242);
-            Selected   = Color(223, 218, 250);
-            Border     = Color(214, 214, 224);
-            Text       = Color(28, 28, 38);
-            TextDim    = Color(110, 110, 128);
-            Accent     = Color(109, 90, 230);
-            AccentDim  = Color(150, 134, 240);
-            Primary    = Color(245, 166, 45);
-            PrimaryText= Color(43, 32, 10);
-            Warning    = Color(176, 98, 0);     // deep amber, reads on light-mode white
-            ShinyStar  = Color(202, 44, 38);    // deep red, reads on light-mode white
-            CursorMenu = Color(206, 58, 58);
-            CursorMove = Color(38, 106, 214);
-            CursorMulti= Color(38, 150, 84);
-        }
+        const ThemePalette& palette = themePalette(mode);
+        Background      = palette.background;
+        Surface         = palette.surface;
+        SurfaceRaised   = palette.surfaceRaised;
+        SurfaceSelected = palette.surfaceSelected;
+        TextPrimary     = palette.textPrimary;
+        TextSecondary   = palette.textSecondary;
+        TextMuted       = palette.textMuted;
+        AccentPrimary   = palette.accentPrimary;
+        AccentSecondary = palette.accentSecondary;
+        FocusBorder     = palette.focusBorder;
+        Divider         = palette.divider;
+        Success         = palette.success;
+        Warning         = palette.warning;
+        Error           = palette.error;
+        Info            = palette.info;
+        Primary         = palette.accentSecondary;
+        PrimaryText     = Color(43, 32, 10);
+        ShinyStar       = (mode == ThemeMode::Light) ? Color(190, 48, 52) : Color(255, 96, 86);
+        CursorMenu      = (mode == ThemeMode::Light) ? Color(196, 52, 57) : Color(232, 92, 92);
+        CursorMove      = (mode == ThemeMode::Light) ? Color(37, 99, 201) : Color(86, 148, 244);
+        CursorMulti     = (mode == ThemeMode::Light) ? Color(35, 143, 81) : Color(96, 205, 128);
     }
 }
 

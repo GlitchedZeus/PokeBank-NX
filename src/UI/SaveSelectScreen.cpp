@@ -10,6 +10,7 @@
 #include "Enums/GameVersion.h"
 #include "Games/GameIdentity.h"
 #include "Utils/Logger.h"
+#include "Utils/Settings.h"
 
 using namespace Utils;
 using namespace Enums;
@@ -235,7 +236,41 @@ namespace UI {
     void SaveSelectScreen::update(const PadState& pad, const TouchInput& touch) {
         // A tap on a nav-bar badge becomes that button's press, so every handler below is
         // reached identically whether the user pressed the button or tapped its on-screen badge.
-        u64 kDown = padGetButtonsDown(&pad) | navTouchButton(touch);
+        constexpr u64 navigationMask = HidNpadButton_Up | HidNpadButton_Down |
+                                       HidNpadButton_Left | HidNpadButton_Right;
+        u64 kDown = navigationRepeat.apply(padGetButtonsDown(&pad), padGetButtons(&pad),
+                                           navigationMask) | navTouchButton(touch);
+
+        if (overlay == Overlay::Help) {
+            if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) overlay = Overlay::None;
+            return;
+        }
+        if (overlay == Overlay::Options) {
+            if (kDown & HidNpadButton_Up)   optionsIndex = (optionsIndex + 2) % 3;
+            if (kDown & HidNpadButton_Down) optionsIndex = (optionsIndex + 1) % 3;
+            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_A) {
+                if (optionsIndex == 0) {
+                    applyTheme(nextThemeMode(g_themeMode));
+                    Utils::saveSettings();
+                } else if (optionsIndex == 1) {
+                    exitRequested = true;
+                } else {
+                    overlay = Overlay::None;
+                }
+            }
+            return;
+        }
+
+        if (kDown & HidNpadButton_Plus) {
+            overlay = Overlay::Options;
+            optionsIndex = 0;
+            return;
+        }
+        if (kDown & HidNpadButton_Minus) {
+            overlay = Overlay::Help;
+            return;
+        }
 
         // Touch (tap targets were captured last draw()).
         if (touch.justPressed()) {
@@ -282,7 +317,6 @@ namespace UI {
             scrollSelectionIntoView();
         }
 
-        if (kDown & HidNpadButton_Plus) exitRequested = true;
     }
 
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {
@@ -295,7 +329,7 @@ namespace UI {
         const UserEntry* u = currentUser();
 
         // ---- User header card ----
-        fb.drawCard(24, HEADER_Y, fb.getWidth() - 48, HEADER_H);
+        drawPanelSurface(fb, 24, HEADER_Y, fb.getWidth() - 48, HEADER_H, true);
 
         const int avX = 44, avY = HEADER_Y + (HEADER_H - AVATAR) / 2;
         if (u) {
@@ -360,10 +394,7 @@ namespace UI {
                 int tileY = GRID_Y + row * (TILE_H + GAP);
                 bool sel = (i == titleIndex);
 
-                fb.drawSoftShadow(tileX, tileY, TILE_W, TILE_H, 16);
-                fb.drawFilledRoundedRect(tileX, tileY, TILE_W, TILE_H, 16, sel ? Colors::PanelAlt : Colors::Panel);
-                if (sel) fb.drawRoundedRect(tileX, tileY, TILE_W, TILE_H, 16, Colors::Primary, 3);
-                else     fb.drawRoundedRect(tileX, tileY, TILE_W, TILE_H, 16, Colors::Border, 1);
+                drawFocusedCard(fb, tileX, tileY, TILE_W, TILE_H, sel, 16);
 
                 int iconX = tileX + (TILE_W - ICON) / 2;
                 int iconY = tileY + 16;
@@ -395,9 +426,36 @@ namespace UI {
         }
 
         // ---- Footer ----
-        if (users.size() > 1)
-            drawNavBar(fb, "A: Select  |  L/R: Switch User  |  +: Exit");
-        else
-            drawNavBar(fb, "A: Select  |  +: Exit");
+        drawNavBar(fb, controllerHints(users.size() > 1
+            ? PokeBank::UIModel::ControllerContext::SelectGameMultipleUsers
+            : PokeBank::UIModel::ControllerContext::SelectGame));
+
+        if (overlay == Overlay::Help) {
+            drawInfoOverlay(fb, "Select Game — Controls", {
+                "D-pad / Left Stick   Navigate (hold to scroll)",
+                "A   Open the focused game source",
+                "L / R   Previous or next Switch user",
+                "+   Options and appearance",
+                "-   Help for the current screen"
+            });
+        } else if (overlay == Overlay::Options) {
+            constexpr int w = 560, h = 326, rowH = 64;
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 26, y + 20, "Options", Colors::TextPrimary, TextStyle::Heading);
+            const std::string rows[3] = {
+                "Theme: " + std::string(themeModeName(g_themeMode)),
+                "Exit PokeBank NX",
+                "Cancel"
+            };
+            int ry = y + 76;
+            for (int i = 0; i < 3; ++i) {
+                drawFocusedCard(fb, x + 22, ry, w - 44, rowH - 8, i == optionsIndex, 12);
+                fb.drawText(x + 44, ry + 15, rows[i],
+                            i == optionsIndex ? Colors::TextPrimary : Colors::TextSecondary);
+                ry += rowH;
+            }
+            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"B", "Cancel"}});
+        }
     }
 }

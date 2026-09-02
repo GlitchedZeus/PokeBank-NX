@@ -84,7 +84,10 @@ namespace UI {
     }
 
     void BackupSelectionScreen::update(const PadState& pad, const TouchInput& touch) {
-        u64 kDown = padGetButtonsDown(&pad) | navTouchButton(touch);   // nav-bar badges are tappable
+        constexpr u64 navigationMask = HidNpadButton_Up | HidNpadButton_Down |
+                                       HidNpadButton_Left | HidNpadButton_Right;
+        u64 kDown = navigationRepeat.apply(padGetButtonsDown(&pad), padGetButtons(&pad),
+                                           navigationMask) | navTouchButton(touch);
         if (statusFrames > 0) --statusFrames;                          // expire the failure notice
 
         // Handle delete confirmation dialog
