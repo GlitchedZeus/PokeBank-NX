@@ -1,130 +1,27 @@
 # PokeBank NX — Session Log — 2026-09-01
 
-This is a historical daily log, not the authoritative current-state file. For current verified status always read `PROJECT_STATUS.md` first.
+This dated log records the major recovery, documentation, implementation, and physical-device milestones reached during the September 1 workday. `PROJECT_STATUS.md` remains authoritative when this historical log and current state differ.
 
----
+## Recovery / repository work
 
-## 1. Recovery / baseline state
+- Recovered the interrupted 23-game identity work.
+- Preserved distinct GBA/Switch FireRed and LeafGreen identities.
+- Re-established the writable `origin` / upstream-only PKSE separation.
+- Confirmed the requested older commit `1932cf0` was not recoverable from available refs/reflogs/stashes/unreachable history/archive.
+- Established permanent recovery/session/runbook documentation.
 
-The interrupted PokeBank NX repository work was recovered and normalized around:
+## Safety milestone
 
-```text
-GlitchedZeus/PokeBank-NX
-feature/pokebank-playable
-```
-
-PKSE remains upstream only.
-
-Verified safety milestone:
+Published source milestone:
 
 ```text
 c618bd5e44381635f92c17fc7b36c594b64aaa40
 safety: hard-lock live game save writes
 ```
 
-Recovered application foundation included:
+Live installed-game save writing remains hard disabled.
 
-- 23 stable release/platform game identities;
-- distinct GBA and Switch FireRed/LeafGreen identities;
-- platform-aware native game cards;
-- host tests/sanitizers;
-- native Switch build;
-- hard-disabled live installed-save writes.
-
-The earlier custom Master Vault / RetroArch implementation could not be recovered from available Git history/workspace data and is being rebuilt from specifications.
-
----
-
-## 2. Reference / architecture documentation pass
-
-Tracked reference projects were formalized:
-
-```text
-PKSE
-PKSM-Core
-PKHeX
-Auto Legality Mod / PKHeX-Plugins
-pkHouse
-pkDex
-PKForge
-```
-
-Major documentation created/expanded today includes:
-
-- `docs/UPSTREAM_AUDIT.md`
-- `docs/MASTER_VAULT_SPEC.md`
-- `docs/PKHEX_ORACLE.md`
-- `docs/PKSM_CORE_INTEGRATION.md`
-- `docs/PKHOUSE_REFERENCE.md`
-- `docs/POKEDEX_SPEC.md`
-- `docs/TRANSFER_MODEL.md`
-- `docs/SAVE_SAFETY.md`
-- `docs/ARCHITECTURE.md`
-- `docs/GAME_SUPPORT_MATRIX.md`
-- `docs/DEVICE_TEST_CHECKLIST.md`
-- `docs/RELEASE_CHECKLIST.md`
-- `docs/BUILD_RECORD.md`
-- `docs/PROJECT_MAP.md`
-
-GitHub host CI was also added for portable tests/sanitizers/whitespace.
-
----
-
-## 3. UI reference / controls contract
-
-Visual references supplied by the project owner were translated into a PokeBank NX-specific design contract rather than copied pixel-for-pixel.
-
-Primary visual direction:
-
-```text
-Select Game:
-large cover-art cards + strong focus
-
-Pokémon Summary:
-grouped data + large Pokémon render + tabs
-
-Pokédex:
-sprite grid + selected-species preview pane
-```
-
-Required themes:
-
-```text
-OLED Black
-Dark
-Light
-```
-
-Controller direction intentionally follows a Pokémon HOME-like mental model:
-
-```text
-D-pad / Left Stick  navigation
-A                   Select / Open / Pokémon Action Sheet
-B                   Back / Cancel
-X                   Filter / Search / context
-Y                   Sort / View / secondary action
-L / R               nearby box/tab/Pokémon movement
-ZL / ZR              larger jumps / major navigation
-+                   More / Options
--                   Help / Controls / Screen Info
-Right Stick          optional fast scroll / secondary pane
-```
-
-On Pokémon Summary, `+` is reserved/preferred for Compatible Games / Transfer Compatibility.
-
-Contracts:
-
-- `docs/CONTROLS.md`
-- `docs/UI_FLOW.md`
-- `docs/UI_STYLE_GUIDE.md`
-
-GitHub issue #13 tracks implementation.
-
----
-
-## 4. Session 1 — Action Sheet — COMPLETED
-
-GitHub issue #2 implemented the controller-first nine-item Pokémon Action Sheet.
+## Session 1 — Action Sheet
 
 Application source:
 
@@ -133,187 +30,155 @@ Application source:
 ui: add controller Pokemon action sheet
 ```
 
-Behavior:
+Result:
 
-```text
-View Pokémon
-Add to Master Vault
-Add to Bank…
-Transfer to Game…
-Edit
-Clone
-Make Shiny
-Legality & Provenance
-Cancel
-```
-
-Verified:
-
-- shared Party / Boxes / Storage behavior;
-- A opens the menu;
-- B/Cancel/navigation are non-mutating;
-- View is read-only;
-- unfinished actions safely return `Not yet supported`;
-- live-write hard lock remains intact;
+- shared nine-item controller-first Action Sheet across Party/Boxes/Storage;
+- A opens deliberate actions rather than mutating immediately;
+- B/Cancel safely close;
+- View read-only;
+- unfinished actions safe/not-yet-supported;
 - host tests PASS;
-- ASan/UBSan PASS;
-- `git diff --check` PASS;
-- native build PASS.
+- sanitizers PASS;
+- native `.nro` BUILDS.
 
-Device artifact:
+Issue #2 was closed/completed.
+
+Recorded artifact:
 
 ```text
 PokeBank-NX-ActionSheet-82a0779.nro
 9,695,669 bytes
-SHA-256:
-6ff0f71c2e8f6d7fcf948a4bbc0037ba799e22bbaac433263be7cd0afac3b72b
+SHA-256 6ff0f71c2e8f6d7fcf948a4bbc0037ba799e22bbaac433263be7cd0afac3b72b
 ```
 
-Physical status:
+The Action-Sheet-only artifact was not separately physically tested.
+
+## Session 2 — interrupted then recovered
+
+The first Session 2 run ran out of usage after implementing substantial local HOME-style control/theme work.
+
+A later recovery/continuation session found/recovered the work and produced the verified application source:
 
 ```text
-NOT DEVICE TESTED
+3be4de6b0b1ce00d5fe369cff9795c3fffbfa31a
+fix: restore complete controller UI source
 ```
 
-Issue #2 was closed as completed during the documentation pass.
+Implemented foundation included:
 
----
+- semantic OLED Black / Dark / Light palettes;
+- persisted theme selection;
+- context-aware typed button hints;
+- contextual `+` Options / More behavior;
+- read-only `-` Help;
+- held navigation repeat model;
+- focus/card/panel/modal primitives;
+- Action Sheet visual integration foundation;
+- ZL/ZR box jumps;
+- host tests expanded to six suites.
 
-## 5. Session 2 — UI/theme implementation — INTERRUPTED
-
-The second coding session started issue #13 using HIGH reasoning.
-
-It reported a clean Session 1 baseline and substantial work in a preserved local Session 2 branch/worktree.
-
-Reported local implementation:
-
-- semantic three-theme foundation;
-- Select Game semantic raised/focused cards;
-- typed/context-aware bottom button hints;
-- held D-pad / Left-Stick navigation repeat;
-- `+` no longer globally exits;
-- contextual `+` Options / Settings / compatibility / More behavior;
-- `-` opens read-only Help;
-- persisted theme cycling;
-- reusable focused-card/modal helpers;
-- Action Sheet being routed through the new primitives.
-
-The coding session ended due to usage limits **before** completing the planned host regressions and before final verification/build/commit/push.
-
-Therefore this work remains:
+Verification:
 
 ```text
-INTERRUPTED LOCAL-ONLY
-NOT REMOTE-VERIFIED
-NOT HOST TESTED AS A COMPLETE SESSION 2 MILESTONE
-NOT NRO BUILDS AS A SESSION 2 MILESTONE
+host tests        PASS
+ASan/UBSan        PASS
+git diff --check  PASS
+native .nro       BUILDS
 ```
 
-A progress warning/comment was added to GitHub issue #13.
-
----
-
-## 6. Branch history cleanup
-
-During Action Sheet publication, GitHub `main` and `feature/pokebank-playable` temporarily had equivalent application content but different history:
-
-- `main` contained the merged Action Sheet application source;
-- feature branch contained the later build/status record.
-
-They were reconciled without force-push or reset at:
+Session 2 artifact:
 
 ```text
-9a2151ee70c73bab4451f35a1216c495d60b57ba
-merge: reconcile action sheet build record with main
+PokeBank-NX-UI-Theme-3be4de6.nro
+9,707,957 bytes
+SHA-256 df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
 ```
 
-Today's documentation refresh then continued on the feature branch before final synchronization.
+## FIRST PHYSICAL SWITCH HARDWARE MILESTONE
 
----
+The exact `3be4de6b` Session 2 binary was physically run on Nintendo Switch hardware.
 
-## 7. GitHub issue changes today
-
-### Closed
+Result:
 
 ```text
-#2 — Implement controller-first Pokémon action sheet
+BOOT                     PASS
+D-PAD                    PASS
+LEFT STICK + HOLD        FAIL
+A ACTION SHEET           PASS
+B/CANCEL                 PASS
+L/R                      PASS
+ZL/ZR                    PASS
++                        PASS
+-                        PASS
+OLED BLACK               PASS
+DARK                     PASS
+LIGHT                    PASS
+THEME PERSISTENCE        PASS
+PARTY                    PASS
+BOXES                    PASS
+STORAGE                  PASS
+CRASHES                  NONE
 ```
 
-Closed as completed with exact source/build/hash evidence.
+Major product finding:
 
-### Current
+The functional/control/theme foundation works substantially better than the visible product identity. The application still looks overwhelmingly like PKSE, including obvious inherited PKSE branding/logo and screen identity.
+
+Therefore:
 
 ```text
-#13 — Implement HOME-style controls and OLED/Dark/Light UI shell
+Issue #8   CLOSED — first exact physical .nro test completed
+Issue #13  REOPENED — visible PokeBank NX shell incomplete
+Issue #19  OPEN — held Left Stick navigation repeat failure
+Issue #16  OPEN / elevated — visible branding/startup/NRO identity
 ```
 
-Interrupted local progress recorded in issue comments.
+Permanent physical report:
 
 ```text
-#8 — Produce and physically test first recovery-era .nro
+docs/DEVICE_TEST_REPORT_2026-09-01.md
 ```
 
-Action Sheet artifact details recorded; physical test deferred until the combined UI/control build is ready.
+No live installed-save write/safety regression was reported during this hardware pass.
 
-### New infrastructure issue
+## Next execution target
+
+HIGH session:
 
 ```text
-#15 — Automate preservation of device-test .nro artifacts
+docs/PROMPT_SESSION2_5_VISUAL_SHELL.md
 ```
 
-Goal: persist future test builds as GitHub Actions artifacts or prereleases with source SHA, size, SHA-256, and verification metadata.
+Goal:
 
----
+- fix held Left Stick repeat;
+- remove obvious PKSE product branding from normal tested flow;
+- make Select Game/top-level shell visibly PokeBank NX;
+- preserve all physical passes;
+- produce a second device-test `.nro`.
 
-## 8. Current next action
+After the replacement hardware pass is stable enough, move to MAX for issue #4 PKSM-Core PK3/Sav3 Gen III integration.
 
-The next HIGH coding block must **recover and finish the interrupted Session 2 work**.
+## Documentation / project-management work completed today
 
-Before any reset/clean/checkout over local work:
+Created or updated permanent documentation for:
 
-```bash
-git status
-git status --short
-git branch -avv
-git log --all --oneline --decorate --graph -30
-git reflog -30
-git stash list
-```
+- project status;
+- project map;
+- session runbook;
+- next-session plan;
+- controller contract;
+- UI flow/style guide;
+- architecture;
+- save safety;
+- build records;
+- device test checklist/report;
+- PKSM-Core integration plan;
+- PKHeX Oracle;
+- Master Vault;
+- transfer model;
+- Pokédex;
+- modern Switch reference research;
+- release/artifact discipline.
 
-Then:
-
-```text
-recover local #13 work
-    ↓
-finish host regressions
-    ↓
-host tests + ASan/UBSan
-    ↓
-git diff --check
-    ↓
-native .nro
-    ↓
-commit/push/verify
-    ↓
-record source SHA + binary SHA-256
-    ↓
-physical Switch test
-```
-
-Only after that combined build is stable should the project switch to MAX/deep reasoning for:
-
-```text
-#4 — PKSM-Core PK3 / Sav3 Gen III integration spike
-```
-
----
-
-## 9. Safety state at end of day
-
-Unchanged and mandatory:
-
-```text
-LIVE INSTALLED-GAME SAVE WRITING REMAINS HARD DISABLED
-```
-
-No UI work, transfer prototype, adapter spike, or convenience shortcut may bypass that lock.
+Supporting issues created during the day include artifact preservation, branding/startup identity, golden fixtures, and the physical Left Stick regression.
