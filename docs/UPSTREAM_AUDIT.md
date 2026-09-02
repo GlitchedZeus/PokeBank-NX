@@ -1,294 +1,400 @@
 # PokeBank NX — Upstream Reuse Audit
 
-Last reviewed: 2026-09-01
+Last reviewed: 2026-09-02
 
-This document is the permanent research map for external projects that can accelerate PokeBank NX. Before writing a major Pokémon-format, save-parser, legality, conversion, Pokédex, generated-Pokémon, or bank subsystem from scratch, check this file and the referenced project first.
+This is the permanent research map for external projects that can accelerate PokeBank NX. Before writing a major Pokémon-format, save-parser, legality, conversion, Pokédex, generated-Pokémon, bank, or transfer subsystem from scratch, check this file and the companion bank-project audit first.
 
-The pins below are **research pins**, not permanent dependency versions. If a future session wants to update a pin, it must record the new commit and re-run the relevant comparison/regression tests.
+Companion audit added 2026-09-02:
+
+```text
+docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md
+```
+
+The pins below are **research pins**, not permanent dependency versions. Any future pin change must record the new revision and rerun relevant comparison/regression tests.
 
 ## Classification
 
-- **DIRECT REUSE** — source may be integrated when its license is compatible and attribution/notices are preserved.
-- **PORT** — behavior/code can be translated into the PokeBank NX architecture with license obligations reviewed first.
-- **REFERENCE ONLY** — study behavior, algorithms, formats, UX, tests, or data organization; independently implement the PokeBank NX version.
-
-## Current PokeBank NX context
-
-- Repository: `GlitchedZeus/PokeBank-NX`
-- Development branch: `feature/pokebank-playable`
-- Verified remote safety milestone: `c618bd5`
-- Live game-save writing: hard disabled
-- 23 release/platform identities: host tested
-- Native `.nro`: builds
-- Physical Switch execution of the recovery build: not yet device tested
+- **DIRECT REUSE** — source may be integrated when licenses/attribution requirements are compatible and preserved.
+- **ADAPTER / SELECTIVE PORT** — reuse or translate a bounded subsystem behind PokeBank NX interfaces after review.
+- **REFERENCE ONLY** — study behavior, algorithms, formats, UX, tests or data organization; independently implement the PokeBank NX version.
 
 ---
 
-## 1. PKSE
+# Current PokeBank NX context
 
-Repository: https://github.com/kiasta/PKSE  
+```text
+Repository: GlitchedZeus/PokeBank-NX
+Development branch: feature/pokebank-playable
+Version: 0.1.0-alpha
+Live installed-game writing: HARD DISABLED / not approved
+Stable release/platform identities: 23
+First exact physical .nro test: COMPLETE / PARTIAL PASS
+Current useful UI/analog source: 361c6f55...
+Second device artifact: PENDING safety/crash finish
+```
+
+First exact device-tested source:
+
+```text
+3be4de6b0b1ce00d5fe369cff9795c3fffbfa31a
+PokeBank-NX-UI-Theme-3be4de6.nro
+SHA-256 df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
+DEVICE TESTED — PARTIAL PASS / KNOWN FAILURES
+```
+
+Do not use upstream capability as proof that PokeBank NX meets its read-only/provenance/write-safety contract. The extended hardware test proved inherited mutation UI remains reachable and is now explicitly audited under #23.
+
+---
+
+# 1. PKSE
+
+Repository: `https://github.com/kiasta/PKSE`  
 Pinned research commit: `1133aedffeeffb5862f35162597e249233903597` (PKSE 1.1.3)  
 Language: C++  
 License: **AGPLv3**
 
-### Role
+## Role
 
-PKSE is the original upstream foundation already imported into PokeBank NX. It provides the native Switch application framework, controller UI, save selection/access, party/box browsing, Pokémon editing/creation, conversion/bank foundations, legality-related code/data, and modern Switch game handlers present in PKSE 1.1.3.
+Original upstream foundation already inherited into PokeBank NX:
 
-### Classification
+- native Nintendo Switch application framework;
+- save selection/access;
+- Party/Box browsing;
+- editor/creation/conversion/bank foundations;
+- legality-related code/data;
+- modern Switch handlers present in the inherited version.
+
+## Classification
 
 **DIRECT REUSE — already inherited into this repository.**
 
-### Policy
+## Policy
 
 - `origin` is PokeBank NX.
-- PKSE is **UPSTREAM ONLY**.
-- Never push PokeBank NX changes to the PKSE repository.
-- Preserve upstream history, notices, and AGPLv3 obligations.
-
-### Audit focus
-
-Before replacing working PKSE code, compare behavior and add regression tests. Existing upstream capability is not automatically proof that it satisfies the PokeBank NX safety/provenance contract.
+- PKSE is **upstream only**.
+- Never push PokeBank NX changes to PKSE.
+- Preserve upstream history/notices/AGPLv3 obligations.
+- Existing PKSE mutation UI must not bypass current PokeBank NX read-only policy.
 
 ---
 
-## 2. PKSM-Core
+# 2. PKSM-Core
 
-Repository: https://github.com/FlagBrew/PKSM-Core  
+Repository: `https://github.com/FlagBrew/PKSM-Core`  
 Pinned research commit: `aa22d7a4f87c0351baf7da5962ba5acd01039a7c`  
 Language: C++  
 License: **GPLv3**
 
-### Role
+## Role
 
-Highest-priority native C++ integration/reuse candidate for historical Pokémon formats and save logic. PKSM-Core is designed as reusable core save-editing code and contains generation-specific Pokémon classes, save classes, conversion paths, personal data, string/i18n support, and related utilities.
+Highest-priority native historical Pokémon/save engine candidate.
 
-### Confirmed high-value files/areas
+High-value areas:
 
-- `include/pkx/PKX.hpp` / `source/pkx/PKX.cpp` — common Pokémon abstraction
-- `include/pkx/PK1.hpp` / `source/pkx/PK1.cpp`
-- `include/pkx/PK2.hpp` / `source/pkx/PK2.cpp`
-- `include/pkx/PK3.hpp` / `source/pkx/PK3.cpp`
-- generation-specific `PK4`, `PK5`, `PK6`, `PK7`, etc.
-- `include/sav/` / `source/sav/` — generation/game save implementations
-- `include/sav/Sav3.hpp` / `source/sav/Sav3.cpp` — Gen III save/box handling
-- `include/utils/genToPkx.hpp` — generation-to-Pokémon helpers/interfaces
-- `personals/` — personal/species data
-- `strings/` — supporting text resources
+```text
+include/pkx/PKX.hpp
+include/pkx/PK1.hpp
+include/pkx/PK2.hpp
+include/pkx/PK3.hpp
+source/pkx/PK3.cpp
+include/sav/
+source/sav/
+include/sav/Sav3.hpp
+source/sav/Sav3.cpp
+include/utils/genToPkx.hpp
+personals/
+strings/
+```
 
-### Classification
+## Classification
 
-**DIRECT REUSE / ADAPTER CANDIDATE**, subject to a focused compatibility and architecture audit.
+**DIRECT REUSE / ADAPTER CANDIDATE**, subject to focused compatibility/build/license review.
 
-### Required audit before integration
+## Required integration audit
 
-1. Determine which PKSM-Core files can compile cleanly in the PokeBank NX/devkitPro environment.
-2. Map PKSM-Core `PKX`/`Sav` objects to PokeBank NX interfaces without exposing live-write paths.
-3. Compare Gen I–VIII parsing/serialization with current PKSE/PokeBank behavior.
-4. Establish untouched-save round-trip tests.
-5. Establish Pokémon parse/serialize golden vectors against PKHeX.
-6. Record attribution and GPLv3 source provenance for any directly reused code.
+1. Determine the smallest PKSM-Core set that compiles cleanly under the PokeBank NX/devkitPro environment.
+2. Hide PKSM-Core objects behind PokeBank NX source adapters.
+3. Do not expose PKSM-Core save-write capabilities while the PokeBank NX adapter is read-only.
+4. Compare parsed Pokémon/save data with PKHeX/golden fixtures.
+5. Establish untouched-save round-trip expectations.
+6. Record exact source provenance/attribution for reused code.
 
-### First practical target
-
-Audit **Gen III / PK3 / Sav3 first**, especially FireRed/LeafGreen, because it directly supports the planned GBA → Vault → Switch FR/LG workflow and gives an early test of the adapter strategy.
+First target: **Gen III / PK3 / Sav3 / FireRed-LeafGreen GBA** under #4.
 
 ---
 
-## 3. PKHeX
+# 3. FlagBrew/PKSM — full application
 
-Repository: https://github.com/kwsch/PKHeX  
+Repository: `https://github.com/FlagBrew/PKSM`  
+Research pin inspected: `47d060ad80bcd55ed5c154d40ded0462d2448d21`  
+Language: C++ / Nintendo 3DS  
+License: **GPLv3 with additional 7.b / 7.c attribution/origin terms**
+
+## Role
+
+Full application reference around PKSM-Core. High value beyond the Core library itself:
+
+- mature offline Banks;
+- BankFile versioning/migration;
+- corruption handling and typed parser errors;
+- backup-before-save and backup rotation;
+- SHA-256 change detection;
+- bank box naming;
+- historical Wondercard/event behavior;
+- search/sort/editor flows;
+- long-lived constrained-Nintendo-platform integration patterns.
+
+Current PKSM BankFile work separates pure format parsing from GUI/I/O and has host tests for invalid box counts, short/truncated files, migrations, bad magic and newer versions.
+
+## Classification
+
+```text
+FULL APP: REFERENCE / SELECTIVE ADAPTER SOURCE
+PKSM BankFile: possible reuse/import candidate after license review
+3DS-specific UI/archive code: REFERENCE ONLY for Switch architecture
+```
+
+Do **not** replace the Master Vault with PKSM's flat Bank format. Use its defensive parser/test/backup ideas and consider a future PKSMBANK importer after Vault v1.
+
+Full notes: `BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`.
+
+---
+
+# 4. Universal-Team/pkmn-chest
+
+Repository: `https://github.com/Universal-Team/pkmn-chest`  
+Research pin inspected: `a847bb63a021a39375a5cb6673b2ed3f24195a2f`  
+Language: C++ / Nintendo DS(i)  
+License: **GPLv3**
+
+## Role
+
+Very high-value integration/UX reference because Pokémon Chest is a Gen III–V Bank and embeds PKSM-Core as a submodule.
+
+Useful lessons:
+
+- proof that PKSM-Core can be wrapped by another Nintendo-platform application;
+- clear Game-save side vs Bank side architecture;
+- bank-backed Pokémon selection through shared PKX interfaces;
+- sorting/filtering and Summary flows;
+- GBA/DS save access patterns as historical context;
+- dedicated bank/game workspace concepts.
+
+## Classification
+
+**REFERENCE / ADAPTER PATTERN.**
+
+During #4, compare both full PKSM and Pokémon Chest before inventing a PokeBank NX PKSM-Core wrapper from scratch.
+
+Full notes: `BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`.
+
+---
+
+# 5. gocario/PHBank
+
+Repository: `https://github.com/gocario/PHBank`  
+Research pin inspected: `a956ab39060148c8dafdb1f472c96632b22dcc65`  
+State: archived/historical  
+Language: C/C++ / Nintendo 3DS  
+License: **GPLv3**
+
+## Role
+
+Strong UX reference for the desired offline Game-PC ↔ Bank experience:
+
+- single Pokémon movement;
+- multi-Pokémon movement;
+- whole-box PC↔Bank operations;
+- explicit Bank vs game views;
+- IV/EV Summary;
+- save/exit/backup workflow.
+
+## Classification
+
+**REFERENCE / UX REFERENCE.**
+
+Do not treat its old XY/ORAS save code as a modern correctness authority. The highest-value idea is a future dedicated **Transfer Workspace** for Game ↔ Vault/Bank operations, implemented through the stricter PokeBank NX transaction model.
+
+Full notes: `BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`.
+
+---
+
+# 6. 0xb01u/PHBankGBC
+
+Repository: `https://github.com/0xb01u/PHBankGBC`  
+Research pin inspected: `9baf997c470b3eaf26c97a9867e35f6acecf527b`  
+Default research branch inspected: `GEN2`  
+Language: C / Nintendo 3DS
+
+## Role
+
+Secondary historical Gen I/II cross-check for:
+
+- party/current-box/PC-box offsets;
+- trainer/language differences;
+- Pokédex/checksum locations;
+- Gen I Pokémon extraction layout;
+- bank concepts.
+
+## Classification
+
+**REFERENCE ONLY.**
+
+Some historical constants/comments are uncertain and the inspected root did not provide a clear modern licensing signal suitable for direct reuse. Any useful fact must be cross-checked against PKSM-Core, PKHeX/public format research and actual fixtures before adoption.
+
+Full notes: `BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`.
+
+---
+
+# 7. PKHeX
+
+Repository: `https://github.com/kwsch/PKHeX`  
 Pinned research commit: `e15d2467b32da7bc26ce7cc8e5c4ede32740e20a`  
 Language: C#  
 License: **GPLv3**
 
-### Role
+## Role
 
-Primary technical correctness/reference implementation for Pokémon structures, save structures, conversion, encounters, forms, locations, moves, Mystery Gifts, legality, and generation-specific behavior.
+Primary technical correctness/reference implementation for:
 
-PokeBank NX already contains Python generator tooling that uses PKHeX source/data as an upstream data source. Continue that pattern where it produces deterministic generated data suitable for the native Switch app.
+- Pokémon structures;
+- save structures;
+- conversions;
+- encounters/forms/locations/moves;
+- Mystery Gifts;
+- legality;
+- generation-specific behavior.
 
-### Classification
+## Classification
 
-**REFERENCE / DATA-GENERATION / HOST-ORACLE.** Do not attempt to port the entire desktop application into the Switch runtime.
+**REFERENCE / DATA-GENERATION / HOST ORACLE.**
 
-### Planned use
+Do not port the desktop application into the Switch runtime. Build `tools/pkhex-oracle/` for machine-readable host comparisons.
 
-Create a host-side `tools/pkhex-oracle/` utility pinned to an exact PKHeX.Core revision. It should provide machine-readable answers and golden test vectors to validate native C++ behavior.
+Planned Oracle operations:
 
-Useful oracle operations:
+```text
+inspect
+legality
+convert
+encounters
+generate
+```
 
-- `legality <pokemon-file>`
-- `inspect <pokemon-file>`
-- `convert <pokemon-file> <target-format>`
-- `encounters <species> <game>`
-- `generate <species> <game> [constraints]`
-
-The Switch app remains native C++ and offline.
+Issue: #5.
 
 ---
 
-## 4. Auto Legality Mod / PKHeX-Plugins
+# 8. Auto Legality / PKHeX-Plugins
 
-Repository: https://github.com/santacrab2/PKHeX-Plugins  
+Repository: `https://github.com/santacrab2/PKHeX-Plugins`  
 Pinned research commit: `90410f2681a0a72680d12280a1e0f14715e67dff`  
 Language: C#  
-License: **MIT** in the pinned repository
+License at pinned repo: **MIT**
 
-### Role
+## Role
 
-Encounter-driven legal Pokémon generation/legalization reference. Useful for future generated collections, encounter selection, trainer/encounter consistency, shiny constraints, and legality-oriented test vectors.
+Encounter-driven generation/legalization reference for host tooling:
 
-### Classification
+- encounter candidates;
+- generation constraints;
+- shiny locks;
+- forms;
+- trainer/encounter consistency;
+- test vectors.
 
-**HOST TOOL / REFERENCE; possible direct host-tool reuse under MIT terms.**
+## Classification
 
-### Planned use
+**HOST TOOL / REFERENCE; possible direct host-tool reuse under reviewed terms.**
 
-Pin AutoMod to a PKHeX.Core revision it supports and compile both into the host-side PKHeX Oracle. Keep this outside the Switch runtime.
-
-High-value future outputs:
-
-- encounter candidates
-- generated legal Pokémon test vectors
-- shiny-lock behavior
-- form constraints
-- origin/encounter constraints
-- generation/conversion comparison vectors
-
-Do not use the tool to forge Pokémon HOME tracker/history data or to make claims of guaranteed online acceptance.
+Never use it to forge HOME tracker/history or to promise guaranteed online acceptance.
 
 ---
 
-## 5. pkHouse
+# 9. pkHouse
 
-Repository: https://github.com/Insektaure/pkHouse  
+Repository: `https://github.com/Insektaure/pkHouse`  
 Pinned research commit: `4e288f4a66acf2e58822ad1bb372a6803d3c46dd`  
 Language: C++ / Nintendo Switch homebrew  
 License: **GPLv2**
 
-### Role
+## Role
 
-High-value modern Nintendo Switch save/bank reference, especially where PokeBank NX needs behavior around current Switch titles rather than historical Pokémon formats.
+High-value modern Switch save/bank behavior reference:
 
-### Author guidance
+- title IDs/save filenames;
+- current Pokémon formats;
+- modern block/container behavior;
+- box/slot sizing;
+- Switch FireRed/LeafGreen identities;
+- Z-A/SV/SwSh/BDSP/PLA/LGPE behavior;
+- Pokédex/handling-trainer/Wondercard-related behavior.
 
-Insektaure has directly encouraged the project to use pkHouse as a reference and recommended **reimplementing needed behavior rather than pure copy/paste**. The author also offered to answer technical questions when implementation details are unclear.
+The author encouraged reimplementation/reference rather than copy-paste and offered technical help, but that is not treated as a broad relicensing grant.
 
-This is useful project guidance, but it is **not recorded here as an explicit AGPLv3 relicensing grant**. Therefore the project policy remains reference/reimplementation.
-
-### Confirmed high-value files/areas
-
-- `include/game_type.h`
-  - title IDs
-  - save filenames
-  - Pokémon file extensions
-  - box/slot sizes
-  - bank grouping
-  - Z-A, SV, SwSh, BDSP, PLA, LGPE and regional Switch FR/LG identities
-- `include/save_file.h` and related save implementation
-  - family-specific save handling
-  - modern block formats
-  - box cache/round-trip behavior
-- `include/pokemon.h` / Pokémon-format helpers
-- `include/bank.h` / bank behavior
-- `include/wondercard.h` / Wondercard behavior
-- Pokédex registration/update logic
-- handling-trainer update logic
-- crypto/block helpers such as `poke_crypto`, `sc_block`, `swish_crypto`
-
-At the pinned commit, `include/game_type.h` explicitly describes Z-A (`pa9`), Scarlet/Violet (`pk9`), Sword/Shield (`pk8`), BDSP (`pb8`), Legends Arceus (`pa8`), LGPE (`pb7`), and multiple regional Switch FireRed/LeafGreen title IDs using `pk3` data.
-
-### Classification
+## Classification
 
 **REFERENCE ONLY.**
 
-### Policy
+Reimplement required behavior inside PokeBank NX interfaces and safety rules. Cross-check important facts with PKHeX/PKSM-Core/device tests.
 
-- Do not paste pkHouse GPLv2 source verbatim into PokeBank NX.
-- Reimplement required behavior within PokeBank NX's interfaces and safety contract.
-- Cross-check important format facts against PKHeX, PKSM-Core, game data, and device/round-trip tests where practical.
-- Preserve notes about which pkHouse commit/file informed a reimplementation.
-- When a difficult detail cannot be resolved confidently, prepare a concise technical question for Insektaure.
-
-### Highest-value research order
-
-1. Legends Z-A
-2. Switch FireRed/LeafGreen outer save/container behavior
-3. Scarlet/Violet SCBlock behavior
-4. Legends Arceus
-5. Sword/Shield
-6. BDSP
-7. LGPE
-8. Pokédex registration
-9. Handling Trainer updates
-10. Wondercards
+Issue: #11.
 
 ---
 
-## 6. pkDex
+# 10. pkDex
 
-Repository: https://github.com/Insektaure/pkDex  
+Repository: `https://github.com/Insektaure/pkDex`  
 Pinned research commit: `c7a1f8debf4e70643464cf939d06f8e167839a15`  
-Language: C++ / Borealis / Nintendo Switch homebrew  
+Language: C++ / Switch homebrew  
 License: **GPLv2**
 
-### Role
+## Role
 
-Pokédex UX, regional organization, controller interaction, and display-data reference.
+Pokédex UX/regional organization/display-data reference:
 
-The pinned project supports region/game datasets including Kanto, FireRed/LeafGreen, Galar/DLC, Sinnoh/BDSP, Legends Arceus, Paldea/DLC, and Legends Z-A. It includes normal/shiny tracking, Alpha/Shiny Alpha where applicable, bulk actions, multi-select, evolution/location/version information, and normal/shiny imagery.
+- normal/shiny collection views;
+- Alpha/Shiny Alpha ideas;
+- multi-select/bulk UX;
+- evolution/location/version information;
+- regional/DLC organization.
 
-### Useful areas
-
-- `resources/data/*.json` — region/DLC organization and display-data shape
-- `app/src/tab/recycling_list_tab.cpp` — controller-oriented list, multi-select, and bulk-action concepts
-- data-loading layer under `app/src/data/`
-- detail views under `app/src/view/`
-- localization structure under `resources/i18n/`
-
-### Classification
+## Classification
 
 **REFERENCE ONLY.**
 
-### PokeBank NX difference
+PokeBank NX difference: the **Master Vault is authoritative**. Pokédex state must be derived from Vault entities rather than a separate manual ownership database.
 
-PokeBank NX should not maintain a separate manual tracker as the authority for collection ownership. The **Master Vault is authoritative**. Pokédex views should derive owned/shiny/form/Alpha/event completion from indexed Vault entities.
-
-Use pkDex for UX/organization inspiration and as a secondary data cross-check, not as the technical legality/source-of-truth database.
+Issue: #7.
 
 ---
 
-## 7. PKForge
+# 11. PKForge
 
-Repository: https://github.com/sofianeelhor/PKForge  
+Repository: `https://github.com/sofianeelhor/PKForge`  
 Pinned research commit: `ded13d9cfb75f94df7c2d88b4621866cfd55e499`  
 Language: C# / .NET MAUI  
 License: **GPLv3**
 
-### Role
+## Role
 
-Architecture/reference for safe local Pokémon storage and save editing. Its application code is not Switch-native, but its separation of domain/engine/infrastructure/UI concerns is useful for PokeBank NX.
+Architecture reference for safe local Pokémon storage and save editing:
 
-### High-value concepts
+- immutable raw entities;
+- stable entity IDs;
+- SHA-256 identity;
+- display metadata as rebuildable cache;
+- provenance history;
+- logical boxes/views;
+- schema migrations;
+- backup/stage/validate/atomic-replace ideas;
+- engine adapter boundaries.
 
-- immutable raw Pokémon entities
-- stable internal entity IDs
-- SHA-256 identity/fingerprints
-- display metadata as a cache rather than authority
-- provenance sidecars/history
-- logical/unlimited boxes over persistent entities
-- schema versions and migrations
-- backup-before-write
-- stage/validate/atomic replace
-- engine adapter separating UI/domain code from PKHeX churn
-- pinned PKHeX.Core + AutoMod integration
-
-### Classification
+## Classification
 
 **ARCHITECTURE REFERENCE / SELECTIVE PORT OF IDEAS.**
 
-Do not copy the MAUI application structure wholesale. Adapt the invariants to native C++, bounded Switch memory, SD-card filesystems, controller UI, and PokeBank NX provenance requirements.
+Adapt invariants to native C++, Switch memory limits, SD storage and controller UI rather than copying MAUI architecture wholesale.
 
 ---
 
@@ -296,19 +402,28 @@ Do not copy the MAUI application structure wholesale. Adapt the invariants to na
 
 ```text
 PKSE
-  = existing native Switch application foundation
+  = inherited native Switch shell/save foundation
 
 PKSM-Core
   = first native C++ candidate for historical Pokémon/save formats
 
-PKHeX
-  = primary correctness oracle and generated-data source
+PKSM + Pokémon Chest
+  = mature integration/bank/defensive parser examples around PKSM-Core
 
-Auto Legality Mod
+PHBank
+  = Game↔Bank transfer UX reference
+
+PHBankGBC
+  = secondary Gen I/II historical cross-check only
+
+PKHeX
+  = primary correctness oracle/reference
+
+Auto Legality
   = encounter-driven generation/legalization reference for host tooling
 
 pkHouse
-  = modern Switch save behavior/research reference
+  = modern Switch save behavior reference
 
 pkDex
   = Pokédex UX/organization reference
@@ -317,53 +432,56 @@ PKForge
   = Vault/provenance/transaction architecture reference
 
 PokeBank NX
-  = safe integration layer + Vault + provenance + banks + controller UX
+  = safe integration layer + Master Vault + provenance + Banks + controller UX
 ```
+
+---
 
 # Mandatory comparison rule
 
-For every format integrated or substantially changed, build a corpus and compare the same sample among as many of these as applicable:
+For each format integrated/substantially changed, compare the same fixture among as many relevant engines as practical:
 
-- PokeBank NX
-- PKHeX
-- PKSM-Core
-- pkHouse (reference comparison where relevant)
+```text
+PokeBank NX
+PKHeX
+PKSM-Core
+pkHouse where relevant
+```
 
 Compare at minimum:
 
-- species
-- form
-- PID
-- encryption constant where applicable
-- IVs / EVs
-- nature
-- ability
-- gender
-- shiny state
-- moves
-- Ball
-- OT
-- TID / SID
-- met/origin data
-- checksum/encryption validity
-- serialized size/format
-- conversion output
+- species/form;
+- PID/encryption constant where applicable;
+- IVs/EVs;
+- nature/ability/gender/shiny state;
+- moves/Ball/item;
+- OT/TID/SID;
+- met/origin data;
+- checksum/encryption validity;
+- serialized size/format;
+- conversion output.
 
-For saves, test:
+For saves:
 
 ```text
 load → no modification → serialize → reparse → compare
 ```
 
-Where the save format permits it, untouched saves should remain byte-identical. Any intentional normalization must be documented and tested rather than silently accepted.
+Where a format permits true byte identity, untouched saves should remain byte-identical. Any normalization must be explicit and tested.
 
-# Next audit tasks
+---
 
-- [ ] Build a concrete PKSM-Core integration spike for `PK3` + `Sav3` without live writes.
-- [ ] Map PKSM-Core dependencies and Switch build cost.
-- [ ] Design/build the PKHeX Oracle.
-- [ ] Build shared golden Pokémon vectors for PK3 and a modern Switch format.
-- [ ] Document Switch FR/LG container findings from pkHouse and independent tests.
-- [ ] Document Z-A save/block findings from pkHouse + PKHeX/reference data.
-- [ ] Convert the useful pkDex UX ideas into the PokeBank NX Pokédex spec.
-- [ ] Keep all direct-reuse attribution/license decisions explicit in commits and documentation.
+# Next research/integration tasks
+
+- [ ] Execute #23/#24 and complete the second physical device gate first.
+- [ ] PKSM-Core `PK3` + `Sav3` spike (#4).
+- [ ] During #4, compare PKSM and Pokémon Chest integration patterns.
+- [ ] Build golden fixtures (#17).
+- [ ] Build PKHeX Oracle (#5).
+- [ ] Use PKSM BankFile corruption/migration failure classes when Vault parser/storage tests are built.
+- [ ] Consider optional PKSMBANK importer after Vault v1.
+- [ ] Translate PHBank/Chest dual-source ideas into a PokeBank NX Transfer Workspace after Vault exists.
+- [ ] Use PHBankGBC only as a secondary Gen I/II cross-check.
+- [ ] Keep all direct-reuse license/attribution decisions explicit in commits/docs.
+
+Full product sequencing: `docs/V1_ROADMAP.md` / issue #29.

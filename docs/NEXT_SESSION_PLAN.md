@@ -1,16 +1,21 @@
 # PokeBank NX — Next Session Plan
 
 Last updated: 2026-09-02  
-Status: ACTIVE EXECUTION PLAN
+Status: **ACTIVE EXECUTION PLAN**
 
-`PROJECT_STATUS.md` is authoritative.
+`PROJECT_STATUS.md` is authoritative for verified state.  
+`docs/V1_ROADMAP.md` / issue #29 describe the full road to v1.0.  
+`docs/GAME_SUPPORT_MATRIX.md` tracks the 23 current identities and the expanded 44-target catalog.  
+This file describes what to do **next**, not every future feature.
 
-## Current position
+---
 
-Completed:
+# Current position
+
+Completed milestones:
 
 ```text
-#2  Controller-first Pokemon Action Sheet
+#2  Controller-first Pokémon Action Sheet
 #8  First exact physical PokeBank NX .nro test
 ```
 
@@ -23,31 +28,16 @@ SHA-256: df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
 Result: DEVICE TESTED — PARTIAL PASS / KNOWN FAILURES
 ```
 
-Initial short test exposed:
-
-```text
-LEFT STICK + HOLD          FAIL
-VISIBLE POKEBANK NX UI    FAIL / INCOMPLETE
-```
-
-Session 2.5 then produced/pushed:
+Session 2.5 useful app-source checkpoint:
 
 ```text
 361c6f551496470db305948d702944c6ed9889c1
 ui: add visible PokeBank shell and physical stick input
 ```
 
-GitHub host CI passed on that source.
+That source is **NOT DEVICE TESTED**.
 
-A later extended hardware pass on the **old `3be4de6b` binary** clarified additional blockers.
-
-Permanent report:
-
-```text
-docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
-```
-
-New facts:
+Extended old-build hardware findings:
 
 ```text
 LEFT STICK SINGLE TAP      FAIL — no input/action
@@ -60,13 +50,17 @@ APP STORAGE PERSISTENCE    PHYSICALLY OBSERVED
 LIVE INSTALLED SAVE WRITE  NOT PROVEN
 ```
 
-Because of these findings, the old packaging-only continuation is no longer the correct primary next step.
+Permanent report:
+
+```text
+docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
+```
 
 ---
 
-# Block A — HIGH — safety/crash blocker session
+# Block A — HIGH — Session 2.6 safety/crash finish
 
-Use:
+Execute exactly:
 
 ```text
 docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md
@@ -75,134 +69,83 @@ docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md
 Primary issues:
 
 ```text
-#23  audit/block inherited mutation UI before second device build
-#24  old/malformed Legends Arceus save crash
-#19  preserve and retest full Left Stick navigation fix
-#13  preserve visible PokeBank NX shell
-#16  preserve current visible branding/NRO identity work
+#23 mutation-path safety audit
+#24 old/malformed PLA crash
+#19 preserve/retest Left Stick source fix
+#13 preserve/retest visible PokeBank NX shell
+#16 preserve visible identity/NRO work
 ```
 
-Supporting findings:
+Do not begin later roadmap work during this session.
+
+Explicit later/out-of-scope items now include:
 
 ```text
-#25  Pokémon visual/model Summary idea — later
-#26  normalize controller semantics — later except safety-relevant shortcuts
-#27  legacy Storage vs future Master Vault/Banks — classify now, redesign later
+#30 DS/3DS identities
+#31 Nintendo DS Gen IV/V adapters
+#32 Nintendo 3DS Gen VI/VII adapters
+#33 Colosseum/XD GameCube support
+#34 Stadium 1/2 N64 support
 ```
 
-## Required safety audit
-
-Trace these user-reachable paths to their final persistence targets:
+## Session 2.6 success condition
 
 ```text
-Release
-Create Pokémon
-Move / Multi
-Edit/apply/save
-unsaved-changes prompt
-legacy/app Storage move/import
-any reachable Save / Commit / Restore / Inject path
+mutation paths classified
+unsafe installed-source mutation UI blocked
+PLA defensive failure path hardened
+Session 2.5 UI/analog work preserved
+host tests PASS
+ASan/UBSan PASS
+git diff --check PASS
+native .nro BUILDS
+new exact application source frozen if code changed
+replacement .nro filename/size/SHA-256 recorded
+artifact preserved/provided
+second-device checklist populated with exact artifact identity
 ```
 
-Classify each as:
+Then stop at:
 
 ```text
-LIVE INSTALLED SAVE WRITE
-BACKUP/STAGED SAVE WRITE
-APP-OWNED STORAGE WRITE
-IN-MEMORY ONLY
-DISABLED / UNREACHABLE
-UNKNOWN — NEEDS BLOCKING
+READY FOR SECOND DEVICE TEST
+NOT DEVICE TESTED
 ```
-
-Do not rely on UI wording.
-
-Current alpha behavior for installed-game sources must remain read-only at the user-facing level. Unsafe Release/Create/Move/Edit/save paths must not remain reachable merely because a lower-level write lock probably rejects the final write.
-
-## Required PLA crash behavior
-
-```text
-valid supported PLA save           opens
-old/unsupported/malformed save     useful error / safe return
-parser failure                     never crashes the app
-failing save                       never auto-written/repaired
-```
-
-If the exact old save is not available in the coding runtime, make source-grounded defensive fixes/tests only and keep #24 OPEN for physical retest.
-
-## Preserve Session 2.5 work
-
-Do not redo the visible shell/analog work from scratch.
-
-Preserve:
-
-```text
-real libnx Left Stick position handling
-deadzone/hysteresis
-single-tap + held repeat path
-diagonal stability
-PokeBank NX header/chrome/cards
-Options / Help styling
-Action Sheet styling
-NRO/window PokeBank NX identity
-OLED / Dark / Light themes
-```
-
-## Application source rule
-
-Because #23/#24 may require source changes, `361c6f55...` is no longer automatically the final second-device artifact source.
-
-If source changes:
-
-```text
-implement coherent blocker fix
-→ host test
-→ sanitize
-→ diff check
-→ native build
-→ COMMIT APPLICATION SOURCE
-→ push/verify remote SHA
-→ clean rebuild from exact new SHA
-→ hash/preserve .nro
-```
-
-Never modify source and still label the binary as `361c6f55`.
 
 ---
 
 # Block B — second physical Switch test
 
-The new replacement artifact should test:
+Use:
 
 ```text
-BOOT                                      PASS
-D-PAD                                     PASS
-LEFT STICK SINGLE TAP                     PASS
-LEFT STICK HELD REPEAT                    PASS
-LEFT STICK DIAGONAL                       PASS
-A/B ACTION SHEET                          PASS
-NO RELEASE ON INSTALLED SOURCE            PASS
-NO CREATE ON INSTALLED SOURCE             PASS
-NO UNSAFE MOVE/MULTI ON INSTALLED SOURCE  PASS
-EDIT CANNOT WRITE INSTALLED SOURCE        PASS
-OLD PLA SAVE                              OPEN OR GRACEFUL ERROR / NO CRASH
-OLED BLACK / DARK / LIGHT                 PASS
-THEME PERSISTENCE                         PASS
-PARTY / BOXES / STORAGE                   PASS
-VISIBLY POKEBANK NX                       PASS
-OBVIOUS PKSE BRANDING REMOVED             PASS
-NO NEW CRASHES                            PASS
+docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md
 ```
 
-Only physically exercised behavior on the exact replacement hash becomes device evidence.
+Critical acceptance areas:
 
-If a device-only regression remains, do the smallest coherent HIGH fix/build/retest loop.
+```text
+BOOT
+visible PokeBank NX identity
+no obvious PKSE top-level branding
+D-pad regression
+Left Stick single tap / hold / diagonal
+Action Sheet regression
+no installed-source Release/Create/unsafe Move/Edit commit
+old PLA save opens or fails gracefully / no crash
+OLED Black / Dark / Light
+Theme persistence
+Party / Boxes / Storage
+no new crashes
+```
+
+Only the exact artifact physically run by the user receives device evidence.
 
 ---
 
 # Block C — MAX — PKSM-Core Gen III spike
 
-Start only after the replacement safety/input/UI build is stable enough on hardware.
+Start only after device gate #2 is stable enough.
 
 Use:
 
@@ -218,69 +161,103 @@ Sav3
 FireRed / LeafGreen GBA
 read-only parsing
 party / box extraction
-active save-slot / sector behavior
+active save slot/sectors
 PK3 encrypt/decrypt/checksum behavior
-untouched round-trip strategy
 adapter/dependency decision
 ```
 
-Issue #17 supports reproducible fixtures. Do not let fixture perfection block the first useful integration decision.
+Compare:
+
+```text
+PKSM-Core
+FlagBrew/PKSM
+Universal-Team/pkmn-chest
+PKHeX
+```
 
 No live writes.
 
 ---
 
-# Core product order after PKSM-Core
+# Platform/source order after the Gen III foundation
+
+Detailed dependencies live in `docs/V1_ROADMAP.md`. Current preferred source expansion order:
 
 ```text
-#3  Master Vault v1 + named Banks
-#9  Professional Summary + provenance
-#6  RetroArch discovery + read-only Gen I-III adapters
-#11 Modern Switch adapter validation
-#5  PKHeX Oracle
-#7  Vault-driven Pokedex / Living Dex
-#10 Conversion / transfer without live writes
-#20 True Move semantics after verified safe-write adapters
+Gen III GBA production reads
+        ↓
+Master Vault + Banks foundation
+        ↓
+Pokémon Colosseum / XD GameCube (#33)
+        ↓
+Gen I / II + RetroArch (#6)
+        ↓
+Pokémon Stadium 1 / 2 (#34, stretch if cheap enough)
+        ↓
+Nintendo DS Gen IV / V (#31)
+        ↓
+Nintendo 3DS Gen VI / VII (#32)
+        ↓
+modern Switch family validation (#11)
 ```
 
-Supporting/later:
+Catalog/source identities for DS/3DS are tracked by #30.
 
-```text
-#15 persistent .nro artifact automation
-#16 final branding/startup/icon/NACP
-#17 golden fixture corpus
-#21 NRO reliability/diagnostics/performance/QoL
-#25 Pokémon Summary visual/model support
-#26 controller normalization
-#27 legacy Storage migration/clarification
-```
+Why GameCube relatively early: Colosseum/XD are Gen III sources and can reuse the Gen III entity/Vault foundation. PKHeX already provides strong correctness references for their save and GameCube memory-card containers.
+
+Why Stadium later: it becomes much cheaper conceptually after the Gen I/II entity engine exists. It is useful but may slip post-v1 rather than block the core release.
 
 ---
 
-# Transfer semantics going forward
-
-Product behavior remains:
+# Product sequence after broad read support
 
 ```text
-COPY  = source stays active; destination representation is created
-MOVE  = destination becomes active; source stops being active after verification
-CLONE = deliberate duplicate with clone provenance
+Summary/provenance + Pokémon visuals
+        ↓
+golden corpus + PKHeX Oracle
+        ↓
+conversion/staged transfer
+        ↓
+Vault-driven Pokédex / Living Dex
+        ↓
+legality-aware edit / generation / events
+        ↓
+generic staged-save write framework
+        ↓
+first individually approved live-write adapter
+        ↓
+additional per-game adapters
+        ↓
+true Move
+        ↓
+release hardening / RC / v1.0
 ```
 
-Current alpha does not authorize true Move/live installed-save writes.
-
-True Move is **later**, not now. It requires per-adapter backup, stage, checksum/container repair, reparse, write, readback, verification, rollback, and physical hardware gates.
-
-See:
-
-```text
-docs/TRANSFER_MODEL.md
-GitHub issue #20
-```
+Future Transfer Workspace UX may use PHBank/Pokémon Chest patterns for one/multi/whole-box Game↔Vault operations.
 
 ---
 
-# NRO quality / polish plan
+# Expanded target catalog summary
+
+```text
+CURRENT IDENTITY TESTED: 23
+
+PLANNED CORE:
+Nintendo DS     +9
+Nintendo 3DS    +8
+GameCube        +2  Colosseum / XD
+
+PLANNED STRETCH:
+Nintendo 64     +2  Stadium / Stadium 2
+
+TOTAL TARGET: 44
+```
+
+Do not call planned identities implemented until #30/#33/#34 source work and host tests exist.
+
+---
+
+# NRO quality work
 
 Detailed backlog:
 
@@ -289,26 +266,7 @@ docs/NRO_QUALITY_ROADMAP.md
 GitHub issue #21
 ```
 
-High-value items include:
-
-```text
-Diagnostics + diagnostic export
-Applet/constrained-memory warning
-privacy-safe error logs
-real startup stages
-READ ONLY / Vault / staged / active-location badges
-Vault recovery + storage health
-search/filter
-Quick Jump
-Favorites
-recent items
-text sizing
-Reduced Motion
-optional original sounds/rumble
-virtualized large grids
-bounded artwork caches
-intentional missing-resource fallback
-```
+Pull diagnostics, logs, memory handling, search, Quick Jump, Favorites, recovery, virtualization, bounded caches and accessibility into dependent milestones incrementally.
 
 Recommended balance after the second-device milestone:
 
@@ -320,19 +278,20 @@ Recommended balance after the second-device milestone:
 
 ---
 
-# Do not do prematurely
-
-Do not begin these during the current blocker session:
+# Do not do prematurely in Session 2.6
 
 ```text
 PKSM-Core
 Master Vault
-full Pokedex
+DS/3DS adapters
+GameCube adapter
+Stadium adapter
+full Pokédex
 full legality engine
 true Move/live writes
-Pokemon 3D/model work
+Pokémon 3D/model work
 all generations at once
 another large UI redesign
 ```
 
-Finish the safety/crash blocker source, build an exact replacement artifact, and physically test it first.
+Finish the safety/crash blocker source, produce the exact replacement artifact, and physically test it first.
