@@ -68,7 +68,7 @@ EXACTLY.
 Start working immediately after the recovery/read phase.
 Do not ask me to repeat project history that is already in the repository.
 Do not redo the external-project research unless an actual blocker cannot be solved from the recorded references.
-Do not start Master Vault, PKSM-Core integration, DS/3DS adapters, Colosseum/XD, Stadium, true Move, full 3D/model work, or event-system work in this session.
+Do not start Master Vault, PKSM-Core integration, DS/3DS adapters, Colosseum/XD, Stadium, true Move, full 3D/model work, event-system work, Android development, PokeBank NX Link/USB-C transfer, LAN sync, or any other post-v1/#39 work in this session.
 
 Mission for this session:
 
