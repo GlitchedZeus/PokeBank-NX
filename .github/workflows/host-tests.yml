@@ -24,9 +24,15 @@ jobs:
         run: |
           g++ --version
           make --version
+          python3 --version
 
       - name: Check whitespace
         run: git diff --check HEAD^ HEAD || git diff --check
+
+      - name: Syntax-check device build tools
+        run: |
+          python3 -m py_compile tools/check_device_assets.py
+          python3 -m py_compile tools/package_device_build.py
 
       - name: Clean host build
         run: make -f Makefile.host host-clean

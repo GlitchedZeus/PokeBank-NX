@@ -1,6 +1,6 @@
 # PokeBank NX — Build / Artifact Record
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
 
 This file distinguishes application source checkpoints, documentation commits, build artifacts, and physical hardware results.
 
@@ -75,6 +75,7 @@ Device tested: YES
 Device result: PARTIAL PASS / KNOWN FAILURES
 First report: docs/DEVICE_TEST_REPORT_2026-09-01.md
 Extended report: docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
+Follow-up report: docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md
 ```
 
 ### Original shorter physical pass
@@ -100,32 +101,87 @@ CRASHES                  NONE DURING SHORTER PASS
 VISIBLE POKEBANK NX UI   FAIL / INCOMPLETE
 ```
 
-### Extended hardware pass on the same exact artifact
+### Extended + Sep 3 follow-up hardware evidence on same exact artifact
 
 ```text
 5 MIN IDLE                        PASS
 10 MIN NORMAL BROWSING            PASS
 5 RELAUNCHES                      PASS
-ACTION SHEET HEAVY OPEN/CLOSE     PASS
+ACTION SHEET HEAVY OPEN/CLOSE     PASS (~100 opens/closes)
 HELD D-PAD                        PASS
 LEFT STICK SINGLE TAP             FAIL — no input/action
 LEFT STICK HOLD                   FAIL — no input/action
 LEFT STICK DIAGONAL               FAIL — no input/action
+HOME / RESUME                     PASS
+SLEEP / WAKE                      PASS
+CONTROLLER RECONNECT              PASS
+HANDHELD                          PASS
+DOCKED                            NOT TESTED
 ONE OLD LEGENDS ARCEUS SAVE       REPRODUCIBLE CRASH
 USER-REACHABLE MUTATION UI        PRESENT
 APP/LEGACY STORAGE PERSISTENCE    PRESENT
-LIVE INSTALLED SAVE WRITE         NOT PROVEN
+CROSS-GAME STORAGE VISIBILITY     PRESENT
+ORIGINAL INSTALLED SAVE CHANGED   NO — tester-reported in exercised flow
+LIVE INSTALLED SAVE WRITE         NOT OBSERVED
+```
+
+### Arbok / Storage transfer clarification
+
+Exact tester-reported sequence:
+
+```text
+installed Z-A source
+    ↓ automatic backup
+open Z-A BACKUP representation
+    ↓
+move Arbok into inherited app Storage
+    ↓
+return to main menu
+    ↓
+open another supported game's backup/session
+    ↓
+open Storage
+    ↓
+Arbok persists
+```
+
+Interpretation:
+
+```text
+INSTALLED TITLE             unchanged in exercised physical check
+BACKUP REPRESENTATION       mutable
+LEGACY STORAGE              app-owned persistent PKSEBANK/bank.dat
+OTHER GAME BACKUP           potential compatible destination
+MASTER VAULT                not implemented
+TRUE MOVE                   not implemented
+```
+
+The Arbok event is therefore a persistent backup-side copy/import into legacy Storage, not a live installed-save write and not product-level true Move.
+
+The old foundation does demonstrate useful cross-game intermediate-bank UX for future PokeBank NX Transfer Workspace design.
+
+### Additional Sep 3 physical observations
+
+```text
+sampled View data       PASS for Bulbasaur / Alolan Meowth / Mewtwo / Mew
+Pokemon visual in View  MISSING in this artifact
+theme torture           PASS
+theme persistence       PASS after restart/sleep
+bottom hint contrast    needs improvement in OLED/Dark
+Dark theme              tester suggests slightly darker
+Light theme             liked as-is
 ```
 
 Important interpretation:
 
 - **DEVICE TESTED** means the exact binary was physically run.
 - It does not mean every tested capability passed.
-- The Left Stick failure is broader than the first short report; issue #19 now tracks no analog navigation at all on this artifact.
+- The Left Stick failure is broader than the first short report; issue #19 tracks no analog navigation at all on this artifact.
 - One older Legends Arceus save reproducibly crashes; issue #24.
-- Extended testing physically reached inherited Release/Create/Move/Multi/Edit/apply-style actions; issue #23 requires source-level persistence classification and blocking before a second device handoff.
-- Legacy/app Storage is physically writable/persistent and is not automatically the future Master Vault; issue #27.
-- The extended checklist did not finish the external original-game save verification, so a live installed-save write regression is **not proven** from this test alone.
+- Hardware reached inherited Release/Create/Move/Multi/Edit/apply-style actions; issue #23 requires clear installed-vs-backup UI behavior even though the low-level live-write hard lock appears intact.
+- Legacy/app Storage is physically writable/persistent and is not the future Master Vault; issue #27.
+- Sep 3 tester feedback supports that the installed Z-A source remained unchanged in the exercised Storage flow.
+- Missing View artwork is likely related to generated gitignored RomFS resources; #25/#37 track visual presentation and device asset gating.
 
 Later Session 2 build/status documentation commit:
 
@@ -166,15 +222,16 @@ NRO/window identity changed to PokeBank NX
 
 The interrupted Session 2.5 run reported host tests, sanitizers, and a native integration build passing before the source checkpoint.
 
-Originally this checkpoint was waiting only for a clean exact-source rebuild and artifact hash. The extended first-device test changed the gate.
+Originally this checkpoint was waiting only for a clean exact-source rebuild and artifact hash. First-build hardware testing changed the gate.
 
 Before a second artifact is handed over, the next session must:
 
 ```text
-#23 trace/classify/block inherited installed-source mutation paths
+#23 verify/classify mutation paths + block ambiguous installed-source mutation UI
 #24 harden the PLA old/malformed-save crash path
 preserve #19 analog source fix
 preserve #13/#16 visible PokeBank NX shell/identity
+#37 ensure required generated visual assets are present
 ```
 
 Therefore current truth is:
@@ -207,21 +264,30 @@ Current blockers/follow-up:
 ```text
 #13  OPEN — visible shell source published; second visual acceptance pending
 #19  OPEN — full Left Stick source fix pending physical test
-#23  OPEN — inherited mutation UI safety audit; second-device blocker
+#23  OPEN — inherited mutation UI safety/UI contract; second-device blocker
 #24  OPEN — old/malformed PLA crash; second-device blocker
 #16  OPEN — visible identity improved; full startup/icon/NACP remains
 #25  OPEN — Pokémon visual Summary/View later
 #26  OPEN — controller normalization later
-#27  OPEN — legacy Storage vs Master Vault clarification
+#27  OPEN — legacy Storage vs Master Vault migration/clarification
+#35  OPEN — Pokémon cry feature later
+#37  OPEN — device build visual asset gate
 ```
 
 ---
 
-## Artifact preservation issue
+## Device artifact tooling
 
-Issue #15 tracks durable `.nro` preservation through GitHub Actions or prerelease artifacts.
+Added before the second artifact:
 
-Preferred future flow:
+```text
+tools/check_device_assets.py
+tools/package_device_build.py
+docs/DEVICE_BUILD_ASSET_GATE.md
+docs/DEVICE_ARTIFACT_PACKAGING.md
+```
+
+Preferred future device artifact flow:
 
 ```text
 application source commit
@@ -229,6 +295,10 @@ application source commit
 host tests + sanitizers
         ↓
 native .nro build
+        ↓
+asset preflight
+        ↓
+exact-source package helper
         ↓
 metadata manifest / hashes
         ↓
@@ -256,6 +326,7 @@ Host test result:
 Sanitizer result:
 git diff --check result:
 Native build result:
+Device asset preflight:
 Artifact filename:
 Artifact size:
 Artifact SHA-256:

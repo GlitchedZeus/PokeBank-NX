@@ -2,6 +2,7 @@
 /build/
 /build-host/
 /build-deps/
+/dist-device/
 /*.elf
 /*.nro
 /*.nsp

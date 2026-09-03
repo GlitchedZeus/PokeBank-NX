@@ -12,7 +12,7 @@ The project started from the PKSE codebase, but the goal is broader: one control
 
 ---
 
-# Current status — September 2, 2026
+# Current status — September 3, 2026
 
 Development branch:
 
@@ -30,7 +30,7 @@ PKSE remains **upstream only**. PokeBank NX changes must never be pushed to the 
 
 ## First physical Switch milestone — COMPLETE
 
-The first exact recorded PokeBank NX `.nro` has been physically run on Nintendo Switch hardware.
+The first exact recorded PokeBank NX `.nro` has been physically run and stress-tested on Nintendo Switch hardware.
 
 ```text
 Application source:
@@ -49,75 +49,105 @@ Result:
 DEVICE TESTED — PARTIAL PASS / KNOWN FAILURES
 ```
 
-Short physical matrix:
+Current first-artifact hardware summary:
 
 | Area | Result |
 |---|---|
-| Boot | **PASS** |
-| D-pad navigation | **PASS** |
-| Left Stick | **FAIL** |
+| Boot / relaunch | **PASS** |
+| D-pad navigation + held repeat | **PASS** |
+| Left Stick | **FAIL — no input at all** |
 | A → Pokémon Action Sheet | **PASS** |
+| Heavy Action Sheet repetition | **PASS** |
 | B / Cancel | **PASS** |
-| L / R | **PASS** in exercised context |
-| ZL / ZR | **PASS** in exercised context |
 | `+` Options / More | **PASS** |
 | `-` Help / Controls | **PASS** |
 | OLED Black | **PASS** |
 | Dark | **PASS** |
 | Light | **PASS** |
 | Theme persistence | **PASS** |
-| Party | **PASS** |
-| Boxes | **PASS** |
-| Storage | **PASS** |
-| Visible PokeBank NX identity | **FAIL / INCOMPLETE** |
+| HOME → return | **PASS** |
+| Sleep → wake | **PASS** |
+| Controller reconnect | **PASS** |
+| Handheld | **PASS** |
+| Docked | **NOT TESTED** |
+| Party / Boxes / Storage | **PASS WITH CAVEATS** |
+| Sampled View data | **PASS / PARTIAL** |
+| Pokémon visual in View | **MISSING IN THIS ARTIFACT** |
+| One old Legends: Arceus save | **REPRODUCIBLE CRASH** |
+| Visible PokeBank NX identity | **FAIL / INCOMPLETE ON THIS OLD BUILD** |
 
-First report: [`docs/DEVICE_TEST_REPORT_2026-09-01.md`](docs/DEVICE_TEST_REPORT_2026-09-01.md).
+Reports:
 
-Issue **#8 is complete** because the physical-test milestone happened. A device test can still be a partial pass.
+- [`docs/DEVICE_TEST_REPORT_2026-09-01.md`](docs/DEVICE_TEST_REPORT_2026-09-01.md)
+- [`docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md)
+- [`docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md`](docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md)
 
-## Extended first-device torture test
+Issue **#8 is complete** because the first exact physical-test milestone happened. A device test can still be a partial pass.
 
-The same exact `3be4de6b...` binary received a longer hardware pass.
+---
 
-Extended report: [`docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md).
+# Important Sep 3 safety / Storage clarification
 
-New evidence:
-
-```text
-5 minutes idle                     PASS
-10 minutes normal browsing         PASS
-5 repeated relaunches              PASS
-Action Sheet heavy open/close      PASS
-held D-pad                         PASS
-Left Stick single taps             FAIL — no input/action
-Left Stick held                    FAIL — no input/action
-Left Stick diagonal                FAIL — no input/action
-one older Legends Arceus save      REPRODUCIBLE CRASH
-```
-
-The extended test also proved inherited PKSE mutation controls are still user-reachable in game-save views:
+Extended testing physically reached inherited PKSE controls such as:
 
 ```text
 Release
 Create Pokémon
 Menu / Move / Multi
 editable Pokémon view
-apply/save-style change flow
+apply/save-style backup changes
 ```
 
-Inherited/app `Storage` is writable/persistent on hardware.
-
-Important evidence boundary:
+The user also tested inherited app Storage with an Arbok. The exact observed sequence was:
 
 ```text
-LIVE INSTALLED SAVE WRITE: NOT PROVEN
-USER-REACHABLE MUTATION UI: PROVEN
-APP STORAGE PERSISTENCE: PROVEN
+installed Pokémon Legends: Z-A source
+        ↓ automatic backup
+open Z-A BACKUP representation
+        ↓
+move Arbok from backup into inherited Storage
+        ↓
+return to PokeBank NX main menu
+        ↓
+open another supported game's backup/session
+        ↓
+open Storage
+        ↓
+Arbok is still present
 ```
 
-The final external verification of launching the original Pokémon title and proving whether its installed save changed was not completed, so the project does **not** claim a confirmed live-save write regression. The mutation paths are still a blocker because current-alpha installed-game browsing is supposed to be read-only at the user-facing level.
+The tester reports the **original installed Z-A save remained unchanged** during the exercised flow.
 
-Tracked by **#23**. The old Legends Arceus crash is tracked by **#24**.
+So the physically demonstrated transfer shape is:
+
+```text
+INSTALLED GAME — read / backup only
+        ↓
+MUTABLE BACKUP REPRESENTATION
+        ↓
+APP-OWNED LEGACY STORAGE (`PKSEBANK` / `bank.dat`)
+        ↓
+OTHER GAME'S LOADED BACKUP REPRESENTATION
+```
+
+Current evidence:
+
+```text
+LIVE INSTALLED SAVE WRITE OBSERVED:      NO
+ORIGINAL INSTALLED SAVE CHANGED:         NO — tester-reported in exercised flow
+USER-REACHABLE MUTATION UI:              YES
+BACKUP/IN-MEMORY MUTATION:               YES
+APP STORAGE PERSISTENCE:                 YES
+CROSS-GAME STORAGE VISIBILITY:           YES
+MASTER VAULT IMPLEMENTED:                NO
+TRUE MOVE IMPLEMENTED:                   NO
+```
+
+The Arbok event is best described as a **persistent copy/import into app-owned legacy Storage from a mutable backup representation**. It is not a destructive live-save move and not the future Master Vault.
+
+This is actually a useful proof-of-concept for future Game ↔ Vault transfer UX, but the inherited Storage architecture will not automatically become the authoritative Vault.
+
+Tracked by **#23** and **#27**. Future true Move is **#20**.
 
 ---
 
@@ -146,9 +176,9 @@ matching Action Sheet styling
 PokeBank NX NRO/window identity
 ```
 
-This source has **not** been physically tested.
+This source is **NOT DEVICE TESTED**.
 
-The extended first-device findings changed the handoff plan. We no longer simply package `361c6f55...`: the next coding session must preserve that UI/input work while first auditing the mutation paths and hardening the PLA crash path. If application code changes, the replacement `.nro` must be tied to a **new exact application-source SHA**.
+The next coding session must preserve that work while fixing the safety/UI and PLA blockers. If application code changes, the replacement `.nro` must be tied to a **new exact application-source SHA**.
 
 Current HIGH prompt:
 
@@ -156,69 +186,52 @@ Current HIGH prompt:
 
 ---
 
-# Verification vocabulary
-
-PokeBank NX deliberately separates:
-
-```text
-IMPLEMENTED
-HOST TESTED
-NRO BUILDS
-DEVICE TESTED
-```
-
-Physical results are recorded as:
-
-```text
-DEVICE TESTED — PASS
-DEVICE TESTED — PARTIAL PASS
-DEVICE TESTED — FAIL
-```
-
-A source commit, CI pass, remembered filename, or buildable `.nro` is never automatically device-tested.
-
----
-
 # Current blockers before device test #2
 
-## #23 — inherited mutation UI safety audit
+## #23 — installed-source safety / UI contract
 
-Trace these paths to their final persistence target:
+A source-level audit already found that inherited Release/Create/Move/Edit operate on the loaded in-memory/backup representation, normal Save Changes targets backup destinations, legacy Storage is app-owned, and the low-level live-title restore path is hard-blocked before mounting the installed save while live writes are disabled.
 
-```text
-Release
-Create Pokémon
-Move / Multi
-Edit / apply / save
-unsaved-changes flow
-legacy/app Storage move/import
-reachable Save / Commit / Restore / Inject paths
-```
+The remaining problem is **user-facing ambiguity**.
 
-Classify each as:
+The replacement build must make these states clear:
 
 ```text
-LIVE INSTALLED SAVE WRITE
-BACKUP/STAGED SAVE WRITE
-APP-OWNED STORAGE WRITE
-IN-MEMORY ONLY
-DISABLED / UNREACHABLE
-UNKNOWN — NEEDS BLOCKING
+INSTALLED SOURCE — READ ONLY
+BACKUP / STAGED COPY — MUTABLE ONLY WHEN EXPLICIT
+LEGACY STORAGE — APP-OWNED COMPATIBILITY STORAGE
+MASTER VAULT — FUTURE AUTHORITATIVE STORAGE
+LIVE GAME WRITE — LATER / PER-ADAPTER SAFETY GATE
 ```
 
-Unsafe installed-source mutations must not remain reachable merely because a lower-level guard may reject the final write.
+Unsafe installed-source Release/Create/Move/Edit shortcuts must not remain exposed simply because a lower-level write guard would eventually stop the final live write.
+
+Static audit: [`docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md`](docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md).
 
 ## #24 — old / malformed Legends Arceus crash
 
-Valid supported PLA saves should open. Old, malformed, unsupported, truncated, or unexpected saves must return a useful read-only error and safe navigation instead of crashing or being silently repaired/written.
+One older PLA save reproducibly crashes the first artifact.
+
+Valid supported saves should open. Old, malformed, unsupported, truncated, or unexpected saves must return a useful read-only error and safe navigation instead of crashing or being silently repaired/written.
 
 ## #19 — Left Stick navigation
 
-The first hardware build receives **no Left Stick navigation input at all**. `361c6f55...` contains the reported real-libnx fix, but physical single-tap, held-repeat and diagonal testing is still required.
+The first hardware build receives **no Left Stick navigation input at all**. `361c6f55...` contains the reported real-libnx replacement path, but physical single-tap, held-repeat and diagonal testing is still required.
 
 ## #13 / #16 — visible PokeBank NX identity
 
 The replacement build must preserve the PokeBank NX shell/chrome/Options/Help/Action Sheet styling and remove obvious normal-path PKSE product identity.
+
+## #37 — required device visual assets
+
+The inherited source already contains a Pokémon renderer and an offline RomFS sprite pipeline. The first physical artifact showed no Pokémon visual, likely because the generated gitignored sprite assets were not packaged.
+
+Before the replacement device build, the asset generator/preflight must run.
+
+Docs:
+
+- [`docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md`](docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md)
+- [`docs/DEVICE_BUILD_ASSET_GATE.md`](docs/DEVICE_BUILD_ASSET_GATE.md)
 
 ---
 
@@ -228,13 +241,19 @@ The replacement build must preserve the PokeBank NX shell/chrome/Options/Help/Ac
 
 Installed game saves are currently **read-only sources**.
 
-PokeBank NX can browse/import from them while the parsers, Vault, conversion engines, staged saves and per-game write adapters are being proven.
+PokeBank NX may create/read backup copies while parsers, Vault, conversion engines, staged saves and per-game write adapters are proven.
+
+## Backup / staged copies
+
+Backup representations may eventually be explicitly editable because they are not the live installed title. The UI must make that state obvious so users never confuse backup edits with live game edits.
 
 ## Legacy/app Storage
 
-The inherited Storage area is already writable/persistent. It is **not automatically the future Master Vault**.
+The inherited Storage area is already writable/persistent and can remain visible across changing game contexts.
 
-Issue **#27** tracks its exact persistence behavior and whether it becomes a migration source, compatibility area, or is retired after Vault v1.
+It is **not automatically the future Master Vault**.
+
+Issue **#27** tracks whether it becomes a migration source, compatibility area, or is retired after Vault v1.
 
 ## Master Vault
 
@@ -270,8 +289,6 @@ Gen III
 Scarlet / Violet
 ```
 
-One entity may be referenced in multiple organizational views without becoming several independent playable clones.
-
 ---
 
 # Copy, Move, and Clone
@@ -295,9 +312,9 @@ Desired end-state:
 Game A  →  Master Vault / Bank  →  Game B
 ```
 
-A real Move should feel like Pokémon Bank/HOME relocation. If Pikachu is moved from FireRed into the Vault, Pikachu is no longer active in FireRed. If it is later moved from the Vault into Violet, Violet becomes the active location.
+A real Move should feel like Pokémon Bank/HOME relocation. The source stops being active only after destination creation, validation, write/readback verification and rollback safety succeed.
 
-PokeBank NX may retain immutable archival/provenance/rollback evidence behind the scenes, but historical records are **not another active playable Pikachu**.
+The old backup→legacy Storage→other-backup flow is **not** true Move, but it confirms that an offline cross-game transfer workspace is viable on-device.
 
 True Move is **later, not now**. Issue **#20** blocks it on independently approved per-game write adapters.
 
@@ -323,7 +340,9 @@ Legality & Provenance
 Cancel
 ```
 
-Opening/navigating/canceling the sheet remained stable during heavy hardware repetition. Installed-source `Edit` behavior is now covered by #23 because the inherited editable view is still reachable.
+Opening/navigating/canceling the sheet remained stable during heavy physical repetition.
+
+Installed-source `Edit` behavior is covered by #23 because the inherited writable view is still reachable.
 
 ## Intended controller contract
 
@@ -339,17 +358,15 @@ Opening/navigating/canceling the sheet remained stable during heavy hardware rep
 | ZL/ZR | larger jumps / major navigation |
 | `+` | contextual More/Options |
 | `-` | Help/Controls/Screen Info |
-| Right Stick | optional fast scroll / secondary pane / later Summary model rotation |
+| Right Stick | optional future Summary model rotation / secondary behavior |
 
 Extended hardware testing exposed inherited differences such as L/R account switching, inactive ZL/ZR in one context, X Dex-sort and Y Menu/Move/Multi. Issue **#26** tracks normalization.
 
 Full contract: [`docs/CONTROLS.md`](docs/CONTROLS.md).
 
-## Summary / Pokémon visuals
+## Theme feedback
 
-Issue **#9** tracks professional Summary/provenance. Issue **#25** tracks adding an actual Pokémon visual to the view. High-quality sprites/artwork are sufficient; optional 3D model rotation is only a later nice-to-have if technically and legally practical.
-
-## Themes
+All three themes and persistence passed physical testing.
 
 ```text
 OLED Black
@@ -357,17 +374,64 @@ Dark
 Light
 ```
 
-All three and persistence passed physical hardware testing.
+Additional Sep 3 feedback:
+
+- bottom controller/button hints need better contrast in OLED Black and Dark;
+- Dark could be slightly darker;
+- Light is liked substantially as-is;
+- OLED Black currently gives the preferred Action Sheet appearance.
 
 Visual direction: [`docs/UI_STYLE_GUIDE.md`](docs/UI_STYLE_GUIDE.md).
 
 ---
 
+# Summary / Pokémon visuals / cries
+
+Sampled View data for Bulbasaur, Alolan Meowth, Mewtwo and Mew reported correct level/gender/shiny information and safe B-return behavior.
+
+The first artifact did not show the expected Pokémon image.
+
+Future Summary/View should explicitly show both:
+
+```text
+Species: Bulbasaur
+Type: Grass / Poison
+```
+
+rather than ambiguous labels.
+
+Planned presentation layers:
+
+```text
+Box / Vault grid      → compact modern Pokémon icon
+View / Summary        → large HOME-style render
+Ball / held item      → compact icon
+Ribbon / Mark         → compact icon
+Cry                   → optional play-on-open + replay
+Optional later 3D     → only if practical on Switch
+```
+
+Relevant work:
+
+- **#9** professional Summary + provenance
+- **#25** Pokémon visual/render support
+- **#35** Pokémon cry support
+- **#7** Vault-driven Pokédex / Living Dex
+
+Visual research:
+
+- [`docs/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md`](docs/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md)
+- [`docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md`](docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md)
+
+PokeBank NX should stay offline at runtime; online datasets are build/reference inputs, not required runtime services.
+
+---
+
 # Target game identities
 
-PokeBank NX currently has **23 host-tested identities in source**. That is the current implementation checkpoint, not the complete product target.
+PokeBank NX currently has **23 host-tested identities in source**. That is the implementation checkpoint, not the complete product target.
 
-The intended catalog is now:
+The intended catalog is:
 
 ```text
 23 current host-tested identities
@@ -402,7 +466,7 @@ The DS/3DS/GameCube/N64 IDs are **planned, not yet identity-tested**. Stadium is
 - Pokémon Stadium
 - Pokémon Stadium 2
 
-PKHeX has dedicated Stadium save handlers with real box/storage/checksum behavior, so read-only import is technically realistic. Stadium support comes after the Gen I/II engine. Forward conversion from Stadium/Gen II into Gen III+ is a PokeBank NX conversion and must not be presented as an official uninterrupted historical transfer path.
+PKHeX has dedicated Stadium save handlers with real box/storage/checksum behavior, so read-only import is technically realistic. Forward conversion into later formats must preserve the historical transfer discontinuity.
 
 Tracked by **#34**.
 
@@ -411,7 +475,7 @@ Tracked by **#34**.
 - Pokémon Colosseum
 - Pokémon XD: Gale of Darkness
 
-These are strong targets: they contain Gen III Pokémon, historically traded with compatible GBA games, and PKHeX already understands Colosseum/XD saves plus GameCube memory-card containers.
+These are strong targets because they are Gen III sources and historically interacted with compatible GBA games.
 
 Tracked by **#33**.
 
@@ -483,10 +547,15 @@ The checklist below is intentionally visible in the README so the repository hom
 - [x] HOME-style controller/theme foundation
 - [x] First exact physical Switch `.nro` test (#8)
 - [x] Extended first-build torture test/report
+- [x] Sep 3 follow-up: sleep/resume/reconnect/handheld/Summary/Storage safety evidence
+- [x] Initial static mutation-persistence audit
+- [x] Device visual-asset preflight tooling
+- [x] Exact-artifact packaging helper
 - [ ] **IN PROGRESS** — visible PokeBank NX shell physical acceptance (#13/#16)
 - [ ] **IN PROGRESS** — full Left Stick physical navigation (#19)
-- [ ] **IN PROGRESS** — inherited mutation safety audit (#23)
+- [ ] **IN PROGRESS** — installed-source mutation UI safety contract (#23)
 - [ ] **IN PROGRESS** — old/malformed PLA crash hardening (#24)
+- [ ] **IN PROGRESS** — required visual assets present in next device build (#37)
 - [ ] Exact second `.nro` packaged, hashed, preserved and physically tested
 - [ ] Final controller semantics/hints normalized (#26)
 
@@ -532,13 +601,15 @@ The checklist below is intentionally visible in the README so the repository hom
 - [ ] transaction journal + crash recovery
 - [ ] rebuildable metadata/search indexes
 - [ ] named Banks over Vault IDs (#3)
-- [ ] legacy writable Storage classification/migration (#27)
-- [ ] optional future PKSMBANK importer if useful
+- [ ] legacy writable Storage migration/import decision (#27)
+- [ ] optional PKSMBANK importer if useful
 
 ## Collection / Summary / quality-of-life
 
 - [ ] professional Summary + provenance (#9)
 - [ ] Pokémon sprite/artwork/render support (#25)
+- [ ] Pokémon cries + replay/mute controls (#35)
+- [ ] Pokédex-style description / encounter-location presentation where data is available
 - [ ] search/filter
 - [ ] Box Quick Jump
 - [ ] Favorites
@@ -610,17 +681,19 @@ Validate individually before any writes (#11):
 - [ ] no credential extraction or tracker forging
 - [ ] no guaranteed-ban-safety claims
 
-PokeBank NX may support **offline source formats that official HOME does not directly import** (for example Stadium or GameCube save files). That does not mean HOME itself supports those saves. Any path into official HOME still goes through a supported modern game and preserves genuine tracker/history rules.
+PokeBank NX may support **offline source formats that official HOME does not directly import**. Any path into official HOME still goes through a supported modern game and preserves genuine tracker/history rules.
 
 ## Native `.nro` reliability / diagnostics / accessibility
 
 Tracked by #21 / [`docs/NRO_QUALITY_ROADMAP.md`](docs/NRO_QUALITY_ROADMAP.md):
 
-- [ ] persistent device-test artifact automation (#15)
+- [x] device-asset preflight helper
+- [x] source-addressed artifact packaging helper
+- [ ] durable CI/release artifact automation (#15)
 - [ ] Diagnostics screen + privacy-safe diagnostic export
 - [ ] Applet/constrained-memory detection
 - [ ] privacy-safe crash/error logs
-- [ ] clear READ ONLY / VAULT / STAGED / active-location badges
+- [ ] clear READ ONLY / BACKUP / LEGACY STORAGE / VAULT / STAGED / active-location badges
 - [ ] Vault storage-health / Verify Vault / rebuild index
 - [ ] interrupted-transaction recovery UI
 - [ ] virtualized huge Vault/Dex grids
@@ -630,6 +703,7 @@ Tracked by #21 / [`docs/NRO_QUALITY_ROADMAP.md`](docs/NRO_QUALITY_ROADMAP.md):
 - [ ] text-size option
 - [ ] Reduced Motion
 - [ ] color-independent focus
+- [ ] readable controller-hint contrast in dark themes
 - [ ] optional original UI sounds
 - [ ] optional restrained rumble
 
@@ -641,7 +715,7 @@ Tracked by #21 / [`docs/NRO_QUALITY_ROADMAP.md`](docs/NRO_QUALITY_ROADMAP.md):
 - [ ] visible version + source SHA
 - [ ] large synthetic Vault performance soak
 - [ ] handheld + docked readability pass
-- [ ] sleep/resume/controller-reconnect pass
+- [ ] sleep/resume/controller-reconnect regression pass
 - [ ] malformed-save corpus torture pass
 - [ ] release-candidate transaction recovery torture test
 - [ ] exact release `.nro`, source SHA, size and SHA-256 preserved
@@ -652,10 +726,11 @@ Tracked by #21 / [`docs/NRO_QUALITY_ROADMAP.md`](docs/NRO_QUALITY_ROADMAP.md):
 ## Current critical path
 
 ```text
-#23 mutation safety audit
+#23 safety/UI contract
 #24 PLA crash hardening
 + preserve #19 analog fix
 + preserve #13/#16 PokeBank NX UI
++ #37 asset preflight
         ↓
 freeze new exact application source if changed
         ↓
@@ -692,19 +767,27 @@ Stadium support is intentionally allowed to slip past v1 if it is disproportiona
 
 ---
 
-# NRO quality / reliability plan
+# Build / device-test helpers
 
-Detailed backlog: [`docs/NRO_QUALITY_ROADMAP.md`](docs/NRO_QUALITY_ROADMAP.md). Tracking issue: **#21**.
+Before a device-test build:
 
-Recommended balance after the second UI/device milestone:
-
-```text
-70% core functionality
-20% hardware validation / bug fixing
-10% polish / infrastructure
+```bash
+python tools/check_device_assets.py
 ```
 
-Quality work is pulled in when its dependent subsystem exists rather than becoming one giant blocking rewrite.
+After freezing the exact clean application source and building `PokeBankNX.nro`:
+
+```bash
+python tools/package_device_build.py PokeBankNX.nro --label Second-Device --zip
+```
+
+See:
+
+- [`docs/DEVICE_BUILD_ASSET_GATE.md`](docs/DEVICE_BUILD_ASSET_GATE.md)
+- [`docs/DEVICE_ARTIFACT_PACKAGING.md`](docs/DEVICE_ARTIFACT_PACKAGING.md)
+- [`docs/BUILD_RECORD.md`](docs/BUILD_RECORD.md)
+
+Packaging never means device-tested. Only a human physical run of that exact recorded hash can add device evidence.
 
 ---
 
@@ -715,11 +798,13 @@ Quality work is pulled in when its dependent subsystem exists rather than becomi
 Known lower-level protections include:
 
 - safe/backup destination posture;
-- generic save API cannot request title injection;
+- generic save API cannot request title injection in the normal path;
 - low-level restore rejects live-title writes before mounting save data;
 - legacy `injectToGame=1` is disabled/rewritten.
 
-The extended hardware test proved inherited mutation UI exists above those guards, so #23 traces the actual call chains instead of assuming the low-level lock is sufficient.
+The Sep 3 Arbok test provides physical supporting evidence that backup/app-Storage operations can persist while the installed source stays unchanged.
+
+That does **not** mean user-facing Release/Create/Move/Edit controls are acceptable on an installed source. #23 keeps UI/source-state safety separate from the low-level hard lock.
 
 Future live writes are **per adapter**, not one global switch.
 
@@ -756,16 +841,25 @@ PokeBank NX checks mature Pokémon homebrew/research projects before rebuilding 
 | [Pokémon Chest](https://github.com/Universal-Team/pkmn-chest) | Gen III–V Bank and second Nintendo-platform PKSM-Core integration reference |
 | [PHBank](https://github.com/gocario/PHBank) | Historical Game-PC ↔ offline-Bank transfer UX reference |
 | [PHBankGBC](https://github.com/0xb01u/PHBankGBC) | Secondary Gen I/II save-layout reference; verify independently |
-| [PKHeX](https://github.com/kwsch/PKHeX) | Primary correctness/reference implementation, including Colosseum/XD/GameCube memory cards and Stadium save handlers |
+| [PKHeX](https://github.com/kwsch/PKHeX) | Primary correctness/reference implementation, including Colosseum/XD/GameCube memory cards and Stadium handlers |
 | [PKHeX-Plugins / Auto Legality](https://github.com/santacrab2/PKHeX-Plugins) | Encounter-driven legality/generation reference |
 | [pkHouse](https://github.com/Insektaure/pkHouse) | Modern Switch save-behavior reference |
 | [pkDex](https://github.com/Insektaure/pkDex) | Pokédex UX/data-organization reference |
 | [PKForge](https://github.com/sofianeelhor/PKForge) | Vault/provenance/transaction architecture reference |
+| [PokeAPI/sprites](https://github.com/PokeAPI/sprites) | Pokémon media organization/reference; inherited PKSE sprite generator source |
+| [PokéSprite](https://github.com/msikma/pokesprite) | Compact box/item/form sprite metadata reference |
+| [PokeAPI/cries](https://github.com/PokeAPI/cries) | Cry file/ID organization reference for future #35 |
 
 Pinned revisions/licenses/classifications: [`docs/UPSTREAM_AUDIT.md`](docs/UPSTREAM_AUDIT.md).  
-Additional bank-project audit: [`docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`](docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md).
+Additional audits:
+
+- [`docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`](docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md)
+- [`docs/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md`](docs/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md)
+- [`docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md`](docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md)
 
 PKSM/Chest/PHBank do **not** replace the Master Vault design. They give us proven ideas around parsing, backups, migrations, Game↔Bank interaction and PKSM-Core integration.
+
+External Pokémon media remains subject to its own copyright/redistribution terms even when the surrounding repository code is permissively licensed.
 
 ---
 
@@ -774,19 +868,17 @@ PKSM/Chest/PHBank do **not** replace the Master Vault design. They give us prove
 Read in this order:
 
 1. [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
-2. [`docs/V1_ROADMAP.md`](docs/V1_ROADMAP.md)
-3. [`docs/NEXT_SESSION_PLAN.md`](docs/NEXT_SESSION_PLAN.md)
-4. [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md)
-5. [`docs/BUILD_RECORD.md`](docs/BUILD_RECORD.md)
-6. [`docs/DEVICE_TEST_REPORT_2026-09-01.md`](docs/DEVICE_TEST_REPORT_2026-09-01.md)
-7. [`docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md)
+2. [`docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md`](docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md)
+3. [`docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md`](docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md)
+4. [`docs/V1_ROADMAP.md`](docs/V1_ROADMAP.md)
+5. [`docs/NEXT_SESSION_PLAN.md`](docs/NEXT_SESSION_PLAN.md)
+6. [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md)
+7. [`docs/BUILD_RECORD.md`](docs/BUILD_RECORD.md)
 8. [`docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md`](docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md)
 9. [`docs/SESSION_RUNBOOK.md`](docs/SESSION_RUNBOOK.md)
 10. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 11. [`docs/SAVE_SAFETY.md`](docs/SAVE_SAFETY.md)
 12. current issue-specific spec/prompt
-
-Latest work log: [`docs/SESSION_LOG_2026-09-02.md`](docs/SESSION_LOG_2026-09-02.md).
 
 ---
 
