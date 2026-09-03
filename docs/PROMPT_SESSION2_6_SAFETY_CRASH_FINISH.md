@@ -20,7 +20,7 @@ PKSE is upstream only. **NEVER push PokeBank NX changes to upstream.**
 
 # Mission
 
-Finish the blockers discovered by the extended physical test, preserve the Session 2.5 PokeBank NX UI/analog work, produce a new exact `.nro`, preserve/hash it, and stop at:
+Finish the blockers discovered by the physical tests, preserve the Session 2.5 PokeBank NX UI/analog work, produce a new exact `.nro`, preserve/hash it, and stop at:
 
 ```text
 READY FOR SECOND DEVICE TEST
@@ -42,7 +42,7 @@ ui: add visible PokeBank shell and physical stick input
 
 This source was host/CI green and reported to build natively, but it is **NOT DEVICE TESTED**.
 
-Later commits on `feature/pokebank-playable` are documentation/research/roadmap commits. Branch HEAD is not automatically application-source identity.
+Later commits on `feature/pokebank-playable` are documentation/research/roadmap/tooling commits. Branch HEAD is not automatically application-source identity.
 
 Exact old physically tested build:
 
@@ -62,6 +62,8 @@ PROJECT_STATUS.md
 README.md
 docs/DEVICE_TEST_REPORT_2026-09-01.md
 docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
+docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md
+docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md
 docs/NEXT_SESSION_PLAN.md
 docs/SESSION_RUNBOOK.md
 docs/SAVE_SAFETY.md
@@ -69,14 +71,16 @@ docs/CONTROLS.md
 docs/UI_FLOW.md
 docs/UI_STYLE_GUIDE.md
 docs/BUILD_RECORD.md
+docs/DEVICE_BUILD_ASSET_GATE.md
+docs/DEVICE_ARTIFACT_PACKAGING.md
 docs/RELEASE_CHECKLIST.md
 docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md
 docs/PROMPT_SESSION2_5_VISUAL_SHELL.md
 ```
 
-`docs/V1_ROADMAP.md`, `docs/GAME_SUPPORT_MATRIX.md`, and issues #29–#34 describe later work only. Read them for context if needed, but **do not implement them now**.
+`docs/V1_ROADMAP.md`, `docs/GAME_SUPPORT_MATRIX.md`, and later platform issues describe later work only. Read them for context if needed, but **do not implement them now**.
 
-Inspect current blocker issues:
+Inspect current blocker/support issues:
 
 ```text
 #13  visible PokeBank NX shell
@@ -84,9 +88,10 @@ Inspect current blocker issues:
 #19  Left Stick navigation
 #23  inherited mutation UI safety audit — BLOCKER
 #24  old/malformed Legends Arceus crash — BLOCKER
-#25  Pokémon visual/model Summary — later
+#25  Pokémon visual/model Summary — later, except existing asset packaging gate
 #26  controller normalization — only safety-critical changes now
-#27  legacy Storage vs Master Vault — classify only as needed now
+#27  legacy Storage vs Master Vault — classification already clarified
+#37  require device-test RomFS visual assets
 ```
 
 Explicitly out of scope:
@@ -101,6 +106,7 @@ Explicitly out of scope:
 #32  Nintendo 3DS adapters
 #33  Colosseum/XD
 #34  Stadium 1/2
+#35  full cry feature implementation
 ```
 
 ---
@@ -169,23 +175,77 @@ Action Sheet Edit   editable Pokémon view
 
 The tester changed an IV, applied it, reopened it, then restored the original value.
 
-Legacy/app Storage was also observed to persist an Arbok moved into it.
+## Sep 3 clarified Arbok/Storage flow
 
-Evidence boundary:
+This supersedes the older ambiguous wording that sounded like Arbok might have been removed from the installed Z-A title.
+
+Exact tester-reported flow:
 
 ```text
-LIVE INSTALLED SAVE WRITE: NOT PROVEN
-USER-REACHABLE MUTATION UI: PROVEN
-APP STORAGE PERSISTENCE: PROVEN
+installed Z-A source
+    ↓ automatic backup
+open Z-A BACKUP representation
+    ↓
+move Arbok from backup into inherited Storage
+    ↓
+return to main menu
+    ↓
+open another supported game's backup/session
+    ↓
+open Storage
+    ↓
+Arbok is still present
 ```
 
-The original game was not externally re-opened to prove whether its live save changed. Do not falsely claim a confirmed live-save write regression.
+The tester reports the **original installed Z-A save remained unchanged** in the exercised flow.
+
+Therefore current evidence is:
+
+```text
+LIVE INSTALLED SAVE WRITE OBSERVED:      NO
+ORIGINAL INSTALLED SAVE CHANGED:         NO — tester-reported for exercised flow
+USER-REACHABLE MUTATION UI:              PROVEN
+BACKUP/IN-MEMORY MUTATION:               PROVEN
+APP STORAGE PERSISTENCE:                 PROVEN
+CROSS-GAME STORAGE VISIBILITY:           PROVEN
+MASTER VAULT:                            NOT IMPLEMENTED
+TRUE MOVE:                               NOT IMPLEMENTED
+```
+
+The inherited UI appears capable of placing the stored Pokémon into another game's loaded backup representation when compatible, but do not claim exhaustive cross-game persistence/compatibility verification from this test alone.
+
+Current physical transfer shape is:
+
+```text
+INSTALLED GAME — read / backup
+        ↓
+MUTABLE BACKUP REPRESENTATION
+        ↓
+APP-OWNED LEGACY STORAGE (`PKSEBANK` / `bank.dat`)
+        ↓
+OTHER GAME'S LOADED BACKUP REPRESENTATION
+```
+
+Do **not** call this a true Move and do **not** call legacy Storage the Master Vault.
 
 ---
 
-# BLOCK A — issue #23 — source-level mutation safety audit
+# BLOCK A — issue #23 — source-level mutation safety audit + UI contract
 
-Trace the actual call paths for:
+`docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md` already did a first source trace. Use it as a starting point, then verify against current source.
+
+Known current classification from that audit:
+
+```text
+Release/Create/Move/Edit   mutate in-memory/backup-loaded representation
+normal Save Changes        targets Working Backup / New Backup
+legacy Storage             app-owned persistent PKSEBANK/bank.dat
+low-level live restore     hard-blocked before mounting save:/ while policy disabled
+```
+
+Do not merely redo that audit from scratch. Confirm it, fill any gaps, then implement the required user-facing safety behavior.
+
+Trace/verify actual call paths for:
 
 ```text
 Release
@@ -211,22 +271,28 @@ UNKNOWN — NEEDS BLOCKING
 
 Follow the code to filesystem/save APIs. Do not classify from UI wording.
 
-While live installed-save writing is disabled, installed-game sources must behave read-only:
+### Required alpha UX
+
+The underlying backup/storage behavior can be useful, but the UI must make the safety boundary unambiguous.
+
+For an installed-game source / initial game browsing context:
 
 - Release not reachable;
 - Create Pokémon not reachable;
 - unsafe Move/Multi not reachable;
 - Edit cannot commit into installed source;
 - if safe copy-editing is not implemented, Edit returns clear read-only/not-supported behavior;
-- no Save Changes path can write installed source;
-- no controller shortcut bypasses the safety model;
+- no Save Changes path can imply it writes the installed source;
+- no controller shortcut bypasses the read-only contract;
 - Action Sheet navigation/B/Cancel remains zero-mutation.
 
-If legacy Storage is proven separate/app-owned, it may remain writable, but do not silently remove an installed-source Pokémon while live writes are disabled.
+If the user deliberately opens a mutable **backup/staged copy**, UI may preserve useful backup-editing behavior only if it is clearly labeled as backup/staged and cannot be confused with the installed title.
+
+If legacy Storage remains writable for this alpha, label/classify it as app-owned legacy/compatibility Storage. Depositing from a backup must not be presented as removing the Pokémon from the installed game.
 
 Add host regression tests where practical.
 
-**Do not remove the low-level hard lock.** UI blocking is defense-in-depth.
+**Do not remove the low-level hard lock.** UI restrictions and clear source-state labeling are defense-in-depth.
 
 ---
 
@@ -285,9 +351,35 @@ OLED Black / Dark / Light + persistence
 
 Do not redesign the UI from scratch.
 
-Do not start Pokémon renders/models (#25) except to preserve existing behavior.
+Hardware polish feedback from Sep 3:
 
-Do not do full controller redesign (#26) except where required to remove unsafe mutation shortcuts.
+- bottom controller/button-hint graphics are too low-contrast in OLED Black and Dark;
+- Dark could be slightly darker (~10% was the tester's suggestion);
+- Light color treatment is liked as-is;
+- OLED Black Action Sheet appearance is currently preferred.
+
+Treat this as small polish only if trivial while touching the same UI code. Do not derail the blocker session.
+
+Do not start full Pokémon render/model work (#25). However, the existing inherited sprite pipeline must not be accidentally omitted from the replacement artifact.
+
+---
+
+# BLOCK D — device visual asset gate (#37)
+
+The first device artifact's `View Pokémon` path showed no Pokémon visual even though inherited source contains visual rendering support. The inherited build pipeline uses generated gitignored RomFS assets.
+
+Before the final native build, inspect/read:
+
+```text
+docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
+docs/DEVICE_BUILD_ASSET_GATE.md
+```
+
+Use the existing asset-generation/preflight workflow rather than inventing a new art system in this session.
+
+At minimum run the repository's device-asset preflight and ensure the required generated sprite resources exist before packaging.
+
+This is a packaging/release correctness task, not authorization to begin #25's full visual-resolver/3D roadmap.
 
 ---
 
@@ -318,6 +410,8 @@ verify remote application-source SHA
         ↓
 clean rebuild from that exact commit
         ↓
+asset preflight
+        ↓
 hash/preserve replacement .nro
 ```
 
@@ -338,6 +432,8 @@ make clean
 make -j1
 ```
 
+Also run the repository device asset preflight required by `docs/DEVICE_BUILD_ASSET_GATE.md`.
+
 Require:
 
 ```text
@@ -347,8 +443,10 @@ git diff --check PASS
 NATIVE .NRO BUILDS
 LIVE-WRITE HARD LOCK INTACT
 MUTATION PATHS CLASSIFIED
-UNSAFE INSTALLED-SOURCE UI MUTATIONS BLOCKED
+UNSAFE/AMBIGUOUS INSTALLED-SOURCE UI MUTATIONS BLOCKED
+BACKUP/STAGED VS INSTALLED SOURCE CLEARLY DISTINGUISHED
 PLA FAILURE PATH HARDENED AS FAR AS AVAILABLE EVIDENCE ALLOWS
+DEVICE ASSET PREFLIGHT PASS
 ```
 
 ---
@@ -356,6 +454,20 @@ PLA FAILURE PATH HARDENED AS FAR AS AVAILABLE EVIDENCE ALLOWS
 # Replacement artifact
 
 Provide the actual `.nro`.
+
+Use the repository packaging helper documented in:
+
+```text
+docs/DEVICE_ARTIFACT_PACKAGING.md
+```
+
+Preferred packaging command after the exact application-source commit is clean and built:
+
+```bash
+python tools/package_device_build.py PokeBankNX.nro --label Second-Device --zip
+```
+
+The helper must not replace independent verification; inspect its manifest/output.
 
 Record:
 
@@ -370,6 +482,7 @@ Host tests:
 Sanitizers:
 git diff --check:
 Native build:
+Device asset preflight:
 Device tested: NO
 ```
 
@@ -405,9 +518,20 @@ artifact SHA-256
 host tests
 sanitizers
 native build
+asset preflight
 ```
 
 Do not pre-fill PASS/FAIL hardware results. Those remain for the user.
+
+Make the checklist wording explicit about source state:
+
+```text
+INSTALLED SOURCE
+BACKUP/STAGED COPY
+LEGACY STORAGE
+```
+
+Do not use ambiguous `save` wording when the test needs to distinguish them.
 
 ---
 
@@ -423,6 +547,7 @@ docs/NEXT_SESSION_PLAN.md
 docs/PROJECT_MAP.md
 docs/V1_ROADMAP.md
 docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
+docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md
 docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md
 ```
 
@@ -432,9 +557,11 @@ Update issues accurately:
 #13 keep OPEN until visual hardware acceptance
 #16 keep OPEN if startup/icon/NACP polish remains
 #19 keep OPEN until physical Left Stick acceptance
-#23 keep OPEN until required safety verification is complete
+#23 keep OPEN until required safety/UI verification is complete
 #24 keep OPEN until exact old PLA save physically retests successfully/gracefully
-#26/#27 record findings without expanding scope
+#26 record controller findings without broadening scope
+#27 preserve exact backup -> legacy Storage -> other backup evidence
+#37 close only if build asset gating is actually integrated/verified as scoped
 ```
 
 Do not rewrite historical evidence for `3be4de6b...`.
@@ -454,14 +581,20 @@ LEFT STICK SINGLE TAP                     PASS
 LEFT STICK HELD REPEAT                    PASS
 LEFT STICK DIAGONAL                       PASS
 A/B ACTION SHEET                          PASS
+POKÉMON VISUAL PRESENT                    PASS / or explicit packaged-resource diagnosis
 NO RELEASE ON INSTALLED SOURCE            PASS
 NO CREATE ON INSTALLED SOURCE             PASS
 NO UNSAFE MOVE/MULTI ON INSTALLED SOURCE  PASS
 EDIT CANNOT WRITE INSTALLED SOURCE        PASS
+BACKUP/STAGED STATE CLEARLY LABELED        PASS
+LEGACY STORAGE CLEARLY APP-OWNED           PASS
 OLD PLA SAVE                              OPEN OR GRACEFUL ERROR / NO CRASH
 OLED BLACK / DARK / LIGHT                 PASS
+BOTTOM BUTTON HINTS READABLE               PASS
 THEME PERSISTENCE                         PASS
 PARTY / BOXES / STORAGE                   PASS
+HOME / SLEEP / RESUME                     PASS
+CONTROLLER RECONNECT                      PASS
 NO NEW CRASHES                            PASS
 ```
 
@@ -478,7 +611,8 @@ DS/3DS identities or adapters
 Colosseum/XD
 Stadium 1/2
 true Move/live writes
-Pokémon 3D/model work
+full cry implementation
+Pokémon realtime 3D/model work
 full controller redesign
 new large UI redesign
 ```
@@ -490,14 +624,16 @@ new large UI redesign
 Stop only after:
 
 ```text
-#23 audit complete enough for current alpha
-unsafe installed-source mutation UI blocked
+#23 audit/UI contract complete enough for current alpha
+unsafe/ambiguous installed-source mutation UI blocked
+backup/staged vs installed source made unambiguous
 #24 defensive crash hardening done as far as evidence allows
 Session 2.5 shell/analog work preserved
 host tests PASS
 sanitizers PASS
 git diff check PASS
 native build PASS
+device asset preflight PASS
 new app source committed/pushed/verified if changed
 exact replacement .nro built from exact source
 artifact size + SHA-256 recorded
@@ -513,4 +649,4 @@ READY FOR SECOND DEVICE TEST
 NOT DEVICE TESTED
 ```
 
-Do not claim Left Stick, PLA crash, or live-save safety behavior is device-fixed until the user runs that exact replacement binary.
+Do not claim Left Stick, PLA crash, Summary visual, or installed-save safety behavior is device-fixed until the user runs that exact replacement binary.
