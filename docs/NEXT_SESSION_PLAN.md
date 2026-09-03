@@ -1,11 +1,11 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-02  
+Last updated: 2026-09-03  
 Status: **ACTIVE EXECUTION PLAN**
 
 `PROJECT_STATUS.md` is authoritative for verified state.  
 `docs/V1_ROADMAP.md` / issue #29 describe the full road to v1.0.  
-`docs/GAME_SUPPORT_MATRIX.md` tracks the 23 current identities and the expanded 44-target catalog.  
+`docs/GAME_SUPPORT_MATRIX.md` tracks the current registry and expanded target catalog.  
 This file describes what to do **next**, not every future feature.
 
 ---
@@ -37,7 +37,7 @@ ui: add visible PokeBank shell and physical stick input
 
 That source is **NOT DEVICE TESTED**.
 
-Extended old-build hardware findings:
+Latest first-build hardware evidence:
 
 ```text
 LEFT STICK SINGLE TAP      FAIL — no input/action
@@ -46,15 +46,60 @@ LEFT STICK DIAGONAL        FAIL — no input/action
 HELD D-PAD                 PASS
 OLD PLA SAVE               REPRODUCIBLE CRASH
 INHERITED MUTATION UI      PHYSICALLY REACHABLE
-APP STORAGE PERSISTENCE    PHYSICALLY OBSERVED
-LIVE INSTALLED SAVE WRITE  NOT PROVEN
+APP STORAGE PERSISTENCE    PHYSICALLY PROVEN
+CROSS-GAME STORAGE VIEW    PHYSICALLY PROVEN
+ORIGINAL INSTALLED SAVE    TESTER-REPORTED UNCHANGED IN EXERCISED FLOW
+LIVE INSTALLED SAVE WRITE  NOT OBSERVED
+HOME/SLEEP/RECONNECT       PASS
+HANDHELD                   PASS
+DOCKED                     NOT TESTED
 ```
 
-Permanent report:
+Permanent reports:
 
 ```text
 docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
+docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md
 ```
+
+Static safety starting point:
+
+```text
+docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md
+```
+
+---
+
+# Clarified legacy Storage transfer behavior
+
+The physically observed Arbok sequence was:
+
+```text
+installed Z-A source
+    ↓ automatic backup
+open Z-A backup representation
+    ↓
+move Arbok into inherited app Storage
+    ↓
+return to main menu / open another game
+    ↓
+Storage still contains Arbok
+```
+
+Current interpretation:
+
+```text
+Installed source        READ ONLY / unchanged in exercised check
+Backup representation   mutable inherited copy
+Legacy Storage          app-owned persistent PKSEBANK
+Other game backup       potential compatible destination
+Master Vault            NOT IMPLEMENTED
+True Move               NOT IMPLEMENTED
+```
+
+This is useful proof-of-concept cross-game Bank UX but not product-level Move.
+
+Issue #27 now records the exact sequence.
 
 ---
 
@@ -66,35 +111,61 @@ Execute exactly:
 docs/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md
 ```
 
+Required reading now includes:
+
+```text
+docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md
+docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md
+docs/DEVICE_BUILD_ASSET_GATE.md
+docs/DEVICE_ARTIFACT_PACKAGING.md
+```
+
 Primary issues:
 
 ```text
-#23 mutation-path safety audit
+#23 mutation-path safety/UI contract
 #24 old/malformed PLA crash
 #19 preserve/retest Left Stick source fix
 #13 preserve/retest visible PokeBank NX shell
 #16 preserve visible identity/NRO work
+#37 require generated visual assets in device build
+```
+
+Supporting classifications:
+
+```text
+#26 controller normalization — later except safety/readability
+#27 legacy Storage vs Master Vault — now physically clarified
 ```
 
 Do not begin later roadmap work during this session.
 
-Explicit later/out-of-scope items now include:
+Explicit later/out-of-scope items include:
 
 ```text
+#3 Master Vault
+#4 PKSM-Core
+#20 true Move
+#25 full Pokémon visual/model redesign
 #30 DS/3DS identities
-#31 Nintendo DS Gen IV/V adapters
-#32 Nintendo 3DS Gen VI/VII adapters
+#31 Nintendo DS adapters
+#32 Nintendo 3DS adapters
 #33 Colosseum/XD GameCube support
 #34 Stadium 1/2 N64 support
+#35 full Pokémon cry feature
 ```
 
 ## Session 2.6 success condition
 
 ```text
-mutation paths classified
-unsafe installed-source mutation UI blocked
+existing static safety audit verified/completed
+unsafe/ambiguous installed-source mutation UI blocked
+installed source vs backup/staged vs legacy Storage clearly labeled
+low-level live-write hard lock preserved
 PLA defensive failure path hardened
 Session 2.5 UI/analog work preserved
+small dark-theme hint readability polish only if trivial
+required Pokémon visual assets generated/preflighted
 host tests PASS
 ASan/UBSan PASS
 git diff --check PASS
@@ -131,11 +202,17 @@ no obvious PKSE top-level branding
 D-pad regression
 Left Stick single tap / hold / diagonal
 Action Sheet regression
-no installed-source Release/Create/unsafe Move/Edit commit
+Pokémon visual actually present if asset preflight passed
+no Release/Create/unsafe Move/Edit on INSTALLED SOURCE
+backup/staged state clearly distinguished
+legacy Storage clearly app-owned
 old PLA save opens or fails gracefully / no crash
 OLED Black / Dark / Light
+bottom button hints readable
 Theme persistence
 Party / Boxes / Storage
+HOME / sleep / resume
+controller reconnect
 no new crashes
 ```
 
@@ -212,7 +289,7 @@ Why Stadium later: it becomes much cheaper conceptually after the Gen I/II entit
 # Product sequence after broad read support
 
 ```text
-Summary/provenance + Pokémon visuals
+Summary/provenance + Pokémon visuals + cries
         ↓
 golden corpus + PKHeX Oracle
         ↓
@@ -233,7 +310,7 @@ true Move
 release hardening / RC / v1.0
 ```
 
-Future Transfer Workspace UX may use PHBank/Pokémon Chest patterns for one/multi/whole-box Game↔Vault operations.
+Future Transfer Workspace UX may use PHBank/Pokémon Chest patterns and the physically observed legacy Storage flow for one/multi/whole-box Game↔Vault operations, while using the safer Master Vault/transaction architecture underneath.
 
 ---
 
@@ -253,7 +330,7 @@ Nintendo 64     +2  Stadium / Stadium 2
 TOTAL TARGET: 44
 ```
 
-Do not call planned identities implemented until #30/#33/#34 source work and host tests exist.
+Do not call planned identities implemented until their source work and host tests exist.
 
 ---
 
@@ -264,6 +341,15 @@ Detailed backlog:
 ```text
 docs/NRO_QUALITY_ROADMAP.md
 GitHub issue #21
+```
+
+Build-specific helpers now include:
+
+```text
+tools/check_device_assets.py
+tools/package_device_build.py
+docs/DEVICE_BUILD_ASSET_GATE.md
+docs/DEVICE_ARTIFACT_PACKAGING.md
 ```
 
 Pull diagnostics, logs, memory handling, search, Quick Jump, Favorites, recovery, virtualization, bounded caches and accessibility into dependent milestones incrementally.
@@ -289,9 +375,8 @@ Stadium adapter
 full Pokédex
 full legality engine
 true Move/live writes
-Pokémon 3D/model work
-all generations at once
+full realtime Pokémon 3D work
 another large UI redesign
 ```
 
-Finish the safety/crash blocker source, produce the exact replacement artifact, and physically test it first.
+Finish the safety/crash blocker source, preserve the newer shell/stick work, ensure required device assets are packaged, produce the exact replacement artifact, and physically test it first.
