@@ -194,19 +194,61 @@ DS/3DS support is planned separately and is not expected from this first artifac
 
 # Most important safety clarification
 
-The tester continued to observe the Arbok previously placed into inherited app Storage. It remained present across stress testing.
+The exact observed Arbok flow was clarified by the tester:
 
-However, the tester now reports that the **original installed game save remained unchanged** after the exercised flow. The detailed `GAME CHECKED`/party/box subfields were not filled in, so treat this as useful physical supporting evidence rather than an exhaustive per-title write-safety proof.
+```text
+1. Select Pokémon Legends: Z-A installed source.
+2. PokeBank NX creates/uses its backup copy.
+3. Open the Z-A BACKUP representation.
+4. Move Arbok from that backup representation into inherited app Storage.
+5. Exit back to the PokeBank NX main menu.
+6. Select another supported game and open its backup/session.
+7. Open inherited Storage.
+8. Arbok is still present in Storage.
+9. The UI appears capable of placing Arbok into the other game's loaded backup representation when compatible.
+```
 
-Combined with the source-level audit in `docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md`, current evidence should be classified as:
+The source-side installed Z-A save itself was **not removed from or changed by that Storage transfer** according to the tester's follow-up check.
+
+This means the physically demonstrated transfer pipeline is:
+
+```text
+INSTALLED GAME
+   |
+   | read / automatic backup
+   v
+BACKUP REPRESENTATION
+   |
+   | mutable inherited PKSE operation
+   v
+APP-OWNED LEGACY STORAGE (PKSEBANK / bank.dat)
+   |
+   | persists across leaving one game and opening another
+   v
+OTHER GAME'S LOADED BACKUP REPRESENTATION
+```
+
+It is **not**:
+
+```text
+installed Z-A save -> destructive true Move -> Storage
+```
+
+and it is **not** the future PokeBank NX Master Vault.
+
+## Current classification
+
+Combined with the source-level audit in `docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md`, current evidence is:
 
 ```text
 LIVE INSTALLED SAVE WRITE OBSERVED:      NO
-ORIGINAL INSTALLED SAVE CHANGED:         NO — tester reports unchanged in exercised check
+ORIGINAL INSTALLED SAVE CHANGED:         NO — tester reports unchanged in exercised flow
 LOW-LEVEL LIVE-WRITE HARD LOCK:          SUPPORTED BY SOURCE + THIS PHYSICAL CHECK
 USER-REACHABLE MUTATION UI:              YES
 BACKUP/IN-MEMORY SAVE MUTATION:          YES
 APP-OWNED LEGACY STORAGE WRITE:          YES
+LEGACY STORAGE CROSS-GAME PERSISTENCE:   YES
+STORAGE -> OTHER BACKUP UI PATH:         REACHABLE WHEN COMPATIBLE; final persistence not exhaustively tested here
 ARBOK IN LEGACY STORAGE:                 PERSISTS
 MASTER VAULT IMPLEMENTED:                NO
 TRUE MOVE IMPLEMENTED:                   NO
@@ -214,20 +256,19 @@ TRUE MOVE IMPLEMENTED:                   NO
 
 ## Arbok interpretation
 
-The tester described the Arbok as a permanent move into `master vault`/`storage`, but the current app does not yet implement the PokeBank NX Master Vault.
+The Arbok event is best described as a **persistent copy/import into app-owned legacy Storage from a mutable backup representation**.
 
-The actual destination is inherited app-owned Storage (`PKSEBANK` / `bank.dat`). Because the installed/original source save was reported unchanged, this event is best classified as a **persistent COPY into app-owned Storage from the backup/in-memory representation**, not a true Move and not a live installed-save write.
+The word `move` is appropriate for the inherited UI operation inside that backup/storage workspace, but it must not be confused with the product-level `MOVE` defined for future PokeBank NX true relocation semantics.
 
-This distinction matters:
+Current observed result:
 
 ```text
-current observed behavior
-backup/in-memory source -> legacy Storage copy
-original installed title save stays unchanged
-
-future true Move (#20)
-verified destination -> verified source removal -> active-location transition
+original installed Z-A save  -> still contains original source state
+Z-A backup representation    -> can be mutated independently
+legacy Storage               -> contains persistent Arbok
 ```
+
+Therefore the user can effectively use the old PKSE foundation as an offline intermediate bank between backup representations without touching the installed source save. This is useful proof-of-concept behavior for future Game ↔ Vault transfer UX, but the legacy storage engine is not trusted as the final Vault architecture.
 
 ## Why #23 still remains a blocker
 
@@ -244,6 +285,16 @@ backup save/apply flows
 ```
 
 Session 2.6 must still block or clearly separate those paths so a user cannot mistake backup/in-memory mutation for an approved live-save editor.
+
+The better long-term UX should distinguish clearly between:
+
+```text
+INSTALLED SOURCE — READ ONLY
+BACKUP / STAGED COPY — MUTABLE WHEN EXPLICIT
+LEGACY STORAGE — APP-OWNED / COMPATIBILITY
+MASTER VAULT — FUTURE AUTHORITATIVE STORAGE
+LIVE GAME WRITE — LATER, PER-ADAPTER SAFETY GATE
+```
 
 ---
 
@@ -268,8 +319,9 @@ NATIVE SWITCH SAVE DISCOVERY     PASS / PARTIAL based on sampled titles
 RETROARCH LEGACY DISCOVERY       NOT IMPLEMENTED / not detected
 USER-FACING READ-ONLY CONTRACT   FAIL / inherited mutation UI remains
 LIVE INSTALLED SAVE WRITE        NOT OBSERVED
-ORIGINAL SAVE UNCHANGED          TESTER-REPORTED PASS in exercised check
+ORIGINAL SAVE UNCHANGED          TESTER-REPORTED PASS in exercised flow
 APP LEGACY STORAGE PERSISTENCE   PASS / physically observed
+CROSS-GAME STORAGE VISIBILITY    PASS / Arbok visible after switching games
 OLD PLA SAVE                     REPRODUCIBLE CRASH
 VISIBLE POKEBANK NX IDENTITY     still old-build failure/incomplete
 ```
@@ -285,6 +337,7 @@ The next coding session remains the same critical gate, but it now starts with b
 3. #19 — preserve and physically validate the newer Left Stick implementation;
 4. #13/#16 — preserve the newer visible PokeBank NX shell;
 5. #37 — run the device asset preflight so View Pokémon artwork is not accidentally omitted from the replacement build;
-6. package/hash/preserve the exact new `.nro` and stop for physical test #2.
+6. preserve the useful concept of an app-owned cross-game intermediate storage layer without treating inherited PKSE Storage as the future Master Vault;
+7. package/hash/preserve the exact new `.nro` and stop for physical test #2.
 
 Do not reinterpret this follow-up as authorization for live writes, true Move, Master Vault work, PKSM-Core work, or a broad UI redesign.
