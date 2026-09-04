@@ -123,7 +123,7 @@ namespace Panels {
         Pill pills[3] = {
             { "Pokémon", std::to_string(stored) + " stored", 0 },
             { "Party",   std::to_string(party)  + " / 6",    1 },
-            { "Storage", std::to_string(bankN)  + " in bank", 2 },
+            { "Legacy Storage", std::to_string(bankN)  + " app-owned / not Master Vault", 2 },
         };
         const int pillH = 76, pillGap = 18;
         int py = 108;

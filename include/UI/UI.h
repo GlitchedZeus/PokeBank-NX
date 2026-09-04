@@ -38,8 +38,9 @@ namespace UI {
         void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName);
         // loadedFromCart records source provenance only. Installed game saves remain read-only;
         // edits are written to the automatically created working backup or a new named backup.
-        void handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
-                               const std::string& backupDir, bool loadedFromCart);
+        bool handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
+                               const std::string& backupDir, bool loadedFromCart,
+                               std::string& error);
     };
 }
 

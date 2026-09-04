@@ -16,45 +16,9 @@
 #include "Globals.h"
 #include "Safety/WritePolicy.h"
 #include "Utils/Logger.h"
+#include "Utils/FileUtilities.h"
 
 namespace Utils {
-    uint8_t* readAllBytes(const char* path, size_t* outSize) {
-        FILE* file = fopen(path, "rb");
-        if (!file) {
-            perror("Failed to open file");
-            return NULL;
-        }
-
-        // Get the file size
-        fseek(file, 0, SEEK_END);
-        size_t fileSize = ftell(file);
-        rewind(file);
-
-        // Allocate memory to hold the file contents
-        uint8_t* buffer = (unsigned char*)malloc(fileSize);
-        if (!buffer) {
-            perror("Failed to allocate memory");
-            fclose(file);
-            return NULL;
-        }
-
-        // Read the file contents into the buffer
-        size_t bytesRead = fread(buffer, 1, fileSize, file);
-        if (bytesRead != fileSize) {
-            perror("Failed to read the entire file");
-            free(buffer);
-            fclose(file);
-            return NULL;
-        }
-
-        fclose(file);
-
-        // Return the buffer and the size of the file
-        if (outSize)
-            *outSize = fileSize;
-        return buffer;
-    }
-
     bool copyDirectoryRecursive(const char* srcPath, const char* destPath) {
         DIR* dir = opendir(srcPath);
         if (!dir) {
@@ -96,7 +60,7 @@ namespace Utils {
                 if (!out) {
                     logErrorToFile("Failed to open for writing", destFilePath);
                     logErrorToFile("fopen error", strerror(errno));
-                    free(data);
+                    delete[] data;
                     overallSuccess = false;
                     continue;
                 }
@@ -109,7 +73,7 @@ namespace Utils {
                     logInfoToFile("File size (bytes)", std::to_string(size).c_str());
                 }
                 fclose(out);
-                free(data);
+                delete[] data;
             }
         }
         closedir(dir);
@@ -139,7 +103,7 @@ namespace Utils {
         if (!out) {
             logErrorToFile("Failed to open for writing", destPath);
             logErrorToFile("fopen error", strerror(errno));
-            free(data);
+            delete[] data;
             return false;
         }
 
@@ -152,7 +116,7 @@ namespace Utils {
         }
 
         fclose(out);
-        free(data);
+        delete[] data;
         return success;
     }
 

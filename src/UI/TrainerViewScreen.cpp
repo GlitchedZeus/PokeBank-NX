@@ -596,7 +596,7 @@ namespace UI {
     // The tail of the + handler: prompt about unsaved GAME-save changes, else leave. Split out so the
     // bank's Save/Discard prompt can resume the exit once the user has answered it.
     void TrainerViewScreen::beginAppExit() {
-        if (hasUnsavedChanges && !saveConfirmActive) {
+        if (!sourceReadOnly() && hasUnsavedChanges && !saveConfirmActive) {
             exitingWithUnsavedChanges = true;
             exitingViaPlus = true;   // remember we're exiting via the + button
             saveConfirmActive = true;
@@ -951,6 +951,7 @@ namespace UI {
     // Safe to call from update(): the UI loop is update() -> draw() -> flush(), so no NanoVG frame
     // is open when swkbd suspends the app. Calling this from draw() would strand a half-built frame.
     void TrainerViewScreen::renameBox(int boxIndex) {
+        if (!requireMutableWorkspace()) return;
         const size_t maxChars = trainer.getMaxBoxNameLength();
         if (maxChars == 0) return;
         if (boxIndex < 0 || boxIndex >= static_cast<int>(trainer.boxNames.size())) return;
@@ -989,6 +990,7 @@ namespace UI {
     // empty name means "use the default", and the keyboard starts from the raw stored name (blank by
     // default) rather than from the "Bank N" label.
     void TrainerViewScreen::renameBankBox(int box) {
+        if (!requireMutableWorkspace()) return;
         if (!bank || box < 0 || box >= static_cast<int>(Trainer::Bank::BANK_BOX_COUNT)) return;
         const std::string current = bank->boxNames[box];
         const Utils::KeyboardResult res =
@@ -1069,6 +1071,7 @@ namespace UI {
     }
 
     void TrainerViewScreen::editTrainerName() {
+        if (!requireMutableWorkspace()) return;
         const std::string current = trainer.trainerName;
         const Utils::KeyboardResult res =
             Utils::promptText("Trainer Name", "OT name", current,
@@ -1100,6 +1103,7 @@ namespace UI {
     // Edit the trainer's money via the number pad, clamped to this game's cap. promptNumber both
     // widths the keypad to the max and clamps the returned value, so an out-of-range entry can't slip in.
     void TrainerViewScreen::editTrainerMoney() {
+        if (!requireMutableWorkspace()) return;
         const Utils::NumberResult res =
             Utils::promptNumber("Money", static_cast<int>(trainer.money), 0,
                                 static_cast<int>(trainer.getMaxMoney()));
@@ -1128,6 +1132,7 @@ namespace UI {
     }
 
     void TrainerViewScreen::performSave(const std::string& destDir) {
+        if (!requireMutableWorkspace()) { saveConfirmActive = false; return; }
         // The game's "current box" is kept in sync live while a box view is open (see update()), so
         // it already reflects wherever the user last was -- including a box change made in Storage
         // before backing out (Storage's own X sorts; this game save happens later). Nothing to do here.
@@ -1285,6 +1290,7 @@ namespace UI {
 
     // Open the details modal on a storage slot (reuses the Box path for the save pane).
     void TrainerViewScreen::openStorageEditor(int pane, int box, int slot) {
+        if (!requireMutableWorkspace()) return;
         if (pane == 1) {
             details.source = EditSource::Bank;
             details.bankBox = box;
@@ -1335,6 +1341,7 @@ namespace UI {
     }
 
     void TrainerViewScreen::openActionSheetTargetDetails(bool readOnly) {
+        readOnly = readOnly || sourceReadOnly();
         if (!actionSheetTargetPokemon()) return;
 
         const auto& target = actionSheet.target();
@@ -1407,6 +1414,7 @@ namespace UI {
     // Move mode: lift the slot under the cursor as a 1x1 block. Single and multi carry share one
     // representation, so every later step (drawing, bounds, put-down, B-to-return) is written once.
     void TrainerViewScreen::pickupSingle() {
+        if (!requireMutableWorkspace()) return;
         if (!bank) return;
         const int pane = storageFocusPane;
         const int box = (pane == 0) ? stSaveBox : stBankBox;
@@ -1424,6 +1432,7 @@ namespace UI {
 
     // Multi mode: the first A anchors the rectangle at the cursor, the second grabs it.
     void TrainerViewScreen::pickupMulti() {
+        if (!requireMutableWorkspace()) return;
         const int pane = storageFocusPane;
         const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
         if (slot < 0 || slot >= paneSlots(pane)) return;
@@ -1441,6 +1450,7 @@ namespace UI {
     // Lift (remove = true) or copy (remove = false) every slot inside the anchored rectangle into
     // moveMon, then snap the cursor to the rectangle's top-left so the block sits under the pointer.
     void TrainerViewScreen::grabSelection(bool remove) {
+        if (!requireMutableWorkspace()) return;
         if (!currentlySelecting || !bank) return;
         const int pane = selectPane;
         const int box = selectBox;
@@ -1568,6 +1578,7 @@ namespace UI {
     // conversion route into this save -- stay in the block and stay untouched, so one blocker never
     // strands the rest of the group.
     void TrainerViewScreen::putDownBlock() {
+        if (!requireMutableWorkspace()) return;
         if (!carrying() || !bank) return;
         const int pane = storageFocusPane;
         const int box = (pane == 0) ? stSaveBox : stBankBox;
@@ -1676,6 +1687,7 @@ namespace UI {
     // relocating such a slot would silently repoint a party member at a different Pokemon. The
     // occupant stays exactly where it is and the sort flows around it.
     void TrainerViewScreen::sortStorageBox(int pane, int box) {
+        if (!requireMutableWorkspace()) return;
         const int slots = (pane == 0) ? static_cast<int>(trainer.getSlotsPerBox())
                                       : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
         std::vector<int> freeIdx;                                   // slots the sort may write to
@@ -1709,6 +1721,10 @@ namespace UI {
 
     void TrainerViewScreen::handleStorageInput(u64 kDown) {
         if (!bank) return;
+        if (sourceReadOnly() && (kDown & (HidNpadButton_X | HidNpadButton_Y))) {
+            requireMutableWorkspace();
+            kDown &= ~(HidNpadButton_X | HidNpadButton_Y);
+        }
 
         // Accessors that always target the currently-focused pane.
         auto curBox  = [&]() -> int& { return storageFocusPane == 0 ? stSaveBox : stBankBox; };
@@ -1892,6 +1908,7 @@ namespace UI {
             switch (cursorMode) {
                 case CursorMode::Menu:
                     if (pane == 0 && !isLocked(pane, box, slot)) {
+                        if (!requireMutableWorkspace()) return;
                         // Empty save-pane slot: create a new Pokemon here (pick species, then edit).
                         creator.active = true; creator.pane = pane; creator.box = box; creator.slot = slot;
                         pickerKind = Dialogs::PickerKind::Species;
@@ -1938,7 +1955,7 @@ namespace UI {
         // swallowing input, and the app looked frozen with only B and + alive.
         //
         // Deferring is the whole fix: the mon still compacts, just once the editor closes.
-        if (!carrying() && !currentlySelecting && !swapActive && !creator.active && !details.active) {
+        if (!sourceReadOnly() && !carrying() && !currentlySelecting && !swapActive && !creator.active && !details.active) {
             trainer.compactStorage();
         }
 
@@ -1948,7 +1965,7 @@ namespace UI {
         // save time) is what makes the Storage box persist, matching the Boxes view. The save-pane box
         // (stSaveBox) and the Boxes-view box (selectedBoxIndex) are two cursors on the same current
         // box; gated on detailViewActive so the HOME menu (no box view) can't overwrite it.
-        if (detailViewActive) {
+        if (detailViewActive && !sourceReadOnly()) {
             const int bc = static_cast<int>(trainer.getBoxCount());
             if (selectedMode == ViewMode::Storage && stSaveBox >= 0 && stSaveBox < bc)
                 trainer.setCurrentBox(static_cast<uint8_t>(stSaveBox));
@@ -1961,6 +1978,25 @@ namespace UI {
         // posted from anywhere else (a save result, a box rename) would have stayed on screen
         // forever. update() runs every frame in every view, which is what a timer needs.
         if (storageStatusFrames > 0) --storageStatusFrames;
+
+        // Defense in depth: inherited modal flags must never create a writable path in an
+        // installed-source session, including touch/deferred entry points. Browse/View is kept.
+        if (sourceReadOnly()) {
+            const bool blocked = pickerActive || itemEditDialogActive || itemRemoveConfirmActive ||
+                statEdit.dialogActive || saveConfirmActive || releaseConfirmActive ||
+                creator.active || creator.editing || groupMenuActive || storageExitConfirmActive ||
+                gen3ConvertConfirmActive || lgpeTransferConfirmActive;
+            if (blocked) {
+                pickerActive = itemEditDialogActive = itemRemoveConfirmActive = false;
+                statEdit.dialogActive = saveConfirmActive = releaseConfirmActive = false;
+                creator.active = creator.editing = creator.keepConfirmActive = false;
+                groupMenuActive = false;
+                storageExitConfirmActive = gen3ConvertConfirmActive = lgpeTransferConfirmActive = false;
+                requireMutableWorkspace();
+                return;
+            }
+            if (details.active) details.readOnly = true;
+        }
 
         // A box-name pill was tapped last frame: the header highlight has now been drawn once, so it
         // is safe to open the (blocking) rename keyboard. Doing this inline with the tap suspended the
@@ -2304,6 +2340,7 @@ namespace UI {
             if (onHomeMenu && !saveConfirmActive && !itemEditDialogActive && !statEdit.dialogActive &&
                 !releaseConfirmActive && !actionSheet.isOpen() && !groupMenuActive &&
                 !storageExitConfirmActive && !details.active) {
+                if (!requireMutableWorkspace()) return;
                 exitingWithUnsavedChanges = false;  // Regular save, not exiting
                 exitingViaPlus = false;
                 saveDestIndex = defaultSaveDestRow();   // the session's safe working backup
@@ -3228,15 +3265,16 @@ namespace UI {
                 return;
             }
             if (kDown & HidNpadButton_A) {
-                switch (actionSheet.activate()) {
+                switch (actionSheet.activate(!sourceReadOnly())) {
                     case PokeVault::UIModel::ActionResult::OpenView:
                         openActionSheetTargetDetails(true);
                         break;
                     case PokeVault::UIModel::ActionResult::OpenEditor:
+                        if (!requireMutableWorkspace()) break;
                         openActionSheetTargetDetails(false);
                         break;
                     case PokeVault::UIModel::ActionResult::NotYetSupported:
-                        postStatus("Not yet supported in this build.", 180);
+                        postStatus(sourceReadOnly() ? "Read-only source. Editing requires an explicit backup workspace." : "Not yet supported in this build.", 240);
                         break;
                     case PokeVault::UIModel::ActionResult::Closed:
                     case PokeVault::UIModel::ActionResult::None:
@@ -3342,7 +3380,7 @@ namespace UI {
                     // Leaving the storage view: if the bank has unsaved changes, prompt Save / Discard /
                     // Cancel. No changes -> just exit.
                     // The bank is its own entity, saved here rather than with the game (X) save.
-                    if (bank && bank->hasChanged()) {
+                    if (!sourceReadOnly() && bank && bank->hasChanged()) {
                         storageExitConfirmActive = true;
                         storageExitConfirmIndex = 0;
                         return;
@@ -3420,6 +3458,10 @@ namespace UI {
 
             // Handle detail view navigation
             if (selectedMode == ViewMode::Items) {
+                if (sourceReadOnly() && (kDown & (HidNpadButton_A | HidNpadButton_X | HidNpadButton_Y))) {
+                    requireMutableWorkspace();
+                    kDown &= ~(HidNpadButton_A | HidNpadButton_X | HidNpadButton_Y);
+                }
                 // Get current pouch size for bounds checking
                 if (selectedCategory >= 0 && selectedCategory < static_cast<int>(trainer.items.size())) {
                     const auto& pouch = trainer.items[selectedCategory];
@@ -3741,6 +3783,7 @@ namespace UI {
                                 selectedItemIndex,
                             });
                         } else if (!storageSlotLocked(0, selectedBoxIndex, selectedItemIndex) && !swapActive) {
+                            if (!requireMutableWorkspace()) return;
                             // Empty slot -> create a new Pokemon here, the same flow as the Storage view:
                             // pick a species, edit it in the details modal, Keep/Discard on exit. The
                             // creator's species-pick handler drops it into boxes[box][slot] via
@@ -3761,6 +3804,7 @@ namespace UI {
                 // release menu enforces (D8). Reuses the global release-confirm flow (pane 0 = save box).
                 // Skipped mid-swap -- while holding a grabbed mon, B cancels and Y drops.
                 if ((kDown & HidNpadButton_X) && !swapActive) {
+                    if (!requireMutableWorkspace()) return;
                     const bool inRange = selectedBoxIndex >= 0 && selectedBoxIndex < static_cast<int>(trainer.boxes.size()) &&
                                          selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(BOX_SLOTS);
                     if (inRange) {
@@ -3780,6 +3824,7 @@ namespace UI {
                 // Y button: grab the slot under the cursor, then Y on another occupied slot
                 // to swap them (Phase 3.1). Same-slot Y cancels the grab.
                 if (kDown & HidNpadButton_Y) {
+                    if (!requireMutableWorkspace()) return;
                     bool inRange = selectedBoxIndex >= 0 && selectedBoxIndex < static_cast<int>(trainer.boxes.size()) &&
                                    selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(BOX_SLOTS);
                     bool cursorOccupied = inRange && trainer.boxes[selectedBoxIndex][selectedItemIndex] != nullptr;
@@ -3901,7 +3946,7 @@ namespace UI {
         // Normal mode navigation (not in detail view)
         if (kDown & HidNpadButton_B) {
             // Check for unsaved changes
-            if (hasUnsavedChanges && !saveConfirmActive) {
+            if (!sourceReadOnly() && hasUnsavedChanges && !saveConfirmActive) {
                 // Prompt to save changes before going back
                 exitingWithUnsavedChanges = true;
                 exitingViaPlus = false;  // Exiting via B button (go back)
@@ -4094,7 +4139,8 @@ namespace UI {
         drawAppBackdrop(fb);
 
         // --- Title bar: the shared chrome, with game name + version + DLC as the subtitle ---
-        std::string subtitle = titleName;
+        std::string subtitle = sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — " : "BACKUP WORKSPACE — ";
+        subtitle += titleName;
         if (!gameVersion.empty()) {
             subtitle += "  v" + gameVersion;
         }
@@ -4260,6 +4306,27 @@ namespace UI {
             !groupMenuActive && !creator.keepConfirmActive && !details.discardConfirmActive &&
             !gen3ConvertConfirmActive && !lgpeTransferConfirmActive;
         if (standardScreen) {
+            if (sourceReadOnly() && !details.active && selectedMode != ViewMode::Settings) {
+                instructions = "Arrows: Navigate  |  B: Back";
+                bool canOpen = !detailViewActive;
+                if (detailViewActive && selectedMode == ViewMode::Party)
+                    canOpen = selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(trainer.party.size()) &&
+                        trainer.party[selectedItemIndex] && trainer.party[selectedItemIndex]->speciesID() != 0;
+                if (detailViewActive && selectedMode == ViewMode::Boxes)
+                    canOpen = selectedBoxIndex >= 0 && selectedBoxIndex < static_cast<int>(trainer.boxes.size()) &&
+                        selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(trainer.getSlotsPerBox()) &&
+                        trainer.boxes[selectedBoxIndex][selectedItemIndex] && trainer.boxes[selectedBoxIndex][selectedItemIndex]->speciesID() != 0;
+                if (detailViewActive && selectedMode == ViewMode::Storage) {
+                    const int slot = storageFocusPane == 0 ? stSaveSlot : stBankSlot;
+                    const int box = storageFocusPane == 0 ? stSaveBox : stBankBox;
+                    canOpen = bank && slot >= 0 && storageSlot(storageFocusPane, box, slot) &&
+                        storageSlot(storageFocusPane, box, slot)->speciesID() != 0;
+                }
+                if (canOpen)
+                    instructions += "  |  A: View / Actions";
+                if (detailViewActive && (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage))
+                    instructions += "  |  L/R: Box  |  ZL/ZR: Jump";
+            }
             const std::string oldExit = "+: Exit App";
             for (std::size_t pos = instructions.find(oldExit); pos != std::string::npos;
                  pos = instructions.find(oldExit, pos)) {
@@ -4334,6 +4401,8 @@ namespace UI {
 
         if (helpOverlayActive) {
             drawInfoOverlay(fb, "Game Browser Controls", {
+                sourceReadOnly() ? "INSTALLED SOURCE: read-only browsing" : "BACKUP WORKSPACE: edits affect backup files only",
+                "Legacy Storage is app-owned bank.dat, NOT Master Vault",
                 "D-pad / Left Stick   Navigate (hold to scroll)",
                 "A   Open or show Pokémon actions",
                 "B   Back or cancel",

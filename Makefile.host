@@ -5,16 +5,35 @@ SANITIZE_FLAGS := -fsanitize=address,undefined -fno-omit-frame-pointer -O1
 HOST_BUILD := build-host
 HOST_TESTS := $(HOST_BUILD)/test_game_identity $(HOST_BUILD)/test_write_policy $(HOST_BUILD)/test_action_sheet_model $(HOST_BUILD)/test_theme $(HOST_BUILD)/test_navigation_repeat $(HOST_BUILD)/test_controller_model
 HOST_SANITIZE_TESTS := $(HOST_BUILD)/test_game_identity_sanitize $(HOST_BUILD)/test_write_policy_sanitize $(HOST_BUILD)/test_action_sheet_model_sanitize $(HOST_BUILD)/test_theme_sanitize $(HOST_BUILD)/test_navigation_repeat_sanitize $(HOST_BUILD)/test_controller_model_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_source_mutation_policy $(HOST_BUILD)/test_pla_read_validation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_source_mutation_policy_sanitize $(HOST_BUILD)/test_pla_read_validation_sanitize
+PLA_TEST_SOURCES := tests/test_pla_read_validation.cpp src/Save/Block.cpp src/Encryption/Encryption.cpp src/Encryption/Encryption8LA.cpp src/Enums/SCTypeCode.cpp src/Utils/HelperUtilities.cpp src/Utils/StringHelpers.cpp src/Utils/SHA256.cpp src/Utils/ReadAllBytes.cpp
 
 .PHONY: host-test host-sanitize host-clean
 
 host-test: $(HOST_TESTS)
-	@for test_bin in $(HOST_TESTS); do ./$$test_bin; done
+	@set -e; for test_bin in $(HOST_TESTS); do ./$$test_bin; done
 
 host-sanitize: $(HOST_SANITIZE_TESTS)
 	# LeakSanitizer cannot inspect /proc under the managed build sandbox. AddressSanitizer and
 	# UndefinedBehaviorSanitizer still run; leak checks remain enabled in unrestricted CI builds.
-	@for test_bin in $(HOST_SANITIZE_TESTS); do ASAN_OPTIONS=detect_leaks=0 ./$$test_bin; done
+	@set -e; for test_bin in $(HOST_SANITIZE_TESTS); do ASAN_OPTIONS=detect_leaks=0 ./$$test_bin; done
+
+$(HOST_BUILD)/test_source_mutation_policy: tests/test_source_mutation_policy.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_source_mutation_policy_sanitize: tests/test_source_mutation_policy.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_pla_read_validation: $(PLA_TEST_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_pla_read_validation_sanitize: $(PLA_TEST_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_game_identity: tests/test_game_identity.cpp src/Games/GameIdentity.cpp
 	@mkdir -p $(HOST_BUILD)

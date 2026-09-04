@@ -68,16 +68,16 @@ namespace PokeVault::UIModel {
         Closed,
     };
 
-    constexpr bool actionImplemented(PokemonAction action) noexcept {
+    constexpr bool actionImplemented(PokemonAction action, bool allowEdit = true) noexcept {
         return action == PokemonAction::View ||
-               action == PokemonAction::Edit ||
+               (action == PokemonAction::Edit && allowEdit) ||
                action == PokemonAction::Cancel;
     }
 
-    constexpr ActionResult dispatchAction(PokemonAction action) noexcept {
+    constexpr ActionResult dispatchAction(PokemonAction action, bool allowEdit = true) noexcept {
         switch (action) {
             case PokemonAction::View:   return ActionResult::OpenView;
-            case PokemonAction::Edit:   return ActionResult::OpenEditor;
+            case PokemonAction::Edit:   return allowEdit ? ActionResult::OpenEditor : ActionResult::NotYetSupported;
             case PokemonAction::Cancel: return ActionResult::Closed;
 
             case PokemonAction::AddToMasterVault:
@@ -125,9 +125,9 @@ namespace PokeVault::UIModel {
             selected_ = (selected_ + step + count) % count;
         }
 
-        ActionResult activate() noexcept {
+        ActionResult activate(bool allowEdit = true) noexcept {
             if (!open_) return ActionResult::None;
-            const ActionResult result = dispatchAction(selectedAction());
+            const ActionResult result = dispatchAction(selectedAction(), allowEdit);
             if (result != ActionResult::NotYetSupported) close();
             return result;
         }

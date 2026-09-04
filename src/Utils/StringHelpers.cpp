@@ -11,7 +11,8 @@ namespace Utils {
     /// Loads characters into the result buffer and returns the count of characters loaded.
     int loadString(const uint8_t* data, size_t data_size, char16_t* result, size_t result_capacity) {
         size_t i = 0;
-        for (; i < data_size; i += 2) {
+        if (!data || !result) return 0;
+        for (; data_size - i >= 2 && i / 2 < result_capacity; i += 2) {
             uint16_t value = readUInt16LittleEndian(&data[i]);  // one 2-byte UTF-16 unit (matches i += 2); a UInt32 read here over-ran the buffer by 2 bytes on the final unit
             if (value == TerminatorNull) {
                 break;

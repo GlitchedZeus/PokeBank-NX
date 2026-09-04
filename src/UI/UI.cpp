@@ -83,19 +83,35 @@ namespace UI {
                         backupScreen.reportFailure("Couldn't create the backup. Check SD card space and try again.");
                         continue;
                     }
-                    handleTrainerView(userUid, titleId, titleName, backupPath, true);   // read from the live save
+                    std::string error;
+                    if (!handleTrainerView(userUid, titleId, titleName, backupPath, true, error)) {
+                        backupScreen.reportFailure(error);
+                        continue;
+                    }
                 } else {
                     // Use existing backup
                     logInfoToFile("Loading existing backup", backupScreen.getSelectedBackupPath().c_str());
-                    handleTrainerView(userUid, titleId, titleName, backupScreen.getSelectedBackupPath(), false);
+                    std::string error;
+                    if (!handleTrainerView(userUid, titleId, titleName,
+                                           backupScreen.getSelectedBackupPath(), false, error)) {
+                        backupScreen.reportFailure(error);
+                        continue;
+                    }
                 }
                 return;
             }
         }
     }
 
-    void UIManager::handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName, const std::string& backupDir, bool loadedFromCart) {
+    bool UIManager::handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
+                                      const std::string& backupDir, bool loadedFromCart,
+                                      std::string& error) {
         logInfoToFile("Loading save from", backupDir.c_str());
+
+        if (!Save::validateTrainerSaveForOpen(backupDir.c_str(), titleId, error)) {
+            logErrorToFile("Save validation refused open", error.c_str());
+            return false;
+        }
 
         // Read trainer data from the specified backup directory
         // Auto-detects game version and uses appropriate reading function
@@ -120,5 +136,6 @@ namespace UI {
                 running = false;
             }
         }, trainerVariant);
+        return true;
     }
 }

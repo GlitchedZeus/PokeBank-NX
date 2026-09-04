@@ -1,6 +1,17 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-03
+Last updated: 2026-09-04
+
+## Session 2.6 source milestone
+
+Read `docs/SESSION2_6_SAFETY_IMPLEMENTATION.md` for the current source-state/persistence audit.
+Installed-source browsing is enforced read-only; explicit backup workspaces retain inherited
+editing. Legacy Storage is app-owned, not Master Vault. The low-level live-write lock is unchanged.
+PLA container/layout/record validation and the shared file-reader allocation fix are IMPLEMENTED
+and HOST TESTED with ASan/UBSan. Existing analog/theme/action-sheet tests pass.
+The exact old failing PLA save is unavailable: #24 remains open pending physical retest.
+Final exact artifact identity will be recorded separately after the application commit and clean
+rebuild. This source is NOT DEVICE TESTED. Do not merge to main before acceptance.
 
 This is the authoritative verified-state handoff for coding sessions. Source commits, CI/build evidence and physical-device evidence are deliberately tracked separately.
 

@@ -13,7 +13,7 @@ using namespace Enums;
 namespace Save {
     // Reads a single block (ported from ReadFromOffset, with bound checks; returns true on success)
     bool tryReadBlock(const uint8_t* data, size_t data_size, uint32_t key, size_t& offset, Block& result) {
-        if (offset >= data_size) return false;
+        if (!data || offset >= data_size) return false;
 
         SCXorShift32 xk(key);
 
@@ -27,17 +27,14 @@ namespace Save {
             case SCTypeCode::Bool1:
             case SCTypeCode::Bool2:
             case SCTypeCode::Bool3:
-    #ifdef DEBUG
-                assert(result.type != SCTypeCode::Bool3); // As in original
-    #endif
                 return true; // No data
 
             case SCTypeCode::Object: {
-                if (offset + 4 > data_size) return false;
+                if (data_size - offset < 4) return false;
                 uint32_t num_bytes = readUInt32LittleEndian(data + offset) ^ xk.Next32();
                 offset += 4;
 
-                if (offset + num_bytes > data_size) return false;
+                if (num_bytes > data_size - offset) return false;
                 result.data.resize(num_bytes);
                 std::memcpy(result.data.data(), data + offset, num_bytes);
                 offset += num_bytes;
@@ -49,7 +46,7 @@ namespace Save {
             }
 
             case SCTypeCode::Array: {
-                if (offset + 4 > data_size) return false;
+                if (data_size - offset < 4) return false;
                 uint32_t num_entries = readUInt32LittleEndian(data + offset) ^ xk.Next32();
                 offset += 4;
 
@@ -58,9 +55,10 @@ namespace Save {
                 ++offset;
 
                 size_t elem_size = getTypeSize(result.sub_type);
-                size_t num_bytes = num_entries * elem_size;
+                if (elem_size == 0 || num_entries > (data_size - offset) / elem_size) return false;
+                size_t num_bytes = static_cast<size_t>(num_entries) * elem_size;
 
-                if (offset + num_bytes > data_size) return false;
+                if (num_bytes > data_size - offset) return false;
                 result.data.resize(num_bytes);
                 std::memcpy(result.data.data(), data + offset, num_bytes);
                 offset += num_bytes;
@@ -77,7 +75,7 @@ namespace Save {
 
             default: { // Single value
                 size_t num_bytes = getTypeSize(result.type);
-                if (num_bytes == 0 || offset + num_bytes > data_size) return false;
+                if (num_bytes == 0 || num_bytes > data_size - offset) return false;
 
                 result.data.resize(num_bytes);
                 std::memcpy(result.data.data(), data + offset, num_bytes);
@@ -96,8 +94,12 @@ namespace Save {
         std::vector<Block> blocks;
         size_t offset = 0;
         size_t consumed = 0;   // end of the last SUCCESSFULLY parsed block
+        if (!data) {
+            if (outConsumed) *outConsumed = 0;
+            return blocks;
+        }
 
-        while (offset + 4 <= data_size) { // Need at least key
+        while (data_size - offset >= 4) { // Need at least key; subtraction cannot overflow
             uint32_t key = readUInt32LittleEndian(data + offset);
             offset += 4;
 

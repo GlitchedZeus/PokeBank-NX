@@ -46,6 +46,11 @@ namespace Save {
      */
     TrainerVariant readTrainerInfo(const char* backupDir, u64 titleId);
 
+    // Read-only preflight used before constructing a trainer. PLA's SCBlock container is fully
+    // checked so an old, truncated, hash-damaged, or unsupported save returns to the picker with a
+    // useful message instead of reaching parser assumptions. No repair or write is attempted.
+    bool validateTrainerSaveForOpen(const char* backupDir, u64 titleId, std::string& error);
+
     /**
      * Saves trainer info to a save file, auto-detecting the game version.
      *
