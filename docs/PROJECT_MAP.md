@@ -1,6 +1,11 @@
 # PokeBank NX — Project Map
 
-Last updated: 2026-09-03
+Last updated: 2026-09-04
+
+Current gate: **READY FOR SECOND DEVICE TEST / NOT DEVICE TESTED**, application `0ea98cc1`.
+See `BUILD_RECORD.md` for the exact binary and
+[`SESSION2_6_SAFETY_IMPLEMENTATION.md`](SESSION2_6_SAFETY_IMPLEMENTATION.md) for implemented
+source guards, persistence classification, PLA hardening and verification boundaries.
 
 Short navigation/index for verified state, active prompts, hardware reports, architecture, research and the full v1.0 plan.
 

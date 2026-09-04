@@ -2,7 +2,26 @@
 
 Last updated: 2026-09-04
 
-## Session 2.6 source milestone
+## Session 2.6 — READY FOR SECOND DEVICE TEST / NOT DEVICE TESTED
+
+- Application source: `0ea98cc1a9f9dfc2b17abc33e944caa4aa9de915`
+- Commit: `safety: lock installed-source UI and harden PLA reads`
+- Embedded version / short SHA: `0.1.0-alpha` / `0ea98cc1`
+- Artifact: `PokeBank-NX-Second-Device-0ea98cc1.nro`
+- Size: **155117481 bytes**
+- SHA-256: `4c220bdf1736fb626e97c30b4ceb89fb7da7a4f24bce17c1dd36d25017478f28`
+- Host tests (8 suites), ASan/UBSan, `git diff --check`: **PASS**
+- Exact-source `make clean` / `make -j1`: **NRO BUILDS**
+- Asset preflight: **PASS**; 3260 HD sprites, 18 type icons, 3 fonts.
+- Independent embedded RomFS comparison: **PASS**, all 3281 files match source assets byte-for-byte.
+- GitHub source verified on `feature/pokebank-playable`; CI run `33839339713`: **PASS**.
+- Checklist: `docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md`; hardware fields remain blank.
+
+The next task is Will's physical acceptance of this exact artifact, especially the old PLA save,
+installed-source UI guards, analog input and rendered artwork. Do not merge to main or start later
+engines before acceptance. Later documentation commits do not change this binary's source identity.
+
+### Source milestone
 
 Read `docs/SESSION2_6_SAFETY_IMPLEMENTATION.md` for the current source-state/persistence audit.
 Installed-source browsing is enforced read-only; explicit backup workspaces retain inherited
@@ -10,8 +29,8 @@ editing. Legacy Storage is app-owned, not Master Vault. The low-level live-write
 PLA container/layout/record validation and the shared file-reader allocation fix are IMPLEMENTED
 and HOST TESTED with ASan/UBSan. Existing analog/theme/action-sheet tests pass.
 The exact old failing PLA save is unavailable: #24 remains open pending physical retest.
-Final exact artifact identity will be recorded separately after the application commit and clean
-rebuild. This source is NOT DEVICE TESTED. Do not merge to main before acceptance.
+Exact artifact identity is recorded above and in `docs/BUILD_RECORD.md`. This source is NOT DEVICE
+TESTED. Do not merge to main before acceptance.
 
 This is the authoritative verified-state handoff for coding sessions. Source commits, CI/build evidence and physical-device evidence are deliberately tracked separately.
 

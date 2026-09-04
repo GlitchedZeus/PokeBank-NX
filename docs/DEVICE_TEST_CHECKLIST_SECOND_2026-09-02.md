@@ -1,6 +1,6 @@
 # PokeBank NX — Second Device Test Checklist
 
-Prepared: 2026-09-02
+Prepared: 2026-09-02; exact replacement identity recorded 2026-09-04
 
 Use this **only after Session 2.6 produces a new exact replacement `.nro`**.
 
@@ -9,15 +9,20 @@ Do not fill in the artifact identity by guessing. Copy the exact application-sou
 ## Exact artifact identity
 
 ```text
-Application source full SHA: PENDING
-Application source commit:   PENDING
-Embedded short SHA/version:  PENDING
-Artifact filename:            PENDING
-Artifact size:                PENDING
-Artifact SHA-256:             PENDING
-Host tests:                   PENDING
-ASan/UBSan:                   PENDING
-Native build:                 PENDING
+Application source full SHA: 0ea98cc1a9f9dfc2b17abc33e944caa4aa9de915
+Application source commit:   safety: lock installed-source UI and harden PLA reads
+Embedded short SHA/version:  0ea98cc1 / 0.1.0-alpha
+Artifact filename:            PokeBank-NX-Second-Device-0ea98cc1.nro
+Artifact size:                155117481 bytes
+Artifact SHA-256:             4c220bdf1736fb626e97c30b4ceb89fb7da7a4f24bce17c1dd36d25017478f28
+Host tests:                   PASS (8 suites)
+ASan/UBSan:                   PASS
+Native build:                 PASS (clean exact-source build)
+git diff --check:              PASS
+Device asset preflight:        PASS
+Embedded RomFS comparison:    PASS (3281 matching files, including 3260 HD sprites)
+GitHub application CI:         PASS (run 33839339713)
+Device tested:                NO
 ```
 
 Pre-test status must read:
@@ -32,11 +37,11 @@ NOT DEVICE TESTED
 # A. Launch / product identity
 
 ```text
-BOOT:                                      PASS / FAIL / NOT TESTED
-VISIBLY POKEBANK NX ON NORMAL PATH:        PASS / FAIL / NOT TESTED
-OBVIOUS PKSE PRODUCT BRANDING GONE:        PASS / FAIL / NOT TESTED
-POKEBANK NX NRO/TITLE IDENTITY:            PASS / FAIL / NOT TESTED
-NO MISSING-RESOURCE CRASH:                 PASS / FAIL / NOT TESTED
+BOOT:                                      ____
+VISIBLY POKEBANK NX ON NORMAL PATH:        ____
+OBVIOUS PKSE PRODUCT BRANDING GONE:        ____
+POKEBANK NX NRO/TITLE IDENTITY:            ____
+NO MISSING-RESOURCE CRASH:                 ____
 ```
 
 Notes:
@@ -46,14 +51,14 @@ Notes:
 # B. Core navigation regression
 
 ```text
-D-PAD SINGLE TAPS:                         PASS / FAIL / NOT TESTED
-D-PAD HELD REPEAT:                         PASS / FAIL / NOT TESTED
-A SELECT/OPEN:                             PASS / FAIL / NOT TESTED
-B BACK/CANCEL:                             PASS / FAIL / NOT TESTED
-L/R:                                       PASS / FAIL / PARTIAL / NOT TESTED
-ZL/ZR:                                     PASS / FAIL / PARTIAL / NOT TESTED
-+:                                         PASS / FAIL / NOT TESTED
--:                                         PASS / FAIL / NOT TESTED
+D-PAD SINGLE TAPS:                         ____
+D-PAD HELD REPEAT:                         ____
+A SELECT/OPEN:                             ____
+B BACK/CANCEL:                             ____
+L/R:                                       ____
+ZL/ZR:                                     ____
++:                                         ____
+-:                                         ____
 ```
 
 Notes / exact context:
@@ -65,20 +70,20 @@ Notes / exact context:
 Test on Select Game and at least one Pokémon box/grid where available.
 
 ```text
-LEFT STICK TAP UP:                         PASS / FAIL / NOT TESTED
-LEFT STICK TAP DOWN:                       PASS / FAIL / NOT TESTED
-LEFT STICK TAP LEFT:                       PASS / FAIL / NOT TESTED
-LEFT STICK TAP RIGHT:                      PASS / FAIL / NOT TESTED
+LEFT STICK TAP UP:                         ____
+LEFT STICK TAP DOWN:                       ____
+LEFT STICK TAP LEFT:                       ____
+LEFT STICK TAP RIGHT:                      ____
 
-LEFT STICK HOLD UP:                        PASS / FAIL / NOT TESTED
-LEFT STICK HOLD DOWN:                      PASS / FAIL / NOT TESTED
-LEFT STICK HOLD LEFT:                      PASS / FAIL / NOT TESTED
-LEFT STICK HOLD RIGHT:                     PASS / FAIL / NOT TESTED
+LEFT STICK HOLD UP:                        ____
+LEFT STICK HOLD DOWN:                      ____
+LEFT STICK HOLD LEFT:                      ____
+LEFT STICK HOLD RIGHT:                     ____
 
-LEFT STICK DIAGONAL STABILITY:             PASS / FAIL / NOT TESTED
-DIRECTION CHANGES WHILE HELD:              PASS / FAIL / NOT TESTED
-NO STUCK REPEAT AFTER RELEASE:             PASS / FAIL / NOT TESTED
-NO UNCONTROLLED SKIPPING:                  PASS / FAIL / NOT TESTED
+LEFT STICK DIAGONAL STABILITY:             ____
+DIRECTION CHANGES WHILE HELD:              ____
+NO STUCK REPEAT AFTER RELEASE:             ____
+NO UNCONTROLLED SKIPPING:                  ____
 ```
 
 Failure behavior if any:
@@ -116,13 +121,13 @@ Cancel
 ```
 
 ```text
-PARTY ACTION SHEET OPENS:                  PASS / FAIL / NOT TESTED
-BOX ACTION SHEET OPENS:                    PASS / FAIL / NOT TESTED
-STORAGE ACTION SHEET OPENS:                PASS / FAIL / NOT TESTED
-ORDER CORRECT:                             PASS / FAIL / NOT TESTED
-B/CANCEL ZERO-MUTATION:                    PASS / FAIL / NOT TESTED
-20x OPEN/CLOSE STABLE:                     PASS / FAIL / NOT TESTED
-NO STUCK INPUT:                            PASS / FAIL / NOT TESTED
+PARTY ACTION SHEET OPENS:                  ____
+BOX ACTION SHEET OPENS:                    ____
+STORAGE ACTION SHEET OPENS:                ____
+ORDER CORRECT:                             ____
+B/CANCEL ZERO-MUTATION:                    ____
+20x OPEN/CLOSE STABLE:                     ____
+NO STUCK INPUT:                            ____
 ```
 
 Notes:
@@ -131,24 +136,30 @@ Notes:
 
 # E. Installed-game mutation safety — issue #23 acceptance
 
+Select the first **Browse installed source** row for this test. The entire session, including the
+Legacy Storage pane, is read-only. To test inherited mutable behavior separately, leave this
+browser and deliberately select an **Edit backup workspace** row. Its changes target backup
+files or app-owned `bank.dat`, never the installed title. The global **LIVE LOCKED** badge refers
+to the installed-game write lock; it does not mean an explicitly selected backup is immutable.
+
 Use a Pokémon loaded directly from an installed-game source.
 
 The goal is **not** to prove a dangerous write by experimenting. The goal is to prove unsafe mutation UI is not reachable/committable.
 
 ```text
-RELEASE NOT REACHABLE ON INSTALLED SOURCE: PASS / FAIL / NOT TESTED
-CREATE NOT REACHABLE ON INSTALLED SOURCE:  PASS / FAIL / NOT TESTED
-UNSAFE MOVE/MULTI NOT REACHABLE:           PASS / FAIL / NOT TESTED
-EDIT CANNOT COMMIT TO INSTALLED SOURCE:    PASS / FAIL / NOT TESTED
-NO SAVE-CHANGES PATH TO INSTALLED SOURCE:  PASS / FAIL / NOT TESTED
-NO CONTROLLER SHORTCUT BYPASS:             PASS / FAIL / NOT TESTED
-VIEW/BROWSE REMAINS READ ONLY:             PASS / FAIL / NOT TESTED
+RELEASE NOT REACHABLE ON INSTALLED SOURCE: ____
+CREATE NOT REACHABLE ON INSTALLED SOURCE:  ____
+UNSAFE MOVE/MULTI NOT REACHABLE:           ____
+EDIT CANNOT COMMIT TO INSTALLED SOURCE:    ____
+NO SAVE-CHANGES PATH TO INSTALLED SOURCE:  ____
+NO CONTROLLER SHORTCUT BYPASS:             ____
+VIEW/BROWSE REMAINS READ ONLY:             ____
 ```
 
 If Edit is intentionally unavailable on installed sources:
 
 ```text
-CLEAR NOT-YET-SUPPORTED/READ-ONLY MESSAGE: PASS / FAIL / NOT TESTED
+CLEAR NOT-YET-SUPPORTED/READ-ONLY MESSAGE: ____
 ```
 
 If any path appears capable of writing the installed save unexpectedly:
@@ -165,14 +176,15 @@ Notes:
 
 # F. App/legacy Storage classification — issue #27
 
-Only test the user-facing behavior exposed by the replacement build.
+Only test the user-facing behavior exposed by the replacement build. Use an explicit BACKUP
+WORKSPACE for writable Legacy Storage tests; initial INSTALLED SOURCE browsing blocks these edits.
 
 ```text
-STORAGE OPENS:                             PASS / FAIL / NOT TESTED
-STORAGE CLEARLY LOOKS APP-OWNED/SEPARATE:  PASS / FAIL / PARTIAL / NOT TESTED
-STORAGE PERSISTENCE STILL WORKS:           PASS / FAIL / NOT TESTED
+STORAGE OPENS:                             ____
+STORAGE CLEARLY LOOKS APP-OWNED/SEPARATE:  ____
+STORAGE PERSISTENCE STILL WORKS:           ____
 MOVING/COPYING TO STORAGE DOES NOT
-SILENTLY REMOVE INSTALLED-SOURCE POKÉMON:  PASS / FAIL / NOT TESTED
+SILENTLY REMOVE INSTALLED-SOURCE POKÉMON:  ____
 ```
 
 Do not confuse legacy Storage with Master Vault; Vault is not implemented yet unless the application source explicitly says otherwise.
@@ -186,13 +198,13 @@ Notes:
 Use the exact older PLA save that crashed the first binary if available.
 
 ```text
-NORMAL/OTHER PLA SAVE OPENS:               PASS / FAIL / NOT TESTED
-OLD PROBLEM PLA SAVE ATTEMPTED:            YES / NO
-OLD PROBLEM PLA SAVE CRASHES:              YES / NO / NOT TESTED
-OLD SAVE OPENS SUCCESSFULLY:                YES / NO / NOT TESTED
-OR FAILS WITH USEFUL ERROR:                 YES / NO / NOT TESTED
-CAN RETURN SAFELY AFTER ERROR:              PASS / FAIL / NOT TESTED
-NO AUTO-REPAIR/WRITE PROMPT:                PASS / FAIL / NOT TESTED
+NORMAL/OTHER PLA SAVE OPENS:               ____
+OLD PROBLEM PLA SAVE ATTEMPTED:            ____
+OLD PROBLEM PLA SAVE CRASHES:              ____
+OLD SAVE OPENS SUCCESSFULLY:                ____
+OR FAILS WITH USEFUL ERROR:                 ____
+CAN RETURN SAFELY AFTER ERROR:              ____
+NO AUTO-REPAIR/WRITE PROMPT:                ____
 ```
 
 If the old save still crashes, record the exact screen/action and stop repeating unnecessary crash loops.
@@ -204,14 +216,14 @@ Notes:
 # H. Themes / visible shell
 
 ```text
-OLED BLACK:                                PASS / FAIL / NOT TESTED
-DARK:                                      PASS / FAIL / NOT TESTED
-LIGHT:                                     PASS / FAIL / NOT TESTED
-THEME PERSISTENCE AFTER RESTART:           PASS / FAIL / NOT TESTED
-OPTIONS LOOKS POKEBANK NX:                 PASS / FAIL / NOT TESTED
-HELP LOOKS POKEBANK NX:                    PASS / FAIL / NOT TESTED
-ACTION SHEET LOOKS POKEBANK NX:            PASS / FAIL / NOT TESTED
-TEXT/FOCUS READABLE IN ALL THEMES:         PASS / FAIL / NOT TESTED
+OLED BLACK:                                ____
+DARK:                                      ____
+LIGHT:                                     ____
+THEME PERSISTENCE AFTER RESTART:           ____
+OPTIONS LOOKS POKEBANK NX:                 ____
+HELP LOOKS POKEBANK NX:                    ____
+ACTION SHEET LOOKS POKEBANK NX:            ____
+TEXT/FOCUS READABLE IN ALL THEMES:         ____
 ```
 
 Notes:
@@ -221,13 +233,13 @@ Notes:
 # I. Party / Boxes / data sanity
 
 ```text
-PARTY OPENS:                               PASS / FAIL / NOT TESTED
-PARTY COUNT/DATA LOOKS CORRECT:            PASS / FAIL / NOT TESTED
-BOXES OPEN:                                PASS / FAIL / NOT TESTED
-BOX COUNT/DATA LOOKS CORRECT:              PASS / FAIL / NOT TESTED
-EMPTY SLOTS SAFE:                          PASS / FAIL / NOT TESTED
-BOX NAVIGATION STABLE:                     PASS / FAIL / NOT TESTED
-NO POKÉMON DISAPPEARS/CHANGES BY BROWSING: PASS / FAIL / NOT TESTED
+PARTY OPENS:                               ____
+PARTY COUNT/DATA LOOKS CORRECT:            ____
+BOXES OPEN:                                ____
+BOX COUNT/DATA LOOKS CORRECT:              ____
+EMPTY SLOTS SAFE:                          ____
+BOX NAVIGATION STABLE:                     ____
+NO POKÉMON DISAPPEARS/CHANGES BY BROWSING: ____
 ```
 
 Notes:
@@ -241,10 +253,10 @@ The visual-model work in #25 is later unless Session 2.6 explicitly included it 
 For now verify read-only data/view behavior:
 
 ```text
-VIEW OPENS:                                PASS / FAIL / NOT TESTED
-SPECIES/LEVEL LOOK CORRECT:                PASS / FAIL / NOT TESTED
-B RETURNS SAFELY:                          PASS / FAIL / NOT TESTED
-VIEW DOES NOT MUTATE SOURCE:               PASS / FAIL / NOT TESTED
+VIEW OPENS:                                ____
+SPECIES/LEVEL LOOK CORRECT:                ____
+B RETURNS SAFELY:                          ____
+VIEW DOES NOT MUTATE SOURCE:               ____
 ```
 
 Notes:
@@ -256,11 +268,11 @@ Notes:
 If practical:
 
 ```text
-HOME → RETURN:                             PASS / FAIL / NOT TESTED
-SLEEP → WAKE → RETURN:                     PASS / FAIL / NOT TESTED
-JOY-CON/CONTROLLER DISCONNECT → RECONNECT: PASS / FAIL / NOT TESTED
-INPUT WORKS AFTER RECONNECT:               PASS / FAIL / NOT TESTED
-NO STUCK FOCUS/REPEAT AFTER RESUME:         PASS / FAIL / NOT TESTED
+HOME → RETURN:                             ____
+SLEEP → WAKE → RETURN:                     ____
+JOY-CON/CONTROLLER DISCONNECT → RECONNECT: ____
+INPUT WORKS AFTER RECONNECT:               ____
+NO STUCK FOCUS/REPEAT AFTER RESUME:         ____
 ```
 
 Notes:
@@ -270,13 +282,13 @@ Notes:
 # L. Handheld / docked
 
 ```text
-HANDHELD TESTED:                           YES / NO
-HANDHELD TEXT/FOCUS/HINTS READABLE:        PASS / FAIL / NOT TESTED
-HANDHELD CONTENT CLIPPED:                  YES / NO / NOT TESTED
+HANDHELD TESTED:                           ____
+HANDHELD TEXT/FOCUS/HINTS READABLE:        ____
+HANDHELD CONTENT CLIPPED:                  ____
 
-DOCKED TESTED:                             YES / NO
-DOCKED TEXT/FOCUS/HINTS READABLE:          PASS / FAIL / NOT TESTED
-DOCKED CONTENT CLIPPED/OVERSCAN:           YES / NO / NOT TESTED
+DOCKED TESTED:                             ____
+DOCKED TEXT/FOCUS/HINTS READABLE:          ____
+DOCKED CONTENT CLIPPED/OVERSCAN:           ____
 ```
 
 Notes:
@@ -289,11 +301,11 @@ After read-only testing, launch at least one actual Pokémon game that was brows
 
 ```text
 GAME CHECKED:
-ORIGINAL SAVE LOADS:                       PASS / FAIL / NOT TESTED
-PARTY STILL LOOKS CORRECT:                 PASS / FAIL / NOT TESTED
-BOXES STILL LOOK CORRECT:                  PASS / FAIL / NOT TESTED
-POKÉMON STILL WHERE EXPECTED:              PASS / FAIL / NOT TESTED
-UNEXPECTED CHANGE:                         YES / NO / NOT TESTED
+ORIGINAL SAVE LOADS:                       ____
+PARTY STILL LOOKS CORRECT:                 ____
+BOXES STILL LOOK CORRECT:                  ____
+POKÉMON STILL WHERE EXPECTED:              ____
+UNEXPECTED CHANGE:                         ____
 ```
 
 This is a user-level sanity check, not a byte-level proof.
@@ -305,20 +317,20 @@ Notes:
 # N. Final result
 
 ```text
-BOOT / STABILITY:                          PASS / FAIL / PARTIAL
-VISIBLE POKEBANK NX SHELL:                 PASS / FAIL / PARTIAL
-LEFT STICK:                                PASS / FAIL / PARTIAL
-D-PAD / CORE INPUT:                        PASS / FAIL / PARTIAL
-ACTION SHEET:                              PASS / FAIL / PARTIAL
-INSTALLED-SOURCE SAFETY UI:                PASS / FAIL / PARTIAL
-PLA OLD-SAVE HANDLING:                     PASS / FAIL / PARTIAL / NOT TESTED
-LEGACY STORAGE:                            PASS / FAIL / PARTIAL / NOT TESTED
-THEMES:                                    PASS / FAIL / PARTIAL
-PARTY / BOXES:                             PASS / FAIL / PARTIAL
-LIFECYCLE/RECONNECT:                       PASS / FAIL / PARTIAL / NOT TESTED
-HANDHELD:                                  PASS / FAIL / PARTIAL / NOT TESTED
-DOCKED:                                    PASS / FAIL / PARTIAL / NOT TESTED
-ORIGINAL GAME SANITY:                      PASS / FAIL / PARTIAL / NOT TESTED
+BOOT / STABILITY:                          ____
+VISIBLE POKEBANK NX SHELL:                 ____
+LEFT STICK:                                ____
+D-PAD / CORE INPUT:                        ____
+ACTION SHEET:                              ____
+INSTALLED-SOURCE SAFETY UI:                ____
+PLA OLD-SAVE HANDLING:                     ____
+LEGACY STORAGE:                            ____
+THEMES:                                    ____
+PARTY / BOXES:                             ____
+LIFECYCLE/RECONNECT:                       ____
+HANDHELD:                                  ____
+DOCKED:                                    ____
+ORIGINAL GAME SANITY:                      ____
 ```
 
 Crashes:

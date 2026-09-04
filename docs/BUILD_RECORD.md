@@ -1,6 +1,73 @@
 # PokeBank NX — Build / Artifact Record
 
-Last updated: 2026-09-03
+Last updated: 2026-09-04
+
+## Session 2.6 replacement — READY FOR SECOND DEVICE TEST
+
+```text
+Application source full SHA: 0ea98cc1a9f9dfc2b17abc33e944caa4aa9de915
+Application commit: safety: lock installed-source UI and harden PLA reads
+Embedded short SHA/version: 0ea98cc1 / 0.1.0-alpha
+Branch: feature/pokebank-playable
+Artifact filename: PokeBank-NX-Second-Device-0ea98cc1.nro
+Artifact byte size: 155117481
+Artifact SHA-256: 4c220bdf1736fb626e97c30b4ceb89fb7da7a4f24bce17c1dd36d25017478f28
+ZIP fallback: PokeBank-NX-Second-Device-0ea98cc1.zip
+Host tests: PASS (8 suites)
+ASan/UBSan: PASS (LeakSanitizer disabled by existing host recipe)
+git diff --check: PASS
+Native build: PASS; clean make -j1 from exact application SHA
+Compiler: devkitA64 15.2.0
+Asset preflight: PASS
+Embedded RomFS byte comparison: PASS; all 3281 files
+PNG integrity: PASS; 3260 HD renders at 256x256
+GitHub source SHA: VERIFIED
+GitHub CI: PASS; run 33839339713, job 100918244541
+Device tested: NO
+```
+
+This documentation follows the application-source commit; its own Git SHA is not the binary source.
+CI: https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/33839339713
+
+### Reproduction / packaging
+
+The verified local `b072c2b022c0725b03a3d69f588a4101e5685daa` was preserved on a recovery branch.
+Normal Git push lacked credentials, so the connected GitHub integration published the identical
+tree (`7cde28c81e8f17bb83221f61387fefa89ab15f26`) as `0ea98cc1...`. The latter was fetched and
+clean-built. No upstream push, force-push or main merge occurred.
+
+```bash
+export DEVKITPRO="$PWD/build-deps/devkitpro-root/opt/devkitpro"
+export DEVKITA64="$DEVKITPRO/devkitA64"
+export PATH="$DEVKITA64/bin:$DEVKITPRO/tools/bin:$PWD/build-deps/pkgconf-install/bin:$PATH"
+export LD_LIBRARY_PATH="$PWD/build-deps/pkgconf-install/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+make -f Makefile.host host-clean
+make -f Makefile.host host-test
+make -f Makefile.host host-sanitize
+git diff --check
+make types fonts
+python tools/gen_hdsprites.py
+python tools/check_device_assets.py
+make clean
+make -j1
+python tools/package_device_build.py PokeBankNX.nro --label Second-Device --zip
+```
+
+For the restored extracted toolchain, `/opt/devkitpro` points to the workspace toolchain; local
+`pkg-config` and `libpkgconf.so.3` links point to the extracted image's existing binaries/libraries.
+One generated host test binary lost its executable mode on runtime restoration; restoring that
+generated file's executable bit allowed the local test run to finish. No application source changed.
+
+Sprites use pinned PokeAPI commit `8dfa3d97e953caaafaafd4963eff7621811af08e`. Download scheduling
+used 64 then 32 workers through the unchanged generator module; a timed-out batch was resumed.
+All 3260 PNGs were validated. The NRO asset header and RomFS directory/file tables were parsed
+using the installed libnx layouts, and every embedded payload was compared to its generated source
+file. This proves packaging, not Switch rendering or resolution of the old PLA crash.
+
+Packager overrides: **NONE**. A verified `/mnt/data/PokeBank-NX-FULL.bundle` preserves local refs.
+The `.nro`, ZIP and generated manifest are separate durable downloads, not just build outputs.
+
+---
 
 This file distinguishes application source checkpoints, documentation commits, build artifacts, and physical hardware results.
 

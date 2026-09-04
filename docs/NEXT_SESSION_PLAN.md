@@ -1,7 +1,19 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-03  
-Status: **ACTIVE EXECUTION PLAN**
+Last updated: 2026-09-04
+Status: **WAITING FOR SECOND DEVICE TEST**
+
+Session 2.6 is built and packaged from application source
+`0ea98cc1a9f9dfc2b17abc33e944caa4aa9de915`. Use the exact artifact identity in
+`BUILD_RECORD.md` and fill the blank hardware fields in
+`DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md` after Will runs that binary.
+
+Do not repeat recovery, sprite generation, or implementation merely because a later docs commit is
+branch HEAD. Do not start later engines or merge main before physical acceptance. #24 remains open:
+the old failing PLA save must open or return gracefully on the device. The application remains
+**NOT DEVICE TESTED** until that exact binary is physically run.
+
+The earlier planning context below is retained for continuity; the physical gate above takes priority.
 
 `PROJECT_STATUS.md` is authoritative for verified state.  
 `docs/V1_ROADMAP.md` / issue #29 describe the full road to v1.0.  
