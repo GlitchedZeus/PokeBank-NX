@@ -12,7 +12,18 @@ The project started from the PKSE codebase, but the goal is broader: one control
 
 ---
 
-# Current status — September 3, 2026
+# Current status — September 4, 2026
+
+**READY FOR SECOND DEVICE TEST — NOT DEVICE TESTED.** Session 2.6 application source is
+`0ea98cc1a9f9dfc2b17abc33e944caa4aa9de915` (`0.1.0-alpha`). The exact replacement binary is
+`PokeBank-NX-Second-Device-0ea98cc1.nro`; see [build identity](docs/BUILD_RECORD.md) and the
+[second-device checklist](docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md).
+
+Installed-source browsing is enforced read-only; intentionally opened backup workspaces retain
+inherited editing. Legacy Storage is app-owned and **not Master Vault**. PLA failure paths are
+hardened, but the old crashing save still needs a physical retest. Host tests, ASan/UBSan, native
+build and asset checks pass. All 3260 HD sprites are included and verified in the replacement.
+Do not merge to main before this binary is physically accepted.
 
 Development branch:
 
