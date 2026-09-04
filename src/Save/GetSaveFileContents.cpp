@@ -10,6 +10,7 @@
 
 #include "Globals.h"
 #include "Save/Block.h"
+#include "Save/PLAReadValidation.h"
 #include "Save/GetSaveFileContents.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Logger.h"
@@ -31,6 +32,26 @@ using namespace Encryption;
 using namespace Enums;
 
 namespace Save {
+    namespace {
+        constexpr size_t MAX_SC_SAVE_BYTES = 64u * 1024u * 1024u;
+
+        const char* decryptFailureMessage(Encryption::DecryptStatus status) {
+            switch (status) {
+                case Encryption::DecryptStatus::MissingData:
+                    return "The save file could not be read.";
+                case Encryption::DecryptStatus::TooSmall:
+                    return "The save file is truncated.";
+                case Encryption::DecryptStatus::HashMismatch:
+                    return "The save integrity hash does not match.";
+                case Encryption::DecryptStatus::MalformedBlocks:
+                    return "The save container is malformed or unsupported.";
+                case Encryption::DecryptStatus::Ok:
+                    break;
+            }
+            return "The save format is not supported by this build.";
+        }
+    }
+
     // ========================================
     // Generic Functions (Auto-detect game)
     // ========================================
@@ -78,6 +99,46 @@ namespace Save {
                 // Return empty Trainer7 as fallback (better error handling needed)
                 return Trainer::Trainer7LGPE(std::vector<Block>());
         }
+    }
+
+    bool validateTrainerSaveForOpen(const char* backupDir, u64 titleId, std::string& error) {
+        error.clear();
+        const GameVersion group = getGameGroup(getGameVersion(titleId));
+        if (group != GameVersion::PLA) return true;
+
+        char mainPath[512];
+        snprintf(mainPath, sizeof(mainPath), "%s/main", backupDir);
+
+        struct stat st{};
+        if (stat(mainPath, &st) != 0 || !S_ISREG(st.st_mode)) {
+            error = "Legends: Arceus save file 'main' is missing.";
+            return false;
+        }
+        if (st.st_size <= static_cast<off_t>(SIZE_HASH_IN_BYTES)) {
+            error = "Legends: Arceus save is truncated; it was not opened or changed.";
+            return false;
+        }
+        if (static_cast<uint64_t>(st.st_size) > MAX_SC_SAVE_BYTES) {
+            error = "Legends: Arceus save is unexpectedly large or unsupported.";
+            return false;
+        }
+
+        size_t fileSize = 0;
+        uint8_t* file = readAllBytes(mainPath, &fileSize);
+        std::vector<Block> blocks;
+        const Encryption::DecryptStatus status = Encryption::tryDecrypt(file, fileSize, blocks);
+        delete[] file;
+        if (status != Encryption::DecryptStatus::Ok) {
+            error = std::string("Legends: Arceus save not opened: ") +
+                    decryptFailureMessage(status) + " Nothing was changed.";
+            return false;
+        }
+        const auto layoutError = validatePLAReadLayout(blocks);
+        if (!layoutError.empty()) {
+            error = "PLA not opened: " + std::string(layoutError);
+            return false;
+        }
+        return true;
     }
 
     /**

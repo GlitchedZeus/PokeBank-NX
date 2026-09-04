@@ -1,5 +1,6 @@
 #ifndef ENUMS_SC_TYPE_CODE_H
 #define ENUMS_SC_TYPE_CODE_H
+#include <cstddef>
 
 #include <cstdint>
 

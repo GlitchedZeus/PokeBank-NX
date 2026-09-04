@@ -3,6 +3,7 @@
 #include <locale>
 #include <cstdio>
 #include <span>
+#include <cstring>
 
 #include <sys/types.h>
 
@@ -35,12 +36,33 @@ namespace Encryption {
         }
     }
 
-    std::vector<Block> decrypt(uint8_t* data, size_t dataLength) {
-        // ignore hash
-        size_t payloadLength = dataLength - SIZE_HASH_IN_BYTES;
+    DecryptStatus tryDecrypt(const uint8_t* data, size_t dataLength,
+                             std::vector<Block>& blocks) {
+        blocks.clear();
+        if (data == nullptr) return DecryptStatus::MissingData;
+        if (dataLength <= SIZE_HASH_IN_BYTES) return DecryptStatus::TooSmall;
+
+        const size_t payloadLength = dataLength - SIZE_HASH_IN_BYTES;
+        uint8_t expectedHash[SIZE_HASH_IN_BYTES];
+        computeHash(data, payloadLength, expectedHash);
+        if (std::memcmp(expectedHash, data + payloadLength, SIZE_HASH_IN_BYTES) != 0)
+            return DecryptStatus::HashMismatch;
+
         std::vector<uint8_t> payload(data, data + payloadLength);
         cryptStaticXorpadBytes(payload, payloadLength);
-        return parseAllBlocks(payload.data(), payloadLength);
+        size_t consumed = 0;
+        blocks = parseAllBlocks(payload.data(), payloadLength, &consumed);
+        if (blocks.empty() || consumed != payloadLength) {
+            blocks.clear();
+            return DecryptStatus::MalformedBlocks;
+        }
+        return DecryptStatus::Ok;
+    }
+
+    std::vector<Block> decrypt(uint8_t* data, size_t dataLength) {
+        std::vector<Block> blocks;
+        (void)tryDecrypt(data, dataLength, blocks);
+        return blocks;
     }
 
     void computeHash(const uint8_t* data, size_t dataLength, uint8_t* hash) {
@@ -89,10 +111,8 @@ namespace Encryption {
 
             // Read current uint16 value from data (little-endian)
             const size_t byteOffset = i * sizeof(uint16_t);
-            uint16_t* valuePtr = reinterpret_cast<uint16_t*>(data.data() + byteOffset);
-
-            // XOR the value with the mask (symmetric operation)
-            *valuePtr ^= xorValue;
+            auto* bytes = reinterpret_cast<uint8_t*>(data.data() + byteOffset);
+            writeUInt16LittleEndian(bytes, readUInt16LittleEndian(bytes) ^ xorValue);
         }
     }
 

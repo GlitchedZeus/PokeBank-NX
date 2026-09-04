@@ -11,6 +11,7 @@
                              // so the save layer, which includes it transitively, can be compiled.
 
 namespace Utils {
+    // Returns a new[] allocation (caller uses delete[]), or nullptr with outSize=0.
     uint8_t* readAllBytes(const char* path, size_t* outSize);
     bool copyDirectory(const char* srcPath, const char* destPath);
     bool copyFile(const char* srcPath, const char* destPath);

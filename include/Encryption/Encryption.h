@@ -12,6 +12,14 @@ using namespace Save;
 
 namespace Encryption {
 
+    enum class DecryptStatus : uint8_t {
+        Ok,
+        MissingData,
+        TooSmall,
+        HashMismatch,
+        MalformedBlocks,
+    };
+
     // uint8_t, not u_int8_t: the latter is a BSD/glibc spelling that isn't standard C++ and doesn't
     // exist outside those libcs, which broke the host build of the save layer.
     static const uint8_t StaticXorpad[] =
@@ -42,6 +50,8 @@ namespace Encryption {
     };
 
     void cryptStaticXorpadBytes(std::vector<uint8_t> &data, size_t dataLength);
+    DecryptStatus tryDecrypt(const uint8_t* data, size_t dataLength,
+                             std::vector<Save::Block>& blocks);
     std::vector<Save::Block> decrypt(uint8_t* data, size_t dataLength);
     std::vector<uint8_t> encrypt(const std::vector<Save::Block>& blocks);
     void computeHash(const uint8_t* data, size_t dataLength, uint8_t* hash);

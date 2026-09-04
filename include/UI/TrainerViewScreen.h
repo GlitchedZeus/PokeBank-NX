@@ -11,6 +11,7 @@
 #include "Globals.h"
 #include "Safety/WritePolicy.h"
 #include "UI/ActionSheetModel.h"
+#include "Safety/SourceMutationPolicy.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/UIScreen.h"
 #include "UI/PKSEFramebuffer.h"
@@ -243,6 +244,17 @@ namespace UI {
         static constexpr SaveDest DestThisBackup = SaveDest::WorkingBackup;
         static constexpr SaveDest DestNewBackup = SaveDest::NewBackup;
         bool loadedFromCart = false;
+        bool sourceReadOnly() const {
+            return !PokeVault::Safety::canPerform(
+                loadedFromCart ? PokeVault::Safety::SourceKind::InstalledGame
+                               : PokeVault::Safety::SourceKind::BackupOrStaged,
+                PokeVault::Safety::SourceMutation::Edit);
+        }
+        bool requireMutableWorkspace() {
+            if (!sourceReadOnly()) return true;
+            postStatus("Installed source is read-only. Open a backup workspace explicitly to edit.", 300);
+            return false;
+        }
 
         /// Cursor into the visible, backup-only destination list.
         int saveDestIndex = 0;

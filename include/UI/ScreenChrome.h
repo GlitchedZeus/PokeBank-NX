@@ -103,9 +103,8 @@ namespace UI {
     // the d-pad is a cross with the unused axis dimmed. `cy` is the badge's vertical CENTRE.
     // Returns the width consumed, or 0 if the token isn't a button PKSE knows how to draw.
     inline int buttonGlyph(PKSEFramebuffer& fb, int x, int cy, const std::string& btn, bool measureOnly) {
-        // Mid-grey badge with the bar colour as ink. Both are theme colours, so the pair inverts
-        // itself: dark letter on light grey in the dark theme, white letter on grey in the light one.
-        const Color fill = Colors::TextDim;
+        // Primary foreground maintains contrast in OLED/Dark; Light keeps dark readable badges.
+        const Color fill = Colors::TextPrimary;
         const Color ink  = Colors::Panel;
         constexpr int kR = 12;              // face-button radius
 
@@ -347,9 +346,9 @@ namespace UI {
         fb.drawFilledRoundedRect(badgeX, 18, badgeW, badgeH, 10,
                                  withAlpha(Colors::Info, 45));
         fb.drawRoundedRect(badgeX, 18, badgeW, badgeH, 10, Colors::Info, 1);
-        int roW, roH; fb.measureText("READ ONLY", roW, roH, TextStyle::Caption);
+        int roW, roH; fb.measureText("LIVE LOCKED", roW, roH, TextStyle::Caption);
         fb.drawText(badgeX + (badgeW - roW) / 2, 18 + (badgeH - roH) / 2,
-                    "READ ONLY", Colors::Info, TextStyle::Caption);
+                    "LIVE LOCKED", Colors::Info, TextStyle::Caption);
     }
 
     // Bottom nav bar: a sheet that curves along its top edge, carrying the controller badges.

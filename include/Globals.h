@@ -2,6 +2,7 @@
 #define GLOBALS_H
 
 #include <string>
+#include <cstdint>
 
 /// Derived from the Makefile's APP_VERSION_FULL via -DPKSE_VERSION. That is the long spelling; the
 /// .nacp separately carries APP_VERSION, an abbreviation of it, because its display_version field

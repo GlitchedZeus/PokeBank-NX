@@ -50,15 +50,15 @@ namespace UI {
         BackupInfo newBackupOption;
         newBackupOption.timestamp = "";
         newBackupOption.displayName = g_autoBackupEnabled
-            ? "Load from Title (Create New Backup)"
-            : "Load from Title (Working Copy)";
+            ? "Browse installed source (read-only / new backup)"
+            : "Browse installed source (read-only / working copy)";
         backups.push_back(newBackupOption);
 
         // Add existing backups
         for (const auto& timestamp : backupDirs) {
             BackupInfo info;
             info.timestamp = timestamp;
-            info.displayName = formatTimestamp(timestamp);
+            info.displayName = "Edit backup workspace: " + formatTimestamp(timestamp);
             backups.push_back(info);
         }
     }

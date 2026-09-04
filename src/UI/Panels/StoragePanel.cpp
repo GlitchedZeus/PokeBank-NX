@@ -305,6 +305,8 @@ namespace UI
                                         ? screen.trainer.boxNames[screen.stSaveBox]
                                         : ("Box " + std::to_string(screen.stSaveBox + 1));
             std::string bankLabel = screen.bank->boxDisplayName(screen.stBankBox);
+            saveLabel = (screen.sourceReadOnly() ? "Read-only: " : "Backup: ") + saveLabel;
+            bankLabel = "Legacy Storage: " + bankLabel;
 
             PaneGeom saveGeom, bankGeom;
 
@@ -457,8 +459,13 @@ namespace UI
             std::array<const char*, PokeVault::UIModel::POKEMON_ACTIONS.size()> items{};
             for (std::size_t i = 0; i < items.size(); ++i)
                 items[i] = PokeVault::UIModel::actionLabel(PokeVault::UIModel::POKEMON_ACTIONS[i]).data();
+            uint32_t disabled = 0;
+            for (std::size_t i = 0; i < items.size(); ++i)
+                if (!PokeVault::UIModel::actionImplemented(PokeVault::UIModel::POKEMON_ACTIONS[i], !screen.sourceReadOnly()))
+                    disabled |= (1u << i);
             drawPopupMenu(screen, fb, title, items.data(), static_cast<int>(items.size()),
-                          screen.actionSheet.selectedIndex(), 0, "POKEBANK NX  /  POKÉMON ACTIONS");
+                          screen.actionSheet.selectedIndex(), disabled,
+                          screen.sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY" : "BACKUP / LEGACY STORAGE ACTIONS");
             drawNavBar(fb, controllerHints(PokeBank::UIModel::ControllerContext::PokemonActionSheet));
         }
 
