@@ -17,8 +17,25 @@ PokeBank NX now routes the Pokémon details modal, selected Box preview and Part
 reusable static contain renderer. It preserves the source aspect ratio and has no time input, bob,
 width modulation or height modulation. The `SpriteManager` resolver/cache and HD-to-legacy fallback
 remain unchanged. A pure host regression suite covers square, wide, tall and invalid sprite layout.
-This correction is **IMPLEMENTED / HOST TESTED / NRO BUILDS** and awaits an exact replacement
-artifact plus physical retest; it is **NOT DEVICE TESTED**.
+This correction is **IMPLEMENTED / HOST TESTED / NRO BUILDS**. Its exact replacement artifact is:
+
+```text
+Application source: 59895efc1f70974fb8c7ba8895f83c9688f27b5c
+Commit: ui: render Pokemon artwork without fake idle motion
+Embedded version / short SHA: 0.1.0-alpha / 59895efc
+Artifact: PokeBank-NX-Static-Render-59895efc.nro
+Size: 155117481 bytes
+SHA-256: d85284030a7d7bef7dce73daf80089c440f011313ff423026693d35920c4c83c
+Host tests (9 suites): PASS
+ASan/UBSan: PASS
+git diff --check: PASS
+Native build: PASS (clean exact-source build)
+Asset preflight: PASS (3260 HD sprites)
+Embedded RomFS comparison: PASS (3281 files)
+Device tested: NO
+```
+
+Status: **READY FOR STATIC-RENDER DEVICE TEST / NOT DEVICE TESTED**.
 
 Permanent feedback record: `docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md`.
 
