@@ -1,5 +1,39 @@
 # PokeBank NX — Build / Artifact Record
 
+## Static Pokémon render replacement — READY FOR DEVICE TEST
+
+```text
+Application source full SHA: 59895efc1f70974fb8c7ba8895f83c9688f27b5c
+Application commit: ui: render Pokemon artwork without fake idle motion
+Embedded short SHA/version: 59895efc / 0.1.0-alpha
+Branch: feature/pokebank-playable
+Artifact filename: PokeBank-NX-Static-Render-59895efc.nro
+Artifact byte size: 155117481
+Artifact SHA-256: d85284030a7d7bef7dce73daf80089c440f011313ff423026693d35920c4c83c
+ZIP fallback: PokeBank-NX-Static-Render-59895efc.zip
+ZIP byte size: 148511529
+ZIP SHA-256: 44920db75271ff04910c6edfca2c17bdf33f738cab5d50c678468ab4f815b79d
+Host tests: PASS (9 suites)
+ASan/UBSan: PASS (LeakSanitizer disabled by existing host recipe)
+git diff --check: PASS
+Native build: PASS; clean make -j1 from exact published application SHA
+Compiler: devkitA64 15.2.0
+Asset preflight: PASS; 3260 HD sprites, 18 type icons, 3 fonts
+Embedded RomFS byte comparison: PASS; all 3281 files
+GitHub source SHA: VERIFIED on origin/feature/pokebank-playable
+Device tested: NO
+```
+
+The exact `0ea98cc1...` predecessor physically passed artwork visibility and quality but failed the
+artificial idle/breathing presentation. This replacement removes the sine-driven bob and independent
+width/height modulation from active Pokémon preview paths. It does not replace the artwork or alter
+the SpriteManager resolver/cache/fallback behavior. See
+`docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md`.
+
+This documentation follows the application-source commit and is not the binary source identity.
+
+---
+
 Last updated: 2026-09-04
 
 ## Session 2.6 replacement — READY FOR SECOND DEVICE TEST
