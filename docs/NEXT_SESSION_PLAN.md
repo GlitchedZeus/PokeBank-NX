@@ -392,3 +392,12 @@ another large UI redesign
 ```
 
 Finish the safety/crash blocker source, preserve the newer shell/stick work, ensure required device assets are packaged, produce the exact replacement artifact, and physically test it first.
+# Immediate device-feedback correction — static Pokémon artwork
+
+The exact `0ea98cc1...` binary proved that HD HOME artwork is packaged, visible and good quality,
+but the inherited `drawSpriteIdle(...)` bob/squash/stretch presentation failed visual acceptance.
+The current source replaces active Summary/View and selected-preview call sites with a static,
+aspect-ratio-preserving renderer while preserving the resolver/cache/fallback pipeline. Package and
+physically retest the new exact-source artifact before treating this correction as accepted.
+
+See `docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md`.

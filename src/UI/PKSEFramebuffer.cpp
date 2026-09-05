@@ -1,4 +1,5 @@
 #include "UI/PKSEFramebuffer.h"
+#include "UI/SpriteLayout.h"
 
 #include <algorithm>
 #include <cmath>
@@ -485,6 +486,15 @@ namespace UI {
         NVGpaint p = nvgImagePattern(vg, (float)x, (float)y, (float)destW, (float)destH, 0.0f, img, 1.0f);
         nvgBeginPath(vg); nvgRect(vg, (float)x, (float)y, (float)destW, (float)destH);
         nvgFillPaint(vg, p); nvgFill(vg);
+    }
+
+    void PKSEFramebuffer::drawSpriteStaticContained(int x, int y, int boxW, int boxH,
+                                                     int srcW, int srcH,
+                                                     const unsigned char* data, int channels) {
+        if (!data) return;
+        const auto rect = PokeBank::UIModel::containSprite(x, y, boxW, boxH, srcW, srcH);
+        if (rect.width <= 0 || rect.height <= 0) return;
+        drawImageScaled(rect.x, rect.y, srcW, srcH, rect.width, rect.height, data, channels);
     }
 
     void PKSEFramebuffer::drawSpriteIdle(int x, int y, int boxW, int boxH, int srcW, int srcH,

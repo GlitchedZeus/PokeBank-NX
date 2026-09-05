@@ -1,6 +1,26 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-04
+Last updated: 2026-09-05
+
+## Post-0ea98cc1 device feedback — static Pokémon artwork correction
+
+The exact `0ea98cc1...` device build physically renders the packaged HOME artwork successfully and
+its quality was accepted, but its inherited sine-driven idle effect failed visual acceptance:
+
+```text
+POKEMON ARTWORK:                         PASS
+ARTWORK QUALITY:                        GOOD
+ARTIFICIAL IDLE / BREATHING MOTION:     FAIL / REMOVE
+```
+
+PokeBank NX now routes the Pokémon details modal, selected Box preview and Party preview through a
+reusable static contain renderer. It preserves the source aspect ratio and has no time input, bob,
+width modulation or height modulation. The `SpriteManager` resolver/cache and HD-to-legacy fallback
+remain unchanged. A pure host regression suite covers square, wide, tall and invalid sprite layout.
+This correction is **IMPLEMENTED / HOST TESTED / NRO BUILDS** and awaits an exact replacement
+artifact plus physical retest; it is **NOT DEVICE TESTED**.
+
+Permanent feedback record: `docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md`.
 
 ## Session 2.6 — READY FOR SECOND DEVICE TEST / NOT DEVICE TESTED
 

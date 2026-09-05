@@ -25,6 +25,19 @@ GitHub application CI:         PASS (run 33839339713)
 Device tested:                NO
 ```
 
+## Additional physical artwork feedback for the exact artifact above
+
+Recorded separately in `docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md`:
+
+```text
+POKEMON ARTWORK:                         PASS
+ARTWORK QUALITY:                        GOOD
+ARTIFICIAL IDLE / BREATHING MOTION:     FAIL / REMOVE
+```
+
+This feedback belongs to the exact `0ea98cc1...` binary. Do not transfer its device-tested result
+to a later static-render replacement artifact.
+
 Pre-test status must read:
 
 ```text

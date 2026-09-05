@@ -226,12 +226,13 @@ namespace Panels {
         std::string species = std::string(p->species());
         const bool isShiny = p->isShiny(p->id32(), species);
 
-        // HD render (idle), centered near the top.
+        // HD HOME render, static and aspect-ratio preserved.
         const int renderSz = 120;
         Sprite* sprite = SpriteManager::getSprite(p->speciesID(), p->form(), isShiny);
         if (sprite && sprite->data) {
-            fb.drawSpriteIdle(x + (width - renderSz) / 2, y + headerH + 6, renderSz, renderSz,
-                              sprite->width, sprite->height, sprite->data, sprite->channels, 0.0f);
+            fb.drawSpriteStaticContained(x + (width - renderSz) / 2, y + headerH + 6,
+                                         renderSz, renderSz, sprite->width, sprite->height,
+                                         sprite->data, sprite->channels);
         }
 
         int cy2 = y + headerH + 6 + renderSz + 4;
