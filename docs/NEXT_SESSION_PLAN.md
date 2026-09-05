@@ -396,8 +396,10 @@ Finish the safety/crash blocker source, preserve the newer shell/stick work, ens
 
 The exact `0ea98cc1...` binary proved that HD HOME artwork is packaged, visible and good quality,
 but the inherited `drawSpriteIdle(...)` bob/squash/stretch presentation failed visual acceptance.
-The current source replaces active Summary/View and selected-preview call sites with a static,
-aspect-ratio-preserving renderer while preserving the resolver/cache/fallback pipeline. Package and
-physically retest the new exact-source artifact before treating this correction as accepted.
+Application source `59895efc1f70974fb8c7ba8895f83c9688f27b5c` replaces active Summary/View
+and selected-preview call sites with a static, aspect-ratio-preserving renderer while preserving the
+resolver/cache/fallback pipeline. Physically test `PokeBank-NX-Static-Render-59895efc.nro`
+(`d85284030a7d7bef7dce73daf80089c440f011313ff423026693d35920c4c83c`) before treating
+this correction as accepted.
 
 See `docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md`.
