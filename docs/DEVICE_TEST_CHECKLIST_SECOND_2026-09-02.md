@@ -9,19 +9,19 @@ Do not fill in the artifact identity by guessing. Copy the exact application-sou
 ## Exact artifact identity
 
 ```text
-Application source full SHA: 0ea98cc1a9f9dfc2b17abc33e944caa4aa9de915
-Application source commit:   safety: lock installed-source UI and harden PLA reads
-Embedded short SHA/version:  0ea98cc1 / 0.1.0-alpha
-Artifact filename:            PokeBank-NX-Second-Device-0ea98cc1.nro
+Application source full SHA: 59895efc1f70974fb8c7ba8895f83c9688f27b5c
+Application source commit:   ui: render Pokemon artwork without fake idle motion
+Embedded short SHA/version:  59895efc / 0.1.0-alpha
+Artifact filename:            PokeBank-NX-Static-Render-59895efc.nro
 Artifact size:                155117481 bytes
-Artifact SHA-256:             4c220bdf1736fb626e97c30b4ceb89fb7da7a4f24bce17c1dd36d25017478f28
-Host tests:                   PASS (8 suites)
+Artifact SHA-256:             d85284030a7d7bef7dce73daf80089c440f011313ff423026693d35920c4c83c
+Host tests:                   PASS (9 suites)
 ASan/UBSan:                   PASS
 Native build:                 PASS (clean exact-source build)
 git diff --check:              PASS
 Device asset preflight:        PASS
 Embedded RomFS comparison:    PASS (3281 matching files, including 3260 HD sprites)
-GitHub application CI:         PASS (run 33839339713)
+GitHub application source:     VERIFIED on feature/pokebank-playable
 Device tested:                NO
 ```
 
@@ -35,8 +35,8 @@ ARTWORK QUALITY:                        GOOD
 ARTIFICIAL IDLE / BREATHING MOTION:     FAIL / REMOVE
 ```
 
-This feedback belongs to the exact `0ea98cc1...` binary. Do not transfer its device-tested result
-to a later static-render replacement artifact.
+This feedback belongs to the prior exact `0ea98cc1...` binary. Do not transfer its device-tested
+result to the `59895efc...` static-render replacement artifact listed above.
 
 Pre-test status must read:
 
