@@ -1,6 +1,35 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-05
+Last updated: 2026-09-06
+
+## Final scoped UI identity checkpoint — READY FOR DEVICE TEST
+
+The final requested identity pass is complete. PokeBank NX now uses a semantic Poké Ball-red
+brand palette in OLED Black, Dark and Light; the title-bar mark is a red-and-white Poké Ball; and
+the permanent left-edge accent stripes are removed. This is deliberately the end of broad UI
+identity work for now. Existing static Pokémon renders, controller behavior, source-read-only
+safety, backup behavior and PLA defensive handling are unchanged.
+
+```text
+Local recovered application commit: 30cd55dddd2afd23b5657faa420c306525a50fcb
+Canonical application source:       af2acf043a15dbf48b8195880a80cc5de562fced
+Application tree:                    35aa16e6b3ffb36c71ad6afdd86b1fa4c97f60ff
+Commit:                              ui: adopt red PokeBank identity accents
+Embedded version / short SHA:        0.1.0-alpha / af2acf04
+Artifact:                            PokeBank-NX-Red-UI-af2acf04.nro
+Size:                                155117481 bytes
+SHA-256:                             898df286cf34b895f1f71f4abc35f0818e4afa66725b67c2d020fc20c01bfac4
+Host tests (9 suites):               PASS
+ASan/UBSan:                          PASS
+git diff --check:                    PASS
+Native build:                        PASS (clean exact-source build)
+Asset preflight:                     PASS (3260 HD sprites)
+Embedded RomFS comparison:           PASS (3281 files)
+GitHub CI:                           PASS (run 34040918715)
+Device tested:                       NO
+```
+
+Status: **READY FOR DEVICE TEST / NOT DEVICE TESTED**.
 
 ## Post-0ea98cc1 device feedback — static Pokémon artwork correction
 

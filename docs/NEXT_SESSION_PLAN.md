@@ -1,12 +1,20 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-04
-Status: **WAITING FOR SECOND DEVICE TEST**
+Last updated: 2026-09-06
+Status: **WAITING FOR FINAL RED-UI DEVICE CHECK**
 
-Session 2.6 is built and packaged from application source
+The final scoped UI identity artifact is application source
+`af2acf043a15dbf48b8195880a80cc5de562fced`, artifact
+`PokeBank-NX-Red-UI-af2acf04.nro`, SHA-256
+`898df286cf34b895f1f71f4abc35f0818e4afa66725b67c2d020fc20c01bfac4`.
+
+Do not start another broad UI redesign or right-stick work. After Will records the exact artifact's
+device result, return to substantive PokeBank NX functionality using the existing roadmap and
+safety gates.
+
+Historical Session 2.6 artifact context: it was built and packaged from application source
 `0ea98cc1a9f9dfc2b17abc33e944caa4aa9de915`. Use the exact artifact identity in
-`BUILD_RECORD.md` and fill the blank hardware fields in
-`DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md` after Will runs that binary.
+`BUILD_RECORD.md`; the newer `af2acf04...` artifact above supersedes it for the next device check.
 
 Do not repeat recovery, sprite generation, or implementation merely because a later docs commit is
 branch HEAD. Do not start later engines or merge main before physical acceptance. #24 remains open:

@@ -1,6 +1,6 @@
 # PokeBank NX — Second Device Test Checklist
 
-Prepared: 2026-09-02; exact replacement identity recorded 2026-09-04
+Prepared: 2026-09-02; final red-identity replacement recorded 2026-09-06
 
 Use this **only after Session 2.6 produces a new exact replacement `.nro`**.
 
@@ -9,12 +9,12 @@ Do not fill in the artifact identity by guessing. Copy the exact application-sou
 ## Exact artifact identity
 
 ```text
-Application source full SHA: 59895efc1f70974fb8c7ba8895f83c9688f27b5c
-Application source commit:   ui: render Pokemon artwork without fake idle motion
-Embedded short SHA/version:  59895efc / 0.1.0-alpha
-Artifact filename:            PokeBank-NX-Static-Render-59895efc.nro
+Application source full SHA: af2acf043a15dbf48b8195880a80cc5de562fced
+Application source commit:   ui: adopt red PokeBank identity accents
+Embedded short SHA/version:  af2acf04 / 0.1.0-alpha
+Artifact filename:            PokeBank-NX-Red-UI-af2acf04.nro
 Artifact size:                155117481 bytes
-Artifact SHA-256:             d85284030a7d7bef7dce73daf80089c440f011313ff423026693d35920c4c83c
+Artifact SHA-256:             898df286cf34b895f1f71f4abc35f0818e4afa66725b67c2d020fc20c01bfac4
 Host tests:                   PASS (9 suites)
 ASan/UBSan:                   PASS
 Native build:                 PASS (clean exact-source build)
@@ -22,10 +22,21 @@ git diff --check:              PASS
 Device asset preflight:        PASS
 Embedded RomFS comparison:    PASS (3281 matching files, including 3260 HD sprites)
 GitHub application source:     VERIFIED on feature/pokebank-playable
+GitHub CI:                     PASS (run 34040918715)
 Device tested:                NO
 ```
 
-## Additional physical artwork feedback for the exact artifact above
+Quick visual identity checks for this exact build:
+
+```text
+POKEBANK PRIMARY ACCENT IS RED:            ____
+TITLE-BAR BALL IS RED/WHITE WITH DARK BAND:____
+PERMANENT LEFT-EDGE STRIPE IS GONE:        ____
+NO OBVIOUS PURPLE/INDIGO BRAND ACCENT:     ____
+STATIC ARTWORK REMAINS STILL/UNDISTORTED:  ____
+```
+
+## Prior physical artwork feedback carried into this regression check
 
 Recorded separately in `docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md`:
 
@@ -36,7 +47,7 @@ ARTIFICIAL IDLE / BREATHING MOTION:     FAIL / REMOVE
 ```
 
 This feedback belongs to the prior exact `0ea98cc1...` binary. Do not transfer its device-tested
-result to the `59895efc...` static-render replacement artifact listed above.
+result to the `af2acf04...` red-identity replacement artifact listed above.
 
 Pre-test status must read:
 
