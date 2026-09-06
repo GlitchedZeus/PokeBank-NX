@@ -29,16 +29,11 @@ namespace UI {
         return Color(color.r, color.g, color.b, alpha);
     }
 
-    // Shared PokeBank NX backdrop. It leaves the OLED theme genuinely black while adding a quiet,
-    // bounded identity stripe and two low-alpha archive rings. Screens no longer begin as a flat
-    // inherited editor canvas, and no theme-specific branches are needed in screen code.
+    // Shared PokeBank NX backdrop. It leaves the OLED theme genuinely black and keeps only the
+    // low-alpha archive rings; the background now extends cleanly to the left edge.
     inline void drawAppBackdrop(PKSEFramebuffer& fb) {
-        const int w = fb.getWidth(), h = fb.getHeight();
+        const int w = fb.getWidth();
         fb.clear(Colors::Background);
-        fb.drawFilledRect(0, kHeaderH, 7, h - kHeaderH - kNavBarH,
-                          withAlpha(Colors::AccentPrimary, 210));
-        fb.drawFilledRect(7, kHeaderH, 3, h - kHeaderH - kNavBarH,
-                          withAlpha(Colors::AccentSecondary, 170));
         fb.drawCircle(w - 58, 126, 112, withAlpha(Colors::AccentPrimary, 24), 18);
         fb.drawCircle(w - 58, 126, 76, withAlpha(Colors::AccentSecondary, 20), 10);
     }
@@ -324,10 +319,20 @@ namespace UI {
                                  kChromeRadius, Colors::SurfaceRaised);
 
         constexpr int cx = 34, cy = 30, r = 19;
+        constexpr Color ballWhite(248, 248, 248);
+        constexpr Color ballBand(24, 25, 29);
+
+        // Classic Poké Ball: white base, clipped red top, dark centre band and white button.
+        // Drawing from semantic AccentPrimary keeps the red consistent across all three themes.
+        fb.drawFilledCircle(cx, cy, r, ballWhite);
+        fb.setClipRect(cx - r, cy - r, r * 2, r);
         fb.drawFilledCircle(cx, cy, r, Colors::AccentPrimary);
-        fb.drawFilledRect(cx - r, cy - 2, r * 2, 5, Colors::SurfaceRaised);
-        fb.drawFilledCircle(cx, cy, 8, Colors::SurfaceRaised);
-        fb.drawCircle(cx, cy, 8, Colors::TextPrimary, 2);
+        fb.clearClip();
+        fb.drawFilledRect(cx - r, cy - 3, r * 2, 6, ballBand);
+        fb.drawFilledCircle(cx, cy, 8, ballBand);
+        fb.drawFilledCircle(cx, cy, 5, ballWhite);
+        fb.drawCircle(cx, cy, r, ballBand, 2);
+        fb.drawCircle(cx, cy, 5, ballBand, 1);
 
         constexpr int brandX = 62;
         fb.drawText(brandX, 8, "PokeBank", Colors::TextPrimary, TextStyle::Title);

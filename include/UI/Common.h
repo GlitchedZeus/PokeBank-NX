@@ -39,24 +39,24 @@ namespace UI {
     };
 
     inline constexpr ThemePalette OLED_BLACK_PALETTE{
-        Color(0, 0, 0),       Color(14, 15, 20),    Color(27, 29, 38),    Color(42, 39, 66),
-        Color(244, 244, 249), Color(194, 194, 207), Color(129, 130, 147), Color(151, 132, 255),
-        Color(255, 184, 77),  Color(187, 172, 255), Color(49, 51, 64),    Color(79, 205, 137),
+        Color(0, 0, 0),       Color(14, 15, 20),    Color(27, 29, 38),    Color(48, 23, 29),
+        Color(244, 244, 249), Color(194, 194, 207), Color(129, 130, 147), Color(236, 62, 72),
+        Color(255, 112, 120), Color(255, 87, 96),   Color(49, 51, 64),    Color(79, 205, 137),
         Color(255, 199, 66),  Color(255, 94, 94),   Color(87, 169, 255)
     };
 
     inline constexpr ThemePalette DARK_PALETTE{
-        Color(24, 27, 38),    Color(35, 39, 53),    Color(47, 52, 69),    Color(62, 61, 92),
-        Color(239, 240, 247), Color(185, 188, 204), Color(126, 130, 151), Color(139, 122, 255),
-        Color(255, 184, 77),  Color(174, 159, 255), Color(67, 72, 91),    Color(72, 190, 126),
+        Color(24, 27, 38),    Color(35, 39, 53),    Color(47, 52, 69),    Color(67, 32, 40),
+        Color(239, 240, 247), Color(185, 188, 204), Color(126, 130, 151), Color(232, 60, 70),
+        Color(250, 103, 112), Color(251, 82, 92),   Color(67, 72, 91),    Color(72, 190, 126),
         Color(255, 195, 61),  Color(243, 86, 89),   Color(82, 158, 240)
     };
 
     // Light is intentionally designed as a warm/pastel palette, not as an inverted dark palette.
     inline constexpr ThemePalette LIGHT_PALETTE{
-        Color(246, 247, 252), Color(255, 255, 255), Color(235, 239, 249), Color(225, 221, 249),
-        Color(29, 32, 45),    Color(75, 80, 101),   Color(113, 119, 140), Color(91, 73, 210),
-        Color(229, 142, 44),  Color(93, 72, 226),   Color(205, 210, 226), Color(35, 137, 83),
+        Color(246, 247, 252), Color(255, 255, 255), Color(235, 239, 249), Color(250, 226, 229),
+        Color(29, 32, 45),    Color(75, 80, 101),   Color(113, 119, 140), Color(200, 48, 58),
+        Color(220, 72, 82),   Color(205, 50, 61),   Color(205, 210, 226), Color(35, 137, 83),
         Color(166, 91, 0),    Color(190, 48, 52),   Color(28, 105, 184)
     };
 
@@ -146,10 +146,10 @@ namespace UI {
         inline Color& TextDim   = TextMuted;
         inline Color& Accent    = AccentPrimary;
         inline Color& AccentDim = AccentSecondary;
-        // Warm secondary (HOME's "warm-on-cool" pop): selected pill / primary action / Save.
-        // Indigo stays the hero; amber is used sparingly for the single primary/selected element.
-        inline Color Primary      = Color(255, 184, 77);  // amber
-        inline Color PrimaryText  = Color(43, 32, 10);    // dark text drawn on top of amber
+        // Secondary brand red: selected pill / primary action / Save. It stays softer than the
+        // focus outline so the active surface remains comfortable instead of becoming a red slab.
+        inline Color Primary      = DARK_PALETTE.accentSecondary;
+        inline Color PrimaryText  = Color(43, 32, 36);
         // Attention accent for warning dialog titles ("Unsaved Changes", "Delete Backup?"). Theme-aware
         // because a bright amber that reads on the dark UI is nearly invisible on light-mode white.
         // Shiny marker (star / "Yes"), HOME-style red rather than yellow. Theme-aware: yellow washed
@@ -206,7 +206,7 @@ namespace UI {
         Error           = palette.error;
         Info            = palette.info;
         Primary         = palette.accentSecondary;
-        PrimaryText     = Color(43, 32, 10);
+        PrimaryText     = Color(43, 32, 36);
         ShinyStar       = (mode == ThemeMode::Light) ? Color(190, 48, 52) : Color(255, 96, 86);
         CursorMenu      = (mode == ThemeMode::Light) ? Color(196, 52, 57) : Color(232, 92, 92);
         CursorMove      = (mode == ThemeMode::Light) ? Color(37, 99, 201) : Color(86, 148, 244);

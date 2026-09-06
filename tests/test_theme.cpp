@@ -26,6 +26,25 @@ int main() {
     assert(LIGHT_PALETTE.background != DARK_PALETTE.background);
     assert(LIGHT_PALETTE.surfaceRaised != DARK_PALETTE.surfaceRaised);
 
+    // PokeBank NX identity is red in every theme. Selected surfaces stay subtle rather than
+    // becoming solid brand-red slabs; meaning-specific success/warning/info colors are unchanged.
+    assert(OLED_BLACK_PALETTE.surfaceSelected == Color(48, 23, 29));
+    assert(OLED_BLACK_PALETTE.accentPrimary == Color(236, 62, 72));
+    assert(OLED_BLACK_PALETTE.accentSecondary == Color(255, 112, 120));
+    assert(OLED_BLACK_PALETTE.focusBorder == Color(255, 87, 96));
+    assert(DARK_PALETTE.surfaceSelected == Color(67, 32, 40));
+    assert(DARK_PALETTE.accentPrimary == Color(232, 60, 70));
+    assert(DARK_PALETTE.accentSecondary == Color(250, 103, 112));
+    assert(DARK_PALETTE.focusBorder == Color(251, 82, 92));
+    assert(LIGHT_PALETTE.surfaceSelected == Color(250, 226, 229));
+    assert(LIGHT_PALETTE.accentPrimary == Color(200, 48, 58));
+    assert(LIGHT_PALETTE.accentSecondary == Color(220, 72, 82));
+    assert(LIGHT_PALETTE.focusBorder == Color(205, 50, 61));
+
+    assert(DARK_PALETTE.success == Color(72, 190, 126));
+    assert(DARK_PALETTE.warning == Color(255, 195, 61));
+    assert(DARK_PALETTE.info == Color(82, 158, 240));
+
     for (ThemeMode mode : {ThemeMode::OLEDBlack, ThemeMode::Dark, ThemeMode::Light}) {
         const ThemePalette& palette = themePalette(mode);
         assert(contrast(palette.textPrimary, palette.background) >= 7.0);
