@@ -1,6 +1,39 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-06
+Last updated: 2026-09-07
+
+## Session 3A — PKSM-Core Gen III read-only integration spike
+
+Status: **IMPLEMENTED / HOST TESTED**. Native application integration remains deliberately gated.
+
+PokeBank NX now has a narrow, UI-independent read-only adapter over pinned PKSM-Core `PK3`,
+`Sav3`, and `SavFRLG` behavior for exact `firered_gba` / `leafgreen_gba` source identities. The
+adapter copies all input before Core sees it and exposes only PokeBank-owned records and typed
+errors. It validates both rotating save slots more strictly than pinned Core: all 14 unique sector
+IDs, Gen III signatures, consistent save counters, per-sector checksums, active-slot selection and
+counter wraparound are checked before parsing.
+
+The deterministic, generated (not personal) 128 KiB fixture has SHA-256
+`b416aa985e459cb939caf1e1c70ce8359edf0c99a536e24d3b2a2a32b0541120`. It proves rotated/newest
+slot selection, safe fallback to an older valid slot, party enumeration, all 14 boxes, an 80-byte
+PK3 split over two PC sectors, and PID/TID/SID/species/EXP/items/moves/PP/IVs/EVs/nickname/OT.
+PKSM-Core decrypt/clone/encrypt is byte-identical for untouched PK3 records. The inherited PKSE
+Gen III crypto implementation independently agrees on the fixture fields and encrypted bytes.
+
+Malformed coverage: wrong/truncated size, invalid/duplicate/missing sector identity, bad signature,
+bad sector checksum, mismatched sector counters, unsupported Gen III family marker, invalid party
+count and bad PK3 checksum. Source immutability is asserted. No production write/resign API is
+exposed and the installed-title hard write lock is unchanged.
+
+Integration decision: **ADAPTER-WRAPPER**. PKSM-Core is pinned as `vendor/PKSM-Core` at
+`aa22d7a4f87c0351baf7da5962ba5acd01039a7c`, including its pinned `memecrypto` and `pcg-cpp`
+submodules. Host integration currently compiles the complete Core because `PKX`/`Sav` translation
+units bind conversion vtables across generations. The adapter is not yet in the native `SOURCES`
+list, so current `.nro` binary-size impact is **0 bytes**. A bounded devkitA64 full-Core probe found
+the concrete blocker: PokeBank's native build uses `-fno-exceptions`, while pinned Core throws from
+`source/personal/personal.cpp` (and unrelated Gen VIII `crypto_swsh.cpp`). The exact next engineering
+task is an exception-free Gen III Core slice/static library before routing
+RetroArch FRLG discovery into this adapter. See `docs/PKSM_CORE_INTEGRATION.md`.
 
 ## Final scoped UI identity checkpoint — READY FOR DEVICE TEST
 
