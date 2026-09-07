@@ -1,4 +1,6 @@
 
+#include <cstdio>
+
 #include "Globals.h"
 #include "Save/GetSaveFileContents.h"
 #include "UI/UI.h"
@@ -18,6 +20,28 @@ namespace UI {
         padConfigureInput(1, HidNpadStyleSet_NpadStandard);
         padInitializeDefault(&pad);
         hidInitializeTouchScreen();  // enable the touchscreen alongside the gamepad
+
+        // Discover only RetroArch's configured/conventional save roots. The provider performs a
+        // bounded, read-only scan and validates every candidate before assigning an FR/LG identity.
+        // UIManager owns the result for this app session so the native Gen III backend is part of
+        // the real runtime source lifecycle rather than an unreferenced library object.
+        legacyFRLGSources = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
+        size_t ready = 0;
+        size_t ambiguous = 0;
+        size_t rejected = 0;
+        for (const auto& source : legacyFRLGSources.sources) {
+            if (source.ready()) ++ready;
+            else if (source.status == PokeVault::Legacy::LegacySourceStatus::AmbiguousIdentity)
+                ++ambiguous;
+            else
+                ++rejected;
+        }
+        char legacySummary[192];
+        snprintf(legacySummary, sizeof(legacySummary),
+                 "RetroArch FRLG: %zu files checked, %zu ready, %zu ambiguous, %zu rejected%s",
+                 legacyFRLGSources.filesExamined, ready, ambiguous, rejected,
+                 legacyFRLGSources.limitReached ? ", scan limit reached" : "");
+        logInfoToFile(legacySummary);
     }
 
     UIManager::~UIManager() {

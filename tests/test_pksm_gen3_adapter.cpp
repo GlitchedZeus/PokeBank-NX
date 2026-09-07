@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <span>
@@ -207,7 +208,7 @@ namespace {
     }
 }
 
-int main() {
+int main(int argc, char** argv) {
     using namespace PokeVault::Integration::Gen3;
 
     const auto fixture = makeFixture();
@@ -215,6 +216,12 @@ int main() {
     const std::string fixtureHash = sha256(fixture);
     std::cout << "Gen III deterministic fixture SHA-256: " << fixtureHash << '\n';
     assert(fixtureHash == "b416aa985e459cb939caf1e1c70ce8359edf0c99a536e24d3b2a2a32b0541120");
+    if (argc == 3 && std::string_view(argv[1]) == "--write-fixture") {
+        std::ofstream output(argv[2], std::ios::binary | std::ios::trunc);
+        output.write(reinterpret_cast<const char*>(fixture.data()),
+                     static_cast<std::streamsize>(fixture.size()));
+        return output ? 0 : 2;
+    }
 
     auto parsed = parse(fixture, SourceGame::FireRedGBA);
     assert(parsed);

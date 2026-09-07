@@ -10,6 +10,7 @@
 #include "UI/SaveSelectScreen.h"
 #include "UI/BackupSelectionScreen.h"
 #include "UI/TrainerViewScreen.h"
+#include "Legacy/RetroArchFRLGDiscovery.h"
 
 namespace Trainer {
     class Trainer;
@@ -33,6 +34,11 @@ namespace UI {
         PadState pad;
         TouchInput touch;
         bool running;
+        // The application lifecycle owns the read-only legacy-source catalog. Keeping the
+        // validated adapter results here both avoids reparsing during one app session and makes
+        // the discovered Party/Boxes model available to the existing source browser when its
+        // legacy-card routing is added. Nothing in this catalog exposes a write operation.
+        PokeVault::Legacy::FRLGDiscoveryResult legacyFRLGSources;
 
         void handleSaveSelection();
         void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName);
