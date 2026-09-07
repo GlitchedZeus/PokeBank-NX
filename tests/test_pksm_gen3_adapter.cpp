@@ -337,6 +337,10 @@ int main() {
     assert(malformedParsed.save->lastEnumerationError() == SaveError::MalformedPokemon);
 
     static_assert(PKSM_CORE_REVISION == "aa22d7a4f87c0351baf7da5962ba5acd01039a7c");
+#if defined(POKEBANK_GEN3_SELECTIVE_PORT_TEST)
+    std::cout << "Exception-free native Gen III slice tests passed\n";
+#else
     std::cout << "PKSM-Core Gen III adapter tests passed\n";
+#endif
     return 0;
 }

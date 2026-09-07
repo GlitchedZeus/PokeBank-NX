@@ -40,7 +40,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	PokeBankNX
 BUILD		:=	build
-SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
+SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Gen3 src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
 DATA		:=	data
 INCLUDES	:=	include nanovg
 APP_TITLE   :=  PokeBank NX

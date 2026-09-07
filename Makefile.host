@@ -19,10 +19,16 @@ PKSM_CORE_FLAGS := -fno-operator-names -Wno-psabi \
 GEN3_ADAPTER_SOURCES := tests/test_pksm_gen3_adapter.cpp \
 	src/Integration/Gen3/PKSMGen3Adapter.cpp src/Encryption/Encryption3FRLG.cpp \
 	src/Utils/SHA256.cpp
+GEN3_NATIVE_SLICE_SOURCES := tests/test_pksm_gen3_adapter.cpp \
+	src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Encryption/Encryption3FRLG.cpp \
+	src/Names/ItemNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Utils/SHA256.cpp
 PKSM_CORE_OBJECT := $(HOST_BUILD)/pksm-core.o
 PKSM_CORE_SANITIZE_OBJECT := $(HOST_BUILD)/pksm-core-sanitize.o
 HOST_TESTS += $(HOST_BUILD)/test_pksm_gen3_adapter
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_pksm_gen3_adapter_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_native_slice
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_native_slice_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -71,6 +77,14 @@ $(HOST_BUILD)/test_pksm_gen3_adapter_sanitize: $(GEN3_ADAPTER_SOURCES) $(PKSM_CO
 	$(CXX) $(CXXFLAGS) $(PKSM_CORE_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(PKSM_CORE_INCLUDES) \
 		$(PKSM_CORE_DEFINES) $(GEN3_ADAPTER_SOURCES) $(PKSM_CORE_SANITIZE_OBJECT) \
 		-Wl,--gc-sections -o $@
+
+$(HOST_BUILD)/test_gen3_native_slice: $(GEN3_NATIVE_SLICE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gen3_native_slice_sanitize: $(GEN3_NATIVE_SLICE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_game_identity: tests/test_game_identity.cpp src/Games/GameIdentity.cpp
 	@mkdir -p $(HOST_BUILD)

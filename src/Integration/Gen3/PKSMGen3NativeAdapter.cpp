@@ -1,24 +1,26 @@
 /*
- * PKSM-Core-backed, read-only Gen III adapter for PokeBank NX.
+ * Exception-free native Generation III implementation behind PKSMGen3Adapter.
  *
- * Derived integration work. PKSM-Core copyright belongs to its contributors and is
- * distributed under GPLv3 with additional terms 7.b and 7.c. This wrapper performs
- * stricter pre-validation than pinned PKSM-Core Sav3::isValid(): every sector signature,
- * counter, and checksum is verified before Core sees a private copy of the bytes.
+ * PKSM-Core's PK3/Sav3 classes are intentionally used by the host oracle, but their
+ * virtual conversion surface pulls every later generation into a native link and reaches
+ * throwing personal/Gen VIII code. This file selectively ports the already-proven read-only
+ * PK3 semantics behind the same PokeBank API. It contains no write/resign/save-repair path.
  */
-#if !defined(__SWITCH__) && !defined(POKEBANK_GEN3_SELECTIVE_PORT_TEST)
+#if defined(__SWITCH__) || defined(POKEBANK_GEN3_SELECTIVE_PORT_TEST)
 
 #include "Integration/Gen3/PKSMGen3Adapter.h"
 
-#include "pkx/PK3.hpp"
-#include "pkx/PKX.hpp"
-#include "sav/Sav3.hpp"
-#include "sav/SavFRLG.hpp"
+#include "Encryption/Encryption3FRLG.h"
+#include "Names/ItemNames.h"
+#include "Pokemon/SpeciesConverter3.h"
+#include "Utils/Gen3Text.h"
+#include "Utils/StringHelpers.h"
 
 #include <algorithm>
 #include <array>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <utility>
 
 namespace PokeVault::Integration::Gen3 {
@@ -66,11 +68,9 @@ namespace PokeVault::Integration::Gen3 {
         SlotValidation validateSlot(std::span<const uint8_t> bytes, uint8_t slot) noexcept {
             SlotValidation result;
             result.logicalSectorOffsets.fill(std::numeric_limits<size_t>::max());
-            const size_t slotBase = kSlotBases[slot];
             bool counterSet = false;
-
             for (size_t physical = 0; physical < kSectorCount; ++physical) {
-                const size_t offset = slotBase + physical * kSectorSize;
+                const size_t offset = kSlotBases[slot] + physical * kSectorSize;
                 const uint16_t id = read16(bytes, offset + 0xFF4);
                 if (id >= kSectorCount) {
                     result.error = SaveError::InvalidSectorId;
@@ -84,7 +84,6 @@ namespace PokeVault::Integration::Gen3 {
                     result.error = SaveError::BadSectorSignature;
                     return result;
                 }
-
                 const uint32_t counter = read32(bytes, offset + 0xFFC);
                 if (!counterSet) {
                     result.counter = counter;
@@ -93,15 +92,13 @@ namespace PokeVault::Integration::Gen3 {
                     result.error = SaveError::MismatchedSectorCounters;
                     return result;
                 }
-
-                const auto payload = bytes.subspan(offset, kChunkLengths[id]);
-                if (read16(bytes, offset + 0xFF6) != sectorChecksum(payload)) {
+                if (read16(bytes, offset + 0xFF6) !=
+                    sectorChecksum(bytes.subspan(offset, kChunkLengths[id]))) {
                     result.error = SaveError::BadSectorChecksum;
                     return result;
                 }
                 result.logicalSectorOffsets[id] = offset;
             }
-
             if (std::ranges::find(result.logicalSectorOffsets,
                     std::numeric_limits<size_t>::max()) != result.logicalSectorOffsets.end()) {
                 result.error = SaveError::MissingSector;
@@ -115,37 +112,19 @@ namespace PokeVault::Integration::Gen3 {
             return static_cast<int32_t>(lhs - rhs) > 0;
         }
 
-        std::shared_ptr<u8[]> copyForCore(std::span<const uint8_t> bytes) {
-            std::shared_ptr<u8[]> copy(new u8[bytes.size()], std::default_delete<u8[]>());
-            std::copy(bytes.begin(), bytes.end(), copy.get());
-            return copy;
-        }
-
-        std::shared_ptr<u8[]> copyForCoreSlot(std::span<const uint8_t> bytes, uint8_t activeSlot) {
-            auto copy = copyForCore(bytes);
-            // PKSM-Core's pinned slot picker only considers sector IDs and counters. Our stricter
-            // validator may correctly reject the numerically newer slot for a bad signature or
-            // checksum, so hide that rejected slot in the private engine copy. Source bytes and
-            // the caller's buffer remain untouched.
-            const uint8_t otherSlot = activeSlot == 0 ? 1 : 0;
-            for (size_t physical = 0; physical < kSectorCount; ++physical) {
-                const size_t idOffset = kSlotBases[otherSlot] + physical * kSectorSize + 0xFF4;
-                copy[idOffset] = 0xFF;
-                copy[idOffset + 1] = 0xFF;
+        std::string decodeName(std::span<const uint8_t> bytes, size_t offset, size_t length) {
+            std::u16string text;
+            for (size_t index = 0; index < length; ++index) {
+                const uint8_t value = bytes[offset + index];
+                if (value == Utils::GEN3_TERMINATOR) break;
+                if (const char16_t character = Utils::gen3ToChar(value)) text.push_back(character);
             }
-            return copy;
-        }
-
-        std::array<pksm::Stat, 6> stats() noexcept {
-            return {pksm::Stat::HP, pksm::Stat::ATK, pksm::Stat::DEF,
-                    pksm::Stat::SPD, pksm::Stat::SPATK, pksm::Stat::SPDEF};
+            return Utils::utf16ToUtf8(text);
         }
     }
 
     struct ReadOnlySave::Impl {
         std::vector<uint8_t> original;
-        std::shared_ptr<u8[]> coreBytes;
-        pksm::SavFRLG core;
         SaveMetadata metadata;
         std::array<size_t, kSectorCount> sectorOffsets{};
         mutable SaveError enumerationError = SaveError::None;
@@ -153,66 +132,70 @@ namespace PokeVault::Integration::Gen3 {
         Impl(std::span<const uint8_t> bytes, SourceGame sourceGame, uint8_t activeSlot,
              uint32_t saveCounter, const std::array<size_t, kSectorCount>& offsets)
             : original(bytes.begin(), bytes.end()),
-              coreBytes(copyForCoreSlot(original, activeSlot)),
-              core(coreBytes),
               metadata{sourceGame, Gen3::sourceGameId(sourceGame), activeSlot, saveCounter,
-                       core.partyCount(), static_cast<uint8_t>(core.maxBoxes()), 30},
-              sectorOffsets(offsets) {}
+                       0, 14, 30},
+              sectorOffsets(offsets) {
+            metadata.partyCount = readLogical(1, 0x34, 1).front();
+        }
 
         std::vector<uint8_t> readLogical(uint8_t firstSector, size_t logical,
                                          size_t length) const {
             std::vector<uint8_t> out(length);
             for (size_t index = 0; index < length; ++index) {
                 const size_t position = logical + index;
-                const size_t sectorDelta = position / kSectorDataSize;
-                const size_t sectorId = static_cast<size_t>(firstSector) + sectorDelta;
+                const size_t sectorId = static_cast<size_t>(firstSector) +
+                                        position / kSectorDataSize;
                 if (sectorId >= kSectorCount) return {};
                 out[index] = original[sectorOffsets[sectorId] + position % kSectorDataSize];
             }
             return out;
         }
 
-        PokemonRecord record(std::unique_ptr<pksm::PKX> pokemon, PokemonLocation location,
-                             std::vector<uint8_t> originalBytes) const {
+        PokemonRecord record(std::vector<uint8_t> raw, PokemonLocation location) const {
             PokemonRecord out;
             out.location = location;
-            out.originalBytes = std::move(originalBytes);
-            if (!pokemon) {
+            out.originalBytes = std::move(raw);
+            if (out.originalBytes.size() != 80 && out.originalBytes.size() != 100) {
                 enumerationError = SaveError::CoreRejected;
                 return out;
             }
 
-            out.checksumValid = !pokemon->isEncrypted();
+            const auto encrypted = std::span<const std::byte>(
+                reinterpret_cast<const std::byte*>(out.originalBytes.data()),
+                out.originalBytes.size());
+            std::unique_ptr<std::byte[]> decrypted(Encryption::decryptArray3FRLG(encrypted));
+            const auto bytes = std::span<const uint8_t>(
+                reinterpret_cast<const uint8_t*>(decrypted.get()), out.originalBytes.size());
+            out.checksumValid = read16(bytes, 0x1C) == Encryption::checksum3FRLG(
+                std::span<const std::byte>(decrypted.get(), out.originalBytes.size()));
             if (!out.checksumValid) {
                 enumerationError = SaveError::MalformedPokemon;
                 return out;
             }
-            out.species = static_cast<uint16_t>(pokemon->species());
-            out.pid = pokemon->PID();
-            out.tid = pokemon->TID();
-            out.sid = pokemon->SID();
-            out.experience = pokemon->experience();
-            out.heldItem = pokemon->heldItem();
-            out.heldItemGen3 = static_cast<const pksm::PK3*>(pokemon.get())->heldItem3();
-            for (uint8_t index = 0; index < 4; ++index) {
-                out.moves[index] = static_cast<uint16_t>(pokemon->move(index));
-                out.pp[index] = pokemon->PP(index);
-            }
-            const auto statOrder = stats();
-            for (size_t index = 0; index < statOrder.size(); ++index) {
-                out.ivs[index] = pokemon->iv(statOrder[index]);
-                out.evs[index] = static_cast<uint8_t>(pokemon->ev(statOrder[index]));
-            }
-            out.nickname = pokemon->nickname();
-            out.otName = pokemon->otName();
 
-            auto roundTrip = pokemon->clone();
-            if (roundTrip) {
-                roundTrip->encrypt();
-                const auto serialized = roundTrip->rawData();
-                out.byteIdenticalRoundTrip = serialized.size() == out.originalBytes.size() &&
-                    std::equal(serialized.begin(), serialized.end(), out.originalBytes.begin());
+            out.pid = read32(bytes, 0x00);
+            out.tid = read16(bytes, 0x04);
+            out.sid = read16(bytes, 0x06);
+            out.species = Pokemon::gen3InternalToNational(read16(bytes, 0x20));
+            out.heldItemGen3 = read16(bytes, 0x22);
+            out.heldItem = Names::itemG3ToModern(out.heldItemGen3);
+            out.experience = read32(bytes, 0x24);
+            for (size_t index = 0; index < 4; ++index) {
+                out.moves[index] = read16(bytes, 0x2C + index * 2);
+                out.pp[index] = bytes[0x34 + index];
             }
+            for (size_t index = 0; index < 6; ++index) out.evs[index] = bytes[0x38 + index];
+            const uint32_t packedIvs = read32(bytes, 0x48);
+            for (size_t index = 0; index < 6; ++index) {
+                out.ivs[index] = static_cast<uint8_t>((packedIvs >> (index * 5)) & 0x1F);
+            }
+            out.nickname = decodeName(bytes, 0x08, 10);
+            out.otName = decodeName(bytes, 0x14, 7);
+
+            std::unique_ptr<std::byte[]> serialized(Encryption::encryptArray3FRLG(
+                std::span<const std::byte>(decrypted.get(), out.originalBytes.size())));
+            out.byteIdenticalRoundTrip = std::memcmp(serialized.get(), out.originalBytes.data(),
+                                                     out.originalBytes.size()) == 0;
             return out;
         }
     };
@@ -228,10 +211,9 @@ namespace PokeVault::Integration::Gen3 {
         impl_->enumerationError = SaveError::None;
         std::vector<PokemonRecord> result;
         for (uint8_t slot = 0; slot < impl_->metadata.partyCount; ++slot) {
-            auto raw = impl_->readLogical(1, 0x38 + static_cast<size_t>(slot) * 100, 100);
-            auto pokemon = impl_->core.pkm(slot);
-            auto parsed = impl_->record(std::move(pokemon),
-                {PokemonLocation::Kind::Party, 0, slot}, std::move(raw));
+            auto parsed = impl_->record(
+                impl_->readLogical(1, 0x38 + static_cast<size_t>(slot) * 100, 100),
+                {PokemonLocation::Kind::Party, 0, slot});
             if (impl_->enumerationError != SaveError::None) break;
             if (parsed.species != 0) result.push_back(std::move(parsed));
         }
@@ -245,10 +227,8 @@ namespace PokeVault::Integration::Gen3 {
             for (uint8_t slot = 0; slot < impl_->metadata.slotsPerBox; ++slot) {
                 const size_t logical = 4 +
                     (static_cast<size_t>(box) * impl_->metadata.slotsPerBox + slot) * 80;
-                auto raw = impl_->readLogical(5, logical, 80);
-                auto pokemon = impl_->core.pkm(box, slot);
-                auto parsed = impl_->record(std::move(pokemon),
-                    {PokemonLocation::Kind::Box, box, slot}, std::move(raw));
+                auto parsed = impl_->record(impl_->readLogical(5, logical, 80),
+                    {PokemonLocation::Kind::Box, box, slot});
                 if (impl_->enumerationError != SaveError::None) return result;
                 if (parsed.species != 0) result.push_back(std::move(parsed));
             }
@@ -264,7 +244,6 @@ namespace PokeVault::Integration::Gen3 {
         if (bytes.size() != kSaveSize) {
             return {nullptr, SaveError::WrongSize, "Gen III GBA save must be exactly 128 KiB"};
         }
-
         const SlotValidation slots[2] = {validateSlot(bytes, 0), validateSlot(bytes, 1)};
         if (!slots[0].valid && !slots[1].valid) {
             const SaveError error = slots[0].error != SaveError::None ?
@@ -274,18 +253,10 @@ namespace PokeVault::Integration::Gen3 {
         const uint8_t active = !slots[0].valid ? 1 : !slots[1].valid ? 0 :
             (counterIsNewer(slots[1].counter, slots[0].counter) ? 1 : 0);
         const auto& selected = slots[active];
-
-        const size_t block0 = selected.logicalSectorOffsets[0];
-        if (read32(bytes, block0 + 0xAC) != 1) {
+        if (read32(bytes, selected.logicalSectorOffsets[0] + 0xAC) != 1) {
             return {nullptr, SaveError::UnsupportedGame,
                     "valid Gen III save is not the FireRed/LeafGreen family"};
         }
-
-        auto coreProbe = copyForCore(bytes);
-        if (!pksm::Sav3::isValid(coreProbe)) {
-            return {nullptr, SaveError::CoreRejected, "pinned PKSM-Core rejected the validated save"};
-        }
-
         auto impl = std::make_unique<ReadOnlySave::Impl>(
             bytes, sourceGame, active, selected.counter, selected.logicalSectorOffsets);
         if (impl->metadata.partyCount > 6) {
@@ -315,7 +286,7 @@ namespace PokeVault::Integration::Gen3 {
             case SaveError::BadSectorChecksum: return "bad sector checksum";
             case SaveError::UnsupportedGame: return "unsupported Generation III game";
             case SaveError::InvalidPartyCount: return "invalid party count";
-            case SaveError::CoreRejected: return "PKSM-Core rejected the save or Pokemon";
+            case SaveError::CoreRejected: return "native Generation III reader rejected the data";
             case SaveError::MalformedPokemon: return "Pokemon checksum is invalid";
         }
         return "unknown Generation III parse error";
