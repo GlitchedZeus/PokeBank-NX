@@ -143,7 +143,7 @@ Native Switch build:        PASS
 Asset preflight:            PASS
 ```
 
-## Physical Switch result — PARTIAL PASS / TWO BLOCKERS
+## Physical Switch result — PARTIAL PASS / THREE BLOCKERS
 
 The exact artifact above was physically tested.
 
@@ -154,7 +154,7 @@ What works:
 - read-only Party/Boxes/Pokémon viewing generally works;
 - no reported crash/corruption in the tested path.
 
-FRLG is **NOT DEVICE-ACCEPTED YET** because two integration bugs were observed.
+FRLG is **NOT DEVICE-ACCEPTED YET** because three integration/UI blockers were observed.
 
 ### Blocker 1 — RetroArch incorrectly behaves like a Switch user/profile context
 
@@ -169,34 +169,71 @@ Nintendo installed-title saves  = user/account scoped where appropriate
 
 RetroArch must not be modeled as or hidden behind a Nintendo user profile. Valid legacy sources should be visible regardless of the currently selected Switch account.
 
-### Blocker 2 — duplicate FRLG source cards
+### Blocker 2 — wrong hierarchy / duplicate top-level FRLG cards
 
 Observed on device:
 
 ```text
-2 FireRed entries representing the same save
-3 LeafGreen entries representing the same save
+2 FireRed top-level cards
+3 LeafGreen top-level cards
 ```
 
-Likely classes of cause to inspect include overlapping configured/conventional roots, path aliases, duplicate traversal roots, or the same underlying file discovered through more than one route. Do not assume the exact cause without inspecting runtime discovery.
+The intended product model is now explicitly:
+
+```text
+Game Sources
+  -> Pokémon FireRed
+       Game Boy Advance · RetroArch
+       -> Save Instances
+            -> WILL — Main Save
+            -> WILL — Save State 1   [future]
+            -> WILL — Save State 2   [future]
+            -> WILL — Save State 3   [future]
+            -> WILL — Backup         [future]
+       -> choose one
+       -> trainer/source view
+       -> Party / Boxes
+```
+
+And one equivalent LeafGreen parent card.
+
+Current production support remains `.sav` / `.srm` battery saves only. Numbered RetroArch save-state parsing is future work. The current fix must nevertheless introduce the parent-game / child-save hierarchy so future SAVE_STATE/BACKUP children fit naturally beneath the same game card.
+
+Within a parent card:
+
+- collapse aliases/duplicate discovery of the same underlying file;
+- preserve genuinely separate save files as separate child entries even when bytes match;
+- never dedupe child saves merely by game ID, trainer name or raw hash alone;
+- use trainer/character name in the child label only when reliably readable.
+
+See `docs/RETROARCH_SOURCE_NAMING.md`.
+
+### Blocker 3 — FireRed / LeafGreen game-card artwork missing
+
+Observed on device: the RetroArch FireRed and LeafGreen GBA top-level cards did not show the expected game artwork.
 
 Required behavior:
 
-- the same underlying logical source must appear once;
-- genuinely distinct save files must still be allowed to coexist even when they are the same game/version;
-- dedupe should occur only after strict validation;
-- prefer a robust canonical-source identity using normalized/canonical path/file identity and, where useful, content hashing to collapse aliases/duplicate discovery without collapsing intentionally separate files incorrectly.
+- `firered_gba` resolves to the correct FireRed GBA card artwork;
+- `leafgreen_gba` resolves to the correct LeafGreen GBA card artwork;
+- do not accidentally conflate GBA artwork/identity with the separate official Switch FRLG identities;
+- use the existing card-art/asset system rather than an ad-hoc RetroArch loader;
+- the next full-asset device build must visibly show both artworks.
 
-Issue #6 records this hardware report.
+Issue #6 records the hardware report.
 
 ## Immediate next milestone
 
-Fix only these two FRLG device blockers:
+Fix only these three FRLG device blockers:
 
 ```text
 make RetroArch legacy sources app-global
         +
-deduplicate identical FRLG discoveries/cards
+introduce one game card -> child save-instance hierarchy
+        +
+dedupe aliases inside child save list
+        +
+restore FireRed/LeafGreen GBA card artwork
         ↓
 keep strict validation + read-only safety
         ↓
