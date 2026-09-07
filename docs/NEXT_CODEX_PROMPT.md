@@ -23,7 +23,7 @@ NRO SHA-256: 809c94c842a3c385d23907c61e5ecfa201b24f08e8ac935e87a4add60770282d
 Assets:      3260 HD renders / 1025 base species / 3281 RomFS files verified
 ```
 
-Physical testing proved Party/Boxes/View basically work, but this artifact is **NOT DEVICE-ACCEPTED** because of three integration/UI blockers.
+Physical testing proved Party/Boxes/View basically work, but this artifact is **NOT DEVICE-ACCEPTED** because of four integration/UI blockers/requirements.
 
 ## Preserve first
 
@@ -37,7 +37,7 @@ origin / feature/pokebank-playable
 
 Never push custom code upstream to `kiasta/PKSE`.
 
-## Product hierarchy requirement
+## Product hierarchy and refresh requirements
 
 Read and follow:
 
@@ -53,8 +53,10 @@ Required shape:
 Game Sources
   -> Pokémon FireRed
        Game Boy Advance · RetroArch
+       -> refresh current save-instance catalog
        -> Save Instances
             -> WILL — Main Save
+            -> WILL — Save State 0   [future]
             -> WILL — Save State 1   [future]
             -> WILL — Save State 2   [future]
             -> WILL — Save State 3   [future]
@@ -66,9 +68,9 @@ Game Sources
 
 Likewise one LeafGreen parent card.
 
-Current production support remains **BATTERY_SAVE only** (`.sav` / `.srm`). Do not implement `.state#` parsing in this blocker-fix session. The hierarchy must be future-proof for SAVE_STATE/BACKUP children.
+Current production support remains **BATTERY_SAVE only** (`.sav` / `.srm`). Do not implement `.state#` parsing in this blocker-fix session. The hierarchy must be future-proof for SAVE_STATE slots 0-3 and BACKUP children.
 
-## Single mission: fix all three FRLG device blockers
+## Single mission: fix all four FRLG device blockers/requirements
 
 ### Blocker A — RetroArch is wrongly user/profile scoped
 
@@ -114,17 +116,6 @@ Rules:
 - keep strict FRLG validation before a child becomes selectable;
 - if trainer name is reliably available, use it in the child label; otherwise do not invent one.
 
-Examples:
-
-```text
-Pokémon FireRed
-Game Boy Advance · RetroArch
-  -> WILL — Main Save
-  -> WILL — Backup 1
-```
-
-Future save-state children must fit naturally beneath the same card, but actual `.state#` parsing is out of scope now.
-
 ### Blocker C — FireRed/LeafGreen game artwork missing
 
 Observed on physical Switch: the RetroArch FireRed and LeafGreen top-level game cards did not show the expected game artwork.
@@ -135,10 +126,32 @@ Required behavior:
 - LeafGreen GBA RetroArch parent card shows the correct LeafGreen game artwork;
 - do not accidentally use the separate official Switch FireRed/LeafGreen artwork/identity if those assets differ;
 - preserve `firered_gba` / `leafgreen_gba` as the source identities driving artwork lookup;
-- use existing asset infrastructure rather than adding an ad-hoc image loader solely for RetroArch;
-- missing artwork must fail gracefully, but the new device-test build should include/resolve both required FRLG GBA artworks.
+- use existing asset infrastructure rather than an ad-hoc loader;
+- missing artwork fails gracefully, but the next device build must resolve both FRLG GBA artworks.
 
-Add a focused test or deterministic lookup check where practical so the GBA identities resolve to non-empty/valid art keys/assets.
+### Blocker D — legacy catalog can become stale / needs refresh
+
+Observed during physical use: after playing in RetroArch and checking another save/state context, the visible PokeBank data can represent an older snapshot. The current UIManager/session catalog must not behave as if all legacy sources are immutable for the lifetime of the app.
+
+Current scope is still `.sav` / `.srm` BATTERY_SAVE only, but implement refresh semantics now so the architecture works for future state slots 0-3.
+
+Required behavior:
+
+1. keep normal bounded scan at app startup;
+2. when a RetroArch game parent card is opened, perform a lightweight refresh of the approved source roots for that game before showing child save instances;
+3. expose a manual **Refresh Saves** / **Rescan Sources** action in the game-card/save-instance view;
+4. changed child sources invalidate cached read models using stable source identity plus useful file metadata such as normalized path, size and modification state where available;
+5. after refresh, selecting a changed child rereads/revalidates it through the same strict FRLG path before Party/Boxes is exposed;
+6. do not hot-swap the selected source while already inside Party/Boxes; refresh only at a clear boundary or explicit action;
+7. deleted/missing sources disappear safely after refresh and stale selections fail gracefully;
+8. all refresh behavior remains read-only.
+
+Important product semantics:
+
+- a refresh does **not** make an old RetroArch save state newer;
+- future Save State 0/1/2/3 children are frozen snapshots and may legitimately differ from the main battery save;
+- if the user overwrites a state slot in RetroArch, a future SAVE_STATE adapter should detect the replacement after refresh;
+- actual `.state#` parsing remains out of scope for this session.
 
 ## Preserve what already works
 
@@ -156,7 +169,7 @@ Do not redo or regress:
 
 ## Safety
 
-This remains strictly read-only. Do not implement/enable RetroArch writeback, repair/resign, installed-title writes, edit-to-source, clone-to-save, Move, conversion, Master Vault/Banks, RSE, Gen I/II, events/mystery gifts, or physical-link hardware.
+This remains strictly read-only. Do not implement/enable RetroArch writeback, repair/resign, installed-title writes, edit-to-source, clone-to-save, Move, conversion, Master Vault/Banks, RSE, Gen I/II, events/mystery gifts, physical-link hardware, or arbitrary save-state parsing.
 
 ## Verification
 
@@ -179,6 +192,10 @@ Specifically prove where practical:
 - overlapping roots/path aliases do not duplicate child save instances;
 - genuinely separate save files remain separate children;
 - FireRed/LeafGreen GBA artwork lookup resolves correctly;
+- opening a parent card refreshes current `.sav` / `.srm` child discovery;
+- manual Refresh Saves/Rescan Sources works;
+- a changed battery save invalidates/rebuilds its cached read model;
+- deleted/missing sources disappear/fail safely;
 - FireRed and LeafGreen identities remain exact and distinct from Switch releases;
 - Party/Boxes/View still work;
 - source bytes remain unchanged;
@@ -191,7 +208,7 @@ Commit/push coherent source work early to `origin/feature/pokebank-playable` onl
 Suggested commit concept:
 
 ```text
-gen3: fix RetroArch grouping scope and artwork
+gen3: fix RetroArch grouping refresh and artwork
 ```
 
 Update issue #6 and minimal status/handoff docs after verification.
@@ -207,6 +224,7 @@ NRO size
 NRO SHA-256
 asset render count
 FRLG GBA artwork lookup/result
+refresh/rescan behavior
 host tests
 ASan/UBSan
 git diff --check
@@ -225,7 +243,9 @@ launch under normal Nintendo user
 -> exactly one top-level card per game
 -> correct FireRed / LeafGreen artwork visible
 -> open game card
--> choose the desired save instance
+-> child save list refreshes from disk
+-> manual Refresh Saves works
+-> choose the desired Main Save child
 -> Party works
 -> Boxes 1-14 work
 -> View Pokémon works
