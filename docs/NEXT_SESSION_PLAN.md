@@ -1,12 +1,20 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-04
-Status: **WAITING FOR SECOND DEVICE TEST**
+Last updated: 2026-09-06
+Status: **WAITING FOR FINAL RED-UI DEVICE CHECK**
 
-Session 2.6 is built and packaged from application source
+The final scoped UI identity artifact is application source
+`af2acf043a15dbf48b8195880a80cc5de562fced`, artifact
+`PokeBank-NX-Red-UI-af2acf04.nro`, SHA-256
+`898df286cf34b895f1f71f4abc35f0818e4afa66725b67c2d020fc20c01bfac4`.
+
+Do not start another broad UI redesign or right-stick work. After Will records the exact artifact's
+device result, return to substantive PokeBank NX functionality using the existing roadmap and
+safety gates.
+
+Historical Session 2.6 artifact context: it was built and packaged from application source
 `0ea98cc1a9f9dfc2b17abc33e944caa4aa9de915`. Use the exact artifact identity in
-`BUILD_RECORD.md` and fill the blank hardware fields in
-`DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md` after Will runs that binary.
+`BUILD_RECORD.md`; the newer `af2acf04...` artifact above supersedes it for the next device check.
 
 Do not repeat recovery, sprite generation, or implementation merely because a later docs commit is
 branch HEAD. Do not start later engines or merge main before physical acceptance. #24 remains open:
@@ -392,3 +400,14 @@ another large UI redesign
 ```
 
 Finish the safety/crash blocker source, preserve the newer shell/stick work, ensure required device assets are packaged, produce the exact replacement artifact, and physically test it first.
+# Immediate device-feedback correction — static Pokémon artwork
+
+The exact `0ea98cc1...` binary proved that HD HOME artwork is packaged, visible and good quality,
+but the inherited `drawSpriteIdle(...)` bob/squash/stretch presentation failed visual acceptance.
+Application source `59895efc1f70974fb8c7ba8895f83c9688f27b5c` replaces active Summary/View
+and selected-preview call sites with a static, aspect-ratio-preserving renderer while preserving the
+resolver/cache/fallback pipeline. Physically test `PokeBank-NX-Static-Render-59895efc.nro`
+(`d85284030a7d7bef7dce73daf80089c440f011313ff423026693d35920c4c83c`) before treating
+this correction as accepted.
+
+See `docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md`.

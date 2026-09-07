@@ -142,8 +142,8 @@ namespace Panels {
                 const int SP = 96;
                 int spX = cardX + colW - pad - SP;
                 int spY = cardY + 30;
-                fb.drawSpriteIdle(spX, spY, SP, SP, sprite->width, sprite->height,
-                                  sprite->data, sprite->channels, static_cast<float>(i) * 1.1f);
+                fb.drawSpriteStaticContained(spX, spY, SP, SP, sprite->width, sprite->height,
+                                             sprite->data, sprite->channels);
             }
         }
     }

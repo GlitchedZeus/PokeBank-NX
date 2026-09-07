@@ -112,8 +112,9 @@ namespace Modals {
         const int renderSz = 150;
         Sprite* sprite = SpriteManager::getSprite(p->speciesID(), p->form(), isShiny);
         if (sprite && sprite->data) {
-            fb.drawSpriteIdle(Lx + (Lw - renderSz) / 2, colY + 14, renderSz, renderSz,
-                              sprite->width, sprite->height, sprite->data, sprite->channels, 0.0f);
+            fb.drawSpriteStaticContained(Lx + (Lw - renderSz) / 2, colY + 14,
+                                         renderSz, renderSz, sprite->width, sprite->height,
+                                         sprite->data, sprite->channels);
         }
         // Type badges under the render (icons, centered).
         {

@@ -1,5 +1,77 @@
 # PokeBank NX — Build / Artifact Record
 
+## Final red UI identity checkpoint — READY FOR DEVICE TEST
+
+```text
+Local recovery commit full SHA: 30cd55dddd2afd23b5657faa420c306525a50fcb
+Canonical application source full SHA: af2acf043a15dbf48b8195880a80cc5de562fced
+Application tree SHA: 35aa16e6b3ffb36c71ad6afdd86b1fa4c97f60ff
+Application commit: ui: adopt red PokeBank identity accents
+Embedded short SHA/version: af2acf04 / 0.1.0-alpha
+Branch: feature/pokebank-playable
+Artifact filename: PokeBank-NX-Red-UI-af2acf04.nro
+Artifact byte size: 155117481
+Artifact SHA-256: 898df286cf34b895f1f71f4abc35f0818e4afa66725b67c2d020fc20c01bfac4
+ZIP fallback: PokeBank-NX-Red-UI-af2acf04.zip
+ZIP byte size: 148510977
+ZIP SHA-256: 78388f502c06088eec2af90ba8ef41c85524209583fc8ff86c8ae95fc688991c
+Host tests: PASS (9 suites)
+ASan/UBSan: PASS (LeakSanitizer disabled by existing managed host recipe)
+git diff --check: PASS
+Native build: PASS; clean make -j1 from exact canonical application SHA
+Compiler: devkitA64 15.2.0
+Asset preflight: PASS; 3260 HD sprites, 18 type icons, 3 fonts
+Embedded RomFS byte comparison: PASS; all 3281 files
+GitHub source SHA: VERIFIED on origin/feature/pokebank-playable
+GitHub CI: PASS; run 34040918715
+Device tested: NO
+```
+
+The authenticated publication produced a different commit identity from the recovered local
+commit while preserving the exact same tree. The canonical remote SHA above is therefore the
+binary source identity. The generated asset cache was reconstructed byte-for-byte from the prior
+verified static-render artifact; no sprite set was replaced or re-downloaded.
+
+This is the final scoped UI identity artifact. Further UI redesign and right-stick work are
+deferred; subsequent development should return to substantive PokeBank NX functionality after the
+device check.
+
+---
+
+## Static Pokémon render replacement — READY FOR DEVICE TEST
+
+```text
+Application source full SHA: 59895efc1f70974fb8c7ba8895f83c9688f27b5c
+Application commit: ui: render Pokemon artwork without fake idle motion
+Embedded short SHA/version: 59895efc / 0.1.0-alpha
+Branch: feature/pokebank-playable
+Artifact filename: PokeBank-NX-Static-Render-59895efc.nro
+Artifact byte size: 155117481
+Artifact SHA-256: d85284030a7d7bef7dce73daf80089c440f011313ff423026693d35920c4c83c
+ZIP fallback: PokeBank-NX-Static-Render-59895efc.zip
+ZIP byte size: 148511529
+ZIP SHA-256: 44920db75271ff04910c6edfca2c17bdf33f738cab5d50c678468ab4f815b79d
+Host tests: PASS (9 suites)
+ASan/UBSan: PASS (LeakSanitizer disabled by existing host recipe)
+git diff --check: PASS
+Native build: PASS; clean make -j1 from exact published application SHA
+Compiler: devkitA64 15.2.0
+Asset preflight: PASS; 3260 HD sprites, 18 type icons, 3 fonts
+Embedded RomFS byte comparison: PASS; all 3281 files
+GitHub source SHA: VERIFIED on origin/feature/pokebank-playable
+Device tested: NO
+```
+
+The exact `0ea98cc1...` predecessor physically passed artwork visibility and quality but failed the
+artificial idle/breathing presentation. This replacement removes the sine-driven bob and independent
+width/height modulation from active Pokémon preview paths. It does not replace the artwork or alter
+the SpriteManager resolver/cache/fallback behavior. See
+`docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md`.
+
+This documentation follows the application-source commit and is not the binary source identity.
+
+---
+
 Last updated: 2026-09-04
 
 ## Session 2.6 replacement — READY FOR SECOND DEVICE TEST

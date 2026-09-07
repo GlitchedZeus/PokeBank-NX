@@ -94,9 +94,13 @@ namespace UI {
                              float maxValue, Color fill, Color web, Color outline);
         // Two-tone rounded type badge (HOME style): colored icon chip + name. Returns total width drawn.
         int  drawTypeBadge(int x, int y, const std::string& typeName, Color typeColor);
-        // Draw a sprite with a gentle idle animation (bob + breathe) and a soft ground
-        // shadow, driven by the frame tick. (x,y,boxW,boxH) is the nominal placement box;
-        // (srcW,srcH) the sprite's native size; `phase` offsets the timing per sprite.
+        // Draw a static sprite centered inside its placement box while preserving the source
+        // aspect ratio. This is the PokeBank NX path for HOME artwork and selected previews.
+        void drawSpriteStaticContained(int x, int y, int boxW, int boxH, int srcW, int srcH,
+                                       const unsigned char* data, int channels);
+
+        // Retained for source compatibility with inherited screens. New PokeBank NX UI must use
+        // drawSpriteStaticContained: static PNG artwork must not be bobbed or squash-stretched.
         void drawSpriteIdle(int x, int y, int boxW, int boxH, int srcW, int srcH,
                             const unsigned char* data, int channels, float phase);
 

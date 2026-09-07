@@ -1,6 +1,105 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-04
+Last updated: 2026-09-07
+
+## Session 3A — PKSM-Core Gen III read-only integration spike
+
+Status: **IMPLEMENTED / HOST TESTED**. Native application integration remains deliberately gated.
+
+PokeBank NX now has a narrow, UI-independent read-only adapter over pinned PKSM-Core `PK3`,
+`Sav3`, and `SavFRLG` behavior for exact `firered_gba` / `leafgreen_gba` source identities. The
+adapter copies all input before Core sees it and exposes only PokeBank-owned records and typed
+errors. It validates both rotating save slots more strictly than pinned Core: all 14 unique sector
+IDs, Gen III signatures, consistent save counters, per-sector checksums, active-slot selection and
+counter wraparound are checked before parsing.
+
+The deterministic, generated (not personal) 128 KiB fixture has SHA-256
+`b416aa985e459cb939caf1e1c70ce8359edf0c99a536e24d3b2a2a32b0541120`. It proves rotated/newest
+slot selection, safe fallback to an older valid slot, party enumeration, all 14 boxes, an 80-byte
+PK3 split over two PC sectors, and PID/TID/SID/species/EXP/items/moves/PP/IVs/EVs/nickname/OT.
+PKSM-Core decrypt/clone/encrypt is byte-identical for untouched PK3 records. The inherited PKSE
+Gen III crypto implementation independently agrees on the fixture fields and encrypted bytes.
+
+Malformed coverage: wrong/truncated size, invalid/duplicate/missing sector identity, bad signature,
+bad sector checksum, mismatched sector counters, unsupported Gen III family marker, invalid party
+count and bad PK3 checksum. Source immutability is asserted. No production write/resign API is
+exposed and the installed-title hard write lock is unchanged.
+
+Integration decision: **ADAPTER-WRAPPER**. PKSM-Core is pinned as `vendor/PKSM-Core` at
+`aa22d7a4f87c0351baf7da5962ba5acd01039a7c`, including its pinned `memecrypto` and `pcg-cpp`
+submodules. Host integration currently compiles the complete Core because `PKX`/`Sav` translation
+units bind conversion vtables across generations. The adapter is not yet in the native `SOURCES`
+list, so current `.nro` binary-size impact is **0 bytes**. A bounded devkitA64 full-Core probe found
+the concrete blocker: PokeBank's native build uses `-fno-exceptions`, while pinned Core throws from
+`source/personal/personal.cpp` (and unrelated Gen VIII `crypto_swsh.cpp`). The exact next engineering
+task is an exception-free Gen III Core slice/static library before routing
+RetroArch FRLG discovery into this adapter. See `docs/PKSM_CORE_INTEGRATION.md`.
+
+## Final scoped UI identity checkpoint — READY FOR DEVICE TEST
+
+The final requested identity pass is complete. PokeBank NX now uses a semantic Poké Ball-red
+brand palette in OLED Black, Dark and Light; the title-bar mark is a red-and-white Poké Ball; and
+the permanent left-edge accent stripes are removed. This is deliberately the end of broad UI
+identity work for now. Existing static Pokémon renders, controller behavior, source-read-only
+safety, backup behavior and PLA defensive handling are unchanged.
+
+```text
+Local recovered application commit: 30cd55dddd2afd23b5657faa420c306525a50fcb
+Canonical application source:       af2acf043a15dbf48b8195880a80cc5de562fced
+Application tree:                    35aa16e6b3ffb36c71ad6afdd86b1fa4c97f60ff
+Commit:                              ui: adopt red PokeBank identity accents
+Embedded version / short SHA:        0.1.0-alpha / af2acf04
+Artifact:                            PokeBank-NX-Red-UI-af2acf04.nro
+Size:                                155117481 bytes
+SHA-256:                             898df286cf34b895f1f71f4abc35f0818e4afa66725b67c2d020fc20c01bfac4
+Host tests (9 suites):               PASS
+ASan/UBSan:                          PASS
+git diff --check:                    PASS
+Native build:                        PASS (clean exact-source build)
+Asset preflight:                     PASS (3260 HD sprites)
+Embedded RomFS comparison:           PASS (3281 files)
+GitHub CI:                           PASS (run 34040918715)
+Device tested:                       NO
+```
+
+Status: **READY FOR DEVICE TEST / NOT DEVICE TESTED**.
+
+## Post-0ea98cc1 device feedback — static Pokémon artwork correction
+
+The exact `0ea98cc1...` device build physically renders the packaged HOME artwork successfully and
+its quality was accepted, but its inherited sine-driven idle effect failed visual acceptance:
+
+```text
+POKEMON ARTWORK:                         PASS
+ARTWORK QUALITY:                        GOOD
+ARTIFICIAL IDLE / BREATHING MOTION:     FAIL / REMOVE
+```
+
+PokeBank NX now routes the Pokémon details modal, selected Box preview and Party preview through a
+reusable static contain renderer. It preserves the source aspect ratio and has no time input, bob,
+width modulation or height modulation. The `SpriteManager` resolver/cache and HD-to-legacy fallback
+remain unchanged. A pure host regression suite covers square, wide, tall and invalid sprite layout.
+This correction is **IMPLEMENTED / HOST TESTED / NRO BUILDS**. Its exact replacement artifact is:
+
+```text
+Application source: 59895efc1f70974fb8c7ba8895f83c9688f27b5c
+Commit: ui: render Pokemon artwork without fake idle motion
+Embedded version / short SHA: 0.1.0-alpha / 59895efc
+Artifact: PokeBank-NX-Static-Render-59895efc.nro
+Size: 155117481 bytes
+SHA-256: d85284030a7d7bef7dce73daf80089c440f011313ff423026693d35920c4c83c
+Host tests (9 suites): PASS
+ASan/UBSan: PASS
+git diff --check: PASS
+Native build: PASS (clean exact-source build)
+Asset preflight: PASS (3260 HD sprites)
+Embedded RomFS comparison: PASS (3281 files)
+Device tested: NO
+```
+
+Status: **READY FOR STATIC-RENDER DEVICE TEST / NOT DEVICE TESTED**.
+
+Permanent feedback record: `docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md`.
 
 ## Session 2.6 — READY FOR SECOND DEVICE TEST / NOT DEVICE TESTED
 

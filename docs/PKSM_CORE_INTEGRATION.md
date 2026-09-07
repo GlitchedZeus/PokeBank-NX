@@ -1,7 +1,7 @@
 # PokeBank NX — PKSM-Core Integration Plan
 
-Status: RESEARCH / IMPLEMENTATION PLAN  
-Last updated: 2026-09-01
+Status: GEN III READ-ONLY HOST SPIKE IMPLEMENTED
+Last updated: 2026-09-07
 
 Pinned reference:
 
@@ -372,19 +372,85 @@ C. ADAPTER/REFERENCE ONLY
 
 Do not start hand-writing a new Gen III engine until this gate is answered.
 
+## Session 3A implementation result
+
+Decision: **ADAPTER-WRAPPER**.
+
+The pinned repository is now a recursive Git submodule at `vendor/PKSM-Core`. PokeBank code sees it
+only through:
+
+```text
+include/Integration/Gen3/PKSMGen3Adapter.h
+src/Integration/Gen3/PKSMGen3Adapter.cpp
+```
+
+No PKSM-Core type appears in the public adapter header or UI. The implementation uses `Sav3` /
+`SavFRLG` to enumerate the party and boxes and `PK3` for Pokémon semantics and byte round trips.
+The wrapper adds validation the pinned `Sav3::isValid()` does not provide: sector signatures,
+per-sector checksums, consistent counters and wrap-aware active-slot selection. When a newer slot
+fails strict validation but an older one is sound, the wrapper masks only the rejected slot in the
+private Core copy so Core cannot reselect it by counter. Caller/source bytes are never changed.
+
+### Deterministic fixture
+
+The host test generates the smallest useful legal-structure fixture in memory; no personal save is
+stored in the repository.
+
+```text
+Type:             synthetic deterministic FireRed/LeafGreen-family GBA save
+Size:             131072 bytes (0x20000)
+SHA-256:          b416aa985e459cb939caf1e1c70ce8359edf0c99a536e24d3b2a2a32b0541120
+Older slot:       counter 7, unrotated, distinct Bulbasaur PID
+Active slot:      counter 9, rotation 5, Bulbasaur
+Party:            one 100-byte PK3
+Boxes:            one aligned PK3 and one PK3 split across the 0xF80 sector boundary
+```
+
+Expected assertions cover species, PID, TID, SID, EXP, normalized and raw Gen III held item,
+moves, PP, IVs, EVs, nickname and OT. Copies generate truncated, bad-checksum, bad-signature,
+invalid-ID, duplicate/missing-ID, counter-mismatch, unsupported-game and malformed-PK3 cases.
+
+### Independent check and round trip
+
+The existing PokeBank/PKSE `Encryption3FRLG` implementation independently decrypts the extracted
+fixture PK3, agrees on the canonical fields, and re-encrypts to the exact source bytes. Separately,
+PKSM-Core `PK3` decrypt -> clone -> encrypt is **BYTE IDENTICAL** for both 80-byte box and 100-byte
+party records. No save resign or write API is called.
+
+### Build/dependency findings
+
+- C++20 compiles on host.
+- Required nested dependencies are pinned Core submodules `memecrypto` and `pcg-cpp`.
+- Configuration also requires `_PKSMCORE_PERSONAL_FOLDER` for this pinned tree in addition to the
+  README-documented `_PKSMCORE_LANG_FOLDER`.
+- `memecrypto.c` must be compiled as C or with C++ alternative operator names disabled because its
+  helper is named `xor`; the host integration uses `-fno-operator-names`.
+- The public PokeBank boundary avoids name/type collisions.
+- Full host Core relocatable object: about 2.7 MiB optimized; final Gen III host test after section
+  garbage collection: about 740 KiB (toolchain-dependent development measurements).
+- The native application does not compile this adapter yet, so current `.nro` impact is 0 bytes.
+  A bounded full-Core devkitA64 probe failed under the application's required `-fno-exceptions`:
+  `source/personal/personal.cpp` throws on a personal-data size mismatch, and unrelated Gen VIII
+  `source/utils/crypto_swsh.cpp` also throws. A Gen III-only, exception-free static slice is the next
+  task; linking all generations would unnecessarily pull those dependencies into the Switch build.
+- GPLv3 and the additional 7.b/7.c notices remain in the pinned submodule; the wrapper marks itself
+  as derived integration work and preserves attribution.
+
 ---
 
 # Success criteria
 
 The PKSM-Core Gen III audit is successful when we have:
 
-- [ ] reproducible pinned source revision
-- [ ] license/notice inventory
-- [ ] PK3 host compile spike
-- [ ] normalized field comparison tests
-- [ ] Sav3 read-only fixture test
-- [ ] dependency/build-size measurement
-- [ ] untouched round-trip result documented
-- [ ] PKHeX comparison plan/result
-- [ ] explicit integration decision
-- [ ] no live game saves modified
+- [x] reproducible pinned source revision
+- [x] license/notice inventory
+- [x] PK3 host compile spike
+- [x] normalized field comparison tests
+- [x] Sav3 read-only fixture test
+- [x] dependency/build-size measurement
+- [x] untouched PK3 round-trip result documented
+- [x] independent existing-parser comparison result
+- [x] explicit integration decision: ADAPTER-WRAPPER
+- [x] no live game saves modified
+- [ ] devkitA64 Gen III Core slice compiled and measured
+- [ ] real redistributable FRLG fixture added when one is available

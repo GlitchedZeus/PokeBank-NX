@@ -3,11 +3,32 @@ CXXFLAGS ?= -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2
 SANITIZE_FLAGS := -fsanitize=address,undefined -fno-omit-frame-pointer -O1
 
 HOST_BUILD := build-host
-HOST_TESTS := $(HOST_BUILD)/test_game_identity $(HOST_BUILD)/test_write_policy $(HOST_BUILD)/test_action_sheet_model $(HOST_BUILD)/test_theme $(HOST_BUILD)/test_navigation_repeat $(HOST_BUILD)/test_controller_model
-HOST_SANITIZE_TESTS := $(HOST_BUILD)/test_game_identity_sanitize $(HOST_BUILD)/test_write_policy_sanitize $(HOST_BUILD)/test_action_sheet_model_sanitize $(HOST_BUILD)/test_theme_sanitize $(HOST_BUILD)/test_navigation_repeat_sanitize $(HOST_BUILD)/test_controller_model_sanitize
+HOST_TESTS := $(HOST_BUILD)/test_game_identity $(HOST_BUILD)/test_write_policy $(HOST_BUILD)/test_action_sheet_model $(HOST_BUILD)/test_theme $(HOST_BUILD)/test_navigation_repeat $(HOST_BUILD)/test_controller_model $(HOST_BUILD)/test_sprite_layout
+HOST_SANITIZE_TESTS := $(HOST_BUILD)/test_game_identity_sanitize $(HOST_BUILD)/test_write_policy_sanitize $(HOST_BUILD)/test_action_sheet_model_sanitize $(HOST_BUILD)/test_theme_sanitize $(HOST_BUILD)/test_navigation_repeat_sanitize $(HOST_BUILD)/test_controller_model_sanitize $(HOST_BUILD)/test_sprite_layout_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_source_mutation_policy $(HOST_BUILD)/test_pla_read_validation
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_source_mutation_policy_sanitize $(HOST_BUILD)/test_pla_read_validation_sanitize
 PLA_TEST_SOURCES := tests/test_pla_read_validation.cpp src/Save/Block.cpp src/Encryption/Encryption.cpp src/Encryption/Encryption8LA.cpp src/Enums/SCTypeCode.cpp src/Utils/HelperUtilities.cpp src/Utils/StringHelpers.cpp src/Utils/SHA256.cpp src/Utils/ReadAllBytes.cpp
+PKSM_CORE_ROOT := vendor/PKSM-Core
+PKSM_CORE_SOURCES := $(shell find $(PKSM_CORE_ROOT)/source $(PKSM_CORE_ROOT)/memecrypto -type f \( -name '*.cpp' -o -name '*.c' \) -print)
+PKSM_CORE_INCLUDES := $(shell find $(PKSM_CORE_ROOT)/include $(PKSM_CORE_ROOT)/memecrypto $(PKSM_CORE_ROOT)/pcg-cpp -type d -printf ' -I%p')
+PKSM_CORE_DEFINES := -D_PKSMCORE_CONFIGURED \
+	-D_PKSMCORE_LANG_FOLDER='"$(PKSM_CORE_ROOT)/strings/"' \
+	-D_PKSMCORE_PERSONAL_FOLDER='"$(PKSM_CORE_ROOT)/personals/"'
+PKSM_CORE_FLAGS := -fno-operator-names -Wno-psabi \
+	-Wno-missing-field-initializers -Wno-unused-parameter
+GEN3_ADAPTER_SOURCES := tests/test_pksm_gen3_adapter.cpp \
+	src/Integration/Gen3/PKSMGen3Adapter.cpp src/Encryption/Encryption3FRLG.cpp \
+	src/Utils/SHA256.cpp
+GEN3_NATIVE_SLICE_SOURCES := tests/test_pksm_gen3_adapter.cpp \
+	src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Encryption/Encryption3FRLG.cpp \
+	src/Names/ItemNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Utils/SHA256.cpp
+PKSM_CORE_OBJECT := $(HOST_BUILD)/pksm-core.o
+PKSM_CORE_SANITIZE_OBJECT := $(HOST_BUILD)/pksm-core-sanitize.o
+HOST_TESTS += $(HOST_BUILD)/test_pksm_gen3_adapter
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_pksm_gen3_adapter_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_native_slice
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_native_slice_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -35,6 +56,36 @@ $(HOST_BUILD)/test_pla_read_validation_sanitize: $(PLA_TEST_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
+$(PKSM_CORE_OBJECT): $(PKSM_CORE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) -std=c++20 -O2 -w $(PKSM_CORE_FLAGS) -ffunction-sections -fdata-sections \
+		$(PKSM_CORE_INCLUDES) $(PKSM_CORE_DEFINES) -r $^ -o $@
+
+$(PKSM_CORE_SANITIZE_OBJECT): $(PKSM_CORE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) -std=c++20 -w $(PKSM_CORE_FLAGS) $(SANITIZE_FLAGS) -ffunction-sections -fdata-sections \
+		$(PKSM_CORE_INCLUDES) $(PKSM_CORE_DEFINES) -r $^ -o $@
+
+$(HOST_BUILD)/test_pksm_gen3_adapter: $(GEN3_ADAPTER_SOURCES) $(PKSM_CORE_OBJECT)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(PKSM_CORE_FLAGS) -Iinclude $(PKSM_CORE_INCLUDES) \
+		$(PKSM_CORE_DEFINES) $(GEN3_ADAPTER_SOURCES) $(PKSM_CORE_OBJECT) \
+		-Wl,--gc-sections -o $@
+
+$(HOST_BUILD)/test_pksm_gen3_adapter_sanitize: $(GEN3_ADAPTER_SOURCES) $(PKSM_CORE_SANITIZE_OBJECT)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(PKSM_CORE_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(PKSM_CORE_INCLUDES) \
+		$(PKSM_CORE_DEFINES) $(GEN3_ADAPTER_SOURCES) $(PKSM_CORE_SANITIZE_OBJECT) \
+		-Wl,--gc-sections -o $@
+
+$(HOST_BUILD)/test_gen3_native_slice: $(GEN3_NATIVE_SLICE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gen3_native_slice_sanitize: $(GEN3_NATIVE_SLICE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
+
 $(HOST_BUILD)/test_game_identity: tests/test_game_identity.cpp src/Games/GameIdentity.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
@@ -59,6 +110,10 @@ $(HOST_BUILD)/test_controller_model: tests/test_controller_model.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
 
+$(HOST_BUILD)/test_sprite_layout: tests/test_sprite_layout.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
 $(HOST_BUILD)/test_game_identity_sanitize: tests/test_game_identity.cpp src/Games/GameIdentity.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
@@ -80,6 +135,10 @@ $(HOST_BUILD)/test_navigation_repeat_sanitize: tests/test_navigation_repeat.cpp
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_controller_model_sanitize: tests/test_controller_model.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_sprite_layout_sanitize: tests/test_sprite_layout.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
