@@ -4,41 +4,209 @@
 
 # PokeBank NX
 
-**PokeBank NX** is an offline Pokémon storage, collection, transfer, provenance and save-management project for Nintendo Switch homebrew.
+**PokeBank NX** is an offline Pokémon storage, collection, provenance, transfer, and save-management project for **CFW Nintendo Switch**.
 
-The project began from the PKSE codebase, but the goal is broader: one controller-first Switch application for browsing supported Pokémon saves, building a permanent local Master Vault, organizing Pokémon into named Banks, tracking provenance, building Living Dex collections and eventually moving compatible Pokémon safely between games and generations.
+The long-term goal is a controller-first, offline Pokémon HOME-style application that can safely browse supported game saves, collect Pokémon into a permanent local Vault, organize them into Banks, preserve origin/provenance, and eventually move compatible Pokémon between supported games without relying on Nintendo's private online services.
 
-> **Alpha safety warning:** live installed-game save writing is not an approved current feature. Installed game sources remain read-only until an individual adapter passes explicit staged-write, validation, readback, rollback and physical-device safety gates.
+> **Alpha / development warning:** live installed-game save writing is **not** an approved current feature. Installed-game sources remain read-only until each individual write adapter passes explicit backup, staging, validation, readback, rollback, and physical-device safety gates.
 
 ---
 
-## Current status — September 7, 2026
+## Current development status
 
-Current engineering focus: **Gen III FireRed/LeafGreen GBA read support + RetroArch source integration**.
-
-Short authoritative handoff:
-
-- [`CURRENT_STATUS.md`](CURRENT_STATUS.md)
-- [`docs/NEXT_SESSION_PLAN.md`](docs/NEXT_SESSION_PLAN.md)
-- [`docs/NEXT_CODEX_PROMPT.md`](docs/NEXT_CODEX_PROMPT.md)
-
-Development branch:
+Active development branch:
 
 ```text
 feature/pokebank-playable
 ```
 
-Writable repository:
+Current engineering focus:
 
 ```text
-GlitchedZeus/PokeBank-NX
+RetroArch FireRed / LeafGreen GBA read-only runtime integration
 ```
 
-PKSE remains **upstream only**. PokeBank NX changes must never be pushed to the original PKSE repository.
+The UI has been accepted as **good enough for development** and is intentionally frozen until the app is much closer to completion. Current work is focused on Pokémon/save functionality rather than more visual redesign.
+
+For the exact engineering state, see:
+
+- [`CURRENT_STATUS.md`](CURRENT_STATUS.md)
+- [`docs/NEXT_SESSION_PLAN.md`](docs/NEXT_SESSION_PLAN.md)
+- [`docs/GAME_SUPPORT_MATRIX.md`](docs/GAME_SUPPORT_MATRIX.md)
+- [`docs/V1_ROADMAP.md`](docs/V1_ROADMAP.md)
 
 ---
 
-## Current accepted Switch UI / hardware milestone
+# ✅ What already works
+
+These are the parts a normal homebrew user would actually notice or care about today.
+
+### App / controls
+
+- ✅ Native Nintendo Switch `.nro` boots and runs on real hardware.
+- ✅ Controller-first navigation.
+- ✅ D-pad navigation.
+- ✅ Left Stick navigation, including the physical-input fix.
+- ✅ Pokémon Action Sheet for deliberate actions instead of accidental instant mutation.
+- ✅ Handheld testing completed on current development builds.
+- ✅ HOME / sleep / wake / controller reconnect behavior has been exercised successfully.
+
+### UI / presentation
+
+- ✅ PokeBank NX branding and shell are visible in-app.
+- ✅ Red PokeBank NX identity accepted for development.
+- ✅ OLED Black, Dark, and Light themes.
+- ✅ Theme persistence.
+- ✅ HD Pokémon artwork packaged in the application.
+- ✅ Pokémon artwork renders on real Switch hardware.
+- ✅ Artificial inherited sprite "breathing" / bobbing effect removed.
+- ✅ Permanent inherited left-side accent bar removed.
+- ✅ Current UI is frozen so engineering effort can go into the actual Pokémon features.
+
+### Save safety
+
+- ✅ Installed Switch game sources are treated as read-only.
+- ✅ Low-level live installed-save write path is hard-disabled.
+- ✅ Inherited Release/Create/Move/Edit paths are blocked from directly mutating installed sources.
+- ✅ Backup/staged representations remain separated from installed-source browsing.
+- ✅ App-owned legacy Storage is identified separately from the future Master Vault.
+- ✅ Malformed / old Legends: Arceus input is handled with a graceful error instead of crashing the app.
+- ✅ Source immutability is covered by regression tests for the new Gen III read path.
+
+### Pokémon / save engine
+
+- ✅ Stable current registry for 23 release/platform identities.
+- ✅ FireRed GBA and LeafGreen GBA remain distinct from the separate Switch FireRed/LeafGreen identities.
+- ✅ PKSM-Core pinned and integrated as a host-side Gen III correctness oracle.
+- ✅ Strict FireRed/LeafGreen GBA Gen III save validation.
+- ✅ Two rotating Gen III save slots handled.
+- ✅ All 14 Gen III sectors validated and reassembled.
+- ✅ Sector IDs, signatures, counters, checksums, and counter wraparound handled.
+- ✅ Safe fallback to an older valid slot when a newer slot is corrupt.
+- ✅ Party Pokémon enumeration.
+- ✅ All 14 PC Boxes enumerated.
+- ✅ PK3 records that cross a PC-sector boundary are reconstructed correctly.
+- ✅ Species, PID, TID, SID, EXP, held item, moves, PP, IVs, EVs, nickname, and OT are extracted.
+- ✅ Malformed / truncated / invalid Gen III input is rejected safely.
+- ✅ Untouched boxed and party PK3 round trips are byte-identical in tests.
+- ✅ Existing PKSE Gen III crypto independently agrees with the new adapter test data.
+- ✅ Exception-free Switch-native Gen III backend builds under the normal `-fno-exceptions` toolchain.
+- ✅ Host regression tests and ASan/UBSan coverage are in place.
+- ✅ GitHub CI runs the host suite with recursive pinned PKSM-Core submodules.
+
+---
+
+# 🚧 In development right now
+
+### RetroArch FireRed / LeafGreen GBA source support
+
+The next user-facing milestone is to let PokeBank NX find and open real FireRed/LeafGreen saves from RetroArch on the Switch.
+
+Target flow:
+
+```text
+RetroArch savefile_directory
+        ↓
+bounded read-only .sav / .srm discovery
+        ↓
+full FRLG structural validation
+        ↓
+FireRed GBA / LeafGreen GBA identity when reliable
+        ↓
+exception-free native Gen III backend
+        ↓
+Party / Boxes
+        ↓
+existing PokeBank browsing flow
+```
+
+Current design rules:
+
+- read-only;
+- no broad uncontrolled SD-card crawl;
+- only known RetroArch save roots / configured save directory;
+- bounded depth and candidate count;
+- never trust filename alone;
+- ambiguous FRLG sources remain unclassified rather than guessed;
+- no save repair or writeback.
+
+Tracked by issue **#6**.
+
+---
+
+# 🗺️ Planned / to be added
+
+These are planned features, not claims that they already work.
+
+### Core storage product
+
+- ⬜ **Master Vault** — permanent game-independent Pokémon storage.
+- ⬜ Immutable raw Pokémon payloads with SHA-256 integrity.
+- ⬜ Origin / source / provenance history.
+- ⬜ Stable Vault IDs and parent/derived lineage.
+- ⬜ Named **Banks** built over Vault entries.
+- ⬜ Living Dex / Shiny Living Dex / Favorites / Events / Competitive collections.
+- ⬜ Search, filters, favorites, recent items, and Quick Jump.
+- ⬜ Crash-safe Vault journal, recovery, and index rebuild tools.
+
+### More game support
+
+- ⬜ Ruby / Sapphire / Emerald GBA.
+- ⬜ Red / Blue / Yellow GB.
+- ⬜ Gold / Silver / Crystal GBC.
+- ⬜ Nintendo DS Gen IV / V games.
+- ⬜ Nintendo 3DS Gen VI / VII games.
+- ⬜ Pokémon Colosseum.
+- ⬜ Pokémon XD: Gale of Darkness.
+- ⬜ Pokémon Stadium / Stadium 2 as stretch archival targets.
+- ⬜ Validation and hardening of modern supported Switch save adapters.
+
+Planned source catalog target:
+
+```text
+23 current host-tested identities
++ 9 Nintendo DS
++ 8 Nintendo 3DS
++ 2 Nintendo GameCube
++ 2 Nintendo 64 Stadium stretch
+= 44 total target identities
+```
+
+### Pokémon tools
+
+- ⬜ Professional Pokémon Summary / provenance view.
+- ⬜ Vault-driven Pokédex.
+- ⬜ Living Dex and shiny collection views.
+- ⬜ PKHeX host-side correctness / legality oracle.
+- ⬜ Legality-aware editing.
+- ⬜ Clone / Make Shiny safeguards with provenance.
+- ⬜ Historical Mystery Gift / event workflows.
+- ⬜ Pokémon cry playback in Summary.
+
+### Transfer system
+
+- ⬜ Explicit **COPY**, **MOVE**, and **CLONE** semantics.
+- ⬜ Cross-generation conversion / compatibility engine.
+- ⬜ Safe staged destination representations.
+- ⬜ Backup → mutate stage → validate → write → readback → rollback transaction pipeline.
+- ⬜ Individually approved game write adapters.
+- ⬜ True Move only after destination success is verified.
+- ⬜ Supported-game bridge workflow compatible with official Pokémon HOME without impersonating private Nintendo/HOME protocols or forging tracker/history data.
+
+### Final polish / release quality
+
+- ⬜ Final title/icon/NACP/startup polish.
+- ⬜ Final controller semantics and hints.
+- ⬜ Docked-mode polish and release-candidate hardware testing.
+- ⬜ Accessibility options such as text sizing and Reduced Motion.
+- ⬜ Privacy-safe diagnostics / crash reports.
+- ⬜ Large-Vault performance / cache optimization.
+- ⬜ Persistent reproducible device-test artifact automation.
+- ⬜ Release candidate, exact binary/hash preservation, and v1.0 release.
+
+---
+
+# Current accepted physical UI milestone
 
 Accepted application source:
 
@@ -51,42 +219,31 @@ Accepted artifact:
 
 ```text
 PokeBank-NX-Red-UI-af2acf04.nro
-SHA-256 898df286cf34b895f1f71f4abc35f0818e4afa66725b67c2d020fc20c01bfac4
+SHA-256: 898df286cf34b895f1f71f4abc35f0818e4afa66725b67c2d020fc20c01bfac4
 ```
 
-Physically accepted for continued development:
+Physical result for continued development:
 
 | Area | Result |
 |---|---|
-| D-pad navigation | **PASS** |
-| Left Stick navigation | **PASS** |
-| Red PokeBank NX identity | **ACCEPTED FOR NOW** |
-| Permanent left-side accent bar | **REMOVED** |
-| HD Pokémon artwork | **PASS** |
-| Artificial sprite breathing/bobbing | **REMOVED** |
-| Old/problem Legends: Arceus source | **GRACEFUL ERROR / NO CRASH** |
-| Installed-source live write | **HARD DISABLED** |
-
-Broad UI work is intentionally frozen until the app is much closer to completion. Final startup/icon/NACP/branding polish remains tracked under issue #16.
-
-Completed hardware/UI blockers include #13, #19, #23 and #24.
+| D-pad | ✅ PASS |
+| Left Stick | ✅ PASS |
+| HD Pokémon artwork | ✅ PASS |
+| Red PokeBank NX identity | ✅ ACCEPTED FOR NOW |
+| Left accent bar | ✅ REMOVED |
+| Fake sprite breathing/bobbing | ✅ REMOVED |
+| Old/problem PLA source | ✅ GRACEFUL ERROR / NO CRASH |
+| Installed-source live write | 🔒 HARD DISABLED |
 
 ---
 
-## Gen III engine milestone
+# Gen III engineering checkpoints
 
-### Session 3A — PKSM-Core host oracle / adapter
+Host PKSM-Core adapter:
 
 ```text
 936e75d98daa7e61fcf8ea199bcda958b1b78d7a
 gen3: add PKSM-Core read-only FRLG adapter
-```
-
-CI/submodule follow-up:
-
-```text
-283073a5215a471ef0ad07619b4856409658cfdc
-ci: checkout pinned PKSM-Core submodules
 ```
 
 Pinned Core:
@@ -96,155 +253,47 @@ FlagBrew/PKSM-Core
 aa22d7a4f87c0351baf7da5962ba5acd01039a7c
 ```
 
-Integration decision: **ADAPTER-WRAPPER**.
-
-The adapter is read-only and exposes PokeBank-owned data rather than PKSM-Core types. PokeBank performs stricter Gen III sector validation before the Core host oracle sees a private copy of source bytes.
-
-Deterministic generated FRLG fixture:
-
-```text
-131072 bytes
-SHA-256 b416aa985e459cb939caf1e1c70ce8359edf0c99a536e24d3b2a2a32b0541120
-```
-
-Verified coverage includes:
-
-- two rotating save slots;
-- all 14 sectors;
-- signatures, counters and checksums;
-- wrap-aware newest-slot selection;
-- safe fallback to an older valid slot;
-- Party + all 14 Boxes;
-- an 80-byte PK3 crossing a PC-sector boundary;
-- malformed/truncated rejection;
-- source immutability;
-- PK3 fields including species, PID, TID, SID, EXP, held item, moves, PP, IVs, EVs, nickname and OT;
-- byte-identical untouched boxed/party PK3 round trips;
-- independent agreement with inherited PKSE Gen III crypto.
-
-### Session 3B — exception-free Switch-native Gen III backend
+Native exception-free backend:
 
 ```text
 43f3a9f90a3314725979d59afdd68f19ee159009
 gen3: build exception-free native core slice
 ```
 
-GitHub Actions:
+Deterministic FRLG regression fixture:
 
 ```text
-PokeBank NX Host Tests
-run #158
-PASS
+Size:    131072 bytes
+SHA-256: b416aa985e459cb939caf1e1c70ce8359edf0c99a536e24d3b2a2a32b0541120
 ```
 
-Full PKSM-Core is intentionally not linked directly into the Switch app because its cross-generation dependency graph reaches exception-throwing code while PokeBank NX builds native code with `-fno-exceptions`.
-
-The native architecture is now:
-
-```text
-PokeBank Gen III API
-    +-- host correctness oracle -> pinned PKSM-Core
-    +-- Switch runtime backend  -> exception-free selective Gen III implementation
-```
-
-The public PokeBank API stays the same regardless of backend.
+More technical detail lives in [`CURRENT_STATUS.md`](CURRENT_STATUS.md) and [`docs/PKSM_CORE_INTEGRATION.md`](docs/PKSM_CORE_INTEGRATION.md).
 
 ---
 
-## Immediate next task
+# Safety principles
 
-A later interrupted coding session reported local/uncommitted RetroArch FRLG source work. It is not considered implemented until recovered, verified and pushed.
-
-Reported design:
-
-```text
-RetroArch configured savefile_directory
-.sav / .srm only
-max directory depth 2
-max 256 candidates by default
-full FRLG structural validation before path/name hints
-ambiguous valid FRLG remains unclassified
-Party / Boxes through the existing Gen III adapter
-```
-
-The next milestone is to recover that work and wire the provider/catalog into the real application source-discovery lifecycle:
-
-```text
-RetroArch save root
--> bounded read-only catalog
--> validated FRLG source
--> firered_gba / leafgreen_gba when reliable
--> native Gen III backend
--> Party / Boxes
--> existing PokeBank source/browser lifecycle
-```
-
-Issue #6 tracks this work.
+- Installed Switch save sources are read-only today.
+- RetroArch / legacy save sources are read-only during parser/import milestones.
+- No parser should auto-repair or overwrite malformed source data.
+- Master Vault will be app-owned storage, separate from original game saves.
+- Live writes will be approved **one game adapter at a time**, never by one global unsafe switch.
+- `COPY`, `MOVE`, and `CLONE` remain intentionally different operations.
+- PokeBank NX does not impersonate private Nintendo/Pokémon HOME protocols or forge HOME tracker/history data.
 
 ---
 
-## Planned v1 source catalog
+# Development / Codex continuation
 
-Current host-tested source registry: **23 identities**.
-
-Planned expansion:
+PokeBank NX custom work belongs only in:
 
 ```text
-+ 9 Nintendo DS
-+ 8 Nintendo 3DS
-+ 2 Nintendo GameCube: Colosseum / XD
-+ 2 Nintendo 64: Stadium / Stadium 2 (stretch)
-= 44 total target identities
+GlitchedZeus/PokeBank-NX
 ```
 
-See:
+`kiasta/PKSE` remains **upstream only**. Never push custom PokeBank NX code upstream.
 
-- [`docs/GAME_SUPPORT_MATRIX.md`](docs/GAME_SUPPORT_MATRIX.md)
-- issue #29 — v1.0 master roadmap
-- issue #30 — DS/3DS identities
-- issue #31 — DS Gen IV/V adapters
-- issue #32 — 3DS Gen VI/VII adapters
-- issue #33 — Colosseum/XD
-- issue #34 — Stadium stretch
-
----
-
-## Major product milestones still ahead
-
-```text
-RetroArch FRLG runtime read path
--> broader Gen III production reads
--> Master Vault + named Banks
--> Colosseum / XD
--> Gen I / II + RetroArch
--> DS / 3DS
--> modern Switch validation
--> Summary / provenance / PKHeX Oracle
--> conversion / Pokédex / legality / events
--> staged writes
--> individually approved live-write adapters
--> true Move
--> release hardening / RC / v1.0
-```
-
-Master Vault is not implemented yet. Legacy inherited Storage remains separate app-owned compatibility storage.
-
----
-
-## Safety principles
-
-- Installed Switch game sources are read-only today.
-- RetroArch/legacy sources are read-only during parser/import milestones.
-- No parser auto-repairs malformed source saves.
-- Live writes are approved one adapter at a time only after backup/staging/readback/rollback testing.
-- `COPY`, `MOVE` and `CLONE` will remain distinct operations.
-- PokeBank NX does not impersonate private Nintendo/HOME protocols or forge HOME tracker/history data.
-
----
-
-## Fast Codex continuation
-
-Future coding sessions no longer need a giant pasted prompt. Send:
+Future coding sessions can use the short launcher:
 
 ```text
 Continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and execute docs/NEXT_CODEX_PROMPT.md. Use HIGH reasoning. Preserve local work, push coherent checkpoints early, and never push custom code upstream.
@@ -252,6 +301,6 @@ Continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and ex
 
 ---
 
-## Disclaimer
+# Disclaimer
 
 PokeBank NX is an unofficial fan-made homebrew project and is not affiliated with or endorsed by Nintendo, The Pokémon Company, GAME FREAK, or Creatures Inc. Pokémon and related trademarks are property of their respective owners.
