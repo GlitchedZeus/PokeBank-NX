@@ -79,36 +79,18 @@ size    131072 bytes
 SHA-256 b416aa985e459cb939caf1e1c70ce8359edf0c99a536e24d3b2a2a32b0541120
 ```
 
-Proven behavior:
-
-- two rotating save slots / 14-sector structure;
-- sector IDs, signatures, counters and checksums;
-- wrap-aware newest-slot selection;
-- safe fallback to the older valid slot;
-- party and all 14 boxes;
-- an 80-byte PK3 crossing a PC-sector boundary;
-- malformed/truncated/invalid structure rejection;
-- source bytes remain unchanged;
-- PK3 fields: species, PID, TID, SID, EXP, held item, moves, PP, IVs, EVs, nickname and OT;
-- inherited PKSE crypto independently agrees;
-- untouched 80-byte boxed and 100-byte party PK3 round trips are byte-identical.
+Proven behavior includes rotating save slots, all 14 sectors, signatures/counters/checksums, wrap-aware newest-slot selection, safe older-slot fallback, Party, all 14 Boxes, sector-boundary PK3 extraction, malformed/truncated rejection, source immutability and byte-identical untouched PK3 round trips.
 
 ## Session 3B checkpoint A — native exception-free Gen III backend
 
-Current verified engineering checkpoint:
+Verified engineering checkpoint:
 
 ```text
 43f3a9f90a3314725979d59afdd68f19ee159009
 gen3: build exception-free native core slice
 ```
 
-GitHub Actions:
-
-```text
-PokeBank NX Host Tests — run #158 — PASS
-```
-
-Full pinned PKSM-Core cannot be linked directly into the Switch app under the normal `-fno-exceptions` build because unrelated/cross-generation PKSM-Core dependencies reach throwing code. The chosen solution keeps the same PokeBank adapter API and uses:
+Full pinned PKSM-Core is not linked wholesale into the native Switch application. The native application remains `-fno-exceptions` and uses the same PokeBank-owned API through the selective native Gen III backend.
 
 ```text
 HOST / correctness oracle:
@@ -118,9 +100,7 @@ SWITCH NATIVE:
 same PokeBank adapter API -> PKSMGen3NativeAdapter.cpp
 ```
 
-The native backend selectively implements the already-proven Gen III read semantics without enabling exceptions globally or pulling unrelated later-generation Core code into the Switch app.
-
-`src/Integration/Gen3` is now part of the normal native `SOURCES` list.
+Do not redo this architecture unless a real regression requires it.
 
 ## Session 3B checkpoint B — RetroArch FRLG runtime catalog
 
@@ -131,7 +111,7 @@ Canonical implementation source:
 gen3: wire RetroArch FRLG read-only sources
 ```
 
-The interrupted source was recovered on local ref `recovery/session3b-retroarch-wip-20260907`, verified, and published as one canonical remote commit. The runtime path is now:
+Implemented path:
 
 ```text
 RetroArch savefile_directory
@@ -143,11 +123,9 @@ RetroArch savefile_directory
         -> UIManager-owned application-session catalog
 ```
 
-Only configured/conventional RetroArch roots are visited; the app never crawls the full SD card. Traversal defaults to depth 2 and 256 `.sav`/`.srm` candidates. A filename/path hint is used only after strict FRLG-family validation. Structurally valid but ambiguous saves remain unclassified. Invalid unrelated saves are suppressed, while named FRLG candidates retain typed diagnostics. All file opens are read-only and tests prove the source bytes do not change.
+Only configured/conventional RetroArch roots are visited; the app never crawls the full SD card. Traversal defaults to depth 2 and 256 `.sav`/`.srm` candidates. A filename/path hint is used only after strict FRLG-family validation. Structurally valid but ambiguous saves remain unclassified. All file opens are read-only and tests prove the source bytes do not change.
 
-The normal Switch runtime owns and invokes the catalog at startup. Native symbols for discovery and the exception-free Gen III parser are retained in the final ELF; the NRO grows by 28,672 bytes from 62,637,553 to 62,666,225 bytes.
-
-Verification: eleven host suites PASS, ASan/UBSan PASS, `git diff --check` PASS, and native devkitA64 `-fno-exceptions` build PASS. This path is **IMPLEMENTED / HOST TESTED / NRO BUILDS**, not DEVICE TESTED.
+State: **IMPLEMENTED / HOST TESTED / NRO BUILDS**.
 
 ## Session 3C — selectable RetroArch FRLG browsing
 
@@ -158,7 +136,7 @@ f6a3052daeffe7cd30d7acceba81a5dfda7615ee
 gen3: expose RetroArch FRLG game sources
 ```
 
-Recovered local checkpoint with the same application tree:
+Recovered local equivalent from the interrupted session:
 
 ```text
 25fc12181bf1fffbe3f0a06b56dc9d676a0c29f0
@@ -176,38 +154,81 @@ UIManager-owned validated catalog
         -> existing Party / Boxes browser
 ```
 
-Only strict `Ready` sources become selectable. Cards carry `firered_gba` or
-`leafgreen_gba`, show `Game Boy Advance` / `RETROARCH`, and remain distinct from the
-Switch release identities. Selection resolves back through the session-owned catalog;
-the file is not reparsed through permissive `Trainer3FRLG` logic.
+Only strict `Ready` sources become selectable. Cards carry `firered_gba` or `leafgreen_gba`, show `Game Boy Advance` / `RETROARCH`, and remain distinct from the Switch release identities. Selection resolves back through the session-owned catalog rather than reparsing through permissive legacy Trainer logic.
 
-`FRLGReadOnlyTrainer` is populated only from validated adapter records. It exposes Party
-and all 14 Boxes to the existing renderer, has no source serializer, returns no blank
-Pokémon for insertion, and has inert update virtuals. `RetroArchLegacy` permits View
-only; Edit, Clone, Transfer, Direct Move and Save Changes remain blocked. Tests prove
-the fixture bytes remain unchanged across card creation, resolution and view-model
-construction.
+`FRLGReadOnlyTrainer` is populated only from validated adapter records. It exposes Party and all 14 Boxes to the existing renderer and has no source serializer/write path. `RetroArchLegacy` permits View only; Edit, Clone, Transfer, Direct Move and Save Changes remain blocked. Tests prove fixture bytes remain unchanged across card creation, resolution and view-model construction.
 
-Verification: twelve host suites PASS; ASan/UBSan PASS; `git diff --check` PASS;
-GitHub Actions run #184 PASS; clean native devkitA64 `-fno-exceptions` build PASS.
-The NRO is 62,694,897 bytes, +28,672 bytes over the catalog-only build and +57,344
-bytes over the pre-runtime baseline.
+Verification: twelve host suites PASS; ASan/UBSan PASS; `git diff --check` PASS; GitHub Actions run #184 PASS; clean native devkitA64 `-fno-exceptions` build PASS.
 
 State: **IMPLEMENTED / HOST TESTED / NRO BUILDS / NOT DEVICE TESTED**.
 
-## Immediate next milestone
+## Exact FRLG browser device-test artifact — READY, NOT DEVICE TESTED
 
-Physically verify the exact FRLG Game Sources -> Party/Boxes route on Switch. After that
-acceptance, extend the same strict read-only Gen III production pipeline to Ruby,
-Sapphire and Emerald without enabling mutation or live writes.
-
-## Next major order after FRLG runtime catalog
-
-Current preferred implementation order remains:
+The complete pinned visual asset set has been restored and verified. This exact artifact is the only current FRLG browser device-test target:
 
 ```text
-FRLG RetroArch read path
--> Gen III production reads
+Application source: f6a3052daeffe7cd30d7acceba81a5dfda7615ee
+Embedded version:   f6a3052d
+NRO size:           155174825 bytes
+NRO SHA-256:        809c94c842a3c385d23907c61e5ecfa201b24f08e8ac935e87a4add60770282d
+ZIP size:           148435779 bytes
+ZIP SHA-256:        66b1e16eb5443fd6ce682f2485aacf0cb50a2b00cca0846b8d170cc89727b701
+```
+
+Asset verification:
+
+```text
+HD Pokémon renders:         3260
+Base species coverage:      1025 / 1025
+Embedded RomFS comparison:  3281 / 3281 files byte-identical
+Native Switch build:        PASS
+Asset preflight:            PASS
+```
+
+Device status remains **NO** until the user physically runs the exact NRO whose SHA-256 is `809c94c842a3c385d23907c61e5ecfa201b24f08e8ac935e87a4add60770282d`.
+
+Required physical flow:
+
+```text
+Game Sources
+  -> FireRed GBA / LeafGreen GBA (RETROARCH)
+  -> select source
+  -> trainer/source view
+  -> Party
+  -> Boxes 1-14
+  -> View Pokémon
+```
+
+Also confirm:
+
+- GBA FireRed/LeafGreen are visibly distinct from the Switch releases;
+- View works;
+- Edit / Clone / Transfer / Move / Save / writeback remain blocked;
+- no crash or missing-art regression.
+
+Do not begin RSE until this exact artifact is physically accepted or a genuine blocker is reported and fixed with a newly hashed artifact.
+
+## Parked interrupted RSE work
+
+A later interrupted session produced local RSE work at:
+
+```text
+1a921515
+```
+
+It remains intentionally local/parked. Do not treat it as published or resume it before FRLG physical acceptance. After the device gate passes, inspect/preserve that local commit before reimplementing equivalent RSE work from scratch.
+
+## Next milestone
+
+Immediate action is **physical Switch testing of the exact FRLG browser artifact above**.
+
+After physical acceptance, continue strict read-only Ruby/Sapphire/Emerald production support using the proven Gen III architecture and recover/reconcile the parked `1a921515` work if it still exists.
+
+## Next major order
+
+```text
+physical FRLG browser acceptance
+-> Ruby / Sapphire / Emerald strict production reads
 -> Master Vault + Banks foundation
 -> Colosseum / XD
 -> Gen I / II + RetroArch
@@ -222,9 +243,18 @@ FRLG RetroArch read path
 -> RC / v1.0
 ```
 
+## Parked later roadmap
+
+```text
+#46  Gift, Event and Mystery Gift Library + EventDex
+#47  PokeBank NX Link for real GB/GBC/GBA hardware transfers
+```
+
+Both remain post-v1/later and must not derail the current critical path.
+
 ## Session launcher
 
-For the next coding session, do not paste a wall of text. Use:
+Do not start another coding session until the exact FRLG artifact has a physical test result. After the user reports PASS or a blocker, use:
 
 ```text
 Continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and execute docs/NEXT_CODEX_PROMPT.md. Use HIGH reasoning. Preserve local work, push coherent checkpoints early, and never push custom code upstream.
