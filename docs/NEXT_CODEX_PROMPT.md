@@ -7,25 +7,66 @@ Use this file as the authoritative task prompt for the next coding session.
 The user should only need to send:
 
 ```text
-Continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and execute docs/NEXT_CODEX_PROMPT.md. Use HIGH reasoning. Preserve local work, push coherent checkpoints early, and never push custom code upstream.
+Recover and continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and execute docs/NEXT_CODEX_PROMPT.md. Use HIGH reasoning. Preserve all local work before syncing, push coherent checkpoints early, and never push custom code upstream.
 ```
 
 ---
 
-## Mission
+## Current remote state
 
-Continue from the verified remote checkpoint:
+The current synchronized remote branch head is:
+
+```text
+3828abb8c939ab96caaa3337545b3a737a3994fc
+Merge PR #45: sync current PokeBank NX development docs
+```
+
+This is a documentation/history synchronization commit. The latest verified Gen III engineering implementation below it is:
 
 ```text
 43f3a9f90a3314725979d59afdd68f19ee159009
 gen3: build exception-free native core slice
 ```
 
-Do **not** redo Session 3A or the native Gen III selective backend.
+Do **not** confuse the documentation branch head with the latest substantive engine checkpoint, and do **not** redo Session 3A or the native Gen III selective backend.
 
-First recover any interrupted/uncommitted RetroArch FireRed/LeafGreen work that may still exist in the workspace. Inspect `git status`, branches, reflog, stashes, worktrees, diffs and untracked files before editing. Preserve useful local work on a recovery ref before changing it.
+## Priority zero — recover interrupted workspace work
 
-Reported interrupted work after `43f3a9f9...`:
+A previous coding session timed out after implementing additional RetroArch FireRed/LeafGreen work locally. That work may be newer than the remote branch and may be uncommitted.
+
+Before pulling, rebasing, checking out another ref, resetting, cleaning, restoring, or editing source, inspect and preserve the workspace.
+
+Inspect at minimum:
+
+```text
+pwd
+git rev-parse --show-toplevel
+git status
+git status --short
+git branch -avv
+git remote -v
+git log --all --oneline --decorate --graph -60
+git reflog -60
+git stash list
+git worktree list
+git diff
+git diff --cached
+git submodule status --recursive
+```
+
+Also inspect untracked/recent files related to RetroArch, FRLG, Gen3, source discovery, `.sav`, `.srm`, `savefile_directory`, source catalogs/providers, and runtime registration.
+
+If useful interrupted work exists, preserve it immediately on a recovery ref/branch and preserve untracked source/tests before doing anything destructive.
+
+Do **not** run `git reset --hard`, `git clean`, `git restore .`, or otherwise discard local state until recovery is complete.
+
+If the local workspace contains work based on an older branch head, recover the useful code first and then reconcile it with remote `3828abb8...`; do not overwrite it just because the remote documentation history moved.
+
+Only recreate work from memory if recovery genuinely fails.
+
+## Reported interrupted RetroArch work
+
+The timed-out session reported:
 
 - bounded read-only RetroArch source catalog;
 - reads configured `savefile_directory`;
@@ -36,9 +77,11 @@ Reported interrupted work after `43f3a9f9...`:
 - Party/Boxes exposed through the existing Gen III adapter;
 - ambiguous valid FRLG sources remain unclassified instead of guessed.
 
-The unfinished task was to ensure the real runtime source-discovery lifecycle owns/invokes the catalog so it is not dead code discarded by the linker.
+The final reported unfinished task was to ensure the real runtime source-discovery lifecycle owns/invokes that catalog so the linker retains it because the application genuinely uses it.
 
-## Required end-to-end path
+## Mission after recovery
+
+Finish the real end-to-end read-only runtime path:
 
 ```text
 RetroArch savefile_directory
@@ -50,11 +93,11 @@ RetroArch savefile_directory
         -> existing PokeBank source/browser lifecycle
 ```
 
-Use the existing source/game registry. Do not create a second browser, debug UI or broad SD-card crawler.
+Use the existing source/game registry. Do not create a second browser, debug UI, or broad SD-card crawler.
 
 ## Classification rules
 
-- Never classify a save as FR/LG from filename alone.
+- Never classify a save as FireRed/LeafGreen from filename alone.
 - Structural validation must pass first.
 - Path/name hints may support classification after validation.
 - If FireRed vs LeafGreen remains genuinely ambiguous, keep it unclassified rather than guessing.
@@ -62,7 +105,7 @@ Use the existing source/game registry. Do not create a second browser, debug UI 
 
 ## Safety
 
-Everything in this milestone is read-only.
+Everything in this milestone remains read-only.
 
 Do not implement or enable:
 
@@ -73,13 +116,15 @@ Do not implement or enable:
 - conversion UI;
 - Master Vault/Banks;
 - unrelated generations;
-- UI redesign or Right Stick work.
+- UI redesign;
+- Right Stick work;
+- app rename/branding migration in this session.
 
 Preserve the existing live-write hard lock.
 
 ## Verification
 
-Preserve the existing Gen III tests and add focused tests where practical for:
+Preserve existing Gen III coverage and add/finish focused tests where practical for:
 
 - configured RetroArch save root;
 - `.sav` and `.srm` candidates;
@@ -101,11 +146,11 @@ git diff --check
 make -j1
 ```
 
-Native build must remain `-fno-exceptions`. Do not reintroduce full PKSM-Core into the native build.
+Native build must remain `-fno-exceptions`. Do not reintroduce full PKSM-Core into the native application.
 
 ## Checkpoint policy
 
-As soon as the recovered/runtime-wired RetroArch work is coherent, commit and push it to:
+As soon as recovered work is coherent enough to preserve, commit and push it to:
 
 ```text
 origin / feature/pokebank-playable
@@ -113,9 +158,9 @@ origin / feature/pokebank-playable
 
 Never upstream.
 
-Do not wait until the final minutes. If credentials fail, use the authenticated GitHub connection before continuing.
+Do not wait until the final minutes. Prefer an early recovery checkpoint followed by a second runtime-wiring checkpoint rather than another lost session.
 
-Suggested commit:
+Suggested implementation commit:
 
 ```text
 gen3: wire RetroArch FRLG read-only sources
@@ -128,21 +173,23 @@ Update only what materially changes:
 - `CURRENT_STATUS.md`
 - `PROJECT_STATUS.md` if needed
 - `docs/NEXT_SESSION_PLAN.md`
+- `docs/NEXT_CODEX_PROMPT.md` so the next launcher remains current
 - issue #6
 - issue #17 only if fixtures change
 
-Issue #4 is the completed PKSM-Core Gen III spike and should not be reopened for this runtime wiring unless the adapter architecture itself regresses.
+Issue #4 is the completed PKSM-Core Gen III spike and should not be reopened unless the adapter architecture itself regresses.
 
 ## Stop condition
 
-Stop after a coherent FRLG RetroArch runtime checkpoint. Do not start Gen I/II, RSE, Vault/Banks, GameCube, DS/3DS or UI polish in the same session.
+Stop after a coherent, pushed FRLG RetroArch runtime checkpoint. Do not start RSE, Gen I/II, Vault/Banks, GameCube, DS/3DS, final UI polish, Ranch mode, or renaming/branding work in this same recovery session.
 
 End report should include:
 
 ```text
+recovery result
 recovered files/ref
-starting SHA
-implementation SHA
+remote starting SHA
+implementation SHA(s)
 runtime registration path
 catalog/provider files
 RetroArch path behavior
