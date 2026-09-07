@@ -51,7 +51,10 @@ namespace UI {
         // Where the details editor's target Pokemon lives.
         enum class EditSource { Party, Box, Bank };
 
-        TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId, AccountUid userUid, bool loadedFromCart);
+        TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName,
+                          const std::string& sourceLocation, u64 titleId, AccountUid userUid,
+                          PokeVault::Safety::SourceKind sourceKind,
+                          std::string sourceGameId = {});
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return goBack; }
@@ -106,7 +109,7 @@ namespace UI {
         // Public state - accessible by UI components (Panels, Dialogs, Modals)
         Trainer::Trainer& trainer;
         std::string titleName;
-        std::string backupDir;
+        std::string backupDir;  // working-backup path or read-only source location
         std::string gameVersion;  // Actual game version from NACP (e.g., "1.0.1", "1.3.2")
         u64 titleId;
         AccountUid userUid;
@@ -243,16 +246,20 @@ namespace UI {
         using SaveDest = PokeVault::Safety::SaveDestination;
         static constexpr SaveDest DestThisBackup = SaveDest::WorkingBackup;
         static constexpr SaveDest DestNewBackup = SaveDest::NewBackup;
-        bool loadedFromCart = false;
+        PokeVault::Safety::SourceKind sourceKind = PokeVault::Safety::SourceKind::InstalledGame;
+        std::string sourceGameId;
         bool sourceReadOnly() const {
             return !PokeVault::Safety::canPerform(
-                loadedFromCart ? PokeVault::Safety::SourceKind::InstalledGame
-                               : PokeVault::Safety::SourceKind::BackupOrStaged,
-                PokeVault::Safety::SourceMutation::Edit);
+                sourceKind, PokeVault::Safety::SourceMutation::Edit);
+        }
+        bool legacyReadOnlySource() const {
+            return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy;
         }
         bool requireMutableWorkspace() {
             if (!sourceReadOnly()) return true;
-            postStatus("Installed source is read-only. Open a backup workspace explicitly to edit.", 300);
+            postStatus(legacyReadOnlySource()
+                ? "RetroArch source is read-only. Editing this file is disabled."
+                : "Installed source is read-only. Open a backup workspace explicitly to edit.", 300);
             return false;
         }
 

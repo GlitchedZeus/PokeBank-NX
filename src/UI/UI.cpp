@@ -11,6 +11,9 @@
 #include "Utils/Logger.h"
 #include "Utils/FileUtilities.h"
 #include "Trainer/Trainer.h"
+#include "Games/GameIdentity.h"
+#include "Legacy/FRLGReadOnlyTrainer.h"
+#include "Legacy/FRLGSourceBrowser.h"
 
 using namespace Utils;
 using namespace Trainer;
@@ -56,7 +59,7 @@ namespace UI {
     // Combined JKSV-style user + title picker: pick a user's avatar and one of their supported
     // Pokemon game icons in a single screen, then go straight to backup selection.
     void UIManager::handleSaveSelection() {
-        SaveSelectScreen selectScreen;
+        SaveSelectScreen selectScreen(legacyFRLGSources);
         fb.startFade();
 
         while (appletMainLoop() && running && !selectScreen.shouldExit()) {
@@ -68,9 +71,16 @@ namespace UI {
             fb.flush();
 
             if (selectScreen.hasSelectedTitle()) {
-                handleBackupSelection(selectScreen.getSelectedUser(),
-                                      selectScreen.getSelectedTitleId(),
-                                      selectScreen.getSelectedTitleName());
+                if (selectScreen.getSelectedSourceKind() ==
+                    SaveSelectScreen::SelectedSourceKind::RetroArchFRLG) {
+                    std::string error;
+                    if (!handleLegacyFRLGView(selectScreen.getSelectedLegacySourceIndex(), error))
+                        logErrorToFile("Legacy FRLG source refused open", error.c_str());
+                } else {
+                    handleBackupSelection(selectScreen.getSelectedUser(),
+                                          selectScreen.getSelectedTitleId(),
+                                          selectScreen.getSelectedTitleName());
+                }
                 // Back from backup/trainer -> return so run() rebuilds the picker (re-lists saves).
                 return;
             }
@@ -143,7 +153,10 @@ namespace UI {
 
         // Use std::visit to extract reference and create TrainerViewScreen
         std::visit([&](auto& trainer) {
-            TrainerViewScreen trainerScreen(trainer, titleName, backupDir, titleId, userUid, loadedFromCart);
+            TrainerViewScreen trainerScreen(
+                trainer, titleName, backupDir, titleId, userUid,
+                loadedFromCart ? PokeVault::Safety::SourceKind::InstalledGame
+                               : PokeVault::Safety::SourceKind::BackupOrStaged);
             fb.startFade();
 
             while (appletMainLoop() && !trainerScreen.shouldExit() && !trainerScreen.hasRequestedExit()) {
@@ -160,6 +173,54 @@ namespace UI {
                 running = false;
             }
         }, trainerVariant);
+        return true;
+    }
+
+    bool UIManager::handleLegacyFRLGView(size_t sourceIndex, std::string& error) {
+        error.clear();
+        if (sourceIndex >= legacyFRLGSources.sources.size()) {
+            error = "RetroArch source selection is stale";
+            return false;
+        }
+
+        const auto& selected = legacyFRLGSources.sources[sourceIndex];
+        PokeVault::Legacy::FRLGSourceCard card{
+            sourceIndex,
+            selected.gameId,
+            {},
+            "Game Boy Advance",
+            "RETROARCH",
+            selected.path,
+        };
+        const auto* source = PokeVault::Legacy::resolveFRLGSourceCard(legacyFRLGSources, card);
+        if (!source) {
+            error = "RetroArch source is no longer a validated FireRed/LeafGreen save";
+            return false;
+        }
+        const auto* identity = PokeVault::Games::findGame(source->gameId);
+        if (!identity) {
+            error = "RetroArch source has no stable game identity";
+            return false;
+        }
+
+        auto trainer = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*source->save, error);
+        if (!trainer) return false;
+
+        AccountUid noUser{};
+        TrainerViewScreen trainerScreen(
+            *trainer, "Pokemon " + std::string(identity->title), source->path, 0, noUser,
+            PokeVault::Safety::SourceKind::RetroArchLegacy, source->gameId);
+        fb.startFade();
+        while (appletMainLoop() && !trainerScreen.shouldExit() &&
+               !trainerScreen.hasRequestedExit()) {
+            padUpdate(&pad);
+            touch.update();
+            trainerScreen.update(pad, touch);
+            trainerScreen.draw(fb);
+            fb.drawFadeOverlay();
+            fb.flush();
+        }
+        if (trainerScreen.hasRequestedExit()) running = false;
         return true;
     }
 }

@@ -483,11 +483,18 @@ namespace UI {
         infoRow("Full SID", std::to_string(t.SID));
     }
 
-    TrainerViewScreen::TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName, const std::string& backupDir, u64 titleId, AccountUid userUid, bool loadedFromCart)
-        : trainer(trainer), titleName(titleName), backupDir(backupDir), gameVersion(Utils::getTitleVersion(titleId)), titleId(titleId), userUid(userUid) {
-        // Assigned in the body rather than the init list: it is declared far below these members, and
-        // C++ initialises in DECLARATION order, so listing it here would only earn a -Wreorder.
-        this->loadedFromCart = loadedFromCart;
+    TrainerViewScreen::TrainerViewScreen(
+        Trainer::Trainer& trainer, const std::string& titleName,
+        const std::string& sourceLocation, u64 titleId, AccountUid userUid,
+        PokeVault::Safety::SourceKind sourceKind, std::string sourceGameId)
+        : trainer(trainer), titleName(titleName), backupDir(sourceLocation),
+          gameVersion(sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy
+                          ? std::string() : Utils::getTitleVersion(titleId)),
+          titleId(titleId), userUid(userUid) {
+        // Assigned in the body rather than the init list: these members are declared below much of
+        // the immediate-mode state, and C++ initialises in declaration order.
+        this->sourceKind = sourceKind;
+        this->sourceGameId = std::move(sourceGameId);
         saveDestIndex = defaultSaveDestRow();
 
         // Open on the box the game was last left on (persisted per-game as the "current box"),
@@ -512,7 +519,11 @@ namespace UI {
         const std::string sessionInfo =
             "pkse=" + VERSION_STRING +
             " game=\"" + titleName + "\" gamever=" + (gameVersion.empty() ? "?" : gameVersion) +
-            " src=" + (this->loadedFromCart ? "CART" : "BACKUP") +
+            " src=" + std::string(this->sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy
+                                      ? "RETROARCH_READ_ONLY"
+                                      : this->sourceKind == PokeVault::Safety::SourceKind::InstalledGame
+                                          ? "INSTALLED_READ_ONLY" : "BACKUP") +
+            " gameid=" + (this->sourceGameId.empty() ? "?" : this->sourceGameId) +
             " backup=\"" + leafName(backupDir) + "\"" +
             " rev=\"" + (trainer.saveRevisionString.empty() ? "Base" : trainer.saveRevisionString) + "\"" +
             " " + Utils::logField("ot", trainer.trainerName) +
@@ -4139,7 +4150,8 @@ namespace UI {
         drawAppBackdrop(fb);
 
         // --- Title bar: the shared chrome, with game name + version + DLC as the subtitle ---
-        std::string subtitle = sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — " : "BACKUP WORKSPACE — ";
+        std::string subtitle = legacyReadOnlySource() ? "RETROARCH / GBA / READ ONLY — "
+            : sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — " : "BACKUP WORKSPACE — ";
         subtitle += titleName;
         if (!gameVersion.empty()) {
             subtitle += "  v" + gameVersion;
@@ -4401,7 +4413,9 @@ namespace UI {
 
         if (helpOverlayActive) {
             drawInfoOverlay(fb, "Game Browser Controls", {
-                sourceReadOnly() ? "INSTALLED SOURCE: read-only browsing" : "BACKUP WORKSPACE: edits affect backup files only",
+                legacyReadOnlySource() ? "RETROARCH GBA SOURCE: read-only browsing"
+                    : sourceReadOnly() ? "INSTALLED SOURCE: read-only browsing"
+                                       : "BACKUP WORKSPACE: edits affect backup files only",
                 "Legacy Storage is app-owned bank.dat, NOT Master Vault",
                 "D-pad / Left Stick   Navigate (hold to scroll)",
                 "A   Open or show Pokémon actions",

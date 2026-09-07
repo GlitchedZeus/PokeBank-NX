@@ -16,6 +16,16 @@ using namespace Utils;
 using namespace Enums;
 
 namespace UI {
+    namespace {
+        std::string sourceLeafName(const std::string& path) {
+            const size_t slash = path.find_last_of("/\\");
+            std::string leaf = slash == std::string::npos ? path : path.substr(slash + 1);
+            constexpr size_t maxChars = 22;
+            if (leaf.size() > maxChars) leaf = leaf.substr(0, maxChars - 3) + "...";
+            return leaf;
+        }
+    }
+
     // Layout (1280x720).
     constexpr int HEADER_Y   = 82;    // top of the user header card
     constexpr int HEADER_H   = 104;
@@ -32,8 +42,40 @@ namespace UI {
     // bottom edge, which is how titles eleven and twelve used to vanish.
     constexpr int VISIBLE_ROWS = 2;
 
-    SaveSelectScreen::SaveSelectScreen() {
+    SaveSelectScreen::SaveSelectScreen(
+        const PokeVault::Legacy::FRLGDiscoveryResult& legacySources) {
         loadUsers();
+        loadLegacySources(legacySources);
+    }
+
+    void SaveSelectScreen::loadLegacySources(
+        const PokeVault::Legacy::FRLGDiscoveryResult& legacySources) {
+        const auto cards = PokeVault::Legacy::buildFRLGSourceCards(legacySources);
+        if (cards.empty()) return;
+
+        if (users.size() == 1 && users.front().titles.empty() &&
+            users.front().name == "No users found") {
+            users.clear();
+        }
+
+        UserEntry group;
+        memset(&group.uid, 0, sizeof(AccountUid));
+        group.name = "RetroArch";
+        group.retroArchGroup = true;
+        group.titles.reserve(cards.size());
+        for (const auto& card : cards) {
+            TitleEntry entry;
+            entry.name = "Pokemon " + card.title;
+            entry.label = card.title;
+            entry.gameId = card.gameId;
+            entry.platformLabel = card.platformLabel;
+            entry.sourceLabel = card.sourceLabel;
+            entry.locationLabel = sourceLeafName(card.location);
+            entry.sourceKind = SelectedSourceKind::RetroArchFRLG;
+            entry.legacySourceIndex = card.sourceIndex;
+            group.titles.push_back(std::move(entry));
+        }
+        users.push_back(std::move(group));
     }
 
     void SaveSelectScreen::loadUsers() {
@@ -230,6 +272,8 @@ namespace UI {
         selectedTitleId  = u->titles[titleIndex].titleId;
         selectedTitleName = u->titles[titleIndex].name;
         selectedGameId = u->titles[titleIndex].gameId;
+        selectedSourceKind = u->titles[titleIndex].sourceKind;
+        selectedLegacySourceIndex = u->titles[titleIndex].legacySourceIndex;
         titleSelected = true;
     }
 
@@ -334,11 +378,18 @@ namespace UI {
 
         const int avX = 44, avY = HEADER_Y + (HEADER_H - AVATAR) / 2;
         if (u) {
-            const IconImage& av = SystemIcons::userIcon(u->uid);
-            if (av.valid())
-                fb.drawImageScaled(avX, avY, av.width, av.height, AVATAR, AVATAR, av.data, 4);
-            else
+            const IconImage* av = u->retroArchGroup ? nullptr : &SystemIcons::userIcon(u->uid);
+            if (av && av->valid())
+                fb.drawImageScaled(avX, avY, av->width, av->height, AVATAR, AVATAR, av->data, 4);
+            else {
                 fb.drawFilledRoundedRect(avX, avY, AVATAR, AVATAR, 10, Colors::Selected);
+                if (u->retroArchGroup) {
+                    int rw, rh;
+                    fb.measureText("RA", rw, rh, TextStyle::Heading);
+                    fb.drawText(avX + (AVATAR - rw) / 2, avY + (AVATAR - rh) / 2,
+                                "RA", Colors::Accent, TextStyle::Heading);
+                }
+            }
             fb.drawRoundedRect(avX, avY, AVATAR, AVATAR, 10, Colors::Accent, 2);
         }
 
@@ -347,7 +398,9 @@ namespace UI {
             int nlh = fb.lineHeight(TextStyle::Title);
             fb.drawText(nameX, avY + 6, u->name, Colors::Text, TextStyle::Title);
             int cnt = (int)u->titles.size();
-            std::string sub = std::to_string(cnt) + (cnt == 1 ? " Pokémon save" : " Pokémon saves");
+            std::string sub = std::to_string(cnt) +
+                (u->retroArchGroup ? (cnt == 1 ? " read-only GBA source" : " read-only GBA sources")
+                                   : (cnt == 1 ? " Pokémon save" : " Pokémon saves"));
             fb.drawText(nameX, avY + 6 + nlh + 4, sub, Colors::TextDim, TextStyle::Caption);
         }
 
@@ -359,11 +412,18 @@ namespace UI {
             int chipY = HEADER_Y + (HEADER_H - CHIP) / 2;
             for (int i = 0; i < n; i++) {
                 int cx = startX + i * (CHIP + 12);
-                const IconImage& av = SystemIcons::userIcon(users[i].uid);
-                if (av.valid())
-                    fb.drawImageScaled(cx, chipY, av.width, av.height, CHIP, CHIP, av.data, 4);
-                else
+                const IconImage* av = users[i].retroArchGroup ? nullptr
+                                                              : &SystemIcons::userIcon(users[i].uid);
+                if (av && av->valid())
+                    fb.drawImageScaled(cx, chipY, av->width, av->height, CHIP, CHIP, av->data, 4);
+                else {
                     fb.drawFilledRoundedRect(cx, chipY, CHIP, CHIP, 8, Colors::Selected);
+                    if (users[i].retroArchGroup) {
+                        int rw, rh; fb.measureText("RA", rw, rh, TextStyle::Caption);
+                        fb.drawText(cx + (CHIP - rw) / 2, chipY + (CHIP - rh) / 2,
+                                    "RA", Colors::Accent, TextStyle::Caption);
+                    }
+                }
                 if (i == userIndex) fb.drawRoundedRect(cx, chipY, CHIP, CHIP, 8, Colors::Primary, 3);
                 else                fb.drawRoundedRect(cx, chipY, CHIP, CHIP, 8, Colors::Border, 1);
                 userRects.push_back({cx, chipY, CHIP, CHIP, i});
@@ -401,21 +461,30 @@ namespace UI {
 
                 int iconX = tileX + (TILE_W - ICON) / 2;
                 int iconY = tileY + 16;
-                const IconImage& ic = SystemIcons::titleIcon(u->titles[i].titleId);
-                if (ic.valid())
-                    fb.drawImageScaled(iconX, iconY, ic.width, ic.height, ICON, ICON, ic.data, 4);
-                else
+                const bool legacy = u->titles[i].sourceKind == SelectedSourceKind::RetroArchFRLG;
+                const IconImage* ic = legacy ? nullptr : &SystemIcons::titleIcon(u->titles[i].titleId);
+                if (ic && ic->valid())
+                    fb.drawImageScaled(iconX, iconY, ic->width, ic->height, ICON, ICON, ic->data, 4);
+                else {
                     fb.drawFilledRoundedRect(iconX, iconY, ICON, ICON, 10, Colors::PanelAlt);
+                    if (legacy) {
+                        const std::string mark = "GBA";
+                        int mw, mh; fb.measureText(mark, mw, mh, TextStyle::Heading);
+                        fb.drawText(iconX + (ICON - mw) / 2, iconY + (ICON - mh) / 2,
+                                    mark, Colors::Accent, TextStyle::Heading);
+                    }
+                }
 
                 // Source badge makes these cards read as a local archive browser, not an inherited
                 // title picker. It is intentionally presentation-only; identity remains gameId.
-                constexpr int sourceW = 76, sourceH = 22;
+                constexpr int sourceW = 88, sourceH = 22;
                 fb.drawFilledRoundedRect(tileX + TILE_W - sourceW - 10, tileY + 14,
                                          sourceW, sourceH, 8,
                                          withAlpha(Colors::Info, sel ? 70 : 38));
-                int sw, sh; fb.measureText("LOCAL SAVE", sw, sh, TextStyle::Caption);
+                const std::string& sourceLabel = u->titles[i].sourceLabel;
+                int sw, sh; fb.measureText(sourceLabel, sw, sh, TextStyle::Caption);
                 fb.drawText(tileX + TILE_W - sourceW - 10 + (sourceW - sw) / 2,
-                            tileY + 14 + (sourceH - sh) / 2, "LOCAL SAVE",
+                            tileY + 14 + (sourceH - sh) / 2, sourceLabel,
                             sel ? Colors::TextPrimary : Colors::TextMuted, TextStyle::Caption);
 
                 // Release name and platform are separate lines. A FireRed tile must always say
@@ -428,6 +497,13 @@ namespace UI {
                 int pw, ph; fb.measureText(platform, pw, ph, TextStyle::Caption);
                 fb.drawText(tileX + (TILE_W - pw) / 2, iconY + ICON + 8 + lh + 1, platform,
                             Colors::TextDim, TextStyle::Caption);
+                if (!u->titles[i].locationLabel.empty()) {
+                    const std::string& location = u->titles[i].locationLabel;
+                    int fw, fh; fb.measureText(location, fw, fh, TextStyle::Caption);
+                    fb.drawText(tileX + (TILE_W - fw) / 2,
+                                iconY + ICON + 8 + lh + ph + 1, location,
+                                Colors::TextMuted, TextStyle::Caption);
+                }
 
                 titleRects.push_back({tileX, tileY, TILE_W, TILE_H, i});
             }
