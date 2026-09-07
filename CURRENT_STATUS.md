@@ -12,11 +12,11 @@ This file is the short authoritative handoff for coding sessions. Historical dev
 - Upstream-only remote: `kiasta/PKSE`
 - Never push PokeBank NX custom code upstream.
 - Live installed-game save writing remains **HARD DISABLED**.
-- Documentation commits may sit above the latest engineering-source checkpoint; do not confuse branch HEAD with the source SHA being discussed.
+- Preserve any local/uncommitted work before syncing or changing refs.
 
 ## Accepted UI / physical state
 
-The current UI is intentionally frozen until the app is much closer to completion.
+The current broad UI is intentionally frozen until the app is much closer to completion.
 
 Accepted application source:
 
@@ -40,14 +40,14 @@ Physical acceptance includes:
 - D-pad navigation works;
 - HD Pokémon artwork renders;
 - artificial sprite breathing/bobbing removed;
-- old/problem Legends: Arceus save no longer crashes and returns a graceful `main file is missing` error;
+- old/problem Legends: Arceus save no longer crashes and returns a graceful missing-main-file error;
 - installed-source read-only safety remains in place.
 
 Closed hardware/safety/UI blockers include #13, #19, #23 and #24. Final branding/startup/NRO polish remains later under #16.
 
-## Session 3A — Gen III host oracle / adapter
+## Gen III host oracle / adapter
 
-Implementation source:
+Verified host implementation:
 
 ```text
 936e75d98daa7e61fcf8ea199bcda958b1b78d7a
@@ -70,7 +70,7 @@ aa22d7a4f87c0351baf7da5962ba5acd01039a7c
 
 Issue #4 is complete. Integration decision: **ADAPTER-WRAPPER**.
 
-The public boundary is PokeBank-owned and does not expose PKSM-Core types. Session 3A proves read-only FireRed/LeafGreen GBA parsing with stricter PokeBank validation in front of PKSM-Core.
+The public boundary is PokeBank-owned and does not expose PKSM-Core types. Host-side PKSM-Core remains the correctness oracle/reference for the already-proven Gen III semantics.
 
 Deterministic generated FRLG fixture:
 
@@ -79,36 +79,18 @@ size    131072 bytes
 SHA-256 b416aa985e459cb939caf1e1c70ce8359edf0c99a536e24d3b2a2a32b0541120
 ```
 
-Proven behavior:
+Proven behavior includes rotating save slots, all 14 sectors, signatures/counters/checksums, wrap-aware newest-slot selection, safe older-slot fallback, Party, all 14 Boxes, sector-boundary PK3 extraction, malformed/truncated rejection, source immutability and byte-identical untouched PK3 round trips.
 
-- two rotating save slots / 14-sector structure;
-- sector IDs, signatures, counters and checksums;
-- wrap-aware newest-slot selection;
-- safe fallback to the older valid slot;
-- party and all 14 boxes;
-- an 80-byte PK3 crossing a PC-sector boundary;
-- malformed/truncated/invalid structure rejection;
-- source bytes remain unchanged;
-- PK3 fields: species, PID, TID, SID, EXP, held item, moves, PP, IVs, EVs, nickname and OT;
-- inherited PKSE crypto independently agrees;
-- untouched 80-byte boxed and 100-byte party PK3 round trips are byte-identical.
+## Exception-free Switch-native Gen III backend
 
-## Session 3B checkpoint A — native exception-free Gen III backend
-
-Current verified engineering checkpoint:
+Verified engineering checkpoint:
 
 ```text
 43f3a9f90a3314725979d59afdd68f19ee159009
 gen3: build exception-free native core slice
 ```
 
-GitHub Actions:
-
-```text
-PokeBank NX Host Tests — run #158 — PASS
-```
-
-Full pinned PKSM-Core cannot be linked directly into the Switch app under the normal `-fno-exceptions` build because unrelated/cross-generation PKSM-Core dependencies reach throwing code. The chosen solution keeps the same PokeBank adapter API and uses:
+Full pinned PKSM-Core is not linked wholesale into the native Switch application. The native application remains `-fno-exceptions` and uses the same PokeBank-owned API through the selective native Gen III backend.
 
 ```text
 HOST / correctness oracle:
@@ -118,49 +100,83 @@ SWITCH NATIVE:
 same PokeBank adapter API -> PKSMGen3NativeAdapter.cpp
 ```
 
-The native backend selectively implements the already-proven Gen III read semantics without enabling exceptions globally or pulling unrelated later-generation Core code into the Switch app.
+Do not redo this architecture unless a real regression requires it.
 
-`src/Integration/Gen3` is now part of the normal native `SOURCES` list.
+## RetroArch FRLG runtime discovery — IMPLEMENTED / PUSHED
 
-## Interrupted Session 3B work — NOT YET REMOTE
+Current branch engineering head:
 
-After `43f3a9f9...`, a later coding session reported local/uncommitted RetroArch FRLG work before timing out. Do **not** call this implemented until recovered, verified and pushed.
+```text
+54cb86892d290ae1c80f447af427ff17192681f9
+gen3: wire RetroArch FRLG read-only sources
+```
 
-Reported local design/work:
+This checkpoint recovered and completed the interrupted Session 3B work.
 
-- bounded read-only RetroArch source catalog;
-- reads RetroArch configured `savefile_directory`;
-- accepts only `.sav` / `.srm`;
-- scans at most two directory levels and 256 candidates by default;
-- validates full FRLG structure before trusting filename/path hints;
-- exposes Party/Boxes through the existing Gen III adapter model;
-- ambiguous structurally valid FRLG saves remain unclassified instead of being guessed.
+Implemented behavior:
 
-The remaining reported task was to connect the catalog to the real application source-discovery lifecycle so the native linker retains it because the runtime genuinely invokes it.
+- reads configured RetroArch `savefile_directory`;
+- considers only `.sav` / `.srm` candidates;
+- bounded traversal: depth <= 2 and 256 candidates by default;
+- strict full FRLG structure validation before trusting filename/path identity hints;
+- ambiguous structurally valid FRLG-family saves remain unclassified instead of guessed;
+- `firered_gba` / `leafgreen_gba` remain distinct from `firered_switch` / `leafgreen_switch`;
+- Party/Boxes use the existing native Gen III read-only model;
+- application startup/lifecycle owns the discovered FRLG catalog for the app session;
+- the runtime genuinely invokes/retains the provider rather than relying on dead/unreferenced code;
+- source files remain read-only and unchanged;
+- no installed Switch title writes were enabled.
+
+The current honest boundary is important:
+
+```text
+DONE:
+RetroArch path discovery
+-> bounded candidate scan
+-> strict FRLG validation
+-> reliable identity assignment when possible
+-> native Party/Boxes parse model
+-> application-lifecycle ownership
+
+NOT YET DONE:
+validated FRLG records exposed as normal selectable Game Source cards/entries in the existing user-facing source browser
+```
+
+Do not call the user-facing RetroArch FRLG browsing milestone device-complete until those records are actually selectable through the normal app UI and physically tested.
 
 ## Immediate next milestone
 
-Recover any uncommitted RetroArch FRLG work from the coding workspace and finish the end-to-end read-only runtime path:
+Expose the already-discovered validated RetroArch FireRed/LeafGreen GBA records through the **existing PokeBank Game Sources/source browser lifecycle**.
+
+Target:
 
 ```text
-RetroArch savefile_directory
-        -> bounded .sav/.srm catalog
-        -> structural FRLG validation
-        -> firered_gba / leafgreen_gba identity when reliable
-        -> native Gen III adapter
-        -> Party / Boxes read model
-        -> existing PokeBank source/browser lifecycle
+validated legacyFRLGSources entry
+        -> existing source/card descriptor
+        -> FireRed GBA / LeafGreen GBA card with clear RetroArch/GBA labeling
+        -> select card
+        -> existing Party / Boxes browsing path
 ```
 
-Do not create a second browser or debug UI. Do not guess FireRed vs LeafGreen when the evidence is ambiguous. Do not modify source saves.
+Rules:
 
-## Next major order after FRLG runtime read path
+- no second browser/debug UI;
+- no duplicate FRLG parser/discovery implementation;
+- no broad UI redesign;
+- invalid/ambiguous sources must not masquerade as valid FireRed/LeafGreen cards;
+- preserve `firered_gba` / `leafgreen_gba` identity separation from the Switch releases;
+- keep all legacy-source operations read-only;
+- preserve the live installed-save write hard lock.
 
-Current preferred implementation order remains:
+Stop after a coherent pushed user-facing FRLG source-card/browser checkpoint. Do not immediately wander into RSE, Gen I/II, Vault/Banks or unrelated UI work in the same coding session.
+
+## Next major order after the FRLG source-card milestone
+
+Preferred implementation order remains:
 
 ```text
-FRLG RetroArch read path
--> Gen III production reads
+user-facing RetroArch FRLG source cards / browse path
+-> broader Gen III production reads (Ruby/Sapphire/Emerald)
 -> Master Vault + Banks foundation
 -> Colosseum / XD
 -> Gen I / II + RetroArch
@@ -175,9 +191,33 @@ FRLG RetroArch read path
 -> RC / v1.0
 ```
 
+## Parked later roadmap
+
+Two newer ideas are intentionally saved as post-v1/later work and must not derail the current critical path:
+
+```text
+#46  Gift, Event and Mystery Gift Library + EventDex
+#47  PokeBank NX Link for real GB/GBC/GBA hardware transfers
+```
+
+Issue #46 covers the visual historical Gift/Event/Mystery Gift browser, EventDex/GiftDex, archived distribution reconstruction, legality-vs-provenance honesty and HOME/server provenance limits.
+
+Issue #47 covers a future real-hardware link path:
+
+```text
+real GB/GBC/GBA
+-> real link cable
+-> MCU/USB PokeBank Link bridge
+-> Nintendo Switch
+-> PokeBank NX
+-> Master Vault / compatible trade workflow
+```
+
+Both are explicitly parked until most heavy lifting/core architecture is complete.
+
 ## Session launcher
 
-For the next coding session, do not paste a wall of text. Use:
+For the next coding session use:
 
 ```text
 Continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and execute docs/NEXT_CODEX_PROMPT.md. Use HIGH reasoning. Preserve local work, push coherent checkpoints early, and never push custom code upstream.
