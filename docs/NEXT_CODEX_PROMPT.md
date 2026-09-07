@@ -23,7 +23,7 @@ NRO SHA-256: 809c94c842a3c385d23907c61e5ecfa201b24f08e8ac935e87a4add60770282d
 Assets:      3260 HD renders / 1025 base species / 3281 RomFS files verified
 ```
 
-Physical testing proved Party/Boxes/View basically work, but this artifact is **NOT DEVICE-ACCEPTED** because of four integration/UI blockers/requirements.
+Physical testing proved Party/Boxes/View basically work, but this artifact is **NOT DEVICE-ACCEPTED** because of five integration/UI blockers/requirements.
 
 ## Preserve first
 
@@ -70,7 +70,7 @@ Likewise one LeafGreen parent card.
 
 Current production support remains **BATTERY_SAVE only** (`.sav` / `.srm`). Do not implement `.state#` parsing in this blocker-fix session. The hierarchy must be future-proof for SAVE_STATE slots 0-3 and BACKUP children.
 
-## Single mission: fix all four FRLG device blockers/requirements
+## Single mission: fix all five FRLG device blockers/requirements
 
 ### Blocker A — RetroArch is wrongly user/profile scoped
 
@@ -138,7 +138,7 @@ Current scope is still `.sav` / `.srm` BATTERY_SAVE only, but implement refresh 
 Required behavior:
 
 1. keep normal bounded scan at app startup;
-2. when a RetroArch game parent card is opened, perform a lightweight refresh of the approved source roots for that game before showing child save instances;
+2. when a RetroArch game parent card is opened, perform a lightweight refresh of the approved active source root for that game before showing child save instances;
 3. expose a manual **Refresh Saves** / **Rescan Sources** action in the game-card/save-instance view;
 4. changed child sources invalidate cached read models using stable source identity plus useful file metadata such as normalized path, size and modification state where available;
 5. after refresh, selecting a changed child rereads/revalidates it through the same strict FRLG path before Party/Boxes is exposed;
@@ -152,6 +152,31 @@ Important product semantics:
 - future Save State 0/1/2/3 children are frozen snapshots and may legitimately differ from the main battery save;
 - if the user overwrites a state slot in RetroArch, a future SAVE_STATE adapter should detect the replacement after refresh;
 - actual `.state#` parsing remains out of scope for this session.
+
+### Blocker E — scanner can surface stale saves RetroArch no longer uses
+
+Physical observation: PokeBank appears to surface old FRLG save copies the user does not currently load in RetroArch.
+
+Code inspection confirms current `discoverConfiguredRetroArchFRLGSaves()` behavior adds both:
+
+```text
+savefile_directory from sdmc:/retroarch/retroarch.cfg
++ sdmc:/retroarch/cores/savefiles when that conventional folder exists
+```
+
+This is the likely source of stale historical copies and duplicate-looking saves.
+
+Required root-precedence behavior:
+
+1. a valid, non-default configured `savefile_directory` is authoritative for BATTERY_SAVE discovery;
+2. `sdmc:/retroarch/cores/savefiles` is fallback-only when there is no usable configured save directory;
+3. do not scan the conventional path additively merely because it exists;
+4. preserve bounded traversal beneath the selected active root;
+5. retain normalized source path and useful metadata for diagnostics and refresh;
+6. during host/device verification, report which physical source path was selected so stale-copy bugs are diagnosable;
+7. never silently prefer an older copy outside the active configured root.
+
+This root-selection fix is distinct from future `.state0`-`.state3` parsing.
 
 ## Preserve what already works
 
@@ -190,12 +215,15 @@ Specifically prove where practical:
 - installed-title user scoping still works;
 - exactly one top-level FireRed RetroArch parent card and one LeafGreen parent card are produced when present;
 - overlapping roots/path aliases do not duplicate child save instances;
-- genuinely separate save files remain separate children;
+- configured `savefile_directory` wins over an existing stale conventional root;
+- conventional root is used only as fallback when configured root is absent/unusable;
+- genuinely separate save files in the active root remain separate children;
 - FireRed/LeafGreen GBA artwork lookup resolves correctly;
 - opening a parent card refreshes current `.sav` / `.srm` child discovery;
 - manual Refresh Saves/Rescan Sources works;
 - a changed battery save invalidates/rebuilds its cached read model;
 - deleted/missing sources disappear/fail safely;
+- selected child diagnostics expose the physical path/metadata needed to verify the source;
 - FireRed and LeafGreen identities remain exact and distinct from Switch releases;
 - Party/Boxes/View still work;
 - source bytes remain unchanged;
@@ -208,7 +236,7 @@ Commit/push coherent source work early to `origin/feature/pokebank-playable` onl
 Suggested commit concept:
 
 ```text
-gen3: fix RetroArch grouping refresh and artwork
+gen3: fix RetroArch source selection grouping refresh and artwork
 ```
 
 Update issue #6 and minimal status/handoff docs after verification.
@@ -223,6 +251,7 @@ NRO filename
 NRO size
 NRO SHA-256
 asset render count
+active RetroArch save root selected
 FRLG GBA artwork lookup/result
 refresh/rescan behavior
 host tests
@@ -242,10 +271,12 @@ launch under normal Nintendo user
 -> FireRed / LeafGreen RetroArch game cards visible
 -> exactly one top-level card per game
 -> correct FireRed / LeafGreen artwork visible
+-> only saves from RetroArch's active configured battery-save root are listed
 -> open game card
 -> child save list refreshes from disk
 -> manual Refresh Saves works
 -> choose the desired Main Save child
+-> confirm trainer/Party/Boxes match the save RetroArch actually uses
 -> Party works
 -> Boxes 1-14 work
 -> View Pokémon works
