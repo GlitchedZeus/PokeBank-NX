@@ -15,102 +15,135 @@ f6a3052daeffe7cd30d7acceba81a5dfda7615ee
 gen3: expose RetroArch FRLG game sources
 ```
 
-The strict FireRed/LeafGreen GBA route is complete through bounded RetroArch discovery, the UIManager-owned catalog, normal Game Sources cards, and read-only Party / Boxes. GitHub Actions run #184 passes all twelve host suites.
-
-Do not redo the PKSM-Core oracle, exception-free native backend, FRLG scanner, source cards, read-only view bridge, accepted UI, Left Stick work or PLA hardening.
-
-## Current hard gate — waiting for physical Switch result
-
-The exact FRLG browser device artifact is READY but **NOT DEVICE TESTED**.
-
-Exact identity:
+The exact device-tested artifact was:
 
 ```text
-Application source: f6a3052daeffe7cd30d7acceba81a5dfda7615ee
-Embedded version:   f6a3052d
-NRO size:           155174825 bytes
-NRO SHA-256:        809c94c842a3c385d23907c61e5ecfa201b24f08e8ac935e87a4add60770282d
-ZIP size:           148435779 bytes
-ZIP SHA-256:        66b1e16eb5443fd6ce682f2485aacf0cb50a2b00cca0846b8d170cc89727b701
+NRO size:    155174825 bytes
+NRO SHA-256: 809c94c842a3c385d23907c61e5ecfa201b24f08e8ac935e87a4add60770282d
+Assets:      3260 HD renders / 1025 base species / 3281 RomFS files verified
 ```
 
-Asset verification already passed:
+Physical testing proved the main FRLG read-only browser path works, but device acceptance is blocked by two integration bugs. Do not call this artifact PASS/DEVICE-ACCEPTED.
+
+## First: preserve local work
+
+Before syncing/resetting/cleaning/restoring/changing refs, inspect and preserve useful local state:
 
 ```text
-HD Pokémon renders:         3260
-Base species coverage:      1025 / 1025
-Embedded RomFS comparison:  3281 / 3281 files byte-identical
-Native Switch build:        PASS
-Asset preflight:            PASS
+git status
+git status --short
+git branch -avv
+git remote -v
+git log --all --oneline --decorate --graph -40
+git reflog -30
+git stash list
+git worktree list
+git diff
+git diff --cached
+git submodule status --recursive
 ```
 
-Do **not** rebuild/repackage merely because a new session starts. Do **not** begin RSE unless the user reports the physical result for this exact artifact.
-
-Required physical flow:
-
-```text
-Game Sources
-  -> FireRed GBA / LeafGreen GBA (RETROARCH)
-  -> select source
-  -> trainer/source view
-  -> Party
-  -> Boxes 1-14
-  -> View Pokémon
-```
-
-Also verify that GBA and Switch FRLG identities are visibly distinct, View works, and Edit/Clone/Transfer/Move/Save/writeback remain blocked.
-
-## If the user reports PASS
-
-First record the exact artifact as **DEVICE TESTED** in `CURRENT_STATUS.md` and the relevant issue/status documentation.
-
-Then begin the next coding milestone: strict read-only Ruby/Sapphire/Emerald production support.
-
-Before touching RSE source, inspect and preserve local state. A previous interrupted session reported useful local RSE work at:
+A previous interrupted RSE checkpoint may exist locally at:
 
 ```text
 1a921515
 ```
 
-That commit was intentionally parked and not pushed. If it exists locally, recover/audit/reconcile it before reimplementing equivalent work from scratch. Never reset/clean/restore over it before preservation.
+Preserve it if present, but do not resume/merge/push RSE work in this session.
 
-Target identities:
-
-```text
-ruby_gba
-sapphire_gba
-emerald_gba
-```
-
-Target path:
+Writable destination:
 
 ```text
-bounded RetroArch discovery
-        -> strict RSE save validation
-        -> exact release + GBA identity
-        -> existing Game Sources screen
-        -> strict read-only Party / Boxes
+origin / feature/pokebank-playable
 ```
 
-Reuse the PokeBank-owned Gen III API where sound. Do not leak PKSM-Core types into UI code or route selected saves through older permissive Trainer parsing. Invalid/ambiguous sources remain unavailable rather than guessed. Preserve source path, game ID, platform, Pokémon locations and original bytes.
+Never push custom PokeBank code upstream to `kiasta/PKSE`.
 
-## If the user reports a blocker/failure
+## Single mission: fix the two FRLG hardware blockers
 
-Do not start RSE.
+### Blocker A — legacy RetroArch sources are wrongly user/profile scoped
 
-Recover/preserve any local changes first, reproduce the exact blocker, fix only the minimum FRLG/browser/device issue, rerun host tests/sanitizers/diff/native build, rebuild with the full pinned asset set, and produce a new exact NRO with filename/size/SHA-256 for another physical test.
+Observed on physical Switch: RetroArch appears as its own user/profile context, and the user must switch to that "account" to see the legacy FRLG saves.
 
-Do not call the failed artifact DEVICE TESTED/PASS.
+Required architecture:
 
-## Read-only safety
+```text
+installed Switch save source
+    -> Nintendo user/account scoped when required
 
-Legacy files and installed titles remain immutable sources. Do not implement editing, clone-to-save, delete, move, injection, repair/resign, writeback, conversion, Master Vault/Banks or installed-title writes in this milestone. View may operate on a PokeBank-owned read model. Disabled actions must return safely and never fall through.
+RetroArch / file / legacy source
+    -> app-global
+    -> visible regardless of currently selected Nintendo user
+```
 
-## Verification for RSE when physical FRLG acceptance is complete
+Do not model RetroArch itself as a Switch user. Do not require selecting a synthetic/legacy profile to expose file-based legacy sources.
 
-Preserve all twelve existing host suites and add focused coverage for RSE structure, identity, malformed/truncated input, Party/Box mapping, source immutability and blocked mutation operations. Keep FRLG regression coverage green.
+Integrate the app-global legacy cards into the existing Game Sources experience with the smallest coherent change. Preserve existing installed-title user handling.
 
-Run:
+### Blocker B — identical legacy saves appear multiple times
+
+Observed on physical Switch:
+
+```text
+2 FireRed cards for the same save
+3 LeafGreen cards for the same save
+```
+
+Inspect the actual cause first. Candidate causes include configured + conventional roots resolving to overlapping locations, root aliases, duplicate traversal roots, symlinks/path aliases, or source-card assembly duplicating the same catalog record.
+
+Required behavior:
+
+- one card for one underlying logical save source;
+- multiple genuinely distinct FireRed or LeafGreen save files are allowed and must remain separately selectable;
+- never dedupe merely by game ID/species/trainer name;
+- strict FRLG validation still happens before a source becomes selectable;
+- normalize/deduplicate approved roots before traversal where appropriate;
+- dedupe discovered sources using robust source identity. Prefer canonical/normalized path or filesystem identity when available; content hashing may be used as a secondary signal, but do not accidentally collapse intentionally separate physical files solely because their bytes currently match unless product semantics explicitly define them as aliases of the same source;
+- if a single file is reachable through multiple aliases/roots, show it once.
+
+Add host-testable coverage for overlapping roots/aliases and source-card uniqueness where practical.
+
+## Preserve everything that already works
+
+Do not redo or regress:
+
+- PKSM-Core Gen III host oracle;
+- exception-free native Gen III backend;
+- bounded `.sav` / `.srm` scanning;
+- strict FRLG structural validation;
+- `firered_gba` / `leafgreen_gba` identity separation from Switch FRLG;
+- existing Party and all 14 Boxes read model;
+- exact validated catalog-entry routing;
+- `Game Boy Advance` / `RETROARCH` labeling;
+- read-only action policy;
+- accepted broad UI identity.
+
+The user reported that aside from the two blockers, the physical FRLG browse path seems to work.
+
+## Safety
+
+This remains strictly read-only.
+
+Do not implement/enable:
+
+- RetroArch save modification;
+- repair/resign/writeback;
+- installed-title writes;
+- editing back into source saves;
+- clone-to-save;
+- Move;
+- conversion;
+- Master Vault/Banks;
+- RSE;
+- Gen I/II;
+- events/mystery gifts;
+- physical-link hardware.
+
+Disabled actions must remain safely blocked.
+
+## Verification
+
+Run all existing coverage plus focused tests for both fixes:
 
 ```text
 make -f Makefile.host host-test
@@ -119,38 +152,93 @@ git diff --check
 make -j1
 ```
 
-Commit/push coherent application work early only to:
+Native application must remain `-fno-exceptions`.
+
+Specifically prove where practical:
+
+- legacy source availability is independent of Nintendo user selection;
+- installed-title user scoping is not accidentally broken;
+- overlapping configured/conventional roots do not duplicate the same source;
+- the same file reached through path aliases does not produce multiple cards;
+- two genuinely distinct save files may both appear;
+- FireRed and LeafGreen identities remain exact;
+- Party/Boxes/View still work;
+- source bytes remain unchanged;
+- blocked actions remain blocked.
+
+## Checkpoint policy
+
+Commit/push coherent source work early to `origin/feature/pokebank-playable` only.
+
+Suggested commit concept:
 
 ```text
-origin / feature/pokebank-playable
+gen3: fix RetroArch source scope and dedupe
 ```
 
-Never push custom code upstream to `kiasta/PKSE`.
+Update issue #6 and the minimal status/handoff docs after verification.
 
-## Stop conditions
+## Device artifact gate
 
-Before a physical FRLG result: **do no new coding work**.
+After fixes pass host/sanitizer/native verification, restore/use the full pinned 3260-render asset set and package a **new exact device-test NRO**.
 
-After FRLG PASS: stop after one coherent, pushed read-only RSE production-source checkpoint. Do not continue into Gen I/II, GameCube, DS/3DS, Master Vault/Banks, conversion, events, physical-link hardware, Right Stick, final UI polish or live writes.
-
-RSE end report should include:
+Report:
 
 ```text
-starting SHA
-recovered parked RSE work/ref if any
-implementation SHA(s)
-exact identities
-validation and slot behavior
-browser path
-read-only controls
-Party/Boxes behavior
-immutability proof
+application/source SHA
+NRO filename
+NRO size
+NRO SHA-256
+asset render count
 host tests
-sanitizers
-diff check
+ASan/UBSan
+git diff --check
 native build
-CI
-NRO size impact
+CI/status
+DEVICE TESTED: NO
+```
+
+Then STOP for physical Switch retest.
+
+Required retest:
+
+```text
+launch under normal Nintendo user
+-> FRLG RetroArch sources are visible without switching to a RetroArch profile
+-> exactly one card per underlying FRLG save
+-> FireRed/LeafGreen GBA identities correct
+-> Party works
+-> Boxes 1-14 work
+-> View Pokémon works
+-> Edit/Clone/Transfer/Move/Save/writeback blocked
+```
+
+Do not begin Ruby/Sapphire/Emerald until the user physically accepts the new artifact.
+
+## Stop condition
+
+Stop after one coherent pushed FRLG blocker-fix checkpoint and a newly hashed full-asset NRO ready for device retest.
+
+Do not resume the parked `1a921515` RSE work in this session.
+
+End report:
+
+```text
+starting remote SHA
+recovered/preserved local refs
+root cause of user/profile bug
+root cause of duplicate cards
+implementation SHA(s)
+source-scope behavior
+source-deduplication key/logic
+host tests
+ASan/UBSan
+git diff --check
+native build
+CI/status
+NRO filename/size/SHA-256
+asset verification
+DEVICE TESTED: NO
 remaining blocker
-exact next coding task
+exact physical retest steps
 ```
