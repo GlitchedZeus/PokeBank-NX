@@ -233,9 +233,54 @@ State: **IMPLEMENTED / HOST TESTED / NRO BUILDS / NOT DEVICE TESTED**.
 
 ---
 
+## Session 3C — RetroArch FRLG Game Sources and read-only browser
+
+Canonical application source:
+
+```text
+f6a3052daeffe7cd30d7acceba81a5dfda7615ee
+gen3: expose RetroArch FRLG game sources
+```
+
+Recovered local checkpoint with the same application tree:
+
+```text
+25fc12181bf1fffbe3f0a06b56dc9d676a0c29f0
+```
+
+Implemented:
+
+- validated ready FireRed/LeafGreen entries become normal cards in the existing Game
+  Sources browser;
+- cards show `Game Boy Advance` and `RETROARCH`, with exact `firered_gba` /
+  `leafgreen_gba` identities distinct from Switch releases;
+- activation resolves the exact UIManager-owned catalog entry and never reparses the
+  file through permissive legacy slot selection;
+- `FRLGReadOnlyTrainer` maps strict adapter Party/Box records into the existing browser;
+- `RetroArchLegacy` is View-only and every mutation action remains blocked;
+- source bytes remain unchanged and there is no legacy save serializer/writeback path.
+
+Verification:
+
+```text
+host suites                 12 PASS
+ASan/UBSan                  PASS
+git diff --check            PASS
+native devkitA64 build      PASS
+GitHub Actions run #184     PASS
+NRO size                    62694897 bytes
+device test                 NOT RUN
+```
+
+State: **IMPLEMENTED / HOST TESTED / NRO BUILDS / NOT DEVICE TESTED**.
+
+---
+
 ## Immediate next milestone
 
-Add legacy entries to the existing Game Sources screen and route selection into a strictly read-only Party/Boxes presentation backed by this catalog. Do not use the older permissive FRLG parser for this route and do not expose editor/save operations.
+Physically verify the exact FRLG source-card and Party/Boxes route. Once accepted, add
+strict read-only Ruby/Sapphire/Emerald production sources through the same architecture.
+Do not enable edits, conversion, writeback or live installed-title writes.
 
 ---
 

@@ -1,7 +1,7 @@
 # PokeBank NX — Next Session Plan
 
 Last updated: 2026-09-07
-Status: **RETROARCH FRLG RUNTIME CATALOG COMPLETE / READ-ONLY BROWSER ROUTING NEXT**
+Status: **RETROARCH FRLG READ-ONLY BROWSER COMPLETE / DEVICE VERIFICATION NEXT**
 
 This file is intentionally short. The detailed verified engineering handoff is `CURRENT_STATUS.md`; the complete next coding instructions are `docs/NEXT_CODEX_PROMPT.md`.
 
@@ -19,9 +19,12 @@ gen3: build exception-free native core slice
 
 54cb86892d290ae1c80f447af427ff17192681f9
 gen3: wire RetroArch FRLG read-only sources
+
+f6a3052daeffe7cd30d7acceba81a5dfda7615ee
+gen3: expose RetroArch FRLG game sources
 ```
 
-GitHub Actions on `43f3a9f9...`: **PASS** (PokeBank NX Host Tests run #158). CI for `54cb8689...` is recorded separately once complete.
+GitHub Actions on `f6a3052d...`: **PASS** (PokeBank NX Host Tests run #184).
 
 ## What is complete
 
@@ -37,10 +40,16 @@ GitHub Actions on `43f3a9f9...`: **PASS** (PokeBank NX Host Tests run #158). CI 
 - recovered bounded RetroArch catalog is now published;
 - `.sav`/`.srm`, configured roots, depth/candidate bounds, ambiguity, malformed input and source immutability are tested;
 - UIManager owns/invokes the catalog and native parser/discovery symbols are retained in the NRO.
+- validated ready FRLG sources appear as normal Game Sources cards;
+- exact GBA release/platform identity remains separate from Switch releases;
+- selection resolves to the session catalog and opens existing Party / Boxes through a
+  narrow read-only view bridge;
+- View is allowed while Edit, Clone, Transfer, Move and Save remain blocked;
+- all twelve host suites, ASan/UBSan, native build and CI pass.
 
 ## Immediate task
 
-Complete the first user-visible legacy browse route:
+Physically verify the first user-visible legacy browse route:
 
 ```text
 validated FRLG catalog
@@ -49,7 +58,9 @@ validated FRLG catalog
 -> read-only Party / Boxes presentation
 ```
 
-Reuse the existing browser and adapter. No second UI, no permissive legacy reparse, no editing, no save writes, and no guessed identity.
+After device acceptance, the exact next coding task is strict read-only
+Ruby/Sapphire/Emerald discovery and browsing through this same source model. No editing,
+conversion, save writes or guessed identity.
 
 ## After FRLG runtime is complete
 

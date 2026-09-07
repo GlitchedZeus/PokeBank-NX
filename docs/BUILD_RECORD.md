@@ -493,3 +493,29 @@ DEVICE TESTED
 For device-tested builds always record the actual result beside the claim.
 
 A remembered filename, local-only session report, successful host test, or pre-commit binary is never enough to claim a final device artifact or `DEVICE TESTED`.
+
+---
+
+## Session 3C — FRLG Game Sources read-only browser
+
+```text
+Branch: feature/pokebank-playable
+Canonical application source: f6a3052daeffe7cd30d7acceba81a5dfda7615ee
+Application message: gen3: expose RetroArch FRLG game sources
+Recovered local equivalent: 25fc12181bf1fffbe3f0a06b56dc9d676a0c29f0
+Host tests: 12 suites PASS
+ASan/UBSan: PASS
+git diff --check: PASS
+Native build: PASS (devkitA64, -fno-exceptions)
+GitHub Actions: run #184 PASS
+NRO size: 62694897 bytes
+Embedded application short SHA: f6a3052d
+Device tested: NO
+```
+
+The exact-source native build succeeded, but no device-test artifact was packaged from
+this runtime because the transient worktree no longer contained the previously verified
+complete generated sprite set. Asset preflight found 1,200 HD PNGs, 251 missing base
+species renders and no shiny renders, so it correctly returned FAIL. The source milestone
+is unaffected and safely published; packaging must reuse/regenerate the pinned complete
+3,260-render set before device handoff.
