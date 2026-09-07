@@ -12,6 +12,7 @@ This file is the short authoritative handoff for coding sessions. Historical dev
 - Upstream-only remote: `kiasta/PKSE`
 - Never push PokeBank NX custom code upstream.
 - Live installed-game save writing remains **HARD DISABLED**.
+- Documentation commits may sit above the latest engineering-source checkpoint; do not confuse branch HEAD with the source SHA being discussed.
 
 ## Accepted UI / physical state
 
@@ -42,7 +43,7 @@ Physical acceptance includes:
 - old/problem Legends: Arceus save no longer crashes and returns a graceful `main file is missing` error;
 - installed-source read-only safety remains in place.
 
-Closed hardware/UI blockers include #13, #19 and #24. Final branding/startup/NRO polish remains later under #16.
+Closed hardware/safety/UI blockers include #13, #19, #23 and #24. Final branding/startup/NRO polish remains later under #16.
 
 ## Session 3A — Gen III host oracle / adapter
 
@@ -67,7 +68,7 @@ FlagBrew/PKSM-Core
 aa22d7a4f87c0351baf7da5962ba5acd01039a7c
 ```
 
-Integration decision: **ADAPTER-WRAPPER**.
+Issue #4 is complete. Integration decision: **ADAPTER-WRAPPER**.
 
 The public boundary is PokeBank-owned and does not expose PKSM-Core types. Session 3A proves read-only FireRed/LeafGreen GBA parsing with stricter PokeBank validation in front of PKSM-Core.
 
