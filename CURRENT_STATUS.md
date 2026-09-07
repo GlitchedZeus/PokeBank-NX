@@ -76,7 +76,7 @@ Canonical implementation:
 gen3: wire RetroArch FRLG read-only sources
 ```
 
-Implemented:
+Implemented baseline:
 
 ```text
 RetroArch savefile_directory
@@ -99,7 +99,7 @@ f6a3052daeffe7cd30d7acceba81a5dfda7615ee
 gen3: expose RetroArch FRLG game sources
 ```
 
-Implemented user path:
+Implemented baseline path:
 
 ```text
 validated session catalog
@@ -112,13 +112,7 @@ validated session catalog
 
 Cards carry exact `firered_gba` / `leafgreen_gba` identities and `Game Boy Advance` / `RETROARCH` labeling. They remain distinct from Switch FireRed/LeafGreen. View is permitted; Edit, Clone, Transfer, Move, Save and writeback remain blocked.
 
-Verification before hardware testing:
-
-- 12 host suites PASS;
-- ASan/UBSan PASS;
-- `git diff --check` PASS;
-- GitHub Actions run #184 PASS;
-- clean native devkitA64 `-fno-exceptions` build PASS.
+Verification before hardware testing: 12 host suites PASS; ASan/UBSan PASS; `git diff --check` PASS; GitHub Actions run #184 PASS; clean native devkitA64 `-fno-exceptions` build PASS.
 
 ## Exact FRLG hardware-test artifact
 
@@ -143,42 +137,33 @@ Native Switch build:        PASS
 Asset preflight:            PASS
 ```
 
-## Physical Switch result — PARTIAL PASS / THREE BLOCKERS
-
-The exact artifact above was physically tested.
+## Physical Switch result — PARTIAL PASS / SEVEN BLOCKERS OR REQUIREMENTS
 
 What works:
 
-- RetroArch FireRed/LeafGreen GBA saves are found;
-- cards open successfully;
-- read-only Party/Boxes/Pokémon viewing generally works;
-- no reported crash/corruption in the tested path.
+- RetroArch FireRed/LeafGreen GBA saves are discovered and open;
+- strict read-only Party/Boxes/Pokémon viewing generally works;
+- no reported source corruption or crash in the tested route;
+- gender happened to display correctly in the Trainer panel.
 
-FRLG is **NOT DEVICE-ACCEPTED YET** because three integration/UI blockers were observed.
+FRLG is **NOT DEVICE-ACCEPTED** until the following are fixed and physically retested.
 
-### Blocker 1 — RetroArch incorrectly behaves like a Switch user/profile context
+### 1 — RetroArch is incorrectly Nintendo-user/profile scoped
 
-Observed behavior: the user must switch to a RetroArch-looking account/profile in order to see the legacy saves.
+Observed: the user must select a RetroArch-looking profile/account to see the legacy saves.
 
-Required behavior:
+Required:
 
 ```text
 RetroArch / legacy file sources = app-global
 Nintendo installed-title saves  = user/account scoped where appropriate
 ```
 
-RetroArch must not be modeled as or hidden behind a Nintendo user profile. Valid legacy sources should be visible regardless of the currently selected Switch account.
+### 2 — wrong game/save hierarchy and duplicate top-level cards
 
-### Blocker 2 — wrong hierarchy / duplicate top-level FRLG cards
+Observed: 2 FireRed and 3 LeafGreen top-level cards.
 
-Observed on device:
-
-```text
-2 FireRed top-level cards
-3 LeafGreen top-level cards
-```
-
-The intended product model is now explicitly:
+Required product model:
 
 ```text
 Game Sources
@@ -186,60 +171,116 @@ Game Sources
        Game Boy Advance · RetroArch
        -> Save Instances
             -> WILL — Main Save
+            -> WILL — Save State 0   [future]
             -> WILL — Save State 1   [future]
             -> WILL — Save State 2   [future]
             -> WILL — Save State 3   [future]
             -> WILL — Backup         [future]
        -> choose one
-       -> trainer/source view
-       -> Party / Boxes
+       -> Trainer / Items / Party / Boxes
 ```
 
-And one equivalent LeafGreen parent card.
+Likewise one LeafGreen parent card. Current production support remains `.sav/.srm` battery saves only; actual `.state#` parsing is future work. Distinct physical saves stay distinct children, while aliases of the same underlying file collapse inside the child list. See `docs/RETROARCH_SOURCE_NAMING.md`.
 
-Current production support remains `.sav` / `.srm` battery saves only. Numbered RetroArch save-state parsing is future work. The current fix must nevertheless introduce the parent-game / child-save hierarchy so future SAVE_STATE/BACKUP children fit naturally beneath the same game card.
+### 3 — FireRed / LeafGreen GBA card artwork missing
 
-Within a parent card:
+Required: `firered_gba` and `leafgreen_gba` must resolve to their correct GBA parent-card artwork through the existing asset system and remain distinct from Switch FRLG identities.
 
-- collapse aliases/duplicate discovery of the same underlying file;
-- preserve genuinely separate save files as separate child entries even when bytes match;
-- never dedupe child saves merely by game ID, trainer name or raw hash alone;
-- use trainer/character name in the child label only when reliably readable.
+### 4 — legacy catalog needs refresh/rescan semantics
 
-See `docs/RETROARCH_SOURCE_NAMING.md`.
+Required:
 
-### Blocker 3 — FireRed / LeafGreen game-card artwork missing
+- initial bounded scan at startup;
+- refresh current `.sav/.srm` children when opening a RetroArch parent card;
+- manual **Refresh Saves / Rescan Sources** action;
+- changed files invalidate and rebuild cached strict read models;
+- deleted files disappear safely;
+- no hot-swap while already browsing a selected source;
+- all refresh behavior read-only.
 
-Observed on device: the RetroArch FireRed and LeafGreen GBA top-level cards did not show the expected game artwork.
+Future Save State support must recognize slots **0, 1, 2, 3** and detect slot replacement/removal after refresh, but `.state#` parsing is not part of this immediate fix.
 
-Required behavior:
+### 5 — scanner can surface stale saves RetroArch is not actively using
 
-- `firered_gba` resolves to the correct FireRed GBA card artwork;
-- `leafgreen_gba` resolves to the correct LeafGreen GBA card artwork;
-- do not accidentally conflate GBA artwork/identity with the separate official Switch FRLG identities;
-- use the existing card-art/asset system rather than an ad-hoc RetroArch loader;
-- the next full-asset device build must visibly show both artworks.
+Current code scans both configured `savefile_directory` and `sdmc:/retroarch/cores/savefiles` additively.
 
-Issue #6 records the hardware report.
+Required precedence:
+
+```text
+usable configured savefile_directory
+        -> authoritative BATTERY_SAVE root
+
+otherwise
+        -> sdmc:/retroarch/cores/savefiles fallback
+```
+
+Do not add the conventional root merely because it exists. Retain selected physical path/root metadata for diagnostics.
+
+### 6 — FRLG Trainer view is only a placeholder read model
+
+Observed on device:
+
+```text
+Name: (none)
+Money: 0
+Gender: correct
+Trainer ID: zero/missing
+Full TID: 0
+Full SID: 0
+```
+
+Code inspection confirms `FRLGReadOnlyTrainer` deliberately clears/zeros trainer name, money, ID32, TID, SID, TID16 and SID16 and then only populates Party/Boxes.
+
+Required strict read-only trainer data:
+
+```text
+trainer name
+gender
+TID16
+SID16
+ID32 / existing Gen III combined-ID semantics
+money
+exact source game identity
+```
+
+Expand the PokeBank-owned Gen III read-only adapter boundary; do not reparse selected raw files through mutable/permissive `Trainer3FRLG` as a shortcut. Existing verified Trainer3FRLG offsets/logic may be used as a cross-check/oracle. Add fixture tests and preserve byte immutability.
+
+### 7 — FRLG Items view says `Invalid category`
+
+Observed: opening Items displays `Invalid category`.
+
+Cause: the Items panel expects `trainer.items` pouches, while the current FRLG read-only bridge populates none.
+
+Required strictly read-only FRLG inventory containers, in existing order:
+
+```text
+Items
+Key Items
+Poké Balls
+TM Case
+Berry Pouch
+PC Items
+```
+
+Use the verified `Inventory3FRLG` pouch definitions. Bag counts that are keyed must decode with the low 16 bits of the FRLG security key; PC Items retain their plaintext/non-keyed behavior. Preserve exact Gen III item IDs, counts, empty-slot behavior and source bytes. No item writeback or serializer is allowed.
 
 ## Immediate next milestone
 
-Fix only these three FRLG device blockers:
+Fix all seven FRLG blockers/requirements as one coherent read-only completion checkpoint:
 
 ```text
-make RetroArch legacy sources app-global
-        +
-introduce one game card -> child save-instance hierarchy
-        +
-dedupe aliases inside child save list
-        +
-restore FireRed/LeafGreen GBA card artwork
+app-global legacy sources
++ active RetroArch root precedence
++ one game parent -> child save instances
++ alias dedupe
++ refresh/rescan
++ FireRed/LeafGreen GBA artwork
++ real trainer metadata
++ six read-only FRLG inventory containers
         ↓
-keep strict validation + read-only safety
+full host/sanitizer/native verification
         ↓
-run host tests/sanitizers/native build
-        ↓
-package new full-asset exact NRO
+new 3260-render full-asset exact NRO
         ↓
 STOP for physical retest
 ```
@@ -248,19 +289,18 @@ Do not begin Ruby/Sapphire/Emerald before this retest passes.
 
 ## Parked RSE work
 
-A previous interrupted session produced local RSE work at:
+A previous interrupted session produced useful local RSE work at:
 
 ```text
 1a921515
 ```
 
-It remains intentionally parked/local. Preserve it if present, but do not resume, merge or reimplement RSE until FRLG passes the physical retest.
+It remains intentionally parked/local. Preserve it if present, but do not resume, merge, push or reimplement RSE until FRLG passes physical acceptance.
 
 ## Next major order
 
 ```text
-fix FRLG device blockers
--> physical FRLG retest / acceptance
+complete + retest FRLG read-only source browsing
 -> Ruby / Sapphire / Emerald strict production reads
 -> Master Vault + Banks foundation
 -> Colosseum / XD
@@ -282,8 +322,6 @@ fix FRLG device blockers
 #46  Gift, Event and Mystery Gift Library + EventDex
 #47  PokeBank NX Link for real GB/GBC/GBA hardware transfers
 ```
-
-Both remain post-v1/later.
 
 ## Session launcher
 
