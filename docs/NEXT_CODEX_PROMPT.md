@@ -7,34 +7,43 @@ Use this file as the authoritative task prompt for the next coding session.
 The user should only need to send:
 
 ```text
-Recover and continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and execute docs/NEXT_CODEX_PROMPT.md. Use HIGH reasoning. Preserve all local work before syncing, push coherent checkpoints early, and never push custom code upstream.
+Continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and execute docs/NEXT_CODEX_PROMPT.md. Use HIGH reasoning. Preserve local work, push coherent checkpoints early, and never push custom code upstream.
 ```
 
 ---
 
-## Current remote state
+## Current verified starting point
 
-The current synchronized remote branch head is:
-
-```text
-3828abb8c939ab96caaa3337545b3a737a3994fc
-Merge PR #45: sync current PokeBank NX development docs
-```
-
-This is a documentation/history synchronization commit. The latest verified Gen III engineering implementation below it is:
+The completed RetroArch FRLG runtime-discovery implementation is:
 
 ```text
-43f3a9f90a3314725979d59afdd68f19ee159009
-gen3: build exception-free native core slice
+54cb86892d290ae1c80f447af427ff17192681f9
+gen3: wire RetroArch FRLG read-only sources
 ```
 
-Do **not** confuse the documentation branch head with the latest substantive engine checkpoint, and do **not** redo Session 3A or the native Gen III selective backend.
+Its parent is the prior synchronized documentation handoff:
 
-## Priority zero — recover interrupted workspace work
+```text
+cde442764962d7dc61084c6f91c46f50fb6f0e22
+docs: harden Codex recovery handoff
+```
 
-A previous coding session timed out after implementing additional RetroArch FireRed/LeafGreen work locally. That work may be newer than the remote branch and may be uncommitted.
+Do **not** redo the interrupted-work recovery. The useful work is already committed and pushed.
 
-Before pulling, rebasing, checking out another ref, resetting, cleaning, restoring, or editing source, inspect and preserve the workspace.
+Do **not** redo Session 3A or the exception-free native Gen III backend.
+
+Relevant earlier verified checkpoints remain:
+
+```text
+936e75d98daa7e61fcf8ea199bcda958b1b78d7a  PKSM-Core FRLG host adapter
+283073a5215a471ef0ad07619b4856409658cfdc  recursive PKSM-Core CI checkout
+43f3a9f90a3314725979d59afdd68f19ee159009  exception-free native Gen III backend
+54cb86892d290ae1c80f447af427ff17192681f9  RetroArch FRLG runtime discovery/lifecycle wiring
+```
+
+## Before editing
+
+Preserve local state first.
 
 Inspect at minimum:
 
@@ -45,8 +54,8 @@ git status
 git status --short
 git branch -avv
 git remote -v
-git log --all --oneline --decorate --graph -60
-git reflog -60
+git log --all --oneline --decorate --graph -40
+git reflog -40
 git stash list
 git worktree list
 git diff
@@ -54,58 +63,107 @@ git diff --cached
 git submodule status --recursive
 ```
 
-Also inspect untracked/recent files related to RetroArch, FRLG, Gen3, source discovery, `.sav`, `.srm`, `savefile_directory`, source catalogs/providers, and runtime registration.
+If there is useful local/uncommitted work, preserve it before syncing or changing refs.
 
-If useful interrupted work exists, preserve it immediately on a recovery ref/branch and preserve untracked source/tests before doing anything destructive.
+Never run destructive cleanup/reset commands until useful local state is known safe.
 
-Do **not** run `git reset --hard`, `git clean`, `git restore .`, or otherwise discard local state until recovery is complete.
+Writable destination remains:
 
-If the local workspace contains work based on an older branch head, recover the useful code first and then reconcile it with remote `3828abb8...`; do not overwrite it just because the remote documentation history moved.
+```text
+origin / feature/pokebank-playable
+```
 
-Only recreate work from memory if recovery genuinely fails.
+Never push PokeBank NX custom code to `kiasta/PKSE` upstream.
 
-## Reported interrupted RetroArch work
+## What is already implemented
 
-The timed-out session reported:
+`54cb8689...` already provides:
 
-- bounded read-only RetroArch source catalog;
-- reads configured `savefile_directory`;
-- only `.sav` / `.srm` candidates;
-- maximum scan depth 2;
-- maximum 256 candidates by default;
-- full FRLG structure validation before using path/name hints;
-- Party/Boxes exposed through the existing Gen III adapter;
-- ambiguous valid FRLG sources remain unclassified instead of guessed.
+- configured RetroArch `savefile_directory` handling;
+- `.sav` / `.srm` only;
+- bounded traversal (depth <= 2, 256 candidates by default);
+- strict FRLG structural validation;
+- identity hints considered only after structural validation;
+- ambiguous FRLG-family files remain unclassified;
+- `firered_gba` / `leafgreen_gba` identity separation from Switch FRLG;
+- existing native Gen III Party/Boxes read model;
+- application-lifecycle ownership of the resulting `legacyFRLGSources` catalog;
+- real runtime invocation/retention of the provider;
+- read-only source behavior.
 
-The final reported unfinished task was to ensure the real runtime source-discovery lifecycle owns/invokes that catalog so the linker retains it because the application genuinely uses it.
+Do not create another parser/provider to solve work that is already complete.
 
-## Mission after recovery
+## Current honest boundary
 
-Finish the real end-to-end read-only runtime path:
+The app now discovers, validates, classifies where reliable, parses and retains RetroArch FRLG sources, but those validated records are **not yet exposed as normal selectable Game Sources cards/entries in the existing user-facing source browser**.
+
+That is the entire mission for this session.
+
+## Mission
+
+Wire the already-populated validated `legacyFRLGSources` records into the existing PokeBank source-selection/browser lifecycle so a user can select a RetroArch FireRed/LeafGreen GBA source and browse its Party/Boxes through the normal application flow.
+
+Target architecture:
 
 ```text
 RetroArch savefile_directory
-        -> bounded read-only catalog
-        -> valid FRLG source
-        -> firered_gba / leafgreen_gba when evidence is reliable
-        -> native exception-free Gen III backend
-        -> Party / Boxes read model
-        -> existing PokeBank source/browser lifecycle
+        -> existing bounded FRLG discovery
+        -> validated FRLGSource / ReadOnlySave
+        -> existing PokeBank source/card descriptor model
+        -> user-facing FireRed GBA / LeafGreen GBA source card
+        -> select card
+        -> existing Party / Boxes browsing path
 ```
 
-Use the existing source/game registry. Do not create a second browser, debug UI, or broad SD-card crawler.
+Use the existing UI/source infrastructure. The goal is integration, not a new browser.
 
-## Classification rules
+## Source-card requirements
 
-- Never classify a save as FireRed/LeafGreen from filename alone.
-- Structural validation must pass first.
-- Path/name hints may support classification after validation.
-- If FireRed vs LeafGreen remains genuinely ambiguous, keep it unclassified rather than guessing.
-- `firered_gba` / `leafgreen_gba` must never collide with `firered_switch` / `leafgreen_switch`.
+For each `Ready` source that has a reliable identity:
+
+- expose a normal selectable source/card entry in the existing Game Sources flow;
+- clearly identify the game as **FireRed GBA** or **LeafGreen GBA**;
+- make the platform/source origin clear enough that it cannot be confused with official Switch FireRed/LeafGreen;
+- retain the exact validated `ReadOnlySave`/source model rather than reparsing on every screen where avoidable;
+- selecting the source must lead to the existing Party/Boxes browsing experience;
+- source data must remain read-only.
+
+Potential label concepts are acceptable if they match existing UI conventions, for example:
+
+```text
+FireRed — Game Boy Advance
+RetroArch Save
+```
+
+or equivalent existing source metadata fields. Do not redesign the card system solely for this milestone.
+
+## Invalid / ambiguous behavior
+
+Do not expose an invalid source as a selectable Pokémon game source.
+
+Do not guess FireRed vs LeafGreen.
+
+For `AmbiguousIdentity`, malformed, unreadable or scan-limit cases, preserve safe behavior. If the existing UI has an appropriate passive diagnostics/status path, use it minimally; otherwise leave these records non-selectable and keep the implementation honest.
+
+Do not add a second diagnostics browser just for this session.
+
+## UI rule
+
+Broad UI work is still frozen.
+
+Only make the minimum UI/source-routing changes required to make the existing validated RetroArch FRLG sources genuinely selectable and browsable.
+
+Do not:
+
+- redesign the home screen;
+- start final branding/startup work;
+- implement Right Stick work;
+- replace the accepted red identity;
+- create a second legacy-save browser.
 
 ## Safety
 
-Everything in this milestone remains read-only.
+Everything remains read-only.
 
 Do not implement or enable:
 
@@ -115,27 +173,28 @@ Do not implement or enable:
 - true Move;
 - conversion UI;
 - Master Vault/Banks;
-- unrelated generations;
-- UI redesign;
-- Right Stick work;
-- app rename/branding migration in this session.
+- event/mystery-gift work;
+- physical hardware/link-cable work;
+- unrelated generations.
 
-Preserve the existing live-write hard lock.
+Preserve the existing installed-save hard lock.
+
+Issues #46 and #47 are explicitly parked post-v1/later and must not be started here.
 
 ## Verification
 
-Preserve existing Gen III coverage and add/finish focused tests where practical for:
+Preserve all existing host coverage and add focused tests for the new source-card/descriptor/routing seam where practical.
 
-- configured RetroArch save root;
-- `.sav` and `.srm` candidates;
-- depth/candidate bounds;
-- missing directory/config graceful handling;
-- non-Pokémon and malformed files skipped/rejected;
-- valid FRLG source accepted;
-- ambiguous FRLG not guessed;
-- GBA/Switch FRLG identity separation;
-- source bytes unchanged;
-- actual runtime/source registration path invokes the provider/catalog where host-testable.
+At minimum verify:
+
+- validated `Ready` FRLG records become eligible source entries;
+- FireRed GBA and LeafGreen GBA remain distinct;
+- neither can collide with `firered_switch` / `leafgreen_switch`;
+- ambiguous/invalid records do not become valid selectable cards;
+- selecting/routing a legacy FRLG entry reaches the existing Party/Boxes read model;
+- no write capability is introduced;
+- source bytes remain unchanged;
+- no duplicate reparsing/provider path was added without need.
 
 Run:
 
@@ -146,63 +205,60 @@ git diff --check
 make -j1
 ```
 
-Native build must remain `-fno-exceptions`. Do not reintroduce full PKSM-Core into the native application.
+Native build must remain `-fno-exceptions`.
+
+If a device-testable `.nro` is produced, record:
+
+```text
+source SHA
+artifact filename
+artifact size
+SHA-256
+```
+
+Do not call it `DEVICE TESTED` until that exact artifact is physically run on Switch.
 
 ## Checkpoint policy
 
-As soon as recovered work is coherent enough to preserve, commit and push it to:
+Commit/push coherent work early to:
 
 ```text
 origin / feature/pokebank-playable
 ```
 
-Never upstream.
-
-Do not wait until the final minutes. Prefer an early recovery checkpoint followed by a second runtime-wiring checkpoint rather than another lost session.
-
 Suggested implementation commit:
 
 ```text
-gen3: wire RetroArch FRLG read-only sources
+gen3: expose RetroArch FRLG game sources
 ```
 
-## Minimal docs/issues
-
-Update only what materially changes:
-
-- `CURRENT_STATUS.md`
-- `PROJECT_STATUS.md` if needed
-- `docs/NEXT_SESSION_PLAN.md`
-- `docs/NEXT_CODEX_PROMPT.md` so the next launcher remains current
-- issue #6
-- issue #17 only if fixtures change
-
-Issue #4 is the completed PKSM-Core Gen III spike and should not be reopened unless the adapter architecture itself regresses.
+Update only the minimal handoff/status files and issue #6 as needed after the implementation is actually verified.
 
 ## Stop condition
 
-Stop after a coherent, pushed FRLG RetroArch runtime checkpoint. Do not start RSE, Gen I/II, Vault/Banks, GameCube, DS/3DS, final UI polish, Ranch mode, or renaming/branding work in this same recovery session.
+Stop after the RetroArch FRLG sources are genuinely selectable through the existing PokeBank source browser and Party/Boxes can be reached through that normal flow, with tests/native build clean and the checkpoint pushed.
+
+Do **not** continue into Ruby/Sapphire/Emerald in the same session.
+
+Do **not** start Master Vault/Banks, Gen I/II, DS/3DS, events, physical-link hardware, final UI polish or live writes.
 
 End report should include:
 
 ```text
-recovery result
-recovered files/ref
-remote starting SHA
+starting remote SHA
 implementation SHA(s)
-runtime registration path
-catalog/provider files
-RetroArch path behavior
-extensions / scan bounds
-FR/LG classification behavior
-Party parse / Box parse
+source-card/descriptor files changed
+routing path from FRLGSource to existing browser
+visible labels/platform distinction
+Party/Boxes browse result
+ambiguous/invalid behavior
 source immutability
 host tests
 ASan/UBSan
 git diff --check
 native build
-GitHub CI
-NRO size impact
+GitHub CI/status if available
+NRO filename/size/SHA-256 if produced
 remaining blocker
 exact next coding task
 ```
