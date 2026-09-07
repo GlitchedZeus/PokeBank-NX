@@ -15,6 +15,13 @@ f6a3052daeffe7cd30d7acceba81a5dfda7615ee
 gen3: expose RetroArch FRLG game sources
 ```
 
+Current documentation head before this handoff update:
+
+```text
+be7db52c6e8b3caa4f10d9de27ef15058088ec42
+docs: record FRLG read-only browser milestone
+```
+
 The strict FireRed/LeafGreen GBA route is complete through bounded RetroArch discovery,
 the UIManager-owned catalog, normal Game Sources cards, and read-only Party / Boxes.
 GitHub Actions run #184 passes all twelve host suites.
@@ -52,15 +59,51 @@ git diff --check
 make -j1
 ```
 
-## First gate: device feedback
+## Hard gate: exact FRLG device artifact
 
-If an exact FRLG browser artifact/device report is available, read it first and fix only
-a genuine blocker. Never claim DEVICE TESTED without the exact artifact being run on a
-physical Switch.
+The application code milestone is complete, but it is **NOT DEVICE TESTED**.
 
-## Single coding mission: strict RSE production reads
+The previous session intentionally did not release a device artifact because asset
+preflight found only 1,200 Pokémon renders in the transient sprite cache instead of the
+verified complete 3,260-render pinned set.
 
-Extend the proven read-only Gen III legacy pipeline to:
+Before beginning Ruby/Sapphire/Emerald work:
+
+1. restore/reconstruct the project-approved complete pinned 3,260-render sprite set using
+   the existing documented asset workflow/reference; do not silently accept the incomplete
+   1,200-render cache;
+2. preserve/verify asset hashes/manifests as the project workflow requires;
+3. build/package an exact device-test `.nro` from application source `f6a3052d...` (or an
+   explicitly documented no-code-change packaging descendant whose application tree is
+   identical);
+4. record artifact filename, source SHA, size and SHA-256;
+5. stop and report the exact artifact for physical Switch testing unless an exact physical
+   device report for that artifact is already available.
+
+Do **not** call FRLG `DEVICE TESTED` until that exact artifact is physically run on Switch.
+
+Required physical flow to verify:
+
+```text
+Game Sources
+  -> FireRed GBA / LeafGreen GBA (RETROARCH)
+  -> select source
+  -> trainer/source view
+  -> Party
+  -> Boxes 1-14
+  -> View Pokémon
+```
+
+Confirm that GBA sources cannot be confused with the separate Switch FireRed/LeafGreen
+identities and that Edit/Clone/Transfer/Move/Save/writeback remain blocked.
+
+If the device test exposes a genuine blocker, fix only that blocker, rerun all verification,
+package a new exact artifact, and report it for another physical test.
+
+## Next coding mission AFTER FRLG physical acceptance: strict RSE production reads
+
+Only after the exact FRLG browser artifact is physically accepted, extend the proven
+read-only Gen III legacy pipeline to:
 
 ```text
 ruby_gba
@@ -90,7 +133,7 @@ clone-to-save, delete, move, injection, repair/resign, writeback, conversion, Ma
 Vault/Banks or installed-title writes. View may operate on a PokeBank-owned read model.
 Disabled actions must return safely and never fall through.
 
-## Tests
+## Tests for RSE when that phase begins
 
 Preserve all twelve existing host suites. Add focused coverage for RSE structure,
 identity, malformed/truncated input, Party/Box mapping, source immutability and blocked
@@ -107,15 +150,53 @@ make -j1
 
 ## Checkpoint and stop
 
-Commit and push coherent application source early to
-`origin/feature/pokebank-playable`. Update only the status/handoff files and relevant
-issue materially affected.
+For the immediate next session, the stop condition is the exact FRLG device-test artifact
+unless that exact artifact has already been physically accepted.
 
-Stop after one coherent, pushed read-only RSE production-source checkpoint. Do not start
-Gen I/II, Gen IV+, GameCube, DS/3DS, Master Vault/Banks, conversion, Right Stick, final
-UI polish or live writes.
+After physical FRLG acceptance, a later coding session may implement one coherent, pushed
+read-only RSE production-source checkpoint.
 
-End report: starting SHA, implementation SHA(s), exact identities, validation and slot
-behavior, browser path, read-only controls, Party/Boxes behavior, immutability proof,
-host tests, sanitizers, diff check, native build, CI, NRO size impact, remaining blocker
-and exact next coding task.
+Do not start Gen I/II, Gen IV+, GameCube, DS/3DS, Master Vault/Banks, conversion, events,
+physical-link hardware, Right Stick, final UI polish or live writes.
+
+Immediate-session end report should include:
+
+```text
+starting SHA
+asset restoration result
+verified render count
+asset manifest/hash result
+exact application/source SHA
+NRO filename
+NRO size
+NRO SHA-256
+host tests
+ASan/UBSan
+git diff --check
+native build
+CI/status if applicable
+physical test status (must remain NO until user tests exact artifact)
+remaining blocker
+exact next action for physical test
+```
+
+After physical acceptance, the RSE session end report should include:
+
+```text
+starting SHA
+implementation SHA(s)
+exact identities
+validation and slot behavior
+browser path
+read-only controls
+Party/Boxes behavior
+immutability proof
+host tests
+sanitizers
+diff check
+native build
+CI
+NRO size impact
+remaining blocker
+exact next coding task
+```
