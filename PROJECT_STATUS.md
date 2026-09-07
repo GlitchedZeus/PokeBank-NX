@@ -53,7 +53,7 @@ Left Stick navigation                    PASS
 PokeBank NX red identity                ACCEPTED FOR NOW
 permanent left-side accent bar          REMOVED / PASS
 HD Pokémon artwork                      PASS
-airtificial idle/breathing motion       REMOVED / ACCEPTED
+artificial idle/breathing motion        REMOVED / ACCEPTED
 old/problem Legends: Arceus source      GRACEFUL ERROR / NO CRASH
 installed-source live-write path        HARD DISABLED
 ```
@@ -190,31 +190,16 @@ This is based on measured devkitA64 / `-fno-exceptions` evidence, not preference
 
 ---
 
-## Interrupted Session 3B RetroArch work — not yet a verified remote checkpoint
+## Session 3B checkpoint B — RetroArch FRLG runtime catalog
 
-A later coding session after `43f3a9f9...` reported local/uncommitted RetroArch FireRed/LeafGreen integration work before timing out.
-
-Reported local design/work:
+Canonical implementation source:
 
 ```text
-RetroArch configured savefile_directory
-accept .sav / .srm only
-scan depth <= 2
-candidate count <= 256 by default
-strict FRLG validation before path/name hints
-ambiguous valid FRLG remains unclassified
-Party / Boxes exposed through the existing Gen III adapter
+54cb86892d290ae1c80f447af427ff17192681f9
+gen3: wire RetroArch FRLG read-only sources
 ```
 
-The remaining reported task was to connect the catalog to the real application source-discovery lifecycle so the runtime genuinely invokes it and the linker retains it.
-
-This work must be recovered, verified, committed and pushed before it is called implemented.
-
----
-
-## Immediate next milestone
-
-Recover the interrupted RetroArch FRLG work first, then complete the real runtime path:
+Implemented runtime path:
 
 ```text
 RetroArch savefile_directory
@@ -223,20 +208,34 @@ RetroArch savefile_directory
         -> firered_gba / leafgreen_gba when reliable
         -> native Gen III backend
         -> Party / Boxes model
-        -> existing PokeBank source/browser lifecycle
+        -> UIManager-owned application-session catalog
 ```
 
-Requirements:
+Properties and verification:
 
-- no second browser/debug UI;
-- no broad unbounded SD-card crawl;
-- no classification from filename alone;
-- ambiguous FRLG remains unclassified rather than guessed;
-- GBA FireRed/LeafGreen identities remain separate from Switch FireRed/LeafGreen;
-- source files remain unchanged;
-- no save repair, resign or writeback.
+- RetroArch `savefile_directory`, plus the conventional save root only when present;
+- `.sav` / `.srm` only, default depth 2 and candidate limit 256;
+- strict FRLG-family validation before identity hints;
+- ambiguous valid FRLG remains unclassified rather than guessed;
+- exact GBA identities remain separate from Switch FireRed/LeafGreen;
+- Party and all Boxes remain available through the validated adapter result;
+- source files remain unchanged; no repair, resign or writeback API exists;
+- eleven host suites PASS;
+- ASan/UBSan PASS;
+- `git diff --check` PASS;
+- native devkitA64 `-fno-exceptions` build PASS;
+- native discovery/parser symbols retained in the ELF;
+- NRO size: 62,666,225 bytes, an increase of 28,672 bytes.
 
 Issue #6 tracks this legacy/RetroArch path.
+
+State: **IMPLEMENTED / HOST TESTED / NRO BUILDS / NOT DEVICE TESTED**.
+
+---
+
+## Immediate next milestone
+
+Add legacy entries to the existing Game Sources screen and route selection into a strictly read-only Party/Boxes presentation backed by this catalog. Do not use the older permissive FRLG parser for this route and do not expose editor/save operations.
 
 ---
 

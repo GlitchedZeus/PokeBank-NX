@@ -1,7 +1,7 @@
 # PokeBank NX — Next Session Plan
 
 Last updated: 2026-09-07
-Status: **GEN III NATIVE BACKEND COMPLETE / RETROARCH FRLG RUNTIME WIRING NEXT**
+Status: **RETROARCH FRLG RUNTIME CATALOG COMPLETE / READ-ONLY BROWSER ROUTING NEXT**
 
 This file is intentionally short. The detailed verified engineering handoff is `CURRENT_STATUS.md`; the complete next coding instructions are `docs/NEXT_CODEX_PROMPT.md`.
 
@@ -16,9 +16,12 @@ ci: checkout pinned PKSM-Core submodules
 
 43f3a9f90a3314725979d59afdd68f19ee159009
 gen3: build exception-free native core slice
+
+54cb86892d290ae1c80f447af427ff17192681f9
+gen3: wire RetroArch FRLG read-only sources
 ```
 
-GitHub Actions on `43f3a9f9...`: **PASS** (PokeBank NX Host Tests run #158).
+GitHub Actions on `43f3a9f9...`: **PASS** (PokeBank NX Host Tests run #158). CI for `54cb8689...` is recorded separately once complete.
 
 ## What is complete
 
@@ -31,40 +34,22 @@ GitHub Actions on `43f3a9f9...`: **PASS** (PokeBank NX Host Tests run #158).
 - Party + all 14 boxes parse.
 - PK3 boundary-crossing extraction and byte-identical untouched round trips are proven.
 - native Switch Gen III backend now compiles without exceptions behind the same public adapter API.
-
-## Interrupted local work to recover
-
-A coding session after `43f3a9f9...` reported local RetroArch FRLG work but timed out before a remote checkpoint. Treat it as **unverified until recovered and pushed**.
-
-Reported design/work:
-
-```text
-RetroArch configured savefile_directory
-.sav / .srm only
-max depth 2
-max 256 candidates
-strict FRLG validation before filename/path hints
-ambiguous valid FRLG remains unclassified
-Party / Boxes via existing Gen III adapter
-```
-
-Remaining reported task: connect the catalog to the real application source-discovery lifecycle so the runtime genuinely invokes it and the linker retains it.
+- recovered bounded RetroArch catalog is now published;
+- `.sav`/`.srm`, configured roots, depth/candidate bounds, ambiguity, malformed input and source immutability are tested;
+- UIManager owns/invokes the catalog and native parser/discovery symbols are retained in the NRO.
 
 ## Immediate task
 
-Recover that local work first, then complete:
+Complete the first user-visible legacy browse route:
 
 ```text
-RetroArch save root
--> bounded source catalog
--> FRLG structural validation
--> reliable firered_gba / leafgreen_gba identity
--> native Gen III adapter
--> Party / Boxes
--> existing PokeBank source/browser lifecycle
+validated FRLG catalog
+-> existing Game Sources cards
+-> selected legacy source
+-> read-only Party / Boxes presentation
 ```
 
-No UI redesign. No save writes. No broad SD-card crawl. No guessing FireRed vs LeafGreen when ambiguous.
+Reuse the existing browser and adapter. No second UI, no permissive legacy reparse, no editing, no save writes, and no guessed identity.
 
 ## After FRLG runtime is complete
 
