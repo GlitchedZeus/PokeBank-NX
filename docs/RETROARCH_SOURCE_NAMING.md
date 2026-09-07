@@ -34,6 +34,31 @@ Only after selecting one of those save instances does the user enter the trainer
 
 This means duplicate top-level FireRed/LeafGreen cards are not the desired final UX even when multiple legitimate saves exist. Legitimate separate saves belong **inside the one game card**.
 
+## Active RetroArch save-root precedence
+
+PokeBank NX should prioritize the save directory RetroArch is actually configured to use.
+
+Current code historically scanned both:
+
+```text
+savefile_directory from sdmc:/retroarch/retroarch.cfg
++ sdmc:/retroarch/cores/savefiles when that folder exists
+```
+
+That additive behavior can surface old `.sav` / `.srm` copies that RetroArch is no longer loading.
+
+Required behavior:
+
+1. if RetroArch has a non-default, usable `savefile_directory`, that configured directory is authoritative for BATTERY_SAVE discovery;
+2. the conventional `sdmc:/retroarch/cores/savefiles` path is fallback-only when there is no usable configured save directory;
+3. do not add the conventional path on top of a valid configured path merely because it exists;
+4. stay within the normal bounded traversal under the selected root(s);
+5. preserve normalized source path and useful file metadata for diagnostics and refresh;
+6. expose enough diagnostic information during development/device testing to verify which physical file PokeBank selected;
+7. never silently choose an older copy over the active configured source.
+
+Multiple subdirectories or genuinely distinct saves inside the active configured root may still become separate child save instances under the same game card.
+
 ## Source-instance identity rule
 
 Within a game card, deduplicate aliases of the same underlying source, not merely matching game IDs, trainer names or matching bytes.
@@ -150,7 +175,7 @@ RetroArch sources must not be treated as a one-time immutable application-start 
 Required product behavior:
 
 1. perform the normal bounded legacy scan at application startup;
-2. when a RetroArch game card is opened, perform a lightweight refresh of that game's approved source roots before presenting the child list;
+2. when a RetroArch game card is opened, perform a lightweight refresh of that game's approved active source root before presenting the child list;
 3. expose an explicit manual action such as **Refresh Saves** / **Rescan Sources** inside the game-card/save-instance view;
 4. compare stable source identity plus useful file metadata (for example normalized path and modification/size information) so changed child sources invalidate cached read models;
 5. when a changed source is selected after refresh, reread it from disk and pass the same strict structural validation before exposing Party/Boxes;
@@ -158,7 +183,7 @@ Required product behavior:
 7. deleted/missing sources should disappear safely after refresh and stale selections should fail gracefully;
 8. all refresh behavior remains read-only.
 
-For current BATTERY_SAVE support, this means a newly changed `.sav` / `.srm` should be reflected after refresh without restarting PokeBank NX.
+For current BATTERY_SAVE support, this means a newly changed `.sav` / `.srm` in RetroArch's active configured save directory should be reflected after refresh without restarting PokeBank NX.
 
 For future SAVE_STATE support, refresh must also detect state-slot creation/replacement/removal and update labels such as `Save State 0` through `Save State 3` accordingly.
 
@@ -183,6 +208,7 @@ For the immediate FRLG profile/grouping/artwork/refresh fix:
 
 - keep scanning `.sav` / `.srm` only;
 - make legacy file sources app-global rather than Nintendo-user scoped;
+- use the configured active `savefile_directory` as authoritative and conventional savefiles path as fallback-only;
 - expose **one FireRed RetroArch parent card** and **one LeafGreen RetroArch parent card** when those identities are present;
 - place distinct validated `.sav` / `.srm` save instances beneath the matching parent card;
 - collapse only aliases/duplicate discovery of the same underlying file inside the child list;
