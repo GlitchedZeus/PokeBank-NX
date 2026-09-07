@@ -8,81 +8,45 @@ Use this file as the authoritative task prompt for the next coding session.
 Continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and execute docs/NEXT_CODEX_PROMPT.md. Use HIGH reasoning. Preserve local work, push coherent checkpoints early, and never push custom code upstream.
 ```
 
-## Current verified source
+## Current verified application source
 
 ```text
 f6a3052daeffe7cd30d7acceba81a5dfda7615ee
 gen3: expose RetroArch FRLG game sources
 ```
 
-Current documentation head before this handoff update:
+The strict FireRed/LeafGreen GBA route is complete through bounded RetroArch discovery, the UIManager-owned catalog, normal Game Sources cards, and read-only Party / Boxes. GitHub Actions run #184 passes all twelve host suites.
+
+Do not redo the PKSM-Core oracle, exception-free native backend, FRLG scanner, source cards, read-only view bridge, accepted UI, Left Stick work or PLA hardening.
+
+## Current hard gate — waiting for physical Switch result
+
+The exact FRLG browser device artifact is READY but **NOT DEVICE TESTED**.
+
+Exact identity:
 
 ```text
-be7db52c6e8b3caa4f10d9de27ef15058088ec42
-docs: record FRLG read-only browser milestone
+Application source: f6a3052daeffe7cd30d7acceba81a5dfda7615ee
+Embedded version:   f6a3052d
+NRO size:           155174825 bytes
+NRO SHA-256:        809c94c842a3c385d23907c61e5ecfa201b24f08e8ac935e87a4add60770282d
+ZIP size:           148435779 bytes
+ZIP SHA-256:        66b1e16eb5443fd6ce682f2485aacf0cb50a2b00cca0846b8d170cc89727b701
 ```
 
-The strict FireRed/LeafGreen GBA route is complete through bounded RetroArch discovery,
-the UIManager-owned catalog, normal Game Sources cards, and read-only Party / Boxes.
-GitHub Actions run #184 passes all twelve host suites.
-
-Do not redo the PKSM-Core oracle, exception-free native backend, FRLG scanner, source
-cards, read-only view bridge, accepted UI, Left Stick work or PLA hardening.
-
-## First: preserve and verify
-
-Inspect and preserve useful local work before changing refs:
+Asset verification already passed:
 
 ```text
-git status
-git status --short
-git branch -avv
-git remote -v
-git log --all --oneline --decorate --graph -30
-git reflog -20
-git stash list
-git worktree list
-git diff
-git diff --cached
-git submodule status --recursive
+HD Pokémon renders:         3260
+Base species coverage:      1025 / 1025
+Embedded RomFS comparison:  3281 / 3281 files byte-identical
+Native Switch build:        PASS
+Asset preflight:            PASS
 ```
 
-Never reset, clean, restore or overwrite unexplained work. Push custom code only to
-`origin/feature/pokebank-playable`; `kiasta/PKSE` remains upstream-only.
+Do **not** rebuild/repackage merely because a new session starts. Do **not** begin RSE unless the user reports the physical result for this exact artifact.
 
-Run the baseline:
-
-```text
-make -f Makefile.host host-test
-make -f Makefile.host host-sanitize
-git diff --check
-make -j1
-```
-
-## Hard gate: exact FRLG device artifact
-
-The application code milestone is complete, but it is **NOT DEVICE TESTED**.
-
-The previous session intentionally did not release a device artifact because asset
-preflight found only 1,200 Pokémon renders in the transient sprite cache instead of the
-verified complete 3,260-render pinned set.
-
-Before beginning Ruby/Sapphire/Emerald work:
-
-1. restore/reconstruct the project-approved complete pinned 3,260-render sprite set using
-   the existing documented asset workflow/reference; do not silently accept the incomplete
-   1,200-render cache;
-2. preserve/verify asset hashes/manifests as the project workflow requires;
-3. build/package an exact device-test `.nro` from application source `f6a3052d...` (or an
-   explicitly documented no-code-change packaging descendant whose application tree is
-   identical);
-4. record artifact filename, source SHA, size and SHA-256;
-5. stop and report the exact artifact for physical Switch testing unless an exact physical
-   device report for that artifact is already available.
-
-Do **not** call FRLG `DEVICE TESTED` until that exact artifact is physically run on Switch.
-
-Required physical flow to verify:
+Required physical flow:
 
 ```text
 Game Sources
@@ -94,16 +58,23 @@ Game Sources
   -> View Pokémon
 ```
 
-Confirm that GBA sources cannot be confused with the separate Switch FireRed/LeafGreen
-identities and that Edit/Clone/Transfer/Move/Save/writeback remain blocked.
+Also verify that GBA and Switch FRLG identities are visibly distinct, View works, and Edit/Clone/Transfer/Move/Save/writeback remain blocked.
 
-If the device test exposes a genuine blocker, fix only that blocker, rerun all verification,
-package a new exact artifact, and report it for another physical test.
+## If the user reports PASS
 
-## Next coding mission AFTER FRLG physical acceptance: strict RSE production reads
+First record the exact artifact as **DEVICE TESTED** in `CURRENT_STATUS.md` and the relevant issue/status documentation.
 
-Only after the exact FRLG browser artifact is physically accepted, extend the proven
-read-only Gen III legacy pipeline to:
+Then begin the next coding milestone: strict read-only Ruby/Sapphire/Emerald production support.
+
+Before touching RSE source, inspect and preserve local state. A previous interrupted session reported useful local RSE work at:
+
+```text
+1a921515
+```
+
+That commit was intentionally parked and not pushed. If it exists locally, recover/audit/reconcile it before reimplementing equivalent work from scratch. Never reset/clean/restore over it before preservation.
+
+Target identities:
 
 ```text
 ruby_gba
@@ -111,7 +82,7 @@ sapphire_gba
 emerald_gba
 ```
 
-Required path:
+Target path:
 
 ```text
 bounded RetroArch discovery
@@ -121,25 +92,25 @@ bounded RetroArch discovery
         -> strict read-only Party / Boxes
 ```
 
-Reuse the current PokeBank-owned Gen III API where sound. Do not leak PKSM-Core types
-into UI code or reparse a selected file through older permissive Trainer logic. Keep
-ambiguous or invalid saves unavailable rather than guessing identity. Preserve source
-path, game ID, platform, Pokémon locations and original bytes.
+Reuse the PokeBank-owned Gen III API where sound. Do not leak PKSM-Core types into UI code or route selected saves through older permissive Trainer parsing. Invalid/ambiguous sources remain unavailable rather than guessed. Preserve source path, game ID, platform, Pokémon locations and original bytes.
+
+## If the user reports a blocker/failure
+
+Do not start RSE.
+
+Recover/preserve any local changes first, reproduce the exact blocker, fix only the minimum FRLG/browser/device issue, rerun host tests/sanitizers/diff/native build, rebuild with the full pinned asset set, and produce a new exact NRO with filename/size/SHA-256 for another physical test.
+
+Do not call the failed artifact DEVICE TESTED/PASS.
 
 ## Read-only safety
 
-Legacy files and installed titles remain immutable sources. Do not implement editing,
-clone-to-save, delete, move, injection, repair/resign, writeback, conversion, Master
-Vault/Banks or installed-title writes. View may operate on a PokeBank-owned read model.
-Disabled actions must return safely and never fall through.
+Legacy files and installed titles remain immutable sources. Do not implement editing, clone-to-save, delete, move, injection, repair/resign, writeback, conversion, Master Vault/Banks or installed-title writes in this milestone. View may operate on a PokeBank-owned read model. Disabled actions must return safely and never fall through.
 
-## Tests for RSE when that phase begins
+## Verification for RSE when physical FRLG acceptance is complete
 
-Preserve all twelve existing host suites. Add focused coverage for RSE structure,
-identity, malformed/truncated input, Party/Box mapping, source immutability and blocked
-mutation operations. Keep FRLG regression coverage green.
+Preserve all twelve existing host suites and add focused coverage for RSE structure, identity, malformed/truncated input, Party/Box mapping, source immutability and blocked mutation operations. Keep FRLG regression coverage green.
 
-Verify:
+Run:
 
 ```text
 make -f Makefile.host host-test
@@ -148,42 +119,25 @@ git diff --check
 make -j1
 ```
 
-## Checkpoint and stop
-
-For the immediate next session, the stop condition is the exact FRLG device-test artifact
-unless that exact artifact has already been physically accepted.
-
-After physical FRLG acceptance, a later coding session may implement one coherent, pushed
-read-only RSE production-source checkpoint.
-
-Do not start Gen I/II, Gen IV+, GameCube, DS/3DS, Master Vault/Banks, conversion, events,
-physical-link hardware, Right Stick, final UI polish or live writes.
-
-Immediate-session end report should include:
+Commit/push coherent application work early only to:
 
 ```text
-starting SHA
-asset restoration result
-verified render count
-asset manifest/hash result
-exact application/source SHA
-NRO filename
-NRO size
-NRO SHA-256
-host tests
-ASan/UBSan
-git diff --check
-native build
-CI/status if applicable
-physical test status (must remain NO until user tests exact artifact)
-remaining blocker
-exact next action for physical test
+origin / feature/pokebank-playable
 ```
 
-After physical acceptance, the RSE session end report should include:
+Never push custom code upstream to `kiasta/PKSE`.
+
+## Stop conditions
+
+Before a physical FRLG result: **do no new coding work**.
+
+After FRLG PASS: stop after one coherent, pushed read-only RSE production-source checkpoint. Do not continue into Gen I/II, GameCube, DS/3DS, Master Vault/Banks, conversion, events, physical-link hardware, Right Stick, final UI polish or live writes.
+
+RSE end report should include:
 
 ```text
 starting SHA
+recovered parked RSE work/ref if any
 implementation SHA(s)
 exact identities
 validation and slot behavior
