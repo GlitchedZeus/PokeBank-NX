@@ -1,6 +1,6 @@
 # RetroArch source grouping, naming and identity
 
-This document records the product semantics for file-based RetroArch/legacy sources so discovery, deduplication and future save-state support match the intended PokeBank NX UX.
+This document records the product semantics for file-based RetroArch/legacy sources so discovery, deduplication, refresh behavior and future save-state support match the intended PokeBank NX UX.
 
 ## Top-level UX rule
 
@@ -23,6 +23,7 @@ Opening a RetroArch game card should show the available save instances for that 
 Pokémon FireRed — RetroArch
 
   WILL — Main Save
+  WILL — Save State 0
   WILL — Save State 1
   WILL — Save State 2
   WILL — Save State 3
@@ -31,7 +32,7 @@ Pokémon FireRed — RetroArch
 
 Only after selecting one of those save instances does the user enter the trainer/source view and Party/Boxes flow.
 
-This means the current duplicate top-level FireRed/LeafGreen cards are not the desired final UX even when multiple legitimate saves exist. Legitimate separate saves belong **inside the one game card**.
+This means duplicate top-level FireRed/LeafGreen cards are not the desired final UX even when multiple legitimate saves exist. Legitimate separate saves belong **inside the one game card**.
 
 ## Source-instance identity rule
 
@@ -64,6 +65,17 @@ Current FRLG production support is **BATTERY_SAVE only** (`.sav` / `.srm`). Save
 
 RetroArch save states are emulator/core snapshots rather than ordinary Pokémon save files, so they require audited extraction/validation before PokeBank NX may expose their Pokémon data.
 
+The user's current RetroArch workflow uses numbered state slots **0 through 3**. Future child-source support should therefore explicitly preserve and label at least:
+
+```text
+Save State 0
+Save State 1
+Save State 2
+Save State 3
+```
+
+Do not assume numbering begins at 1.
+
 ## Desired child labels
 
 When metadata is available, each child entry inside the game card should clearly identify what it is.
@@ -73,6 +85,9 @@ Examples:
 ```text
 WILL — Main Save
 RetroArch Battery Save
+
+WILL — Save State 0
+RetroArch Save State
 
 WILL — Save State 1
 RetroArch Save State
@@ -114,8 +129,10 @@ Desired flow:
 ```text
 Game Sources
   -> Pokémon FireRed — Game Boy Advance · RetroArch
+  -> Refresh current save-instance catalog
   -> Save Instances
        -> WILL — Main Save
+       -> WILL — Save State 0
        -> WILL — Save State 1
        -> WILL — Save State 2
        -> WILL — Save State 3
@@ -125,6 +142,27 @@ Game Sources
 ```
 
 For a game with only one save instance, it is still acceptable to open the game card and show a one-entry child list for consistency. A future UX optimization may optionally auto-open a sole child only if that remains clear and does not undermine the hierarchy.
+
+## Refresh / rescan semantics
+
+RetroArch sources must not be treated as a one-time immutable application-start snapshot. A user may play in RetroArch, overwrite the main battery save, overwrite a numbered save-state slot, create/delete a backup, then return to PokeBank NX.
+
+Required product behavior:
+
+1. perform the normal bounded legacy scan at application startup;
+2. when a RetroArch game card is opened, perform a lightweight refresh of that game's approved source roots before presenting the child list;
+3. expose an explicit manual action such as **Refresh Saves** / **Rescan Sources** inside the game-card/save-instance view;
+4. compare stable source identity plus useful file metadata (for example normalized path and modification/size information) so changed child sources invalidate cached read models;
+5. when a changed source is selected after refresh, reread it from disk and pass the same strict structural validation before exposing Party/Boxes;
+6. do not silently replace data while the user is already browsing Party/Boxes for a selected snapshot; refresh should occur at a clear navigation boundary or explicit user action;
+7. deleted/missing sources should disappear safely after refresh and stale selections should fail gracefully;
+8. all refresh behavior remains read-only.
+
+For current BATTERY_SAVE support, this means a newly changed `.sav` / `.srm` should be reflected after refresh without restarting PokeBank NX.
+
+For future SAVE_STATE support, refresh must also detect state-slot creation/replacement/removal and update labels such as `Save State 0` through `Save State 3` accordingly.
+
+A refresh does **not** make an old save-state snapshot newer. If `Save State 1` was created earlier than the main save, it is expected to contain older game memory until the user overwrites that slot in RetroArch. PokeBank NX should present the actual snapshot faithfully and may show last-modified metadata where useful.
 
 ## Savestate handling boundary
 
@@ -141,7 +179,7 @@ Do not parse arbitrary core-state memory as a Pokémon save without an audited a
 
 ## Current FRLG blocker semantics
 
-For the immediate FRLG profile/deduplication fix:
+For the immediate FRLG profile/grouping/artwork/refresh fix:
 
 - keep scanning `.sav` / `.srm` only;
 - make legacy file sources app-global rather than Nintendo-user scoped;
@@ -150,5 +188,7 @@ For the immediate FRLG profile/deduplication fix:
 - collapse only aliases/duplicate discovery of the same underlying file inside the child list;
 - preserve separately stored save files as separate children even if their bytes happen to match;
 - do not dedupe child saves by trainer name or file hash alone;
-- design the child-source descriptor so future `SAVE_STATE` entries with slot numbers and `BACKUP` entries can be added without changing the parent-card model;
-- do not add actual `.state#` parsing during the immediate duplicate/profile blocker fix.
+- refresh BATTERY_SAVE child discovery when opening the game card and provide a manual refresh action;
+- invalidate/reread changed child sources only after strict validation and at a clear navigation boundary;
+- design the child-source descriptor so future `SAVE_STATE` entries with slot numbers 0-3 and `BACKUP` entries can be added without changing the parent-card model;
+- do not add actual `.state#` parsing during the immediate blocker-fix session.
