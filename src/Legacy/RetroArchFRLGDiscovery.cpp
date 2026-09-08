@@ -1,6 +1,9 @@
 #include "Legacy/RetroArchFRLGDiscovery.h"
 
+#include "Utils/SHA256.h"
+
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstdio>
 #include <dirent.h>
@@ -64,6 +67,21 @@ namespace PokeVault::Legacy {
             return result;
         }
 
+        std::string sha256Hex(const uint8_t* bytes, size_t size) {
+            Utils::SHA256 hash;
+            hash.update(bytes, size);
+            std::array<uint8_t, Utils::PKSE_SHA256_HASH_SIZE> digest{};
+            hash.finalize(digest.data());
+            constexpr char digits[] = "0123456789abcdef";
+            std::string result;
+            result.reserve(digest.size() * 2);
+            for (uint8_t byte : digest) {
+                result.push_back(digits[byte >> 4]);
+                result.push_back(digits[byte & 0x0F]);
+            }
+            return result;
+        }
+
         std::string filesystemIdentity(const std::string& path) {
             struct stat info{};
             if (stat(path.c_str(), &info) == 0 && info.st_ino != 0) {
@@ -74,6 +92,14 @@ namespace PokeVault::Legacy {
             // normalization still collapses repeated/overlapping roots without guessing that two
             // separately stored files are aliases merely because their contents match.
             return normalizedPath(path);
+        }
+
+        std::string sourceIdentity(const std::string& path) {
+            // Persistent bindings must survive a reboot. SD/FAT inode values are not a suitable
+            // on-disk key, so identity is provider + normalized physical path. Runtime alias
+            // collapse remains the separate canonicalPath/inode concern below.
+            const std::string identity = "retroarch:" + normalizedPath(path);
+            return sha256Hex(reinterpret_cast<const uint8_t*>(identity.data()), identity.size());
         }
 
         bool supportedExtension(const std::string& name) {
@@ -118,6 +144,7 @@ namespace PokeVault::Legacy {
             FRLGSource source;
             source.path = path;
             source.normalizedPath = normalizedPath(path);
+            source.sourceIdentity = sourceIdentity(path);
             source.fileSize = static_cast<uint64_t>(metadata.st_size);
             source.modifiedTime = static_cast<int64_t>(metadata.st_mtime);
             const size_t size = static_cast<size_t>(metadata.st_size);
@@ -134,6 +161,7 @@ namespace PokeVault::Legacy {
                 source.detail = "candidate could not be read completely";
                 return source;
             }
+            source.contentFingerprint = sha256Hex(bytes.data(), bytes.size());
 
             const SourceGame assumed = hint == IdentityHint::LeafGreen ?
                 SourceGame::LeafGreenGBA : SourceGame::FireRedGBA;

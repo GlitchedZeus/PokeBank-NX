@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cstring>
 #include <cstdio>
+#include <iomanip>
+#include <sstream>
 
 #include "Globals.h"
 #include "UI/SaveSelectScreen.h"
@@ -25,6 +27,18 @@ namespace UI {
             if (leaf.size() > maxChars) leaf = leaf.substr(0, maxChars - 3) + "...";
             return leaf;
         }
+
+        std::string profileIdentity(AccountUid uid) {
+            std::ostringstream output;
+            output << std::hex << std::setfill('0')
+                   << std::setw(16) << static_cast<unsigned long long>(uid.uid[0])
+                   << std::setw(16) << static_cast<unsigned long long>(uid.uid[1]);
+            return output.str();
+        }
+
+        std::string shortValue(const std::string& value, size_t length = 12) {
+            return value.substr(0, std::min(length, value.size()));
+        }
     }
 
     // Layout (1280x720).
@@ -44,8 +58,9 @@ namespace UI {
     constexpr int VISIBLE_ROWS = 2;
 
     SaveSelectScreen::SaveSelectScreen(
-        PokeVault::Legacy::FRLGDiscoveryResult& legacySources)
-        : legacyCatalog(&legacySources) {
+        PokeVault::Legacy::FRLGDiscoveryResult& legacySources,
+        PokeVault::Legacy::LegacySourceBindings& bindings)
+        : legacyCatalog(&legacySources), legacyBindings(&bindings) {
         loadUsers();
         loadLegacySources(legacySources);
     }
@@ -58,18 +73,18 @@ namespace UI {
                     return title.sourceKind == SelectedSourceKind::RetroArchFRLG;
                 }), user.titles.end());
         }
-        const auto cards = PokeVault::Legacy::buildFRLGSourceCards(legacySources);
-        if (cards.empty()) return;
-
         if (users.size() == 1 && users.front().titles.empty() &&
             users.front().name == "No users found") {
             users.front().name = "Game Sources";
         }
 
-        // Legacy files are app-global. Repeat the same parent descriptors in each account view so
-        // switching Nintendo users changes only the installed-title subset; it never hides an SD
-        // card source or models RetroArch as a fake account/profile.
+        // Discovery is app-global; normal visibility is not. A filesystem source has no intrinsic
+        // Nintendo-account owner, so it appears only after an explicit persistent assignment.
         for (auto& user : users) {
+            const auto cards = legacyBindings
+                ? PokeVault::Legacy::buildFRLGSourceCardsForProfile(
+                    legacySources, *legacyBindings, profileIdentity(user.uid))
+                : std::vector<PokeVault::Legacy::FRLGSourceCard>{};
             user.titles.reserve(user.titles.size() + cards.size());
             for (const auto& card : cards) {
                 TitleEntry entry;
@@ -86,10 +101,60 @@ namespace UI {
                 user.titles.push_back(std::move(entry));
             }
         }
+        rebuildUnassignedLegacySources();
+    }
+
+    void SaveSelectScreen::rebuildUnassignedLegacySources() {
+        unassignedLegacySources.clear();
+        if (!legacyCatalog || !legacyBindings) return;
+        for (const auto& card : PokeVault::Legacy::buildFRLGSourceCards(*legacyCatalog)) {
+            for (const auto& instance : card.instances) {
+                if (legacyBindings->isAssigned(instance.sourceIdentity)) continue;
+                unassignedLegacySources.push_back({card.gameId, card.title, instance});
+            }
+        }
+        if (legacyAssignmentIndex >= static_cast<int>(unassignedLegacySources.size()))
+            legacyAssignmentIndex = std::max(0,
+                static_cast<int>(unassignedLegacySources.size()) - 1);
+    }
+
+    std::string SaveSelectScreen::currentProfileIdentity() const {
+        const UserEntry* user = currentUser();
+        return user ? profileIdentity(user->uid) : std::string{};
+    }
+
+    const PokeVault::Legacy::FRLGSaveInstance* SaveSelectScreen::currentLegacyInstance() const {
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size()))
+            return nullptr;
+        const auto& title = user->titles[titleIndex];
+        if (title.sourceKind != SelectedSourceKind::RetroArchFRLG || legacyInstanceIndex < 0 ||
+            legacyInstanceIndex >= static_cast<int>(title.legacyInstances.size())) return nullptr;
+        return &title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
+    }
+
+    bool SaveSelectScreen::assignCurrentLegacySource() {
+        if (!legacyBindings || legacyAssignmentIndex < 0 ||
+            legacyAssignmentIndex >= static_cast<int>(unassignedLegacySources.size())) return false;
+        const std::string profile = currentProfileIdentity();
+        if (profile.empty()) return false;
+        const auto& entry = unassignedLegacySources[static_cast<size_t>(legacyAssignmentIndex)];
+        if (!legacyBindings->assign(entry.instance.sourceIdentity, profile)) return false;
+        if (!legacyBindings->save()) {
+            (void)legacyBindings->unassign(entry.instance.sourceIdentity);
+            legacyNotice = "Assignment could not be saved; source remains unassigned.";
+            return false;
+        }
+        legacyNotice = sourceLeafName(entry.instance.location) + " assigned to this profile.";
+        loadLegacySources(*legacyCatalog);
+        overlay = Overlay::None;
+        titleIndex = 0;
+        scrollSelectionIntoView();
+        return true;
     }
 
     bool SaveSelectScreen::refreshLegacySources(
-        const std::string& gameId, const std::string& preferredNormalizedPath,
+        const std::string& gameId, const std::string& preferredSourceIdentity,
         bool requirePreferred) {
         if (!legacyCatalog) return false;
         auto refreshed = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
@@ -116,10 +181,10 @@ namespace UI {
 
         titleIndex = static_cast<int>(std::distance(user->titles.begin(), parent));
         legacyInstanceIndex = 0;
-        if (!preferredNormalizedPath.empty()) {
+        if (!preferredSourceIdentity.empty()) {
             const auto instance = std::find_if(parent->legacyInstances.begin(),
                 parent->legacyInstances.end(), [&](const auto& candidate) {
-                    return candidate.normalizedPath == preferredNormalizedPath;
+                    return candidate.sourceIdentity == preferredSourceIdentity;
                 });
             if (instance == parent->legacyInstances.end()) {
                 legacyNotice = "That save changed location or was removed; nothing was opened.";
@@ -351,16 +416,16 @@ namespace UI {
         // Reread the active physical root at the selection boundary. If this child was replaced or
         // deleted while the picker was open, the stale instance can no longer resolve to anything.
         const std::string gameId = title.gameId;
-        const std::string normalizedPath =
-            title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)].normalizedPath;
-        if (!refreshLegacySources(gameId, normalizedPath, true)) return;
+        const std::string sourceIdentity =
+            title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)].sourceIdentity;
+        if (!refreshLegacySources(gameId, sourceIdentity, true)) return;
         u = currentUser();
         if (!u || titleIndex < 0 || titleIndex >= static_cast<int>(u->titles.size())) return;
         const auto& refreshedTitle = u->titles[titleIndex];
         if (legacyInstanceIndex < 0 ||
             legacyInstanceIndex >= static_cast<int>(refreshedTitle.legacyInstances.size())) return;
 
-        selectedUserUid = {};
+        selectedUserUid = u->uid;
         selectedTitleId = 0;
         selectedTitleName = refreshedTitle.name;
         selectedGameId = refreshedTitle.gameId;
@@ -381,6 +446,35 @@ namespace UI {
 
         if (overlay == Overlay::Help) {
             if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) overlay = Overlay::None;
+            return;
+        }
+        if (overlay == Overlay::LegacyDetails) {
+            if (kDown & (HidNpadButton_B | HidNpadButton_Y)) overlay = Overlay::LegacyInstances;
+            return;
+        }
+        if (overlay == Overlay::LegacyAssignment) {
+            const int count = static_cast<int>(unassignedLegacySources.size());
+            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_X) {
+                if (legacyCatalog) {
+                    *legacyCatalog = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
+                    loadLegacySources(*legacyCatalog);
+                    legacyNotice = "Unassigned source list refreshed.";
+                }
+                if (unassignedLegacySources.empty()) overlay = Overlay::None;
+                return;
+            }
+            if (count == 0) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_Up)
+                legacyAssignmentIndex = (legacyAssignmentIndex - 1 + count) % count;
+            if (kDown & HidNpadButton_Down)
+                legacyAssignmentIndex = (legacyAssignmentIndex + 1) % count;
+            constexpr int visibleRows = 5;
+            if (legacyAssignmentIndex < legacyAssignmentScroll)
+                legacyAssignmentScroll = legacyAssignmentIndex;
+            else if (legacyAssignmentIndex >= legacyAssignmentScroll + visibleRows)
+                legacyAssignmentScroll = legacyAssignmentIndex - visibleRows + 1;
+            if (kDown & HidNpadButton_A) assignCurrentLegacySource();
             return;
         }
         if (overlay == Overlay::Options) {
@@ -415,8 +509,17 @@ namespace UI {
                 const std::string gameId = u->titles[titleIndex].gameId;
                 std::string preferred;
                 if (legacyInstanceIndex >= 0 && legacyInstanceIndex < count)
-                    preferred = instances[static_cast<size_t>(legacyInstanceIndex)].normalizedPath;
+                    preferred = instances[static_cast<size_t>(legacyInstanceIndex)].sourceIdentity;
                 refreshLegacySources(gameId, preferred, false);
+                return;
+            }
+            if (kDown & HidNpadButton_Y) {
+                const auto* instance = currentLegacyInstance();
+                if (instance) {
+                    legacyDetailsInstance = *instance;
+                    legacyDetailsGameId = u->titles[titleIndex].gameId;
+                    overlay = Overlay::LegacyDetails;
+                }
                 return;
             }
             if (count == 0) {
@@ -443,6 +546,13 @@ namespace UI {
         }
         if (kDown & HidNpadButton_Minus) {
             overlay = Overlay::Help;
+            return;
+        }
+        if ((kDown & HidNpadButton_X) && !unassignedLegacySources.empty()) {
+            overlay = Overlay::LegacyAssignment;
+            legacyAssignmentIndex = 0;
+            legacyAssignmentScroll = 0;
+            legacyNotice.clear();
             return;
         }
 
@@ -640,14 +750,17 @@ namespace UI {
         }
 
         // ---- Footer ----
-        drawNavBar(fb, controllerHints(users.size() > 1
+        auto homeHints = controllerHints(users.size() > 1
             ? PokeBank::UIModel::ControllerContext::SelectGameMultipleUsers
-            : PokeBank::UIModel::ControllerContext::SelectGame));
+            : PokeBank::UIModel::ControllerContext::SelectGame);
+        if (!unassignedLegacySources.empty())
+            homeHints.push_back({"X", "Assign Legacy Save"});
+        drawNavBar(fb, homeHints);
 
         if (overlay == Overlay::LegacyInstances && u && titleIndex >= 0 &&
             titleIndex < static_cast<int>(u->titles.size())) {
             const auto& parent = u->titles[titleIndex];
-            constexpr int w = 720, h = 500, rowH = 58, visibleRows = 6;
+            constexpr int w = 780, h = 530, rowH = 66, visibleRows = 5;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
             fb.drawText(x + 28, y + 18, "RETROARCH / GAME BOY ADVANCE / READ ONLY",
@@ -674,12 +787,13 @@ namespace UI {
                 fb.drawText(x + 44, ry + 8, instance.label,
                             i == legacyInstanceIndex ? Colors::TextPrimary : Colors::TextSecondary,
                             TextStyle::Body);
-                const std::string location = sourceLeafName(instance.location);
+                const std::string recency = instance.mostRecentlyModified
+                    ? "MOST RECENTLY MODIFIED" : "OLDER FILE";
                 int fw, fh;
-                fb.measureText(location, fw, fh, TextStyle::Caption);
-                fb.drawText(x + w - 44 - fw, ry + 11, location, Colors::TextMuted,
+                fb.measureText(recency, fw, fh, TextStyle::Caption);
+                fb.drawText(x + w - 44 - fw, ry + 11, recency, Colors::TextMuted,
                             TextStyle::Caption);
-                fb.drawText(x + 44, ry + 31, instance.sourceLabel, Colors::TextMuted,
+                fb.drawText(x + 44, ry + 34, instance.sourceLabel, Colors::TextMuted,
                             TextStyle::Caption);
                 ry += rowH;
             }
@@ -687,12 +801,74 @@ namespace UI {
                 fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
             drawNavBar(fb, {{"Up/Down", "Choose Save"}, {"A", "Open Read Only"},
-                            {"X", "Refresh Saves"}, {"B", "Back"}});
+                            {"Y", "Source Details"}, {"X", "Refresh Saves"}, {"B", "Back"}});
+        } else if (overlay == Overlay::LegacyAssignment && u) {
+            constexpr int w = 800, h = 530, rowH = 70, visibleRows = 5;
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 28, y + 18, "RETROARCH / EXPLICIT PROFILE ASSIGNMENT",
+                        Colors::AccentPrimary, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44, "Assign a Legacy Save to " + u->name,
+                        Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 28, y + 76,
+                        "Unassigned files are hidden from every profile until you choose one.",
+                        Colors::TextSecondary, TextStyle::Caption);
+            const int first = legacyAssignmentScroll;
+            const int last = std::min<int>(static_cast<int>(unassignedLegacySources.size()),
+                                           first + visibleRows);
+            int rowY = y + 108;
+            for (int index = first; index < last; ++index) {
+                const auto& entry = unassignedLegacySources[static_cast<size_t>(index)];
+                drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6,
+                                index == legacyAssignmentIndex, 10);
+                fb.drawText(x + 44, rowY + 7, "Pokemon " + entry.title + " — " +
+                            entry.instance.label,
+                            index == legacyAssignmentIndex ? Colors::TextPrimary
+                                                           : Colors::TextSecondary,
+                            TextStyle::Body);
+                fb.drawText(x + 44, rowY + 35, entry.instance.sourceLabel,
+                            Colors::TextMuted, TextStyle::Caption);
+                rowY += rowH;
+            }
+            if (!legacyNotice.empty())
+                fb.drawText(x + 28, y + h - 36, legacyNotice, Colors::TextMuted,
+                            TextStyle::Caption);
+            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Assign to This Profile"},
+                            {"X", "Refresh"}, {"B", "Cancel"}});
+        } else if (overlay == Overlay::LegacyDetails) {
+            constexpr int w = 900, h = 520;
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 28, y + 18, "RETROARCH / SOURCE DIAGNOSTICS / READ ONLY",
+                        Colors::AccentPrimary, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44, legacyDetailsInstance.label,
+                        Colors::TextPrimary, TextStyle::Heading);
+            int lineY = y + 88;
+            auto drawLine = [&](const std::string& label, const std::string& value) {
+                fb.drawText(x + 32, lineY, label, Colors::TextMuted, TextStyle::Caption);
+                fb.drawText(x + 214, lineY, value, Colors::TextPrimary, TextStyle::Caption);
+                lineY += 30;
+            };
+            drawLine("Provider", "RetroArch");
+            drawLine("Game identity", legacyDetailsGameId);
+            drawLine("Trainer", legacyDetailsInstance.trainerName.empty()
+                ? "Unknown" : legacyDetailsInstance.trainerName);
+            drawLine("Party count", std::to_string(legacyDetailsInstance.partyCount));
+            drawLine("File size", std::to_string(legacyDetailsInstance.fileSize) + " bytes");
+            drawLine("Modified state", std::to_string(legacyDetailsInstance.modifiedTime));
+            drawLine("Source identity", shortValue(legacyDetailsInstance.sourceIdentity, 24));
+            drawLine("Content SHA-256", shortValue(legacyDetailsInstance.contentFingerprint, 24));
+            const std::string& path = legacyDetailsInstance.normalizedPath;
+            drawLine("Physical path", path.substr(0, std::min<size_t>(70, path.size())));
+            for (size_t offset = 70; offset < path.size() && offset < 210; offset += 70)
+                drawLine("", path.substr(offset, 70));
+            drawNavBar(fb, {{"B", "Back to Save List"}});
         } else if (overlay == Overlay::Help) {
             drawInfoOverlay(fb, "Game Sources & Controls", {
                 "D-pad / Left Stick   Navigate (hold to scroll)",
                 "A   Open the focused game source",
                 "L / R   Previous or next Switch user",
+                "X   Assign an unassigned legacy save to this profile",
                 "+   Options and appearance",
                 "-   Help for the current screen"
             });

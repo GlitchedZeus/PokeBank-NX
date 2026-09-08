@@ -11,6 +11,7 @@
 #include "UI/BackupSelectionScreen.h"
 #include "UI/TrainerViewScreen.h"
 #include "Legacy/RetroArchFRLGDiscovery.h"
+#include "Legacy/LegacySourceBindings.h"
 
 namespace Trainer {
     class Trainer;
@@ -39,6 +40,7 @@ namespace UI {
         // the discovered Party/Boxes model available to the existing source browser when its
         // legacy-card routing is added. Nothing in this catalog exposes a write operation.
         PokeVault::Legacy::FRLGDiscoveryResult legacyFRLGSources;
+        PokeVault::Legacy::LegacySourceBindings legacySourceBindings;
 
         void handleSaveSelection();
         void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName);
@@ -47,7 +49,7 @@ namespace UI {
         bool handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
                                const std::string& backupDir, bool loadedFromCart,
                                std::string& error);
-        bool handleLegacyFRLGView(size_t sourceIndex, const std::string& gameId,
+        bool handleLegacyFRLGView(AccountUid userUid, size_t sourceIndex, const std::string& gameId,
                                   std::string& error);
     };
 }

@@ -6,6 +6,18 @@
 #include <set>
 
 namespace PokeVault::Legacy {
+    namespace {
+        std::string leafName(const std::string& path) {
+            const size_t slash = path.find_last_of("/\\");
+            return slash == std::string::npos ? path : path.substr(slash + 1);
+        }
+
+        std::string stableIdentity(const FRLGSource& source) {
+            if (!source.sourceIdentity.empty()) return source.sourceIdentity;
+            return source.canonicalPath.empty() ? source.normalizedPath : source.canonicalPath;
+        }
+    }
+
     std::vector<FRLGSourceCard> buildFRLGSourceCards(const FRLGDiscoveryResult& discovery) {
         std::vector<FRLGSourceCard> cards;
         std::vector<std::set<std::string>> instanceKeys;
@@ -46,22 +58,59 @@ namespace PokeVault::Legacy {
                                                                        : source.canonicalPath;
             if (!instanceKeys[cardIndex].insert(identity).second) continue;
             auto& instances = cards[cardIndex].instances;
-            const size_t number = instances.size() + 1;
-            const std::string saveLabel = number == 1 ? "Main Save"
-                : "Battery Save " + std::to_string(number);
             const std::string& trainerName = source.save->trainer().name;
+            const size_t partyCount = source.save->party().size();
+            const std::string fingerprint = source.contentFingerprint.empty()
+                ? std::string("unavailable") : source.contentFingerprint;
+            const std::string details = (trainerName.empty() ? std::string("Unknown trainer")
+                                                              : trainerName) +
+                " | Party " + std::to_string(partyCount) + " | FP " +
+                fingerprint.substr(0, std::min<size_t>(12, fingerprint.size()));
             instances.push_back({
                 index,
                 LegacySaveInstanceKind::BatterySave,
-                trainerName.empty() ? saveLabel : trainerName + " — " + saveLabel,
-                "RETROARCH BATTERY SAVE",
+                leafName(source.path),
+                details,
                 source.path,
                 source.normalizedPath,
-                identity,
+                stableIdentity(source),
+                fingerprint,
+                trainerName,
                 source.fileSize,
                 source.modifiedTime,
+                partyCount,
+                false,
             });
         }
+        for (auto& card : cards) {
+            std::sort(card.instances.begin(), card.instances.end(), [](const auto& left,
+                                                                        const auto& right) {
+                if (left.modifiedTime != right.modifiedTime)
+                    return left.modifiedTime > right.modifiedTime;
+                return left.normalizedPath < right.normalizedPath;
+            });
+            if (!card.instances.empty()) card.instances.front().mostRecentlyModified = true;
+        }
+        return cards;
+    }
+
+    std::vector<FRLGSourceCard> buildFRLGSourceCardsForProfile(
+        const FRLGDiscoveryResult& discovery, const LegacySourceBindings& bindings,
+        std::string_view profileIdentity) {
+        auto cards = buildFRLGSourceCards(discovery);
+        for (auto& card : cards) {
+            card.instances.erase(std::remove_if(card.instances.begin(), card.instances.end(),
+                [&](const auto& instance) {
+                    return !bindings.isVisibleTo(instance.sourceIdentity, profileIdentity);
+                }), card.instances.end());
+            if (!card.instances.empty()) {
+                for (auto& instance : card.instances) instance.mostRecentlyModified = false;
+                card.instances.front().mostRecentlyModified = true;
+            }
+        }
+        cards.erase(std::remove_if(cards.begin(), cards.end(), [](const auto& card) {
+            return card.instances.empty();
+        }), cards.end());
         return cards;
     }
 
@@ -75,10 +124,10 @@ namespace PokeVault::Legacy {
         const auto& source = discovery.sources[instance.sourceIndex];
         if (!source.ready() || source.gameId != card.gameId) return nullptr;
         if (instance.normalizedPath != source.normalizedPath ||
-            instance.sourceIdentity != (source.canonicalPath.empty() ? source.path
-                                                                      : source.canonicalPath) ||
+            instance.sourceIdentity != stableIdentity(source) ||
             instance.fileSize != source.fileSize ||
-            instance.modifiedTime != source.modifiedTime) return nullptr;
+            instance.modifiedTime != source.modifiedTime ||
+            instance.contentFingerprint != source.contentFingerprint) return nullptr;
         if (source.save->metadata().sourceGameId != card.gameId) return nullptr;
         const auto* game = Games::findGame(card.gameId);
         if (!game || game->platform != Games::Platform::GameBoyAdvance ||

@@ -26,6 +26,47 @@ namespace {
                      static_cast<std::streamsize>(bytes.size()));
         assert(output.good());
     }
+
+    uint16_t read16(const std::vector<uint8_t>& bytes, size_t offset) {
+        return static_cast<uint16_t>(bytes[offset]) |
+               static_cast<uint16_t>(bytes[offset + 1] << 8);
+    }
+
+    void write16(std::vector<uint8_t>& bytes, size_t offset, uint16_t value) {
+        bytes[offset] = static_cast<uint8_t>(value);
+        bytes[offset + 1] = static_cast<uint8_t>(value >> 8);
+    }
+
+    uint16_t sectorChecksum(const uint8_t* bytes) {
+        uint32_t sum = 0;
+        for (size_t offset = 0; offset < 0xF80; offset += 4) {
+            sum += static_cast<uint32_t>(bytes[offset]) |
+                   (static_cast<uint32_t>(bytes[offset + 1]) << 8) |
+                   (static_cast<uint32_t>(bytes[offset + 2]) << 16) |
+                   (static_cast<uint32_t>(bytes[offset + 3]) << 24);
+        }
+        return static_cast<uint16_t>((sum & 0xFFFFu) + (sum >> 16));
+    }
+
+    std::vector<uint8_t> withTwoPartyPokemon(const std::vector<uint8_t>& fixture) {
+        std::vector<uint8_t> changed = fixture;
+        constexpr size_t activeSlot = 0xE000;
+        size_t partySector = changed.size();
+        for (size_t physical = 0; physical < 14; ++physical) {
+            const size_t offset = activeSlot + physical * 0x1000;
+            if (read16(changed, offset + 0xFF4) == 1) {
+                partySector = offset;
+                break;
+            }
+        }
+        assert(partySector < changed.size());
+        changed[partySector + 0x34] = 2;
+        std::copy_n(changed.begin() + static_cast<std::ptrdiff_t>(partySector + 0x38), 100,
+                    changed.begin() + static_cast<std::ptrdiff_t>(partySector + 0x38 + 100));
+        write16(changed, partySector + 0xFF6,
+                sectorChecksum(changed.data() + partySector));
+        return changed;
+    }
 }
 
 int main() {
@@ -85,6 +126,9 @@ int main() {
     assert(fireRed != result.sources.end());
     assert(leafGreen != result.sources.end());
     assert(!fireRed->canonicalPath.empty() && !leafGreen->canonicalPath.empty());
+    assert(!fireRed->sourceIdentity.empty() && !leafGreen->sourceIdentity.empty());
+    assert(fireRed->sourceIdentity != leafGreen->sourceIdentity);
+    assert(fireRed->contentFingerprint.size() == 64);
     assert(fireRed->normalizedPath == fireRedPath.string());
     assert(fireRed->fileSize == 0x20000 && leafGreen->fileSize == 0x20000);
     assert(std::count_if(result.sources.begin(), result.sources.end(), [&](const auto& source) {
@@ -162,8 +206,21 @@ int main() {
         depthRoots, {.maxDepth = 3, .maxFiles = 256});
     assert(depthAllowed.sources.size() == 1 && depthAllowed.sources.front().ready());
 
-    // Refresh is a fresh bounded read: changed files are strictly revalidated, and deleted files
-    // disappear instead of leaving a stale parsed model reachable by an old catalog index.
+    // Refresh is a fresh bounded read: same-path valid replacement bytes produce a new strict
+    // model and fingerprint instead of leaving the old one-Pokemon parsed object cached.
+    const std::string oldFingerprint = fireRed->contentFingerprint;
+    const std::string stableIdentity = fireRed->sourceIdentity;
+    writeFile(fireRedPath, withTwoPartyPokemon(fixture));
+    auto refreshed = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves(
+        {}, config.string(), fallbackRoot.string());
+    const auto currentFireRed = std::find_if(refreshed.sources.begin(), refreshed.sources.end(),
+        [&](const auto& source) { return source.normalizedPath == fireRedPath.string(); });
+    assert(currentFireRed != refreshed.sources.end() && currentFireRed->ready());
+    assert(currentFireRed->sourceIdentity == stableIdentity);
+    assert(currentFireRed->contentFingerprint != oldFingerprint);
+    assert(currentFireRed->save->party().size() == 2);
+
+    // Invalid and deleted files disappear from selectable sources safely.
     writeFile(leafGreenPath, {1, 2, 3, 4});
     auto changed = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves(
         {}, config.string(), fallbackRoot.string());

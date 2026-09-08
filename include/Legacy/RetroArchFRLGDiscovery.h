@@ -27,11 +27,17 @@ namespace PokeVault::Legacy {
     struct FRLGSource {
         std::string path;
         std::string normalizedPath;
+        // Stable, content-independent provider identity used by profile bindings. It is derived
+        // from RetroArch plus the normalized physical path, never trainer or Pokemon contents.
+        std::string sourceIdentity;
         // Canonical filesystem identity used only to collapse aliases of this same file. Two
         // separately stored saves remain distinct even when their bytes happen to match.
         std::string canonicalPath;
         uint64_t fileSize = 0;
         int64_t modifiedTime = 0;
+        // SHA-256 of the exact bytes parsed during this discovery pass. It diagnoses stale copies
+        // and proves refresh replaced the model, but is deliberately not ownership identity.
+        std::string contentFingerprint;
         std::string gameId;
         LegacySourceStatus status = LegacySourceStatus::ReadError;
         Integration::Gen3::SaveError parseError = Integration::Gen3::SaveError::None;

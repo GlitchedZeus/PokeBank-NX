@@ -2,6 +2,7 @@
 #define POKEBANK_LEGACY_FRLG_SOURCE_BROWSER_H
 
 #include "Legacy/RetroArchFRLGDiscovery.h"
+#include "Legacy/LegacySourceBindings.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -24,8 +25,12 @@ namespace PokeVault::Legacy {
         std::string location;
         std::string normalizedPath;
         std::string sourceIdentity;
+        std::string contentFingerprint;
+        std::string trainerName;
         uint64_t fileSize = 0;
         int64_t modifiedTime = 0;
+        size_t partyCount = 0;
+        bool mostRecentlyModified = false;
     };
 
     // One UI-neutral parent card per exact game identity/source family. Validated save files are
@@ -44,6 +49,11 @@ namespace PokeVault::Legacy {
     // stay in the diagnostic catalog but can never enter the browsing route.
     [[nodiscard]] std::vector<FRLGSourceCard> buildFRLGSourceCards(
         const FRLGDiscoveryResult& discovery);
+
+    // Normal Game Sources visibility is profile-scoped even though discovery is app-global.
+    [[nodiscard]] std::vector<FRLGSourceCard> buildFRLGSourceCardsForProfile(
+        const FRLGDiscoveryResult& discovery, const LegacySourceBindings& bindings,
+        std::string_view profileIdentity);
 
     // Revalidates parent identity and child catalog index at activation time. This prevents a stale
     // or malformed UI descriptor from routing to another release, platform, or source instance.

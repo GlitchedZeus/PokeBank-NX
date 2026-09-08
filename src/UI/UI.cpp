@@ -1,5 +1,6 @@
 
 #include <cstdio>
+#include <sys/stat.h>
 
 #include "Globals.h"
 #include "Save/GetSaveFileContents.h"
@@ -19,10 +20,16 @@ using namespace Utils;
 using namespace Trainer;
 
 namespace UI {
-    UIManager::UIManager() : running(true) {
+    UIManager::UIManager()
+        : running(true),
+          legacySourceBindings(BASE_SAVE_DIRECTORY + "/legacy_source_bindings.cfg") {
         padConfigureInput(1, HidNpadStyleSet_NpadStandard);
         padInitializeDefault(&pad);
         hidInitializeTouchScreen();  // enable the touchscreen alongside the gamepad
+
+        mkdir(BASE_SAVE_DIRECTORY.c_str(), 0777);
+        if (!legacySourceBindings.load())
+            logErrorToFile("Legacy source bindings contain malformed or unreadable rows");
 
         // Discover only RetroArch's configured/conventional save roots. The provider performs a
         // bounded, read-only scan and validates every candidate before assigning an FR/LG identity.
@@ -45,9 +52,6 @@ namespace UI {
                  legacyFRLGSources.filesExamined, ready, ambiguous, rejected,
                  legacyFRLGSources.limitReached ? ", scan limit reached" : "");
         logInfoToFile(legacySummary);
-        logInfoToFile("RetroArch active battery-save root",
-            legacyFRLGSources.activeRoot.empty() ? "(none)"
-                                                 : legacyFRLGSources.activeRoot.c_str());
     }
 
     UIManager::~UIManager() {
@@ -62,7 +66,7 @@ namespace UI {
     // Combined JKSV-style user + title picker: pick a user's avatar and one of their supported
     // Pokemon game icons in a single screen, then go straight to backup selection.
     void UIManager::handleSaveSelection() {
-        SaveSelectScreen selectScreen(legacyFRLGSources);
+        SaveSelectScreen selectScreen(legacyFRLGSources, legacySourceBindings);
         fb.startFade();
 
         while (appletMainLoop() && running && !selectScreen.shouldExit()) {
@@ -77,7 +81,8 @@ namespace UI {
                 if (selectScreen.getSelectedSourceKind() ==
                     SaveSelectScreen::SelectedSourceKind::RetroArchFRLG) {
                     std::string error;
-                    if (!handleLegacyFRLGView(selectScreen.getSelectedLegacySourceIndex(),
+                    if (!handleLegacyFRLGView(selectScreen.getSelectedUser(),
+                                              selectScreen.getSelectedLegacySourceIndex(),
                                               selectScreen.getSelectedGameId(), error))
                         logErrorToFile("Legacy FRLG source refused open", error.c_str());
                 } else {
@@ -181,7 +186,7 @@ namespace UI {
     }
 
     bool UIManager::handleLegacyFRLGView(
-        size_t sourceIndex, const std::string& gameId, std::string& error) {
+        AccountUid userUid, size_t sourceIndex, const std::string& gameId, std::string& error) {
         error.clear();
         if (sourceIndex >= legacyFRLGSources.sources.size()) {
             error = "RetroArch source selection is stale";
@@ -204,9 +209,8 @@ namespace UI {
         auto trainer = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*source->save, error);
         if (!trainer) return false;
 
-        AccountUid noUser{};
         TrainerViewScreen trainerScreen(
-            *trainer, "Pokemon " + std::string(identity->title), source->path, 0, noUser,
+            *trainer, "Pokemon " + std::string(identity->title), source->path, 0, userUid,
             PokeVault::Safety::SourceKind::RetroArchLegacy, source->gameId);
         fb.startFade();
         while (appletMainLoop() && !trainerScreen.shouldExit() &&
