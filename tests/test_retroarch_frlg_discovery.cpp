@@ -85,6 +85,8 @@ int main() {
     assert(fireRed != result.sources.end());
     assert(leafGreen != result.sources.end());
     assert(!fireRed->canonicalPath.empty() && !leafGreen->canonicalPath.empty());
+    assert(fireRed->normalizedPath == fireRedPath.string());
+    assert(fireRed->fileSize == 0x20000 && leafGreen->fileSize == 0x20000);
     assert(std::count_if(result.sources.begin(), result.sources.end(), [&](const auto& source) {
         return source.ready() && source.gameId == "firered_gba";
     }) == 1);
@@ -119,6 +121,32 @@ int main() {
     assert(fireRedGba->support == PokeVault::Games::SourceSupport::ReadOnly);
     assert(leafGreenGba->support == PokeVault::Games::SourceSupport::ReadOnly);
 
+    // A usable configured root is authoritative. A conventional fallback that also exists must
+    // not be scanned additively, otherwise stale copies RetroArch is not using would reappear.
+    const fs::path fallbackRoot = temp / "conventional-savefiles";
+    fs::create_directories(fallbackRoot);
+    const fs::path staleFallback = fallbackRoot / "Pokemon FireRed Old.sav";
+    writeFile(staleFallback, fixture);
+    const auto configured = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves(
+        {}, config.string(), fallbackRoot.string());
+    assert(configured.activeRoot == saves.string());
+    assert(configured.activeRootKind ==
+           PokeVault::Legacy::FRLGDiscoveryResult::RootKind::Configured);
+    assert(std::none_of(configured.sources.begin(), configured.sources.end(),
+        [&](const auto& source) { return source.path == staleFallback.string(); }));
+
+    const fs::path defaultConfig = temp / "retroarch-default.cfg";
+    {
+        std::ofstream output(defaultConfig);
+        output << "savefile_directory = \"default\"\n";
+    }
+    const auto fallbackSelected = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves(
+        {}, defaultConfig.string(), fallbackRoot.string());
+    assert(fallbackSelected.activeRoot == fallbackRoot.string());
+    assert(fallbackSelected.activeRootKind ==
+           PokeVault::Legacy::FRLGDiscoveryResult::RootKind::ConventionalFallback);
+    assert(fallbackSelected.sources.size() == 1 && fallbackSelected.sources[0].ready());
+
     auto limited = PokeVault::Legacy::discoverFRLGSaves(roots, {.maxDepth = 2, .maxFiles = 1});
     assert(limited.filesExamined == 1 && limited.limitReached);
 
@@ -133,6 +161,21 @@ int main() {
     const auto depthAllowed = PokeVault::Legacy::discoverFRLGSaves(
         depthRoots, {.maxDepth = 3, .maxFiles = 256});
     assert(depthAllowed.sources.size() == 1 && depthAllowed.sources.front().ready());
+
+    // Refresh is a fresh bounded read: changed files are strictly revalidated, and deleted files
+    // disappear instead of leaving a stale parsed model reachable by an old catalog index.
+    writeFile(leafGreenPath, {1, 2, 3, 4});
+    auto changed = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves(
+        {}, config.string(), fallbackRoot.string());
+    assert(std::none_of(changed.sources.begin(), changed.sources.end(), [](const auto& source) {
+        return source.ready() && source.gameId == "leafgreen_gba";
+    }));
+    fs::remove(fireRedPath);
+    auto removed = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves(
+        {}, config.string(), fallbackRoot.string());
+    assert(std::none_of(removed.sources.begin(), removed.sources.end(), [&](const auto& source) {
+        return source.normalizedPath == fireRedPath.string();
+    }));
 
     fs::remove_all(temp);
     std::cout << "RetroArch FRLG read-only discovery tests passed\n";

@@ -45,6 +45,9 @@ namespace UI {
                  legacyFRLGSources.filesExamined, ready, ambiguous, rejected,
                  legacyFRLGSources.limitReached ? ", scan limit reached" : "");
         logInfoToFile(legacySummary);
+        logInfoToFile("RetroArch active battery-save root",
+            legacyFRLGSources.activeRoot.empty() ? "(none)"
+                                                 : legacyFRLGSources.activeRoot.c_str());
     }
 
     UIManager::~UIManager() {

@@ -40,6 +40,39 @@ namespace PokeVault::Integration::Gen3 {
         InvalidPartyCount,
         CoreRejected,
         MalformedPokemon,
+        InvalidInventory,
+    };
+
+    struct TrainerRecord {
+        std::string name;
+        uint8_t gender = 0;
+        uint16_t tid16 = 0;
+        uint16_t sid16 = 0;
+        // Gen III stores the visible TID in the low half and SID in the high half.
+        uint32_t id32 = 0;
+        uint32_t money = 0;
+    };
+
+    enum class InventoryPouch : uint8_t {
+        Items,
+        KeyItems,
+        PokeBalls,
+        TMCase,
+        BerryPouch,
+        PCItems,
+    };
+
+    struct InventoryItemRecord {
+        uint16_t itemId = 0;
+        uint16_t count = 0;
+    };
+
+    struct InventoryPouchRecord {
+        InventoryPouch pouch = InventoryPouch::Items;
+        std::string_view name;
+        uint16_t capacity = 0;
+        bool countEncrypted = false;
+        std::vector<InventoryItemRecord> items;
     };
 
     struct PokemonLocation {
@@ -94,6 +127,8 @@ namespace PokeVault::Integration::Gen3 {
         ReadOnlySave& operator=(const ReadOnlySave&) = delete;
 
         [[nodiscard]] const SaveMetadata& metadata() const noexcept;
+        [[nodiscard]] const TrainerRecord& trainer() const noexcept;
+        [[nodiscard]] const std::vector<InventoryPouchRecord>& inventory() const noexcept;
         [[nodiscard]] std::vector<PokemonRecord> party() const;
         [[nodiscard]] std::vector<PokemonRecord> boxes() const;
         [[nodiscard]] SaveError lastEnumerationError() const noexcept;

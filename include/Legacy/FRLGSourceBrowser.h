@@ -4,6 +4,7 @@
 #include "Legacy/RetroArchFRLGDiscovery.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,10 @@ namespace PokeVault::Legacy {
         std::string label;
         std::string sourceLabel;
         std::string location;
+        std::string normalizedPath;
+        std::string sourceIdentity;
+        uint64_t fileSize = 0;
+        int64_t modifiedTime = 0;
     };
 
     // One UI-neutral parent card per exact game identity/source family. Validated save files are

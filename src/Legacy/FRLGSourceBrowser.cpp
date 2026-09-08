@@ -47,12 +47,19 @@ namespace PokeVault::Legacy {
             if (!instanceKeys[cardIndex].insert(identity).second) continue;
             auto& instances = cards[cardIndex].instances;
             const size_t number = instances.size() + 1;
+            const std::string saveLabel = number == 1 ? "Main Save"
+                : "Battery Save " + std::to_string(number);
+            const std::string& trainerName = source.save->trainer().name;
             instances.push_back({
                 index,
                 LegacySaveInstanceKind::BatterySave,
-                number == 1 ? "Main Save" : "Battery Save " + std::to_string(number),
+                trainerName.empty() ? saveLabel : trainerName + " — " + saveLabel,
                 "RETROARCH BATTERY SAVE",
                 source.path,
+                source.normalizedPath,
+                identity,
+                source.fileSize,
+                source.modifiedTime,
             });
         }
         return cards;
@@ -67,6 +74,11 @@ namespace PokeVault::Legacy {
             instance.sourceIndex >= discovery.sources.size()) return nullptr;
         const auto& source = discovery.sources[instance.sourceIndex];
         if (!source.ready() || source.gameId != card.gameId) return nullptr;
+        if (instance.normalizedPath != source.normalizedPath ||
+            instance.sourceIdentity != (source.canonicalPath.empty() ? source.path
+                                                                      : source.canonicalPath) ||
+            instance.fileSize != source.fileSize ||
+            instance.modifiedTime != source.modifiedTime) return nullptr;
         if (source.save->metadata().sourceGameId != card.gameId) return nullptr;
         const auto* game = Games::findGame(card.gameId);
         if (!game || game->platform != Games::Platform::GameBoyAdvance ||

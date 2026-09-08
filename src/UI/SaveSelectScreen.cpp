@@ -44,13 +44,20 @@ namespace UI {
     constexpr int VISIBLE_ROWS = 2;
 
     SaveSelectScreen::SaveSelectScreen(
-        const PokeVault::Legacy::FRLGDiscoveryResult& legacySources) {
+        PokeVault::Legacy::FRLGDiscoveryResult& legacySources)
+        : legacyCatalog(&legacySources) {
         loadUsers();
         loadLegacySources(legacySources);
     }
 
     void SaveSelectScreen::loadLegacySources(
         const PokeVault::Legacy::FRLGDiscoveryResult& legacySources) {
+        for (auto& user : users) {
+            user.titles.erase(std::remove_if(user.titles.begin(), user.titles.end(),
+                [](const auto& title) {
+                    return title.sourceKind == SelectedSourceKind::RetroArchFRLG;
+                }), user.titles.end());
+        }
         const auto cards = PokeVault::Legacy::buildFRLGSourceCards(legacySources);
         if (cards.empty()) return;
 
@@ -79,6 +86,55 @@ namespace UI {
                 user.titles.push_back(std::move(entry));
             }
         }
+    }
+
+    bool SaveSelectScreen::refreshLegacySources(
+        const std::string& gameId, const std::string& preferredNormalizedPath,
+        bool requirePreferred) {
+        if (!legacyCatalog) return false;
+        auto refreshed = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
+        *legacyCatalog = std::move(refreshed);
+        loadLegacySources(*legacyCatalog);
+
+        logInfoToFile("RetroArch active battery-save root",
+            legacyCatalog->activeRoot.empty() ? "(none)" : legacyCatalog->activeRoot.c_str());
+        const UserEntry* user = currentUser();
+        if (!user) return false;
+        const auto parent = std::find_if(user->titles.begin(), user->titles.end(),
+            [&](const auto& title) {
+                return title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                       title.gameId == gameId;
+            });
+        if (parent == user->titles.end()) {
+            overlay = Overlay::None;
+            legacyNotice = "No validated saves remain for this game.";
+            titleIndex = std::min<int>(titleIndex,
+                std::max<int>(0, static_cast<int>(user->titles.size()) - 1));
+            scrollSelectionIntoView();
+            return false;
+        }
+
+        titleIndex = static_cast<int>(std::distance(user->titles.begin(), parent));
+        legacyInstanceIndex = 0;
+        if (!preferredNormalizedPath.empty()) {
+            const auto instance = std::find_if(parent->legacyInstances.begin(),
+                parent->legacyInstances.end(), [&](const auto& candidate) {
+                    return candidate.normalizedPath == preferredNormalizedPath;
+                });
+            if (instance == parent->legacyInstances.end()) {
+                legacyNotice = "That save changed location or was removed; nothing was opened.";
+                overlay = Overlay::LegacyInstances;
+                legacyInstanceScroll = 0;
+                return !requirePreferred;
+            }
+            legacyInstanceIndex = static_cast<int>(
+                std::distance(parent->legacyInstances.begin(), instance));
+        }
+        legacyInstanceScroll = std::max(0, legacyInstanceIndex - 5);
+        legacyNotice = "Save list refreshed from the active RetroArch root.";
+        overlay = Overlay::LegacyInstances;
+        scrollSelectionIntoView();
+        return true;
     }
 
     void SaveSelectScreen::loadUsers() {
@@ -273,10 +329,8 @@ namespace UI {
         if (!u || titleIndex < 0 || titleIndex >= (int)u->titles.size()) return;
         const auto& title = u->titles[titleIndex];
         if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-            if (title.legacyInstances.empty()) return;
-            overlay = Overlay::LegacyInstances;
-            legacyInstanceIndex = 0;
-            legacyInstanceScroll = 0;
+            const std::string gameId = title.gameId;
+            refreshLegacySources(gameId);
             return;
         }
         selectedUserUid  = u->uid;
@@ -294,13 +348,25 @@ namespace UI {
         if (title.sourceKind != SelectedSourceKind::RetroArchFRLG ||
             legacyInstanceIndex < 0 ||
             legacyInstanceIndex >= static_cast<int>(title.legacyInstances.size())) return;
+        // Reread the active physical root at the selection boundary. If this child was replaced or
+        // deleted while the picker was open, the stale instance can no longer resolve to anything.
+        const std::string gameId = title.gameId;
+        const std::string normalizedPath =
+            title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)].normalizedPath;
+        if (!refreshLegacySources(gameId, normalizedPath, true)) return;
+        u = currentUser();
+        if (!u || titleIndex < 0 || titleIndex >= static_cast<int>(u->titles.size())) return;
+        const auto& refreshedTitle = u->titles[titleIndex];
+        if (legacyInstanceIndex < 0 ||
+            legacyInstanceIndex >= static_cast<int>(refreshedTitle.legacyInstances.size())) return;
+
         selectedUserUid = {};
         selectedTitleId = 0;
-        selectedTitleName = title.name;
-        selectedGameId = title.gameId;
-        selectedSourceKind = title.sourceKind;
+        selectedTitleName = refreshedTitle.name;
+        selectedGameId = refreshedTitle.gameId;
+        selectedSourceKind = refreshedTitle.sourceKind;
         selectedLegacySourceIndex =
-            title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)].sourceIndex;
+            refreshedTitle.legacyInstances[static_cast<size_t>(legacyInstanceIndex)].sourceIndex;
         titleSelected = true;
     }
 
@@ -343,6 +409,14 @@ namespace UI {
             const int count = static_cast<int>(instances.size());
             if (kDown & HidNpadButton_B) {
                 overlay = Overlay::None;
+                return;
+            }
+            if (kDown & HidNpadButton_X) {
+                const std::string gameId = u->titles[titleIndex].gameId;
+                std::string preferred;
+                if (legacyInstanceIndex >= 0 && legacyInstanceIndex < count)
+                    preferred = instances[static_cast<size_t>(legacyInstanceIndex)].normalizedPath;
+                refreshLegacySources(gameId, preferred, false);
                 return;
             }
             if (count == 0) {
@@ -583,11 +657,16 @@ namespace UI {
             fb.drawText(x + 28, y + 76,
                         "Choose a validated battery save. The source file will not be modified.",
                         Colors::TextSecondary, TextStyle::Caption);
+            if (legacyCatalog && !legacyCatalog->activeRoot.empty()) {
+                fb.drawText(x + 28, y + 96,
+                            "Active root: " + sourceLeafName(legacyCatalog->activeRoot),
+                            Colors::TextMuted, TextStyle::Caption);
+            }
 
             const int first = legacyInstanceScroll;
             const int last = std::min<int>(static_cast<int>(parent.legacyInstances.size()),
                                            first + visibleRows);
-            int ry = y + 112;
+            int ry = y + 122;
             for (int i = first; i < last; ++i) {
                 const auto& instance = parent.legacyInstances[static_cast<size_t>(i)];
                 drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 6,
@@ -604,8 +683,11 @@ namespace UI {
                             TextStyle::Caption);
                 ry += rowH;
             }
+            if (!legacyNotice.empty())
+                fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
+                            TextStyle::Caption);
             drawNavBar(fb, {{"Up/Down", "Choose Save"}, {"A", "Open Read Only"},
-                            {"B", "Back"}});
+                            {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
             drawInfoOverlay(fb, "Game Sources & Controls", {
                 "D-pad / Left Stick   Navigate (hold to scroll)",

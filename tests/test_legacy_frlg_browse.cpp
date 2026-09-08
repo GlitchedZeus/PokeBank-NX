@@ -80,9 +80,9 @@ int main() {
     assert(cards[0].artworkKey == "firered_gba");
     assert(cards[0].instances.size() == 2);
     assert(cards[0].instances[0].sourceIndex == 0);
-    assert(cards[0].instances[0].label == "Main Save");
+    assert(cards[0].instances[0].label == "WILL — Main Save");
     assert(cards[0].instances[1].sourceIndex == 4);
-    assert(cards[0].instances[1].label == "Battery Save 2");
+    assert(cards[0].instances[1].label == "WILL — Battery Save 2");
     assert(cards[1].gameId == "leafgreen_gba");
     assert(cards[1].artworkKey == "leafgreen_gba");
     assert(cards[1].instances.size() == 1 && cards[1].instances[0].sourceIndex == 2);
@@ -96,6 +96,9 @@ int main() {
     staleCard = cards[0];
     staleCard.instances[0].sourceIndex = 1;
     assert(Legacy::resolveFRLGSaveInstance(discovery, staleCard, 0) == nullptr);
+    staleCard = cards[0];
+    ++staleCard.instances[0].modifiedTime;
+    assert(Legacy::resolveFRLGSaveInstance(discovery, staleCard, 0) == nullptr);
     assert(Legacy::resolveFRLGSaveInstance(discovery, cards[0], 2) == nullptr);
 
     const auto strictParty = discovery.sources[0].save->party();
@@ -105,6 +108,20 @@ int main() {
     auto trainer = Legacy::FRLGReadOnlyTrainer::create(*discovery.sources[0].save, error);
     assert(trainer && error.empty());
     assert(trainer->sourceGameId() == "firered_gba");
+    assert(trainer->trainerName == "WILL");
+    assert(trainer->trainerGender == 1);
+    assert(trainer->TID16 == 54321 && trainer->SID16 == 12345);
+    assert(trainer->ID32 == (static_cast<uint32_t>(12345) << 16 | 54321));
+    assert(trainer->TID == 54321 && trainer->SID == 12345);
+    assert(trainer->money == 500000);
+    assert(trainer->items.size() == 6);
+    const uint16_t expectedItemIds[] = {13, 259, 4, 289, 133, 1};
+    const uint16_t expectedItemCounts[] = {25, 1, 50, 3, 8, 7};
+    for (size_t pouch = 0; pouch < trainer->items.size(); ++pouch) {
+        assert(trainer->items[pouch].size() == 1);
+        assert(trainer->items[pouch][0].itemId == expectedItemIds[pouch]);
+        assert(trainer->items[pouch][0].count == expectedItemCounts[pouch]);
+    }
     assert(trainer->getPartySize() == 1);
     assert(trainer->getBoxCount() == 14 && trainer->getSlotsPerBox() == 30);
     assert(trainer->party[0]);

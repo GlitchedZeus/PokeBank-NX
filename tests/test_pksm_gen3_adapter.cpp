@@ -124,6 +124,26 @@ namespace {
     LogicalSectors makeLogicalSlot(uint16_t species, uint32_t pid) {
         LogicalSectors logical{};
         write32(logical[0], 0xAC, 1);                  // PKSM-Core FRLG family marker
+        writeName(logical[0], 0x00, 8, u"WILL");
+        logical[0][0x08] = 1;                         // female trainer
+        write16(logical[0], 0x0A, 54321);             // visible TID
+        write16(logical[0], 0x0C, 12345);             // secret ID
+        constexpr uint32_t securityKey = 0xA1B2C3D4;
+        constexpr uint16_t key16 = static_cast<uint16_t>(securityKey);
+        write32(logical[0], 0xF20, securityKey);
+        write32(logical[1], 0x290, 500000u ^ securityKey);
+
+        auto bagItem = [&](size_t offset, uint16_t itemId, uint16_t count, bool keyed) {
+            write16(logical[1], offset, itemId);
+            write16(logical[1], offset + 2, keyed ? static_cast<uint16_t>(count ^ key16)
+                                                  : count);
+        };
+        bagItem(0x310, 13, 25, true);                 // Items: Potion x25
+        bagItem(0x3B8, 259, 1, true);                 // Key Items
+        bagItem(0x430, 4, 50, true);                  // Poke Balls x50
+        bagItem(0x464, 289, 3, true);                 // TM Case
+        bagItem(0x54C, 133, 8, true);                 // Berry Pouch
+        bagItem(0x298, 1, 7, false);                  // PC Items: plaintext Master Ball x7
         logical[1][0x34] = 1;
         const auto party = makePokemon(species, pid, true);
         std::copy(party.begin(), party.end(), logical[1].begin() + 0x38);
@@ -215,7 +235,8 @@ int main(int argc, char** argv) {
     const auto untouched = fixture;
     const std::string fixtureHash = sha256(fixture);
     std::cout << "Gen III deterministic fixture SHA-256: " << fixtureHash << '\n';
-    assert(fixtureHash == "b416aa985e459cb939caf1e1c70ce8359edf0c99a536e24d3b2a2a32b0541120");
+    // Update this pinned value only when the deterministic fixture contract intentionally changes.
+    assert(fixtureHash == "c0aec024fd8f0b2c3b99a8e93853f63c013d223b8fd2c08a790156bc147ae0a0");
     if (argc == 3 && std::string_view(argv[1]) == "--write-fixture") {
         std::ofstream output(argv[2], std::ios::binary | std::ios::trunc);
         output.write(reinterpret_cast<const char*>(fixture.data()),
@@ -230,6 +251,25 @@ int main(int argc, char** argv) {
     assert(parsed.save->metadata().activeSlot == 1);
     assert(parsed.save->metadata().saveCounter == 9);
     assert(parsed.save->metadata().partyCount == 1);
+    const auto& trainer = parsed.save->trainer();
+    assert(trainer.name == "WILL");
+    assert(trainer.gender == 1);
+    assert(trainer.tid16 == 54321 && trainer.sid16 == 12345);
+    assert(trainer.id32 == (static_cast<uint32_t>(12345) << 16 | 54321));
+    assert(trainer.money == 500000);
+    const auto& inventory = parsed.save->inventory();
+    assert(inventory.size() == 6);
+    const std::array<std::string_view, 6> pouchNames = {
+        "Items", "Key Items", "Poké Balls", "TM Case", "Berry Pouch", "PC Items"};
+    const std::array<uint16_t, 6> expectedIds = {13, 259, 4, 289, 133, 1};
+    const std::array<uint16_t, 6> expectedCounts = {25, 1, 50, 3, 8, 7};
+    for (size_t index = 0; index < inventory.size(); ++index) {
+        assert(inventory[index].name == pouchNames[index]);
+        assert(inventory[index].items.size() == 1);
+        assert(inventory[index].items[0].itemId == expectedIds[index]);
+        assert(inventory[index].items[0].count == expectedCounts[index]);
+        assert(inventory[index].countEncrypted == (index != 5));
+    }
     const auto party = parsed.save->party();
     assert(parsed.save->lastEnumerationError() == SaveError::None);
     assert(party.size() == 1);
@@ -331,6 +371,22 @@ int main(int argc, char** argv) {
     refreshSectorChecksum(invalidPartyCount, partySector);
     assert(parse(invalidPartyCount, SourceGame::FireRedGBA).error ==
            SaveError::InvalidPartyCount);
+
+    auto malformedInventory = fixture;
+    const size_t inventorySector = physicalSectorForId(malformedInventory, 1, 1);
+    write16(malformedInventory, inventorySector + 0x310, 0xFFFF);
+    refreshSectorChecksum(malformedInventory, inventorySector);
+    assert(parse(malformedInventory, SourceGame::FireRedGBA).error ==
+           SaveError::InvalidInventory);
+
+    auto oversizedStack = fixture;
+    const size_t oversizedInventorySector = physicalSectorForId(oversizedStack, 1, 1);
+    constexpr uint16_t fixtureSecurityKeyLow = 0xC3D4;
+    write16(oversizedStack, oversizedInventorySector + 0x310 + 2,
+            static_cast<uint16_t>(1000 ^ fixtureSecurityKeyLow));
+    refreshSectorChecksum(oversizedStack, oversizedInventorySector);
+    assert(parse(oversizedStack, SourceGame::FireRedGBA).error ==
+           SaveError::InvalidInventory);
 
     // A Pokemon corruption with a freshly valid save-sector checksum reaches entity validation,
     // then fails safely instead of being presented as a valid record.

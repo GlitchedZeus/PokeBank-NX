@@ -67,6 +67,33 @@ namespace PokeVault::Legacy {
 
     bool FRLGReadOnlyTrainer::populate(
         const Integration::Gen3::ReadOnlySave& save, std::string& error) {
+        const auto& strictTrainer = save.trainer();
+        trainerName = strictTrainer.name;
+        trainerGender = strictTrainer.gender;
+        TID16 = strictTrainer.tid16;
+        SID16 = strictTrainer.sid16;
+        ID32 = strictTrainer.id32;
+        // Gen III has no modern six-digit display IDs. Keep the inherited panel truthful by
+        // exposing the raw 16-bit visible/secret values in both legacy display fields.
+        TID = TID16;
+        SID = SID16;
+        money = strictTrainer.money;
+
+        const auto& strictInventory = save.inventory();
+        if (strictInventory.size() != 6) {
+            error = "strict Gen III adapter returned an invalid inventory layout";
+            return false;
+        }
+        items.clear();
+        items.resize(strictInventory.size());
+        for (size_t pouch = 0; pouch < strictInventory.size(); ++pouch) {
+            items[pouch].reserve(strictInventory[pouch].items.size());
+            for (const auto& item : strictInventory[pouch].items) {
+                if (item.itemId == 0 || item.count == 0) continue;
+                items[pouch].push_back({item.itemId, item.count, false, false});
+            }
+        }
+
         const auto partyRecords = save.party();
         if (save.lastEnumerationError() != Integration::Gen3::SaveError::None) {
             error = "strict Gen III adapter could not enumerate the party";

@@ -4,6 +4,7 @@
 #include "Integration/Gen3/PKSMGen3Adapter.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <span>
 #include <string>
@@ -25,9 +26,12 @@ namespace PokeVault::Legacy {
 
     struct FRLGSource {
         std::string path;
+        std::string normalizedPath;
         // Canonical filesystem identity used only to collapse aliases of this same file. Two
         // separately stored saves remain distinct even when their bytes happen to match.
         std::string canonicalPath;
+        uint64_t fileSize = 0;
+        int64_t modifiedTime = 0;
         std::string gameId;
         LegacySourceStatus status = LegacySourceStatus::ReadError;
         Integration::Gen3::SaveError parseError = Integration::Gen3::SaveError::None;
@@ -40,9 +44,12 @@ namespace PokeVault::Legacy {
     };
 
     struct FRLGDiscoveryResult {
+        enum class RootKind : unsigned char { None, Configured, ConventionalFallback };
         std::vector<FRLGSource> sources;
         size_t filesExamined = 0;
         bool limitReached = false;
+        std::string activeRoot;
+        RootKind activeRootKind = RootKind::None;
     };
 
     // Reads only savefile_directory from a RetroArch configuration. Relative values are
@@ -58,7 +65,9 @@ namespace PokeVault::Legacy {
     // Switch convenience path: configured RetroArch root, plus the conventional save root only
     // when it actually exists. It never recursively scans sdmc:/ as a whole.
     [[nodiscard]] FRLGDiscoveryResult discoverConfiguredRetroArchFRLGSaves(
-        ScanLimits limits = {});
+        ScanLimits limits = {},
+        const std::string& configPath = "sdmc:/retroarch/retroarch.cfg",
+        const std::string& conventionalRoot = "sdmc:/retroarch/cores/savefiles");
 }
 
 #endif

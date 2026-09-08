@@ -34,10 +34,10 @@ namespace PokeVault::Legacy {
             return !path.empty() && (path.front() == '/' || path.find(":/") != std::string::npos);
         }
 
-        bool isRegularFile(const std::string& path, size_t* size = nullptr) {
+        bool isRegularFile(const std::string& path, struct stat* metadata = nullptr) {
             struct stat info{};
             if (stat(path.c_str(), &info) != 0 || !S_ISREG(info.st_mode)) return false;
-            if (size) *size = static_cast<size_t>(info.st_size);
+            if (metadata) *metadata = info;
             return true;
         }
 
@@ -113,9 +113,14 @@ namespace PokeVault::Legacy {
             return true;
         }
 
-        FRLGSource inspectFile(const std::string& path, size_t size, IdentityHint hint) {
+        FRLGSource inspectFile(const std::string& path, const struct stat& metadata,
+                               IdentityHint hint) {
             FRLGSource source;
             source.path = path;
+            source.normalizedPath = normalizedPath(path);
+            source.fileSize = static_cast<uint64_t>(metadata.st_size);
+            source.modifiedTime = static_cast<int64_t>(metadata.st_mtime);
+            const size_t size = static_cast<size_t>(metadata.st_size);
             if (size != 0x20000) {
                 source.status = LegacySourceStatus::InvalidSave;
                 source.parseError = Integration::Gen3::SaveError::WrongSize;
@@ -187,8 +192,8 @@ namespace PokeVault::Legacy {
                     continue;
                 }
                 if (!supportedExtension(name)) continue;
-                size_t size = 0;
-                if (!isRegularFile(path, &size)) continue;
+                struct stat metadata{};
+                if (!isRegularFile(path, &metadata)) continue;
                 const std::string fileIdentity = filesystemIdentity(path);
                 if (!state.visitedFiles.insert(fileIdentity).second) continue;
                 if (state.result.filesExamined >= state.limits.maxFiles) {
@@ -197,7 +202,7 @@ namespace PokeVault::Legacy {
                 }
                 ++state.result.filesExamined;
                 const IdentityHint hint = identityHint(path);
-                FRLGSource source = inspectFile(path, size, hint);
+                FRLGSource source = inspectFile(path, metadata, hint);
                 source.canonicalPath = fileIdentity;
                 // Do not surface every unrelated emulator .sav. Keep valid FRLG-family files and
                 // named FR/LG candidates so a useful error can be shown for the latter.
@@ -237,18 +242,33 @@ namespace PokeVault::Legacy {
         ScanState state{limits, {}, {}, {}};
         for (const auto& root : approvedRoots) {
             if (state.result.limitReached) break;
-            if (isDirectory(root)) scanDirectory(root, 0, state);
+            if (isDirectory(root)) {
+                if (state.result.activeRoot.empty())
+                    state.result.activeRoot = normalizedPath(root);
+                scanDirectory(root, 0, state);
+            }
         }
         return std::move(state.result);
     }
 
-    FRLGDiscoveryResult discoverConfiguredRetroArchFRLGSaves(ScanLimits limits) {
-        auto roots = retroArchSaveRootsFromConfig("sdmc:/retroarch/retroarch.cfg");
-        const std::string conventional = "sdmc:/retroarch/cores/savefiles";
-        if (isDirectory(conventional) &&
-            std::find(roots.begin(), roots.end(), conventional) == roots.end()) {
-            roots.push_back(conventional);
+    FRLGDiscoveryResult discoverConfiguredRetroArchFRLGSaves(
+        ScanLimits limits, const std::string& configPath,
+        const std::string& conventionalRoot) {
+        const auto configuredRoots = retroArchSaveRootsFromConfig(configPath);
+        std::vector<std::string> selectedRoots;
+        FRLGDiscoveryResult::RootKind kind = FRLGDiscoveryResult::RootKind::None;
+        // RetroArch uses exactly one savefile_directory. A usable configured directory is
+        // authoritative; the conventional root is considered only when that setting is absent,
+        // "default", unreadable, or points to a directory that does not exist.
+        if (!configuredRoots.empty() && isDirectory(configuredRoots.front())) {
+            selectedRoots.push_back(configuredRoots.front());
+            kind = FRLGDiscoveryResult::RootKind::Configured;
+        } else if (isDirectory(conventionalRoot)) {
+            selectedRoots.push_back(conventionalRoot);
+            kind = FRLGDiscoveryResult::RootKind::ConventionalFallback;
         }
-        return discoverFRLGSaves(roots, limits);
+        auto result = discoverFRLGSaves(selectedRoots, limits);
+        result.activeRootKind = kind;
+        return result;
     }
 }

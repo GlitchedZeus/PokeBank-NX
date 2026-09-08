@@ -9,6 +9,7 @@
 #if defined(__SWITCH__) || defined(POKEBANK_GEN3_SELECTIVE_PORT_TEST)
 
 #include "Integration/Gen3/PKSMGen3Adapter.h"
+#include "Integration/Gen3/FRLGReadModel.h"
 
 #include "Encryption/Encryption3FRLG.h"
 #include "Names/ItemNames.h"
@@ -127,6 +128,7 @@ namespace PokeVault::Integration::Gen3 {
         std::vector<uint8_t> original;
         SaveMetadata metadata;
         std::array<size_t, kSectorCount> sectorOffsets{};
+        Detail::FRLGReadModelResult readModel;
         mutable SaveError enumerationError = SaveError::None;
 
         Impl(std::span<const uint8_t> bytes, SourceGame sourceGame, uint8_t activeSlot,
@@ -134,7 +136,8 @@ namespace PokeVault::Integration::Gen3 {
             : original(bytes.begin(), bytes.end()),
               metadata{sourceGame, Gen3::sourceGameId(sourceGame), activeSlot, saveCounter,
                        0, 14, 30},
-              sectorOffsets(offsets) {
+              sectorOffsets(offsets),
+              readModel(Detail::readFRLGModel(original, sectorOffsets)) {
             metadata.partyCount = readLogical(1, 0x34, 1).front();
         }
 
@@ -206,6 +209,10 @@ namespace PokeVault::Integration::Gen3 {
     ReadOnlySave::~ReadOnlySave() = default;
 
     const SaveMetadata& ReadOnlySave::metadata() const noexcept { return impl_->metadata; }
+    const TrainerRecord& ReadOnlySave::trainer() const noexcept { return impl_->readModel.trainer; }
+    const std::vector<InventoryPouchRecord>& ReadOnlySave::inventory() const noexcept {
+        return impl_->readModel.inventory;
+    }
 
     std::vector<PokemonRecord> ReadOnlySave::party() const {
         impl_->enumerationError = SaveError::None;
@@ -259,6 +266,10 @@ namespace PokeVault::Integration::Gen3 {
         }
         auto impl = std::make_unique<ReadOnlySave::Impl>(
             bytes, sourceGame, active, selected.counter, selected.logicalSectorOffsets);
+        if (impl->readModel.error != SaveError::None) {
+            const SaveError error = impl->readModel.error;
+            return {nullptr, error, std::string(errorMessage(error))};
+        }
         if (impl->metadata.partyCount > 6) {
             return {nullptr, SaveError::InvalidPartyCount, "party count exceeds six"};
         }
@@ -288,6 +299,7 @@ namespace PokeVault::Integration::Gen3 {
             case SaveError::InvalidPartyCount: return "invalid party count";
             case SaveError::CoreRejected: return "native Generation III reader rejected the data";
             case SaveError::MalformedPokemon: return "Pokemon checksum is invalid";
+            case SaveError::InvalidInventory: return "invalid FireRed/LeafGreen inventory";
         }
         return "unknown Generation III parse error";
     }

@@ -25,7 +25,7 @@ namespace UI {
             RetroArchFRLG,
         };
 
-        explicit SaveSelectScreen(const PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
+        explicit SaveSelectScreen(PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return exitRequested; }
@@ -76,6 +76,8 @@ namespace UI {
         std::string selectedGameId;
         SelectedSourceKind selectedSourceKind = SelectedSourceKind::None;
         size_t selectedLegacySourceIndex = 0;
+        PokeVault::Legacy::FRLGDiscoveryResult* legacyCatalog = nullptr;
+        std::string legacyNotice;
 
         // Tap targets captured during draw(), hit-tested on the next update().
         std::vector<HitRect> titleRects;
@@ -83,6 +85,9 @@ namespace UI {
 
         void loadUsers();
         void loadLegacySources(const PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
+        bool refreshLegacySources(const std::string& gameId,
+                                  const std::string& preferredNormalizedPath = {},
+                                  bool requirePreferred = false);
         // Titles come from enumerating SAVE DATA, not installed applications: a game played from a
         // cartridge that is currently out, or one that has been uninstalled, keeps its save on
         // internal storage and must still be editable.
