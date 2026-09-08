@@ -36,6 +36,9 @@ int main() {
     assert(fireRedSwitch->platform == Platform::NintendoSwitch);
     assert(platformName(Platform::GameBoyAdvance) == "Game Boy Advance");
     assert(platformName(Platform::NintendoSwitch) == "Nintendo Switch");
+    assert(gameCardArtworkPath("firered_gba") == "romfs:/game_cards/firered_gba.png");
+    assert(gameCardArtworkPath("leafgreen_gba") == "romfs:/game_cards/leafgreen_gba.png");
+    assert(gameCardArtworkPath("firered_switch").empty());
     assert(findGame("missing") == nullptr);
     assert(findSwitchGame(0) == nullptr);
 }

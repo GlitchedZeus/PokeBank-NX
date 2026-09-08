@@ -48,14 +48,14 @@ namespace UI {
             std::string platformLabel;
             std::string sourceLabel = "LOCAL SAVE";
             std::string locationLabel;
+            std::string artworkKey;
+            std::vector<PokeVault::Legacy::FRLGSaveInstance> legacyInstances;
             SelectedSourceKind sourceKind = SelectedSourceKind::SwitchTitle;
-            size_t legacySourceIndex = 0;
         };
         struct UserEntry {
             AccountUid uid;
             std::string name;
             std::vector<TitleEntry> titles;
-            bool retroArchGroup = false;
         };
         struct HitRect { int x, y, w, h, idx; };
 
@@ -65,9 +65,11 @@ namespace UI {
 
         bool titleSelected = false;
         bool exitRequested = false;
-        enum class Overlay { None, Options, Help };
+        enum class Overlay { None, Options, Help, LegacyInstances };
         Overlay overlay = Overlay::None;
         int optionsIndex = 0;
+        int legacyInstanceIndex = 0;
+        int legacyInstanceScroll = 0;
         AccountUid selectedUserUid{};
         u64 selectedTitleId = 0;
         std::string selectedTitleName;
@@ -88,6 +90,7 @@ namespace UI {
         static bool scanSaveSpace(UserEntry& user, int spaceId, int& scanned, int& forUser);
         void setUser(int idx);
         void selectCurrentTitle();
+        void selectCurrentLegacyInstance();
 
         const UserEntry* currentUser() const;
         int titleColumns() const;      // grid columns for the current user's title count (<= 5)

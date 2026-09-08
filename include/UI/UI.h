@@ -47,7 +47,8 @@ namespace UI {
         bool handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
                                const std::string& backupDir, bool loadedFromCart,
                                std::string& error);
-        bool handleLegacyFRLGView(size_t sourceIndex, std::string& error);
+        bool handleLegacyFRLGView(size_t sourceIndex, const std::string& gameId,
+                                  std::string& error);
     };
 }
 

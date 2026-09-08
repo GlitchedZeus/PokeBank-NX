@@ -65,4 +65,10 @@ namespace PokeVault::Games {
         }
         return "Unknown platform";
     }
+
+    std::string_view gameCardArtworkPath(std::string_view id) noexcept {
+        if (id == "firered_gba") return "romfs:/game_cards/firered_gba.png";
+        if (id == "leafgreen_gba") return "romfs:/game_cards/leafgreen_gba.png";
+        return {};
+    }
 }

@@ -25,6 +25,9 @@ namespace PokeVault::Legacy {
 
     struct FRLGSource {
         std::string path;
+        // Canonical filesystem identity used only to collapse aliases of this same file. Two
+        // separately stored saves remain distinct even when their bytes happen to match.
+        std::string canonicalPath;
         std::string gameId;
         LegacySourceStatus status = LegacySourceStatus::ReadError;
         Integration::Gen3::SaveError parseError = Integration::Gen3::SaveError::None;

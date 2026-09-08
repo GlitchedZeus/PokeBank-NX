@@ -74,7 +74,8 @@ namespace UI {
                 if (selectScreen.getSelectedSourceKind() ==
                     SaveSelectScreen::SelectedSourceKind::RetroArchFRLG) {
                     std::string error;
-                    if (!handleLegacyFRLGView(selectScreen.getSelectedLegacySourceIndex(), error))
+                    if (!handleLegacyFRLGView(selectScreen.getSelectedLegacySourceIndex(),
+                                              selectScreen.getSelectedGameId(), error))
                         logErrorToFile("Legacy FRLG source refused open", error.c_str());
                 } else {
                     handleBackupSelection(selectScreen.getSelectedUser(),
@@ -176,7 +177,8 @@ namespace UI {
         return true;
     }
 
-    bool UIManager::handleLegacyFRLGView(size_t sourceIndex, std::string& error) {
+    bool UIManager::handleLegacyFRLGView(
+        size_t sourceIndex, const std::string& gameId, std::string& error) {
         error.clear();
         if (sourceIndex >= legacyFRLGSources.sources.size()) {
             error = "RetroArch source selection is stale";
@@ -184,19 +186,12 @@ namespace UI {
         }
 
         const auto& selected = legacyFRLGSources.sources[sourceIndex];
-        PokeVault::Legacy::FRLGSourceCard card{
-            sourceIndex,
-            selected.gameId,
-            {},
-            "Game Boy Advance",
-            "RETROARCH",
-            selected.path,
-        };
-        const auto* source = PokeVault::Legacy::resolveFRLGSourceCard(legacyFRLGSources, card);
-        if (!source) {
+        if (!selected.ready() || selected.gameId != gameId ||
+            selected.save->metadata().sourceGameId != gameId) {
             error = "RetroArch source is no longer a validated FireRed/LeafGreen save";
             return false;
         }
+        const auto* source = &selected;
         const auto* identity = PokeVault::Games::findGame(source->gameId);
         if (!identity) {
             error = "RetroArch source has no stable game identity";

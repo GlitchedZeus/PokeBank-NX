@@ -8,16 +8,31 @@
 #include <vector>
 
 namespace PokeVault::Legacy {
-    // UI-neutral descriptor for one validated legacy source. The descriptor carries the
-    // discovery-result index rather than a raw save pointer, so selection can be resolved back
-    // through the session-owned catalog without copying or reparsing the source file.
-    struct FRLGSourceCard {
+    enum class LegacySaveInstanceKind : unsigned char {
+        BatterySave,
+        SaveState,
+        Backup,
+        ManualImport,
+    };
+
+    struct FRLGSaveInstance {
         size_t sourceIndex = 0;
+        LegacySaveInstanceKind kind = LegacySaveInstanceKind::BatterySave;
+        std::string label;
+        std::string sourceLabel;
+        std::string location;
+    };
+
+    // One UI-neutral parent card per exact game identity/source family. Validated save files are
+    // children, not duplicate top-level cards. The child retains the session-catalog index so
+    // activation never copies or reparses the raw source file.
+    struct FRLGSourceCard {
         std::string gameId;
         std::string title;
         std::string platformLabel;
         std::string sourceLabel;
-        std::string location;
+        std::string artworkKey;
+        std::vector<FRLGSaveInstance> instances;
     };
 
     // Only strict, ready sources become selectable cards. Invalid, ambiguous, or unreadable files
@@ -25,10 +40,11 @@ namespace PokeVault::Legacy {
     [[nodiscard]] std::vector<FRLGSourceCard> buildFRLGSourceCards(
         const FRLGDiscoveryResult& discovery);
 
-    // Revalidates the index/identity relationship at activation time. This prevents a stale or
-    // malformed UI descriptor from routing to the wrong release or platform.
-    [[nodiscard]] const FRLGSource* resolveFRLGSourceCard(
-        const FRLGDiscoveryResult& discovery, const FRLGSourceCard& card) noexcept;
+    // Revalidates parent identity and child catalog index at activation time. This prevents a stale
+    // or malformed UI descriptor from routing to another release, platform, or source instance.
+    [[nodiscard]] const FRLGSource* resolveFRLGSaveInstance(
+        const FRLGDiscoveryResult& discovery, const FRLGSourceCard& card,
+        size_t instanceIndex) noexcept;
 }
 
 #endif

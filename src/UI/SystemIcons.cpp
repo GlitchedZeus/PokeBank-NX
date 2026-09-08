@@ -4,8 +4,10 @@
 
 #include <cstdlib>
 #include <map>
+#include <string>
 #include <vector>
 
+#include "Games/GameIdentity.h"
 #include "Utils/Logger.h"
 
 using namespace Utils;
@@ -20,12 +22,24 @@ namespace UI {
 
         std::map<UidKey, IconImage> s_userCache;
         std::map<u64, IconImage>    s_titleCache;
+        std::map<std::string, IconImage> s_gameCardCache;
 
         // Decode a JPEG blob to a session-owned RGBA IconImage (invalid on failure).
         IconImage decodeToRGBA(const unsigned char* jpg, int len) {
             IconImage img;
             int w = 0, h = 0, comp = 0;
             unsigned char* rgba = stbi_load_from_memory(jpg, len, &w, &h, &comp, 4);
+            if (!rgba) return img;
+            img.data = rgba;
+            img.width = w;
+            img.height = h;
+            return img;
+        }
+
+        IconImage decodeFileToRGBA(std::string_view path) {
+            IconImage img;
+            int w = 0, h = 0, comp = 0;
+            unsigned char* rgba = stbi_load(std::string(path).c_str(), &w, &h, &comp, 4);
             if (!rgba) return img;
             img.data = rgba;
             img.width = w;
@@ -77,10 +91,26 @@ namespace UI {
         return s_titleCache.emplace(titleId, img).first->second;
     }
 
+    const IconImage& SystemIcons::gameCardIcon(std::string_view gameId, u64 titleId) {
+        if (titleId != 0) return titleIcon(titleId);
+
+        const std::string key(gameId);
+        auto it = s_gameCardCache.find(key);
+        if (it != s_gameCardCache.end()) return it->second;
+
+        IconImage img;
+        const std::string_view path = PokeVault::Games::gameCardArtworkPath(gameId);
+        if (!path.empty()) img = decodeFileToRGBA(path);
+        if (!img.valid()) logErrorToFile("SystemIcons: failed to load packaged game-card artwork");
+        return s_gameCardCache.emplace(key, img).first->second;
+    }
+
     void SystemIcons::cleanup() {
         for (auto& kv : s_userCache)  if (kv.second.data) stbi_image_free(kv.second.data);
         for (auto& kv : s_titleCache) if (kv.second.data) stbi_image_free(kv.second.data);
+        for (auto& kv : s_gameCardCache) if (kv.second.data) stbi_image_free(kv.second.data);
         s_userCache.clear();
         s_titleCache.clear();
+        s_gameCardCache.clear();
     }
 }

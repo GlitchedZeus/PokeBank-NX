@@ -28,6 +28,7 @@ ROMFS = ROOT / "romfs"
 HD_DIR = ROMFS / "sprites" / "pokemon_hd"
 TYPE_DIR = ROMFS / "sprites" / "types"
 FONT_DIR = ROMFS / "fonts"
+GAME_CARD_ART_DIR = ROMFS / "game_cards"
 GENERATOR = ROOT / "tools" / "gen_hdsprites.py"
 
 DEX_MAX = 1025
@@ -124,6 +125,17 @@ def main() -> int:
             fail(errors, f"required UI fonts missing: {', '.join(missing_fonts)}")
         else:
             ok("required UI fonts are present")
+
+    required_game_cards = ("firered_gba.png", "leafgreen_gba.png")
+    if not GAME_CARD_ART_DIR.is_dir():
+        fail(errors, "romfs/game_cards/ is missing; run: make game-card-art")
+    else:
+        missing_cards = [name for name in required_game_cards
+                         if not (GAME_CARD_ART_DIR / name).is_file()]
+        if missing_cards:
+            fail(errors, f"required GBA game-card artwork missing: {', '.join(missing_cards)}")
+        else:
+            ok("FireRed/LeafGreen GBA game-card artwork is present")
 
     print()
     if errors:

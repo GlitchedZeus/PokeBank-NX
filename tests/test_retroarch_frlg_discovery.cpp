@@ -65,7 +65,11 @@ int main() {
 
     const auto fireRedBefore = readFile(fireRedPath);
     const auto leafGreenBefore = readFile(leafGreenPath);
-    auto result = PokeVault::Legacy::discoverFRLGSaves(roots);
+    // Overlapping and repeated approved roots must not surface the same underlying file twice.
+    auto overlappingRoots = roots;
+    overlappingRoots.push_back(core.string());
+    overlappingRoots.push_back(saves.string());
+    auto result = PokeVault::Legacy::discoverFRLGSaves(overlappingRoots);
     assert(result.filesExamined == 5);
     assert(!result.limitReached);
     assert(readFile(fireRedPath) == fireRedBefore);
@@ -80,6 +84,13 @@ int main() {
     const auto leafGreen = findReady("leafgreen_gba");
     assert(fireRed != result.sources.end());
     assert(leafGreen != result.sources.end());
+    assert(!fireRed->canonicalPath.empty() && !leafGreen->canonicalPath.empty());
+    assert(std::count_if(result.sources.begin(), result.sources.end(), [&](const auto& source) {
+        return source.ready() && source.gameId == "firered_gba";
+    }) == 1);
+    assert(std::count_if(result.sources.begin(), result.sources.end(), [&](const auto& source) {
+        return source.ready() && source.gameId == "leafgreen_gba";
+    }) == 1);
     assert(fireRed->save->party().size() == 1);
     assert(fireRed->save->boxes().size() == 2);
     assert(leafGreen->save->party().size() == 1);

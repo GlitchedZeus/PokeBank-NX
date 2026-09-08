@@ -46,6 +46,36 @@ namespace PokeVault::Legacy {
             return stat(path.c_str(), &info) == 0 && S_ISDIR(info.st_mode);
         }
 
+        std::string normalizedPath(std::string path) {
+            std::replace(path.begin(), path.end(), '\\', '/');
+            std::string result;
+            result.reserve(path.size());
+            bool slash = false;
+            for (char c : path) {
+                if (c == '/') {
+                    if (slash) continue;
+                    slash = true;
+                } else {
+                    slash = false;
+                }
+                result.push_back(c);
+            }
+            while (result.size() > 1 && result.back() == '/') result.pop_back();
+            return result;
+        }
+
+        std::string filesystemIdentity(const std::string& path) {
+            struct stat info{};
+            if (stat(path.c_str(), &info) == 0 && info.st_ino != 0) {
+                return "inode:" + std::to_string(static_cast<unsigned long long>(info.st_dev)) +
+                    ":" + std::to_string(static_cast<unsigned long long>(info.st_ino));
+            }
+            // FAT/devoptab implementations may not expose useful inode numbers. Syntactic
+            // normalization still collapses repeated/overlapping roots without guessing that two
+            // separately stored files are aliases merely because their contents match.
+            return normalizedPath(path);
+        }
+
         bool supportedExtension(const std::string& name) {
             const size_t dot = name.find_last_of('.');
             if (dot == std::string::npos) return false;
@@ -131,11 +161,13 @@ namespace PokeVault::Legacy {
             ScanLimits limits;
             FRLGDiscoveryResult result;
             std::set<std::string> visitedDirectories;
+            std::set<std::string> visitedFiles;
         };
 
         void scanDirectory(const std::string& root, size_t depth, ScanState& state) {
+            const std::string directoryIdentity = filesystemIdentity(root);
             if (state.result.limitReached || depth > state.limits.maxDepth ||
-                !state.visitedDirectories.insert(root).second) return;
+                !state.visitedDirectories.insert(directoryIdentity).second) return;
             DIR* directory = opendir(root.c_str());
             if (!directory) return;
 
@@ -155,15 +187,18 @@ namespace PokeVault::Legacy {
                     continue;
                 }
                 if (!supportedExtension(name)) continue;
+                size_t size = 0;
+                if (!isRegularFile(path, &size)) continue;
+                const std::string fileIdentity = filesystemIdentity(path);
+                if (!state.visitedFiles.insert(fileIdentity).second) continue;
                 if (state.result.filesExamined >= state.limits.maxFiles) {
                     state.result.limitReached = true;
                     break;
                 }
                 ++state.result.filesExamined;
-                size_t size = 0;
-                if (!isRegularFile(path, &size)) continue;
                 const IdentityHint hint = identityHint(path);
                 FRLGSource source = inspectFile(path, size, hint);
+                source.canonicalPath = fileIdentity;
                 // Do not surface every unrelated emulator .sav. Keep valid FRLG-family files and
                 // named FR/LG candidates so a useful error can be shown for the latter.
                 if (source.ready() || source.status == LegacySourceStatus::AmbiguousIdentity ||
@@ -199,7 +234,7 @@ namespace PokeVault::Legacy {
     FRLGDiscoveryResult discoverFRLGSaves(
         std::span<const std::string> approvedRoots, ScanLimits limits) {
         if (limits.maxFiles == 0) limits.maxFiles = 1;
-        ScanState state{limits, {}, {}};
+        ScanState state{limits, {}, {}, {}};
         for (const auto& root : approvedRoots) {
             if (state.result.limitReached) break;
             if (isDirectory(root)) scanDirectory(root, 0, state);

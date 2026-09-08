@@ -2,10 +2,13 @@
 
 #include "Games/GameIdentity.h"
 
+#include <algorithm>
+#include <set>
+
 namespace PokeVault::Legacy {
     std::vector<FRLGSourceCard> buildFRLGSourceCards(const FRLGDiscoveryResult& discovery) {
         std::vector<FRLGSourceCard> cards;
-        cards.reserve(discovery.sources.size());
+        std::vector<std::set<std::string>> instanceKeys;
         for (size_t index = 0; index < discovery.sources.size(); ++index) {
             const auto& source = discovery.sources[index];
             if (!source.ready()) continue;
@@ -17,22 +20,52 @@ namespace PokeVault::Legacy {
             }
             if (source.save->metadata().sourceGameId != game->id) continue;
 
-            cards.push_back({
+            auto cardIt = std::find_if(cards.begin(), cards.end(), [&](const auto& card) {
+                return card.gameId == game->id;
+            });
+            size_t cardIndex = 0;
+            if (cardIt == cards.end()) {
+                cards.push_back({
+                    std::string(game->id),
+                    std::string(game->title),
+                    std::string(Games::platformName(game->platform)),
+                    "RETROARCH",
+                    std::string(game->id),
+                    {},
+                });
+                instanceKeys.emplace_back();
+                cardIndex = cards.size() - 1;
+            } else {
+                cardIndex = static_cast<size_t>(std::distance(cards.begin(), cardIt));
+            }
+
+            // Discovery normally canonicalizes this already. Keeping the same guard at the model
+            // boundary makes manually assembled/imported catalogs safe too. Never use content hash,
+            // trainer name, or game id as the child identity: separate files must remain separate.
+            const std::string& identity = source.canonicalPath.empty() ? source.path
+                                                                       : source.canonicalPath;
+            if (!instanceKeys[cardIndex].insert(identity).second) continue;
+            auto& instances = cards[cardIndex].instances;
+            const size_t number = instances.size() + 1;
+            instances.push_back({
                 index,
-                std::string(game->id),
-                std::string(game->title),
-                std::string(Games::platformName(game->platform)),
-                "RETROARCH",
+                LegacySaveInstanceKind::BatterySave,
+                number == 1 ? "Main Save" : "Battery Save " + std::to_string(number),
+                "RETROARCH BATTERY SAVE",
                 source.path,
             });
         }
         return cards;
     }
 
-    const FRLGSource* resolveFRLGSourceCard(
-        const FRLGDiscoveryResult& discovery, const FRLGSourceCard& card) noexcept {
-        if (card.sourceIndex >= discovery.sources.size()) return nullptr;
-        const auto& source = discovery.sources[card.sourceIndex];
+    const FRLGSource* resolveFRLGSaveInstance(
+        const FRLGDiscoveryResult& discovery, const FRLGSourceCard& card,
+        size_t instanceIndex) noexcept {
+        if (instanceIndex >= card.instances.size()) return nullptr;
+        const auto& instance = card.instances[instanceIndex];
+        if (instance.kind != LegacySaveInstanceKind::BatterySave ||
+            instance.sourceIndex >= discovery.sources.size()) return nullptr;
+        const auto& source = discovery.sources[instance.sourceIndex];
         if (!source.ready() || source.gameId != card.gameId) return nullptr;
         if (source.save->metadata().sourceGameId != card.gameId) return nullptr;
         const auto* game = Games::findGame(card.gameId);
