@@ -1,5 +1,29 @@
 # PokeBank NX — Build / Artifact Record
 
+
+## Complete FRLG read-only browser — READY FOR DEVICE TEST
+
+```text
+Canonical application source full SHA: 5d3e5e23f352dda4900ae42b4f396d9d4a4b8b8e
+Application commit: gen3: complete FRLG read-only source browsing
+Embedded short SHA/version: 5d3e5e23 / 0.1.0-alpha
+Branch: feature/pokebank-playable
+Artifact filename: PokeBank-NX-FRLG-Complete-5d3e5e23.nro
+Artifact byte size: 156249001
+Artifact SHA-256: 8dd94277e609c96f37e82b0b0b47928bad50ce36fdb380520bd2521ab18ec78a
+ZIP fallback: PokeBank-NX-FRLG-Complete-5d3e5e23.zip
+ZIP byte size: 149497873
+ZIP SHA-256: 29fed23bd4269116094df7b33dc5b52622c66699b0d663a058964836a17e0b54
+Host tests: PASS (12 suites)
+ASan/UBSan: PASS (LeakSanitizer unavailable under the existing managed host recipe)
+git diff --check: PASS
+Native build: PASS; clean make -j1 with normal -fno-exceptions flags
+Device asset preflight: PASS; 3260 HD renders, all 1025 base species, 18 type icons, 3 fonts, 2 FRLG game cards
+Embedded RomFS comparison: PASS; 3283/3283 files and 148183859/148183859 bytes identical
+GitHub CI: PASS; PokeBank NX Host Tests run #238
+Device tested: NO
+```
+
 ## Final red UI identity checkpoint — READY FOR DEVICE TEST
 
 ```text

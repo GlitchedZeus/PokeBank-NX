@@ -1,6 +1,35 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-07
+
+## FRLG read-only browser completion — READY FOR PHYSICAL DEVICE TEST
+
+```text
+Application source SHA: 5d3e5e23f352dda4900ae42b4f396d9d4a4b8b8e
+Application commit: gen3: complete FRLG read-only source browsing
+Embedded version: 0.1.0-alpha (5d3e5e23)
+Artifact: PokeBank-NX-FRLG-Complete-5d3e5e23.nro
+Artifact size: 156249001 bytes
+Artifact SHA-256: 8dd94277e609c96f37e82b0b0b47928bad50ce36fdb380520bd2521ab18ec78a
+Device tested: NO
+```
+
+Implemented and verified in this source:
+
+- bounded startup, parent-open, and manual X Refresh Saves discovery;
+- configured RetroArch `savefile_directory` precedence, with the conventional root used only as fallback;
+- exact `firered_gba` / `leafgreen_gba` parent cards and deduplicated child save instances;
+- stale/deleted save invalidation via normalized path, file size, and modification time;
+- immutable Party and all 14 Boxes browsing;
+- Gen III trainer name, gender, TID16, SID16, ID32, security-key-decrypted money, and exact source identity;
+- read-only Items, Key Items, Poke Balls, TM Case, Berry Pouch, and plaintext PC Items;
+- malformed inventory rejection and unchanged source bytes;
+- 12 host suites PASS, ASan/UBSan PASS, `git diff --check` PASS, native `-fno-exceptions` build PASS;
+- pinned 3,260-render asset set and all 1,025 base species present;
+- extracted embedded RomFS: 3,283 / 3,283 files byte-identical to source.
+
+The parked RSE recovery checkpoint remains isolated and must not be merged, resumed, or pushed before this exact FRLG artifact is physically tested. Live installed-game and RetroArch source writes remain HARD DISABLED.
+
+Last updated: 2026-09-08
 
 This is the current verified project-state summary. For the shortest coding handoff, read `CURRENT_STATUS.md`. For the next Codex task, execute `docs/NEXT_CODEX_PROMPT.md`.
 

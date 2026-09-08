@@ -1,91 +1,22 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-07
-Status: **RETROARCH FRLG READ-ONLY BROWSER COMPLETE / DEVICE VERIFICATION NEXT**
+Last updated: 2026-09-08
+Status: **FRLG READ-ONLY BROWSER BUILT / PHYSICAL DEVICE TEST REQUIRED**
 
-This file is intentionally short. The detailed verified engineering handoff is `CURRENT_STATUS.md`; the complete next coding instructions are `docs/NEXT_CODEX_PROMPT.md`.
-
-## Verified remote checkpoints
+## Exact test build
 
 ```text
-936e75d98daa7e61fcf8ea199bcda958b1b78d7a
-gen3: add PKSM-Core read-only FRLG adapter
-
-283073a5215a471ef0ad07619b4856409658cfdc
-ci: checkout pinned PKSM-Core submodules
-
-43f3a9f90a3314725979d59afdd68f19ee159009
-gen3: build exception-free native core slice
-
-54cb86892d290ae1c80f447af427ff17192681f9
-gen3: wire RetroArch FRLG read-only sources
-
-f6a3052daeffe7cd30d7acceba81a5dfda7615ee
-gen3: expose RetroArch FRLG game sources
+Application source: 5d3e5e23f352dda4900ae42b4f396d9d4a4b8b8e
+Commit: gen3: complete FRLG read-only source browsing
+Embedded: 0.1.0-alpha (5d3e5e23)
+Artifact: PokeBank-NX-FRLG-Complete-5d3e5e23.nro
+Size: 156249001 bytes
+SHA-256: 8dd94277e609c96f37e82b0b0b47928bad50ce36fdb380520bd2521ab18ec78a
+Device tested: NO
 ```
 
-GitHub Actions on `f6a3052d...`: **PASS** (PokeBank NX Host Tests run #184).
+## Next action
 
-## What is complete
+STOP development and physically test the exact artifact above. Report launch, active RetroArch root, FireRed/LeafGreen parent and child grouping, manual X refresh, changed/deleted-save handling, trainer fields, six inventory pouches, Party, all 14 Boxes, artwork, and crashes.
 
-- UI accepted/frozen for now; return to final polish near release.
-- Left Stick hardware fix accepted.
-- old/problem PLA source now fails gracefully instead of crashing.
-- installed-source live-write lock remains hard disabled.
-- pinned PKSM-Core host oracle and PokeBank-owned FRLG adapter are implemented.
-- deterministic 128 KiB FRLG fixture and corruption coverage exist.
-- Party + all 14 boxes parse.
-- PK3 boundary-crossing extraction and byte-identical untouched round trips are proven.
-- native Switch Gen III backend now compiles without exceptions behind the same public adapter API.
-- recovered bounded RetroArch catalog is now published;
-- `.sav`/`.srm`, configured roots, depth/candidate bounds, ambiguity, malformed input and source immutability are tested;
-- UIManager owns/invokes the catalog and native parser/discovery symbols are retained in the NRO.
-- validated ready FRLG sources appear as normal Game Sources cards;
-- exact GBA release/platform identity remains separate from Switch releases;
-- selection resolves to the session catalog and opens existing Party / Boxes through a
-  narrow read-only view bridge;
-- View is allowed while Edit, Clone, Transfer, Move and Save remain blocked;
-- all twelve host suites, ASan/UBSan, native build and CI pass.
-
-## Immediate task
-
-Physically verify the first user-visible legacy browse route:
-
-```text
-validated FRLG catalog
--> existing Game Sources cards
--> selected legacy source
--> read-only Party / Boxes presentation
-```
-
-After device acceptance, the exact next coding task is strict read-only
-Ruby/Sapphire/Emerald discovery and browsing through this same source model. No editing,
-conversion, save writes or guessed identity.
-
-## After FRLG runtime is complete
-
-Preferred order:
-
-```text
-Gen III production reads
--> Master Vault + Banks
--> Colosseum / XD
--> Gen I / II + RetroArch
--> Stadium stretch
--> DS
--> 3DS
--> modern Switch adapter validation
--> Summary / Oracle / conversion / Dex / legality / events
--> staged writes
--> individually approved live writes
--> true Move
--> RC / v1.0
-```
-
-## One-line launcher
-
-Use this for the next Codex session:
-
-```text
-Continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and execute docs/NEXT_CODEX_PROMPT.md. Use HIGH reasoning. Preserve local work, push coherent checkpoints early, and never push custom code upstream.
-```
+Do not begin RSE. Preserve the parked RSE recovery branch/commit and all live-write locks. After the device report, update the authoritative prompt to address only confirmed failures or explicitly approve the next milestone.

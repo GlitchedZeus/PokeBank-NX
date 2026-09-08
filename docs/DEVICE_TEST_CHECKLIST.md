@@ -1,7 +1,26 @@
 # PokeBank NX — Physical Switch Test Checklist
 
+
+## Complete FRLG browser test build — 2026-09-08
+
+```text
+Application source: 5d3e5e23f352dda4900ae42b4f396d9d4a4b8b8e
+Commit: gen3: complete FRLG read-only source browsing
+Embedded: 0.1.0-alpha (5d3e5e23)
+Artifact: PokeBank-NX-FRLG-Complete-5d3e5e23.nro
+Size: 156249001 bytes
+SHA-256: 8dd94277e609c96f37e82b0b0b47928bad50ce36fdb380520bd2521ab18ec78a
+Host tests: PASS (12 suites)
+Sanitizers: PASS
+Native build: PASS (-fno-exceptions)
+Assets: PASS (3260 HD renders; embedded RomFS 3283/3283 identical)
+Device tested: NO
+```
+
+Test and leave PASS/FAIL notes for: launch; active RetroArch root; FireRed/LeafGreen parent cards; child save grouping; X Refresh Saves; changed/deleted-save handling; trainer name/gender/TID/SID/ID32/money; Items/Key Items/Poke Balls/TM Case/Berry Pouch/PC Items; Party? no, source is read-only; Party; all 14 Boxes; artwork; crashes. Confirm no source file timestamp/hash changes.
+
 Status: PRE-ALPHA / READ-ONLY TEST PLAN  
-Last updated: 2026-09-01
+Last updated: 2026-09-08
 
 Use this checklist for physical-device testing of PokeBank NX `.nro` builds.
 
