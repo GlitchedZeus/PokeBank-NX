@@ -1,38 +1,47 @@
 # PokeBank NX — Authoritative Next Codex Prompt
 
-> **FRLG PHYSICAL RETEST FAILED — FIX ONLY THE TWO DEVICE-PROVEN BLOCKERS BELOW**
+> **FRLG FIX SOURCE IS ALREADY PUBLISHED — FINISH ONLY THE EXACT PHYSICAL-TEST ARTIFACT**
 
 Use HIGH reasoning.
 
-## Starting remote state
+## Starting remote application checkpoint
 
-The branch was previously gated for physical testing at:
+The two device-proven FRLG failures have already been addressed in source and published to:
 
 ```text
-Documentation head: 02e0367cf8ae4af8f6a741fd0778639c0c1f7646
-Application source: 5d3e5e23f352dda4900ae42b4f396d9d4a4b8b8e
-Commit: gen3: complete FRLG read-only source browsing
-Artifact: PokeBank-NX-FRLG-Complete-5d3e5e23.nro
-NRO size: 156249001 bytes
-NRO SHA-256: 8dd94277e609c96f37e82b0b0b47928bad50ce36fdb380520bd2521ab18ec78a
+ea0b806bac4acdb5619f22f9841d616ea8a237ff
+legacy: bind FRLG sources to profiles and expose diagnostics
 ```
 
-That exact artifact has now been physically tested.
+This is the canonical application source for the next physical-test artifact unless a real packaging/build defect forces an application-source change.
+
+The previous rejected artifact remains:
 
 ```text
+5d3e5e23f352dda4900ae42b4f396d9d4a4b8b8e
+PokeBank-NX-FRLG-Complete-5d3e5e23.nro
+SHA-256 8dd94277e609c96f37e82b0b0b47928bad50ce36fdb380520bd2521ab18ec78a
 DEVICE TESTED: YES
 DEVICE ACCEPTED: NO
 ```
 
-Do not describe the 5d3e5e23 artifact as untested or accepted.
+Do not call the old artifact untested or accepted.
 
-Before syncing, resetting, cleaning, restoring, switching refs, rebasing, changing worktrees, or doing anything that could discard local state, inspect and preserve all local/uncommitted/recovery work.
+## Preserve first
 
-Preserve parked RSE recovery work including `b5ef83b`, `1a921515`, or equivalent refs if present. Do not merge, resume, reimplement, or push RSE in this session.
+Before syncing, resetting, cleaning, restoring, switching refs, rebasing, changing worktrees, deleting generated assets, or doing anything that could discard local state:
 
-The README is human-facing product/roadmap information only and must not expand this task.
+- inspect all worktrees;
+- inspect `git status`;
+- preserve useful uncommitted/generated/recovery state;
+- preserve any partially restored pinned artwork because the restore is resumable;
+- preserve parked RSE refs including `b5ef83b`, `1a921515`, or equivalents.
 
-Push coherent checkpoints only to:
+Do not merge, resume, reimplement, or push RSE.
+
+The README is human-facing roadmap/product information only and must NOT expand the active task.
+
+Push only to:
 
 ```text
 origin/feature/pokebank-playable
@@ -40,173 +49,137 @@ origin/feature/pokebank-playable
 
 Never push custom PokeBank NX code upstream to PKSE.
 
-# Physical observations from 5d3e5e23
+# What was already completed before the previous session ran out
 
-## BLOCKER 1 — PokeBank is still reading an OLD FRLG save
+The previous session reported and published the following application behavior in `ea0b806b`:
 
-The user's current FireRed/LeafGreen gameplay save contains **2 Pokémon**.
+## Stale/old-save correction
 
-PokeBank instead still shows an older save state containing the previously observed **level 6 Charmander**.
-
-Therefore the claimed active-root/refresh fix is not physically correct yet. Host tests proving configured-root precedence are insufficient if the device still resolves the wrong physical battery save.
-
-This must be debugged from the actual source-selection path, not papered over by changing the displayed trainer/Pokémon data.
-
-### Required outcome
-
-For a live RetroArch FRLG battery save, PokeBank must open the exact physical `.sav` / `.srm` file RetroArch is currently using for that game.
-
-Do not silently choose:
-
-- a stale copy in another directory;
-- a fallback-root copy when the configured active root is usable;
-- an older duplicate inside an overlapping route;
-- a cached parsed model after the physical file changed;
-- an alias whose canonical target is not the active file.
-
-### Required investigation
-
-Inspect the complete RetroArch source-resolution chain on Switch, including where appropriate:
-
-- `sdmc:/retroarch/retroarch.cfg` parsing;
-- configured `savefile_directory` semantics;
-- quotes/whitespace/special/default values;
-- relative or special RetroArch path values if supported by the existing implementation;
-- per-core/per-content directory behavior already represented in the repository;
-- `.sav` versus `.srm` candidates;
-- directory traversal and duplicate/alias handling;
-- candidate ordering;
-- cache keys and refresh invalidation;
-- parent-open refresh;
-- manual `X — Refresh Saves`;
-- whether the selected child keeps an obsolete model after refresh;
-- whether multiple valid FRLG files inside the authoritative root are being mislabeled or auto-selected.
-
-Do not invent behavior unsupported by RetroArch. If the active file cannot be uniquely inferred from configuration alone, preserve multiple genuine physical save instances as children and make the UI identify them truthfully rather than silently selecting an arbitrary one.
-
-### Mandatory on-device diagnostics for the next artifact
-
-The next physical-test build must make it possible to identify the exact source PokeBank opened. At minimum expose in an existing diagnostics/source-details surface, or a minimal non-invasive equivalent:
+Root cause found:
 
 ```text
-provider = RetroArch
-normalized physical path
-file size
-modification time/state where available
-stable source identity
-short content fingerprint/hash
-selected game identity
-trainer name if decoded
-party count
+multiple valid FRLG files
+-> filename sorting
+-> first child auto-focused
+-> first child incorrectly called "Main Save"
 ```
 
-Do not clutter the normal Pokémon UI permanently if an existing diagnostics/details surface can carry this information.
+That was not proof of RetroArch's active/current gameplay save.
 
-For the user's current save, the next test must allow us to prove that the file opened by PokeBank is the same current save that contains 2 Pokémon, not the old level 6 Charmander save.
+Published correction:
 
-### Selection rules
+- do not invent `Main Save`;
+- keep genuinely separate valid physical saves as separate children;
+- expose truthful filename/source information;
+- expose Source Details with provider, normalized path, size, modification state, stable identity, short SHA-256/content fingerprint, exact game ID, decoded trainer, and party count;
+- use newest mtime only for deterministic initial focus when multiple genuine saves exist, while preserving all children for explicit selection;
+- refresh remains read-only and rebuilds changed source models safely.
 
-- configured usable active root remains authoritative;
-- conventional `sdmc:/retroarch/cores/savefiles` remains fallback-only;
-- never scan both additively merely because both exist;
-- multiple genuinely distinct valid saves inside the authoritative root remain distinct child instances;
-- aliases of the same underlying physical file collapse;
-- do not dedupe by trainer name or Pokémon-content hash alone;
-- do not automatically relabel an old copy as the current Main Save;
-- refresh must invalidate and reread the selected physical source at a safe navigation boundary;
-- deleted/missing sources disappear safely;
-- all behavior remains strictly read-only.
+A deterministic stale-copy regression reportedly uses an older one-Pokémon save plus a newer two-Pokémon save and passes.
 
-Add deterministic host tests for whatever real bug is found, including a fixture/layout with a stale old FRLG copy and a newer/current FRLG copy so the regression cannot return.
+## Profile leakage correction
 
-# BLOCKER 2 — GBA legacy saves are visible under BOTH Nintendo profiles
-
-Physical result:
-
-- the user's FRLG GBA legacy saves appear under the user's Nintendo profile;
-- the same GBA legacy saves also appear under the user's niece's Nintendo profile.
-
-This is not the desired product behavior.
-
-The previous phrase **"RetroArch/file sources are app-global"** must now be interpreted correctly:
+Published model:
 
 ```text
-physical discovery/catalog = app-global
-profile visibility/ownership binding = profile-scoped
+physical legacy discovery/catalog = shared/app-global
+normal source visibility/binding = profile-scoped
 ```
 
-RetroArch itself is not a Nintendo user, but a discovered legacy save must not automatically appear in every profile's normal game-source library.
+Published correction reportedly provides:
 
-## Required profile/source model
+- persistent source-to-profile bindings;
+- unassigned legacy saves hidden from normal profile source lists;
+- explicit assignment to the current Nintendo/PokeBank profile;
+- Profile A source absent from Profile B;
+- bindings survive reload/restart;
+- aliases do not duplicate bindings;
+- distinct physical saves can be assigned independently;
+- installed Switch-title account scoping unaffected;
+- no Vault/Gift/Trade implementation;
+- no source writes.
 
-Maintain one shared physical source catalog, then bind legacy save instances to a PokeBank/Nintendo profile.
+## Verification already completed
 
-Conceptually:
+The previous session reported all green for the exact `ea0b806b` application source:
 
 ```text
-shared RetroArch discovery
-        ↓
-physical save identity
-        ↓
-profile source binding
-        ↓
-only assigned profile sees it in normal Game Sources
+Host tests: 13 suites PASS
+ASan/UBSan: PASS
+git diff --check: PASS
+Native Switch -fno-exceptions compile/link: PASS
 ```
 
-Do NOT infer ownership from trainer name, TID, Pokémon contents, or save hash.
+DO NOT burn another session rerunning expensive full sanitizer/PKSM-Core work solely to package the unchanged `ea0b806b` source.
 
-A physical save may eventually be explicitly Shared, but shared visibility must be deliberate rather than the default.
+First verify that the source tree used for packaging is exactly `ea0b806b` and that no application-code changes are needed.
 
-## Immediate FRLG behavior required
+If application source remains byte-for-byte/commit-identical to `ea0b806b`:
 
-Implement the smallest clean profile-binding behavior consistent with the existing architecture and future profile-scoped Vault design.
+- reuse the already completed verification record;
+- check relevant CI status if available;
+- perform only packaging/build verification materially required to create the exact artifact.
 
-Required properties:
+If application code changes after `ea0b806b`, rerun the appropriate host/sanitizer/native/diff verification before packaging.
 
-- source discovery remains shared/app-global so the filesystem is not rescanned independently per Nintendo account;
-- binding/visibility is keyed by stable Nintendo/PokeBank profile identity plus stable physical source identity;
-- a bound FRLG save appears only for the profile it is assigned to;
-- switching to the niece's profile must not show the user's FRLG saves by default;
-- switching back to the user's profile restores the user's assigned FRLG sources;
-- bindings survive application restart;
-- path aliases for the same physical source do not create multiple bindings;
-- genuinely separate physical saves can be assigned independently;
-- installed Switch-title save account scoping must not regress;
-- no direct cross-profile game-save access is introduced;
-- no Vault/Gift/Trade feature is implemented here.
+# Single mission — finish the exact physical-test artifact
 
-If an explicit first-assignment prompt/flow is needed because a filesystem save cannot intrinsically identify its Nintendo-profile owner, implement a minimal safe assignment flow rather than guessing ownership. New/unassigned legacy saves must not become visible to every profile merely because they exist on the SD card.
+The previous session ran out during the pinned full-artwork restore.
 
-A future shared-source option may be represented in the data model, but do not build broad sharing UI in this milestone.
+Last reported progress:
 
-Add host tests covering at least two Nintendo/PokeBank profiles and proving a legacy FRLG source bound to Profile A is absent from Profile B's normal source list.
+```text
+HD renders present: 1392 / 3260
+Type icons: 18 / 18
+Fonts: 3 / 3
+Restore process: resumable
+Canonical source: ea0b806bac4acdb5619f22f9841d616ea8a237ff
+```
 
-# Preserve the parts that did pass
+Do not assume those exact local counts still exist after workspace maintenance; inspect safely first. Resume useful existing restored state rather than deleting/restarting it.
+
+Required completion:
+
+1. restore the complete pinned **3,260 HD Pokémon render** set;
+2. verify **1,025 / 1,025 base species**;
+3. run the existing asset preflight/integrity checks;
+4. ensure the build is tied to canonical application source `ea0b806b`;
+5. perform a clean exact-source native Switch build with the complete assets;
+6. verify the embedded RomFS against the intended source asset tree using the repository's established verification method;
+7. package the exact physical-test `.nro`;
+8. produce ZIP fallback and build manifest if the established release flow supports them;
+9. calculate exact byte sizes and SHA-256 hashes;
+10. record the embedded version/source SHA;
+11. update minimal engineering handoff docs with exact artifact identity;
+12. STOP for physical device testing.
+
+Do not do additional feature development during this session.
+
+# Preserve existing ea0b806b functionality
 
 Do not regress or broadly rewrite:
 
-- strict FRLG slot/sector/checksum validation;
-- Party browsing;
-- all 14 Boxes;
+- strict FRLG save validation;
+- FireRed / LeafGreen identities and GBA artwork;
+- Party and all 14 Boxes;
 - Pokémon View;
-- trainer name/gender/TID/SID/ID32/money decoding;
-- all six read-only inventory pouches;
-- FireRed/LeafGreen separate parent identity;
-- FireRed/LeafGreen GBA card artwork;
-- canonical alias dedupe;
-- manual refresh control;
-- malformed-save safety;
-- source byte immutability;
-- native `-fno-exceptions` build;
-- installed-title live-write lock;
-- RetroArch writeback lock.
+- truthful trainer data and decrypted money;
+- six read-only inventory pouches;
+- refresh/rescan;
+- alias dedupe;
+- truthful physical-source diagnostics;
+- persistent per-profile legacy-source bindings;
+- installed-title account scoping;
+- malformed-source safety;
+- source-byte immutability;
+- installed-game and RetroArch live-write locks.
 
 # Strictly out of scope
 
 Do NOT begin:
 
 - Ruby/Sapphire/Emerald;
-- Master/Profile Vault implementation beyond the minimal legacy-source binding needed for this blocker;
+- Master/Profile Vault implementation beyond the already-published source binding;
 - Banks;
 - Gen I/II;
 - DS/3DS;
@@ -220,67 +193,48 @@ Do NOT begin:
 - conversion;
 - Move;
 - arbitrary RetroArch save-state parsing;
-- UI redesign.
+- broad UI redesign.
 
-# Verification
+# Final artifact report
 
-Run:
-
-```text
-make -f Makefile.host host-test
-make -f Makefile.host host-sanitize
-git diff --check
-make -j1
-```
-
-Native app remains `-fno-exceptions`.
-
-Specifically prove:
-
-1. stale-copy regression fixture selects/exposes the correct authoritative physical source behavior;
-2. configured root is truly authoritative and fallback-only behavior remains correct;
-3. refresh rebuilds from changed physical bytes;
-4. next artifact exposes enough source diagnostics to identify exact path/fingerprint/party count;
-5. Profile A legacy binding is not visible in Profile B;
-6. bindings persist across restart/reload;
-7. aliases do not duplicate bindings;
-8. installed-title account scoping is unaffected;
-9. trainer/items/party/boxes still pass;
-10. source bytes remain unchanged;
-11. all source writes remain blocked.
-
-# Checkpoint / packaging
-
-Push a coherent application checkpoint early after the two fixes and tests are green.
-
-Then restore/verify the pinned full artwork set and build a new exact physical-test NRO.
-
-Final report must include:
+Report exactly:
 
 ```text
-starting remote SHA
-application/source SHA
-what caused the stale level-6-Charmander source to be selected
-exact corrected source-selection rule
-profile-binding storage/model used
-profile A / profile B visibility test result
-host tests
-ASan/UBSan
-git diff --check
-native build
-CI
-asset counts
+starting remote/documentation SHA
+canonical application source SHA = ea0b806bac4acdb5619f22f9841d616ea8a237ff
+application commit message
+whether any application source changed during packaging
+verification record reused and/or rerun
+CI status if checked
+HD render count
+base species count
+RomFS verification result
 NRO filename
-NRO size
+NRO exact byte size
 NRO SHA-256
+ZIP filename/size/SHA-256 if produced
+build manifest filename if produced
+embedded version/source identity
+preserved RSE refs/status
 DEVICE TESTED: NO
+DEVICE ACCEPTED: NO
 ```
 
-Then STOP for physical testing.
+Then STOP.
 
-Do not begin RSE until the user physically confirms both:
+# Required physical retest after artifact delivery
+
+The user must verify on Switch:
 
 ```text
-A. current FRLG save with 2 Pokémon is the save PokeBank opens
-B. user's GBA legacy saves are absent from niece's profile unless deliberately assigned/shared
+1. Under the user's profile, assign/select the correct FRLG physical save.
+2. Source Details identify the exact physical path/fingerprint/trainer/party count.
+3. The current save with 2 Pokémon opens correctly.
+4. The old level-6 Charmander copy is not silently presented as "Main Save"; if still present as a genuine separate file, it is truthfully identifiable as a separate child.
+5. Restart PokeBank NX and confirm the source binding persists.
+6. Switch to the niece's profile and confirm the user's assigned FRLG save is absent.
+7. Switch back to the user's profile and confirm it remains assigned/visible.
+8. Trainer, Items, Party, Boxes 1-14, Pokémon View, refresh, and read-only locks still work.
 ```
+
+Do not begin RSE until the user physically accepts both the current-save selection behavior and profile isolation.
