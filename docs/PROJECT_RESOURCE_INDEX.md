@@ -62,6 +62,7 @@ Never push custom PokeBank NX code upstream to PKSE.
 | DS saves | **DS chunk** below |
 | 3DS saves | **3DS chunk** below |
 | Modern Switch saves | **Switch chunk** below |
+| GameCube Colosseum / XD | **GameCube chunk** below |
 | Vault / Banks / Dex | **Vault chunk** below |
 | Cross-generation transfer | **Transfer chunk** below |
 | Create Pokémon / editor / legality | **Create + Legality chunk** below |
@@ -70,7 +71,7 @@ Never push custom PokeBank NX code upstream to PKSE.
 | Build / package / physical test | **Build + Test chunk** below |
 | Save/write safety / recovery | **Safety chunk** below |
 | Friends / Mailbox / connected features | **Connected chunk** below |
-| External project research | `docs/RESEARCH_REFERENCE_MATRIX.md` first |
+| External project research | `docs/RESEARCH_REFERENCE_MATRIX.md` + relevant research intake/audit |
 
 If a task crosses two chunks, open two. Do not automatically open all of them.
 
@@ -98,6 +99,9 @@ docs/GAME_SUPPORT_MATRIX.md
 
 docs/RESEARCH_REFERENCE_MATRIX.md
     external conversion/save references already researched
+
+docs/RESEARCH_INTAKE_2026-09-09.md
+    latest high-value research additions by subsystem
 ```
 
 For FRLG physical/build work also use:
@@ -145,10 +149,27 @@ Use for Diamond/Pearl/Platinum, HGSS, BW and B2W2.
 docs/PKHEX_ORACLE.md
 docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
 docs/RESEARCH_REFERENCE_MATRIX.md
+docs/RESEARCH_INTAKE_2026-09-09.md
 docs/GAME_SUPPORT_MATRIX.md
 ```
 
-The research matrix already indexes useful DS-era references such as IR-GTS, battle-video tools, egg-move/NARC archaeology and older conversion work. Search the matrix before new GitHub research.
+High-value starting references now include:
+
+```text
+FlagBrew/PKSM-Core
+NaGaa95/DrasticDS_nx
+```
+
+Current native DraStic Switch discovery research distinguishes normal battery/cart saves from savestates:
+
+```text
+sdmc:/switch/drastic/user/backup/      normal cartridge saves
+sdmc:/switch/drastic/user/savestates/ save states
+```
+
+For RetroArch melonDS, use the configured frontend Save directory and normal `.srm` saves rather than inventing one universal absolute path.
+
+The research matrix also indexes useful DS-era references such as IR-GTS, battle-video tools, egg-move/NARC archaeology and older conversion work. Search the matrix before new GitHub research.
 
 ---
 
@@ -160,8 +181,13 @@ Use for XY, ORAS, SM and USUM.
 docs/PKHEX_ORACLE.md
 docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
 docs/RESEARCH_REFERENCE_MATRIX.md
+docs/RESEARCH_INTAKE_2026-09-09.md
 docs/GAME_SUPPORT_MATRIX.md
 ```
+
+Primary direction is PKSM-Core + PKHeX with older XYSAV/KeySAV-family implementations as independent historical checks.
+
+For Citra/Azahar-style emulator sources, do not accept a file merely because it is named `main`; validate expected size, format and integrity. Emulator-created wrong-size/corrupt files are a known class of edge case worth fixture coverage.
 
 High-value references already indexed include Gen VI save/checksum research, Pokémon Link/event research and historical KeySAV-style tooling. Do not rediscover them from scratch.
 
@@ -177,9 +203,26 @@ docs/OPENHOME_SWITCH_PLATFORM_REFERENCE_AUDIT_2026-09-03.md
 docs/PKHEX_ORACLE.md
 docs/GAME_SUPPORT_MATRIX.md
 docs/RESEARCH_REFERENCE_MATRIX.md
+docs/RESEARCH_INTAKE_2026-09-09.md
 ```
 
-The research matrix already indexes Switch gift/BCAT research, PokePia/LAN protocol work, BDSP Unity data extraction, poke-client and related tools.
+Preferred research order before rebuilding modern save behavior from scratch:
+
+```text
+PKHeX oracle
+    ↓
+current upstream kiasta/PKSE
+    ↓
+Insektaure/pkHouse
+    ↓
+Insektaure/pkBakery / title-specific tools
+    ↓
+PokeBank-owned independently tested adapter
+```
+
+The current upstream PKSE README now documents hardware-validated support across the main Switch Pokémon families plus native bank/creator/legality/data-table work. Diff/reference upstream before reimplementing a solved modern-game issue, but never push PokeBank custom code upstream.
+
+The research matrix also indexes Switch gift/BCAT research, PokePia/LAN protocol work, BDSP Unity data extraction, poke-client and related tools.
 
 Keep these identities separate from legacy releases, e.g.:
 
@@ -190,13 +233,40 @@ leafgreen_gba != leafgreen_switch
 
 ---
 
-# 8. Vault / Banks / Pokédex chunk
+# 8. GameCube chunk — Colosseum / XD
+
+Future-only until explicitly promoted by `NEXT_CODEX_PROMPT.md`.
+
+```text
+docs/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
+docs/RESEARCH_INTAKE_2026-09-09.md
+docs/PKHEX_ORACLE.md
+docs/GAME_SUPPORT_MATRIX.md
+```
+
+Primary reference stack:
+
+```text
+PKHeX
+logdog2325/PokéBridge
+TuxSH/PkmGCTools / LibPkmGC
+Dolphin memory-card code
+```
+
+PokéBridge is the modern GameCube-homebrew reference. PkmGCTools is an older independent C++ implementation useful as a historical/host oracle, not a default Switch dependency because it is Boost-dependent, exception-using and old.
+
+Initial PokeBank support should be read-only. Do not let future GameCube writeback bypass normal staging/reparse/readback safety.
+
+---
+
+# 9. Vault / Banks / Pokédex chunk
 
 ```text
 docs/ARCHITECTURE.md
 docs/MASTER_VAULT_SPEC.md
 docs/POKEDEX_SPEC.md
 docs/PRODUCT_DECISIONS.md
+docs/RESEARCH_INTAKE_2026-09-09.md
 ```
 
 Core ownership model:
@@ -208,11 +278,13 @@ Pokédex      = rebuildable collection index derived from Vault
 Game saves   = external sources/destinations behind adapters
 ```
 
+Important crash-safety reference from the September research intake: `prodeveloper0/uNSS` uses pending/committed revisions so an incomplete upload cannot hide the previous known-good revision. The idea maps well to immutable Vault objects + generation manifests.
+
 Do not make Banks or the Pokédex a second independent ownership database.
 
 ---
 
-# 9. Transfer / conversion chunk
+# 10. Transfer / conversion chunk
 
 ```text
 docs/TRANSFER_MODEL.md
@@ -220,9 +292,12 @@ docs/ARCHITECTURE.md
 docs/PKHEX_ORACLE.md
 docs/HOME_BRIDGE_HISTORICAL_TRANSFER_RESEARCH.md
 docs/RESEARCH_REFERENCE_MATRIX.md
+docs/RESEARCH_INTAKE_2026-09-09.md
 ```
 
-External references already researched include `Poke_Transporter_GB`, `pk2pk`, PKHeX and HOME-format preservation work.
+External references already researched include `Poke_Transporter_GB`, PCCS, `pk2pk`, current PKSE, PKHeX and HOME-format preservation work.
+
+Prefer explicit generation-boundary conversions with independent test vectors rather than one opaque arbitrary-source-to-arbitrary-destination converter.
 
 Permanent distinctions:
 
@@ -234,7 +309,7 @@ Destination compatibility and lossy/irreversible changes must be explicit.
 
 ---
 
-# 10. Create Pokémon / editor / legality chunk
+# 11. Create Pokémon / editor / legality chunk
 
 This is a permanent product pillar; do not let it disappear from the roadmap.
 
@@ -243,6 +318,7 @@ docs/CREATE_POKEMON_VISION.md
 docs/PKHEX_ORACLE.md
 docs/PRODUCT_DECISIONS.md
 docs/RESEARCH_REFERENCE_MATRIX.md
+docs/RESEARCH_INTAKE_2026-09-09.md
 ```
 
 Product direction:
@@ -258,19 +334,24 @@ provenance/history
 Vault + staging/preview/rollback
 ```
 
+High-value architecture reference: `projectpokemon/PoGoEncTool` maintains legality source data as JSON and generates a compact PKHeX Legality Binary. PokeBank should consider the same host-generator -> versioned compact runtime-pack pattern rather than shipping giant editable rule databases directly in the NRO.
+
 PKHeX / Auto Legality / CoreConsole are host-side research/oracle references unless a later explicit architecture decision changes that.
 
 ---
 
-# 11. Events / Mystery Gifts chunk
+# 12. Events / Mystery Gifts chunk
 
 ```text
 docs/PRODUCT_DECISIONS.md
 docs/FUTURE_PRODUCT_VISION.md
 docs/RESEARCH_REFERENCE_MATRIX.md
+docs/RESEARCH_INTAKE_2026-09-09.md
 ```
 
-Already researched/indexed references include Project Pokémon EventsGallery, PKHeX event handling, Switch-Gift-Data-Manager, G6 Pokémon Link tooling and IR-GTS/Wonder Card behavior.
+Already researched/indexed references include Project Pokémon EventsGallery, PKHeX event handling, Switch-Gift-Data-Manager, PKSM, `wc-beacon`, G6 Pokémon Link tooling and IR-GTS/Wonder Card behavior.
+
+Technical availability and redistribution rights are separate questions. EventsGallery can remain an oracle/reference while PokeBank maintains its own generated metadata/index layer.
 
 Permanent provenance rule:
 
@@ -282,7 +363,7 @@ Never fabricate official server receipt, Nintendo-account history, HOME trackers
 
 ---
 
-# 12. UI / controls / assets / audio chunk
+# 13. UI / controls / assets / audio chunk
 
 ```text
 docs/UI_STYLE_GUIDE.md
@@ -308,7 +389,7 @@ Technical availability of Pokémon art/audio does not automatically grant redist
 
 ---
 
-# 13. Build / package / device-test chunk
+# 14. Build / package / device-test chunk
 
 ```text
 docs/DEVICE_BUILD_ASSET_GATE.md
@@ -316,9 +397,12 @@ docs/DEVICE_ARTIFACT_PACKAGING.md
 docs/RELEASE_CHECKLIST.md
 docs/DEVICE_TEST_CHECKLIST.md
 docs/BUILD_RECORD.md
+docs/RESEARCH_INTAKE_2026-09-09.md
 ```
 
 Use `BUILD_RECORD.md` for artifact history, **not** as current-state authority.
+
+The September research intake also proposes a deterministic multi-generation fixture corpus built from known blank/test saves plus mechanically derived corruption/edge cases. That belongs in host/test tooling when the corresponding adapters become active.
 
 Evidence terminology must remain exact:
 
@@ -331,15 +415,21 @@ Physical acceptance applies only to the exact tested artifact/source identity.
 
 ---
 
-# 14. Save safety / writes / recovery chunk
+# 15. Save safety / writes / recovery chunk
 
 ```text
+docs/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md
+    immediate libnx/fsdev SD replacement research and LeafGreen relevance
+
 docs/SAVE_SAFETY.md
 docs/ARCHITECTURE.md
 docs/TRANSFER_MODEL.md
 docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md
 docs/SESSION2_6_SAFETY_IMPLEMENTATION.md
+docs/RESEARCH_INTAKE_2026-09-09.md
 ```
+
+For ordinary SD-card/config/Vault files, keep a `SafeSdFileReplace` abstraction separate from mounted retail-title `SwitchSaveTransaction` semantics.
 
 Default pipeline for any future write-capable adapter:
 
@@ -363,7 +453,7 @@ No global unsafe live-write switch.
 
 ---
 
-# 15. Connected / Trainer Plaza / social chunk
+# 16. Connected / Trainer Plaza / social chunk
 
 Future-only unless explicitly promoted by `NEXT_CODEX_PROMPT.md`.
 
@@ -378,7 +468,7 @@ The local Vault remains primary. Online services must not become a mandatory clo
 
 ---
 
-# 16. External research master index
+# 17. External research master index
 
 Before searching GitHub or implementing a Pokémon format/protocol/helper already likely solved elsewhere, open:
 
@@ -386,7 +476,20 @@ Before searching GitHub or implementing a Pokémon format/protocol/helper alread
 docs/RESEARCH_REFERENCE_MATRIX.md
 ```
 
-It classifies projects as:
+For the newest September 9 additions, then open only the relevant section of:
+
+```text
+docs/RESEARCH_INTAKE_2026-09-09.md
+```
+
+Dedicated deep dives currently include:
+
+```text
+docs/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md
+docs/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
+```
+
+Research is classified conceptually as:
 
 ```text
 DIRECT-CANDIDATE
@@ -400,7 +503,7 @@ Public visibility is not permission to copy. Check license and asset/data rights
 
 ---
 
-# 17. Product roadmap / future ideas
+# 18. Product roadmap / future ideas
 
 These describe destination, not today's coding scope:
 
@@ -417,7 +520,7 @@ docs/PRODUCT_DECISIONS.md
 
 ---
 
-# 18. Historical / recovery evidence
+# 19. Historical / recovery evidence
 
 Historical material remains useful, but Codex should not read it by default.
 
@@ -437,7 +540,7 @@ We preserve them instead of deleting them so recovery information and previous a
 
 ---
 
-# 19. AI efficiency rules
+# 20. AI efficiency rules
 
 Do:
 
@@ -445,7 +548,7 @@ Do:
 1. read the three authority files
 2. identify the active subsystem
 3. open only that resource chunk
-4. check RESEARCH_REFERENCE_MATRIX before new external research
+4. check RESEARCH_REFERENCE_MATRIX / relevant intake section before new external research
 5. reuse verified source/assets when unchanged
 6. push coherent source checkpoints early
 7. keep application SHA, docs SHA and artifact SHA distinct
@@ -457,6 +560,7 @@ Avoid:
 ```text
 reading the entire docs folder
 reading every roadmap before a narrow bug fix
+reading the entire research intake when only one section is relevant
 redoing external research already indexed
 rerunning sanitizers only because a session restarted
 redownloading complete asset sets without proving they are missing
