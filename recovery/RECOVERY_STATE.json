@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "updated": "2026-09-09",
+  "repository": "GlitchedZeus/PokeBank-NX",
+  "branch": "feature/pokebank-playable",
+  "application_source": "92bde34d1586990aaa82adc4f60d42d7bc6b5bdf",
+  "application_source_message": "legacy: safely replace profile binding database on Switch",
+  "historical_full_visual_baseline": {
+    "application_source": "ea0b806bac4acdb5619f22f9841d616ea8a237ff",
+    "nro_filename": "PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro",
+    "nro_size": 156592377,
+    "nro_sha256": "396f8ff9f4da53b5449aeb46b8d1237ca9358a0ac94998680017575916b6b1ee",
+    "hd_render_count": 3260,
+    "base_species_count": 1025,
+    "type_icon_count": 18,
+    "font_count": 3,
+    "embedded_romfs_file_count": 3283
+  },
+  "pokemon_hd": {
+    "generator": "tools/gen_hdsprites.py",
+    "pinned_pokeapi_sprites_ref": "8dfa3d97e953caaafaafd4963eff7621811af08e",
+    "expected_png_count": 3260,
+    "expected_base_species": 1025,
+    "output": "romfs/sprites/pokemon_hd"
+  },
+  "type_icons": {
+    "source_repository": "PokeAPI/sprites",
+    "pinned_ref": "8dfa3d97e953caaafaafd4963eff7621811af08e",
+    "path_template": "sprites/types/generation-ix/scarlet-violet/{api_id}.png",
+    "expected_count": 18,
+    "output": "romfs/sprites/types"
+  },
+  "fonts": {
+    "expected": [
+      "Nunito.ttf",
+      "NotoSansSymbols.ttf",
+      "NotoSansSymbols2.ttf"
+    ],
+    "output": "romfs/fonts",
+    "note": "SIL OFL fonts; recovery script uses the project URLs. Add exact hashes to this state after the historical NRO is extracted/compared if byte-for-byte font identity is required."
+  },
+  "game_cards": {
+    "tracked_source": "assets/game_cards",
+    "expected": [
+      "firered_gba.png",
+      "leafgreen_gba.png"
+    ],
+    "output": "romfs/game_cards"
+  },
+  "overrides": {
+    "tracked_root": "assets/recovery_overrides",
+    "rule": "No manual asset correction may live only in generated romfs. Encode it in tracked code/transform or place a legally redistributable override here."
+  },
+  "preflight": "tools/check_device_assets.py",
+  "recovery_command": "python3 tools/recover_workspace.py",
+  "normal_recovery_requires_forensic_git_archaeology": false
+}
