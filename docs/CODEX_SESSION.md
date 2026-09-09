@@ -28,14 +28,38 @@ zero/one relevant cross-cutting chunk
 Examples:
 
 ```text
-FRLG save bug     -> GBA chunk + Safety/Build only if needed
-3DS save parser   -> 3DS chunk
-Vault work        -> Vault chunk
+FRLG save bug      -> GBA chunk + Safety/Build only if needed
+3DS save parser    -> 3DS chunk
+Vault work         -> Vault chunk
 GB -> GBA transfer -> GB/GBC chunk + Transfer chunk
-Create Pokémon    -> Create + Legality chunk
+Create Pokémon     -> Create + Legality chunk
 ```
 
 Do not read every generation, roadmap or research file before starting.
+
+## Research routing rule
+
+When the active task needs external/reference research, open:
+
+```text
+docs/RESEARCH_CURRENT_INDEX.md
+```
+
+first.
+
+That file routes the September 9 research sweep into small subsystem notes for:
+
+```text
+save revisions / profiles / containers / localization
+transfers / fixtures / HOME provenance
+Vault / data packs / events / fuzzing / performance
+legacy recovery / GameCube / Pokémon Box / Stadium
+Switch safe file replacement
+```
+
+Then open only the one note relevant to the active task.
+
+`docs/RESEARCH_REFERENCE_MATRIX.md` remains the classification/license-oriented master list of external projects. `docs/RESEARCH_INTAKE_2026-09-09.md` remains the earlier condensed intake. Do not read all three files automatically.
 
 ## Session rules
 
@@ -43,7 +67,7 @@ Do not read every generation, roadmap or research file before starting.
 2. Read `CURRENT_STATUS.md` before deciding what source/artifact state is current.
 3. Read and execute `docs/NEXT_CODEX_PROMPT.md` as the authoritative task prompt.
 4. Use `docs/PROJECT_RESOURCE_INDEX.md` to open only the relevant game-family/system chunks.
-5. Check `docs/RESEARCH_REFERENCE_MATRIX.md` before independently rebuilding/researching a Pokémon format, transfer rule, event format, protocol, artwork pipeline or helper feature that may already have a mature reference.
+5. Before independently rebuilding/researching a Pokémon format, transfer rule, event format, protocol, artwork pipeline or helper feature that may already have a mature reference, check `docs/RESEARCH_CURRENT_INDEX.md` and then the relevant dedicated note / `docs/RESEARCH_REFERENCE_MATRIX.md` classification entry.
 6. Treat `README.md`, future vision/roadmap/backlog docs and product planning as context only unless `NEXT_CODEX_PROMPT.md` explicitly promotes something into the active milestone.
 7. Treat `docs/history/`, old `PROMPT_*` files, session logs, `PROJECT_MAP.md`, `NEXT_SESSION_PLAN.md`, old device reports and older `BUILD_RECORD.md` sections as historical/recovery evidence, not current state, unless the authoritative prompt points to them.
 8. Reuse completed verification and generated assets when the exact application source is unchanged and the authoritative prompt permits reuse. Do not rerun expensive work merely because a session restarted.
@@ -66,5 +90,5 @@ Older standalone recovery/session prompts remain in `docs/` for archaeology and 
 ## Short launcher for normal chat
 
 ```text
-Continue PokeBank NX on feature/pokebank-playable. Use HIGH reasoning. Before touching refs or worktrees, preserve all local/uncommitted/recovery/build/generated-asset work. Read CURRENT_STATUS.md and docs/CODEX_SESSION.md, then execute docs/NEXT_CODEX_PROMPT.md exactly. Use docs/PROJECT_RESOURCE_INDEX.md to open only the relevant game/system chunk. Push coherent checkpoints early only to origin/feature/pokebank-playable; never push custom code upstream.
+Continue PokeBank NX on feature/pokebank-playable. Use HIGH reasoning. Before touching refs or worktrees, preserve all local/uncommitted/recovery/build/generated-asset work. Read CURRENT_STATUS.md and docs/CODEX_SESSION.md, then execute docs/NEXT_CODEX_PROMPT.md exactly. Use docs/PROJECT_RESOURCE_INDEX.md to open only the relevant game/system chunk and docs/RESEARCH_CURRENT_INDEX.md only when reference research is needed. Push coherent checkpoints early only to origin/feature/pokebank-playable; never push custom code upstream.
 ```
