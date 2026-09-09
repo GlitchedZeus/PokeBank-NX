@@ -1,8 +1,39 @@
 # PokeBank NX — Device-Build Asset Gate
 
-Purpose: prevent a technically valid `.nro` from being handed to a physical tester while locally generated RomFS assets are missing.
+Purpose: prevent a technically valid `.nro` from being handed to a physical tester while generated RomFS assets are missing.
 
-This is especially important because `/romfs/` is intentionally gitignored. A clean checkout can therefore compile without the HD Pokémon renders used by the inherited `SpriteManager` / `View Pokémon` path.
+`/romfs/` is intentionally generated/gitignored. Project-authored fixes must never exist only there; see `docs/RECOVERY_CONTRACT.md`.
+
+## Normal fresh-workspace recovery
+
+Do **not** manually reconstruct the asset tree one piece at a time during a routine recovery.
+
+Run:
+
+```bash
+python3 tools/recover_workspace.py
+```
+
+This restores:
+
+```text
+pinned HD Pokémon renders
+pinned type icons
+required UI fonts
+tracked FireRed/LeafGreen game-card art
+tracked recovery overrides
+```
+
+and then runs `tools/check_device_assets.py` automatically.
+
+Expected success:
+
+```text
+RECOVERY COMPLETE
+Generated asset preflight: PASS
+```
+
+If this deterministic path fails, report the exact failed stage. Only then use a narrower manual repair/forensic path.
 
 ## Current source of HD Pokémon renders
 
@@ -12,20 +43,29 @@ This is especially important because `/romfs/` is intentionally gitignored. A cl
 romfs/sprites/pokemon_hd/
 ```
 
-The generator is build-time tooling. PokeBank NX does not need to fetch these images from the internet while running on Switch.
+The generator is build-time tooling. PokeBank NX does not need to fetch these images while running on Switch.
 
-## Required preflight for a visual-acceptance / device-test build
+The verified full baseline is:
 
-From the repository root:
-
-```bash
-make types
-make fonts
-python tools/gen_hdsprites.py
-python tools/check_device_assets.py
+```text
+HD renders: 3,260 / 3,260
+base species: 1,025 / 1,025
+type icons: 18 / 18
+fonts: 3 / 3
+embedded RomFS: 3,283 / 3,283 files
 ```
 
-`tools/check_device_assets.py` is intentionally offline and stdlib-only. It verifies, at minimum:
+`recovery/RECOVERY_STATE.json` records the pinned recovery inputs and historical artifact identity.
+
+## Offline preflight
+
+After recovery, or whenever a build workflow modifies generated assets, run:
+
+```bash
+python3 tools/check_device_assets.py
+```
+
+The check verifies at minimum:
 
 ```text
 romfs exists
@@ -36,34 +76,51 @@ alternate-form numeric render IDs are present
 representative Bulbasaur/Pikachu renders exist
 all 18 type sprites are present
 required UI fonts are present
+FireRed/LeafGreen game-card art is present
 ```
 
-If the preflight fails, **do not hand off the build as a visual-acceptance `.nro`**. Generate/repair the missing local assets first or explicitly report the build blocked.
+If the preflight fails, **do not hand off the build as a visual-acceptance `.nro`**.
 
 ## Important evidence boundary
 
 A passing asset preflight proves the expected local source files are present **before packaging**.
 
-It does **not** by itself prove:
+It does not by itself prove:
 
 ```text
 the final .nro contains the RomFS
 SpriteManager resolves the correct form
 stb_image decodes the image on Switch
-the Summary/View layout actually renders it correctly
+the Summary/View layout renders it correctly
 ```
 
-Those remain build/runtime/device-test responsibilities.
+Therefore a replacement device artifact must also verify the embedded RomFS and then be physically tested.
 
-## Second-device build requirement
+## Manual correction rule
 
-For the next replacement `.nro`, record:
+A future session may not fix a sprite/form/render problem by changing only an ignored file in `romfs/` and then call the work saved.
+
+The correction must be represented in GitHub as one of:
+
+```text
+tracked generator change
+tracked form/sprite mapping change
+tracked deterministic transform
+legally-safe file under assets/recovery_overrides/romfs/
+```
+
+Then `tools/recover_workspace.py` must reproduce it from a clean workspace.
+
+## Device-test record
+
+For every replacement `.nro`, record:
 
 ```text
 DEVICE ASSET PREFLIGHT: PASS
-PokeAPI sprite generator pinned ref
+pinned PokeAPI sprite ref
 number of generated HD PNG files
 HD asset directory total size
+embedded RomFS verification
 ```
 
 Then physically test at least:
@@ -76,4 +133,4 @@ missing-art fallback
 View Pokémon opens/closes repeatedly without crash or large hitch
 ```
 
-Do not allow this asset work to weaken or delay the current save-safety hard lock. The safety/crash gate remains higher priority than visual polish.
+Do not allow asset work to weaken save-safety locks. Live save writing remains a separate higher-risk gate.
