@@ -1,5 +1,48 @@
 # PokeBank NX — Physical Switch Test Checklist
 
+## Corrected FRLG physical-test artifact — READY FOR DEVICE TEST
+
+```text
+Starting recovery/documentation SHA: c7e410d4d168d1173c9bd9e3ceb38489c865d404
+Canonical application source: ea0b806bac4acdb5619f22f9841d616ea8a237ff
+Canonical application tree: ed5912093886384894c44538d569fe4955fd2e47
+Application commit: legacy: bind FRLG sources to profiles and expose diagnostics
+Application source changed during packaging: NO
+Embedded version/source: 0.1.0-alpha / ea0b806b
+
+Artifact: PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro
+Artifact byte size: 156592377
+Artifact SHA-256: 396f8ff9f4da53b5449aeb46b8d1237ca9358a0ac94998680017575916b6b1ee
+ZIP: PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.zip
+ZIP byte size: 149672676
+ZIP SHA-256: 255ec20cd0f7965c9b25123cb83eedd0cebc83d10fd88313bcff672a0c1ced67
+Manifest: PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro.manifest.txt
+Manifest byte size: 900
+Manifest SHA-256: a79ede73124f74ce4a6c85d6c151bf7f3e9ca732747a332caa68750626058952
+SHA256SUMS: SHA256SUMS.txt
+SHA256SUMS byte size: 352
+SHA256SUMS SHA-256: d28ee7266c58b3cab2716211a0425b0af6562dab3f9d6768ac299b77d8342f55
+
+HD renders: 3260 / 3260
+Base species: 1025 / 1025
+Type icons: 18 / 18
+Fonts: 3 / 3
+FRLG GBA cards: PASS
+Asset preflight: PASS
+Embedded RomFS: PASS — 3283 / 3283 files byte-identical, 148076683 bytes
+Native devkitA64 -fno-exceptions build: PASS
+Previously verified host tests: PASS — 13 suites
+Previously verified ASan/UBSan: PASS
+Previously verified git diff --check: PASS
+GitHub CI for application source: PASS — run #245
+GitHub prerelease published: NO — unavailable authentication/tooling
+DEVICE TESTED: NO
+DEVICE ACCEPTED: NO
+```
+
+The exact NRO, ZIP, manifest and checksum record were preserved outside the temporary build tree. Large artifacts were not committed to Git history. Parked RSE checkpoint `b5ef83b` remains isolated and untouched; `1a921515` was unavailable locally, with `b5ef83b` retained as the verified equivalent recovery state.
+
+
 
 ## Complete FRLG browser test build — 2026-09-08
 
