@@ -20,8 +20,8 @@
     "manifest": "recovery/assets_snapshot/manifest.json",
     "packer": "tools/pack_recovery_snapshot.py",
     "preferred_when_present": true,
-    "status": "PENDING_FIRST_FULL_SNAPSHOT",
-    "note": "After one full preflight-passing recovery, pack and commit the split snapshot parts so future recovery can be GitHub-only with no network regeneration."
+    "status": "COMMITTED",
+    "note": "Complete 3283-file snapshot committed at a2adac94f15504b90a83a295e77ad54154da4206; both parts and manifest remote-verified."
   },
   "pokemon_hd": {
     "generator": "tools/gen_hdsprites.py",

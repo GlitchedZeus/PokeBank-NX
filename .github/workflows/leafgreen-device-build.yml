@@ -1,0 +1,102 @@
+name: LeafGreen exact-source physical retest build
+
+on:
+  push:
+    branches: [feature/pokebank-playable]
+    paths: [.github/workflows/leafgreen-device-build.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pokebank-leafgreen-device-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out recovery infrastructure
+        uses: actions/checkout@v4
+        with:
+          ref: feature/pokebank-playable
+          path: recovery-work
+      - name: Require committed snapshot and recover
+        working-directory: recovery-work
+        run: |
+          test -f recovery/assets_snapshot/manifest.json
+          python3 tools/recover_workspace.py
+      - name: Check out exact application source
+        uses: actions/checkout@v4
+        with:
+          ref: 92bde34d1586990aaa82adc4f60d42d7bc6b5bdf
+          path: application
+          submodules: recursive
+      - name: Verify application identity and supply recovered assets
+        run: |
+          test "$(git -C application rev-parse HEAD)" = 92bde34d1586990aaa82adc4f60d42d7bc6b5bdf
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = 08215dcdae0959685eae3796a63d67e76c2b49da
+          cp -a recovery-work/romfs application/romfs
+          python3 application/tools/check_device_assets.py
+          test -z "$(git -C application status --porcelain)"
+      - name: Clean native no-exceptions build
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Sy --noconfirm switch-sdl2 switch-glad switch-lz4
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            make -j1
+          ' 2>&1 | tee native-build.log
+      - name: Verify and package exact binary
+        run: |
+          set -euo pipefail
+          test -z "$(git -C application status --porcelain)"
+          python3 application/tools/check_device_assets.py
+          python3 recovery-work/tools/verify_embedded_romfs.py application/PokeBankNX.nro application/romfs > embedded-romfs.json
+          python3 application/tools/package_device_build.py application/PokeBankNX.nro --label LeafGreen-Bindings-Retest --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
+          cp embedded-romfs.json toolchain-image.json toolchain-packages.txt device-artifact/
+          python3 - <<'PY'
+          import hashlib, json, subprocess
+          from pathlib import Path
+          out = Path('device-artifact')
+          files = {p.name: {'size':p.stat().st_size, 'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(out.iterdir()) if p.is_file()}
+          record = {'application_source':'92bde34d1586990aaa82adc4f60d42d7bc6b5bdf', 'application_tree':'08215dcdae0959685eae3796a63d67e76c2b49da', 'recovery_source':subprocess.check_output(['git','-C','recovery-work','rev-parse','HEAD'],text=True).strip(), 'device_tested':False, 'device_accepted':False, 'files':files}
+          (out/'BUILD_MANIFEST.json').write_text(json.dumps(record,indent=2)+'\n')
+          (out/'SHA256SUMS').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(out.iterdir()) if p.is_file() and p.name != 'SHA256SUMS'))
+          PY
+      - name: Preserve artifact immediately
+        uses: actions/upload-artifact@v4
+        with:
+          name: LeafGreen-Bindings-Retest-92bde34d
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Publish private device-test prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: GlitchedZeus/PokeBank-NX
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          tag="device-leafgreen-bindings-92bde34d-$RUN_ID"
+          gh release create "$tag" device-artifact/* --target 92bde34d1586990aaa82adc4f60d42d7bc6b5bdf --prerelease --title "LeafGreen binding fix — physical retest (92bde34d)" --notes "Exact application source 92bde34d1586990aaa82adc4f60d42d7bc6b5bdf. Complete recovered RomFS and embedded byte comparison passed. DEVICE TESTED: NO. DEVICE ACCEPTED: NO. Test LeafGreen assignment/restart/profile isolation and existing FireRed read-only browsing."
+          gh release view "$tag" --json url,assets > release-record.json
+          cat release-record.json >> "$GITHUB_STEP_SUMMARY"
+          cat device-artifact/BUILD_MANIFEST.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LeafGreen-build-diagnostics
+          path: |
+            native-build.log
+            embedded-romfs.json
+            release-record.json
+            toolchain-image.json
+            toolchain-packages.txt
+          if-no-files-found: ignore
