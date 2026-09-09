@@ -37,6 +37,7 @@ jobs:
           python3 -m py_compile tools/package_device_build.py
           python3 -m py_compile tools/recover_workspace.py
           python3 -m py_compile tools/check_recovery_contract.py
+          python3 -m py_compile tools/pack_recovery_snapshot.py
 
       - name: Verify GitHub recovery contract
         run: python3 tools/check_recovery_contract.py
