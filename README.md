@@ -19,12 +19,15 @@ The idea is simple: one app that can eventually manage Pokémon across the mainl
 | Native Switch `.nro` | ✅ Working on real hardware |
 | Controller-first UI | ✅ Working |
 | Red PokeBank NX visual identity | ✅ Accepted for development |
-| HD Pokémon artwork | ✅ Working on hardware |
+| HD Pokémon artwork | ✅ 3,260/3,260 verified; working on hardware |
 | Strict Gen III FRLG parser | ✅ Working |
 | FRLG Party + all 14 Boxes | ✅ Working |
-| FRLG parent/child save grouping | ✅ Checkpointed |
-| FRLG GBA artwork | ✅ Checkpointed |
-| FRLG refresh / active-root / trainer / inventory fixes | 🚧 Current milestone |
+| FRLG parent/child save grouping | ✅ Working |
+| FRLG GBA artwork | ✅ Verified in full-asset device build |
+| FRLG refresh / current battery-save reread | ✅ FireRed physically verified |
+| FRLG trainer + inventory read path | ✅ FireRed physically verified |
+| Profile-scoped legacy save assignment | 🚧 FireRed works; LeafGreen persistence bug under fix |
+| FRLG physical acceptance | 🚧 Retest in progress |
 | Profile-scoped Vaults | ⬜ Planned |
 | Banks | ⬜ Planned |
 | Mainline GB/GBC/GBA/DS/3DS/Switch coverage | ⬜ v1.0 target |
@@ -43,7 +46,7 @@ feature/pokebank-playable
 Current milestone:
 
 ```text
-Finish FireRed / LeafGreen GBA physical-test blockers before moving to RSE.
+Fix LeafGreen legacy-source binding persistence, retest FRLG on hardware, then unlock RSE.
 ```
 
 ---
@@ -95,42 +98,91 @@ Finish FireRed / LeafGreen GBA physical-test blockers before moving to RSE.
 - [x] Byte-identical untouched boxed/party PK3 round trips in tests.
 - [x] Exception-free native Switch Gen III backend.
 - [x] Host tests + ASan/UBSan coverage.
+- [x] Current RetroArch battery/in-game `.srm` saves are discovered without requiring emulator savestates.
+- [x] Legacy sources expose truthful filename/source diagnostics instead of a false generic “Main Save.”
+- [x] Distinct physical legacy files remain distinct sources.
+- [x] Profile-scoped legacy-source assignment model exists.
+- [x] Refresh rereads the current physical save.
+- [x] Trainer information and read-only inventory views are implemented.
 
-Latest published FRLG application checkpoint:
+Latest physically tested FRLG application source:
 
 ```text
-9e72e2732fd1cd30a3467e9a9a3f7a4f62ca8024
-gen3: fix RetroArch grouping scope and artwork
+ea0b806bac4acdb5619f22f9841d616ea8a237ff
+legacy: bind FRLG sources to profiles and expose diagnostics
 ```
 
-That checkpoint includes:
+The corrected full-asset device-test artifact was built from that exact application source:
 
-- [x] RetroArch/file legacy sources are app-global instead of tied to a Nintendo profile.
-- [x] One FireRed parent and one LeafGreen parent with child save instances.
-- [x] Alias dedupe without collapsing genuinely separate physical saves.
-- [x] FireRed/LeafGreen GBA card artwork through the shared asset system.
+```text
+PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro
+156,592,377 bytes
+SHA-256 396f8ff9f4da53b5449aeb46b8d1237ca9358a0ac94998680017575916b6b1ee
+```
+
+That artifact passed:
+
+- [x] Native devkitA64 `-fno-exceptions` build.
+- [x] 3,260/3,260 HD Pokémon renders.
+- [x] 1,025/1,025 base species coverage.
+- [x] 18/18 type icons.
+- [x] 3/3 fonts.
+- [x] FireRed + LeafGreen GBA card artwork.
+- [x] Asset preflight.
+- [x] 3,283/3,283 embedded RomFS files byte-identical to the intended asset tree.
+- [x] Embedded `0.1.0-alpha / ea0b806b` source identity.
 
 ---
 
 # Current FRLG milestone
 
-Before Ruby/Sapphire/Emerald begins, the remaining FRLG device blockers need to be finished and physically retested.
+Before Ruby/Sapphire/Emerald begins, the remaining FRLG device blocker needs to be fixed and physically retested.
 
 - [x] App-global RetroArch source scope.
 - [x] Parent/child hierarchy.
 - [x] FRLG GBA artwork.
-- [ ] Startup/open-parent/manual **Refresh Saves / Rescan Sources**.
-- [ ] Changed-save cache invalidation and safe reread.
-- [ ] Deleted/missing-save handling.
-- [ ] Configured RetroArch `savefile_directory` is authoritative; conventional path is fallback-only.
-- [ ] Truthful FRLG trainer name, gender, TID/SID, combined ID semantics, and money.
-- [ ] All six read-only FRLG inventory containers.
-- [ ] Full host tests, sanitizers, native build, and diff checks.
-- [ ] Restore/verify all 3,260 HD renders.
-- [ ] Package a new exact full-asset `.nro`.
-- [ ] Physical Switch retest and acceptance.
+- [x] Startup/open-parent/manual **Refresh Saves / Rescan Sources** path.
+- [x] Changed-save cache invalidation / safe reread demonstrated by the current FireRed in-game save.
+- [ ] Deleted/missing-save physical behavior still needs final acceptance coverage.
+- [ ] Configured RetroArch `savefile_directory` precedence still needs final physical acceptance coverage.
+- [x] Truthful FRLG trainer name, gender, TID/SID, combined ID semantics, and money implemented; FireRed trainer view physically opens correctly.
+- [x] Six read-only FRLG inventory containers implemented; FireRed item view physically opens correctly.
+- [x] Full host tests, sanitizers, native build, and diff checks completed for the tested application source.
+- [x] Restore/verify all 3,260 HD renders.
+- [x] Package and hash a new exact full-asset `.nro`.
+- [x] FireRed current battery-save physical test: current 2-Pokémon save opens with trainer/items data.
+- [x] LeafGreen discovery/parser physical test: `Pokemon - Leaf Green Version.srm`, trainer `Will`, party `1`, fingerprint prefix `d76e3c7e25a4`.
+- [ ] Fix LeafGreen / second legacy-source assignment persistence on Switch.
+- [ ] Retest LeafGreen assignment, restart persistence, and cross-profile isolation.
+- [ ] Final FRLG physical acceptance.
 
 **RSE stays parked until this FRLG milestone passes on hardware.**
+
+---
+
+# Physical testing update — September 9, 2026
+
+The corrected `ea0b806b` build has now been exercised on real Switch hardware.
+
+### FireRed GBA
+
+- [x] PokeBank discovers the normal RetroArch battery/in-game `.srm` source.
+- [x] Saving normally inside FireRed updates the save PokeBank reads.
+- [x] The current 2-Pokémon save opens correctly.
+- [x] Trainer information opens correctly.
+- [x] Item data opens correctly.
+- [x] Emulator `.state` savestate support is not needed as a workaround and is not part of this fix.
+
+### LeafGreen GBA
+
+- [x] `Pokemon - Leaf Green Version.srm` is discovered.
+- [x] Game identity is LeafGreen.
+- [x] Trainer is `Will`.
+- [x] Party count is `1`.
+- [x] Displayed fingerprint prefix is `d76e3c7e25a4`.
+- [ ] Assignment persistence currently fails with `Assignment could not be saved; source remains unassigned.`
+
+The remaining FRLG blocker is now narrowly scoped to persistent legacy-source binding storage on Switch. Discovery and parsing of the physical LeafGreen source are working.
 
 ---
 
@@ -198,7 +250,7 @@ A lot of long-term product planning was cleaned up so the project can grow witho
 - [x] RetroArch source-provider foundation through FRLG.
 - [ ] Source Provider Registry.
 - [ ] Multiple independent saves of the same game.
-- [ ] Profile assignment for emulator/legacy saves.
+- [ ] Profile assignment for emulator/legacy saves — FRLG implementation exists; second-binding persistence fix pending physical retest.
 - [ ] DraStic source provider.
 - [ ] Tico source provider.
 - [ ] Dekopon source provider.
