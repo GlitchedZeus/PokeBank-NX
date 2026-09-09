@@ -62,7 +62,62 @@ https://github.com/znxDomain/DNS-MITM_Manager
 source/GlobalObjects.cpp
 ```
 
-## 3. Separate the two write abstractions
+## 3. Independent Switch confirmation: badpiggies_nx
+
+`ChanseyIsTheBest/badpiggies_nx` contains a compatibility shim for software that expects desktop/POSIX rename semantics. Its comments explicitly document two Horizon behaviors that matter to the current PokeBank failure:
+
+```text
+POSIX rename:
+    replaces an existing destination
+
+Horizon fsFsRenameFile:
+    does not replace an existing destination
+
+Horizon filesystem:
+    may also reject rename/delete while a relevant file handle remains open
+```
+
+This gives the current LeafGreen persistence bug two concrete suspects:
+
+```text
+A. legacy_source_bindings.cfg already exists
+B. target/source/tmp/bak still has an open handle at promotion time
+```
+
+Reference:
+
+```text
+https://github.com/ChanseyIsTheBest/badpiggies_nx
+source/libc_shim.c
+source/libc_shim.h
+```
+
+The project is MIT-licensed at the reviewed revision, but PokeBank should still implement its own narrow transaction abstraction rather than import the Android compatibility shim wholesale.
+
+### Diagnostic requirement for the next physical retest
+
+Do not reduce another hardware failure to only:
+
+```text
+save failed
+```
+
+Capture enough stage information to distinguish the failure:
+
+```text
+SAFE_REPLACE BEGIN
+ target/tmp/bak existence
+ write/flush/close result
+ rename(target,bak): errno + fsdevGetLastResult where available
+ rename(tmp,target): errno + fsdevGetLastResult where available
+ reopen target
+ parse/size/hash validation
+ SAFE_REPLACE END
+```
+
+All readers/writers involving the target transaction paths should be closed before old-to-backup or temp-to-target promotion.
+
+## 4. Separate the two write abstractions
 
 PokeBank should keep these concepts distinct:
 
@@ -84,7 +139,7 @@ SwitchSaveTransaction
 
 Do not collapse both into one generic `writeFile()` helper.
 
-## 4. pkHouse / pkBakery lesson for mounted Switch saves
+## 5. pkHouse / pkBakery lesson for mounted Switch saves
 
 Current native Switch projects from `Insektaure` are useful references for the *other* side of this boundary.
 
@@ -108,27 +163,29 @@ https://github.com/Insektaure/pkBakery
 
 Both repositories are GPL-2.0 at the reviewed revision; default to study/reference unless project licensing decisions explicitly allow direct reuse.
 
-## 5. Recommended PokeBank SD replacement transaction
+## 6. Recommended PokeBank SD replacement transaction
 
 The exact implementation must still be verified on the Switch, but the desired safety contract is:
 
 ```text
 1. recover any stale .tmp/.bak state first
-2. serialize complete new contents in memory when practical
-3. write target.tmp
-4. flush/close target.tmp
-5. validate target.tmp (size + parse/hash as appropriate)
-6. move existing target -> target.bak
-7. move target.tmp -> target
-8. reopen/read/validate target
-9. only after validation, delete target.bak
+2. close every reader/writer involving target/tmp/bak
+3. serialize complete new contents in memory when practical
+4. write target.tmp
+5. flush/close target.tmp
+6. reopen + validate target.tmp (size + parse/hash as appropriate)
+7. close target.tmp again
+8. move existing target -> target.bak
+9. move target.tmp -> target
+10. reopen/read/validate target
+11. retain target.bak until a later known-good startup/retention point
 ```
 
-If step 7 or 8 fails, the previous valid file must remain recoverable from `.bak`.
+If step 9 or 10 fails, the previous valid file must remain recoverable from `.bak`.
 
 Never intentionally enter a state where the only known-good copy is deleted before a replacement is validated.
 
-## 6. Startup/recovery expectations
+## 7. Startup/recovery expectations
 
 `SafeSdFileReplace` should eventually have deterministic recovery rules for combinations of:
 
@@ -150,7 +207,7 @@ recoverable — never neither.
 
 For the current LeafGreen bug, keep the patch narrow: solve binding persistence safely, add regression/failure-injection coverage, and do not turn this session into the entire future Vault transaction implementation.
 
-## 7. Suggested regression matrix
+## 8. Suggested regression matrix
 
 Host-side tests should simulate a failure after each state-changing step:
 
@@ -161,7 +218,7 @@ validate tmp
 rename old -> bak
 rename tmp -> target
 validate target
-delete bak
+backup retention/cleanup
 ```
 
 After every injected failure, reopening the storage abstraction must recover a valid previous/new database and never silently lose the already-working FireRed binding.
@@ -174,23 +231,25 @@ second assignment
 restart/reload
 same-profile FR+LG
 cross-profile isolation
+open-handle diagnostics
 power/app interruption where practical
 FAT32/exFAT behavior if both environments become available
 ```
 
-## 8. Current evidence boundary
+## 9. Current evidence boundary
 
 Strongly supported:
 
 - physical failure occurs after in-memory assignment and during persistence;
 - libnx fsdev `rename()` delegates to `fsFsRenameFile()` directly;
-- a mature Switch homebrew project uses `old -> .bak`, `.tmp -> old`, then removes `.bak`;
+- mature Switch homebrew uses `old -> .bak`, `.tmp -> old` rather than rename-over-existing;
+- an independent Switch project explicitly documents destination-exists and open-handle differences from desktop POSIX behavior;
 - mounted Horizon save-data has different commit/journal concerns from ordinary SD files.
 
 Still to prove in the actual PokeBank patch/device test:
 
-- the exact result code returned by the failed LeafGreen rename;
-- whether destination-exists is the sole cause on the user's filesystem;
+- the exact result code returned by the failed LeafGreen transaction;
+- whether destination-exists, an open handle, or both cause the user's failure;
 - the final replacement/recovery sequence that behaves correctly on the user's SD card.
 
-Treat rename-over-existing as the leading hypothesis until the patched code logs/confirms the actual failure path.
+Treat rename-over-existing as the leading hypothesis, with open-handle rejection as a second concrete suspect, until the patched code logs/confirms the actual failure path.
