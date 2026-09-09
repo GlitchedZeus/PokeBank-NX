@@ -86,6 +86,12 @@ Open:
 docs/research/2026-09-09/TRANSFER_FIXTURES_PROVENANCE.md
 ```
 
+For source grading and bulk before/after pairing also open, only when needed:
+
+```text
+docs/research/2026-09-09/OFFICIAL_PATH_TRANSFER_CORPUS_AUDIT.md
+```
+
 For the shutdown/deadline capture campaign also open:
 
 ```text
@@ -114,6 +120,12 @@ Open:
 
 ```text
 docs/research/2026-09-09/VAULT_DATA_EVENTS_PERFORMANCE.md
+```
+
+For the deep Switch benchmark / EventGallery rights delta also open, only when needed:
+
+```text
+docs/research/2026-09-09/VAULT_PERFORMANCE_EVENT_RIGHTS_AUDIT.md
 ```
 
 For exact future durability testing open:
