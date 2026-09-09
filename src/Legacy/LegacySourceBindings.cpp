@@ -1,12 +1,21 @@
 #include "Legacy/LegacySourceBindings.h"
 
 #include <algorithm>
+#include <cerrno>
 #include <cstdio>
+#include <cstring>
+#include <unistd.h>
 #include <utility>
 #include <vector>
+#ifdef __SWITCH__
+#include <switch/runtime/devices/fs_dev.h>
+#endif
 
 namespace PokeVault::Legacy {
     namespace {
+        using Owners = std::unordered_map<std::string, std::string>;
+        constexpr const char* Header = "# PokeBank NX legacy source bindings v1\n";
+        enum class ReadStatus { Missing, Valid, Invalid };
         char hexDigit(unsigned value) noexcept {
             return static_cast<char>(value < 10 ? '0' + value : 'a' + value - 10);
         }
@@ -42,60 +51,179 @@ namespace PokeVault::Legacy {
         }
     }
 
-    LegacySourceBindings::LegacySourceBindings(std::string storagePath)
-        : storagePath_(std::move(storagePath)) {}
+    namespace {
+        // Bounded, strict read: never expose a partially parsed ownership database.
+        ReadStatus readDatabase(const std::string& path, Owners& owners, std::string& bytes) {
+            owners.clear();
+            bytes.clear();
+            errno = 0;
+            FILE* file = std::fopen(path.c_str(), "rb");
+            if (!file) return errno == ENOENT ? ReadStatus::Missing : ReadStatus::Invalid;
+            char buffer[4096];
+            bool ok = true;
+            size_t count;
+            while ((count = std::fread(buffer, 1, sizeof(buffer), file)) != 0) {
+                if (bytes.size() + count > 1024 * 1024) { ok = false; errno = EFBIG; break; }
+                bytes.append(buffer, count);
+            }
+            if (std::ferror(file)) ok = false;
+            int savedErrno = errno;
+            if (std::fclose(file) != 0) { ok = false; savedErrno = errno; }
+            if (!ok) { errno = savedErrno ? savedErrno : EIO; return ReadStatus::Invalid; }
+            if (!bytes.starts_with(Header) || bytes.back() != '\n') {
+                errno = EILSEQ; return ReadStatus::Invalid;
+            }
+            size_t offset = std::strlen(Header);
+            while (offset < bytes.size()) {
+                const size_t end = bytes.find('\n', offset);
+                const std::string_view row(bytes.data() + offset, end - offset);
+                const size_t sep = row.find('\t');
+                std::string source, profile;
+                if (sep == std::string_view::npos ||
+                    row.find('\t', sep + 1) != std::string_view::npos ||
+                    !hexDecode(row.substr(0, sep), source) ||
+                    !hexDecode(row.substr(sep + 1), profile) ||
+                    !owners.emplace(std::move(source), std::move(profile)).second) {
+                    owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
+                }
+                offset = end + 1;
+            }
+            return ReadStatus::Valid;
+        }
+
+        std::string serialize(const Owners& owners) {
+            std::vector<std::pair<std::string, std::string>> ordered(owners.begin(), owners.end());
+            std::sort(ordered.begin(), ordered.end());
+            std::string bytes = Header;
+            for (const auto& [source, profile] : ordered)
+                bytes += hexEncode(source) + "\t" + hexEncode(profile) + "\n";
+            return bytes;
+        }
+    }
+
+    LegacySourceBindings::LegacySourceBindings(std::string path, BindingFileOps ops)
+        : storagePath_(std::move(path)), ops_(ops) {}
+
+    bool LegacySourceBindings::fail(const char* stage) const {
+        const int error = errno;
+        char diagnostic[256];
+#ifdef __SWITCH__
+        // This is libnx's last translated Result, possibly stale for a local validation failure.
+        const unsigned native = fsdevGetLastResult();
+#else
+        const unsigned native = 0;
+#endif
+        std::snprintf(diagnostic, sizeof(diagnostic),
+            "%s: errno=%d (%s), fsdevLastResult=0x%08x",
+            stage, error, std::strerror(error), native);
+        lastError_ = diagnostic;
+        return false;
+    }
+
+    bool LegacySourceBindings::checkpoint(const char* stage) const {
+        errno = 0;
+        if (ops_.checkpoint && ops_.checkpoint(stage) != 0) return fail(stage);
+        return true;
+    }
 
     bool LegacySourceBindings::load() {
-        owners_.clear();
-        if (storagePath_.empty()) return false;
-        FILE* file = std::fopen(storagePath_.c_str(), "rb");
-        if (!file) return true; // First run: a missing binding file is an empty, valid database.
-
-        char line[4096];
-        bool valid = true;
-        while (std::fgets(line, sizeof(line), file)) {
-            std::string row(line);
-            while (!row.empty() && (row.back() == '\n' || row.back() == '\r')) row.pop_back();
-            if (row.empty() || row.front() == '#') continue;
-            const size_t separator = row.find('\t');
-            if (separator == std::string::npos || row.find('\t', separator + 1) != std::string::npos) {
-                valid = false;
-                continue;
-            }
-            std::string source;
-            std::string profile;
-            if (!hexDecode(std::string_view(row).substr(0, separator), source) ||
-                !hexDecode(std::string_view(row).substr(separator + 1), profile)) {
-                valid = false;
-                continue;
-            }
-            owners_.insert_or_assign(std::move(source), std::move(profile));
+        lastError_.clear();
+        if (storagePath_.empty()) { errno = EINVAL; return fail("load-path"); }
+        Owners candidate;
+        std::string bytes;
+        const auto primary = readDatabase(storagePath_, candidate, bytes);
+        if (primary == ReadStatus::Valid) { owners_ = std::move(candidate); return true; }
+        const int primaryError = errno;
+        const auto backup = readDatabase(storagePath_ + ".bak", candidate, bytes);
+        if (backup == ReadStatus::Valid) {
+            owners_ = std::move(candidate);
+            lastError_ = "Recovered bindings from .bak; primary missing or invalid";
+            return true;
         }
-        if (std::ferror(file)) valid = false;
-        if (std::fclose(file) != 0) valid = false;
-        return valid;
+        if (primary == ReadStatus::Missing && backup == ReadStatus::Missing) {
+            owners_.clear(); // A .tmp alone is uncommitted, never automatically promoted.
+            return true;
+        }
+        errno = primary == ReadStatus::Invalid ? primaryError : errno;
+        return fail("load-database"); // Preserve previous in-memory state on failure.
     }
 
     bool LegacySourceBindings::save() const {
-        if (storagePath_.empty()) return false;
-        const std::string temporary = storagePath_ + ".tmp";
-        FILE* file = std::fopen(temporary.c_str(), "wb");
-        if (!file) return false;
+        lastError_.clear();
+        if (storagePath_.empty()) { errno = EINVAL; return fail("save-path"); }
+        const auto renameFile = ops_.renameFile ? ops_.renameFile : std::rename;
+        const std::string tmp = storagePath_ + ".tmp";
+        const std::string bak = storagePath_ + ".bak";
+        Owners previous, checked;
+        std::string priorBytes, checkedBytes;
+        auto primary = readDatabase(storagePath_, previous, priorBytes);
+        if (primary == ReadStatus::Invalid) return fail("read-existing");
+        if (primary == ReadStatus::Missing) {
+            const auto backup = readDatabase(bak, previous, priorBytes);
+            if (backup == ReadStatus::Invalid) return fail("read-recovery-backup");
+            if (backup == ReadStatus::Valid) {
+                if (!checkpoint("recover-backup")) return false;
+                if (renameFile(bak.c_str(), storagePath_.c_str()) != 0)
+                    return fail("recover-backup");
+                primary = ReadStatus::Valid;
+            }
+        }
+        const std::string bytes = serialize(owners_);
+        if (!checkpoint("write-temp")) return false;
+        FILE* file = std::fopen(tmp.c_str(), "wb");
+        if (!file) return fail("open-temp");
+        bool ok = std::fwrite(bytes.data(), 1, bytes.size(), file) == bytes.size();
+        if (!ok) fail("write-temp");
+        if (ok && std::fflush(file) != 0) { fail("flush-temp"); ok = false; }
+        if (ok && ::fsync(::fileno(file)) != 0) { fail("sync-temp"); ok = false; }
+        // Every handle is closed, even on earlier failure, before any rename/delete.
+        if (std::fclose(file) != 0 && ok) { fail("close-temp"); ok = false; }
+        if (!ok) return false; // Existing primary remains valid; .tmp is never authoritative.
+        if (!checkpoint("validate-temp")) return false;
+        if (readDatabase(tmp, checked, checkedBytes) != ReadStatus::Valid ||
+            checkedBytes != bytes) { errno = EILSEQ; return fail("validate-temp"); }
 
-        bool valid = std::fputs("# PokeBank NX legacy source bindings v1\n", file) >= 0;
-        std::vector<std::pair<std::string, std::string>> ordered(owners_.begin(), owners_.end());
-        std::sort(ordered.begin(), ordered.end());
-        for (const auto& [source, profile] : ordered) {
-            const std::string row = hexEncode(source) + "\t" + hexEncode(profile) + "\n";
-            if (valid && std::fwrite(row.data(), 1, row.size(), file) != row.size()) valid = false;
+        const bool hasPrevious = primary == ReadStatus::Valid;
+        if (hasPrevious) {
+            // Only retire an older backup while the fully validated current primary still exists.
+            if (!checkpoint("retire-backup")) return false;
+            errno = 0;
+            if (std::remove(bak.c_str()) != 0 && errno != ENOENT) return fail("retire-backup");
+            if (!checkpoint("old-to-backup")) return false;
+            if (renameFile(storagePath_.c_str(), bak.c_str()) != 0) return fail("old-to-backup");
         }
-        if (std::fflush(file) != 0) valid = false;
-        if (std::fclose(file) != 0) valid = false;
-        if (!valid || std::rename(temporary.c_str(), storagePath_.c_str()) != 0) {
-            std::remove(temporary.c_str());
+        const auto rollback = [&](bool promoted) {
+            const std::string originalError = lastError_;
+            bool restored = true;
+            if (promoted && std::remove(storagePath_.c_str()) != 0) restored = false;
+            if (hasPrevious && restored &&
+                renameFile(bak.c_str(), storagePath_.c_str()) != 0) restored = false;
+            if (!restored) {
+                fail("rollback"); lastError_ = originalError + "; " + lastError_ +
+                    "; previous database retained at .bak";
+            } else lastError_ = originalError;
             return false;
+        };
+        if (!checkpoint("temp-to-target")) return rollback(false);
+        if (renameFile(tmp.c_str(), storagePath_.c_str()) != 0) {
+            fail("temp-to-target"); return rollback(false);
         }
+        if (!checkpoint("validate-target")) return rollback(true);
+        if (readDatabase(storagePath_, checked, checkedBytes) != ReadStatus::Valid ||
+            checkedBytes != bytes) {
+            errno = EILSEQ; fail("validate-target"); return rollback(true);
+        }
+        // Retain the verified old primary at .bak after success. On restart a missing/invalid
+        // primary can use it; a valid primary always wins over stale .tmp/.bak.
         return true;
+    }
+
+    bool LegacySourceBindings::assignAndSave(std::string_view source, std::string_view profile) {
+        const auto before = owners_;
+        if (!assign(source, profile)) { errno = EINVAL; return fail("assign"); }
+        if (save()) return true;
+        owners_ = before;
+        return false;
     }
 
     bool LegacySourceBindings::assign(std::string_view sourceIdentity,

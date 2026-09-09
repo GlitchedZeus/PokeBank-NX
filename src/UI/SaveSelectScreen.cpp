@@ -139,9 +139,8 @@ namespace UI {
         const std::string profile = currentProfileIdentity();
         if (profile.empty()) return false;
         const auto& entry = unassignedLegacySources[static_cast<size_t>(legacyAssignmentIndex)];
-        if (!legacyBindings->assign(entry.instance.sourceIdentity, profile)) return false;
-        if (!legacyBindings->save()) {
-            (void)legacyBindings->unassign(entry.instance.sourceIdentity);
+        if (!legacyBindings->assignAndSave(entry.instance.sourceIdentity, profile)) {
+            logErrorToFile("Legacy binding assignment failed", legacyBindings->lastError().c_str());
             legacyNotice = "Assignment could not be saved; source remains unassigned.";
             return false;
         }

@@ -2,6 +2,23 @@
 
 Last updated: 2026-09-09
 
+## LeafGreen binding replacement fix — source checkpoint (2026-09-09)
+
+The binding writer now uses verified temporary output, explicit flush/fsync/close, old-to-backup rotation, promotion to an absent target and exact readback. The previous valid database remains recoverable at the target or .bak throughout replacement. Startup prefers a valid primary, recovers a missing/invalid primary from a valid backup, and never promotes speculative .tmp data. Invalid primary data is preserved and blocks further writes rather than being silently overwritten.
+
+assignAndSave() restores the entire prior in-memory assignment map on persistence failure. SaveSelectScreen logs the exact failure stage, errno and (on Switch) fsdevGetLastResult; the native last-result field may be stale for local validation errors. No source save write path changed.
+
+Evidence: old ea0b806b writer reproduced first-save success / second-save failure using an EEXIST-on-existing rename shim. The replacement passes first/second assignments, same/split-profile reload isolation, repeated aliases, separate source identities, failure checkpoints, real open failure, corrupt temp/target readback, failed rollback, stale tmp and backup recovery. All persistence-owned file handles close before rename/delete. No device errno/native Result or external-open-handle evidence has yet been captured; actual Switch root cause/acceptance remains pending retest.
+
+Verification: focused binding tests PASS; focused binding ASan/UBSan PASS with -fno-exceptions/-fno-rtti; existing write-policy/source-mutation tests PASS; git diff --check PASS. Full native build and device artifact remain pending the post-checkpoint build gate. Do not rerun the full PKSM-Core suite solely for this config-file change.
+
+Workspace maintenance removed the prior partial patch staging tree. Its small change was recovered from the recorded patch and hardened; surviving FRLG local changes and b5ef83b RSE ref were preserved. No LeafGreen .srm bytes were available in this runtime: preserve the user's existing fixture (Will, party 1, fingerprint prefix d76e3c7e25a4); no personal save was recreated or changed. RSE remains parked.
+
+DEVICE TESTED FOR NEW SOURCE: NO
+DEVICE ACCEPTED: NO
+
+
+
 This is the short authoritative engineering handoff for coding sessions. The root `README.md` is the human-facing project dashboard. Historical snapshots and older device/build/session records are preserved under `docs/` and `docs/history/`.
 
 ## Authority / repository
