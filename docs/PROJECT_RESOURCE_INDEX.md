@@ -1,28 +1,24 @@
-# PokeBank NX — Codex Project / Resource Index
+# PokeBank NX — AI / Codex Resource Map
 
 Last updated: 2026-09-09
 
 > **Navigation only. This file does not define active scope.**
 >
-> The active engineering authority remains, in order:
+> Current engineering authority is always:
 >
 > 1. `CURRENT_STATUS.md`
 > 2. `docs/CODEX_SESSION.md`
 > 3. `docs/NEXT_CODEX_PROMPT.md`
 >
-> If any roadmap, old session log, old build record, old project map, issue text, README text, or research file conflicts with the three files above, the three files above win for the current coding session.
+> Read this file only to find the small set of supporting documents needed for the active task.
 
-This index exists so Codex can find the right information quickly instead of reading the entire repository or rediscovering work that has already been researched.
-
-The root `README.md` is the user's human-facing project front page. **Do not rewrite, reorganize, replace, or use it to expand implementation scope unless the user explicitly asks for README work.**
+The root `README.md` is the user's human-facing project dashboard. Do not use it as implementation authority.
 
 ---
 
-# 1. Codex fast path
+# 1. AI fast path
 
-For a normal coding/recovery session, do **not** read every document.
-
-Start with:
+A normal coding session should usually read only:
 
 ```text
 CURRENT_STATUS.md
@@ -30,21 +26,23 @@ CURRENT_STATUS.md
 docs/CODEX_SESSION.md
         ↓
 docs/NEXT_CODEX_PROMPT.md
+        ↓
+ONE relevant resource chunk below
 ```
 
-Then consult only the category below that is directly relevant to the active task.
+Do **not** read every roadmap, research file, historical device report or old prompt before starting a narrow task.
 
-Before any destructive Git/worktree/generated-asset/recovery action:
+Before destructive Git/worktree/generated-asset/recovery actions:
 
 ```text
 inspect worktrees
-inspect git status
-preserve useful local/uncommitted/recovery/build/generated state
-preserve parked recovery refs
+inspect git status / diff / untracked files
+preserve useful local work
+preserve recovery refs/assets
 then act
 ```
 
-Writable branch/remote:
+Writable development target:
 
 ```text
 origin/feature/pokebank-playable
@@ -54,113 +52,248 @@ Never push custom PokeBank NX code upstream to PKSE.
 
 ---
 
-# 2. Current recovery / build / artifact work
+# 2. Pick the chunk that matches the task
 
-Use these when the active task is building, packaging, hashing, preserving, publishing, or physically testing an `.nro`:
+| Task / subsystem | Open these first |
+|---|---|
+| Current bug / coding milestone | `CURRENT_STATUS.md`, `CODEX_SESSION.md`, `NEXT_CODEX_PROMPT.md` |
+| GBA / Gen III saves | **GBA chunk** below |
+| GB / GBC saves | **GB/GBC chunk** below |
+| DS saves | **DS chunk** below |
+| 3DS saves | **3DS chunk** below |
+| Modern Switch saves | **Switch chunk** below |
+| Vault / Banks / Dex | **Vault chunk** below |
+| Cross-generation transfer | **Transfer chunk** below |
+| Create Pokémon / editor / legality | **Create + Legality chunk** below |
+| Events / Mystery Gifts | **Events chunk** below |
+| UI / controls / artwork / audio | **UI + Assets chunk** below |
+| Build / package / physical test | **Build + Test chunk** below |
+| Save/write safety / recovery | **Safety chunk** below |
+| Friends / Mailbox / connected features | **Connected chunk** below |
+| External project research | `docs/RESEARCH_REFERENCE_MATRIX.md` first |
 
-```text
-CURRENT_STATUS.md
-
-docs/NEXT_CODEX_PROMPT.md
-    exact active mission and STOP point
-
-docs/DEVICE_BUILD_ASSET_GATE.md
-    required RomFS / sprite / font / type-icon / game-card checks
-
-docs/DEVICE_ARTIFACT_PACKAGING.md
-    exact-source packaging workflow and package_device_build.py behavior
-
-docs/BUILD_RECORD.md
-    historical and current artifact identities / hashes / verification records
-
-docs/RELEASE_CHECKLIST.md
-    build/device/prerelease/release evidence rules
-
-docs/DEVICE_TEST_CHECKLIST.md
-    physical Switch test coverage
-```
-
-Current FRLG recovery facts must always come from `CURRENT_STATUS.md` / `NEXT_CODEX_PROMPT.md`, not from older sections of `BUILD_RECORD.md`, `PROJECT_MAP.md`, or `NEXT_SESSION_PLAN.md`.
-
-As of this index update, the canonical application source named by the authoritative files is:
-
-```text
-ea0b806bac4acdb5619f22f9841d616ea8a237ff
-legacy: bind FRLG sources to profiles and expose diagnostics
-```
-
-Canonical application tree:
-
-```text
-ed5912093886384894c44538d569fe4955fd2e47
-```
-
-Do not treat this index as a replacement for checking `CURRENT_STATUS.md` in a later session; those authoritative files may advance.
+If a task crosses two chunks, open two. Do not automatically open all of them.
 
 ---
 
-# 3. Architecture / boundaries
+# 3. GBA / Gen III chunk
 
-Read only when the task changes app structure, adapters, services, storage, legality, transfer, or write safety:
+Use for Ruby/Sapphire/Emerald and FireRed/LeafGreen GBA work.
+
+```text
+docs/PKSM_CORE_INTEGRATION.md
+    Gen III engine integration / adapter decisions
+
+docs/PKHEX_ORACLE.md
+    host-side correctness/oracle behavior
+
+docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
+    secondary save-engine references
+
+docs/UPSTREAM_AUDIT.md
+    inherited PKSE behavior worth reusing
+
+docs/GAME_SUPPORT_MATRIX.md
+    exact release/platform identity rules
+
+docs/RESEARCH_REFERENCE_MATRIX.md
+    external conversion/save references already researched
+```
+
+For FRLG physical/build work also use:
+
+```text
+docs/DEVICE_TEST_CHECKLIST.md
+docs/DEVICE_BUILD_ASSET_GATE.md
+docs/DEVICE_ARTIFACT_PACKAGING.md
+GitHub issue #6
+```
+
+Current GBA rule: `.sav` / `.srm` battery/in-game saves are the normal RetroArch save sources. Do not invent `.state` support unless a future explicit task requires it.
+
+---
+
+# 4. GB / GBC chunk
+
+Use for Red/Blue/Yellow and Gold/Silver/Crystal.
+
+```text
+docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md
+    PHBankGBC and older bank/save behavior research
+
+docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
+    pksav and portable save-engine references
+
+docs/PKSM_CORE_INTEGRATION.md
+    PK1/PK2 / Sav1/Sav2 engine direction
+
+docs/PKHEX_ORACLE.md
+    host-side correctness oracle
+
+docs/GAME_SUPPORT_MATRIX.md
+```
+
+Before implementing cross-generation GB/GBC transfer behavior, also open the **Transfer chunk**.
+
+---
+
+# 5. DS chunk — Gen IV / V
+
+Use for Diamond/Pearl/Platinum, HGSS, BW and B2W2.
+
+```text
+docs/PKHEX_ORACLE.md
+docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
+docs/RESEARCH_REFERENCE_MATRIX.md
+docs/GAME_SUPPORT_MATRIX.md
+```
+
+The research matrix already indexes useful DS-era references such as IR-GTS, battle-video tools, egg-move/NARC archaeology and older conversion work. Search the matrix before new GitHub research.
+
+---
+
+# 6. 3DS chunk — Gen VI / VII
+
+Use for XY, ORAS, SM and USUM.
+
+```text
+docs/PKHEX_ORACLE.md
+docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
+docs/RESEARCH_REFERENCE_MATRIX.md
+docs/GAME_SUPPORT_MATRIX.md
+```
+
+High-value references already indexed include Gen VI save/checksum research, Pokémon Link/event research and historical KeySAV-style tooling. Do not rediscover them from scratch.
+
+---
+
+# 7. Modern Switch chunk
+
+Use for LGPE, SwSh, BDSP, PLA, SV, Z-A and official Switch FR/LG work.
+
+```text
+docs/PKHOUSE_REFERENCE.md
+docs/OPENHOME_SWITCH_PLATFORM_REFERENCE_AUDIT_2026-09-03.md
+docs/PKHEX_ORACLE.md
+docs/GAME_SUPPORT_MATRIX.md
+docs/RESEARCH_REFERENCE_MATRIX.md
+```
+
+The research matrix already indexes Switch gift/BCAT research, PokePia/LAN protocol work, BDSP Unity data extraction, poke-client and related tools.
+
+Keep these identities separate from legacy releases, e.g.:
+
+```text
+firered_gba != firered_switch
+leafgreen_gba != leafgreen_switch
+```
+
+---
+
+# 8. Vault / Banks / Pokédex chunk
 
 ```text
 docs/ARCHITECTURE.md
-    layer boundaries and dependency direction
-
-docs/SAVE_SAFETY.md
-    staged-write / backup / readback / rollback contract
-
-docs/TRANSFER_MODEL.md
-    COPY / MOVE / CLONE / conversion semantics
-
 docs/MASTER_VAULT_SPEC.md
-    immutable Vault entities, hashes, provenance, transactions
-
-docs/GAME_SUPPORT_MATRIX.md
-    game/release/platform identity and planned support
+docs/POKEDEX_SPEC.md
+docs/PRODUCT_DECISIONS.md
 ```
 
-Core rule:
+Core ownership model:
 
 ```text
-external engine/reference
-        ↓
-PokeBank adapter/service boundary
-        ↓
-PokeBank safety/provenance/transactions
-        ↓
-PokeBank controller-first UI
+Master Vault = authoritative immutable Pokémon entities + hashes + provenance
+Banks        = logical organization / references
+Pokédex      = rebuildable collection index derived from Vault
+Game saves   = external sources/destinations behind adapters
 ```
 
-Do not let PKSM, PKHeX, PKSE, pkHouse, or another project become the UI/business architecture directly.
+Do not make Banks or the Pokédex a second independent ownership database.
 
 ---
 
-# 4. UI / controls / visual design
+# 9. Transfer / conversion chunk
 
-Use these for UI work instead of re-deriving design from old screenshots/chat history:
+```text
+docs/TRANSFER_MODEL.md
+docs/ARCHITECTURE.md
+docs/PKHEX_ORACLE.md
+docs/HOME_BRIDGE_HISTORICAL_TRANSFER_RESEARCH.md
+docs/RESEARCH_REFERENCE_MATRIX.md
+```
+
+External references already researched include `Poke_Transporter_GB`, `pk2pk`, PKHeX and HOME-format preservation work.
+
+Permanent distinctions:
+
+```text
+COPY != MOVE != CLONE != TRADE
+```
+
+Destination compatibility and lossy/irreversible changes must be explicit.
+
+---
+
+# 10. Create Pokémon / editor / legality chunk
+
+This is a permanent product pillar; do not let it disappear from the roadmap.
+
+```text
+docs/CREATE_POKEMON_VISION.md
+docs/PKHEX_ORACLE.md
+docs/PRODUCT_DECISIONS.md
+docs/RESEARCH_REFERENCE_MATRIX.md
+```
+
+Product direction:
+
+```text
+Quick Legal
+Guided Create
+Advanced / Expert editor
+human-readable legality explanations
+destination-aware constraints
+Event Library integration
+provenance/history
+Vault + staging/preview/rollback
+```
+
+PKHeX / Auto Legality / CoreConsole are host-side research/oracle references unless a later explicit architecture decision changes that.
+
+---
+
+# 11. Events / Mystery Gifts chunk
+
+```text
+docs/PRODUCT_DECISIONS.md
+docs/FUTURE_PRODUCT_VISION.md
+docs/RESEARCH_REFERENCE_MATRIX.md
+```
+
+Already researched/indexed references include Project Pokémon EventsGallery, PKHeX event handling, Switch-Gift-Data-Manager, G6 Pokémon Link tooling and IR-GTS/Wonder Card behavior.
+
+Permanent provenance rule:
+
+```text
+legality != witnessed historical redemption
+```
+
+Never fabricate official server receipt, Nintendo-account history, HOME trackers or witnessed redemption provenance.
+
+---
+
+# 12. UI / controls / assets / audio chunk
 
 ```text
 docs/UI_STYLE_GUIDE.md
-    visual contract, themes, cards, Summary, Dex, Vault, dialogs
-
 docs/UI_FLOW.md
-    controller-first navigation and action semantics
-
 docs/CONTROLS.md
-    controller behavior / normalization details
-
 docs/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md
-    external visual/artwork sources, rights notes, resolver recommendations
-
 docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
-    inherited offline sprite generation/runtime pipeline
-
-docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md
-    physical feedback for Pokémon render motion/presentation
+docs/POKEMON_CRY_AUDIO_AUDIT_2026-09-02.md
 ```
 
-Actual project visual material includes:
+Project visual material:
 
 ```text
 assets/screenshots/
@@ -169,94 +302,89 @@ assets/banner.png
 assets/icon.jpg
 ```
 
-`assets/game_cards/README.md` records the pinned source revision and hashes for the packaged FRLG GBA cards.
+Generated runtime assets under `romfs/` are not equivalent to Git-tracked `assets/`. Do not regenerate thousands of files until the build/asset gate proves they are missing or corrupt.
 
-The generated runtime asset tree under `romfs/` is intentionally not equivalent to the Git-tracked `assets/` directory. Follow the asset-gate and sprite-pipeline docs before assuming a clean checkout contains every runtime image.
-
----
-
-# 5. Pokémon visual / artwork source strategy
-
-Before searching for or rebuilding Pokémon artwork infrastructure, consult:
-
-```text
-docs/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md
-docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
-```
-
-Already researched sources include:
-
-```text
-PokeAPI/sprites
-PokéSprite
-Project Pokémon sprite/model indexes
-Pokemon-3D-api organization
-Pokémon Database sprite pages
-libretro game-cover thumbnails
-```
-
-Important distinction:
-
-```text
-technical availability != redistribution permission
-```
-
-Repository code licensing and Pokémon artwork/model rights may be different. Do not assume an MIT/BSD repository license automatically licenses Nintendo/TPC/Game Freak imagery for redistribution.
+Technical availability of Pokémon art/audio does not automatically grant redistribution rights.
 
 ---
 
-# 6. Audio / cries
-
-For Pokémon cry/audio work:
+# 13. Build / package / device-test chunk
 
 ```text
-docs/POKEMON_CRY_AUDIO_AUDIT_2026-09-02.md
+docs/DEVICE_BUILD_ASSET_GATE.md
+docs/DEVICE_ARTIFACT_PACKAGING.md
+docs/RELEASE_CHECKLIST.md
+docs/DEVICE_TEST_CHECKLIST.md
+docs/BUILD_RECORD.md
 ```
 
-Do not begin new audio-source research without checking that audit first.
+Use `BUILD_RECORD.md` for artifact history, **not** as current-state authority.
+
+Evidence terminology must remain exact:
+
+```text
+BUILDS != DEVICE TESTED
+DEVICE TESTED != DEVICE ACCEPTED
+```
+
+Physical acceptance applies only to the exact tested artifact/source identity.
 
 ---
 
-# 7. Save engines / format research
-
-Before writing a Pokémon/save parser or conversion engine from scratch, consult:
+# 14. Save safety / writes / recovery chunk
 
 ```text
-docs/PKSM_CORE_INTEGRATION.md
-docs/PKHEX_ORACLE.md
-docs/PKHOUSE_REFERENCE.md
-docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
-docs/UPSTREAM_AUDIT.md
-docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md
-docs/OPENHOME_SWITCH_PLATFORM_REFERENCE_AUDIT_2026-09-03.md
-docs/UPR_ZX_REFERENCE_AUDIT_2026-09-03.md
-docs/RESEARCH_REFERENCE_MATRIX.md
+docs/SAVE_SAFETY.md
+docs/ARCHITECTURE.md
+docs/TRANSFER_MODEL.md
+docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md
+docs/SESSION2_6_SAFETY_IMPLEMENTATION.md
 ```
 
-Primary roles:
+Default pipeline for any future write-capable adapter:
 
 ```text
-PKSE          inherited native Switch foundation
-PKSM-Core     native historical Pokémon/save engine candidate
-PKSM          mature full-app/bank/event/save-management reference
-PKHeX         primary host-side correctness / legality / encounter / conversion oracle
-Auto Legality host-side Quick Legal / generation research
-pkHouse       modern Switch save-behavior reference
+backup / snapshot
+        ↓
+stage
+        ↓
+validate
+        ↓
+write
+        ↓
+readback
+        ↓
+verify
+        ↓
+commit history OR rollback
 ```
 
-Use triangulation where practical instead of trusting one implementation blindly.
+No global unsafe live-write switch.
 
 ---
 
-# 8. External GitHub research inventory
+# 15. Connected / Trainer Plaza / social chunk
 
-The master external-project triage is:
+Future-only unless explicitly promoted by `NEXT_CODEX_PROMPT.md`.
+
+```text
+docs/TRAINER_PLAZA_VISION.md
+docs/V2_PLATFORM_VISION.md
+docs/V2_ROADMAP.md
+docs/PRODUCT_DECISIONS.md
+```
+
+The local Vault remains primary. Online services must not become a mandatory cloud Vault.
+
+---
+
+# 16. External research master index
+
+Before searching GitHub or implementing a Pokémon format/protocol/helper already likely solved elsewhere, open:
 
 ```text
 docs/RESEARCH_REFERENCE_MATRIX.md
 ```
-
-Check it before searching GitHub or implementing a solved subproblem.
 
 It classifies projects as:
 
@@ -268,274 +396,72 @@ HISTORICAL
 IGNORE / OUT-OF-SCOPE
 ```
 
-High-value references currently include, among others:
-
-```text
-kwsch/PKHeX
-PKSM / PKSM-Core
-Striaton-Lab-Team/Poke_Transporter_GB
-Manu098vm/Switch-Gift-Data-Manager
-kwsch/PokePiaSWSH
-JamieJQuinn/IR-GTS
-Reisyukaku/poke-client
-foohyfooh/PKHeXPluginPile
-kwsch/CoreConsole
-kwsch/HomeRip
-kwsch/pk2pk
-kwsch/XYSAV
-kwsch/UnityDPtools
-carimatics/switch-poke-pilot
-ItsMeJoji/PokeTrainerTools
-PoshoDev/DexTool
-DigitalFlow/Pokemon-Team-Builder
-suloku/G6_pl_tool
-```
-
-Do not copy code merely because a repository is public. Check exact license and file/data rights first.
+Public visibility is not permission to copy. Check license and asset/data rights separately.
 
 ---
 
-# 9. Create Pokémon / editor / legality
+# 17. Product roadmap / future ideas
 
-This feature is permanent and must not be accidentally dropped when other roadmap ideas are discussed.
-
-Read:
+These describe destination, not today's coding scope:
 
 ```text
-docs/CREATE_POKEMON_VISION.md
-docs/PKHEX_ORACLE.md
-docs/PRODUCT_DECISIONS.md
-```
-
-Product shorthand:
-
-```text
-PKHeX-class capability baseline
-+ Quick Legal
-+ Guided Create
-+ Advanced / Expert Editor
-+ controller-first workflow
-+ human-readable legality explanations
-+ destination compatibility
-+ Event Library
-+ provenance/history
-+ Vault integration
-+ staging / preview / rollback
-= PokeBank NX Create Pokémon
-```
-
-PKHeX is a host-side oracle/reference under the current architecture; the Switch runtime remains PokeBank-native unless a deliberate later architecture/licensing decision changes that.
-
----
-
-# 10. Vault / Banks / Dex / collection intelligence
-
-Use:
-
-```text
-docs/MASTER_VAULT_SPEC.md
-docs/POKEDEX_SPEC.md
-docs/TRANSFER_MODEL.md
-docs/MODDED_SWITCH_FEATURE_BACKLOG.md
-docs/FUTURE_PRODUCT_VISION.md
-```
-
-Concept boundary:
-
-```text
-Master Vault = authoritative immutable entities + provenance
-Banks        = logical organization/references
-Pokédex      = rebuildable collection index derived from Vault
-Game saves   = external sources/destinations behind adapters
-```
-
-Do not make Banks own independent Pokémon payloads and do not make the Pokédex a second manual ownership database.
-
----
-
-# 11. Event / Mystery Gift preservation
-
-Use:
-
-```text
-docs/FUTURE_PRODUCT_VISION.md
-docs/PRODUCT_DECISIONS.md
-docs/RESEARCH_REFERENCE_MATRIX.md
-```
-
-Important external references already indexed include:
-
-```text
-Project Pokémon EventsGallery
-PKHeX event/Mystery Gift handling
-Switch-Gift-Data-Manager
-G6_pl_tool
-IR-GTS Wonder Card behavior
-```
-
-Permanent provenance rule:
-
-```text
-legality != witnessed historical redemption
-```
-
-A locally restored/generated event must be labeled truthfully and must not fabricate HOME trackers, Nintendo-account history, server receipts, or official live-redemption provenance.
-
----
-
-# 12. Social / Trainer Plaza / trading
-
-Future-only unless explicitly promoted into the active prompt:
-
-```text
-docs/TRAINER_PLAZA_VISION.md
-docs/V2_PLATFORM_VISION.md
-docs/V2_ROADMAP.md
-docs/PRODUCT_DECISIONS.md
-```
-
-Current design direction:
-
-```text
-Trainer Plaza
-Friends
-Mailbox
-Poké Radar
-TrainerDex
-Trainer Card / Passport
-Partner Pokémon
-Trade Center
-Gift
-LAN / Internet PokeBank exchange
-Android companion later
-```
-
-The local Vault remains primary. Online infrastructure should not become a mandatory hosted Vault.
-
----
-
-# 13. Long-term mega-app backlog
-
-These are accepted product directions but **never automatically become the next coding task**:
-
-```text
-docs/MODDED_SWITCH_FEATURE_BACKLOG.md
-docs/FUTURE_PRODUCT_VISION.md
-docs/FEATURE_FEASIBILITY_MATRIX.md
-docs/PRODUCT_DECISIONS.md
 docs/V1_ROADMAP.md
 docs/V2_ROADMAP.md
+docs/FUTURE_PRODUCT_VISION.md
+docs/FEATURE_FEASIBILITY_MATRIX.md
+docs/MODDED_SWITCH_FEATURE_BACKLOG.md
+docs/PRODUCT_DECISIONS.md
 ```
 
-The backlog includes Save Scanner, Rescue Mode, Save Time Machine, Pokémon Journey/provenance, Transfer Lab, compatibility map, offline legality, Living Dex intelligence, evolution planning, duplicate detection, EventDex, Ribbon Master, shiny-hunt tools, team building, bulk tools, cross-save search, Verified Breeding, Trainer Plaza, LAN/Internet exchange, companion apps, backup/disaster recovery, provider/plugin systems, and offline-first/no-lock-in guarantees.
-
-Roadmap documents describe destination. `NEXT_CODEX_PROMPT.md` decides what Codex is allowed to implement now.
+`NEXT_CODEX_PROMPT.md` alone decides what gets implemented in the current session.
 
 ---
 
-# 14. Testing / evidence / safety history
+# 18. Historical / recovery evidence
 
-Use only the exact report relevant to the artifact/source under investigation:
-
-```text
-docs/DEVICE_TEST_REPORT_2026-09-01.md
-docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
-docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md
-docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md
-docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md
-docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md
-docs/SESSION2_6_SAFETY_IMPLEMENTATION.md
-```
-
-Never upgrade evidence terminology merely because a build succeeds:
+Historical material remains useful, but Codex should not read it by default.
 
 ```text
-BUILDS != DEVICE TESTED
-DEVICE TESTED != DEVICE ACCEPTED
-```
-
-Physical acceptance requires the user's test of the exact filename/hash.
-
----
-
-# 15. Historical session documents
-
-These are retained deliberately and must not be deleted merely because newer state exists:
-
-```text
+docs/history/
 docs/SESSION_LOG_*.md
 docs/PROMPT_SESSION*.md
-docs/PROMPT_MONDAY_RECOVERY_SESSION2_6.md
-docs/FINAL_HANDOFF_2026-09-03.md
 docs/NEXT_SESSION_PLAN.md
 docs/PROJECT_MAP.md
+older sections of docs/BUILD_RECORD.md
+older device-test reports
 ```
 
-They can contain useful archaeology, previous artifact identities, failed approaches, or recovery details.
+Historical snapshots can contain stale phrases such as “current” or “next.” They are evidence, not active authority.
 
-However, some contain older "current" states. Treat them as **historical evidence/navigation unless CURRENT_STATUS.md or NEXT_CODEX_PROMPT.md explicitly points to them**.
-
-Do not delete or rewrite historical evidence simply to make the docs directory look cleaner.
+We preserve them instead of deleting them so recovery information and previous artifact identities remain available.
 
 ---
 
-# 16. Codex efficiency rules
+# 19. AI efficiency rules
 
-When beginning work:
+Do:
 
 ```text
-1. read authority files
-2. identify exact active subsystem
-3. use this index to open only relevant detailed docs
+1. read the three authority files
+2. identify the active subsystem
+3. open only that resource chunk
 4. check RESEARCH_REFERENCE_MATRIX before new external research
-5. reuse verified work when source is unchanged
-6. do not rerun expensive verification without cause
-7. do not regenerate large asset trees without proving they are missing/corrupt
-8. keep source SHA, documentation SHA and artifact SHA distinct
-9. preserve recovery refs/worktrees before maintenance
-10. stop at the active prompt's STOP condition
+5. reuse verified source/assets when unchanged
+6. push coherent source checkpoints early
+7. keep application SHA, docs SHA and artifact SHA distinct
+8. stop at NEXT_CODEX_PROMPT's STOP condition
 ```
 
 Avoid:
 
 ```text
-reading every roadmap before a narrow recovery build
-reimplementing a solved external format blindly
-turning a research document into active scope
-using old PROJECT_MAP/NEXT_SESSION_PLAN state as current truth
-changing README during engineering cleanup
-rewriting mature adapters merely to make architecture look uniform
-rerunning full sanitizers because a session restarted with unchanged source
-redownloading thousands of sprites when a verified cache already survives
-committing large generated `.nro` binaries to normal Git history when a GitHub Release/Actions artifact is the intended persistent distribution path
+reading the entire docs folder
+reading every roadmap before a narrow bug fix
+redoing external research already indexed
+rerunning sanitizers only because a session restarted
+redownloading complete asset sets without proving they are missing
+using README or an old prompt as active engineering scope
+moving/deleting old files merely for cosmetic organization
 ```
 
----
-
-# 17. Repository cleanup policy
-
-This repository intentionally keeps engineering history because recovery evidence matters.
-
-"Cleanup" therefore means:
-
-```text
-add indexes
-add clear authority labels
-add cross-links
-classify historical vs current
-reduce duplicate searching
-preserve old evidence
-```
-
-It does **not** mean:
-
-```text
-delete old prompts
-remove recovery refs
-throw away build records
-move files in ways that break old links
-rewrite the user's README
-squash away artifact history
-```
-
-This index is the preferred map for future Codex sessions.
+The repository is intentionally organized by **navigation and authority**, not by physically moving every historical file. This keeps old links/recovery evidence stable while allowing AI tools to jump directly to the relevant game family or subsystem.
