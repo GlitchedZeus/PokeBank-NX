@@ -1,5 +1,21 @@
 # PokeBank NX — Current Verified Engineering State
 
+## Emergency save-mode checkpoint — 2026-09-09
+
+```text
+Canonical application source: ea0b806bac4acdb5619f22f9841d616ea8a237ff
+Canonical tree: ed5912093886384894c44538d569fe4955fd2e47
+Exact-source staging tree: reconstructed and verified clean
+Pinned HD renders restored so far: 2672 / 3260
+Final NRO packaged: NO
+GitHub prerelease published: NO
+DEVICE TESTED: NO
+DEVICE ACCEPTED: NO
+```
+
+The resumable sprite generator was restoring only missing pinned renders when save mode was requested. Preserve/reuse the generated files; do not delete or restart them. Finish 3260/3260, run asset preflight, build exact `ea0b806b`, compare embedded RomFS byte-for-byte, then package fresh NRO/ZIP/manifest hashes. Parked RSE checkpoint `b5ef83b` remains isolated and untouched.
+
+
 Last updated: 2026-09-08
 
 This file is the short authoritative engineering handoff. The root README is human-facing product/roadmap information only. Detailed active work instructions live in `docs/NEXT_CODEX_PROMPT.md`.
