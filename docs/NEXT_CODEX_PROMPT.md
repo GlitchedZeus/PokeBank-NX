@@ -1,3 +1,18 @@
+# Current stop state — native link blocker
+
+Read CURRENT_STATUS.md first. Recovery and the complete private GitHub RomFS snapshot are DONE at a2adac94f15504b90a83a295e77ad54154da4206. A fresh runner successfully restored it. Do not repeat external sprite restoration.
+
+The exact 92bde34d application clean build failed at final linking with undefined reference to fsdevGetLastResult() from LegacySourceBindings.cpp:112. Translation-unit compilation had passed. See run 34404103716 and the current status for preserved logs/toolchain identity.
+
+Do not claim or package a 92bde34d NRO. A future source-fix session should check the libnx C/C++ declaration/linkage and publish any necessary narrow correction as a NEW application source SHA, then update the pinned source/tree/embedded-SHA build gates. No persistence redesign, RSE or roadmap work. This recovery/build-only session stopped without changing runtime source.
+
+DEVICE TESTED FOR NEW ARTIFACT: NO
+DEVICE ACCEPTED: NO
+
+---
+
+## Prior recovery/build instructions (recovery completed; link failed)
+
 # PokeBank NX — Authoritative Next Codex Prompt
 
 Use HIGH reasoning.
