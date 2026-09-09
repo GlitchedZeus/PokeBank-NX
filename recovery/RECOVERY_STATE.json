@@ -16,6 +16,13 @@
     "font_count": 3,
     "embedded_romfs_file_count": 3283
   },
+  "full_romfs_snapshot": {
+    "manifest": "recovery/assets_snapshot/manifest.json",
+    "packer": "tools/pack_recovery_snapshot.py",
+    "preferred_when_present": true,
+    "status": "PENDING_FIRST_FULL_SNAPSHOT",
+    "note": "After one full preflight-passing recovery, pack and commit the split snapshot parts so future recovery can be GitHub-only with no network regeneration."
+  },
   "pokemon_hd": {
     "generator": "tools/gen_hdsprites.py",
     "pinned_pokeapi_sprites_ref": "8dfa3d97e953caaafaafd4963eff7621811af08e",
@@ -37,7 +44,7 @@
       "NotoSansSymbols2.ttf"
     ],
     "output": "romfs/fonts",
-    "note": "SIL OFL fonts; recovery script uses the project URLs. Add exact hashes to this state after the historical NRO is extracted/compared if byte-for-byte font identity is required."
+    "note": "SIL OFL fonts; recovery script uses the project URLs until the complete private GitHub RomFS snapshot is committed."
   },
   "game_cards": {
     "tracked_source": "assets/game_cards",
