@@ -51,6 +51,9 @@ PokeBank NX v2.0 is the target for **PokeBank NX Connected**:
 
 - Android companion app;
 - PokeBank IDs;
+- Trainer Plaza foundation;
+- Trainer Card / Trainer Passport;
+- Partner Pokémon;
 - Friends;
 - Mailbox;
 - Internet Gifts;
@@ -150,13 +153,55 @@ v1.x
 Deeper local tools + Colosseum/XD + Stadium stretch + local/LAN exchange
 
 v2.0
-Android + Friends + Mailbox + Internet Gift/Trade
+Android + Trainer Plaza foundation + Friends + Mailbox + Internet Gift/Trade
 
 v2.x+
-Wonder/GTS/Room/public-community systems and other companion clients
+Richer Trainer encounters/Poké Radar/TrainerDex + Wonder/GTS/Room/public-community systems and other companion clients
 
 Research
 Physical hardware/link experiments and anything requiring proof-of-concept first
 ```
 
 PokeBank NX should ship a strong 1.0 before attempting to complete every future idea.
+
+---
+
+## 6. Trainer Plaza supersedes Pokémon Ranch as the preferred social direction
+
+As of 2026-09-08, the preferred Connected/community concept is:
+
+```text
+Trainer Plaza
++ PokeBank ID
++ Trainer Card / Trainer Passport
++ Partner Pokémon
++ Friends
++ Mailbox
++ Trainer Encounters
++ TrainerDex
++ Poké Radar
++ safe Gift / mandatory one-for-one Friend Trade
+```
+
+This replaces the earlier Pokémon Ranch-style concept as the primary social shell.
+
+Why:
+
+- it directly builds on the Friends/Mailbox/Trade infrastructure already planned for v2.0;
+- Partner Pokémon gives each trainer a strong Pokémon-native visual identity;
+- Trainer Cards and encounters work naturally on both Switch and Android;
+- the server can remain lightweight instead of hosting full Vaults;
+- social discovery can exist without exposing private Vault contents;
+- the experience can start simple and expand later without blocking the local core.
+
+The product may still include a private/local Ranch-style visualization someday as a cosmetic or collection-view feature, but it is optional and must not take priority over Trainer Plaza.
+
+The reference inspiration is `Insektaure/NX-Plaza`, particularly its lightweight identity/pass/radar/encounter philosophy. NX-Plaza is GPL-2.0, so PokeBank NX should use a clean-room Pokémon-native implementation with its own protocol/data model rather than casually copying substantial source or assets.
+
+Detailed design is recorded in:
+
+```text
+docs/TRAINER_PLAZA_VISION.md
+```
+
+This is future-only and must not expand the current FRLG/RSE implementation scope.
