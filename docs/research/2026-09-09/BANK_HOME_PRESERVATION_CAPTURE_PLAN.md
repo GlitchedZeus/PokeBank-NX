@@ -13,6 +13,103 @@ Official references:
 
 This makes controlled Bank -> HOME captures a 2026 preservation task rather than something to postpone until the Gen VII/VIII implementation milestone.
 
+## What we are actually trying to capture
+
+We are **not** trying to send PokeBank NX Pokémon into HOME or somehow transfer them back to the 3DS.
+
+The practical goal is simply:
+
+```text
+known exact Pokémon before
+        ↓
+official Bank -> HOME path
+        ↓
+known exact Pokémon / HOME state after
+```
+
+The value is the before/after difference. Years later, PokeBank NX can compare the source bytes to the official-path result and learn what Nintendo's real service changed.
+
+A small, carefully documented corpus is sufficient. This is preservation/test research, not a user collection migration.
+
+## Practical workflow with another researcher
+
+The easiest safe setup is to prepare a **throwaway Gen VII research save** or a numbered set of exact `.pk7` files, then let a trusted researcher with working Bank/HOME perform the official transfer.
+
+Recommended source package:
+
+```text
+PBX-BH-001-Bulbasaur.pk7
+PBX-BH-002-Pikachu.pk7
+PBX-BH-003-Unown.pk7
+...
+PBX-BH-050-Example.pk7
+
+source_save/
+  main
+
+manifest.json
+sha256sums.txt
+```
+
+The researcher can either:
+
+1. restore the clean research save to a compatible 3DS setup; or
+2. inject the exact numbered `.pk7` files into their own clean compatible Gen VII test save.
+
+For this research, option 2 is acceptable because the thing being measured is the official **Bank -> HOME transformation of known source bytes**, not proof that the source Pokémon was personally caught by the original researcher.
+
+Then:
+
+```text
+source PK7 / test save
+        ↓
+Pokémon Bank
+        ↓
+official Bank -> HOME transfer
+        ↓
+HOME result capture
+        ↓
+optional official withdrawal into compatible Switch title
+        ↓
+resulting PB7 / PK8 / PB8 / PA8 / PK9 / PA9
+```
+
+The source and returned files should preserve the numeric fixture ID so before/after pairing is unambiguous.
+
+## What the researcher should return
+
+### Minimum useful result
+
+For each specimen:
+
+```text
+before/PBX-BH-001-Example.pk7
+
+after/PBX-BH-001-Example.pk8   # or other official destination format
+```
+
+plus:
+
+```text
+manifest.json
+sha256sums.txt
+```
+
+A whole destination save may also be useful, but individual resulting Pokémon files are cleaner for differential tests and avoid asking the researcher to share unrelated personal save data.
+
+### Best possible result
+
+If the researcher has an online-safe hacked Switch they are comfortable using with HOME, also capture the HOME-native representation using the HOME Live Plugin **dumper**:
+
+```text
+before/PBX-BH-001-Example.pk7
+home_after_import/PBX-BH-001-Example.ph?/eh?
+after/PBX-BH-001-Example.pk8
+home_after_destination/PBX-BH-001-Example.ph?/eh?
+```
+
+Do **not** require or pressure anyone to put their primary modded Switch/account at risk merely for this research. Existing community captures remain useful if a safe collaborator is unavailable.
+
 ## Why native HOME state matters
 
 A simple:
@@ -22,7 +119,7 @@ PK7 before
 PK8 after
 ```
 
-is not a complete modern transfer fixture. HOME has server-created identity/state, including the HOME Tracker and game-specific representations/side data.
+is useful, but is not a complete modern transfer fixture. HOME has server-created identity/state, including the HOME Tracker and game-specific representations/side data.
 
 Permanent rule remains:
 
@@ -109,7 +206,7 @@ SHA-256 for every captured artifact
 
 ## Prefer diversity over raw count
 
-A carefully selected 50–200-specimen corpus is likely more useful than thousands of ordinary random Pokémon.
+A carefully selected **20–50 excellent specimens** may already be more valuable than hundreds of poorly documented ordinary Pokémon. The broader target can remain 50–200 if enough safe collaborators/time exist.
 
 Cover where practical:
 
@@ -127,6 +224,40 @@ alternate / normalized forms
 nickname / OT encoding edge cases
 country/subregion metadata
 PID / gender / shiny threshold edge cases
+```
+
+Do **not** use irreplaceable personal living-dex/event specimens for the experiment when generated/duplicated legal research specimens can exercise the same transformation. Bank -> HOME is one-way.
+
+## Destination compatibility
+
+Not every source Pokémon can be withdrawn into every Switch game. Do not assume the complete test set can all become `PK8` or all become `PK9`.
+
+Two valid approaches:
+
+```text
+A. capture HOME-native state and stop there for incompatible species
+
+B. deliberately split the test set across compatible destination games
+   SWSH / BDSP / PLA / SV / ZA as appropriate
+```
+
+The research question is the official transformation path, not forcing every specimen into one destination title.
+
+## Suggested collaborator request
+
+A concise request can be framed as:
+
+```text
+I have a numbered research set of exact legal PK7 Pokémon and need them
+passed through the real Pokémon Bank -> Pokémon HOME route before Bank
+shuts down. I will provide the source PK7 files and/or a clean test save.
+Please do not manually edit the Pokémon after receipt.
+
+After transfer I need the resulting Pokémon data. If possible, HOME-native
+PH/EH dumps are ideal; otherwise an official withdrawal into a compatible
+Switch game and the resulting PK8/PK9/etc files is still useful.
+
+I do not need your personal save or account information.
 ```
 
 ## Modern HOME route model
