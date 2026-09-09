@@ -11,7 +11,9 @@ ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH = ROOT / "recovery" / "RECOVERY_STATE.json"
 GENERATOR = ROOT / "tools" / "gen_hdsprites.py"
 RECOVER = ROOT / "tools" / "recover_workspace.py"
+PACKER = ROOT / "tools" / "pack_recovery_snapshot.py"
 CONTRACT = ROOT / "docs" / "RECOVERY_CONTRACT.md"
+SNAPSHOT_README = ROOT / "recovery" / "assets_snapshot" / "README.md"
 
 
 def fail(message: str) -> None:
@@ -20,7 +22,7 @@ def fail(message: str) -> None:
 
 
 def main() -> int:
-    for path in (STATE_PATH, GENERATOR, RECOVER, CONTRACT):
+    for path in (STATE_PATH, GENERATOR, RECOVER, PACKER, CONTRACT, SNAPSHOT_README):
         if not path.is_file():
             fail(f"missing tracked recovery file: {path.relative_to(ROOT)}")
 
@@ -48,6 +50,12 @@ def main() -> int:
     if len(state.get("fonts", {}).get("expected", [])) != 3:
         fail("expected font count is not 3")
 
+    snapshot = state.get("full_romfs_snapshot", {})
+    if snapshot.get("manifest") != "recovery/assets_snapshot/manifest.json":
+        fail("full RomFS snapshot manifest path drifted")
+    if snapshot.get("packer") != "tools/pack_recovery_snapshot.py":
+        fail("full RomFS snapshot packer path drifted")
+
     for name in state.get("game_cards", {}).get("expected", []):
         source = ROOT / state["game_cards"]["tracked_source"] / name
         if not source.is_file():
@@ -59,6 +67,7 @@ def main() -> int:
     print("RECOVERY CONTRACT: PASS")
     print(f"sprite ref: {generator_ref}")
     print("verified baseline: 3260 HD / 1025 base / 18 types / 3 fonts")
+    print(f"snapshot status: {snapshot.get('status', 'unknown')}")
     return 0
 
 
