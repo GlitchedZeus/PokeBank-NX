@@ -4,22 +4,28 @@
 Normal use:
     python3 tools/recover_workspace.py
 
-This is the routine RECOVERY path. It is deliberately not a Git archaeology tool.
-It restores generated RomFS inputs from pinned/tracked sources, applies tracked
-project overrides, and runs the offline device asset preflight.
+Recovery order:
+    1. complete committed RomFS snapshot, when present;
+    2. pinned/tracked source regeneration as a fallback;
+    3. tracked project overrides;
+    4. offline device asset preflight.
 
+This is the routine RECOVERY path. It is deliberately not a Git archaeology tool.
 If this succeeds it prints RECOVERY COMPLETE. Only if it fails should a session
 fall back to forensic worktree/reflog recovery.
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
 import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
 import urllib.request
 from pathlib import Path
 
@@ -60,8 +66,87 @@ def run(stage: str, argv: list[str], cwd: Path = ROOT) -> None:
 def load_state() -> dict:
     try:
         return json.loads(STATE_PATH.read_text(encoding="utf-8"))
-    except Exception as exc:  # fail loud; malformed recovery metadata is a real blocker
+    except Exception as exc:
         die("load recovery state", f"{STATE_PATH}: {exc}")
+
+
+def sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def safe_members(tf: tarfile.TarFile):
+    for member in tf.getmembers():
+        path = Path(member.name)
+        if path.is_absolute() or ".." in path.parts or not path.parts or path.parts[0] != "romfs":
+            die("restore committed RomFS snapshot", f"unsafe archive member: {member.name}")
+        yield member
+
+
+def restore_committed_snapshot(state: dict) -> bool:
+    info = state.get("full_romfs_snapshot") or {}
+    manifest_rel = info.get("manifest")
+    if not manifest_rel:
+        return False
+    manifest_path = ROOT / manifest_rel
+    if not manifest_path.is_file():
+        return False
+
+    print("\n== restore complete GitHub RomFS snapshot ==")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        die("restore committed RomFS snapshot", f"invalid manifest: {exc}")
+
+    parts = manifest.get("parts") or []
+    if not parts:
+        die("restore committed RomFS snapshot", "manifest contains no archive parts")
+
+    snapshot_dir = manifest_path.parent
+    with tempfile.TemporaryDirectory(prefix="pokebank-recovery-") as td:
+        temp_root = Path(td)
+        archive = temp_root / manifest.get("archive", "romfs-recovery.tar")
+        with archive.open("wb") as out:
+            for item in parts:
+                part = snapshot_dir / item["name"]
+                if not part.is_file():
+                    die("restore committed RomFS snapshot", f"missing part: {part.relative_to(ROOT)}")
+                actual = sha256(part)
+                if actual != item.get("sha256"):
+                    die("restore committed RomFS snapshot",
+                        f"part hash mismatch for {part.name}: expected {item.get('sha256')}, got {actual}")
+                if part.stat().st_size != int(item.get("size", -1)):
+                    die("restore committed RomFS snapshot", f"part size mismatch for {part.name}")
+                with part.open("rb") as src:
+                    shutil.copyfileobj(src, out, length=1024 * 1024)
+
+        expected_archive = manifest.get("archive_sha256")
+        actual_archive = sha256(archive)
+        if expected_archive and actual_archive != expected_archive:
+            die("restore committed RomFS snapshot",
+                f"archive hash mismatch: expected {expected_archive}, got {actual_archive}")
+
+        extract_root = temp_root / "extract"
+        extract_root.mkdir()
+        try:
+            with tarfile.open(archive, "r") as tf:
+                tf.extractall(extract_root, members=safe_members(tf))
+        except (tarfile.TarError, OSError) as exc:
+            die("restore committed RomFS snapshot", str(exc))
+
+        recovered = extract_root / "romfs"
+        if not recovered.is_dir():
+            die("restore committed RomFS snapshot", "archive did not contain romfs/")
+
+        if ROMFS.exists():
+            shutil.rmtree(ROMFS)
+        shutil.move(str(recovered), str(ROMFS))
+
+    print(f"Committed snapshot restored from {len(parts)} GitHub part(s).")
+    return True
 
 
 def download(url: str, dst: Path) -> None:
@@ -100,8 +185,6 @@ def restore_hd_sprites(state: dict, force: bool) -> None:
     current = png_count(HD_DIR)
     print(f"HD renders before recovery: {current}/{expected}")
 
-    # Normal recovery downloads only missing files. --force is available when validating a
-    # completely fresh rebuild or after intentionally changing the pinned source.
     if force or current != expected:
         ensure_pillow()
         argv = [sys.executable, str(ROOT / info["generator"])]
@@ -189,7 +272,7 @@ def apply_overrides() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--force", action="store_true",
-                        help="re-fetch generated network assets even when already present")
+                        help="ignore a committed snapshot and re-fetch generated network assets")
     parser.add_argument("--build", action="store_true",
                         help="after recovery/preflight, run the native make build")
     args = parser.parse_args()
@@ -202,9 +285,16 @@ def main() -> int:
     print(f"Application source checkpoint: {state['application_source']}")
     print(f"Recovery state: {STATE_PATH.relative_to(ROOT)}")
 
-    restore_hd_sprites(state, args.force)
-    restore_type_icons(state, args.force)
-    restore_fonts(state, args.force)
+    snapshot_used = False
+    if not args.force:
+        snapshot_used = restore_committed_snapshot(state)
+
+    if not snapshot_used:
+        print("Complete GitHub RomFS snapshot not present; using pinned regeneration fallback.")
+        restore_hd_sprites(state, args.force)
+        restore_type_icons(state, args.force)
+        restore_fonts(state, args.force)
+
     restore_game_cards(state)
     apply_overrides()
 
@@ -217,6 +307,7 @@ def main() -> int:
 
     print("\nRECOVERY COMPLETE")
     print(f"GitHub application source checkpoint: {state['application_source']}")
+    print("Recovery source: " + ("committed GitHub RomFS snapshot" if snapshot_used else "pinned regeneration fallback"))
     print("Generated asset preflight: PASS")
     print("Active task can continue: YES")
     return 0
