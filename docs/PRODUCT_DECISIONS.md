@@ -205,3 +205,83 @@ docs/TRAINER_PLAZA_VISION.md
 ```
 
 This is future-only and must not expand the current FRLG/RSE implementation scope.
+
+---
+
+## 7. Create Pokémon / Quick Legal / advanced editor stays a core feature
+
+The PKHeX-style creation/editor direction is a permanent product requirement, not a temporary prototype and not something displaced by Trainer Plaza or the 29-feature backlog.
+
+PokeBank NX should eventually provide:
+
+- guided **Create Pokémon**;
+- **Quick Legal** creation;
+- advanced controller-friendly editing;
+- generation/game-aware required, optional and conditional fields;
+- real-time legality feedback where the offline ruleset supports it;
+- legality-aware Make Shiny / clone/edit safeguards;
+- explicit `CREATED / GENERATED` provenance rather than pretending the Pokémon was naturally obtained;
+- staging into the local Vault or an approved destination representation before any live-save write.
+
+Created Pokémon may remain entirely inside the PokeBank/local-game ecosystem. Official Pokémon HOME compatibility is not a requirement for PokeBank NX to create, store, inspect, organize or use them with technically supported local saves.
+
+---
+
+## 8. Event Library must work independently of official HOME/distribution services
+
+PokeBank NX should preserve historical Event/Mystery Gift data and provide local Event Library / EventDex workflows.
+
+Where technically supported, archived event-definition data may be used to materialize/import the corresponding event Pokémon or gift representation into the local PokeBank ecosystem even if official distribution infrastructure or Pokémon HOME is unavailable.
+
+PokeBank must distinguish:
+
+```text
+legality
+vs.
+historical provenance
+```
+
+A locally generated/restored historical event must be labeled as coming from the PokeBank Event Library / archived event data. It must not falsely claim that PokeBank witnessed a real official server redemption, fabricate HOME tracker data, or invent unavailable Nintendo/account provenance.
+
+The goal is preservation and local usability, not impersonating official services.
+
+---
+
+## 9. PokeBank friend codes are first-class; QR is optional convenience
+
+Every essential friend/pairing flow must work without the Android companion.
+
+PokeBank Connected therefore requires a short, human-enterable **PokeBank friend ID/code** that can be typed with a controller when two users are together or communicating remotely.
+
+QR should encode the same safe public pairing information and make the process faster, but it must never be the only way to add a friend.
+
+Friend-code design should:
+
+- be short and readable;
+- avoid ambiguous characters where practical;
+- be case-insensitive where practical;
+- include typo/checksum detection;
+- expose only public identity/pairing data;
+- never contain the private auth token/secret;
+- work on Switch before the Android companion exists;
+- remain compatible with later Android QR scanning.
+
+Example style only; final format remains TBD:
+
+```text
+PBX-K4M-92X7
+```
+
+---
+
+## 10. The 29-feature modded-Switch backlog is accepted as future direction
+
+The broader differentiator backlog is recorded in:
+
+```text
+docs/MODDED_SWITCH_FEATURE_BACKLOG.md
+```
+
+It includes the local Vault, Save Scanner, Rescue Mode, Save Time Machine, provenance/Journey, Transfer Lab, compatibility map, offline legality, Living Dex intelligence, Evolution Planner, Duplicate Detective, EventDex, Ribbon Master, shiny hunts, Vault team builder, bulk tools, cross-save search, Verified Breeding trees, Trainer Passport, Trainer Plaza, serverless LAN mode, QR + human codes, Android planning, no-lock-in export, encrypted backups, disaster recovery, automatic updates, provider/plugin architecture and the offline-first guarantee.
+
+These are accepted long-term product directions but remain subject to release sequencing and technical/safety feasibility. They must not be allowed to derail the current FRLG/RSE/mainline critical path.
