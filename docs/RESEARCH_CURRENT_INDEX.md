@@ -40,6 +40,18 @@ Key findings preserved there:
 - ordinary `sdmc:` file replacement must remain separate from mounted Horizon savedata commit semantics;
 - the current LeafGreen assignment failure should log stage + errno/native result rather than only `save failed`.
 
+### Time-sensitive Bank -> HOME preservation
+
+Open:
+
+```text
+docs/research/2026-09-09/BANK_HOME_PRESERVATION_CAPTURE_PLAN.md
+```
+
+The official Bank shutdown is February 25, 2027 at 7:00 p.m. PST / February 26, 2027 at 03:00 UTC. New Bank -> HOME captures disappear after that deadline, so this is a preservation task to schedule during 2026 even though Gen VII/VIII implementation is future scope.
+
+The note records the HOME-native capture model and the HOME Live Plugin dumper/reference distinction.
+
 ---
 
 ## Save formats, structural revisions, profiles, wrappers and localization
@@ -74,6 +86,12 @@ Open:
 docs/research/2026-09-09/TRANSFER_FIXTURES_PROVENANCE.md
 ```
 
+For the shutdown/deadline capture campaign also open:
+
+```text
+docs/research/2026-09-09/BANK_HOME_PRESERVATION_CAPTURE_PLAN.md
+```
+
 Contains:
 
 - sequential generation-boundary conversion architecture;
@@ -82,10 +100,11 @@ Contains:
 - real Pal Park / Poké Transfer / Bank / HOME research fixtures;
 - multilingual NPC Gift/Trade PKM corpus;
 - Project Pokémon public save corpuses;
-- RoCs-PC / NX_Saves-style fixture sources;
+- RoC's PC as a bulk pairable official-path capture corpus for IV->V, V->VI and VI->VII;
 - fixture manifest / hashes-only policy when redistribution rights are unclear;
 - HOME Tracker preservation rule: preserve observed trackers, never fabricate official HOME provenance;
-- Handling Trainer / HOME sidecar / modern representation concerns.
+- Handling Trainer / HOME sidecar / modern representation concerns;
+- time-sensitive Bank -> HOME native-state capture planning.
 
 ---
 
@@ -97,6 +116,12 @@ Open:
 docs/research/2026-09-09/VAULT_DATA_EVENTS_PERFORMANCE.md
 ```
 
+For exact future durability testing open:
+
+```text
+docs/research/2026-09-09/POWERLOSS_DURABILITY_TEST_PLAN.md
+```
+
 Contains:
 
 - immutable/content-addressed Vault objects;
@@ -104,6 +129,7 @@ Contains:
 - SQLite-on-Switch findings and why desktop WAL defaults should not be assumed safe;
 - rebuildable/expendable search indexes;
 - large-Vault benchmark requirements;
+- packed immutable segments as the leading architecture to benchmark against flat-file baselines;
 - PKSM Mystery Gift pack architecture;
 - PKHeX BinLinker / `.pkl` architecture and PoGoEncTool generator pattern;
 - proposed PokeBank binary data-pack generator;
@@ -111,7 +137,26 @@ Contains:
 - `wcparse` as a secondary Wonder Card oracle;
 - PokéAPI/Veekun for generic metadata generation;
 - host-side libFuzzer/AFL++ parser fuzzing;
-- staged-session/backup lessons from PKVault.
+- staged-session/backup lessons from PKVault;
+- disposable Horizon/sdmc power-cut checkpoint planning.
+
+---
+
+## Ribbon / Bank-exclusive / DNS-event preservation planning
+
+Open:
+
+```text
+docs/research/2026-09-09/RIBBON_BANK_EVENT_PRESERVATION_REFERENCES.md
+```
+
+This routes three community references without promoting them directly into legality truth:
+
+- Hallowed Tower DNS Exploit / Mystery Gift tables;
+- Athis' Ribbon Handbook and Bank-deadline Ribbon Master planning;
+- the r/PokemonHome Pokémon Bank Exclusives Masterpost.
+
+Use them as preservation/checklist/workflow leads and verify hard game/event rules independently.
 
 ---
 
@@ -144,6 +189,7 @@ Also keep:
 docs/RESEARCH_REFERENCE_MATRIX.md
 docs/RESEARCH_INTAKE_2026-09-09.md
 docs/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
+docs/research/2026-09-09/SOURCE_MANIFEST.md
 ```
 
 The matrix still classifies external projects by integration role/license posture. The September intake is the earlier condensed research pass. The dedicated notes above are the newer routing-friendly consolidation of tonight's broader sweep.
@@ -166,6 +212,9 @@ DrasticDS_nx
 PokéBridge
 PkmGCTools / LibPkmGC
 Dolphin
+RoC's PC
+HOME Live Plugin
+hactool / LibHac
 ```
 
 ---
@@ -191,6 +240,9 @@ These are architectural constraints, not implementation claims:
 14. Host-generated compact data packs are preferred over giant runtime JSON/SQLite datasets.
 15. Fixture provenance/redistribution status is tracked separately from technical usefulness.
 16. Parser safety should eventually include fuzzing + corruption fixtures + hardware tests.
+17. Flat one-Pokémon-per-file Vault storage is a benchmark baseline, not the preferred production design.
+18. Community re-delivery of an event is not proof of original official redemption.
+19. Bank->HOME official-path capture is deadline-bound preservation work before February 2027.
 ```
 
 ---
@@ -199,10 +251,12 @@ These are architectural constraints, not implementation claims:
 
 Research reduced many unknowns, but these remain intentionally open:
 
-1. exact Switch savedata durability behavior under power loss at specific transaction stages — requires sacrificial hardware testing;
-2. real 10k/50k/100k/250k Vault performance on Switch — requires a benchmark NRO rather than guesses;
-3. redistribution rights for large official Mystery Gift/event corpuses — do not assume public availability means bundle permission;
-4. perfectly controlled official before/after fixtures for every transfer boundary, language and hardware path — coverage is uneven;
-5. final implementation/license review for every external source before any code/data is copied.
+1. exact Switch savedata electrical durability after specific transaction checkpoints — requires sacrificial hardware testing;
+2. real 10k/50k/100k/250k Vault performance on Switch — requires `vaultbench.nro` rather than guesses;
+3. redistribution rights for wholesale official Mystery Gift/event corpuses — do not assume public availability means bundle permission;
+4. final implementation/license review for every external source before any code/data is copied;
+5. complete modern HOME-native before/after coverage across every game/language route.
+
+Classic transfer boundaries III->IV, IV->V, V->VI and VI->VII are now considered sufficiently researched to support later differential implementation/testing, subject to fixture provenance and redistribution checks.
 
 Do not reopen already-solved research unless implementation evidence contradicts these notes.
