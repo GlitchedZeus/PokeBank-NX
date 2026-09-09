@@ -1,237 +1,189 @@
 # PokeBank NX — Current Verified Engineering State
 
-## Corrected FRLG physical-test artifact — READY FOR DEVICE TEST
+Last updated: 2026-09-09
+
+This is the short authoritative engineering handoff for coding sessions. The root `README.md` is the human-facing project dashboard. Historical snapshots and older device/build/session records are preserved under `docs/` and `docs/history/`.
+
+## Authority / repository
 
 ```text
-Starting recovery/documentation SHA: c7e410d4d168d1173c9bd9e3ceb38489c865d404
-Canonical application source: ea0b806bac4acdb5619f22f9841d616ea8a237ff
-Canonical application tree: ed5912093886384894c44538d569fe4955fd2e47
-Application commit: legacy: bind FRLG sources to profiles and expose diagnostics
-Application source changed during packaging: NO
-Embedded version/source: 0.1.0-alpha / ea0b806b
-
-Artifact: PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro
-Artifact byte size: 156592377
-Artifact SHA-256: 396f8ff9f4da53b5449aeb46b8d1237ca9358a0ac94998680017575916b6b1ee
-ZIP: PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.zip
-ZIP byte size: 149672676
-ZIP SHA-256: 255ec20cd0f7965c9b25123cb83eedd0cebc83d10fd88313bcff672a0c1ced67
-Manifest: PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro.manifest.txt
-Manifest byte size: 900
-Manifest SHA-256: a79ede73124f74ce4a6c85d6c151bf7f3e9ca732747a332caa68750626058952
-SHA256SUMS: SHA256SUMS.txt
-SHA256SUMS byte size: 352
-SHA256SUMS SHA-256: d28ee7266c58b3cab2716211a0425b0af6562dab3f9d6768ac299b77d8342f55
-
-HD renders: 3260 / 3260
-Base species: 1025 / 1025
-Type icons: 18 / 18
-Fonts: 3 / 3
-FRLG GBA cards: PASS
-Asset preflight: PASS
-Embedded RomFS: PASS — 3283 / 3283 files byte-identical, 148076683 bytes
-Native devkitA64 -fno-exceptions build: PASS
-Previously verified host tests: PASS — 13 suites
-Previously verified ASan/UBSan: PASS
-Previously verified git diff --check: PASS
-GitHub CI for application source: PASS — run #245
-GitHub prerelease published: NO — unavailable authentication/tooling
-DEVICE TESTED: NO
-DEVICE ACCEPTED: NO
+Repository: GlitchedZeus/PokeBank-NX
+Development branch: feature/pokebank-playable
+Writable remote: origin
+Upstream reference: kiasta/PKSE
 ```
 
-The exact NRO, ZIP, manifest and checksum record were preserved outside the temporary build tree. Large artifacts were not committed to Git history. Parked RSE checkpoint `b5ef83b` remains isolated and untouched; `1a921515` was unavailable locally, with `b5ef83b` retained as the verified equivalent recovery state.
+Never push custom PokeBank NX code upstream.
 
+Live installed-game and RetroArch save writing remains **HARD DISABLED**.
 
-## Emergency save-mode checkpoint — 2026-09-09
+Before any sync/reset/clean/rebase/ref/worktree/generated-asset action, inspect and preserve useful local/uncommitted/recovery/build state first.
 
-```text
-Canonical application source: ea0b806bac4acdb5619f22f9841d616ea8a237ff
-Canonical tree: ed5912093886384894c44538d569fe4955fd2e47
-Exact-source staging tree: reconstructed and verified clean
-Pinned HD renders restored so far: 2672 / 3260
-Final NRO packaged: NO
-GitHub prerelease published: NO
-DEVICE TESTED: NO
-DEVICE ACCEPTED: NO
-```
-
-The resumable sprite generator was restoring only missing pinned renders when save mode was requested. Preserve/reuse the generated files; do not delete or restart them. Finish 3260/3260, run asset preflight, build exact `ea0b806b`, compare embedded RomFS byte-for-byte, then package fresh NRO/ZIP/manifest hashes. Parked RSE checkpoint `b5ef83b` remains isolated and untouched.
-
-
-Last updated: 2026-09-08
-
-This file is the short authoritative engineering handoff. The root README is human-facing product/roadmap information only. Detailed active work instructions live in `docs/NEXT_CODEX_PROMPT.md`.
-
-## Current state — FRLG source fix published; assets complete; exact device artifact build incomplete
-
-The previously rejected physical-test artifact remains:
-
-```text
-Application source: 5d3e5e23f352dda4900ae42b4f396d9d4a4b8b8e
-Artifact: PokeBank-NX-FRLG-Complete-5d3e5e23.nro
-SHA-256: 8dd94277e609c96f37e82b0b0b47928bad50ce36fdb380520bd2521ab18ec78a
-DEVICE TESTED: YES
-DEVICE ACCEPTED: NO
-```
-
-Device-proven failures were:
-
-1. PokeBank opened an older FRLG save containing the previously observed level-6 Charmander instead of the user's current save containing 2 Pokémon.
-2. The user's FRLG GBA legacy sources appeared under both the user's Nintendo profile and the niece's profile.
-
-## Published corrective application checkpoint
-
-Both failures were addressed in source and published as:
+## Current physically tested application source
 
 ```text
 ea0b806bac4acdb5619f22f9841d616ea8a237ff
 legacy: bind FRLG sources to profiles and expose diagnostics
 ```
 
-This is the canonical application source for the next physical-test artifact.
-
-Reported implementation in `ea0b806b`:
-
-- removed the unsupported/arbitrary `Main Save` guess;
-- multiple valid FRLG physical files remain distinct save instances;
-- source children expose truthful filename/source information;
-- newest modification time is used only for deterministic initial focus when several genuine files exist;
-- Source Details expose provider, normalized physical path, size, modification state, stable identity, SHA-256 prefix/fingerprint, exact game ID, decoded trainer, and party count;
-- physical legacy discovery/catalog remains shared/app-global;
-- normal source visibility is profile-scoped;
-- unassigned legacy saves stay hidden from normal per-profile source lists;
-- explicit assignment binds a selected source to the current Nintendo/PokeBank profile;
-- bindings persist atomically across restart/reload;
-- Profile A's bound source remains absent from Profile B;
-- aliases do not duplicate bindings;
-- genuinely distinct physical saves can be assigned independently;
-- installed Switch-title account scoping remains separate;
-- RetroArch and installed-game source writes remain hard disabled.
-
-Reported stale-save root cause:
+Canonical application tree:
 
 ```text
-multiple valid FRLG files
--> filename sort
--> first child auto-focused
--> first child falsely labeled "Main Save"
+ed5912093886384894c44538d569fe4955fd2e47
 ```
 
-There was no evidence that the first filename-sorted save was RetroArch's active gameplay save.
-
-## Verification already completed for ea0b806b
-
-Reported green for the exact application source:
+Corrected physical-test artifact:
 
 ```text
-Host tests: 13 suites PASS
-ASan/UBSan: PASS
-git diff --check: PASS
-Native Switch -fno-exceptions compile/link: PASS
-GitHub CI run #245: PASS
+PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro
+size: 156,592,377 bytes
+SHA-256: 396f8ff9f4da53b5449aeb46b8d1237ca9358a0ac94998680017575916b6b1ee
+embedded: 0.1.0-alpha / ea0b806b
 ```
 
-Regression coverage reportedly includes:
-
-- old one-Pokémon FRLG copy + newer two-Pokémon FRLG copy;
-- truthful filename/party/fingerprint source diagnostics;
-- two-profile persistent source binding where Profile A's source is absent from Profile B after reload.
-
-Unless application source changes after `ea0b806b`, do not rerun expensive full sanitizer/PKSM-Core verification solely to package the same source. Reuse the completed verification record and only rerun what is materially required to create/verify the exact artifact. If application code changes, rerun the required verification for the changed source.
-
-## Latest packaging progress before credits ended
-
-A later continuation reconstructed an isolated build tree from canonical GitHub source and reported:
-
-```text
-Canonical application source: ea0b806bac4acdb5619f22f9841d616ea8a237ff
-Canonical tree: ed5912093886384894c44538d569fe4955fd2e47
-Native include/src/Makefile source mismatches: 0
-GitHub CI run #245: PASS
-Host regression suite: PASS
-```
-
-It intentionally did not repeat the already-recorded expensive sanitizer pass.
-
-The full pinned asset gate then completed:
+Artifact/build verification already completed:
 
 ```text
 HD renders: 3260 / 3260
 Base species: 1025 / 1025
 Type icons: 18 / 18
 Fonts: 3 / 3
-Shiny/form coverage: PASS
-FRLG GBA card artwork: PASS
+FRLG GBA cards: PASS
 Asset preflight: PASS
+Embedded RomFS: PASS — 3283 / 3283 files byte-identical
+Native devkitA64 -fno-exceptions build: PASS
+Host tests for ea0b806b: 13 suites PASS
+ASan/UBSan for ea0b806b: PASS
+git diff --check for ea0b806b: PASS
+GitHub application CI run #245: PASS
 ```
 
-The clean devkitA64 `-fno-exceptions` build tied to embedded commit `ea0b806b` was started, but credits ended before the final NRO/package identity was reported.
+Do not rerun expensive unchanged-source verification merely because a new session starts. If application source changes, run verification appropriate to the changed source.
 
-Therefore current status is:
+## Physical Switch result — FireRed GBA
+
+The earlier stale-save concern is now understood and the normal RetroArch in-game save path works.
+
+Physically confirmed on the exact `ea0b806b` artifact:
+
+- normal RetroArch battery/in-game `.srm` save is discovered;
+- after saving normally inside FireRed, PokeBank rereads the current save;
+- current FireRed save opens with **2 Pokémon**;
+- trainer information opens correctly;
+- item/inventory information opens correctly;
+- truthful source diagnostics are present;
+- `.state` savestate support is **not** required and must not be added as a workaround.
+
+FireRed is not the current blocker.
+
+## Physical Switch result — LeafGreen GBA
+
+The physical LeafGreen source is successfully discovered and parsed:
 
 ```text
-SOURCE FIX PUBLISHED: YES
-SOURCE STAGING VERIFIED AGAINST CANONICAL GITHUB TREE: YES
-SOFTWARE VERIFICATION REPORTED GREEN: YES
-FULL PINNED ASSET RESTORE COMPLETE: YES
-ASSET PREFLIGHT: PASS
-EXACT ea0b806b NATIVE BUILD STARTED: YES
-NEW EXACT NRO PACKAGED/RECORDED: NO
-DEVICE TESTED FOR ea0b806b: NO
-DEVICE ACCEPTED: NO
+File: Pokemon - Leaf Green Version.srm
+Game: LeafGreen
+Trainer: Will
+Party count: 1
+Displayed fingerprint prefix: d76e3c7e25a4
 ```
+
+Attempting assignment to either available Nintendo/PokeBank profile fails with:
+
+```text
+Assignment could not be saved; source remains unassigned.
+```
+
+The remaining FRLG blocker is therefore **binding persistence**, not LeafGreen discovery or parsing.
+
+## Known failure path
+
+Code inspection established that the exact UI error above is reached only after:
+
+```text
+LegacySourceBindings::assign(...)
+        -> succeeds in memory
+LegacySourceBindings::save()
+        -> returns false
+```
+
+Actual binding database path:
+
+```text
+sdmc:/PKSE/legacy_source_bindings.cfg
+```
+
+Current persistence behavior:
+
+```text
+write sdmc:/PKSE/legacy_source_bindings.cfg.tmp
+flush / close
+rename(tmp, existing destination)
+```
+
+Leading hypothesis — **not yet proven**:
+
+- first assignment succeeds because the destination file does not yet exist;
+- a later assignment fails because Switch/libnx fsdev rename-over-existing semantics differ from ordinary POSIX host behavior.
+
+This hypothesis matches the physical pattern and exact failure location, but the next coding session must confirm or reject it before claiming root cause.
+
+## Interrupted LeafGreen fix session
+
+The previous Codex session ran out of credits immediately after reporting:
+
+```text
+Applying a code patch
+```
+
+It had already narrowed the issue to `LegacySourceBindings::save()` and was checking libnx/fsdev behavior.
+
+**Critical first step next session:** before syncing, resetting, cleaning, switching refs or changing worktrees, inspect every relevant worktree with `git status`, `git diff`, staged diff and untracked files. Preserve/recover any partially applied binding-persistence patch before doing anything destructive.
+
+Remote branch documentation HEAD at the time of this handoff may be newer than the tested application source; keep documentation SHA, application-source SHA and artifact SHA distinct.
 
 ## Immediate next milestone
 
-Do not reopen the already-fixed bugs or redo completed asset restoration unless current local state proves it was lost.
-
-Continue only from `ea0b806b` and finish:
+Do only the LeafGreen / second-binding persistence fix:
 
 ```text
-preserve surviving recovery/build/asset state
+recover interrupted patch if present
         ↓
-reuse completed 3260-render asset tree if present
+confirm actual fsdev replacement behavior
         ↓
-finish or restart only the clean exact-source native build
+implement crash-conscious Switch-safe binding persistence
         ↓
-verify embedded RomFS against intended asset tree
+preserve existing valid FireRed binding
         ↓
-package exact NRO + ZIP fallback/manifest if supported
+add focused regressions for first + second assignments, reload,
+profile isolation and rollback on persistence failure
         ↓
-record exact sizes + SHA-256 + embedded source identity
+run focused verification
         ↓
-update minimal handoff docs
+commit + push SOURCE FIX first
         ↓
-STOP for physical Switch retest
+build a new device-test NRO only after source is safe
+        ↓
+STOP for physical retest
 ```
 
-Do not rerun full ASan/UBSan/PKSM-Core merely because a new session starts. Only rerun it if application source changes or an actual verification defect is discovered.
+Do not reopen FRLG discovery/parser work. Do not add arbitrary RetroArch `.state` parsing. Do not start RSE or other roadmap features in the same session.
 
-The next physical test must prove:
+## Required physical retest after the persistence fix
+
+1. FireRed current 2-Pokémon source still opens correctly.
+2. LeafGreen can be assigned successfully.
+3. Restart PokeBank NX and confirm LeafGreen assignment persists.
+4. Assign/test profile isolation so one profile's source does not appear in the other profile.
+5. Switch back and confirm the original profile assignment remains.
+6. Recheck Trainer, Items, Party, Boxes 1-14, Pokémon View, Refresh and read-only locks.
+
+Only after this passes may FRLG be marked physically accepted.
 
 ```text
-A. the user's current two-Pokémon FRLG save can be identified and opened using truthful Source Details; the old level-6 Charmander copy is not silently presented as "Main Save"
-
-B. a FRLG legacy source assigned to the user's profile is absent from the niece's profile, including after application restart
+DEVICE TESTED: YES
+DEVICE ACCEPTED: NO
 ```
-
-Do not begin Ruby/Sapphire/Emerald until both pass physically.
-
-## Repository / safety
-
-```text
-Repository: GlitchedZeus/PokeBank-NX
-Development branch: feature/pokebank-playable
-Writable remote: origin
-Upstream-only remote: kiasta/PKSE
-```
-
-Before any sync/reset/clean/restore/ref/worktree change, preserve useful local/uncommitted/recovery/generated state first.
-
-Never push PokeBank NX custom code upstream.
-
-Live installed-game and RetroArch writes remain HARD DISABLED.
 
 ## Parked RSE recovery
 
@@ -244,10 +196,10 @@ b5ef83b
 
 or equivalent recovered refs.
 
-RSE remains parked. Do not merge, resume, reimplement, or push it until FRLG physical acceptance.
+`b5ef83b` is the verified parked RSE recovery checkpoint. Do not merge, resume, reimplement or push RSE until FRLG physical acceptance.
 
-## Session launcher
+## Fast session launcher
 
 ```text
-Continue PokeBank NX on feature/pokebank-playable. Use HIGH reasoning. Before touching refs, preserve all local/uncommitted/recovery work. Read CURRENT_STATUS.md and docs/CODEX_SESSION.md, then execute docs/NEXT_CODEX_PROMPT.md exactly. Push coherent checkpoints only to origin/feature/pokebank-playable; never push custom code upstream.
+Continue PokeBank NX on feature/pokebank-playable. Use HIGH reasoning. Before touching refs or worktrees, preserve all local/uncommitted/recovery work and inspect for the interrupted LeafGreen binding patch. Read CURRENT_STATUS.md and docs/CODEX_SESSION.md, then execute docs/NEXT_CODEX_PROMPT.md exactly. Use docs/PROJECT_RESOURCE_INDEX.md only for the active subsystem. Push coherent checkpoints only to origin/feature/pokebank-playable; never push custom code upstream.
 ```
