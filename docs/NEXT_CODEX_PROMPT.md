@@ -104,9 +104,10 @@ flush / close
 rename(tmp, existing destination)
 ```
 
-Leading hypothesis — NOT yet proven:
+Leading hypotheses — NOT yet proven:
 
-The first assignment succeeds because no destination exists; a later assignment fails because Switch/libnx fsdev rename-over-existing behavior differs from ordinary POSIX host behavior.
+1. the first assignment succeeds because no destination exists, while a later assignment fails because Switch/libnx fsdev rename-over-existing behavior differs from ordinary POSIX host behavior;
+2. Horizon may also reject rename/delete while a relevant file handle is still open.
 
 The interrupted session had started checking libnx/fsdev semantics and had begun applying a patch.
 
@@ -122,22 +123,24 @@ That note records verified implementation references relevant to this failure:
 
 - current libnx `fsdev_rename()` delegates a file rename directly to `fsFsRenameFile()`; it does not implement its own replace-existing fallback;
 - `znxDomain/DNS-MITM_Manager` has a real Switch SD-card update pattern that writes a temp file, renames the old target to `.bak`, renames `.tmp` into the target path, then removes the backup;
+- `ChanseyIsTheBest/badpiggies_nx` independently documents that Horizon does not provide normal POSIX replace-existing rename semantics and may reject rename/delete while the relevant path still has an open handle;
 - `fsFileFlush()` exists for explicit file flushes;
 - `fsdevCommitDevice()` / `fsFsCommit()` is specifically a mounted **savedata** write concern and must not be confused with ordinary `sdmc:` file replacement;
 - mounted retail-title saves and ordinary SD-card files should remain separate abstractions.
 
-Use those references to avoid rediscovering the platform behavior, but **do not copy the DNS-MITM failure handling verbatim**. PokeBank must retain/recover a known-good binding database across every failure point.
+Use those references to avoid rediscovering the platform behavior, but **do not copy their failure handling verbatim**. PokeBank must retain/recover a known-good binding database across every failure point.
 
 The target design direction is a narrow `SafeSdFileReplace`-style transaction for this binding DB, while future retail Switch save writing remains a separate `SwitchSaveTransaction` concern.
 
 ## Required implementation work
 
 1. Recover the interrupted patch if it survived.
-2. Confirm or reject the actual fsdev/rename-over-existing hypothesis using the relevant libnx/devoptab behavior and, where possible, capture/log the actual failure result/errno.
+2. Confirm or reject the actual fsdev/rename-over-existing and open-handle hypotheses using the relevant libnx/devoptab behavior and, where possible, capture/log the actual failure result/errno.
 3. Implement a crash-conscious Switch-safe persistence transaction.
-4. Preserve an existing valid bindings database; do not simply delete it first and hope the next write succeeds.
-5. Ensure a failed persistence attempt rolls back/reverts the in-memory assignment so UI state never claims an unsaved binding.
-6. Preserve all existing FireRed behavior and all read-only locks.
+4. Explicitly ensure all file handles involving target/tmp/bak are closed before promotion.
+5. Preserve an existing valid bindings database; do not simply delete it first and hope the next write succeeds.
+6. Ensure a failed persistence attempt rolls back/reverts the in-memory assignment so UI state never claims an unsaved binding.
+7. Preserve all existing FireRed behavior and all read-only locks.
 
 ## Required focused regression coverage
 
@@ -152,7 +155,8 @@ Add/verify tests for:
 - aliases do not duplicate/collapse real sources;
 - failed persistence leaves the previous on-disk database valid;
 - failed persistence rolls back the attempted in-memory assignment;
-- failure injection around temp-write / old-to-backup / temp-to-target / final-validation never leaves neither old nor new valid database recoverable.
+- failure injection around temp-write / validation / old-to-backup / temp-to-target / final-validation never leaves neither old nor new valid database recoverable;
+- diagnostics distinguish destination-exists/open-handle/promotion failures where the platform exposes enough information.
 
 Use the smallest reliable host/filesystem abstraction needed to reproduce replacement semantics. Do not redesign the whole storage system.
 
@@ -228,9 +232,10 @@ Report:
 recovered interrupted patch/ref (if any)
 starting remote SHA
 new application source SHA
-confirmed root cause or rejected hypothesis
+confirmed root cause or rejected hypotheses
 binding persistence strategy
 actual Switch/libnx failure code/errno if captured
+open-handle evidence if captured
 regression tests added
 host/focused verification
 native -fno-exceptions build status
