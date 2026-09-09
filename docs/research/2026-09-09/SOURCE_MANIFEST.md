@@ -29,9 +29,32 @@ Pasted markdown (3).md
 
 Pasted markdown(3).md
 3a3974f99d22f0cd730959e4c79f2884fd51e165107821999631fe467ca8a15e
+
+Pasted markdown(4).md
+377cccf4831b01a804f122aaacacc4e2260945333d0549af1f516a212ab0203c
 ```
 
-Several are revised/overlapping passes over the same research buckets. Consolidation preserves the unique findings rather than intentionally duplicating near-identical prose throughout the engineering docs.
+`Pasted markdown(4).md` is the dedicated **Deep Research on the Four Remaining Hard Gaps** pass covering Switch electrical/power-loss durability, huge-Vault performance, EventGallery redistribution posture, and official-path transfer fixtures / Bank→HOME preservation.
+
+Several pastes are revised/overlapping passes over the same research buckets. Consolidation preserves the unique findings rather than intentionally duplicating near-identical prose throughout the engineering docs.
+
+## Web references added in the same batch
+
+The September 9 intake also reviewed these user-supplied community references:
+
+```text
+https://hallowedtower.net/pages/guides/dnsExploit
+https://sites.google.com/view/athis-ribbon-handbook/home
+https://www.reddit.com/r/PokemonHome/comments/1apiuee/pok%C3%A9mon_bank_exclusives_masterpost/
+```
+
+Their distilled use/provenance guidance is preserved in:
+
+```text
+docs/research/2026-09-09/RIBBON_BANK_EVENT_PRESERVATION_REFERENCES.md
+```
+
+The official Bank shutdown date is anchored to the official Pokémon page rather than the community pages.
 
 ## Consolidation targets
 
@@ -53,6 +76,15 @@ docs/research/2026-09-09/VAULT_DATA_EVENTS_PERFORMANCE.md
 
 docs/research/2026-09-09/LEGACY_RECOVERY_GAMECUBE_STADIUM.md
     Gen III/IV recovery, Pokémon Box R&S, Stadium, Colosseum/XD, PkmGCTools, container normalization
+
+docs/research/2026-09-09/POWERLOSS_DURABILITY_TEST_PLAN.md
+    Horizon savedata transaction model, disposable power-cut checkpoint matrix, hactool/LibHac forensic plan
+
+docs/research/2026-09-09/BANK_HOME_PRESERVATION_CAPTURE_PLAN.md
+    February 2027 deadline, HOME-native capture strategy, HOME Live Plugin dumper reference, canonical fixture campaign
+
+docs/research/2026-09-09/RIBBON_BANK_EVENT_PRESERVATION_REFERENCES.md
+    Hallowed Tower DNS events, Athis Ribbon Handbook, Bank-exclusives checklist and provenance caveats
 ```
 
 ## Unique findings accounted for
@@ -72,10 +104,16 @@ sequential generation-boundary conversions
 Pal Park / Poké Transfer / Bank / HOME fixtures
 HOME Tracker and Handling Trainer provenance
 Nintendo savedata commit semantics
+Horizon dual-header / duplex / journal / IVFC durability model
+disposable `powercut.nro` checkpoint design
+hactool/LibHac savedata forensic inspection
 parser fuzzing
 immutable/content-addressed Vault architecture
 Vault schema migration
 large-Vault performance benchmark requirements
+large-directory/tiny-file risk on Switch
+packed immutable segment benchmark direction
+Hekate-style percentile latency/IOPS reporting
 Pokémon Box R&S format research
 Stadium/Stadium 2 region/endian/recovery research
 GameCube Colosseum/XD references
@@ -98,7 +136,15 @@ wcparse Wonder Card oracle
 PokeTools-style event metadata verification reference
 PokéAPI / Veekun generic metadata generation
 EventsGallery redistribution uncertainty
+explicit maintainer-permission request strategy
 fixture manifest / hashes-only policy
+RoC's PC pairable IV→V / V→VI / VI→VII transfer corpuses
+Japanese Gen V official Transporter LanguageID edge case
+Bank→HOME shutdown deadline and preservation campaign
+HOME Live Plugin 1:1 encrypted native HOME dump capability
+DNS re-delivery vs historical official distribution provenance
+Ribbon Master planning / missable-before-transfer guidance
+Bank-exclusive preservation checklist as community reference
 ```
 
 If a future session finds a missing unique result from the September 9 source pastes, add it to the appropriate dedicated note and this manifest rather than making every Codex session reread all source material.
