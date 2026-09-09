@@ -285,3 +285,46 @@ docs/MODDED_SWITCH_FEATURE_BACKLOG.md
 It includes the local Vault, Save Scanner, Rescue Mode, Save Time Machine, provenance/Journey, Transfer Lab, compatibility map, offline legality, Living Dex intelligence, Evolution Planner, Duplicate Detective, EventDex, Ribbon Master, shiny hunts, Vault team builder, bulk tools, cross-save search, Verified Breeding trees, Trainer Passport, Trainer Plaza, serverless LAN mode, QR + human codes, Android planning, no-lock-in export, encrypted backups, disaster recovery, automatic updates, provider/plugin architecture and the offline-first guarantee.
 
 These are accepted long-term product directions but remain subject to release sequencing and technical/safety feasibility. They must not be allowed to derail the current FRLG/RSE/mainline critical path.
+
+---
+
+## 11. PKHeX is the capability baseline for Create Pokémon; PokeBank adds the intelligence layer
+
+PokeBank NX's Create Pokémon and advanced editor should treat **PKHeX-class field coverage, generation awareness, encounter correctness and legality capability as the functional baseline**.
+
+PokeBank NX then adds its own user-facing layer:
+
+```text
+PKHeX-class power
++ Quick Legal
++ Guided Create
++ Advanced / Expert Editor
++ controller-first navigation
++ field-by-field legality explanations
++ one-tap safe fixes
++ target-game compatibility checks
++ Transfer Lab preview
++ Event Library integration
++ explicit CREATED / GENERATED provenance
++ Vault parent/history links for clone/edit/template operations
++ staging instead of immediate live-save mutation
++ Save Time Machine / rollback before approved writes
+```
+
+Safeguards must **not** dumb down the editor or remove expert control. Advanced users should still be able to inspect and intentionally manipulate every meaningful field supported by a Pokémon format. Deliberately invalid/test Pokémon may exist when technically supported, but must be clearly labeled `INVALID / USER-CREATED` and must never be passed off as naturally obtained.
+
+The preferred UI has three levels:
+
+1. **Quick Legal** — choose the Pokémon and a few desired traits; PokeBank fills a legal compatible candidate and explains compromises.
+2. **Guided Create** — step through species, origin/encounter, trainer context, met data, nature/ability/shiny, IV/EV, moves, items, ribbons/marks and format-specific fields with contextual rules.
+3. **Advanced / Expert** — PKHeX-class field access for power users, with live warnings and technical detail rather than hidden fields.
+
+PKHeX remains a pinned host-side oracle/reference as defined in `docs/PKHEX_ORACLE.md`; the Switch runtime stays PokeBank-native unless a deliberate future architecture/licensing decision changes that boundary.
+
+Detailed design is recorded in:
+
+```text
+docs/CREATE_POKEMON_VISION.md
+```
+
+This is a future product decision and must not expand the active FRLG artifact/RSE critical path.
