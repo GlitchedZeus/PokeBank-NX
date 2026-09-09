@@ -4,13 +4,23 @@ Last updated: 2026-09-09
 
 ## LeafGreen binding replacement fix — source checkpoint (2026-09-09)
 
+Published application source: `92bde34d1586990aaa82adc4f60d42d7bc6b5bdf`
+(`legacy: safely replace profile binding database on Switch`).
+Application tree: `08215dcdae0959685eae3796a63d67e76c2b49da`.
+Starting remote documentation/source head: `c3f2e4725132af834969452b9b08cf5637aaaf48`.
+Published and exact remote SHA verified on `origin/feature/pokebank-playable` before any artifact work.
+
 The binding writer now uses verified temporary output, explicit flush/fsync/close, old-to-backup rotation, promotion to an absent target and exact readback. The previous valid database remains recoverable at the target or .bak throughout replacement. Startup prefers a valid primary, recovers a missing/invalid primary from a valid backup, and never promotes speculative .tmp data. Invalid primary data is preserved and blocks further writes rather than being silently overwritten.
 
 assignAndSave() restores the entire prior in-memory assignment map on persistence failure. SaveSelectScreen logs the exact failure stage, errno and (on Switch) fsdevGetLastResult; the native last-result field may be stale for local validation errors. No source save write path changed.
 
 Evidence: old ea0b806b writer reproduced first-save success / second-save failure using an EEXIST-on-existing rename shim. The replacement passes first/second assignments, same/split-profile reload isolation, repeated aliases, separate source identities, failure checkpoints, real open failure, corrupt temp/target readback, failed rollback, stale tmp and backup recovery. All persistence-owned file handles close before rename/delete. No device errno/native Result or external-open-handle evidence has yet been captured; actual Switch root cause/acceptance remains pending retest.
 
-Verification: focused binding tests PASS; focused binding ASan/UBSan PASS with -fno-exceptions/-fno-rtti; existing write-policy/source-mutation tests PASS; git diff --check PASS. Full native build and device artifact remain pending the post-checkpoint build gate. Do not rerun the full PKSM-Core suite solely for this config-file change.
+Verification: focused binding tests PASS; focused binding ASan/UBSan PASS with -fno-exceptions/-fno-rtti; existing write-policy/source-mutation tests PASS; git diff --check PASS. The changed binding translation unit compiles with devkitA64, libnx, -fno-exceptions/-fno-rtti and the existing Makefile's -D_POSIX_C_SOURCE=200809L. This is NOT a full native link/build. Do not rerun the full PKSM-Core suite solely for this config-file change.
+
+ARTIFACT BUILD DEFERRED: YES. Maintenance removed the complete exact-source build tree and full asset set. Only 1,200/3,260 HD renders survive (2,060 missing); no sprites were regenerated/downloaded. No new NRO, manifest, size or hash is claimed. Asset/device preflight and embedded RomFS verification cannot pass for a replacement artifact yet. The previous ea0b806b NRO is historical and does not contain this fix.
+
+Next authorized work is packaging/physical retest of the published binding fix once complete pinned assets and the exact source build context are available. Do not repeat the binding implementation or substitute the parked older/RSE NRO. Preserve all useful existing assets and recovery work. GitHub host CI runs #353 (push) and #354 (PR) were started; their live result is authoritative.
 
 Workspace maintenance removed the prior partial patch staging tree. Its small change was recovered from the recorded patch and hardened; surviving FRLG local changes and b5ef83b RSE ref were preserved. No LeafGreen .srm bytes were available in this runtime: preserve the user's existing fixture (Will, party 1, fingerprint prefix d76e3c7e25a4); no personal save was recreated or changed. RSE remains parked.
 

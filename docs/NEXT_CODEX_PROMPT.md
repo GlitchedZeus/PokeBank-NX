@@ -1,3 +1,20 @@
+# Published LeafGreen persistence checkpoint — 2026-09-09
+
+Application source `92bde34d1586990aaa82adc4f60d42d7bc6b5bdf` (`legacy: safely replace profile binding database on Switch`) is published and remote-verified. The implementation and focused host/ASan/UBSan tests are complete. DO NOT repeat the investigation/patch instructions in the historical prompt below unless a new defect is found.
+
+Current stop state: ARTIFACT BUILD DEFERRED: YES. Only 1,200/3,260 pinned HD renders survived maintenance, and the complete exact-source build context is gone. The binding translation unit compiles with devkitA64 and normal no-exceptions/POSIX flags; full NRO linking and device preflight have NOT been run for the new source. Do not claim the historical ea0b806b binary contains this fix.
+
+Next session: preserve all work/assets/RSE refs first; read CURRENT_STATUS.md. If artifact recovery/build is authorized, reuse every surviving pinned asset, reconstruct the exact published application source, run normal native build and device/embedded RomFS gates, package/hash/preserve a new NRO, update issue #6, then STOP for physical retest. Do not restart parser work, full PKSM-Core verification, RSE or roadmap features. Keep the user's existing LeafGreen .srm fixture (Will, party 1, fingerprint d76e3c7e25a4) unchanged; its bytes were not available in the coding runtime.
+
+Source checks completed: focused binding suite and ASan/UBSan PASS, old writer fails second save under EEXIST rename shim, write-policy/source-mutation checks PASS, diff whitespace PASS. Device root-cause errno/external-handle evidence remains uncollected. New logs record stage/errno/native last Result where available. No new NRO exists yet.
+
+DEVICE TESTED FOR NEW SOURCE: NO
+DEVICE ACCEPTED: NO
+
+---
+
+## Historical implementation prompt (completed source work)
+
 # PokeBank NX — Authoritative Next Codex Prompt
 
 Use HIGH reasoning.

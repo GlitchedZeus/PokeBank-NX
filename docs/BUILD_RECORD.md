@@ -1,3 +1,18 @@
+# LeafGreen persistence source checkpoint — 2026-09-09
+
+- Application: `92bde34d1586990aaa82adc4f60d42d7bc6b5bdf` — `legacy: safely replace profile binding database on Switch`.
+- Application tree: `08215dcdae0959685eae3796a63d67e76c2b49da`.
+- Focused binding tests / ASan+UBSan / diff check: PASS.
+- devkitA64 binding translation unit: PASS under -fno-exceptions/-fno-rtti and existing -D_POSIX_C_SOURCE=200809L. This is not a complete application link.
+- Full native NRO / asset preflight / final embedded RomFS: DEFERRED, not verified for this source.
+- Surviving HD renders: 1,200/3,260. No restoration performed this session.
+- Replacement artifact filename/size/SHA-256: NONE — ARTIFACT BUILD DEFERRED: YES.
+- GitHub push host CI #353 at checkpoint: completed / success; see https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/34370853771 for live state.
+- Historical ea0b806b binary and earlier hashes below must not be relabelled as the new source.
+- DEVICE TESTED: NO. DEVICE ACCEPTED: NO for the new source.
+
+---
+
 # PokeBank NX — Build / Artifact Record
 
 ## Corrected FRLG physical-test artifact — READY FOR DEVICE TEST
