@@ -17,7 +17,7 @@ Focused binding tests, ASan/UBSan, write-policy/source-mutation checks and white
 
 ## Single mission for the next session
 
-**Recover the generated build context deterministically from GitHub, build/package the exact new LeafGreen retest NRO, then STOP for physical Switch testing.**
+**Recover the complete generated build context, save a complete verified RomFS snapshot into the private GitHub repository, build/package the exact new LeafGreen retest NRO, then STOP for physical Switch testing.**
 
 Do not start RSE or another roadmap feature.
 
@@ -39,9 +39,10 @@ python3 tools/recover_workspace.py
 Normal expected behavior:
 
 ```text
-restore missing pinned HD renders
-restore pinned type icons
-restore fonts
+try complete committed GitHub RomFS snapshot
+        ↓
+if not populated yet, restore missing pinned HD renders/types/fonts
+        ↓
 copy tracked game-card art
 apply tracked recovery overrides
 run device asset preflight
@@ -51,7 +52,7 @@ RECOVERY COMPLETE
 
 Do **not** begin with reflog/worktree/stash archaeology. Use forensic recovery only if this deterministic GitHub path actually fails or the user explicitly asks to rescue unsaved local-only work.
 
-A previous workspace had only 1,200/3,260 generated HD renders after maintenance. That is no longer a reason to stop by itself: `romfs/` is generated, and the recovery recipe is now tracked on GitHub. Reconstruct it first.
+A previous workspace had only 1,200/3,260 generated HD renders after maintenance. That is no longer a reason to stop by itself. Reconstruct the full tree first.
 
 Historical full visual baseline for comparison:
 
@@ -69,9 +70,35 @@ embedded RomFS: 3,283/3,283
 
 The user still has this historical NRO on the Switch, so it is an independent fallback/reference. Normal recovery must not require the user to re-upload it.
 
-## Build/package after recovery
+## One-time permanent asset snapshot — REQUIRED this session
 
-Once `tools/recover_workspace.py` prints `RECOVERY COMPLETE`:
+After `tools/recover_workspace.py` reports a full passing tree, run:
+
+```bash
+python3 tools/pack_recovery_snapshot.py
+```
+
+It will create GitHub-safe 80 MiB chunks under:
+
+```text
+recovery/assets_snapshot/
+```
+
+Then:
+
+```bash
+git add -f recovery/assets_snapshot/
+git commit -m "recovery: snapshot complete verified RomFS"
+git push origin feature/pokebank-playable
+```
+
+Remote-verify that the manifest and **every listed part** exist before continuing.
+
+This is the permanent fix for the disappearing Codex asset cache. After this one-time snapshot is pushed, future routine recovery should restore the complete RomFS directly from the private GitHub repo; network regeneration is only fallback.
+
+Do not call the session safely saved if the full generated tree was rebuilt but the snapshot parts were left only in the workspace.
+
+## Build/package after recovery snapshot is safely on GitHub
 
 1. prepare/build the exact application source containing `92bde34d...` without changing application code;
 2. run the normal native devkitA64 `-fno-exceptions` build;
@@ -136,6 +163,7 @@ Stop only after either:
 
 ```text
 RECOVERY COMPLETE
+complete RomFS recovery snapshot pushed + remote-verified on GitHub
 source fix remains pushed
 new exact NRO packaged + hashed
 embedded RomFS verified
