@@ -13,7 +13,10 @@ Historical snapshots are evidence/recovery context, not active scope. Do not del
 
 Current archived snapshots:
 
-- `CURRENT_STATUS_PRE_LEAFGREEN_2026-09-09.md` — the full pre-physical-test/recovery status that existed before the LeafGreen binding failure was isolated.
-- `NEXT_CODEX_PROMPT_PRE_LEAFGREEN_2026-09-09.md` — the completed FRLG artifact-packaging prompt that was authoritative before the physical retest.
+- `CURRENT_STATUS_PRE_LEAFGREEN_2026-09-09.md` — full pre-physical-test/recovery status before the LeafGreen binding failure was isolated.
+- `NEXT_CODEX_PROMPT_PRE_LEAFGREEN_2026-09-09.md` — completed FRLG artifact-packaging prompt that was authoritative before the physical retest.
+- `PROJECT_RESOURCE_INDEX_PRE_CHUNKS_2026-09-09.md` — the longer pre-chunk navigation index preserved before the AI map was reorganized by game family and subsystem.
 
-Git history and the older named session/build/device reports remain additional historical evidence.
+Older named session/build/device reports and standalone prompts remain in `docs/` when keeping their original paths is useful for old links and recovery archaeology. Git history remains additional evidence.
+
+Do not read this archive during a normal coding session unless `CURRENT_STATUS.md`, `NEXT_CODEX_PROMPT.md`, or a recovery task explicitly points here.
