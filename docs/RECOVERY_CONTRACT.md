@@ -52,32 +52,68 @@ an unpushed commit
 
 If a fix is made by manually changing generated output, that fix must be promoted into a tracked generator/mapping/transform/override before the session is called saved.
 
-## Generated third-party assets
+## Complete private GitHub RomFS snapshot
 
-`romfs/` remains generated and gitignored because much of it is third-party Pokémon artwork and generated build material. Public availability is not treated as blanket redistribution permission.
+The repository is private, so routine recovery should ultimately be independent of a temporary Codex cache **and** independent of redownloading 3,260 assets from the internet.
 
-That does **not** mean the work needed to recreate it may be local-only.
+After the first full preflight-passing recovery, run:
 
-GitHub must contain the exact recovery recipe:
+```bash
+python3 tools/pack_recovery_snapshot.py
+git add -f recovery/assets_snapshot/
+git commit -m "recovery: snapshot complete verified RomFS"
+git push origin feature/pokebank-playable
+```
 
-- pinned Pokémon sprite source revision;
-- generator code;
-- expected sprite counts;
-- type/font source information;
-- project-owned game-card art;
-- any tracked project-authored overrides;
-- verification script;
-- last known artifact identity/hash.
+The packer creates a deterministic tar of the complete `romfs/` tree and splits it into 80 MiB GitHub-safe pieces under:
 
-`tools/recover_workspace.py` reconstructs this generated context automatically.
+```text
+recovery/assets_snapshot/
+```
 
-Any future non-reproducible manual asset correction must be placed under:
+No individual part exceeds GitHub's normal 100 MiB single-file limit.
+
+Once `recovery/assets_snapshot/manifest.json` and all listed parts are committed, `tools/recover_workspace.py` **prefers the full committed GitHub snapshot**. Pinned source regeneration becomes a fallback, not the normal path.
+
+This gives us the intended recovery model:
+
+```text
+private GitHub
+  source/code/tests/docs
+  + complete verified RomFS snapshot
+        ↓
+one recovery command
+        ↓
+working build context
+```
+
+Do not commit a partial snapshot. The packer runs the device asset preflight first and refuses to snapshot an incomplete tree.
+
+## Generated third-party assets and project-authored fixes
+
+Normal build output under `romfs/` remains generated/gitignored on the development branch. That prevents ordinary coding commits from accidentally mixing thousands of generated binaries with source changes.
+
+GitHub still contains both:
+
+1. the complete verified recovery snapshot under `recovery/assets_snapshot/` once populated; and
+2. the exact regeneration recipe as a fallback:
+   - pinned Pokémon sprite source revision;
+   - generator code;
+   - expected sprite counts;
+   - pinned type source information;
+   - font source information;
+   - project-owned game-card art;
+   - tracked project-authored overrides;
+   - verification script;
+   - last known artifact identity/hash.
+
+Any future non-reproducible manual asset correction must also be represented under:
 
 ```text
 assets/recovery_overrides/
 ```
 
-or encoded as a tracked deterministic transform. Never leave the only copy in `romfs/`.
+or encoded as a tracked deterministic transform. Never leave the only corrected copy in generated `romfs/`.
 
 ## Current known full visual baseline
 
@@ -116,9 +152,11 @@ When a new coding session starts and the user says RECOVERY:
 python3 tools/recover_workspace.py
 ```
 
-4. If it prints `RECOVERY COMPLETE`, continue the authorized task immediately.
-5. Do not rerun expensive tests merely because the workspace is new. Run only verification required by changed source or by the current prompt.
-6. If recovery fails, report the exact failed stage and then use the smallest forensic action necessary.
+4. The tool first attempts the complete committed GitHub RomFS snapshot.
+5. If the snapshot has not been populated yet, it uses pinned deterministic regeneration as the fallback.
+6. If it prints `RECOVERY COMPLETE`, continue the authorized task immediately.
+7. Do not rerun expensive tests merely because the workspace is new. Run only verification required by changed source or by the current prompt.
+8. If recovery fails, report the exact failed stage and then use the smallest forensic action necessary.
 
 ## Forensic exception path
 
@@ -127,7 +165,7 @@ Only if normal recovery fails:
 ```text
 remote commit missing
 tracked recovery recipe inconsistent
-pinned upstream source unavailable
+committed snapshot corrupt/missing parts AND pinned fallback unavailable
 local-only work explicitly needs rescue
 Git history divergence prevents normal checkout
 ```
@@ -149,6 +187,8 @@ remote SHA verified
         ↓
 recovery recipe/state still valid
         ↓
+complete recovery snapshot refreshed when generated assets materially change
+        ↓
 no manual fix exists only in ignored/generated output
 ```
 
@@ -158,7 +198,7 @@ A statement such as “preserved in downloadable storage” is **not** equivalen
 
 Git source and a built `.nro` are different things.
 
-GitHub must always preserve enough project-authored information to recreate the build. Binary NRO/ZIP preservation is useful but must not be treated as the only copy of source/build logic.
+GitHub must always preserve enough project-authored information and the private RomFS recovery snapshot needed to recreate the build. Binary NRO/ZIP preservation is useful but must not be treated as the only copy of source/build logic.
 
 If a binary cannot be uploaded to GitHub from the active environment, record its exact filename/size/SHA-256 in GitHub and state clearly where the binary actually lives. Never call temporary session storage “durable” without verification.
 
@@ -169,6 +209,7 @@ Use this only after the normal path succeeds:
 ```text
 RECOVERY COMPLETE
 GitHub source: <sha>
+Recovery source: committed GitHub RomFS snapshot OR pinned fallback
 Generated asset preflight: PASS
 Active task can continue: YES
 ```
