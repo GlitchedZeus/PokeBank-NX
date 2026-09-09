@@ -48,9 +48,26 @@ Open:
 docs/research/2026-09-09/BANK_HOME_PRESERVATION_CAPTURE_PLAN.md
 ```
 
-The official Bank shutdown is February 25, 2027 at 7:00 p.m. PST / February 26, 2027 at 03:00 UTC. New Bank -> HOME captures disappear after that deadline, so this is a preservation task to schedule during 2026 even though Gen VII/VIII implementation is future scope.
+For the public corpus that now replaces much of the original custom-capture plan also open:
 
-The note records the HOME-native capture model and the HOME Live Plugin dumper/reference distinction.
+```text
+docs/research/2026-09-09/BANK_HOME_PUBLIC_CORPUS_AUDIT.md
+```
+
+The official Bank shutdown is February 25, 2027 at 7:00 p.m. PST / February 26, 2027 at 03:00 UTC. New Bank -> HOME captures disappear after that deadline, but the public internet already exposes a meaningful set of before/after official-path specimens.
+
+Current strategy:
+
+```text
+public corpus
+ -> download/hash
+ -> pair validation
+ -> field-level diff
+ -> coverage matrix
+ -> custom transfers only for genuine remaining holes
+```
+
+Do not begin a large 20–50 specimen custom campaign before the public corpus has been exhausted.
 
 ---
 
@@ -92,9 +109,10 @@ For source grading and bulk before/after pairing also open, only when needed:
 docs/research/2026-09-09/OFFICIAL_PATH_TRANSFER_CORPUS_AUDIT.md
 ```
 
-For the shutdown/deadline capture campaign also open:
+For Bank -> HOME specifically:
 
 ```text
+docs/research/2026-09-09/BANK_HOME_PUBLIC_CORPUS_AUDIT.md
 docs/research/2026-09-09/BANK_HOME_PRESERVATION_CAPTURE_PLAN.md
 ```
 
@@ -107,6 +125,7 @@ Contains:
 - multilingual NPC Gift/Trade PKM corpus;
 - Project Pokémon public save corpuses;
 - RoC's PC as a bulk pairable official-path capture corpus for IV->V, V->VI and VI->VII;
+- explicit public Bank -> HOME before/after pairs plus larger source-only leads;
 - fixture manifest / hashes-only policy when redistribution rights are unclear;
 - HOME Tracker preservation rule: preserve observed trackers, never fabricate official HOME provenance;
 - Handling Trainer / HOME sidecar / modern representation concerns;
@@ -204,7 +223,7 @@ docs/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
 docs/research/2026-09-09/SOURCE_MANIFEST.md
 ```
 
-The matrix still classifies external projects by integration role/license posture. The September intake is the earlier condensed research pass. The dedicated notes above are the newer routing-friendly consolidation of tonight's broader sweep.
+The matrix still classifies external projects by integration role/license posture. The September intake is the earlier condensed intake. The dedicated notes above are the newer routing-friendly consolidation of tonight's broader sweep.
 
 Important already-indexed references include:
 
@@ -226,6 +245,7 @@ PkmGCTools / LibPkmGC
 Dolphin
 RoC's PC
 HOME Live Plugin
+Project Pokémon Bank/HOME request threads + contributed PKM archives
 hactool / LibHac
 ```
 
@@ -255,6 +275,9 @@ These are architectural constraints, not implementation claims:
 17. Flat one-Pokémon-per-file Vault storage is a benchmark baseline, not the preferred production design.
 18. Community re-delivery of an event is not proof of original official redemption.
 19. Bank->HOME official-path capture is deadline-bound preservation work before February 2027.
+20. Public before/after fixtures must be downloaded, hashed and invariant-validated before golden-test promotion.
+21. Known side edits contaminate specific fields, not necessarily the entire fixture; record them explicitly.
+22. Exhaust public Bank/HOME corpuses before requesting new custom transfers.
 ```
 
 ---
@@ -267,8 +290,11 @@ Research reduced many unknowns, but these remain intentionally open:
 2. real 10k/50k/100k/250k Vault performance on Switch — requires `vaultbench.nro` rather than guesses;
 3. redistribution rights for wholesale official Mystery Gift/event corpuses — do not assume public availability means bundle permission;
 4. final implementation/license review for every external source before any code/data is copied;
-5. complete modern HOME-native before/after coverage across every game/language route.
+5. complete modern HOME-native before/after coverage across every game/language route;
+6. a perfect public same-specimen `PK7 -> native PH/EH -> destination PKM` three-stage Bank/HOME fixture has not yet been confirmed.
 
 Classic transfer boundaries III->IV, IV->V, V->VI and VI->VII are now considered sufficiently researched to support later differential implementation/testing, subject to fixture provenance and redistribution checks.
+
+Bank -> HOME now has a meaningful public before/after corpus, so the remaining task is corpus acquisition/validation/coverage analysis plus targeted capture of only genuine holes before shutdown.
 
 Do not reopen already-solved research unless implementation evidence contradicts these notes.
