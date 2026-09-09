@@ -1,21 +1,27 @@
 # PokeBank NX — Authoritative Next Codex Prompt
 
-> **FRLG FIX SOURCE IS ALREADY PUBLISHED — FINISH ONLY THE EXACT PHYSICAL-TEST ARTIFACT**
+> **FRLG FIX SOURCE AND FULL ASSET GATE ARE COMPLETE — FINISH ONLY THE EXACT DEVICE-TEST BUILD/PACKAGE**
 
 Use HIGH reasoning.
 
-## Starting remote application checkpoint
+## Canonical application source
 
-The two device-proven FRLG failures have already been addressed in source and published to:
+The two device-proven FRLG failures have already been fixed in source and published as:
 
 ```text
 ea0b806bac4acdb5619f22f9841d616ea8a237ff
 legacy: bind FRLG sources to profiles and expose diagnostics
 ```
 
-This is the canonical application source for the next physical-test artifact unless a real packaging/build defect forces an application-source change.
+Canonical tree:
 
-The previous rejected artifact remains:
+```text
+ed5912093886384894c44538d569fe4955fd2e47
+```
+
+This exact application source is the target for the next physical-test artifact unless a real build/package defect forces an application-code change.
+
+The old rejected artifact remains:
 
 ```text
 5d3e5e23f352dda4900ae42b4f396d9d4a4b8b8e
@@ -25,16 +31,16 @@ DEVICE TESTED: YES
 DEVICE ACCEPTED: NO
 ```
 
-Do not call the old artifact untested or accepted.
+Do not call that old artifact untested or accepted.
 
 ## Preserve first
 
-Before syncing, resetting, cleaning, restoring, switching refs, rebasing, changing worktrees, deleting generated assets, or doing anything that could discard local state:
+Before syncing, resetting, cleaning, restoring, switching refs, rebasing, replacing worktrees, deleting generated assets, or doing anything that could discard local state:
 
 - inspect all worktrees;
 - inspect `git status`;
-- preserve useful uncommitted/generated/recovery state;
-- preserve any partially restored pinned artwork because the restore is resumable;
+- preserve useful uncommitted/generated/recovery/build state;
+- preserve the completed/restored pinned asset tree if it survived;
 - preserve parked RSE refs including `b5ef83b`, `1a921515`, or equivalents.
 
 Do not merge, resume, reimplement, or push RSE.
@@ -49,113 +55,103 @@ origin/feature/pokebank-playable
 
 Never push custom PokeBank NX code upstream to PKSE.
 
-# What was already completed before the previous session ran out
+# Already completed — DO NOT REDO WITHOUT CAUSE
 
-The previous session reported and published the following application behavior in `ea0b806b`:
+## Source fix
 
-## Stale/old-save correction
+`ea0b806b` reportedly includes:
 
-Root cause found:
+- removal of the false/arbitrary `Main Save` label;
+- distinct physical FRLG files retained as distinct save instances;
+- truthful filename/source information;
+- deterministic newest-mtime initial focus only, without claiming that file is the active RetroArch save;
+- Source Details with provider, normalized path, size, modification state, stable identity, short SHA-256/fingerprint, exact game ID, trainer, and party count;
+- shared physical discovery/catalog with profile-scoped visibility;
+- unassigned legacy saves hidden from normal per-profile lists;
+- explicit assignment to the current Nintendo/PokeBank profile;
+- persistent source/profile bindings;
+- Profile A source absent from Profile B;
+- aliases not duplicating bindings;
+- installed Switch-title account scoping preserved;
+- all source writes still hard disabled.
+
+Reported stale-save root cause:
 
 ```text
 multiple valid FRLG files
--> filename sorting
+-> filename sort
 -> first child auto-focused
--> first child incorrectly called "Main Save"
+-> first child falsely labeled "Main Save"
 ```
 
-That was not proof of RetroArch's active/current gameplay save.
+## Verification already completed for unchanged ea0b806b
 
-Published correction:
-
-- do not invent `Main Save`;
-- keep genuinely separate valid physical saves as separate children;
-- expose truthful filename/source information;
-- expose Source Details with provider, normalized path, size, modification state, stable identity, short SHA-256/content fingerprint, exact game ID, decoded trainer, and party count;
-- use newest mtime only for deterministic initial focus when multiple genuine saves exist, while preserving all children for explicit selection;
-- refresh remains read-only and rebuilds changed source models safely.
-
-A deterministic stale-copy regression reportedly uses an older one-Pokémon save plus a newer two-Pokémon save and passes.
-
-## Profile leakage correction
-
-Published model:
-
-```text
-physical legacy discovery/catalog = shared/app-global
-normal source visibility/binding = profile-scoped
-```
-
-Published correction reportedly provides:
-
-- persistent source-to-profile bindings;
-- unassigned legacy saves hidden from normal profile source lists;
-- explicit assignment to the current Nintendo/PokeBank profile;
-- Profile A source absent from Profile B;
-- bindings survive reload/restart;
-- aliases do not duplicate bindings;
-- distinct physical saves can be assigned independently;
-- installed Switch-title account scoping unaffected;
-- no Vault/Gift/Trade implementation;
-- no source writes.
-
-## Verification already completed
-
-The previous session reported all green for the exact `ea0b806b` application source:
+The exact published application source already has this reported verification:
 
 ```text
 Host tests: 13 suites PASS
 ASan/UBSan: PASS
 git diff --check: PASS
 Native Switch -fno-exceptions compile/link: PASS
+GitHub CI run #245: PASS
 ```
 
-DO NOT burn another session rerunning expensive full sanitizer/PKSM-Core work solely to package the unchanged `ea0b806b` source.
+A later continuation reconstructed a fresh isolated build tree from GitHub and verified all native `include/`, `src/`, and Makefile content against canonical tree `ed591209...` with **zero source mismatches**. Its host regression suite also passed.
 
-First verify that the source tree used for packaging is exactly `ea0b806b` and that no application-code changes are needed.
+Do NOT burn another session rerunning full sanitizer/PKSM-Core verification merely because the session restarted.
 
-If application source remains byte-for-byte/commit-identical to `ea0b806b`:
+If application source remains exactly `ea0b806b`:
 
-- reuse the already completed verification record;
-- check relevant CI status if available;
-- perform only packaging/build verification materially required to create the exact artifact.
+- reuse the verification record above;
+- do not re-debug the stale-save/profile-binding fixes;
+- do not rerun expensive ASan/UBSan/PKSM-Core unless a real defect makes it necessary;
+- perform only the build/package/integrity work required for the exact artifact.
 
-If application code changes after `ea0b806b`, rerun the appropriate host/sanitizer/native/diff verification before packaging.
+If application code changes after `ea0b806b`, then rerun the verification appropriate to the changed source before packaging.
 
-# Single mission — finish the exact physical-test artifact
+# Full pinned asset gate is already complete
 
-The previous session ran out during the pinned full-artwork restore.
-
-Last reported progress:
+The previous continuation reported successful completion of the asset restore/preflight:
 
 ```text
-HD renders present: 1392 / 3260
+HD Pokémon renders: 3260 / 3260
+Base species: 1025 / 1025
 Type icons: 18 / 18
 Fonts: 3 / 3
-Restore process: resumable
-Canonical source: ea0b806bac4acdb5619f22f9841d616ea8a237ff
+Shiny/form coverage: PASS
+FireRed/LeafGreen GBA card artwork: PASS
+Asset preflight: PASS
 ```
 
-Do not assume those exact local counts still exist after workspace maintenance; inspect safely first. Resume useful existing restored state rather than deleting/restarting it.
+The clean exact-source devkitA64 `-fno-exceptions` build with embedded commit `ea0b806b` was started when credits ended.
 
-Required completion:
+Therefore:
 
-1. restore the complete pinned **3,260 HD Pokémon render** set;
-2. verify **1,025 / 1,025 base species**;
-3. run the existing asset preflight/integrity checks;
-4. ensure the build is tied to canonical application source `ea0b806b`;
-5. perform a clean exact-source native Switch build with the complete assets;
-6. verify the embedded RomFS against the intended source asset tree using the repository's established verification method;
-7. package the exact physical-test `.nro`;
-8. produce ZIP fallback and build manifest if the established release flow supports them;
-9. calculate exact byte sizes and SHA-256 hashes;
-10. record the embedded version/source SHA;
-11. update minimal engineering handoff docs with exact artifact identity;
-12. STOP for physical device testing.
+- inspect whether that exact build completed or left reusable outputs;
+- inspect whether the complete asset tree survived;
+- resume/reuse those outputs when trustworthy;
+- do not delete/re-download/re-restore all 3,260 renders simply because a new session started;
+- if workspace maintenance removed them, restore only what is actually missing using the established pinned process.
 
-Do not do additional feature development during this session.
+# Single mission — finish exact physical-test artifact
 
-# Preserve existing ea0b806b functionality
+Do only this:
+
+1. Preserve surviving build, asset, and recovery state.
+2. Verify the application source used for the artifact is exactly `ea0b806bac4acdb5619f22f9841d616ea8a237ff`.
+3. Reuse the completed 3,260-render asset tree if present; otherwise restore only missing/corrupt assets.
+4. Finish or restart only the clean exact-source devkitA64 `-fno-exceptions` native build.
+5. Verify embedded source/version identity is `ea0b806b`.
+6. Verify the built RomFS is byte-identical to the intended complete asset tree using the repository's established method.
+7. Produce the exact physical-test `.nro`.
+8. Produce ZIP fallback and build manifest if supported by the established release flow.
+9. Calculate exact byte sizes and SHA-256 hashes.
+10. Record minimal engineering handoff documentation with exact artifact identity.
+11. STOP for physical device testing.
+
+Do not do new feature development.
+
+# Preserve existing functionality
 
 Do not regress or broadly rewrite:
 
@@ -163,12 +159,12 @@ Do not regress or broadly rewrite:
 - FireRed / LeafGreen identities and GBA artwork;
 - Party and all 14 Boxes;
 - Pokémon View;
-- truthful trainer data and decrypted money;
+- trainer metadata and decrypted money;
 - six read-only inventory pouches;
 - refresh/rescan;
 - alias dedupe;
-- truthful physical-source diagnostics;
-- persistent per-profile legacy-source bindings;
+- truthful Source Details diagnostics;
+- persistent per-profile source bindings;
 - installed-title account scoping;
 - malformed-source safety;
 - source-byte immutability;
@@ -179,7 +175,7 @@ Do not regress or broadly rewrite:
 Do NOT begin:
 
 - Ruby/Sapphire/Emerald;
-- Master/Profile Vault implementation beyond the already-published source binding;
+- Master/Profile Vault beyond the already-published minimal source binding;
 - Banks;
 - Gen I/II;
 - DS/3DS;
@@ -202,12 +198,14 @@ Report exactly:
 ```text
 starting remote/documentation SHA
 canonical application source SHA = ea0b806bac4acdb5619f22f9841d616ea8a237ff
+canonical tree SHA = ed5912093886384894c44538d569fe4955fd2e47
 application commit message
-whether any application source changed during packaging
+whether application source changed during packaging
 verification record reused and/or rerun
-CI status if checked
+CI status
 HD render count
 base species count
+asset preflight result
 RomFS verification result
 NRO filename
 NRO exact byte size
@@ -230,11 +228,11 @@ The user must verify on Switch:
 1. Under the user's profile, assign/select the correct FRLG physical save.
 2. Source Details identify the exact physical path/fingerprint/trainer/party count.
 3. The current save with 2 Pokémon opens correctly.
-4. The old level-6 Charmander copy is not silently presented as "Main Save"; if still present as a genuine separate file, it is truthfully identifiable as a separate child.
-5. Restart PokeBank NX and confirm the source binding persists.
+4. The old level-6 Charmander copy is not silently presented as "Main Save"; if it remains as a genuine separate file, it is truthfully identifiable as a separate child.
+5. Restart PokeBank NX and confirm the binding persists.
 6. Switch to the niece's profile and confirm the user's assigned FRLG save is absent.
 7. Switch back to the user's profile and confirm it remains assigned/visible.
 8. Trainer, Items, Party, Boxes 1-14, Pokémon View, refresh, and read-only locks still work.
 ```
 
-Do not begin RSE until the user physically accepts both the current-save selection behavior and profile isolation.
+Do not begin RSE until the user physically accepts both current-save selection behavior and profile isolation.
