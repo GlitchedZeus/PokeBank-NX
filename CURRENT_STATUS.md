@@ -2,36 +2,213 @@
 
 Last updated: 2026-09-09
 
-## LeafGreen binding replacement fix — source checkpoint (2026-09-09)
+## Current application source
 
-Published application source: `92bde34d1586990aaa82adc4f60d42d7bc6b5bdf`
-(`legacy: safely replace profile binding database on Switch`).
-Application tree: `08215dcdae0959685eae3796a63d67e76c2b49da`.
-Starting remote documentation/source head: `c3f2e4725132af834969452b9b08cf5637aaaf48`.
-Published and exact remote SHA verified on `origin/feature/pokebank-playable` before any artifact work.
+Published and remote-verified application source:
 
-The binding writer now uses verified temporary output, explicit flush/fsync/close, old-to-backup rotation, promotion to an absent target and exact readback. The previous valid database remains recoverable at the target or .bak throughout replacement. Startup prefers a valid primary, recovers a missing/invalid primary from a valid backup, and never promotes speculative .tmp data. Invalid primary data is preserved and blocks further writes rather than being silently overwritten.
+```text
+92bde34d1586990aaa82adc4f60d42d7bc6b5bdf
+legacy: safely replace profile binding database on Switch
+```
 
-assignAndSave() restores the entire prior in-memory assignment map on persistence failure. SaveSelectScreen logs the exact failure stage, errno and (on Switch) fsdevGetLastResult; the native last-result field may be stale for local validation errors. No source save write path changed.
+Application tree at that source checkpoint:
 
-Evidence: old ea0b806b writer reproduced first-save success / second-save failure using an EEXIST-on-existing rename shim. The replacement passes first/second assignments, same/split-profile reload isolation, repeated aliases, separate source identities, failure checkpoints, real open failure, corrupt temp/target readback, failed rollback, stale tmp and backup recovery. All persistence-owned file handles close before rename/delete. No device errno/native Result or external-open-handle evidence has yet been captured; actual Switch root cause/acceptance remains pending retest.
+```text
+08215dcdae0959685eae3796a63d67e76c2b49da
+```
 
-Verification: focused binding tests PASS; focused binding ASan/UBSan PASS with -fno-exceptions/-fno-rtti; existing write-policy/source-mutation tests PASS; git diff --check PASS. The changed binding translation unit compiles with devkitA64, libnx, -fno-exceptions/-fno-rtti and the existing Makefile's -D_POSIX_C_SOURCE=200809L. This is NOT a full native link/build. Do not rerun the full PKSM-Core suite solely for this config-file change.
+The LeafGreen binding persistence **source fix is complete**. Do not redo the implementation unless new device evidence proves a new defect.
 
-ARTIFACT BUILD DEFERRED: YES. Maintenance removed the complete exact-source build tree and full asset set. Only 1,200/3,260 HD renders survive (2,060 missing); no sprites were regenerated/downloaded. No new NRO, manifest, size or hash is claimed. Asset/device preflight and embedded RomFS verification cannot pass for a replacement artifact yet. The previous ea0b806b NRO is historical and does not contain this fix.
+The binding writer now:
 
-Next authorized work is packaging/physical retest of the published binding fix once complete pinned assets and the exact source build context are available. Do not repeat the binding implementation or substitute the parked older/RSE NRO. Preserve all useful existing assets and recovery work. GitHub host CI runs #353 (push) and #354 (PR) were started; their live result is authoritative.
+- writes and validates temporary output;
+- flushes/fsyncs/closes before rename/delete;
+- rotates the old valid database to `.bak`;
+- promotes the new file only into an absent target;
+- verifies exact readback;
+- recovers from a valid backup;
+- does not promote speculative `.tmp` data;
+- preserves invalid primary data instead of silently overwriting it;
+- restores the entire prior in-memory binding map if persistence fails;
+- logs exact failure stage, errno and Switch fsdev last Result where available.
 
-Workspace maintenance removed the prior partial patch staging tree. Its small change was recovered from the recorded patch and hardened; surviving FRLG local changes and b5ef83b RSE ref were preserved. No LeafGreen .srm bytes were available in this runtime: preserve the user's existing fixture (Will, party 1, fingerprint prefix d76e3c7e25a4); no personal save was recreated or changed. RSE remains parked.
+Focused evidence for `92bde34d...`:
 
-DEVICE TESTED FOR NEW SOURCE: NO
+```text
+first assignment save: PASS
+second assignment under EEXIST-style rename restriction: PASS
+reload / same-profile / split-profile isolation: PASS
+failure-injection / rollback / backup recovery: PASS
+focused binding ASan/UBSan: PASS
+write-policy/source-mutation checks: PASS
+git diff --check: PASS
+changed binding translation unit devkitA64 -fno-exceptions/-fno-rtti: PASS
+```
+
+No source-save write path changed. Live installed-game and RetroArch writing remains **HARD DISABLED**.
+
+## RECOVERY policy is now deterministic
+
+Routine recovery no longer means manually inspecting every worktree/reflog/history first.
+
+Authoritative recovery files:
+
+```text
+docs/RECOVERY_CONTRACT.md
+recovery/RECOVERY_STATE.json
+tools/recover_workspace.py
+```
+
+Normal recovery command:
+
+```bash
+python3 tools/recover_workspace.py
+```
+
+Expected result:
+
+```text
+RECOVERY COMPLETE
+Generated asset preflight: PASS
+Active task can continue: YES
+```
+
+The script reconstructs missing generated RomFS inputs from GitHub-tracked source pins/scripts, restores tracked game-card art, applies tracked recovery overrides and runs the offline asset preflight.
+
+Forensic status/reflog/worktree archaeology is now an exception path only if this deterministic GitHub recovery path fails or the user explicitly asks to rescue unsaved local-only work.
+
+Permanent save rule: no project-authored fix may exist only in `romfs/`, `build/`, `/mnt/data/`, a temporary Codex worktree or an unpushed commit. A manual generated-asset correction must be promoted into tracked generator/mapping/transform logic or a legally-safe tracked recovery override before a session is called saved.
+
+## Historical full visual baseline
+
+Physically tested application source:
+
+```text
+ea0b806bac4acdb5619f22f9841d616ea8a237ff
+legacy: bind FRLG sources to profiles and expose diagnostics
+```
+
+Canonical tree:
+
+```text
+ed5912093886384894c44538d569fe4955fd2e47
+```
+
+Exact physically tested artifact:
+
+```text
+PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro
+size: 156,592,377 bytes
+SHA-256: 396f8ff9f4da53b5449aeb46b8d1237ca9358a0ac94998680017575916b6b1ee
+embedded: 0.1.0-alpha / ea0b806b
+```
+
+Verified build context for that artifact:
+
+```text
+HD renders: 3,260 / 3,260
+Base species: 1,025 / 1,025
+Type icons: 18 / 18
+Fonts: 3 / 3
+FRLG GBA cards: PASS
+Asset preflight: PASS
+Embedded RomFS: 3,283 / 3,283 files byte-identical
+Native devkitA64 -fno-exceptions build: PASS
+Host tests: 13 suites PASS
+ASan/UBSan: PASS
+git diff --check: PASS
+GitHub application CI run #245: PASS
+```
+
+The user still has this exact historical NRO on the physical Switch. It is an independent fallback/reference copy, but normal recovery must not depend on re-uploading it.
+
+The historical NRO does **not** contain the new `92bde34d...` persistence fix.
+
+## Physical Switch result — FireRed
+
+Physically confirmed on the exact `ea0b806b` artifact:
+
+- normal RetroArch battery/in-game `.srm` is the correct source;
+- current FireRed save rereads correctly after a normal in-game save;
+- current save opens with 2 Pokémon;
+- trainer information opens correctly;
+- items/inventory open correctly;
+- truthful source diagnostics are present;
+- `.state` savestate support is not required and must not be added as a workaround.
+
+FireRed is not the blocker.
+
+## Physical Switch result — LeafGreen before the new fix
+
+Regression fixture to preserve unchanged:
+
+```text
+File: Pokemon - Leaf Green Version.srm
+Game: LeafGreen
+Trainer: Will
+Party count: 1
+Displayed fingerprint prefix: d76e3c7e25a4
+```
+
+On `ea0b806b`, discovery/parsing succeeded but assignment failed with:
+
+```text
+Assignment could not be saved; source remains unassigned.
+```
+
+That failure was narrowed to binding persistence, reproduced under rename-over-existing restrictions, and addressed by `92bde34d...`.
+
+The **new source has not yet been physically tested**.
+
+## Immediate next milestone
+
+Do only:
+
+```text
+run deterministic recovery
+        ↓
+full 3,260-render / 18-type / 3-font preflight PASS
+        ↓
+build exact 92bde34d application source
+        ↓
+verify embedded RomFS
+        ↓
+package/hash new retest NRO + ZIP
+        ↓
+STOP for physical Switch retest
+```
+
+Do not restart parser/discovery work. Do not start RSE or another roadmap feature.
+
+## Required physical retest
+
+1. FireRed current 2-Pokémon source still opens correctly.
+2. LeafGreen can be assigned successfully.
+3. Restart PokeBank NX and confirm LeafGreen assignment persists.
+4. Test profile isolation.
+5. Switch back and confirm the original profile assignment remains.
+6. Recheck Trainer, Items, Party, Boxes 1-14, Pokémon View, Refresh and read-only locks.
+
+Only after this passes may FRLG be marked physically accepted.
+
+```text
+DEVICE TESTED FOR 92bde34d SOURCE: NO
 DEVICE ACCEPTED: NO
+```
 
+## Parked RSE recovery
 
+Preserve:
 
-This is the short authoritative engineering handoff for coding sessions. The root `README.md` is the human-facing project dashboard. Historical snapshots and older device/build/session records are preserved under `docs/` and `docs/history/`.
+```text
+b5ef83b
+```
 
-## Authority / repository
+and `1a921515` if available or its verified equivalent.
+
+Do not merge, resume, reimplement or push RSE until FRLG physical acceptance.
+
+## Repository authority
 
 ```text
 Repository: GlitchedZeus/PokeBank-NX
@@ -42,191 +219,16 @@ Upstream reference: kiasta/PKSE
 
 Never push custom PokeBank NX code upstream.
 
-Live installed-game and RetroArch save writing remains **HARD DISABLED**.
+## Fast launcher
 
-Before any sync/reset/clean/rebase/ref/worktree/generated-asset action, inspect and preserve useful local/uncommitted/recovery/build state first.
-
-## Current physically tested application source
+Normal coding:
 
 ```text
-ea0b806bac4acdb5619f22f9841d616ea8a237ff
-legacy: bind FRLG sources to profiles and expose diagnostics
+Continue PokeBank NX on feature/pokebank-playable. Use HIGH reasoning. Read CURRENT_STATUS.md and docs/CODEX_SESSION.md, then execute docs/NEXT_CODEX_PROMPT.md exactly.
 ```
 
-Canonical application tree:
+Recovery:
 
 ```text
-ed5912093886384894c44538d569fe4955fd2e47
-```
-
-Corrected physical-test artifact:
-
-```text
-PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro
-size: 156,592,377 bytes
-SHA-256: 396f8ff9f4da53b5449aeb46b8d1237ca9358a0ac94998680017575916b6b1ee
-embedded: 0.1.0-alpha / ea0b806b
-```
-
-Artifact/build verification already completed:
-
-```text
-HD renders: 3260 / 3260
-Base species: 1025 / 1025
-Type icons: 18 / 18
-Fonts: 3 / 3
-FRLG GBA cards: PASS
-Asset preflight: PASS
-Embedded RomFS: PASS — 3283 / 3283 files byte-identical
-Native devkitA64 -fno-exceptions build: PASS
-Host tests for ea0b806b: 13 suites PASS
-ASan/UBSan for ea0b806b: PASS
-git diff --check for ea0b806b: PASS
-GitHub application CI run #245: PASS
-```
-
-Do not rerun expensive unchanged-source verification merely because a new session starts. If application source changes, run verification appropriate to the changed source.
-
-## Physical Switch result — FireRed GBA
-
-The earlier stale-save concern is now understood and the normal RetroArch in-game save path works.
-
-Physically confirmed on the exact `ea0b806b` artifact:
-
-- normal RetroArch battery/in-game `.srm` save is discovered;
-- after saving normally inside FireRed, PokeBank rereads the current save;
-- current FireRed save opens with **2 Pokémon**;
-- trainer information opens correctly;
-- item/inventory information opens correctly;
-- truthful source diagnostics are present;
-- `.state` savestate support is **not** required and must not be added as a workaround.
-
-FireRed is not the current blocker.
-
-## Physical Switch result — LeafGreen GBA
-
-The physical LeafGreen source is successfully discovered and parsed:
-
-```text
-File: Pokemon - Leaf Green Version.srm
-Game: LeafGreen
-Trainer: Will
-Party count: 1
-Displayed fingerprint prefix: d76e3c7e25a4
-```
-
-Attempting assignment to either available Nintendo/PokeBank profile fails with:
-
-```text
-Assignment could not be saved; source remains unassigned.
-```
-
-The remaining FRLG blocker is therefore **binding persistence**, not LeafGreen discovery or parsing.
-
-## Known failure path
-
-Code inspection established that the exact UI error above is reached only after:
-
-```text
-LegacySourceBindings::assign(...)
-        -> succeeds in memory
-LegacySourceBindings::save()
-        -> returns false
-```
-
-Actual binding database path:
-
-```text
-sdmc:/PKSE/legacy_source_bindings.cfg
-```
-
-Current persistence behavior:
-
-```text
-write sdmc:/PKSE/legacy_source_bindings.cfg.tmp
-flush / close
-rename(tmp, existing destination)
-```
-
-Leading hypothesis — **not yet proven**:
-
-- first assignment succeeds because the destination file does not yet exist;
-- a later assignment fails because Switch/libnx fsdev rename-over-existing semantics differ from ordinary POSIX host behavior.
-
-This hypothesis matches the physical pattern and exact failure location, but the next coding session must confirm or reject it before claiming root cause.
-
-## Interrupted LeafGreen fix session
-
-The previous Codex session ran out of credits immediately after reporting:
-
-```text
-Applying a code patch
-```
-
-It had already narrowed the issue to `LegacySourceBindings::save()` and was checking libnx/fsdev behavior.
-
-**Critical first step next session:** before syncing, resetting, cleaning, switching refs or changing worktrees, inspect every relevant worktree with `git status`, `git diff`, staged diff and untracked files. Preserve/recover any partially applied binding-persistence patch before doing anything destructive.
-
-Remote branch documentation HEAD at the time of this handoff may be newer than the tested application source; keep documentation SHA, application-source SHA and artifact SHA distinct.
-
-## Immediate next milestone
-
-Do only the LeafGreen / second-binding persistence fix:
-
-```text
-recover interrupted patch if present
-        ↓
-confirm actual fsdev replacement behavior
-        ↓
-implement crash-conscious Switch-safe binding persistence
-        ↓
-preserve existing valid FireRed binding
-        ↓
-add focused regressions for first + second assignments, reload,
-profile isolation and rollback on persistence failure
-        ↓
-run focused verification
-        ↓
-commit + push SOURCE FIX first
-        ↓
-build a new device-test NRO only after source is safe
-        ↓
-STOP for physical retest
-```
-
-Do not reopen FRLG discovery/parser work. Do not add arbitrary RetroArch `.state` parsing. Do not start RSE or other roadmap features in the same session.
-
-## Required physical retest after the persistence fix
-
-1. FireRed current 2-Pokémon source still opens correctly.
-2. LeafGreen can be assigned successfully.
-3. Restart PokeBank NX and confirm LeafGreen assignment persists.
-4. Assign/test profile isolation so one profile's source does not appear in the other profile.
-5. Switch back and confirm the original profile assignment remains.
-6. Recheck Trainer, Items, Party, Boxes 1-14, Pokémon View, Refresh and read-only locks.
-
-Only after this passes may FRLG be marked physically accepted.
-
-```text
-DEVICE TESTED: YES
-DEVICE ACCEPTED: NO
-```
-
-## Parked RSE recovery
-
-Preserve if present:
-
-```text
-b5ef83b
-1a921515
-```
-
-or equivalent recovered refs.
-
-`b5ef83b` is the verified parked RSE recovery checkpoint. Do not merge, resume, reimplement or push RSE until FRLG physical acceptance.
-
-## Fast session launcher
-
-```text
-Continue PokeBank NX on feature/pokebank-playable. Use HIGH reasoning. Before touching refs or worktrees, preserve all local/uncommitted/recovery work and inspect for the interrupted LeafGreen binding patch. Read CURRENT_STATUS.md and docs/CODEX_SESSION.md, then execute docs/NEXT_CODEX_PROMPT.md exactly. Use docs/PROJECT_RESOURCE_INDEX.md only for the active subsystem. Push coherent checkpoints only to origin/feature/pokebank-playable; never push custom code upstream.
+RECOVERY. Use origin/feature/pokebank-playable as the normal source of truth. Read docs/RECOVERY_CONTRACT.md, CURRENT_STATUS.md and docs/NEXT_CODEX_PROMPT.md, then run `python3 tools/recover_workspace.py`. If it prints RECOVERY COMPLETE, continue immediately. Do not inspect reflogs/worktrees/history unless that deterministic path fails or I explicitly ask to rescue unsaved local-only work.
 ```
