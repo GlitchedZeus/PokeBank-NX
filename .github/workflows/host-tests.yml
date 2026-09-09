@@ -31,10 +31,15 @@ jobs:
       - name: Check whitespace
         run: git diff --check HEAD^ HEAD || git diff --check
 
-      - name: Syntax-check device build tools
+      - name: Syntax-check device/recovery tools
         run: |
           python3 -m py_compile tools/check_device_assets.py
           python3 -m py_compile tools/package_device_build.py
+          python3 -m py_compile tools/recover_workspace.py
+          python3 -m py_compile tools/check_recovery_contract.py
+
+      - name: Verify GitHub recovery contract
+        run: python3 tools/check_recovery_contract.py
 
       - name: Clean host build
         run: make -f Makefile.host host-clean
