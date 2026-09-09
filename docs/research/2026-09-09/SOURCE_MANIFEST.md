@@ -71,8 +71,14 @@ docs/research/2026-09-09/SAVE_FORMATS_PROFILES_CONTAINERS.md
 docs/research/2026-09-09/TRANSFER_FIXTURES_PROVENANCE.md
     generation boundaries, PKSM/PKHeX oracles, Poke_Transporter_GB/PCCS, HOME provenance, golden fixture corpuses
 
+docs/research/2026-09-09/OFFICIAL_PATH_TRANSFER_CORPUS_AUDIT.md
+    source grading and bulk pairability for Pal Park / Poké Transfer / Poké Transporter / Bank corpuses, especially RoC's PC
+
 docs/research/2026-09-09/VAULT_DATA_EVENTS_PERFORMANCE.md
     immutable Vault, SQLite/VFS/WAL research, compact data packs, events/licensing, fuzzing, benchmark design
+
+docs/research/2026-09-09/VAULT_PERFORMANCE_EVENT_RIGHTS_AUDIT.md
+    Switch large-directory evidence, packed-segment benchmark plan, EventsGallery permission/redistribution posture
 
 docs/research/2026-09-09/LEGACY_RECOVERY_GAMECUBE_STADIUM.md
     Gen III/IV recovery, Pokémon Box R&S, Stadium, Colosseum/XD, PkmGCTools, container normalization
