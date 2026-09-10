@@ -233,6 +233,9 @@ MAX_JOBS     := 20        # increase the value if you want it to run faster
 .PHONY: game-card-art
 game-card-art:
 	@mkdir -p "$(GAME_CARD_ART_DIR)"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/red_gb.png" "$(GAME_CARD_ART_DIR)/red_gb.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/blue_gb.png" "$(GAME_CARD_ART_DIR)/blue_gb.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/yellow_gb.png" "$(GAME_CARD_ART_DIR)/yellow_gb.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/firered_gba.png" "$(GAME_CARD_ART_DIR)/firered_gba.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/leafgreen_gba.png" "$(GAME_CARD_ART_DIR)/leafgreen_gba.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/ruby_gba.png" "$(GAME_CARD_ART_DIR)/ruby_gba.png"

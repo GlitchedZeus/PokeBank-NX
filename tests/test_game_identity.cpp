@@ -53,6 +53,9 @@ int main() {
     assert(platformName(Platform::GameBoy) == "Game Boy");
     assert(platformName(Platform::GameBoyAdvance) == "Game Boy Advance");
     assert(platformName(Platform::NintendoSwitch) == "Nintendo Switch");
+    assert(gameCardArtworkPath("red_gb") == "romfs:/game_cards/red_gb.png");
+    assert(gameCardArtworkPath("blue_gb") == "romfs:/game_cards/blue_gb.png");
+    assert(gameCardArtworkPath("yellow_gb") == "romfs:/game_cards/yellow_gb.png");
     assert(gameCardArtworkPath("firered_gba") == "romfs:/game_cards/firered_gba.png");
     assert(gameCardArtworkPath("leafgreen_gba") == "romfs:/game_cards/leafgreen_gba.png");
     assert(gameCardArtworkPath("ruby_gba") == "romfs:/game_cards/ruby_gba.png");
