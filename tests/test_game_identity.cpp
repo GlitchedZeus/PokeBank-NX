@@ -44,7 +44,9 @@ int main() {
     assert(platformName(Platform::NintendoSwitch) == "Nintendo Switch");
     assert(gameCardArtworkPath("firered_gba") == "romfs:/game_cards/firered_gba.png");
     assert(gameCardArtworkPath("leafgreen_gba") == "romfs:/game_cards/leafgreen_gba.png");
-    assert(gameCardArtworkPath("ruby_gba").empty());
+    assert(gameCardArtworkPath("ruby_gba") == "romfs:/game_cards/ruby_gba.png");
+    assert(gameCardArtworkPath("sapphire_gba") == "romfs:/game_cards/sapphire_gba.png");
+    assert(gameCardArtworkPath("emerald_gba") == "romfs:/game_cards/emerald_gba.png");
     assert(gameCardArtworkPath("firered_switch").empty());
     assert(findGame("missing") == nullptr);
     assert(findSwitchGame(0) == nullptr);
