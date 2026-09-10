@@ -12,31 +12,20 @@
 
 namespace PokeVault::Legacy {
     enum class LegacySourceStatus : unsigned char {
-        Ready,
-        InvalidSave,
-        AmbiguousIdentity,
-        ReadError,
-        ScanLimitReached,
+        Ready, InvalidSave, AmbiguousIdentity, ReadError, ScanLimitReached,
     };
 
-    struct ScanLimits {
-        size_t maxDepth = 2;
-        size_t maxFiles = 256;
-    };
+    struct ScanLimits { size_t maxDepth = 2; size_t maxFiles = 256; };
 
+    // Historical type/API name retained for compatibility; this now represents all read-only
+    // RetroArch Gen III GBA sources (R/S/E/FR/LG), not only FRLG.
     struct FRLGSource {
         std::string path;
         std::string normalizedPath;
-        // Stable, content-independent provider identity used by profile bindings. It is derived
-        // from RetroArch plus the normalized physical path, never trainer or Pokemon contents.
         std::string sourceIdentity;
-        // Canonical filesystem identity used only to collapse aliases of this same file. Two
-        // separately stored saves remain distinct even when their bytes happen to match.
         std::string canonicalPath;
         uint64_t fileSize = 0;
         int64_t modifiedTime = 0;
-        // SHA-256 of the exact bytes parsed during this discovery pass. It diagnoses stale copies
-        // and proves refresh replaced the model, but is deliberately not ownership identity.
         std::string contentFingerprint;
         std::string gameId;
         LegacySourceStatus status = LegacySourceStatus::ReadError;
@@ -58,18 +47,15 @@ namespace PokeVault::Legacy {
         RootKind activeRootKind = RootKind::None;
     };
 
-    // Reads only savefile_directory from a RetroArch configuration. Relative values are
-    // resolved beside the config file; "default" and missing/unreadable configs yield no root.
     [[nodiscard]] std::vector<std::string> retroArchSaveRootsFromConfig(
         const std::string& configPath);
 
-    // Bounded read-only traversal. Only .sav/.srm files are considered. Unrelated invalid files
-    // are suppressed; a filename/path hint is accepted only after strict FRLG-family validation.
+    // Bounded read-only traversal. Only .sav/.srm raw battery saves are considered. Arbitrary
+    // RetroArch savestates are never parsed. Filename release hints are accepted only after strict
+    // Gen III family validation; Ruby/Sapphire exact identity necessarily comes from that source.
     [[nodiscard]] FRLGDiscoveryResult discoverFRLGSaves(
         std::span<const std::string> approvedRoots, ScanLimits limits = {});
 
-    // Switch convenience path: configured RetroArch root, plus the conventional save root only
-    // when it actually exists. It never recursively scans sdmc:/ as a whole.
     [[nodiscard]] FRLGDiscoveryResult discoverConfiguredRetroArchFRLGSaves(
         ScanLimits limits = {},
         const std::string& configPath = "sdmc:/retroarch/retroarch.cfg",

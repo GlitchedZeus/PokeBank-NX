@@ -44,21 +44,29 @@ namespace PokeVault::Integration::Gen3::Detail {
             std::u16string text;
             for (uint8_t value : bytes) {
                 if (value == Utils::GEN3_TERMINATOR) break;
-                if (const char16_t character = Utils::gen3ToChar(value))
-                    text.push_back(character);
+                if (const char16_t character = Utils::gen3ToChar(value)) text.push_back(character);
             }
             while (!text.empty() && text.back() == u' ') text.pop_back();
             return Utils::utf16ToUtf8(text);
         }
 
+        bool readTrainerIdentity(std::span<const uint8_t> source,
+                                 const std::array<size_t, 14>& sectors,
+                                 TrainerRecord& trainer) noexcept {
+            std::array<uint8_t, 16> trainerBytes{};
+            if (!readLogical(source, sectors, 0, 0, trainerBytes)) return false;
+            trainer.name = decodeTrainerName(std::span<const uint8_t>(trainerBytes.data(), 7));
+            trainer.gender = static_cast<uint8_t>(trainerBytes[8] & 1);
+            trainer.tid16 = read16(trainerBytes, 0x0A);
+            trainer.sid16 = read16(trainerBytes, 0x0C);
+            trainer.id32 = read32(trainerBytes, 0x0A);
+            return true;
+        }
+
         InventoryPouch pouchType(size_t index) noexcept {
             constexpr std::array<InventoryPouch, 6> order = {
-                InventoryPouch::Items,
-                InventoryPouch::KeyItems,
-                InventoryPouch::PokeBalls,
-                InventoryPouch::TMCase,
-                InventoryPouch::BerryPouch,
-                InventoryPouch::PCItems,
+                InventoryPouch::Items, InventoryPouch::KeyItems, InventoryPouch::PokeBalls,
+                InventoryPouch::TMCase, InventoryPouch::BerryPouch, InventoryPouch::PCItems,
             };
             return order[index];
         }
@@ -68,18 +76,10 @@ namespace PokeVault::Integration::Gen3::Detail {
         std::span<const uint8_t> source,
         const std::array<size_t, 14>& logicalSectorOffsets) noexcept {
         FRLGReadModelResult result;
-
-        std::array<uint8_t, 16> trainerBytes{};
-        if (!readLogical(source, logicalSectorOffsets, 0, 0, trainerBytes)) {
+        if (!readTrainerIdentity(source, logicalSectorOffsets, result.trainer)) {
             result.error = SaveError::CoreRejected;
             return result;
         }
-        result.trainer.name = decodeTrainerName(
-            std::span<const uint8_t>(trainerBytes.data(), 7));
-        result.trainer.gender = static_cast<uint8_t>(trainerBytes[8] & 1);
-        result.trainer.tid16 = read16(trainerBytes, 0x0A);
-        result.trainer.sid16 = read16(trainerBytes, 0x0C);
-        result.trainer.id32 = read32(trainerBytes, 0x0A);
 
         std::array<uint8_t, 4> keyBytes{};
         std::array<uint8_t, 4> moneyBytes{};
@@ -118,7 +118,6 @@ namespace PokeVault::Integration::Gen3::Detail {
                 const uint16_t itemId = read16(entry, 0);
                 uint16_t count = read16(entry, 2);
                 if (definition.keyed) count ^= key16;
-                // Empty slots are ignored even when their stored keyed count is non-zero.
                 if (itemId == 0 || count == 0) continue;
                 if (itemId > kHighestGen3ItemId || count > kHighestLegalStackCount) {
                     result.error = SaveError::InvalidInventory;
@@ -129,6 +128,35 @@ namespace PokeVault::Integration::Gen3::Detail {
             }
             result.inventory.push_back(std::move(pouch));
         }
+        return result;
+    }
+
+    FRLGReadModelResult readRSEModel(
+        std::span<const uint8_t> source,
+        const std::array<size_t, 14>& logicalSectorOffsets,
+        bool emerald) noexcept {
+        FRLGReadModelResult result;
+        if (!readTrainerIdentity(source, logicalSectorOffsets, result.trainer)) {
+            result.error = SaveError::CoreRejected;
+            return result;
+        }
+
+        std::array<uint8_t, 4> moneyBytes{};
+        if (!readLogical(source, logicalSectorOffsets, 1, 0x490, moneyBytes)) {
+            result.error = SaveError::CoreRejected;
+            return result;
+        }
+        uint32_t securityKey = 0;
+        if (emerald) {
+            std::array<uint8_t, 4> keyBytes{};
+            if (!readLogical(source, logicalSectorOffsets, 0, 0xAC, keyBytes)) {
+                result.error = SaveError::CoreRejected;
+                return result;
+            }
+            securityKey = read32(keyBytes, 0);
+        }
+        result.trainer.money = read32(moneyBytes, 0) ^ securityKey;
+        if (result.trainer.money > 999999) result.error = SaveError::CoreRejected;
         return result;
     }
 }

@@ -25,6 +25,9 @@ namespace PokeVault::Integration::Gen3 {
     enum class SourceGame : uint8_t {
         FireRedGBA,
         LeafGreenGBA,
+        RubyGBA,
+        SapphireGBA,
+        EmeraldGBA,
     };
 
     enum class SaveError : uint8_t {
@@ -48,7 +51,6 @@ namespace PokeVault::Integration::Gen3 {
         uint8_t gender = 0;
         uint16_t tid16 = 0;
         uint16_t sid16 = 0;
-        // Gen III stores the visible TID in the low half and SID in the high half.
         uint32_t id32 = 0;
         uint32_t money = 0;
     };
@@ -89,19 +91,15 @@ namespace PokeVault::Integration::Gen3 {
         uint16_t tid = 0;
         uint16_t sid = 0;
         uint32_t experience = 0;
-        // Cross-generation item id exposed by PKSM-Core.
         uint16_t heldItem = 0;
-        // Exact Generation III item id preserved for historical/raw inspection.
         uint16_t heldItemGen3 = 0;
         std::array<uint16_t, 4> moves{};
         std::array<uint8_t, 4> pp{};
-        // Gen III order: HP, Attack, Defense, Speed, Special Attack, Special Defense.
         std::array<uint8_t, 6> ivs{};
         std::array<uint8_t, 6> evs{};
         std::string nickname;
         std::string otName;
         bool checksumValid = false;
-        // PKSM-Core decrypt -> clone -> encrypt reproduced originalBytes exactly.
         bool byteIdenticalRoundTrip = false;
     };
 
@@ -149,8 +147,9 @@ namespace PokeVault::Integration::Gen3 {
         [[nodiscard]] explicit operator bool() const noexcept { return save != nullptr; }
     };
 
-    // FireRed and LeafGreen use the same on-save family marker. The exact release identity
-    // therefore comes from the detected source selected by the caller, never from display text.
+    // Ruby and Sapphire share one save layout and cannot be distinguished from save bytes alone;
+    // FireRed and LeafGreen likewise share a family marker. Exact release identity therefore comes
+    // from the selected RetroArch source, while parse() independently verifies the expected family.
     [[nodiscard]] ParseResult parse(std::span<const uint8_t> bytes, SourceGame sourceGame);
     [[nodiscard]] std::string_view sourceGameId(SourceGame game) noexcept;
     [[nodiscard]] std::string_view errorMessage(SaveError error) noexcept;

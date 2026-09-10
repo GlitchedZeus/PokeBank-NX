@@ -27,6 +27,15 @@ namespace PokeVault::Legacy {
             }
             return pokemon;
         }
+
+        bool supportedGen3Id(std::string_view id) noexcept {
+            return id == "ruby_gba" || id == "sapphire_gba" || id == "emerald_gba" ||
+                   id == "firered_gba" || id == "leafgreen_gba";
+        }
+
+        bool isFRLGId(std::string_view id) noexcept {
+            return id == "firered_gba" || id == "leafgreen_gba";
+        }
     }
 
     FRLGReadOnlyTrainer::FRLGReadOnlyTrainer(
@@ -52,15 +61,12 @@ namespace PokeVault::Legacy {
         const Integration::Gen3::ReadOnlySave& save, std::string& error) {
         error.clear();
         const auto& metadata = save.metadata();
-        if ((metadata.sourceGameId != "firered_gba" &&
-             metadata.sourceGameId != "leafgreen_gba") ||
-            metadata.boxCount != 14 || metadata.slotsPerBox != 30 ||
-            metadata.partyCount > ::Trainer::MAX_PARTY_SLOTS) {
+        if (!supportedGen3Id(metadata.sourceGameId) || metadata.boxCount != 14 ||
+            metadata.slotsPerBox != 30 || metadata.partyCount > ::Trainer::MAX_PARTY_SLOTS) {
             error = "unsupported Gen III source metadata";
             return nullptr;
         }
-        auto trainer = std::unique_ptr<FRLGReadOnlyTrainer>(
-            new FRLGReadOnlyTrainer(metadata));
+        auto trainer = std::unique_ptr<FRLGReadOnlyTrainer>(new FRLGReadOnlyTrainer(metadata));
         if (!trainer->populate(save, error)) return nullptr;
         return trainer;
     }
@@ -73,25 +79,33 @@ namespace PokeVault::Legacy {
         TID16 = strictTrainer.tid16;
         SID16 = strictTrainer.sid16;
         ID32 = strictTrainer.id32;
-        // Gen III has no modern six-digit display IDs. Keep the inherited panel truthful by
-        // exposing the raw 16-bit visible/secret values in both legacy display fields.
         TID = TID16;
         SID = SID16;
         money = strictTrainer.money;
 
         const auto& strictInventory = save.inventory();
-        if (strictInventory.size() != 6) {
-            error = "strict Gen III adapter returned an invalid inventory layout";
-            return false;
-        }
         items.clear();
-        items.resize(strictInventory.size());
-        for (size_t pouch = 0; pouch < strictInventory.size(); ++pouch) {
-            items[pouch].reserve(strictInventory[pouch].items.size());
-            for (const auto& item : strictInventory[pouch].items) {
-                if (item.itemId == 0 || item.count == 0) continue;
-                items[pouch].push_back({item.itemId, item.count, false, false});
+        if (isFRLGId(sourceGameId_)) {
+            if (strictInventory.size() != 6) {
+                error = "strict FRLG adapter returned an invalid inventory layout";
+                return false;
             }
+            items.resize(strictInventory.size());
+            for (size_t pouch = 0; pouch < strictInventory.size(); ++pouch) {
+                items[pouch].reserve(strictInventory[pouch].items.size());
+                for (const auto& item : strictInventory[pouch].items) {
+                    if (item.itemId == 0 || item.count == 0) continue;
+                    items[pouch].push_back({item.itemId, item.count, false, false});
+                }
+            }
+        } else {
+            if (!strictInventory.empty()) {
+                error = "RSE read-only milestone unexpectedly exposed inventory data";
+                return false;
+            }
+            // The inherited Trainer UI expects six pouch vectors. Keep them empty rather than
+            // inventing RSE inventory data; inventory is outside this milestone.
+            items.resize(6);
         }
 
         const auto partyRecords = save.party();
@@ -118,8 +132,7 @@ namespace PokeVault::Legacy {
         }
         for (const auto& record : boxRecords) {
             if (record.location.kind != Integration::Gen3::PokemonLocation::Kind::Box ||
-                record.location.box >= boxes.size() ||
-                record.location.slot >= slotsPerBox_) {
+                record.location.box >= boxes.size() || record.location.slot >= slotsPerBox_) {
                 error = "strict Gen III adapter returned an invalid box location";
                 return false;
             }

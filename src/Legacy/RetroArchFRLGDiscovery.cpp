@@ -14,7 +14,9 @@ namespace PokeVault::Legacy {
     namespace {
         using Integration::Gen3::SourceGame;
 
-        enum class IdentityHint { None, FireRed, LeafGreen, Ambiguous };
+        enum class IdentityHint {
+            None, Ruby, Sapphire, Emerald, FireRed, LeafGreen, Ambiguous
+        };
 
         std::string trim(std::string value) {
             const auto notSpace = [](unsigned char c) { return !std::isspace(c); };
@@ -88,16 +90,10 @@ namespace PokeVault::Legacy {
                 return "inode:" + std::to_string(static_cast<unsigned long long>(info.st_dev)) +
                     ":" + std::to_string(static_cast<unsigned long long>(info.st_ino));
             }
-            // FAT/devoptab implementations may not expose useful inode numbers. Syntactic
-            // normalization still collapses repeated/overlapping roots without guessing that two
-            // separately stored files are aliases merely because their contents match.
             return normalizedPath(path);
         }
 
         std::string sourceIdentity(const std::string& path) {
-            // Persistent bindings must survive a reboot. SD/FAT inode values are not a suitable
-            // on-disk key, so identity is provider + normalized physical path. Runtime alias
-            // collapse remains the separate canonicalPath/inode concern below.
             const std::string identity = "retroarch:" + normalizedPath(path);
             return sha256Hex(reinterpret_cast<const uint8_t*>(identity.data()), identity.size());
         }
@@ -114,15 +110,44 @@ namespace PokeVault::Legacy {
         IdentityHint identityHint(const std::string& path) {
             std::string compact;
             compact.reserve(path.size());
-            for (unsigned char c : path) {
+            for (unsigned char c : path)
                 if (std::isalnum(c)) compact.push_back(static_cast<char>(std::tolower(c)));
+
+            const std::array<std::pair<std::string_view, IdentityHint>, 5> names{{
+                {"firered", IdentityHint::FireRed}, {"leafgreen", IdentityHint::LeafGreen},
+                {"sapphire", IdentityHint::Sapphire}, {"emerald", IdentityHint::Emerald},
+                {"ruby", IdentityHint::Ruby},
+            }};
+            IdentityHint result = IdentityHint::None;
+            size_t matches = 0;
+            for (const auto& [needle, hint] : names) {
+                if (compact.find(needle) == std::string::npos) continue;
+                result = hint;
+                ++matches;
             }
-            const bool fireRed = compact.find("firered") != std::string::npos;
-            const bool leafGreen = compact.find("leafgreen") != std::string::npos;
-            if (fireRed && leafGreen) return IdentityHint::Ambiguous;
-            if (fireRed) return IdentityHint::FireRed;
-            if (leafGreen) return IdentityHint::LeafGreen;
-            return IdentityHint::None;
+            return matches > 1 ? IdentityHint::Ambiguous : result;
+        }
+
+        SourceGame sourceGameForHint(IdentityHint hint) noexcept {
+            switch (hint) {
+                case IdentityHint::Ruby: return SourceGame::RubyGBA;
+                case IdentityHint::Sapphire: return SourceGame::SapphireGBA;
+                case IdentityHint::Emerald: return SourceGame::EmeraldGBA;
+                case IdentityHint::LeafGreen: return SourceGame::LeafGreenGBA;
+                case IdentityHint::FireRed:
+                case IdentityHint::None:
+                case IdentityHint::Ambiguous:
+                    return SourceGame::FireRedGBA;
+            }
+            return SourceGame::FireRedGBA;
+        }
+
+        Integration::Gen3::ParseResult parseAnyFamily(std::span<const uint8_t> bytes) {
+            auto parsed = Integration::Gen3::parse(bytes, SourceGame::FireRedGBA);
+            if (parsed || parsed.error != Integration::Gen3::SaveError::UnsupportedGame) return parsed;
+            parsed = Integration::Gen3::parse(bytes, SourceGame::RubyGBA);
+            if (parsed || parsed.error != Integration::Gen3::SaveError::UnsupportedGame) return parsed;
+            return Integration::Gen3::parse(bytes, SourceGame::EmeraldGBA);
         }
 
         bool readExactly(const std::string& path, size_t expected, std::vector<uint8_t>& bytes) {
@@ -163,23 +188,27 @@ namespace PokeVault::Legacy {
             }
             source.contentFingerprint = sha256Hex(bytes.data(), bytes.size());
 
-            const SourceGame assumed = hint == IdentityHint::LeafGreen ?
-                SourceGame::LeafGreenGBA : SourceGame::FireRedGBA;
+            if (hint == IdentityHint::None || hint == IdentityHint::Ambiguous) {
+                auto parsed = parseAnyFamily(bytes);
+                if (!parsed) {
+                    source.status = LegacySourceStatus::InvalidSave;
+                    source.parseError = parsed.error;
+                    source.detail = parsed.detail;
+                    return source;
+                }
+                source.status = LegacySourceStatus::AmbiguousIdentity;
+                source.detail = hint == IdentityHint::Ambiguous ?
+                    "valid Gen III save path contains multiple release identity hints" :
+                    "valid Gen III save needs a Ruby/Sapphire/Emerald/FireRed/LeafGreen source hint";
+                return source;
+            }
+
+            const SourceGame assumed = sourceGameForHint(hint);
             auto parsed = Integration::Gen3::parse(bytes, assumed);
             if (!parsed) {
                 source.status = LegacySourceStatus::InvalidSave;
                 source.parseError = parsed.error;
                 source.detail = parsed.detail;
-                return source;
-            }
-            if (hint == IdentityHint::Ambiguous) {
-                source.status = LegacySourceStatus::AmbiguousIdentity;
-                source.detail = "valid FRLG save path contains both release identity hints";
-                return source;
-            }
-            if (hint == IdentityHint::None) {
-                source.status = LegacySourceStatus::AmbiguousIdentity;
-                source.detail = "valid FRLG-family save needs a FireRed or LeafGreen source hint";
                 return source;
             }
 
@@ -232,8 +261,8 @@ namespace PokeVault::Legacy {
                 const IdentityHint hint = identityHint(path);
                 FRLGSource source = inspectFile(path, metadata, hint);
                 source.canonicalPath = fileIdentity;
-                // Do not surface every unrelated emulator .sav. Keep valid FRLG-family files and
-                // named FR/LG candidates so a useful error can be shown for the latter.
+                // Do not surface every unrelated emulator save. Keep valid Gen III-family files
+                // and named candidates so useful validation errors remain visible.
                 if (source.ready() || source.status == LegacySourceStatus::AmbiguousIdentity ||
                     hint != IdentityHint::None) {
                     state.result.sources.push_back(std::move(source));
@@ -271,8 +300,7 @@ namespace PokeVault::Legacy {
         for (const auto& root : approvedRoots) {
             if (state.result.limitReached) break;
             if (isDirectory(root)) {
-                if (state.result.activeRoot.empty())
-                    state.result.activeRoot = normalizedPath(root);
+                if (state.result.activeRoot.empty()) state.result.activeRoot = normalizedPath(root);
                 scanDirectory(root, 0, state);
             }
         }
@@ -285,9 +313,6 @@ namespace PokeVault::Legacy {
         const auto configuredRoots = retroArchSaveRootsFromConfig(configPath);
         std::vector<std::string> selectedRoots;
         FRLGDiscoveryResult::RootKind kind = FRLGDiscoveryResult::RootKind::None;
-        // RetroArch uses exactly one savefile_directory. A usable configured directory is
-        // authoritative; the conventional root is considered only when that setting is absent,
-        // "default", unreadable, or points to a directory that does not exist.
         if (!configuredRoots.empty() && isDirectory(configuredRoots.front())) {
             selectedRoots.push_back(configuredRoots.front());
             kind = FRLGDiscoveryResult::RootKind::Configured;
