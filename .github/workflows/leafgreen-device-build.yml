@@ -14,11 +14,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  APP_SHA: 1dc5893dd20edf54a06b62ea3e27909f5719fa77
-  APP_TREE: 5507793af16f611d667357894496c0028dcb6a1d
+  APP_SHA: 1c96df2543cba339cec3dc88e20f8c6ca4fe82bb
+  APP_TREE: 49870ef3bdf92c4f8434597bc83de22dc6e76e27
   SNAPSHOT_SHA: 2321fa488668e32392de25afed84e38919fbd21f
   OLD_RSE_SHA: 46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
-  SHORT_SHA: 1dc5893d
+  SHORT_SHA: 1c96df25
   EXPECTED_ROMFS: 3286
 
 jobs:
@@ -57,7 +57,7 @@ jobs:
       - name: Check out exact corrected RSE application source
         uses: actions/checkout@v4
         with:
-          ref: 1dc5893dd20edf54a06b62ea3e27909f5719fa77
+          ref: 1c96df2543cba339cec3dc88e20f8c6ca4fe82bb
           path: application
           fetch-depth: 2
           submodules: recursive
@@ -168,7 +168,7 @@ jobs:
       - name: Preserve corrected RSE physical-retest artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RSE-Final-Retest-1dc5893d
+          name: RSE-Final-Retest-1c96df25
           path: device-artifact/
           if-no-files-found: error
           retention-days: 90
@@ -177,7 +177,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: RSE-Final-Retest-diagnostics-1dc5893d
+          name: RSE-Final-Retest-diagnostics-1c96df25
           path: |
             recovery.log
             asset-preflight.log
