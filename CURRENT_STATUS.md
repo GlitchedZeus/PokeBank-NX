@@ -2,32 +2,23 @@
 
 Last updated: 2026-09-10
 
-## STOP: RSE physical-test artifact is ready
+## STOP: corrected RSE final-retest artifact is ready
 
-The active development branch is `feature/pokebank-playable`.
+Active branch: `feature/pokebank-playable`.
 
-No further roadmap work is authorized until the user physically tests the exact Ruby/Sapphire/Emerald artifact recorded below.
+Ruby/Sapphire/Emerald have now been physically tested on a real Nintendo Switch using the original RSE artifact. Core read-only RSE behavior passed, but RSE is **not yet physically accepted** because that artifact exposed two UI/data-supply blockers: empty Items inventory and missing Ruby/Sapphire/Emerald game-card artwork.
+
+Both blockers are corrected, fully host/native verified, packaged, and ready for the user's final physical RSE retest. Do not begin Gen I/II or any other roadmap work before that retest result is recorded.
 
 Live installed-game and RetroArch save writing remains **HARD DISABLED**.
 
 ## FRLG milestone — physically accepted
-
-FireRed GBA and LeafGreen GBA read-only browsing/source assignment are physically accepted on a real Nintendo Switch.
 
 Acceptance-record checkpoint:
 
 ```text
 8172ebd9c067bd69df63815dbe865207f905eac6
 ```
-
-Accepted FRLG runtime application source:
-
-```text
-d78b76503f02ae26309855970fc5ce0b35c12bcb
-legacy: make fsdev diagnostics link-compatible
-```
-
-Physical status:
 
 ```text
 FireRed GBA: DEVICE TESTED = YES
@@ -37,129 +28,235 @@ LeafGreen GBA: DEVICE ACCEPTED = YES
 FRLG MILESTONE: PHYSICALLY ACCEPTED
 ```
 
-The accepted FRLG test covered opening both games, source assignment, persistence across full app restart, per-PokeBank/Nintendo-profile isolation, switching back to the original profile, Refresh after normal RetroArch in-game battery saves, updated Pokémon display, healthy original saves, and additional trainer/party/box browsing.
+Accepted FRLG runtime application source:
 
-This acceptance is **read-only browsing/source-assignment only**. It is not approval for live save writing.
+```text
+d78b76503f02ae26309855970fc5ce0b35c12bcb
+```
 
-## RSE application source — host verified
+FRLG remains read-only browsing/source-assignment only. Do not reopen it without new device evidence of a defect.
 
-Ruby/Sapphire/Emerald read-only support is implemented at the exact application-source checkpoint:
+## Original RSE physical test — real Switch result
+
+The user physically tested exactly:
+
+```text
+PokeBank-NX-RSE-Retest-46e0c161.nro
+application source: 46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
+```
+
+Physical PASS for Ruby, Sapphire and Emerald:
+
+- RetroArch battery save discovery;
+- save open;
+- trainer/read model;
+- Pokémon, party and boxes;
+- general browsing;
+- normal read-only RetroArch save handling.
+
+The user also continued playing Emerald after PokeBank NX had successfully read the save, saved normally in-game, and PokeBank NX continued reading the real updated save correctly. This is further physical evidence that the read-only path does not break normal game-save use.
+
+Physical FAIL on that artifact for all three RSE games:
+
+- Items screen was empty;
+- game-card artwork was missing.
+
+Known real Emerald evidence from the tested save:
+
+```text
+trainer money: 2100
+known inventory: Potion x3
+```
+
+Current physical state:
+
+```text
+DEVICE TESTED FOR RUBY = YES
+DEVICE TESTED FOR SAPPHIRE = YES
+DEVICE TESTED FOR EMERALD = YES
+DEVICE TESTED FOR RSE = YES
+DEVICE ACCEPTED FOR RSE = NO
+```
+
+## RSE blocker fixes — verified
+
+Original strict RSE source checkpoint:
 
 ```text
 46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
 gen3: add strict read-only Ruby Sapphire Emerald path
-application tree: 655ccd8fb37b6627017959213f7c3811a2f3275a
 ```
 
-This source includes Ruby/Sapphire/Emerald stable identities; RetroArch `.sav`/`.srm` discovery; `.state` exclusion; strict 128 KiB Gen III rotating-sector validation; all 14 sector IDs; sector signatures and checksums; coherent save counters; newest-valid-slot selection; corrupt-newer-slot fallback; RSE-vs-FRLG family validation; R/S source identity handling; Emerald money encryption handling; trainer/party/PC-box read models; Refresh; source non-mutation; and the retained PC-sector-boundary Pokémon fixture.
-
-Host verification is complete:
+Corrected final-retest application checkpoint:
 
 ```text
-GitHub Actions host run: 34440786353
-Ruby source support: HOST TESTED PASS
-Sapphire source support: HOST TESTED PASS
-Emerald source support: HOST TESTED PASS
-focused/host tests: PASS
-git diff --check / whitespace: PASS
-device/recovery tool syntax: PASS
-GitHub recovery contract: PASS
+1c96df2543cba339cec3dc88e20f8c6ca4fe82bb
+tests: expect RSE game-card artwork
+application tree: 49870ef3bdf92c4f8434597bc83de22dc6e76e27
+```
+
+The runtime blocker fixes are included before this checkpoint. `readRSEModel()` now populates the existing read-only `InventoryPouchRecord` model consumed by the Items UI, using the RSE-specific Gen III layouts rather than FRLG offsets.
+
+Verified inventory semantics:
+
+```text
+Ruby / Sapphire
+PC Items   0x0498, 50 entries, plaintext quantity
+Items      0x0560, 20 entries, plaintext quantity
+Key Items  0x05B0, 20 entries, plaintext quantity
+Poké Balls 0x0600, 16 entries, plaintext quantity
+TM/HM      0x0640, 64 entries, plaintext quantity
+Berries    0x0740, 46 entries, plaintext quantity
+
+Emerald
+PC Items   0x0498, 50 entries, plaintext quantity
+Items      0x0560, 30 entries, keyed quantity
+Key Items  0x05D8, 30 entries, keyed quantity
+Poké Balls 0x0650, 16 entries, keyed quantity
+TM/HM      0x0690, 64 entries, keyed quantity
+Berries    0x0790, 46 entries, keyed quantity
+```
+
+Gen III bag entries are 4-byte little-endian item-id/quantity pairs. Ruby/Sapphire quantities are plaintext. Emerald bag quantities use the low 16 bits of Emerald's section-0 security key; PC Items remain plaintext. Invalid item IDs/impossible counts are rejected defensively, empty slots are ignored, and source bytes are never modified.
+
+Focused RSE fixtures cover Ruby, Sapphire and Emerald non-empty inventories, all six pouch types, keyed Emerald quantities, a Potion x3-style fixture, empty slots, invalid item IDs, impossible counts, corrupt-save rejection, rotating-slot fallback, source non-mutation and retained cross-PC-sector behavior. The Potion x3 value is fixture evidence only and is not hardcoded in production parsing.
+
+Authoritative layout behavior was cross-checked against the project's pinned PKSM-Core Gen III implementations.
+
+Host/safety verification for the corrected application checkpoint:
+
+```text
+RSE inventory Ruby: PASS
+RSE inventory Sapphire: PASS
+RSE inventory Emerald: PASS
+known Emerald Potion x3-style fixture: HOST TESTED PASS
+FRLG Gen III regression: PASS
+source mutation/write-policy checks: PASS
+git diff --check: PASS
 ASan: PASS
 UBSan: PASS
+GitHub Actions host run 34445802093: PASS
 ```
 
-No application-source correction was required during the native artifact build. The RSE application source therefore remains exactly `46e0c1617fb642f45c0cd1d4b07a9bcc89c01909`.
+## RSE game-card artwork — fixed and permanent
 
-## Recovery snapshot — unchanged and verified
-
-The build used only the existing committed private GitHub RomFS recovery snapshot:
+Runtime artwork resolution now maps:
 
 ```text
-a2adac94f15504b90a83a295e77ad54154da4206
+ruby_gba     -> romfs:/game_cards/ruby_gba.png
+sapphire_gba -> romfs:/game_cards/sapphire_gba.png
+emerald_gba  -> romfs:/game_cards/emerald_gba.png
 ```
 
-The device pipeline explicitly verified that `recovery/assets_snapshot` had not changed relative to that checkpoint before running the existing deterministic recovery tooling.
+Tracked assets use the same pinned Libretro GBA thumbnail source as FRLG:
 
-Verified recovered/preflight assets:
+```text
+upstream: libretro-thumbnails/Nintendo_-_Game_Boy_Advance
+revision: 23b8665408e767fd3220bfb83fd5ad8dfe1a9aa1
+
+Ruby path: Named_Boxarts/Pokemon - Ruby Version (USA).png
+SHA-256: 0c264af577ca175f0d73b6766b1100dd4b78d6728bbcfb07298679500f0316e1
+
+Sapphire path: Named_Boxarts/Pokemon - Sapphire Version (USA).png
+SHA-256: 2bcea4502d475507ed7f07f3bbaf45f36ec30446c5a02519f950bea31b3154fb
+
+Emerald path: Named_Boxarts/Pokemon - Emerald Version (USA, Europe).png
+SHA-256: f39a4d3d7044d2ad693a60f6af362619f7268cd9187c6576f3d4e3373dfa49b5
+```
+
+These images are tracked, copied by the normal game-card asset pipeline, required by device preflight, captured by the permanent recovery snapshot, and verified inside the final NRO.
+
+## Permanent recovery snapshot — evolved for RSE artwork
+
+The old 3283-file snapshot is superseded for current builds by:
+
+```text
+2321fa488668e32392de25afed84e38919fbd21f
+recovery: snapshot RSE game-card artwork
+```
+
+Authoritative restored/preflight state:
 
 ```text
 HD renders: 3260/3260
 base species: 1025/1025
 type icons: 18/18
 fonts: 3/3
-required FRLG game-card artwork: PASS
+FireRed artwork: PASS
+LeafGreen artwork: PASS
+Ruby artwork: PASS
+Sapphire artwork: PASS
+Emerald artwork: PASS
+RomFS files: 3286
+DEVICE ASSET PREFLIGHT: PASS
+```
+
+The new snapshot is committed as two GitHub parts plus manifest. Future deterministic recovery restores all five GBA game-card images. No full sprite redownload or generic recovery redo was performed.
+
+The embedded-RomFS verifier was also corrected to derive completeness from the intended RomFS tree instead of retaining the obsolete hardcoded 3283 count; the final build pipeline independently requires the recovery manifest's derived 3286 count.
+
+## Corrected RSE final-retest artifact — READY
+
+Exact application source embedded in the NRO:
+
+```text
+1c96df2543cba339cec3dc88e20f8c6ca4fe82bb
+```
+
+Successful device-build run:
+
+```text
+GitHub Actions run: 34446696858
+recovery restore: PASS
+exact application identity: PASS
 device asset preflight: PASS
-total expected RomFS files: 3283
+focused host/safety/sanitizers: PASS
+native devkitA64 full compile + final link: PASS
+embedded RomFS byte-for-byte verification: PASS 3286/3286
+artifact upload: PASS
 ```
-
-No sprites were redownloaded or regenerated.
-
-## RSE native/device artifact — READY FOR PHYSICAL TEST
-
-Exact application source used by the native build:
-
-```text
-46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
-```
-
-Required native artifact pipeline results:
-
-```text
-clean devkitA64 full build/link: PASS
-final NRO produced: PASS
-embedded RomFS byte-for-byte verification: PASS
-embedded RomFS files: 3283/3283
-embedded application-source identity: PASS
-Actions physical-test artifact upload: PASS
-```
-
-The successful packaged artifact came from device-build run `34441709355`. That workflow's required recovery, preflight, native full-link, embedded-RomFS/package, and Actions artifact-upload steps all passed. The run itself is displayed red only because the later optional private GitHub prerelease-publication step failed **after** the physical-test artifact had already been preserved; this did not alter or invalidate the NRO/ZIP and is not an RSE application-source defect.
 
 Preserved Actions artifact:
 
 ```text
-name: RSE-Retest-46e0c161
-artifact id: 10138231150
-Actions artifact digest: sha256:73a3a001732c1834d5ab8f8774a9ddba6a17c45cece05ca7279095188f740cf0
+name: RSE-Final-Retest-1c96df25
+artifact id: 10140106102
+Actions artifact digest: sha256:9e5e4c4d5ce1e65ab5148c66a4ee83db7cfffb9244ba930e0c1ce94bfc2318fd
 ```
 
-Exact physical-test files:
+Exact final-retest files:
 
 ```text
-NRO: PokeBank-NX-RSE-Retest-46e0c161.nro
-NRO bytes: 156711849
-NRO SHA-256: 5cbf1cdd9e5b075793b6b259a647ff0b14328589b31939a4fe1f56cccc0c7d8a
+NRO: PokeBank-NX-RSE-Final-Retest-1c96df25.nro
+NRO bytes: 158120837
+NRO SHA-256: d525a8bfac881e313d2fce1c154e26f0a893a907dc2a0be44f8f604c91416d07
 
-ZIP: PokeBank-NX-RSE-Retest-46e0c161.zip
-ZIP bytes: 149787526
-ZIP SHA-256: 17c63ab10089bcaff996d1c4a390d307b61ff386f6e6644ded380a812e6a9cb9
+ZIP: PokeBank-NX-RSE-Final-Retest-1c96df25.zip
+ZIP bytes: 151193359
+ZIP SHA-256: 7bda62d924d1a0e094fceaaaeb35c88e697029b323ede17b4306f2a4dbf6ab74
 
-Packaging manifest: PokeBank-NX-RSE-Retest-46e0c161.nro.manifest.txt
-Packaging manifest SHA-256: 180b2c2827df236c096c760d2b278b5893987bdd2f90d3d78d1b77f57b3ad117
+Packaging manifest: PokeBank-NX-RSE-Final-Retest-1c96df25.nro.manifest.txt
+Packaging manifest SHA-256: 655dfd477bd8d2344ff7b929afcfa05fef6a7a091881f30a78d562cacbaf27b4
 
 Build manifest: BUILD_MANIFEST.json
-Build manifest SHA-256: 0d845df83c363f94c755ef2b49c37b03f0fa412352f219182ce636f225b5f037
+Build manifest SHA-256: 8c6705072803126ad447fae411de75144edaf764f7caf7731d228e84b71c403b
 ```
 
-Independent extraction of the preserved Actions artifact reproduced the same NRO/ZIP sizes and SHA-256 values recorded by the build manifest.
-
-Current device status:
-
-```text
-DEVICE TESTED FOR RUBY: NO
-DEVICE TESTED FOR SAPPHIRE: NO
-DEVICE TESTED FOR EMERALD: NO
-DEVICE TESTED FOR RSE: NO
-DEVICE ACCEPTED FOR RSE: NO
-```
+The preserved Actions artifact was independently extracted and the exact NRO/ZIP/manifest hashes above were reproduced.
 
 ## STOP condition / next action
 
-**STOP DEVELOPMENT HERE.** The next project event must be the user's physical Switch test of `PokeBank-NX-RSE-Retest-46e0c161.nro` with Ruby, Sapphire and Emerald normal RetroArch battery saves.
+**STOP DEVELOPMENT HERE.** The next project event is the user's final physical Switch retest of:
 
-Do not start Gen I, Gen II, DS, 3DS, modern Switch expansion, Vault/Banks, transfers, editor/Create Pokémon, legality, events/gifts, RetroArch per-Switch-user save changes, or live writing while RSE physical acceptance is pending.
+```text
+PokeBank-NX-RSE-Final-Retest-1c96df25.nro
+```
 
-If a future session begins before physical RSE results exist, do not rebuild or reimplement RSE merely because the session changed. Preserve the exact application source and artifact identity above and wait for device evidence.
+Retest the previously failing RSE Items screens and Ruby/Sapphire/Emerald card artwork while also confirming normal opening/browsing still behaves correctly.
+
+Do **not** mark `DEVICE ACCEPTED FOR RSE = YES` until that corrected artifact passes on hardware.
+
+Do not start Gen I, Gen II, DS, 3DS, modern Switch expansion, Vault/Banks, transfers, legality/editor/Create Pokémon, events/gifts, RetroArch per-Switch-user save changes, or live save writing while final RSE acceptance is pending.
 
 ## Repository authority
 
