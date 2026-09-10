@@ -36,6 +36,19 @@ namespace PokeVault::Legacy {
         bool isFRLGId(std::string_view id) noexcept {
             return id == "firered_gba" || id == "leafgreen_gba";
         }
+
+        void populateInventoryItems(
+            const std::vector<Integration::Gen3::InventoryPouchRecord>& strictInventory,
+            std::vector<std::vector<::Trainer::InventoryItem>>& items) {
+            items.resize(strictInventory.size());
+            for (size_t pouch = 0; pouch < strictInventory.size(); ++pouch) {
+                items[pouch].reserve(strictInventory[pouch].items.size());
+                for (const auto& item : strictInventory[pouch].items) {
+                    if (item.itemId == 0 || item.count == 0) continue;
+                    items[pouch].push_back({item.itemId, item.count, false, false});
+                }
+            }
+        }
     }
 
     FRLGReadOnlyTrainer::FRLGReadOnlyTrainer(
@@ -86,26 +99,24 @@ namespace PokeVault::Legacy {
         const auto& strictInventory = save.inventory();
         items.clear();
         if (isFRLGId(sourceGameId_)) {
+            // FRLG inventory is part of its already accepted device contract. Preserve the strict
+            // six-pouch requirement rather than weakening accepted FRLG behavior.
             if (strictInventory.size() != 6) {
                 error = "strict FRLG adapter returned an invalid inventory layout";
                 return false;
             }
-            items.resize(strictInventory.size());
-            for (size_t pouch = 0; pouch < strictInventory.size(); ++pouch) {
-                items[pouch].reserve(strictInventory[pouch].items.size());
-                for (const auto& item : strictInventory[pouch].items) {
-                    if (item.itemId == 0 || item.count == 0) continue;
-                    items[pouch].push_back({item.itemId, item.count, false, false});
-                }
-            }
+            populateInventoryItems(strictInventory, items);
         } else {
-            if (!strictInventory.empty()) {
-                error = "RSE read-only milestone unexpectedly exposed inventory data";
-                return false;
-            }
-            // The inherited Trainer UI expects six pouch vectors. Keep them empty rather than
-            // inventing RSE inventory data; inventory is outside this milestone.
-            items.resize(6);
+            // RSE inventory was added after the original read-only trainer bridge. The old bridge
+            // treated any newly exposed RSE inventory as an error and returned nullptr, which made
+            // every otherwise-valid Ruby/Sapphire/Emerald save bounce back to the main menu.
+            //
+            // A valid six-pouch RSE model is now passed through exactly like FRLG. If the optional
+            // RSE inventory model is unavailable, leave items empty and continue exposing trainer,
+            // party, boxes, source details and refresh. The Items panel renders that state as
+            // "Inventory unavailable" instead of making the whole save unusable.
+            if (strictInventory.size() == 6)
+                populateInventoryItems(strictInventory, items);
         }
 
         const auto partyRecords = save.party();
