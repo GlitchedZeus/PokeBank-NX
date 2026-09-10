@@ -5,6 +5,7 @@ on:
     branches: [tmp-rby-adapter]
     paths:
       - '.github/workflows/rby-modal-patch.yml'
+      - 'tools/patch_rby_details_dispatch.py'
 
 permissions:
   contents: write
@@ -17,41 +18,15 @@ jobs:
         with:
           ref: tmp-rby-adapter
           fetch-depth: 0
-      - name: Dispatch PK1 to the dedicated Gen I details renderer
+      - name: Apply exact details dispatch patch
+        run: python3 tools/patch_rby_details_dispatch.py
+      - name: Commit dispatch hook
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('src/UI/Modals/PokemonDetailsModal.cpp')
-          text = path.read_text()
-          inc = '#include "Pokemon/Pokemon.h"\n'
-          repl = '#include "Pokemon/Pokemon.h"\n#include "Pokemon/Pokemon1ReadOnly.h"\n#include "UI/Modals/Gen1PokemonDetailsModal.h"\n'
-          assert text.count(inc) == 1, 'Pokemon include anchor changed'
-          text = text.replace(inc, repl, 1)
-          anchor = '''        const Pokemon::Pokemon* p = screen.detailsTargetPokemon();
-        if (!p || p->speciesID() == 0) return;
-
-'''
-          dispatch = '''        const Pokemon::Pokemon* p = screen.detailsTargetPokemon();
-        if (!p || p->speciesID() == 0) return;
-
-        // PK1 is not a reduced modern format: it has DVs/stat experience and lacks nature,
-        // ability, held item, SID, ribbons/marks and modern met/Ball metadata. Route it before
-        // the modern editor computes or draws any of those fields.
-        if (const auto* gen1 = dynamic_cast<const Pokemon::Pokemon1ReadOnly*>(p)) {
-            drawGen1PokemonDetailsModal(screen, fb, *gen1);
-            return;
-        }
-
-'''
-          assert text.count(anchor) == 1, 'details function anchor changed'
-          text = text.replace(anchor, dispatch, 1)
-          path.write_text(text)
-          PY
           git diff --check
-          git diff -- src/UI/Modals/PokemonDetailsModal.cpp
           git config user.name 'PokeBank NX CI'
           git config user.email 'actions@users.noreply.github.com'
           git add src/UI/Modals/PokemonDetailsModal.cpp
+          git diff --cached --quiet && exit 0
           git commit -m 'gen1: dispatch Pokemon details to truthful renderer'
           git push origin HEAD:tmp-rby-adapter
