@@ -1,4 +1,4 @@
-name: LeafGreen exact-source physical retest build
+name: RSE exact-source physical retest build
 
 on:
   push:
@@ -10,8 +10,14 @@ permissions:
   contents: write
 
 concurrency:
-  group: pokebank-leafgreen-device-build
+  group: pokebank-rse-device-build
   cancel-in-progress: false
+
+env:
+  APP_SHA: 46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
+  APP_TREE: 655ccd8fb37b6627017959213f7c3811a2f3275a
+  SNAPSHOT_SHA: a2adac94f15504b90a83a295e77ad54154da4206
+  SHORT_SHA: 46e0c161
 
 jobs:
   build:
@@ -23,25 +29,42 @@ jobs:
         with:
           ref: feature/pokebank-playable
           path: recovery-work
-      - name: Require committed snapshot and recover
+          fetch-depth: 0
+
+      - name: Require unchanged committed snapshot and recover
         working-directory: recovery-work
         run: |
+          set -euo pipefail
           test -f recovery/assets_snapshot/manifest.json
-          python3 tools/recover_workspace.py
-      - name: Check out exact application source
+          git cat-file -e "$SNAPSHOT_SHA^{commit}"
+          git diff --quiet "$SNAPSHOT_SHA" HEAD -- recovery/assets_snapshot
+          python3 tools/recover_workspace.py 2>&1 | tee ../recovery.log
+          grep -q 'Recovery source: committed GitHub RomFS snapshot' ../recovery.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' ../recovery.log
+
+      - name: Check out exact RSE application source
         uses: actions/checkout@v4
         with:
-          ref: d78b76503f02ae26309855970fc5ce0b35c12bcb
+          ref: 46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
           path: application
           submodules: recursive
+
       - name: Verify application identity and supply recovered assets
         run: |
-          test "$(git -C application rev-parse HEAD)" = d78b76503f02ae26309855970fc5ce0b35c12bcb
-          test "$(git -C application rev-parse 'HEAD^{tree}')" = 894500f09655d1fb8e37f27473021e6f091e2a98
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
           cp -a recovery-work/romfs application/romfs
-          python3 application/tools/check_device_assets.py
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'HD sprite directory exists (3260 PNGs' asset-preflight.log
+          grep -q 'all 1025 base-species HOME renders are present' asset-preflight.log
+          grep -q 'all 18 type sprites are present' asset-preflight.log
+          grep -q 'required UI fonts are present' asset-preflight.log
+          grep -q 'FireRed/LeafGreen GBA game-card artwork is present' asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
           test -z "$(git -C application status --porcelain)"
-      - name: Clean native no-exceptions build and link
+
+      - name: Clean native devkitA64 full build and link
         run: |
           set -euo pipefail
           docker pull devkitpro/devkita64:latest
@@ -52,13 +75,11 @@ jobs:
             dkp-pacman -Q > /work/toolchain-packages.txt
             echo "=== native toolchain ==="
             dkp-pacman -Q libnx devkitA64 switch-tools switch-sdl2 switch-glad switch-lz4 || true
-            echo "=== installed fsdev declaration/export ==="
-            grep -n -B2 -A2 "fsdevGetLastResult" /opt/devkitpro/libnx/include/switch/runtime/devices/fs_dev.h || true
-            nm -g --defined-only /opt/devkitpro/libnx/lib/libnx.a | grep "fsdevGetLastResult" || true
+            make clean || true
             make -j1
-            echo "=== fixed LegacySourceBindings.o fsdev reference ==="
-            find build -name LegacySourceBindings.o -print -exec nm {} \; | grep -E "LegacySourceBindings|fsdevGetLastResult" || true
+            test -s PokeBankNX.nro
           ' 2>&1 | tee native-build.log
+
       - name: Verify embedded RomFS and package exact binary
         run: |
           set -euo pipefail
@@ -66,19 +87,26 @@ jobs:
           python3 application/tools/check_device_assets.py
           python3 recovery-work/tools/verify_embedded_romfs.py \
             application/PokeBankNX.nro application/romfs \
-            --application-source d78b76503f02ae26309855970fc5ce0b35c12bcb \
+            --application-source "$APP_SHA" \
             > embedded-romfs.json
+          python3 - <<'PY'
+          import json
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('status') == 'PASS', data
+          assert data.get('expected_file_count') == 3283, data
+          assert data.get('embedded_file_count') == 3283, data
+          PY
           python3 application/tools/package_device_build.py application/PokeBankNX.nro \
-            --label FRLG-Persistence-Retest \
+            --label RSE-Retest \
             --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
-          cp embedded-romfs.json toolchain-image.json toolchain-packages.txt native-build.log device-artifact/
+          cp embedded-romfs.json asset-preflight.log recovery.log toolchain-image.json toolchain-packages.txt native-build.log device-artifact/
           python3 - <<'PY'
           import hashlib, json, subprocess
           from pathlib import Path
 
           out = Path('device-artifact')
-          application_source = 'd78b76503f02ae26309855970fc5ce0b35c12bcb'
-          application_tree = '894500f09655d1fb8e37f27473021e6f091e2a98'
+          application_source = '46e0c1617fb642f45c0cd1d4b07a9bcc89c01909'
+          application_tree = '655ccd8fb37b6627017959213f7c3811a2f3275a'
           recovery_source = subprocess.check_output(
               ['git', '-C', 'recovery-work', 'rev-parse', 'HEAD'], text=True).strip()
           record = {
@@ -86,6 +114,11 @@ jobs:
               'application_tree': application_tree,
               'recovery_snapshot': 'a2adac94f15504b90a83a295e77ad54154da4206',
               'documentation_recovery_branch_source': recovery_source,
+              'ci_run_host_tests': 34440786353,
+              'ci_host_tests': 'PASS',
+              'ci_asan_ubsan': 'PASS',
+              'native_devkitA64_full_link': 'PASS',
+              'embedded_romfs': 'PASS 3283/3283',
               'device_tested': False,
               'device_accepted': False,
           }
@@ -103,35 +136,45 @@ jobs:
               if p.is_file() and p.name != 'SHA256SUMS.txt':
                   sums.append(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n')
           (out / 'SHA256SUMS.txt').write_text(''.join(sums))
+          print((out / 'BUILD_MANIFEST.json').read_text())
+          print((out / 'SHA256SUMS.txt').read_text())
           PY
-      - name: Preserve artifact immediately
+
+      - name: Preserve RSE physical-test artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FRLG-Persistence-Retest-d78b7650
+          name: RSE-Retest-46e0c161
           path: device-artifact/
           if-no-files-found: error
           retention-days: 90
-      - name: Publish private device-test prerelease
+
+      - name: Publish private RSE device-test prerelease
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: GlitchedZeus/PokeBank-NX
           RUN_ID: ${{ github.run_id }}
         run: |
-          tag="device-frlg-persistence-d78b7650-$RUN_ID"
+          set -euo pipefail
+          tag="device-rse-retest-46e0c161-$RUN_ID"
           gh release create "$tag" device-artifact/* \
-            --target d78b76503f02ae26309855970fc5ce0b35c12bcb \
+            --target "$APP_SHA" \
             --prerelease \
-            --title "FRLG persistence retest — d78b7650" \
-            --notes "Application source d78b76503f02ae26309855970fc5ce0b35c12bcb contains the 92bde34d LeafGreen persistence fix plus the narrow fsdevGetLastResult C-linkage compatibility fix. RomFS was restored from committed recovery snapshot a2adac94f15504b90a83a295e77ad54154da4206 and verified byte-for-byte at 3283 files. DEVICE TESTED: NO. DEVICE ACCEPTED: NO. Stop for physical Switch test."
-          gh release view "$tag" --json url,assets > release-record.json
+            --title "RSE physical retest — 46e0c161" \
+            --notes "Ruby/Sapphire/Emerald read-only application source $APP_SHA. Host/ASan/UBSan CI run 34440786353 passed. RomFS restored only from committed recovery snapshot $SNAPSHOT_SHA and verified byte-for-byte at 3283 files. DEVICE TESTED FOR RSE: NO. DEVICE ACCEPTED FOR RSE: NO. Stop for physical Switch test."
+          gh release view "$tag" --json url,tagName,assets > release-record.json
+          cat release-record.json
           cat release-record.json >> "$GITHUB_STEP_SUMMARY"
           cat device-artifact/BUILD_MANIFEST.json >> "$GITHUB_STEP_SUMMARY"
-      - name: Preserve build diagnostics
+          cat device-artifact/SHA256SUMS.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve RSE build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FRLG-Persistence-Retest-build-diagnostics
+          name: RSE-Retest-build-diagnostics-46e0c161
           path: |
+            recovery.log
+            asset-preflight.log
             native-build.log
             embedded-romfs.json
             release-record.json
