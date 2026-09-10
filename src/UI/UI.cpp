@@ -32,7 +32,7 @@ namespace UI {
             logErrorToFile("Legacy source bindings contain malformed or unreadable rows");
 
         // Discover only RetroArch's configured/conventional save roots. The provider performs a
-        // bounded, read-only scan and validates every candidate before assigning an FR/LG identity.
+        // bounded, read-only scan and validates every candidate before assigning a Gen III identity.
         // UIManager owns the result for this app session so the native Gen III backend is part of
         // the real runtime source lifecycle rather than an unreferenced library object.
         legacyFRLGSources = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
@@ -48,7 +48,7 @@ namespace UI {
         }
         char legacySummary[192];
         snprintf(legacySummary, sizeof(legacySummary),
-                 "RetroArch FRLG: %zu files checked, %zu ready, %zu ambiguous, %zu rejected%s",
+                 "RetroArch Gen III: %zu files checked, %zu ready, %zu ambiguous, %zu rejected%s",
                  legacyFRLGSources.filesExamined, ready, ambiguous, rejected,
                  legacyFRLGSources.limitReached ? ", scan limit reached" : "");
         logInfoToFile(legacySummary);
@@ -84,7 +84,7 @@ namespace UI {
                     if (!handleLegacyFRLGView(selectScreen.getSelectedUser(),
                                               selectScreen.getSelectedLegacySourceIndex(),
                                               selectScreen.getSelectedGameId(), error))
-                        logErrorToFile("Legacy FRLG source refused open", error.c_str());
+                        logErrorToFile("Legacy Gen III source refused open", error.c_str());
                 } else {
                     handleBackupSelection(selectScreen.getSelectedUser(),
                                           selectScreen.getSelectedTitleId(),
@@ -196,7 +196,7 @@ namespace UI {
         const auto& selected = legacyFRLGSources.sources[sourceIndex];
         if (!selected.ready() || selected.gameId != gameId ||
             selected.save->metadata().sourceGameId != gameId) {
-            error = "RetroArch source is no longer a validated FireRed/LeafGreen save";
+            error = "RetroArch source is no longer a validated Generation III save";
             return false;
         }
         const auto* source = &selected;
@@ -208,6 +208,13 @@ namespace UI {
 
         auto trainer = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*source->save, error);
         if (!trainer) return false;
+
+        const bool rseInventoryUnavailable = source->save->inventory().empty() &&
+            (source->gameId == "ruby_gba" || source->gameId == "sapphire_gba" ||
+             source->gameId == "emerald_gba");
+        if (rseInventoryUnavailable)
+            logErrorToFile("RSE inventory validation failed; save remains open read-only",
+                           source->gameId.c_str());
 
         TrainerViewScreen trainerScreen(
             *trainer, "Pokemon " + std::string(identity->title), source->path, 0, userUid,
