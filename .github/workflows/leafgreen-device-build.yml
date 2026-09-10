@@ -62,7 +62,7 @@ jobs:
           ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize 2>&1 | tee ../focused-rse-sanitize.log
           make -f Makefile.host host-sanitize 2>&1 | tee ../sanitizers.log
           grep -q 'RSE strict read-only adapter/discovery tests passed' ../host-tests.log
-          grep -q 'RSE save-open bridge regression passed' ../focused-rse.log
+          grep -q 'RSE save-open/inventory regression tests passed' ../focused-rse.log
 
       - name: Check out recovery infrastructure
         uses: actions/checkout@v4
