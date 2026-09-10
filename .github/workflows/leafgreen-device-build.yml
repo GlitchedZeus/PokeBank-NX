@@ -1,4 +1,4 @@
-name: Prepare RSE physical-test blocker fixes
+name: RSE final physical-retest build
 
 on:
   push:
@@ -7,236 +7,184 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: pokebank-rse-device-build
   cancel-in-progress: false
 
+env:
+  APP_SHA: 1dc5893dd20edf54a06b62ea3e27909f5719fa77
+  APP_TREE: 5507793af16f611d667357894496c0028dcb6a1d
+  SNAPSHOT_SHA: 2321fa488668e32392de25afed84e38919fbd21f
+  OLD_RSE_SHA: 46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
+  SHORT_SHA: 1dc5893d
+  EXPECTED_ROMFS: 3286
+
 jobs:
-  prepare:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
-      - name: Check out current branch
+      - name: Check out recovery infrastructure
         uses: actions/checkout@v4
         with:
           ref: feature/pokebank-playable
+          path: recovery-work
           fetch-depth: 0
+
+      - name: Restore exact permanent RSE recovery snapshot
+        working-directory: recovery-work
+        run: |
+          set -euo pipefail
+          git cat-file -e "$SNAPSHOT_SHA^{commit}"
+          test -f recovery/assets_snapshot/manifest.json
+          git diff --quiet "$SNAPSHOT_SHA" HEAD -- recovery/assets_snapshot
+          test "$(python3 -c 'import json; print(json.load(open("recovery/assets_snapshot/manifest.json"))["file_count"])')" = "$EXPECTED_ROMFS"
+          python3 tools/recover_workspace.py 2>&1 | tee ../recovery.log
+          grep -q 'Recovery source: committed GitHub RomFS snapshot' ../recovery.log
+          grep -q 'HD sprite directory exists (3260 PNGs' ../recovery.log
+          grep -q 'all 1025 base-species HOME renders are present' ../recovery.log
+          grep -q 'all 18 type sprites are present' ../recovery.log
+          grep -q 'required UI fonts are present' ../recovery.log
+          grep -q 'FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present' ../recovery.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' ../recovery.log
+          test "$(find romfs -type f | wc -l)" -eq "$EXPECTED_ROMFS"
+          for f in firered_gba leafgreen_gba ruby_gba sapphire_gba emerald_gba; do
+            test -s "romfs/game_cards/$f.png"
+          done
+
+      - name: Check out exact corrected RSE application source
+        uses: actions/checkout@v4
+        with:
+          ref: 1dc5893dd20edf54a06b62ea3e27909f5719fa77
+          path: application
+          fetch-depth: 2
           submodules: recursive
 
-      - name: Add pinned RSE game-card artwork
-        shell: bash
+      - name: Verify exact source and recovered asset supply
         run: |
           set -euo pipefail
-          REF=23b8665408e767fd3220bfb83fd5ad8dfe1a9aa1
-          BASE="https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Game_Boy_Advance/$REF/Named_Boxarts"
-          curl -fsSL "$BASE/Pokemon%20-%20Ruby%20Version%20(USA).png" -o assets/game_cards/ruby_gba.png
-          curl -fsSL "$BASE/Pokemon%20-%20Sapphire%20Version%20(USA).png" -o assets/game_cards/sapphire_gba.png
-          curl -fsSL "$BASE/Pokemon%20-%20Emerald%20Version%20(USA,%20Europe).png" -o assets/game_cards/emerald_gba.png
-          file assets/game_cards/{ruby,sapphire,emerald}_gba.png
-          sha256sum assets/game_cards/{ruby,sapphire,emerald}_gba.png | tee /tmp/rse-art-sha256.txt
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          cp -a recovery-work/romfs application/romfs
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'HD sprite directory exists (3260 PNGs' asset-preflight.log
+          grep -q 'all 1025 base-species HOME renders are present' asset-preflight.log
+          grep -q 'all 18 type sprites are present' asset-preflight.log
+          grep -q 'required UI fonts are present' asset-preflight.log
+          grep -q 'FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present' asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_ROMFS"
+          test -z "$(git -C application status --porcelain)"
 
-      - name: Wire tracked art, recovery gate, and focused RSE fixtures
-        shell: bash
+      - name: Focused host regressions, source safety, ASan and UBSan
+        working-directory: application
         run: |
           set -euo pipefail
+          git diff --check HEAD^ HEAD
+          python3 -m py_compile tools/check_device_assets.py tools/recover_workspace.py tools/check_recovery_contract.py tools/pack_recovery_snapshot.py tools/package_device_build.py
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test 2>&1 | tee ../host-tests.log
+          make -f Makefile.host host-sanitize 2>&1 | tee ../sanitizers.log
+          grep -q 'RSE strict read-only adapter/discovery tests passed' ../host-tests.log
+
+      - name: Clean native devkitA64 full build and final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            echo "=== native toolchain ==="
+            dkp-pacman -Q libnx devkitA64 switch-tools switch-sdl2 switch-glad switch-lz4 || true
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s application/PokeBankNX.nro
+
+      - name: Verify embedded identity and complete RomFS, then package
+        run: |
+          set -euo pipefail
+          test -z "$(git -C application status --porcelain)"
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source "$APP_SHA" > embedded-romfs.json
           python3 - <<'PY'
+          import json, os
           from pathlib import Path
-          import hashlib
-
-          def replace_once(path, old, new):
-              p = Path(path)
-              text = p.read_text(encoding='utf-8')
-              if text.count(old) != 1:
-                  raise SystemExit(f'{path}: expected exactly one replacement target, found {text.count(old)}')
-              p.write_text(text.replace(old, new), encoding='utf-8')
-
-          replace_once('Makefile',
-              '\t@cp -f "$(GAME_CARD_ART_SOURCE)/leafgreen_gba.png" "$(GAME_CARD_ART_DIR)/leafgreen_gba.png"\n',
-              '\t@cp -f "$(GAME_CARD_ART_SOURCE)/leafgreen_gba.png" "$(GAME_CARD_ART_DIR)/leafgreen_gba.png"\n'
-              '\t@cp -f "$(GAME_CARD_ART_SOURCE)/ruby_gba.png" "$(GAME_CARD_ART_DIR)/ruby_gba.png"\n'
-              '\t@cp -f "$(GAME_CARD_ART_SOURCE)/sapphire_gba.png" "$(GAME_CARD_ART_DIR)/sapphire_gba.png"\n'
-              '\t@cp -f "$(GAME_CARD_ART_SOURCE)/emerald_gba.png" "$(GAME_CARD_ART_DIR)/emerald_gba.png"\n')
-
-          replace_once('tools/check_device_assets.py',
-              '    required_game_cards = ("firered_gba.png", "leafgreen_gba.png")\n',
-              '    required_game_cards = (\n'
-              '        "firered_gba.png", "leafgreen_gba.png",\n'
-              '        "ruby_gba.png", "sapphire_gba.png", "emerald_gba.png",\n'
-              '    )\n')
-          replace_once('tools/check_device_assets.py',
-              '            ok("FireRed/LeafGreen GBA game-card artwork is present")\n',
-              '            ok("FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present")\n')
-
-          test = Path('tests/test_rse_gen3_adapter.cpp')
-          text = test.read_text(encoding='utf-8')
-          old = '''        write32(logical[1], 0x490, 500000u ^ securityKey);\n        logical[1][0x234] = 1;\n'''
-          new = '''        write32(logical[1], 0x490, 500000u ^ securityKey);\n\n        // Real Gen III four-byte item entries. Ruby/Sapphire quantities are plaintext; Emerald\n        // bag quantities use the low 16 bits of the save security key. PC item quantities are\n        // plaintext in all three games. Potion (item 13) x3 mirrors the physical Emerald evidence\n        // without hardcoding anything in production parsing.\n        const auto writeInventoryEntry = [&](size_t offset, uint16_t itemId, uint16_t count,\n                                             bool keyed) {\n            write16(logical[1], offset, itemId);\n            const uint16_t key16 = keyed ? static_cast<uint16_t>(securityKey) : 0;\n            write16(logical[1], offset + 2, static_cast<uint16_t>(count ^ key16));\n        };\n        if (family == Family::RS) {\n            writeInventoryEntry(0x0560, 13, 3, false);   // Items: Potion x3\n            writeInventoryEntry(0x05B0, 259, 1, false); // Key Items\n            writeInventoryEntry(0x0600, 4, 7, false);   // Poké Balls\n            writeInventoryEntry(0x0640, 289, 2, false); // TM/HM\n            writeInventoryEntry(0x0740, 133, 5, false); // Berries\n            writeInventoryEntry(0x0498, 13, 9, false);  // PC Items\n        } else if (family == Family::Emerald) {\n            writeInventoryEntry(0x0560, 13, 3, true);\n            writeInventoryEntry(0x05D8, 259, 1, true);\n            writeInventoryEntry(0x0650, 4, 7, true);\n            writeInventoryEntry(0x0690, 289, 2, true);\n            writeInventoryEntry(0x0790, 133, 5, true);\n            writeInventoryEntry(0x0498, 13, 9, false);\n        }\n\n        logical[1][0x234] = 1;\n'''
-          if text.count(old) != 1:
-              raise SystemExit('inventory fixture insertion target drifted')
-          text = text.replace(old, new)
-
-          old = '''        assert(trainer.money == 500000);\n        assert(parsed.save->inventory().empty());\n\n        const auto party = parsed.save->party();\n'''
-          new = '''        assert(trainer.money == 500000);\n\n        const auto& inventory = parsed.save->inventory();\n        assert(inventory.size() == 6);\n        const bool isEmerald = expectedId == "emerald_gba";\n        const std::array<InventoryPouch, 6> expectedPouches = {\n            InventoryPouch::Items, InventoryPouch::KeyItems, InventoryPouch::PokeBalls,\n            InventoryPouch::TMCase, InventoryPouch::BerryPouch, InventoryPouch::PCItems,\n        };\n        const std::array<std::string_view, 6> expectedNames = {\n            "Items", "Key Items", "Poké Balls", "TM/HM", "Berries", "PC Items",\n        };\n        const std::array<uint16_t, 6> rsCapacities = {20, 20, 16, 64, 46, 50};\n        const std::array<uint16_t, 6> emeraldCapacities = {30, 30, 16, 64, 46, 50};\n        const std::array<uint16_t, 6> expectedIds = {13, 259, 4, 289, 133, 13};\n        const std::array<uint16_t, 6> expectedCounts = {3, 1, 7, 2, 5, 9};\n        for (size_t index = 0; index < inventory.size(); ++index) {\n            assert(inventory[index].pouch == expectedPouches[index]);\n            assert(inventory[index].name == expectedNames[index]);\n            assert(inventory[index].capacity ==\n                   (isEmerald ? emeraldCapacities[index] : rsCapacities[index]));\n            assert(inventory[index].countEncrypted == (isEmerald && index < 5));\n            assert(inventory[index].items.size() == 1); // remaining zero-id slots are ignored\n            assert(inventory[index].items.front().itemId == expectedIds[index]);\n            assert(inventory[index].items.front().count == expectedCounts[index]);\n        }\n\n        const auto party = parsed.save->party();\n'''
-          if text.count(old) != 1:
-              raise SystemExit('inventory assertion target drifted')
-          text = text.replace(old, new)
-
-          old = '''    void writeFile(const fs::path& path, const std::vector<uint8_t>& bytes) {\n'''
-          new = '''    void overwriteInventoryEntry(std::vector<uint8_t>& save, uint8_t slot,\n                                 size_t logicalOffset, uint16_t itemId, uint16_t storedCount) {\n        const size_t sector = physicalSectorForId(save, slot, 1);\n        write16(save, sector + logicalOffset, itemId);\n        write16(save, sector + logicalOffset + 2, storedCount);\n        write16(save, sector + 0xFF6, sectorChecksum(\n            std::span<const uint8_t>(save.data() + sector, kChunkLengths[1])));\n    }\n\n    void writeFile(const fs::path& path, const std::vector<uint8_t>& bytes) {\n'''
-          if text.count(old) != 1:
-              raise SystemExit('inventory corruption helper target drifted')
-          text = text.replace(old, new)
-
-          old = '''    const auto emerald = makeFixture(Family::Emerald);\n    assertRSERead(emerald, SourceGame::EmeraldGBA, "emerald_gba", 1, 9, 0x12345679);\n    assert(!parse(emerald, SourceGame::RubyGBA));\n\n    auto slotA = makeFixture(Family::RS, 12, 9);\n'''
-          new = '''    const auto emerald = makeFixture(Family::Emerald);\n    assertRSERead(emerald, SourceGame::EmeraldGBA, "emerald_gba", 1, 9, 0x12345679);\n    assert(!parse(emerald, SourceGame::RubyGBA));\n\n    // Emerald's bag quantity is genuinely keyed on disk; PC Items remain plaintext.\n    const size_t emeraldSection1 = physicalSectorForId(emerald, 1, 1);\n    assert(read16(emerald, emeraldSection1 + 0x0562) ==\n           static_cast<uint16_t>(3 ^ 0xC3D4));\n    assert(read16(emerald, emeraldSection1 + 0x049A) == 9);\n\n    auto invalidItem = rs;\n    for (uint8_t slot = 0; slot < 2; ++slot)\n        overwriteInventoryEntry(invalidItem, slot, 0x0560, 377, 1);\n    auto invalidItemResult = parse(invalidItem, SourceGame::RubyGBA);\n    assert(!invalidItemResult && invalidItemResult.error == SaveError::InvalidInventory);\n\n    auto impossibleCount = rs;\n    for (uint8_t slot = 0; slot < 2; ++slot)\n        overwriteInventoryEntry(impossibleCount, slot, 0x0560, 13, 1000);\n    auto impossibleCountResult = parse(impossibleCount, SourceGame::SapphireGBA);\n    assert(!impossibleCountResult && impossibleCountResult.error == SaveError::InvalidInventory);\n\n    auto slotA = makeFixture(Family::RS, 12, 9);\n'''
-          if text.count(old) != 1:
-              raise SystemExit('inventory malformed test target drifted')
-          text = text.replace(old, new)
-
-          old = '''    assert(emeraldGame->support == PokeVault::Games::SourceSupport::ReadOnly);\n\n    fs::remove_all(root);\n'''
-          new = '''    assert(emeraldGame->support == PokeVault::Games::SourceSupport::ReadOnly);\n    assert(PokeVault::Games::gameCardArtworkPath("ruby_gba") ==\n           "romfs:/game_cards/ruby_gba.png");\n    assert(PokeVault::Games::gameCardArtworkPath("sapphire_gba") ==\n           "romfs:/game_cards/sapphire_gba.png");\n    assert(PokeVault::Games::gameCardArtworkPath("emerald_gba") ==\n           "romfs:/game_cards/emerald_gba.png");\n    assert(PokeVault::Games::gameCardArtworkPath("firered_gba") ==\n           "romfs:/game_cards/firered_gba.png");\n    assert(PokeVault::Games::gameCardArtworkPath("leafgreen_gba") ==\n           "romfs:/game_cards/leafgreen_gba.png");\n\n    fs::remove_all(root);\n'''
-          if text.count(old) != 1:
-              raise SystemExit('artwork resolver assertion target drifted')
-          text = text.replace(old, new)
-          test.write_text(text, encoding='utf-8')
-
-          ref = '23b8665408e767fd3220bfb83fd5ad8dfe1a9aa1'
-          entries = [
-              ('firered_gba.png', 'Named_Boxarts/Pokemon - FireRed Version (USA).png'),
-              ('leafgreen_gba.png', 'Named_Boxarts/Pokemon - LeafGreen Version (USA).png'),
-              ('ruby_gba.png', 'Named_Boxarts/Pokemon - Ruby Version (USA).png'),
-              ('sapphire_gba.png', 'Named_Boxarts/Pokemon - Sapphire Version (USA).png'),
-              ('emerald_gba.png', 'Named_Boxarts/Pokemon - Emerald Version (USA, Europe).png'),
-          ]
-          lines = [
-              '# Packaged GBA game-card artwork', '',
-              'FireRed, LeafGreen, Ruby, Sapphire and Emerald parent cards use the shared',
-              '`SystemIcons::gameCardIcon` resolver and these release-specific tracked assets. They are',
-              'copied into `romfs:/game_cards/` by `make game-card-art`.', '',
-              'Source repository: `libretro-thumbnails/Nintendo_-_Game_Boy_Advance`', '',
-              f'Pinned revision: `{ref}`', '', 'Files:', ''
-          ]
-          for local, upstream in entries:
-              lines.append(f'- `{upstream}` -> `{local}`')
-          lines += ['', 'SHA-256:', '']
-          for local, _ in entries:
-              digest = hashlib.sha256((Path('assets/game_cards') / local).read_bytes()).hexdigest()
-              lines.append(f'- `{local}`: `{digest}`')
-          lines += [
-              '',
-              'Pokémon and its artwork are trademarks/copyright of their respective owners. These images are',
-              'included for game identification in this non-commercial homebrew utility; upstream attribution and',
-              'project licensing remain intact.', ''
-          ]
-          Path('assets/game_cards/README.md').write_text('\n'.join(lines), encoding='utf-8')
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          for name in ('firered_gba.png','leafgreen_gba.png','ruby_gba.png','sapphire_gba.png','emerald_gba.png'):
+              assert (Path('application/romfs/game_cards') / name).is_file(), name
           PY
-          python3 -m py_compile tools/check_device_assets.py
-          git diff --check
-
-      - name: Commit and push exact application-source fix
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "GlitchedZeus"
-          git config user.email "user91746@protonmail.com"
-          git add src/Integration/Gen3/FRLGReadModel.cpp include/Integration/Gen3/FRLGReadModel.h \
-                  src/Games/GameIdentity.cpp tests/test_rse_gen3_adapter.cpp Makefile \
-                  tools/check_device_assets.py assets/game_cards
-          git diff --cached --check
-          git commit -m "gen3: fix RSE inventory and game-card artwork"
-          APP_SHA=$(git rev-parse HEAD)
-          echo "APP_SHA=$APP_SHA" | tee /tmp/app-source.txt
-          git push origin HEAD:feature/pokebank-playable
-
-      - name: Register new recovery requirements
-        shell: bash
-        run: |
-          set -euo pipefail
-          APP_SHA=$(cut -d= -f2 /tmp/app-source.txt)
-          python3 - "$APP_SHA" <<'PY'
-          import json, sys
+          python3 application/tools/package_device_build.py application/PokeBankNX.nro \
+            --label RSE-Final-Retest --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
+          cp embedded-romfs.json asset-preflight.log recovery.log host-tests.log sanitizers.log \
+             toolchain-image.json toolchain-packages.txt native-build.log device-artifact/
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess
           from pathlib import Path
-          p = Path('recovery/RECOVERY_STATE.json')
-          state = json.loads(p.read_text(encoding='utf-8'))
-          state['updated'] = '2026-09-10'
-          state['application_source'] = sys.argv[1]
-          state['application_source_message'] = 'gen3: fix RSE inventory and game-card artwork'
-          state['game_cards']['expected'] = [
-              'firered_gba.png', 'leafgreen_gba.png', 'ruby_gba.png',
-              'sapphire_gba.png', 'emerald_gba.png'
-          ]
-          state['full_romfs_snapshot']['status'] = 'REPACKING_FOR_RSE_ARTWORK'
-          state['full_romfs_snapshot']['note'] = (
-              'Previous committed snapshot a2adac94f15504b90a83a295e77ad54154da4206 has 3283 files; '
-              'tracked RSE game-card assets are overlaid before deterministic repack.'
-          )
-          p.write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8')
+          out = Path('device-artifact')
+          record = {
+              'original_rse_source': os.environ['OLD_RSE_SHA'],
+              'application_source': os.environ['APP_SHA'],
+              'application_tree': os.environ['APP_TREE'],
+              'recovery_snapshot': os.environ['SNAPSHOT_SHA'],
+              'documentation_recovery_branch_source': subprocess.check_output(
+                  ['git','-C','recovery-work','rev-parse','HEAD'], text=True).strip(),
+              'workflow_run': int(os.environ['GITHUB_RUN_ID']),
+              'host_rse_inventory': 'PASS Ruby/Sapphire/Emerald',
+              'frlg_regression': 'PASS',
+              'asan_ubsan': 'PASS',
+              'live_save_writing': 'HARD DISABLED',
+              'native_devkitA64_full_link': 'PASS',
+              'embedded_romfs': f"PASS {os.environ['EXPECTED_ROMFS']}/{os.environ['EXPECTED_ROMFS']}",
+              'rse_device_tested': True,
+              'rse_device_accepted': False,
+          }
+          files = {}
+          for p in sorted(out.iterdir()):
+              if p.is_file():
+                  files[p.name] = {'bytes': p.stat().st_size,
+                                   'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
+          record['files'] = files
+          (out / 'BUILD_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+          sums = []
+          for p in sorted(out.iterdir()):
+              if p.is_file() and p.name != 'SHA256SUMS.txt':
+                  sums.append(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n')
+          (out / 'SHA256SUMS.txt').write_text(''.join(sums))
+          print((out / 'BUILD_MANIFEST.json').read_text())
+          print((out / 'SHA256SUMS.txt').read_text())
           PY
-          git add recovery/RECOVERY_STATE.json
-          git diff --cached --check
-          git commit -m "recovery: register RSE game-card requirements"
-          git push origin HEAD:feature/pokebank-playable
 
-      - name: Restore old snapshot, overlay tracked RSE art, preflight, and repack
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf romfs
-          python3 tools/recover_workspace.py 2>&1 | tee /tmp/recovery-rse.log
-          grep -q 'Recovery source: committed GitHub RomFS snapshot' /tmp/recovery-rse.log
-          grep -q 'HD sprite directory exists (3260 PNGs' /tmp/recovery-rse.log
-          grep -q 'all 1025 base-species HOME renders are present' /tmp/recovery-rse.log
-          grep -q 'all 18 type sprites are present' /tmp/recovery-rse.log
-          grep -q 'required UI fonts are present' /tmp/recovery-rse.log
-          grep -q 'FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present' /tmp/recovery-rse.log
-          grep -q 'DEVICE ASSET PREFLIGHT: PASS' /tmp/recovery-rse.log
-          for f in firered_gba leafgreen_gba ruby_gba sapphire_gba emerald_gba; do
-            cmp "assets/game_cards/$f.png" "romfs/game_cards/$f.png"
-          done
-          python3 tools/pack_recovery_snapshot.py 2>&1 | tee /tmp/pack-rse.log
-          FILE_COUNT=$(python3 -c 'import json; print(json.load(open("recovery/assets_snapshot/manifest.json"))["file_count"])')
-          echo "DERIVED_ROMFS_COUNT=$FILE_COUNT" | tee /tmp/romfs-count.txt
-          test "$FILE_COUNT" -gt 3283
-
-      - name: Commit and push new permanent recovery snapshot
-        shell: bash
-        run: |
-          set -euo pipefail
-          git add -f recovery/assets_snapshot
-          git diff --cached --check
-          git commit -m "recovery: snapshot RSE game-card artwork"
-          SNAPSHOT_SHA=$(git rev-parse HEAD)
-          echo "SNAPSHOT_SHA=$SNAPSHOT_SHA" | tee /tmp/snapshot-source.txt
-          git push origin HEAD:feature/pokebank-playable
-
-          APP_SHA=$(cut -d= -f2 /tmp/app-source.txt)
-          COUNT=$(cut -d= -f2 /tmp/romfs-count.txt)
-          python3 - "$APP_SHA" "$SNAPSHOT_SHA" "$COUNT" <<'PY'
-          import json, sys
-          from pathlib import Path
-          p = Path('recovery/RECOVERY_STATE.json')
-          state = json.loads(p.read_text(encoding='utf-8'))
-          state['application_source'] = sys.argv[1]
-          state['full_romfs_snapshot']['status'] = 'COMMITTED'
-          state['full_romfs_snapshot']['note'] = (
-              f'Complete {sys.argv[3]}-file snapshot committed at {sys.argv[2]}; '
-              'includes FireRed/LeafGreen/Ruby/Sapphire/Emerald game-card artwork.'
-          )
-          p.write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8')
-          PY
-          git add recovery/RECOVERY_STATE.json
-          git commit -m "recovery: record RSE artwork snapshot checkpoint"
-          git push origin HEAD:feature/pokebank-playable
-
-      - name: Upload preparation metadata
+      - name: Preserve corrected RSE physical-retest artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RSE-fix-preparation-metadata
+          name: RSE-Final-Retest-1dc5893d
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Preserve final build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RSE-Final-Retest-diagnostics-1dc5893d
           path: |
-            /tmp/app-source.txt
-            /tmp/snapshot-source.txt
-            /tmp/romfs-count.txt
-            /tmp/rse-art-sha256.txt
-            recovery/assets_snapshot/manifest.json
+            recovery.log
+            asset-preflight.log
+            host-tests.log
+            sanitizers.log
+            native-build.log
+            embedded-romfs.json
+            toolchain-image.json
+            toolchain-packages.txt
+          if-no-files-found: ignore
