@@ -20,8 +20,8 @@ namespace PokeVault::Integration::Gen3::Detail {
         std::span<const uint8_t> source,
         const std::array<size_t, 14>& logicalSectorOffsets) noexcept;
 
-    // Ruby/Sapphire/Emerald trainer-only immutable view. RSE inventory is intentionally not
-    // exposed during this read-only milestone; callers receive an empty inventory vector.
+    // Ruby/Sapphire/Emerald immutable trainer + inventory view. RSE pouch offsets/capacities and
+    // Emerald quantity obfuscation are handled separately from FRLG; source bytes are never written.
     [[nodiscard]] FRLGReadModelResult readRSEModel(
         std::span<const uint8_t> source,
         const std::array<size_t, 14>& logicalSectorOffsets,
