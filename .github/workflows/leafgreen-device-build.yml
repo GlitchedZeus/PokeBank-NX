@@ -31,17 +31,17 @@ jobs:
       - name: Check out exact application source
         uses: actions/checkout@v4
         with:
-          ref: 92bde34d1586990aaa82adc4f60d42d7bc6b5bdf
+          ref: d78b76503f02ae26309855970fc5ce0b35c12bcb
           path: application
           submodules: recursive
       - name: Verify application identity and supply recovered assets
         run: |
-          test "$(git -C application rev-parse HEAD)" = 92bde34d1586990aaa82adc4f60d42d7bc6b5bdf
-          test "$(git -C application rev-parse 'HEAD^{tree}')" = 08215dcdae0959685eae3796a63d67e76c2b49da
+          test "$(git -C application rev-parse HEAD)" = d78b76503f02ae26309855970fc5ce0b35c12bcb
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = 894500f09655d1fb8e37f27473021e6f091e2a98
           cp -a recovery-work/romfs application/romfs
           python3 application/tools/check_device_assets.py
           test -z "$(git -C application status --porcelain)"
-      - name: Clean native no-exceptions build
+      - name: Clean native no-exceptions build and link
         run: |
           set -euo pipefail
           docker pull devkitpro/devkita64:latest
@@ -50,46 +50,64 @@ jobs:
             set -euo pipefail
             git config --global --add safe.directory /work/application
             dkp-pacman -Q > /work/toolchain-packages.txt
-            echo "=== libnx package ==="
+            echo "=== native toolchain ==="
             dkp-pacman -Q libnx devkitA64 switch-tools switch-sdl2 switch-glad switch-lz4 || true
-            echo "=== installed fs_dev.h declaration ==="
+            echo "=== installed fsdev declaration/export ==="
             grep -n -B2 -A2 "fsdevGetLastResult" /opt/devkitpro/libnx/include/switch/runtime/devices/fs_dev.h || true
-            echo "=== nm implementation ==="
-            command -v nm || true
-            nm --version | head -n 1 || true
-            echo "=== libnx.a exported symbol ==="
             nm -g --defined-only /opt/devkitpro/libnx/lib/libnx.a | grep "fsdevGetLastResult" || true
-            set +e
             make -j1
-            build_rc=$?
-            set -e
-            echo "=== LegacySourceBindings.o unresolved fsdev symbol ==="
+            echo "=== fixed LegacySourceBindings.o fsdev reference ==="
             find build -name LegacySourceBindings.o -print -exec nm {} \; | grep -E "LegacySourceBindings|fsdevGetLastResult" || true
-            echo "=== demangled unresolved fsdev symbol ==="
-            find build -name LegacySourceBindings.o -exec nm -C {} \; | grep "fsdevGetLastResult" || true
-            exit "$build_rc"
           ' 2>&1 | tee native-build.log
-      - name: Verify and package exact binary
+      - name: Verify embedded RomFS and package exact binary
         run: |
           set -euo pipefail
           test -z "$(git -C application status --porcelain)"
           python3 application/tools/check_device_assets.py
-          python3 recovery-work/tools/verify_embedded_romfs.py application/PokeBankNX.nro application/romfs > embedded-romfs.json
-          python3 application/tools/package_device_build.py application/PokeBankNX.nro --label LeafGreen-Bindings-Retest --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
-          cp embedded-romfs.json toolchain-image.json toolchain-packages.txt device-artifact/
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source d78b76503f02ae26309855970fc5ce0b35c12bcb \
+            > embedded-romfs.json
+          python3 application/tools/package_device_build.py application/PokeBankNX.nro \
+            --label FRLG-Persistence-Retest \
+            --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
+          cp embedded-romfs.json toolchain-image.json toolchain-packages.txt native-build.log device-artifact/
           python3 - <<'PY'
           import hashlib, json, subprocess
           from pathlib import Path
+
           out = Path('device-artifact')
-          files = {p.name: {'size':p.stat().st_size, 'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(out.iterdir()) if p.is_file()}
-          record = {'application_source':'92bde34d1586990aaa82adc4f60d42d7bc6b5bdf', 'application_tree':'08215dcdae0959685eae3796a63d67e76c2b49da', 'recovery_source':subprocess.check_output(['git','-C','recovery-work','rev-parse','HEAD'],text=True).strip(), 'device_tested':False, 'device_accepted':False, 'files':files}
-          (out/'BUILD_MANIFEST.json').write_text(json.dumps(record,indent=2)+'\n')
-          (out/'SHA256SUMS').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(out.iterdir()) if p.is_file() and p.name != 'SHA256SUMS'))
+          application_source = 'd78b76503f02ae26309855970fc5ce0b35c12bcb'
+          application_tree = '894500f09655d1fb8e37f27473021e6f091e2a98'
+          recovery_source = subprocess.check_output(
+              ['git', '-C', 'recovery-work', 'rev-parse', 'HEAD'], text=True).strip()
+          record = {
+              'application_source': application_source,
+              'application_tree': application_tree,
+              'recovery_snapshot': 'a2adac94f15504b90a83a295e77ad54154da4206',
+              'documentation_recovery_branch_source': recovery_source,
+              'device_tested': False,
+              'device_accepted': False,
+          }
+          files = {}
+          for p in sorted(out.iterdir()):
+              if p.is_file():
+                  files[p.name] = {
+                      'bytes': p.stat().st_size,
+                      'sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
+                  }
+          record['files'] = files
+          (out / 'BUILD_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+          sums = []
+          for p in sorted(out.iterdir()):
+              if p.is_file() and p.name != 'SHA256SUMS.txt':
+                  sums.append(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n')
+          (out / 'SHA256SUMS.txt').write_text(''.join(sums))
           PY
       - name: Preserve artifact immediately
         uses: actions/upload-artifact@v4
         with:
-          name: LeafGreen-Bindings-Retest-92bde34d
+          name: FRLG-Persistence-Retest-d78b7650
           path: device-artifact/
           if-no-files-found: error
           retention-days: 90
@@ -99,8 +117,12 @@ jobs:
           GH_REPO: GlitchedZeus/PokeBank-NX
           RUN_ID: ${{ github.run_id }}
         run: |
-          tag="device-leafgreen-bindings-92bde34d-$RUN_ID"
-          gh release create "$tag" device-artifact/* --target 92bde34d1586990aaa82adc4f60d42d7bc6b5bdf --prerelease --title "LeafGreen binding fix — physical retest (92bde34d)" --notes "Exact application source 92bde34d1586990aaa82adc4f60d42d7bc6b5bdf. Complete recovered RomFS and embedded byte comparison passed. DEVICE TESTED: NO. DEVICE ACCEPTED: NO. Test LeafGreen assignment/restart/profile isolation and existing FireRed read-only browsing."
+          tag="device-frlg-persistence-d78b7650-$RUN_ID"
+          gh release create "$tag" device-artifact/* \
+            --target d78b76503f02ae26309855970fc5ce0b35c12bcb \
+            --prerelease \
+            --title "FRLG persistence retest — d78b7650" \
+            --notes "Application source d78b76503f02ae26309855970fc5ce0b35c12bcb contains the 92bde34d LeafGreen persistence fix plus the narrow fsdevGetLastResult C-linkage compatibility fix. RomFS was restored from committed recovery snapshot a2adac94f15504b90a83a295e77ad54154da4206 and verified byte-for-byte at 3283 files. DEVICE TESTED: NO. DEVICE ACCEPTED: NO. Stop for physical Switch test."
           gh release view "$tag" --json url,assets > release-record.json
           cat release-record.json >> "$GITHUB_STEP_SUMMARY"
           cat device-artifact/BUILD_MANIFEST.json >> "$GITHUB_STEP_SUMMARY"
@@ -108,7 +130,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: LeafGreen-build-diagnostics
+          name: FRLG-Persistence-Retest-build-diagnostics
           path: |
             native-build.log
             embedded-romfs.json
