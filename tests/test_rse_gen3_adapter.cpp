@@ -345,8 +345,10 @@ int main() {
     auto invalidItem = rs;
     for (uint8_t slot = 0; slot < 2; ++slot)
         overwriteInventoryEntry(invalidItem, slot, 0x0560, 377, 1);
+    const auto invalidItemUntouched = invalidItem;
     auto invalidItemResult = parse(invalidItem, SourceGame::RubyGBA);
     assert(invalidItemResult && invalidItemResult.error == SaveError::None);
+    assert(invalidItem == invalidItemUntouched);
     assert(invalidItemResult.save->inventory().empty());
     assert(invalidItemResult.save->trainer().name == "WILL");
     assert(invalidItemResult.save->party().size() == 1);
@@ -357,14 +359,32 @@ int main() {
     auto impossibleCount = rs;
     for (uint8_t slot = 0; slot < 2; ++slot)
         overwriteInventoryEntry(impossibleCount, slot, 0x0560, 13, 1000);
+    const auto impossibleCountUntouched = impossibleCount;
     auto impossibleCountResult = parse(impossibleCount, SourceGame::SapphireGBA);
     assert(impossibleCountResult && impossibleCountResult.error == SaveError::None);
+    assert(impossibleCount == impossibleCountUntouched);
     assert(impossibleCountResult.save->inventory().empty());
     assert(impossibleCountResult.save->trainer().money == 500000);
     assert(impossibleCountResult.save->party().size() == 1);
     assert(impossibleCountResult.save->lastEnumerationError() == SaveError::None);
     assert(impossibleCountResult.save->boxes().size() == 2);
     assert(impossibleCountResult.save->lastEnumerationError() == SaveError::None);
+
+    // Repeat the optional-inventory failure contract on Emerald, including keyed quantity storage.
+    auto invalidEmeraldItem = emerald;
+    for (uint8_t slot = 0; slot < 2; ++slot)
+        overwriteInventoryEntry(invalidEmeraldItem, slot, 0x0560, 377,
+                                static_cast<uint16_t>(1 ^ 0xC3D4));
+    const auto invalidEmeraldUntouched = invalidEmeraldItem;
+    auto invalidEmeraldResult = parse(invalidEmeraldItem, SourceGame::EmeraldGBA);
+    assert(invalidEmeraldResult && invalidEmeraldResult.error == SaveError::None);
+    assert(invalidEmeraldItem == invalidEmeraldUntouched);
+    assert(invalidEmeraldResult.save->inventory().empty());
+    assert(invalidEmeraldResult.save->trainer().name == "WILL");
+    assert(invalidEmeraldResult.save->party().size() == 1);
+    assert(invalidEmeraldResult.save->lastEnumerationError() == SaveError::None);
+    assert(invalidEmeraldResult.save->boxes().size() == 2);
+    assert(invalidEmeraldResult.save->lastEnumerationError() == SaveError::None);
 
     // Current PKHeX Gen III pouch semantics load fixed-width slots and treat count-zero entries
     // as unowned/clearable state. Preserve realistic stale slots instead of rejecting inventory.
