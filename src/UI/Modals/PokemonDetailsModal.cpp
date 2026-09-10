@@ -46,8 +46,9 @@ namespace Modals {
         // PK1 is not a reduced modern format: it has DVs/stat experience and lacks nature,
         // ability, held item, SID, ribbons/marks and modern met/Ball metadata. Route it before
         // the modern editor computes or draws any of those fields.
-        if (const auto* gen1 = dynamic_cast<const Pokemon::Pokemon1ReadOnly*>(p)) {
-            drawGen1PokemonDetailsModal(screen, fb, *gen1);
+        if (p->getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup) {
+            const auto& gen1 = static_cast<const Pokemon::Pokemon1ReadOnly&>(*p);
+            drawGen1PokemonDetailsModal(screen, fb, gen1);
             return;
         }
 
