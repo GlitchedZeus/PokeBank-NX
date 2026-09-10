@@ -14,6 +14,39 @@ namespace PokeVault::Integration::Gen3::Detail {
         constexpr uint16_t kHighestGen3ItemId = 376;
         constexpr uint16_t kHighestLegalStackCount = 999;
 
+        // Ruby/Sapphire and Emerald use the same four-byte Gen III item entry layout as FRLG
+        // (little-endian u16 item id + little-endian u16 quantity), but their pouch offsets and
+        // capacities are different. These offsets/capacities are the SavRS/SavE layouts from the
+        // project's pinned PKSM-Core revision aa22d7a4f87c0351baf7da5962ba5acd01039a7c.
+        // Ruby/Sapphire store bag quantities plainly. Emerald XOR-obfuscates bag quantities with
+        // the low 16 bits of the security key at section 0 + 0xAC. PC item quantities are plaintext
+        // in all three games.
+        struct RSEPouchDefinition {
+            InventoryPouch pouch;
+            const char* name;
+            size_t offset;
+            uint16_t maxSlots;
+            bool keyed;
+        };
+
+        constexpr std::array<RSEPouchDefinition, 6> kRSPouches{{
+            {InventoryPouch::Items,      "Items",      0x0560, 20, false},
+            {InventoryPouch::KeyItems,   "Key Items",  0x05B0, 20, false},
+            {InventoryPouch::PokeBalls,  "Poké Balls", 0x0600, 16, false},
+            {InventoryPouch::TMCase,     "TM/HM",      0x0640, 64, false},
+            {InventoryPouch::BerryPouch, "Berries",    0x0740, 46, false},
+            {InventoryPouch::PCItems,    "PC Items",   0x0498, 50, false},
+        }};
+
+        constexpr std::array<RSEPouchDefinition, 6> kEmeraldPouches{{
+            {InventoryPouch::Items,      "Items",      0x0560, 30, true},
+            {InventoryPouch::KeyItems,   "Key Items",  0x05D8, 30, true},
+            {InventoryPouch::PokeBalls,  "Poké Balls", 0x0650, 16, true},
+            {InventoryPouch::TMCase,     "TM/HM",      0x0690, 64, true},
+            {InventoryPouch::BerryPouch, "Berries",    0x0790, 46, true},
+            {InventoryPouch::PCItems,    "PC Items",   0x0498, 50, false},
+        }};
+
         uint16_t read16(std::span<const uint8_t> bytes, size_t offset) noexcept {
             return static_cast<uint16_t>(bytes[offset]) |
                    static_cast<uint16_t>(bytes[offset + 1] << 8);
@@ -69,6 +102,49 @@ namespace PokeVault::Integration::Gen3::Detail {
                 InventoryPouch::TMCase, InventoryPouch::BerryPouch, InventoryPouch::PCItems,
             };
             return order[index];
+        }
+
+        template <size_t N>
+        bool readRSEInventory(std::span<const uint8_t> source,
+                              const std::array<size_t, 14>& sectors,
+                              const std::array<RSEPouchDefinition, N>& definitions,
+                              uint16_t key16,
+                              std::vector<InventoryPouchRecord>& inventory) noexcept {
+            inventory.clear();
+            inventory.reserve(N);
+            for (const auto& definition : definitions) {
+                InventoryPouchRecord pouch;
+                pouch.pouch = definition.pouch;
+                pouch.name = definition.name;
+                pouch.capacity = definition.maxSlots;
+                pouch.countEncrypted = definition.keyed;
+                pouch.items.reserve(definition.maxSlots);
+
+                for (uint16_t slot = 0; slot < definition.maxSlots; ++slot) {
+                    std::array<uint8_t, 4> entry{};
+                    if (!readLogical(source, sectors, 1,
+                            definition.offset + static_cast<size_t>(slot) * 4, entry)) {
+                        inventory.clear();
+                        return false;
+                    }
+                    const uint16_t itemId = read16(entry, 0);
+                    uint16_t count = read16(entry, 2);
+                    if (definition.keyed) count ^= key16;
+
+                    // Empty item ids are empty slots regardless of the stored count word. This is
+                    // important for keyed Emerald slots, whose untouched quantity word need not
+                    // decode to zero in isolation.
+                    if (itemId == 0) continue;
+                    if (count == 0 || itemId > kHighestGen3ItemId ||
+                        count > kHighestLegalStackCount) {
+                        inventory.clear();
+                        return false;
+                    }
+                    pouch.items.push_back({itemId, count});
+                }
+                inventory.push_back(std::move(pouch));
+            }
+            return true;
         }
     }
 
@@ -156,7 +232,19 @@ namespace PokeVault::Integration::Gen3::Detail {
             securityKey = read32(keyBytes, 0);
         }
         result.trainer.money = read32(moneyBytes, 0) ^ securityKey;
-        if (result.trainer.money > 999999) result.error = SaveError::CoreRejected;
+        if (result.trainer.money > 999999) {
+            result.error = SaveError::CoreRejected;
+            return result;
+        }
+
+        const uint16_t key16 = static_cast<uint16_t>(securityKey);
+        const bool inventoryOk = emerald
+            ? readRSEInventory(source, logicalSectorOffsets, kEmeraldPouches, key16, result.inventory)
+            : readRSEInventory(source, logicalSectorOffsets, kRSPouches, 0, result.inventory);
+        if (!inventoryOk) {
+            result.error = SaveError::InvalidInventory;
+            result.inventory.clear();
+        }
         return result;
     }
 }
