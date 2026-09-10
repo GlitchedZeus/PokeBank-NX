@@ -93,6 +93,9 @@ struct Metadata {
     bool boxesInitialized = false;
 };
 
+class ReadOnlySave;
+struct ParseResult;
+
 class ReadOnlySave final {
 public:
     const TrainerRecord& trainer() const noexcept { return trainer_; }
@@ -102,7 +105,6 @@ public:
     std::span<const uint8_t> sourceBytes() const noexcept { return sourceBytes_; }
 
 private:
-    friend struct ParseResult;
     friend ParseResult parse(std::span<const uint8_t>, SourceGame);
 
     std::vector<uint8_t> sourceBytes_;
