@@ -1,4 +1,4 @@
-name: RBY one-time details patch
+name: RBY one-time integration patch
 
 on:
   push:
@@ -18,15 +18,15 @@ jobs:
         with:
           ref: tmp-rby-adapter
           fetch-depth: 0
-      - name: Apply exact details dispatch patch
+      - name: Apply exact RBY integration patch
         run: python3 tools/patch_rby_details_dispatch.py
-      - name: Commit dispatch hook
+      - name: Commit native source and trainer truthfulness fixes
         run: |
           set -euo pipefail
           git diff --check
           git config user.name 'PokeBank NX CI'
           git config user.email 'actions@users.noreply.github.com'
-          git add src/UI/Modals/PokemonDetailsModal.cpp
+          git add Makefile src/UI/TrainerViewScreen.cpp
           git diff --cached --quiet && exit 0
-          git commit -m 'gen1: dispatch Pokemon details to truthful renderer'
+          git commit -m 'gen1: finish native and trainer view integration'
           git push origin HEAD:tmp-rby-adapter
