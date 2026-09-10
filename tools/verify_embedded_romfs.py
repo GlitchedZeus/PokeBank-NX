@@ -6,7 +6,7 @@ import json
 import struct
 from pathlib import Path
 
-def verify(nro, root):
+def verify(nro, root, application_source):
     data = nro.read_bytes()
     assert data[16:20] == b'NRO0', 'missing NRO0'
     aset = struct.unpack_from('<I', data, 24)[0]
@@ -51,12 +51,15 @@ def verify(nro, root):
     expected = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()}
     assert set(files) == expected, 'missing files: '+str(sorted(expected-set(files)))
     assert len(files) == 3283, 'unexpected complete file count'
-    assert b'92bde34d' in data, 'application source identity absent'
-    return {'result':'PASS', 'file_count':len(files), 'application_source':'92bde34d1586990aaa82adc4f60d42d7bc6b5bdf', 'nro_size':len(data), 'nro_sha256':hashlib.sha256(data).hexdigest()}
+    short_source = application_source[:8].encode('ascii')
+    assert short_source in data, 'application source identity absent'
+    return {'result':'PASS', 'file_count':len(files), 'application_source':application_source, 'nro_size':len(data), 'nro_sha256':hashlib.sha256(data).hexdigest()}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('nro', type=Path)
     parser.add_argument('romfs', type=Path)
+    parser.add_argument('--application-source', required=True,
+                        help='full application-source SHA whose short form must be embedded')
     args = parser.parse_args()
-    print(json.dumps(verify(args.nro, args.romfs), indent=2))
+    print(json.dumps(verify(args.nro, args.romfs, args.application_source), indent=2))
