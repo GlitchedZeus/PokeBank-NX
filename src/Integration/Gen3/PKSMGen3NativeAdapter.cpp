@@ -217,7 +217,7 @@ namespace PokeVault::Integration::Gen3 {
             case SaveError::InvalidPartyCount: return "invalid party count";
             case SaveError::CoreRejected: return "native Generation III reader rejected the data";
             case SaveError::MalformedPokemon: return "Pokemon checksum is invalid";
-            case SaveError::InvalidInventory: return "invalid FireRed/LeafGreen inventory";
+            case SaveError::InvalidInventory: return "invalid Generation III inventory";
         }
         return "unknown Generation III parse error";
     }

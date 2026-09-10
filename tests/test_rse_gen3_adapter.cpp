@@ -346,13 +346,45 @@ int main() {
     for (uint8_t slot = 0; slot < 2; ++slot)
         overwriteInventoryEntry(invalidItem, slot, 0x0560, 377, 1);
     auto invalidItemResult = parse(invalidItem, SourceGame::RubyGBA);
-    assert(!invalidItemResult && invalidItemResult.error == SaveError::InvalidInventory);
+    assert(invalidItemResult && invalidItemResult.error == SaveError::None);
+    assert(invalidItemResult.save->inventory().empty());
+    assert(invalidItemResult.save->trainer().name == "WILL");
+    assert(invalidItemResult.save->party().size() == 1);
+    assert(invalidItemResult.save->lastEnumerationError() == SaveError::None);
+    assert(invalidItemResult.save->boxes().size() == 2);
+    assert(invalidItemResult.save->lastEnumerationError() == SaveError::None);
 
     auto impossibleCount = rs;
     for (uint8_t slot = 0; slot < 2; ++slot)
         overwriteInventoryEntry(impossibleCount, slot, 0x0560, 13, 1000);
     auto impossibleCountResult = parse(impossibleCount, SourceGame::SapphireGBA);
-    assert(!impossibleCountResult && impossibleCountResult.error == SaveError::InvalidInventory);
+    assert(impossibleCountResult && impossibleCountResult.error == SaveError::None);
+    assert(impossibleCountResult.save->inventory().empty());
+    assert(impossibleCountResult.save->trainer().money == 500000);
+    assert(impossibleCountResult.save->party().size() == 1);
+    assert(impossibleCountResult.save->lastEnumerationError() == SaveError::None);
+    assert(impossibleCountResult.save->boxes().size() == 2);
+    assert(impossibleCountResult.save->lastEnumerationError() == SaveError::None);
+
+    // Current PKHeX Gen III pouch semantics load fixed-width slots and treat count-zero entries
+    // as unowned/clearable state. Preserve realistic stale slots instead of rejecting inventory.
+    auto staleZero = rs;
+    for (uint8_t slot = 0; slot < 2; ++slot)
+        overwriteInventoryEntry(staleZero, slot, 0x0564, 600, 0);
+    auto staleZeroResult = parse(staleZero, SourceGame::RubyGBA);
+    assert(staleZeroResult);
+    assert(staleZeroResult.save->inventory().size() == 6);
+    assert(staleZeroResult.save->inventory()[0].items.size() == 1);
+    assert(staleZeroResult.save->inventory()[0].items[0].itemId == 13);
+    assert(staleZeroResult.save->inventory()[0].items[0].count == 3);
+
+    auto staleEmerald = emerald;
+    for (uint8_t slot = 0; slot < 2; ++slot)
+        overwriteInventoryEntry(staleEmerald, slot, 0x0564, 600, 0xC3D4);
+    auto staleEmeraldResult = parse(staleEmerald, SourceGame::EmeraldGBA);
+    assert(staleEmeraldResult);
+    assert(staleEmeraldResult.save->inventory().size() == 6);
+    assert(staleEmeraldResult.save->inventory()[0].items.size() == 1);
 
     auto slotA = makeFixture(Family::RS, 12, 9);
     assertRSERead(slotA, SourceGame::RubyGBA, "ruby_gba", 0, 12, 0x23456789);
