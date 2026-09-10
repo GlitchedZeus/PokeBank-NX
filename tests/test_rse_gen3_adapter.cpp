@@ -128,6 +128,33 @@ namespace {
             write32(logical[0], 0xAC, 0);
         }
         write32(logical[1], 0x490, 500000u ^ securityKey);
+
+        // Real Gen III four-byte item entries. Ruby/Sapphire quantities are plaintext; Emerald
+        // bag quantities use the low 16 bits of the save security key. PC item quantities are
+        // plaintext in all three games. Potion (item 13) x3 mirrors the physical Emerald evidence
+        // without hardcoding anything in production parsing.
+        const auto writeInventoryEntry = [&](size_t offset, uint16_t itemId, uint16_t count,
+                                             bool keyed) {
+            write16(logical[1], offset, itemId);
+            const uint16_t key16 = keyed ? static_cast<uint16_t>(securityKey) : 0;
+            write16(logical[1], offset + 2, static_cast<uint16_t>(count ^ key16));
+        };
+        if (family == Family::RS) {
+            writeInventoryEntry(0x0560, 13, 3, false);   // Items: Potion x3
+            writeInventoryEntry(0x05B0, 259, 1, false); // Key Items
+            writeInventoryEntry(0x0600, 4, 7, false);   // Poké Balls
+            writeInventoryEntry(0x0640, 289, 2, false); // TM/HM
+            writeInventoryEntry(0x0740, 133, 5, false); // Berries
+            writeInventoryEntry(0x0498, 13, 9, false);  // PC Items
+        } else if (family == Family::Emerald) {
+            writeInventoryEntry(0x0560, 13, 3, true);
+            writeInventoryEntry(0x05D8, 259, 1, true);
+            writeInventoryEntry(0x0650, 4, 7, true);
+            writeInventoryEntry(0x0690, 289, 2, true);
+            writeInventoryEntry(0x0790, 133, 5, true);
+            writeInventoryEntry(0x0498, 13, 9, false);
+        }
+
         logical[1][0x234] = 1;
         const auto party = makePokemon(species, pid, true);
         std::copy(party.begin(), party.end(), logical[1].begin() + 0x238);
@@ -193,6 +220,15 @@ namespace {
         write16(save, offset + 0xFF4, duplicate);
     }
 
+    void overwriteInventoryEntry(std::vector<uint8_t>& save, uint8_t slot,
+                                 size_t logicalOffset, uint16_t itemId, uint16_t storedCount) {
+        const size_t sector = physicalSectorForId(save, slot, 1);
+        write16(save, sector + logicalOffset, itemId);
+        write16(save, sector + logicalOffset + 2, storedCount);
+        write16(save, sector + 0xFF6, sectorChecksum(
+            std::span<const uint8_t>(save.data() + sector, kChunkLengths[1])));
+    }
+
     void writeFile(const fs::path& path, const std::vector<uint8_t>& bytes) {
         std::ofstream output(path, std::ios::binary | std::ios::trunc);
         output.write(reinterpret_cast<const char*>(bytes.data()),
@@ -239,7 +275,31 @@ namespace {
         assert(trainer.gender == 1);
         assert(trainer.tid16 == 54321 && trainer.sid16 == 12345);
         assert(trainer.money == 500000);
-        assert(parsed.save->inventory().empty());
+
+        const auto& inventory = parsed.save->inventory();
+        assert(inventory.size() == 6);
+        const bool isEmerald = expectedId == "emerald_gba";
+        const std::array<InventoryPouch, 6> expectedPouches = {
+            InventoryPouch::Items, InventoryPouch::KeyItems, InventoryPouch::PokeBalls,
+            InventoryPouch::TMCase, InventoryPouch::BerryPouch, InventoryPouch::PCItems,
+        };
+        const std::array<std::string_view, 6> expectedNames = {
+            "Items", "Key Items", "Poké Balls", "TM/HM", "Berries", "PC Items",
+        };
+        const std::array<uint16_t, 6> rsCapacities = {20, 20, 16, 64, 46, 50};
+        const std::array<uint16_t, 6> emeraldCapacities = {30, 30, 16, 64, 46, 50};
+        const std::array<uint16_t, 6> expectedIds = {13, 259, 4, 289, 133, 13};
+        const std::array<uint16_t, 6> expectedCounts = {3, 1, 7, 2, 5, 9};
+        for (size_t index = 0; index < inventory.size(); ++index) {
+            assert(inventory[index].pouch == expectedPouches[index]);
+            assert(inventory[index].name == expectedNames[index]);
+            assert(inventory[index].capacity ==
+                   (isEmerald ? emeraldCapacities[index] : rsCapacities[index]));
+            assert(inventory[index].countEncrypted == (isEmerald && index < 5));
+            assert(inventory[index].items.size() == 1); // remaining zero-id slots are ignored
+            assert(inventory[index].items.front().itemId == expectedIds[index]);
+            assert(inventory[index].items.front().count == expectedCounts[index]);
+        }
 
         const auto party = parsed.save->party();
         assert(parsed.save->lastEnumerationError() == SaveError::None);
@@ -275,6 +335,24 @@ int main() {
     const auto emerald = makeFixture(Family::Emerald);
     assertRSERead(emerald, SourceGame::EmeraldGBA, "emerald_gba", 1, 9, 0x12345679);
     assert(!parse(emerald, SourceGame::RubyGBA));
+
+    // Emerald's bag quantity is genuinely keyed on disk; PC Items remain plaintext.
+    const size_t emeraldSection1 = physicalSectorForId(emerald, 1, 1);
+    assert(read16(emerald, emeraldSection1 + 0x0562) ==
+           static_cast<uint16_t>(3 ^ 0xC3D4));
+    assert(read16(emerald, emeraldSection1 + 0x049A) == 9);
+
+    auto invalidItem = rs;
+    for (uint8_t slot = 0; slot < 2; ++slot)
+        overwriteInventoryEntry(invalidItem, slot, 0x0560, 377, 1);
+    auto invalidItemResult = parse(invalidItem, SourceGame::RubyGBA);
+    assert(!invalidItemResult && invalidItemResult.error == SaveError::InvalidInventory);
+
+    auto impossibleCount = rs;
+    for (uint8_t slot = 0; slot < 2; ++slot)
+        overwriteInventoryEntry(impossibleCount, slot, 0x0560, 13, 1000);
+    auto impossibleCountResult = parse(impossibleCount, SourceGame::SapphireGBA);
+    assert(!impossibleCountResult && impossibleCountResult.error == SaveError::InvalidInventory);
 
     auto slotA = makeFixture(Family::RS, 12, 9);
     assertRSERead(slotA, SourceGame::RubyGBA, "ruby_gba", 0, 12, 0x23456789);
@@ -378,6 +456,16 @@ int main() {
     assert(rubyGame->support == PokeVault::Games::SourceSupport::ReadOnly);
     assert(sapphireGame->support == PokeVault::Games::SourceSupport::ReadOnly);
     assert(emeraldGame->support == PokeVault::Games::SourceSupport::ReadOnly);
+    assert(PokeVault::Games::gameCardArtworkPath("ruby_gba") ==
+           "romfs:/game_cards/ruby_gba.png");
+    assert(PokeVault::Games::gameCardArtworkPath("sapphire_gba") ==
+           "romfs:/game_cards/sapphire_gba.png");
+    assert(PokeVault::Games::gameCardArtworkPath("emerald_gba") ==
+           "romfs:/game_cards/emerald_gba.png");
+    assert(PokeVault::Games::gameCardArtworkPath("firered_gba") ==
+           "romfs:/game_cards/firered_gba.png");
+    assert(PokeVault::Games::gameCardArtworkPath("leafgreen_gba") ==
+           "romfs:/game_cards/leafgreen_gba.png");
 
     fs::remove_all(root);
     std::cout << "RSE strict read-only adapter/discovery tests passed\n";

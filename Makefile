@@ -235,6 +235,9 @@ game-card-art:
 	@mkdir -p "$(GAME_CARD_ART_DIR)"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/firered_gba.png" "$(GAME_CARD_ART_DIR)/firered_gba.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/leafgreen_gba.png" "$(GAME_CARD_ART_DIR)/leafgreen_gba.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/ruby_gba.png" "$(GAME_CARD_ART_DIR)/ruby_gba.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/sapphire_gba.png" "$(GAME_CARD_ART_DIR)/sapphire_gba.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/emerald_gba.png" "$(GAME_CARD_ART_DIR)/emerald_gba.png"
 
 #---------------------------------------------------------------------------------
 # Type sprite download (generation-ix scarlet-violet style)
