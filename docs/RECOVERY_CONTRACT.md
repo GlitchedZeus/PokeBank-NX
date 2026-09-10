@@ -1,6 +1,6 @@
 # PokeBank NX — Recovery Contract
 
-Last updated: 2026-09-09
+Last updated: 2026-09-10
 
 ## The rule
 
@@ -117,7 +117,7 @@ or encoded as a tracked deterministic transform. Never leave the only corrected 
 
 ## Current known full visual baseline
 
-Historical full visual baseline:
+Historical FRLG full visual baseline:
 
 ```text
 Application source: ea0b806bac4acdb5619f22f9841d616ea8a237ff
@@ -131,14 +131,27 @@ Fonts: 3 / 3
 Embedded RomFS: 3,283 / 3,283 files
 ```
 
-Current application source awaiting a new physical-test artifact:
+Current RSE final-retest baseline:
 
 ```text
-92bde34d1586990aaa82adc4f60d42d7bc6b5bdf
-legacy: safely replace profile binding database on Switch
+Application source: 1c96df2543cba339cec3dc88e20f8c6ca4fe82bb
+Application tree: 49870ef3bdf92c4f8434597bc83de22dc6e76e27
+Recovery snapshot: 2321fa488668e32392de25afed84e38919fbd21f
+Artifact: PokeBank-NX-RSE-Final-Retest-1c96df25.nro
+Size: 158,120,837 bytes
+SHA-256: d525a8bfac881e313d2fce1c154e26f0a893a907dc2a0be44f8f604c91416d07
+HD renders: 3,260 / 3,260
+Base species: 1,025 / 1,025
+Type icons: 18 / 18
+Fonts: 3 / 3
+GBA game-card artwork: FireRed/LeafGreen/Ruby/Sapphire/Emerald PASS
+Embedded RomFS: 3,286 / 3,286 files
+Device status: RSE TESTED = YES; RSE ACCEPTED = NO pending final corrected-artifact retest
 ```
 
-The user's copy of the historical NRO is a useful independent fallback, but normal recovery must not depend on the user re-uploading it.
+The current permanent recovery snapshot is the 3,286-file snapshot above. It supersedes the older 3,283-file snapshot for current RSE builds because Ruby/Sapphire/Emerald game-card artwork is now part of the required asset tree.
+
+The user's copies of historical artifacts are useful independent fallbacks, but normal recovery must not depend on the user re-uploading them.
 
 ## Routine RECOVERY algorithm
 
