@@ -6,7 +6,10 @@ on:
     paths:
       - 'include/Integration/Gen1/**'
       - 'src/Integration/Gen1/**'
+      - 'include/Legacy/RetroArchRBYDiscovery.h'
+      - 'src/Legacy/RetroArchRBYDiscovery.cpp'
       - 'tests/test_rby_gen1_adapter.cpp'
+      - 'tests/test_rby_discovery.cpp'
       - '.github/workflows/rby-adapter-check.yml'
   workflow_dispatch:
 
@@ -44,6 +47,15 @@ jobs:
             build-host/pksm-core.o -Wl,--gc-sections -o build-host/test_rby_gen1_adapter
           ./build-host/test_rby_gen1_adapter
 
+      - name: Focused RBY discovery
+        run: |
+          set -euo pipefail
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_rby_discovery.cpp src/Legacy/RetroArchRBYDiscovery.cpp \
+            src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Utils/SHA256.cpp \
+            -o build-host/test_rby_discovery
+          ./build-host/test_rby_discovery
+
       - name: Focused Gen I ASan UBSan
         run: |
           set -euo pipefail
@@ -61,3 +73,9 @@ jobs:
             tests/test_rby_gen1_adapter.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
             build-host/pksm-core-rby-sanitize.o -Wl,--gc-sections -o build-host/test_rby_gen1_adapter_sanitize
           ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rby_gen1_adapter_sanitize
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O1 \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            tests/test_rby_discovery.cpp src/Legacy/RetroArchRBYDiscovery.cpp \
+            src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Utils/SHA256.cpp \
+            -o build-host/test_rby_discovery_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rby_discovery_sanitize
