@@ -92,9 +92,9 @@ jobs:
           python3 - <<'PY'
           import json
           data = json.load(open('embedded-romfs.json'))
-          assert data.get('status') == 'PASS', data
-          assert data.get('expected_file_count') == 3283, data
-          assert data.get('embedded_file_count') == 3283, data
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == 3283, data
+          assert data.get('application_source') == '46e0c1617fb642f45c0cd1d4b07a9bcc89c01909', data
           PY
           python3 application/tools/package_device_build.py application/PokeBankNX.nro \
             --label RSE-Retest \
