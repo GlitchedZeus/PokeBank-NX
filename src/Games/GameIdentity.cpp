@@ -59,6 +59,9 @@ namespace PokeVault::Games {
     }
 
     std::string_view gameCardArtworkPath(std::string_view id) noexcept {
+        if (id == "ruby_gba") return "romfs:/game_cards/ruby_gba.png";
+        if (id == "sapphire_gba") return "romfs:/game_cards/sapphire_gba.png";
+        if (id == "emerald_gba") return "romfs:/game_cards/emerald_gba.png";
         if (id == "firered_gba") return "romfs:/game_cards/firered_gba.png";
         if (id == "leafgreen_gba") return "romfs:/game_cards/leafgreen_gba.png";
         return {};
