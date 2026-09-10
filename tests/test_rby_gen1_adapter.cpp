@@ -152,29 +152,18 @@ std::vector<uint8_t> makeFixture(SourceGame game, const FixtureLayout& l, bool i
 
     for (size_t box=0;box<l.boxCount;++box) initEmptyList(d,boxStart(l,box),l.boxCapacity);
     if (initialized) {
-        // A non-current stored box.
         setListEntry(d,boxStart(l,0),l.boxCapacity,33,l.stringLength,0,0xB0,12,ot,
                      jp?encJP({0x96,0x97},l.stringLength):encIntl("CHAR",l.stringLength));
-        // Final box / final legal slot boundary: fill the list so slot capacity-1 is real.
         const size_t last=l.boxCount-1;
         for (size_t slot=0;slot<l.boxCapacity;++slot)
             setListEntry(d,boxStart(l,last),l.boxCapacity,33,l.stringLength,slot,0x15,
                          static_cast<uint8_t>(5+(slot%20)),ot,
                          jp?encJP({0x98},l.stringLength):encIntl("MEW",l.stringLength));
     } else {
-        // Deliberate garbage in a non-current bank. The game has not initialized stored boxes yet;
-        // production must ignore this instead of manufacturing Pokemon from it.
         std::fill(d.begin()+boxStart(l,0),d.begin()+boxStart(l,0)+l.boxSize,0xA5);
     }
 
-    if (!jp) {
-        // Pinned PKSM-Core's Sav1 constructor uses a deliberately loose Japanese-layout probe at
-        // 0x2ED5/0x302D. A mostly-zero synthetic international save can accidentally satisfy that
-        // probe even though the international checksum/list layout is authoritative. Mark the
-        // unused international byte at the first JP probe as non-list data so the oracle evaluates
-        // the intended international layout. This is fixture-only; production detection is unchanged.
-        d[0x2ED5]=0xFF;
-    }
+    if (!jp) d[0x2ED5]=0xFF;
     finalizeChecksums(d,l,initialized);
     return d;
 }
@@ -185,12 +174,10 @@ void oracleCheckPKSM(const std::vector<uint8_t>& fixture, const FixtureLayout& l
     assert(pksm::Sav1::isValid(bytes));
     pksm::Sav1 sav(bytes,static_cast<uint32_t>(fixture.size()));
     assert(sav.TID()==0x1234);
-    // Pinned PKSM-Core aa22d7 has a known BCD helper defect: BCDtoUInteger() never advances its
-    // decimal multiplier, so 0x12,0x34,0x56 becomes 12+34+56 = 102. PKHeX e15d246 reads these
-    // same Gen I big-endian BCD bytes as 123456. Production intentionally follows the correct
-    // representation; keep this assertion so a future PKSM-Core pin changing the behavior is
-    // noticed instead of silently turning the oracle into a different implementation.
-    assert(sav.money()==102);
+    // Do not use Sav1::money() as an oracle at this pinned revision. Its BigEndian BCD helper has
+    // both a non-advancing multiplier and off-by-one reverse-iterator bounds, so it reads outside
+    // the three-byte money field. PKHeX e15d246 independently confirms Gen I money is three-byte
+    // big-endian packed BCD; the production assertion below must still equal 123456.
     assert(sav.currentBox()==2);
     assert(sav.partyCount()==2);
     assert(sav.maxBoxes()==l.boxCount);
@@ -239,22 +226,20 @@ void assertCore(SourceGame game, const FixtureLayout& l) {
 }
 
 int main() {
-    assert(gen1InternalToNational(0x01)==112); // Rhydon: PKHeX SpeciesConverter test oracle.
-    assert(gen1InternalToNational(0x54)==25); // Pikachu.
-    assert(gen1InternalToNational(0x99)==1);  // Bulbasaur.
-    assert(gen1InternalToNational(0x15)==151);// Mew.
+    assert(gen1InternalToNational(0x01)==112);
+    assert(gen1InternalToNational(0x54)==25);
+    assert(gen1InternalToNational(0x99)==1);
+    assert(gen1InternalToNational(0x15)==151);
 
     assertCore(SourceGame::Red,INTL);
-    assertCore(SourceGame::Blue,INTL);   // same structural family; identity comes from validated path hint.
+    assertCore(SourceGame::Blue,INTL);
     assertCore(SourceGame::Yellow,INTL);
     assertCore(SourceGame::Red,JPN);
     assertCore(SourceGame::Yellow,JPN);
 
-    // Red/Blue are structurally indistinguishable, so either validated RB hint can open the same RB save.
     auto rb=makeFixture(SourceGame::Red,INTL,true);
     assert(parse(rb,SourceGame::Blue));
 
-    // But a strong Yellow-vs-RB contradiction is refused rather than guessed.
     auto yellow=makeFixture(SourceGame::Yellow,INTL,true);
     auto mismatch=parse(yellow,SourceGame::Red);
     assert(!mismatch && mismatch.error==SaveError::GameHintMismatch);
@@ -262,19 +247,16 @@ int main() {
     mismatch=parse(red,SourceGame::Yellow);
     assert(!mismatch && mismatch.error==SaveError::GameHintMismatch);
 
-    // Main checksum is fatal.
     auto checksumBad=red;
     checksumBad[0x2608]^=0x01;
     auto bad=parse(checksumBad,SourceGame::Red);
     assert(!bad && bad.error==SaveError::ChecksumMismatch);
 
-    // Stored box checksums are strict once the game says the banks are initialized.
     auto boxChecksumBad=red;
     boxChecksumBad[0x4000+0x30]^=0x80;
     bad=parse(boxChecksumBad,SourceGame::Red);
     assert(!bad && bad.error==SaveError::ChecksumMismatch);
 
-    // Before initialization, non-current box banks are undefined and must be ignored read-only.
     auto early=makeFixture(SourceGame::Red,INTL,false);
     auto earlyBefore=early;
     auto earlyResult=parse(early,SourceGame::Red);
@@ -284,7 +266,6 @@ int main() {
     assert(!earlyResult.save->boxes()[0].slots[0]);
     assert(earlyResult.save->boxes()[2].slots[0] && earlyResult.save->boxes()[2].slots[0]->species==1);
 
-    // Invalid party/list states fail cleanly.
     auto badParty=red;
     badParty[INTL.party]=7;
     badParty[INTL.checksum]=diff8(std::span<const uint8_t>(badParty).subspan(0x2598,INTL.mainLength));
@@ -293,19 +274,18 @@ int main() {
 
     auto badMon=red;
     const size_t partyBody=INTL.party+8;
-    badMon[partyBody]=0x02; // header says Pikachu (0x54); body now says Kangaskhan.
+    badMon[partyBody]=0x02;
     badMon[INTL.checksum]=diff8(std::span<const uint8_t>(badMon).subspan(0x2598,INTL.mainLength));
     bad=parse(badMon,SourceGame::Red);
     assert(!bad && bad.error==SaveError::InvalidParty);
 
     auto invalidSpecies=red;
-    invalidSpecies[INTL.party+1]=0x1F; // glitch/internal id -> national 0
+    invalidSpecies[INTL.party+1]=0x1F;
     invalidSpecies[partyBody]=0x1F;
     invalidSpecies[INTL.checksum]=diff8(std::span<const uint8_t>(invalidSpecies).subspan(0x2598,INTL.mainLength));
     bad=parse(invalidSpecies,SourceGame::Red);
     assert(!bad);
 
-    // Invalid BCD money and truncation are rejected.
     auto badMoney=red;
     badMoney[INTL.money]=0xFA;
     badMoney[INTL.checksum]=diff8(std::span<const uint8_t>(badMoney).subspan(0x2598,INTL.mainLength));
