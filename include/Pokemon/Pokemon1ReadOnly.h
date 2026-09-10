@@ -14,6 +14,10 @@ namespace Pokemon {
 // not reinterpret DVs/stat experience as modern IVs/EVs and all mutation entry points remain inert.
 class Pokemon1ReadOnly final : public Pokemon {
 public:
+    // Internal presentation-only tag. This is NOT a stored Pokemon game-version byte; it exists so
+    // the no-RTTI Switch build can route validated PK1 wrappers to the Generation I summary UI.
+    static constexpr Enums::GameVersion kReadOnlyGameGroup = static_cast<Enums::GameVersion>(71);
+
     explicit Pokemon1ReadOnly(const PokeVault::Integration::Gen1::PokemonRecord& record);
 
     uint16_t speciesID() const noexcept override { return record_.species; }
@@ -60,11 +64,7 @@ public:
         return slot >= 0 && slot < 4 ? record_.ppUps[static_cast<size_t>(slot)] : 0;
     }
 
-    Enums::GameVersion getGameGroup() const noexcept override {
-        // 71 is reserved immediately before the existing FRLG grouping (72). Keeping this local
-        // until the enum itself is promoted avoids claiming a stored game-version byte.
-        return static_cast<Enums::GameVersion>(71);
-    }
+    Enums::GameVersion getGameGroup() const noexcept override { return kReadOnlyGameGroup; }
     uint16_t tid16() const noexcept override { return record_.trainerId; }
     std::u16string otName() const override;
 
