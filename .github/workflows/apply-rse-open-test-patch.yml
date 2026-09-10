@@ -35,18 +35,35 @@ jobs:
 
       - name: Run focused RSE open regression
         run: |
-          set -euo pipefail
+          set -o pipefail
           SOURCES="tests/test_rse_open_regression.cpp src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES -o build-host/test_rse_open_regression
-          ./build-host/test_rse_open_regression
+          {
+            set -x
+            g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES -o build-host/test_rse_open_regression
+            ./build-host/test_rse_open_regression
+          } 2>&1 | tee focused-rse.log
 
       - name: Run sanitizers
         run: |
           make -f Makefile.host host-sanitize
-          set -euo pipefail
+          set -o pipefail
           SOURCES="tests/test_rse_open_regression.cpp src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES -o build-host/test_rse_open_regression_sanitize
-          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize
+          {
+            set -x
+            g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES -o build-host/test_rse_open_regression_sanitize
+            ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize
+          } 2>&1 | tee focused-rse-sanitize.log
+
+      - name: Upload focused diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rse-open-focused-${{ github.run_id }}
+          path: |
+            focused-rse.log
+            focused-rse-sanitize.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Commit and push tested patch
         run: |
