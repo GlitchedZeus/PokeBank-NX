@@ -1,4 +1,4 @@
-name: RSE final physical-retest build
+name: RSE open-fix physical-retest build
 
 on:
   push:
@@ -14,12 +14,12 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  APP_SHA: 1c96df2543cba339cec3dc88e20f8c6ca4fe82bb
-  APP_TREE: 49870ef3bdf92c4f8434597bc83de22dc6e76e27
+  APP_SHA: a2df4c1acdb7a556808bd58a2bdbcd4fc0335954
+  APP_TREE: 559202d16f0affc13a9e1c521beff4834585b1e7
   SNAPSHOT_SHA: 2321fa488668e32392de25afed84e38919fbd21f
-  OLD_RSE_SHA: 46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
-  SHORT_SHA: 1c96df25
-  # Derived from the permanent recovery manifest after adding Ruby/Sapphire/Emerald card art.
+  PREVIOUS_CORRECTED_SHA: 1c96df2543cba339cec3dc88e20f8c6ca4fe82bb
+  SHORT_SHA: a2df4c1a
+  CLEAN_HOST_GATE_RUN: 34453208654
   EXPECTED_ROMFS: 3286
 
 jobs:
@@ -27,6 +27,43 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
+      - name: Check out current verification source
+        uses: actions/checkout@v4
+        with:
+          ref: feature/pokebank-playable
+          path: verification
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Verify complete host/focused/sanitizer gate on current tests
+        working-directory: verification
+        run: |
+          set -euo pipefail
+          git diff --check HEAD^ HEAD || git diff --check
+          python3 -m py_compile tools/check_device_assets.py tools/recover_workspace.py tools/check_recovery_contract.py tools/pack_recovery_snapshot.py tools/package_device_build.py
+          python3 tools/check_recovery_contract.py
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test 2>&1 | tee ../host-tests.log
+          SOURCES="tests/test_rse_open_regression.cpp \
+            src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+            src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp \
+            src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
+            src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
+            src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
+            src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \
+            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
+            -o build-host/test_rse_open_regression
+          ./build-host/test_rse_open_regression 2>&1 | tee ../focused-rse.log
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O1 \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
+            -o build-host/test_rse_open_regression_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize 2>&1 | tee ../focused-rse-sanitize.log
+          make -f Makefile.host host-sanitize 2>&1 | tee ../sanitizers.log
+          grep -q 'RSE strict read-only adapter/discovery tests passed' ../host-tests.log
+          grep -q 'RSE save-open bridge regression passed' ../focused-rse.log
+
       - name: Check out recovery infrastructure
         uses: actions/checkout@v4
         with:
@@ -55,15 +92,15 @@ jobs:
             test -s "romfs/game_cards/$f.png"
           done
 
-      - name: Check out exact corrected RSE application source
+      - name: Check out exact RSE open-fix application source
         uses: actions/checkout@v4
         with:
-          ref: 1c96df2543cba339cec3dc88e20f8c6ca4fe82bb
+          ref: a2df4c1acdb7a556808bd58a2bdbcd4fc0335954
           path: application
           fetch-depth: 2
           submodules: recursive
 
-      - name: Verify exact source and recovered asset supply
+      - name: Verify exact application source and recovered asset supply
         run: |
           set -euo pipefail
           test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
@@ -78,17 +115,6 @@ jobs:
           grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
           test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_ROMFS"
           test -z "$(git -C application status --porcelain)"
-
-      - name: Focused host regressions, source safety, ASan and UBSan
-        working-directory: application
-        run: |
-          set -euo pipefail
-          git diff --check HEAD^ HEAD
-          python3 -m py_compile tools/check_device_assets.py tools/recover_workspace.py tools/check_recovery_contract.py tools/pack_recovery_snapshot.py tools/package_device_build.py
-          make -f Makefile.host host-clean
-          make -f Makefile.host host-test 2>&1 | tee ../host-tests.log
-          make -f Makefile.host host-sanitize 2>&1 | tee ../sanitizers.log
-          grep -q 'RSE strict read-only adapter/discovery tests passed' ../host-tests.log
 
       - name: Clean native devkitA64 full build and final link
         run: |
@@ -126,27 +152,39 @@ jobs:
               assert (Path('application/romfs/game_cards') / name).is_file(), name
           PY
           python3 application/tools/package_device_build.py application/PokeBankNX.nro \
-            --label RSE-Final-Retest --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
-          cp embedded-romfs.json asset-preflight.log recovery.log host-tests.log sanitizers.log \
-             toolchain-image.json toolchain-packages.txt native-build.log device-artifact/
+            --label RSE-OpenFix-Retest --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
+          cp embedded-romfs.json asset-preflight.log recovery.log host-tests.log focused-rse.log \
+             focused-rse-sanitize.log sanitizers.log toolchain-image.json toolchain-packages.txt \
+             native-build.log device-artifact/
           python3 - <<'PY'
           import hashlib, json, os, subprocess
           from pathlib import Path
           out = Path('device-artifact')
           record = {
-              'original_rse_source': os.environ['OLD_RSE_SHA'],
+              'previous_corrected_application_source': os.environ['PREVIOUS_CORRECTED_SHA'],
               'application_source': os.environ['APP_SHA'],
               'application_tree': os.environ['APP_TREE'],
               'recovery_snapshot': os.environ['SNAPSHOT_SHA'],
-              'documentation_recovery_branch_source': subprocess.check_output(
+              'verification_branch_source': subprocess.check_output(
+                  ['git','-C','verification','rev-parse','HEAD'], text=True).strip(),
+              'workflow_branch_source': subprocess.check_output(
                   ['git','-C','recovery-work','rev-parse','HEAD'], text=True).strip(),
+              'clean_host_gate_run': int(os.environ['CLEAN_HOST_GATE_RUN']),
               'workflow_run': int(os.environ['GITHUB_RUN_ID']),
+              'host_suite': 'PASS',
+              'focused_ruby_open': 'PASS',
+              'focused_sapphire_open': 'PASS',
+              'focused_emerald_open': 'PASS',
+              'inventory_failure_rejects_whole_save': False,
               'host_rse_inventory': 'PASS Ruby/Sapphire/Emerald',
               'frlg_regression': 'PASS',
+              'source_mutation_policy': 'PASS',
+              'write_policy': 'PASS',
               'asan_ubsan': 'PASS',
               'live_save_writing': 'HARD DISABLED',
               'native_devkitA64_full_link': 'PASS',
               'embedded_romfs': f"PASS {os.environ['EXPECTED_ROMFS']}/{os.environ['EXPECTED_ROMFS']}",
+              'rse_artwork_physical': 'PASS Ruby/Sapphire/Emerald',
               'rse_device_tested': True,
               'rse_device_accepted': False,
           }
@@ -166,23 +204,25 @@ jobs:
           print((out / 'SHA256SUMS.txt').read_text())
           PY
 
-      - name: Preserve corrected RSE physical-retest artifact
+      - name: Preserve RSE open-fix physical-retest artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RSE-Final-Retest-1c96df25
+          name: RSE-OpenFix-Retest-a2df4c1a
           path: device-artifact/
           if-no-files-found: error
           retention-days: 90
 
-      - name: Preserve final build diagnostics
+      - name: Preserve RSE open-fix build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: RSE-Final-Retest-diagnostics-1c96df25
+          name: RSE-OpenFix-Retest-diagnostics-a2df4c1a
           path: |
             recovery.log
             asset-preflight.log
             host-tests.log
+            focused-rse.log
+            focused-rse-sanitize.log
             sanitizers.log
             native-build.log
             embedded-romfs.json
