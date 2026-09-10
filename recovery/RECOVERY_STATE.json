@@ -20,8 +20,8 @@
     "manifest": "recovery/assets_snapshot/manifest.json",
     "packer": "tools/pack_recovery_snapshot.py",
     "preferred_when_present": true,
-    "status": "REPACKING_FOR_RSE_ARTWORK",
-    "note": "Previous committed snapshot a2adac94f15504b90a83a295e77ad54154da4206 has 3283 files; tracked RSE game-card assets are overlaid before deterministic repack."
+    "status": "COMMITTED",
+    "note": "Complete 3286-file snapshot committed at 2321fa488668e32392de25afed84e38919fbd21f; includes FireRed/LeafGreen/Ruby/Sapphire/Emerald game-card artwork."
   },
   "pokemon_hd": {
     "generator": "tools/gen_hdsprites.py",
