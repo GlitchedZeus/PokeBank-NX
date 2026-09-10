@@ -1,4 +1,5 @@
 #include "Legacy/RetroArchFRLGDiscovery.h"
+#include "Legacy/RetroArchRBYDiscovery.h"
 
 #include "Utils/SHA256.h"
 
@@ -269,6 +270,34 @@ namespace PokeVault::Legacy {
                 }
             }
         }
+
+        LegacySourceStatus mapRBYStatus(RBYSourceStatus status) noexcept {
+            switch (status) {
+                case RBYSourceStatus::Ready: return LegacySourceStatus::Ready;
+                case RBYSourceStatus::InvalidSave: return LegacySourceStatus::InvalidSave;
+                case RBYSourceStatus::AmbiguousIdentity: return LegacySourceStatus::AmbiguousIdentity;
+                case RBYSourceStatus::ReadError: return LegacySourceStatus::ReadError;
+                case RBYSourceStatus::ScanLimitReached: return LegacySourceStatus::ScanLimitReached;
+            }
+            return LegacySourceStatus::ReadError;
+        }
+
+        FRLGSource importRBYSource(const RBYSource& input) {
+            FRLGSource output;
+            output.path = input.path;
+            output.normalizedPath = input.normalizedPath;
+            output.sourceIdentity = input.sourceIdentity;
+            output.canonicalPath = input.canonicalPath;
+            output.fileSize = input.fileSize;
+            output.modifiedTime = input.modifiedTime;
+            output.contentFingerprint = input.contentFingerprint;
+            output.gameId = input.gameId;
+            output.status = mapRBYStatus(input.status);
+            output.gen1ParseError = input.parseError;
+            output.detail = input.detail;
+            output.gen1Save = input.save;
+            return output;
+        }
     }
 
     std::vector<std::string> retroArchSaveRootsFromConfig(const std::string& configPath) {
@@ -320,8 +349,36 @@ namespace PokeVault::Legacy {
             selectedRoots.push_back(conventionalRoot);
             kind = FRLGDiscoveryResult::RootKind::ConventionalFallback;
         }
+
+        // Keep the already accepted Gen III traversal unchanged, then independently run the strict
+        // Gen I scanner over the same approved RetroArch battery-save root. The two parsers never
+        // reinterpret each other's data; this merge is presentation/catalog plumbing only.
         auto result = discoverFRLGSaves(selectedRoots, limits);
         result.activeRootKind = kind;
+
+        RBYScanLimits rbyLimits;
+        rbyLimits.maxDepth = limits.maxDepth;
+        rbyLimits.maxFiles = limits.maxFiles;
+        auto rby = discoverConfiguredRetroArchRBYSaves(
+            rbyLimits, configPath, conventionalRoot);
+        result.filesExamined = std::max(result.filesExamined, rby.filesExamined);
+        result.limitReached = result.limitReached || rby.limitReached;
+        if (result.activeRoot.empty()) result.activeRoot = rby.activeRoot;
+        if (result.activeRootKind == FRLGDiscoveryResult::RootKind::None) {
+            switch (rby.activeRootKind) {
+                case RBYDiscoveryResult::RootKind::Configured:
+                    result.activeRootKind = FRLGDiscoveryResult::RootKind::Configured;
+                    break;
+                case RBYDiscoveryResult::RootKind::ConventionalFallback:
+                    result.activeRootKind = FRLGDiscoveryResult::RootKind::ConventionalFallback;
+                    break;
+                case RBYDiscoveryResult::RootKind::None:
+                    break;
+            }
+        }
+        result.sources.reserve(result.sources.size() + rby.sources.size());
+        for (const auto& source : rby.sources)
+            result.sources.push_back(importRBYSource(source));
         return result;
     }
 }
