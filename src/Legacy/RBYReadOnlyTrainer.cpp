@@ -47,7 +47,7 @@ std::unique_ptr<RBYReadOnlyTrainer> RBYReadOnlyTrainer::create(
     }
     const size_t expectedBoxes = metadata.region == Integration::Gen1::RegionLayout::Japanese ? 8u : 12u;
     const size_t expectedSlots = metadata.region == Integration::Gen1::RegionLayout::Japanese ? 30u : 20u;
-    if (save.boxes().size() != expectedBoxes || save.party().size() > Trainer::MAX_PARTY_SLOTS) {
+    if (save.boxes().size() != expectedBoxes || save.party().size() > ::Trainer::MAX_PARTY_SLOTS) {
         error = "strict Generation I source metadata is inconsistent";
         return nullptr;
     }
