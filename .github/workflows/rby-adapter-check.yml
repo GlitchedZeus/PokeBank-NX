@@ -6,10 +6,13 @@ on:
     paths:
       - 'include/Integration/Gen1/**'
       - 'src/Integration/Gen1/**'
-      - 'include/Legacy/RetroArchRBYDiscovery.h'
-      - 'src/Legacy/RetroArchRBYDiscovery.cpp'
-      - 'tests/test_rby_gen1_adapter.cpp'
-      - 'tests/test_rby_discovery.cpp'
+      - 'include/Legacy/*RBY*'
+      - 'src/Legacy/*RBY*'
+      - 'include/Pokemon/Pokemon1ReadOnly.h'
+      - 'src/Pokemon/Pokemon1ReadOnly.cpp'
+      - 'src/Games/GameIdentity.cpp'
+      - 'tests/test_game_identity.cpp'
+      - 'tests/test_rby_*.cpp'
       - '.github/workflows/rby-adapter-check.yml'
   workflow_dispatch:
 
@@ -19,7 +22,7 @@ permissions:
 jobs:
   host:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,7 +50,7 @@ jobs:
             build-host/pksm-core.o -Wl,--gc-sections -o build-host/test_rby_gen1_adapter
           ./build-host/test_rby_gen1_adapter
 
-      - name: Focused RBY discovery
+      - name: Focused RBY discovery and source cards
         run: |
           set -euo pipefail
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
@@ -55,6 +58,23 @@ jobs:
             src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Utils/SHA256.cpp \
             -o build-host/test_rby_discovery
           ./build-host/test_rby_discovery
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_rby_source_browser.cpp src/Legacy/RBYSourceBrowser.cpp \
+            src/Legacy/RetroArchRBYDiscovery.cpp src/Legacy/LegacySourceBindings.cpp \
+            src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp \
+            -o build-host/test_rby_source_browser
+          ./build-host/test_rby_source_browser
+
+      - name: Focused RBY Trainer Party Boxes Pokemon bridge
+        run: |
+          set -euo pipefail
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_rby_readonly_bridge.cpp src/Legacy/RBYReadOnlyTrainer.cpp \
+            src/Pokemon/Pokemon1ReadOnly.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
+            src/Pokemon/BaseStatsGen89.cpp src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp \
+            src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
+            -o build-host/test_rby_readonly_bridge
+          ./build-host/test_rby_readonly_bridge
 
       - name: Focused Gen I ASan UBSan
         run: |
@@ -79,3 +99,18 @@ jobs:
             src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Utils/SHA256.cpp \
             -o build-host/test_rby_discovery_sanitize
           ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rby_discovery_sanitize
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O1 \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            tests/test_rby_source_browser.cpp src/Legacy/RBYSourceBrowser.cpp \
+            src/Legacy/RetroArchRBYDiscovery.cpp src/Legacy/LegacySourceBindings.cpp \
+            src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp \
+            -o build-host/test_rby_source_browser_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rby_source_browser_sanitize
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O1 \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            tests/test_rby_readonly_bridge.cpp src/Legacy/RBYReadOnlyTrainer.cpp \
+            src/Pokemon/Pokemon1ReadOnly.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
+            src/Pokemon/BaseStatsGen89.cpp src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp \
+            src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
+            -o build-host/test_rby_readonly_bridge_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rby_readonly_bridge_sanitize
