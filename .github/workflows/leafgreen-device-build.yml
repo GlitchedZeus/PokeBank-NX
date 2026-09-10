@@ -19,6 +19,7 @@ env:
   SNAPSHOT_SHA: 2321fa488668e32392de25afed84e38919fbd21f
   OLD_RSE_SHA: 46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
   SHORT_SHA: 1c96df25
+  # Derived from the permanent recovery manifest after adding Ruby/Sapphire/Emerald card art.
   EXPECTED_ROMFS: 3286
 
 jobs:
