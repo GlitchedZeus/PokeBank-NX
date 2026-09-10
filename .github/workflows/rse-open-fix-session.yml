@@ -1,0 +1,343 @@
+name: RSE open-regression fix session
+
+on:
+  push:
+    branches: [feature/pokebank-playable]
+    paths: [.github/workflows/rse-open-fix-session.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pokebank-rse-open-fix-session
+  cancel-in-progress: false
+
+env:
+  SNAPSHOT_SHA: 2321fa488668e32392de25afed84e38919fbd21f
+  EXPECTED_ROMFS: 3286
+  ORIGINAL_RSE_SHA: 46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
+  FAILED_DEVICE_SHA: 1c96df2543cba339cec3dc88e20f8c6ca4fe82bb
+
+jobs:
+  fix-test-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - name: Check out branch and pinned submodules
+        uses: actions/checkout@v4
+        with:
+          ref: feature/pokebank-playable
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Add focused regression coverage and diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if text.count(old) != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {text.count(old)}")
+              p.write_text(text.replace(old, new, 1))
+
+          # Fix stale FRLG-only wording now that the adapter serves all GBA Gen III sources.
+          for path in (
+              'src/Integration/Gen3/PKSMGen3Adapter.cpp',
+              'src/Integration/Gen3/PKSMGen3NativeAdapter.cpp',
+          ):
+              replace_once(path,
+                  'case SaveError::InvalidInventory: return "invalid FireRed/LeafGreen inventory";',
+                  'case SaveError::InvalidInventory: return "invalid Generation III inventory";')
+
+          # Runtime log carries the exact selected R/S/E identity when optional inventory is absent.
+          replace_once('src/UI/UI.cpp',
+              '"RetroArch FRLG: %zu files checked, %zu ready, %zu ambiguous, %zu rejected%s",',
+              '"RetroArch Gen III: %zu files checked, %zu ready, %zu ambiguous, %zu rejected%s",')
+          replace_once('src/UI/UI.cpp',
+              'logErrorToFile("Legacy FRLG source refused open", error.c_str());',
+              'logErrorToFile("Legacy Gen III source refused open", error.c_str());')
+          replace_once('src/UI/UI.cpp',
+              'error = "RetroArch source is no longer a validated FireRed/LeafGreen save";',
+              'error = "RetroArch source is no longer a validated Generation III save";')
+          replace_once('src/UI/UI.cpp',
+              '        auto trainer = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*source->save, error);\n'
+              '        if (!trainer) return false;\n\n'
+              '        TrainerViewScreen trainerScreen(',
+              '        auto trainer = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*source->save, error);\n'
+              '        if (!trainer) return false;\n\n'
+              '        const bool rseInventoryUnavailable = source->save->inventory().empty() &&\n'
+              '            (source->gameId == "ruby_gba" || source->gameId == "sapphire_gba" ||\n'
+              '             source->gameId == "emerald_gba");\n'
+              '        if (rseInventoryUnavailable)\n'
+              '            logErrorToFile("RSE inventory validation failed; save remains open read-only",\n'
+              '                           source->gameId.c_str());\n\n'
+              '        TrainerViewScreen trainerScreen(')
+
+          test_path = 'tests/test_rse_gen3_adapter.cpp'
+          replace_once(test_path,
+              '#include "Legacy/RetroArchFRLGDiscovery.h"\n',
+              '#include "Legacy/RetroArchFRLGDiscovery.h"\n'
+              '#ifdef POKEBANK_GEN3_SELECTIVE_PORT_TEST\n'
+              '#include "Legacy/FRLGReadOnlyTrainer.h"\n'
+              '#endif\n')
+
+          replace_once(test_path,
+              '    assertRSERead(emerald, SourceGame::EmeraldGBA, "emerald_gba", 1, 9, 0x12345679);\n'
+              '    assert(!parse(emerald, SourceGame::RubyGBA));\n\n',
+              '    assertRSERead(emerald, SourceGame::EmeraldGBA, "emerald_gba", 1, 9, 0x12345679);\n'
+              '    assert(!parse(emerald, SourceGame::RubyGBA));\n\n'
+              '#ifdef POKEBANK_GEN3_SELECTIVE_PORT_TEST\n'
+              '    // Exact UI-bridge regression: 1c96df25 exposed valid RSE inventory, but the old\n'
+              '    // FRLGReadOnlyTrainer milestone guard rejected any non-empty RSE inventory and\n'
+              '    // returned nullptr, which made SaveSelect bounce to the main menu.\n'
+              '    auto rubyBridgeParsed = parse(rs, SourceGame::RubyGBA);\n'
+              '    assert(rubyBridgeParsed);\n'
+              '    std::string rubyBridgeError;\n'
+              '    auto rubyBridge = PokeVault::Legacy::FRLGReadOnlyTrainer::create(\n'
+              '        *rubyBridgeParsed.save, rubyBridgeError);\n'
+              '    assert(rubyBridge && rubyBridgeError.empty());\n'
+              '    assert(rubyBridge->items.size() == 6);\n'
+              '    assert(rubyBridge->items[0].size() == 1);\n'
+              '    assert(rubyBridge->items[0][0].itemId == 13 && rubyBridge->items[0][0].count == 3);\n'
+              '    assert(rubyBridge->party.size() == 1);\n'
+              '    assert(rubyBridge->boxes.size() == 14);\n\n'
+              '    auto sapphireBridgeParsed = parse(rs, SourceGame::SapphireGBA);\n'
+              '    assert(sapphireBridgeParsed);\n'
+              '    std::string sapphireBridgeError;\n'
+              '    auto sapphireBridge = PokeVault::Legacy::FRLGReadOnlyTrainer::create(\n'
+              '        *sapphireBridgeParsed.save, sapphireBridgeError);\n'
+              '    assert(sapphireBridge && sapphireBridgeError.empty());\n\n'
+              '    auto emeraldBridgeParsed = parse(emerald, SourceGame::EmeraldGBA);\n'
+              '    assert(emeraldBridgeParsed);\n'
+              '    std::string emeraldBridgeError;\n'
+              '    auto emeraldBridge = PokeVault::Legacy::FRLGReadOnlyTrainer::create(\n'
+              '        *emeraldBridgeParsed.save, emeraldBridgeError);\n'
+              '    assert(emeraldBridge && emeraldBridgeError.empty());\n'
+              '    assert(emeraldBridge->items.size() == 6);\n'
+              '#endif\n\n')
+
+          old_invalid = '''    auto invalidItem = rs;
+    for (uint8_t slot = 0; slot < 2; ++slot)
+        overwriteInventoryEntry(invalidItem, slot, 0x0560, 377, 1);
+    auto invalidItemResult = parse(invalidItem, SourceGame::RubyGBA);
+    assert(!invalidItemResult && invalidItemResult.error == SaveError::InvalidInventory);
+
+    auto impossibleCount = rs;
+    for (uint8_t slot = 0; slot < 2; ++slot)
+        overwriteInventoryEntry(impossibleCount, slot, 0x0560, 13, 1000);
+    auto impossibleCountResult = parse(impossibleCount, SourceGame::SapphireGBA);
+    assert(!impossibleCountResult && impossibleCountResult.error == SaveError::InvalidInventory);
+'''
+          new_invalid = '''    // Inventory is an optional submodel. A semantically bad inventory entry must never make an
+    // otherwise structurally valid RSE save unopenable.
+    auto invalidItem = rs;
+    for (uint8_t slot = 0; slot < 2; ++slot)
+        overwriteInventoryEntry(invalidItem, slot, 0x0560, 377, 1);
+    auto invalidItemResult = parse(invalidItem, SourceGame::RubyGBA);
+    assert(invalidItemResult && invalidItemResult.error == SaveError::None);
+    assert(invalidItemResult.save->inventory().empty());
+    assert(invalidItemResult.save->trainer().name == "WILL");
+    assert(invalidItemResult.save->party().size() == 1);
+    assert(invalidItemResult.save->boxes().size() == 2);
+#ifdef POKEBANK_GEN3_SELECTIVE_PORT_TEST
+    std::string invalidBridgeError;
+    auto invalidBridge = PokeVault::Legacy::FRLGReadOnlyTrainer::create(
+        *invalidItemResult.save, invalidBridgeError);
+    assert(invalidBridge && invalidBridgeError.empty());
+    assert(invalidBridge->items.empty());
+    assert(invalidBridge->party.size() == 1 && invalidBridge->boxes.size() == 14);
+#endif
+
+    auto impossibleCount = rs;
+    for (uint8_t slot = 0; slot < 2; ++slot)
+        overwriteInventoryEntry(impossibleCount, slot, 0x0560, 13, 1000);
+    auto impossibleCountResult = parse(impossibleCount, SourceGame::SapphireGBA);
+    assert(impossibleCountResult && impossibleCountResult.error == SaveError::None);
+    assert(impossibleCountResult.save->inventory().empty());
+    assert(impossibleCountResult.save->trainer().money == 500000);
+    assert(impossibleCountResult.save->party().size() == 1);
+    assert(impossibleCountResult.save->boxes().size() == 2);
+
+    // PKHeX's Gen III pouch model loads fixed-width entries and treats count-zero entries as
+    // non-owned/clearable state. Preserve real stale-slot compatibility, including a stale item id
+    // outside the normal Gen III range when its decoded quantity is zero.
+    auto staleZero = rs;
+    for (uint8_t slot = 0; slot < 2; ++slot)
+        overwriteInventoryEntry(staleZero, slot, 0x0564, 600, 0);
+    auto staleZeroResult = parse(staleZero, SourceGame::RubyGBA);
+    assert(staleZeroResult);
+    assert(staleZeroResult.save->inventory().size() == 6);
+    assert(staleZeroResult.save->inventory()[0].items.size() == 1);
+    assert(staleZeroResult.save->inventory()[0].items[0].itemId == 13);
+    assert(staleZeroResult.save->inventory()[0].items[0].count == 3);
+
+    auto staleEmerald = emerald;
+    for (uint8_t slot = 0; slot < 2; ++slot)
+        overwriteInventoryEntry(staleEmerald, slot, 0x0564, 600, 0xC3D4);
+    auto staleEmeraldResult = parse(staleEmerald, SourceGame::EmeraldGBA);
+    assert(staleEmeraldResult);
+    assert(staleEmeraldResult.save->inventory().size() == 6);
+    assert(staleEmeraldResult.save->inventory()[0].items.size() == 1);
+'''
+          replace_once(test_path, old_invalid, new_invalid)
+
+          replace_once('Makefile.host',
+              'RSE_NATIVE_SOURCES := $(RSE_TEST_COMMON_SOURCES) src/Integration/Gen3/PKSMGen3NativeAdapter.cpp \\\n\tsrc/Names/ItemNames.cpp\n',
+              'RSE_NATIVE_SOURCES := $(RSE_TEST_COMMON_SOURCES) src/Integration/Gen3/PKSMGen3NativeAdapter.cpp \\\n\tsrc/Names/ItemNames.cpp src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp \\\n\tsrc/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \\\n\tsrc/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp\n')
+          PY
+
+          git diff --check
+          git diff --stat
+
+      - name: Focused host regression suite and sanitizers
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test 2>&1 | tee host-tests.log
+          make -f Makefile.host host-sanitize 2>&1 | tee sanitizers.log
+          grep -q 'RSE strict read-only adapter/discovery tests passed' host-tests.log
+
+      - name: Commit and push exact application source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'PokeBank NX CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add Makefile.host tests/test_rse_gen3_adapter.cpp \
+            src/Integration/Gen3/PKSMGen3Adapter.cpp \
+            src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/UI/UI.cpp
+          git diff --cached --check
+          git commit -m 'gen3: regress RSE save-open bridge and stale inventory slots'
+          APP_SHA="$(git rev-parse HEAD)"
+          SHORT_SHA="$(git rev-parse --short=8 HEAD)"
+          echo "APP_SHA=$APP_SHA" >> "$GITHUB_ENV"
+          echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
+          echo "sha=$APP_SHA" >> "$GITHUB_OUTPUT"
+          git push origin HEAD:feature/pokebank-playable
+
+      - name: Verify permanent 3286-file recovery snapshot is unchanged and restore it
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --quiet "$SNAPSHOT_SHA" HEAD -- recovery/assets_snapshot
+          test "$(python3 -c 'import json; print(json.load(open("recovery/assets_snapshot/manifest.json"))["file_count"])')" = "$EXPECTED_ROMFS"
+          python3 tools/recover_workspace.py 2>&1 | tee recovery.log
+          grep -q 'Recovery source: committed GitHub RomFS snapshot' recovery.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' recovery.log
+          test "$(find romfs -type f | wc -l)" -eq "$EXPECTED_ROMFS"
+          for f in firered_gba leafgreen_gba ruby_gba sapphire_gba emerald_gba; do
+            test -s "romfs/game_cards/$f.png"
+          done
+
+      - name: Device asset preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          test "$(find romfs -type f | wc -l)" -eq "$EXPECTED_ROMFS"
+
+      - name: Clean native devkitA64 full compile and final link
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s PokeBankNX.nro
+
+      - name: Verify embedded identity and full RomFS then package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          python3 tools/verify_embedded_romfs.py PokeBankNX.nro romfs \
+            --application-source "$APP_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          PY
+          mkdir -p device-artifact
+          python3 tools/package_device_build.py PokeBankNX.nro \
+            --label RSE-OpenFix-Retest --out-dir device-artifact --zip
+          cp embedded-romfs.json asset-preflight.log recovery.log host-tests.log sanitizers.log \
+             toolchain-image.json toolchain-packages.txt native-build.log device-artifact/
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          out = Path('device-artifact')
+          record = {
+              'original_rse_source': os.environ['ORIGINAL_RSE_SHA'],
+              'failed_device_source': os.environ['FAILED_DEVICE_SHA'],
+              'application_source': os.environ['APP_SHA'],
+              'recovery_snapshot': os.environ['SNAPSHOT_SHA'],
+              'recovery_snapshot_changed': False,
+              'host_rse_open_regression': 'PASS Ruby/Sapphire/Emerald',
+              'inventory_failure_rejects_whole_save': False,
+              'frlg_regression': 'PASS',
+              'asan_ubsan': 'PASS',
+              'live_save_writing': 'HARD DISABLED',
+              'native_devkitA64_full_link': 'PASS',
+              'embedded_romfs': f"PASS {os.environ['EXPECTED_ROMFS']}/{os.environ['EXPECTED_ROMFS']}",
+              'rse_artwork_physical': 'PASS',
+              'rse_device_accepted': False,
+              'workflow_run': int(os.environ['GITHUB_RUN_ID']),
+          }
+          files = {}
+          for p in sorted(out.iterdir()):
+              if p.is_file():
+                  files[p.name] = {'bytes': p.stat().st_size,
+                                   'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
+          record['files'] = files
+          (out / 'BUILD_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+          sums = []
+          for p in sorted(out.iterdir()):
+              if p.is_file() and p.name != 'SHA256SUMS.txt':
+                  sums.append(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n')
+          (out / 'SHA256SUMS.txt').write_text(''.join(sums))
+          print((out / 'BUILD_MANIFEST.json').read_text())
+          print((out / 'SHA256SUMS.txt').read_text())
+          PY
+
+      - name: Upload RSE open-fix physical retest bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: RSE-OpenFix-Retest-${{ env.SHORT_SHA }}
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload diagnostics on failure or success
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RSE-OpenFix-diagnostics-${{ github.run_id }}
+          path: |
+            host-tests.log
+            sanitizers.log
+            recovery.log
+            asset-preflight.log
+            native-build.log
+            embedded-romfs.json
+            toolchain-image.json
+            toolchain-packages.txt
+          if-no-files-found: ignore
+          retention-days: 14
