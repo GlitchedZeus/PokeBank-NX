@@ -55,16 +55,19 @@ jobs:
             dkp-pacman -Q libnx devkitA64 switch-tools || true
             echo "=== installed fs_dev.h declaration ==="
             grep -n -B2 -A2 "fsdevGetLastResult" /opt/devkitpro/libnx/include/switch/runtime/devices/fs_dev.h || true
+            echo "=== nm implementation ==="
+            command -v nm || true
+            nm --version | head -n 1 || true
             echo "=== libnx.a exported symbol ==="
-            aarch64-none-elf-nm -g --defined-only /opt/devkitpro/libnx/lib/libnx.a | grep "fsdevGetLastResult" || true
+            nm -g --defined-only /opt/devkitpro/libnx/lib/libnx.a | grep "fsdevGetLastResult" || true
             set +e
             make -j1
             build_rc=$?
             set -e
             echo "=== LegacySourceBindings.o unresolved fsdev symbol ==="
-            find build -name LegacySourceBindings.o -print -exec aarch64-none-elf-nm {} \; | grep -E "LegacySourceBindings|fsdevGetLastResult" || true
+            find build -name LegacySourceBindings.o -print -exec nm {} \; | grep -E "LegacySourceBindings|fsdevGetLastResult" || true
             echo "=== demangled unresolved fsdev symbol ==="
-            find build -name LegacySourceBindings.o -exec aarch64-none-elf-nm -C {} \; | grep "fsdevGetLastResult" || true
+            find build -name LegacySourceBindings.o -exec nm -C {} \; | grep "fsdevGetLastResult" || true
             exit "$build_rc"
           ' 2>&1 | tee native-build.log
       - name: Verify and package exact binary
