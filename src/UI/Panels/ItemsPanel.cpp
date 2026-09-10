@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <array>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "UI/Panels/ItemsPanel.h"
@@ -26,6 +28,20 @@ using namespace Utils;
 
 namespace UI {
 namespace Panels {
+    namespace {
+        bool isRSESource(std::string_view id) noexcept {
+            return id == "ruby_gba" || id == "sapphire_gba" || id == "emerald_gba";
+        }
+
+        const char* rsePouchDisplayName(int category) noexcept {
+            constexpr std::array<const char*, 6> names = {
+                "Items", "Key Items", "Poké Balls", "TM/HM", "Berries", "PC Items",
+            };
+            return category >= 0 && category < static_cast<int>(names.size())
+                ? names[static_cast<size_t>(category)] : "?";
+        }
+    }
+
     const char* pouchDisplayName(GameVersion gameGroup, int category) {
         const char* name = nullptr;
         if (gameGroup == GameVersion::ZA)        name = getPouchInfo9LZA(static_cast<PouchType9LZA>(category)).name;
@@ -47,10 +63,25 @@ namespace Panels {
         fb.drawFilledRoundedRect(x, y, width, hH, 16, Colors::AccentDim);
         fb.drawFilledRect(x, y + hH - 16, width, 16, Colors::AccentDim);
         GameVersion gameGroup = screen.trainer.getGameGroup();
-        const char* pouchName = pouchDisplayName(gameGroup, screen.selectedCategory);
+        const bool rseSource = screen.legacyReadOnlySource() && isRSESource(screen.sourceGameId);
+        const char* pouchName = rseSource
+            ? rsePouchDisplayName(screen.selectedCategory)
+            : pouchDisplayName(gameGroup, screen.selectedCategory);
         fb.drawText(x + 22, y + (hH - fb.lineHeight(TextStyle::Heading)) / 2, std::string("Items - ") + pouchName, Colors::Text, TextStyle::Heading);
 
         screen.touchButtons.clear();
+
+        // A successfully decoded RSE bag always exposes six pouch records, even when all pouches
+        // contain zero owned items. The read-only bridge deliberately leaves trainer.items empty
+        // only when the optional RSE inventory submodel could not be validated. Keep the save open
+        // and tell the user exactly what is unavailable instead of showing "Invalid category" or
+        // bouncing back to the source picker.
+        if (rseSource && screen.trainer.items.empty()) {
+            fb.drawText(x + 24, y + hH + 30, "Inventory unavailable", Colors::Text, TextStyle::Body);
+            fb.drawText(x + 24, y + hH + 58, "RSE inventory validation failed", Colors::TextDim, TextStyle::Caption);
+            fb.drawText(x + 24, y + hH + 82, "Trainer, party and boxes remain read-only and available.", Colors::TextDim, TextStyle::Caption);
+            return;
+        }
 
         if (screen.selectedCategory < 0 || screen.selectedCategory >= static_cast<int>(screen.trainer.items.size())) {
             fb.drawText(x + 24, y + hH + 30, "Invalid category", Colors::TextDim);
