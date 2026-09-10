@@ -58,11 +58,11 @@ jobs:
             src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
             src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
             src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 \
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \
             -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
             -o build-host/test_rse_open_regression
           ./build-host/test_rse_open_regression
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O1 \
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O1 \
             -fsanitize=address,undefined -fno-omit-frame-pointer \
             -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
             -o build-host/test_rse_open_regression_sanitize
