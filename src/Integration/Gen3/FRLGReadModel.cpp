@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
 #include <string>
 
 namespace PokeVault::Integration::Gen3::Detail {
@@ -104,11 +105,27 @@ namespace PokeVault::Integration::Gen3::Detail {
             return order[index];
         }
 
+        void reportRSEInventoryFailure(bool emerald, const RSEPouchDefinition& definition,
+                                       uint16_t slot, size_t logicalOffset, uint16_t itemId,
+                                       uint16_t rawCount, uint16_t decodedCount, uint16_t key16,
+                                       const char* reason) noexcept {
+            // Ruby and Sapphire share the same byte-level save family, so this low-level reader
+            // cannot distinguish the exact release. The UI/discovery layer logs the selected
+            // source identity separately. Emerald is byte-distinct and can be named exactly here.
+            const char* game = emerald ? "emerald_gba" : "ruby_or_sapphire_gba";
+            std::fprintf(stderr,
+                "RSE inventory validation failure: game=%s pouch=%s slot=%u offset=0x%zX "
+                "item=%u raw_count=%u decoded_count=%u key16=0x%04X reason=%s\n",
+                game, definition.name, static_cast<unsigned>(slot), logicalOffset,
+                static_cast<unsigned>(itemId), static_cast<unsigned>(rawCount),
+                static_cast<unsigned>(decodedCount), static_cast<unsigned>(key16), reason);
+        }
+
         template <size_t N>
         bool readRSEInventory(std::span<const uint8_t> source,
                               const std::array<size_t, 14>& sectors,
                               const std::array<RSEPouchDefinition, N>& definitions,
-                              uint16_t key16,
+                              uint16_t key16, bool emerald,
                               std::vector<InventoryPouchRecord>& inventory) noexcept {
             inventory.clear();
             inventory.reserve(N);
@@ -121,22 +138,44 @@ namespace PokeVault::Integration::Gen3::Detail {
                 pouch.items.reserve(definition.maxSlots);
 
                 for (uint16_t slot = 0; slot < definition.maxSlots; ++slot) {
+                    const size_t logicalOffset = definition.offset + static_cast<size_t>(slot) * 4;
                     std::array<uint8_t, 4> entry{};
-                    if (!readLogical(source, sectors, 1,
-                            definition.offset + static_cast<size_t>(slot) * 4, entry)) {
+                    if (!readLogical(source, sectors, 1, logicalOffset, entry)) {
+                        reportRSEInventoryFailure(emerald, definition, slot, logicalOffset,
+                                                  0, 0, 0, key16, "logical read failed");
                         inventory.clear();
                         return false;
                     }
                     const uint16_t itemId = read16(entry, 0);
-                    uint16_t count = read16(entry, 2);
+                    const uint16_t rawCount = read16(entry, 2);
+                    uint16_t count = rawCount;
                     if (definition.keyed) count ^= key16;
 
                     // Empty item ids are empty slots regardless of the stored count word. This is
-                    // important for keyed Emerald slots, whose untouched quantity word need not
-                    // decode to zero in isolation.
+                    // especially important for keyed Emerald slots, whose stored quantity word can
+                    // be nonzero even when the slot is empty.
                     if (itemId == 0) continue;
-                    if (count == 0 || itemId > kHighestGen3ItemId ||
-                        count > kHighestLegalStackCount) {
+
+                    // PKHeX's Gen III pouch loader accepts every fixed-width slot first and treats
+                    // count==0 entries as non-owned/clearable state. Real saves can therefore carry
+                    // a stale nonzero item id in an unused slot. Ignore that stale slot instead of
+                    // rejecting the inventory (and never reject the whole save for it).
+                    if (count == 0) continue;
+
+                    // Keep semantic validation for genuinely implausible non-empty entries, but an
+                    // inventory-only failure is optional-model failure. readRSEModel() deliberately
+                    // leaves the critical save result valid so trainer/party/boxes remain usable.
+                    if (itemId > kHighestGen3ItemId) {
+                        reportRSEInventoryFailure(emerald, definition, slot, logicalOffset,
+                                                  itemId, rawCount, count, key16,
+                                                  "item id exceeds Gen III range");
+                        inventory.clear();
+                        return false;
+                    }
+                    if (count > kHighestLegalStackCount) {
+                        reportRSEInventoryFailure(emerald, definition, slot, logicalOffset,
+                                                  itemId, rawCount, count, key16,
+                                                  "decoded quantity exceeds supported stack range");
                         inventory.clear();
                         return false;
                     }
@@ -239,10 +278,15 @@ namespace PokeVault::Integration::Gen3::Detail {
 
         const uint16_t key16 = static_cast<uint16_t>(securityKey);
         const bool inventoryOk = emerald
-            ? readRSEInventory(source, logicalSectorOffsets, kEmeraldPouches, key16, result.inventory)
-            : readRSEInventory(source, logicalSectorOffsets, kRSPouches, 0, result.inventory);
+            ? readRSEInventory(source, logicalSectorOffsets, kEmeraldPouches, key16, true,
+                               result.inventory)
+            : readRSEInventory(source, logicalSectorOffsets, kRSPouches, 0, false,
+                               result.inventory);
         if (!inventoryOk) {
-            result.error = SaveError::InvalidInventory;
+            // Inventory is a secondary read model, not a save-integrity gate. Slot/sector/signature/
+            // checksum/family/trainer validation has already succeeded before this point. Keep the
+            // structurally valid save openable and signal inventory unavailability with an empty
+            // inventory vector. A successfully decoded (even completely empty) bag has six pouches.
             result.inventory.clear();
         }
         return result;
