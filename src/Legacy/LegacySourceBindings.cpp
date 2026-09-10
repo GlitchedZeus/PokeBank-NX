@@ -8,7 +8,8 @@
 #include <utility>
 #include <vector>
 #ifdef __SWITCH__
-#include <switch/runtime/devices/fs_dev.h>
+#include <switch/result.h>
+extern "C" Result fsdevGetLastResult(void) __attribute__((weak));
 #endif
 
 namespace PokeVault::Legacy {
@@ -108,14 +109,21 @@ namespace PokeVault::Legacy {
         const int error = errno;
         char diagnostic[256];
 #ifdef __SWITCH__
-        // This is libnx's last translated Result, possibly stale for a local validation failure.
-        const unsigned native = fsdevGetLastResult();
+        // Optional richer libnx diagnostic. Keep persistence compatible when this API is absent.
+        if (fsdevGetLastResult) {
+            const unsigned native = fsdevGetLastResult();
+            std::snprintf(diagnostic, sizeof(diagnostic),
+                "%s: errno=%d (%s), native_result=0x%08x",
+                stage, error, std::strerror(error), native);
+        } else {
+            std::snprintf(diagnostic, sizeof(diagnostic),
+                "%s: errno=%d (%s), native_result=unavailable",
+                stage, error, std::strerror(error));
+        }
 #else
-        const unsigned native = 0;
-#endif
         std::snprintf(diagnostic, sizeof(diagnostic),
-            "%s: errno=%d (%s), fsdevLastResult=0x%08x",
-            stage, error, std::strerror(error), native);
+            "%s: errno=%d (%s)", stage, error, std::strerror(error));
+#endif
         lastError_ = diagnostic;
         return false;
     }
