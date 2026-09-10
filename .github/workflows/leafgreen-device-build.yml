@@ -49,10 +49,9 @@ jobs:
           docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
             set -euo pipefail
             git config --global --add safe.directory /work/application
-            dkp-pacman -Sy --noconfirm switch-sdl2 switch-glad switch-lz4
             dkp-pacman -Q > /work/toolchain-packages.txt
             echo "=== libnx package ==="
-            dkp-pacman -Q libnx devkitA64 switch-tools || true
+            dkp-pacman -Q libnx devkitA64 switch-tools switch-sdl2 switch-glad switch-lz4 || true
             echo "=== installed fs_dev.h declaration ==="
             grep -n -B2 -A2 "fsdevGetLastResult" /opt/devkitpro/libnx/include/switch/runtime/devices/fs_dev.h || true
             echo "=== nm implementation ==="
