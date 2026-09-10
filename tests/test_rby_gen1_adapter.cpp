@@ -167,6 +167,14 @@ std::vector<uint8_t> makeFixture(SourceGame game, const FixtureLayout& l, bool i
         std::fill(d.begin()+boxStart(l,0),d.begin()+boxStart(l,0)+l.boxSize,0xA5);
     }
 
+    if (!jp) {
+        // Pinned PKSM-Core's Sav1 constructor uses a deliberately loose Japanese-layout probe at
+        // 0x2ED5/0x302D. A mostly-zero synthetic international save can accidentally satisfy that
+        // probe even though the international checksum/list layout is authoritative. Mark the
+        // unused international byte at the first JP probe as non-list data so the oracle evaluates
+        // the intended international layout. This is fixture-only; production detection is unchanged.
+        d[0x2ED5]=0xFF;
+    }
     finalizeChecksums(d,l,initialized);
     return d;
 }
