@@ -7,12 +7,17 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace PokeVault::Integration::Gen3::Detail {
     struct FRLGReadModelResult {
         TrainerRecord trainer;
         std::vector<InventoryPouchRecord> inventory;
+        // Inventory is secondary to structural save validation. FRLG keeps its accepted strict
+        // behavior; RSE may report this false while the structurally valid save remains openable.
+        bool inventoryAvailable = true;
+        std::string inventoryError;
         SaveError error = SaveError::None;
     };
 
