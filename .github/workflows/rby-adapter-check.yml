@@ -73,6 +73,7 @@ jobs:
             src/Pokemon/Pokemon1ReadOnly.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
             src/Pokemon/BaseStatsGen89.cpp src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp \
             src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
+            src/Utils/HelperUtilities.cpp \
             -o build-host/test_rby_readonly_bridge
           ./build-host/test_rby_readonly_bridge
 
@@ -112,5 +113,6 @@ jobs:
             src/Pokemon/Pokemon1ReadOnly.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
             src/Pokemon/BaseStatsGen89.cpp src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp \
             src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
+            src/Utils/HelperUtilities.cpp \
             -o build-host/test_rby_readonly_bridge_sanitize
           ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rby_readonly_bridge_sanitize
