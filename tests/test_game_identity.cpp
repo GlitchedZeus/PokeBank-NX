@@ -25,6 +25,9 @@ int main() {
         assert(findGame(game.id) == &game);
     }
 
+    const auto* red = findGame("red_gb");
+    const auto* blue = findGame("blue_gb");
+    const auto* yellow = findGame("yellow_gb");
     const auto* ruby = findGame("ruby_gba");
     const auto* sapphire = findGame("sapphire_gba");
     const auto* emerald = findGame("emerald_gba");
@@ -32,7 +35,14 @@ int main() {
     const auto* fireRedSwitch = findGame("firered_switch");
     const auto* leafGreenGba = findGame("leafgreen_gba");
     const auto* leafGreenSwitch = findGame("leafgreen_switch");
-    assert(ruby && sapphire && emerald && fireRedGba && fireRedSwitch && leafGreenGba && leafGreenSwitch);
+    assert(red && blue && yellow && ruby && sapphire && emerald &&
+           fireRedGba && fireRedSwitch && leafGreenGba && leafGreenSwitch);
+    assert(red->support == SourceSupport::ReadOnly);
+    assert(blue->support == SourceSupport::ReadOnly);
+    assert(yellow->support == SourceSupport::ReadOnly);
+    assert(red->platform == Platform::GameBoy);
+    assert(blue->platform == Platform::GameBoy);
+    assert(yellow->platform == Platform::GameBoy);
     assert(ruby->support == SourceSupport::ReadOnly);
     assert(sapphire->support == SourceSupport::ReadOnly);
     assert(emerald->support == SourceSupport::ReadOnly);
@@ -40,6 +50,7 @@ int main() {
     assert(leafGreenGba->id != leafGreenSwitch->id);
     assert(fireRedGba->platform == Platform::GameBoyAdvance);
     assert(fireRedSwitch->platform == Platform::NintendoSwitch);
+    assert(platformName(Platform::GameBoy) == "Game Boy");
     assert(platformName(Platform::GameBoyAdvance) == "Game Boy Advance");
     assert(platformName(Platform::NintendoSwitch) == "Nintendo Switch");
     assert(gameCardArtworkPath("firered_gba") == "romfs:/game_cards/firered_gba.png");
@@ -47,6 +58,7 @@ int main() {
     assert(gameCardArtworkPath("ruby_gba") == "romfs:/game_cards/ruby_gba.png");
     assert(gameCardArtworkPath("sapphire_gba") == "romfs:/game_cards/sapphire_gba.png");
     assert(gameCardArtworkPath("emerald_gba") == "romfs:/game_cards/emerald_gba.png");
+    assert(gameCardArtworkPath("red_gb").empty()); // artwork is a later device-package gate.
     assert(gameCardArtworkPath("firered_switch").empty());
     assert(findGame("missing") == nullptr);
     assert(findSwitchGame(0) == nullptr);
