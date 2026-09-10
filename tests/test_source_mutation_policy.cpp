@@ -11,10 +11,12 @@ int main() {
              SourceMutation::DirectMove, SourceMutation::Edit, SourceMutation::Rename,
              SourceMutation::EditTrainer, SourceMutation::EditItems, SourceMutation::SaveChanges}) {
         assert(!canPerform(SourceKind::InstalledGame, action));
+        assert(!canPerform(SourceKind::RetroArchLegacy, action));
         assert(canPerform(SourceKind::BackupOrStaged, action));
         assert(canPerform(SourceKind::AppOwnedStorage, action));
     }
     assert(canPerform(SourceKind::InstalledGame, SourceMutation::View));
+    assert(canPerform(SourceKind::RetroArchLegacy, SourceMutation::View));
     for (auto location : {PokemonLocation::Party, PokemonLocation::SaveBox, PokemonLocation::Bank}) {
         PokemonActionSheet sheet;
         for (int repeat = 0; repeat < 100; ++repeat) {

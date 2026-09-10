@@ -2,6 +2,7 @@
 #define UI_SYSTEM_ICONS_H
 
 #include <switch.h>
+#include <string_view>
 
 namespace UI {
     // A decoded RGBA image (Switch user avatar or game title icon). The pixel buffer is owned by
@@ -21,6 +22,9 @@ namespace UI {
         const IconImage& userIcon(AccountUid uid);
         // A game's icon from its control data (JPEG decoded to RGBA). Cached by title id.
         const IconImage& titleIcon(u64 titleId);
+        // Shared release-aware card-art resolver. Installed titles use control data; file-based
+        // games use a packaged RomFS artwork path keyed by exact game identity.
+        const IconImage& gameCardIcon(std::string_view gameId, u64 titleId = 0);
         // Free every cached buffer. Call once at shutdown.
         void cleanup();
     }

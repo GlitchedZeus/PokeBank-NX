@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "archive": "romfs-recovery.tar",
+  "archive_sha256": "0c75b404b3bb87640b32b936a001557a3b719bc25963a200a1fa9d06abc5aeb9",
+  "archive_size": 152115200,
+  "chunk_bytes": 83886080,
+  "file_count": 3286,
+  "application_source": "1dc5893dd20edf54a06b62ea3e27909f5719fa77",
+  "historical_full_visual_baseline": {
+    "application_source": "ea0b806bac4acdb5619f22f9841d616ea8a237ff",
+    "nro_filename": "PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro",
+    "nro_size": 156592377,
+    "nro_sha256": "396f8ff9f4da53b5449aeb46b8d1237ca9358a0ac94998680017575916b6b1ee",
+    "hd_render_count": 3260,
+    "base_species_count": 1025,
+    "type_icon_count": 18,
+    "font_count": 3,
+    "embedded_romfs_file_count": 3283
+  },
+  "parts": [
+    {
+      "name": "romfs-recovery.tar.part000",
+      "size": 83886080,
+      "sha256": "4b5b8195263701eaaf741c3793d14a585bf260cf1dfb1ecf0569dc63c637f2dc"
+    },
+    {
+      "name": "romfs-recovery.tar.part001",
+      "size": 68229120,
+      "sha256": "e00cf26b32c1bce8e6ee2072aef605fab55fcd08e668ee09d68a300fe2180b3e"
+    }
+  ],
+  "note": "Commit every part plus this manifest to the private GitHub repository. Recovery prefers this snapshot over network regeneration."
+}

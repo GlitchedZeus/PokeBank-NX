@@ -25,17 +25,29 @@ int main() {
         assert(findGame(game.id) == &game);
     }
 
+    const auto* ruby = findGame("ruby_gba");
+    const auto* sapphire = findGame("sapphire_gba");
+    const auto* emerald = findGame("emerald_gba");
     const auto* fireRedGba = findGame("firered_gba");
     const auto* fireRedSwitch = findGame("firered_switch");
     const auto* leafGreenGba = findGame("leafgreen_gba");
     const auto* leafGreenSwitch = findGame("leafgreen_switch");
-    assert(fireRedGba && fireRedSwitch && leafGreenGba && leafGreenSwitch);
+    assert(ruby && sapphire && emerald && fireRedGba && fireRedSwitch && leafGreenGba && leafGreenSwitch);
+    assert(ruby->support == SourceSupport::ReadOnly);
+    assert(sapphire->support == SourceSupport::ReadOnly);
+    assert(emerald->support == SourceSupport::ReadOnly);
     assert(fireRedGba->id != fireRedSwitch->id);
     assert(leafGreenGba->id != leafGreenSwitch->id);
     assert(fireRedGba->platform == Platform::GameBoyAdvance);
     assert(fireRedSwitch->platform == Platform::NintendoSwitch);
     assert(platformName(Platform::GameBoyAdvance) == "Game Boy Advance");
     assert(platformName(Platform::NintendoSwitch) == "Nintendo Switch");
+    assert(gameCardArtworkPath("firered_gba") == "romfs:/game_cards/firered_gba.png");
+    assert(gameCardArtworkPath("leafgreen_gba") == "romfs:/game_cards/leafgreen_gba.png");
+    assert(gameCardArtworkPath("ruby_gba") == "romfs:/game_cards/ruby_gba.png");
+    assert(gameCardArtworkPath("sapphire_gba") == "romfs:/game_cards/sapphire_gba.png");
+    assert(gameCardArtworkPath("emerald_gba") == "romfs:/game_cards/emerald_gba.png");
+    assert(gameCardArtworkPath("firered_switch").empty());
     assert(findGame("missing") == nullptr);
     assert(findSwitchGame(0) == nullptr);
 }

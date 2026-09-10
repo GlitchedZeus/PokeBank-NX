@@ -1,0 +1,82 @@
+name: Preserve verified RomFS recovery snapshot
+
+on:
+  push:
+    branches: [feature/pokebank-playable]
+    paths: [.github/workflows/recovery-snapshot.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pokebank-romfs-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/pokebank-playable
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install image verifier
+        run: python3 -m pip install Pillow
+      - name: Run normal deterministic recovery
+        run: python3 tools/recover_workspace.py
+      - name: Verify complete images and pack snapshot
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          root = Path('romfs')
+          hd = list((root / 'sprites/pokemon_hd').glob('*.png'))
+          assert len(hd) == 3260, len(hd)
+          assert all((root / f'sprites/pokemon_hd/{n}.png').is_file() for n in range(1, 1026))
+          assert len(list((root / 'sprites/types').glob('*.png'))) == 18
+          assert len(list((root / 'fonts').glob('*.ttf'))) == 3
+          for path in root.rglob('*.png'):
+              with Image.open(path) as image:
+                  image.verify()
+          assert sum(p.is_file() for p in root.rglob('*')) == 3283
+          print('Complete 3260-render / 3283-file tree verified')
+          PY
+          python3 tools/pack_recovery_snapshot.py
+      - name: Commit snapshot to origin feature branch only
+        run: |
+          set -euo pipefail
+          test "$(git remote get-url origin)" = "https://github.com/GlitchedZeus/PokeBank-NX"
+          git config user.name "PokeBank NX Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f recovery/assets_snapshot/
+          if ! git diff --cached --quiet; then
+            git commit -m "recovery: snapshot complete verified RomFS"
+            git push origin HEAD:feature/pokebank-playable
+          fi
+          git fetch origin feature/pokebank-playable
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/feature/pokebank-playable)"
+          python3 - <<'PY'
+          import hashlib, json, subprocess
+          from pathlib import Path
+          root = Path('recovery/assets_snapshot')
+          manifest = json.loads((root / 'manifest.json').read_text())
+          for name in ['manifest.json'] + [p['name'] for p in manifest['parts']]:
+              path = root / name
+              local = subprocess.check_output(['git', 'hash-object', str(path)], text=True).strip()
+              remote = subprocess.check_output(['git', 'rev-parse', 'origin/feature/pokebank-playable:' + str(path)], text=True).strip()
+              assert local == remote, name
+          for part in manifest['parts']:
+              data = (root / part['name']).read_bytes()
+              assert len(data) == part['size']
+              assert hashlib.sha256(data).hexdigest() == part['sha256']
+          print('Complete manifest and every snapshot part remote-verified')
+          PY
+      - name: Record snapshot identity
+        run: |
+          git rev-parse HEAD >> "$GITHUB_STEP_SUMMARY"
+          cat recovery/assets_snapshot/manifest.json >> "$GITHUB_STEP_SUMMARY"

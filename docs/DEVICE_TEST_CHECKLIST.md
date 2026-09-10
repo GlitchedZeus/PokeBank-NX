@@ -1,7 +1,69 @@
 # PokeBank NX — Physical Switch Test Checklist
 
+## Corrected FRLG physical-test artifact — READY FOR DEVICE TEST
+
+```text
+Starting recovery/documentation SHA: c7e410d4d168d1173c9bd9e3ceb38489c865d404
+Canonical application source: ea0b806bac4acdb5619f22f9841d616ea8a237ff
+Canonical application tree: ed5912093886384894c44538d569fe4955fd2e47
+Application commit: legacy: bind FRLG sources to profiles and expose diagnostics
+Application source changed during packaging: NO
+Embedded version/source: 0.1.0-alpha / ea0b806b
+
+Artifact: PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro
+Artifact byte size: 156592377
+Artifact SHA-256: 396f8ff9f4da53b5449aeb46b8d1237ca9358a0ac94998680017575916b6b1ee
+ZIP: PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.zip
+ZIP byte size: 149672676
+ZIP SHA-256: 255ec20cd0f7965c9b25123cb83eedd0cebc83d10fd88313bcff672a0c1ced67
+Manifest: PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro.manifest.txt
+Manifest byte size: 900
+Manifest SHA-256: a79ede73124f74ce4a6c85d6c151bf7f3e9ca732747a332caa68750626058952
+SHA256SUMS: SHA256SUMS.txt
+SHA256SUMS byte size: 352
+SHA256SUMS SHA-256: d28ee7266c58b3cab2716211a0425b0af6562dab3f9d6768ac299b77d8342f55
+
+HD renders: 3260 / 3260
+Base species: 1025 / 1025
+Type icons: 18 / 18
+Fonts: 3 / 3
+FRLG GBA cards: PASS
+Asset preflight: PASS
+Embedded RomFS: PASS — 3283 / 3283 files byte-identical, 148076683 bytes
+Native devkitA64 -fno-exceptions build: PASS
+Previously verified host tests: PASS — 13 suites
+Previously verified ASan/UBSan: PASS
+Previously verified git diff --check: PASS
+GitHub CI for application source: PASS — run #245
+GitHub prerelease published: NO — unavailable authentication/tooling
+DEVICE TESTED: NO
+DEVICE ACCEPTED: NO
+```
+
+The exact NRO, ZIP, manifest and checksum record were preserved outside the temporary build tree. Large artifacts were not committed to Git history. Parked RSE checkpoint `b5ef83b` remains isolated and untouched; `1a921515` was unavailable locally, with `b5ef83b` retained as the verified equivalent recovery state.
+
+
+
+## Complete FRLG browser test build — 2026-09-08
+
+```text
+Application source: 5d3e5e23f352dda4900ae42b4f396d9d4a4b8b8e
+Commit: gen3: complete FRLG read-only source browsing
+Embedded: 0.1.0-alpha (5d3e5e23)
+Artifact: PokeBank-NX-FRLG-Complete-5d3e5e23.nro
+Size: 156249001 bytes
+SHA-256: 8dd94277e609c96f37e82b0b0b47928bad50ce36fdb380520bd2521ab18ec78a
+Host tests: PASS (12 suites)
+Sanitizers: PASS
+Native build: PASS (-fno-exceptions)
+Assets: PASS (3260 HD renders; embedded RomFS 3283/3283 identical)
+Device tested: NO
+```
+
+Test and leave PASS/FAIL notes for: launch; active RetroArch root; FireRed/LeafGreen parent cards; child save grouping; X Refresh Saves; changed/deleted-save handling; trainer name/gender/TID/SID/ID32/money; Items/Key Items/Poke Balls/TM Case/Berry Pouch/PC Items; Party? no, source is read-only; Party; all 14 Boxes; artwork; crashes. Confirm no source file timestamp/hash changes.
+
 Status: PRE-ALPHA / READ-ONLY TEST PLAN  
-Last updated: 2026-09-01
+Last updated: 2026-09-08
 
 Use this checklist for physical-device testing of PokeBank NX `.nro` builds.
 

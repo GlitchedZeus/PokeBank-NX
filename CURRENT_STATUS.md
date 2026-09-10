@@ -1,184 +1,191 @@
 # PokeBank NX — Current Verified Engineering State
 
-Last updated: 2026-09-07
+Last updated: 2026-09-10
 
-This file is the short authoritative handoff for coding sessions. Historical device reports, long-form research and earlier roadmaps remain in `docs/` and GitHub issues; Git history preserves previous versions.
+## CURRENT STATE — GEN III READ-ONLY MILESTONE ACCEPTED
 
-## Repository / branch
+Active development branch: `feature/pokebank-playable`.
 
-- Repository: `GlitchedZeus/PokeBank-NX`
-- Development branch: `feature/pokebank-playable`
-- Writable remote: `origin`
-- Upstream-only remote: `kiasta/PKSE`
-- Never push PokeBank NX custom code upstream.
-- Live installed-game save writing remains **HARD DISABLED**.
-- Documentation commits may sit above the latest engineering-source checkpoint; do not confuse branch HEAD with the source SHA being discussed.
+FireRed, LeafGreen, Ruby, Sapphire and Emerald legacy GBA support is now physically accepted on a real Nintendo Switch for the current read-only browsing/source-assignment milestone.
 
-## Accepted UI / physical state
+Live installed-game and RetroArch save writing remains **HARD DISABLED**.
 
-The current UI is intentionally frozen until the app is much closer to completion.
-
-Accepted application source:
+## FRLG — PHYSICALLY ACCEPTED
 
 ```text
-af2acf043a15dbf48b8195880a80cc5de562fced
-ui: adopt red PokeBank identity accents
+Acceptance checkpoint: 8172ebd9c067bd69df63815dbe865207f905eac6
+Accepted runtime source: d78b76503f02ae26309855970fc5ce0b35c12bcb
+FireRed GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
+LeafGreen GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
+FRLG MILESTONE: PHYSICALLY ACCEPTED
 ```
 
-Accepted artifact:
+Physical verification includes:
+
+- normal RetroArch battery-save discovery;
+- correct save opening and current-save refresh;
+- trainer, Items, Party and all Boxes;
+- profile-scoped legacy-source assignment;
+- assignment persistence across full app restart;
+- profile isolation and switching back to the original assignment;
+- rereading a save after normal in-game RetroArch changes;
+- original source save remaining healthy/playable.
+
+Do not reopen FRLG work without new device evidence of a defect.
+
+## RSE — PHYSICALLY ACCEPTED
+
+Final accepted application source:
 
 ```text
-PokeBank-NX-Red-UI-af2acf04.nro
-SHA-256 898df286cf34b895f1f71f4abc35f0818e4afa66725b67c2d020fc20c01bfac4
+a2df4c1acdb7a556808bd58a2bdbcd4fc0335954
+application tree: 559202d16f0affc13a9e1c521beff4834585b1e7
 ```
 
-Physical acceptance includes:
-
-- PokeBank NX red identity accepted for now;
-- permanent left-side accent bar removed;
-- Left Stick navigation works;
-- D-pad navigation works;
-- HD Pokémon artwork renders;
-- artificial sprite breathing/bobbing removed;
-- old/problem Legends: Arceus save no longer crashes and returns a graceful `main file is missing` error;
-- installed-source read-only safety remains in place.
-
-Closed hardware/safety/UI blockers include #13, #19, #23 and #24. Final branding/startup/NRO polish remains later under #16.
-
-## Session 3A — Gen III host oracle / adapter
-
-Implementation source:
+Exact accepted artifact:
 
 ```text
-936e75d98daa7e61fcf8ea199bcda958b1b78d7a
-gen3: add PKSM-Core read-only FRLG adapter
+PokeBank-NX-RSE-OpenFix-Retest-a2df4c1a.nro
+bytes: 158120837
+SHA-256: 34fc0893ae0f0ee1a3e244c11469a5d44de181d68318040fce386470b2e0e80e
 ```
 
-CI follow-up:
+The user physically tested this NRO and reported Ruby, Sapphire and Emerald all work as intended, matching the accepted FRLG browsing experience. The existing Switch save paths also continued to open normally during this test.
 
 ```text
-283073a5215a471ef0ad07619b4856409658cfdc
-ci: checkout pinned PKSM-Core submodules
+Ruby GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
+Sapphire GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
+Emerald GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
+RSE MILESTONE: PHYSICALLY ACCEPTED
+GEN III LEGACY READ-ONLY MILESTONE: PHYSICALLY ACCEPTED
 ```
 
-Pinned PKSM-Core:
+Physical RSE acceptance covers:
+
+- save discovery/open;
+- trainer data;
+- Party and PC Boxes;
+- Pokémon browsing;
+- Items/inventory;
+- Ruby/Sapphire/Emerald game-card artwork;
+- Refresh/current battery-save behavior;
+- read-only source safety.
+
+### RSE defects fixed during acceptance
+
+1. Initial RSE build opened real saves but had empty Items and missing R/S/E artwork.
+2. RSE inventory layouts were added for Ruby/Sapphire and Emerald, including Emerald keyed bag quantities and plaintext PC Items.
+3. R/S/E game-card artwork was added and permanently included in recovery assets.
+4. A stale `FRLGReadOnlyTrainer::populate()` bridge guard caused populated RSE inventory to reject otherwise-valid RSE opens; this was removed.
+5. Inventory-specific model failure is now nonfatal to the whole save while critical Gen III sector/signature/counter/checksum/family validation remains strict.
+6. Focused regressions now prove Ruby/Sapphire/Emerald open paths and nonfatal inventory-submodel failure behavior.
+
+## Verification for accepted RSE runtime
+
+Clean host verification:
 
 ```text
-FlagBrew/PKSM-Core
-aa22d7a4f87c0351baf7da5962ba5acd01039a7c
+checkpoint: e5df0e237ba1b7ad0dd78e37a1e1aac609071c3f
+GitHub Actions run: 34453208654
+full host suite: PASS
+focused Ruby open: PASS
+focused Sapphire open: PASS
+focused Emerald open: PASS
+valid Ruby inventory: PASS
+valid Sapphire inventory: PASS
+valid Emerald inventory: PASS
+inventory failure rejects whole save: NO
+FRLG regression: PASS
+source mutation/write policy: PASS
+ASan: PASS
+UBSan: PASS
+git diff --check: PASS
 ```
 
-Issue #4 is complete. Integration decision: **ADAPTER-WRAPPER**.
-
-The public boundary is PokeBank-owned and does not expose PKSM-Core types. Session 3A proves read-only FireRed/LeafGreen GBA parsing with stricter PokeBank validation in front of PKSM-Core.
-
-Deterministic generated FRLG fixture:
+Exact native/device build:
 
 ```text
-size    131072 bytes
-SHA-256 b416aa985e459cb939caf1e1c70ce8359edf0c99a536e24d3b2a2a32b0541120
+GitHub Actions run: 34454555232
+recovery restore: PASS
+exact application source/tree verification: PASS
+device asset preflight: PASS
+native devkitA64 compile: PASS
+native devkitA64 final link: PASS
+embedded application identity: PASS
+embedded RomFS: 3286/3286 PASS
+packaging: PASS
+artifact upload: PASS
 ```
 
-Proven behavior:
-
-- two rotating save slots / 14-sector structure;
-- sector IDs, signatures, counters and checksums;
-- wrap-aware newest-slot selection;
-- safe fallback to the older valid slot;
-- party and all 14 boxes;
-- an 80-byte PK3 crossing a PC-sector boundary;
-- malformed/truncated/invalid structure rejection;
-- source bytes remain unchanged;
-- PK3 fields: species, PID, TID, SID, EXP, held item, moves, PP, IVs, EVs, nickname and OT;
-- inherited PKSE crypto independently agrees;
-- untouched 80-byte boxed and 100-byte party PK3 round trips are byte-identical.
-
-## Session 3B checkpoint A — native exception-free Gen III backend
-
-Current verified engineering checkpoint:
+Preserved Actions artifact:
 
 ```text
-43f3a9f90a3314725979d59afdd68f19ee159009
-gen3: build exception-free native core slice
+name: RSE-OpenFix-Retest-a2df4c1a
+artifact id: 10143216443
+digest: sha256:2daecd936c60719364f5b35b66fa41500be6b5a607146fab70535cbbe5e0fec7
 ```
 
-GitHub Actions:
+Companion package:
 
 ```text
-PokeBank NX Host Tests — run #158 — PASS
+ZIP: PokeBank-NX-RSE-OpenFix-Retest-a2df4c1a.zip
+bytes: 151195235
+SHA-256: 847788db890523d1ebce070d1427f6230fd89a60ca14986525fd6d2b634d0788
+
+Packaging manifest SHA-256: 3dfa38be0fabde6f45edfb1ee52d87d2f9b1513ec89ba3fa576b0b0ed8da55f9
+BUILD_MANIFEST.json SHA-256: 335c1a62b45c2b7c3f2282c424c7c2cd089a6b1178c92fec2bccb027401070ee
+SHA256SUMS.txt SHA-256: 33f461dbb17fc2ddbd1ab116d682fcb9871e49e33f0c77465cbed7cff489f664
 ```
 
-Full pinned PKSM-Core cannot be linked directly into the Switch app under the normal `-fno-exceptions` build because unrelated/cross-generation PKSM-Core dependencies reach throwing code. The chosen solution keeps the same PokeBank adapter API and uses:
+## Permanent recovery baseline
+
+Current committed full RomFS snapshot:
 
 ```text
-HOST / correctness oracle:
-PKSMGen3Adapter -> pinned PKSM-Core PK3/Sav3/SavFRLG
-
-SWITCH NATIVE:
-same PokeBank adapter API -> PKSMGen3NativeAdapter.cpp
+2321fa488668e32392de25afed84e38919fbd21f
 ```
 
-The native backend selectively implements the already-proven Gen III read semantics without enabling exceptions globally or pulling unrelated later-generation Core code into the Switch app.
-
-`src/Integration/Gen3` is now part of the normal native `SOURCES` list.
-
-## Interrupted Session 3B work — NOT YET REMOTE
-
-After `43f3a9f9...`, a later coding session reported local/uncommitted RetroArch FRLG work before timing out. Do **not** call this implemented until recovered, verified and pushed.
-
-Reported local design/work:
-
-- bounded read-only RetroArch source catalog;
-- reads RetroArch configured `savefile_directory`;
-- accepts only `.sav` / `.srm`;
-- scans at most two directory levels and 256 candidates by default;
-- validates full FRLG structure before trusting filename/path hints;
-- exposes Party/Boxes through the existing Gen III adapter model;
-- ambiguous structurally valid FRLG saves remain unclassified instead of being guessed.
-
-The remaining reported task was to connect the catalog to the real application source-discovery lifecycle so the native linker retains it because the runtime genuinely invokes it.
-
-## Immediate next milestone
-
-Recover any uncommitted RetroArch FRLG work from the coding workspace and finish the end-to-end read-only runtime path:
+Verified baseline:
 
 ```text
-RetroArch savefile_directory
-        -> bounded .sav/.srm catalog
-        -> structural FRLG validation
-        -> firered_gba / leafgreen_gba identity when reliable
-        -> native Gen III adapter
-        -> Party / Boxes read model
-        -> existing PokeBank source/browser lifecycle
+HD renders: 3260/3260
+base species: 1025/1025
+type icons: 18/18
+fonts: 3/3
+FireRed artwork: PASS
+LeafGreen artwork: PASS
+Ruby artwork: PASS
+Sapphire artwork: PASS
+Emerald artwork: PASS
+RomFS files: 3286
 ```
 
-Do not create a second browser or debug UI. Do not guess FireRed vs LeafGreen when the evidence is ambiguous. Do not modify source saves.
+Normal recovery remains the deterministic GitHub snapshot path. Do not redownload/regenerate the sprite library during ordinary coding sessions.
 
-## Next major order after FRLG runtime read path
+## NEXT DEVELOPMENT TARGET — GEN I RBY READ-ONLY
 
-Current preferred implementation order remains:
+The next narrow milestone is:
 
 ```text
-FRLG RetroArch read path
--> Gen III production reads
--> Master Vault + Banks foundation
--> Colosseum / XD
--> Gen I / II + RetroArch
--> Stadium stretch
--> DS Gen IV/V
--> 3DS Gen VI/VII
--> modern Switch adapter validation
--> Summary / Oracle / conversion / Dex / legality
--> staged writes
--> individually approved live-write adapters
--> true Move
--> RC / v1.0
+Red / Blue / Yellow
+Game Boy
+RetroArch normal battery saves
+READ ONLY
 ```
 
-## Session launcher
+Use the existing legacy-source/provider architecture and pinned correctness references. The first Gen I milestone should include strict save recognition/validation, Red/Blue/Yellow identity, trainer, Party, Boxes/storage, Pokémon view, Refresh, source diagnostics and source-byte immutability. Savestates are not canonical save sources.
 
-For the next coding session, do not paste a wall of text. Use:
+Do **not** start Gen II in the same session unless the RBY milestone is complete and the user explicitly authorizes continuing. Do not enable live writing.
+
+After RBY physical acceptance, the intended next legacy target is Gold/Silver/Crystal.
+
+## Repository authority
 
 ```text
-Continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and execute docs/NEXT_CODEX_PROMPT.md. Use HIGH reasoning. Preserve local work, push coherent checkpoints early, and never push custom code upstream.
+Repository: GlitchedZeus/PokeBank-NX
+Development branch: feature/pokebank-playable
+Writable remote: origin
+Upstream reference: kiasta/PKSE
 ```
+
+Never push custom PokeBank NX work upstream.

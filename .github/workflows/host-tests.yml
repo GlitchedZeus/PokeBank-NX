@@ -14,7 +14,7 @@ jobs:
   host-tests:
     name: Host tests (GCC)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
 
     steps:
       - name: Checkout
@@ -31,16 +31,42 @@ jobs:
       - name: Check whitespace
         run: git diff --check HEAD^ HEAD || git diff --check
 
-      - name: Syntax-check device build tools
+      - name: Syntax-check device/recovery tools
         run: |
           python3 -m py_compile tools/check_device_assets.py
           python3 -m py_compile tools/package_device_build.py
+          python3 -m py_compile tools/recover_workspace.py
+          python3 -m py_compile tools/check_recovery_contract.py
+          python3 -m py_compile tools/pack_recovery_snapshot.py
+
+      - name: Verify GitHub recovery contract
+        run: python3 tools/check_recovery_contract.py
 
       - name: Clean host build
         run: make -f Makefile.host host-clean
 
       - name: Run host tests
         run: make -f Makefile.host host-test
+
+      - name: Focused RSE save-open bridge regression
+        run: |
+          set -euo pipefail
+          SOURCES="tests/test_rse_open_regression.cpp \
+            src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+            src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp \
+            src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
+            src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
+            src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
+            src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \
+            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
+            -o build-host/test_rse_open_regression
+          ./build-host/test_rse_open_regression
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O1 \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
+            -o build-host/test_rse_open_regression_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize
 
       - name: Run ASan and UBSan tests
         run: make -f Makefile.host host-sanitize

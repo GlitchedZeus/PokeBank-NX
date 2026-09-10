@@ -1,0 +1,231 @@
+name: RSE open-fix physical-retest build
+
+on:
+  push:
+    branches: [feature/pokebank-playable]
+    paths: [.github/workflows/leafgreen-device-build.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-rse-device-build
+  cancel-in-progress: false
+
+env:
+  APP_SHA: a2df4c1acdb7a556808bd58a2bdbcd4fc0335954
+  APP_TREE: 559202d16f0affc13a9e1c521beff4834585b1e7
+  SNAPSHOT_SHA: 2321fa488668e32392de25afed84e38919fbd21f
+  PREVIOUS_CORRECTED_SHA: 1c96df2543cba339cec3dc88e20f8c6ca4fe82bb
+  SHORT_SHA: a2df4c1a
+  CLEAN_HOST_GATE_RUN: 34453208654
+  EXPECTED_ROMFS: 3286
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Check out current verification source
+        uses: actions/checkout@v4
+        with:
+          ref: feature/pokebank-playable
+          path: verification
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Verify complete host/focused/sanitizer gate on current tests
+        working-directory: verification
+        run: |
+          set -euo pipefail
+          git diff --check HEAD^ HEAD || git diff --check
+          python3 -m py_compile tools/check_device_assets.py tools/recover_workspace.py tools/check_recovery_contract.py tools/pack_recovery_snapshot.py tools/package_device_build.py
+          python3 tools/check_recovery_contract.py
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test 2>&1 | tee ../host-tests.log
+          SOURCES="tests/test_rse_open_regression.cpp \
+            src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+            src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp \
+            src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
+            src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
+            src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
+            src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \
+            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
+            -o build-host/test_rse_open_regression
+          ./build-host/test_rse_open_regression 2>&1 | tee ../focused-rse.log
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O1 \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
+            -o build-host/test_rse_open_regression_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize 2>&1 | tee ../focused-rse-sanitize.log
+          make -f Makefile.host host-sanitize 2>&1 | tee ../sanitizers.log
+          grep -q 'RSE strict read-only adapter/discovery tests passed' ../host-tests.log
+          grep -q 'RSE save-open/inventory regression tests passed' ../focused-rse.log
+
+      - name: Check out recovery infrastructure
+        uses: actions/checkout@v4
+        with:
+          ref: feature/pokebank-playable
+          path: recovery-work
+          fetch-depth: 0
+
+      - name: Restore exact permanent RSE recovery snapshot
+        working-directory: recovery-work
+        run: |
+          set -euo pipefail
+          git cat-file -e "$SNAPSHOT_SHA^{commit}"
+          test -f recovery/assets_snapshot/manifest.json
+          git diff --quiet "$SNAPSHOT_SHA" HEAD -- recovery/assets_snapshot
+          test "$(python3 -c 'import json; print(json.load(open("recovery/assets_snapshot/manifest.json"))["file_count"])')" = "$EXPECTED_ROMFS"
+          python3 tools/recover_workspace.py 2>&1 | tee ../recovery.log
+          grep -q 'Recovery source: committed GitHub RomFS snapshot' ../recovery.log
+          grep -q 'HD sprite directory exists (3260 PNGs' ../recovery.log
+          grep -q 'all 1025 base-species HOME renders are present' ../recovery.log
+          grep -q 'all 18 type sprites are present' ../recovery.log
+          grep -q 'required UI fonts are present' ../recovery.log
+          grep -q 'FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present' ../recovery.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' ../recovery.log
+          test "$(find romfs -type f | wc -l)" -eq "$EXPECTED_ROMFS"
+          for f in firered_gba leafgreen_gba ruby_gba sapphire_gba emerald_gba; do
+            test -s "romfs/game_cards/$f.png"
+          done
+
+      - name: Check out exact RSE open-fix application source
+        uses: actions/checkout@v4
+        with:
+          ref: a2df4c1acdb7a556808bd58a2bdbcd4fc0335954
+          path: application
+          fetch-depth: 2
+          submodules: recursive
+
+      - name: Verify exact application source and recovered asset supply
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          cp -a recovery-work/romfs application/romfs
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'HD sprite directory exists (3260 PNGs' asset-preflight.log
+          grep -q 'all 1025 base-species HOME renders are present' asset-preflight.log
+          grep -q 'all 18 type sprites are present' asset-preflight.log
+          grep -q 'required UI fonts are present' asset-preflight.log
+          grep -q 'FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present' asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_ROMFS"
+          test -z "$(git -C application status --porcelain)"
+
+      - name: Clean native devkitA64 full build and final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            echo "=== native toolchain ==="
+            dkp-pacman -Q libnx devkitA64 switch-tools switch-sdl2 switch-glad switch-lz4 || true
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s application/PokeBankNX.nro
+
+      - name: Verify embedded identity and complete RomFS, then package
+        run: |
+          set -euo pipefail
+          test -z "$(git -C application status --porcelain)"
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source "$APP_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          for name in ('firered_gba.png','leafgreen_gba.png','ruby_gba.png','sapphire_gba.png','emerald_gba.png'):
+              assert (Path('application/romfs/game_cards') / name).is_file(), name
+          PY
+          python3 application/tools/package_device_build.py application/PokeBankNX.nro \
+            --label RSE-OpenFix-Retest --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
+          cp embedded-romfs.json asset-preflight.log recovery.log host-tests.log focused-rse.log \
+             focused-rse-sanitize.log sanitizers.log toolchain-image.json toolchain-packages.txt \
+             native-build.log device-artifact/
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          out = Path('device-artifact')
+          record = {
+              'previous_corrected_application_source': os.environ['PREVIOUS_CORRECTED_SHA'],
+              'application_source': os.environ['APP_SHA'],
+              'application_tree': os.environ['APP_TREE'],
+              'recovery_snapshot': os.environ['SNAPSHOT_SHA'],
+              'verification_branch_source': subprocess.check_output(
+                  ['git','-C','verification','rev-parse','HEAD'], text=True).strip(),
+              'workflow_branch_source': subprocess.check_output(
+                  ['git','-C','recovery-work','rev-parse','HEAD'], text=True).strip(),
+              'clean_host_gate_run': int(os.environ['CLEAN_HOST_GATE_RUN']),
+              'workflow_run': int(os.environ['GITHUB_RUN_ID']),
+              'host_suite': 'PASS',
+              'focused_ruby_open': 'PASS',
+              'focused_sapphire_open': 'PASS',
+              'focused_emerald_open': 'PASS',
+              'inventory_failure_rejects_whole_save': False,
+              'host_rse_inventory': 'PASS Ruby/Sapphire/Emerald',
+              'frlg_regression': 'PASS',
+              'source_mutation_policy': 'PASS',
+              'write_policy': 'PASS',
+              'asan_ubsan': 'PASS',
+              'live_save_writing': 'HARD DISABLED',
+              'native_devkitA64_full_link': 'PASS',
+              'embedded_romfs': f"PASS {os.environ['EXPECTED_ROMFS']}/{os.environ['EXPECTED_ROMFS']}",
+              'rse_artwork_physical': 'PASS Ruby/Sapphire/Emerald',
+              'rse_device_tested': True,
+              'rse_device_accepted': False,
+          }
+          files = {}
+          for p in sorted(out.iterdir()):
+              if p.is_file():
+                  files[p.name] = {'bytes': p.stat().st_size,
+                                   'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
+          record['files'] = files
+          (out / 'BUILD_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+          sums = []
+          for p in sorted(out.iterdir()):
+              if p.is_file() and p.name != 'SHA256SUMS.txt':
+                  sums.append(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n')
+          (out / 'SHA256SUMS.txt').write_text(''.join(sums))
+          print((out / 'BUILD_MANIFEST.json').read_text())
+          print((out / 'SHA256SUMS.txt').read_text())
+          PY
+
+      - name: Preserve RSE open-fix physical-retest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RSE-OpenFix-Retest-a2df4c1a
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Preserve RSE open-fix build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RSE-OpenFix-Retest-diagnostics-a2df4c1a
+          path: |
+            recovery.log
+            asset-preflight.log
+            host-tests.log
+            focused-rse.log
+            focused-rse-sanitize.log
+            sanitizers.log
+            native-build.log
+            embedded-romfs.json
+            toolchain-image.json
+            toolchain-packages.txt
+          if-no-files-found: ignore

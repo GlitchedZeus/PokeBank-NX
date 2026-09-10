@@ -40,7 +40,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	PokeBankNX
 BUILD		:=	build
-SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Gen3 src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
+SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Gen3 src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
 DATA		:=	data
 INCLUDES	:=	include nanovg
 APP_TITLE   :=  PokeBank NX
@@ -217,16 +217,27 @@ ifneq ($(ROMFS),)
 endif
 
 # Default target when you just run 'make'. Only builds.
-default: $(BUILD)
+default: game-card-art $(BUILD)
 
 # Target when you run 'make all'. Downloads type icons + fonts, THEN build (HD sprites: tools/gen_hdsprites.py)
-all: types fonts $(BUILD)
+all: types fonts game-card-art $(BUILD)
 
 #---------------------------------------------------------------------------------
 # Sprite and icon download integration
 #---------------------------------------------------------------------------------
 TYPE_DIR     := romfs/sprites/types
+GAME_CARD_ART_SOURCE := assets/game_cards
+GAME_CARD_ART_DIR := romfs/game_cards
 MAX_JOBS     := 20        # increase the value if you want it to run faster
+
+.PHONY: game-card-art
+game-card-art:
+	@mkdir -p "$(GAME_CARD_ART_DIR)"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/firered_gba.png" "$(GAME_CARD_ART_DIR)/firered_gba.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/leafgreen_gba.png" "$(GAME_CARD_ART_DIR)/leafgreen_gba.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/ruby_gba.png" "$(GAME_CARD_ART_DIR)/ruby_gba.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/sapphire_gba.png" "$(GAME_CARD_ART_DIR)/sapphire_gba.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/emerald_gba.png" "$(GAME_CARD_ART_DIR)/emerald_gba.png"
 
 #---------------------------------------------------------------------------------
 # Type sprite download (generation-ix scarlet-violet style)

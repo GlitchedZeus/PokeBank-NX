@@ -17,18 +17,53 @@ PKSM_CORE_DEFINES := -D_PKSMCORE_CONFIGURED \
 PKSM_CORE_FLAGS := -fno-operator-names -Wno-psabi \
 	-Wno-missing-field-initializers -Wno-unused-parameter
 GEN3_ADAPTER_SOURCES := tests/test_pksm_gen3_adapter.cpp \
-	src/Integration/Gen3/PKSMGen3Adapter.cpp src/Encryption/Encryption3FRLG.cpp \
+	src/Integration/Gen3/PKSMGen3Adapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+	src/Encryption/Encryption3FRLG.cpp src/Utils/StringHelpers.cpp \
+	src/Utils/HelperUtilities.cpp \
 	src/Utils/SHA256.cpp
 GEN3_NATIVE_SLICE_SOURCES := tests/test_pksm_gen3_adapter.cpp \
-	src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Encryption/Encryption3FRLG.cpp \
+	src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+	src/Encryption/Encryption3FRLG.cpp \
 	src/Names/ItemNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
 	src/Utils/SHA256.cpp
+RETROARCH_FRLG_SOURCES := tests/test_retroarch_frlg_discovery.cpp \
+	src/Legacy/RetroArchFRLGDiscovery.cpp src/Integration/Gen3/PKSMGen3NativeAdapter.cpp \
+	src/Integration/Gen3/FRLGReadModel.cpp \
+	src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Utils/StringHelpers.cpp \
+	src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp
+LEGACY_FRLG_BROWSE_SOURCES := tests/test_legacy_frlg_browse.cpp \
+	src/Legacy/FRLGSourceBrowser.cpp src/Legacy/FRLGReadOnlyTrainer.cpp \
+	src/Legacy/LegacySourceBindings.cpp \
+	src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+	src/Pokemon/Pokemon3FRLG.cpp \
+	src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
+	src/Pokemon/Experience.cpp src/Encryption/Encryption3FRLG.cpp \
+	src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp \
+	src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Games/GameIdentity.cpp
+LEGACY_FRLG_BROWSE_FLAGS := -Wno-unused-parameter
+RSE_TEST_COMMON_SOURCES := tests/test_rse_gen3_adapter.cpp \
+	src/Legacy/RetroArchFRLGDiscovery.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+	src/Encryption/Encryption3FRLG.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Utils/SHA256.cpp src/Games/GameIdentity.cpp
+RSE_HOST_SOURCES := $(RSE_TEST_COMMON_SOURCES) src/Integration/Gen3/PKSMGen3Adapter.cpp
+RSE_NATIVE_SOURCES := $(RSE_TEST_COMMON_SOURCES) src/Integration/Gen3/PKSMGen3NativeAdapter.cpp \
+	src/Names/ItemNames.cpp
+GEN3_FIXTURE := $(HOST_BUILD)/frlg_fixture.sav
 PKSM_CORE_OBJECT := $(HOST_BUILD)/pksm-core.o
 PKSM_CORE_SANITIZE_OBJECT := $(HOST_BUILD)/pksm-core-sanitize.o
 HOST_TESTS += $(HOST_BUILD)/test_pksm_gen3_adapter
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_pksm_gen3_adapter_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen3_native_slice
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_native_slice_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_retroarch_frlg_discovery
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_retroarch_frlg_discovery_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_legacy_frlg_browse
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legacy_frlg_browse_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_legacy_source_bindings
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legacy_source_bindings_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_rse_gen3_adapter $(HOST_BUILD)/test_rse_gen3_native_slice
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_rse_gen3_adapter_sanitize $(HOST_BUILD)/test_rse_gen3_native_slice_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -85,6 +120,57 @@ $(HOST_BUILD)/test_gen3_native_slice: $(GEN3_NATIVE_SLICE_SOURCES)
 $(HOST_BUILD)/test_gen3_native_slice_sanitize: $(GEN3_NATIVE_SLICE_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_rse_gen3_adapter: $(RSE_HOST_SOURCES) $(PKSM_CORE_OBJECT)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(PKSM_CORE_FLAGS) -Iinclude $(PKSM_CORE_INCLUDES) \
+		$(PKSM_CORE_DEFINES) $(RSE_HOST_SOURCES) $(PKSM_CORE_OBJECT) \
+		-Wl,--gc-sections -o $@
+
+$(HOST_BUILD)/test_rse_gen3_adapter_sanitize: $(RSE_HOST_SOURCES) $(PKSM_CORE_SANITIZE_OBJECT)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(PKSM_CORE_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(PKSM_CORE_INCLUDES) \
+		$(PKSM_CORE_DEFINES) $(RSE_HOST_SOURCES) $(PKSM_CORE_SANITIZE_OBJECT) \
+		-Wl,--gc-sections -o $@
+
+$(HOST_BUILD)/test_rse_gen3_native_slice: $(RSE_NATIVE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_rse_gen3_native_slice_sanitize: $(RSE_NATIVE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
+
+$(GEN3_FIXTURE): $(HOST_BUILD)/test_gen3_native_slice
+	$< --write-fixture $@
+
+$(HOST_BUILD)/test_retroarch_frlg_discovery: $(RETROARCH_FRLG_SOURCES) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude \
+		$(RETROARCH_FRLG_SOURCES) -o $@
+
+$(HOST_BUILD)/test_retroarch_frlg_discovery_sanitize: $(RETROARCH_FRLG_SOURCES) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude \
+		$(RETROARCH_FRLG_SOURCES) -o $@
+
+$(HOST_BUILD)/test_legacy_frlg_browse: $(LEGACY_FRLG_BROWSE_SOURCES) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(LEGACY_FRLG_BROWSE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude \
+		$(LEGACY_FRLG_BROWSE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_legacy_frlg_browse_sanitize: $(LEGACY_FRLG_BROWSE_SOURCES) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(LEGACY_FRLG_BROWSE_FLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude \
+		$(LEGACY_FRLG_BROWSE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_legacy_source_bindings: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_legacy_source_bindings_sanitize: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_game_identity: tests/test_game_identity.cpp src/Games/GameIdentity.cpp
 	@mkdir -p $(HOST_BUILD)

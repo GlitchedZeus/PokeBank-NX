@@ -7,9 +7,6 @@ namespace PokeVault::Games {
         using enum Platform;
         using enum SourceSupport;
 
-        // Stable identity is release + platform, never display name alone. The Switch FireRed and
-        // LeafGreen releases deliberately remain distinct from their GBA originals even though the
-        // inner Pokemon data is Gen III compatible.
         constexpr std::array<GameDescriptor, 23> kGames{{
             {"red_gb",                       "Red",               GameBoy,        1, 0, Planned},
             {"blue_gb",                      "Blue",              GameBoy,        1, 0, Planned},
@@ -17,11 +14,11 @@ namespace PokeVault::Games {
             {"gold_gbc",                     "Gold",              GameBoyColor,   2, 0, Planned},
             {"silver_gbc",                   "Silver",            GameBoyColor,   2, 0, Planned},
             {"crystal_gbc",                  "Crystal",           GameBoyColor,   2, 0, Planned},
-            {"ruby_gba",                     "Ruby",              GameBoyAdvance, 3, 0, Planned},
-            {"sapphire_gba",                 "Sapphire",          GameBoyAdvance, 3, 0, Planned},
-            {"emerald_gba",                  "Emerald",           GameBoyAdvance, 3, 0, Planned},
-            {"firered_gba",                  "FireRed",           GameBoyAdvance, 3, 0, Planned},
-            {"leafgreen_gba",                "LeafGreen",         GameBoyAdvance, 3, 0, Planned},
+            {"ruby_gba",                     "Ruby",              GameBoyAdvance, 3, 0, ReadOnly},
+            {"sapphire_gba",                 "Sapphire",          GameBoyAdvance, 3, 0, ReadOnly},
+            {"emerald_gba",                  "Emerald",           GameBoyAdvance, 3, 0, ReadOnly},
+            {"firered_gba",                  "FireRed",           GameBoyAdvance, 3, 0, ReadOnly},
+            {"leafgreen_gba",                "LeafGreen",         GameBoyAdvance, 3, 0, ReadOnly},
             {"firered_switch",               "FireRed",           NintendoSwitch, 3, 0x0100554023408000ULL, NativeSwitch},
             {"leafgreen_switch",             "LeafGreen",         NintendoSwitch, 3, 0x010034D02340E000ULL, NativeSwitch},
             {"letsgo_pikachu_switch",        "Let's Go Pikachu",  NintendoSwitch, 7, 0x010003F003A34000ULL, NativeSwitch},
@@ -37,32 +34,36 @@ namespace PokeVault::Games {
         }};
     }
 
-    std::span<const GameDescriptor> allGameDescriptors() noexcept {
-        return kGames;
-    }
+    std::span<const GameDescriptor> allGameDescriptors() noexcept { return kGames; }
 
     const GameDescriptor* findGame(std::string_view id) noexcept {
-        for (const auto& game : kGames) {
-            if (game.id == id) return &game;
-        }
+        for (const auto& game : kGames) if (game.id == id) return &game;
         return nullptr;
     }
 
     const GameDescriptor* findSwitchGame(uint64_t titleId) noexcept {
         if (titleId == 0) return nullptr;
-        for (const auto& game : kGames) {
+        for (const auto& game : kGames)
             if (game.switchTitleId == titleId) return &game;
-        }
         return nullptr;
     }
 
     std::string_view platformName(Platform platform) noexcept {
         switch (platform) {
-            case Platform::GameBoy:        return "Game Boy";
-            case Platform::GameBoyColor:   return "Game Boy Color";
+            case Platform::GameBoy: return "Game Boy";
+            case Platform::GameBoyColor: return "Game Boy Color";
             case Platform::GameBoyAdvance: return "Game Boy Advance";
             case Platform::NintendoSwitch: return "Nintendo Switch";
         }
         return "Unknown platform";
+    }
+
+    std::string_view gameCardArtworkPath(std::string_view id) noexcept {
+        if (id == "ruby_gba") return "romfs:/game_cards/ruby_gba.png";
+        if (id == "sapphire_gba") return "romfs:/game_cards/sapphire_gba.png";
+        if (id == "emerald_gba") return "romfs:/game_cards/emerald_gba.png";
+        if (id == "firered_gba") return "romfs:/game_cards/firered_gba.png";
+        if (id == "leafgreen_gba") return "romfs:/game_cards/leafgreen_gba.png";
+        return {};
     }
 }

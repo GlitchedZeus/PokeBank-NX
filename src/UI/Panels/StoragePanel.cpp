@@ -465,7 +465,9 @@ namespace UI
                     disabled |= (1u << i);
             drawPopupMenu(screen, fb, title, items.data(), static_cast<int>(items.size()),
                           screen.actionSheet.selectedIndex(), disabled,
-                          screen.sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY" : "BACKUP / LEGACY STORAGE ACTIONS");
+                          screen.legacyReadOnlySource() ? "RETROARCH GBA SOURCE / READ ONLY"
+                              : screen.sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY"
+                                                        : "BACKUP / LEGACY STORAGE ACTIONS");
             drawNavBar(fb, controllerHints(PokeBank::UIModel::ControllerContext::PokemonActionSheet));
         }
 

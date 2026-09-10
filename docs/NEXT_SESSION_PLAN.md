@@ -1,95 +1,45 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-07
-Status: **GEN III NATIVE BACKEND COMPLETE / RETROARCH FRLG RUNTIME WIRING NEXT**
+Last updated: 2026-09-10
+Status: **GEN III GBA READ-ONLY PHYSICALLY ACCEPTED / RBY NEXT**
 
-This file is intentionally short. The detailed verified engineering handoff is `CURRENT_STATUS.md`; the complete next coding instructions are `docs/NEXT_CODEX_PROMPT.md`.
-
-## Verified remote checkpoints
+## Accepted baseline
 
 ```text
-936e75d98daa7e61fcf8ea199bcda958b1b78d7a
-gen3: add PKSM-Core read-only FRLG adapter
+FireRed: DEVICE ACCEPTED YES
+LeafGreen: DEVICE ACCEPTED YES
+Ruby: DEVICE ACCEPTED YES
+Sapphire: DEVICE ACCEPTED YES
+Emerald: DEVICE ACCEPTED YES
 
-283073a5215a471ef0ad07619b4856409658cfdc
-ci: checkout pinned PKSM-Core submodules
+Final accepted RSE application source:
+a2df4c1acdb7a556808bd58a2bdbcd4fc0335954
 
-43f3a9f90a3314725979d59afdd68f19ee159009
-gen3: build exception-free native core slice
+Accepted NRO:
+PokeBank-NX-RSE-OpenFix-Retest-a2df4c1a.nro
+SHA-256: 34fc0893ae0f0ee1a3e244c11469a5d44de181d68318040fce386470b2e0e80e
+
+Recovery snapshot:
+2321fa488668e32392de25afed84e38919fbd21f
+3286 RomFS files
 ```
 
-GitHub Actions on `43f3a9f9...`: **PASS** (PokeBank NX Host Tests run #158).
+Live installed-game and RetroArch source writing remains **HARD DISABLED**.
 
-## What is complete
+## Next action
 
-- UI accepted/frozen for now; return to final polish near release.
-- Left Stick hardware fix accepted.
-- old/problem PLA source now fails gracefully instead of crashing.
-- installed-source live-write lock remains hard disabled.
-- pinned PKSM-Core host oracle and PokeBank-owned FRLG adapter are implemented.
-- deterministic 128 KiB FRLG fixture and corruption coverage exist.
-- Party + all 14 boxes parse.
-- PK3 boundary-crossing extraction and byte-identical untouched round trips are proven.
-- native Switch Gen III backend now compiles without exceptions behind the same public adapter API.
-
-## Interrupted local work to recover
-
-A coding session after `43f3a9f9...` reported local RetroArch FRLG work but timed out before a remote checkpoint. Treat it as **unverified until recovered and pushed**.
-
-Reported design/work:
+Implement strict read-only RetroArch support for:
 
 ```text
-RetroArch configured savefile_directory
-.sav / .srm only
-max depth 2
-max 256 candidates
-strict FRLG validation before filename/path hints
-ambiguous valid FRLG remains unclassified
-Party / Boxes via existing Gen III adapter
+Pokémon Red
+Pokémon Blue
+Pokémon Yellow
 ```
 
-Remaining reported task: connect the catalog to the real application source-discovery lifecycle so the runtime genuinely invokes it and the linker retains it.
+Use normal battery saves, strict Gen I size/layout/checksum validation, truthful structural/language handling, Trainer, Party, PC storage, Pokémon view, Refresh and source-byte immutability. Reuse the existing provider/read-model architecture and pinned correctness references.
 
-## Immediate task
+Run RBY focused tests plus full Gen III regressions, sanitizers and native devkitA64 final link. Push coherent checkpoints early. Produce one exact RBY physical-test NRO and STOP for the user's Switch test.
 
-Recover that local work first, then complete:
+Do not begin Gold/Silver/Crystal in the same session unless RBY is complete and the user explicitly authorizes continuing.
 
-```text
-RetroArch save root
--> bounded source catalog
--> FRLG structural validation
--> reliable firered_gba / leafgreen_gba identity
--> native Gen III adapter
--> Party / Boxes
--> existing PokeBank source/browser lifecycle
-```
-
-No UI redesign. No save writes. No broad SD-card crawl. No guessing FireRed vs LeafGreen when ambiguous.
-
-## After FRLG runtime is complete
-
-Preferred order:
-
-```text
-Gen III production reads
--> Master Vault + Banks
--> Colosseum / XD
--> Gen I / II + RetroArch
--> Stadium stretch
--> DS
--> 3DS
--> modern Switch adapter validation
--> Summary / Oracle / conversion / Dex / legality / events
--> staged writes
--> individually approved live writes
--> true Move
--> RC / v1.0
-```
-
-## One-line launcher
-
-Use this for the next Codex session:
-
-```text
-Continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md and execute docs/NEXT_CODEX_PROMPT.md. Use HIGH reasoning. Preserve local work, push coherent checkpoints early, and never push custom code upstream.
-```
+Canonical detailed instructions: `docs/NEXT_CODEX_PROMPT.md`.
