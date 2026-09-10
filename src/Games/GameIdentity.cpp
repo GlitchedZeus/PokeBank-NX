@@ -8,9 +8,9 @@ namespace PokeVault::Games {
         using enum SourceSupport;
 
         constexpr std::array<GameDescriptor, 23> kGames{{
-            {"red_gb",                       "Red",               GameBoy,        1, 0, Planned},
-            {"blue_gb",                      "Blue",              GameBoy,        1, 0, Planned},
-            {"yellow_gb",                    "Yellow",            GameBoy,        1, 0, Planned},
+            {"red_gb",                       "Red",               GameBoy,        1, 0, ReadOnly},
+            {"blue_gb",                      "Blue",              GameBoy,        1, 0, ReadOnly},
+            {"yellow_gb",                    "Yellow",            GameBoy,        1, 0, ReadOnly},
             {"gold_gbc",                     "Gold",              GameBoyColor,   2, 0, Planned},
             {"silver_gbc",                   "Silver",            GameBoyColor,   2, 0, Planned},
             {"crystal_gbc",                  "Crystal",           GameBoyColor,   2, 0, Planned},
