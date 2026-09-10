@@ -2,13 +2,13 @@
 
 Use MEDIUM reasoning.
 
-## CURRENT STOP STATE — WAIT FOR PHYSICAL RSE TEST
+## CURRENT STOP STATE — WAIT FOR FINAL PHYSICAL RSE RETEST
 
-Do **not** continue roadmap development until the user supplies physical Ruby/Sapphire/Emerald Switch-test results.
+Do **not** continue roadmap development until the user supplies physical Ruby/Sapphire/Emerald results for the exact corrected artifact below.
 
 This is not a recovery task and not an RSE implementation task. Do not regenerate assets, redownload sprites, redo FRLG, redo RSE, or start another generation merely because a new session began.
 
-Live save writing remains **HARD DISABLED**.
+Live installed-game and RetroArch save writing remains **HARD DISABLED**.
 
 ## FRLG accepted
 
@@ -18,6 +18,9 @@ FRLG read-only browsing/source assignment is physically accepted.
 FRLG acceptance-record checkpoint:
 8172ebd9c067bd69df63815dbe865207f905eac6
 
+Accepted FRLG runtime application source:
+d78b76503f02ae26309855970fc5ce0b35c12bcb
+
 FireRed GBA: DEVICE TESTED = YES
 FireRed GBA: DEVICE ACCEPTED = YES
 LeafGreen GBA: DEVICE TESTED = YES
@@ -26,84 +29,156 @@ LeafGreen GBA: DEVICE ACCEPTED = YES
 
 Do not reopen FRLG without new device evidence of a defect.
 
-## RSE application source — frozen for current device test
+## Original RSE physical test — completed, not accepted
 
-Exact Ruby/Sapphire/Emerald application source:
+The user physically tested exactly:
 
 ```text
-46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
-gen3: add strict read-only Ruby Sapphire Emerald path
+PokeBank-NX-RSE-Retest-46e0c161.nro
+application source: 46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
 ```
 
-Host CI is complete:
+Physical PASS for Ruby, Sapphire and Emerald:
+
+- save discovery and open;
+- trainer/read model;
+- Pokémon, party and boxes;
+- general browsing;
+- normal read-only RetroArch battery-save handling.
+
+The user also continued playing Emerald, saved normally in-game, and PokeBank NX continued reading the updated real save correctly.
+
+Physical FAIL on that artifact for all three games:
+
+- Items screen empty;
+- Ruby/Sapphire/Emerald game-card artwork missing.
+
+Known real Emerald evidence:
 
 ```text
-CI run 34440786353: PASS
-Ruby: HOST TESTED PASS
-Sapphire: HOST TESTED PASS
-Emerald: HOST TESTED PASS
-ASan: PASS
-UBSan: PASS
+trainer money: 2100
+inventory: Potion x3
 ```
 
-Do not reimplement or rerun host CI unless later source changes require it.
-
-## Recovery snapshot — complete and unchanged
+Therefore:
 
 ```text
-a2adac94f15504b90a83a295e77ad54154da4206
+DEVICE TESTED FOR RUBY = YES
+DEVICE TESTED FOR SAPPHIRE = YES
+DEVICE TESTED FOR EMERALD = YES
+DEVICE TESTED FOR RSE = YES
+DEVICE ACCEPTED FOR RSE = NO
+```
+
+## Corrected RSE application source — frozen for final retest
+
+Exact corrected application source:
+
+```text
+1c96df2543cba339cec3dc88e20f8c6ca4fe82bb
+tests: expect RSE game-card artwork
+application tree: 49870ef3bdf92c4f8434597bc83de22dc6e76e27
+```
+
+This checkpoint contains the strict read-only RSE inventory fix and Ruby/Sapphire/Emerald artwork integration.
+
+Verified inventory behavior:
+
+```text
+Ruby inventory: PASS
+Sapphire inventory: PASS
+Emerald inventory: PASS
+Emerald keyed bag quantities: PASS
+PC item plaintext quantities: PASS
+Potion x3-style host fixture: PASS
+invalid item/count rejection: PASS
+source non-mutation: PASS
+FRLG regression: PASS
+ASan/UBSan: PASS
+```
+
+Do not hardcode the user's Potion x3 evidence; production parsing already decodes it generically.
+
+## Permanent recovery snapshot — current
+
+Use the evolved permanent snapshot:
+
+```text
+2321fa488668e32392de25afed84e38919fbd21f
+recovery: snapshot RSE game-card artwork
+```
+
+Verified contents:
+
+```text
 HD renders: 3260/3260
 base species: 1025/1025
-types: 18/18
+type icons: 18/18
 fonts: 3/3
-required game artwork: PASS
-total RomFS: 3283/3283
+FireRed artwork: PASS
+LeafGreen artwork: PASS
+Ruby artwork: PASS
+Sapphire artwork: PASS
+Emerald artwork: PASS
+embedded/expected RomFS: 3286/3286
 ```
 
-Do not redownload or regenerate sprites. Use only the committed deterministic recovery tooling if restoration is genuinely needed later.
+Do not use the superseded 3283-file snapshot for the current RSE final retest. Do not redownload or regenerate the sprite library.
 
-## Exact RSE physical-test artifact
+## Exact corrected RSE physical-retest artifact
 
-Native build/package verification is complete for exact application source `46e0c1617fb642f45c0cd1d4b07a9bcc89c01909`.
+Successful build/verification run:
 
 ```text
-native devkitA64 full build/link: PASS
-embedded RomFS: PASS 3283/3283
+GitHub Actions run: 34446696858
+focused host/safety tests: PASS
+ASan/UBSan: PASS
+native devkitA64 full compile + final link: PASS
+embedded application identity: PASS
+embedded RomFS: PASS 3286/3286
+artifact upload: PASS
+```
 
-PokeBank-NX-RSE-Retest-46e0c161.nro
-bytes: 156711849
-SHA-256: 5cbf1cdd9e5b075793b6b259a647ff0b14328589b31939a4fe1f56cccc0c7d8a
+Preserved Actions artifact:
 
-PokeBank-NX-RSE-Retest-46e0c161.zip
-bytes: 149787526
-SHA-256: 17c63ab10089bcaff996d1c4a390d307b61ff386f6e6644ded380a812e6a9cb9
+```text
+name: RSE-Final-Retest-1c96df25
+artifact id: 10140106102
+Actions artifact digest: sha256:9e5e4c4d5ce1e65ab5148c66a4ee83db7cfffb9244ba930e0c1ce94bfc2318fd
+```
 
-PokeBank-NX-RSE-Retest-46e0c161.nro.manifest.txt
-SHA-256: 180b2c2827df236c096c760d2b278b5893987bdd2f90d3d78d1b77f57b3ad117
+Exact files:
+
+```text
+PokeBank-NX-RSE-Final-Retest-1c96df25.nro
+bytes: 158120837
+SHA-256: d525a8bfac881e313d2fce1c154e26f0a893a907dc2a0be44f8f604c91416d07
+
+PokeBank-NX-RSE-Final-Retest-1c96df25.zip
+bytes: 151193359
+SHA-256: 7bda62d924d1a0e094fceaaaeb35c88e697029b323ede17b4306f2a4dbf6ab74
+
+PokeBank-NX-RSE-Final-Retest-1c96df25.nro.manifest.txt
+SHA-256: 655dfd477bd8d2344ff7b929afcfa05fef6a7a091881f30a78d562cacbaf27b4
 
 BUILD_MANIFEST.json
-SHA-256: 0d845df83c363f94c755ef2b49c37b03f0fa412352f219182ce636f225b5f037
+SHA-256: 8c6705072803126ad447fae411de75144edaf764f7caf7731d228e84b71c403b
 ```
 
-The physical-test bundle was preserved as GitHub Actions artifact `RSE-Retest-46e0c161` (artifact id `10138231150`). Required recovery, preflight, native-link, embedded-RomFS/package and artifact-upload steps passed. The Actions run is red only because an optional private prerelease-publication step failed after artifact preservation; do not treat that as an RSE application failure.
+## What to do when the user returns with final RSE retest results
 
-Current RSE hardware state:
+First verify they tested the exact NRO filename/hash above. Record observations for Ruby, Sapphire and Emerald, especially:
 
-```text
-DEVICE TESTED FOR RUBY: NO
-DEVICE TESTED FOR SAPPHIRE: NO
-DEVICE TESTED FOR EMERALD: NO
-DEVICE TESTED FOR RSE: NO
-DEVICE ACCEPTED FOR RSE: NO
-```
+- Items screen now shows real inventory correctly, including the user's Emerald Potion x3 where still present;
+- Ruby/Sapphire/Emerald game-card artwork renders;
+- save opening/trainer/Pokémon/party/boxes/general browsing remain healthy;
+- normal in-game RetroArch saving remains unaffected by this read-only app.
 
-## What to do when the user returns with RSE test results
-
-First verify that the user tested the exact filename/hash above. Record their physical observations in `CURRENT_STATUS.md` and the relevant GitHub issue. If all requested Ruby/Sapphire/Emerald read-only behaviors pass, record RSE physical acceptance. If something fails, diagnose only the observed RSE defect from this exact checkpoint and preserve the source/save safety rules.
+If all requested behavior passes, record `DEVICE ACCEPTED FOR RSE = YES`. If something fails, diagnose only that observed defect from exact application source `1c96df2543cba339cec3dc88e20f8c6ca4fe82bb`.
 
 Do not infer device acceptance from host/native tests alone.
 
-## Out of scope while RSE physical testing is pending
+## Out of scope while final RSE acceptance is pending
 
 Do not start:
 
@@ -119,4 +194,4 @@ Do not start:
 
 ## STOP
 
-Stop and wait for the user's physical Ruby/Sapphire/Emerald test. Do not create new feature work before those results.
+Stop and wait for the user's final physical test of `PokeBank-NX-RSE-Final-Retest-1c96df25.nro`.
