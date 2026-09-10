@@ -1,0 +1,63 @@
+name: RBY adapter checkpoint
+
+on:
+  push:
+    branches: [tmp-rby-adapter]
+    paths:
+      - 'include/Integration/Gen1/**'
+      - 'src/Integration/Gen1/**'
+      - 'tests/test_rby_gen1_adapter.cpp'
+      - '.github/workflows/rby-adapter-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp-rby-adapter
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Existing full host regression
+        run: |
+          set -euo pipefail
+          git diff --check 5eb56a5988bfa4c825728c7d6cd80fdc86499487..HEAD
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+
+      - name: Focused Gen I adapter with pinned PKSM-Core oracle
+        run: |
+          set -euo pipefail
+          PKSM_CORE_ROOT=vendor/PKSM-Core
+          PKSM_CORE_INCLUDES="$(find "$PKSM_CORE_ROOT/include" "$PKSM_CORE_ROOT/memecrypto" "$PKSM_CORE_ROOT/pcg-cpp" -type d -printf ' -I%p')"
+          PKSM_CORE_DEFINES="-D_PKSMCORE_CONFIGURED -D_PKSMCORE_LANG_FOLDER='\"vendor/PKSM-Core/strings/\"' -D_PKSMCORE_PERSONAL_FOLDER='\"vendor/PKSM-Core/personals/\"'"
+          eval g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 \
+            -fno-operator-names -Wno-psabi -Wno-missing-field-initializers -Wno-unused-parameter \
+            -Iinclude $PKSM_CORE_INCLUDES $PKSM_CORE_DEFINES \
+            tests/test_rby_gen1_adapter.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
+            build-host/pksm-core.o -Wl,--gc-sections -o build-host/test_rby_gen1_adapter
+          ./build-host/test_rby_gen1_adapter
+
+      - name: Focused Gen I ASan UBSan
+        run: |
+          set -euo pipefail
+          PKSM_CORE_ROOT=vendor/PKSM-Core
+          PKSM_CORE_INCLUDES="$(find "$PKSM_CORE_ROOT/include" "$PKSM_CORE_ROOT/memecrypto" "$PKSM_CORE_ROOT/pcg-cpp" -type d -printf ' -I%p')"
+          PKSM_CORE_DEFINES="-D_PKSMCORE_CONFIGURED -D_PKSMCORE_LANG_FOLDER='\"vendor/PKSM-Core/strings/\"' -D_PKSMCORE_PERSONAL_FOLDER='\"vendor/PKSM-Core/personals/\"'"
+          PKSM_CORE_SOURCES="$(find "$PKSM_CORE_ROOT/source" "$PKSM_CORE_ROOT/memecrypto" -type f \( -name '*.cpp' -o -name '*.c' \) -print)"
+          eval g++ -std=c++20 -O1 -w -fno-operator-names -Wno-psabi -Wno-missing-field-initializers -Wno-unused-parameter \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -ffunction-sections -fdata-sections \
+            $PKSM_CORE_INCLUDES $PKSM_CORE_DEFINES -r $PKSM_CORE_SOURCES -o build-host/pksm-core-rby-sanitize.o
+          eval g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O1 \
+            -fno-operator-names -Wno-psabi -Wno-missing-field-initializers -Wno-unused-parameter \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            $PKSM_CORE_INCLUDES $PKSM_CORE_DEFINES \
+            tests/test_rby_gen1_adapter.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
+            build-host/pksm-core-rby-sanitize.o -Wl,--gc-sections -o build-host/test_rby_gen1_adapter_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rby_gen1_adapter_sanitize
