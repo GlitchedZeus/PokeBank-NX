@@ -185,7 +185,12 @@ void oracleCheckPKSM(const std::vector<uint8_t>& fixture, const FixtureLayout& l
     assert(pksm::Sav1::isValid(bytes));
     pksm::Sav1 sav(bytes,static_cast<uint32_t>(fixture.size()));
     assert(sav.TID()==0x1234);
-    assert(sav.money()==123456);
+    // Pinned PKSM-Core aa22d7 has a known BCD helper defect: BCDtoUInteger() never advances its
+    // decimal multiplier, so 0x12,0x34,0x56 becomes 12+34+56 = 102. PKHeX e15d246 reads these
+    // same Gen I big-endian BCD bytes as 123456. Production intentionally follows the correct
+    // representation; keep this assertion so a future PKSM-Core pin changing the behavior is
+    // noticed instead of silently turning the oracle into a different implementation.
+    assert(sav.money()==102);
     assert(sav.currentBox()==2);
     assert(sav.partyCount()==2);
     assert(sav.maxBoxes()==l.boxCount);
