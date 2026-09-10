@@ -1,105 +1,122 @@
 # PokeBank NX — Authoritative Next Codex Prompt
 
-Use MEDIUM reasoning. If RSE save-format/sector work becomes ambiguous or difficult, switch to HIGH reasoning.
+Use MEDIUM reasoning.
 
-## Current accepted milestone
+## CURRENT STOP STATE — WAIT FOR PHYSICAL RSE TEST
 
-FRLG read-only browsing/source assignment is physically accepted on real Switch hardware using application source:
+Do **not** continue roadmap development until the user supplies physical Ruby/Sapphire/Emerald Switch-test results.
+
+This is not a recovery task and not an RSE implementation task. Do not regenerate assets, redownload sprites, redo FRLG, redo RSE, or start another generation merely because a new session began.
+
+Live save writing remains **HARD DISABLED**.
+
+## FRLG accepted
+
+FRLG read-only browsing/source assignment is physically accepted.
 
 ```text
-d78b76503f02ae26309855970fc5ce0b35c12bcb
+FRLG acceptance-record checkpoint:
+8172ebd9c067bd69df63815dbe865207f905eac6
+
+FireRed GBA: DEVICE TESTED = YES
+FireRed GBA: DEVICE ACCEPTED = YES
+LeafGreen GBA: DEVICE TESTED = YES
+LeafGreen GBA: DEVICE ACCEPTED = YES
 ```
 
-FireRed GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES.
-LeafGreen GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES.
+Do not reopen FRLG without new device evidence of a defect.
 
-Do not reopen FRLG persistence or the `fsdevGetLastResult()` work without new device evidence of a new defect. Live save writing remains HARD DISABLED and was not part of the acceptance.
+## RSE application source — frozen for current device test
 
-Recovery is already complete. The verified private GitHub RomFS snapshot remains:
+Exact Ruby/Sapphire/Emerald application source:
+
+```text
+46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
+gen3: add strict read-only Ruby Sapphire Emerald path
+```
+
+Host CI is complete:
+
+```text
+CI run 34440786353: PASS
+Ruby: HOST TESTED PASS
+Sapphire: HOST TESTED PASS
+Emerald: HOST TESTED PASS
+ASan: PASS
+UBSan: PASS
+```
+
+Do not reimplement or rerun host CI unless later source changes require it.
+
+## Recovery snapshot — complete and unchanged
 
 ```text
 a2adac94f15504b90a83a295e77ad54154da4206
-HD renders 3260/3260
-base species 1025/1025
-types 18/18
-fonts 3/3
-total RomFS 3283/3283
+HD renders: 3260/3260
+base species: 1025/1025
+types: 18/18
+fonts: 3/3
+required game artwork: PASS
+total RomFS: 3283/3283
 ```
 
-Do not regenerate sprites or redo recovery.
+Do not redownload or regenerate sprites. Use only the committed deterministic recovery tooling if restoration is genuinely needed later.
 
-## Single active mission — RSE read-only
+## Exact RSE physical-test artifact
 
-Implement/verify Pokémon Ruby, Pokémon Sapphire and Pokémon Emerald GBA / RetroArch normal battery saves using the existing Gen III architecture.
-
-Before coding, perform one narrow check for parked RSE checkpoint `b5ef83b` and `1a921515` if available or a verified equivalent. Inspect only the RSE-specific diff and reuse useful pieces without resetting the current branch or losing newer FRLG/recovery/UI/asset/safety work. If the parked checkpoint is genuinely unavailable, continue from the current architecture; do not begin broad reflog/worktree archaeology.
-
-Architecture:
+Native build/package verification is complete for exact application source `46e0c1617fb642f45c0cd1d4b07a9bcc89c01909`.
 
 ```text
-raw GBA battery save
-        ↓
-strict PokeBank validation
-        ↓
-valid rotating save-slot selection
-        ↓
-Gen III adapter / PKSM-Core where appropriate
-        ↓
-PokeBank-owned read model
-        ↓
-UI
+native devkitA64 full build/link: PASS
+embedded RomFS: PASS 3283/3283
+
+PokeBank-NX-RSE-Retest-46e0c161.nro
+bytes: 156711849
+SHA-256: 5cbf1cdd9e5b075793b6b259a647ff0b14328589b31939a4fe1f56cccc0c7d8a
+
+PokeBank-NX-RSE-Retest-46e0c161.zip
+bytes: 149787526
+SHA-256: 17c63ab10089bcaff996d1c4a390d307b61ff386f6e6644ded380a812e6a9cb9
+
+PokeBank-NX-RSE-Retest-46e0c161.nro.manifest.txt
+SHA-256: 180b2c2827df236c096c760d2b278b5893987bdd2f90d3d78d1b77f57b3ad117
+
+BUILD_MANIFEST.json
+SHA-256: 0d845df83c363f94c755ef2b49c37b03f0fa412352f219182ce636f225b5f037
 ```
 
-Validate 128 KiB raw battery saves, both rotating Gen III save slots, expected sector IDs, sector signatures, section checksums, save index/counter coherence, malformed/truncated input and newest-valid-slot selection. A newer corrupted slot must never beat an older valid coherent slot.
+The physical-test bundle was preserved as GitHub Actions artifact `RSE-Retest-46e0c161` (artifact id `10138231150`). Required recovery, preflight, native-link, embedded-RomFS/package and artifact-upload steps passed. The Actions run is red only because an optional private prerelease-publication step failed after artifact preservation; do not treat that as an RSE application failure.
 
-Implement/verify for Ruby, Sapphire and Emerald:
-
-- RetroArch normal in-game battery save discovery (`.srm` and already-supported equivalent raw normalization); no arbitrary `.state` parsing;
-- truthful Ruby/Sapphire/Emerald identification with no false FRLG identification;
-- trainer name, gender, TID, SID where available, money, badges and other existing read-model fields where supported;
-- party count and all party Pokémon fields supported by the current summary model;
-- all PC boxes in correct order, names where available, empty-slot behavior, and Pokémon reconstruction across Gen III PC sector boundaries;
-- existing Pokémon View/artwork path without crashes for legal normal records;
-- Refresh rereads a newly saved RetroArch battery save;
-- no source mutation and no live-write path.
-
-Focused fixtures/tests should cover where practical:
+Current RSE hardware state:
 
 ```text
-valid slot A
-valid slot B newer
-newer corrupted slot + older valid slot
-bad sector checksum
-bad sector signature
-missing sector
-truncated save
-party Pokémon
-boxed Pokémon
-Pokémon crossing PC sector boundary
-trainer data
-Ruby identification
-Sapphire identification
-Emerald identification
-no source mutation
-```
-
-Do not replace the cross-sector-boundary fixture with an aligned-only fixture.
-
-Run focused RSE/Gen III tests, relevant FRLG regressions, ASan/UBSan, source-mutation/write-policy checks, `git diff --check`, and a full native devkitA64 build/link.
-
-As soon as a coherent RSE source milestone passes host verification, commit/push `origin/feature/pokebank-playable` and remote-verify it. Do not leave substantial work only in a temporary workspace.
-
-Then restore the committed RomFS snapshot using existing tooling, verify 3260/3260 HD, 1025/1025 base, 18/18 types, 3/3 fonts and device asset preflight PASS. Build/package the exact new RSE application source as `PokeBank-NX-RSE-Retest-<shortsha>.nro/.zip`, record application SHA and documentation SHA separately, verify the embedded 3283-file RomFS, hash the artifact, and STOP for physical Ruby/Sapphire/Emerald testing.
-
-## Out of scope
-
-Do not start Gen I, Gen II, DS, 3DS, modern Switch expansion, Vault, editor/Create Pokémon, transfers, events/gifts, RetroArch per-Switch-user changes, or live save writing.
-
-## STOP condition
-
-Stop after the RSE physical-test artifact exists and has been verified/packaged. Report Ruby/Sapphire/Emerald host status, focused tests, ASan/UBSan, native full-link status, exact application source SHA, push/remote verification, unchanged recovery snapshot counts, exact NRO filename/size/SHA-256, and:
-
-```text
+DEVICE TESTED FOR RUBY: NO
+DEVICE TESTED FOR SAPPHIRE: NO
+DEVICE TESTED FOR EMERALD: NO
 DEVICE TESTED FOR RSE: NO
 DEVICE ACCEPTED FOR RSE: NO
 ```
+
+## What to do when the user returns with RSE test results
+
+First verify that the user tested the exact filename/hash above. Record their physical observations in `CURRENT_STATUS.md` and the relevant GitHub issue. If all requested Ruby/Sapphire/Emerald read-only behaviors pass, record RSE physical acceptance. If something fails, diagnose only the observed RSE defect from this exact checkpoint and preserve the source/save safety rules.
+
+Do not infer device acceptance from host/native tests alone.
+
+## Out of scope while RSE physical testing is pending
+
+Do not start:
+
+- Gen I or Gen II;
+- DS or 3DS;
+- modern Switch expansion;
+- Vault/Banks;
+- transfers;
+- legality/editor/Create Pokémon;
+- events/gifts;
+- RetroArch per-Switch-user save patch;
+- live save writing.
+
+## STOP
+
+Stop and wait for the user's physical Ruby/Sapphire/Emerald test. Do not create new feature work before those results.

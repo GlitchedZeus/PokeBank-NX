@@ -2,53 +2,32 @@
 
 Last updated: 2026-09-10
 
-## FRLG physically accepted; RSE unblocked
+## STOP: RSE physical-test artifact is ready
 
-FireRed GBA and LeafGreen GBA read-only browsing/source assignment are now **DEVICE TESTED = YES** and **DEVICE ACCEPTED = YES** on a real Nintendo Switch.
+The active development branch is `feature/pokebank-playable`.
 
-Accepted application source:
+No further roadmap work is authorized until the user physically tests the exact Ruby/Sapphire/Emerald artifact recorded below.
+
+Live installed-game and RetroArch save writing remains **HARD DISABLED**.
+
+## FRLG milestone — physically accepted
+
+FireRed GBA and LeafGreen GBA read-only browsing/source assignment are physically accepted on a real Nintendo Switch.
+
+Acceptance-record checkpoint:
+
+```text
+8172ebd9c067bd69df63815dbe865207f905eac6
+```
+
+Accepted FRLG runtime application source:
 
 ```text
 d78b76503f02ae26309855970fc5ce0b35c12bcb
 legacy: make fsdev diagnostics link-compatible
 ```
 
-This source contains the earlier LeafGreen persistence fix from:
-
-```text
-92bde34d1586990aaa82adc4f60d42d7bc6b5bdf
-legacy: safely replace profile binding database on Switch
-```
-
-The native `fsdevGetLastResult()` compatibility blocker is fixed. The runner used libnx 4.12.0-1; the header declared the function while `libnx.a` exported the unmangled C symbol and the old C++ object requested a mangled symbol. The narrow fix uses C linkage and treats the API as optional diagnostics only, falling back to `native_result=unavailable` when unavailable. Persistence behavior, backup/recovery/rollback, source bytes and write policy were not weakened.
-
-The exact FRLG persistence retest artifact was built with a full native devkitA64 link, restored from the committed RomFS snapshot, and verified with 3,283/3,283 embedded RomFS files. The accepted NRO was:
-
-```text
-PokeBank-NX-FRLG-Persistence-Retest-d78b7650.nro
-size: 156,707,753 bytes
-SHA-256: 60c727d05ea79dda2f284b4594222ec334324f04eba0db87d9cb4f60f8959dc2
-embedded application source: d78b76503f02ae26309855970fc5ce0b35c12bcb
-```
-
-### Physical Switch acceptance results
-
-The user physically verified all of the following on the current FRLG persistence build:
-
-1. FireRed opens correctly.
-2. LeafGreen opens correctly.
-3. FireRed and LeafGreen can both be assigned.
-4. Fully exiting PokeBank NX and reopening preserves assignments.
-5. Switching Nintendo/PokeBank profiles preserves correct profile isolation.
-6. Switching back restores the correct original profile assignments.
-7. Pokémon were changed in RetroArch.
-8. The games were saved normally using the in-game battery save.
-9. PokeBank NX Refresh reread the changed save correctly.
-10. Updated Pokémon data appeared correctly.
-11. The original FireRed/LeafGreen saves still load and remain healthy in RetroArch.
-12. Additional browsing/trainer/party/box testing also passed.
-
-Therefore:
+Physical status:
 
 ```text
 FireRed GBA: DEVICE TESTED = YES
@@ -58,71 +37,129 @@ LeafGreen GBA: DEVICE ACCEPTED = YES
 FRLG MILESTONE: PHYSICALLY ACCEPTED
 ```
 
-This acceptance covers the implemented **READ-ONLY** browsing/source-assignment functionality only. Live installed-game and RetroArch save writing remains **HARD DISABLED**. Do not claim live writing as tested or accepted.
+The accepted FRLG test covered opening both games, source assignment, persistence across full app restart, per-PokeBank/Nintendo-profile isolation, switching back to the original profile, Refresh after normal RetroArch in-game battery saves, updated Pokémon display, healthy original saves, and additional trainer/party/box browsing.
 
-## Recovery snapshot remains complete
+This acceptance is **read-only browsing/source-assignment only**. It is not approval for live save writing.
 
-Recovery is already complete and must not be redone during ordinary development.
+## RSE application source — host verified
 
-Authoritative private GitHub RomFS recovery snapshot:
+Ruby/Sapphire/Emerald read-only support is implemented at the exact application-source checkpoint:
+
+```text
+46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
+gen3: add strict read-only Ruby Sapphire Emerald path
+application tree: 655ccd8fb37b6627017959213f7c3811a2f3275a
+```
+
+This source includes Ruby/Sapphire/Emerald stable identities; RetroArch `.sav`/`.srm` discovery; `.state` exclusion; strict 128 KiB Gen III rotating-sector validation; all 14 sector IDs; sector signatures and checksums; coherent save counters; newest-valid-slot selection; corrupt-newer-slot fallback; RSE-vs-FRLG family validation; R/S source identity handling; Emerald money encryption handling; trainer/party/PC-box read models; Refresh; source non-mutation; and the retained PC-sector-boundary Pokémon fixture.
+
+Host verification is complete:
+
+```text
+GitHub Actions host run: 34440786353
+Ruby source support: HOST TESTED PASS
+Sapphire source support: HOST TESTED PASS
+Emerald source support: HOST TESTED PASS
+focused/host tests: PASS
+git diff --check / whitespace: PASS
+device/recovery tool syntax: PASS
+GitHub recovery contract: PASS
+ASan: PASS
+UBSan: PASS
+```
+
+No application-source correction was required during the native artifact build. The RSE application source therefore remains exactly `46e0c1617fb642f45c0cd1d4b07a9bcc89c01909`.
+
+## Recovery snapshot — unchanged and verified
+
+The build used only the existing committed private GitHub RomFS recovery snapshot:
 
 ```text
 a2adac94f15504b90a83a295e77ad54154da4206
 ```
 
-Verified snapshot/build context:
+The device pipeline explicitly verified that `recovery/assets_snapshot` had not changed relative to that checkpoint before running the existing deterministic recovery tooling.
+
+Verified recovered/preflight assets:
 
 ```text
 HD renders: 3260/3260
 base species: 1025/1025
 type icons: 18/18
 fonts: 3/3
-FRLG artwork: PASS
-total RomFS files: 3283/3283
+required FRLG game-card artwork: PASS
+device asset preflight: PASS
+total expected RomFS files: 3283
 ```
 
-Normal recovery remains defined by `docs/RECOVERY_CONTRACT.md`, `recovery/RECOVERY_STATE.json`, and `tools/recover_workspace.py`. Do not regenerate sprites or perform broad reflog/worktree archaeology unless the committed deterministic recovery path genuinely fails.
+No sprites were redownloaded or regenerated.
 
-## Next authorized development target — Ruby / Sapphire / Emerald
+## RSE native/device artifact — READY FOR PHYSICAL TEST
 
-RSE is now unblocked. The next milestone is **Pokémon Ruby, Pokémon Sapphire and Pokémon Emerald GBA / RetroArch normal battery saves, read-only only**.
-
-Use the existing Gen III architecture and strict validation concepts already proven for FRLG:
+Exact application source used by the native build:
 
 ```text
-raw GBA battery save
-        ↓
-strict PokeBank validation
-        ↓
-valid rotating save-slot selection
-        ↓
-Gen III adapter / PKSM-Core where appropriate
-        ↓
-PokeBank-owned read model
-        ↓
-UI
+46e0c1617fb642f45c0cd1d4b07a9bcc89c01909
 ```
 
-PokeBank must validate rotating save sections before exposing Pokémon. Never select a newer corrupt slot merely because its save index is higher. Reject malformed/truncated/missing-sector/checksum/signature failures safely. Source saves must remain byte-for-byte untouched.
-
-Parked RSE checkpoints to inspect **once, narrowly** before implementation:
+Required native artifact pipeline results:
 
 ```text
-b5ef83b
-1a921515 if available, or verified equivalent
+clean devkitA64 full build/link: PASS
+final NRO produced: PASS
+embedded RomFS byte-for-byte verification: PASS
+embedded RomFS files: 3283/3283
+embedded application-source identity: PASS
+Actions physical-test artifact upload: PASS
 ```
 
-If useful RSE work exists there, reapply/integrate only that work on top of the current branch. Never reset the branch backwards and never discard newer FRLG, recovery, UI, asset or safety work. If the parked work is genuinely unavailable, continue from current Gen III architecture rather than spending the session on broad archaeology.
+The successful packaged artifact came from device-build run `34441709355`. That workflow's required recovery, preflight, native full-link, embedded-RomFS/package, and Actions artifact-upload steps all passed. The run itself is displayed red only because the later optional private GitHub prerelease-publication step failed **after** the physical-test artifact had already been preserved; this did not alter or invalidate the NRO/ZIP and is not an RSE application-source defect.
 
-Required RSE coverage includes Ruby/Sapphire/Emerald identification, trainer data, party, PC boxes including a cross-sector-boundary Pokémon fixture, rotating-slot selection, corrupt-newer-slot fallback to older valid slot, malformed/truncated rejection, Refresh reread behavior, source-mutation/write-policy checks, relevant FRLG regressions, ASan/UBSan and a full native devkitA64 link.
+Preserved Actions artifact:
 
-Once coherent RSE host verification passes, commit/push/remote-verify an application-source checkpoint early. Then restore the existing committed RomFS snapshot, build/package a new RSE physical-test NRO, verify embedded RomFS and STOP for device testing.
+```text
+name: RSE-Retest-46e0c161
+artifact id: 10138231150
+Actions artifact digest: sha256:73a3a001732c1834d5ab8f8774a9ddba6a17c45cece05ca7279095188f740cf0
+```
 
-## Strict scope / safety
+Exact physical-test files:
 
-Do not begin Gen I, Gen II, DS, 3DS, modern Switch expansion, Vault/Banks, editor/Create Pokémon, events/gifts, transfers, RetroArch per-Switch-user modifications or any other roadmap feature during the RSE milestone.
+```text
+NRO: PokeBank-NX-RSE-Retest-46e0c161.nro
+NRO bytes: 156711849
+NRO SHA-256: 5cbf1cdd9e5b075793b6b259a647ff0b14328589b31939a4fe1f56cccc0c7d8a
 
-No live save writing. No browsing action may modify source save bytes.
+ZIP: PokeBank-NX-RSE-Retest-46e0c161.zip
+ZIP bytes: 149787526
+ZIP SHA-256: 17c63ab10089bcaff996d1c4a390d307b61ff386f6e6644ded380a812e6a9cb9
+
+Packaging manifest: PokeBank-NX-RSE-Retest-46e0c161.nro.manifest.txt
+Packaging manifest SHA-256: 180b2c2827df236c096c760d2b278b5893987bdd2f90d3d78d1b77f57b3ad117
+
+Build manifest: BUILD_MANIFEST.json
+Build manifest SHA-256: 0d845df83c363f94c755ef2b49c37b03f0fa412352f219182ce636f225b5f037
+```
+
+Independent extraction of the preserved Actions artifact reproduced the same NRO/ZIP sizes and SHA-256 values recorded by the build manifest.
+
+Current device status:
+
+```text
+DEVICE TESTED FOR RUBY: NO
+DEVICE TESTED FOR SAPPHIRE: NO
+DEVICE TESTED FOR EMERALD: NO
+DEVICE TESTED FOR RSE: NO
+DEVICE ACCEPTED FOR RSE: NO
+```
+
+## STOP condition / next action
+
+**STOP DEVELOPMENT HERE.** The next project event must be the user's physical Switch test of `PokeBank-NX-RSE-Retest-46e0c161.nro` with Ruby, Sapphire and Emerald normal RetroArch battery saves.
+
+Do not start Gen I, Gen II, DS, 3DS, modern Switch expansion, Vault/Banks, transfers, editor/Create Pokémon, legality, events/gifts, RetroArch per-Switch-user save changes, or live writing while RSE physical acceptance is pending.
+
+If a future session begins before physical RSE results exist, do not rebuild or reimplement RSE merely because the session changed. Preserve the exact application source and artifact identity above and wait for device evidence.
 
 ## Repository authority
 
@@ -133,4 +170,4 @@ Writable remote: origin
 Upstream reference: kiasta/PKSE
 ```
 
-Never push custom PokeBank NX code upstream.
+Never push custom PokeBank NX work upstream.
