@@ -71,7 +71,7 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add tests/test_rse_gen3_adapter.cpp
           git diff --cached --check
-          git commit -m "tests: enforce nonfatal RSE inventory regression"
+          git commit -m "tests: complete nonfatal RSE inventory regression"
           git push origin HEAD:feature/pokebank-playable
 
-# continuation trigger: stale fatal inventory assertions only
+# continuation trigger: source immutability + keyed Emerald optional failure
