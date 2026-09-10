@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "updated": "2026-09-09",
+  "updated": "2026-09-10",
   "repository": "GlitchedZeus/PokeBank-NX",
   "branch": "feature/pokebank-playable",
-  "application_source": "92bde34d1586990aaa82adc4f60d42d7bc6b5bdf",
-  "application_source_message": "legacy: safely replace profile binding database on Switch",
+  "application_source": "1dc5893dd20edf54a06b62ea3e27909f5719fa77",
+  "application_source_message": "gen3: fix RSE inventory and game-card artwork",
   "historical_full_visual_baseline": {
     "application_source": "ea0b806bac4acdb5619f22f9841d616ea8a237ff",
     "nro_filename": "PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro",
@@ -20,8 +20,8 @@
     "manifest": "recovery/assets_snapshot/manifest.json",
     "packer": "tools/pack_recovery_snapshot.py",
     "preferred_when_present": true,
-    "status": "COMMITTED",
-    "note": "Complete 3283-file snapshot committed at a2adac94f15504b90a83a295e77ad54154da4206; both parts and manifest remote-verified."
+    "status": "REPACKING_FOR_RSE_ARTWORK",
+    "note": "Previous committed snapshot a2adac94f15504b90a83a295e77ad54154da4206 has 3283 files; tracked RSE game-card assets are overlaid before deterministic repack."
   },
   "pokemon_hd": {
     "generator": "tools/gen_hdsprites.py",
@@ -50,7 +50,10 @@
     "tracked_source": "assets/game_cards",
     "expected": [
       "firered_gba.png",
-      "leafgreen_gba.png"
+      "leafgreen_gba.png",
+      "ruby_gba.png",
+      "sapphire_gba.png",
+      "emerald_gba.png"
     ],
     "output": "romfs/game_cards"
   },
