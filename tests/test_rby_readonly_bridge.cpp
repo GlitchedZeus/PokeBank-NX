@@ -75,7 +75,9 @@ int main(){
     assert(trainer->party.size()==1);auto* party=static_cast<Pokemon::Pokemon1ReadOnly*>(trainer->party[0].get());
     assert(party->speciesID()==25);assert(Utils::utf16ToUtf8(party->nickname())=="SPARKY");assert(Utils::utf16ToUtf8(party->otName())=="RED");
     assert(party->tid16()==0x1234);assert(party->level()==15);assert(party->exp()==12345);assert(party->move(0)==33);assert(party->movePP(0)==20);assert(party->movePPUps(0)==3);
-    assert(party->dvATK()==10&&party->dvDEF()==9&&party->dvSPE()==8&&party->dvSpecial()==7);assert(party->dvHP()==8);
+    assert(party->dvATK()==10&&party->dvDEF()==9&&party->dvSPE()==8&&party->dvSpecial()==7);
+    // DV16 0xA987 => low bits A/9/8/7 = 0/1/0/1, so Gen I's synthesized HP DV is 0b0101 = 5.
+    assert(party->dvHP()==5);
     assert(party->statExpHP()==111&&party->statExpSpecial()==555);assert(party->statusByte()==0x40);assert(party->isPartyRecord());
     assert(party->statHPCurrent()==45&&party->statHPMax()==52&&party->statATK()==31&&party->statDEF()==28&&party->statSPE()==35&&party->gen1Special()==30);
     assert(party->heldItem()==0&&party->ability()==0&&party->nature()==0&&party->sid16()==0);
