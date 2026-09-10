@@ -13,6 +13,8 @@
 #include "Trainer/Trainer.h"
 #include "Utils/HelperUtilities.h"
 #include "Pokemon/Pokemon.h"
+#include "Pokemon/Pokemon1ReadOnly.h"
+#include "UI/Modals/Gen1PokemonDetailsModal.h"
 #include "Pokemon/PokemonTypes.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/BaseStatsGen89.h"
@@ -40,6 +42,14 @@ namespace Modals {
     void drawPokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const Pokemon::Pokemon* p = screen.detailsTargetPokemon();
         if (!p || p->speciesID() == 0) return;
+
+        // PK1 is not a reduced modern format: it has DVs/stat experience and lacks nature,
+        // ability, held item, SID, ribbons/marks and modern met/Ball metadata. Route it before
+        // the modern editor computes or draws any of those fields.
+        if (const auto* gen1 = dynamic_cast<const Pokemon::Pokemon1ReadOnly*>(p)) {
+            drawGen1PokemonDetailsModal(screen, fb, *gen1);
+            return;
+        }
 
         const int W = fb.getWidth(), H = fb.getHeight();
         const bool isShiny = p->isShiny(p->id32(), p->species());
