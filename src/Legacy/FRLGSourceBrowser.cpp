@@ -16,6 +16,32 @@ namespace PokeVault::Legacy {
             if (!source.sourceIdentity.empty()) return source.sourceIdentity;
             return source.canonicalPath.empty() ? source.normalizedPath : source.canonicalPath;
         }
+
+        bool sourceMatchesGame(const FRLGSource& source, const Games::GameDescriptor& game) {
+            if (!source.ready() || game.support != Games::SourceSupport::ReadOnly ||
+                game.switchTitleId != 0) return false;
+            if (source.isGen1()) {
+                return game.platform == Games::Platform::GameBoy &&
+                       source.gen1Save->metadata().sourceGameId == game.id;
+            }
+            if (source.isGen3()) {
+                return game.platform == Games::Platform::GameBoyAdvance &&
+                       source.save->metadata().sourceGameId == game.id;
+            }
+            return false;
+        }
+
+        std::string trainerNameFor(const FRLGSource& source) {
+            if (source.isGen1()) return source.gen1Save->trainer().name;
+            if (source.isGen3()) return source.save->trainer().name;
+            return {};
+        }
+
+        size_t partyCountFor(const FRLGSource& source) {
+            if (source.isGen1()) return source.gen1Save->party().size();
+            if (source.isGen3()) return source.save->party().size();
+            return 0;
+        }
     }
 
     std::vector<FRLGSourceCard> buildFRLGSourceCards(const FRLGDiscoveryResult& discovery) {
@@ -26,11 +52,7 @@ namespace PokeVault::Legacy {
             if (!source.ready()) continue;
 
             const auto* game = Games::findGame(source.gameId);
-            if (!game || game->platform != Games::Platform::GameBoyAdvance ||
-                game->support != Games::SourceSupport::ReadOnly || game->switchTitleId != 0) {
-                continue;
-            }
-            if (source.save->metadata().sourceGameId != game->id) continue;
+            if (!game || !sourceMatchesGame(source, *game)) continue;
 
             auto cardIt = std::find_if(cards.begin(), cards.end(), [&](const auto& card) {
                 return card.gameId == game->id;
@@ -58,8 +80,8 @@ namespace PokeVault::Legacy {
                                                                        : source.canonicalPath;
             if (!instanceKeys[cardIndex].insert(identity).second) continue;
             auto& instances = cards[cardIndex].instances;
-            const std::string& trainerName = source.save->trainer().name;
-            const size_t partyCount = source.save->party().size();
+            const std::string trainerName = trainerNameFor(source);
+            const size_t partyCount = partyCountFor(source);
             const std::string fingerprint = source.contentFingerprint.empty()
                 ? std::string("unavailable") : source.contentFingerprint;
             const std::string details = (trainerName.empty() ? std::string("Unknown trainer")
@@ -128,12 +150,8 @@ namespace PokeVault::Legacy {
             instance.fileSize != source.fileSize ||
             instance.modifiedTime != source.modifiedTime ||
             instance.contentFingerprint != source.contentFingerprint) return nullptr;
-        if (source.save->metadata().sourceGameId != card.gameId) return nullptr;
         const auto* game = Games::findGame(card.gameId);
-        if (!game || game->platform != Games::Platform::GameBoyAdvance ||
-            game->support != Games::SourceSupport::ReadOnly || game->switchTitleId != 0) {
-            return nullptr;
-        }
+        if (!game || !sourceMatchesGame(source, *game)) return nullptr;
         return &source;
     }
 }
