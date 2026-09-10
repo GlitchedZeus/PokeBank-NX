@@ -50,7 +50,7 @@ def verify(nro, root, application_source):
     directory(0, Path())
     expected = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()}
     assert set(files) == expected, 'missing files: '+str(sorted(expected-set(files)))
-    assert len(files) == 3283, 'unexpected complete file count'
+    assert len(files) == len(expected), 'embedded file count differs from intended tree'
     short_source = application_source[:8].encode('ascii')
     assert short_source in data, 'application source identity absent'
     return {'result':'PASS', 'file_count':len(files), 'application_source':application_source, 'nro_size':len(data), 'nro_sha256':hashlib.sha256(data).hexdigest()}
