@@ -127,6 +127,8 @@ namespace PokeVault::Integration::Gen3 {
         [[nodiscard]] const SaveMetadata& metadata() const noexcept;
         [[nodiscard]] const TrainerRecord& trainer() const noexcept;
         [[nodiscard]] const std::vector<InventoryPouchRecord>& inventory() const noexcept;
+        [[nodiscard]] bool inventoryAvailable() const noexcept;
+        [[nodiscard]] std::string_view inventoryError() const noexcept;
         [[nodiscard]] std::vector<PokemonRecord> party() const;
         [[nodiscard]] std::vector<PokemonRecord> boxes() const;
         [[nodiscard]] SaveError lastEnumerationError() const noexcept;
