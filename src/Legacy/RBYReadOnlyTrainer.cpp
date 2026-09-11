@@ -3,6 +3,7 @@
 #include "Pokemon/Pokemon1ReadOnly.h"
 
 #include <string_view>
+#include <vector>
 
 namespace PokeVault::Legacy {
 namespace {
@@ -12,7 +13,7 @@ bool supportedRBYId(std::string_view id) noexcept {
 }
 
 RBYReadOnlyTrainer::RBYReadOnlyTrainer(const Integration::Gen1::Metadata& metadata)
-    : Trainer::Trainer({}),
+    : Trainer::Trainer(std::vector<Save::Block>{}),
       boxCount_(metadata.region == Integration::Gen1::RegionLayout::Japanese ? 8u : 12u),
       slotsPerBox_(metadata.region == Integration::Gen1::RegionLayout::Japanese ? 30u : 20u),
       sourceGameId_(metadata.sourceGameId),
