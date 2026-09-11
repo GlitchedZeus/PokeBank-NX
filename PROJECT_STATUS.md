@@ -115,11 +115,11 @@ The ItemsFix preserves the strict read-only policy. Generation I inventory is mo
 Successful native/device build:
 
 ```text
-GitHub Actions run: 34576721503
+GitHub Actions run: 34576781488
 Actions artifact: RBY-ItemsFix-Retest-50dac31f
-Artifact id: 10190023094
-Actions archive bytes: 305759595
-Actions archive SHA-256: 07e2ba8dba82bd6edb780d1bcf0aae626e3ef134fb3415ab4af9b525228489f3
+Artifact id: 10190135145
+Actions archive bytes: 305759538
+Actions archive SHA-256: 1a9fa5a4e43ac4c00d06e89c96b5effbe4450958fc41f4ad3f71e39fc8fe4901
 Device asset preflight: PASS
 Native devkitA64 FINAL LINK: PASS
 Embedded application identity: PASS
@@ -135,14 +135,14 @@ NRO SHA-256: b2a8c68a80b27ca647777e7286da976b25d66ff7460555f9a404a1a783a1c16b
 
 ZIP: PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.zip
 ZIP bytes: 152773612
-ZIP SHA-256: e6c0af2915c2315ce132b10b844f0d14f4951e5b8845f801697ed27aef3a578e
+ZIP SHA-256: f6dbdf2a76df1598e37ea0d1a771ac7a1eaa1864a29294c9101a6c6c09e2ecb6
 
 NRO manifest SHA-256: 4b43aee6f5e68db8a3733449df4627af1c5e2a4c82f19bb038ceb5917014b126
-BUILD_MANIFEST.json SHA-256: 5302cedbf5a61244de213aea9948035ab6cc99003c055fb2a339f1206a175b66
-SHA256SUMS.txt SHA-256: ca650014d5f06976df96f920066c5fc405bb584a727e6638f9df782140689fb7
+BUILD_MANIFEST.json SHA-256: d4c93a7c24240ec444f9a105039b7920e2ac82545a8866caba97a963fa2e8f6d
+SHA256SUMS.txt SHA-256: cb0930d99fe60339eca103bf82c80d61dba0ba4ac6153ffde536675d16ef2894
 ```
 
-The Actions artifact was downloaded and independently verified. The outer Actions ZIP matches GitHub's artifact digest. The standalone NRO is byte-identical to the NRO inside the package ZIP, and its independently computed SHA-256 agrees with the NRO manifest, `BUILD_MANIFEST.json`, `SHA256SUMS.txt`, and `embedded-romfs.json`.
+The canonical Actions artifact for run `34576781488` was downloaded into the verification session and independently hashed. The outer Actions ZIP exactly matches GitHub's current artifact digest. The inner package ZIP passes `unzip -t`; the standalone NRO is byte-identical to the NRO inside that ZIP. The independently computed NRO SHA-256 agrees with the NRO manifest, `BUILD_MANIFEST.json`, and `SHA256SUMS.txt`. `embedded-romfs.json` records the same runtime source and `3289/3289` embedded RomFS verification.
 
 ## Accepted Generation III baseline
 
