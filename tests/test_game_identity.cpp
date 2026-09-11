@@ -53,6 +53,16 @@ int main() {
     assert(platformName(Platform::GameBoy) == "Game Boy");
     assert(platformName(Platform::GameBoyAdvance) == "Game Boy Advance");
     assert(platformName(Platform::NintendoSwitch) == "Nintendo Switch");
+    assert(legacyPlatformAbbreviation("red_gb") == "GB");
+    assert(legacyPlatformAbbreviation("blue_gb") == "GB");
+    assert(legacyPlatformAbbreviation("yellow_gb") == "GB");
+    assert(legacyPlatformAbbreviation("firered_gba") == "GBA");
+    assert(legacyPlatformAbbreviation("leafgreen_gba") == "GBA");
+    assert(legacyPlatformAbbreviation("ruby_gba") == "GBA");
+    assert(legacyPlatformAbbreviation("sapphire_gba") == "GBA");
+    assert(legacyPlatformAbbreviation("emerald_gba") == "GBA");
+    assert(legacyPlatformAbbreviation("gold_gbc").empty());
+    assert(legacyPlatformAbbreviation("firered_switch").empty());
     assert(gameCardArtworkPath("red_gb") == "romfs:/game_cards/red_gb.png");
     assert(gameCardArtworkPath("blue_gb") == "romfs:/game_cards/blue_gb.png");
     assert(gameCardArtworkPath("yellow_gb") == "romfs:/game_cards/yellow_gb.png");

@@ -36,6 +36,9 @@ namespace PokeVault::Games {
     const GameDescriptor* findGame(std::string_view id) noexcept;
     const GameDescriptor* findSwitchGame(uint64_t titleId) noexcept;
     std::string_view platformName(Platform platform) noexcept;
+    // Compact platform label for a supported read-only legacy source. Planned sources intentionally
+    // return empty so this helper cannot accidentally activate later roadmap support.
+    std::string_view legacyPlatformAbbreviation(std::string_view id) noexcept;
     // Empty means the shared game-card renderer should use its safe fallback. Paths are stable,
     // release/platform-specific RomFS assets rather than display-name guesses.
     std::string_view gameCardArtworkPath(std::string_view id) noexcept;

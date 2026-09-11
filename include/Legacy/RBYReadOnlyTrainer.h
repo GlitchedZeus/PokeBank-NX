@@ -26,7 +26,7 @@ public:
     size_t getSlotsPerBox() const noexcept override { return slotsPerBox_; }
     size_t getPartySize() const noexcept override { return party.size(); }
     Enums::GameVersion getGameGroup() const noexcept override {
-        return static_cast<Enums::GameVersion>(71);
+        return Enums::GameVersion::RBY;
     }
 
     const std::string& sourceGameId() const noexcept { return sourceGameId_; }

@@ -16,7 +16,7 @@ using namespace PokeVault::Integration::Gen1;
 using namespace PokeVault::Legacy;
 
 namespace {
-constexpr size_t MAIN=0x2598, MONEY=0x25F3, TID=0x2605, CURIDX=0x284C;
+constexpr size_t MAIN=0x2598, BAG=0x25C9, MONEY=0x25F3, TID=0x2605, PCITEMS=0x27E6, CURIDX=0x284C;
 constexpr size_t PARTY=0x2F2C, CURBOX=0x30C0, SUM=0x3523, MAINLEN=0x0F8B;
 constexpr size_t BOXSIZE=0x462, BANKSIZE=0x1A4C;
 constexpr size_t CAP=20, BOXES=12, STR=11;
@@ -34,6 +34,11 @@ std::vector<uint8_t> text(const std::string& s) {
 size_t boxStart(size_t box){return box<6?0x4000+box*BOXSIZE:0x6000+(box-6)*BOXSIZE;}
 void emptyList(std::vector<uint8_t>& d,size_t o,size_t cap){
     d[o]=0;std::fill(d.begin()+o+1,d.begin()+o+cap+2,0);d[o+1]=0xFF;
+}
+void itemList(std::vector<uint8_t>& d,size_t o,std::initializer_list<std::pair<uint8_t,uint8_t>> entries){
+    d[o]=static_cast<uint8_t>(entries.size());size_t i=0;
+    for(const auto& [item,qty]:entries){d[o+1+i*2]=item;d[o+2+i*2]=qty;++i;}
+    d[o+1+i*2]=0xFF;
 }
 void body(std::vector<uint8_t>& d,size_t o,size_t n,uint8_t species,uint8_t level){
     std::fill(d.begin()+o,d.begin()+o+n,0);
@@ -61,6 +66,8 @@ std::vector<uint8_t> fixture(){
     emptyList(d,PARTY,6);setEntry(d,PARTY,6,44,0,0x54,15,"SPARKY");
     emptyList(d,CURBOX,CAP);setEntry(d,CURBOX,CAP,33,0,0x99,8,"BULBA");
     for(size_t b=0;b<BOXES;++b)emptyList(d,boxStart(b),CAP);
+    itemList(d,BAG,{{0x14,3},{0xC9,2}});
+    itemList(d,PCITEMS,{{0x2D,1}});
     setEntry(d,boxStart(0),CAP,33,0,0xB0,12,"CHAR");
     for(size_t s=0;s<CAP;++s)setEntry(d,boxStart(BOXES-1),CAP,33,s,0x15,5+(s%20),"MEW");
     d[0x2ED5]=0xFF;checksums(d);return d;
@@ -71,6 +78,11 @@ int main(){
     auto raw=fixture();const auto before=raw;auto parsed=parse(raw,SourceGame::Red);assert(parsed);assert(raw==before);
     std::string error;auto trainer=RBYReadOnlyTrainer::create(*parsed.save,error);assert(trainer&&error.empty());
     assert(trainer->sourceGameId()=="red_gb");assert(!trainer->japaneseLayout());assert(trainer->getBoxCount()==12);assert(trainer->getSlotsPerBox()==20);
+    assert(trainer->getGameGroup()==Enums::GameVersion::RBY);
+    assert(trainer->items.size()==2);assert(trainer->items[0].size()==2);assert(trainer->items[1].size()==1);
+    assert(trainer->items[0][0].itemId==0x14&&trainer->items[0][0].count==3);
+    assert(trainer->items[0][1].itemId==0xC9&&trainer->items[0][1].count==2);
+    assert(trainer->items[1][0].itemId==0x2D&&trainer->items[1][0].count==1);
     assert(trainer->trainerName=="WILL");assert(trainer->money==123456);assert(trainer->TID16==0x1234);assert(trainer->SID16==0);assert(trainer->currentBox==2);
     assert(trainer->party.size()==1);auto* party=static_cast<Pokemon::Pokemon1ReadOnly*>(trainer->party[0].get());
     assert(party->speciesID()==25);assert(Utils::utf16ToUtf8(party->nickname())=="SPARKY");assert(Utils::utf16ToUtf8(party->otName())=="RED");
@@ -87,5 +99,23 @@ int main(){
     assert(!trainer->boxes[1][0]);
     auto* boxed=static_cast<Pokemon::Pokemon1ReadOnly*>(trainer->boxes[2][0].get());assert(!boxed->isPartyRecord());assert(boxed->statHPMax()==0);
     auto cloned=party->clone();assert(cloned&&cloned->speciesID()==25&&Utils::utf16ToUtf8(cloned->nickname())=="SPARKY");
+
+    for(const auto& [game,id]:std::array<std::pair<SourceGame,const char*>,1>{{
+            {SourceGame::Blue,"blue_gb"}
+        }}){
+        auto p=parse(raw,game);assert(p);std::string e;auto t=RBYReadOnlyTrainer::create(*p.save,e);
+        assert(t&&e.empty()&&t->sourceGameId()==id&&t->items.size()==2);
+        assert(t->items[0][0].itemId==0x14&&t->items[1][0].itemId==0x2D);
+    }
+    auto bad=fixture();bad[BAG]=21;checksums(bad);const auto badBefore=bad;
+    auto badParsed=parse(bad,SourceGame::Red);assert(badParsed);
+    std::string badError;auto badTrainer=RBYReadOnlyTrainer::create(*badParsed.save,badError);
+    assert(badTrainer&&badError.empty()&&badTrainer->sourceGameId()=="red_gb"&&badTrainer->items.empty());
+    assert(badTrainer->party.size()==1&&badTrainer->boxes[0][0]);assert(bad==badBefore);
+
+    auto yellowRaw=raw; yellowRaw[0x29C3]=0x54; checksums(yellowRaw);
+    auto yp=parse(yellowRaw,SourceGame::Yellow);assert(yp);std::string ye;auto yt=RBYReadOnlyTrainer::create(*yp.save,ye);
+    assert(yt&&ye.empty()&&yt->sourceGameId()=="yellow_gb"&&yt->items.size()==2);
+    assert(yt->items[0][0].itemId==0x14&&yt->items[1][0].itemId==0x2D);
     std::cout<<"RBY Trainer/Party/Boxes/Pokemon read-only bridge tests passed\n";return 0;
 }

@@ -1,6 +1,8 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 
+#include "Integration/Gen1/Gen1ReadOnlyInventory.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
+#include "Trainer/Inventory.h"
 
 #include <string_view>
 #include <vector>
@@ -73,6 +75,24 @@ bool RBYReadOnlyTrainer::populate(
     ID32 = TID16; // Gen I has no SID; low 16 bits only are meaningful and displayed.
     SID16 = 0;
     SID = 0;
+
+    // Inventory is an optional read-only submodel, matching the accepted RSE policy: malformed
+    // inventory never makes an otherwise-valid trainer/party/boxes save unusable. A valid empty
+    // inventory still exposes both Gen I categories so the UI says "No items" rather than treating
+    // the category as invalid.
+    items.clear();
+    const auto inventory = Integration::Gen1::decodeInventory(
+        save.sourceBytes(), save.metadata().region);
+    if (inventory.available) {
+        items.resize(Integration::Gen1::kInventoryCategoryCount);
+        auto copyInventory = [](const auto& src, auto& dst) {
+            dst.reserve(src.size());
+            for (const auto& item : src)
+                dst.push_back(::Trainer::InventoryItem{item.itemId, item.quantity, false, false});
+        };
+        copyInventory(inventory.bag, items[0]);
+        copyInventory(inventory.pcItems, items[1]);
+    }
 
     party.clear();
     party.reserve(save.party().size());

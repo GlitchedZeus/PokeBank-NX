@@ -16,6 +16,7 @@
 #include "Trainer/Inventory8SWSH.h"
 #include "Trainer/Inventory7LGPE.h"
 #include "Trainer/Inventory3FRLG.h"
+#include "Integration/Gen1/Gen1ReadOnlyInventory.h"
 #include "Enums/GameVersion.h"
 #include "Utils/HelperUtilities.h"
 #include "Names/MoveNames.h"
@@ -29,6 +30,10 @@ using namespace Utils;
 namespace UI {
 namespace Panels {
     namespace {
+        bool isRBYSource(std::string_view id) noexcept {
+            return id == "red_gb" || id == "blue_gb" || id == "yellow_gb";
+        }
+
         bool isRSESource(std::string_view id) noexcept {
             return id == "ruby_gba" || id == "sapphire_gba" || id == "emerald_gba";
         }
@@ -49,6 +54,7 @@ namespace Panels {
         else if (gameGroup == GameVersion::PLA)  name = getPouchInfo8LA(static_cast<PouchType8LA>(category)).name;
         else if (gameGroup == GameVersion::BDSP) name = getPouchInfo8BDSP(static_cast<PouchType8BDSP>(category)).name;
         else if (gameGroup == GameVersion::GG)   name = getPouchInfo7LGPE(static_cast<PouchType7LGPE>(category)).name;
+        else if (gameGroup == GameVersion::RBY)  name = PokeVault::Integration::Gen1::inventoryCategoryName(static_cast<size_t>(category));
         else if (gameGroup == GameVersion::FRLG) name = getPouchInfo3FRLG(static_cast<PouchType3FRLG>(category)).name;
         else                                     name = getPouchInfo8SWSH(static_cast<PouchType8SWSH>(category)).name;
         return (name != nullptr && name[0] != '\0') ? name : "?";
@@ -63,13 +69,26 @@ namespace Panels {
         fb.drawFilledRoundedRect(x, y, width, hH, 16, Colors::AccentDim);
         fb.drawFilledRect(x, y + hH - 16, width, 16, Colors::AccentDim);
         GameVersion gameGroup = screen.trainer.getGameGroup();
+        const bool rbySource = screen.legacyReadOnlySource() && isRBYSource(screen.sourceGameId);
         const bool rseSource = screen.legacyReadOnlySource() && isRSESource(screen.sourceGameId);
-        const char* pouchName = rseSource
-            ? rsePouchDisplayName(screen.selectedCategory)
-            : pouchDisplayName(gameGroup, screen.selectedCategory);
+        const char* pouchName = rbySource
+            ? PokeVault::Integration::Gen1::inventoryCategoryName(static_cast<size_t>(screen.selectedCategory))
+            : rseSource ? rsePouchDisplayName(screen.selectedCategory)
+                        : pouchDisplayName(gameGroup, screen.selectedCategory);
         fb.drawText(x + 22, y + (hH - fb.lineHeight(TextStyle::Heading)) / 2, std::string("Items - ") + pouchName, Colors::Text, TextStyle::Heading);
 
         screen.touchButtons.clear();
+
+        // A successfully decoded RBY inventory always exposes Bag + PC Items even when both are
+        // empty. Empty here therefore means the optional strict inventory decoder rejected malformed
+        // data; keep trainer/party/boxes usable and report inventory unavailable rather than a fake
+        // category error.
+        if (rbySource && screen.trainer.items.empty()) {
+            fb.drawText(x + 24, y + hH + 30, "Inventory unavailable", Colors::Text, TextStyle::Body);
+            fb.drawText(x + 24, y + hH + 58, "Generation I inventory validation failed", Colors::TextDim, TextStyle::Caption);
+            fb.drawText(x + 24, y + hH + 82, "Trainer, party and boxes remain read-only and available.", Colors::TextDim, TextStyle::Caption);
+            return;
+        }
 
         // A successfully decoded RSE bag always exposes six pouch records, even when all pouches
         // contain zero owned items. The read-only bridge deliberately leaves trainer.items empty
@@ -119,12 +138,14 @@ namespace Panels {
             const Color nameCol = selected ? Colors::PrimaryText : (item.isNew ? Colors::Accent : Colors::Text);
             int nx = tileX + 22;
             if (item.isFavorite) { fb.drawSymbol(nx, ry + (tileH - 20) / 2, "\xE2\x98\x85", Colors::Yellow); nx += 24; }
-            const char* itemName = (gameGroup == GameVersion::FRLG)
-                ? Names::getItemNameG3(item.itemId)   // Gen 3 ids differ -> convert then name
-                : getItemName(item.itemId);
+            const char* itemName = (gameGroup == GameVersion::RBY)
+                ? Names::getItemNameG1(item.itemId)   // raw Gen I ids have their own namespace
+                : (gameGroup == GameVersion::FRLG)
+                    ? Names::getItemNameG3(item.itemId)   // Gen 3 ids differ -> convert then name
+                    : getItemName(item.itemId);
             fb.drawText(nx, ry + (tileH - fb.lineHeight(TextStyle::Body)) / 2, itemName, nameCol, TextStyle::Body);
             // TM/HM/TR items: show the move the machine teaches (dim, after the item name).
-            if (uint16_t tmMove = Names::getTMMove(gameGroup, item.itemId)) {
+            if (gameGroup != GameVersion::RBY) if (uint16_t tmMove = Names::getTMMove(gameGroup, item.itemId)) {
                 int iw, ih; fb.measureText(itemName, iw, ih, TextStyle::Body);
                 const Color moveCol = selected ? Colors::PrimaryText : Colors::TextDim;
                 fb.drawText(nx + iw + 14, ry + (tileH - fb.lineHeight(TextStyle::Body)) / 2, Names::getMoveName(tmMove), moveCol, TextStyle::Body);

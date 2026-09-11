@@ -15,6 +15,8 @@
 #include "Legality/Legality.h"   // analyze() -> gate the details-page Legality (R) button when clean
 
 #include "Globals.h"
+#include "Games/GameIdentity.h"
+#include "Integration/Gen1/Gen1ReadOnlyInventory.h"
 #include "Save/GetSaveFileContents.h"
 #include "UI/TrainerViewScreen.h"
 #include "UI/TouchInput.h"
@@ -3638,6 +3640,13 @@ namespace UI {
                                 selectedItemIndex = 0;
                                 break;
                             }
+                            case GameVersion::RBY: {
+                                constexpr int count = static_cast<int>(PokeVault::Integration::Gen1::kInventoryCategoryCount);
+                                selectedCategory = (selectedCategory - 1 + count) % count;
+                                currentPage = 0;
+                                selectedItemIndex = 0;
+                                break;
+                            }
                             default: break;
                         }
                     }
@@ -3681,6 +3690,13 @@ namespace UI {
                             }
                             case GameVersion::FRLG: {
                                 selectedCategory = (selectedCategory + 1) % POUCH_COUNT3_FRLG;
+                                currentPage = 0;
+                                selectedItemIndex = 0;
+                                break;
+                            }
+                            case GameVersion::RBY: {
+                                constexpr int count = static_cast<int>(PokeVault::Integration::Gen1::kInventoryCategoryCount);
+                                selectedCategory = (selectedCategory + 1) % count;
                                 currentPage = 0;
                                 selectedItemIndex = 0;
                                 break;
@@ -4090,6 +4106,13 @@ namespace UI {
                         selectedItemIndex = 0;
                         break;
                     }
+                    case GameVersion::RBY: {
+                        constexpr int count = static_cast<int>(PokeVault::Integration::Gen1::kInventoryCategoryCount);
+                        selectedCategory = (selectedCategory - 1 + count) % count;
+                        currentPage = 0;
+                        selectedItemIndex = 0;
+                        break;
+                    }
                     default: break;
                 }
             }
@@ -4137,6 +4160,13 @@ namespace UI {
                         selectedItemIndex = 0;
                         break;
                     }
+                    case GameVersion::RBY: {
+                        constexpr int count = static_cast<int>(PokeVault::Integration::Gen1::kInventoryCategoryCount);
+                        selectedCategory = (selectedCategory + 1) % count;
+                        currentPage = 0;
+                        selectedItemIndex = 0;
+                        break;
+                    }
                     default: break;
                 }
             }
@@ -4159,7 +4189,9 @@ namespace UI {
         drawAppBackdrop(fb);
 
         // --- Title bar: the shared chrome, with game name + version + DLC as the subtitle ---
-        std::string subtitle = legacyReadOnlySource() ? "RETROARCH / GBA / READ ONLY — "
+        const std::string legacyPlatform(PokeVault::Games::legacyPlatformAbbreviation(sourceGameId));
+        std::string subtitle = legacyReadOnlySource()
+            ? std::string("RETROARCH / ") + (legacyPlatform.empty() ? std::string("GBA") : legacyPlatform) + " / READ ONLY — "
             : sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — " : "BACKUP WORKSPACE — ";
         subtitle += titleName;
         if (!gameVersion.empty()) {
@@ -4422,7 +4454,8 @@ namespace UI {
 
         if (helpOverlayActive) {
             drawInfoOverlay(fb, "Game Browser Controls", {
-                legacyReadOnlySource() ? "RETROARCH GBA SOURCE: read-only browsing"
+                legacyReadOnlySource()
+                    ? std::string("RETROARCH ") + (legacyPlatform.empty() ? std::string("GBA") : legacyPlatform) + " SOURCE: read-only browsing"
                     : sourceReadOnly() ? "INSTALLED SOURCE: read-only browsing"
                                        : "BACKUP WORKSPACE: edits affect backup files only",
                 "Legacy Storage is app-owned bank.dat, NOT Master Vault",

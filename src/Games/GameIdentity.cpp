@@ -58,6 +58,18 @@ namespace PokeVault::Games {
         return "Unknown platform";
     }
 
+    std::string_view legacyPlatformAbbreviation(std::string_view id) noexcept {
+        const GameDescriptor* game = findGame(id);
+        if (!game || game->support != SourceSupport::ReadOnly) return {};
+        switch (game->platform) {
+            case Platform::GameBoy: return "GB";
+            case Platform::GameBoyColor: return "GBC";
+            case Platform::GameBoyAdvance: return "GBA";
+            case Platform::NintendoSwitch: return {};
+        }
+        return {};
+    }
+
     std::string_view gameCardArtworkPath(std::string_view id) noexcept {
         if (id == "red_gb") return "romfs:/game_cards/red_gb.png";
         if (id == "blue_gb") return "romfs:/game_cards/blue_gb.png";

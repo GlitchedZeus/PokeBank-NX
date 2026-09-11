@@ -34,6 +34,7 @@ namespace Enums {
         // These values are assigned as properties for various logic branching.
 
         // Game Groupings
+        RBY = 71,  // Pokemon Red/Blue/Yellow legacy read-only group (not a stored PKM origin value)
         FRLG = 72, // Pokemon FireRed & LeafGreen group
         GG = 73,   // Pokemon Let's Go Pikachu & Eevee group
         SWSH = 74, // Pokemon Sword & Shield group
@@ -140,6 +141,7 @@ namespace Enums {
         switch (version) {
             case GameVersion::FR: return "FireRed";
             case GameVersion::LG: return "LeafGreen";
+            case GameVersion::RBY: return "Red/Blue/Yellow";
             case GameVersion::FRLG: return "FireRed/LeafGreen";
             case GameVersion::GP: return "Let's Go Pikachu";
             case GameVersion::GE: return "Let's Go Eevee";
