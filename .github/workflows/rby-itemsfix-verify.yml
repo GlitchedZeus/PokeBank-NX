@@ -96,6 +96,33 @@ jobs:
           PY
           python3 /tmp/rby_nav_fix.py
 
+      - name: Fix staged test-only structured binding warnings
+        shell: bash
+        working-directory: work
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          fixes = {
+              "tests/test_rby_inventory.cpp": [
+                  ("for (const auto [item, qty] : entries)", "for (const auto& [item, qty] : entries)"),
+              ],
+              "tests/test_rby_readonly_bridge.cpp": [
+                  ("for(const auto [item,qty]:entries)", "for(const auto& [item,qty]:entries)"),
+                  ("for(const auto [game,id]:std::array", "for(const auto& [game,id]:std::array"),
+              ],
+          }
+          for path, replacements in fixes.items():
+              p = Path(path)
+              text = p.read_text()
+              for old, new in replacements:
+                  count = text.count(old)
+                  if count != 1:
+                      raise SystemExit(f"{path}: expected one staged test warning pattern, found {count}: {old}")
+                  text = text.replace(old, new)
+              p.write_text(text)
+          PY
+
       - name: Diff safety and protected Gen III paths
         shell: bash
         working-directory: work
