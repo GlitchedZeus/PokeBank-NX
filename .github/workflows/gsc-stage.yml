@@ -9,12 +9,19 @@ permissions:
 jobs:
   focused:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: codex/gsc-readonly
+          fetch-depth: 0
           submodules: recursive
+      - name: Generate pinned Gen II gender oracle table
+        run: |
+          set -euo pipefail
+          python3 tools/generate_gen2_gender_table.py
+          test -s include/Integration/Gen2/Gen2GenderTable.h
+          cp include/Integration/Gen2/Gen2GenderTable.h /tmp/Gen2GenderTable.h
       - name: Compile and run strict GSC parser
         run: |
           set -euo pipefail
@@ -40,4 +47,11 @@ jobs:
             tests/test_gsc_inventory.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp -o build-gsc/test_gsc_inventory_san
           ASAN_OPTIONS=detect_leaks=0 ./build-gsc/test_gsc_inventory_san
       - name: Diff safety
-        run: git diff --check HEAD^ HEAD
+        run: git diff --check ac903cbd791353af9b07a345dcc2ed5b9eed1518..HEAD
+      - name: Preserve generated oracle header
+        uses: actions/upload-artifact@v4
+        with:
+          name: gsc-generated-gender-table
+          path: /tmp/Gen2GenderTable.h
+          if-no-files-found: error
+          retention-days: 7
