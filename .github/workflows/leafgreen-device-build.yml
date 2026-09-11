@@ -203,7 +203,7 @@ jobs:
           sums_path.write_text(''.join(sums))
           rec = json.loads(build_manifest.read_text())
           assert rec['files'][nro.name]['sha256'] == nro_hash
-          listed = dict(line.strip().split('  ', 1) for line in sums_path.read_text().splitlines() if line.strip())
+          listed = {name: digest for digest, name in (line.split('  ', 1) for line in sums_path.read_text().splitlines() if line.strip())}
           assert listed[nro.name] == nro_hash
           assert hashlib.sha256(nro.read_bytes()).hexdigest() == nro_hash
           print(build_manifest.read_text())
