@@ -1,9 +1,9 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-10
-Status: **GEN III GBA READ-ONLY PHYSICALLY ACCEPTED / RBY NEXT**
+Last updated: 2026-09-11
+Status: **RBY IMPLEMENTED / HOST VERIFIED / NRO BUILT / WAITING FOR PHYSICAL TEST**
 
-## Accepted baseline
+## Preserved baseline
 
 ```text
 FireRed: DEVICE ACCEPTED YES
@@ -11,35 +11,69 @@ LeafGreen: DEVICE ACCEPTED YES
 Ruby: DEVICE ACCEPTED YES
 Sapphire: DEVICE ACCEPTED YES
 Emerald: DEVICE ACCEPTED YES
-
-Final accepted RSE application source:
-a2df4c1acdb7a556808bd58a2bdbcd4fc0335954
-
-Accepted NRO:
-PokeBank-NX-RSE-OpenFix-Retest-a2df4c1a.nro
-SHA-256: 34fc0893ae0f0ee1a3e244c11469a5d44de181d68318040fce386470b2e0e80e
-
-Recovery snapshot:
-2321fa488668e32392de25afed84e38919fbd21f
-3286 RomFS files
+Live installed-game writing: HARD DISABLED
+Live RetroArch writing: HARD DISABLED
 ```
 
-Live installed-game and RetroArch source writing remains **HARD DISABLED**.
-
-## Next action
-
-Implement strict read-only RetroArch support for:
+## Frozen RBY runtime
 
 ```text
-Pokémon Red
-Pokémon Blue
-Pokémon Yellow
+Application source: d9077e2da3909b6fbe9d8db9ce7384a71b8b98e7
+Application tree: 0ea6fbe365afe8122f252754554fef1fae73e183
+Recovery snapshot: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+RomFS: 3289 files
 ```
 
-Use normal battery saves, strict Gen I size/layout/checksum validation, truthful structural/language handling, Trainer, Party, PC storage, Pokémon view, Refresh and source-byte immutability. Reuse the existing provider/read-model architecture and pinned correctness references.
+RBY implementation state:
 
-Run RBY focused tests plus full Gen III regressions, sanitizers and native devkitA64 final link. Push coherent checkpoints early. Produce one exact RBY physical-test NRO and STOP for the user's Switch test.
+```text
+Red: IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST
+Blue: IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST
+Yellow: IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST
+Full host suite: PASS
+FRLG regression: PASS
+RSE regression: PASS
+ASan: PASS
+UBSan: PASS
+Native devkitA64 FINAL LINK: PASS
+Embedded application identity: PASS
+Embedded RomFS: 3289/3289 PASS
+```
 
-Do not begin Gold/Silver/Crystal in the same session unless RBY is complete and the user explicitly authorizes continuing.
+## Exact physical-test artifact
 
-Canonical detailed instructions: `docs/NEXT_CODEX_PROMPT.md`.
+```text
+PokeBank-NX-RBY-Retest-d9077e2d.nro
+bytes: 159741909
+SHA-256: b56bbce9f8d6155f318cbac44819967378df468f1355dfa4538691d1e536a664
+```
+
+Successful build/package run: `34566567906`.
+
+Actions artifact:
+
+```text
+RBY-Retest-d9077e2d
+artifact id: 10186285817
+digest: sha256:6310e55c2fca1ebe160490f16fdc54374266aa1b12fe775f598621bb3cba9367
+```
+
+The artifact was downloaded and independently verified after the successful workflow run.
+
+## Next action — physical Switch test only
+
+The user should run the exact NRO above and test Pokémon Red, Blue and Yellow through the intended read-only flow.
+
+Until the user reports the result:
+
+```text
+Red: DEVICE TESTED = NO / DEVICE ACCEPTED = NO
+Blue: DEVICE TESTED = NO / DEVICE ACCEPTED = NO
+Yellow: DEVICE TESTED = NO / DEVICE ACCEPTED = NO
+```
+
+If the physical test passes, record acceptance using the exact filename/hash. If it exposes a defect, investigate only the observed device defect while preserving accepted Gen III behavior and source-write safety.
+
+Do **not** begin Gold/Silver/Crystal, DS, 3DS, Vault/Banks, RetroArch profile isolation, Admin Mode, transfer work, editor work, legality expansion, events or live writing before the RBY physical result.
+
+Canonical handoff: `docs/NEXT_CODEX_PROMPT.md`.

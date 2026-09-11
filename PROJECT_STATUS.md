@@ -1,10 +1,10 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-10
+Last updated: 2026-09-11
 
-For the shortest engineering handoff, read `CURRENT_STATUS.md` and then `docs/NEXT_CODEX_PROMPT.md`.
+For the shortest engineering handoff, read `CURRENT_STATUS.md` and `docs/NEXT_CODEX_PROMPT.md`.
 
-## Project identity
+## Project identity and safety
 
 ```text
 Product: PokeBank NX
@@ -17,7 +17,7 @@ Live installed-game writing: HARD DISABLED
 Live RetroArch writing: HARD DISABLED
 ```
 
-Verification vocabulary remains:
+Verification vocabulary:
 
 ```text
 IMPLEMENTED
@@ -27,23 +27,64 @@ DEVICE TESTED
 DEVICE ACCEPTED
 ```
 
-`DEVICE ACCEPTED` is only used when the user physically tested the exact relevant artifact and reported the milestone working.
+`DEVICE ACCEPTED` is only used after the user physically tests the exact relevant artifact and reports the milestone working.
 
----
+## Current headline
 
-# Current headline — Gen III legacy read-only milestone accepted
+Generation III legacy read-only support remains physically accepted. Generation I Red/Blue/Yellow read-only support is implemented, host-tested, native-built, packaged and **ready for physical testing**, but it is **not device tested or accepted yet**.
 
-The current controller-first Switch app has physically accepted legacy GBA support for:
+| Game | State |
+|---|---|
+| FireRed GBA | DEVICE ACCEPTED |
+| LeafGreen GBA | DEVICE ACCEPTED |
+| Ruby GBA | DEVICE ACCEPTED |
+| Sapphire GBA | DEVICE ACCEPTED |
+| Emerald GBA | DEVICE ACCEPTED |
+| Red GB | IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST |
+| Blue GB | IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST |
+| Yellow GB | IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST |
+
+## Frozen RBY runtime
 
 ```text
-Ruby
-Sapphire
-Emerald
-FireRed
-LeafGreen
+Application source: d9077e2da3909b6fbe9d8db9ce7384a71b8b98e7
+Application tree: 0ea6fbe365afe8122f252754554fef1fae73e183
+Clean host gate run: 34559821944
+Recovery snapshot: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+Expected embedded RomFS: 3289 files
 ```
 
-All five use normal read-only battery-save sources. Savestates are not required as canonical sources.
+This exact runtime passed focused RBY verification, the full host suite, FRLG and RSE regressions, source mutation/write policy checks, ASan, UBSan, native devkitA64 compile/final link, embedded application identity and complete embedded RomFS verification.
+
+## RBY physical-test artifact
+
+A packaging-only SHA256SUMS lookup defect was fixed without touching application runtime source.
+
+```text
+Packaging infrastructure commit: 214e5a3b8a96d340d20229b0ba948bff608a3d60
+Successful Actions run: 34566567906
+Artifact name: RBY-Retest-d9077e2d
+Artifact id: 10186285817
+Artifact digest: sha256:6310e55c2fca1ebe160490f16fdc54374266aa1b12fe775f598621bb3cba9367
+```
+
+```text
+NRO: PokeBank-NX-RBY-Retest-d9077e2d.nro
+NRO bytes: 159741909
+NRO SHA-256: b56bbce9f8d6155f318cbac44819967378df468f1355dfa4538691d1e536a664
+
+ZIP: PokeBank-NX-RBY-Retest-d9077e2d.zip
+ZIP bytes: 152768842
+ZIP SHA-256: cec41809905b1d758c4c3f995dcf316ffe11f178bf7571b7c5a4d822ccf58e5c
+
+Packaging manifest SHA-256: 2cb61bc65b84527e8aee2545667ac34ef61daf0bb5e39cf71f0abf10a794a33c
+BUILD_MANIFEST.json SHA-256: c6080ba90c0a21ca4d635bf9fb123775e5b526e60ac5263506f5cedb7962a6fc
+SHA256SUMS.txt SHA-256: 5fa82074ac5786bcfcb34994b76cca277c346c35465849212b40d8dc0e26b11c
+```
+
+The Actions artifact was downloaded and independently verified. The NRO SHA-256 matches all three packaging records.
+
+## Accepted Generation III baseline
 
 ```text
 FireRed GBA: DEVICE TESTED YES / DEVICE ACCEPTED YES
@@ -54,217 +95,26 @@ Emerald GBA: DEVICE TESTED YES / DEVICE ACCEPTED YES
 GEN III LEGACY READ-ONLY: PHYSICALLY ACCEPTED
 ```
 
-The user also confirmed the existing Switch save paths still open normally in the accepted RSE build.
+Accepted RSE application source remains `a2df4c1acdb7a556808bd58a2bdbcd4fc0335954`; exact accepted RSE NRO SHA-256 remains `34fc0893ae0f0ee1a3e244c11469a5d44de181d68318040fce386470b2e0e80e`.
 
----
+## Current architecture / safety rules
 
-# Accepted FRLG milestone
-
-Acceptance-record checkpoint:
-
-```text
-8172ebd9c067bd69df63815dbe865207f905eac6
-```
-
-Accepted FRLG runtime source:
-
-```text
-d78b76503f02ae26309855970fc5ce0b35c12bcb
-```
-
-Physical acceptance covered save discovery/open, profile-scoped assignment, assignment persistence after restart, profile isolation, Trainer, Items, Party, Boxes, Refresh after normal RetroArch in-game save changes, and continued health of the original source saves.
-
-The FRLG path uses strict Gen III rotating-sector validation and an exception-free native backend. Do not reopen FRLG without new physical evidence of a defect.
-
----
-
-# Accepted RSE milestone
-
-Final accepted application source:
-
-```text
-a2df4c1acdb7a556808bd58a2bdbcd4fc0335954
-application tree: 559202d16f0affc13a9e1c521beff4834585b1e7
-```
-
-Exact accepted artifact:
-
-```text
-PokeBank-NX-RSE-OpenFix-Retest-a2df4c1a.nro
-bytes: 158120837
-SHA-256: 34fc0893ae0f0ee1a3e244c11469a5d44de181d68318040fce386470b2e0e80e
-```
-
-Companion ZIP:
-
-```text
-PokeBank-NX-RSE-OpenFix-Retest-a2df4c1a.zip
-bytes: 151195235
-SHA-256: 847788db890523d1ebce070d1427f6230fd89a60ca14986525fd6d2b634d0788
-```
-
-Build metadata:
-
-```text
-Packaging manifest SHA-256: 3dfa38be0fabde6f45edfb1ee52d87d2f9b1513ec89ba3fa576b0b0ed8da55f9
-BUILD_MANIFEST.json SHA-256: 335c1a62b45c2b7c3f2282c424c7c2cd089a6b1178c92fec2bccb027401070ee
-SHA256SUMS.txt SHA-256: 33f461dbb17fc2ddbd1ab116d682fcb9871e49e33f0c77465cbed7cff489f664
-Actions artifact id: 10143216443
-Actions artifact digest: sha256:2daecd936c60719364f5b35b66fa41500be6b5a607146fab70535cbbe5e0fec7
-```
-
-Clean host verification:
-
-```text
-checkpoint: e5df0e237ba1b7ad0dd78e37a1e1aac609071c3f
-run: 34453208654
-full host suite: PASS
-focused Ruby/Sapphire/Emerald open: PASS
-valid R/S/E inventory: PASS
-inventory failure rejects whole save: NO
-FRLG regression: PASS
-source mutation/write policy: PASS
-ASan/UBSan: PASS
-git diff --check: PASS
-```
-
-Native artifact verification:
-
-```text
-run: 34454555232
-recovery restore: PASS
-exact application source/tree: PASS
-device asset preflight: PASS
-native devkitA64 compile/final link: PASS
-embedded application identity: PASS
-embedded RomFS: 3286/3286 PASS
-packaging/artifact upload: PASS
-```
-
-## RSE defects resolved during physical acceptance
-
-The first RSE device build proved the core parser worked but exposed two missing user-facing pieces: RSE Items and R/S/E card artwork. Both were implemented. A follow-up physical build then exposed a stale `FRLGReadOnlyTrainer::populate()` guard which incorrectly treated newly populated RSE inventory as an error and returned to the main menu.
-
-That bridge guard is fixed. Optional inventory-model failure is now isolated from the structurally valid save-open path. Critical Gen III save validation remains strict and independent: sector IDs, signatures, counters, checksums, coherent slot selection and source-family validation still gate the save itself.
-
-The final `a2df4c1a` artifact physically passed Ruby/Sapphire/Emerald opening, browsing, inventory and artwork.
-
----
-
-# Permanent recovery state
-
-Current complete private GitHub RomFS snapshot:
-
-```text
-2321fa488668e32392de25afed84e38919fbd21f
-```
-
-Verified baseline:
-
-```text
-HD Pokémon renders: 3260/3260
-base species: 1025/1025
-type icons: 18/18
-fonts: 3/3
-FireRed / LeafGreen / Ruby / Sapphire / Emerald artwork: PASS
-RomFS files: 3286
-```
-
-Normal future sessions restore this snapshot through the deterministic recovery tooling. Do not redownload/regenerate the complete sprite set during ordinary coding work.
-
----
-
-# Current architecture / safety rules
-
-- Stable identity includes release + platform; GBA and Switch FRLG remain separate identities.
-- Legacy emulator source identity is based on provider/path/save-container, not automatically the active Nintendo user.
-- Profile binding is organizational ownership for legacy saves unless a provider supplies a trustworthy account identity.
-- One physical legacy battery save is one source/virtual cartridge.
-- Savestates are not canonical save sources.
+- Legacy source identity remains provider/path/save-container based.
+- Savestates are not canonical battery-save sources.
 - Original source bytes remain untouched during read-only milestones.
-- Critical save validation and optional UI/read submodels have separate failure states.
-- `GameVersion != StructuralRevision`; unknown revisions are never assumed writable.
-- Horizon installed-title save transactions and ordinary SD/emulator-file transactions remain separate architectures.
-- Live writing stays HARD DISABLED until individually approved adapter safety milestones.
+- Unknown save variants fail safely instead of being guessed writable.
+- Live installed-game writing is HARD DISABLED.
+- Live RetroArch writing is HARD DISABLED.
+- Gen III accepted behavior must remain preserved.
 
----
-
-# Current support progression
+## Current stop condition
 
 ```text
-Gen III GBA read-only    PHYSICALLY ACCEPTED
-        ↓
-Gen I RBY read-only      NEXT
-        ↓
-Gen II GSC read-only
-        ↓
-Vault / Banks and wider source coverage continue per roadmap
+Red: DEVICE TESTED = NO / DEVICE ACCEPTED = NO
+Blue: DEVICE TESTED = NO / DEVICE ACCEPTED = NO
+Yellow: DEVICE TESTED = NO / DEVICE ACCEPTED = NO
 ```
 
-The RetroArch per-Switch-user save-directory modification discussed during testing is a useful later quality-of-life/provider project, but it is intentionally parked so it does not interrupt RBY.
+The next action is **physical Red / Blue / Yellow testing on the user's Nintendo Switch with the exact d9077e2d NRO**.
 
----
-
-# Immediate next milestone — Red / Blue / Yellow
-
-Target:
-
-```text
-Pokémon Red
-Pokémon Blue
-Pokémon Yellow
-Game Boy / RetroArch battery saves
-READ ONLY
-```
-
-The next coding session should use the existing source-provider architecture and PokeBank-owned read models, with pinned PKSM-Core Gen I support as the first correctness reference and independent PKHeX/reference checks where useful.
-
-Required first milestone:
-
-- bounded `.sav`/`.srm` battery-save discovery;
-- stable R/B/Y identities;
-- strict real Gen I layout/size/checksum validation;
-- structural/language variants handled explicitly rather than guessed;
-- Trainer;
-- Party;
-- PC storage/Boxes;
-- PK1/Pokémon view mapping;
-- Refresh;
-- malformed/truncated rejection;
-- source-byte immutability;
-- Gen III regressions preserved;
-- host + sanitizer verification;
-- full native devkitA64 build;
-- one exact RBY NRO for physical Switch testing.
-
-Do not begin GSC in the same session unless RBY is complete and the user explicitly authorizes it.
-
----
-
-# Major future product targets
-
-Still planned after source coverage milestones:
-
-- profile-scoped immutable Master Vault;
-- named Banks;
-- Living/Shiny/Form/Event collection tracking;
-- provenance/Journey history;
-- search/filter/sort/favorites;
-- DS/3DS mainline save support;
-- modern Switch per-game validation/hardening;
-- legality/oracle integration;
-- guided Create Pokémon / Quick Legal;
-- explicit Copy/Move/Clone semantics;
-- staged write/rollback framework;
-- individually accepted write adapters;
-- Colosseum/XD and later Stadium preservation work;
-- local trading;
-- Android companion / Friends / Mailbox / connected exchange in later releases.
-
----
-
-# Compact next-session launcher
-
-```text
-Continue PokeBank NX on feature/pokebank-playable. Read CURRENT_STATUS.md, docs/CODEX_SESSION.md and docs/NEXT_CODEX_PROMPT.md. This is NOT recovery. Gen III FRLG+RSE is physically accepted; preserve it. Execute only the next Red/Blue/Yellow read-only milestone, push coherent checkpoints early, and never push custom code upstream.
-```
+Do not start Gold/Silver/Crystal, DS, 3DS, Vault/Banks, profile isolation work, Admin Mode, transfers, editor/legality expansion, events or live writing before that test result.
