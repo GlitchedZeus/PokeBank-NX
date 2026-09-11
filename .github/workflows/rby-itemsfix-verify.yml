@@ -96,7 +96,7 @@ jobs:
           PY
           python3 /tmp/rby_nav_fix.py
 
-      - name: Fix staged test-only structured binding warnings
+      - name: Fix exact staged compile defects
         shell: bash
         working-directory: work
         run: |
@@ -111,6 +111,9 @@ jobs:
                   ("for(const auto [item,qty]:entries)", "for(const auto& [item,qty]:entries)"),
                   ("for(const auto [game,id]:std::array", "for(const auto& [game,id]:std::array"),
               ],
+              "src/Legacy/RBYReadOnlyTrainer.cpp": [
+                  ("dst.push_back(Trainer::InventoryItem{", "dst.push_back(::Trainer::InventoryItem{"),
+              ],
           }
           for path, replacements in fixes.items():
               p = Path(path)
@@ -118,7 +121,7 @@ jobs:
               for old, new in replacements:
                   count = text.count(old)
                   if count != 1:
-                      raise SystemExit(f"{path}: expected one staged test warning pattern, found {count}: {old}")
+                      raise SystemExit(f"{path}: expected one staged compile-fix pattern, found {count}: {old}")
                   text = text.replace(old, new)
               p.write_text(text)
           PY
