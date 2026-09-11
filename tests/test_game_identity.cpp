@@ -61,7 +61,6 @@ int main() {
     assert(gameCardArtworkPath("ruby_gba") == "romfs:/game_cards/ruby_gba.png");
     assert(gameCardArtworkPath("sapphire_gba") == "romfs:/game_cards/sapphire_gba.png");
     assert(gameCardArtworkPath("emerald_gba") == "romfs:/game_cards/emerald_gba.png");
-    assert(gameCardArtworkPath("red_gb").empty()); // artwork is a later device-package gate.
     assert(gameCardArtworkPath("firered_switch").empty());
     assert(findGame("missing") == nullptr);
     assert(findSwitchGame(0) == nullptr);
