@@ -27,7 +27,9 @@ jobs:
           BEGIN { inpy=0 }
           {
             if ($0 == "from pathlib import Path") inpy=1
-            if (inpy) print "          " $0; else print $0
+            if (inpy && length($0) == 0) print "";
+            else if (inpy) print "          " $0;
+            else print $0;
             if (inpy && $0 == "PY") inpy=0
           }
           ' "$target" > /tmp/rby-itemsfix-patch.yml
