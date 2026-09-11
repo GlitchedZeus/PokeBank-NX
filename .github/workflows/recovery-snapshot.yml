@@ -1,3 +1,4 @@
+# Session recovery trigger: Generation II GSC milestone
 name: Preserve verified RomFS recovery snapshot
 
 on:
