@@ -14,7 +14,7 @@ jobs:
   host-tests:
     name: Host tests (GCC)
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -42,6 +42,33 @@ jobs:
       - name: Verify GitHub recovery contract
         run: python3 tools/check_recovery_contract.py
 
+      - name: Verify GSC generated oracle is reproducible
+        run: |
+          set -euo pipefail
+          cp include/Integration/Gen2/Gen2GenderTable.h /tmp/Gen2GenderTable.committed.h
+          python3 tools/generate_gen2_gender_table.py
+          cmp /tmp/Gen2GenderTable.committed.h include/Integration/Gen2/Gen2GenderTable.h
+
+      - name: Focused GSC parser inventory and bridge
+        run: |
+          set -euo pipefail
+          mkdir -p build-host
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_gsc_gen2_adapter.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+            -o build-host/test_gsc_gen2_adapter
+          ./build-host/test_gsc_gen2_adapter
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_gsc_inventory.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+            src/Names/ItemNamesGen2.cpp -o build-host/test_gsc_inventory
+          ./build-host/test_gsc_inventory
+          GSC_BRIDGE="tests/test_gsc_readonly_bridge.cpp src/Legacy/GSCReadOnlyTrainer.cpp \
+            src/Pokemon/Pokemon2ReadOnly.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+            src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Pokemon/BaseStatsGen89.cpp \
+            src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 -Iinclude \
+            $GSC_BRIDGE -o build-host/test_gsc_readonly_bridge
+          ./build-host/test_gsc_readonly_bridge
+
       - name: Clean host build
         run: make -f Makefile.host host-clean
 
@@ -67,6 +94,26 @@ jobs:
             -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
             -o build-host/test_rse_open_regression_sanitize
           ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize
+
+      - name: Focused GSC sanitizers
+        run: |
+          set -euo pipefail
+          SAN='-fsanitize=address,undefined -fno-omit-frame-pointer -O1'
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror $SAN -Iinclude \
+            tests/test_gsc_gen2_adapter.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+            -o build-host/test_gsc_gen2_adapter_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_gsc_gen2_adapter_sanitize
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror $SAN -Iinclude \
+            tests/test_gsc_inventory.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+            src/Names/ItemNamesGen2.cpp -o build-host/test_gsc_inventory_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_gsc_inventory_sanitize
+          GSC_BRIDGE="tests/test_gsc_readonly_bridge.cpp src/Legacy/GSCReadOnlyTrainer.cpp \
+            src/Pokemon/Pokemon2ReadOnly.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+            src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Pokemon/BaseStatsGen89.cpp \
+            src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter $SAN -Iinclude \
+            $GSC_BRIDGE -o build-host/test_gsc_readonly_bridge_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_gsc_readonly_bridge_sanitize
 
       - name: Run ASan and UBSan tests
         run: make -f Makefile.host host-sanitize

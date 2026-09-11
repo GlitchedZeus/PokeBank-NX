@@ -23,6 +23,7 @@ struct PokemonRecord {
     uint8_t friendship = 0; uint8_t pokerus = 0; uint16_t caughtData = 0; uint8_t level = 0; uint8_t status = 0;
     uint16_t currentHP = 0, maxHP = 0, attack = 0, defense = 0, speed = 0, specialAttack = 0, specialDefense = 0;
     std::string originalTrainer; std::string nickname; bool partyRecord = false; bool isEgg = false; bool shiny = false; uint8_t gender = 2; uint8_t form = 0;
+    SourceGame sourceGame = SourceGame::Gold; RegionLayout region = RegionLayout::International;
     std::array<uint8_t, 48> rawBody{}; std::size_t rawBodySize = 0;
 };
 struct TrainerRecord { std::string name; uint16_t trainerId = 0; uint32_t money = 0; std::optional<uint8_t> gender; };

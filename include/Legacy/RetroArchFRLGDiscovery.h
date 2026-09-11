@@ -2,6 +2,7 @@
 #define POKEBANK_LEGACY_RETROARCH_FRLG_DISCOVERY_H
 
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
+#include "Integration/Gen2/Gen2ReadOnlySave.h"
 #include "Integration/Gen3/PKSMGen3Adapter.h"
 
 #include <cstddef>
@@ -19,10 +20,10 @@ namespace PokeVault::Legacy {
     struct ScanLimits { size_t maxDepth = 2; size_t maxFiles = 256; };
 
     // Historical type/API name retained for compatibility. The UI-facing legacy catalog now
-    // represents validated read-only RetroArch Gen I R/B/Y and Gen III R/S/E/FR/LG battery saves.
-    // Parsing remains generation-specific: exactly one of save/gen1Save is populated for a ready
-    // source. Keeping both strongly typed prevents Gen III structural assumptions from leaking into
-    // the Gen I parser while allowing the accepted Game Sources presentation flow to stay shared.
+    // represents validated read-only RetroArch Gen I R/B/Y, Gen II G/S/C, and Gen III R/S/E/FR/LG
+    // battery saves. Parsing remains generation-specific: exactly one strongly typed save pointer
+    // is populated for a ready source, preventing one generation's layout assumptions from leaking
+    // into another while the accepted Game Sources presentation flow stays shared.
     struct FRLGSource {
         std::string path;
         std::string normalizedPath;
@@ -35,15 +36,20 @@ namespace PokeVault::Legacy {
         LegacySourceStatus status = LegacySourceStatus::ReadError;
         Integration::Gen3::SaveError parseError = Integration::Gen3::SaveError::None;
         Integration::Gen1::SaveError gen1ParseError = Integration::Gen1::SaveError::None;
+        Integration::Gen2::SaveError gen2ParseError = Integration::Gen2::SaveError::None;
         std::string detail;
         std::unique_ptr<Integration::Gen3::ReadOnlySave> save;
         std::shared_ptr<const Integration::Gen1::ReadOnlySave> gen1Save;
+        std::shared_ptr<const Integration::Gen2::ReadOnlySave> gen2Save;
 
         [[nodiscard]] bool ready() const noexcept {
-            return status == LegacySourceStatus::Ready &&
-                   ((save != nullptr) != (gen1Save != nullptr));
+            const int count = static_cast<int>(save != nullptr) +
+                              static_cast<int>(gen1Save != nullptr) +
+                              static_cast<int>(gen2Save != nullptr);
+            return status == LegacySourceStatus::Ready && count == 1;
         }
         [[nodiscard]] bool isGen1() const noexcept { return gen1Save != nullptr; }
+        [[nodiscard]] bool isGen2() const noexcept { return gen2Save != nullptr; }
         [[nodiscard]] bool isGen3() const noexcept { return save != nullptr; }
     };
 
@@ -59,17 +65,12 @@ namespace PokeVault::Legacy {
     [[nodiscard]] std::vector<std::string> retroArchSaveRootsFromConfig(
         const std::string& configPath);
 
-    // Bounded read-only Gen III traversal. Only .sav/.srm raw battery saves are considered.
-    // Arbitrary RetroArch savestates are never parsed. Filename release hints are accepted only
-    // after strict family validation; Ruby/Sapphire exact identity necessarily comes from source
-    // evidence. Gen I discovery remains a separate strict implementation and is merged only by the
-    // configured runtime catalog function below.
     [[nodiscard]] FRLGDiscoveryResult discoverFRLGSaves(
         std::span<const std::string> approvedRoots, ScanLimits limits = {});
 
-    // Runtime legacy catalog for the normal Game Sources UI. It preserves the accepted Gen III
-    // discovery behavior and appends separately validated R/B/Y results from the same approved
-    // configured/fallback RetroArch battery-save root. Both generation scanners remain bounded.
+    // Runtime legacy catalog for the normal Game Sources UI. The already accepted Gen I and Gen III
+    // scanners remain generation-specific and unchanged; strict Gen II discovery is appended from
+    // the same approved configured/fallback RetroArch battery-save root.
     [[nodiscard]] FRLGDiscoveryResult discoverConfiguredRetroArchFRLGSaves(
         ScanLimits limits = {},
         const std::string& configPath = "sdmc:/retroarch/retroarch.cfg",

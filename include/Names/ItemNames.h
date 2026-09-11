@@ -14,6 +14,10 @@ namespace Names {
     /// Returns "???" for ids that are not valid Gen I inventory items.
     const char* getItemNameG1(uint16_t itemId);
 
+    /// Item name for a raw Generation II G/S/C item id. This deliberately stays in the native
+    /// Gen II namespace; unused/Teru-sama ids are returned as "???" rather than modern names.
+    const char* getItemNameG2(uint16_t itemId);
+
     // ---- Gen 3 (GBA) item id <-> modern item id (PKHeX ItemConverter.Item3to4) ----
     /// Convert a Gen 3 item id to the modern (Gen 4+) id; 0 if it has no modern equivalent.
     uint16_t itemG3ToModern(uint16_t g3Id);
