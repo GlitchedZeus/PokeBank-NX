@@ -9,7 +9,6 @@ This matrix separates identity/source integration, host/native read-engine verif
 - **RETROARCH SOURCE** — normal emulator battery-save discovery is integrated.
 - **NATIVE SOURCE** — installed Switch title can be discovered through the Switch source path.
 - **READ ENGINE HOST+NATIVE** — read-only parser/model is verified on host and through the native Switch build path.
-- **READY FOR PHYSICAL TEST** — exact NRO exists and passed build/packaging verification, but the user has not yet run it on hardware.
 - **DEVICE TESTED** — a human physically ran the relevant exact artifact.
 - **DEVICE ACCEPTED** — that physical test passed the current milestone contract.
 - **PLANNED** — not yet implemented for the production path.
@@ -20,12 +19,12 @@ No current adapter is approved for live installed-game or RetroArch source writi
 
 | Stable ID | Game | Platform | Gen | Source status | Parser / engine | Device status |
 |---|---|---:|---:|---|---|---|
-| `red_gb` | Red | GB | 1 | **RETROARCH SOURCE** | **READ ENGINE HOST+NATIVE** | **READY FOR PHYSICAL TEST / NOT DEVICE TESTED** |
-| `blue_gb` | Blue | GB | 1 | **RETROARCH SOURCE** | **READ ENGINE HOST+NATIVE** | **READY FOR PHYSICAL TEST / NOT DEVICE TESTED** |
-| `yellow_gb` | Yellow | GB | 1 | **RETROARCH SOURCE** | **READ ENGINE HOST+NATIVE** | **READY FOR PHYSICAL TEST / NOT DEVICE TESTED** |
-| `gold_gbc` | Gold | GBC | 2 | planned legacy source | PLANNED | NOT DEVICE TESTED |
-| `silver_gbc` | Silver | GBC | 2 | planned legacy source | PLANNED | NOT DEVICE TESTED |
-| `crystal_gbc` | Crystal | GBC | 2 | planned legacy source | PLANNED | NOT DEVICE TESTED |
+| `red_gb` | Red | GB | 1 | **RETROARCH SOURCE** | **READ ENGINE HOST+NATIVE** | **DEVICE ACCEPTED** |
+| `blue_gb` | Blue | GB | 1 | **RETROARCH SOURCE** | **READ ENGINE HOST+NATIVE** | **DEVICE ACCEPTED** |
+| `yellow_gb` | Yellow | GB | 1 | **RETROARCH SOURCE** | **READ ENGINE HOST+NATIVE** | **DEVICE ACCEPTED** |
+| `gold_gbc` | Gold | GBC | 2 | planned legacy source | PLANNED — NEXT MILESTONE | NOT DEVICE TESTED |
+| `silver_gbc` | Silver | GBC | 2 | planned legacy source | PLANNED — NEXT MILESTONE | NOT DEVICE TESTED |
+| `crystal_gbc` | Crystal | GBC | 2 | planned legacy source | PLANNED — NEXT MILESTONE | NOT DEVICE TESTED |
 | `ruby_gba` | Ruby | GBA | 3 | **RETROARCH SOURCE** | **READ ENGINE HOST+NATIVE** | **DEVICE ACCEPTED** |
 | `sapphire_gba` | Sapphire | GBA | 3 | **RETROARCH SOURCE** | **READ ENGINE HOST+NATIVE** | **DEVICE ACCEPTED** |
 | `emerald_gba` | Emerald | GBA | 3 | **RETROARCH SOURCE** | **READ ENGINE HOST+NATIVE** | **DEVICE ACCEPTED** |
@@ -46,34 +45,33 @@ No current adapter is approved for live installed-game or RetroArch source writi
 
 FireRed/LeafGreen GBA and FireRed/LeafGreen Switch remain deliberately separate identities.
 
-## Generation I RBY build record
+## Accepted Generation I RBY milestone
+
+Accepted runtime and device artifact:
 
 ```text
-Application source: d9077e2da3909b6fbe9d8db9ce7384a71b8b98e7
-Application tree: 0ea6fbe365afe8122f252754554fef1fae73e183
+Application source: 50dac31f53907143f48884681056f8d582813b76
+Application tree: 1cf73ea12833e8a94a06dfaf2b9036e9059344ec
+Verification run: 34576027301
 Recovery snapshot: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
-Host gate run: 34559821944
-Device/package run: 34566567906
-Native devkitA64 compile/final link: PASS
-Embedded application identity: PASS
+Device/package run: 34576781488
 Embedded RomFS: 3289/3289 PASS
-```
 
-Exact physical-test NRO:
-
-```text
-PokeBank-NX-RBY-Retest-d9077e2d.nro
-bytes: 159741909
-SHA-256: b56bbce9f8d6155f318cbac44819967378df468f1355dfa4538691d1e536a664
+PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.nro
+bytes: 159754197
+SHA-256: b2a8c68a80b27ca647777e7286da976b25d66ff7460555f9a404a1a783a1c16b
 ```
 
 ```text
-Red: IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST
-Blue: IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST
-Yellow: IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST
-DEVICE TESTED FOR RBY: NO
-DEVICE ACCEPTED FOR RBY: NO
+Red: IMPLEMENTED / HOST TESTED / NRO BUILDS / DEVICE TESTED / DEVICE ACCEPTED
+Blue: IMPLEMENTED / HOST TESTED / NRO BUILDS / DEVICE TESTED / DEVICE ACCEPTED
+Yellow: IMPLEMENTED / HOST TESTED / NRO BUILDS / DEVICE TESTED / DEVICE ACCEPTED
+GEN I RBY LEGACY READ-ONLY: PHYSICALLY ACCEPTED
 ```
+
+Accepted RBY capability is bounded normal RetroArch battery-save discovery, strict Gen I validation, international/Japanese handling, Trainer, Party, PC Boxes, PK1/Pokémon details, Bag, PC Items, dedicated Gen I item naming, GB platform identity, malformed-optional-inventory isolation and source immutability.
+
+Historical first device-test runtime `d9077e2d` remains recorded because it exposed the Items/category and GB/GBA label defects before the accepted ItemsFix retest.
 
 ## Accepted Generation III GBA milestone
 
@@ -91,7 +89,7 @@ Accepted RSE NRO SHA-256:
 34fc0893ae0f0ee1a3e244c11469a5d44de181d68318040fce386470b2e0e80e
 ```
 
-Do not downgrade or reopen this accepted baseline without new physical evidence.
+Do not downgrade or reopen accepted Gen I/III baselines without new physical evidence.
 
 ## Current safety policy
 
@@ -107,8 +105,6 @@ true Move                     NOT IMPLEMENTED
 
 Malformed/unsupported sources must fail safely and must never be silently repaired or overwritten.
 
-## Current stop state
+## Next legacy milestone
 
-The next required action is the user's physical Red/Blue/Yellow Switch test of `PokeBank-NX-RBY-Retest-d9077e2d.nro`.
-
-Gold/Silver/Crystal and later roadmap work remain parked until that result is reported.
+Generation II Gold/Silver/Crystal (`gold_gbc`, `silver_gbc`, `crystal_gbc`) on Game Boy Color / RetroArch is next. Production GSC implementation has not started yet.

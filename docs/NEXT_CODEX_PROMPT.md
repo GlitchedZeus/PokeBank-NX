@@ -1,179 +1,141 @@
-# NEXT CODEX PROMPT — RBY ITEMSFIX PHYSICAL RETEST WAIT STATE
+# NEXT CODEX PROMPT — GENERATION II GSC READ-ONLY MILESTONE
 
 Continue PokeBank NX on `feature/pokebank-playable`.
 
-Use MEDIUM reasoning unless an actual physical-test defect requires deeper diagnosis.
+Use MEDIUM reasoning unless a concrete parser/build defect requires deeper analysis.
 
-## THIS IS NOT A NEW DEVELOPMENT MILESTONE
+## RECOVER FIRST
 
-Generation I Red/Blue/Yellow read-only support has already been physically tested once. Runtime `d9077e2d` passed Trainer, Party, Boxes, Pokemon details and general browsing but exposed the Items/category defect and the incorrect GBA label for Yellow.
+This is the next coding milestone after physically accepted Generation I RBY and Generation III legacy read-only support.
 
-The RBY ItemsFix is now implemented, host/sanitizer verified, native-built, packaged and independently hashed. **Do not reopen implementation unless the user reports a concrete defect from the exact ItemsFix retest artifact below.**
+Before implementing anything:
 
-Do not start Gold/Silver/Crystal or any later roadmap work.
+1. follow `docs/RECOVERY_CONTRACT.md` and recover `origin/feature/pokebank-playable`;
+2. read `CURRENT_STATUS.md` and `docs/CODEX_SESSION.md`;
+3. verify the accepted Gen I and Gen III checkpoints below are present;
+4. open only the GB/GBC game-family resource material and relevant research/reference notes;
+5. keep all custom work on `origin/feature/pokebank-playable`, never PKSE upstream.
 
-Live installed-game and RetroArch save writing remains **HARD DISABLED**.
+Live installed-game writing and live RetroArch writing remain **HARD DISABLED**.
 
-## VERIFIED GEN III BASELINE — PRESERVE
+## ACCEPTED BASELINE — DO NOT REOPEN WITHOUT DEVICE EVIDENCE
 
-```text
-FireRed GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-LeafGreen GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-Ruby GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-Sapphire GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-Emerald GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-```
-
-Do not reopen accepted Gen III work without new device evidence of a defect.
-
-## RBY PHYSICAL-TEST HISTORY
-
-Previous physically tested runtime:
+Generation I RBY:
 
 ```text
-Application source: d9077e2da3909b6fbe9d8db9ce7384a71b8b98e7
-Application tree: 0ea6fbe365afe8122f252754554fef1fae73e183
-NRO: PokeBank-NX-RBY-Retest-d9077e2d.nro
-SHA-256: b56bbce9f8d6155f318cbac44819967378df468f1355dfa4538691d1e536a664
-```
-
-Physical result:
-
-```text
-Trainer: PASS
-Party: PASS
-Boxes: PASS
-Pokemon details: PASS
-General RBY browsing: PASS
-Items: FAIL
-Yellow platform label: FAIL — shown as GBA instead of GB
-RBY DEVICE TESTED = YES
-RBY DEVICE ACCEPTED = NO
-```
-
-## VERIFIED ITEMSFIX APPLICATION
-
-```text
-Pre-fix feature/docs head: 0e92cee6ae743d5156dd8f7aaf55750b70dde5e5
+Red GB: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
+Blue GB: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
+Yellow GB: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
 Application source: 50dac31f53907143f48884681056f8d582813b76
 Application tree: 1cf73ea12833e8a94a06dfaf2b9036e9059344ec
-Commit: gen1: add read-only RBY inventory support
-Recovery snapshot: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
-Expected RomFS: 3289 files
-Verification run: 34576027301
-```
-
-This exact runtime passed:
-
-```text
-Focused RBY inventory: PASS
-RBY parser/oracle: PASS
-RBY discovery: PASS
-RBY source browser: PASS
-RBY read-only bridge: PASS
-Malformed inventory nonfatal test: PASS
-Full host suite: PASS
-FRLG regression: PASS
-RSE regression: PASS
-Source mutation/write policy: PASS
-ASan: PASS
-UBSan: PASS
-git diff --check: PASS
-Gen III protected paths: PASS
-```
-
-The malformed-inventory bridge fixture was corrected to use the Red-family identity matching its synthetic source. Production Yellow detection was not weakened. Malformed optional inventory remains nonfatal to an otherwise-readable Trainer/Party/Boxes model, and source bytes remain immutable.
-
-## ITEMSFIX DEVICE BUILD / PACKAGING RECORD
-
-Successful build/package run:
-
-```text
-GitHub Actions run: 34576781488
-Device asset preflight: PASS
-Native devkitA64 compile: PASS
-Native devkitA64 FINAL LINK: PASS
-Embedded application identity: PASS
-Embedded RomFS: 3289/3289 PASS
-```
-
-Actions artifact:
-
-```text
-name: RBY-ItemsFix-Retest-50dac31f
-artifact id: 10190135145
-archive bytes: 305759538
-digest: sha256:1a9fa5a4e43ac4c00d06e89c96b5effbe4450958fc41f4ad3f71e39fc8fe4901
-```
-
-Exact physical-retest package:
-
-```text
-NRO: PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.nro
+Accepted NRO: PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.nro
 bytes: 159754197
 SHA-256: b2a8c68a80b27ca647777e7286da976b25d66ff7460555f9a404a1a783a1c16b
-
-ZIP: PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.zip
-bytes: 152773612
-SHA-256: f6dbdf2a76df1598e37ea0d1a771ac7a1eaa1864a29294c9101a6c6c09e2ecb6
-
-NRO manifest SHA-256: 4b43aee6f5e68db8a3733449df4627af1c5e2a4c82f19bb038ceb5917014b126
-BUILD_MANIFEST.json SHA-256: d4c93a7c24240ec444f9a105039b7920e2ac82545a8866caba97a963fa2e8f6d
-SHA256SUMS.txt SHA-256: cb0930d99fe60339eca103bf82c80d61dba0ba4ac6153ffde536675d16ef2894
+GEN I RBY LEGACY READ-ONLY: PHYSICALLY ACCEPTED
 ```
 
-The canonical Actions artifact from run `34576781488` was downloaded into the verification session and independently hashed. Its outer archive exactly matches GitHub's current artifact digest. The inner ZIP passes integrity testing; the standalone NRO is byte-identical to the NRO inside it, and the NRO hash agrees with the NRO manifest, `BUILD_MANIFEST.json`, and `SHA256SUMS.txt`.
+Historical RBY record to preserve: runtime `d9077e2d` was the first device test and exposed the Items/category + Yellow GB/GBA defects; `50dac31f...` fixed them and passed physical retest.
 
-## CURRENT RBY TRUTH
+Generation III:
 
 ```text
-Red: IMPLEMENTED / HOST TESTED / NRO BUILDS / DEVICE TESTED / AWAITING ITEMSFIX RETEST
-Blue: IMPLEMENTED / HOST TESTED / NRO BUILDS / DEVICE TESTED / AWAITING ITEMSFIX RETEST
-Yellow: IMPLEMENTED / HOST TESTED / NRO BUILDS / DEVICE TESTED / AWAITING ITEMSFIX RETEST
-
-RBY DEVICE TESTED = YES
-RBY ITEMSFIX DEVICE TESTED = NO
-RBY DEVICE ACCEPTED = NO
+FireRed GBA: DEVICE ACCEPTED YES
+LeafGreen GBA: DEVICE ACCEPTED YES
+Ruby GBA: DEVICE ACCEPTED YES
+Sapphire GBA: DEVICE ACCEPTED YES
+Emerald GBA: DEVICE ACCEPTED YES
+GEN III LEGACY READ-ONLY: PHYSICALLY ACCEPTED
 ```
 
-Do not mark the ItemsFix device-tested or RBY accepted until the user physically runs the exact filename/hash above.
+Do not change accepted Gen I/III behavior unless a new physical defect directly implicates it.
 
-## REQUIRED NEXT ACTION
+## ACTIVE MILESTONE — GENERATION II
 
-Wait for the user to physically test `PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.nro` on the Nintendo Switch, especially the Items view/navigation and GB platform label.
-
-When the user returns:
-
-- if the exact ItemsFix artifact passes, record the exact filename/hash as physically accepted and only then discuss the next authorized milestone;
-- if it fails, diagnose only the reported device behavior and preserve every verified/accepted path not implicated by evidence.
-
-## HARD STOP
-
-Do not start:
+Implement focused read-only support for:
 
 ```text
-Gold / Silver / Crystal
-DS
-3DS
-Vault / Banks
-RetroArch profile isolation
-Admin Mode
-RetroArch profile bridge
-transfer work
-editor work
-legality expansion
-events
-live writing
+gold_gbc
+silver_gbc
+crystal_gbc
+Game Boy Color / RetroArch
+READ ONLY
 ```
 
-Expected state before the user's retest remains:
+This milestone is normal RetroArch battery saves only (`.sav` / `.srm`). Savestates are not canonical sources.
+
+## RESEARCH / ORACLE ORDER
+
+Before writing parser constants:
+
+1. inspect the project's pinned PKSM-Core `Sav2` / `PK2` implementation;
+2. independently check PKHeX for save-layout, checksum, language/region and Pokémon-structure behavior;
+3. use existing project research/indexed references where relevant;
+4. do not copy unverified historical constants from PHBankGBC or forums without an independent oracle/fixture.
+
+## REQUIRED GSC SCOPE
+
+Prove and implement, as applicable:
+
+- supported international/Japanese save layouts;
+- exact supported save sizes;
+- strict checksums / structural validation;
+- explicit Gold/Silver vs Crystal differences;
+- stable `gold_gbc`, `silver_gbc`, `crystal_gbc` identities;
+- bounded RetroArch discovery;
+- Trainer;
+- Party;
+- PC Boxes/storage;
+- Items/inventory with Generation II semantics;
+- truthful PK2 / Generation II Pokémon detail mapping;
+- Refresh/current-save behavior;
+- source-byte immutability;
+- malformed/truncated rejection;
+- nonfatal handling for optional sections only when proven safe;
+- Gen I and Gen III regression preservation.
+
+Do not fabricate modern fields that do not exist in Gen II.
+
+## VERIFICATION GATES
+
+Before any physical-test artifact:
 
 ```text
-GEN III ACCEPTED BASELINE: PRESERVED
-RBY ITEMSFIX APPLICATION SOURCE: 50dac31f53907143f48884681056f8d582813b76
-RBY ITEMSFIX NRO BUILDS: YES
-RBY DEVICE TESTED: YES
-RBY ITEMSFIX DEVICE TESTED: NO
-RBY DEVICE ACCEPTED: NO
-STOP FOR PHYSICAL ITEMSFIX SWITCH RETEST
+focused GSC parser/oracle tests
+GSC discovery tests
+GSC source-browser/bridge tests
+malformed/truncated rejection
+source mutation/write-policy tests
+full host suite
+Gen I regression
+FRLG regression
+RSE regression
+ASan
+UBSan
+git diff --check
+native device asset preflight
+devkitA64 compile
+native FINAL LINK
+embedded application identity
+embedded RomFS verification
 ```
+
+Device acceptance requires a new exact `.nro`, exact application-source SHA/tree, bytes, SHA-256 and a physical Switch test. Do not mark GSC `DEVICE TESTED` or `DEVICE ACCEPTED` before that happens.
+
+## SAFETY
+
+```text
+Live installed-game writes: HARD DISABLED
+Live RetroArch writes: HARD DISABLED
+Read-only source bytes: MUST REMAIN IMMUTABLE
+Unknown/malformed variants: FAIL SAFELY
+```
+
+No physical acceptance of prior read-only paths authorizes write support.
+
+## DO NOT START IN THE GSC MILESTONE
+
+Do not expand into DS, 3DS, Vault/Banks, RetroArch per-profile isolation, Admin Mode, RetroArch Profile Bridge, transfers, conversion, editor, legality expansion, events or live writing unless separately authorized after the focused GSC milestone.
+
+## STOP CONDITION
+
+Stop after a coherent GSC read-only implementation is host/sanitizer/native verified and an exact physical-test artifact is ready, unless the user explicitly changes scope earlier. Do not roll automatically into DS/3DS or product/Vault work.
