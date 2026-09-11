@@ -31,58 +31,118 @@ DEVICE ACCEPTED
 
 ## Current headline
 
-Generation III legacy read-only support remains physically accepted. Generation I Red/Blue/Yellow read-only support is implemented, host-tested, native-built, packaged and **ready for physical testing**, but it is **not device tested or accepted yet**.
+Generation III legacy read-only support remains physically accepted. Generation I Red/Blue/Yellow was physically tested with runtime `d9077e2d`; Trainer, Party, Boxes, Pokemon details and general browsing passed, while the Items view exposed a device defect. The RBY ItemsFix is now implemented, fully host/sanitizer verified, native-built and packaged as a new exact artifact. RBY remains **DEVICE ACCEPTED = NO** until that ItemsFix artifact is physically retested.
 
 | Game | State |
 |---|---|
-| FireRed GBA | DEVICE ACCEPTED |
-| LeafGreen GBA | DEVICE ACCEPTED |
-| Ruby GBA | DEVICE ACCEPTED |
-| Sapphire GBA | DEVICE ACCEPTED |
-| Emerald GBA | DEVICE ACCEPTED |
-| Red GB | IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST |
-| Blue GB | IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST |
-| Yellow GB | IMPLEMENTED / HOST TESTED / NRO BUILDS / READY FOR PHYSICAL TEST |
+| FireRed GBA | DEVICE TESTED / DEVICE ACCEPTED |
+| LeafGreen GBA | DEVICE TESTED / DEVICE ACCEPTED |
+| Ruby GBA | DEVICE TESTED / DEVICE ACCEPTED |
+| Sapphire GBA | DEVICE TESTED / DEVICE ACCEPTED |
+| Emerald GBA | DEVICE TESTED / DEVICE ACCEPTED |
+| Red GB | IMPLEMENTED / HOST TESTED / NRO BUILDS / DEVICE TESTED / AWAITING ITEMSFIX PHYSICAL RETEST |
+| Blue GB | IMPLEMENTED / HOST TESTED / NRO BUILDS / DEVICE TESTED / AWAITING ITEMSFIX PHYSICAL RETEST |
+| Yellow GB | IMPLEMENTED / HOST TESTED / NRO BUILDS / DEVICE TESTED / AWAITING ITEMSFIX PHYSICAL RETEST |
 
-## Frozen RBY runtime
+## RBY physical-test history
+
+Previous physically tested runtime:
 
 ```text
 Application source: d9077e2da3909b6fbe9d8db9ce7384a71b8b98e7
 Application tree: 0ea6fbe365afe8122f252754554fef1fae73e183
-Clean host gate run: 34559821944
+Artifact: PokeBank-NX-RBY-Retest-d9077e2d.nro
+NRO bytes: 159741909
+NRO SHA-256: b56bbce9f8d6155f318cbac44819967378df468f1355dfa4538691d1e536a664
+```
+
+Physical result:
+
+```text
+Trainer: PASS
+Party: PASS
+Boxes: PASS
+Pokemon details: PASS
+General RBY browsing: PASS
+Items: FAIL — device-discovered category/inventory defect
+Platform label: FAIL — Yellow was shown as GBA instead of GB
+RBY DEVICE TESTED: YES
+RBY DEVICE ACCEPTED: NO
+```
+
+## Verified RBY ItemsFix runtime
+
+Pre-fix feature/docs head:
+
+```text
+0e92cee6ae743d5156dd8f7aaf55750b70dde5e5
+```
+
+Verified runtime:
+
+```text
+Application source: 50dac31f53907143f48884681056f8d582813b76
+Application tree: 1cf73ea12833e8a94a06dfaf2b9036e9059344ec
+Commit: gen1: add read-only RBY inventory support
+Clean verification run: 34576027301
 Recovery snapshot: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
 Expected embedded RomFS: 3289 files
 ```
 
-This exact runtime passed focused RBY verification, the full host suite, FRLG and RSE regressions, source mutation/write policy checks, ASan, UBSan, native devkitA64 compile/final link, embedded application identity and complete embedded RomFS verification.
-
-## RBY physical-test artifact
-
-A packaging-only SHA256SUMS lookup defect was fixed without touching application runtime source.
+Verification gates:
 
 ```text
-Packaging infrastructure commit: 214e5a3b8a96d340d20229b0ba948bff608a3d60
-Successful Actions run: 34566567906
-Artifact name: RBY-Retest-d9077e2d
-Artifact id: 10186285817
-Artifact digest: sha256:6310e55c2fca1ebe160490f16fdc54374266aa1b12fe775f598621bb3cba9367
+Focused RBY inventory: PASS
+RBY parser/oracle: PASS
+RBY discovery: PASS
+RBY source browser: PASS
+RBY read-only bridge: PASS
+Malformed inventory nonfatal test: PASS
+Full host suite: PASS
+FRLG regression: PASS
+RSE regression: PASS
+Source mutation/write policy: PASS
+ASan: PASS
+UBSan: PASS
+git diff --check: PASS
+Gen III protected paths: PASS
 ```
+
+The ItemsFix preserves the strict read-only policy. Generation I inventory is modeled as the two real stores, Bag and PC Items; malformed optional inventory does not invalidate an otherwise-readable Trainer/Party/Boxes save. Red/Blue/Yellow use the GB platform identity. Accepted Gen III runtime paths remain protected.
+
+## RBY ItemsFix physical-retest artifact
+
+Successful native/device build:
 
 ```text
-NRO: PokeBank-NX-RBY-Retest-d9077e2d.nro
-NRO bytes: 159741909
-NRO SHA-256: b56bbce9f8d6155f318cbac44819967378df468f1355dfa4538691d1e536a664
-
-ZIP: PokeBank-NX-RBY-Retest-d9077e2d.zip
-ZIP bytes: 152768842
-ZIP SHA-256: cec41809905b1d758c4c3f995dcf316ffe11f178bf7571b7c5a4d822ccf58e5c
-
-Packaging manifest SHA-256: 2cb61bc65b84527e8aee2545667ac34ef61daf0bb5e39cf71f0abf10a794a33c
-BUILD_MANIFEST.json SHA-256: c6080ba90c0a21ca4d635bf9fb123775e5b526e60ac5263506f5cedb7962a6fc
-SHA256SUMS.txt SHA-256: 5fa82074ac5786bcfcb34994b76cca277c346c35465849212b40d8dc0e26b11c
+GitHub Actions run: 34576721503
+Actions artifact: RBY-ItemsFix-Retest-50dac31f
+Artifact id: 10190023094
+Actions archive bytes: 305759595
+Actions archive SHA-256: 07e2ba8dba82bd6edb780d1bcf0aae626e3ef134fb3415ab4af9b525228489f3
+Device asset preflight: PASS
+Native devkitA64 FINAL LINK: PASS
+Embedded application identity: PASS
+Embedded RomFS: 3289/3289 PASS
 ```
 
-The Actions artifact was downloaded and independently verified. The NRO SHA-256 matches all three packaging records.
+Exact physical-retest package:
+
+```text
+NRO: PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.nro
+NRO bytes: 159754197
+NRO SHA-256: b2a8c68a80b27ca647777e7286da976b25d66ff7460555f9a404a1a783a1c16b
+
+ZIP: PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.zip
+ZIP bytes: 152773612
+ZIP SHA-256: e6c0af2915c2315ce132b10b844f0d14f4951e5b8845f801697ed27aef3a578e
+
+NRO manifest SHA-256: 4b43aee6f5e68db8a3733449df4627af1c5e2a4c82f19bb038ceb5917014b126
+BUILD_MANIFEST.json SHA-256: 5302cedbf5a61244de213aea9948035ab6cc99003c055fb2a339f1206a175b66
+SHA256SUMS.txt SHA-256: ca650014d5f06976df96f920066c5fc405bb584a727e6638f9df782140689fb7
+```
+
+The Actions artifact was downloaded and independently verified. The outer Actions ZIP matches GitHub's artifact digest. The standalone NRO is byte-identical to the NRO inside the package ZIP, and its independently computed SHA-256 agrees with the NRO manifest, `BUILD_MANIFEST.json`, `SHA256SUMS.txt`, and `embedded-romfs.json`.
 
 ## Accepted Generation III baseline
 
@@ -103,6 +163,7 @@ Accepted RSE application source remains `a2df4c1acdb7a556808bd58a2bdbcd4fc033595
 - Savestates are not canonical battery-save sources.
 - Original source bytes remain untouched during read-only milestones.
 - Unknown save variants fail safely instead of being guessed writable.
+- Malformed optional RBY inventory remains nonfatal to otherwise-valid Trainer/Party/Boxes access.
 - Live installed-game writing is HARD DISABLED.
 - Live RetroArch writing is HARD DISABLED.
 - Gen III accepted behavior must remain preserved.
@@ -110,11 +171,13 @@ Accepted RSE application source remains `a2df4c1acdb7a556808bd58a2bdbcd4fc033595
 ## Current stop condition
 
 ```text
-Red: DEVICE TESTED = NO / DEVICE ACCEPTED = NO
-Blue: DEVICE TESTED = NO / DEVICE ACCEPTED = NO
-Yellow: DEVICE TESTED = NO / DEVICE ACCEPTED = NO
+RBY DEVICE TESTED = YES
+RBY ITEMSFIX HOST VERIFIED = YES
+RBY ITEMSFIX NRO BUILDS = YES
+RBY ITEMSFIX DEVICE TESTED = NO
+RBY DEVICE ACCEPTED = NO
 ```
 
-The next action is **physical Red / Blue / Yellow testing on the user's Nintendo Switch with the exact d9077e2d NRO**.
+The next action is **physical Red / Blue / Yellow Items testing on the user's Nintendo Switch with the exact `PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.nro` binary and SHA-256 `b2a8c68a80b27ca647777e7286da976b25d66ff7460555f9a404a1a783a1c16b`**.
 
-Do not start Gold/Silver/Crystal, DS, 3DS, Vault/Banks, profile isolation work, Admin Mode, transfers, editor/legality expansion, events or live writing before that test result.
+Do not start Gold/Silver/Crystal, DS, 3DS, Vault/Banks, profile isolation work, Admin Mode, RetroArch profile bridge, transfers, editor/legality expansion, events or live writing before that physical retest result.
