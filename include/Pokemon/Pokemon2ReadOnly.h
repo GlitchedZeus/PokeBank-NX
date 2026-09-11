@@ -63,8 +63,8 @@ public:
     uint8_t friendship() const noexcept override { return record_.friendship; }
     bool isEgg() const noexcept override { return record_.isEgg; }
     bool isShiny(uint32_t,std::string) const noexcept override { return record_.shiny; }
-    bool isPokerusInfected() const noexcept override { return (record_.pokerus & 0xF0) != 0; }
-    bool isPokerusCured() const noexcept override { return record_.pokerus != 0 && (record_.pokerus & 0xF0) == 0; }
+    bool isPokerusInfected() const noexcept override { return (record_.pokerus >> 4) != 0 && (record_.pokerus & 0x0F) != 0; }
+    bool isPokerusCured() const noexcept override { return (record_.pokerus >> 4) != 0 && (record_.pokerus & 0x0F) == 0; }
     uint16_t checksum() const noexcept override { return 0; } uint16_t calculateChecksum() const noexcept override { return 0; }
     void refreshChecksum() noexcept override {} bool checksumValid() const noexcept override { return true; }
     void recalculateStats() noexcept override {} void regeneratePID(uint32_t) noexcept override {} void setShiny(bool,uint32_t) noexcept override {}
@@ -77,6 +77,7 @@ public:
     uint16_t statExpDEF() const noexcept { return record_.statExperience[2]; } uint16_t statExpSPE() const noexcept { return record_.statExperience[3]; }
     uint16_t statExpSpecial() const noexcept { return record_.statExperience[4]; }
     uint16_t caughtData() const noexcept { return record_.caughtData; } uint8_t statusByte() const noexcept { return record_.status; }
+    uint8_t pokerusByte() const noexcept { return record_.pokerus; }
     bool isPartyRecord() const noexcept { return record_.partyRecord; }
     uint8_t rawOriginVersion() const noexcept { return sourceGame_==PokeVault::Integration::Gen2::SourceGame::Gold?39:sourceGame_==PokeVault::Integration::Gen2::SourceGame::Silver?40:41; }
     PokeVault::Integration::Gen2::RegionLayout regionLayout() const noexcept { return region_; }
