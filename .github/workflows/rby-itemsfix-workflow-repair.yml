@@ -1,0 +1,45 @@
+name: Repair RBY ItemsFix workflow
+
+on:
+  push:
+    branches:
+      - codex/rby-itemsfix-patch
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out staged checkpoint branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/rby-itemsfix-patch
+          fetch-depth: 0
+
+      - name: Repair embedded heredoc indentation only
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=.github/workflows/rby-itemsfix-patch.yml
+          awk '
+          BEGIN { inpy=0 }
+          {
+            if ($0 == "from pathlib import Path") inpy=1
+            if (inpy) print "          " $0; else print $0
+            if (inpy && $0 == "PY") inpy=0
+          }
+          ' "$target" > /tmp/rby-itemsfix-patch.yml
+          if cmp -s "$target" /tmp/rby-itemsfix-patch.yml; then
+            echo "Workflow heredoc indentation already repaired; no commit needed."
+            exit 0
+          fi
+          mv /tmp/rby-itemsfix-patch.yml "$target"
+          git diff --check
+          git diff -- "$target"
+          git config user.name "GlitchedZeus"
+          git config user.email "user91746@protonmail.com"
+          git add "$target"
+          git commit -m "ci: repair RBY ItemsFix workflow indentation"
+          git push origin HEAD:codex/rby-itemsfix-patch
