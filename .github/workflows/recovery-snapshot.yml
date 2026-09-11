@@ -28,9 +28,17 @@ jobs:
       - name: Install image verifier
         run: python3 -m pip install Pillow
       - name: Run normal deterministic recovery
-        run: python3 tools/recover_workspace.py
-      - name: Verify complete images and pack snapshot
+        run: python3 tools/recover_workspace.py 2>&1 | tee recovery.log
+      - name: Verify complete RBY asset tree and derive authoritative count
         run: |
+          set -euo pipefail
+          python3 tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'HD sprite directory exists (3260 PNGs' asset-preflight.log
+          grep -q 'all 1025 base-species HOME renders are present' asset-preflight.log
+          grep -q 'all 18 type sprites are present' asset-preflight.log
+          grep -q 'required UI fonts are present' asset-preflight.log
+          grep -q 'Red/Blue/Yellow GB + FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present' asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
           python3 - <<'PY'
           from pathlib import Path
           from PIL import Image
@@ -40,13 +48,31 @@ jobs:
           assert all((root / f'sprites/pokemon_hd/{n}.png').is_file() for n in range(1, 1026))
           assert len(list((root / 'sprites/types').glob('*.png'))) == 18
           assert len(list((root / 'fonts').glob('*.ttf'))) == 3
+          cards = (
+              'red_gb.png', 'blue_gb.png', 'yellow_gb.png',
+              'firered_gba.png', 'leafgreen_gba.png',
+              'ruby_gba.png', 'sapphire_gba.png', 'emerald_gba.png',
+          )
+          assert all((root / 'game_cards' / name).is_file() for name in cards)
           for path in root.rglob('*.png'):
               with Image.open(path) as image:
                   image.verify()
-          assert sum(p.is_file() for p in root.rglob('*')) == 3283
-          print('Complete 3260-render / 3283-file tree verified')
+          count = sum(p.is_file() for p in root.rglob('*'))
+          Path('.expected-romfs-count').write_text(str(count) + '\n')
+          print(f'Complete 3260-render / {count}-file RBY tree verified')
           PY
+      - name: Pack deterministic recovery snapshot
+        run: |
+          set -euo pipefail
           python3 tools/pack_recovery_snapshot.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          expected = int(Path('.expected-romfs-count').read_text().strip())
+          manifest = json.loads(Path('recovery/assets_snapshot/manifest.json').read_text())
+          assert manifest['file_count'] == expected, (manifest['file_count'], expected)
+          print(f"Snapshot manifest count verified: {expected}")
+          PY
       - name: Commit snapshot to origin feature branch only
         run: |
           set -euo pipefail
@@ -55,7 +81,7 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add -f recovery/assets_snapshot/
           if ! git diff --cached --quiet; then
-            git commit -m "recovery: snapshot complete verified RomFS"
+            git commit -m "recovery: snapshot verified RBY RomFS"
             git push origin HEAD:feature/pokebank-playable
           fi
           git fetch origin feature/pokebank-playable
