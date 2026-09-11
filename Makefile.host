@@ -26,8 +26,13 @@ GEN3_NATIVE_SLICE_SOURCES := tests/test_pksm_gen3_adapter.cpp \
 	src/Encryption/Encryption3FRLG.cpp \
 	src/Names/ItemNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
 	src/Utils/SHA256.cpp
+# Runtime legacy discovery now appends separately validated Gen I R/B/Y sources. The accepted Gen III
+# scanner remains unchanged; these are link dependencies for its configured runtime catalog wrapper.
+RBY_RUNTIME_DISCOVERY_SOURCES := src/Legacy/RetroArchRBYDiscovery.cpp \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp
 RETROARCH_FRLG_SOURCES := tests/test_retroarch_frlg_discovery.cpp \
-	src/Legacy/RetroArchFRLGDiscovery.cpp src/Integration/Gen3/PKSMGen3NativeAdapter.cpp \
+	src/Legacy/RetroArchFRLGDiscovery.cpp $(RBY_RUNTIME_DISCOVERY_SOURCES) \
+	src/Integration/Gen3/PKSMGen3NativeAdapter.cpp \
 	src/Integration/Gen3/FRLGReadModel.cpp \
 	src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Utils/StringHelpers.cpp \
 	src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp
@@ -43,12 +48,33 @@ LEGACY_FRLG_BROWSE_SOURCES := tests/test_legacy_frlg_browse.cpp \
 	src/Games/GameIdentity.cpp
 LEGACY_FRLG_BROWSE_FLAGS := -Wno-unused-parameter
 RSE_TEST_COMMON_SOURCES := tests/test_rse_gen3_adapter.cpp \
-	src/Legacy/RetroArchFRLGDiscovery.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+	src/Legacy/RetroArchFRLGDiscovery.cpp $(RBY_RUNTIME_DISCOVERY_SOURCES) \
+	src/Integration/Gen3/FRLGReadModel.cpp \
 	src/Encryption/Encryption3FRLG.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
 	src/Utils/SHA256.cpp src/Games/GameIdentity.cpp
 RSE_HOST_SOURCES := $(RSE_TEST_COMMON_SOURCES) src/Integration/Gen3/PKSMGen3Adapter.cpp
 RSE_NATIVE_SOURCES := $(RSE_TEST_COMMON_SOURCES) src/Integration/Gen3/PKSMGen3NativeAdapter.cpp \
 	src/Names/ItemNames.cpp
+
+GEN1_ADAPTER_SOURCES := tests/test_rby_gen1_adapter.cpp \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp
+RBY_INVENTORY_SOURCES := tests/test_rby_inventory.cpp \
+	src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Names/ItemNames.cpp
+RBY_DISCOVERY_SOURCES := tests/test_rby_discovery.cpp \
+	src/Legacy/RetroArchRBYDiscovery.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
+	src/Utils/SHA256.cpp
+RBY_SOURCE_BROWSER_SOURCES := tests/test_rby_source_browser.cpp \
+	src/Legacy/RBYSourceBrowser.cpp src/Legacy/RetroArchRBYDiscovery.cpp \
+	src/Legacy/LegacySourceBindings.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
+	src/Utils/SHA256.cpp src/Games/GameIdentity.cpp
+RBY_BRIDGE_SOURCES := tests/test_rby_readonly_bridge.cpp \
+	src/Legacy/RBYReadOnlyTrainer.cpp src/Pokemon/Pokemon1ReadOnly.cpp \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1ReadOnlyInventory.cpp \
+	src/Pokemon/BaseStatsGen89.cpp \
+	src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp src/Names/NatureNames.cpp \
+	src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+RBY_BRIDGE_FLAGS := -Wno-unused-parameter
+
 GEN3_FIXTURE := $(HOST_BUILD)/frlg_fixture.sav
 PKSM_CORE_OBJECT := $(HOST_BUILD)/pksm-core.o
 PKSM_CORE_SANITIZE_OBJECT := $(HOST_BUILD)/pksm-core-sanitize.o
@@ -64,6 +90,12 @@ HOST_TESTS += $(HOST_BUILD)/test_legacy_source_bindings
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legacy_source_bindings_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_rse_gen3_adapter $(HOST_BUILD)/test_rse_gen3_native_slice
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_rse_gen3_adapter_sanitize $(HOST_BUILD)/test_rse_gen3_native_slice_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_rby_gen1_adapter $(HOST_BUILD)/test_rby_inventory \
+	$(HOST_BUILD)/test_rby_discovery $(HOST_BUILD)/test_rby_source_browser \
+	$(HOST_BUILD)/test_rby_readonly_bridge
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_rby_gen1_adapter_sanitize \
+	$(HOST_BUILD)/test_rby_inventory_sanitize $(HOST_BUILD)/test_rby_discovery_sanitize \
+	$(HOST_BUILD)/test_rby_source_browser_sanitize $(HOST_BUILD)/test_rby_readonly_bridge_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -171,6 +203,50 @@ $(HOST_BUILD)/test_legacy_source_bindings: tests/test_legacy_source_bindings.cpp
 $(HOST_BUILD)/test_legacy_source_bindings_sanitize: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_rby_gen1_adapter: $(GEN1_ADAPTER_SOURCES) $(PKSM_CORE_OBJECT)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(PKSM_CORE_FLAGS) -Iinclude $(PKSM_CORE_INCLUDES) \
+		$(PKSM_CORE_DEFINES) $(GEN1_ADAPTER_SOURCES) $(PKSM_CORE_OBJECT) \
+		-Wl,--gc-sections -o $@
+
+$(HOST_BUILD)/test_rby_gen1_adapter_sanitize: $(GEN1_ADAPTER_SOURCES) $(PKSM_CORE_SANITIZE_OBJECT)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(PKSM_CORE_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(PKSM_CORE_INCLUDES) \
+		$(PKSM_CORE_DEFINES) $(GEN1_ADAPTER_SOURCES) $(PKSM_CORE_SANITIZE_OBJECT) \
+		-Wl,--gc-sections -o $@
+
+$(HOST_BUILD)/test_rby_inventory: $(RBY_INVENTORY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_rby_inventory_sanitize: $(RBY_INVENTORY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_rby_discovery: $(RBY_DISCOVERY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_rby_discovery_sanitize: $(RBY_DISCOVERY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_rby_source_browser: $(RBY_SOURCE_BROWSER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_rby_source_browser_sanitize: $(RBY_SOURCE_BROWSER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_rby_readonly_bridge: $(RBY_BRIDGE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(RBY_BRIDGE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_rby_readonly_bridge_sanitize: $(RBY_BRIDGE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(RBY_BRIDGE_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_game_identity: tests/test_game_identity.cpp src/Games/GameIdentity.cpp
 	@mkdir -p $(HOST_BUILD)

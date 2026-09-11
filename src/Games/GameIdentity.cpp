@@ -8,9 +8,9 @@ namespace PokeVault::Games {
         using enum SourceSupport;
 
         constexpr std::array<GameDescriptor, 23> kGames{{
-            {"red_gb",                       "Red",               GameBoy,        1, 0, Planned},
-            {"blue_gb",                      "Blue",              GameBoy,        1, 0, Planned},
-            {"yellow_gb",                    "Yellow",            GameBoy,        1, 0, Planned},
+            {"red_gb",                       "Red",               GameBoy,        1, 0, ReadOnly},
+            {"blue_gb",                      "Blue",              GameBoy,        1, 0, ReadOnly},
+            {"yellow_gb",                    "Yellow",            GameBoy,        1, 0, ReadOnly},
             {"gold_gbc",                     "Gold",              GameBoyColor,   2, 0, Planned},
             {"silver_gbc",                   "Silver",            GameBoyColor,   2, 0, Planned},
             {"crystal_gbc",                  "Crystal",           GameBoyColor,   2, 0, Planned},
@@ -58,7 +58,22 @@ namespace PokeVault::Games {
         return "Unknown platform";
     }
 
+    std::string_view legacyPlatformAbbreviation(std::string_view id) noexcept {
+        const GameDescriptor* game = findGame(id);
+        if (!game || game->support != SourceSupport::ReadOnly) return {};
+        switch (game->platform) {
+            case Platform::GameBoy: return "GB";
+            case Platform::GameBoyColor: return "GBC";
+            case Platform::GameBoyAdvance: return "GBA";
+            case Platform::NintendoSwitch: return {};
+        }
+        return {};
+    }
+
     std::string_view gameCardArtworkPath(std::string_view id) noexcept {
+        if (id == "red_gb") return "romfs:/game_cards/red_gb.png";
+        if (id == "blue_gb") return "romfs:/game_cards/blue_gb.png";
+        if (id == "yellow_gb") return "romfs:/game_cards/yellow_gb.png";
         if (id == "ruby_gba") return "romfs:/game_cards/ruby_gba.png";
         if (id == "sapphire_gba") return "romfs:/game_cards/sapphire_gba.png";
         if (id == "emerald_gba") return "romfs:/game_cards/emerald_gba.png";

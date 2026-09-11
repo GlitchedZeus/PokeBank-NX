@@ -127,6 +127,7 @@ def main() -> int:
             ok("required UI fonts are present")
 
     required_game_cards = (
+        "red_gb.png", "blue_gb.png", "yellow_gb.png",
         "firered_gba.png", "leafgreen_gba.png",
         "ruby_gba.png", "sapphire_gba.png", "emerald_gba.png",
     )
@@ -136,9 +137,9 @@ def main() -> int:
         missing_cards = [name for name in required_game_cards
                          if not (GAME_CARD_ART_DIR / name).is_file()]
         if missing_cards:
-            fail(errors, f"required GBA game-card artwork missing: {', '.join(missing_cards)}")
+            fail(errors, f"required game-card artwork missing: {', '.join(missing_cards)}")
         else:
-            ok("FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present")
+            ok("Red/Blue/Yellow GB + FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present")
 
     print()
     if errors:

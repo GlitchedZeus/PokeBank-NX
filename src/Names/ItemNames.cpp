@@ -2709,6 +2709,171 @@ namespace Names {
         return 2685;
     }
 
+
+    // ------------------------------------------------------------------
+    // Gen 1 (R/B/Y) raw item-id names.
+    // ------------------------------------------------------------------
+    // Raw IDs are intentionally kept in their original Gen I namespace. This table follows
+    // pret/pokered's item constants/names, while admissible save-list IDs are validated by the
+    // read-only inventory decoder against pinned PKSM-Core Sav1::validItems1.
+    static const char* ITEM1_NAMES[] = {
+        "(None)",  // 0
+        "Master Ball",  // 1
+        "Ultra Ball",  // 2
+        "Great Ball",  // 3
+        "Poké Ball",  // 4
+        "Town Map",  // 5
+        "Bicycle",  // 6
+        "???",  // 7
+        "Safari Ball",  // 8
+        "Pokédex",  // 9
+        "Moon Stone",  // 10
+        "Antidote",  // 11
+        "Burn Heal",  // 12
+        "Ice Heal",  // 13
+        "Awakening",  // 14
+        "Parlyz Heal",  // 15
+        "Full Restore",  // 16
+        "Max Potion",  // 17
+        "Hyper Potion",  // 18
+        "Super Potion",  // 19
+        "Potion",  // 20
+        "BoulderBadge",  // 21
+        "CascadeBadge",  // 22
+        "ThunderBadge",  // 23
+        "RainbowBadge",  // 24
+        "SoulBadge",  // 25
+        "MarshBadge",  // 26
+        "VolcanoBadge",  // 27
+        "EarthBadge",  // 28
+        "Escape Rope",  // 29
+        "Repel",  // 30
+        "Old Amber",  // 31
+        "Fire Stone",  // 32
+        "Thunderstone",  // 33
+        "Water Stone",  // 34
+        "HP Up",  // 35
+        "Protein",  // 36
+        "Iron",  // 37
+        "Carbos",  // 38
+        "Calcium",  // 39
+        "Rare Candy",  // 40
+        "Dome Fossil",  // 41
+        "Helix Fossil",  // 42
+        "Secret Key",  // 43
+        "???",  // 44
+        "Bike Voucher",  // 45
+        "X Accuracy",  // 46
+        "Leaf Stone",  // 47
+        "Card Key",  // 48
+        "Nugget",  // 49
+        "PP Up",  // 50
+        "Poké Doll",  // 51
+        "Full Heal",  // 52
+        "Revive",  // 53
+        "Max Revive",  // 54
+        "Guard Spec.",  // 55
+        "Super Repel",  // 56
+        "Max Repel",  // 57
+        "Dire Hit",  // 58
+        "Coin",  // 59
+        "Fresh Water",  // 60
+        "Soda Pop",  // 61
+        "Lemonade",  // 62
+        "S.S.Ticket",  // 63
+        "Gold Teeth",  // 64
+        "X Attack",  // 65
+        "X Defend",  // 66
+        "X Speed",  // 67
+        "X Special",  // 68
+        "Coin Case",  // 69
+        "Oak's Parcel",  // 70
+        "Itemfinder",  // 71
+        "Silph Scope",  // 72
+        "Poké Flute",  // 73
+        "Lift Key",  // 74
+        "Exp. All",  // 75
+        "Old Rod",  // 76
+        "Good Rod",  // 77
+        "Super Rod",  // 78
+        "PP Up",  // 79
+        "Ether",  // 80
+        "Max Ether",  // 81
+        "Elixer",  // 82
+        "Max Elixer",  // 83
+    };
+    static const char* ITEM1_HM_NAMES[] = {
+        "HM01",  // 0
+        "HM02",  // 1
+        "HM03",  // 2
+        "HM04",  // 3
+        "HM05",  // 4
+    };
+    static const char* ITEM1_TM_NAMES[] = {
+        "TM01",  // 0
+        "TM02",  // 1
+        "TM03",  // 2
+        "TM04",  // 3
+        "TM05",  // 4
+        "TM06",  // 5
+        "TM07",  // 6
+        "TM08",  // 7
+        "TM09",  // 8
+        "TM10",  // 9
+        "TM11",  // 10
+        "TM12",  // 11
+        "TM13",  // 12
+        "TM14",  // 13
+        "TM15",  // 14
+        "TM16",  // 15
+        "TM17",  // 16
+        "TM18",  // 17
+        "TM19",  // 18
+        "TM20",  // 19
+        "TM21",  // 20
+        "TM22",  // 21
+        "TM23",  // 22
+        "TM24",  // 23
+        "TM25",  // 24
+        "TM26",  // 25
+        "TM27",  // 26
+        "TM28",  // 27
+        "TM29",  // 28
+        "TM30",  // 29
+        "TM31",  // 30
+        "TM32",  // 31
+        "TM33",  // 32
+        "TM34",  // 33
+        "TM35",  // 34
+        "TM36",  // 35
+        "TM37",  // 36
+        "TM38",  // 37
+        "TM39",  // 38
+        "TM40",  // 39
+        "TM41",  // 40
+        "TM42",  // 41
+        "TM43",  // 42
+        "TM44",  // 43
+        "TM45",  // 44
+        "TM46",  // 45
+        "TM47",  // 46
+        "TM48",  // 47
+        "TM49",  // 48
+        "TM50",  // 49
+    };
+
+    const char* getItemNameG1(uint16_t itemId) {
+        if (itemId < (sizeof(ITEM1_NAMES) / sizeof(ITEM1_NAMES[0]))) {
+            const char* name = ITEM1_NAMES[itemId];
+            return (name != nullptr && name[0] != '\0') ? name : "???";
+        }
+        if (itemId >= 0xC4 && itemId <= 0xC8)
+            return ITEM1_HM_NAMES[itemId - 0xC4];
+        if (itemId >= 0xC9 && itemId <= 0xFA)
+            return ITEM1_TM_NAMES[itemId - 0xC9];
+        return "???";
+    }
+
     // ------------------------------------------------------------------
     // Gen 3 (GBA) item id <-> modern (Gen 4+) item id.
     // ------------------------------------------------------------------

@@ -1,293 +1,141 @@
-# NEXT CODEX PROMPT — GEN I RBY READ-ONLY
+# NEXT CODEX PROMPT — GENERATION II GSC READ-ONLY MILESTONE
 
 Continue PokeBank NX on `feature/pokebank-playable`.
 
-Use MEDIUM reasoning. Use HIGH if Gen I checksum/layout/version behavior becomes ambiguous.
+Use MEDIUM reasoning unless a concrete parser/build defect requires deeper analysis.
 
-## THIS IS NOT RECOVERY
+## RECOVER FIRST
 
-Do not redo Gen III, redownload sprites, regenerate the RomFS, or re-open accepted FRLG/RSE work without new device evidence.
+This is the next coding milestone after physically accepted Generation I RBY and Generation III legacy read-only support.
 
-Live installed-game and RetroArch save writing remains **HARD DISABLED**.
+Before implementing anything:
 
-## VERIFIED BASELINE
+1. follow `docs/RECOVERY_CONTRACT.md` and recover `origin/feature/pokebank-playable`;
+2. read `CURRENT_STATUS.md` and `docs/CODEX_SESSION.md`;
+3. verify the accepted Gen I and Gen III checkpoints below are present;
+4. open only the GB/GBC game-family resource material and relevant research/reference notes;
+5. keep all custom work on `origin/feature/pokebank-playable`, never PKSE upstream.
 
-FRLG and RSE are physically accepted on a real Nintendo Switch for the current read-only browsing/source-assignment milestone.
+Live installed-game writing and live RetroArch writing remain **HARD DISABLED**.
 
-```text
-FireRed GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-LeafGreen GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-Ruby GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-Sapphire GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-Emerald GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-```
+## ACCEPTED BASELINE — DO NOT REOPEN WITHOUT DEVICE EVIDENCE
 
-Accepted RSE application source:
+Generation I RBY:
 
 ```text
-a2df4c1acdb7a556808bd58a2bdbcd4fc0335954
-application tree: 559202d16f0affc13a9e1c521beff4834585b1e7
+Red GB: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
+Blue GB: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
+Yellow GB: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
+Application source: 50dac31f53907143f48884681056f8d582813b76
+Application tree: 1cf73ea12833e8a94a06dfaf2b9036e9059344ec
+Accepted NRO: PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.nro
+bytes: 159754197
+SHA-256: b2a8c68a80b27ca647777e7286da976b25d66ff7460555f9a404a1a783a1c16b
+GEN I RBY LEGACY READ-ONLY: PHYSICALLY ACCEPTED
 ```
 
-Accepted RSE artifact:
+Historical RBY record to preserve: runtime `d9077e2d` was the first device test and exposed the Items/category + Yellow GB/GBA defects; `50dac31f...` fixed them and passed physical retest.
+
+Generation III:
 
 ```text
-PokeBank-NX-RSE-OpenFix-Retest-a2df4c1a.nro
-bytes: 158120837
-SHA-256: 34fc0893ae0f0ee1a3e244c11469a5d44de181d68318040fce386470b2e0e80e
+FireRed GBA: DEVICE ACCEPTED YES
+LeafGreen GBA: DEVICE ACCEPTED YES
+Ruby GBA: DEVICE ACCEPTED YES
+Sapphire GBA: DEVICE ACCEPTED YES
+Emerald GBA: DEVICE ACCEPTED YES
+GEN III LEGACY READ-ONLY: PHYSICALLY ACCEPTED
 ```
 
-Host verification run `34453208654`: PASS.
-Native/device build run `34454555232`: PASS.
-Embedded RomFS: 3286/3286 PASS.
+Do not change accepted Gen I/III behavior unless a new physical defect directly implicates it.
 
-Permanent recovery snapshot:
+## ACTIVE MILESTONE — GENERATION II
+
+Implement focused read-only support for:
 
 ```text
-2321fa488668e32392de25afed84e38919fbd21f
+gold_gbc
+silver_gbc
+crystal_gbc
+Game Boy Color / RetroArch
+READ ONLY
 ```
 
-Do not repack that snapshot unless the required asset set genuinely changes.
+This milestone is normal RetroArch battery saves only (`.sav` / `.srm`). Savestates are not canonical sources.
 
-## REQUIRED READING ORDER
+## RESEARCH / ORACLE ORDER
 
-Read only what is needed:
+Before writing parser constants:
 
-1. `CURRENT_STATUS.md`
-2. `docs/CODEX_SESSION.md`
-3. this file
-4. the **GB / GBC** chunk in `docs/PROJECT_RESOURCE_INDEX.md`
-5. if external/reference research is needed, `docs/RESEARCH_CURRENT_INDEX.md` and only the relevant Gen I note/reference
+1. inspect the project's pinned PKSM-Core `Sav2` / `PK2` implementation;
+2. independently check PKHeX for save-layout, checksum, language/region and Pokémon-structure behavior;
+3. use existing project research/indexed references where relevant;
+4. do not copy unverified historical constants from PHBankGBC or forums without an independent oracle/fixture.
 
-Do not automatically crawl every roadmap/history/research document.
+## REQUIRED GSC SCOPE
 
-# SINGLE DEVELOPMENT MISSION
+Prove and implement, as applicable:
 
-Implement the first production-quality **read-only Generation I RetroArch source path** for:
+- supported international/Japanese save layouts;
+- exact supported save sizes;
+- strict checksums / structural validation;
+- explicit Gold/Silver vs Crystal differences;
+- stable `gold_gbc`, `silver_gbc`, `crystal_gbc` identities;
+- bounded RetroArch discovery;
+- Trainer;
+- Party;
+- PC Boxes/storage;
+- Items/inventory with Generation II semantics;
+- truthful PK2 / Generation II Pokémon detail mapping;
+- Refresh/current-save behavior;
+- source-byte immutability;
+- malformed/truncated rejection;
+- nonfatal handling for optional sections only when proven safe;
+- Gen I and Gen III regression preservation.
+
+Do not fabricate modern fields that do not exist in Gen II.
+
+## VERIFICATION GATES
+
+Before any physical-test artifact:
 
 ```text
-Pokémon Red
-Pokémon Blue
-Pokémon Yellow
+focused GSC parser/oracle tests
+GSC discovery tests
+GSC source-browser/bridge tests
+malformed/truncated rejection
+source mutation/write-policy tests
+full host suite
+Gen I regression
+FRLG regression
+RSE regression
+ASan
+UBSan
+git diff --check
+native device asset preflight
+devkitA64 compile
+native FINAL LINK
+embedded application identity
+embedded RomFS verification
 ```
 
-Target normal in-game battery saves (`.srm`, `.sav`, equivalent normalized raw save where already supported`).
+Device acceptance requires a new exact `.nro`, exact application-source SHA/tree, bytes, SHA-256 and a physical Switch test. Do not mark GSC `DEVICE TESTED` or `DEVICE ACCEPTED` before that happens.
 
-Do NOT parse emulator savestates as canonical game saves.
-
-Do NOT begin Gold/Silver/Crystal in this session.
-
-## REUSE THE EXISTING ARCHITECTURE
-
-Keep the same separation that now works for Gen III:
+## SAFETY
 
 ```text
-RetroArch/provider discovery
-        -> exact source identity
-        -> strict format validation
-        -> PokeBank-owned read model
-        -> Trainer / Party / Boxes / Pokémon UI
+Live installed-game writes: HARD DISABLED
+Live RetroArch writes: HARD DISABLED
+Read-only source bytes: MUST REMAIN IMMUTABLE
+Unknown/malformed variants: FAIL SAFELY
 ```
 
-Legacy source identity is provider/path/save-container based. Do not pretend a RetroArch save is inherently owned by a Nintendo account; profile assignment remains an organizational binding unless the provider itself supplies ownership.
+No physical acceptance of prior read-only paths authorizes write support.
 
-## REFERENCE PRIORITY
+## DO NOT START IN THE GSC MILESTONE
 
-Before inventing Gen I parsing behavior, inspect existing pinned/reference implementations.
+Do not expand into DS, 3DS, Vault/Banks, RetroArch per-profile isolation, Admin Mode, RetroArch Profile Bridge, transfers, conversion, editor, legality expansion, events or live writing unless separately authorized after the focused GSC milestone.
 
-Priority:
+## STOP CONDITION
 
-1. pinned `vendor/PKSM-Core` Gen I (`Sav1`, `PK1`, related helpers)
-2. PKHeX Gen I save/PK1 code as an independent correctness oracle when useful
-3. project reference audits/resources already indexed
-4. other mature open-source Gen I bank/save tools only when they add concrete evidence
-
-Record exact upstream project/revision/path for any newly relied-on behavior.
-
-Do not copy large external implementations wholesale if a small adapter/selective native implementation is sufficient.
-
-## REQUIRED GEN I BEHAVIOR
-
-Implement/verify for Red, Blue and Yellow:
-
-### Discovery / identity
-
-- bounded RetroArch battery-save discovery;
-- stable IDs `red_gb`, `blue_gb`, `yellow_gb`;
-- no false R/B/Y classification when evidence is insufficient;
-- preserve source filename/path/provider diagnostics;
-- same game in different physical save files remains distinct source instances.
-
-### Structural validation
-
-Determine and enforce the real Gen I save contract before exposing Pokémon.
-
-At minimum investigate/test:
-
-- supported save sizes;
-- game/release distinction where structurally possible;
-- language/region differences that affect offsets/text/validation;
-- checksum location/range and exact algorithm;
-- party count bounds;
-- box/storage structure and active/current-box semantics;
-- malformed/truncated data;
-- duplicate/impossible party/storage records;
-- any Yellow-specific layout differences.
-
-Important project rule:
-
-`GameVersion != StructuralRevision`.
-
-If multiple Gen I structural layouts exist, model them explicitly rather than assuming one English-US layout represents every save.
-
-Unknown structural variants must be read-rejected or marked unsupported, never guessed writable.
-
-### Trainer
-
-Expose truthful fields available in Gen I, such as:
-
-- trainer name;
-- visible trainer ID;
-- money if safely supported;
-- badges/playtime only if already cleanly represented and verified.
-
-Do not fabricate SID or later-generation fields that do not exist.
-
-### Party
-
-- correct party count;
-- all party Pokémon;
-- species;
-- nickname;
-- OT;
-- level/EXP;
-- moves/PP;
-- stats/DVs/EV-style stat experience where available;
-- current HP/status where represented;
-- no fake modern fields.
-
-### PC / Boxes
-
-- enumerate all Gen I PC boxes correctly;
-- handle current box and stored box structures;
-- preserve slot order;
-- empty slots handled safely;
-- box names should remain truthful to what the game actually stores (do not invent custom names as save data).
-
-### Pokémon view
-
-Map Gen I records into the existing PokeBank Pokémon view without pretending unavailable metadata exists.
-
-Preserve raw/original encoded bytes where practical so untouched source representation remains exact.
-
-### Refresh
-
-Changing/saving the game normally in RetroArch and using PokeBank Refresh should reread the current battery save without requiring app restart.
-
-### Safety
-
-- source file remains byte-for-byte unchanged;
-- no repair/writeback API;
-- no live write route;
-- malformed input fails cleanly;
-- accepted FRLG/RSE behavior remains unchanged.
-
-## HOST FIXTURES / TESTS
-
-Add focused Gen I fixtures/tests based on independently verified layout behavior.
-
-At minimum cover:
-
-- valid Red;
-- valid Blue;
-- valid Yellow;
-- empty/minimal party where legal;
-- six-Pokémon party;
-- boxed Pokémon;
-- Pokémon at storage boundary/last slot;
-- nickname and OT text;
-- checksum valid/invalid;
-- wrong/truncated size;
-- invalid party count;
-- game/layout mismatch if distinguishable;
-- source-byte non-mutation;
-- Refresh/source rediscovery behavior.
-
-Do not make production code and fixtures share the same unverified invented assumptions. Cross-check fixture layout against pinned PKSM-Core/PKHeX or another independent reference.
-
-Retain and run existing Gen III regressions.
-
-## CHECKPOINT EARLY
-
-Once a coherent RBY read-only source milestone passes host verification:
-
-```text
-commit
-push origin/feature/pokebank-playable
-remote-verify SHA
-```
-
-Do not leave meaningful project-authored work only in the temporary workspace.
-
-## VERIFICATION
-
-Before a device build run:
-
-- focused RBY tests PASS;
-- full host suite PASS;
-- FRLG regression PASS;
-- RSE regression PASS;
-- ASan/UBSan PASS;
-- source mutation/write policy PASS;
-- `git diff --check` PASS.
-
-Then restore the committed recovery snapshot and run the full native devkitA64 compile/final link.
-
-If R/B/Y game-card artwork is added as a required UI asset, use the established tracked/pinned asset pipeline, update device preflight and evolve the permanent recovery snapshot exactly once. Do not manually patch only a build workspace.
-
-## DEVICE ARTIFACT
-
-When RBY is coherent, build one physical-test artifact from the exact application source SHA, for example:
-
-```text
-PokeBank-NX-RBY-Retest-<shortsha>.nro
-PokeBank-NX-RBY-Retest-<shortsha>.zip
-manifest
-SHA256SUMS.txt
-```
-
-Record exact source SHA, NRO size/hash, ZIP size/hash, native final-link result, embedded identity and embedded RomFS verification.
-
-Update `CURRENT_STATUS.md`, this file, `PROJECT_STATUS.md`, `docs/GAME_SUPPORT_MATRIX.md`, `docs/BUILD_RECORD.md` as appropriate, and issue #6.
-
-Push/remote-verify all source/tests/docs before stopping.
-
-# STOP CONDITION
-
-STOP after the RBY physical-test NRO is ready.
-
-Do NOT begin Gen II, DS, 3DS, Vault/Banks, transfers, editor/legality/events, RetroArch per-Switch-user save routing, or live writing.
-
-Expected final report:
-
-```text
-GEN III ACCEPTED BASELINE: PRESERVED
-Red read-only source: IMPLEMENTED / HOST TESTED
-Blue read-only source: IMPLEMENTED / HOST TESTED
-Yellow read-only source: IMPLEMENTED / HOST TESTED
-Focused RBY tests: PASS
-FRLG/RSE regressions: PASS
-ASan/UBSan: PASS
-Source mutation/write policy: PASS
-Native devkitA64 final link: PASS
-Application source: <SHA>
-Recovery snapshot: <SHA>
-Embedded RomFS: PASS
-NRO: <filename>
-NRO bytes: <bytes>
-NRO SHA-256: <hash>
-SOURCE/TESTS/DOCS PUSHED + REMOTE VERIFIED: YES
-DEVICE TESTED FOR RBY: NO
-DEVICE ACCEPTED FOR RBY: NO
-STOP FOR PHYSICAL SWITCH TEST
-```
+Stop after a coherent GSC read-only implementation is host/sanitizer/native verified and an exact physical-test artifact is ready, unless the user explicitly changes scope earlier. Do not roll automatically into DS/3DS or product/Vault work.
