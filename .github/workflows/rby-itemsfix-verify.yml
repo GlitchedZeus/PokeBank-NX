@@ -49,42 +49,50 @@ jobs:
         run: |
           cat > /tmp/rby_nav_fix.py <<'PY'
           from pathlib import Path
+          import re
 
           p = Path("src/UI/TrainerViewScreen.cpp")
-          lines = p.read_text().splitlines()
-          out = []
-          inserted = 0
-          for i, line in enumerate(lines):
-              out.append(line)
-              if line.strip() != "}":
-                  continue
-              start = max(0, i - 8)
-              recent = "\n".join(lines[start:i + 1])
-              direction = None
-              if "case GameVersion::FRLG: {" in recent and "selectedCategory = (selectedCategory - 1 + POUCH_COUNT3_FRLG) % POUCH_COUNT3_FRLG;" in recent:
-                  direction = "left"
-              elif "case GameVersion::FRLG: {" in recent and "selectedCategory = (selectedCategory + 1) % POUCH_COUNT3_FRLG;" in recent:
-                  direction = "right"
-              if direction is None:
-                  continue
-              if any("case GameVersion::RBY:" in x for x in lines[i + 1:i + 9]):
-                  continue
-              case_line = next(x for x in reversed(lines[start:i + 1]) if "case GameVersion::FRLG:" in x)
-              indent = case_line[:len(case_line) - len(case_line.lstrip())]
-              out.append(indent + "case GameVersion::RBY: {")
-              out.append(indent + "    constexpr int count = static_cast<int>(PokeVault::Integration::Gen1::kInventoryCategoryCount);")
+          text = p.read_text()
+
+          def add(direction: str) -> None:
+              global text
               if direction == "left":
-                  out.append(indent + "    selectedCategory = (selectedCategory - 1 + count) % count;")
+                  expr = r"selectedCategory = \(selectedCategory - 1 \+ POUCH_COUNT3_FRLG\) % POUCH_COUNT3_FRLG;"
+                  replacement_expr = "selectedCategory = (selectedCategory - 1 + count) % count;"
               else:
-                  out.append(indent + "    selectedCategory = (selectedCategory + 1) % count;")
-              out.append(indent + "    currentPage = 0;")
-              out.append(indent + "    selectedItemIndex = 0;")
-              out.append(indent + "    break;")
-              out.append(indent + "}")
-              inserted += 1
-          if inserted != 2:
-              raise SystemExit(f"expected to repair 2 lower navigation anchors, repaired {inserted}")
-          p.write_text("\n".join(out) + "\n")
+                  expr = r"selectedCategory = \(selectedCategory \+ 1\) % POUCH_COUNT3_FRLG;"
+                  replacement_expr = "selectedCategory = (selectedCategory + 1) % count;"
+              pattern = re.compile(
+                  r"(?P<i>^[ \t]*)case GameVersion::FRLG: \{\n"
+                  r"(?P=i)    " + expr + r"\n"
+                  r"(?P=i)    currentPage = 0;\n"
+                  r"(?P=i)    selectedItemIndex = 0;\n"
+                  r"(?P=i)    break;\n"
+                  r"(?P=i)\}\n"
+                  r"(?P=i)default: break;",
+                  re.MULTILINE,
+              )
+              def repl(m: re.Match[str]) -> str:
+                  i = m.group("i")
+                  frlg = m.group(0)[:-len(i + "default: break;")]
+                  return (
+                      frlg
+                      + i + "case GameVersion::RBY: {\n"
+                      + i + "    constexpr int count = static_cast<int>(PokeVault::Integration::Gen1::kInventoryCategoryCount);\n"
+                      + i + "    " + replacement_expr + "\n"
+                      + i + "    currentPage = 0;\n"
+                      + i + "    selectedItemIndex = 0;\n"
+                      + i + "    break;\n"
+                      + i + "}\n"
+                      + i + "default: break;"
+                  )
+              text, count = pattern.subn(repl, text)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one remaining {direction} FRLG navigation anchor, found {count}")
+
+          add("left")
+          add("right")
+          p.write_text(text)
           PY
           python3 /tmp/rby_nav_fix.py
 
