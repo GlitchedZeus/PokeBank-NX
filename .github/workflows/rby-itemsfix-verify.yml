@@ -36,11 +36,57 @@ jobs:
           python3 -c 'from pathlib import Path; p=Path("staged/.github/workflows/rby-itemsfix-patch.yml"); s=p.read_text(); a=s.index("from pathlib import Path"); b=s.index("\nPY\n", a); Path("/tmp/rby_itemsfix.py").write_text(s[a:b] + "\n")'
           grep -q 'Gen1ReadOnlyInventory' /tmp/rby_itemsfix.py
           grep -q 'getItemNameG1' /tmp/rby_itemsfix.py
+          python3 -c 'from pathlib import Path; p=Path("/tmp/rby_itemsfix.py"); s=p.read_text(); assert s.count(", 2),") == 2; p.write_text(s.replace(", 2),", ", 1),"))'
 
-      - name: Apply staged RBY ItemsFix exactly
+      - name: Apply staged RBY ItemsFix with corrected anchor counts
         shell: bash
         working-directory: work
         run: python3 /tmp/rby_itemsfix.py
+
+      - name: Apply missing lower-indentation RBY navigation anchors
+        shell: bash
+        working-directory: work
+        run: |
+          cat > /tmp/rby_nav_fix.py <<'PY'
+          from pathlib import Path
+
+          p = Path("src/UI/TrainerViewScreen.cpp")
+          lines = p.read_text().splitlines()
+          out = []
+          inserted = 0
+          for i, line in enumerate(lines):
+              out.append(line)
+              if line.strip() != "}":
+                  continue
+              start = max(0, i - 8)
+              recent = "\n".join(lines[start:i + 1])
+              direction = None
+              if "case GameVersion::FRLG: {" in recent and "selectedCategory = (selectedCategory - 1 + POUCH_COUNT3_FRLG) % POUCH_COUNT3_FRLG;" in recent:
+                  direction = "left"
+              elif "case GameVersion::FRLG: {" in recent and "selectedCategory = (selectedCategory + 1) % POUCH_COUNT3_FRLG;" in recent:
+                  direction = "right"
+              if direction is None:
+                  continue
+              if any("case GameVersion::RBY:" in x for x in lines[i + 1:i + 9]):
+                  continue
+              case_line = next(x for x in reversed(lines[start:i + 1]) if "case GameVersion::FRLG:" in x)
+              indent = case_line[:len(case_line) - len(case_line.lstrip())]
+              out.append(indent + "case GameVersion::RBY: {")
+              out.append(indent + "    constexpr int count = static_cast<int>(PokeVault::Integration::Gen1::kInventoryCategoryCount);")
+              if direction == "left":
+                  out.append(indent + "    selectedCategory = (selectedCategory - 1 + count) % count;")
+              else:
+                  out.append(indent + "    selectedCategory = (selectedCategory + 1) % count;")
+              out.append(indent + "    currentPage = 0;")
+              out.append(indent + "    selectedItemIndex = 0;")
+              out.append(indent + "    break;")
+              out.append(indent + "}")
+              inserted += 1
+          if inserted != 2:
+              raise SystemExit(f"expected to repair 2 lower navigation anchors, repaired {inserted}")
+          p.write_text("\n".join(out) + "\n")
+          PY
+          python3 /tmp/rby_nav_fix.py
 
       - name: Diff safety and protected Gen III paths
         shell: bash
