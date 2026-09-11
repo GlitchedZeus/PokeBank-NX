@@ -1,0 +1,43 @@
+name: GSC focused staging verification
+on:
+  push:
+    branches: [codex/gsc-readonly]
+  pull_request:
+    branches: [feature/pokebank-playable]
+permissions:
+  contents: read
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/gsc-readonly
+          submodules: recursive
+      - name: Compile and run strict GSC parser
+        run: |
+          set -euo pipefail
+          mkdir -p build-gsc
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_gsc_gen2_adapter.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+            -o build-gsc/test_gsc_gen2_adapter
+          ./build-gsc/test_gsc_gen2_adapter
+      - name: Compile and run strict GSC inventory
+        run: |
+          set -euo pipefail
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_gsc_inventory.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+            -o build-gsc/test_gsc_inventory
+          ./build-gsc/test_gsc_inventory
+      - name: Sanitizers
+        run: |
+          set -euo pipefail
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            tests/test_gsc_gen2_adapter.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp -o build-gsc/test_gsc_gen2_adapter_san
+          ASAN_OPTIONS=detect_leaks=0 ./build-gsc/test_gsc_gen2_adapter_san
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            tests/test_gsc_inventory.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp -o build-gsc/test_gsc_inventory_san
+          ASAN_OPTIONS=detect_leaks=0 ./build-gsc/test_gsc_inventory_san
+      - name: Diff safety
+        run: git diff --check HEAD^ HEAD
