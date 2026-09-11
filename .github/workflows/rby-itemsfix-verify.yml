@@ -1,0 +1,112 @@
+name: RBY ItemsFix corrected verifier
+
+on:
+  push:
+    branches:
+      - codex/rby-itemsfix-patch
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out staged patch checkpoint branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/rby-itemsfix-patch
+          path: staged
+          fetch-depth: 0
+
+      - name: Check out exact feature baseline
+        uses: actions/checkout@v4
+        with:
+          ref: feature/pokebank-playable
+          path: work
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Verify frozen baseline and extract staged payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C work rev-parse HEAD)" = "0e92cee6ae743d5156dd8f7aaf55750b70dde5e5"
+          test "$(git -C work rev-parse HEAD^)" = "214e5a3b8a96d340d20229b0ba948bff608a3d60"
+          python3 -c 'from pathlib import Path; p=Path("staged/.github/workflows/rby-itemsfix-patch.yml"); s=p.read_text(); a=s.index("from pathlib import Path"); b=s.index("\nPY\n", a); Path("/tmp/rby_itemsfix.py").write_text(s[a:b] + "\n")'
+          grep -q 'Gen1ReadOnlyInventory' /tmp/rby_itemsfix.py
+          grep -q 'getItemNameG1' /tmp/rby_itemsfix.py
+
+      - name: Apply staged RBY ItemsFix exactly
+        shell: bash
+        working-directory: work
+        run: python3 /tmp/rby_itemsfix.py
+
+      - name: Diff safety and protected Gen III paths
+        shell: bash
+        working-directory: work
+        run: |
+          set -euo pipefail
+          git diff --check
+          git status --short
+          changed="$(git diff --name-only)"
+          printf '%s\n' "$changed"
+          test -z "$(printf '%s\n' "$changed" | grep -E '^(src/Integration/Gen3|include/Integration/Gen3|src/Legacy/(FRLG|RSE)|include/Legacy/(FRLG|RSE))' || true)"
+
+      - name: Focused RBY inventory test
+        shell: bash
+        working-directory: work
+        run: |
+          set -euo pipefail
+          make -f Makefile.host build-host/test_rby_inventory
+          ./build-host/test_rby_inventory
+
+      - name: RBY parser discovery source browser and bridge
+        shell: bash
+        working-directory: work
+        run: |
+          set -euo pipefail
+          make -f Makefile.host build-host/test_rby_gen1_adapter build-host/test_rby_discovery build-host/test_rby_source_browser build-host/test_rby_readonly_bridge
+          ./build-host/test_rby_gen1_adapter
+          ./build-host/test_rby_discovery
+          ./build-host/test_rby_source_browser
+          ./build-host/test_rby_readonly_bridge
+
+      - name: Full host suite including FRLG RSE mutation and write-policy regressions
+        shell: bash
+        working-directory: work
+        run: make -f Makefile.host host-test
+
+      - name: ASan and UBSan suite
+        shell: bash
+        working-directory: work
+        run: make -f Makefile.host host-sanitize
+
+      - name: Recheck diff and protected paths after tests
+        shell: bash
+        working-directory: work
+        run: |
+          set -euo pipefail
+          git diff --check
+          changed="$(git diff --name-only)"
+          test -z "$(printf '%s\n' "$changed" | grep -E '^(src/Integration/Gen3|include/Integration/Gen3|src/Legacy/(FRLG|RSE)|include/Legacy/(FRLG|RSE))' || true)"
+
+      - name: Commit and promote verified runtime fix
+        shell: bash
+        working-directory: work
+        run: |
+          set -euo pipefail
+          git config user.name "GlitchedZeus"
+          git config user.email "user91746@protonmail.com"
+          git add Makefile.host include/Enums/GameVersion.h include/Games/GameIdentity.h include/Integration/Gen1/Gen1ReadOnlyInventory.h include/Legacy/RBYReadOnlyTrainer.h include/Names/ItemNames.h src/Games/GameIdentity.cpp src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Legacy/RBYReadOnlyTrainer.cpp src/Names/ItemNames.cpp src/UI/Panels/ItemsPanel.cpp src/UI/TrainerViewScreen.cpp tests/test_game_identity.cpp tests/test_rby_inventory.cpp tests/test_rby_readonly_bridge.cpp
+          git diff --cached --check
+          git commit -m "gen1: add read-only RBY inventory support"
+          git push origin HEAD:feature/pokebank-playable
+          echo "RUNTIME_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "RUNTIME_TREE=$(git rev-parse HEAD^{tree})" >> "$GITHUB_ENV"
+
+      - name: Record promoted runtime identity
+        shell: bash
+        run: |
+          echo "RUNTIME_SHA=$RUNTIME_SHA"
+          echo "RUNTIME_TREE=$RUNTIME_TREE"
