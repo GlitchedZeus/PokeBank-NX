@@ -96,7 +96,7 @@ jobs:
           PY
           python3 /tmp/rby_nav_fix.py
 
-      - name: Fix exact staged compile defects
+      - name: Fix exact staged compile and fixture defects
         shell: bash
         working-directory: work
         run: |
@@ -110,6 +110,8 @@ jobs:
               "tests/test_rby_readonly_bridge.cpp": [
                   ("for(const auto [item,qty]:entries)", "for(const auto& [item,qty]:entries)"),
                   ("for(const auto [game,id]:std::array", "for(const auto& [game,id]:std::array"),
+                  ("std::array<std::pair<SourceGame,const char*>,2>{{\n            {SourceGame::Blue,\"blue_gb\"},{SourceGame::Yellow,\"yellow_gb\"}\n        }}", "std::array<std::pair<SourceGame,const char*>,1>{{\n            {SourceGame::Blue,\"blue_gb\"}\n        }}"),
+                  ("    std::cout<<\"RBY Trainer/Party/Boxes/Pokemon read-only bridge tests passed\\n\";return 0;", "    auto yellowRaw=raw; yellowRaw[0x29C3]=0x54; checksums(yellowRaw);\n    auto yp=parse(yellowRaw,SourceGame::Yellow);assert(yp);std::string ye;auto yt=RBYReadOnlyTrainer::create(*yp.save,ye);\n    assert(yt&&ye.empty()&&yt->sourceGameId()==\"yellow_gb\"&&yt->items.size()==2);\n    assert(yt->items[0][0].itemId==0x14&&yt->items[1][0].itemId==0x2D);\n    std::cout<<\"RBY Trainer/Party/Boxes/Pokemon read-only bridge tests passed\\n\";return 0;"),
               ],
               "src/Legacy/RBYReadOnlyTrainer.cpp": [
                   ("dst.push_back(Trainer::InventoryItem{", "dst.push_back(::Trainer::InventoryItem{"),
@@ -121,7 +123,7 @@ jobs:
               for old, new in replacements:
                   count = text.count(old)
                   if count != 1:
-                      raise SystemExit(f"{path}: expected one staged compile-fix pattern, found {count}: {old}")
+                      raise SystemExit(f"{path}: expected one staged correction pattern, found {count}: {old}")
                   text = text.replace(old, new)
               p.write_text(text)
           PY
