@@ -1,4 +1,5 @@
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
+#include "Integration/Gen2/Gen2GenderTable.h"
 
 #include <algorithm>
 #include <array>
@@ -17,6 +18,7 @@ struct Layout {
     std::size_t party;
     std::size_t checksumEnd;
     std::size_t checksum;
+    std::size_t checksum2;
     std::size_t gender;
     uint8_t boxCount;
     uint8_t boxCapacity;
@@ -27,17 +29,18 @@ struct Layout {
 };
 
 // PKSM-Core aa22d7... Sav2 and PKHeX 77dcd3a... SAV2Offsets/SAV2.
+// PKHeX stores the same additive checksum at two positions and requires both to validate.
 constexpr Layout kIntGS{RegionLayout::International, VersionFamily::GoldSilver,
-    0x2009,0x23DB,0x2724,0x2727,0x288A,0x2D68,0x2D69,0,
+    0x2009,0x23DB,0x2724,0x2727,0x288A,0x2D68,0x2D69,0x7E6D,0,
     14,20,11,7,0x450,7};
 constexpr Layout kIntC{RegionLayout::International, VersionFamily::Crystal,
-    0x2009,0x23DC,0x2700,0x2703,0x2865,0x2B82,0x2D0D,0x3E3D,
+    0x2009,0x23DC,0x2700,0x2703,0x2865,0x2B82,0x2D0D,0x1F0D,0x3E3D,
     14,20,11,7,0x450,7};
 constexpr Layout kJpGS{RegionLayout::Japanese, VersionFamily::GoldSilver,
-    0x2009,0x23BC,0x2705,0x2708,0x283E,0x2C8B,0x2D0D,0,
+    0x2009,0x23BC,0x2705,0x2708,0x283E,0x2C8B,0x2D0D,0x7F0D,0,
     9,30,6,5,0x54A,6};
 constexpr Layout kJpC{RegionLayout::Japanese, VersionFamily::Crystal,
-    0x2009,0x23BE,0x26E2,0x26E5,0x281A,0x2AE2,0x2D0D,0x8000,
+    0x2009,0x23BE,0x26E2,0x26E5,0x281A,0x2AE2,0x2D0D,0x7F0D,0x8000,
     9,30,6,5,0x54A,6};
 constexpr std::array<Layout,4> kLayouts{kIntGS,kIntC,kJpGS,kJpC};
 constexpr std::size_t kPartyCapacity = 6;
@@ -56,10 +59,19 @@ uint32_t readBE24(std::span<const uint8_t> b, std::size_t o) noexcept {
 
 bool payloadFor(std::span<const uint8_t> raw, std::size_t& payload, std::size_t& footer) noexcept {
     footer = 0;
-    if (raw.size() == kRawSaveSize32K || raw.size() == kRawSaveSize64K) { payload = raw.size(); return true; }
+    if (raw.size() == kRawSaveSize32K || raw.size() == kRawSaveSize64K) {
+        payload = raw.size();
+        return true;
+    }
+    // PKHeX's relaxed Gen1-3 RTC footer handler accepts appended RTC metadata only on the
+    // 64 KiB Gen II raw size. The footer is preserved byte-for-byte but excluded from parsing.
     if (raw.size() > kRawSaveSize64K) {
         const std::size_t extra = raw.size() - kRawSaveSize64K;
-        if (isKnownRTCFooterSize(extra)) { payload = kRawSaveSize64K; footer = extra; return true; }
+        if (isKnownRTCFooterSize(extra)) {
+            payload = kRawSaveSize64K;
+            footer = extra;
+            return true;
+        }
     }
     return false;
 }
@@ -77,13 +89,21 @@ bool validListHeader(std::span<const uint8_t> p, std::size_t o, std::size_t capa
 }
 
 bool layoutFits(std::span<const uint8_t> p, const Layout& l) noexcept {
+    // Current PKHeX accepts 32 KiB international GSC and 64 KiB Japanese GSC. Do not allow a
+    // structurally plausible Japanese offset map to classify a 32 KiB container by accident.
+    if (l.region == RegionLayout::International) {
+        if (p.size() != kRawSaveSize32K) return false;
+    } else if (p.size() != kRawSaveSize64K) {
+        return false;
+    }
     if (l.gender && l.gender >= p.size()) return false;
-    if (l.checksum + 1 >= p.size() || l.party >= p.size() || l.currentBoxIndex >= p.size()) return false;
+    if (l.checksum + 1 >= p.size() || l.checksum2 + 1 >= p.size() ||
+        l.party >= p.size() || l.currentBoxIndex >= p.size()) return false;
     if (!validListHeader(p, l.party, kPartyCapacity)) return false;
     if (p[l.currentBoxIndex] & 0x80) return false;
     if ((p[l.currentBoxIndex] & 0x7F) >= l.boxCount) return false;
     const uint16_t want = calculateChecksum(p, l.region, l.family);
-    if (want != readLE16(p, l.checksum)) return false;
+    if (want != readLE16(p, l.checksum) || want != readLE16(p, l.checksum2)) return false;
     // Validate the first authoritative stored box, not the potentially stale current-box copy.
     return validListHeader(p, 0x4000, l.boxCapacity);
 }
@@ -149,6 +169,7 @@ bool parsePokemon(std::span<const uint8_t> body, std::span<const uint8_t> ot, st
     if (r.level>100) return false;
     r.originalTrainer=decodeGen2String(ot,region); r.nickname=decodeGen2String(nick,region);
     r.partyRecord=party; r.isEgg=egg; r.shiny=shinyDV(r.dvs[1],r.dvs[2],r.dvs[3],r.dvs[4]);
+    r.gender=derivedGender(species,r.dvs[1]);
     r.form=species==201?unownForm(r.dvs[1],r.dvs[2],r.dvs[3],r.dvs[4]):0;
     r.rawBodySize=need; std::copy_n(body.begin(),need,r.rawBody.begin());
     if (party) {
@@ -191,7 +212,9 @@ const Layout* selectLayout(std::span<const uint8_t> p, SourceGame hint, SaveErro
     for (const auto& l:kLayouts) if (layoutFits(p,l) && l.family!=wanted) {
         e=SaveError::GameHintMismatch; detail="Generation II save structure contradicts the requested GS/Crystal identity"; return nullptr;
     }
-    e=SaveError::ChecksumMismatch; detail="no supported Generation II layout passed strict structure and primary checksum validation"; return nullptr;
+    e=SaveError::ChecksumMismatch;
+    detail="no supported Generation II layout passed strict structure and both checksum-copy validations";
+    return nullptr;
 }
 
 } // namespace
@@ -210,13 +233,17 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame hint) {
     if (l->family==VersionFamily::Crystal) { const uint8_t g=payload[l->gender]; if (g>1) { result.error=SaveError::InvalidTrainerData; result.detail="Crystal trainer gender is out of range"; return result; } save->trainer_.gender=g; }
     std::vector<std::optional<PokemonRecord>> partySlots;
     if (!parseList(payload,l->party,kPartyCapacity,kPartyBody,l->stringLength,l->region,true,partySlots)) { result.error=SaveError::InvalidParty; result.detail="invalid Generation II party list"; return result; }
-    for (auto& x:partySlots) if (x) save->party_.push_back(std::move(*x));
+    for (auto& x:partySlots) if (x) {
+        x->sourceGame=hint; x->region=l->region;
+        save->party_.push_back(std::move(*x));
+    }
     save->boxes_.resize(l->boxCount);
     for (std::size_t box=0;box<l->boxCount;++box) {
         const std::size_t bankBase=box<l->firstBankCount?0x4000:0x6000;
         const std::size_t bankIndex=box<l->firstBankCount?box:box-l->firstBankCount;
         const std::size_t offset=bankBase+bankIndex*l->boxSpacing;
         if (!parseList(payload,offset,l->boxCapacity,kStoredBody,l->stringLength,l->region,false,save->boxes_[box].slots)) { result.error=SaveError::InvalidBox; result.detail="invalid authoritative Generation II stored box"; return result; }
+        for (auto& x:save->boxes_[box].slots) if (x) { x->sourceGame=hint; x->region=l->region; }
         save->boxes_[box].name=decodeGen2String(payload.subspan(l->boxNames+box*9,9),l->region);
         if (save->boxes_[box].name.empty()) save->boxes_[box].name="Box "+std::to_string(box+1);
     }
