@@ -3,8 +3,8 @@
   "updated": "2026-09-10",
   "repository": "GlitchedZeus/PokeBank-NX",
   "branch": "feature/pokebank-playable",
-  "application_source": "1dc5893dd20edf54a06b62ea3e27909f5719fa77",
-  "application_source_message": "gen3: fix RSE inventory and game-card artwork",
+  "application_source": "b38c48c6c1d7266895a33f02fbe78e56bd4e094d",
+  "application_source_message": "gen1: finish native and trainer view integration",
   "historical_full_visual_baseline": {
     "application_source": "ea0b806bac4acdb5619f22f9841d616ea8a237ff",
     "nro_filename": "PokeBank-NX-FRLG-Corrected-Retest-ea0b806b.nro",
@@ -21,7 +21,7 @@
     "packer": "tools/pack_recovery_snapshot.py",
     "preferred_when_present": true,
     "status": "COMMITTED",
-    "note": "Complete 3286-file snapshot committed at 2321fa488668e32392de25afed84e38919fbd21f; includes FireRed/LeafGreen/Ruby/Sapphire/Emerald game-card artwork."
+    "note": "Existing permanent snapshot is the 3286-file Gen III baseline at 2321fa488668e32392de25afed84e38919fbd21f; RBY recovery evolution overlays tracked Red/Blue/Yellow artwork before deterministic repack."
   },
   "pokemon_hd": {
     "generator": "tools/gen_hdsprites.py",
@@ -49,6 +49,9 @@
   "game_cards": {
     "tracked_source": "assets/game_cards",
     "expected": [
+      "red_gb.png",
+      "blue_gb.png",
+      "yellow_gb.png",
       "firered_gba.png",
       "leafgreen_gba.png",
       "ruby_gba.png",
