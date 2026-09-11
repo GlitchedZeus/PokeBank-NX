@@ -15,11 +15,12 @@ concurrency:
 
 env:
   ACCEPTED_GEN3_BASELINE: 5eb56a5988bfa4c825728c7d6cd80fdc86499487
-  APP_SHA: b38c48c6c1d7266895a33f02fbe78e56bd4e094d
-  APP_TREE: 3fb50250b2bf710df1d5531e573b8b478654ebb9
+  APP_SHA: d9077e2da3909b6fbe9d8db9ce7384a71b8b98e7
+  APP_TREE: 0ea6fbe365afe8122f252754554fef1fae73e183
   SNAPSHOT_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
-  SHORT_SHA: b38c48c6
-  CLEAN_HOST_GATE_RUN: 34558913348
+  SNAPSHOT_APP_SHA: b38c48c6c1d7266895a33f02fbe78e56bd4e094d
+  SHORT_SHA: d9077e2d
+  CLEAN_HOST_GATE_RUN: 34559821944
   EXPECTED_ROMFS: 3289
 
 jobs:
@@ -47,7 +48,7 @@ jobs:
           p = Path('recovery-work/recovery/assets_snapshot/manifest.json')
           m = json.loads(p.read_text())
           assert m['file_count'] == int(os.environ['EXPECTED_ROMFS']), m
-          assert m['application_source'] == os.environ['APP_SHA'], m
+          assert m['application_source'] == os.environ['SNAPSHOT_APP_SHA'], m
           assert m['archive_sha256'] == '43ca238b1c8402f7cdc17ba9a0ca58ec87bc68895faf354403db2673a9f419fa', m
           PY
 
@@ -141,7 +142,7 @@ jobs:
           cp embedded-romfs.json asset-preflight.log recovery.log toolchain-image.json \
              toolchain-packages.txt native-build.log device-artifact/
           python3 - <<'PY'
-          import hashlib, json, os, re, subprocess
+          import hashlib, json, os
           from pathlib import Path
           out = Path('device-artifact')
           app_sha = os.environ['APP_SHA']
@@ -200,7 +201,6 @@ jobs:
                   sums.append(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n')
           sums_path = out / 'SHA256SUMS.txt'
           sums_path.write_text(''.join(sums))
-          # Independent consistency checks after both final manifests exist.
           rec = json.loads(build_manifest.read_text())
           assert rec['files'][nro.name]['sha256'] == nro_hash
           listed = dict(line.strip().split('  ', 1) for line in sums_path.read_text().splitlines() if line.strip())
@@ -213,7 +213,7 @@ jobs:
       - name: Preserve RBY physical-retest artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RBY-Retest-b38c48c6
+          name: RBY-Retest-d9077e2d
           path: device-artifact/
           if-no-files-found: error
           retention-days: 90
@@ -222,7 +222,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: RBY-Retest-diagnostics-b38c48c6
+          name: RBY-Retest-diagnostics-d9077e2d
           path: |
             recovery.log
             asset-preflight.log
