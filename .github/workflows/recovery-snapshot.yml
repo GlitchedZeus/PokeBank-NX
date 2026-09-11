@@ -1,5 +1,4 @@
 name: Preserve verified RomFS recovery snapshot
-# GSC handoff recovery verification trigger: 2026-09-11
 
 on:
   push:
