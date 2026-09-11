@@ -1,7 +1,9 @@
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
+#include "Names/ItemNames.h"
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <string>
 #include <vector>
 using namespace PokeVault::Integration::Gen2;
 namespace {
@@ -22,5 +24,13 @@ int main(){
  {auto b=f(IGS);pair(b,IGS.item,7,1);auto x=decodeInventory(b,RegionLayout::International,VersionFamily::GoldSilver);assert(!x.available);}
  {auto b=f(IGS);b[IGS.tm+50]=2;auto x=decodeInventory(b,RegionLayout::International,VersionFamily::GoldSilver);assert(!x.available);}
  assert(std::string(inventoryCategoryName(0))=="TM/HM");assert(std::string(inventoryCategoryName(4))=="PC Items");assert(std::string(inventoryCategoryName(5))=="Invalid category");
+ assert(std::string(Names::getItemNameG2(1))=="Master Ball");
+ assert(std::string(Names::getItemNameG2(67))=="Red Scale");
+ assert(std::string(Names::getItemNameG2(173))=="Berry");
+ assert(std::string(Names::getItemNameG2(191))=="TM01");
+ assert(std::string(Names::getItemNameG2(243))=="HM01");
+ assert(std::string(Names::getItemNameG2(249))=="HM07");
+ assert(std::string(Names::getItemNameG2(6))=="???");
+ assert(std::string(Names::getItemNameG2(195))=="???");
  std::cout<<"GSC strict read-only inventory tests passed\n";
 }
