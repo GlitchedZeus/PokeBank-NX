@@ -24,6 +24,10 @@ namespace PokeVault::Legacy {
                 return game.platform == Games::Platform::GameBoy &&
                        source.gen1Save->metadata().sourceGameId == game.id;
             }
+            if (source.isGen2()) {
+                return game.platform == Games::Platform::GameBoyColor &&
+                       source.gen2Save->metadata().sourceGameId == game.id;
+            }
             if (source.isGen3()) {
                 return game.platform == Games::Platform::GameBoyAdvance &&
                        source.save->metadata().sourceGameId == game.id;
@@ -33,12 +37,14 @@ namespace PokeVault::Legacy {
 
         std::string trainerNameFor(const FRLGSource& source) {
             if (source.isGen1()) return source.gen1Save->trainer().name;
+            if (source.isGen2()) return source.gen2Save->trainer().name;
             if (source.isGen3()) return source.save->trainer().name;
             return {};
         }
 
         size_t partyCountFor(const FRLGSource& source) {
             if (source.isGen1()) return source.gen1Save->party().size();
+            if (source.isGen2()) return source.gen2Save->party().size();
             if (source.isGen3()) return source.save->party().size();
             return 0;
         }
@@ -73,9 +79,6 @@ namespace PokeVault::Legacy {
                 cardIndex = static_cast<size_t>(std::distance(cards.begin(), cardIt));
             }
 
-            // Discovery normally canonicalizes this already. Keeping the same guard at the model
-            // boundary makes manually assembled/imported catalogs safe too. Never use content hash,
-            // trainer name, or game id as the child identity: separate files must remain separate.
             const std::string& identity = source.canonicalPath.empty() ? source.path
                                                                        : source.canonicalPath;
             if (!instanceKeys[cardIndex].insert(identity).second) continue;
