@@ -1,0 +1,237 @@
+name: RBY ItemsFix physical-retest build
+
+on:
+  push:
+    branches: [codex/rby-itemsfix-patch]
+    paths: [.github/workflows/rby-itemsfix-device-build.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-rby-itemsfix-device-build
+  cancel-in-progress: false
+
+env:
+  ACCEPTED_GEN3_BASELINE: 5eb56a5988bfa4c825728c7d6cd80fdc86499487
+  PREVIOUS_DEVICE_TESTED_SHA: d9077e2da3909b6fbe9d8db9ce7384a71b8b98e7
+  APP_SHA: 50dac31f53907143f48884681056f8d582813b76
+  APP_TREE: 1cf73ea12833e8a94a06dfaf2b9036e9059344ec
+  SNAPSHOT_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  SNAPSHOT_APP_SHA: b38c48c6c1d7266895a33f02fbe78e56bd4e094d
+  SHORT_SHA: 50dac31f
+  CLEAN_HOST_GATE_RUN: 34576027301
+  EXPECTED_ROMFS: 3289
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Check out exact RBY recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SNAPSHOT_SHA }}
+          path: recovery-work
+          fetch-depth: 0
+
+      - name: Verify frozen recovery identities
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$SNAPSHOT_SHA"
+          python3 recovery-work/tools/check_recovery_contract.py
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path('recovery-work/recovery/assets_snapshot/manifest.json')
+          m = json.loads(p.read_text())
+          assert m['file_count'] == int(os.environ['EXPECTED_ROMFS']), m
+          assert m['application_source'] == os.environ['SNAPSHOT_APP_SHA'], m
+          assert m['archive_sha256'] == '43ca238b1c8402f7cdc17ba9a0ca58ec87bc68895faf354403db2673a9f419fa', m
+          PY
+
+      - name: Restore exact permanent RBY RomFS snapshot
+        working-directory: recovery-work
+        run: |
+          set -euo pipefail
+          python3 tools/recover_workspace.py 2>&1 | tee ../recovery.log
+          grep -q 'Recovery source: committed GitHub RomFS snapshot' ../recovery.log
+          grep -q 'HD sprite directory exists (3260 PNGs' ../recovery.log
+          grep -q 'all 1025 base-species HOME renders are present' ../recovery.log
+          grep -q 'all 18 type sprites are present' ../recovery.log
+          grep -q 'required UI fonts are present' ../recovery.log
+          grep -q 'Red/Blue/Yellow GB + FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present' ../recovery.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' ../recovery.log
+          test "$(find romfs -type f | wc -l)" -eq "$EXPECTED_ROMFS"
+          for f in red_gb blue_gb yellow_gb firered_gba leafgreen_gba ruby_gba sapphire_gba emerald_gba; do
+            test -s "romfs/game_cards/$f.png"
+          done
+
+      - name: Check out exact verified RBY ItemsFix runtime
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 2
+          submodules: recursive
+
+      - name: Verify application identity and device assets
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          cp -a recovery-work/romfs application/romfs
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'HD sprite directory exists (3260 PNGs' asset-preflight.log
+          grep -q 'all 1025 base-species HOME renders are present' asset-preflight.log
+          grep -q 'all 18 type sprites are present' asset-preflight.log
+          grep -q 'required UI fonts are present' asset-preflight.log
+          grep -q 'Red/Blue/Yellow GB + FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present' asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_ROMFS"
+          test -z "$(git -C application status --porcelain)"
+
+      - name: Clean native devkitA64 full build and final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            echo "=== native toolchain ==="
+            dkp-pacman -Q libnx devkitA64 switch-tools switch-sdl2 switch-glad switch-lz4 || true
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s application/PokeBankNX.nro
+          test -z "$(git -C application status --porcelain)"
+
+      - name: Verify embedded application identity and complete RomFS
+        run: |
+          set -euo pipefail
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source "$APP_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          for name in (
+              'red_gb.png','blue_gb.png','yellow_gb.png',
+              'firered_gba.png','leafgreen_gba.png',
+              'ruby_gba.png','sapphire_gba.png','emerald_gba.png'):
+              assert (Path('application/romfs/game_cards') / name).is_file(), name
+          print(json.dumps(data, indent=2))
+          PY
+
+      - name: Package exact RBY ItemsFix physical-test artifact and evidence
+        run: |
+          set -euo pipefail
+          mkdir -p device-artifact
+          python3 application/tools/package_device_build.py application/PokeBankNX.nro \
+            --label RBY-ItemsFix-Retest --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
+          cp embedded-romfs.json asset-preflight.log recovery.log toolchain-image.json \
+             toolchain-packages.txt native-build.log device-artifact/
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          out = Path('device-artifact')
+          app_sha = os.environ['APP_SHA']
+          short = os.environ['SHORT_SHA']
+          nro = out / f'PokeBank-NX-RBY-ItemsFix-Retest-{short}.nro'
+          package_manifest = out / f'{nro.name}.manifest.txt'
+          zip_path = out / f'PokeBank-NX-RBY-ItemsFix-Retest-{short}.zip'
+          assert nro.is_file() and package_manifest.is_file() and zip_path.is_file()
+          nro_hash = hashlib.sha256(nro.read_bytes()).hexdigest()
+          text = package_manifest.read_text()
+          assert f'Application source full SHA: {app_sha}' in text
+          assert f'Artifact size bytes: {nro.stat().st_size}' in text
+          assert f'Artifact SHA-256: {nro_hash}' in text
+          record = {
+              'accepted_gen3_baseline': os.environ['ACCEPTED_GEN3_BASELINE'],
+              'previous_device_tested_source': os.environ['PREVIOUS_DEVICE_TESTED_SHA'],
+              'application_source': app_sha,
+              'application_tree': os.environ['APP_TREE'],
+              'recovery_snapshot': os.environ['SNAPSHOT_SHA'],
+              'clean_host_gate_run': int(os.environ['CLEAN_HOST_GATE_RUN']),
+              'workflow_run': int(os.environ['GITHUB_RUN_ID']),
+              'rby_inventory_oracle': 'PASS',
+              'rby_items_host_tests': 'PASS',
+              'rby_fixture_oracle': 'PASS',
+              'rby_discovery': 'PASS',
+              'rby_source_card_binding': 'PASS',
+              'rby_readonly_bridge': 'PASS',
+              'malformed_inventory_nonfatal': 'PASS',
+              'full_host_suite': 'PASS',
+              'frlg_regression': 'PASS',
+              'rse_regression': 'PASS',
+              'source_mutation_policy': 'PASS',
+              'write_policy': 'PASS',
+              'asan': 'PASS',
+              'ubsan': 'PASS',
+              'git_diff_check': 'PASS',
+              'gen3_protected_paths': 'PASS',
+              'live_installed_game_writing': 'HARD DISABLED',
+              'live_retroarch_writing': 'HARD DISABLED',
+              'native_devkitA64_full_link': 'PASS',
+              'embedded_application_identity': 'PASS',
+              'embedded_romfs': f"PASS {os.environ['EXPECTED_ROMFS']}/{os.environ['EXPECTED_ROMFS']}",
+              'rby_device_tested': True,
+              'rby_device_tested_source': os.environ['PREVIOUS_DEVICE_TESTED_SHA'],
+              'itemsfix_device_tested': False,
+              'rby_device_accepted': False,
+          }
+          files = {}
+          for p in sorted(out.iterdir()):
+              if p.is_file():
+                  files[p.name] = {
+                      'bytes': p.stat().st_size,
+                      'sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
+                  }
+          record['files'] = files
+          build_manifest = out / 'BUILD_MANIFEST.json'
+          build_manifest.write_text(json.dumps(record, indent=2) + '\n')
+          sums = []
+          for p in sorted(out.iterdir()):
+              if p.is_file() and p.name != 'SHA256SUMS.txt':
+                  sums.append(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n')
+          sums_path = out / 'SHA256SUMS.txt'
+          sums_path.write_text(''.join(sums))
+          rec = json.loads(build_manifest.read_text())
+          assert rec['files'][nro.name]['sha256'] == nro_hash
+          listed = {name: digest for digest, name in (line.split('  ', 1) for line in sums_path.read_text().splitlines() if line.strip())}
+          assert listed[nro.name] == nro_hash
+          assert hashlib.sha256(nro.read_bytes()).hexdigest() == nro_hash
+          print(build_manifest.read_text())
+          print(sums_path.read_text())
+          PY
+
+      - name: Preserve RBY ItemsFix physical-retest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RBY-ItemsFix-Retest-50dac31f
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Preserve RBY ItemsFix build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RBY-ItemsFix-Retest-diagnostics-50dac31f
+          path: |
+            recovery.log
+            asset-preflight.log
+            native-build.log
+            embedded-romfs.json
+            toolchain-image.json
+            toolchain-packages.txt
+          if-no-files-found: ignore
