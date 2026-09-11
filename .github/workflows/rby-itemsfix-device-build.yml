@@ -1,3 +1,4 @@
+# Registered trigger for verified ItemsFix device build
 name: RBY ItemsFix physical-retest build
 
 on:
