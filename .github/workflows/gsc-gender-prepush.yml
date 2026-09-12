@@ -1,0 +1,94 @@
+name: GSC trainer gender pre-push validation
+
+on:
+  push:
+    branches:
+      - ci/gsc-gender-validation-20260912
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 50e32d4456f84ea8ac9680c820526770c2b2cf3e
+          fetch-depth: 2
+          submodules: recursive
+
+      - name: Verify candidate identity and scope
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "50e32d4456f84ea8ac9680c820526770c2b2cf3e"
+          test "$(git rev-parse 'HEAD^{tree}')" = "0c7710907083f2e742474e2061f0157d784f28a2"
+          git diff --check HEAD^ HEAD
+          test "$(git diff --name-only HEAD^ HEAD | wc -l)" -eq 3
+          git diff --name-only HEAD^ HEAD | grep -qx 'src/Legacy/GSCReadOnlyTrainer.cpp'
+          git diff --name-only HEAD^ HEAD | grep -qx 'src/UI/TrainerViewScreenGSCOverlay.cpp'
+          git diff --name-only HEAD^ HEAD | grep -qx 'tests/test_gsc_readonly_bridge.cpp'
+          grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
+
+      - name: Verify Gen II trainer UI semantics
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path('src/UI/TrainerViewScreenGSCOverlay.cpp').read_text()
+          assert 'row("Gender", trainer.trainerGender == 0 ? "Male" : "Female");' in text
+          assert 'row("SID"' not in text
+          assert "Gold/Silver use the games' fixed male player character." in text
+          assert 'Crystal gender is shown only from the validated Crystal save field.' in text
+          print('Gen II trainer UI gender/SID presentation source checks: PASS')
+          PY
+
+      - name: Full host suite
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+          echo 'FULL HOST SUITE: PASS'
+
+      - name: Explicit GSC permanent targets
+        run: |
+          set -euo pipefail
+          for t in test_gsc_gen2_adapter test_gsc_inventory test_gsc_gen2_personal test_gsc_discovery test_gsc_source_browser test_gsc_readonly_bridge test_gsc_runtime_catalog test_gsc_ui_rules; do
+            "./build-host/$t"
+          done
+          echo 'GSC PERMANENT TARGETS: PASS'
+
+      - name: Explicit Gen I RBY regression
+        run: |
+          set -euo pipefail
+          for t in test_rby_gen1_adapter test_rby_inventory test_rby_discovery test_rby_source_browser test_rby_readonly_bridge; do
+            "./build-host/$t"
+          done
+          echo 'GEN I RBY REGRESSION: PASS'
+
+      - name: Explicit FRLG regression
+        run: |
+          set -euo pipefail
+          for t in test_retroarch_frlg_discovery test_legacy_frlg_browse test_legacy_source_bindings test_pksm_gen3_adapter test_gen3_native_slice; do
+            "./build-host/$t"
+          done
+          echo 'FRLG REGRESSION: PASS'
+
+      - name: Explicit RSE regression
+        run: |
+          set -euo pipefail
+          ./build-host/test_rse_gen3_adapter
+          ./build-host/test_rse_gen3_native_slice
+          SOURCES="tests/test_rse_open_regression.cpp src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES -o build-host/test_rse_open_regression
+          ./build-host/test_rse_open_regression
+          echo 'RSE REGRESSION: PASS'
+
+      - name: Safety invariants
+        run: |
+          set -euo pipefail
+          ./build-host/test_write_policy
+          ./build-host/test_source_mutation_policy
+          echo 'LIVE INSTALLED-GAME WRITES: HARD DISABLED'
+          echo 'LIVE RETROARCH WRITES: HARD DISABLED'
