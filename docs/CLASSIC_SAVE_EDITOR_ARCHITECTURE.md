@@ -2,7 +2,7 @@
 
 Status: first staged classic-editor slice, 2026-09-12.
 
-This document records what PokeVault NX already inherited/implemented before adding classic-save editing, so classic support extends the existing architecture instead of creating a second unrelated editor stack.
+This document records what PokeBank NX already inherited/implemented before adding classic-save editing, so classic support extends the existing architecture instead of creating a second unrelated editor stack.
 
 ## Existing shared editor infrastructure
 
@@ -107,3 +107,8 @@ Generation II read support remains unchanged. The first write/export slice only 
 5. Research and add Player Position later, per game/generation, with map/coordinate validation.
 
 No step above authorizes live RetroArch or live installed-game writes.
+
+
+## Standalone export ownership
+
+Generation II staged exports are PokeBank-owned and resolve under `sdmc:/switch/PokeBank-NX/exports/gen2/`. The serializer and source-read-only policy are unchanged by this path migration.

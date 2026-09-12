@@ -250,3 +250,10 @@ Live emulator-source writing: HARD DISABLED by default
 PKSE is an upstream/reference source only. Never push custom PokeBank NX work upstream.
 
 Physical read acceptance does not authorize live writes. Any future write path must be source-specific, staged, backed up, validated, read back and recoverable.
+
+
+## Standalone runtime ownership
+
+PokeBank NX is a standalone all-in-one Nintendo Switch Pokémon management application. External Pokémon homebrew and PC tools may be development references or optional migration tools, but are not prerequisites for normal advertised operation.
+
+Canonical runtime root: `sdmc:/switch/PokeBank-NX/`. See `docs/STANDALONE_RUNTIME.md` and `docs/UI_OWNERSHIP_STATUS.md`. Issue #58 remains open for the full visible v1 UI conversion.

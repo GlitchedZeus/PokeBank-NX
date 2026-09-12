@@ -651,3 +651,10 @@ The remaining work is the larger product layer: editing, Vault/Banks, broader sa
 # Disclaimer
 
 PokeBank NX is an unofficial fan-made homebrew project and is not affiliated with or endorsed by Nintendo, The Pokémon Company, GAME FREAK, or Creatures Inc. Pokémon and related trademarks and game assets are property of their respective owners.
+
+
+## Standalone runtime ownership
+
+PokeBank NX is a standalone all-in-one Nintendo Switch Pokémon management application. External Pokémon homebrew and PC tools may be development references or optional migration tools, but are not prerequisites for normal advertised operation.
+
+Canonical runtime root: `sdmc:/switch/PokeBank-NX/`. See `docs/STANDALONE_RUNTIME.md` and `docs/UI_OWNERSHIP_STATUS.md`. Issue #58 remains open for the full visible v1 UI conversion.

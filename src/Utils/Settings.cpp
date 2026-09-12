@@ -8,10 +8,11 @@
 #include "Globals.h"
 #include "UI/Common.h"
 #include "Utils/Logger.h"
+#include "Utils/PokeBankPaths.h"
 
 namespace Utils {
     static std::string settingsPath() {
-        return BASE_SAVE_DIRECTORY + "/settings.cfg";
+        return PokeBank::Paths::settingsFile();
     }
 
     void loadSettings() {
@@ -52,8 +53,11 @@ namespace Utils {
     }
 
     void saveSettings() {
-        // Make sure the base dir exists (it normally does once a backup has been taken).
-        mkdir(BASE_SAVE_DIRECTORY.c_str(), 0777);
+        std::string pathError;
+        if (!PokeBank::Paths::ensureConfigRoot(&pathError)) {
+            logErrorToFile("Failed to create PokeBank NX config directory", pathError.c_str());
+            return;
+        }
 
         FILE* f = fopen(settingsPath().c_str(), "w");
         if (!f) {

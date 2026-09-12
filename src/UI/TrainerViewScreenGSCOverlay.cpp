@@ -10,6 +10,7 @@
 #include "Trainer/Trainer.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
+#include "Utils/PokeBankPaths.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -110,15 +111,19 @@ std::string exportStagedCopy(TrainerViewScreen& screen, Gen2Editor& editor, std:
         return {};
     }
 
-    const std::string root = BASE_SAVE_DIRECTORY + "/Exports";
-    const std::string gen2Root = root + "/Gen2";
-    if (!mkdirIfNeeded(BASE_SAVE_DIRECTORY) || !mkdirIfNeeded(root) || !mkdirIfNeeded(gen2Root)) {
-        error = "Could not create PokeVault export directory";
+    const std::string gen2Root = PokeBank::Paths::gen2ExportsRoot();
+    if (!PokeBank::Paths::ensureGen2ExportsRoot(&error)) {
+        if (error.empty()) error = "Could not create PokeBank NX export directory";
         return {};
     }
 
-    const std::string baseName = screen.sourceGameId + "_" + Utils::getTimestamp();
-    std::string exportDir = gen2Root + "/" + baseName;
+    const std::string timestamp = Utils::getTimestamp();
+    std::string exportDir = PokeBank::Paths::gen2ExportDirectory(screen.sourceGameId, timestamp);
+    if (exportDir.empty()) {
+        error = "Could not construct safe PokeBank NX export path";
+        return {};
+    }
+    const std::string baseName = exportDir.substr(gen2Root.size() + 1);
     for (int suffix = 2; pathExists(exportDir) && suffix < 1000; ++suffix)
         exportDir = gen2Root + "/" + baseName + "-" + std::to_string(suffix);
     if (pathExists(exportDir) || !mkdirIfNeeded(exportDir)) {
@@ -138,7 +143,7 @@ std::string exportStagedCopy(TrainerViewScreen& screen, Gen2Editor& editor, std:
     }
 
     std::string manifest;
-    manifest += "PokeVault NX Generation II staged export\n";
+    manifest += "PokeBank NX Generation II staged export\n";
     manifest += "GAME_ID=" + screen.sourceGameId + "\n";
     manifest += "SOURCE_PATH=" + screen.backupDir + "\n";
     manifest += "SOURCE_KIND=RetroArchLegacy_READ_ONLY\n";
@@ -204,7 +209,7 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
                 screen.postStatus(error.empty() ? "Staged export failed" : error);
             } else {
                 state.lastExportDirectory = exportDir;
-                screen.postStatus("Exported edited copy + original backup to PokeVault/Exports/Gen2");
+                screen.postStatus("Exported edited copy + original backup to PokeBank NX exports/gen2");
             }
         }
         return;

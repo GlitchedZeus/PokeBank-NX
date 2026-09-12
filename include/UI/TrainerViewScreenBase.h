@@ -281,7 +281,7 @@ namespace UI {
         /// logic: it is about what is being written, not where.
         bool illegalDataWritten = false;
 
-        // Create sdmc:/PKSE/{title}/{name}/ seeded with a copy of the current backup, suffixing
+        // Create sdmc:/switch/PokeBank-NX/{title}/{name}/ seeded with a copy of the current backup, suffixing
         // -2, -3... if the name is taken. Returns the new path, or "" on failure.
         std::string createNamedBackupDir(const std::string& name);
         // Write only to a backup/staged directory. Live title injection has no UI entry point and

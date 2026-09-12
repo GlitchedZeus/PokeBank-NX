@@ -2,7 +2,7 @@
 #define UTILS_SETTINGS_H
 
 namespace Utils {
-    // Persisted app settings live in sdmc:/PKSE/settings.cfg (simple key=value text).
+    // Persisted app settings live in sdmc:/switch/PokeBank-NX/settings.cfg (simple key=value text).
     // Currently: theme (OLED Black/Dark/Light) and app safety/preferences.
 
     // Load settings into the runtime globals (UI::g_themeMode via applyTheme,

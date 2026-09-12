@@ -11,6 +11,7 @@
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
 #include "Utils/FileUtilities.h"
+#include "Utils/PokeBankPaths.h"
 #include "Trainer/Trainer.h"
 #include "Games/GameIdentity.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
@@ -24,12 +25,14 @@ using namespace Trainer;
 namespace UI {
     UIManager::UIManager()
         : running(true),
-          legacySourceBindings(BASE_SAVE_DIRECTORY + "/legacy_source_bindings.cfg") {
+          legacySourceBindings(PokeBank::Paths::legacySourceBindingsFile()) {
         padConfigureInput(1, HidNpadStyleSet_NpadStandard);
         padInitializeDefault(&pad);
         hidInitializeTouchScreen();  // enable the touchscreen alongside the gamepad
 
-        mkdir(BASE_SAVE_DIRECTORY.c_str(), 0777);
+        std::string pathError;
+        if (!PokeBank::Paths::ensureConfigRoot(&pathError))
+            logErrorToFile("Could not initialize PokeBank NX runtime root", pathError.c_str());
         if (!legacySourceBindings.load())
             logErrorToFile("Legacy source bindings contain malformed or unreadable rows");
 

@@ -4,6 +4,8 @@
 #include <string>
 #include <cstdint>
 
+#include "Utils/PokeBankPaths.h"
+
 /// Derived from the Makefile's APP_VERSION_FULL via -DPKSE_VERSION. That is the long spelling; the
 /// .nacp separately carries APP_VERSION, an abbreviation of it, because its display_version field
 /// holds only 15 characters. Both are set side by side in the Makefile, so the two can differ in
@@ -28,7 +30,7 @@ inline const std::string VERSION_STRING = PKSE_VERSION;
 #endif
 inline const std::string BUILD_COMMIT = POKEVAULT_GIT_COMMIT;
 
-inline constexpr std::string BASE_SAVE_DIRECTORY = "sdmc:/PKSE";
+inline const std::string BASE_SAVE_DIRECTORY = PokeBank::Paths::root();
 
 inline constexpr uint32_t SIZE_HASH_IN_BYTES = 32;
 
@@ -41,7 +43,7 @@ inline bool g_allowIllegalEdits = false;  // Settings toggle: lift the legal EV/
 inline bool g_moveWarn = true;            // Settings toggle ("Move warning"): confirm before a bank move that loses data. Covers the Let's Go transfer (AV/EV training resets to 0); the Gen 3 down-convert warns regardless, since it rebuilds the PID and cannot be undone.
 
 /// Settings toggle ("Enable Debug Logging"), persisted. Default OFF, and every log sink checks it:
-/// with it off PKSE writes no `sdmc:/PKSE/logs/debug_*.log` and no `sdmc:/PKSE/trace.log`, so a
+/// with it off PokeBank NX writes no files under `sdmc:/switch/PokeBank-NX/logs/`, so a
 /// normal run leaves nothing on the user's card. Turn it on, reproduce the problem, send the log.
 ///
 /// Replaces a compile-time switch (`-DPKSE_PROD`, via `make ... prod`), which had three problems a
