@@ -14,10 +14,7 @@
 #include "Utils/HelperUtilities.h"
 #include "Pokemon/Pokemon.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
-#include "Pokemon/Pokemon2ReadOnly.h"
-#include "UI/LegacyPresentationRules.h"
 #include "UI/Modals/Gen1PokemonDetailsModal.h"
-#include "UI/Modals/Gen2PokemonDetailsModal.h"
 #include "Pokemon/PokemonTypes.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/BaseStatsGen89.h"
@@ -46,21 +43,13 @@ namespace Modals {
         const Pokemon::Pokemon* p = screen.detailsTargetPokemon();
         if (!p || p->speciesID() == 0) return;
 
-        // Legacy formats have their own truthful layouts. Dispatch BEFORE the modern editor computes
-        // Nature/Ability/PID/met/ribbon fields so neutral compatibility values can never be presented
-        // as native Gen I/II data. Group checks are safe without RTTI because each read-only wrapper
-        // owns a unique legacy group and the bridge constructs only that wrapper for the group.
-        switch (pokemonDetailsLayoutFor(p->getGameGroup())) {
-            case PokemonDetailsLayout::Generation1:
-                drawGen1PokemonDetailsModal(
-                    screen, fb, static_cast<const Pokemon::Pokemon1ReadOnly&>(*p));
-                return;
-            case PokemonDetailsLayout::Generation2:
-                drawGen2PokemonDetailsModal(
-                    screen, fb, static_cast<const Pokemon::Pokemon2ReadOnly&>(*p));
-                return;
-            case PokemonDetailsLayout::Modern:
-                break;
+        // PK1 is not a reduced modern format: it has DVs/stat experience and lacks nature,
+        // ability, held item, SID, ribbons/marks and modern met/Ball metadata. Route it before
+        // the modern editor computes or draws any of those fields.
+        if (p->getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup) {
+            const auto& gen1 = static_cast<const Pokemon::Pokemon1ReadOnly&>(*p);
+            drawGen1PokemonDetailsModal(screen, fb, gen1);
+            return;
         }
 
         const int W = fb.getWidth(), H = fb.getHeight();
@@ -239,119 +228,338 @@ namespace Modals {
         // Origin-generation location routing: a Gen 3/4 mon's MET id is remapped into the current
         // format's numbering when it is transferred up (Gen 5+ keep their own table), so a Gen 3/4 met
         // must be named with the format's table -- else a Platinum starter link-traded to SV reads "(none)".
-        // `locationTableVersion` encodes that rule. Only an origin we actually know should produce a
-        // table; unknown stays "(none)" rather than borrowing the open game's table.
-        const uint8_t originVer = p->originGame();
-        const uint8_t formatVer = Enums::getGroupRepVersion(p->getGameGroup());
-        const uint8_t metVer = originVer ? Enums::locationTableVersion(originVer, formatVer, false) : 0;
-        const uint8_t eggVer = originVer ? Enums::locationTableVersion(originVer, formatVer, true) : 0;
-        const char* metName = metVer ? Names::getLocationName(metVer, p->metLocation()) : "(none)";
-        const char* eggName = eggVer ? Names::getLocationName(eggVer, p->eggLocation()) : "(none)";
-        editRow("Met Location", metName, 19);
-        if (p->isEgg()) editRow("Egg Location", eggName, 20);
+        const uint8_t fmtVer = Enums::getGroupRepVersion(p->getGameGroup());
+        { const char* loc = Names::getMetLocationName(Enums::locationTableVersion(p->originGame(), fmtVer, false), p->metLocation());
+          editRow("Met", (loc[0] != '\0') ? std::string(loc) : std::string("(none)"), 25); }
+        // Met date -- every format records one except Gen 3 (FireRed/LeafGreen). Year byte is +2000.
         if (notGen3) {
-            char date[32]; snprintf(date, sizeof(date), "%04u-%02u-%02u", p->metYear(), p->metMonth(), p->metDay());
-            editRow("Met Date", date, 21);
+            // A transferred mon can carry no met date (00/00) -- show "(none)" instead of "00/00/2000",
+            // matching the egg-date row and how PKHeX blanks an unset date.
+            if (p->metMonth() == 0 || p->metDay() == 0) snprintf(buf, sizeof(buf), "(none)");
+            else snprintf(buf, sizeof(buf), "%02u/%02u/%04u", p->metDay(), p->metMonth(), 2000 + p->metYear());
+            editRow("Met Date", buf, 28);
         }
+        // Egg-met conditions -- the breeding formats only.
+        if (modernFmt) {
+            // "From an egg" means a real egg location. BDSP's "none" sentinel is 65535 (Gen 4 numbering,
+            // where 0 is a real place), not 0 -- treat it as no-egg too, so the display matches the game.
+            const bool fromEgg = p->eggLocation() != 0
+                              && !(p->getGameGroup() == Enums::GameVersion::BDSP && p->eggLocation() == 0xFFFF);
+            { const char* el = Names::getMetLocationName(Enums::locationTableVersion(p->originGame(), fmtVer, true), p->eggLocation());
+              editRow("Egg Loc", (fromEgg && el[0] != '\0') ? std::string(el) : std::string("(none)"), 29); }
+            if (fromEgg)
+                 snprintf(buf, sizeof(buf), "%02u/%02u/%04u", p->eggDay(), p->eggMonth(), 2000 + p->eggYear());
+            else snprintf(buf, sizeof(buf), "(none)");
+            editRow("Egg Date", buf, 30);
+        }
+        editRow("Ball", Enums::getBallName(p->ball()), 19);
+        editRow("Language", Enums::getLanguageName(p->language()), 20);
+        { std::string og = Enums::getOriginGameName(p->originGame());
+          editRow("Origin", og, 21); }
+        if (notGen3) editRow("Fateful", p->isFatefulEncounter() ? "Yes" : "No", 31);
         {
-            const uint8_t ver = p->originGame();
-            const std::string origin = ver ? Enums::getOriginGameName(ver) : std::string("Unknown");
-            editRow("Origin", origin, 22);
+            // Pokerus: editable (None -> Infected -> Cured) where the game has it; read-only otherwise.
+            const char* pkrs = p->isPokerusInfected() ? "Infected" : p->isPokerusCured() ? "Cured" : "None";
+            if (p->hasPokerus()) editRow("Pokerus", pkrs, 22);
+            else                 row("Pokerus", pkrs);
         }
-        if (notGen3) editRow("Fateful", p->fatefulEncounter() ? "Yes" : "No", 25);
-        editRow("Ball", getBallName(p->ball()), 28);
-        editRow("Language", getLanguageName(p->language()), 29);
-        fb.resetClipRect();
-        screen.details.leftOrder = leftOrder;                 // update() uses the exact rendered list for navigation
+        // Ribbons: count only (there can be dozens); Y / tap opens the full list.
+        {
+            auto rb = Names::getMonRibbons(reinterpret_cast<const uint8_t*>(p->getData().data()), p->getGameGroup());
+            if (!rb.empty()) {
+                const int ry = iy - scroll;
+                row("Ribbons", std::to_string(rb.size()) + "  (Y)");   // advances iy
+                if (rowVisible(ry)) screen.touchButtons.push_back({ 94, Lx + 8, ry, Lw - 16, RH });
+            }
+        }
+        fb.clearClip();
+        screen.details.leftOrder = leftOrder;   // hand the nav its draw-order field list
 
-        // Keep the selected left row inside the viewport. Draw uses the OLD scroll this frame, then
-        // adjusts it for the next; that avoids modifying layout halfway through the same render pass.
-        if (selRowY >= 0) {
-            const int visibleH = contentBottom - contentTop;
-            const int totalH = iy - contentTop;
-            const int maxScroll = std::max(0, totalH - visibleH);
-            if (selRowY - screen.details.leftScroll < contentTop)
-                screen.details.leftScroll = std::clamp(selRowY - contentTop, 0, maxScroll);
-            else if (selRowY + RH - screen.details.leftScroll > contentBottom)
-                screen.details.leftScroll = std::clamp(selRowY + RH - contentBottom, 0, maxScroll);
-            else
-                screen.details.leftScroll = std::clamp(screen.details.leftScroll, 0, maxScroll);
+        // Auto-scroll so the selected field stays visible (applied next frame), plus a faint scrollbar.
+        {
+            const int contentH = iy - contentTop;
+            const int viewH = contentBottom - contentTop;
+            int s = scroll;
+            if (selRowY >= 0) {
+                if (selRowY - s < contentTop)                s = selRowY - contentTop;
+                else if ((selRowY + RH) - s > contentBottom) s = (selRowY + RH) - contentBottom;
+            }
+            const int maxS = (contentH > viewH) ? (contentH - viewH) : 0;
+            if (s < 0) s = 0;
+            if (s > maxS) s = maxS;
+            screen.details.leftScroll = s;
+            drawScrollbar(fb, Lx + Lw - 7, contentTop, viewH, contentH, s);
         }
 
-        // Legality summary pinned at the bottom of the left column.
-        const int legY = colY + colH - legalityH;
-        if (legalityRep.valid) {
-            fb.drawText(Lx + 18, legY + 8, "Legality: Valid", Colors::Green, TextStyle::Caption);
-        } else {
-            const std::string text = "Legality: " + std::to_string(legalityRep.issues.size()) + " issue(s)";
-            fb.drawText(Lx + 18, legY + 8, text, Colors::Warning, TextStyle::Caption);
+        // Legality summary pinned at the bottom of the left pane (R / tap opens the full issue list).
+        {
+            const int ly = colY + colH - legalityH + 6;
+            if (legalityRep.ok()) {
+                fb.drawText(Lx + 18, ly, "Legality: no problems found", Color(120, 205, 140), TextStyle::Caption);
+            } else {
+                const std::string label = "Legality: " + std::to_string(legalityRep.problemCount())
+                                        + " issue(s)  -  R / tap to view";
+                fb.drawText(Lx + 18, ly, label, Color(235, 100, 100), TextStyle::Caption);
+                int lw, lh; fb.measureText(label, lw, lh, TextStyle::Caption);
+                screen.touchButtons.push_back({ 95, Lx + 14, ly - 4, lw + 8, lh + 8 });  // id 95: open legality overlay
+            }
         }
 
-        // =========================== CENTER: stats / values ===========================
-        const int Cx = Lx + Lw + 12, Cw = 360;
+        // =========================== CENTER: editable stat table + shiny ===========================
+        const int Cx = 474, Cw = 340;
         fb.drawFilledRoundedRect(Cx, colY, Cw, colH, 16, Colors::Panel);
         fb.drawRoundedRect(Cx, colY, Cw, colH, 16, Colors::Border, 1);
+        fb.drawText(Cx + 18, colY + 16, "Values", Colors::Text, TextStyle::Heading);
 
-        fb.drawText(Cx + 20, colY + 18, av ? "Stats / IV / AV" : "Stats / IV / EV", Colors::Text, TextStyle::Heading);
-        const char* statNames[6] = { "HP", "Attack", "Defense", "Sp. Atk", "Sp. Def", "Speed" };
-        uint16_t statVals[6] = { p->statHPMax(), p->statATK(), p->statDEF(), p->statSPA(), p->statSPD(), p->statSPE() };
-        uint8_t ivVals[6] = { p->ivHP(), p->ivATK(), p->ivDEF(), p->ivSPA(), p->ivSPD(), p->ivSPE() };
-        uint16_t evVals[6] = { p->evHP(), p->evATK(), p->evDEF(), p->evSPA(), p->evSPD(), p->evSPE() };
-        uint8_t avVals[6] = { p->avHP(), p->avATK(), p->avDEF(), p->avSPA(), p->avSPD(), p->avSPE() };
-        int sy = colY + 62;
+        const int nameX = Cx + 18, cIV = Cx + 120, cEV = Cx + 200, cStat = Cx + 280;
+        int ty = colY + 62;
+        fb.drawText(cIV,   ty, "IV",            Colors::TextDim, TextStyle::Caption);
+        fb.drawText(cEV,   ty, av ? "AV" : "EV", Colors::TextDim, TextStyle::Caption);
+        fb.drawText(cStat, ty, "Stat",          Colors::TextDim, TextStyle::Caption);
+        ty += 24;
+
+        // Party stats (the 0x14A+ block) read 0 for box mons in the packed formats, so compute the
+        // battle stat from base + IV + EV + EXP-level + (stat)nature when the stored value is 0. Party
+        // mons keep their exact stored stats; LGPE (bstat == null -> its AV formula) is left as-is.
+        const bool statIsGG = (p->getGameGroup() == Enums::GameVersion::GG);
+        const Pokemon::BaseStatsGen89* bstat = statIsGG ? nullptr : Pokemon::getBaseStatsGen89(p->speciesID(), p->form());
+        const uint8_t dispLevel = (p->level() != 0) ? p->level()
+                                : Pokemon::getLevelFromExp(p->exp(), Pokemon::getGrowthRate(p->speciesID()));
+        auto dispStat = [&](int idx, uint16_t stored) -> int {
+            if (stored != 0 || !bstat) return stored;  // party mon / LGPE / no base data -> stored value
+            const int base = (idx == 0) ? bstat->hp : (idx == 1) ? bstat->atk : (idx == 2) ? bstat->def
+                           : (idx == 3) ? bstat->spa : (idx == 4) ? bstat->spd : bstat->spe;
+            int iv = 0, ev = 0;
+            switch (idx) {
+                case 0: iv = p->ivHP();  ev = p->evHP();  break;
+                case 1: iv = p->ivATK(); ev = p->evATK(); break;
+                case 2: iv = p->ivDEF(); ev = p->evDEF(); break;
+                case 3: iv = p->ivSPA(); ev = p->evSPA(); break;
+                case 4: iv = p->ivSPD(); ev = p->evSPD(); break;
+                default: iv = p->ivSPE(); ev = p->evSPE(); break;
+            }
+            int val = ((2 * base + iv + ev / 4) * dispLevel) / 100;
+            if (idx == 0) return val + dispLevel + 10;  // HP uses a distinct formula
+            val += 5;
+            // Nature (mint-aware) modifier. natIdx maps a display row to its nature stat index
+            // (nature order is Atk, Def, Spe, SpA, SpD); HP (idx 0) is never nature-affected.
+            static const int natIdx[6] = { -1, 0, 1, 3, 4, 2 };
+            const int up = p->statNature() / 5, down = p->statNature() % 5;
+            if (up != down) {
+                if (natIdx[idx] == up)        val = val * 110 / 100;
+                else if (natIdx[idx] == down) val = val * 90 / 100;
+            }
+            return val;
+        };
+
+        struct S { const char* nm; int iv, evav, stat; };
+        const S rows[6] = {
+            { "HP",  p->ivHP(),  av ? p->avHP()  : p->evHP(),  dispStat(0, p->statHPMax()) },
+            { "Atk", p->ivATK(), av ? p->avATK() : p->evATK(), dispStat(1, p->statATK()) },
+            { "Def", p->ivDEF(), av ? p->avDEF() : p->evDEF(), dispStat(2, p->statDEF()) },
+            { "SpA", p->ivSPA(), av ? p->avSPA() : p->evSPA(), dispStat(3, p->statSPA()) },
+            { "SpD", p->ivSPD(), av ? p->avSPD() : p->evSPD(), dispStat(4, p->statSPD()) },
+            { "Spe", p->ivSPE(), av ? p->avSPE() : p->evSPE(), dispStat(5, p->statSPE()) },
+        };
+        const int statRowH = 44;
         for (int i = 0; i < 6; ++i) {
-            const bool ss = (sel == i);
-            if (ss) fb.drawFilledRoundedRect(Cx + 10, sy - 6, Cw - 20, 50, 10, Colors::Selected);
-            fb.drawText(Cx + 20, sy + 6, statNames[i], ss ? Colors::Text : Colors::TextDim, TextStyle::Body);
-            char v[80];
-            if (av) snprintf(v, sizeof(v), "%u    IV %u    AV %u", statVals[i], ivVals[i], avVals[i]);
-            else    snprintf(v, sizeof(v), "%u    IV %u    EV %u", statVals[i], ivVals[i], evVals[i]);
-            int vw, vh; fb.measureText(v, vw, vh, TextStyle::Body);
-            fb.drawText(Cx + Cw - 20 - vw, sy + 6, v, ss ? Colors::Accent : Colors::Text, TextStyle::Body);
-            screen.touchButtons.push_back({ i, Cx + 10, sy - 6, Cw - 20, 50 });
-            sy += 56;
+            const bool s = (sel == i);
+            if (s) { fb.drawFilledRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Selected);
+                     fb.drawRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Accent, 2); }
+            fb.drawText(nameX, ty, rows[i].nm, s ? Colors::Text : Colors::TextDim);
+            fb.drawText(cIV,   ty, std::to_string(rows[i].iv),   Colors::Text);
+            fb.drawText(cEV,   ty, std::to_string(rows[i].evav), Colors::Text);
+            fb.drawText(cStat, ty, std::to_string(rows[i].stat), Colors::Accent);
+            screen.touchButtons.push_back({ i, Cx + 8, ty - 6, Cw - 16, statRowH - 6 });
+            ty += statRowH;
         }
 
-        auto centerEdit = [&](const char* label, const std::string& value, int field) {
-            const bool ss = (sel == field);
-            if (ss) fb.drawFilledRoundedRect(Cx + 10, sy - 4, Cw - 20, 40, 8, Colors::Selected);
-            fb.drawText(Cx + 20, sy + 6, label, ss ? Colors::Text : Colors::TextDim, TextStyle::Body);
-            int vw, vh; fb.measureText(value, vw, vh, TextStyle::Body);
-            fb.drawText(Cx + Cw - 20 - vw, sy + 6, value, ss ? Colors::Accent : Colors::Text, TextStyle::Body);
-            screen.touchButtons.push_back({ field, Cx + 10, sy - 4, Cw - 20, 40 });
-            sy += 46;
-        };
-        centerEdit("Shiny", isShiny ? "Yes" : "No", 6);
-        centerEdit("Nature", getNatureName(p->nature()), 7);
-        centerEdit("Gender", p->genderSymbol()[0] ? p->genderSymbol() : "—", 8);
-        centerEdit("Level", std::to_string(subLvl), 9);
+        // Shiny toggle row (selectable index 6).
+        ty += 10;
+        {
+            const bool s = (sel == 6);
+            if (s) { fb.drawFilledRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Selected);
+                     fb.drawRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Accent, 2); }
+            fb.drawText(nameX, ty, "Shiny", s ? Colors::Text : Colors::TextDim);
+            // Right-aligned to the panel edge, flush with Nature/Gender/Level below it.
+            { const char* sv = isShiny ? "Yes" : "No"; int sw, sh; fb.measureText(sv, sw, sh);
+              fb.drawText(Cx + Cw - 18 - sw, ty, sv, isShiny ? Colors::ShinyStar : Colors::Text); }
+            screen.touchButtons.push_back({ 6, Cx + 8, ty - 6, Cw - 16, statRowH - 6 });
+            ty += statRowH;
+        }
 
-        // =========================== RIGHT: moves + item ===========================
-        const int Rx = Cx + Cw + 12, Rw = W - Rx - 24;
+        // Nature row (selectable index 7) — cycled with Left/Right (or A).
+        ty += 6;
+        {
+            const bool s = (sel == 7);
+            if (s) { fb.drawFilledRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Selected);
+                     fb.drawRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Accent, 2); }
+            fb.drawText(nameX, ty, "Nature", s ? Colors::Text : Colors::TextDim);
+            std::string nat = getNatureName(p->nature());
+            int nw, nh; fb.measureText(nat, nw, nh);
+            fb.drawText(Cx + Cw - 18 - nw, ty, nat, Colors::Accent);
+            screen.touchButtons.push_back({ 7, Cx + 8, ty - 6, Cw - 16, statRowH - 6 });
+            ty += statRowH;
+        }
+
+        // Gender row (selectable index 8) — A opens the picker. READ-ONLY for a fixed-gender species
+        // (male-only Braviary, female-only Miltank, genderless Magnemite): the value still shows, but
+        // there is no highlight and no touch target, and the cursor steps over it — the same way the
+        // left column handles a read-only row by not listing it. See TrainerViewScreen::genderEditable.
+        ty += 6;
+        {
+            const bool editable = screen.genderEditable(*p);
+            const bool s = editable && (sel == 8);
+            if (s) { fb.drawFilledRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Selected);
+                     fb.drawRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Accent, 2); }
+            fb.drawText(nameX, ty, "Gender", s ? Colors::Text : Colors::TextDim);
+            const uint8_t gv = p->gender();
+            const char* gname = (gv == 0) ? "Male" : (gv == 1) ? "Female" : "Genderless";
+            const Color gc = (gv == 0) ? Colors::Blue : (gv == 1) ? Colors::Magenta : Colors::Text;
+            int gw, gh; fb.measureText(gname, gw, gh);
+            fb.drawText(Cx + Cw - 18 - gw, ty, gname, gc);
+            if (editable) screen.touchButtons.push_back({ 8, Cx + 8, ty - 6, Cw - 16, statRowH - 6 });
+            ty += statRowH;
+        }
+
+        // Level row (selectable index 9) — A opens the 1-100 level picker (changing level recomputes stats).
+        ty += 6;
+        {
+            const bool s = (sel == 9);
+            if (s) { fb.drawFilledRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Selected);
+                     fb.drawRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Accent, 2); }
+            fb.drawText(nameX, ty, "Level", s ? Colors::Text : Colors::TextDim);
+            const std::string lvlStr = std::to_string(dispLevel);
+            int lw, lh; fb.measureText(lvlStr, lw, lh);
+            fb.drawText(Cx + Cw - 18 - lw, ty, lvlStr, Colors::Accent);
+            screen.touchButtons.push_back({ 9, Cx + 8, ty - 6, Cw - 16, statRowH - 6 });
+            ty += statRowH;
+        }
+        // (The old on-panel "Randomize" row was removed -- it's L / the bottom nav bar's "Randomize
+        // IVs", so it no longer needs a highlighted box taking space in the Values column.)
+
+        // =========================== RIGHT: moves + held item ===========================
+        const int Rx = 838, Rw = W - Rx - 24;
         fb.drawFilledRoundedRect(Rx, colY, Rw, colH, 16, Colors::Panel);
         fb.drawRoundedRect(Rx, colY, Rw, colH, 16, Colors::Border, 1);
-        fb.drawText(Rx + 20, colY + 18, "Moves / Held Item", Colors::Text, TextStyle::Heading);
-        int my = colY + 62;
-        for (int i = 0; i < 4; ++i) {
-            const bool ms = (sel == 10 + i);
-            if (ms) fb.drawFilledRoundedRect(Rx + 10, my - 5, Rw - 20, 72, 10, Colors::Selected);
-            uint16_t moveId = p->move(i);
-            const char* moveName = (moveId == 0) ? "(none)" : getMoveName(moveId);
-            fb.drawText(Rx + 20, my + 4, moveName, ms ? Colors::Text : Colors::Text, TextStyle::Body);
-            char pp[48]; snprintf(pp, sizeof(pp), "PP %u   PP Ups %u", p->movePP(i), p->movePPUps(i));
-            fb.drawText(Rx + 20, my + 32, pp, ms ? Colors::Accent : Colors::TextDim, TextStyle::Caption);
-            screen.touchButtons.push_back({ 10 + i, Rx + 10, my - 5, Rw - 20, 72 });
-            my += 80;
-        }
-        const bool itemSel = (sel == 14);
-        if (itemSel) fb.drawFilledRoundedRect(Rx + 10, my - 4, Rw - 20, 44, 8, Colors::Selected);
-        fb.drawText(Rx + 20, my + 8, "Held Item", itemSel ? Colors::Text : Colors::TextDim, TextStyle::Body);
-        const char* itemName = p->heldItem() ? getItemName(p->heldItem()) : "(none)";
-        int iw, ih; fb.measureText(itemName, iw, ih, TextStyle::Body);
-        fb.drawText(Rx + Rw - 20 - iw, my + 8, itemName, itemSel ? Colors::Accent : Colors::Text, TextStyle::Body);
-        screen.touchButtons.push_back({14, Rx + 10, my - 4, Rw - 20, 44});
 
-        // Footer controls are drawn by TrainerViewScreen, not here.
+        // This panel is exclusively the moveset — 4 move slots (rows 10-13) + held item (row 14).
+        iy = colY + 22;
+        fb.drawText(Rx + 18, iy, "Moves", Colors::Text, TextStyle::Heading);
+        iy += 46;
+        for (int i = 0; i < 4; ++i) {
+            const uint16_t mv = p->move(i);
+            const bool s = (sel == 10 + i);
+            if (s) { fb.drawFilledRoundedRect(Rx + 14, iy - 8, Rw - 28, 38, 10, Colors::Selected);
+                     fb.drawRoundedRect(Rx + 14, iy - 8, Rw - 28, 38, 10, Colors::Accent, 2); }
+            const std::string mn = mv ? std::string(Names::getMoveName(mv)) : std::string("-");
+            fb.drawText(Rx + 24, iy, mn, (mv || s) ? Colors::Text : Colors::TextDim, TextStyle::Body);
+            if (mv) {
+                const std::string pp = "PP " + std::to_string(p->movePP(i));
+                int vw, vh; fb.measureText(pp, vw, vh, TextStyle::Caption);
+                fb.drawText(Rx + Rw - 20 - vw, iy + 3, pp, Colors::TextDim, TextStyle::Caption);
+            }
+            screen.touchButtons.push_back({ 10 + i, Rx + 14, iy - 8, Rw - 28, 38 });
+            iy += 52;
+        }
+
+        // Held item (selectable index 14; A opens the item picker).
+        iy += 14;
+        fb.drawText(Rx + 18, iy, "Held Item", Colors::TextDim, TextStyle::Caption);
+        iy += 30;
+        {
+            const bool s = (sel == 14);
+            if (s) { fb.drawFilledRoundedRect(Rx + 14, iy - 8, Rw - 28, 38, 10, Colors::Selected);
+                     fb.drawRoundedRect(Rx + 14, iy - 8, Rw - 28, 38, 10, Colors::Accent, 2); }
+            const uint16_t it = p->heldItem();
+            const std::string iname = it
+                ? std::string(p->getGameGroup() == Enums::GameVersion::FRLG
+                    ? Names::getItemNameG3(it) : getItemName(it))
+                : std::string("None");
+            fb.drawText(Rx + 24, iy, iname, it ? Colors::Text : Colors::TextDim, TextStyle::Body);
+            screen.touchButtons.push_back({ 14, Rx + 14, iy - 8, Rw - 28, 38 });
+        }
+
+        // Bottom nav bar -- the SAME badge guide as the rest of the app. This is a full-screen page,
+        // so it gets a real nav bar rather than the old cramped inline hint. The context depends on
+        // which column is focused (values / details / moves). Drawn before the overlays so an open
+        // legality/ribbon popup dims it like everything else behind them.
+        {
+            std::string navHint;
+            // Y opens ribbons; R opens the legality list -- but only when there ARE issues, so a clean
+            // mon simply omits R: Legality (the button is disabled / nothing to view).
+            const std::string legalSeg = legalityRep.ok() ? "" : "R: Legality  |  ";
+            // A freshly-created mon has no "save" -- every field is an unsaved edit until committed, so
+            // X reads KEEP (commit + close); Discard still lives on the B Keep/Discard prompt.
+            const std::string saveSeg = screen.creator.editing ? "X: Keep" : "X: Save";
+            // B always reads "Close" now: with unsaved edits it raises the Save/Discard/Back prompt
+            // rather than discarding on the spot, so promising "Discard" would describe the old
+            // behaviour. Dirtiness is already signalled by the top-bar "Unsaved changes" marker.
+            const std::string backSeg = "B: Close";
+            if (sel >= 15)      navHint = "A: Edit  |  Y: Ribbons  |  L: Randomize IVs  |  " + legalSeg + "Right: Values  |  " + saveSeg + "  |  " + backSeg;
+            else if (sel >= 10) navHint = "A: Edit  |  Y: Ribbons  |  L: Randomize IVs  |  " + legalSeg + "Left: Values  |  " + saveSeg + "  |  " + backSeg;
+            else                navHint = "A: Edit  |  Y: Ribbons  |  L: Randomize IVs  |  " + legalSeg + "Left: Details  |  Right: Moves  |  " + saveSeg + "  |  " + backSeg;
+            drawNavBar(fb, navHint);
+        }
+
+        // Legality issue overlay — opened via Y or by tapping the legality summary; any tap / B closes.
+        if (screen.details.legalityOverlay) {
+            fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 170));
+            const int rowsN = static_cast<int>(legalityRep.issues.size());
+            const int ow = 760, oh = std::min(H - 60, 96 + std::max(1, rowsN) * 30);
+            const int ox = (W - ow) / 2, oy = (H - oh) / 2;
+            fb.drawFilledRoundedRect(ox, oy, ow, oh, 16, Colors::Panel);
+            fb.drawRoundedRect(ox, oy, ow, oh, 16, Colors::Border, 1);
+            fb.drawText(ox + 24, oy + 20, "Legality", Colors::Text, TextStyle::Heading);
+            { const char* h = "B / tap: close"; int hw, hh; fb.measureText(h, hw, hh, TextStyle::Caption);
+              fb.drawText(ox + ow - 24 - hw, oy + 28, h, Colors::TextDim, TextStyle::Caption); }
+            int ly = oy + 66;
+            if (legalityRep.ok()) {
+                fb.drawText(ox + 28, ly, "No problems found.", Color(120, 205, 140), TextStyle::Body);
+            } else {
+                for (const auto& is : legalityRep.issues) {
+                    if (is.severity == Legality::Severity::Info) continue;
+                    if (ly > oy + oh - 30) break;
+                    const Color c = (is.severity == Legality::Severity::Invalid) ? Color(235, 100, 100) : Colors::Orange;
+                    const char* tag = (is.severity == Legality::Severity::Invalid) ? "[illegal]  " : "[warning]  ";
+                    fb.drawText(ox + 28, ly, std::string(tag) + is.text, c, TextStyle::Caption);
+                    ly += 30;
+                }
+            }
+            // id 96: tap anywhere closes -- but NOT over the nav bar, whose badges are themselves
+            // tappable. Overlapping them would fire both the badge's button and this close.
+            screen.touchButtons.push_back({ 96, 0, 0, W, H - kNavBarH });
+        }
+
+        // Ribbon list overlay — opened by tapping the Ribbons row; any tap / B closes.
+        // Two columns, because a fully-decorated Gen 8/9 mon can carry dozens of ribbons and marks.
+        if (screen.details.ribbonOverlay) {
+            const auto rb = Names::getMonRibbons(reinterpret_cast<const uint8_t*>(p->getData().data()),
+                                                 p->getGameGroup());
+            fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 170));
+            const int cols = (rb.size() > 12) ? 2 : 1;
+            const int perCol = (static_cast<int>(rb.size()) + cols - 1) / std::max(1, cols);
+            const int ow = (cols == 2) ? 860 : 560;
+            const int oh = std::min(H - 60, 96 + std::max(1, perCol) * 28);
+            const int ox = (W - ow) / 2, oy = (H - oh) / 2;
+            fb.drawFilledRoundedRect(ox, oy, ow, oh, 16, Colors::Panel);
+            fb.drawRoundedRect(ox, oy, ow, oh, 16, Colors::Border, 1);
+            fb.drawText(ox + 24, oy + 20, "Ribbons & Marks", Colors::Text, TextStyle::Heading);
+            { const char* h = "B / tap: close"; int hw, hh; fb.measureText(h, hw, hh, TextStyle::Caption);
+              fb.drawText(ox + ow - 24 - hw, oy + 28, h, Colors::TextDim, TextStyle::Caption); }
+            const int colW = (ow - 56) / std::max(1, cols);
+            for (size_t i = 0; i < rb.size(); ++i) {
+                const int c = static_cast<int>(i) / std::max(1, perCol);
+                const int r = static_cast<int>(i) % std::max(1, perCol);
+                const int tx = ox + 28 + c * colW;
+                const int ty = oy + 66 + r * 28;
+                if (ty > oy + oh - 26) continue;
+                fb.drawText(tx, ty, rb[i], Colors::Text, TextStyle::Caption);
+            }
+            // id 96: tap anywhere closes -- but NOT over the nav bar, whose badges are themselves
+            // tappable. Overlapping them would fire both the badge's button and this close.
+            screen.touchButtons.push_back({ 96, 0, 0, W, H - kNavBarH });
+        }
     }
 }
 }
