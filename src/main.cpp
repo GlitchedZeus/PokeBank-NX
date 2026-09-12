@@ -25,7 +25,7 @@ int main()
     // loading it up here is what makes the toggle cover startup as well -- read any later and the
     // dozen lines below would follow the compiled-in default instead of the user's choice, which
     // means either losing exactly the init diagnostics a bug report needs or writing a file the
-    // user switched off. Safe this early: loadSettings only fopen()s sdmc:/PKSE/settings.cfg
+    // user switched off. Safe this early: loadSettings only fopen()s sdmc:/switch/PokeBank-NX/config/settings.cfg
     // (libnx mounts sdmc before main), applyTheme just swaps colour globals, and nothing in it
     // logs. It needs no service, no ROMFS and no SDL, none of which exist yet.
     Utils::loadSettings();

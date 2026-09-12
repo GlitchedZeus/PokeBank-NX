@@ -3969,7 +3969,7 @@ namespace UI {
                         // to someone else: turn it on, reproduce the problem, send the log.
                         g_debugLogging = !g_debugLogging;
                         postStatus(g_debugLogging
-                            ? "Debug logging on. Logs are written to sdmc:/PKSE/logs."
+                            ? "Debug logging on. Logs are written to sdmc:/switch/PokeBank-NX/logs."
                             : "Debug logging off. No new log files will be written.", 300);
                     }
                     Utils::saveSettings();   // persist the change to settings.cfg

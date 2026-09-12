@@ -31,7 +31,7 @@ namespace Utils {
     void logEventToFile(const std::string& line);
 
     /**
-     * Append one line to the TEST TRACE at sdmc:/PKSE/trace.log.
+     * Append one line to the TEST TRACE at sdmc:/switch/PokeBank-NX/trace.log.
      *
      * Deliberately a separate file from the dated diagnostic logs. This one is meant to be copied
      * off the SD card whole and read by someone who wasn't there — so it stays one line per action,

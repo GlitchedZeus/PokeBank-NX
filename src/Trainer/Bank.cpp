@@ -26,6 +26,7 @@
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
 #include "Globals.h"
+#include "Utils/PokeBankPaths.h"
 
 using namespace Utils;
 using namespace Enums;
@@ -35,7 +36,7 @@ using namespace Encryption;
 namespace Trainer {
     namespace {
         // ---- Unified on-disk format ----------------------------------------------------------
-        // File: BASE_SAVE_DIRECTORY/bank/bank.dat
+        // File: PokeBank NX banks/legacy-pkse/bank.dat (legacy PKSEBANK format)
         //   Header (16 B): char magic[8]="PKSEBANK"; u32 version; u32 boxCount
         //   Then boxCount*BANK_SLOTS_PER_BOX fixed records, each:
         //     u32 groupTag; u8 payload[maxPayload]   (payload = native ENCRYPTED per-gen bytes)
@@ -158,7 +159,7 @@ namespace Trainer {
     }
 
     std::string Bank::filePath() const {
-        return BASE_SAVE_DIRECTORY + "/bank/bank.dat";
+        return PokeBank::Paths::legacyBankRoot() + "/bank.dat";
     }
 
     std::string Bank::boxDisplayName(size_t box) const {
@@ -358,7 +359,7 @@ namespace Trainer {
 
         int imported = 0, dropped = 0;
         for (const auto& L : legacy) {
-            const std::string p = BASE_SAVE_DIRECTORY + "/bank/" + L.tag + "_bank.dat";
+            const std::string p = PokeBank::Paths::legacyBankRoot() + "/" + L.tag + "_bank.dat";
             size_t sz = 0;
             uint8_t* f = readAllBytes(p.c_str(), &sz);
             if (!f) continue;
@@ -427,8 +428,12 @@ namespace Trainer {
 
     bool Bank::save() const {
         // Ensure the bank directory exists.
-        const std::string dir = BASE_SAVE_DIRECTORY + "/bank";
-        mkdir(dir.c_str(), 0777);  // ignore EEXIST
+        const std::string dir = PokeBank::Paths::legacyBankRoot();
+        std::string pathError;
+        if (!PokeBank::Paths::ensureLegacyBankRoot(&pathError)) {
+            logErrorToFile("Bank: failed to create PokeBank NX legacy bank directory", pathError.c_str());
+            return;
+        }  // ignore EEXIST
 
         std::vector<uint8_t> buf = serialize();
 
