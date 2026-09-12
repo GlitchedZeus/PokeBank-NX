@@ -74,6 +74,9 @@ namespace PokeVault::Games {
         if (id == "red_gb") return "romfs:/game_cards/red_gb.png";
         if (id == "blue_gb") return "romfs:/game_cards/blue_gb.png";
         if (id == "yellow_gb") return "romfs:/game_cards/yellow_gb.png";
+        if (id == "gold_gbc") return "romfs:/game_cards/gold_gbc.png";
+        if (id == "silver_gbc") return "romfs:/game_cards/silver_gbc.png";
+        if (id == "crystal_gbc") return "romfs:/game_cards/crystal_gbc.png";
         if (id == "ruby_gba") return "romfs:/game_cards/ruby_gba.png";
         if (id == "sapphire_gba") return "romfs:/game_cards/sapphire_gba.png";
         if (id == "emerald_gba") return "romfs:/game_cards/emerald_gba.png";

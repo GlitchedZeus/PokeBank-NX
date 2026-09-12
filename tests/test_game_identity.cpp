@@ -83,10 +83,9 @@ int main() {
     assert(gameCardArtworkPath("ruby_gba") == "romfs:/game_cards/ruby_gba.png");
     assert(gameCardArtworkPath("sapphire_gba") == "romfs:/game_cards/sapphire_gba.png");
     assert(gameCardArtworkPath("emerald_gba") == "romfs:/game_cards/emerald_gba.png");
-    // GSC currently uses the source-card fallback artwork path; no fabricated/placeholder asset.
-    assert(gameCardArtworkPath("gold_gbc").empty());
-    assert(gameCardArtworkPath("silver_gbc").empty());
-    assert(gameCardArtworkPath("crystal_gbc").empty());
+    assert(gameCardArtworkPath("gold_gbc") == "romfs:/game_cards/gold_gbc.png");
+    assert(gameCardArtworkPath("silver_gbc") == "romfs:/game_cards/silver_gbc.png");
+    assert(gameCardArtworkPath("crystal_gbc") == "romfs:/game_cards/crystal_gbc.png");
     assert(gameCardArtworkPath("firered_switch").empty());
     assert(findGame("missing") == nullptr);
     assert(findSwitchGame(0) == nullptr);

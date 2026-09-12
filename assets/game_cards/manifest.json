@@ -1,0 +1,43 @@
+{
+  "upstream_repository": "https://github.com/libretro-thumbnails/Nintendo_-_Game_Boy_Color",
+  "pinned_commit": "0931985ba8a3a9f38fb87f006611a13dc094260f",
+  "named_boxarts_tree": "19e9d2ffcc7896f72aa7eb6b8f3e2d56730e75f0",
+  "assets": [
+    {
+      "label": "GOLD",
+      "game_id": "gold_gbc",
+      "requested_path": "Named_Boxarts/Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).png",
+      "tree_entry_blob_sha": "abc749bca2673b144113abe3929ae52217dfdddc",
+      "upstream_path": "Named_Boxarts/Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).png",
+      "git_blob_sha": "abc749bca2673b144113abe3929ae52217dfdddc",
+      "sha256": "d443bb5a99c64eb88faf4d9f0c60bff9f64bae299adb1f2c9512e979a4661812",
+      "tree_mode": "100644",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/gold_gbc.png"
+    },
+    {
+      "label": "SILVER",
+      "game_id": "silver_gbc",
+      "requested_path": "Named_Boxarts/Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).png",
+      "tree_entry_blob_sha": "f075e64ded41169bb0c8ae47edc0fc2ed5f6149c",
+      "upstream_path": "Named_Boxarts/Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).png",
+      "git_blob_sha": "f075e64ded41169bb0c8ae47edc0fc2ed5f6149c",
+      "sha256": "8e69b4e9b61c3cf45009270b991513d0deab090558e29c8d2f8ffcbf901e4f98",
+      "tree_mode": "100644",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/silver_gbc.png"
+    },
+    {
+      "label": "CRYSTAL",
+      "game_id": "crystal_gbc",
+      "requested_path": "Named_Boxarts/Pokemon - Crystal Version (USA, Europe) (Rev 1).png",
+      "tree_entry_blob_sha": "7c8e17590d44a2bcd62776cb74b1822e7ca091b3",
+      "upstream_path": "Named_Boxarts/Pokemon - Crystal Version (USA).png",
+      "git_blob_sha": "36fb3c05b3a61b3b5d8c25474ffddc77a749ef6d",
+      "sha256": "f43784edc9d10ead4d93d1be9551d676b341dd5ae8d3c585a29de678d6433337",
+      "tree_mode": "120000",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/crystal_gbc.png"
+    }
+  ]
+}

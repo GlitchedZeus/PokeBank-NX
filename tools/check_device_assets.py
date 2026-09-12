@@ -128,6 +128,7 @@ def main() -> int:
 
     required_game_cards = (
         "red_gb.png", "blue_gb.png", "yellow_gb.png",
+        "gold_gbc.png", "silver_gbc.png", "crystal_gbc.png",
         "firered_gba.png", "leafgreen_gba.png",
         "ruby_gba.png", "sapphire_gba.png", "emerald_gba.png",
     )
@@ -139,7 +140,7 @@ def main() -> int:
         if missing_cards:
             fail(errors, f"required game-card artwork missing: {', '.join(missing_cards)}")
         else:
-            ok("Red/Blue/Yellow GB + FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present")
+            ok("Red/Blue/Yellow GB + Gold/Silver/Crystal GBC + FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present")
 
     print()
     if errors:
