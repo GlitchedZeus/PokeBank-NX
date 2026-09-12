@@ -29,7 +29,7 @@ const Layout& layoutFor(VersionFamily family) noexcept {
     return family == VersionFamily::Crystal ? kIntlCrystal : kIntlGS;
 }
 
-constexpr std::array<uint8_t, 119> kGeneralItems{
+constexpr std::array<uint8_t, 131> kGeneralItems{
     3,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,27,28,29,
     30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,51,52,53,57,
     60,62,63,64,65,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,
@@ -69,12 +69,6 @@ std::size_t pocketCapacity(InventoryPocket pocket) noexcept {
         case InventoryPocket::Balls: return 12;
         default: return 0;
     }
-}
-
-uint32_t readBE24(std::span<const uint8_t> bytes, std::size_t offset) noexcept {
-    return (static_cast<uint32_t>(bytes[offset]) << 16) |
-           (static_cast<uint32_t>(bytes[offset + 1]) << 8) |
-           bytes[offset + 2];
 }
 
 void writeBE24(std::vector<uint8_t>& bytes, std::size_t offset, uint32_t value) noexcept {
