@@ -33,7 +33,9 @@ namespace Enums {
         // The following values are not actually stored values in pk data,
         // These values are assigned as properties for various logic branching.
 
-        // Game Groupings
+        // Game Groupings. GSC intentionally occupies the unused value immediately before RBY;
+        // every existing grouping keeps its historical numeric value.
+        GSC = 70,  // Pokemon Gold/Silver/Crystal legacy read-only group (not a stored PKM origin value)
         RBY = 71,  // Pokemon Red/Blue/Yellow legacy read-only group (not a stored PKM origin value)
         FRLG = 72, // Pokemon FireRed & LeafGreen group
         GG = 73,   // Pokemon Let's Go Pikachu & Eevee group
@@ -141,6 +143,7 @@ namespace Enums {
         switch (version) {
             case GameVersion::FR: return "FireRed";
             case GameVersion::LG: return "LeafGreen";
+            case GameVersion::GSC: return "Gold/Silver/Crystal";
             case GameVersion::RBY: return "Red/Blue/Yellow";
             case GameVersion::FRLG: return "FireRed/LeafGreen";
             case GameVersion::GP: return "Let's Go Pikachu";
@@ -279,6 +282,7 @@ namespace Enums {
     /** A representative stored version byte for a storage-format game group, for location-table routing. */
     inline uint8_t getGroupRepVersion(GameVersion group) {
         switch (group) {
+            case GameVersion::GSC:  return 39;  // Gold VC id; presentation-only representative for the GSC group
             case GameVersion::FRLG: return 4;   // FireRed
             case GameVersion::GG:   return 42;  // Let's Go Pikachu
             case GameVersion::SWSH: return 44;  // Sword
