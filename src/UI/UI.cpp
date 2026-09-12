@@ -15,6 +15,7 @@
 #include "Games/GameIdentity.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Legacy/RBYReadOnlyTrainer.h"
+#include "Legacy/GSCReadOnlyTrainer.h"
 #include "Legacy/FRLGSourceBrowser.h"
 
 using namespace Utils;
@@ -32,19 +33,21 @@ namespace UI {
         if (!legacySourceBindings.load())
             logErrorToFile("Legacy source bindings contain malformed or unreadable rows");
 
-        // Discover only RetroArch's configured/conventional save roots. The runtime catalog keeps
-        // the accepted Gen III path and the strict Gen I R/B/Y path separately typed, then presents
-        // both through the same read-only Game Sources cards. No legacy source exposes a write path.
+        // Discover only RetroArch's configured/conventional save roots. Generation-specific strict
+        // parsers remain separate; the catalog only shares presentation/profile binding and is
+        // permanently read-only for Gen I R/B/Y, Gen II G/S/C, and Gen III R/S/E/FR/LG.
         legacyFRLGSources = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
         size_t ready = 0;
         size_t ambiguous = 0;
         size_t rejected = 0;
         size_t gen1Ready = 0;
+        size_t gen2Ready = 0;
         size_t gen3Ready = 0;
         for (const auto& source : legacyFRLGSources.sources) {
             if (source.ready()) {
                 ++ready;
                 if (source.isGen1()) ++gen1Ready;
+                if (source.isGen2()) ++gen2Ready;
                 if (source.isGen3()) ++gen3Ready;
             } else if (source.status == PokeVault::Legacy::LegacySourceStatus::AmbiguousIdentity) {
                 ++ambiguous;
@@ -52,10 +55,11 @@ namespace UI {
                 ++rejected;
             }
         }
-        char legacySummary[224];
+        char legacySummary[256];
         snprintf(legacySummary, sizeof(legacySummary),
-                 "RetroArch legacy: %zu files checked, %zu ready (Gen I %zu, Gen III %zu), %zu ambiguous, %zu rejected%s",
-                 legacyFRLGSources.filesExamined, ready, gen1Ready, gen3Ready, ambiguous, rejected,
+                 "RetroArch legacy: %zu files checked, %zu ready (Gen I %zu, Gen II %zu, Gen III %zu), %zu ambiguous, %zu rejected%s",
+                 legacyFRLGSources.filesExamined, ready, gen1Ready, gen2Ready, gen3Ready,
+                 ambiguous, rejected,
                  legacyFRLGSources.limitReached ? ", scan limit reached" : "");
         logInfoToFile(legacySummary);
     }
@@ -126,9 +130,6 @@ namespace UI {
                     std::string backupPath = backupSaveData(userUid, titleId, titleName, g_autoBackupEnabled);
                     if (backupPath.empty()) {
                         logErrorToFile("Failed to back up save data");
-                        // Tell the user and stay put. Returning here (the old behaviour) dropped them
-                        // back at the save picker with no message, which is exactly what pressing B
-                        // does -- so a failed backup was indistinguishable from a cancel.
                         backupScreen.reportFailure("Couldn't create the backup. Check SD card space and try again.");
                         continue;
                     }
@@ -162,11 +163,8 @@ namespace UI {
             return false;
         }
 
-        // Read trainer data from the specified backup directory
-        // Auto-detects game version and uses appropriate reading function
         TrainerVariant trainerVariant = readTrainerInfo(backupDir.c_str(), titleId);
 
-        // Use std::visit to extract reference and create TrainerViewScreen
         std::visit([&](auto& trainer) {
             TrainerViewScreen trainerScreen(
                 trainer, titleName, backupDir, titleId, userUid,
@@ -183,10 +181,7 @@ namespace UI {
                 fb.flush();
             }
 
-            // If user pressed + to exit app, stop running
-            if (trainerScreen.hasRequestedExit()) {
-                running = false;
-            }
+            if (trainerScreen.hasRequestedExit()) running = false;
         }, trainerVariant);
         return true;
     }
@@ -218,6 +213,17 @@ namespace UI {
                 return false;
             }
             trainer = PokeVault::Legacy::RBYReadOnlyTrainer::create(*selected.gen1Save, error);
+        } else if (selected.isGen2()) {
+            if (identity->platform != PokeVault::Games::Platform::GameBoyColor ||
+                selected.gen2Save->metadata().sourceGameId != gameId) {
+                error = "RetroArch source is no longer a validated Generation II save";
+                return false;
+            }
+            auto gscTrainer = PokeVault::Legacy::GSCReadOnlyTrainer::create(*selected.gen2Save, error);
+            if (gscTrainer && !gscTrainer->inventoryAvailable())
+                logErrorToFile("GSC optional inventory validation failed; save remains open read-only",
+                               selected.gameId.c_str());
+            trainer = std::move(gscTrainer);
         } else if (selected.isGen3()) {
             if (identity->platform != PokeVault::Games::Platform::GameBoyAdvance ||
                 selected.save->metadata().sourceGameId != gameId) {

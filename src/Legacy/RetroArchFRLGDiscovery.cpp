@@ -1,5 +1,6 @@
 #include "Legacy/RetroArchFRLGDiscovery.h"
 #include "Legacy/RetroArchRBYDiscovery.h"
+#include "Legacy/RetroArchGSCDiscovery.h"
 
 #include "Utils/SHA256.h"
 
@@ -282,6 +283,17 @@ namespace PokeVault::Legacy {
             return LegacySourceStatus::ReadError;
         }
 
+        LegacySourceStatus mapGSCStatus(GSCSourceStatus status) noexcept {
+            switch (status) {
+                case GSCSourceStatus::Ready: return LegacySourceStatus::Ready;
+                case GSCSourceStatus::InvalidSave: return LegacySourceStatus::InvalidSave;
+                case GSCSourceStatus::AmbiguousIdentity: return LegacySourceStatus::AmbiguousIdentity;
+                case GSCSourceStatus::ReadError: return LegacySourceStatus::ReadError;
+                case GSCSourceStatus::ScanLimitReached: return LegacySourceStatus::ScanLimitReached;
+            }
+            return LegacySourceStatus::ReadError;
+        }
+
         FRLGSource importRBYSource(const RBYSource& input) {
             FRLGSource output;
             output.path = input.path;
@@ -297,6 +309,37 @@ namespace PokeVault::Legacy {
             output.detail = input.detail;
             output.gen1Save = input.save;
             return output;
+        }
+
+        FRLGSource importGSCSource(const GSCSource& input) {
+            FRLGSource output;
+            output.path = input.path;
+            output.normalizedPath = input.normalizedPath;
+            output.sourceIdentity = input.sourceIdentity;
+            output.canonicalPath = input.canonicalPath;
+            output.fileSize = input.fileSize;
+            output.modifiedTime = input.modifiedTime;
+            output.contentFingerprint = input.contentFingerprint;
+            output.gameId = input.gameId;
+            output.status = mapGSCStatus(input.status);
+            output.gen2ParseError = input.parseError;
+            output.detail = input.detail;
+            output.gen2Save = input.save;
+            return output;
+        }
+
+        void importRootKind(FRLGDiscoveryResult& result, GSCDiscoveryResult::RootKind kind) {
+            if (result.activeRootKind != FRLGDiscoveryResult::RootKind::None) return;
+            switch (kind) {
+                case GSCDiscoveryResult::RootKind::Configured:
+                    result.activeRootKind = FRLGDiscoveryResult::RootKind::Configured;
+                    break;
+                case GSCDiscoveryResult::RootKind::ConventionalFallback:
+                    result.activeRootKind = FRLGDiscoveryResult::RootKind::ConventionalFallback;
+                    break;
+                case GSCDiscoveryResult::RootKind::None:
+                    break;
+            }
         }
     }
 
@@ -350,17 +393,16 @@ namespace PokeVault::Legacy {
             kind = FRLGDiscoveryResult::RootKind::ConventionalFallback;
         }
 
-        // Keep the already accepted Gen III traversal unchanged, then independently run the strict
-        // Gen I scanner over the same approved RetroArch battery-save root. The two parsers never
-        // reinterpret each other's data; this merge is presentation/catalog plumbing only.
+        // Keep the accepted Gen III traversal unchanged, then independently run strict Gen I and
+        // Gen II scanners over the same approved RetroArch battery-save root. This is presentation
+        // plumbing only: no parser is allowed to reinterpret another generation's bytes.
         auto result = discoverFRLGSaves(selectedRoots, limits);
         result.activeRootKind = kind;
 
         RBYScanLimits rbyLimits;
         rbyLimits.maxDepth = limits.maxDepth;
         rbyLimits.maxFiles = limits.maxFiles;
-        auto rby = discoverConfiguredRetroArchRBYSaves(
-            rbyLimits, configPath, conventionalRoot);
+        auto rby = discoverConfiguredRetroArchRBYSaves(rbyLimits, configPath, conventionalRoot);
         result.filesExamined = std::max(result.filesExamined, rby.filesExamined);
         result.limitReached = result.limitReached || rby.limitReached;
         if (result.activeRoot.empty()) result.activeRoot = rby.activeRoot;
@@ -376,9 +418,21 @@ namespace PokeVault::Legacy {
                     break;
             }
         }
-        result.sources.reserve(result.sources.size() + rby.sources.size());
+
+        GSCScanLimits gscLimits;
+        gscLimits.maxDepth = limits.maxDepth;
+        gscLimits.maxFiles = limits.maxFiles;
+        auto gsc = discoverConfiguredRetroArchGSCSaves(gscLimits, configPath, conventionalRoot);
+        result.filesExamined = std::max(result.filesExamined, gsc.filesExamined);
+        result.limitReached = result.limitReached || gsc.limitReached;
+        if (result.activeRoot.empty()) result.activeRoot = gsc.activeRoot;
+        importRootKind(result, gsc.activeRootKind);
+
+        result.sources.reserve(result.sources.size() + rby.sources.size() + gsc.sources.size());
         for (const auto& source : rby.sources)
             result.sources.push_back(importRBYSource(source));
+        for (const auto& source : gsc.sources)
+            result.sources.push_back(importGSCSource(source));
         return result;
     }
 }

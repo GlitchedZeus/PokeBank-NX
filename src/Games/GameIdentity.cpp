@@ -11,9 +11,9 @@ namespace PokeVault::Games {
             {"red_gb",                       "Red",               GameBoy,        1, 0, ReadOnly},
             {"blue_gb",                      "Blue",              GameBoy,        1, 0, ReadOnly},
             {"yellow_gb",                    "Yellow",            GameBoy,        1, 0, ReadOnly},
-            {"gold_gbc",                     "Gold",              GameBoyColor,   2, 0, Planned},
-            {"silver_gbc",                   "Silver",            GameBoyColor,   2, 0, Planned},
-            {"crystal_gbc",                  "Crystal",           GameBoyColor,   2, 0, Planned},
+            {"gold_gbc",                     "Gold",              GameBoyColor,   2, 0, ReadOnly},
+            {"silver_gbc",                   "Silver",            GameBoyColor,   2, 0, ReadOnly},
+            {"crystal_gbc",                  "Crystal",           GameBoyColor,   2, 0, ReadOnly},
             {"ruby_gba",                     "Ruby",              GameBoyAdvance, 3, 0, ReadOnly},
             {"sapphire_gba",                 "Sapphire",          GameBoyAdvance, 3, 0, ReadOnly},
             {"emerald_gba",                  "Emerald",           GameBoyAdvance, 3, 0, ReadOnly},
@@ -29,7 +29,7 @@ namespace PokeVault::Games {
             {"shining_pearl_switch",         "Shining Pearl",     NintendoSwitch, 8, 0x010018E011D92000ULL, NativeSwitch},
             {"legends_arceus_switch",        "Legends Arceus",    NintendoSwitch, 8, 0x01001F5010DFA000ULL, NativeSwitch},
             {"scarlet_switch",               "Scarlet",           NintendoSwitch, 9, 0x0100A3D008C5C000ULL, NativeSwitch},
-            {"violet_switch",                "Violet",            NintendoSwitch, 9, 0x01008F6008C5E000ULL, NativeSwitch},
+            {"violet_switch",                "Violet",             NintendoSwitch, 9, 0x01008DB008C5E000ULL, NativeSwitch},
             {"legends_za_switch",            "Legends Z-A",       NintendoSwitch, 9, 0x0100F43008C44000ULL, NativeSwitch},
         }};
     }

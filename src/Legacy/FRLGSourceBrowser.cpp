@@ -24,6 +24,10 @@ namespace PokeVault::Legacy {
                 return game.platform == Games::Platform::GameBoy &&
                        source.gen1Save->metadata().sourceGameId == game.id;
             }
+            if (source.isGen2()) {
+                return game.platform == Games::Platform::GameBoyColor &&
+                       source.gen2Save->metadata().sourceGameId == game.id;
+            }
             if (source.isGen3()) {
                 return game.platform == Games::Platform::GameBoyAdvance &&
                        source.save->metadata().sourceGameId == game.id;
@@ -33,14 +37,23 @@ namespace PokeVault::Legacy {
 
         std::string trainerNameFor(const FRLGSource& source) {
             if (source.isGen1()) return source.gen1Save->trainer().name;
+            if (source.isGen2()) return source.gen2Save->trainer().name;
             if (source.isGen3()) return source.save->trainer().name;
             return {};
         }
 
         size_t partyCountFor(const FRLGSource& source) {
             if (source.isGen1()) return source.gen1Save->party().size();
+            if (source.isGen2()) return source.gen2Save->party().size();
             if (source.isGen3()) return source.save->party().size();
             return 0;
+        }
+
+        std::string platformLabelFor(const FRLGSource& source, const Games::GameDescriptor& game) {
+            // GSC is shown explicitly as GBC per the legacy-source UI contract; preserve the
+            // accepted long-form Game Boy / Game Boy Advance labels for Gen I and III.
+            if (source.isGen2()) return "GBC";
+            return std::string(Games::platformName(game.platform));
         }
     }
 
@@ -62,7 +75,7 @@ namespace PokeVault::Legacy {
                 cards.push_back({
                     std::string(game->id),
                     std::string(game->title),
-                    std::string(Games::platformName(game->platform)),
+                    platformLabelFor(source, *game),
                     "RETROARCH",
                     std::string(game->id),
                     {},
