@@ -1,6 +1,7 @@
 #include "Integration/Gen2/Gen2StagedEditor.h"
 
 #include "Integration/Gen2/Gen2PersonalData.h"
+#include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
 
 #include <algorithm>
@@ -270,18 +271,21 @@ bool encodeInternationalASCII(std::string_view name, std::size_t maxChars, std::
         error = std::string(fieldLabel) + " cannot be empty";
         return false;
     }
-    if (name.size() > maxChars) {
-        error = std::string(fieldLabel) + " exceeds the Generation II international length limit";
-        return false;
-    }
     encoded.assign(fieldBytes, 0x50);
-    for (std::size_t i = 0; i < name.size(); ++i) {
-        const unsigned char c = static_cast<unsigned char>(name[i]);
+    std::size_t input = 0;
+    std::size_t output = 0;
+    while (input < name.size()) {
+        if (output >= maxChars) {
+            error = std::string(fieldLabel) + " exceeds the Generation II international length limit";
+            return false;
+        }
+        const unsigned char c = static_cast<unsigned char>(name[input]);
         uint8_t value = 0;
+        std::size_t consumed = 1;
         if (c >= 'A' && c <= 'Z') value = static_cast<uint8_t>(0x80 + c - 'A');
         else if (c >= 'a' && c <= 'z') value = static_cast<uint8_t>(0xA0 + c - 'a');
         else if (c >= '0' && c <= '9') value = static_cast<uint8_t>(0xF6 + c - '0');
-        else {
+        else if (c < 0x80) {
             switch (c) {
                 case ' ': value = 0x7F; break;
                 case '(': value = 0x9A; break;
@@ -301,8 +305,31 @@ bool encodeInternationalASCII(std::string_view name, std::size_t maxChars, std::
                         " contains a character not representable by the conservative Gen II encoder";
                     return false;
             }
+        } else if (input + 2 < name.size() &&
+                   static_cast<unsigned char>(name[input]) == 0xE2 &&
+                   static_cast<unsigned char>(name[input + 1]) == 0x99 &&
+                   static_cast<unsigned char>(name[input + 2]) == 0x82) {
+            value = 0xEF;
+            consumed = 3;
+        } else if (input + 2 < name.size() &&
+                   static_cast<unsigned char>(name[input]) == 0xE2 &&
+                   static_cast<unsigned char>(name[input + 1]) == 0x99 &&
+                   static_cast<unsigned char>(name[input + 2]) == 0x80) {
+            value = 0xF5;
+            consumed = 3;
+        } else if (input + 2 < name.size() &&
+                   static_cast<unsigned char>(name[input]) == 0xE2 &&
+                   static_cast<unsigned char>(name[input + 1]) == 0x80 &&
+                   static_cast<unsigned char>(name[input + 2]) == 0x99) {
+            value = 0xE0;
+            consumed = 3;
+        } else {
+            error = std::string(fieldLabel) +
+                " contains a character not representable by the conservative Gen II encoder";
+            return false;
         }
-        encoded[i] = value;
+        encoded[output++] = value;
+        input += consumed;
     }
     return true;
 }
@@ -909,10 +936,6 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
         error = "new Pokemon level must be in the range 1..100";
         return false;
     }
-    if (pokemon.nickname.empty()) {
-        error = "new Pokemon requires a Generation II nickname/species label";
-        return false;
-    }
     if (!validHeldItem(pokemon.heldItem)) {
         error = "new Pokemon held item is not a usable Generation II item id";
         return false;
@@ -940,7 +963,7 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
     created.friendship = pokemon.friendship;
     created.pokerus = pokemon.pokerus;
     created.caughtData = pokemon.caughtData;
-    created.nickname = pokemon.nickname;
+    created.nickname = pokemon.nickname.empty() ? std::string(Names::getSpeciesName(pokemon.species)) : pokemon.nickname;
     created.originalTrainer = pokemon.otName.empty() ? trainerName_ : pokemon.otName;
     created.partyRecord = false;
     created.isEgg = false;

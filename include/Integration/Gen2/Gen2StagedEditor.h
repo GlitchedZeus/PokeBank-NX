@@ -56,7 +56,7 @@ struct BoxPokemonEdit {
 struct BoxPokemonCreate {
     uint16_t species = 0;
     uint8_t level = 5;
-    std::string nickname; // Empty -> species label supplied by the caller/UI before staging.
+    std::string nickname; // Empty -> generation-correct species display name.
     std::string otName;   // Empty -> current save trainer name.
     std::optional<uint16_t> trainerId; // Empty -> current save TID.
     uint8_t heldItem = 0;

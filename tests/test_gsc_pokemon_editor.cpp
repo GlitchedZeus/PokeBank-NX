@@ -133,7 +133,7 @@ void runFamily(const L& l,SourceGame game){
     assert(editor->stageBoxPokemonEdit(0,0,edit,error));
     auto changed=editor->boxedPokemon(0,0,error);assert(changed);
     assert(changed->species==26&&changed->nickname=="SPARKY"&&changed->level==20&&changed->heldItem==1);
-    assert(changed->moves==std::array<uint8_t,4>{84,85,0,0});
+    assert((changed->moves==std::array<uint8_t,4>{84,85,0,0}));
     assert(changed->pp[0]==StagedEditor::gen2MoveBasePP(84));
     assert(changed->pp[1]==StagedEditor::gen2MoveBasePP(85));
     assert(changed->dvs[0]==StagedEditor::derivedHPDV({9,8,7,6}));
@@ -191,7 +191,14 @@ void runFamily(const L& l,SourceGame game){
     assert(added->originalTrainer=="ASH"&&added->trainerId==0x1234&&!added->shiny);
     const auto* createdPersonal=personalRecord(158);assert(createdPersonal);
     assert(added->experience==Pokemon::getExpForLevel(5,createdPersonal->experienceGrowth));
-    assert(added->statExperience==std::array<uint16_t,5>{0,0,0,0,0});
+    assert((added->statExperience==std::array<uint16_t,5>{0,0,0,0,0}));
+
+    BoxPokemonCreate defaultNamed=created;defaultNamed.species=25;defaultNamed.nickname.clear();
+    size_t defaultSlot=99;assert(editor->stageAddBoxPokemon(5,defaultNamed,defaultSlot,error));
+    auto defaultMon=editor->boxedPokemon(5,0,error);assert(defaultMon&&defaultMon->nickname=="Pikachu");
+    BoxPokemonEdit genderGlyph;genderGlyph.nickname="NIDORAN\xE2\x99\x80";
+    assert(editor->stageBoxPokemonEdit(5,0,genderGlyph,error));
+    auto glyphMon=editor->boxedPokemon(5,0,error);assert(glyphMon&&glyphMon->nickname=="NIDORAN\xE2\x99\x80");
 
     // Full box refuses add/clone and never overwrites.
     auto fullRaw=fixture(l);fullBox(fullRaw,4);checksum(fullRaw,l);

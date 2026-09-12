@@ -4,6 +4,7 @@ GEN2_STAGED_EDITOR_COMMON := \
 	src/Integration/Gen2/Gen2ReadOnlySave.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
 	src/Integration/Gen2/Gen2PersonalData.cpp \
+	src/Names/SpeciesNames.cpp \
 	src/Pokemon/Experience.cpp
 
 GEN2_STAGED_EDITOR_SOURCES := tests/test_gsc_staged_editor.cpp $(GEN2_STAGED_EDITOR_COMMON)
