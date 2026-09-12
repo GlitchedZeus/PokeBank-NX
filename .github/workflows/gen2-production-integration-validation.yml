@@ -1,0 +1,178 @@
+name: Gen II production integration validation
+
+on:
+  push:
+    branches:
+      - integration/gen2-staged-editor-20260912
+
+permissions:
+  contents: read
+
+jobs:
+  exact-host-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_SHA: 3618f2423ba48be4fcaee138beb1fadec36792bd
+      BASE_SHA: 6ef650334194ad16c5db52cc7fb3fc89469af0f6
+    steps:
+      - name: Checkout workflow carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Checkout exact integrated application
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 2
+          submodules: recursive
+      - name: Exact identity and invariants
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse HEAD^)" = "$BASE_SHA"
+          git -C application diff --check "$BASE_SHA" "$APP_SHA"
+          grep -q '0x01008F6008C5E000ULL' application/src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' application/include/Safety/SourceMutationPolicy.h
+          ! grep -q 'row("SID"' application/src/UI/TrainerViewScreenGSCOverlay.cpp
+          grep -q 'trainer.trainerGender == 0 ? "Male" : "Female"' application/src/UI/TrainerViewScreenGSCOverlay.cpp
+          echo 'git diff --check: PASS'
+          echo 'VIOLET TITLE ID: PASS'
+          echo 'GSC GENDER/SID UI INVARIANTS: PASS'
+      - name: Clean and run full host suite
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+          echo 'FULL HOST SUITE: PASS'
+      - name: Explicit regression categories
+        working-directory: application
+        run: |
+          set -euo pipefail
+          ./build-host/test_gsc_staged_editor
+          echo 'GEN II STAGED EDITOR TESTS: PASS'
+          ./build-host/test_gsc_gen2_adapter
+          echo 'GEN II PARSER REGRESSION: PASS'
+          ./build-host/test_gsc_inventory
+          echo 'GEN II INVENTORY REGRESSION: PASS'
+          ./build-host/test_gsc_readonly_bridge
+          echo 'GSC BRIDGE REGRESSION: PASS'
+          ./build-host/test_rby_gen1_adapter
+          ./build-host/test_rby_inventory
+          ./build-host/test_rby_discovery
+          ./build-host/test_rby_source_browser
+          ./build-host/test_rby_readonly_bridge
+          echo 'GEN I RBY REGRESSION: PASS'
+          ./build-host/test_pksm_gen3_adapter
+          ./build-host/test_gen3_native_slice
+          ./build-host/test_retroarch_frlg_discovery
+          ./build-host/test_legacy_frlg_browse
+          ./build-host/test_legacy_source_bindings
+          echo 'FRLG REGRESSION: PASS'
+          ./build-host/test_rse_gen3_adapter
+          ./build-host/test_rse_gen3_native_slice
+          echo 'RSE REGRESSION: PASS'
+          ./build-host/test_write_policy
+          ./build-host/test_source_mutation_policy
+          echo 'SOURCE MUTATION POLICY: PASS'
+      - name: Focused RSE save-open regression
+        working-directory: application
+        run: |
+          set -euo pipefail
+          SOURCES="tests/test_rse_open_regression.cpp \
+            src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+            src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp \
+            src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
+            src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
+            src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
+            src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \
+            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
+            -o build-host/test_rse_open_regression
+          ./build-host/test_rse_open_regression
+          echo 'FOCUSED RSE SAVE-OPEN REGRESSION: PASS'
+      - name: ASan and UBSan matrix
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-sanitize
+          SOURCES="tests/test_rse_open_regression.cpp \
+            src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+            src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp \
+            src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
+            src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
+            src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
+            src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O1 \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
+            -o build-host/test_rse_open_regression_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize
+          echo 'ASan: PASS'
+          echo 'UBSan: PASS'
+
+  exact-native-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_SHA: 3618f2423ba48be4fcaee138beb1fadec36792bd
+      RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+      EXPECTED_RECOVERY_ROMFS: 3289
+      EXPECTED_FINAL_ROMFS: 3292
+    steps:
+      - name: Checkout workflow carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Checkout exact integrated application
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 2
+          submodules: recursive
+      - name: Checkout recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+      - name: Device asset preflight
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py)
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+      - name: Native devkitA64 compile probes and link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            find build -name Gen2StagedEditor.o -type f | grep -q .
+            find build -name GSCReadOnlyTrainer.o -type f | grep -q .
+            find build -name TrainerViewScreenGSCOverlay.o -type f | grep -q .
+            find build -name TrainerViewScreen.o -type f | grep -q .
+            find build -name PokemonDetailsDispatcher.o -type f | grep -q .
+          '
+          echo 'GEN II EDITOR NATIVE COMPILE: PASS'
+          echo 'GSC BRIDGE NATIVE COMPILE: PASS'
+          echo 'GSC EDITOR UI NATIVE COMPILE: PASS'
+          echo 'TRAINER UI NATIVE COMPILE: PASS'
+          echo 'DETAILS/DISPATCHER NATIVE COMPILE: PASS'
+          echo 'NATIVE DEVKITA64 COMPILE: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
