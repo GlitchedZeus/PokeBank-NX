@@ -1,0 +1,44 @@
+name: make-clean-standalone-candidate
+
+on:
+  push:
+    branches:
+      - dev/standalone-runtime-audit-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Build clean candidate directly on production parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "PokeBank NX CI"
+          git config user.email "actions@users.noreply.github.com"
+          SOURCE=661d9efe3945575cb796d1e3d0514548a252b939
+          PROD=3618f2423ba48be4fcaee138beb1fadec36792bd
+          BRANCH=dev/standalone-runtime-candidate-20260912
+          git fetch origin "$PROD" "$SOURCE"
+          git checkout --detach "$PROD"
+          git checkout "$SOURCE" -- \
+            CURRENT_STATUS.md Makefile.host Makefile.host.standalone README.md \
+            docs/CLASSIC_SAVE_EDITOR_ARCHITECTURE.md docs/STANDALONE_RUNTIME.md docs/UI_OWNERSHIP_STATUS.md \
+            include/Globals.h include/Trainer/Bank.h include/UI/TrainerViewScreenBase.h \
+            include/Utils/FileUtilities.h include/Utils/Logger.h include/Utils/PokeBankPaths.h include/Utils/Settings.h \
+            src/Trainer/Bank.cpp src/UI/BackupSelectionScreen.cpp src/UI/TrainerViewScreenBase.inc \
+            src/UI/TrainerViewScreenGSCOverlay.cpp src/UI/UI.cpp src/Utils/FileUtilities.cpp src/Utils/Logger.cpp \
+            src/Utils/Settings.cpp src/main.cpp \
+            tests/test_clean_install_runtime.cpp tests/test_pokebank_paths.cpp tests/test_runtime_dependency_contract.cpp
+          git diff --check
+          test -z "$(git diff --name-only -- .github/workflows)"
+          git add -A
+          git commit -m "core: make pokebank runtime standalone"
+          echo "CANDIDATE_HEAD=$(git rev-parse HEAD)"
+          echo "CANDIDATE_TREE=$(git rev-parse HEAD^{tree})"
+          git push origin HEAD:refs/heads/$BRANCH
