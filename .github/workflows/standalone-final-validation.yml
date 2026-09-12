@@ -1,0 +1,193 @@
+name: standalone-final-validation
+
+on:
+  push:
+    branches:
+      - ci/standalone-final-validation-20260912
+
+permissions:
+  contents: read
+
+env:
+  APP_SHA: 74698c3f6c8427dd6810c4259d520f015da7ba25
+  APP_TREE: 3b34a375a3b6c0418869c819d060654f9e0210ab
+  PROD_SHA: 3618f2423ba48be4fcaee138beb1fadec36792bd
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact application candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          fetch-depth: 4
+          submodules: recursive
+      - name: Verify exact identity, parent and scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          test "$(git rev-parse HEAD^1)" = "$PROD_SHA"
+          git diff --check "$PROD_SHA" "$APP_SHA"
+          git diff --name-only "$PROD_SHA" "$APP_SHA" | sort > /tmp/actual-files
+          cat > /tmp/expected-files <<'EOF'
+CURRENT_STATUS.md
+Makefile.host
+Makefile.host.standalone
+README.md
+docs/CLASSIC_SAVE_EDITOR_ARCHITECTURE.md
+docs/STANDALONE_RUNTIME.md
+docs/UI_OWNERSHIP_STATUS.md
+include/Globals.h
+include/Trainer/Bank.h
+include/UI/TrainerViewScreenBase.h
+include/Utils/FileUtilities.h
+include/Utils/Logger.h
+include/Utils/PokeBankPaths.h
+include/Utils/Settings.h
+src/Trainer/Bank.cpp
+src/UI/BackupSelectionScreen.cpp
+src/UI/TrainerViewScreenBase.inc
+src/UI/TrainerViewScreenGSCOverlay.cpp
+src/UI/UI.cpp
+src/Utils/FileUtilities.cpp
+src/Utils/Logger.cpp
+src/Utils/Settings.cpp
+src/main.cpp
+tests/test_clean_install_runtime.cpp
+tests/test_pokebank_paths.cpp
+tests/test_runtime_dependency_contract.cpp
+EOF
+          sort -o /tmp/expected-files /tmp/expected-files
+          diff -u /tmp/expected-files /tmp/actual-files
+          test -z "$(git diff --name-only "$PROD_SHA" "$APP_SHA" -- .github/workflows)"
+      - name: Runtime dependency, path, branding and safety invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! git grep -n -I -F 'sdmc:/PKSE' -- src include
+          grep -q 'sdmc:/switch/PokeBank-NX' include/Utils/PokeBankPaths.h
+          grep -q 'exports/gen2' include/Utils/PokeBankPaths.h
+          grep -q 'PokeBank NX Generation II staged export' src/UI/TrainerViewScreenGSCOverlay.cpp
+          ! grep -q 'PokeVault NX Generation II staged export' src/UI/TrainerViewScreenGSCOverlay.cpp
+          ! grep -q 'PokeVault/Exports/Gen2' src/UI/TrainerViewScreenGSCOverlay.cpp
+          grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' include/Safety/SourceMutationPolicy.h
+          grep -q 'LIVE_RETROARCH_WRITE=DISABLED' src/UI/TrainerViewScreenGSCOverlay.cpp
+          grep -q 'LIVE_INSTALLED_GAME_WRITE=DISABLED' src/UI/TrainerViewScreenGSCOverlay.cpp
+          grep -q 'Japanese Generation II remains read-only' docs/STANDALONE_RUNTIME.md
+          echo 'Runtime dependency/path/static safety audit: PASS'
+      - name: Full host suite and explicit regression matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+          ./build-host/test_pokebank_paths
+          ./build-host/test_clean_install_runtime
+          ./build-host/test_runtime_dependency_contract
+          ./build-host/test_write_policy
+          ./build-host/test_source_mutation_policy
+          ./build-host/test_gsc_staged_editor
+          ./build-host/test_gsc_gen2_adapter
+          ./build-host/test_gsc_inventory
+          ./build-host/test_gsc_readonly_bridge
+          ./build-host/test_rby_gen1_adapter
+          ./build-host/test_rby_inventory
+          ./build-host/test_rby_discovery
+          ./build-host/test_rby_source_browser
+          ./build-host/test_rby_readonly_bridge
+          ./build-host/test_retroarch_frlg_discovery
+          ./build-host/test_legacy_frlg_browse
+          ./build-host/test_legacy_source_bindings
+          ./build-host/test_pksm_gen3_adapter
+          ./build-host/test_gen3_native_slice
+          ./build-host/test_rse_gen3_adapter
+          ./build-host/test_rse_gen3_native_slice
+      - name: Independent RSE save-open regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCES="tests/test_rse_open_regression.cpp \
+            src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+            src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp \
+            src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
+            src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
+            src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
+            src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \
+            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
+            -o build-host/test_rse_open_regression
+          ./build-host/test_rse_open_regression
+      - name: ASan and UBSan full host suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-sanitize
+          echo 'ASAN_UBSAN_FULL_HOST: PASS'
+
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout exact application candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 4
+          submodules: recursive
+      - name: Checkout recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+      - name: Recover RomFS and device asset preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          (cd recovery-work && python3 tools/recover_workspace.py)
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+      - name: Full devkitA64 native compile and final link
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            for obj in Gen2StagedEditor.o GSCReadOnlyTrainer.o TrainerViewScreenGSCOverlay.o TrainerViewScreen.o Logger.o Settings.o FileUtilities.o Bank.o BackupSelectionScreen.o UI.o; do
+              find build -name "$obj" -type f | grep -q . || { echo "missing native object: $obj"; exit 1; }
+            done
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          grep -q '0x01008F6008C5E000ULL' application/src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' application/include/Safety/SourceMutationPolicy.h
+          grep -q 'sdmc:/switch/PokeBank-NX' application/include/Utils/PokeBankPaths.h
+          echo 'PATH/FILESYSTEM NATIVE COMPILE: PASS'
+          echo 'GEN II EDITOR NATIVE COMPILE: PASS'
+          echo 'GSC BRIDGE NATIVE COMPILE: PASS'
+          echo 'GSC EDITOR UI NATIVE COMPILE: PASS'
+          echo 'TRAINER/AFFECTED UI NATIVE COMPILE: PASS'
+          echo 'DEVKITA64 COMPILE: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
