@@ -11,17 +11,25 @@ GSC_DISCOVERY_SOURCES := tests/test_gsc_discovery.cpp \
 GSC_SOURCE_BROWSER_SOURCES := tests/test_gsc_source_browser.cpp \
 	src/Legacy/GSCSourceBrowser.cpp src/Legacy/LegacySourceBindings.cpp \
 	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Games/GameIdentity.cpp
+GSC_BRIDGE_SOURCES := tests/test_gsc_readonly_bridge.cpp \
+	src/Legacy/GSCReadOnlyTrainer.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+	src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/BaseStatsGen89.cpp \
+	src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp
+GSC_BRIDGE_FLAGS := -Wno-unused-parameter
 
 GSC_HOST_TESTS := $(HOST_BUILD)/test_gsc_gen2_adapter \
 	$(HOST_BUILD)/test_gsc_inventory \
 	$(HOST_BUILD)/test_gsc_gen2_personal \
 	$(HOST_BUILD)/test_gsc_discovery \
-	$(HOST_BUILD)/test_gsc_source_browser
+	$(HOST_BUILD)/test_gsc_source_browser \
+	$(HOST_BUILD)/test_gsc_readonly_bridge
 GSC_SANITIZE_TESTS := $(HOST_BUILD)/test_gsc_gen2_adapter_sanitize \
 	$(HOST_BUILD)/test_gsc_inventory_sanitize \
 	$(HOST_BUILD)/test_gsc_gen2_personal_sanitize \
 	$(HOST_BUILD)/test_gsc_discovery_sanitize \
-	$(HOST_BUILD)/test_gsc_source_browser_sanitize
+	$(HOST_BUILD)/test_gsc_source_browser_sanitize \
+	$(HOST_BUILD)/test_gsc_readonly_bridge_sanitize
 
 # The core host recipe is defined in Makefile.host.base. Extend both its runtime loop variables
 # and its prerequisite graph so normal/sanitizer invocations build and execute the GSC tests.
@@ -69,3 +77,11 @@ $(HOST_BUILD)/test_gsc_source_browser: $(GSC_SOURCE_BROWSER_SOURCES)
 $(HOST_BUILD)/test_gsc_source_browser_sanitize: $(GSC_SOURCE_BROWSER_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gsc_readonly_bridge: $(GSC_BRIDGE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GSC_BRIDGE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gsc_readonly_bridge_sanitize: $(GSC_BRIDGE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GSC_BRIDGE_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
