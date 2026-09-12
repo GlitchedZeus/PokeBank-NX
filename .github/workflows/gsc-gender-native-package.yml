@@ -1,0 +1,147 @@
+name: GSC gender-fix native build and package
+
+on:
+  push:
+    branches:
+      - ci/gsc-gender-validation-20260912
+
+permissions:
+  contents: read
+
+jobs:
+  native-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      APP_SHA: 50e32d4456f84ea8ac9680c820526770c2b2cf3e
+      APP_TREE: 0c7710907083f2e742474e2061f0157d784f28a2
+      SHORT_SHA: 50e32d44
+      RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+      EXPECTED_RECOVERY_ROMFS: 3289
+      EXPECTED_FINAL_ROMFS: 3292
+
+    steps:
+      - name: Check out recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 0
+
+      - name: Check out exact pushed fix source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 2
+          submodules: recursive
+
+      - name: Verify exact pushed source and invariants
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          test -z "$(git -C application status --porcelain)"
+          grep -q '0x01008F6008C5E000ULL' application/src/Games/GameIdentity.cpp
+          python3 - <<'PY'
+          from pathlib import Path
+          bridge = Path('application/src/Legacy/GSCReadOnlyTrainer.cpp').read_text()
+          ui = Path('application/src/UI/TrainerViewScreenGSCOverlay.cpp').read_text()
+          assert 'sourceGameId_ == "gold_gbc" || sourceGameId_ == "silver_gbc"' in bridge
+          assert 'trainerGender = 0;' in bridge
+          assert 'row("Gender", trainer.trainerGender == 0 ? "Male" : "Female");' in ui
+          assert 'row("SID"' not in ui
+          print('FINAL GSC GENDER SOURCE CHECK: PASS')
+          PY
+          git -C application diff --check HEAD^ HEAD
+
+      - name: Recover and preflight exact final RomFS
+        run: |
+          set -euo pipefail
+          (cd recovery-work && python3 tools/recover_workspace.py) 2>&1 | tee recovery.log
+          grep -q 'Recovery source: committed GitHub RomFS snapshot' recovery.log
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+            cmp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+
+      - name: Native devkitA64 compile and final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            echo "=== native toolchain ==="
+            dkp-pacman -Q libnx devkitA64 switch-tools switch-sdl2 switch-glad switch-lz4 || true
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            find build -name TrainerViewScreenGSCOverlay.o -type f | grep -q .
+            find build -name GSCReadOnlyTrainer.o -type f | grep -q .
+            find build -name Gen2ReadOnlySave.o -type f | grep -q .
+            find build -name PokemonDetailsDispatcher.o -type f | grep -q .
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s application/PokeBankNX.nro
+          echo 'TRAINER UI NATIVE COMPILE: PASS'
+          echo 'GEN II TRAINER BRIDGE NATIVE COMPILE: PASS'
+          echo 'GEN II PARSER NATIVE COMPILE: PASS'
+          echo 'DETAILS DISPATCHER NATIVE COMPILE: PASS'
+          echo 'NATIVE DEVKITA64 COMPILE: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
+
+      - name: Verify embedded identity and exact RomFS
+        run: |
+          set -euo pipefail
+          python3 application/tools/verify_embedded_romfs.py application/PokeBankNX.nro application/romfs --application-source "$APP_SHA" | tee embedded-romfs.json
+          grep -q '"result": "PASS"' embedded-romfs.json
+          grep -q '"file_count": 3292' embedded-romfs.json
+          grep -q "$APP_SHA" embedded-romfs.json
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cmp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          grep -a -q "$SHORT_SHA" application/PokeBankNX.nro
+          echo 'EMBEDDED APPLICATION IDENTITY: PASS'
+          echo 'EMBEDDED ROMFS: PASS'
+
+      - name: Package exact rebuilt NRO and ZIP
+        run: |
+          set -euo pipefail
+          rm -rf device-artifact
+          (cd application && python3 tools/package_device_build.py PokeBankNX.nro --label GSC-Gender-Fix --out-dir ../device-artifact --zip) 2>&1 | tee package.log
+          NRO=$(find device-artifact -maxdepth 1 -name '*.nro' -type f -print -quit)
+          ZIP=$(find device-artifact -maxdepth 1 -name '*.zip' -type f -print -quit)
+          test -n "$NRO" && test -n "$ZIP"
+          NRO_BYTES=$(stat -c%s "$NRO")
+          NRO_SHA=$(sha256sum "$NRO" | awk '{print $1}')
+          ZIP_SHA=$(sha256sum "$ZIP" | awk '{print $1}')
+          cat > device-artifact/GSC_GENDER_FIX_HANDOFF.txt <<EOF
+          APPLICATION_SOURCE=$APP_SHA
+          APPLICATION_TREE=$APP_TREE
+          NRO=$(basename "$NRO")
+          NRO_BYTES=$NRO_BYTES
+          NRO_SHA256=$NRO_SHA
+          ZIP=$(basename "$ZIP")
+          ZIP_SHA256=$ZIP_SHA
+          ROMFS_FILES=$EXPECTED_FINAL_ROMFS
+          STATUS=READY_FOR_TARGETED_GSC_GENDER_DEVICE_TEST_NOT_DEVICE_TESTED
+          EOF
+          sha256sum "$NRO" "$ZIP" > device-artifact/SHA256SUMS.txt
+          cat device-artifact/GSC_GENDER_FIX_HANDOFF.txt
+
+      - name: Upload rebuilt GSC gender-fix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GSC-Gender-Fix-${{ env.SHORT_SHA }}
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
