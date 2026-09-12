@@ -22,98 +22,13 @@ jobs:
           git rev-parse HEAD
           git rev-parse HEAD^{tree}
       - name: Inject field-level diagnostics in workspace only
+        env:
+          PATCH_B64: CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAoKcCA9IFBhdGgoInNyYy9JbnRlZ3JhdGlvbi9HZW4yL0dlbjJTdGFnZWRFZGl0b3IuY3BwIikKcyA9IHAucmVhZF90ZXh0KCkKb2xkID0gIiIiYm9vbCBzYW1lUG9rZW1vbihjb25zdCBQb2tlbW9uUmVjb3JkJiBhLCBjb25zdCBQb2tlbW9uUmVjb3JkJiBiKSBub2V4Y2VwdCB7CiAgICByZXR1cm4gYS5zcGVjaWVzID09IGIuc3BlY2llcyAmJiBhLmhlbGRJdGVtID09IGIuaGVsZEl0ZW0gJiYgYS5tb3ZlcyA9PSBiLm1vdmVzICYmCiAgICAgICAgICAgYS50cmFpbmVySWQgPT0gYi50cmFpbmVySWQgJiYgYS5leHBlcmllbmNlID09IGIuZXhwZXJpZW5jZSAmJgogICAgICAgICAgIGEuc3RhdEV4cGVyaWVuY2UgPT0gYi5zdGF0RXhwZXJpZW5jZSAmJiBhLmR2cyA9PSBiLmR2cyAmJiBhLnBwID09IGIucHAgJiYKICAgICAgICAgICBhLnBwVXBzID09IGIucHBVcHMgJiYgYS5mcmllbmRzaGlwID09IGIuZnJpZW5kc2hpcCAmJiBhLnBva2VydXMgPT0gYi5wb2tlcnVzICYmCiAgICAgICAgICAgYS5jYXVnaHREYXRhID09IGIuY2F1Z2h0RGF0YSAmJiBhLmxldmVsID09IGIubGV2ZWwgJiYgYS5vcmlnaW5hbFRyYWluZXIgPT0gYi5vcmlnaW5hbFRyYWluZXIgJiYKICAgICAgICAgICBhLm5pY2tuYW1lID09IGIubmlja25hbWUgJiYgYS5pc0VnZyA9PSBiLmlzRWdnICYmIGEuc2hpbnkgPT0gYi5zaGlueSAmJgogICAgICAgICAgIGEuZ2VuZGVyID09IGIuZ2VuZGVyOwp9CiIiIgpuZXcgPSAiIiJzdGQ6OnN0cmluZyBwb2tlbW9uTWlzbWF0Y2hEZXRhaWwoY29uc3QgUG9rZW1vblJlY29yZCYgcmVwYXJzZWQsIGNvbnN0IFBva2Vtb25SZWNvcmQmIGV4cGVjdGVkKSB7CiAgICBzdGQ6Om9zdHJpbmdzdHJlYW0gb3M7CiAgICBhdXRvIGFkZCA9IFsmXShjb25zdCBjaGFyKiBmaWVsZCwgY29uc3QgYXV0byYgYWN0dWFsLCBjb25zdCBhdXRvJiB3YW50ZWQpIHsKICAgICAgICBpZiAoYWN0dWFsID09IHdhbnRlZCkgcmV0dXJuOwogICAgICAgIGlmIChvcy50ZWxscCgpID4gMCkgb3MgPDwgIjsgIjsKICAgICAgICBvcyA8PCBmaWVsZCA8PCAiIGV4cGVjdGVkPSIgPDwgK3dhbnRlZCA8PCAiIHJlcGFyc2VkPSIgPDwgK2FjdHVhbDsKICAgIH07CiAgICBhZGQoInNwZWNpZXMiLCByZXBhcnNlZC5zcGVjaWVzLCBleHBlY3RlZC5zcGVjaWVzKTsKICAgIGFkZCgiaGVsZEl0ZW0iLCByZXBhcnNlZC5oZWxkSXRlbSwgZXhwZWN0ZWQuaGVsZEl0ZW0pOwogICAgYWRkKCJ0cmFpbmVySWQiLCByZXBhcnNlZC50cmFpbmVySWQsIGV4cGVjdGVkLnRyYWluZXJJZCk7CiAgICBhZGQoImV4cGVyaWVuY2UiLCByZXBhcnNlZC5leHBlcmllbmNlLCBleHBlY3RlZC5leHBlcmllbmNlKTsKICAgIGZvciAoc3RkOjpzaXplX3QgaSA9IDA7IGkgPCA0OyArK2kpIHsKICAgICAgICBjb25zdCBzdGQ6OnN0cmluZyBtb3ZlRmllbGQgPSAibW92ZSIgKyBzdGQ6OnRvX3N0cmluZyhpICsgMSk7CiAgICAgICAgY29uc3Qgc3RkOjpzdHJpbmcgcHBGaWVsZCA9ICJwcCIgKyBzdGQ6OnRvX3N0cmluZyhpICsgMSk7CiAgICAgICAgY29uc3Qgc3RkOjpzdHJpbmcgdXBGaWVsZCA9ICJwcFVwcyIgKyBzdGQ6OnRvX3N0cmluZyhpICsgMSk7CiAgICAgICAgYWRkKG1vdmVGaWVsZC5jX3N0cigpLCByZXBhcnNlZC5tb3Zlc1tpXSwgZXhwZWN0ZWQubW92ZXNbaV0pOwogICAgICAgIGFkZChwcEZpZWxkLmNfc3RyKCksIHJlcGFyc2VkLnBwW2ldLCBleHBlY3RlZC5wcFtpXSk7CiAgICAgICAgYWRkKHVwRmllbGQuY19zdHIoKSwgcmVwYXJzZWQucHBVcHNbaV0sIGV4cGVjdGVkLnBwVXBzW2ldKTsKICAgIH0KICAgIGZvciAoc3RkOjpzaXplX3QgaSA9IDA7IGkgPCA1OyArK2kpIHsKICAgICAgICBjb25zdCBzdGQ6OnN0cmluZyBzdGF0RmllbGQgPSAic3RhdEV4cCIgKyBzdGQ6OnRvX3N0cmluZyhpKTsKICAgICAgICBjb25zdCBzdGQ6OnN0cmluZyBkdkZpZWxkID0gImR2IiArIHN0ZDo6dG9fc3RyaW5nKGkpOwogICAgICAgIGFkZChzdGF0RmllbGQuY19zdHIoKSwgcmVwYXJzZWQuc3RhdEV4cGVyaWVuY2VbaV0sIGV4cGVjdGVkLnN0YXRFeHBlcmllbmNlW2ldKTsKICAgICAgICBhZGQoZHZGaWVsZC5jX3N0cigpLCByZXBhcnNlZC5kdnNbaV0sIGV4cGVjdGVkLmR2c1tpXSk7CiAgICB9CiAgICBhZGQoImZyaWVuZHNoaXAiLCByZXBhcnNlZC5mcmllbmRzaGlwLCBleHBlY3RlZC5mcmllbmRzaGlwKTsKICAgIGFkZCgicG9rZXJ1cyIsIHJlcGFyc2VkLnBva2VydXMsIGV4cGVjdGVkLnBva2VydXMpOwogICAgYWRkKCJjYXVnaHREYXRhIiwgcmVwYXJzZWQuY2F1Z2h0RGF0YSwgZXhwZWN0ZWQuY2F1Z2h0RGF0YSk7CiAgICBhZGQoImxldmVsIiwgcmVwYXJzZWQubGV2ZWwsIGV4cGVjdGVkLmxldmVsKTsKICAgIGFkZCgiaXNFZ2ciLCByZXBhcnNlZC5pc0VnZywgZXhwZWN0ZWQuaXNFZ2cpOwogICAgYWRkKCJzaGlueSIsIHJlcGFyc2VkLnNoaW55LCBleHBlY3RlZC5zaGlueSk7CiAgICBhZGQoImdlbmRlciIsIHJlcGFyc2VkLmdlbmRlciwgZXhwZWN0ZWQuZ2VuZGVyKTsKICAgIGlmIChyZXBhcnNlZC5vcmlnaW5hbFRyYWluZXIgIT0gZXhwZWN0ZWQub3JpZ2luYWxUcmFpbmVyKSB7CiAgICAgICAgaWYgKG9zLnRlbGxwKCkgPiAwKSBvcyA8PCAiOyAiOwogICAgICAgIG9zIDw8ICJvcmlnaW5hbFRyYWluZXIgZXhwZWN0ZWQ9JyIgPDwgZXhwZWN0ZWQub3JpZ2luYWxUcmFpbmVyIDw8ICInIHJlcGFyc2VkPSciIDw8IHJlcGFyc2VkLm9yaWdpbmFsVHJhaW5lciA8PCAiJyI7CiAgICB9CiAgICBpZiAocmVwYXJzZWQubmlja25hbWUgIT0gZXhwZWN0ZWQubmlja25hbWUpIHsKICAgICAgICBpZiAob3MudGVsbHAoKSA+IDApIG9zIDw8ICI7ICI7CiAgICAgICAgb3MgPDwgIm5pY2tuYW1lIGV4cGVjdGVkPSciIDw8IGV4cGVjdGVkLm5pY2tuYW1lIDw8ICInIHJlcGFyc2VkPSciIDw8IHJlcGFyc2VkLm5pY2tuYW1lIDw8ICInIjsKICAgIH0KICAgIHJldHVybiBvcy5zdHIoKTsKfQoKYm9vbCBzYW1lUG9rZW1vbihjb25zdCBQb2tlbW9uUmVjb3JkJiBhLCBjb25zdCBQb2tlbW9uUmVjb3JkJiBiKSBub2V4Y2VwdCB7CiAgICByZXR1cm4gcG9rZW1vbk1pc21hdGNoRGV0YWlsKGEsIGIpLmVtcHR5KCk7Cn0KIiIiCmlmIG9sZCBub3QgaW4gczoKICAgIHJhaXNlIFN5c3RlbUV4aXQoInNhbWVQb2tlbW9uIGFuY2hvciBub3QgZm91bmQiKQpzID0gcy5yZXBsYWNlKG9sZCwgbmV3LCAxKQpvbGQyID0gIiIiICAgIGF1dG8gdmVyaWZpZWQgPSBib3hlZFBva2Vtb24oYm94LCBzbG90LCBlcnJvcik7CiAgICBpZiAoIXZlcmlmaWVkIHx8ICFzYW1lUG9rZW1vbigqdmVyaWZpZWQsIGFmdGVyKSkgewogICAgICAgIGlmIChlcnJvci5lbXB0eSgpKSBlcnJvciA9ICJzdGFnZWQgR2VuZXJhdGlvbiBJSSBQb2tlbW9uIGVkaXQgZmFpbGVkIHNlbWFudGljIHJvdW5kLXRyaXAiOwoiIiIKbmV3MiA9ICIiIiAgICBhdXRvIHZlcmlmaWVkID0gYm94ZWRQb2tlbW9uKGJveCwgc2xvdCwgZXJyb3IpOwogICAgaWYgKCF2ZXJpZmllZCB8fCAhc2FtZVBva2Vtb24oKnZlcmlmaWVkLCBhZnRlcikpIHsKICAgICAgICBpZiAoZXJyb3IuZW1wdHkoKSkgewogICAgICAgICAgICBjb25zdCBzdGQ6OnN0cmluZyBtaXNtYXRjaCA9IHZlcmlmaWVkID8gcG9rZW1vbk1pc21hdGNoRGV0YWlsKCp2ZXJpZmllZCwgYWZ0ZXIpIDogc3RkOjpzdHJpbmcoInJlcGFyc2UgdW5hdmFpbGFibGUiKTsKICAgICAgICAgICAgZXJyb3IgPSAic3RhZ2VkIEdlbmVyYXRpb24gSUkgUG9rZW1vbiBlZGl0IGZhaWxlZCBzZW1hbnRpYyByb3VuZC10cmlwOiAiICsgbWlzbWF0Y2g7CiAgICAgICAgfQoiIiIKaWYgb2xkMiBub3QgaW4gczoKICAgIHJhaXNlIFN5c3RlbUV4aXQoInJvdW5kdHJpcCBhbmNob3Igbm90IGZvdW5kIikKcyA9IHMucmVwbGFjZShvbGQyLCBuZXcyLCAxKQpwLndyaXRlX3RleHQocykKCnQgPSBQYXRoKCJ0ZXN0cy90ZXN0X2dzY19wb2tlbW9uX2VkaXRvci5jcHAiKQp0cyA9IHQucmVhZF90ZXh0KCkKYW5jaG9yID0gIiAgICBhc3NlcnQoZWRpdG9yLT5zdGFnZUJveFBva2Vtb25FZGl0KDAsMCxlZGl0LGVycm9yKSk7XG4iCnJlcGwgPSAiIiIgICAgaWYgKCFlZGl0b3ItPnN0YWdlQm94UG9rZW1vbkVkaXQoMCwwLGVkaXQsZXJyb3IpKSB7CiAgICAgICAgc3RkOjpjZXJyIDw8ICJHRU4yX0NPTVBPVU5EX1JPVU5EVFJJUF9GQUlMVVJFOiAiIDw8IGVycm9yIDw8ICJcXG4iOwogICAgICAgIHJldHVybjsKICAgIH0KIiIiCmlmIGFuY2hvciBub3QgaW4gdHM6CiAgICByYWlzZSBTeXN0ZW1FeGl0KCJjb21wb3VuZCB0ZXN0IGFuY2hvciBub3QgZm91bmQiKQp0cyA9IHRzLnJlcGxhY2UoYW5jaG9yLCByZXBsLCAxKQp0LndyaXRlX3RleHQodHMpCg==
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('src/Integration/Gen2/Gen2StagedEditor.cpp')
-          s = p.read_text()
-          old = '''bool samePokemon(const PokemonRecord& a, const PokemonRecord& b) noexcept {
-    return a.species == b.species && a.heldItem == b.heldItem && a.moves == b.moves &&
-           a.trainerId == b.trainerId && a.experience == b.experience &&
-           a.statExperience == b.statExperience && a.dvs == b.dvs && a.pp == b.pp &&
-           a.ppUps == b.ppUps && a.friendship == b.friendship && a.pokerus == b.pokerus &&
-           a.caughtData == b.caughtData && a.level == b.level && a.originalTrainer == b.originalTrainer &&
-           a.nickname == b.nickname && a.isEgg == b.isEgg && a.shiny == b.shiny &&
-           a.gender == b.gender;
-}
-'''
-          new = '''std::string pokemonMismatchDetail(const PokemonRecord& reparsed, const PokemonRecord& expected) {
-    std::ostringstream os;
-    auto add = [&](const char* field, const auto& actual, const auto& wanted) {
-        if (actual == wanted) return;
-        if (os.tellp() > 0) os << "; ";
-        os << field << " expected=" << +wanted << " reparsed=" << +actual;
-    };
-    add("species", reparsed.species, expected.species);
-    add("heldItem", reparsed.heldItem, expected.heldItem);
-    add("trainerId", reparsed.trainerId, expected.trainerId);
-    add("experience", reparsed.experience, expected.experience);
-    for (std::size_t i = 0; i < 4; ++i) {
-        add((std::string("move") + std::to_string(i + 1)).c_str(), reparsed.moves[i], expected.moves[i]);
-        add((std::string("pp") + std::to_string(i + 1)).c_str(), reparsed.pp[i], expected.pp[i]);
-        add((std::string("ppUps") + std::to_string(i + 1)).c_str(), reparsed.ppUps[i], expected.ppUps[i]);
-    }
-    for (std::size_t i = 0; i < 5; ++i) {
-        add((std::string("statExp") + std::to_string(i)).c_str(), reparsed.statExperience[i], expected.statExperience[i]);
-        add((std::string("dv") + std::to_string(i)).c_str(), reparsed.dvs[i], expected.dvs[i]);
-    }
-    add("friendship", reparsed.friendship, expected.friendship);
-    add("pokerus", reparsed.pokerus, expected.pokerus);
-    add("caughtData", reparsed.caughtData, expected.caughtData);
-    add("level", reparsed.level, expected.level);
-    add("isEgg", reparsed.isEgg, expected.isEgg);
-    add("shiny", reparsed.shiny, expected.shiny);
-    add("gender", reparsed.gender, expected.gender);
-    if (reparsed.originalTrainer != expected.originalTrainer) {
-        if (os.tellp() > 0) os << "; ";
-        os << "originalTrainer expected='" << expected.originalTrainer << "' reparsed='" << reparsed.originalTrainer << "'";
-    }
-    if (reparsed.nickname != expected.nickname) {
-        if (os.tellp() > 0) os << "; ";
-        os << "nickname expected='" << expected.nickname << "' reparsed='" << reparsed.nickname << "'";
-    }
-    return os.str();
-}
-
-bool samePokemon(const PokemonRecord& a, const PokemonRecord& b) noexcept {
-    return pokemonMismatchDetail(a, b).empty();
-}
-'''
-          if old not in s:
-              raise SystemExit('samePokemon anchor not found')
-          s = s.replace(old, new, 1)
-          old2 = '''    auto verified = boxedPokemon(box, slot, error);
-    if (!verified || !samePokemon(*verified, after)) {
-        if (error.empty()) error = "staged Generation II Pokemon edit failed semantic round-trip";
-'''
-          new2 = '''    auto verified = boxedPokemon(box, slot, error);
-    if (!verified || !samePokemon(*verified, after)) {
-        if (error.empty()) {
-            const std::string mismatch = verified ? pokemonMismatchDetail(*verified, after) : std::string("reparse unavailable");
-            error = "staged Generation II Pokemon edit failed semantic round-trip: " + mismatch;
-        }
-'''
-          if old2 not in s:
-              raise SystemExit('roundtrip anchor not found')
-          s = s.replace(old2, new2, 1)
-          p.write_text(s)
-
-          t = Path('tests/test_gsc_pokemon_editor.cpp')
-          ts = t.read_text()
-          anchor = '    assert(editor->stageBoxPokemonEdit(0,0,edit,error));\n'
-          repl = '''    if (!editor->stageBoxPokemonEdit(0,0,edit,error)) {
-        std::cerr << "GEN2_COMPOUND_ROUNDTRIP_FAILURE: " << error << "\\n";
-        return;
-    }
-'''
-          if anchor not in ts:
-              raise SystemExit('compound test anchor not found')
-          ts = ts.replace(anchor, repl, 1)
-          t.write_text(ts)
-          PY
+          printf '%s' "$PATCH_B64" | base64 -d > /tmp/gen2_diag.py
+          python3 /tmp/gen2_diag.py
       - name: Build focused test
-        run: |
-          make -f Makefile.host.editor build-host/test_gsc_pokemon_editor
+        run: make -f Makefile.host.editor build-host/test_gsc_pokemon_editor
       - name: Run focused diagnostic
         run: |
           set -o pipefail
