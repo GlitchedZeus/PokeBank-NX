@@ -1,0 +1,32 @@
+name: standalone-runtime-audit
+
+on:
+  push:
+    branches:
+      - dev/standalone-runtime-audit-20260912
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Verify exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "HEAD=$(git rev-parse HEAD)"
+          echo "TREE=$(git rev-parse HEAD^{tree})"
+      - name: Audit runtime dependency references
+        shell: bash
+        run: |
+          set -uo pipefail
+          echo '=== RUNTIME DEPENDENCY AUDIT: src/include/romfs ==='
+          git grep -n -I -E 'PKSE|PKSM|PokeVault|pkDex|pkHouse|PKHeX|JKSV|Checkpoint|BASE_SAVE_DIRECTORY|sdmc:/' -- src include romfs 2>/dev/null || true
+          echo '=== RUNTIME PATH LITERALS ONLY ==='
+          git grep -n -I -E 'sdmc:/|/PKSE/' -- src include romfs 2>/dev/null || true
+          echo '=== BUILD/DOC/TEST REFERENCES (classification context) ==='
+          git grep -n -I -E 'PKSE|PKSM|PokeVault|pkDex|pkHouse|PKHeX|JKSV|Checkpoint|BASE_SAVE_DIRECTORY|sdmc:/' -- Makefile 'Makefile.*' README.md CURRENT_STATUS.md PROJECT_STATUS.md docs tests .github 2>/dev/null || true
+          echo '=== END AUDIT ==='
