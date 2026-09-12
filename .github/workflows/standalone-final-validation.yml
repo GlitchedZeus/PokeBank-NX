@@ -36,35 +36,17 @@ jobs:
           test "$(git rev-parse HEAD^1)" = "$PROD_SHA"
           git diff --check "$PROD_SHA" "$APP_SHA"
           git diff --name-only "$PROD_SHA" "$APP_SHA" | sort > /tmp/actual-files
-          cat > /tmp/expected-files <<'EOF'
-CURRENT_STATUS.md
-Makefile.host
-Makefile.host.standalone
-README.md
-docs/CLASSIC_SAVE_EDITOR_ARCHITECTURE.md
-docs/STANDALONE_RUNTIME.md
-docs/UI_OWNERSHIP_STATUS.md
-include/Globals.h
-include/Trainer/Bank.h
-include/UI/TrainerViewScreenBase.h
-include/Utils/FileUtilities.h
-include/Utils/Logger.h
-include/Utils/PokeBankPaths.h
-include/Utils/Settings.h
-src/Trainer/Bank.cpp
-src/UI/BackupSelectionScreen.cpp
-src/UI/TrainerViewScreenBase.inc
-src/UI/TrainerViewScreenGSCOverlay.cpp
-src/UI/UI.cpp
-src/Utils/FileUtilities.cpp
-src/Utils/Logger.cpp
-src/Utils/Settings.cpp
-src/main.cpp
-tests/test_clean_install_runtime.cpp
-tests/test_pokebank_paths.cpp
-tests/test_runtime_dependency_contract.cpp
-EOF
-          sort -o /tmp/expected-files /tmp/expected-files
+          EXPECTED=(
+            CURRENT_STATUS.md Makefile.host Makefile.host.standalone README.md
+            docs/CLASSIC_SAVE_EDITOR_ARCHITECTURE.md docs/STANDALONE_RUNTIME.md docs/UI_OWNERSHIP_STATUS.md
+            include/Globals.h include/Trainer/Bank.h include/UI/TrainerViewScreenBase.h
+            include/Utils/FileUtilities.h include/Utils/Logger.h include/Utils/PokeBankPaths.h include/Utils/Settings.h
+            src/Trainer/Bank.cpp src/UI/BackupSelectionScreen.cpp src/UI/TrainerViewScreenBase.inc
+            src/UI/TrainerViewScreenGSCOverlay.cpp src/UI/UI.cpp src/Utils/FileUtilities.cpp src/Utils/Logger.cpp
+            src/Utils/Settings.cpp src/main.cpp tests/test_clean_install_runtime.cpp tests/test_pokebank_paths.cpp
+            tests/test_runtime_dependency_contract.cpp
+          )
+          printf '%s\n' "${EXPECTED[@]}" | sort > /tmp/expected-files
           diff -u /tmp/expected-files /tmp/actual-files
           test -z "$(git diff --name-only "$PROD_SHA" "$APP_SHA" -- .github/workflows)"
       - name: Runtime dependency, path, branding and safety invariants
@@ -114,16 +96,8 @@ EOF
         shell: bash
         run: |
           set -euo pipefail
-          SOURCES="tests/test_rse_open_regression.cpp \
-            src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
-            src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp \
-            src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
-            src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
-            src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
-            src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \
-            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
-            -o build-host/test_rse_open_regression
+          SOURCES="tests/test_rse_open_regression.cpp src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES -o build-host/test_rse_open_regression
           ./build-host/test_rse_open_regression
       - name: ASan and UBSan full host suite
         shell: bash
@@ -159,9 +133,7 @@ EOF
           test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
           rm -rf application/romfs
           cp -a recovery-work/romfs application/romfs
-          for f in gold_gbc silver_gbc crystal_gbc; do
-            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
-          done
+          for f in gold_gbc silver_gbc crystal_gbc; do cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"; done
           test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
           python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
           grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
