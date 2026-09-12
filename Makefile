@@ -189,7 +189,7 @@ endif
 
 ifeq ($(strip $(ICON)),)
 	icons := $(wildcard *.jpg)
-	ifneq (,$(findstring $(TARGET).jpg,$(icons)))
+	ifneq (,$(findstring $(TARGET).jpg,$(jsons)))
 		export APP_ICON := $(TOPDIR)/$(TARGET).jpg
 	else
 		ifneq (,$(findstring icon.jpg,$(icons)))
@@ -273,7 +273,7 @@ types:
 		if command -v curl >/dev/null 2>&1; then \
 			curl -fsSL "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-ix/scarlet-violet/$$api_id.png" -o "$$outfile"; \
 		else \
-			wget -q "$(TYPE_DIR)/$$local_id.png" "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-ix/scarlet-violet/$$api_id.png"; \
+			wget -q "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-ix/scarlet-violet/$$api_id.png" -O "$$outfile"; \
 		fi || { printf "Failed type #$$api_id\n"; exit 1; }'; \
 	ret=$$?; \
 	if [ $$ret -ne 0 ]; then exit $$ret; fi
