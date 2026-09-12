@@ -1,9 +1,11 @@
 #include "Integration/Gen2/Gen2StagedEditor.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <string>
 #include <vector>
 
 using namespace PokeVault::Integration::Gen2;
@@ -58,6 +60,15 @@ void inventory(std::vector<uint8_t>& d,const L& l){
     pairPocket(d,l.balls,{{kPokeBallItemId,5}});
     d[l.pc]=0;d[l.pc+1]=0xFF;
 }
+void fillItemsPocket(std::vector<uint8_t>& d,size_t ofs){
+    constexpr std::array<uint8_t,20> ids{
+        3,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,27
+    };
+    d[ofs]=static_cast<uint8_t>(ids.size());
+    size_t p=ofs+1;
+    for(uint8_t id:ids){d[p++]=id;d[p++]=1;}
+    d[p]=0xFF;
+}
 void checksum(std::vector<uint8_t>& d,const L& l){
     uint16_t s=0;for(size_t i=0x2009;i<=l.end;i++)s=static_cast<uint16_t>(s+d[i]);
     d[l.sum]=s&0xFF;d[l.sum+1]=s>>8;
@@ -102,23 +113,35 @@ int main(){
         auto editor=StagedEditor::create(*parsed.save,error);assert(editor&&error.empty());
         assert(editor->capabilities().supports(PokeVault::SaveEdit::Capability::TrainerIdentity));
         assert(editor->capabilities().supports(PokeVault::SaveEdit::Capability::Money));
+        assert(editor->capabilities().supports(PokeVault::SaveEdit::Capability::Inventory));
         assert(editor->capabilities().supports(PokeVault::SaveEdit::Capability::Balls));
         assert(editor->capabilities().supports(PokeVault::SaveEdit::Capability::Medicine));
         assert(!editor->capabilities().supports(PokeVault::SaveEdit::Capability::KeyItems));
+        assert(!editor->capabilities().supports(PokeVault::SaveEdit::Capability::PlayerPosition));
         assert(editor->trainerName()=="A"&&editor->money()==123456);
         assert(editor->itemQuantity(InventoryPocket::Items,kPotionItemId)==2);
         assert(editor->itemQuantity(InventoryPocket::Balls,kPokeBallItemId)==5);
         assert(editor->itemQuantity(InventoryPocket::Balls,kMasterBallItemId)==0);
 
+        // Field limits and encoding are validated before staged bytes are accepted.
+        assert(editor->stageTrainerName("ABCDEFG",error)); // exact international maximum length
+        assert(editor->trainerName()=="ABCDEFG");
         assert(editor->stageTrainerName("WILL",error));
+        assert(!editor->stageTrainerName("TOO-LONG",error));
+        assert(!editor->stageTrainerName("A@",error));
         assert(editor->stageMoney(999999,error));
+        assert(!editor->stageMoney(1000000,error));
+
+        // Exercise update, remove, re-add, valid pocket routing, invalid IDs and the device-target trio.
+        assert(editor->stageItemQuantity(InventoryPocket::Items,kPotionItemId,0,error));
+        assert(editor->itemQuantity(InventoryPocket::Items,kPotionItemId)==0);
         assert(editor->stageItemQuantity(InventoryPocket::Items,kPotionItemId,20,error));
         assert(editor->stageItemQuantity(InventoryPocket::Balls,kPokeBallItemId,30,error));
         assert(editor->stageItemQuantity(InventoryPocket::Balls,kMasterBallItemId,1,error));
         assert(!editor->stageItemQuantity(InventoryPocket::Balls,kPotionItemId,1,error));
+        assert(!editor->stageItemQuantity(InventoryPocket::Items,0xFF,1,error));
         assert(!editor->stageItemQuantity(InventoryPocket::Items,kPotionItemId,100,error));
-        assert(!editor->stageTrainerName("TOO-LONG",error));
-        assert(raw==original); // source vector remains sacred
+        assert(raw==original); // caller/source vector remains sacred
         assert(editor->pendingChanges().size()==5);
 
         auto out=editor->finalizedBytes(error);assert(!out.empty()&&error.empty());
@@ -149,11 +172,16 @@ int main(){
         assert(reload.save->trainer().gender&&*reload.save->trainer().gender==1);
     }
     {
-        // Japanese read support remains accepted, but the first write slice deliberately refuses it
-        // until a complete Japanese encoder/mirror round-trip is covered.
-        auto raw=fixture(GS); // use an international fixture only to prove the staged editor itself is gated elsewhere.
-        auto parsed=parse(raw,SourceGame::Silver);assert(parsed);
-        assert(parsed.save->metadata().region==RegionLayout::International);
+        // A full Items pocket must reject another entry rather than overwrite or overflow adjacent data.
+        auto raw=fixture(GS);
+        fillItemsPocket(raw,GS.items);
+        checksum(raw,GS);
+        auto parsed=parse(raw,SourceGame::Gold);assert(parsed);
+        std::string error;auto editor=StagedEditor::create(*parsed.save,error);assert(editor);
+        assert(!editor->stageItemQuantity(InventoryPocket::Items,28,1,error));
+        assert(error.find("full")!=std::string::npos);
+        assert(editor->stagedBytes().size()==raw.size());
+        assert(std::equal(editor->stagedBytes().begin(),editor->stagedBytes().end(),raw.begin()));
     }
     std::cout<<"Generation II staged editor round-trip tests: PASS\n";
 }
