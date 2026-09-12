@@ -1,3 +1,4 @@
 # Permanent host suite is split only to keep the accepted pre-GSC test graph byte-identical.
 include Makefile.host.base
 include Makefile.host.gsc
+include Makefile.host.editor

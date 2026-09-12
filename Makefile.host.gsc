@@ -14,6 +14,7 @@ GSC_SOURCE_BROWSER_SOURCES := tests/test_gsc_source_browser.cpp \
 GSC_BRIDGE_SOURCES := tests/test_gsc_readonly_bridge.cpp \
 	src/Legacy/GSCReadOnlyTrainer.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
 	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+	src/Integration/Gen2/Gen2StagedEditor.cpp \
 	src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/BaseStatsGen89.cpp \
 	src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp src/Names/NatureNames.cpp \
 	src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
