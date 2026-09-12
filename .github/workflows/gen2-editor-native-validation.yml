@@ -1,0 +1,70 @@
+name: Gen II staged editor native validation
+
+on:
+  push:
+    branches:
+      - dev/gen2-staged-editor-20260912
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      APP_SHA: b104cfca897f1a0187b89c229275e937fae1c726
+      RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+      EXPECTED_RECOVERY_ROMFS: 3289
+      EXPECTED_FINAL_ROMFS: 3292
+    steps:
+      - name: Checkout workflow carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Checkout exact editor candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 2
+          submodules: recursive
+      - name: Checkout recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+      - name: Recover exact RomFS and preserve safety invariants
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          grep -q '0x01008F6008C5E000ULL' application/src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' application/include/Safety/SourceMutationPolicy.h
+          (cd recovery-work && python3 tools/recover_workspace.py)
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py
+      - name: Native devkitA64 compile and link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            find build -name Gen2StagedEditor.o -type f | grep -q .
+            find build -name GSCReadOnlyTrainer.o -type f | grep -q .
+            find build -name TrainerViewScreenGSCOverlay.o -type f | grep -q .
+          '
+          echo 'GEN II STAGED EDITOR NATIVE COMPILE: PASS'
+          echo 'GSC BRIDGE NATIVE COMPILE: PASS'
+          echo 'GSC EDITOR UI NATIVE COMPILE: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
