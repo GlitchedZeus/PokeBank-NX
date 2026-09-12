@@ -3,6 +3,11 @@ from pathlib import Path
 p = Path('tests/test_gsc_pokemon_editor.cpp')
 s = p.read_text()
 
+# Keep the deterministic fixture readable under the project's -Werror policy.
+s = s.replace(
+    "    if(c==' ')return 0x7F;if(c=='-')return 0xE3;if(c=='!')return 0xE7;\n",
+    "    if(c==' ')return 0x7F;\n    if(c=='-')return 0xE3;\n    if(c=='!')return 0xE7;\n")
+
 needle = '    BoxPokemonEdit bad;bad.nickname="ABCDEFGHIJK";assert(!editor->stageBoxPokemonEdit(0,0,bad,error));\n'
 extra = '''    BoxPokemonEdit bad;bad.nickname="ABCDEFGHIJK";assert(!editor->stageBoxPokemonEdit(0,0,bad,error));
     bad={};bad.species=252;assert(!editor->stageBoxPokemonEdit(0,0,bad,error));
