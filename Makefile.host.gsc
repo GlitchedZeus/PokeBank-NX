@@ -27,6 +27,11 @@ GSC_RUNTIME_DISCOVERY_SOURCES := src/Legacy/RetroArchGSCDiscovery.cpp \
 RETROARCH_FRLG_SOURCES += $(GSC_RUNTIME_DISCOVERY_SOURCES)
 RSE_HOST_SOURCES += $(GSC_RUNTIME_DISCOVERY_SOURCES)
 RSE_NATIVE_SOURCES += $(GSC_RUNTIME_DISCOVERY_SOURCES)
+# Makefile.host.base defines these native-slice targets before this extension is included and their
+# recipes link via $^. Add the Gen II runtime dependencies to the already-defined prerequisite lists
+# so both normal and sanitizer native-slice links receive the same configured catalog dependencies.
+$(HOST_BUILD)/test_rse_gen3_native_slice: $(GSC_RUNTIME_DISCOVERY_SOURCES)
+$(HOST_BUILD)/test_rse_gen3_native_slice_sanitize: $(GSC_RUNTIME_DISCOVERY_SOURCES)
 GSC_RUNTIME_CATALOG_SOURCES := tests/test_gsc_runtime_catalog.cpp \
 	$(filter-out tests/test_retroarch_frlg_discovery.cpp,$(RETROARCH_FRLG_SOURCES)) \
 	src/Legacy/FRLGSourceBrowser.cpp src/Legacy/LegacySourceBindings.cpp
