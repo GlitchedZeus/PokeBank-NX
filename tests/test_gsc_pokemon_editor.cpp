@@ -35,7 +35,9 @@ uint8_t encodeChar(char c){
     if(c>='A'&&c<='Z')return static_cast<uint8_t>(0x80+c-'A');
     if(c>='a'&&c<='z')return static_cast<uint8_t>(0xA0+c-'a');
     if(c>='0'&&c<='9')return static_cast<uint8_t>(0xF6+c-'0');
-    if(c==' ')return 0x7F;if(c=='-')return 0xE3;if(c=='!')return 0xE7;
+    if(c==' ')return 0x7F;
+    if(c=='-')return 0xE3;
+    if(c=='!')return 0xE7;
     return 0xE6;
 }
 void text(std::vector<uint8_t>& d,size_t ofs,size_t len,const std::string& s){
