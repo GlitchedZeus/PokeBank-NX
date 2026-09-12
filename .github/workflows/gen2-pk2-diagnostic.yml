@@ -1,0 +1,43 @@
+name: gen2-pk2-diagnostic
+
+on:
+  push:
+    branches:
+      - ci/standalone-final-host-validation-20260912
+
+permissions:
+  contents: read
+
+env:
+  APP_SHA: 6bd5909358b8e274110bc184737980e09ad1e9ab
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 1
+      - name: Instrument only the failing assertion
+        working-directory: application
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/test_gsc_pokemon_editor.cpp')
+          s=p.read_text()
+          old='    assert(editor->stageBoxPokemonEdit(0,0,edit,error));\n'
+          new='    if(!editor->stageBoxPokemonEdit(0,0,edit,error)){ std::cerr << "compound edit failure: " << error << "\\n"; std::abort(); }\n'
+          if old not in s: raise SystemExit('assertion marker missing')
+          p.write_text(s.replace(old,new,1))
+          PY
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_gsc_pokemon_editor.cpp \
+            src/Integration/Gen2/Gen2StagedEditor.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+            src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Integration/Gen2/Gen2PersonalData.cpp \
+            src/Names/SpeciesNames.cpp src/Pokemon/Experience.cpp \
+            -o test_gsc_pokemon_editor_diag
+          ./test_gsc_pokemon_editor_diag
