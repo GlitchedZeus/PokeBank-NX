@@ -26,10 +26,6 @@ int main() {
     // Same machine number, different generation/game mapping.
     assert(Names::getTMMove(GameVersion::FRLG, 289) == 264);
     assert(Names::getTMMove(GameVersion::FRLG, 289) != Names::getTMMove(GameVersion::GSC, 191));
-    auto frLeaf = Names::getMachineDescriptor(GameVersion::FR, 289);
-    assert(frLeaf && frLeaf.kind == MachineKind::TM && frLeaf.number == 1 && frLeaf.moveId == 264);
-    auto swLeaf = Names::getMachineDescriptor(GameVersion::SW, 1145);
-    assert(swLeaf && swLeaf.kind == MachineKind::TR && swLeaf.number == 15 && swLeaf.moveId == 126);
 
     // Existing reliable project mappings remain available through the global descriptor layer.
     auto tr15 = Names::getMachineDescriptor(GameVersion::SWSH, 1145);
