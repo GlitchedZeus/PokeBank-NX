@@ -1,4 +1,4 @@
-name: Gen II Editor Fixup
+name: Gen II Editor Finish Patch
 
 on:
   push:
@@ -10,47 +10,30 @@ permissions:
 
 jobs:
   patch:
-    if: ${{ !contains(github.event.head_commit.message, '[gen2-fixup]') }}
+    if: ${{ !contains(github.event.head_commit.message, '[gen2-finish-applied]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply proven compile fixups
+      - name: Apply final deterministic milestone patch
+        run: python3 tools/dev_finish_gen2_milestone.py
+      - name: Commit patch if needed
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path('src/Integration/Gen2/Gen2StagedEditor.cpp')
-          s = p.read_text()
-          replacements = {
-              'a.otName': 'a.originalTrainer',
-              'b.otName': 'b.originalTrainer',
-              'after.otName': 'after.originalTrainer',
-              'before.otName': 'before.originalTrainer',
-              'verified->otName': 'verified->originalTrainer',
-              'source->otName': 'source->originalTrainer',
-              'created.otName': 'created.originalTrainer',
-          }
-          for old, new in replacements.items():
-              s = s.replace(old, new)
-          old_pp = 'return static_cast<uint8_t>(base + (static_cast<unsigned>(base) * ppUps) / 5u);'
-          new_pp = 'return static_cast<uint8_t>(std::min<unsigned>(63u, base + (static_cast<unsigned>(base) * ppUps) / 5u));'
-          if old_pp not in s:
-              raise SystemExit('expected maxPP expression not found')
-          s = s.replace(old_pp, new_pp)
-          p.write_text(s)
-
-          p = Path('tests/test_gsc_pokemon_editor.cpp')
-          s = p.read_text().replace('changed->otName', 'changed->originalTrainer').replace('added->otName', 'added->originalTrainer')
-          p.write_text(s)
-          PY
           git diff --check
-          git diff --exit-code -- src/Integration/Gen2/Gen2StagedEditor.cpp tests/test_gsc_pokemon_editor.cpp && exit 0 || true
+          if git diff --quiet; then
+            exit 0
+          fi
           git config user.name "PokeBank NX CI"
           git config user.email "actions@users.noreply.github.com"
-          git add src/Integration/Gen2/Gen2StagedEditor.cpp tests/test_gsc_pokemon_editor.cpp
-          git commit -m "gen2: fix staged pokemon record field mapping [gen2-fixup]"
+          git add \
+            Makefile.host Makefile.host.gsc Makefile.host.machine \
+            include/Save/EditableSaveCapabilities.h include/UI/TrainerViewScreen.h \
+            include/Names/MachineDisplay.h \
+            src/Integration/Gen2/Gen2StagedEditor.cpp src/Names/TMMoves.cpp src/Names/MachineDisplay.cpp \
+            src/UI/TrainerViewScreenGSCOverlay.cpp src/UI/Panels/ItemsPanel.cpp src/UI/Dialogs/PickerDialog.cpp \
+            src/UI/Dialogs/SaveConfirmDialog.cpp tests/test_gsc_pokemon_editor.cpp tests/test_machine_display.cpp
+          git commit -m "gen2: finish boxed pokemon UI and machine names [gen2-finish-applied]"
           git push origin HEAD:dev/gen2-pokemon-editor-20260912
