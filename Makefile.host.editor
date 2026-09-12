@@ -1,0 +1,21 @@
+# Classic staged-save editor gates. Kept separate from the accepted read-only Gen I/II/III graphs.
+GEN2_STAGED_EDITOR_SOURCES := tests/test_gsc_staged_editor.cpp \
+	src/Integration/Gen2/Gen2StagedEditor.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+
+EDITOR_HOST_TESTS := $(HOST_BUILD)/test_gsc_staged_editor
+EDITOR_SANITIZE_TESTS := $(HOST_BUILD)/test_gsc_staged_editor_sanitize
+
+HOST_TESTS += $(EDITOR_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(EDITOR_SANITIZE_TESTS)
+host-test: $(EDITOR_HOST_TESTS)
+host-sanitize: $(EDITOR_SANITIZE_TESTS)
+
+$(HOST_BUILD)/test_gsc_staged_editor: $(GEN2_STAGED_EDITOR_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gsc_staged_editor_sanitize: $(GEN2_STAGED_EDITOR_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
