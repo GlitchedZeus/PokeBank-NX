@@ -316,7 +316,7 @@ bool validHeldItem(uint8_t item) noexcept {
 uint8_t maxPP(uint8_t move, uint8_t ppUps) noexcept {
     if (move == 0 || move > kMaxGen2Move || ppUps > 3) return 0;
     const uint8_t base = kGen2BasePP[move];
-    return static_cast<uint8_t>(base + (static_cast<unsigned>(base) * ppUps) / 5u);
+    return static_cast<uint8_t>(std::min<unsigned>(63u, base + (static_cast<unsigned>(base) * ppUps) / 5u));
 }
 
 std::string array4(const std::array<uint8_t, 4>& values) {
@@ -337,7 +337,7 @@ bool samePokemon(const PokemonRecord& a, const PokemonRecord& b) noexcept {
            a.trainerId == b.trainerId && a.experience == b.experience &&
            a.statExperience == b.statExperience && a.dvs == b.dvs && a.pp == b.pp &&
            a.ppUps == b.ppUps && a.friendship == b.friendship && a.pokerus == b.pokerus &&
-           a.caughtData == b.caughtData && a.level == b.level && a.otName == b.otName &&
+           a.caughtData == b.caughtData && a.level == b.level && a.originalTrainer == b.originalTrainer &&
            a.nickname == b.nickname && a.isEgg == b.isEgg && a.shiny == b.shiny &&
            a.gender == b.gender;
 }
@@ -631,7 +631,7 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     if (edit.otName) {
         std::vector<uint8_t> ignored;
         if (!encodePokemonName(*edit.otName, ignored, error)) return false;
-        after.otName = *edit.otName;
+        after.originalTrainer = *edit.otName;
     }
     if (edit.heldItem) {
         if (!validHeldItem(*edit.heldItem)) {
@@ -721,7 +721,7 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     std::vector<uint8_t> nicknameBytes;
     std::vector<uint8_t> otBytes;
     if (!encodePokemonName(after.nickname, nicknameBytes, error) ||
-        !encodePokemonName(after.otName, otBytes, error)) return false;
+        !encodePokemonName(after.originalTrainer, otBytes, error)) return false;
 
     const auto& layout = layoutFor(metadata_.family);
     if (!validBoxLocation(metadata_, layout, box, slot, error)) return false;
@@ -779,8 +779,8 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     if (before.statExperience != verified->statExperience)
         setChange(prefix + "statexp", labelPrefix + "Stat Experience",
                   statExpText(before.statExperience), statExpText(verified->statExperience));
-    if (before.otName != verified->otName)
-        setChange(prefix + "ot", labelPrefix + "OT Name", before.otName, verified->otName);
+    if (before.originalTrainer != verified->originalTrainer)
+        setChange(prefix + "ot", labelPrefix + "OT Name", before.originalTrainer, verified->originalTrainer);
     if (before.trainerId != verified->trainerId)
         setChange(prefix + "tid", labelPrefix + "Trainer ID", std::to_string(before.trainerId), std::to_string(verified->trainerId));
     if (before.friendship != verified->friendship)
@@ -865,7 +865,7 @@ bool StagedEditor::stageCloneBoxPokemon(std::size_t sourceBox, std::size_t sourc
     destinationSlot = count;
 
     std::vector<uint8_t> otBytes, nicknameBytes;
-    if (!encodePokemonName(source->otName, otBytes, error) ||
+    if (!encodePokemonName(source->originalTrainer, otBytes, error) ||
         !encodePokemonName(source->nickname, nicknameBytes, error)) return false;
 
     const auto stagedBackup = staged_;
@@ -941,7 +941,7 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
     created.pokerus = pokemon.pokerus;
     created.caughtData = pokemon.caughtData;
     created.nickname = pokemon.nickname;
-    created.otName = pokemon.otName.empty() ? trainerName_ : pokemon.otName;
+    created.originalTrainer = pokemon.otName.empty() ? trainerName_ : pokemon.otName;
     created.partyRecord = false;
     created.isEgg = false;
     const auto* personal = personalRecord(created.species);
@@ -965,7 +965,7 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
     }
 
     std::vector<uint8_t> otBytes, nicknameBytes;
-    if (!encodePokemonName(created.otName, otBytes, error) ||
+    if (!encodePokemonName(created.originalTrainer, otBytes, error) ||
         !encodePokemonName(created.nickname, nicknameBytes, error)) return false;
 
     const auto& layout = layoutFor(metadata_.family);

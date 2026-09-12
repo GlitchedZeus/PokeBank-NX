@@ -137,7 +137,7 @@ void runFamily(const L& l,SourceGame game){
     assert(changed->pp[0]==StagedEditor::gen2MoveBasePP(84));
     assert(changed->pp[1]==StagedEditor::gen2MoveBasePP(85));
     assert(changed->dvs[0]==StagedEditor::derivedHPDV({9,8,7,6}));
-    assert(changed->otName=="RED"&&changed->trainerId==4321&&changed->friendship==200);
+    assert(changed->originalTrainer=="RED"&&changed->trainerId==4321&&changed->friendship==200);
     const auto* personal=personalRecord(26);assert(personal);
     assert(changed->experience==Pokemon::getExpForLevel(20,personal->experienceGrowth));
     assert(Pokemon::getLevelFromExp(changed->experience,personal->experienceGrowth)==20);
@@ -188,7 +188,7 @@ void runFamily(const L& l,SourceGame game){
     created.moves={10,43,0,0};created.dvs={8,8,8,8};created.friendship=70;
     size_t addSlot=99;assert(editor->stageAddBoxPokemon(3,created,addSlot,error));assert(addSlot==0);
     auto added=editor->boxedPokemon(3,0,error);assert(added&&added->species==158&&added->nickname=="TOTODILE");
-    assert(added->otName=="ASH"&&added->trainerId==0x1234&&!added->shiny);
+    assert(added->originalTrainer=="ASH"&&added->trainerId==0x1234&&!added->shiny);
     const auto* createdPersonal=personalRecord(158);assert(createdPersonal);
     assert(added->experience==Pokemon::getExpForLevel(5,createdPersonal->experienceGrowth));
     assert(added->statExperience==std::array<uint16_t,5>{0,0,0,0,0});
