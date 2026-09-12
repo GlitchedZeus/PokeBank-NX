@@ -1,0 +1,56 @@
+name: Gen II Editor Fixup
+
+on:
+  push:
+    branches:
+      - dev/gen2-pokemon-editor-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[gen2-fixup]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply proven compile fixups
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/Integration/Gen2/Gen2StagedEditor.cpp')
+          s = p.read_text()
+          replacements = {
+              'a.otName': 'a.originalTrainer',
+              'b.otName': 'b.originalTrainer',
+              'after.otName': 'after.originalTrainer',
+              'before.otName': 'before.originalTrainer',
+              'verified->otName': 'verified->originalTrainer',
+              'source->otName': 'source->originalTrainer',
+              'created.otName': 'created.originalTrainer',
+          }
+          for old, new in replacements.items():
+              s = s.replace(old, new)
+          old_pp = 'return static_cast<uint8_t>(base + (static_cast<unsigned>(base) * ppUps) / 5u);'
+          new_pp = 'return static_cast<uint8_t>(std::min<unsigned>(63u, base + (static_cast<unsigned>(base) * ppUps) / 5u));'
+          if old_pp not in s:
+              raise SystemExit('expected maxPP expression not found')
+          s = s.replace(old_pp, new_pp)
+          p.write_text(s)
+
+          p = Path('tests/test_gsc_pokemon_editor.cpp')
+          s = p.read_text().replace('changed->otName', 'changed->originalTrainer').replace('added->otName', 'added->originalTrainer')
+          p.write_text(s)
+          PY
+          git diff --check
+          git diff --exit-code -- src/Integration/Gen2/Gen2StagedEditor.cpp tests/test_gsc_pokemon_editor.cpp && exit 0 || true
+          git config user.name "PokeBank NX CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/Integration/Gen2/Gen2StagedEditor.cpp tests/test_gsc_pokemon_editor.cpp
+          git commit -m "gen2: fix staged pokemon record field mapping [gen2-fixup]"
+          git push origin HEAD:dev/gen2-pokemon-editor-20260912
