@@ -35,4 +35,4 @@ jobs:
           grep -R "0x01008F6008C5E000" -n src include
           grep -R "InstalledGame" -n src include >/dev/null
           grep -R "RetroArchLegacy" -n src include >/dev/null
-# rerun after proven PokemonRecord field-name fix
+# hardened core validation trigger 2026-09-12
