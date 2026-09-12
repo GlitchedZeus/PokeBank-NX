@@ -73,6 +73,13 @@ std::unique_ptr<GSCReadOnlyTrainer> GSCReadOnlyTrainer::create(
     }
     auto trainer = std::unique_ptr<GSCReadOnlyTrainer>(new GSCReadOnlyTrainer(metadata));
     if (!trainer->populate(save, error)) return nullptr;
+
+    // Keep the accepted read-only bridge authoritative. Staged editing is an optional sidecar built
+    // from the already-validated save and owns its own byte clone; failing to create it must never
+    // prevent a safe read-only save from opening.
+    std::string stagedError;
+    trainer->stagedEditor_ = Integration::Gen2::StagedEditor::create(save, stagedError);
+    trainer->stagedEditingUnavailableReason_ = std::move(stagedError);
     return trainer;
 }
 
