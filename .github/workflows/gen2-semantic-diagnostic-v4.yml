@@ -1,0 +1,32 @@
+name: Gen II Semantic Roundtrip Diagnostic V4
+
+on:
+  push:
+    branches:
+      - dev/gen2-pokemon-editor-20260912
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Identity
+        run: |
+          git rev-parse HEAD
+          git rev-parse HEAD^{tree}
+      - name: Inject field-level diagnostics in workspace only
+        run: python3 .github/scripts/gen2_semantic_diag.py
+      - name: Build focused test
+        run: make -f Makefile.host build-host/test_gsc_pokemon_editor
+      - name: Run focused diagnostic
+        run: |
+          set -o pipefail
+          ./build-host/test_gsc_pokemon_editor 2>&1 | tee /tmp/gen2-diagnostic.log
+          grep -F 'GEN2_COMPOUND_ROUNDTRIP_FAILURE:' /tmp/gen2-diagnostic.log
