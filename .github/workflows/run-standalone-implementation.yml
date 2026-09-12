@@ -40,4 +40,6 @@ jobs:
               raise SystemExit('implementation payload missing')
           Path('/tmp/pokebank-standalone-implement.sh').write_text('\n'.join(payload) + '\n')
           PY
+          git config user.name "PokeBank NX CI"
+          git config user.email "actions@users.noreply.github.com"
           bash /tmp/pokebank-standalone-implement.sh
