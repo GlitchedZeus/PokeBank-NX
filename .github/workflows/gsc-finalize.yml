@@ -1,0 +1,335 @@
+name: GSC pinned-assets finalizer
+
+on:
+  push:
+    branches: [feature/pokebank-playable]
+    paths: [.github/workflows/gsc-finalize.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pokebank-gsc-finalize
+  cancel-in-progress: false
+
+env:
+  STARTING_HEAD: 15ad94ab077fd81dabb5abf47da1943bff741b87
+  STARTING_TREE: a84be75a55686aa7f1ba5b3cfc5eff71d80692bd
+  GBC_REPO: libretro-thumbnails/Nintendo_-_Game_Boy_Color
+  GBC_PIN: 0931985ba8a3a9f38fb87f006611a13dc094260f
+  NAMED_BOXARTS_TREE: 19e9d2ffcc7896f72aa7eb6b8f3e2d56730e75f0
+  GOLD_PATH: Named_Boxarts/Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).png
+  GOLD_BLOB: abc749bca2673b144113abe3929ae52217dfdddc
+  SILVER_PATH: Named_Boxarts/Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).png
+  SILVER_BLOB: f075e64ded41169bb0c8ae47edc0fc2ed5f6149c
+  CRYSTAL_PATH: Named_Boxarts/Pokemon - Crystal Version (USA, Europe) (Rev 1).png
+  CRYSTAL_BLOB: 36fb3c05b3a61b3b5d8c25474ffddc77a749ef6d
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out guarded branch tip
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          ref: feature/pokebank-playable
+
+      - name: Guard starting lineage and safety identity
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$STARTING_HEAD" HEAD
+          test "$(git rev-parse "$STARTING_HEAD^{tree}")" = "$STARTING_TREE"
+          test -z "$(git status --porcelain)"
+          grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
+
+      - name: Prove all three pinned upstream Git objects before staging anything
+        run: |
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/gbc-upstream"
+          anon_home="$RUNNER_TEMP/anon-home"
+          rm -rf "$upstream" "$anon_home"
+          mkdir -p "$anon_home"
+          git init -q "$upstream"
+          git -C "$upstream" remote add origin "https://github.com/$GBC_REPO.git"
+          HOME="$anon_home" GIT_CONFIG_GLOBAL=/dev/null git -C "$upstream" fetch --depth=1 origin "$GBC_PIN"
+          test "$(git -C "$upstream" rev-parse FETCH_HEAD)" = "$GBC_PIN"
+          test "$(git -C "$upstream" rev-parse "$GBC_PIN:Named_Boxarts")" = "$NAMED_BOXARTS_TREE"
+          mkdir -p "$RUNNER_TEMP/gsc-assets"
+          : > "$RUNNER_TEMP/gsc-assets.env"
+          : > "$RUNNER_TEMP/gsc-provenance.tsv"
+          verify_asset() {
+            local label="$1" game_id="$2" path="$3" expected_png_blob="$4" out="$5"
+            local ls mode type entry_blob resolved_path png_blob target sig sha
+            ls="$(git -C "$upstream" ls-tree "$GBC_PIN" -- "$path")"
+            test -n "$ls"
+            mode="$(printf '%s\n' "$ls" | awk '{print $1}')"
+            type="$(printf '%s\n' "$ls" | awk '{print $2}')"
+            entry_blob="$(printf '%s\n' "$ls" | awk '{print $3}')"
+            test "$type" = blob
+            resolved_path="$path"; png_blob="$entry_blob"
+            if [ "$mode" = 120000 ]; then
+              target="$(git -C "$upstream" cat-file -p "$entry_blob")"
+              resolved_path="$(python3 - "${path%/*}" "$target" <<'PY'
+          import posixpath, sys
+          print(posixpath.normpath(posixpath.join(sys.argv[1], sys.argv[2])))
+          PY
+          )"
+              png_blob="$(git -C "$upstream" rev-parse "$GBC_PIN:$resolved_path")"
+            fi
+            test "$png_blob" = "$expected_png_blob"
+            git -C "$upstream" cat-file blob "$png_blob" > "$out"
+            test "$(git hash-object "$out")" = "$expected_png_blob"
+            sig="$(python3 - "$out" <<'PY'
+          import sys
+          print(open(sys.argv[1], 'rb').read(8).hex())
+          PY
+          )"
+            test "$sig" = 89504e470d0a1a0a
+            sha="$(sha256sum "$out" | awk '{print $1}')"
+            printf '%s_SHA256=%s\n%s_PNG_SIGNATURE=PASS\n%s_TREE_ENTRY_BLOB=%s\n' "$label" "$sha" "$label" "$label" "$entry_blob" >> "$RUNNER_TEMP/gsc-assets.env"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$label" "$game_id" "$path" "$entry_blob" "$resolved_path" "$png_blob" "$sha" "$mode" >> "$RUNNER_TEMP/gsc-provenance.tsv"
+            printf '%s alias=%s entry=%s mode=%s resolved=%s png_blob=%s sha256=%s PNG=PASS\n' "$label" "$path" "$entry_blob" "$mode" "$resolved_path" "$png_blob" "$sha"
+          }
+          verify_asset GOLD gold_gbc "$GOLD_PATH" "$GOLD_BLOB" "$RUNNER_TEMP/gsc-assets/gold_gbc.png"
+          verify_asset SILVER silver_gbc "$SILVER_PATH" "$SILVER_BLOB" "$RUNNER_TEMP/gsc-assets/silver_gbc.png"
+          verify_asset CRYSTAL crystal_gbc "$CRYSTAL_PATH" "$CRYSTAL_BLOB" "$RUNNER_TEMP/gsc-assets/crystal_gbc.png"
+          python3 - "$RUNNER_TEMP/gsc-provenance.tsv" "$RUNNER_TEMP/gsc-provenance.json" <<'PY'
+          import csv, json, sys
+          rows=[]
+          with open(sys.argv[1], newline='') as f:
+              for r in csv.reader(f, delimiter='\t'):
+                  label, game_id, alias, entry_blob, resolved, png_blob, sha, mode = r
+                  rows.append({'label':label,'game_id':game_id,'requested_path':alias,'tree_entry_blob_sha':entry_blob,'upstream_path':resolved,'git_blob_sha':png_blob,'sha256':sha,'tree_mode':mode,'png_signature':'PASS','local_destination':f'assets/game_cards/{game_id}.png'})
+          json.dump({'upstream_repository':'https://github.com/libretro-thumbnails/Nintendo_-_Game_Boy_Color','pinned_commit':'0931985ba8a3a9f38fb87f006611a13dc094260f','named_boxarts_tree':'19e9d2ffcc7896f72aa7eb6b8f3e2d56730e75f0','assets':rows}, open(sys.argv[2],'w'), indent=2)
+          open(sys.argv[2],'a').write('\n')
+          PY
+          cat "$RUNNER_TEMP/gsc-assets.env"
+          cat "$RUNNER_TEMP/gsc-provenance.json"
+
+      - name: Install all three assets and permanent runtime/build mappings
+        run: |
+          set -euo pipefail
+          source "$RUNNER_TEMP/gsc-assets.env"
+          install -m 0644 "$RUNNER_TEMP/gsc-assets/gold_gbc.png" assets/game_cards/gold_gbc.png
+          install -m 0644 "$RUNNER_TEMP/gsc-assets/silver_gbc.png" assets/game_cards/silver_gbc.png
+          install -m 0644 "$RUNNER_TEMP/gsc-assets/crystal_gbc.png" assets/game_cards/crystal_gbc.png
+          cp "$RUNNER_TEMP/gsc-provenance.json" assets/game_cards/manifest.json
+          python3 - <<'PY'
+          from pathlib import Path
+          def replace_once(path, old, new):
+              p=Path(path); text=p.read_text(); n=text.count(old)
+              if n != 1: raise SystemExit(f'{path}: patch anchor count {n}')
+              p.write_text(text.replace(old,new,1))
+          replace_once('src/Games/GameIdentity.cpp',
+              '        if (id == "yellow_gb") return "romfs:/game_cards/yellow_gb.png";\n        if (id == "ruby_gba")',
+              '        if (id == "yellow_gb") return "romfs:/game_cards/yellow_gb.png";\n        if (id == "gold_gbc") return "romfs:/game_cards/gold_gbc.png";\n        if (id == "silver_gbc") return "romfs:/game_cards/silver_gbc.png";\n        if (id == "crystal_gbc") return "romfs:/game_cards/crystal_gbc.png";\n        if (id == "ruby_gba")')
+          replace_once('tests/test_game_identity.cpp',
+              '    // GSC currently uses the source-card fallback artwork path; no fabricated/placeholder asset.\n    assert(gameCardArtworkPath("gold_gbc").empty());\n    assert(gameCardArtworkPath("silver_gbc").empty());\n    assert(gameCardArtworkPath("crystal_gbc").empty());',
+              '    assert(gameCardArtworkPath("gold_gbc") == "romfs:/game_cards/gold_gbc.png");\n    assert(gameCardArtworkPath("silver_gbc") == "romfs:/game_cards/silver_gbc.png");\n    assert(gameCardArtworkPath("crystal_gbc") == "romfs:/game_cards/crystal_gbc.png");')
+          replace_once('Makefile',
+              '\t@cp -f "$(GAME_CARD_ART_SOURCE)/yellow_gb.png" "$(GAME_CARD_ART_DIR)/yellow_gb.png"\n',
+              '\t@cp -f "$(GAME_CARD_ART_SOURCE)/yellow_gb.png" "$(GAME_CARD_ART_DIR)/yellow_gb.png"\n\t@cp -f "$(GAME_CARD_ART_SOURCE)/gold_gbc.png" "$(GAME_CARD_ART_DIR)/gold_gbc.png"\n\t@cp -f "$(GAME_CARD_ART_SOURCE)/silver_gbc.png" "$(GAME_CARD_ART_DIR)/silver_gbc.png"\n\t@cp -f "$(GAME_CARD_ART_SOURCE)/crystal_gbc.png" "$(GAME_CARD_ART_DIR)/crystal_gbc.png"\n')
+          p=Path('tools/check_device_assets.py'); text=p.read_text()
+          anchor='        "red_gb.png", "blue_gb.png", "yellow_gb.png",\n'
+          if text.count(anchor) != 1: raise SystemExit('device asset anchor mismatch')
+          text=text.replace(anchor, anchor+'        "gold_gbc.png", "silver_gbc.png", "crystal_gbc.png",\n', 1)
+          old='Red/Blue/Yellow GB + FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present'
+          new='Red/Blue/Yellow GB + Gold/Silver/Crystal GBC + FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present'
+          if old not in text: raise SystemExit('device asset phrase anchor missing')
+          p.write_text(text.replace(old,new))
+          readme=Path('assets/game_cards/README.md')
+          if '## Generation II Game Boy Color cards' in readme.read_text(): raise SystemExit('Gen II README section already exists')
+          readme.write_text(readme.read_text().rstrip()+'\n\n## Generation II Game Boy Color cards\n\nGold, Silver, and Crystal use permanent representative USA/Europe retail box art from `libretro-thumbnails/Nintendo_-_Game_Boy_Color`, pinned at commit `0931985ba8a3a9f38fb87f006611a13dc094260f`. `manifest.json` records the pinned tree, exact tree entry, resolved Git blob, SHA-256, and local destination for each asset. `make game-card-art` copies the stable IDs into RomFS.\n')
+          PY
+          git diff --check
+          grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
+          for f in gold_gbc silver_gbc crystal_gbc; do test -s "assets/game_cards/$f.png"; done
+
+      - name: Commit all three assets atomically and push only origin
+        run: |
+          set -euo pipefail
+          git config user.name 'PokeVault NX CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git stash push --include-untracked -m gsc-verified-assets
+          git fetch origin feature/pokebank-playable
+          git merge --ff-only origin/feature/pokebank-playable
+          git stash pop
+          grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
+          git add Makefile src/Games/GameIdentity.cpp tests/test_game_identity.cpp tools/check_device_assets.py assets/game_cards/README.md assets/game_cards/manifest.json assets/game_cards/gold_gbc.png assets/game_cards/silver_gbc.png assets/game_cards/crystal_gbc.png
+          for f in assets/game_cards/gold_gbc.png assets/game_cards/silver_gbc.png assets/game_cards/crystal_gbc.png; do git diff --cached --name-only -- "$f" | grep -qx "$f"; done
+          git commit -m 'assets(gsc): pin Gold Silver Crystal game-card artwork'
+          ASSET_COMMIT="$(git rev-parse HEAD)"; ASSET_TREE="$(git rev-parse 'HEAD^{tree}')"
+          printf 'ASSET_COMMIT=%s\nASSET_TREE=%s\nFINAL_SOURCE=%s\nFINAL_TREE=%s\n' "$ASSET_COMMIT" "$ASSET_TREE" "$ASSET_COMMIT" "$ASSET_TREE" >> "$RUNNER_TEMP/gsc-assets.env"
+          git push origin HEAD:feature/pokebank-playable
+          REMOTE="$(git ls-remote origin refs/heads/feature/pokebank-playable | awk '{print $1}')"
+          test "$REMOTE" = "$ASSET_COMMIT"
+          test -z "$(git status --porcelain)"
+          cat "$RUNNER_TEMP/gsc-assets.env"
+
+      - name: Restore permanent RomFS and overlay all eleven game cards
+        run: |
+          set -euo pipefail
+          recovery="$RUNNER_TEMP/recovery-base"
+          git worktree add --detach "$recovery" "$STARTING_HEAD"
+          (cd "$recovery" && python3 tools/check_recovery_contract.py)
+          (cd "$recovery" && python3 tools/recover_workspace.py) 2>&1 | tee recovery.log
+          test -d "$recovery/romfs"
+          rm -rf romfs; cp -a "$recovery/romfs" romfs
+          make game-card-art
+          for f in gold_gbc silver_gbc crystal_gbc; do test -s "romfs/game_cards/$f.png"; cmp "assets/game_cards/$f.png" "romfs/game_cards/$f.png"; done
+          python3 tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          grep -q 'Gold/Silver/Crystal GBC' asset-preflight.log
+          test "$(find romfs -type f | wc -l)" -eq 3292
+          git worktree remove --force "$recovery"
+
+      - name: Full host suite and explicit generation regressions
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test 2>&1 | tee host-test.log
+          for t in test_gsc_gen2_adapter test_gsc_inventory test_gsc_gen2_personal test_gsc_discovery test_gsc_source_browser test_gsc_readonly_bridge test_gsc_runtime_catalog test_gsc_ui_rules; do "./build-host/$t"; done
+          echo 'GSC PERMANENT TARGETS: PASS' | tee gsc-targets.log
+          for t in test_rby_gen1_adapter test_rby_inventory test_rby_discovery test_rby_source_browser test_rby_readonly_bridge; do "./build-host/$t"; done
+          echo 'GEN I RBY REGRESSION: PASS' | tee rby-regression.log
+          for t in test_retroarch_frlg_discovery test_legacy_frlg_browse test_legacy_source_bindings; do "./build-host/$t"; done
+          echo 'FRLG REGRESSION: PASS' | tee frlg-regression.log
+          for t in test_rse_gen3_adapter test_rse_gen3_native_slice; do "./build-host/$t"; done
+          SOURCES="tests/test_rse_open_regression.cpp src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES -o build-host/test_rse_open_regression
+          ./build-host/test_rse_open_regression
+          echo 'RSE REGRESSION: PASS' | tee rse-regression.log
+          ./build-host/test_write_policy
+          ./build-host/test_source_mutation_policy
+          git diff --check HEAD^ HEAD
+          echo 'git diff --check: PASS' | tee diff-check.log
+
+      - name: ASan and UBSan matrix
+        run: |
+          set -euo pipefail
+          ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 make -f Makefile.host host-sanitize 2>&1 | tee sanitizer.log
+          echo 'ASan: PASS (combined address,undefined matrix)' | tee asan.log
+          echo 'UBSan: PASS (combined address,undefined matrix)' | tee ubsan.log
+
+      - name: Native devkitA64 compile, four GSC UI slices, and final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            find build -name Gen2PokemonDetailsModal.o -type f | grep -q .
+            find build -name PokemonDetailsDispatcher.o -type f | grep -q .
+            find build -name ItemsPanel.o -type f | grep -q .
+            find build -name TrainerViewScreenGSCOverlay.o -type f | grep -q .
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s PokeBankNX.nro
+          echo 'PK2 DETAILS NATIVE COMPILE: PASS' | tee pk2-native.log
+          echo 'DETAILS DISPATCHER NATIVE COMPILE: PASS' | tee dispatcher-native.log
+          echo 'GSC ITEMS UI NATIVE COMPILE: PASS' | tee items-native.log
+          echo 'TRAINER UI NATIVE COMPILE: PASS' | tee trainer-native.log
+          echo 'NATIVE DEVKITA64 COMPILE: PASS' | tee native-compile.log
+          echo 'NATIVE FINAL LINK: PASS' | tee native-link.log
+
+      - name: Verify embedded application identity and complete RomFS
+        run: |
+          set -euo pipefail
+          source "$RUNNER_TEMP/gsc-assets.env"
+          python3 tools/verify_embedded_romfs.py PokeBankNX.nro romfs --application-source "$FINAL_SOURCE" > embedded-romfs.json
+          export FINAL_SOURCE
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          data=json.load(open('embedded-romfs.json'))
+          assert data.get('result')=='PASS',data
+          assert data.get('application_source')==os.environ['FINAL_SOURCE'],data
+          assert data.get('file_count')==3292,data
+          for stem in ('gold_gbc','silver_gbc','crystal_gbc'):
+              a=Path('assets/game_cards')/f'{stem}.png'; r=Path('romfs/game_cards')/f'{stem}.png'
+              assert a.is_file() and r.is_file() and hashlib.sha256(a.read_bytes()).digest()==hashlib.sha256(r.read_bytes()).digest()
+          print(json.dumps(data,indent=2))
+          PY
+          strings PokeBankNX.nro | grep -q "${FINAL_SOURCE:0:8}"
+
+      - name: Package real NRO, ZIP, hashes, and final evidence
+        run: |
+          set -euo pipefail
+          source "$RUNNER_TEMP/gsc-assets.env"
+          cp "$RUNNER_TEMP/gsc-provenance.json" gsc-provenance.json
+          readarray -t META < <(python3 - gsc-provenance.json <<'PY'
+          import json
+          d=json.load(open('gsc-provenance.json'))
+          for a in d['assets']:
+              print(a['upstream_path'])
+          PY
+          )
+          mkdir -p device-artifact
+          cp PokeBankNX.nro device-artifact/PokeVault-NX-GSC.nro
+          cp embedded-romfs.json gsc-provenance.json asset-preflight.log recovery.log host-test.log gsc-targets.log rby-regression.log frlg-regression.log rse-regression.log sanitizer.log native-build.log toolchain-image.json toolchain-packages.txt device-artifact/
+          NRO_BYTES="$(stat -c %s device-artifact/PokeVault-NX-GSC.nro)"; NRO_SHA256="$(sha256sum device-artifact/PokeVault-NX-GSC.nro | awk '{print $1}')"
+          cat > device-artifact/GSC_FINAL_HANDOFF.txt <<EOF
+          STARTING_HEAD=$STARTING_HEAD
+          STARTING_TREE=$STARTING_TREE
+          GBC_PIN=$GBC_PIN
+          NAMED_BOXARTS_TREE=$NAMED_BOXARTS_TREE
+          GOLD_UPSTREAM_PATH=${META[0]}
+          GOLD_BLOB_SHA=$GOLD_BLOB
+          GOLD_SHA256=$GOLD_SHA256
+          GOLD_TREE_ENTRY_BLOB=$GOLD_TREE_ENTRY_BLOB
+          SILVER_UPSTREAM_PATH=${META[1]}
+          SILVER_BLOB_SHA=$SILVER_BLOB
+          SILVER_SHA256=$SILVER_SHA256
+          SILVER_TREE_ENTRY_BLOB=$SILVER_TREE_ENTRY_BLOB
+          CRYSTAL_UPSTREAM_PATH=${META[2]}
+          CRYSTAL_BLOB_SHA=$CRYSTAL_BLOB
+          CRYSTAL_SHA256=$CRYSTAL_SHA256
+          CRYSTAL_TREE_ENTRY_BLOB=$CRYSTAL_TREE_ENTRY_BLOB
+          ASSET_COMMIT=$ASSET_COMMIT
+          ASSET_TREE=$ASSET_TREE
+          FINAL_GSC_APPLICATION_SOURCE=$FINAL_SOURCE
+          FINAL_GSC_TREE=$FINAL_TREE
+          VIOLET_TITLE_ID=0x01008F6008C5E000
+          FULL_HOST_SUITE=PASS
+          GSC_PERMANENT_TARGETS=PASS
+          GEN_I_RBY_REGRESSION=PASS
+          FRLG_REGRESSION=PASS
+          RSE_REGRESSION=PASS
+          ASAN=PASS
+          UBSAN=PASS
+          GIT_DIFF_CHECK=PASS
+          PK2_DETAILS_NATIVE_COMPILE=PASS
+          DETAILS_DISPATCHER_NATIVE_COMPILE=PASS
+          GSC_ITEMS_UI_NATIVE_COMPILE=PASS
+          TRAINER_UI_NATIVE_COMPILE=PASS
+          NATIVE_DEVKITA64_COMPILE=PASS
+          NATIVE_FINAL_LINK=PASS
+          EMBEDDED_APPLICATION_IDENTITY=PASS
+          EMBEDDED_ROMFS=PASS_3292_OF_3292
+          NRO_BYTES=$NRO_BYTES
+          NRO_SHA256=$NRO_SHA256
+          LIVE_INSTALLED_GAME_WRITES=HARD_DISABLED
+          LIVE_RETROARCH_WRITES=HARD_DISABLED
+          EOF
+          (cd device-artifact && zip -9 PokeVault-NX-GSC.zip PokeVault-NX-GSC.nro GSC_FINAL_HANDOFF.txt embedded-romfs.json gsc-provenance.json >/dev/null)
+          ZIP_SHA256="$(sha256sum device-artifact/PokeVault-NX-GSC.zip | awk '{print $1}')"
+          printf 'ZIP_SHA256=%s\n' "$ZIP_SHA256" >> device-artifact/GSC_FINAL_HANDOFF.txt
+          sha256sum device-artifact/* > device-artifact/SHA256SUMS.txt
+          printf 'NRO_BYTES=%s\nNRO_SHA256=%s\nZIP_SHA256=%s\n' "$NRO_BYTES" "$NRO_SHA256" "$ZIP_SHA256" | tee artifact-summary.txt
+          cp artifact-summary.txt device-artifact/
+
+      - name: Preserve GSC final physical-test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GSC-Final-${{ github.run_id }}
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
