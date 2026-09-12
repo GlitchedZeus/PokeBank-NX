@@ -1,0 +1,572 @@
+name: implement-standalone-runtime
+
+on:
+  push:
+    branches:
+      - dev/standalone-runtime-audit-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    if: github.event.head_commit.message != 'core: make pokebank runtime standalone candidate'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Apply standalone runtime ownership cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def read(path):
+              return Path(path).read_text()
+
+          def write(path, text):
+              p = Path(path)
+              p.parent.mkdir(parents=True, exist_ok=True)
+              p.write_text(text)
+
+          def replace(path, old, new, count=None):
+              text = read(path)
+              actual = text.count(old)
+              expected = 1 if count is None else count
+              if actual != expected:
+                  raise SystemExit(f'{path}: expected {expected} occurrences, found {actual}: {old[:100]!r}')
+              write(path, text.replace(old, new))
+
+          paths_h = r'''#ifndef POKEBANK_PATHS_H
+          #define POKEBANK_PATHS_H
+
+          #include <cerrno>
+          #include <cctype>
+          #include <string>
+          #include <string_view>
+          #include <sys/stat.h>
+
+          namespace PokeBank::Paths {
+
+          inline constexpr std::string_view kRoot = "sdmc:/switch/PokeBank-NX";
+
+          inline std::string root() { return std::string(kRoot); }
+          inline std::string exportsRoot() { return root() + "/exports"; }
+          inline std::string gen2ExportsRoot() { return exportsRoot() + "/gen2"; }
+          inline std::string backupsRoot() { return root() + "/backups"; }
+          inline std::string configRoot() { return root() + "/config"; }
+          inline std::string logsRoot() { return root() + "/logs"; }
+          inline std::string banksRoot() { return root() + "/banks"; }
+          inline std::string legacyBankRoot() { return banksRoot() + "/legacy-pkse"; }
+          inline std::string settingsFile() { return configRoot() + "/settings.cfg"; }
+          inline std::string legacySourceBindingsFile() { return configRoot() + "/legacy_source_bindings.cfg"; }
+          inline std::string traceFile() { return logsRoot() + "/trace.log"; }
+
+          inline bool isSafeTimestamp(std::string_view value) noexcept {
+              if (value.size() != 15 || value[8] != '_') return false;
+              for (size_t i = 0; i < value.size(); ++i) {
+                  if (i == 8) continue;
+                  if (value[i] < '0' || value[i] > '9') return false;
+              }
+              return true;
+          }
+
+          inline bool isSafeComponent(std::string_view value) noexcept {
+              if (value.empty() || value == "." || value == "..") return false;
+              for (const unsigned char c : value) {
+                  if (!(std::isalnum(c) || c == '-' || c == '_' || c == '.')) return false;
+              }
+              return true;
+          }
+
+          inline std::string sanitizeComponent(std::string_view value) {
+              std::string out;
+              out.reserve(value.size());
+              for (const unsigned char c : value) {
+                  out.push_back((std::isalnum(c) || c == '-' || c == '_' || c == '.')
+                                    ? static_cast<char>(c) : '_');
+              }
+              while (out == "." || out == "..") out.push_back('_');
+              if (out.empty()) out = "unnamed";
+              if (out.size() > 96) out.resize(96);
+              return out;
+          }
+
+          inline std::string child(const std::string& parent, std::string_view component) {
+              if (!isSafeComponent(component)) return {};
+              return parent + "/" + std::string(component);
+          }
+
+          inline bool isOwnedPath(std::string_view path) noexcept {
+              if (path == kRoot) return true;
+              return path.size() > kRoot.size() && path.substr(0, kRoot.size()) == kRoot &&
+                     path[kRoot.size()] == '/';
+          }
+
+          inline bool directoryExists(const std::string& path) noexcept {
+              struct stat st{};
+              return ::stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+          }
+
+          inline bool ensureOneDirectory(const std::string& path, std::string* error = nullptr) {
+              if (directoryExists(path)) return true;
+              if (::mkdir(path.c_str(), 0777) == 0) return true;
+              if (errno == EEXIST && directoryExists(path)) return true;
+              if (error) *error = "Could not create directory: " + path;
+              return false;
+          }
+
+          inline bool ensureDirectoryTree(const std::string& path, std::string* error = nullptr) {
+              if (path.empty()) {
+                  if (error) *error = "Directory path is empty";
+                  return false;
+              }
+
+              std::string current;
+              size_t pos = 0;
+              if (path.rfind("sdmc:/", 0) == 0) {
+                  current = "sdmc:";
+                  pos = 6;
+              } else if (path[0] == '/') {
+                  pos = 1;
+              }
+
+              while (pos <= path.size()) {
+                  const size_t slash = path.find('/', pos);
+                  const size_t end = slash == std::string::npos ? path.size() : slash;
+                  const std::string_view part(path.data() + pos, end - pos);
+                  if (!part.empty()) {
+                      if (part == "." || part == "..") {
+                          if (error) *error = "Refusing traversal component in directory path";
+                          return false;
+                      }
+                      if (current.empty()) current = path[0] == '/' ? "/" + std::string(part) : std::string(part);
+                      else current += "/" + std::string(part);
+                      if (!ensureOneDirectory(current, error)) return false;
+                  }
+                  if (slash == std::string::npos) break;
+                  pos = slash + 1;
+              }
+              return true;
+          }
+
+          inline bool ensureRuntimeRoot(std::string* error = nullptr) {
+              return ensureDirectoryTree(root(), error);
+          }
+          inline bool ensureConfigRoot(std::string* error = nullptr) {
+              return ensureDirectoryTree(configRoot(), error);
+          }
+          inline bool ensureLogsRoot(std::string* error = nullptr) {
+              return ensureDirectoryTree(logsRoot(), error);
+          }
+          inline bool ensureBackupsRoot(std::string* error = nullptr) {
+              return ensureDirectoryTree(backupsRoot(), error);
+          }
+          inline bool ensureLegacyBankRoot(std::string* error = nullptr) {
+              return ensureDirectoryTree(legacyBankRoot(), error);
+          }
+          inline bool ensureGen2ExportsRoot(std::string* error = nullptr) {
+              return ensureDirectoryTree(gen2ExportsRoot(), error);
+          }
+
+          inline std::string gen2ExportDirectory(std::string_view gameId, std::string_view timestamp) {
+              if (!isSafeTimestamp(timestamp)) return {};
+              const std::string safeGame = sanitizeComponent(gameId);
+              return gen2ExportsRoot() + "/" + safeGame + "_" + std::string(timestamp);
+          }
+
+          } // namespace PokeBank::Paths
+
+          #endif
+          '''.replace('\n          ', '\n').lstrip()
+          write('include/Utils/PokeBankPaths.h', paths_h)
+
+          # Globals: retain the compatibility symbol so inherited backends need not be rewritten,
+          # but make its one source of truth PokeBank-owned.
+          text = read('include/Globals.h')
+          text = text.replace('#include <cstdint>\n', '#include <cstdint>\n\n#include "Utils/PokeBankPaths.h"\n')
+          text = text.replace('inline constexpr std::string BASE_SAVE_DIRECTORY = "sdmc:/PKSE";',
+                              'inline const std::string BASE_SAVE_DIRECTORY = PokeBank::Paths::root();')
+          text = text.replace('with it off PKSE writes no `sdmc:/PKSE/logs/debug_*.log` and no `sdmc:/PKSE/trace.log`, so a',
+                              'with it off PokeBank NX writes no files under `sdmc:/switch/PokeBank-NX/logs/`, so a')
+          write('include/Globals.h', text)
+
+          # Settings are PokeBank-owned config, not /PKSE/.
+          replace('src/Utils/Settings.cpp', '#include "Utils/Logger.h"\n',
+                  '#include "Utils/Logger.h"\n#include "Utils/PokeBankPaths.h"\n')
+          replace('src/Utils/Settings.cpp', 'return BASE_SAVE_DIRECTORY + "/settings.cfg";',
+                  'return PokeBank::Paths::settingsFile();')
+          replace('src/Utils/Settings.cpp',
+                  '        // Make sure the base dir exists (it normally does once a backup has been taken).\n        mkdir(BASE_SAVE_DIRECTORY.c_str(), 0777);',
+                  '        std::string pathError;\n        if (!PokeBank::Paths::ensureConfigRoot(&pathError)) {\n            logErrorToFile("Failed to create PokeBank NX config directory", pathError.c_str());\n            return;\n        }')
+
+          # Logger paths are owned and created on demand.
+          replace('src/Utils/Logger.cpp', '#include "Globals.h"\n',
+                  '#include "Globals.h"\n#include "Utils/PokeBankPaths.h"\n')
+          replace('src/Utils/Logger.cpp', '    #define LOG_DIRECTORY "sdmc:/PKSE/logs"',
+                  '    static const std::string& logDirectory() { static const std::string p = PokeBank::Paths::logsRoot(); return p; }')
+          replace('src/Utils/Logger.cpp', '    #define TEST_TRACE_PATH "sdmc:/PKSE/trace.log"',
+                  '    static const std::string& testTracePath() { static const std::string p = PokeBank::Paths::traceFile(); return p; }')
+          text = read('src/Utils/Logger.cpp')
+          text = text.replace('TEST_TRACE_PATH', 'testTracePath().c_str()')
+          text = text.replace('LOG_DIRECTORY', 'logDirectory().c_str()')
+          # Make the log directory before a requested write; never create it while logging is disabled.
+          text = text.replace('        if (!g_debugLogging) return;\n        FILE* f = fopen(testTracePath().c_str(), "a");',
+                              '        if (!g_debugLogging) return;\n        std::string pathError;\n        if (!PokeBank::Paths::ensureLogsRoot(&pathError)) return;\n        FILE* f = fopen(testTracePath().c_str(), "a");')
+          # Both logTest and logTestSession need the same guard; replacement above catches both.
+          text = text.replace('std::string(logDirectory().c_str())', 'logDirectory()')
+          write('src/Utils/Logger.cpp', text)
+
+          # Startup comment and UI-owned configuration/bindings root.
+          replace('src/main.cpp', 'loadSettings only fopen()s sdmc:/PKSE/settings.cfg',
+                  'loadSettings only fopen()s sdmc:/switch/PokeBank-NX/config/settings.cfg')
+          replace('src/UI/UI.cpp', '#include "Utils/FileUtilities.h"\n',
+                  '#include "Utils/FileUtilities.h"\n#include "Utils/PokeBankPaths.h"\n')
+          replace('src/UI/UI.cpp',
+                  '          legacySourceBindings(BASE_SAVE_DIRECTORY + "/legacy_source_bindings.cfg") {',
+                  '          legacySourceBindings(PokeBank::Paths::legacySourceBindingsFile()) {')
+          replace('src/UI/UI.cpp',
+                  '        mkdir(BASE_SAVE_DIRECTORY.c_str(), 0777);\n        if (!legacySourceBindings.load())',
+                  '        std::string pathError;\n        if (!PokeBank::Paths::ensureConfigRoot(&pathError))\n            logErrorToFile("Could not initialize PokeBank NX runtime root", pathError.c_str());\n        if (!legacySourceBindings.load())')
+
+          # Backup picker points at the PokeBank-owned backup namespace.
+          replace('src/UI/BackupSelectionScreen.cpp', '#include "Utils/FileUtilities.h"\n',
+                  '#include "Utils/FileUtilities.h"\n#include "Utils/PokeBankPaths.h"\n')
+          replace('src/UI/BackupSelectionScreen.cpp',
+                  '        char gameDirBuf[512];\n        snprintf(gameDirBuf, sizeof(gameDirBuf), "%s/%s", BASE_SAVE_DIRECTORY.c_str(), titleName.c_str());\n        gameDirectory = gameDirBuf;',
+                  '        const std::string safeTitle = PokeBank::Paths::sanitizeComponent(titleName);\n        gameDirectory = PokeBank::Paths::backupsRoot() + "/" + safeTitle;')
+
+          # Save backup workspace goes under backups/<sanitized-title>/.
+          replace('src/Utils/FileUtilities.cpp', '#include "Utils/FileUtilities.h"\n',
+                  '#include "Utils/FileUtilities.h"\n#include "Utils/PokeBankPaths.h"\n')
+          replace('src/Utils/FileUtilities.cpp',
+                  '        // Create base game directory: PKSE/{titleName}/\n        char gameDirectory[512];\n        snprintf(gameDirectory, sizeof(gameDirectory), "%s/%s", BASE_SAVE_DIRECTORY.c_str(), titleName.c_str());\n\n        // History backup -> PKSE/{titleName}/{timestamp}/ ; auto-backup off -> reuse PKSE/{titleName}/Working/\n        std::string folderName = timestamped ? getTimestamp() : std::string("Working");',
+                  '        const std::string backupRoot = PokeBank::Paths::backupsRoot();\n        const std::string safeTitle = PokeBank::Paths::sanitizeComponent(titleName);\n        char gameDirectory[512];\n        snprintf(gameDirectory, sizeof(gameDirectory), "%s/%s", backupRoot.c_str(), safeTitle.c_str());\n\n        // History backup -> PokeBank NX backups/<title>/<timestamp>/; otherwise reuse Working/.\n        std::string folderName = timestamped ? getTimestamp() : std::string("Working");')
+          replace('src/Utils/FileUtilities.cpp',
+                  '        if (mkdir(BASE_SAVE_DIRECTORY.c_str(), 0777) != 0 && errno != EEXIST) {\n            logErrorToFile("Failed to create base directory", BASE_SAVE_DIRECTORY.c_str());\n            logErrorToFile("mkdir error", strerror(errno));\n            return "";\n        }',
+                  '        std::string pathError;\n        if (!PokeBank::Paths::ensureBackupsRoot(&pathError)) {\n            logErrorToFile("Failed to create PokeBank NX backups directory", pathError.c_str());\n            return "";\n        }')
+
+          # Legacy inherited bank format remains byte-compatible but is owned by PokeBank NX.
+          replace('src/Trainer/Bank.cpp', '#include "Globals.h"\n',
+                  '#include "Globals.h"\n#include "Utils/PokeBankPaths.h"\n')
+          text = read('src/Trainer/Bank.cpp')
+          text = text.replace('File: BASE_SAVE_DIRECTORY/bank/bank.dat',
+                              'File: PokeBank NX banks/legacy-pkse/bank.dat (legacy PKSEBANK format)')
+          text = text.replace('return BASE_SAVE_DIRECTORY + "/bank/bank.dat";',
+                              'return PokeBank::Paths::legacyBankRoot() + "/bank.dat";')
+          text = text.replace('BASE_SAVE_DIRECTORY + "/bank/" + L.tag + "_bank.dat"',
+                              'PokeBank::Paths::legacyBankRoot() + "/" + L.tag + "_bank.dat"')
+          text = text.replace('const std::string dir = BASE_SAVE_DIRECTORY + "/bank";',
+                              'const std::string dir = PokeBank::Paths::legacyBankRoot();')
+          # Existing save() mkdir is one-level; ensure the full owned tree first.
+          text = text.replace('mkdir(dir.c_str(), 0777);',
+                              'std::string pathError;\n        if (!PokeBank::Paths::ensureLegacyBankRoot(&pathError)) {\n            logErrorToFile("Bank: failed to create PokeBank NX legacy bank directory", pathError.c_str());\n            return;\n        }')
+          write('src/Trainer/Bank.cpp', text)
+
+          # Exact Gen II export contract + PokeBank terminology.
+          replace('src/UI/TrainerViewScreenGSCOverlay.cpp', '#include "Utils/Keyboard.h"\n',
+                  '#include "Utils/Keyboard.h"\n#include "Utils/PokeBankPaths.h"\n')
+          replace('src/UI/TrainerViewScreenGSCOverlay.cpp',
+                  '    const std::string root = BASE_SAVE_DIRECTORY + "/Exports";\n    const std::string gen2Root = root + "/Gen2";\n    if (!mkdirIfNeeded(BASE_SAVE_DIRECTORY) || !mkdirIfNeeded(root) || !mkdirIfNeeded(gen2Root)) {\n        error = "Could not create PokeVault export directory";\n        return {};\n    }\n\n    const std::string baseName = screen.sourceGameId + "_" + Utils::getTimestamp();\n    std::string exportDir = gen2Root + "/" + baseName;',
+                  '    const std::string gen2Root = PokeBank::Paths::gen2ExportsRoot();\n    if (!PokeBank::Paths::ensureGen2ExportsRoot(&error)) {\n        if (error.empty()) error = "Could not create PokeBank NX export directory";\n        return {};\n    }\n\n    const std::string timestamp = Utils::getTimestamp();\n    std::string exportDir = PokeBank::Paths::gen2ExportDirectory(screen.sourceGameId, timestamp);\n    if (exportDir.empty()) {\n        error = "Could not construct safe PokeBank NX export path";\n        return {};\n    }\n    const std::string baseName = exportDir.substr(gen2Root.size() + 1);')
+          text = read('src/UI/TrainerViewScreenGSCOverlay.cpp')
+          text = text.replace('PokeVault NX Generation II staged export', 'PokeBank NX Generation II staged export')
+          text = text.replace('Exported edited copy + original backup to PokeVault/Exports/Gen2',
+                              'Exported edited copy + original backup to PokeBank NX exports/gen2')
+          write('src/UI/TrainerViewScreenGSCOverlay.cpp', text)
+
+          # Runtime-visible path text and stale path comments only; internal type/namespace names stay.
+          for path in [
+              'src/UI/TrainerViewScreenBase.inc', 'include/Trainer/Bank.h',
+              'include/UI/TrainerViewScreenBase.h', 'include/Utils/Logger.h',
+              'include/Utils/Settings.h', 'include/Utils/FileUtilities.h']:
+              text = read(path)
+              text = text.replace('sdmc:/PKSE', 'sdmc:/switch/PokeBank-NX')
+              text = text.replace('PKSE/{titleName}', 'PokeBank-NX/backups/{titleName}')
+              write(path, text)
+
+          # Permanent host tests.
+          test_paths = r'''#include "Utils/PokeBankPaths.h"
+          #include <cassert>
+          #include <filesystem>
+          #include <fstream>
+          #include <iostream>
+          #include <unistd.h>
+
+          int main() {
+              using namespace PokeBank::Paths;
+              assert(root() == "sdmc:/switch/PokeBank-NX");
+              assert(exportsRoot() == root() + "/exports");
+              assert(gen2ExportsRoot() == root() + "/exports/gen2");
+              assert(backupsRoot() == root() + "/backups");
+              assert(configRoot() == root() + "/config");
+              assert(logsRoot() == root() + "/logs");
+              assert(legacyBankRoot() == root() + "/banks/legacy-pkse");
+              assert(settingsFile() == root() + "/config/settings.cfg");
+              assert(legacySourceBindingsFile() == root() + "/config/legacy_source_bindings.cfg");
+              assert(traceFile() == root() + "/logs/trace.log");
+
+              assert(isOwnedPath(root()));
+              assert(isOwnedPath(gen2ExportsRoot()));
+              assert(!isOwnedPath("sdmc:/PKSE"));
+              assert(!isOwnedPath("sdmc:/switch/PokeBank-NX-evil/file"));
+
+              assert(isSafeComponent("gold_gbc"));
+              assert(!isSafeComponent("../PKSE"));
+              assert(!isSafeComponent("a/b"));
+              assert(child(root(), "safe") == root() + "/safe");
+              assert(child(root(), "../escape").empty());
+              assert(sanitizeComponent("Pokemon Gold/../bad") == "Pokemon_Gold_.._bad");
+              assert(sanitizeComponent("..") == ".._");
+              assert(isSafeTimestamp("20260912_173200"));
+              assert(!isSafeTimestamp("../../escape000"));
+              assert(gen2ExportDirectory("gold_gbc", "20260912_173200") ==
+                     root() + "/exports/gen2/gold_gbc_20260912_173200");
+              assert(gen2ExportDirectory("../gold", "20260912_173200") ==
+                     root() + "/exports/gen2/.._gold_20260912_173200");
+              assert(gen2ExportDirectory("gold_gbc", "bad").empty());
+
+              const std::filesystem::path base = std::filesystem::temp_directory_path() /
+                  ("pokebank-path-test-" + std::to_string(static_cast<long long>(getpid())));
+              std::filesystem::remove_all(base);
+              std::string error;
+              assert(ensureDirectoryTree((base / "switch/PokeBank-NX/config").string(), &error));
+              assert(std::filesystem::is_directory(base / "switch/PokeBank-NX/config"));
+              assert(ensureDirectoryTree((base / "switch/PokeBank-NX/config").string(), &error));
+
+              std::ofstream blocker(base / "file");
+              blocker << "x";
+              blocker.close();
+              error.clear();
+              assert(!ensureDirectoryTree((base / "file/child").string(), &error));
+              assert(!error.empty());
+              assert(!std::filesystem::exists(base / "PKSE"));
+              std::filesystem::remove_all(base);
+              std::cout << "PokeBank path ownership tests passed\n";
+          }
+          '''.replace('\n          ', '\n').lstrip()
+          write('tests/test_pokebank_paths.cpp', test_paths)
+
+          test_clean = r'''#include "Utils/PokeBankPaths.h"
+          #include <cassert>
+          #include <filesystem>
+          #include <fstream>
+          #include <iostream>
+          #include <unistd.h>
+
+          int main() {
+              namespace fs = std::filesystem;
+              using namespace PokeBank::Paths;
+              const fs::path sd = fs::temp_directory_path() /
+                  ("pokebank-clean-install-" + std::to_string(static_cast<long long>(getpid())));
+              fs::remove_all(sd);
+              fs::create_directories(sd);
+              assert(!fs::exists(sd / "PKSE"));
+              assert(!fs::exists(sd / "PKSM"));
+              assert(!fs::exists(sd / "JKSV"));
+              assert(!fs::exists(sd / "Checkpoint"));
+
+              std::string error;
+              const fs::path owned = sd / "switch/PokeBank-NX";
+              assert(ensureDirectoryTree((owned / "config").string(), &error));
+              assert(ensureDirectoryTree((owned / "backups").string(), &error));
+              assert(ensureDirectoryTree((owned / "exports/gen2").string(), &error));
+              assert(fs::is_directory(owned / "config"));
+              assert(fs::is_directory(owned / "backups"));
+              assert(fs::is_directory(owned / "exports/gen2"));
+              assert(!fs::exists(sd / "PKSE"));
+
+              const std::string game = sanitizeComponent("Gold / Test");
+              assert(game == "Gold___Test");
+              const fs::path exportDir = owned / "exports/gen2" /
+                  (game + "_20260912_173200");
+              assert(ensureDirectoryTree(exportDir.string(), &error));
+              for (const char* name : {"original_backup.srm", "edited.srm", "EDIT_MANIFEST.txt"}) {
+                  std::ofstream f(exportDir / name, std::ios::binary);
+                  f << "fixture";
+              }
+              assert(fs::exists(exportDir / "original_backup.srm"));
+              assert(fs::exists(exportDir / "edited.srm"));
+              assert(fs::exists(exportDir / "EDIT_MANIFEST.txt"));
+              assert(!fs::exists(sd / "PKSE"));
+              fs::remove_all(sd);
+              std::cout << "Clean-install no-PKSE filesystem contract passed\n";
+          }
+          '''.replace('\n          ', '\n').lstrip()
+          write('tests/test_clean_install_runtime.cpp', test_clean)
+
+          test_dep = r'''#include <cassert>
+          #include <filesystem>
+          #include <fstream>
+          #include <iostream>
+          #include <sstream>
+          #include <string>
+
+          int main() {
+              namespace fs = std::filesystem;
+              for (const char* root : {"src", "include"}) {
+                  for (const auto& ent : fs::recursive_directory_iterator(root)) {
+                      if (!ent.is_regular_file()) continue;
+                      const auto ext = ent.path().extension().string();
+                      if (ext != ".cpp" && ext != ".h" && ext != ".inc") continue;
+                      std::ifstream f(ent.path(), std::ios::binary);
+                      std::ostringstream ss; ss << f.rdbuf();
+                      const std::string text = ss.str();
+                      if (text.find("sdmc:/PKSE") != std::string::npos) {
+                          std::cerr << "foreign runtime path remains: " << ent.path() << "\n";
+                          return 1;
+                      }
+                      if (text.find("PokeVault NX Generation II staged export") != std::string::npos ||
+                          text.find("PokeVault/Exports/Gen2") != std::string::npos) {
+                          std::cerr << "legacy user-visible staged-editor branding remains: " << ent.path() << "\n";
+                          return 1;
+                      }
+                  }
+              }
+              std::cout << "Runtime dependency/path textual contract passed\n";
+          }
+          '''.replace('\n          ', '\n').lstrip()
+          write('tests/test_runtime_dependency_contract.cpp', test_dep)
+
+          make_standalone = r'''STANDALONE_HOST_TESTS := \
+          	$(HOST_BUILD)/test_pokebank_paths \
+          	$(HOST_BUILD)/test_clean_install_runtime \
+          	$(HOST_BUILD)/test_runtime_dependency_contract
+
+          STANDALONE_SANITIZE_TESTS := \
+          	$(HOST_BUILD)/test_pokebank_paths_sanitize \
+          	$(HOST_BUILD)/test_clean_install_runtime_sanitize \
+          	$(HOST_BUILD)/test_runtime_dependency_contract_sanitize
+
+          HOST_TESTS += $(STANDALONE_HOST_TESTS)
+          HOST_SANITIZE_TESTS += $(STANDALONE_SANITIZE_TESTS)
+          host-test: $(STANDALONE_HOST_TESTS)
+          host-sanitize: $(STANDALONE_SANITIZE_TESTS)
+
+          $(HOST_BUILD)/test_pokebank_paths: tests/test_pokebank_paths.cpp
+          	@mkdir -p $(HOST_BUILD)
+          	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+          $(HOST_BUILD)/test_clean_install_runtime: tests/test_clean_install_runtime.cpp
+          	@mkdir -p $(HOST_BUILD)
+          	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+          $(HOST_BUILD)/test_runtime_dependency_contract: tests/test_runtime_dependency_contract.cpp
+          	@mkdir -p $(HOST_BUILD)
+          	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+          $(HOST_BUILD)/test_pokebank_paths_sanitize: tests/test_pokebank_paths.cpp
+          	@mkdir -p $(HOST_BUILD)
+          	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+          $(HOST_BUILD)/test_clean_install_runtime_sanitize: tests/test_clean_install_runtime.cpp
+          	@mkdir -p $(HOST_BUILD)
+          	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+          $(HOST_BUILD)/test_runtime_dependency_contract_sanitize: tests/test_runtime_dependency_contract.cpp
+          	@mkdir -p $(HOST_BUILD)
+          	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+          '''.replace('\n          ', '\n').lstrip()
+          write('Makefile.host.standalone', make_standalone)
+          text = read('Makefile.host')
+          if 'include Makefile.host.standalone' not in text:
+              text += 'include Makefile.host.standalone\n'
+          write('Makefile.host', text)
+
+          standalone_doc = r'''# PokeBank NX standalone runtime contract
+
+          PokeBank NX is a standalone all-in-one Nintendo Switch Pokémon management application. External Pokémon homebrew and PC tools may be development references or optional migration tools, but are not prerequisites for normal advertised operation.
+
+          ## Runtime ownership
+
+          Canonical PokeBank-owned root:
+
+          `sdmc:/switch/PokeBank-NX/`
+
+          Current owned paths are produced through `Utils/PokeBankPaths.h`. New runtime code must not create files under `/PKSE/`, PKSM, JKSV, Checkpoint, pkDex, pkHouse, or another application's namespace.
+
+          Current owned subtrees used by implemented features are:
+
+          - `config/` — settings and legacy-source bindings;
+          - `logs/` — opt-in diagnostics;
+          - `backups/` — PokeBank-created installed-title backup workspaces;
+          - `exports/gen2/` — staged Generation II exports;
+          - `banks/legacy-pkse/` — inherited bank format retained only as legacy app-owned storage. Its `PKSEBANK` magic remains unchanged for format compatibility and it is **not** the future Master Vault.
+
+          Existing `/PKSE/` data is not silently moved, deleted, overwritten, or required. A future explicit importer may offer optional migration.
+
+          ## Runtime dependency audit classification
+
+          - inherited PKSE-derived C++ compiled into the NRO: INTERNAL COMPILED CODE — OK;
+          - `PokeVault::` and `PKSEFramebuffer` internal symbols: INTERNAL COMPILED CODE — OK;
+          - pinned PKSM-Core host/oracle and narrow adapter references: INTERNAL/DEVELOPER REFERENCE — OK, with required notices retained;
+          - PKHeX: DEVELOPER/TEST ORACLE — OK, not an end-user runtime requirement;
+          - pkDex and pkHouse: DEVELOPER/RESEARCH REFERENCES — OK;
+          - JKSV and Checkpoint: save-lifecycle/reference/optional user tooling only — not required;
+          - RetroArch paths: external SAVE SOURCE discovery — allowed; RetroArch is not invoked as a helper;
+          - `/PKSE/` runtime writes: FOREIGN APP-OWNED WRITE PATH — removed from normal runtime;
+          - visible PokeVault wording in the staged Gen II exporter: USER-VISIBLE LEGACY BRANDING — removed.
+
+          ## Safety boundary
+
+          Standalone ownership does not authorize direct source mutation. Live installed-title writes and live RetroArch writes remain hard-disabled by policy. The Generation II staged editor continues to preserve original bytes, edit an independent buffer, repair checksum/mirrors, strict-reload, preserve supported RTC footer bytes, and export a separate edited save plus original backup and manifest.
+
+          Japanese Generation II remains read-only.
+          '''.replace('\n          ', '\n').lstrip()
+          write('docs/STANDALONE_RUNTIME.md', standalone_doc)
+
+          ui_doc = r'''# PokeBank NX UI ownership status
+
+          Issue #58 remains open. This pass establishes the PokeBank-owned product boundary and cleans touched runtime/editor identity; it does not claim that every inherited visible screen has been replaced.
+
+          | Surface | Current ownership | Retain as backend | Visible layer still to replace/refine |
+          | --- | --- | --- | --- |
+          | Home | MIXED | shared navigation/state/chrome | continue converging remaining inherited layout pieces |
+          | Game selection | MIXED | title/profile/source discovery and validated adapters | finish PokeBank-owned source/profile UX and touch parity |
+          | Trainer | MIXED | proven trainer models and read/write capability gates | replace remaining inherited TrainerView presentation incrementally |
+          | Party | MIXED | party models, Pokémon entities, legality/source rules | PokeBank-owned touch/controller presentation |
+          | Boxes | MIXED | box models, move/copy safety, source adapters | PokeBank-owned storage/box workspace |
+          | Inventory | MIXED | proven per-game pouch/item models | unified PokeBank inventory/editor presentation |
+          | Summary | MIXED | entity parsing, names, legality/provenance data | unified PokeBank summary presentation |
+          | Editor | MIXED | inherited common editor backend plus PokeBank staged Gen II sidecar | expand PokeBank-owned staged UI and touch controls |
+          | Backups | INHERITED/MIXED | proven backup-copy plumbing and safety policy | PokeBank backup/recovery browser and transaction UX |
+          | Settings | MIXED | settings model and persisted toggles | PokeBank-owned settings organization/touch surface |
+
+          Internal class names such as `PKSEFramebuffer` and namespaces such as `PokeVault::` are implementation details and are not treated as runtime prerequisites or user-facing product identity. Required attribution remains intact.
+          '''.replace('\n          ', '\n').lstrip()
+          write('docs/UI_OWNERSHIP_STATUS.md', ui_doc)
+
+          # Update existing docs truthfully without claiming future features complete.
+          statement = ('PokeBank NX is a standalone all-in-one Nintendo Switch Pokémon management application. '
+                       'External Pokémon homebrew and PC tools may be development references or optional migration tools, '
+                       'but are not prerequisites for normal advertised operation.')
+          for path in ['README.md', 'CURRENT_STATUS.md']:
+              text = read(path)
+              if statement not in text:
+                  text += f'\n\n## Standalone runtime ownership\n\n{statement}\n\nCanonical runtime root: `sdmc:/switch/PokeBank-NX/`. See `docs/STANDALONE_RUNTIME.md` and `docs/UI_OWNERSHIP_STATUS.md`. Issue #58 remains open for the full visible v1 UI conversion.\n'
+              write(path, text)
+
+          text = read('docs/CLASSIC_SAVE_EDITOR_ARCHITECTURE.md')
+          text = text.replace('PokeVault NX', 'PokeBank NX')
+          if 'sdmc:/switch/PokeBank-NX/exports/gen2/' not in text:
+              text += '\n\n## Standalone export ownership\n\nGeneration II staged exports are PokeBank-owned and resolve under `sdmc:/switch/PokeBank-NX/exports/gen2/`. The serializer and source-read-only policy are unchanged by this path migration.\n'
+          write('docs/CLASSIC_SAVE_EDITOR_ARCHITECTURE.md', text)
+
+          # Final static assertions before committing.
+          bad = []
+          for root in ['src', 'include']:
+              for p in Path(root).rglob('*'):
+                  if p.is_file() and p.suffix in {'.cpp', '.h', '.inc'}:
+                      t = p.read_text(errors='ignore')
+                      if 'sdmc:/PKSE' in t: bad.append(str(p))
+          if bad:
+              raise SystemExit('foreign runtime path remains: ' + ', '.join(bad))
+          PY
+
+          git diff --check
+          git status --short
+          git add include src tests Makefile.host Makefile.host.standalone README.md CURRENT_STATUS.md docs
+          git commit -m 'core: make pokebank runtime standalone candidate'
+          git push origin HEAD:dev/standalone-runtime-audit-20260912
