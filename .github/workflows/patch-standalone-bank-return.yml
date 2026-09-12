@@ -1,0 +1,45 @@
+name: patch-standalone-bank-return
+
+on:
+  push:
+    branches:
+      - dev/standalone-runtime-audit-20260912
+    paths:
+      - .github/workflows/patch-standalone-bank-return.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev/standalone-runtime-candidate-20260912
+          fetch-depth: 4
+      - name: Apply exact native compile fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "PokeBank NX CI"
+          git config user.email "actions@users.noreply.github.com"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/Trainer/Bank.cpp')
+          s = p.read_text()
+          old = '''        if (!PokeBank::Paths::ensureLegacyBankRoot(&pathError)) {
+              logErrorToFile("Bank: failed to create PokeBank NX legacy bank directory", pathError.c_str());
+              return;
+          }  // ignore EEXIST'''.replace('              ', '            ')
+          new = old.replace('            return;\n', '            return false;\n')
+          if s.count(old) != 1:
+              raise SystemExit(f'expected one exact Bank::save failure branch, found {s.count(old)}')
+          p.write_text(s.replace(old, new))
+          PY
+          git diff --check
+          git diff -- src/Trainer/Bank.cpp
+          grep -A4 -B1 -F 'ensureLegacyBankRoot' src/Trainer/Bank.cpp
+          git add src/Trainer/Bank.cpp
+          git commit -m 'core: return failure when legacy bank root cannot initialize'
+          git push origin HEAD:dev/standalone-runtime-candidate-20260912
