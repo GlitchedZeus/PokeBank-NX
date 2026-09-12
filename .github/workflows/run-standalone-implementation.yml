@@ -1,0 +1,43 @@
+name: run-standalone-implementation
+
+on:
+  push:
+    branches:
+      - dev/standalone-runtime-audit-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Run checked implementation payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$(git log -1 --pretty=%s)" = "core: make pokebank runtime standalone candidate" ]; then
+            echo "Candidate commit already created; nothing to mutate."
+            exit 0
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('.github/workflows/implement-standalone-runtime.yml').read_text().splitlines()
+          marker = '        run: |'
+          start = source.index(marker) + 1
+          payload = []
+          for line in source[start:]:
+              if line.startswith('          '):
+                  payload.append(line[10:])
+              elif not line.strip():
+                  payload.append('')
+              else:
+                  break
+          if not payload:
+              raise SystemExit('implementation payload missing')
+          Path('/tmp/pokebank-standalone-implement.sh').write_text('\n'.join(payload) + '\n')
+          PY
+          bash /tmp/pokebank-standalone-implement.sh
