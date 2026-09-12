@@ -1,0 +1,188 @@
+name: standalone-production-artifact
+
+on:
+  push:
+    branches:
+      - ci/standalone-production-artifact-20260912
+
+permissions:
+  contents: read
+
+env:
+  APP_SHA: 74698c3f6c8427dd6810c4259d520f015da7ba25
+  APP_TREE: 3b34a375a3b6c0418869c819d060654f9e0210ab
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+  LABEL: Standalone-Gold
+  ARTIFACT_NAME: PokeBank-NX-Standalone-Gold-74698c3f
+
+jobs:
+  exact-production-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout workflow carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Checkout exact remotely verified production source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 4
+          submodules: recursive
+
+      - name: Checkout recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Verify remote production identity and clean source
+        shell: bash
+        run: |
+          set -euo pipefail
+          REMOTE_SHA="$(git ls-remote origin refs/heads/feature/pokebank-playable | awk '{print $1}')"
+          test "$REMOTE_SHA" = "$APP_SHA"
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          test -z "$(git -C application status --porcelain --untracked-files=no)"
+          grep -q '0x01008F6008C5E000ULL' application/src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' application/include/Safety/SourceMutationPolicy.h
+          ! git -C application grep -n -I -F 'sdmc:/PKSE' -- src include
+          grep -q 'sdmc:/switch/PokeBank-NX' application/include/Utils/PokeBankPaths.h
+          echo 'EXACT REMOTE PRODUCTION SOURCE: PASS'
+          echo 'CLEAN TRACKED SOURCE: PASS'
+
+      - name: Recover exact RomFS and run device asset preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd recovery-work && python3 tools/recover_workspace.py)
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+
+      - name: Native devkitA64 compile and final link
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            for obj in Gen2StagedEditor.o GSCReadOnlyTrainer.o TrainerViewScreenGSCOverlay.o TrainerViewScreen.o Logger.o Settings.o FileUtilities.o Bank.o BackupSelectionScreen.o UI.o; do
+              find build -name "$obj" -type f | grep -q . || { echo "missing native object: $obj"; exit 1; }
+            done
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          echo 'NATIVE DEVKITA64 COMPILE: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
+
+      - name: Verify embedded application identity and RomFS
+        working-directory: application
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/verify_embedded_romfs.py PokeBankNX.nro romfs --application-source "$APP_SHA" | tee embedded-verification.json
+          grep -q '"result": "PASS"' embedded-verification.json
+          grep -q '"application_source": "'"$APP_SHA"'"' embedded-verification.json
+          echo 'EMBEDDED APPLICATION IDENTITY: PASS'
+          echo 'EMBEDDED ROMFS: PASS'
+
+      - name: Package exact standalone Gold build
+        working-directory: application
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          git diff --exit-code
+          git diff --cached --exit-code
+          rm -rf dist-device
+          python3 tools/package_device_build.py PokeBankNX.nro --label "$LABEL" --zip --out-dir dist-device --allow-dirty
+          NRO="$(find dist-device -maxdepth 1 -name '*.nro' -type f -print -quit)"
+          ZIP="$(find dist-device -maxdepth 1 -name '*.zip' -type f -print -quit)"
+          test -n "$NRO" && test -s "$NRO"
+          test -n "$ZIP" && test -s "$ZIP"
+          export NRO ZIP
+          python3 - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          app_sha = os.environ['APP_SHA']
+          app_tree = os.environ['APP_TREE']
+          nro = Path(os.environ['NRO'])
+          zip_path = Path(os.environ['ZIP'])
+
+          def digest(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open('rb') as f:
+                  for chunk in iter(lambda: f.read(1024 * 1024), b''):
+                      h.update(chunk)
+              return h.hexdigest()
+
+          nro_sha = digest(nro)
+          zip_sha = digest(zip_path)
+          nro_bytes = nro.stat().st_size
+          zip_bytes = zip_path.stat().st_size
+          out = Path('dist-device')
+          (out / 'SHA256SUMS.txt').write_text(
+              f'{nro_sha}  {nro.name}\n{zip_sha}  {zip_path.name}\n',
+              encoding='utf-8',
+          )
+          handoff = f'''POKEBANK NX STANDALONE GEN II GOLD HANDOFF
+          =========================================
+          Application source SHA: {app_sha}
+          Application tree: {app_tree}
+          NRO: {nro.name}
+          NRO bytes: {nro_bytes}
+          NRO SHA-256: {nro_sha}
+          Package ZIP: {zip_path.name}
+          ZIP bytes: {zip_bytes}
+          ZIP SHA-256: {zip_sha}
+          Embedded application identity: PASS
+          Embedded RomFS: PASS
+          Device asset preflight: PASS
+          Canonical runtime root: sdmc:/switch/PokeBank-NX/
+          Gen II export root: sdmc:/switch/PokeBank-NX/exports/gen2/
+          Live installed-game writes: HARD DISABLED
+          Live RetroArch writes: HARD DISABLED
+          Physical status: NOT DEVICE TESTED
+          Purpose: controlled Pokemon Gold staged-editor export test only
+          '''
+          (out / 'STANDALONE_GEN2_GOLD_HANDOFF.txt').write_text(handoff, encoding='utf-8')
+          print(handoff)
+          PY
+          cat dist-device/SHA256SUMS.txt
+
+      - name: Reconfirm remote production tip before upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          REMOTE_SHA="$(git ls-remote origin refs/heads/feature/pokebank-playable | awk '{print $1}')"
+          test "$REMOTE_SHA" = "$APP_SHA"
+          echo 'REMOTE PRODUCTION STILL EXACT: PASS'
+
+      - name: Upload exact production artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: application/dist-device/*
+          if-no-files-found: error
+          compression-level: 0
