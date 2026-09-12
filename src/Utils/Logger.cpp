@@ -12,6 +12,7 @@
 
 #include "Utils/Logger.h"
 #include "Globals.h"
+#include "Utils/PokeBankPaths.h"
 
 //---------------------------------------------------------------------------------------------
 // SD-card logging is a RUNTIME setting: Settings -> "Enable Debug Logging" (g_debugLogging in
@@ -37,7 +38,7 @@
 //---------------------------------------------------------------------------------------------
 
 namespace Utils {
-    #define LOG_DIRECTORY "sdmc:/PKSE/logs"
+    static const std::string& logDirectory() { static const std::string p = PokeBank::Paths::logsRoot(); return p; }
 
     constexpr const char *LOG_TYPE_INFO = "INFO";
     constexpr const char *LOG_TYPE_ERROR = "ERROR";
@@ -45,11 +46,13 @@ namespace Utils {
 
     // One flat file, next to the backups rather than inside logs/, so it is obvious and easy to
     // grab over MTP without digging through dated debug logs.
-    #define TEST_TRACE_PATH "sdmc:/PKSE/trace.log"
+    static const std::string& testTracePath() { static const std::string p = PokeBank::Paths::traceFile(); return p; }
 
     void logTest(const std::string& line) {
         if (!g_debugLogging) return;
-        FILE* f = fopen(TEST_TRACE_PATH, "a");
+        std::string pathError;
+        if (!PokeBank::Paths::ensureLogsRoot(&pathError)) return;
+        FILE* f = fopen(testTracePath().c_str(), "a");
         if (!f) return;   // tracing must never be able to break the app it is observing
         char timeBuffer[16];
         const time_t now = time(NULL);
@@ -60,7 +63,9 @@ namespace Utils {
 
     void logTestSession(const std::string& details) {
         if (!g_debugLogging) return;
-        FILE* f = fopen(TEST_TRACE_PATH, "a");
+        std::string pathError;
+        if (!PokeBank::Paths::ensureLogsRoot(&pathError)) return;
+        FILE* f = fopen(testTracePath().c_str(), "a");
         if (!f) return;
         char dateBuffer[32];
         const time_t now = time(NULL);
@@ -80,7 +85,7 @@ namespace Utils {
         char dateBuffer[16];
         strftime(dateBuffer, sizeof(dateBuffer), "%Y-%m-%d", t);
 
-        return std::string(LOG_DIRECTORY) + "/debug_" + dateBuffer + ".log";
+        return logDirectory() + "/debug_" + dateBuffer + ".log";
     }
     // For internal use only. Every logInfoToFile/logErrorToFile overload funnels through here, so
     // this one check covers all of them -- the wrappers below deliberately do not repeat it.
@@ -90,9 +95,9 @@ namespace Utils {
         const bool hasContext = (context != NULL && context[0] != '\0');
 
         // Ensure the directory exists
-        if (mkdir(LOG_DIRECTORY, 0777) != 0 && errno != EEXIST)
+        if (mkdir(logDirectory().c_str(), 0777) != 0 && errno != EEXIST)
         {
-            printf("Failed to create log directory: %s\n", LOG_DIRECTORY);
+            printf("Failed to create log directory: %s\n", logDirectory().c_str());
             consoleUpdate(NULL);
             return;
         }
@@ -169,7 +174,7 @@ namespace Utils {
         // is on the card was put there deliberately, and removing it is their call.
         if (!g_debugLogging) return;
 
-        DIR* dir = opendir(LOG_DIRECTORY);
+        DIR* dir = opendir(logDirectory().c_str());
         if (!dir) {
             return; // Directory doesn't exist or can't be opened
         }
@@ -183,7 +188,7 @@ namespace Utils {
             std::string filename(entry->d_name);
             if (filename.find("debug_") == 0 && filename.find(".log") == filename.length() - 4) {
                 // Build full path
-                std::string fullPath = std::string(LOG_DIRECTORY) + "/" + filename;
+                std::string fullPath = logDirectory() + "/" + filename;
 
                 // Get file modification time
                 struct stat fileInfo;

@@ -2,7 +2,7 @@
  * Bank.h - Persistent cross-GAME Pokemon storage ("bank")
  *
  * A HOME-style storage bank: boxes of Pokemon that live OUTSIDE any single save file,
- * persisted to the SD card under sdmc:/PKSE/bank. UNIFIED across all games: every slot
+ * persisted to the SD card under sdmc:/switch/PokeBank-NX/bank. UNIFIED across all games: every slot
  * carries its own game-group tag + native (encrypted) per-gen bytes, so Pokemon from all
  * six titles coexist in one bank. Deposit is passive (store as-is, byte-in == byte-out) --
  * the bank never converts or mutates a stored mon. Only withdraw-INTO-a-save converts, and

@@ -17,6 +17,7 @@
 #include "Safety/WritePolicy.h"
 #include "Utils/Logger.h"
 #include "Utils/FileUtilities.h"
+#include "Utils/PokeBankPaths.h"
 
 namespace Utils {
     bool copyDirectoryRecursive(const char* srcPath, const char* destPath) {
@@ -176,11 +177,12 @@ namespace Utils {
         logInfoToFile("Pokemon titleId: ", titleBuf);
         logInfoToFile("Pokemon Title name: ", titleName.c_str());
 
-        // Create base game directory: PKSE/{titleName}/
+        const std::string backupRoot = PokeBank::Paths::backupsRoot();
+        const std::string safeTitle = PokeBank::Paths::sanitizeComponent(titleName);
         char gameDirectory[512];
-        snprintf(gameDirectory, sizeof(gameDirectory), "%s/%s", BASE_SAVE_DIRECTORY.c_str(), titleName.c_str());
+        snprintf(gameDirectory, sizeof(gameDirectory), "%s/%s", backupRoot.c_str(), safeTitle.c_str());
 
-        // History backup -> PKSE/{titleName}/{timestamp}/ ; auto-backup off -> reuse PKSE/{titleName}/Working/
+        // History backup -> PokeBank NX backups/<title>/<timestamp>/; otherwise reuse Working/.
         std::string folderName = timestamped ? getTimestamp() : std::string("Working");
         char backupDirectory[1024];
         snprintf(backupDirectory, sizeof(backupDirectory), "%s/%s", gameDirectory, folderName.c_str());
@@ -188,9 +190,9 @@ namespace Utils {
         logInfoToFile("Backup directory", backupDirectory);
         logInfoToFile("Backing up save for title", titleName.c_str());
 
-        if (mkdir(BASE_SAVE_DIRECTORY.c_str(), 0777) != 0 && errno != EEXIST) {
-            logErrorToFile("Failed to create base directory", BASE_SAVE_DIRECTORY.c_str());
-            logErrorToFile("mkdir error", strerror(errno));
+        std::string pathError;
+        if (!PokeBank::Paths::ensureBackupsRoot(&pathError)) {
+            logErrorToFile("Failed to create PokeBank NX backups directory", pathError.c_str());
             return "";
         }
         if (mkdir(gameDirectory, 0777) != 0 && errno != EEXIST) {

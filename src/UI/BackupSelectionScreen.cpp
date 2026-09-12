@@ -8,6 +8,7 @@
 #include "UI/Dialogs/DialogFrame.h"
 #include "Utils/HelperUtilities.h"
 #include "Utils/FileUtilities.h"
+#include "Utils/PokeBankPaths.h"
 #include "Globals.h"
 
 using namespace Utils;
@@ -33,9 +34,8 @@ namespace UI {
         : titleId(titleId), titleName(titleName), selectedIndex(0), backupSelected(false),
         createNewBackup(false), goBack(false), showDeleteConfirmation(false), deleteConfirmationIndex(-1) {
 
-        char gameDirBuf[512];
-        snprintf(gameDirBuf, sizeof(gameDirBuf), "%s/%s", BASE_SAVE_DIRECTORY.c_str(), titleName.c_str());
-        gameDirectory = gameDirBuf;
+        const std::string safeTitle = PokeBank::Paths::sanitizeComponent(titleName);
+        gameDirectory = PokeBank::Paths::backupsRoot() + "/" + safeTitle;
 
         loadBackups();
     }
