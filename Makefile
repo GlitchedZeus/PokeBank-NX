@@ -189,7 +189,7 @@ endif
 
 ifeq ($(strip $(ICON)),)
 	icons := $(wildcard *.jpg)
-	ifneq (,$(findstring $(TARGET).jpg,$(jsons)))
+	ifneq (,$(findstring $(TARGET).jpg,$(icons)))
 		export APP_ICON := $(TOPDIR)/$(TARGET).jpg
 	else
 		ifneq (,$(findstring icon.jpg,$(icons)))
