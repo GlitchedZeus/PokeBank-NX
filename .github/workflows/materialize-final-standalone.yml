@@ -1,0 +1,49 @@
+name: materialize-final-standalone
+
+on:
+  push:
+    branches:
+      - dev/standalone-runtime-audit-20260912
+    paths:
+      - .github/workflows/materialize-final-standalone.yml
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev/standalone-runtime-final-20260912
+          fetch-depth: 6
+      - name: Consolidate final application delta onto production parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "PokeBank NX CI"
+          git config user.email "actions@users.noreply.github.com"
+          PROD=3618f2423ba48be4fcaee138beb1fadec36792bd
+          SOURCE=c8a08c1db8d373156bd3f3ca20a8d9304b3383c5
+          test "$(git rev-parse HEAD)" = "$PROD"
+          git fetch origin "$SOURCE"
+          git checkout "$SOURCE" -- \
+            CURRENT_STATUS.md Makefile.host Makefile.host.standalone README.md \
+            docs/CLASSIC_SAVE_EDITOR_ARCHITECTURE.md docs/STANDALONE_RUNTIME.md docs/UI_OWNERSHIP_STATUS.md \
+            include/Globals.h include/Trainer/Bank.h include/UI/TrainerViewScreenBase.h \
+            include/Utils/FileUtilities.h include/Utils/Logger.h include/Utils/PokeBankPaths.h include/Utils/Settings.h \
+            src/Trainer/Bank.cpp src/UI/BackupSelectionScreen.cpp src/UI/TrainerViewScreenBase.inc \
+            src/UI/TrainerViewScreenGSCOverlay.cpp src/UI/UI.cpp src/Utils/FileUtilities.cpp src/Utils/Logger.cpp \
+            src/Utils/Settings.cpp src/main.cpp \
+            tests/test_clean_install_runtime.cpp tests/test_pokebank_paths.cpp tests/test_runtime_dependency_contract.cpp
+          test -z "$(git diff --name-only -- .github/workflows)"
+          git diff --check
+          test "$(grep -c 'return false;' src/Trainer/Bank.cpp)" -ge 1
+          ! git grep -n -I -F 'sdmc:/PKSE' -- src include
+          git add -A
+          git commit -m 'core: make pokebank runtime standalone'
+          test "$(git rev-parse HEAD^1)" = "$PROD"
+          echo "FINAL_CANDIDATE_HEAD=$(git rev-parse HEAD)"
+          echo "FINAL_CANDIDATE_TREE=$(git rev-parse 'HEAD^{tree}')"
+          git push origin HEAD:dev/standalone-runtime-final-20260912
