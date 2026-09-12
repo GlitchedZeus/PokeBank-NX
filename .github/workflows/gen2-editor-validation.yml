@@ -1,0 +1,42 @@
+name: Gen II staged editor validation
+
+on:
+  push:
+    branches:
+      - dev/gen2-staged-editor-20260912
+
+permissions:
+  contents: read
+
+jobs:
+  editor-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          submodules: recursive
+      - name: Identity and safety invariants
+        run: |
+          set -euo pipefail
+          git diff --check HEAD^ HEAD
+          grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' include/Safety/SourceMutationPolicy.h
+      - name: Build and run staged editor round-trip
+        run: |
+          set -euo pipefail
+          make -f Makefile.host build-host/test_gsc_staged_editor
+          ./build-host/test_gsc_staged_editor
+      - name: Run staged editor sanitizers
+        run: |
+          set -euo pipefail
+          make -f Makefile.host build-host/test_gsc_staged_editor_sanitize
+          ./build-host/test_gsc_staged_editor_sanitize
+      - name: Accepted GSC parser/inventory regressions
+        run: |
+          set -euo pipefail
+          make -f Makefile.host build-host/test_gsc_gen2_adapter build-host/test_gsc_inventory build-host/test_gsc_readonly_bridge
+          ./build-host/test_gsc_gen2_adapter
+          ./build-host/test_gsc_inventory
+          ./build-host/test_gsc_readonly_bridge
