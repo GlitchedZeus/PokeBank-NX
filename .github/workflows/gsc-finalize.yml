@@ -23,7 +23,7 @@ env:
   SILVER_PATH: Named_Boxarts/Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).png
   SILVER_BLOB: f075e64ded41169bb0c8ae47edc0fc2ed5f6149c
   CRYSTAL_PATH: Named_Boxarts/Pokemon - Crystal Version (USA, Europe) (Rev 1).png
-  CRYSTAL_BLOB: 7c8e17590d44a2bcd62776cb74b1822e7ca091b3
+  CRYSTAL_BLOB: 36fb3c05b3a61b3b5d8c25474ffddc77a749ef6d
 
 jobs:
   finalize:
@@ -146,7 +146,6 @@ jobs:
           if '## Generation II Game Boy Color cards' in readme.read_text(): raise SystemExit('Gen II README section already exists')
           readme.write_text(readme.read_text().rstrip()+'\n\n## Generation II Game Boy Color cards\n\nGold, Silver, and Crystal use permanent representative USA/Europe retail box art from `libretro-thumbnails/Nintendo_-_Game_Boy_Color`, pinned at commit `0931985ba8a3a9f38fb87f006611a13dc094260f`. `manifest.json` records the pinned tree, exact tree entry, resolved Git blob, SHA-256, and local destination for each asset. `make game-card-art` copies the stable IDs into RomFS.\n')
           PY
-          git rm .github/workflows/gsc-finalize.yml
           git diff --check
           grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
           for f in gold_gbc silver_gbc crystal_gbc; do test -s "assets/game_cards/$f.png"; done
@@ -156,8 +155,12 @@ jobs:
           set -euo pipefail
           git config user.name 'PokeVault NX CI'
           git config user.email 'actions@users.noreply.github.com'
+          git stash push --include-untracked -m gsc-verified-assets
+          git fetch origin feature/pokebank-playable
+          git merge --ff-only origin/feature/pokebank-playable
+          git stash pop
+          grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
           git add Makefile src/Games/GameIdentity.cpp tests/test_game_identity.cpp tools/check_device_assets.py assets/game_cards/README.md assets/game_cards/manifest.json assets/game_cards/gold_gbc.png assets/game_cards/silver_gbc.png assets/game_cards/crystal_gbc.png
-          git add -u .github/workflows/gsc-finalize.yml
           for f in assets/game_cards/gold_gbc.png assets/game_cards/silver_gbc.png assets/game_cards/crystal_gbc.png; do git diff --cached --name-only -- "$f" | grep -qx "$f"; done
           git commit -m 'assets(gsc): pin Gold Silver Crystal game-card artwork'
           ASSET_COMMIT="$(git rev-parse HEAD)"; ASSET_TREE="$(git rev-parse 'HEAD^{tree}')"
