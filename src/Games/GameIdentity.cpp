@@ -29,7 +29,7 @@ namespace PokeVault::Games {
             {"shining_pearl_switch",         "Shining Pearl",     NintendoSwitch, 8, 0x010018E011D92000ULL, NativeSwitch},
             {"legends_arceus_switch",        "Legends Arceus",    NintendoSwitch, 8, 0x01001F5010DFA000ULL, NativeSwitch},
             {"scarlet_switch",               "Scarlet",           NintendoSwitch, 9, 0x0100A3D008C5C000ULL, NativeSwitch},
-            {"violet_switch",                "Violet",             NintendoSwitch, 9, 0x01008DB008C5E000ULL, NativeSwitch},
+            {"violet_switch",                "Violet",            NintendoSwitch, 9, 0x01008F6008C5E000ULL, NativeSwitch},
             {"legends_za_switch",            "Legends Z-A",       NintendoSwitch, 9, 0x0100F43008C44000ULL, NativeSwitch},
         }};
     }
