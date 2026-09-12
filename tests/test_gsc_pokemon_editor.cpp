@@ -146,8 +146,10 @@ void runFamily(const L& l,SourceGame game){
     // Invalid/malformed edits reject atomically.
     const auto preReject=std::vector<uint8_t>(editor->stagedBytes().begin(),editor->stagedBytes().end());
     BoxPokemonEdit bad;bad.nickname="ABCDEFGHIJK";assert(!editor->stageBoxPokemonEdit(0,0,bad,error));
+    bad={};bad.species=252;assert(!editor->stageBoxPokemonEdit(0,0,bad,error));
     bad={};bad.nickname="BAD@";assert(!editor->stageBoxPokemonEdit(0,0,bad,error));
     bad={};bad.level=0;assert(!editor->stageBoxPokemonEdit(0,0,bad,error));
+    bad={};bad.level=101;assert(!editor->stageBoxPokemonEdit(0,0,bad,error));
     bad={};bad.heldItem=6;assert(!editor->stageBoxPokemonEdit(0,0,bad,error)); // TERU-SAMA
     bad={};bad.moves=std::array<uint8_t,4>{252,0,0,0};assert(!editor->stageBoxPokemonEdit(0,0,bad,error));
     bad={};bad.dvs=std::array<uint8_t,4>{16,1,1,1};assert(!editor->stageBoxPokemonEdit(0,0,bad,error));
@@ -200,6 +202,9 @@ void runFamily(const L& l,SourceGame game){
     BoxPokemonEdit genderGlyph;genderGlyph.nickname="NIDORAN\xE2\x99\x80";
     assert(editor->stageBoxPokemonEdit(5,0,genderGlyph,error));
     auto glyphMon=editor->boxedPokemon(5,0,error);assert(glyphMon&&glyphMon->nickname=="NIDORAN\xE2\x99\x80");
+    genderGlyph.nickname="NIDORAN\xE2\x99\x82";
+    assert(editor->stageBoxPokemonEdit(5,0,genderGlyph,error));
+    glyphMon=editor->boxedPokemon(5,0,error);assert(glyphMon&&glyphMon->nickname=="NIDORAN\xE2\x99\x82");
 
     // Full box refuses add/clone and never overwrites.
     auto fullRaw=fixture(l);fullBox(fullRaw,4);checksum(fullRaw,l);
