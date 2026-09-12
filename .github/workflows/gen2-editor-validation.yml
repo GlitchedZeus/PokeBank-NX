@@ -1,0 +1,36 @@
+name: Gen II Pokemon Editor Validation
+
+on:
+  push:
+    branches:
+      - dev/gen2-pokemon-editor-20260912
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Identity
+        run: |
+          git rev-parse HEAD
+          git rev-parse HEAD^{tree}
+          git diff --check HEAD^ HEAD
+      - name: Host suite
+        run: |
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+      - name: ASan and UBSan
+        run: make -f Makefile.host host-sanitize
+      - name: Safety invariants
+        run: |
+          set -euo pipefail
+          ! grep -R "sdmc:/PKSE" -n src include
+          grep -R "0x01008F6008C5E000" -n src include
+          grep -R "InstalledGame" -n src include >/dev/null
+          grep -R "RetroArchLegacy" -n src include >/dev/null
