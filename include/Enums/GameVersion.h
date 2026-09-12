@@ -1,6 +1,7 @@
 #ifndef ENUMS_GAME_VERSION_H
 #define ENUMS_GAME_VERSION_H
 
+#include <cstdint>
 #include <string>
 
 namespace Enums {
