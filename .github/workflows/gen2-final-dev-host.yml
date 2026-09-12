@@ -1,0 +1,63 @@
+name: gen2-final-dev-host
+
+on:
+  push:
+    branches:
+      - ci/standalone-final-host-validation-20260912
+
+permissions:
+  contents: read
+
+env:
+  APP_SHA: 6bd5909358b8e274110bc184737980e09ad1e9ab
+  APP_TREE: b16389acbc06cefce630f6e310126c2998805e90
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact final dev candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          submodules: recursive
+          fetch-depth: 4
+      - name: Identity and diff checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          git -C application diff --check HEAD^
+      - name: Full host suite
+        working-directory: application
+        run: |
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+      - name: ASan and UBSan
+        working-directory: application
+        run: make -f Makefile.host host-sanitize
+      - name: Required focused gates and safety invariants
+        working-directory: application
+        shell: bash
+        run: |
+          set -euo pipefail
+          for t in \
+            test_gsc_pokemon_editor test_machine_display test_gsc_staged_editor \
+            test_gsc_gen2_adapter test_gsc_inventory test_gsc_readonly_bridge \
+            test_rby_gen1_adapter test_rby_readonly_bridge \
+            test_gen3_native_slice test_rse_gen3_native_slice \
+            test_source_mutation_policy test_clean_install_runtime \
+            test_runtime_dependency_contract test_pokebank_paths; do
+            test -x "build-host/$t" || { echo "missing required host gate: $t"; exit 1; }
+          done
+          ! grep -R "sdmc:/PKSE" -n src include
+          grep -R "0x01008F6008C5E000" -n src include
+          grep -q 'MachineMoveNames' include/Save/EditableSaveCapabilities.h
+          grep -q 'SAVE WRITING NOT YET ENABLED' src/UI/Dialogs/SaveConfirmDialog.cpp
+          echo 'FINAL DEV HOST MATRIX: PASS'
+          echo 'SOURCE MUTATION POLICY: PASS'
+          echo 'CLEAN INSTALL: PASS'
+          echo 'NO /PKSE/ DEPENDENCY: PASS'
