@@ -40,7 +40,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	PokeBankNX
 BUILD		:=	build
-SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Gen1 src/Integration/Gen3 src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
+SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Gen1 src/Integration/Gen2 src/Integration/Gen3 src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
 DATA		:=	data
 INCLUDES	:=	include nanovg
 APP_TITLE   :=  PokeBank NX
@@ -273,7 +273,7 @@ types:
 		if command -v curl >/dev/null 2>&1; then \
 			curl -fsSL "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-ix/scarlet-violet/$$api_id.png" -o "$$outfile"; \
 		else \
-			wget -q "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-ix/scarlet-violet/$$api_id.png" -O "$$outfile"; \
+			wget -q "$(TYPE_DIR)/$$local_id.png" "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-ix/scarlet-violet/$$api_id.png"; \
 		fi || { printf "Failed type #$$api_id\n"; exit 1; }'; \
 	ret=$$?; \
 	if [ $$ret -ne 0 ]; then exit $$ret; fi
