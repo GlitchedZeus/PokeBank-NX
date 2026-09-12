@@ -38,8 +38,8 @@ void drawGSCTrainerCard(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const int w = fb.getWidth() - x;
 
     // The accepted base screen drew the later-generation Trainer card first. Replace only the content
-    // panel for GSC so no SID, full modern IDs, account/profile data, or unproven GS player gender can
-    // remain visible. The title bar and existing navigation footer stay untouched.
+    // panel for GSC so no SID, full modern IDs, account/profile data, or unsupported metadata can remain
+    // visible. The title bar and existing navigation footer stay untouched.
     fb.drawFilledRoundedRect(x, y, w, h, 16, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 16, Colors::Border, 1);
     fb.drawFilledRoundedRect(x, y, w, headerH, 16, Colors::AccentDim);
@@ -72,15 +72,15 @@ void drawGSCTrainerCard(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     row("Money", "$" + std::to_string(trainer.money));
     row("Trainer ID", std::to_string(trainer.TID16));
 
-    // Gold/Silver do not carry a proven player-gender field. Crystal's strict parser validates the
-    // family and accepts only the stored 0/1 gender byte before this source can reach the runtime.
-    if (screen.sourceGameId == "crystal_gbc" && trainer.trainerGender <= 1)
-        row("Player Gender", trainer.trainerGender == 0 ? "Male" : "Female");
+    // The Gen II trainer bridge guarantees a semantic gender value for validated GSC sources:
+    // Gold/Silver resolve to their fixed male player character, while Crystal is save-derived.
+    if (trainer.trainerGender <= 1)
+        row("Gender", trainer.trainerGender == 0 ? "Male" : "Female");
 
     rowY += 8;
     const char* note = screen.sourceGameId == "crystal_gbc"
         ? "Crystal gender is shown only from the validated Crystal save field."
-        : "Gold/Silver do not expose a proven player-gender field.";
+        : "Gold/Silver use the games' fixed male player character.";
     fb.drawText(cardX + 12, rowY, note, Colors::TextDim, TextStyle::Caption);
     fb.drawText(cardX + 12, rowY + 28,
                 "No SID or later-generation trainer metadata is stored in this Gen II view.",

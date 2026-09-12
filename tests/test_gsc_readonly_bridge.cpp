@@ -99,9 +99,10 @@ int main(){
         assert(trainer&&error.empty());
         assert(trainer->getGameGroup()==Enums::GameVersion::GSC);
         assert(trainer->sourceGameId()=="gold_gbc");
-        assert(!trainer->japaneseLayout()&&!trainer->crystalFamily()&&!trainer->hasTrainerGender());
+        assert(!trainer->japaneseLayout()&&!trainer->crystalFamily());
+        assert(trainer->hasTrainerGender()&&trainer->trainerGender==0); // Gold player is fixed male.
         assert(trainer->trainerName=="A"&&trainer->money==123456&&trainer->TID16==0x1234);
-        assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==0x1234);
+        assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==0x1234); // Gen II has no SID.
         assert(trainer->getBoxCount()==14&&trainer->getSlotsPerBox()==20&&trainer->getCurrentBox()==0);
         assert(trainer->boxNames.size()==14&&trainer->boxNames[0]=="A");
         assert(trainer->getPartySize()==1&&trainer->party[0]);
@@ -129,17 +130,29 @@ int main(){
         assert(std::equal(parsed.save->sourceBytes().begin(),parsed.save->sourceBytes().end(),before.begin()));
     }
     {
-        auto bytes=fixture(IC);
+        auto bytes=fixture(IC); // fixture stores Crystal female = 1.
         auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Crystal);assert(parsed);
         std::string error;auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);assert(trainer);
         assert(trainer->sourceGameId()=="crystal_gbc"&&trainer->crystalFamily());
         assert(trainer->hasTrainerGender()&&trainer->trainerGender==1);
+        assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==trainer->TID16);
+    }
+    {
+        auto bytes=fixture(IC);
+        bytes[IC.gender]=0; // Crystal male save.
+        checksum(bytes,IC);
+        auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Crystal);assert(parsed);
+        std::string error;auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);assert(trainer);
+        assert(trainer->hasTrainerGender()&&trainer->trainerGender==0);
+        assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==trainer->TID16);
     }
     {
         auto bytes=fixture(JGS);
         auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Silver);assert(parsed);
         std::string error;auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);assert(trainer);
         assert(trainer->sourceGameId()=="silver_gbc"&&trainer->japaneseLayout());
+        assert(trainer->hasTrainerGender()&&trainer->trainerGender==0); // Silver player is fixed male.
+        assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==trainer->TID16);
         assert(trainer->getBoxCount()==9&&trainer->getSlotsPerBox()==30&&trainer->boxNames.size()==9);
     }
     {
@@ -150,5 +163,9 @@ int main(){
         assert(unown->speciesID()==201&&unown->form()==21); // Gen II DV-derived Unown letter index.
     }
 
+    std::cout<<"Gold trainer gender fixed male: PASS\n";
+    std::cout<<"Silver trainer gender fixed male: PASS\n";
+    std::cout<<"Crystal saved male/female trainer gender: PASS\n";
+    std::cout<<"Generation II SID unsupported (zero / not exposed): PASS\n";
     std::cout<<"Generation II readonly Trainer/Party/Boxes + PK2 bridge: PASS\n";
 }

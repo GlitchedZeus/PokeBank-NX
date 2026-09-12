@@ -86,8 +86,17 @@ bool GSCReadOnlyTrainer::populate(
     ID32 = TID16; // PK2 has no SID. Only the visible 16-bit Trainer ID is meaningful.
     SID16 = 0;
     SID = 0;
+
+    // Crystal stores a validated 0/1 player-gender byte and the strict parser owns that truth.
+    // Gold/Silver have no selectable player gender: their player character is fixed male, so resolve
+    // that game rule here instead of reading an unrelated save byte or pretending gender is absent.
     trainerGenderAvailable_ = strictTrainer.gender.has_value();
-    if (strictTrainer.gender) trainerGender = *strictTrainer.gender;
+    if (strictTrainer.gender) {
+        trainerGender = *strictTrainer.gender;
+    } else if (sourceGameId_ == "gold_gbc" || sourceGameId_ == "silver_gbc") {
+        trainerGender = 0;
+        trainerGenderAvailable_ = true;
+    }
 
     // Inventory is deliberately optional. A malformed optional item submodel never invalidates an
     // otherwise-valid Trainer/Party/Boxes save. A valid empty inventory still exposes all five real
