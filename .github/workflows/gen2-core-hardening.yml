@@ -1,4 +1,4 @@
-name: Gen II Core Hardening Patch
+name: Gen II Acceptance Test Hardening
 
 on:
   push:
@@ -10,23 +10,24 @@ permissions:
 
 jobs:
   patch:
+    if: ${{ !contains(github.event.head_commit.message, '[gen2-tests-hardened]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply deterministic hardening patch
-        run: python3 tools/dev_gen2_core_hardening.py
+      - name: Apply final acceptance test hardening
+        run: python3 tools/dev_gen2_test_hardening.py
       - name: Commit patch if needed
         shell: bash
         run: |
           set -euo pipefail
           git diff --check
-          if git diff --quiet -- src/Integration/Gen2/Gen2StagedEditor.cpp include/Integration/Gen2/Gen2StagedEditor.h Makefile.host.editor tests/test_gsc_pokemon_editor.cpp; then
+          if git diff --quiet -- tests/test_gsc_pokemon_editor.cpp tests/test_machine_display.cpp; then
             exit 0
           fi
           git config user.name "PokeBank NX CI"
           git config user.email "actions@users.noreply.github.com"
-          git add src/Integration/Gen2/Gen2StagedEditor.cpp include/Integration/Gen2/Gen2StagedEditor.h Makefile.host.editor tests/test_gsc_pokemon_editor.cpp
-          git commit -m "gen2: harden text encoding and creation defaults"
+          git add tests/test_gsc_pokemon_editor.cpp tests/test_machine_display.cpp
+          git commit -m "test: harden gen2 pokemon and machine acceptance [gen2-tests-hardened]"
           git push origin HEAD:dev/gen2-pokemon-editor-20260912
