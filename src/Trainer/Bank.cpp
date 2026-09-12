@@ -432,7 +432,7 @@ namespace Trainer {
         std::string pathError;
         if (!PokeBank::Paths::ensureLegacyBankRoot(&pathError)) {
             logErrorToFile("Bank: failed to create PokeBank NX legacy bank directory", pathError.c_str());
-            return;
+            return false;
         }  // ignore EEXIST
 
         std::vector<uint8_t> buf = serialize();
