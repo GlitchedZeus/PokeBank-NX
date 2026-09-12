@@ -122,6 +122,16 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     }
 
     updateLegacyBase(pad, touch);
+
+    // The inherited read-only summary input knows about the modern Ribbons/Legality overlays and can
+    // set those flags from Y/R before it reaches the read-only edit guard. The dedicated Gen II modal
+    // intentionally has neither surface, so retaining either flag would create an invisible blocking
+    // overlay on the next frame. Clear them only for validated GSC sources after base input handling;
+    // accepted RBY and Gen III+ behavior is untouched.
+    if (trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this)) {
+        details.ribbonOverlay = false;
+        details.legalityOverlay = false;
+    }
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
