@@ -14,11 +14,7 @@ namespace {
 
 MachineDescriptor make(Enums::GameVersion game, uint16_t itemId, MachineKind kind,
                        uint16_t number, uint8_t width) noexcept {
-    // TMMoves stores mappings by shared save/game group. Accept exact game identities at this
-    // presentation boundary and normalize them without changing the underlying stored item id.
-    const Enums::GameVersion grouped = Enums::getGameGroup(game);
-    const Enums::GameVersion mapping = grouped == Enums::GameVersion::Invalid ? game : grouped;
-    const uint16_t move = getTMMove(mapping, itemId);
+    const uint16_t move = getTMMove(game, itemId);
     if (move == 0) return {};
     return {kind, number, width, move};
 }
