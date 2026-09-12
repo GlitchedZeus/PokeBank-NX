@@ -15,7 +15,8 @@ GSC_BRIDGE_SOURCES := tests/test_gsc_readonly_bridge.cpp \
 	src/Legacy/GSCReadOnlyTrainer.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
 	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
 	src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/BaseStatsGen89.cpp \
-	src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp
+	src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp src/Names/NatureNames.cpp \
+	src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
 GSC_BRIDGE_FLAGS := -Wno-unused-parameter
 GSC_UI_RULES_SOURCES := tests/test_gsc_ui_rules.cpp
 
