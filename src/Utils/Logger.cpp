@@ -94,11 +94,12 @@ namespace Utils {
 
         const bool hasContext = (context != NULL && context[0] != '\0');
 
-        // Ensure the directory exists
-        if (mkdir(logDirectory().c_str(), 0777) != 0 && errno != EEXIST)
-        {
-            printf("Failed to create log directory: %s\n", logDirectory().c_str());
+        std::string pathError;
+        if (!PokeBank::Paths::ensureLogsRoot(&pathError)) {
+            printf("Failed to create PokeBank NX log directory: %s\n", pathError.c_str());
+#ifdef __SWITCH__
             consoleUpdate(NULL);
+#endif
             return;
         }
 
