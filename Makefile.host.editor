@@ -1,11 +1,16 @@
 # Classic staged-save editor gates. Kept separate from the accepted read-only Gen I/II/III graphs.
-GEN2_STAGED_EDITOR_SOURCES := tests/test_gsc_staged_editor.cpp \
+GEN2_STAGED_EDITOR_COMMON := \
 	src/Integration/Gen2/Gen2StagedEditor.cpp \
 	src/Integration/Gen2/Gen2ReadOnlySave.cpp \
-	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+	src/Integration/Gen2/Gen2PersonalData.cpp \
+	src/Pokemon/Experience.cpp
 
-EDITOR_HOST_TESTS := $(HOST_BUILD)/test_gsc_staged_editor
-EDITOR_SANITIZE_TESTS := $(HOST_BUILD)/test_gsc_staged_editor_sanitize
+GEN2_STAGED_EDITOR_SOURCES := tests/test_gsc_staged_editor.cpp $(GEN2_STAGED_EDITOR_COMMON)
+GEN2_POKEMON_EDITOR_SOURCES := tests/test_gsc_pokemon_editor.cpp $(GEN2_STAGED_EDITOR_COMMON)
+
+EDITOR_HOST_TESTS := $(HOST_BUILD)/test_gsc_staged_editor $(HOST_BUILD)/test_gsc_pokemon_editor
+EDITOR_SANITIZE_TESTS := $(HOST_BUILD)/test_gsc_staged_editor_sanitize $(HOST_BUILD)/test_gsc_pokemon_editor_sanitize
 
 HOST_TESTS += $(EDITOR_HOST_TESTS)
 HOST_SANITIZE_TESTS += $(EDITOR_SANITIZE_TESTS)
@@ -17,5 +22,13 @@ $(HOST_BUILD)/test_gsc_staged_editor: $(GEN2_STAGED_EDITOR_SOURCES)
 	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_gsc_staged_editor_sanitize: $(GEN2_STAGED_EDITOR_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gsc_pokemon_editor: $(GEN2_POKEMON_EDITOR_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gsc_pokemon_editor_sanitize: $(GEN2_POKEMON_EDITOR_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
