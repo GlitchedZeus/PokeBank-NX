@@ -22,6 +22,7 @@
 #include "Utils/HelperUtilities.h"
 #include "Names/MoveNames.h"
 #include "Names/TMMoves.h"
+#include "Names/MachineDisplay.h"
 #include "Names/ItemNames.h"
 
 using namespace Trainer;
@@ -156,32 +157,20 @@ namespace Panels {
                 nx += 24;
             }
 
-            std::string gen2Name;
-            const char* itemName = nullptr;
+            std::string baseName;
             if (gameGroup == GameVersion::RBY) {
-                itemName = Names::getItemNameG1(item.itemId);
+                baseName = Names::getItemNameG1(item.itemId);
             } else if (gameGroup == GameVersion::GSC) {
-                gen2Name = std::string(PokeVault::Integration::Gen2::gen2ItemName(
+                baseName = std::string(PokeVault::Integration::Gen2::gen2ItemName(
                     static_cast<uint8_t>(item.itemId)));
-                itemName = gen2Name.c_str();
             } else if (gameGroup == GameVersion::FRLG) {
-                itemName = Names::getItemNameG3(item.itemId);
+                baseName = Names::getItemNameG3(item.itemId);
             } else {
-                itemName = getItemName(item.itemId);
+                baseName = getItemName(item.itemId);
             }
+            const std::string displayName = Names::machineDisplayLabel(gameGroup, item.itemId, baseName);
             fb.drawText(nx, ry + (tileH - fb.lineHeight(TextStyle::Body)) / 2,
-                        itemName, nameCol, TextStyle::Body);
-
-            // Raw Gen I/II machine ids have their own namespaces; never reinterpret them through a
-            // later-generation TM table. Their exact TM01..TM50/HM01..HM07 labels come from gen2ItemName.
-            if (gameGroup != GameVersion::RBY && gameGroup != GameVersion::GSC) {
-                if (uint16_t tmMove = Names::getTMMove(gameGroup, item.itemId)) {
-                    int iw, ih; fb.measureText(itemName, iw, ih, TextStyle::Body);
-                    const Color moveCol = selected ? Colors::PrimaryText : Colors::TextDim;
-                    fb.drawText(nx + iw + 14, ry + (tileH - fb.lineHeight(TextStyle::Body)) / 2,
-                                Names::getMoveName(tmMove), moveCol, TextStyle::Body);
-                }
-            }
+                        displayName, nameCol, TextStyle::Body);
 
             std::string cnt = "\xC3\x97" + std::to_string(item.count);
             int cw, ch; fb.measureText(cnt, cw, ch, TextStyle::Body);

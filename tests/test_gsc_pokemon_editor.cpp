@@ -118,6 +118,7 @@ void runFamily(const L& l,SourceGame game){
     assert(editor->capabilities().supports(PokeVault::SaveEdit::Capability::PokemonCreation));
     assert(editor->capabilities().supports(PokeVault::SaveEdit::Capability::PokemonClone));
     assert(editor->capabilities().supports(PokeVault::SaveEdit::Capability::PokemonShinyToggle));
+    assert(editor->capabilities().supports(PokeVault::SaveEdit::Capability::MachineMoveNames));
     assert(!editor->capabilities().supports(PokeVault::SaveEdit::Capability::PartyPokemon));
 
     auto p=editor->boxedPokemon(0,0,error);assert(p&&p->species==25&&p->nickname=="PIKA");

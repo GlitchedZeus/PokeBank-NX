@@ -436,7 +436,8 @@ StagedEditor::StagedEditor(const ReadOnlySave& source)
                  .add(SaveEdit::Capability::PokemonEditing)
                  .add(SaveEdit::Capability::PokemonCreation)
                  .add(SaveEdit::Capability::PokemonClone)
-                 .add(SaveEdit::Capability::PokemonShinyToggle);
+                 .add(SaveEdit::Capability::PokemonShinyToggle)
+                 .add(SaveEdit::Capability::MachineMoveNames);
 }
 
 std::unique_ptr<StagedEditor> StagedEditor::create(const ReadOnlySave& source, std::string& error) {

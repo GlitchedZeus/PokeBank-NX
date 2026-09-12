@@ -24,6 +24,7 @@ enum class Capability : uint32_t {
     PokemonCreation   = 1u << 15,
     PokemonClone      = 1u << 16,
     PokemonShinyToggle= 1u << 17,
+    MachineMoveNames   = 1u << 18,
 };
 
 class Capabilities final {

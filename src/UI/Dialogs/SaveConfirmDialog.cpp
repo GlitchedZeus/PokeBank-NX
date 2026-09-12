@@ -23,18 +23,29 @@ namespace Dialogs {
         // Exiting with unsaved changes is a different question ("throw these away?"), not a
         // destination choice, so it keeps the plain two-button form.
         if (screen.exitingWithUnsavedChanges) {
-            constexpr int h = 248;
+            const bool installedPreview = screen.sourceKind == PokeVault::Safety::SourceKind::InstalledGame;
+            constexpr int h = 270;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
-            int cy = drawDialogFrame(fb, x, y, w, h, "Unsaved Changes", Colors::Warning);
-            fb.drawText(x + 24, cy,      "You have unsaved changes.", Colors::Text);
-            fb.drawText(x + 24, cy + 28, "Changes will be lost if you continue.", Colors::TextDim);
+            int cy = drawDialogFrame(fb, x, y, w, h,
+                                     installedPreview ? "SAVE WRITING NOT YET ENABLED" : "Unsaved Changes",
+                                     Colors::Warning);
+            if (installedPreview) {
+                fb.drawText(x + 24, cy,      "Edits to this installed game are preview-only in this build.", Colors::Text);
+                fb.drawText(x + 24, cy + 28, "PokeBank NX will not modify the installed game save.", Colors::TextDim);
+                fb.drawText(x + 24, cy + 56, "Discard the preview changes, or return to the editor.", Colors::TextDim);
+            } else {
+                fb.drawText(x + 24, cy,      "You have unsaved changes.", Colors::Text);
+                fb.drawText(x + 24, cy + 28, "Changes will be lost if you continue.", Colors::TextDim);
+            }
 
-            // Buttons carry their glyph (id 0 = Cancel/B, id 1 = Discard & Exit/A), no guide line.
+            // Same behavior and button ids as before; only the installed-source wording is clearer.
             screen.touchButtons.clear();
             const int cbh = TouchTargetMin, cby = y + h - cbh - 16;
             const int cbw = (w - 48 - 16) / 2;
-            drawEditChoiceButton(screen, fb, x + 24,           cby, cbw, cbh, "B", "Cancel",         0);
-            drawEditChoiceButton(screen, fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Discard & Exit", 1);
+            drawEditChoiceButton(screen, fb, x + 24, cby, cbw, cbh, "B",
+                                 installedPreview ? "Return to Editor" : "Cancel", 0);
+            drawEditChoiceButton(screen, fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
+                                 installedPreview ? "Discard Changes" : "Discard & Exit", 1);
             return;
         }
 
