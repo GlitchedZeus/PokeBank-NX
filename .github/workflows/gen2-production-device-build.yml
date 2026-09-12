@@ -1,0 +1,128 @@
+name: Gen II production device build
+
+on:
+  push:
+    branches:
+      - integration/gen2-staged-editor-20260912
+
+permissions:
+  contents: read
+
+jobs:
+  exact-production-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      APP_SHA: 3618f2423ba48be4fcaee138beb1fadec36792bd
+      APP_TREE: 723e8caa0d9779d7f863c05712c863569443e7ef
+      RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+      EXPECTED_RECOVERY_ROMFS: 3289
+      EXPECTED_FINAL_ROMFS: 3292
+      LABEL: Gen2-Staged-Editor-Gold
+    steps:
+      - name: Checkout workflow carrier
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Checkout exact remotely verified production source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 2
+          submodules: recursive
+      - name: Checkout recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+      - name: Recover exact RomFS and verify source identity
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse HEAD^{tree})" = "$APP_TREE"
+          (cd recovery-work && python3 tools/recover_workspace.py)
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py
+          grep -q '0x01008F6008C5E000ULL' application/src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' application/include/Safety/SourceMutationPolicy.h
+          echo 'EXACT PRODUCTION SOURCE: PASS'
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+      - name: Native devkitA64 compile and final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            find build -name Gen2StagedEditor.o -type f | grep -q .
+            find build -name GSCReadOnlyTrainer.o -type f | grep -q .
+            find build -name TrainerViewScreenGSCOverlay.o -type f | grep -q .
+            find build -name TrainerViewScreen.o -type f | grep -q .
+            find build -name PokemonDetailsDispatcher.o -type f | grep -q .
+          '
+          echo 'GEN II EDITOR NATIVE COMPILE: PASS'
+          echo 'GSC BRIDGE NATIVE COMPILE: PASS'
+          echo 'GSC EDITOR UI NATIVE COMPILE: PASS'
+          echo 'TRAINER UI NATIVE COMPILE: PASS'
+          echo 'DETAILS/DISPATCHER NATIVE COMPILE: PASS'
+          echo 'NATIVE DEVKITA64 COMPILE: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
+      - name: Verify embedded identity and RomFS
+        working-directory: application
+        run: |
+          set -euo pipefail
+          python3 tools/verify_embedded_romfs.py PokeBankNX.nro romfs --application-source "$APP_SHA" | tee embedded-verification.json
+          grep -q '"result": "PASS"' embedded-verification.json
+          grep -q '"application_source": "'$APP_SHA'"' embedded-verification.json
+          echo 'EMBEDDED APPLICATION IDENTITY: PASS'
+          echo 'EMBEDDED ROMFS: PASS'
+      - name: Package exact Gold staged-editor test build
+        working-directory: application
+        run: |
+          set -euo pipefail
+          python3 tools/package_device_build.py PokeBankNX.nro --label "$LABEL" --zip --out-dir dist-device
+          NRO="$(find dist-device -maxdepth 1 -name '*.nro' -type f -print -quit)"
+          ZIP="$(find dist-device -maxdepth 1 -name '*.zip' -type f -print -quit)"
+          test -n "$NRO" && test -s "$NRO"
+          test -n "$ZIP" && test -s "$ZIP"
+          sha256sum "$NRO" "$ZIP" | tee dist-device/SHA256SUMS.txt
+          NRO_BYTES="$(stat -c '%s' "$NRO")"
+          NRO_SHA="$(sha256sum "$NRO" | awk '{print $1}')"
+          ZIP_SHA="$(sha256sum "$ZIP" | awk '{print $1}')"
+          cat > dist-device/GEN2_STAGED_EDITOR_HANDOFF.txt <<EOF
+          POKEBANK NX GEN II STAGED EDITOR DEVICE HANDOFF
+          ===============================================
+          Application source SHA: $APP_SHA
+          Application tree: $APP_TREE
+          NRO: $(basename "$NRO")
+          NRO bytes: $NRO_BYTES
+          NRO SHA-256: $NRO_SHA
+          Package ZIP: $(basename "$ZIP")
+          ZIP SHA-256: $ZIP_SHA
+          Embedded application identity: PASS
+          Embedded RomFS: PASS
+          Device asset preflight: PASS
+          Live installed-game writes: HARD DISABLED
+          Live RetroArch writes: HARD DISABLED
+          Physical status: NOT DEVICE TESTED
+          Purpose: controlled Pokemon Gold staged-editor export test only
+          EOF
+          cat dist-device/GEN2_STAGED_EDITOR_HANDOFF.txt
+      - name: Upload exact production artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gen2-Staged-Editor-Gold-3618f242
+          path: application/dist-device/*
+          if-no-files-found: error
+          compression-level: 0
