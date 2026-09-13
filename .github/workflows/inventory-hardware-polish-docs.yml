@@ -1,0 +1,55 @@
+name: Inventory Hardware Polish Docs
+
+on:
+  push:
+    branches: [dev/inventory-hardware-polish-20260913]
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    if: ${{ !contains(github.event.head_commit.message, '[inventory-polish-docs]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Record hardware findings and validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          current = Path('CURRENT_STATUS.md')
+          text = current.read_text()
+          marker = '## Inventory UI hardware follow-up — physical retest required (2026-09-13)'
+          if marker not in text:
+              text += '''\n\n---\n\n## Inventory UI hardware follow-up — physical retest required (2026-09-13)\n\nThe newest physical Switch inventory test did **not** device-accept the inventory milestone. Classic staged inventories used the intended `A Edit / X Add / Y Remove` mapping, but editable modern Switch backup/workspace inventories still used the inherited opposite `Y Add / X Remove` mapping. The same hardware pass also found the classic Add Item picker too wide, picker controls insufficiently visible, and normal item-name color inconsistent because `item.isNew` recolored the whole item name.\n\nThe isolated hardware-polish candidate corrects presentation/input only; save formats, exact-game catalogs, staged serializers, and live-write policy are unchanged.\n\n```text\nCandidate SHA: 8cf4c7bf7a9213afcb4ef84a1a892b99017a7ed4\nCandidate tree: e58f3e6058d48377983399bc3b198d52f20a9083\nValidation run: 34742137283\nHost job: 103683513164 — PASS\nNative job: 103683513554 — PASS\nFull host: PASS\nASan: PASS\nUBSan: PASS\nDevice asset preflight: PASS\ndevkitA64: PASS\nNative final link: PASS\nEmbedded identity/RomFS: PASS\nPhysical device status: RETEST REQUIRED\n```\n\nAuthoritative editable Inventory controls for both classic staged saves and modern editable backup/workspaces are now:\n\n```text\nD-pad / Left Stick  Navigate\nA                   Edit Amount\nX                   Add Item\nY                   Remove Item\nL / R               Previous / Next category\n+                   Options\n-                   Help\nB                   Back / Cancel\n```\n\nRead-only installed/live sources remain read-only and must not advertise unavailable A/X/Y edit actions. The classic Add Item picker now uses the same 560px-centered geometry family as the inherited picker, 40px rows, a live position counter, visible controls, and functional L/R paging while retaining exact-game + exact-pocket filtering. Modern Add Item still uses the existing game/pouch provider.\n\nNormal unselected item names now render with the normal text role regardless of `item.isNew`; selected names retain their selected readable color. The underlying `isNew` value is preserved. No NEW badge was added in this pass.\n\nYellow future-item rejection, machine move labels, Gen I real Bag/PC backing, GSC real pockets, Gen III staged serialization, Key Item warnings, `(None)` empty categories, unsupported-category skipping, Gen II Key Item capacity, Coin Case/Balls behavior, and source immutability remain regression-covered.\n\nLive installed-game writes, live RetroArch writes, and live emulator-source writes remain **HARD DISABLED**.\n'''
+              current.write_text(text)
+
+          project = Path('PROJECT_STATUS.md')
+          text = project.read_text()
+          marker = '## Inventory UI hardware follow-up'
+          if marker not in text:
+              text += '''\n\n## Inventory UI hardware follow-up\n\nPhysical polish/consistency acceptance is **FAILED — RETEST REQUIRED**. The hardware test confirmed classic `X Add / Y Remove` controls, but editable modern Switch backup/workspace Inventory still used `Y Add / X Remove`; the classic Add Item modal was too wide; picker controls needed clearer bottom hints; and `item.isNew` caused inconsistent full-name accent coloring.\n\nCorrected candidate `8cf4c7bf7a9213afcb4ef84a1a892b99017a7ed4` (tree `e58f3e6058d48377983399bc3b198d52f20a9083`) passed validation run `34742137283` including focused inventory contracts, prior classic regressions, full host, ASan, UBSan, device asset preflight, full devkitA64 link, and embedded identity/RomFS.\n\nThe shared editable Inventory contract is now `A Edit / X Add / Y Remove / L/R Category / + Options / - Help / B Back`, with D-pad and Left Stick navigation. Empty editable categories advertise X Add but not impossible A Edit/Y Remove. Read-only installed sources hide edit actions and remain locked. Classic and inherited Add Item pickers use the shared 560px-centered geometry constants; classic retains exact-game/exact-pocket data and adds a counter, compact rows, visible controls, and actual L/R paging. Normal item names no longer change color merely because `isNew` is true; the save-state flag itself remains preserved.\n\nIssue #59 remains open. Do not mark the inventory milestone DEVICE ACCEPTED until the corrected exact-production artifact is physically retested. Live installed-game, RetroArch, and emulator-source writes remain **HARD DISABLED**.\n'''
+              project.write_text(text)
+
+          controls = Path('docs/CONTROLS.md')
+          text = controls.read_text()
+          old = '# Classic inventory editor\n\nFor staged Generation I/II/III inventory sources, the authoritative mapping is:'
+          new = '# Inventory editor\n\nFor **every editable Inventory screen**—classic staged Generation I/II/III sources and modern editable Switch backup/workspaces—the authoritative mapping is:'
+          if old in text:
+              text = text.replace(old, new, 1)
+              text = text.replace('All classic inventory mutations are staged and export to a separate edited copy; the source save remains read-only.\nThe older development-only `Y Add / X Remove / + Pending Changes` mapping is obsolete.',
+                  'Classic inventory mutations remain staged and export to a separate edited copy; their source save remains read-only. Modern installed/live sources that are intentionally read-only must not advertise A/X/Y editing controls. The older/inherited Inventory mapping `Y Add / X Remove` is obsolete everywhere an Inventory source is actually editable.')
+          controls.write_text(text)
+          PY
+          git diff --check
+          rm -f .github/workflows/inventory-hardware-polish-docs.yml
+          git config user.name "PokeBank NX CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: record inventory hardware polish retest state [inventory-polish-docs]"
+          git push origin HEAD:dev/inventory-hardware-polish-20260913
