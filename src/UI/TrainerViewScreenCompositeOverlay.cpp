@@ -37,10 +37,17 @@
 #undef draw
 #undef update
 
-// The hardware-proven Gen I implementation remains compiled unchanged as a recovery/reference path.
-// The UX-polish implementation is included here under distinct exported symbol names, so we can switch
-// the public wrapper to it without deleting or rewriting the accepted implementation while hardware
-// retest is pending.
+// Distinct entry points for the hardware-polish implementation. The accepted Gen I implementation
+// still compiles normally from Gen1PokemonEditorOverlay.cpp; these names deliberately avoid replacing
+// its symbols until the owner accepts the new UX on-device.
+namespace UI::Gen1PokemonEditor {
+[[nodiscard]] bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept;
+[[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down);
+void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+} // namespace UI::Gen1PokemonEditor
+
+// Include the new implementation under those isolated names. The dependency headers it includes are
+// already guarded; the macros therefore rename only this implementation's Gen I overlay entry points.
 #define isGen1Source isGen1SourceUX
 #define handleInput handleInputUX
 #define drawOverlay drawOverlayUX
