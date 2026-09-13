@@ -33,8 +33,6 @@ struct StagedChange {
     std::string afterValue;
 };
 
-// Boxed Generation II PK2 mutation request. std::nullopt means preserve the stored value.
-// DVs are Attack, Defense, Speed, Special. HP DV remains derived from those four.
 struct BoxPokemonEdit {
     std::optional<uint16_t> species;
     std::optional<std::string> nickname;
@@ -56,14 +54,14 @@ struct BoxPokemonEdit {
 struct BoxPokemonCreate {
     uint16_t species = 0;
     uint8_t level = 5;
-    std::string nickname; // Empty -> generation-correct species display name.
-    std::string otName;   // Empty -> current save trainer name.
-    std::optional<uint16_t> trainerId; // Empty -> current save TID.
+    std::string nickname;
+    std::string otName;
+    std::optional<uint16_t> trainerId;
     uint8_t heldItem = 0;
     std::array<uint8_t, 4> moves{};
-    std::array<uint8_t, 4> pp{}; // Zero for a non-empty move -> initialize to base PP.
+    std::array<uint8_t, 4> pp{};
     std::array<uint8_t, 4> ppUps{};
-    std::array<uint8_t, 4> dvs{8, 8, 8, 8}; // Attack, Defense, Speed, Special.
+    std::array<uint8_t, 4> dvs{8, 8, 8, 8};
     std::array<uint16_t, 5> statExperience{};
     uint8_t friendship = 70;
     uint8_t pokerus = 0;
@@ -88,8 +86,14 @@ public:
     bool stageItemQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
                            std::string& error);
 
-    // Boxed PK2 editing is staged-only. The logical slot must already be occupied for edit/shiny.
-    // Add/clone append into the first valid empty logical slot and never overwrite occupied data.
+    // Universal staged inventory path used by the normal PKSE-style Items screen. Unlike the
+    // original first-milestone helper above, this supports all five retail GSC containers and
+    // validates exact Gold/Silver/Crystal catalog membership before mutation.
+    std::vector<InventoryItem> inventoryEntries(InventoryPocket pocket, std::string& error) const;
+    uint8_t stagedInventoryQuantity(InventoryPocket pocket, uint8_t itemId) const;
+    bool stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
+                                std::string& error);
+
     std::optional<PokemonRecord> boxedPokemon(std::size_t box, std::size_t slot,
                                                std::string& error) const;
     bool stageBoxPokemonEdit(std::size_t box, std::size_t slot, const BoxPokemonEdit& edit,
@@ -110,9 +114,6 @@ public:
     bool hasPendingChanges() const noexcept { return !changes_.empty(); }
     void discard() noexcept;
 
-    // Returns a fully serialized copy suitable for export. The original/source bytes are never
-    // mutated. Current-box cache, retail mirror regions and both overall checksums are repaired;
-    // every staged boxed-Pokemon expectation must strict-reload semantically before success.
     std::vector<uint8_t> finalizedBytes(std::string& error) const;
 
 private:
