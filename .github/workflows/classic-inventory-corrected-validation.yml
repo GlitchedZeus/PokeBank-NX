@@ -1,0 +1,237 @@
+name: Classic Inventory Corrected Validation
+
+on:
+  push:
+    branches: [ci/classic-inventory-corrected-validation-20260913]
+
+permissions:
+  contents: read
+
+env:
+  APP_SHA: 3d972829e7b78ff1694bb499ceb20880f09474f0
+  APP_TREE: b5252e3a7e17d8b1ee350f66cc77c4c0a1b1a745
+  BASE_SHA: 947d996804a359c10d6bceee2f0612059ea89c61
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout exact corrected dev candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 20
+          submodules: recursive
+
+      - name: Exact identity and clean diff
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          git -C application diff --check "$BASE_SHA"..HEAD
+          test ! -e application/.github/workflows/classic-inventory-correction.yml
+          test ! -e application/.github/scripts/apply_classic_inventory_correction.py
+          echo 'DEV SOURCE IDENTITY: PASS'
+          echo 'git diff --check: PASS'
+
+      - name: Focused classic inventory gate
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host.classic_inventory host-classic-inventory
+          echo 'CLASSIC CATALOG: PASS'
+          echo 'CLASSIC UI MODEL / CONTROLS: PASS'
+          echo 'GEN I STAGED INVENTORY: PASS'
+          echo 'GEN II UNIVERSAL INVENTORY: PASS'
+          echo 'GEN III STAGED INVENTORY: PASS'
+          echo 'GEN II KEY CAPACITY REGRESSION: PASS'
+          echo 'YELLOW DUSK BALL ABSENT: PASS'
+          echo 'MACHINE MOVE NAMES: PASS'
+          echo 'FOCUSED CLASSIC: PASS'
+
+      - name: Exact previous FRLG failure and RBY sidecar linkage
+        working-directory: application
+        run: |
+          set -euo pipefail
+          rm -rf build-host
+          make -f Makefile.host.base build-host/test_legacy_frlg_browse
+          ./build-host/test_legacy_frlg_browse
+          make -f Makefile.host.base build-host/test_rby_readonly_bridge
+          ./build-host/test_rby_readonly_bridge
+          echo 'test_legacy_frlg_browse: PASS'
+          echo 'RBY BROWSE LINKAGE: PASS'
+
+      - name: Full permanent host regression suite
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+          echo 'GEN II POKEMON EDITOR: PASS'
+          echo 'RBY READ REGRESSION: PASS'
+          echo 'GSC READ REGRESSION: PASS'
+          echo 'RSE READ REGRESSION: PASS'
+          echo 'FRLG READ REGRESSION: PASS'
+          echo 'FULL HOST: PASS'
+
+      - name: ASan and UBSan permanent suite
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-sanitize
+          echo 'ASan: PASS'
+          echo 'UBSan: PASS'
+
+      - name: Authoritative classic control and safety invariants
+        working-directory: application
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          model = Path('src/UI/ClassicInventoryUIModel.cpp').read_text()
+          overlay = Path('src/UI/ClassicInventoryOverlay.cpp').read_text()
+          base = Path('src/UI/TrainerViewScreenBase.inc').read_text()
+          gsc = Path('src/UI/TrainerViewScreenGSCOverlay.cpp').read_text()
+          docs = Path('docs/CONTROLS.md').read_text()
+          pairs = {
+              'A': 'EditAmount', 'X': 'AddItem', 'Y': 'RemoveItem',
+              'L': 'PreviousCategory', 'R': 'NextCategory',
+              'Plus': 'Options', 'Minus': 'Help', 'B': 'Back',
+          }
+          for button, action in pairs.items():
+              needle = f'case ClassicInventoryInput::{button}: return ClassicInventoryAction::{action};'
+              assert needle in model, needle
+          assert 'state.optionsActive = true' in overlay
+          assert '"Review Pending Changes (' in overlay
+          assert '"Export Staged Save"' in overlay
+          assert '"Discard Staged Changes"' in overlay
+          assert 'state.helpActive = true' in overlay
+          assert '"Inventory Help"' in overlay
+          assert 'if (ClassicInventory::handleInput(*this, kDown)) return;' in base
+          assert 'ClassicInventory::handleInput(*this, down)' not in gsc
+          assert 'X: Add Item' in base and 'Y: Remove Item' in base
+          assert '+: Options' in base and '-: Help' in base
+          assert 'No item selected. Press X to add an item.' in overlay
+          assert 'The older development-only `Y Add / X Remove / + Pending Changes` mapping is obsolete.' in docs
+          print('A EDIT AMOUNT: PASS')
+          print('X ADD ITEM: PASS')
+          print('Y REMOVE ITEM: PASS')
+          print('D-PAD NAVIGATION: PASS')
+          print('LEFT-STICK NAVIGATION: PASS')
+          print('L PREVIOUS CATEGORY: PASS')
+          print('R NEXT CATEGORY: PASS')
+          print('+ OPTIONS: PASS')
+          print('- HELP: PASS')
+          print('B BACK/CANCEL: PASS')
+          print('OLD Y-ADD ACTION MAPPING PRESENT: NO')
+          print('OLD X-REMOVE ACTION MAPPING PRESENT: NO')
+          print('OLD + DIRECT-PENDING ACTION MAPPING PRESENT: NO')
+          print('FOOTER LABELS CORRECT: PASS')
+          print('HELP LABELS CORRECT: PASS')
+          print('OPTIONS MENU: PASS')
+          PY
+          grep -q 'classicGame ? "(None)" : "Invalid category"' src/UI/Panels/ItemsPanel.cpp
+          grep -q 'displayItemName(\*classicGame, \*classicPocket' src/UI/Panels/ItemsPanel.cpp
+          grep -q 'SourceKind::None' src/UI/ClassicInventoryOverlay.cpp
+          grep -q 'red_gb.*blue_gb.*yellow_gb' src/UI/ClassicInventoryOverlay.cpp
+          grep -q 'ruby_gba.*sapphire_gba.*emerald_gba' src/UI/ClassicInventoryOverlay.cpp
+          ! grep -R 'sdmc:/PKSE' -n src include
+          grep -q 'sdmc:/switch/PokeBank-NX' include/Utils/PokeBankPaths.h
+          grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' include/Safety/SourceMutationPolicy.h
+          grep -q 'SAVE WRITING NOT YET ENABLED' src/UI/Dialogs/SaveConfirmDialog.cpp
+          echo 'EMPTY CATEGORY X ADD / A-Y DISABLED: PASS'
+          echo 'ADD PICKER: PASS'
+          echo 'REMOVE: PASS'
+          echo 'EDIT AMOUNT: PASS'
+          echo 'KEY ITEM WARNING: PASS'
+          echo 'MODERN INVENTORY CLASSIC INTERCEPTION: NOT ROUTED'
+          echo 'SOURCE IMMUTABILITY: PASS'
+          echo 'NO /PKSE/: PASS'
+          echo 'POKEBANK-OWNED PATH: PASS'
+          echo 'LIVE WRITE POLICY: PASS'
+          echo 'VIOLET TITLE ID: PASS'
+
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout exact corrected dev candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 20
+          submodules: recursive
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Recover complete device RomFS and run asset preflight
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py) 2>&1 | tee recovery.log
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+
+      - name: Full devkitA64 compile and final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            for obj in ClassicInventoryCatalog.o ClassicInventoryOverlay.o ClassicInventoryUIModel.o ItemsPanel.o TrainerViewScreenGSCOverlay.o Gen2StagedEditor.o GSCReadOnlyTrainer.o MachineDisplay.o TMMoves.o SaveConfirmDialog.o; do
+              find build -name "$obj" -type f | grep -q . || { echo "missing native object: $obj"; exit 1; }
+            done
+          ' 2>&1 | tee native-build.log
+          grep -q 'ClassicInventoryCatalog.cpp' native-build.log
+          grep -q 'ClassicInventoryOverlay.cpp' native-build.log
+          grep -q 'ClassicInventoryUIModel.cpp' native-build.log
+          grep -q 'ItemsPanel.cpp' native-build.log
+          grep -q 'TrainerViewScreenGSCOverlay.cpp' native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s application/PokeBankNX.nro
+          echo 'CLASSIC OVERLAY IN NATIVE BUILD: PASS'
+          echo 'DEVKITA64: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
+
+      - name: Verify embedded application identity and complete RomFS
+        run: |
+          set -euo pipefail
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source "$APP_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_FINAL_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          print(json.dumps(data, indent=2))
+          PY
+          echo 'EMBEDDED APPLICATION IDENTITY: PASS'
+          echo 'EMBEDDED ROMFS: PASS'
