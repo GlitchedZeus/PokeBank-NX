@@ -28,30 +28,27 @@
 #include <utility>
 #include <vector>
 
-// Compile the already-accepted Gen II wrapper byte-for-byte under private method names. The public
-// update()/draw() below then add the Gen I staged box editor in front/above it. Non-RBY behavior is
-// therefore delegated straight to the exact accepted GSC/base implementation.
 #define update updateGSCOverlay
 #define draw drawGSCOverlay
 #include "TrainerViewScreenGSCOverlay.inc"
 #undef draw
 #undef update
 
-// Distinct entry points for the hardware-polish implementation. The accepted Gen I implementation
-// still compiles normally from Gen1PokemonEditorOverlay.cpp; these names deliberately avoid replacing
-// its symbols until the owner accepts the new UX on-device.
 namespace UI::Gen1PokemonEditor {
 [[nodiscard]] bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down);
 void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 } // namespace UI::Gen1PokemonEditor
 
-// Include the new implementation under those isolated names. The dependency headers it includes are
-// already guarded; the macros therefore rename only this implementation's Gen I overlay entry points.
+// Hardware-polish implementation under isolated symbols. SelectedText is intentionally mapped onto
+// the existing theme-aware Text role: the established palette has no separate SelectedText symbol,
+// and the selection background/border already provides the state contrast.
 #define isGen1Source isGen1SourceUX
 #define handleInput handleInputUX
 #define drawOverlay drawOverlayUX
+#define SelectedText Text
 #include "Gen1PokemonEditorOverlayUX.inc"
+#undef SelectedText
 #undef drawOverlay
 #undef handleInput
 #undef isGen1Source
