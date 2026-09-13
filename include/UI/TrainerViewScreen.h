@@ -3,8 +3,9 @@
 
 // Keep every dependency that can declare a generic update()/draw() out of the narrow macro window
 // below. The accepted TrainerViewScreen class body is included unchanged from TrainerViewScreenBase.h;
-// only its two virtual entry declarations are expanded with private implementation companions so GSC
-// can add a tiny read-only overlay without rewriting the large accepted screen implementation.
+// its two public frame entry declarations are expanded with implementation companions. The legacy
+// base stays byte-for-byte isolated, while the accepted GSC overlay can also be compiled under a
+// private name and composed behind the Generation I staged editor wrapper.
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -25,8 +26,8 @@
 #include "Dialogs/StatEditDialog.h"
 #include "Dialogs/PickerDialog.h"
 
-#define update(...) updateLegacyBase(__VA_ARGS__); void update(__VA_ARGS__)
-#define draw(...) drawLegacyBase(__VA_ARGS__); void draw(__VA_ARGS__)
+#define update(...) updateLegacyBase(__VA_ARGS__); void updateGSCOverlay(__VA_ARGS__); void update(__VA_ARGS__)
+#define draw(...) drawLegacyBase(__VA_ARGS__); void drawGSCOverlay(__VA_ARGS__); void draw(__VA_ARGS__)
 #include "UI/TrainerViewScreenBase.h"
 #undef draw
 #undef update
