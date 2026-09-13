@@ -13,6 +13,7 @@
 #include "UI/ActionSheetModel.h"
 #include "Safety/SourceMutationPolicy.h"
 #include "UI/NavigationRepeat.h"
+#include "UI/InventoryUIContract.h"
 #include "UI/UIScreen.h"
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Bank.h"
@@ -105,6 +106,9 @@ namespace UI {
         int currentPouchCapacity() const;                      // slot limit of the current pouch; 0 = appending unsupported
         void sortStorageBox(int pane, int box);                // pack + order one box, pinning party-linked slots
         int currentItemMaxCount() const;                       // per-stack ceiling for the current pouch (never 0)
+        void captureInventorySourceBaseline();
+        [[nodiscard]] PokeBank::UIModel::InventoryItemPresentationState inventoryItemPresentationState(
+            int category, uint16_t itemId, uint16_t quantity, bool currentIsNew, bool selected) const;
 
         // Public state - accessible by UI components (Panels, Dialogs, Modals)
         Trainer::Trainer& trainer;
@@ -238,6 +242,10 @@ namespace UI {
         // Items list: Y asks before removing the selected item. A in this dialog does the delete,
         // B cancels. Only reachable from the Items view, so it never lets X-to-save fire (home-menu only).
         bool itemRemoveConfirmActive = false;
+        // Immutable semantic inventory state captured when this save/workspace is loaded. The game's
+        // own isNew marker is retained here as source data, never repurposed as PokeBank dirty state.
+        PokeBank::UIModel::InventoryBaseline inventorySourceBaseline;
+        bool inventorySourceBaselineCaptured = false;
 
         // Save confirmation state
         bool saveConfirmActive = false;

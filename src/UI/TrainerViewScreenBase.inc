@@ -27,6 +27,7 @@
 #include "UI/Panels/ItemsPanel.h"
 #include "UI/ClassicInventoryOverlay.h"
 #include "UI/ClassicInventoryUIModel.h"
+#include "UI/InventoryUIContract.h"
 #include "UI/Panels/StoragePanel.h"
 #include "UI/Panels/HomeMenuPanel.h"
 #include "UI/Dialogs/ItemEditDialog.h"
@@ -496,6 +497,26 @@ namespace UI {
         }
     }
 
+    void TrainerViewScreen::captureInventorySourceBaseline() {
+        inventorySourceBaseline.clear();
+        for (int category = 0; category < static_cast<int>(trainer.items.size()); ++category) {
+            for (const auto& item : trainer.items[category]) {
+                inventorySourceBaseline.push_back({
+                    category, item.itemId, item.count, item.isNew,
+                });
+            }
+        }
+        inventorySourceBaselineCaptured = true;
+    }
+
+    PokeBank::UIModel::InventoryItemPresentationState
+    TrainerViewScreen::inventoryItemPresentationState(
+        int category, uint16_t itemId, uint16_t quantity, bool currentIsNew, bool selected) const {
+        if (!inventorySourceBaselineCaptured) return {false, false, selected};
+        return PokeBank::UIModel::inventoryItemPresentationState(
+            inventorySourceBaseline, category, itemId, quantity, currentIsNew, selected);
+    }
+
     TrainerViewScreen::TrainerViewScreen(
         Trainer::Trainer& trainer, const std::string& titleName,
         const std::string& sourceLocation, u64 titleId, AccountUid userUid,
@@ -508,6 +529,8 @@ namespace UI {
         // the immediate-mode state, and C++ initialises in declaration order.
         this->sourceKind = sourceKind;
         this->sourceGameId = std::move(sourceGameId);
+        if (this->sourceKind != PokeVault::Safety::SourceKind::RetroArchLegacy)
+            captureInventorySourceBaseline();
         saveDestIndex = defaultSaveDestRow();
 
         // Open on the box the game was last left on (persisted per-game as the "current box"),
@@ -3490,6 +3513,14 @@ namespace UI {
                     requireMutableWorkspace();
                     kDown &= ~(HidNpadButton_A | HidNpadButton_X | HidNpadButton_Y);
                 }
+                const auto inventoryActionPressed = [&](PokeBank::UIModel::InventoryAction action) {
+                    using PokeBank::UIModel::InventoryInput;
+                    return ((kDown & HidNpadButton_A) && PokeBank::UIModel::inventoryAction(InventoryInput::A) == action)
+                        || ((kDown & HidNpadButton_X) && PokeBank::UIModel::inventoryAction(InventoryInput::X) == action)
+                        || ((kDown & HidNpadButton_Y) && PokeBank::UIModel::inventoryAction(InventoryInput::Y) == action)
+                        || ((kDown & HidNpadButton_L) && PokeBank::UIModel::inventoryAction(InventoryInput::L) == action)
+                        || ((kDown & HidNpadButton_R) && PokeBank::UIModel::inventoryAction(InventoryInput::R) == action);
+                };
                 // Get current pouch size for bounds checking
                 if (selectedCategory >= 0 && selectedCategory < static_cast<int>(trainer.items.size())) {
                     const auto& pouch = trainer.items[selectedCategory];
@@ -3546,8 +3577,8 @@ namespace UI {
                         selectedItemIndex = std::min(currentPage * itemsPerPage, totalItems - 1);
                     }
 
-                    // A button to edit item amount (map the visible selection back to the raw pouch slot)
-                    if (kDown & HidNpadButton_A) {
+                    // A edits amount under the shared PokeBank inventory control contract.
+                    if (inventoryActionPressed(PokeBank::UIModel::InventoryAction::EditAmount)) {
                         if (selectedItemIndex >= 0 && selectedItemIndex < totalItems) {
                             int rawIdx = visible[selectedItemIndex];
                             // Open edit dialog for selected item
@@ -3557,10 +3588,9 @@ namespace UI {
                         }
                     }
 
-                    // Y opens the add-item picker: the ids that legally belong in THIS pouch,
-                    // minus what the bag already holds. Nothing is offered for a pouch the game
-                    // doesn't have, or when appending isn't supported and every legal id is present.
-                    if (kDown & HidNpadButton_Y) {
+                    // X opens the add-item picker under the shared PokeBank inventory contract.
+                    // The ids still come from THIS game's pouch provider; no raw-id namespace is mixed.
+                    if (inventoryActionPressed(PokeBank::UIModel::InventoryAction::AddItem)) {
                         const auto legal = Names::getPouchItems(trainer.getGameGroup(), selectedCategory);
                         const bool canAppend = static_cast<int>(pouch.size()) < currentPouchCapacity();
                         pickerOrder.clear();
@@ -3593,16 +3623,16 @@ namespace UI {
                         return;
                     }
 
-                    // X asks to remove the selected item, behind a confirm dialog. The delete
-                    // runs in the itemRemoveConfirmActive handler on A; here we just open the prompt.
-                    if ((kDown & HidNpadButton_X) && totalItems > 0
+                    // Y removes the selected item under the shared PokeBank inventory contract.
+                    // The delete still runs behind the existing confirmation dialog.
+                    if (inventoryActionPressed(PokeBank::UIModel::InventoryAction::RemoveItem) && totalItems > 0
                         && selectedItemIndex >= 0 && selectedItemIndex < totalItems) {
                         itemRemoveConfirmActive = true;
                         return;
                     }
 
                     // L/R to change categories (but not when in edit dialog)
-                    if (kDown & HidNpadButton_L) {
+                    if (inventoryActionPressed(PokeBank::UIModel::InventoryAction::PreviousCategory)) {
                         switch(trainer.getGameGroup()) {
                             case GameVersion::ZA: {
                                 selectedCategory = (selectedCategory - 1 + POUCH_COUNT9_LZA) % POUCH_COUNT9_LZA;
@@ -3656,7 +3686,7 @@ namespace UI {
                             default: break;
                         }
                     }
-                    if (kDown & HidNpadButton_R) {
+                    if (inventoryActionPressed(PokeBank::UIModel::InventoryAction::NextCategory)) {
                         switch(trainer.getGameGroup()) {
                             case GameVersion::ZA: {
                                 selectedCategory = (selectedCategory + 1) % POUCH_COUNT9_LZA;
@@ -4288,15 +4318,19 @@ namespace UI {
                                 PokeBank::UIModel::classicInventoryQuantityEditable(*game, *pocket, item.itemId);
                         }
                     }
-                    const auto available = PokeBank::UIModel::classicInventoryActionAvailability(
-                        pocket.has_value(), hasSelection, quantityEditable);
-                    instructions = "D-pad/Stick: Navigate";
-                    if (available.editAmount) instructions += "  |  A: Edit Amount";
-                    if (available.addItem) instructions += "  |  X: Add Item";
-                    if (available.removeItem) instructions += "  |  Y: Remove Item";
-                    instructions += "  |  L/R: Category  |  +: Options  |  -: Help  |  B: Back";
+                    instructions = PokeBank::UIModel::inventoryFooter(
+                        true, pocket.has_value(), hasSelection, quantityEditable);
                 } else {
-                    instructions = "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  Left/Right: Page  |  L/R: Category  |  B: Back";
+                    const bool categorySupported = selectedCategory >= 0 &&
+                        selectedCategory < static_cast<int>(trainer.items.size());
+                    bool hasSelection = false;
+                    if (categorySupported) {
+                        const auto visible = visibleItemIndices();
+                        hasSelection = selectedItemIndex >= 0 &&
+                            selectedItemIndex < static_cast<int>(visible.size());
+                    }
+                    instructions = PokeBank::UIModel::inventoryFooter(
+                        !sourceReadOnly(), categorySupported, hasSelection, hasSelection);
                 }
             } else if (selectedMode == ViewMode::Boxes) {
                 if (details.active) {

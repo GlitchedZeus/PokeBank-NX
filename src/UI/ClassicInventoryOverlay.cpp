@@ -9,6 +9,7 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 #include "Trainer/Trainer.h"
 #include "UI/ClassicInventoryUIModel.h"
+#include "UI/InventoryUIContract.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/TrainerViewScreen.h"
@@ -547,11 +548,12 @@ bool selectPickerItem(TrainerViewScreen& screen) {
     return true;
 }
 
-void drawRow(PKSEFramebuffer& fb, int x, int y, int width, const std::string& text, bool selected) {
-    constexpr int h = 48;
-    fb.drawFilledRoundedRect(x, y, width, h, 10, selected ? Colors::AccentDim : Colors::PanelAlt);
-    if (selected) fb.drawRoundedRect(x, y, width, h, 10, Colors::Accent, 2);
-    fb.drawText(x + 18, y + 13, text, selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
+void drawRow(PKSEFramebuffer& fb, int x, int y, int width, const std::string& text,
+             bool selected, int height = 48) {
+    fb.drawFilledRoundedRect(x, y, width, height, 10, selected ? Colors::AccentDim : Colors::PanelAlt);
+    if (selected) fb.drawRoundedRect(x, y, width, height, 10, Colors::Accent, 2);
+    const int ty = y + (height - fb.lineHeight(TextStyle::Body)) / 2;
+    fb.drawText(x + 18, ty, text, selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
 }
 
 } // namespace
@@ -585,6 +587,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
     auto& state = stateFor(screen);
 
     if (!state.presentationInitialized && refreshPresentation(screen)) {
+        screen.captureInventorySourceBaseline();
         state.presentationInitialized = true;
         const auto game = exactGame(screen);
         const int categoryCount = game
@@ -623,6 +626,11 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
         if (count == 0) { state.pickerActive = false; return true; }
         if (down & HidNpadButton_Up) state.pickerRow = (state.pickerRow - 1 + count) % count;
         if (down & HidNpadButton_Down) state.pickerRow = (state.pickerRow + 1) % count;
+        constexpr int page = PokeBank::UIModel::InventoryPickerLayout::ClassicRowsPerPage;
+        if (down & (HidNpadButton_L | HidNpadButton_Left))
+            state.pickerRow = std::max(0, state.pickerRow - page);
+        if (down & (HidNpadButton_R | HidNpadButton_Right))
+            state.pickerRow = std::min(count - 1, state.pickerRow + page);
         if (down & HidNpadButton_B) { state.pickerActive = false; return true; }
         if (down & HidNpadButton_A) { selectPickerItem(screen); return true; }
         return true;
@@ -774,13 +782,15 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         !state.warningActive && !state.discardConfirmActive) return;
 
     screen.touchButtons.clear();
-    constexpr int width = 900;
-    constexpr int height = 610;
+    const bool compactPicker = state.pickerActive;
+    const int width = compactPicker ? PokeBank::UIModel::InventoryPickerLayout::Width : 900;
+    const int y = compactPicker ? PokeBank::UIModel::InventoryPickerLayout::VerticalMargin : 66;
+    const int height = compactPicker ? fb.getHeight() - 2 * y : 610;
     const int x = (fb.getWidth() - width) / 2;
-    const int y = 66;
-    fb.drawSoftShadow(x, y, width, height, 18);
-    fb.drawFilledRoundedRect(x, y, width, height, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, width, height, 18, Colors::Accent, 2);
+    const int radius = compactPicker ? 16 : 18;
+    fb.drawSoftShadow(x, y, width, height, radius);
+    fb.drawFilledRoundedRect(x, y, width, height, radius, Colors::Panel);
+    fb.drawRoundedRect(x, y, width, height, radius, Colors::Accent, 2);
 
     const auto game = exactGame(screen);
     const auto pocket = game ? PokeBank::UIModel::classicInventoryPocketAt(*game, screen.selectedCategory)
@@ -805,22 +815,33 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.pickerActive && game && pocket) {
-        fb.drawText(x + 30, y + 20, "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
+        constexpr int pad = PokeBank::UIModel::InventoryPickerLayout::HorizontalPadding;
+        fb.drawText(x + pad, y + 16, "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
                     Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 56, "Exact-game catalog only — stored item IDs remain native to this game.",
-                    Colors::TextDim, TextStyle::Caption);
-        constexpr int visibleRows = 8;
         const int count = static_cast<int>(state.pickerItems.size());
+        std::string pos = std::to_string(state.pickerRow + 1) + " / " + std::to_string(count);
+        int posW = 0, posH = 0;
+        fb.measureText(pos, posW, posH, TextStyle::Caption);
+        fb.drawText(x + width - pad - posW, y + 22, pos, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + pad, y + 54, "Exact game + pocket catalog", Colors::TextDim, TextStyle::Caption);
+        fb.drawHDivider(x + pad, y + 76, width - pad * 2);
+
+        const int rowH = PokeBank::UIModel::InventoryPickerLayout::RowHeight;
+        const int listTop = y + PokeBank::UIModel::InventoryPickerLayout::ClassicListTopOffset;
+        const int listBottom = y + height - PokeBank::UIModel::InventoryPickerLayout::FooterHeight;
+        const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
         const int start = std::clamp(state.pickerRow - visibleRows / 2, 0, std::max(0, count - visibleRows));
-        int rowY = y + 94;
+        int rowY = listTop;
         for (int i = start; i < std::min(count, start + visibleRows); ++i) {
             const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
             std::string label = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
             if (stagedQuantity(screen, *pocket, itemId) != 0) label += "  (Already in pouch)";
-            drawRow(fb, x + 30, rowY, width - 60, label, i == state.pickerRow);
-            rowY += 57;
+            drawRow(fb, x + 12, rowY, width - 24, label, i == state.pickerRow, rowH - 4);
+            screen.touchButtons.push_back({i, x + 12, rowY, width - 24, rowH - 4});
+            rowY += rowH;
         }
-        fb.drawText(x + 30, y + height - 42, "D-pad / Left Stick Select    A Add / Focus Existing    B Cancel",
+        fb.drawText(x + pad, y + height - 34,
+                    "D-pad/Stick Navigate   A Add/Select   B Cancel   L/R Page",
                     Colors::TextDim, TextStyle::Caption);
         return;
     }

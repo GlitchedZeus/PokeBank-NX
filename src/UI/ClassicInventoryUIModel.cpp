@@ -71,26 +71,12 @@ std::vector<uint16_t> classicInventoryAddableItems(ClassicGame game, ClassicPock
 }
 
 ClassicInventoryAction classicInventoryAction(ClassicInventoryInput input) noexcept {
-    switch (input) {
-        case ClassicInventoryInput::A: return ClassicInventoryAction::EditAmount;
-        case ClassicInventoryInput::X: return ClassicInventoryAction::AddItem;
-        case ClassicInventoryInput::Y: return ClassicInventoryAction::RemoveItem;
-        case ClassicInventoryInput::L: return ClassicInventoryAction::PreviousCategory;
-        case ClassicInventoryInput::R: return ClassicInventoryAction::NextCategory;
-        case ClassicInventoryInput::Plus: return ClassicInventoryAction::Options;
-        case ClassicInventoryInput::Minus: return ClassicInventoryAction::Help;
-        case ClassicInventoryInput::B: return ClassicInventoryAction::Back;
-    }
-    return ClassicInventoryAction::Back;
+    return inventoryAction(input);
 }
 
 ClassicInventoryActionAvailability classicInventoryActionAvailability(
     bool categorySupported, bool hasSelection, bool quantityEditable) noexcept {
-    return {
-        categorySupported && hasSelection && quantityEditable,
-        categorySupported,
-        categorySupported && hasSelection,
-    };
+    return inventoryActionAvailability(true, categorySupported, hasSelection, quantityEditable);
 }
 
 bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept {

@@ -303,3 +303,49 @@ Validated classic inventory behavior includes exact-game and exact-pocket add ca
 The Gen II boxed Pokémon staged editor remains present and regression-tested. Party mutation remains deferred.
 
 Classic edits remain source → staged memory → validate → export copy. Live installed-game writes, live RetroArch writes, and live emulator-source writes remain **HARD DISABLED**. Physical hardware acceptance of this editor milestone is still pending. Historical device-accepted read-only milestones above are unchanged.
+
+
+---
+
+## Inventory UI hardware follow-up — physical retest required (2026-09-13)
+
+The newest physical Switch inventory test did **not** device-accept the inventory milestone. Classic staged inventories used the intended `A Edit / X Add / Y Remove` mapping, but editable modern Switch backup/workspace inventories still used the inherited opposite `Y Add / X Remove` mapping. The same hardware pass also found the classic Add Item picker too wide, picker controls insufficiently visible, and normal item-name color inconsistent because `item.isNew` recolored the whole item name.
+
+The isolated hardware-polish candidate corrects presentation/input only; save formats, exact-game catalogs, staged serializers, and live-write policy are unchanged.
+
+```text
+Candidate SHA: 8cf4c7bf7a9213afcb4ef84a1a892b99017a7ed4
+Candidate tree: e58f3e6058d48377983399bc3b198d52f20a9083
+Validation run: 34742137283
+Host job: 103683513164 — PASS
+Native job: 103683513554 — PASS
+Full host: PASS
+ASan: PASS
+UBSan: PASS
+Device asset preflight: PASS
+devkitA64: PASS
+Native final link: PASS
+Embedded identity/RomFS: PASS
+Physical device status: RETEST REQUIRED
+```
+
+Authoritative editable Inventory controls for both classic staged saves and modern editable backup/workspaces are now:
+
+```text
+D-pad / Left Stick  Navigate
+A                   Edit Amount
+X                   Add Item
+Y                   Remove Item
+L / R               Previous / Next category
++                   Options
+-                   Help
+B                   Back / Cancel
+```
+
+Read-only installed/live sources remain read-only and must not advertise unavailable A/X/Y edit actions. The classic Add Item picker now uses the same 560px-centered geometry family as the inherited picker, 40px rows, a live position counter, visible controls, and functional L/R paging while retaining exact-game + exact-pocket filtering. Modern Add Item still uses the existing game/pouch provider.
+
+Normal unselected item names now render with the normal text role regardless of `item.isNew`; selected names retain their selected readable color. The underlying `isNew` value is preserved. No NEW badge was added in this pass.
+
+Yellow future-item rejection, machine move labels, Gen I real Bag/PC backing, GSC real pockets, Gen III staged serialization, Key Item warnings, `(None)` empty categories, unsupported-category skipping, Gen II Key Item capacity, Coin Case/Balls behavior, and source immutability remain regression-covered.
+
+Live installed-game writes, live RetroArch writes, and live emulator-source writes remain **HARD DISABLED**.

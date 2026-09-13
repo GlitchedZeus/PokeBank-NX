@@ -109,8 +109,8 @@ HOST_TESTS += $(HOST_BUILD)/test_rby_gen1_adapter $(HOST_BUILD)/test_rby_invento
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_rby_gen1_adapter_sanitize \
 	$(HOST_BUILD)/test_rby_inventory_sanitize $(HOST_BUILD)/test_rby_discovery_sanitize \
 	$(HOST_BUILD)/test_rby_source_browser_sanitize $(HOST_BUILD)/test_rby_readonly_bridge_sanitize
-HOST_TESTS += $(HOST_BUILD)/test_classic_inventory_ui_model
-HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_inventory_ui_model_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_classic_inventory_ui_model $(HOST_BUILD)/test_inventory_ui_contract
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_inventory_ui_model_sanitize $(HOST_BUILD)/test_inventory_ui_contract_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -129,6 +129,14 @@ $(HOST_BUILD)/test_classic_inventory_ui_model: $(CLASSIC_UI_MODEL_SOURCES)
 $(HOST_BUILD)/test_classic_inventory_ui_model_sanitize: $(CLASSIC_UI_MODEL_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_inventory_ui_contract: tests/test_inventory_ui_contract.cpp include/UI/InventoryUIContract.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_inventory_ui_contract.cpp -o $@
+
+$(HOST_BUILD)/test_inventory_ui_contract_sanitize: tests/test_inventory_ui_contract.cpp include/UI/InventoryUIContract.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_inventory_ui_contract.cpp -o $@
 
 $(HOST_BUILD)/test_source_mutation_policy: tests/test_source_mutation_policy.cpp
 	@mkdir -p $(HOST_BUILD)
