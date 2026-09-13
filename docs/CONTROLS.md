@@ -420,9 +420,9 @@ On physical Switch, explicitly test:
 
 ---
 
-# Classic inventory editor
+# Inventory editor
 
-For staged Generation I/II/III inventory sources, the authoritative mapping is:
+For **every editable Inventory screen**—classic staged Generation I/II/III sources and modern editable Switch backup/workspaces—the authoritative mapping is:
 
 ```text
 D-pad / Left Stick  Navigate rows
@@ -438,5 +438,4 @@ B                   Back / Cancel
 `+` opens **Inventory Options**, whose save-level actions include Review Pending Changes,
 Export Staged Save, Discard Staged Changes, and Cancel. It does not jump directly to Pending Changes.
 On an empty valid category, `(None)` is shown and X Add remains available; A Edit and Y Remove are unavailable.
-All classic inventory mutations are staged and export to a separate edited copy; the source save remains read-only.
-The older development-only `Y Add / X Remove / + Pending Changes` mapping is obsolete.
+Classic inventory mutations remain staged and export to a separate edited copy; their source save remains read-only. Modern installed/live sources that are intentionally read-only must not advertise A/X/Y editing controls. The older/inherited Inventory mapping `Y Add / X Remove` is obsolete everywhere an Inventory source is actually editable.

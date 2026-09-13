@@ -230,3 +230,14 @@ Do not reopen accepted Gen I, Gen II read-only, or Gen III behavior without new 
 ## Immediate next step
 
 Produce and retrieve the exact pushed production hardware-test package, verify local/retrieved hashes, then perform the Gold staged-editor hardware test. Do not enable live writeback during that test.
+
+
+## Inventory UI hardware follow-up
+
+Physical polish/consistency acceptance is **FAILED — RETEST REQUIRED**. The hardware test confirmed classic `X Add / Y Remove` controls, but editable modern Switch backup/workspace Inventory still used `Y Add / X Remove`; the classic Add Item modal was too wide; picker controls needed clearer bottom hints; and `item.isNew` caused inconsistent full-name accent coloring.
+
+Corrected candidate `8cf4c7bf7a9213afcb4ef84a1a892b99017a7ed4` (tree `e58f3e6058d48377983399bc3b198d52f20a9083`) passed validation run `34742137283` including focused inventory contracts, prior classic regressions, full host, ASan, UBSan, device asset preflight, full devkitA64 link, and embedded identity/RomFS.
+
+The shared editable Inventory contract is now `A Edit / X Add / Y Remove / L/R Category / + Options / - Help / B Back`, with D-pad and Left Stick navigation. Empty editable categories advertise X Add but not impossible A Edit/Y Remove. Read-only installed sources hide edit actions and remain locked. Classic and inherited Add Item pickers use the shared 560px-centered geometry constants; classic retains exact-game/exact-pocket data and adds a counter, compact rows, visible controls, and actual L/R paging. Normal item names no longer change color merely because `isNew` is true; the save-state flag itself remains preserved.
+
+Issue #59 remains open. Do not mark the inventory milestone DEVICE ACCEPTED until the corrected exact-production artifact is physically retested. Live installed-game, RetroArch, and emulator-source writes remain **HARD DISABLED**.
