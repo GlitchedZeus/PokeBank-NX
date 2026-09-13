@@ -497,6 +497,26 @@ namespace UI {
         }
     }
 
+    void TrainerViewScreen::captureInventorySourceBaseline() {
+        inventorySourceBaseline.clear();
+        for (int category = 0; category < static_cast<int>(trainer.items.size()); ++category) {
+            for (const auto& item : trainer.items[category]) {
+                inventorySourceBaseline.push_back({
+                    category, item.itemId, item.count, item.isNew,
+                });
+            }
+        }
+        inventorySourceBaselineCaptured = true;
+    }
+
+    PokeBank::UIModel::InventoryItemPresentationState
+    TrainerViewScreen::inventoryItemPresentationState(
+        int category, uint16_t itemId, uint16_t quantity, bool currentIsNew, bool selected) const {
+        if (!inventorySourceBaselineCaptured) return {false, false, selected};
+        return PokeBank::UIModel::inventoryItemPresentationState(
+            inventorySourceBaseline, category, itemId, quantity, currentIsNew, selected);
+    }
+
     TrainerViewScreen::TrainerViewScreen(
         Trainer::Trainer& trainer, const std::string& titleName,
         const std::string& sourceLocation, u64 titleId, AccountUid userUid,
@@ -509,6 +529,8 @@ namespace UI {
         // the immediate-mode state, and C++ initialises in declaration order.
         this->sourceKind = sourceKind;
         this->sourceGameId = std::move(sourceGameId);
+        if (this->sourceKind != PokeVault::Safety::SourceKind::RetroArchLegacy)
+            captureInventorySourceBaseline();
         saveDestIndex = defaultSaveDestRow();
 
         // Open on the box the game was last left on (persisted per-game as the "current box"),

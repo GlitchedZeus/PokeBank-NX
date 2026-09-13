@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace PokeBank::UIModel {
 
@@ -66,11 +67,46 @@ struct InventoryPickerLayout {
     static constexpr int ClassicRowsPerPage = 11;
 };
 
-enum class ItemNameColorRole : uint8_t { NormalText, SelectedText };
+struct InventoryBaselineItem {
+    int category = -1;
+    uint16_t itemId = 0;
+    uint16_t quantity = 0;
+    bool sourceIsNew = false;
+};
 
-[[nodiscard]] constexpr ItemNameColorRole itemNameColorRole(bool selected, bool isNew) noexcept {
-    (void)isNew;
-    return selected ? ItemNameColorRole::SelectedText : ItemNameColorRole::NormalText;
+using InventoryBaseline = std::vector<InventoryBaselineItem>;
+
+struct InventoryItemPresentationState {
+    bool sourceIsNew = false;
+    bool stagedModified = false;
+    bool selected = false;
+};
+
+[[nodiscard]] inline const InventoryBaselineItem* findInventoryBaselineItem(
+    const InventoryBaseline& baseline, int category, uint16_t itemId) noexcept {
+    for (const auto& item : baseline)
+        if (item.category == category && item.itemId == itemId) return &item;
+    return nullptr;
+}
+
+[[nodiscard]] inline InventoryItemPresentationState inventoryItemPresentationState(
+    const InventoryBaseline& baseline, int category, uint16_t itemId, uint16_t currentQuantity,
+    bool currentIsNew, bool selected) noexcept {
+    (void)currentIsNew; // game-owned marker is deliberately not a PokeBank dirty signal
+    const auto* source = findInventoryBaselineItem(baseline, category, itemId);
+    return {
+        source ? source->sourceIsNew : false,
+        source ? source->quantity != currentQuantity : currentQuantity != 0,
+        selected,
+    };
+}
+
+enum class ItemNameColorRole : uint8_t { NormalText, ModifiedText, SelectedText };
+
+[[nodiscard]] constexpr ItemNameColorRole itemNameColorRole(
+    const InventoryItemPresentationState& state) noexcept {
+    if (state.selected) return ItemNameColorRole::SelectedText;
+    return state.stagedModified ? ItemNameColorRole::ModifiedText : ItemNameColorRole::NormalText;
 }
 
 } // namespace PokeBank::UIModel

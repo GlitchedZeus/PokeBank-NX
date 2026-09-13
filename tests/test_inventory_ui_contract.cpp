@@ -49,10 +49,52 @@ int main() {
     static_assert(InventoryPickerLayout::Width < 900);
     static_assert(InventoryPickerLayout::ClassicRowsPerPage == 11);
 
-    static_assert(itemNameColorRole(false, false) == ItemNameColorRole::NormalText);
-    static_assert(itemNameColorRole(false, true) == ItemNameColorRole::NormalText);
-    static_assert(itemNameColorRole(true, false) == ItemNameColorRole::SelectedText);
-    static_assert(itemNameColorRole(true, true) == ItemNameColorRole::SelectedText);
+    InventoryBaseline baseline{
+        {0, 17, 53, true},   // source-owned isNew item: Potion-like representative
+        {0, 18, 5, false},
+        {1, 17, 8, false},   // same item id in a different category is a distinct semantic identity
+    };
+
+    const auto untouchedNew = inventoryItemPresentationState(baseline, 0, 17, 53, true, false);
+    assert(untouchedNew.sourceIsNew);
+    assert(!untouchedNew.stagedModified);
+    assert(itemNameColorRole(untouchedNew) == ItemNameColorRole::NormalText);
+
+    const auto changed = inventoryItemPresentationState(baseline, 0, 17, 99, true, false);
+    assert(changed.sourceIsNew);
+    assert(changed.stagedModified);
+    assert(itemNameColorRole(changed) == ItemNameColorRole::ModifiedText);
+
+    const auto reverted = inventoryItemPresentationState(baseline, 0, 17, 53, true, false);
+    assert(reverted.sourceIsNew);
+    assert(!reverted.stagedModified);
+    assert(itemNameColorRole(reverted) == ItemNameColorRole::NormalText);
+
+    // The live/current isNew value is not allowed to manufacture or clear PokeBank dirty state.
+    const auto currentFlagCleared = inventoryItemPresentationState(baseline, 0, 17, 53, false, false);
+    assert(currentFlagCleared.sourceIsNew);
+    assert(!currentFlagCleared.stagedModified);
+
+    const auto added = inventoryItemPresentationState(baseline, 0, 99, 10, true, false);
+    assert(!added.sourceIsNew);
+    assert(added.stagedModified);
+    assert(itemNameColorRole(added) == ItemNameColorRole::ModifiedText);
+
+    const auto addedThenRemoved = inventoryItemPresentationState(baseline, 0, 99, 0, true, false);
+    assert(!addedThenRemoved.stagedModified);
+
+    // A source item removed from the staged model is semantically dirty even though its row is no longer drawn.
+    const auto removedSource = inventoryItemPresentationState(baseline, 0, 18, 0, false, false);
+    assert(removedSource.stagedModified);
+
+    const auto selectedDirty = inventoryItemPresentationState(baseline, 0, 17, 99, true, true);
+    assert(selectedDirty.stagedModified);
+    assert(itemNameColorRole(selectedDirty) == ItemNameColorRole::SelectedText);
+
+    const auto otherCategory = inventoryItemPresentationState(baseline, 1, 17, 8, false, false);
+    assert(!otherCategory.stagedModified);
+    const auto categoryChanged = inventoryItemPresentationState(baseline, 1, 17, 9, false, false);
+    assert(categoryChanged.stagedModified);
 
     std::cout << "inventory UI contract: PASS\n";
 }

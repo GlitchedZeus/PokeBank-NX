@@ -160,9 +160,13 @@ namespace Panels {
             fb.drawSoftShadow(tileX, ry, tileW, tileH, tileH / 2);
             fb.drawFilledRoundedRect(tileX, ry, tileW, tileH, 12,
                                      selected ? Colors::Primary : Colors::PanelAlt);
-            const auto nameRole = PokeBank::UIModel::itemNameColorRole(selected, item.isNew);
+            const auto presentation = screen.inventoryItemPresentationState(
+                screen.selectedCategory, item.itemId, item.count, item.isNew, selected);
+            const auto nameRole = PokeBank::UIModel::itemNameColorRole(presentation);
             const Color nameCol = nameRole == PokeBank::UIModel::ItemNameColorRole::SelectedText
-                                ? Colors::PrimaryText : Colors::Text;
+                                ? Colors::PrimaryText
+                                : nameRole == PokeBank::UIModel::ItemNameColorRole::ModifiedText
+                                    ? Colors::Accent : Colors::Text;
             int nx = tileX + 22;
             if (item.isFavorite) {
                 fb.drawSymbol(nx, ry + (tileH - 20) / 2, "\xE2\x98\x85", Colors::Yellow);

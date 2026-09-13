@@ -587,6 +587,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
     auto& state = stateFor(screen);
 
     if (!state.presentationInitialized && refreshPresentation(screen)) {
+        screen.captureInventorySourceBaseline();
         state.presentationInitialized = true;
         const auto game = exactGame(screen);
         const int categoryCount = game
