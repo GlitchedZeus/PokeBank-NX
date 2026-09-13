@@ -114,6 +114,10 @@ bool differsOnlyInRange(const std::vector<uint8_t>& a,const std::vector<uint8_t>
 void runFamily(const L& l,SourceGame game){
     auto raw=fixture(l,true);const auto source=raw;
     auto parsed=parse(raw,game);assert(parsed);
+    // The accepted read parser intentionally keeps the raw PokemonRecord gender unresolved.
+    // The staged semantic layer must derive gender from species + Attack DV without changing it.
+    assert(parsed.save->boxes()[0].slots[0]);
+    assert(parsed.save->boxes()[0].slots[0]->gender==2);
     std::string error;auto editor=StagedEditor::create(*parsed.save,error);assert(editor&&error.empty());
     assert(editor->capabilities().supports(PokeVault::SaveEdit::Capability::BoxPokemon));
     assert(editor->capabilities().supports(PokeVault::SaveEdit::Capability::PokemonEditing));
@@ -124,6 +128,7 @@ void runFamily(const L& l,SourceGame game){
     assert(!editor->capabilities().supports(PokeVault::SaveEdit::Capability::PartyPokemon));
 
     auto p=editor->boxedPokemon(0,0,error);assert(p&&p->species==25&&p->nickname=="PIKA");
+    assert(p->gender==static_cast<uint8_t>(genderFromAttackDV(p->species,p->dvs[1])));
     assert(p->shiny);assert(StagedEditor::isShinyDVs({7,10,10,10}));
     assert(StagedEditor::derivedHPDV({7,10,10,10})==8);
     assert(raw==source);assert(std::equal(parsed.save->sourceBytes().begin(),parsed.save->sourceBytes().end(),source.begin()));
@@ -140,6 +145,7 @@ void runFamily(const L& l,SourceGame game){
     assert(changed->pp[0]==StagedEditor::gen2MoveBasePP(84));
     assert(changed->pp[1]==StagedEditor::gen2MoveBasePP(85));
     assert(changed->dvs[0]==StagedEditor::derivedHPDV({9,8,7,6}));
+    assert(changed->gender==static_cast<uint8_t>(genderFromAttackDV(changed->species,changed->dvs[1])));
     assert(changed->originalTrainer=="RED"&&changed->trainerId==4321&&changed->friendship==200);
     const auto* personal=personalRecord(26);assert(personal);
     assert(changed->experience==Pokemon::getExpForLevel(20,personal->experienceGrowth));

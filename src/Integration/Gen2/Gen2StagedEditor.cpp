@@ -359,6 +359,10 @@ std::string statExpText(const std::array<uint16_t, 5>& values) {
     return os.str();
 }
 
+uint8_t semanticGender(const PokemonRecord& pokemon) noexcept {
+    return static_cast<uint8_t>(genderFromAttackDV(pokemon.species, pokemon.dvs[1]));
+}
+
 bool samePokemon(const PokemonRecord& a, const PokemonRecord& b) noexcept {
     return a.species == b.species && a.heldItem == b.heldItem && a.moves == b.moves &&
            a.trainerId == b.trainerId && a.experience == b.experience &&
@@ -366,7 +370,47 @@ bool samePokemon(const PokemonRecord& a, const PokemonRecord& b) noexcept {
            a.ppUps == b.ppUps && a.friendship == b.friendship && a.pokerus == b.pokerus &&
            a.caughtData == b.caughtData && a.level == b.level && a.originalTrainer == b.originalTrainer &&
            a.nickname == b.nickname && a.isEgg == b.isEgg && a.shiny == b.shiny &&
-           a.gender == b.gender;
+           semanticGender(a) == semanticGender(b);
+}
+
+std::string pokemonMismatchDetail(const PokemonRecord& reparsed, const PokemonRecord& expected) {
+    std::ostringstream os;
+    auto add = [&](std::string_view field, auto actual, auto wanted) {
+        if (actual == wanted) return;
+        if (os.tellp() > 0) os << "; ";
+        os << field << " expected=" << +wanted << " reparsed=" << +actual;
+    };
+    add("species", reparsed.species, expected.species);
+    add("heldItem", reparsed.heldItem, expected.heldItem);
+    add("trainerId", reparsed.trainerId, expected.trainerId);
+    add("experience", reparsed.experience, expected.experience);
+    for (std::size_t i = 0; i < 4; ++i) {
+        add("move" + std::to_string(i + 1), reparsed.moves[i], expected.moves[i]);
+        add("pp" + std::to_string(i + 1), reparsed.pp[i], expected.pp[i]);
+        add("ppUps" + std::to_string(i + 1), reparsed.ppUps[i], expected.ppUps[i]);
+    }
+    for (std::size_t i = 0; i < 5; ++i) {
+        add("statExperience" + std::to_string(i), reparsed.statExperience[i], expected.statExperience[i]);
+        add("dv" + std::to_string(i), reparsed.dvs[i], expected.dvs[i]);
+    }
+    add("friendship", reparsed.friendship, expected.friendship);
+    add("pokerus", reparsed.pokerus, expected.pokerus);
+    add("caughtData", reparsed.caughtData, expected.caughtData);
+    add("level", reparsed.level, expected.level);
+    add("isEgg", reparsed.isEgg, expected.isEgg);
+    add("shiny", reparsed.shiny, expected.shiny);
+    add("gender", semanticGender(reparsed), semanticGender(expected));
+    if (reparsed.originalTrainer != expected.originalTrainer) {
+        if (os.tellp() > 0) os << "; ";
+        os << "originalTrainer expected='" << expected.originalTrainer
+           << "' reparsed='" << reparsed.originalTrainer << "'";
+    }
+    if (reparsed.nickname != expected.nickname) {
+        if (os.tellp() > 0) os << "; ";
+        os << "nickname expected='" << expected.nickname
+           << "' reparsed='" << reparsed.nickname << "'";
+    }
+    return os.str();
 }
 
 bool validBoxLocation(const Metadata& metadata, const Layout& layout,
@@ -604,7 +648,12 @@ std::optional<PokemonRecord> StagedEditor::boxedPokemon(std::size_t box, std::si
         error = "Generation II box slot is empty";
         return std::nullopt;
     }
-    return *parsed.save->boxes()[box].slots[slot];
+    PokemonRecord normalized = *parsed.save->boxes()[box].slots[slot];
+    // Gender is not stored independently in Gen II PK2 data. The read-only parser deliberately
+    // leaves PokemonRecord::gender unresolved; staged-editor semantics resolve it from species
+    // and Attack DV so a serialize/reparse cycle compares the actual retail meaning.
+    normalized.gender = semanticGender(normalized);
+    return normalized;
 }
 
 bool StagedEditor::syncCurrentBoxCopy(std::size_t box, std::string& error) {
@@ -777,7 +826,12 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
 
     auto verified = boxedPokemon(box, slot, error);
     if (!verified || !samePokemon(*verified, after)) {
-        if (error.empty()) error = "staged Generation II Pokemon edit failed semantic round-trip";
+        if (error.empty()) {
+            const std::string mismatch = verified ? pokemonMismatchDetail(*verified, after)
+                                                  : std::string("reparse unavailable");
+            error = "staged Generation II Pokemon edit failed semantic round-trip";
+            if (!mismatch.empty()) error += ": " + mismatch;
+        }
         staged_ = stagedBackup;
         changes_ = changesBackup;
         pokemonExpectations_ = expectationsBackup;
