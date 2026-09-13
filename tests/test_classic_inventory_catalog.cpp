@@ -32,6 +32,15 @@ int main() {
     assert(!has(ClassicGame::Gold, ClassicPocket::Balls, 13));
     assert(!has(ClassicGame::Emerald, ClassicPocket::Balls, 13)); // Gen III ball ids end at 12.
 
+    // Raw ID 5 is the ordinary ball in all three titles; GS Ball stays ID 115.
+    for (auto game : {ClassicGame::Gold, ClassicGame::Silver, ClassicGame::Crystal}) {
+        assert(has(game, ClassicPocket::Balls, 5));
+        assert(displayItemName(game, ClassicPocket::Balls, 5) == "Poké Ball");
+        assert(displayItemName(game, ClassicPocket::PCItems, 5) == "Poké Ball");
+        assert(displayItemName(game, ClassicPocket::KeyItems, 115) == "GS BALL");
+        assert(displayItemName(game, ClassicPocket::PCItems, 115) == "GS BALL");
+    }
+
     assert(has(ClassicGame::Gold, ClassicPocket::KeyItems, 54));
     assert(!has(ClassicGame::Gold, ClassicPocket::KeyItems, 70));
     assert(has(ClassicGame::Crystal, ClassicPocket::KeyItems, 70));

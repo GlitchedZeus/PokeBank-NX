@@ -36,7 +36,7 @@ constexpr std::array<uint8_t, 57> kMachineIds{
 // Unused retail IDs intentionally retain their TERU-SAMA identity instead of falling through to a
 // later-generation National item mapping.
 constexpr std::array<std::string_view, 191> kBaseNames{
-    "NONE","MASTER BALL","ULTRA BALL","BRIGHTPOWDER","GREAT BALL","# BALL","TERU-SAMA","BICYCLE",
+    "NONE","MASTER BALL","ULTRA BALL","BRIGHTPOWDER","GREAT BALL","Poké Ball","TERU-SAMA","BICYCLE",
     "MOON STONE","ANTIDOTE","BURN HEAL","ICE HEAL","AWAKENING","PARLYZ HEAL","FULL RESTORE","MAX POTION",
     "HYPER POTION","SUPER POTION","POTION","ESCAPE ROPE","REPEL","MAX ELIXER","FIRE STONE","THUNDERSTONE",
     "WATER STONE","TERU-SAMA","HP UP","PROTEIN","IRON","CARBOS","LUCKY PUNCH","CALCIUM","RARE CANDY",

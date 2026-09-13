@@ -307,3 +307,27 @@ v2.0: Android + Friends + Mailbox + Internet Gift/Trade
 ```
 
 For the next coding session, use `docs/NEXT_CODEX_PROMPT.md` rather than pasting a giant prompt.
+
+
+## Classic inventory hardware milestone accepted — 2026-09-13
+
+The owner physically accepted the latest inventory UX at application checkpoint
+`fc1e6de285177ca82ea08808edb1cf486bc2534b`. This supersedes the earlier inventory
+retest-pending status. Accepted: X Add (including empty pockets), Y Remove, A Edit
+Amount, L/R category, + Options, - Help, B Back, the slim centered Add Item picker,
+visible picker controls, readable names, navigation and exact-game catalogs.
+Source immutability, staged-only mutations and read-only installed sources remain
+the required safety contract. Neither live-write path was tested or authorized.
+
+The one reported `# BALL` label was the ordinary Gen II raw item ID 5. The shared
+name table now displays `Poké Ball`, including carried Balls, PC Items, pickers and
+callers of the shared name API. GS BALL remains a separate item at ID 115. This is
+a deterministic post-acceptance name-table cleanup, with regression coverage;
+no item IDs, save bytes, quantity rules or accepted inventory controls changed.
+A new inventory hardware checkpoint is not required solely for this label fix.
+
+LIVE INSTALLED-GAME WRITES: **HARD DISABLED**.
+LIVE RETROARCH WRITES: **HARD DISABLED**.
+
+Next: Gen I boxed staged Pokémon editor; new editor functionality is **not yet
+hardware accepted**. Party mutation and live source writes remain disabled.

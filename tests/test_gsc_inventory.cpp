@@ -36,6 +36,13 @@ void check(I i,RegionLayout r,VersionFamily f) {
     assert(inv.balls.size()==1&&inv.balls[0].name=="MASTER BALL");
     assert(inv.pcItems.size()==1&&inv.pcItems[0].name=="LUCKY EGG");
     assert(d==before);
+    d[i.balls+1]=5; d[i.pc+1]=5;
+    const auto ballBytes=d;
+    inv=decodeInventory(d,r,f);
+    assert(inv.available);
+    assert(inv.balls[0].itemId==5 && inv.balls[0].name=="Poké Ball");
+    assert(inv.pcItems[0].itemId==5 && inv.pcItems[0].name=="Poké Ball");
+    assert(d==ballBytes);
 }
 }
 
@@ -45,7 +52,9 @@ int main(){
     check(JGS,RegionLayout::Japanese,VersionFamily::GoldSilver);
     check(JC,RegionLayout::Japanese,VersionFamily::Crystal);
     assert(gen2ItemName(70)=="CLEAR BELL");
+    assert(gen2ItemName(5)=="Poké Ball");
     assert(gen2ItemName(115)=="GS BALL");
+    assert(gen2ItemName(5)!=gen2ItemName(115));
     assert(gen2ItemName(116)=="BLUE CARD");
     assert(gen2ItemName(129)=="EGG TICKET");
     assert(gen2ItemName(249)=="HM07");
