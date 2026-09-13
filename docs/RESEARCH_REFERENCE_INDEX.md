@@ -46,7 +46,7 @@ Related issues: #3, #17, #27.
 
 ### `docs/SAVE_STORAGE_DISCOVERY_RESEARCH_2026-09-13.md`
 
-Newest high-value storage/platform research pass. This is the canonical detailed note for:
+High-value storage/platform research covering:
 
 - exact PKSE `PKSEBANK` v1 decoder contract;
 - legacy pre-`PKSEBANK` flat-bank migration behavior;
@@ -69,6 +69,25 @@ Vault recovery:               IMMUTABLE-GENERATION DESIGN REAFFIRMED
 ```
 
 Related issues: #11, #17, #27, #56.
+
+### `docs/SAVE_FORMAT_EDGE_CASE_RESEARCH_2026-09-13.md`
+
+Follow-up research that narrows several remaining hard problems:
+
+- Switch FireRed/LeafGreen appears to expose standard 128 KiB Gen III save payloads with no extra proprietary wrapper;
+- DraStic `.dsv` should be content-validated before assuming a wrapper/footer;
+- Tico gets stronger default-path evidence plus version/profile-aware resolver requirements;
+- Tico/Azahar 3DS should resolve a virtual 3DS filesystem, not flat `.sav` files;
+- 3DS secure-value rollback prevention is a future restore/write constraint;
+- Gen IV general/storage replicas must be resolved independently;
+- Gen V should use an explicit per-region/block-table adapter rather than a generic NDS writer;
+- future Gen III writers should preserve the previous valid replica where possible;
+- native Switch writes must explicitly commit the save filesystem before readback;
+- native provenance can retain SaveData IDs/types/UID/CommitId/timestamp metadata;
+- #17 should explicitly allow synthetic historical revision fixtures;
+- #10 should use explicit generation-transition modules rather than one monolithic converter.
+
+Related issues: #10, #11, #17, #20, #31, #32, #49, #56.
 
 ---
 
@@ -105,7 +124,7 @@ Research around:
 - DS/3DS metadata directions;
 - offline HOME-style UX.
 
-Use this alongside `SAVE_STORAGE_DISCOVERY_RESEARCH_2026-09-13.md` when working on modern Switch support.
+Use this alongside both 2026-09-13 save research documents when working on modern Switch support.
 
 Related issues: #11, #30, #31, #32.
 
@@ -113,9 +132,10 @@ Related issues: #11, #30, #31, #32.
 
 ## Emulator/save discovery research
 
-Primary current reference:
+Primary current references:
 
-### `docs/SAVE_STORAGE_DISCOVERY_RESEARCH_2026-09-13.md`
+- `docs/SAVE_STORAGE_DISCOVERY_RESEARCH_2026-09-13.md`
+- `docs/SAVE_FORMAT_EDGE_CASE_RESEARCH_2026-09-13.md`
 
 The desired #56 architecture is resolver-based:
 
@@ -131,12 +151,13 @@ CustomFolderResolver
 
 Configuration outranks guessed defaults. Standalone emulators and libretro cores are separate source types when their save behavior differs.
 
-Known strong references recorded in the audit include:
+Known strong references recorded in the audits include:
 
 - RetroArch Switch platform defaults/config
 - standalone mGBA config/save path behavior
 - standalone melonDS Switch config/save path behavior
-- DraSticDS_nx Switch directory layout
+- DraSticDS_nx Switch directory layout and raw-save behavior evidence
+- Tico / legacy tiicu path conventions and possible profile scoping
 - Tico mGBA/Azahar cores
 - Azahar NX virtual filesystem layout
 
@@ -144,11 +165,33 @@ Related issue: #56.
 
 ---
 
+## DS / 3DS save architecture research
+
+Primary current references:
+
+- `docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md`
+- `docs/OPENHOME_SWITCH_PLATFORM_REFERENCE_AUDIT_2026-09-03.md`
+- `docs/SAVE_FORMAT_EDGE_CASE_RESEARCH_2026-09-13.md`
+
+Important current architecture rules:
+
+```text
+Gen IV: resolve general/storage replicas independently
+Gen V: explicit region/block table + per-block checksums
+3DS emulator sources: resolve virtual SaveData / decrypted game files
+real 3DS future restore: secure-value behavior must be part of safety proof
+```
+
+Related issues: #31, #32.
+
+---
+
 ## Modern save revision / DLC research
 
-Primary current reference:
+Primary current references:
 
-### `docs/SAVE_STORAGE_DISCOVERY_RESEARCH_2026-09-13.md`
+- `docs/SAVE_STORAGE_DISCOVERY_RESEARCH_2026-09-13.md`
+- `docs/SAVE_FORMAT_EDGE_CASE_RESEARCH_2026-09-13.md`
 
 Key rule:
 
@@ -162,7 +205,7 @@ Current game-specific direction:
 - **BDSP:** explicit revision/size matrix;
 - **Z-A:** explicit `KSaveRevision = 0x0926555A`;
 - **LGPE:** structural/container validation;
-- **Switch FR/LG:** Gen III semantics + Switch source/container handling.
+- **Switch FR/LG:** keep Switch identity/provenance separate, but reuse standard Gen III payload parsing unless contradictory evidence appears.
 
 Related issue: #11.
 
@@ -175,17 +218,19 @@ Primary references:
 - `docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md`
 - `docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`
 - `docs/SAVE_STORAGE_DISCOVERY_RESEARCH_2026-09-13.md`
+- `docs/SAVE_FORMAT_EDGE_CASE_RESEARCH_2026-09-13.md`
 
 Preferred corpus model:
 
 ```text
 generated blank saves
 + synthetic Pokémon-filled saves
++ synthetic historical revision/layout fixtures
 + legally redistributable historical layouts
 + programmatically corrupted variants
 ```
 
-Fixtures should be deterministic and carry size, SHA-256, expected game/revision/semantics and expected failure class.
+Fixtures should be deterministic and carry size, SHA-256, expected game/revision/semantics, provenance class and expected failure class.
 
 Related issue: #17.
 
@@ -215,6 +260,8 @@ Use together with upstream/save-engine audits when implementing:
 - staged export/checksum repair;
 - source immutability.
 
+For future Gen III serializer work, also read `docs/SAVE_FORMAT_EDGE_CASE_RESEARCH_2026-09-13.md` before deciding whether to mutate the active replica or emit a new valid inactive replica.
+
 ---
 
 ## Important external references currently pinned by research
@@ -232,21 +279,26 @@ These are not runtime dependencies. They are research/oracle/reference projects 
 - pkDex — Pokédex/reference ideas
 - PKForge / related tools — creation/editing reference where applicable
 
-### Save/platform references highlighted in the 2026-09-13 audit
+### Save/platform references highlighted in the 2026-09-13 audits
 
 - PKHeX `SaveUtil.cs`
 - PKHeX SWSH `Zukan8` revision/block logic
+- PKHeX 2026 Switch FR/LG support/release notes
+- Project Pokémon save-format/reference material
 - RetroArch Switch platform source/config schema
 - mGBA config implementation
 - melonDS Switch fork
 - DraSticDS_nx
+- Tico / legacy tiicu release documentation
 - Tico mGBA / Tico Azahar cores
 - Azahar NX experimental fork
+- 3dbrew 3DS SaveData / secure-value documentation
+- Switchbrew SaveData filesystem / metadata documentation
 - JKSV
 - libnx
 - pkHouse
 
-See the detailed audit for URLs, constants and implementation notes.
+See the detailed audits for constants and implementation notes. Pin exact URLs/revisions during implementation rather than relying on mutable web state.
 
 ---
 
@@ -256,7 +308,7 @@ Research is not automatically production truth.
 
 When a reference becomes implementation input:
 
-1. pin the exact upstream commit/revision;
+1. pin the exact upstream commit/revision or preserved primary page;
 2. confirm license/reuse classification;
 3. extract the smallest useful behavior/specification;
 4. implement behind PokeBank-owned interfaces;
@@ -273,11 +325,14 @@ Never enable live writes merely because an upstream project writes the same form
 ## Current highest-value research-backed implementation opportunities
 
 1. **Gen I full staged boxed-Pokémon editor** — current active classic-editor direction.
-2. **PKSE bank decoder/importer core** — now implementation-ready as a read-only parser; Vault is the eventual destination.
+2. **PKSE bank decoder/importer core** — implementation-ready as a read-only parser; Vault is the eventual destination.
 3. **`SaveRevisionDetector`** — modern Switch revision safety foundation.
-4. **Universal emulator resolver framework** — #56.
-5. **Save-first native Switch discovery** — improve profile/orphan/device-save handling.
-6. **Golden-corpus generator** — expand #17 across PKSE banks + modern revisions + malformed inputs.
-7. **Master Vault/Banks** — use the bank audits and immutable-generation recovery model when this milestone starts.
+4. **Universal emulator resolver framework** — now has stronger DraStic/Tico/Azahar guidance.
+5. **DS adapters (#31)** — Gen IV/Gen V architecture split is now much clearer.
+6. **3DS adapters (#32)** — virtual SaveData + secure-value safety boundary is now clearer.
+7. **Save-first native Switch discovery** — preserve profile/orphan/device-save metadata and CommitId where useful.
+8. **Golden-corpus generator** — include synthetic historical revision/layout fixtures.
+9. **Master Vault/Banks** — use bank audits and immutable-generation recovery model when this milestone starts.
+10. **Transition-oriented conversion engine** — explicit PK3→PK4→PK5... modules with independent tests.
 
-The current active milestone should not be derailed solely because a later subsystem is now research-ready. Preserve these findings and pull them in when their roadmap phase begins.
+The current active milestone should not be derailed solely because later subsystems are research-ready. Preserve these findings and pull them in when their roadmap phase begins.
