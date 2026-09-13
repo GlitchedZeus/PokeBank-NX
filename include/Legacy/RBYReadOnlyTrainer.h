@@ -3,6 +3,7 @@
 
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
 #include "Integration/Gen1/Gen1StagedInventoryEditor.h"
+#include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Trainer/Trainer.h"
 
 #include <memory>
@@ -27,10 +28,20 @@ public:
 
     const std::string& sourceGameId() const noexcept { return sourceGameId_; }
     bool japaneseLayout() const noexcept { return japaneseLayout_; }
+
     bool stagedInventoryAvailable() const noexcept { return stagedInventory_ != nullptr; }
     Integration::Gen1::StagedInventoryEditor* stagedInventory() noexcept { return stagedInventory_.get(); }
     const Integration::Gen1::StagedInventoryEditor* stagedInventory() const noexcept { return stagedInventory_.get(); }
     const std::string& stagedInventoryUnavailableReason() const noexcept { return stagedInventoryUnavailableReason_; }
+
+    bool stagedPokemonAvailable() const noexcept { return stagedPokemon_ != nullptr; }
+    Integration::Gen1::StagedPokemonEditor* stagedPokemon() noexcept { return stagedPokemon_.get(); }
+    const Integration::Gen1::StagedPokemonEditor* stagedPokemon() const noexcept { return stagedPokemon_.get(); }
+    const std::string& stagedPokemonUnavailableReason() const noexcept { return stagedPokemonUnavailableReason_; }
+
+    // Rebuilds only the on-screen boxed-Pokemon presentation from the staged editor. It never writes
+    // the RetroArch source and never changes party bytes. Used after semantic staged box mutations.
+    bool refreshBoxesFromStagedPokemon(std::string& error);
 
 private:
     explicit RBYReadOnlyTrainer(const Integration::Gen1::Metadata& metadata);
@@ -42,6 +53,8 @@ private:
     bool japaneseLayout_ = false;
     std::unique_ptr<Integration::Gen1::StagedInventoryEditor> stagedInventory_;
     std::string stagedInventoryUnavailableReason_;
+    std::unique_ptr<Integration::Gen1::StagedPokemonEditor> stagedPokemon_;
+    std::string stagedPokemonUnavailableReason_;
 };
 
 } // namespace PokeVault::Legacy
