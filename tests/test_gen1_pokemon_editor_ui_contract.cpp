@@ -1,10 +1,17 @@
 #include "UI/Gen1PokemonEditorUIContract.h"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <iostream>
 
 using namespace PokeBank::UIModel::Gen1Editor;
+
+static bool contains(const FooterSet& set, FooterAction action) {
+    for (std::size_t i = 0; i < set.count; ++i)
+        if (set[i] == action) return true;
+    return false;
+}
 
 int main() {
     const auto occupied = actionsForSlot(true);
@@ -24,14 +31,26 @@ int main() {
     assert(empty[2] == Action::LegalityProvenance);
     assert(empty[3] == Action::Cancel);
 
-    const auto navigate = addDraftDecision(AddDraftEvent::Navigate);
-    assert(!navigate.mutateStagedSave && !navigate.leaveDraft);
-    const auto edit = addDraftDecision(AddDraftEvent::EditField);
-    assert(!edit.mutateStagedSave && !edit.leaveDraft);
+    for (const auto event : {AddDraftEvent::Navigate, AddDraftEvent::EditField,
+                             AddDraftEvent::PreviewSpecies, AddDraftEvent::JumpSection}) {
+        const auto decision = addDraftDecision(event);
+        assert(!decision.mutateStagedSave && !decision.leaveDraft);
+    }
     const auto cancel = addDraftDecision(AddDraftEvent::Cancel);
     assert(!cancel.mutateStagedSave && cancel.leaveDraft);
     const auto stage = addDraftDecision(AddDraftEvent::StageAdd);
     assert(stage.mutateStagedSave && stage.leaveDraft);
+
+    static_assert(addUsesSingleScrollableWorkspace());
+    static_assert(!addRequiresWizardPageNavigation());
+    static_assert(addWorkspaceFieldCount() == 30);
+    constexpr auto starts = addSectionStarts();
+    static_assert(starts[0] == 0 && starts[1] == 4 && starts[2] == 16);
+    static_assert(starts[3] == 21 && starts[4] == 26 && starts[5] == 28);
+
+    assert(speciesPickerRow(1, "Bulbasaur") == "001 - Bulbasaur");
+    assert(speciesPickerRow(4, "Charmander") == "004 - Charmander");
+    assert(speciesPickerRow(151, "Mew") == "151 - Mew");
 
     constexpr auto sections = editorSections();
     static_assert(sections.size() == 5);
@@ -40,6 +59,24 @@ int main() {
     static_assert(sections[2] == EditorSection::DVs);
     static_assert(sections[3] == EditorSection::StatExp);
     static_assert(sections[4] == EditorSection::Trainer);
+
+    const auto editableBoxes = footerForSurface(FooterSurface::Boxes, true);
+    assert(contains(editableBoxes, FooterAction::Add));
+    assert(contains(editableBoxes, FooterAction::Remove));
+    const auto readOnlyBoxes = footerForSurface(FooterSurface::Boxes, false);
+    assert(!contains(readOnlyBoxes, FooterAction::Add));
+    assert(!contains(readOnlyBoxes, FooterAction::Remove));
+
+    const auto draftFooter = footerForSurface(FooterSurface::AddDraft);
+    assert(contains(draftFooter, FooterAction::StageAdd));
+    assert(contains(draftFooter, FooterAction::CancelDraft));
+    const auto pickerFooter = footerForSurface(FooterSurface::SpeciesPicker);
+    assert(!contains(pickerFooter, FooterAction::StageAdd));
+    assert(contains(pickerFooter, FooterAction::Select));
+    assert(contains(pickerFooter, FooterAction::Page));
+    static_assert(footerTopmostSurfaceOverridesParent());
+    static_assert(footerRestoresParentOnClose());
+    static_assert(!footerMayAdvertiseUnavailableAction());
 
     static_assert(!hpDVIsStoredEditableField());
     static_assert(!hasSIDField());
@@ -50,6 +87,6 @@ int main() {
     static_assert(!liveRetroArchWritingEnabled());
     static_assert(!liveInstalledGameWritingEnabled());
 
-    std::cout << "Gen I Pokemon editor UI contract: PASS\n";
+    std::cout << "Gen I Pokemon editor one-screen UX + footer contract: PASS\n";
     return 0;
 }
