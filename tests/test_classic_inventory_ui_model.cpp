@@ -1,4 +1,5 @@
 #include "UI/ClassicInventoryUIModel.h"
+#include "UI/InventoryUIContract.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 
 #include <algorithm>
@@ -59,6 +60,8 @@ int main() {
     assert(classicInventoryAction(ClassicInventoryInput::Plus) == ClassicInventoryAction::Options);
     assert(classicInventoryAction(ClassicInventoryInput::Minus) == ClassicInventoryAction::Help);
     assert(classicInventoryAction(ClassicInventoryInput::B) == ClassicInventoryAction::Back);
+    assert(classicInventoryAction(ClassicInventoryInput::X) == inventoryAction(InventoryInput::X));
+    assert(classicInventoryAction(ClassicInventoryInput::Y) == inventoryAction(InventoryInput::Y));
 
     const auto emptyActions = classicInventoryActionAvailability(true, false, false);
     assert(!emptyActions.editAmount);

@@ -5,6 +5,7 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"     // drawScrollbar
+#include "UI/InventoryUIContract.h"
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Trainer.h"     // getNatureName / getAbilityName
 #include "Names/MoveNames.h"     // getMoveName / getMoveCount
@@ -106,8 +107,10 @@ namespace Dialogs {
 
         // Dim behind + centered panel.
         fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 150));
-        const int pw = 560, ph = H - 120;
-        const int px = (W - pw) / 2, py = 60;
+        const int pw = PokeBank::UIModel::InventoryPickerLayout::Width;
+        const int py = PokeBank::UIModel::InventoryPickerLayout::VerticalMargin;
+        const int ph = H - 2 * py;
+        const int px = (W - pw) / 2;
         fb.drawFilledRoundedRect(px, py, pw, ph, 16, Colors::Panel);
         fb.drawRoundedRect(px, py, pw, ph, 16, Colors::Accent, 2);
 
@@ -125,8 +128,9 @@ namespace Dialogs {
         fb.drawHDivider(px + 20, py + 52, pw - 40);
 
         // Scrollable list window centered on the selection.
-        const int rowH = 40;
-        const int listTop = py + 64, listBottom = py + ph - 48;
+        const int rowH = PokeBank::UIModel::InventoryPickerLayout::RowHeight;
+        const int listTop = py + PokeBank::UIModel::InventoryPickerLayout::ListTopOffset;
+        const int listBottom = py + ph - PokeBank::UIModel::InventoryPickerLayout::FooterHeight;
         int visible = (listBottom - listTop) / rowH;
         if (visible < 1) visible = 1;
         int first = sel - visible / 2;
@@ -187,7 +191,7 @@ namespace Dialogs {
         // Scrollbar on the panel's right edge (same thumb as everywhere else) when the list overflows.
         drawScrollbar(fb, px + pw - 14, listTop, visible * rowH, count * rowH, first * rowH);
 
-        fb.drawText(px + 20, py + ph - 34, "A: Select    B: Cancel    L/R: Page", Colors::TextDim, TextStyle::Caption);
+        fb.drawText(px + 20, py + ph - 34, "D-pad/Stick Navigate   A Select   B Cancel   L/R Page", Colors::TextDim, TextStyle::Caption);
     }
 }
 }

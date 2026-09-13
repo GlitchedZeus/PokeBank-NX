@@ -2,6 +2,7 @@
 #define POKEBANK_UI_CLASSIC_INVENTORY_UI_MODEL_H
 
 #include "Inventory/ClassicInventoryCatalog.h"
+#include "UI/InventoryUIContract.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -27,16 +28,9 @@ using PokeVault::Inventory::ClassicPocket;
                                                      uint16_t itemId) noexcept;
 [[nodiscard]] std::vector<uint16_t> classicInventoryAddableItems(ClassicGame game,
                                                                  ClassicPocket pocket);
-enum class ClassicInventoryInput : uint8_t { A, X, Y, L, R, Plus, Minus, B };
-enum class ClassicInventoryAction : uint8_t {
-    EditAmount, AddItem, RemoveItem, PreviousCategory, NextCategory, Options, Help, Back,
-};
-
-struct ClassicInventoryActionAvailability {
-    bool editAmount = false;
-    bool addItem = false;
-    bool removeItem = false;
-};
+using ClassicInventoryInput = InventoryInput;
+using ClassicInventoryAction = InventoryAction;
+using ClassicInventoryActionAvailability = InventoryActionAvailability;
 
 [[nodiscard]] ClassicInventoryAction classicInventoryAction(ClassicInventoryInput input) noexcept;
 [[nodiscard]] ClassicInventoryActionAvailability classicInventoryActionAvailability(

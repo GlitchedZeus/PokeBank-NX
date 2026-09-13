@@ -21,6 +21,7 @@
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/ClassicInventoryUIModel.h"
+#include "UI/InventoryUIContract.h"
 #include "Enums/GameVersion.h"
 #include "Utils/HelperUtilities.h"
 #include "Names/MoveNames.h"
@@ -159,8 +160,9 @@ namespace Panels {
             fb.drawSoftShadow(tileX, ry, tileW, tileH, tileH / 2);
             fb.drawFilledRoundedRect(tileX, ry, tileW, tileH, 12,
                                      selected ? Colors::Primary : Colors::PanelAlt);
-            const Color nameCol = selected ? Colors::PrimaryText
-                                           : (item.isNew ? Colors::Accent : Colors::Text);
+            const auto nameRole = PokeBank::UIModel::itemNameColorRole(selected, item.isNew);
+            const Color nameCol = nameRole == PokeBank::UIModel::ItemNameColorRole::SelectedText
+                                ? Colors::PrimaryText : Colors::Text;
             int nx = tileX + 22;
             if (item.isFavorite) {
                 fb.drawSymbol(nx, ry + (tileH - 20) / 2, "\xE2\x98\x85", Colors::Yellow);
