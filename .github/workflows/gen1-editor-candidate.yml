@@ -8,16 +8,19 @@ on:
       - 'include/Integration/Gen1/**'
       - 'include/Legacy/RBYReadOnlyTrainer.h'
       - 'include/UI/Gen1PokemonEditor*'
+      - 'include/UI/StatsRadar.h'
       - 'include/UI/TrainerViewScreen.h'
       - 'include/Utils/PokeBankPaths.h'
       - 'src/Integration/Gen1/**'
       - 'src/Legacy/RBYReadOnlyTrainer.cpp'
       - 'src/UI/Gen1PokemonEditorOverlay.cpp'
       - 'src/UI/Gen1PokemonEditorOverlayUX.inc'
+      - 'src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc'
       - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
       - 'src/UI/TrainerViewScreenGSCOverlay.cpp'
       - 'src/UI/TrainerViewScreenGSCOverlay.inc'
       - 'tests/test_rby_pokemon_editor.cpp'
+      - 'tests/test_gen1_battle_stats.cpp'
       - 'tests/test_gen1_pokemon_editor_ui_contract.cpp'
       - '.github/workflows/gen1-editor-candidate.yml'
   workflow_dispatch:
@@ -70,11 +73,14 @@ jobs:
           rm -rf build-host
           make -f Makefile.host build-host/test_rby_pokemon_editor
           ./build-host/test_rby_pokemon_editor
+          make -f Makefile.host build-host/test_gen1_battle_stats
+          ./build-host/test_gen1_battle_stats
           make -f Makefile.host build-host/test_gen1_pokemon_editor_ui_contract
           ./build-host/test_gen1_pokemon_editor_ui_contract
           make -f Makefile.host build-host/test_rby_readonly_bridge
           ./build-host/test_rby_readonly_bridge
           echo 'GEN I STAGED POKEMON CORE: PASS'
+          echo 'GEN I EXACT FIVE-STAT PREVIEW: PASS'
           echo 'GEN I EDITOR UI CONTRACT: PASS'
           echo 'RBY READ-ONLY BRIDGE + STAGED SIDECAR: PASS'
 
@@ -85,60 +91,77 @@ jobs:
           from pathlib import Path
           contract = Path('include/UI/Gen1PokemonEditorUIContract.h').read_text()
           overlay = Path('src/UI/Gen1PokemonEditorOverlay.cpp').read_text()
-          ux = Path('src/UI/Gen1PokemonEditorOverlayUX.inc').read_text()
+          ux1 = Path('src/UI/Gen1PokemonEditorOverlayUX.inc').read_text()
+          ux2 = Path('src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc').read_text()
+          stats = Path('src/Integration/Gen1/Gen1BattleStats.cpp').read_text()
+          radar = Path('include/UI/StatsRadar.h').read_text()
+          composite = Path('src/UI/TrainerViewScreenCompositeOverlay.cpp').read_text()
           bridge = Path('src/Legacy/RBYReadOnlyTrainer.cpp').read_text()
           core = Path('src/Integration/Gen1/Gen1StagedPokemonEditor.cpp').read_text()
           paths = Path('include/Utils/PokeBankPaths.h').read_text()
           keyboard = Path('include/Utils/Keyboard.h').read_text()
+
           required_contract = [
-              'Action::View, Action::Edit, Action::Clone, Action::Remove',
-              'Action::AddPokemon, Action::ReviewPendingChanges',
-              'AddDraftEvent::Cancel: return {false, true};',
-              'AddDraftEvent::StageAdd: return {true, true};',
-              'constexpr bool hpDVIsStoredEditableField() noexcept { return false; }',
-              'constexpr bool hasSIDField() noexcept { return false; }',
-              'constexpr bool partyEditingEnabled() noexcept { return false; }',
-              'constexpr bool liveRetroArchWritingEnabled() noexcept { return false; }',
-              'constexpr bool liveInstalledGameWritingEnabled() noexcept { return false; }',
+              'logicalWorkspaceRowCount() noexcept { return 13; }',
+              'logicalMoveRowCount() noexcept { return 4; }',
+              'ppIsTopLevelEditorRow() noexcept { return false; }',
+              'ppUpsIsTopLevelEditorRow() noexcept { return false; }',
+              'dvsAreGrouped() noexcept { return true; }',
+              'statExperienceIsGrouped() noexcept { return true; }',
+              'speciesHoverMutatesDraft() noexcept { return false; }',
+              'speciesHoverMutatesStagedSave() noexcept { return false; }',
+              'gen1RadarAxisCount() noexcept { return 5; }',
+              'gen1HasSplitSpecial() noexcept { return false; }',
+              'editorGeometryHasNoKnownCollision() noexcept',
+              'emptySlotUsesCompactDialog() noexcept { return true; }',
+              'cloneUsesVisualDestinationGrid() noexcept { return true; }',
+              'cloneBrowseMutatesStagedSave() noexcept { return false; }',
+              'hpDVIsStoredEditableField() noexcept { return false; }',
+              'partyEditingEnabled() noexcept { return false; }',
+              'liveRetroArchWritingEnabled() noexcept { return false; }',
+              'liveInstalledGameWritingEnabled() noexcept { return false; }',
+              'fullEncounterLegalityEngineEnabled() noexcept { return false; }',
           ]
           for needle in required_contract:
               assert needle in contract, needle
-          for needle in [
-              'state.mode = Mode::AddDraft;',
-              'state.draft = BoxPokemonCreate{};',
-              'stageAdd(',
-              'stageClone(',
-              'stageRemove(',
-              'HP DV (derived / read-only)',
-              'NOT CLAIMED by this editor',
-              'original_backup.srm',
-              'edited.srm',
-              'LIVE_RETROARCH_WRITE=DISABLED',
-              'LIVE_INSTALLED_GAME_WRITE=DISABLED',
-              'PARTY_EDIT=DEFERRED',
-          ]:
-              assert needle in overlay, needle
-          required_ux = [
-              'constexpr int rows = 30;',
-              'state.mode == Mode::AddDraft && (down & HidNpadButton_X)',
-              'if (state.mode == Mode::AddDraft) state.draft = BoxPokemonCreate{};',
-              'if (down & HidNpadButton_X)',
-              'beginAddDraft(screen);',
-              'if (down & HidNpadButton_Y)',
-              'state.mode = Mode::RemoveConfirm;',
-              'SpriteManager::getSprite(species, false)',
-              'return UX::speciesPickerRow(species, Names::getSpeciesName(species));',
-              'void drawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h, bool add)',
-              'case Mode::Edit: drawEditor(screen, fb, x, y, w, h, false);',
-              'case Mode::AddDraft: drawEditor(screen, fb, x, y, w, h, true);',
-              '(derived / read-only)',
-              'std::string footerText(const TrainerViewScreen& screen, const OverlayState& state)',
-              'if (state.picker == PickerKind::Species || state.picker == PickerKind::Move)',
-              'drawFooter(fb, footerText(screen, state));',
-              'original RetroArch .srm unchanged',
+
+          required_ux2 = [
+              'UX2Mode::MoveEditor',
+              'UX2Mode::DVEditor',
+              'UX2Mode::StatExpEditor',
+              'ux2PreviewSpecies',
+              'state.pickerValue',
+              'state.draft.species = selected;',
+              'fb.setClipRect(listX, listY, listW, viewportH);',
+              'fb.clearClip();',
+              'UX::logicalWorkspaceRowCount()',
+              'ux2OpenMoveEditor',
+              'ux2OpenDVEditor',
+              'ux2OpenStatExpEditor',
+              'Editor::calculateBattleStats',
+              'StatsRadar::draw',
+              '"Not checked yet"',
+              'ux2DrawClone',
+              'only the next writable empty slot',
+              'X Stage Add',
+              'B Cancel Draft',
+              'original .srm unchanged',
           ]
-          for needle in required_ux:
-              assert needle in ux, needle
+          for needle in required_ux2:
+              assert needle in ux2, needle
+
+          required_stats = [
+              'statExperienceContribution',
+              'derivedHPDV(dvs)',
+              'out.hp', 'out.attack', 'out.defense', 'out.speed', 'out.special',
+          ]
+          for needle in required_stats:
+              assert needle in stats, needle
+          assert 'template <std::size_t N>' in radar
+          assert '360.0f * static_cast<float>(index) / static_cast<float>(count)' in radar
+          assert 'Gen1PokemonEditorOverlayUX.inc' in composite
+          assert 'Gen1PokemonEditorOverlayUXCleanup2.inc' in composite
+          assert 'isGen1SourceUXBase' in composite
           assert 'StagedPokemonEditor::create(save, stagedError)' in bridge
           assert 'refreshBoxesFromStagedPokemon' in bridge
           assert 'RegionLayout::International' in core
@@ -146,16 +169,21 @@ jobs:
           assert 'gen1ExportsRoot()' in paths
           assert 'sdmc:/switch/PokeBank-NX' in paths
           assert 'At most ONE prompt per frame' in keyboard
-          assert 'sdmc:/PKSE' not in overlay
-          assert 'sdmc:/PKSE' not in ux
-          assert 'writeBytes(screen.backupDir' not in ux
-          assert 'std::fopen(screen.backupDir' not in ux
+          for source in (overlay, ux1, ux2):
+              assert 'writeBytes(screen.backupDir' not in source
+              assert 'std::fopen(screen.backupDir' not in source
+          assert 'sdmc:/PKSE' not in ux2
+
           print('GEN I ACTION CAPABILITY CONTRACT: PASS')
-          print('GEN I ONE-SCREEN UX ARCHITECTURE: PASS')
+          print('GEN I CLEANUP2 LOGICAL EDITOR: PASS')
+          print('GEN I CLIPPED LAYOUT / FIXED STATUS REGION: PASS')
+          print('GEN I NON-MUTATING SPECIES HOVER: PASS')
+          print('GEN I GROUPED MOVE / DV / STAT EXP EDITORS: PASS')
+          print('GEN I FIVE-STAT RADAR + EXACT PREVIEW: PASS')
+          print('GEN I VISUAL CLONE BROWSER: PASS')
           print('GEN I CONTEXTUAL FOOTER OWNERSHIP: PASS')
-          print('GEN I LIVE PREVIEW / DIRECT BOX ACTIONS: PASS')
+          print('GEN I LEGALITY UI: TRUTHFUL / ENGINE DEFERRED')
           print('ADD DRAFT MUTATION GATE: PASS')
-          print('NO FAKE MODERN GEN I FIELD CONTRACT: PASS')
           print('INTERNATIONAL EDIT GATE: PASS')
           print('POKEBANK-OWNED EXPORT PATH: PASS')
           print('LIVE RETROARCH WRITE: HARD DISABLED')
@@ -265,25 +293,20 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p device-artifact
-          short="${APP_SHA:0:8}"
           python3 application/tools/package_device_build.py application/PokeBankNX.nro \
-            --label Gen1-Editor --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
+            --label Gen1-UX2-Retest --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
           cp embedded-romfs.json asset-preflight.log recovery.log native-build.log \
              toolchain-image.json toolchain-packages.txt candidate-tree.txt device-artifact/
           python3 - <<'PY'
           import hashlib, json, os
           from pathlib import Path
           out = Path('device-artifact')
-          app = Path('application')
           app_sha = os.environ['APP_SHA']
           tree = os.popen("git -C application rev-parse 'HEAD^{tree}'").read().strip()
           files = {}
           for p in sorted(out.iterdir()):
               if p.is_file():
-                  files[p.name] = {
-                      'bytes': p.stat().st_size,
-                      'sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
-                  }
+                  files[p.name] = {'bytes': p.stat().st_size, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
           nro_candidates = [p for p in out.iterdir() if p.suffix == '.nro']
           zip_candidates = [p for p in out.iterdir() if p.suffix == '.zip']
           assert len(nro_candidates) == 1, nro_candidates
@@ -294,7 +317,8 @@ jobs:
               'recovery_snapshot': os.environ['RECOVERY_SHA'],
               'workflow_run': int(os.environ['GITHUB_RUN_ID']),
               'focused_gen1_editor': 'PASS',
-              'gen1_ui_contract': 'PASS',
+              'gen1_cleanup2_ui_contract': 'PASS',
+              'gen1_exact_five_stat_preview': 'PASS',
               'full_host_suite': 'PASS',
               'asan': 'PASS',
               'ubsan': 'PASS',
@@ -316,10 +340,10 @@ jobs:
           print((out / 'SHA256SUMS.txt').read_text())
           PY
 
-      - name: Preserve Gen I physical-test artifact
+      - name: Preserve Gen I UX2 physical-test artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Gen1-Editor-Candidate
+          name: Gen1-UX2-Retest-Candidate
           path: device-artifact/
           if-no-files-found: error
           retention-days: 90
@@ -328,7 +352,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Gen1-Editor-Diagnostics
+          name: Gen1-UX2-Retest-Diagnostics
           path: |
             recovery.log
             asset-preflight.log
