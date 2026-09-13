@@ -1,0 +1,120 @@
+name: Inventory Dirty Refinement
+
+on:
+  push:
+    branches: [dev/inventory-hardware-polish-20260913]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[inventory-dirty-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify carrier parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "b5cae1366231efa93a381f2e8437c272c737c86c"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/inventory-dirty-refinement.yml"
+      - name: Apply semantic inventory baseline refinement
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, count=1):
+              p = Path(path)
+              text = p.read_text()
+              actual = text.count(old)
+              if actual != count:
+                  raise SystemExit(f"{path}: expected {count} matches, found {actual} for {old[:80]!r}")
+              p.write_text(text.replace(old, new, count))
+
+          # Shared presentation semantics: source/game isNew and PokeBank staged dirty state are independent.
+          replace(
+              'include/UI/InventoryUIContract.h',
+              '#include <cstdint>\n#include <string>\n',
+              '#include <cstdint>\n#include <string>\n#include <vector>\n')
+          replace(
+              'include/UI/InventoryUIContract.h',
+              '''enum class ItemNameColorRole : uint8_t { NormalText, SelectedText };\n\n[[nodiscard]] constexpr ItemNameColorRole itemNameColorRole(bool selected, bool isNew) noexcept {\n    (void)isNew;\n    return selected ? ItemNameColorRole::SelectedText : ItemNameColorRole::NormalText;\n}\n''',
+              '''struct InventoryBaselineItem {\n    int category = -1;\n    uint16_t itemId = 0;\n    uint16_t quantity = 0;\n    bool sourceIsNew = false;\n};\n\nusing InventoryBaseline = std::vector<InventoryBaselineItem>;\n\nstruct InventoryItemPresentationState {\n    bool sourceIsNew = false;\n    bool stagedModified = false;\n    bool selected = false;\n};\n\n[[nodiscard]] inline const InventoryBaselineItem* findInventoryBaselineItem(\n    const InventoryBaseline& baseline, int category, uint16_t itemId) noexcept {\n    for (const auto& item : baseline)\n        if (item.category == category && item.itemId == itemId) return &item;\n    return nullptr;\n}\n\n[[nodiscard]] inline InventoryItemPresentationState inventoryItemPresentationState(\n    const InventoryBaseline& baseline, int category, uint16_t itemId, uint16_t currentQuantity,\n    bool currentIsNew, bool selected) noexcept {\n    (void)currentIsNew; // game-owned marker is deliberately not a PokeBank dirty signal\n    const auto* source = findInventoryBaselineItem(baseline, category, itemId);\n    return {\n        source ? source->sourceIsNew : false,\n        source ? source->quantity != currentQuantity : currentQuantity != 0,\n        selected,\n    };\n}\n\nenum class ItemNameColorRole : uint8_t { NormalText, ModifiedText, SelectedText };\n\n[[nodiscard]] constexpr ItemNameColorRole itemNameColorRole(\n    const InventoryItemPresentationState& state) noexcept {\n    if (state.selected) return ItemNameColorRole::SelectedText;\n    return state.stagedModified ? ItemNameColorRole::ModifiedText : ItemNameColorRole::NormalText;\n}\n''')
+
+          # TrainerViewScreen owns an immutable loaded inventory baseline for modern workspace views.
+          replace(
+              'include/UI/TrainerViewScreenBase.h',
+              '#include "UI/NavigationRepeat.h"\n',
+              '#include "UI/NavigationRepeat.h"\n#include "UI/InventoryUIContract.h"\n')
+          replace(
+              'include/UI/TrainerViewScreenBase.h',
+              '''        int currentItemMaxCount() const;                       // per-stack ceiling for the current pouch (never 0)\n''',
+              '''        int currentItemMaxCount() const;                       // per-stack ceiling for the current pouch (never 0)\n        void captureInventorySourceBaseline();\n        [[nodiscard]] PokeBank::UIModel::InventoryItemPresentationState inventoryItemPresentationState(\n            int category, uint16_t itemId, uint16_t quantity, bool currentIsNew, bool selected) const;\n''')
+          replace(
+              'include/UI/TrainerViewScreenBase.h',
+              '''        bool itemRemoveConfirmActive = false;\n\n        // Save confirmation state\n''',
+              '''        bool itemRemoveConfirmActive = false;\n        // Immutable semantic inventory state captured when this save/workspace is loaded. The game's\n        // own isNew marker is retained here as source data, never repurposed as PokeBank dirty state.\n        PokeBank::UIModel::InventoryBaseline inventorySourceBaseline;\n        bool inventorySourceBaselineCaptured = false;\n\n        // Save confirmation state\n''')
+
+          # Methods and modern baseline capture. RetroArch classic sources are captured after their first
+          # staged-presentation rebuild, because that rebuild establishes the exact unified category order.
+          replace(
+              'src/UI/TrainerViewScreenBase.inc',
+              '''    TrainerViewScreen::TrainerViewScreen(\n        Trainer::Trainer& trainer, const std::string& titleName,\n''',
+              '''    void TrainerViewScreen::captureInventorySourceBaseline() {\n        inventorySourceBaseline.clear();\n        for (int category = 0; category < static_cast<int>(trainer.items.size()); ++category) {\n            for (const auto& item : trainer.items[category]) {\n                inventorySourceBaseline.push_back({\n                    category, item.itemId, item.count, item.isNew,\n                });\n            }\n        }\n        inventorySourceBaselineCaptured = true;\n    }\n\n    PokeBank::UIModel::InventoryItemPresentationState\n    TrainerViewScreen::inventoryItemPresentationState(\n        int category, uint16_t itemId, uint16_t quantity, bool currentIsNew, bool selected) const {\n        if (!inventorySourceBaselineCaptured) return {false, false, selected};\n        return PokeBank::UIModel::inventoryItemPresentationState(\n            inventorySourceBaseline, category, itemId, quantity, currentIsNew, selected);\n    }\n\n    TrainerViewScreen::TrainerViewScreen(\n        Trainer::Trainer& trainer, const std::string& titleName,\n''')
+          replace(
+              'src/UI/TrainerViewScreenBase.inc',
+              '''        this->sourceKind = sourceKind;\n        this->sourceGameId = std::move(sourceGameId);\n        saveDestIndex = defaultSaveDestRow();\n''',
+              '''        this->sourceKind = sourceKind;\n        this->sourceGameId = std::move(sourceGameId);\n        if (this->sourceKind != PokeVault::Safety::SourceKind::RetroArchLegacy)\n            captureInventorySourceBaseline();\n        saveDestIndex = defaultSaveDestRow();\n''')
+
+          # Classic baseline: capture exactly once, immediately after the initial staged model is projected
+          # into the shared Inventory list and before any mutation can run.
+          replace(
+              'src/UI/ClassicInventoryOverlay.cpp',
+              '''    if (!state.presentationInitialized && refreshPresentation(screen)) {\n        state.presentationInitialized = true;\n''',
+              '''    if (!state.presentationInitialized && refreshPresentation(screen)) {\n        screen.captureInventorySourceBaseline();\n        state.presentationInitialized = true;\n''')
+
+          # Shared ItemsPanel asks one presentation question for classic + modern inventories.
+          replace(
+              'src/UI/Panels/ItemsPanel.cpp',
+              '''            const auto nameRole = PokeBank::UIModel::itemNameColorRole(selected, item.isNew);\n            const Color nameCol = nameRole == PokeBank::UIModel::ItemNameColorRole::SelectedText\n                                ? Colors::PrimaryText : Colors::Text;\n''',
+              '''            const auto presentation = screen.inventoryItemPresentationState(\n                screen.selectedCategory, item.itemId, item.count, item.isNew, selected);\n            const auto nameRole = PokeBank::UIModel::itemNameColorRole(presentation);\n            const Color nameCol = nameRole == PokeBank::UIModel::ItemNameColorRole::SelectedText\n                                ? Colors::PrimaryText\n                                : nameRole == PokeBank::UIModel::ItemNameColorRole::ModifiedText\n                                    ? Colors::Accent : Colors::Text;\n''')
+
+          # Permanent semantic regression matrix, including source isNew preservation and exact revert.
+          replace(
+              'tests/test_inventory_ui_contract.cpp',
+              '''    static_assert(itemNameColorRole(false, false) == ItemNameColorRole::NormalText);\n    static_assert(itemNameColorRole(false, true) == ItemNameColorRole::NormalText);\n    static_assert(itemNameColorRole(true, false) == ItemNameColorRole::SelectedText);\n    static_assert(itemNameColorRole(true, true) == ItemNameColorRole::SelectedText);\n\n    std::cout << "inventory UI contract: PASS\\n";\n''',
+              '''    InventoryBaseline baseline{\n        {0, 17, 53, true},   // source-owned isNew item: Potion-like representative\n        {0, 18, 5, false},\n        {1, 17, 8, false},   // same item id in a different category is a distinct semantic identity\n    };\n\n    const auto untouchedNew = inventoryItemPresentationState(baseline, 0, 17, 53, true, false);\n    assert(untouchedNew.sourceIsNew);\n    assert(!untouchedNew.stagedModified);\n    assert(itemNameColorRole(untouchedNew) == ItemNameColorRole::NormalText);\n\n    const auto changed = inventoryItemPresentationState(baseline, 0, 17, 99, true, false);\n    assert(changed.sourceIsNew);\n    assert(changed.stagedModified);\n    assert(itemNameColorRole(changed) == ItemNameColorRole::ModifiedText);\n\n    const auto reverted = inventoryItemPresentationState(baseline, 0, 17, 53, true, false);\n    assert(reverted.sourceIsNew);\n    assert(!reverted.stagedModified);\n    assert(itemNameColorRole(reverted) == ItemNameColorRole::NormalText);\n\n    // The live/current isNew value is not allowed to manufacture or clear PokeBank dirty state.\n    const auto currentFlagCleared = inventoryItemPresentationState(baseline, 0, 17, 53, false, false);\n    assert(currentFlagCleared.sourceIsNew);\n    assert(!currentFlagCleared.stagedModified);\n\n    const auto added = inventoryItemPresentationState(baseline, 0, 99, 10, true, false);\n    assert(!added.sourceIsNew);\n    assert(added.stagedModified);\n    assert(itemNameColorRole(added) == ItemNameColorRole::ModifiedText);\n\n    const auto addedThenRemoved = inventoryItemPresentationState(baseline, 0, 99, 0, true, false);\n    assert(!addedThenRemoved.stagedModified);\n\n    // A source item removed from the staged model is semantically dirty even though its row is no longer drawn.\n    const auto removedSource = inventoryItemPresentationState(baseline, 0, 18, 0, false, false);\n    assert(removedSource.stagedModified);\n\n    const auto selectedDirty = inventoryItemPresentationState(baseline, 0, 17, 99, true, true);\n    assert(selectedDirty.stagedModified);\n    assert(itemNameColorRole(selectedDirty) == ItemNameColorRole::SelectedText);\n\n    const auto otherCategory = inventoryItemPresentationState(baseline, 1, 17, 8, false, false);\n    assert(!otherCategory.stagedModified);\n    const auto categoryChanged = inventoryItemPresentationState(baseline, 1, 17, 9, false, false);\n    assert(categoryChanged.stagedModified);\n\n    std::cout << "inventory UI contract: PASS\\n";\n''')
+          PY
+
+          git diff --check
+          grep -q 'captureInventorySourceBaseline' src/UI/TrainerViewScreenBase.inc
+          grep -q 'ModifiedText' src/UI/Panels/ItemsPanel.cpp
+          grep -q 'screen.captureInventorySourceBaseline' src/UI/ClassicInventoryOverlay.cpp
+          grep -q 'currentIsNew; // game-owned marker is deliberately not a PokeBank dirty signal' include/UI/InventoryUIContract.h
+      - name: Focused presentation tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f Makefile.host.base build-host/test_inventory_ui_contract
+          ./build-host/test_inventory_ui_contract
+          make -f Makefile.host.base build-host/test_inventory_ui_contract_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_inventory_ui_contract_sanitize
+          make -f Makefile.host.base build-host/test_classic_inventory_ui_model
+          ./build-host/test_classic_inventory_ui_model
+      - name: Commit clean application refinement
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/inventory-dirty-refinement.yml
+          git diff --check
+          test -z "$(git status --porcelain | grep '^??' || true)"
+          git config user.name "PokeBank NX CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "ui: distinguish source-new items from staged inventory edits [inventory-dirty-applied]"
+          git push origin HEAD:dev/inventory-hardware-polish-20260913
