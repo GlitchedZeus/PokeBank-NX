@@ -59,6 +59,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 ../carrier/.github/scripts/apply_classic_inventory_correction.py build
+          python3 ../carrier/.github/scripts/update_rby_bridge_expectations.py
           git diff --check
           rm -rf build-host
           make -f Makefile.host.base build-host/test_legacy_frlg_browse
@@ -68,7 +69,7 @@ jobs:
           make -f Makefile.host.classic_inventory host-classic-inventory
           make -f Makefile.host.base build-host/test_classic_inventory_ui_model
           ./build-host/test_classic_inventory_ui_model
-          git add Makefile.host.base
+          git add Makefile.host.base tests/test_rby_readonly_bridge.cpp
           git commit -m "build: link staged classic inventory into host regressions"
 
       - name: Push corrected development branch
