@@ -51,5 +51,19 @@ $(HOST_BUILD)/test_rby_pokemon_editor_sanitize: $(GEN1_POKEMON_SOURCES) src/Inte
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_POKEMON_SOURCES) -o $@
 
-# RBY bridge owns the sidecar; accepted read-only tests must link its native dependencies.
+# Host-testable controller/action contract for the Switch-only Gen I overlay. This permanently proves
+# empty vs occupied action availability and that draft navigation/edit/cancel never requests mutation.
+HOST_TESTS += $(HOST_BUILD)/test_gen1_pokemon_editor_ui_contract
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_pokemon_editor_ui_contract_sanitize
+host-test: $(HOST_BUILD)/test_gen1_pokemon_editor_ui_contract
+host-sanitize: $(HOST_BUILD)/test_gen1_pokemon_editor_ui_contract_sanitize
+$(HOST_BUILD)/test_gen1_pokemon_editor_ui_contract: tests/test_gen1_pokemon_editor_ui_contract.cpp include/UI/Gen1PokemonEditorUIContract.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen1_pokemon_editor_ui_contract.cpp -o $@
+$(HOST_BUILD)/test_gen1_pokemon_editor_ui_contract_sanitize: tests/test_gen1_pokemon_editor_ui_contract.cpp include/UI/Gen1PokemonEditorUIContract.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen1_pokemon_editor_ui_contract.cpp -o $@
+
+# RBY bridge owns the staged Pokemon sidecar; accepted read-only tests must link its native
+# dependencies in addition to the already-linked classic inventory sidecar.
 $(HOST_BUILD)/test_rby_readonly_bridge $(HOST_BUILD)/test_rby_readonly_bridge_sanitize: src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Pokemon/Experience.cpp
