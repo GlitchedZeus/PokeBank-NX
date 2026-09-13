@@ -6,7 +6,7 @@ on:
       - dev/classic-inventory-20260912
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   catalog:
@@ -17,41 +17,8 @@ jobs:
         run: |
           set -euo pipefail
           echo "HEAD=$(git rev-parse HEAD)"
-          echo "TREE=$(git rev-parse HEAD^{tree})"
-      - name: Normalize catalog formatting
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('src/Inventory/ClassicInventoryCatalog.cpp')
-          s = p.read_text()
-          s = s.replace('''        for (auto id:kG3Items) out[n++]=id; for(auto id:kG3KeysRS) out[n++]=id;
-        for(auto id:kG3Berries) out[n++]=id; for(auto id:kG3Balls) if(id) out[n++]=id; for(auto id:kG3Machines) out[n++]=id;''', '''        for (auto id : kG3Items) out[n++] = id;
-        for (auto id : kG3KeysRS) out[n++] = id;
-        for (auto id : kG3Berries) out[n++] = id;
-        for (auto id : kG3Balls) if (id) out[n++] = id;
-        for (auto id : kG3Machines) out[n++] = id;''')
-          s = s.replace('''        for (auto id:kG3Items) out[n++]=id; for(auto id:kG3Berries) out[n++]=id;
-        for(auto id:kG3Balls) if(id) out[n++]=id; for(auto id:kG3Machines) out[n++]=id; return out;''', '''        for (auto id : kG3Items) out[n++] = id;
-        for (auto id : kG3Berries) out[n++] = id;
-        for (auto id : kG3Balls) if (id) out[n++] = id;
-        for (auto id : kG3Machines) out[n++] = id;
-        return out;''')
-          s = s.replace('''        for (auto id:kG3Items) out[n++]=id; return out;''', '''        for (auto id : kG3Items) out[n++] = id;
-        return out;''')
-          p.write_text(s)
-          PY
+          echo "TREE=$(git rev-parse 'HEAD^{tree}')"
       - name: Catalog tests
         run: make -f Makefile.host.classic_inventory host-classic-inventory
       - name: Diff check
-        run: git diff --check
-      - name: Commit formatting fix
-        run: |
-          set -euo pipefail
-          if git diff --quiet; then
-            exit 0
-          fi
-          git config user.name "PokeBank NX CI"
-          git config user.email "actions@users.noreply.github.com"
-          git add src/Inventory/ClassicInventoryCatalog.cpp
-          git commit -m "inventory: satisfy strict catalog compile"
-          git push origin HEAD:dev/classic-inventory-20260912
+        run: git diff --check HEAD^
