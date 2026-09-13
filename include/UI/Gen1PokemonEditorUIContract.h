@@ -23,7 +23,6 @@ enum class Action : uint8_t {
 struct ActionSet {
     std::array<Action, 7> values{};
     std::size_t count = 0;
-
     constexpr Action operator[](std::size_t index) const noexcept { return values[index]; }
 };
 
@@ -42,6 +41,8 @@ enum class AddDraftEvent : uint8_t {
     EditField,
     PreviewSpecies,
     JumpSection,
+    OpenLogicalSubEditor,
+    CancelSubEditor,
     Cancel,
     StageAdd,
 };
@@ -53,42 +54,92 @@ struct AddDraftDecision {
 
 constexpr AddDraftDecision addDraftDecision(AddDraftEvent event) noexcept {
     switch (event) {
-        case AddDraftEvent::Navigate: return {false, false};
-        case AddDraftEvent::EditField: return {false, false};
-        case AddDraftEvent::PreviewSpecies: return {false, false};
-        case AddDraftEvent::JumpSection: return {false, false};
+        case AddDraftEvent::Navigate:
+        case AddDraftEvent::EditField:
+        case AddDraftEvent::PreviewSpecies:
+        case AddDraftEvent::JumpSection:
+        case AddDraftEvent::OpenLogicalSubEditor:
+        case AddDraftEvent::CancelSubEditor:
+            return {false, false};
         case AddDraftEvent::Cancel: return {false, true};
         case AddDraftEvent::StageAdd: return {true, true};
     }
     return {};
 }
 
-enum class EditorSection : uint8_t { Summary, Moves, DVs, StatExp, Trainer, Actions };
-
+enum class EditorSection : uint8_t { Summary, Moves, Stats, Trainer, Actions };
 constexpr std::array<EditorSection, 5> editorSections() noexcept {
-    return {EditorSection::Summary, EditorSection::Moves, EditorSection::DVs,
-            EditorSection::StatExp, EditorSection::Trainer};
+    return {EditorSection::Summary, EditorSection::Moves, EditorSection::Stats,
+            EditorSection::Trainer, EditorSection::Actions};
 }
 
+// Cleanup pass #2 keeps one coherent editor but presents logical rows instead of the original
+// raw 30-field list. Move PP/PP Ups and DV/Stat Exp details live in contextual sub-editors.
 constexpr bool addUsesSingleScrollableWorkspace() noexcept { return true; }
 constexpr bool addRequiresWizardPageNavigation() noexcept { return false; }
-constexpr std::size_t addWorkspaceFieldCount() noexcept { return 30; }
-constexpr std::array<std::size_t, 6> addSectionStarts() noexcept {
-    return {0, 4, 16, 21, 26, 28};
-}
+constexpr std::size_t legacyRawFieldCount() noexcept { return 30; }
+constexpr std::size_t logicalWorkspaceRowCount() noexcept { return 13; }
+constexpr std::array<std::size_t,5> logicalSectionStarts() noexcept { return {0,3,7,9,11}; }
+constexpr std::size_t logicalMoveRowCount() noexcept { return 4; }
+constexpr bool ppIsTopLevelEditorRow() noexcept { return false; }
+constexpr bool ppUpsIsTopLevelEditorRow() noexcept { return false; }
+constexpr bool dvsAreGrouped() noexcept { return true; }
+constexpr bool statExperienceIsGrouped() noexcept { return true; }
 
 inline std::string speciesPickerRow(uint16_t species, const char* name) {
-    // uint16_t can be five digits even though the Gen I picker constrains 1..151. Keep this buffer
-    // sized for the type's full range so -Wformat-truncation can prove the helper safe independently.
     char prefix[16]{};
     std::snprintf(prefix, sizeof(prefix), "%03u - ", static_cast<unsigned>(species));
     return std::string(prefix) + (name ? name : "");
 }
 
+// Highlighting a species is preview-only. A commits; B keeps the previous committed species.
+constexpr uint16_t speciesPreviewOnHighlight(uint16_t, uint16_t highlighted) noexcept {
+    return highlighted;
+}
+constexpr uint16_t speciesAfterPickerClose(uint16_t committed, uint16_t highlighted,
+                                           bool accepted) noexcept {
+    return accepted ? highlighted : committed;
+}
+constexpr bool speciesHoverMutatesDraft() noexcept { return false; }
+constexpr bool speciesHoverMutatesStagedSave() noexcept { return false; }
+
+// Gen I Summary / editor stats are exactly five axes. Special is unified.
+constexpr std::size_t gen1RadarAxisCount() noexcept { return 5; }
+constexpr bool gen1HasSplitSpecial() noexcept { return false; }
+constexpr std::array<const char*,5> gen1StatLabels() noexcept {
+    return {"HP", "Attack", "Defense", "Speed", "Special"};
+}
+
+// Hardware-layout contract: scrolling rows occupy a clipped viewport that ends before the fixed
+// row/section status strip. The fixed footer is outside the panel entirely.
+struct EditorGeometry {
+    int contentTop;
+    int scrollBottom;
+    int statusTop;
+    int panelBottom;
+    int footerTop;
+};
+constexpr EditorGeometry editorGeometry720p() noexcept {
+    return {122, 566, 578, 652, 672};
+}
+constexpr bool editorGeometryHasNoKnownCollision() noexcept {
+    constexpr auto g = editorGeometry720p();
+    return g.contentTop < g.scrollBottom && g.scrollBottom < g.statusTop &&
+           g.statusTop < g.panelBottom && g.panelBottom < g.footerTop;
+}
+
+constexpr bool emptySlotUsesCompactDialog() noexcept { return true; }
+constexpr bool smallConfirmationUsesCompactDialog() noexcept { return true; }
+constexpr bool cloneUsesVisualDestinationGrid() noexcept { return true; }
+constexpr bool cloneBrowseMutatesStagedSave() noexcept { return false; }
+constexpr bool cloneRequiresExplicitConfirm() noexcept { return true; }
+constexpr bool cloneSourceMutatedByClone() noexcept { return false; }
+
 enum class FooterAction : uint8_t {
     Navigate,
     Select,
     Edit,
+    Apply,
     Back,
     CancelDraft,
     StageAdd,
@@ -110,7 +161,10 @@ enum class FooterSurface : uint8_t {
     AddDraft,
     SpeciesPicker,
     MovePicker,
-    CloneConfirm,
+    MoveEditor,
+    DVEditor,
+    StatExpEditor,
+    CloneDestination,
     RemoveConfirm,
     Review,
     Provenance,
@@ -141,8 +195,14 @@ constexpr FooterSet footerForSurface(FooterSurface surface, bool editable = true
         case FooterSurface::MovePicker:
             return {{{FooterAction::Navigate, FooterAction::Select, FooterAction::Page,
                       FooterAction::Back}}, 4};
-        case FooterSurface::CloneConfirm:
-            return {{{FooterAction::PreviousNextBox, FooterAction::ConfirmClone, FooterAction::Back}}, 3};
+        case FooterSurface::MoveEditor:
+        case FooterSurface::DVEditor:
+        case FooterSurface::StatExpEditor:
+            return {{{FooterAction::Navigate, FooterAction::Edit, FooterAction::Apply,
+                      FooterAction::Back}}, 4};
+        case FooterSurface::CloneDestination:
+            return {{{FooterAction::Navigate, FooterAction::PreviousNextBox,
+                      FooterAction::ConfirmClone, FooterAction::Back}}, 4};
         case FooterSurface::RemoveConfirm:
             return {{{FooterAction::ConfirmRemove, FooterAction::Back}}, 2};
         case FooterSurface::Review:
@@ -166,6 +226,7 @@ constexpr bool hasHeldItemField() noexcept { return false; }
 constexpr bool partyEditingEnabled() noexcept { return false; }
 constexpr bool liveRetroArchWritingEnabled() noexcept { return false; }
 constexpr bool liveInstalledGameWritingEnabled() noexcept { return false; }
+constexpr bool fullEncounterLegalityEngineEnabled() noexcept { return false; }
 
 } // namespace PokeBank::UIModel::Gen1Editor
 
