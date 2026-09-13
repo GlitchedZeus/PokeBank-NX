@@ -1,0 +1,74 @@
+name: Classic Inventory Bridge Fixup
+
+on:
+  push:
+    branches: [dev/classic-inventory-20260912]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[classic-bridges-applied]') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev/classic-inventory-20260912
+          fetch-depth: 2
+      - name: Patch read-only bridges with staged sidecars
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          for name in ['src/Integration/Gen3/PKSMGen3Adapter.cpp', 'src/Integration/Gen3/PKSMGen3NativeAdapter.cpp']:
+              p=Path(name); s=p.read_text()
+              anchor='''    const std::vector<InventoryPouchRecord>& ReadOnlySave::inventory() const noexcept {\n        return impl_->readModel.inventory;\n    }\n'''
+              insert=anchor+'''    std::span<const uint8_t> ReadOnlySave::sourceBytes() const noexcept {\n        return impl_->original;\n    }\n'''
+              if 'ReadOnlySave::sourceBytes()' not in s:
+                  if anchor not in s: raise SystemExit(f'adapter accessor anchor missing: {name}')
+                  s=s.replace(anchor,insert,1)
+              p.write_text(s)
+
+          p=Path('src/Legacy/RBYReadOnlyTrainer.cpp'); s=p.read_text()
+          inc='#include "Integration/Gen1/Gen1ReadOnlyInventory.h"\n'
+          if '#include "Inventory/ClassicInventoryCatalog.h"' not in s:
+              s=s.replace(inc,inc+'#include "Inventory/ClassicInventoryCatalog.h"\n',1)
+          old='''    auto trainer = std::unique_ptr<RBYReadOnlyTrainer>(new RBYReadOnlyTrainer(metadata));\n    if (!trainer->populate(save, error)) return nullptr;\n    return trainer;\n'''
+          new='''    auto trainer = std::unique_ptr<RBYReadOnlyTrainer>(new RBYReadOnlyTrainer(metadata));\n    if (!trainer->populate(save, error)) return nullptr;\n    std::string stagedError;\n    trainer->stagedInventory_ = Integration::Gen1::StagedInventoryEditor::create(save, stagedError);\n    trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);\n    return trainer;\n'''
+          if old not in s: raise SystemExit('RBY create anchor missing')
+          s=s.replace(old,new,1)
+          old='''    if (inventory.available) {\n        items.resize(Integration::Gen1::kInventoryCategoryCount);\n        auto copyInventory = [](const auto& src, auto& dst) {\n            dst.reserve(src.size());\n            for (const auto& item : src)\n                dst.push_back(::Trainer::InventoryItem{item.itemId, item.quantity, false, false});\n        };\n        copyInventory(inventory.bag, items[0]);\n        copyInventory(inventory.pcItems, items[1]);\n    }\n'''
+          new='''    if (inventory.available) {\n        // Gen I stores one Bag plus PC Items. Present six PKSE-style virtual categories by\n        // filtering that real Bag; staged serialization still writes the original pair lists.\n        items.resize(6);\n        const auto game = Inventory::classicGameFromId(sourceGameId_);\n        const Inventory::ClassicPocket virtualPockets[5] = {\n            Inventory::ClassicPocket::Items, Inventory::ClassicPocket::Medicines,\n            Inventory::ClassicPocket::Balls, Inventory::ClassicPocket::KeyItems,\n            Inventory::ClassicPocket::TMHM,\n        };\n        if (game) {\n            for (const auto& item : inventory.bag) {\n                for (size_t category = 0; category < 5; ++category) {\n                    if (!Inventory::isAddableItem(*game, virtualPockets[category], item.itemId)) continue;\n                    items[category].push_back(::Trainer::InventoryItem{item.itemId, item.quantity, false, false});\n                    break;\n                }\n            }\n        }\n        for (const auto& item : inventory.pcItems)\n            items[5].push_back(::Trainer::InventoryItem{item.itemId, item.quantity, false, false});\n    }\n'''
+          if old not in s: raise SystemExit('RBY inventory presentation anchor missing')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('src/Legacy/FRLGReadOnlyTrainer.cpp'); s=p.read_text()
+          old='''        auto trainer = std::unique_ptr<FRLGReadOnlyTrainer>(new FRLGReadOnlyTrainer(metadata));\n        if (!trainer->populate(save, error)) return nullptr;\n        return trainer;\n'''
+          new='''        auto trainer = std::unique_ptr<FRLGReadOnlyTrainer>(new FRLGReadOnlyTrainer(metadata));\n        if (!trainer->populate(save, error)) return nullptr;\n        std::string stagedError;\n        trainer->stagedInventory_ = Integration::Gen3::StagedInventoryEditor::create(\n            save.sourceBytes(), metadata.sourceGame, stagedError);\n        trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);\n        return trainer;\n'''
+          if old not in s: raise SystemExit('Gen III bridge create anchor missing')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('Makefile.host.classic_inventory'); s=p.read_text()
+          anchor='''\t$(CXX) $(CXXFLAGS) tests/test_classic_inventory_catalog.cpp $(CATALOG_SOURCES) -o /tmp/test_classic_inventory_catalog\n\t/tmp/test_classic_inventory_catalog\n'''
+          insert=anchor+'''\t$(CXX) $(CXXFLAGS) tests/test_classic_inventory_ui_model.cpp src/UI/ClassicInventoryUIModel.cpp $(CATALOG_SOURCES) -o /tmp/test_classic_inventory_ui_model\n\t/tmp/test_classic_inventory_ui_model\n'''
+          if 'test_classic_inventory_ui_model.cpp' not in s:
+              if anchor not in s: raise SystemExit('Makefile UI model anchor missing')
+              s=s.replace(anchor,insert,1)
+          p.write_text(s)
+          PY
+          git diff --check
+          make -f Makefile.host.classic_inventory host-classic-inventory
+      - name: Commit bridge wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'PokeBank NX CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/Integration/Gen3/PKSMGen3Adapter.cpp src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Legacy/RBYReadOnlyTrainer.cpp src/Legacy/FRLGReadOnlyTrainer.cpp Makefile.host.classic_inventory
+          git commit -m 'classic: attach staged inventory sidecars [classic-bridges-applied]'
+          git push origin HEAD:dev/classic-inventory-20260912
