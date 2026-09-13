@@ -1,0 +1,56 @@
+name: gen2-final-focused
+
+on:
+  push:
+    branches:
+      - ci/gen2-final-focused-20260912
+
+permissions:
+  contents: read
+
+env:
+  APP_SHA: 4866de7fb54d3e9da884dd5ab862cb07902d3b28
+  APP_TREE: b990eeafe31a52b44a091adcebdb6a2c850e36de
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact final dev application
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 2
+          submodules: recursive
+      - name: Verify identity
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          git -C application diff --check HEAD^
+      - name: Boxed Pokemon focused gate
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host build-host/test_gsc_pokemon_editor
+          ./build-host/test_gsc_pokemon_editor
+      - name: Staged trainer inventory gate
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host build-host/test_gsc_staged_editor
+          ./build-host/test_gsc_staged_editor
+      - name: Machine display focused gate
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host build-host/test_machine_display
+          ./build-host/test_machine_display
+      - name: GSC bridge gate
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host build-host/test_gsc_readonly_bridge
+          ./build-host/test_gsc_readonly_bridge
