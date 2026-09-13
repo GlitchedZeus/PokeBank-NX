@@ -15,32 +15,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Extract and run deterministic patch
+      - name: Apply deterministic inventory polish patch
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          carrier = Path('.github/workflows/inventory-hardware-polish-apply.yml').read_text().splitlines()
-          marker = "          python3 - <<'PY'"
-          try:
-              start = carrier.index(marker) + 1
-          except ValueError:
-              raise SystemExit('embedded patch start marker missing')
-          end = None
-          for i in range(start, len(carrier)):
-              if carrier[i] == '          PY':
-                  end = i
-                  break
-          if end is None:
-              raise SystemExit('embedded patch end marker missing')
-          script_lines = []
-          for line in carrier[start:end]:
-              script_lines.append(line[10:] if line.startswith('          ') else line)
-          Path('/tmp/inventory_polish_apply.py').write_text('\n'.join(script_lines) + '\n')
-          PY
-          python3 /tmp/inventory_polish_apply.py
+          python3 .github/scripts/inventory_hardware_polish_apply.py
           git diff --check
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_inventory_ui_contract.cpp -o /tmp/test_inventory_ui_contract
+          /tmp/test_inventory_ui_contract
+          make -f Makefile.host.classic_inventory host-classic-inventory
           grep -F 'InventoryAction::AddItem' src/UI/TrainerViewScreenBase.inc >/dev/null
           grep -F 'InventoryAction::RemoveItem' src/UI/TrainerViewScreenBase.inc >/dev/null
           grep -F 'itemNameColorRole(selected, item.isNew)' src/UI/Panels/ItemsPanel.cpp >/dev/null
@@ -50,7 +34,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          rm -f .github/workflows/inventory-hardware-polish-apply.yml
           rm -f .github/workflows/inventory-hardware-polish-run.yml
+          rm -f .github/scripts/inventory_hardware_polish_apply.py
           git config user.name "PokeBank NX CI"
           git config user.email "actions@users.noreply.github.com"
           git add -A
