@@ -1,0 +1,58 @@
+name: Inventory Hardware Polish Runner
+
+on:
+  push:
+    branches:
+      - dev/inventory-hardware-polish-20260913
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract and run deterministic patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          carrier = Path('.github/workflows/inventory-hardware-polish-apply.yml').read_text().splitlines()
+          marker = "          python3 - <<'PY'"
+          try:
+              start = carrier.index(marker) + 1
+          except ValueError:
+              raise SystemExit('embedded patch start marker missing')
+          end = None
+          for i in range(start, len(carrier)):
+              if carrier[i] == '          PY':
+                  end = i
+                  break
+          if end is None:
+              raise SystemExit('embedded patch end marker missing')
+          script_lines = []
+          for line in carrier[start:end]:
+              script_lines.append(line[10:] if line.startswith('          ') else line)
+          Path('/tmp/inventory_polish_apply.py').write_text('\n'.join(script_lines) + '\n')
+          PY
+          python3 /tmp/inventory_polish_apply.py
+          git diff --check
+          grep -F 'InventoryAction::AddItem' src/UI/TrainerViewScreenBase.inc >/dev/null
+          grep -F 'InventoryAction::RemoveItem' src/UI/TrainerViewScreenBase.inc >/dev/null
+          grep -F 'itemNameColorRole(selected, item.isNew)' src/UI/Panels/ItemsPanel.cpp >/dev/null
+          grep -F 'InventoryPickerLayout::Width' src/UI/ClassicInventoryOverlay.cpp >/dev/null
+          grep -F 'D-pad/Stick Navigate' src/UI/Dialogs/PickerDialog.cpp >/dev/null
+      - name: Commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/inventory-hardware-polish-run.yml
+          git config user.name "PokeBank NX CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "ui: unify inventory hardware controls and picker polish [inventory-polish-applied]"
+          git push origin HEAD:dev/inventory-hardware-polish-20260913
