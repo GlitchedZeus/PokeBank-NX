@@ -27,8 +27,6 @@ struct ActionSet {
     constexpr Action operator[](std::size_t index) const noexcept { return values[index]; }
 };
 
-// One authoritative action-capability model for the R/B/Y boxed editor. Empty slots never inherit
-// mutation actions intended for an occupied boxed Pokemon.
 constexpr ActionSet actionsForSlot(bool occupied) noexcept {
     if (occupied) {
         return {{{Action::View, Action::Edit, Action::Clone, Action::Remove,
@@ -53,8 +51,6 @@ struct AddDraftDecision {
     bool leaveDraft = false;
 };
 
-// The draft is UI-local until the explicit StageAdd event. Scrolling, editing draft fields, changing
-// the live sprite/identity preview, and section jumps are all guaranteed non-mutating operations.
 constexpr AddDraftDecision addDraftDecision(AddDraftEvent event) noexcept {
     switch (event) {
         case AddDraftEvent::Navigate: return {false, false};
@@ -74,8 +70,6 @@ constexpr std::array<EditorSection, 5> editorSections() noexcept {
             EditorSection::StatExp, EditorSection::Trainer};
 }
 
-// Hardware UX acceptance requires one continuous field list. L/R may jump between these starts but
-// is never required to progress through a wizard.
 constexpr bool addUsesSingleScrollableWorkspace() noexcept { return true; }
 constexpr bool addRequiresWizardPageNavigation() noexcept { return false; }
 constexpr std::size_t addWorkspaceFieldCount() noexcept { return 30; }
@@ -84,7 +78,9 @@ constexpr std::array<std::size_t, 6> addSectionStarts() noexcept {
 }
 
 inline std::string speciesPickerRow(uint16_t species, const char* name) {
-    char prefix[8]{};
+    // uint16_t can be five digits even though the Gen I picker constrains 1..151. Keep this buffer
+    // sized for the type's full range so -Wformat-truncation can prove the helper safe independently.
+    char prefix[16]{};
     std::snprintf(prefix, sizeof(prefix), "%03u - ", static_cast<unsigned>(species));
     return std::string(prefix) + (name ? name : "");
 }
