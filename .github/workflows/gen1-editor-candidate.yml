@@ -1,0 +1,311 @@
+name: Gen I Editor Candidate Gate
+
+on:
+  pull_request:
+    branches: [feature/pokebank-playable]
+    paths:
+      - 'Makefile.host*'
+      - 'include/Integration/Gen1/**'
+      - 'include/Legacy/RBYReadOnlyTrainer.h'
+      - 'include/UI/Gen1PokemonEditor*'
+      - 'include/UI/TrainerViewScreen.h'
+      - 'include/Utils/PokeBankPaths.h'
+      - 'src/Integration/Gen1/**'
+      - 'src/Legacy/RBYReadOnlyTrainer.cpp'
+      - 'src/UI/Gen1PokemonEditorOverlay.cpp'
+      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
+      - 'src/UI/TrainerViewScreenGSCOverlay.cpp'
+      - 'src/UI/TrainerViewScreenGSCOverlay.inc'
+      - 'tests/test_rby_pokemon_editor.cpp'
+      - 'tests/test_gen1_pokemon_editor_ui_contract.cpp'
+      - '.github/workflows/gen1-editor-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-gen1-editor-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+
+jobs:
+  host:
+    name: Gen I host + sanitizer gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - name: Checkout exact candidate head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          fetch-depth: 80
+          submodules: recursive
+
+      - name: Verify exact candidate and whitespace
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          git fetch --no-tags origin "$BASE_SHA" || true
+          if git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null && [ "$BASE_SHA" != "$APP_SHA" ]; then
+            git diff --check "$BASE_SHA"..HEAD
+          else
+            git diff --check HEAD^
+          fi
+          git diff --quiet
+          git diff --cached --quiet
+          echo "GEN I CANDIDATE SOURCE: $APP_SHA"
+          echo "GEN I CANDIDATE TREE: $(git rev-parse 'HEAD^{tree}')"
+
+      - name: Focused Gen I staged Pokemon editor
+        run: |
+          set -euo pipefail
+          rm -rf build-host
+          make -f Makefile.host build-host/test_rby_pokemon_editor
+          ./build-host/test_rby_pokemon_editor
+          make -f Makefile.host build-host/test_gen1_pokemon_editor_ui_contract
+          ./build-host/test_gen1_pokemon_editor_ui_contract
+          make -f Makefile.host build-host/test_rby_readonly_bridge
+          ./build-host/test_rby_readonly_bridge
+          echo 'GEN I STAGED POKEMON CORE: PASS'
+          echo 'GEN I EDITOR UI CONTRACT: PASS'
+          echo 'RBY READ-ONLY BRIDGE + STAGED SIDECAR: PASS'
+
+      - name: Generation I safety contract
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          contract = Path('include/UI/Gen1PokemonEditorUIContract.h').read_text()
+          overlay = Path('src/UI/Gen1PokemonEditorOverlay.cpp').read_text()
+          bridge = Path('src/Legacy/RBYReadOnlyTrainer.cpp').read_text()
+          core = Path('src/Integration/Gen1/Gen1StagedPokemonEditor.cpp').read_text()
+          paths = Path('include/Utils/PokeBankPaths.h').read_text()
+          keyboard = Path('include/Utils/Keyboard.h').read_text()
+          required_contract = [
+              'Action::View, Action::Edit, Action::Clone, Action::Remove',
+              'Action::AddPokemon, Action::ReviewPendingChanges',
+              'AddDraftEvent::Cancel: return {false, true};',
+              'AddDraftEvent::StageAdd: return {true, true};',
+              'constexpr bool hpDVIsStoredEditableField() noexcept { return false; }',
+              'constexpr bool hasSIDField() noexcept { return false; }',
+              'constexpr bool partyEditingEnabled() noexcept { return false; }',
+              'constexpr bool liveRetroArchWritingEnabled() noexcept { return false; }',
+              'constexpr bool liveInstalledGameWritingEnabled() noexcept { return false; }',
+          ]
+          for needle in required_contract:
+              assert needle in contract, needle
+          for needle in [
+              'state.mode = Mode::AddDraft;',
+              'state.draft = BoxPokemonCreate{};',
+              'stageAdd(',
+              'stageClone(',
+              'stageRemove(',
+              'HP DV (derived / read-only)',
+              'NOT CLAIMED by this editor',
+              'original_backup.srm',
+              'edited.srm',
+              'LIVE_RETROARCH_WRITE=DISABLED',
+              'LIVE_INSTALLED_GAME_WRITE=DISABLED',
+              'PARTY_EDIT=DEFERRED',
+          ]:
+              assert needle in overlay, needle
+          assert 'StagedPokemonEditor::create(save, stagedError)' in bridge
+          assert 'refreshBoxesFromStagedPokemon' in bridge
+          assert 'RegionLayout::International' in core
+          assert 'Export strict reload failed' in core
+          assert 'gen1ExportsRoot()' in paths
+          assert 'sdmc:/switch/PokeBank-NX' in paths
+          assert 'At most ONE prompt per frame' in keyboard
+          assert 'sdmc:/PKSE' not in overlay
+          print('GEN I ACTION CAPABILITY CONTRACT: PASS')
+          print('ADD DRAFT MUTATION GATE: PASS')
+          print('NO FAKE MODERN GEN I FIELD CONTRACT: PASS')
+          print('INTERNATIONAL EDIT GATE: PASS')
+          print('POKEBANK-OWNED EXPORT PATH: PASS')
+          print('LIVE RETROARCH WRITE: HARD DISABLED')
+          print('LIVE INSTALLED-GAME WRITE: HARD DISABLED')
+          print('PARTY EDIT: DEFERRED')
+          PY
+
+      - name: Full permanent host suite
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+          echo 'FULL HOST SUITE: PASS'
+
+      - name: ASan and UBSan permanent suite
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-sanitize
+          echo 'ASAN: PASS'
+          echo 'UBSAN: PASS'
+
+  native_package:
+    name: devkitA64 link + physical-test package
+    needs: host
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - name: Checkout exact candidate head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 80
+          submodules: recursive
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Verify exact candidate identity
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          echo "APP_SHA=$APP_SHA"
+          echo "APP_TREE=$(git -C application rev-parse 'HEAD^{tree}')" | tee candidate-tree.txt
+          git -C application diff --check HEAD^
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+
+      - name: Recover complete device RomFS
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py) 2>&1 | tee recovery.log
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            test -s "application/assets/game_cards/$f.png"
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+
+      - name: Clean devkitA64 compile and final NRO link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            dkp-pacman -Q libnx devkitA64 switch-tools switch-sdl2 switch-glad switch-lz4 || true
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s application/PokeBankNX.nro
+          echo 'DEVKITA64 FULL BUILD: PASS'
+          echo 'FINAL NRO LINK: PASS'
+
+      - name: Verify embedded source identity and RomFS
+        run: |
+          set -euo pipefail
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source "$APP_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_FINAL_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          print(json.dumps(data, indent=2))
+          PY
+          echo 'EMBEDDED SOURCE IDENTITY: PASS'
+          echo 'EMBEDDED ROMFS: PASS'
+
+      - name: Package physical Switch candidate and hashes
+        run: |
+          set -euo pipefail
+          mkdir -p device-artifact
+          short="${APP_SHA:0:8}"
+          python3 application/tools/package_device_build.py application/PokeBankNX.nro \
+            --label Gen1-Editor --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
+          cp embedded-romfs.json asset-preflight.log recovery.log native-build.log \
+             toolchain-image.json toolchain-packages.txt candidate-tree.txt device-artifact/
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          out = Path('device-artifact')
+          app = Path('application')
+          app_sha = os.environ['APP_SHA']
+          tree = os.popen("git -C application rev-parse 'HEAD^{tree}'").read().strip()
+          files = {}
+          for p in sorted(out.iterdir()):
+              if p.is_file():
+                  files[p.name] = {
+                      'bytes': p.stat().st_size,
+                      'sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
+                  }
+          nro_candidates = [p for p in out.iterdir() if p.suffix == '.nro']
+          zip_candidates = [p for p in out.iterdir() if p.suffix == '.zip']
+          assert len(nro_candidates) == 1, nro_candidates
+          assert len(zip_candidates) == 1, zip_candidates
+          record = {
+              'application_source': app_sha,
+              'application_tree': tree,
+              'recovery_snapshot': os.environ['RECOVERY_SHA'],
+              'workflow_run': int(os.environ['GITHUB_RUN_ID']),
+              'focused_gen1_editor': 'PASS',
+              'gen1_ui_contract': 'PASS',
+              'full_host_suite': 'PASS',
+              'asan': 'PASS',
+              'ubsan': 'PASS',
+              'native_devkitA64_full_link': 'PASS',
+              'embedded_romfs': f"PASS {os.environ['EXPECTED_FINAL_ROMFS']}/{os.environ['EXPECTED_FINAL_ROMFS']}",
+              'live_retroarch_writing': 'HARD DISABLED',
+              'live_installed_game_writing': 'HARD DISABLED',
+              'party_edit': 'DEFERRED',
+              'hardware_accepted': False,
+              'files': files,
+          }
+          (out / 'BUILD_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+          sums = []
+          for p in sorted(out.iterdir()):
+              if p.is_file() and p.name != 'SHA256SUMS.txt':
+                  sums.append(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n')
+          (out / 'SHA256SUMS.txt').write_text(''.join(sums))
+          print((out / 'BUILD_MANIFEST.json').read_text())
+          print((out / 'SHA256SUMS.txt').read_text())
+          PY
+
+      - name: Preserve Gen I physical-test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gen1-Editor-Candidate
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Preserve native diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gen1-Editor-Diagnostics
+          path: |
+            recovery.log
+            asset-preflight.log
+            native-build.log
+            embedded-romfs.json
+            toolchain-image.json
+            toolchain-packages.txt
+            candidate-tree.txt
+          if-no-files-found: ignore
