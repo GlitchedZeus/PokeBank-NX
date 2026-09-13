@@ -23,7 +23,8 @@ using PokeVault::Inventory::ClassicPocket;
                                                     uint16_t itemId) noexcept;
 [[nodiscard]] uint16_t classicInventoryMaximumQuantity(ClassicGame game, ClassicPocket pocket,
                                                        uint16_t itemId) noexcept;
-[[nodiscard]] bool classicInventoryNeedsStoryWarning(ClassicPocket pocket) noexcept;
+[[nodiscard]] bool classicInventoryNeedsStoryWarning(ClassicGame game, ClassicPocket pocket,
+                                                     uint16_t itemId) noexcept;
 [[nodiscard]] std::vector<uint16_t> classicInventoryAddableItems(ClassicGame game,
                                                                  ClassicPocket pocket);
 [[nodiscard]] bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept;

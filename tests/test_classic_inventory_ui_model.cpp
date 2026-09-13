@@ -5,7 +5,6 @@
 #include <cassert>
 #include <iostream>
 
-using PokeVault::Inventory::ClassicGame;
 using PokeVault::Inventory::ClassicPocket;
 using namespace PokeBank::UIModel;
 
@@ -49,8 +48,8 @@ int main() {
     assert(!classicInventoryQuantityEditable(*gold, ClassicPocket::TMHM, 247));
     assert(classicInventoryQuantityEditable(*gold, ClassicPocket::Items, 18));
     assert(classicInventoryMaximumQuantity(*gold, ClassicPocket::Items, 18) == 99);
-    assert(classicInventoryNeedsStoryWarning(ClassicPocket::KeyItems));
-    assert(!classicInventoryNeedsStoryWarning(ClassicPocket::Balls));
+    assert(classicInventoryNeedsStoryWarning(*gold, ClassicPocket::KeyItems, 54));
+    assert(!classicInventoryNeedsStoryWarning(*gold, ClassicPocket::Balls, 5));
 
     std::cout << "classic inventory UI model: PASS\n";
 }

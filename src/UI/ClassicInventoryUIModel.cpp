@@ -24,18 +24,6 @@ bool isGen1(ClassicGame game) noexcept {
 bool isGen2(ClassicGame game) noexcept {
     return game == ClassicGame::Gold || game == ClassicGame::Silver || game == ClassicGame::Crystal;
 }
-std::string_view pocketName(ClassicPocket pocket) noexcept {
-    switch (pocket) {
-        case ClassicPocket::Items: return "Items";
-        case ClassicPocket::Medicines: return "Medicines";
-        case ClassicPocket::Balls: return "Poké Balls";
-        case ClassicPocket::KeyItems: return "Key Items";
-        case ClassicPocket::TMHM: return "TM/HM";
-        case ClassicPocket::Berries: return "Berries";
-        case ClassicPocket::PCItems: return "PC Items";
-    }
-    return "Inventory";
-}
 
 } // namespace
 
@@ -59,13 +47,12 @@ std::optional<ClassicPocket> classicInventoryPocketAt(ClassicGame game, int cate
 
 std::string_view classicInventoryCategoryName(ClassicGame game, int category) noexcept {
     const auto pocket = classicInventoryPocketAt(game, category);
-    return pocket ? pocketName(*pocket) : std::string_view{};
+    return pocket ? PokeVault::Inventory::pocketName(*pocket) : std::string_view{};
 }
 
 bool classicInventoryQuantityEditable(ClassicGame game, ClassicPocket pocket,
                                       uint16_t itemId) noexcept {
-    const auto rule = PokeVault::Inventory::quantityRule(game, pocket, itemId);
-    return !rule.fixed && rule.maximum > rule.minimum;
+    return PokeVault::Inventory::quantityRule(game, pocket, itemId).editable;
 }
 
 uint16_t classicInventoryMaximumQuantity(ClassicGame game, ClassicPocket pocket,
@@ -73,8 +60,9 @@ uint16_t classicInventoryMaximumQuantity(ClassicGame game, ClassicPocket pocket,
     return PokeVault::Inventory::quantityRule(game, pocket, itemId).maximum;
 }
 
-bool classicInventoryNeedsStoryWarning(ClassicPocket pocket) noexcept {
-    return pocket == ClassicPocket::KeyItems;
+bool classicInventoryNeedsStoryWarning(ClassicGame game, ClassicPocket pocket,
+                                       uint16_t itemId) noexcept {
+    return PokeVault::Inventory::isStorySensitiveKeyItem(game, pocket, itemId);
 }
 
 std::vector<uint16_t> classicInventoryAddableItems(ClassicGame game, ClassicPocket pocket) {
