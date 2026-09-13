@@ -1,9 +1,14 @@
 CXX ?= g++
 CXXFLAGS ?= -std=c++20 -Wall -Wextra -Werror -O2 -Iinclude
 
+CATALOG_SOURCES := src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+GEN2_EDITOR_SOURCES := src/Integration/Gen2/Gen2StagedEditor.cpp src/Integration/Gen2/Gen2UniversalInventory.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Integration/Gen2/Gen2PersonalData.cpp src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/SpeciesNames.cpp src/Pokemon/Experience.cpp
+
 .PHONY: host-classic-inventory
 host-classic-inventory:
-	$(CXX) $(CXXFLAGS) tests/test_classic_inventory_catalog.cpp src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp -o /tmp/test_classic_inventory_catalog
+	$(CXX) $(CXXFLAGS) tests/test_classic_inventory_catalog.cpp $(CATALOG_SOURCES) -o /tmp/test_classic_inventory_catalog
 	/tmp/test_classic_inventory_catalog
-	$(CXX) $(CXXFLAGS) tests/test_rby_staged_inventory.cpp src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1StagedInventoryEditor.cpp -o /tmp/test_rby_staged_inventory
+	$(CXX) $(CXXFLAGS) tests/test_rby_staged_inventory.cpp $(CATALOG_SOURCES) src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1StagedInventoryEditor.cpp -o /tmp/test_rby_staged_inventory
 	/tmp/test_rby_staged_inventory
+	$(CXX) $(CXXFLAGS) tests/test_gsc_universal_inventory.cpp $(GEN2_EDITOR_SOURCES) -o /tmp/test_gsc_universal_inventory
+	/tmp/test_gsc_universal_inventory
