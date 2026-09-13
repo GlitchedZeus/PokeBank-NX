@@ -13,7 +13,6 @@
 #include "UI/ClassicInventoryOverlay.h"
 #include "UI/LegacyPresentationRules.h"
 #include "UI/PKSEFramebuffer.h"
-#include "UI/ScreenChrome.h"
 #include "Trainer/Trainer.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
@@ -38,17 +37,29 @@
 #undef draw
 #undef update
 
+// The hardware-proven Gen I implementation remains compiled unchanged as a recovery/reference path.
+// The UX-polish implementation is included here under distinct exported symbol names, so we can switch
+// the public wrapper to it without deleting or rewriting the accepted implementation while hardware
+// retest is pending.
+#define isGen1Source isGen1SourceUX
+#define handleInput handleInputUX
+#define drawOverlay drawOverlayUX
+#include "Gen1PokemonEditorOverlayUX.inc"
+#undef drawOverlay
+#undef handleInput
+#undef isGen1Source
+
 namespace UI {
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 down = padGetButtonsDown(&pad);
-    if (Gen1PokemonEditor::handleInput(*this, down)) return;
+    if (Gen1PokemonEditor::handleInputUX(*this, down)) return;
     updateGSCOverlay(pad, touch);
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     drawGSCOverlay(fb);
-    Gen1PokemonEditor::drawOverlay(*this, fb);
+    Gen1PokemonEditor::drawOverlayUX(*this, fb);
 }
 
 } // namespace UI
