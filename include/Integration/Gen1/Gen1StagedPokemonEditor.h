@@ -25,6 +25,17 @@ struct BoxPokemonCreate {
     std::array<uint8_t,4> moves{33,0,0,0}, pp{35,0,0,0}, ppUps{}, dvs{8,8,8,8};
     std::array<uint16_t,5> statExperience{};
 };
+struct BattleStats {
+    uint16_t hp = 0;
+    uint16_t attack = 0;
+    uint16_t defense = 0;
+    uint16_t speed = 0;
+    uint16_t special = 0;
+
+    constexpr std::array<uint16_t,5> asArray() const noexcept {
+        return {hp, attack, defense, speed, special};
+    }
+};
 
 // Owns boxed-Pokemon mutations only. No filesystem or source-write API.
 class StagedPokemonEditor final {
@@ -51,6 +62,12 @@ public:
     static uint8_t moveBasePP(uint16_t move) noexcept;
     static uint8_t moveMaxPP(uint16_t move, uint8_t ups) noexcept;
     static uint8_t growthRate(uint16_t species) noexcept;
+    // Exact Generation I battle-stat preview. Uses the original five-stat model
+    // HP / Attack / Defense / Speed / Special, four stored DVs plus derived HP DV,
+    // and Stat Exp's ceil(sqrt(value))/4 contribution. This is display math only.
+    static BattleStats calculateBattleStats(uint16_t species, uint8_t level,
+                                            const std::array<uint8_t,4>& dvs,
+                                            const std::array<uint16_t,5>& statExperience) noexcept;
     static bool encodeName(std::string_view, size_t maximum, std::array<uint8_t,11>&,
                            std::string& error);
 private:
