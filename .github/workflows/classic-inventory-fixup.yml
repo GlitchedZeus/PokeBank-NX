@@ -51,15 +51,12 @@ jobs:
 
           t = Path('tests/test_gsc_universal_inventory.cpp')
           s = t.read_text()
-          old = '''        assert(editor->stageInventoryQuantity(InventoryPocket::KeyItems,54,1,error));
-          assert(!editor->stageInventoryQuantity(InventoryPocket::KeyItems,54,2,error));'''
-          new = '''        assert(editor->stageInventoryQuantity(InventoryPocket::KeyItems,54,1,error));
-          // Regression: the Key Items writer must stop before the adjacent Balls count byte.
-          assert(editor->stagedInventoryQuantity(InventoryPocket::Balls,5)==5);
-          assert(!editor->stageInventoryQuantity(InventoryPocket::KeyItems,54,2,error));'''
-          if old not in s:
+          anchor = '        assert(editor->stageInventoryQuantity(InventoryPocket::KeyItems,54,1,error));\n'
+          insertion = anchor + '        // Regression: Key Items must not overwrite the adjacent Balls count byte.\n' + \
+              '        assert(editor->stagedInventoryQuantity(InventoryPocket::Balls,5)==5);\n'
+          if anchor not in s:
               raise SystemExit('expected key-item test anchor not found')
-          s = s.replace(old, new, 1)
+          s = s.replace(anchor, insertion, 1)
           t.write_text(s)
           PY
           git diff --check
