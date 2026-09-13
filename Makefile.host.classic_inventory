@@ -1,0 +1,7 @@
+CXX ?= g++
+CXXFLAGS ?= -std=c++20 -Wall -Wextra -Werror -O2 -Iinclude
+
+.PHONY: host-classic-inventory
+host-classic-inventory:
+	$(CXX) $(CXXFLAGS) tests/test_classic_inventory_catalog.cpp src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp -o /tmp/test_classic_inventory_catalog
+	/tmp/test_classic_inventory_catalog
