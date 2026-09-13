@@ -23,10 +23,10 @@ int main() {
     assert(!classicInventoryPocketAt(*yellow, 6));
 
     assert(classicInventoryCategories(*gold).size() == 5);
-    assert(classicInventoryPocketAt(*gold, 0) == ClassicPocket::TMHM);
-    assert(classicInventoryPocketAt(*gold, 1) == ClassicPocket::Items);
+    assert(classicInventoryPocketAt(*gold, 0) == ClassicPocket::Items);
+    assert(classicInventoryPocketAt(*gold, 1) == ClassicPocket::Balls);
     assert(classicInventoryPocketAt(*gold, 2) == ClassicPocket::KeyItems);
-    assert(classicInventoryPocketAt(*gold, 3) == ClassicPocket::Balls);
+    assert(classicInventoryPocketAt(*gold, 3) == ClassicPocket::TMHM);
     assert(classicInventoryPocketAt(*gold, 4) == ClassicPocket::PCItems);
 
     assert(classicInventoryCategories(*emerald).size() == 6);

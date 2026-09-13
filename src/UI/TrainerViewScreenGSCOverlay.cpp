@@ -6,6 +6,7 @@
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "UI/Common.h"
+#include "UI/ClassicInventoryOverlay.h"
 #include "UI/LegacyPresentationRules.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
@@ -72,17 +73,6 @@ const PokeVault::Legacy::GSCReadOnlyTrainer& gscTrainer(const TrainerViewScreen&
 
 Gen2Editor* stagedEditor(TrainerViewScreen& screen) noexcept {
     return gscTrainer(screen).stagedEditor();
-}
-
-bool itemCategoryNavigationAvailable(const TrainerViewScreen& screen) noexcept {
-    return screen.selectedMode == TrainerViewScreen::ViewMode::Items &&
-           !screen.pickerActive && !screen.itemEditDialogActive &&
-           !screen.itemRemoveConfirmActive && !screen.statEdit.dialogActive &&
-           !screen.saveConfirmActive && !screen.releaseConfirmActive &&
-           !screen.storageExitConfirmActive && !screen.groupMenuActive &&
-           !screen.creator.keepConfirmActive && !screen.details.active &&
-           !screen.details.discardConfirmActive && !screen.gen3ConvertConfirmActive &&
-           !screen.lgpeTransferConfirmActive && !screen.actionSheet.isOpen();
 }
 
 bool mkdirIfNeeded(const std::string& path) {
@@ -186,12 +176,7 @@ void openStagedEditor(TrainerViewScreen& screen) {
     state.pokemonActions = false;
     state.pokemonFields = false;
     state.reviewRow = 0;
-    if (screen.selectedMode == TrainerViewScreen::ViewMode::Items) {
-        // Jump near the actual pocket the user was viewing: Items -> Potion, Balls -> Poke Ball.
-        state.selectedRow = screen.selectedCategory == 3 ? 3 : 2;
-    } else {
-        state.selectedRow = 0;
-    }
+    state.selectedRow = 0;
 }
 
 
@@ -562,7 +547,7 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
         return;
     }
 
-    constexpr int rowCount = 7;
+    constexpr int rowCount = 4;
     if (down & HidNpadButton_Up)
         state.selectedRow = (state.selectedRow - 1 + rowCount) % rowCount;
     if (down & HidNpadButton_Down)
@@ -606,41 +591,11 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
                 screen.postStatus("Money staged; source .srm unchanged");
             break;
         }
-        case 2: {
-            const int current = editor->itemQuantity(InventoryPocket::Items, kPotionItemId);
-            const auto result = Utils::promptNumber("Potion quantity (0 removes)", current, 0, 99);
-            if (result.accepted && !editor->stageItemQuantity(
-                    InventoryPocket::Items, kPotionItemId, static_cast<uint8_t>(result.value), error))
-                screen.postStatus(error);
-            else if (result.accepted)
-                screen.postStatus("Potion quantity staged; source .srm unchanged");
-            break;
-        }
-        case 3: {
-            const int current = editor->itemQuantity(InventoryPocket::Balls, kPokeBallItemId);
-            const auto result = Utils::promptNumber("Poke Ball quantity (0 removes)", current, 0, 99);
-            if (result.accepted && !editor->stageItemQuantity(
-                    InventoryPocket::Balls, kPokeBallItemId, static_cast<uint8_t>(result.value), error))
-                screen.postStatus(error);
-            else if (result.accepted)
-                screen.postStatus("Poke Ball quantity staged; source .srm unchanged");
-            break;
-        }
-        case 4: {
-            const int current = editor->itemQuantity(InventoryPocket::Balls, kMasterBallItemId);
-            const auto result = Utils::promptNumber("Master Ball quantity (0 removes)", current, 0, 99);
-            if (result.accepted && !editor->stageItemQuantity(
-                    InventoryPocket::Balls, kMasterBallItemId, static_cast<uint8_t>(result.value), error))
-                screen.postStatus(error);
-            else if (result.accepted)
-                screen.postStatus("Master Ball quantity staged; source .srm unchanged");
-            break;
-        }
-        case 5:
+        case 2:
             state.review = true;
             state.reviewRow = 0;
             break;
-        case 6:
+        case 3:
             editor->discard();
             screen.postStatus("Staged changes discarded; original save was never modified");
             break;
@@ -872,9 +827,6 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const std::vector<std::pair<std::string, std::string>> rows{
         {"Trainer Name", editor->trainerName()},
         {"Money", "$" + std::to_string(editor->money())},
-        {"Potion", std::to_string(editor->itemQuantity(InventoryPocket::Items, kPotionItemId))},
-        {"Poke Ball", std::to_string(editor->itemQuantity(InventoryPocket::Balls, kPokeBallItemId))},
-        {"Master Ball", std::to_string(editor->itemQuantity(InventoryPocket::Balls, kMasterBallItemId))},
         {"Review Pending Changes", std::to_string(editor->pendingChanges().size()) + " change(s)"},
         {"Discard Staged Changes", editor->hasPendingChanges() ? "Available" : "Nothing staged"},
     };
@@ -892,10 +844,12 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 } // namespace
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
+    const u64 down = padGetButtonsDown(&pad);
+    if (ClassicInventory::handleInput(*this, down)) return;
+
     const bool validatedGSC = trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this);
     if (validatedGSC) {
         auto& overlay = editorOverlayState(*this);
-        const u64 down = padGetButtonsDown(&pad);
         if (overlay.active) {
             handleStagedEditorInput(*this, down);
             return;
@@ -910,7 +864,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         }
 
         const bool editorEntrySurface = detailViewActive &&
-            (selectedMode == ViewMode::Trainer || selectedMode == ViewMode::Items) &&
+            selectedMode == ViewMode::Trainer &&
             !helpOverlayActive && !details.active && !actionSheet.isOpen() &&
             !saveConfirmActive && !pickerActive && !itemEditDialogActive;
         if (editorEntrySurface && (down & HidNpadButton_X)) {
@@ -919,23 +873,6 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         }
     }
 
-    // The accepted large implementation has no GSC switch arm, so its L/R item-tab handling is a
-    // deliberate no-op for group 70. Handle the five real Gen II pockets here, then delegate every
-    // other input path unchanged. This preserves RBY=2 and every existing Gen III+ pouch count.
-    if (validatedGSC && itemCategoryNavigationAvailable(*this)) {
-        const u64 down = padGetButtonsDown(&pad);
-        const int count = legacyInventoryCategoryCount(Enums::GameVersion::GSC);
-        if (count > 0 && (down & HidNpadButton_L)) {
-            selectedCategory = (selectedCategory - 1 + count) % count;
-            currentPage = 0;
-            selectedItemIndex = 0;
-        }
-        if (count > 0 && (down & HidNpadButton_R)) {
-            selectedCategory = (selectedCategory + 1) % count;
-            currentPage = 0;
-            selectedItemIndex = 0;
-        }
-    }
 
     updateLegacyBase(pad, touch);
 
@@ -958,6 +895,7 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
             drawGSCTrainerCard(*this, fb);
         drawStagedEditor(*this, fb);
     }
+    ClassicInventory::drawOverlay(*this, fb);
 }
 
 } // namespace UI

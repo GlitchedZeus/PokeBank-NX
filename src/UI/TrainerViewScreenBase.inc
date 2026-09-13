@@ -25,6 +25,7 @@
 #include "UI/Panels/PartyPokemonPanel.h"
 #include "UI/Panels/BoxPokemonPanel.h"
 #include "UI/Panels/ItemsPanel.h"
+#include "UI/ClassicInventoryOverlay.h"
 #include "UI/Panels/StoragePanel.h"
 #include "UI/Panels/HomeMenuPanel.h"
 #include "UI/Dialogs/ItemEditDialog.h"
@@ -4265,7 +4266,9 @@ namespace UI {
             instructions = "Up/Down: Select  |  A: Toggle  |  B: Back";
         } else if (detailViewActive) {
             if (selectedMode == ViewMode::Items) {
-                instructions = "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  Left/Right: Page  |  L/R: Category  |  B: Back";
+                instructions = ClassicInventory::isClassicSource(*this)
+                    ? "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  L/R: Category  |  +: Pending Changes  |  B: Back"
+                    : "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  Left/Right: Page  |  L/R: Category  |  B: Back";
             } else if (selectedMode == ViewMode::Boxes) {
                 if (details.active) {
                     if (details.category == 0) { // Main

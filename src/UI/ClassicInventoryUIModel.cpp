@@ -10,8 +10,8 @@ constexpr std::array<ClassicPocket, 6> kGen1Categories{{
     ClassicPocket::KeyItems, ClassicPocket::TMHM, ClassicPocket::PCItems,
 }};
 constexpr std::array<ClassicPocket, 5> kGen2Categories{{
-    ClassicPocket::TMHM, ClassicPocket::Items, ClassicPocket::KeyItems,
-    ClassicPocket::Balls, ClassicPocket::PCItems,
+    ClassicPocket::Items, ClassicPocket::Balls, ClassicPocket::KeyItems,
+    ClassicPocket::TMHM, ClassicPocket::PCItems,
 }};
 constexpr std::array<ClassicPocket, 6> kGen3Categories{{
     ClassicPocket::Items, ClassicPocket::KeyItems, ClassicPocket::Balls,

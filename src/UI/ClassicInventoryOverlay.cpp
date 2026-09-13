@@ -35,6 +35,9 @@ using PokeVault::Inventory::ClassicPocket;
 using Gen2Pocket = PokeVault::Integration::Gen2::InventoryPocket;
 using Gen3Pouch = PokeVault::Integration::Gen3::InventoryPouch;
 
+// ItemsPanel renders eight 52px rows in the fixed inventory content region.
+constexpr int kClassicInventoryRowsPerPage = 8;
+
 struct Row {
     uint16_t itemId = 0;
     uint16_t quantity = 0;
@@ -44,6 +47,8 @@ enum class SourceKind : uint8_t { None, Gen1, Gen2, Gen3 };
 
 struct OverlayState {
     const TrainerViewScreen* owner = nullptr;
+    std::string sourceGameId;
+    bool presentationInitialized = false;
     bool pickerActive = false;
     bool reviewActive = false;
     bool warningActive = false;
@@ -58,9 +63,10 @@ struct OverlayState {
 
 OverlayState& stateFor(const TrainerViewScreen& screen) {
     static OverlayState state;
-    if (state.owner != &screen) {
+    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
         state = {};
         state.owner = &screen;
+        state.sourceGameId = screen.sourceGameId;
     }
     return state;
 }
@@ -452,7 +458,7 @@ void focusItem(TrainerViewScreen& screen, uint16_t itemId) {
         const auto& item = screen.trainer.items[screen.selectedCategory][visible[i]];
         if (item.itemId != itemId) continue;
         screen.selectedItemIndex = i;
-        const int perPage = std::max(1, (CONTENT_PANEL_HEIGHT - 106) / 52);
+        const int perPage = kClassicInventoryRowsPerPage;
         screen.currentPage = i / perPage;
         return;
     }
@@ -474,7 +480,7 @@ bool applyMutation(TrainerViewScreen& screen, ClassicPocket pocket, uint16_t ite
         const auto visible = screen.visibleItemIndices();
         if (screen.selectedItemIndex >= static_cast<int>(visible.size()))
             screen.selectedItemIndex = std::max(0, static_cast<int>(visible.size()) - 1);
-        const int perPage = std::max(1, (CONTENT_PANEL_HEIGHT - 106) / 52);
+        const int perPage = kClassicInventoryRowsPerPage;
         screen.currentPage = visible.empty() ? 0 : screen.selectedItemIndex / perPage;
     }
     screen.postStatus(quantity == 0
@@ -574,6 +580,17 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
     if (!isClassicSource(screen)) return false;
     auto& state = stateFor(screen);
 
+    if (!state.presentationInitialized && refreshPresentation(screen)) {
+        state.presentationInitialized = true;
+        const auto game = exactGame(screen);
+        const int categoryCount = game
+            ? static_cast<int>(PokeBank::UIModel::classicInventoryCategories(*game).size()) : 0;
+        if (categoryCount > 0)
+            screen.selectedCategory = std::clamp(screen.selectedCategory, 0, categoryCount - 1);
+        screen.selectedItemIndex = 0;
+        screen.currentPage = 0;
+    }
+
     if (state.warningActive) {
         if (down & HidNpadButton_B) {
             state.warningActive = false;
@@ -629,7 +646,10 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
     if (!screen.detailViewActive || screen.selectedMode != TrainerViewScreen::ViewMode::Items ||
         screen.helpOverlayActive || screen.details.active || screen.actionSheet.isOpen() ||
         screen.saveConfirmActive || screen.pickerActive || screen.itemEditDialogActive ||
-        screen.itemRemoveConfirmActive) return false;
+        screen.itemRemoveConfirmActive || screen.statEdit.dialogActive ||
+        screen.releaseConfirmActive || screen.storageExitConfirmActive || screen.groupMenuActive ||
+        screen.creator.keepConfirmActive || screen.details.discardConfirmActive ||
+        screen.gen3ConvertConfirmActive || screen.lgpeTransferConfirmActive) return false;
 
     std::string availabilityError;
     const uint64_t classicActions = HidNpadButton_A | HidNpadButton_X | HidNpadButton_Y |

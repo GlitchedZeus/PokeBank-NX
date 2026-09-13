@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -18,6 +19,8 @@
 #include "Trainer/Inventory3FRLG.h"
 #include "Integration/Gen1/Gen1ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
+#include "Inventory/ClassicInventoryCatalog.h"
+#include "UI/ClassicInventoryUIModel.h"
 #include "Enums/GameVersion.h"
 #include "Utils/HelperUtilities.h"
 #include "Names/MoveNames.h"
@@ -86,8 +89,15 @@ namespace Panels {
         const bool rbySource = screen.legacyReadOnlySource() && isRBYSource(screen.sourceGameId);
         const bool gscSource = screen.legacyReadOnlySource() && isGSCSource(screen.sourceGameId);
         const bool rseSource = screen.legacyReadOnlySource() && isRSESource(screen.sourceGameId);
-        const char* pouchName = rbySource
-            ? PokeVault::Integration::Gen1::inventoryCategoryName(static_cast<size_t>(screen.selectedCategory))
+        const auto classicGame = PokeBank::UIModel::classicInventoryGame(screen.sourceGameId);
+        const auto classicPocket = classicGame
+            ? PokeBank::UIModel::classicInventoryPocketAt(*classicGame, screen.selectedCategory)
+            : std::optional<PokeVault::Inventory::ClassicPocket>{};
+        const std::string classicPouchName = classicPocket
+            ? std::string(PokeVault::Inventory::pocketName(*classicPocket)) : std::string{};
+        const char* pouchName = classicPocket
+            ? classicPouchName.c_str()
+            : rbySource ? PokeVault::Integration::Gen1::inventoryCategoryName(static_cast<size_t>(screen.selectedCategory))
             : gscSource ? gscPouchDisplayName(screen.selectedCategory)
             : rseSource ? rsePouchDisplayName(screen.selectedCategory)
                         : pouchDisplayName(gameGroup, screen.selectedCategory);
@@ -118,13 +128,13 @@ namespace Panels {
         }
 
         if (screen.selectedCategory < 0 || screen.selectedCategory >= static_cast<int>(screen.trainer.items.size())) {
-            fb.drawText(x + 24, y + hH + 30, "Invalid category", Colors::TextDim);
+            fb.drawText(x + 24, y + hH + 30, classicGame ? "(None)" : "Invalid category", Colors::TextDim);
             return;
         }
         const auto& pouch = screen.trainer.items[screen.selectedCategory];
         std::vector<int> visible = screen.visibleItemIndices();
         if (visible.empty()) {
-            fb.drawText(x + 24, y + hH + 30, "No items in this category", Colors::TextDim);
+            fb.drawText(x + 24, y + hH + 30, classicGame ? "(None)" : "No items in this category", Colors::TextDim);
             return;
         }
         const int total = static_cast<int>(visible.size());
@@ -157,18 +167,23 @@ namespace Panels {
                 nx += 24;
             }
 
-            std::string baseName;
-            if (gameGroup == GameVersion::RBY) {
-                baseName = Names::getItemNameG1(item.itemId);
-            } else if (gameGroup == GameVersion::GSC) {
-                baseName = std::string(PokeVault::Integration::Gen2::gen2ItemName(
-                    static_cast<uint8_t>(item.itemId)));
-            } else if (gameGroup == GameVersion::FRLG) {
-                baseName = Names::getItemNameG3(item.itemId);
+            std::string displayName;
+            if (classicGame && classicPocket) {
+                displayName = PokeVault::Inventory::displayItemName(*classicGame, *classicPocket, item.itemId);
             } else {
-                baseName = getItemName(item.itemId);
+                std::string baseName;
+                if (gameGroup == GameVersion::RBY) {
+                    baseName = Names::getItemNameG1(item.itemId);
+                } else if (gameGroup == GameVersion::GSC) {
+                    baseName = std::string(PokeVault::Integration::Gen2::gen2ItemName(
+                        static_cast<uint8_t>(item.itemId)));
+                } else if (gameGroup == GameVersion::FRLG) {
+                    baseName = Names::getItemNameG3(item.itemId);
+                } else {
+                    baseName = getItemName(item.itemId);
+                }
+                displayName = Names::machineDisplayLabel(gameGroup, item.itemId, baseName);
             }
-            const std::string displayName = Names::machineDisplayLabel(gameGroup, item.itemId, baseName);
             fb.drawText(nx, ry + (tileH - fb.lineHeight(TextStyle::Body)) / 2,
                         displayName, nameCol, TextStyle::Body);
 
