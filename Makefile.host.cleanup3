@@ -1,0 +1,34 @@
+# Gen I UX Cleanup #3 focused host gates. Kept in a separate make fragment so
+# the already-accepted Cleanup #2 host graph remains intact.
+
+GEN1_CLEANUP3_MOVE_SOURCES := \
+	tests/test_gen1_move_compatibility.cpp \
+	src/Integration/Gen1/Gen1MoveCompatibility.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_gen1_move_compatibility
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_move_compatibility_sanitize
+host-test: $(HOST_BUILD)/test_gen1_move_compatibility
+host-sanitize: $(HOST_BUILD)/test_gen1_move_compatibility_sanitize
+
+$(HOST_BUILD)/test_gen1_move_compatibility: $(GEN1_CLEANUP3_MOVE_SOURCES) src/Integration/Gen1/Gen1MoveCompatibilityData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_CLEANUP3_MOVE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen1_move_compatibility_sanitize: $(GEN1_CLEANUP3_MOVE_SOURCES) src/Integration/Gen1/Gen1MoveCompatibilityData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_CLEANUP3_MOVE_SOURCES) -o $@
+
+GEN1_CLEANUP3_SHINY_SOURCES := tests/test_gen1_shiny.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_gen1_shiny
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_shiny_sanitize
+host-test: $(HOST_BUILD)/test_gen1_shiny
+host-sanitize: $(HOST_BUILD)/test_gen1_shiny_sanitize
+
+$(HOST_BUILD)/test_gen1_shiny: $(GEN1_CLEANUP3_SHINY_SOURCES) include/Integration/Gen1/Gen1Shiny.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_CLEANUP3_SHINY_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen1_shiny_sanitize: $(GEN1_CLEANUP3_SHINY_SOURCES) include/Integration/Gen1/Gen1Shiny.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_CLEANUP3_SHINY_SOURCES) -o $@
