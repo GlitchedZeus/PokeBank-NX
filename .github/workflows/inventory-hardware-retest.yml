@@ -42,6 +42,7 @@ jobs:
           git -C application diff --check "$BASE_SHA"..HEAD
           git -C application diff --quiet
           git -C application diff --cached --quiet
+          git -C application fetch --no-tags origin "$VALIDATED_DEV_SHA"
           git -C application diff --exit-code "$VALIDATED_DEV_SHA" HEAD -- . ':(exclude).github/workflows/inventory-hardware-retest.yml'
           echo 'EXACT PRODUCTION IDENTITY: PASS'
           echo 'APPLICATION TREE EQUIVALENCE: PASS'
@@ -224,6 +225,7 @@ jobs:
           git -C application diff --check "$BASE_SHA"..HEAD
           git -C application diff --quiet
           git -C application diff --cached --quiet
+          git -C application fetch --no-tags origin "$VALIDATED_DEV_SHA"
           git -C application diff --exit-code "$VALIDATED_DEV_SHA" HEAD -- . ':(exclude).github/workflows/inventory-hardware-retest.yml'
           echo 'EXACT PRODUCTION IDENTITY: PASS'
           echo 'APPLICATION TREE EQUIVALENCE: PASS'
