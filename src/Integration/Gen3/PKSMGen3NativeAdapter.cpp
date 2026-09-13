@@ -129,6 +129,9 @@ namespace PokeVault::Integration::Gen3 {
     const std::vector<InventoryPouchRecord>& ReadOnlySave::inventory() const noexcept {
         return impl_->readModel.inventory;
     }
+    std::span<const uint8_t> ReadOnlySave::sourceBytes() const noexcept {
+        return impl_->original;
+    }
 
     std::vector<PokemonRecord> ReadOnlySave::party() const {
         impl_->enumerationError = SaveError::None;

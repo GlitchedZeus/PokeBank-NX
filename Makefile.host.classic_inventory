@@ -9,6 +9,8 @@ GEN3_EDITOR_SOURCES := src/Integration/Gen3/Gen3StagedInventoryEditor.cpp $(CATA
 host-classic-inventory:
 	$(CXX) $(CXXFLAGS) tests/test_classic_inventory_catalog.cpp $(CATALOG_SOURCES) -o /tmp/test_classic_inventory_catalog
 	/tmp/test_classic_inventory_catalog
+	$(CXX) $(CXXFLAGS) tests/test_classic_inventory_ui_model.cpp src/UI/ClassicInventoryUIModel.cpp $(CATALOG_SOURCES) -o /tmp/test_classic_inventory_ui_model
+	/tmp/test_classic_inventory_ui_model
 	$(CXX) $(CXXFLAGS) tests/test_rby_staged_inventory.cpp $(CATALOG_SOURCES) src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1StagedInventoryEditor.cpp -o /tmp/test_rby_staged_inventory
 	/tmp/test_rby_staged_inventory
 	$(CXX) $(CXXFLAGS) tests/test_gsc_universal_inventory.cpp $(GEN2_EDITOR_SOURCES) -o /tmp/test_gsc_universal_inventory

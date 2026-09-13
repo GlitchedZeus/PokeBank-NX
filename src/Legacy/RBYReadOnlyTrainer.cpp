@@ -1,6 +1,7 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 
 #include "Integration/Gen1/Gen1ReadOnlyInventory.h"
+#include "Inventory/ClassicInventoryCatalog.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "Trainer/Inventory.h"
 
@@ -62,6 +63,9 @@ std::unique_ptr<RBYReadOnlyTrainer> RBYReadOnlyTrainer::create(
     }
     auto trainer = std::unique_ptr<RBYReadOnlyTrainer>(new RBYReadOnlyTrainer(metadata));
     if (!trainer->populate(save, error)) return nullptr;
+    std::string stagedError;
+    trainer->stagedInventory_ = Integration::Gen1::StagedInventoryEditor::create(save, stagedError);
+    trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);
     return trainer;
 }
 
@@ -84,14 +88,26 @@ bool RBYReadOnlyTrainer::populate(
     const auto inventory = Integration::Gen1::decodeInventory(
         save.sourceBytes(), save.metadata().region);
     if (inventory.available) {
-        items.resize(Integration::Gen1::kInventoryCategoryCount);
-        auto copyInventory = [](const auto& src, auto& dst) {
-            dst.reserve(src.size());
-            for (const auto& item : src)
-                dst.push_back(::Trainer::InventoryItem{item.itemId, item.quantity, false, false});
+        // Gen I stores one Bag plus PC Items. Present six PKSE-style virtual categories by
+        // filtering that real Bag; staged serialization still writes the original pair lists.
+        items.resize(6);
+        const auto game = Inventory::classicGameFromId(sourceGameId_);
+        const Inventory::ClassicPocket virtualPockets[5] = {
+            Inventory::ClassicPocket::Items, Inventory::ClassicPocket::Medicines,
+            Inventory::ClassicPocket::Balls, Inventory::ClassicPocket::KeyItems,
+            Inventory::ClassicPocket::TMHM,
         };
-        copyInventory(inventory.bag, items[0]);
-        copyInventory(inventory.pcItems, items[1]);
+        if (game) {
+            for (const auto& item : inventory.bag) {
+                for (size_t category = 0; category < 5; ++category) {
+                    if (!Inventory::isAddableItem(*game, virtualPockets[category], item.itemId)) continue;
+                    items[category].push_back(::Trainer::InventoryItem{item.itemId, item.quantity, false, false});
+                    break;
+                }
+            }
+        }
+        for (const auto& item : inventory.pcItems)
+            items[5].push_back(::Trainer::InventoryItem{item.itemId, item.quantity, false, false});
     }
 
     party.clear();

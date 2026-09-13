@@ -81,6 +81,10 @@ namespace PokeVault::Legacy {
         }
         auto trainer = std::unique_ptr<FRLGReadOnlyTrainer>(new FRLGReadOnlyTrainer(metadata));
         if (!trainer->populate(save, error)) return nullptr;
+        std::string stagedError;
+        trainer->stagedInventory_ = Integration::Gen3::StagedInventoryEditor::create(
+            save.sourceBytes(), metadata.sourceGame, stagedError);
+        trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);
         return trainer;
     }
 
