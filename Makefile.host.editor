@@ -52,6 +52,19 @@ $(HOST_BUILD)/test_rby_pokemon_editor_sanitize: $(GEN1_POKEMON_SOURCES) src/Inte
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_POKEMON_SOURCES) -o $@
 
+# Exact five-stat Generation I battle-stat preview math used by the draft and staged Summary radar.
+GEN1_BATTLE_STAT_SOURCES := tests/test_gen1_battle_stats.cpp src/Integration/Gen1/Gen1BattleStats.cpp src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen1_battle_stats
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_battle_stats_sanitize
+host-test: $(HOST_BUILD)/test_gen1_battle_stats
+host-sanitize: $(HOST_BUILD)/test_gen1_battle_stats_sanitize
+$(HOST_BUILD)/test_gen1_battle_stats: $(GEN1_BATTLE_STAT_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_BATTLE_STAT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_battle_stats_sanitize: $(GEN1_BATTLE_STAT_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_BATTLE_STAT_SOURCES) -o $@
+
 # Host-testable controller/action contract for the Switch-only Gen I overlay. This permanently proves
 # empty vs occupied action availability and that draft navigation/edit/cancel never requests mutation.
 HOST_TESTS += $(HOST_BUILD)/test_gen1_pokemon_editor_ui_contract
