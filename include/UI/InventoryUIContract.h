@@ -54,11 +54,18 @@ struct InventoryActionAvailability {
     return out;
 }
 
+[[nodiscard]] constexpr bool useReadOnlyInventoryFooterOverride(
+    bool sourceReadOnly, bool detailsActive, bool settingsMode,
+    bool stagedInventoryActionsAvailable) noexcept {
+    return sourceReadOnly && !detailsActive && !settingsMode &&
+           !stagedInventoryActionsAvailable;
+}
+
 struct InventoryPickerLayout {
     static constexpr int Width = 560;
     static constexpr int VerticalMargin = 60;
     static constexpr int RowHeight = 40;
-    static constexpr int FooterHeight = 48;
+    static constexpr int FooterHeight = 64;
     static constexpr int HorizontalPadding = 20;
     static constexpr int TitleOffsetY = 16;
     static constexpr int DividerOffsetY = 52;

@@ -549,11 +549,12 @@ bool selectPickerItem(TrainerViewScreen& screen) {
 }
 
 void drawRow(PKSEFramebuffer& fb, int x, int y, int width, const std::string& text,
-             bool selected, int height = 48) {
+             bool selected, int height = 48, bool brightUnselected = false) {
     fb.drawFilledRoundedRect(x, y, width, height, 10, selected ? Colors::AccentDim : Colors::PanelAlt);
     if (selected) fb.drawRoundedRect(x, y, width, height, 10, Colors::Accent, 2);
     const int ty = y + (height - fb.lineHeight(TextStyle::Body)) / 2;
-    fb.drawText(x + 18, ty, text, selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
+    const auto textColor = (selected || brightUnselected) ? Colors::Text : Colors::TextDim;
+    fb.drawText(x + 18, ty, text, textColor, TextStyle::Body);
 }
 
 } // namespace
@@ -561,6 +562,12 @@ void drawRow(PKSEFramebuffer& fb, int x, int y, int width, const std::string& te
 bool isClassicSource(const TrainerViewScreen& screen) noexcept {
     return sourceKind(screen.sourceGameId) != SourceKind::None &&
            PokeBank::UIModel::classicInventoryGame(screen.sourceGameId).has_value();
+}
+
+bool stagedEditingAvailable(TrainerViewScreen& screen) {
+    if (!isClassicSource(screen)) return false;
+    std::string error;
+    return backendAvailable(screen, error);
 }
 
 bool refreshPresentation(TrainerViewScreen& screen) {
@@ -836,13 +843,17 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
             std::string label = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
             if (stagedQuantity(screen, *pocket, itemId) != 0) label += "  (Already in pouch)";
-            drawRow(fb, x + 12, rowY, width - 24, label, i == state.pickerRow, rowH - 4);
+            drawRow(fb, x + 12, rowY, width - 24, label, i == state.pickerRow, rowH - 4, true);
             screen.touchButtons.push_back({i, x + 12, rowY, width - 24, rowH - 4});
             rowY += rowH;
         }
-        fb.drawText(x + pad, y + height - 34,
-                    "D-pad/Stick Navigate   A Add/Select   B Cancel   L/R Page",
-                    Colors::TextDim, TextStyle::Caption);
+        // Two readable lines fit the fixed 560px panel without shrinking the text.
+        fb.drawText(x + pad, y + height - 56,
+                    "D-pad/Stick Navigate     A Add/Select",
+                    Colors::Text, TextStyle::Caption);
+        fb.drawText(x + pad, y + height - 30,
+                    "B Cancel                  L/R Page",
+                    Colors::Text, TextStyle::Caption);
         return;
     }
 

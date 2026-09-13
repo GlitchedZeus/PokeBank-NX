@@ -10,6 +10,8 @@ class PKSEFramebuffer;
 namespace ClassicInventory {
 
 [[nodiscard]] bool isClassicSource(const TrainerViewScreen& screen) noexcept;
+// True only when PokeBank owns a staged classic editor for this read-only source.
+[[nodiscard]] bool stagedEditingAvailable(TrainerViewScreen& screen);
 // Returns true when the classic inventory layer consumed this frame's input.
 [[nodiscard]] bool handleInput(TrainerViewScreen& screen, uint64_t down);
 void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb);

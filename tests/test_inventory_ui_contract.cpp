@@ -22,6 +22,15 @@ int main() {
     static_assert(!empty.editAmount && empty.addItem && !empty.removeItem);
     constexpr auto readOnly = inventoryActionAvailability(false, true, true, true);
     static_assert(!readOnly.editAmount && !readOnly.addItem && !readOnly.removeItem);
+    constexpr auto fixedQuantity = inventoryActionAvailability(true, true, true, false);
+    static_assert(!fixedQuantity.editAmount && fixedQuantity.addItem && fixedQuantity.removeItem);
+
+    // A read-only source with a real PokeBank staged editor must bypass generic read-only footer.
+    static_assert(useReadOnlyInventoryFooterOverride(true, false, false, false));
+    static_assert(!useReadOnlyInventoryFooterOverride(true, false, false, true));
+    static_assert(!useReadOnlyInventoryFooterOverride(false, false, false, false));
+    static_assert(!useReadOnlyInventoryFooterOverride(true, true, false, false));
+    static_assert(!useReadOnlyInventoryFooterOverride(true, false, true, false));
 
     const std::string fullFooter = inventoryFooter(true, true, true, true);
     assert(fullFooter.find("A: Edit Amount") != std::string::npos);
@@ -36,6 +45,15 @@ int main() {
     assert(emptyFooter.find("X: Add Item") != std::string::npos);
     assert(emptyFooter.find("A: Edit Amount") == std::string::npos);
     assert(emptyFooter.find("Y: Remove Item") == std::string::npos);
+    assert(emptyFooter.find("L/R: Category") != std::string::npos);
+    assert(emptyFooter.find("+: Options") != std::string::npos);
+    assert(emptyFooter.find("-: Help") != std::string::npos);
+    assert(emptyFooter.find("B: Back") != std::string::npos);
+
+    const std::string fixedFooter = inventoryFooter(true, true, true, false);
+    assert(fixedFooter.find("A: Edit Amount") == std::string::npos);
+    assert(fixedFooter.find("X: Add Item") != std::string::npos);
+    assert(fixedFooter.find("Y: Remove Item") != std::string::npos);
 
     const std::string readOnlyFooter = inventoryFooter(false, true, true, true);
     assert(readOnlyFooter.find("A: Edit Amount") == std::string::npos);
@@ -46,6 +64,7 @@ int main() {
     static_assert(InventoryPickerLayout::Width == 560);
     static_assert(InventoryPickerLayout::VerticalMargin == 60);
     static_assert(InventoryPickerLayout::RowHeight == 40);
+    static_assert(InventoryPickerLayout::FooterHeight == 64);
     static_assert(InventoryPickerLayout::Width < 900);
     static_assert(InventoryPickerLayout::ClassicRowsPerPage == 11);
 
