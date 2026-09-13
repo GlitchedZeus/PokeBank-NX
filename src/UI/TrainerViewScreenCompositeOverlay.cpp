@@ -35,23 +35,30 @@
 #undef update
 
 namespace UI::Gen1PokemonEditor {
+// Preserve the hardware-proven pass-1 implementation under recovery/reference symbols. Cleanup #2
+// reuses its staged/export helpers in the same translation unit while owning the active UI state.
+[[nodiscard]] bool isGen1SourceUXBase(const TrainerViewScreen& screen) noexcept;
+[[nodiscard]] bool handleInputUXBase(TrainerViewScreen& screen, uint64_t down);
+void drawOverlayUXBase(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+
 [[nodiscard]] bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down);
 void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 } // namespace UI::Gen1PokemonEditor
 
-// Hardware-polish implementation under isolated symbols. SelectedText is intentionally mapped onto
-// the existing theme-aware Text role: the established palette has no separate SelectedText symbol,
-// and the selection background/border already provides the state contrast.
-#define isGen1Source isGen1SourceUX
-#define handleInput handleInputUX
-#define drawOverlay drawOverlayUX
+#define isGen1Source isGen1SourceUXBase
+#define handleInput handleInputUXBase
+#define drawOverlay drawOverlayUXBase
 #define SelectedText Text
 #include "Gen1PokemonEditorOverlayUX.inc"
 #undef SelectedText
 #undef drawOverlay
 #undef handleInput
 #undef isGen1Source
+
+// Hardware cleanup pass #2: compact geometry, clipped logical editor, non-mutating hover preview,
+// grouped move/stat editors, true five-stat radar, truthful legality wording, and visual clone browse.
+#include "Gen1PokemonEditorOverlayUXCleanup2.inc"
 
 namespace UI {
 
