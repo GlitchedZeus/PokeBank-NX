@@ -92,11 +92,14 @@ struct InventoryItemPresentationState {
 [[nodiscard]] inline InventoryItemPresentationState inventoryItemPresentationState(
     const InventoryBaseline& baseline, int category, uint16_t itemId, uint16_t currentQuantity,
     bool currentIsNew, bool selected) noexcept {
-    (void)currentIsNew; // game-owned marker is deliberately not a PokeBank dirty signal
     const auto* source = findInventoryBaselineItem(baseline, category, itemId);
+    // The raw truth value is never a dirty signal: source isNew=true + current isNew=true is clean.
+    // But if PokeBank changes that game-owned metadata bit, the staged save does differ semantically.
+    const bool sourceIsNew = source ? source->sourceIsNew : false;
+    const bool metadataChanged = source && currentIsNew != sourceIsNew;
     return {
-        source ? source->sourceIsNew : false,
-        source ? source->quantity != currentQuantity : currentQuantity != 0,
+        sourceIsNew,
+        source ? (source->quantity != currentQuantity || metadataChanged) : currentQuantity != 0,
         selected,
     };
 }

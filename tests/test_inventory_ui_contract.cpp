@@ -70,10 +70,16 @@ int main() {
     assert(!reverted.stagedModified);
     assert(itemNameColorRole(reverted) == ItemNameColorRole::NormalText);
 
-    // The live/current isNew value is not allowed to manufacture or clear PokeBank dirty state.
+    // Raw isNew=true is not dirty, but changing that source-owned metadata bit is a real semantic edit.
     const auto currentFlagCleared = inventoryItemPresentationState(baseline, 0, 17, 53, false, false);
     assert(currentFlagCleared.sourceIsNew);
-    assert(!currentFlagCleared.stagedModified);
+    assert(currentFlagCleared.stagedModified);
+    const auto sourceFalseUntouched = inventoryItemPresentationState(baseline, 0, 18, 5, false, false);
+    assert(!sourceFalseUntouched.sourceIsNew);
+    assert(!sourceFalseUntouched.stagedModified);
+    const auto sourceFalseFlagChanged = inventoryItemPresentationState(baseline, 0, 18, 5, true, false);
+    assert(!sourceFalseFlagChanged.sourceIsNew);
+    assert(sourceFalseFlagChanged.stagedModified);
 
     const auto added = inventoryItemPresentationState(baseline, 0, 99, 10, true, false);
     assert(!added.sourceIsNew);
