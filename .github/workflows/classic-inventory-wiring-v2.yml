@@ -1,0 +1,96 @@
+name: Classic Inventory Wiring V2
+
+on:
+  push:
+    branches: [ci/classic-inventory-wiring-20260913]
+
+permissions:
+  contents: write
+
+env:
+  EXPECTED_DEV: f087f0e2f53300ea606a2e5da8ae22f3c5e0d29e
+  DEV_BRANCH: dev/classic-inventory-20260912
+
+jobs:
+  patch-test-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out carrier scripts
+        uses: actions/checkout@v4
+        with:
+          ref: ci/classic-inventory-wiring-20260913
+          path: carrier
+          fetch-depth: 1
+
+      - name: Check out exact development tip
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEV_BRANCH }}
+          path: app
+          fetch-depth: 0
+
+      - name: Verify exact preserved base
+        run: |
+          set -euo pipefail
+          test "$(git -C app rev-parse HEAD)" = "$EXPECTED_DEV"
+          test "$(git -C app rev-parse 'HEAD^{tree}')" = "ab3f94d5bacbc78f534dd747275e1082ae604653"
+
+      - name: Apply live UI wiring patch
+        working-directory: app
+        run: python3 ../carrier/ci/classic_inventory_wiring.py
+
+      - name: Static safety and scope gate
+        working-directory: app
+        run: |
+          set -euo pipefail
+          git diff --check
+          grep -q 'ClassicInventory::handleInput' src/UI/TrainerViewScreenGSCOverlay.cpp
+          grep -q 'ClassicInventory::drawOverlay' src/UI/TrainerViewScreenGSCOverlay.cpp
+          grep -q 'displayItemName(\*classicGame, \*classicPocket' src/UI/Panels/ItemsPanel.cpp
+          grep -q '+: Pending Changes' src/UI/TrainerViewScreenBase.inc
+          ! grep -q 'Potion quantity (0 removes)' src/UI/TrainerViewScreenGSCOverlay.cpp
+          grep -q '0x01008F6008C5E000' include/Enums/GameVersion.h
+          if grep -R --line-number --fixed-strings 'sdmc:/PKSE' src include; then exit 1; fi
+
+      - name: Focused classic host gate
+        working-directory: app
+        run: make -f Makefile.host.classic_inventory host-classic-inventory
+
+      - name: Native affected UI compile and full final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/app devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee native-wiring-v2.log
+          grep -q 'ClassicInventoryOverlay.cpp' native-wiring-v2.log
+          grep -q 'ItemsPanel.cpp' native-wiring-v2.log
+          grep -q 'TrainerViewScreenGSCOverlay.cpp' native-wiring-v2.log
+          grep -q 'linking PokeBankNX.elf' native-wiring-v2.log
+          test -s app/PokeBankNX.nro
+
+      - name: Commit only verified source changes to dev
+        working-directory: app
+        run: |
+          set -euo pipefail
+          git config user.name 'PokeBank NX CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/UI/ClassicInventoryUIModel.cpp tests/test_classic_inventory_ui_model.cpp \
+                  src/UI/ClassicInventoryOverlay.cpp src/UI/Panels/ItemsPanel.cpp \
+                  src/UI/TrainerViewScreenBase.inc src/UI/TrainerViewScreenGSCOverlay.cpp
+          git diff --cached --check
+          git commit -m 'ui: wire classic inventory editor into live screen [classic-ui-wired]'
+          git push origin HEAD:${DEV_BRANCH}
+          echo "PATCHED_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "PATCHED_TREE=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_ENV"
+
+      - name: Report verified candidate
+        run: |
+          echo "PATCHED_SHA=$PATCHED_SHA"
+          echo "PATCHED_TREE=$PATCHED_TREE"
+          echo 'FOCUSED_CLASSIC_TESTS=PASS'
+          echo 'DEVKITA64_FULL_LINK=PASS'
