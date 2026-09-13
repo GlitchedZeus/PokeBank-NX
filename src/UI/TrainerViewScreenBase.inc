@@ -4301,7 +4301,8 @@ namespace UI {
             instructions = "Up/Down: Select  |  A: Toggle  |  B: Back";
         } else if (detailViewActive) {
             if (selectedMode == ViewMode::Items) {
-                if (ClassicInventory::isClassicSource(*this)) {
+                if (ClassicInventory::isClassicSource(*this) &&
+                    ClassicInventory::stagedEditingAvailable(*this)) {
                     const auto game = PokeBank::UIModel::classicInventoryGame(sourceGameId);
                     const auto pocket = game
                         ? PokeBank::UIModel::classicInventoryPocketAt(*game, selectedCategory)
@@ -4425,7 +4426,12 @@ namespace UI {
             !groupMenuActive && !creator.keepConfirmActive && !details.discardConfirmActive &&
             !gen3ConvertConfirmActive && !lgpeTransferConfirmActive;
         if (standardScreen) {
-            if (sourceReadOnly() && !details.active && selectedMode != ViewMode::Settings) {
+            const bool stagedInventoryActionsAvailable =
+                detailViewActive && selectedMode == ViewMode::Items &&
+                ClassicInventory::stagedEditingAvailable(*this);
+            if (PokeBank::UIModel::useReadOnlyInventoryFooterOverride(
+                    sourceReadOnly(), details.active, selectedMode == ViewMode::Settings,
+                    stagedInventoryActionsAvailable)) {
                 instructions = "Arrows: Navigate  |  B: Back";
                 bool canOpen = !detailViewActive;
                 if (detailViewActive && selectedMode == ViewMode::Party)
