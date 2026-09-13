@@ -13,6 +13,7 @@ inline constexpr std::string_view kRoot = "sdmc:/switch/PokeBank-NX";
 
 inline std::string root() { return std::string(kRoot); }
 inline std::string exportsRoot() { return root() + "/exports"; }
+inline std::string gen1ExportsRoot() { return exportsRoot() + "/gen1"; }
 inline std::string gen2ExportsRoot() { return exportsRoot() + "/gen2"; }
 inline std::string backupsRoot() { return root() + "/backups"; }
 inline std::string configRoot() { return root() + "/config"; }
@@ -126,8 +127,17 @@ inline bool ensureBackupsRoot(std::string* error = nullptr) {
 inline bool ensureLegacyBankRoot(std::string* error = nullptr) {
     return ensureDirectoryTree(legacyBankRoot(), error);
 }
+inline bool ensureGen1ExportsRoot(std::string* error = nullptr) {
+    return ensureDirectoryTree(gen1ExportsRoot(), error);
+}
 inline bool ensureGen2ExportsRoot(std::string* error = nullptr) {
     return ensureDirectoryTree(gen2ExportsRoot(), error);
+}
+
+inline std::string gen1ExportDirectory(std::string_view gameId, std::string_view timestamp) {
+    if (!isSafeTimestamp(timestamp)) return {};
+    const std::string safeGame = sanitizeComponent(gameId);
+    return gen1ExportsRoot() + "/" + safeGame + "_" + std::string(timestamp);
 }
 
 inline std::string gen2ExportDirectory(std::string_view gameId, std::string_view timestamp) {
