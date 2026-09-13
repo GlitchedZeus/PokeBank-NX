@@ -35,6 +35,7 @@ $(HOST_BUILD)/test_gsc_pokemon_editor_sanitize: $(GEN2_POKEMON_EDITOR_SOURCES)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
 GEN1_POKEMON_COMMON := src/Integration/Gen1/Gen1StagedPokemonEditor.cpp \
+    src/Integration/Gen1/Gen1BattleStats.cpp \
     src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \
     src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp \
     src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp \
@@ -66,4 +67,4 @@ $(HOST_BUILD)/test_gen1_pokemon_editor_ui_contract_sanitize: tests/test_gen1_pok
 
 # RBY bridge owns the staged Pokemon sidecar; accepted read-only tests must link its native
 # dependencies in addition to the already-linked classic inventory sidecar.
-$(HOST_BUILD)/test_rby_readonly_bridge $(HOST_BUILD)/test_rby_readonly_bridge_sanitize: src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Pokemon/Experience.cpp
+$(HOST_BUILD)/test_rby_readonly_bridge $(HOST_BUILD)/test_rby_readonly_bridge_sanitize: src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1BattleStats.cpp src/Pokemon/Experience.cpp
