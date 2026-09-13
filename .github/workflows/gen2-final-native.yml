@@ -1,0 +1,83 @@
+name: gen2-final-native
+
+on:
+  push:
+    branches:
+      - ci/gen2-final-native-20260912
+
+permissions:
+  contents: read
+
+env:
+  APP_SHA: 4866de7fb54d3e9da884dd5ab862cb07902d3b28
+  APP_TREE: b990eeafe31a52b44a091adcebdb6a2c850e36de
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout exact final Gen II dev application
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 4
+          submodules: recursive
+      - name: Checkout recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+      - name: Verify identity and recover device assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          git -C application diff --check HEAD^
+          (cd recovery-work && python3 tools/recover_workspace.py)
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+      - name: Full devkitA64 compile and final link
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            for obj in Gen2StagedEditor.o GSCReadOnlyTrainer.o TrainerViewScreenGSCOverlay.o TrainerViewScreen.o ItemsPanel.o PickerDialog.o SaveConfirmDialog.o MachineDisplay.o TMMoves.o; do
+              find build -name "$obj" -type f | grep -q . || { echo "missing native object: $obj"; exit 1; }
+            done
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          grep -q '0x01008F6008C5E000ULL' application/src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' application/include/Safety/SourceMutationPolicy.h
+          grep -q 'sdmc:/switch/PokeBank-NX' application/include/Utils/PokeBankPaths.h
+          grep -q 'SAVE WRITING NOT YET ENABLED' application/src/UI/Dialogs/SaveConfirmDialog.cpp
+          grep -q 'MachineMoveNames' application/include/Save/EditableSaveCapabilities.h
+          echo 'PK2 EDITOR NATIVE COMPILE: PASS'
+          echo 'GSC BRIDGE NATIVE COMPILE: PASS'
+          echo 'POKEMON ACTION/EDIT/ADD/CLONE/SHINY UI NATIVE COMPILE: PASS'
+          echo 'PENDING CHANGES UI NATIVE COMPILE: PASS'
+          echo 'MACHINE DISPLAY NATIVE COMPILE: PASS'
+          echo 'AFFECTED INVENTORY UI NATIVE COMPILE: PASS'
+          echo 'INSTALLED-SAVE WARNING NATIVE COMPILE: PASS'
+          echo 'DEVKITA64 COMPILE: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
