@@ -1,6 +1,6 @@
 # PokeBank NX — Current Verified Engineering State
 
-Last updated: 2026-09-12
+Last updated: 2026-09-13
 
 ## CURRENT STATE — GEN I + GEN II + GEN III LEGACY READ-ONLY PHYSICALLY ACCEPTED
 
@@ -257,3 +257,49 @@ Physical read acceptance does not authorize live writes. Any future write path m
 PokeBank NX is a standalone all-in-one Nintendo Switch Pokémon management application. External Pokémon homebrew and PC tools may be development references or optional migration tools, but are not prerequisites for normal advertised operation.
 
 Canonical runtime root: `sdmc:/switch/PokeBank-NX/`. See `docs/STANDALONE_RUNTIME.md` and `docs/UI_OWNERSHIP_STATUS.md`. Issue #58 remains open for the full visible v1 UI conversion.
+
+---
+
+## Classic Inventory Editor — final development validation handoff (2026-09-13)
+
+Status:
+
+```text
+Classic Inventory Editor: HOST VERIFIED / NATIVE VERIFIED / DEVICE TEST PENDING
+Gen I RBY inventory:       HOST/NATIVE VERIFIED / DEVICE TEST PENDING
+Gen II GSC inventory:      HOST/NATIVE VERIFIED / DEVICE TEST PENDING
+Gen III RSE/FRLG inventory: HOST/NATIVE VERIFIED / DEVICE TEST PENDING
+```
+
+Validated code candidate:
+
+```text
+HEAD 3d972829e7b78ff1694bb499ceb20880f09474f0
+TREE b5252e3a7e17d8b1ee350f66cc77c4c0a1b1a745
+Corrected validation run 34739635304
+Host job 103677024711
+Native job 103677024816
+```
+
+The completed corrected validation passed exact identity, `git diff --check`, focused classic inventory, the previous FRLG link-failure regression, RBY staged-sidecar linkage, the permanent host suite, ASan, UBSan, authoritative control/safety invariants, device asset preflight, full devkitA64 compilation/final link, embedded application identity, and embedded RomFS verification.
+
+Final inventory controls are authoritative:
+
+```text
+A             Edit Amount
+X             Add Item
+Y             Remove Item
+D-pad/Stick   Navigate
+L / R         Previous / Next valid category
++             Options
+-             Help
+B             Back / Cancel
+```
+
+The obsolete `Y Add`, `X Remove`, and `+` direct-Pending mappings are not part of the final control contract.
+
+Validated classic inventory behavior includes exact-game and exact-pocket add catalogs; Yellow rejecting Dusk Ball/future items; `(None)` for valid empty categories; unsupported categories skipped; exact-game TM/HM move names; real Gen I Bag/PC structures; real Gen II pockets; the fixed Gen II Key Item capacity regression and Key Item warning flow; and completed Gen III staged inventory serialization.
+
+The Gen II boxed Pokémon staged editor remains present and regression-tested. Party mutation remains deferred.
+
+Classic edits remain source → staged memory → validate → export copy. Live installed-game writes, live RetroArch writes, and live emulator-source writes remain **HARD DISABLED**. Physical hardware acceptance of this editor milestone is still pending. Historical device-accepted read-only milestones above are unchanged.
