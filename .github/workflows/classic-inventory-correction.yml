@@ -12,14 +12,22 @@ jobs:
   correct:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout carrier
+        uses: actions/checkout@v4
+        with:
+          ref: ci/classic-inventory-correction-20260913
+          path: carrier
+
       - name: Checkout preserved development branch
         uses: actions/checkout@v4
         with:
           ref: dev/classic-inventory-20260912
           fetch-depth: 0
+          path: work
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify preserved starting point
+        working-directory: work
         shell: bash
         run: |
           set -euo pipefail
@@ -28,443 +36,16 @@ jobs:
           git diff --quiet
           git diff --cached --quiet
 
-      - name: Apply authoritative control correction
+      - name: Apply and validate authoritative controls
+        working-directory: work
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          def replace(path, old, new, count=1):
-              p = Path(path)
-              text = p.read_text()
-              if old not in text:
-                  raise SystemExit(f"missing replacement anchor in {path}: {old[:100]!r}")
-              text2 = text.replace(old, new, count)
-              if text2 == text:
-                  raise SystemExit(f"replacement made no change in {path}")
-              p.write_text(text2)
-
-          def replace_between(path, start, end, replacement):
-              p = Path(path)
-              text = p.read_text()
-              a = text.find(start)
-              if a < 0:
-                  raise SystemExit(f"missing start anchor in {path}: {start!r}")
-              b = text.find(end, a)
-              if b < 0:
-                  raise SystemExit(f"missing end anchor in {path}: {end!r}")
-              p.write_text(text[:a] + replacement + text[b:])
-
-          # Host-testable authoritative action mapping.
-          replace(
-              "include/UI/ClassicInventoryUIModel.h",
-              "[[nodiscard]] bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept;\n",
-              '''enum class ClassicInventoryInput : uint8_t { A, X, Y, L, R, Plus, Minus, B };\nenum class ClassicInventoryAction : uint8_t {\n    EditAmount, AddItem, RemoveItem, PreviousCategory, NextCategory, Options, Help, Back,\n};\n\nstruct ClassicInventoryActionAvailability {\n    bool editAmount = false;\n    bool addItem = false;\n    bool removeItem = false;\n};\n\n[[nodiscard]] ClassicInventoryAction classicInventoryAction(ClassicInventoryInput input) noexcept;\n[[nodiscard]] ClassicInventoryActionAvailability classicInventoryActionAvailability(\n    bool categorySupported, bool hasSelection, bool quantityEditable) noexcept;\n[[nodiscard]] bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept;\n''')
-
-          replace(
-              "src/UI/ClassicInventoryUIModel.cpp",
-              "bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept {\n",
-              '''ClassicInventoryAction classicInventoryAction(ClassicInventoryInput input) noexcept {\n    switch (input) {\n        case ClassicInventoryInput::A: return ClassicInventoryAction::EditAmount;\n        case ClassicInventoryInput::X: return ClassicInventoryAction::AddItem;\n        case ClassicInventoryInput::Y: return ClassicInventoryAction::RemoveItem;\n        case ClassicInventoryInput::L: return ClassicInventoryAction::PreviousCategory;\n        case ClassicInventoryInput::R: return ClassicInventoryAction::NextCategory;\n        case ClassicInventoryInput::Plus: return ClassicInventoryAction::Options;\n        case ClassicInventoryInput::Minus: return ClassicInventoryAction::Help;\n        case ClassicInventoryInput::B: return ClassicInventoryAction::Back;\n    }\n    return ClassicInventoryAction::Back;\n}\n\nClassicInventoryActionAvailability classicInventoryActionAvailability(\n    bool categorySupported, bool hasSelection, bool quantityEditable) noexcept {\n    return {\n        categorySupported && hasSelection && quantityEditable,\n        categorySupported,\n        categorySupported && hasSelection,\n    };\n}\n\nbool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept {\n''')
-
-          replace(
-              "tests/test_classic_inventory_ui_model.cpp",
-              '    std::cout << "classic inventory UI model: PASS\\n";\n',
-              '''    assert(classicInventoryAction(ClassicInventoryInput::A) == ClassicInventoryAction::EditAmount);\n    assert(classicInventoryAction(ClassicInventoryInput::X) == ClassicInventoryAction::AddItem);\n    assert(classicInventoryAction(ClassicInventoryInput::Y) == ClassicInventoryAction::RemoveItem);\n    assert(classicInventoryAction(ClassicInventoryInput::L) == ClassicInventoryAction::PreviousCategory);\n    assert(classicInventoryAction(ClassicInventoryInput::R) == ClassicInventoryAction::NextCategory);\n    assert(classicInventoryAction(ClassicInventoryInput::Plus) == ClassicInventoryAction::Options);\n    assert(classicInventoryAction(ClassicInventoryInput::Minus) == ClassicInventoryAction::Help);\n    assert(classicInventoryAction(ClassicInventoryInput::B) == ClassicInventoryAction::Back);\n\n    const auto emptyActions = classicInventoryActionAvailability(true, false, false);\n    assert(!emptyActions.editAmount);\n    assert(emptyActions.addItem);\n    assert(!emptyActions.removeItem);\n    const auto quantityActions = classicInventoryActionAvailability(true, true, true);\n    assert(quantityActions.editAmount);\n    assert(quantityActions.addItem);\n    assert(quantityActions.removeItem);\n    const auto fixedActions = classicInventoryActionAvailability(true, true, false);\n    assert(!fixedActions.editAmount);\n    assert(fixedActions.addItem);\n    assert(fixedActions.removeItem);\n    const auto unsupportedActions = classicInventoryActionAvailability(false, false, false);\n    assert(!unsupportedActions.editAmount && !unsupportedActions.addItem && !unsupportedActions.removeItem);\n\n    std::cout << "classic inventory UI model: PASS\\n";\n''')
-
-          # Extend the existing live overlay state; do not recreate the overlay architecture.
-          replace(
-              "src/UI/ClassicInventoryOverlay.cpp",
-              '''    bool pickerActive = false;\n    bool reviewActive = false;\n    bool warningActive = false;\n    int pickerRow = 0;\n    int reviewRow = 0;\n''',
-              '''    bool pickerActive = false;\n    bool optionsActive = false;\n    bool reviewActive = false;\n    bool helpActive = false;\n    bool warningActive = false;\n    bool discardConfirmActive = false;\n    int pickerRow = 0;\n    int optionsRow = 0;\n    int reviewRow = 0;\n''')
-
-          handle = r'''bool handleInput(TrainerViewScreen& screen, uint64_t down) {
-    if (!isClassicSource(screen)) return false;
-    auto& state = stateFor(screen);
-
-    if (!state.presentationInitialized && refreshPresentation(screen)) {
-        state.presentationInitialized = true;
-        const auto game = exactGame(screen);
-        const int categoryCount = game
-            ? static_cast<int>(PokeBank::UIModel::classicInventoryCategories(*game).size()) : 0;
-        if (categoryCount > 0)
-            screen.selectedCategory = std::clamp(screen.selectedCategory, 0, categoryCount - 1);
-        screen.selectedItemIndex = 0;
-        screen.currentPage = 0;
-    }
-
-    // Every classic modal owns the translated input for the whole frame. This prevents X/Y/+/−
-    // from leaking through to the underlying inventory after a modal closes.
-    if (state.warningActive) {
-        if (down & HidNpadButton_B) { state.warningActive = false; return true; }
-        if (down & HidNpadButton_A) {
-            const auto pocket = state.pendingPocket;
-            const uint16_t item = state.pendingItem;
-            const uint16_t quantity = state.pendingQuantity;
-            state.warningActive = false;
-            applyMutation(screen, pocket, item, quantity);
-        }
-        return true;
-    }
-
-    if (state.discardConfirmActive) {
-        if (down & HidNpadButton_B) { state.discardConfirmActive = false; return true; }
-        if (down & HidNpadButton_A) {
-            discardAll(screen);
-            refreshPresentation(screen);
-            state.discardConfirmActive = false;
-            screen.postStatus("Staged changes discarded; original source save was never modified", 300);
-        }
-        return true;
-    }
-
-    if (state.pickerActive) {
-        const int count = static_cast<int>(state.pickerItems.size());
-        if (count == 0) { state.pickerActive = false; return true; }
-        if (down & HidNpadButton_Up) state.pickerRow = (state.pickerRow - 1 + count) % count;
-        if (down & HidNpadButton_Down) state.pickerRow = (state.pickerRow + 1) % count;
-        if (down & HidNpadButton_B) { state.pickerActive = false; return true; }
-        if (down & HidNpadButton_A) { selectPickerItem(screen); return true; }
-        return true;
-    }
-
-    if (state.helpActive) {
-        if (down & (HidNpadButton_B | HidNpadButton_Minus)) state.helpActive = false;
-        return true;
-    }
-
-    if (state.reviewActive) {
-        const auto lines = pendingLines(screen);
-        const int count = static_cast<int>(lines.size());
-        if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow - 1 + count) % count;
-        if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
-        if (down & HidNpadButton_B) {
-            state.reviewActive = false;
-            state.optionsActive = true;
-        }
-        return true; // review is deliberately non-mutating
-    }
-
-    if (state.optionsActive) {
-        constexpr int optionCount = 4;
-        if (down & HidNpadButton_Up) state.optionsRow = (state.optionsRow - 1 + optionCount) % optionCount;
-        if (down & HidNpadButton_Down) state.optionsRow = (state.optionsRow + 1) % optionCount;
-        if (down & HidNpadButton_B) { state.optionsActive = false; return true; }
-        if (!(down & HidNpadButton_A)) return true;
-        switch (state.optionsRow) {
-            case 0:
-                state.optionsActive = false;
-                state.reviewActive = true;
-                state.reviewRow = 0;
-                break;
-            case 1: {
-                std::string error;
-                const std::string dir = exportStagedCopy(screen, error);
-                if (dir.empty()) screen.postStatus(error.empty() ? "Classic staged export failed" : error, 360);
-                else {
-                    state.lastExportDirectory = dir;
-                    screen.postStatus("Exported edited copy + original backup under PokeBank NX exports", 360);
-                }
-                break;
-            }
-            case 2:
-                if (!hasPending(screen)) screen.postStatus("No staged changes to discard", 240);
-                else state.discardConfirmActive = true;
-                break;
-            case 3:
-                state.optionsActive = false;
-                break;
-        }
-        return true;
-    }
-
-    if (!screen.detailViewActive || screen.selectedMode != TrainerViewScreen::ViewMode::Items ||
-        screen.helpOverlayActive || screen.details.active || screen.actionSheet.isOpen() ||
-        screen.saveConfirmActive || screen.pickerActive || screen.itemEditDialogActive ||
-        screen.itemRemoveConfirmActive || screen.statEdit.dialogActive ||
-        screen.releaseConfirmActive || screen.storageExitConfirmActive || screen.groupMenuActive ||
-        screen.creator.keepConfirmActive || screen.details.discardConfirmActive ||
-        screen.gen3ConvertConfirmActive || screen.lgpeTransferConfirmActive) return false;
-
-    std::optional<PokeBank::UIModel::ClassicInventoryInput> input;
-    if (down & HidNpadButton_A) input = PokeBank::UIModel::ClassicInventoryInput::A;
-    else if (down & HidNpadButton_X) input = PokeBank::UIModel::ClassicInventoryInput::X;
-    else if (down & HidNpadButton_Y) input = PokeBank::UIModel::ClassicInventoryInput::Y;
-    else if (down & HidNpadButton_L) input = PokeBank::UIModel::ClassicInventoryInput::L;
-    else if (down & HidNpadButton_R) input = PokeBank::UIModel::ClassicInventoryInput::R;
-    else if (down & HidNpadButton_Plus) input = PokeBank::UIModel::ClassicInventoryInput::Plus;
-    else if (down & HidNpadButton_Minus) input = PokeBank::UIModel::ClassicInventoryInput::Minus;
-    else if (down & HidNpadButton_B) input = PokeBank::UIModel::ClassicInventoryInput::B;
-    else return false; // Up/Down/Left/Right continue through the established shared navigation path.
-
-    const auto action = PokeBank::UIModel::classicInventoryAction(*input);
-    if (action == PokeBank::UIModel::ClassicInventoryAction::Back) return false;
-
-    ClassicGame game{};
-    ClassicPocket pocket{};
-    if (!currentPocket(screen, game, pocket)) {
-        screen.postStatus("This inventory category is not supported by the selected classic game", 300);
-        return true;
-    }
-
-    if (action == PokeBank::UIModel::ClassicInventoryAction::PreviousCategory ||
-        action == PokeBank::UIModel::ClassicInventoryAction::NextCategory) {
-        const int count = static_cast<int>(PokeBank::UIModel::classicInventoryCategories(game).size());
-        const int delta = action == PokeBank::UIModel::ClassicInventoryAction::PreviousCategory ? -1 : 1;
-        screen.selectedCategory = (screen.selectedCategory + delta + count) % count;
-        screen.selectedItemIndex = 0;
-        screen.currentPage = 0;
-        return true;
-    }
-
-    if (action == PokeBank::UIModel::ClassicInventoryAction::Help) {
-        state.helpActive = true;
-        return true;
-    }
-
-    std::string availabilityError;
-    if (!backendAvailable(screen, availabilityError)) {
-        screen.postStatus(availabilityError, 360);
-        return true;
-    }
-
-    if (action == PokeBank::UIModel::ClassicInventoryAction::Options) {
-        state.optionsActive = true;
-        state.optionsRow = 0;
-        return true;
-    }
-
-    uint16_t itemId = 0;
-    uint16_t quantity = 0;
-    const bool hasSelection = currentItem(screen, itemId, quantity);
-    const bool quantityEditable = hasSelection &&
-        PokeBank::UIModel::classicInventoryQuantityEditable(game, pocket, itemId);
-    const auto availability = PokeBank::UIModel::classicInventoryActionAvailability(
-        true, hasSelection, quantityEditable);
-
-    if (action == PokeBank::UIModel::ClassicInventoryAction::AddItem) {
-        if (availability.addItem) openAddPicker(screen, game, pocket);
-        return true;
-    }
-
-    if (action == PokeBank::UIModel::ClassicInventoryAction::RemoveItem) {
-        if (availability.removeItem)
-            queueMutationWithWarning(screen, game, pocket, itemId, 0);
-        return true;
-    }
-
-    if (action == PokeBank::UIModel::ClassicInventoryAction::EditAmount) {
-        if (!availability.editAmount) {
-            if (!hasSelection) screen.postStatus("No item selected. Press X to add an item.", 240);
-            else screen.postStatus("This item has a fixed/presence-only quantity", 240);
-            return true;
-        }
-        const auto rule = PokeVault::Inventory::quantityRule(game, pocket, itemId);
-        const auto result = Utils::promptNumber(
-            "Edit " + PokeVault::Inventory::displayItemName(game, pocket, itemId),
-            static_cast<int>(quantity), static_cast<int>(rule.minimum), static_cast<int>(rule.maximum));
-        if (result.accepted)
-            applyMutation(screen, pocket, itemId, static_cast<uint16_t>(result.value));
-        return true;
-    }
-    return true;
-}
-
-'''
-          replace_between("src/UI/ClassicInventoryOverlay.cpp",
-                          "bool handleInput(TrainerViewScreen& screen, uint64_t down) {",
-                          "void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {",
-                          handle)
-
-          draw = r'''void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    if (!isClassicSource(screen)) return;
-    auto& state = stateFor(screen);
-    if (!state.pickerActive && !state.optionsActive && !state.reviewActive && !state.helpActive &&
-        !state.warningActive && !state.discardConfirmActive) return;
-
-    screen.touchButtons.clear();
-    constexpr int width = 900;
-    constexpr int height = 610;
-    const int x = (fb.getWidth() - width) / 2;
-    const int y = 66;
-    fb.drawSoftShadow(x, y, width, height, 18);
-    fb.drawFilledRoundedRect(x, y, width, height, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, width, height, 18, Colors::Accent, 2);
-
-    const auto game = exactGame(screen);
-    const auto pocket = game ? PokeBank::UIModel::classicInventoryPocketAt(*game, screen.selectedCategory)
-                             : std::optional<ClassicPocket>{};
-
-    if (state.warningActive) {
-        fb.drawText(x + 30, y + 24, "Key Item Warning", Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 100,
-                    "This Key Item may depend on story/event state.", Colors::Text, TextStyle::Body);
-        fb.drawText(x + 30, y + 142,
-                    "Changing inventory does not reproduce or reverse the associated story event.",
-                    Colors::TextDim, TextStyle::Body);
-        fb.drawText(x + 30, y + 196,
-                    "No unrelated event flags will be modified.", Colors::TextDim, TextStyle::Body);
-        fb.drawText(x + 30, y + height - 54, "A Confirm    B Cancel",
-                    Colors::Text, TextStyle::Body);
-        return;
-    }
-
-    if (state.discardConfirmActive) {
-        fb.drawText(x + 30, y + 24, "Discard Staged Changes?", Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 104,
-                    "This discards the shared staged classic-save transaction.", Colors::Text, TextStyle::Body);
-        fb.drawText(x + 30, y + 148,
-                    "The original source save remains unchanged.", Colors::TextDim, TextStyle::Body);
-        fb.drawText(x + 30, y + height - 54, "A Discard Staged Changes    B Cancel",
-                    Colors::Text, TextStyle::Body);
-        return;
-    }
-
-    if (state.pickerActive && game && pocket) {
-        fb.drawText(x + 30, y + 20,
-                    "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
-                    Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 56,
-                    "Exact-game catalog only — stored item IDs remain native to this game.",
-                    Colors::TextDim, TextStyle::Caption);
-        constexpr int visibleRows = 8;
-        const int count = static_cast<int>(state.pickerItems.size());
-        const int start = std::clamp(state.pickerRow - visibleRows / 2, 0,
-                                     std::max(0, count - visibleRows));
-        int rowY = y + 94;
-        for (int i = start; i < std::min(count, start + visibleRows); ++i) {
-            const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
-            std::string label = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
-            if (stagedQuantity(screen, *pocket, itemId) != 0) label += "  (Already in pouch)";
-            drawRow(fb, x + 30, rowY, width - 60, label, i == state.pickerRow);
-            rowY += 57;
-        }
-        fb.drawText(x + 30, y + height - 42,
-                    "D-pad / Left Stick Select    A Add / Focus Existing    B Cancel",
-                    Colors::TextDim, TextStyle::Caption);
-        return;
-    }
-
-    if (state.helpActive) {
-        fb.drawText(x + 30, y + 20, "Inventory Help", Colors::Text, TextStyle::Heading);
-        const std::vector<std::string> lines{
-            "A   Edit amount (only when this item has an editable quantity)",
-            "X   Add item from the exact-game, exact-category catalog",
-            "Y   Remove the highlighted item",
-            "L / R   Previous / next supported inventory category",
-            "D-pad / Left Stick   Navigate (held stick repeat is shared with the main UI)",
-            "+   Inventory Options     -   Help     B   Back / Cancel",
-            "Empty valid categories show (None); X Add remains available.",
-            "Key Items may depend on story flags; warnings do not alter unrelated flags.",
-            "All edits are staged. Export creates an edited copy; the source save is not overwritten.",
-        };
-        int rowY = y + 78;
-        for (const auto& line : lines) {
-            fb.drawText(x + 34, rowY, line, Colors::TextDim, TextStyle::Body);
-            rowY += 48;
-        }
-        fb.drawText(x + 30, y + height - 42, "B Close Help", Colors::Text, TextStyle::Body);
-        return;
-    }
-
-    if (state.optionsActive) {
-        fb.drawText(x + 30, y + 20, "Inventory Options", Colors::Text, TextStyle::Heading);
-        const std::array<std::string, 4> rows{{
-            "Review Pending Changes (" + std::to_string(pendingLines(screen).size()) + ")",
-            "Export Staged Save",
-            "Discard Staged Changes",
-            "Cancel",
-        }};
-        int rowY = y + 94;
-        for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
-            drawRow(fb, x + 30, rowY, width - 60, rows[static_cast<std::size_t>(i)], i == state.optionsRow);
-            rowY += 62;
-        }
-        fb.drawText(x + 30, y + height - 42,
-                    "D-pad / Left Stick Select    A Open    B Close",
-                    Colors::TextDim, TextStyle::Caption);
-        return;
-    }
-
-    if (state.reviewActive) {
-        const auto lines = pendingLines(screen);
-        fb.drawText(x + 30, y + 20, "Pending Classic Save Changes", Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 56,
-                    "Review only — use Inventory Options for Export or Discard.",
-                    Colors::TextDim, TextStyle::Caption);
-        if (lines.empty()) {
-            fb.drawText(x + 34, y + 116, "No pending changes.", Colors::TextDim, TextStyle::Body);
-        } else {
-            constexpr int visibleRows = 7;
-            const int count = static_cast<int>(lines.size());
-            const int start = std::clamp(state.reviewRow - visibleRows / 2, 0,
-                                         std::max(0, count - visibleRows));
-            int rowY = y + 94;
-            for (int i = start; i < std::min(count, start + visibleRows); ++i) {
-                drawRow(fb, x + 30, rowY, width - 60, lines[static_cast<std::size_t>(i)],
-                        i == state.reviewRow);
-                rowY += 57;
-            }
-        }
-        fb.drawText(x + 30, y + height - 72,
-                    "D-pad / Left Stick Browse    B Back to Options",
-                    Colors::Text, TextStyle::Body);
-        if (!state.lastExportDirectory.empty())
-            fb.drawText(x + 30, y + height - 40, "Last export: " + state.lastExportDirectory,
-                        Colors::TextDim, TextStyle::Caption);
-    }
-}
-
-'''
-          replace_between("src/UI/ClassicInventoryOverlay.cpp",
-                          "void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {",
-                          "} // namespace UI::ClassicInventory",
-                          draw)
-
-          # Route classic inventory through the already-established D-pad/left-stick repeat translation.
-          replace(
-              "src/UI/TrainerViewScreenBase.inc",
-              '#include "UI/ClassicInventoryOverlay.h"\n',
-              '#include "UI/ClassicInventoryOverlay.h"\n#include "UI/ClassicInventoryUIModel.h"\n')
-          replace(
-              "src/UI/TrainerViewScreenBase.inc",
-              '''        u64 kDown = controllerNavigation.apply(\n            padGetButtonsDown(&pad), padGetButtons(&pad), stick.x, stick.y,\n            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)\n            | navTouchButton(touch);\n\n''',
-              '''        u64 kDown = controllerNavigation.apply(\n            padGetButtonsDown(&pad), padGetButtons(&pad), stick.x, stick.y,\n            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)\n            | navTouchButton(touch);\n\n        // Classic inventory gets first refusal on its own translated controls. This is deliberately\n        // before global +/− and inherited read-only mutation guards: classic edits target a staged\n        // sidecar, never the source save, and its modals must own stick/D-pad repeat without leaks.\n        if (ClassicInventory::handleInput(*this, kDown)) return;\n\n''')
-
-          old_footer = '''                instructions = ClassicInventory::isClassicSource(*this)\n                    ? "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  L/R: Category  |  +: Pending Changes  |  B: Back"\n                    : "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  Left/Right: Page  |  L/R: Category  |  B: Back";\n'''
-          new_footer = '''                if (ClassicInventory::isClassicSource(*this)) {\n                    const auto game = PokeBank::UIModel::classicInventoryGame(sourceGameId);\n                    const auto pocket = game\n                        ? PokeBank::UIModel::classicInventoryPocketAt(*game, selectedCategory)\n                        : std::optional<PokeVault::Inventory::ClassicPocket>{};\n                    bool hasSelection = false;\n                    bool quantityEditable = false;\n                    if (game && pocket && selectedCategory >= 0 &&\n                        selectedCategory < static_cast<int>(trainer.items.size())) {\n                        const auto visible = visibleItemIndices();\n                        if (selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(visible.size())) {\n                            const auto& item = trainer.items[selectedCategory][visible[selectedItemIndex]];\n                            hasSelection = item.count != 0;\n                            quantityEditable = hasSelection &&\n                                PokeBank::UIModel::classicInventoryQuantityEditable(*game, *pocket, item.itemId);\n                        }\n                    }\n                    const auto available = PokeBank::UIModel::classicInventoryActionAvailability(\n                        pocket.has_value(), hasSelection, quantityEditable);\n                    instructions = "D-pad/Stick: Navigate";\n                    if (available.editAmount) instructions += "  |  A: Edit Amount";\n                    if (available.addItem) instructions += "  |  X: Add Item";\n                    if (available.removeItem) instructions += "  |  Y: Remove Item";\n                    instructions += "  |  L/R: Category  |  +: Options  |  -: Help  |  B: Back";\n                } else {\n                    instructions = "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  Left/Right: Page  |  L/R: Category  |  B: Back";\n                }\n'''
-          replace("src/UI/TrainerViewScreenBase.inc", old_footer, new_footer)
-
-          # The GSC wrapper must not run the classic controller with raw pad-down before shared repeat.
-          replace(
-              "src/UI/TrainerViewScreenGSCOverlay.cpp",
-              '''    const u64 down = padGetButtonsDown(&pad);\n    if (ClassicInventory::handleInput(*this, down)) return;\n\n    const bool validatedGSC''',
-              '''    const u64 down = padGetButtonsDown(&pad);\n\n    const bool validatedGSC''')
-
-          # Record the final owner-selected contract in the durable controls document.
-          controls = Path("docs/CONTROLS.md")
-          text = controls.read_text()
-          marker = "# Classic inventory editor\n"
-          if marker not in text:
-              text += '''\n---\n\n# Classic inventory editor\n\nFor staged Generation I/II/III inventory sources, the authoritative mapping is:\n\n```text\nD-pad / Left Stick  Navigate rows\nA                   Edit amount (only when the selected item has an editable quantity)\nX                   Add item from the exact-game / exact-category catalog\nY                   Remove the selected item\nL / R               Previous / next supported category\n+                   Inventory Options\n-                   Inventory Help\nB                   Back / Cancel\n```\n\n`+` opens **Inventory Options**, whose save-level actions include Review Pending Changes,\nExport Staged Save, Discard Staged Changes, and Cancel. It does not jump directly to Pending Changes.\nOn an empty valid category, `(None)` is shown and X Add remains available; A Edit and Y Remove are unavailable.\nAll classic inventory mutations are staged and export to a separate edited copy; the source save remains read-only.\nThe older development-only `Y Add / X Remove / + Pending Changes` mapping is obsolete.\n'''
-              controls.write_text(text)
-          PY
-
+          python3 ../carrier/.github/scripts/apply_classic_inventory_correction.py controls
           git diff --check
+          make -f Makefile.host.classic_inventory host-classic-inventory
           ! git grep -n -E 'Y: Add Item.*X: Remove Item|Y Add Item.*X Remove Item|\+: Pending Changes' -- \
             src/UI/ClassicInventoryOverlay.cpp src/UI/TrainerViewScreenBase.inc docs/CONTROLS.md
-
-      - name: Focused control and classic inventory tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          make -f Makefile.host.classic_inventory host-classic-inventory
-          git diff --check
-
-      - name: Commit authoritative controls
-        shell: bash
-        run: |
-          set -euo pipefail
           git config user.name "PokeBank NX CI"
           git config user.email "actions@users.noreply.github.com"
           git add include/UI/ClassicInventoryUIModel.h src/UI/ClassicInventoryUIModel.cpp \
@@ -472,53 +53,13 @@ jobs:
                   src/UI/TrainerViewScreenBase.inc src/UI/TrainerViewScreenGSCOverlay.cpp docs/CONTROLS.md
           git commit -m "ui: correct classic inventory controls and options"
 
-      - name: Fix permanent host staged-sidecar linkage
+      - name: Fix and validate permanent host linkage
+        working-directory: work
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("Makefile.host.base")
-          text = p.read_text()
-
-          anchor = '''LEGACY_FRLG_BROWSE_SOURCES := tests/test_legacy_frlg_browse.cpp \\\n'''
-          shared = '''# Trainers with staged classic-inventory sidecars pull these implementation dependencies into\n# every host executable that instantiates them. ItemNames.cpp is already present in both trainer\n# source groups below, so this list intentionally contains only the additional shared catalog pieces.\nCLASSIC_INVENTORY_CATALOG_LINK_SOURCES := src/Inventory/ClassicInventoryCatalog.cpp \\\n\tsrc/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp\nGEN3_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen3/Gen3StagedInventoryEditor.cpp \\\n\t$(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES)\nGEN1_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \\\n\t$(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES)\nCLASSIC_UI_MODEL_SOURCES := tests/test_classic_inventory_ui_model.cpp \\\n\tsrc/UI/ClassicInventoryUIModel.cpp $(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES) src/Names/ItemNames.cpp\n\n'''
-          if anchor not in text:
-              raise SystemExit("LEGACY_FRLG_BROWSE_SOURCES anchor missing")
-          text = text.replace(anchor, shared + anchor, 1)
-
-          old = '''\tsrc/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \\\n\tsrc/Games/GameIdentity.cpp\nLEGACY_FRLG_BROWSE_FLAGS'''
-          new = '''\tsrc/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \\\n\tsrc/Games/GameIdentity.cpp $(GEN3_STAGED_INVENTORY_LINK_SOURCES)\nLEGACY_FRLG_BROWSE_FLAGS'''
-          if old not in text:
-              raise SystemExit("FRLG browse source-tail anchor missing")
-          text = text.replace(old, new, 1)
-
-          old = '''\tsrc/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp\nRBY_BRIDGE_FLAGS'''
-          new = '''\tsrc/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \\\n\t$(GEN1_STAGED_INVENTORY_LINK_SOURCES)\nRBY_BRIDGE_FLAGS'''
-          if old not in text:
-              raise SystemExit("RBY bridge source-tail anchor missing")
-          text = text.replace(old, new, 1)
-
-          old = '''HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_rby_gen1_adapter_sanitize \\\n\t$(HOST_BUILD)/test_rby_inventory_sanitize $(HOST_BUILD)/test_rby_discovery_sanitize \\\n\t$(HOST_BUILD)/test_rby_source_browser_sanitize $(HOST_BUILD)/test_rby_readonly_bridge_sanitize\n\n.PHONY: host-test'''
-          new = '''HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_rby_gen1_adapter_sanitize \\\n\t$(HOST_BUILD)/test_rby_inventory_sanitize $(HOST_BUILD)/test_rby_discovery_sanitize \\\n\t$(HOST_BUILD)/test_rby_source_browser_sanitize $(HOST_BUILD)/test_rby_readonly_bridge_sanitize\nHOST_TESTS += $(HOST_BUILD)/test_classic_inventory_ui_model\nHOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_inventory_ui_model_sanitize\n\n.PHONY: host-test'''
-          if old not in text:
-              raise SystemExit("host test list anchor missing")
-          text = text.replace(old, new, 1)
-
-          target_anchor = '''$(HOST_BUILD)/test_source_mutation_policy: tests/test_source_mutation_policy.cpp\n'''
-          targets = '''$(HOST_BUILD)/test_classic_inventory_ui_model: $(CLASSIC_UI_MODEL_SOURCES)\n\t@mkdir -p $(HOST_BUILD)\n\t$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@\n\n$(HOST_BUILD)/test_classic_inventory_ui_model_sanitize: $(CLASSIC_UI_MODEL_SOURCES)\n\t@mkdir -p $(HOST_BUILD)\n\t$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@\n\n'''
-          if target_anchor not in text:
-              raise SystemExit("target insertion anchor missing")
-          text = text.replace(target_anchor, targets + target_anchor, 1)
-          p.write_text(text)
-          PY
-
+          python3 ../carrier/.github/scripts/apply_classic_inventory_correction.py build
           git diff --check
-
-      - name: Re-run exact failed link target and representative Gen I linkage
-        shell: bash
-        run: |
-          set -euo pipefail
           rm -rf build-host
           make -f Makefile.host.base build-host/test_legacy_frlg_browse
           ./build-host/test_legacy_frlg_browse
@@ -527,16 +68,11 @@ jobs:
           make -f Makefile.host.classic_inventory host-classic-inventory
           make -f Makefile.host.base build-host/test_classic_inventory_ui_model
           ./build-host/test_classic_inventory_ui_model
-          git diff --check
-
-      - name: Commit host build graph fix
-        shell: bash
-        run: |
-          set -euo pipefail
           git add Makefile.host.base
           git commit -m "build: link staged classic inventory into host regressions"
 
       - name: Push corrected development branch
+        working-directory: work
         shell: bash
         run: |
           set -euo pipefail
