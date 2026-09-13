@@ -86,6 +86,11 @@ constexpr bool ppUpsIsTopLevelEditorRow() noexcept { return false; }
 constexpr bool dvsAreGrouped() noexcept { return true; }
 constexpr bool statExperienceIsGrouped() noexcept { return true; }
 
+// The hardware-proven pass-1 UI remains compiled under recovery/reference symbols. Keep its old
+// 30-row contract helpers available so preserving that implementation never constrains Cleanup #2.
+constexpr std::size_t addWorkspaceFieldCount() noexcept { return legacyRawFieldCount(); }
+constexpr std::array<std::size_t,6> addSectionStarts() noexcept { return {0,4,16,21,26,28}; }
+
 inline std::string speciesPickerRow(uint16_t species, const char* name) {
     char prefix[16]{};
     std::snprintf(prefix, sizeof(prefix), "%03u - ", static_cast<unsigned>(species));
