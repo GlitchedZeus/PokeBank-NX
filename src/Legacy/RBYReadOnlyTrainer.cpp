@@ -63,9 +63,14 @@ std::unique_ptr<RBYReadOnlyTrainer> RBYReadOnlyTrainer::create(
     }
     auto trainer = std::unique_ptr<RBYReadOnlyTrainer>(new RBYReadOnlyTrainer(metadata));
     if (!trainer->populate(save, error)) return nullptr;
+
     std::string stagedError;
     trainer->stagedInventory_ = Integration::Gen1::StagedInventoryEditor::create(save, stagedError);
     trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);
+
+    stagedError.clear();
+    trainer->stagedPokemon_ = Integration::Gen1::StagedPokemonEditor::create(save, stagedError);
+    trainer->stagedPokemonUnavailableReason_ = std::move(stagedError);
     return trainer;
 }
 
@@ -138,6 +143,45 @@ bool RBYReadOnlyTrainer::populate(
                 return false;
             }
             boxes[box][slot] = std::make_unique<Pokemon::Pokemon1ReadOnly>(record);
+        }
+    }
+    return true;
+}
+
+bool RBYReadOnlyTrainer::refreshBoxesFromStagedPokemon(std::string& error) {
+    error.clear();
+    if (!stagedPokemon_) {
+        error = stagedPokemonUnavailableReason_.empty()
+            ? "Generation I staged boxed Pokemon editor is unavailable"
+            : stagedPokemonUnavailableReason_;
+        return false;
+    }
+    if (boxes.size() != stagedPokemon_->metadata().boxCount) {
+        error = "staged Generation I box count no longer matches presentation geometry";
+        return false;
+    }
+
+    for (size_t box = 0; box < boxes.size(); ++box) {
+        if (boxes[box].size() < slotsPerBox_) {
+            error = "staged Generation I slot count no longer matches presentation geometry";
+            return false;
+        }
+        for (size_t slot = 0; slot < slotsPerBox_; ++slot) {
+            std::string slotError;
+            const auto record = stagedPokemon_->boxedPokemon(box, slot, slotError);
+            if (!slotError.empty()) {
+                error = slotError;
+                return false;
+            }
+            if (!record) {
+                boxes[box][slot].reset();
+                continue;
+            }
+            if (record->partyRecord || record->rawBodySize != 33 || record->species == 0) {
+                error = "staged Generation I editor returned an invalid boxed record";
+                return false;
+            }
+            boxes[box][slot] = std::make_unique<Pokemon::Pokemon1ReadOnly>(*record);
         }
     }
     return true;
