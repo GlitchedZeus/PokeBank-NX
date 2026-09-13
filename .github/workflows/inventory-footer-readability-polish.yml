@@ -1,0 +1,59 @@
+name: Inventory Footer Readability Polish
+
+on:
+  push:
+    branches:
+      - dev/inventory-footer-readability-20260913
+    paths:
+      - tools/apply_inventory_footer_readability_polish.py
+      - .github/workflows/inventory-footer-readability-polish.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-focus-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply deterministic polish patch
+        run: python3 tools/apply_inventory_footer_readability_polish.py
+      - name: Diff check
+        run: git diff --check
+      - name: Focused inventory UI model tests
+        run: |
+          make -f Makefile.host build-host/test_inventory_ui_contract build-host/test_classic_inventory_ui_model
+          ./build-host/test_inventory_ui_contract
+          ./build-host/test_classic_inventory_ui_model
+      - name: Static picker/footer invariants
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          c = Path('include/UI/InventoryUIContract.h').read_text()
+          o = Path('src/UI/ClassicInventoryOverlay.cpp').read_text()
+          b = Path('src/UI/TrainerViewScreenBase.inc').read_text()
+          assert 'static constexpr int Width = 560;' in c
+          assert 'static constexpr int FooterHeight = 64;' in c
+          assert 'rowH - 4, true' in o
+          assert 'Colors::Text, TextStyle::Caption' in o
+          assert 'D-pad/Stick Navigate     A Add/Select' in o
+          assert 'B Cancel                  L/R Page' in o
+          assert 'stagedInventoryActionsAvailable' in b
+          assert 'useReadOnlyInventoryFooterOverride' in b
+          print('picker/footer static invariants: PASS')
+          PY
+      - name: Commit applied source patch
+        run: |
+          if git diff --quiet; then
+            echo 'Patch already present; nothing to commit.'
+            exit 0
+          fi
+          git config user.name 'PokeBank NX CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add include/UI/InventoryUIContract.h include/UI/ClassicInventoryOverlay.h \
+                  src/UI/ClassicInventoryOverlay.cpp src/UI/TrainerViewScreenBase.inc \
+                  tests/test_inventory_ui_contract.cpp
+          git commit -m 'ui: fix classic staged footer and picker readability [inventory-polish-applied]'
+          git push origin HEAD:dev/inventory-footer-readability-20260913
