@@ -33,3 +33,23 @@ $(HOST_BUILD)/test_gsc_pokemon_editor: $(GEN2_POKEMON_EDITOR_SOURCES)
 $(HOST_BUILD)/test_gsc_pokemon_editor_sanitize: $(GEN2_POKEMON_EDITOR_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+GEN1_POKEMON_COMMON := src/Integration/Gen1/Gen1StagedPokemonEditor.cpp \
+    src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \
+    src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp \
+    src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp \
+    src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+GEN1_POKEMON_SOURCES := tests/test_rby_pokemon_editor.cpp $(GEN1_POKEMON_COMMON)
+HOST_TESTS += $(HOST_BUILD)/test_rby_pokemon_editor
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_rby_pokemon_editor_sanitize
+host-test: $(HOST_BUILD)/test_rby_pokemon_editor
+host-sanitize: $(HOST_BUILD)/test_rby_pokemon_editor_sanitize
+$(HOST_BUILD)/test_rby_pokemon_editor: $(GEN1_POKEMON_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_POKEMON_SOURCES) -o $@
+$(HOST_BUILD)/test_rby_pokemon_editor_sanitize: $(GEN1_POKEMON_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_POKEMON_SOURCES) -o $@
+
+# RBY bridge owns the sidecar; accepted read-only tests must link its native dependencies.
+$(HOST_BUILD)/test_rby_readonly_bridge $(HOST_BUILD)/test_rby_readonly_bridge_sanitize: src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Pokemon/Experience.cpp
