@@ -32,3 +32,18 @@ $(HOST_BUILD)/test_gen1_shiny: $(GEN1_CLEANUP3_SHINY_SOURCES) include/Integratio
 $(HOST_BUILD)/test_gen1_shiny_sanitize: $(GEN1_CLEANUP3_SHINY_SOURCES) include/Integration/Gen1/Gen1Shiny.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_CLEANUP3_SHINY_SOURCES) -o $@
+
+GEN1_CLEANUP3_UX_SOURCES := tests/test_gen1_pokemon_editor_ux3_contract.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract_sanitize
+host-test: $(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract
+host-sanitize: $(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract_sanitize
+
+$(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract: $(GEN1_CLEANUP3_UX_SOURCES) include/UI/Gen1PokemonEditorUX3Contract.h include/UI/NavigationRepeat.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_CLEANUP3_UX_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract_sanitize: $(GEN1_CLEANUP3_UX_SOURCES) include/UI/Gen1PokemonEditorUX3Contract.h include/UI/NavigationRepeat.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_CLEANUP3_UX_SOURCES) -o $@
