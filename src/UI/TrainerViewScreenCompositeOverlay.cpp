@@ -13,6 +13,7 @@
 #include "UI/ClassicInventoryOverlay.h"
 #include "UI/LegacyPresentationRules.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/ScreenChrome.h"
 #include "Trainer/Trainer.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
@@ -35,14 +36,24 @@
 #undef update
 
 namespace UI::Gen1PokemonEditor {
-// Preserve the hardware-proven pass-1 implementation under recovery/reference symbols. Cleanup #2
-// reuses its staged/export helpers in the same translation unit while owning the active UI state.
+using SourceGame = PokeVault::Integration::Gen1::SourceGame;
+using PokeVault::Integration::Gen1::parse;
+
+// Preserve the hardware-proven pass-1 implementation under recovery/reference symbols.
 [[nodiscard]] bool isGen1SourceUXBase(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUXBase(TrainerViewScreen& screen, uint64_t down);
 void drawOverlayUXBase(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 
+// Cleanup #2 remains compiled under explicit recovery symbols. Cleanup #3 owns the
+// live entry points while reusing Cleanup #2's accepted staged/export helpers.
+[[nodiscard]] bool isGen1SourceUXCleanup2(const TrainerViewScreen& screen) noexcept;
+[[nodiscard]] bool handleInputUXCleanup2(TrainerViewScreen& screen, uint64_t down);
+void drawOverlayUXCleanup2(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+
 [[nodiscard]] bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down);
+[[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                 int stickX, int stickY);
 void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 } // namespace UI::Gen1PokemonEditor
 
@@ -56,15 +67,27 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 #undef handleInput
 #undef isGen1Source
 
-// Hardware cleanup pass #2: compact geometry, clipped logical editor, non-mutating hover preview,
-// grouped move/stat editors, true five-stat radar, truthful legality wording, and visual clone browse.
+// Hardware cleanup pass #2 stays byte-for-byte available as the immediate recovery/reference layer.
+#define isGen1SourceUX isGen1SourceUXCleanup2
+#define handleInputUX handleInputUXCleanup2
+#define drawOverlayUX drawOverlayUXCleanup2
 #include "Gen1PokemonEditorOverlayUXCleanup2.inc"
+#undef drawOverlayUX
+#undef handleInputUX
+#undef isGen1SourceUX
+
+// Cleanup pass #3: PKSE-style Gen I Create/Edit structure, five-stat radar, DV-derived shiny UX,
+// numbered normal/shiny Species preview, shared stick navigation, move compatibility, clone sprites,
+// mature read-only View reuse, and content-aware Pending Changes.
+#include "Gen1PokemonEditorOverlayUXCleanup3.inc"
 
 namespace UI {
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 down = padGetButtonsDown(&pad);
-    if (Gen1PokemonEditor::handleInputUX(*this, down)) return;
+    const u64 held = padGetButtons(&pad);
+    const HidAnalogStickState stick = padGetStickPos(&pad, 0);
+    if (Gen1PokemonEditor::handleInputUX(*this, down, held, stick.x, stick.y)) return;
     updateGSCOverlay(pad, touch);
 }
 
