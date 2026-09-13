@@ -102,8 +102,10 @@ void writePairs(std::vector<uint8_t>& bytes, std::size_t offset, std::size_t cap
     bytes[offset + 1 + entries.size() * 2] = 0xFF;
 }
 
+constexpr std::size_t kKeyItemCapacity = 25;
+
 bool readKeys(std::span<const uint8_t> bytes, std::size_t offset, std::vector<uint8_t>& out) noexcept {
-    constexpr std::size_t capacity = 26;
+    constexpr std::size_t capacity = kKeyItemCapacity;
     if (offset >= bytes.size() || 1 + capacity + 1 > bytes.size() - offset) return false;
     const uint8_t count = bytes[offset];
     if (count > capacity || bytes[offset + 1 + count] != 0xFF) return false;
@@ -113,7 +115,7 @@ bool readKeys(std::span<const uint8_t> bytes, std::size_t offset, std::vector<ui
 }
 
 void writeKeys(std::vector<uint8_t>& bytes, std::size_t offset, std::span<const uint8_t> entries) {
-    constexpr std::size_t capacity = 26;
+    constexpr std::size_t capacity = kKeyItemCapacity;
     bytes[offset] = static_cast<uint8_t>(entries.size());
     std::fill(bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1),
               bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1 + capacity + 1), 0);
@@ -221,7 +223,7 @@ bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId
         if (quantity == 0) {
             if (it != entries.end()) entries.erase(it);
         } else if (it == entries.end()) {
-            if (entries.size() >= 26) {
+            if (entries.size() >= kKeyItemCapacity) {
                 error = "No free slots in this Key Items pocket";
                 return false;
             }

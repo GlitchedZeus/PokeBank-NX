@@ -100,6 +100,8 @@ int main(){
         assert(editor->inventoryEntries(InventoryPocket::PCItems,error).empty()&&error.empty());
 
         assert(editor->stageInventoryQuantity(InventoryPocket::KeyItems,54,1,error));
+        // Regression: Key Items must not overwrite the adjacent Balls count byte.
+        assert(editor->stagedInventoryQuantity(InventoryPocket::Balls,5)==5);
         assert(!editor->stageInventoryQuantity(InventoryPocket::KeyItems,54,2,error));
         assert(!editor->stageInventoryQuantity(InventoryPocket::KeyItems,70,1,error)); // Crystal-only.
         assert(editor->stageInventoryQuantity(InventoryPocket::TMHM,191,3,error)); // TM01.
