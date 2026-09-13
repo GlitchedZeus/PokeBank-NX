@@ -13,6 +13,7 @@ on:
       - 'src/Integration/Gen1/**'
       - 'src/Legacy/RBYReadOnlyTrainer.cpp'
       - 'src/UI/Gen1PokemonEditorOverlay.cpp'
+      - 'src/UI/Gen1PokemonEditorOverlayUX.inc'
       - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
       - 'src/UI/TrainerViewScreenGSCOverlay.cpp'
       - 'src/UI/TrainerViewScreenGSCOverlay.inc'
@@ -84,6 +85,7 @@ jobs:
           from pathlib import Path
           contract = Path('include/UI/Gen1PokemonEditorUIContract.h').read_text()
           overlay = Path('src/UI/Gen1PokemonEditorOverlay.cpp').read_text()
+          ux = Path('src/UI/Gen1PokemonEditorOverlayUX.inc').read_text()
           bridge = Path('src/Legacy/RBYReadOnlyTrainer.cpp').read_text()
           core = Path('src/Integration/Gen1/Gen1StagedPokemonEditor.cpp').read_text()
           paths = Path('include/Utils/PokeBankPaths.h').read_text()
@@ -116,6 +118,27 @@ jobs:
               'PARTY_EDIT=DEFERRED',
           ]:
               assert needle in overlay, needle
+          required_ux = [
+              'constexpr int rows = 30;',
+              'state.mode == Mode::AddDraft && (down & HidNpadButton_X)',
+              'if (state.mode == Mode::AddDraft) state.draft = BoxPokemonCreate{};',
+              'if (down & HidNpadButton_X)',
+              'beginAddDraft(screen);',
+              'if (down & HidNpadButton_Y)',
+              'state.mode = Mode::RemoveConfirm;',
+              'SpriteManager::getSprite(species, false)',
+              'return UX::speciesPickerRow(species, Names::getSpeciesName(species));',
+              'void drawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h, bool add)',
+              'case Mode::Edit: drawEditor(screen, fb, x, y, w, h, false);',
+              'case Mode::AddDraft: drawEditor(screen, fb, x, y, w, h, true);',
+              '(derived / read-only)',
+              'std::string footerText(const TrainerViewScreen& screen, const OverlayState& state)',
+              'if (state.picker == PickerKind::Species || state.picker == PickerKind::Move)',
+              'drawFooter(fb, footerText(screen, state));',
+              'original RetroArch .srm unchanged',
+          ]
+          for needle in required_ux:
+              assert needle in ux, needle
           assert 'StagedPokemonEditor::create(save, stagedError)' in bridge
           assert 'refreshBoxesFromStagedPokemon' in bridge
           assert 'RegionLayout::International' in core
@@ -124,7 +147,13 @@ jobs:
           assert 'sdmc:/switch/PokeBank-NX' in paths
           assert 'At most ONE prompt per frame' in keyboard
           assert 'sdmc:/PKSE' not in overlay
+          assert 'sdmc:/PKSE' not in ux
+          assert 'writeBytes(screen.backupDir' not in ux
+          assert 'std::fopen(screen.backupDir' not in ux
           print('GEN I ACTION CAPABILITY CONTRACT: PASS')
+          print('GEN I ONE-SCREEN UX ARCHITECTURE: PASS')
+          print('GEN I CONTEXTUAL FOOTER OWNERSHIP: PASS')
+          print('GEN I LIVE PREVIEW / DIRECT BOX ACTIONS: PASS')
           print('ADD DRAFT MUTATION GATE: PASS')
           print('NO FAKE MODERN GEN I FIELD CONTRACT: PASS')
           print('INTERNATIONAL EDIT GATE: PASS')
