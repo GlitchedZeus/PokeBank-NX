@@ -1,0 +1,173 @@
+name: Gen I Cleanup3 Focused Gates
+
+on:
+  pull_request:
+    branches: [feature/pokebank-playable]
+    paths:
+      - 'Makefile.host*'
+      - 'include/Integration/Gen1/Gen1MoveCompatibility.h'
+      - 'include/Integration/Gen1/Gen1Shiny.h'
+      - 'include/UI/Gen1PokemonDetailsPresentation.h'
+      - 'include/UI/Gen1PokemonEditorUX3Contract.h'
+      - 'include/UI/NavigationRepeat.h'
+      - 'include/UI/SpriteManager.h'
+      - 'include/UI/StatsRadar.h'
+      - 'src/Integration/Gen1/Gen1MoveCompatibility*'
+      - 'src/UI/Gen1PokemonDetailsPresentation.cpp'
+      - 'src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc'
+      - 'src/UI/Modals/Gen1PokemonDetailsModal.cpp'
+      - 'src/UI/SpriteManager.cpp'
+      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
+      - 'src/Names/SpeciesNames.cpp'
+      - 'tests/test_gen1_cleanup3_staged_semantics.cpp'
+      - 'tests/test_gen1_move_compatibility.cpp'
+      - 'tests/test_gen1_pokemon_editor_ux3_contract.cpp'
+      - 'tests/test_gen1_shiny.cpp'
+      - 'tools/check_device_assets.py'
+      - 'tools/gen_hdsprites.py'
+      - 'docs/GEN1_SHINY_SPRITE_REFERENCE.md'
+      - 'romfs/sprites/pokemon_hd/**'
+      - '.github/workflows/gen1-cleanup3-focused.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-gen1-cleanup3-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused:
+    name: Cleanup3 model + UX safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 40
+          submodules: recursive
+
+      - name: Exact identity and whitespace
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          git diff --check HEAD^
+          git diff --quiet
+          git diff --cached --quiet
+          echo "CLEANUP3 SOURCE: $(git rev-parse HEAD)"
+          echo "CLEANUP3 TREE: $(git rev-parse 'HEAD^{tree}')"
+
+      - name: Focused Cleanup3 host tests
+        run: |
+          set -euo pipefail
+          rm -rf build-host
+          for target in \
+            test_gen1_shiny \
+            test_gen1_move_compatibility \
+            test_gen1_pokemon_editor_ux3_contract \
+            test_gen1_cleanup3_staged_semantics; do
+            make -f Makefile.host "build-host/$target"
+            "./build-host/$target"
+          done
+          echo 'GEN I CLEANUP3 FOCUSED HOST: PASS'
+
+      - name: Source/UI safety contract
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          ux3 = Path('src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc').read_text()
+          composite = Path('src/UI/TrainerViewScreenCompositeOverlay.cpp').read_text()
+          shiny = Path('include/Integration/Gen1/Gen1Shiny.h').read_text()
+          compat = Path('src/Integration/Gen1/Gen1MoveCompatibility.cpp').read_text()
+          model = Path('include/UI/Gen1PokemonEditorUX3Contract.h').read_text()
+          presentation = Path('include/UI/Gen1PokemonDetailsPresentation.h').read_text()
+          assets = Path('tools/check_device_assets.py').read_text()
+          sprite_manager = Path('src/UI/SpriteManager.cpp').read_text()
+          staged_test = Path('tests/test_gen1_cleanup3_staged_semantics.cpp').read_text()
+
+          required_ux3 = [
+              'ControllerNavigation',
+              'MoveCompatibility::compatibleMoves',
+              'MoveCompatibility::firstIncompatible',
+              'ShinyDVs::makeShiny',
+              'ShinyDVs::makeNormalFallback',
+              'Y Shiny',
+              'D-pad/Stick Navigate',
+              'SpriteManager::getSprite(preview, true)',
+              'SpriteManager::getIconSprite',
+              'UX3Contract::pendingGeometry',
+              'drawGen1PokemonDetailsPresentation',
+              'Encounter legality',
+              'Not checked',
+          ]
+          for needle in required_ux3:
+              assert needle in ux3, needle
+
+          assert 'Gen1PokemonEditorOverlayUXCleanup2.inc' in composite
+          assert 'Gen1PokemonEditorOverlayUXCleanup3.inc' in composite
+          assert '#define isGen1SourceUX isGen1SourceUXCleanup2' in composite
+          assert 'padGetStickPos(&pad, 0)' in composite
+
+          assert 'dvs[1] == 10 && dvs[2] == 10 && dvs[3] == 10' in shiny
+          assert '2, 3, 6, 7, 10, 11, 14, 15' in shiny
+          assert 'shinyIsStoredBoolean() noexcept { return false; }' in model
+          assert 'fullEncounterLegalityIsImplemented() noexcept { return false; }' in model
+          assert 'viewIsReadOnly() noexcept { return true; }' in model
+          assert 'usesPkseThreeColumnSkeleton() noexcept { return true; }' in model
+          assert 'cloneBrowseMutatesStagedSave() noexcept { return false; }' in model
+          assert 'workspaceRowCount()' in model and 'workspaceFields().size()' in model
+          assert 'nature' not in presentation.lower()
+          assert 'ability' not in presentation.lower()
+          assert 'helditem' not in presentation.lower()
+          assert 'canLearnMove' in compat
+
+          # Asset contract: all Gen I normal+shiny paths are explicit, runtime-shared and fail-loud.
+          assert 'GEN1_DEX_MAX = 151' in assets
+          assert 'all {GEN1_DEX_MAX} Gen I normal HOME renders are present' in assets
+          assert 'all {GEN1_DEX_MAX} Gen I shiny HOME renders are present' in assets
+          assert 'verify_runtime_sprite_contract' in assets
+          assert 'format_missing' in assets
+          assert 'std::string suffix = isShiny ? "s" : "";' in sprite_manager
+          assert 'sprites/pokemon_hd/' in sprite_manager
+          assert 'sprites/pokemon/' in sprite_manager
+
+          # Permanent test must cross the actual staged serializer boundary, not merely call isShiny().
+          for needle in (
+              'finalizedBytes(error)',
+              'parse(finalized, SourceGame::Red)',
+              'stored(*reparsedShiny) == shinyDVs',
+              'stageClone(2, 1, 2, 2, error)',
+              'stored(*clone) == shinyDVs',
+              'renamed->moves == sourceMoves',
+              'renamed->pp == sourcePP',
+              'renamed->ppUps == sourcePPUps',
+          ):
+              assert needle in staged_test, needle
+
+          # None of the active Cleanup3 files may grow a live source-write path.
+          for path in (
+              Path('src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc'),
+              Path('src/UI/Gen1PokemonDetailsPresentation.cpp'),
+          ):
+              text = path.read_text()
+              assert 'writeBytes(' not in text
+              assert 'fopen(' not in text
+              assert 'fsOpenSaveDataFileSystem' not in text
+
+          print('PKSE-STYLE GEN I CREATE/EDIT CONTRACT: PASS')
+          print('GEN I SHINY STORAGE: DV-DERIVED / NO FAKE FLAG')
+          print('GEN I STRICT SHINY SERIALIZE/REPARSE CONTRACT: PASS')
+          print('GEN I SHINY CLONE DV PRESERVATION CONTRACT: PASS')
+          print('GEN I WEIRD-SOURCE MOVE/PP PRESERVATION CONTRACT: PASS')
+          print('GEN I SPECIES NORMAL+SHINY PREVIEW: PASS')
+          print('GEN I MOVE COMPATIBILITY FILTER: PASS')
+          print('GEN I LEFT-STICK SHARED NAVIGATION: PASS')
+          print('GEN I CLONE SPRITE CONTRACT: PASS')
+          print('GEN I CONTENT-AWARE PENDING CONTRACT: PASS')
+          print('LIVE SOURCE WRITES: HARD DISABLED')
+          PY

@@ -47,3 +47,24 @@ $(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract: $(GEN1_CLEANUP3_UX_SOURCES)
 $(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract_sanitize: $(GEN1_CLEANUP3_UX_SOURCES) include/UI/Gen1PokemonEditorUX3Contract.h include/UI/NavigationRepeat.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_CLEANUP3_UX_SOURCES) -o $@
+
+# End-to-end staged semantics for the new kid-facing shiny/move UX: a shiny Add
+# must survive strict finalize/reparse and Clone, while unrelated edits preserve an
+# existing weird source move instead of normalizing it through the picker model.
+GEN1_CLEANUP3_STAGED_SOURCES := \
+	tests/test_gen1_cleanup3_staged_semantics.cpp \
+	$(GEN1_POKEMON_COMMON) \
+	src/Integration/Gen1/Gen1MoveCompatibility.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_gen1_cleanup3_staged_semantics
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_cleanup3_staged_semantics_sanitize
+host-test: $(HOST_BUILD)/test_gen1_cleanup3_staged_semantics
+host-sanitize: $(HOST_BUILD)/test_gen1_cleanup3_staged_semantics_sanitize
+
+$(HOST_BUILD)/test_gen1_cleanup3_staged_semantics: $(GEN1_CLEANUP3_STAGED_SOURCES) src/Integration/Gen1/Gen1MoveCompatibilityData.inc src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_CLEANUP3_STAGED_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen1_cleanup3_staged_semantics_sanitize: $(GEN1_CLEANUP3_STAGED_SOURCES) src/Integration/Gen1/Gen1MoveCompatibilityData.inc src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_CLEANUP3_STAGED_SOURCES) -o $@

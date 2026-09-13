@@ -1,0 +1,317 @@
+name: Gen I Cleanup3 Candidate Gate
+
+on:
+  pull_request:
+    branches: [feature/pokebank-playable]
+    paths:
+      - 'Makefile.host*'
+      - 'include/Integration/Gen1/**'
+      - 'include/Legacy/RBYReadOnlyTrainer.h'
+      - 'include/UI/Gen1Pokemon*'
+      - 'include/UI/NavigationRepeat.h'
+      - 'include/UI/SpriteManager.h'
+      - 'include/UI/StatsRadar.h'
+      - 'src/Integration/Gen1/**'
+      - 'src/Legacy/RBYReadOnlyTrainer.cpp'
+      - 'src/UI/Gen1Pokemon*'
+      - 'src/UI/Modals/Gen1PokemonDetailsModal.cpp'
+      - 'src/UI/SpriteManager.cpp'
+      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
+      - 'src/Names/SpeciesNames.cpp'
+      - 'tests/test_gen1*'
+      - 'tools/check_device_assets.py'
+      - 'tools/gen_hdsprites.py'
+      - 'docs/GEN1_SHINY_SPRITE_REFERENCE.md'
+      - '.github/workflows/gen1-cleanup3-focused.yml'
+      - '.github/workflows/gen1-cleanup3-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-gen1-cleanup3-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+
+jobs:
+  host:
+    name: Cleanup3 exact host + sanitizer gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - name: Checkout exact Cleanup3 head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          fetch-depth: 100
+          submodules: recursive
+
+      - name: Verify exact identity and whitespace
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          git fetch --no-tags origin "$BASE_SHA" || true
+          if git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null && [ "$BASE_SHA" != "$APP_SHA" ]; then
+            git diff --check "$BASE_SHA"..HEAD
+          else
+            git diff --check HEAD^
+          fi
+          git diff --quiet
+          git diff --cached --quiet
+          echo "GEN I CLEANUP3 SOURCE: $APP_SHA"
+          echo "GEN I CLEANUP3 TREE: $(git rev-parse 'HEAD^{tree}')"
+
+      - name: Focused Cleanup3 hardening tests
+        run: |
+          set -euo pipefail
+          rm -rf build-host
+          for target in \
+            test_gen1_shiny \
+            test_gen1_move_compatibility \
+            test_gen1_pokemon_editor_ux3_contract \
+            test_gen1_cleanup3_staged_semantics \
+            test_rby_pokemon_editor \
+            test_gen1_battle_stats \
+            test_gen1_pokemon_editor_ui_contract \
+            test_rby_readonly_bridge; do
+            make -f Makefile.host "build-host/$target"
+            "./build-host/$target"
+          done
+          echo 'GEN I SHINY DERIVATION: PASS'
+          echo 'GEN I SHINY REVERSIBLE TOGGLE CONTRACT: PASS'
+          echo 'GEN I SHINY STRICT ROUND TRIP: PASS'
+          echo 'GEN I SHINY CLONE PRESERVATION: PASS'
+          echo 'GEN I WEIRD SOURCE MOVE PRESERVATION: PASS'
+          echo 'GEN I SPECIES/MOVE/CONTROLLER UI CONTRACT: PASS'
+          echo 'GEN I RBY READ-ONLY + STAGED SIDECAR: PASS'
+
+      - name: Cleanup3 source immutability contract
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          staged = Path('tests/test_gen1_cleanup3_staged_semantics.cpp').read_text()
+          ux3 = Path('src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc').read_text()
+          model = Path('include/UI/Gen1PokemonEditorUX3Contract.h').read_text()
+          shiny = Path('include/Integration/Gen1/Gen1Shiny.h').read_text()
+          assets = Path('tools/check_device_assets.py').read_text()
+
+          for needle in (
+              'finalizedBytes(error)',
+              'parse(finalized, SourceGame::Red)',
+              'stored(*reparsedShiny) == shinyDVs',
+              'stored(*clone) == shinyDVs',
+              'renamed->moves == sourceMoves',
+              'renamed->pp == sourcePP',
+              'renamed->ppUps == sourcePPUps',
+              'sourceBytes().begin()',
+          ):
+              assert needle in staged, needle
+          assert 'dvs[1] == 10 && dvs[2] == 10 && dvs[3] == 10' in shiny
+          assert '2, 3, 6, 7, 10, 11, 14, 15' in shiny
+          assert 'shinyIsStoredBoolean() noexcept { return false; }' in model
+          assert 'viewIsReadOnly() noexcept { return true; }' in model
+          assert 'cloneBrowseMutatesStagedSave() noexcept { return false; }' in model
+          assert 'liveSourceWritingEnabled() noexcept { return false; }' in model
+          assert 'partyEditingEnabled() noexcept { return false; }' in model
+          assert 'GEN1_DEX_MAX = 151' in assets
+          assert 'all {GEN1_DEX_MAX} Gen I normal HOME renders are present' in assets
+          assert 'all {GEN1_DEX_MAX} Gen I shiny HOME renders are present' in assets
+          for text in (ux3,):
+              assert 'writeBytes(' not in text
+              assert 'fopen(' not in text
+              assert 'fsOpenSaveDataFileSystem' not in text
+          print('CLEANUP3 SOURCE IMMUTABILITY: PASS')
+          print('LIVE RETROARCH WRITE: HARD DISABLED')
+          print('LIVE INSTALLED-GAME WRITE: HARD DISABLED')
+          print('PARTY EDIT: DEFERRED')
+          PY
+
+      - name: Full permanent host suite
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+          echo 'FULL PERMANENT HOST SUITE: PASS'
+
+      - name: ASan and UBSan permanent suite
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-sanitize
+          echo 'ASAN: PASS'
+          echo 'UBSAN: PASS'
+
+  native_package:
+    name: Cleanup3 devkitA64 + UX3 physical-test package
+    needs: host
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - name: Checkout exact Cleanup3 head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 100
+          submodules: recursive
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Verify exact candidate identity
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          echo "APP_SHA=$APP_SHA"
+          echo "APP_TREE=$(git -C application rev-parse 'HEAD^{tree}')" | tee candidate-tree.txt
+          git -C application diff --check HEAD^
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+
+      - name: Recover complete device RomFS and prove Gen I Normal/Shiny coverage
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py) 2>&1 | tee recovery.log
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            test -s "application/assets/game_cards/$f.png"
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          grep -q 'all 151 Gen I normal HOME renders are present' asset-preflight.log
+          grep -q 'all 151 Gen I shiny HOME renders are present' asset-preflight.log
+          echo 'GEN I NORMAL/SHINY ARTWORK PREFLIGHT: PASS 151/151 + 151/151'
+
+      - name: Clean devkitA64 compile and final NRO link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            dkp-pacman -Q libnx devkitA64 switch-tools switch-sdl2 switch-glad switch-lz4 || true
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s application/PokeBankNX.nro
+          echo 'DEVKITA64 FULL BUILD: PASS'
+          echo 'FINAL NRO LINK: PASS'
+
+      - name: Verify embedded source identity and RomFS
+        run: |
+          set -euo pipefail
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source "$APP_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_FINAL_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          print(json.dumps(data, indent=2))
+          PY
+          echo 'EMBEDDED SOURCE IDENTITY: PASS'
+          echo 'EMBEDDED ROMFS: PASS'
+
+      - name: Package exact UX3 physical Switch candidate and hashes
+        run: |
+          set -euo pipefail
+          mkdir -p device-artifact
+          python3 application/tools/package_device_build.py application/PokeBankNX.nro \
+            --label Gen1-UX3-Retest --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
+          cp embedded-romfs.json asset-preflight.log recovery.log native-build.log \
+             toolchain-image.json toolchain-packages.txt candidate-tree.txt device-artifact/
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          out = Path('device-artifact')
+          app_sha = os.environ['APP_SHA']
+          tree = os.popen("git -C application rev-parse 'HEAD^{tree}'").read().strip()
+          files = {}
+          for p in sorted(out.iterdir()):
+              if p.is_file():
+                  files[p.name] = {
+                      'bytes': p.stat().st_size,
+                      'sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
+                  }
+          nro_candidates = [p for p in out.iterdir() if p.suffix == '.nro']
+          zip_candidates = [p for p in out.iterdir() if p.suffix == '.zip']
+          assert len(nro_candidates) == 1, nro_candidates
+          assert len(zip_candidates) == 1, zip_candidates
+          assert 'UX3' in nro_candidates[0].name, nro_candidates[0]
+          assert 'UX3' in zip_candidates[0].name, zip_candidates[0]
+          record = {
+              'application_source': app_sha,
+              'application_tree': tree,
+              'recovery_snapshot': os.environ['RECOVERY_SHA'],
+              'workflow_run': int(os.environ['GITHUB_RUN_ID']),
+              'gen1_cleanup3_focused': 'PASS',
+              'shiny_strict_round_trip': 'PASS',
+              'shiny_clone_preservation': 'PASS',
+              'weird_source_move_preservation': 'PASS',
+              'gen1_normal_sprite_coverage': 'PASS 151/151',
+              'gen1_shiny_sprite_coverage': 'PASS 151/151',
+              'full_host_suite': 'PASS',
+              'asan': 'PASS',
+              'ubsan': 'PASS',
+              'native_devkitA64_full_link': 'PASS',
+              'embedded_romfs': f"PASS {os.environ['EXPECTED_FINAL_ROMFS']}/{os.environ['EXPECTED_FINAL_ROMFS']}",
+              'live_retroarch_writing': 'HARD DISABLED',
+              'live_installed_game_writing': 'HARD DISABLED',
+              'party_edit': 'DEFERRED',
+              'hardware_accepted': False,
+              'files': files,
+          }
+          (out / 'BUILD_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+          sums = []
+          for p in sorted(out.iterdir()):
+              if p.is_file() and p.name != 'SHA256SUMS.txt':
+                  sums.append(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n')
+          (out / 'SHA256SUMS.txt').write_text(''.join(sums))
+          print((out / 'BUILD_MANIFEST.json').read_text())
+          print((out / 'SHA256SUMS.txt').read_text())
+          PY
+
+      - name: Preserve Gen I UX3 physical-test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gen1-UX3-Retest-Candidate
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Preserve Cleanup3 native diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gen1-UX3-Retest-Diagnostics
+          path: |
+            recovery.log
+            asset-preflight.log
+            native-build.log
+            embedded-romfs.json
+            toolchain-image.json
+            toolchain-packages.txt
+            candidate-tree.txt
+          if-no-files-found: ignore
