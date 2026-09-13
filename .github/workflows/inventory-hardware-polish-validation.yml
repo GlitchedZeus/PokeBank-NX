@@ -1,0 +1,254 @@
+name: Inventory Hardware Polish Candidate Validation
+
+on:
+  push:
+    branches: [ci/inventory-hardware-polish-validation-20260913]
+
+permissions:
+  contents: read
+
+env:
+  APP_SHA: 8cf4c7bf7a9213afcb4ef84a1a892b99017a7ed4
+  APP_TREE: e58f3e6058d48377983399bc3b198d52f20a9083
+  CANDIDATE_BRANCH: dev/inventory-hardware-polish-20260913
+  BASE_SHA: f603e3e4e14b8e5dff06b032cbb5467843cb16bd
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 50
+          submodules: recursive
+
+      - name: Exact candidate identity
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          test "$(git -C application ls-remote origin "refs/heads/$CANDIDATE_BRANCH" | awk '{print $1}')" = "$APP_SHA"
+          git -C application diff --check "$BASE_SHA"..HEAD
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+          echo 'EXACT CANDIDATE IDENTITY: PASS'
+          echo 'git diff --check: PASS'
+
+      - name: Focused inventory hardware UI gate
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host.classic_inventory host-classic-inventory
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_inventory_ui_contract.cpp -o /tmp/test_inventory_ui_contract
+          /tmp/test_inventory_ui_contract
+          echo 'GLOBAL EDITABLE INVENTORY CONTROL CONTRACT: PASS'
+          echo 'CLASSIC X ADD / Y REMOVE: PASS'
+          echo 'MODERN X ADD / Y REMOVE MODEL: PASS'
+          echo 'CLASSIC PICKER WIDTH CONTRACT: PASS'
+          echo 'ITEM COLOR ROLE CONTRACT: PASS'
+          echo 'FOCUSED CLASSIC INVENTORY: PASS'
+
+      - name: Hardware-polish source invariants
+        working-directory: application
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          contract = Path('include/UI/InventoryUIContract.h').read_text()
+          base = Path('src/UI/TrainerViewScreenBase.inc').read_text()
+          overlay = Path('src/UI/ClassicInventoryOverlay.cpp').read_text()
+          picker = Path('src/UI/Dialogs/PickerDialog.cpp').read_text()
+          items = Path('src/UI/Panels/ItemsPanel.cpp').read_text()
+          assert 'case InventoryInput::A: return InventoryAction::EditAmount;' in contract
+          assert 'case InventoryInput::X: return InventoryAction::AddItem;' in contract
+          assert 'case InventoryInput::Y: return InventoryAction::RemoveItem;' in contract
+          assert 'case InventoryInput::L: return InventoryAction::PreviousCategory;' in contract
+          assert 'case InventoryInput::R: return InventoryAction::NextCategory;' in contract
+          assert 'case InventoryInput::Plus: return InventoryAction::Options;' in contract
+          assert 'case InventoryInput::Minus: return InventoryAction::Help;' in contract
+          assert 'case InventoryInput::B: return InventoryAction::Back;' in contract
+          assert 'if (available.addItem) out += "  |  X: Add Item";' in contract
+          assert 'if (available.removeItem) out += "  |  Y: Remove Item";' in contract
+          assert 'static constexpr int Width = 560;' in contract
+          assert 'static constexpr int RowHeight = 40;' in contract
+          assert 'itemNameColorRole(bool selected, bool isNew)' in contract
+          assert '(void)isNew;' in contract
+          assert 'InventoryAction::AddItem' in base
+          assert 'InventoryAction::RemoveItem' in base
+          assert 'requireMutableWorkspace();' in base
+          assert 'inventoryFooter(' in base
+          assert 'InventoryPickerLayout::Width' in overlay
+          assert 'std::to_string(state.pickerRow + 1) + " / "' in overlay
+          assert 'HidNpadButton_L | HidNpadButton_Left' in overlay
+          assert 'HidNpadButton_R | HidNpadButton_Right' in overlay
+          assert 'D-pad/Stick Navigate   A Add/Select   B Cancel   L/R Page' in overlay
+          assert 'D-pad/Stick Navigate   A Select   B Cancel   L/R Page' in picker
+          assert 'itemNameColorRole(selected, item.isNew)' in items
+          assert 'item.isNew ? Colors::Accent' not in items
+          print('MODERN CONTROL FIX STATIC CONTRACT: PASS')
+          print('READ-ONLY EDIT LOCK STATIC CONTRACT: PASS')
+          print('MAIN/EMPTY FOOTER CONTRACT: PASS')
+          print('CLASSIC PICKER NARROW/CENTERED CONTRACT: PASS')
+          print('PICKER POSITION COUNTER: PASS')
+          print('PICKER CONTROLS VISIBLE: PASS')
+          print('isNew PRESERVED / NAME NOT ACCENT: PASS')
+          PY
+          ! grep -R 'sdmc:/PKSE' -n src include
+          grep -q 'sdmc:/switch/PokeBank-NX' include/Utils/PokeBankPaths.h
+          grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' include/Safety/SourceMutationPolicy.h
+          grep -q 'SAVE WRITING NOT YET ENABLED' src/UI/Dialogs/SaveConfirmDialog.cpp
+          echo 'NO /PKSE/: PASS'
+          echo 'SOURCE MUTATION POLICY: PASS'
+          echo 'LIVE INSTALLED-GAME WRITES: HARD DISABLED'
+          echo 'LIVE RETROARCH WRITES: HARD DISABLED'
+          echo 'LIVE EMULATOR WRITES: HARD DISABLED'
+          echo 'VIOLET TITLE ID: PASS'
+
+      - name: Previous link regressions
+        working-directory: application
+        run: |
+          set -euo pipefail
+          rm -rf build-host
+          make -f Makefile.host.base build-host/test_legacy_frlg_browse
+          ./build-host/test_legacy_frlg_browse
+          make -f Makefile.host.base build-host/test_rby_readonly_bridge
+          ./build-host/test_rby_readonly_bridge
+          echo 'FRLG LINK REGRESSION: PASS'
+          echo 'RBY STAGED SIDECAR LINKAGE: PASS'
+
+      - name: Full permanent host suite
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+          echo 'FULL HOST: PASS'
+          echo 'GEN II POKEMON EDITOR: PASS'
+          echo 'RBY/GSC/RSE/FRLG READ REGRESSIONS: PASS'
+          echo 'MODERN READ PATHS: PASS'
+          echo 'RUNTIME DEPENDENCY CONTRACT: PASS'
+          echo 'POKEBANK PATHS: PASS'
+
+      - name: ASan and UBSan permanent suite
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-sanitize
+          echo 'ASan: PASS'
+          echo 'UBSan: PASS'
+
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 50
+          submodules: recursive
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Verify exact candidate identity
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          test "$(git -C application ls-remote origin "refs/heads/$CANDIDATE_BRANCH" | awk '{print $1}')" = "$APP_SHA"
+          git -C application diff --check "$BASE_SHA"..HEAD
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+          echo 'EXACT CANDIDATE IDENTITY: PASS'
+
+      - name: Recover device RomFS and asset preflight
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py) 2>&1 | tee recovery.log
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+
+      - name: Full devkitA64 compile and final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            for obj in ClassicInventoryOverlay.o ClassicInventoryUIModel.o ItemsPanel.o PickerDialog.o TrainerViewScreen.o; do
+              find build -name "$obj" -type f | grep -q . || { echo "missing native object: $obj"; exit 1; }
+            done
+          ' 2>&1 | tee native-build.log
+          grep -q 'ClassicInventoryOverlay.cpp' native-build.log
+          grep -q 'ClassicInventoryUIModel.cpp' native-build.log
+          grep -q 'ItemsPanel.cpp' native-build.log
+          grep -q 'PickerDialog.cpp' native-build.log
+          grep -q 'TrainerViewScreen.cpp' native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s application/PokeBankNX.nro
+          echo 'CHANGED UI FILES ENTERED NATIVE BUILD: PASS'
+          echo 'DEVKITA64: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
+
+      - name: Verify embedded identity and RomFS
+        run: |
+          set -euo pipefail
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source "$APP_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_FINAL_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          print(json.dumps(data, indent=2))
+          PY
+          echo 'EMBEDDED IDENTITY: PASS'
+          echo 'EMBEDDED ROMFS: PASS'
+
+      - name: Upload candidate native diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Inventory-Hardware-Polish-Candidate-Diagnostics-8cf4c7bf
+          path: |
+            recovery.log
+            asset-preflight.log
+            native-build.log
+            embedded-romfs.json
+            toolchain-image.json
+            toolchain-packages.txt
+          if-no-files-found: ignore
+          retention-days: 30
