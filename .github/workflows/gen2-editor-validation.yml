@@ -36,3 +36,4 @@ jobs:
           grep -R "InstalledGame" -n src include >/dev/null
           grep -R "RetroArchLegacy" -n src include >/dev/null
 # final Gen II acceptance validation trigger 2026-09-12
+# exact cleaned Gen II editor candidate validation
