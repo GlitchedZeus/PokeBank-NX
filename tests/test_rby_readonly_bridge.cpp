@@ -79,10 +79,19 @@ int main(){
     std::string error;auto trainer=RBYReadOnlyTrainer::create(*parsed.save,error);assert(trainer&&error.empty());
     assert(trainer->sourceGameId()=="red_gb");assert(!trainer->japaneseLayout());assert(trainer->getBoxCount()==12);assert(trainer->getSlotsPerBox()==20);
     assert(trainer->getGameGroup()==Enums::GameVersion::RBY);
-    assert(trainer->items.size()==2);assert(trainer->items[0].size()==2);assert(trainer->items[1].size()==1);
-    assert(trainer->items[0][0].itemId==0x14&&trainer->items[0][0].count==3);
-    assert(trainer->items[0][1].itemId==0xC9&&trainer->items[0][1].count==2);
-    assert(trainer->items[1][0].itemId==0x2D&&trainer->items[1][0].count==1);
+    // RBY still stores one real Bag plus PC Items, but the accepted classic inventory UI now
+    // presents six filtered views over those same bytes: Items, Medicines, Balls, Key Items,
+    // TM/HM, PC Items. This verifies presentation only; it does not fabricate new save pockets.
+    assert(trainer->items.size()==6);
+    assert(trainer->items[0].empty());
+    assert(trainer->items[1].size()==1);
+    assert(trainer->items[2].empty());
+    assert(trainer->items[3].empty());
+    assert(trainer->items[4].size()==1);
+    assert(trainer->items[5].size()==1);
+    assert(trainer->items[1][0].itemId==0x14&&trainer->items[1][0].count==3);
+    assert(trainer->items[4][0].itemId==0xC9&&trainer->items[4][0].count==2);
+    assert(trainer->items[5][0].itemId==0x2D&&trainer->items[5][0].count==1);
     assert(trainer->trainerName=="WILL");assert(trainer->money==123456);assert(trainer->TID16==0x1234);assert(trainer->SID16==0);assert(trainer->currentBox==2);
     assert(trainer->party.size()==1);auto* party=static_cast<Pokemon::Pokemon1ReadOnly*>(trainer->party[0].get());
     assert(party->speciesID()==25);assert(Utils::utf16ToUtf8(party->nickname())=="SPARKY");assert(Utils::utf16ToUtf8(party->otName())=="RED");
@@ -104,8 +113,8 @@ int main(){
             {SourceGame::Blue,"blue_gb"}
         }}){
         auto p=parse(raw,game);assert(p);std::string e;auto t=RBYReadOnlyTrainer::create(*p.save,e);
-        assert(t&&e.empty()&&t->sourceGameId()==id&&t->items.size()==2);
-        assert(t->items[0][0].itemId==0x14&&t->items[1][0].itemId==0x2D);
+        assert(t&&e.empty()&&t->sourceGameId()==id&&t->items.size()==6);
+        assert(t->items[1][0].itemId==0x14&&t->items[4][0].itemId==0xC9&&t->items[5][0].itemId==0x2D);
     }
     auto bad=fixture();bad[BAG]=21;checksums(bad);const auto badBefore=bad;
     auto badParsed=parse(bad,SourceGame::Red);assert(badParsed);
@@ -115,7 +124,7 @@ int main(){
 
     auto yellowRaw=raw; yellowRaw[0x29C3]=0x54; checksums(yellowRaw);
     auto yp=parse(yellowRaw,SourceGame::Yellow);assert(yp);std::string ye;auto yt=RBYReadOnlyTrainer::create(*yp.save,ye);
-    assert(yt&&ye.empty()&&yt->sourceGameId()=="yellow_gb"&&yt->items.size()==2);
-    assert(yt->items[0][0].itemId==0x14&&yt->items[1][0].itemId==0x2D);
+    assert(yt&&ye.empty()&&yt->sourceGameId()=="yellow_gb"&&yt->items.size()==6);
+    assert(yt->items[1][0].itemId==0x14&&yt->items[4][0].itemId==0xC9&&yt->items[5][0].itemId==0x2D);
     std::cout<<"RBY Trainer/Party/Boxes/Pokemon read-only bridge tests passed\n";return 0;
 }
