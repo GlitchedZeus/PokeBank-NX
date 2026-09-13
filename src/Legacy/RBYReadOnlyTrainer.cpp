@@ -156,8 +156,10 @@ bool RBYReadOnlyTrainer::refreshBoxesFromStagedPokemon(std::string& error) {
             : stagedPokemonUnavailableReason_;
         return false;
     }
-    if (boxes.size() != stagedPokemon_->metadata().boxCount) {
-        error = "staged Generation I box count no longer matches presentation geometry";
+    // The mutation editor is deliberately gated to the validated international R/B/Y layout,
+    // whose physical geometry is exactly 12 contiguous boxes x 20 slots.
+    if (boxes.size() != 12u || slotsPerBox_ != 20u) {
+        error = "staged Generation I editor presentation requires the validated 12x20 international layout";
         return false;
     }
 
