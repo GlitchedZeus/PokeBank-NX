@@ -1,0 +1,465 @@
+name: Classic Inventory Wiring Carrier
+
+on:
+  push:
+    branches: [ci/classic-inventory-wiring-20260913]
+
+permissions:
+  contents: write
+
+env:
+  EXPECTED_DEV: f087f0e2f53300ea606a2e5da8ae22f3c5e0d29e
+  DEV_BRANCH: dev/classic-inventory-20260912
+
+jobs:
+  wire-test-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out exact development branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEV_BRANCH }}
+          fetch-depth: 0
+
+      - name: Verify preserved development tip
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_DEV"
+          test "$(git rev-parse 'HEAD^{tree}')" = "ab3f94d5bacbc78f534dd747275e1082ae604653"
+          test "$(git rev-parse HEAD^)" = "2f88622d8eb2c44f21f89af0ce13a9cb66d649f8"
+
+      - name: Wire existing classic controller into live UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"expected patch anchor missing in {path}: {old[:120]!r}")
+              if text.count(old) != 1:
+                  raise SystemExit(f"patch anchor not unique in {path}: {text.count(old)}")
+              p.write_text(text.replace(old, new, 1))
+
+          # Shared Gen II category order: one model drives tabs, exact pocket, picker and rendering.
+          replace_once('src/UI/ClassicInventoryUIModel.cpp',
+          '''constexpr std::array<ClassicPocket, 5> kGen2Categories{{
+              ClassicPocket::TMHM, ClassicPocket::Items, ClassicPocket::KeyItems,
+              ClassicPocket::Balls, ClassicPocket::PCItems,
+          }};''',
+          '''constexpr std::array<ClassicPocket, 5> kGen2Categories{{
+              ClassicPocket::Items, ClassicPocket::Balls, ClassicPocket::KeyItems,
+              ClassicPocket::TMHM, ClassicPocket::PCItems,
+          }};''')
+
+          replace_once('tests/test_classic_inventory_ui_model.cpp',
+          '''    assert(classicInventoryCategories(*gold).size() == 5);
+              assert(classicInventoryPocketAt(*gold, 0) == ClassicPocket::TMHM);
+              assert(classicInventoryPocketAt(*gold, 1) == ClassicPocket::Items);
+              assert(classicInventoryPocketAt(*gold, 2) == ClassicPocket::KeyItems);
+              assert(classicInventoryPocketAt(*gold, 3) == ClassicPocket::Balls);
+              assert(classicInventoryPocketAt(*gold, 4) == ClassicPocket::PCItems);''',
+          '''    assert(classicInventoryCategories(*gold).size() == 5);
+              assert(classicInventoryPocketAt(*gold, 0) == ClassicPocket::Items);
+              assert(classicInventoryPocketAt(*gold, 1) == ClassicPocket::Balls);
+              assert(classicInventoryPocketAt(*gold, 2) == ClassicPocket::KeyItems);
+              assert(classicInventoryPocketAt(*gold, 3) == ClassicPocket::TMHM);
+              assert(classicInventoryPocketAt(*gold, 4) == ClassicPocket::PCItems);''')
+
+          # Initialize the presentation once per opened classic source and respect every blocking modal.
+          replace_once('src/UI/ClassicInventoryOverlay.cpp',
+          '''struct OverlayState {
+              const TrainerViewScreen* owner = nullptr;
+              bool pickerActive = false;''',
+          '''struct OverlayState {
+              const TrainerViewScreen* owner = nullptr;
+              std::string sourceGameId;
+              bool presentationInitialized = false;
+              bool pickerActive = false;''')
+
+          replace_once('src/UI/ClassicInventoryOverlay.cpp',
+          '''OverlayState& stateFor(const TrainerViewScreen& screen) {
+              static OverlayState state;
+              if (state.owner != &screen) {
+                  state = {};
+                  state.owner = &screen;
+              }
+              return state;
+          }''',
+          '''OverlayState& stateFor(const TrainerViewScreen& screen) {
+              static OverlayState state;
+              if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+                  state = {};
+                  state.owner = &screen;
+                  state.sourceGameId = screen.sourceGameId;
+              }
+              return state;
+          }''')
+
+          replace_once('src/UI/ClassicInventoryOverlay.cpp',
+          '''bool handleInput(TrainerViewScreen& screen, uint64_t down) {
+              if (!isClassicSource(screen)) return false;
+              auto& state = stateFor(screen);
+
+              if (state.warningActive) {''',
+          '''bool handleInput(TrainerViewScreen& screen, uint64_t down) {
+              if (!isClassicSource(screen)) return false;
+              auto& state = stateFor(screen);
+
+              if (!state.presentationInitialized && refreshPresentation(screen)) {
+                  state.presentationInitialized = true;
+                  const auto game = exactGame(screen);
+                  const int categoryCount = game
+                      ? static_cast<int>(PokeBank::UIModel::classicInventoryCategories(*game).size()) : 0;
+                  if (categoryCount > 0)
+                      screen.selectedCategory = std::clamp(screen.selectedCategory, 0, categoryCount - 1);
+                  screen.selectedItemIndex = 0;
+                  screen.currentPage = 0;
+              }
+
+              if (state.warningActive) {''')
+
+          replace_once('src/UI/ClassicInventoryOverlay.cpp',
+          '''    if (!screen.detailViewActive || screen.selectedMode != TrainerViewScreen::ViewMode::Items ||
+                  screen.helpOverlayActive || screen.details.active || screen.actionSheet.isOpen() ||
+                  screen.saveConfirmActive || screen.pickerActive || screen.itemEditDialogActive ||
+                  screen.itemRemoveConfirmActive) return false;''',
+          '''    if (!screen.detailViewActive || screen.selectedMode != TrainerViewScreen::ViewMode::Items ||
+                  screen.helpOverlayActive || screen.details.active || screen.actionSheet.isOpen() ||
+                  screen.saveConfirmActive || screen.pickerActive || screen.itemEditDialogActive ||
+                  screen.itemRemoveConfirmActive || screen.statEdit.dialogActive ||
+                  screen.releaseConfirmActive || screen.storageExitConfirmActive || screen.groupMenuActive ||
+                  screen.creator.keepConfirmActive || screen.details.discardConfirmActive ||
+                  screen.gen3ConvertConfirmActive || screen.lgpeTransferConfirmActive) return false;''')
+
+          # ItemsPanel: exact classic model for category labels and item/machine names; valid empty == (None).
+          replace_once('src/UI/Panels/ItemsPanel.cpp',
+          '''#include "Integration/Gen2/Gen2ReadOnlyInventory.h"
+          #include "Enums/GameVersion.h"''',
+          '''#include "Integration/Gen2/Gen2ReadOnlyInventory.h"
+          #include "Inventory/ClassicInventoryCatalog.h"
+          #include "UI/ClassicInventoryUIModel.h"
+          #include "Enums/GameVersion.h"''')
+
+          replace_once('src/UI/Panels/ItemsPanel.cpp',
+          '''        const bool rbySource = screen.legacyReadOnlySource() && isRBYSource(screen.sourceGameId);
+                  const bool gscSource = screen.legacyReadOnlySource() && isGSCSource(screen.sourceGameId);
+                  const bool rseSource = screen.legacyReadOnlySource() && isRSESource(screen.sourceGameId);
+                  const char* pouchName = rbySource
+                      ? PokeVault::Integration::Gen1::inventoryCategoryName(static_cast<size_t>(screen.selectedCategory))
+                      : gscSource ? gscPouchDisplayName(screen.selectedCategory)
+                      : rseSource ? rsePouchDisplayName(screen.selectedCategory)
+                                  : pouchDisplayName(gameGroup, screen.selectedCategory);''',
+          '''        const bool rbySource = screen.legacyReadOnlySource() && isRBYSource(screen.sourceGameId);
+                  const bool gscSource = screen.legacyReadOnlySource() && isGSCSource(screen.sourceGameId);
+                  const bool rseSource = screen.legacyReadOnlySource() && isRSESource(screen.sourceGameId);
+                  const auto classicGame = PokeBank::UIModel::classicInventoryGame(screen.sourceGameId);
+                  const auto classicPocket = classicGame
+                      ? PokeBank::UIModel::classicInventoryPocketAt(*classicGame, screen.selectedCategory)
+                      : std::optional<PokeVault::Inventory::ClassicPocket>{};
+                  std::string classicPouchName = classicPocket
+                      ? std::string(PokeVault::Inventory::pocketName(*classicPocket)) : std::string{};
+                  const char* pouchName = classicPocket
+                      ? classicPouchName.c_str()
+                      : rbySource ? PokeVault::Integration::Gen1::inventoryCategoryName(static_cast<size_t>(screen.selectedCategory))
+                      : gscSource ? gscPouchDisplayName(screen.selectedCategory)
+                      : rseSource ? rsePouchDisplayName(screen.selectedCategory)
+                                  : pouchDisplayName(gameGroup, screen.selectedCategory);''')
+
+          replace_once('src/UI/Panels/ItemsPanel.cpp',
+          '''        if (screen.selectedCategory < 0 || screen.selectedCategory >= static_cast<int>(screen.trainer.items.size())) {
+                  fb.drawText(x + 24, y + hH + 30, "Invalid category", Colors::TextDim);
+                  return;
+              }''',
+          '''        if (screen.selectedCategory < 0 || screen.selectedCategory >= static_cast<int>(screen.trainer.items.size())) {
+                  fb.drawText(x + 24, y + hH + 30,
+                              classicGame ? "(None)" : "Invalid category", Colors::TextDim);
+                  return;
+              }''')
+
+          replace_once('src/UI/Panels/ItemsPanel.cpp',
+          '''        if (visible.empty()) {
+                  fb.drawText(x + 24, y + hH + 30, "No items in this category", Colors::TextDim);
+                  return;
+              }''',
+          '''        if (visible.empty()) {
+                  fb.drawText(x + 24, y + hH + 30,
+                              classicGame ? "(None)" : "No items in this category", Colors::TextDim);
+                  return;
+              }''')
+
+          replace_once('src/UI/Panels/ItemsPanel.cpp',
+          '''            std::string baseName;
+                      if (gameGroup == GameVersion::RBY) {
+                          baseName = Names::getItemNameG1(item.itemId);
+                      } else if (gameGroup == GameVersion::GSC) {
+                          baseName = std::string(PokeVault::Integration::Gen2::gen2ItemName(
+                              static_cast<uint8_t>(item.itemId)));
+                      } else if (gameGroup == GameVersion::FRLG) {
+                          baseName = Names::getItemNameG3(item.itemId);
+                      } else {
+                          baseName = getItemName(item.itemId);
+                      }
+                      const std::string displayName = Names::machineDisplayLabel(gameGroup, item.itemId, baseName);''',
+          '''            std::string displayName;
+                      if (classicGame && classicPocket) {
+                          displayName = PokeVault::Inventory::displayItemName(*classicGame, *classicPocket, item.itemId);
+                      } else {
+                          std::string baseName;
+                          if (gameGroup == GameVersion::RBY) {
+                              baseName = Names::getItemNameG1(item.itemId);
+                          } else if (gameGroup == GameVersion::GSC) {
+                              baseName = std::string(PokeVault::Integration::Gen2::gen2ItemName(
+                                  static_cast<uint8_t>(item.itemId)));
+                          } else if (gameGroup == GameVersion::FRLG) {
+                              baseName = Names::getItemNameG3(item.itemId);
+                          } else {
+                              baseName = getItemName(item.itemId);
+                          }
+                          displayName = Names::machineDisplayLabel(gameGroup, item.itemId, baseName);
+                      }''')
+
+          # Global footer advertises the classic action contract including Pending Changes.
+          replace_once('src/UI/TrainerViewScreenBase.inc',
+          '''#include "UI/Panels/ItemsPanel.h"
+          #include "UI/Panels/StoragePanel.h"''',
+          '''#include "UI/Panels/ItemsPanel.h"
+          #include "UI/ClassicInventoryOverlay.h"
+          #include "UI/Panels/StoragePanel.h"''')
+
+          replace_once('src/UI/TrainerViewScreenBase.inc',
+          '''            if (selectedMode == ViewMode::Items) {
+                          instructions = "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  Left/Right: Page  |  L/R: Category  |  B: Back";
+                      } else if (selectedMode == ViewMode::Boxes) {''',
+          '''            if (selectedMode == ViewMode::Items) {
+                          instructions = ClassicInventory::isClassicSource(*this)
+                              ? "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  L/R: Category  |  +: Pending Changes  |  B: Back"
+                              : "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  Left/Right: Page  |  L/R: Category  |  B: Back";
+                      } else if (selectedMode == ViewMode::Boxes) {''')
+
+          # GSC wrapper owns the actual live update/draw definitions. Route classic actions before inherited handlers.
+          replace_once('src/UI/TrainerViewScreenGSCOverlay.cpp',
+          '''#include "UI/Common.h"
+          #include "UI/LegacyPresentationRules.h"''',
+          '''#include "UI/Common.h"
+          #include "UI/ClassicInventoryOverlay.h"
+          #include "UI/LegacyPresentationRules.h"''')
+
+          replace_once('src/UI/TrainerViewScreenGSCOverlay.cpp',
+          '''bool itemCategoryNavigationAvailable(const TrainerViewScreen& screen) noexcept {
+              return screen.selectedMode == TrainerViewScreen::ViewMode::Items &&
+                     !screen.pickerActive && !screen.itemEditDialogActive &&
+                     !screen.itemRemoveConfirmActive && !screen.statEdit.dialogActive &&
+                     !screen.saveConfirmActive && !screen.releaseConfirmActive &&
+                     !screen.storageExitConfirmActive && !screen.groupMenuActive &&
+                     !screen.creator.keepConfirmActive && !screen.details.active &&
+                     !screen.details.discardConfirmActive && !screen.gen3ConvertConfirmActive &&
+                     !screen.lgpeTransferConfirmActive && !screen.actionSheet.isOpen();
+          }
+
+          ''', '')
+
+          replace_once('src/UI/TrainerViewScreenGSCOverlay.cpp',
+          '''    if (screen.selectedMode == TrainerViewScreen::ViewMode::Items) {
+                  // Jump near the actual pocket the user was viewing: Items -> Potion, Balls -> Poke Ball.
+                  state.selectedRow = screen.selectedCategory == 3 ? 3 : 2;
+              } else {
+                  state.selectedRow = 0;
+              }''',
+          '''    state.selectedRow = 0;''')
+
+          replace_once('src/UI/TrainerViewScreenGSCOverlay.cpp',
+          '''    constexpr int rowCount = 7;''',
+          '''    constexpr int rowCount = 4;''')
+
+          old_cases = '''        case 2: {
+                      const int current = editor->itemQuantity(InventoryPocket::Items, kPotionItemId);
+                      const auto result = Utils::promptNumber("Potion quantity (0 removes)", current, 0, 99);
+                      if (result.accepted && !editor->stageItemQuantity(
+                              InventoryPocket::Items, kPotionItemId, static_cast<uint8_t>(result.value), error))
+                          screen.postStatus(error);
+                      else if (result.accepted)
+                          screen.postStatus("Potion quantity staged; source .srm unchanged");
+                      break;
+                  }
+                  case 3: {
+                      const int current = editor->itemQuantity(InventoryPocket::Balls, kPokeBallItemId);
+                      const auto result = Utils::promptNumber("Poke Ball quantity (0 removes)", current, 0, 99);
+                      if (result.accepted && !editor->stageItemQuantity(
+                              InventoryPocket::Balls, kPokeBallItemId, static_cast<uint8_t>(result.value), error))
+                          screen.postStatus(error);
+                      else if (result.accepted)
+                          screen.postStatus("Poke Ball quantity staged; source .srm unchanged");
+                      break;
+                  }
+                  case 4: {
+                      const int current = editor->itemQuantity(InventoryPocket::Balls, kMasterBallItemId);
+                      const auto result = Utils::promptNumber("Master Ball quantity (0 removes)", current, 0, 99);
+                      if (result.accepted && !editor->stageItemQuantity(
+                              InventoryPocket::Balls, kMasterBallItemId, static_cast<uint8_t>(result.value), error))
+                          screen.postStatus(error);
+                      else if (result.accepted)
+                          screen.postStatus("Master Ball quantity staged; source .srm unchanged");
+                      break;
+                  }
+                  case 5:
+                      state.review = true;
+                      state.reviewRow = 0;
+                      break;
+                  case 6:
+                      editor->discard();
+                      screen.postStatus("Staged changes discarded; original save was never modified");
+                      break;'''
+          new_cases = '''        case 2:
+                      state.review = true;
+                      state.reviewRow = 0;
+                      break;
+                  case 3:
+                      editor->discard();
+                      screen.postStatus("Staged changes discarded; original save was never modified");
+                      break;'''
+          replace_once('src/UI/TrainerViewScreenGSCOverlay.cpp', old_cases, new_cases)
+
+          replace_once('src/UI/TrainerViewScreenGSCOverlay.cpp',
+          '''    const std::vector<std::pair<std::string, std::string>> rows{
+                  {"Trainer Name", editor->trainerName()},
+                  {"Money", "$" + std::to_string(editor->money())},
+                  {"Potion", std::to_string(editor->itemQuantity(InventoryPocket::Items, kPotionItemId))},
+                  {"Poke Ball", std::to_string(editor->itemQuantity(InventoryPocket::Balls, kPokeBallItemId))},
+                  {"Master Ball", std::to_string(editor->itemQuantity(InventoryPocket::Balls, kMasterBallItemId))},
+                  {"Review Pending Changes", std::to_string(editor->pendingChanges().size()) + " change(s)"},
+                  {"Discard Staged Changes", editor->hasPendingChanges() ? "Available" : "Nothing staged"},
+              };''',
+          '''    const std::vector<std::pair<std::string, std::string>> rows{
+                  {"Trainer Name", editor->trainerName()},
+                  {"Money", "$" + std::to_string(editor->money())},
+                  {"Review Pending Changes", std::to_string(editor->pendingChanges().size()) + " change(s)"},
+                  {"Discard Staged Changes", editor->hasPendingChanges() ? "Available" : "Nothing staged"},
+              };''')
+
+          replace_once('src/UI/TrainerViewScreenGSCOverlay.cpp',
+          '''void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
+              const bool validatedGSC = trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this);
+              if (validatedGSC) {
+                  auto& overlay = editorOverlayState(*this);
+                  const u64 down = padGetButtonsDown(&pad);''',
+          '''void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
+              const u64 down = padGetButtonsDown(&pad);
+              if (ClassicInventory::handleInput(*this, down)) return;
+
+              const bool validatedGSC = trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this);
+              if (validatedGSC) {
+                  auto& overlay = editorOverlayState(*this);''')
+
+          replace_once('src/UI/TrainerViewScreenGSCOverlay.cpp',
+          '''        const bool editorEntrySurface = detailViewActive &&
+                  (selectedMode == ViewMode::Trainer || selectedMode == ViewMode::Items) &&''',
+          '''        const bool editorEntrySurface = detailViewActive &&
+                  selectedMode == ViewMode::Trainer &&''')
+
+          old_nav = '''
+              // The accepted large implementation has no GSC switch arm, so its L/R item-tab handling is a
+              // deliberate no-op for group 70. Handle the five real Gen II pockets here, then delegate every
+              // other input path unchanged. This preserves RBY=2 and every existing Gen III+ pouch count.
+              if (validatedGSC && itemCategoryNavigationAvailable(*this)) {
+                  const u64 down = padGetButtonsDown(&pad);
+                  const int count = legacyInventoryCategoryCount(Enums::GameVersion::GSC);
+                  if (count > 0 && (down & HidNpadButton_L)) {
+                      selectedCategory = (selectedCategory - 1 + count) % count;
+                      currentPage = 0;
+                      selectedItemIndex = 0;
+                  }
+                  if (count > 0 && (down & HidNpadButton_R)) {
+                      selectedCategory = (selectedCategory + 1) % count;
+                      currentPage = 0;
+                      selectedItemIndex = 0;
+                  }
+              }
+          '''
+          replace_once('src/UI/TrainerViewScreenGSCOverlay.cpp', old_nav, '\n')
+
+          replace_once('src/UI/TrainerViewScreenGSCOverlay.cpp',
+          '''    if (trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this)) {
+                  if (detailViewActive && selectedMode == ViewMode::Trainer && !helpOverlayActive)
+                      drawGSCTrainerCard(*this, fb);
+                  drawStagedEditor(*this, fb);
+              }
+          }''',
+          '''    if (trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this)) {
+                  if (detailViewActive && selectedMode == ViewMode::Trainer && !helpOverlayActive)
+                      drawGSCTrainerCard(*this, fb);
+                  drawStagedEditor(*this, fb);
+              }
+              ClassicInventory::drawOverlay(*this, fb);
+          }''')
+
+          # No hardcoded inventory rows remain in the Gen II trainer/save editor.
+          text = Path('src/UI/TrainerViewScreenGSCOverlay.cpp').read_text()
+          for forbidden in ('{"Potion", std::to_string(editor->itemQuantity',
+                            '{"Poke Ball", std::to_string(editor->itemQuantity',
+                            '{"Master Ball", std::to_string(editor->itemQuantity'):
+              if forbidden in text:
+                  raise SystemExit(f'old Gen II inventory quick row survived: {forbidden}')
+          PY
+
+      - name: Static wiring assertions
+        run: |
+          set -euo pipefail
+          grep -q 'ClassicInventory::handleInput' src/UI/TrainerViewScreenGSCOverlay.cpp
+          grep -q 'ClassicInventory::drawOverlay' src/UI/TrainerViewScreenGSCOverlay.cpp
+          grep -q 'displayItemName(\*classicGame, \*classicPocket' src/UI/Panels/ItemsPanel.cpp
+          grep -q 'classicGame ? "(None)"' src/UI/Panels/ItemsPanel.cpp
+          grep -q '+: Pending Changes' src/UI/TrainerViewScreenBase.inc
+          ! grep -q 'selectedMode == ViewMode::Trainer || selectedMode == ViewMode::Items' src/UI/TrainerViewScreenGSCOverlay.cpp
+          ! grep -q 'Potion quantity (0 removes)' src/UI/TrainerViewScreenGSCOverlay.cpp
+          grep -q 'ClassicPocket::Items, ClassicPocket::Balls, ClassicPocket::KeyItems' src/UI/ClassicInventoryUIModel.cpp
+          grep -q '0x01008F6008C5E000' include/Enums/GameVersion.h
+          ! grep -R --line-number --fixed-strings 'sdmc:/PKSE' src include || true
+          git diff --check
+
+      - name: Focused classic host gate
+        run: |
+          set -euo pipefail
+          make -f Makefile.host.classic_inventory host-classic-inventory
+
+      - name: Native devkitA64 compile and final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee native-wiring.log
+          grep -q 'ClassicInventoryOverlay.cpp' native-wiring.log
+          grep -q 'ItemsPanel.cpp' native-wiring.log
+          grep -q 'TrainerViewScreenGSCOverlay.cpp' native-wiring.log
+          grep -q 'linking PokeBankNX.elf' native-wiring.log
+          test -s PokeBankNX.nro
+
+      - name: Commit verified wiring to development branch
+        run: |
+          set -euo pipefail
+          git config user.name 'PokeBank NX CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/UI/ClassicInventoryUIModel.cpp tests/test_classic_inventory_ui_model.cpp \
+                  src/UI/ClassicInventoryOverlay.cpp src/UI/Panels/ItemsPanel.cpp \
+                  src/UI/TrainerViewScreenBase.inc src/UI/TrainerViewScreenGSCOverlay.cpp
+          test -n "$(git status --porcelain)"
+          git diff --cached --check
+          git commit -m 'ui: wire classic inventory editor into live screen [classic-ui-wired]'
+          git push origin HEAD:${DEV_BRANCH}
+          echo "PATCHED_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "PATCHED_TREE=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_ENV"
+
+      - name: Evidence
+        run: |
+          echo "PATCHED_SHA=$PATCHED_SHA"
+          echo "PATCHED_TREE=$PATCHED_TREE"
+          echo 'FOCUSED_CLASSIC_TESTS=PASS'
+          echo 'DEVKITA64_UI_COMPILE_LINK=PASS'
+          echo 'LIVE_INSTALLED_GAME_WRITES=HARD_DISABLED'
+          echo 'LIVE_RETROARCH_WRITES=HARD_DISABLED'
