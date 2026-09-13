@@ -3,3 +3,5 @@ include Makefile.host.base
 include Makefile.host.gsc
 include Makefile.host.editor
 include Makefile.host.standalone
+
+include Makefile.host.machine

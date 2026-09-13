@@ -21,20 +21,34 @@ namespace Dialogs {
         constexpr int w = 560;
 
         // Exiting with unsaved changes is a different question ("throw these away?"), not a
-        // destination choice, so it keeps the plain two-button form.
+        // destination choice, so it keeps the plain two-button form. Any nonzero titleId is a native
+        // Switch title; existing PokeBank backup workspaces are mutable, but live writeback to the
+        // installed save is still disabled, so the warning must not depend only on SourceKind.
         if (screen.exitingWithUnsavedChanges) {
-            constexpr int h = 248;
+            const bool nativeTitlePreview = screen.titleId != 0;
+            constexpr int h = 270;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
-            int cy = drawDialogFrame(fb, x, y, w, h, "Unsaved Changes", Colors::Warning);
-            fb.drawText(x + 24, cy,      "You have unsaved changes.", Colors::Text);
-            fb.drawText(x + 24, cy + 28, "Changes will be lost if you continue.", Colors::TextDim);
+            int cy = drawDialogFrame(fb, x, y, w, h,
+                                     nativeTitlePreview ? "SAVE WRITING NOT YET ENABLED" : "Unsaved Changes",
+                                     Colors::Warning);
+            if (nativeTitlePreview) {
+                fb.drawText(x + 24, cy,      "Live installed-save writing is not enabled in this build.", Colors::Text);
+                fb.drawText(x + 24, cy + 28, "These edits will not be applied to the installed game save.", Colors::TextDim);
+                fb.drawText(x + 24, cy + 56, "Discard these unsaved edits, or return to the editor.", Colors::TextDim);
+            } else {
+                fb.drawText(x + 24, cy,      "You have unsaved changes.", Colors::Text);
+                fb.drawText(x + 24, cy + 28, "Changes will be lost if you continue.", Colors::TextDim);
+            }
 
-            // Buttons carry their glyph (id 0 = Cancel/B, id 1 = Discard & Exit/A), no guide line.
+            // Same behavior and button ids as before; the native-title wording only clarifies the
+            // existing lock. It does not add an Apply/Save-to-installed-game path.
             screen.touchButtons.clear();
             const int cbh = TouchTargetMin, cby = y + h - cbh - 16;
             const int cbw = (w - 48 - 16) / 2;
-            drawEditChoiceButton(screen, fb, x + 24,           cby, cbw, cbh, "B", "Cancel",         0);
-            drawEditChoiceButton(screen, fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Discard & Exit", 1);
+            drawEditChoiceButton(screen, fb, x + 24, cby, cbw, cbh, "B",
+                                 nativeTitlePreview ? "Return to Editor" : "Cancel", 0);
+            drawEditChoiceButton(screen, fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
+                                 nativeTitlePreview ? "Discard Changes" : "Discard & Exit", 1);
             return;
         }
 

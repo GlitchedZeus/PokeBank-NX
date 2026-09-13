@@ -144,6 +144,23 @@ namespace Names {
         80, 669, 143, 90, 329, 800, 796, 307, 308, 338,
     };
 
+    // Gold/Silver/Crystal (PKHeX PersonalInfo2.MachineMoves).
+    // The Gen II bag stores one quantity byte for each machine in this exact item-id order.
+    // Indices 0-49 are TM01-TM50; indices 50-56 are HM01-HM07.
+    static const uint8_t GSC_MACHINE_ITEMS[] = {
+        191,192,193,194,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,
+        212,213,214,215,216,217,218,219,221,222,223,224,225,226,227,228,229,230,231,232,
+        233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,
+    };
+    static const uint16_t GSC_MACHINE_MOVES[] = {
+        223, 29,174,205, 46, 92,192,249,244,237,
+        241,230,173, 59, 63,196,182,240,202,203,
+        218, 76,231,225, 87, 89,216, 91, 94,247,
+        189,104,  8,207,214,188,201,126,129,111,
+          9,138,197,156,213,168,211,  7,210,171,
+         15, 19, 57, 70,148,250,127,
+    };
+
     // FireRed/LeafGreen  (PKHeX PersonalInfo3.MachineMovesTechnical / MachineMovesHidden)
     // Gen 3 predates the 328.. item block: TM01..TM50 == items 289..338 and
     // HM01..HM08 == items 339..346. The same 50/8 ordering indexes the 58 TM/HM
@@ -166,6 +183,16 @@ namespace Names {
 
     uint16_t getTMMove(GameVersion group, uint16_t itemId) {
         switch (group) {
+            // ---- Gold/Silver/Crystal ----
+            case GameVersion::GSC: {
+                constexpr size_t NI = sizeof(GSC_MACHINE_ITEMS) / sizeof(GSC_MACHINE_ITEMS[0]);
+                constexpr size_t NM = sizeof(GSC_MACHINE_MOVES) / sizeof(GSC_MACHINE_MOVES[0]);
+                static_assert(NI == NM);
+                for (size_t i = 0; i < NI; ++i)
+                    if (GSC_MACHINE_ITEMS[i] == itemId) return GSC_MACHINE_MOVES[i];
+                return 0;
+            }
+
             // ---- FireRed/LeafGreen ----
             case GameVersion::FR:
             case GameVersion::LG:

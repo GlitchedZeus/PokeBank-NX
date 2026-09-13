@@ -8,7 +8,8 @@
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Trainer.h"     // getNatureName / getAbilityName
 #include "Names/MoveNames.h"     // getMoveName / getMoveCount
-#include "Names/ItemNames.h"     // getItemNameG3 (Gen 3 has its own item id space)
+#include "Names/ItemNames.h"
+#include "Names/MachineDisplay.h"     // getItemNameG3 (Gen 3 has its own item id space)
 #include "Enums/Ball.h"          // getBallName
 #include "Enums/LanguageID.h"    // getLanguageName
 #include "Enums/GameVersion.h"   // getGameVersionName (Origin picker)
@@ -171,6 +172,13 @@ namespace Dialogs {
                 label = formLbl.c_str();
             } else {
                 label = pickerOptionLabel(kind, val);
+            }
+            static std::string machineLabel;
+            if (kind == PickerKind::Item || kind == PickerKind::ItemG3 ||
+                kind == PickerKind::PouchItem || kind == PickerKind::PouchItemG3) {
+                machineLabel = Names::machineDisplayLabel(screen.trainer.getGameGroup(),
+                                                         static_cast<uint16_t>(val), label);
+                label = machineLabel.c_str();
             }
             fb.drawText(px + 28, ry + (rowH - 4 - fb.lineHeight(TextStyle::Body)) / 2, label, col);
             screen.touchButtons.push_back({ idx, px + 12, ry, pw - 24, rowH - 4 });  // id = option row
