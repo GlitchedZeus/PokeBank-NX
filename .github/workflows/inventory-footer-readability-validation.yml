@@ -1,0 +1,256 @@
+name: Inventory Footer Readability Candidate Validation
+
+on:
+  push:
+    branches: [ci/inventory-footer-readability-validation-20260913]
+    paths: [.github/workflows/inventory-footer-readability-validation.yml]
+
+permissions:
+  contents: read
+
+env:
+  TARGET_SHA: fc1e6de285177ca82ea08808edb1cf486bc2534b
+  TARGET_TREE: 58d0559819aaca044ca184f7aedebd6f11c29c44
+  BASE_SHA: e6cd69dde17c654d3ad73adc24ca7fbe4efbac59
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          path: application
+          fetch-depth: 50
+          submodules: recursive
+
+      - name: Exact identity and five-file scope
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$TARGET_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$TARGET_TREE"
+          git -C application diff --check "$BASE_SHA"..HEAD
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+          mapfile -t changed < <(git -C application diff --name-only "$BASE_SHA"..HEAD | sort)
+          expected=(
+            include/UI/ClassicInventoryOverlay.h
+            include/UI/InventoryUIContract.h
+            src/UI/ClassicInventoryOverlay.cpp
+            src/UI/TrainerViewScreenBase.inc
+            tests/test_inventory_ui_contract.cpp
+          )
+          mapfile -t expected_sorted < <(printf '%s\n' "${expected[@]}" | sort)
+          test "${#changed[@]}" -eq "${#expected_sorted[@]}"
+          diff -u <(printf '%s\n' "${expected_sorted[@]}") <(printf '%s\n' "${changed[@]}")
+          echo 'EXACT CANDIDATE IDENTITY: PASS'
+          echo 'FIVE-FILE POLISH SCOPE: PASS'
+          echo 'git diff --check: PASS'
+
+      - name: Focused inventory UI regressions
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host.classic_inventory host-classic-inventory
+          make -f Makefile.host.base build-host/test_inventory_ui_contract
+          ./build-host/test_inventory_ui_contract
+          make -f Makefile.host.base build-host/test_inventory_ui_contract_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_inventory_ui_contract_sanitize
+          echo 'CLASSIC STAGED FOOTER MODEL: PASS'
+          echo 'EMPTY X ADD / A-Y HIDDEN: PASS'
+          echo 'POPULATED A-X-Y: PASS'
+          echo 'FIXED ITEM A HIDDEN / X-Y PRESENT: PASS'
+          echo 'MODERN FOOTER MODEL: PASS'
+
+      - name: Footer, picker, and safety invariants
+        working-directory: application
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          contract = Path('include/UI/InventoryUIContract.h').read_text()
+          overlay_h = Path('include/UI/ClassicInventoryOverlay.h').read_text()
+          overlay = Path('src/UI/ClassicInventoryOverlay.cpp').read_text()
+          base = Path('src/UI/TrainerViewScreenBase.inc').read_text()
+          tests = Path('tests/test_inventory_ui_contract.cpp').read_text()
+
+          required_contract = [
+              'case InventoryInput::A: return InventoryAction::EditAmount;',
+              'case InventoryInput::X: return InventoryAction::AddItem;',
+              'case InventoryInput::Y: return InventoryAction::RemoveItem;',
+              'case InventoryInput::L: return InventoryAction::PreviousCategory;',
+              'case InventoryInput::R: return InventoryAction::NextCategory;',
+              'case InventoryInput::Plus: return InventoryAction::Options;',
+              'case InventoryInput::Minus: return InventoryAction::Help;',
+              'case InventoryInput::B: return InventoryAction::Back;',
+              'useReadOnlyInventoryFooterOverride',
+              'static constexpr int Width = 560;',
+              'static constexpr int FooterHeight = 64;',
+              'bool sourceIsNew = false;',
+              'bool stagedModified = false;',
+          ]
+          for needle in required_contract:
+              assert needle in contract, needle
+
+          assert 'stagedEditingAvailable(TrainerViewScreen& screen)' in overlay_h
+          assert 'bool stagedEditingAvailable(TrainerViewScreen& screen)' in overlay
+          assert 'ClassicInventory::stagedEditingAvailable(*this)' in base
+          assert 'stagedInventoryActionsAvailable' in base
+          assert 'useReadOnlyInventoryFooterOverride' in base
+          assert 'rowH - 4, true' in overlay
+          assert 'const auto textColor = (selected || brightUnselected) ? Colors::Text : Colors::TextDim;' in overlay
+          assert 'D-pad/Stick Navigate     A Add/Select' in overlay
+          assert 'B Cancel                  L/R Page' in overlay
+          assert overlay.count('D-pad/Stick Navigate     A Add/Select') == 1
+          assert 'static_assert(InventoryPickerLayout::Width == 560);' in tests
+          assert 'static_assert(InventoryPickerLayout::FooterHeight == 64);' in tests
+          assert 'fixedQuantity' in tests
+          assert 'useReadOnlyInventoryFooterOverride(true, false, false, true)' in tests
+          print('CLASSIC STAGED FOOTER ROOT-CAUSE GATE: PASS')
+          print('GENERIC READ-ONLY FOOTER BYPASS FOR STAGED EDITOR: PASS')
+          print('PICKER WIDTH: 560')
+          print('PICKER NORMAL ITEM TEXT ROLE: Colors::Text')
+          print('PICKER CONTROL FOOTER: BRIGHT TWO-LINE')
+          print('X/Y CONTROL CONTRACT: PASS')
+          PY
+          ! grep -R 'sdmc:/PKSE' -n src include
+          grep -q 'sdmc:/switch/PokeBank-NX' include/Utils/PokeBankPaths.h
+          grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' include/Safety/SourceMutationPolicy.h
+          grep -q 'SAVE WRITING NOT YET ENABLED' src/UI/Dialogs/SaveConfirmDialog.cpp
+          echo 'SOURCE MUTATION POLICY: PASS'
+          echo 'LIVE INSTALLED-GAME WRITES: HARD DISABLED'
+          echo 'LIVE RETROARCH WRITES: HARD DISABLED'
+          echo 'LIVE EMULATOR WRITES: HARD DISABLED'
+
+      - name: Focused classic correctness regressions
+        working-directory: application
+        run: |
+          set -euo pipefail
+          rm -rf build-host
+          make -f Makefile.host.classic_inventory host-classic-inventory
+          make -f Makefile.host.base build-host/test_legacy_frlg_browse
+          ./build-host/test_legacy_frlg_browse
+          make -f Makefile.host.base build-host/test_rby_readonly_bridge
+          ./build-host/test_rby_readonly_bridge
+          echo 'GEN I: PASS'
+          echo 'GEN II: PASS'
+          echo 'GEN III: PASS'
+          echo 'SOURCE IMMUTABILITY: PASS'
+          echo 'MACHINE LABELS: PASS'
+          echo 'YELLOW DUSK BALL ABSENT: PASS'
+
+      - name: Full permanent host suite
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+          echo 'FULL HOST: PASS'
+          echo 'GEN II POKEMON EDITOR: PASS'
+          echo 'RUNTIME DEPENDENCY: PASS'
+
+      - name: ASan and UBSan permanent suite
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-sanitize
+          echo 'ASan: PASS'
+          echo 'UBSan: PASS'
+
+  native:
+    needs: host
+    runs-on: ubuntu-latest
+    timeout-minutes: 105
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          path: application
+          fetch-depth: 50
+          submodules: recursive
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Verify exact candidate before native build
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$TARGET_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$TARGET_TREE"
+          git -C application diff --check "$BASE_SHA"..HEAD
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+          echo 'EXACT CANDIDATE IDENTITY: PASS'
+
+      - name: Recover device RomFS and asset preflight
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py) 2>&1 | tee recovery.log
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+
+      - name: Full devkitA64 compile and final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            for obj in ClassicInventoryOverlay.o ClassicInventoryUIModel.o ItemsPanel.o PickerDialog.o TrainerViewScreen.o; do
+              find build -name "$obj" -type f | grep -q . || { echo "missing native object: $obj"; exit 1; }
+            done
+          ' 2>&1 | tee native-build.log
+          grep -q 'ClassicInventoryOverlay.cpp' native-build.log
+          grep -q 'ClassicInventoryUIModel.cpp' native-build.log
+          grep -q 'ItemsPanel.cpp' native-build.log
+          grep -q 'PickerDialog.cpp' native-build.log
+          grep -q 'TrainerViewScreen.cpp' native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s application/PokeBankNX.nro
+          echo 'CHANGED FOOTER/PICKER SOURCES ENTERED NRO BUILD: PASS'
+          echo 'DEVKITA64: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
+
+      - name: Verify embedded identity and RomFS
+        run: |
+          set -euo pipefail
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source "$TARGET_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_FINAL_ROMFS']), data
+          assert data.get('application_source') == os.environ['TARGET_SHA'], data
+          print(json.dumps(data, indent=2))
+          PY
+          echo 'EMBEDDED IDENTITY: PASS'
+          echo 'EMBEDDED ROMFS: PASS'
