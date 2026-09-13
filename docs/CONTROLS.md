@@ -417,3 +417,26 @@ On physical Switch, explicitly test:
 - - reliably opens useful Help/Info;
 - Right Stick does not interfere with normal navigation;
 - no button performs an undocumented mutation.
+
+---
+
+# Classic inventory editor
+
+For staged Generation I/II/III inventory sources, the authoritative mapping is:
+
+```text
+D-pad / Left Stick  Navigate rows
+A                   Edit amount (only when the selected item has an editable quantity)
+X                   Add item from the exact-game / exact-category catalog
+Y                   Remove the selected item
+L / R               Previous / next supported category
++                   Inventory Options
+-                   Inventory Help
+B                   Back / Cancel
+```
+
+`+` opens **Inventory Options**, whose save-level actions include Review Pending Changes,
+Export Staged Save, Discard Staged Changes, and Cancel. It does not jump directly to Pending Changes.
+On an empty valid category, `(None)` is shown and X Add remains available; A Edit and Y Remove are unavailable.
+All classic inventory mutations are staged and export to a separate edited copy; the source save remains read-only.
+The older development-only `Y Add / X Remove / + Pending Changes` mapping is obsolete.

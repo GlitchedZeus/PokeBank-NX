@@ -50,9 +50,13 @@ struct OverlayState {
     std::string sourceGameId;
     bool presentationInitialized = false;
     bool pickerActive = false;
+    bool optionsActive = false;
     bool reviewActive = false;
+    bool helpActive = false;
     bool warningActive = false;
+    bool discardConfirmActive = false;
     int pickerRow = 0;
+    int optionsRow = 0;
     int reviewRow = 0;
     ClassicPocket pendingPocket = ClassicPocket::Items;
     uint16_t pendingItem = 0;
@@ -592,17 +596,24 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
     }
 
     if (state.warningActive) {
-        if (down & HidNpadButton_B) {
-            state.warningActive = false;
-            return true;
-        }
+        if (down & HidNpadButton_B) { state.warningActive = false; return true; }
         if (down & HidNpadButton_A) {
             const auto pocket = state.pendingPocket;
             const uint16_t item = state.pendingItem;
             const uint16_t quantity = state.pendingQuantity;
             state.warningActive = false;
             applyMutation(screen, pocket, item, quantity);
-            return true;
+        }
+        return true;
+    }
+
+    if (state.discardConfirmActive) {
+        if (down & HidNpadButton_B) { state.discardConfirmActive = false; return true; }
+        if (down & HidNpadButton_A) {
+            discardAll(screen);
+            refreshPresentation(screen);
+            state.discardConfirmActive = false;
+            screen.postStatus("Staged changes discarded; original source save was never modified", 300);
         }
         return true;
     }
@@ -617,28 +628,52 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
         return true;
     }
 
+    if (state.helpActive) {
+        if (down & (HidNpadButton_B | HidNpadButton_Minus)) state.helpActive = false;
+        return true;
+    }
+
     if (state.reviewActive) {
         const auto lines = pendingLines(screen);
         const int count = static_cast<int>(lines.size());
         if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow - 1 + count) % count;
         if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
-        if (down & HidNpadButton_B) { state.reviewActive = false; return true; }
-        if (down & HidNpadButton_Y) {
-            discardAll(screen);
-            refreshPresentation(screen);
+        if (down & HidNpadButton_B) {
             state.reviewActive = false;
-            screen.postStatus("Staged changes discarded; original save was never modified", 300);
-            return true;
+            state.optionsActive = true;
         }
-        if (down & HidNpadButton_A) {
-            std::string error;
-            const std::string dir = exportStagedCopy(screen, error);
-            if (dir.empty()) screen.postStatus(error.empty() ? "Classic staged export failed" : error, 360);
-            else {
-                state.lastExportDirectory = dir;
-                screen.postStatus("Exported edited copy + original backup under PokeBank NX exports", 360);
+        return true;
+    }
+
+    if (state.optionsActive) {
+        constexpr int optionCount = 4;
+        if (down & HidNpadButton_Up) state.optionsRow = (state.optionsRow - 1 + optionCount) % optionCount;
+        if (down & HidNpadButton_Down) state.optionsRow = (state.optionsRow + 1) % optionCount;
+        if (down & HidNpadButton_B) { state.optionsActive = false; return true; }
+        if (!(down & HidNpadButton_A)) return true;
+        switch (state.optionsRow) {
+            case 0:
+                state.optionsActive = false;
+                state.reviewActive = true;
+                state.reviewRow = 0;
+                break;
+            case 1: {
+                std::string error;
+                const std::string dir = exportStagedCopy(screen, error);
+                if (dir.empty()) screen.postStatus(error.empty() ? "Classic staged export failed" : error, 360);
+                else {
+                    state.lastExportDirectory = dir;
+                    screen.postStatus("Exported edited copy + original backup under PokeBank NX exports", 360);
+                }
+                break;
             }
-            return true;
+            case 2:
+                if (!hasPending(screen)) screen.postStatus("No staged changes to discard", 240);
+                else state.discardConfirmActive = true;
+                break;
+            case 3:
+                state.optionsActive = false;
+                break;
         }
         return true;
     }
@@ -651,61 +686,77 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
         screen.creator.keepConfirmActive || screen.details.discardConfirmActive ||
         screen.gen3ConvertConfirmActive || screen.lgpeTransferConfirmActive) return false;
 
-    std::string availabilityError;
-    const uint64_t classicActions = HidNpadButton_A | HidNpadButton_X | HidNpadButton_Y |
-                                    HidNpadButton_L | HidNpadButton_R | HidNpadButton_Plus;
-    if ((down & classicActions) && !backendAvailable(screen, availabilityError)) {
-        screen.postStatus(availabilityError, 360);
-        return true;
-    }
+    std::optional<PokeBank::UIModel::ClassicInventoryInput> input;
+    if (down & HidNpadButton_A) input = PokeBank::UIModel::ClassicInventoryInput::A;
+    else if (down & HidNpadButton_X) input = PokeBank::UIModel::ClassicInventoryInput::X;
+    else if (down & HidNpadButton_Y) input = PokeBank::UIModel::ClassicInventoryInput::Y;
+    else if (down & HidNpadButton_L) input = PokeBank::UIModel::ClassicInventoryInput::L;
+    else if (down & HidNpadButton_R) input = PokeBank::UIModel::ClassicInventoryInput::R;
+    else if (down & HidNpadButton_Plus) input = PokeBank::UIModel::ClassicInventoryInput::Plus;
+    else if (down & HidNpadButton_Minus) input = PokeBank::UIModel::ClassicInventoryInput::Minus;
+    else if (down & HidNpadButton_B) input = PokeBank::UIModel::ClassicInventoryInput::B;
+    else return false;
+
+    const auto action = PokeBank::UIModel::classicInventoryAction(*input);
+    if (action == PokeBank::UIModel::ClassicInventoryAction::Back) return false;
 
     ClassicGame game{};
     ClassicPocket pocket{};
     if (!currentPocket(screen, game, pocket)) {
-        if (down & classicActions) {
-            screen.postStatus("This inventory category is not supported by the selected classic game", 300);
-            return true;
-        }
-        return false;
+        screen.postStatus("This inventory category is not supported by the selected classic game", 300);
+        return true;
     }
 
-    if (down & HidNpadButton_L) {
+    if (action == PokeBank::UIModel::ClassicInventoryAction::PreviousCategory ||
+        action == PokeBank::UIModel::ClassicInventoryAction::NextCategory) {
         const int count = static_cast<int>(PokeBank::UIModel::classicInventoryCategories(game).size());
-        screen.selectedCategory = (screen.selectedCategory - 1 + count) % count;
+        const int delta = action == PokeBank::UIModel::ClassicInventoryAction::PreviousCategory ? -1 : 1;
+        screen.selectedCategory = (screen.selectedCategory + delta + count) % count;
         screen.selectedItemIndex = 0;
         screen.currentPage = 0;
         return true;
     }
-    if (down & HidNpadButton_R) {
-        const int count = static_cast<int>(PokeBank::UIModel::classicInventoryCategories(game).size());
-        screen.selectedCategory = (screen.selectedCategory + 1) % count;
-        screen.selectedItemIndex = 0;
-        screen.currentPage = 0;
+
+    if (action == PokeBank::UIModel::ClassicInventoryAction::Help) {
+        state.helpActive = true;
         return true;
     }
-    if (down & HidNpadButton_Plus) {
-        state.reviewActive = true;
-        state.reviewRow = 0;
+
+    std::string availabilityError;
+    if (!backendAvailable(screen, availabilityError)) {
+        screen.postStatus(availabilityError, 360);
         return true;
     }
-    if (down & HidNpadButton_Y) {
-        openAddPicker(screen, game, pocket);
+
+    if (action == PokeBank::UIModel::ClassicInventoryAction::Options) {
+        state.optionsActive = true;
+        state.optionsRow = 0;
         return true;
     }
 
     uint16_t itemId = 0;
     uint16_t quantity = 0;
-    if ((down & (HidNpadButton_A | HidNpadButton_X)) && !currentItem(screen, itemId, quantity)) {
-        screen.postStatus("No item is selected. Use Y to add an item to this category.", 240);
+    const bool hasSelection = currentItem(screen, itemId, quantity);
+    const bool quantityEditable = hasSelection &&
+        PokeBank::UIModel::classicInventoryQuantityEditable(game, pocket, itemId);
+    const auto availability = PokeBank::UIModel::classicInventoryActionAvailability(
+        true, hasSelection, quantityEditable);
+
+    if (action == PokeBank::UIModel::ClassicInventoryAction::AddItem) {
+        if (availability.addItem) openAddPicker(screen, game, pocket);
         return true;
     }
-
-    if (down & HidNpadButton_A) {
-        const auto rule = PokeVault::Inventory::quantityRule(game, pocket, itemId);
-        if (!rule.editable) {
-            screen.postStatus("This item has a fixed quantity; amount editing is not applicable", 300);
+    if (action == PokeBank::UIModel::ClassicInventoryAction::RemoveItem) {
+        if (availability.removeItem) queueMutationWithWarning(screen, game, pocket, itemId, 0);
+        return true;
+    }
+    if (action == PokeBank::UIModel::ClassicInventoryAction::EditAmount) {
+        if (!availability.editAmount) {
+            if (!hasSelection) screen.postStatus("No item selected. Press X to add an item.", 240);
+            else screen.postStatus("This item has a fixed/presence-only quantity", 240);
             return true;
         }
+        const auto rule = PokeVault::Inventory::quantityRule(game, pocket, itemId);
         const auto result = Utils::promptNumber(
             "Edit " + PokeVault::Inventory::displayItemName(game, pocket, itemId),
             static_cast<int>(quantity), static_cast<int>(rule.minimum), static_cast<int>(rule.maximum));
@@ -713,18 +764,14 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
             applyMutation(screen, pocket, itemId, static_cast<uint16_t>(result.value));
         return true;
     }
-
-    if (down & HidNpadButton_X) {
-        queueMutationWithWarning(screen, game, pocket, itemId, 0);
-        return true;
-    }
-    return false;
+    return true;
 }
 
 void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isClassicSource(screen)) return;
     auto& state = stateFor(screen);
-    if (!state.pickerActive && !state.reviewActive && !state.warningActive) return;
+    if (!state.pickerActive && !state.optionsActive && !state.reviewActive && !state.helpActive &&
+        !state.warningActive && !state.discardConfirmActive) return;
 
     screen.touchButtons.clear();
     constexpr int width = 900;
@@ -741,29 +788,30 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (state.warningActive) {
         fb.drawText(x + 30, y + 24, "Key Item Warning", Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 100,
-                    "This Key Item may depend on story/event state.", Colors::Text, TextStyle::Body);
-        fb.drawText(x + 30, y + 142,
-                    "Changing inventory does not reproduce or reverse the associated story event.",
+        fb.drawText(x + 30, y + 100, "This Key Item may depend on story/event state.", Colors::Text, TextStyle::Body);
+        fb.drawText(x + 30, y + 142, "Changing inventory does not reproduce or reverse the associated story event.",
                     Colors::TextDim, TextStyle::Body);
-        fb.drawText(x + 30, y + 196,
-                    "No unrelated event flags will be modified.", Colors::TextDim, TextStyle::Body);
-        fb.drawText(x + 30, y + height - 54, "A Continue    B Cancel",
-                    Colors::Text, TextStyle::Body);
+        fb.drawText(x + 30, y + 196, "No unrelated event flags will be modified.", Colors::TextDim, TextStyle::Body);
+        fb.drawText(x + 30, y + height - 54, "A Confirm    B Cancel", Colors::Text, TextStyle::Body);
+        return;
+    }
+
+    if (state.discardConfirmActive) {
+        fb.drawText(x + 30, y + 24, "Discard Staged Changes?", Colors::Text, TextStyle::Heading);
+        fb.drawText(x + 30, y + 104, "This discards the shared staged classic-save transaction.", Colors::Text, TextStyle::Body);
+        fb.drawText(x + 30, y + 148, "The original source save remains unchanged.", Colors::TextDim, TextStyle::Body);
+        fb.drawText(x + 30, y + height - 54, "A Discard Staged Changes    B Cancel", Colors::Text, TextStyle::Body);
         return;
     }
 
     if (state.pickerActive && game && pocket) {
-        fb.drawText(x + 30, y + 20,
-                    "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
+        fb.drawText(x + 30, y + 20, "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
                     Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 56,
-                    "Exact-game catalog only — stored item IDs remain native to this game.",
+        fb.drawText(x + 30, y + 56, "Exact-game catalog only — stored item IDs remain native to this game.",
                     Colors::TextDim, TextStyle::Caption);
         constexpr int visibleRows = 8;
         const int count = static_cast<int>(state.pickerItems.size());
-        const int start = std::clamp(state.pickerRow - visibleRows / 2, 0,
-                                     std::max(0, count - visibleRows));
+        const int start = std::clamp(state.pickerRow - visibleRows / 2, 0, std::max(0, count - visibleRows));
         int rowY = y + 94;
         for (int i = start; i < std::min(count, start + visibleRows); ++i) {
             const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
@@ -772,7 +820,42 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             drawRow(fb, x + 30, rowY, width - 60, label, i == state.pickerRow);
             rowY += 57;
         }
-        fb.drawText(x + 30, y + height - 42, "Up/Down Select    A Add / Focus Existing    B Cancel",
+        fb.drawText(x + 30, y + height - 42, "D-pad / Left Stick Select    A Add / Focus Existing    B Cancel",
+                    Colors::TextDim, TextStyle::Caption);
+        return;
+    }
+
+    if (state.helpActive) {
+        fb.drawText(x + 30, y + 20, "Inventory Help", Colors::Text, TextStyle::Heading);
+        const std::vector<std::string> lines{
+            "A   Edit amount (only when this item has an editable quantity)",
+            "X   Add item from the exact-game, exact-category catalog",
+            "Y   Remove the highlighted item",
+            "L / R   Previous / next supported inventory category",
+            "D-pad / Left Stick   Navigate (hold to repeat)",
+            "+   Inventory Options     -   Help     B   Back / Cancel",
+            "Empty valid categories show (None); X Add remains available.",
+            "Key Items may depend on story flags; warnings do not alter unrelated flags.",
+            "All edits are staged. Export creates an edited copy; the source save is not overwritten.",
+        };
+        int rowY = y + 78;
+        for (const auto& line : lines) { fb.drawText(x + 34, rowY, line, Colors::TextDim, TextStyle::Body); rowY += 48; }
+        fb.drawText(x + 30, y + height - 42, "B Close Help", Colors::Text, TextStyle::Body);
+        return;
+    }
+
+    if (state.optionsActive) {
+        fb.drawText(x + 30, y + 20, "Inventory Options", Colors::Text, TextStyle::Heading);
+        const std::array<std::string, 4> rows{{
+            "Review Pending Changes (" + std::to_string(pendingLines(screen).size()) + ")",
+            "Export Staged Save", "Discard Staged Changes", "Cancel",
+        }};
+        int rowY = y + 94;
+        for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
+            drawRow(fb, x + 30, rowY, width - 60, rows[static_cast<std::size_t>(i)], i == state.optionsRow);
+            rowY += 62;
+        }
+        fb.drawText(x + 30, y + height - 42, "D-pad / Left Stick Select    A Open    B Close",
                     Colors::TextDim, TextStyle::Caption);
         return;
     }
@@ -780,25 +863,21 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (state.reviewActive) {
         const auto lines = pendingLines(screen);
         fb.drawText(x + 30, y + 20, "Pending Classic Save Changes", Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 56,
-                    "Export creates a separate edited .srm plus an automatic original backup.",
+        fb.drawText(x + 30, y + 56, "Review only — use Inventory Options for Export or Discard.",
                     Colors::TextDim, TextStyle::Caption);
         if (lines.empty()) {
             fb.drawText(x + 34, y + 116, "No pending changes.", Colors::TextDim, TextStyle::Body);
         } else {
             constexpr int visibleRows = 7;
             const int count = static_cast<int>(lines.size());
-            const int start = std::clamp(state.reviewRow - visibleRows / 2, 0,
-                                         std::max(0, count - visibleRows));
+            const int start = std::clamp(state.reviewRow - visibleRows / 2, 0, std::max(0, count - visibleRows));
             int rowY = y + 94;
             for (int i = start; i < std::min(count, start + visibleRows); ++i) {
-                drawRow(fb, x + 30, rowY, width - 60, lines[static_cast<std::size_t>(i)],
-                        i == state.reviewRow);
+                drawRow(fb, x + 30, rowY, width - 60, lines[static_cast<std::size_t>(i)], i == state.reviewRow);
                 rowY += 57;
             }
         }
-        fb.drawText(x + 30, y + height - 72,
-                    "A Export Edited Copy    Y Discard Staged Changes    B Back",
+        fb.drawText(x + 30, y + height - 72, "D-pad / Left Stick Browse    B Back to Options",
                     Colors::Text, TextStyle::Body);
         if (!state.lastExportDirectory.empty())
             fb.drawText(x + 30, y + height - 40, "Last export: " + state.lastExportDirectory,

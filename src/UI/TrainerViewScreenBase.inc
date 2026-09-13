@@ -26,6 +26,7 @@
 #include "UI/Panels/BoxPokemonPanel.h"
 #include "UI/Panels/ItemsPanel.h"
 #include "UI/ClassicInventoryOverlay.h"
+#include "UI/ClassicInventoryUIModel.h"
 #include "UI/Panels/StoragePanel.h"
 #include "UI/Panels/HomeMenuPanel.h"
 #include "UI/Dialogs/ItemEditDialog.h"
@@ -1954,6 +1955,10 @@ namespace UI {
             padGetButtonsDown(&pad), padGetButtons(&pad), stick.x, stick.y,
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
             | navTouchButton(touch);
+
+        // Classic inventory gets first refusal on its own translated controls. This is before global
+        // +/- and inherited source-write guards because classic mutations target a staged sidecar.
+        if (ClassicInventory::handleInput(*this, kDown)) return;
 
         // Let's Go stores its boxes as a GAPLESS list, so anything that vacated a slot last frame
         // left a hole the game can't represent. Re-pack it here rather than at each of the
@@ -4266,9 +4271,33 @@ namespace UI {
             instructions = "Up/Down: Select  |  A: Toggle  |  B: Back";
         } else if (detailViewActive) {
             if (selectedMode == ViewMode::Items) {
-                instructions = ClassicInventory::isClassicSource(*this)
-                    ? "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  L/R: Category  |  +: Pending Changes  |  B: Back"
-                    : "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  Left/Right: Page  |  L/R: Category  |  B: Back";
+                if (ClassicInventory::isClassicSource(*this)) {
+                    const auto game = PokeBank::UIModel::classicInventoryGame(sourceGameId);
+                    const auto pocket = game
+                        ? PokeBank::UIModel::classicInventoryPocketAt(*game, selectedCategory)
+                        : std::optional<PokeVault::Inventory::ClassicPocket>{};
+                    bool hasSelection = false;
+                    bool quantityEditable = false;
+                    if (game && pocket && selectedCategory >= 0 &&
+                        selectedCategory < static_cast<int>(trainer.items.size())) {
+                        const auto visible = visibleItemIndices();
+                        if (selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(visible.size())) {
+                            const auto& item = trainer.items[selectedCategory][visible[selectedItemIndex]];
+                            hasSelection = item.count != 0;
+                            quantityEditable = hasSelection &&
+                                PokeBank::UIModel::classicInventoryQuantityEditable(*game, *pocket, item.itemId);
+                        }
+                    }
+                    const auto available = PokeBank::UIModel::classicInventoryActionAvailability(
+                        pocket.has_value(), hasSelection, quantityEditable);
+                    instructions = "D-pad/Stick: Navigate";
+                    if (available.editAmount) instructions += "  |  A: Edit Amount";
+                    if (available.addItem) instructions += "  |  X: Add Item";
+                    if (available.removeItem) instructions += "  |  Y: Remove Item";
+                    instructions += "  |  L/R: Category  |  +: Options  |  -: Help  |  B: Back";
+                } else {
+                    instructions = "Up/Down: Select  |  A: Edit Amount  |  Y: Add Item  |  X: Remove Item  |  Left/Right: Page  |  L/R: Category  |  B: Back";
+                }
             } else if (selectedMode == ViewMode::Boxes) {
                 if (details.active) {
                     if (details.category == 0) { // Main

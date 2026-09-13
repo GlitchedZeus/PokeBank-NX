@@ -51,5 +51,29 @@ int main() {
     assert(classicInventoryNeedsStoryWarning(*gold, ClassicPocket::KeyItems, 54));
     assert(!classicInventoryNeedsStoryWarning(*gold, ClassicPocket::Balls, 5));
 
+    assert(classicInventoryAction(ClassicInventoryInput::A) == ClassicInventoryAction::EditAmount);
+    assert(classicInventoryAction(ClassicInventoryInput::X) == ClassicInventoryAction::AddItem);
+    assert(classicInventoryAction(ClassicInventoryInput::Y) == ClassicInventoryAction::RemoveItem);
+    assert(classicInventoryAction(ClassicInventoryInput::L) == ClassicInventoryAction::PreviousCategory);
+    assert(classicInventoryAction(ClassicInventoryInput::R) == ClassicInventoryAction::NextCategory);
+    assert(classicInventoryAction(ClassicInventoryInput::Plus) == ClassicInventoryAction::Options);
+    assert(classicInventoryAction(ClassicInventoryInput::Minus) == ClassicInventoryAction::Help);
+    assert(classicInventoryAction(ClassicInventoryInput::B) == ClassicInventoryAction::Back);
+
+    const auto emptyActions = classicInventoryActionAvailability(true, false, false);
+    assert(!emptyActions.editAmount);
+    assert(emptyActions.addItem);
+    assert(!emptyActions.removeItem);
+    const auto quantityActions = classicInventoryActionAvailability(true, true, true);
+    assert(quantityActions.editAmount);
+    assert(quantityActions.addItem);
+    assert(quantityActions.removeItem);
+    const auto fixedActions = classicInventoryActionAvailability(true, true, false);
+    assert(!fixedActions.editAmount);
+    assert(fixedActions.addItem);
+    assert(fixedActions.removeItem);
+    const auto unsupportedActions = classicInventoryActionAvailability(false, false, false);
+    assert(!unsupportedActions.editAmount && !unsupportedActions.addItem && !unsupportedActions.removeItem);
+
     std::cout << "classic inventory UI model: PASS\n";
 }

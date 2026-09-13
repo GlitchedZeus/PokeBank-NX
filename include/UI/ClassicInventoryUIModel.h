@@ -27,6 +27,20 @@ using PokeVault::Inventory::ClassicPocket;
                                                      uint16_t itemId) noexcept;
 [[nodiscard]] std::vector<uint16_t> classicInventoryAddableItems(ClassicGame game,
                                                                  ClassicPocket pocket);
+enum class ClassicInventoryInput : uint8_t { A, X, Y, L, R, Plus, Minus, B };
+enum class ClassicInventoryAction : uint8_t {
+    EditAmount, AddItem, RemoveItem, PreviousCategory, NextCategory, Options, Help, Back,
+};
+
+struct ClassicInventoryActionAvailability {
+    bool editAmount = false;
+    bool addItem = false;
+    bool removeItem = false;
+};
+
+[[nodiscard]] ClassicInventoryAction classicInventoryAction(ClassicInventoryInput input) noexcept;
+[[nodiscard]] ClassicInventoryActionAvailability classicInventoryActionAvailability(
+    bool categorySupported, bool hasSelection, bool quantityEditable) noexcept;
 [[nodiscard]] bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept;
 
 } // namespace PokeBank::UIModel

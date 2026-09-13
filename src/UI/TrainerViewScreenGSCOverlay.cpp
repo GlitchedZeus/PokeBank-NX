@@ -845,7 +845,6 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 down = padGetButtonsDown(&pad);
-    if (ClassicInventory::handleInput(*this, down)) return;
 
     const bool validatedGSC = trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this);
     if (validatedGSC) {
