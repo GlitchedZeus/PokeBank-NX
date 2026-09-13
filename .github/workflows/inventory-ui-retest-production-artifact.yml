@@ -1,0 +1,249 @@
+name: Inventory UI Retest Exact Production Artifact
+
+on:
+  push:
+    branches: [ci/inventory-ui-retest-production-artifact-20260913]
+    paths: [.github/workflows/inventory-ui-retest-production-artifact.yml]
+
+permissions:
+  contents: read
+
+env:
+  PROD_BRANCH: feature/pokebank-playable
+  APP_SHA: fc1e6de285177ca82ea08808edb1cf486bc2534b
+  APP_TREE: 58d0559819aaca044ca184f7aedebd6f11c29c44
+  BASE_SHA: e6cd69dde17c654d3ad73adc24ca7fbe4efbac59
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+
+jobs:
+  exact-production-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - name: Checkout exact production application source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 50
+          submodules: recursive
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Verify exact remote production identity and scope
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          test "$(git -C application ls-remote origin "refs/heads/$PROD_BRANCH" | awk '{print $1}')" = "$APP_SHA"
+          git -C application diff --check "$BASE_SHA"..HEAD
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+          mapfile -t changed < <(git -C application diff --name-only "$BASE_SHA"..HEAD | sort)
+          expected=(
+            include/UI/ClassicInventoryOverlay.h
+            include/UI/InventoryUIContract.h
+            src/UI/ClassicInventoryOverlay.cpp
+            src/UI/TrainerViewScreenBase.inc
+            tests/test_inventory_ui_contract.cpp
+          )
+          mapfile -t expected_sorted < <(printf '%s\n' "${expected[@]}" | sort)
+          diff -u <(printf '%s\n' "${expected_sorted[@]}") <(printf '%s\n' "${changed[@]}")
+          echo 'EXACT REMOTE PRODUCTION IDENTITY: PASS'
+          echo 'EXACT PRODUCTION FIVE-FILE SCOPE: PASS'
+          echo 'git diff --check: PASS'
+
+      - name: Focused exact-production footer contract
+        working-directory: application
+        run: |
+          set -euo pipefail
+          make -f Makefile.host.base build-host/test_inventory_ui_contract
+          ./build-host/test_inventory_ui_contract
+          make -f Makefile.host.base build-host/test_classic_inventory_ui_model
+          ./build-host/test_classic_inventory_ui_model
+          python3 - <<'PY'
+          from pathlib import Path
+          contract = Path('include/UI/InventoryUIContract.h').read_text()
+          overlay = Path('src/UI/ClassicInventoryOverlay.cpp').read_text()
+          base = Path('src/UI/TrainerViewScreenBase.inc').read_text()
+          assert 'static constexpr int Width = 560;' in contract
+          assert 'static constexpr int FooterHeight = 64;' in contract
+          assert 'useReadOnlyInventoryFooterOverride' in contract
+          assert 'ClassicInventory::stagedEditingAvailable(*this)' in base
+          assert 'stagedInventoryActionsAvailable' in base
+          assert 'rowH - 4, true' in overlay
+          assert 'const auto textColor = (selected || brightUnselected) ? Colors::Text : Colors::TextDim;' in overlay
+          assert 'D-pad/Stick Navigate     A Add/Select' in overlay
+          assert 'B Cancel                  L/R Page' in overlay
+          print('CLASSIC STAGED FOOTER: PASS')
+          print('PICKER WIDTH: 560')
+          print('PICKER ITEM TEXT: BRIGHT PRIMARY ROLE')
+          print('PICKER CONTROL FOOTER: PASS')
+          PY
+          ! grep -R 'sdmc:/PKSE' -n src include
+          grep -q '0x01008F6008C5E000ULL' src/Games/GameIdentity.cpp
+          grep -q 'return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;' include/Safety/SourceMutationPolicy.h
+          echo 'LIVE INSTALLED-GAME WRITES: HARD DISABLED'
+          echo 'LIVE RETROARCH WRITES: HARD DISABLED'
+          echo 'LIVE EMULATOR WRITES: HARD DISABLED'
+
+      - name: Recover device RomFS and asset preflight
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py) 2>&1 | tee recovery.log
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+
+      - name: Full devkitA64 compile and final link
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            for obj in ClassicInventoryOverlay.o ClassicInventoryUIModel.o ItemsPanel.o PickerDialog.o TrainerViewScreen.o; do
+              find build -name "$obj" -type f | grep -q . || { echo "missing native object: $obj"; exit 1; }
+            done
+          ' 2>&1 | tee native-build.log
+          grep -q 'ClassicInventoryOverlay.cpp' native-build.log
+          grep -q 'ClassicInventoryUIModel.cpp' native-build.log
+          grep -q 'TrainerViewScreen.cpp' native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s application/PokeBankNX.nro
+          echo 'CHANGED FOOTER/PICKER SOURCES ENTERED NRO BUILD: PASS'
+          echo 'DEVKITA64: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
+
+      - name: Verify embedded exact-production identity and RomFS
+        run: |
+          set -euo pipefail
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source "$APP_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_FINAL_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          print(json.dumps(data, indent=2))
+          PY
+          echo 'EMBEDDED IDENTITY: PASS'
+          echo 'EMBEDDED ROMFS: PASS'
+
+      - name: Package exact production retest files
+        id: package
+        run: |
+          set -euo pipefail
+          test "$(git -C application ls-remote origin "refs/heads/$PROD_BRANCH" | awk '{print $1}')" = "$APP_SHA"
+          SHORT_SHA="${APP_SHA:0:8}"
+          export SHORT_SHA
+          mkdir -p device-artifact
+          STEM="PokeBank-NX-Inventory-UI-Retest-${SHORT_SHA}"
+          cp application/PokeBankNX.nro "device-artifact/${STEM}.nro"
+          cp recovery.log asset-preflight.log native-build.log embedded-romfs.json toolchain-image.json toolchain-packages.txt device-artifact/
+          python3 - <<'PY'
+          import hashlib, json, os, zipfile
+          from pathlib import Path
+          out = Path('device-artifact')
+          app_sha = os.environ['APP_SHA']
+          app_tree = os.environ['APP_TREE']
+          short = os.environ['SHORT_SHA']
+          stem = f'PokeBank-NX-Inventory-UI-Retest-{short}'
+          nro = out / f'{stem}.nro'
+          nro_hash = hashlib.sha256(nro.read_bytes()).hexdigest()
+          manifest = out / f'{nro.name}.manifest.txt'
+          manifest.write_text(
+              f'Application source full SHA: {app_sha}\n'
+              f'Application tree: {app_tree}\n'
+              f'Artifact size bytes: {nro.stat().st_size}\n'
+              f'Artifact SHA-256: {nro_hash}\n'
+              'Full host validation run: 34746114229 PASS\n'
+              'ASan/UBSan validation run: 34746114229 PASS\n'
+              'Physical device status: RETEST REQUIRED\n'
+              'Live installed-game writes: HARD DISABLED\n'
+              'Live RetroArch writes: HARD DISABLED\n'
+              'Live emulator writes: HARD DISABLED\n'
+          )
+          handoff = out / 'INVENTORY_UI_POLISH_RETEST.txt'
+          handoff.write_text(
+              'PokeBank NX Inventory UI Polish Hardware Retest\n\n'
+              f'Production SHA: {app_sha}\n'
+              f'Production tree: {app_tree}\n'
+              'Classic populated footer: A Edit | X Add | Y Remove | L/R Category | + Options | - Help | B Back\n'
+              'Classic empty footer: X Add | L/R Category | + Options | - Help | B Back (A/Y hidden)\n'
+              'Picker width: 560 px\n'
+              'Picker normal item text: bright primary role\n'
+              'Physical device status: RETEST REQUIRED\n'
+              'Do not enable live writes.\n'
+          )
+          zip_path = out / f'{stem}.zip'
+          with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+              zf.write(nro, nro.name)
+              zf.write(manifest, manifest.name)
+              zf.write(handoff, handoff.name)
+          zip_hash = hashlib.sha256(zip_path.read_bytes()).hexdigest()
+          record = {
+              'application_source': app_sha,
+              'application_tree': app_tree,
+              'candidate_validation_run': 34746114229,
+              'artifact_build_run': int(os.environ['GITHUB_RUN_ID']),
+              'full_host': 'PASS',
+              'asan': 'PASS',
+              'ubsan': 'PASS',
+              'device_asset_preflight': 'PASS',
+              'devkitA64': 'PASS',
+              'native_final_link': 'PASS',
+              'embedded_identity': 'PASS',
+              'embedded_romfs': 'PASS',
+              'live_installed_game_writes': 'HARD DISABLED',
+              'live_retroarch_writes': 'HARD DISABLED',
+              'live_emulator_writes': 'HARD DISABLED',
+              'physical_device_status': 'RETEST REQUIRED',
+              'nro': {'name': nro.name, 'bytes': nro.stat().st_size, 'sha256': nro_hash},
+              'zip': {'name': zip_path.name, 'bytes': zip_path.stat().st_size, 'sha256': zip_hash},
+          }
+          (out / 'BUILD_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+          (out / 'SHA256SUMS.txt').write_text(f'{nro_hash}  {nro.name}\n{zip_hash}  {zip_path.name}\n')
+          print(json.dumps(record, indent=2))
+          PY
+          echo "artifact_name=PokeBank-NX-Inventory-UI-Retest-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Reconfirm remote production before upload
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          test "$(git -C application ls-remote origin "refs/heads/$PROD_BRANCH" | awk '{print $1}')" = "$APP_SHA"
+          echo 'REMOTE PRODUCTION STILL EXACT: PASS'
+
+      - name: Upload exact production retest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.artifact_name }}
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
