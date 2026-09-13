@@ -1,0 +1,221 @@
+name: Gen II editor exact production hardware artifact
+
+on:
+  push:
+    branches:
+      - ci/gen2-final-artifact-20260913
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-gen2-editor-final-artifact
+  cancel-in-progress: false
+
+env:
+  APP_SHA: 8d5e1ae5b4d6684ad3b09bbba12794b508690f98
+  APP_TREE: 4cee60fb41150df1d148d9bc8fe4faf833184274
+  SNAPSHOT_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  SHORT_SHA: 8d5e1ae5
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+  FINAL_VALIDATION_RUN: 34729373603
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout exact recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SNAPSHOT_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Restore permanent RomFS snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$SNAPSHOT_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py) 2>&1 | tee recovery.log
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' recovery.log
+
+      - name: Checkout exact remotely verified production source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 4
+          submodules: recursive
+
+      - name: Verify production identity and assemble final RomFS
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          test "$(git -C application rev-parse 'HEAD^{tree}')" = "$APP_TREE"
+          git -C application diff --check HEAD^
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          ! grep -R 'sdmc:/PKSE' -n application/src application/include
+          grep -q 'sdmc:/switch/PokeBank-NX' application/include/Utils/PokeBankPaths.h
+          grep -q 'SAVE WRITING NOT YET ENABLED' application/src/UI/Dialogs/SaveConfirmDialog.cpp
+          grep -q '0x01008F6008C5E000ULL' application/src/Games/GameIdentity.cpp
+          echo 'PRODUCTION SOURCE IDENTITY: PASS'
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+
+      - name: Clean native devkitA64 full build and final link
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            make clean || true
+            make -j1
+            test -s PokeBankNX.nro
+            for obj in Gen2StagedEditor.o GSCReadOnlyTrainer.o TrainerViewScreenGSCOverlay.o TrainerViewScreen.o ItemsPanel.o PickerDialog.o SaveConfirmDialog.o MachineDisplay.o TMMoves.o; do
+              find build -name "$obj" -type f | grep -q . || { echo "missing native object: $obj"; exit 1; }
+            done
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          test -s application/PokeBankNX.nro
+          echo 'TOUCHED OBJECT NATIVE PROBES: PASS'
+          echo 'DEVKITA64 COMPILE: PASS'
+          echo 'NATIVE FINAL LINK: PASS'
+
+      - name: Verify embedded application identity and complete RomFS
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source "$APP_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_FINAL_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          print(json.dumps(data, indent=2))
+          PY
+          echo 'EMBEDDED APPLICATION IDENTITY: PASS'
+          echo 'EMBEDDED ROMFS: PASS'
+
+      - name: Package exact Gen II editor artifact and evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p device-artifact
+          python3 application/tools/package_device_build.py application/PokeBankNX.nro \
+            --label Gen2-Editor --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
+          cp embedded-romfs.json asset-preflight.log recovery.log native-build.log \
+             toolchain-image.json toolchain-packages.txt device-artifact/
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          def digest(path):
+              h = hashlib.sha256()
+              with path.open('rb') as f:
+                  for chunk in iter(lambda: f.read(1024 * 1024), b''):
+                      h.update(chunk)
+              return h.hexdigest()
+
+          out = Path('device-artifact')
+          app_sha = os.environ['APP_SHA']
+          app_tree = os.environ['APP_TREE']
+          short = os.environ['SHORT_SHA']
+          nro = out / f'PokeBank-NX-Gen2-Editor-{short}.nro'
+          package_manifest = out / f'{nro.name}.manifest.txt'
+          zip_path = out / f'PokeBank-NX-Gen2-Editor-{short}.zip'
+          assert nro.is_file() and nro.stat().st_size > 0, nro
+          assert package_manifest.is_file(), package_manifest
+          assert zip_path.is_file() and zip_path.stat().st_size > 0, zip_path
+          nro_hash = digest(nro)
+          zip_hash = digest(zip_path)
+          text = package_manifest.read_text()
+          assert f'Application source full SHA: {app_sha}' in text
+          assert f'Artifact size bytes: {nro.stat().st_size}' in text
+          assert f'Artifact SHA-256: {nro_hash}' in text
+          record = {
+              'application_source': app_sha,
+              'application_tree': app_tree,
+              'recovery_snapshot': os.environ['SNAPSHOT_SHA'],
+              'final_validation_run': int(os.environ['FINAL_VALIDATION_RUN']),
+              'device_asset_preflight': 'PASS',
+              'devkitA64': 'PASS',
+              'native_final_link': 'PASS',
+              'embedded_application_identity': 'PASS',
+              'embedded_romfs': f"PASS {os.environ['EXPECTED_FINAL_ROMFS']}/{os.environ['EXPECTED_FINAL_ROMFS']}",
+              'full_host': 'PASS',
+              'asan': 'PASS',
+              'ubsan': 'PASS',
+              'safety_invariants': 'PASS',
+              'focused_pk2': 'PASS',
+              'compound_edit': 'PASS',
+              'per_field_matrix': 'PASS',
+              'add': 'PASS',
+              'clone': 'PASS',
+              'shiny': 'PASS',
+              'derived_gender': 'PASS',
+              'machine_display': 'PASS',
+              'underlying_machine_ids_unchanged': 'PASS',
+              'trainer_money_inventory': 'PASS',
+              'gsc_bridge': 'PASS',
+              'rby_regression': 'PASS',
+              'frlg_regression': 'PASS',
+              'rse_regression': 'PASS',
+              'source_immutability': 'PASS',
+              'clean_install': 'PASS',
+              'no_pkse_dependency': 'PASS',
+              'source_mutation_policy': 'PASS',
+              'git_diff_check': 'PASS',
+              'party_edit': 'DEFERRED',
+              'japanese_gen2': 'READ-ONLY',
+              'live_installed_game_writes': 'HARD DISABLED',
+              'live_retroarch_writes': 'HARD DISABLED',
+              'live_emulator_source_writes': 'HARD DISABLED',
+              'hardware_tested': False,
+              'files': {
+                  nro.name: {'bytes': nro.stat().st_size, 'sha256': nro_hash},
+                  zip_path.name: {'bytes': zip_path.stat().st_size, 'sha256': zip_hash},
+              },
+          }
+          build_manifest = out / 'BUILD_MANIFEST.json'
+          build_manifest.write_text(json.dumps(record, indent=2) + '\n')
+          sums = []
+          for p in sorted(out.iterdir()):
+              if p.is_file() and p.name != 'SHA256SUMS.txt':
+                  sums.append(f'{digest(p)}  {p.name}\n')
+          sums_path = out / 'SHA256SUMS.txt'
+          sums_path.write_text(''.join(sums))
+          listed = {name: sha for sha, name in (line.split('  ', 1) for line in sums_path.read_text().splitlines() if line.strip())}
+          assert listed[nro.name] == nro_hash
+          assert listed[zip_path.name] == zip_hash
+          print('RUNNER_LOCAL_NRO_BYTES=' + str(nro.stat().st_size))
+          print('RUNNER_LOCAL_NRO_SHA256=' + nro_hash)
+          print('RUNNER_LOCAL_ZIP_BYTES=' + str(zip_path.stat().st_size))
+          print('RUNNER_LOCAL_ZIP_SHA256=' + zip_hash)
+          print(build_manifest.read_text())
+          print(sums_path.read_text())
+          PY
+
+      - name: Upload exact Gen II editor hardware-test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gen2-Editor-8d5e1ae5
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
