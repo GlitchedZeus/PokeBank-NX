@@ -1,0 +1,53 @@
+name: Inventory Dirty Metadata Fix
+
+on:
+  push:
+    branches: [dev/inventory-hardware-polish-20260913]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[inventory-dirty-metadata]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify carrier parent
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "8af3cb5952631357a0ef7aad763f688867602185"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/inventory-dirty-metadata-fix.yml"
+      - name: Tighten source metadata comparison and tests
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          def repl(path, old, new):
+              p=Path(path); s=p.read_text();
+              if s.count(old)!=1: raise SystemExit(f'{path}: expected exactly one match, got {s.count(old)}')
+              p.write_text(s.replace(old,new,1))
+          repl('include/UI/InventoryUIContract.h',
+               '''    (void)currentIsNew; // game-owned marker is deliberately not a PokeBank dirty signal\n    const auto* source = findInventoryBaselineItem(baseline, category, itemId);\n    return {\n        source ? source->sourceIsNew : false,\n        source ? source->quantity != currentQuantity : currentQuantity != 0,\n        selected,\n    };\n''',
+               '''    const auto* source = findInventoryBaselineItem(baseline, category, itemId);\n    // The raw truth value is never a dirty signal: source isNew=true + current isNew=true is clean.\n    // But if PokeBank changes that game-owned metadata bit, the staged save does differ semantically.\n    const bool sourceIsNew = source ? source->sourceIsNew : false;\n    const bool metadataChanged = source && currentIsNew != sourceIsNew;\n    return {\n        sourceIsNew,\n        source ? (source->quantity != currentQuantity || metadataChanged) : currentQuantity != 0,\n        selected,\n    };\n''')
+          repl('tests/test_inventory_ui_contract.cpp',
+               '''    // The live/current isNew value is not allowed to manufacture or clear PokeBank dirty state.\n    const auto currentFlagCleared = inventoryItemPresentationState(baseline, 0, 17, 53, false, false);\n    assert(currentFlagCleared.sourceIsNew);\n    assert(!currentFlagCleared.stagedModified);\n\n''',
+               '''    // Raw isNew=true is not dirty, but changing that source-owned metadata bit is a real semantic edit.\n    const auto currentFlagCleared = inventoryItemPresentationState(baseline, 0, 17, 53, false, false);\n    assert(currentFlagCleared.sourceIsNew);\n    assert(currentFlagCleared.stagedModified);\n    const auto sourceFalseUntouched = inventoryItemPresentationState(baseline, 0, 18, 5, false, false);\n    assert(!sourceFalseUntouched.sourceIsNew);\n    assert(!sourceFalseUntouched.stagedModified);\n    const auto sourceFalseFlagChanged = inventoryItemPresentationState(baseline, 0, 18, 5, true, false);\n    assert(!sourceFalseFlagChanged.sourceIsNew);\n    assert(sourceFalseFlagChanged.stagedModified);\n\n''')
+          PY
+          git diff --check
+          make -f Makefile.host.base build-host/test_inventory_ui_contract
+          ./build-host/test_inventory_ui_contract
+          make -f Makefile.host.base build-host/test_inventory_ui_contract_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_inventory_ui_contract_sanitize
+      - name: Commit clean fix
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/inventory-dirty-metadata-fix.yml
+          git diff --check
+          git config user.name "PokeBank NX CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "ui: compare game-owned item metadata against inventory baseline [inventory-dirty-metadata]"
+          git push origin HEAD:dev/inventory-hardware-polish-20260913
