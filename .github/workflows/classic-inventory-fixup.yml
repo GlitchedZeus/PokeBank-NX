@@ -1,0 +1,75 @@
+name: Classic Inventory Fixup
+
+on:
+  push:
+    branches:
+      - dev/classic-inventory-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  fixup:
+    if: ${{ !contains(github.event.head_commit.message, '[classic-key-capacity-fixed]') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev/classic-inventory-20260912
+          fetch-depth: 2
+      - name: Apply focused Gen II capacity fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/Integration/Gen2/Gen2UniversalInventory.cpp')
+          s = p.read_text()
+          old = '''bool readKeys(std::span<const uint8_t> bytes, std::size_t offset, std::vector<uint8_t>& out) noexcept {
+              constexpr std::size_t capacity = 26;'''
+          new = '''constexpr std::size_t kKeyItemCapacity = 25;
+
+          bool readKeys(std::span<const uint8_t> bytes, std::size_t offset, std::vector<uint8_t>& out) noexcept {
+              constexpr std::size_t capacity = kKeyItemCapacity;'''
+          if old not in s:
+              raise SystemExit('expected readKeys capacity block not found')
+          s = s.replace(old, new, 1)
+          old = '''void writeKeys(std::vector<uint8_t>& bytes, std::size_t offset, std::span<const uint8_t> entries) {
+              constexpr std::size_t capacity = 26;'''
+          new = '''void writeKeys(std::vector<uint8_t>& bytes, std::size_t offset, std::span<const uint8_t> entries) {
+              constexpr std::size_t capacity = kKeyItemCapacity;'''
+          if old not in s:
+              raise SystemExit('expected writeKeys capacity block not found')
+          s = s.replace(old, new, 1)
+          old = 'if (entries.size() >= 26) {'
+          new = 'if (entries.size() >= kKeyItemCapacity) {'
+          if old not in s:
+              raise SystemExit('expected key capacity guard not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          t = Path('tests/test_gsc_universal_inventory.cpp')
+          s = t.read_text()
+          old = '''        assert(editor->stageInventoryQuantity(InventoryPocket::KeyItems,54,1,error));
+          assert(!editor->stageInventoryQuantity(InventoryPocket::KeyItems,54,2,error));'''
+          new = '''        assert(editor->stageInventoryQuantity(InventoryPocket::KeyItems,54,1,error));
+          // Regression: the Key Items writer must stop before the adjacent Balls count byte.
+          assert(editor->stagedInventoryQuantity(InventoryPocket::Balls,5)==5);
+          assert(!editor->stageInventoryQuantity(InventoryPocket::KeyItems,54,2,error));'''
+          if old not in s:
+              raise SystemExit('expected key-item test anchor not found')
+          s = s.replace(old, new, 1)
+          t.write_text(s)
+          PY
+          git diff --check
+          make -f Makefile.host.classic_inventory host-classic-inventory
+      - name: Commit focused fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'PokeBank NX CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/Integration/Gen2/Gen2UniversalInventory.cpp tests/test_gsc_universal_inventory.cpp
+          git commit -m 'classic: fix Gen II key item capacity [classic-key-capacity-fixed]'
+          git push origin HEAD:dev/classic-inventory-20260912
