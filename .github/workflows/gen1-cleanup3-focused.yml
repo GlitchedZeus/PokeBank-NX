@@ -12,6 +12,16 @@ on:
       - 'include/UI/NavigationRepeat.h'
       - 'include/UI/SpriteManager.h'
       - 'include/UI/StatsRadar.h'
+      - 'include/UI/BattleStatRadarModel.h'
+      - 'include/UI/Gen1PokemonPresentation.h'
+      - 'include/UI/PokemonEditorFoundationContract.h'
+      - 'include/Pokemon/Pokemon1ReadOnly.h'
+      - 'src/UI/Panels/BoxPokemonPanel.cpp'
+      - 'src/UI/Gen1PokemonEditorOverlayFoundation.inc'
+      - 'src/UI/Gen1PokemonEditorFoundationHardwareFix.inc'
+      - 'tests/test_gen1_summary_presentation.cpp'
+      - 'tests/test_gen1_radar_render.cpp'
+      - 'tests/test_pokemon_editor_foundation_contract.cpp'
       - 'src/Integration/Gen1/Gen1MoveCompatibility*'
       - 'src/UI/Gen1PokemonDetailsPresentation.cpp'
       - 'src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc'
@@ -65,6 +75,9 @@ jobs:
           set -euo pipefail
           rm -rf build-host
           for target in \
+            test_gen1_summary_presentation \
+            test_gen1_radar_render \
+            test_pokemon_editor_foundation_contract \
             test_gen1_shiny \
             test_gen1_move_compatibility \
             test_gen1_pokemon_editor_ux3_contract \

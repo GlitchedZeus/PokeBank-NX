@@ -707,11 +707,8 @@ std::array<uint16_t,5> ux2StatsForDisplay(TrainerViewScreen& screen, uint16_t sp
 }
 
 void ux2DrawRadar(PKSEFramebuffer& fb, int cx, int cy, int radius, const std::array<uint16_t,5>& stats) {
-    std::array<float,5> values{};
-    uint16_t maxStat = 1;
-    for (size_t i = 0; i < stats.size(); ++i) { values[i] = static_cast<float>(stats[i]); maxStat = std::max(maxStat, stats[i]); }
-    const float graphMax = std::max(20.0f, static_cast<float>(maxStat) * 1.15f);
-    StatsRadar::draw(fb, cx, cy, radius, values, graphMax,
+    const auto model = PokeBank::UIModel::gen1RadarModel(stats);
+    StatsRadar::draw(fb, cx, cy, radius, model.normalized, 1.0f,
                      Color(232, 60, 70, 58), Colors::Divider, Colors::Accent);
 }
 

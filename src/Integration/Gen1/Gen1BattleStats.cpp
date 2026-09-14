@@ -23,6 +23,11 @@ uint16_t calculatedStat(uint8_t base, uint8_t dv, uint16_t statExp,
 }
 } // namespace
 
+std::array<uint8_t,2> StagedPokemonEditor::personalTypes(uint16_t species) noexcept {
+    if (species < 1 || species > 151) return {0, 0};
+    return {kPersonal[species][5], kPersonal[species][6]};
+}
+
 BattleStats StagedPokemonEditor::calculateBattleStats(
     uint16_t species, uint8_t level, const std::array<uint8_t,4>& dvs,
     const std::array<uint16_t,5>& statExperience) noexcept {

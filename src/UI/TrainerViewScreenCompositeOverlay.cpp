@@ -44,12 +44,20 @@ using PokeVault::Integration::Gen1::parse;
 [[nodiscard]] bool handleInputUXBase(TrainerViewScreen& screen, uint64_t down);
 void drawOverlayUXBase(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 
-// Cleanup #2 remains compiled under explicit recovery symbols. Cleanup #3 owns the
-// live entry points while reusing Cleanup #2's accepted staged/export helpers.
+// Cleanup #2 remains compiled under explicit recovery symbols.
 [[nodiscard]] bool isGen1SourceUXCleanup2(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUXCleanup2(TrainerViewScreen& screen, uint64_t down);
 void drawOverlayUXCleanup2(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 
+// Cleanup #3 remains compiled intact as the accepted shiny/move/radar/staging recovery layer.
+// The final foundation delegates every non-workspace surface back to these symbols.
+[[nodiscard]] bool isGen1SourceUXCleanup3(const TrainerViewScreen& screen) noexcept;
+[[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down);
+[[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                         int stickX, int stickY);
+void drawOverlayUXCleanup3(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+
+// Final live entry points.
 [[nodiscard]] bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down);
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held,
@@ -76,10 +84,23 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 #undef handleInputUX
 #undef isGen1SourceUX
 
-// Cleanup pass #3: PKSE-style Gen I Create/Edit structure, five-stat radar, DV-derived shiny UX,
-// numbered normal/shiny Species preview, shared stick navigation, move compatibility, clone sprites,
-// mature read-only View reuse, and content-aware Pending Changes.
+// Hardware-tested Cleanup #3 stays intact under explicit recovery symbols. Its accepted
+// shiny mechanics, compatibility enforcement, species/move pickers, clone/review screens,
+// staged-write helpers, and radar are reused by the final foundation rather than rewritten.
+#define isGen1SourceUX isGen1SourceUXCleanup3
+#define handleInputUX handleInputUXCleanup3
+#define drawOverlayUX drawOverlayUXCleanup3
 #include "Gen1PokemonEditorOverlayUXCleanup3.inc"
+#undef drawOverlayUX
+#undef handleInputUX
+#undef isGen1SourceUX
+
+// Final permanent editor shell: all three PKSE-style panels are interactive and capability-driven.
+#include "Gen1PokemonEditorOverlayFoundation.inc"
+
+// Physical-test correction layer. This stays small and additive: picker ownership is restored
+// above the foundation workspace, and the lower-right display becomes two capability-aware panes.
+#include "Gen1PokemonEditorFoundationHardwareFix.inc"
 
 namespace UI {
 
@@ -87,13 +108,29 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 down = padGetButtonsDown(&pad);
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
+
+    // A picker is modal even though SpeciesPicker intentionally leaves the underlying mode as
+    // AddDraft/Edit. Route it directly to the accepted Cleanup #3 picker handler so A on Species
+    // cannot create an invisible picker that later appears over Level/EXP.
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
+        if (Gen1PokemonEditor::handleInputUXCleanup3(*this, down, held, stick.x, stick.y)) return;
+    }
+
     if (Gen1PokemonEditor::handleInputUX(*this, down, held, stick.x, stick.y)) return;
     updateGSCOverlay(pad, touch);
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     drawGSCOverlay(fb);
+
+    // Match the input ownership rule above: an active picker must be the visible top surface.
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
+        Gen1PokemonEditor::drawOverlayUXCleanup3(*this, fb);
+        return;
+    }
+
     Gen1PokemonEditor::drawOverlayUX(*this, fb);
+    Gen1PokemonEditor::drawFoundationBottomSplit(*this, fb);
 }
 
 } // namespace UI

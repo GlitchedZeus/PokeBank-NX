@@ -1,4 +1,5 @@
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
+#include "UI/Gen1PokemonPresentation.h"
 #include "Integration/Gen1/Gen1Shiny.h"
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 
@@ -100,6 +101,11 @@ int main() {
     assert(editor->stageAdd(2, 1, create, error));
     const auto staged = editor->boxedPokemon(2, 1, error);
     assert(staged && staged->species == 6);
+    const auto draftPresentation = PokeBank::UIModel::presentGen1Pokemon(
+        create.species, create.level, create.dvs, create.statExperience);
+    const auto stagedPresentation = PokeBank::UIModel::presentGen1Pokemon(*staged);
+    assert(draftPresentation.shiny && stagedPresentation.shiny);
+    assert(draftPresentation.battleStats == stagedPresentation.battleStats);
     assert(stored(*staged) == shinyDVs);
     assert(ShinyDVs::isShiny(stored(*staged)));
 
@@ -110,6 +116,7 @@ int main() {
     assert(reparsed && reparsed.save);
     const auto reparsedShiny = reparsed.save->boxes()[2].slots[1];
     assert(reparsedShiny);
+    assert(PokeBank::UIModel::presentGen1Pokemon(*reparsedShiny).battleStats == draftPresentation.battleStats);
     assert(stored(*reparsedShiny) == shinyDVs);
     assert(ShinyDVs::isShiny(stored(*reparsedShiny)));
 

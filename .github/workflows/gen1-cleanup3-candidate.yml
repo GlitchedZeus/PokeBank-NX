@@ -11,6 +11,16 @@ on:
       - 'include/UI/NavigationRepeat.h'
       - 'include/UI/SpriteManager.h'
       - 'include/UI/StatsRadar.h'
+      - 'include/UI/BattleStatRadarModel.h'
+      - 'include/UI/Gen1PokemonPresentation.h'
+      - 'include/UI/PokemonEditorFoundationContract.h'
+      - 'include/Pokemon/Pokemon1ReadOnly.h'
+      - 'src/UI/Panels/BoxPokemonPanel.cpp'
+      - 'src/UI/Gen1PokemonEditorOverlayFoundation.inc'
+      - 'src/UI/Gen1PokemonEditorFoundationHardwareFix.inc'
+      - 'tests/test_gen1_summary_presentation.cpp'
+      - 'tests/test_gen1_radar_render.cpp'
+      - 'tests/test_pokemon_editor_foundation_contract.cpp'
       - 'src/Integration/Gen1/**'
       - 'src/Legacy/RBYReadOnlyTrainer.cpp'
       - 'src/UI/Gen1Pokemon*'
@@ -73,6 +83,9 @@ jobs:
           set -euo pipefail
           rm -rf build-host
           for target in \
+            test_gen1_summary_presentation \
+            test_gen1_radar_render \
+            test_pokemon_editor_foundation_contract \
             test_gen1_shiny \
             test_gen1_move_compatibility \
             test_gen1_pokemon_editor_ux3_contract \
@@ -149,7 +162,7 @@ jobs:
           echo 'UBSAN: PASS'
 
   native_package:
-    name: Cleanup3 devkitA64 + UX3 physical-test package
+    name: Cleanup3 devkitA64 + UX4 physical-test package
     needs: host
     runs-on: ubuntu-latest
     timeout-minutes: 110
@@ -234,12 +247,12 @@ jobs:
           echo 'EMBEDDED SOURCE IDENTITY: PASS'
           echo 'EMBEDDED ROMFS: PASS'
 
-      - name: Package exact UX3 physical Switch candidate and hashes
+      - name: Package exact UX4 physical Switch candidate and hashes
         run: |
           set -euo pipefail
           mkdir -p device-artifact
           python3 application/tools/package_device_build.py application/PokeBankNX.nro \
-            --label Gen1-UX3-Retest --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
+            --label Gen1-UX4-Retest --out-dir "$GITHUB_WORKSPACE/device-artifact" --zip
           cp embedded-romfs.json asset-preflight.log recovery.log native-build.log \
              toolchain-image.json toolchain-packages.txt candidate-tree.txt device-artifact/
           python3 - <<'PY'
@@ -259,14 +272,17 @@ jobs:
           zip_candidates = [p for p in out.iterdir() if p.suffix == '.zip']
           assert len(nro_candidates) == 1, nro_candidates
           assert len(zip_candidates) == 1, zip_candidates
-          assert 'UX3' in nro_candidates[0].name, nro_candidates[0]
-          assert 'UX3' in zip_candidates[0].name, zip_candidates[0]
+          assert 'UX4' in nro_candidates[0].name, nro_candidates[0]
+          assert 'UX4' in zip_candidates[0].name, zip_candidates[0]
           record = {
               'application_source': app_sha,
               'application_tree': tree,
               'recovery_snapshot': os.environ['RECOVERY_SHA'],
               'workflow_run': int(os.environ['GITHUB_RUN_ID']),
               'gen1_cleanup3_focused': 'PASS',
+              'gen1_summary_presentation': 'PASS',
+              'gen1_radar_render': 'PASS',
+              'pokemon_editor_foundation': 'PASS',
               'shiny_strict_round_trip': 'PASS',
               'shiny_clone_preservation': 'PASS',
               'weird_source_move_preservation': 'PASS',
@@ -293,10 +309,10 @@ jobs:
           print((out / 'SHA256SUMS.txt').read_text())
           PY
 
-      - name: Preserve Gen I UX3 physical-test artifact
+      - name: Preserve Gen I UX4 physical-test artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Gen1-UX3-Retest-Candidate
+          name: Gen1-UX4-Retest-Candidate
           path: device-artifact/
           if-no-files-found: error
           retention-days: 90
@@ -305,7 +321,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Gen1-UX3-Retest-Diagnostics
+          name: Gen1-UX4-Retest-Diagnostics
           path: |
             recovery.log
             asset-preflight.log
