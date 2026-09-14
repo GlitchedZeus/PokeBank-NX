@@ -62,6 +62,9 @@ public:
     static uint8_t moveBasePP(uint16_t move) noexcept;
     static uint8_t moveMaxPP(uint16_t move, uint8_t ups) noexcept;
     static uint8_t growthRate(uint16_t species) noexcept;
+    // Read-only personal-data lookup for presentation. The returned values are the exact
+    // Generation I type IDs stored in the same frozen personal-data table used by stat math.
+    static std::array<uint8_t,2> personalTypes(uint16_t species) noexcept;
     // Exact Generation I battle-stat preview. Uses the original five-stat model
     // HP / Attack / Defense / Speed / Special, four stored DVs plus derived HP DV,
     // and Stat Exp's ceil(sqrt(value))/4 contribution. This is display math only.
