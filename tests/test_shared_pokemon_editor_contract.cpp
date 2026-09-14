@@ -49,6 +49,33 @@ int main() {
     assert(gen2Occupied[3] == Action::Review);
     assert(gen2Occupied[4] == Action::Close);
 
+    // Gen I and Gen II share the same DETAILS and MOVES shell. Gen II extends VALUES
+    // with capability rows for shiny/gender/held item/friendship/Pokerus.
+    constexpr auto gen1Layout = layoutFor(Generation::Gen1);
+    constexpr auto gen2Layout = layoutFor(Generation::Gen2);
+    static_assert(gen1Layout.detailsRows == gen2Layout.detailsRows);
+    static_assert(gen1Layout.movesRows == gen2Layout.movesRows);
+    static_assert(gen1Layout.valuesRows == 7);
+    static_assert(gen2Layout.valuesRows == 10);
+
+    Focus focus{};
+    assert(focus == Focus{Panel::Details, 0, 0});
+    focus = moveVertical(Generation::Gen2, focus, -1);
+    assert(focus == Focus{Panel::Details, 4, 0});
+    focus = switchPanel(Generation::Gen2, focus, 1);
+    assert(focus.panel == Panel::Values);
+    focus = Focus{Panel::Values, 4, 0};
+    focus = moveColumn(Generation::Gen2, focus, 1);
+    assert(focus.column == 1);
+    focus = moveColumn(Generation::Gen2, focus, 1);
+    assert(focus.column == 2);
+    focus = moveVertical(Generation::Gen2, Focus{Panel::Values, 9, 2}, 0);
+    assert(focus == Focus{Panel::Values, 9, 0}); // capability rows have one focus target.
+    focus = switchPanel(Generation::Gen2, Focus{Panel::Moves, 3, 2}, 1);
+    assert(focus.panel == Panel::Details);
+    assert(focus.row == 3);
+    assert(focus.column == 0);
+
     assert(draftDecision(DraftEvent::Navigate).mutateStagedSave == false);
     assert(draftDecision(DraftEvent::BrowsePicker).mutateStagedSave == false);
     assert(draftDecision(DraftEvent::AcceptPicker).mutateStagedSave == false);
