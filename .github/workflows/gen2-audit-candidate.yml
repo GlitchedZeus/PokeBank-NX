@@ -237,6 +237,33 @@ jobs:
           git -C application diff --quiet
           git -C application diff --cached --quiet
 
+      - name: Verify devkitA64 verifier toolchain
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            : "${DEVKITPRO:?DEVKITPRO is not set}"
+            devkita64_root="${DEVKITA64:-${DEVKITPRO}/devkitA64}"
+            readelf="${devkita64_root}/bin/aarch64-none-elf-readelf"
+            cxx="${devkita64_root}/bin/aarch64-none-elf-g++"
+            objcopy="${devkita64_root}/bin/aarch64-none-elf-objcopy"
+            echo "DEVKITPRO=${DEVKITPRO}"
+            echo "DEVKITA64_ROOT=${devkita64_root}"
+            for tool in "$readelf" "$cxx" "$objcopy"; do
+              if [ ! -x "$tool" ]; then
+                echo "ERROR: required devkitA64 tool is missing or not executable: $tool" >&2
+                echo "Contents of ${devkita64_root}/bin:" >&2
+                ls -la "${devkita64_root}/bin" >&2 || true
+                exit 1
+              fi
+              echo "TOOL OK: $tool"
+            done
+            "$readelf" --version
+          '
+          echo 'DEVKITA64 VERIFIER TOOLCHAIN: PASS'
+
       - name: Recover complete device RomFS and run asset preflight
         run: |
           set -euo pipefail
@@ -258,10 +285,12 @@ jobs:
       - name: Clean devkitA64 compile, link and native identity
         run: |
           set -euo pipefail
-          docker pull devkitpro/devkita64:latest
-          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
           docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
             set -euo pipefail
+            : "${DEVKITPRO:?DEVKITPRO is not set}"
+            devkita64_root="${DEVKITA64:-${DEVKITPRO}/devkitA64}"
+            readelf="${devkita64_root}/bin/aarch64-none-elf-readelf"
+            test -x "$readelf"
             git config --global --add safe.directory /work/application
             dkp-pacman -Q > /work/toolchain-packages.txt
             dkp-pacman -Q libnx devkitA64 switch-tools switch-sdl2 switch-glad switch-lz4 || true
@@ -269,13 +298,14 @@ jobs:
             make -j1
             test -s PokeBankNX.elf
             test -s PokeBankNX.nro
-            aarch64-none-elf-readelf -h PokeBankNX.elf > /work/native-linkage.txt
+            "$readelf" -h PokeBankNX.elf > /work/native-linkage.txt
           ' 2>&1 | tee native-build.log
           grep -q 'linking PokeBankNX.elf' native-build.log
           grep -q 'AArch64' native-linkage.txt
           test -s application/PokeBankNX.nro
           echo 'DEVKITA64 FULL BUILD: PASS'
           echo 'FINAL NRO LINK: PASS'
+          echo 'READELF: PASS / resolved devkitA64 toolchain path'
           echo 'NATIVE LINKAGE: PASS / AArch64'
 
       - name: Verify embedded application SHA and RomFS
