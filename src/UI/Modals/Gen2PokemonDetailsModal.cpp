@@ -249,7 +249,7 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
 
     fb.drawText(leftPaneX + 10, splitY + 8, "GEN II DATA", Colors::Accent, TextStyle::Caption);
     int dataY = splitY + 29;
-    const auto nativeRow = [&](const std::string& label, const std::string& value) mutable {
+    auto nativeRow = [&](const std::string& label, const std::string& value) {
         compactRow(fb, leftPaneX + 10, dataY, label, value, 80);
         dataY += 16;
     };
