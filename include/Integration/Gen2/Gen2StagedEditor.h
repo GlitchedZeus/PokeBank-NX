@@ -84,6 +84,7 @@ public:
     uint32_t money() const noexcept { return money_; }
     uint8_t itemQuantity(InventoryPocket pocket, uint8_t itemId) const noexcept;
 
+    bool stageTrainerEdit(std::string_view name, uint32_t money, std::string& error);
     bool stageTrainerName(std::string_view name, std::string& error);
     bool stageMoney(uint32_t money, std::string& error);
     bool stageItemQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,

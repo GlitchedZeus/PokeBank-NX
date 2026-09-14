@@ -586,8 +586,9 @@ void drawGSCTrainerCard(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     };
 
     const Trainer::Trainer& trainer = screen.trainer;
-    row("Name", trainer.trainerName.empty() ? std::string("(none)") : trainer.trainerName);
-    row("Money", "$" + std::to_string(trainer.money));
+    const auto* staged = stagedEditor(screen);
+    row("Name", staged ? staged->trainerName() : trainer.trainerName);
+    row("Money", "$" + std::to_string(staged ? staged->money() : trainer.money));
     row("Trainer ID", std::to_string(trainer.TID16));
 
     // The Gen II trainer bridge guarantees a semantic gender value for validated GSC sources:
@@ -601,7 +602,7 @@ void drawGSCTrainerCard(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         : "Gold/Silver use the games' fixed male player character.";
     fb.drawText(cardX + 12, rowY, note, Colors::TextDim, TextStyle::Caption);
     fb.drawText(cardX + 12, rowY + 28,
-                "No SID is stored. X opens staged editing; the source .srm remains read-only.",
+                "A / X: Edit staged copy   Y: Review / Export   Source .srm remains read-only.",
                 Colors::TextDim, TextStyle::Caption);
 
     // The accepted base draws transient status before this overlay; redraw it so a read-only-action

@@ -1,5 +1,6 @@
 #include "Pokemon/Pokemon2ReadOnly.h"
 #include "UI/Gen2StagedAccess.h"
+#include "Gen2TrainerSessionOverlay.inc"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
@@ -190,6 +191,7 @@ void drawParityGen2Clone(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
 bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isGSC(screen)) return false;
+    if (trainerSessionFor(screen).session.active) { drawTrainerSession(screen, fb); return true; }
     if (const auto* passive = parityPassiveDetailsTarget(screen)) {
         drawParityExternalPassiveView(screen, fb, *passive);
         return true;
@@ -207,12 +209,14 @@ bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 }
 
 bool finalGen2SurfaceOwnsFrame(const TrainerViewScreen& screen) noexcept {
-    return parityPassiveDetailsTarget(screen) != nullptr || unifiedGen2SurfaceOwnsFrame(screen);
+    return (isGSC(screen) && trainerSessionFor(screen).session.active) ||
+        parityPassiveDetailsTarget(screen) != nullptr || unifiedGen2SurfaceOwnsFrame(screen);
 }
 
 bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                  int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
+    if (handleTrainerSession(screen, down, held, stickX, stickY)) return true;
     if (handleParityExternalPassiveInput(screen, down, touch)) return true;
     if (handleUnifiedGen2SurfaceInput(screen, down, held, stickX, stickY, touch)) return true;
 
@@ -222,7 +226,8 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         screen.trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(screen), editor != nullptr);
     const bool storage = screen.selectedMode == TrainerViewScreen::ViewMode::Storage;
     const auto surface = screen.selectedMode == TrainerViewScreen::ViewMode::Boxes ? Access::Surface::Boxes
-        : storage && screen.storageFocusPane == 0 ? Access::Surface::StorageSave : Access::Surface::Other;
+        : storage && screen.storageFocusPane == 0 ? Access::Surface::StorageSave
+        : screen.selectedMode == TrainerViewScreen::ViewMode::Trainer ? Access::Surface::Trainer : Access::Surface::Other;
     const int box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
     const int slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
     const bool validSlot = editor && box >= 0 && slot >= 0 &&
@@ -231,6 +236,23 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     const bool blocked = editorOverlayState(screen).active || screen.helpOverlayActive ||
         screen.details.active || screen.actionSheet.isOpen() || screen.saveConfirmActive ||
         screen.pickerActive || screen.itemEditDialogActive || screen.carrying() || screen.currentlySelecting;
+    if (caps.canEditStagedCopy && surface == Access::Surface::Trainer && screen.detailViewActive && !blocked &&
+        (down & HidNpadButton_Y)) {
+        auto& legacy = editorOverlayState(screen);
+        legacy.active = legacy.review = true;
+        legacy.pokemonActions = false;
+        legacy.reviewRow = 0;
+        return true;
+    }
+    if (Access::entry(caps, surface, screen.detailViewActive, blocked, validSlot,
+                      down & (HidNpadButton_A | HidNpadButton_X)) == Access::Entry::TrainerEdit) {
+        auto& trainer = trainerSessionFor(screen);
+        trainer.session.begin(*editor);
+        trainer.row = 0;
+        trainer.error.clear();
+        screen.controllerNavigation.reset();
+        return true;
+    }
     if (Access::entry(caps, surface, screen.detailViewActive, blocked, validSlot,
                       down & (HidNpadButton_A | HidNpadButton_X)) == Access::Entry::PokemonActions) {
         auto& legacy = editorOverlayState(screen);

@@ -538,6 +538,14 @@ void StagedEditor::setChange(std::string key, std::string label,
                         std::move(beforeValue), std::move(afterValue)});
 }
 
+bool StagedEditor::stageTrainerEdit(std::string_view name, uint32_t money, std::string& error) {
+    // Validate both fields before changing either. Name encoding can fail; money
+    // has no remaining failure path after this range check.
+    if (money > kMaxMoney) { error = "Money must be between 0 and 999999"; return false; }
+    if (!stageTrainerName(name, error)) return false;
+    return stageMoney(money, error);
+}
+
 bool StagedEditor::stageTrainerName(std::string_view name, std::string& error) {
     std::vector<uint8_t> encoded;
     if (!encodeTrainerName(name, encoded, error)) return false;

@@ -2,6 +2,7 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2PokemonSession.h"
 #include "UI/Gen2StagedAccess.h"
+#include "UI/Gen2TrainerSession.h"
 #include "UI/Gen2PokemonPickerModel.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/BattleStatRadarModel.h"
@@ -101,6 +102,50 @@ void runCreateParity(const L& layout, SourceGame game) {
     assert(std::equal(afterAdd.begin(), afterAdd.end(), editor->stagedBytes().begin()));
 }
 
+void runTrainerSession(const L& layout, SourceGame game) {
+    const auto raw = fixture(layout, true);
+    auto parsed = parse(raw, game);
+    std::string error;
+    auto editor = StagedEditor::create(*parsed.save, error);
+    assert(editor);
+    namespace Access = PokeBank::UIModel::Gen2StagedAccess;
+    assert(Access::entry(Access::capabilities(true, true), Access::Surface::Trainer,
+        true, false, false, true) == Access::Entry::TrainerEdit);
+    // Preserve earlier staged Pokemon and Trainer changes across Discard this Edit.
+    BoxPokemonEdit edit;
+    edit.nickname = "EARLIER";
+    assert(editor->stageBoxPokemonEdit(0, 0, edit, error));
+    assert(editor->stageMoney(1234, error));
+    const auto before = std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end());
+    PokeBank::UIModel::Gen2Trainer::Session session;
+    session.begin(*editor);
+    session.name = "SILVER";
+    session.money = 5678;
+    assert(!session.back() && session.confirmExit);
+    session.continueEditing();
+    assert(session.active && !session.confirmExit && session.name == "SILVER");
+    assert(std::equal(before.begin(), before.end(), editor->stagedBytes().begin()));
+    session.discard();
+    assert(!session.active && session.money == 1234);
+    assert(std::equal(before.begin(), before.end(), editor->stagedBytes().begin()));
+    session.begin(*editor);
+    session.name = "GOLD";
+    session.money = 1000000;
+    assert(!session.keep(*editor, error));
+    assert(std::equal(before.begin(), before.end(), editor->stagedBytes().begin()));
+    session.money = 999999;
+    session.name = "TOOLONGNAME";
+    assert(!session.keep(*editor, error));
+    assert(std::equal(before.begin(), before.end(), editor->stagedBytes().begin()));
+    session.name = "GOLD";
+    assert(session.keep(*editor, error));
+    assert(editor->trainerName() == "GOLD" && editor->money() == 999999);
+    assert(editor->boxedPokemon(0, 0, error)->nickname == "EARLIER");
+    assert(parse(editor->finalizedBytes(error), game));
+    assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
+    assert(std::equal(raw.begin(), raw.end(), parsed.save->sourceBytes().begin()));
+}
+
 int main() {
     // Same conceptual surfaces for occupied and empty slots across generations.
     const auto empty = Shared::actionsForSlot(false);
@@ -135,6 +180,9 @@ int main() {
     assert(partyData->currentHP == 44 && partyData->maxHP == 55);
     assert(partyData->statusText == "Poisoned");
 
+    runTrainerSession(GS, SourceGame::Gold);
+    runTrainerSession(GS, SourceGame::Silver);
+    runTrainerSession(C, SourceGame::Crystal);
     runCreateParity(GS, SourceGame::Gold);
     runCreateParity(GS, SourceGame::Silver);
     runCreateParity(C, SourceGame::Crystal);
