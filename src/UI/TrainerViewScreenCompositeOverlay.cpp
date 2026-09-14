@@ -44,12 +44,20 @@ using PokeVault::Integration::Gen1::parse;
 [[nodiscard]] bool handleInputUXBase(TrainerViewScreen& screen, uint64_t down);
 void drawOverlayUXBase(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 
-// Cleanup #2 remains compiled under explicit recovery symbols. Cleanup #3 owns the
-// live entry points while reusing Cleanup #2's accepted staged/export helpers.
+// Cleanup #2 remains compiled under explicit recovery symbols.
 [[nodiscard]] bool isGen1SourceUXCleanup2(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUXCleanup2(TrainerViewScreen& screen, uint64_t down);
 void drawOverlayUXCleanup2(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 
+// Cleanup #3 remains compiled intact as the accepted shiny/move/radar/staging recovery layer.
+// The final foundation delegates every non-workspace surface back to these symbols.
+[[nodiscard]] bool isGen1SourceUXCleanup3(const TrainerViewScreen& screen) noexcept;
+[[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down);
+[[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                         int stickX, int stickY);
+void drawOverlayUXCleanup3(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+
+// Final live entry points.
 [[nodiscard]] bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down);
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held,
@@ -76,10 +84,19 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 #undef handleInputUX
 #undef isGen1SourceUX
 
-// Cleanup pass #3: PKSE-style Gen I Create/Edit structure, five-stat radar, DV-derived shiny UX,
-// numbered normal/shiny Species preview, shared stick navigation, move compatibility, clone sprites,
-// mature read-only View reuse, and content-aware Pending Changes.
+// Hardware-tested Cleanup #3 stays intact under explicit recovery symbols. Its accepted
+// shiny mechanics, compatibility enforcement, species/move pickers, clone/review screens,
+// staged-write helpers, and radar are reused by the final foundation rather than rewritten.
+#define isGen1SourceUX isGen1SourceUXCleanup3
+#define handleInputUX handleInputUXCleanup3
+#define drawOverlayUX drawOverlayUXCleanup3
 #include "Gen1PokemonEditorOverlayUXCleanup3.inc"
+#undef drawOverlayUX
+#undef handleInputUX
+#undef isGen1SourceUX
+
+// Final permanent editor shell: all three PKSE-style panels are interactive and capability-driven.
+#include "Gen1PokemonEditorOverlayFoundation.inc"
 
 namespace UI {
 
