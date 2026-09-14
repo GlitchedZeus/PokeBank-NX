@@ -9,9 +9,9 @@ namespace UI { class PKSEFramebuffer; class TrainerViewScreen; }
 
 namespace UI::Modals {
 
-// Truthful Generation I view model shared by the mature read-only PK1 detail path
-// and the staged boxed-Pokemon Cleanup #3 View. It deliberately contains only
-// fields that physically exist in the Gen I record or are derived from them.
+// Truthful Generation I view model shared by the mature read-only PK1 Party/Box detail path.
+// It deliberately contains only fields that physically exist in the Gen I record or are
+// deterministically derived from them. This is presentation-only; no mutation path lives here.
 struct Gen1PokemonDetailsPresentation {
     uint16_t species = 0;
     std::string speciesName;
@@ -26,9 +26,12 @@ struct Gen1PokemonDetailsPresentation {
     std::array<uint8_t,4> pp{};
     std::array<uint8_t,4> ppUps{};
     std::array<uint16_t,5> battleStats{};
+    std::array<uint8_t,2> nativeTypes{}; // exact Gen I type IDs
     bool hasBattleStats = false;
     bool battleStatsCalculated = false;
     bool shiny = false;
+    uint8_t catchRate = 0;
+    std::string sourceGameLabel = "Gen I";
     std::string recordLabel;
     std::string sourceStateLabel = "READ ONLY";
 };
