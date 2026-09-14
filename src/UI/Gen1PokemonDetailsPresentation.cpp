@@ -67,9 +67,10 @@ void drawBadge(PKSEFramebuffer& fb, int x, int y, const std::string& text) {
 }
 
 void compactRow(PKSEFramebuffer& fb, int x, int y, const std::string& label,
-                const std::string& value, int valueX = 100) {
+                const std::string& value, int valueX = 100,
+                Color valueColor = Colors::Text) {
     fb.drawText(x, y, label, Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + valueX, y, value, Colors::Text, TextStyle::Caption);
+    fb.drawText(x + valueX, y, value, valueColor, TextStyle::Caption);
 }
 
 std::string shortRecordLabel(const std::string& record) {
@@ -105,7 +106,7 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
         fb.measureText("View Pokemon — READ ONLY", titleW, titleH, TextStyle::Heading);
         fb.drawShinyMark(workspaceX + 36 + titleW, workspaceY + 18, 18, Colors::ShinyStar);
     }
-    const std::string subtitle = p.recordLabel + "  •  PKSE three-panel workspace  •  Source save immutable";
+    const std::string subtitle = p.recordLabel + "  •  Source save immutable";
     fb.drawText(workspaceX + 24, workspaceY + 50, subtitle, Colors::TextDim, TextStyle::Caption);
 
     constexpr int contentY = workspaceY + 74;
@@ -186,8 +187,16 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
         fb.drawText(rightX + rightW - 20 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
     }
     fb.drawFilledRect(rightX + 14, contentY + 220, rightW - 28, 1, Colors::Divider);
-    compactRow(fb, rightX + 18, contentY + 235, "Move compatibility", "Not checked", 300);
-    compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300);
+    const std::string compatibilityText = !p.moveCompatibilityChecked
+        ? "Not checked"
+        : (p.moveCompatibilityCompatible ? "OK" : "Unusual preserved");
+    const Color compatibilityColor = !p.moveCompatibilityChecked
+        ? Colors::TextDim
+        : (p.moveCompatibilityCompatible ? Colors::Success : Colors::Warning);
+    compactRow(fb, rightX + 18, contentY + 235, "Move compatibility", compatibilityText, 300,
+               compatibilityColor);
+    compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300,
+               Colors::TextDim);
 
     constexpr int splitY = contentY + 288;
     constexpr int splitH = 216;
