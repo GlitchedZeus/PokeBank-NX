@@ -237,4 +237,34 @@ ExportTransactionResult publishVerifiedExport(const ExportTransactionRequest& re
     return result;
 }
 
+ExportTransactionResult publishVerifiedStagedEditorExport(
+    const StagedEditor& editor, const StagedEditorExportRequest& request) {
+    ExportTransactionResult result;
+    if (!editor.hasPendingChanges()) {
+        result.error = "No pending changes to export";
+        return result;
+    }
+
+    std::string finalizeError;
+    const auto edited = editor.finalizedBytes(finalizeError);
+    if (edited.empty()) {
+        result.error = finalizeError.empty() ? "Staged save finalization failed" : finalizeError;
+        return result;
+    }
+
+    ExportTransactionRequest transaction;
+    transaction.rootDirectory = request.rootDirectory;
+    transaction.directoryStem = request.directoryStem;
+    transaction.sourcePath = request.sourcePath;
+    transaction.gameId = request.gameId;
+    transaction.saveFormat = request.saveFormat;
+    transaction.timestamp = request.timestamp;
+    transaction.applicationSha = request.applicationSha;
+    transaction.sourceGame = editor.metadata().sourceGame;
+    transaction.originalBytes = editor.originalBytes();
+    transaction.editedBytes = edited;
+    transaction.pendingChanges = editor.pendingChanges();
+    return publishVerifiedExport(transaction);
+}
+
 } // namespace PokeVault::Integration::Gen2
