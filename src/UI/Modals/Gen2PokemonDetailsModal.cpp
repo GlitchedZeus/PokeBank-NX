@@ -1,6 +1,7 @@
 #include "UI/Modals/Gen2PokemonDetailsModal.h"
 
 #include "Integration/Gen2/Gen2BattleStats.h"
+#include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Names/MoveNames.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
@@ -15,6 +16,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <optional>
 #include <string>
 
 namespace UI::Modals {
@@ -59,6 +61,13 @@ const char* sourceGameTitle(const std::string& id) noexcept {
     if (id == "silver_gbc") return "Silver";
     if (id == "crystal_gbc") return "Crystal";
     return "Gen II";
+}
+
+std::optional<Gen2::SourceGame> sourceGameFromId(const std::string& id) noexcept {
+    if (id == "gold_gbc") return Gen2::SourceGame::Gold;
+    if (id == "silver_gbc") return Gen2::SourceGame::Silver;
+    if (id == "crystal_gbc") return Gen2::SourceGame::Crystal;
+    return std::nullopt;
 }
 
 void drawBadge(PKSEFramebuffer& fb, int x, int y, const std::string& text) {
@@ -206,11 +215,13 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
                 calculatedBoxStats ? "Box battle stats calculated / read-only" : "Party battle stats stored / read-only",
                 Colors::TextDim, TextStyle::Caption);
 
-    // MOVES
+    // MOVES — compatibility is recomputed from exact source game + current species/moves every draw.
     fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
+    std::array<uint8_t, 4> currentMoves{};
     for (int slot = 0; slot < 4; ++slot) {
         const int y = contentY + 50 + slot * 44;
         const uint16_t move = p.move(slot);
+        currentMoves[static_cast<std::size_t>(slot)] = static_cast<uint8_t>(move);
         const std::string moveName = move == 0 ? std::string("Empty") : std::string(Names::getMoveName(move));
         fb.drawText(rightX + 20, y, moveName, Colors::Text, TextStyle::Caption);
         const std::string ppText = "PP " + std::to_string(p.movePP(slot)) + "  Up " + std::to_string(p.movePPUps(slot));
@@ -218,8 +229,14 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
         fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
         fb.drawText(rightX + rightW - 20 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
     }
+    const auto exactGame = sourceGameFromId(screen.sourceGameId);
+    const bool movesCompatible = exactGame &&
+        !Gen2::MoveCompatibility::firstIncompatible(*exactGame, p.speciesID(), currentMoves).has_value();
+    const std::string compatibilityText = movesCompatible ? "OK" : "Unusual preserved";
+    const Color compatibilityColor = movesCompatible ? Colors::Success : Colors::Warning;
+
     fb.drawFilledRect(rightX + 14, contentY + 220, rightW - 28, 1, Colors::Divider);
-    compactRow(fb, rightX + 18, contentY + 235, "Move compatibility", "Not checked", 300, Colors::TextDim);
+    compactRow(fb, rightX + 18, contentY + 235, "Move compatibility", compatibilityText, 300, compatibilityColor);
     compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300, Colors::TextDim);
 
     // Supplemental native Gen II data + six-axis battle-stat radar.
