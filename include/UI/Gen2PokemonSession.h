@@ -91,13 +91,24 @@ struct Session {
         const auto next = Pokemon::getExpForLevel(working.level+1,p->experienceGrowth);
         return next > working.experience ? next - working.experience : 0;
     }
-    bool movesAllowCommit(Gen2::SourceGame game) const noexcept {
-        for (size_t i=0; i<4; ++i) {
-            const bool compatible = Gen2::MoveCompatibility::canLearnMove(game,working.species,working.moves[i]);
-            const bool preserved = mode == SessionMode::Edit && working.species == baseline.species && working.moves[i] == baseline.moves[i];
-            if (!compatible && !preserved) return false;
+    CompatibilityState moveCompatibility(Gen2::SourceGame game, size_t slot) const noexcept {
+        if (slot >= 4) return CompatibilityState::NeedsCorrection;
+        const bool compatible = Gen2::MoveCompatibility::canLearnMove(game, working.species, working.moves[slot]);
+        if (mode == SessionMode::View) return passiveViewCompatibility(compatible);
+        const bool preserved = mode == SessionMode::Edit && working.species == baseline.species &&
+            working.moves[slot] == baseline.moves[slot];
+        return editMoveCompatibility(compatible, preserved);
+    }
+    CompatibilityState moveSummary(Gen2::SourceGame game) const noexcept {
+        auto result = CompatibilityState::Ok;
+        for (size_t i = 0; i < 4; ++i) {
+            const auto status = moveCompatibility(game, i);
+            if (static_cast<int>(status) > static_cast<int>(result)) result = status;
         }
-        return true;
+        return result;
+    }
+    bool movesAllowCommit(Gen2::SourceGame game) const noexcept {
+        return mayCommit(moveSummary(game));
     }
     Gen2::BoxPokemonEdit editRequest() const {
     const auto& before = baseline;

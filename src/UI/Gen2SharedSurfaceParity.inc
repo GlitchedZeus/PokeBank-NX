@@ -62,7 +62,7 @@ void drawParityExternalPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& f
     const int midX = leftX + leftW + 14, midW = 398;
     const int rightX = midX + midW + 14, rightW = g.x + g.width - 18 - rightX;
 
-    drawSharedDetails(fb, visual, leftX, contentY, leftW, contentH, true);
+    drawUnifiedDetails(fb, visual, unified, leftX, contentY, leftW, contentH, true);
     drawUnifiedValues(fb, visual, unified, midX, contentY, midW, contentH, true);
     drawUnifiedMoves(fb, screen, visual, unified, rightX, contentY, rightW, contentH, true);
 

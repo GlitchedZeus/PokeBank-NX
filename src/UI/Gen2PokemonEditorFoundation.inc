@@ -222,12 +222,7 @@ Rules::CompatibilityState moveStatus(const TrainerViewScreen& screen, const Stat
     if (!game)
         return state.mode == Mode::Create ? Rules::CompatibilityState::NeedsCorrection
                                           : Rules::CompatibilityState::UnusualPreserved;
-    const bool compatible = Gen2::MoveCompatibility::canLearnMove(
-        *game, state.working.species, state.working.moves[static_cast<std::size_t>(slot)]);
-    if (state.mode == Mode::Create) return Rules::createMoveCompatibility(compatible);
-    const bool exactPreservation = state.working.species == state.baseline.species &&
-        state.working.moves[static_cast<std::size_t>(slot)] == state.baseline.moves[static_cast<std::size_t>(slot)];
-    return Rules::editMoveCompatibility(compatible, exactPreservation);
+    return state.moveCompatibility(*game, static_cast<std::size_t>(slot));
 }
 
 bool movesAllowCommit(const TrainerViewScreen& screen, const State& state) noexcept {

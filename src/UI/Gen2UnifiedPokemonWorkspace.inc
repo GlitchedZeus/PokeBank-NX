@@ -1,4 +1,5 @@
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/Gen2WorkspacePresentation.h"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
@@ -270,11 +271,11 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
     fb.drawText(x + 292, y + 42, "Stat", Colors::TextDim, TextStyle::Caption);
 
     const auto& p = state.working;
-    const auto battle = Gen2::calculateBattleStats(p.species, p.level, editableDVs(p), p.statExperience).asArray();
+    const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p);
     const std::array<const char*, 5> labels{"HP", "Attack", "Defense", "Speed", "Special"};
     const std::array<uint8_t, 5> dvs{p.dvs[0], p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]};
     for (int r = 0; r < 5; ++r) {
-        const int yy = y + 70 + r * 42;
+        const int yy = y + 70 + r * 34;
         const bool rowSelected = !passive && unified.focus.panel == Unified::Panel::Values && unified.focus.row == r;
         if (rowSelected) fb.drawSelectionHighlight(x + 10, yy - 5, w - 20, 36);
         fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], Colors::TextDim, TextStyle::Caption);
@@ -283,11 +284,16 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     rowSelected && unified.focus.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
         const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)])
-                                      : "SpA " + std::to_string(battle[4]) + " / SpD " + std::to_string(battle[5]);
+                                      : "—";
         fb.drawText(x + 282, yy, stat,
                     rowSelected && unified.focus.column == 2 ? Colors::Accent : Colors::Text, TextStyle::Caption);
     }
-    fb.drawText(x + 18, y + 276, "* HP DV derived; one Special DV feeds SpA + SpD", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 246, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 274, "SpA", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 84, y + 274, std::to_string(battle[4]), Colors::Text, TextStyle::Caption);
+    fb.drawText(x + 200, y + 274, "SpD", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 266, y + 274, std::to_string(battle[5]), Colors::Text, TextStyle::Caption);
+    fb.drawText(x + 18, y + 304, "* HP DV derived • one stored Special DV", Colors::TextDim, TextStyle::Caption);
 
     const std::array<std::pair<std::string, std::string>, 5> capabilityRows{{
         {"Shiny", p.shiny ? "Yes (DV-derived)" : "No (DV-derived)"},
@@ -298,7 +304,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
     }};
     for (int i = 0; i < 5; ++i) {
         const int row = 5 + i;
-        const int yy = y + 306 + i * 39;
+        const int yy = y + 338 + i * 34;
         const bool selected = !passive && unified.focus.panel == Unified::Panel::Values && unified.focus.row == row;
         if (selected) fb.drawSelectionHighlight(x + 10, yy - 5, w - 20, 34);
         fb.drawText(x + 18, yy, capabilityRows[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
@@ -355,7 +361,7 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
     fb.drawText(x + 190, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 246, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
     for (int slot = 0; slot < 4; ++slot) {
-        const int yy = y + 72 + slot * 42;
+        const int yy = y + 62 + slot * 32;
         const bool selected = !passive && unified.focus.panel == Unified::Panel::Moves && unified.focus.row == slot;
         if (selected) fb.drawSelectionHighlight(x + 10, yy - 5, w - 20, 36);
         const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];
@@ -366,43 +372,23 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
                     selected && unified.focus.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
         fb.drawText(x + 246, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]),
                     selected && unified.focus.column == 2 ? Colors::Accent : Colors::Text, TextStyle::Caption);
-        fb.drawText(x + 292, yy, Rules::compatibilityText(status), unifiedStatusColor(status), TextStyle::Caption);
+        fb.drawText(x + 292, yy, status == Rules::CompatibilityState::Ok ? "OK" :
+            status == Rules::CompatibilityState::UnusualPreserved ? "Unusual" : "Invalid", unifiedStatusColor(status), TextStyle::Caption);
     }
-    const int statusY = y + 246;
-    fb.drawHDivider(x + 14, statusY - 12, w - 28);
-    fb.drawText(x + 18, statusY, "Encounter legality", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 152, statusY, "Not checked", Colors::Text, TextStyle::Caption);
-    fb.drawText(x + 18, statusY + 28, "GEN II DATA", Colors::Accent, TextStyle::Caption);
+    Rules::CompatibilityState summary = Rules::CompatibilityState::Ok;
+    for (int slot = 0; slot < 4; ++slot) {
+        const auto status = moveStatus(screen, state, slot);
+        if (static_cast<int>(status) > static_cast<int>(summary)) summary = status;
+    }
+    fb.drawHDivider(x + 14, y + 184, w - 28);
+    fb.drawText(x + 18, y + 194,
+        std::string("Move compatibility: ") + (summary == Rules::CompatibilityState::NeedsCorrection
+            ? "Invalid draft" : Rules::compatibilityText(summary)),
+        unifiedStatusColor(summary), TextStyle::Caption);
+    fb.drawText(x + 18, y + 220, "Encounter legality: Not checked", Colors::TextDim, TextStyle::Caption);
+    if (const auto game = Rules::exactGameFromSourceId(screen.sourceGameId))
+        Gen2WorkspacePresentation::drawDataAndGraph(fb, x, y + 244, w, h - 256, state.working, *game);
 
-    const auto& p = state.working;
-    const auto* personal = Gen2::personalRecord(p.species);
-    const auto battle = Gen2::calculateBattleStats(p.species, p.level, editableDVs(p), p.statExperience).asArray();
-    const uint32_t nextExp = personal && p.level < 100
-        ? Pokemon::getExpForLevel(static_cast<uint8_t>(p.level + 1), personal->experienceGrowth)
-        : p.experience;
-    const uint32_t remaining = nextExp > p.experience ? nextExp - p.experience : 0;
-    int infoY = statusY + 58;
-    auto infoRow = [&](const char* label, const std::string& value) {
-        fb.drawText(x + 18, infoY, label, Colors::TextDim, TextStyle::Caption);
-        fb.drawText(x + 104, infoY, value, Colors::Text, TextStyle::Caption);
-        infoY += 24;
-    };
-    infoRow("Game", sharedGameName(screen));
-    if (const auto party = Gen2Native::partyViewData(p)) {
-        infoRow("Party HP", std::to_string(party->currentHP) + " / " + std::to_string(party->maxHP));
-        infoRow("Status", party->statusText);
-    } else {
-        infoRow("Growth", personal ? Rules::growthGroupName(personal->experienceGrowth) : "Unknown");
-        infoRow("EXP next", std::to_string(remaining));
-    }
-    if (screen.sourceGameId == "crystal_gbc") {
-        const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
-        infoRow("Met time", Gen2Native::crystalMetTimeName(caught.timeOfDay));
-        infoRow("Met level", Gen2Native::crystalCaughtLevelText(caught));
-        infoRow("Location", Gen2Native::crystalCaughtLocationName(caught.location));
-        infoRow("OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught));
-    }
-    StatsRadar::drawGen2Labeled(fb, x + w - 180, statusY + 62, 164, 150, battle);
 }
 
 void drawProgressionEditor(PKSEFramebuffer& fb, const State& state, const UnifiedWorkspaceState& unified) {

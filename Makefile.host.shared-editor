@@ -15,3 +15,17 @@ $(SHARED_EDITOR_HOST_TEST): $(SHARED_EDITOR_SOURCES)
 $(SHARED_EDITOR_SANITIZE_TEST): $(SHARED_EDITOR_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+GSC_RENDER_SOURCES := tests/test_gsc_workspace_render.cpp src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/Experience.cpp
+GSC_RENDER_TEST := $(HOST_BUILD)/test_gsc_workspace_render
+GSC_RENDER_SANITIZE := $(HOST_BUILD)/test_gsc_workspace_render_sanitize
+HOST_TESTS += $(GSC_RENDER_TEST)
+HOST_SANITIZE_TESTS += $(GSC_RENDER_SANITIZE)
+host-test: $(GSC_RENDER_TEST)
+host-sanitize: $(GSC_RENDER_SANITIZE)
+$(GSC_RENDER_TEST): $(GSC_RENDER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(GSC_RENDER_SANITIZE): $(GSC_RENDER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@

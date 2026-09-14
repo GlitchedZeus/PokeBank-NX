@@ -1,0 +1,74 @@
+#include "UI/Gen2WorkspacePresentation.h"
+#include "UI/SharedSpeciesPicker.h"
+#include <cassert>
+#include <iostream>
+#include <vector>
+namespace {
+struct Text { int x, y, w, h; std::string value; UI::Color color; };
+std::vector<Text> texts;
+std::vector<std::pair<uint16_t, bool>> sprites;
+bool intersects(const Text& a, const Text& b) {
+    return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+}
+}
+namespace UI {
+PKSEFramebuffer::PKSEFramebuffer() = default;
+PKSEFramebuffer::~PKSEFramebuffer() = default;
+void PKSEFramebuffer::measureText(const std::string& s, int& w, int& h, TextStyle) { w = s.size()*9; h = 18; }
+void PKSEFramebuffer::drawText(int x,int y,const std::string& s,Color c,TextStyle style) {
+    int w,h; measureText(s,w,h,style); texts.push_back({x,y,w,h,s,c});
+}
+void PKSEFramebuffer::drawText(int x,int y,const char* s,Color c,TextStyle style) { drawText(x,y,std::string(s),c,style); }
+void PKSEFramebuffer::drawFilledRect(int,int,int,int,Color) {}
+void PKSEFramebuffer::drawFilledCircle(int,int,int,Color) {}
+void PKSEFramebuffer::drawFilledRoundedRect(int,int,int,int,int,Color) {}
+void PKSEFramebuffer::drawRoundedRect(int,int,int,int,int,Color,int) {}
+void PKSEFramebuffer::drawSelectionHighlight(int,int,int,int) {}
+void PKSEFramebuffer::drawSpriteStaticContained(int,int,int,int,int,int,const unsigned char*,int) {}
+Sprite* SpriteManager::getSprite(uint16_t species, bool shiny) { sprites.emplace_back(species,shiny); return nullptr; }
+}
+int main() {
+    UI::PKSEFramebuffer fb;
+    namespace G = PokeVault::Integration::Gen2;
+    namespace W = PokeBank::UIModel::Gen2Workspace;
+    G::PokemonRecord p{};
+    p.species = 155; p.level = 5; p.dvs = {15,15,15,15,15};
+    for (auto game : {G::SourceGame::Gold, G::SourceGame::Silver, G::SourceGame::Crystal}) {
+        for (bool party : {false,true}) {
+            p.partyRecord = party; p.currentHP = 123; p.maxHP = 999;
+            p.attack = 998; p.defense = 997; p.speed = 996; p.specialAttack = 995; p.specialDefense = 994;
+            for (uint8_t status : {0,7,8,16,32,64}) {
+                p.status = status;
+                for (uint16_t location = 0; location < 96; ++location) {
+                    p.caughtData = static_cast<uint16_t>(0xFFFF & (0xFF80 | location));
+                    texts.clear();
+                    UI::Gen2WorkspacePresentation::drawDataAndGraph(fb, 0, 0, 438, 260, p, game);
+                    for (std::size_t i = 0; i < texts.size(); ++i) {
+                        const auto& t = texts[i];
+                        if (!(t.x >= 0 && t.y >= 0 && t.x+t.w <= 438 && t.y+t.h <= 260)) {
+                            std::cerr << "Outside: " << t.value << " at " << t.x << "," << t.y << " size " << t.w << "," << t.h << '\n';
+                            assert(false);
+                        }
+                        for (std::size_t j=i+1;j<texts.size();++j) assert(!intersects(t,texts[j]));
+                    }
+                }
+            }
+            const auto rows = W::dataRows(p, game);
+            auto has = [&](const char* label) { return std::any_of(rows.begin(),rows.end(),[&](const auto& r){return r.label==label;}); };
+            assert(has("HP") == party && has("Status") == party);
+            assert(has("Location") == (game == G::SourceGame::Crystal));
+            if (party) assert((W::battleStats(p) == std::array<uint16_t,6>{999,998,997,996,995,994}));
+            else assert(W::battleStats(p)[0] != 999);
+        }
+    }
+    // The actual shared renderer must request both sprite appearances for the
+    // hovered species, including the Gen II-only dex range, without a session write.
+    for (uint16_t dex : {1,151,152,251}) {
+        texts.clear(); sprites.clear();
+        UI::SharedSpeciesPicker::drawContent(fb,100,76,dex,251,true,
+            [](uint16_t id){ return std::to_string(id); }, [](uint16_t id){ return std::to_string(id); });
+        assert((sprites == std::vector<std::pair<uint16_t,bool>>{{dex,false},{dex,true}}));
+        assert(std::any_of(texts.begin(),texts.end(),[](const Text& t){return t.value == "Intended: Shiny";}));
+    }
+    std::cout << "Gen II production Data/Graph and shared species renderer: native gating, bounded nonoverlapping text, sprite identity PASS\n";
+}

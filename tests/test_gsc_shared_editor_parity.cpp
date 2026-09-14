@@ -41,6 +41,27 @@ void runCreateParity(const L& layout, SourceGame game) {
                          true, false, true, true) == Access::Entry::None);
     assert(Access::entry(caps, Access::Surface::Other, true, false, true, true) == Access::Entry::None);
 
+    // Existing unusual moves are orange/preserved in View and Edit, but a newly
+    // introduced incompatible draft is red and cannot reach either commit path.
+    auto unusual = seed;
+    uint16_t incompatible = 1;
+    while (MoveCompatibility::canLearnMove(game, seed.species, incompatible)) ++incompatible;
+    unusual.moves = {static_cast<uint8_t>(incompatible),0,0,0};
+    Session statusSession;
+    statusSession.begin(unusual, SessionMode::View);
+    assert(statusSession.moveSummary(game) == SessionRules::CompatibilityState::UnusualPreserved);
+    statusSession.begin(unusual, SessionMode::Edit);
+    assert(statusSession.moveSummary(game) == SessionRules::CompatibilityState::UnusualPreserved);
+    statusSession.begin(seed, SessionMode::Edit);
+    statusSession.setMove(0, incompatible);
+    assert(statusSession.moveSummary(game) == SessionRules::CompatibilityState::NeedsCorrection);
+    const auto beforeInvalid = std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end());
+    assert(!statusSession.keep(*editor, 0, 0, error));
+    statusSession.begin(unusual, SessionMode::Create);
+    size_t rejectedSlot = 0;
+    assert(!statusSession.add(*editor, 2, rejectedSlot, error));
+    assert(std::equal(beforeInvalid.begin(), beforeInvalid.end(), editor->stagedBytes().begin()));
+
     // Create starts as a local draft. Browsing from the fixture's Pikachu to
     // Chikorita must not mutate staged or source bytes.
     const std::vector<uint8_t> stagedBefore(editor->stagedBytes().begin(), editor->stagedBytes().end());
