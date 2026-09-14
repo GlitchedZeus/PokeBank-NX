@@ -2,6 +2,7 @@
 
 #include "Utils/SHA256.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
