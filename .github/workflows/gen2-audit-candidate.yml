@@ -4,7 +4,9 @@ on:
   pull_request:
     branches: [feature/pokebank-playable]
     paths:
+      - 'Makefile'
       - 'Makefile.host*'
+      - 'include/UI/SharedSpeciesPicker.h'
       - 'include/Integration/Gen2/**'
       - 'include/UI/Gen2*'
       - 'include/UI/SharedPokemonEditorContract.h'
@@ -95,6 +97,7 @@ jobs:
           for target in \
             test_shared_pokemon_editor_contract \
             test_gsc_shared_editor_parity \
+            test_gsc_workspace_render \
             test_gsc_gen2_adapter \
             test_gsc_inventory \
             test_gsc_gen2_personal \
@@ -210,9 +213,34 @@ jobs:
           echo 'ASAN: PASS'
           echo 'UBSAN: PASS'
 
+  native_ui:
+    name: Early real devkitA64 composite + Inventory compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          submodules: recursive
+      - name: Compile production UI translation units with native flags
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            : "${DEVKITPRO:?DEVKITPRO is not set}"
+            devkita64_root="${DEVKITA64:-${DEVKITPRO}/devkitA64}"
+            for name in g++ readelf objcopy; do
+              tool="${devkita64_root}/bin/aarch64-none-elf-${name}"
+              test -x "$tool" || { echo "ERROR: required native tool missing: $tool" >&2; exit 1; }
+            done
+            git config --global --add safe.directory /work
+            make native-ui-check
+          '
+
   native_package:
     name: Gen II shared editor devkitA64 + exact physical-test package
-    needs: host
+    needs: [host, native_ui]
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
