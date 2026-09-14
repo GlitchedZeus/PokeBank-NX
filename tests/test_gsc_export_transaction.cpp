@@ -74,13 +74,19 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     const auto written = parse(readBytes(result.directory + "/edited.srm"), game);
     assert(written);
     const std::string manifest = readText(result.directory + "/EDIT_MANIFEST.txt");
+    assert(manifest.find("GAME_ID=" + std::string(sourceGameId(game))) != std::string::npos);
+    assert(manifest.find("SAVE_FORMAT=PK2 / GSC SRAM") != std::string::npos);
     assert(manifest.find("SOURCE_PATH=/retroarch/saves/" + tag + ".srm") != std::string::npos);
+    assert(manifest.find("SOURCE_KIND=RetroArchLegacy_READ_ONLY") != std::string::npos);
+    assert(manifest.find("SOURCE_SIZE=" + std::to_string(source.size())) != std::string::npos);
     assert(manifest.find("SOURCE_SHA256=" + result.originalSha256) != std::string::npos);
+    assert(manifest.find("EDITED_SIZE=" + std::to_string(edited.size())) != std::string::npos);
     assert(manifest.find("EDITED_SHA256=" + result.editedSha256) != std::string::npos);
     assert(manifest.find("APPLICATION_SHA=test-sha") != std::string::npos);
     assert(manifest.find("WRITE_READBACK=VERIFIED") != std::string::npos);
     assert(manifest.find("STRICT_REPARSE=VERIFIED") != std::string::npos);
     assert(manifest.find("LIVE_RETROARCH_WRITE=DISABLED") != std::string::npos);
+    assert(manifest.find("LIVE_INSTALLED_GAME_WRITE=DISABLED") != std::string::npos);
 
     // Failure after files have been created must leave neither a final directory nor a temp tree.
     ExportTransactionRequest failed = request;
@@ -91,9 +97,12 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     assert(!exists(root + "/fail-" + tag));
     assert(!exists(root + "/fail-" + tag + ".tmp"));
 
-    // Corrupt staged bytes are rejected by strict parse before any directory is created.
+    // 0x2009 is inside the checksum-covered payload for both G/S and Crystal fixtures.
+    // Flipping it without updating the stored checksum must be rejected by strict parse before
+    // any export directory is created. Do not weaken this to accept successful parsing.
     auto corrupt = edited;
-    corrupt[0x2D6B] ^= 0x01;
+    corrupt[0x2009] ^= 0x01;
+    assert(!parse(corrupt, game));
     ExportTransactionRequest invalid = request;
     invalid.directoryStem = "invalid-" + tag;
     invalid.editedBytes = corrupt;
