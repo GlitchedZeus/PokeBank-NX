@@ -91,6 +91,9 @@ std::size_t occupiedBoxSlots(const Legacy::GSCReadOnlyTrainer& trainer){
 int main(){
     {
         auto bytes=fixture(IGS,1,25,25);
+        // This case also exercises the staged adapter, which requires valid inventory.
+        for (size_t offset : {0x241Fu,0x2449u,0x2464u,0x247Eu}) emptyList(bytes,offset);
+        checksum(bytes,IGS);
         const auto before=bytes;
         auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Gold);
         assert(parsed);
@@ -125,6 +128,19 @@ int main(){
         // exactly one Bulbasaur and no duplicated working-copy Pokemon.
         assert(trainer->boxes[0][0]&&trainer->boxes[0][0]->speciesID()==1);
         assert(occupiedBoxSlots(*trainer)==1);
+        auto* editor = trainer->stagedEditor();
+        assert(editor);
+        Integration::Gen2::BoxPokemonCreate create;
+        create.species = 152; create.level = 5; create.nickname = "CHIKORITA";
+        std::size_t addedSlot = 0;
+        assert(editor->stageAddBoxPokemon(2, create, addedSlot, error));
+        assert(trainer->refreshStagedBoxPresentation(error));
+        assert(trainer->boxes[2][addedSlot]->speciesID() == 152);
+        assert(trainer->party[0].get() == party); // untouched immutable Party wrapper
+        editor->discard();
+        assert(trainer->refreshStagedBoxPresentation(error));
+        assert(!trainer->boxes[2][addedSlot] && occupiedBoxSlots(*trainer) == 1);
+        assert(std::equal(before.begin(), before.end(), editor->originalBytes().begin()));
         assert(bytes==before);
         assert(parsed.save->sourceBytes().size()==before.size());
         assert(std::equal(parsed.save->sourceBytes().begin(),parsed.save->sourceBytes().end(),before.begin()));

@@ -212,6 +212,7 @@ bool handleSharedClone(TrainerViewScreen& screen, uint64_t down) {
         return true;
     }
     shared.cloneActive = false;
+    gscTrainer(screen).refreshStagedBoxPresentation(error);
     screen.postStatus("Clone staged at Box " + std::to_string(shared.cloneBox + 1) +
                       " / Slot " + std::to_string(destinationSlot + 1) +
                       "; source .srm unchanged", 320);
@@ -233,15 +234,19 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (nav & HidNpadButton_Down) legacy.reviewRow = (legacy.reviewRow + 1) % count;
     if (down & HidNpadButton_B) {
         legacy.review = false;
-        legacy.pokemonActions = true;
+        legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+        legacy.active = legacy.pokemonActions;
         legacy.pokemonRow = 0;
         screen.controllerNavigation.reset();
         return true;
     }
     if (down & HidNpadButton_X) {
         editor->discard();
+        std::string refreshError;
+        gscTrainer(screen).refreshStagedBoxPresentation(refreshError);
         legacy.review = false;
-        legacy.pokemonActions = true;
+        legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+        legacy.active = legacy.pokemonActions;
         legacy.pokemonRow = 0;
         screen.postStatus("All staged Gen II changes discarded; original source was never changed", 320);
         return true;

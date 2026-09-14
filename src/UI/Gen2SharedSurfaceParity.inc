@@ -46,6 +46,7 @@ void drawParityExternalPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& f
                                    const Pokemon::Pokemon2ReadOnly& pokemon) {
     State visual{};
     visual.begin(pokemon.strictRecord(), Mode::View);
+    refreshDerived(visual.working); // presentation only: native DVs determine gender/shiny
     UnifiedWorkspaceState unified{};
     const auto g = SharedEditor::geometry720p();
 

@@ -249,6 +249,7 @@ bool stageCreate(TrainerViewScreen& screen) {
     auto& legacy = editorOverlayState(screen);
     legacy.pokemonBox = state.box;
     legacy.pokemonSlot = static_cast<int>(slot);
+    gscTrainer(screen).refreshStagedBoxPresentation(error);
     screen.postStatus("Pokemon added to staged copy only; source .srm unchanged", 300);
     closeToActions(screen);
     return true;
@@ -269,6 +270,7 @@ bool stageEdit(TrainerViewScreen& screen) {
         screen.postStatus(error.empty() ? "Gen II staged edit was rejected" : error, 300);
         return false;
     }
+    gscTrainer(screen).refreshStagedBoxPresentation(error);
     screen.postStatus("Pokemon edit kept in staged copy; source .srm unchanged", 300);
     closeToActions(screen);
     return true;
