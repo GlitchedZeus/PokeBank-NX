@@ -116,6 +116,87 @@ constexpr DraftDecision draftDecision(DraftEvent event) noexcept {
     return {};
 }
 
+// The shell owns one three-panel focus language. Generation adapters only vary
+// the row domain and which capability rows are meaningful.
+enum class Panel : uint8_t { Details, Values, Moves };
+
+struct Layout {
+    uint8_t detailsRows = 5;
+    uint8_t valuesRows = 7;
+    uint8_t movesRows = 4;
+    uint8_t valueStatRows = 5;
+    uint8_t valueColumns = 3;
+};
+
+constexpr Layout layoutFor(Generation generation) noexcept {
+    if (generation == Generation::Gen2)
+        return {/*details*/5, /*values*/10, /*moves*/4, /*stat rows*/5, /*columns*/3};
+    return {/*details*/5, /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
+}
+
+struct Focus {
+    Panel panel = Panel::Details;
+    uint8_t row = 0;
+    uint8_t column = 0;
+
+    constexpr bool operator==(const Focus& other) const noexcept {
+        return panel == other.panel && row == other.row && column == other.column;
+    }
+    constexpr bool operator!=(const Focus& other) const noexcept { return !(*this == other); }
+};
+
+constexpr uint8_t rowsFor(Generation generation, Panel panel) noexcept {
+    const auto layout = layoutFor(generation);
+    if (panel == Panel::Details) return layout.detailsRows;
+    if (panel == Panel::Values) return layout.valuesRows;
+    return layout.movesRows;
+}
+
+constexpr Focus normalize(Generation generation, Focus focus) noexcept {
+    const auto layout = layoutFor(generation);
+    const uint8_t rows = rowsFor(generation, focus.panel);
+    if (rows != 0) focus.row = static_cast<uint8_t>(focus.row % rows);
+    if (focus.panel == Panel::Details) {
+        focus.column = 0;
+    } else if (focus.panel == Panel::Values) {
+        if (focus.row >= layout.valueStatRows)
+            focus.column = 0;
+        else if (focus.column >= layout.valueColumns)
+            focus.column = static_cast<uint8_t>(layout.valueColumns - 1);
+    } else {
+        // Move, PP and PP Ups share one row.
+        if (focus.column >= 3) focus.column = 2;
+    }
+    return focus;
+}
+
+constexpr Focus moveVertical(Generation generation, Focus focus, int direction) noexcept {
+    focus = normalize(generation, focus);
+    const int rows = rowsFor(generation, focus.panel);
+    focus.row = static_cast<uint8_t>((static_cast<int>(focus.row) + direction + rows) % rows);
+    return normalize(generation, focus);
+}
+
+constexpr Focus switchPanel(Generation generation, Focus focus, int direction) noexcept {
+    focus = normalize(generation, focus);
+    int panel = static_cast<int>(focus.panel);
+    panel = (panel + direction + 3) % 3;
+    focus.panel = static_cast<Panel>(panel);
+    return normalize(generation, focus);
+}
+
+constexpr Focus moveColumn(Generation generation, Focus focus, int direction) noexcept {
+    focus = normalize(generation, focus);
+    if (focus.panel == Panel::Details) return focus;
+    const auto layout = layoutFor(generation);
+    const int maxColumn = focus.panel == Panel::Moves ? 2 :
+        (focus.row < layout.valueStatRows ? static_cast<int>(layout.valueColumns) - 1 : 0);
+    focus.column = static_cast<uint8_t>(direction < 0
+        ? (focus.column == 0 ? 0 : focus.column - 1)
+        : (focus.column >= maxColumn ? maxColumn : focus.column + 1));
+    return focus;
+}
+
 struct Geometry720p {
     int x;
     int y;
