@@ -1,0 +1,17 @@
+# One-Pokemon-editor architecture contract.
+SHARED_EDITOR_SOURCES := tests/test_shared_pokemon_editor_contract.cpp
+SHARED_EDITOR_HOST_TEST := $(HOST_BUILD)/test_shared_pokemon_editor_contract
+SHARED_EDITOR_SANITIZE_TEST := $(HOST_BUILD)/test_shared_pokemon_editor_contract_sanitize
+
+HOST_TESTS += $(SHARED_EDITOR_HOST_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_EDITOR_SANITIZE_TEST)
+host-test: $(SHARED_EDITOR_HOST_TEST)
+host-sanitize: $(SHARED_EDITOR_SANITIZE_TEST)
+
+$(SHARED_EDITOR_HOST_TEST): $(SHARED_EDITOR_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(SHARED_EDITOR_SANITIZE_TEST): $(SHARED_EDITOR_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
