@@ -10,6 +10,14 @@ int main() {
     assert(panelIsInteractive(Panel::Values));
     assert(panelIsInteractive(Panel::Moves));
 
+    // Picker/sub-editor surfaces always take ownership over the foundation workspace.
+    // This is the hardware-regression contract for Species A -> picker, and prevents a
+    // stale picker from hiding behind Level/EXP or any other contextual editor.
+    static_assert(surfaceOwnerFor(true, false) == SurfaceOwner::FoundationWorkspace);
+    static_assert(surfaceOwnerFor(true, true) == SurfaceOwner::Cleanup3);
+    static_assert(surfaceOwnerFor(false, false) == SurfaceOwner::Cleanup3);
+    static_assert(surfaceOwnerFor(false, true) == SurfaceOwner::Cleanup3);
+
     // Focus crosses the full workspace rather than living in one decorative middle column.
     Focus f{Panel::Identity, 1, 0};
     f = moveFocus(f, Direction::Right);
@@ -56,11 +64,15 @@ int main() {
     static_assert(!gen1.supportsFriendship && !gen1.supportsEgg && !gen1.supportsMetLevel);
     static_assert(!gen1.supportsRibbons && !gen1.supportsMarks && !gen1.supportsGender);
     static_assert(!gen1HasFakeModernFields());
+    static_assert(!supplementalPanelShowsHeldItem(Generation::Gen1));
+    static_assert(!supplementalPanelShowsRibbons(Generation::Gen1));
 
     constexpr auto gen2 = capabilitiesForGeneration(Generation::Gen2);
     static_assert(gen2.supportsHeldItem && gen2.supportsFriendship && gen2.supportsGender);
     static_assert(gen2.usesDVs && gen2.usesStatExp);
     static_assert(!gen2.supportsNature && !gen2.supportsAbility && !gen2.supportsRibbons);
+    static_assert(supplementalPanelShowsHeldItem(Generation::Gen2));
+    static_assert(!supplementalPanelShowsRibbons(Generation::Gen2));
 
     // Synthetic Gen III contract proves the same shell can expose later-generation concepts
     // without implementing any unfinished serializer here.
@@ -69,6 +81,8 @@ int main() {
     static_assert(gen3.supportsRibbons && gen3.usesIVs && gen3.usesEVs);
     static_assert(gen3.hasSplitSpecial && gen3.supportsGender);
     static_assert(!gen3.usesDVs && !gen3.usesStatExp && !gen3.supportsMarks);
+    static_assert(supplementalPanelShowsHeldItem(Generation::Gen3));
+    static_assert(supplementalPanelShowsRibbons(Generation::Gen3));
 
     static_assert(gen1StatLabels()[0][0] == 'H');
     static_assert(gen1StatLabels()[4][0] == 'S');
