@@ -108,8 +108,12 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 #include "Gen1PokemonEditorPassiveView.inc"
 
 // Generation II reuses the same DETAILS | VALUES | MOVES interaction contract, while retaining
-// the proven GSC discovery/export/action-sheet layer compiled above. It owns only Gen II Create/Edit.
+// the proven GSC discovery/export/action-sheet layer compiled above. It owns Gen II View/Create/Edit.
 #include "Gen2PokemonEditorFoundation.inc"
+
+// Named Gen II Species/Move/Pokerus pickers are a thin modal layer over the tested local session.
+// They must own A before the foundation can fall back to its recovery numeric prompts.
+#include "Gen2PokemonPickerOverlay.inc"
 
 namespace UI {
 
@@ -118,9 +122,12 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 
-    // Generation II Create/Edit is a local draft/session over the staged editor. Route it before
-    // the preserved GSC overlay so browsing fields never mutates the staged save and B can provide
-    // the accepted Keep / Discard-this-session / Continue transaction behavior.
+    // Named Gen II pickers own all navigation while open and intercept activation of their three
+    // fields before the foundation's old numeric fallback can launch a software keyboard.
+    if (Gen2PokemonEditor::handlePickerInput(*this, down, held, stick.x, stick.y)) return;
+
+    // Generation II View/Create/Edit is a local session over the staged editor. Route it before
+    // the preserved GSC overlay so browsing never mutates the staged save.
     if (Gen2PokemonEditor::handleInput(*this, down, held, stick.x, stick.y)) return;
 
     // A picker is modal even though SpeciesPicker intentionally leaves the underlying mode as
@@ -144,9 +151,10 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     drawGSCOverlay(fb);
 
-    // The shared Gen II workspace fully owns the visible surface while Create/Edit is active.
+    // The shared Gen II workspace owns the visible surface while View/Create/Edit is active.
     if (Gen2PokemonEditor::active(*this)) {
         Gen2PokemonEditor::drawOverlay(*this, fb);
+        Gen2PokemonEditor::drawPickerOverlay(*this, fb);
         return;
     }
 
