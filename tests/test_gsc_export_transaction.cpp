@@ -63,6 +63,8 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     uiRequest.applicationSha = "test-sha";
 
     const auto result = publishVerifiedStagedEditorExport(*editor, uiRequest);
+    if (!result.success)
+        std::fprintf(stderr, "verified staged export failed for %s: %s\n", tag.c_str(), result.error.c_str());
     assert(result.success && !result.directory.empty());
     assert(exists(result.directory + "/original_backup.srm"));
     assert(exists(result.directory + "/edited.srm"));
