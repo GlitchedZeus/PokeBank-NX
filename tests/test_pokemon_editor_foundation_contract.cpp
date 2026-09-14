@@ -42,6 +42,13 @@ int main() {
     assert(moveRowsAreIndividuallyFocusable());
     assert(!radarIsFocusable());
 
+    // Randomize DVs is generation-correct: every generated stored DV is exactly 0..15.
+    uint32_t randomState = 0x13579BDFu;
+    for (int i = 0; i < 256; ++i) {
+        const auto dvs = randomDVs(randomState);
+        for (const auto dv : dvs) assert(dv <= 15);
+    }
+
     constexpr auto gen1 = capabilitiesForGeneration(Generation::Gen1);
     static_assert(gen1.usesDVs && gen1.usesStatExp && gen1.supportsShiny);
     static_assert(!gen1.usesIVs && !gen1.usesEVs && !gen1.hasSplitSpecial);
