@@ -98,19 +98,39 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 // Final permanent editor shell: all three PKSE-style panels are interactive and capability-driven.
 #include "Gen1PokemonEditorOverlayFoundation.inc"
 
+// Physical-test correction layer. This stays small and additive: picker ownership is restored
+// above the foundation workspace, and the lower-right display becomes two capability-aware panes.
+#include "Gen1PokemonEditorFoundationHardwareFix.inc"
+
 namespace UI {
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 down = padGetButtonsDown(&pad);
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
+
+    // A picker is modal even though SpeciesPicker intentionally leaves the underlying mode as
+    // AddDraft/Edit. Route it directly to the accepted Cleanup #3 picker handler so A on Species
+    // cannot create an invisible picker that later appears over Level/EXP.
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
+        if (Gen1PokemonEditor::handleInputUXCleanup3(*this, down, held, stick.x, stick.y)) return;
+    }
+
     if (Gen1PokemonEditor::handleInputUX(*this, down, held, stick.x, stick.y)) return;
     updateGSCOverlay(pad, touch);
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     drawGSCOverlay(fb);
+
+    // Match the input ownership rule above: an active picker must be the visible top surface.
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
+        Gen1PokemonEditor::drawOverlayUXCleanup3(*this, fb);
+        return;
+    }
+
     Gen1PokemonEditor::drawOverlayUX(*this, fb);
+    Gen1PokemonEditor::drawFoundationBottomSplit(*this, fb);
 }
 
 } // namespace UI
