@@ -18,18 +18,19 @@ int main() {
     static_assert(surfaceOwnerFor(false, false) == SurfaceOwner::Cleanup3);
     static_assert(surfaceOwnerFor(false, true) == SurfaceOwner::Cleanup3);
 
-    // Focus crosses the full workspace rather than living in one decorative middle column.
+    // Focus crosses the full workspace, but calculated Stat cells are display-only and are
+    // never presented with the same editable selection treatment as DV / Stat Exp cells.
     Focus f{Panel::Identity, 1, 0};
     f = moveFocus(f, Direction::Right);
-    assert(f.panel == Panel::Values);
+    assert(f.panel == Panel::Values && f.column == static_cast<uint8_t>(ValueColumn::DV));
     f = moveFocus(f, Direction::Right);
-    assert(f.panel == Panel::Values && f.column == 1);
-    f = moveFocus(f, Direction::Right);
-    assert(f.panel == Panel::Values && f.column == 2);
+    assert(f.panel == Panel::Values && f.column == static_cast<uint8_t>(ValueColumn::StatExperience));
     f = moveFocus(f, Direction::Right);
     assert(f.panel == Panel::Moves);
     f = moveFocus(f, Direction::Left);
-    assert(f.panel == Panel::Values && f.column == 2);
+    assert(f.panel == Panel::Values && f.column == static_cast<uint8_t>(ValueColumn::StatExperience));
+    assert((normalize({Panel::Values, 2, static_cast<uint8_t>(ValueColumn::CalculatedStat)}) ==
+            Focus{Panel::Values, 2, static_cast<uint8_t>(ValueColumn::StatExperience)}));
 
     // Vertical movement remains local to the focused panel and wraps cleanly.
     assert((moveFocus({Panel::Identity, 0, 0}, Direction::Up) == Focus{Panel::Identity, 4, 0}));
@@ -47,6 +48,7 @@ int main() {
     assert(valueCellEditable(ValueRow::Special, ValueColumn::StatExperience));
     assert(!valueCellEditable(ValueRow::Attack, ValueColumn::CalculatedStat));
     assert(calculatedStatsAreReadOnly());
+    assert(!calculatedStatsAreFocusable());
     assert(moveRowsAreIndividuallyFocusable());
     assert(!radarIsFocusable());
 
