@@ -1023,7 +1023,14 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
     created.partyRecord = false;
     created.isEgg = false;
     const auto* personal = personalRecord(created.species);
-    created.experience = Pokemon::getExpForLevel(created.level, personal->experienceGrowth);
+    if (pokemon.experience) {
+        if (*pokemon.experience > Pokemon::getExpForLevel(100, personal->experienceGrowth)) {
+            error = "new Pokemon EXP exceeds species level-100 threshold";
+            return false;
+        }
+        created.experience = *pokemon.experience;
+        created.level = Pokemon::getLevelFromExp(created.experience, personal->experienceGrowth);
+    } else created.experience = Pokemon::getExpForLevel(created.level, personal->experienceGrowth);
     putEditableDVs(created, pokemon.dvs);
     created.ppUps = pokemon.ppUps;
     for (std::size_t i = 0; i < 4; ++i) {

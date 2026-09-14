@@ -10,6 +10,7 @@
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
 #include "UI/Gen2PokemonEditorRules.h"
+#include "UI/Gen2PokemonSession.h"
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/StatsRadar.h"
 
@@ -29,12 +30,10 @@ namespace Gen2 = PokeVault::Integration::Gen2;
 namespace Rules = PokeBank::UIModel::Gen2PokemonEditor;
 namespace Foundation = PokeBank::UIModel::PokemonEditorFoundation;
 
-enum class Mode : uint8_t { None, Create, Edit };
+using Mode = Rules::SessionMode;
 
-struct State {
+struct State : Rules::Session {
     const TrainerViewScreen* owner = nullptr;
-    Mode mode = Mode::None;
-    bool confirmExit = false;
     bool itemPicker = false;
     int box = 0;
     int slot = 0;
@@ -42,8 +41,6 @@ struct State {
     int row = 0;
     int column = 0;
     uint32_t rng = 0x2A6F19D3u;
-    Gen2::PokemonRecord baseline{};
-    Gen2::PokemonRecord working{};
     std::vector<uint8_t> itemChoices;
     int itemChoiceIndex = 0;
 };
@@ -104,14 +101,6 @@ std::string pokerusText(uint8_t raw) {
     return "S" + std::to_string(raw >> 4U) + " / D" + std::to_string(raw & 0x0FU);
 }
 
-bool sameEditableRecord(const Gen2::PokemonRecord& a, const Gen2::PokemonRecord& b) noexcept {
-    return a.species == b.species && a.heldItem == b.heldItem && a.moves == b.moves &&
-           a.trainerId == b.trainerId && a.experience == b.experience &&
-           a.statExperience == b.statExperience && editableDVs(a) == editableDVs(b) &&
-           a.pp == b.pp && a.ppUps == b.ppUps && a.friendship == b.friendship &&
-           a.pokerus == b.pokerus && a.caughtData == b.caughtData && a.level == b.level &&
-           a.originalTrainer == b.originalTrainer && a.nickname == b.nickname;
-}
 
 constexpr int identityRows() noexcept { return 8; }
 constexpr int valueRows() noexcept { return 8; }
@@ -176,7 +165,7 @@ bool beginCreate(TrainerViewScreen& screen, int box) {
     state.row = 0;
     state.column = 0;
     state.working = defaultCreateRecord(*editor);
-    state.baseline = state.working;
+    state.begin(state.working, Mode::Create);
     state.rng ^= static_cast<uint32_t>((box + 1) * 0x9E3779B9u);
     screen.controllerNavigation.reset();
     return true;
@@ -202,6 +191,7 @@ bool beginEdit(TrainerViewScreen& screen, int box, int slot) {
     state.column = 0;
     state.baseline = *pokemon; // exact staged state at Edit entry, not original source bytes.
     state.working = *pokemon;
+    state.begin(*pokemon, Mode::Edit);
     state.rng ^= static_cast<uint32_t>((box + 1) * 0x85EBCA6Bu + (slot + 1));
     screen.controllerNavigation.reset();
     return true;
@@ -222,7 +212,7 @@ void closeToActions(TrainerViewScreen& screen) {
 }
 
 bool isDirty(const State& state) noexcept {
-    return state.mode == Mode::Create || !sameEditableRecord(state.baseline, state.working);
+    return state.mode == Mode::Create || state.dirty();
 }
 
 Rules::CompatibilityState moveStatus(const TrainerViewScreen& screen, const State& state, int slot) noexcept {
@@ -253,25 +243,9 @@ bool stageCreate(TrainerViewScreen& screen) {
         return false;
     }
 
-    Gen2::BoxPokemonCreate create;
-    create.species = state.working.species;
-    create.level = state.working.level;
-    create.nickname = state.working.nickname;
-    create.otName = state.working.originalTrainer;
-    create.trainerId = state.working.trainerId;
-    create.heldItem = state.working.heldItem;
-    create.moves = state.working.moves;
-    create.pp = state.working.pp;
-    create.ppUps = state.working.ppUps;
-    create.dvs = editableDVs(state.working);
-    create.statExperience = state.working.statExperience;
-    create.friendship = state.working.friendship;
-    create.pokerus = state.working.pokerus;
-    create.caughtData = state.working.caughtData;
-
     std::size_t slot = 0;
     std::string error;
-    if (!editor->stageAddBoxPokemon(static_cast<std::size_t>(state.box), create, slot, error)) {
+    if (!state.add(*editor, static_cast<std::size_t>(state.box), slot, error)) {
         screen.postStatus(error.empty() ? "Could not stage Gen II Pokemon" : error, 300);
         return false;
     }
@@ -292,28 +266,9 @@ bool stageEdit(TrainerViewScreen& screen) {
         return false;
     }
 
-    const auto& before = state.baseline;
-    const auto& after = state.working;
-    Gen2::BoxPokemonEdit edit;
-    if (before.species != after.species) edit.species = after.species;
-    if (before.nickname != after.nickname) edit.nickname = after.nickname;
-    if (before.level != after.level) edit.level = after.level;
-    if (before.experience != after.experience) edit.experience = after.experience;
-    if (before.heldItem != after.heldItem) edit.heldItem = after.heldItem;
-    if (before.moves != after.moves) edit.moves = after.moves;
-    if (before.pp != after.pp) edit.pp = after.pp;
-    if (before.ppUps != after.ppUps) edit.ppUps = after.ppUps;
-    if (editableDVs(before) != editableDVs(after)) edit.dvs = editableDVs(after);
-    if (before.statExperience != after.statExperience) edit.statExperience = after.statExperience;
-    if (before.originalTrainer != after.originalTrainer) edit.otName = after.originalTrainer;
-    if (before.trainerId != after.trainerId) edit.trainerId = after.trainerId;
-    if (before.friendship != after.friendship) edit.friendship = after.friendship;
-    if (before.pokerus != after.pokerus) edit.pokerus = after.pokerus;
-    if (before.caughtData != after.caughtData) edit.caughtData = after.caughtData;
-
     std::string error;
-    if (!editor->stageBoxPokemonEdit(static_cast<std::size_t>(state.box),
-                                     static_cast<std::size_t>(state.slot), edit, error)) {
+    if (!state.keep(*editor, static_cast<std::size_t>(state.box),
+                                     static_cast<std::size_t>(state.slot), error)) {
         screen.postStatus(error.empty() ? "Gen II staged edit was rejected" : error, 300);
         return false;
     }
@@ -404,11 +359,10 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
             const std::string oldDefault = Names::getSpeciesName(oldSpecies);
             const auto result = Utils::promptNumber("Gen II Species ID", p.species, 1, 251);
             if (!result.accepted) return;
-            p.species = static_cast<uint16_t>(result.value);
+            state.setSpecies(static_cast<uint16_t>(result.value));
             if (state.mode == Mode::Create && p.nickname == oldDefault)
                 p.nickname = Names::getSpeciesName(p.species);
             refreshDerived(p);
-            p.experience = minimumExpFor(p);
             break;
         }
         case 1: {
@@ -419,13 +373,12 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
         case 2: {
             const auto result = Utils::promptNumber("Gen II Level", p.level, 1, 100);
             if (!result.accepted) return;
-            p.level = static_cast<uint8_t>(result.value);
-            p.experience = minimumExpFor(p);
+            state.setLevel(static_cast<uint8_t>(result.value));
             break;
         }
         case 3: {
-            const auto result = Utils::promptNumber("Gen II Experience", static_cast<int>(p.experience), 0, 2000000);
-            if (result.accepted) p.experience = static_cast<uint32_t>(result.value);
+            const auto result = Utils::promptNumber("Gen II Experience", static_cast<int>(p.experience), 0, static_cast<int>(state.maximumExperience()));
+            if (result.accepted) state.setExperience(static_cast<uint32_t>(result.value));
             break;
         }
         case 4: {
@@ -539,11 +492,12 @@ bool handleConfirm(TrainerViewScreen& screen, State& state, uint64_t down) {
         // The session never touched StagedEditor, so discard reveals the exact staged entry captured
         // in baseline, including unrelated work that existed before Edit opened.
         screen.postStatus("This Edit session discarded; earlier staged work preserved", 300);
+        state.discard();
         closeToActions(screen);
         return true;
     }
     if (down & HidNpadButton_B) {
-        state.confirmExit = false;
+        state.continueEditing();
         screen.controllerNavigation.reset();
     }
     return true;
@@ -611,16 +565,11 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int st
     if ((down & HidNpadButton_X) && state.mode == Mode::Create) stageCreate(screen);
 
     if (down & HidNpadButton_B) {
-        if (state.mode == Mode::Create) {
-            screen.postStatus("Create draft cancelled; staged save unchanged", 240);
-            closeToActions(screen);
-        } else if (!isDirty(state)) {
-            closeToActions(screen);
-        } else {
-            state.confirmExit = true;
-            screen.controllerNavigation.reset();
-        }
+        if (state.mode == Mode::Create) screen.postStatus("Create draft cancelled; staged save unchanged", 240);
+        if (state.back()) closeToActions(screen);
+        else screen.controllerNavigation.reset();
     }
+
     return true;
 }
 

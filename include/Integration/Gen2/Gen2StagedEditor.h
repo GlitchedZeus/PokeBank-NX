@@ -54,6 +54,8 @@ struct BoxPokemonEdit {
 struct BoxPokemonCreate {
     uint16_t species = 0;
     uint8_t level = 5;
+    // When present, EXP is canonical and level is derived with the species growth curve.
+    std::optional<uint32_t> experience;
     std::string nickname;
     std::string otName;
     std::optional<uint16_t> trainerId;

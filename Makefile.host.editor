@@ -81,3 +81,15 @@ $(HOST_BUILD)/test_gen1_pokemon_editor_ui_contract_sanitize: tests/test_gen1_pok
 # RBY bridge owns the staged Pokemon sidecar; accepted read-only tests must link its native
 # dependencies in addition to the already-linked classic inventory sidecar.
 $(HOST_BUILD)/test_rby_readonly_bridge $(HOST_BUILD)/test_rby_readonly_bridge_sanitize: src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1BattleStats.cpp src/Pokemon/Experience.cpp
+
+GEN2_SESSION_SOURCES := tests/test_gsc_pokemon_session.cpp $(GEN2_STAGED_EDITOR_COMMON) src/Integration/Gen2/Gen2MoveCompatibility.cpp src/Integration/Gen1/Gen1MoveCompatibility.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gsc_pokemon_session
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gsc_pokemon_session_sanitize
+host-test: $(HOST_BUILD)/test_gsc_pokemon_session
+host-sanitize: $(HOST_BUILD)/test_gsc_pokemon_session_sanitize
+$(HOST_BUILD)/test_gsc_pokemon_session: $(GEN2_SESSION_SOURCES) include/UI/Gen2PokemonSession.h tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_SESSION_SOURCES) -o $@
+$(HOST_BUILD)/test_gsc_pokemon_session_sanitize: $(GEN2_SESSION_SOURCES) include/UI/Gen2PokemonSession.h tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_SESSION_SOURCES) -o $@
