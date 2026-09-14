@@ -2,6 +2,7 @@
 
 #include "Enums/GameVersion.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
+#include "Integration/Gen2/Gen2ExportTransaction.h"
 #include "Legacy/GSCReadOnlyTrainer.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
@@ -16,12 +17,9 @@
 #include "Utils/PokeBankPaths.h"
 
 #include <algorithm>
-#include <cerrno>
-#include <cstdio>
 #include <array>
 #include <sstream>
 #include <string>
-#include <sys/stat.h>
 #include <utility>
 #include <vector>
 
@@ -75,29 +73,6 @@ Gen2Editor* stagedEditor(TrainerViewScreen& screen) noexcept {
     return gscTrainer(screen).stagedEditor();
 }
 
-bool mkdirIfNeeded(const std::string& path) {
-    if (::mkdir(path.c_str(), 0777) == 0) return true;
-    return errno == EEXIST;
-}
-
-bool pathExists(const std::string& path) {
-    struct stat st{};
-    return ::stat(path.c_str(), &st) == 0;
-}
-
-bool writeBytes(const std::string& path, std::span<const uint8_t> bytes) {
-    FILE* out = std::fopen(path.c_str(), "wb");
-    if (!out) return false;
-    const bool ok = std::fwrite(bytes.data(), 1, bytes.size(), out) == bytes.size();
-    const bool closeOk = std::fclose(out) == 0;
-    return ok && closeOk;
-}
-
-bool writeText(const std::string& path, const std::string& text) {
-    return writeBytes(path, std::span<const uint8_t>(
-        reinterpret_cast<const uint8_t*>(text.data()), text.size()));
-}
-
 std::string exportStagedCopy(TrainerViewScreen& screen, Gen2Editor& editor, std::string& error) {
     error.clear();
     if (!editor.hasPendingChanges()) {
@@ -105,12 +80,8 @@ std::string exportStagedCopy(TrainerViewScreen& screen, Gen2Editor& editor, std:
         return {};
     }
 
-    auto edited = editor.finalizedBytes(error);
-    if (edited.empty()) {
-        if (error.empty()) error = "Staged save finalization failed";
-        return {};
-    }
-
+    // Path construction remains centralized in PokeBankPaths, but all save finalization and I/O are
+    // owned by Gen2ExportTransaction. This wrapper deliberately contains no fopen/fwrite sequence.
     const std::string gen2Root = PokeBank::Paths::gen2ExportsRoot();
     if (!PokeBank::Paths::ensureGen2ExportsRoot(&error)) {
         if (error.empty()) error = "Could not create PokeBank NX export directory";
@@ -118,49 +89,31 @@ std::string exportStagedCopy(TrainerViewScreen& screen, Gen2Editor& editor, std:
     }
 
     const std::string timestamp = Utils::getTimestamp();
-    std::string exportDir = PokeBank::Paths::gen2ExportDirectory(screen.sourceGameId, timestamp);
-    if (exportDir.empty()) {
+    const std::string proposed = PokeBank::Paths::gen2ExportDirectory(screen.sourceGameId, timestamp);
+    const std::string rootPrefix = gen2Root + "/";
+    if (proposed.empty() || proposed.rfind(rootPrefix, 0) != 0 || proposed.size() <= rootPrefix.size()) {
         error = "Could not construct safe PokeBank NX export path";
         return {};
     }
-    const std::string baseName = exportDir.substr(gen2Root.size() + 1);
-    for (int suffix = 2; pathExists(exportDir) && suffix < 1000; ++suffix)
-        exportDir = gen2Root + "/" + baseName + "-" + std::to_string(suffix);
-    if (pathExists(exportDir) || !mkdirIfNeeded(exportDir)) {
-        error = "Could not create unique staged export directory";
-        return {};
-    }
 
-    const std::string backupPath = exportDir + "/original_backup.srm";
-    const std::string editedPath = exportDir + "/edited.srm";
-    if (!writeBytes(backupPath, editor.originalBytes())) {
-        error = "Could not write automatic original backup";
-        return {};
-    }
-    if (!writeBytes(editedPath, edited)) {
-        error = "Could not write staged edited save";
-        return {};
-    }
+    PokeVault::Integration::Gen2::StagedEditorExportRequest request;
+    request.rootDirectory = gen2Root;
+    request.directoryStem = proposed.substr(rootPrefix.size());
+    request.sourcePath = screen.backupDir;
+    request.gameId = screen.sourceGameId;
+    request.timestamp = timestamp;
+#ifdef POKEVAULT_GIT_COMMIT
+    request.applicationSha = POKEVAULT_GIT_COMMIT;
+#else
+    request.applicationSha = "unknown";
+#endif
 
-    std::string manifest;
-    manifest += "PokeBank NX Generation II staged export\n";
-    manifest += "GAME_ID=" + screen.sourceGameId + "\n";
-    manifest += "SOURCE_PATH=" + screen.backupDir + "\n";
-    manifest += "SOURCE_KIND=RetroArchLegacy_READ_ONLY\n";
-    manifest += "ORIGINAL_BACKUP=original_backup.srm\n";
-    manifest += "EDITED_SAVE=edited.srm\n";
-    manifest += "ORIGINAL_BYTES=" + std::to_string(editor.originalBytes().size()) + "\n";
-    manifest += "EDITED_BYTES=" + std::to_string(edited.size()) + "\n";
-    manifest += "LIVE_RETROARCH_WRITE=DISABLED\n";
-    manifest += "LIVE_INSTALLED_GAME_WRITE=DISABLED\n";
-    manifest += "PENDING_CHANGES:\n";
-    for (const auto& change : editor.pendingChanges())
-        manifest += "- " + change.label + ": " + change.beforeValue + " -> " + change.afterValue + "\n";
-    if (!writeText(exportDir + "/EDIT_MANIFEST.txt", manifest)) {
-        error = "Edited save was written, but provenance manifest creation failed";
+    const auto result = PokeVault::Integration::Gen2::publishVerifiedStagedEditorExport(editor, request);
+    if (!result.success) {
+        error = result.error.empty() ? "Verified staged export failed" : result.error;
         return {};
     }
-    return exportDir;
+    return result.directory;
 }
 
 void openStagedEditor(TrainerViewScreen& screen) {
@@ -519,10 +472,11 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
             std::string error;
             const std::string exportDir = exportStagedCopy(screen, *editor, error);
             if (exportDir.empty()) {
-                screen.postStatus(error.empty() ? "Staged export failed" : error);
+                const std::string reason = error.empty() ? "Verified staged export failed" : error;
+                screen.postStatus(reason + "; source remains unchanged", 360);
             } else {
                 state.lastExportDirectory = exportDir;
-                screen.postStatus("Exported edited copy + original backup to PokeBank NX exports/gen2");
+                screen.postStatus("Verified staged export: " + exportDir, 360);
             }
         }
         return;
