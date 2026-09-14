@@ -52,19 +52,17 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     ::mkdir(root.c_str(), 0777);
     const std::string stem = "verified-" + tag;
 
-    ExportTransactionRequest request;
-    request.rootDirectory = root;
-    request.directoryStem = stem;
-    request.sourcePath = "/retroarch/saves/" + tag + ".srm";
-    request.gameId = sourceGameId(game);
-    request.timestamp = "20260914-120000";
-    request.applicationSha = "test-sha";
-    request.sourceGame = game;
-    request.originalBytes = editor->originalBytes();
-    request.editedBytes = edited;
-    request.pendingChanges = editor->pendingChanges();
+    // This is the same staged-editor-level abstraction used by the real Gen II UI. It owns
+    // finalization and pending-change capture, then delegates to the verified disk transaction.
+    StagedEditorExportRequest uiRequest;
+    uiRequest.rootDirectory = root;
+    uiRequest.directoryStem = stem;
+    uiRequest.sourcePath = "/retroarch/saves/" + tag + ".srm";
+    uiRequest.gameId = sourceGameId(game);
+    uiRequest.timestamp = "20260914-120000";
+    uiRequest.applicationSha = "test-sha";
 
-    const auto result = publishVerifiedExport(request);
+    const auto result = publishVerifiedStagedEditorExport(*editor, uiRequest);
     assert(result.success && !result.directory.empty());
     assert(exists(result.directory + "/original_backup.srm"));
     assert(exists(result.directory + "/edited.srm"));
@@ -87,6 +85,19 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     assert(manifest.find("STRICT_REPARSE=VERIFIED") != std::string::npos);
     assert(manifest.find("LIVE_RETROARCH_WRITE=DISABLED") != std::string::npos);
     assert(manifest.find("LIVE_INSTALLED_GAME_WRITE=DISABLED") != std::string::npos);
+
+    // Low-level request remains public only for deterministic failure/corruption injection tests.
+    ExportTransactionRequest request;
+    request.rootDirectory = root;
+    request.directoryStem = stem;
+    request.sourcePath = uiRequest.sourcePath;
+    request.gameId = uiRequest.gameId;
+    request.timestamp = uiRequest.timestamp;
+    request.applicationSha = uiRequest.applicationSha;
+    request.sourceGame = game;
+    request.originalBytes = editor->originalBytes();
+    request.editedBytes = edited;
+    request.pendingChanges = editor->pendingChanges();
 
     // Failure after files have been created must leave neither a final directory nor a temp tree.
     ExportTransactionRequest failed = request;
@@ -125,5 +136,5 @@ int main() {
     runExport(GS, SourceGame::Gold, "gold");
     runExport(GS, SourceGame::Silver, "silver");
     runExport(C, SourceGame::Crystal, "crystal");
-    std::puts("GSC verified export transaction: read-back, hashes, strict reparse, cleanup and source immutability PASS");
+    std::puts("GSC verified staged UI export + transaction: files, provenance, read-back, strict reparse, cleanup and source immutability PASS");
 }
