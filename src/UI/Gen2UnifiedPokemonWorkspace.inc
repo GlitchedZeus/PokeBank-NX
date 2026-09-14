@@ -202,7 +202,7 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     auto& unified = unifiedStateFor(screen);
 
     if (state.mode == Mode::View) {
-        if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B, touchedButtonId(touch)) ==
+        if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B, screen.touchedButtonId(touch)) ==
             PokeBank::UIModel::PassiveViewAction::Back) {
             closeToActions(screen);
             resetUnifiedFocus(screen);
