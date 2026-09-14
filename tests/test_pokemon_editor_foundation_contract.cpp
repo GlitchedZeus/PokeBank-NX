@@ -24,8 +24,8 @@ int main() {
     assert(f.panel == Panel::Values && f.column == 2);
 
     // Vertical movement remains local to the focused panel and wraps cleanly.
-    assert(moveFocus({Panel::Identity, 0, 0}, Direction::Up) == Focus{Panel::Identity, 4, 0});
-    assert(moveFocus({Panel::Moves, 3, 0}, Direction::Down) == Focus{Panel::Moves, 0, 0});
+    assert((moveFocus({Panel::Identity, 0, 0}, Direction::Up) == Focus{Panel::Identity, 4, 0}));
+    assert((moveFocus({Panel::Moves, 3, 0}, Direction::Down) == Focus{Panel::Moves, 0, 0}));
 
     // Gen I Values are truthful: HP DV and calculated stats are display-only, other DVs and
     // all five Stat Exp values are editable, while Shiny and Level remain real focusable rows.
