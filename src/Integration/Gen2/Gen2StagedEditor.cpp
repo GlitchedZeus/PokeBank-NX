@@ -1,6 +1,7 @@
 #include "Integration/Gen2/Gen2StagedEditor.h"
 
 #include "Integration/Gen2/Gen2PersonalData.h"
+#include "Integration/Gen2/Gen2HeldItems.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
 
@@ -335,9 +336,7 @@ bool encodeInternationalASCII(std::string_view name, std::size_t maxChars, std::
 }
 
 bool validHeldItem(uint8_t item) noexcept {
-    if (item == 0) return true;
-    const auto name = gen2ItemName(item);
-    return !name.empty() && name != "TERU-SAMA";
+    return selectableHeldItem(item);
 }
 
 uint8_t maxPP(uint8_t move, uint8_t ppUps) noexcept {

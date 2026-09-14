@@ -6,6 +6,7 @@
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
+#include "Integration/Gen2/Gen2HeldItems.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
@@ -87,7 +88,7 @@ uint32_t minimumExpFor(const Gen2::PokemonRecord& p) noexcept {
 std::string itemText(uint8_t item) {
     if (item == 0) return "None";
     const auto name = Gen2::gen2ItemName(item);
-    return name.empty() ? ("Item " + std::to_string(item)) : std::string(name);
+    return Gen2::selectableHeldItem(item) ? std::string(name) : "Raw item " + std::to_string(item);
 }
 
 std::string genderText(uint8_t gender) {
@@ -214,9 +215,6 @@ void closeToActions(TrainerViewScreen& screen) {
     screen.controllerNavigation.reset();
 }
 
-bool isDirty(const State& state) noexcept {
-    return state.mode == Mode::Create || state.dirty();
-}
 
 Rules::CompatibilityState moveStatus(const TrainerViewScreen& screen, const State& state, int slot) noexcept {
     const auto game = Rules::exactGameFromSourceId(screen.sourceGameId);

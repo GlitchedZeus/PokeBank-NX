@@ -4,6 +4,7 @@
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
+#include "Integration/Gen2/Gen2HeldItems.h"
 #include "Names/MoveNames.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
@@ -103,7 +104,7 @@ void compactRow(PKSEFramebuffer& fb, int x, int y, const std::string& label,
 std::string heldItemText(uint16_t held) {
     if (held == 0) return "None";
     const auto name = Gen2::gen2ItemName(static_cast<uint8_t>(held));
-    return name.empty() ? std::string("Item ") + std::to_string(held) : std::string(name);
+    return Gen2::selectableHeldItem(static_cast<uint8_t>(held)) ? std::string(name) : "Raw item " + std::to_string(held);
 }
 
 std::string pokerusText(uint8_t raw) {

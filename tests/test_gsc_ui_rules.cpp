@@ -58,6 +58,9 @@ int main() {
     assert(Gen2Rules::usableHeldItem(0));
     assert(Gen2Rules::usableHeldItem(1)); // Master Ball is an authentic Generation II item.
     assert(!Gen2Rules::usableHeldItem(6)); // TERU-SAMA placeholder is not selectable.
+    for (uint8_t item : {7,54,66,70,115,116,129,175,178,195,220,243,249,250,255})
+        assert(!Gen2Rules::usableHeldItem(item));
+    for (uint8_t item : {1,3,8,157,191,196,221,242}) assert(Gen2Rules::usableHeldItem(item));
     const auto heldItems = Gen2Rules::heldItemChoices();
     assert(!heldItems.empty() && heldItems.front() == 0);
     assert(std::find(heldItems.begin(), heldItems.end(), static_cast<uint8_t>(6)) == heldItems.end());

@@ -2,6 +2,7 @@
 
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
+#include "Integration/Gen2/Gen2HeldItems.h"
 
 #include <array>
 #include <cstdint>
@@ -61,9 +62,7 @@ inline bool allMovesCompatible(Gen2::SourceGame game, uint16_t species,
 }
 
 inline bool usableHeldItem(uint8_t item) noexcept {
-    if (item == 0) return true;
-    const auto name = Gen2::gen2ItemName(item);
-    return !name.empty() && name != "TERU-SAMA";
+    return Gen2::selectableHeldItem(item);
 }
 
 inline std::vector<uint8_t> heldItemChoices() {

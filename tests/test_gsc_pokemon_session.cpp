@@ -71,6 +71,25 @@ void runSession(const L& layout,SourceGame game) {
     session.begin(kept,SessionMode::Edit);session.working.nickname="KEPT";
     assert(session.keep(*editor,0,0,error));
 
+    // Explicit new choices reject key items; an unusual byte already in the
+    // source survives an unrelated edit and strict serialization.
+    auto unusualRaw=fixture(layout,true);
+    const auto body=boxStart(0)+22;
+    unusualRaw[body+1]=7;
+    checksum(unusualRaw,layout);
+    auto unusualParsed=parse(unusualRaw,game);assert(unusualParsed);
+    auto unusualEditor=StagedEditor::create(*unusualParsed.save,error);assert(unusualEditor);
+    auto unusual=*unusualEditor->boxedPokemon(0,0,error);assert(unusual.heldItem==7);
+    session.begin(unusual,SessionMode::Edit);session.working.nickname="RAW";
+    assert(session.keep(*unusualEditor,0,0,error));
+    assert(unusualEditor->boxedPokemon(0,0,error)->heldItem==7);
+    BoxPokemonEdit badHeld;badHeld.heldItem=54;
+    assert(!unusualEditor->stageBoxPokemonEdit(0,0,badHeld,error));
+    session.begin(unusual,SessionMode::Create);session.working.moves={};
+    session.working.pp={};session.working.ppUps={};
+    assert(!session.add(*unusualEditor,2,slot,error));
+    assert(!unusualEditor->finalizedBytes(error).empty());
+
     // Passive sessions reject edit setters, Keep and Add, even if A/Y/etc is
     // accidentally routed here. Back is the only exit effect.
     session.begin(kept,SessionMode::View);
