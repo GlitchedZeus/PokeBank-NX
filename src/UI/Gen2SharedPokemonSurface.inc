@@ -441,7 +441,7 @@ void drawSharedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const
     const uint32_t remaining = nextExp > p.experience ? nextExp - p.experience : 0;
 
     int infoY = statusY + 58;
-    const auto infoRow = [&](const char* label, const std::string& value) mutable {
+    auto infoRow = [&](const char* label, const std::string& value) {
         fb.drawText(x + 18, infoY, label, Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 104, infoY, value, Colors::Text, TextStyle::Caption);
         infoY += 24;
