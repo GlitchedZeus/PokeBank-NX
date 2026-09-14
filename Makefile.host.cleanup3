@@ -68,3 +68,21 @@ $(HOST_BUILD)/test_gen1_cleanup3_staged_semantics: $(GEN1_CLEANUP3_STAGED_SOURCE
 $(HOST_BUILD)/test_gen1_cleanup3_staged_semantics_sanitize: $(GEN1_CLEANUP3_STAGED_SOURCES) src/Integration/Gen1/Gen1MoveCompatibilityData.inc src/Integration/Gen1/Gen1PersonalData.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_CLEANUP3_STAGED_SOURCES) -o $@
+
+# Permanent three-panel / generation-capability foundation contract. This is deliberately
+# host-only: later-generation capability fixtures prove layout scalability without enabling
+# unfinished Gen III serializers or live-write paths.
+POKEMON_EDITOR_FOUNDATION_SOURCES := tests/test_pokemon_editor_foundation_contract.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_pokemon_editor_foundation_contract
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_pokemon_editor_foundation_contract_sanitize
+host-test: $(HOST_BUILD)/test_pokemon_editor_foundation_contract
+host-sanitize: $(HOST_BUILD)/test_pokemon_editor_foundation_contract_sanitize
+
+$(HOST_BUILD)/test_pokemon_editor_foundation_contract: $(POKEMON_EDITOR_FOUNDATION_SOURCES) include/UI/PokemonEditorFoundationContract.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(POKEMON_EDITOR_FOUNDATION_SOURCES) -o $@
+
+$(HOST_BUILD)/test_pokemon_editor_foundation_contract_sanitize: $(POKEMON_EDITOR_FOUNDATION_SOURCES) include/UI/PokemonEditorFoundationContract.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(POKEMON_EDITOR_FOUNDATION_SOURCES) -o $@
