@@ -1,10 +1,13 @@
 #include "UI/Gen1PokemonDetailsPresentation.h"
 
+#include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Names/MoveNames.h"
+#include "Pokemon/Experience.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SpriteManager.h"
+#include "UI/StatsRadar.h"
 #include "UI/TrainerViewScreen.h"
 
 #include <algorithm>
@@ -12,19 +15,69 @@
 
 namespace UI::Modals {
 namespace {
-void valueRow(PKSEFramebuffer& fb, int x, int y, int w,
-              const std::string& label, const std::string& value) {
-    fb.drawText(x, y, label, Colors::TextDim, TextStyle::Body);
-    int vw = 0, vh = 0;
-    fb.measureText(value, vw, vh, TextStyle::Body);
-    fb.drawText(x + w - vw, y, value, Colors::Text, TextStyle::Body);
-}
+
+namespace Gen1 = PokeVault::Integration::Gen1;
 
 std::string dexLabel(uint16_t species) {
     std::string dex = std::to_string(species);
     while (dex.size() < 3) dex = "0" + dex;
     return dex;
 }
+
+const char* typeName(uint8_t type) noexcept {
+    switch (type) {
+        case 0: return "Normal";
+        case 1: return "Fighting";
+        case 2: return "Flying";
+        case 3: return "Poison";
+        case 4: return "Ground";
+        case 5: return "Rock";
+        case 7: return "Bug";
+        case 8: return "Ghost";
+        case 20: return "Fire";
+        case 21: return "Water";
+        case 22: return "Grass";
+        case 23: return "Electric";
+        case 24: return "Psychic";
+        case 25: return "Ice";
+        case 26: return "Dragon";
+        default: return "Unknown";
+    }
+}
+
+const char* growthName(uint8_t growth) noexcept {
+    switch (growth) {
+        case 0: return "Medium Fast";
+        case 1: return "Erratic";
+        case 2: return "Fluctuating";
+        case 3: return "Medium Slow";
+        case 4: return "Fast";
+        case 5: return "Slow";
+        default: return "Unknown";
+    }
+}
+
+void drawBadge(PKSEFramebuffer& fb, int x, int y, const std::string& text) {
+    int tw = 0, th = 0;
+    fb.measureText(text, tw, th, TextStyle::Caption);
+    const int w = std::max(64, tw + 24);
+    fb.drawFilledRoundedRect(x, y, w, 28, 10, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, 28, 10, Colors::Accent, 1);
+    fb.drawText(x + 12, y + 6, text, Colors::Text, TextStyle::Caption);
+}
+
+void compactRow(PKSEFramebuffer& fb, int x, int y, const std::string& label,
+                const std::string& value, int valueX = 100) {
+    fb.drawText(x, y, label, Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + valueX, y, value, Colors::Text, TextStyle::Caption);
+}
+
+std::string shortRecordLabel(const std::string& record) {
+    if (record.find("Party") != std::string::npos) return "Party";
+    if (record.find("Box") != std::string::npos) return "Box";
+    return record.empty() ? std::string("Pokemon") : record;
+}
+
 } // namespace
 
 void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuffer& fb,
@@ -32,118 +85,146 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     const int W = fb.getWidth(), H = fb.getHeight();
     screen.touchButtons.clear();
 
+    // Use the same permanent three-panel visual language as the accepted Gen I editor,
+    // but this surface is deliberately passive: no field cursor and no per-field navigation.
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 130));
     fb.drawVerticalGradient(0, 0, W, H,
         Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 250),
         Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 255));
 
+    constexpr int workspaceX = 40;
+    constexpr int workspaceY = 31;
+    constexpr int workspaceW = 1200;
+    constexpr int workspaceH = 609;
+    drawPanelSurface(fb, workspaceX, workspaceY, workspaceW, workspaceH, false, 18);
+
     const std::string name = p.nickname.empty() ? p.speciesName : p.nickname;
-    fb.drawText(28, 16, name, Colors::Text, TextStyle::Heading);
-    int nameW = 0, nameH = 0;
-    fb.measureText(name, nameW, nameH, TextStyle::Heading);
-    if (p.shiny) fb.drawShinyMark(40 + nameW, 20, 18, Colors::ShinyStar);
+    fb.drawText(workspaceX + 24, workspaceY + 14, "View Pokemon — READ ONLY", Colors::Text, TextStyle::Heading);
+    if (p.shiny) {
+        int titleW = 0, titleH = 0;
+        fb.measureText("View Pokemon — READ ONLY", titleW, titleH, TextStyle::Heading);
+        fb.drawShinyMark(workspaceX + 36 + titleW, workspaceY + 18, 18, Colors::ShinyStar);
+    }
+    const std::string subtitle = p.recordLabel + "  •  PKSE three-panel workspace  •  Source save immutable";
+    fb.drawText(workspaceX + 24, workspaceY + 50, subtitle, Colors::TextDim, TextStyle::Caption);
 
-    const std::string sub = "Lv. " + std::to_string(p.level) + "     No. " + dexLabel(p.species);
-    int subW = 0, subH = 0;
-    fb.measureText(sub, subW, subH);
-    fb.drawText(W - 90 - subW, 24, sub, Colors::TextDim);
+    constexpr int contentY = workspaceY + 74;
+    constexpr int contentH = 516;
+    constexpr int leftX = workspaceX + 18;
+    constexpr int leftW = 300;
+    constexpr int midX = leftX + leftW + 14;
+    constexpr int midW = 398;
+    constexpr int rightX = midX + midW + 14;
+    constexpr int rightW = workspaceX + workspaceW - 18 - rightX;
 
-    const std::string state = "GEN I  /  " + p.sourceStateLabel;
-    int stateW = 0, stateH = 0;
-    fb.measureText(state, stateW, stateH, TextStyle::Caption);
-    fb.drawText((W - stateW) / 2, 22, state, Colors::Accent, TextStyle::Caption);
-    fb.drawFilledRect(0, 60, W, 2, Colors::Accent);
+    drawPanelSurface(fb, leftX, contentY, leftW, contentH, false, 14);
+    drawPanelSurface(fb, midX, contentY, midW, contentH, false, 14);
+    drawPanelSurface(fb, rightX, contentY, rightW, contentH, false, 14);
 
-    fb.drawFilledCircle(W - 40, 30, 20, Colors::PanelAlt);
-    fb.drawCircle(W - 40, 30, 20, Colors::Border, 1);
-    fb.drawText(W - 47, 18, "\xC3\x97", Colors::Text, TextStyle::Heading);
-    screen.touchButtons.push_back({99, W - 64, 6, 52, 52});
-
-    // Match the inherited PKSE three-column summary/editor proportions so View and
-    // Create/Edit feel like one application rather than unrelated homebrew screens.
-    const int colY = 72;
-    const int colH = H - colY - kNavBarH - 6;
-    const int leftX = 24, leftW = 430;
-    const int centerX = 474, centerW = 340;
-    const int rightX = 838, rightW = W - rightX - 24;
-    drawPanelSurface(fb, leftX, colY, leftW, colH, false, 16);
-    drawPanelSurface(fb, centerX, colY, centerW, colH, false, 16);
-    drawPanelSurface(fb, rightX, colY, rightW, colH, false, 16);
-
-    // LEFT — large cached artwork + identity/source truth.
-    constexpr int renderSize = 170;
+    // LEFT — exactly the editor's identity language, with no focus highlight.
+    fb.drawText(leftX + 14, contentY + 10, "DETAILS", Colors::Accent, TextStyle::Caption);
+    constexpr int renderSize = 174;
     if (auto* sprite = SpriteManager::getSprite(p.species, p.shiny); sprite && sprite->data) {
-        fb.drawSpriteStaticContained(leftX + (leftW - renderSize) / 2, colY + 14,
-                                     renderSize, renderSize, sprite->width, sprite->height,
-                                     sprite->data, sprite->channels);
+        fb.drawSpriteStaticContained(leftX + 63, contentY + 34, renderSize, 146,
+                                     sprite->width, sprite->height, sprite->data, sprite->channels);
     } else {
-        fb.drawText(leftX + 132, colY + 88, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
+        fb.drawText(leftX + 82, contentY + 104, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
     }
 
-    fb.drawText(leftX + 18, colY + 194, p.shiny ? "SHINY" : "NORMAL",
-                p.shiny ? Colors::ShinyStar : Colors::Accent, TextStyle::Caption);
-    int ly = colY + 226;
-    const int identityW = leftW - 36;
-    valueRow(fb, leftX + 18, ly, identityW, "Species", p.speciesName); ly += 36;
-    valueRow(fb, leftX + 18, ly, identityW, "Nickname", name); ly += 36;
-    valueRow(fb, leftX + 18, ly, identityW, "Level", std::to_string(p.level)); ly += 36;
-    valueRow(fb, leftX + 18, ly, identityW, "EXP", std::to_string(p.experience)); ly += 36;
-    valueRow(fb, leftX + 18, ly, identityW, "OT", p.originalTrainer); ly += 36;
-    valueRow(fb, leftX + 18, ly, identityW, "Trainer ID", std::to_string(p.trainerId)); ly += 36;
-    if (!p.recordLabel.empty())
-        valueRow(fb, leftX + 18, ly, identityW, "Record", p.recordLabel);
+    int badgeX = leftX + 18;
+    drawBadge(fb, badgeX, contentY + 184, typeName(p.nativeTypes[0]));
+    if (p.nativeTypes[1] != p.nativeTypes[0]) {
+        int tw = 0, th = 0;
+        fb.measureText(typeName(p.nativeTypes[0]), tw, th, TextStyle::Caption);
+        badgeX += std::max(64, tw + 24) + 8;
+        drawBadge(fb, badgeX, contentY + 184, typeName(p.nativeTypes[1]));
+    }
 
-    // CENTER — native Gen I five-stat/DV model. No modern IV/EV split and no
-    // Sp. Atk / Sp. Def invention.
-    fb.drawText(centerX + 18, colY + 16, "Values", Colors::Text, TextStyle::Heading);
-    fb.drawText(centerX + 18, colY + 50, "Gen I DVs / Stat Exp", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(centerX + 132, colY + 82, "DV", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(centerX + 204, colY + 82, "Stat Exp", Colors::TextDim, TextStyle::Caption);
+    compactRow(fb, leftX + 18, contentY + 232, "Species", dexLabel(p.species) + " - " + p.speciesName, 90);
+    compactRow(fb, leftX + 18, contentY + 275, "Nickname", name, 90);
+    compactRow(fb, leftX + 18, contentY + 318, "Level / EXP",
+               "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience), 90);
+    compactRow(fb, leftX + 18, contentY + 361, "OT", p.originalTrainer, 90);
+    compactRow(fb, leftX + 18, contentY + 404, "Trainer ID", std::to_string(p.trainerId), 90);
+
+    // MIDDLE — DV / Stat Exp / calculated-or-stored battle Stat, all read-only here.
+    fb.drawText(midX + 14, contentY + 10, "VALUES", Colors::Text, TextStyle::Heading);
+    fb.drawText(midX + 104, contentY + 48, "DV", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(midX + 198, contentY + 48, "Stat Exp", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(midX + 310, contentY + 48, "Stat", Colors::TextDim, TextStyle::Caption);
+
     static constexpr const char* statNames[] = {"HP", "Attack", "Defense", "Speed", "Special"};
-    int sy = colY + 112;
     for (int i = 0; i < 5; ++i) {
-        fb.drawText(centerX + 18, sy, statNames[i], Colors::TextDim);
-        fb.drawText(centerX + 132, sy, std::to_string(p.dvs[static_cast<size_t>(i)]), Colors::Text);
-        fb.drawText(centerX + 204, sy, std::to_string(p.statExperience[static_cast<size_t>(i)]), Colors::Text);
-        sy += 40;
+        const int y = contentY + 88 + i * 48;
+        fb.drawText(midX + 16, y, statNames[i], Colors::TextDim, TextStyle::Caption);
+        const std::string dv = std::to_string(p.dvs[static_cast<size_t>(i)]) + (i == 0 ? " *" : "");
+        fb.drawText(midX + 96, y, dv, Colors::Text, TextStyle::Caption);
+        fb.drawText(midX + 192, y, std::to_string(p.statExperience[static_cast<size_t>(i)]), Colors::Text,
+                    TextStyle::Caption);
+        fb.drawText(midX + 300, y,
+                    p.hasBattleStats ? std::to_string(p.battleStats[static_cast<size_t>(i)]) : "-",
+                    Colors::Text, TextStyle::Caption);
     }
+    fb.drawText(midX + 16, contentY + 322, "* HP DV derived", Colors::TextDim, TextStyle::Caption);
+    compactRow(fb, midX + 16, contentY + 366, "Shiny", p.shiny ? "Yes" : "No", 124);
+    compactRow(fb, midX + 16, contentY + 412, "Level", std::to_string(p.level), 124);
+    fb.drawText(midX + 16, contentY + 458,
+                p.battleStatsCalculated ? "Calculated Stat cells are read-only" : "Party battle Stat cells are read-only",
+                Colors::TextDim, TextStyle::Caption);
 
-    sy += 12;
-    fb.drawText(centerX + 18, sy,
-                p.battleStatsCalculated ? "Calculated battle stats" : "Battle stats",
-                Colors::Text, TextStyle::Heading);
-    sy += 38;
-    if (p.hasBattleStats) {
-        for (int i = 0; i < 5; ++i) {
-            valueRow(fb, centerX + 18, sy, centerW - 36, statNames[i],
-                     std::to_string(p.battleStats[static_cast<size_t>(i)]));
-            sy += 32;
-        }
-    } else {
-        fb.drawText(centerX + 18, sy, "Not stored in this boxed record.", Colors::TextDim, TextStyle::Caption);
-    }
-
-    // RIGHT — the same four-card move presentation used by the mature Gen I View,
-    // including PP and PP Ups rather than exposing raw packed bytes.
-    fb.drawText(rightX + 18, colY + 16, "Moves", Colors::Text, TextStyle::Heading);
-    int my = colY + 62;
+    // RIGHT — four compact move rows, then the same supplemental-data + radar split.
+    fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
     for (int slot = 0; slot < 4; ++slot) {
         const auto i = static_cast<size_t>(slot);
+        const int y = contentY + 50 + slot * 44;
         const uint16_t move = p.moves[i];
-        const std::string moveName = move == 0 ? std::string("-") : std::string(Names::getMoveName(move));
-        fb.drawFilledRoundedRect(rightX + 14, my, rightW - 28, 88, 12, Colors::PanelAlt);
-        fb.drawText(rightX + 28, my + 14, moveName, Colors::Text, TextStyle::Body);
-        fb.drawText(rightX + 28, my + 48, "PP " + std::to_string(p.pp[i]), Colors::TextDim, TextStyle::Caption);
-        const std::string ups = "PP Ups " + std::to_string(p.ppUps[i]);
-        int upsW = 0, upsH = 0;
-        fb.measureText(ups, upsW, upsH, TextStyle::Caption);
-        fb.drawText(rightX + rightW - 28 - upsW, my + 48, ups, Colors::TextDim, TextStyle::Caption);
-        my += 102;
+        const std::string moveName = move == 0 ? std::string("Empty") : std::string(Names::getMoveName(move));
+        fb.drawText(rightX + 20, y, moveName, Colors::Text, TextStyle::Caption);
+        const std::string ppText = "PP " + std::to_string(p.pp[i]) + "  Up " + std::to_string(p.ppUps[i]);
+        int ppW = 0, ppH = 0;
+        fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
+        fb.drawText(rightX + rightW - 20 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
     }
+    fb.drawFilledRect(rightX + 14, contentY + 220, rightW - 28, 1, Colors::Divider);
+    compactRow(fb, rightX + 18, contentY + 235, "Move compatibility", "Not checked", 300);
+    compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300);
 
-    fb.drawText(rightX + 18, my + 8, "Generation I truth", Colors::Accent, TextStyle::Caption);
-    fb.drawText(rightX + 18, my + 32, "No SID, nature, ability, held item,", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + 18, my + 52, "modern IV/EV split or modern met fields.", Colors::TextDim, TextStyle::Caption);
+    constexpr int splitY = contentY + 288;
+    constexpr int splitH = 216;
+    constexpr int inset = 12;
+    constexpr int gap = 10;
+    constexpr int innerW = rightW - inset * 2;
+    constexpr int leftPaneW = 136;
+    constexpr int rightPaneW = innerW - gap - leftPaneW;
+    constexpr int leftPaneX = rightX + inset;
+    constexpr int rightPaneX = leftPaneX + leftPaneW + gap;
+
+    drawPanelSurface(fb, leftPaneX, splitY, leftPaneW, splitH, false, 12);
+    drawPanelSurface(fb, rightPaneX, splitY, rightPaneW, splitH, false, 12);
+
+    const uint8_t growth = Gen1::StagedPokemonEditor::growthRate(p.species);
+    const uint32_t nextLevelExp = p.level < 100
+        ? Pokemon::getExpForLevel(static_cast<uint8_t>(p.level + 1), growth)
+        : p.experience;
+    const uint32_t toNextLevel = p.level < 100 && nextLevelExp > p.experience
+        ? nextLevelExp - p.experience : 0;
+
+    fb.drawText(leftPaneX + 10, splitY + 10, "GEN I DATA", Colors::Accent, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 40, "Game / record", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 58,
+                p.sourceGameLabel + " / " + shortRecordLabel(p.recordLabel), Colors::Text, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 82, "Growth", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 100, growthName(growth), Colors::Text, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 124, "To next Lv", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 142,
+                p.level >= 100 ? std::string("MAX") : std::to_string(toNextLevel) + " EXP",
+                Colors::Text, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 166, "Catch byte", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 184, std::to_string(p.catchRate), Colors::Text, TextStyle::Caption);
+
+    fb.drawText(rightPaneX + 10, splitY + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
+    if (p.hasBattleStats)
+        StatsRadar::drawGen1Labeled(fb, rightPaneX + 8, splitY + 32, rightPaneW - 16, splitH - 40, p.battleStats);
 
     screen.details.leftOrder.clear();
     screen.details.leftScroll = 0;

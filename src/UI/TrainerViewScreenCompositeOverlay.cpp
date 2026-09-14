@@ -102,6 +102,10 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 // above the foundation workspace, and the lower-right display becomes two capability-aware panes.
 #include "Gen1PokemonEditorFoundationHardwareFix.inc"
 
+// The occupied-slot action-sheet View uses the same passive Gen I presenter as Party/Storage View.
+// It owns all input while active, has no field cursor, and exposes only B Back.
+#include "Gen1PokemonEditorPassiveView.inc"
+
 namespace UI {
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
@@ -116,6 +120,13 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         if (Gen1PokemonEditor::handleInputUXCleanup3(*this, down, held, stick.x, stick.y)) return;
     }
 
+    // View from the occupied-Pokemon action sheet is a passive read-only surface, just like the
+    // Party and Storage detail routes. Consume all input here so no editor focus/cursor can appear.
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPassiveViewActive(*this)) {
+        Gen1PokemonEditor::handleFoundationPassiveViewInput(*this, down);
+        return;
+    }
+
     if (Gen1PokemonEditor::handleInputUX(*this, down, held, stick.x, stick.y)) return;
     updateGSCOverlay(pad, touch);
 }
@@ -126,6 +137,13 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     // Match the input ownership rule above: an active picker must be the visible top surface.
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
         Gen1PokemonEditor::drawOverlayUXCleanup3(*this, fb);
+        return;
+    }
+
+    // Match Party/Storage View Pokemon exactly: shared passive presenter, no field cursor,
+    // no editable focus, and no second foundation bottom pane drawn over it.
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPassiveViewActive(*this)) {
+        Gen1PokemonEditor::drawFoundationPassiveView(*this, fb);
         return;
     }
 

@@ -1,8 +1,8 @@
 #include "UI/Modals/Gen1PokemonDetailsModal.h"
 
-#include "Integration/Gen1/Gen1Shiny.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
+#include "UI/Gen1PokemonPresentation.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/TrainerViewScreen.h"
 #include "Utils/StringHelpers.h"
@@ -11,6 +11,16 @@
 #include <string>
 
 namespace UI::Modals {
+namespace {
+
+std::string sourceGameLabel(const std::string& id) {
+    if (id.find("yellow") != std::string::npos || id.find("Yellow") != std::string::npos) return "Yellow";
+    if (id.find("blue") != std::string::npos || id.find("Blue") != std::string::npos) return "Blue";
+    if (id.find("red") != std::string::npos || id.find("Red") != std::string::npos) return "Red";
+    return "Gen I";
+}
+
+} // namespace
 
 void drawGen1PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
                                  const Pokemon::Pokemon1ReadOnly& p) {
@@ -35,18 +45,27 @@ void drawGen1PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
         view.ppUps[i] = static_cast<uint8_t>(p.movePPUps(slot));
     }
 
-    const std::array<uint8_t,4> storedDVs{view.dvs[1], view.dvs[2], view.dvs[3], view.dvs[4]};
-    view.shiny = PokeVault::Integration::Gen1::ShinyDVs::isShiny(storedDVs);
+    const auto presentation = PokeBank::UIModel::presentGen1Pokemon(p.strictRecord());
+    view.shiny = presentation.shiny;
+    view.nativeTypes = presentation.nativeTypes;
+    view.catchRate = p.strictRecord().catchRate;
+    view.sourceGameLabel = sourceGameLabel(screen.sourceGameId);
     view.recordLabel = p.isPartyRecord() ? "Party (44 bytes)" : "Box (33 bytes)";
     view.sourceStateLabel = "READ ONLY";
 
     if (p.isPartyRecord()) {
+        // Party records physically store their battle stats. Show exactly those values.
         view.battleStats = {static_cast<uint16_t>(p.statHPMax()), static_cast<uint16_t>(p.statATK()),
                             static_cast<uint16_t>(p.statDEF()), static_cast<uint16_t>(p.statSPE()),
                             static_cast<uint16_t>(p.gen1Special())};
-        view.hasBattleStats = true;
         view.battleStatsCalculated = false;
+    } else {
+        // Box records do not store battle stats; use the same trusted calculation path as the
+        // accepted Gen I editor so Storage/Box View and editor View agree.
+        view.battleStats = presentation.battleStats;
+        view.battleStatsCalculated = true;
     }
+    view.hasBattleStats = true;
 
     drawGen1PokemonDetailsPresentation(screen, fb, view);
 }
