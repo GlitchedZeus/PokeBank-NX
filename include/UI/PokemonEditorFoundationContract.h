@@ -68,7 +68,8 @@ constexpr Focus normalize(Focus focus) noexcept {
         case Panel::Values:
             focus.row = static_cast<uint8_t>(focus.row % valueRowCount());
             if (focus.row >= valueStatRowCount()) focus.column = 0;
-            else focus.column = static_cast<uint8_t>(focus.column % 3);
+            else if (focus.column >= static_cast<uint8_t>(ValueColumn::CalculatedStat))
+                focus.column = static_cast<uint8_t>(ValueColumn::StatExperience);
             break;
         case Panel::Moves:
             focus.row = static_cast<uint8_t>(focus.row % moveRowCount());
@@ -95,7 +96,7 @@ constexpr Focus moveFocus(Focus focus, Direction direction) noexcept {
             return normalize({Panel::Values, static_cast<uint8_t>(focus.row < valueStatRowCount() ? focus.row : valueStatRowCount() - 1), 0});
         }
         if (focus.panel == Panel::Values) {
-            if (focus.row < valueStatRowCount() && focus.column < 2) {
+            if (focus.row < valueStatRowCount() && focus.column < static_cast<uint8_t>(ValueColumn::StatExperience)) {
                 ++focus.column;
                 return focus;
             }
@@ -105,7 +106,7 @@ constexpr Focus moveFocus(Focus focus, Direction direction) noexcept {
     }
 
     if (focus.panel == Panel::Moves) {
-        return normalize({Panel::Values, static_cast<uint8_t>(focus.row), 2});
+        return normalize({Panel::Values, static_cast<uint8_t>(focus.row), static_cast<uint8_t>(ValueColumn::StatExperience)});
     }
     if (focus.panel == Panel::Values) {
         if (focus.row < valueStatRowCount() && focus.column > 0) {
@@ -134,6 +135,7 @@ constexpr bool valueCellEditable(ValueRow row, ValueColumn column) noexcept {
     return true;
 }
 constexpr bool calculatedStatsAreReadOnly() noexcept { return true; }
+constexpr bool calculatedStatsAreFocusable() noexcept { return false; }
 constexpr bool hpDVIsDerived() noexcept { return true; }
 constexpr bool moveRowsAreIndividuallyFocusable() noexcept { return true; }
 constexpr bool radarIsFocusable() noexcept { return false; }
