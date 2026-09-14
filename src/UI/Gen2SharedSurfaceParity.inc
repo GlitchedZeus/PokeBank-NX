@@ -1,4 +1,5 @@
 #include "Pokemon/Pokemon2ReadOnly.h"
+#include "UI/Gen2StagedAccess.h"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
@@ -211,8 +212,40 @@ bool finalGen2SurfaceOwnsFrame(const TrainerViewScreen& screen) noexcept {
 
 bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                  int stickX, int stickY, const TouchInput& touch) {
+    if (!isGSC(screen)) return false;
     if (handleParityExternalPassiveInput(screen, down, touch)) return true;
-    return handleUnifiedGen2SurfaceInput(screen, down, held, stickX, stickY, touch);
+    if (handleUnifiedGen2SurfaceInput(screen, down, held, stickX, stickY, touch)) return true;
+
+    namespace Access = PokeBank::UIModel::Gen2StagedAccess;
+    auto* editor = stagedEditor(screen);
+    const auto caps = Access::capabilities(
+        screen.trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(screen), editor != nullptr);
+    const bool storage = screen.selectedMode == TrainerViewScreen::ViewMode::Storage;
+    const auto surface = screen.selectedMode == TrainerViewScreen::ViewMode::Boxes ? Access::Surface::Boxes
+        : storage && screen.storageFocusPane == 0 ? Access::Surface::StorageSave : Access::Surface::Other;
+    const int box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
+    const int slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
+    const bool validSlot = editor && box >= 0 && slot >= 0 &&
+        box < static_cast<int>(editor->metadata().boxCount) &&
+        slot < static_cast<int>(editor->metadata().boxCapacity);
+    const bool blocked = editorOverlayState(screen).active || screen.helpOverlayActive ||
+        screen.details.active || screen.actionSheet.isOpen() || screen.saveConfirmActive ||
+        screen.pickerActive || screen.itemEditDialogActive || screen.carrying() || screen.currentlySelecting;
+    if (Access::entry(caps, surface, screen.detailViewActive, blocked, validSlot,
+                      down & (HidNpadButton_A | HidNpadButton_X)) == Access::Entry::PokemonActions) {
+        auto& legacy = editorOverlayState(screen);
+        legacy.active = true;
+        legacy.review = false;
+        legacy.pokemonActions = true;
+        legacy.pokemonFields = false;
+        legacy.pokemonBox = box;
+        legacy.pokemonSlot = slot;
+        legacy.pokemonRow = 0;
+        legacy.reviewRow = 0;
+        screen.controllerNavigation.reset();
+        return true; // consume before the legacy source-writable guard
+    }
+    return false;
 }
 
 } // namespace UI::Gen2PokemonEditor

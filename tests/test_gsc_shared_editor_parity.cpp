@@ -1,6 +1,7 @@
 #include "fixtures/gsc_pokemon_fixture.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2PokemonSession.h"
+#include "UI/Gen2StagedAccess.h"
 #include "UI/Gen2PokemonPickerModel.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/BattleStatRadarModel.h"
@@ -27,6 +28,17 @@ void runCreateParity(const L& layout, SourceGame game) {
     auto editor = StagedEditor::create(*parsed.save, error);
     assert(editor);
     const auto seed = *editor->boxedPokemon(0, 0, error);
+    namespace Access = PokeBank::UIModel::Gen2StagedAccess;
+    const auto caps = Access::capabilities(true, editor != nullptr);
+    assert(!caps.canWriteOriginalSource && caps.canEditStagedCopy);
+    for (auto surface : {Access::Surface::Boxes, Access::Surface::StorageSave}) {
+        assert(Access::entry(caps, surface, true, false, true, true) == Access::Entry::PokemonActions);
+        assert(Access::entry(caps, surface, true, true, true, true) == Access::Entry::None);
+        assert(Access::entry(caps, surface, true, false, false, true) == Access::Entry::None);
+    }
+    assert(Access::entry(Access::capabilities(false, true), Access::Surface::Boxes,
+                         true, false, true, true) == Access::Entry::None);
+    assert(Access::entry(caps, Access::Surface::Other, true, false, true, true) == Access::Entry::None);
 
     // Create starts as a local draft. Browsing from the fixture's Pikachu to
     // Chikorita must not mutate staged or source bytes.
@@ -68,6 +80,13 @@ void runCreateParity(const L& layout, SourceGame game) {
     assert(added->level == 18);
     assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
     assert(std::equal(raw.begin(), raw.end(), parsed.save->sourceBytes().begin()));
+
+    // The same immutable adapter permits an Edit; only Keep reaches staged bytes.
+    session.begin(*added, SessionMode::Edit);
+    assert(session.setLevel(19));
+    assert(session.keep(*editor, 2, slot, error));
+    assert(editor->boxedPokemon(2, slot, error)->level == 19);
+    assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
 
     // Cancelling a second Create draft restores no bytes because nothing from
     // browsing or local edits ever reached StagedEditor.
