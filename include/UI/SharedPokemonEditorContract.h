@@ -21,6 +21,17 @@ enum class Surface : uint8_t {
     Review,
 };
 
+enum class PassiveViewOrigin : uint8_t {
+    Box,
+    Party,
+    Storage,
+    ActionSheet,
+};
+
+constexpr Surface passiveViewSurfaceFor(PassiveViewOrigin) noexcept {
+    return Surface::View;
+}
+
 enum class Action : uint8_t {
     View,
     Edit,
@@ -229,6 +240,21 @@ constexpr const char* titleFor(Surface surface) noexcept {
     }
     return "Pokemon";
 }
+
+// Recovery/reference code may remain compiled while the refactor settles, but none
+// of these legacy Gen II paths are allowed to own the normal production Pokemon UX.
+enum class Gen2LegacyPath : uint8_t {
+    StageAddPromptWizard,
+    LegacyTwentyEightRowEditor,
+    LegacyPokemonActionsModal,
+    RawSpeciesIdCreatePrompt,
+    RawMoveIdCreatePrompt,
+    RawHeldItemIdCreatePrompt,
+    LegacyHandleInput,
+};
+
+constexpr bool gen2LegacyPathProductionReachable(Gen2LegacyPath) noexcept { return false; }
+constexpr bool gen2ExternalPassiveViewUsesSharedSurface() noexcept { return true; }
 
 constexpr bool passiveViewHasFieldCursor() noexcept { return false; }
 constexpr bool passiveViewAllowsEditing() noexcept { return false; }

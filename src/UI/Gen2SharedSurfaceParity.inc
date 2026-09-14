@@ -1,5 +1,82 @@
+#include "Pokemon/Pokemon2ReadOnly.h"
+
 namespace UI::Gen2PokemonEditor {
 namespace {
+
+static_assert(SharedEditor::gen2ExternalPassiveViewUsesSharedSurface());
+static_assert(!SharedEditor::gen2LegacyPathProductionReachable(SharedEditor::Gen2LegacyPath::StageAddPromptWizard));
+static_assert(!SharedEditor::gen2LegacyPathProductionReachable(SharedEditor::Gen2LegacyPath::LegacyTwentyEightRowEditor));
+static_assert(!SharedEditor::gen2LegacyPathProductionReachable(SharedEditor::Gen2LegacyPath::LegacyPokemonActionsModal));
+static_assert(!SharedEditor::gen2LegacyPathProductionReachable(SharedEditor::Gen2LegacyPath::LegacyHandleInput));
+
+const Pokemon::Pokemon2ReadOnly* parityPassiveDetailsTarget(const TrainerViewScreen& screen) noexcept {
+    if (!screen.details.active) return nullptr;
+    // Generation II runtime Party/Box records are constructed exclusively as Pokemon2ReadOnly by
+    // GSCReadOnlyTrainer. Legacy Storage cannot serialize GSC records yet, so Bank is deliberately
+    // excluded instead of making an unsafe cast in the no-RTTI Switch build.
+    if (screen.details.source != TrainerViewScreen::EditSource::Party &&
+        screen.details.source != TrainerViewScreen::EditSource::Box)
+        return nullptr;
+    auto& mutableScreen = const_cast<TrainerViewScreen&>(screen);
+    Pokemon::Pokemon* target = mutableScreen.detailsTargetPokemon();
+    if (!target || target->getGameGroup() != Enums::GameVersion::GSC) return nullptr;
+    return static_cast<const Pokemon::Pokemon2ReadOnly*>(target);
+}
+
+std::string parityPassiveContext(const TrainerViewScreen& screen) {
+    std::string context;
+    if (screen.details.source == TrainerViewScreen::EditSource::Party) {
+        context = "Party Slot " + std::to_string(screen.details.partyIndex + 1);
+    } else if (screen.selectedMode == TrainerViewScreen::ViewMode::Storage) {
+        context = "Storage Save Box " + std::to_string(screen.selectedBoxIndex + 1) +
+                  " / Slot " + std::to_string(screen.selectedItemIndex + 1);
+    } else {
+        context = "Box " + std::to_string(screen.selectedBoxIndex + 1) +
+                  " / Slot " + std::to_string(screen.selectedItemIndex + 1);
+    }
+    context += "  •  ";
+    context += sharedGameName(screen);
+    context += "  •  Source save immutable";
+    return context;
+}
+
+void drawParityExternalPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& fb,
+                                   const Pokemon::Pokemon2ReadOnly& pokemon) {
+    State visual{};
+    visual.begin(pokemon.strictRecord(), Mode::View);
+    UnifiedWorkspaceState unified{};
+    const auto g = SharedEditor::geometry720p();
+
+    screen.touchButtons.clear();
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
+    drawPanelSurface(fb, g.x, g.y, g.width, g.height, false, 18);
+    fb.drawText(g.x + 24, g.y + 14, SharedEditor::titleFor(SharedEditor::Surface::View),
+                Colors::Text, TextStyle::Heading);
+    fb.drawText(g.x + 24, g.y + 46, parityPassiveContext(screen), Colors::TextDim, TextStyle::Caption);
+
+    const int contentY = g.y + 74;
+    const int contentH = g.height - 94;
+    const int leftX = g.x + 18, leftW = 300;
+    const int midX = leftX + leftW + 14, midW = 398;
+    const int rightX = midX + midW + 14, rightW = g.x + g.width - 18 - rightX;
+
+    drawSharedDetails(fb, visual, leftX, contentY, leftW, contentH, true);
+    drawUnifiedValues(fb, visual, unified, midX, contentY, midW, contentH, true);
+    drawUnifiedMoves(fb, screen, visual, unified, rightX, contentY, rightW, contentH, true);
+
+    screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget,
+                                   16, fb.getHeight() - 68, 190, 58});
+    drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
+}
+
+bool handleParityExternalPassiveInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
+    if (!parityPassiveDetailsTarget(screen)) return false;
+    if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B, screen.touchedButtonId(touch)) ==
+        PokeBank::UIModel::PassiveViewAction::Back)
+        screen.closeDetailsModal();
+    // View is passive by contract: A/Y/L/R/D-pad never reach the old GSC details editor.
+    return true;
+}
 
 void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& legacy = editorOverlayState(screen);
@@ -112,6 +189,10 @@ void drawParityGen2Clone(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
 bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isGSC(screen)) return false;
+    if (const auto* passive = parityPassiveDetailsTarget(screen)) {
+        drawParityExternalPassiveView(screen, fb, *passive);
+        return true;
+    }
     auto& legacy = editorOverlayState(screen);
     const auto& shared = sharedSurfaceStateFor(screen);
     if (stateFor(screen).mode != Mode::None) {
@@ -125,11 +206,12 @@ bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 }
 
 bool finalGen2SurfaceOwnsFrame(const TrainerViewScreen& screen) noexcept {
-    return unifiedGen2SurfaceOwnsFrame(screen);
+    return parityPassiveDetailsTarget(screen) != nullptr || unifiedGen2SurfaceOwnsFrame(screen);
 }
 
 bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                  int stickX, int stickY, const TouchInput& touch) {
+    if (handleParityExternalPassiveInput(screen, down, touch)) return true;
     return handleUnifiedGen2SurfaceInput(screen, down, held, stickX, stickY, touch);
 }
 

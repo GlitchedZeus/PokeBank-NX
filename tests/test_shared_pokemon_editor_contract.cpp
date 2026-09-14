@@ -12,9 +12,21 @@ int main() {
     static_assert(!passiveViewHasFieldCursor());
     static_assert(!passiveViewAllowsEditing());
     static_assert(!passiveViewAllowsPanelSwitching());
-    static_assert(!createBrowsingMutatesStagedSave());
-    static_assert(!editBrowsingMutatesSource());
+    static_assert(createBrowsingMutatesStagedSave() == false);
+    static_assert(editBrowsingMutatesSource() == false);
     static_assert(stageAddRequiresExplicitAction());
+    static_assert(gen2ExternalPassiveViewUsesSharedSurface());
+    static_assert(passiveViewSurfaceFor(PassiveViewOrigin::Box) == Surface::View);
+    static_assert(passiveViewSurfaceFor(PassiveViewOrigin::Party) == Surface::View);
+    static_assert(passiveViewSurfaceFor(PassiveViewOrigin::Storage) == Surface::View);
+    static_assert(passiveViewSurfaceFor(PassiveViewOrigin::ActionSheet) == Surface::View);
+    static_assert(!gen2LegacyPathProductionReachable(Gen2LegacyPath::StageAddPromptWizard));
+    static_assert(!gen2LegacyPathProductionReachable(Gen2LegacyPath::LegacyTwentyEightRowEditor));
+    static_assert(!gen2LegacyPathProductionReachable(Gen2LegacyPath::LegacyPokemonActionsModal));
+    static_assert(!gen2LegacyPathProductionReachable(Gen2LegacyPath::RawSpeciesIdCreatePrompt));
+    static_assert(!gen2LegacyPathProductionReachable(Gen2LegacyPath::RawMoveIdCreatePrompt));
+    static_assert(!gen2LegacyPathProductionReachable(Gen2LegacyPath::RawHeldItemIdCreatePrompt));
+    static_assert(!gen2LegacyPathProductionReachable(Gen2LegacyPath::LegacyHandleInput));
 
     const auto empty = actionsForSlot(false);
     assert(empty.count == 3);
