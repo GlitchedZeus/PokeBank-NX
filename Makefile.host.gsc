@@ -6,7 +6,8 @@ GSC_INVENTORY_SOURCES := tests/test_gsc_inventory.cpp \
 GSC_PERSONAL_SOURCES := tests/test_gsc_gen2_personal.cpp \
 	src/Integration/Gen2/Gen2PersonalData.cpp
 GSC_MOVE_COMPAT_SOURCES := tests/test_gsc_move_compatibility.cpp \
-	src/Integration/Gen2/Gen2MoveCompatibility.cpp
+	src/Integration/Gen2/Gen2MoveCompatibility.cpp \
+	src/Integration/Gen1/Gen1MoveCompatibility.cpp
 GSC_DISCOVERY_SOURCES := tests/test_gsc_discovery.cpp \
 	src/Legacy/RetroArchGSCDiscovery.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
 	src/Utils/SHA256.cpp
@@ -21,7 +22,8 @@ GSC_BRIDGE_SOURCES := tests/test_gsc_readonly_bridge.cpp \
 	src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp src/Names/NatureNames.cpp \
 	src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
 GSC_BRIDGE_FLAGS := -Wno-unused-parameter
-GSC_UI_RULES_SOURCES := tests/test_gsc_ui_rules.cpp
+GSC_UI_RULES_SOURCES := tests/test_gsc_ui_rules.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
 
 # The accepted shared RetroArch catalog now imports the separately validated Gen II scanner as a
 # third typed payload. Any pre-GSC host target that links RetroArchFRLGDiscovery.cpp must therefore
