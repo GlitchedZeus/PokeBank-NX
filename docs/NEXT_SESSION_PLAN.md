@@ -1,89 +1,99 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-11
-Status: **GEN I RBY + GEN III LEGACY READ-ONLY PHYSICALLY ACCEPTED / NEXT: GSC READ-ONLY**
+Last updated: 2026-09-14
 
-## Preserved accepted baseline
+Status: **GEN II SHARED POKÉMON EDITOR IMPLEMENTED ON PR #68 / FINAL EXACT-HEAD VALIDATION + DEVICE CANDIDATE NEXT**
 
-```text
-Red GB: DEVICE ACCEPTED YES
-Blue GB: DEVICE ACCEPTED YES
-Yellow GB: DEVICE ACCEPTED YES
-FireRed GBA: DEVICE ACCEPTED YES
-LeafGreen GBA: DEVICE ACCEPTED YES
-Ruby GBA: DEVICE ACCEPTED YES
-Sapphire GBA: DEVICE ACCEPTED YES
-Emerald GBA: DEVICE ACCEPTED YES
-Live installed-game writing: HARD DISABLED
-Live RetroArch writing: HARD DISABLED
-```
-
-Accepted RBY runtime/artifact:
+## Recover this exact project state first
 
 ```text
-Application source: 50dac31f53907143f48884681056f8d582813b76
-Application tree: 1cf73ea12833e8a94a06dfaf2b9036e9059344ec
-PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.nro
-bytes: 159754197
-SHA-256: b2a8c68a80b27ca647777e7286da976b25d66ff7460555f9a404a1a783a1c16b
-RBY DEVICE TESTED: YES
-RBY DEVICE ACCEPTED: YES
+Repository: GlitchedZeus/PokeBank-NX
+Production branch: feature/pokebank-playable
+Production checkpoint: a9fc4521087cdc80078c7db620f1be0107adce58
+Focused branch: feature/gen2-shared-pokemon-editor-20260914
+PR #68: OPEN / DRAFT / NOT MERGED
+Known implementation head: 43b8563d4177b58ae0f341c1ebd58f86e2ee4fdb
+Known tree: e791463ef438b5795da28c636de7bcac1105806f
 ```
 
-Preserve the first `d9077e2d` device-test record as historical evidence: it exposed the RBY Items/category defect and Yellow GB/GBA label defect before the accepted `50dac31f...` retest.
+If the PR head has advanced, preserve the newer head. Do not reset backward.
 
-## Next milestone — Generation II Gold / Silver / Crystal
-
-Target identities:
+## Accepted baselines that must remain frozen
 
 ```text
-gold_gbc
-silver_gbc
-crystal_gbc
+Gen I RBY read-only: DEVICE ACCEPTED
+Gen II GSC read-only: DEVICE ACCEPTED
+Gen III GBA read-only: DEVICE ACCEPTED
+Classic Inventory editor: DEVICE ACCEPTED
+Gen I boxed staged Pokémon editor: DEVICE ACCEPTED
+Gen I passive View unification: DEVICE ACCEPTED
+Live installed-game writes: HARD DISABLED
+Live emulator-source writes: HARD DISABLED
 ```
 
-Platform/source:
+## What the current Gen II branch already contains
+
+- exact G/S vs Crystal move compatibility tables and runtime selection;
+- passive View live compatibility (`OK` / `Unusual preserved`);
+- encounter legality still `Not checked`;
+- clean passive View wording;
+- shared Gen II Details/Values/Moves View/Create/Edit;
+- authentic 0–15 DVs and derived HP DV;
+- one Special DV feeding split SpA/SpD display;
+- six-stat / six-axis battle presentation;
+- Held Item picker;
+- Friendship / Pokérus;
+- Crystal-specific caught/met handling;
+- species/Attack-DV gender;
+- DV-derived shiny;
+- local Add/Edit drafts;
+- transactional Edit keep/discard/continue with exact pre-edit staged baseline;
+- unusual existing move preservation on unrelated edits;
+- separate Level and EXP applet invocations;
+- permanent compatibility/passive-view/editor-surface tests.
+
+## Next task
+
+Do not start another feature milestone. Freeze the current exact PR #68 head and finish validation on that exact SHA.
+
+Required final gates:
 
 ```text
-Game Boy Color / RetroArch
-normal battery saves only (.sav / .srm)
-READ ONLY
+git diff --check
+Gen II focused staged-editor tests
+Gen II compatibility data verifier
+Gen II passive-view contract
+Gen II editor-surface/session contract
+Gen I accepted editor regressions
+GSC read-only regressions
+RBY regressions
+FRLG/RSE regressions
+inventory regressions
+source mutation policy / source immutability
+full permanent host suite
+ASan
+UBSan
+device asset preflight
+clean devkitA64 build
+final NRO link
+embedded application source identity
+complete embedded RomFS verification
+exact package manifest + SHA256SUMS
 ```
 
-## Start the next coding session with recovery
+If any gate fails, fix only the real regression, commit/push, and restart exact-head verification from the new SHA.
 
-1. Recover the exact accepted branch state using the repository recovery contract.
-2. Read `CURRENT_STATUS.md`, `docs/CODEX_SESSION.md`, `docs/NEXT_CODEX_PROMPT.md` and the GB/GBC resource chunk only.
-3. Verify accepted Gen I and Gen III baselines remain present before touching GSC.
-4. Keep live installed-game and RetroArch writes hard disabled.
+## Hardware handoff
 
-## GSC audit / implementation scope for the next coding session
+When all exact-head gates are green:
 
-- inspect pinned PKSM-Core `Sav2` / `PK2` first;
-- independently oracle relevant behavior with PKHeX;
-- determine international/Japanese save layouts;
-- prove supported save sizes/checksums;
-- model Gold/Silver vs Crystal differences explicitly;
-- Trainer;
-- Party;
-- PC Boxes;
-- Items/inventory;
-- truthful Generation II Pokémon summary fields;
-- bounded RetroArch normal battery-save discovery;
-- `.sav` / `.srm` only, not savestates;
-- source immutability;
-- Refresh/current-save behavior;
-- malformed/truncated rejection;
-- Gen I + Gen III regressions;
-- focused host tests + full host suite;
-- ASan/UBSan;
-- native build;
-- eventual exact physical-test NRO before device acceptance.
+1. retrieve the CI-produced artifact for the exact candidate SHA;
+2. verify artifact digest/size;
+3. verify `BUILD_MANIFEST.json` and `SHA256SUMS.txt`;
+4. verify standalone NRO and packaged ZIP hashes;
+5. verify inner ZIP NRO is byte-identical to standalone NRO;
+6. verify embedded source SHA and full RomFS;
+7. provide the actual `.nro` for download;
+8. STOP coding for owner physical Gold/Silver/Crystal testing.
 
-Do not guess offsets/layouts or weaken strict identity/checksum validation merely to accept a fixture.
-
-## Out of scope until separately authorized
-
-Do not start DS, 3DS, Vault/Banks, RetroArch per-profile isolation, Admin Mode, RetroArch Profile Bridge, transfers, conversion, editor, legality expansion, events or live writing merely because RBY is now accepted.
-
-Canonical handoff: `docs/NEXT_CODEX_PROMPT.md`.
+Do not merge PR #68 or declare Gen II device accepted before that physical result.

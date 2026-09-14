@@ -1,143 +1,144 @@
 # PokeBank NX — Current Verified Engineering State
 
-Last updated: 2026-09-11
+Last updated: 2026-09-14
 
-## CURRENT STATE — GENERATION I + GENERATION III LEGACY READ-ONLY PHYSICALLY ACCEPTED
-
-Active development branch: `feature/pokebank-playable`.
-
-Generation I Red/Blue/Yellow and Generation III FireRed/LeafGreen/Ruby/Sapphire/Emerald are physically accepted for the current **read-only legacy source** milestone on a real Nintendo Switch.
-
-Live installed-game writing and live RetroArch writing remain **HARD DISABLED**.
-
-## ACCEPTED GENERATION I RBY BASELINE
-
-```text
-Red GB: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-Blue GB: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-Yellow GB: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-GEN I RBY LEGACY READ-ONLY: PHYSICALLY ACCEPTED
-```
-
-Accepted application identity:
-
-```text
-Application source: 50dac31f53907143f48884681056f8d582813b76
-Application tree: 1cf73ea12833e8a94a06dfaf2b9036e9059344ec
-Commit: gen1: add read-only RBY inventory support
-Verification run: 34576027301
-Recovery snapshot: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
-```
-
-Accepted exact device artifact:
-
-```text
-PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.nro
-bytes: 159754197
-SHA-256: b2a8c68a80b27ca647777e7286da976b25d66ff7460555f9a404a1a783a1c16b
-Native/device build run: 34576781488
-Embedded RomFS: 3289/3289 PASS
-```
-
-Physical retest result on the exact artifact above:
-
-```text
-RBY opens: PASS
-Trainer: PASS
-Party: PASS
-Boxes: PASS
-Pokemon details: PASS
-General browsing: PASS
-Items: PASS
-Bag: PASS
-PC Items: PASS
-RBY inventory navigation: PASS
-No Invalid category: PASS
-No modern Medicines pouch fallback: PASS
-Yellow GB platform identity: PASS
-Generation-appropriate Trainer fields: PASS
-No fabricated SID/modern Trainer fields: PASS
-```
-
-Gen I inventory remains modeled as the two real saved stores, **Bag** and **PC Items**. TM/HM, key items, Poké Balls, medicines and ordinary items remain entries in those Gen I stores rather than fabricated modern pouch categories. Malformed optional inventory remains nonfatal to otherwise-valid Trainer/Party/Boxes access, and source bytes remain immutable.
-
-### RBY physical-test history
-
-The first device-test runtime was:
-
-```text
-Application source: d9077e2da3909b6fbe9d8db9ce7384a71b8b98e7
-Application tree: 0ea6fbe365afe8122f252754554fef1fae73e183
-Artifact: PokeBank-NX-RBY-Retest-d9077e2d.nro
-SHA-256: b56bbce9f8d6155f318cbac44819967378df468f1355dfa4538691d1e536a664
-```
-
-That first physical test passed Trainer, Party, Boxes, Pokémon details and general browsing, but exposed the Items/category defect and the incorrect GBA label for Yellow. The corrected `50dac31f...` ItemsFix runtime was then fully host/sanitizer/native verified and physically retested successfully. Preserve both records.
-
-## ACCEPTED GENERATION III BASELINE
-
-```text
-FireRed GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-LeafGreen GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-Ruby GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-Sapphire GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-Emerald GBA: DEVICE TESTED = YES / DEVICE ACCEPTED = YES
-GEN III LEGACY READ-ONLY: PHYSICALLY ACCEPTED
-```
-
-Accepted RSE runtime remains `a2df4c1acdb7a556808bd58a2bdbcd4fc0335954`; accepted RSE NRO SHA-256 remains `34fc0893ae0f0ee1a3e244c11469a5d44de181d68318040fce386470b2e0e80e`.
-
-Do not reopen any accepted Gen I or Gen III path without new physical evidence of a defect.
-
-## VERIFIED RBY ITEMSFIX GATES
-
-```text
-Focused RBY inventory: PASS
-RBY parser/oracle: PASS
-RBY discovery: PASS
-RBY source browser: PASS
-RBY read-only bridge: PASS
-Malformed inventory nonfatal: PASS
-Full host suite: PASS
-FRLG regression: PASS
-RSE regression: PASS
-Source mutation/write policy: PASS
-ASan: PASS
-UBSan: PASS
-git diff --check: PASS
-Gen III protected paths: PASS
-Device asset preflight: PASS
-Native devkitA64 compile: PASS
-Native devkitA64 FINAL LINK: PASS
-Embedded application identity: PASS
-Embedded RomFS: 3289/3289 PASS
-```
-
-## NEXT MILESTONE — GENERATION II GSC READ-ONLY
-
-The next legacy milestone is:
-
-```text
-gold_gbc
-silver_gbc
-crystal_gbc
-Game Boy Color / RetroArch
-READ ONLY
-```
-
-The next coding session should recover the accepted branch state first, then audit pinned PKSM-Core `Sav2` / `PK2` and independently check PKHeX before implementing strict Generation II parsing/discovery. Expected scope includes international/Japanese layouts, save sizes/checksums, Gold/Silver vs Crystal differences, Trainer, Party, PC Boxes, inventory, truthful Gen II Pokémon summaries, bounded normal battery-save `.sav`/`.srm` discovery, source immutability, malformed/truncated rejection, Gen I + Gen III regressions, sanitizers, native build and eventual exact device-test artifact.
-
-**GSC implementation has not started in this acceptance/merge session.**
-
-## SAFETY / REPOSITORY AUTHORITY
+## Current repository state
 
 ```text
 Repository: GlitchedZeus/PokeBank-NX
-Development branch: feature/pokebank-playable
+Production branch: feature/pokebank-playable
+Production checkpoint: a9fc4521087cdc80078c7db620f1be0107adce58
+Focused branch: feature/gen2-shared-pokemon-editor-20260914
+Draft PR: #68 — OPEN / DRAFT / NOT MERGED
+Current implementation head: 43b8563d4177b58ae0f341c1ebd58f86e2ee4fdb
+Current implementation tree: e791463ef438b5795da28c636de7bcac1105806f
 Writable remote: origin
-Upstream reference: kiasta/PKSE
-Live installed-game writing: HARD DISABLED
-Live RetroArch writing: HARD DISABLED
+Upstream/reference: kiasta/PKSE
 ```
 
-Physical read acceptance does not authorize live writes. Never push custom PokeBank NX work upstream.
+Do not reset the focused branch backward if newer commits exist. PR #68 must remain draft/unmerged until an exact hardware-test NRO is physically accepted.
+
+## Physically accepted milestones
+
+### Legacy read-only
+
+```text
+Red GB        DEVICE ACCEPTED
+Blue GB       DEVICE ACCEPTED
+Yellow GB     DEVICE ACCEPTED
+Gold GBC      DEVICE ACCEPTED
+Silver GBC    DEVICE ACCEPTED
+Crystal GBC   DEVICE ACCEPTED
+FireRed GBA   DEVICE ACCEPTED
+LeafGreen GBA DEVICE ACCEPTED
+Ruby GBA      DEVICE ACCEPTED
+Sapphire GBA  DEVICE ACCEPTED
+Emerald GBA   DEVICE ACCEPTED
+```
+
+Gold/Silver Trainer gender is fixed Male. Crystal Trainer gender is save-derived. Gen II SID does not exist.
+
+### Classic staged Inventory
+
+Hardware accepted. Authoritative editable control mapping:
+
+```text
+A Edit Amount
+X Add Item
+Y Remove Item
+L/R Category
++ Options
+- Help
+B Back/Cancel
+```
+
+Exact-game/exact-pocket catalogs, empty valid categories, machine move labels, Key Item warnings, staged-only mutation, and source immutability remain the contract.
+
+### Generation I boxed staged Pokémon editor
+
+Issue #62 is CLOSED / DEVICE ACCEPTED.
+
+```text
+Accepted source: 69668bc81629228ef25c1bdada7c7ce1aed9b666
+Accepted NRO: PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
+Accepted NRO SHA-256: 3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
+```
+
+Accepted behavior includes the shared capability-driven `DETAILS | VALUES | MOVES` editor, staged Create/Edit, transactional Edit exit, Y DV randomization, L/R panel navigation, truthful Gen I fields, semantic move compatibility colors, five-stat battle presentation/radar, shiny correctness, and immutable source bytes.
+
+PR #67 was subsequently hardware accepted and merged to unify Party/Storage/action-sheet View Pokémon into one passive no-cursor read-only presenter.
+
+## Current active milestone — Generation II shared Pokémon editor
+
+PR #68 extends Gold/Silver/Crystal onto the same reusable foundation. The current implementation includes:
+
+- passive Gen II three-panel View;
+- exact-game Gold/Silver vs Crystal move compatibility;
+- generated offline compatibility tables pinned to PKHeX reference commit `77dcd3a7895bceaafbbff12d25bdf77c1acd8ca5`;
+- live passive View compatibility (`OK` / `Unusual preserved`), with encounter legality still `Not checked`;
+- clean passive View wording with editor-internal wording removed;
+- shared Gen II Create/Edit shell;
+- local drafts rather than immediate staged mutation while editing;
+- authentic 0–15 Attack/Defense/Speed/Special DVs and derived HP DV;
+- one Special DV feeding truthful split SpA/SpD battle presentation;
+- six displayed battle stats and six-axis radar in `HP / Atk / Def / SpA / SpD / Spe` order;
+- exact-domain Held Item picker;
+- Friendship and Pokérus editing;
+- Crystal-only caught/met presentation where actually stored;
+- species/Attack-DV-derived gender semantics;
+- DV-derived shiny semantics;
+- transactional existing-Pokémon Edit snapshot/keep/discard/continue behavior;
+- preservation of pre-existing unusual move/PP/PP-Up bytes during unrelated edits;
+- separate Level and EXP input actions to avoid chained library applets;
+- permanent compatibility/passive-view/editor-surface host and sanitizer gates.
+
+## Important validation boundary
+
+`43b8563d...` is an implementation checkpoint, **not** a device candidate and **not** device accepted.
+
+Earlier CI results cannot be reused as final evidence for this later exact head. Before hardware handoff, freeze one exact current SHA and verify on that exact source:
+
+```text
+git diff --check
+Gen II focused tests
+Gen II compatibility-data verification
+Gen I editor regressions
+GSC read-only regressions
+RBY regressions
+FRLG/RSE regressions
+inventory regressions
+source mutation policy / source immutability
+full permanent host suite
+ASan
+UBSan
+device asset preflight
+clean devkitA64 compile
+final NRO link
+embedded application SHA
+complete embedded RomFS
+exact artifact packaging / hashes
+```
+
+Then retrieve/materialize the exact CI-built `.nro` and stop for owner hardware testing on Gold/Silver/Crystal.
+
+## Safety invariants
+
+```text
+ORIGINAL SOURCE SAVE: IMMUTABLE
+LIVE INSTALLED-GAME WRITE: HARD DISABLED
+LIVE RETROARCH WRITE: HARD DISABLED
+LIVE OTHER-EMULATOR WRITE: HARD DISABLED
+PARTY MUTATION: DEFERRED WHERE NOT SEPARATELY PROVEN
+STAGED/EXPORT WORKFLOW: REQUIRED
+```
+
+Physical acceptance of read or staged-edit milestones does not authorize live writeback.
+
+## Immediate next step
+
+1. Recover current PR #68 head; preserve any newer commits.
+2. Update stale PR/status metadata if needed.
+3. Run/fix all final gates on one frozen exact SHA.
+4. Produce and independently verify one source-addressed Gen II hardware-test NRO.
+5. Keep PR #68 open/draft/unmerged.
+6. Wait for physical Gold/Silver/Crystal results before declaring acceptance.
