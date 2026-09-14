@@ -1,9 +1,11 @@
 #include "fixtures/gsc_pokemon_fixture.h"
 #include "UI/Gen2PokemonSession.h"
+#include "UI/Gen2PokemonPickerModel.h"
 #include "UI/PokemonViewActions.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include "UI/BattleStatRadarModel.h"
 namespace Rules = PokeBank::UIModel::Gen2PokemonEditor;
+namespace Picker = PokeBank::UIModel::Gen2PokemonPicker;
 using Rules::Session;
 using Rules::SessionMode;
 
@@ -37,7 +39,43 @@ void runSession(const L& layout,SourceGame game) {
     assert(!session.editRequest().level && session.editRequest().experience==27001);
     assert(session.setLevel(40));assert(session.editRequest().level==40&&!session.editRequest().experience);
     session.setSpecies(1);assert(session.working.experience==Pokemon::getExpForLevel(40,3));
+    assert(session.working.gender==static_cast<uint8_t>(genderFromAttackDV(1,session.working.dvs[1])));
+    assert(session.working.dvs[0]==StagedEditor::derivedHPDV(Rules::storedDVs(session.working)));
     assert(!session.setExperience(session.maximumExperience()+1));
+
+    // Named picker models only browse local selection. Session state changes only on explicit Apply.
+    session.begin(kept,SessionMode::Edit);
+    Picker::Model picker;
+    const auto beforeSpeciesBrowse=session.working;
+    picker.openSpecies(session.working.species);
+    picker.stepList(-24); // Pikachu #25 -> Bulbasaur #1, without touching the edit transaction.
+    assert(Rules::sameEditableRecord(beforeSpeciesBrowse,session.working));
+    assert(picker.speciesChoice()==1);
+    assert(Picker::applySpeciesChoice(session,picker.speciesChoice()));
+    assert(session.working.species==1 && session.working.experience==beforeSpeciesBrowse.experience);
+    assert(session.working.level==Pokemon::getLevelFromExp(session.working.experience,3));
+    assert(session.working.gender==static_cast<uint8_t>(genderFromAttackDV(1,session.working.dvs[1])));
+
+    session.begin(kept,SessionMode::Edit);
+    const auto beforeMoveBrowse=session.working;
+    picker.openMove(session.working.moves[0],0);
+    picker.stepList(84-static_cast<int>(picker.moveChoice()));
+    assert(Rules::sameEditableRecord(beforeMoveBrowse,session.working));
+    assert(picker.moveChoice()==84);
+    assert(Picker::applyMoveChoice(session,0,picker.moveChoice()));
+    assert(session.working.moves[0]==84 && session.working.pp[0]==30 && session.working.ppUps[0]==0);
+    picker.openMove(session.working.moves[0],0);picker.stepList(-84);
+    assert(picker.moveChoice()==0 && Picker::applyMoveChoice(session,0,0));
+    assert(session.working.moves[0]==0 && session.working.pp[0]==0 && session.working.ppUps[0]==0);
+
+    session.begin(kept,SessionMode::Edit);
+    const auto beforePokerusBrowse=session.working;
+    picker.openPokerus(PokeBank::UIModel::Gen2Native::encodePokerus(3,4));
+    picker.stepPokerusRow(1);picker.adjustPokerus(2);
+    assert(Rules::sameEditableRecord(beforePokerusBrowse,session.working));
+    assert(Picker::applyPokerusChoice(session,picker.pokerusRaw()));
+    const auto appliedPokerus=PokeBank::UIModel::Gen2Native::decodePokerus(session.working.pokerus);
+    assert(appliedPokerus.strain==5 && appliedPokerus.days==4 && appliedPokerus.active);
 
     // Staged work at entry is the baseline. Continue keeps the local edits; Discard
     // never calls StagedEditor and preserves prior staged changes byte-for-byte.
@@ -108,11 +146,20 @@ void runSession(const L& layout,SourceGame game) {
     assert(!session.add(*unusualEditor,2,slot,error));
     assert(!unusualEditor->finalizedBytes(error).empty());
 
-    // Passive sessions reject edit setters, Keep and Add, even if A/Y/etc is
-    // accidentally routed here. Back is the only exit effect.
+    // Re-accepting an existing unusual move through the named picker is a no-op, preserving raw PP.
+    session.begin(unusual,SessionMode::Edit);
+    picker.openMove(unusual.moves[0],0);
+    const auto unusualPP=session.working.pp[0];
+    assert(Picker::applyMoveChoice(session,0,picker.moveChoice()));
+    assert(session.working.moves[0]==unusual.moves[0] && session.working.pp[0]==unusualPP);
+
+    // Passive sessions reject edit setters, Keep, Add and picker application.
     session.begin(kept,SessionMode::View);
     assert(!session.setLevel(90)&&!session.setExperience(1000)&&!session.setSpecies(6));
     assert(!session.setMove(0,33)&&!session.setPP(0,1)&&!session.setPPUps(0,1));
+    assert(!Picker::applySpeciesChoice(session,6));
+    assert(!Picker::applyMoveChoice(session,0,33));
+    assert(!Picker::applyPokerusChoice(session,0x34));
     assert(!session.keep(*editor,0,0,error)&&!session.add(*editor,3,slot,error));
     assert(session.back());
     assert(std::equal(raw.begin(),raw.end(),editor->originalBytes().begin()));
@@ -131,4 +178,4 @@ int main(){
  assert(passiveViewAction(false,passiveBackTarget)==PassiveViewAction::Back);
  assert(passiveViewAction(false,42)==PassiveViewAction::None);
 runSession(GS,SourceGame::Gold);runSession(GS,SourceGame::Silver);runSession(C,SourceGame::Crystal);
- std::cout<<"GSC UI session: canonical Level/EXP Keep, Create serialization, preview, transaction and passive mutation gates PASS\n";}
+ std::cout<<"GSC UI session: progression, named-picker browse/apply, transaction, PP and passive mutation gates PASS\n";}

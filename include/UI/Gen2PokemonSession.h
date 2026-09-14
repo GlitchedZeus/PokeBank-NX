@@ -56,6 +56,10 @@ struct Session {
     bool setSpecies(uint16_t species) noexcept {
         if (!editable() || !Gen2::personalRecord(species)) return false;
         working.species = species;
+        const auto dvs = storedDVs(working);
+        working.dvs[0] = Gen2::StagedEditor::derivedHPDV(dvs);
+        working.shiny = Gen2::StagedEditor::isShinyDVs(dvs);
+        working.gender = static_cast<uint8_t>(Gen2::genderFromAttackDV(species, dvs[0]));
         return progression == ProgressionSource::Level ? setLevel(working.level)
             : setExperience(std::min(working.experience, maximumExperience()));
     }

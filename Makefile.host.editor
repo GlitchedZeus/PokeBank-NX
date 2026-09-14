@@ -87,9 +87,9 @@ HOST_TESTS += $(HOST_BUILD)/test_gsc_pokemon_session
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gsc_pokemon_session_sanitize
 host-test: $(HOST_BUILD)/test_gsc_pokemon_session
 host-sanitize: $(HOST_BUILD)/test_gsc_pokemon_session_sanitize
-$(HOST_BUILD)/test_gsc_pokemon_session: $(GEN2_SESSION_SOURCES) include/UI/Gen2PokemonSession.h tests/fixtures/gsc_pokemon_fixture.h
+$(HOST_BUILD)/test_gsc_pokemon_session: $(GEN2_SESSION_SOURCES) include/UI/Gen2PokemonSession.h include/UI/Gen2PokemonPickerModel.h include/UI/Gen2NativePresentation.h tests/fixtures/gsc_pokemon_fixture.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_SESSION_SOURCES) -o $@
-$(HOST_BUILD)/test_gsc_pokemon_session_sanitize: $(GEN2_SESSION_SOURCES) include/UI/Gen2PokemonSession.h tests/fixtures/gsc_pokemon_fixture.h
+$(HOST_BUILD)/test_gsc_pokemon_session_sanitize: $(GEN2_SESSION_SOURCES) include/UI/Gen2PokemonSession.h include/UI/Gen2PokemonPickerModel.h include/UI/Gen2NativePresentation.h tests/fixtures/gsc_pokemon_fixture.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_SESSION_SOURCES) -o $@
