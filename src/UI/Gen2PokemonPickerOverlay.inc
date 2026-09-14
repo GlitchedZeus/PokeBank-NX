@@ -163,12 +163,21 @@ void drawPokerusPicker(PKSEFramebuffer& fb, const Gen2Picker::Model& model) {
 } // namespace
 
 bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
-                       int stickX, int stickY) {
+                       int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
     auto& state = stateFor(screen);
     auto& picker = pickerStateFor(screen);
 
-    if (state.mode == Mode::None || state.mode == Mode::View) {
+    if (state.mode == Mode::View) {
+        if (PokeBank::UIModel::passiveViewAction(false, screen.touchedButtonId(touch)) ==
+            PokeBank::UIModel::PassiveViewAction::Back) {
+            closeToActions(screen);
+            return true;
+        }
+        if (picker.model.active()) picker.model.close();
+        return false;
+    }
+    if (state.mode == Mode::None) {
         if (picker.model.active()) picker.model.close();
         return false;
     }
@@ -203,9 +212,14 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
 }
 
 void drawPickerOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    const auto& state = stateFor(screen);
+    if (state.mode == Mode::View) {
+        screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget,
+                                       16, fb.getHeight() - 68, 190, 58});
+        return;
+    }
     const auto& picker = pickerStateFor(screen).model;
     if (!picker.active()) return;
-    const auto& state = stateFor(screen);
     if (picker.kind == Gen2Picker::Kind::Pokerus) drawPokerusPicker(fb, picker);
     else drawListPicker(screen, fb, state, picker);
 }

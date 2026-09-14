@@ -15,6 +15,7 @@
 #include "UI/PokemonViewActions.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
+#include "UI/TouchInput.h"
 #include "Trainer/Trainer.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
@@ -40,25 +41,17 @@ namespace UI::Gen1PokemonEditor {
 using SourceGame = PokeVault::Integration::Gen1::SourceGame;
 using PokeVault::Integration::Gen1::parse;
 
-// Preserve the hardware-proven pass-1 implementation under recovery/reference symbols.
 [[nodiscard]] bool isGen1SourceUXBase(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUXBase(TrainerViewScreen& screen, uint64_t down);
 void drawOverlayUXBase(TrainerViewScreen& screen, PKSEFramebuffer& fb);
-
-// Cleanup #2 remains compiled under explicit recovery symbols.
 [[nodiscard]] bool isGen1SourceUXCleanup2(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUXCleanup2(TrainerViewScreen& screen, uint64_t down);
 void drawOverlayUXCleanup2(TrainerViewScreen& screen, PKSEFramebuffer& fb);
-
-// Cleanup #3 remains compiled intact as the accepted shiny/move/radar/staging recovery layer.
-// The final foundation delegates every non-workspace surface back to these symbols.
 [[nodiscard]] bool isGen1SourceUXCleanup3(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down);
 [[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                          int stickX, int stickY);
 void drawOverlayUXCleanup3(TrainerViewScreen& screen, PKSEFramebuffer& fb);
-
-// Final live entry points.
 [[nodiscard]] bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down);
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held,
@@ -76,7 +69,6 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 #undef handleInput
 #undef isGen1Source
 
-// Hardware cleanup pass #2 stays byte-for-byte available as the immediate recovery/reference layer.
 #define isGen1SourceUX isGen1SourceUXCleanup2
 #define handleInputUX handleInputUXCleanup2
 #define drawOverlayUX drawOverlayUXCleanup2
@@ -85,9 +77,6 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 #undef handleInputUX
 #undef isGen1SourceUX
 
-// Hardware-tested Cleanup #3 stays intact under explicit recovery symbols. Its accepted
-// shiny mechanics, compatibility enforcement, species/move pickers, clone/review screens,
-// staged-write helpers, and radar are reused by the final foundation rather than rewritten.
 #define isGen1SourceUX isGen1SourceUXCleanup3
 #define handleInputUX handleInputUXCleanup3
 #define drawOverlayUX drawOverlayUXCleanup3
@@ -96,23 +85,10 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 #undef handleInputUX
 #undef isGen1SourceUX
 
-// Final permanent editor shell: all three PKSE-style panels are interactive and capability-driven.
 #include "Gen1PokemonEditorOverlayFoundation.inc"
-
-// Physical-test correction layer. This stays small and additive: picker ownership is restored
-// above the foundation workspace, and the lower-right display becomes two capability-aware panes.
 #include "Gen1PokemonEditorFoundationHardwareFix.inc"
-
-// The occupied-slot action-sheet View uses the same passive Gen I presenter as Party/Storage View.
-// It owns all input while active, has no field cursor, and exposes only B Back.
 #include "Gen1PokemonEditorPassiveView.inc"
-
-// Generation II reuses the same DETAILS | VALUES | MOVES interaction contract, while retaining
-// the proven GSC discovery/export/action-sheet layer compiled above. It owns Gen II View/Create/Edit.
 #include "Gen2PokemonEditorFoundation.inc"
-
-// Named Gen II Species/Move/Pokerus pickers are a thin modal layer over the tested local session.
-// They must own A before the foundation can fall back to its recovery numeric prompts.
 #include "Gen2PokemonPickerOverlay.inc"
 
 namespace UI {
@@ -122,25 +98,15 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 
-    // Named Gen II pickers own all navigation while open and intercept activation of their three
-    // fields before the foundation's old numeric fallback can launch a software keyboard.
-    if (Gen2PokemonEditor::handlePickerInput(*this, down, held, stick.x, stick.y)) return;
-
-    // Generation II View/Create/Edit is a local session over the staged editor. Route it before
-    // the preserved GSC overlay so browsing never mutates the staged save.
+    if (Gen2PokemonEditor::handlePickerInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen2PokemonEditor::handleInput(*this, down, held, stick.x, stick.y)) return;
 
-    // A picker is modal even though SpeciesPicker intentionally leaves the underlying mode as
-    // AddDraft/Edit. Route it directly to the accepted Cleanup #3 picker handler so A on Species
-    // cannot create an invisible picker that later appears over Level/EXP.
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
         if (Gen1PokemonEditor::handleInputUXCleanup3(*this, down, held, stick.x, stick.y)) return;
     }
 
-    // View from the occupied-Pokemon action sheet is a passive read-only surface, just like the
-    // Party and Storage detail routes. Consume all input here so no editor focus/cursor can appear.
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPassiveViewActive(*this)) {
-        Gen1PokemonEditor::handleFoundationPassiveViewInput(*this, down);
+        Gen1PokemonEditor::handleFoundationPassiveViewInput(*this, down, touchedButtonId(touch));
         return;
     }
 
@@ -151,21 +117,17 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     drawGSCOverlay(fb);
 
-    // The shared Gen II workspace owns the visible surface while View/Create/Edit is active.
     if (Gen2PokemonEditor::active(*this)) {
         Gen2PokemonEditor::drawOverlay(*this, fb);
         Gen2PokemonEditor::drawPickerOverlay(*this, fb);
         return;
     }
 
-    // Match the input ownership rule above: an active picker must be the visible top surface.
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
         Gen1PokemonEditor::drawOverlayUXCleanup3(*this, fb);
         return;
     }
 
-    // Match Party/Storage View Pokemon exactly: shared passive presenter, no field cursor,
-    // no editable focus, and no second foundation bottom pane drawn over it.
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPassiveViewActive(*this)) {
         Gen1PokemonEditor::drawFoundationPassiveView(*this, fb);
         return;

@@ -18,12 +18,14 @@ bool foundationPassiveViewActive(const TrainerViewScreen& screen) noexcept {
     return ux2StateFor(screen).mode == UX2Mode::View;
 }
 
-bool handleFoundationPassiveViewInput(TrainerViewScreen& screen, uint64_t down) {
+bool handleFoundationPassiveViewInput(TrainerViewScreen& screen, uint64_t down,
+                                      int touchTarget = -1) {
     if (!foundationPassiveViewActive(screen)) return false;
 
-    // Action-sheet View is deliberately passive, matching Party and Storage View Pokemon.
-    // Consume every input so D-pad/stick/A/L/R can never create a field cursor or editor action.
-    if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B) == PokeBank::UIModel::PassiveViewAction::Back)
+    // Controller and touch resolve through the same presentation-only action. Consume every other
+    // input so D-pad/stick/A/L/R can never create a field cursor or editor action.
+    if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B, touchTarget) ==
+        PokeBank::UIModel::PassiveViewAction::Back)
         foundationExitMainMode(screen);
     return true;
 }
@@ -75,6 +77,8 @@ void drawFoundationPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     view.sourceStateLabel = "STAGED READ ONLY";
 
     Modals::drawGen1PokemonDetailsPresentation(screen, fb, view);
+    screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget,
+                                   16, fb.getHeight() - 68, 190, 58});
 }
 
 } // namespace UI::Gen1PokemonEditor
