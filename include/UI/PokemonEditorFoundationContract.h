@@ -169,6 +169,7 @@ struct Capabilities {
     bool supportsShiny = true;
 };
 
+// Convenience defaults only. ExactSaveCapabilities is authoritative for a known save.
 constexpr Capabilities capabilitiesForGeneration(Generation generation) noexcept {
     switch (generation) {
         case Generation::Gen1:

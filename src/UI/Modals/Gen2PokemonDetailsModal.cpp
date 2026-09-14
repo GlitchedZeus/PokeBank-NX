@@ -5,6 +5,7 @@
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
+#include "UI/ExactSaveCapabilities.h"
 #include "Names/MoveNames.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
@@ -260,7 +261,8 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     compactRow(fb, leftPaneX + 10, splitY + 126, "Held", heldItemText(p.heldItem()), 82);
     compactRow(fb, leftPaneX + 10, splitY + 149, "Friendship", std::to_string(p.friendship()), 82);
     compactRow(fb, leftPaneX + 10, splitY + 172, "Pokerus", pokerusText(p.pokerusByte()), 82);
-    if (screen.sourceGameId == "crystal_gbc")
+    if (const auto caps = PokeBank::UIModel::PokemonEditorFoundation::capabilitiesForSourceId(screen.sourceGameId);
+        caps && caps->supportsCrystalCaughtData)
         compactRow(fb, leftPaneX + 10, splitY + 195, "Caught/Met", std::to_string(p.caughtData()), 82);
 
     fb.drawText(rightPaneX + 10, splitY + 8, "BATTLE STATS", Colors::Accent, TextStyle::Caption);

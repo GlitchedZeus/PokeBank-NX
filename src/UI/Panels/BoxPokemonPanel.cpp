@@ -12,6 +12,7 @@
 #include "Pokemon/PokemonTypes.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "UI/Gen1PokemonPresentation.h"
+#include "UI/ExactSaveCapabilities.h"
 #include "UI/StatsRadar.h"
 #include "Names/ItemNames.h"
 #include "Names/FormNames.h"   // getDisplayName -- variant prefix ("Alolan Raichu", "Combat Breed Tauros")
@@ -234,7 +235,8 @@ namespace Panels {
         namespace Foundation = PokeBank::UIModel::PokemonEditorFoundation;
         // Only the three quick-info fields are rendered here. Legacy formats reuse
         // the same capability contract as the editor; modern adapters retain their path.
-        const auto capabilities = gen1 ? presentation.capabilities :
+        const auto exact = Foundation::capabilitiesForSourceId(screen.sourceGameId);
+        const auto capabilities = exact ? exact->fields : gen1 ? presentation.capabilities :
             Foundation::capabilitiesForGeneration(p->getGameGroup() == Enums::GameVersion::GSC
                 ? Foundation::Generation::Gen2 : Foundation::Generation::Gen3);
 

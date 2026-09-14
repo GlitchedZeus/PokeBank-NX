@@ -2,6 +2,7 @@
 #include "UI/Gen2PokemonEditorRules.h"
 #include "UI/LegacyPresentationRules.h"
 #include "UI/PokemonEditorFoundationContract.h"
+#include "UI/ExactSaveCapabilities.h"
 
 #include <algorithm>
 #include <array>
@@ -25,6 +26,32 @@ int main() {
     assert(UI::pokemonDetailsLayoutFor(GameVersion::GSC) == PokemonDetailsLayout::Generation2);
     assert(UI::pokemonDetailsLayoutFor(GameVersion::FRLG) == PokemonDetailsLayout::Modern);
     assert(UI::pokemonDetailsLayoutFor(GameVersion::SV) == PokemonDetailsLayout::Modern);
+
+    constexpr auto rby = Foundation::capabilitiesForSourceId("yellow_gb");
+    constexpr auto gold = Foundation::capabilitiesForSourceId("gold_gbc");
+    constexpr auto silver = Foundation::capabilitiesForSourceId("silver_gbc");
+    constexpr auto crystal = Foundation::capabilitiesForSourceId("crystal_gbc");
+    constexpr auto lgpe = Foundation::capabilitiesForSourceId("letsgo_eevee_switch");
+    constexpr auto pla = Foundation::capabilitiesForSourceId("legends_arceus_switch");
+    constexpr auto sv = Foundation::capabilitiesForSourceId("scarlet_switch");
+    static_assert(rby && gold && silver && crystal && lgpe && pla && sv);
+    static_assert(rby->statModel != gold->statModel && !rby->fields.supportsHeldItem);
+    static_assert(gold->fields.supportsHeldItem && gold->supportsPokerus);
+    static_assert(!gold->supportsCrystalCaughtData && !silver->fields.supportsMetLevel);
+    static_assert(crystal->supportsCrystalCaughtData && crystal->fields.supportsMetLevel);
+    static_assert(gold->geneticMaximum == 15 && gold->trainingMaximum == 65535);
+    static_assert(lgpe->fields.usesIVs && lgpe->usesAVs && !lgpe->fields.usesEVs);
+    static_assert(lgpe->geneticMaximum == 31 && lgpe->trainingMaximum == 200);
+    static_assert(!lgpe->fields.supportsAbility && !lgpe->fields.supportsHeldItem);
+    static_assert(pla->usesEffortLevels && pla->trainingMaximum == 10 && !pla->fields.usesEVs);
+    static_assert(pla->statModel != sv->statModel && sv->fields.usesIVs && sv->fields.usesEVs);
+    static_assert(!Foundation::capabilitiesForSourceId("unknown"));
+    constexpr auto wrong = Foundation::exactSaveCapabilities({"gold_gbc",PokeVault::Games::Platform::GameBoyColor,
+        Foundation::Generation::Gen2,Foundation::SaveFormat::PA8});
+    static_assert(!wrong);
+    constexpr auto jp = Foundation::exactSaveCapabilities({"crystal_gbc",PokeVault::Games::Platform::GameBoyColor,
+        Foundation::Generation::Gen2,Foundation::SaveFormat::GSCJapanese,1});
+    static_assert(jp && jp->identity.revision == 1 && jp->supportsCrystalCaughtData);
 
     constexpr auto gen2 = Foundation::capabilitiesForGeneration(Foundation::Generation::Gen2);
     static_assert(gen2.supportsHeldItem);

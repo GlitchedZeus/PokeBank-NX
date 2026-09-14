@@ -7,6 +7,7 @@
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
+#include "UI/ExactSaveCapabilities.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
@@ -720,7 +721,8 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
     const uint32_t remaining = nextExp > state.working.experience ? nextExp - state.working.experience : 0;
     fb.drawText(x + 18, y + 404, "EXP next", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 105, y + 404, std::to_string(remaining), Colors::Text, TextStyle::Caption);
-    if (screen.sourceGameId == "crystal_gbc") {
+    if (const auto caps = PokeBank::UIModel::PokemonEditorFoundation::capabilitiesForSourceId(screen.sourceGameId);
+        caps && caps->supportsCrystalCaughtData) {
         fb.drawText(x + 18, y + 428, "Caught/Met", Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 105, y + 428, std::to_string(state.working.caughtData), Colors::Text, TextStyle::Caption);
     }
