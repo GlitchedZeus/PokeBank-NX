@@ -94,21 +94,20 @@ $(HOST_BUILD)/test_gsc_pokemon_session_sanitize: $(GEN2_SESSION_SOURCES) include
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_SESSION_SOURCES) -o $@
 
-# Permanent Gen II shared-editor parity gate. Uses the proven session source graph plus
-# battle-stat presentation so the non-Pikachu Create/Cancel and passive-view capability
-# contract runs in every normal and sanitizer host suite.
+# Permanent Gen II shared-editor parity gate. Gen II battle-stat math is header-only, so this uses
+# the proven session source graph; the explicit header dependency below keeps parity behavior tied
+# to the exact six-stat implementation in every normal and sanitizer host suite.
 GEN2_SHARED_EDITOR_PARITY_SOURCES := tests/test_gsc_shared_editor_parity.cpp \
 	$(GEN2_STAGED_EDITOR_COMMON) \
 	src/Integration/Gen2/Gen2MoveCompatibility.cpp \
-	src/Integration/Gen1/Gen1MoveCompatibility.cpp \
-	src/Integration/Gen2/Gen2BattleStats.cpp
+	src/Integration/Gen1/Gen1MoveCompatibility.cpp
 HOST_TESTS += $(HOST_BUILD)/test_gsc_shared_editor_parity
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gsc_shared_editor_parity_sanitize
 host-test: $(HOST_BUILD)/test_gsc_shared_editor_parity
 host-sanitize: $(HOST_BUILD)/test_gsc_shared_editor_parity_sanitize
-$(HOST_BUILD)/test_gsc_shared_editor_parity: $(GEN2_SHARED_EDITOR_PARITY_SOURCES) include/UI/SharedPokemonEditorContract.h include/UI/ExactSaveCapabilities.h include/UI/Gen2PokemonSession.h include/UI/Gen2PokemonPickerModel.h include/UI/Gen2NativePresentation.h include/UI/BattleStatRadarModel.h tests/fixtures/gsc_pokemon_fixture.h
+$(HOST_BUILD)/test_gsc_shared_editor_parity: $(GEN2_SHARED_EDITOR_PARITY_SOURCES) include/Integration/Gen2/Gen2BattleStats.h include/UI/SharedPokemonEditorContract.h include/UI/ExactSaveCapabilities.h include/UI/Gen2PokemonSession.h include/UI/Gen2PokemonPickerModel.h include/UI/Gen2NativePresentation.h include/UI/BattleStatRadarModel.h tests/fixtures/gsc_pokemon_fixture.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_SHARED_EDITOR_PARITY_SOURCES) -o $@
-$(HOST_BUILD)/test_gsc_shared_editor_parity_sanitize: $(GEN2_SHARED_EDITOR_PARITY_SOURCES) include/UI/SharedPokemonEditorContract.h include/UI/ExactSaveCapabilities.h include/UI/Gen2PokemonSession.h include/UI/Gen2PokemonPickerModel.h include/UI/Gen2NativePresentation.h include/UI/BattleStatRadarModel.h tests/fixtures/gsc_pokemon_fixture.h
+$(HOST_BUILD)/test_gsc_shared_editor_parity_sanitize: $(GEN2_SHARED_EDITOR_PARITY_SOURCES) include/Integration/Gen2/Gen2BattleStats.h include/UI/SharedPokemonEditorContract.h include/UI/ExactSaveCapabilities.h include/UI/Gen2PokemonSession.h include/UI/Gen2PokemonPickerModel.h include/UI/Gen2NativePresentation.h include/UI/BattleStatRadarModel.h tests/fixtures/gsc_pokemon_fixture.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_SHARED_EDITOR_PARITY_SOURCES) -o $@
