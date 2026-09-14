@@ -25,7 +25,7 @@ const uint8_t* rowFor(SourceGame game, uint16_t species) noexcept {
 } // namespace
 
 bool MoveCompatibility::canLearnMove(SourceGame game, uint16_t species, uint16_t move) noexcept {
-    if (move == 0) return species >= 1 && species <= 251;
+    if (move == 0) return true; // Empty move slot is always a valid editor choice.
     if (move > 251) return false;
     const auto* row = rowFor(game, species);
     if (!row) return false;
