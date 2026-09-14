@@ -78,6 +78,7 @@ public:
     std::span<const uint8_t> stagedBytes() const noexcept { return staged_; }
 
     const std::string& trainerName() const noexcept { return trainerName_; }
+    uint16_t trainerId() const noexcept { return trainerId_; }
     uint32_t money() const noexcept { return money_; }
     uint8_t itemQuantity(InventoryPocket pocket, uint8_t itemId) const noexcept;
 
