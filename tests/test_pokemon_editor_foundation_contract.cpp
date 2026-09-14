@@ -66,6 +66,8 @@ int main() {
     static_assert(!gen1HasFakeModernFields());
     static_assert(!supplementalPanelShowsHeldItem(Generation::Gen1));
     static_assert(!supplementalPanelShowsRibbons(Generation::Gen1));
+    static_assert(supplementalActionFor(Generation::Gen1, SupplementalField::HeldItem) == SupplementalAction::Unavailable);
+    static_assert(supplementalActionFor(Generation::Gen1, SupplementalField::Ribbons) == SupplementalAction::Unavailable);
 
     constexpr auto gen2 = capabilitiesForGeneration(Generation::Gen2);
     static_assert(gen2.supportsHeldItem && gen2.supportsFriendship && gen2.supportsGender);
@@ -73,6 +75,8 @@ int main() {
     static_assert(!gen2.supportsNature && !gen2.supportsAbility && !gen2.supportsRibbons);
     static_assert(supplementalPanelShowsHeldItem(Generation::Gen2));
     static_assert(!supplementalPanelShowsRibbons(Generation::Gen2));
+    static_assert(supplementalActionFor(Generation::Gen2, SupplementalField::HeldItem) == SupplementalAction::OpenHeldItemPicker);
+    static_assert(supplementalActionFor(Generation::Gen2, SupplementalField::Ribbons) == SupplementalAction::Unavailable);
 
     // Synthetic Gen III contract proves the same shell can expose later-generation concepts
     // without implementing any unfinished serializer here.
@@ -83,6 +87,17 @@ int main() {
     static_assert(!gen3.usesDVs && !gen3.usesStatExp && !gen3.supportsMarks);
     static_assert(supplementalPanelShowsHeldItem(Generation::Gen3));
     static_assert(supplementalPanelShowsRibbons(Generation::Gen3));
+    static_assert(supplementalActionFor(Generation::Gen3, SupplementalField::HeldItem) == SupplementalAction::OpenHeldItemPicker);
+    static_assert(supplementalActionFor(Generation::Gen3, SupplementalField::Ribbons) == SupplementalAction::OpenRibbonCollection);
+
+    // Shared-shell behavior for future generation adapters: Create and Edit expose the same
+    // controls, selection lists are filtered by current format generation, and ribbons get a
+    // dedicated collection surface rather than being crammed into the compact lower-left pane.
+    static_assert(supplementalCapabilityUsesCurrentFormatGeneration());
+    static_assert(createAndEditShareSupplementalControls());
+    static_assert(heldItemPickerMustFilterToCurrentGeneration());
+    static_assert(ribbonCollectionMustFilterToCurrentGeneration());
+    static_assert(ribbonsOpenDedicatedCollectionScreen());
 
     static_assert(gen1StatLabels()[0][0] == 'H');
     static_assert(gen1StatLabels()[4][0] == 'S');
