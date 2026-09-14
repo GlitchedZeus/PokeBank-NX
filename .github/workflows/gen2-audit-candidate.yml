@@ -1,4 +1,4 @@
-name: Gen II Audit Candidate Gate
+name: Gen II Shared Editor Candidate Gate
 
 on:
   pull_request:
@@ -7,6 +7,7 @@ on:
       - 'Makefile.host*'
       - 'include/Integration/Gen2/**'
       - 'include/UI/Gen2*'
+      - 'include/UI/SharedPokemonEditorContract.h'
       - 'include/UI/ExactSaveCapabilities.h'
       - 'include/UI/PokemonViewActions.h'
       - 'include/UI/PokemonEditorFoundationContract.h'
@@ -20,6 +21,7 @@ on:
       - 'src/UI/TrainerViewScreenGSCOverlay.inc'
       - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
       - 'tests/test_gsc*'
+      - 'tests/test_shared_pokemon_editor_contract.cpp'
       - 'tests/test_passive_pokemon_view_contract.cpp'
       - 'tests/test_source_mutation_policy.cpp'
       - 'tests/test_write_policy.cpp'
@@ -37,7 +39,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pokebank-gen2-audit-candidate-${{ github.event.pull_request.number || github.ref }}
+  group: pokebank-gen2-shared-editor-candidate-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -50,11 +52,11 @@ env:
 
 jobs:
   host:
-    name: Gen II exact host + sanitizer gates
+    name: Gen II shared editor exact host + sanitizer gates
     runs-on: ubuntu-latest
     timeout-minutes: 95
     steps:
-      - name: Checkout exact Gen II audit head
+      - name: Checkout exact Gen II shared-editor head
         uses: actions/checkout@v4
         with:
           ref: ${{ env.APP_SHA }}
@@ -86,11 +88,13 @@ jobs:
           git diff --exit-code -- src/Integration/Gen2/Gen2MoveCompatibilityData.inc
           echo 'GEN II COMPATIBILITY DATA: PASS'
 
-      - name: Focused Gen II parser, editor, View and export gates
+      - name: Focused shared editor and Gen II behavior gates
         run: |
           set -euo pipefail
           rm -rf build-host
           for target in \
+            test_shared_pokemon_editor_contract \
+            test_gsc_shared_editor_parity \
             test_gsc_gen2_adapter \
             test_gsc_inventory \
             test_gsc_gen2_personal \
@@ -110,6 +114,9 @@ jobs:
             make -f Makefile.host "build-host/$target"
             "./build-host/$target"
           done
+          echo 'SHARED POKEMON EDITOR CONTRACT: PASS'
+          echo 'GSC SHARED EDITOR PARITY: PASS'
+          echo 'NON-PIKACHU CREATE / CANCEL / SERIALIZE: PASS'
           echo 'GEN II READ-ONLY PARSER: PASS'
           echo 'GEN II EDITOR BEHAVIOR: PASS'
           echo 'LEVEL/EXP + CREATE + TRANSACTIONAL EDIT: PASS'
@@ -131,13 +138,17 @@ jobs:
           overlay = Path('src/UI/TrainerViewScreenGSCOverlay.inc').read_text()
           transaction = Path('src/Integration/Gen2/Gen2ExportTransaction.cpp').read_text()
           surface = Path('src/UI/Gen2PokemonEditorFoundation.inc').read_text()
+          composite = Path('src/UI/TrainerViewScreenCompositeOverlay.cpp').read_text()
           assert 'publishVerifiedStagedEditorExport(editor, request)' in overlay
           for needle in ('std::fopen', 'std::fwrite', 'writeBytes(', 'writeText('):
               assert needle not in overlay, needle
           assert 'LIVE_RETROARCH_WRITE=DISABLED' in transaction
           assert 'LIVE_INSTALLED_GAME_WRITE=DISABLED' in transaction
           assert 'source .srm unchanged' in surface or 'source unchanged' in surface
+          assert 'handleFinalGen2SurfaceInput' in composite
+          assert 'Gen2PokemonEditor::handleInput(*this' not in composite
           print('SOURCE IMMUTABILITY: PASS')
+          print('LEGACY GEN II NORMAL EDITOR ROUTE: UNREACHABLE')
           print('LIVE RETROARCH WRITE: HARD DISABLED')
           print('LIVE INSTALLED-GAME WRITE: HARD DISABLED')
           print('PARTY MUTATION: DEFERRED')
@@ -200,12 +211,12 @@ jobs:
           echo 'UBSAN: PASS'
 
   native_package:
-    name: Gen II devkitA64 + exact physical-test package
+    name: Gen II shared editor devkitA64 + exact physical-test package
     needs: host
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - name: Checkout exact Gen II audit head
+      - name: Checkout exact Gen II shared-editor head
         uses: actions/checkout@v4
         with:
           ref: ${{ env.APP_SHA }}
@@ -325,12 +336,12 @@ jobs:
           echo 'EMBEDDED APPLICATION SHA: PASS'
           echo 'EMBEDDED ROMFS: PASS'
 
-      - name: Package exact Gen II audit candidate
+      - name: Package exact Gen II shared-editor candidate
         run: |
           set -euo pipefail
           mkdir -p device-artifact
           python3 application/tools/package_device_build.py application/PokeBankNX.nro \
-            --label Gen2-Audit --out-dir "$GITHUB_WORKSPACE/device-artifact"
+            --label Gen2-SharedEditor --out-dir "$GITHUB_WORKSPACE/device-artifact"
           cp embedded-romfs.json asset-preflight.log recovery.log native-build.log native-linkage.txt \
              toolchain-image.json toolchain-packages.txt device-artifact/
 
@@ -344,7 +355,7 @@ jobs:
           branch = os.environ['HEAD_REF']
           tree = subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD^{tree}'], text=True).strip()
           short = subprocess.check_output(['git','-C',str(app),'rev-parse','--short=8','HEAD'], text=True).strip()
-          nro = out / f'PokeBank-NX-Gen2-Audit-{short}.nro'
+          nro = out / f'PokeBank-NX-Gen2-SharedEditor-{short}.nro'
           assert nro.is_file(), nro
           artifact_manifest = out / f'{nro.name}.manifest.txt'
           assert artifact_manifest.is_file(), artifact_manifest
@@ -357,10 +368,12 @@ jobs:
               'application_tree': tree,
               'branch': branch,
               'pull_request': 68,
-              'issue_69': 'audit remediation implemented; deferred global follow-ups remain open',
+              'issue_69': 'shared-editor parity remediation implemented; deferred global follow-ups remain open',
               'recovery_snapshot': os.environ['RECOVERY_SHA'],
               'workflow_run': int(os.environ['GITHUB_RUN_ID']),
               'host_suite': 'PASS',
+              'shared_editor_contract': 'PASS',
+              'gsc_shared_editor_parity': 'PASS',
               'gen2': 'PASS',
               'gen1_regression': 'PASS',
               'gen3_regression': 'PASS',
@@ -385,7 +398,7 @@ jobs:
                           out/'asset-preflight.log', out/'native-linkage.txt']
           (out / 'SHA256SUMS.txt').write_text(''.join(f'{sha(p)}  {p.name}\n' for p in sums_targets))
 
-          zip_path = out / f'PokeBank-NX-Gen2-Audit-{short}.zip'
+          zip_path = out / f'PokeBank-NX-Gen2-SharedEditor-{short}.zip'
           with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
               for p in (nro, artifact_manifest, out/'BUILD_MANIFEST.json', out/'SHA256SUMS.txt'):
                   zf.write(p, arcname=p.name)
@@ -396,11 +409,11 @@ jobs:
           print((out / 'PACKAGE_SHA256.txt').read_text())
           PY
 
-      - name: Upload exact Gen II audit candidate
+      - name: Upload exact Gen II shared-editor candidate
         id: upload
         uses: actions/upload-artifact@v4
         with:
-          name: Gen2-Audit-Candidate-${{ steps.identity.outputs.short }}
+          name: Gen2-SharedEditor-Candidate-${{ steps.identity.outputs.short }}
           path: device-artifact/
           if-no-files-found: error
           retention-days: 90
@@ -412,4 +425,4 @@ jobs:
           echo "ARTIFACT_URL=${{ steps.upload.outputs.artifact-url }}"
           echo "APPLICATION_SHA=$APP_SHA"
           echo "TREE_SHA=${{ steps.identity.outputs.tree }}"
-          echo "DEVICE STATUS: READY FOR PHYSICAL G/S/C TEST / NOT DEVICE ACCEPTED"
+          echo "DEVICE STATUS: CI VERIFIED / DEVICE RETEST REQUIRED / NOT DEVICE ACCEPTED"
