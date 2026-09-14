@@ -25,6 +25,12 @@ int main() {
     const auto gen2Modal = readFile("src/UI/Modals/Gen2PokemonDetailsModal.cpp");
     const auto composite = readFile("src/UI/TrainerViewScreenCompositeOverlay.cpp");
 
+    const auto gen2Actions = readFile("src/UI/Gen2PokemonEditorFoundation.inc");
+    const auto gen2Routes = readFile("src/UI/TrainerViewScreenGSCOverlay.inc");
+    assert(gen2Actions.find("Rules::slotActionAt(") != std::string::npos);
+    assert(gen2Actions.find("Modals::drawGen2PokemonDetailsModal(screen, fb, pokemon)") != std::string::npos);
+    assert(gen2Routes.find("validatedGSC && details.active") != std::string::npos);
+    assert(gen2Routes.find("passiveViewAction(") != std::string::npos);
     requireCleanPassiveSurface(gen1Modal);
     requireCleanPassiveSurface(gen1ActionView);
     requireCleanPassiveSurface(gen2Modal);

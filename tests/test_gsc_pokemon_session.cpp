@@ -1,5 +1,6 @@
 #include "fixtures/gsc_pokemon_fixture.h"
 #include "UI/Gen2PokemonSession.h"
+#include "UI/PokemonViewActions.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include "UI/BattleStatRadarModel.h"
 namespace Rules = PokeBank::UIModel::Gen2PokemonEditor;
@@ -79,5 +80,17 @@ void runSession(const L& layout,SourceGame game) {
     assert(std::equal(raw.begin(),raw.end(),editor->originalBytes().begin()));
     assert(std::equal(raw.begin(),raw.end(),parsed.save->sourceBytes().begin()));
 }
-int main(){runSession(GS,SourceGame::Gold);runSession(GS,SourceGame::Silver);runSession(C,SourceGame::Crystal);
+int main(){
+ using namespace PokeBank::UIModel;
+ assert(Rules::slotActionCount(true)==7 && Rules::slotActionCount(false)==3);
+ const std::array expected{Rules::SlotAction::View,Rules::SlotAction::Edit,Rules::SlotAction::Clone,
+  Rules::SlotAction::Shiny,Rules::SlotAction::Add,Rules::SlotAction::Review,Rules::SlotAction::Close};
+ for(size_t i=0;i<expected.size();++i) assert(Rules::slotActionAt(true,i)==expected[i]);
+ assert(Rules::slotActionAt(false,0)==Rules::SlotAction::Add);
+ assert(Rules::slotActionAt(true,7)==Rules::SlotAction::None);
+ assert(passiveViewAction(false)==PassiveViewAction::None);
+ assert(passiveViewAction(true)==PassiveViewAction::Back);
+ assert(passiveViewAction(false,passiveBackTarget)==PassiveViewAction::Back);
+ assert(passiveViewAction(false,42)==PassiveViewAction::None);
+runSession(GS,SourceGame::Gold);runSession(GS,SourceGame::Silver);runSession(C,SourceGame::Crystal);
  std::cout<<"GSC UI session: canonical Level/EXP Keep, Create serialization, preview, transaction and passive mutation gates PASS\n";}

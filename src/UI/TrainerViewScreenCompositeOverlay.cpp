@@ -12,6 +12,7 @@
 #include "UI/Common.h"
 #include "UI/ClassicInventoryOverlay.h"
 #include "UI/LegacyPresentationRules.h"
+#include "UI/PokemonViewActions.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
 #include "Trainer/Trainer.h"

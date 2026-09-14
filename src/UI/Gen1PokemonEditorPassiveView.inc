@@ -1,5 +1,6 @@
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
+#include "UI/PokemonViewActions.h"
 
 namespace UI::Gen1PokemonEditor {
 namespace {
@@ -22,7 +23,8 @@ bool handleFoundationPassiveViewInput(TrainerViewScreen& screen, uint64_t down) 
 
     // Action-sheet View is deliberately passive, matching Party and Storage View Pokemon.
     // Consume every input so D-pad/stick/A/L/R can never create a field cursor or editor action.
-    if (down & HidNpadButton_B) foundationExitMainMode(screen);
+    if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B) == PokeBank::UIModel::PassiveViewAction::Back)
+        foundationExitMainMode(screen);
     return true;
 }
 

@@ -433,7 +433,8 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
     const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(state.pokemonBox),
                                               static_cast<std::size_t>(state.pokemonSlot), error);
     const bool occupied = pokemon.has_value();
-    const int rowCount = occupied ? 6 : 3;
+    namespace Actions = PokeBank::UIModel::Gen2PokemonEditor;
+    const int rowCount = static_cast<int>(Actions::slotActionCount(occupied));
     if (down & HidNpadButton_Up) state.pokemonRow = (state.pokemonRow - 1 + rowCount) % rowCount;
     if (down & HidNpadButton_Down) state.pokemonRow = (state.pokemonRow + 1) % rowCount;
     if (down & HidNpadButton_X) { state.review = true; state.reviewRow = 0; return; }
@@ -444,23 +445,12 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
     }
     if (!(down & HidNpadButton_A)) return;
 
-    if (!occupied) {
-        if (state.pokemonRow == 0) {
-            if (stageAddPokemon(screen, state.pokemonBox)) state.pokemonRow = 0;
-        } else if (state.pokemonRow == 1) {
-            state.review = true; state.reviewRow = 0;
-        } else {
-            state.active = false; state.pokemonActions = false;
-        }
-        return;
-    }
-
-    switch (state.pokemonRow) {
-        case 0:
+    switch (Actions::slotActionAt(occupied, state.pokemonRow)) {
+        case Actions::SlotAction::Edit:
             state.pokemonFields = true;
             state.pokemonRow = 0;
             break;
-        case 1: {
+        case Actions::SlotAction::Clone: {
             const auto destination = Utils::promptNumber("Clone to Gen II Box", state.pokemonBox + 1, 1,
                                                          editor->metadata().boxCount);
             if (!destination.accepted) break;
@@ -475,23 +465,23 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
                                   " Slot " + std::to_string(destinationSlot + 1) + "; source unchanged", 300);
             break;
         }
-        case 2: {
+        case Actions::SlotAction::Shiny: {
             if (!editor->stageBoxPokemonShiny(static_cast<std::size_t>(state.pokemonBox),
                                               static_cast<std::size_t>(state.pokemonSlot),
-                                              !pokemon->shiny, error))
+                                              pokemon && !pokemon->shiny, error))
                 screen.postStatus(error.empty() ? "Shiny toggle failed" : error, 360);
             else
                 screen.postStatus(pokemon->shiny ? "Non-shiny DV state staged; source unchanged"
                                                  : "Legal Gen II shiny DV state staged; source unchanged", 300);
             break;
         }
-        case 3:
+        case Actions::SlotAction::Add:
             stageAddPokemon(screen, state.pokemonBox);
             break;
-        case 4:
+        case Actions::SlotAction::Review:
             state.review = true; state.reviewRow = 0;
             break;
-        case 5:
+        case Actions::SlotAction::Close:
             state.active = false; state.pokemonActions = false;
             break;
         default:
@@ -772,6 +762,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         std::vector<std::pair<std::string, std::string>> rows;
         if (pokemon) {
             rows = {
+                {"View", "Read-only Pokemon summary"},
                 {"Edit", pokemon->nickname + " Lv. " + std::to_string(pokemon->level)},
                 {"Clone", "Append to an empty box slot"},
                 {pokemon->shiny ? "Make Non-Shiny" : "Make Shiny", "Real Gen II DV rules"},
@@ -790,7 +781,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
             drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
                           i == state.pokemonRow);
-            rowY += 57;
+            rowY += 51;
         }
         fb.drawText(x + 32, y + h - 40,
                     "A Select    X Review    B Close/Review    FORMAT VALID != full encounter legality",
@@ -847,6 +838,11 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 down = padGetButtonsDown(&pad);
 
     const bool validatedGSC = trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this);
+    if (validatedGSC && details.active) {
+        if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B) == PokeBank::UIModel::PassiveViewAction::Back)
+            closeDetailsModal();
+        return; // Party/Storage share the same passive Back-only input contract.
+    }
     if (validatedGSC) {
         auto& overlay = editorOverlayState(*this);
         if (overlay.active) {

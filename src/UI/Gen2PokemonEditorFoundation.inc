@@ -11,6 +11,9 @@
 #include "Pokemon/Experience.h"
 #include "UI/Gen2PokemonEditorRules.h"
 #include "UI/Gen2PokemonSession.h"
+#include "UI/PokemonViewActions.h"
+#include "UI/Modals/Gen2PokemonDetailsModal.h"
+#include "Pokemon/Pokemon2ReadOnly.h"
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/StatsRadar.h"
 
@@ -524,13 +527,24 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int st
         auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                              static_cast<std::size_t>(legacy.pokemonSlot), error);
         const bool occupied = pokemon.has_value();
-        if (occupied && legacy.pokemonRow == 0)
+        const auto action = Rules::slotActionAt(occupied, legacy.pokemonRow);
+        if (action == Rules::SlotAction::View) {
+            state.begin(*pokemon, Mode::View);
+            screen.controllerNavigation.reset();
+            return true;
+        }
+        if (action == Rules::SlotAction::Edit)
             return beginEdit(screen, legacy.pokemonBox, legacy.pokemonSlot);
-        if ((occupied && legacy.pokemonRow == 3) || (!occupied && legacy.pokemonRow == 0))
+        if (action == Rules::SlotAction::Add)
             return beginCreate(screen, legacy.pokemonBox);
         return false;
     }
 
+    if (state.mode == Mode::View) {
+        if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B) == PokeBank::UIModel::PassiveViewAction::Back)
+            closeToActions(screen);
+        return true;
+    }
     if (state.itemPicker) return handleItemPicker(screen, state, down, held, stickX, stickY);
     if (state.confirmExit) return handleConfirm(screen, state, down);
 
@@ -759,6 +773,11 @@ void drawConfirm(PKSEFramebuffer& fb) {
 void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& state = stateFor(screen);
     if (state.mode == Mode::None) return;
+    if (state.mode == Mode::View) {
+        const Pokemon::Pokemon2ReadOnly pokemon(state.working);
+        Modals::drawGen2PokemonDetailsModal(screen, fb, pokemon);
+        return;
+    }
     const int W = fb.getWidth(), H = fb.getHeight();
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 135));
     fb.drawVerticalGradient(0, 0, W, H,
