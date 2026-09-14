@@ -26,6 +26,7 @@ GSC_UI_RULES_SOURCES := tests/test_gsc_ui_rules.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
 GSC_PASSIVE_VIEW_CONTRACT_SOURCES := tests/test_passive_pokemon_view_contract.cpp
 GSC_EDITOR_SURFACE_CONTRACT_SOURCES := tests/test_gsc_editor_surface_contract.cpp
+GSC_NATIVE_PRESENTATION_SOURCES := tests/test_gsc_native_presentation.cpp
 
 # The accepted shared RetroArch catalog now imports the separately validated Gen II scanner as a
 # third typed payload. Any pre-GSC host target that links RetroArchFRLGDiscovery.cpp must therefore
@@ -55,7 +56,8 @@ GSC_HOST_TESTS := $(HOST_BUILD)/test_gsc_gen2_adapter \
 	$(HOST_BUILD)/test_gsc_runtime_catalog \
 	$(HOST_BUILD)/test_gsc_ui_rules \
 	$(HOST_BUILD)/test_passive_pokemon_view_contract \
-	$(HOST_BUILD)/test_gsc_editor_surface_contract
+	$(HOST_BUILD)/test_gsc_editor_surface_contract \
+	$(HOST_BUILD)/test_gsc_native_presentation
 GSC_SANITIZE_TESTS := $(HOST_BUILD)/test_gsc_gen2_adapter_sanitize \
 	$(HOST_BUILD)/test_gsc_inventory_sanitize \
 	$(HOST_BUILD)/test_gsc_gen2_personal_sanitize \
@@ -66,7 +68,8 @@ GSC_SANITIZE_TESTS := $(HOST_BUILD)/test_gsc_gen2_adapter_sanitize \
 	$(HOST_BUILD)/test_gsc_runtime_catalog_sanitize \
 	$(HOST_BUILD)/test_gsc_ui_rules_sanitize \
 	$(HOST_BUILD)/test_passive_pokemon_view_contract_sanitize \
-	$(HOST_BUILD)/test_gsc_editor_surface_contract_sanitize
+	$(HOST_BUILD)/test_gsc_editor_surface_contract_sanitize \
+	$(HOST_BUILD)/test_gsc_native_presentation_sanitize
 
 # The core host recipe is defined in Makefile.host.base. Extend both its runtime loop variables
 # and its prerequisite graph so normal/sanitizer invocations build and execute the GSC tests.
@@ -160,5 +163,13 @@ $(HOST_BUILD)/test_gsc_editor_surface_contract: $(GSC_EDITOR_SURFACE_CONTRACT_SO
 	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_gsc_editor_surface_contract_sanitize: $(GSC_EDITOR_SURFACE_CONTRACT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gsc_native_presentation: $(GSC_NATIVE_PRESENTATION_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gsc_native_presentation_sanitize: $(GSC_NATIVE_PRESENTATION_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@

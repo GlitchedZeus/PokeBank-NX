@@ -6,6 +6,7 @@
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
 #include "UI/ExactSaveCapabilities.h"
+#include "UI/Gen2NativePresentation.h"
 #include "Names/MoveNames.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
@@ -19,7 +20,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cstdio>
 #include <optional>
 #include <string>
 
@@ -27,6 +27,7 @@ namespace UI::Modals {
 namespace {
 
 namespace Gen2 = PokeVault::Integration::Gen2;
+namespace Native = PokeBank::UIModel::Gen2Native;
 
 const char* gen2TypeName(uint8_t type) noexcept {
     switch (type) {
@@ -106,13 +107,6 @@ std::string heldItemText(uint16_t held) {
     if (held == 0) return "None";
     const auto name = Gen2::gen2ItemName(static_cast<uint8_t>(held));
     return Gen2::selectableHeldItem(static_cast<uint8_t>(held)) ? std::string(name) : "Raw item " + std::to_string(held);
-}
-
-std::string pokerusText(uint8_t raw) {
-    if (raw == 0) return "None";
-    char buf[3];
-    std::snprintf(buf, sizeof(buf), "%02X", raw);
-    return std::string("0x") + buf;
 }
 
 } // namespace
@@ -254,16 +248,35 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     const uint32_t expRemaining = nextExp > p.exp() ? nextExp - p.exp() : 0;
 
     fb.drawText(leftPaneX + 10, splitY + 8, "GEN II DATA", Colors::Accent, TextStyle::Caption);
-    compactRow(fb, leftPaneX + 10, splitY + 34, "Game", sourceGameTitle(screen.sourceGameId), 82);
-    compactRow(fb, leftPaneX + 10, splitY + 57, "Record", p.isPartyRecord() ? "Party" : "Box", 82);
-    compactRow(fb, leftPaneX + 10, splitY + 80, "Growth", personal ? growthName(personal->experienceGrowth) : "Unknown", 82);
-    compactRow(fb, leftPaneX + 10, splitY + 103, "EXP next", std::to_string(expRemaining), 82);
-    compactRow(fb, leftPaneX + 10, splitY + 126, "Held", heldItemText(p.heldItem()), 82);
-    compactRow(fb, leftPaneX + 10, splitY + 149, "Friendship", std::to_string(p.friendship()), 82);
-    compactRow(fb, leftPaneX + 10, splitY + 172, "Pokerus", pokerusText(p.pokerusByte()), 82);
+    int dataY = splitY + 29;
+    const auto nativeRow = [&](const std::string& label, const std::string& value) mutable {
+        compactRow(fb, leftPaneX + 10, dataY, label, value, 80);
+        dataY += 16;
+    };
+    nativeRow("Game", sourceGameTitle(screen.sourceGameId));
+    nativeRow("Record", p.isPartyRecord() ? "Party" : "Box");
+    nativeRow("Growth", personal ? growthName(personal->experienceGrowth) : "Unknown");
+    nativeRow("EXP next", std::to_string(expRemaining));
+    nativeRow("Held", heldItemText(p.heldItem()));
+    nativeRow("Friendship", std::to_string(p.friendship()));
+    nativeRow("Pokerus", Native::pokerusText(p.pokerusByte()));
+
+    if (const auto party = Native::partyViewData(p.strictRecord())) {
+        nativeRow("HP", std::to_string(party->currentHP) + " / " + std::to_string(party->maxHP));
+        nativeRow("Status", party->statusText);
+    }
+
     if (const auto caps = PokeBank::UIModel::PokemonEditorFoundation::capabilitiesForSourceId(screen.sourceGameId);
-        caps && caps->supportsCrystalCaughtData)
-        compactRow(fb, leftPaneX + 10, splitY + 195, "Caught/Met", std::to_string(p.caughtData()), 82);
+        caps && caps->supportsCrystalCaughtData) {
+        const auto caught = Native::decodeCrystalCaughtData(p.caughtData());
+        if (!caught.present) {
+            nativeRow("Met", "Unknown");
+        } else {
+            nativeRow("Met", Native::crystalCaughtLevelText(caught) + " / " + Native::crystalMetTimeName(caught.timeOfDay));
+            nativeRow("Location", Native::crystalCaughtLocationName(caught.location));
+            nativeRow("OT gender", Native::crystalOriginalTrainerGenderText(caught));
+        }
+    }
 
     fb.drawText(rightPaneX + 10, splitY + 8, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
     StatsRadar::drawGen2Labeled(fb, rightPaneX + 6, splitY + 30, rightPaneW - 12, splitH - 38, battleStats);
