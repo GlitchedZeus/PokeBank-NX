@@ -31,6 +31,13 @@ enum class ValueRow : uint8_t {
 };
 
 enum class MoveField : uint8_t { Move1, Move2, Move3, Move4 };
+enum class SupplementalField : uint8_t { HeldItem, Ribbons };
+
+enum class SupplementalAction : uint8_t {
+    Unavailable,
+    OpenHeldItemPicker,
+    OpenRibbonCollection,
+};
 
 struct Focus {
     Panel panel = Panel::Identity;
@@ -194,6 +201,26 @@ constexpr bool supplementalPanelShowsHeldItem(Generation generation) noexcept {
 constexpr bool supplementalPanelShowsRibbons(Generation generation) noexcept {
     return capabilitiesForGeneration(generation).supportsRibbons;
 }
+
+constexpr SupplementalAction supplementalActionFor(Generation generation, SupplementalField field) noexcept {
+    if (field == SupplementalField::HeldItem)
+        return supplementalPanelShowsHeldItem(generation)
+            ? SupplementalAction::OpenHeldItemPicker
+            : SupplementalAction::Unavailable;
+    return supplementalPanelShowsRibbons(generation)
+        ? SupplementalAction::OpenRibbonCollection
+        : SupplementalAction::Unavailable;
+}
+
+// The current save/game generation controls which values can be selected. A species that debuted
+// in an older generation (for example Charmander) still follows the capabilities of the format it
+// currently lives in. This prevents later-generation items/ribbons leaking backward into old saves.
+constexpr bool supplementalCapabilityUsesCurrentFormatGeneration() noexcept { return true; }
+
+constexpr bool createAndEditShareSupplementalControls() noexcept { return true; }
+constexpr bool heldItemPickerMustFilterToCurrentGeneration() noexcept { return true; }
+constexpr bool ribbonCollectionMustFilterToCurrentGeneration() noexcept { return true; }
+constexpr bool ribbonsOpenDedicatedCollectionScreen() noexcept { return true; }
 
 constexpr std::array<const char*, 5> gen1StatLabels() noexcept {
     return {"HP", "Attack", "Defense", "Speed", "Special"};
