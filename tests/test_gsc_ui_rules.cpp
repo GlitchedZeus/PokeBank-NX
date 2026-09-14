@@ -2,6 +2,7 @@
 #include "UI/LegacyPresentationRules.h"
 #include "UI/PokemonEditorFoundationContract.h"
 
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 
