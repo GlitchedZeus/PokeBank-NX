@@ -1,3 +1,4 @@
+#include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
 
 namespace UI::Gen1PokemonEditor {
@@ -63,6 +64,10 @@ void drawFoundationPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     view.hasBattleStats = true;
     view.battleStatsCalculated = true;
     view.catchRate = pokemon->catchRate;
+    view.moveCompatibilityChecked = true;
+    view.moveCompatibilityCompatible =
+        !PokeVault::Integration::Gen1::MoveCompatibility::firstIncompatible(
+            e->metadata().sourceGame, pokemon->species, pokemon->moves).has_value();
     view.sourceGameLabel = foundationPassiveSourceGameLabel(screen.sourceGameId);
     view.recordLabel = "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1);
     view.sourceStateLabel = "STAGED READ ONLY";
