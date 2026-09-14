@@ -10,10 +10,10 @@ The long-term goal is one native `.nro` that can discover supported Pokémon sav
 
 > **Product direction:** HOME-style browsing and organization, PKSE-style Switch-native interaction, and progressively stronger PKHeX-class validation/creation capabilities — unified into one PokeBank NX experience.
 
-**Current status:** 🚧 active alpha development  
-**Platform:** 🎮 Nintendo Switch with Atmosphere/CFW  
-**Storage model:** 💾 local-first / offline-first  
-**Live writes:** 🔒 hard disabled unless a game/source adapter later earns explicit approval  
+**Current status:** 🚧 active alpha development
+**Platform:** 🎮 Nintendo Switch with Atmosphere/CFW
+**Storage model:** 💾 local-first / offline-first
+**Live writes:** 🔒 hard disabled unless a game/source adapter later earns explicit approval
 **License:** 📜 AGPL-3.0
 
 ---

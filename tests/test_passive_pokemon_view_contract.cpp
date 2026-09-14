@@ -42,8 +42,11 @@ int main() {
     assert(gen2Modal.find("Not checked") != std::string::npos);
     assert(gen2Modal.find("Needs correction") == std::string::npos);
     assert(gen2Modal.find("{\"B\", \"Back\"}") != std::string::npos);
-    assert(gen2Modal.find("No field cursor") != std::string::npos);
-    assert(gen2Modal.find("no mutation route") != std::string::npos);
+    // Check executable rendering calls, not wording of a removed developer comment.
+    assert(gen2Modal.find("drawSelectionHighlight(") == std::string::npos);
+    assert(gen2Modal.find("selectedRowBackground(") == std::string::npos);
+    assert(gen2Modal.find("stageBoxPokemonEdit(") == std::string::npos);
+    assert(gen2Modal.find("promptNumber(") == std::string::npos);
 
     std::cout << "Passive Pokemon View surface contract: PASS\n";
     return 0;
