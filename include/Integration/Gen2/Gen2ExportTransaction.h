@@ -32,6 +32,16 @@ struct ExportTransactionRequest {
     ExportFailurePoint failurePoint = ExportFailurePoint::None;
 };
 
+struct StagedEditorExportRequest {
+    std::string rootDirectory;
+    std::string directoryStem;
+    std::string sourcePath;
+    std::string gameId;
+    std::string saveFormat = "PK2 / GSC SRAM";
+    std::string timestamp;
+    std::string applicationSha = "unknown";
+};
+
 struct ExportTransactionResult {
     bool success = false;
     std::string directory;
@@ -40,6 +50,13 @@ struct ExportTransactionResult {
     std::string error;
 };
 
+// Low-level verified publisher for already-finalized bytes. Kept public for focused corruption/fault tests.
 ExportTransactionResult publishVerifiedExport(const ExportTransactionRequest& request);
+
+// Authoritative UI-facing Generation II export workflow. It owns staged finalization and pending-change
+// capture, then delegates the actual filesystem transaction to publishVerifiedExport(). Renderers should
+// call this rather than writing .srm/manifest files themselves.
+ExportTransactionResult publishVerifiedStagedEditorExport(
+    const StagedEditor& editor, const StagedEditorExportRequest& request);
 
 } // namespace PokeVault::Integration::Gen2
