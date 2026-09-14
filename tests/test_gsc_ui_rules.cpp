@@ -54,7 +54,7 @@ int main() {
     assert(!Gen2Rules::exactGameFromSourceId("yellow_gb"));
 
     assert(Gen2Rules::usableHeldItem(0));
-    assert(Gen2Rules::usableHeldItem(PokeVault::Integration::Gen2::kMasterBallItemId));
+    assert(Gen2Rules::usableHeldItem(1)); // Master Ball is an authentic Generation II item.
     assert(!Gen2Rules::usableHeldItem(6)); // TERU-SAMA placeholder is not selectable.
     const auto heldItems = Gen2Rules::heldItemChoices();
     assert(!heldItems.empty() && heldItems.front() == 0);
