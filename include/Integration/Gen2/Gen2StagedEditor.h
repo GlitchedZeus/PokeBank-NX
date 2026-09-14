@@ -112,6 +112,7 @@ public:
     static bool isShinyDVs(const std::array<uint8_t, 4>& dvs) noexcept;
     static uint8_t derivedHPDV(const std::array<uint8_t, 4>& dvs) noexcept;
     static uint8_t gen2MoveBasePP(uint16_t move) noexcept;
+    static uint8_t gen2MoveMaxPP(uint8_t move, uint8_t ppUps) noexcept;
 
     const std::vector<StagedChange>& pendingChanges() const noexcept { return changes_; }
     bool hasPendingChanges() const noexcept { return !changes_.empty(); }

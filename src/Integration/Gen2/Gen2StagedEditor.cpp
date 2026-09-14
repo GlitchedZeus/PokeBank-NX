@@ -616,6 +616,10 @@ bool StagedEditor::stageItemQuantity(InventoryPocket pocket, uint8_t itemId, uin
     return true;
 }
 
+uint8_t StagedEditor::gen2MoveMaxPP(uint8_t move, uint8_t ppUps) noexcept {
+    return maxPP(move, ppUps);
+}
+
 uint8_t StagedEditor::gen2MoveBasePP(uint16_t move) noexcept {
     return move <= kMaxGen2Move ? kGen2BasePP[move] : 0;
 }
@@ -764,14 +768,18 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
 
     if (edit.moves) {
         after.moves = *edit.moves;
-        if (!edit.ppUps) after.ppUps = {0,0,0,0};
-        if (!edit.pp) {
-            for (std::size_t i = 0; i < 4; ++i) after.pp[i] = gen2MoveBasePP(after.moves[i]);
+        for (std::size_t i = 0; i < 4; ++i) {
+            if (after.moves[i] == before.moves[i]) continue;
+            if (!edit.ppUps) after.ppUps[i] = 0;
+            if (!edit.pp) after.pp[i] = gen2MoveBasePP(after.moves[i]);
         }
     }
     if (edit.ppUps) after.ppUps = *edit.ppUps;
     if (edit.pp) after.pp = *edit.pp;
     for (std::size_t i = 0; i < 4; ++i) {
+        // Preserve an untouched unusual packed PP byte; validate any newly edited tuple.
+        if (after.moves[i] == before.moves[i] && after.pp[i] == before.pp[i] &&
+            after.ppUps[i] == before.ppUps[i]) continue;
         if (after.moves[i] > kMaxGen2Move) {
             error = "move id is outside the Generation II move range";
             return false;
@@ -1040,7 +1048,7 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
                 return false;
             }
         } else {
-            if (created.pp[i] == 0) created.pp[i] = gen2MoveBasePP(created.moves[i]);
+            // Zero is an explicit, valid exhausted PP value; never silently refill Create.
             if (created.pp[i] > maxPP(created.moves[i], created.ppUps[i])) {
                 error = "new Pokemon PP exceeds the Generation II maximum";
                 return false;

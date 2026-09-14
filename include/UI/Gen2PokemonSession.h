@@ -59,6 +59,28 @@ struct Session {
         return progression == ProgressionSource::Level ? setLevel(working.level)
             : setExperience(std::min(working.experience, maximumExperience()));
     }
+    uint8_t maximumPP(size_t slot) const noexcept {
+        return slot < 4 ? Gen2::StagedEditor::gen2MoveMaxPP(working.moves[slot],working.ppUps[slot]) : 0;
+    }
+    bool setMove(size_t slot, uint16_t move) noexcept {
+        if (!editable() || slot >= 4 || move > 251) return false;
+        working.moves[slot] = static_cast<uint8_t>(move);
+        working.ppUps[slot] = 0;
+        working.pp[slot] = Gen2::StagedEditor::gen2MoveBasePP(move);
+        return true;
+    }
+    bool setPPUps(size_t slot, uint8_t ups) noexcept {
+        if (!editable() || slot >= 4 || ups > 3) return false;
+        working.ppUps[slot] = working.moves[slot] == 0 ? 0 : ups;
+        working.pp[slot] = std::min(working.pp[slot], maximumPP(slot));
+        return true;
+    }
+    bool setPP(size_t slot, uint8_t pp) noexcept {
+        if (!editable() || slot >= 4 || pp > maximumPP(slot)) return false;
+        working.pp[slot] = pp;
+        if (working.moves[slot] == 0) working.ppUps[slot] = 0;
+        return true;
+    }
     uint32_t experienceToNext() const noexcept {
         const auto* p = Gen2::personalRecord(working.species);
         if (!p || working.level >= 100) return 0;

@@ -444,18 +444,16 @@ void editMoveField(State& state) {
     if (state.column == 0) {
         const auto result = Utils::promptNumber("Gen II Move ID (0=Empty)", p.moves[slot], 0, 251);
         if (!result.accepted) return;
-        p.moves[slot] = static_cast<uint8_t>(result.value);
-        p.ppUps[slot] = 0;
-        p.pp[slot] = p.moves[slot] == 0 ? 0 : Gen2::StagedEditor::gen2MoveBasePP(p.moves[slot]);
+        state.setMove(slot, static_cast<uint16_t>(result.value));
         return;
     }
     if (state.column == 1) {
-        const auto result = Utils::promptNumber("Gen II Move PP", p.pp[slot], 0, 63);
-        if (result.accepted) p.pp[slot] = static_cast<uint8_t>(result.value);
+        const auto result = Utils::promptNumber("Gen II Move PP", std::min(p.pp[slot], state.maximumPP(slot)), 0, state.maximumPP(slot));
+        if (result.accepted) state.setPP(slot, static_cast<uint8_t>(result.value));
         return;
     }
-    const auto result = Utils::promptNumber("Gen II PP Ups (0-3)", p.ppUps[slot], 0, 3);
-    if (result.accepted) p.ppUps[slot] = static_cast<uint8_t>(result.value);
+    const auto result = Utils::promptNumber("Gen II PP Ups", p.ppUps[slot], 0, p.moves[slot] == 0 ? 0 : 3);
+    if (result.accepted) state.setPPUps(slot, static_cast<uint8_t>(result.value));
 }
 
 void activateField(TrainerViewScreen& screen, State& state) {

@@ -71,11 +71,28 @@ void runSession(const L& layout,SourceGame game) {
     session.begin(kept,SessionMode::Edit);session.working.nickname="KEPT";
     assert(session.keep(*editor,0,0,error));
 
+    // PP edits use the same session methods as the UI: decreasing Ups clamps,
+    // changing a move resets, empty is zero, and Create preserves exhausted PP.
+    session.begin(kept,SessionMode::Edit);
+    assert(session.setMove(0,33) && session.working.pp[0]==35 && session.working.ppUps[0]==0);
+    assert(session.setPPUps(0,3) && session.maximumPP(0)==56);
+    assert(session.setPP(0,56) && !session.setPP(0,57));
+    assert(session.setPPUps(0,0) && session.working.pp[0]==35);
+    assert(session.setMove(0,84) && session.working.pp[0]==30 && session.working.ppUps[0]==0);
+    assert(session.setMove(0,0) && session.working.pp[0]==0 && session.working.ppUps[0]==0);
+    assert(session.setPPUps(0,3) && session.working.ppUps[0]==0 && !session.setPP(0,1));
+    session.begin(kept,SessionMode::Create);session.working.heldItem=0;
+    for(size_t i=0;i<4;++i)session.setMove(i,0);
+    assert(session.setMove(0,84)&&session.setPP(0,0));
+    assert(session.add(*editor,4,slot,error));
+    assert(editor->boxedPokemon(4,slot,error)->pp[0]==0);
+
     // Explicit new choices reject key items; an unusual byte already in the
     // source survives an unrelated edit and strict serialization.
     auto unusualRaw=fixture(layout,true);
     const auto body=boxStart(0)+22;
     unusualRaw[body+1]=7;
+    unusualRaw[body+0x17]=63; // unusual existing PP, outside the move maximum
     checksum(unusualRaw,layout);
     auto unusualParsed=parse(unusualRaw,game);assert(unusualParsed);
     auto unusualEditor=StagedEditor::create(*unusualParsed.save,error);assert(unusualEditor);
@@ -83,6 +100,7 @@ void runSession(const L& layout,SourceGame game) {
     session.begin(unusual,SessionMode::Edit);session.working.nickname="RAW";
     assert(session.keep(*unusualEditor,0,0,error));
     assert(unusualEditor->boxedPokemon(0,0,error)->heldItem==7);
+    assert(unusualEditor->boxedPokemon(0,0,error)->pp[0]==63);
     BoxPokemonEdit badHeld;badHeld.heldItem=54;
     assert(!unusualEditor->stageBoxPokemonEdit(0,0,badHeld,error));
     session.begin(unusual,SessionMode::Create);session.working.moves={};
@@ -94,6 +112,7 @@ void runSession(const L& layout,SourceGame game) {
     // accidentally routed here. Back is the only exit effect.
     session.begin(kept,SessionMode::View);
     assert(!session.setLevel(90)&&!session.setExperience(1000)&&!session.setSpecies(6));
+    assert(!session.setMove(0,33)&&!session.setPP(0,1)&&!session.setPPUps(0,1));
     assert(!session.keep(*editor,0,0,error)&&!session.add(*editor,3,slot,error));
     assert(session.back());
     assert(std::equal(raw.begin(),raw.end(),editor->originalBytes().begin()));
