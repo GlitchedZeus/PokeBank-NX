@@ -127,12 +127,13 @@ inline void drawGen1Labeled(PKSEFramebuffer& fb, int x, int y, int width, int he
 // exposes only the four stored DVs (one Special DV feeds both SpA and SpD).
 inline void drawGen2Labeled(PKSEFramebuffer& fb, int x, int y, int width, int height,
                            const std::array<uint16_t,6>& stats) {
+    const auto displayStats = PokeBank::UIModel::canonicalGen2RadarStats(stats);
     const auto model = PokeBank::UIModel::gen2RadarModel(stats);
     std::array<std::string,6> labels{};
     std::array<int,6> widths{};
     int lineH = 0;
-    for (size_t i = 0; i < stats.size(); ++i) {
-        labels[i] = std::string(PokeBank::UIModel::gen2RadarLabels[i]) + " " + std::to_string(stats[i]);
+    for (size_t i = 0; i < displayStats.size(); ++i) {
+        labels[i] = std::string(PokeBank::UIModel::gen2RadarLabels[i]) + " " + std::to_string(displayStats[i]);
         int h = 0;
         fb.measureText(labels[i], widths[i], h, TextStyle::Caption);
         lineH = std::max(lineH, h);
