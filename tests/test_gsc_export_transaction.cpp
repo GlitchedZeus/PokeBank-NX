@@ -43,7 +43,10 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     std::string error;
     auto editor = StagedEditor::create(*parsed.save, error);
     assert(editor);
-    assert(editor->stageMoney(123456, error));
+    // The fixture stores 123456. Stage a guaranteed different valid value so this test exercises
+    // the same "pending staged work" precondition as the real Review -> Export UI.
+    assert(editor->stageMoney(123457, error));
+    assert(editor->hasPendingChanges());
     const auto edited = editor->finalizedBytes(error);
     assert(!edited.empty());
     assert(source == std::vector<uint8_t>(editor->originalBytes().begin(), editor->originalBytes().end()));
