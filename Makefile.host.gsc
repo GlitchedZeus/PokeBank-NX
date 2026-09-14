@@ -5,6 +5,8 @@ GSC_INVENTORY_SOURCES := tests/test_gsc_inventory.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
 GSC_PERSONAL_SOURCES := tests/test_gsc_gen2_personal.cpp \
 	src/Integration/Gen2/Gen2PersonalData.cpp
+GSC_MOVE_COMPAT_SOURCES := tests/test_gsc_move_compatibility.cpp \
+	src/Integration/Gen2/Gen2MoveCompatibility.cpp
 GSC_DISCOVERY_SOURCES := tests/test_gsc_discovery.cpp \
 	src/Legacy/RetroArchGSCDiscovery.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
 	src/Utils/SHA256.cpp
@@ -42,6 +44,7 @@ GSC_RUNTIME_CATALOG_FLAGS := -Wno-unused-parameter
 GSC_HOST_TESTS := $(HOST_BUILD)/test_gsc_gen2_adapter \
 	$(HOST_BUILD)/test_gsc_inventory \
 	$(HOST_BUILD)/test_gsc_gen2_personal \
+	$(HOST_BUILD)/test_gsc_move_compatibility \
 	$(HOST_BUILD)/test_gsc_discovery \
 	$(HOST_BUILD)/test_gsc_source_browser \
 	$(HOST_BUILD)/test_gsc_readonly_bridge \
@@ -50,6 +53,7 @@ GSC_HOST_TESTS := $(HOST_BUILD)/test_gsc_gen2_adapter \
 GSC_SANITIZE_TESTS := $(HOST_BUILD)/test_gsc_gen2_adapter_sanitize \
 	$(HOST_BUILD)/test_gsc_inventory_sanitize \
 	$(HOST_BUILD)/test_gsc_gen2_personal_sanitize \
+	$(HOST_BUILD)/test_gsc_move_compatibility_sanitize \
 	$(HOST_BUILD)/test_gsc_discovery_sanitize \
 	$(HOST_BUILD)/test_gsc_source_browser_sanitize \
 	$(HOST_BUILD)/test_gsc_readonly_bridge_sanitize \
@@ -84,6 +88,14 @@ $(HOST_BUILD)/test_gsc_gen2_personal: $(GSC_PERSONAL_SOURCES)
 	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_gsc_gen2_personal_sanitize: $(GSC_PERSONAL_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gsc_move_compatibility: $(GSC_MOVE_COMPAT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gsc_move_compatibility_sanitize: $(GSC_MOVE_COMPAT_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
