@@ -59,9 +59,9 @@ int main() {
     static_assert(gen2Layout.valuesRows == 10);
 
     Focus focus{};
-    assert(focus == Focus{Panel::Details, 0, 0});
+    assert((focus == Focus{Panel::Details, 0, 0}));
     focus = moveVertical(Generation::Gen2, focus, -1);
-    assert(focus == Focus{Panel::Details, 4, 0});
+    assert((focus == Focus{Panel::Details, 4, 0}));
     focus = switchPanel(Generation::Gen2, focus, 1);
     assert(focus.panel == Panel::Values);
     focus = Focus{Panel::Values, 4, 0};
@@ -70,7 +70,7 @@ int main() {
     focus = moveColumn(Generation::Gen2, focus, 1);
     assert(focus.column == 2);
     focus = moveVertical(Generation::Gen2, Focus{Panel::Values, 9, 2}, 0);
-    assert(focus == Focus{Panel::Values, 9, 0}); // capability rows have one focus target.
+    assert((focus == Focus{Panel::Values, 9, 0})); // capability rows have one focus target.
     focus = switchPanel(Generation::Gen2, Focus{Panel::Moves, 3, 2}, 1);
     assert(focus.panel == Panel::Details);
     assert(focus.row == 3);

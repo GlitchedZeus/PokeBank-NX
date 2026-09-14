@@ -4,7 +4,7 @@
 #include "UI/Gen2PokemonPickerModel.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/BattleStatRadarModel.h"
-#include "UI/PokemonEditorFoundationContract.h"
+#include "UI/ExactSaveCapabilities.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
 
 #include <algorithm>
