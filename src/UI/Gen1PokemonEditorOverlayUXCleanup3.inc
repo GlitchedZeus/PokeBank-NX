@@ -464,37 +464,9 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     fb.drawText(x + 24, y + 18, speciesPicker ? "Choose Species" : "Choose Move", Colors::Text, TextStyle::Heading);
 
     if (speciesPicker) {
-        fb.drawText(x + 24, y + 50, "One species row • hover preview only • Y chooses intended Normal/Shiny appearance",
-                    Colors::TextDim, TextStyle::Caption);
-        constexpr int visible = 9;
-        const int start = std::clamp(state.pickerValue - visible / 2, 1, 151 - visible + 1);
-        const int listX = x + 20, listW = 560;
-        for (int i = 0; i < visible; ++i) {
-            const int species = start + i;
-            const int rowY = y + 84 + i * 43;
-            const bool selected = species == state.pickerValue;
-            if (selected) fb.drawSelectionHighlight(listX, rowY, listW, 39);
-            fb.drawText(listX + 16, rowY + 9,
-                        UX::speciesPickerRow(static_cast<uint16_t>(species), Names::getSpeciesName(species)),
-                        selected ? Colors::Text : Colors::TextDim);
-        }
-
-        const uint16_t preview = static_cast<uint16_t>(state.pickerValue);
-        const int previewX = x + 610;
-        fb.drawText(previewX, y + 86, speciesCompact(preview), Colors::Text, TextStyle::Heading);
-        fb.drawText(previewX, y + 122, "NORMAL", !ux3.pickerPreviewShiny ? Colors::Accent : Colors::TextDim, TextStyle::Caption);
-        fb.drawText(previewX + 190, y + 122, "SHINY", ux3.pickerPreviewShiny ? Colors::ShinyStar : Colors::TextDim, TextStyle::Caption);
-        if (auto* normal = SpriteManager::getSprite(preview, false); normal && normal->data)
-            fb.drawSpriteStaticContained(previewX, y + 152, 165, 190, normal->width, normal->height, normal->data, normal->channels);
-        else fb.drawText(previewX + 20, y + 235, "No sprite", Colors::TextDim, TextStyle::Caption);
-        if (auto* shiny = SpriteManager::getSprite(preview, true); shiny && shiny->data)
-            fb.drawSpriteStaticContained(previewX + 188, y + 152, 165, 190, shiny->width, shiny->height, shiny->data, shiny->channels);
-        else fb.drawText(previewX + 208, y + 235, "No shiny sprite", Colors::TextDim, TextStyle::Caption);
-        fb.drawText(previewX, y + 364,
-            std::string("Intended: ") + (ux3.pickerPreviewShiny ? "Shiny" : "Normal"),
-            ux3.pickerPreviewShiny ? Colors::ShinyStar : Colors::Accent, TextStyle::Body);
-        fb.drawText(previewX, y + 400, "A commits to draft/editor only", Colors::TextDim, TextStyle::Caption);
-        fb.drawText(previewX, y + 424, "B restores previous committed choice", Colors::TextDim, TextStyle::Caption);
+        SharedSpeciesPicker::drawContent(fb, x, y, state.pickerValue, 151, ux3.pickerPreviewShiny,
+            [](uint16_t species) { return UX::speciesPickerRow(species, Names::getSpeciesName(species)); },
+            [](uint16_t species) { return speciesCompact(species); });
         return;
     }
 

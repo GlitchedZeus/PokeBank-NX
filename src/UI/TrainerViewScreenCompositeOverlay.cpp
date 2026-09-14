@@ -15,6 +15,7 @@
 #include "UI/PokemonViewActions.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
+#include "UI/SharedSpeciesPicker.h"
 #include "UI/TouchInput.h"
 #include "Trainer/Trainer.h"
 #include "Utils/FileUtilities.h"

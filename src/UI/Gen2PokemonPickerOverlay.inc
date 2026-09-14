@@ -33,7 +33,7 @@ bool openPickerForFocusedField(TrainerViewScreen& screen, State& state,
                                PickerOverlayState& picker, uint64_t down) {
     if (!(down & HidNpadButton_A) || state.itemPicker || state.confirmExit) return false;
     if (state.panel == Foundation::Panel::Identity && state.row == 0) {
-        picker.model.openSpecies(state.working.species);
+        picker.model.openSpecies(state.working.species, state.working.shiny);
     } else if (state.panel == Foundation::Panel::Moves && state.column == 0) {
         picker.model.openMove(state.working.moves[static_cast<std::size_t>(state.row)],
                               static_cast<std::size_t>(state.row));
@@ -50,7 +50,7 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
     if (picker.model.kind == Gen2Picker::Kind::Species) {
         const std::string oldDefault = Names::getSpeciesName(state.working.species);
         const bool renameDefault = state.mode == Mode::Create && state.working.nickname == oldDefault;
-        if (!Gen2Picker::applySpeciesChoice(state, picker.model.speciesChoice())) return false;
+        if (!Gen2Picker::applySpeciesAppearance(state, picker.model.speciesChoice(), picker.model.previewShiny)) return false;
         if (renameDefault) state.working.nickname = Names::getSpeciesName(state.working.species);
         refreshDerived(state.working);
     } else if (picker.model.kind == Gen2Picker::Kind::Move) {
@@ -92,6 +92,23 @@ void drawPickerRow(PKSEFramebuffer& fb, int x, int y, int w, const std::string& 
 
 void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
                     const Gen2Picker::Model& model) {
+    if (model.kind == Gen2Picker::Kind::Species) {
+        constexpr int w = 1080, h = 520, x = (1280 - w) / 2, y = (672 - h) / 2;
+        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
+        fb.drawSoftShadow(x, y, w, h, 18);
+        fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+        fb.drawRoundedRect(x, y, w, h, 18, Colors::Accent, 2);
+        fb.drawText(x + 24, y + 18, "Choose Species", Colors::Text, TextStyle::Heading);
+        SharedSpeciesPicker::drawContent(fb, x, y, model.speciesChoice(), 251, model.previewShiny,
+            [](uint16_t species) {
+                char prefix[16]{};
+                std::snprintf(prefix, sizeof(prefix), "%03u - ", static_cast<unsigned>(species));
+                return std::string(prefix) + Names::getSpeciesName(species);
+            },
+            [](uint16_t species) { return std::to_string(species) + " - " + Names::getSpeciesName(species); });
+        drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"L/R", "Page"}, {"Y", "Normal/Shiny"}, {"A", "Select"}, {"B", "Cancel"}});
+        return;
+    }
     const int W = fb.getWidth(), H = fb.getHeight();
     constexpr int panelW = 760, panelH = 568;
     const int x = (W - panelW) / 2, y = (H - panelH) / 2;
@@ -198,8 +215,14 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         picker.model.kind == Gen2Picker::Kind::Move) {
         if (nav & HidNpadButton_Up) picker.model.stepList(-1);
         if (nav & HidNpadButton_Down) picker.model.stepList(1);
-        if (nav & HidNpadButton_Left) picker.model.stepList(-10);
-        if (nav & HidNpadButton_Right) picker.model.stepList(10);
+        if (picker.model.kind == Gen2Picker::Kind::Species) {
+            if (down & HidNpadButton_L) picker.model.stepList(-10);
+            if (down & HidNpadButton_R) picker.model.stepList(10);
+            if (down & HidNpadButton_Y) picker.model.previewShiny = !picker.model.previewShiny;
+        } else {
+            if (nav & HidNpadButton_Left) picker.model.stepList(-10);
+            if (nav & HidNpadButton_Right) picker.model.stepList(10);
+        }
     } else if (picker.model.kind == Gen2Picker::Kind::Pokerus) {
         if (nav & HidNpadButton_Up) picker.model.stepPokerusRow(-1);
         if (nav & HidNpadButton_Down) picker.model.stepPokerusRow(1);

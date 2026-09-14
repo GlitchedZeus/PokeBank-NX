@@ -102,6 +102,36 @@ void runCreateParity(const L& layout, SourceGame game) {
     assert(std::equal(afterAdd.begin(), afterAdd.end(), editor->stagedBytes().begin()));
 }
 
+void runSpeciesAppearance() {
+    Session session;
+    PokemonRecord seed{};
+    seed.species = 25; seed.level = 5; seed.dvs = {0, 9, 9, 9, 9};
+    session.begin(seed, SessionMode::Create);
+    Picker::Model picker;
+    picker.openSpecies(1, false);
+    picker.stepList(-10); assert(picker.speciesChoice() == 1);
+    picker.stepList(999); assert(picker.speciesChoice() == 251);
+    // Every selectable species translates shiny intent into authentic DV/gender state.
+    for (uint16_t species = 1; species <= 251; ++species) {
+        assert(Picker::applySpeciesAppearance(session, species, true));
+        auto dvs = SessionRules::storedDVs(session.working);
+        assert(StagedEditor::isShinyDVs(dvs) && session.working.shiny);
+        assert(session.working.gender == static_cast<uint8_t>(genderFromAttackDV(species, dvs[0])));
+        assert(session.working.dvs[0] == StagedEditor::derivedHPDV(dvs));
+        const auto attack = dvs[0];
+        assert(Picker::applySpeciesAppearance(session, species, false));
+        assert(!session.working.shiny && session.working.dvs[1] == attack);
+    }
+    const auto committed = session.working;
+    picker.openSpecies(committed.species, committed.shiny);
+    picker.previewShiny = !picker.previewShiny;
+    picker.stepList(-10);
+    picker.close();
+    assert(SessionRules::sameEditableRecord(committed, session.working));
+    session.begin(seed, SessionMode::View);
+    assert(!Picker::applySpeciesAppearance(session, 152, true));
+}
+
 void runTrainerSession(const L& layout, SourceGame game) {
     const auto raw = fixture(layout, true);
     auto parsed = parse(raw, game);
@@ -147,6 +177,7 @@ void runTrainerSession(const L& layout, SourceGame game) {
 }
 
 int main() {
+    runSpeciesAppearance();
     // Same conceptual surfaces for occupied and empty slots across generations.
     const auto empty = Shared::actionsForSlot(false);
     assert(Shared::surfaceForAction(empty[0]) == Shared::Surface::CreateDraft);

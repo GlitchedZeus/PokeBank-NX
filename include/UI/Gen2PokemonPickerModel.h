@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 
 namespace PokeBank::UIModel::Gen2PokemonPicker {
 
@@ -15,6 +16,7 @@ enum class PokerusMode : uint8_t { None, Active, Cured };
 struct Model {
     Kind kind = Kind::None;
     int index = 0;
+    bool previewShiny = false;
     std::size_t moveSlot = 0;
     PokerusMode pokerusMode = PokerusMode::None;
     uint8_t strain = 1;
@@ -24,7 +26,8 @@ struct Model {
     bool active() const noexcept { return kind != Kind::None; }
     void close() noexcept { kind = Kind::None; }
 
-    void openSpecies(uint16_t current) noexcept {
+    void openSpecies(uint16_t current, bool shiny = false) noexcept {
+        previewShiny = shiny;
         kind = Kind::Species;
         index = std::clamp<int>(current, 1, 251) - 1;
     }
@@ -44,6 +47,7 @@ struct Model {
     void stepList(int delta) noexcept {
         const int count = kind == Kind::Species ? 251 : kind == Kind::Move ? 252 : 0;
         if (count == 0) return;
+        if (kind == Kind::Species) { index = std::clamp(index + delta, 0, count - 1); return; }
         int next = (index + delta) % count;
         if (next < 0) next += count;
         index = next;
@@ -96,6 +100,32 @@ struct Model {
 
 inline bool applySpeciesChoice(Gen2PokemonEditor::Session& session, uint16_t species) noexcept {
     return session.setSpecies(species);
+}
+
+// Appearance is translated into the native DVs, never a stored shiny flag.
+inline bool applySpeciesAppearance(Gen2PokemonEditor::Session& session, uint16_t species, bool shiny) noexcept {
+    if (!session.setSpecies(species)) return false;
+    namespace G = PokeVault::Integration::Gen2;
+    auto dvs = Gen2PokemonEditor::storedDVs(session.working);
+    if (G::StagedEditor::isShinyDVs(dvs) != shiny) {
+        if (!shiny) dvs[1] = 9; // breaks shiny while preserving Attack DV / gender
+        else {
+            const auto originalGender = G::genderFromAttackDV(species, dvs[0]);
+            int best = 2, bestScore = 1000;
+            for (uint8_t candidate : {2, 3, 6, 7, 10, 11, 14, 15}) {
+                const auto gender = G::genderFromAttackDV(species, candidate);
+                const int score = (gender == originalGender ? 0 : 100) +
+                    std::abs(static_cast<int>(candidate) - static_cast<int>(dvs[0]));
+                if (score < bestScore) { best = candidate; bestScore = score; }
+            }
+            dvs = {static_cast<uint8_t>(best), 10, 10, 10};
+        }
+        for (std::size_t i = 0; i < 4; ++i) session.working.dvs[i + 1] = dvs[i];
+        session.working.dvs[0] = G::StagedEditor::derivedHPDV(dvs);
+        session.working.shiny = G::StagedEditor::isShinyDVs(dvs);
+        session.working.gender = static_cast<uint8_t>(G::genderFromAttackDV(species, dvs[0]));
+    }
+    return true;
 }
 
 // Re-selecting the already stored move is intentionally a no-op. This preserves unusual existing
