@@ -10,6 +10,9 @@
 #include "UI/SpriteManager.h"
 #include "Trainer/Trainer.h"
 #include "Pokemon/PokemonTypes.h"
+#include "Pokemon/Pokemon1ReadOnly.h"
+#include "UI/Gen1PokemonPresentation.h"
+#include "UI/StatsRadar.h"
 #include "Names/ItemNames.h"
 #include "Names/FormNames.h"   // getDisplayName -- variant prefix ("Alolan Raichu", "Combat Breed Tauros")
 
@@ -223,6 +226,18 @@ namespace Panels {
             return;
         }
 
+        // The no-RTTI PK1 adapter tag identifies the current record format, not origin.
+        const bool gen1 = p->getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup;
+        const auto presentation = gen1 ? PokeBank::UIModel::presentGen1Pokemon(
+            static_cast<const Pokemon::Pokemon1ReadOnly*>(p)->strictRecord())
+            : PokeBank::UIModel::Gen1PokemonPresentation{};
+        namespace Foundation = PokeBank::UIModel::PokemonEditorFoundation;
+        // Only the three quick-info fields are rendered here. Legacy formats reuse
+        // the same capability contract as the editor; modern adapters retain their path.
+        const auto capabilities = gen1 ? presentation.capabilities :
+            Foundation::capabilitiesForGeneration(p->getGameGroup() == Enums::GameVersion::GSC
+                ? Foundation::Generation::Gen2 : Foundation::Generation::Gen3);
+
         std::string species = std::string(p->species());
         const bool isShiny = p->isShiny(p->id32(), species);
 
@@ -243,7 +258,7 @@ namespace Panels {
             fb.drawText(x + (width - nW) / 2, cy2, display, Colors::Text, TextStyle::Heading);
             int mx = x + (width + nW) / 2 + 6;
             const char* g = p->genderSymbol();
-            if (g[0] != '\0') { fb.drawSymbol(mx, cy2 + 6, g, (std::string(g) == "♂") ? Colors::Blue : Colors::Magenta); mx += 20; }
+            if (capabilities.supportsGender && g[0] != '\0') { fb.drawSymbol(mx, cy2 + 6, g, (std::string(g) == "♂") ? Colors::Blue : Colors::Magenta); mx += 20; }
             if (isShiny) fb.drawShinyMark(mx, cy2 + 6, 16, Colors::ShinyStar);
             cy2 += nH + 4;
         }
@@ -259,6 +274,11 @@ namespace Panels {
         // Type icons, centered.
         {
             Pokemon::TypePair types = Pokemon::getPokemonTypes(p->speciesID(), p->form(), p->getGameGroup());
+            if (gen1) {
+                const auto& native = presentation.nativeTypes;
+                types = {PokeBank::UIModel::gen1TypeSprite(native[0]),
+                    native[0] == native[1] ? uint8_t{255} : PokeBank::UIModel::gen1TypeSprite(native[1])};
+            }
             Sprite* t1 = SpriteManager::getTypeSprite(types.type1);
             Sprite* t2 = Pokemon::hasSecondType(types) ? SpriteManager::getTypeSprite(types.type2) : nullptr;
             const int th = 20;
@@ -271,47 +291,56 @@ namespace Panels {
             cy2 += th + 10;
         }
 
-        // Stat hexagon (actual stats, HOME vertex order [HP, Atk, Def, Spe, SpD, SpA]).
-        float vals[6] = {
-            static_cast<float>(p->statHPMax()), static_cast<float>(p->statATK()), static_cast<float>(p->statDEF()),
-            static_cast<float>(p->statSPE()),   static_cast<float>(p->statSPD()), static_cast<float>(p->statSPA())
-        };
-        const int hexCx = x + width / 2;
-        const int hexR = 70;
-        // Center the hexagon well below the type badges: its top vertex + HP label extend
-        // ~(hexR + 14 + lineHeight) above center, so a small offset would collide with the types.
-        const int hexCy = cy2 + hexR + 32;
-        fb.drawStatHexagon(hexCx, hexCy, hexR, vals, 6, 255.0f,
-                           Color(Colors::Accent.r, Colors::Accent.g, Colors::Accent.b, 110),
-                           Colors::Border, Colors::Accent);
-        // Vertex labels: "ABBR value", anchored by side.
-        static const char* abbr[6] = { "HP", "Atk", "Def", "Spe", "SpD", "SpA" };
-        static const double ang[6]  = { 90, 30, -30, 270, 210, 150 };
-        const double PI = 3.14159265358979323846;
-        for (int i = 0; i < 6; ++i) {
-            double a = ang[i] * PI / 180.0;
-            int vx = hexCx + static_cast<int>(std::lround(std::cos(a) * (hexR + 14)));
-            int vy = hexCy - static_cast<int>(std::lround(std::sin(a) * (hexR + 14)));
-            std::string lbl = std::string(abbr[i]) + " " + std::to_string(static_cast<int>(vals[i]));
-            int lw, lh; fb.measureText(lbl, lw, lh, TextStyle::Caption);
-            double c = std::cos(a);
-            int lx = (c > 0.3) ? vx + 4 : (c < -0.3) ? vx - 4 - lw : vx - lw / 2;
-            int ly = (i == 0) ? vy - lh : (i == 3) ? vy : vy - lh / 2;
-            fb.drawText(lx, ly, lbl, Colors::Text, TextStyle::Caption);
+        int iy = cy2;
+        if (gen1) {
+            // Boxed PK1 records do not store calculated battle stats. Use the same
+            // immutable presentation as Create/Edit, including one Special axis.
+            StatsRadar::drawGen1Labeled(fb, x + 18, cy2 + 4, width - 36,
+                std::min(236, y + height - 36 - (cy2 + 4)), presentation.battleStats);
+        } else {
+            // Stat hexagon (actual stats, HOME vertex order [HP, Atk, Def, Spe, SpD, SpA]).
+            float vals[6] = {
+                static_cast<float>(p->statHPMax()), static_cast<float>(p->statATK()), static_cast<float>(p->statDEF()),
+                static_cast<float>(p->statSPE()),   static_cast<float>(p->statSPD()), static_cast<float>(p->statSPA())
+            };
+            const int hexCx = x + width / 2;
+            const int hexR = 70;
+            // Center the hexagon well below the type badges: its top vertex + HP label extend
+            // ~(hexR + 14 + lineHeight) above center, so a small offset would collide with the types.
+            const int hexCy = cy2 + hexR + 32;
+            fb.drawStatHexagon(hexCx, hexCy, hexR, vals, 6, 255.0f,
+                               Color(Colors::Accent.r, Colors::Accent.g, Colors::Accent.b, 110),
+                               Colors::Border, Colors::Accent);
+            // Vertex labels: "ABBR value", anchored by side.
+            static const char* abbr[6] = { "HP", "Atk", "Def", "Spe", "SpD", "SpA" };
+            static const double ang[6]  = { 90, 30, -30, 270, 210, 150 };
+            const double PI = 3.14159265358979323846;
+            for (int i = 0; i < 6; ++i) {
+                double a = ang[i] * PI / 180.0;
+                int vx = hexCx + static_cast<int>(std::lround(std::cos(a) * (hexR + 14)));
+                int vy = hexCy - static_cast<int>(std::lround(std::sin(a) * (hexR + 14)));
+                std::string lbl = std::string(abbr[i]) + " " + std::to_string(static_cast<int>(vals[i]));
+                int lw, lh; fb.measureText(lbl, lw, lh, TextStyle::Caption);
+                double c = std::cos(a);
+                int lx = (c > 0.3) ? vx + 4 : (c < -0.3) ? vx - 4 - lw : vx - lw / 2;
+                int ly = (i == 0) ? vy - lh : (i == 3) ? vy : vy - lh / 2;
+                fb.drawText(lx, ly, lbl, Colors::Text, TextStyle::Caption);
+            }
+
+            iy = hexCy + hexR + 34;
         }
 
-        // Quick info: Nature / Ability / Held Item (label left, value right).
-        // Start below the bottom (Speed) hexagon label so they don't collide.
-        int iy = hexCy + hexR + 34;
+        // Every quick-info row follows the current adapter's capabilities,
+        // independently of which radar was drawn. PK1 exposes none of these rows.
         auto infoRow = [&](const char* label, const std::string& value) {
             fb.drawText(x + 18, iy, label, Colors::TextDim, TextStyle::Caption);
             int vw, vh; fb.measureText(value, vw, vh, TextStyle::Caption);
             fb.drawText(x + width - 18 - vw, iy, value, Colors::Text, TextStyle::Caption);
             iy += 20;
         };
-        infoRow("Nature",    getNatureName(p->nature()));
-        infoRow("Ability",   getAbilityName(p->ability()));
-        infoRow("Held Item", p->heldItem()
+        if (capabilities.supportsNature) infoRow("Nature", getNatureName(p->nature()));
+        if (capabilities.supportsAbility) infoRow("Ability", getAbilityName(p->ability()));
+        if (capabilities.supportsHeldItem) infoRow("Held Item", p->heldItem()
             ? std::string(p->getGameGroup() == Enums::GameVersion::FRLG
                 ? Names::getItemNameG3(p->heldItem()) : getItemName(p->heldItem()))
             : std::string("None"));

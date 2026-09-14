@@ -2,6 +2,7 @@
 #define POKEBANK_UI_STATS_RADAR_H
 
 #include "UI/PKSEFramebuffer.h"
+#include "UI/BattleStatRadarModel.h"
 
 #include <algorithm>
 #include <array>
@@ -44,7 +45,11 @@ inline void fillPolygon(PKSEFramebuffer& fb, const std::array<PointF,N>& points,
                 xs[count++] = a.x + (b.x - a.x) * t;
             }
         }
-        std::sort(xs.begin(), xs.begin() + static_cast<std::ptrdiff_t>(count));
+        // At most eight intersections. A bounded insertion sort also avoids
+        // libstdc++'s 16-element sort fast path on this small fixed array.
+        for (std::size_t i = 1; i < count; ++i)
+            for (std::size_t j = i; j > 0 && xs[j] < xs[j - 1]; --j)
+                std::swap(xs[j], xs[j - 1]);
         for (std::size_t i = 0; i + 1 < count; i += 2) {
             const int x0 = static_cast<int>(std::ceil(xs[i]));
             const int x1 = static_cast<int>(std::floor(xs[i + 1]));
@@ -82,6 +87,40 @@ inline void draw(PKSEFramebuffer& fb, int cx, int cy, int radius,
     fillPolygon(fb, data, fill);
     for (std::size_t i = 0; i < N; ++i)
         dottedLine(fb, data[i], data[(i + 1) % N], outline, 2);
+}
+
+// Shared bounded five-axis renderer. Axis labels show raw battle stats; the scale
+// caption explicitly names the common outer-ring value. Text is measured before
+// placement, and labels occupy the clear space above/below their vertices.
+inline void drawGen1Labeled(PKSEFramebuffer& fb, int x, int y, int width, int height,
+                           const std::array<uint16_t,5>& stats) {
+    const auto model = PokeBank::UIModel::gen1RadarModel(stats);
+    std::array<std::string,5> labels{};
+    std::array<int,5> widths{};
+    int lineH = 0;
+    for (size_t i = 0; i < stats.size(); ++i) {
+        labels[i] = std::string(PokeBank::UIModel::gen1RadarLabels[i]) + " " + std::to_string(stats[i]);
+        int h = 0;
+        fb.measureText(labels[i], widths[i], h, TextStyle::Caption);
+        lineH = std::max(lineH, h);
+    }
+    const int radius = std::min((width - 20) / 2,
+        static_cast<int>((height - 2 * lineH - 12) / 1.81f));
+    if (radius <= 0) return;
+    const int cx = x + width / 2, cy = y + lineH + 4 + radius;
+    draw(fb, cx, cy, radius, model.normalized, 1.0f,
+         Color(232, 60, 70, 58), Colors::Divider, Colors::Accent);
+    for (size_t i = 0; i < labels.size(); ++i) {
+        const auto v = vertex(cx, cy, static_cast<float>(radius), static_cast<int>(i), 5);
+        const bool right = i == 1 || i == 2;
+        int lx = i == 0 ? cx - widths[i] / 2 : right ? x + width - widths[i] : x;
+        int ly = i == 0 ? y : static_cast<int>(std::lround(v.y)) + (i == 2 || i == 3 ? 4 : -lineH - 4);
+        fb.drawText(lx, ly, labels[i], Colors::Text, TextStyle::Caption);
+    }
+    const std::string scale = "Scale " + std::to_string(static_cast<unsigned>(model.scale));
+    int sw = 0, sh = 0;
+    fb.measureText(scale, sw, sh, TextStyle::Caption);
+    fb.drawText(cx - sw / 2, y + height - sh, scale, Colors::TextDim, TextStyle::Caption);
 }
 
 } // namespace UI::StatsRadar

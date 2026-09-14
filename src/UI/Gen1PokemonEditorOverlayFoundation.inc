@@ -1,4 +1,5 @@
 #include "UI/PokemonEditorFoundationContract.h"
+#include "UI/Gen1PokemonPresentation.h"
 
 #include <map>
 
@@ -256,9 +257,10 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto dvs = add ? state.draft.dvs : storedDVs(*pokemon);
     const auto& statExp = add ? state.draft.statExperience : pokemon->statExperience;
     const uint8_t level = add ? state.draft.level : pokemon->level;
-    const bool shiny = ShinyDVs::isShiny(dvs);
-    const auto stats = Editor::calculateBattleStats(species, level, dvs, statExp).asArray();
-    const auto types = Editor::personalTypes(species);
+    const auto presentation = PokeBank::UIModel::presentGen1Pokemon(species, level, dvs, statExp);
+    const bool shiny = presentation.shiny;
+    const auto& stats = presentation.battleStats;
+    const auto& types = presentation.nativeTypes;
     const auto& moves = add ? state.draft.moves : pokemon->moves;
     const auto& pp = add ? state.draft.pp : pokemon->pp;
     const auto badMove = MoveCompatibility::firstIncompatible(e->metadata().sourceGame, species, moves);
@@ -355,7 +357,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // RIGHT — four real Move rows, compact status, then PokeBank's five-axis radar.
     fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
     for (int i = 0; i < 4; ++i) {
-        const int rowY = contentY + 48 + i * 44;
+        const int rowY = contentY + 44 + i * 40;
         const bool selected = foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;
         if (selected) fb.drawSelectionHighlight(rightX + 10, rowY, rightW - 20, 38);
         const bool incompatible = badMove && *badMove == static_cast<size_t>(i);
@@ -364,7 +366,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         fb.drawText(rightX + 20, rowY + 9, moveText, incompatible ? Colors::Warning : Colors::Text, TextStyle::Caption);
         fb.drawText(rightX + rightW - 82, rowY + 9, "PP " + std::to_string(pp[static_cast<size_t>(i)]), Colors::TextDim, TextStyle::Caption);
     }
-    const int statusY = contentY + 232;
+    const int statusY = contentY + 214;
     fb.drawHDivider(rightX + 14, statusY - 12, rightW - 28);
     fb.drawText(rightX + 18, statusY, "Move compatibility", Colors::TextDim, TextStyle::Caption);
     fb.drawText(rightX + rightW - 118, statusY, badMove ? "Needs attention" : "OK",
@@ -375,14 +377,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const std::string warning = add ? "Change marked move before Stage Add" : "Existing unusual move preserved";
         fb.drawText(rightX + 18, statusY + 54, warning, Colors::Warning, TextStyle::Caption);
     }
-    fb.drawText(rightX + 18, statusY + 86, "GEN I BATTLE STATS", Colors::Accent, TextStyle::Caption);
-    ux2DrawRadar(fb, rightX + rightW / 2, statusY + 178, 66, stats);
-    fb.drawText(rightX + 18, statusY + 254,
-                "HP " + std::to_string(stats[0]) + "  Atk " + std::to_string(stats[1]) + "  Def " + std::to_string(stats[2]),
-                Colors::Text, TextStyle::Caption);
-    fb.drawText(rightX + 18, statusY + 278,
-                "Spe " + std::to_string(stats[3]) + "  Special " + std::to_string(stats[4]),
-                Colors::Text, TextStyle::Caption);
+    // Supplemental/radar panes are drawn once by drawFoundationBottomSplit.
 
     std::string footer = "D-pad/Stick Navigate   R Next Panel   B Back";
     if (!view) footer = "D-pad/Stick Navigate   A Edit   L Randomize DVs   R Next Panel   B Back";

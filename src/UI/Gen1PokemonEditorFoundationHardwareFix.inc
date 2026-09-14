@@ -28,7 +28,8 @@ void drawFoundationBottomSplit(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto dvs = add ? state.draft.dvs : storedDVs(*pokemon);
     const auto& statExp = add ? state.draft.statExperience : pokemon->statExperience;
     const uint8_t level = add ? state.draft.level : pokemon->level;
-    const auto stats = Editor::calculateBattleStats(species, level, dvs, statExp).asArray();
+    const auto presentation = PokeBank::UIModel::presentGen1Pokemon(species, level, dvs, statExp);
+    const auto& stats = presentation.battleStats;
 
     // Keep these coordinates tied to the permanent foundation workspace geometry.
     constexpr int workspaceX = 40;
@@ -42,41 +43,28 @@ void drawFoundationBottomSplit(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     constexpr int rightX = midX + midW + 14;
     constexpr int rightW = workspaceX + workspaceW - 18 - rightX;
 
-    // Cover only the old single-radar region; move/status rows above remain untouched.
-    constexpr int splitY = contentY + 306;
-    constexpr int splitH = 198;
+    // One authoritative split renderer, below move/status rows.
+    constexpr int splitY = contentY + 288;
+    constexpr int splitH = 216;
     constexpr int inset = 12;
     constexpr int gap = 10;
     constexpr int innerW = rightW - inset * 2;
-    constexpr int leftPaneW = (innerW - gap) / 2;
+    constexpr int leftPaneW = 136;
     constexpr int rightPaneW = innerW - gap - leftPaneW;
     constexpr int leftPaneX = rightX + inset;
     constexpr int rightPaneX = leftPaneX + leftPaneW + gap;
 
-    // Mask the previous full-width radar rendering before placing the two new panes.
-    fb.drawFilledRect(rightX + 6, splitY - 8, rightW - 12, splitH + 16, Colors::Panel);
-
     drawPanelSurface(fb, leftPaneX, splitY, leftPaneW, splitH, false, 12);
     drawPanelSurface(fb, rightPaneX, splitY, rightPaneW, splitH, false, 12);
 
-    constexpr auto gen1Caps = Foundation::capabilitiesForGeneration(Foundation::Generation::Gen1);
-    static_assert(!gen1Caps.supportsHeldItem && !gen1Caps.supportsRibbons);
-
-    fb.drawText(leftPaneX + 12, splitY + 12, "GEN I DATA", Colors::Accent, TextStyle::Caption);
-    fb.drawText(leftPaneX + 12, splitY + 52, "No additional fields", Colors::Text, TextStyle::Caption);
-    fb.drawText(leftPaneX + 12, splitY + 78, "for Generation I", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(leftPaneX + 12, splitY + 126, "Capability-driven", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(leftPaneX + 12, splitY + 150, "for later generations", Colors::TextDim, TextStyle::Caption);
-
-    fb.drawText(rightPaneX + 12, splitY + 12, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
-    ux2DrawRadar(fb, rightPaneX + rightPaneW / 2, splitY + 98, 48, stats);
-    fb.drawText(rightPaneX + 10, splitY + 154,
-                "HP " + std::to_string(stats[0]) + " Atk " + std::to_string(stats[1]) +
-                " Def " + std::to_string(stats[2]),
-                Colors::Text, TextStyle::Caption);
-    fb.drawText(rightPaneX + 10, splitY + 176,
-                "Spe " + std::to_string(stats[3]) + " Spc " + std::to_string(stats[4]),
-                Colors::Text, TextStyle::Caption);
+    const auto& gen1Caps = presentation.capabilities;
+    if (!gen1Caps.supportsHeldItem && !gen1Caps.supportsRibbons) {
+        fb.drawText(leftPaneX + 10, splitY + 12, "GEN I DATA", Colors::Accent, TextStyle::Caption);
+        fb.drawText(leftPaneX + 10, splitY + 54, "No additional", Colors::TextDim, TextStyle::Caption);
+        fb.drawText(leftPaneX + 10, splitY + 76, "native fields", Colors::TextDim, TextStyle::Caption);
+    }
+    fb.drawText(rightPaneX + 10, splitY + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
+    StatsRadar::drawGen1Labeled(fb, rightPaneX + 8, splitY + 32, rightPaneW - 16, splitH - 40, stats);
 }
 
 } // namespace UI::Gen1PokemonEditor

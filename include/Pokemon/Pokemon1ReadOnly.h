@@ -2,6 +2,7 @@
 #define POKEMON_POKEMON1_READ_ONLY_H
 
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
+#include "Integration/Gen1/Gen1Shiny.h"
 #include "Pokemon/Pokemon.h"
 
 #include <array>
@@ -85,7 +86,10 @@ public:
 
     uint8_t friendship() const noexcept override { return 0; }
     bool isEgg() const noexcept override { return false; }
-    bool isShiny(uint32_t, std::string) const noexcept override { return false; }
+    bool isShiny(uint32_t, std::string) const noexcept override {
+        return PokeVault::Integration::Gen1::ShinyDVs::isShiny(
+            {record_.dvs[1], record_.dvs[2], record_.dvs[3], record_.dvs[4]});
+    }
     bool isPokerusInfected() const noexcept override { return false; }
     bool isPokerusCured() const noexcept override { return false; }
     uint16_t checksum() const noexcept override { return 0; }

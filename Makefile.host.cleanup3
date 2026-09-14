@@ -86,3 +86,24 @@ $(HOST_BUILD)/test_pokemon_editor_foundation_contract: $(POKEMON_EDITOR_FOUNDATI
 $(HOST_BUILD)/test_pokemon_editor_foundation_contract_sanitize: $(POKEMON_EDITOR_FOUNDATION_SOURCES) include/UI/PokemonEditorFoundationContract.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(POKEMON_EDITOR_FOUNDATION_SOURCES) -o $@
+
+# Production Gen I presentation + recording-framebuffer radar regression gates.
+GEN1_SUMMARY_SOURCES := tests/test_gen1_summary_presentation.cpp $(GEN1_POKEMON_COMMON) \
+    src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/BaseStatsGen89.cpp \
+    src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen1_summary_presentation $(HOST_BUILD)/test_gen1_radar_render
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_summary_presentation_sanitize $(HOST_BUILD)/test_gen1_radar_render_sanitize
+host-test: $(HOST_BUILD)/test_gen1_summary_presentation $(HOST_BUILD)/test_gen1_radar_render
+host-sanitize: $(HOST_BUILD)/test_gen1_summary_presentation_sanitize $(HOST_BUILD)/test_gen1_radar_render_sanitize
+$(HOST_BUILD)/test_gen1_summary_presentation: $(GEN1_SUMMARY_SOURCES) include/UI/Gen1PokemonPresentation.h include/UI/BattleStatRadarModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN1_SUMMARY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_summary_presentation_sanitize: $(GEN1_SUMMARY_SOURCES) include/UI/Gen1PokemonPresentation.h include/UI/BattleStatRadarModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN1_SUMMARY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_radar_render: tests/test_gen1_radar_render.cpp include/UI/StatsRadar.h include/UI/BattleStatRadarModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen1_radar_render.cpp -o $@
+$(HOST_BUILD)/test_gen1_radar_render_sanitize: tests/test_gen1_radar_render.cpp include/UI/StatsRadar.h include/UI/BattleStatRadarModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen1_radar_render.cpp -o $@

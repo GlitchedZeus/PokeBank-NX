@@ -1,6 +1,6 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-13
+Last updated: 2026-09-14
 
 For the shortest engineering handoff, read `CURRENT_STATUS.md` and `docs/NEXT_CODEX_PROMPT.md`.
 
@@ -19,6 +19,22 @@ Live emulator-source writing: HARD DISABLED
 ```
 
 `DEVICE ACCEPTED` is used only after the user physically tests the exact relevant artifact and reports the milestone working.
+
+## Gen I editor and summary hardware correction — retest required
+
+Focused branch: `feature/pokemon-editor-ui-foundation-final-20260913`; PR #66 stays **OPEN / DRAFT / NOT MERGED**. Issue #62 stays open. Production base `0fd59ae9ad9ba8e45798d1d930b36044b465244f` is unchanged.
+
+The physically tested `5adec3ab51ebc782a4d72e9fd36f1ed450cace49` candidate (NRO SHA-256 `1c5cdbbd44e8ec0c20b56e3de18723d4de8a78a2d846f091387f6bb2d5e40ce0`) was **not accepted**. This correction supersedes it only after exact-head CI and package verification; a replacement must be physically retested.
+
+- The PK1 wrapper now uses the existing DV shiny helper for every polymorphic sprite consumer, including box thumbnails and the summary artwork.
+- The editor and box summary use one Gen I presentation model for real calculated five-stat values and current-format capabilities. Gen I modern quick-info defaults are hidden; its type badges also use Gen I personal data.
+- The old foundation radar and leftover text are no longer drawn. The lower-right supplemental/radar split remains, with a larger measured, labeled five-axis radar.
+- Both radar paths use a common linear local scale with rounded headroom buckets. Axis labels are raw stats; `Scale` is the outer-ring value. Crossing a bucket rescales the whole graph. DV edits that leave integer battle stats unchanged correctly leave the graph unchanged.
+- Regression coverage exercises the actual PK1 shiny getter, draft/staged/reparsed presentation agreement, capabilities, low-level stat changes, bounded normalization, and production radar draw coordinates/text. Existing picker ownership, calculated-cell navigation, Cleanup #3 and immutability tests remain.
+
+Validation at implementation time: full permanent host suite and focused presentation, radar drawing, foundation, battle math, RBY bridge and Cleanup #3 staged tests PASS locally. ASan/UBSan and native/package gates must pass for the new exact source SHA before delivery; the CI `BUILD_MANIFEST.json` is the exact-build evidence.
+
+All editor UI, shiny box/summary, radar labels/sizing, Species picker and calculated-stat navigation remain **RETEST REQUIRED**. **DEVICE ACCEPTED: NO.** All live source writes remain HARD DISABLED; party editing stays deferred. See `docs/GEN1_SUMMARY_RADAR_RETEST.md` for causes and the physical checklist.
 
 ## Current headline
 
