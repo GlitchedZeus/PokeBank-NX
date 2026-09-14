@@ -37,6 +37,34 @@ std::vector<uint8_t> fixture(SourceGame game,bool initialized=true) {
     checksums(v);return v;
 }
 std::vector<uint8_t> bytes(const StagedPokemonEditor& e) {return {e.stagedBytes().begin(),e.stagedBytes().end()};}
+void currentBoxAdd(SourceGame game) {
+    const auto raw = fixture(game);
+    const auto source = parse(raw, game); assert(source);
+    std::string error; auto editor = StagedPokemonEditor::create(*source.save, error); assert(editor);
+    BoxPokemonCreate draft; draft.species = 29; draft.nickname = "Nidoran F";
+    // Visual cell 19 in partially filled box 2 maps to packed position 1 in box 2.
+    // Empty box 0 cannot steal that destination.
+    const size_t currentBox = 2;
+    auto slot = editor->appendSlot(currentBox, error); assert(slot == 1);
+    assert(editor->stageAdd(currentBox, *slot, draft, error));
+    assert(editor->boxedPokemon(currentBox, 1, error)->species == 29);
+    assert(!editor->boxedPokemon(0, 0, error));
+    auto output = editor->finalizedBytes(error); assert(parse(output, game));
+    // An entirely empty selected box starts at zero within that selected box.
+    slot = editor->appendSlot(7, error); assert(slot == 0);
+    assert(editor->stageAdd(7, *slot, draft, error));
+    for (size_t i = 2; i < 20; ++i) {
+        slot = editor->appendSlot(currentBox, error); assert(slot == i);
+        assert(editor->stageAdd(currentBox, *slot, draft, error));
+    }
+    const auto before = bytes(*editor);
+    assert(!editor->appendSlot(currentBox, error) && error == "This Generation I box is full");
+    assert(bytes(*editor) == before && !editor->boxedPokemon(0, 0, error));
+    assert(!editor->appendSlot(12, error));
+    assert(parse(editor->finalizedBytes(error), game));
+    assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
+    assert(std::equal(raw.begin(), raw.end(), source.save->sourceBytes().begin()));
+}
 void run(SourceGame game) {
     const auto raw=fixture(game);const auto source=parse(raw,game);assert(source);
     std::string error;auto e=StagedPokemonEditor::create(*source.save,error);assert(e);
@@ -95,7 +123,7 @@ void run(SourceGame game) {
 }
 }
 int main() {
-    for(auto game:{SourceGame::Red,SourceGame::Blue,SourceGame::Yellow})run(game);
+    for(auto game:{SourceGame::Red,SourceGame::Blue,SourceGame::Yellow}) { run(game); currentBoxAdd(game); }
     assert(StagedPokemonEditor::moveMaxPP(74,3)==61);assert(StagedPokemonEditor::moveBasePP(105)==20);
     assert(StagedPokemonEditor::moveBasePP(166)==0);
     for(uint8_t a=0;a<16;++a) for(uint8_t d=0;d<16;++d) for(uint8_t s=0;s<16;++s) for(uint8_t c=0;c<16;++c)

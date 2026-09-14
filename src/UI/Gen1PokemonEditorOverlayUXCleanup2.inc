@@ -131,15 +131,13 @@ void ux2BeginAdd(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
     auto* e = editor(screen);
     if (!e) return;
-    const int expected = ux2FirstEmpty(*e, state.box);
-    if (expected < 0) {
-        screen.postStatus("This Generation I box is full", 300);
+    std::string error;
+    const auto destination = e->appendSlot(static_cast<size_t>(state.box), error);
+    if (!destination) {
+        screen.postStatus(error, 300);
         return;
     }
-    if (state.slot != expected) {
-        screen.postStatus("Gen I boxes are contiguous; Add is available at the next writable slot", 300);
-        return;
-    }
+    state.slot = static_cast<int>(*destination);
     state.draft = BoxPokemonCreate{};
     state.mode = UX2Mode::AddDraft;
     state.row = 0;
