@@ -15,6 +15,8 @@ struct FoundationState {
     PokeBank::UIModel::ControllerNavigation navigation;
     UX2Mode lastMainMode = UX2Mode::Closed;
     uint32_t randomState = 0x6D2B79F5u;
+    std::optional<PokemonRecord> editBaseline;
+    bool editExitConfirm = false;
 };
 
 FoundationState& foundationStateFor(const TrainerViewScreen& screen) {
@@ -40,6 +42,13 @@ void foundationSyncMainMode(TrainerViewScreen& screen) {
         foundation.lastMainMode = state.mode;
         foundation.randomState ^= static_cast<uint32_t>((state.box + 1) * 0x9E37u);
         foundation.randomState ^= static_cast<uint32_t>((state.slot + 1) * 0x85EBu);
+        foundation.editExitConfirm = false;
+        if (state.mode == UX2Mode::Edit) {
+            std::string error;
+            foundation.editBaseline = ux2SelectedPokemon(screen, error);
+        } else {
+            foundation.editBaseline.reset();
+        }
     }
 }
 
@@ -93,6 +102,68 @@ uint32_t foundationExperience(const UX2State& state, const PokemonRecord* pokemo
     return add ? draftExperience(state.draft) : (pokemon ? pokemon->experience : 0);
 }
 
+bool foundationSameEditablePokemon(const PokemonRecord& a, const PokemonRecord& b) noexcept {
+    return a.species == b.species &&
+           a.nickname == b.nickname &&
+           a.level == b.level &&
+           a.experience == b.experience &&
+           a.originalTrainer == b.originalTrainer &&
+           a.trainerId == b.trainerId &&
+           a.moves == b.moves &&
+           a.pp == b.pp &&
+           a.ppUps == b.ppUps &&
+           a.dvs == b.dvs &&
+           a.statExperience == b.statExperience;
+}
+
+bool foundationEditSessionDirty(TrainerViewScreen& screen) {
+    auto& foundation = foundationStateFor(screen);
+    if (!foundation.editBaseline) return false;
+    std::string error;
+    const auto current = ux2SelectedPokemon(screen, error);
+    return current && !foundationSameEditablePokemon(*foundation.editBaseline, *current);
+}
+
+bool foundationRestoreEditBaseline(TrainerViewScreen& screen) {
+    auto& state = ux2StateFor(screen);
+    auto& foundation = foundationStateFor(screen);
+    auto* e = editor(screen);
+    if (!foundation.editBaseline || !e) return true;
+
+    const auto& baseline = *foundation.editBaseline;
+    BoxPokemonEdit edit;
+    edit.species = baseline.species;
+    edit.nickname = baseline.nickname;
+    edit.level = baseline.level;
+    edit.experience = baseline.experience;
+    edit.trainerId = baseline.trainerId;
+    edit.moves = baseline.moves;
+    edit.pp = baseline.pp;
+    edit.ppUps = baseline.ppUps;
+    edit.dvs = storedDVs(baseline);
+    edit.statExperience = baseline.statExperience;
+    edit.otName = baseline.originalTrainer;
+
+    std::string error;
+    if (!e->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), edit, error)) {
+        screen.postStatus(error.empty() ? "Could not restore the pre-edit staged Pokemon" : error, 360);
+        return false;
+    }
+    refreshBoxes(screen);
+    return true;
+}
+
+void foundationExitMainMode(TrainerViewScreen& screen) {
+    auto& state = ux2StateFor(screen);
+    auto& foundation = foundationStateFor(screen);
+    ux3ResetSessionState(screen);
+    state.mode = UX2Mode::Actions;
+    state.row = 0;
+    foundation.lastMainMode = UX2Mode::Closed;
+    foundation.editBaseline.reset();
+    foundation.editExitConfirm = false;
+}
+
 void foundationRandomizeDVs(TrainerViewScreen& screen, bool add) {
     auto& state = ux2StateFor(screen);
     auto& foundation = foundationStateFor(screen);
@@ -106,7 +177,7 @@ void foundationRandomizeDVs(TrainerViewScreen& screen, bool add) {
     }
     BoxPokemonEdit edit;
     edit.dvs = dvs;
-    if (ux2CommitEdit(screen, edit, "Randomized DVs staged; source .srm unchanged"))
+    if (ux2CommitEdit(screen, edit, "Randomized DVs staged in this edit session; source .srm unchanged"))
         ux3.preShinyEditDVs.reset();
 }
 
@@ -125,7 +196,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
                                                   foundationNickname(state, pokemon, add, species), 10);
             if (!result.accepted) break;
             if (add) state.draft.nickname = result.text;
-            else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change staged; source .srm unchanged"); }
+            else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change staged in this edit session; source .srm unchanged"); }
             break;
         }
         case 2:
@@ -136,14 +207,14 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
                                                   foundationOT(state, *e, pokemon, add), 7);
             if (!result.accepted) break;
             if (add) state.draft.otName = result.text;
-            else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change staged; source .srm unchanged"); }
+            else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change staged in this edit session; source .srm unchanged"); }
             break;
         }
         case 4: {
             const auto result = Utils::promptNumber("Generation I Trainer ID", foundationTID(state, *e, pokemon, add), 0, 65535);
             if (!result.accepted) break;
             if (add) state.draft.trainerId = static_cast<uint16_t>(result.value);
-            else { BoxPokemonEdit edit; edit.trainerId = static_cast<uint16_t>(result.value); ux2CommitEdit(screen, edit, "TID change staged; source .srm unchanged"); }
+            else { BoxPokemonEdit edit; edit.trainerId = static_cast<uint16_t>(result.value); ux2CommitEdit(screen, edit, "TID change staged in this edit session; source .srm unchanged"); }
             break;
         }
     }
@@ -187,22 +258,48 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
     const bool add = state.mode == UX2Mode::AddDraft;
     const bool editable = !view;
 
+    if (foundation.editExitConfirm) {
+        if (down & HidNpadButton_B) {
+            foundation.editExitConfirm = false;
+            screen.postStatus("Continue editing; no edit-session decision made", 220);
+            return;
+        }
+        if (down & HidNpadButton_X) {
+            if (!foundationRestoreEditBaseline(screen)) return;
+            screen.postStatus("Edit-session changes discarded; pre-edit staged Pokemon restored", 320);
+            foundationExitMainMode(screen);
+            return;
+        }
+        if (down & HidNpadButton_A) {
+            screen.postStatus("Edit-session changes kept staged; source .srm unchanged", 300);
+            foundationExitMainMode(screen);
+            return;
+        }
+        return;
+    }
+
     if (down & HidNpadButton_Up) foundation.focus = Foundation::moveFocus(foundation.focus, Foundation::Direction::Up);
     if (down & HidNpadButton_Down) foundation.focus = Foundation::moveFocus(foundation.focus, Foundation::Direction::Down);
     if (down & HidNpadButton_Left) foundation.focus = Foundation::moveFocus(foundation.focus, Foundation::Direction::Left);
     if (down & HidNpadButton_Right) foundation.focus = Foundation::moveFocus(foundation.focus, Foundation::Direction::Right);
+    if (down & HidNpadButton_L) foundation.focus = Foundation::nextPanel(Foundation::nextPanel(foundation.focus));
     if (down & HidNpadButton_R) foundation.focus = Foundation::nextPanel(foundation.focus);
 
     if (add && (down & HidNpadButton_X)) { ux3StageAdd(screen); return; }
     if (down & HidNpadButton_B) {
-        if (add) state.draft = BoxPokemonCreate{};
-        ux3ResetSessionState(screen);
-        state.mode = UX2Mode::Actions;
-        state.row = 0;
-        foundation.lastMainMode = UX2Mode::Closed;
+        if (add) {
+            state.draft = BoxPokemonCreate{};
+            foundationExitMainMode(screen);
+            return;
+        }
+        if (state.mode == UX2Mode::Edit && foundationEditSessionDirty(screen)) {
+            foundation.editExitConfirm = true;
+            return;
+        }
+        foundationExitMainMode(screen);
         return;
     }
-    if (editable && (down & HidNpadButton_L)) {
+    if (editable && (down & HidNpadButton_Y)) {
         foundationRandomizeDVs(screen, add);
         return;
     }
@@ -237,6 +334,30 @@ void foundationDrawIdentityRow(PKSEFramebuffer& fb, int x, int y, int w,
     fb.drawText(x + 100, y + 7, value, selected ? Colors::Text : Colors::Text, TextStyle::Caption);
 }
 
+void foundationDrawExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    auto& foundation = foundationStateFor(screen);
+    if (!foundation.editExitConfirm) return;
+
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 150));
+    constexpr int w = 760;
+    constexpr int h = 250;
+    constexpr int x = (1280 - w) / 2;
+    constexpr int y = 190;
+    ux2DrawPanel(fb, x, y, w, h);
+    fb.drawText(x + 28, y + 24, "Keep staged Pokemon edits?", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 28, y + 72,
+                "You changed this Pokemon during the current Edit session.", Colors::Text, TextStyle::Body);
+    fb.drawText(x + 28, y + 108,
+                "A keeps those edits staged. X restores the Pokemon exactly as it was when Edit opened.",
+                Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 28, y + 138,
+                "The original source save remains immutable either way.", Colors::Success, TextStyle::Caption);
+    fb.drawText(x + 28, y + 188,
+                "A Keep Staged     X Discard Session     B Continue Editing",
+                Colors::Accent, TextStyle::Body);
+    drawFooter(fb, "A Keep staged edits   X Discard this edit session   B Continue editing");
+}
+
 void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& state = ux2StateFor(screen);
     auto& foundation = foundationStateFor(screen);
@@ -264,6 +385,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto& moves = add ? state.draft.moves : pokemon->moves;
     const auto& pp = add ? state.draft.pp : pokemon->pp;
     const auto badMove = MoveCompatibility::firstIncompatible(e->metadata().sourceGame, species, moves);
+    const Color incompatibleColor = add ? Colors::Error : Colors::Warning;
 
     screen.touchButtons.clear();
     constexpr int x = 40, y = 31, w = 1200, h = 610;
@@ -354,7 +476,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     fb.drawText(gridX + 130, gridY + 361, std::to_string(level), Colors::Text, TextStyle::Caption);
     fb.drawText(gridX + 12, gridY + 406, "Calculated Stat cells are read-only", Colors::TextDim, TextStyle::Caption);
 
-    // RIGHT — four real Move rows, compact status, then PokeBank's five-axis radar.
+    // RIGHT — four real Move rows, semantic compatibility status, then PokeBank's five-axis radar.
     fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
     for (int i = 0; i < 4; ++i) {
         const int rowY = contentY + 44 + i * 40;
@@ -363,26 +485,28 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const bool incompatible = badMove && *badMove == static_cast<size_t>(i);
         std::string moveText = moves[static_cast<size_t>(i)] == 0 ? "Empty" : std::string(Names::getMoveName(moves[static_cast<size_t>(i)]));
         if (incompatible) moveText = "[!] " + moveText;
-        fb.drawText(rightX + 20, rowY + 9, moveText, incompatible ? Colors::Warning : Colors::Text, TextStyle::Caption);
+        fb.drawText(rightX + 20, rowY + 9, moveText, incompatible ? incompatibleColor : Colors::Text, TextStyle::Caption);
         fb.drawText(rightX + rightW - 82, rowY + 9, "PP " + std::to_string(pp[static_cast<size_t>(i)]), Colors::TextDim, TextStyle::Caption);
     }
     const int statusY = contentY + 214;
     fb.drawHDivider(rightX + 14, statusY - 12, rightW - 28);
     fb.drawText(rightX + 18, statusY, "Move compatibility", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + rightW - 118, statusY, badMove ? "Needs attention" : "OK",
-                badMove ? Colors::Warning : Colors::Accent, TextStyle::Caption);
+    const std::string compatibilityText = !badMove ? "OK" : (add ? "Needs correction" : "Unusual preserved");
+    const Color compatibilityColor = !badMove ? Colors::Success : (add ? Colors::Error : Colors::Warning);
+    fb.drawText(rightX + rightW - 148, statusY, compatibilityText, compatibilityColor, TextStyle::Caption);
     fb.drawText(rightX + 18, statusY + 26, "Encounter legality", Colors::TextDim, TextStyle::Caption);
     fb.drawText(rightX + rightW - 118, statusY + 26, "Not checked", Colors::Text, TextStyle::Caption);
     if (badMove) {
-        const std::string warning = add ? "Change marked move before Stage Add" : "Existing unusual move preserved";
-        fb.drawText(rightX + 18, statusY + 54, warning, Colors::Warning, TextStyle::Caption);
+        const std::string warning = add ? "Change marked move before Stage Add" : "Legacy/unusual move kept unless you replace it";
+        fb.drawText(rightX + 18, statusY + 54, warning, compatibilityColor, TextStyle::Caption);
     }
     // Supplemental/radar panes are drawn once by drawFoundationBottomSplit.
 
-    std::string footer = "D-pad/Stick Navigate   R Next Panel   B Back";
-    if (!view) footer = "D-pad/Stick Navigate   A Edit   L Randomize DVs   R Next Panel   B Back";
-    if (add) footer = "D-pad/Stick Navigate   A Edit   L Randomize DVs   R Next Panel   X Stage Add   B Cancel Draft";
+    std::string footer = "D-pad/Stick Navigate   L/R Panel   B Back";
+    if (!view) footer = "D-pad/Stick Navigate   A Edit   Y Randomize DVs   L/R Panel   B Back";
+    if (add) footer = "D-pad/Stick Navigate   A Edit   Y Randomize DVs   L/R Panel   X Stage Add   B Cancel Draft";
     drawFooter(fb, footer);
+    foundationDrawExitConfirm(screen, fb);
 }
 
 } // namespace
