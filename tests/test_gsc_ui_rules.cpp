@@ -1,8 +1,10 @@
+#include "UI/BattleStatRadarModel.h"
 #include "UI/Gen2PokemonEditorRules.h"
 #include "UI/LegacyPresentationRules.h"
 #include "UI/PokemonEditorFoundationContract.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <iostream>
 
@@ -59,6 +61,16 @@ int main() {
     const auto heldItems = Gen2Rules::heldItemChoices();
     assert(!heldItems.empty() && heldItems.front() == 0);
     assert(std::find(heldItems.begin(), heldItems.end(), static_cast<uint8_t>(6)) == heldItems.end());
+
+    // Internal battle-stat storage order remains HP/Atk/Def/Spe/SpA/SpD; the permanent Gen II
+    // radar presentation contract remaps it to HP/Atk/Def/SpA/SpD/Spe.
+    constexpr std::array<uint16_t, 6> internalStats{101, 102, 103, 106, 104, 105};
+    constexpr auto radarStats = PokeBank::UIModel::canonicalGen2RadarStats(internalStats);
+    static_assert(radarStats == std::array<uint16_t, 6>{101, 102, 103, 104, 105, 106});
+    static_assert(PokeBank::UIModel::gen2RadarLabels[0][0] == 'H');
+    static_assert(PokeBank::UIModel::gen2RadarLabels[3][2] == 'A');
+    static_assert(PokeBank::UIModel::gen2RadarLabels[4][2] == 'D');
+    static_assert(PokeBank::UIModel::gen2RadarLabels[5][0] == 'S');
 
     std::cout << "GSC shared editor UI/capability rules: PASS\n";
 }
