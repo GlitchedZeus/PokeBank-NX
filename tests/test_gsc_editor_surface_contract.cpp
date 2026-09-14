@@ -42,6 +42,18 @@ int main() {
     assert(source.find("one Special DV feeds SpA + SpD") != std::string::npos);
     assert(source.find("Held Item — Generation II") != std::string::npos);
 
-    std::cout << "GSC shared editor surface/session contract: PASS\n";
+    // The real GSC Review -> Export UI is only a metadata/path wrapper around the verified staged
+    // transaction. Keep a small source-surface guard here in addition to the behavioral export test:
+    // no second fopen/fwrite implementation is allowed to creep back into the overlay.
+    const auto overlay = readFile("src/UI/TrainerViewScreenGSCOverlay.inc");
+    assert(overlay.find("publishVerifiedStagedEditorExport(editor, request)") != std::string::npos);
+    assert(overlay.find("Verified staged export: ") != std::string::npos);
+    assert(overlay.find("source remains unchanged") != std::string::npos);
+    assert(overlay.find("std::fopen") == std::string::npos);
+    assert(overlay.find("std::fwrite") == std::string::npos);
+    assert(overlay.find("writeBytes(") == std::string::npos);
+    assert(overlay.find("writeText(") == std::string::npos);
+
+    std::cout << "GSC shared editor surface/session/export contract: PASS\n";
     return 0;
 }
