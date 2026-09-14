@@ -1,7 +1,6 @@
 // Generation II shared DETAILS | VALUES | MOVES workspace.
-// Included by TrainerViewScreenCompositeOverlay.cpp after the preserved GSC overlay so it can
-// reuse that overlay's staged-editor/action-sheet plumbing without replacing source discovery,
-// export, review, clone, or immutable-source safeguards.
+// This stays layered over the accepted GSC discovery/export/action-sheet implementation.
+// Browsing edits only a local session record; StagedEditor is touched solely by Stage Add / Keep.
 
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
@@ -20,6 +19,7 @@
 #include <cstdlib>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace UI::Gen2PokemonEditor {
@@ -84,10 +84,6 @@ uint32_t minimumExpFor(const Gen2::PokemonRecord& p) noexcept {
     return personal ? Pokemon::getExpForLevel(p.level, personal->experienceGrowth) : 0;
 }
 
-void refreshCreateExperience(Gen2::PokemonRecord& p) noexcept {
-    p.experience = minimumExpFor(p);
-}
-
 std::string itemText(uint8_t item) {
     if (item == 0) return "None";
     const auto name = Gen2::gen2ItemName(item);
@@ -117,9 +113,9 @@ bool sameEditableRecord(const Gen2::PokemonRecord& a, const Gen2::PokemonRecord&
            a.originalTrainer == b.originalTrainer && a.nickname == b.nickname;
 }
 
-int identityRows() noexcept { return 7; }
-int valueRows() noexcept { return 8; }
-int moveRows() noexcept { return 4; }
+constexpr int identityRows() noexcept { return 8; }
+constexpr int valueRows() noexcept { return 8; }
+constexpr int moveRows() noexcept { return 4; }
 
 int rowsForPanel(Foundation::Panel panel) noexcept {
     switch (panel) {
@@ -141,9 +137,9 @@ void clampFocus(State& state) noexcept {
 }
 
 void nextPanel(State& state, int direction) noexcept {
-    int p = static_cast<int>(state.panel);
-    p = (p + direction + 3) % 3;
-    state.panel = static_cast<Foundation::Panel>(p);
+    int panel = static_cast<int>(state.panel);
+    panel = (panel + direction + 3) % 3;
+    state.panel = static_cast<Foundation::Panel>(panel);
     clampFocus(state);
 }
 
@@ -163,7 +159,7 @@ Gen2::PokemonRecord defaultCreateRecord(Gen2::StagedEditor& editor) {
     p.pokerus = 0;
     p.caughtData = 0;
     applyEditableDVs(p, {8, 8, 8, 8});
-    refreshCreateExperience(p);
+    p.experience = minimumExpFor(p);
     return p;
 }
 
@@ -190,8 +186,8 @@ bool beginEdit(TrainerViewScreen& screen, int box, int slot) {
     auto* editor = stagedEditor(screen);
     if (!editor) return false;
     std::string error;
-    auto p = editor->boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error);
-    if (!p) {
+    auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error);
+    if (!pokemon) {
         screen.postStatus(error.empty() ? "Selected Gen II slot is empty" : error, 300);
         return false;
     }
@@ -204,8 +200,8 @@ bool beginEdit(TrainerViewScreen& screen, int box, int slot) {
     state.panel = Foundation::Panel::Identity;
     state.row = 0;
     state.column = 0;
-    state.baseline = *p;     // exact staged state at Edit entry, not original source state.
-    state.working = *p;
+    state.baseline = *pokemon; // exact staged state at Edit entry, not original source bytes.
+    state.working = *pokemon;
     state.rng ^= static_cast<uint32_t>((box + 1) * 0x85EBCA6Bu + (slot + 1));
     screen.controllerNavigation.reset();
     return true;
@@ -229,18 +225,17 @@ bool isDirty(const State& state) noexcept {
     return state.mode == Mode::Create || !sameEditableRecord(state.baseline, state.working);
 }
 
-Rules::CompatibilityState moveStatus(const TrainerViewScreen& screen, const State& state,
-                                     int slot) noexcept {
+Rules::CompatibilityState moveStatus(const TrainerViewScreen& screen, const State& state, int slot) noexcept {
     const auto game = Rules::exactGameFromSourceId(screen.sourceGameId);
-    if (!game) return state.mode == Mode::Create
-        ? Rules::CompatibilityState::NeedsCorrection
-        : Rules::CompatibilityState::UnusualPreserved;
+    if (!game)
+        return state.mode == Mode::Create ? Rules::CompatibilityState::NeedsCorrection
+                                          : Rules::CompatibilityState::UnusualPreserved;
     const bool compatible = Gen2::MoveCompatibility::canLearnMove(
         *game, state.working.species, state.working.moves[static_cast<std::size_t>(slot)]);
     if (state.mode == Mode::Create) return Rules::createMoveCompatibility(compatible);
-    const bool preservation = state.working.species == state.baseline.species &&
+    const bool exactPreservation = state.working.species == state.baseline.species &&
         state.working.moves[static_cast<std::size_t>(slot)] == state.baseline.moves[static_cast<std::size_t>(slot)];
-    return Rules::editMoveCompatibility(compatible, preservation);
+    return Rules::editMoveCompatibility(compatible, exactPreservation);
 }
 
 bool movesAllowCommit(const TrainerViewScreen& screen, const State& state) noexcept {
@@ -364,6 +359,7 @@ bool chooseGender(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
 void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
     auto dvs = editableDVs(p);
     if (Gen2::StagedEditor::isShinyDVs(dvs)) {
+        // Preserve Attack DV/gender when making normal; changing Defense alone breaks the shiny pattern.
         dvs[1] = dvs[1] == 10 ? 9 : dvs[1];
         if (Gen2::StagedEditor::isShinyDVs(dvs)) dvs[2] = 9;
         applyEditableDVs(p, dvs);
@@ -380,16 +376,14 @@ void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
         const int score = (sameGender ? 0 : 100) + std::abs(static_cast<int>(candidate) - static_cast<int>(dvs[0]));
         if (score < bestScore) { bestScore = score; best = candidate; }
     }
-    dvs = {static_cast<uint8_t>(best), 10, 10, 10};
-    applyEditableDVs(p, dvs);
+    applyEditableDVs(p, {static_cast<uint8_t>(best), 10, 10, 10});
     if (Gen2::genderFromAttackDV(p.species, p.dvs[1]) != originalGender &&
         originalGender != Gen2::PokemonGender::Genderless)
-        screen.postStatus("Shiny DVs are authentic; gender changed because this ratio has no matching shiny Attack DV", 300);
+        screen.postStatus("Authentic shiny DVs changed gender for this species ratio", 300);
 }
 
 void randomizeDVs(State& state) {
-    const auto dvs = Foundation::randomDVs(state.rng);
-    applyEditableDVs(state.working, dvs);
+    applyEditableDVs(state.working, Foundation::randomDVs(state.rng));
 }
 
 void openHeldItemPicker(State& state) {
@@ -401,53 +395,53 @@ void openHeldItemPicker(State& state) {
     state.itemPicker = true;
 }
 
+// Hardware rule: every A press launches at most one swkbd applet. Level and EXP are separate rows.
 void editIdentityField(TrainerViewScreen& screen, State& state) {
     auto& p = state.working;
     switch (state.row) {
         case 0: {
             const uint16_t oldSpecies = p.species;
             const std::string oldDefault = Names::getSpeciesName(oldSpecies);
-            const auto r = Utils::promptNumber("Gen II Species ID", p.species, 1, 251);
-            if (!r.accepted) return;
-            p.species = static_cast<uint16_t>(r.value);
+            const auto result = Utils::promptNumber("Gen II Species ID", p.species, 1, 251);
+            if (!result.accepted) return;
+            p.species = static_cast<uint16_t>(result.value);
             if (state.mode == Mode::Create && p.nickname == oldDefault)
                 p.nickname = Names::getSpeciesName(p.species);
             refreshDerived(p);
-            if (state.mode == Mode::Create) refreshCreateExperience(p);
+            p.experience = minimumExpFor(p);
             break;
         }
         case 1: {
-            const auto r = Utils::promptText("Gen II Nickname", "1-10 Gen II characters", p.nickname, 10);
-            if (r.accepted) p.nickname = r.text;
+            const auto result = Utils::promptText("Gen II Nickname", "1-10 Gen II characters", p.nickname, 10);
+            if (result.accepted) p.nickname = result.text;
             break;
         }
         case 2: {
-            const auto level = Utils::promptNumber("Gen II Level", p.level, 1, 100);
-            if (!level.accepted) return;
-            p.level = static_cast<uint8_t>(level.value);
-            if (state.mode == Mode::Create) {
-                refreshCreateExperience(p);
-            } else {
-                const auto exp = Utils::promptNumber("Gen II Experience", static_cast<int>(p.experience), 0, 2000000);
-                if (exp.accepted) p.experience = static_cast<uint32_t>(exp.value);
-                else p.experience = minimumExpFor(p);
-            }
+            const auto result = Utils::promptNumber("Gen II Level", p.level, 1, 100);
+            if (!result.accepted) return;
+            p.level = static_cast<uint8_t>(result.value);
+            p.experience = minimumExpFor(p);
             break;
         }
         case 3: {
-            const auto r = Utils::promptText("Gen II OT Name", "1-10 Gen II characters", p.originalTrainer, 10);
-            if (r.accepted) p.originalTrainer = r.text;
+            const auto result = Utils::promptNumber("Gen II Experience", static_cast<int>(p.experience), 0, 2000000);
+            if (result.accepted) p.experience = static_cast<uint32_t>(result.value);
             break;
         }
         case 4: {
-            const auto r = Utils::promptNumber("Gen II Trainer ID", p.trainerId, 0, 65535);
-            if (r.accepted) p.trainerId = static_cast<uint16_t>(r.value);
+            const auto result = Utils::promptText("Gen II OT Name", "1-10 Gen II characters", p.originalTrainer, 10);
+            if (result.accepted) p.originalTrainer = result.text;
             break;
         }
-        case 5:
+        case 5: {
+            const auto result = Utils::promptNumber("Gen II Trainer ID", p.trainerId, 0, 65535);
+            if (result.accepted) p.trainerId = static_cast<uint16_t>(result.value);
+            break;
+        }
+        case 6:
             chooseGender(screen, p);
             break;
-        case 6:
+        case 7:
             openHeldItemPicker(state);
             break;
     }
@@ -463,16 +457,16 @@ void editValueField(TrainerViewScreen& screen, State& state) {
             }
             auto dvs = editableDVs(p);
             const int index = state.row - 1;
-            const auto r = Utils::promptNumber("Gen II DV (0-15)", dvs[static_cast<std::size_t>(index)], 0, 15);
-            if (!r.accepted) return;
-            dvs[static_cast<std::size_t>(index)] = static_cast<uint8_t>(r.value);
+            const auto result = Utils::promptNumber("Gen II DV (0-15)", dvs[static_cast<std::size_t>(index)], 0, 15);
+            if (!result.accepted) return;
+            dvs[static_cast<std::size_t>(index)] = static_cast<uint8_t>(result.value);
             applyEditableDVs(p, dvs);
         } else {
             auto statExp = p.statExperience;
-            const auto r = Utils::promptNumber("Gen II Stat Experience (0-65535)",
-                                               statExp[static_cast<std::size_t>(state.row)], 0, 65535);
-            if (!r.accepted) return;
-            statExp[static_cast<std::size_t>(state.row)] = static_cast<uint16_t>(r.value);
+            const auto result = Utils::promptNumber("Gen II Stat Experience (0-65535)",
+                                                    statExp[static_cast<std::size_t>(state.row)], 0, 65535);
+            if (!result.accepted) return;
+            statExp[static_cast<std::size_t>(state.row)] = static_cast<uint16_t>(result.value);
             p.statExperience = statExp;
         }
         return;
@@ -482,32 +476,32 @@ void editValueField(TrainerViewScreen& screen, State& state) {
         return;
     }
     if (state.row == 6) {
-        const auto r = Utils::promptNumber("Gen II Friendship", p.friendship, 0, 255);
-        if (r.accepted) p.friendship = static_cast<uint8_t>(r.value);
+        const auto result = Utils::promptNumber("Gen II Friendship", p.friendship, 0, 255);
+        if (result.accepted) p.friendship = static_cast<uint8_t>(result.value);
         return;
     }
-    const auto r = Utils::promptNumber("Gen II Pokerus byte", p.pokerus, 0, 255);
-    if (r.accepted) p.pokerus = static_cast<uint8_t>(r.value);
+    const auto result = Utils::promptNumber("Gen II Pokerus byte", p.pokerus, 0, 255);
+    if (result.accepted) p.pokerus = static_cast<uint8_t>(result.value);
 }
 
 void editMoveField(State& state) {
     auto& p = state.working;
     const int slot = state.row;
     if (state.column == 0) {
-        const auto r = Utils::promptNumber("Gen II Move ID (0=Empty)", p.moves[slot], 0, 251);
-        if (!r.accepted) return;
-        p.moves[slot] = static_cast<uint8_t>(r.value);
+        const auto result = Utils::promptNumber("Gen II Move ID (0=Empty)", p.moves[slot], 0, 251);
+        if (!result.accepted) return;
+        p.moves[slot] = static_cast<uint8_t>(result.value);
         p.ppUps[slot] = 0;
         p.pp[slot] = p.moves[slot] == 0 ? 0 : Gen2::StagedEditor::gen2MoveBasePP(p.moves[slot]);
         return;
     }
     if (state.column == 1) {
-        const auto r = Utils::promptNumber("Gen II Move PP", p.pp[slot], 0, 63);
-        if (r.accepted) p.pp[slot] = static_cast<uint8_t>(r.value);
+        const auto result = Utils::promptNumber("Gen II Move PP", p.pp[slot], 0, 63);
+        if (result.accepted) p.pp[slot] = static_cast<uint8_t>(result.value);
         return;
     }
-    const auto r = Utils::promptNumber("Gen II PP Ups (0-3)", p.ppUps[slot], 0, 3);
-    if (r.accepted) p.ppUps[slot] = static_cast<uint8_t>(r.value);
+    const auto result = Utils::promptNumber("Gen II PP Ups (0-3)", p.ppUps[slot], 0, 3);
+    if (result.accepted) p.ppUps[slot] = static_cast<uint8_t>(result.value);
 }
 
 void activateField(TrainerViewScreen& screen, State& state) {
@@ -542,8 +536,8 @@ bool handleConfirm(TrainerViewScreen& screen, State& state, uint64_t down) {
         if (stageEdit(screen)) return true;
     }
     if (down & HidNpadButton_X) {
-        // Working edits were local only. Discard therefore restores the exact staged state present
-        // when Edit opened, including any unrelated edits that predated this session.
+        // The session never touched StagedEditor, so discard reveals the exact staged entry captured
+        // in baseline, including unrelated work that existed before Edit opened.
         screen.postStatus("This Edit session discarded; earlier staged work preserved", 300);
         closeToActions(screen);
         return true;
@@ -573,9 +567,9 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int st
         auto* editor = stagedEditor(screen);
         if (!editor) return false;
         std::string error;
-        auto p = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
-                                      static_cast<std::size_t>(legacy.pokemonSlot), error);
-        const bool occupied = p.has_value();
+        auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
+                                             static_cast<std::size_t>(legacy.pokemonSlot), error);
+        const bool occupied = pokemon.has_value();
         if (occupied && legacy.pokemonRow == 0)
             return beginEdit(screen, legacy.pokemonBox, legacy.pokemonSlot);
         if ((occupied && legacy.pokemonRow == 3) || (!occupied && legacy.pokemonRow == 0))
@@ -614,7 +608,6 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int st
         screen.postStatus("Authentic Gen II DVs randomized (0-15); HP/gender/shiny re-derived", 240);
     }
     if (down & HidNpadButton_A) activateField(screen, state);
-
     if ((down & HidNpadButton_X) && state.mode == Mode::Create) stageCreate(screen);
 
     if (down & HidNpadButton_B) {
@@ -645,22 +638,24 @@ Color statusColor(Rules::CompatibilityState status) {
     return Colors::Error;
 }
 
-void drawIdentity(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
-                  int x, int y, int w, int h) {
+void drawIdentity(PKSEFramebuffer& fb, const State& state, int x, int y, int w, int h) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "DETAILS", state.panel == Foundation::Panel::Identity ? Colors::Accent : Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 14, y + 10, "DETAILS",
+                state.panel == Foundation::Panel::Identity ? Colors::Accent : Colors::Text,
+                TextStyle::Heading);
     const auto& p = state.working;
-    const std::array<std::pair<std::string, std::string>, 7> rows{{
+    const std::array<std::pair<std::string, std::string>, 8> rows{{
         {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
         {"Nickname", p.nickname},
-        {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
+        {"Level", std::to_string(p.level)},
+        {"EXP", std::to_string(p.experience)},
         {"OT", p.originalTrainer},
         {"Trainer ID", std::to_string(p.trainerId)},
         {"Gender", genderText(p.gender)},
         {"Held Item", itemText(p.heldItem)},
     }};
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
-        const int yy = y + 58 + i * 52;
+        const int yy = y + 54 + i * 43;
         selectedRowBackground(fb, x + 10, yy, w - 20,
                               state.panel == Foundation::Panel::Identity && state.row == i);
         fb.drawText(x + 18, yy, rows[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
@@ -672,14 +667,15 @@ void drawIdentity(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const St
 
 void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, int h) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "VALUES", state.panel == Foundation::Panel::Values ? Colors::Accent : Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 14, y + 10, "VALUES",
+                state.panel == Foundation::Panel::Values ? Colors::Accent : Colors::Text,
+                TextStyle::Heading);
     fb.drawText(x + 120, y + 44, "DV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 190, y + 44, "Stat Exp", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 305, y + 44, "Stat", Colors::TextDim, TextStyle::Caption);
 
     const auto& p = state.working;
-    const auto dvs4 = editableDVs(p);
-    const auto battle = Gen2::calculateBattleStats(p.species, p.level, dvs4, p.statExperience).asArray();
+    const auto battle = Gen2::calculateBattleStats(p.species, p.level, editableDVs(p), p.statExperience).asArray();
     const std::array<const char*, 5> labels{"HP", "Attack", "Defense", "Speed", "Special"};
     const std::array<uint8_t, 5> dvs{p.dvs[0], p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]};
     for (int i = 0; i < 5; ++i) {
@@ -689,13 +685,15 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
         fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(i)], Colors::TextDim, TextStyle::Caption);
         const Color dvColor = state.panel == Foundation::Panel::Values && state.row == i && state.column == 0
             ? Colors::Accent : Colors::Text;
-        const Color seColor = state.panel == Foundation::Panel::Values && state.row == i && state.column == 1
+        const Color statExpColor = state.panel == Foundation::Panel::Values && state.row == i && state.column == 1
             ? Colors::Accent : Colors::Text;
-        fb.drawText(x + 116, yy, std::to_string(dvs[static_cast<std::size_t>(i)]) + (i == 0 ? " *" : ""), dvColor, TextStyle::Caption);
-        fb.drawText(x + 190, yy, std::to_string(p.statExperience[static_cast<std::size_t>(i)]), seColor, TextStyle::Caption);
-        std::string stat;
-        if (i < 4) stat = std::to_string(battle[static_cast<std::size_t>(i)]);
-        else stat = "SpA " + std::to_string(battle[4]) + " / SpD " + std::to_string(battle[5]);
+        fb.drawText(x + 116, yy, std::to_string(dvs[static_cast<std::size_t>(i)]) + (i == 0 ? " *" : ""),
+                    dvColor, TextStyle::Caption);
+        fb.drawText(x + 190, yy, std::to_string(p.statExperience[static_cast<std::size_t>(i)]),
+                    statExpColor, TextStyle::Caption);
+        const std::string stat = i < 4
+            ? std::to_string(battle[static_cast<std::size_t>(i)])
+            : "SpA " + std::to_string(battle[4]) + " / SpD " + std::to_string(battle[5]);
         fb.drawText(x + 286, yy, stat, Colors::Text, TextStyle::Caption);
     }
 
@@ -704,22 +702,25 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
         {"Friendship", std::to_string(p.friendship)},
         {"Pokerus", pokerusText(p.pokerus)},
     }};
-    for (int j = 0; j < 3; ++j) {
-        const int row = 5 + j;
-        const int yy = y + 314 + j * 48;
+    for (int i = 0; i < 3; ++i) {
+        const int row = 5 + i;
+        const int yy = y + 314 + i * 48;
         selectedRowBackground(fb, x + 10, yy, w - 20,
                               state.panel == Foundation::Panel::Values && state.row == row);
-        fb.drawText(x + 18, yy, extras[static_cast<std::size_t>(j)].first, Colors::TextDim, TextStyle::Caption);
-        fb.drawText(x + 130, yy, extras[static_cast<std::size_t>(j)].second,
-                    j == 0 && p.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+        fb.drawText(x + 18, yy, extras[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 130, yy, extras[static_cast<std::size_t>(i)].second,
+                    i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
     }
-    fb.drawText(x + 18, y + h - 27, "* HP DV derived; one Special DV feeds SpA + SpD", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + h - 27, "* HP DV derived; one Special DV feeds SpA + SpD",
+                Colors::TextDim, TextStyle::Caption);
 }
 
 void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                int x, int y, int w, int h) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "MOVES", state.panel == Foundation::Panel::Moves ? Colors::Accent : Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 14, y + 10, "MOVES",
+                state.panel == Foundation::Panel::Moves ? Colors::Accent : Colors::Text,
+                TextStyle::Heading);
     fb.drawText(x + 198, y + 43, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 260, y + 43, "Ups", Colors::TextDim, TextStyle::Caption);
     for (int slot = 0; slot < 4; ++slot) {
@@ -730,7 +731,8 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
         const std::string name = move == 0 ? "Empty" : std::string(Names::getMoveName(move));
         const auto status = moveStatus(screen, state, slot);
         const bool selected = state.panel == Foundation::Panel::Moves && state.row == slot;
-        fb.drawText(x + 18, yy, name, selected && state.column == 0 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+        fb.drawText(x + 18, yy, name, selected && state.column == 0 ? Colors::Accent : Colors::Text,
+                    TextStyle::Caption);
         fb.drawText(x + 198, yy, std::to_string(state.working.pp[static_cast<std::size_t>(slot)]),
                     selected && state.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
         fb.drawText(x + 260, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]),
@@ -744,13 +746,18 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
     fb.drawFilledRect(x + 14, y + 286, w - 28, 1, Colors::Divider);
     fb.drawText(x + 18, y + 304, "GEN II DATA", Colors::Accent, TextStyle::Caption);
     fb.drawText(x + 18, y + 332, "Game", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 105, y + 332, screen.sourceGameId == "gold_gbc" ? "Gold" : screen.sourceGameId == "silver_gbc" ? "Silver" : "Crystal", Colors::Text, TextStyle::Caption);
+    fb.drawText(x + 105, y + 332,
+                screen.sourceGameId == "gold_gbc" ? "Gold" : screen.sourceGameId == "silver_gbc" ? "Silver" : "Crystal",
+                Colors::Text, TextStyle::Caption);
     fb.drawText(x + 18, y + 356, "Record", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 105, y + 356, state.mode == Mode::Create ? "Create draft" : "Staged box", Colors::Text, TextStyle::Caption);
+    fb.drawText(x + 105, y + 356, state.mode == Mode::Create ? "Create draft" : "Staged box",
+                Colors::Text, TextStyle::Caption);
     fb.drawText(x + 18, y + 380, "Growth", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 105, y + 380, personal ? Rules::growthGroupName(personal->experienceGrowth) : "Unknown", Colors::Text, TextStyle::Caption);
+    fb.drawText(x + 105, y + 380, personal ? Rules::growthGroupName(personal->experienceGrowth) : "Unknown",
+                Colors::Text, TextStyle::Caption);
     const uint32_t nextExp = personal && state.working.level < 100
-        ? Pokemon::getExpForLevel(static_cast<uint8_t>(state.working.level + 1), personal->experienceGrowth) : state.working.experience;
+        ? Pokemon::getExpForLevel(static_cast<uint8_t>(state.working.level + 1), personal->experienceGrowth)
+        : state.working.experience;
     const uint32_t remaining = nextExp > state.working.experience ? nextExp - state.working.experience : 0;
     fb.drawText(x + 18, y + 404, "EXP next", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 105, y + 404, std::to_string(remaining), Colors::Text, TextStyle::Caption);
@@ -791,8 +798,10 @@ void drawConfirm(PKSEFramebuffer& fb) {
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawText(x + 28, y + 28, "Keep staged Pokemon edits?", Colors::Text, TextStyle::Heading);
     fb.drawText(x + 28, y + 78, "A keeps this Edit session in the staged copy.", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 28, y + 108, "X discards only this session and restores the staged entry state.", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 28, y + 138, "B continues editing. Original source bytes are untouched.", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 28, y + 108, "X discards only this session and restores the staged entry state.",
+                Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 28, y + 138, "B continues editing. Original source bytes are untouched.",
+                Colors::TextDim, TextStyle::Caption);
     drawNavBar(fb, {{"A", "Keep"}, {"X", "Discard"}, {"B", "Continue"}});
 }
 
@@ -809,7 +818,8 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     constexpr int workspaceX = 34, workspaceY = 25, workspaceW = 1212, workspaceH = 620;
     drawPanelSurface(fb, workspaceX, workspaceY, workspaceW, workspaceH, false, 18);
-    const std::string title = state.mode == Mode::Create ? "Create Pokemon — GEN II DRAFT" : "Edit Pokemon — GEN II STAGED";
+    const std::string title = state.mode == Mode::Create ? "Create Pokemon — GEN II DRAFT"
+                                                         : "Edit Pokemon — GEN II STAGED";
     fb.drawText(workspaceX + 24, workspaceY + 14, title, Colors::Text, TextStyle::Heading);
     fb.drawText(workspaceX + 24, workspaceY + 50,
                 "DETAILS | VALUES | MOVES  •  Source save immutable  •  Party mutation deferred",
@@ -820,14 +830,16 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     constexpr int midX = leftX + leftW + 12, midW = 410;
     constexpr int rightX = midX + midW + 12;
     constexpr int rightW = workspaceX + workspaceW - 16 - rightX;
-    drawIdentity(fb, screen, state, leftX, contentY, leftW, contentH);
+    drawIdentity(fb, state, leftX, contentY, leftW, contentH);
     drawValues(fb, state, midX, contentY, midW, contentH);
     drawMoves(fb, screen, state, rightX, contentY, rightW, contentH);
 
     if (state.mode == Mode::Create)
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"X", "Stage Add"}, {"B", "Cancel"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
+                        {"Y", "Random DVs"}, {"X", "Stage Add"}, {"B", "Cancel"}});
     else
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"B", "Back"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
+                        {"Y", "Random DVs"}, {"B", "Back"}});
 
     if (state.itemPicker) drawHeldItemPicker(fb, state);
     if (state.confirmExit) drawConfirm(fb);
