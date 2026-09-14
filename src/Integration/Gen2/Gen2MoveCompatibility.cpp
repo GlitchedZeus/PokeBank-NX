@@ -1,5 +1,7 @@
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
 
+#include "Integration/Gen1/Gen1MoveCompatibility.h"
+
 namespace PokeVault::Integration::Gen2 {
 namespace {
 #include "Gen2MoveCompatibilityData.inc"
@@ -22,6 +24,15 @@ const uint8_t* rowFor(SourceGame game, uint16_t species) noexcept {
 
     return table->data() + (static_cast<std::size_t>(species) * kGen2MoveCompatibilityWidth);
 }
+
+bool canCarryFromTimeCapsule(uint16_t species, uint16_t move) noexcept {
+    if (species < 1 || species > 151 || move < 1 || move > 165) return false;
+    using Gen1Compatibility = PokeVault::Integration::Gen1::MoveCompatibility;
+    using Gen1Game = PokeVault::Integration::Gen1::SourceGame;
+    return Gen1Compatibility::canLearnMove(Gen1Game::Red, species, move) ||
+           Gen1Compatibility::canLearnMove(Gen1Game::Blue, species, move) ||
+           Gen1Compatibility::canLearnMove(Gen1Game::Yellow, species, move);
+}
 } // namespace
 
 bool MoveCompatibility::canLearnMove(SourceGame game, uint16_t species, uint16_t move) noexcept {
@@ -29,7 +40,10 @@ bool MoveCompatibility::canLearnMove(SourceGame game, uint16_t species, uint16_t
     if (move > 251) return false;
     const auto* row = rowFor(game, species);
     if (!row) return false;
-    return (row[move >> 3U] & static_cast<uint8_t>(1U << (move & 7U))) != 0;
+    const bool nativeGen2 = (row[move >> 3U] & static_cast<uint8_t>(1U << (move & 7U))) != 0;
+    // G/S/C may legally preserve compatible Gen I moves through the Time Capsule. This is still
+    // move compatibility, not encounter/tradeback legality; those deeper constraints stay deferred.
+    return nativeGen2 || canCarryFromTimeCapsule(species, move);
 }
 
 std::vector<uint8_t> MoveCompatibility::compatibleMoves(SourceGame game, uint16_t species) {
