@@ -126,6 +126,15 @@ constexpr bool hpDVIsDerived() noexcept { return true; }
 constexpr bool moveRowsAreIndividuallyFocusable() noexcept { return true; }
 constexpr bool radarIsFocusable() noexcept { return false; }
 
+constexpr uint8_t nextRandomDV(uint32_t& state) noexcept {
+    state = state * 1664525u + 1013904223u;
+    return static_cast<uint8_t>((state >> 28U) & 0x0FU);
+}
+
+constexpr std::array<uint8_t,4> randomDVs(uint32_t& state) noexcept {
+    return {nextRandomDV(state), nextRandomDV(state), nextRandomDV(state), nextRandomDV(state)};
+}
+
 enum class Generation : uint8_t { Gen1 = 1, Gen2 = 2, Gen3 = 3, Gen4 = 4, Gen5 = 5, Gen6 = 6, Gen7 = 7, Gen8 = 8, Gen9 = 9 };
 
 struct Capabilities {
