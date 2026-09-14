@@ -2,9 +2,9 @@
 
 Last updated: 2026-09-14
 
-Status: **GEN II SHARED POKÉMON EDITOR IMPLEMENTED ON PR #68 / FINAL EXACT-HEAD VALIDATION + DEVICE CANDIDATE NEXT**
+Status: **GEN II FINAL AUDIT IMPLEMENTED / FREEZE EXACT CANDIDATE / MATERIALIZE CI NRO / PHYSICAL G-S-C TEST NEXT**
 
-## Recover this exact project state first
+## Recover this project state first
 
 ```text
 Repository: GlitchedZeus/PokeBank-NX
@@ -12,11 +12,11 @@ Production branch: feature/pokebank-playable
 Production checkpoint: a9fc4521087cdc80078c7db620f1be0107adce58
 Focused branch: feature/gen2-shared-pokemon-editor-20260914
 PR #68: OPEN / DRAFT / NOT MERGED
-Known implementation head: 43b8563d4177b58ae0f341c1ebd58f86e2ee4fdb
-Known tree: e791463ef438b5795da28c636de7bcac1105806f
+Audit tracker: #69
+Latest pre-documentation implementation checkpoint: a3917f20e0b09b31473f073398a9b1f1a6adfb51
 ```
 
-If the PR head has advanced, preserve the newer head. Do not reset backward.
+The exact candidate SHA is the newer PR head containing this documentation refresh. Preserve any newer head; never reset backward to the checkpoint above.
 
 ## Accepted baselines that must remain frozen
 
@@ -31,69 +31,173 @@ Live installed-game writes: HARD DISABLED
 Live emulator-source writes: HARD DISABLED
 ```
 
-## What the current Gen II branch already contains
+Do not rewrite historical acceptance evidence while validating the new Gen II editor.
+
+## Generation II implementation now present
 
 - exact G/S vs Crystal move compatibility tables and runtime selection;
-- passive View live compatibility (`OK` / `Unusual preserved`);
-- encounter legality still `Not checked`;
-- clean passive View wording;
-- shared Gen II Details/Values/Moves View/Create/Edit;
-- authentic 0–15 DVs and derived HP DV;
-- one Special DV feeding split SpA/SpD display;
+- passive View and occupied-slot action-sheet View;
+- live compatibility (`OK` / `Unusual preserved`) with encounter legality still `Not checked`;
+- canonical Level/EXP transaction behavior and Create EXP serialization;
+- immediate EXP -> Level/stat/radar synchronization;
+- authentic DVs, Stat Exp, derived HP DV and one stored Special feeding split SpA/SpD display;
 - six-stat / six-axis battle presentation;
-- Held Item picker;
-- Friendship / Pokérus;
-- Crystal-specific caught/met handling;
-- species/Attack-DV gender;
-- DV-derived shiny;
-- local Add/Edit drafts;
-- transactional Edit keep/discard/continue with exact pre-edit staged baseline;
-- unusual existing move preservation on unrelated edits;
-- separate Level and EXP applet invocations;
-- permanent compatibility/passive-view/editor-surface tests.
+- authentic Held Item picker;
+- Friendship;
+- named Species picker;
+- named exact-game Move picker;
+- user-facing Pokérus State/Strain/Days control;
+- PP/PP Ups validation/clamping;
+- Crystal caught/met decode into meaningful native fields;
+- Party-only Current HP / Max HP / Status;
+- gender/shiny DV semantics;
+- local Create/Edit drafts;
+- transactional Edit Keep / Discard-current-session / Continue;
+- unusual existing move/PP/PP-Up preservation;
+- contained passive Gen I/II touch Back;
+- exact save/game/revision capability model;
+- one authoritative verified Gen II staged-export transaction used by the real UI.
 
-## Next task
+## Export contract
 
-Do not start another feature milestone. Freeze the current exact PR #68 head and finish validation on that exact SHA.
+The UI must continue to call `publishVerifiedStagedEditorExport()` and must not regain a second direct save writer. Required behavior:
 
-Required final gates:
+```text
+finalize staged bytes
+strict pre-write parse
+fingerprint source + edited bytes
+write original backup + edited save under an app-owned temp directory
+flush/sync/close where supported
+read both files back
+verify exact bytes + SHA-256
+strictly reparse the edited disk bytes
+write provenance manifest
+publish by same-filesystem rename
+remove incomplete temp output on failure
+never write the source .srm
+```
+
+Only a fully verified/published directory counts as success.
+
+## Final exact-SHA validation
+
+Do not add features. If a gate fails, fix only the demonstrated regression, commit once, and restart all exact-head evidence from the new SHA.
+
+The dedicated workflow `.github/workflows/gen2-audit-candidate.yml` must pass on the exact final PR head and prove:
 
 ```text
 git diff --check
-Gen II focused staged-editor tests
-Gen II compatibility data verifier
-Gen II passive-view contract
-Gen II editor-surface/session contract
-Gen I accepted editor regressions
-GSC read-only regressions
-RBY regressions
-FRLG/RSE regressions
-inventory regressions
-source mutation policy / source immutability
+Gen II compatibility regeneration
+Gen II parser/discovery/bridge
+Gen II editor/session/Create/Edit/Level/EXP
+passive/action-sheet View
+Crystal caught/met
+Party/Box native presentation
+Held Item
+Species picker
+Move picker
+Pokérus
+PP / PP Ups
+gender
+shiny
+six battle stats
+six-axis radar
+verified export UI + transaction
+corruption rejection
+temporary cleanup
+source immutability/write locks
+Gen I regression
+Gen III regression
+Classic Inventory regression
 full permanent host suite
 ASan
 UBSan
 device asset preflight
-clean devkitA64 build
+RomFS recovery/completeness
+clean devkitA64 compile
 final NRO link
-embedded application source identity
-complete embedded RomFS verification
-exact package manifest + SHA256SUMS
+AArch64 native linkage
+embedded application SHA
+embedded RomFS
+BUILD_MANIFEST.json
+SHA256SUMS.txt
+Gen2-Audit NRO + package ZIP
 ```
 
-If any gate fails, fix only the real regression, commit/push, and restart exact-head verification from the new SHA.
+Standard PR workflows must also be green for that same SHA. Never reuse an older green result.
 
-## Hardware handoff
+## Audit issue disposition
 
-When all exact-head gates are green:
+When exact-head tests are green, update #69 accurately:
 
-1. retrieve the CI-produced artifact for the exact candidate SHA;
-2. verify artifact digest/size;
-3. verify `BUILD_MANIFEST.json` and `SHA256SUMS.txt`;
-4. verify standalone NRO and packaged ZIP hashes;
-5. verify inner ZIP NRO is byte-identical to standalone NRO;
-6. verify embedded source SHA and full RomFS;
-7. provide the actual `.nro` for download;
-8. STOP coding for owner physical Gold/Silver/Crystal testing.
+```text
+COMPLETE: Crystal caught/met decode
+COMPLETE: Party-only HP/status View
+COMPLETE: user-facing Species/Move/Pokérus controls
+COMPLETE: staged export transaction hardening
+COMPLETE: contained passive View touch Back foundation
+DEFERRED -> #55: full touch-only v1
+DEFERRED -> #26: global box/controller normalization + device retest
+DEFERRED -> #27: Legacy Storage migration / Master Vault / true Move architecture
+```
 
-Do not merge PR #68 or declare Gen II device accepted before that physical result.
+Leave #55, #26 and #27 open. Issue #69 may remain open for these deferred/global items.
+
+## Artifact handoff
+
+When the exact candidate workflow is fully green:
+
+1. record application SHA, tree SHA, branch, PR state and workflow run;
+2. record artifact name/ID/size/digest;
+3. download the exact CI Actions artifact;
+4. verify `BUILD_MANIFEST.json`, `SHA256SUMS.txt` and package hash;
+5. verify standalone NRO filename/size/SHA-256;
+6. verify packaged ZIP filename/size/SHA-256;
+7. verify embedded application SHA and complete RomFS evidence;
+8. materialize the exact CI-built `PokeBank-NX-Gen2-Audit-<shortsha>.nro` into the conversation;
+9. give the owner a clickable link;
+10. STOP CODING.
+
+Do not substitute an older NRO or locally rebuilt binary.
+
+## Physical Switch checklist — after artifact handoff
+
+Run on **Gold, Silver and Crystal**, noting any game-specific differences:
+
+- boot/open correct save;
+- Party View;
+- Party Current HP / Max HP;
+- Party Status;
+- Box View and no fabricated Party-only values;
+- occupied-slot action-sheet View;
+- passive touch Back and controller B Back;
+- named Species picker;
+- named exact-game Move picker;
+- Pokérus State/Strain/Days editor;
+- Held Item picker;
+- Level;
+- EXP;
+- Level/EXP synchronization;
+- PP;
+- PP Ups;
+- move compatibility / unusual preserved state;
+- Crystal caught/met native values;
+- Gold/Silver show no fake Crystal caught/met fields;
+- gender;
+- shiny;
+- Friendship;
+- six battle stats;
+- six-axis radar;
+- Create / Stage Add;
+- Edit;
+- Keep;
+- Discard current Edit session;
+- Continue editing;
+- unusual existing move/PP preservation on unrelated edit;
+- Export staged copy;
+- exported `original_backup.srm` exists;
+- exported `edited.srm` exists;
+- exported `EDIT_MANIFEST.txt` exists;
+- original RetroArch/source `.srm` remains byte-unchanged.
+
+PR #68 stays OPEN / DRAFT / NOT MERGED and Gen II stays DEVICE TEST PENDING until the owner reports the result of this checklist for the exact delivered artifact.
