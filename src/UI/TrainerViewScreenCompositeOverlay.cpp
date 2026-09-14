@@ -92,6 +92,7 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 #include "Gen2PokemonPickerOverlay.inc"
 #include "Gen2SharedPokemonSurface.inc"
 #include "Gen2UnifiedPokemonWorkspace.inc"
+#include "Gen2SharedSurfaceParity.inc"
 
 namespace UI {
 
@@ -103,7 +104,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     // Gen II uses the same top-level Pokemon editor shell as Gen I. Generation-specific code below
     // supplies PK2 rules/data only; the preserved GSC trainer/inventory overlay is not a competing
     // Pokemon editor.
-    if (Gen2PokemonEditor::handleUnifiedGen2SurfaceInput(*this, down, held, stick.x, stick.y, touch)) return;
+    if (Gen2PokemonEditor::handleFinalGen2SurfaceInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen2PokemonEditor::handlePickerInput(*this, down, held, stick.x, stick.y, touch)) return;
 
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
@@ -122,10 +123,10 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     // Exactly one top-level Pokemon surface owns the frame. GSC still owns its trainer/inventory
     // surfaces, but it never draws underneath Actions/View/Edit/Create/Review.
-    if (!Gen2PokemonEditor::unifiedGen2SurfaceOwnsFrame(*this))
+    if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this))
         drawGSCOverlay(fb);
 
-    if (Gen2PokemonEditor::drawUnifiedGen2Surface(*this, fb)) {
+    if (Gen2PokemonEditor::drawFinalGen2Surface(*this, fb)) {
         Gen2PokemonEditor::drawPickerOverlay(*this, fb);
         return;
     }
