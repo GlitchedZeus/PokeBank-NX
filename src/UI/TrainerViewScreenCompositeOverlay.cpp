@@ -106,12 +106,21 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 // It owns all input while active, has no field cursor, and exposes only B Back.
 #include "Gen1PokemonEditorPassiveView.inc"
 
+// Generation II reuses the same DETAILS | VALUES | MOVES interaction contract, while retaining
+// the proven GSC discovery/export/action-sheet layer compiled above. It owns only Gen II Create/Edit.
+#include "Gen2PokemonEditorFoundation.inc"
+
 namespace UI {
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 down = padGetButtonsDown(&pad);
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
+
+    // Generation II Create/Edit is a local draft/session over the staged editor. Route it before
+    // the preserved GSC overlay so browsing fields never mutates the staged save and B can provide
+    // the accepted Keep / Discard-this-session / Continue transaction behavior.
+    if (Gen2PokemonEditor::handleInput(*this, down, held, stick.x, stick.y)) return;
 
     // A picker is modal even though SpeciesPicker intentionally leaves the underlying mode as
     // AddDraft/Edit. Route it directly to the accepted Cleanup #3 picker handler so A on Species
@@ -133,6 +142,12 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     drawGSCOverlay(fb);
+
+    // The shared Gen II workspace fully owns the visible surface while Create/Edit is active.
+    if (Gen2PokemonEditor::active(*this)) {
+        Gen2PokemonEditor::drawOverlay(*this, fb);
+        return;
+    }
 
     // Match the input ownership rule above: an active picker must be the visible top surface.
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
