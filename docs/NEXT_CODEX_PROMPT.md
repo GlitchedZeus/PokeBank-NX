@@ -1,365 +1,246 @@
-# NEXT CODEX PROMPT — GEN I STAGED EDITOR UX OVERHAUL
+# NEXT CODEX PROMPT — GENERATION II SHARED POKÉMON EDITOR
 
 Continue PokeBank NX on `feature/pokebank-playable`.
 
-Use MEDIUM reasoning by default; use deeper analysis only for a concrete UI/native defect.
+## ACCEPTED BASELINE
 
-## THIS IS A CONTINUATION TASK
+PR #66 is merged. Generation I boxed staged Pokémon editing is now physically DEVICE ACCEPTED.
 
-Do **not** restart the Gen I editor.
-Do **not** rewrite the working Gen I save/editor core.
-Do **not** begin Gen III boxed editing, Master Vault, DS/3DS, emulator resolver implementation, or live writes.
-
-The exact Gen I boxed staged editor was physically tested on a real Switch.
-
-Hardware-tested application:
+Accepted Gen I hardware candidate:
 
 ```text
-Application source: 574d604b3aa2157942fb05d10d846426ffcdf099
-Application tree: fc5c30d5d6db04f1e28cb5489ca214a49471f593
-Validation run: 34749156054
-NRO: PokeBank-NX-Gen1-Editor-574d604b.nro
-NRO bytes: 161418993
-NRO SHA-256: 76a3bbd93f06072e762821091d77f6f28538b4f47a43a4e85b382a8bc4424415
+Application source: 69668bc81629228ef25c1bdada7c7ce1aed9b666
+Application tree:   b0ec6d42a426b4bba4bff87ad7eb948ccafc4fe9
+NRO:                PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
+NRO SHA-256:        3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
+Acceptance record:  docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md
+Issue #62:          CLOSED / DEVICE ACCEPTED
 ```
 
-Owner hardware result:
+PR #66 merge commit baseline:
 
 ```text
-GEN I EDITOR FUNCTIONAL HARDWARE TEST: PASS
-GEN I EDITOR UX ACCEPTANCE: FAIL / RETEST REQUIRED
-GEN I BOXED STAGED EDITOR DEVICE ACCEPTED: NO
-GEN I PARTY EDIT: DEFERRED
-LIVE RETROARCH WRITE: HARD DISABLED
-LIVE INSTALLED-GAME WRITE: HARD DISABLED
+22333d370f4c06d334946e8ff913f884a205722f
 ```
 
-Tracking issue: **#62 — Gen I staged editor UX overhaul — functional hardware pass, UI retest required**.
+Recover the latest remote production head before editing; do not assume the baseline above is still HEAD if newer documentation commits exist.
 
-Read first:
+## NEXT MILESTONE
 
-- `CURRENT_STATUS.md`
-- `PROJECT_STATUS.md`
-- `docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md`
-- issue #62
-- existing Gen I editor/UI contract and tests
+Bring the existing Generation II Gold/Silver/Crystal boxed-Pokémon staged editor onto the same reusable PKSE-style View/Create/Edit foundation now accepted for Gen I, then produce an exact NRO for physical hardware acceptance.
 
-## FIRST ACTION — RECOVER, DO NOT ASSUME
+Do NOT rewrite the existing Gen II parser/serializer/editor core unless a concrete failing test proves a defect. Reuse the already validated staged Gen II backend.
 
-1. Follow `docs/RECOVERY_CONTRACT.md`.
-2. Recover the current remote `origin/feature/pokebank-playable` HEAD.
-3. Record exact HEAD/tree before editing.
-4. Confirm the hardware-tested application source `574d604b...` is in history.
-5. Run the current focused Gen I editor/UI tests before changing UI behavior.
-6. Preserve all newer docs/research and all accepted inventory/Gen II work.
-7. Keep custom PokeBank NX work on `origin` only; never push it to `kiasta/PKSE`.
+## PERMANENT EDITOR RULE
 
-## CORE RULE — THIS IS UI POLISH, NOT SAVE-FORMAT REWORK
+Read and obey:
 
-The hardware test proved that the Gen I staged editor functions on Switch. The problem is the human-facing experience.
+`docs/POKEMON_EDITOR_UI_CONTRACT.md`
 
-Do not touch parser/serializer/editor-core logic unless a new test or reproducible hardware defect proves it necessary.
+If a field genuinely exists in the exact current game/save format, expose it in the shared editor. If it does not exist, hide it rather than fabricate it. Exact game/save/revision capability wins over species debut generation.
 
-Preserve:
+Gen II should therefore expose truthful PK2 concepts such as:
 
-- immutable original source bytes;
-- staged working bytes;
-- semantic Pending Changes;
-- Add as draft-only until explicit `Stage Add`;
-- clone/remove behavior;
-- strict export/finalize/reparse validation;
-- international editable-layout gate;
-- Japanese/unsupported editable layouts fail closed/read-only;
-- live installed-game writes HARD DISABLED;
-- live RetroArch writes HARD DISABLED;
-- live other-emulator writes HARD DISABLED;
-- party editing DEFERRED.
+- Species
+- Nickname
+- Level / EXP
+- OT
+- TID
+- Held Item
+- Moves / PP / PP Ups
+- Attack / Defense / Speed / Special DVs
+- derived/read-only HP DV
+- Stat Exp
+- Friendship
+- Pokérus
+- caught/met data where the exact GSC format supports it
+- shiny state derived from DVs
+- gender derived from species + Attack DV where applicable
+- real calculated Generation II battle stats
 
-## OWNER HARDWARE UX FINDINGS — FIX ALL OF THESE
+Do NOT add Gen III+ concepts to GSC:
 
-### 1. Replace the multi-page Add wizard feel
+- Nature
+- Ability
+- Ribbons
+- Marks
+- modern personality/PID semantics
+- later-generation-only met fields
 
-Current Add Pokémon creation feels like too many little windows/pages: choose a few values, move to another step, choose a few more, repeat.
+Gold/Silver trainer gender remains fixed Male. Crystal trainer gender remains save-derived. Gen II SID does not exist.
 
-The owner described it as janky and confusing.
+## SHARED UI EXPECTATION
 
-Build **one coherent Gen I Pokémon editor workspace** instead of a long wizard chain.
-
-Creation should feel like editing one Pokémon, not filling out 10–15 separate forms.
-
-### 2. Remove confusing right-bumper-as-next-step behavior
-
-The owner specifically reported that the right bumper acts as the next-step button and that this is not intuitive.
-
-Do not preserve a hidden/sequential wizard progression merely because it exists now.
-
-Preferred controller model:
+Use the same permanent three-panel visual language accepted for Gen I:
 
 ```text
-D-pad / Left Stick   Navigate fields/rows
-A                    Select / Edit
-B                    Back / Cancel
-L / R                Previous / Next clearly labeled section/tab
-+ or explicit row    Review / Stage action only where appropriate
+DETAILS | VALUES | MOVES
 ```
 
-The exact final mapping may differ if existing project conventions require it, but:
+Create, Edit and View should share one generation-aware shell.
 
-- controls must be visible;
-- hints must match real behavior;
-- next/previous navigation must not feel hidden;
-- no accidental mutation may be tied to changing sections.
-
-### 3. Show the Pokémon sprite LIVE while creating
-
-As soon as the draft species changes, display that Pokémon's sprite/art immediately.
-
-The owner should not need to complete `Stage Add` before seeing what Pokémon is being created.
-
-Changing the visual preview must **not** stage save bytes.
-
-Use existing project Pokémon visual assets/resource helpers where possible; do not introduce a network dependency.
-
-### 4. Give creation/editing a persistent full Pokémon overview
-
-The owner wants a full-window understanding of the Pokémon while editing.
-
-The new workspace should keep a persistent preview/summary visible while moving between editable sections.
-
-Generation-correct content should include, where applicable:
+Preserve the accepted controller model:
 
 ```text
-Species
-Nickname
-Level
-Experience
-Move 1-4
-PP
-PP Ups
-Attack DV
-Defense DV
-Speed DV
-Special DV
-HP DV (derived/read-only)
-HP Stat Exp
-Attack Stat Exp
-Defense Stat Exp
-Speed Stat Exp
-Special Stat Exp
-OT
-TID
+D-pad / Left Stick   Navigate current panel
+A                    Edit / Select
+Y                    Generation-appropriate quick action only when explicitly shown
+L                    Previous panel
+R                    Next panel
+B                    Back / transactional exit
 ```
 
-Also show calculated/read-only Gen I battle stats if they can be derived correctly from species/base stats + level + DVs + Stat Exp using existing trusted data.
+Footer hints must always describe the currently active screen/modal.
 
-Do **not** invent stored fields just to fill the page.
+For existing-Pokémon Edit, preserve the accepted transactional-session rule:
 
-Still no:
+- opening Edit snapshots the exact current staged Pokémon;
+- previews may update inside the editor;
+- B after a real change opens confirmation;
+- A keeps this session's staged edits;
+- X discards only this Edit session and restores the exact state present when Edit opened;
+- B on confirmation returns to editing;
+- opening Edit and changing nothing exits normally without pointless confirmation;
+- discard must never erase unrelated earlier staged work.
+
+## GEN II SUPPLEMENTAL DATA PANE
+
+Use the lower-left supplemental pane beside the radar for real Gen II data rather than empty filler.
+
+Good candidates include compact truthful values such as:
+
+- Held Item
+- Friendship
+- Pokérus
+- caught/met information where supported
+- source game
+- EXP growth / next-level information
+
+Held Item must be interactive and use an exact-game-valid picker. Do not expose later-generation items that cannot exist in GSC.
+
+There are no Ribbons in Gen II, so do not show a Ribbons row.
+
+## GEN II BATTLE STATS / RADAR
+
+Generation II battle stats are six numeric stats because Special Attack and Special Defense are separate battle stats, even though the stored DV is one shared Special DV.
+
+Do not blindly reuse the Gen I five-axis labels if they would misrepresent Gen II.
+
+Audit the existing Gen II stat model and choose a truthful readable presentation. The shared radar architecture may require a generation-specific six-axis variant for Gen II+.
+
+Requirements:
+
+- use actual calculated GSC battle stats;
+- make clear that Sp. Atk and Sp. Def derive from one stored Special DV in Gen II;
+- do not fabricate independent SpA/SpD DVs;
+- keep calculated battle stats read-only/unfocusable;
+- editor and normal Summary must agree.
+
+## PRESERVE EXISTING GEN II BACKEND
+
+The existing staged Gen II editor already has host/native coverage for boxed Pokémon edits, including semantic round-trip validation and derived-gender normalization. Preserve that work.
+
+Do not weaken:
+
+- strict serialize -> finalize -> reparse -> semantic verification;
+- source immutability;
+- exact game handling;
+- unsupported Japanese/edit layouts fail-closed behavior;
+- staged Trainer / Money / Inventory behavior;
+- machine display mappings;
+- existing Gen I / Gen III read regressions.
+
+Party mutation remains DEFERRED.
+
+## SAFETY — NON-NEGOTIABLE
 
 ```text
-SID
-Nature
-Ability
-Held Item
-native shiny flag
-native gender field
-ribbons
-marks
-personality value
-modern met-data
+ORIGINAL SOURCE SAVE: IMMUTABLE
+LIVE RETROARCH WRITES: HARD DISABLED
+LIVE INSTALLED-GAME WRITES: HARD DISABLED
+LIVE OTHER-EMULATOR WRITES: HARD DISABLED
+PARTY EDIT: DEFERRED
 ```
 
-### 5. Fix the species picker layout
+Implementing the Gen II UI does not authorize live writeback.
 
-Current picker has the number at the far left and the species name at the far right with a huge empty gap.
+## FIRST TASK
 
-Replace that presentation with a compact single-label row such as:
+1. Recover exact current `feature/pokebank-playable` HEAD/tree.
+2. Confirm PR #66 merge and Gen I acceptance record are in history.
+3. Run the existing Gen II focused staged-editor tests before changing UI.
+4. Audit which Gen II backend fields already exist and map them into the permanent shared editor capability model.
+5. Reuse the accepted Gen I UI primitives rather than creating another generation-specific editor from scratch.
+6. Keep Gen I DEVICE ACCEPTED behavior frozen unless a new regression proves otherwise.
 
-```text
-001 - Bulbasaur
-002 - Ivysaur
-003 - Venusaur
-...
-151 - Mew
-```
-
-Number and name must stay visually together.
-
-Keep Gen I species restricted to #001–151.
-
-### 6. Clean up modal/header geometry
-
-Hardware screenshots show presentation problems including crowded/overlapping title/subtitle text and large areas of dead whitespace.
-
-Audit and fix:
-
-- title/subtitle vertical spacing;
-- overlapping text;
-- clipping;
-- modal width/height;
-- row alignment;
-- padding;
-- footer placement;
-- label/value hierarchy;
-- content density.
-
-The UI should look intentional on 1280×720 Switch handheld/docked output, not like debug menus stacked on top of one another.
-
-### 7. Add and Edit should share the same polished workspace
-
-Editing an existing boxed Pokémon and creating a new boxed Pokémon should use the same visual language and section layout wherever their fields overlap.
-
-For Add, the transaction semantics remain different:
-
-```text
-open draft
-→ modify draft fields
-→ preview freely
-→ Cancel = no staged mutation
-→ explicit Stage Add = staged mutation
-```
-
-Do not call `stageAdd()` during navigation, field selection, species preview, tab changes, or Cancel.
-
-### 8. Keep the complete draft understandable at a glance
-
-A strong target layout is:
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ Gen I Pokémon Editor — DRAFT / Box X Slot Y                 │
-├─────────────────────┬────────────────────────────────────────┤
-│                     │ Species / Nickname / Lv / EXP         │
-│    LIVE SPRITE      │ calculated stats preview              │
-│                     │ compact draft status / pending state   │
-├─────────────────────┴────────────────────────────────────────┤
-│ Summary | Moves | DVs | Stat Exp | Trainer                  │
-├──────────────────────────────────────────────────────────────┤
-│ current section fields — editable without opening a new     │
-│ full-screen modal for every tiny group                       │
-├──────────────────────────────────────────────────────────────┤
-│ A Edit  B Back/Cancel  L/R Section  Review / Stage Add      │
-└──────────────────────────────────────────────────────────────┘
-```
-
-This is a UX direction, not a pixel-perfect mandate. Reuse existing project UI primitives and styles.
-
-## DO NOT REGRESS EXISTING ACCEPTED WORK
-
-Inventory hardware milestone remains DEVICE ACCEPTED.
-
-Gen II ordinary item ID 5 remains `Poké Ball`; GS Ball remains separate.
-
-Gen I/II/III legacy read-only paths remain accepted.
-
-Generation II accepted overlay behavior must not regress.
-
-One software-keyboard prompt per frame remains required.
-
-Do not reopen working save-format behavior because of visual polish.
-
-## REQUIRED TEST/CONTRACT UPDATES
-
-Update permanent host/UI contracts so the new UX cannot silently regress.
+## REQUIRED REGRESSION COVERAGE
 
 At minimum cover:
 
-- Add draft navigation does not mutate staged bytes;
-- Cancel from draft does not mutate staged bytes;
-- `Stage Add` is still explicit;
-- species picker formatting is compact, e.g. `001 - Bulbasaur`;
-- draft species change updates preview identity/sprite selection without staging;
-- section/tab navigation is explicit and deterministic;
-- Gen I-only field set remains enforced;
-- HP DV remains derived/read-only;
-- party edit remains disabled;
-- source writes remain hard disabled.
+- exact Gen II field/capability set;
+- Held Item present and editable;
+- no Nature/Ability/Ribbons;
+- HP DV derived/read-only;
+- one stored Special DV feeding truthful Gen II battle-stat presentation;
+- Friendship / Pokérus / caught data where supported;
+- derived gender behavior;
+- shiny DV behavior;
+- transactional Edit keep/discard/no-change semantics;
+- Add remains explicit staged-draft flow;
+- exact-game held-item validity;
+- calculated stats unfocusable;
+- contextual picker/modal ownership;
+- source immutability and all live-write locks.
 
-Keep existing Gen I mutation/core tests unchanged unless a legitimate UI-contract integration requires additional coverage.
+## VALIDATION BEFORE DEVICE NRO
 
-## VERIFICATION GATES BEFORE THE NEXT NRO
-
-The exact new candidate must pass:
+Require:
 
 ```text
 git diff --check
-focused Gen I staged editor tests
-Gen I UI/UX contract tests
-Add draft/cancel mutation safety
-species picker formatting contract
-preview-selection contract
-RBY read-only regression
-GSC / Gen II editor regression
-FRLG regression
-RSE regression
-classic inventory regression
-machine-label regression
+focused Gen II staged editor tests
+shared Pokémon editor capability/UI tests
+Gen I accepted editor regressions
+GSC read-only regressions
+RBY regressions
+FRLG/RSE regressions
+inventory regressions
+machine-display regressions
 source mutation policy
 full permanent host suite
 ASan
 UBSan
-native device asset preflight
+device asset preflight
 devkitA64 clean compile
-FINAL NRO LINK
-embedded application source identity
-embedded RomFS identity
+final NRO link
+embedded application identity
+embedded RomFS verification
 exact artifact packaging
 ```
 
-Do not weaken or remove a test to make the new UI green.
+Do not weaken tests to make the candidate green.
 
-## HARDWARE RETEST TARGET
+## HARDWARE HANDOFF
 
-Package a new exact source-addressed NRO and stop for owner testing.
+When the exact candidate is fully green, download the CI artifact and independently verify its manifest and hashes. Report exact application SHA/tree, workflow IDs, NRO filename/bytes/SHA-256, packaged ZIP, artifact ID/digest and RomFS count.
 
-The owner should retest primarily:
+Then provide the actual `.nro` and STOP for owner hardware testing.
 
-1. Add Pokémon from an empty Gen I box slot.
-2. Confirm the sprite appears immediately while still in draft.
-3. Change species and confirm the sprite/identity preview updates immediately.
-4. Confirm species rows look like `001 - Bulbasaur`, not distant left/right columns.
-5. Navigate Summary / Moves / DVs / Stat Exp / Trainer naturally.
-6. Confirm the whole draft remains understandable without a long wizard chain.
-7. Cancel a draft and confirm nothing was added.
-8. Stage Add and confirm the Pokémon appears staged.
-9. Edit an existing Pokémon and confirm it uses the same polished layout.
-10. Check for text overlaps, clipping, giant empty dialogs, confusing button hints, or awkward shoulder-button behavior.
+Primary physical test targets:
+
+1. Gold/Silver/Crystal boxed Pokémon open in the shared editor.
+2. View is read-only.
+3. Create/Edit share the same workspace.
+4. Held Item picker works and only offers exact-game-valid items.
+5. Friendship, Pokérus and supported caught/met fields are truthful/editable.
+6. DVs and derived HP DV behave correctly.
+7. Gen II gender derivation remains correct.
+8. shiny behavior remains DV-derived.
+9. battle stats/Summary agree and clearly handle split SpA/SpD with one stored Special DV.
+10. transactional B exit keep/discard/no-change works.
+11. discard restores exact pre-edit staged state.
+12. source `.srm` remains untouched.
 
 ## STOP CONDITION
 
-Stop only after the UI overhaul is host/sanitizer/native green and an exact new NRO is ready for physical retest.
-
-Report:
-
-```text
-GEN I EDITOR FUNCTIONAL BASELINE:
-PRESERVED
-
-GEN I EDITOR UX:
-READY FOR HARDWARE RETEST
-
-GEN I BOXED STAGED EDITOR DEVICE ACCEPTED:
-NO — PENDING OWNER RETEST
-
-PARTY EDIT:
-DEFERRED
-
-LIVE RETROARCH WRITE:
-HARD DISABLED
-
-LIVE INSTALLED-GAME WRITE:
-HARD DISABLED
-
-APPLICATION SOURCE SHA:
-<exact sha>
-
-APPLICATION TREE:
-<exact tree>
-
-NRO:
-<filename>
-<bytes>
-<SHA-256>
-```
-
-Then stop. Do **not** start the next roadmap milestone until the owner accepts the cleaned-up Gen I editor UI on real hardware.
+Do not start Gen III boxed editing, Master Vault, DS/3DS, live writes or another roadmap milestone until the Generation II shared editor has an exact hardware-test candidate and the owner reports the device result.
