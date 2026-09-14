@@ -8,6 +8,7 @@ namespace PokeBank::UIModel::PokemonEditorFoundation {
 
 enum class Panel : uint8_t { Identity, Values, Moves };
 enum class Direction : uint8_t { Up, Down, Left, Right };
+enum class SurfaceOwner : uint8_t { FoundationWorkspace, Cleanup3 };
 
 enum class IdentityField : uint8_t {
     Species,
@@ -46,6 +47,10 @@ constexpr uint8_t identityRowCount() noexcept { return 5; }
 constexpr uint8_t valueRowCount() noexcept { return 7; }
 constexpr uint8_t moveRowCount() noexcept { return 4; }
 constexpr uint8_t valueStatRowCount() noexcept { return 5; }
+
+constexpr SurfaceOwner surfaceOwnerFor(bool foundationMainMode, bool pickerActive) noexcept {
+    return (!foundationMainMode || pickerActive) ? SurfaceOwner::Cleanup3 : SurfaceOwner::FoundationWorkspace;
+}
 
 constexpr Focus normalize(Focus focus) noexcept {
     switch (focus.panel) {
@@ -180,6 +185,14 @@ constexpr Capabilities capabilitiesForGeneration(Generation generation) noexcept
                     false, true, false, true, true, true, true};
     }
     return {};
+}
+
+constexpr bool supplementalPanelShowsHeldItem(Generation generation) noexcept {
+    return capabilitiesForGeneration(generation).supportsHeldItem;
+}
+
+constexpr bool supplementalPanelShowsRibbons(Generation generation) noexcept {
+    return capabilitiesForGeneration(generation).supportsRibbons;
 }
 
 constexpr std::array<const char*, 5> gen1StatLabels() noexcept {
