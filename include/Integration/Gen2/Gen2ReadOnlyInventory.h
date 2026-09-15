@@ -40,7 +40,12 @@ struct InventoryRecord {
 [[nodiscard]] InventoryRecord decodeInventory(
     std::span<const uint8_t> payload, RegionLayout region, VersionFamily family);
 
+// Exact raw Generation II item-table label. Keep this stable for parsing/oracle work.
 [[nodiscard]] std::string_view gen2ItemName(uint8_t itemId) noexcept;
+
+// Player-facing display alias for the same exact raw item id. This never changes
+// item identity; it only expands game-era abbreviations and normalizes casing.
+[[nodiscard]] std::string gen2ItemDisplayName(uint8_t itemId);
 
 } // namespace PokeVault::Integration::Gen2
 #endif
