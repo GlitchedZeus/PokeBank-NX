@@ -1,7 +1,7 @@
 # Issue #71 — Pre-Gen-III input/document archaeology index
 
-Audit base: `feature/pokebank-playable@48753c2b0093d30213aa32f016100df0906c3cfb`  
-Audit branch: `audit/pre-gen3-shared-editor-71`  
+Audit base: `feature/pokebank-playable@48753c2b0093d30213aa32f016100df0906c3cfb`
+Audit branch: `audit/pre-gen3-shared-editor-71`
 Accepted Gen I/II tree: `11c6d899f0d842ac97a3813a48c8d33beba675bb`
 
 This file records the corpus-discovery pass required by issue #71. The complete `docs/` tree at the accepted baseline was enumerated recursively, including `docs/history/` and `docs/research/`. The canonical research routers were read first, then current implementation and potentially relevant historical material were cross-checked.
