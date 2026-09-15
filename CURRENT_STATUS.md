@@ -28,23 +28,33 @@ Physical result: CI VERIFIED / DEVICE RETESTED / DEVICE ACCEPTED / no hardware b
 
 The production merge commit preserves the accepted SHA as a parent and uses the accepted tree.
 
-## Active phase
+## Active phase — Issue #71 P0 foundation
 
-Issue #71 — pre-Gen-III reuse/shared-editor audit.
+Issue #71 remains OPEN.
 
-Audit branch:
+Branch:
 `audit/pre-gen3-shared-editor-71`
 
-Scope: architecture/reuse/freeze only. **Gen III Pokémon editing implementation has NOT started.**
+Draft validation PR:
+`#72 — P0: add pre-Gen-III exact-format editor provider foundation`
 
-Required audit artifacts:
-- `docs/GEN3_INPUT_DOCS_INDEX.md`
-- `docs/GEN3_UI_REUSE_MATRIX.md`
-- `docs/GEN3_REUSE_FREEZE.md`
-- `docs/GEN3_ITEM_LANE_DECISION_TREE.md`
-- `docs/GEN3_MINIMAL_SAFE_CHANGE_LIST.md`
+P0 now provides generation-neutral, PokeBank-owned descriptor/provider vocabulary above the generation-native adapters:
 
-Next implementation phase after audit approval: P0 descriptor/provider foundation only; still no Gen III product routing.
+- field state: Hidden / Derived / ReadOnly / Editable;
+- exact-format editor descriptor;
+- PackedNative / SparseOwned / AdapterDefined storage semantics;
+- generation-truthful stat presentation schema;
+- exact-game move compatibility provider interface plus Gen I/II proof adapters;
+- trainer field descriptor;
+- source/save-operation to UI-field bridge without source-write permission;
+- future Move/Multi storage-operation vocabulary only, disabled in P0;
+- permanent host architecture guard preventing a parallel Gen3PokemonEditor shell.
+
+Gen I and Gen II serializers, runtime editor routing, visual layout, navigation and packed-box behavior are not rewritten by P0.
+
+**Generation III Pokémon editing implementation has NOT started. Generation III product routing remains unchanged/read-only.**
+
+PR #72 is intentionally DRAFT / NOT MERGED. Exact-head host, sanitizer and native validation must be reviewed before P0 is accepted and before any later Gen III implementation is authorized.
 
 ## Permanent safety contract
 
@@ -52,7 +62,8 @@ Next implementation phase after audit approval: P0 descriptor/provider foundatio
 - live RetroArch writes HARD DISABLED;
 - live installed-game writes HARD DISABLED;
 - live other-emulator writes HARD DISABLED;
-- staged PokeBank editing/export allowed;
+- staged PokeBank editing/export allowed only through approved generation-native adapters;
+- party mutation separately gated;
 - Gen I native boxes PACKED;
 - Gen II native boxes PACKED;
 - ONE shared Pokémon editor;

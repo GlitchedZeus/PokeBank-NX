@@ -123,12 +123,21 @@ struct MoveCompatibilityQuery {
     bool existingSourceMove = false;
 };
 
+using MoveCompatibilityEvaluator = MoveCompatibilityResult (*)(const MoveCompatibilityQuery&) noexcept;
+
 struct MoveCompatibilityProvider {
     MoveCompatibilityProviderKind kind = MoveCompatibilityProviderKind::None;
     std::string_view exactGameId;
+    MoveCompatibilityEvaluator evaluator = nullptr;
 
     constexpr bool accepts(const MoveCompatibilityQuery& query) const noexcept {
         return kind != MoveCompatibilityProviderKind::None && query.exactGameId == exactGameId;
+    }
+
+    MoveCompatibilityResult evaluate(const MoveCompatibilityQuery& query) const noexcept {
+        if (!accepts(query)) return MoveCompatibilityResult::Invalid;
+        if (!evaluator) return MoveCompatibilityResult::Unsupported;
+        return evaluator(query);
     }
 };
 
@@ -199,7 +208,7 @@ struct SourceCapabilityBridge {
                saveOperations.supports(PokeVault::SaveEdit::Capability::PokemonEditing);
     }
 
-    // Exact-format editor providers describe UI/staged rights. They never grant original-source writes.
+    // Providers describe UI/staged rights only; original-source write permission is never granted here.
     constexpr bool canWriteOriginalSource() const noexcept { return false; }
 
     constexpr bool sourcePolicyWouldAllowDirectEdit() const noexcept {
@@ -234,7 +243,8 @@ constexpr std::optional<ExactFormatEditorDescriptor> descriptorForAcceptedClassi
     std::string_view sourceId,
     PokeVault::SaveEdit::Capabilities saveOperations,
     PokeVault::Safety::SourceKind sourceKind,
-    bool stagedWorkspaceAvailable) noexcept {
+    bool stagedWorkspaceAvailable,
+    MoveCompatibilityEvaluator moveEvaluator = nullptr) noexcept {
     const auto exact = PokemonEditorFoundation::capabilitiesForSourceId(sourceId);
     if (!exact) return std::nullopt;
 
@@ -248,10 +258,11 @@ constexpr std::optional<ExactFormatEditorDescriptor> descriptorForAcceptedClassi
         gen1 ? gen1StatPresentation() : gen2StatPresentation(),
         {gen1 ? MoveCompatibilityProviderKind::Gen1ExactGame
               : MoveCompatibilityProviderKind::Gen2ExactGame,
-         sourceId},
+         sourceId,
+         moveEvaluator},
         gen1 ? gen1TrainerDescriptor() : gen2TrainerDescriptor(),
         {sourceKind, saveOperations, stagedWorkspaceAvailable},
-        {}, // P0 defines vocabulary only; inherited Move/Multi extraction remains later work.
+        {}, // P0 vocabulary only; inherited Move/Multi extraction remains later work.
         {true},
     };
 }

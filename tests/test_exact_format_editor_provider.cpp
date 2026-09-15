@@ -1,6 +1,6 @@
+#include "Integration/Classic/ClassicExactFormatEditorProviders.h"
 #include "Safety/SourceMutationPolicy.h"
 #include "Save/EditableSaveCapabilities.h"
-#include "UI/ExactFormatEditorProvider.h"
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/SharedPokemonEditorContract.h"
 
@@ -24,6 +24,7 @@ int main() {
     namespace Exact = PokeBank::UIModel::ExactFormatEditor;
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
     namespace Foundation = PokeBank::UIModel::PokemonEditorFoundation;
+    namespace Classic = PokeVault::Integration::ClassicEditorProvider;
     using PokeVault::Safety::SourceKind;
 
     static_assert(!std::is_same_v<Shared::ActionCapabilities, PokeVault::SaveEdit::Capabilities>);
@@ -32,7 +33,7 @@ int main() {
     static_assert(!Foundation::liveInstalledGameWriteEnabled());
     static_assert(!Foundation::liveOtherEmulatorWriteEnabled());
 
-    const auto gen1 = Exact::descriptorForAcceptedClassicSource(
+    const auto gen1 = Classic::descriptorForAcceptedClassicSource(
         "red_gb", stagedPokemonCapabilities(), SourceKind::RetroArchLegacy, true);
     assert(gen1);
     assert(gen1->storage == Exact::StorageSemantics::PackedNative);
@@ -56,8 +57,10 @@ int main() {
     assert(!gen1->fieldIsEditorTarget(Shared::FieldIdentity::Shiny));
     assert(gen1->fieldIsEditorTarget(Shared::FieldIdentity::Species));
     assert(gen1->moves.kind == Exact::MoveCompatibilityProviderKind::Gen1ExactGame);
-    assert(gen1->moves.accepts({"red_gb", 25, 0, 85, false}));
-    assert(!gen1->moves.accepts({"blue_gb", 25, 0, 85, false}));
+    assert(gen1->moves.evaluate({"red_gb", 6, 0, 53, false}) == Exact::MoveCompatibilityResult::Compatible);
+    assert(gen1->moves.evaluate({"red_gb", 6, 0, 19, false}) == Exact::MoveCompatibilityResult::Unsupported);
+    assert(gen1->moves.evaluate({"red_gb", 6, 0, 19, true}) == Exact::MoveCompatibilityResult::PreserveExisting);
+    assert(gen1->moves.evaluate({"blue_gb", 6, 0, 53, false}) == Exact::MoveCompatibilityResult::Invalid);
     assert(gen1->trainer.state(Exact::TrainerField::Name) == Exact::FieldState::Editable);
     assert(gen1->trainer.state(Exact::TrainerField::TrainerId) == Exact::FieldState::ReadOnly);
     assert(gen1->trainer.state(Exact::TrainerField::SecretId) == Exact::FieldState::Hidden);
@@ -68,7 +71,12 @@ int main() {
     assert(!gen1->storageOperations.stagedSingleReorder);
     assert(!gen1->storageOperations.stagedRectangleSelection);
 
-    const auto gen2 = Exact::descriptorForAcceptedClassicSource(
+    const auto yellow = Classic::descriptorForAcceptedClassicSource(
+        "yellow_gb", stagedPokemonCapabilities(), SourceKind::RetroArchLegacy, true);
+    assert(yellow);
+    assert(yellow->moves.evaluate({"yellow_gb", 6, 0, 19, false}) == Exact::MoveCompatibilityResult::Compatible);
+
+    const auto gen2 = Classic::descriptorForAcceptedClassicSource(
         "gold_gbc", stagedPokemonCapabilities(), SourceKind::RetroArchLegacy, true);
     assert(gen2);
     assert(gen2->storage == Exact::StorageSemantics::PackedNative);
@@ -89,18 +97,20 @@ int main() {
     assert(gen2->trainer.state(Exact::TrainerField::TrainerId) == Exact::FieldState::ReadOnly);
     assert(gen2->trainer.state(Exact::TrainerField::Gender) == Exact::FieldState::ReadOnly);
     assert(gen2->moves.kind == Exact::MoveCompatibilityProviderKind::Gen2ExactGame);
-    assert(gen2->moves.accepts({"gold_gbc", 25, 0, 85, true}));
+    assert(gen2->moves.evaluate({"gold_gbc", 23, 0, 242, false}) == Exact::MoveCompatibilityResult::Unsupported);
+    assert(gen2->moves.evaluate({"gold_gbc", 23, 0, 242, true}) == Exact::MoveCompatibilityResult::PreserveExisting);
     assert(!gen2->source.canWriteOriginalSource());
     assert(!gen2->source.sourcePolicyWouldAllowDirectEdit());
 
-    const auto crystal = Exact::descriptorForAcceptedClassicSource(
+    const auto crystal = Classic::descriptorForAcceptedClassicSource(
         "crystal_gbc", stagedPokemonCapabilities(), SourceKind::RetroArchLegacy, true);
     assert(crystal);
     assert(crystal->fieldState(Shared::FieldIdentity::MetLevel) == Exact::FieldState::Editable);
     assert(crystal->fieldState(Shared::FieldIdentity::MetLocation) == Exact::FieldState::Editable);
+    assert(crystal->moves.evaluate({"crystal_gbc", 23, 0, 242, false}) == Exact::MoveCompatibilityResult::Compatible);
 
     // P0 deliberately does not route Generation III into an editable product provider.
-    assert(!Exact::descriptorForAcceptedClassicSource(
+    assert(!Classic::descriptorForAcceptedClassicSource(
         "ruby_gba", stagedPokemonCapabilities(), SourceKind::RetroArchLegacy, true));
 
     // Staged capability and original-source capability are intentionally distinct.
@@ -111,7 +121,6 @@ int main() {
     assert(!PokeVault::Safety::canPerform(SourceKind::InstalledGame, PokeVault::Safety::SourceMutation::Edit));
     assert(!PokeVault::Safety::canPerform(SourceKind::RetroArchLegacy, PokeVault::Safety::SourceMutation::Edit));
 
-    // Result vocabulary preserves compatibility vs unusual-existing vs invalid distinctions.
     static_assert(Exact::MoveCompatibilityResult::Compatible != Exact::MoveCompatibilityResult::PreserveExisting);
     static_assert(Exact::MoveCompatibilityResult::Unsupported != Exact::MoveCompatibilityResult::Invalid);
 

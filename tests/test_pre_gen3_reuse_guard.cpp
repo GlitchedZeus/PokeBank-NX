@@ -35,29 +35,42 @@ int main() {
     const auto shared = readFile("include/UI/SharedPokemonEditorContract.h");
     const auto foundation = readFile("include/UI/PokemonEditorFoundationContract.h");
     const auto provider = readFile("include/UI/ExactFormatEditorProvider.h");
+    const auto classicProvider = readFile("include/Integration/Classic/ClassicExactFormatEditorProviders.h");
     const auto gen3 = readFile("include/Integration/Gen3/PKSMGen3Adapter.h");
     const auto safety = readFile("include/Safety/SourceMutationPolicy.h");
 
-    assert(shared.find("namespace PokeBank::UIModel::SharedEditor") != std::string::npos);
-    assert(shared.find("enum class Workspace") != std::string::npos);
+    // Assert the real accepted shared contracts rather than brittle fictional namespace names.
+    assert(shared.find("namespace PokeBank::UIModel::SharedPokemonEditor") != std::string::npos);
+    assert(shared.find("enum class Surface") != std::string::npos);
+    assert(shared.find("CreateDraft") != std::string::npos);
+    assert(shared.find("enum class Panel") != std::string::npos);
     assert(shared.find("Details") != std::string::npos);
-    assert(shared.find("Stats") != std::string::npos);
+    assert(shared.find("Values") != std::string::npos);
     assert(shared.find("Moves") != std::string::npos);
 
-    assert(foundation.find("CreateDraft") != std::string::npos);
-    assert(foundation.find("EditStaged") != std::string::npos);
-    assert(foundation.find("ViewReadOnly") != std::string::npos);
+    assert(foundation.find("namespace PokeBank::UIModel::PokemonEditorFoundation") != std::string::npos);
+    assert(foundation.find("struct Capabilities") != std::string::npos);
+    assert(foundation.find("liveRetroArchWriteEnabled") != std::string::npos);
+    assert(foundation.find("liveInstalledGameWriteEnabled") != std::string::npos);
+    assert(foundation.find("liveOtherEmulatorWriteEnabled") != std::string::npos);
+    assert(foundation.find("partyEditEnabled") != std::string::npos);
 
-    // P0 provider vocabulary must remain PokeBank-owned, generation-neutral and serialization-free.
+    // P0 provider vocabulary remains PokeBank-owned, generation-neutral and serialization-free.
     assert(provider.find("enum class FieldState") != std::string::npos);
     assert(provider.find("enum class StorageSemantics") != std::string::npos);
     assert(provider.find("struct StatPresentationSchema") != std::string::npos);
     assert(provider.find("struct MoveCompatibilityQuery") != std::string::npos);
+    assert(provider.find("MoveCompatibilityEvaluator") != std::string::npos);
     assert(provider.find("struct TrainerDescriptor") != std::string::npos);
     assert(provider.find("struct SourceCapabilityBridge") != std::string::npos);
     assert(provider.find("descriptorForAcceptedClassicSource") != std::string::npos);
     assert(provider.find("finalizedBytes") == std::string::npos);
     assert(provider.find("PKSMGen3") == std::string::npos);
+
+    // Generation-specific move truth is adapted behind the provider instead of moved into shared UI.
+    assert(classicProvider.find("Gen1::MoveCompatibility::canLearnMove") != std::string::npos);
+    assert(classicProvider.find("Gen2::MoveCompatibility::canLearnMove") != std::string::npos);
+    assert(classicProvider.find("PreserveExisting") != std::string::npos);
 
     // The current Gen III boundary is deliberately read-only and PokeBank-owned; do not make
     // PKSM-Core concrete objects or write APIs the UI architecture during the preflight.

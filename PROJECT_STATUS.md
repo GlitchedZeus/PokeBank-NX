@@ -14,36 +14,36 @@ PR #68 merged into `feature/pokebank-playable` as merge commit `48753c2b0093d302
 
 Accepted NRO SHA256: `fa74911ef4af8a911a01b8cfe931735e517ac48c0ab4650215306c1195acabea`.
 
-## Current engineering milestone
-
-Issue #71: **Pre-Gen-III shared editor / reuse audit**.
+## Current engineering milestone — Issue #71 P0
 
 Branch: `audit/pre-gen3-shared-editor-71`.
 
-The audit freezes what must be reused, what may be generalized above generation-native adapters, and what must remain generation-specific. It does not authorize Gen III editing.
+Draft PR #72 contains the P0 pre-Gen-III descriptor/provider foundation and remains intentionally unmerged.
 
-Key architectural conclusion:
+Architecture:
 
 ```text
-PokeBank NX shared UI / lifecycle / capabilities
+PokeBank NX shared UI / lifecycle
         ↓
 PokeBank-owned exact-format provider descriptors
         ↓
-generation-native read/staged adapters
+generation-native read / staged adapters
         ↓
-PKSE / PKSM-Core / PKHeX / references as licensed backends/oracles
+reviewed backend/oracle/reference implementations
 ```
 
-Do not merge generation-native PK1/PK2/PK3 mutation structs into one fake universal serializer model.
+P0 adds field-state truth, storage semantics, stat presentation descriptors, exact-game move compatibility adapters, trainer descriptors, a save/UI capability bridge, and future staged Move/Multi operation vocabulary. It does not genericize PK1/PK2 serializers and it does not add PK3 mutation.
 
-## Existing Gen III foundation — current scope only
+The Gen I/II proof adapter layer delegates move compatibility to the existing exact-game Gen I/II implementations. Native serialization remains owned by the accepted generation-specific staged editors.
 
-The repository already contains read-only FRLG/RSE adapter work and staged inventory infrastructure. That work remains read-only/product-unchanged during #71. No Gen III Pokémon Create/Edit route is authorized yet.
+## Existing Gen III foundation — unchanged scope
+
+The repository still contains the existing read-only FRLG/RSE adapter work and staged inventory infrastructure. No Gen III Pokémon Create/Edit route, PK3 mutation, Gen III trainer mutation or party mutation is authorized by P0.
 
 ## Safety
 
-All original sources remain immutable. Live RetroArch, installed-game and other-emulator writes remain HARD DISABLED. Future write capability is adapter-specific and requires its own backup/stage/validate/readback/device gates.
+All original sources remain immutable. Live RetroArch, installed-game and other-emulator writes remain HARD DISABLED. Provider descriptors cannot grant original-source write permission. Future write capability remains adapter-specific and requires separate backup/stage/validate/readback/device gates.
 
 ## Next gate
 
-Complete/review #71 audit artifacts, then execute the P0 descriptor/provider foundation on the audit branch or a follow-on branch as explicitly instructed. Re-run accepted Gen I/II permanent host/sanitizer/native regressions. Only after that may a separately authorized Gen III implementation milestone begin.
+Review exact-head CI for draft PR #72: focused Gen I/II regressions, full permanent host suite, ASan/UBSan, source safety and real devkitA64/native compile. If P0 is green and confirmed to be no-product-change, review/accept the foundation. Only a subsequent explicit authorization may begin Generation III Pokémon editing.
