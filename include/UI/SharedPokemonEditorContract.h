@@ -40,7 +40,7 @@ enum class Action : uint8_t {
     LegalityProvenance,
     Add,
     Review,
-    Close,
+    Close, // internal close/cancel semantic; product copy is always "Cancel".
     None,
 };
 
@@ -68,6 +68,7 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
     if (!occupied) {
         append(Action::Add);
         append(Action::Review);
+        if (capabilities.hasLegalityProvenance) append(Action::LegalityProvenance);
         append(Action::Close);
         return result;
     }
@@ -81,6 +82,28 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
     append(Action::Close);
     return result;
 }
+
+constexpr const char* actionLabel(Action action) noexcept {
+    switch (action) {
+        case Action::View: return "View";
+        case Action::Edit: return "Edit";
+        case Action::Clone: return "Clone";
+        case Action::Remove: return "Remove";
+        case Action::LegalityProvenance: return "Legality & Provenance";
+        case Action::Add: return "Add Pokemon";
+        case Action::Review: return "Review Pending Changes";
+        case Action::Close: return "Cancel";
+        case Action::None: return "";
+    }
+    return "";
+}
+
+struct ActionMenuGeometry {
+    int rowStart = 86;
+    int rowHeight = 42;
+    int rowStep = 46;
+};
+constexpr ActionMenuGeometry actionMenuGeometry() noexcept { return {}; }
 
 constexpr Surface surfaceForAction(Action action) noexcept {
     switch (action) {
@@ -98,13 +121,32 @@ constexpr Surface surfaceForAction(Action action) noexcept {
     return Surface::Actions;
 }
 
+// Box interaction is shared across classic generations: A opens the contextual
+// Empty Slot/Pokemon Actions menu, while X is a direct Add shortcut only on an
+// empty visual cell. Packed native formats still choose the real append slot.
+enum class BoxActivation : uint8_t { None, Actions, Add };
+constexpr BoxActivation boxActivation(bool occupied, bool pressA, bool pressX) noexcept {
+    if (pressX && !occupied) return BoxActivation::Add;
+    if (pressA) return BoxActivation::Actions;
+    return BoxActivation::None;
+}
+
+struct PostAddSelection {
+    int box = -1;
+    int slot = -1;
+    bool openActions = false;
+};
+constexpr PostAddSelection postAddSelection(int currentBox, int packedSlot) noexcept {
+    return {currentBox, packedSlot, false};
+}
+
 enum class DraftEvent : uint8_t {
     Navigate,
     BrowsePicker,
     AcceptPicker,
     EditField,
     Cancel,
-    StageAdd,
+    StageAdd, // internal transaction semantic; user-facing command is Add.
 };
 
 struct DraftDecision {
@@ -125,6 +167,131 @@ constexpr DraftDecision draftDecision(DraftEvent event) noexcept {
             return {true, true};
     }
     return {};
+}
+
+// Shared field identities are deliberately broader than any one generation.
+// Merely naming a field never makes it visible: the active exact-save adapter
+// decides whether the field is hidden, derived, read-only or editable.
+enum class FieldIdentity : uint8_t {
+    Species,
+    Nickname,
+    Form,
+    Gender,
+    Shiny,
+    Language,
+    Level,
+    Experience,
+    Friendship,
+    DV,
+    IV,
+    StatExperience,
+    EV,
+    AV,
+    EffortLevel,
+    Nature,
+    StatNature,
+    CalculatedStats,
+    Ability,
+    HeldItem,
+    Pokerus,
+    OriginalTrainer,
+    TrainerId,
+    SecretId,
+    PersonalityId,
+    OriginGame,
+    Ball,
+    MetLevel,
+    MetLocation,
+    MetDate,
+    Egg,
+    EggLocation,
+    EggDate,
+    MoveCompatibility,
+    EncounterLegality,
+    Provenance,
+    OriginalTrainerGender,
+};
+
+enum class FieldAccess : uint8_t { Hidden, Derived, ReadOnly, Editable };
+
+constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdentity field,
+                                                bool crystalCaughtData = false) noexcept {
+    if (generation == Generation::Gen1) {
+        switch (field) {
+            case FieldIdentity::Species:
+            case FieldIdentity::Nickname:
+            case FieldIdentity::Level:
+            case FieldIdentity::Experience:
+            case FieldIdentity::DV:
+            case FieldIdentity::StatExperience:
+            case FieldIdentity::OriginalTrainer:
+            case FieldIdentity::TrainerId:
+                return FieldAccess::Editable;
+            case FieldIdentity::Shiny:
+                return FieldAccess::Derived;
+            case FieldIdentity::CalculatedStats:
+            case FieldIdentity::OriginGame:
+            case FieldIdentity::MoveCompatibility:
+            case FieldIdentity::EncounterLegality:
+            case FieldIdentity::Provenance:
+                return FieldAccess::ReadOnly;
+            default:
+                return FieldAccess::Hidden;
+        }
+    }
+    if (generation == Generation::Gen2) {
+        switch (field) {
+            case FieldIdentity::Species:
+            case FieldIdentity::Nickname:
+            case FieldIdentity::Level:
+            case FieldIdentity::Experience:
+            case FieldIdentity::Friendship:
+            case FieldIdentity::DV:
+            case FieldIdentity::StatExperience:
+            case FieldIdentity::HeldItem:
+            case FieldIdentity::Pokerus:
+            case FieldIdentity::OriginalTrainer:
+            case FieldIdentity::TrainerId:
+                return FieldAccess::Editable;
+            case FieldIdentity::Gender:
+            case FieldIdentity::Shiny:
+                return FieldAccess::Derived;
+            case FieldIdentity::CalculatedStats:
+            case FieldIdentity::OriginGame:
+            case FieldIdentity::MoveCompatibility:
+            case FieldIdentity::EncounterLegality:
+            case FieldIdentity::Provenance:
+                return FieldAccess::ReadOnly;
+            case FieldIdentity::MetLevel:
+            case FieldIdentity::MetLocation:
+            case FieldIdentity::OriginalTrainerGender:
+                return crystalCaughtData ? FieldAccess::ReadOnly : FieldAccess::Hidden;
+            default:
+                return FieldAccess::Hidden;
+        }
+    }
+    // Future-generation identities are hooks only in this milestone. Their exact
+    // activation belongs to the audited adapters, not to a guessed generic default.
+    return FieldAccess::Hidden;
+}
+
+// Generic selected-row scrolling model. Current classic panels that fit remain
+// stationary; future/native capability rows can exceed capacity without clipping.
+struct ScrollWindow {
+    std::size_t first = 0;
+    std::size_t count = 0;
+    bool scrolls = false;
+};
+
+constexpr ScrollWindow scrollWindow(std::size_t totalRows, std::size_t visibleCapacity,
+                                    std::size_t focusedRow) noexcept {
+    if (totalRows == 0 || visibleCapacity == 0) return {};
+    if (visibleCapacity >= totalRows) return {0, totalRows, false};
+    if (focusedRow >= totalRows) focusedRow = totalRows - 1;
+    std::size_t first = focusedRow >= visibleCapacity ? focusedRow - visibleCapacity + 1 : 0;
+    const std::size_t maxFirst = totalRows - visibleCapacity;
+    if (first > maxFirst) first = maxFirst;
+    return {first, visibleCapacity, true};
 }
 
 // The shell owns one three-panel focus language. Generation adapters only vary
