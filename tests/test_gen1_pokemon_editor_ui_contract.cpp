@@ -49,7 +49,7 @@ int main() {
     }
     const auto cancel = addDraftDecision(AddDraftEvent::Cancel);
     assert(!cancel.mutateStagedSave && cancel.leaveDraft);
-    const auto stage = addDraftDecision(AddDraftEvent::StageAdd); // internal transaction name only
+    const auto stage = addDraftDecision(AddDraftEvent::StageAdd);
     assert(stage.mutateStagedSave && stage.leaveDraft);
 
     static_assert(addUsesSingleScrollableWorkspace());
@@ -107,7 +107,7 @@ int main() {
     assert(!contains(readOnlyBoxes, FooterAction::Remove));
 
     const auto draftFooter = footerForSurface(FooterSurface::AddDraft);
-    assert(contains(draftFooter, FooterAction::StageAdd)); // internal semantic; display adapter says Add
+    assert(contains(draftFooter, FooterAction::StageAdd));
     assert(contains(draftFooter, FooterAction::CancelDraft));
     const auto pickerFooter = footerForSurface(FooterSurface::SpeciesPicker);
     assert(!contains(pickerFooter, FooterAction::StageAdd));
@@ -137,8 +137,6 @@ int main() {
     static_assert(!liveInstalledGameWritingEnabled());
     static_assert(!fullEncounterLegalityEngineEnabled());
 
-    // Hardware-retest adapter: the accepted packed serializer still chooses the real append slot;
-    // only the box selection follows that result so Add from an arbitrary empty visual cell is clear.
     const auto composite = readFile("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     assert(composite.find("ux2StageAddWithClassicSelection") != std::string::npos);
     assert(composite.find("const int destinationBox = state.box") != std::string::npos);
@@ -148,7 +146,19 @@ int main() {
     assert(composite.find("drawFooterWithClassicAddLabel") != std::string::npos);
     assert(composite.find("text.replace(pos, std::char_traits<char>::length(oldLabel), \"Add\")") != std::string::npos);
     assert(composite.find("added to Box") != std::string::npos);
+    assert(composite.find("#include \"Gen1MoveStatusParity.inc\"") != std::string::npos);
+    assert(composite.find("drawGen1MoveStatusParity(*this, fb)") != std::string::npos);
 
-    std::cout << "Gen I cleanup2 logical-editor + packed-Add cursor + footer + layout contract: PASS\n";
+    const auto moveParity = readFile("src/UI/Gen1MoveStatusParity.inc");
+    assert(moveParity.find("MoveCompatibility::canLearnMove") != std::string::npos);
+    assert(moveParity.find("\"OK\", Colors::Success") != std::string::npos);
+    assert(moveParity.find("state.mode != UX2Mode::Edit && state.mode != UX2Mode::AddDraft") != std::string::npos);
+    const auto passiveView = readFile("src/UI/Gen1PokemonEditorPassiveView.inc");
+    assert(passiveView.find("view.moveCompatible[i]") != std::string::npos);
+    const auto passivePresentation = readFile("src/UI/Gen1PokemonDetailsPresentation.cpp");
+    assert(passivePresentation.find("p.moveCompatible[i] ? \"OK\" : \"Unusual\"") != std::string::npos);
+    assert(passivePresentation.find("Encounter legality\", \"Not checked") != std::string::npos);
+
+    std::cout << "Gen I cleanup2 logical-editor + packed-Add + move-status parity contract: PASS\n";
     return 0;
 }
