@@ -178,7 +178,9 @@ constexpr Capabilities capabilitiesForGeneration(Generation generation) noexcept
                     /*dvs*/true, /*ivs*/false, /*statExp*/true, /*evs*/false,
                     /*splitSpecial*/false, /*gender*/false, /*shiny*/true};
         case Generation::Gen2:
-            return {false, true, false, true, true, true, false, false,
+            // Egg/met capability is intentionally NOT generic Gen II capability. The current
+            // PK2 model does not expose a proven native egg state, and caught/met data is Crystal-only.
+            return {false, true, false, true, false, false, false, false,
                     true, false, true, false, true, true, true};
         case Generation::Gen3:
             return {true, true, true, true, true, true, true, false,
