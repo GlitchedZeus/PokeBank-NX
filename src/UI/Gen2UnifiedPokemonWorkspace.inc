@@ -44,9 +44,17 @@ void resetUnifiedFocus(TrainerViewScreen& screen) {
 
 void mirrorPickerFocus(State& state, const Unified::Focus& focus) {
     if (focus.panel == Unified::Panel::Details) {
-        state.panel = Foundation::Panel::Identity;
-        state.row = focus.row == 0 ? 0 : static_cast<int>(focus.row);
-        state.column = 0;
+        // Pokérus moved to shared DETAILS row 7, but the proven named picker adapter still uses
+        // its internal legacy Values row 7. Keep that backend detail hidden behind the shared shell.
+        if (focus.row == 7) {
+            state.panel = Foundation::Panel::Values;
+            state.row = 7;
+            state.column = 0;
+        } else {
+            state.panel = Foundation::Panel::Identity;
+            state.row = static_cast<int>(focus.row);
+            state.column = 0;
+        }
         return;
     }
     if (focus.panel == Unified::Panel::Moves) {
@@ -56,16 +64,13 @@ void mirrorPickerFocus(State& state, const Unified::Focus& focus) {
         return;
     }
     state.panel = Foundation::Panel::Values;
-    // The existing named Pokérus picker is a data adapter. Its legacy activation row stays 7
-    // internally while the shared product shell presents Pokérus as Gen II capability row 9.
-    state.row = focus.row == 9 ? 7 : static_cast<int>(focus.row);
+    state.row = static_cast<int>(focus.row);
     state.column = focus.column;
 }
 
 bool sharedPickerField(const Unified::Focus& focus) noexcept {
-    return (focus.panel == Unified::Panel::Details && focus.row == 0) ||
-           (focus.panel == Unified::Panel::Moves && focus.column == 0) ||
-           (focus.panel == Unified::Panel::Values && focus.row == 9);
+    return (focus.panel == Unified::Panel::Details && (focus.row == 0 || focus.row == 7)) ||
+           (focus.panel == Unified::Panel::Moves && focus.column == 0);
 }
 
 void beginProgressionEditor(TrainerViewScreen& screen) {
@@ -117,7 +122,7 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
     if (focus.panel == Unified::Panel::Details) {
         if (focus.row == 0) {
             mirrorPickerFocus(state, focus);
-            return false; // named Species picker owns A.
+            return false;
         }
         if (focus.row == 1) {
             const auto result = Utils::promptText("Nickname", "1-10 Generation II characters", p.nickname, 10);
@@ -134,9 +139,22 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             if (result.accepted) p.originalTrainer = result.text;
             return true;
         }
-        const auto result = Utils::promptNumber("Trainer ID", p.trainerId, 0, 65535);
-        if (result.accepted) p.trainerId = static_cast<uint16_t>(result.value);
-        return true;
+        if (focus.row == 4) {
+            const auto result = Utils::promptNumber("Trainer ID", p.trainerId, 0, 65535);
+            if (result.accepted) p.trainerId = static_cast<uint16_t>(result.value);
+            return true;
+        }
+        if (focus.row == 5) {
+            openHeldItemPicker(state);
+            return true;
+        }
+        if (focus.row == 6) {
+            const auto result = Utils::promptNumber("Friendship", p.friendship, 0, 255);
+            if (result.accepted) p.friendship = static_cast<uint8_t>(result.value);
+            return true;
+        }
+        mirrorPickerFocus(state, focus);
+        return false; // named Pokérus picker owns A.
     }
 
     if (focus.panel == Unified::Panel::Values) {
@@ -169,20 +187,13 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return true;
         }
         if (focus.row == 5) { toggleShiny(screen, p); return true; }
-        if (focus.row == 6) { chooseGender(screen, p); return true; }
-        if (focus.row == 7) { openHeldItemPicker(state); return true; }
-        if (focus.row == 8) {
-            const auto result = Utils::promptNumber("Friendship", p.friendship, 0, 255);
-            if (result.accepted) p.friendship = static_cast<uint8_t>(result.value);
-            return true;
-        }
-        mirrorPickerFocus(state, focus);
-        return false; // named Pokérus picker owns A.
+        chooseGender(screen, p);
+        return true;
     }
 
     if (focus.column == 0) {
         mirrorPickerFocus(state, focus);
-        return false; // named Move picker owns A.
+        return false;
     }
     const int slot = focus.row;
     if (focus.column == 1) {
@@ -211,7 +222,7 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         return true;
     }
 
-    if (pickerStateFor(screen).model.active()) return false; // named picker layer gets first-class ownership next.
+    if (pickerStateFor(screen).model.active()) return false;
     if (state.itemPicker) return handleItemPicker(screen, state, down, held, stickX, stickY);
     if (state.confirmExit) return handleConfirm(screen, state, down);
     if (handleProgressionEditor(screen, down, held, stickX, stickY)) return true;
@@ -250,7 +261,7 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
 
     mirrorPickerFocus(state, unified.focus);
     if (!activateUnifiedField(screen, state, unified.focus))
-        return false; // allow Gen2PokemonPickerOverlay to open the named picker on this A press.
+        return false;
     return true;
 }
 
@@ -283,8 +294,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
                     rowSelected && unified.focus.column == 0 ? Colors::Accent : Colors::Text, TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     rowSelected && unified.focus.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
-        const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)])
-                                      : "—";
+        const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)]) : "—";
         fb.drawText(x + 282, yy, stat,
                     rowSelected && unified.focus.column == 2 ? Colors::Accent : Colors::Text, TextStyle::Caption);
     }
@@ -293,20 +303,17 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
     fb.drawText(x + 84, y + 274, std::to_string(battle[4]), Colors::Text, TextStyle::Caption);
     fb.drawText(x + 200, y + 274, "SpD", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 266, y + 274, std::to_string(battle[5]), Colors::Text, TextStyle::Caption);
-    fb.drawText(x + 18, y + 304, "* HP DV derived • one stored Special DV", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 304, "* HP DV derived • one stored Special DV / Stat Exp", Colors::TextDim, TextStyle::Caption);
 
-    const std::array<std::pair<std::string, std::string>, 5> capabilityRows{{
+    const std::array<std::pair<std::string, std::string>, 2> capabilityRows{{
         {"Shiny", p.shiny ? "Yes (DV-derived)" : "No (DV-derived)"},
         {"Gender", genderText(p.gender)},
-        {"Held Item", itemText(p.heldItem)},
-        {"Friendship", std::to_string(p.friendship)},
-        {"Pokerus", Gen2Native::pokerusText(p.pokerus)},
     }};
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 2; ++i) {
         const int row = 5 + i;
-        const int yy = y + 338 + i * 34;
+        const int yy = y + 350 + i * 42;
         const bool selected = !passive && unified.focus.panel == Unified::Panel::Values && unified.focus.row == row;
-        if (selected) fb.drawSelectionHighlight(x + 10, yy - 5, w - 20, 34);
+        if (selected) fb.drawSelectionHighlight(x + 10, yy - 5, w - 20, 36);
         fb.drawText(x + 18, yy, capabilityRows[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 134, yy, capabilityRows[static_cast<std::size_t>(i)].second,
                     selected ? Colors::Accent : (i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text),
@@ -335,15 +342,16 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
             sharedBadge(fb, badgeX, y + 184, sharedTypeName(personal->rawType2));
         }
     }
-    const std::array<std::pair<std::string, std::string>, 5> rows{{
+    const std::array<std::pair<std::string, std::string>, 8> rows{{
         {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
         {"Nickname", p.nickname},
         {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
         {"OT", p.originalTrainer},
         {"Trainer ID", std::to_string(p.trainerId)},
+        {"Held Item", itemText(p.heldItem)},
+        {"Friendship", std::to_string(p.friendship)},
+        {"Pokerus", Gen2Native::pokerusText(p.pokerus)},
     }};
-    // Shared scroll foundation is intentionally dormant here because all five native Gen II
-    // Details rows fit. If future exact capabilities add rows, the same window keeps focus visible.
     const auto window = Unified::scrollWindow(rows.size(), 5,
         passive ? 0 : static_cast<std::size_t>(unified.focus.row));
     for (std::size_t i = 0; i < window.count; ++i) {
@@ -355,6 +363,8 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         fb.drawText(x + 108, yy + 7, rows[row].second,
                     selected ? Colors::Accent : Colors::Text, TextStyle::Caption);
     }
+    if (window.scrolls)
+        fb.drawText(x + w - 44, y + h - 26, "↕", Colors::TextDim, TextStyle::Caption);
 }
 
 void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
@@ -393,7 +403,6 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
     fb.drawText(x + 18, y + 220, "Encounter legality: Not checked", Colors::TextDim, TextStyle::Caption);
     if (const auto game = Rules::exactGameFromSourceId(screen.sourceGameId))
         Gen2WorkspacePresentation::drawDataAndGraph(fb, x, y + 244, w, h - 256, state.working, *game);
-
 }
 
 void drawProgressionEditor(PKSEFramebuffer& fb, const State& state, const UnifiedWorkspaceState& unified) {
