@@ -47,6 +47,8 @@ public:
     std::span<const uint8_t> stagedBytes() const noexcept { return view_->sourceBytes(); }
     std::optional<PokemonRecord> boxedPokemon(size_t box, size_t slot, std::string& error) const;
     bool stageEdit(size_t box, size_t slot, const BoxPokemonEdit&, std::string& error);
+    // Resolve only this box: visual empty cells are not persistent sparse positions.
+    std::optional<size_t> appendSlot(size_t box, std::string& error) const;
     // Explicit destination must be the first empty slot; boxes are contiguous lists.
     bool stageAdd(size_t box, size_t slot, const BoxPokemonCreate&, std::string& error);
     bool stageClone(size_t sourceBox, size_t sourceSlot, size_t box, size_t slot, std::string& error);

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 
 namespace PokeVault::Integration::Gen2 {
 namespace {
@@ -34,7 +35,7 @@ constexpr std::array<uint8_t, 57> kMachineIds{
 
 // Exact Generation II raw item namespace from the Gen II oracle / pret pokecrystal item table.
 // Unused retail IDs intentionally retain their TERU-SAMA identity instead of falling through to a
-// later-generation National item mapping.
+// later-generation National item mapping. Player-facing aliases are layered above this table.
 constexpr std::array<std::string_view, 191> kBaseNames{
     "NONE","MASTER BALL","ULTRA BALL","BRIGHTPOWDER","GREAT BALL","Poké Ball","TERU-SAMA","BICYCLE",
     "MOON STONE","ANTIDOTE","BURN HEAL","ICE HEAL","AWAKENING","PARLYZ HEAL","FULL RESTORE","MAX POTION",
@@ -62,6 +63,57 @@ constexpr std::array<std::string_view, 191> kBaseNames{
     "BRICK PIECE","SURF MAIL","LITEBLUEMAIL","PORTRAITMAIL","LOVELY MAIL","EON MAIL","MORPH MAIL",
     "BLUESKY MAIL","MUSIC MAIL","MIRAGE MAIL","TERU-SAMA"
 };
+
+std::string polishedAlias(std::string_view raw) {
+    // Explicit aliases expand the retail-era abbreviations without changing the raw id/table.
+    if (raw == "PARLYZ HEAL") return "Paralyze Heal";
+    if (raw == "BLK APRICORN") return "Black Apricorn";
+    if (raw == "BLU APRICORN") return "Blue Apricorn";
+    if (raw == "YLW APRICORN") return "Yellow Apricorn";
+    if (raw == "GRN APRICORN") return "Green Apricorn";
+    if (raw == "WHT APRICORN") return "White Apricorn";
+    if (raw == "PNK APRICORN") return "Pink Apricorn";
+    if (raw == "EXP.SHARE") return "Exp. Share";
+    if (raw == "S.S.TICKET") return "S.S. Ticket";
+    if (raw == "SECRETPOTION") return "Secret Potion";
+    if (raw == "PSNCUREBERRY") return "Poison Cure Berry";
+    if (raw == "PRZCUREBERRY") return "Paralyze Cure Berry";
+    if (raw == "TINYMUSHROOM") return "Tiny Mushroom";
+    if (raw == "SILVERPOWDER") return "Silver Powder";
+    if (raw == "TWISTEDSPOON") return "Twisted Spoon";
+    if (raw == "BLACKBELT") return "Black Belt";
+    if (raw == "BLACKGLASSES") return "Black Glasses";
+    if (raw == "SLOWPOKETAIL") return "Slowpoke Tail";
+    if (raw == "NEVERMELTICE") return "Never-Melt Ice";
+    if (raw == "MIRACLEBERRY") return "Miracle Berry";
+    if (raw == "MYSTERYBERRY") return "Mystery Berry";
+    if (raw == "RAGECANDYBAR") return "RageCandyBar";
+    if (raw == "ENERGYPOWDER") return "Energy Powder";
+    if (raw == "SQUIRTBOTTLE") return "Squirt Bottle";
+    if (raw == "LITEBLUEMAIL") return "Lite Blue Mail";
+    if (raw == "PORTRAITMAIL") return "Portrait Mail";
+    if (raw == "LOVELY MAIL") return "Lovely Mail";
+    if (raw == "BLUESKY MAIL") return "Blue Sky Mail";
+    if (raw == "HP UP") return "HP Up";
+    if (raw == "PP UP") return "PP Up";
+    if (raw == "GS BALL") return "GS Ball";
+    if (raw == "Poké Ball") return std::string(raw);
+    if (raw.size() >= 2 && ((raw[0] == 'T' && raw[1] == 'M') || (raw[0] == 'H' && raw[1] == 'M')))
+        return std::string(raw);
+
+    std::string out(raw);
+    bool newWord = true;
+    for (char& ch : out) {
+        const unsigned char c = static_cast<unsigned char>(ch);
+        if (std::isalpha(c)) {
+            ch = static_cast<char>(newWord ? std::toupper(c) : std::tolower(c));
+            newWord = false;
+        } else {
+            newWord = ch == ' ' || ch == '-' || ch == '#';
+        }
+    }
+    return out;
+}
 
 bool appendPairList(std::span<const uint8_t> data, std::size_t offset, std::size_t capacity,
                     std::vector<InventoryItem>& out, std::string& detail) {
@@ -139,6 +191,10 @@ std::string_view gen2ItemName(uint8_t itemId) noexcept {
     for (std::size_t i = 0; i < kMachineIds.size(); ++i)
         if (kMachineIds[i] == itemId) return names[i];
     return "TERU-SAMA";
+}
+
+std::string gen2ItemDisplayName(uint8_t itemId) {
+    return polishedAlias(gen2ItemName(itemId));
 }
 
 InventoryRecord decodeInventory(

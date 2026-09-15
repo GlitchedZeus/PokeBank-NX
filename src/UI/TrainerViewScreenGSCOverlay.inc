@@ -2,6 +2,7 @@
 
 #include "Enums/GameVersion.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
+#include "Integration/Gen2/Gen2ExportTransaction.h"
 #include "Legacy/GSCReadOnlyTrainer.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
@@ -16,12 +17,9 @@
 #include "Utils/PokeBankPaths.h"
 
 #include <algorithm>
-#include <cerrno>
-#include <cstdio>
 #include <array>
 #include <sstream>
 #include <string>
-#include <sys/stat.h>
 #include <utility>
 #include <vector>
 
@@ -75,29 +73,6 @@ Gen2Editor* stagedEditor(TrainerViewScreen& screen) noexcept {
     return gscTrainer(screen).stagedEditor();
 }
 
-bool mkdirIfNeeded(const std::string& path) {
-    if (::mkdir(path.c_str(), 0777) == 0) return true;
-    return errno == EEXIST;
-}
-
-bool pathExists(const std::string& path) {
-    struct stat st{};
-    return ::stat(path.c_str(), &st) == 0;
-}
-
-bool writeBytes(const std::string& path, std::span<const uint8_t> bytes) {
-    FILE* out = std::fopen(path.c_str(), "wb");
-    if (!out) return false;
-    const bool ok = std::fwrite(bytes.data(), 1, bytes.size(), out) == bytes.size();
-    const bool closeOk = std::fclose(out) == 0;
-    return ok && closeOk;
-}
-
-bool writeText(const std::string& path, const std::string& text) {
-    return writeBytes(path, std::span<const uint8_t>(
-        reinterpret_cast<const uint8_t*>(text.data()), text.size()));
-}
-
 std::string exportStagedCopy(TrainerViewScreen& screen, Gen2Editor& editor, std::string& error) {
     error.clear();
     if (!editor.hasPendingChanges()) {
@@ -105,12 +80,8 @@ std::string exportStagedCopy(TrainerViewScreen& screen, Gen2Editor& editor, std:
         return {};
     }
 
-    auto edited = editor.finalizedBytes(error);
-    if (edited.empty()) {
-        if (error.empty()) error = "Staged save finalization failed";
-        return {};
-    }
-
+    // Path construction remains centralized in PokeBankPaths, but all save finalization and I/O are
+    // owned by Gen2ExportTransaction. This wrapper deliberately contains no fopen/fwrite sequence.
     const std::string gen2Root = PokeBank::Paths::gen2ExportsRoot();
     if (!PokeBank::Paths::ensureGen2ExportsRoot(&error)) {
         if (error.empty()) error = "Could not create PokeBank NX export directory";
@@ -118,49 +89,31 @@ std::string exportStagedCopy(TrainerViewScreen& screen, Gen2Editor& editor, std:
     }
 
     const std::string timestamp = Utils::getTimestamp();
-    std::string exportDir = PokeBank::Paths::gen2ExportDirectory(screen.sourceGameId, timestamp);
-    if (exportDir.empty()) {
+    const std::string proposed = PokeBank::Paths::gen2ExportDirectory(screen.sourceGameId, timestamp);
+    const std::string rootPrefix = gen2Root + "/";
+    if (proposed.empty() || proposed.rfind(rootPrefix, 0) != 0 || proposed.size() <= rootPrefix.size()) {
         error = "Could not construct safe PokeBank NX export path";
         return {};
     }
-    const std::string baseName = exportDir.substr(gen2Root.size() + 1);
-    for (int suffix = 2; pathExists(exportDir) && suffix < 1000; ++suffix)
-        exportDir = gen2Root + "/" + baseName + "-" + std::to_string(suffix);
-    if (pathExists(exportDir) || !mkdirIfNeeded(exportDir)) {
-        error = "Could not create unique staged export directory";
-        return {};
-    }
 
-    const std::string backupPath = exportDir + "/original_backup.srm";
-    const std::string editedPath = exportDir + "/edited.srm";
-    if (!writeBytes(backupPath, editor.originalBytes())) {
-        error = "Could not write automatic original backup";
-        return {};
-    }
-    if (!writeBytes(editedPath, edited)) {
-        error = "Could not write staged edited save";
-        return {};
-    }
+    PokeVault::Integration::Gen2::StagedEditorExportRequest request;
+    request.rootDirectory = gen2Root;
+    request.directoryStem = proposed.substr(rootPrefix.size());
+    request.sourcePath = screen.backupDir;
+    request.gameId = screen.sourceGameId;
+    request.timestamp = timestamp;
+#ifdef POKEVAULT_GIT_COMMIT
+    request.applicationSha = POKEVAULT_GIT_COMMIT;
+#else
+    request.applicationSha = "unknown";
+#endif
 
-    std::string manifest;
-    manifest += "PokeBank NX Generation II staged export\n";
-    manifest += "GAME_ID=" + screen.sourceGameId + "\n";
-    manifest += "SOURCE_PATH=" + screen.backupDir + "\n";
-    manifest += "SOURCE_KIND=RetroArchLegacy_READ_ONLY\n";
-    manifest += "ORIGINAL_BACKUP=original_backup.srm\n";
-    manifest += "EDITED_SAVE=edited.srm\n";
-    manifest += "ORIGINAL_BYTES=" + std::to_string(editor.originalBytes().size()) + "\n";
-    manifest += "EDITED_BYTES=" + std::to_string(edited.size()) + "\n";
-    manifest += "LIVE_RETROARCH_WRITE=DISABLED\n";
-    manifest += "LIVE_INSTALLED_GAME_WRITE=DISABLED\n";
-    manifest += "PENDING_CHANGES:\n";
-    for (const auto& change : editor.pendingChanges())
-        manifest += "- " + change.label + ": " + change.beforeValue + " -> " + change.afterValue + "\n";
-    if (!writeText(exportDir + "/EDIT_MANIFEST.txt", manifest)) {
-        error = "Edited save was written, but provenance manifest creation failed";
+    const auto result = PokeVault::Integration::Gen2::publishVerifiedStagedEditorExport(editor, request);
+    if (!result.success) {
+        error = result.error.empty() ? "Verified staged export failed" : result.error;
         return {};
     }
-    return exportDir;
+    return result.directory;
 }
 
 void openStagedEditor(TrainerViewScreen& screen) {
@@ -433,7 +386,8 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
     const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(state.pokemonBox),
                                               static_cast<std::size_t>(state.pokemonSlot), error);
     const bool occupied = pokemon.has_value();
-    const int rowCount = occupied ? 6 : 3;
+    namespace Actions = PokeBank::UIModel::Gen2PokemonEditor;
+    const int rowCount = static_cast<int>(Actions::slotActionCount(occupied));
     if (down & HidNpadButton_Up) state.pokemonRow = (state.pokemonRow - 1 + rowCount) % rowCount;
     if (down & HidNpadButton_Down) state.pokemonRow = (state.pokemonRow + 1) % rowCount;
     if (down & HidNpadButton_X) { state.review = true; state.reviewRow = 0; return; }
@@ -444,23 +398,12 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
     }
     if (!(down & HidNpadButton_A)) return;
 
-    if (!occupied) {
-        if (state.pokemonRow == 0) {
-            if (stageAddPokemon(screen, state.pokemonBox)) state.pokemonRow = 0;
-        } else if (state.pokemonRow == 1) {
-            state.review = true; state.reviewRow = 0;
-        } else {
-            state.active = false; state.pokemonActions = false;
-        }
-        return;
-    }
-
-    switch (state.pokemonRow) {
-        case 0:
+    switch (Actions::slotActionAt(occupied, state.pokemonRow)) {
+        case Actions::SlotAction::Edit:
             state.pokemonFields = true;
             state.pokemonRow = 0;
             break;
-        case 1: {
+        case Actions::SlotAction::Clone: {
             const auto destination = Utils::promptNumber("Clone to Gen II Box", state.pokemonBox + 1, 1,
                                                          editor->metadata().boxCount);
             if (!destination.accepted) break;
@@ -475,23 +418,23 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
                                   " Slot " + std::to_string(destinationSlot + 1) + "; source unchanged", 300);
             break;
         }
-        case 2: {
+        case Actions::SlotAction::Shiny: {
             if (!editor->stageBoxPokemonShiny(static_cast<std::size_t>(state.pokemonBox),
                                               static_cast<std::size_t>(state.pokemonSlot),
-                                              !pokemon->shiny, error))
+                                              pokemon && !pokemon->shiny, error))
                 screen.postStatus(error.empty() ? "Shiny toggle failed" : error, 360);
             else
                 screen.postStatus(pokemon->shiny ? "Non-shiny DV state staged; source unchanged"
                                                  : "Legal Gen II shiny DV state staged; source unchanged", 300);
             break;
         }
-        case 3:
+        case Actions::SlotAction::Add:
             stageAddPokemon(screen, state.pokemonBox);
             break;
-        case 4:
+        case Actions::SlotAction::Review:
             state.review = true; state.reviewRow = 0;
             break;
-        case 5:
+        case Actions::SlotAction::Close:
             state.active = false; state.pokemonActions = false;
             break;
         default:
@@ -529,10 +472,11 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
             std::string error;
             const std::string exportDir = exportStagedCopy(screen, *editor, error);
             if (exportDir.empty()) {
-                screen.postStatus(error.empty() ? "Staged export failed" : error);
+                const std::string reason = error.empty() ? "Verified staged export failed" : error;
+                screen.postStatus(reason + "; source remains unchanged", 360);
             } else {
                 state.lastExportDirectory = exportDir;
-                screen.postStatus("Exported edited copy + original backup to PokeBank NX exports/gen2");
+                screen.postStatus("Verified staged export: " + exportDir, 360);
             }
         }
         return;
@@ -601,76 +545,6 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
             break;
         default:
             break;
-    }
-}
-
-void drawGSCTrainerCard(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    constexpr int x = 12;
-    constexpr int y = 80;
-    constexpr int h = 560;
-    constexpr int headerH = 46;
-    const int w = fb.getWidth() - x;
-
-    // The accepted base screen drew the later-generation Trainer card first. Replace only the content
-    // panel for GSC so no SID, full modern IDs, account/profile data, or unsupported metadata can remain
-    // visible. The title bar and existing navigation footer stay untouched.
-    fb.drawFilledRoundedRect(x, y, w, h, 16, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 16, Colors::Border, 1);
-    fb.drawFilledRoundedRect(x, y, w, headerH, 16, Colors::AccentDim);
-    fb.drawFilledRect(x, y + headerH - 16, w, 16, Colors::AccentDim);
-    fb.drawText(x + 22, y + (headerH - fb.lineHeight(TextStyle::Heading)) / 2,
-                "Trainer — Generation II / Source Read Only", Colors::Text, TextStyle::Heading);
-
-    screen.touchButtons.clear();
-
-    const int cardW = 680;
-    const int cardX = x + (w - cardW) / 2;
-    int rowY = y + headerH + 36;
-    constexpr int rowH = 56;
-    constexpr int rowGap = 14;
-
-    auto row = [&](const char* label, const std::string& value) {
-        fb.drawSoftShadow(cardX, rowY, cardW, rowH, 14);
-        fb.drawFilledRoundedRect(cardX, rowY, cardW, rowH, 14, Colors::PanelAlt);
-        fb.drawText(cardX + 24, rowY + (rowH - fb.lineHeight(TextStyle::Body)) / 2,
-                    label, Colors::TextDim, TextStyle::Body);
-        int vw = 0, vh = 0;
-        fb.measureText(value, vw, vh, TextStyle::Body);
-        fb.drawText(cardX + cardW - 24 - vw, rowY + (rowH - vh) / 2,
-                    value, Colors::Text, TextStyle::Body);
-        rowY += rowH + rowGap;
-    };
-
-    const Trainer::Trainer& trainer = screen.trainer;
-    row("Name", trainer.trainerName.empty() ? std::string("(none)") : trainer.trainerName);
-    row("Money", "$" + std::to_string(trainer.money));
-    row("Trainer ID", std::to_string(trainer.TID16));
-
-    // The Gen II trainer bridge guarantees a semantic gender value for validated GSC sources:
-    // Gold/Silver resolve to their fixed male player character, while Crystal is save-derived.
-    if (trainer.trainerGender <= 1)
-        row("Gender", trainer.trainerGender == 0 ? "Male" : "Female");
-
-    rowY += 8;
-    const char* note = screen.sourceGameId == "crystal_gbc"
-        ? "Crystal gender is shown only from the validated Crystal save field."
-        : "Gold/Silver use the games' fixed male player character.";
-    fb.drawText(cardX + 12, rowY, note, Colors::TextDim, TextStyle::Caption);
-    fb.drawText(cardX + 12, rowY + 28,
-                "No SID is stored. X opens staged editing; the source .srm remains read-only.",
-                Colors::TextDim, TextStyle::Caption);
-
-    // The accepted base draws transient status before this overlay; redraw it so a read-only-action
-    // refusal is not hidden by the corrected card.
-    if (screen.storageStatusFrames > 0 && !screen.storageStatus.empty()) {
-        int tw = 0, th = 0;
-        fb.measureText(screen.storageStatus, tw, th);
-        const int padX = 18, bw = tw + padX * 2, bh = th + 14;
-        const int footerY = fb.getHeight() - kNavBarH;
-        const int bx = (fb.getWidth() - bw) / 2, by = footerY - bh - 12;
-        fb.drawFilledRoundedRect(bx, by, bw, bh, 8, Colors::Panel);
-        fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Accent, 2);
-        fb.drawText(bx + padX, by + 7, screen.storageStatus, Colors::Text);
     }
 }
 
@@ -772,6 +646,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         std::vector<std::pair<std::string, std::string>> rows;
         if (pokemon) {
             rows = {
+                {"View", "Read-only Pokemon summary"},
                 {"Edit", pokemon->nickname + " Lv. " + std::to_string(pokemon->level)},
                 {"Clone", "Append to an empty box slot"},
                 {pokemon->shiny ? "Make Non-Shiny" : "Make Shiny", "Real Gen II DV rules"},
@@ -790,7 +665,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
             drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
                           i == state.pokemonRow);
-            rowY += 57;
+            rowY += 51;
         }
         fb.drawText(x + 32, y + h - 40,
                     "A Select    X Review    B Close/Review    FORMAT VALID != full encounter legality",
@@ -847,6 +722,11 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 down = padGetButtonsDown(&pad);
 
     const bool validatedGSC = trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this);
+    if (validatedGSC && details.active) {
+        if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B) == PokeBank::UIModel::PassiveViewAction::Back)
+            closeDetailsModal();
+        return; // Party/Storage share the same passive Back-only input contract.
+    }
     if (validatedGSC) {
         auto& overlay = editorOverlayState(*this);
         if (overlay.active) {
@@ -890,8 +770,6 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     drawLegacyBase(fb);
 
     if (trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this)) {
-        if (detailViewActive && selectedMode == ViewMode::Trainer && !helpOverlayActive)
-            drawGSCTrainerCard(*this, fb);
         drawStagedEditor(*this, fb);
     }
     ClassicInventory::drawOverlay(*this, fb);

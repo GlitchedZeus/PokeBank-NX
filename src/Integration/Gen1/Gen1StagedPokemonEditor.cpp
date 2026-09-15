@@ -110,6 +110,14 @@ std::optional<PokemonRecord> StagedPokemonEditor::boxedPokemon(size_t b,size_t s
     error.clear(); if(b>=12 || s>=Capacity) { error="Box or slot is out of range"; return {}; }
     return view_->boxes()[b].slots[s];
 }
+std::optional<size_t> StagedPokemonEditor::appendSlot(size_t box, std::string& error) const {
+    error.clear();
+    if (box >= view_->boxes().size()) { error = "Generation I box is out of range"; return {}; }
+    const auto& slots = view_->boxes()[box].slots;
+    const size_t count = static_cast<size_t>(std::count_if(slots.begin(), slots.end(), [](const auto& p) { return bool(p); }));
+    if (count >= slots.size()) { error = "This Generation I box is full"; return {}; }
+    return count;
+}
 bool StagedPokemonEditor::destination(size_t b,size_t s,std::string& error) const {
     error.clear(); if(b>=12 || s>=Capacity) { error="Box is full or destination is out of range"; return false; }
     const auto& slots=view_->boxes()[b].slots;

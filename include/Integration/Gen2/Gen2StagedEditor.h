@@ -54,6 +54,8 @@ struct BoxPokemonEdit {
 struct BoxPokemonCreate {
     uint16_t species = 0;
     uint8_t level = 5;
+    // When present, EXP is canonical and level is derived with the species growth curve.
+    std::optional<uint32_t> experience;
     std::string nickname;
     std::string otName;
     std::optional<uint16_t> trainerId;
@@ -78,9 +80,11 @@ public:
     std::span<const uint8_t> stagedBytes() const noexcept { return staged_; }
 
     const std::string& trainerName() const noexcept { return trainerName_; }
+    uint16_t trainerId() const noexcept { return trainerId_; }
     uint32_t money() const noexcept { return money_; }
     uint8_t itemQuantity(InventoryPocket pocket, uint8_t itemId) const noexcept;
 
+    bool stageTrainerEdit(std::string_view name, uint32_t money, std::string& error);
     bool stageTrainerName(std::string_view name, std::string& error);
     bool stageMoney(uint32_t money, std::string& error);
     bool stageItemQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
@@ -109,6 +113,7 @@ public:
     static bool isShinyDVs(const std::array<uint8_t, 4>& dvs) noexcept;
     static uint8_t derivedHPDV(const std::array<uint8_t, 4>& dvs) noexcept;
     static uint8_t gen2MoveBasePP(uint16_t move) noexcept;
+    static uint8_t gen2MoveMaxPP(uint8_t move, uint8_t ppUps) noexcept;
 
     const std::vector<StagedChange>& pendingChanges() const noexcept { return changes_; }
     bool hasPendingChanges() const noexcept { return !changes_.empty(); }

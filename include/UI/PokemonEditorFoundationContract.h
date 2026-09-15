@@ -169,6 +169,7 @@ struct Capabilities {
     bool supportsShiny = true;
 };
 
+// Convenience defaults only. ExactSaveCapabilities is authoritative for a known save.
 constexpr Capabilities capabilitiesForGeneration(Generation generation) noexcept {
     switch (generation) {
         case Generation::Gen1:
@@ -177,8 +178,10 @@ constexpr Capabilities capabilitiesForGeneration(Generation generation) noexcept
                     /*dvs*/true, /*ivs*/false, /*statExp*/true, /*evs*/false,
                     /*splitSpecial*/false, /*gender*/false, /*shiny*/true};
         case Generation::Gen2:
-            return {false, true, false, true, true, true, false, false,
-                    true, false, true, false, false, true, true};
+            // Egg/met capability is intentionally NOT generic Gen II capability. The current
+            // PK2 model does not expose a proven native egg state, and caught/met data is Crystal-only.
+            return {false, true, false, true, false, false, false, false,
+                    true, false, true, false, true, true, true};
         case Generation::Gen3:
             return {true, true, true, true, true, true, true, false,
                     false, true, false, true, true, true, true};
@@ -227,6 +230,14 @@ constexpr bool ribbonsOpenDedicatedCollectionScreen() noexcept { return true; }
 constexpr std::array<const char*, 5> gen1StatLabels() noexcept {
     return {"HP", "Attack", "Defense", "Speed", "Special"};
 }
+
+constexpr std::array<const char*, 6> gen2BattleStatLabels() noexcept {
+    return {"HP", "Attack", "Defense", "Speed", "Sp. Atk", "Sp. Def"};
+}
+
+// Gen II has six calculated battle stats but only four stored DVs. Both Sp. Atk and Sp. Def
+// derive from the one stored Special DV and the one stored Special Stat Experience value.
+constexpr bool gen2UsesSingleSpecialDVForSplitBattleStats() noexcept { return true; }
 
 constexpr bool gen1HasFakeModernFields() noexcept {
     constexpr auto c = capabilitiesForGeneration(Generation::Gen1);

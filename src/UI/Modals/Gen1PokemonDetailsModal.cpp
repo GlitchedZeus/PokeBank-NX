@@ -1,5 +1,6 @@
 #include "UI/Modals/Gen1PokemonDetailsModal.h"
 
+#include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
 #include "UI/Gen1PokemonPresentation.h"
@@ -8,6 +9,7 @@
 #include "Utils/StringHelpers.h"
 
 #include <array>
+#include <optional>
 #include <string>
 
 namespace UI::Modals {
@@ -18,6 +20,14 @@ std::string sourceGameLabel(const std::string& id) {
     if (id.find("blue") != std::string::npos || id.find("Blue") != std::string::npos) return "Blue";
     if (id.find("red") != std::string::npos || id.find("Red") != std::string::npos) return "Red";
     return "Gen I";
+}
+
+std::optional<PokeVault::Integration::Gen1::SourceGame> sourceGame(const std::string& id) {
+    using SourceGame = PokeVault::Integration::Gen1::SourceGame;
+    if (id.find("yellow") != std::string::npos || id.find("Yellow") != std::string::npos) return SourceGame::Yellow;
+    if (id.find("blue") != std::string::npos || id.find("Blue") != std::string::npos) return SourceGame::Blue;
+    if (id.find("red") != std::string::npos || id.find("Red") != std::string::npos) return SourceGame::Red;
+    return std::nullopt;
 }
 
 } // namespace
@@ -52,6 +62,10 @@ void drawGen1PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     view.sourceGameLabel = sourceGameLabel(screen.sourceGameId);
     view.recordLabel = p.isPartyRecord() ? "Party (44 bytes)" : "Box (33 bytes)";
     view.sourceStateLabel = "READ ONLY";
+
+    if (const auto game = sourceGame(screen.sourceGameId)) {
+        view.setMoveCompatibility(*game);
+    }
 
     if (p.isPartyRecord()) {
         // Party records physically store their battle stats. Show exactly those values.

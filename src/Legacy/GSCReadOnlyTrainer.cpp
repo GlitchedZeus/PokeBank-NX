@@ -83,6 +83,25 @@ std::unique_ptr<GSCReadOnlyTrainer> GSCReadOnlyTrainer::create(
     return trainer;
 }
 
+bool GSCReadOnlyTrainer::refreshStagedBoxPresentation(std::string& error) {
+    if (!stagedEditor_) { error = "Staged editing unavailable"; return false; }
+    const auto bytes = stagedEditor_->finalizedBytes(error);
+    if (bytes.empty()) return false;
+    const auto parsed = Integration::Gen2::parse(bytes, stagedEditor_->metadata().sourceGame);
+    if (!parsed) { error = parsed.detail; return false; }
+    decltype(boxes) displayBoxes(boxCount_);
+    for (size_t box = 0; box < boxCount_; ++box) {
+        for (size_t slot = 0; slot < slotsPerBox_; ++slot) {
+            const auto& record = parsed.save->boxes()[box].slots[slot];
+            if (record) displayBoxes[box][slot] = std::make_unique<Pokemon::Pokemon2ReadOnly>(*record);
+        }
+    }
+    boxes.swap(displayBoxes);
+    trainerName = parsed.save->trainer().name;
+    money = parsed.save->trainer().money;
+    return true;
+}
+
 bool GSCReadOnlyTrainer::populate(
     const Integration::Gen2::ReadOnlySave& save, std::string& error) {
     const auto& strictTrainer = save.trainer();

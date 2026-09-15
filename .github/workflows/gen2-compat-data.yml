@@ -1,0 +1,45 @@
+name: Gen II Compatibility Data
+
+on:
+  pull_request:
+    branches:
+      - feature/pokebank-playable
+    types: [opened, synchronize, reopened]
+    paths:
+      - tools/gen_gen2_move_compatibility.py
+      - .github/workflows/gen2-compat-data.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Generate pinned G/S/C move compatibility tables
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 tools/gen_gen2_move_compatibility.py
+
+      - name: Commit generated table if changed
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          path=src/Integration/Gen2/Gen2MoveCompatibilityData.inc
+          git add "$path"
+          if git diff --cached --quiet; then
+            echo "Generated table already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "gen2: generate pinned move compatibility data"
+          git push origin "HEAD:${HEAD_REF}"

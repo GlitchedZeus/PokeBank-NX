@@ -2,184 +2,170 @@
 
 Last updated: 2026-09-14
 
-For the shortest engineering handoff, read `CURRENT_STATUS.md` and `docs/NEXT_CODEX_PROMPT.md`.
+For the shortest recovery handoff, read `CURRENT_STATUS.md` and `docs/NEXT_SESSION_PLAN.md`.
 
-## Project identity and safety
+## Project identity
 
 ```text
 Product: PokeBank NX
 Version: 0.1.0-alpha
 Repository: GlitchedZeus/PokeBank-NX
-Development branch: feature/pokebank-playable
+Production branch: feature/pokebank-playable
+Production checkpoint: a9fc4521087cdc80078c7db620f1be0107adce58
+Focused branch: feature/gen2-shared-pokemon-editor-20260914
+Active PR: #68 — OPEN / DRAFT / NOT MERGED
+Audit tracker: #69 — OPEN
+Latest pre-documentation implementation checkpoint: a3917f20e0b09b31473f073398a9b1f1a6adfb51
 Writable remote: origin
-Upstream reference: kiasta/PKSE
-Live installed-game writing: HARD DISABLED
-Live RetroArch writing: HARD DISABLED
-Live emulator-source writing: HARD DISABLED
+Upstream/reference: kiasta/PKSE
 ```
 
-`DEVICE ACCEPTED` is used only after the user physically tests the exact relevant artifact and reports the milestone working.
+`DEVICE ACCEPTED` is reserved for an exact artifact physically tested by the owner. The final Gen II candidate SHA is the exact PR head after the audit/status documentation refresh and must pass the dedicated exact-SHA candidate workflow before handoff.
 
-## Gen I editor and summary hardware correction — retest required
+## Headline
 
-Focused branch: `feature/pokemon-editor-ui-foundation-final-20260913`; PR #66 stays **OPEN / DRAFT / NOT MERGED**. Issue #62 stays open. Production base `0fd59ae9ad9ba8e45798d1d930b36044b465244f` is unchanged.
+- Generation I, II, and III legacy read-only paths are physically accepted.
+- Classic staged Inventory is hardware accepted.
+- The Generation I boxed staged Pokémon editor and passive View are hardware accepted.
+- Generation II shared View/Create/Edit and final audit remediation are IMPLEMENTED on PR #68.
+- PR #68 now includes Crystal-native caught/met decoding, Party-only HP/status, named Species/Move/Pokérus controls, and a verified transactional staged-export path.
+- Full v1 touch remains #55; global controller normalization remains #26; Legacy Storage/Master Vault separation remains #27.
+- Live installed-game and emulator-source writes remain HARD DISABLED.
+- Gen II DEVICE TEST is still pending an exact green candidate artifact and owner physical Gold/Silver/Crystal test.
 
-The physically tested `5adec3ab51ebc782a4d72e9fd36f1ed450cace49` candidate (NRO SHA-256 `1c5cdbbd44e8ec0c20b56e3de18723d4de8a78a2d846f091387f6bb2d5e40ce0`) was **not accepted**. This correction supersedes it only after exact-head CI and package verification; a replacement must be physically retested.
+## Accepted legacy/read/editor baselines
 
-- The PK1 wrapper now uses the existing DV shiny helper for every polymorphic sprite consumer, including box thumbnails and the summary artwork.
-- The editor and box summary use one Gen I presentation model for real calculated five-stat values and current-format capabilities. Gen I modern quick-info defaults are hidden; its type badges also use Gen I personal data.
-- The old foundation radar and leftover text are no longer drawn. The lower-right supplemental/radar split remains, with a larger measured, labeled five-axis radar.
-- Both radar paths use a common linear local scale with rounded headroom buckets. Axis labels are raw stats; `Scale` is the outer-ring value. Crossing a bucket rescales the whole graph. DV edits that leave integer battle stats unchanged correctly leave the graph unchanged.
-- Regression coverage exercises the actual PK1 shiny getter, draft/staged/reparsed presentation agreement, capabilities, low-level stat changes, bounded normalization, and production radar draw coordinates/text. Existing picker ownership, calculated-cell navigation, Cleanup #3 and immutability tests remain.
-
-Validation at implementation time: full permanent host suite and focused presentation, radar drawing, foundation, battle math, RBY bridge and Cleanup #3 staged tests PASS locally. ASan/UBSan and native/package gates must pass for the new exact source SHA before delivery; the CI `BUILD_MANIFEST.json` is the exact-build evidence.
-
-All editor UI, shiny box/summary, radar labels/sizing, Species picker and calculated-stat navigation remain **RETEST REQUIRED**. **DEVICE ACCEPTED: NO.** All live source writes remain HARD DISABLED; party editing stays deferred. See `docs/GEN1_SUMMARY_RADAR_RETEST.md` for causes and the physical checklist.
-
-## Current headline
-
-Generation I Red/Blue/Yellow, Generation II Gold/Silver/Crystal, and Generation III FireRed/LeafGreen/Ruby/Sapphire/Emerald are physically accepted for their legacy read-only paths.
-
-The Generation II **boxed Pokémon staged editor** is now **HOST/NATIVE VERIFIED** and is awaiting hardware testing. It remains staged/export-only; no live installed-game, RetroArch, or emulator-source writeback is enabled.
-
-```text
-PHYSICAL STANDALONE TEST: PASSED
-GEN II BOXED POKEMON EDITOR: HOST/NATIVE VERIFIED
-GEN II EDITOR HARDWARE ACCEPTANCE: PENDING
-PARTY EDIT: DEFERRED — SAFETY PROOF INCOMPLETE
-JAPANESE GEN II: READ-ONLY
-LIVE INSTALLED-GAME WRITES: HARD DISABLED
-LIVE RETROARCH WRITES: HARD DISABLED
-LIVE EMULATOR-SOURCE WRITES: HARD DISABLED
-```
-
-## Accepted legacy read baselines
-
-| Game | State |
+| Milestone | Status |
 |---|---|
-| Red GB | DEVICE TESTED / DEVICE ACCEPTED READ-ONLY |
-| Blue GB | DEVICE TESTED / DEVICE ACCEPTED READ-ONLY |
-| Yellow GB | DEVICE TESTED / DEVICE ACCEPTED READ-ONLY |
-| Gold GBC | DEVICE TESTED / DEVICE ACCEPTED READ-ONLY |
-| Silver GBC | DEVICE TESTED / DEVICE ACCEPTED READ-ONLY |
-| Crystal GBC | DEVICE TESTED / DEVICE ACCEPTED READ-ONLY |
-| FireRed GBA | DEVICE TESTED / DEVICE ACCEPTED READ-ONLY |
-| LeafGreen GBA | DEVICE TESTED / DEVICE ACCEPTED READ-ONLY |
-| Ruby GBA | DEVICE TESTED / DEVICE ACCEPTED READ-ONLY |
-| Sapphire GBA | DEVICE TESTED / DEVICE ACCEPTED READ-ONLY |
-| Emerald GBA | DEVICE TESTED / DEVICE ACCEPTED READ-ONLY |
+| Red / Blue / Yellow read-only | DEVICE ACCEPTED |
+| Gold / Silver / Crystal read-only | DEVICE ACCEPTED |
+| FireRed / LeafGreen / Ruby / Sapphire / Emerald read-only | DEVICE ACCEPTED |
+| Classic staged Inventory | DEVICE ACCEPTED |
+| Gen I boxed staged Pokémon editor | DEVICE ACCEPTED |
+| Gen I passive View unification | DEVICE ACCEPTED |
 
-Generation II trainer semantics remain:
+Generation II read semantics remain:
 
 ```text
 Gold Trainer gender: Male
 Silver Trainer gender: Male
 Crystal Trainer gender: save-derived
-Gen II SID: DOES NOT EXIST
+Gen II SID: N/A — does not exist
 ```
 
-## Generation II staged boxed-Pokémon editor
-
-The current staged editor preserves the source save bytes and supports boxed-Pokémon operations including:
-
-- Species edit
-- Nickname edit
-- Level / EXP
-- Held Item
-- Moves
-- PP
-- PP Ups
-- DVs and derived HP DV
-- derived Gen II gender semantics
-- Stat Experience
-- OT
-- TID
-- Friendship
-- Pokérus
-- caught/met data where supported
-- Make Shiny / Make Non-Shiny
-- Add boxed Pokémon
-- Clone boxed Pokémon
-- semantic Pending Changes
-- strict serialize → finalize → reparse → canonical semantic verification
-- staged Trainer Name / Money / Inventory editing
-- game-aware TM/HM machine move-name display without changing stored item IDs
-
-Party browsing remains supported, but mutation of the Generation II 48-byte party battle-state structure is intentionally deferred.
-
-### Resolved semantic defect
-
-The editor previously exposed the semantic round-trip failure:
+Accepted Gen I editor artifact remains:
 
 ```text
-gender expected=0 reparsed=2
+Source: 69668bc81629228ef25c1bdada7c7ce1aed9b666
+NRO: PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
+SHA-256: 3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
 ```
 
-Root cause: Generation II gender is derived from **species + Attack DV** and is not an independently stored PK2 field. The correct fix is to derive/canonicalize gender on both sides of semantic verification. The serializer was not the defect, the accepted parser was left unchanged, and validation was not weakened.
+Do not rewrite or replace this historical acceptance evidence while validating Gen II.
 
-### Frozen development candidate evidence
+## Active Generation II shared editor milestone — PR #68
+
+### Editor and presentation
+
+Implemented:
+
+- capability-driven `DETAILS | VALUES | MOVES` shell;
+- passive Party/Box/action-sheet View with no edit cursor;
+- exact Gold/Silver vs Crystal move compatibility generated from pinned PKHeX data;
+- canonical Level/EXP behavior for Edit and Create with immediate stats/radar synchronization;
+- local/staged Create/Edit only;
+- transactional Keep / Discard current Edit session / Continue behavior;
+- authentic Gen II DVs/Stat Exp, derived HP DV, split SpA/SpD display from the one stored Special value;
+- six battle stats and six-axis radar;
+- exact Held Item selection domain with preservation of unusual existing bytes;
+- Friendship;
+- named Species picker;
+- named exact-game Move picker;
+- user-facing Pokérus State/Strain/Days controls;
+- immediate PP/PP Ups validation/clamping;
+- gender derived from species + Attack DV;
+- shiny derived from authentic DV patterns;
+- Crystal caught/met time, level, location and original-trainer gender presentation;
+- Gold/Silver hiding of Crystal-only caught/met fields;
+- Party-only Current HP / Max HP / Status presentation;
+- contained touch Back for passive Gen I/II View routed through the same Back action as controller B;
+- exact save/game/revision capability model for future per-format editors.
+
+### Verified staged export
+
+There is one authoritative Generation II save-export implementation:
 
 ```text
-Frozen dev SHA: 4866de7fb54d3e9da884dd5ab862cb07902d3b28
-Frozen dev tree: b990eeafe31a52b44a091adcebdb6a2c850e36de
-Semantic normalization fix: 538c91feb01ab76bb3b102460d449c43f97727b7
-Old native validation run: 34727424357
-Completed native job: 103643931880
+UI Review -> Export
+  -> publishVerifiedStagedEditorExport()
+  -> finalized staged bytes
+  -> strict pre-write parse
+  -> source + edited SHA-256
+  -> temporary app-owned directory
+  -> original_backup.srm + edited.srm
+  -> flush/fsync/close where supported
+  -> disk read-back and byte/hash verification
+  -> strict reparse of the disk bytes
+  -> provenance EDIT_MANIFEST.txt
+  -> same-filesystem publish/rename
+  -> incomplete temp cleanup on failure
 ```
 
-Frozen-dev gates:
+The GSC UI overlay no longer performs an independent `fopen/fwrite` export sequence. UI success is posted only after the transaction has verified and published. Failure states that the source remains unchanged.
+
+### Permanent automated coverage
+
+The Gen II audit candidate gate includes focused behavior/regression coverage for:
+
+- parser/discovery/source identity;
+- Level/EXP/Create/transaction semantics;
+- action-sheet and passive View;
+- Crystal caught/met and Party-native presentation;
+- Held Item, Species, Move, Pokérus, PP/PP Ups;
+- gender, shiny, six-stat calculation, radar;
+- verified staged export including disk equality, strict reparse, corruption rejection, cleanup, source immutability and provenance manifest;
+- Gen I, Gen III and Classic Inventory regressions;
+- full host suite and ASan/UBSan;
+- clean devkitA64 build, RomFS, embedded source identity and native-link proof;
+- exact source-addressed `Gen2-Audit` packaging.
+
+## Audit tracker #69
+
+The following PR #68 remediation is implemented and is eligible to be marked complete once the final exact candidate SHA is fully green:
+
+- Crystal caught/met meaningful decode;
+- Party-only HP/status View;
+- named/user-facing Species, Move and Pokérus controls;
+- staged export transaction hardening.
+
+Contained passive View touch Back is implemented, but the full touch-only v1 requirement remains **DEFERRED -> #55**.
+
+Global box/controller normalization remains **DEFERRED -> #26** and requires its own dedicated/device-tested pass.
+
+Legacy `PKSEBANK` Storage migration / Master Vault / true Move architecture remains **DEFERRED -> #27**. Legacy Storage is not Master Vault and backup-side operations are not product-level destructive Move semantics.
+
+## Permanent editor architecture
 
 ```text
-Focused PK2: PASS
-Compound edit: PASS
-Per-field semantic matrix: PASS
-Add: PASS
-Clone: PASS
-Shiny: PASS
-Derived gender: PASS
-Trainer/Money/Inventory: PASS
-Machine display: PASS
-GSC bridge: PASS
-Full host: PASS
-ASan: PASS
-UBSan: PASS
-Safety invariants: PASS
-Source mutation policy: PASS
-Clean install: PASS
-No /PKSE/ dependency: PASS
-git diff --check: PASS
-Device asset preflight: PASS
-devkitA64: PASS
-Native final link: PASS
+exact game/save/revision capabilities
+        ↓
+shared View/Create/Edit shell
+        ↓
+generation-specific adapters and user-facing pickers
+        ↓
+local/staged mutations only
+        ↓
+strict serialize/finalize/reparse validation
+        ↓
+verified exported edited copy + original backup + provenance
+        ↓
+future separately approved source-specific write adapter
 ```
 
-### Production-candidate validation
-
-The integrated application candidate was created from production without importing temporary CI carrier workflows. It was independently validated by GitHub Actions run `34728928845` against the exact application SHA/tree rather than the carrier commit.
+## Standalone runtime contract
 
 ```text
-Integrated code candidate: fc3da981165f9d5d8a97871f21be3690ac20dc4d
-Integrated code tree: dc972d147a915c074fea14e3774927dab24473c0
-Production validation run: 34728928845
-Native job: 103648021828 — PASS
-Host job: 103648021879 — PASS
-Full host: PASS
-ASan/UBSan: PASS
-Safety invariants: PASS
-Device asset preflight: PASS
-devkitA64: PASS
-Native final link: PASS
-```
-
-The final production/documentation SHA and hardware-test artifact are recorded after exact-SHA packaging; hardware acceptance remains pending until the user tests that exact artifact.
-
-## Standalone/runtime contract
-
-PokeBank NX owns its runtime data and does not require PKSE or other external save tools to launch.
-
-```text
-PokeBank runtime root: sdmc:/switch/PokeBank-NX/
-Gen II export root: sdmc:/switch/PokeBank-NX/exports/gen2/
+Runtime root: sdmc:/switch/PokeBank-NX/
 Required /PKSE/: NO
 Required PKSE.nro: NO
 Required PKSM: NO
@@ -190,94 +176,21 @@ Required Checkpoint: NO
 Required PC PKHeX: NO
 ```
 
-The native Switch edit flow must continue to show `SAVE WRITING NOT YET ENABLED` and provide discard/return behavior rather than implying installed-game writes were applied.
+External tools may be development references/oracles or optional migration helpers; they are not prerequisites for normal advertised runtime operation.
 
-## Machine-name presentation
+## Safety
 
-The reusable machine display system resolves machine labels using game identity + machine kind + machine number. Current routed mappings include GSC, FRLG, LGPE, Sword/Shield TM/TR, BDSP, Scarlet/Violet, and Legends Z-A. Visible labels may show forms such as `TM24 — Thunderbolt`; underlying stored item IDs remain unchanged.
+- Original source bytes are immutable.
+- Live installed-game writes are HARD DISABLED.
+- Live RetroArch writes are HARD DISABLED.
+- Live other-emulator writes are HARD DISABLED.
+- Party mutation remains deferred where safety proof is incomplete.
+- Unknown save variants fail closed.
+- Read acceptance does not authorize writes.
+- A staged export is not successful until read-back/hash/strict-reparse/publish completes.
 
-## Generation I RBY physical-test history
+## Final Gen II gate / stop condition
 
-The physically accepted corrected RBY runtime remains preserved. The exact accepted ItemsFix artifact was:
+Do not begin another major feature milestone. The exact PR head containing this status refresh is to be treated as the sole candidate source if and only if all exact-head workflows are green. Retrieve the CI-built `PokeBank-NX-Gen2-Audit-<shortsha>.nro`, independently verify hashes/package identity, deliver that exact binary, and STOP coding for owner Gold/Silver/Crystal hardware testing.
 
-```text
-Application source: 50dac31f53907143f48884681056f8d582813b76
-Application tree: 1cf73ea12833e8a94a06dfaf2b9036e9059344ec
-NRO: PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.nro
-NRO bytes: 159754197
-NRO SHA-256: b2a8c68a80b27ca647777e7286da976b25d66ff7460555f9a404a1a783a1c16b
-ZIP: PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.zip
-ZIP bytes: 152773612
-ZIP SHA-256: f6dbdf2a76df1598e37ea0d1a771ac7a1eaa1864a29294c9101a6c6c09e2ecb6
-Native/device build run: 34576781488
-```
-
-RBY opening, Trainer, Party, Boxes, Pokémon details, Items, Bag, PC Items, inventory navigation, and GB platform identity were physically accepted. Generation-appropriate Trainer fields are shown without fabricated SID/modern fields.
-
-## Accepted Generation III baseline
-
-```text
-FireRed GBA: DEVICE TESTED YES / DEVICE ACCEPTED YES
-LeafGreen GBA: DEVICE TESTED YES / DEVICE ACCEPTED YES
-Ruby GBA: DEVICE TESTED YES / DEVICE ACCEPTED YES
-Sapphire GBA: DEVICE TESTED YES / DEVICE ACCEPTED YES
-Emerald GBA: DEVICE TESTED YES / DEVICE ACCEPTED YES
-GEN III LEGACY READ-ONLY: PHYSICALLY ACCEPTED
-```
-
-Accepted RSE application source remains `a2df4c1acdb7a556808bd58a2bdbcd4fc0335954`; exact accepted RSE NRO SHA-256 remains `34fc0893ae0f0ee1a3e244c11469a5d44de181d68318040fce386470b2e0e80e`.
-
-Do not reopen accepted Gen I, Gen II read-only, or Gen III behavior without new physical evidence of a defect.
-
-## Current architecture / safety rules
-
-- Legacy source identity remains provider/path/save-container based.
-- Savestates are not canonical battery-save sources.
-- Original source bytes remain untouched.
-- Unknown save variants fail safely instead of being guessed writable.
-- Staged/editor exports are app-owned outputs, not live source mutation.
-- Live installed-game writing is HARD DISABLED.
-- Live RetroArch writing is HARD DISABLED.
-- Live emulator-source writing is HARD DISABLED.
-- Physical acceptance of reads does not authorize live writes.
-- Party editing remains deferred until its separate safety proof is complete.
-- Japanese Generation II remains read-only.
-
-## Immediate next step
-
-Produce and retrieve the exact pushed production hardware-test package, verify local/retrieved hashes, then perform the Gold staged-editor hardware test. Do not enable live writeback during that test.
-
-
-## Inventory UI hardware follow-up
-
-Physical polish/consistency acceptance is **FAILED — RETEST REQUIRED**. The hardware test confirmed classic `X Add / Y Remove` controls, but editable modern Switch backup/workspace Inventory still used `Y Add / X Remove`; the classic Add Item modal was too wide; picker controls needed clearer bottom hints; and `item.isNew` caused inconsistent full-name accent coloring.
-
-Corrected candidate `8cf4c7bf7a9213afcb4ef84a1a892b99017a7ed4` (tree `e58f3e6058d48377983399bc3b198d52f20a9083`) passed validation run `34742137283` including focused inventory contracts, prior classic regressions, full host, ASan, UBSan, device asset preflight, full devkitA64 link, and embedded identity/RomFS.
-
-The shared editable Inventory contract is now `A Edit / X Add / Y Remove / L/R Category / + Options / - Help / B Back`, with D-pad and Left Stick navigation. Empty editable categories advertise X Add but not impossible A Edit/Y Remove. Read-only installed sources hide edit actions and remain locked. Classic and inherited Add Item pickers use the shared 560px-centered geometry constants; classic retains exact-game/exact-pocket data and adds a counter, compact rows, visible controls, and actual L/R paging. Normal item names no longer change color merely because `isNew` is true; the save-state flag itself remains preserved.
-
-Issue #59 remains open. Do not mark the inventory milestone DEVICE ACCEPTED until the corrected exact-production artifact is physically retested. Live installed-game, RetroArch, and emulator-source writes remain **HARD DISABLED**.
-
-
-## Classic inventory hardware milestone accepted — 2026-09-13
-
-The owner physically accepted the latest inventory UX at application checkpoint
-`fc1e6de285177ca82ea08808edb1cf486bc2534b`. This supersedes the earlier inventory
-retest-pending status. Accepted: X Add (including empty pockets), Y Remove, A Edit
-Amount, L/R category, + Options, - Help, B Back, the slim centered Add Item picker,
-visible picker controls, readable names, navigation and exact-game catalogs.
-Source immutability, staged-only mutations and read-only installed sources remain
-the required safety contract. Neither live-write path was tested or authorized.
-
-The one reported `# BALL` label was the ordinary Gen II raw item ID 5. The shared
-name table now displays `Poké Ball`, including carried Balls, PC Items, pickers and
-callers of the shared name API. GS BALL remains a separate item at ID 115. This is
-a deterministic post-acceptance name-table cleanup, with regression coverage;
-no item IDs, save bytes, quantity rules or accepted inventory controls changed.
-A new inventory hardware checkpoint is not required solely for this label fix.
-
-LIVE INSTALLED-GAME WRITES: **HARD DISABLED**.
-LIVE RETROARCH WRITES: **HARD DISABLED**.
-
-Next: Gen I boxed staged Pokémon editor; new editor functionality is **not yet
-hardware accepted**. Party mutation and live source writes remain disabled.
+PR #68 remains OPEN / DRAFT / NOT MERGED. Gen II remains DEVICE TEST PENDING until the owner accepts the exact candidate artifact.

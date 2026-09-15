@@ -1,246 +1,122 @@
-# NEXT CODEX PROMPT — GENERATION II SHARED POKÉMON EDITOR
+# NEXT CODEX PROMPT — FINISH GEN II SHARED EDITOR DEVICE CANDIDATE
 
-Continue PokeBank NX on `feature/pokebank-playable`.
+Continue PokeBank NX from the existing Gen II work. Do not restart, create a replacement branch, or reset newer commits.
 
-## ACCEPTED BASELINE
-
-PR #66 is merged. Generation I boxed staged Pokémon editing is now physically DEVICE ACCEPTED.
-
-Accepted Gen I hardware candidate:
+## Repository state
 
 ```text
-Application source: 69668bc81629228ef25c1bdada7c7ce1aed9b666
-Application tree:   b0ec6d42a426b4bba4bff87ad7eb948ccafc4fe9
-NRO:                PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
-NRO SHA-256:        3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
-Acceptance record:  docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md
-Issue #62:          CLOSED / DEVICE ACCEPTED
+Repository: GlitchedZeus/PokeBank-NX
+Production branch: feature/pokebank-playable
+Production checkpoint: a9fc4521087cdc80078c7db620f1be0107adce58
+Focused branch: feature/gen2-shared-pokemon-editor-20260914
+PR #68: OPEN / DRAFT / NOT MERGED
+Known implementation head: 43b8563d4177b58ae0f341c1ebd58f86e2ee4fdb
+Known implementation tree: e791463ef438b5795da28c636de7bcac1105806f
 ```
 
-PR #66 merge commit baseline:
+First re-fetch PR #68. If it has advanced, preserve the newer head and continue from it.
+
+## Accepted milestones — do not reopen without evidence
+
+- Gen I RBY read-only: DEVICE ACCEPTED
+- Gen II GSC read-only: DEVICE ACCEPTED
+- Gen III GBA read-only: DEVICE ACCEPTED
+- Classic staged Inventory: DEVICE ACCEPTED
+- Gen I boxed staged Pokémon editor: DEVICE ACCEPTED
+- Gen I passive View unification: DEVICE ACCEPTED
+
+Accepted Gen I editor artifact:
 
 ```text
-22333d370f4c06d334946e8ff913f884a205722f
+source 69668bc81629228ef25c1bdada7c7ce1aed9b666
+NRO PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
+SHA-256 3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
 ```
 
-Recover the latest remote production head before editing; do not assume the baseline above is still HEAD if newer documentation commits exist.
+## Current Gen II implementation
 
-## NEXT MILESTONE
+The focused branch already contains the shared Gen II View/Create/Edit work. Do not redo research or regenerate compatibility data unless a failing test proves the existing data is wrong.
 
-Bring the existing Generation II Gold/Silver/Crystal boxed-Pokémon staged editor onto the same reusable PKSE-style View/Create/Edit foundation now accepted for Gen I, then produce an exact NRO for physical hardware acceptance.
+Implemented:
 
-Do NOT rewrite the existing Gen II parser/serializer/editor core unless a concrete failing test proves a defect. Reuse the already validated staged Gen II backend.
+- Gold/Silver vs Crystal exact-game move compatibility;
+- pinned offline compatibility tables derived from PKHeX reference commit `77dcd3a7895bceaafbbff12d25bdf77c1acd8ca5`;
+- passive View live compatibility: green `OK` / orange `Unusual preserved`;
+- encounter legality remains `Not checked`;
+- passive View does not show editor-internal `PKSE three-panel workspace` wording;
+- shared Gen II `DETAILS | VALUES | MOVES` View/Create/Edit;
+- authentic DVs / derived HP DV / Stat Exp;
+- one Special DV feeding split SpA/SpD battle presentation;
+- six-stat and six-axis radar presentation;
+- Held Item picker using the Gen II item domain;
+- Friendship and Pokérus;
+- Crystal-only caught/met data where actually stored;
+- species + Attack-DV gender;
+- DV-derived shiny;
+- local Add/Edit drafts;
+- Y random 0–15 DVs;
+- L/R previous/next panel;
+- Create explicit Stage Add;
+- transactional Edit baseline + Keep/Discard/Continue;
+- discard restores the exact staged state that existed when Edit opened;
+- unrelated edits preserve pre-existing unusual move/PP/PP-Up bytes;
+- Level and EXP use separate applet invocations;
+- permanent compatibility/passive-view/editor-surface host/sanitizer tests.
 
-## PERMANENT EDITOR RULE
-
-Read and obey:
-
-`docs/POKEMON_EDITOR_UI_CONTRACT.md`
-
-If a field genuinely exists in the exact current game/save format, expose it in the shared editor. If it does not exist, hide it rather than fabricate it. Exact game/save/revision capability wins over species debut generation.
-
-Gen II should therefore expose truthful PK2 concepts such as:
-
-- Species
-- Nickname
-- Level / EXP
-- OT
-- TID
-- Held Item
-- Moves / PP / PP Ups
-- Attack / Defense / Speed / Special DVs
-- derived/read-only HP DV
-- Stat Exp
-- Friendship
-- Pokérus
-- caught/met data where the exact GSC format supports it
-- shiny state derived from DVs
-- gender derived from species + Attack DV where applicable
-- real calculated Generation II battle stats
-
-Do NOT add Gen III+ concepts to GSC:
-
-- Nature
-- Ability
-- Ribbons
-- Marks
-- modern personality/PID semantics
-- later-generation-only met fields
-
-Gold/Silver trainer gender remains fixed Male. Crystal trainer gender remains save-derived. Gen II SID does not exist.
-
-## SHARED UI EXPECTATION
-
-Use the same permanent three-panel visual language accepted for Gen I:
-
-```text
-DETAILS | VALUES | MOVES
-```
-
-Create, Edit and View should share one generation-aware shell.
-
-Preserve the accepted controller model:
-
-```text
-D-pad / Left Stick   Navigate current panel
-A                    Edit / Select
-Y                    Generation-appropriate quick action only when explicitly shown
-L                    Previous panel
-R                    Next panel
-B                    Back / transactional exit
-```
-
-Footer hints must always describe the currently active screen/modal.
-
-For existing-Pokémon Edit, preserve the accepted transactional-session rule:
-
-- opening Edit snapshots the exact current staged Pokémon;
-- previews may update inside the editor;
-- B after a real change opens confirmation;
-- A keeps this session's staged edits;
-- X discards only this Edit session and restores the exact state present when Edit opened;
-- B on confirmation returns to editing;
-- opening Edit and changing nothing exits normally without pointless confirmation;
-- discard must never erase unrelated earlier staged work.
-
-## GEN II SUPPLEMENTAL DATA PANE
-
-Use the lower-left supplemental pane beside the radar for real Gen II data rather than empty filler.
-
-Good candidates include compact truthful values such as:
-
-- Held Item
-- Friendship
-- Pokérus
-- caught/met information where supported
-- source game
-- EXP growth / next-level information
-
-Held Item must be interactive and use an exact-game-valid picker. Do not expose later-generation items that cannot exist in GSC.
-
-There are no Ribbons in Gen II, so do not show a Ribbons row.
-
-## GEN II BATTLE STATS / RADAR
-
-Generation II battle stats are six numeric stats because Special Attack and Special Defense are separate battle stats, even though the stored DV is one shared Special DV.
-
-Do not blindly reuse the Gen I five-axis labels if they would misrepresent Gen II.
-
-Audit the existing Gen II stat model and choose a truthful readable presentation. The shared radar architecture may require a generation-specific six-axis variant for Gen II+.
-
-Requirements:
-
-- use actual calculated GSC battle stats;
-- make clear that Sp. Atk and Sp. Def derive from one stored Special DV in Gen II;
-- do not fabricate independent SpA/SpD DVs;
-- keep calculated battle stats read-only/unfocusable;
-- editor and normal Summary must agree.
-
-## PRESERVE EXISTING GEN II BACKEND
-
-The existing staged Gen II editor already has host/native coverage for boxed Pokémon edits, including semantic round-trip validation and derived-gender normalization. Preserve that work.
-
-Do not weaken:
-
-- strict serialize -> finalize -> reparse -> semantic verification;
-- source immutability;
-- exact game handling;
-- unsupported Japanese/edit layouts fail-closed behavior;
-- staged Trainer / Money / Inventory behavior;
-- machine display mappings;
-- existing Gen I / Gen III read regressions.
-
-Party mutation remains DEFERRED.
-
-## SAFETY — NON-NEGOTIABLE
+## Non-negotiable safety
 
 ```text
 ORIGINAL SOURCE SAVE: IMMUTABLE
-LIVE RETROARCH WRITES: HARD DISABLED
-LIVE INSTALLED-GAME WRITES: HARD DISABLED
-LIVE OTHER-EMULATOR WRITES: HARD DISABLED
-PARTY EDIT: DEFERRED
+LIVE INSTALLED-GAME WRITE: HARD DISABLED
+LIVE RETROARCH WRITE: HARD DISABLED
+LIVE OTHER-EMULATOR WRITE: HARD DISABLED
+PARTY MUTATION: DEFERRED WHERE NOT SEPARATELY PROVEN
 ```
 
-Implementing the Gen II UI does not authorize live writeback.
+## Primary task — freeze and validate one exact candidate
 
-## FIRST TASK
+Do not start Gen III editor, Vault, DS/3DS, or another roadmap milestone.
 
-1. Recover exact current `feature/pokebank-playable` HEAD/tree.
-2. Confirm PR #66 merge and Gen I acceptance record are in history.
-3. Run the existing Gen II focused staged-editor tests before changing UI.
-4. Audit which Gen II backend fields already exist and map them into the permanent shared editor capability model.
-5. Reuse the accepted Gen I UI primitives rather than creating another generation-specific editor from scratch.
-6. Keep Gen I DEVICE ACCEPTED behavior frozen unless a new regression proves otherwise.
+On the exact current PR #68 head:
 
-## REQUIRED REGRESSION COVERAGE
+1. run `git diff --check`;
+2. run all focused Gen II staged/editor/compatibility/passive-view tests;
+3. run Gen I accepted editor regressions;
+4. run GSC/RBY/FRLG/RSE/inventory regressions;
+5. run source mutation/immutability gates;
+6. run the full permanent host suite;
+7. run ASan and UBSan;
+8. run device asset preflight;
+9. perform a clean devkitA64 compile and final NRO link;
+10. verify embedded application SHA;
+11. verify complete embedded RomFS;
+12. produce source-addressed artifact packaging with manifest and SHA256SUMS.
 
-At minimum cover:
+Earlier CI results from older SHAs are not final-candidate evidence.
 
-- exact Gen II field/capability set;
-- Held Item present and editable;
-- no Nature/Ability/Ribbons;
-- HP DV derived/read-only;
-- one stored Special DV feeding truthful Gen II battle-stat presentation;
-- Friendship / Pokérus / caught data where supported;
-- derived gender behavior;
-- shiny DV behavior;
-- transactional Edit keep/discard/no-change semantics;
-- Add remains explicit staged-draft flow;
-- exact-game held-item validity;
-- calculated stats unfocusable;
-- contextual picker/modal ownership;
-- source immutability and all live-write locks.
+If anything fails, inspect the exact failure, fix only the real regression, commit/push, and restart verification from the new exact SHA.
 
-## VALIDATION BEFORE DEVICE NRO
+## PR metadata
 
-Require:
+Update PR #68 body/status summary so it no longer claims Create/Edit, Held Item, compatibility, or transactional editing are still unimplemented. Keep PR #68 OPEN / DRAFT / NOT MERGED.
 
-```text
-git diff --check
-focused Gen II staged editor tests
-shared Pokémon editor capability/UI tests
-Gen I accepted editor regressions
-GSC read-only regressions
-RBY regressions
-FRLG/RSE regressions
-inventory regressions
-machine-display regressions
-source mutation policy
-full permanent host suite
-ASan
-UBSan
-device asset preflight
-devkitA64 clean compile
-final NRO link
-embedded application identity
-embedded RomFS verification
-exact artifact packaging
-```
+## Exact hardware handoff
 
-Do not weaken tests to make the candidate green.
+Once every required gate is green on one frozen SHA, retrieve the CI-produced physical-test artifact and independently verify:
 
-## HARDWARE HANDOFF
+- application SHA + tree;
+- workflow/run identity;
+- artifact name/id/size/digest;
+- `BUILD_MANIFEST.json`;
+- `SHA256SUMS.txt`;
+- standalone NRO size + SHA-256;
+- packaged ZIP size + SHA-256;
+- ZIP NRO byte-identical to standalone NRO;
+- embedded source identity;
+- complete RomFS count.
 
-When the exact candidate is fully green, download the CI artifact and independently verify its manifest and hashes. Report exact application SHA/tree, workflow IDs, NRO filename/bytes/SHA-256, packaged ZIP, artifact ID/digest and RomFS count.
+Then provide the actual downloadable `.nro` and STOP coding.
 
-Then provide the actual `.nro` and STOP for owner hardware testing.
+Physical test checklist must cover Gold/Silver/Crystal View/Create/Edit, move compatibility, Held Item, Friendship, Pokérus, Crystal caught/met, six stats/radar, shiny/gender/DVs, L/R/Y controls, transactional discard, invalid Add move blocking, unusual existing move preservation, and unchanged source `.srm`.
 
-Primary physical test targets:
-
-1. Gold/Silver/Crystal boxed Pokémon open in the shared editor.
-2. View is read-only.
-3. Create/Edit share the same workspace.
-4. Held Item picker works and only offers exact-game-valid items.
-5. Friendship, Pokérus and supported caught/met fields are truthful/editable.
-6. DVs and derived HP DV behave correctly.
-7. Gen II gender derivation remains correct.
-8. shiny behavior remains DV-derived.
-9. battle stats/Summary agree and clearly handle split SpA/SpD with one stored Special DV.
-10. transactional B exit keep/discard/no-change works.
-11. discard restores exact pre-edit staged state.
-12. source `.srm` remains untouched.
-
-## STOP CONDITION
-
-Do not start Gen III boxed editing, Master Vault, DS/3DS, live writes or another roadmap milestone until the Generation II shared editor has an exact hardware-test candidate and the owner reports the device result.
+Do not merge PR #68 or declare Gen II DEVICE ACCEPTED before the owner reports the physical result.

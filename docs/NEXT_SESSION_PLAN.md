@@ -1,89 +1,203 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-11
-Status: **GEN I RBY + GEN III LEGACY READ-ONLY PHYSICALLY ACCEPTED / NEXT: GSC READ-ONLY**
+Last updated: 2026-09-14
 
-## Preserved accepted baseline
+Status: **GEN II FINAL AUDIT IMPLEMENTED / FREEZE EXACT CANDIDATE / MATERIALIZE CI NRO / PHYSICAL G-S-C TEST NEXT**
 
-```text
-Red GB: DEVICE ACCEPTED YES
-Blue GB: DEVICE ACCEPTED YES
-Yellow GB: DEVICE ACCEPTED YES
-FireRed GBA: DEVICE ACCEPTED YES
-LeafGreen GBA: DEVICE ACCEPTED YES
-Ruby GBA: DEVICE ACCEPTED YES
-Sapphire GBA: DEVICE ACCEPTED YES
-Emerald GBA: DEVICE ACCEPTED YES
-Live installed-game writing: HARD DISABLED
-Live RetroArch writing: HARD DISABLED
-```
-
-Accepted RBY runtime/artifact:
+## Recover this project state first
 
 ```text
-Application source: 50dac31f53907143f48884681056f8d582813b76
-Application tree: 1cf73ea12833e8a94a06dfaf2b9036e9059344ec
-PokeBank-NX-RBY-ItemsFix-Retest-50dac31f.nro
-bytes: 159754197
-SHA-256: b2a8c68a80b27ca647777e7286da976b25d66ff7460555f9a404a1a783a1c16b
-RBY DEVICE TESTED: YES
-RBY DEVICE ACCEPTED: YES
+Repository: GlitchedZeus/PokeBank-NX
+Production branch: feature/pokebank-playable
+Production checkpoint: a9fc4521087cdc80078c7db620f1be0107adce58
+Focused branch: feature/gen2-shared-pokemon-editor-20260914
+PR #68: OPEN / DRAFT / NOT MERGED
+Audit tracker: #69
+Latest pre-documentation implementation checkpoint: a3917f20e0b09b31473f073398a9b1f1a6adfb51
 ```
 
-Preserve the first `d9077e2d` device-test record as historical evidence: it exposed the RBY Items/category defect and Yellow GB/GBA label defect before the accepted `50dac31f...` retest.
+The exact candidate SHA is the newer PR head containing this documentation refresh. Preserve any newer head; never reset backward to the checkpoint above.
 
-## Next milestone — Generation II Gold / Silver / Crystal
-
-Target identities:
+## Accepted baselines that must remain frozen
 
 ```text
-gold_gbc
-silver_gbc
-crystal_gbc
+Gen I RBY read-only: DEVICE ACCEPTED
+Gen II GSC read-only: DEVICE ACCEPTED
+Gen III GBA read-only: DEVICE ACCEPTED
+Classic Inventory editor: DEVICE ACCEPTED
+Gen I boxed staged Pokémon editor: DEVICE ACCEPTED
+Gen I passive View unification: DEVICE ACCEPTED
+Live installed-game writes: HARD DISABLED
+Live emulator-source writes: HARD DISABLED
 ```
 
-Platform/source:
+Do not rewrite historical acceptance evidence while validating the new Gen II editor.
+
+## Generation II implementation now present
+
+- exact G/S vs Crystal move compatibility tables and runtime selection;
+- passive View and occupied-slot action-sheet View;
+- live compatibility (`OK` / `Unusual preserved`) with encounter legality still `Not checked`;
+- canonical Level/EXP transaction behavior and Create EXP serialization;
+- immediate EXP -> Level/stat/radar synchronization;
+- authentic DVs, Stat Exp, derived HP DV and one stored Special feeding split SpA/SpD display;
+- six-stat / six-axis battle presentation;
+- authentic Held Item picker;
+- Friendship;
+- named Species picker;
+- named exact-game Move picker;
+- user-facing Pokérus State/Strain/Days control;
+- PP/PP Ups validation/clamping;
+- Crystal caught/met decode into meaningful native fields;
+- Party-only Current HP / Max HP / Status;
+- gender/shiny DV semantics;
+- local Create/Edit drafts;
+- transactional Edit Keep / Discard-current-session / Continue;
+- unusual existing move/PP/PP-Up preservation;
+- contained passive Gen I/II touch Back;
+- exact save/game/revision capability model;
+- one authoritative verified Gen II staged-export transaction used by the real UI.
+
+## Export contract
+
+The UI must continue to call `publishVerifiedStagedEditorExport()` and must not regain a second direct save writer. Required behavior:
 
 ```text
-Game Boy Color / RetroArch
-normal battery saves only (.sav / .srm)
-READ ONLY
+finalize staged bytes
+strict pre-write parse
+fingerprint source + edited bytes
+write original backup + edited save under an app-owned temp directory
+flush/sync/close where supported
+read both files back
+verify exact bytes + SHA-256
+strictly reparse the edited disk bytes
+write provenance manifest
+publish by same-filesystem rename
+remove incomplete temp output on failure
+never write the source .srm
 ```
 
-## Start the next coding session with recovery
+Only a fully verified/published directory counts as success.
 
-1. Recover the exact accepted branch state using the repository recovery contract.
-2. Read `CURRENT_STATUS.md`, `docs/CODEX_SESSION.md`, `docs/NEXT_CODEX_PROMPT.md` and the GB/GBC resource chunk only.
-3. Verify accepted Gen I and Gen III baselines remain present before touching GSC.
-4. Keep live installed-game and RetroArch writes hard disabled.
+## Final exact-SHA validation
 
-## GSC audit / implementation scope for the next coding session
+Do not add features. If a gate fails, fix only the demonstrated regression, commit once, and restart all exact-head evidence from the new SHA.
 
-- inspect pinned PKSM-Core `Sav2` / `PK2` first;
-- independently oracle relevant behavior with PKHeX;
-- determine international/Japanese save layouts;
-- prove supported save sizes/checksums;
-- model Gold/Silver vs Crystal differences explicitly;
-- Trainer;
-- Party;
-- PC Boxes;
-- Items/inventory;
-- truthful Generation II Pokémon summary fields;
-- bounded RetroArch normal battery-save discovery;
-- `.sav` / `.srm` only, not savestates;
-- source immutability;
-- Refresh/current-save behavior;
-- malformed/truncated rejection;
-- Gen I + Gen III regressions;
-- focused host tests + full host suite;
-- ASan/UBSan;
-- native build;
-- eventual exact physical-test NRO before device acceptance.
+The dedicated workflow `.github/workflows/gen2-audit-candidate.yml` must pass on the exact final PR head and prove:
 
-Do not guess offsets/layouts or weaken strict identity/checksum validation merely to accept a fixture.
+```text
+git diff --check
+Gen II compatibility regeneration
+Gen II parser/discovery/bridge
+Gen II editor/session/Create/Edit/Level/EXP
+passive/action-sheet View
+Crystal caught/met
+Party/Box native presentation
+Held Item
+Species picker
+Move picker
+Pokérus
+PP / PP Ups
+gender
+shiny
+six battle stats
+six-axis radar
+verified export UI + transaction
+corruption rejection
+temporary cleanup
+source immutability/write locks
+Gen I regression
+Gen III regression
+Classic Inventory regression
+full permanent host suite
+ASan
+UBSan
+device asset preflight
+RomFS recovery/completeness
+clean devkitA64 compile
+final NRO link
+AArch64 native linkage
+embedded application SHA
+embedded RomFS
+BUILD_MANIFEST.json
+SHA256SUMS.txt
+Gen2-Audit NRO + package ZIP
+```
 
-## Out of scope until separately authorized
+Standard PR workflows must also be green for that same SHA. Never reuse an older green result.
 
-Do not start DS, 3DS, Vault/Banks, RetroArch per-profile isolation, Admin Mode, RetroArch Profile Bridge, transfers, conversion, editor, legality expansion, events or live writing merely because RBY is now accepted.
+## Audit issue disposition
 
-Canonical handoff: `docs/NEXT_CODEX_PROMPT.md`.
+When exact-head tests are green, update #69 accurately:
+
+```text
+COMPLETE: Crystal caught/met decode
+COMPLETE: Party-only HP/status View
+COMPLETE: user-facing Species/Move/Pokérus controls
+COMPLETE: staged export transaction hardening
+COMPLETE: contained passive View touch Back foundation
+DEFERRED -> #55: full touch-only v1
+DEFERRED -> #26: global box/controller normalization + device retest
+DEFERRED -> #27: Legacy Storage migration / Master Vault / true Move architecture
+```
+
+Leave #55, #26 and #27 open. Issue #69 may remain open for these deferred/global items.
+
+## Artifact handoff
+
+When the exact candidate workflow is fully green:
+
+1. record application SHA, tree SHA, branch, PR state and workflow run;
+2. record artifact name/ID/size/digest;
+3. download the exact CI Actions artifact;
+4. verify `BUILD_MANIFEST.json`, `SHA256SUMS.txt` and package hash;
+5. verify standalone NRO filename/size/SHA-256;
+6. verify packaged ZIP filename/size/SHA-256;
+7. verify embedded application SHA and complete RomFS evidence;
+8. materialize the exact CI-built `PokeBank-NX-Gen2-Audit-<shortsha>.nro` into the conversation;
+9. give the owner a clickable link;
+10. STOP CODING.
+
+Do not substitute an older NRO or locally rebuilt binary.
+
+## Physical Switch checklist — after artifact handoff
+
+Run on **Gold, Silver and Crystal**, noting any game-specific differences:
+
+- boot/open correct save;
+- Party View;
+- Party Current HP / Max HP;
+- Party Status;
+- Box View and no fabricated Party-only values;
+- occupied-slot action-sheet View;
+- passive touch Back and controller B Back;
+- named Species picker;
+- named exact-game Move picker;
+- Pokérus State/Strain/Days editor;
+- Held Item picker;
+- Level;
+- EXP;
+- Level/EXP synchronization;
+- PP;
+- PP Ups;
+- move compatibility / unusual preserved state;
+- Crystal caught/met native values;
+- Gold/Silver show no fake Crystal caught/met fields;
+- gender;
+- shiny;
+- Friendship;
+- six battle stats;
+- six-axis radar;
+- Create / Stage Add;
+- Edit;
+- Keep;
+- Discard current Edit session;
+- Continue editing;
+- unusual existing move/PP preservation on unrelated edit;
+- Export staged copy;
+- exported `original_backup.srm` exists;
+- exported `edited.srm` exists;
+- exported `EDIT_MANIFEST.txt` exists;
+- original RetroArch/source `.srm` remains byte-unchanged.
+
+PR #68 stays OPEN / DRAFT / NOT MERGED and Gen II stays DEVICE TEST PENDING until the owner reports the result of this checklist for the exact delivered artifact.

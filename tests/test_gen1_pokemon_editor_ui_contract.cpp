@@ -2,7 +2,10 @@
 
 #include <array>
 #include <cassert>
+#include <fstream>
 #include <iostream>
+#include <iterator>
+#include <string>
 
 using namespace PokeBank::UIModel::Gen1Editor;
 
@@ -10,6 +13,12 @@ static bool contains(const FooterSet& set, FooterAction action) {
     for (std::size_t i = 0; i < set.count; ++i)
         if (set[i] == action) return true;
     return false;
+}
+
+static std::string readFile(const char* path) {
+    std::ifstream in(path, std::ios::binary);
+    assert(in);
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
 int main() {
@@ -128,6 +137,27 @@ int main() {
     static_assert(!liveInstalledGameWritingEnabled());
     static_assert(!fullEncounterLegalityEngineEnabled());
 
-    std::cout << "Gen I cleanup2 logical-editor + hover + footer + layout contract: PASS\n";
+    const auto composite = readFile("src/UI/TrainerViewScreenCompositeOverlay.cpp");
+    assert(composite.find("ux2StageAddWithClassicSelection") != std::string::npos);
+    assert(composite.find("const int destinationBox = state.box") != std::string::npos);
+    assert(composite.find("const int destinationSlot = state.slot") != std::string::npos);
+    assert(composite.find("screen.selectedBoxIndex = destinationBox") != std::string::npos);
+    assert(composite.find("screen.selectedItemIndex = destinationSlot") != std::string::npos);
+    assert(composite.find("drawFooterWithClassicAddLabel") != std::string::npos);
+    assert(composite.find("text.replace(pos, std::char_traits<char>::length(oldLabel), \"Add\")") != std::string::npos);
+    assert(composite.find("added to Box") != std::string::npos);
+    assert(composite.find("Gen1MoveStatusParity") == std::string::npos);
+    const auto workspace = readFile("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
+    assert(workspace.find("MoveCompatibility::canLearnMove") != std::string::npos);
+    assert(workspace.find("fb.drawText(statusX, rowY + 9, status") != std::string::npos);
+    assert(workspace.find("centerX + 142") == std::string::npos);
+    for (const auto* path : {"src/UI/Gen1PokemonEditorPassiveView.inc", "src/UI/Modals/Gen1PokemonDetailsModal.cpp",
+                             "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"})
+        assert(readFile(path).find("view.setMoveCompatibility(") != std::string::npos);
+    const auto passivePresentation = readFile("src/UI/Gen1PokemonDetailsPresentation.cpp");
+    assert(passivePresentation.find("p.moveCompatible[i] ? \"OK\" : \"Unusual\"") != std::string::npos);
+    assert(passivePresentation.find("Encounter legality\", \"Not checked") != std::string::npos);
+
+    std::cout << "Gen I cleanup2 logical-editor + packed-Add + move-status parity contract: PASS\n";
     return 0;
 }

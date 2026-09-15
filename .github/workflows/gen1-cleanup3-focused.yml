@@ -10,6 +10,7 @@ on:
       - 'include/UI/Gen1PokemonDetailsPresentation.h'
       - 'include/UI/Gen1PokemonEditorUX3Contract.h'
       - 'include/UI/NavigationRepeat.h'
+      - 'include/UI/SharedSpeciesPicker.h'
       - 'include/UI/SpriteManager.h'
       - 'include/UI/StatsRadar.h'
       - 'include/UI/BattleStatRadarModel.h'
@@ -95,6 +96,7 @@ jobs:
 
           ux3 = Path('src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc').read_text()
           composite = Path('src/UI/TrainerViewScreenCompositeOverlay.cpp').read_text()
+          shared_picker = Path('include/UI/SharedSpeciesPicker.h').read_text()
           shiny = Path('include/Integration/Gen1/Gen1Shiny.h').read_text()
           compat = Path('src/Integration/Gen1/Gen1MoveCompatibility.cpp').read_text()
           model = Path('include/UI/Gen1PokemonEditorUX3Contract.h').read_text()
@@ -111,7 +113,8 @@ jobs:
               'ShinyDVs::makeNormalFallback',
               'Y Shiny',
               'D-pad/Stick Navigate',
-              'SpriteManager::getSprite(preview, true)',
+              'SharedSpeciesPicker::drawContent',
+              'state.pickerValue, 151, ux3.pickerPreviewShiny',
               'SpriteManager::getIconSprite',
               'UX3Contract::pendingGeometry',
               'drawGen1PokemonDetailsPresentation',
@@ -120,6 +123,14 @@ jobs:
           ]
           for needle in required_ux3:
               assert needle in ux3, needle
+
+          # The accepted Gen I visual species picker is now shared infrastructure. Protect the
+          # extracted ownership instead of requiring its sprite calls to remain duplicated here.
+          assert '#include "UI/SharedSpeciesPicker.h"' in composite
+          assert 'SpriteManager::getSprite(preview, false)' in shared_picker
+          assert 'SpriteManager::getSprite(preview, true)' in shared_picker
+          assert '"NORMAL"' in shared_picker and '"SHINY"' in shared_picker
+          assert 'previewShiny' in shared_picker
 
           assert 'Gen1PokemonEditorOverlayUXCleanup2.inc' in composite
           assert 'Gen1PokemonEditorOverlayUXCleanup3.inc' in composite
@@ -177,7 +188,7 @@ jobs:
           print('GEN I STRICT SHINY SERIALIZE/REPARSE CONTRACT: PASS')
           print('GEN I SHINY CLONE DV PRESERVATION CONTRACT: PASS')
           print('GEN I WEIRD-SOURCE MOVE/PP PRESERVATION CONTRACT: PASS')
-          print('GEN I SPECIES NORMAL+SHINY PREVIEW: PASS')
+          print('GEN I SHARED SPECIES PICKER NORMAL+SHINY PREVIEW: PASS')
           print('GEN I MOVE COMPATIBILITY FILTER: PASS')
           print('GEN I LEFT-STICK SHARED NAVIGATION: PASS')
           print('GEN I CLONE SPRITE CONTRACT: PASS')

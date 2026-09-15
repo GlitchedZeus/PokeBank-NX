@@ -1,6 +1,7 @@
 #ifndef UI_GEN1_POKEMON_DETAILS_PRESENTATION_H
 #define UI_GEN1_POKEMON_DETAILS_PRESENTATION_H
 
+#include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include <array>
 #include <cstdint>
 #include <string>
@@ -25,15 +26,26 @@ struct Gen1PokemonDetailsPresentation {
     std::array<uint16_t,4> moves{};
     std::array<uint8_t,4> pp{};
     std::array<uint8_t,4> ppUps{};
+    std::array<bool,4> moveCompatible{};
     std::array<uint16_t,5> battleStats{};
     std::array<uint8_t,2> nativeTypes{}; // exact Gen I type IDs
     bool hasBattleStats = false;
     bool battleStatsCalculated = false;
     bool shiny = false;
     uint8_t catchRate = 0;
+    bool moveCompatibilityChecked = false;
+    bool moveCompatibilityCompatible = false;
     std::string sourceGameLabel = "Gen I";
     std::string recordLabel;
     std::string sourceStateLabel = "READ ONLY";
+    void setMoveCompatibility(PokeVault::Integration::Gen1::SourceGame game) {
+        moveCompatibilityChecked = true;
+        moveCompatibilityCompatible = true;
+        for (size_t i = 0; i < moves.size(); ++i) {
+            moveCompatible[i] = PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(game, species, moves[i]);
+            moveCompatibilityCompatible &= moveCompatible[i];
+        }
+    }
 };
 
 void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuffer& fb,

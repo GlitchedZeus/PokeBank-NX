@@ -482,11 +482,20 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const int rowY = contentY + 44 + i * 40;
         const bool selected = foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;
         if (selected) fb.drawSelectionHighlight(rightX + 10, rowY, rightW - 20, 38);
-        const bool incompatible = badMove && *badMove == static_cast<size_t>(i);
+        const bool incompatible = !MoveCompatibility::canLearnMove(e->metadata().sourceGame, species, moves[static_cast<size_t>(i)]);
         std::string moveText = moves[static_cast<size_t>(i)] == 0 ? "Empty" : std::string(Names::getMoveName(moves[static_cast<size_t>(i)]));
         if (incompatible) moveText = "[!] " + moveText;
         fb.drawText(rightX + 20, rowY + 9, moveText, incompatible ? incompatibleColor : Colors::Text, TextStyle::Caption);
-        fb.drawText(rightX + rightW - 82, rowY + 9, "PP " + std::to_string(pp[static_cast<size_t>(i)]), Colors::TextDim, TextStyle::Caption);
+        const std::string status = incompatible ? (add ? "Invalid" : "Unusual") : "OK";
+        int statusW = 0, statusH = 0;
+        fb.measureText(status, statusW, statusH, TextStyle::Caption);
+        const int statusX = rightX + rightW - 16 - statusW;
+        fb.drawText(statusX, rowY + 9, status, incompatible ? incompatibleColor : Colors::Success, TextStyle::Caption);
+        const auto ups = add ? state.draft.ppUps[static_cast<size_t>(i)] : pokemon->ppUps[static_cast<size_t>(i)];
+        const std::string ppText = "PP " + std::to_string(pp[static_cast<size_t>(i)]) + " Up " + std::to_string(ups);
+        int ppW = 0, ppH = 0;
+        fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
+        fb.drawText(statusX - 12 - ppW, rowY + 9, ppText, Colors::TextDim, TextStyle::Caption);
     }
     const int statusY = contentY + 214;
     fb.drawHDivider(rightX + 14, statusY - 12, rightW - 28);

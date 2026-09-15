@@ -1,4 +1,6 @@
+#include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
+#include "UI/PokemonViewActions.h"
 
 namespace UI::Gen1PokemonEditor {
 namespace {
@@ -16,12 +18,13 @@ bool foundationPassiveViewActive(const TrainerViewScreen& screen) noexcept {
     return ux2StateFor(screen).mode == UX2Mode::View;
 }
 
-bool handleFoundationPassiveViewInput(TrainerViewScreen& screen, uint64_t down) {
+bool handleFoundationPassiveViewInput(TrainerViewScreen& screen, uint64_t down,
+                                      int touchTarget = -1) {
     if (!foundationPassiveViewActive(screen)) return false;
 
-    // Action-sheet View is deliberately passive, matching Party and Storage View Pokemon.
-    // Consume every input so D-pad/stick/A/L/R can never create a field cursor or editor action.
-    if (down & HidNpadButton_B) foundationExitMainMode(screen);
+    if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B, touchTarget) ==
+        PokeBank::UIModel::PassiveViewAction::Back)
+        foundationExitMainMode(screen);
     return true;
 }
 
@@ -53,6 +56,7 @@ void drawFoundationPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         view.moves[i] = pokemon->moves[i];
         view.pp[i] = pokemon->pp[i];
         view.ppUps[i] = pokemon->ppUps[i];
+
     }
 
     const auto presentation = PokeBank::UIModel::presentGen1Pokemon(
@@ -63,11 +67,14 @@ void drawFoundationPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     view.hasBattleStats = true;
     view.battleStatsCalculated = true;
     view.catchRate = pokemon->catchRate;
+    view.setMoveCompatibility(e->metadata().sourceGame);
     view.sourceGameLabel = foundationPassiveSourceGameLabel(screen.sourceGameId);
     view.recordLabel = "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1);
     view.sourceStateLabel = "STAGED READ ONLY";
 
     Modals::drawGen1PokemonDetailsPresentation(screen, fb, view);
+    screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget,
+                                   16, fb.getHeight() - 68, 190, 58});
 }
 
 } // namespace UI::Gen1PokemonEditor

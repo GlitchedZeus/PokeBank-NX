@@ -11,7 +11,10 @@
 #include "Trainer/Trainer.h"
 #include "Pokemon/PokemonTypes.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
+#include "Pokemon/Pokemon2ReadOnly.h"
+#include "UI/Gen2WorkspacePresentation.h"
 #include "UI/Gen1PokemonPresentation.h"
+#include "UI/ExactSaveCapabilities.h"
 #include "UI/StatsRadar.h"
 #include "Names/ItemNames.h"
 #include "Names/FormNames.h"   // getDisplayName -- variant prefix ("Alolan Raichu", "Combat Breed Tauros")
@@ -234,7 +237,8 @@ namespace Panels {
         namespace Foundation = PokeBank::UIModel::PokemonEditorFoundation;
         // Only the three quick-info fields are rendered here. Legacy formats reuse
         // the same capability contract as the editor; modern adapters retain their path.
-        const auto capabilities = gen1 ? presentation.capabilities :
+        const auto exact = Foundation::capabilitiesForSourceId(screen.sourceGameId);
+        const auto capabilities = exact ? exact->fields : gen1 ? presentation.capabilities :
             Foundation::capabilitiesForGeneration(p->getGameGroup() == Enums::GameVersion::GSC
                 ? Foundation::Generation::Gen2 : Foundation::Generation::Gen3);
 
@@ -297,6 +301,11 @@ namespace Panels {
             // immutable presentation as Create/Edit, including one Special axis.
             StatsRadar::drawGen1Labeled(fb, x + 18, cy2 + 4, width - 36,
                 std::min(236, y + height - 36 - (cy2 + 4)), presentation.battleStats);
+        } else if (p->getGameGroup() == Enums::GameVersion::GSC) {
+            const auto& record = static_cast<const Pokemon::Pokemon2ReadOnly*>(p)->strictRecord();
+            StatsRadar::drawGen2Labeled(fb, x + 18, cy2 + 4, width - 36,
+                std::min(236, y + height - 36 - (cy2 + 4)),
+                PokeBank::UIModel::Gen2Workspace::battleStats(record));
         } else {
             // Stat hexagon (actual stats, HOME vertex order [HP, Atk, Def, Spe, SpD, SpA]).
             float vals[6] = {

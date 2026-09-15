@@ -1,0 +1,460 @@
+name: Gen II Shared Editor Candidate Gate
+
+on:
+  pull_request:
+    branches: [feature/pokebank-playable]
+    paths:
+      - 'Makefile'
+      - 'Makefile.host*'
+      - 'include/UI/SharedSpeciesPicker.h'
+      - 'include/Integration/Gen2/**'
+      - 'include/UI/Gen2*'
+      - 'include/UI/SharedPokemonEditorContract.h'
+      - 'include/UI/ExactSaveCapabilities.h'
+      - 'include/UI/PokemonViewActions.h'
+      - 'include/UI/PokemonEditorFoundationContract.h'
+      - 'include/Pokemon/Pokemon2ReadOnly.h'
+      - 'src/Integration/Gen2/**'
+      - 'src/Legacy/GSC*'
+      - 'src/Legacy/RetroArchGSCDiscovery.cpp'
+      - 'src/Pokemon/Pokemon2ReadOnly.cpp'
+      - 'src/UI/Gen2*'
+      - 'src/UI/Modals/Gen2*'
+      - 'src/UI/TrainerViewScreenGSCOverlay.inc'
+      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
+      - 'tests/test_gsc*'
+      - 'tests/test_shared_pokemon_editor_contract.cpp'
+      - 'tests/test_passive_pokemon_view_contract.cpp'
+      - 'tests/test_source_mutation_policy.cpp'
+      - 'tests/test_write_policy.cpp'
+      - 'tools/check_device_assets.py'
+      - 'tools/package_device_build.py'
+      - 'tools/gen_gen2_move_compatibility.py'
+      - 'CURRENT_STATUS.md'
+      - 'PROJECT_STATUS.md'
+      - 'NEXT_SESSION_PLAN.md'
+      - 'docs/GEN2_AUDIT_RESEARCH.md'
+      - '.github/workflows/gen2-audit-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-gen2-shared-editor-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+  HEAD_REF: ${{ github.event.pull_request.head.ref || 'feature/gen2-shared-pokemon-editor-20260914' }}
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+
+jobs:
+  host:
+    name: Gen II shared editor exact host + sanitizer gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 95
+    steps:
+      - name: Checkout exact Gen II shared-editor head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          fetch-depth: 100
+          submodules: recursive
+
+      - name: Verify exact identity and whitespace
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          git fetch --no-tags origin "$BASE_SHA" || true
+          if git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null && [ "$BASE_SHA" != "$APP_SHA" ]; then
+            git diff --check "$BASE_SHA"..HEAD
+          else
+            git diff --check HEAD^
+          fi
+          git diff --quiet
+          git diff --cached --quiet
+          echo "APPLICATION_SHA=$APP_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+          echo "BRANCH=$HEAD_REF"
+
+      - name: Verify pinned Gen II compatibility data
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -euo pipefail
+          python3 tools/gen_gen2_move_compatibility.py
+          git diff --exit-code -- src/Integration/Gen2/Gen2MoveCompatibilityData.inc
+          echo 'GEN II COMPATIBILITY DATA: PASS'
+
+      - name: Focused shared editor and Gen II behavior gates
+        run: |
+          set -euo pipefail
+          rm -rf build-host
+          for target in \
+            test_shared_pokemon_editor_contract \
+            test_gsc_shared_editor_parity \
+            test_gsc_workspace_render \
+            test_gsc_gen2_adapter \
+            test_gsc_inventory \
+            test_gsc_gen2_personal \
+            test_gsc_move_compatibility \
+            test_gsc_discovery \
+            test_gsc_source_browser \
+            test_gsc_readonly_bridge \
+            test_gsc_runtime_catalog \
+            test_gsc_ui_rules \
+            test_passive_pokemon_view_contract \
+            test_gsc_editor_surface_contract \
+            test_gsc_native_presentation \
+            test_gsc_export_transaction \
+            test_gsc_staged_editor \
+            test_gsc_pokemon_editor \
+            test_gsc_pokemon_session; do
+            make -f Makefile.host "build-host/$target"
+            "./build-host/$target"
+          done
+          echo 'SHARED POKEMON EDITOR CONTRACT: PASS'
+          echo 'GSC SHARED EDITOR PARITY: PASS'
+          echo 'NON-PIKACHU CREATE / CANCEL / SERIALIZE: PASS'
+          echo 'GEN II READ-ONLY PARSER: PASS'
+          echo 'GEN II EDITOR BEHAVIOR: PASS'
+          echo 'LEVEL/EXP + CREATE + TRANSACTIONAL EDIT: PASS'
+          echo 'ACTION-SHEET/PASSIVE VIEW: PASS'
+          echo 'CRYSTAL CAUGHT/MET + PARTY NATIVE PRESENTATION: PASS'
+          echo 'HELD ITEM + SPECIES/MOVE/Pokerus + PP/PP UPS: PASS'
+          echo 'GENDER + SHINY + SIX STATS/RADAR: PASS'
+          echo 'VERIFIED STAGED EXPORT UI/TRANSACTION: PASS'
+
+      - name: Source immutability and write-lock gates
+        run: |
+          set -euo pipefail
+          for target in test_source_mutation_policy test_write_policy; do
+            make -f Makefile.host "build-host/$target"
+            "./build-host/$target"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          overlay = Path('src/UI/TrainerViewScreenGSCOverlay.inc').read_text()
+          transaction = Path('src/Integration/Gen2/Gen2ExportTransaction.cpp').read_text()
+          surface = Path('src/UI/Gen2PokemonEditorFoundation.inc').read_text()
+          access = Path('include/UI/Gen2StagedAccess.h').read_text()
+          composite = Path('src/UI/TrainerViewScreenCompositeOverlay.cpp').read_text()
+          assert 'publishVerifiedStagedEditorExport(editor, request)' in overlay
+          for needle in ('std::fopen', 'std::fwrite', 'writeBytes(', 'writeText('):
+              assert needle not in overlay, needle
+              assert needle not in surface, needle
+          assert 'LIVE_RETROARCH_WRITE=DISABLED' in transaction
+          assert 'LIVE_INSTALLED_GAME_WRITE=DISABLED' in transaction
+          assert 'bool canWriteOriginalSource = false' in access
+          assert 'return {false, validatedAdapter && stagedEditorAvailable};' in access
+          assert 'handleFinalGen2SurfaceInput' in composite
+          assert 'Gen2PokemonEditor::handleInput(*this' not in composite
+          print('SOURCE IMMUTABILITY: PASS')
+          print('STAGED ACCESS OWNS MUTATION / ORIGINAL SOURCE WRITE: FALSE')
+          print('LEGACY GEN II NORMAL EDITOR ROUTE: UNREACHABLE')
+          print('LIVE RETROARCH WRITE: HARD DISABLED')
+          print('LIVE INSTALLED-GAME WRITE: HARD DISABLED')
+          print('PARTY MUTATION: DEFERRED')
+          PY
+
+      - name: Focused Gen I / Gen III / Classic Inventory regressions
+        run: |
+          set -euo pipefail
+          for target in \
+            test_gen1_summary_presentation \
+            test_gen1_shiny \
+            test_gen1_move_compatibility \
+            test_rby_pokemon_editor \
+            test_rby_readonly_bridge \
+            test_rse_gen3_adapter \
+            test_pksm_gen3_adapter \
+            test_inventory_ui_contract; do
+            make -f Makefile.host "build-host/$target"
+            "./build-host/$target"
+          done
+
+          # test_rse_open_regression is intentionally a focused CI bridge regression rather than a
+          # permanent Makefile target. Mirror host-tests.yml exactly so this candidate gate proves
+          # both the normal and sanitizer variants on the same source SHA.
+          SOURCES="tests/test_rse_open_regression.cpp \
+            src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+            src/Legacy/FRLGReadOnlyTrainer.cpp src/Pokemon/Pokemon3FRLG.cpp \
+            src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
+            src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
+            src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
+            src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp \
+            src/Integration/Gen3/Gen3StagedInventoryEditor.cpp src/Inventory/ClassicInventoryCatalog.cpp \
+            src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp"
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \
+            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
+            -o build-host/test_rse_open_regression
+          ./build-host/test_rse_open_regression
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O1 \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
+            -o build-host/test_rse_open_regression_sanitize
+          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize
+
+          echo 'GEN I REGRESSION: PASS'
+          echo 'GEN III REGRESSION: PASS'
+          echo 'CLASSIC INVENTORY REGRESSION: PASS'
+
+      - name: Full permanent host suite
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+          echo 'FULL PERMANENT HOST SUITE: PASS'
+
+      - name: ASan and UBSan permanent suite
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-sanitize
+          echo 'ASAN: PASS'
+          echo 'UBSAN: PASS'
+
+  native_ui:
+    name: Early real devkitA64 composite + Inventory compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          submodules: recursive
+      - name: Compile production UI translation units with native flags
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            : "${DEVKITPRO:?DEVKITPRO is not set}"
+            devkita64_root="${DEVKITA64:-${DEVKITPRO}/devkitA64}"
+            for name in g++ readelf objcopy; do
+              tool="${devkita64_root}/bin/aarch64-none-elf-${name}"
+              test -x "$tool" || { echo "ERROR: required native tool missing: $tool" >&2; exit 1; }
+            done
+            git config --global --add safe.directory /work
+            make native-ui-check
+          '
+
+  native_package:
+    name: Gen II shared editor devkitA64 + exact physical-test package
+    needs: [host, native_ui]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout exact Gen II shared-editor head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 100
+          submodules: recursive
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Verify exact candidate identity
+        id: identity
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          tree="$(git -C application rev-parse 'HEAD^{tree}')"
+          short="$(git -C application rev-parse --short=8 HEAD)"
+          echo "tree=$tree" >> "$GITHUB_OUTPUT"
+          echo "short=$short" >> "$GITHUB_OUTPUT"
+          echo "APP_SHA=$APP_SHA"
+          echo "APP_TREE=$tree"
+          echo "SHORT_SHA=$short"
+          echo "BRANCH=$HEAD_REF"
+          git -C application diff --check HEAD^
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+
+      - name: Verify devkitA64 verifier toolchain
+        run: |
+          set -euo pipefail
+          docker pull devkitpro/devkita64:latest
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > toolchain-image.json
+          docker run --rm devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            : "${DEVKITPRO:?DEVKITPRO is not set}"
+            devkita64_root="${DEVKITA64:-${DEVKITPRO}/devkitA64}"
+            readelf="${devkita64_root}/bin/aarch64-none-elf-readelf"
+            cxx="${devkita64_root}/bin/aarch64-none-elf-g++"
+            objcopy="${devkita64_root}/bin/aarch64-none-elf-objcopy"
+            echo "DEVKITPRO=${DEVKITPRO}"
+            echo "DEVKITA64_ROOT=${devkita64_root}"
+            for tool in "$readelf" "$cxx" "$objcopy"; do
+              if [ ! -x "$tool" ]; then
+                echo "ERROR: required devkitA64 tool is missing or not executable: $tool" >&2
+                echo "Contents of ${devkita64_root}/bin:" >&2
+                ls -la "${devkita64_root}/bin" >&2 || true
+                exit 1
+              fi
+              echo "TOOL OK: $tool"
+            done
+            "$readelf" --version
+          '
+          echo 'DEVKITA64 VERIFIER TOOLCHAIN: PASS'
+
+      - name: Recover complete device RomFS and run asset preflight
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py) 2>&1 | tee recovery.log
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            test -s "application/assets/game_cards/$f.png"
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+          echo 'DEVICE ASSET PREFLIGHT: PASS'
+          echo "ROMFS RECOVERY: PASS $EXPECTED_FINAL_ROMFS files"
+
+      - name: Clean devkitA64 compile, link and native identity
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            : "${DEVKITPRO:?DEVKITPRO is not set}"
+            devkita64_root="${DEVKITA64:-${DEVKITPRO}/devkitA64}"
+            readelf="${devkita64_root}/bin/aarch64-none-elf-readelf"
+            test -x "$readelf"
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            dkp-pacman -Q libnx devkitA64 switch-tools switch-sdl2 switch-glad switch-lz4 || true
+            make clean || true
+            make -j1
+            test -s PokeBankNX.elf
+            test -s PokeBankNX.nro
+            "$readelf" -h PokeBankNX.elf > /work/native-linkage.txt
+          ' 2>&1 | tee native-build.log
+          grep -q 'linking PokeBankNX.elf' native-build.log
+          grep -q 'AArch64' native-linkage.txt
+          test -s application/PokeBankNX.nro
+          echo 'DEVKITA64 FULL BUILD: PASS'
+          echo 'FINAL NRO LINK: PASS'
+          echo 'READELF: PASS / resolved devkitA64 toolchain path'
+          echo 'NATIVE LINKAGE: PASS / AArch64'
+
+      - name: Verify embedded application SHA and RomFS
+        run: |
+          set -euo pipefail
+          python3 recovery-work/tools/verify_embedded_romfs.py \
+            application/PokeBankNX.nro application/romfs \
+            --application-source "$APP_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_FINAL_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          print(json.dumps(data, indent=2))
+          PY
+          echo 'EMBEDDED APPLICATION SHA: PASS'
+          echo 'EMBEDDED ROMFS: PASS'
+
+      - name: Package exact Gen II shared-editor candidate
+        run: |
+          set -euo pipefail
+          mkdir -p device-artifact
+          python3 application/tools/package_device_build.py application/PokeBankNX.nro \
+            --label Gen2-SharedEditor --out-dir "$GITHUB_WORKSPACE/device-artifact"
+          cp embedded-romfs.json asset-preflight.log recovery.log native-build.log native-linkage.txt \
+             toolchain-image.json toolchain-packages.txt device-artifact/
+
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess, zipfile
+          from pathlib import Path
+
+          out = Path('device-artifact')
+          app = Path('application')
+          app_sha = os.environ['APP_SHA']
+          branch = os.environ['HEAD_REF']
+          tree = subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD^{tree}'], text=True).strip()
+          short = subprocess.check_output(['git','-C',str(app),'rev-parse','--short=8','HEAD'], text=True).strip()
+          nro = out / f'PokeBank-NX-Gen2-SharedEditor-{short}.nro'
+          assert nro.is_file(), nro
+          artifact_manifest = out / f'{nro.name}.manifest.txt'
+          assert artifact_manifest.is_file(), artifact_manifest
+
+          def sha(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          record = {
+              'application_source': app_sha,
+              'application_tree': tree,
+              'branch': branch,
+              'pull_request': 68,
+              'issue_69': 'shared-editor parity remediation implemented; deferred global follow-ups remain open',
+              'recovery_snapshot': os.environ['RECOVERY_SHA'],
+              'workflow_run': int(os.environ['GITHUB_RUN_ID']),
+              'host_suite': 'PASS',
+              'shared_editor_contract': 'PASS',
+              'gsc_shared_editor_parity': 'PASS',
+              'gen2': 'PASS',
+              'gen1_regression': 'PASS',
+              'gen3_regression': 'PASS',
+              'classic_inventory': 'PASS',
+              'source_immutability': 'PASS',
+              'export_transaction': 'PASS',
+              'asan': 'PASS',
+              'ubsan': 'PASS',
+              'native_devkitA64_full_link': 'PASS',
+              'native_linkage': 'PASS / AArch64',
+              'embedded_application_sha': 'PASS',
+              'embedded_romfs': f"PASS {os.environ['EXPECTED_FINAL_ROMFS']}/{os.environ['EXPECTED_FINAL_ROMFS']}",
+              'live_retroarch_writing': 'HARD DISABLED',
+              'live_installed_game_writing': 'HARD DISABLED',
+              'party_mutation': 'DEFERRED',
+              'hardware_accepted': False,
+              'nro': {'filename': nro.name, 'bytes': nro.stat().st_size, 'sha256': sha(nro)},
+          }
+          (out / 'BUILD_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+
+          sums_targets = [nro, artifact_manifest, out/'BUILD_MANIFEST.json', out/'embedded-romfs.json',
+                          out/'asset-preflight.log', out/'native-linkage.txt']
+          (out / 'SHA256SUMS.txt').write_text(''.join(f'{sha(p)}  {p.name}\n' for p in sums_targets))
+
+          zip_path = out / f'PokeBank-NX-Gen2-SharedEditor-{short}.zip'
+          with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+              for p in (nro, artifact_manifest, out/'BUILD_MANIFEST.json', out/'SHA256SUMS.txt'):
+                  zf.write(p, arcname=p.name)
+          (out / 'PACKAGE_SHA256.txt').write_text(f'{sha(zip_path)}  {zip_path.name}\n')
+
+          print((out / 'BUILD_MANIFEST.json').read_text())
+          print((out / 'SHA256SUMS.txt').read_text())
+          print((out / 'PACKAGE_SHA256.txt').read_text())
+          PY
+
+      - name: Upload exact Gen II shared-editor candidate
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gen2-SharedEditor-Candidate-${{ steps.identity.outputs.short }}
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report uploaded artifact identity
+        run: |
+          echo "ARTIFACT_ID=${{ steps.upload.outputs.artifact-id }}"
+          echo "ARTIFACT_DIGEST=${{ steps.upload.outputs.artifact-digest }}"
+          echo "ARTIFACT_URL=${{ steps.upload.outputs.artifact-url }}"
+          echo "APPLICATION_SHA=$APP_SHA"
+          echo "TREE_SHA=${{ steps.identity.outputs.tree }}"
+          echo "DEVICE STATUS: CI VERIFIED / DEVICE RETEST REQUIRED / NOT DEVICE ACCEPTED"

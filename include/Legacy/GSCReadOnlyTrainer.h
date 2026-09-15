@@ -37,6 +37,9 @@ public:
     bool hasTrainerGender() const noexcept { return trainerGenderAvailable_; }
     bool inventoryAvailable() const noexcept { return inventoryAvailable_; }
 
+    // Refresh read-only display wrappers from the verified staged copy, never the source.
+    bool refreshStagedBoxPresentation(std::string& error);
+
     bool stagedEditingAvailable() const noexcept { return stagedEditor_ != nullptr; }
     Integration::Gen2::StagedEditor* stagedEditor() noexcept { return stagedEditor_.get(); }
     const Integration::Gen2::StagedEditor* stagedEditor() const noexcept { return stagedEditor_.get(); }

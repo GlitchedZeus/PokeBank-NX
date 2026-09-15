@@ -1,6 +1,7 @@
 #include "Integration/Gen2/Gen2StagedEditor.h"
 
 #include "Integration/Gen2/Gen2PersonalData.h"
+#include "Integration/Gen2/Gen2HeldItems.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
 
@@ -335,9 +336,7 @@ bool encodeInternationalASCII(std::string_view name, std::size_t maxChars, std::
 }
 
 bool validHeldItem(uint8_t item) noexcept {
-    if (item == 0) return true;
-    const auto name = gen2ItemName(item);
-    return !name.empty() && name != "TERU-SAMA";
+    return selectableHeldItem(item);
 }
 
 uint8_t maxPP(uint8_t move, uint8_t ppUps) noexcept {
@@ -539,6 +538,14 @@ void StagedEditor::setChange(std::string key, std::string label,
                         std::move(beforeValue), std::move(afterValue)});
 }
 
+bool StagedEditor::stageTrainerEdit(std::string_view name, uint32_t money, std::string& error) {
+    // Validate both fields before changing either. Name encoding can fail; money
+    // has no remaining failure path after this range check.
+    if (money > kMaxMoney) { error = "Money must be between 0 and 999999"; return false; }
+    if (!stageTrainerName(name, error)) return false;
+    return stageMoney(money, error);
+}
+
 bool StagedEditor::stageTrainerName(std::string_view name, std::string& error) {
     std::vector<uint8_t> encoded;
     if (!encodeTrainerName(name, encoded, error)) return false;
@@ -615,6 +622,10 @@ bool StagedEditor::stageItemQuantity(InventoryPocket pocket, uint8_t itemId, uin
                             ":" + std::to_string(itemId);
     setChange(key, itemLabel(itemId), std::to_string(originalQuantity), std::to_string(quantity));
     return true;
+}
+
+uint8_t StagedEditor::gen2MoveMaxPP(uint8_t move, uint8_t ppUps) noexcept {
+    return maxPP(move, ppUps);
 }
 
 uint8_t StagedEditor::gen2MoveBasePP(uint16_t move) noexcept {
@@ -765,14 +776,18 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
 
     if (edit.moves) {
         after.moves = *edit.moves;
-        if (!edit.ppUps) after.ppUps = {0,0,0,0};
-        if (!edit.pp) {
-            for (std::size_t i = 0; i < 4; ++i) after.pp[i] = gen2MoveBasePP(after.moves[i]);
+        for (std::size_t i = 0; i < 4; ++i) {
+            if (after.moves[i] == before.moves[i]) continue;
+            if (!edit.ppUps) after.ppUps[i] = 0;
+            if (!edit.pp) after.pp[i] = gen2MoveBasePP(after.moves[i]);
         }
     }
     if (edit.ppUps) after.ppUps = *edit.ppUps;
     if (edit.pp) after.pp = *edit.pp;
     for (std::size_t i = 0; i < 4; ++i) {
+        // Preserve an untouched unusual packed PP byte; validate any newly edited tuple.
+        if (after.moves[i] == before.moves[i] && after.pp[i] == before.pp[i] &&
+            after.ppUps[i] == before.ppUps[i]) continue;
         if (after.moves[i] > kMaxGen2Move) {
             error = "move id is outside the Generation II move range";
             return false;
@@ -1023,7 +1038,14 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
     created.partyRecord = false;
     created.isEgg = false;
     const auto* personal = personalRecord(created.species);
-    created.experience = Pokemon::getExpForLevel(created.level, personal->experienceGrowth);
+    if (pokemon.experience) {
+        if (*pokemon.experience > Pokemon::getExpForLevel(100, personal->experienceGrowth)) {
+            error = "new Pokemon EXP exceeds species level-100 threshold";
+            return false;
+        }
+        created.experience = *pokemon.experience;
+        created.level = Pokemon::getLevelFromExp(created.experience, personal->experienceGrowth);
+    } else created.experience = Pokemon::getExpForLevel(created.level, personal->experienceGrowth);
     putEditableDVs(created, pokemon.dvs);
     created.ppUps = pokemon.ppUps;
     for (std::size_t i = 0; i < 4; ++i) {
@@ -1034,7 +1056,7 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
                 return false;
             }
         } else {
-            if (created.pp[i] == 0) created.pp[i] = gen2MoveBasePP(created.moves[i]);
+            // Zero is an explicit, valid exhausted PP value; never silently refill Create.
             if (created.pp[i] > maxPP(created.moves[i], created.ppUps[i])) {
                 error = "new Pokemon PP exceeds the Generation II maximum";
                 return false;

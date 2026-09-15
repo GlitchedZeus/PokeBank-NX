@@ -59,7 +59,7 @@ inline void fillPolygon(PKSEFramebuffer& fb, const std::array<PointF,N>& points,
 }
 
 // PokeBank-owned variable-axis radar renderer. The inherited framebuffer hexagon renderer is
-// optimized around six modern stats; this helper intentionally supports true five-axis Gen I
+// optimized around six modern stats; this helper intentionally also supports true five-axis Gen I
 // HP/Attack/Defense/Speed/Special without inventing Sp.Atk or Sp.Def.
 template <std::size_t N>
 inline void draw(PKSEFramebuffer& fb, int cx, int cy, int radius,
@@ -117,6 +117,49 @@ inline void drawGen1Labeled(PKSEFramebuffer& fb, int x, int y, int width, int he
         int ly = i == 0 ? y : static_cast<int>(std::lround(v.y)) + (i == 2 || i == 3 ? 4 : -lineH - 4);
         fb.drawText(lx, ly, labels[i], Colors::Text, TextStyle::Caption);
     }
+    const std::string scale = "Scale " + std::to_string(static_cast<unsigned>(model.scale));
+    int sw = 0, sh = 0;
+    fb.measureText(scale, sw, sh, TextStyle::Caption);
+    fb.drawText(cx - sw / 2, y + height - sh, scale, Colors::TextDim, TextStyle::Caption);
+}
+
+// Truthful Generation II renderer: six calculated battle stats, while the editor still
+// exposes only the four stored DVs (one Special DV feeds both SpA and SpD).
+inline void drawGen2Labeled(PKSEFramebuffer& fb, int x, int y, int width, int height,
+                           const std::array<uint16_t,6>& stats) {
+    const auto displayStats = PokeBank::UIModel::canonicalGen2RadarStats(stats);
+    const auto model = PokeBank::UIModel::gen2RadarModel(stats);
+    std::array<std::string,6> labels{};
+    std::array<int,6> widths{};
+    int lineH = 0;
+    for (size_t i = 0; i < displayStats.size(); ++i) {
+        labels[i] = std::string(PokeBank::UIModel::gen2RadarLabels[i]) + " " + std::to_string(displayStats[i]);
+        int h = 0;
+        fb.measureText(labels[i], widths[i], h, TextStyle::Caption);
+        lineH = std::max(lineH, h);
+    }
+
+    const int radius = std::min((width - 24) / 2,
+                                std::max(0, (height - 2 * lineH - 22) / 2));
+    if (radius <= 0) return;
+    const int cx = x + width / 2;
+    const int cy = y + lineH + 6 + radius;
+    draw(fb, cx, cy, radius, model.normalized, 1.0f,
+         Color(232, 60, 70, 58), Colors::Divider, Colors::Accent);
+
+    for (size_t i = 0; i < labels.size(); ++i) {
+        const auto v = vertex(cx, cy, static_cast<float>(radius), static_cast<int>(i), 6);
+        int lx = x;
+        int ly = static_cast<int>(std::lround(v.y)) - lineH / 2;
+        if (i == 0 || i == 3) {
+            lx = cx - widths[i] / 2;
+            ly = i == 0 ? y : y + height - 2 * lineH - 2;
+        } else if (i == 1 || i == 2) {
+            lx = x + width - widths[i];
+        }
+        fb.drawText(lx, ly, labels[i], Colors::Text, TextStyle::Caption);
+    }
+
     const std::string scale = "Scale " + std::to_string(static_cast<unsigned>(model.scale));
     int sw = 0, sh = 0;
     fb.measureText(scale, sw, sh, TextStyle::Caption);

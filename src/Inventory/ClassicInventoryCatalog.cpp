@@ -40,7 +40,6 @@ constexpr std::array<ClassicPocket, 6> kGen3Pockets{{
     ClassicPocket::TMHM, ClassicPocket::Berries, ClassicPocket::PCItems,
 }};
 
-// Gen I uses one carried Bag plus PC storage. These are UI filters over the raw pair lists.
 constexpr std::array<uint16_t, 18> kG1Items{{
     10,29,30,32,33,34,46,47,49,51,55,56,57,58,65,66,67,68,
 }};
@@ -84,8 +83,6 @@ constexpr std::array<uint16_t, 57> kG2Machines{{
     237,238,239,240,241,242,243,244,245,246,247,248,249,
 }};
 
-// PKHeX ItemStorage3RS / ItemStorage3E / ItemStorage3FRLG catalogs. Safari Ball (5) and
-// Berry Juice (44) are deliberately absent because PKHeX marks them unreleased in GBA inventory.
 constexpr std::array<uint16_t, 138> kG3Items{{
     13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,
     42,43,45,46,47,48,49,50,51,63,64,65,66,67,68,69,70,71,73,74,75,76,77,78,79,80,81,83,84,
@@ -114,7 +111,6 @@ constexpr std::array<uint16_t, 32> kG3KeysFRLG{{
     260,261,262,263,264,265,349,350,351,352,353,354,355,356,357,358,359,360,361,362,363,364,365,366,367,368,369,370,371,372,373,374,
 }};
 
-// Gen I PersonalInfo1.MachineMoves, reordered to match raw inventory ids HM01-05 then TM01-50.
 constexpr std::array<uint16_t, 55> kG1MachineMoves{{
     15,19,57,70,148,
     5,13,14,18,25,92,32,34,36,38,61,55,58,59,63,6,66,68,69,99,72,76,82,85,87,89,90,91,
@@ -295,7 +291,7 @@ QuantityRule quantityRule(ClassicGame game, ClassicPocket pocket, uint16_t itemI
     if (pocket == ClassicPocket::KeyItems) return {false, 1, 1};
     if (pocket == ClassicPocket::TMHM) {
         if (game <= ClassicGame::Yellow && itemId >= 196 && itemId <= 200) return {false, 1, 1};
-        if (game >= ClassicGame::Gold && game <= ClassicGame::Crystal && itemId >= 243) return {false, 1, 1};
+        if (game <= ClassicGame::Crystal && itemId >= 243) return {false, 1, 1};
         if (game >= ClassicGame::Ruby && itemId >= 339) return {false, 1, 1};
     }
     return {true, 1, 99};
@@ -320,27 +316,32 @@ uint16_t classicMachineMove(ClassicGame game, uint16_t itemId) noexcept {
 }
 
 std::string displayItemName(ClassicGame game, ClassicPocket pocket, uint16_t itemId) {
-    if (pocket == ClassicPocket::TMHM) {
-        const uint16_t move = classicMachineMove(game, itemId);
-        if (move != 0) {
-            if (game <= ClassicGame::Yellow) {
-                if (itemId <= 200) return machineLabel("HM", itemId - 195, 2, move);
-                return machineLabel("TM", itemId - 200, 2, move);
-            }
-            if (game <= ClassicGame::Crystal) {
-                const auto it = std::find(kG2Machines.begin(), kG2Machines.end(), itemId);
+    const uint16_t move = classicMachineMove(game, itemId);
+    // Generation II PC Items can contain machines too. If the exact id is a machine, present the
+    // same polished TM/HM + move label regardless of which legitimate inventory category owns it.
+    if (move != 0 && (pocket == ClassicPocket::TMHM ||
+                      (game <= ClassicGame::Crystal &&
+                       pocket == ClassicPocket::PCItems))) {
+        if (game <= ClassicGame::Yellow) {
+            if (itemId <= 200) return machineLabel("HM", itemId - 195, 2, move);
+            return machineLabel("TM", itemId - 200, 2, move);
+        }
+        if (game <= ClassicGame::Crystal) {
+            const auto it = std::find(kG2Machines.begin(), kG2Machines.end(), itemId);
+            if (it != kG2Machines.end()) {
                 const int index = static_cast<int>(it - kG2Machines.begin());
                 if (index < 50) return machineLabel("TM", index + 1, 2, move);
                 return machineLabel("HM", index - 49, 2, move);
             }
+        } else {
             if (itemId <= 338) return machineLabel("TM", itemId - 288, 2, move);
             return machineLabel("HM", itemId - 338, 2, move);
         }
     }
     if (game <= ClassicGame::Yellow) return Names::getItemNameG1(itemId);
     if (game <= ClassicGame::Crystal) {
-        const auto name = PokeVault::Integration::Gen2::gen2ItemName(static_cast<uint8_t>(itemId));
-        return name.empty() ? ("Item " + std::to_string(itemId)) : std::string(name);
+        const auto name = PokeVault::Integration::Gen2::gen2ItemDisplayName(static_cast<uint8_t>(itemId));
+        return name.empty() ? ("Item " + std::to_string(itemId)) : name;
     }
     return Names::getItemNameG3(itemId);
 }

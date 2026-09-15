@@ -67,9 +67,10 @@ void drawBadge(PKSEFramebuffer& fb, int x, int y, const std::string& text) {
 }
 
 void compactRow(PKSEFramebuffer& fb, int x, int y, const std::string& label,
-                const std::string& value, int valueX = 100) {
+                const std::string& value, int valueX = 100,
+                Color valueColor = Colors::Text) {
     fb.drawText(x, y, label, Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + valueX, y, value, Colors::Text, TextStyle::Caption);
+    fb.drawText(x + valueX, y, value, valueColor, TextStyle::Caption);
 }
 
 std::string shortRecordLabel(const std::string& record) {
@@ -85,8 +86,6 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     const int W = fb.getWidth(), H = fb.getHeight();
     screen.touchButtons.clear();
 
-    // Use the same permanent three-panel visual language as the accepted Gen I editor,
-    // but this surface is deliberately passive: no field cursor and no per-field navigation.
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 130));
     fb.drawVerticalGradient(0, 0, W, H,
         Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 250),
@@ -105,7 +104,7 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
         fb.measureText("View Pokemon — READ ONLY", titleW, titleH, TextStyle::Heading);
         fb.drawShinyMark(workspaceX + 36 + titleW, workspaceY + 18, 18, Colors::ShinyStar);
     }
-    const std::string subtitle = p.recordLabel + "  •  PKSE three-panel workspace  •  Source save immutable";
+    const std::string subtitle = p.recordLabel + "  •  Source save immutable";
     fb.drawText(workspaceX + 24, workspaceY + 50, subtitle, Colors::TextDim, TextStyle::Caption);
 
     constexpr int contentY = workspaceY + 74;
@@ -121,7 +120,6 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     drawPanelSurface(fb, midX, contentY, midW, contentH, false, 14);
     drawPanelSurface(fb, rightX, contentY, rightW, contentH, false, 14);
 
-    // LEFT — exactly the editor's identity language, with no focus highlight.
     fb.drawText(leftX + 14, contentY + 10, "DETAILS", Colors::Accent, TextStyle::Caption);
     constexpr int renderSize = 174;
     if (auto* sprite = SpriteManager::getSprite(p.species, p.shiny); sprite && sprite->data) {
@@ -147,7 +145,6 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     compactRow(fb, leftX + 18, contentY + 361, "OT", p.originalTrainer, 90);
     compactRow(fb, leftX + 18, contentY + 404, "Trainer ID", std::to_string(p.trainerId), 90);
 
-    // MIDDLE — DV / Stat Exp / calculated-or-stored battle Stat, all read-only here.
     fb.drawText(midX + 14, contentY + 10, "VALUES", Colors::Text, TextStyle::Heading);
     fb.drawText(midX + 104, contentY + 48, "DV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(midX + 198, contentY + 48, "Stat Exp", Colors::TextDim, TextStyle::Caption);
@@ -165,14 +162,25 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
                     p.hasBattleStats ? std::to_string(p.battleStats[static_cast<size_t>(i)]) : "-",
                     Colors::Text, TextStyle::Caption);
     }
-    fb.drawText(midX + 16, contentY + 322, "* HP DV derived", Colors::TextDim, TextStyle::Caption);
-    compactRow(fb, midX + 16, contentY + 366, "Shiny", p.shiny ? "Yes" : "No", 124);
-    compactRow(fb, midX + 16, contentY + 412, "Level", std::to_string(p.level), 124);
-    fb.drawText(midX + 16, contentY + 458,
+
+    // Gen I stores exactly one Special stat. The modern split labels below are presentation-only:
+    // both values truthfully derive from that same native Special battle stat and never create fields.
+    const std::string splitSpecial = p.hasBattleStats ? std::to_string(p.battleStats[4]) : "-";
+    fb.drawText(midX + 16, contentY + 322, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(midX + 16, contentY + 350, "SpA", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(midX + 82, contentY + 350, splitSpecial, Colors::Text, TextStyle::Caption);
+    fb.drawText(midX + 198, contentY + 350, "SpD", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(midX + 264, contentY + 350, splitSpecial, Colors::Text, TextStyle::Caption);
+    fb.drawText(midX + 16, contentY + 382,
+                "* one stored Gen I Special stat; SpA / SpD are display-only",
+                Colors::TextDim, TextStyle::Caption);
+    compactRow(fb, midX + 16, contentY + 418, "Shiny", p.shiny ? "Yes" : "No", 124);
+    compactRow(fb, midX + 16, contentY + 454, "Level", std::to_string(p.level), 124);
+    fb.drawText(midX + 16, contentY + 488,
                 p.battleStatsCalculated ? "Calculated Stat cells are read-only" : "Party battle Stat cells are read-only",
                 Colors::TextDim, TextStyle::Caption);
 
-    // RIGHT — four compact move rows, then the same supplemental-data + radar split.
+    // RIGHT — match the shared Gen II move-row language: move, PP, Up count and a truthful status marker.
     fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
     for (int slot = 0; slot < 4; ++slot) {
         const auto i = static_cast<size_t>(slot);
@@ -180,14 +188,37 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
         const uint16_t move = p.moves[i];
         const std::string moveName = move == 0 ? std::string("Empty") : std::string(Names::getMoveName(move));
         fb.drawText(rightX + 20, y, moveName, Colors::Text, TextStyle::Caption);
-        const std::string ppText = "PP " + std::to_string(p.pp[i]) + "  Up " + std::to_string(p.ppUps[i]);
-        int ppW = 0, ppH = 0;
-        fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
-        fb.drawText(rightX + rightW - 20 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
+        if (p.moveCompatibilityChecked) {
+            const std::string status = p.moveCompatible[i] ? "OK" : "Unusual";
+            const Color statusColor = p.moveCompatible[i] ? Colors::Success : Colors::Warning;
+            int statusW = 0, statusH = 0;
+            fb.measureText(status, statusW, statusH, TextStyle::Caption);
+            const int statusX = rightX + rightW - 20 - statusW;
+            fb.drawText(statusX, y, status, statusColor, TextStyle::Caption);
+            if (move != 0) {
+                const std::string ppText = "PP " + std::to_string(p.pp[i]) + "  Up " + std::to_string(p.ppUps[i]);
+                int ppW = 0, ppH = 0;
+                fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
+                fb.drawText(statusX - 14 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
+            }
+        } else if (move != 0) {
+            const std::string ppText = "PP " + std::to_string(p.pp[i]) + "  Up " + std::to_string(p.ppUps[i]);
+            int ppW = 0, ppH = 0;
+            fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
+            fb.drawText(rightX + rightW - 20 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
+        }
     }
     fb.drawFilledRect(rightX + 14, contentY + 220, rightW - 28, 1, Colors::Divider);
-    compactRow(fb, rightX + 18, contentY + 235, "Move compatibility", "Not checked", 300);
-    compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300);
+    const std::string compatibilityText = !p.moveCompatibilityChecked
+        ? "Not checked"
+        : (p.moveCompatibilityCompatible ? "OK" : "Unusual preserved");
+    const Color compatibilityColor = !p.moveCompatibilityChecked
+        ? Colors::TextDim
+        : (p.moveCompatibilityCompatible ? Colors::Success : Colors::Warning);
+    compactRow(fb, rightX + 18, contentY + 235, "Move compatibility", compatibilityText, 300,
+               compatibilityColor);
+    compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300,
+               Colors::TextDim);
 
     constexpr int splitY = contentY + 288;
     constexpr int splitH = 216;

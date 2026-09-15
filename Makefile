@@ -325,7 +325,13 @@ fonts:
 # are already present (like the font).
 
 #---------------------------------------------------------------------------------
-.PHONY: $(BUILD) clean all
+.PHONY: $(BUILD) clean all native-ui-check
+
+# Compile the real macro/include composite and Inventory with the normal Switch
+# flags before a candidate spends time on the full host/package gate.
+native-ui-check:
+	@mkdir -p $(BUILD)
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile TrainerViewScreenCompositeOverlay.o ClassicInventoryOverlay.o
 
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
