@@ -127,10 +127,29 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 #include "Gen1PokemonEditorFoundationHardwareFix.inc"
 #include "Gen1PokemonEditorPassiveView.inc"
 #include "Gen2PokemonEditorFoundation.inc"
+
+// Keep the accepted Gen II implementations available as exact bases, then place only
+// the physical-hardware regression corrections around their public entry points.
+#define handlePickerInput handlePickerInputBase
+#define drawPickerOverlay drawPickerOverlayBase
 #include "Gen2PokemonPickerOverlay.inc"
+#undef drawPickerOverlay
+#undef handlePickerInput
+#include "Gen2HardwarePickerFix.inc"
+
 #include "Gen2SharedPokemonSurface.inc"
+
+#define handleUnifiedGen2SurfaceInput handleUnifiedGen2SurfaceInputBase
+#define drawUnifiedGen2Surface drawUnifiedGen2SurfaceBase
 #include "Gen2UnifiedPokemonWorkspace.inc"
+#undef drawUnifiedGen2Surface
+#undef handleUnifiedGen2SurfaceInput
+#include "Gen2HardwareWorkspaceFix.inc"
+
+#define drawFinalGen2Surface drawFinalGen2SurfaceBase
 #include "Gen2SharedSurfaceParity.inc"
+#undef drawFinalGen2Surface
+#include "Gen2HardwareFinalFix.inc"
 
 namespace UI {
 namespace {

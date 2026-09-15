@@ -19,6 +19,9 @@ int main() {
     const auto shared = readFile("src/UI/Gen2SharedPokemonSurface.inc");
     const auto composite = readFile("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     const auto trainerPage = readFile("src/UI/Gen2TrainerSessionOverlay.inc");
+    const auto pickerFix = readFile("src/UI/Gen2HardwarePickerFix.inc");
+    const auto workspaceFix = readFile("src/UI/Gen2HardwareWorkspaceFix.inc");
+    const auto finalFix = readFile("src/UI/Gen2HardwareFinalFix.inc");
 
     assert(foundation.find("Gen II Level") != std::string::npos);
     assert(foundation.find("Gen II Experience") != std::string::npos);
@@ -99,6 +102,43 @@ int main() {
     assert(overlay.find("writeBytes(") == std::string::npos);
     assert(overlay.find("writeText(") == std::string::npos);
 
-    std::cout << "GSC shared editor Trainer/field-layout/session/export production contract: PASS\n";
+    // Hardware-retest corrections remain narrow wrappers around the accepted shared editor.
+    assert(composite.find("#define handlePickerInput handlePickerInputBase") != std::string::npos);
+    assert(composite.find("#define drawPickerOverlay drawPickerOverlayBase") != std::string::npos);
+    assert(composite.find("#define handleUnifiedGen2SurfaceInput handleUnifiedGen2SurfaceInputBase") != std::string::npos);
+    assert(composite.find("#define drawUnifiedGen2Surface drawUnifiedGen2SurfaceBase") != std::string::npos);
+    assert(composite.find("#define drawFinalGen2Surface drawFinalGen2SurfaceBase") != std::string::npos);
+
+    // Normal Gen II Move picker: Empty + exact-game-compatible choices only.
+    assert(pickerFix.find("hardwareMoveAllowed") != std::string::npos);
+    assert(pickerFix.find("MoveCompatibility::canLearnMove") != std::string::npos);
+    assert(pickerFix.find("choices.push_back(0)") != std::string::npos);
+    assert(pickerFix.find("Empty + compatible moves only") != std::string::npos);
+    assert(pickerFix.find("Needs correction") == std::string::npos);
+
+    // Empty move rows cannot focus PP/Ups and their meaningless numeric cells are hidden.
+    assert(workspaceFix.find("normalizeHardwareEmptyMoveFocus") != std::string::npos);
+    assert(workspaceFix.find("state.working.moves[row] == 0 && unified.focus.column > 0") != std::string::npos);
+    assert(workspaceFix.find("unified.focus.column = 0") != std::string::npos);
+    assert(workspaceFix.find("state.working.moves[static_cast<std::size_t>(slot)] != 0") != std::string::npos);
+    assert(workspaceFix.find("rightX + 184") != std::string::npos);
+
+    // Panel titles are neutral; only the actual field/cell carries focus. The stray scroll glyph is erased.
+    assert(workspaceFix.find("clearHardwarePanelHeading") != std::string::npos);
+    assert(workspaceFix.find("\"DETAILS\", TextStyle::Caption") != std::string::npos);
+    assert(workspaceFix.find("\"STATS\", TextStyle::Heading") != std::string::npos);
+    assert(workspaceFix.find("\"MOVES\", TextStyle::Heading") != std::string::npos);
+    assert(workspaceFix.find("stray bottom glyph") != std::string::npos);
+    assert(workspaceFix.find("contentY + contentH - 34") != std::string::npos);
+
+    // Gold/Silver receive the same informational Gender row that Crystal already renders;
+    // the established Name/Money two-row cursor contract above is unchanged.
+    assert(finalFix.find("gold_gbc") != std::string::npos);
+    assert(finalFix.find("silver_gbc") != std::string::npos);
+    assert(finalFix.find("hasTrainerGender()") != std::string::npos);
+    assert(finalFix.find("\"Gender\"") != std::string::npos);
+    assert(finalFix.find("trainerGender == 0 ? \"Male\"") != std::string::npos);
+
+    std::cout << "GSC shared editor Trainer/field-layout/session/export + hardware regression contract: PASS\n";
     return 0;
 }

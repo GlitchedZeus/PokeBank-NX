@@ -162,10 +162,21 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
                     p.hasBattleStats ? std::to_string(p.battleStats[static_cast<size_t>(i)]) : "-",
                     Colors::Text, TextStyle::Caption);
     }
-    fb.drawText(midX + 16, contentY + 322, "* HP DV derived", Colors::TextDim, TextStyle::Caption);
-    compactRow(fb, midX + 16, contentY + 366, "Shiny", p.shiny ? "Yes" : "No", 124);
-    compactRow(fb, midX + 16, contentY + 412, "Level", std::to_string(p.level), 124);
-    fb.drawText(midX + 16, contentY + 458,
+
+    // Gen I stores exactly one Special stat. The modern split labels below are presentation-only:
+    // both values truthfully derive from that same native Special battle stat and never create fields.
+    const std::string splitSpecial = p.hasBattleStats ? std::to_string(p.battleStats[4]) : "-";
+    fb.drawText(midX + 16, contentY + 322, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(midX + 16, contentY + 350, "SpA", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(midX + 82, contentY + 350, splitSpecial, Colors::Text, TextStyle::Caption);
+    fb.drawText(midX + 198, contentY + 350, "SpD", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(midX + 264, contentY + 350, splitSpecial, Colors::Text, TextStyle::Caption);
+    fb.drawText(midX + 16, contentY + 382,
+                "* one stored Gen I Special stat; SpA / SpD are display-only",
+                Colors::TextDim, TextStyle::Caption);
+    compactRow(fb, midX + 16, contentY + 418, "Shiny", p.shiny ? "Yes" : "No", 124);
+    compactRow(fb, midX + 16, contentY + 454, "Level", std::to_string(p.level), 124);
+    fb.drawText(midX + 16, contentY + 488,
                 p.battleStatsCalculated ? "Calculated Stat cells are read-only" : "Party battle Stat cells are read-only",
                 Colors::TextDim, TextStyle::Caption);
 
@@ -177,9 +188,6 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
         const uint16_t move = p.moves[i];
         const std::string moveName = move == 0 ? std::string("Empty") : std::string(Names::getMoveName(move));
         fb.drawText(rightX + 20, y, moveName, Colors::Text, TextStyle::Caption);
-        const std::string ppText = "PP " + std::to_string(p.pp[i]) + "  Up " + std::to_string(p.ppUps[i]);
-        int ppW = 0, ppH = 0;
-        fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
         if (p.moveCompatibilityChecked) {
             const std::string status = p.moveCompatible[i] ? "OK" : "Unusual";
             const Color statusColor = p.moveCompatible[i] ? Colors::Success : Colors::Warning;
@@ -187,8 +195,16 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
             fb.measureText(status, statusW, statusH, TextStyle::Caption);
             const int statusX = rightX + rightW - 20 - statusW;
             fb.drawText(statusX, y, status, statusColor, TextStyle::Caption);
-            fb.drawText(statusX - 14 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
-        } else {
+            if (move != 0) {
+                const std::string ppText = "PP " + std::to_string(p.pp[i]) + "  Up " + std::to_string(p.ppUps[i]);
+                int ppW = 0, ppH = 0;
+                fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
+                fb.drawText(statusX - 14 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
+            }
+        } else if (move != 0) {
+            const std::string ppText = "PP " + std::to_string(p.pp[i]) + "  Up " + std::to_string(p.ppUps[i]);
+            int ppW = 0, ppH = 0;
+            fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
             fb.drawText(rightX + rightW - 20 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
         }
     }

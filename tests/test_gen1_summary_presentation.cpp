@@ -3,11 +3,22 @@
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include <cassert>
 #include <cmath>
+#include <fstream>
 #include <iostream>
+#include <iterator>
+#include <string>
 #include <string_view>
 
 using namespace PokeVault::Integration::Gen1;
 using namespace PokeBank::UIModel;
+
+namespace {
+std::string readFile(const char* path) {
+    std::ifstream in(path, std::ios::binary);
+    assert(in && "Gen I presentation source must exist");
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+} // namespace
 
 int main() {
     PokemonRecord record{};
@@ -67,5 +78,16 @@ int main() {
     assert((presentGen1Pokemon(35, 5, {8,8,8,8}, {}).nativeTypes == std::array<uint8_t,2>{0,0}));
     assert((presentGen1Pokemon(81, 5, {8,8,8,8}, {}).nativeTypes == std::array<uint8_t,2>{23,23}));
     assert(gen1TypeSprite(22) == 11 && gen1TypeSprite(3) == 3);
-    std::cout << "Gen I summary/editor stats, capabilities, sprite shininess and radar scaling: PASS\n";
+
+    // Hardware-requested View enhancement stays presentation-only: the native model above still
+    // exposes exactly five stats and explicitly reports no split Special capability.
+    const auto view = readFile("src/UI/Gen1PokemonDetailsPresentation.cpp");
+    assert(view.find("CALCULATED SPECIAL STATS") != std::string::npos);
+    assert(view.find("\"SpA\"") != std::string::npos);
+    assert(view.find("\"SpD\"") != std::string::npos);
+    assert(view.find("p.battleStats[4]") != std::string::npos);
+    assert(view.find("one stored Gen I Special stat") != std::string::npos);
+    assert(view.find("if (move != 0)") != std::string::npos);
+
+    std::cout << "Gen I summary/editor stats, capabilities, sprite shininess, radar + View hardware presentation: PASS\n";
 }
