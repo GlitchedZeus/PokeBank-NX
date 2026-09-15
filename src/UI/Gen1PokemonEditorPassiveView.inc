@@ -22,8 +22,6 @@ bool handleFoundationPassiveViewInput(TrainerViewScreen& screen, uint64_t down,
                                       int touchTarget = -1) {
     if (!foundationPassiveViewActive(screen)) return false;
 
-    // Controller and touch resolve through the same presentation-only action. Consume every other
-    // input so D-pad/stick/A/L/R can never create a field cursor or editor action.
     if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B, touchTarget) ==
         PokeBank::UIModel::PassiveViewAction::Back)
         foundationExitMainMode(screen);
@@ -58,6 +56,8 @@ void drawFoundationPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         view.moves[i] = pokemon->moves[i];
         view.pp[i] = pokemon->pp[i];
         view.ppUps[i] = pokemon->ppUps[i];
+        view.moveCompatible[i] = PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(
+            e->metadata().sourceGame, pokemon->species, pokemon->moves[i]);
     }
 
     const auto presentation = PokeBank::UIModel::presentGen1Pokemon(
