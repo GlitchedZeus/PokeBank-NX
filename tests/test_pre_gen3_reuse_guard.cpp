@@ -34,6 +34,7 @@ int main() {
 
     const auto shared = readFile("include/UI/SharedPokemonEditorContract.h");
     const auto foundation = readFile("include/UI/PokemonEditorFoundationContract.h");
+    const auto provider = readFile("include/UI/ExactFormatEditorProvider.h");
     const auto gen3 = readFile("include/Integration/Gen3/PKSMGen3Adapter.h");
     const auto safety = readFile("include/Safety/SourceMutationPolicy.h");
 
@@ -47,6 +48,17 @@ int main() {
     assert(foundation.find("EditStaged") != std::string::npos);
     assert(foundation.find("ViewReadOnly") != std::string::npos);
 
+    // P0 provider vocabulary must remain PokeBank-owned, generation-neutral and serialization-free.
+    assert(provider.find("enum class FieldState") != std::string::npos);
+    assert(provider.find("enum class StorageSemantics") != std::string::npos);
+    assert(provider.find("struct StatPresentationSchema") != std::string::npos);
+    assert(provider.find("struct MoveCompatibilityQuery") != std::string::npos);
+    assert(provider.find("struct TrainerDescriptor") != std::string::npos);
+    assert(provider.find("struct SourceCapabilityBridge") != std::string::npos);
+    assert(provider.find("descriptorForAcceptedClassicSource") != std::string::npos);
+    assert(provider.find("finalizedBytes") == std::string::npos);
+    assert(provider.find("PKSMGen3") == std::string::npos);
+
     // The current Gen III boundary is deliberately read-only and PokeBank-owned; do not make
     // PKSM-Core concrete objects or write APIs the UI architecture during the preflight.
     assert(gen3.find("PokeBank NX read-only Generation III adapter") != std::string::npos);
@@ -58,6 +70,6 @@ int main() {
     // The pre-Gen-III architecture gate cannot weaken the permanent source-mutation default.
     assert(safety.find("return false") != std::string::npos);
 
-    std::cout << "Pre-Gen-III reuse guard: one shared editor, read-only Gen III boundary, source safety PASS\n";
+    std::cout << "Pre-Gen-III reuse guard: one shared editor, P0 provider, read-only Gen III boundary, source safety PASS\n";
     return 0;
 }

@@ -35,6 +35,25 @@ $(PRE_GEN3_REUSE_GUARD_SANITIZE): $(PRE_GEN3_REUSE_GUARD_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
+# P0 exact-format provider/descriptor contract. Header-only by design: generation-native adapters
+# retain serialization ownership and this lane proves Gen I/II semantics without product routing changes.
+EXACT_EDITOR_PROVIDER_SOURCES := tests/test_exact_format_editor_provider.cpp
+EXACT_EDITOR_PROVIDER_TEST := $(HOST_BUILD)/test_exact_format_editor_provider
+EXACT_EDITOR_PROVIDER_SANITIZE := $(HOST_BUILD)/test_exact_format_editor_provider_sanitize
+
+HOST_TESTS += $(EXACT_EDITOR_PROVIDER_TEST)
+HOST_SANITIZE_TESTS += $(EXACT_EDITOR_PROVIDER_SANITIZE)
+host-test: $(EXACT_EDITOR_PROVIDER_TEST)
+host-sanitize: $(EXACT_EDITOR_PROVIDER_SANITIZE)
+
+$(EXACT_EDITOR_PROVIDER_TEST): $(EXACT_EDITOR_PROVIDER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(EXACT_EDITOR_PROVIDER_SANITIZE): $(EXACT_EDITOR_PROVIDER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
 GSC_RENDER_SOURCES := tests/test_gsc_workspace_render.cpp src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/Experience.cpp
 GSC_RENDER_TEST := $(HOST_BUILD)/test_gsc_workspace_render
 GSC_RENDER_SANITIZE := $(HOST_BUILD)/test_gsc_workspace_render_sanitize
