@@ -61,8 +61,8 @@ int main() {
 
     ActionCapabilities gen2;
     gen2.canClone = true;
-    gen2.canRemove = false; // backend remove/compaction is not implemented yet.
-    gen2.hasLegalityProvenance = true; // informational shell is safe even without encounter legality.
+    gen2.canRemove = false;
+    gen2.hasLegalityProvenance = true;
     const auto gen2Occupied = actionsForSlot(true, gen2);
     assert(gen2Occupied.count == 6);
     assert(gen2Occupied[0] == Action::View);
@@ -72,8 +72,6 @@ int main() {
     assert(gen2Occupied[4] == Action::Review);
     assert(gen2Occupied[5] == Action::Close);
 
-    // Box interaction language is shared. X is a direct Add shortcut only on an empty visual cell;
-    // native packed insertion remains a serializer concern, never a sparse-slot claim.
     assert(boxActivation(false, true, false) == BoxActivation::Actions);
     assert(boxActivation(true, true, false) == BoxActivation::Actions);
     assert(boxActivation(false, false, true) == BoxActivation::Add);
@@ -81,19 +79,21 @@ int main() {
     const auto afterAdd = postAddSelection(6, 3);
     assert(afterAdd.box == 6 && afterAdd.slot == 3 && !afterAdd.openActions);
 
-    // Gen I and Gen II share the same DETAILS and MOVES shell. Gen II extends VALUES
-    // with capability rows for shiny/gender/held item/friendship/Pokerus.
+    // Gen II extends the same shell: descriptive capabilities move to DETAILS while VALUES remains
+    // numeric/stat material. MOVES stays identical.
     constexpr auto gen1Layout = layoutFor(Generation::Gen1);
     constexpr auto gen2Layout = layoutFor(Generation::Gen2);
-    static_assert(gen1Layout.detailsRows == gen2Layout.detailsRows);
+    static_assert(gen1Layout.detailsRows == 5);
+    static_assert(gen2Layout.detailsRows == 8);
     static_assert(gen1Layout.movesRows == gen2Layout.movesRows);
     static_assert(gen1Layout.valuesRows == 7);
-    static_assert(gen2Layout.valuesRows == 10);
+    static_assert(gen2Layout.valuesRows == 7);
+    static_assert(gen2Layout.valueStatRows == 5);
 
     Focus focus{};
     assert((focus == Focus{Panel::Details, 0, 0}));
     focus = moveVertical(Generation::Gen2, focus, -1);
-    assert((focus == Focus{Panel::Details, 4, 0}));
+    assert((focus == Focus{Panel::Details, 7, 0}));
     focus = switchPanel(Generation::Gen2, focus, 1);
     assert(focus.panel == Panel::Values);
     focus = Focus{Panel::Values, 4, 0};
@@ -101,14 +101,13 @@ int main() {
     assert(focus.column == 1);
     focus = moveColumn(Generation::Gen2, focus, 1);
     assert(focus.column == 2);
-    focus = moveVertical(Generation::Gen2, Focus{Panel::Values, 9, 2}, 0);
-    assert((focus == Focus{Panel::Values, 9, 0})); // capability rows have one focus target.
+    focus = moveVertical(Generation::Gen2, Focus{Panel::Values, 6, 2}, 0);
+    assert((focus == Focus{Panel::Values, 6, 0}));
     focus = switchPanel(Generation::Gen2, Focus{Panel::Moves, 3, 2}, 1);
     assert(focus.panel == Panel::Details);
     assert(focus.row == 3);
     assert(focus.column == 0);
 
-    // Field identities are architecture only; unsupported classic fields stay hidden.
     assert(fieldAccessForGeneration(Generation::Gen1, FieldIdentity::DV) == FieldAccess::Editable);
     assert(fieldAccessForGeneration(Generation::Gen1, FieldIdentity::StatExperience) == FieldAccess::Editable);
     assert(fieldAccessForGeneration(Generation::Gen1, FieldIdentity::Shiny) == FieldAccess::Derived);
@@ -131,15 +130,14 @@ int main() {
     assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLevel, true) == FieldAccess::ReadOnly);
     assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::OriginalTrainerGender, true) == FieldAccess::ReadOnly);
 
-    // Scrolling is dormant while a panel fits, then keeps the selected row visible once required.
     auto scroll = scrollWindow(5, 5, 4);
     assert(!scroll.scrolls && scroll.first == 0 && scroll.count == 5);
-    scroll = scrollWindow(12, 5, 0);
+    scroll = scrollWindow(gen2Layout.detailsRows, 5, 0);
     assert(scroll.scrolls && scroll.first == 0 && scroll.count == 5);
-    scroll = scrollWindow(12, 5, 7);
-    assert(scroll.scrolls && scroll.first == 3 && 7 >= scroll.first && 7 < scroll.first + scroll.count);
-    scroll = scrollWindow(12, 5, 11);
-    assert(scroll.scrolls && scroll.first == 7 && 11 < scroll.first + scroll.count);
+    scroll = scrollWindow(gen2Layout.detailsRows, 5, 5);
+    assert(scroll.scrolls && scroll.first == 1 && 5 >= scroll.first && 5 < scroll.first + scroll.count);
+    scroll = scrollWindow(gen2Layout.detailsRows, 5, 7);
+    assert(scroll.scrolls && scroll.first == 3 && 7 < scroll.first + scroll.count);
 
     assert(draftDecision(DraftEvent::Navigate).mutateStagedSave == false);
     assert(draftDecision(DraftEvent::BrowsePicker).mutateStagedSave == false);
