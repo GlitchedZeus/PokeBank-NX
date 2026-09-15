@@ -194,7 +194,6 @@ void drawParityGen2Clone(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
 bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isGSC(screen)) return false;
-    if (trainerSessionFor(screen).session.active) { drawTrainerSession(screen, fb); return true; }
     if (const auto* passive = parityPassiveDetailsTarget(screen)) {
         drawParityExternalPassiveView(screen, fb, *passive);
         return true;
@@ -213,14 +212,13 @@ bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 }
 
 bool finalGen2SurfaceOwnsFrame(const TrainerViewScreen& screen) noexcept {
-    return (isGSC(screen) && trainerSessionFor(screen).session.active) ||
-        parityPassiveDetailsTarget(screen) != nullptr || unifiedGen2SurfaceOwnsFrame(screen);
+    return parityPassiveDetailsTarget(screen) != nullptr || unifiedGen2SurfaceOwnsFrame(screen);
 }
 
 bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                  int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
-    if (handleTrainerSession(screen, down, held, stickX, stickY)) return true;
+    if (handleTrainerSession(screen, down, held, stickX, stickY, touch)) return true;
     if (handleParityExternalPassiveInput(screen, down, touch)) return true;
     if (handleUnifiedGen2SurfaceInput(screen, down, held, stickX, stickY, touch)) return true;
 
@@ -248,16 +246,6 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         legacy.reviewRow = 0;
         return true;
     }
-    if (Access::entry(caps, surface, screen.detailViewActive, blocked, validSlot,
-                      down & (HidNpadButton_A | HidNpadButton_X)) == Access::Entry::TrainerEdit) {
-        auto& trainer = trainerSessionFor(screen);
-        trainer.session.begin(*editor);
-        trainer.row = 0;
-        trainer.error.clear();
-        screen.controllerNavigation.reset();
-        return true;
-    }
-
     // Gen II Boxes now use the same primary interaction language as accepted Gen I:
     // A opens Empty Slot/Pokemon Actions; X is a direct Add shortcut only on an empty cell.
     if (caps.canEditStagedCopy && surface == Access::Surface::Boxes && screen.detailViewActive && !blocked && validSlot) {

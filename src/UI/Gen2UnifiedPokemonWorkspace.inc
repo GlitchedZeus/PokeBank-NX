@@ -11,6 +11,8 @@ struct UnifiedWorkspaceState {
     std::string sourceGameId;
     Mode lastMode = Mode::None;
     Unified::Focus focus{};
+    std::size_t detailsFocus = 0;
+    bool crystal = false;
     bool progressionEditor = false;
     int progressionRow = 0;
     Gen2::PokemonRecord progressionBaseline{};
@@ -26,16 +28,19 @@ UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
         state.lastMode = mode;
     } else if (state.lastMode != mode) {
         state.focus = {};
+        state.detailsFocus = 0;
         state.progressionEditor = false;
         state.progressionRow = 0;
         state.lastMode = mode;
     }
+    state.crystal = screen.sourceGameId == "crystal_gbc";
     return state;
 }
 
 void resetUnifiedFocus(TrainerViewScreen& screen) {
     auto& unified = unifiedStateFor(screen);
     unified.focus = {};
+    unified.detailsFocus = 0;
     unified.progressionEditor = false;
     unified.progressionRow = 0;
     unified.lastMode = stateFor(screen).mode;
@@ -153,6 +158,23 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             if (result.accepted) p.friendship = static_cast<uint8_t>(result.value);
             return true;
         }
+        if (focus.row >= 8 && screen.sourceGameId == "crystal_gbc") {
+            auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
+            if (focus.row == 8) caught.timeOfDay = static_cast<uint8_t>((caught.timeOfDay + 1) % 4);
+            if (focus.row == 9) {
+                const auto result = Utils::promptNumber("Met level: 0 unknown, 1 egg marker", caught.levelCode, 0, 63);
+                if (!result.accepted) return true;
+                caught.levelCode = static_cast<uint8_t>(result.value);
+            }
+            if (focus.row == 10) {
+                pickerStateFor(screen).model.openLocation(caught.location);
+                screen.controllerNavigation.reset();
+                return true;
+            }
+            if (focus.row == 11) caught.originalTrainerFemale = !caught.originalTrainerFemale;
+            p.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
+            return true;
+        }
         mirrorPickerFocus(state, focus);
         return false; // named Pokérus picker owns A.
     }
@@ -230,12 +252,14 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
-    if (down & HidNpadButton_L) unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, -1);
-    if (down & HidNpadButton_R) unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, 1);
-    if (nav & HidNpadButton_Up) unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, -1);
-    if (nav & HidNpadButton_Down) unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, 1);
-    if (nav & HidNpadButton_Left) unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, -1);
-    if (nav & HidNpadButton_Right) unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, 1);
+    if (down & HidNpadButton_L) unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+    if (down & HidNpadButton_R) unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+    if (nav & HidNpadButton_Up) unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+    if (nav & HidNpadButton_Down) unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+    if (nav & HidNpadButton_Left) unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+    if (nav & HidNpadButton_Right) unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+
+    unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
 
     if (down & HidNpadButton_Y) {
         randomizeDVs(state);
@@ -274,7 +298,7 @@ Color unifiedStatusColor(Rules::CompatibilityState status) {
 void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWorkspaceState& unified,
                        int x, int y, int w, int h, bool passive) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "VALUES",
+    fb.drawText(x + 14, y + 10, Unified::statsHeading(),
         !passive && unified.focus.panel == Unified::Panel::Values ? Colors::Accent : Colors::Text,
         TextStyle::Heading);
     fb.drawText(x + 114, y + 42, "DV", Colors::TextDim, TextStyle::Caption);
@@ -288,7 +312,10 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
     for (int r = 0; r < 5; ++r) {
         const int yy = y + 70 + r * 34;
         const bool rowSelected = !passive && unified.focus.panel == Unified::Panel::Values && unified.focus.row == r;
-        if (rowSelected) fb.drawSelectionHighlight(x + 10, yy - 5, w - 20, 36);
+        if (rowSelected) {
+            const auto cell = Unified::cellFocus(unified.focus);
+            fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::Accent, 2);
+        }
         fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 114, yy, std::to_string(dvs[static_cast<std::size_t>(r)]) + (r == 0 ? " *" : ""),
                     rowSelected && unified.focus.column == 0 ? Colors::Accent : Colors::Text, TextStyle::Caption);
@@ -313,7 +340,10 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
         const int row = 5 + i;
         const int yy = y + 350 + i * 42;
         const bool selected = !passive && unified.focus.panel == Unified::Panel::Values && unified.focus.row == row;
-        if (selected) fb.drawSelectionHighlight(x + 10, yy - 5, w - 20, 36);
+        if (selected) {
+            const auto cell = Unified::cellFocus(unified.focus);
+            fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::Accent, 2);
+        }
         fb.drawText(x + 18, yy, capabilityRows[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 134, yy, capabilityRows[static_cast<std::size_t>(i)].second,
                     selected ? Colors::Accent : (i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text),
@@ -342,7 +372,7 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
             sharedBadge(fb, badgeX, y + 184, sharedTypeName(personal->rawType2));
         }
     }
-    const std::array<std::pair<std::string, std::string>, 8> rows{{
+    std::vector<std::pair<std::string, std::string>> rows{
         {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
         {"Nickname", p.nickname},
         {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
@@ -351,14 +381,25 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         {"Held Item", itemText(p.heldItem)},
         {"Friendship", std::to_string(p.friendship)},
         {"Pokerus", Gen2Native::pokerusText(p.pokerus)},
-    }};
+    };
+    if (unified.crystal) {
+        const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
+        rows.push_back({"Met time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});
+        rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
+        rows.push_back({"Location", Gen2Native::crystalCaughtLocationName(caught.location)});
+        rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
+    }
+
     const auto window = Unified::scrollWindow(rows.size(), 5,
-        passive ? 0 : static_cast<std::size_t>(unified.focus.row));
+        passive ? 0 : unified.detailsFocus);
     for (std::size_t i = 0; i < window.count; ++i) {
         const std::size_t row = window.first + i;
         const int yy = y + 224 + static_cast<int>(i) * 43;
         const bool selected = !passive && unified.focus.panel == Unified::Panel::Details && unified.focus.row == row;
-        if (selected) fb.drawSelectionHighlight(x + 8, yy, w - 16, 38);
+        if (selected) {
+            const auto cell = Unified::cellFocus(unified.focus);
+            fb.drawRoundedRect(x + cell.x, yy + 2, cell.width, 30, 6, Colors::Accent, 2);
+        }
         fb.drawText(x + 18, yy + 7, rows[row].first, Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[row].second,
                     selected ? Colors::Accent : Colors::Text, TextStyle::Caption);
@@ -378,7 +419,10 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
     for (int slot = 0; slot < 4; ++slot) {
         const int yy = y + 62 + slot * 32;
         const bool selected = !passive && unified.focus.panel == Unified::Panel::Moves && unified.focus.row == slot;
-        if (selected) fb.drawSelectionHighlight(x + 10, yy - 5, w - 20, 36);
+        if (selected) {
+            const auto cell = Unified::cellFocus(unified.focus);
+            fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::Accent, 2);
+        }
         const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];
         const auto status = moveStatus(screen, state, slot);
         fb.drawText(x + 18, yy, move == 0 ? "Empty" : Names::getMoveName(move),

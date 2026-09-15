@@ -489,6 +489,11 @@ namespace UI {
             // Gen I stores one visible 16-bit Trainer ID. There is no SID or trainer-gender field
             // to present here, so do not manufacture later-generation rows from neutral defaults.
             infoRow("Trainer ID", std::to_string(t.TID16));
+        } else if (screen.sourceGameId == "gold_gbc" || screen.sourceGameId == "silver_gbc" ||
+                   screen.sourceGameId == "crystal_gbc") {
+            infoRow("Trainer ID", std::to_string(t.TID16));
+            if (screen.sourceGameId == "crystal_gbc")
+                infoRow("Gender", t.trainerGender == 0 ? "Male" : t.trainerGender == 1 ? "Female" : "Unknown");
         } else {
             infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
             infoRow("Trainer ID", std::to_string(t.TID16) + " / " + std::to_string(t.SID16));

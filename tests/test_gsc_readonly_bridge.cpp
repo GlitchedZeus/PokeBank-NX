@@ -146,9 +146,24 @@ int main(){
         auto* added=static_cast<Pokemon::Pokemon2ReadOnly*>(trainer->boxes[2][addedSlot].get());
         assert(added->statHPMax()>0 && added->statATK()>0); // refreshed summary has real derived values immediately.
         assert(trainer->party[0].get() == party);
+        Integration::Gen2::BoxPokemonEdit edit;
+        edit.level = 40;
+        assert(editor->stageBoxPokemonEdit(2, addedSlot, edit, error));
+        assert(trainer->refreshStagedBoxPresentation(error));
+        auto* edited = static_cast<Pokemon::Pokemon2ReadOnly*>(trainer->boxes[2][addedSlot].get());
+        assert(edited->level() == 40 && edited->statHPMax() > 50);
+        const auto hp = edited->statHPMax();
+        std::size_t clonedSlot = 0;
+        assert(editor->stageCloneBoxPokemon(2, addedSlot, 3, clonedSlot, error));
+        assert(trainer->refreshStagedBoxPresentation(error));
+        assert(trainer->boxes[3][clonedSlot]->statHPMax() == hp);
+        assert(editor->stageTrainerEdit("NEW", 123, error));
+        assert(trainer->refreshStagedBoxPresentation(error));
+        assert(trainer->trainerName == "NEW" && trainer->money == 123);
         editor->discard();
         assert(trainer->refreshStagedBoxPresentation(error));
         assert(!trainer->boxes[2][addedSlot] && occupiedBoxSlots(*trainer) == 1);
+        assert(trainer->trainerName == "A" && trainer->money == 123456);
         assert(std::equal(before.begin(), before.end(), editor->originalBytes().begin()));
         assert(bytes==before);
         assert(parsed.save->sourceBytes().size()==before.size());

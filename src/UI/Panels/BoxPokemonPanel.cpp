@@ -11,6 +11,8 @@
 #include "Trainer/Trainer.h"
 #include "Pokemon/PokemonTypes.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
+#include "Pokemon/Pokemon2ReadOnly.h"
+#include "UI/Gen2WorkspacePresentation.h"
 #include "UI/Gen1PokemonPresentation.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/StatsRadar.h"
@@ -299,6 +301,11 @@ namespace Panels {
             // immutable presentation as Create/Edit, including one Special axis.
             StatsRadar::drawGen1Labeled(fb, x + 18, cy2 + 4, width - 36,
                 std::min(236, y + height - 36 - (cy2 + 4)), presentation.battleStats);
+        } else if (p->getGameGroup() == Enums::GameVersion::GSC) {
+            const auto& record = static_cast<const Pokemon::Pokemon2ReadOnly*>(p)->strictRecord();
+            StatsRadar::drawGen2Labeled(fb, x + 18, cy2 + 4, width - 36,
+                std::min(236, y + height - 36 - (cy2 + 4)),
+                PokeBank::UIModel::Gen2Workspace::battleStats(record));
         } else {
             // Stat hexagon (actual stats, HOME vertex order [HP, Atk, Def, Spe, SpD, SpA]).
             float vals[6] = {

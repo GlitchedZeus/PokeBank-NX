@@ -2,6 +2,8 @@
 #include "Integration/Gen1/Gen1StagedInventoryEditor.h"
 #include "Pokemon/Experience.h"
 #include <algorithm>
+#include "Inventory/ClassicInventoryCatalog.h"
+#include "UI/ClassicDefaultNickname.h"
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -123,6 +125,22 @@ void run(SourceGame game) {
 }
 }
 int main() {
+    using namespace PokeVault::Inventory;
+    for (auto game : {ClassicGame::Red, ClassicGame::Blue, ClassicGame::Yellow}) {
+        assert(displayItemName(game, ClassicPocket::PCItems, 201) == "TM01 — Mega Punch");
+        assert(displayItemName(game, ClassicPocket::PCItems, 239) == "TM39 — Swift");
+        assert(displayItemName(game, ClassicPocket::PCItems, 196) == "HM01 — Cut");
+        for (uint16_t machine = 196; machine <= 250; ++machine)
+            assert(displayItemName(game, ClassicPocket::PCItems, machine) == displayItemName(game, ClassicPocket::TMHM, machine));
+    }
+
+    using PokeBank::UIModel::nicknameAfterSpeciesChange;
+    assert(nicknameAfterSpeciesChange("Bulbasaur", 1, 150) == "Mewtwo");
+    assert(nicknameAfterSpeciesChange("BULBASAUR", 1, 15) == "BEEDRILL");
+    assert(nicknameAfterSpeciesChange("FlameBoy", 6, 9) == "FlameBoy");
+    assert(nicknameAfterSpeciesChange("", 1, 150).empty());
+    assert(nicknameAfterSpeciesChange("Pikachu", 25, 83) == "Farfetchd");
+
     for(auto game:{SourceGame::Red,SourceGame::Blue,SourceGame::Yellow}) { run(game); currentBoxAdd(game); }
     assert(StagedPokemonEditor::moveMaxPP(74,3)==61);assert(StagedPokemonEditor::moveBasePP(105)==20);
     assert(StagedPokemonEditor::moveBasePP(166)==0);

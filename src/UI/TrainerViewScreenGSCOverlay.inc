@@ -548,77 +548,6 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
     }
 }
 
-void drawGSCTrainerCard(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    constexpr int x = 12;
-    constexpr int y = 80;
-    constexpr int h = 560;
-    constexpr int headerH = 46;
-    const int w = fb.getWidth() - x;
-
-    // The accepted base screen drew the later-generation Trainer card first. Replace only the content
-    // panel for GSC so no SID, full modern IDs, account/profile data, or unsupported metadata can remain
-    // visible. The title bar and existing navigation footer stay untouched.
-    fb.drawFilledRoundedRect(x, y, w, h, 16, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 16, Colors::Border, 1);
-    fb.drawFilledRoundedRect(x, y, w, headerH, 16, Colors::AccentDim);
-    fb.drawFilledRect(x, y + headerH - 16, w, 16, Colors::AccentDim);
-    fb.drawText(x + 22, y + (headerH - fb.lineHeight(TextStyle::Heading)) / 2,
-                "Trainer — Generation II / Source Read Only", Colors::Text, TextStyle::Heading);
-
-    screen.touchButtons.clear();
-
-    const int cardW = 680;
-    const int cardX = x + (w - cardW) / 2;
-    int rowY = y + headerH + 36;
-    constexpr int rowH = 56;
-    constexpr int rowGap = 14;
-
-    auto row = [&](const char* label, const std::string& value) {
-        fb.drawSoftShadow(cardX, rowY, cardW, rowH, 14);
-        fb.drawFilledRoundedRect(cardX, rowY, cardW, rowH, 14, Colors::PanelAlt);
-        fb.drawText(cardX + 24, rowY + (rowH - fb.lineHeight(TextStyle::Body)) / 2,
-                    label, Colors::TextDim, TextStyle::Body);
-        int vw = 0, vh = 0;
-        fb.measureText(value, vw, vh, TextStyle::Body);
-        fb.drawText(cardX + cardW - 24 - vw, rowY + (rowH - vh) / 2,
-                    value, Colors::Text, TextStyle::Body);
-        rowY += rowH + rowGap;
-    };
-
-    const Trainer::Trainer& trainer = screen.trainer;
-    const auto* staged = stagedEditor(screen);
-    row("Name", staged ? staged->trainerName() : trainer.trainerName);
-    row("Money", "$" + std::to_string(staged ? staged->money() : trainer.money));
-    row("Trainer ID", std::to_string(trainer.TID16));
-
-    // The Gen II trainer bridge guarantees a semantic gender value for validated GSC sources:
-    // Gold/Silver resolve to their fixed male player character, while Crystal is save-derived.
-    if (trainer.trainerGender <= 1)
-        row("Gender", trainer.trainerGender == 0 ? "Male" : "Female");
-
-    rowY += 8;
-    const char* note = screen.sourceGameId == "crystal_gbc"
-        ? "Crystal gender is shown only from the validated Crystal save field."
-        : "Gold/Silver use the games' fixed male player character.";
-    fb.drawText(cardX + 12, rowY, note, Colors::TextDim, TextStyle::Caption);
-    fb.drawText(cardX + 12, rowY + 28,
-                "A / X: Edit staged copy   Y: Review / Export   Source .srm remains read-only.",
-                Colors::TextDim, TextStyle::Caption);
-
-    // The accepted base draws transient status before this overlay; redraw it so a read-only-action
-    // refusal is not hidden by the corrected card.
-    if (screen.storageStatusFrames > 0 && !screen.storageStatus.empty()) {
-        int tw = 0, th = 0;
-        fb.measureText(screen.storageStatus, tw, th);
-        const int padX = 18, bw = tw + padX * 2, bh = th + 14;
-        const int footerY = fb.getHeight() - kNavBarH;
-        const int bx = (fb.getWidth() - bw) / 2, by = footerY - bh - 12;
-        fb.drawFilledRoundedRect(bx, by, bw, bh, 8, Colors::Panel);
-        fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Accent, 2);
-        fb.drawText(bx + padX, by + 7, screen.storageStatus, Colors::Text);
-    }
-}
-
 void drawEditorRow(PKSEFramebuffer& fb, int x, int y, int w, const std::string& label,
                    const std::string& value, bool selected) {
     constexpr int h = 48;
@@ -841,8 +770,6 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     drawLegacyBase(fb);
 
     if (trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this)) {
-        if (detailViewActive && selectedMode == ViewMode::Trainer && !helpOverlayActive)
-            drawGSCTrainerCard(*this, fb);
         drawStagedEditor(*this, fb);
     }
     ClassicInventory::drawOverlay(*this, fb);

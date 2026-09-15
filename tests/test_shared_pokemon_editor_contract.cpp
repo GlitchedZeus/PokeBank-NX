@@ -126,9 +126,30 @@ int main() {
                        FieldIdentity::MetDate, FieldIdentity::EggDate})
         assert(fieldAccessForGeneration(Generation::Gen2, field) == FieldAccess::Hidden);
     assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLocation, false) == FieldAccess::Hidden);
-    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLocation, true) == FieldAccess::ReadOnly);
-    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLevel, true) == FieldAccess::ReadOnly);
-    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::OriginalTrainerGender, true) == FieldAccess::ReadOnly);
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLocation, true) == FieldAccess::Editable);
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLevel, true) == FieldAccess::Editable);
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::OriginalTrainerGender, true) == FieldAccess::Editable);
+
+    assert(std::string(statsHeading()) == "STATS");
+    assert((moveColumn(Generation::Gen2, {Panel::Details, 4, 0}, 1) == Focus{Panel::Values, 4, 0}));
+    assert((moveColumn(Generation::Gen2, {Panel::Values, 4, 2}, 1) == Focus{Panel::Moves, 0, 0}));
+    assert((moveColumn(Generation::Gen2, {Panel::Moves, 3, 0}, -1) == Focus{Panel::Values, 3, 2}));
+    assert(moveColumn(Generation::Gen2, {Panel::Values, 6, 0}, 1).panel == Panel::Moves);
+    assert(moveColumn(Generation::Gen2, {Panel::Values, 6, 0}, -1).panel == Panel::Details);
+    assert(moveVertical(Generation::Gen2, {}, -1, true).row == 11);
+    std::size_t detailsFocus = detailsScrollFocus({Panel::Details, 7, 0}, 0);
+    for (int row = 0; row < 7; ++row)
+        assert(detailsScrollFocus({Panel::Values, static_cast<uint8_t>(row), 0}, detailsFocus) == 7);
+    for (int row = 0; row < 4; ++row)
+        assert(detailsScrollFocus({Panel::Moves, static_cast<uint8_t>(row), 0}, detailsFocus) == 7);
+    for (auto panel : {Panel::Values, Panel::Moves}) {
+        int end = 0;
+        for (uint8_t column = 0; column < 3; ++column) {
+            const auto cell = cellFocus({panel, 1, column});
+            assert(cell.x >= end && cell.width > 0 && cell.width < 200);
+            end = cell.x + cell.width;
+        }
+    }
 
     auto scroll = scrollWindow(5, 5, 4);
     assert(!scroll.scrolls && scroll.first == 0 && scroll.count == 5);

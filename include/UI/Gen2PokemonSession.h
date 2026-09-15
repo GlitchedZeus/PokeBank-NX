@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include "UI/ClassicDefaultNickname.h"
 #include "UI/Gen2PokemonEditorRules.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
@@ -55,6 +56,7 @@ struct Session {
     }
     bool setSpecies(uint16_t species) noexcept {
         if (!editable() || !Gen2::personalRecord(species)) return false;
+        working.nickname = nicknameAfterSpeciesChange(working.nickname, working.species, species);
         working.species = species;
         const auto dvs = storedDVs(working);
         working.dvs[0] = Gen2::StagedEditor::derivedHPDV(dvs);

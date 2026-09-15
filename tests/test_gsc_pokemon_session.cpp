@@ -16,6 +16,35 @@ void runSession(const L& layout,SourceGame game) {
     BoxPokemonEdit level5;level5.level=5;
     assert(editor->stageBoxPokemonEdit(0,0,level5,error));
     auto entry=*editor->boxedPokemon(0,0,error);
+    for (auto mode : {SessionMode::Create, SessionMode::Edit}) {
+        Session names; names.begin(entry, mode);
+        names.working.nickname = "Pikachu";
+        assert(names.setSpecies(6)); assert(names.working.nickname == "Charizard");
+        names.working.nickname = "FlameBoy";
+        assert(names.setSpecies(9)); assert(names.working.nickname == "FlameBoy");
+        names.working.nickname = "BLASTOISE";
+        assert(names.setSpecies(25)); assert(names.working.nickname == "PIKACHU");
+    }
+    if (game == SourceGame::Crystal) {
+        Session caughtSession; caughtSession.begin(entry, SessionMode::Edit);
+        caughtSession.working.moves = {}; caughtSession.working.pp = {}; caughtSession.working.ppUps = {};
+        auto caught = PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(0);
+        caught.timeOfDay = 3; caught.levelCode = 20; caught.location = 16; caught.originalTrainerFemale = true;
+        caughtSession.working.caughtData = PokeBank::UIModel::Gen2Native::encodeCrystalCaughtData(caught);
+        assert(caughtSession.keep(*editor, 0, 0, error));
+        const auto saved = editor->boxedPokemon(0, 0, error);
+        assert(saved && saved->caughtData == 0xD490);
+        assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
+        editor->discard();
+        assert(editor->stageBoxPokemonEdit(0,0,level5,error));
+    }
+    Picker::Model locations;
+    locations.openLocation(16);
+    assert(locations.locationChoice() == 16);
+    locations.stepList(1);
+    assert(std::string(PokeBank::UIModel::Gen2Native::crystalCaughtLocationName(locations.locationChoice())) == "Radio Tower");
+    locations.openLocation(127); assert(locations.locationChoice() == 127);
+    locations.stepList(1); assert(locations.locationChoice() == 0);
     Session session;session.begin(entry,SessionMode::Edit);
     assert(session.setLevel(20));
     assert(session.working.level==20 && session.working.experience==8000);

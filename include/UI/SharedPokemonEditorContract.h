@@ -265,7 +265,7 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::MetLevel:
             case FieldIdentity::MetLocation:
             case FieldIdentity::OriginalTrainerGender:
-                return crystalCaughtData ? FieldAccess::ReadOnly : FieldAccess::Hidden;
+                return crystalCaughtData ? FieldAccess::Editable : FieldAccess::Hidden;
             default:
                 return FieldAccess::Hidden;
         }
@@ -300,11 +300,11 @@ struct Layout {
     uint8_t valueColumns = 3;
 };
 
-constexpr Layout layoutFor(Generation generation) noexcept {
+constexpr Layout layoutFor(Generation generation, bool crystal = false) noexcept {
     // Gen II extends the accepted shared shell by putting descriptive/native identity
     // capabilities in DETAILS. VALUES stays stat-focused: five DV/Stat Exp rows + Shiny/Gender.
     if (generation == Generation::Gen2)
-        return {/*details*/8, /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
+        return {/*details*/static_cast<uint8_t>(crystal ? 12 : 8), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
     return {/*details*/5, /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
 
@@ -319,16 +319,16 @@ struct Focus {
     constexpr bool operator!=(const Focus& other) const noexcept { return !(*this == other); }
 };
 
-constexpr uint8_t rowsFor(Generation generation, Panel panel) noexcept {
-    const auto layout = layoutFor(generation);
+constexpr uint8_t rowsFor(Generation generation, Panel panel, bool crystal = false) noexcept {
+    const auto layout = layoutFor(generation, crystal);
     if (panel == Panel::Details) return layout.detailsRows;
     if (panel == Panel::Values) return layout.valuesRows;
     return layout.movesRows;
 }
 
-constexpr Focus normalize(Generation generation, Focus focus) noexcept {
-    const auto layout = layoutFor(generation);
-    const uint8_t rows = rowsFor(generation, focus.panel);
+constexpr Focus normalize(Generation generation, Focus focus, bool crystal = false) noexcept {
+    const auto layout = layoutFor(generation, crystal);
+    const uint8_t rows = rowsFor(generation, focus.panel, crystal);
     if (rows != 0) focus.row = static_cast<uint8_t>(focus.row % rows);
     if (focus.panel == Panel::Details) {
         focus.column = 0;
@@ -343,31 +343,52 @@ constexpr Focus normalize(Generation generation, Focus focus) noexcept {
     return focus;
 }
 
-constexpr Focus moveVertical(Generation generation, Focus focus, int direction) noexcept {
-    focus = normalize(generation, focus);
-    const int rows = rowsFor(generation, focus.panel);
+constexpr Focus moveVertical(Generation generation, Focus focus, int direction, bool crystal = false) noexcept {
+    focus = normalize(generation, focus, crystal);
+    const int rows = rowsFor(generation, focus.panel, crystal);
     focus.row = static_cast<uint8_t>((static_cast<int>(focus.row) + direction + rows) % rows);
-    return normalize(generation, focus);
+    return normalize(generation, focus, crystal);
 }
 
-constexpr Focus switchPanel(Generation generation, Focus focus, int direction) noexcept {
-    focus = normalize(generation, focus);
+constexpr Focus switchPanel(Generation generation, Focus focus, int direction, bool crystal = false) noexcept {
+    focus = normalize(generation, focus, crystal);
     int panel = static_cast<int>(focus.panel);
     panel = (panel + direction + 3) % 3;
     focus.panel = static_cast<Panel>(panel);
-    return normalize(generation, focus);
+    return normalize(generation, focus, crystal);
 }
 
-constexpr Focus moveColumn(Generation generation, Focus focus, int direction) noexcept {
-    focus = normalize(generation, focus);
-    if (focus.panel == Panel::Details) return focus;
-    const auto layout = layoutFor(generation);
-    const int maxColumn = focus.panel == Panel::Moves ? 2 :
+constexpr Focus moveColumn(Generation generation, Focus focus, int direction, bool crystal = false) noexcept {
+    focus = normalize(generation, focus, crystal);
+    const auto layout = layoutFor(generation, crystal);
+    const int maxColumn = focus.panel == Panel::Details ? 0 : focus.panel == Panel::Moves ? 2 :
         (focus.row < layout.valueStatRows ? static_cast<int>(layout.valueColumns) - 1 : 0);
-    focus.column = static_cast<uint8_t>(direction < 0
-        ? (focus.column == 0 ? 0 : focus.column - 1)
-        : (focus.column >= maxColumn ? maxColumn : focus.column + 1));
+    const int next = static_cast<int>(focus.column) + direction;
+    if (next < 0 || next > maxColumn) {
+        const int panel = static_cast<int>(focus.panel) + (direction < 0 ? -1 : 1);
+        if (panel < 0 || panel > 2) return focus;
+        focus = switchPanel(generation, focus, direction < 0 ? -1 : 1, crystal);
+        focus.column = direction < 0 ? 2 : 0;
+        return normalize(generation, focus, crystal);
+    }
+    focus.column = static_cast<uint8_t>(next);
     return focus;
+}
+
+constexpr const char* statsHeading() noexcept { return "STATS"; }
+struct CellFocus { int x, width; };
+constexpr CellFocus cellFocus(Focus focus) noexcept {
+    if (focus.panel == Panel::Details) return {104, 186};
+    if (focus.panel == Panel::Moves) {
+        if (focus.column == 0) return {14, 170};
+        return focus.column == 1 ? CellFocus{186, 50} : CellFocus{242, 42};
+    }
+    if (focus.row >= 5) return {130, 244};
+    if (focus.column == 0) return {110, 64};
+    return focus.column == 1 ? CellFocus{180, 90} : CellFocus{278, 98};
+}
+constexpr std::size_t detailsScrollFocus(Focus focus, std::size_t previous) noexcept {
+    return focus.panel == Panel::Details ? focus.row : previous;
 }
 
 struct Geometry720p {

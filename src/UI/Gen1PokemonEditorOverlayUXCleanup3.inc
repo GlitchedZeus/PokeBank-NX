@@ -163,6 +163,7 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
     const uint16_t species = static_cast<uint16_t>(state.pickerValue);
     if (state.mode == UX2Mode::AddDraft) {
         const bool beforeShiny = ux3IsShiny(state.draft);
+        state.draft.nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(state.draft.nickname, state.draft.species, species);
         state.draft.species = species; // Moves stay intact and are revalidated visibly below.
         if (beforeShiny != ux3.pickerPreviewShiny)
             ux3SetDraftShiny(screen, ux3.pickerPreviewShiny);
@@ -178,6 +179,8 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
         const bool beforeShiny = ShinyDVs::isShiny(oldDVs);
         BoxPokemonEdit edit;
         edit.species = species;
+        const auto nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(pokemon->nickname, pokemon->species, species);
+        if (nickname != pokemon->nickname) edit.nickname = nickname;
         if (beforeShiny != ux3.pickerPreviewShiny) {
             auto nextDVs = oldDVs;
             if (ux3.pickerPreviewShiny) {
@@ -572,6 +575,7 @@ void ux3DrawStagedView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     view.battleStats = Editor::calculateBattleStats(pokemon->species, pokemon->level, stored, pokemon->statExperience).asArray();
     view.hasBattleStats = true;
     view.battleStatsCalculated = true;
+    if (auto* e = editor(screen)) view.setMoveCompatibility(e->metadata().sourceGame);
     view.recordLabel = "Staged box record";
     view.sourceStateLabel = "STAGED VIEW / READ ONLY";
     Modals::drawGen1PokemonDetailsPresentation(screen, fb, view);

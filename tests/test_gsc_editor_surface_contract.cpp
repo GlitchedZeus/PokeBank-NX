@@ -60,24 +60,20 @@ int main() {
     assert(shared.find("Encounter legality\", \"Not checked") != std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);
 
-    // Main Trainer page owns row navigation/editing. The detached full-screen Trainer editor title
-    // is gone; Name/Money are editable and Trainer ID/Gender remain focusable/read-only.
-    assert(trainerPage.find("Trainer — Generation II") != std::string::npos);
-    assert(trainerPage.find("Edit Trainer — STAGED") == std::string::npos);
-    assert(trainerPage.find("state.row = (state.row + 3) % 4") != std::string::npos);
-    assert(trainerPage.find("state.row = (state.row + 1) % 4") != std::string::npos);
-    assert(trainerPage.find("down & (HidNpadButton_A | HidNpadButton_X)") != std::string::npos);
-    assert(trainerPage.find("{\"Name\", name}") != std::string::npos);
-    assert(trainerPage.find("{\"Money\", \"$\" + std::to_string(money)}") != std::string::npos);
-    assert(trainerPage.find("{\"Trainer ID\", std::to_string(editor->trainerId())}") != std::string::npos);
-    assert(trainerPage.find("{\"Gender\", gender}") != std::string::npos);
-    assert(trainerPage.find("i < 2") != std::string::npos);
-    assert(trainerPage.find("Trainer ID is read-only") != std::string::npos);
-    assert(trainerPage.find("Gender is save-derived/read-only") != std::string::npos);
-    assert(trainerPage.find("Keep staged Trainer edits?") != std::string::npos);
-    assert(trainerPage.find("Discard this Edit") != std::string::npos);
-    assert(trainerPage.find("Continue") != std::string::npos);
-    assert(trainerPage.find("original source immutable") != std::string::npos);
+    // The established inline page owns rendering and exactly two cursor rows.
+    assert(trainerPage.find("drawTrainerSession") == std::string::npos);
+    assert(trainerPage.find("drawFilledRect") == std::string::npos);
+    assert(trainerPage.find("screen.trainerSelectedRow = (screen.trainerSelectedRow + 1) % 2") != std::string::npos);
+    assert(trainerPage.find("editor->stageTrainerEdit(name, money, error)") != std::string::npos);
+    assert(parity.find("trainerSessionFor") == std::string::npos);
+    const auto base = readFile("src/UI/TrainerViewScreenBase.inc");
+    assert(base.find("constexpr int kEditRows = 2") != std::string::npos);
+    assert(unified.find("Unified::statsHeading()") != std::string::npos);
+    assert(unified.find("Unified::cellFocus(unified.focus)") != std::string::npos);
+    assert(unified.find("passive ? 0 : unified.detailsFocus") != std::string::npos);
+    const auto summary = readFile("src/UI/Panels/BoxPokemonPanel.cpp");
+    assert(summary.find("StatsRadar::drawGen2Labeled") != std::string::npos);
+    assert(summary.find("Gen2Workspace::battleStats(record)") != std::string::npos);
 
     // Exact-format capability hygiene and Gen II Values remain truthful: descriptive native fields
     // are now in DETAILS, while VALUES keeps stats plus derived Shiny/Gender.

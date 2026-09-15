@@ -56,8 +56,7 @@ void drawFoundationPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         view.moves[i] = pokemon->moves[i];
         view.pp[i] = pokemon->pp[i];
         view.ppUps[i] = pokemon->ppUps[i];
-        view.moveCompatible[i] = PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(
-            e->metadata().sourceGame, pokemon->species, pokemon->moves[i]);
+
     }
 
     const auto presentation = PokeBank::UIModel::presentGen1Pokemon(
@@ -68,10 +67,7 @@ void drawFoundationPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     view.hasBattleStats = true;
     view.battleStatsCalculated = true;
     view.catchRate = pokemon->catchRate;
-    view.moveCompatibilityChecked = true;
-    view.moveCompatibilityCompatible =
-        !PokeVault::Integration::Gen1::MoveCompatibility::firstIncompatible(
-            e->metadata().sourceGame, pokemon->species, pokemon->moves).has_value();
+    view.setMoveCompatibility(e->metadata().sourceGame);
     view.sourceGameLabel = foundationPassiveSourceGameLabel(screen.sourceGameId);
     view.recordLabel = "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1);
     view.sourceStateLabel = "STAGED READ ONLY";

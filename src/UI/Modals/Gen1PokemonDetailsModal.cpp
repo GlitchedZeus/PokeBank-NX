@@ -64,13 +64,7 @@ void drawGen1PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     view.sourceStateLabel = "READ ONLY";
 
     if (const auto game = sourceGame(screen.sourceGameId)) {
-        const std::array<uint8_t,4> moves{
-            static_cast<uint8_t>(p.move(0)), static_cast<uint8_t>(p.move(1)),
-            static_cast<uint8_t>(p.move(2)), static_cast<uint8_t>(p.move(3))};
-        view.moveCompatibilityChecked = true;
-        view.moveCompatibilityCompatible =
-            !PokeVault::Integration::Gen1::MoveCompatibility::firstIncompatible(
-                *game, p.speciesID(), moves).has_value();
+        view.setMoveCompatibility(*game);
     }
 
     if (p.isPartyRecord()) {

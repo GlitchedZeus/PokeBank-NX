@@ -97,6 +97,8 @@ bool GSCReadOnlyTrainer::refreshStagedBoxPresentation(std::string& error) {
         }
     }
     boxes.swap(displayBoxes);
+    trainerName = parsed.save->trainer().name;
+    money = parsed.save->trainer().money;
     return true;
 }
 

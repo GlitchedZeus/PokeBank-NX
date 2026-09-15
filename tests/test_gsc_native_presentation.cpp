@@ -8,6 +8,8 @@ int main() {
     namespace Native = PokeBank::UIModel::Gen2Native;
     using PokeVault::Integration::Gen2::PokemonRecord;
 
+    for (unsigned raw = 0; raw <= 65535; ++raw)
+        assert(Native::encodeCrystalCaughtData(Native::decodeCrystalCaughtData(static_cast<uint16_t>(raw))) == raw);
     // Crystal byte layout: time[15:14], level[13:8], OT gender[7], location[6:0].
     constexpr uint16_t morningGoldenrodFemale =
         static_cast<uint16_t>((1u << 14) | (20u << 8) | (1u << 7) | 0x10u);

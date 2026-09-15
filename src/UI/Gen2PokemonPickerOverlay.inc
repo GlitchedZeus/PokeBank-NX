@@ -48,13 +48,15 @@ bool openPickerForFocusedField(TrainerViewScreen& screen, State& state,
 
 bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlayState& picker) {
     if (picker.model.kind == Gen2Picker::Kind::Species) {
-        const std::string oldDefault = Names::getSpeciesName(state.working.species);
-        const bool renameDefault = state.mode == Mode::Create && state.working.nickname == oldDefault;
         if (!Gen2Picker::applySpeciesAppearance(state, picker.model.speciesChoice(), picker.model.previewShiny)) return false;
-        if (renameDefault) state.working.nickname = Names::getSpeciesName(state.working.species);
         refreshDerived(state.working);
     } else if (picker.model.kind == Gen2Picker::Kind::Move) {
         if (!Gen2Picker::applyMoveChoice(state, picker.model.moveSlot, picker.model.moveChoice())) return false;
+    } else if (picker.model.kind == Gen2Picker::Kind::Location) {
+        if (!state.editable() || screen.sourceGameId != "crystal_gbc") return false;
+        auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+        caught.location = picker.model.locationChoice();
+        state.working.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
     } else if (picker.model.kind == Gen2Picker::Kind::Pokerus) {
         if (!Gen2Picker::applyPokerusChoice(state, picker.model.pokerusRaw())) return false;
     } else {
@@ -116,21 +118,25 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
 
     const bool species = model.kind == Gen2Picker::Kind::Species;
-    fb.drawText(x + 24, y + 18, species ? "Species — Generation II" : "Move — Generation II",
+    const bool location = model.kind == Gen2Picker::Kind::Location;
+    fb.drawText(x + 24, y + 18, location ? "Met location — Crystal" : species ? "Species — Generation II" : "Move — Generation II",
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                species ? "#001–#251 • browsing does not change the staged Pokemon"
+                location ? "Native Crystal landmarks • encounter legality not checked" : species ? "#001–#251 • browsing does not change the staged Pokemon"
                         : "Empty + moves 1–251 • compatibility shown for this exact game",
                 Colors::TextDim, TextStyle::Caption);
 
-    const int count = species ? 251 : 252;
+    const int count = location ? Gen2Picker::Model::locationCount : species ? 251 : 252;
     constexpr int visible = 13;
     const int first = std::clamp(model.index - visible / 2, 0, std::max(0, count - visible));
     const int last = std::min(count, first + visible);
     for (int i = first; i < last; ++i) {
         const int yy = y + 88 + (i - first) * 33;
         const bool selected = i == model.index;
-        if (species) {
+        if (location) {
+            drawPickerRow(fb, x + 20, yy, panelW - 40,
+                Gen2Native::crystalCaughtLocationName(Gen2Picker::Model::locationAt(i)), selected);
+        } else if (species) {
             const uint16_t dex = static_cast<uint16_t>(i + 1);
             std::string number = std::to_string(dex);
             while (number.size() < 3) number = "0" + number;
@@ -212,7 +218,7 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     }
 
     if (picker.model.kind == Gen2Picker::Kind::Species ||
-        picker.model.kind == Gen2Picker::Kind::Move) {
+        picker.model.kind == Gen2Picker::Kind::Move || picker.model.kind == Gen2Picker::Kind::Location) {
         if (nav & HidNpadButton_Up) picker.model.stepList(-1);
         if (nav & HidNpadButton_Down) picker.model.stepList(1);
         if (picker.model.kind == Gen2Picker::Kind::Species) {

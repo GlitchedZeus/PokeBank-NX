@@ -1,5 +1,6 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
+#include "UI/ClassicDefaultNickname.h"
 
 // Pre-include every dependency used by the preserved GSC source before the narrow rename macros.
 // Their include guards ensure the macros below rename only TrainerViewScreen's two method definitions,
@@ -122,7 +123,6 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 #undef drawFooter
 #undef ux2StageAdd
 
-#include "Gen1MoveStatusParity.inc"
 #include "Gen1PokemonEditorOverlayFoundation.inc"
 #include "Gen1PokemonEditorFoundationHardwareFix.inc"
 #include "Gen1PokemonEditorPassiveView.inc"
@@ -205,7 +205,6 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     }
 
     Gen1PokemonEditor::drawOverlayUX(*this, fb);
-    Gen1PokemonEditor::drawGen1MoveStatusParity(*this, fb);
     Gen1PokemonEditor::drawFoundationBottomSplit(*this, fb);
 }
 

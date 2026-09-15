@@ -146,15 +146,14 @@ int main() {
     assert(composite.find("drawFooterWithClassicAddLabel") != std::string::npos);
     assert(composite.find("text.replace(pos, std::char_traits<char>::length(oldLabel), \"Add\")") != std::string::npos);
     assert(composite.find("added to Box") != std::string::npos);
-    assert(composite.find("#include \"Gen1MoveStatusParity.inc\"") != std::string::npos);
-    assert(composite.find("drawGen1MoveStatusParity(*this, fb)") != std::string::npos);
-
-    const auto moveParity = readFile("src/UI/Gen1MoveStatusParity.inc");
-    assert(moveParity.find("MoveCompatibility::canLearnMove") != std::string::npos);
-    assert(moveParity.find("\"OK\", Colors::Success") != std::string::npos);
-    assert(moveParity.find("state.mode != UX2Mode::Edit && state.mode != UX2Mode::AddDraft") != std::string::npos);
-    const auto passiveView = readFile("src/UI/Gen1PokemonEditorPassiveView.inc");
-    assert(passiveView.find("view.moveCompatible[i]") != std::string::npos);
+    assert(composite.find("Gen1MoveStatusParity") == std::string::npos);
+    const auto workspace = readFile("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
+    assert(workspace.find("MoveCompatibility::canLearnMove") != std::string::npos);
+    assert(workspace.find("fb.drawText(statusX, rowY + 9, status") != std::string::npos);
+    assert(workspace.find("centerX + 142") == std::string::npos);
+    for (const auto* path : {"src/UI/Gen1PokemonEditorPassiveView.inc", "src/UI/Modals/Gen1PokemonDetailsModal.cpp",
+                             "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"})
+        assert(readFile(path).find("view.setMoveCompatibility(") != std::string::npos);
     const auto passivePresentation = readFile("src/UI/Gen1PokemonDetailsPresentation.cpp");
     assert(passivePresentation.find("p.moveCompatible[i] ? \"OK\" : \"Unusual\"") != std::string::npos);
     assert(passivePresentation.find("Encounter legality\", \"Not checked") != std::string::npos);

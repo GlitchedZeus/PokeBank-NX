@@ -30,6 +30,12 @@ constexpr CrystalCaughtData decodeCrystalCaughtData(uint16_t raw) noexcept {
     };
 }
 
+constexpr uint16_t encodeCrystalCaughtData(const CrystalCaughtData& caught) noexcept {
+    return static_cast<uint16_t>(((caught.timeOfDay & 3) << 14) |
+        ((caught.levelCode & 63) << 8) | (caught.originalTrainerFemale ? 0x80 : 0) |
+        (caught.location & 127));
+}
+
 constexpr const char* crystalMetTimeName(uint8_t code) noexcept {
     switch (code & 0x03) {
         case 1: return "Morning";

@@ -291,7 +291,7 @@ QuantityRule quantityRule(ClassicGame game, ClassicPocket pocket, uint16_t itemI
     if (pocket == ClassicPocket::KeyItems) return {false, 1, 1};
     if (pocket == ClassicPocket::TMHM) {
         if (game <= ClassicGame::Yellow && itemId >= 196 && itemId <= 200) return {false, 1, 1};
-        if (game >= ClassicGame::Gold && game <= ClassicGame::Crystal && itemId >= 243) return {false, 1, 1};
+        if (game <= ClassicGame::Crystal && itemId >= 243) return {false, 1, 1};
         if (game >= ClassicGame::Ruby && itemId >= 339) return {false, 1, 1};
     }
     return {true, 1, 99};
@@ -320,7 +320,7 @@ std::string displayItemName(ClassicGame game, ClassicPocket pocket, uint16_t ite
     // Generation II PC Items can contain machines too. If the exact id is a machine, present the
     // same polished TM/HM + move label regardless of which legitimate inventory category owns it.
     if (move != 0 && (pocket == ClassicPocket::TMHM ||
-                      (game >= ClassicGame::Gold && game <= ClassicGame::Crystal &&
+                      (game <= ClassicGame::Crystal &&
                        pocket == ClassicPocket::PCItems))) {
         if (game <= ClassicGame::Yellow) {
             if (itemId <= 200) return machineLabel("HM", itemId - 195, 2, move);

@@ -10,7 +10,7 @@
 
 namespace PokeBank::UIModel::Gen2PokemonPicker {
 
-enum class Kind : uint8_t { None, Species, Move, Pokerus };
+enum class Kind : uint8_t { None, Species, Move, Pokerus, Location };
 enum class PokerusMode : uint8_t { None, Active, Cured };
 
 struct Model {
@@ -44,8 +44,17 @@ struct Model {
         return static_cast<uint16_t>(std::clamp(index, 0, 251));
     }
 
+    static constexpr int locationCount = static_cast<int>(Gen2Native::crystalLandmarkNames.size()) + 2;
+    static constexpr uint8_t locationAt(int i) noexcept {
+        return static_cast<uint8_t>(i < locationCount - 2 ? i : i == locationCount - 2 ? 126 : 127);
+    }
+    void openLocation(uint8_t current) noexcept {
+        kind = Kind::Location;
+        index = current < locationCount - 2 ? current : current == 126 ? locationCount - 2 : current == 127 ? locationCount - 1 : 0;
+    }
+    uint8_t locationChoice() const noexcept { return locationAt(index); }
     void stepList(int delta) noexcept {
-        const int count = kind == Kind::Species ? 251 : kind == Kind::Move ? 252 : 0;
+        const int count = kind == Kind::Species ? 251 : kind == Kind::Move ? 252 : kind == Kind::Location ? locationCount : 0;
         if (count == 0) return;
         if (kind == Kind::Species) { index = std::clamp(index + delta, 0, count - 1); return; }
         int next = (index + delta) % count;
