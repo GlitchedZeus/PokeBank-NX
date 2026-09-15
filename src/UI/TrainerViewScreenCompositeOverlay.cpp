@@ -96,6 +96,34 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 #include "Gen2SharedSurfaceParity.inc"
 
 namespace UI {
+namespace {
+
+bool gen2ClassicBoxFooterActive(const TrainerViewScreen& screen) noexcept {
+    const bool gsc = screen.trainer.getGameGroup() == Enums::GameVersion::GSC &&
+        (screen.sourceGameId == "gold_gbc" || screen.sourceGameId == "silver_gbc" ||
+         screen.sourceGameId == "crystal_gbc");
+    return gsc && screen.selectedMode == TrainerViewScreen::ViewMode::Boxes && screen.detailViewActive &&
+        !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
+        !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
+        !screen.carrying() && !screen.currentlySelecting;
+}
+
+void drawGen2ClassicBoxFooter(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    if (!gen2ClassicBoxFooterActive(screen)) return;
+    bool occupied = false;
+    if (screen.selectedBoxIndex >= 0 && screen.selectedItemIndex >= 0 &&
+        screen.selectedBoxIndex < static_cast<int>(screen.trainer.getBoxCount()) &&
+        screen.selectedItemIndex < static_cast<int>(screen.trainer.getSlotsPerBox())) {
+        occupied = static_cast<bool>(screen.trainer.boxes[static_cast<std::size_t>(screen.selectedBoxIndex)]
+                                                [static_cast<std::size_t>(screen.selectedItemIndex)]);
+    }
+    if (occupied)
+        drawNavBar(fb, {{"A", "Actions"}, {"L/R", "Box"}, {"B", "Back"}});
+    else
+        drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"L/R", "Box"}, {"B", "Back"}});
+}
+
+} // namespace
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 down = padGetButtonsDown(&pad);
@@ -124,8 +152,12 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     // Exactly one top-level Pokemon surface owns the frame. GSC still owns its trainer/inventory
     // surfaces, but it never draws underneath Actions/View/Edit/Create/Review.
-    if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this))
+    if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this)) {
         drawGSCOverlay(fb);
+        // The preserved base screen still draws its generic footer; overwrite it with the classic
+        // Pokemon-box control language that the production Gen II input route actually implements.
+        drawGen2ClassicBoxFooter(*this, fb);
+    }
 
     if (Gen2PokemonEditor::drawFinalGen2Surface(*this, fb)) {
         Gen2PokemonEditor::drawPickerOverlay(*this, fb);
