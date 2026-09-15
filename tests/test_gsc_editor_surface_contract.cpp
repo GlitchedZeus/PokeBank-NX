@@ -18,14 +18,11 @@ int main() {
     const auto parity = readFile("src/UI/Gen2SharedSurfaceParity.inc");
     const auto shared = readFile("src/UI/Gen2SharedPokemonSurface.inc");
     const auto composite = readFile("src/UI/TrainerViewScreenCompositeOverlay.cpp");
+    const auto trainerPage = readFile("src/UI/Gen2TrainerSessionOverlay.inc");
 
-    // Hardware swkbd safety: Level and EXP are separate logical actions, so one A press never
-    // deliberately chains the two library applets in the same update.
     assert(foundation.find("Gen II Level") != std::string::npos);
     assert(foundation.find("Gen II Experience") != std::string::npos);
 
-    // Transactional Edit snapshots the current staged entry, edits a local working copy, and
-    // exposes the accepted Keep / discard-this-session / Continue interaction.
     assert(foundation.find("state.baseline = *pokemon") != std::string::npos);
     assert(foundation.find("state.working = *pokemon") != std::string::npos);
     assert(foundation.find("Keep staged Pokemon edits?") != std::string::npos);
@@ -34,15 +31,12 @@ int main() {
     assert(foundation.find("{\"X\", \"Discard\"}") != std::string::npos);
     assert(foundation.find("{\"B\", \"Continue\"}") != std::string::npos);
 
-    // Create remains a staged-copy transaction internally, but hardware-facing language is Add.
     assert(foundation.find("Add blocked: correct red incompatible move rows first") != std::string::npos);
     assert(foundation.find("Create draft cancelled; staged save unchanged") != std::string::npos);
     assert(unified.find("{\"X\", \"Add\"}") != std::string::npos);
     assert(unified.find("Stage Add") == std::string::npos);
     assert(foundation.find("Pokemon added to staged copy only; source .srm unchanged") == std::string::npos);
 
-    // Successful Add returns to the box, refreshes from staged bytes, selects the truthful native
-    // packed append slot, and deliberately leaves Pokemon Actions closed.
     assert(foundation.find("refreshStagedBoxPresentation(error)") != std::string::npos);
     assert(foundation.find("closeToBoxAfterAdd(screen, destinationBox, static_cast<int>(slot))") != std::string::npos);
     assert(foundation.find("screen.selectedBoxIndex = target.box") != std::string::npos);
@@ -50,8 +44,6 @@ int main() {
     assert(foundation.find("legacy.pokemonActions = false") != std::string::npos);
     assert(foundation.find("added to Box") != std::string::npos);
 
-    // Gen II box interaction is the same classic contract as Gen I: A opens contextual Actions,
-    // X is a direct Add shortcut only on an empty cell, and occupied X cannot hide an edit action.
     assert(parity.find("SharedEditor::boxActivation") != std::string::npos);
     assert(parity.find("SharedEditor::BoxActivation::Add") != std::string::npos);
     assert(parity.find("SharedEditor::BoxActivation::Actions") != std::string::npos);
@@ -61,7 +53,6 @@ int main() {
     assert(composite.find("{\"L/R\", \"Box\"}") != std::string::npos);
     assert(composite.find("drawGen2ClassicBoxFooter") != std::string::npos);
 
-    // Empty/occupied actions share the common action contract and accepted classic geometry.
     assert(shared.find("caps.hasLegalityProvenance = true") != std::string::npos);
     assert(shared.find("SharedEditor::actionLabel(action)") != std::string::npos);
     assert(parity.find("SharedEditor::actionMenuGeometry()") != std::string::npos);
@@ -69,21 +60,40 @@ int main() {
     assert(shared.find("Encounter legality\", \"Not checked") != std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);
 
-    // Exact-format capability hygiene and authentic Gen II Values remain visible in the shared shell.
+    // Main Trainer page owns row navigation/editing. The detached full-screen Trainer editor title
+    // is gone; Name/Money are editable and Trainer ID/Gender remain focusable/read-only.
+    assert(trainerPage.find("Trainer — Generation II") != std::string::npos);
+    assert(trainerPage.find("Edit Trainer — STAGED") == std::string::npos);
+    assert(trainerPage.find("state.row = (state.row + 3) % 4") != std::string::npos);
+    assert(trainerPage.find("state.row = (state.row + 1) % 4") != std::string::npos);
+    assert(trainerPage.find("down & (HidNpadButton_A | HidNpadButton_X)") != std::string::npos);
+    assert(trainerPage.find("{\"Name\", name}") != std::string::npos);
+    assert(trainerPage.find("{\"Money\", \"$\" + std::to_string(money)}") != std::string::npos);
+    assert(trainerPage.find("{\"Trainer ID\", std::to_string(editor->trainerId())}") != std::string::npos);
+    assert(trainerPage.find("{\"Gender\", gender}") != std::string::npos);
+    assert(trainerPage.find("i < 2") != std::string::npos);
+    assert(trainerPage.find("Trainer ID is read-only") != std::string::npos);
+    assert(trainerPage.find("Gender is save-derived/read-only") != std::string::npos);
+    assert(trainerPage.find("Keep staged Trainer edits?") != std::string::npos);
+    assert(trainerPage.find("Discard this Edit") != std::string::npos);
+    assert(trainerPage.find("Continue") != std::string::npos);
+    assert(trainerPage.find("original source immutable") != std::string::npos);
+
+    // Exact-format capability hygiene and Gen II Values remain truthful: descriptive native fields
+    // are now in DETAILS, while VALUES keeps stats plus derived Shiny/Gender.
     assert(foundation.find("HP DV is derived") != std::string::npos);
     assert(unified.find("\"DV\"") != std::string::npos);
     assert(unified.find("\"Stat Exp\"") != std::string::npos);
     assert(unified.find("CALCULATED SPECIAL STATS") != std::string::npos);
     assert(unified.find("\"SpA\"") != std::string::npos);
     assert(unified.find("\"SpD\"") != std::string::npos);
-    assert(unified.find("Held Item") != std::string::npos);
-    assert(unified.find("Friendship") != std::string::npos);
-    assert(unified.find("Pokerus") != std::string::npos);
+    assert(unified.find("{\"Held Item\", itemText(p.heldItem)}") != std::string::npos);
+    assert(unified.find("{\"Friendship\", std::to_string(p.friendship)}") != std::string::npos);
+    assert(unified.find("{\"Pokerus\", Gen2Native::pokerusText(p.pokerus)}") != std::string::npos);
+    assert(unified.find("std::array<std::pair<std::string, std::string>, 2> capabilityRows") != std::string::npos);
     assert(unified.find("Encounter legality: Not checked") != std::string::npos);
-    assert(unified.find("scrollWindow") != std::string::npos);
+    assert(unified.find("scrollWindow(rows.size(), 5") != std::string::npos);
 
-    // The real GSC Review -> Export UI is only a metadata/path wrapper around the verified staged
-    // transaction. No second fopen/fwrite implementation may creep back into the overlay.
     const auto overlay = readFile("src/UI/TrainerViewScreenGSCOverlay.inc");
     assert(overlay.find("publishVerifiedStagedEditorExport(editor, request)") != std::string::npos);
     assert(overlay.find("Verified staged export: ") != std::string::npos);
@@ -93,6 +103,6 @@ int main() {
     assert(overlay.find("writeBytes(") == std::string::npos);
     assert(overlay.find("writeText(") == std::string::npos);
 
-    std::cout << "GSC shared editor UX parity/session/export production contract: PASS\n";
+    std::cout << "GSC shared editor Trainer/field-layout/session/export production contract: PASS\n";
     return 0;
 }
