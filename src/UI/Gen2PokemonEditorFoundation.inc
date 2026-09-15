@@ -1,6 +1,6 @@
 // Generation II shared DETAILS | VALUES | MOVES workspace.
 // This stays layered over the accepted GSC discovery/export/action-sheet implementation.
-// Browsing edits only a local session record; StagedEditor is touched solely by Stage Add / Keep.
+// Browsing edits only a local session record; StagedEditor is touched solely by Add / Keep.
 
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
@@ -8,6 +8,7 @@
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
 #include "UI/ExactSaveCapabilities.h"
+#include "UI/SharedPokemonEditorContract.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
@@ -34,6 +35,7 @@ namespace {
 namespace Gen2 = PokeVault::Integration::Gen2;
 namespace Rules = PokeBank::UIModel::Gen2PokemonEditor;
 namespace Foundation = PokeBank::UIModel::PokemonEditorFoundation;
+namespace SharedEditor = PokeBank::UIModel::SharedPokemonEditor;
 
 using Mode = Rules::SessionMode;
 
@@ -216,6 +218,33 @@ void closeToActions(TrainerViewScreen& screen) {
     screen.controllerNavigation.reset();
 }
 
+void closeToBoxAfterAdd(TrainerViewScreen& screen, int box, int slot) {
+    const auto target = SharedEditor::postAddSelection(box, slot);
+    auto& state = stateFor(screen);
+    state.mode = Mode::None;
+    state.confirmExit = false;
+    state.itemPicker = false;
+
+    auto& legacy = editorOverlayState(screen);
+    legacy.active = false;
+    legacy.review = false;
+    legacy.pokemonActions = false;
+    legacy.pokemonFields = false;
+    legacy.pokemonBox = target.box;
+    legacy.pokemonSlot = target.slot;
+    legacy.pokemonRow = 0;
+
+    if (screen.selectedMode == TrainerViewScreen::ViewMode::Storage && screen.storageFocusPane == 0) {
+        screen.stSaveBox = target.box;
+        screen.stSaveSlot = target.slot;
+    } else {
+        screen.selectedBoxIndex = target.box;
+        screen.selectedItemIndex = target.slot;
+        screen.detailViewActive = true;
+    }
+    screen.controllerNavigation.reset();
+}
+
 
 Rules::CompatibilityState moveStatus(const TrainerViewScreen& screen, const State& state, int slot) noexcept {
     const auto game = Rules::exactGameFromSourceId(screen.sourceGameId);
@@ -236,22 +265,29 @@ bool stageCreate(TrainerViewScreen& screen) {
     auto* editor = stagedEditor(screen);
     if (!editor || state.mode != Mode::Create) return false;
     if (!movesAllowCommit(screen, state)) {
-        screen.postStatus("Stage Add blocked: correct red incompatible move rows first", 300);
+        screen.postStatus("Add blocked: correct red incompatible move rows first", 300);
         return false;
     }
 
+    const std::string displayName = state.working.nickname.empty()
+        ? std::string(Names::getSpeciesName(state.working.species)) : state.working.nickname;
+    const int destinationBox = state.box;
     std::size_t slot = 0;
     std::string error;
-    if (!state.add(*editor, static_cast<std::size_t>(state.box), slot, error)) {
-        screen.postStatus(error.empty() ? "Could not stage Gen II Pokemon" : error, 300);
+    if (!state.add(*editor, static_cast<std::size_t>(destinationBox), slot, error)) {
+        screen.postStatus(error.empty() ? "Could not add Pokemon" : error, 300);
         return false;
     }
+
     auto& legacy = editorOverlayState(screen);
-    legacy.pokemonBox = state.box;
+    legacy.pokemonBox = destinationBox;
     legacy.pokemonSlot = static_cast<int>(slot);
-    gscTrainer(screen).refreshStagedBoxPresentation(error);
-    screen.postStatus("Pokemon added to staged copy only; source .srm unchanged", 300);
-    closeToActions(screen);
+    if (!gscTrainer(screen).refreshStagedBoxPresentation(error)) {
+        screen.postStatus(error.empty() ? "Pokemon added, but the staged box display could not refresh" : error, 360);
+    } else {
+        screen.postStatus(displayName + " added to Box " + std::to_string(destinationBox + 1), 260);
+    }
+    closeToBoxAfterAdd(screen, destinationBox, static_cast<int>(slot));
     return true;
 }
 
@@ -271,7 +307,7 @@ bool stageEdit(TrainerViewScreen& screen) {
         return false;
     }
     gscTrainer(screen).refreshStagedBoxPresentation(error);
-    screen.postStatus("Pokemon edit kept in staged copy; source .srm unchanged", 300);
+    screen.postStatus("Pokemon edit kept", 260);
     closeToActions(screen);
     return true;
 }
@@ -799,7 +835,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (state.mode == Mode::Create)
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Stage Add"}, {"B", "Cancel"}});
+                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel"}});
     else
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"B", "Back"}});
