@@ -28,12 +28,22 @@ int main() {
     static_assert(!gen2LegacyPathProductionReachable(Gen2LegacyPath::RawHeldItemIdCreatePrompt));
     static_assert(!gen2LegacyPathProductionReachable(Gen2LegacyPath::LegacyHandleInput));
 
-    const auto empty = actionsForSlot(false);
-    assert(empty.count == 3);
+    ActionCapabilities classicMenu;
+    classicMenu.canClone = true;
+    classicMenu.canRemove = false;
+    classicMenu.hasLegalityProvenance = true;
+
+    const auto empty = actionsForSlot(false, classicMenu);
+    assert(empty.count == 4);
     assert(empty[0] == Action::Add);
     assert(empty[1] == Action::Review);
-    assert(empty[2] == Action::Close);
+    assert(empty[2] == Action::LegalityProvenance);
+    assert(empty[3] == Action::Close);
     assert(surfaceForAction(empty[0]) == Surface::CreateDraft);
+    assert(std::string(actionLabel(Action::Close)) == "Cancel");
+    assert(std::string(actionLabel(Action::LegalityProvenance)) == "Legality & Provenance");
+    constexpr auto menuGeometry = actionMenuGeometry();
+    static_assert(menuGeometry.rowStart == 86 && menuGeometry.rowHeight == 42 && menuGeometry.rowStep == 46);
 
     ActionCapabilities gen1;
     gen1.canClone = true;
@@ -51,15 +61,25 @@ int main() {
 
     ActionCapabilities gen2;
     gen2.canClone = true;
-    gen2.canRemove = false; // backend capability is not implemented yet; shell remains shared.
-    gen2.hasLegalityProvenance = false;
+    gen2.canRemove = false; // backend remove/compaction is not implemented yet.
+    gen2.hasLegalityProvenance = true; // informational shell is safe even without encounter legality.
     const auto gen2Occupied = actionsForSlot(true, gen2);
-    assert(gen2Occupied.count == 5);
+    assert(gen2Occupied.count == 6);
     assert(gen2Occupied[0] == Action::View);
     assert(gen2Occupied[1] == Action::Edit);
     assert(gen2Occupied[2] == Action::Clone);
-    assert(gen2Occupied[3] == Action::Review);
-    assert(gen2Occupied[4] == Action::Close);
+    assert(gen2Occupied[3] == Action::LegalityProvenance);
+    assert(gen2Occupied[4] == Action::Review);
+    assert(gen2Occupied[5] == Action::Close);
+
+    // Box interaction language is shared. X is a direct Add shortcut only on an empty visual cell;
+    // native packed insertion remains a serializer concern, never a sparse-slot claim.
+    assert(boxActivation(false, true, false) == BoxActivation::Actions);
+    assert(boxActivation(true, true, false) == BoxActivation::Actions);
+    assert(boxActivation(false, false, true) == BoxActivation::Add);
+    assert(boxActivation(true, false, true) == BoxActivation::None);
+    const auto afterAdd = postAddSelection(6, 3);
+    assert(afterAdd.box == 6 && afterAdd.slot == 3 && !afterAdd.openActions);
 
     // Gen I and Gen II share the same DETAILS and MOVES shell. Gen II extends VALUES
     // with capability rows for shiny/gender/held item/friendship/Pokerus.
@@ -88,6 +108,39 @@ int main() {
     assert(focus.row == 3);
     assert(focus.column == 0);
 
+    // Field identities are architecture only; unsupported classic fields stay hidden.
+    assert(fieldAccessForGeneration(Generation::Gen1, FieldIdentity::DV) == FieldAccess::Editable);
+    assert(fieldAccessForGeneration(Generation::Gen1, FieldIdentity::StatExperience) == FieldAccess::Editable);
+    assert(fieldAccessForGeneration(Generation::Gen1, FieldIdentity::Shiny) == FieldAccess::Derived);
+    for (auto field : {FieldIdentity::Ability, FieldIdentity::Friendship, FieldIdentity::Nature,
+                       FieldIdentity::Ball, FieldIdentity::IV, FieldIdentity::EV,
+                       FieldIdentity::MetLocation, FieldIdentity::MetDate, FieldIdentity::Egg})
+        assert(fieldAccessForGeneration(Generation::Gen1, field) == FieldAccess::Hidden);
+
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::HeldItem) == FieldAccess::Editable);
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::Friendship) == FieldAccess::Editable);
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::Pokerus) == FieldAccess::Editable);
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::Gender) == FieldAccess::Derived);
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::Shiny) == FieldAccess::Derived);
+    for (auto field : {FieldIdentity::Ability, FieldIdentity::PersonalityId, FieldIdentity::Nature,
+                       FieldIdentity::Ball, FieldIdentity::IV, FieldIdentity::EV,
+                       FieldIdentity::MetDate, FieldIdentity::EggDate})
+        assert(fieldAccessForGeneration(Generation::Gen2, field) == FieldAccess::Hidden);
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLocation, false) == FieldAccess::Hidden);
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLocation, true) == FieldAccess::ReadOnly);
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLevel, true) == FieldAccess::ReadOnly);
+    assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::OriginalTrainerGender, true) == FieldAccess::ReadOnly);
+
+    // Scrolling is dormant while a panel fits, then keeps the selected row visible once required.
+    auto scroll = scrollWindow(5, 5, 4);
+    assert(!scroll.scrolls && scroll.first == 0 && scroll.count == 5);
+    scroll = scrollWindow(12, 5, 0);
+    assert(scroll.scrolls && scroll.first == 0 && scroll.count == 5);
+    scroll = scrollWindow(12, 5, 7);
+    assert(scroll.scrolls && scroll.first == 3 && 7 >= scroll.first && 7 < scroll.first + scroll.count);
+    scroll = scrollWindow(12, 5, 11);
+    assert(scroll.scrolls && scroll.first == 7 && 11 < scroll.first + scroll.count);
+
     assert(draftDecision(DraftEvent::Navigate).mutateStagedSave == false);
     assert(draftDecision(DraftEvent::BrowsePicker).mutateStagedSave == false);
     assert(draftDecision(DraftEvent::AcceptPicker).mutateStagedSave == false);
@@ -101,6 +154,6 @@ int main() {
     static_assert(g.detailsX < g.valuesX && g.valuesX < g.movesX);
     static_assert(g.footerTop > g.y + g.height);
 
-    std::cout << "Shared Pokemon editor architecture contract: PASS\n";
+    std::cout << "Shared Pokemon editor architecture + classic parity/field/scroll contracts: PASS\n";
     return 0;
 }
