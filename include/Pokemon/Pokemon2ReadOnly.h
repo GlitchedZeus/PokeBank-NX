@@ -1,6 +1,7 @@
 #ifndef POKEMON_POKEMON2_READ_ONLY_H
 #define POKEMON_POKEMON2_READ_ONLY_H
 
+#include "Integration/Gen2/Gen2BattleStats.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
 #include "Pokemon/Pokemon.h"
@@ -76,12 +77,15 @@ public:
     uint8_t baseSPA() const noexcept override { return personal_.specialAttack; }
     uint8_t baseSPD() const noexcept override { return personal_.specialDefense; }
 
-    uint16_t statHPMax() const noexcept override { return record_.partyRecord ? record_.maxHP : 0; }
-    uint16_t statATK() const noexcept override { return record_.partyRecord ? record_.attack : 0; }
-    uint16_t statDEF() const noexcept override { return record_.partyRecord ? record_.defense : 0; }
-    uint16_t statSPE() const noexcept override { return record_.partyRecord ? record_.speed : 0; }
-    uint16_t statSPA() const noexcept override { return record_.partyRecord ? record_.specialAttack : 0; }
-    uint16_t statSPD() const noexcept override { return record_.partyRecord ? record_.specialDefense : 0; }
+    // Party records expose their stored live battle stats. Box records do not store those
+    // fields, so derive the same truthful stats used by the full shared Gen II View instead of
+    // returning zeros. Current HP/status remain party-only below.
+    uint16_t statHPMax() const noexcept override { return record_.partyRecord ? record_.maxHP : calculatedStats().hp; }
+    uint16_t statATK() const noexcept override { return record_.partyRecord ? record_.attack : calculatedStats().attack; }
+    uint16_t statDEF() const noexcept override { return record_.partyRecord ? record_.defense : calculatedStats().defense; }
+    uint16_t statSPE() const noexcept override { return record_.partyRecord ? record_.speed : calculatedStats().speed; }
+    uint16_t statSPA() const noexcept override { return record_.partyRecord ? record_.specialAttack : calculatedStats().specialAttack; }
+    uint16_t statSPD() const noexcept override { return record_.partyRecord ? record_.specialDefense : calculatedStats().specialDefense; }
     uint16_t statHPCurrent() const noexcept override { return record_.partyRecord ? record_.currentHP : 0; }
 
     uint8_t friendship() const noexcept override { return record_.friendship; }
@@ -127,6 +131,13 @@ public:
     const PokeVault::Integration::Gen2::PokemonRecord& strictRecord() const noexcept { return record_; }
 
 private:
+    PokeVault::Integration::Gen2::BattleStats calculatedStats() const noexcept {
+        return PokeVault::Integration::Gen2::calculateBattleStats(
+            record_.species, record_.level,
+            {record_.dvs[1], record_.dvs[2], record_.dvs[3], record_.dvs[4]},
+            record_.statExperience);
+    }
+
     PokeVault::Integration::Gen2::PokemonRecord record_;
     PokeVault::Integration::Gen2::PersonalRecord personal_{};
     uint8_t gender_ = 2;
