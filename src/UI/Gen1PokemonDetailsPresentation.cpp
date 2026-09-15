@@ -86,8 +86,6 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     const int W = fb.getWidth(), H = fb.getHeight();
     screen.touchButtons.clear();
 
-    // Use the same permanent three-panel visual language as the accepted Gen I editor,
-    // but this surface is deliberately passive: no field cursor and no per-field navigation.
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 130));
     fb.drawVerticalGradient(0, 0, W, H,
         Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 250),
@@ -122,7 +120,6 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     drawPanelSurface(fb, midX, contentY, midW, contentH, false, 14);
     drawPanelSurface(fb, rightX, contentY, rightW, contentH, false, 14);
 
-    // LEFT — exactly the editor's identity language, with no focus highlight.
     fb.drawText(leftX + 14, contentY + 10, "DETAILS", Colors::Accent, TextStyle::Caption);
     constexpr int renderSize = 174;
     if (auto* sprite = SpriteManager::getSprite(p.species, p.shiny); sprite && sprite->data) {
@@ -148,7 +145,6 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     compactRow(fb, leftX + 18, contentY + 361, "OT", p.originalTrainer, 90);
     compactRow(fb, leftX + 18, contentY + 404, "Trainer ID", std::to_string(p.trainerId), 90);
 
-    // MIDDLE — DV / Stat Exp / calculated-or-stored battle Stat, all read-only here.
     fb.drawText(midX + 14, contentY + 10, "VALUES", Colors::Text, TextStyle::Heading);
     fb.drawText(midX + 104, contentY + 48, "DV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(midX + 198, contentY + 48, "Stat Exp", Colors::TextDim, TextStyle::Caption);
@@ -173,7 +169,7 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
                 p.battleStatsCalculated ? "Calculated Stat cells are read-only" : "Party battle Stat cells are read-only",
                 Colors::TextDim, TextStyle::Caption);
 
-    // RIGHT — four compact move rows, then the same supplemental-data + radar split.
+    // RIGHT — match the shared Gen II move-row language: move, PP, Up count and a truthful status marker.
     fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
     for (int slot = 0; slot < 4; ++slot) {
         const auto i = static_cast<size_t>(slot);
@@ -184,7 +180,17 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
         const std::string ppText = "PP " + std::to_string(p.pp[i]) + "  Up " + std::to_string(p.ppUps[i]);
         int ppW = 0, ppH = 0;
         fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
-        fb.drawText(rightX + rightW - 20 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
+        if (p.moveCompatibilityChecked) {
+            const std::string status = p.moveCompatible[i] ? "OK" : "Unusual";
+            const Color statusColor = p.moveCompatible[i] ? Colors::Success : Colors::Warning;
+            int statusW = 0, statusH = 0;
+            fb.measureText(status, statusW, statusH, TextStyle::Caption);
+            const int statusX = rightX + rightW - 20 - statusW;
+            fb.drawText(statusX, y, status, statusColor, TextStyle::Caption);
+            fb.drawText(statusX - 14 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
+        } else {
+            fb.drawText(rightX + rightW - 20 - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
+        }
     }
     fb.drawFilledRect(rightX + 14, contentY + 220, rightW - 28, 1, Colors::Divider);
     const std::string compatibilityText = !p.moveCompatibilityChecked
