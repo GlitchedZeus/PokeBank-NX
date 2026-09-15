@@ -2,7 +2,10 @@
 
 #include <array>
 #include <cassert>
+#include <fstream>
 #include <iostream>
+#include <iterator>
+#include <string>
 
 using namespace PokeBank::UIModel::Gen1Editor;
 
@@ -10,6 +13,12 @@ static bool contains(const FooterSet& set, FooterAction action) {
     for (std::size_t i = 0; i < set.count; ++i)
         if (set[i] == action) return true;
     return false;
+}
+
+static std::string readFile(const char* path) {
+    std::ifstream in(path, std::ios::binary);
+    assert(in);
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
 int main() {
@@ -40,7 +49,7 @@ int main() {
     }
     const auto cancel = addDraftDecision(AddDraftEvent::Cancel);
     assert(!cancel.mutateStagedSave && cancel.leaveDraft);
-    const auto stage = addDraftDecision(AddDraftEvent::StageAdd);
+    const auto stage = addDraftDecision(AddDraftEvent::StageAdd); // internal transaction name only
     assert(stage.mutateStagedSave && stage.leaveDraft);
 
     static_assert(addUsesSingleScrollableWorkspace());
@@ -98,7 +107,7 @@ int main() {
     assert(!contains(readOnlyBoxes, FooterAction::Remove));
 
     const auto draftFooter = footerForSurface(FooterSurface::AddDraft);
-    assert(contains(draftFooter, FooterAction::StageAdd));
+    assert(contains(draftFooter, FooterAction::StageAdd)); // internal semantic; display adapter says Add
     assert(contains(draftFooter, FooterAction::CancelDraft));
     const auto pickerFooter = footerForSurface(FooterSurface::SpeciesPicker);
     assert(!contains(pickerFooter, FooterAction::StageAdd));
@@ -128,6 +137,18 @@ int main() {
     static_assert(!liveInstalledGameWritingEnabled());
     static_assert(!fullEncounterLegalityEngineEnabled());
 
-    std::cout << "Gen I cleanup2 logical-editor + hover + footer + layout contract: PASS\n";
+    // Hardware-retest adapter: the accepted packed serializer still chooses the real append slot;
+    // only the box selection follows that result so Add from an arbitrary empty visual cell is clear.
+    const auto composite = readFile("src/UI/TrainerViewScreenCompositeOverlay.cpp");
+    assert(composite.find("ux2StageAddWithClassicSelection") != std::string::npos);
+    assert(composite.find("const int destinationBox = state.box") != std::string::npos);
+    assert(composite.find("const int destinationSlot = state.slot") != std::string::npos);
+    assert(composite.find("screen.selectedBoxIndex = destinationBox") != std::string::npos);
+    assert(composite.find("screen.selectedItemIndex = destinationSlot") != std::string::npos);
+    assert(composite.find("drawFooterWithClassicAddLabel") != std::string::npos);
+    assert(composite.find("text.replace(pos, std::char_traits<char>::length(oldLabel), \"Add\")") != std::string::npos);
+    assert(composite.find("added to Box") != std::string::npos);
+
+    std::cout << "Gen I cleanup2 logical-editor + packed-Add cursor + footer + layout contract: PASS\n";
     return 0;
 }
