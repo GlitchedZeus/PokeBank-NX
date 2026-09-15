@@ -122,6 +122,7 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 #undef drawFooter
 #undef ux2StageAdd
 
+#include "Gen1MoveStatusParity.inc"
 #include "Gen1PokemonEditorOverlayFoundation.inc"
 #include "Gen1PokemonEditorFoundationHardwareFix.inc"
 #include "Gen1PokemonEditorPassiveView.inc"
@@ -166,9 +167,6 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 
-    // Gen II uses the same top-level Pokemon editor shell as Gen I. Generation-specific code below
-    // supplies PK2 rules/data only; the preserved GSC trainer/inventory overlay is not a competing
-    // Pokemon editor.
     if (Gen2PokemonEditor::handleFinalGen2SurfaceInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen2PokemonEditor::handlePickerInput(*this, down, held, stick.x, stick.y, touch)) return;
 
@@ -186,12 +184,8 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
-    // Exactly one top-level Pokemon surface owns the frame. GSC still owns its trainer/inventory
-    // surfaces, but it never draws underneath Actions/View/Edit/Create/Review.
     if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this)) {
         drawGSCOverlay(fb);
-        // The preserved base screen still draws its generic footer; overwrite it with the classic
-        // Pokemon-box control language that the production Gen II input route actually implements.
         drawGen2ClassicBoxFooter(*this, fb);
     }
 
@@ -211,6 +205,7 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     }
 
     Gen1PokemonEditor::drawOverlayUX(*this, fb);
+    Gen1PokemonEditor::drawGen1MoveStatusParity(*this, fb);
     Gen1PokemonEditor::drawFoundationBottomSplit(*this, fb);
 }
 
