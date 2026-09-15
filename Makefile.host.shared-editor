@@ -16,6 +16,25 @@ $(SHARED_EDITOR_SANITIZE_TEST): $(SHARED_EDITOR_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
+# Issue #71 pre-Gen-III freeze guard. This is intentionally a host/text architecture contract:
+# it forbids a parallel Gen3PokemonEditor UI shell while keeping the existing Gen III adapter read-only.
+PRE_GEN3_REUSE_GUARD_SOURCES := tests/test_pre_gen3_reuse_guard.cpp
+PRE_GEN3_REUSE_GUARD_TEST := $(HOST_BUILD)/test_pre_gen3_reuse_guard
+PRE_GEN3_REUSE_GUARD_SANITIZE := $(HOST_BUILD)/test_pre_gen3_reuse_guard_sanitize
+
+HOST_TESTS += $(PRE_GEN3_REUSE_GUARD_TEST)
+HOST_SANITIZE_TESTS += $(PRE_GEN3_REUSE_GUARD_SANITIZE)
+host-test: $(PRE_GEN3_REUSE_GUARD_TEST)
+host-sanitize: $(PRE_GEN3_REUSE_GUARD_SANITIZE)
+
+$(PRE_GEN3_REUSE_GUARD_TEST): $(PRE_GEN3_REUSE_GUARD_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(PRE_GEN3_REUSE_GUARD_SANITIZE): $(PRE_GEN3_REUSE_GUARD_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
 GSC_RENDER_SOURCES := tests/test_gsc_workspace_render.cpp src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/Experience.cpp
 GSC_RENDER_TEST := $(HOST_BUILD)/test_gsc_workspace_render
 GSC_RENDER_SANITIZE := $(HOST_BUILD)/test_gsc_workspace_render_sanitize
