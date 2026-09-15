@@ -11,6 +11,7 @@ struct SharedSurfaceState {
     const TrainerViewScreen* owner = nullptr;
     std::string sourceGameId;
     bool cloneActive = false;
+    bool provenanceActive = false;
     int cloneBox = 0;
 };
 
@@ -67,23 +68,13 @@ SharedEditor::ActionCapabilities gen2ActionCapabilities() noexcept {
     SharedEditor::ActionCapabilities caps;
     caps.canClone = true;
     caps.canRemove = false; // Gen2 StagedEditor has no proven remove/compaction adapter yet.
-    caps.hasLegalityProvenance = false;
+    // This is an informational shell: encounter legality remains explicitly "Not checked".
+    caps.hasLegalityProvenance = true;
     return caps;
 }
 
 std::string sharedActionLabel(SharedEditor::Action action) {
-    switch (action) {
-        case SharedEditor::Action::View: return "View";
-        case SharedEditor::Action::Edit: return "Edit";
-        case SharedEditor::Action::Clone: return "Clone";
-        case SharedEditor::Action::Remove: return "Remove";
-        case SharedEditor::Action::LegalityProvenance: return "Legality & Provenance";
-        case SharedEditor::Action::Add: return "Add Pokemon";
-        case SharedEditor::Action::Review: return "Review Pending Changes";
-        case SharedEditor::Action::Close: return "Close";
-        case SharedEditor::Action::None: return "";
-    }
-    return "";
+    return SharedEditor::actionLabel(action);
 }
 
 std::string sharedActionDescription(SharedEditor::Action action, const Gen2::StagedEditor& editor,
@@ -93,10 +84,11 @@ std::string sharedActionDescription(SharedEditor::Action action, const Gen2::Sta
         case SharedEditor::Action::Edit:
             return pokemon ? pokemon->nickname + "  Lv " + std::to_string(pokemon->level) : "Edit Pokemon";
         case SharedEditor::Action::Clone: return "Choose a destination box visually";
+        case SharedEditor::Action::LegalityProvenance: return "Source, validation and truthful legality status";
         case SharedEditor::Action::Add: return "Open Create Pokemon — DRAFT";
         case SharedEditor::Action::Review:
             return std::to_string(editor.pendingChanges().size()) + " staged change(s)";
-        case SharedEditor::Action::Close: return "Return to boxes";
+        case SharedEditor::Action::Close: return "Return to box";
         default: return "";
     }
 }
@@ -133,13 +125,8 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
     legacy.pokemonRow = std::clamp(legacy.pokemonRow, 0, static_cast<int>(actions.count) - 1);
 
     if (down & HidNpadButton_B) {
-        if (editor->hasPendingChanges()) {
-            legacy.review = true;
-            legacy.reviewRow = 0;
-        } else {
-            legacy.active = false;
-            legacy.pokemonActions = false;
-        }
+        legacy.active = false;
+        legacy.pokemonActions = false;
         screen.controllerNavigation.reset();
         return true;
     }
@@ -164,6 +151,13 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
             screen.controllerNavigation.reset();
             return true;
         }
+        case SharedEditor::Action::LegalityProvenance: {
+            auto& shared = sharedSurfaceStateFor(screen);
+            shared.provenanceActive = true;
+            legacy.pokemonActions = false;
+            screen.controllerNavigation.reset();
+            return true;
+        }
         case SharedEditor::Action::Add:
             return beginCreate(screen, legacy.pokemonBox);
         case SharedEditor::Action::Review:
@@ -179,6 +173,19 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
         default:
             return true;
     }
+}
+
+bool handleSharedProvenance(TrainerViewScreen& screen, uint64_t down) {
+    auto& shared = sharedSurfaceStateFor(screen);
+    if (!shared.provenanceActive) return false;
+    if (!(down & (HidNpadButton_A | HidNpadButton_B))) return true;
+    shared.provenanceActive = false;
+    auto& legacy = editorOverlayState(screen);
+    legacy.active = true;
+    legacy.pokemonActions = true;
+    legacy.review = false;
+    screen.controllerNavigation.reset();
+    return true;
 }
 
 bool handleSharedClone(TrainerViewScreen& screen, uint64_t down) {
@@ -213,9 +220,8 @@ bool handleSharedClone(TrainerViewScreen& screen, uint64_t down) {
     }
     shared.cloneActive = false;
     gscTrainer(screen).refreshStagedBoxPresentation(error);
-    screen.postStatus("Clone staged at Box " + std::to_string(shared.cloneBox + 1) +
-                      " / Slot " + std::to_string(destinationSlot + 1) +
-                      "; source .srm unchanged", 320);
+    screen.postStatus("Clone added to Box " + std::to_string(shared.cloneBox + 1) +
+                      " / Slot " + std::to_string(destinationSlot + 1), 300);
     return true;
 }
 
@@ -248,15 +254,14 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         legacy.active = legacy.pokemonActions;
         legacy.pokemonRow = 0;
-        screen.postStatus("All staged Gen II changes discarded; original source was never changed", 320);
+        screen.postStatus("All staged Gen II changes discarded", 300);
         return true;
     }
     if (down & HidNpadButton_A) {
         std::string error;
         const std::string directory = exportStagedCopy(screen, *editor, error);
         if (directory.empty())
-            screen.postStatus((error.empty() ? "Verified staged export failed" : error) +
-                              std::string("; source remains unchanged"), 360);
+            screen.postStatus(error.empty() ? "Verified staged export failed" : error, 360);
         else {
             legacy.lastExportDirectory = directory;
             screen.postStatus("Verified staged copy exported: " + directory, 360);
@@ -287,17 +292,49 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 "   •   Source save immutable",
                 Colors::TextDim, TextStyle::Caption);
 
-    int yy = y + 104;
+    const auto geometry = SharedEditor::actionMenuGeometry();
+    int yy = y + geometry.rowStart;
     for (std::size_t i = 0; i < actions.count; ++i) {
         const bool selected = legacy.pokemonRow == static_cast<int>(i);
-        if (selected) fb.drawSelectionHighlight(x + 22, yy - 7, w - 44, 52);
-        fb.drawText(x + 38, yy, sharedActionLabel(actions[i]), selected ? Colors::Accent : Colors::Text,
-                    TextStyle::Body);
-        fb.drawText(x + 300, yy + 2, sharedActionDescription(actions[i], *editor, pokemon),
-                    Colors::TextDim, TextStyle::Caption);
-        yy += 58;
+        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, geometry.rowHeight);
+        fb.drawText(x + 38, yy + 10, sharedActionLabel(actions[i]), selected ? Colors::Text : Colors::TextDim);
+        yy += geometry.rowStep;
     }
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
+    fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
+}
+
+void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    auto* editor = stagedEditor(screen);
+    if (!editor) return;
+    const auto& legacy = editorOverlayState(screen);
+    std::string error;
+    const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
+                                               static_cast<std::size_t>(legacy.pokemonSlot), error);
+    constexpr int x = 220, y = 92, w = 840, h = 480;
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
+    drawPanelSurface(fb, x, y, w, h, false, 18);
+    fb.drawText(x + 24, y + 18, "Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 52, "Truthful status only — full encounter legality is not implemented", Colors::TextDim, TextStyle::Caption);
+    const std::array<std::pair<std::string, std::string>, 7> rows{{
+        {"Source game", sharedGameName(screen)},
+        {"Location", "Box " + std::to_string(legacy.pokemonBox + 1) + " / Slot " + std::to_string(legacy.pokemonSlot + 1)},
+        {"Record", pokemon ? pokemon->nickname : std::string("Empty slot")},
+        {"Source mutation", "HARD DISABLED"},
+        {"Staged validation", "Strict serialize + reparse"},
+        {"Move compatibility", pokemon ? "Checked by exact-game Gen II rules" : "No Pokemon selected"},
+        {"Encounter legality", "Not checked"},
+    }};
+    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
+        const int yy = y + 92 + i * 46;
+        fb.drawText(x + 34, yy, rows[static_cast<std::size_t>(i)].first, Colors::TextDim);
+        fb.drawText(x + 270, yy, rows[static_cast<std::size_t>(i)].second,
+                    i == 3 || i == 6 ? Colors::Accent : Colors::Text);
+    }
+    fb.drawText(x + 34, y + h - 48,
+                std::to_string(editor->pendingChanges().size()) + " staged semantic change(s) • source bytes remain immutable",
+                Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"B", "Back"}});
 }
 
 void drawSharedCloneSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -515,7 +552,7 @@ void drawSharedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
     } else if (create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Stage Add"}, {"B", "Cancel Draft"}});
+                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel Draft"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"B", "Back"}});
@@ -530,13 +567,14 @@ bool sharedSurfaceOwnsFrame(const TrainerViewScreen& screen) noexcept {
     if (!isGSC(screen)) return false;
     const auto& shared = sharedSurfaceStateFor(screen);
     const auto& legacy = editorOverlayState(screen);
-    return shared.cloneActive || stateFor(screen).mode != Mode::None ||
+    return shared.cloneActive || shared.provenanceActive || stateFor(screen).mode != Mode::None ||
            (legacy.active && (legacy.pokemonActions || legacy.review));
 }
 
 bool handleSharedSurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                               int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
+    if (handleSharedProvenance(screen, down)) return true;
     if (handleSharedClone(screen, down)) return true;
     if (handleSharedReview(screen, down, held, stickX, stickY)) return true;
     if (handleSharedActions(screen, down, held, stickX, stickY)) return true;
@@ -554,6 +592,7 @@ bool drawSharedSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isGSC(screen)) return false;
     const auto& shared = sharedSurfaceStateFor(screen);
     auto& legacy = editorOverlayState(screen);
+    if (shared.provenanceActive) { drawSharedProvenanceSurface(screen, fb); return true; }
     if (shared.cloneActive) { drawSharedCloneSurface(screen, fb); return true; }
     if (legacy.active && legacy.review) { drawSharedReviewSurface(screen, fb); return true; }
     if (stateFor(screen).mode != Mode::None) { drawSharedWorkspace(screen, fb); return true; }
