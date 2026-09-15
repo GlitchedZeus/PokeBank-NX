@@ -75,6 +75,8 @@ int main() {
     static_assert(gen2.supportsHeldItem && gen2.supportsFriendship && gen2.supportsGender);
     static_assert(gen2.usesDVs && gen2.usesStatExp);
     static_assert(!gen2.supportsNature && !gen2.supportsAbility && !gen2.supportsRibbons);
+    // Egg is hidden until the PK2 parser proves an exact native representation; met capability is exact-save/Crystal only.
+    static_assert(!gen2.supportsEgg && !gen2.supportsMetLevel);
     static_assert(supplementalPanelShowsHeldItem(Generation::Gen2));
     static_assert(!supplementalPanelShowsRibbons(Generation::Gen2));
     static_assert(supplementalActionFor(Generation::Gen2, SupplementalField::HeldItem) == SupplementalAction::OpenHeldItemPicker);
