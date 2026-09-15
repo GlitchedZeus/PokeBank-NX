@@ -141,16 +141,20 @@ jobs:
           overlay = Path('src/UI/TrainerViewScreenGSCOverlay.inc').read_text()
           transaction = Path('src/Integration/Gen2/Gen2ExportTransaction.cpp').read_text()
           surface = Path('src/UI/Gen2PokemonEditorFoundation.inc').read_text()
+          access = Path('include/UI/Gen2StagedAccess.h').read_text()
           composite = Path('src/UI/TrainerViewScreenCompositeOverlay.cpp').read_text()
           assert 'publishVerifiedStagedEditorExport(editor, request)' in overlay
           for needle in ('std::fopen', 'std::fwrite', 'writeBytes(', 'writeText('):
               assert needle not in overlay, needle
+              assert needle not in surface, needle
           assert 'LIVE_RETROARCH_WRITE=DISABLED' in transaction
           assert 'LIVE_INSTALLED_GAME_WRITE=DISABLED' in transaction
-          assert 'source .srm unchanged' in surface or 'source unchanged' in surface
+          assert 'bool canWriteOriginalSource = false' in access
+          assert 'return {false, validatedAdapter && stagedEditorAvailable};' in access
           assert 'handleFinalGen2SurfaceInput' in composite
           assert 'Gen2PokemonEditor::handleInput(*this' not in composite
           print('SOURCE IMMUTABILITY: PASS')
+          print('STAGED ACCESS OWNS MUTATION / ORIGINAL SOURCE WRITE: FALSE')
           print('LEGACY GEN II NORMAL EDITOR ROUTE: UNREACHABLE')
           print('LIVE RETROARCH WRITE: HARD DISABLED')
           print('LIVE INSTALLED-GAME WRITE: HARD DISABLED')
