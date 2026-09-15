@@ -4,8 +4,8 @@ Updated: 2026-09-15
 
 ## Production
 
-Repository: `GlitchedZeus/PokeBank-NX`  
-Production branch: `feature/pokebank-playable`  
+Repository: `GlitchedZeus/PokeBank-NX`
+Production branch: `feature/pokebank-playable`
 Production head after Gen II merge: `48753c2b0093d30213aa32f016100df0906c3cfb`
 
 ## Gen I / Gen II accepted baseline
