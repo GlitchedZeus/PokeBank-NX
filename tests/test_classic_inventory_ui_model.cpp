@@ -42,6 +42,17 @@ int main() {
     assert(!PokeVault::Inventory::isAddableItem(*emerald, ClassicPocket::Items, 500));
     assert(!PokeVault::Inventory::isAddableItem(*firered, ClassicPocket::TMHM, 500));
 
+    // Generation II keeps exact ids/catalog membership while player-facing picker text is polished.
+    assert(PokeVault::Inventory::displayItemName(*gold, ClassicPocket::Items, 59) == "Good Rod");
+    assert(PokeVault::Inventory::displayItemName(*gold, ClassicPocket::Items, 16) == "Hyper Potion");
+    assert(PokeVault::Inventory::displayItemName(*gold, ClassicPocket::Balls, 5) == "Poké Ball");
+    assert(PokeVault::Inventory::displayItemName(*gold, ClassicPocket::Items, 36) == "Nugget");
+    assert(PokeVault::Inventory::displayItemName(*gold, ClassicPocket::Items, 13) == "Paralyze Heal");
+    assert(PokeVault::Inventory::displayItemName(*gold, ClassicPocket::Items, 99) == "Black Apricorn");
+    assert(PokeVault::Inventory::displayItemName(*gold, ClassicPocket::TMHM, 201) == "TM10 — Hidden Power");
+    assert(PokeVault::Inventory::displayItemName(*gold, ClassicPocket::TMHM, 244) == "HM02 — Fly");
+    assert(PokeVault::Inventory::displayItemName(*gold, ClassicPocket::PCItems, 201) == "TM10 — Hidden Power");
+
     assert(classicInventoryEmptyState(true, 0));
     assert(!classicInventoryEmptyState(true, 1));
     assert(!classicInventoryEmptyState(false, 0));
@@ -78,5 +89,5 @@ int main() {
     const auto unsupportedActions = classicInventoryActionAvailability(false, false, false);
     assert(!unsupportedActions.editAmount && !unsupportedActions.addItem && !unsupportedActions.removeItem);
 
-    std::cout << "classic inventory UI model: PASS\n";
+    std::cout << "classic inventory UI model + polished Gen II display: PASS\n";
 }
