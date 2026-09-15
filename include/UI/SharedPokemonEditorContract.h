@@ -270,13 +270,9 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
                 return FieldAccess::Hidden;
         }
     }
-    // Future-generation identities are hooks only in this milestone. Their exact
-    // activation belongs to the audited adapters, not to a guessed generic default.
     return FieldAccess::Hidden;
 }
 
-// Generic selected-row scrolling model. Current classic panels that fit remain
-// stationary; future/native capability rows can exceed capacity without clipping.
 struct ScrollWindow {
     std::size_t first = 0;
     std::size_t count = 0;
@@ -294,8 +290,6 @@ constexpr ScrollWindow scrollWindow(std::size_t totalRows, std::size_t visibleCa
     return {first, visibleCapacity, true};
 }
 
-// The shell owns one three-panel focus language. Generation adapters only vary
-// the row domain and which capability rows are meaningful.
 enum class Panel : uint8_t { Details, Values, Moves };
 
 struct Layout {
@@ -307,8 +301,10 @@ struct Layout {
 };
 
 constexpr Layout layoutFor(Generation generation) noexcept {
+    // Gen II extends the accepted shared shell by putting descriptive/native identity
+    // capabilities in DETAILS. VALUES stays stat-focused: five DV/Stat Exp rows + Shiny/Gender.
     if (generation == Generation::Gen2)
-        return {/*details*/5, /*values*/10, /*moves*/4, /*stat rows*/5, /*columns*/3};
+        return {/*details*/8, /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
     return {/*details*/5, /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
 
@@ -342,7 +338,6 @@ constexpr Focus normalize(Generation generation, Focus focus) noexcept {
         else if (focus.column >= layout.valueColumns)
             focus.column = static_cast<uint8_t>(layout.valueColumns - 1);
     } else {
-        // Move, PP and PP Ups share one row.
         if (focus.column >= 3) focus.column = 2;
     }
     return focus;
@@ -390,7 +385,6 @@ struct Geometry720p {
     int movesWidth;
 };
 
-// Geometry family extracted from the accepted Gen I three-panel workspace.
 constexpr Geometry720p geometry720p() noexcept {
     return {40, 31, 1200, 610, 82, 672, 64, 330, 404, 390, 804, 412};
 }
@@ -408,8 +402,6 @@ constexpr const char* titleFor(Surface surface) noexcept {
     return "Pokemon";
 }
 
-// Recovery/reference code may remain compiled while the refactor settles, but none
-// of these legacy Gen II paths are allowed to own the normal production Pokemon UX.
 enum class Gen2LegacyPath : uint8_t {
     StageAddPromptWizard,
     LegacyTwentyEightRowEditor,
