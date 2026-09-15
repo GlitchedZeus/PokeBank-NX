@@ -51,13 +51,26 @@ int main(){
     check(IC,RegionLayout::International,VersionFamily::Crystal);
     check(JGS,RegionLayout::Japanese,VersionFamily::GoldSilver);
     check(JC,RegionLayout::Japanese,VersionFamily::Crystal);
+
+    // The raw oracle remains exact and stable; polished aliases are presentation-only.
     assert(gen2ItemName(70)=="CLEAR BELL");
+    assert(gen2ItemName(13)=="PARLYZ HEAL");
+    assert(gen2ItemName(99)=="BLK APRICORN");
     assert(gen2ItemName(5)=="Poké Ball");
     assert(gen2ItemName(115)=="GS BALL");
     assert(gen2ItemName(5)!=gen2ItemName(115));
     assert(gen2ItemName(116)=="BLUE CARD");
     assert(gen2ItemName(129)=="EGG TICKET");
     assert(gen2ItemName(249)=="HM07");
+    assert(gen2ItemDisplayName(59)=="Good Rod");
+    assert(gen2ItemDisplayName(16)=="Hyper Potion");
+    assert(gen2ItemDisplayName(5)=="Poké Ball");
+    assert(gen2ItemDisplayName(36)=="Nugget");
+    assert(gen2ItemDisplayName(13)=="Paralyze Heal");
+    assert(gen2ItemDisplayName(99)=="Black Apricorn");
+    assert(gen2ItemDisplayName(87)=="Tiny Mushroom");
+    assert(gen2ItemDisplayName(191)=="TM01"); // move label is added by the exact-game catalog layer.
+
     {
         auto d=fixture(IGS); d[IGS.items]=21;
         auto inv=decodeInventory(d,RegionLayout::International,VersionFamily::GoldSilver);
@@ -73,5 +86,5 @@ int main(){
         auto inv=decodeInventory(d,RegionLayout::International,VersionFamily::GoldSilver);
         assert(!inv.available);
     }
-    std::cout<<"Generation II read-only inventory: PASS\n";
+    std::cout<<"Generation II read-only inventory + polished display aliases: PASS\n";
 }
