@@ -68,7 +68,7 @@ int main(){
     assert(gen2ItemDisplayName(36)=="Nugget");
     assert(gen2ItemDisplayName(13)=="Paralyze Heal");
     assert(gen2ItemDisplayName(99)=="Black Apricorn");
-    assert(gen2ItemDisplayName(87)=="Tiny Mushroom");
+    assert(gen2ItemDisplayName(86)=="Tiny Mushroom");
     assert(gen2ItemDisplayName(191)=="TM01"); // move label is added by the exact-game catalog layer.
 
     {
