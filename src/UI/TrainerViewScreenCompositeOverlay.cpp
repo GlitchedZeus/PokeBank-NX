@@ -78,6 +78,40 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 #undef handleInputUX
 #undef isGen1SourceUX
 
+namespace UI::Gen1PokemonEditor {
+namespace {
+
+// Cleanup3 remains the accepted Gen I product implementation. This narrow wrapper changes only the
+// post-success presentation around its already-proven packed append: the native box/slot chosen by
+// UX2 is preserved, the box cursor follows that actual packed slot, and success copy stays user-facing.
+bool ux2StageAddWithClassicSelection(TrainerViewScreen& screen) {
+    auto& state = ux2StateFor(screen);
+    const int destinationBox = state.box;
+    const int destinationSlot = state.slot;
+    const std::string displayName = state.draft.nickname.empty()
+        ? std::string(Names::getSpeciesName(state.draft.species)) : state.draft.nickname;
+    if (!ux2StageAdd(screen)) return false;
+    screen.selectedBoxIndex = destinationBox;
+    screen.selectedItemIndex = destinationSlot;
+    screen.detailViewActive = true;
+    screen.postStatus(displayName + " added to Box " + std::to_string(destinationBox + 1), 260);
+    return true;
+}
+
+void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
+    constexpr const char* oldLabel = "Stage Add";
+    if (const auto pos = text.find(oldLabel); pos != std::string::npos)
+        text.replace(pos, std::char_traits<char>::length(oldLabel), "Add");
+    drawFooter(fb, text);
+}
+
+} // namespace
+} // namespace UI::Gen1PokemonEditor
+
+// Keep the accepted Cleanup3 source untouched while routing only its staged-Add call and footer
+// presentation through the hardware-retest parity adapters above.
+#define ux2StageAdd ux2StageAddWithClassicSelection
+#define drawFooter drawFooterWithClassicAddLabel
 #define isGen1SourceUX isGen1SourceUXCleanup3
 #define handleInputUX handleInputUXCleanup3
 #define drawOverlayUX drawOverlayUXCleanup3
@@ -85,6 +119,8 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 #undef drawOverlayUX
 #undef handleInputUX
 #undef isGen1SourceUX
+#undef drawFooter
+#undef ux2StageAdd
 
 #include "Gen1PokemonEditorOverlayFoundation.inc"
 #include "Gen1PokemonEditorFoundationHardwareFix.inc"
