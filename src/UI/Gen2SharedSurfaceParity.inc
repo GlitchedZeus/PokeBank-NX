@@ -91,10 +91,12 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto actions = SharedEditor::actionsForSlot(static_cast<bool>(pokemon), gen2ActionCapabilities());
     legacy.pokemonRow = std::clamp(legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
 
+    // Match the accepted Gen I action-sheet geometry exactly.
     const int w = pokemon ? 650 : 560;
     const int h = pokemon ? 500 : 350;
     const int x = (1280 - w) / 2;
     const int y = (672 - h) / 2;
+    const auto geometry = SharedEditor::actionMenuGeometry();
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawText(x + 24, y + 18, pokemon ? "Pokemon Actions" : "Empty Slot", Colors::Text, TextStyle::Heading);
@@ -103,13 +105,13 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         std::to_string(legacy.pokemonSlot + 1) + "  •  staged copy only",
         Colors::TextDim, TextStyle::Caption);
 
-    int rowY = y + 86;
+    int rowY = y + geometry.rowStart;
     for (std::size_t i = 0; i < actions.count; ++i) {
         const bool selected = static_cast<int>(i) == legacy.pokemonRow;
-        if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);
-        fb.drawText(x + 38, rowY + 10, sharedActionLabel(actions[i]),
+        if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight);
+        fb.drawText(x + 38, rowY + 10, SharedEditor::actionLabel(actions[i]),
                     selected ? Colors::Text : Colors::TextDim);
-        rowY += 46;
+        rowY += geometry.rowStep;
     }
     fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
@@ -203,6 +205,7 @@ bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         drawUnifiedWorkspace(screen, fb);
         return true;
     }
+    if (shared.provenanceActive) { drawSharedProvenanceSurface(screen, fb); return true; }
     if (shared.cloneActive) { drawParityGen2Clone(screen, fb); return true; }
     if (legacy.active && legacy.review) { drawParityGen2Review(screen, fb); return true; }
     if (legacy.active && legacy.pokemonActions) { drawParityGen2Actions(screen, fb); return true; }
@@ -254,8 +257,36 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         screen.controllerNavigation.reset();
         return true;
     }
+
+    // Gen II Boxes now use the same primary interaction language as accepted Gen I:
+    // A opens Empty Slot/Pokemon Actions; X is a direct Add shortcut only on an empty cell.
+    if (caps.canEditStagedCopy && surface == Access::Surface::Boxes && screen.detailViewActive && !blocked && validSlot) {
+        std::string error;
+        const bool occupied = editor->boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error).has_value();
+        const auto activation = SharedEditor::boxActivation(occupied,
+            (down & HidNpadButton_A) != 0, (down & HidNpadButton_X) != 0);
+        if (activation == SharedEditor::BoxActivation::Add) {
+            return beginCreate(screen, box);
+        }
+        if (activation == SharedEditor::BoxActivation::Actions) {
+            auto& legacy = editorOverlayState(screen);
+            legacy.active = true;
+            legacy.review = false;
+            legacy.pokemonActions = true;
+            legacy.pokemonFields = false;
+            legacy.pokemonBox = box;
+            legacy.pokemonSlot = slot;
+            legacy.pokemonRow = 0;
+            legacy.reviewRow = 0;
+            screen.controllerNavigation.reset();
+            return true;
+        }
+        if (down & HidNpadButton_X) return true; // occupied X is intentionally not a hidden edit/add action.
+    }
+
+    // Save-side Storage retains the same contextual action menu; it has no direct-X shortcut contract.
     if (Access::entry(caps, surface, screen.detailViewActive, blocked, validSlot,
-                      down & (HidNpadButton_A | HidNpadButton_X)) == Access::Entry::PokemonActions) {
+                      down & HidNpadButton_A) == Access::Entry::PokemonActions) {
         auto& legacy = editorOverlayState(screen);
         legacy.active = true;
         legacy.review = false;
