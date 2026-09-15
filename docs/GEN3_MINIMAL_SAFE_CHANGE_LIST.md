@@ -5,26 +5,32 @@ This is the implementation order after the audit. **It does not authorize Gen II
 ## P0 — required before Gen III product work
 
 1. Add pure, generation-neutral descriptor types for:
+   - per-field state: `Hidden`, `Derived`, `ReadOnly`, `Editable`;
    - exact-format editor identity/capabilities;
    - native storage semantics (`PackedNative`, `SparseOwned`, `Other/AdapterDefined`);
    - stat presentation labels/count and stored-vs-derived status;
    - trainer-field support/editability;
-   - move-compatibility query/result including `Compatible`, `PreserveExisting`, `Unsupported/Invalid`.
-2. Add an adapter/provider interface that exposes those descriptors and normalized read-only/editor-view values without exposing PKSM/PK1/PK2 concrete implementation types.
-3. Adapt **Gen I and Gen II only** to the descriptors first, as a no-product-change proof. Their device-accepted behavior must remain byte/UX-equivalent.
-4. Add contract/host tests proving:
+   - move-compatibility query/result including `Compatible`, `PreserveExisting`, `Unsupported/Invalid`;
+   - storage-operation capability sufficient to host future shared Move/Multi without direct legacy mutation.
+2. Keep semantic actions separate from storage state: a DERIVED field such as Gen I/II Shiny may have a safe `Make Shiny` transformer without pretending Shiny is an independently stored editable field.
+3. Add an adapter/provider interface that exposes those descriptors and normalized read-only/editor-view values without exposing PKSM/PK1/PK2 concrete implementation types.
+4. Adapt **Gen I and Gen II only** to the descriptors first, as a no-product-change proof. Their device-accepted behavior must remain byte/UX-equivalent.
+5. Add contract/host tests proving:
    - Gen I remains five-stat / one Special / packed-native;
    - Gen II remains its accepted DV/Stat Exp/derived-stat semantics / packed-native;
    - exact move compatibility remains game-specific;
    - unsupported capability fields remain hidden;
+   - derived fields remain identified as derived even when semantic actions exist;
    - source mutation remains false for every current source kind;
-   - no new Gen III Create/Edit route exists.
-5. Keep `SaveEdit::Capabilities` separate from shared Pokémon-field capabilities; test the explicit bridge.
-6. Re-run full host, ASan/UBSan and native compile/candidate regressions for accepted Gen I/II before declaring P0 complete.
+   - no new Gen III Create/Edit route exists;
+   - legacy Move/Multi mutation is not made a source-save bypass.
+6. Keep `SaveEdit::Capabilities` separate from shared Pokémon-field capabilities; test the explicit bridge.
+7. Re-run full host, ASan/UBSan and native compile/candidate regressions for accepted Gen I/II before declaring P0 complete.
 
 ## P1 — high value before/while opening the later Gen III milestone
 
 - normalize the shared move-picker provider around exact game/species/form while retaining current Gen I/II data implementations;
+- extract/refactor inherited PKSE Move/Multi carry/rectangle interaction into a PokeBank-owned storage controller, connected only to staged/native-safe providers;
 - stabilize trainer presentation descriptor use in current read-only screens;
 - add explicit Ball/Language/SID/Marks/collection capability vocabulary only where supported by exact adapters and shared UI;
 - formalize provenance/legality read-only result descriptors (`Unknown` is valid);
