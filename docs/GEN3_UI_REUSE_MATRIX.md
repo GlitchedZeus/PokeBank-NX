@@ -1,6 +1,6 @@
 # Issue #71 — Gen III shared UI/reuse matrix
 
-Status: **FREEZE CANDIDATE AFTER MULTI-PASS AUDIT**  
+Status: **FREEZE CANDIDATE AFTER MULTI-PASS AUDIT**
 Scope: architecture/reuse planning only; **no Gen III product implementation**.
 
 PokeBank NX presents one coherent product. Proven backends/references sit behind PokeBank-owned interfaces, capabilities, provenance, validation and safety boundaries.
