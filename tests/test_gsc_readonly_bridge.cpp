@@ -1,5 +1,6 @@
 #include "Legacy/GSCReadOnlyTrainer.h"
 
+#include "Integration/Gen2/Gen2BattleStats.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 
@@ -71,8 +72,6 @@ std::vector<uint8_t> fixture(const L& l,uint8_t storedSpecies=1,uint8_t currentC
         text(d,l.names+b*9,9,static_cast<char>('A'+(b%26)));
     }
     pokemonList(d,boxStart(l,0),l.cap,32,l.str,storedSpecies,false);
-    // Deliberately disagree with the canonical stored bank. The bridge must not duplicate or
-    // substitute this current-box working copy for box 0.
     pokemonList(d,l.current,l.cap,32,l.str,currentCopySpecies,false);
     pokemonList(d,l.party,6,48,l.str,partySpecies,true);
     checksum(d,l);
@@ -91,7 +90,6 @@ std::size_t occupiedBoxSlots(const Legacy::GSCReadOnlyTrainer& trainer){
 int main(){
     {
         auto bytes=fixture(IGS,1,25,25);
-        // This case also exercises the staged adapter, which requires valid inventory.
         for (size_t offset : {0x241Fu,0x2449u,0x2464u,0x247Eu}) emptyList(bytes,offset);
         checksum(bytes,IGS);
         const auto before=bytes;
@@ -103,9 +101,9 @@ int main(){
         assert(trainer->getGameGroup()==Enums::GameVersion::GSC);
         assert(trainer->sourceGameId()=="gold_gbc");
         assert(!trainer->japaneseLayout()&&!trainer->crystalFamily());
-        assert(trainer->hasTrainerGender()&&trainer->trainerGender==0); // Gold player is fixed male.
+        assert(trainer->hasTrainerGender()&&trainer->trainerGender==0);
         assert(trainer->trainerName=="A"&&trainer->money==123456&&trainer->TID16==0x1234);
-        assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==0x1234); // Gen II has no SID.
+        assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==0x1234);
         assert(trainer->getBoxCount()==14&&trainer->getSlotsPerBox()==20&&trainer->getCurrentBox()==0);
         assert(trainer->boxNames.size()==14&&trainer->boxNames[0]=="A");
         assert(trainer->getPartySize()==1&&trainer->party[0]);
@@ -115,7 +113,7 @@ int main(){
         assert(party->dvATK()==7&&party->dvDEF()==10&&party->dvSPE()==10&&party->dvSpecial()==10);
         assert(party->statExpHP()==1&&party->statExpSpecial()==5);
         assert(party->move(0)==33&&party->move(1)==45&&party->movePP(0)==10&&party->movePPUps(0)==1);
-        assert(party->isShiny(0,{})&&party->gender()==1); // Pikachu: Attack DV 7 is female at the 50% boundary.
+        assert(party->isShiny(0,{})&&party->gender()==1);
         assert(party->statusByte()==0x08&&party->statHPCurrent()==35&&party->statHPMax()==40);
         assert(party->statATK()==30&&party->statDEF()==20&&party->statSPE()==25);
         assert(party->statSPA()==26&&party->statSPD()==27);
@@ -124,10 +122,19 @@ int main(){
         assert(party->ivATK()==0&&party->evATK()==0&&party->ability()==0&&party->nature()==0);
         auto clone=party->clone();assert(clone&&clone->getGameGroup()==Enums::GameVersion::GSC&&clone->speciesID()==25);
 
-        // Stored box bank is canonical. The current-box copy contains Pikachu, but box 0 contains
-        // exactly one Bulbasaur and no duplicated working-copy Pokemon.
         assert(trainer->boxes[0][0]&&trainer->boxes[0][0]->speciesID()==1);
+        auto* boxed=static_cast<Pokemon::Pokemon2ReadOnly*>(trainer->boxes[0][0].get());
+        assert(!boxed->isPartyRecord() && boxed->statHPCurrent()==0 && boxed->statusByte()==0);
+        const auto& record=boxed->strictRecord();
+        const auto expected=Integration::Gen2::calculateBattleStats(record.species,record.level,
+            {record.dvs[1],record.dvs[2],record.dvs[3],record.dvs[4]},record.statExperience);
+        // The HOME-style box summary uses these generic getters. Boxed PK2 records must expose
+        // the same derived six battle stats as full View, while current HP/status stay party-only.
+        assert(boxed->statHPMax()==expected.hp);
+        assert(boxed->statATK()==expected.attack&&boxed->statDEF()==expected.defense&&boxed->statSPE()==expected.speed);
+        assert(boxed->statSPA()==expected.specialAttack&&boxed->statSPD()==expected.specialDefense);
         assert(occupiedBoxSlots(*trainer)==1);
+
         auto* editor = trainer->stagedEditor();
         assert(editor);
         Integration::Gen2::BoxPokemonCreate create;
@@ -136,7 +143,9 @@ int main(){
         assert(editor->stageAddBoxPokemon(2, create, addedSlot, error));
         assert(trainer->refreshStagedBoxPresentation(error));
         assert(trainer->boxes[2][addedSlot]->speciesID() == 152);
-        assert(trainer->party[0].get() == party); // untouched immutable Party wrapper
+        auto* added=static_cast<Pokemon::Pokemon2ReadOnly*>(trainer->boxes[2][addedSlot].get());
+        assert(added->statHPMax()>0 && added->statATK()>0); // refreshed summary has real derived values immediately.
+        assert(trainer->party[0].get() == party);
         editor->discard();
         assert(trainer->refreshStagedBoxPresentation(error));
         assert(!trainer->boxes[2][addedSlot] && occupiedBoxSlots(*trainer) == 1);
@@ -146,7 +155,7 @@ int main(){
         assert(std::equal(parsed.save->sourceBytes().begin(),parsed.save->sourceBytes().end(),before.begin()));
     }
     {
-        auto bytes=fixture(IC); // fixture stores Crystal female = 1.
+        auto bytes=fixture(IC);
         auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Crystal);assert(parsed);
         std::string error;auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);assert(trainer);
         assert(trainer->sourceGameId()=="crystal_gbc"&&trainer->crystalFamily());
@@ -155,7 +164,7 @@ int main(){
     }
     {
         auto bytes=fixture(IC);
-        bytes[IC.gender]=0; // Crystal male save.
+        bytes[IC.gender]=0;
         checksum(bytes,IC);
         auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Crystal);assert(parsed);
         std::string error;auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);assert(trainer);
@@ -167,7 +176,7 @@ int main(){
         auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Silver);assert(parsed);
         std::string error;auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);assert(trainer);
         assert(trainer->sourceGameId()=="silver_gbc"&&trainer->japaneseLayout());
-        assert(trainer->hasTrainerGender()&&trainer->trainerGender==0); // Silver player is fixed male.
+        assert(trainer->hasTrainerGender()&&trainer->trainerGender==0);
         assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==trainer->TID16);
         assert(trainer->getBoxCount()==9&&trainer->getSlotsPerBox()==30&&trainer->boxNames.size()==9);
     }
@@ -176,12 +185,12 @@ int main(){
         auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Gold);assert(parsed);
         std::string error;auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);assert(trainer);
         auto* unown=static_cast<Pokemon::Pokemon2ReadOnly*>(trainer->party[0].get());
-        assert(unown->speciesID()==201&&unown->form()==21); // Gen II DV-derived Unown letter index.
+        assert(unown->speciesID()==201&&unown->form()==21);
     }
 
     std::cout<<"Gold trainer gender fixed male: PASS\n";
     std::cout<<"Silver trainer gender fixed male: PASS\n";
     std::cout<<"Crystal saved male/female trainer gender: PASS\n";
     std::cout<<"Generation II SID unsupported (zero / not exposed): PASS\n";
-    std::cout<<"Generation II readonly Trainer/Party/Boxes + PK2 bridge: PASS\n";
+    std::cout<<"Generation II readonly Trainer/Party/Boxes + live box battle-stat bridge: PASS\n";
 }
