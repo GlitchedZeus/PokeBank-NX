@@ -80,8 +80,11 @@ int main() {
     assert(gen3.find("stageBoxPokemon") == std::string::npos);
     assert(gen3.find("finalizedBytes") == std::string::npos);
 
-    // The pre-Gen-III architecture gate cannot weaken the permanent source-mutation default.
-    assert(safety.find("return false") != std::string::npos);
+    // Current mutation policy grants non-View mutation only to staged/app-owned sources.
+    assert(safety.find("return source == SourceKind::BackupOrStaged || source == SourceKind::AppOwnedStorage;") !=
+           std::string::npos);
+    assert(safety.find("InstalledGame") != std::string::npos);
+    assert(safety.find("RetroArchLegacy") != std::string::npos);
 
     std::cout << "Pre-Gen-III reuse guard: one shared editor, P0 provider, read-only Gen III boundary, source safety PASS\n";
     return 0;
