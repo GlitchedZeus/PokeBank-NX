@@ -342,12 +342,17 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         {"OT", p.originalTrainer},
         {"Trainer ID", std::to_string(p.trainerId)},
     }};
-    for (int i = 0; i < 5; ++i) {
-        const int yy = y + 224 + i * 43;
-        const bool selected = !passive && unified.focus.panel == Unified::Panel::Details && unified.focus.row == i;
+    // Shared scroll foundation is intentionally dormant here because all five native Gen II
+    // Details rows fit. If future exact capabilities add rows, the same window keeps focus visible.
+    const auto window = Unified::scrollWindow(rows.size(), 5,
+        passive ? 0 : static_cast<std::size_t>(unified.focus.row));
+    for (std::size_t i = 0; i < window.count; ++i) {
+        const std::size_t row = window.first + i;
+        const int yy = y + 224 + static_cast<int>(i) * 43;
+        const bool selected = !passive && unified.focus.panel == Unified::Panel::Details && unified.focus.row == row;
         if (selected) fb.drawSelectionHighlight(x + 8, yy, w - 16, 38);
-        fb.drawText(x + 18, yy + 7, rows[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
-        fb.drawText(x + 108, yy + 7, rows[static_cast<std::size_t>(i)].second,
+        fb.drawText(x + 18, yy + 7, rows[row].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 108, yy + 7, rows[row].second,
                     selected ? Colors::Accent : Colors::Text, TextStyle::Caption);
     }
 }
@@ -396,7 +401,7 @@ void drawProgressionEditor(PKSEFramebuffer& fb, const State& state, const Unifie
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 150));
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawText(x + 24, y + 18, "Level / Experience", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, "Contextual editor — changes remain local until Stage Add / Keep",
+    fb.drawText(x + 24, y + 52, "Contextual editor — changes remain local until Add / Keep",
                 Colors::TextDim, TextStyle::Caption);
     const std::array<std::pair<std::string, std::string>, 4> rows{{
         {"Level", std::to_string(state.working.level)},
@@ -444,7 +449,7 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
     } else if (create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Stage Add"}, {"B", "Cancel Draft"}});
+                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel Draft"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"B", "Back"}});
