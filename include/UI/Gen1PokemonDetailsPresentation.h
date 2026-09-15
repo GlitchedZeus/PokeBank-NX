@@ -25,6 +25,7 @@ struct Gen1PokemonDetailsPresentation {
     std::array<uint16_t,4> moves{};
     std::array<uint8_t,4> pp{};
     std::array<uint8_t,4> ppUps{};
+    std::array<bool,4> moveCompatible{};
     std::array<uint16_t,5> battleStats{};
     std::array<uint8_t,2> nativeTypes{}; // exact Gen I type IDs
     bool hasBattleStats = false;
