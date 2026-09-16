@@ -26,8 +26,11 @@ int main() {
 
     const auto gen1Fix = readText("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
     const auto gen1View = readText("src/UI/Gen1PokemonEditorPassiveView.inc");
+    const auto gen1Passive = readText("src/UI/Gen1PokemonDetailsPresentation.cpp");
     const auto gen2Fix = readText("src/UI/Gen2HardwareWorkspaceFix.inc");
     const auto gen2Final = readText("src/UI/Gen2HardwareFinalFix.inc");
+    const auto sharedPicker = readText("include/UI/SharedSpeciesPicker.h");
+    const auto sharedTypes = readText("include/UI/ClassicTypeBadges.h");
 
     // All six exact identities are one shared contract across View/Edit/Create.
     const std::array<std::pair<const char*, const char*>, 6> games{{
@@ -78,20 +81,57 @@ int main() {
     assert(gen1View.find("drawFullscreenGen1Workspace(screen, fb);") != std::string::npos);
     assert(gen1View.find("drawGen1PokemonDetailsPresentation") == std::string::npos);
 
+    // Mature Party/Box passive View now owns the same true fullscreen language rather than
+    // the old outer workspace card, and includes exact source identity when available.
+    assert(gen1Passive.find("fb.drawText(28, 16, name") != std::string::npos);
+    assert(gen1Passive.find("passiveContextLine(p)") != std::string::npos);
+    assert(gen1Passive.find("drawPanelSurface(fb, workspaceX") == std::string::npos);
+    assert(gen1Passive.find("\"STATS\", Colors::Text") != std::string::npos);
+    assert(gen1Passive.find("\"VALUES\"") == std::string::npos);
+
     // Headings are neutral; the focus cursor is a separate red/theme focus border.
     assert(gen1Fix.find("\"DETAILS\", Colors::Text") != std::string::npos);
     assert(gen1Fix.find("\"STATS\", Colors::Text") != std::string::npos);
     assert(gen1Fix.find("\"MOVES\", Colors::Text") != std::string::npos);
     assert(gen1Fix.find("Colors::FocusBorder, 2") != std::string::npos);
+    assert(gen1Passive.find("\"DETAILS\", Colors::Text") != std::string::npos);
+    assert(gen1Passive.find("\"MOVES\", Colors::Text") != std::string::npos);
 
-    // Type badges use the canonical SpriteManager asset path, never a guessed color palette.
+    // Canonical type badge helper is shared by mature passive View and the shared RBY/GSC picker.
+    assert(sharedTypes.find("SpriteManager::getTypeSprite") != std::string::npos);
+    assert(sharedTypes.find("normalizedTypeSpriteId") != std::string::npos);
+    assert(gen1Passive.find("ClassicTypeBadges::drawPairCentered") != std::string::npos);
+    assert(sharedPicker.find("ClassicTypeBadges::drawPairCentered") != std::string::npos);
+    assert(sharedPicker.find("speciesCount == 151") != std::string::npos);
+    assert(sharedPicker.find("speciesCount == 251") != std::string::npos);
+    assert(sharedPicker.find("StagedPokemonEditor::personalTypes") != std::string::npos);
+    assert(sharedPicker.find("Gen2::personalRecord") != std::string::npos);
     assert(gen1Fix.find("SpriteManager::getTypeSprite") != std::string::npos);
     assert(gen2Final.find("SpriteManager::getTypeSprite") != std::string::npos);
 
-    // Calculated Stat is semantic accent; DV and Stat Exp are redrawn neutral.
+    // Calculated Stat is semantic accent; DV and Stat Exp stay neutral on both final and passive routes.
     assert(gen1Fix.find("const Color valueColor = c == 2 ? Colors::Accent : Colors::Text") != std::string::npos);
-    assert(gen2Final.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
+    assert(gen1Passive.find("p.hasBattleStats ? std::to_string(p.battleStats") != std::string::npos);
+    assert(gen1Passive.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
     assert(gen2Final.find("std::to_string(p.statExperience") != std::string::npos);
+    assert(gen2Final.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
+
+    // Move status owns a far-right region independent of PP/Ups; empty rows skip PP/Ups.
+    assert(gen1Passive.find("moveStatusRightPad") != std::string::npos);
+    assert(gen1Passive.find("ppRightOffset") != std::string::npos);
+    assert(gen1Passive.find("if (move != 0)") != std::string::npos);
+    assert(gen2Final.find("const int ppX = x + w - 226") != std::string::npos);
+    assert(gen2Final.find("x + w - 18 - statusW") != std::string::npos);
+    assert(gen2Final.find("fb.drawText(x + 292, yy") == std::string::npos);
+
+    // Classic derivation/storage notes have dedicated baselines instead of one long overlapping line.
+    assert(gen1Passive.find("* HP DV derived / read-only") != std::string::npos);
+    assert(gen1Passive.find("* one stored Gen I Special stat; split display only") != std::string::npos);
+    assert(gen2Final.find("* HP DV derived / read-only") != std::string::npos);
+    assert(gen2Final.find("* one stored Special DV / Stat Exp") != std::string::npos);
+    assert(gen2Final.find("* HP DV derived / read-only • one stored Special DV / Stat Exp") == std::string::npos);
+    assert(gen2Final.find("const int shinyY = y + 366") != std::string::npos);
+    assert(gen2Final.find("const int genderY = y + 408") != std::string::npos);
 
     // Generation II restores semantic gender colors and has a fullscreen final repaint for both
     // active shared modes and the external passive View route.
@@ -123,11 +163,12 @@ int main() {
     assert(gen2Fix.find("focus.panel != Unified::Panel::Values || focus.row != 0 || focus.column != 0") != std::string::npos);
     assert(gen2Fix.find("normalizeHardwareDerivedHpDvFocus(screen, &previous);") != std::string::npos);
 
-    // The final hardware layers must never present the stale workspace label.
+    // Final hardware layers must never present the stale workspace label.
     assert(gen1Fix.find("PKSE three-panel workspace") == std::string::npos);
     assert(gen1View.find("PKSE three-panel workspace") == std::string::npos);
+    assert(gen1Passive.find("PKSE three-panel workspace") == std::string::npos);
     assert(gen2Final.find("PKSE three-panel workspace") == std::string::npos);
 
-    std::cout << "Shared Gen I/II fullscreen presentation and exact identity contract PASS\n";
+    std::cout << "Shared Gen I/II fullscreen presentation and hardware regression contract PASS\n";
     return 0;
 }
