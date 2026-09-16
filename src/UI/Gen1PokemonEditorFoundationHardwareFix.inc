@@ -29,6 +29,28 @@ const char* foundationGrowthShort(uint8_t growth) noexcept {
     return "Unknown";
 }
 
+// Hardware fix 2026-09-15: panel focus is communicated only by the compact red
+// field/cell cursor. Main workspace headings stay neutral in every mode and Gen I
+// uses the same DETAILS / STATS / MOVES vocabulary as the shared Gen II surface.
+void drawNeutralGen1WorkspaceHeadings(PKSEFramebuffer& fb) {
+    constexpr int workspaceX = 40;
+    constexpr int workspaceY = 31;
+    constexpr int contentY = workspaceY + 74;
+    constexpr int leftX = workspaceX + 18;
+    constexpr int leftW = 300;
+    constexpr int midX = leftX + leftW + 14;
+    constexpr int midW = 398;
+    constexpr int rightX = midX + midW + 14;
+
+    const auto redraw = [&fb](int x, const char* text, TextStyle style) {
+        fb.drawFilledRect(x + 10, contentY + 6, 150, 34, Colors::Panel);
+        fb.drawText(x + 14, contentY + 10, text, Colors::Text, style);
+    };
+    redraw(leftX, "DETAILS", TextStyle::Caption);
+    redraw(midX, "STATS", TextStyle::Heading);
+    redraw(rightX, "MOVES", TextStyle::Heading);
+}
+
 // Layout requested during the same hardware pass: reserve the lower-right workspace
 // as two sibling panes. The right pane is always the generation's battle-stat radar;
 // the left pane is capability-driven extra data. Generation I deliberately exposes
@@ -69,6 +91,8 @@ void drawFoundationBottomSplit(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     constexpr int midW = 398;
     constexpr int rightX = midX + midW + 14;
     constexpr int rightW = workspaceX + workspaceW - 18 - rightX;
+
+    drawNeutralGen1WorkspaceHeadings(fb);
 
     // One authoritative split renderer, below move/status rows.
     constexpr int splitY = contentY + 288;
