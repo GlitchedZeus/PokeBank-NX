@@ -73,6 +73,9 @@ void drawFoundationPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     view.sourceStateLabel = "STAGED READ ONLY";
 
     Modals::drawGen1PokemonDetailsPresentation(screen, fb, view);
+    // Keep View aligned with Create/Edit: panel titles are neutral and the
+    // Gen I middle panel uses the shared STATS vocabulary instead of VALUES.
+    drawNeutralGen1WorkspaceHeadings(fb);
     screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget,
                                    16, fb.getHeight() - 68, 190, 58});
 }
