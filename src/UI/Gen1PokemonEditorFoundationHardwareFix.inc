@@ -51,6 +51,21 @@ void drawNeutralGen1WorkspaceHeadings(PKSEFramebuffer& fb) {
     redraw(rightX, "MOVES", TextStyle::Heading);
 }
 
+void drawExactGen1WorkspaceSubtitle(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    auto* e = editor(screen);
+    if (!e) return;
+    const auto& state = ux2StateFor(screen);
+    constexpr int workspaceX = 40;
+    constexpr int workspaceY = 31;
+    constexpr int workspaceW = 1200;
+    const std::string context =
+        "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1) +
+        "  •  " + foundationGen1GameShort(e->metadata().sourceGame) +
+        "  •  Source save immutable";
+    fb.drawFilledRect(workspaceX + 20, workspaceY + 42, workspaceW - 40, 30, Colors::Panel);
+    fb.drawText(workspaceX + 24, workspaceY + 46, context, Colors::TextDim, TextStyle::Caption);
+}
+
 // Layout requested during the same hardware pass: reserve the lower-right workspace
 // as two sibling panes. The right pane is always the generation's battle-stat radar;
 // the left pane is capability-driven extra data. Generation I deliberately exposes
@@ -92,6 +107,7 @@ void drawFoundationBottomSplit(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     constexpr int rightX = midX + midW + 14;
     constexpr int rightW = workspaceX + workspaceW - 18 - rightX;
 
+    drawExactGen1WorkspaceSubtitle(screen, fb);
     drawNeutralGen1WorkspaceHeadings(fb);
 
     // One authoritative split renderer, below move/status rows.
