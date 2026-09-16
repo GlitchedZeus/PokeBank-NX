@@ -39,7 +39,14 @@ void drawGoldSilverTrainerGender(TrainerViewScreen& screen, PKSEFramebuffer& fb)
 } // namespace
 
 bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    if (drawFinalGen2SurfaceBase(screen, fb)) return true;
+    if (drawFinalGen2SurfaceBase(screen, fb)) {
+        // The accepted parity route draws the raw unified workspace directly during
+        // Create/Edit. Re-apply the hardware correction layer so DETAILS/STATS/MOVES
+        // always remain neutral; the compact field/cell cursor is the sole focus cue.
+        if (isGSC(screen) && stateFor(screen).mode != Mode::None)
+            drawHardwareWorkspaceCorrections(screen, fb);
+        return true;
+    }
     if (trainerMainPage(screen) &&
         (screen.sourceGameId == "gold_gbc" || screen.sourceGameId == "silver_gbc")) {
         drawGoldSilverTrainerGender(screen, fb);
