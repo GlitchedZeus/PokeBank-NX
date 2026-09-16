@@ -14,6 +14,37 @@ void normalizeHardwareEmptyMoveFocus(TrainerViewScreen& screen) {
         unified.focus.column = 0;
 }
 
+void normalizeHardwareDerivedHpDvFocus(TrainerViewScreen& screen,
+                                       const Unified::Focus* previous = nullptr) {
+    auto& unified = unifiedStateFor(screen);
+    auto& focus = unified.focus;
+    if (focus.panel != Unified::Panel::Values || focus.row != 0 || focus.column != 0) return;
+
+    // Preserve vertical DV-column navigation while skipping the derived HP DV.
+    if (previous && previous->panel == Unified::Panel::Values && previous->column == 0) {
+        if (previous->row == 1) {
+            focus.row = 6;
+            return;
+        }
+        if (previous->row == 6) {
+            focus.row = 1;
+            return;
+        }
+    }
+
+    // Moving left from HP Stat Exp exits to DETAILS rather than landing on HP DV.
+    if (previous && previous->panel == Unified::Panel::Values &&
+        previous->row == 0 && previous->column == 1) {
+        focus.panel = Unified::Panel::Details;
+        focus.row = 0;
+        focus.column = 0;
+        return;
+    }
+
+    // Entering STATS on the HP row defaults to the first real editable value.
+    focus.column = 1;
+}
+
 void clearHardwarePanelHeading(PKSEFramebuffer& fb, int x, int y, int width,
                                const char* text, TextStyle style) {
     fb.drawFilledRect(x + 10, y + 6, width, 34, Colors::Panel);
@@ -55,8 +86,11 @@ bool handleUnifiedGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uin
     if (!isGSC(screen)) return false;
     if (stateFor(screen).mode != Mode::None) {
         normalizeHardwareEmptyMoveFocus(screen);
+        normalizeHardwareDerivedHpDvFocus(screen);
+        const auto previous = unifiedStateFor(screen).focus;
         const bool handled = handleUnifiedWorkspaceInput(screen, down, held, stickX, stickY, touch);
         normalizeHardwareEmptyMoveFocus(screen);
+        normalizeHardwareDerivedHpDvFocus(screen, &previous);
         return handled;
     }
     return handleUnifiedGen2SurfaceInputBase(screen, down, held, stickX, stickY, touch);
@@ -65,6 +99,7 @@ bool handleUnifiedGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uin
 bool drawUnifiedGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isGSC(screen)) return false;
     if (stateFor(screen).mode != Mode::None) {
+        normalizeHardwareDerivedHpDvFocus(screen);
         drawUnifiedWorkspace(screen, fb);
         drawHardwareWorkspaceCorrections(screen, fb);
         return true;
