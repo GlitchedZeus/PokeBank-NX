@@ -25,7 +25,9 @@ void PKSEFramebuffer::drawFilledRoundedRect(int,int,int,int,int,Color) {}
 void PKSEFramebuffer::drawRoundedRect(int,int,int,int,int,Color,int) {}
 void PKSEFramebuffer::drawSelectionHighlight(int,int,int,int) {}
 void PKSEFramebuffer::drawSpriteStaticContained(int,int,int,int,int,int,const unsigned char*,int) {}
+void PKSEFramebuffer::drawImageScaled(int,int,int,int,int,int,const unsigned char*,int) {}
 Sprite* SpriteManager::getSprite(uint16_t species, bool shiny) { sprites.emplace_back(species,shiny); return nullptr; }
+Sprite* SpriteManager::getTypeSprite(uint8_t) { return nullptr; }
 }
 int main() {
     UI::PKSEFramebuffer fb;
@@ -63,6 +65,8 @@ int main() {
     }
     // The actual shared renderer must request both sprite appearances for the
     // hovered species, including the Gen II-only dex range, without a session write.
+    // Type drawing is deliberately mocked here; generation-correct type data has its
+    // own executable contract in test_classic_picker_type_contract.
     for (uint16_t dex : {1,151,152,251}) {
         texts.clear(); sprites.clear();
         UI::SharedSpeciesPicker::drawContent(fb,100,76,dex,251,true,
