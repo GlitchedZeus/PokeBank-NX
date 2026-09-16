@@ -166,11 +166,14 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     fb.drawText(x + 84, y + 274, std::to_string(battle[4]), Colors::Accent, TextStyle::Caption);
     fb.drawText(x + 200, y + 274, "SpD", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 266, y + 274, std::to_string(battle[5]), Colors::Accent, TextStyle::Caption);
-    fb.drawText(x + 18, y + 304, "* HP DV derived / read-only • one stored Special DV / Stat Exp",
-                Colors::TextDim, TextStyle::Caption);
 
-    const int shinyY = y + 350;
-    const int genderY = y + 392;
+    // Keep derivation/storage notes on dedicated baselines so they cannot collide
+    // with calculated Special values or the Shiny/Gender rows at 1280x720.
+    fb.drawText(x + 18, y + 304, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 328, "* one stored Special DV / Stat Exp", Colors::TextDim, TextStyle::Caption);
+
+    const int shinyY = y + 366;
+    const int genderY = y + 408;
     const bool shinySelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 5;
     const bool genderSelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 6;
     drawGen2Focus(fb, x + 8, shinyY - 5, w - 16, 30, shinySelected);
@@ -188,8 +191,10 @@ void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& scre
     fb.drawFilledRect(x + 10, y + 6, 150, 34, Colors::Panel);
     fb.drawText(x + 14, y + 10, "MOVES", Colors::Text, TextStyle::Heading);
     fb.drawFilledRect(x + 10, y + 38, w - 20, 146, Colors::Panel);
-    fb.drawText(x + 190, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 246, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
+    const int ppX = x + w - 226;
+    const int upsX = x + w - 154;
+    fb.drawText(ppX, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(upsX, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
     for (int slot = 0; slot < 4; ++slot) {
         const int yy = y + 62 + slot * 32;
         const bool selected = !passive && unified.focus.panel == UnifiedContract::Panel::Moves && unified.focus.row == slot;
@@ -201,12 +206,14 @@ void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& scre
         const auto status = moveStatus(screen, state, slot);
         fb.drawText(x + 18, yy, move == 0 ? "Empty" : Names::getMoveName(move), Colors::Text, TextStyle::Caption);
         if (move != 0) {
-            fb.drawText(x + 190, yy, std::to_string(state.working.pp[static_cast<std::size_t>(slot)]), Colors::Text, TextStyle::Caption);
-            fb.drawText(x + 246, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]), Colors::Text, TextStyle::Caption);
+            fb.drawText(ppX, yy, std::to_string(state.working.pp[static_cast<std::size_t>(slot)]), Colors::Text, TextStyle::Caption);
+            fb.drawText(upsX, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]), Colors::Text, TextStyle::Caption);
         }
-        fb.drawText(x + 292, yy,
-                    status == Rules::CompatibilityState::Ok ? "OK" :
-                    status == Rules::CompatibilityState::UnusualPreserved ? "Unusual" : "Invalid",
+        const std::string statusText = status == Rules::CompatibilityState::Ok ? "OK" :
+            status == Rules::CompatibilityState::UnusualPreserved ? "Unusual" : "Invalid";
+        int statusW = 0, statusH = 0;
+        fb.measureText(statusText, statusW, statusH, TextStyle::Caption);
+        fb.drawText(x + w - 18 - statusW, yy, statusText,
                     unifiedStatusColor(status), TextStyle::Caption);
     }
 }
