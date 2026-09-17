@@ -1,0 +1,21 @@
+# Hardware-derived classic presentation regressions added after physical Switch retest.
+# Reuse the proven Gen I editor source graph and the Gen II personal table so this is
+# executable data coverage, not only source-text coverage.
+CLASSIC_PICKER_TYPE_SOURCES := tests/test_classic_picker_type_contract.cpp \
+	$(GEN1_POKEMON_COMMON) \
+	src/Integration/Gen2/Gen2PersonalData.cpp
+CLASSIC_PICKER_TYPE_TEST := $(HOST_BUILD)/test_classic_picker_type_contract
+CLASSIC_PICKER_TYPE_SANITIZE := $(HOST_BUILD)/test_classic_picker_type_contract_sanitize
+
+HOST_TESTS += $(CLASSIC_PICKER_TYPE_TEST)
+HOST_SANITIZE_TESTS += $(CLASSIC_PICKER_TYPE_SANITIZE)
+host-test: $(CLASSIC_PICKER_TYPE_TEST)
+host-sanitize: $(CLASSIC_PICKER_TYPE_SANITIZE)
+
+$(CLASSIC_PICKER_TYPE_TEST): $(CLASSIC_PICKER_TYPE_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(CLASSIC_PICKER_TYPE_SOURCES) -o $@
+
+$(CLASSIC_PICKER_TYPE_SANITIZE): $(CLASSIC_PICKER_TYPE_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CLASSIC_PICKER_TYPE_SOURCES) -o $@

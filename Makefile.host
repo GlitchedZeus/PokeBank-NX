@@ -5,5 +5,6 @@ include Makefile.host.editor
 include Makefile.host.cleanup3
 include Makefile.host.standalone
 include Makefile.host.shared-editor
+include Makefile.host.hardware-fixes
 
 include Makefile.host.machine

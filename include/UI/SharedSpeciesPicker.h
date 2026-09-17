@@ -1,12 +1,32 @@
 #pragma once
+#include "Integration/Gen1/Gen1StagedPokemonEditor.h"
+#include "Integration/Gen2/Gen2PersonalData.h"
+#include "UI/ClassicTypeBadges.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SpriteManager.h"
 #include "UI/Common.h"
 #include <algorithm>
+#include <array>
 
 namespace UI::SharedSpeciesPicker {
-// Extracted verbatim from the accepted Gen I visual picker. Generations supply
-// only the dex bound, committed appearance preview and display names.
+namespace {
+
+// The shared picker is currently used by the supported RBY and GSC editors only.
+// Keep their exact native type tables here so the preview never guesses modern typing.
+inline std::array<uint8_t, 2> classicPickerTypes(uint16_t species, int speciesCount) {
+    if (speciesCount == 151)
+        return PokeVault::Integration::Gen1::StagedPokemonEditor::personalTypes(species);
+    if (speciesCount == 251) {
+        if (const auto* personal = PokeVault::Integration::Gen2::personalRecord(species))
+            return {personal->rawType1, personal->rawType2};
+    }
+    return {0, 0};
+}
+
+} // namespace
+
+// Extracted from the accepted Gen I visual picker and shared with Generation II.
+// Browsing is preview-only; the generation supplies only its dex bound and text.
 template <class RowText, class TitleText>
 void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
                  int speciesCount, bool previewShiny, RowText rowText, TitleText titleText) {
@@ -27,6 +47,7 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
 
         const uint16_t preview = static_cast<uint16_t>(selectedSpecies);
         const int previewX = x + 610;
+        constexpr int previewW = 353;
         fb.drawText(previewX, y + 86, titleText(preview), Colors::Text, TextStyle::Heading);
         fb.drawText(previewX, y + 122, "NORMAL", !previewShiny ? Colors::Accent : Colors::TextDim, TextStyle::Caption);
         fb.drawText(previewX + 190, y + 122, "SHINY", previewShiny ? Colors::ShinyStar : Colors::TextDim, TextStyle::Caption);
@@ -36,10 +57,15 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
         if (auto* shiny = SpriteManager::getSprite(preview, true); shiny && shiny->data)
             fb.drawSpriteStaticContained(previewX + 188, y + 152, 165, 190, shiny->width, shiny->height, shiny->data, shiny->channels);
         else fb.drawText(previewX + 208, y + 235, "No shiny sprite", Colors::TextDim, TextStyle::Caption);
-        fb.drawText(previewX, y + 364,
+
+        // Generation-correct canonical type badges update with the highlighted species.
+        const auto types = classicPickerTypes(preview, speciesCount);
+        ClassicTypeBadges::drawPairCentered(fb, previewX, previewW, y + 344, types[0], types[1]);
+
+        fb.drawText(previewX, y + 374,
             std::string("Intended: ") + (previewShiny ? "Shiny" : "Normal"),
             previewShiny ? Colors::ShinyStar : Colors::Accent, TextStyle::Body);
-        fb.drawText(previewX, y + 400, "A commits to draft/editor only", Colors::TextDim, TextStyle::Caption);
-        fb.drawText(previewX, y + 424, "B restores previous committed choice", Colors::TextDim, TextStyle::Caption);
+        fb.drawText(previewX, y + 406, "A commits to draft/editor only", Colors::TextDim, TextStyle::Caption);
+        fb.drawText(previewX, y + 430, "B restores previous committed choice", Colors::TextDim, TextStyle::Caption);
 }
 } // namespace UI::SharedSpeciesPicker

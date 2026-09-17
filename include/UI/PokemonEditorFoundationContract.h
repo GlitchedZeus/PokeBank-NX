@@ -59,6 +59,12 @@ constexpr SurfaceOwner surfaceOwnerFor(bool foundationMainMode, bool pickerActiv
     return (!foundationMainMode || pickerActive) ? SurfaceOwner::Cleanup3 : SurfaceOwner::FoundationWorkspace;
 }
 
+constexpr bool derivedHpDvFocus(Focus focus) noexcept {
+    return focus.panel == Panel::Values &&
+           focus.row == static_cast<uint8_t>(ValueRow::HP) &&
+           focus.column == static_cast<uint8_t>(ValueColumn::DV);
+}
+
 constexpr Focus normalize(Focus focus) noexcept {
     switch (focus.panel) {
         case Panel::Identity:
@@ -69,6 +75,10 @@ constexpr Focus normalize(Focus focus) noexcept {
             focus.row = static_cast<uint8_t>(focus.row % valueRowCount());
             if (focus.row >= valueStatRowCount()) focus.column = 0;
             else if (focus.column >= static_cast<uint8_t>(ValueColumn::CalculatedStat))
+                focus.column = static_cast<uint8_t>(ValueColumn::StatExperience);
+            // HP DV is derived from the four stored DVs. Keep the value visible,
+            // but never let keyboard/controller focus make it look editable.
+            if (derivedHpDvFocus(focus))
                 focus.column = static_cast<uint8_t>(ValueColumn::StatExperience);
             break;
         case Panel::Moves:
@@ -86,7 +96,14 @@ constexpr Focus moveFocus(Focus focus, Direction direction) noexcept {
         uint8_t rows = identityRowCount();
         if (focus.panel == Panel::Values) rows = valueRowCount();
         if (focus.panel == Panel::Moves) rows = moveRowCount();
-        focus.row = static_cast<uint8_t>((static_cast<int>(focus.row) + delta + rows) % rows);
+        int nextRow = (static_cast<int>(focus.row) + delta + rows) % rows;
+        // Preserve vertical DV-column navigation while skipping the derived HP DV.
+        if (focus.panel == Panel::Values &&
+            focus.column == static_cast<uint8_t>(ValueColumn::DV) &&
+            nextRow == static_cast<int>(ValueRow::HP)) {
+            nextRow = (nextRow + delta + rows) % rows;
+        }
+        focus.row = static_cast<uint8_t>(nextRow);
         if (focus.panel == Panel::Values && focus.row >= valueStatRowCount()) focus.column = 0;
         return normalize(focus);
     }
@@ -98,7 +115,7 @@ constexpr Focus moveFocus(Focus focus, Direction direction) noexcept {
         if (focus.panel == Panel::Values) {
             if (focus.row < valueStatRowCount() && focus.column < static_cast<uint8_t>(ValueColumn::StatExperience)) {
                 ++focus.column;
-                return focus;
+                return normalize(focus);
             }
             return normalize({Panel::Moves, static_cast<uint8_t>(focus.row < moveRowCount() ? focus.row : moveRowCount() - 1), 0});
         }
@@ -109,9 +126,15 @@ constexpr Focus moveFocus(Focus focus, Direction direction) noexcept {
         return normalize({Panel::Values, static_cast<uint8_t>(focus.row), static_cast<uint8_t>(ValueColumn::StatExperience)});
     }
     if (focus.panel == Panel::Values) {
+        // Moving left from HP Stat Exp must leave the panel instead of landing on
+        // the derived HP DV cell.
+        if (focus.row == static_cast<uint8_t>(ValueRow::HP) &&
+            focus.column == static_cast<uint8_t>(ValueColumn::StatExperience)) {
+            return normalize({Panel::Identity, static_cast<uint8_t>(ValueRow::HP), 0});
+        }
         if (focus.row < valueStatRowCount() && focus.column > 0) {
             --focus.column;
-            return focus;
+            return normalize(focus);
         }
         return normalize({Panel::Identity, static_cast<uint8_t>(focus.row < identityRowCount() ? focus.row : identityRowCount() - 1), 0});
     }

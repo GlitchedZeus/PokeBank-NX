@@ -147,11 +147,27 @@ int main() {
     assert(composite.find("text.replace(pos, std::char_traits<char>::length(oldLabel), \"Add\")") != std::string::npos);
     assert(composite.find("added to Box") != std::string::npos);
     assert(composite.find("Gen1MoveStatusParity") == std::string::npos);
+
     const auto workspace = readFile("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
     assert(workspace.find("MoveCompatibility::canLearnMove") != std::string::npos);
     assert(workspace.find("fb.drawText(statusX, rowY + 9, status") != std::string::npos);
     assert(workspace.find("centerX + 142") == std::string::npos);
-    for (const auto* path : {"src/UI/Gen1PokemonEditorPassiveView.inc", "src/UI/Modals/Gen1PokemonDetailsModal.cpp",
+
+    // The fullscreen hardware layer now owns passive View presentation as well as
+    // Edit/Create. Compatibility must therefore be proven at the renderer it
+    // delegates to, rather than requiring the old passive modal object to call
+    // view.setMoveCompatibility() itself.
+    const auto fullscreen = readFile("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
+    const auto passive = readFile("src/UI/Gen1PokemonEditorPassiveView.inc");
+    assert(passive.find("drawFullscreenGen1Workspace(screen, fb)") != std::string::npos);
+    assert(fullscreen.find("MoveCompatibility::firstIncompatible") != std::string::npos);
+    assert(fullscreen.find("MoveCompatibility::canLearnMove") != std::string::npos);
+    assert(fullscreen.find("Move compatibility") != std::string::npos);
+    assert(fullscreen.find("Encounter legality") != std::string::npos);
+
+    // The independent legacy details routes still use the presentation object and
+    // retain their explicit compatibility initialization.
+    for (const auto* path : {"src/UI/Modals/Gen1PokemonDetailsModal.cpp",
                              "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"})
         assert(readFile(path).find("view.setMoveCompatibility(") != std::string::npos);
     const auto passivePresentation = readFile("src/UI/Gen1PokemonDetailsPresentation.cpp");
