@@ -22,15 +22,21 @@ std::string gen2DexLabel(uint16_t species) {
     return dex;
 }
 
+Color gen2MaleColor() noexcept {
+    // Pure fixed Blue is too dark against the accepted dark/OLED surfaces on Switch hardware.
+    // Keep a cyan-leaning sky blue in dark themes and a deeper companion shade for light mode.
+    return g_themeMode == ThemeMode::Light ? Color(24, 112, 184) : Color(92, 205, 255);
+}
+
 Color gen2GenderColor(uint8_t gender) noexcept {
-    if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Male) return Colors::Blue;
+    if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Male) return gen2MaleColor();
     if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Female) return Colors::Magenta;
     return Colors::Text;
 }
 
 void drawGen2HeaderGender(PKSEFramebuffer& fb, int x, int y, uint8_t gender) {
     if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Male)
-        fb.drawSymbol(x, y, "\xE2\x99\x82", Colors::Blue);
+        fb.drawSymbol(x, y, "\xE2\x99\x82", gen2MaleColor());
     else if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Female)
         fb.drawSymbol(x, y, "\xE2\x99\x80", Colors::Magenta);
 }
@@ -138,10 +144,17 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p);
     const std::array<const char*, 5> labels{"HP", "Attack", "Defense", "Speed", "Special"};
     const std::array<uint8_t, 5> dvs{p.dvs[0], p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]};
+    const int shinyY = y + 366;
+    const int genderY = y + 408;
 
     fb.drawFilledRect(x + 10, y + 6, 150, 34, Colors::Panel);
     fb.drawText(x + 14, y + 10, "STATS", Colors::Text, TextStyle::Heading);
-    fb.drawFilledRect(x + 10, y + 38, w - 20, 330, Colors::Panel);
+    // drawUnifiedValues() has already painted its legacy Shiny/Gender rows underneath this
+    // hardware layer. Clear through the final Gender baseline before repainting semantics so
+    // the old neutral row cannot remain visible as a duplicate beneath the colored value.
+    const int clearTop = y + 38;
+    const int semanticClearBottom = genderY + 30;
+    fb.drawFilledRect(x + 10, clearTop, w - 20, semanticClearBottom - clearTop, Colors::Panel);
     fb.drawText(x + 114, y + 42, "DV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 184, y + 42, "Stat Exp", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 292, y + 42, "Stat", Colors::TextDim, TextStyle::Caption);
@@ -172,8 +185,6 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     fb.drawText(x + 18, y + 304, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 18, y + 328, "* one stored Special DV / Stat Exp", Colors::TextDim, TextStyle::Caption);
 
-    const int shinyY = y + 366;
-    const int genderY = y + 408;
     const bool shinySelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 5;
     const bool genderSelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 6;
     drawGen2Focus(fb, x + 8, shinyY - 5, w - 16, 30, shinySelected);
@@ -316,7 +327,7 @@ void drawGoldSilverTrainerGender(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     const int genderY = trainerIdY + infoRowStep;
     const std::string value = screen.trainer.trainerGender == 0 ? "Male" :
                               screen.trainer.trainerGender == 1 ? "Female" : "Unknown";
-    const Color valueColor = screen.trainer.trainerGender == 0 ? Colors::Blue :
+    const Color valueColor = screen.trainer.trainerGender == 0 ? gen2MaleColor() :
                              screen.trainer.trainerGender == 1 ? Colors::Magenta : Colors::Text;
 
     fb.drawFilledRoundedRect(cardX, genderY, cardW, 46, 12, Colors::PanelAlt);

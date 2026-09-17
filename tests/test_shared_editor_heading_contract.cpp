@@ -18,6 +18,16 @@ std::string readText(const char* path) {
     return text.str();
 }
 
+std::size_t countOccurrences(const std::string& text, const std::string& needle) {
+    std::size_t count = 0;
+    std::size_t pos = 0;
+    while ((pos = text.find(needle, pos)) != std::string::npos) {
+        ++count;
+        pos += needle.size();
+    }
+    return count;
+}
+
 } // namespace
 
 int main() {
@@ -29,6 +39,7 @@ int main() {
     const auto gen1Passive = readText("src/UI/Gen1PokemonDetailsPresentation.cpp");
     const auto gen2Fix = readText("src/UI/Gen2HardwareWorkspaceFix.inc");
     const auto gen2Final = readText("src/UI/Gen2HardwareFinalFix.inc");
+    const auto gen2Data = readText("include/UI/Gen2WorkspacePresentation.h");
     const auto sharedPicker = readText("include/UI/SharedSpeciesPicker.h");
     const auto sharedTypes = readText("include/UI/ClassicTypeBadges.h");
 
@@ -53,6 +64,12 @@ int main() {
     }
     const auto yellow = Classic::contextLine("Box 1 / Slot 1", "yellow_gb", Classic::SurfaceMode::ViewReadOnly);
     assert(yellow.find("Box 1 / Slot 1 • Yellow • Source save immutable • READ ONLY") != std::string::npos);
+
+    // Generation labels stay exact on the two classic presentation families.
+    assert(gen1Fix.find("\"GEN I DATA\"") != std::string::npos);
+    assert(gen1Passive.find("\"GEN I DATA\"") != std::string::npos);
+    assert(gen2Data.find("\"GEN II DATA\"") != std::string::npos);
+    assert(gen2Data.find("\"GEN I DATA\"") == std::string::npos);
 
     // Nature remains absent from Gen I/II; the shared convention only begins with Gen III.
     assert(!Classic::generationHasNature(1));
@@ -133,10 +150,20 @@ int main() {
     assert(gen2Final.find("const int shinyY = y + 366") != std::string::npos);
     assert(gen2Final.find("const int genderY = y + 408") != std::string::npos);
 
-    // Generation II restores semantic gender colors and has a fullscreen final repaint for both
-    // active shared modes and the external passive View route.
-    assert(gen2Final.find("Colors::Blue") != std::string::npos);
+    // Generation II gender semantics: one final row survives the legacy underpaint, male uses
+    // a readable cyan-leaning blue, female stays magenta, and genderless stays neutral.
+    assert(gen2Final.find("Color gen2MaleColor() noexcept") != std::string::npos);
+    assert(gen2Final.find("Color(92, 205, 255)") != std::string::npos);
+    assert(gen2Final.find("Color(24, 112, 184)") != std::string::npos);
+    assert(gen2Final.find("Colors::Blue") == std::string::npos);
     assert(gen2Final.find("Colors::Magenta") != std::string::npos);
+    assert(gen2Final.find("return Colors::Text;") != std::string::npos);
+    assert(gen2Final.find("const int semanticClearBottom = genderY + 30") != std::string::npos);
+    assert(gen2Final.find("semanticClearBottom - clearTop") != std::string::npos);
+    assert(countOccurrences(gen2Final, "fb.drawText(x + 18, genderY, \"Gender\"") == 1);
+    assert(countOccurrences(gen2Final, "genderText(p.gender), gen2GenderColor(p.gender)") == 1);
+
+    // Generation II has a fullscreen final repaint for both active shared modes and external passive View.
     assert(gen2Final.find("drawFullscreenGen2Active") != std::string::npos);
     assert(gen2Final.find("drawFullscreenGen2Passive") != std::string::npos);
     assert(gen2Final.find("fb.drawText(28, 16, name") != std::string::npos);

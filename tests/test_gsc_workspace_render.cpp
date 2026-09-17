@@ -45,6 +45,13 @@ int main() {
                     p.caughtData = static_cast<uint16_t>(0xFFFF & (0xFF80 | location));
                     texts.clear();
                     UI::Gen2WorkspacePresentation::drawDataAndGraph(fb, 0, 0, 438, 260, p, game);
+                    const auto gen2TitleCount = std::count_if(texts.begin(), texts.end(), [](const Text& t) {
+                        return t.value == "GEN II DATA";
+                    });
+                    assert(gen2TitleCount == 1);
+                    assert(std::none_of(texts.begin(), texts.end(), [](const Text& t) {
+                        return t.value == "GEN I DATA";
+                    }));
                     for (std::size_t i = 0; i < texts.size(); ++i) {
                         const auto& t = texts[i];
                         if (!(t.x >= 0 && t.y >= 0 && t.x+t.w <= 438 && t.y+t.h <= 260)) {
@@ -74,5 +81,5 @@ int main() {
         assert((sprites == std::vector<std::pair<uint16_t,bool>>{{dex,false},{dex,true}}));
         assert(std::any_of(texts.begin(),texts.end(),[](const Text& t){return t.value == "Intended: Shiny";}));
     }
-    std::cout << "Gen II production Data/Graph and shared species renderer: native gating, bounded nonoverlapping text, sprite identity PASS\n";
+    std::cout << "Gen II production Data/Graph and shared species renderer: native gating, exact generation title, bounded nonoverlapping text, sprite identity PASS\n";
 }
