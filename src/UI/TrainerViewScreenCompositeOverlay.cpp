@@ -82,9 +82,6 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 namespace UI::Gen1PokemonEditor {
 namespace {
 
-// Cleanup3 remains the accepted Gen I product implementation. This narrow wrapper changes only the
-// post-success presentation around its already-proven packed append: the native box/slot chosen by
-// UX2 is preserved, the box cursor follows that actual packed slot, and success copy stays user-facing.
 bool ux2StageAddWithClassicSelection(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
     const int destinationBox = state.box;
@@ -109,8 +106,6 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 } // namespace
 } // namespace UI::Gen1PokemonEditor
 
-// Keep the accepted Cleanup3 source untouched while routing only its staged-Add call and footer
-// presentation through the hardware-retest parity adapters above.
 #define ux2StageAdd ux2StageAddWithClassicSelection
 #define drawFooter drawFooterWithClassicAddLabel
 #define isGen1SourceUX isGen1SourceUXCleanup3
@@ -128,8 +123,6 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 #include "Gen1PokemonEditorPassiveView.inc"
 #include "Gen2PokemonEditorFoundation.inc"
 
-// Keep the accepted Gen II implementations available as exact bases, then place only
-// the physical-hardware regression corrections around their public entry points.
 #define handlePickerInput handlePickerInputBase
 #define drawPickerOverlay drawPickerOverlayBase
 #include "Gen2PokemonPickerOverlay.inc"
@@ -151,13 +144,28 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 #undef drawFinalGen2Surface
 #include "Gen2HardwareFinalFix.inc"
 
-// PR #74 layers only box movement/multi-select and Release action semantics over the accepted
-// fullscreen View/Edit/Create implementation. Those accepted workspaces remain untouched.
 #include "ClassicPackedMoveOverlay.inc"
 #include "ClassicReleaseActionFix.inc"
 
 namespace UI {
 namespace {
+
+bool classicPackedMoveLayerAvailable(const TrainerViewScreen& screen) noexcept {
+    if (Gen1PokemonEditor::isGen1SourceUX(screen)) {
+        const auto& state = Gen1PokemonEditor::ux2StateFor(screen);
+        return state.mode == decltype(state.mode)::Closed &&
+               !Gen1PokemonEditor::foundationPickerActive(screen) &&
+               !Gen1PokemonEditor::foundationPassiveViewActive(screen);
+    }
+    const bool gsc = screen.sourceGameId == "gold_gbc" ||
+                     screen.sourceGameId == "silver_gbc" ||
+                     screen.sourceGameId == "crystal_gbc";
+    if (gsc) {
+        const auto& state = Gen2PokemonEditor::stateFor(screen);
+        return state.mode == decltype(state.mode)::None && !editorOverlayState(screen).active;
+    }
+    return false;
+}
 
 bool gen2ClassicBoxFooterActive(const TrainerViewScreen& screen) noexcept {
     const bool gsc = screen.trainer.getGameGroup() == Enums::GameVersion::GSC &&
@@ -191,7 +199,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 
-    if (ClassicPackedMove::handleInput(*this, down, held, touch)) return;
+    if (classicPackedMoveLayerAvailable(*this) && ClassicPackedMove::handleInput(*this, down, held, touch)) return;
     if (Gen1PokemonEditor::handleReleaseActionInput(*this, down)) return;
     if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
 
@@ -222,25 +230,23 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
 
     if (Gen2PokemonEditor::drawFinalGen2Surface(*this, fb)) {
         Gen2PokemonEditor::drawPickerOverlay(*this, fb);
-        ClassicPackedMove::draw(*this, fb);
+        if (classicPackedMoveLayerAvailable(*this)) ClassicPackedMove::draw(*this, fb);
         return;
     }
 
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
         Gen1PokemonEditor::drawOverlayUXCleanup3(*this, fb);
-        ClassicPackedMove::draw(*this, fb);
         return;
     }
 
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPassiveViewActive(*this)) {
         Gen1PokemonEditor::drawFoundationPassiveView(*this, fb);
-        ClassicPackedMove::draw(*this, fb);
         return;
     }
 
     Gen1PokemonEditor::drawOverlayUX(*this, fb);
     Gen1PokemonEditor::drawFoundationBottomSplit(*this, fb);
-    ClassicPackedMove::draw(*this, fb);
+    if (classicPackedMoveLayerAvailable(*this)) ClassicPackedMove::draw(*this, fb);
 }
 
 } // namespace UI
