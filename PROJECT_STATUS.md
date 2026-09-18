@@ -1,6 +1,6 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-14
+Last updated: 2026-09-18
 
 For the shortest recovery handoff, read `CURRENT_STATUS.md` and `docs/NEXT_SESSION_PLAN.md`.
 
@@ -11,29 +11,92 @@ Product: PokeBank NX
 Version: 0.1.0-alpha
 Repository: GlitchedZeus/PokeBank-NX
 Production branch: feature/pokebank-playable
-Production checkpoint: a9fc4521087cdc80078c7db620f1be0107adce58
-Focused branch: feature/gen2-shared-pokemon-editor-20260914
-Active PR: #68 — OPEN / DRAFT / NOT MERGED
-Audit tracker: #69 — OPEN
-Latest pre-documentation implementation checkpoint: a3917f20e0b09b31473f073398a9b1f1a6adfb51
+Accepted milestone merge commit: e0815da5c1a167827a07ed1dfd50d49db2136aa3
+Accepted source checkpoint: c24859ce17d33040685ea19b9aff068ba378d8ae
+Accepted source tree: 88d2ad46d57346df346453698ee11792f7df4f1f
+PR #74: MERGED
 Writable remote: origin
 Upstream/reference: kiasta/PKSE
 ```
 
-`DEVICE ACCEPTED` is reserved for an exact artifact physically tested by the owner. The final Gen II candidate SHA is the exact PR head after the audit/status documentation refresh and must pass the dedicated exact-SHA candidate workflow before handoff.
+`DEVICE ACCEPTED` is reserved for an exact artifact physically tested and accepted by the owner.
 
 ## Headline
 
-- Generation I, II, and III legacy read-only paths are physically accepted.
-- Classic staged Inventory is hardware accepted.
-- The Generation I boxed staged Pokémon editor and passive View are hardware accepted.
-- Generation II shared View/Create/Edit and final audit remediation are IMPLEMENTED on PR #68.
-- PR #68 now includes Crystal-native caught/met decoding, Party-only HP/status, named Species/Move/Pokérus controls, and a verified transactional staged-export path.
-- Full v1 touch remains #55; global controller normalization remains #26; Legacy Storage/Master Vault separation remains #27.
-- Live installed-game and emulator-source writes remain HARD DISABLED.
-- Gen II DEVICE TEST is still pending an exact green candidate artifact and owner physical Gold/Silver/Crystal test.
+- **Gen I/II packed move + multi-select milestone: DEVICE ACCEPTED.**
+- PR #74 is merged into `feature/pokebank-playable`.
+- Red/Blue/Yellow and Gold/Silver/Crystal source boxes present their native 20 valid slots.
+- PokeBank-owned Legacy Storage remains 30 slots per box.
+- Gen I/II staged Y movement, Y-hold rectangular multi-select, packed group movement, Release, and fullscreen View/Edit/Create are hardware accepted.
+- The Gen II empty-slot action-sheet/fullscreen ownership bug is physically confirmed fixed.
+- Original source saves remain immutable and every live source-write path remains HARD DISABLED.
+- No next major feature is selected by this status update. Do not start Gen III automatically.
 
-## Accepted legacy/read/editor baselines
+## Exact hardware-accepted checkpoint
+
+```text
+Milestone: Gen I/II packed move + multi-select
+Status: DEVICE ACCEPTED
+Physical result: PASS / NO BUGS FOUND
+Accepted source: c24859ce17d33040685ea19b9aff068ba378d8ae
+Accepted tree: 88d2ad46d57346df346453698ee11792f7df4f1f
+Accepted parent: 99aacea1d9c5bd392b1eb779d175e49d3f99179c
+Accepted NRO: PokeBank-NX-Gen1-UX4-Retest-c24859ce.nro
+Accepted NRO size: 161681137 bytes
+Accepted NRO SHA-256: 0eeef3c4752fc52240332567bf3919099271be4985fda346da26d66018fff82f
+Accepted Actions workflow: Gen I Cleanup3 Candidate Gate
+Accepted Actions run: 35316216883
+Accepted artifact: Gen1-UX4-Retest-Candidate
+Accepted artifact ID: 10535653625
+Accepted artifact digest: sha256:15c9a98c37c05f7ce4427791b33968faa43e0a9cb7442e57eb0a8b537ef0f6c1
+Merge commit: e0815da5c1a167827a07ed1dfd50d49db2136aa3
+```
+
+The independent Gen II candidate pipeline produced the same application NRO SHA-256, so the accepted application binary identity is unambiguous.
+
+## Accepted milestone behavior
+
+### Generation I — Red / Blue / Yellow
+
+DEVICE ACCEPTED:
+
+- native 20-slot source-box presentation;
+- PokeBank Legacy Storage remains 30 slots;
+- empty-slot Add Pokemon;
+- fullscreen View / Edit / Create;
+- A-button Actions;
+- Release behind A -> Actions -> Release -> explicit confirmation;
+- Y tap single packed move;
+- Y hold rectangular multi-select;
+- same-box and cross-box packed movement;
+- deterministic selected/group ordering;
+- atomic destination-capacity rejection;
+- B exact staged restore;
+- controller behavior and fullscreen surface ownership.
+
+### Generation II — Gold / Silver / Crystal
+
+DEVICE ACCEPTED:
+
+- native 20-slot source-box presentation;
+- PokeBank Legacy Storage remains 30 slots;
+- empty-slot Add Pokemon immediately opens Create;
+- Review Pending Changes opens Review rather than exposing a hidden Create workspace;
+- no action sheet remains on top of View/Edit/Create;
+- fullscreen View / Edit / Create;
+- A-button Actions;
+- Release behind A -> Actions -> Release -> explicit confirmation;
+- Y tap single packed move;
+- Y hold rectangular multi-select;
+- same-box and cross-box packed movement;
+- deterministic selected/group ordering;
+- atomic destination-capacity rejection;
+- B exact staged restore;
+- controller behavior and fullscreen surface ownership.
+
+## Previously accepted baselines
+
+These historical milestones remain accepted and must not be rewritten as untested:
 
 | Milestone | Status |
 |---|---|
@@ -41,8 +104,9 @@ Upstream/reference: kiasta/PKSE
 | Gold / Silver / Crystal read-only | DEVICE ACCEPTED |
 | FireRed / LeafGreen / Ruby / Sapphire / Emerald read-only | DEVICE ACCEPTED |
 | Classic staged Inventory | DEVICE ACCEPTED |
-| Gen I boxed staged Pokémon editor | DEVICE ACCEPTED |
+| Gen I boxed staged Pokemon editor | DEVICE ACCEPTED |
 | Gen I passive View unification | DEVICE ACCEPTED |
+| Gen I/II packed move + multi-select / Release / native source capacity | DEVICE ACCEPTED |
 
 Generation II read semantics remain:
 
@@ -53,7 +117,7 @@ Crystal Trainer gender: save-derived
 Gen II SID: N/A — does not exist
 ```
 
-Accepted Gen I editor artifact remains:
+Historical Gen I editor acceptance evidence remains valid:
 
 ```text
 Source: 69668bc81629228ef25c1bdada7c7ce1aed9b666
@@ -61,136 +125,30 @@ NRO: PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
 SHA-256: 3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
 ```
 
-Do not rewrite or replace this historical acceptance evidence while validating Gen II.
-
-## Active Generation II shared editor milestone — PR #68
-
-### Editor and presentation
-
-Implemented:
-
-- capability-driven `DETAILS | VALUES | MOVES` shell;
-- passive Party/Box/action-sheet View with no edit cursor;
-- exact Gold/Silver vs Crystal move compatibility generated from pinned PKHeX data;
-- canonical Level/EXP behavior for Edit and Create with immediate stats/radar synchronization;
-- local/staged Create/Edit only;
-- transactional Keep / Discard current Edit session / Continue behavior;
-- authentic Gen II DVs/Stat Exp, derived HP DV, split SpA/SpD display from the one stored Special value;
-- six battle stats and six-axis radar;
-- exact Held Item selection domain with preservation of unusual existing bytes;
-- Friendship;
-- named Species picker;
-- named exact-game Move picker;
-- user-facing Pokérus State/Strain/Days controls;
-- immediate PP/PP Ups validation/clamping;
-- gender derived from species + Attack DV;
-- shiny derived from authentic DV patterns;
-- Crystal caught/met time, level, location and original-trainer gender presentation;
-- Gold/Silver hiding of Crystal-only caught/met fields;
-- Party-only Current HP / Max HP / Status presentation;
-- contained touch Back for passive Gen I/II View routed through the same Back action as controller B;
-- exact save/game/revision capability model for future per-format editors.
-
-### Verified staged export
-
-There is one authoritative Generation II save-export implementation:
+## Permanent safety invariants
 
 ```text
-UI Review -> Export
-  -> publishVerifiedStagedEditorExport()
-  -> finalized staged bytes
-  -> strict pre-write parse
-  -> source + edited SHA-256
-  -> temporary app-owned directory
-  -> original_backup.srm + edited.srm
-  -> flush/fsync/close where supported
-  -> disk read-back and byte/hash verification
-  -> strict reparse of the disk bytes
-  -> provenance EDIT_MANIFEST.txt
-  -> same-filesystem publish/rename
-  -> incomplete temp cleanup on failure
+ORIGINAL SOURCE SAVE: IMMUTABLE
+LIVE INSTALLED-GAME WRITE: HARD DISABLED
+LIVE RETROARCH WRITE: HARD DISABLED
+LIVE OTHER-EMULATOR WRITE: HARD DISABLED
+POKEBANK STAGED EDITING: ALLOWED
+READ ACCEPTANCE DOES NOT AUTHORIZE SOURCE WRITES
+UNKNOWN SAVE VARIANTS: FAIL CLOSED
 ```
 
-The GSC UI overlay no longer performs an independent `fopen/fwrite` export sequence. UI success is posted only after the transaction has verified and published. Failure states that the source remains unchanged.
+The accepted PR #74 milestone does not weaken any source-write lock.
 
-### Permanent automated coverage
+## Continuation boundary
 
-The Gen II audit candidate gate includes focused behavior/regression coverage for:
+Production now contains the exact hardware-accepted `c24859ce...` source through merge commit `e0815da5...`.
 
-- parser/discovery/source identity;
-- Level/EXP/Create/transaction semantics;
-- action-sheet and passive View;
-- Crystal caught/met and Party-native presentation;
-- Held Item, Species, Move, Pokérus, PP/PP Ups;
-- gender, shiny, six-stat calculation, radar;
-- verified staged export including disk equality, strict reparse, corruption rejection, cleanup, source immutability and provenance manifest;
-- Gen I, Gen III and Classic Inventory regressions;
-- full host suite and ASan/UBSan;
-- clean devkitA64 build, RomFS, embedded source identity and native-link proof;
-- exact source-addressed `Gen2-Audit` packaging.
+At the beginning of the next development session:
 
-## Audit tracker #69
+1. re-fetch `feature/pokebank-playable` and treat GitHub as authoritative;
+2. preserve any newer production head and never reset backward;
+3. retain all accepted Gen I/II behavior and safety invariants above;
+4. do not reopen PR #74 or rewrite its accepted source checkpoint;
+5. select the next milestone only from explicit owner direction.
 
-The following PR #68 remediation is implemented and is eligible to be marked complete once the final exact candidate SHA is fully green:
-
-- Crystal caught/met meaningful decode;
-- Party-only HP/status View;
-- named/user-facing Species, Move and Pokérus controls;
-- staged export transaction hardening.
-
-Contained passive View touch Back is implemented, but the full touch-only v1 requirement remains **DEFERRED -> #55**.
-
-Global box/controller normalization remains **DEFERRED -> #26** and requires its own dedicated/device-tested pass.
-
-Legacy `PKSEBANK` Storage migration / Master Vault / true Move architecture remains **DEFERRED -> #27**. Legacy Storage is not Master Vault and backup-side operations are not product-level destructive Move semantics.
-
-## Permanent editor architecture
-
-```text
-exact game/save/revision capabilities
-        ↓
-shared View/Create/Edit shell
-        ↓
-generation-specific adapters and user-facing pickers
-        ↓
-local/staged mutations only
-        ↓
-strict serialize/finalize/reparse validation
-        ↓
-verified exported edited copy + original backup + provenance
-        ↓
-future separately approved source-specific write adapter
-```
-
-## Standalone runtime contract
-
-```text
-Runtime root: sdmc:/switch/PokeBank-NX/
-Required /PKSE/: NO
-Required PKSE.nro: NO
-Required PKSM: NO
-Required pkDex: NO
-Required pkHouse: NO
-Required JKSV: NO
-Required Checkpoint: NO
-Required PC PKHeX: NO
-```
-
-External tools may be development references/oracles or optional migration helpers; they are not prerequisites for normal advertised runtime operation.
-
-## Safety
-
-- Original source bytes are immutable.
-- Live installed-game writes are HARD DISABLED.
-- Live RetroArch writes are HARD DISABLED.
-- Live other-emulator writes are HARD DISABLED.
-- Party mutation remains deferred where safety proof is incomplete.
-- Unknown save variants fail closed.
-- Read acceptance does not authorize writes.
-- A staged export is not successful until read-back/hash/strict-reparse/publish completes.
-
-## Final Gen II gate / stop condition
-
-Do not begin another major feature milestone. The exact PR head containing this status refresh is to be treated as the sole candidate source if and only if all exact-head workflows are green. Retrieve the CI-built `PokeBank-NX-Gen2-Audit-<shortsha>.nro`, independently verify hashes/package identity, deliver that exact binary, and STOP coding for owner Gold/Silver/Crystal hardware testing.
-
-PR #68 remains OPEN / DRAFT / NOT MERGED. Gen II remains DEVICE TEST PENDING until the owner accepts the exact candidate artifact.
+**Do not start Gen III automatically.**
