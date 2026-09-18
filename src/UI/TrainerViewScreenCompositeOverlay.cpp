@@ -150,6 +150,21 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 namespace UI {
 namespace {
 
+void clampSourceBoxSelection(TrainerViewScreen& screen) noexcept {
+    if (screen.selectedMode != TrainerViewScreen::ViewMode::Boxes ||
+        !screen.detailViewActive || screen.selectedItemIndex < 0) {
+        return;
+    }
+
+    const int capacity = static_cast<int>(screen.trainer.getSlotsPerBox());
+    if (capacity <= 0) {
+        screen.selectedItemIndex = -1;
+        return;
+    }
+    if (screen.selectedItemIndex >= capacity)
+        screen.selectedItemIndex = capacity - 1;
+}
+
 bool classicPackedMoveLayerAvailable(const TrainerViewScreen& screen) noexcept {
     if (Gen1PokemonEditor::isGen1SourceUX(screen)) {
         const auto& state = Gen1PokemonEditor::ux2StateFor(screen);
@@ -199,6 +214,10 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 
+    // Base navigation still uses the shared modern grid geometry. Normalize the source cursor to
+    // the adapter's native capacity before any source action/move layer sees it.
+    clampSourceBoxSelection(*this);
+
     if (classicPackedMoveLayerAvailable(*this) && ClassicPackedMove::handleInput(*this, down, held, touch)) return;
     if (Gen1PokemonEditor::handleReleaseActionInput(*this, down)) return;
     if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
@@ -217,9 +236,14 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 
     if (Gen1PokemonEditor::handleInputUX(*this, down, held, stick.x, stick.y)) return;
     updateGSCOverlay(pad, touch);
+    clampSourceBoxSelection(*this);
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
+    // Prevent a base-navigation transition from ever presenting a non-existent source slot, even
+    // for the single frame in which the shared 30-slot navigation math crosses the native edge.
+    clampSourceBoxSelection(*this);
+
     if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this)) {
         drawGSCOverlay(fb);
         drawGen2ClassicBoxFooter(*this, fb);
