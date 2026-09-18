@@ -1,6 +1,7 @@
 #include "Integration/Gen2/Gen2StagedEditor.h"
 
 #include <algorithm>
+#include <array>
 
 namespace PokeVault::Integration::Gen2 {
 namespace {
@@ -114,50 +115,72 @@ bool sameStoredPokemon(const PokemonRecord& a, const PokemonRecord& b) noexcept 
 
 bool StagedEditor::beginPackedMove(std::size_t sourceBox, std::size_t sourceSlot,
                                    std::string& error) {
+    const std::array<std::size_t, 1> slots{sourceSlot};
+    return beginPackedGroupMove(sourceBox, slots, error);
+}
+
+bool StagedEditor::beginPackedGroupMove(std::size_t sourceBox,
+                                        std::span<const std::size_t> sourceSlots,
+                                        std::string& error) {
     error.clear();
     if (packedMove_.active) {
-        error = "A Generation II Pokemon is already being carried";
+        error = "A Generation II Pokemon group is already being carried";
         return false;
     }
 
     const auto& layout = packedLayoutFor(metadata_.family);
-    if (sourceBox >= layout.boxCount || sourceBox >= metadata_.boxCount ||
-        sourceSlot >= layout.boxCapacity) {
-        error = "Generation II move source is out of range";
+    if (sourceBox >= layout.boxCount || sourceBox >= metadata_.boxCount || sourceSlots.empty()) {
+        error = "Generation II move selection is empty or out of range";
         return false;
     }
 
-    auto source = boxedPokemon(sourceBox, sourceSlot, error);
-    if (!source) {
-        if (error.empty()) error = "Generation II move source slot is empty";
+    std::vector<std::size_t> ordered(sourceSlots.begin(), sourceSlots.end());
+    std::sort(ordered.begin(), ordered.end());
+    if (ordered.back() >= layout.boxCapacity) {
+        error = "Generation II move source is out of range";
+        return false;
+    }
+    if (std::adjacent_find(ordered.begin(), ordered.end()) != ordered.end()) {
+        error = "Generation II move selection contains duplicate slots";
         return false;
     }
 
     const auto list = boxStart(layout, sourceBox);
     const std::size_t count = staged_[list];
-    if (count == 0 || sourceSlot >= count) {
-        error = "Generation II move source slot is empty";
+    if (count == 0 || ordered.back() >= count) {
+        error = "Generation II move selection contains an empty slot";
         return false;
     }
 
     PackedMoveState state;
     state.active = true;
     state.sourceBox = sourceBox;
-    state.sourceSlot = sourceSlot;
-    state.carried = *source;
+    state.sourceSlots = ordered;
     state.stagedBefore = staged_;
     state.changesBefore = changes_;
     state.expectationsBefore = pokemonExpectations_;
+    state.carried.reserve(ordered.size());
+    for (const auto slot : ordered) {
+        auto pokemon = boxedPokemon(sourceBox, slot, error);
+        if (!pokemon) return false;
+        state.carried.push_back(*pokemon);
+    }
     packedMove_ = std::move(state);
 
+    // Compact the source in one transaction while preserving the exact stored bytes of every
+    // survivor. Selection order is row/slot order, independent of the direction the rectangle grew.
     const auto beforeRemove = staged_;
-    for (std::size_t slot = sourceSlot; slot + 1 < count; ++slot)
-        copyStoredSlot(beforeRemove, layout, sourceBox, slot + 1, staged_, sourceBox, slot);
-
-    const std::size_t last = count - 1;
-    clearStoredSlot(staged_, layout, sourceBox, last);
-    staged_[list] = static_cast<uint8_t>(last);
-    staged_[list + 1 + last] = 0xFF;
+    std::size_t write = 0;
+    for (std::size_t read = 0; read < count; ++read) {
+        if (std::binary_search(ordered.begin(), ordered.end(), read)) continue;
+        if (write != read)
+            copyStoredSlot(beforeRemove, layout, sourceBox, read, staged_, sourceBox, write);
+        ++write;
+    }
+    for (std::size_t slot = write; slot < count; ++slot)
+        clearStoredSlot(staged_, layout, sourceBox, slot);
+    staged_[list] = static_cast<uint8_t>(write);
+    staged_[list + 1 + write] = 0xFF;
 
     if (!syncCurrentBoxCopy(sourceBox, error)) {
         staged_ = packedMove_.stagedBefore;
@@ -167,18 +190,16 @@ bool StagedEditor::beginPackedMove(std::size_t sourceBox, std::size_t sourceSlot
         return false;
     }
 
-    // Expectations describe staged coordinates. Compaction shifts every record after the
-    // picked slot one position left; the carried record has no staged coordinate until drop.
     pokemonExpectations_.erase(
         std::remove_if(pokemonExpectations_.begin(), pokemonExpectations_.end(),
             [&](PokemonExpectation& expectation) {
                 if (expectation.box != sourceBox) return false;
-                if (expectation.slot == sourceSlot) return true;
-                if (expectation.slot > sourceSlot) --expectation.slot;
+                if (std::binary_search(ordered.begin(), ordered.end(), expectation.slot)) return true;
+                const auto before = std::lower_bound(ordered.begin(), ordered.end(), expectation.slot);
+                expectation.slot -= static_cast<std::size_t>(before - ordered.begin());
                 return false;
             }),
         pokemonExpectations_.end());
-
     return true;
 }
 
@@ -186,10 +207,17 @@ bool StagedEditor::placePackedMove(std::size_t destinationBox,
                                    std::size_t destinationSlot,
                                    std::size_t& placedSlot,
                                    std::string& error) {
+    return placePackedGroupMove(destinationBox, destinationSlot, placedSlot, error);
+}
+
+bool StagedEditor::placePackedGroupMove(std::size_t destinationBox,
+                                        std::size_t destinationSlot,
+                                        std::size_t& firstPlacedSlot,
+                                        std::string& error) {
     error.clear();
-    placedSlot = 0;
-    if (!packedMove_.active) {
-        error = "No Generation II Pokemon is being carried";
+    firstPlacedSlot = 0;
+    if (!packedMove_.active || packedMove_.sourceSlots.empty()) {
+        error = "No Generation II Pokemon group is being carried";
         return false;
     }
 
@@ -202,8 +230,9 @@ bool StagedEditor::placePackedMove(std::size_t destinationBox,
 
     const auto list = boxStart(layout, destinationBox);
     const std::size_t count = staged_[list];
-    if (count >= layout.boxCapacity) {
-        error = "This Generation II box is full";
+    const std::size_t groupSize = packedMove_.sourceSlots.size();
+    if (count + groupSize > layout.boxCapacity) {
+        error = "This Generation II box does not have enough room for the selected Pokemon";
         return false;
     }
 
@@ -211,15 +240,20 @@ bool StagedEditor::placePackedMove(std::size_t destinationBox,
     const auto stagedBeforePlace = staged_;
     const auto expectationsBeforePlace = pokemonExpectations_;
 
-    for (std::size_t slot = count; slot > insert; --slot)
-        copyStoredSlot(stagedBeforePlace, layout, destinationBox, slot - 1,
-                       staged_, destinationBox, slot);
+    for (std::size_t slot = count; slot > insert; --slot) {
+        const std::size_t from = slot - 1;
+        copyStoredSlot(stagedBeforePlace, layout, destinationBox, from,
+                       staged_, destinationBox, from + groupSize);
+    }
+    for (std::size_t i = 0; i < groupSize; ++i) {
+        copyStoredSlot(packedMove_.stagedBefore, layout,
+                       packedMove_.sourceBox, packedMove_.sourceSlots[i],
+                       staged_, destinationBox, insert + i);
+    }
 
-    copyStoredSlot(packedMove_.stagedBefore, layout,
-                   packedMove_.sourceBox, packedMove_.sourceSlot,
-                   staged_, destinationBox, insert);
-    staged_[list] = static_cast<uint8_t>(count + 1);
-    staged_[list + 1 + count + 1] = 0xFF;
+    const std::size_t newCount = count + groupSize;
+    staged_[list] = static_cast<uint8_t>(newCount);
+    staged_[list + 1 + newCount] = 0xFF;
 
     if (!syncCurrentBoxCopy(destinationBox, error)) {
         staged_ = stagedBeforePlace;
@@ -227,31 +261,39 @@ bool StagedEditor::placePackedMove(std::size_t destinationBox,
         return false;
     }
 
-    auto verified = boxedPokemon(destinationBox, insert, error);
-    if (!verified || !sameStoredPokemon(*verified, packedMove_.carried)) {
-        if (error.empty()) error = "Moved Generation II Pokemon failed exact staged round-trip";
-        staged_ = stagedBeforePlace;
-        pokemonExpectations_ = expectationsBeforePlace;
-        return false;
+    for (std::size_t i = 0; i < groupSize; ++i) {
+        auto verified = boxedPokemon(destinationBox, insert + i, error);
+        if (!verified || !sameStoredPokemon(*verified, packedMove_.carried[i])) {
+            if (error.empty()) error = "Moved Generation II Pokemon group failed exact staged round-trip";
+            staged_ = stagedBeforePlace;
+            pokemonExpectations_ = expectationsBeforePlace;
+            return false;
+        }
     }
 
     for (auto& expectation : pokemonExpectations_) {
         if (expectation.box == destinationBox && expectation.slot >= insert)
-            ++expectation.slot;
+            expectation.slot += groupSize;
     }
-    rememberPokemonExpectation(destinationBox, insert, *verified);
+    for (std::size_t i = 0; i < groupSize; ++i) {
+        auto verified = boxedPokemon(destinationBox, insert + i, error);
+        if (!verified) {
+            staged_ = stagedBeforePlace;
+            pokemonExpectations_ = expectationsBeforePlace;
+            return false;
+        }
+        rememberPokemonExpectation(destinationBox, insert + i, *verified);
+    }
 
     setChange(
-        "packed_move:" + std::to_string(packedMove_.sourceBox) + ":" +
-            std::to_string(packedMove_.sourceSlot) + "->" +
+        "packed_group_move:" + std::to_string(packedMove_.sourceBox) + ":" +
+            std::to_string(packedMove_.sourceSlots.front()) + ":" + std::to_string(groupSize) + "->" +
             std::to_string(destinationBox) + ":" + std::to_string(insert),
-        "Packed Pokemon move",
-        "Box " + std::to_string(packedMove_.sourceBox + 1) +
-            " Slot " + std::to_string(packedMove_.sourceSlot + 1),
-        "Box " + std::to_string(destinationBox + 1) +
-            " Slot " + std::to_string(insert + 1));
+        groupSize == 1 ? "Packed Pokemon move" : "Packed Pokemon group move",
+        "Box " + std::to_string(packedMove_.sourceBox + 1) + " / " + std::to_string(groupSize) + " Pokemon",
+        "Box " + std::to_string(destinationBox + 1) + " Slot " + std::to_string(insert + 1));
 
-    placedSlot = insert;
+    firstPlacedSlot = insert;
     packedMove_ = {};
     return true;
 }
@@ -264,6 +306,25 @@ bool StagedEditor::cancelPackedMove(std::string& error) {
     changes_ = packedMove_.changesBefore;
     pokemonExpectations_ = packedMove_.expectationsBefore;
     packedMove_ = {};
+    return true;
+}
+
+bool StagedEditor::stageReleaseBoxPokemon(std::size_t box, std::size_t slot,
+                                          std::string& error) {
+    error.clear();
+    if (packedMove_.active) {
+        error = "Finish or cancel the current Pokemon move before Release";
+        return false;
+    }
+    auto pokemon = boxedPokemon(box, slot, error);
+    if (!pokemon) return false;
+    if (!beginPackedMove(box, slot, error)) return false;
+
+    const std::string before = pokemon->nickname + " Lv. " + std::to_string(pokemon->level);
+    packedMove_ = {}; // The packed removal is now the staged Release transaction.
+    setChange("release:" + std::to_string(box) + ":" + std::to_string(slot),
+              "Box " + std::to_string(box + 1) + " Slot " + std::to_string(slot + 1) + " Release",
+              before, "Released (staged only)");
     return true;
 }
 

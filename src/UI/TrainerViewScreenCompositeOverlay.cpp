@@ -151,9 +151,10 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 #undef drawFinalGen2Surface
 #include "Gen2HardwareFinalFix.inc"
 
-// Part 1 of PR #74: packed single-Pokemon Y pickup/drop. This is deliberately layered
-// after the accepted Gen I/II editor surfaces so View/Edit/Create remain byte-for-byte intact.
+// PR #74 layers only box movement/multi-select and Release action semantics over the accepted
+// fullscreen View/Edit/Create implementation. Those accepted workspaces remain untouched.
 #include "ClassicPackedMoveOverlay.inc"
+#include "ClassicReleaseActionFix.inc"
 
 namespace UI {
 namespace {
@@ -190,7 +191,9 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 
-    if (ClassicPackedMove::handleInput(*this, down, touch)) return;
+    if (ClassicPackedMove::handleInput(*this, down, held, touch)) return;
+    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down)) return;
+    if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
 
     if (Gen2PokemonEditor::handleFinalGen2SurfaceInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen2PokemonEditor::handlePickerInput(*this, down, held, stick.x, stick.y, touch)) return;
@@ -213,6 +216,9 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
         drawGSCOverlay(fb);
         drawGen2ClassicBoxFooter(*this, fb);
     }
+
+    if (Gen2PokemonEditor::drawReleaseActionSurface(*this, fb)) return;
+    if (Gen1PokemonEditor::drawReleaseActionSurface(*this, fb)) return;
 
     if (Gen2PokemonEditor::drawFinalGen2Surface(*this, fb)) {
         Gen2PokemonEditor::drawPickerOverlay(*this, fb);

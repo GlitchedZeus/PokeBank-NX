@@ -2,6 +2,7 @@
 #define POKEBANK_GEN1_STAGED_POKEMON_EDITOR_H
 
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -55,14 +56,18 @@ public:
     bool stageClone(size_t sourceBox, size_t sourceSlot, size_t box, size_t slot, std::string& error);
     bool stageRemove(size_t box, size_t slot, std::string& error);
 
-    // Packed single-Pokemon relocation used by the native classic box Y-move interaction.
-    // Pickup removes + compacts immediately in the STAGED view. Placement inserts at the
-    // requested packed position. Cancel restores the exact staged snapshot from before pickup.
+    // Packed relocation engine used by the native classic box Y interaction. The single-Pokemon
+    // entry points remain the Part 1 contract; Part 2 extends the same engine to an ordered group.
     bool beginPackedMove(size_t sourceBox, size_t sourceSlot, std::string& error);
     bool placePackedMove(size_t destinationBox, size_t destinationSlot,
                          size_t& placedSlot, std::string& error);
+    bool beginPackedGroupMove(size_t sourceBox, std::span<const size_t> sourceSlots,
+                              std::string& error);
+    bool placePackedGroupMove(size_t destinationBox, size_t destinationSlot,
+                              size_t& firstPlacedSlot, std::string& error);
     bool cancelPackedMove(std::string& error);
     bool packedMoveActive() const noexcept { return packedMove_.active; }
+    size_t packedMoveCount() const noexcept { return packedMove_.sourceSlots.size(); }
 
     bool revertPokemon(size_t box, size_t slot, std::string& error);
     void discard() noexcept;
@@ -90,7 +95,7 @@ private:
     struct PackedMoveState {
         bool active = false;
         size_t sourceBox = 0;
-        size_t sourceSlot = 0;
+        std::vector<size_t> sourceSlots;
         std::vector<uint8_t> beforeBytes;
     };
 

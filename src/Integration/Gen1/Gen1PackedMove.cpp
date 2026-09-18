@@ -1,6 +1,7 @@
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 
 #include <algorithm>
+#include <array>
 
 namespace PokeVault::Integration::Gen1 {
 namespace {
@@ -56,32 +57,60 @@ void initializeBanks(std::vector<uint8_t>& bytes, const Metadata& metadata) {
 
 bool StagedPokemonEditor::beginPackedMove(std::size_t sourceBox, std::size_t sourceSlot,
                                           std::string& error) {
+    const std::array<std::size_t, 1> slots{sourceSlot};
+    return beginPackedGroupMove(sourceBox, slots, error);
+}
+
+bool StagedPokemonEditor::beginPackedGroupMove(std::size_t sourceBox,
+                                               std::span<const std::size_t> sourceSlots,
+                                               std::string& error) {
     error.clear();
     if (packedMove_.active) {
-        error = "A Generation I Pokemon is already being carried";
+        error = "A Generation I Pokemon group is already being carried";
         return false;
     }
-    if (sourceBox >= 12 || sourceSlot >= kCapacity) {
-        error = "Generation I move source is out of range";
+    if (sourceBox >= 12 || sourceSlots.empty()) {
+        error = "Generation I move selection is empty or out of range";
         return false;
     }
 
-    const auto source = boxedPokemon(sourceBox, sourceSlot, error);
-    if (!source) {
-        if (error.empty()) error = "Generation I move source slot is empty";
+    std::vector<std::size_t> ordered(sourceSlots.begin(), sourceSlots.end());
+    std::sort(ordered.begin(), ordered.end());
+    if (ordered.back() >= kCapacity) {
+        error = "Generation I move source is out of range";
         return false;
+    }
+    if (std::adjacent_find(ordered.begin(), ordered.end()) != ordered.end()) {
+        error = "Generation I move selection contains duplicate slots";
+        return false;
+    }
+
+    for (const auto slot : ordered) {
+        std::string slotError;
+        if (!boxedPokemon(sourceBox, slot, slotError)) {
+            error = slotError.empty() ? "Generation I move selection contains an empty slot" : slotError;
+            return false;
+        }
     }
 
     PackedMoveState state;
     state.active = true;
     state.sourceBox = sourceBox;
-    state.sourceSlot = sourceSlot;
+    state.sourceSlots = ordered;
     state.beforeBytes.assign(stagedBytes().begin(), stagedBytes().end());
     packedMove_ = std::move(state);
 
-    if (!stageRemove(sourceBox, sourceSlot, error)) {
-        packedMove_ = {};
-        return false;
+    // Remove from the highest source index downward. Each proven Part 1 remove compacts the
+    // staged box, so lower selected coordinates stay stable until their turn.
+    for (auto it = ordered.rbegin(); it != ordered.rend(); ++it) {
+        if (!stageRemove(sourceBox, *it, error)) {
+            auto restore = packedMove_.beforeBytes;
+            std::string restoreError;
+            commit(std::move(restore), restoreError);
+            packedMove_ = {};
+            if (error.empty()) error = restoreError.empty() ? "Generation I group pickup failed" : restoreError;
+            return false;
+        }
     }
     return true;
 }
@@ -90,10 +119,17 @@ bool StagedPokemonEditor::placePackedMove(std::size_t destinationBox,
                                           std::size_t destinationSlot,
                                           std::size_t& placedSlot,
                                           std::string& error) {
+    return placePackedGroupMove(destinationBox, destinationSlot, placedSlot, error);
+}
+
+bool StagedPokemonEditor::placePackedGroupMove(std::size_t destinationBox,
+                                               std::size_t destinationSlot,
+                                               std::size_t& firstPlacedSlot,
+                                               std::string& error) {
     error.clear();
-    placedSlot = 0;
-    if (!packedMove_.active) {
-        error = "No Generation I Pokemon is being carried";
+    firstPlacedSlot = 0;
+    if (!packedMove_.active || packedMove_.sourceSlots.empty()) {
+        error = "No Generation I Pokemon group is being carried";
         return false;
     }
     if (destinationBox >= 12 || destinationSlot >= kCapacity) {
@@ -107,22 +143,29 @@ bool StagedPokemonEditor::placePackedMove(std::size_t destinationBox,
 
     const auto destinationOffset = boxOffset(metadata(), destinationBox);
     const std::size_t count = bytes[destinationOffset];
-    if (count >= kCapacity) {
-        error = "This Generation I box is full";
+    const std::size_t groupSize = packedMove_.sourceSlots.size();
+    if (count + groupSize > kCapacity) {
+        error = "This Generation I box does not have enough room for the selected Pokemon";
         return false;
     }
 
     const std::size_t insert = std::min(destinationSlot, count);
     const auto beforeInsert = bytes;
-    for (std::size_t slot = count; slot > insert; --slot)
-        copySlot(beforeInsert, destinationOffset, slot - 1, bytes, destinationOffset, slot);
+    for (std::size_t slot = count; slot > insert; --slot) {
+        const std::size_t from = slot - 1;
+        copySlot(beforeInsert, destinationOffset, from,
+                 bytes, destinationOffset, from + groupSize);
+    }
 
     const auto sourceOffset = boxOffset(metadata(), packedMove_.sourceBox);
-    copySlot(packedMove_.beforeBytes, sourceOffset, packedMove_.sourceSlot,
-             bytes, destinationOffset, insert);
+    for (std::size_t i = 0; i < groupSize; ++i) {
+        copySlot(packedMove_.beforeBytes, sourceOffset, packedMove_.sourceSlots[i],
+                 bytes, destinationOffset, insert + i);
+    }
 
-    bytes[destinationOffset] = static_cast<uint8_t>(count + 1);
-    bytes[destinationOffset + 1 + count + 1] = 0xFF;
+    const std::size_t newCount = count + groupSize;
+    bytes[destinationOffset] = static_cast<uint8_t>(newCount);
+    bytes[destinationOffset + 1 + newCount] = 0xFF;
 
     if (destinationBox == metadata().currentBox && (bytes[0x284C] & 0x80))
         std::copy_n(bytes.begin() + static_cast<std::ptrdiff_t>(kCurrentBox), kBoxSize,
@@ -130,7 +173,7 @@ bool StagedPokemonEditor::placePackedMove(std::size_t destinationBox,
 
     if (!commit(std::move(bytes), error)) return false;
 
-    placedSlot = insert;
+    firstPlacedSlot = insert;
     packedMove_ = {};
     return true;
 }
