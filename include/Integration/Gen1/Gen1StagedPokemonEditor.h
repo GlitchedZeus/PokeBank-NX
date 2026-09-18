@@ -2,7 +2,9 @@
 #define POKEBANK_GEN1_STAGED_POKEMON_EDITOR_H
 
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
+#include <span>
 #include <string_view>
+#include <vector>
 
 namespace PokeVault::Integration::Gen1 {
 struct PokemonChange {
@@ -53,6 +55,20 @@ public:
     bool stageAdd(size_t box, size_t slot, const BoxPokemonCreate&, std::string& error);
     bool stageClone(size_t sourceBox, size_t sourceSlot, size_t box, size_t slot, std::string& error);
     bool stageRemove(size_t box, size_t slot, std::string& error);
+
+    // Packed relocation engine used by the native classic box Y interaction. The single-Pokemon
+    // entry points remain the Part 1 contract; Part 2 extends the same engine to an ordered group.
+    bool beginPackedMove(size_t sourceBox, size_t sourceSlot, std::string& error);
+    bool placePackedMove(size_t destinationBox, size_t destinationSlot,
+                         size_t& placedSlot, std::string& error);
+    bool beginPackedGroupMove(size_t sourceBox, std::span<const size_t> sourceSlots,
+                              std::string& error);
+    bool placePackedGroupMove(size_t destinationBox, size_t destinationSlot,
+                              size_t& firstPlacedSlot, std::string& error);
+    bool cancelPackedMove(std::string& error);
+    bool packedMoveActive() const noexcept { return packedMove_.active; }
+    size_t packedMoveCount() const noexcept { return packedMove_.sourceSlots.size(); }
+
     bool revertPokemon(size_t box, size_t slot, std::string& error);
     void discard() noexcept;
     bool hasPendingChanges() const noexcept { return !changes_.empty(); }
@@ -76,12 +92,20 @@ public:
     static bool encodeName(std::string_view, size_t maximum, std::array<uint8_t,11>&,
                            std::string& error);
 private:
+    struct PackedMoveState {
+        bool active = false;
+        size_t sourceBox = 0;
+        std::vector<size_t> sourceSlots;
+        std::vector<uint8_t> beforeBytes;
+    };
+
     explicit StagedPokemonEditor(std::shared_ptr<const ReadOnlySave> source);
     bool destination(size_t box, size_t slot, std::string& error) const;
     bool commit(std::vector<uint8_t> candidate, std::string& error);
     void rebuildChanges();
     std::shared_ptr<const ReadOnlySave> original_, view_;
     std::vector<PokemonChange> changes_;
+    PackedMoveState packedMove_;
 };
 } // namespace PokeVault::Integration::Gen1
 #endif

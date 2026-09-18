@@ -109,6 +109,20 @@ public:
                               std::string& error);
     bool stageAddBoxPokemon(std::size_t destinationBox, const BoxPokemonCreate& pokemon,
                             std::size_t& destinationSlot, std::string& error);
+    bool stageReleaseBoxPokemon(std::size_t box, std::size_t slot, std::string& error);
+
+    // Packed relocation engine used by the native classic box Y interaction. The single-Pokemon
+    // entry points remain the Part 1 contract; Part 2 extends the same engine to an ordered group.
+    bool beginPackedMove(std::size_t sourceBox, std::size_t sourceSlot, std::string& error);
+    bool placePackedMove(std::size_t destinationBox, std::size_t destinationSlot,
+                         std::size_t& placedSlot, std::string& error);
+    bool beginPackedGroupMove(std::size_t sourceBox, std::span<const std::size_t> sourceSlots,
+                              std::string& error);
+    bool placePackedGroupMove(std::size_t destinationBox, std::size_t destinationSlot,
+                              std::size_t& firstPlacedSlot, std::string& error);
+    bool cancelPackedMove(std::string& error);
+    bool packedMoveActive() const noexcept { return packedMove_.active; }
+    std::size_t packedMoveCount() const noexcept { return packedMove_.sourceSlots.size(); }
 
     static bool isShinyDVs(const std::array<uint8_t, 4>& dvs) noexcept;
     static uint8_t derivedHPDV(const std::array<uint8_t, 4>& dvs) noexcept;
@@ -126,6 +140,16 @@ private:
         std::size_t box = 0;
         std::size_t slot = 0;
         PokemonRecord expected;
+    };
+
+    struct PackedMoveState {
+        bool active = false;
+        std::size_t sourceBox = 0;
+        std::vector<std::size_t> sourceSlots;
+        std::vector<PokemonRecord> carried;
+        std::vector<uint8_t> stagedBefore;
+        std::vector<StagedChange> changesBefore;
+        std::vector<PokemonExpectation> expectationsBefore;
     };
 
     explicit StagedEditor(const ReadOnlySave& source);
@@ -153,6 +177,7 @@ private:
     uint32_t money_ = 0;
     std::vector<StagedChange> changes_;
     std::vector<PokemonExpectation> pokemonExpectations_;
+    PackedMoveState packedMove_;
 };
 
 } // namespace PokeVault::Integration::Gen2

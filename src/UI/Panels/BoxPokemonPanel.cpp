@@ -90,10 +90,12 @@ namespace Panels {
 
         const auto& currentBox = screen.trainer.boxes[screen.selectedBoxIndex];
 
-        // ---- Grid geometry (LGPE 5x5=25, others 6x5=30) ----
+        // ---- Source/game grid geometry. Keep the established 5- or 6-column pitch, but only
+        // draw the adapter's real native slots. App-owned Legacy Storage remains a separate 30-slot grid.
         const int slotsPerBox = static_cast<int>(screen.trainer.getSlotsPerBox());
         const int GRID_COLS = (slotsPerBox == 25) ? 5 : 6;
         const int GRID_ROWS = 5;
+        const int visibleSlots = std::clamp(slotsPerBox, 0, GRID_COLS * GRID_ROWS);
 
         const int gridTop = y + headerH + 8;
         const int gridBottom = y + height - 12;   // selection info now lives in the summary side-panel
@@ -118,70 +120,73 @@ namespace Panels {
         if (screen.swapActive &&
             screen.swapSourceBox >= 0 && screen.swapSourceBox < static_cast<int>(screen.trainer.boxes.size()) &&
             screen.swapSourceSlot >= 0 && screen.swapSourceSlot < slotsPerBox) {
-            carried = screen.trainer.boxes[screen.swapSourceBox][screen.swapSourceSlot].get();
+            const auto& sourceBox = screen.trainer.boxes[screen.swapSourceBox];
+            if (screen.swapSourceSlot < static_cast<int>(sourceBox.size()))
+                carried = sourceBox[screen.swapSourceSlot].get();
         }
 
         const double nowT = fb.getTimeSeconds();   // drives the cursor's bob
 
-        for (int row = 0; row < GRID_ROWS; ++row) {
-            for (int col = 0; col < GRID_COLS; ++col) {
-                const int slotIndex = row * GRID_COLS + col;
-                const int cellX = gridX + col * colPitch;
-                const int cellY = gridTop + row * rowPitch;
-                const int cx = cellX + colPitch / 2;
-                const int cy = cellY + rowPitch / 2;
+        for (int slotIndex = 0; slotIndex < visibleSlots; ++slotIndex) {
+            const int row = slotIndex / GRID_COLS;
+            const int col = slotIndex % GRID_COLS;
+            const int cellX = gridX + col * colPitch;
+            const int cellY = gridTop + row * rowPitch;
+            const int cx = cellX + colPitch / 2;
+            const int cy = cellY + rowPitch / 2;
 
-                // Whole-cell tap target (finger-friendly, larger than the disc).
-                screen.touchButtons.push_back({ slotIndex, cellX, cellY, colPitch, rowPitch });
+            // Whole-cell tap target (finger-friendly, larger than the disc). Invalid/native-missing
+            // cells are not drawn and never receive touch targets.
+            screen.touchButtons.push_back({ slotIndex, cellX, cellY, colPitch, rowPitch });
 
-                const bool selected = screen.detailViewActive && slotIndex == screen.selectedItemIndex;
-                const bool grabbed  = screen.swapActive &&
-                                      screen.swapSourceBox == screen.selectedBoxIndex &&
-                                      screen.swapSourceSlot == slotIndex;
+            const bool selected = screen.detailViewActive && slotIndex == screen.selectedItemIndex;
+            const bool grabbed  = screen.swapActive &&
+                                  screen.swapSourceBox == screen.selectedBoxIndex &&
+                                  screen.swapSourceSlot == slotIndex;
 
-                const auto& pokemon = currentBox[slotIndex];
-                std::string speciesName = pokemon ? std::string(pokemon->species()) : "";
-                // A grabbed slot renders empty: its occupant is drawn riding the cursor instead, so
-                // showing it here too would put the same Pokemon on screen twice.
-                const bool empty = grabbed || !pokemon || speciesName == "None" || speciesName == "Empty" ||
-                                   pokemon->speciesID() == 0;
+            const ::Pokemon::Pokemon* pokemon = slotIndex < static_cast<int>(currentBox.size())
+                ? currentBox[slotIndex].get() : nullptr;
+            std::string speciesName = pokemon ? std::string(pokemon->species()) : "";
+            // A grabbed slot renders empty: its occupant is drawn riding the cursor instead, so
+            // showing it here too would put the same Pokemon on screen twice.
+            const bool empty = grabbed || !pokemon || speciesName == "None" || speciesName == "Empty" ||
+                               pokemon->speciesID() == 0;
 
-                // Disc: occupied a touch lighter than empty for subtle depth.
-                fb.drawFilledCircle(cx, cy, discR, empty ? Colors::Panel : Colors::PanelAlt);
+            // Disc: occupied a touch lighter than empty for subtle depth.
+            fb.drawFilledCircle(cx, cy, discR, empty ? Colors::Panel : Colors::PanelAlt);
 
-                if (empty) {
-                    fb.drawCircle(cx, cy, discR, Colors::Border, 1);
+            if (empty) {
+                fb.drawCircle(cx, cy, discR, Colors::Border, 1);
+            } else {
+                const bool isShiny = pokemon->isShiny(pokemon->id32(), speciesName);
+                int sz = std::min(static_cast<int>(discR * 1.8), colPitch - 6);
+                if (pokemon->isEgg()) {
+                    // Eggs show as an egg in the grid; the summary panel still shows the species.
+                    fb.drawEgg(cx, cy, sz);
                 } else {
-                    const bool isShiny = pokemon->isShiny(pokemon->id32(), speciesName);
-                    int sz = std::min(static_cast<int>(discR * 1.8), colPitch - 6);
-                    if (pokemon->isEgg()) {
-                        // Eggs show as an egg in the grid; the summary panel still shows the species.
-                        fb.drawEgg(cx, cy, sz);
-                    } else {
-                        Sprite* sprite = SpriteManager::getIconSprite(pokemon->speciesID(), pokemon->form(), isShiny);
-                        if (sprite && sprite->data) {
-                            fb.drawImageScaled(cx - sz / 2, cy - sz / 2, sprite->width, sprite->height,
-                                               sz, sz, sprite->data, sprite->channels);
-                        }
+                    Sprite* sprite = SpriteManager::getIconSprite(pokemon->speciesID(), pokemon->form(), isShiny);
+                    if (sprite && sprite->data) {
+                        fb.drawImageScaled(cx - sz / 2, cy - sz / 2, sprite->width, sprite->height,
+                                           sz, sz, sprite->data, sprite->channels);
                     }
-                    // Markers: partner heart (top-left), party number (bottom-left), shiny star (top-right).
-                    if (screen.trainer.isStarterPokemon(screen.selectedBoxIndex, slotIndex))
-                        fb.drawSymbol(cx - discR, cy - discR + 2, "♥", Colors::PartnerHeart);
-                    int partyPos = screen.trainer.getPartyPosition(screen.selectedBoxIndex, slotIndex);
-                    if (partyPos > 0) {
-                        // Gold badge + dark digit (bottom-left), legible on any sprite in either theme.
-                        const std::string n = std::to_string(partyPos);
-                        const int bx = cx - discR + 9, by = cy + discR - 9;
-                        fb.drawFilledCircle(bx, by, 9, Colors::PartyBadge);
-                        int tw, th; fb.measureText(n, tw, th, TextStyle::Caption);
-                        fb.drawText(bx - tw / 2, by - th / 2, n, Colors::PartyBadgeText, TextStyle::Caption);
-                    }
-                    if (isShiny)
-                        fb.drawShinyMark(cx + discR - 15, cy - discR + 1, 15, Colors::ShinyStar);
                 }
-
-                if (selected) { selCx = cx; selDiscTop = cy - discR; selDiscR = discR; haveSel = true; }
+                // Markers: partner heart (top-left), party number (bottom-left), shiny star (top-right).
+                if (screen.trainer.isStarterPokemon(screen.selectedBoxIndex, slotIndex))
+                    fb.drawSymbol(cx - discR, cy - discR + 2, "♥", Colors::PartnerHeart);
+                int partyPos = screen.trainer.getPartyPosition(screen.selectedBoxIndex, slotIndex);
+                if (partyPos > 0) {
+                    // Gold badge + dark digit (bottom-left), legible on any sprite in either theme.
+                    const std::string n = std::to_string(partyPos);
+                    const int bx = cx - discR + 9, by = cy + discR - 9;
+                    fb.drawFilledCircle(bx, by, 9, Colors::PartyBadge);
+                    int tw, th; fb.measureText(n, tw, th, TextStyle::Caption);
+                    fb.drawText(bx - tw / 2, by - th / 2, n, Colors::PartyBadgeText, TextStyle::Caption);
+                }
+                if (isShiny)
+                    fb.drawShinyMark(cx + discR - 15, cy - discR + 1, 15, Colors::ShinyStar);
             }
+
+            if (selected) { selCx = cx; selDiscTop = cy - discR; selDiscR = discR; haveSel = true; }
         }
 
         fb.drawRoundedRect(x, y, width, height, 16, Colors::Border, 1);
