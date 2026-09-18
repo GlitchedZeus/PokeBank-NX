@@ -130,6 +130,15 @@ const char* releaseActionLabel(PokeBank::UIModel::SharedPokemonEditor::Action ac
     return PokeBank::UIModel::SharedPokemonEditor::actionLabel(action);
 }
 
+void dismissActionSheetForWorkspace(TrainerViewScreen& screen) {
+    auto& legacy = editorOverlayState(screen);
+    legacy.active = false;
+    legacy.review = false;
+    legacy.pokemonActions = false;
+    legacy.pokemonFields = false;
+    legacy.pokemonRow = 0;
+}
+
 bool confirmRelease(TrainerViewScreen& screen) {
     auto* editor = stagedEditor(screen);
     auto& legacy = editorOverlayState(screen);
@@ -222,10 +231,13 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             editState.box = legacy.pokemonBox;
             editState.slot = legacy.pokemonSlot;
             editState.begin(*pokemon, PokeBank::UIModel::Gen2PokemonEditor::SessionMode::View);
+            dismissActionSheetForWorkspace(screen);
             screen.controllerNavigation.reset();
             return true;
         case Action::Edit:
-            return beginEdit(screen, legacy.pokemonBox, legacy.pokemonSlot);
+            if (beginEdit(screen, legacy.pokemonBox, legacy.pokemonSlot))
+                dismissActionSheetForWorkspace(screen);
+            return true;
         case Action::Clone: {
             if (!pokemon) return true;
             auto& shared = sharedSurfaceStateFor(screen);
@@ -247,7 +259,9 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             return true;
         }
         case Action::Add:
-            return beginCreate(screen, legacy.pokemonBox);
+            if (beginCreate(screen, legacy.pokemonBox))
+                dismissActionSheetForWorkspace(screen);
+            return true;
         case Action::Review:
             legacy.review = true;
             legacy.reviewRow = 0;
