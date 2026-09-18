@@ -110,6 +110,15 @@ public:
     bool stageAddBoxPokemon(std::size_t destinationBox, const BoxPokemonCreate& pokemon,
                             std::size_t& destinationSlot, std::string& error);
 
+    // Packed single-Pokemon relocation used by the native classic box Y-move interaction.
+    // Pickup compacts the staged source immediately, placement inserts without sparse holes,
+    // and cancel restores the exact pre-pickup staged state.
+    bool beginPackedMove(std::size_t sourceBox, std::size_t sourceSlot, std::string& error);
+    bool placePackedMove(std::size_t destinationBox, std::size_t destinationSlot,
+                         std::size_t& placedSlot, std::string& error);
+    bool cancelPackedMove(std::string& error);
+    bool packedMoveActive() const noexcept { return packedMove_.active; }
+
     static bool isShinyDVs(const std::array<uint8_t, 4>& dvs) noexcept;
     static uint8_t derivedHPDV(const std::array<uint8_t, 4>& dvs) noexcept;
     static uint8_t gen2MoveBasePP(uint16_t move) noexcept;
@@ -126,6 +135,16 @@ private:
         std::size_t box = 0;
         std::size_t slot = 0;
         PokemonRecord expected;
+    };
+
+    struct PackedMoveState {
+        bool active = false;
+        std::size_t sourceBox = 0;
+        std::size_t sourceSlot = 0;
+        PokemonRecord carried;
+        std::vector<uint8_t> stagedBefore;
+        std::vector<StagedChange> changesBefore;
+        std::vector<PokemonExpectation> expectationsBefore;
     };
 
     explicit StagedEditor(const ReadOnlySave& source);
@@ -153,6 +172,7 @@ private:
     uint32_t money_ = 0;
     std::vector<StagedChange> changes_;
     std::vector<PokemonExpectation> pokemonExpectations_;
+    PackedMoveState packedMove_;
 };
 
 } // namespace PokeVault::Integration::Gen2
