@@ -27,7 +27,9 @@ namespace Panels {
         return n;
     }
 
-    // Draw a compact, non-interactive preview of the current box (disc + sprite per slot).
+    // Draw a compact, non-interactive preview of the current box (disc + sprite per native slot).
+    // Source/game boxes expose their real adapter capacity here; app-owned Legacy Storage keeps its
+    // independent 30-slot bank layout.
     static void drawBoxPreview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
         constexpr int headerH = 40;
         fb.drawFilledRoundedRect(x, y, w, headerH, 16, Colors::AccentDim);
@@ -45,6 +47,7 @@ namespace Panels {
         const int slotsPerBox = static_cast<int>(screen.trainer.getSlotsPerBox());
         const int cols = (slotsPerBox == 25) ? 5 : 6;
         const int rows = 5;
+        const int visibleSlots = std::clamp(slotsPerBox, 0, cols * rows);
         const int gx = x + 16, gy = y + headerH + 10;
         const int gw = w - 32, gh = h - headerH - 20;
         const int colPitch = gw / cols, rowPitch = gh / rows;
@@ -52,24 +55,23 @@ namespace Panels {
         if (discR < 14) discR = 14;
 
         const auto& curBox = screen.trainer.boxes[box];
-        for (int r = 0; r < rows; ++r) {
-            for (int c = 0; c < cols; ++c) {
-                const int idx = r * cols + c;
-                const int cx = gx + c * colPitch + colPitch / 2;
-                const int cy = gy + r * rowPitch + rowPitch / 2;
-                const auto& mon = curBox[idx];
-                const bool empty = !mon || mon->speciesID() == 0;
-                fb.drawFilledCircle(cx, cy, discR, empty ? Colors::Panel : Colors::PanelAlt);
-                if (empty) { fb.drawCircle(cx, cy, discR, Colors::Border, 1); continue; }
-                int sz = std::min(static_cast<int>(discR * 1.8), colPitch - 4);
-                if (mon->isEgg()) {
-                    fb.drawEgg(cx, cy, sz);  // eggs show as an egg in the box preview too
-                } else {
-                    bool shiny = mon->isShiny(mon->id32(), mon->species());
-                    Sprite* sp = SpriteManager::getIconSprite(mon->speciesID(), mon->form(), shiny);
-                    if (sp && sp->data) {
-                        fb.drawImageScaled(cx - sz / 2, cy - sz / 2, sp->width, sp->height, sz, sz, sp->data, sp->channels);
-                    }
+        for (int idx = 0; idx < visibleSlots; ++idx) {
+            const int r = idx / cols;
+            const int c = idx % cols;
+            const int cx = gx + c * colPitch + colPitch / 2;
+            const int cy = gy + r * rowPitch + rowPitch / 2;
+            const ::Pokemon::Pokemon* mon = idx < static_cast<int>(curBox.size()) ? curBox[idx].get() : nullptr;
+            const bool empty = !mon || mon->speciesID() == 0;
+            fb.drawFilledCircle(cx, cy, discR, empty ? Colors::Panel : Colors::PanelAlt);
+            if (empty) { fb.drawCircle(cx, cy, discR, Colors::Border, 1); continue; }
+            int sz = std::min(static_cast<int>(discR * 1.8), colPitch - 4);
+            if (mon->isEgg()) {
+                fb.drawEgg(cx, cy, sz);  // eggs show as an egg in the box preview too
+            } else {
+                bool shiny = mon->isShiny(mon->id32(), mon->species());
+                Sprite* sp = SpriteManager::getIconSprite(mon->speciesID(), mon->form(), shiny);
+                if (sp && sp->data) {
+                    fb.drawImageScaled(cx - sz / 2, cy - sz / 2, sp->width, sp->height, sz, sz, sp->data, sp->channels);
                 }
             }
         }
