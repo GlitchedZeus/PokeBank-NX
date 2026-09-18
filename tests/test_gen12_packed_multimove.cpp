@@ -71,7 +71,8 @@ void assertOriginal(const Editor& editor, const std::vector<uint8_t>& raw) {
 }
 
 std::unique_ptr<G1::StagedPokemonEditor> makeGen1Editor(const std::vector<uint8_t>& raw, G1::SourceGame game) {
-    const auto parsed = G1::parse(raw, game); assert(parsed);
+    const auto parsed = G1::parse(raw, game);
+    assert(parsed);
     std::string error;
     auto editor = G1::StagedPokemonEditor::create(*parsed.save, error);
     assert(editor && error.empty());
@@ -81,9 +82,12 @@ std::unique_ptr<G1::StagedPokemonEditor> makeGen1Editor(const std::vector<uint8_
 void addGen1(G1::StagedPokemonEditor& editor, std::size_t box, const std::string& nickname,
              uint16_t species = 1) {
     std::string error;
-    const auto slot = editor.appendSlot(box, error); assert(slot);
+    const auto slot = editor.appendSlot(box, error);
+    assert(slot);
     G1::BoxPokemonCreate create;
-    create.species = species; create.nickname = nickname; create.otName = "RED";
+    create.species = species;
+    create.nickname = nickname;
+    create.otName = "RED";
     assert(editor.stageAdd(box, *slot, create, error));
 }
 
@@ -95,15 +99,22 @@ void setupGen1Six(G1::StagedPokemonEditor& editor) {
 std::vector<std::string> gen1Order(G1::StagedPokemonEditor& editor, std::size_t box) {
     std::vector<std::string> out;
     for (std::size_t slot = 0; slot < 20; ++slot) {
-        std::string error; const auto pokemon = editor.boxedPokemon(box, slot, error); assert(error.empty());
-        if (!pokemon) break; out.push_back(pokemon->nickname);
+        std::string error;
+        const auto pokemon = editor.boxedPokemon(box, slot, error);
+        assert(error.empty());
+        if (!pokemon) break;
+        out.push_back(pokemon->nickname);
     }
     return out;
 }
 std::size_t gen1Total(G1::StagedPokemonEditor& editor) {
     std::size_t total = 0;
-    for (std::size_t box = 0; box < 12; ++box) for (std::size_t slot = 0; slot < 20; ++slot) {
-        std::string error; if (editor.boxedPokemon(box, slot, error)) ++total; else assert(error.empty());
+    for (std::size_t box = 0; box < 12; ++box) {
+        for (std::size_t slot = 0; slot < 20; ++slot) {
+            std::string error;
+            if (editor.boxedPokemon(box, slot, error)) ++total;
+            else assert(error.empty());
+        }
     }
     return total;
 }
@@ -111,8 +122,11 @@ void assertGen1Packed(G1::StagedPokemonEditor& editor) {
     for (std::size_t box = 0; box < 12; ++box) {
         bool empty = false;
         for (std::size_t slot = 0; slot < 20; ++slot) {
-            std::string error; const auto pokemon = editor.boxedPokemon(box, slot, error); assert(error.empty());
-            if (!pokemon) empty = true; else assert(!empty);
+            std::string error;
+            const auto pokemon = editor.boxedPokemon(box, slot, error);
+            assert(error.empty());
+            if (!pokemon) empty = true;
+            else assert(!empty);
         }
     }
 }
@@ -184,19 +198,25 @@ void runGen1(G1::SourceGame game) {
     {
         auto editor = makeGen1Editor(raw, game); setupGen1Six(*editor);
         const auto total = gen1Total(*editor);
-        assert(editor->stageRemove(2, 1, error)); // A -> Release uses this proven packed primitive.
+        assert(editor->stageRemove(2, 1, error));
         assert(gen1Total(*editor) + 1 == total); assertGen1Packed(*editor); assertOriginal(*editor, raw);
     }
 }
 
 std::unique_ptr<G2::StagedEditor> makeGen2Editor(const std::vector<uint8_t>& raw, G2::SourceGame game) {
-    const auto parsed = G2::parse(raw, game); assert(parsed);
-    std::string error; auto editor = G2::StagedEditor::create(*parsed.save, error);
-    assert(editor && error.empty()); return editor;
+    const auto parsed = G2::parse(raw, game);
+    assert(parsed);
+    std::string error;
+    auto editor = G2::StagedEditor::create(*parsed.save, error);
+    assert(editor && error.empty());
+    return editor;
 }
 void addGen2(G2::StagedEditor& editor, std::size_t box, const std::string& nickname, uint16_t species=25) {
-    G2::BoxPokemonCreate create; create.species=species; create.level=15; create.nickname=nickname; create.otName="ASH";
-    std::size_t slot=99; std::string error; assert(editor.stageAddBoxPokemon(box, create, slot, error));
+    G2::BoxPokemonCreate create;
+    create.species=species; create.level=15; create.nickname=nickname; create.otName="ASH";
+    std::size_t slot=99;
+    std::string error;
+    assert(editor.stageAddBoxPokemon(box, create, slot, error));
 }
 void setupGen2Six(G2::StagedEditor& editor) {
     addGen2(editor,0,"B"); addGen2(editor,0,"C"); addGen2(editor,0,"D"); addGen2(editor,0,"E"); addGen2(editor,0,"F");
@@ -204,14 +224,20 @@ void setupGen2Six(G2::StagedEditor& editor) {
 std::vector<std::string> gen2Order(G2::StagedEditor& editor, std::size_t box) {
     std::vector<std::string> out;
     for (std::size_t slot=0; slot<editor.metadata().boxCapacity; ++slot) {
-        std::string error; const auto pokemon=editor.boxedPokemon(box,slot,error); if(!pokemon) break; out.push_back(pokemon->nickname);
+        std::string error;
+        const auto pokemon=editor.boxedPokemon(box,slot,error);
+        if(!pokemon) break;
+        out.push_back(pokemon->nickname);
     }
     return out;
 }
 std::size_t gen2Total(G2::StagedEditor& editor) {
     std::size_t total=0;
-    for(std::size_t box=0; box<editor.metadata().boxCount; ++box) for(std::size_t slot=0; slot<editor.metadata().boxCapacity; ++slot) {
-        std::string error; if(editor.boxedPokemon(box,slot,error)) ++total;
+    for(std::size_t box=0; box<editor.metadata().boxCount; ++box) {
+        for(std::size_t slot=0; slot<editor.metadata().boxCapacity; ++slot) {
+            std::string error;
+            if(editor.boxedPokemon(box,slot,error)) ++total;
+        }
     }
     return total;
 }
@@ -219,14 +245,17 @@ void assertGen2Packed(G2::StagedEditor& editor) {
     for(std::size_t box=0; box<editor.metadata().boxCount; ++box) {
         bool empty=false;
         for(std::size_t slot=0; slot<editor.metadata().boxCapacity; ++slot) {
-            std::string error; const auto pokemon=editor.boxedPokemon(box,slot,error);
-            if(!pokemon) empty=true; else assert(!empty);
+            std::string error;
+            const auto pokemon=editor.boxedPokemon(box,slot,error);
+            if(!pokemon) empty=true;
+            else assert(!empty);
         }
     }
 }
 
 void runGen2(const L& layout, G2::SourceGame game) {
-    const auto raw=fixture(layout,true); std::string error;
+    const auto raw=fixture(layout,true);
+    std::string error;
     {
         auto editor=makeGen2Editor(raw,game); setupGen2Six(*editor); const auto total=gen2Total(*editor);
         const std::array<std::size_t,3> selected{1,2,3};
