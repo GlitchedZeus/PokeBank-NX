@@ -1,6 +1,6 @@
 # PokeBank NX — Current Verified Engineering State
 
-Last updated: 2026-09-18
+Last updated: 2026-09-19
 
 ## Current repository state
 
@@ -11,6 +11,9 @@ Accepted milestone merge commit: e0815da5c1a167827a07ed1dfd50d49db2136aa3
 Accepted source checkpoint: c24859ce17d33040685ea19b9aff068ba378d8ae
 Accepted source tree: 88d2ad46d57346df346453698ee11792f7df4f1f
 PR #74: MERGED
+Issue #71: COMPLETE
+PR #75: MERGED
+Issue #71 merge commit: fb0f3c6573eac12d2350253d5c225dae8fc02277
 Writable remote: origin
 Upstream/reference: kiasta/PKSE
 ```
@@ -94,6 +97,12 @@ Accepted NRO: PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
 Accepted NRO SHA-256: 3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
 ```
 
+## Issue #71 architecture freeze — COMPLETE
+
+`docs/ISSUE71_UNIVERSAL_EDITOR_REUSE_FREEZE.md` is merged through PR #75 and is authoritative for next-generation editor architecture.
+
+Frozen direction: one shared Pokémon editor, exact-game capabilities/providers, generation-native adapters, and no parallel Gen III editor shell.
+
 ## Safety invariants
 
 ```text
@@ -109,7 +118,7 @@ No accepted milestone authorizes live source writeback.
 
 ## Continuation boundary
 
-PR #74 is complete and merged. Do not reopen or amend its exact accepted source checkpoint.
+PR #74 and issue #71 / PR #75 are complete and merged. Do not reopen their accepted checkpoints for unrelated work.
 
 At the start of the next session:
 
@@ -117,6 +126,6 @@ At the start of the next session:
 2. preserve any newer production head;
 3. treat the exact `c24859ce...` hardware result as frozen accepted evidence;
 4. preserve Gen I/II packed movement, native source capacities, Legacy Storage 30-slot layout, fullscreen surfaces, Release semantics, and all source-write locks;
-5. wait for explicit owner direction before selecting the next major milestone.
+5. if the owner explicitly starts Generation III, create a new focused branch from current production and follow the completed #71 architecture freeze.
 
-**Do not start Gen III automatically.**
+**GEN III READY FOR EXPLICIT START.**
