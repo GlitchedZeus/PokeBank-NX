@@ -131,6 +131,11 @@ void runGame(SourceGame game, Family family) {
     const auto immutableSource = source;
     std::string error;
     auto editor = StagedPokemonEditor::create(source, game, error);
+    if (!editor || !error.empty()) {
+        std::cerr << "Gen III staged editor create failed: game="
+                  << static_cast<unsigned>(game) << " family="
+                  << static_cast<unsigned>(family) << " error=" << error << "\\n";
+    }
     assert(editor && error.empty());
     assert(editor->boxCount() == 14);
     assert(editor->boxCapacity() == 30);
