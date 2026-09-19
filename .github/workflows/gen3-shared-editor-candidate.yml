@@ -1,0 +1,292 @@
+name: Gen III Shared Editor Candidate Gate
+
+on:
+  pull_request:
+    branches: [feature/pokebank-playable]
+    paths:
+      - 'Makefile'
+      - 'Makefile.host*'
+      - 'include/Integration/Gen3/**'
+      - 'include/Legacy/FRLG*'
+      - 'include/Pokemon/Pokemon3FRLG.h'
+      - 'include/UI/Gen3*'
+      - 'include/UI/ExactFormatEditorProvider.h'
+      - 'include/UI/ExactSaveCapabilities.h'
+      - 'include/UI/SharedPokemonEditorContract.h'
+      - 'include/UI/SharedSpeciesPicker.h'
+      - 'src/Integration/Gen3/**'
+      - 'src/Legacy/FRLG*'
+      - 'src/Pokemon/Pokemon3FRLG.cpp'
+      - 'src/UI/Gen3*'
+      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
+      - 'tests/test_gen3*'
+      - 'tests/test_pksm_gen3_adapter.cpp'
+      - 'tests/test_rse_gen3_adapter.cpp'
+      - 'tests/test_legacy_frlg_browse.cpp'
+      - 'tests/test_pre_gen3_reuse_guard.cpp'
+      - 'tests/test_source_mutation_policy.cpp'
+      - 'tests/test_write_policy.cpp'
+      - '.github/workflows/gen3-shared-editor-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-gen3-shared-editor-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+  HEAD_REF: ${{ github.event.pull_request.head.ref || 'feature/gen3-shared-pokemon-editor-20260919' }}
+  PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  EXPECTED_RECOVERY_ROMFS: 3289
+  EXPECTED_FINAL_ROMFS: 3292
+
+jobs:
+  host:
+    name: Gen III shared editor exact host + sanitizer gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - name: Checkout exact Gen III shared-editor head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          fetch-depth: 100
+          submodules: recursive
+
+      - name: Verify exact identity and whitespace
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          git fetch --no-tags origin "$BASE_SHA" || true
+          if git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null && [ "$BASE_SHA" != "$APP_SHA" ]; then
+            git diff --check "$BASE_SHA"..HEAD
+          else
+            git diff --check HEAD^
+          fi
+          git diff --quiet
+          git diff --cached --quiet
+          echo "APPLICATION_SHA=$APP_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+          echo "BRANCH=$HEAD_REF"
+
+      - name: Focused Generation III shared-editor gates
+        run: |
+          set -euo pipefail
+          rm -rf build-host
+          for target in             test_gen3_exact_format_editor_provider             test_gen3_staged_pokemon_editor             test_gen3_shared_pokemon_session             test_pksm_gen3_adapter             test_rse_gen3_adapter             test_legacy_frlg_browse             test_pre_gen3_reuse_guard             test_source_mutation_policy             test_write_policy; do
+            make -f Makefile.host "build-host/$target"
+            "./build-host/$target"
+          done
+          echo 'GEN III EXACT IDENTITY / CAPABILITY PROVIDER: PASS'
+          echo 'GEN III STAGED PK3 CREATE / EDIT / CLONE / RELEASE: PASS'
+          echo 'GEN III SHARED DRAFT SESSION: PASS'
+          echo 'GEN III STRICT REPARSE / CHECKSUM / SOURCE IMMUTABILITY: PASS'
+          echo 'ONE SHARED POKEMON EDITOR ARCHITECTURE: PASS'
+          echo 'LIVE RETROARCH WRITE: HARD DISABLED'
+          echo 'LIVE INSTALLED-GAME WRITE: HARD DISABLED'
+          echo 'PARTY MUTATION: DEFERRED'
+
+      - name: Full permanent host suite
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+          echo 'FULL PERMANENT HOST SUITE: PASS'
+
+      - name: ASan and UBSan permanent suite
+        run: |
+          set -euo pipefail
+          make -f Makefile.host host-sanitize
+          echo 'ASAN: PASS'
+          echo 'UBSAN: PASS'
+
+  native_ui:
+    name: Gen III real devkitA64 composite compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          submodules: recursive
+      - name: Compile production UI translation units with native flags
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            : "${DEVKITPRO:?DEVKITPRO is not set}"
+            devkita64_root="${DEVKITA64:-${DEVKITPRO}/devkitA64}"
+            for name in g++ readelf objcopy; do
+              tool="${devkita64_root}/bin/aarch64-none-elf-${name}"
+              test -x "$tool" || { echo "ERROR: required native tool missing: $tool" >&2; exit 1; }
+            done
+            git config --global --add safe.directory /work
+            make native-ui-check
+          '
+
+  native_package:
+    name: Gen III devkitA64 + exact physical-test package
+    needs: [host, native_ui]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout exact Gen III shared-editor head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          fetch-depth: 100
+          submodules: recursive
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Verify exact candidate identity
+        id: identity
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          tree="$(git -C application rev-parse 'HEAD^{tree}')"
+          short="$(git -C application rev-parse --short=8 HEAD)"
+          parent="$(git -C application rev-parse HEAD^)"
+          echo "tree=$tree" >> "$GITHUB_OUTPUT"
+          echo "short=$short" >> "$GITHUB_OUTPUT"
+          echo "parent=$parent" >> "$GITHUB_OUTPUT"
+          git -C application diff --check "$BASE_SHA"..HEAD
+          git -C application diff --quiet
+          git -C application diff --cached --quiet
+
+      - name: Recover complete device RomFS and run asset preflight
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py) 2>&1 | tee recovery.log
+          test "$(find recovery-work/romfs -type f | wc -l)" -eq "$EXPECTED_RECOVERY_ROMFS"
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            test -s "application/assets/game_cards/$f.png"
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          test "$(find application/romfs -type f | wc -l)" -eq "$EXPECTED_FINAL_ROMFS"
+          python3 application/tools/check_device_assets.py 2>&1 | tee asset-preflight.log
+          grep -q 'DEVICE ASSET PREFLIGHT: PASS' asset-preflight.log
+
+      - name: Clean devkitA64 compile, link and native identity
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            : "${DEVKITPRO:?DEVKITPRO is not set}"
+            devkita64_root="${DEVKITA64:-${DEVKITPRO}/devkitA64}"
+            readelf="${devkita64_root}/bin/aarch64-none-elf-readelf"
+            test -x "$readelf"
+            git config --global --add safe.directory /work/application
+            dkp-pacman -Q > /work/toolchain-packages.txt
+            make clean || true
+            make -j1
+            test -s PokeBankNX.elf
+            test -s PokeBankNX.nro
+            "$readelf" -h PokeBankNX.elf > /work/native-linkage.txt
+          ' 2>&1 | tee native-build.log
+          grep -q 'AArch64' native-linkage.txt
+          test -s application/PokeBankNX.nro
+
+      - name: Verify embedded application SHA and RomFS
+        run: |
+          set -euo pipefail
+          python3 recovery-work/tools/verify_embedded_romfs.py             application/PokeBankNX.nro application/romfs             --application-source "$APP_SHA" > embedded-romfs.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('embedded-romfs.json'))
+          assert data.get('result') == 'PASS', data
+          assert data.get('file_count') == int(os.environ['EXPECTED_FINAL_ROMFS']), data
+          assert data.get('application_source') == os.environ['APP_SHA'], data
+          print(json.dumps(data, indent=2))
+          PY
+
+      - name: Package exact Gen III shared-editor candidate
+        run: |
+          set -euo pipefail
+          mkdir -p device-artifact
+          python3 application/tools/package_device_build.py application/PokeBankNX.nro             --label Gen3-SharedEditor --out-dir "$GITHUB_WORKSPACE/device-artifact"
+          cp embedded-romfs.json asset-preflight.log recovery.log native-build.log native-linkage.txt              toolchain-packages.txt device-artifact/
+
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess, zipfile
+          from pathlib import Path
+          out = Path('device-artifact')
+          app = Path('application')
+          app_sha = os.environ['APP_SHA']
+          tree = subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD^{tree}'], text=True).strip()
+          parent = subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD^'], text=True).strip()
+          short = subprocess.check_output(['git','-C',str(app),'rev-parse','--short=8','HEAD'], text=True).strip()
+          nro = out / f'PokeBank-NX-Gen3-SharedEditor-{short}.nro'
+          assert nro.is_file(), nro
+          manifest = out / f'{nro.name}.manifest.txt'
+          assert manifest.is_file(), manifest
+          def sha(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+          record = {
+              'application_source': app_sha,
+              'application_tree': tree,
+              'application_parent': parent,
+              'branch': os.environ['HEAD_REF'],
+              'pull_request': int(os.environ['PR_NUMBER']),
+              'issue_71': 'COMPLETE / architecture freeze preserved',
+              'gen3_exact_identities': ['ruby_gba','sapphire_gba','emerald_gba','firered_gba','leafgreen_gba'],
+              'shared_editor': 'PASS',
+              'staged_pk3': 'PASS',
+              'source_immutability': 'PASS',
+              'host_suite': 'PASS',
+              'asan': 'PASS',
+              'ubsan': 'PASS',
+              'native_devkitA64_full_link': 'PASS',
+              'embedded_application_sha': 'PASS',
+              'live_retroarch_writing': 'HARD DISABLED',
+              'live_installed_game_writing': 'HARD DISABLED',
+              'party_mutation': 'DEFERRED',
+              'hardware_accepted': False,
+              'nro': {'filename': nro.name, 'bytes': nro.stat().st_size, 'sha256': sha(nro)},
+          }
+          (out/'BUILD_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+          targets=[nro,manifest,out/'BUILD_MANIFEST.json',out/'embedded-romfs.json',out/'asset-preflight.log',out/'native-linkage.txt']
+          (out/'SHA256SUMS.txt').write_text(''.join(f'{sha(p)}  {p.name}\n' for p in targets))
+          zip_path=out/f'PokeBank-NX-Gen3-SharedEditor-{short}.zip'
+          with zipfile.ZipFile(zip_path,'w',compression=zipfile.ZIP_DEFLATED) as zf:
+              for p in (nro,manifest,out/'BUILD_MANIFEST.json',out/'SHA256SUMS.txt'):
+                  zf.write(p,arcname=p.name)
+          (out/'PACKAGE_SHA256.txt').write_text(f'{sha(zip_path)}  {zip_path.name}\n')
+          print((out/'BUILD_MANIFEST.json').read_text())
+          print((out/'SHA256SUMS.txt').read_text())
+          print((out/'PACKAGE_SHA256.txt').read_text())
+          PY
+
+      - name: Upload exact Gen III shared-editor candidate
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gen3-SharedEditor-Candidate-${{ steps.identity.outputs.short }}
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report uploaded artifact identity
+        run: |
+          echo "ARTIFACT_ID=${{ steps.upload.outputs.artifact-id }}"
+          echo "ARTIFACT_DIGEST=${{ steps.upload.outputs.artifact-digest }}"
+          echo "ARTIFACT_URL=${{ steps.upload.outputs.artifact-url }}"
+          echo "APPLICATION_SHA=$APP_SHA"
+          echo "TREE_SHA=${{ steps.identity.outputs.tree }}"
+          echo "PARENT_SHA=${{ steps.identity.outputs.parent }}"
+          echo "DEVICE STATUS: CI VERIFIED / DEVICE TEST REQUIRED / NOT DEVICE ACCEPTED"
