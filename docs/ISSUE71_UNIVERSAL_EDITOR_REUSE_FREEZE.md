@@ -1,10 +1,10 @@
 # Issue #71 — Universal editor / reuse architecture freeze
 
-Status: **AUDIT COMPLETE / GEN III IMPLEMENTATION NOT AUTHORIZED**  
-Audit date: 2026-09-18  
-Production base: `feature/pokebank-playable@94efe4dda341e623538b3e6fe895a9dba04ed195`  
-Production tree: `a501f4929570bad3f5c0ff216d84cbbdb1ffee5c`  
-Accepted Gen I/II source: `c24859ce17d33040685ea19b9aff068ba378d8ae`  
+Status: **AUDIT COMPLETE / GEN III IMPLEMENTATION NOT AUTHORIZED**
+Audit date: 2026-09-18
+Production base: `feature/pokebank-playable@94efe4dda341e623538b3e6fe895a9dba04ed195`
+Production tree: `a501f4929570bad3f5c0ff216d84cbbdb1ffee5c`
+Accepted Gen I/II source: `c24859ce17d33040685ea19b9aff068ba378d8ae`
 Accepted Gen I/II tree: `88d2ad46d57346df346453698ee11792f7df4f1f`
 
 This document freezes the architecture required by issue #71 before any Generation III Pokémon editor work begins.
