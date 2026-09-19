@@ -205,7 +205,7 @@ void runGame(SourceGame game, Family family) {
     auto created = editor->boxedPokemon(0, 2, error);
     assert(created && created->species == 133 && created->level == 10);
     assert(created->originGame == origin(game));
-    assert(created->moves == std::array<uint16_t,4>{});
+    assert((created->moves == std::array<uint16_t,4>{}));
     assert(!created->shiny);
 
     // Release is staged sparse removal; neighboring slots do not shift.
