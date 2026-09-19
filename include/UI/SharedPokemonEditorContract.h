@@ -427,6 +427,17 @@ constexpr CellFocus cellFocus(Focus focus) noexcept {
     if (focus.column == 0) return {110, 64};
     return focus.column == 1 ? CellFocus{180, 90} : CellFocus{278, 98};
 }
+constexpr CellFocus cellFocusFor(Generation generation, Focus focus) noexcept {
+    if (generation != Generation::Gen3) return cellFocus(focus);
+    if (focus.panel == Panel::Details) return {104, 186};
+    if (focus.panel == Panel::Moves) {
+        if (focus.column == 0) return {14, 170};
+        return focus.column == 1 ? CellFocus{186, 50} : CellFocus{242, 42};
+    }
+    if (focus.row >= 6) return {130, 244};
+    if (focus.column == 0) return {110, 64};
+    return focus.column == 1 ? CellFocus{180, 90} : CellFocus{278, 98};
+}
 constexpr std::size_t detailsScrollFocus(Focus focus, std::size_t previous) noexcept {
     return focus.panel == Panel::Details ? focus.row : previous;
 }
