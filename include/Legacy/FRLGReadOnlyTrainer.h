@@ -32,6 +32,7 @@ public:
     Integration::Gen3::StagedPokemonEditor* stagedPokemon() noexcept { return stagedPokemon_.get(); }
     const Integration::Gen3::StagedPokemonEditor* stagedPokemon() const noexcept { return stagedPokemon_.get(); }
     const std::string& stagedPokemonUnavailableReason() const noexcept { return stagedPokemonUnavailableReason_; }
+    bool refreshStagedPokemonPresentation(std::string& error);
 private:
     explicit FRLGReadOnlyTrainer(const Integration::Gen3::SaveMetadata& metadata);
     bool populate(const Integration::Gen3::ReadOnlySave& save, std::string& error);
