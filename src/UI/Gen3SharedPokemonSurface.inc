@@ -646,7 +646,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const bool selected = state.focus.panel == Shared::Panel::Values &&
                               state.focus.row == row;
         if (selected) {
-            const auto cell = Shared::cellFocus(state.focus);
+            const auto cell = Shared::cellFocusFor(Shared::Generation::Gen3, state.focus);
             drawFocus(fb, midX + cell.x, yy - 5, cell.width, 30, true);
         }
         fb.drawText(midX + 18, yy, statLabels[static_cast<std::size_t>(row)], Colors::TextDim, TextStyle::Caption);
@@ -681,7 +681,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const bool selected = state.focus.panel == Shared::Panel::Moves &&
                               state.focus.row == row;
         if (selected) {
-            const auto cell = Shared::cellFocus(state.focus);
+            const auto cell = Shared::cellFocusFor(Shared::Generation::Gen3, state.focus);
             drawFocus(fb, rightX + cell.x, yy - 5, cell.width, 32, true);
         }
         const uint16_t move = p.moves[static_cast<std::size_t>(row)];
