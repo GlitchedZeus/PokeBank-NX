@@ -1,6 +1,7 @@
 #pragma once
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
+#include "Pokemon/PersonalInfoTable.h"
 #include "UI/ClassicTypeBadges.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SpriteManager.h"
@@ -19,6 +20,21 @@ inline std::array<uint8_t, 2> classicPickerTypes(uint16_t species, int speciesCo
     if (speciesCount == 251) {
         if (const auto* personal = PokeVault::Integration::Gen2::personalRecord(species))
             return {personal->rawType1, personal->rawType2};
+    }
+    if (speciesCount == 386) {
+        const auto& personal = Pokemon::getPersonalInfoG3(species);
+        const auto toClassic = [](uint8_t normalized) -> uint8_t {
+            // PersonalInfoG3 uses canonical 0-16 type ids; ClassicTypeBadges
+            // accepts the native RBY/GSC/Gen-III type-byte numbering.
+            if (normalized <= 5) return normalized;
+            if (normalized == 6) return 7;
+            if (normalized == 7) return 8;
+            if (normalized == 8) return 9;
+            if (normalized >= 9 && normalized <= 16)
+                return static_cast<uint8_t>(20 + (normalized - 9));
+            return 0xFF;
+        };
+        return {toClassic(personal.type1), toClassic(personal.type2)};
     }
     return {0, 0};
 }
