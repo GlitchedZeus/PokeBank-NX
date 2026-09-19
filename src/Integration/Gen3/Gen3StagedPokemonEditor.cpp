@@ -27,11 +27,6 @@ std::size_t boxLogicalOffset(std::size_t box, std::size_t slot) noexcept {
     return kBoxPrefixBytes + (box * 30 + slot) * kBoxRecordSize;
 }
 
-uint16_t read16(std::span<const uint8_t> bytes, std::size_t offset) noexcept {
-    return static_cast<uint16_t>(bytes[offset]) |
-           static_cast<uint16_t>(bytes[offset + 1] << 8);
-}
-
 void write16(std::span<uint8_t> bytes, std::size_t offset, uint16_t value) noexcept {
     bytes[offset] = static_cast<uint8_t>(value);
     bytes[offset + 1] = static_cast<uint8_t>(value >> 8);
