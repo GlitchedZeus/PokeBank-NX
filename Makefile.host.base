@@ -43,6 +43,8 @@ CLASSIC_INVENTORY_CATALOG_LINK_SOURCES := src/Inventory/ClassicInventoryCatalog.
 	src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
 GEN3_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen3/Gen3StagedInventoryEditor.cpp \
 	$(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES)
+GEN3_STAGED_POKEMON_LINK_SOURCES := src/Integration/Gen3/Gen3StagedPokemonEditor.cpp \
+	src/Names/MoveInfo.cpp
 GEN1_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \
 	$(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES)
 CLASSIC_UI_MODEL_SOURCES := tests/test_classic_inventory_ui_model.cpp \
@@ -57,7 +59,8 @@ LEGACY_FRLG_BROWSE_SOURCES := tests/test_legacy_frlg_browse.cpp \
 	src/Pokemon/Experience.cpp src/Encryption/Encryption3FRLG.cpp \
 	src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp \
 	src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
-	src/Games/GameIdentity.cpp $(GEN3_STAGED_INVENTORY_LINK_SOURCES)
+	src/Games/GameIdentity.cpp $(GEN3_STAGED_INVENTORY_LINK_SOURCES) \
+	$(GEN3_STAGED_POKEMON_LINK_SOURCES)
 LEGACY_FRLG_BROWSE_FLAGS := -Wno-unused-parameter
 RSE_TEST_COMMON_SOURCES := tests/test_rse_gen3_adapter.cpp \
 	src/Legacy/RetroArchFRLGDiscovery.cpp $(RBY_RUNTIME_DISCOVERY_SOURCES) \
