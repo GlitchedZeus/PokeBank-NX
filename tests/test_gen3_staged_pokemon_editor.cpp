@@ -231,8 +231,14 @@ void runGame(SourceGame game, Family family) {
         family == Family::FRLG ? SourceGame::RubyGBA : SourceGame::FireRedGBA;
     assert(!StagedPokemonEditor::create(source, mismatch, error));
 
-    // Malformed checksums fail closed.
+    // A single corrupt rotating save slot must remain recoverable from the other valid slot.
+    auto oneBroken = source;
+    oneBroken[Detail::kSlotBases[1] + 0xFF6] ^= 0xFF;
+    assert(StagedPokemonEditor::create(oneBroken, game, error));
+
+    // With both rotating save slots checksum-invalid there is no safe recovery candidate.
     auto broken = source;
+    broken[Detail::kSlotBases[0] + 0xFF6] ^= 0xFF;
     broken[Detail::kSlotBases[1] + 0xFF6] ^= 0xFF;
     assert(!StagedPokemonEditor::create(broken, game, error));
 }
