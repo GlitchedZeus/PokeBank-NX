@@ -2,6 +2,7 @@
 #define POKEBANK_LEGACY_FRLG_READ_ONLY_TRAINER_H
 
 #include "Integration/Gen3/Gen3StagedInventoryEditor.h"
+#include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 #include "Integration/Gen3/PKSMGen3Adapter.h"
 #include "Trainer/Trainer.h"
 
@@ -27,6 +28,11 @@ public:
     Integration::Gen3::StagedInventoryEditor* stagedInventory() noexcept { return stagedInventory_.get(); }
     const Integration::Gen3::StagedInventoryEditor* stagedInventory() const noexcept { return stagedInventory_.get(); }
     const std::string& stagedInventoryUnavailableReason() const noexcept { return stagedInventoryUnavailableReason_; }
+    bool stagedPokemonAvailable() const noexcept { return stagedPokemon_ != nullptr; }
+    Integration::Gen3::StagedPokemonEditor* stagedPokemon() noexcept { return stagedPokemon_.get(); }
+    const Integration::Gen3::StagedPokemonEditor* stagedPokemon() const noexcept { return stagedPokemon_.get(); }
+    const std::string& stagedPokemonUnavailableReason() const noexcept { return stagedPokemonUnavailableReason_; }
+    bool refreshStagedPokemonPresentation(std::string& error);
 private:
     explicit FRLGReadOnlyTrainer(const Integration::Gen3::SaveMetadata& metadata);
     bool populate(const Integration::Gen3::ReadOnlySave& save, std::string& error);
@@ -35,6 +41,8 @@ private:
     std::string sourceGameId_;
     std::unique_ptr<Integration::Gen3::StagedInventoryEditor> stagedInventory_;
     std::string stagedInventoryUnavailableReason_;
+    std::unique_ptr<Integration::Gen3::StagedPokemonEditor> stagedPokemon_;
+    std::string stagedPokemonUnavailableReason_;
 };
 }
 

@@ -85,7 +85,48 @@ namespace PokeVault::Legacy {
         trainer->stagedInventory_ = Integration::Gen3::StagedInventoryEditor::create(
             save.sourceBytes(), metadata.sourceGame, stagedError);
         trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);
+
+        std::string pokemonStagedError;
+        trainer->stagedPokemon_ = Integration::Gen3::StagedPokemonEditor::create(
+            save.sourceBytes(), metadata.sourceGame, pokemonStagedError);
+        trainer->stagedPokemonUnavailableReason_ = std::move(pokemonStagedError);
         return trainer;
+    }
+
+    bool FRLGReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
+        error.clear();
+        if (!stagedPokemon_) {
+            error = "Generation III staged Pokemon editing unavailable";
+            return false;
+        }
+        const auto bytes = stagedPokemon_->finalizedBytes(error);
+        if (bytes.empty()) return false;
+        auto parsed = Integration::Gen3::parse(bytes, stagedPokemon_->sourceGame());
+        if (!parsed) {
+            error = parsed.detail.empty()
+                ? std::string(Integration::Gen3::errorMessage(parsed.error))
+                : parsed.detail;
+            return false;
+        }
+
+        decltype(boxes) displayBoxes(boxCount_);
+        for (const auto& record : parsed.save->boxes()) {
+            if (record.location.kind != Integration::Gen3::PokemonLocation::Kind::Box ||
+                record.location.box >= displayBoxes.size() ||
+                record.location.slot >= slotsPerBox_) {
+                error = "strict Generation III staged reparse returned an invalid box location";
+                return false;
+            }
+            auto pokemon = makePokemon(record, 80, error);
+            if (!pokemon) return false;
+            displayBoxes[record.location.box][record.location.slot] = std::move(pokemon);
+        }
+        if (parsed.save->lastEnumerationError() != Integration::Gen3::SaveError::None) {
+            error = "strict Generation III staged reparse could not enumerate boxes";
+            return false;
+        }
+        boxes.swap(displayBoxes);
+        return true;
     }
 
     bool FRLGReadOnlyTrainer::populate(

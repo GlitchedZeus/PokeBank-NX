@@ -270,6 +270,44 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
                 return FieldAccess::Hidden;
         }
     }
+    if (generation == Generation::Gen3) {
+        // First Gen III editor milestone deliberately keeps every PID-correlated
+        // presentation field read-only. Nature, gender, shiny and ability share
+        // PID/ability-slot constraints and must not silently rewrite one another.
+        switch (field) {
+            case FieldIdentity::Species:
+            case FieldIdentity::Nickname:
+            case FieldIdentity::Language:
+            case FieldIdentity::Level:
+            case FieldIdentity::Experience:
+            case FieldIdentity::Friendship:
+            case FieldIdentity::IV:
+            case FieldIdentity::EV:
+            case FieldIdentity::HeldItem:
+            case FieldIdentity::Pokerus:
+            case FieldIdentity::OriginalTrainer:
+            case FieldIdentity::Ball:
+            case FieldIdentity::MetLevel:
+            case FieldIdentity::MetLocation:
+                return FieldAccess::Editable;
+            case FieldIdentity::Form:
+            case FieldIdentity::Gender:
+            case FieldIdentity::Shiny:
+            case FieldIdentity::Nature:
+            case FieldIdentity::Ability:
+            case FieldIdentity::CalculatedStats:
+            case FieldIdentity::TrainerId:
+            case FieldIdentity::SecretId:
+            case FieldIdentity::PersonalityId:
+            case FieldIdentity::OriginGame:
+            case FieldIdentity::MoveCompatibility:
+            case FieldIdentity::EncounterLegality:
+            case FieldIdentity::Provenance:
+                return FieldAccess::ReadOnly;
+            default:
+                return FieldAccess::Hidden;
+        }
+    }
     return FieldAccess::Hidden;
 }
 
@@ -305,6 +343,8 @@ constexpr Layout layoutFor(Generation generation, bool crystal = false) noexcept
     // capabilities in DETAILS. VALUES stays stat-focused: five DV/Stat Exp rows + Shiny/Gender.
     if (generation == Generation::Gen2)
         return {/*details*/static_cast<uint8_t>(crystal ? 12 : 8), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
+    if (generation == Generation::Gen3)
+        return {/*details*/15, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
     return {/*details*/5, /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
 
@@ -384,6 +424,17 @@ constexpr CellFocus cellFocus(Focus focus) noexcept {
         return focus.column == 1 ? CellFocus{186, 50} : CellFocus{242, 42};
     }
     if (focus.row >= 5) return {130, 244};
+    if (focus.column == 0) return {110, 64};
+    return focus.column == 1 ? CellFocus{180, 90} : CellFocus{278, 98};
+}
+constexpr CellFocus cellFocusFor(Generation generation, Focus focus) noexcept {
+    if (generation != Generation::Gen3) return cellFocus(focus);
+    if (focus.panel == Panel::Details) return {104, 186};
+    if (focus.panel == Panel::Moves) {
+        if (focus.column == 0) return {14, 170};
+        return focus.column == 1 ? CellFocus{186, 50} : CellFocus{242, 42};
+    }
+    if (focus.row >= 6) return {130, 244};
     if (focus.column == 0) return {110, 64};
     return focus.column == 1 ? CellFocus{180, 90} : CellFocus{278, 98};
 }
