@@ -136,10 +136,10 @@ host-test: $(HOST_BUILD)/test_gen3_staged_pokemon_editor
 host-sanitize: $(HOST_BUILD)/test_gen3_staged_pokemon_editor_sanitize
 $(HOST_BUILD)/test_gen3_staged_pokemon_editor: $(GEN3_POKEMON_EDITOR_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
 $(HOST_BUILD)/test_gen3_staged_pokemon_editor_sanitize: $(GEN3_POKEMON_EDITOR_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
 
 
 # Host-testable Generation III shared editor draft/session contract. Draft browsing and field edits
