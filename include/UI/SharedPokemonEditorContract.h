@@ -286,8 +286,6 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::HeldItem:
             case FieldIdentity::Pokerus:
             case FieldIdentity::OriginalTrainer:
-            case FieldIdentity::TrainerId:
-            case FieldIdentity::SecretId:
             case FieldIdentity::Ball:
             case FieldIdentity::MetLevel:
             case FieldIdentity::MetLocation:
@@ -298,6 +296,8 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Nature:
             case FieldIdentity::Ability:
             case FieldIdentity::CalculatedStats:
+            case FieldIdentity::TrainerId:
+            case FieldIdentity::SecretId:
             case FieldIdentity::PersonalityId:
             case FieldIdentity::OriginGame:
             case FieldIdentity::MoveCompatibility:
