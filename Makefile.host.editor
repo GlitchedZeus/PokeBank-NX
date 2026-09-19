@@ -111,3 +111,32 @@ $(HOST_BUILD)/test_gsc_shared_editor_parity: $(GEN2_SHARED_EDITOR_PARITY_SOURCES
 $(HOST_BUILD)/test_gsc_shared_editor_parity_sanitize: $(GEN2_SHARED_EDITOR_PARITY_SOURCES) include/Integration/Gen2/Gen2BattleStats.h include/UI/SharedPokemonEditorContract.h include/UI/ExactSaveCapabilities.h include/UI/Gen2PokemonSession.h include/UI/Gen2PokemonPickerModel.h include/UI/Gen2NativePresentation.h include/UI/BattleStatRadarModel.h tests/fixtures/gsc_pokemon_fixture.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_SHARED_EDITOR_PARITY_SOURCES) -o $@
+
+
+# Generation III one-shared-editor exact capability/provider contract.
+GEN3_EXACT_PROVIDER_SOURCES := tests/test_gen3_exact_format_editor_provider.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen3_exact_format_editor_provider
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_exact_format_editor_provider_sanitize
+host-test: $(HOST_BUILD)/test_gen3_exact_format_editor_provider
+host-sanitize: $(HOST_BUILD)/test_gen3_exact_format_editor_provider_sanitize
+$(HOST_BUILD)/test_gen3_exact_format_editor_provider: $(GEN3_EXACT_PROVIDER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gen3_exact_format_editor_provider_sanitize: $(GEN3_EXACT_PROVIDER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+# Staged boxed-PK3 editor. Uses the accepted native Gen III reader plus PokeBank-owned
+# exact-format mutation/serialize/reparse logic; the caller's source vector is never written.
+GEN3_POKEMON_EDITOR_SOURCES := tests/test_gen3_staged_pokemon_editor.cpp 	src/Integration/Gen3/Gen3StagedPokemonEditor.cpp 	src/Integration/Gen3/PKSMGen3NativeAdapter.cpp 	src/Integration/Gen3/FRLGReadModel.cpp 	src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/BaseStatsGen89.cpp 	src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp 	src/Encryption/Encryption3FRLG.cpp 	src/Inventory/ClassicInventoryCatalog.cpp 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp 	src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp 	src/Names/SpeciesNames.cpp 	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_gen3_staged_pokemon_editor
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_staged_pokemon_editor_sanitize
+host-test: $(HOST_BUILD)/test_gen3_staged_pokemon_editor
+host-sanitize: $(HOST_BUILD)/test_gen3_staged_pokemon_editor_sanitize
+$(HOST_BUILD)/test_gen3_staged_pokemon_editor: $(GEN3_POKEMON_EDITOR_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gen3_staged_pokemon_editor_sanitize: $(GEN3_POKEMON_EDITOR_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
