@@ -79,13 +79,20 @@ std::array<uint8_t,80> samplePokemon(SourceGame game) {
 LogicalSectors makeLogical(Family family, SourceGame game) {
     LogicalSectors logical{};
     if (family == Family::FRLG) {
+        constexpr uint32_t key = 0xA1B2C3D4;
         write32(logical[0], 0xAC, 1);
-        write32(logical[0], 0xF20, 0xA1B2C3D4);
+        write32(logical[0], 0xF20, key);
+        // FRLG money is XOR-obfuscated with the full security key. Encode zero money.
+        write32(logical[1], 0x0290, key);
     } else if (family == Family::Emerald) {
-        write32(logical[0], 0xAC, 0xA1B2C3D4);
+        constexpr uint32_t key = 0xA1B2C3D4;
+        write32(logical[0], 0xAC, key);
         logical[0][0xEE0] = 0x42;
+        // Emerald money is XOR-obfuscated with the same full security key. Encode zero money.
+        write32(logical[1], 0x0490, key);
     } else {
         write32(logical[0], 0xAC, 0);
+        write32(logical[1], 0x0490, 0);
     }
     write16(logical[0], 0x0A, 12345);
     write16(logical[0], 0x0C, 54321);
