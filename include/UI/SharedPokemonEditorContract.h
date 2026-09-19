@@ -343,6 +343,8 @@ constexpr Layout layoutFor(Generation generation, bool crystal = false) noexcept
     // capabilities in DETAILS. VALUES stays stat-focused: five DV/Stat Exp rows + Shiny/Gender.
     if (generation == Generation::Gen2)
         return {/*details*/static_cast<uint8_t>(crystal ? 12 : 8), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
+    if (generation == Generation::Gen3)
+        return {/*details*/15, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
     return {/*details*/5, /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
 
