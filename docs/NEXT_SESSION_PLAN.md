@@ -1,8 +1,8 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-18
+Last updated: 2026-09-19
 
-Status: **GEN I/II PACKED MOVE + MULTI-SELECT DEVICE ACCEPTED / PR #74 MERGED / PRODUCTION SYNCHRONIZED**
+Status: **ISSUE #71 ARCHITECTURE FREEZE COMPLETE / PR #75 MERGED / GEN III READY FOR EXPLICIT START**
 
 ## Recover this project state first
 
@@ -13,6 +13,9 @@ Accepted milestone merge commit: e0815da5c1a167827a07ed1dfd50d49db2136aa3
 Accepted source checkpoint: c24859ce17d33040685ea19b9aff068ba378d8ae
 Accepted source tree: 88d2ad46d57346df346453698ee11792f7df4f1f
 PR #74: MERGED
+Issue #71: COMPLETE
+PR #75: MERGED
+Issue #71 merge commit: fb0f3c6573eac12d2350253d5c225dae8fc02277
 ```
 
 GitHub is authoritative. Re-fetch production before any new modification. If GitHub contains a newer production head, preserve it; never reset/rebase backward to the checkpoint above.
@@ -60,6 +63,12 @@ Preserve all of the following:
 - accepted controller behavior and touch ownership;
 - source save immutability.
 
+## Completed issue #71 architecture freeze
+
+`docs/ISSUE71_UNIVERSAL_EDITOR_REUSE_FREEZE.md` is merged and authoritative.
+
+Future generations extend the accepted shared editor through exact-game capabilities/providers and generation-native adapters. Do not create a parallel Gen III editor shell.
+
 ## Safety invariants — permanent
 
 ```text
@@ -77,15 +86,13 @@ Read/editor/device acceptance never grants permission to weaken those locks.
 1. Re-fetch `feature/pokebank-playable`.
 2. Record the exact current production head/tree/parent.
 3. Preserve any newer production work.
-4. Confirm the accepted `c24859ce...` checkpoint remains in production ancestry.
-5. Only then select a new branch/PR for the owner's explicitly requested next milestone.
+4. Confirm both the accepted `c24859ce...` checkpoint and the merged #71 architecture freeze remain in production ancestry.
+5. If the owner explicitly starts Generation III, create one new focused Gen III branch/PR from current production.
 
 ## Next milestone boundary
 
-No new major feature is selected by this handoff.
+Generation III is the prepared next editor milestone only when explicitly started by the owner.
 
-**Do NOT start Gen III automatically.**
-
-Do not reopen PR #74 for unrelated work. A future feature should receive its own focused branch/PR once the owner states what to build next.
+Do not reopen PR #74 or PR #75 for unrelated work. Gen III must use a new focused branch/PR and follow the completed #71 architecture freeze.
 
 No further physical testing is required for PR #74 unless a future change intentionally touches one of its accepted behaviors.
