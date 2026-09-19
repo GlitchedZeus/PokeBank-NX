@@ -94,6 +94,7 @@ public:
     [[nodiscard]] uint32_t saveCounter() const noexcept { return saveCounter_; }
     [[nodiscard]] uint8_t boxCount() const noexcept { return 14; }
     [[nodiscard]] uint8_t boxCapacity() const noexcept { return 30; }
+    [[nodiscard]] const TrainerRecord& trainer() const noexcept { return trainer_; }
     [[nodiscard]] const std::vector<uint8_t>& originalBytes() const noexcept { return original_; }
     [[nodiscard]] const std::vector<uint8_t>& stagedBytes() const noexcept { return staged_; }
     [[nodiscard]] const std::vector<StagedPokemonChange>& pendingChanges() const noexcept {
