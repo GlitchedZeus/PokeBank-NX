@@ -584,7 +584,7 @@ std::string surfaceContext(const TrainerViewScreen& screen, const State& state) 
 
 void drawPanel(PKSEFramebuffer& fb, int x, int y, int w, int h, const char* title) {
     fb.drawFilledRoundedRect(x, y, w, h, 14, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 14, Colors::PanelBorder, 1);
+    fb.drawRoundedRect(x, y, w, h, 14, Colors::Border, 1);
     fb.drawText(x + 14, y + 12, title, Colors::Text, TextStyle::Heading);
 }
 
