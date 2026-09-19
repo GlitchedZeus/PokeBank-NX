@@ -270,6 +270,44 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
                 return FieldAccess::Hidden;
         }
     }
+    if (generation == Generation::Gen3) {
+        // First Gen III editor milestone deliberately keeps every PID-correlated
+        // presentation field read-only. Nature, gender, shiny and ability share
+        // PID/ability-slot constraints and must not silently rewrite one another.
+        switch (field) {
+            case FieldIdentity::Species:
+            case FieldIdentity::Nickname:
+            case FieldIdentity::Language:
+            case FieldIdentity::Level:
+            case FieldIdentity::Experience:
+            case FieldIdentity::Friendship:
+            case FieldIdentity::IV:
+            case FieldIdentity::EV:
+            case FieldIdentity::HeldItem:
+            case FieldIdentity::Pokerus:
+            case FieldIdentity::OriginalTrainer:
+            case FieldIdentity::TrainerId:
+            case FieldIdentity::SecretId:
+            case FieldIdentity::Ball:
+            case FieldIdentity::MetLevel:
+            case FieldIdentity::MetLocation:
+                return FieldAccess::Editable;
+            case FieldIdentity::Form:
+            case FieldIdentity::Gender:
+            case FieldIdentity::Shiny:
+            case FieldIdentity::Nature:
+            case FieldIdentity::Ability:
+            case FieldIdentity::CalculatedStats:
+            case FieldIdentity::PersonalityId:
+            case FieldIdentity::OriginGame:
+            case FieldIdentity::MoveCompatibility:
+            case FieldIdentity::EncounterLegality:
+            case FieldIdentity::Provenance:
+                return FieldAccess::ReadOnly;
+            default:
+                return FieldAccess::Hidden;
+        }
+    }
     return FieldAccess::Hidden;
 }
 
