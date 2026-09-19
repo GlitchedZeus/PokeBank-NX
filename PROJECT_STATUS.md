@@ -1,6 +1,6 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-18
+Last updated: 2026-09-19
 
 For the shortest recovery handoff, read `CURRENT_STATUS.md` and `docs/NEXT_SESSION_PLAN.md`.
 
@@ -15,6 +15,9 @@ Accepted milestone merge commit: e0815da5c1a167827a07ed1dfd50d49db2136aa3
 Accepted source checkpoint: c24859ce17d33040685ea19b9aff068ba378d8ae
 Accepted source tree: 88d2ad46d57346df346453698ee11792f7df4f1f
 PR #74: MERGED
+Issue #71: COMPLETE
+PR #75: MERGED
+Issue #71 merge commit: fb0f3c6573eac12d2350253d5c225dae8fc02277
 Writable remote: origin
 Upstream/reference: kiasta/PKSE
 ```
@@ -23,6 +26,8 @@ Upstream/reference: kiasta/PKSE
 
 ## Headline
 
+- **Issue #71 universal editor / reuse architecture freeze: COMPLETE.**
+- PR #75 is merged; `docs/ISSUE71_UNIVERSAL_EDITOR_REUSE_FREEZE.md` is now the architecture authority for future editor generations.
 - **Gen I/II packed move + multi-select milestone: DEVICE ACCEPTED.**
 - PR #74 is merged into `feature/pokebank-playable`.
 - Red/Blue/Yellow and Gold/Silver/Crystal source boxes present their native 20 valid slots.
@@ -30,7 +35,7 @@ Upstream/reference: kiasta/PKSE
 - Gen I/II staged Y movement, Y-hold rectangular multi-select, packed group movement, Release, and fullscreen View/Edit/Create are hardware accepted.
 - The Gen II empty-slot action-sheet/fullscreen ownership bug is physically confirmed fixed.
 - Original source saves remain immutable and every live source-write path remains HARD DISABLED.
-- No next major feature is selected by this status update. Do not start Gen III automatically.
+- Generation III is ready for explicit owner start under the completed #71 shared-editor architecture.
 
 ## Exact hardware-accepted checkpoint
 
@@ -149,6 +154,6 @@ At the beginning of the next development session:
 2. preserve any newer production head and never reset backward;
 3. retain all accepted Gen I/II behavior and safety invariants above;
 4. do not reopen PR #74 or rewrite its accepted source checkpoint;
-5. select the next milestone only from explicit owner direction.
+5. start Generation III only from explicit owner direction, on a new focused branch that follows the completed #71 architecture freeze.
 
-**Do not start Gen III automatically.**
+**GEN III READY FOR EXPLICIT START.**
