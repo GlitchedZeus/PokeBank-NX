@@ -85,6 +85,11 @@ namespace PokeVault::Legacy {
         trainer->stagedInventory_ = Integration::Gen3::StagedInventoryEditor::create(
             save.sourceBytes(), metadata.sourceGame, stagedError);
         trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);
+
+        std::string pokemonStagedError;
+        trainer->stagedPokemon_ = Integration::Gen3::StagedPokemonEditor::create(
+            save.sourceBytes(), metadata.sourceGame, pokemonStagedError);
+        trainer->stagedPokemonUnavailableReason_ = std::move(pokemonStagedError);
         return trainer;
     }
 
