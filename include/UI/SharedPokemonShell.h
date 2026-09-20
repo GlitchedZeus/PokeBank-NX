@@ -62,7 +62,7 @@ inline void drawPortrait(PKSEFramebuffer& fb, int x, int y, uint16_t species, bo
 template <class Label, class Value>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
     std::size_t total, std::size_t focus, bool focused, Label label, Value value) {
-    const auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, 5, focus);
+    const auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, 6, focus);
     for (std::size_t i = 0; i < window.count; ++i) {
         const auto row = window.first + i;
         const int yy = y + 224 + static_cast<int>(i) * 48;
