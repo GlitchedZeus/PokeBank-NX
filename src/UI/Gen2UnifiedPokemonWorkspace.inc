@@ -474,10 +474,10 @@ void drawUnifiedMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb,
                            State& state, const UnifiedWorkspaceState& unified) {
     if (!unified.moveEditor) return;
     const auto slot = static_cast<std::size_t>(unified.moveEditorSlot);
-    constexpr int w = 650, h = 390;
+    constexpr int w = 650, h = 390, navH = 48;
     const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 95));
+    const int y = (fb.getHeight() - navH - h) / 2;
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - navH, Color(0, 0, 0, 95));
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
     fb.drawText(x + 24, y + 18, "Move " + std::to_string(unified.moveEditorSlot + 1),
