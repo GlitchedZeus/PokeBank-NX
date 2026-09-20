@@ -226,6 +226,12 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     if (handleParityExternalPassiveInput(screen, down, touch)) return true;
     if (handleUnifiedGen2SurfaceInput(screen, down, held, stickX, stickY, touch)) return true;
 
+    // The named Species/Move/Pokerus picker is handled immediately after this
+    // final-surface adapter in TrainerViewScreen::update. While it owns input,
+    // do not let the underlying Box A activation see the same A press and open
+    // Empty Slot / Pokemon Actions behind the editor.
+    if (pickerStateFor(screen).model.active()) return false;
+
     namespace Access = PokeBank::UIModel::Gen2StagedAccess;
     auto* editor = stagedEditor(screen);
     const auto caps = Access::capabilities(

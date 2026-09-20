@@ -135,6 +135,8 @@ int main() {
     assert(unified.find("Discard these move details") != std::string::npos);
     assert(unified.find("openPickerForFocusedField") != std::string::npos);
     assert(unified.find("beginUnifiedMoveEditor(screen, state, static_cast<int>(focus.row))") != std::string::npos);
+    // Nested move picker input must not fall through to the underlying Box A action.
+    assert(parity.find("if (pickerStateFor(screen).model.active()) return false;") != std::string::npos);
 
     // Normal Gen II Move picker: Empty + exact-game-compatible choices only.
     assert(pickerFix.find("hardwareMoveAllowed") != std::string::npos);
