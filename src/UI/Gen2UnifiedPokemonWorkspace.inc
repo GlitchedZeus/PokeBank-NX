@@ -1,10 +1,12 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2WorkspacePresentation.h"
+#include "Integration/Encounter/EncounterGuardrails.h"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
 
 namespace Unified = PokeBank::UIModel::SharedPokemonEditor;
+namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 
 struct UnifiedWorkspaceState {
     const TrainerViewScreen* owner = nullptr;
@@ -139,7 +141,7 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return true;
         }
         if (focus.row == 3) {
-            const auto result = Utils::promptText("Original Trainer", "1-10 Generation II characters",
+            const auto result = Utils::promptText("OT Name", "1-10 Generation II characters",
                                                   p.originalTrainer, 10);
             if (result.accepted) p.originalTrainer = result.text;
             return true;
@@ -162,12 +164,48 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
             if (focus.row == 8) caught.timeOfDay = static_cast<uint8_t>((caught.timeOfDay + 1) % 4);
             if (focus.row == 9) {
-                const auto result = Utils::promptNumber("Met level: 0 unknown, 1 egg marker", caught.levelCode, 0, 63);
-                if (!result.accepted) return true;
-                caught.levelCode = static_cast<uint8_t>(result.value);
+                const auto choices = Encounter::forGameSpecies(screen.sourceGameId, p.species);
+                const Encounter::EncounterTemplate* selected = nullptr;
+                for (const auto& encounter : choices) {
+                    if (encounter.location != caught.location) continue;
+                    if (caught.levelCode == 1 && encounter.method == Encounter::Method::Egg) {
+                        selected = &encounter; break;
+                    }
+                    if (caught.levelCode >= 2 && encounter.containsLevel(caught.levelCode)) {
+                        selected = &encounter; break;
+                    }
+                    if (!selected) selected = &encounter;
+                }
+                if (!selected) {
+                    screen.postStatus("Choose a legitimate Crystal encounter first", 300);
+                    return true;
+                }
+                if (selected->method == Encounter::Method::Egg) {
+                    caught.levelCode = 1;
+                    screen.postStatus("Egg encounter uses Crystal's native egg marker", 240);
+                } else if (selected->fixedLevel()) {
+                    caught.levelCode = static_cast<uint8_t>(std::clamp<int>(selected->minLevel, 2, 63));
+                    screen.postStatus("This encounter has fixed met level " +
+                                      std::to_string(caught.levelCode), 240);
+                } else {
+                    const int minLevel = std::clamp<int>(selected->minLevel, 2, 63);
+                    const int maxLevel = std::clamp<int>(selected->maxLevel, minLevel, 63);
+                    const int current = caught.levelCode >= minLevel && caught.levelCode <= maxLevel
+                        ? caught.levelCode : minLevel;
+                    const auto result = Utils::promptNumber("Met Level for selected Crystal encounter",
+                                                             current, minLevel, maxLevel);
+                    if (!result.accepted) return true;
+                    caught.levelCode = static_cast<uint8_t>(result.value);
+                }
             }
             if (focus.row == 10) {
-                pickerStateFor(screen).model.openLocation(caught.location);
+                pickerStateFor(screen).model.openLocation(
+                    screen.sourceGameId, p.species, caught.location, caught.levelCode);
+                if (pickerStateFor(screen).model.locationCount() == 0) {
+                    pickerStateFor(screen).model.close();
+                    screen.postStatus("No supported Crystal encounter templates for this species", 300);
+                    return true;
+                }
                 screen.controllerNavigation.reset();
                 return true;
             }
@@ -373,7 +411,7 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
         {"Nickname", p.nickname},
         {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
-        {"OT", p.originalTrainer},
+        {"OT Name", p.originalTrainer},
         {"Trainer ID", std::to_string(p.trainerId)},
         {"Held Item", itemText(p.heldItem)},
         {"Friendship", std::to_string(p.friendship)},
@@ -387,11 +425,11 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
     }
 
-    const auto window = Unified::scrollWindow(rows.size(), 5,
+    const auto window = Unified::scrollWindow(rows.size(), 8,
         passive ? 0 : unified.detailsFocus);
     for (std::size_t i = 0; i < window.count; ++i) {
         const std::size_t row = window.first + i;
-        const int yy = y + 224 + static_cast<int>(i) * 43;
+        const int yy = y + 224 + static_cast<int>(i) * 38;
         const bool selected = !passive && unified.focus.panel == Unified::Panel::Details && unified.focus.row == row;
         if (selected) {
             const auto cell = Unified::cellFocus(unified.focus);
