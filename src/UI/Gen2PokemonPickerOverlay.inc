@@ -51,6 +51,14 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
     if (picker.model.kind == Gen2Picker::Kind::Species) {
         if (!Gen2Picker::applySpeciesAppearance(state, picker.model.speciesChoice(), picker.model.previewShiny)) return false;
         refreshDerived(state.working);
+        if (screen.sourceGameId == "crystal_gbc") {
+            const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+            if (caught.present &&
+                !Encounter::locationAllowed(screen.sourceGameId, state.working.species, caught.location)) {
+                state.working.caughtData = 0;
+                screen.postStatus("Species changed; choose a new legitimate Crystal encounter", 300);
+            }
+        }
     } else if (picker.model.kind == Gen2Picker::Kind::Move) {
         if (!Gen2Picker::applyMoveChoice(state, picker.model.moveSlot, picker.model.moveChoice())) return false;
     } else if (picker.model.kind == Gen2Picker::Kind::Location) {
