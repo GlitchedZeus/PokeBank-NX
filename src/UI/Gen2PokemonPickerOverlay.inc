@@ -9,6 +9,7 @@ namespace {
 
 namespace Gen2Picker = PokeBank::UIModel::Gen2PokemonPicker;
 namespace Gen2Native = PokeBank::UIModel::Gen2Native;
+namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 
 struct PickerOverlayState {
     const TrainerViewScreen* owner = nullptr;
@@ -54,8 +55,23 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
         if (!Gen2Picker::applyMoveChoice(state, picker.model.moveSlot, picker.model.moveChoice())) return false;
     } else if (picker.model.kind == Gen2Picker::Kind::Location) {
         if (!state.editable() || screen.sourceGameId != "crystal_gbc") return false;
+        const auto* encounter = picker.model.locationChoice();
+        if (!encounter) return false;
         auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
-        caught.location = picker.model.locationChoice();
+        caught.present = true;
+        caught.location = static_cast<uint8_t>(encounter->location);
+        caught.levelCode = encounter->method == Encounter::Method::Egg
+            ? 1 : static_cast<uint8_t>(std::clamp<int>(encounter->minLevel, 2, 63));
+        if (encounter->timeMask != 0) {
+            const auto allowed = [encounter](uint8_t value) {
+                return (encounter->timeMask & (1u << value)) != 0;
+            };
+            if (!allowed(caught.timeOfDay)) {
+                for (uint8_t value = 1; value <= 3; ++value) {
+                    if (allowed(value)) { caught.timeOfDay = value; break; }
+                }
+            }
+        }
         state.working.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
     } else if (picker.model.kind == Gen2Picker::Kind::Pokerus) {
         if (!Gen2Picker::applyPokerusChoice(state, picker.model.pokerusRaw())) return false;
@@ -122,11 +138,11 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     fb.drawText(x + 24, y + 18, location ? "Met location — Crystal" : species ? "Species — Generation II" : "Move — Generation II",
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                location ? "Native Crystal landmarks • encounter legality not checked" : species ? "#001–#251 • browsing does not change the staged Pokemon"
+                location ? "Species-valid Crystal encounters • selecting defaults Met Level to encounter minimum" : species ? "#001–#251 • browsing does not change the staged Pokemon"
                         : "Empty + moves 1–251 • compatibility shown for this exact game",
                 Colors::TextDim, TextStyle::Caption);
 
-    const int count = location ? Gen2Picker::Model::locationCount : species ? 251 : 252;
+    const int count = location ? model.locationCount() : species ? 251 : 252;
     constexpr int visible = 13;
     const int first = std::clamp(model.index - visible / 2, 0, std::max(0, count - visible));
     const int last = std::min(count, first + visible);
@@ -134,8 +150,14 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
         const int yy = y + 88 + (i - first) * 33;
         const bool selected = i == model.index;
         if (location) {
-            drawPickerRow(fb, x + 20, yy, panelW - 40,
-                Gen2Native::crystalCaughtLocationName(Gen2Picker::Model::locationAt(i)), selected);
+            const auto& encounter = model.encounterChoices[static_cast<std::size_t>(i)];
+            std::string label = std::string(Gen2Native::crystalCaughtLocationName(
+                static_cast<uint8_t>(encounter.location))) + " — " +
+                Encounter::methodName(encounter.method) + " — Lv. " +
+                std::to_string(encounter.minLevel);
+            if (encounter.maxLevel != encounter.minLevel)
+                label += "–" + std::to_string(encounter.maxLevel);
+            drawPickerRow(fb, x + 20, yy, panelW - 40, label, selected);
         } else if (species) {
             const uint16_t dex = static_cast<uint16_t>(i + 1);
             std::string number = std::to_string(dex);
