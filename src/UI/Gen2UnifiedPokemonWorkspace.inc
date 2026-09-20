@@ -18,6 +18,12 @@ struct UnifiedWorkspaceState {
     bool progressionEditor = false;
     int progressionRow = 0;
     Gen2::PokemonRecord progressionBaseline{};
+    bool moveEditor = false;
+    int moveEditorRow = 0;
+    int moveEditorSlot = 0;
+    uint16_t moveBaseline = 0;
+    uint8_t movePpBaseline = 0;
+    uint8_t movePpUpsBaseline = 0;
 };
 
 UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
@@ -45,6 +51,8 @@ void resetUnifiedFocus(TrainerViewScreen& screen) {
     unified.detailsFocus = 0;
     unified.progressionEditor = false;
     unified.progressionRow = 0;
+    unified.moveEditor = false;
+    unified.moveEditorRow = 0;
     unified.lastMode = stateFor(screen).mode;
     screen.controllerNavigation.reset();
 }
@@ -121,6 +129,87 @@ bool handleProgressionEditor(TrainerViewScreen& screen, uint64_t down, uint64_t 
         unified.progressionEditor = false;
         screen.controllerNavigation.reset();
     }
+    return true;
+}
+
+
+void beginUnifiedMoveEditor(TrainerViewScreen& screen, State& state, int slot) {
+    auto& unified = unifiedStateFor(screen);
+    unified.moveEditor = true;
+    unified.moveEditorRow = 0;
+    unified.moveEditorSlot = std::clamp(slot, 0, 3);
+    const auto index = static_cast<std::size_t>(unified.moveEditorSlot);
+    unified.moveBaseline = state.working.moves[index];
+    unified.movePpBaseline = state.working.pp[index];
+    unified.movePpUpsBaseline = state.working.ppUps[index];
+    screen.controllerNavigation.reset();
+}
+
+void cancelUnifiedMoveEditor(TrainerViewScreen& screen, State& state) {
+    auto& unified = unifiedStateFor(screen);
+    if (!unified.moveEditor) return;
+    const auto index = static_cast<std::size_t>(unified.moveEditorSlot);
+    state.working.moves[index] = unified.moveBaseline;
+    state.working.pp[index] = unified.movePpBaseline;
+    state.working.ppUps[index] = unified.movePpUpsBaseline;
+    unified.moveEditor = false;
+    unified.moveEditorRow = 0;
+    screen.controllerNavigation.reset();
+}
+
+bool handleUnifiedMoveEditor(TrainerViewScreen& screen, State& state, uint64_t down,
+                             uint64_t held, int stickX, int stickY) {
+    auto& unified = unifiedStateFor(screen);
+    if (!unified.moveEditor) return false;
+    if (pickerStateFor(screen).model.active()) return false;
+
+    const uint64_t nav = screen.controllerNavigation.apply(
+        down, held, stickX, stickY,
+        HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
+    if (nav & HidNpadButton_Up) unified.moveEditorRow = (unified.moveEditorRow + 4) % 5;
+    if (nav & HidNpadButton_Down) unified.moveEditorRow = (unified.moveEditorRow + 1) % 5;
+    if (down & HidNpadButton_B) {
+        cancelUnifiedMoveEditor(screen, state);
+        return true;
+    }
+    if (!(down & HidNpadButton_A)) return true;
+
+    const int slot = unified.moveEditorSlot;
+    const auto index = static_cast<std::size_t>(slot);
+    if (unified.moveEditorRow == 0) {
+        Unified::Focus moveFocus{Unified::Panel::Moves, static_cast<uint8_t>(slot), 0};
+        mirrorPickerFocus(state, moveFocus);
+        auto& picker = pickerStateFor(screen);
+        openPickerForFocusedField(screen, state, picker, HidNpadButton_A);
+        return true;
+    }
+    if (unified.moveEditorRow == 1) {
+        if (state.working.moves[index] == 0) {
+            screen.postStatus("Choose a move before editing PP", 220);
+            return true;
+        }
+        const auto result = Utils::promptNumber(
+            "Move PP", std::min(state.working.pp[index], state.maximumPP(slot)),
+            0, state.maximumPP(slot));
+        if (result.accepted) state.setPP(slot, static_cast<uint8_t>(result.value));
+        return true;
+    }
+    if (unified.moveEditorRow == 2) {
+        if (state.working.moves[index] == 0) {
+            screen.postStatus("Empty move slots keep PP Ups at zero", 220);
+            return true;
+        }
+        const auto result = Utils::promptNumber("PP Ups", state.working.ppUps[index], 0, 3);
+        if (result.accepted) state.setPPUps(slot, static_cast<uint8_t>(result.value));
+        return true;
+    }
+    if (unified.moveEditorRow == 3) {
+        unified.moveEditor = false;
+        unified.moveEditorRow = 0;
+        screen.controllerNavigation.reset();
+        return true;
+    }
+    cancelUnifiedMoveEditor(screen, state);
     return true;
 }
 
@@ -251,19 +340,9 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
         return true;
     }
 
-    if (focus.column == 0) {
-        mirrorPickerFocus(state, focus);
-        return false;
-    }
-    const int slot = focus.row;
-    if (focus.column == 1) {
-        const auto result = Utils::promptNumber("Move PP", std::min(p.pp[slot], state.maximumPP(slot)),
-                                                0, state.maximumPP(slot));
-        if (result.accepted) state.setPP(slot, static_cast<uint8_t>(result.value));
-        return true;
-    }
-    const auto result = Utils::promptNumber("PP Ups", p.ppUps[slot], 0, p.moves[slot] == 0 ? 0 : 3);
-    if (result.accepted) state.setPPUps(slot, static_cast<uint8_t>(result.value));
+    // Move rows share the accepted Gen I interaction: A opens Move N first.
+    // The Choose Move picker is a child of that editor, never the box Empty Slot action sheet.
+    beginUnifiedMoveEditor(screen, state, static_cast<int>(focus.row));
     return true;
 }
 
@@ -286,6 +365,7 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     if (state.itemPicker) return handleItemPicker(screen, state, down, held, stickX, stickY);
     if (state.confirmExit) return handleConfirm(screen, state, down);
     if (handleProgressionEditor(screen, down, held, stickX, stickY)) return true;
+    if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;
 
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,
@@ -387,6 +467,46 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
                     selected ? Colors::Accent : (i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text),
                     TextStyle::Caption);
     }
+}
+
+
+void drawUnifiedMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb,
+                           State& state, const UnifiedWorkspaceState& unified) {
+    if (!unified.moveEditor) return;
+    const auto slot = static_cast<std::size_t>(unified.moveEditorSlot);
+    constexpr int w = 650, h = 390;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 95));
+    drawPanelSurface(fb, x, y, w, h, false, 18);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
+    fb.drawText(x + 24, y + 18, "Move " + std::to_string(unified.moveEditorSlot + 1),
+                Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 52, "Contextual editor — B always cancels this dialog",
+                Colors::TextDim, TextStyle::Caption);
+
+    const uint16_t move = state.working.moves[slot];
+    const std::array<std::pair<std::string, std::string>, 5> rows{{
+        {"Move", move == 0 ? std::string("Empty") : std::string(Names::getMoveName(move))},
+        {"PP", std::to_string(state.working.pp[slot]) + "/" +
+               std::to_string(state.maximumPP(unified.moveEditorSlot))},
+        {"PP Ups", std::to_string(state.working.ppUps[slot])},
+        {"Apply", "Keep these move details"},
+        {"Cancel", "Discard these move details"},
+    }};
+    int rowY = y + 88;
+    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
+        const bool selected = i == unified.moveEditorRow;
+        if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);
+        fb.drawText(x + 38, rowY + 10, rows[static_cast<std::size_t>(i)].first,
+                    selected ? Colors::Text : Colors::TextDim);
+        int valueW = 0, valueH = 0;
+        fb.measureText(rows[static_cast<std::size_t>(i)].second, valueW, valueH, TextStyle::Body);
+        fb.drawText(x + w - 38 - valueW, rowY + 10, rows[static_cast<std::size_t>(i)].second,
+                    selected ? Colors::Text : Colors::TextDim);
+        rowY += 48;
+    }
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Edit / Apply"}, {"B", "Cancel"}});
 }
 
 void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWorkspaceState& unified,

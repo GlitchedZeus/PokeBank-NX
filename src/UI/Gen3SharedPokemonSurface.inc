@@ -65,6 +65,12 @@ struct State {
     PickerTarget pickerTarget = PickerTarget::None;
     int pickerRow = 0;
     int pickerMoveSlot = 0;
+    bool moveEditor = false;
+    int moveEditorRow = 0;
+    int moveEditorSlot = 0;
+    uint16_t moveBaseline = 0;
+    uint8_t movePpBaseline = 0;
+    uint8_t movePpUpsBaseline = 0;
     std::vector<uint16_t> pickerValues;
     std::vector<Encounter::EncounterTemplate> encounterChoices;
     std::optional<Encounter::EncounterTemplate> selectedEncounter;
@@ -167,6 +173,8 @@ void resetWorkspaceFocus(State& state) noexcept {
     state.pickerValues.clear();
     state.encounterChoices.clear();
     state.selectedEncounter.reset();
+    state.moveEditor = false;
+    state.moveEditorRow = 0;
     state.detailsFocus = 0;
     state.previewValid = false;
 }
@@ -384,8 +392,12 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
                 label += "–" + std::to_string(encounter.maxLevel);
             return label;
         }
-        case PickerTarget::Move:
-            return value == 0 ? "Empty" : std::string(Names::getMoveName(value));
+        case PickerTarget::Move: {
+            std::string id = std::to_string(value);
+            while (id.size() < 3) id = "0" + id;
+            return value == 0 ? "000 - Empty move slot" :
+                                id + " - " + std::string(Names::getMoveName(value));
+        }
         default: return {};
     }
 }
@@ -632,25 +644,40 @@ void editStatCell(TrainerViewScreen& screen, State& state) {
     }
 }
 
+int gen3MoveMaxPP(uint16_t move, uint8_t ppUps) {
+    if (move == 0) return 0;
+    const int base = Names::getMoveBasePP(move, Enums::GameVersion::FRLG);
+    return base * (5 + std::min<int>(ppUps, 3)) / 5;
+}
+
+void beginMoveEditor(TrainerViewScreen& screen, State& state, int slot) {
+    state.moveEditor = true;
+    state.moveEditorRow = 0;
+    state.moveEditorSlot = std::clamp(slot, 0, 3);
+    const auto index = static_cast<std::size_t>(state.moveEditorSlot);
+    state.moveBaseline = state.session.working.moves[index];
+    state.movePpBaseline = state.session.working.pp[index];
+    state.movePpUpsBaseline = state.session.working.ppUps[index];
+    screen.controllerNavigation.reset();
+}
+
+void cancelMoveEditor(TrainerViewScreen& screen, State& state) {
+    if (!state.moveEditor) return;
+    const auto index = static_cast<std::size_t>(state.moveEditorSlot);
+    state.session.working.moves[index] = state.moveBaseline;
+    state.session.working.pp[index] = state.movePpBaseline;
+    state.session.working.ppUps[index] = state.movePpUpsBaseline;
+    state.moveEditor = false;
+    state.moveEditorRow = 0;
+    state.previewValid = false;
+    screen.controllerNavigation.reset();
+}
+
 void editMoveCell(TrainerViewScreen& screen, State& state) {
     if (!state.session.editable()) return;
-    const std::size_t slot = state.focus.row;
-    if (state.focus.column == 0) {
-        openValuePicker(screen, state, PickerTarget::Move, static_cast<int>(slot));
-        return;
-    }
-    if (state.session.working.moves[slot] == 0) {
-        screen.postStatus("Empty move slots keep PP and PP Ups at zero");
-        return;
-    }
-    if (state.focus.column == 1) {
-        const auto r = Utils::promptNumber("Current PP", state.session.working.pp[slot], 0, 99);
-        if (r.accepted) state.session.working.pp[slot] = static_cast<uint8_t>(r.value);
-    } else {
-        const auto r = Utils::promptNumber("PP Ups", state.session.working.ppUps[slot], 0, 3);
-        if (r.accepted) state.session.working.ppUps[slot] = static_cast<uint8_t>(r.value);
-    }
+    beginMoveEditor(screen, state, static_cast<int>(state.focus.row));
 }
+
 
 bool handleValuePicker(TrainerViewScreen&, State& state, u64 down) {
     if (!state.valuePicker) return false;
@@ -709,10 +736,66 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {
     return true;
 }
 
+bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {
+    if (!state.moveEditor) return false;
+    if (state.valuePicker) return false;
+    if (down & HidNpadButton_Up) state.moveEditorRow = (state.moveEditorRow + 4) % 5;
+    if (down & HidNpadButton_Down) state.moveEditorRow = (state.moveEditorRow + 1) % 5;
+    if (down & HidNpadButton_B) {
+        cancelMoveEditor(screen, state);
+        return true;
+    }
+    if (!(down & HidNpadButton_A)) return true;
+
+    const auto slot = static_cast<std::size_t>(state.moveEditorSlot);
+    if (state.moveEditorRow == 0) {
+        openValuePicker(screen, state, PickerTarget::Move, state.moveEditorSlot);
+        return true;
+    }
+    if (state.moveEditorRow == 1) {
+        if (state.session.working.moves[slot] == 0) {
+            screen.postStatus("Choose a move before editing PP", 220);
+            return true;
+        }
+        const int maximum = gen3MoveMaxPP(state.session.working.moves[slot],
+                                          state.session.working.ppUps[slot]);
+        const auto r = Utils::promptNumber("Current PP",
+            std::min<int>(state.session.working.pp[slot], maximum), 0, maximum);
+        if (r.accepted) state.session.working.pp[slot] = static_cast<uint8_t>(r.value);
+        state.previewValid = false;
+        return true;
+    }
+    if (state.moveEditorRow == 2) {
+        if (state.session.working.moves[slot] == 0) {
+            screen.postStatus("Empty move slots keep PP Ups at zero", 220);
+            return true;
+        }
+        const auto r = Utils::promptNumber("PP Ups", state.session.working.ppUps[slot], 0, 3);
+        if (r.accepted) {
+            state.session.working.ppUps[slot] = static_cast<uint8_t>(r.value);
+            state.session.working.pp[slot] = static_cast<uint8_t>(std::min<int>(
+                state.session.working.pp[slot],
+                gen3MoveMaxPP(state.session.working.moves[slot], state.session.working.ppUps[slot])));
+        }
+        state.previewValid = false;
+        return true;
+    }
+    if (state.moveEditorRow == 3) {
+        state.moveEditor = false;
+        state.moveEditorRow = 0;
+        state.previewValid = false;
+        screen.controllerNavigation.reset();
+        return true;
+    }
+    cancelMoveEditor(screen, state);
+    return true;
+}
+
 bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
     if (!workspaceActive(state)) return false;
     if (handleValuePicker(screen, state, down)) return true;
     if (handleSpeciesPicker(screen, state, down)) return true;
+    if (handleMoveEditor(screen, state, down)) return true;
 
     if (state.session.confirmExit) {
         if (down & HidNpadButton_A) {
@@ -962,6 +1045,44 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     {"A", "Choose"}, {"B", "Cancel"}});
 }
 
+
+void drawMoveEditor(PKSEFramebuffer& fb, State& state) {
+    if (!state.moveEditor) return;
+    const auto slot = static_cast<std::size_t>(state.moveEditorSlot);
+    constexpr int w = 650, h = 390;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 95));
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
+    fb.drawText(x + 24, y + 18, "Move " + std::to_string(state.moveEditorSlot + 1),
+                Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 52, "Contextual editor — B always cancels this dialog",
+                Colors::TextDim, TextStyle::Caption);
+    const uint16_t move = state.session.working.moves[slot];
+    const std::array<std::pair<std::string, std::string>, 5> rows{{
+        {"Move", move == 0 ? std::string("Empty") : std::string(Names::getMoveName(move))},
+        {"PP", std::to_string(state.session.working.pp[slot]) + "/" +
+               std::to_string(gen3MoveMaxPP(move, state.session.working.ppUps[slot]))},
+        {"PP Ups", std::to_string(state.session.working.ppUps[slot])},
+        {"Apply", "Keep these move details"},
+        {"Cancel", "Discard these move details"},
+    }};
+    int rowY = y + 88;
+    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
+        const bool selected = i == state.moveEditorRow;
+        if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);
+        fb.drawText(x + 38, rowY + 10, rows[static_cast<std::size_t>(i)].first,
+                    selected ? Colors::Text : Colors::TextDim);
+        int valueW = 0, valueH = 0;
+        fb.measureText(rows[static_cast<std::size_t>(i)].second, valueW, valueH, TextStyle::Body);
+        fb.drawText(x + w - 38 - valueW, rowY + 10, rows[static_cast<std::size_t>(i)].second,
+                    selected ? Colors::Text : Colors::TextDim);
+        rowY += 48;
+    }
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Edit / Apply"}, {"B", "Cancel"}});
+}
+
 void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     // Preview uses the exact serializer on a private copy only when the draft changes.
     // Failed drafts never display stale computed stats as if they were valid.
@@ -1140,6 +1261,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
                     Colors::TextDim, TextStyle::Caption);
     }
 
+    if (state.moveEditor) drawMoveEditor(fb, state);
     if (state.speciesPicker) {
         constexpr int px = 110, py = 56, pw = 1060, ph = 600;
         fb.drawFilledRoundedRect(px, py, pw, ph, 18, Colors::Panel);
