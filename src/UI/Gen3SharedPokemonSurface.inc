@@ -4,6 +4,7 @@
 #include <cstring>
 #include "Integration/Gen3/Gen3ExactFormatEditorProvider.h"
 #include "Integration/Gen3/Gen3LearnsetTable.h"
+#include "Integration/Encounter/EncounterGuardrails.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Enums/Ball.h"
 #include "Enums/GameVersion.h"
@@ -24,6 +25,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -34,6 +36,7 @@ namespace {
 namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
 namespace SessionModel = PokeBank::UIModel::Gen3SharedEditor;
 namespace Gen3 = PokeVault::Integration::Gen3;
+namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
 
 enum class PickerTarget : uint8_t {
@@ -63,6 +66,8 @@ struct State {
     int pickerRow = 0;
     int pickerMoveSlot = 0;
     std::vector<uint16_t> pickerValues;
+    std::vector<Encounter::EncounterTemplate> encounterChoices;
+    std::optional<Encounter::EncounterTemplate> selectedEncounter;
     int actionRow = 0;
     int box = 0;
     int slot = 0;
@@ -160,6 +165,8 @@ void resetWorkspaceFocus(State& state) noexcept {
     state.valuePicker = false;
     state.pickerTarget = PickerTarget::None;
     state.pickerValues.clear();
+    state.encounterChoices.clear();
+    state.selectedEncounter.reset();
     state.detailsFocus = 0;
     state.previewValid = false;
 }
@@ -275,8 +282,10 @@ std::string exactOriginText(const TrainerViewScreen&,
 
 std::string metLocationText(const Gen3::StagedPokemonRecord& p) {
     const char* name = Names::getMetLocationName(p.originGame, p.metLocation);
-    if (name && *name) return name;
-    return p.metLocation == 0 ? "(none)" : "Unknown (" + std::to_string(p.metLocation) + ")";
+    if (p.metLocation == 0) return "(none)";
+    const std::string id = "ID " + std::to_string(p.metLocation);
+    if (name && *name) return std::string(name) + " (" + id + ")";
+    return "Unknown (" + id + ")";
 }
 
 Color genderValueColor(uint8_t gender) {
@@ -318,7 +327,7 @@ bool detailEditable(const State& state, int row) noexcept {
     if (!state.session.editable()) return false;
     if (state.session.mode == SessionModel::Mode::Create)
         return row == 0 || row == 1 || row == 2 || row == 7 ||
-               row == 8 || row == 9 || row == 11 || row == 13;
+               row == 8 || row == 9 || row == 11 || row == 12 || row == 13;
     return row == 0 || row == 1 || row == 2 || row == 3 || row == 4 ||
            row == 7 || row == 8 || row == 9 || row == 11 || row == 12 ||
            row == 13 || row == 14;
@@ -330,8 +339,16 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
         case PickerTarget::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
         case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
         case PickerTarget::MetLocation: {
-            const char* name = Names::getMetLocationName(state.session.working.originGame, value);
-            return (name && *name) ? std::string(name) : "Unknown (" + std::to_string(value) + ")";
+            if (value >= state.encounterChoices.size()) return "Invalid encounter";
+            const auto& encounter = state.encounterChoices[value];
+            const char* name = Names::getMetLocationName(state.session.working.originGame, encounter.location);
+            std::string label = (name && *name) ? std::string(name) : "Unknown";
+            label += " (ID " + std::to_string(encounter.location) + ") — ";
+            label += Encounter::methodName(encounter.method);
+            label += " — Lv. " + std::to_string(encounter.minLevel);
+            if (encounter.maxLevel != encounter.minLevel)
+                label += "–" + std::to_string(encounter.maxLevel);
+            return label;
         }
         case PickerTarget::Move:
             return value == 0 ? "Empty" : std::string(Names::getMoveName(value));
@@ -368,6 +385,7 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
     state.pickerTarget = target;
     state.pickerMoveSlot = moveSlot;
     state.pickerValues.clear();
+    state.encounterChoices.clear();
 
     if (target == PickerTarget::HeldItem) {
         const auto count = Names::getItemCountG3();
@@ -383,11 +401,23 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         const auto balls = Enums::getBallList(Enums::GameVersion::FRLG);
         state.pickerValues.assign(balls.begin(), balls.end());
     } else if (target == PickerTarget::MetLocation) {
-        const auto table = Names::getLocationTable(state.session.working.originGame);
-        if (table.names) {
-            for (std::size_t id = 0; id < table.count; ++id)
-                if (table.names[id] && *table.names[id])
-                    state.pickerValues.push_back(static_cast<uint16_t>(id));
+        state.encounterChoices = Encounter::forGameSpecies(screen.sourceGameId, state.session.working.species);
+        state.pickerValues.reserve(state.encounterChoices.size());
+        for (std::size_t i = 0; i < state.encounterChoices.size(); ++i)
+            state.pickerValues.push_back(static_cast<uint16_t>(i));
+        if (!state.encounterChoices.empty()) {
+            state.pickerRow = 0;
+            for (int i = 0; i < static_cast<int>(state.encounterChoices.size()); ++i) {
+                const auto& encounter = state.encounterChoices[static_cast<std::size_t>(i)];
+                if (encounter.location == state.session.working.metLocation &&
+                    encounter.containsLevel(state.session.working.metLevel)) {
+                    state.pickerRow = i;
+                    break;
+                }
+            }
+            state.valuePicker = true;
+            screen.controllerNavigation.reset();
+            return;
         }
     } else if (target == PickerTarget::Move) {
         const auto game = PokeVault::Integration::Gen3EditorProvider::sourceGameForId(screen.sourceGameId);
@@ -427,7 +457,15 @@ void applyValuePicker(State& state) {
         case PickerTarget::HeldItem: p.heldItem = value; break;
         case PickerTarget::Language: p.language = static_cast<uint8_t>(value); break;
         case PickerTarget::Ball: p.ball = static_cast<uint8_t>(value); break;
-        case PickerTarget::MetLocation: p.metLocation = value; break;
+        case PickerTarget::MetLocation: {
+            if (value < state.encounterChoices.size()) {
+                const auto encounter = state.encounterChoices[value];
+                p.metLocation = encounter.location;
+                p.metLevel = encounter.minLevel;
+                state.selectedEncounter = encounter;
+            }
+            break;
+        }
         case PickerTarget::Move: {
             const auto slot = static_cast<std::size_t>(state.pickerMoveSlot);
             p.moves[slot] = value;
@@ -441,6 +479,7 @@ void applyValuePicker(State& state) {
     state.valuePicker = false;
     state.pickerTarget = PickerTarget::None;
     state.pickerValues.clear();
+    state.encounterChoices.clear();
     state.previewValid = false;
 }
 
@@ -486,12 +525,40 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
     if (row == 9) { openValuePicker(screen, state, PickerTarget::Language); return; }
     if (row == 11) { openValuePicker(screen, state, PickerTarget::Ball); return; }
     if (row == 13) { openValuePicker(screen, state, PickerTarget::MetLocation); return; }
+    if (row == 12) {
+        auto choices = Encounter::forGameSpecies(screen.sourceGameId, p.species);
+        std::optional<Encounter::EncounterTemplate> chosen = state.selectedEncounter;
+        if (!chosen || chosen->location != p.metLocation) {
+            chosen.reset();
+            for (const auto& encounter : choices) {
+                if (encounter.location != p.metLocation) continue;
+                if (encounter.containsLevel(p.metLevel)) { chosen = encounter; break; }
+                if (!chosen) chosen = encounter;
+            }
+        }
+        if (!chosen) {
+            screen.postStatus("Choose a legitimate Met Location encounter first", 300);
+            return;
+        }
+        if (chosen->fixedLevel()) {
+            p.metLevel = chosen->minLevel;
+            state.selectedEncounter = *chosen;
+            screen.postStatus("This encounter has fixed met level " + std::to_string(chosen->minLevel), 240);
+            return;
+        }
+        const auto r = Utils::promptNumber("Met Level for selected encounter", p.metLevel,
+                                           chosen->minLevel, chosen->maxLevel);
+        if (r.accepted) {
+            p.metLevel = static_cast<uint8_t>(r.value);
+            state.selectedEncounter = *chosen;
+        }
+        return;
+    }
 
     int current = 0, minimum = 0, maximum = 255;
     const char* title = "Generation III value";
     switch (row) {
         case 8: current = p.friendship; title = "Friendship"; break;
-        case 12: current = p.metLevel; maximum = 100; title = "Met Level"; break;
         case 14: current = p.pokerus; title = "Pokerus byte"; break;
         default: return;
     }
@@ -499,17 +566,13 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
     if (!r.accepted) return;
     switch (row) {
         case 8: p.friendship = static_cast<uint8_t>(r.value); break;
-        case 12: p.metLevel = static_cast<uint8_t>(r.value); break;
         case 14: p.pokerus = static_cast<uint8_t>(r.value); break;
         default: break;
     }
 }
 
 void editStatCell(TrainerViewScreen& screen, State& state) {
-    if (!state.session.editable() || state.session.mode == SessionModel::Mode::Create) {
-        screen.postStatus("IV/EV creation controls are deferred; safe defaults will be used", 300);
-        return;
-    }
+    if (!state.session.editable()) return;
     if (state.focus.row >= 6 || state.focus.column >= 2) {
         screen.postStatus("Nature, Gender, Shiny, Ability and PID are read-only for PID safety", 300);
         return;
@@ -594,8 +657,17 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {
         return true;
     }
     if (down & HidNpadButton_A) {
-        if (state.session.setSpecies(state.speciesPreview))
+        if (state.session.setSpecies(state.speciesPreview)) {
             state.speciesPicker = false;
+            const auto& p = state.session.working;
+            if (p.metLocation != 0 &&
+                !Encounter::locationAllowed(screen.sourceGameId, p.species, p.metLocation)) {
+                state.session.working.metLocation = 0;
+                state.session.working.metLevel = 0;
+                state.selectedEncounter.reset();
+                screen.postStatus("Species changed; choose a new legitimate encounter", 300);
+            }
+        }
         else
             screen.postStatus("Species is not representable in Generation III");
         return true;
@@ -638,7 +710,9 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
     if (down & HidNpadButton_Right)
         state.focus = Shared::moveColumn(Shared::Generation::Gen3, state.focus, 1);
 
-    if (state.focus.panel == Shared::Panel::Details) state.detailsFocus = state.focus.row;
+    state.focus = Shared::normalize(Shared::Generation::Gen3, state.focus);
+    state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
+    state.detailsFocus = std::min<int>(state.detailsFocus, static_cast<int>(detailLabels.size()) - 1);
 
     if (down & HidNpadButton_B) {
         if (state.session.mode == SessionModel::Mode::View) {
@@ -677,7 +751,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
     std::string error;
     const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                 static_cast<std::size_t>(state.slot), error).has_value();
-    const auto actions = Shared::actionsForSlot(occupied, {/*clone*/true, /*remove*/true, /*legality*/false});
+    const auto actions = Shared::actionsForSlot(occupied, {/*clone*/true, /*remove*/true, /*legality*/true});
     if (actions.count == 0) return true;
     if (down & HidNpadButton_Up)
         state.actionRow = (state.actionRow - 1 + static_cast<int>(actions.count)) %
@@ -695,6 +769,10 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
         case Shared::Action::View: beginViewOrEdit(screen, SessionModel::Mode::View); break;
         case Shared::Action::Edit: beginViewOrEdit(screen, SessionModel::Mode::Edit); break;
         case Shared::Action::Add: beginCreate(screen, state.box, state.slot); break;
+        case Shared::Action::LegalityProvenance:
+            state.actions = false;
+            state.legality = true;
+            break;
         case Shared::Action::Review:
             state.actions = false;
             state.review = true;
@@ -900,7 +978,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     constexpr std::array<const char*,6> statLabels{{"HP","Attack","Defense","Speed","Sp. Atk","Sp. Def"}};
     for (int row = 0; row < 6; ++row) {
         const int yy = y + 78 + row * 40;
-        const bool selected = state.session.mode == SessionModel::Mode::Edit &&
+        const bool selected = state.session.editable() &&
                               state.focus.panel == Shared::Panel::Values &&
                               state.focus.row == row;
         if (selected) {
@@ -1041,6 +1119,28 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.valuePicker) drawValuePicker(screen, fb, state);
 }
 
+void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
+    screen.drawGSCOverlay(fb);
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 120));
+    constexpr int x = 220, y = 92, w = 840, h = 480;
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+    fb.drawText(x + 24, y + 18, "Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 52, "Editor guardrails active • full legality checker is a later milestone",
+                Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 34, y + 112, "Exact source", Colors::TextDim);
+    fb.drawText(x + 270, y + 112, Context::exactGameName(screen.sourceGameId), Colors::Text);
+    fb.drawText(x + 34, y + 158, "Source mutation", Colors::TextDim);
+    fb.drawText(x + 270, y + 158, "HARD DISABLED", Colors::Accent);
+    fb.drawText(x + 34, y + 204, "Encounter guardrails", Colors::TextDim);
+    fb.drawText(x + 270, y + 204, "Game/species/location/level constrained", Colors::Text);
+    fb.drawText(x + 34, y + 250, "PID-linked fields", Colors::TextDim);
+    fb.drawText(x + 270, y + 250, "READ ONLY", Colors::Text);
+    fb.drawText(x + 34, y + 296, "Deep encounter legality", Colors::TextDim);
+    fb.drawText(x + 270, y + 296, "Not checked", Colors::Warning);
+    drawNavBar(fb, {{"B", "Back"}});
+}
+
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     auto* staged = editor(screen);
     if (!staged) return;
@@ -1049,23 +1149,27 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
                                                 static_cast<std::size_t>(state.slot), error).has_value();
     const auto actions = Shared::actionsForSlot(occupied, {true, true, false});
 
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
-    fb.drawText(32, 24, occupied ? "Pokemon Actions" : "Empty Slot", Colors::Text, TextStyle::Heading);
-    fb.drawText(32, 62,
+    screen.drawGSCOverlay(fb);
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
+    constexpr int x = 250, y = 72, w = 780, h = 560, rowH = 58;
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+    fb.drawText(x + 28, y + 20, occupied ? "Pokemon Actions" : "Empty Slot", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 28, y + 54,
         Context::contextLine("Box " + std::to_string(state.box + 1) + " / Slot " +
                              std::to_string(state.slot + 1),
                              screen.sourceGameId, Context::SurfaceMode::ViewReadOnly),
         Colors::TextDim, TextStyle::Caption);
 
-    constexpr int x = 210, y = 112, w = 860, rowH = 58;
+    const int listX = x + 22, listY = y + 92, listW = w - 44;
     for (std::size_t i = 0; i < actions.count; ++i) {
-        const int yy = y + static_cast<int>(i) * (rowH + 8);
+        const int yy = listY + static_cast<int>(i) * (rowH + 8);
         const bool selected = static_cast<int>(i) == state.actionRow;
-        fb.drawFilledRoundedRect(x, yy, w, rowH, 10, selected ? Colors::AccentDim : Colors::Panel);
-        if (selected) fb.drawRoundedRect(x, yy, w, rowH, 10, Colors::FocusBorder, 2);
+        fb.drawFilledRoundedRect(listX, yy, listW, rowH, 10, selected ? Colors::AccentDim : Colors::PanelAlt);
+        if (selected) fb.drawRoundedRect(listX, yy, listW, rowH, 10, Colors::FocusBorder, 2);
         const auto action = actions[i];
         const char* label = action == Shared::Action::Remove ? "Release" : Shared::actionLabel(action);
-        fb.drawText(x + 22, yy + 17, label, Colors::Text, TextStyle::Body);
+        fb.drawText(listX + 16, yy + 17, label, Colors::Text, TextStyle::Body);
         std::string note;
         if (action == Shared::Action::View) note = "Read-only shared summary";
         else if (action == Shared::Action::Edit) note = "PokeBank staged copy only";
@@ -1076,7 +1180,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
         else note = "Return to boxes";
         int nw = 0, nh = 0;
         fb.measureText(note, nw, nh, TextStyle::Caption);
-        fb.drawText(x + w - 22 - nw, yy + 20, note, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(listX + listW - 16 - nw, yy + 20, note, Colors::TextDim, TextStyle::Caption);
     }
     drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
 }
@@ -1162,6 +1266,14 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 
     beginPassiveView(screen);
     auto& state = stateFor(screen);
+    if (state.legality) {
+        if (down & HidNpadButton_B) {
+            state.legality = false;
+            state.actions = true;
+            screen.controllerNavigation.reset();
+        }
+        return true;
+    }
     if (handleReleaseConfirm(screen, state, down)) return true;
     if (handleReview(screen, state, down)) return true;
     if (handleWorkspace(screen, state, down)) return true;
@@ -1186,6 +1298,7 @@ bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!ownsFrameImpl(screen)) return false;
     auto& state = stateFor(screen);
     if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);
+    else if (state.legality) drawLegality(screen, fb, state);
     else if (state.review) drawReview(screen, fb, state);
     else if (workspaceActive(state)) drawWorkspace(screen, fb, state);
     else if (state.actions) drawActions(screen, fb, state);
