@@ -9,6 +9,8 @@
 namespace PokeVault::Integration::Gen3EditorProvider {
 
 namespace Exact = PokeBank::UIModel::ExactFormatEditor;
+using Gen3::SourceGame;
+namespace Learnset = Gen3::Learnset;
 
 constexpr bool isGen3GbaId(std::string_view id) noexcept {
     return id == "ruby_gba" || id == "sapphire_gba" || id == "emerald_gba" ||

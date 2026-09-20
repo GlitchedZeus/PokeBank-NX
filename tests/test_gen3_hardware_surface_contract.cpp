@@ -11,7 +11,10 @@ std::string read(const char* path) {
     std::ifstream in(path); assert(in);
     return {std::istreambuf_iterator<char>(in), {}};
 }
-void contains(const std::string& text, const char* needle) { assert(text.find(needle) != std::string::npos); }
+void contains(const std::string& text, const char* needle) {
+    if (text.find(needle) == std::string::npos) std::cerr << "Missing surface contract: " << needle << '\n';
+    assert(text.find(needle) != std::string::npos);
+}
 int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
     namespace Multi = PokeBank::UIModel::ClassicPackedMove;
@@ -23,12 +26,12 @@ int main() {
     Shared::Focus focus{Shared::Panel::Details, 0, 0};
     for (int row = 0; row < 15; ++row) {
         assert(focus.row == row);
-        const auto window = Shared::scrollWindow(15, 5, focus.row);
-        assert(window.scrolls && window.count == 5);
+        const auto window = Shared::scrollWindow(15, 6, focus.row);
+        assert(window.scrolls && window.count == 6);
         assert(window.first <= focus.row && focus.row < window.first + window.count);
         assert(window.first + window.count <= 15);
         // Last value baseline fits the Details panel; sprite/type header remains above it.
-        assert(224 + int(window.count - 1) * 48 + 20 + 20 < 514);
+        assert(224 + int(window.count - 1) * 48 + 20 + 20 < geometry.h - 30);
         if (row < 14) focus = Shared::moveVertical(Shared::Generation::Gen3, focus, 1);
     }
     const auto lastDetails = Shared::detailsScrollFocus(focus, 0);
@@ -63,7 +66,7 @@ int main() {
     contains(shell, "BATTLE STATS"); contains(shell, "StatsRadar::drawGen2Labeled");
     contains(surface, "GEN III DATA"); contains(surface, "Colors::Panel");
     contains(surface, "SharedPokemonShell::drawScrollableDetails");
-    contains(shell, "scrollWindow(total, 5, focus)");
+    contains(shell, "scrollWindow(total, 6, focus)");
     contains(surface, "previewCreate"); contains(surface, "previewEdit");
     contains(surface, "SessionModel::sameEditableRecord");
     contains(composite, "return !Gen3SharedEditorSurface::ownsFrame(screen)");
