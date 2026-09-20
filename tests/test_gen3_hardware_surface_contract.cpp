@@ -69,6 +69,13 @@ int main() {
     contains(shell, "scrollWindow(total, 6, focus)");
     contains(surface, "previewCreate"); contains(surface, "previewEdit");
     contains(surface, "SessionModel::sameEditableRecord");
+    contains(surface, "Encounter::forGameSpecies(screen.sourceGameId, state.session.working.species)");
+    contains(surface, "Met Level for selected encounter");
+    contains(surface, "normalizeEditableFocus(state");
+    contains(surface, "state.session.editable() &&");
+    contains(surface, "screen.drawGSCOverlay(fb)");
+    contains(surface, "Game/species/location/level constrained");
+    assert(surface.find("fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background)") == std::string::npos);
     contains(composite, "return !Gen3SharedEditorSurface::ownsFrame(screen)");
     assert(composite.find("ClassicPackedMove::handleInput") < composite.find("Gen3SharedEditorSurface::handleInput"));
     contains(move, "Move / Hold Multi"); contains(move, "Hold Multi");
