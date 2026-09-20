@@ -97,8 +97,12 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const int x = (1280 - w) / 2;
     const int y = (672 - h) / 2;
     const auto geometry = SharedEditor::actionMenuGeometry();
+    // Action sheets are overlays on the live box browser, never standalone black screens.
+    // Gen I/Yellow is the canonical presentation for every classic generation.
+    screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     drawPanelSurface(fb, x, y, w, h, false, 18);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
     fb.drawText(x + 24, y + 18, pokemon ? "Pokemon Actions" : "Empty Slot", Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
         "Box " + std::to_string(legacy.pokemonBox + 1) + " / Slot " +

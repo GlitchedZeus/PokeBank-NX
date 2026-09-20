@@ -1188,40 +1188,38 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
                                                 static_cast<std::size_t>(state.slot), error).has_value();
     const auto actions = Shared::actionsForSlot(occupied, {true, true, true});
 
+    // Match the accepted Gen I/Yellow box action sheet: keep the box visible,
+    // dim it, then draw one compact red-outlined modal on top.
     screen.drawGSCOverlay(fb);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    constexpr int x = 250, y = 72, w = 780, h = 560, rowH = 58;
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 105));
+    const int w = occupied ? 650 : 560;
+    const int h = occupied ? 500 : 350;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    const auto geometry = Shared::actionMenuGeometry();
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 28, y + 20, occupied ? "Pokemon Actions" : "Empty Slot", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 28, y + 54,
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
+    fb.drawText(x + 24, y + 18, occupied ? "Pokemon Actions" : "Empty Slot",
+                Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 52,
         Context::contextLine("Box " + std::to_string(state.box + 1) + " / Slot " +
                              std::to_string(state.slot + 1),
                              screen.sourceGameId, Context::SurfaceMode::ViewReadOnly),
         Colors::TextDim, TextStyle::Caption);
 
-    const int listX = x + 22, listY = y + 92, listW = w - 44;
+    int rowY = y + geometry.rowStart;
     for (std::size_t i = 0; i < actions.count; ++i) {
-        const int yy = listY + static_cast<int>(i) * (rowH + 8);
         const bool selected = static_cast<int>(i) == state.actionRow;
-        fb.drawFilledRoundedRect(listX, yy, listW, rowH, 10, selected ? Colors::AccentDim : Colors::PanelAlt);
-        if (selected) fb.drawRoundedRect(listX, yy, listW, rowH, 10, Colors::FocusBorder, 2);
+        if (selected)
+            fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight);
         const auto action = actions[i];
         const char* label = action == Shared::Action::Remove ? "Release" : Shared::actionLabel(action);
-        fb.drawText(listX + 16, yy + 17, label, Colors::Text, TextStyle::Body);
-        std::string note;
-        if (action == Shared::Action::View) note = "Read-only shared summary";
-        else if (action == Shared::Action::Edit) note = "PokeBank staged copy only";
-        else if (action == Shared::Action::Clone) note = "Copy PK3 to an empty native slot";
-        else if (action == Shared::Action::Remove) note = "Explicit confirmation; staged only";
-        else if (action == Shared::Action::Add) note = "Create draft in this exact empty slot";
-        else if (action == Shared::Action::Review) note = std::to_string(staged->pendingChanges().size()) + " pending change(s)";
-        else note = "Return to boxes";
-        int nw = 0, nh = 0;
-        fb.measureText(note, nw, nh, TextStyle::Caption);
-        fb.drawText(listX + listW - 16 - nw, yy + 20, note, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 38, rowY + 10, label, selected ? Colors::Text : Colors::TextDim);
+        rowY += geometry.rowStep;
     }
-    drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
+    fb.drawText(x + 24, y + h - 38, "Original source is immutable",
+                Colors::Accent, TextStyle::Caption);
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
 void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State&) {
