@@ -796,6 +796,54 @@ void drawFocus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selected) {
     if (selected) fb.drawRoundedRect(x, y, w, h, 6, Colors::FocusBorder, 2);
 }
 
+void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
+    if (!state.valuePicker || state.pickerValues.empty()) return;
+    constexpr int x = 300, y = 74, w = 680, h = 560;
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 105));
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::PanelAlt);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
+    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget), Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 28, y + 55,
+                std::to_string(state.pickerRow + 1) + " / " +
+                    std::to_string(state.pickerValues.size()),
+                Colors::TextDim, TextStyle::Caption);
+
+    constexpr int visible = 10;
+    const int count = static_cast<int>(state.pickerValues.size());
+    const int first = std::clamp(state.pickerRow - visible / 2, 0, std::max(0, count - visible));
+    const int last = std::min(count, first + visible);
+    for (int i = first; i < last; ++i) {
+        const int yy = y + 90 + (i - first) * 42;
+        const bool selected = i == state.pickerRow;
+        if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44, 38);
+        const auto value = state.pickerValues[static_cast<std::size_t>(i)];
+        std::string label = pickerValueLabel(state, value);
+        Color color = selected ? Colors::Text : Colors::TextDim;
+        std::string suffix;
+        if (state.pickerTarget == PickerTarget::Move) {
+            const auto game =
+                PokeVault::Integration::Gen3EditorProvider::sourceGameForId(screen.sourceGameId);
+            if (game) {
+                const auto status = Gen3::Learnset::classify(
+                    *game, state.session.working.species, value, state.session.baseline.moves);
+                if (status == Gen3::Learnset::Availability::Direct) {
+                    suffix = "  OK";
+                    color = selected ? Colors::Text : Colors::Success;
+                } else if (status == Gen3::Learnset::Availability::Transfer) {
+                    suffix = "  Transfer";
+                    color = Colors::Warning;
+                } else if (status == Gen3::Learnset::Availability::Preserved) {
+                    suffix = "  Preserved";
+                    color = Colors::Warning;
+                }
+            }
+        }
+        fb.drawText(x + 38, yy + 7, label + suffix, color, TextStyle::Body);
+    }
+    drawNavBar(fb, {{"Up/Down", "Browse"}, {"Left/Right", "Page"},
+                    {"A", "Choose"}, {"B", "Cancel"}});
+}
+
 void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     // Preview uses the exact serializer on a private copy only when the draft changes.
     // Failed drafts never display stale computed stats as if they were valid.
@@ -840,7 +888,9 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         }
     }
     SharedPokemonShell::drawScrollableDetails(fb, leftX, y, leftW, h,
-        detailLabels.size(), state.detailsFocus, state.focus.panel == Shared::Panel::Details,
+        detailLabels.size(), state.detailsFocus,
+        state.session.editable() && state.focus.panel == Shared::Panel::Details &&
+            detailEditable(state, state.detailsFocus),
         [](std::size_t row) { return detailLabels[row]; },
         [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); });
     drawPanel(fb, midX, y, midW, h, "STATS");
@@ -850,7 +900,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     constexpr std::array<const char*,6> statLabels{{"HP","Attack","Defense","Speed","Sp. Atk","Sp. Def"}};
     for (int row = 0; row < 6; ++row) {
         const int yy = y + 78 + row * 40;
-        const bool selected = state.focus.panel == Shared::Panel::Values &&
+        const bool selected = state.session.mode == SessionModel::Mode::Edit &&
+                              state.focus.panel == Shared::Panel::Values &&
                               state.focus.row == row;
         if (selected) {
             const auto cell = Shared::cellFocusFor(Shared::Generation::Gen3, state.focus);
@@ -861,23 +912,26 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         fb.drawText(midX + 190, yy, std::to_string(p.evs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(midX + 274, yy, state.previewError.empty() ? std::to_string(p.calculatedStats[static_cast<std::size_t>(row)]) : "—", Colors::Accent, TextStyle::Caption);
     }
+    fb.drawHDivider(midX + 14, y + 310, midW - 28);
+    fb.drawText(midX + 18, y + 318, "PID-LINKED / DERIVED (READ ONLY)",
+                Colors::TextDim, TextStyle::Caption);
     const std::array<std::pair<const char*,std::string>,5> derived{{
-        {"Nature", std::to_string(p.nature)},
+        {"Nature", Trainer::getNatureName(p.nature)},
         {"Gender", genderText(p.gender)},
         {"Shiny", p.shiny ? "Yes" : "No"},
-        {"Ability", std::to_string(p.ability) + " / slot " + std::to_string(p.abilityNumber)},
+        {"Ability", Trainer::getAbilityName(p.ability)},
         {"PID", std::to_string(p.pid)},
     }};
     for (int i = 0; i < 5; ++i) {
         const int row = i + 6;
-        const int yy = y + 328 + i * 35;
-        const bool selected = state.focus.panel == Shared::Panel::Values &&
-                              state.focus.row == row;
+        const int yy = y + 346 + i * 35;
+        const bool selected = false; // PID-correlated rows are intentionally frozen.
         drawFocus(fb, midX + 8, yy - 5, midW - 16, 29, selected);
         fb.drawText(midX + 18, yy, derived[static_cast<std::size_t>(i)].first,
                     Colors::TextDim, TextStyle::Caption);
+        const Color valueColor = i == 1 ? genderValueColor(p.gender) : Colors::Text;
         fb.drawText(midX + 130, yy, derived[static_cast<std::size_t>(i)].second,
-                    Colors::Text, TextStyle::Caption);
+                    valueColor, TextStyle::Caption);
     }
 
     drawPanel(fb, rightX, y, rightW, h, "MOVES");
@@ -885,7 +939,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     fb.drawText(rightX + 242, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
     for (int row = 0; row < 4; ++row) {
         const int yy = y + 62 + row * 32;
-        const bool selected = state.focus.panel == Shared::Panel::Moves &&
+        const bool selected = state.session.editable() &&
+                              state.focus.panel == Shared::Panel::Moves &&
                               state.focus.row == row;
         if (selected) {
             const auto cell = Shared::cellFocusFor(Shared::Generation::Gen3, state.focus);
@@ -900,16 +955,47 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         fb.drawText(rightX + 242, yy,
                     std::to_string(p.ppUps[static_cast<std::size_t>(row)]),
                     Colors::Text, TextStyle::Caption);
+
+        bool existingSource = false;
+        for (uint16_t sourceMove : state.session.baseline.moves)
+            if (sourceMove != 0 && sourceMove == move) existingSource = true;
+        const auto descriptor =
+            PokeVault::Integration::Gen3EditorProvider::descriptorForSource(screen.sourceGameId, true);
+        auto result = PokeBank::UIModel::ExactFormatEditor::MoveCompatibilityResult::Invalid;
+        if (descriptor)
+            result = descriptor->moves.evaluate(
+                {screen.sourceGameId, p.species, 0, move, existingSource});
+        const char* status = "Invalid";
+        Color statusColor = Colors::Error;
+        using MoveResult = PokeBank::UIModel::ExactFormatEditor::MoveCompatibilityResult;
+        if (result == MoveResult::Compatible) {
+            status = "OK";
+            statusColor = Colors::Success;
+        } else if (result == MoveResult::PreserveExisting) {
+            status = "Preserved";
+            statusColor = Colors::Warning;
+        } else if (result == MoveResult::Unsupported) {
+            status = "Transfer";
+            statusColor = Colors::Warning;
+        }
+        int sw = 0, sh = 0;
+        fb.measureText(status, sw, sh, TextStyle::Caption);
+        fb.drawText(rightX + rightW - 18 - sw, yy, status, statusColor, TextStyle::Caption);
     }
     fb.drawHDivider(rightX + 14, y + 184, rightW - 28);
-    fb.drawText(rightX + 18, y + 194, "Move compatibility: Not checked", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + 18, y + 220, "Move selection: READ ONLY", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(rightX + 18, y + 194,
+                state.session.editable() ? "A: choose exact Gen III move" : "Move compatibility: checked",
+                state.session.editable() ? Colors::Success : Colors::TextDim, TextStyle::Caption);
+    fb.drawText(rightX + 18, y + 220,
+                "OK = native   Transfer/Preserved = warning", Colors::TextDim, TextStyle::Caption);
     struct DataRow { std::string label, value; };
     const std::vector<DataRow> rows{
-        {"Origin", std::to_string(p.originGame)}, {"Language", std::to_string(p.language)},
-        {"Ball", std::to_string(p.ball)}, {"PID fields", "READ ONLY"},
-        {"Legality", "Not checked"},
-        {"Preview", state.previewError.empty() ? "Exact PK3" : "Invalid draft"}
+        {"Origin", Enums::getOriginGameName(p.originGame)},
+        {"Language", Enums::getLanguageName(p.language)},
+        {"Ball", Enums::getBallName(p.ball)},
+        {"Met Location", metLocationText(p)},
+        {"PID fields", "READ ONLY"},
+        {"Legality", "Encounter not checked"}
     };
     SharedPokemonShell::drawDataAndGraph(fb, rightX, y + 244, rightW, h - 256,
         "GEN III DATA", rows, state.previewError.empty() ? p.calculatedStats : std::array<uint16_t,6>{});
@@ -952,6 +1038,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             });
         drawNavBar(fb, {{"D-pad", "Browse"}, {"A", "Choose"}, {"B", "Cancel"}});
     }
+    if (state.valuePicker) drawValuePicker(screen, fb, state);
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
