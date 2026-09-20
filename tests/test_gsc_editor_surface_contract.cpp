@@ -135,6 +135,7 @@ int main() {
     assert(unified.find("Discard these move details") != std::string::npos);
     assert(unified.find("openPickerForFocusedField") != std::string::npos);
     assert(unified.find("beginUnifiedMoveEditor(screen, state, static_cast<int>(focus.row))") != std::string::npos);
+    assert(unified.find("constexpr int w = 650, h = 390, navH = 48") != std::string::npos);
     // Nested move picker input must not fall through to the underlying Box A action.
     assert(parity.find("if (pickerStateFor(screen).model.active()) return false;") != std::string::npos);
 
