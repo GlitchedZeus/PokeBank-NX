@@ -39,12 +39,21 @@ void runSession(const L& layout,SourceGame game) {
         assert(editor->stageBoxPokemonEdit(0,0,level5,error));
     }
     Picker::Model locations;
-    locations.openLocation(16);
-    assert(locations.locationChoice() == 16);
+    locations.openLocation("crystal_gbc", 25, 71, 25);
+    assert(locations.locationCount() > 0);
+    const auto* selectedLocation = locations.locationChoice();
+    assert(selectedLocation);
+    assert(selectedLocation->sourceGameId == "crystal_gbc");
+    assert(selectedLocation->species == 25);
+    assert(selectedLocation->location == 71);
+    assert(selectedLocation->minLevel == 25 && selectedLocation->maxLevel == 25);
+    assert(selectedLocation->containsLevel(25));
+    assert(!selectedLocation->containsLevel(83));
     locations.stepList(1);
-    assert(std::string(PokeBank::UIModel::Gen2Native::crystalCaughtLocationName(locations.locationChoice())) == "Radio Tower");
-    locations.openLocation(127); assert(locations.locationChoice() == 127);
-    locations.stepList(1); assert(locations.locationChoice() == 0);
+    selectedLocation = locations.locationChoice();
+    assert(selectedLocation);
+    assert(selectedLocation->sourceGameId == "crystal_gbc");
+    assert(selectedLocation->species == 25);
     Session session;session.begin(entry,SessionMode::Edit);
     assert(session.setLevel(20));
     assert(session.working.level==20 && session.working.experience==8000);
