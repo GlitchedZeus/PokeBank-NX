@@ -2,13 +2,18 @@
 
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen2PokemonSession.h"
+#include "Integration/Encounter/EncounterGuardrails.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <optional>
+#include <string_view>
+#include <vector>
 
 namespace PokeBank::UIModel::Gen2PokemonPicker {
+namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 
 enum class Kind : uint8_t { None, Species, Move, Pokerus, Location };
 enum class PokerusMode : uint8_t { None, Active, Cured };
@@ -22,9 +27,10 @@ struct Model {
     uint8_t strain = 1;
     uint8_t days = 1;
     int pokerusRow = 0;
+    std::vector<Encounter::EncounterTemplate> encounterChoices;
 
     bool active() const noexcept { return kind != Kind::None; }
-    void close() noexcept { kind = Kind::None; }
+    void close() noexcept { kind = Kind::None; encounterChoices.clear(); }
 
     void openSpecies(uint16_t current, bool shiny = false) noexcept {
         previewShiny = shiny;
@@ -44,17 +50,28 @@ struct Model {
         return static_cast<uint16_t>(std::clamp(index, 0, 251));
     }
 
-    static constexpr int locationCount = static_cast<int>(Gen2Native::crystalLandmarkNames.size()) + 2;
-    static constexpr uint8_t locationAt(int i) noexcept {
-        return static_cast<uint8_t>(i < locationCount - 2 ? i : i == locationCount - 2 ? 126 : 127);
-    }
-    void openLocation(uint8_t current) noexcept {
+    void openLocation(std::string_view sourceGameId, uint16_t species,
+                      uint8_t currentLocation, uint8_t currentLevel) {
         kind = Kind::Location;
-        index = current < locationCount - 2 ? current : current == 126 ? locationCount - 2 : current == 127 ? locationCount - 1 : 0;
+        encounterChoices = Encounter::forGameSpecies(sourceGameId, species);
+        index = 0;
+        for (int i = 0; i < static_cast<int>(encounterChoices.size()); ++i) {
+            const auto& encounter = encounterChoices[static_cast<std::size_t>(i)];
+            if (encounter.location == currentLocation &&
+                (currentLevel <= 1 || encounter.containsLevel(currentLevel))) {
+                index = i;
+                break;
+            }
+        }
     }
-    uint8_t locationChoice() const noexcept { return locationAt(index); }
+    int locationCount() const noexcept { return static_cast<int>(encounterChoices.size()); }
+    const Encounter::EncounterTemplate* locationChoice() const noexcept {
+        return index >= 0 && index < static_cast<int>(encounterChoices.size())
+            ? &encounterChoices[static_cast<std::size_t>(index)] : nullptr;
+    }
     void stepList(int delta) noexcept {
-        const int count = kind == Kind::Species ? 251 : kind == Kind::Move ? 252 : kind == Kind::Location ? locationCount : 0;
+        const int count = kind == Kind::Species ? 251 : kind == Kind::Move ? 252 :
+                          kind == Kind::Location ? locationCount() : 0;
         if (count == 0) return;
         if (kind == Kind::Species) { index = std::clamp(index + delta, 0, count - 1); return; }
         int next = (index + delta) % count;
