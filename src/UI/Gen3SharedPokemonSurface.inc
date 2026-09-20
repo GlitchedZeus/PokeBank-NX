@@ -3,9 +3,17 @@
 #include "Encryption/Encryption3FRLG.h"
 #include <cstring>
 #include "Integration/Gen3/Gen3ExactFormatEditorProvider.h"
+#include "Integration/Gen3/Gen3LearnsetTable.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
+#include "Enums/Ball.h"
+#include "Enums/GameVersion.h"
+#include "Enums/LanguageID.h"
+#include "Names/ItemNames.h"
+#include "Names/LocationNames.h"
+#include "Names/MoveInfo.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
+#include "Trainer/Trainer.h"
 #include "UI/ClassicGameContext.h"
 #include "UI/Common.h"
 #include "UI/Gen3SharedPokemonSession.h"
@@ -28,6 +36,15 @@ namespace SessionModel = PokeBank::UIModel::Gen3SharedEditor;
 namespace Gen3 = PokeVault::Integration::Gen3;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
 
+enum class PickerTarget : uint8_t {
+    None,
+    HeldItem,
+    Language,
+    Ball,
+    MetLocation,
+    Move,
+};
+
 struct State {
     const TrainerViewScreen* owner = nullptr;
     bool passive = false;
@@ -38,8 +55,14 @@ struct State {
     std::string previewError;
     bool actions = false;
     bool review = false;
+    bool legality = false;
     bool confirmRelease = false;
     bool speciesPicker = false;
+    bool valuePicker = false;
+    PickerTarget pickerTarget = PickerTarget::None;
+    int pickerRow = 0;
+    int pickerMoveSlot = 0;
+    std::vector<uint16_t> pickerValues;
     int actionRow = 0;
     int box = 0;
     int slot = 0;
@@ -84,8 +107,8 @@ bool workspaceActive(const State& state) noexcept {
 bool ownsFrameImpl(const TrainerViewScreen& screen) noexcept {
     if (!isGen3Gba(screen)) return false;
     const auto& state = stateFor(screen);
-    return state.actions || state.review || state.confirmRelease ||
-           state.speciesPicker || workspaceActive(state);
+    return state.actions || state.review || state.legality || state.confirmRelease ||
+           state.speciesPicker || state.valuePicker || workspaceActive(state);
 }
 
 bool boxEntrySurface(const TrainerViewScreen& screen) noexcept {
@@ -134,6 +157,9 @@ bool selectedOccupied(TrainerViewScreen& screen) {
 void resetWorkspaceFocus(State& state) noexcept {
     state.focus = {Shared::Panel::Details, 0, 0};
     state.speciesPicker = false;
+    state.valuePicker = false;
+    state.pickerTarget = PickerTarget::None;
+    state.pickerValues.clear();
     state.detailsFocus = 0;
     state.previewValid = false;
 }
@@ -142,8 +168,12 @@ void beginActions(TrainerViewScreen& screen) {
     auto& state = stateFor(screen);
     state.actions = true;
     state.review = false;
+    state.legality = false;
     state.confirmRelease = false;
     state.speciesPicker = false;
+    state.valuePicker = false;
+    state.pickerTarget = PickerTarget::None;
+    state.pickerValues.clear();
     state.actionRow = 0;
     state.box = screen.selectedBoxIndex;
     state.slot = screen.selectedItemIndex;
@@ -165,6 +195,7 @@ bool beginViewOrEdit(TrainerViewScreen& screen, SessionModel::Mode mode) {
     state.session.begin(*pokemon, mode);
     state.actions = false;
     state.review = false;
+    state.legality = false;
     resetWorkspaceFocus(state);
     return true;
 }
@@ -195,6 +226,7 @@ bool beginCreate(TrainerViewScreen& screen, int box, int slot) {
     state.slot = slot;
     state.actions = false;
     state.review = false;
+    state.legality = false;
     state.confirmRelease = false;
     state.passive = false;
     state.session.beginCreate(staged->trainer());
@@ -236,11 +268,22 @@ const char* genderText(uint8_t gender) noexcept {
     return gender == 0 ? "Male" : gender == 1 ? "Female" : "Genderless";
 }
 
-std::string exactOriginText(const TrainerViewScreen& screen,
+std::string exactOriginText(const TrainerViewScreen&,
                             const Gen3::StagedPokemonRecord& p) {
-    const auto game = Context::exactGameName(screen.sourceGameId);
-    return std::string(game.empty() ? "Gen III" : game) + " / native " +
-           std::to_string(p.originGame);
+    return Enums::getOriginGameName(p.originGame);
+}
+
+std::string metLocationText(const Gen3::StagedPokemonRecord& p) {
+    const char* name = Names::getMetLocationName(p.originGame, p.metLocation);
+    if (name && *name) return name;
+    return p.metLocation == 0 ? "(none)" : "Unknown (" + std::to_string(p.metLocation) + ")";
+}
+
+Color genderValueColor(uint8_t gender) {
+    if (gender == 0)
+        return g_themeMode == ThemeMode::Light ? Color(24,112,184) : Color(92,205,255);
+    if (gender == 1) return Colors::Magenta;
+    return Colors::Text;
 }
 
 std::string detailsValue(const TrainerViewScreen& screen,
@@ -253,13 +296,13 @@ std::string detailsValue(const TrainerViewScreen& screen,
         case 4: return p.otName.empty() ? "(none)" : p.otName;
         case 5: return std::to_string(p.tid);
         case 6: return std::to_string(p.sid);
-        case 7: return std::to_string(p.heldItem);
+        case 7: return Names::getItemNameG3(p.heldItem);
         case 8: return std::to_string(p.friendship);
-        case 9: return std::to_string(p.language);
+        case 9: return Enums::getLanguageName(p.language);
         case 10: return exactOriginText(screen, p);
-        case 11: return std::to_string(p.ball);
+        case 11: return Enums::getBallName(p.ball);
         case 12: return std::to_string(p.metLevel);
-        case 13: return std::to_string(p.metLocation);
+        case 13: return metLocationText(p);
         case 14: return std::to_string(p.pokerus);
         default: return {};
     }
