@@ -61,6 +61,8 @@ int main() {
     assert(shared.find("caps.hasLegalityProvenance = true") != std::string::npos);
     assert(shared.find("SharedEditor::actionLabel(action)") != std::string::npos);
     assert(parity.find("SharedEditor::actionMenuGeometry()") != std::string::npos);
+    assert(parity.find("screen.drawGSCOverlay(fb)") != std::string::npos);
+    assert(parity.find("Colors::FocusBorder, 2") != std::string::npos);
     assert(shared.find("drawSharedProvenanceSurface") != std::string::npos);
     assert(shared.find("Encounter legality\", \"Not checked") != std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);
@@ -94,6 +96,9 @@ int main() {
     assert(unified.find("std::array<std::pair<std::string, std::string>, 2> capabilityRows") != std::string::npos);
     assert(unified.find("Encounter legality: Not checked") != std::string::npos);
     assert(unified.find("scrollWindow(rows.size(), 8") != std::string::npos);
+    assert(finalFix.find("scrollWindow(rows.size(), 8") != std::string::npos);
+    assert(finalFix.find("viewportY = y + 216") != std::string::npos);
+    assert(finalFix.find("fb.clearClip()") != std::string::npos);
     assert(unified.find("\"OT Name\", p.originalTrainer") != std::string::npos);
     assert(unified.find("Met Level for selected Crystal encounter") != std::string::npos);
     assert(unified.find("Encounter::forGameSpecies(screen.sourceGameId, p.species)") != std::string::npos);
@@ -121,6 +126,15 @@ int main() {
     assert(picker.find("encounter->minLevel") != std::string::npos);
     assert(picker.find("encounter->timeMask") != std::string::npos);
     assert(picker.find("state.working.caughtData = 0") != std::string::npos);
+
+    // Move slots must enter the accepted Gen I-style Move N contextual editor first.
+    assert(unified.find("beginUnifiedMoveEditor") != std::string::npos);
+    assert(unified.find("drawUnifiedMoveEditor") != std::string::npos);
+    assert(unified.find("Contextual editor — B always cancels this dialog") != std::string::npos);
+    assert(unified.find("Keep these move details") != std::string::npos);
+    assert(unified.find("Discard these move details") != std::string::npos);
+    assert(unified.find("openPickerForFocusedField") != std::string::npos);
+    assert(unified.find("beginUnifiedMoveEditor(screen, state, static_cast<int>(focus.row))") != std::string::npos);
 
     // Normal Gen II Move picker: Empty + exact-game-compatible choices only.
     assert(pickerFix.find("hardwareMoveAllowed") != std::string::npos);

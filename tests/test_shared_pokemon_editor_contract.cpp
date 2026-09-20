@@ -153,12 +153,23 @@ int main() {
 
     auto scroll = scrollWindow(5, 5, 4);
     assert(!scroll.scrolls && scroll.first == 0 && scroll.count == 5);
-    scroll = scrollWindow(gen2Layout.detailsRows, 5, 0);
-    assert(scroll.scrolls && scroll.first == 0 && scroll.count == 5);
-    scroll = scrollWindow(gen2Layout.detailsRows, 5, 5);
-    assert(scroll.scrolls && scroll.first == 1 && 5 >= scroll.first && 5 < scroll.first + scroll.count);
-    scroll = scrollWindow(gen2Layout.detailsRows, 5, 7);
-    assert(scroll.scrolls && scroll.first == 3 && 7 < scroll.first + scroll.count);
+    // Gold/Silver fit the full eight-row Details window without scrolling.
+    scroll = scrollWindow(gen2Layout.detailsRows, 8, 7);
+    assert(!scroll.scrolls && scroll.first == 0 && scroll.count == 8);
+    // Crystal has twelve Details rows and keeps exactly eight visible at once.
+    constexpr auto crystalLayout = layoutFor(Generation::Gen2, true);
+    static_assert(crystalLayout.detailsRows == 12);
+    scroll = scrollWindow(crystalLayout.detailsRows, 8, 0);
+    assert(scroll.scrolls && scroll.first == 0 && scroll.count == 8);
+    scroll = scrollWindow(crystalLayout.detailsRows, 8, 8);
+    assert(scroll.scrolls && scroll.first == 1 && 8 < scroll.first + scroll.count);
+    scroll = scrollWindow(crystalLayout.detailsRows, 8, 11);
+    assert(scroll.scrolls && scroll.first == 4 && 11 < scroll.first + scroll.count);
+
+    // Derived HP DV is visible but skipped: LEFT from HP Stat Exp stays in STATS.
+    assert((moveColumn(Generation::Gen1, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 1, 0}));
+    assert((moveColumn(Generation::Gen2, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 1, 0}));
+    assert((moveColumn(Generation::Gen3, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 0, 0}));
 
     assert(draftDecision(DraftEvent::Navigate).mutateStagedSave == false);
     assert(draftDecision(DraftEvent::BrowsePicker).mutateStagedSave == false);

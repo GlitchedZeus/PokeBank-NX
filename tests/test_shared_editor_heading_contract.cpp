@@ -185,12 +185,18 @@ int main() {
     const auto hpStatExpLeft = Foundation::moveFocus(
         {Foundation::Panel::Values, 0, static_cast<uint8_t>(Foundation::ValueColumn::StatExperience)},
         Foundation::Direction::Left);
-    assert(hpStatExpLeft.panel == Foundation::Panel::Identity);
+    assert(hpStatExpLeft.panel == Foundation::Panel::Values);
+    assert(hpStatExpLeft.row == static_cast<uint8_t>(Foundation::ValueRow::Attack));
+    assert(hpStatExpLeft.column == static_cast<uint8_t>(Foundation::ValueColumn::DV));
 
     // Gen II final input normalization keeps derived HP DV visible but unreachable by focus.
     assert(gen2Fix.find("normalizeHardwareDerivedHpDvFocus") != std::string::npos);
     assert(gen2Fix.find("focus.panel != Unified::Panel::Values || focus.row != 0 || focus.column != 0") != std::string::npos);
     assert(gen2Fix.find("normalizeHardwareDerivedHpDvFocus(screen, &previous);") != std::string::npos);
+    assert(gen2Fix.find("focus.row = 1;") != std::string::npos);
+    assert(gen2Fix.find("focus.column = 0;") != std::string::npos);
+    assert(gen2Fix.find("focus.panel = Unified::Panel::Details") == std::string::npos);
+    assert(gen2Final.find("r == 0 ? Colors::TextDim : Colors::Text") != std::string::npos);
 
     // Final hardware layers must never present the stale workspace label.
     assert(gen1Fix.find("PKSE three-panel workspace") == std::string::npos);

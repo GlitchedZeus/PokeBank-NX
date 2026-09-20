@@ -67,11 +67,25 @@ int main() {
     contains(surface, "GEN III DATA"); contains(surface, "Colors::Panel");
     contains(surface, "SharedPokemonShell::drawScrollableDetails");
     contains(shell, "scrollWindow(total, 6, focus)");
+    contains(shell, "viewportY = y + 216");
+    contains(shell, "fb.setClipRect");
+    contains(shell, "fb.clearClip()");
     contains(surface, "previewCreate"); contains(surface, "previewEdit");
     contains(surface, "SessionModel::sameEditableRecord");
     contains(surface, "Encounter::forGameSpecies(screen.sourceGameId, state.session.working.species)");
     contains(surface, "Met Level for selected encounter");
     contains(surface, "normalizeEditableFocus(state");
+    contains(surface, "beginMoveEditor");
+    contains(surface, "drawMoveEditor");
+    contains(surface, "Contextual editor — B always cancels this dialog");
+    contains(surface, "Keep these move details");
+    contains(surface, "Discard these move details");
+    contains(surface, "000 - Empty move slot");
+    contains(surface, "openValuePicker(screen, state, PickerTarget::Move, state.moveEditorSlot)");
+    assert(surface.find("Add Pokemon") != std::string::npos); // Box action still exists.
+    const auto moveEditorBegin = surface.find("void drawMoveEditor(");
+    const auto workspaceBegin = surface.find("void drawWorkspace(", moveEditorBegin);
+    assert(moveEditorBegin != std::string::npos && workspaceBegin > moveEditorBegin);
     contains(surface, "state.session.editable() &&");
     contains(surface, "screen.drawGSCOverlay(fb)");
     contains(surface, "Game/species/location/level constrained");
@@ -81,6 +95,11 @@ int main() {
     const auto actionsBody = surface.substr(actionsBegin, actionsEnd - actionsBegin);
     assert(actionsBody.find("screen.drawGSCOverlay(fb)") != std::string::npos);
     assert(actionsBody.find("Colors::Background") == std::string::npos);
+    assert(actionsBody.find("const int w = occupied ? 650 : 560") != std::string::npos);
+    assert(actionsBody.find("const int h = occupied ? 500 : 350") != std::string::npos);
+    assert(actionsBody.find("Shared::actionMenuGeometry()") != std::string::npos);
+    assert(actionsBody.find("Colors::FocusBorder, 2") != std::string::npos);
+    assert(actionsBody.find("constexpr int x = 250, y = 72, w = 780, h = 560") == std::string::npos);
     contains(composite, "return !Gen3SharedEditorSurface::ownsFrame(screen)");
     assert(composite.find("ClassicPackedMove::handleInput") < composite.find("Gen3SharedEditorSurface::handleInput"));
     contains(move, "Move / Hold Multi"); contains(move, "Hold Multi");
