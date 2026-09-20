@@ -378,6 +378,16 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         }
         pokemon.setHeldItem(*edit.heldItem);
     }
+    if (edit.moves) {
+        for (uint16_t move : *edit.moves) {
+            if (move > kMaxGen3Move) {
+                error = "Generation III move id is outside the native move table";
+                return false;
+            }
+        }
+        for (int i = 0; i < 4; ++i)
+            pokemon.setMove(i, (*edit.moves)[static_cast<std::size_t>(i)]);
+    }
     if (edit.ivs) {
         for (uint8_t value : *edit.ivs) {
             if (value > 31) {
@@ -437,7 +447,7 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
 
     auto pps = edit.pp.value_or(before->pp);
     auto ppUps = edit.ppUps.value_or(before->ppUps);
-    if (edit.pp || edit.ppUps) {
+    if (edit.moves || edit.pp || edit.ppUps) {
         if (!validPpForMoves(pokemon, pps, ppUps, error)) return false;
         for (int i = 0; i < 4; ++i) {
             pokemon.setMovePPUps(i, ppUps[static_cast<std::size_t>(i)]);
@@ -542,11 +552,18 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     }
     pokemon.setNickname(nickname16);
     pokemon.setLevel(create.level);
-    for (int i = 0; i < 4; ++i) {
-        pokemon.setMove(i, 0);
-        pokemon.setMovePPUps(i, 0);
-        pokemon.setMovePP(i, 0);
+    for (uint16_t move : create.moves) {
+        if (move > kMaxGen3Move) {
+            error = "Generation III move id is outside the native move table";
+            return false;
+        }
     }
+    for (int i = 0; i < 4; ++i) {
+        pokemon.setMove(i, create.moves[static_cast<std::size_t>(i)]);
+        pokemon.setMovePPUps(i, create.ppUps[static_cast<std::size_t>(i)]);
+        pokemon.setMovePP(i, create.pp[static_cast<std::size_t>(i)]);
+    }
+    if (!validPpForMoves(pokemon, create.pp, create.ppUps, error)) return false;
 
     const auto replacement = encryptedBytes(pokemon);
     const auto stagedBackup = staged_;
