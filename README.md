@@ -6,205 +6,193 @@
 
 **PokeBank NX** is an offline-first Pokémon bank, save editor, collection manager, and preservation project for **CFW Nintendo Switch**.
 
-The long-term goal is one native `.nro` that can discover supported Pokémon saves, browse and safely edit them, preserve Pokémon in a PokeBank-owned Master Vault, organize collections into named Banks, track provenance, and eventually perform carefully approved transfer/write workflows without requiring a PC-side tool for normal use.
+The goal is one native `.nro` that can discover supported Pokémon saves, browse and safely edit them, preserve Pokémon in a PokeBank-owned Master Vault, organize collections into named Banks, track provenance, and eventually perform carefully approved transfer/write workflows without requiring a PC for normal use.
 
 > **Product direction:** HOME-style browsing and organization, PKSE-style Switch-native interaction, and progressively stronger PKHeX-class validation/creation capabilities — unified into one PokeBank NX experience.
 
 **Current status:** 🚧 active alpha development  
-**Platform:** 🎮 Nintendo Switch with Atmosphere/CFW  
+**Platform:** 🎮 Nintendo Switch with Atmosphère/CFW  
 **Storage model:** 💾 local-first / offline-first  
-**Live writes:** 🔒 hard disabled unless a game/source adapter later earns explicit approval  
+**Live writes:** 🔒 hard disabled  
 **License:** 📜 AGPL-3.0
 
 ---
 
-## ⚠️ Alpha safety rule
+## ⚠️ Safety first
 
 PokeBank NX treats original saves as evidence, not scratch space.
 
-- installed Switch saves remain **read-only unless separately approved later**;
-- emulator/source files remain **read-only unless separately approved later**;
-- original source bytes are preserved;
-- supported editing happens in an **in-memory staged workspace**;
-- staged changes can be reviewed and exported as a separate edited copy;
+- original source saves remain **immutable**;
+- installed Switch saves remain **read-only**;
+- RetroArch and other emulator-source files remain **read-only**;
+- supported editing happens in a **staged PokeBank workspace**;
+- staged changes can be reviewed before export;
 - live installed-game writing is **HARD DISABLED**;
-- live RetroArch/emulator-source writing is **HARD DISABLED**;
-- party mutation remains deferred where the format needs additional safety proof.
+- live RetroArch writing is **HARD DISABLED**;
+- live other-emulator writing is **HARD DISABLED**;
+- unknown or unsupported save variants fail closed.
 
 An editable screen does **not** mean PokeBank NX will overwrite the original save.
 
 ---
 
-# 📍 Where the project is now
+# 📍 Current project state
 
-Last updated: **2026-09-14**
+Last updated: **2026-09-20**
 
-Production/development line:
-
-```text
-feature/pokebank-playable
-production checkpoint: a9fc4521087cdc80078c7db620f1be0107adce58
-```
-
-Current focused milestone:
+## Production / accepted baseline
 
 ```text
-feature/gen2-shared-pokemon-editor-20260914
-PR #68 — OPEN / DRAFT / NOT MERGED
-latest functional implementation checkpoint before docs refresh:
-43b8563d4177b58ae0f341c1ebd58f86e2ee4fdb
+Production branch: feature/pokebank-playable
+Current production head: 3aeecb8061a3cf8cf19670c042c5ce4cd06330fb
+
+Latest hardware-accepted Gen I/II source:
+c24859ce17d33040685ea19b9aff068ba378d8ae
+
+Accepted NRO SHA-256:
+0eeef3c4752fc52240332567bf3919099271be4985fda346da26d66018fff82f
 ```
 
-The project now has physically accepted read-only foundations for the first three generations, a hardware-accepted classic inventory editor, a hardware-accepted Gen I boxed Pokémon editor, and a shared generation-aware Pokémon editor foundation that is being extended to Gold/Silver/Crystal.
+The Gen I/II editor and storage interaction foundation is now physically accepted. PR #74 is merged, and the pre-Gen-III architecture freeze from issue #71 / PR #75 is complete.
 
-### Current snapshot
+## Current active milestone
+
+```text
+Branch: feature/gen3-shared-pokemon-editor-20260919
+PR #77 — Generation III: extend the shared Pokemon editor
+State: OPEN / DRAFT / NOT MERGED
+Current head: dcbd1ff92f1b4f1127c071d3ccb958495436e539
+Automated CI: GREEN
+Device acceptance: PENDING
+```
+
+Generation III is now being brought onto the **same shared editor architecture** used by the accepted Gen I/II work. The current PR includes exact-format Gen III capabilities/providers, a generation-native staged Pokémon editor, shared View/Edit/Create surfaces, safety-focused field policies, and Gen III-specific sparse box movement behavior.
+
+The current exact PR #77 head is CI-green across host tests, Gen I/II regressions, packed-move regressions, Gen III candidate gates, sanitizers, and native candidate validation. It is **not DEVICE ACCEPTED** until the exact CI-built NRO is physically tested and accepted.
+
+---
+
+# ✅ What is already device accepted
 
 | Area | Status |
 |---|---|
-| Native Switch `.nro` | ✅ Working on real hardware |
-| Standalone PokeBank NX runtime | ✅ Working — PokeBank-owned paths |
-| Gen I Red / Blue / Yellow read support | ✅ **Device accepted** |
-| Gen II Gold / Silver / Crystal read support | ✅ **Device accepted** |
-| Gen III Ruby / Sapphire / Emerald / FRLG read support | ✅ **Device accepted** |
-| Classic staged inventory editor | ✅ **Hardware accepted** |
-| Exact-game item catalogs / machine names | ✅ Implemented |
-| Gen I boxed staged Pokémon editor | ✅ **Device accepted** |
-| Gen I passive View / Summary presentation | ✅ **Device accepted** |
-| Shared capability-driven Pokémon editor foundation | ✅ Established |
-| Gen II shared View / Create / Edit | 🚧 Implemented on PR #68; final exact-head validation + hardware test pending |
-| Gen II exact-game move compatibility | 🚧 Implemented on PR #68; final device candidate pending |
-| Gen II Held Item / Friendship / Pokérus editor surfaces | 🚧 Implemented on PR #68; final device candidate pending |
-| Gen II six-stat / six-axis presentation | 🚧 Implemented on PR #68; final device candidate pending |
-| Master Vault | ⬜ Planned for v1 |
-| Named Banks | ⬜ Planned for v1 |
-| Universal emulator discovery | ⬜ Planned for v1 |
+| Native Switch `.nro` runtime | ✅ Working on real hardware |
+| Red / Blue / Yellow read support | ✅ Device accepted |
+| Gold / Silver / Crystal read support | ✅ Device accepted |
+| Ruby / Sapphire / Emerald / FireRed / LeafGreen read support | ✅ Device accepted |
+| Classic staged Inventory editor | ✅ Device accepted |
+| Gen I boxed staged Pokémon editor | ✅ Device accepted |
+| Gen I/II fullscreen View / Edit / Create | ✅ Device accepted |
+| Gen I/II exact game identity + generation-correct fields | ✅ Device accepted |
+| Gen I/II packed single-Pokémon movement | ✅ Device accepted |
+| Gen I/II rectangular multi-select / group movement | ✅ Device accepted |
+| Gen I/II Release with confirmation | ✅ Device accepted |
+| Gen I/II native 20-slot source boxes | ✅ Device accepted |
+| PokeBank Legacy Storage 30-slot boxes | ✅ Device accepted |
+| Issue #71 universal editor/reuse architecture freeze | ✅ Complete / merged |
+| Gen III shared staged editor | 🚧 PR #77 — CI green, hardware pending |
+| Master Vault | ⬜ Planned |
+| Named Banks | ⬜ Planned |
+| Universal emulator discovery | ⬜ Planned |
 | Nintendo DS / 3DS support | ⬜ Planned |
 | Modern Switch per-game validation | 🟨 Foundation exists; production validation pending |
-| Full touch-only UI | ⬜ v1 requirement |
-| Live save writing | 🔒 **HARD DISABLED** |
+| Live save writing | 🔒 HARD DISABLED |
 
 ---
 
-# ✅ Physically accepted legacy read foundation
+# 🎮 Accepted Gen I / II experience
 
-| Game | Platform | Read status |
-|---|---|---|
-| Red | GB | ✅ Device accepted |
-| Blue | GB | ✅ Device accepted |
-| Yellow | GB | ✅ Device accepted |
-| Gold | GBC | ✅ Device accepted |
-| Silver | GBC | ✅ Device accepted |
-| Crystal | GBC | ✅ Device accepted |
-| FireRed | GBA | ✅ Device accepted |
-| LeafGreen | GBA | ✅ Device accepted |
-| Ruby | GBA | ✅ Device accepted |
-| Sapphire | GBA | ✅ Device accepted |
-| Emerald | GBA | ✅ Device accepted |
+PokeBank NX now has a hardware-accepted shared editor and storage interaction model for:
 
-These accepted paths include Trainer, Party, PC Boxes, generation-appropriate Pokémon details, inventory where supported, strict format validation, source immutability, and bounded legacy save discovery.
+- **Red / Blue / Yellow**
+- **Gold / Silver / Crystal**
 
-Gold/Silver Trainer gender is fixed `Male`; Crystal keeps save-derived Trainer gender. Gen II does **not** fabricate a modern SID.
+Accepted behavior includes:
 
-FireRed/LeafGreen **GBA** and FireRed/LeafGreen **Switch** remain separate release/platform identities.
+- dedicated fullscreen **View Pokémon**, **Edit Pokémon**, and **Create Pokémon** pages;
+- exact game identity in the UI;
+- generation-correct fields rather than fabricated modern metadata;
+- staged Create/Edit with source immutability;
+- filtered move selection and compatibility presentation;
+- generation-correct DVs / Stat Exp;
+- derived HP DV behavior;
+- split Special presentation where required;
+- battle-stat radar presentation;
+- A-button Pokémon Actions;
+- empty-slot Add Pokémon;
+- **Y tap** packed single-Pokémon movement;
+- **Y hold** rectangular multi-select;
+- deterministic same-box and cross-box packed movement;
+- atomic rejection when the destination lacks capacity;
+- **B** exact staged restore/cancel;
+- Release only through Actions with explicit confirmation.
 
----
+### Packed vs sparse storage
 
-# ✅ Hardware-accepted editor milestones
+Gen I/II native boxes are treated as **packed lists**. Moving a Pokémon reorders/inserts/removes entries without inventing permanent holes.
 
-## Classic Inventory
+PokeBank-owned Legacy Storage remains separate and uses its own 30-slot box model.
 
-The classic staged Inventory workflow is hardware accepted with the shared control contract:
-
-```text
-A             Edit Amount
-X             Add Item
-Y             Remove Item
-L / R         Previous / Next valid category
-+             Options
--             Help
-B             Back / Cancel
-```
-
-Exact-game/exact-pocket catalogs, empty valid categories, machine move labels, Key Item warnings, staged Pending Changes, and source immutability are part of the accepted direction.
-
-## Generation I boxed Pokémon editor
-
-The accepted Gen I editor is a capability-driven staged editor using the permanent three-panel visual language:
-
-```text
-DETAILS | VALUES | MOVES
-```
-
-Accepted hardware candidate:
-
-```text
-Application source: 69668bc81629228ef25c1bdada7c7ce1aed9b666
-NRO: PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
-SHA-256: 3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
-Issue #62: CLOSED / DEVICE ACCEPTED
-```
-
-The accepted behavior includes staged Create/Edit, transactional Keep/Discard/Continue editing, Y DV randomization, L/R panel navigation, DV-derived shiny behavior, generation-correct fields, semantic move compatibility colors, real five-stat battle presentation, and source immutability.
-
-A later accepted UI follow-up unified Party/Storage/action-sheet **View Pokémon** into the same passive visual language with no editable cursor. PR #67 was merged after hardware acceptance.
+Generation III uses its own exact-format rules; its native box storage is not forced into Gen I/II packed semantics.
 
 ---
 
-# 🚧 Current milestone — Generation II shared Pokémon editor
+# 🚧 Current milestone — Generation III shared editor
 
-PR **#68** brings Gold/Silver/Crystal onto the same reusable editor foundation instead of creating another one-off editor.
+PR **#77** extends the existing shared editor instead of creating a parallel Gen III-only UI.
 
-Current implementation on the focused branch includes:
+Current implementation includes:
 
-- passive Gen II `DETAILS | VALUES | MOVES` View;
-- exact-game Gold/Silver vs Crystal move compatibility tables;
-- pinned offline compatibility data generated from PKHeX reference data;
-- green `OK` / orange `Unusual preserved` passive View semantics;
-- encounter legality still truthfully shown as `Not checked`;
-- clean passive View wording with editor-internal wording removed;
-- Gen II Create and Edit surfaces using local drafts/staged edits;
-- authentic 0–15 DVs with derived HP DV;
-- one stored Special DV feeding split SpA/SpD battle presentation;
-- six displayed battle stats and a six-axis radar;
-- Held Item picker constrained to the Gen II item domain;
-- Friendship and Pokérus support;
-- Crystal-specific caught/met handling without pretending Gold/Silver store the same data;
-- species/Attack-DV-derived gender behavior;
-- DV-derived shiny behavior;
-- transactional existing-Pokémon Edit sessions that restore the exact pre-edit staged state on discard;
-- preservation of pre-existing unusual move/PP bytes during unrelated edits;
-- separate Level and EXP applet invocations to avoid chained library-applet failures;
-- permanent host/sanitizer contract tests for the editor surface and compatibility behavior.
+- exact identities for Ruby, Sapphire, Emerald, FireRed GBA, and LeafGreen GBA;
+- exact-format editor capability/provider plumbing;
+- generation-native staged PK3 editing;
+- shared editor shell / species-picker reuse;
+- shared hardware View/Edit/Create presentation;
+- Gen III-specific sparse box movement behavior;
+- permanent host/regression tests for the Gen III surface and staged editor;
+- safety guards preserving Gen I/II accepted behavior;
+- source immutability and all live-write locks.
 
-### Important status boundary
+### Gen III safety boundary
 
-This Gen II milestone is **not device accepted yet**.
+PID-correlated fields such as Nature, Gender, Shiny, Ability/PID relationships remain deliberately constrained until an atomic policy can prove they can be changed without silently breaking related values.
 
-The latest functional implementation checkpoint before the documentation refresh is:
-
-```text
-43b8563d4177b58ae0f341c1ebd58f86e2ee4fdb
-```
-
-The remaining work is to freeze one exact candidate SHA and complete the full host/regression/source-safety/ASan/UBSan/devkitA64/RomFS/source-identity/package gates against that exact SHA, then produce one exact `.nro` for physical Gold/Silver/Crystal testing.
-
-PR #68 must remain **open, draft, and unmerged** until that hardware result.
+PR #77 is **OPEN / DRAFT / NOT MERGED** and remains hardware-pending.
 
 ---
 
-# 🧱 Permanent Pokémon editor rule
+# 🧱 Universal editor architecture
 
-The exact game/save format decides what the editor shows.
+Issue **#71** is complete and PR **#75** is merged.
 
-> If the field genuinely exists in the exact current save format, expose it. If it does not exist, hide it. Never fabricate modern fields just because the Pokémon exists in a newer generation.
+The frozen direction for all future generations is:
+
+```text
+shared PokeBank editor UI / lifecycle
+        ↓
+exact-game capability + provider layer
+        ↓
+generation-native staged adapter
+        ↓
+strict serialization / validation boundaries
+```
+
+Field state is explicit:
+
+```text
+HIDDEN
+DERIVED
+READ_ONLY
+EDITABLE
+```
+
+The exact game/save format decides what appears. PokeBank NX does not fabricate fields simply because later generations have them.
 
 Examples:
 
-- Gen I: DVs, Stat Exp, five battle stats, no Held Item/Nature/Ability/Ribbons.
-- Gen II: Held Item, Friendship, Pokérus, DVs/Stat Exp, split SpA/SpD battle display, no Nature/Ability/Ribbons.
-- Gen III+: later native fields appear only when the exact game/save really stores them.
-
-Large collections such as Ribbons/Marks should use dedicated collection screens when those generations are implemented.
+- **Gen I:** DVs, Stat Exp, five native battle stats, no Held Item/Nature/Ability/Ribbons.
+- **Gen II:** Held Item, Friendship, Pokérus, DVs/Stat Exp, split SpA/SpD display, no Nature/Ability/Ribbons.
+- **Gen III+:** fields appear only when supported by that exact game/save format and the staged adapter has earned the required safety coverage.
 
 ---
 
@@ -215,38 +203,55 @@ source save
    ↓ read only
 immutable original bytes
    ↓
-in-memory staged changes
+PokeBank staged workspace
    ↓
 Review Changes
    ↓
 strict serialize / finalize / reparse / validate
    ↓
-export edited copy
+exported edited copy
    ↓
 future individually approved source-specific write adapter
 ```
 
-`COPY`, `MOVE`, and `CLONE` remain distinct operations. A real Move may only retire/remove the source after a destination has been durably created and validated.
+`COPY`, `MOVE`, `CLONE`, staged edit, and source writeback remain distinct operations.
+
+A future true Move must never destroy the source until the destination has been durably created and validated.
 
 ---
 
 # 🗃️ Master Vault and named Banks
 
-The long-term storage model is PokeBank-owned rather than inherited writable PKSE Storage.
+The long-term storage system is PokeBank-owned.
 
-Planned Master Vault properties include immutable original Pokémon payloads, SHA-256/stable Vault IDs, source provenance, parent/clone/derived relationships, journal/recovery behavior, and profile-aware ownership.
+Planned Master Vault properties include:
 
-Named Banks will organize Vault IDs into collections such as Living Dex, Shiny Dex, Events, Trade/Extras, or personal named sets without duplicating the authoritative raw payload.
+- immutable original Pokémon payloads;
+- SHA-256 / stable Vault IDs;
+- source provenance;
+- parent / clone / derived relationships;
+- journal / recovery behavior;
+- profile-aware ownership.
+
+Named Banks will organize Vault IDs into collections such as Living Dex, Shiny Dex, Events, Trade/Extras, and user-defined sets without duplicating the authoritative original payload.
 
 ---
 
 # 🔎 Universal save discovery
 
-PokeBank NX v1 is planned to use a reusable Save Source Adapter architecture rather than staying RetroArch-only.
+The planned Save Source Adapter architecture is intended to support more than RetroArch.
 
-Target sources include RetroArch, Tico, mGBA, melonDS, DraStic, Azahar, custom folders, and validated unknown-but-valid save files.
+Target sources include:
 
-Discovery should be config-aware, bounded, provenance-preserving, deduplicated, and separated from write authorization.
+- RetroArch
+- mGBA
+- melonDS
+- DraStic
+- Azahar
+- custom folders
+- validated unknown-but-recognized save files
+
+Discovery and write authorization remain separate concerns. Finding a save never implies permission to modify it.
 
 ---
 
@@ -258,39 +263,41 @@ Discovery should be config-aware, bounded, provenance-preserving, deduplicated, 
 
 **Nintendo Switch validation targets:** Let's Go Pikachu/Eevee, Sword/Shield, Brilliant Diamond/Shining Pearl, Legends: Arceus, Scarlet/Violet, Legends: Z-A, FireRed Switch, and LeafGreen Switch.
 
-Modern families require explicit save-revision/update/DLC validation. One writable game must never globally authorize all games.
+FireRed/LeafGreen **GBA** and FireRed/LeafGreen **Switch** are always treated as separate release/platform identities.
+
+Modern games require explicit save-revision/update/DLC validation. One writable adapter must never globally authorize unrelated games.
 
 ---
 
 # 🛣️ High-level v1 path
 
 ```text
-Gen I / II / III legacy reads          DEVICE ACCEPTED
-classic inventory editor               DEVICE ACCEPTED
-Gen I boxed Pokémon editor             DEVICE ACCEPTED
-Gen II shared Pokémon editor           CURRENT / PR #68 / HARDWARE PENDING
+Gen I / II / III legacy reads                 DEVICE ACCEPTED
+Classic inventory editor                      DEVICE ACCEPTED
+Gen I/II shared editor + packed movement       DEVICE ACCEPTED
+Universal editor architecture freeze           COMPLETE
         ↓
-Gen III shared Pokémon editor
+Gen III shared staged editor                   CURRENT / PR #77 / HARDWARE PENDING
         ↓
 Master Vault + named Banks
         ↓
-universal SaveSource adapters
+Universal SaveSource adapters
         ↓
 DS + 3DS identities/read adapters
         ↓
-modern Switch validation
+Modern Switch validation
         ↓
 Summary / provenance / Dex / search
         ↓
-conversion / legality / transfer workspace
+Conversion / legality / transfer workspace
         ↓
-staged transaction framework
+Staged transaction framework
         ↓
-individually approved writes / true Move
+Individually approved writes / true Move
         ↓
-full touch-only completion
+Full touch-only completion
         ↓
-release hardening / RC hardware torture pass
+Release hardening / RC hardware torture pass
         ↓
 v1.0
 ```
@@ -301,9 +308,20 @@ Canonical roadmap tracking remains issue **#29**.
 
 # 🧪 Validation philosophy
 
-Before any new device-accepted milestone, PokeBank NX expects focused host tests, permanent regressions, source-immutability checks, ASan/UBSan, generated-data verification where applicable, device asset preflight, clean devkitA64 compile/link, embedded source/RomFS verification, exact artifact hashes, and real physical Switch testing.
+Before a milestone becomes device accepted, PokeBank NX expects:
 
-`DEVICE ACCEPTED` is reserved for the exact physically tested artifact.
+- focused host tests;
+- permanent regression coverage;
+- source-immutability checks;
+- ASan / UBSan;
+- generated-data verification where applicable;
+- device asset preflight;
+- clean devkitA64 compile/link;
+- embedded source/RomFS verification;
+- exact artifact hashes;
+- real physical Switch testing.
+
+`DEVICE ACCEPTED` is reserved for the exact artifact/hash physically tested by the owner.
 
 ---
 
@@ -311,9 +329,12 @@ Before any new device-accepted milestone, PokeBank NX expects focused host tests
 
 ```text
 Repository: GlitchedZeus/PokeBank-NX
+Default branch / landing page: main
 Production branch: feature/pokebank-playable
-Current focused branch: feature/gen2-shared-pokemon-editor-20260914
-Current draft PR: #68
+Production head: 3aeecb8061a3cf8cf19670c042c5ce4cd06330fb
+Current focused branch: feature/gen3-shared-pokemon-editor-20260919
+Current draft PR: #77
+Current PR head: dcbd1ff92f1b4f1127c071d3ccb958495436e539
 Writable remote: origin
 Upstream/reference: kiasta/PKSE
 ```
@@ -324,7 +345,7 @@ Canonical runtime root:
 sdmc:/switch/PokeBank-NX/
 ```
 
-PKSE/PKHeX/PKSM and other projects may be used as references or optional migration/oracle tooling. Custom PokeBank NX work belongs on `origin`; it must not be pushed to upstream reference repositories.
+PKSE, PKHeX, PKSM and other projects may be used as references/oracles where licensing and project boundaries permit. Custom PokeBank NX work belongs on `origin`; it must not be pushed to upstream reference repositories.
 
 ---
 
