@@ -1168,7 +1168,7 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     fb.drawText(x + 24, y + 52, "Editor guardrails active • full legality checker is a later milestone",
                 Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 34, y + 112, "Exact source", Colors::TextDim);
-    fb.drawText(x + 270, y + 112, Context::exactGameName(screen.sourceGameId), Colors::Text);
+    fb.drawText(x + 270, y + 112, std::string(Context::exactGameName(screen.sourceGameId)), Colors::Text);
     fb.drawText(x + 34, y + 158, "Source mutation", Colors::TextDim);
     fb.drawText(x + 270, y + 158, "HARD DISABLED", Colors::Accent);
     fb.drawText(x + 34, y + 204, "Encounter guardrails", Colors::TextDim);
