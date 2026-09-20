@@ -401,6 +401,11 @@ constexpr Focus switchPanel(Generation generation, Focus focus, int direction, b
 constexpr Focus moveColumn(Generation generation, Focus focus, int direction, bool crystal = false) noexcept {
     focus = normalize(generation, focus, crystal);
     const auto layout = layoutFor(generation, crystal);
+    // Classic DV generations display HP DV but derive it from the stored DVs. Keep
+    // LEFT from HP Stat Exp inside STATS by skipping that non-focusable cell.
+    if ((generation == Generation::Gen1 || generation == Generation::Gen2) &&
+        focus.panel == Panel::Values && focus.row == 0 && focus.column == 1 && direction < 0)
+        return normalize(generation, {Panel::Values, 1, 0}, crystal);
     const int maxColumn = focus.panel == Panel::Details ? 0 : focus.panel == Panel::Moves ? 2 :
         (focus.row < layout.valueStatRows ? static_cast<int>(layout.valueColumns) - 1 : 0);
     const int next = static_cast<int>(focus.column) + direction;
