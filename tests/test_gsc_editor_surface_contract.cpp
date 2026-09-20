@@ -22,6 +22,8 @@ int main() {
     const auto pickerFix = readFile("src/UI/Gen2HardwarePickerFix.inc");
     const auto workspaceFix = readFile("src/UI/Gen2HardwareWorkspaceFix.inc");
     const auto finalFix = readFile("src/UI/Gen2HardwareFinalFix.inc");
+    const auto picker = readFile("src/UI/Gen2PokemonPickerOverlay.inc");
+    const auto pickerModel = readFile("include/UI/Gen2PokemonPickerModel.h");
 
     assert(foundation.find("Gen II Level") != std::string::npos);
     assert(foundation.find("Gen II Experience") != std::string::npos);
@@ -91,7 +93,10 @@ int main() {
     assert(unified.find("{\"Pokerus\", Gen2Native::pokerusText(p.pokerus)}") != std::string::npos);
     assert(unified.find("std::array<std::pair<std::string, std::string>, 2> capabilityRows") != std::string::npos);
     assert(unified.find("Encounter legality: Not checked") != std::string::npos);
-    assert(unified.find("scrollWindow(rows.size(), 5") != std::string::npos);
+    assert(unified.find("scrollWindow(rows.size(), 8") != std::string::npos);
+    assert(unified.find("\"OT Name\", p.originalTrainer") != std::string::npos);
+    assert(unified.find("Met Level for selected Crystal encounter") != std::string::npos);
+    assert(unified.find("Encounter::forGameSpecies(screen.sourceGameId, p.species)") != std::string::npos);
 
     const auto overlay = readFile("src/UI/TrainerViewScreenGSCOverlay.inc");
     assert(overlay.find("publishVerifiedStagedEditorExport(editor, request)") != std::string::npos);
@@ -108,6 +113,14 @@ int main() {
     assert(composite.find("#define handleUnifiedGen2SurfaceInput handleUnifiedGen2SurfaceInputBase") != std::string::npos);
     assert(composite.find("#define drawUnifiedGen2Surface drawUnifiedGen2SurfaceBase") != std::string::npos);
     assert(composite.find("#define drawFinalGen2Surface drawFinalGen2SurfaceBase") != std::string::npos);
+
+    // Crystal Met Location is species/exact-game aware; accepting it writes the native
+    // location and encounter-minimum caught level rather than an arbitrary landmark.
+    assert(pickerModel.find("Encounter::forGameSpecies(sourceGameId, species)") != std::string::npos);
+    assert(picker.find("Species-valid Crystal encounters") != std::string::npos);
+    assert(picker.find("encounter->minLevel") != std::string::npos);
+    assert(picker.find("encounter->timeMask") != std::string::npos);
+    assert(picker.find("state.working.caughtData = 0") != std::string::npos);
 
     // Normal Gen II Move picker: Empty + exact-game-compatible choices only.
     assert(pickerFix.find("hardwareMoveAllowed") != std::string::npos);
