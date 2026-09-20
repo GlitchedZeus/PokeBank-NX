@@ -126,11 +126,12 @@ constexpr Focus moveFocus(Focus focus, Direction direction) noexcept {
         return normalize({Panel::Values, static_cast<uint8_t>(focus.row), static_cast<uint8_t>(ValueColumn::StatExperience)});
     }
     if (focus.panel == Panel::Values) {
-        // Moving left from HP Stat Exp must leave the panel instead of landing on
-        // the derived HP DV cell.
+        // HP DV is derived/non-focusable. Moving left from HP Stat Exp stays in
+        // STATS and skips directly to the next real editable DV: Attack DV.
         if (focus.row == static_cast<uint8_t>(ValueRow::HP) &&
             focus.column == static_cast<uint8_t>(ValueColumn::StatExperience)) {
-            return normalize({Panel::Identity, static_cast<uint8_t>(ValueRow::HP), 0});
+            return normalize({Panel::Values, static_cast<uint8_t>(ValueRow::Attack),
+                              static_cast<uint8_t>(ValueColumn::DV)});
         }
         if (focus.row < valueStatRowCount() && focus.column > 0) {
             --focus.column;
