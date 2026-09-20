@@ -7,6 +7,7 @@ on:
       - 'Makefile'
       - 'Makefile.host*'
       - 'include/Integration/Gen3/**'
+      - 'include/Integration/Encounter/**'
       - 'include/Legacy/FRLG*'
       - 'include/Pokemon/Pokemon3FRLG.h'
       - 'include/UI/Gen3*'
@@ -21,6 +22,7 @@ on:
       - 'src/UI/Gen3*'
       - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
       - 'tests/test_gen3*'
+      - 'tests/test_encounter_guardrails.cpp'
       - 'tests/test_pksm_gen3_adapter.cpp'
       - 'tests/test_rse_gen3_adapter.cpp'
       - 'tests/test_legacy_frlg_browse.cpp'
@@ -79,7 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf build-host
-          for target in             test_gen3_exact_format_editor_provider             test_gen3_staged_pokemon_editor             test_gen3_shared_pokemon_session             test_gen3_hardware_surface_contract             test_gen3_shell_render             test_pksm_gen3_adapter             test_rse_gen3_adapter             test_legacy_frlg_browse             test_pre_gen3_reuse_guard             test_source_mutation_policy             test_write_policy; do
+          for target in             test_encounter_guardrails             test_gen3_exact_format_editor_provider             test_gen3_staged_pokemon_editor             test_gen3_shared_pokemon_session             test_gen3_hardware_surface_contract             test_gen3_shell_render             test_pksm_gen3_adapter             test_rse_gen3_adapter             test_legacy_frlg_browse             test_pre_gen3_reuse_guard             test_source_mutation_policy             test_write_policy; do
             make -f Makefile.host "build-host/$target"
             "./build-host/$target"
           done
