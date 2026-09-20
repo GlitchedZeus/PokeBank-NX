@@ -166,8 +166,10 @@ int main() {
     // Generation II has a fullscreen final repaint for both active shared modes and external passive View.
     assert(gen2Final.find("drawFullscreenGen2Active") != std::string::npos);
     assert(gen2Final.find("drawFullscreenGen2Passive") != std::string::npos);
-    assert(gen2Final.find("fb.drawText(28, 16, name") != std::string::npos);
-    assert(gen2Final.find("No. \" + gen2DexLabel(p.species)") != std::string::npos);
+    const auto shell = readText("include/UI/SharedPokemonShell.h");
+    assert(gen2Final.find("SharedPokemonShell::drawChrome(fb, p.species, p.nickname, p.level, p.gender, p.shiny") != std::string::npos);
+    assert(shell.find("fb.drawText(28, 16, name") != std::string::npos);
+    assert(shell.find("No. \" + dexLabel(species)") != std::string::npos);
 
     // Gen I HP DV is derived and must never be a focus/edit target.
     assert(Foundation::hpDVIsDerived());

@@ -325,6 +325,7 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
     std::size_t box, std::size_t slot, const BoxPokemonEdit& edit,
     std::string& error) {
     error.clear();
+    if (carryingSparseMove()) { error = "Place or cancel the carried Pokemon first"; return false; }
     bool ok = false;
     const auto raw = readBoxRaw(box, slot, ok);
     if (!ok) {
@@ -489,6 +490,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     std::size_t box, std::size_t slot, const BoxPokemonCreate& create,
     std::string& error) {
     error.clear();
+    if (carryingSparseMove()) { error = "Place or cancel the carried Pokemon first"; return false; }
     if (box >= boxCount() || slot >= boxCapacity()) {
         error = "Generation III box/slot is outside the native 14 x 30 storage";
         return false;
@@ -573,6 +575,7 @@ bool StagedPokemonEditor::stageCloneBoxPokemon(
     std::size_t destinationBox, std::size_t destinationSlot,
     std::string& error) {
     error.clear();
+    if (carryingSparseMove()) { error = "Place or cancel the carried Pokemon first"; return false; }
     bool sourceOk = false;
     const auto sourceRaw = readBoxRaw(sourceBox, sourceSlot, sourceOk);
     if (!sourceOk) {
@@ -619,6 +622,7 @@ bool StagedPokemonEditor::stageCloneBoxPokemon(
 bool StagedPokemonEditor::stageReleaseBoxPokemon(
     std::size_t box, std::size_t slot, std::string& error) {
     error.clear();
+    if (carryingSparseMove()) { error = "Place or cancel the carried Pokemon first"; return false; }
     auto before = boxedPokemon(box, slot, error);
     if (!before) {
         if (error.empty()) error = "Generation III Release requires an occupied slot";
@@ -686,12 +690,110 @@ bool StagedPokemonEditor::validateStaged(std::string& error) const {
     return true;
 }
 
+std::optional<StagedPokemonRecord> StagedPokemonEditor::decodeRecord(
+    const std::array<uint8_t,80>& raw, std::string& error) { return parseRaw(raw, error); }
+
+std::optional<StagedPokemonRecord> StagedPokemonEditor::previewEdit(
+    std::size_t box, std::size_t slot, const BoxPokemonEdit& edit, std::string& error) const {
+    auto preview = *this;
+    if (!preview.stageBoxPokemonEdit(box, slot, edit, error)) return {};
+    return preview.boxedPokemon(box, slot, error);
+}
+
+std::optional<StagedPokemonRecord> StagedPokemonEditor::previewCreate(
+    std::size_t box, std::size_t slot, const BoxPokemonCreate& create, std::string& error) const {
+    auto preview = *this;
+    if (!preview.stageAddBoxPokemon(box, slot, create, error)) return {};
+    return preview.boxedPokemon(box, slot, error);
+}
+
+bool StagedPokemonEditor::beginSparseMove(std::size_t box,
+    const std::vector<std::size_t>& slots, std::string& error) {
+    error.clear();
+    if (carryingSparseMove() || slots.empty() || box >= boxCount()) {
+        error = "Select occupied native slots before moving"; return false;
+    }
+    auto ordered = slots;
+    std::sort(ordered.begin(), ordered.end());
+    if (std::adjacent_find(ordered.begin(), ordered.end()) != ordered.end()) {
+        error = "Duplicate move source"; return false;
+    }
+    std::vector<std::array<uint8_t,80>> records;
+    for (auto slot : ordered) {
+        auto p = boxedPokemon(box, slot, error);
+        if (!p) { if (error.empty()) error = "Move source is empty"; return false; }
+        records.push_back(p->encryptedBytes);
+    }
+    const auto backup = staged_;
+    const std::array<uint8_t,80> empty{};
+    for (auto slot : ordered) {
+        if (!writeBoxRaw(box, slot, empty, error)) { staged_ = backup; return false; }
+    }
+    if (!validateStaged(error)) { staged_ = backup; return false; }
+    beforeCarry_ = backup;
+    carrySlots_ = std::move(ordered);
+    carryRecords_ = std::move(records);
+    return true;
+}
+
+bool StagedPokemonEditor::placeSparseMove(std::size_t box, std::size_t anchor,
+                                          std::string& error) {
+    error.clear();
+    if (!carryingSparseMove() || box >= boxCount() || anchor >= boxCapacity()) {
+        error = "No carried Pokemon or invalid destination"; return false;
+    }
+    // Translate the occupied selection relative to its first row-major slot.
+    // Preserve holes and row/column offsets; never wrap a row or compact neighbors.
+    std::vector<std::size_t> destinations;
+    const auto first = carrySlots_.front();
+    for (auto source : carrySlots_) {
+        const int row = int(anchor / 6) + int(source / 6) - int(first / 6);
+        const int col = int(anchor % 6) + int(source % 6) - int(first % 6);
+        if (row < 0 || row >= 5 || col < 0 || col >= 6) {
+            error = "Selected shape does not fit this destination"; return false;
+        }
+        const std::size_t slot = row * 6 + col;
+        if (boxedPokemon(box, slot, error) || !error.empty()) {
+            if (error.empty()) error = "Move destination must be empty; no overwrite";
+            return false;
+        }
+        destinations.push_back(slot);
+    }
+    const auto backup = staged_;
+    for (std::size_t i = 0; i < destinations.size(); ++i) {
+        if (!writeBoxRaw(box, destinations[i], carryRecords_[i], error)) {
+            staged_ = backup; return false;
+        }
+    }
+    if (!validateStaged(error)) { staged_ = backup; return false; }
+    for (std::size_t i = 0; i < destinations.size(); ++i) {
+        auto p = boxedPokemon(box, destinations[i], error);
+        if (!p || p->encryptedBytes != carryRecords_[i]) {
+            staged_ = backup; error = "Sparse move failed exact reparse"; return false;
+        }
+    }
+    changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(anchor),
+        "Sparse Pokemon move", std::to_string(carrySlots_.size()) + " carried", "Exact native slots"});
+    carrySlots_.clear(); carryRecords_.clear(); beforeCarry_.clear();
+    return true;
+}
+
+bool StagedPokemonEditor::cancelSparseMove(std::string& error) {
+    error.clear();
+    if (!carryingSparseMove()) { error = "No sparse move to cancel"; return false; }
+    staged_ = std::move(beforeCarry_);
+    carrySlots_.clear(); carryRecords_.clear();
+    return true;
+}
+
 void StagedPokemonEditor::discard() noexcept {
     staged_ = original_;
     changes_.clear();
+    carrySlots_.clear(); carryRecords_.clear(); beforeCarry_.clear();
 }
 
 std::vector<uint8_t> StagedPokemonEditor::finalizedBytes(std::string& error) const {
+    if (carryingSparseMove()) { error = "Place or cancel the carried Pokemon first"; return {}; }
     if (!validateStaged(error)) return {};
     if (staged_.size() != original_.size()) {
         error = "Generation III staged save size changed unexpectedly";

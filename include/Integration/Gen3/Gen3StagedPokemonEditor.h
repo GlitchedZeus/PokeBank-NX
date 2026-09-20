@@ -105,6 +105,13 @@ public:
     [[nodiscard]] std::optional<StagedPokemonRecord> boxedPokemon(
         std::size_t box, std::size_t slot, std::string& error) const;
 
+    static std::optional<StagedPokemonRecord> decodeRecord(
+        const std::array<uint8_t,80>& raw, std::string& error);
+    std::optional<StagedPokemonRecord> previewEdit(std::size_t box, std::size_t slot,
+        const BoxPokemonEdit& edit, std::string& error) const;
+    std::optional<StagedPokemonRecord> previewCreate(std::size_t box, std::size_t slot,
+        const BoxPokemonCreate& create, std::string& error) const;
+
     bool stageBoxPokemonEdit(std::size_t box, std::size_t slot,
                              const BoxPokemonEdit& edit, std::string& error);
     bool stageAddBoxPokemon(std::size_t box, std::size_t slot,
@@ -114,6 +121,11 @@ public:
                               std::string& error);
     bool stageReleaseBoxPokemon(std::size_t box, std::size_t slot, std::string& error);
 
+    // Sparse carry is transactional: exact slots only, no compaction or overwrite.
+    bool beginSparseMove(std::size_t box, const std::vector<std::size_t>& slots, std::string& error);
+    bool placeSparseMove(std::size_t box, std::size_t anchor, std::string& error);
+    bool cancelSparseMove(std::string& error);
+    bool carryingSparseMove() const noexcept { return !carrySlots_.empty(); }
     void discard() noexcept;
     [[nodiscard]] std::vector<uint8_t> finalizedBytes(std::string& error) const;
 
@@ -132,6 +144,9 @@ private:
     [[nodiscard]] std::array<uint8_t, 80> readBoxRaw(
         std::size_t box, std::size_t slot, bool& ok) const noexcept;
 
+    std::vector<std::size_t> carrySlots_;
+    std::vector<std::array<uint8_t, 80>> carryRecords_;
+    std::vector<uint8_t> beforeCarry_;
     SourceGame sourceGame_;
     uint8_t activeSlot_;
     uint32_t saveCounter_;

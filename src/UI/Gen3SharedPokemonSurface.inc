@@ -1,3 +1,7 @@
+#include "UI/SharedPokemonShell.h"
+#include "Pokemon/PersonalInfoTable.h"
+#include "Encryption/Encryption3FRLG.h"
+#include <cstring>
 #include "Integration/Gen3/Gen3ExactFormatEditorProvider.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Names/MoveNames.h"
@@ -26,6 +30,12 @@ namespace Context = PokeBank::UIModel::ClassicGameContext;
 
 struct State {
     const TrainerViewScreen* owner = nullptr;
+    bool passive = false;
+    int detailsFocus = 0;
+    bool previewValid = false;
+    Gen3::StagedPokemonRecord previewInput{};
+    Gen3::StagedPokemonRecord previewRecord{};
+    std::string previewError;
     bool actions = false;
     bool review = false;
     bool confirmRelease = false;
@@ -124,6 +134,8 @@ bool selectedOccupied(TrainerViewScreen& screen) {
 void resetWorkspaceFocus(State& state) noexcept {
     state.focus = {Shared::Panel::Details, 0, 0};
     state.speciesPicker = false;
+    state.detailsFocus = 0;
+    state.previewValid = false;
 }
 
 void beginActions(TrainerViewScreen& screen) {
@@ -149,6 +161,7 @@ bool beginViewOrEdit(TrainerViewScreen& screen, SessionModel::Mode mode) {
         screen.postStatus(error.empty() ? "Selected Generation III slot is empty" : error, 300);
         return false;
     }
+    state.passive = false;
     state.session.begin(*pokemon, mode);
     state.actions = false;
     state.review = false;
@@ -183,6 +196,7 @@ bool beginCreate(TrainerViewScreen& screen, int box, int slot) {
     state.actions = false;
     state.review = false;
     state.confirmRelease = false;
+    state.passive = false;
     state.session.beginCreate(staged->trainer());
     resetWorkspaceFocus(state);
     return true;
@@ -252,7 +266,7 @@ std::string detailsValue(const TrainerViewScreen& screen,
 }
 
 constexpr std::array<const char*,15> detailLabels{{
-    "Species", "Nickname", "Level", "Experience", "OT", "TID", "SID",
+    "Species", "Nickname", "Level", "Experience", "OT", "TID (read-only)", "SID (read-only)",
     "Held Item", "Friendship", "Language", "Origin", "Ball",
     "Met Level", "Met Location", "Pokerus"
 }};
@@ -442,9 +456,12 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
     if (down & HidNpadButton_Right)
         state.focus = Shared::moveColumn(Shared::Generation::Gen3, state.focus, 1);
 
+    if (state.focus.panel == Shared::Panel::Details) state.detailsFocus = state.focus.row;
+
     if (down & HidNpadButton_B) {
         if (state.session.mode == SessionModel::Mode::View) {
             state.session.mode = SessionModel::Mode::None;
+            if (state.passive) { screen.closeDetailsModal(); state.passive = false; }
         } else if (state.session.mode == SessionModel::Mode::Create) {
             state.session.discardDraft();
             screen.postStatus("Generation III Create draft cancelled; staged/source bytes unchanged");
@@ -577,6 +594,11 @@ std::string surfaceContext(const TrainerViewScreen& screen, const State& state) 
     Context::SurfaceMode mode = Context::SurfaceMode::ViewReadOnly;
     if (state.session.mode == SessionModel::Mode::Edit) mode = Context::SurfaceMode::EditStaged;
     else if (state.session.mode == SessionModel::Mode::Create) mode = Context::SurfaceMode::CreateDraft;
+    if (state.passive) {
+        if (screen.details.source == TrainerViewScreen::EditSource::Party)
+            return "Party Slot " + std::to_string(screen.details.partyIndex + 1);
+        return "Legacy Storage / Slot " + std::to_string(screen.selectedItemIndex + 1);
+    }
     return Context::contextLine(
         "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
         screen.sourceGameId, mode);
@@ -593,49 +615,52 @@ void drawFocus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selected) {
 }
 
 void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    const auto& p = state.session.working;
+    // Preview uses the exact serializer on a private copy only when the draft changes.
+    // Failed drafts never display stale computed stats as if they were valid.
+    if (state.session.editable() && (!state.previewValid ||
+        !SessionModel::sameEditableRecord(state.previewInput, state.session.working))) {
+        state.previewInput = state.session.working;
+        state.previewError.clear();
+        if (auto* staged = editor(screen)) {
+            auto preview = state.session.mode == SessionModel::Mode::Create
+                ? staged->previewCreate(state.box, state.slot, state.session.createRequest(), state.previewError)
+                : staged->previewEdit(state.box, state.slot, state.session.editRequest(), state.previewError);
+            if (preview) state.previewRecord = *preview;
+        } else state.previewError = "Exact preview unavailable";
+        state.previewValid = true;
+    }
+    const auto& p = state.session.editable() && state.previewError.empty()
+        ? state.previewRecord : state.session.working;
     screen.touchButtons.clear();
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
-
-    const std::string title =
-        p.nickname.empty() ? std::string(Names::getSpeciesName(p.species)) : p.nickname;
-    fb.drawText(28, 16, title, Colors::Text, TextStyle::Heading);
-    const std::string levelDex =
-        "Lv. " + std::to_string(p.level) + "     No. " + std::to_string(p.species);
-    int rw = 0, rh = 0;
-    fb.measureText(levelDex, rw, rh);
-    fb.drawText(fb.getWidth() - 28 - rw, 24, levelDex, Colors::TextDim);
-    const auto surface = state.session.mode == SessionModel::Mode::View ? Shared::Surface::View :
-                         state.session.mode == SessionModel::Mode::Edit ? Shared::Surface::Edit :
-                         Shared::Surface::CreateDraft;
-    const std::string mode = Shared::titleFor(surface);
-    int mw = 0, mh = 0;
-    fb.measureText(mode, mw, mh, TextStyle::Caption);
-    fb.drawText((fb.getWidth() - mw) / 2, 23, mode, Colors::Accent, TextStyle::Caption);
-    fb.drawFilledRect(0, 60, fb.getWidth(), 2, Colors::Accent);
-    fb.drawText(28, 67, surfaceContext(screen, state), Colors::TextDim, TextStyle::Caption);
-
-    constexpr int y = 96, h = 514;
-    constexpr int leftX = 24, leftW = 310;
-    constexpr int gap = 14;
-    constexpr int midX = leftX + leftW + gap, midW = 410;
-    constexpr int rightX = midX + midW + gap;
-    const int rightW = fb.getWidth() - 24 - rightX;
+    auto mode = Context::SurfaceMode::ViewReadOnly;
+    if (state.session.mode == SessionModel::Mode::Edit) mode = Context::SurfaceMode::EditStaged;
+    if (state.session.mode == SessionModel::Mode::Create) mode = Context::SurfaceMode::CreateDraft;
+    SharedPokemonShell::drawChrome(fb, p.species, p.nickname, p.level, p.gender, p.shiny,
+        mode, state.passive ? surfaceContext(screen, state) :
+        "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1), screen.sourceGameId);
+    const SharedPokemonShell::Geometry geometry(fb.getWidth(), fb.getHeight(), kNavBarH);
+    const int y = geometry.y, h = geometry.h;
+    const int leftX = geometry.leftX, leftW = geometry.leftW;
+    const int midX = geometry.midX, midW = geometry.midW;
+    const int rightX = geometry.rightX, rightW = geometry.rightW;
 
     drawPanel(fb, leftX, y, leftW, h, "DETAILS");
-    const auto detailWindow = Shared::scrollWindow(detailLabels.size(), 9, state.focus.row);
-    for (std::size_t i = 0; i < detailWindow.count; ++i) {
-        const std::size_t row = detailWindow.first + i;
-        const int yy = y + 54 + static_cast<int>(i) * 48;
-        const bool selected = state.focus.panel == Shared::Panel::Details &&
-                              state.focus.row == row;
-        drawFocus(fb, leftX + 8, yy - 4, leftW - 16, 36, selected);
-        fb.drawText(leftX + 16, yy, detailLabels[row], Colors::TextDim, TextStyle::Caption);
-        std::string value = detailsValue(screen, p, static_cast<int>(row));
-        if (value.size() > 22) value.resize(22);
-        fb.drawText(leftX + 112, yy, value, Colors::Text, TextStyle::Caption);
+    SharedPokemonShell::drawPortrait(fb, leftX, y, p.species, p.shiny);
+    const auto& personal = Pokemon::getPersonalInfoG3(p.species);
+    const std::array<uint8_t,2> types{personal.type1, personal.type2};
+    int typeX = leftX + 66;
+    for (std::size_t i = 0; i < types.size(); ++i) {
+        if (types[i] == 255 || (i && types[i] == types[0])) continue;
+        if (auto* sprite = SpriteManager::getTypeSprite(types[i]); sprite && sprite->data && sprite->height > 0) {
+            const int width = sprite->width * 22 / sprite->height;
+            fb.drawImageScaled(typeX, y + 180, sprite->width, sprite->height, width, 22, sprite->data, sprite->channels);
+            typeX += width + 8;
+        }
     }
-
+    SharedPokemonShell::drawScrollableDetails(fb, leftX, y, leftW, h,
+        detailLabels.size(), state.detailsFocus, state.focus.panel == Shared::Panel::Details,
+        [](std::size_t row) { return detailLabels[row]; },
+        [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); });
     drawPanel(fb, midX, y, midW, h, "STATS");
     fb.drawText(midX + 126, y + 50, "IV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(midX + 190, y + 50, "EV", Colors::TextDim, TextStyle::Caption);
@@ -652,7 +677,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         fb.drawText(midX + 18, yy, statLabels[static_cast<std::size_t>(row)], Colors::TextDim, TextStyle::Caption);
         fb.drawText(midX + 126, yy, std::to_string(p.ivs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(midX + 190, yy, std::to_string(p.evs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
-        fb.drawText(midX + 274, yy, std::to_string(p.calculatedStats[static_cast<std::size_t>(row)]), Colors::Accent, TextStyle::Caption);
+        fb.drawText(midX + 274, yy, state.previewError.empty() ? std::to_string(p.calculatedStats[static_cast<std::size_t>(row)]) : "—", Colors::Accent, TextStyle::Caption);
     }
     const std::array<std::pair<const char*,std::string>,5> derived{{
         {"Nature", std::to_string(p.nature)},
@@ -674,10 +699,10 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     }
 
     drawPanel(fb, rightX, y, rightW, h, "MOVES");
-    fb.drawText(rightX + rightW - 174, y + 50, "PP", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + rightW - 98, y + 50, "Ups", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(rightX + 186, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(rightX + 242, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
     for (int row = 0; row < 4; ++row) {
-        const int yy = y + 78 + row * 56;
+        const int yy = y + 62 + row * 32;
         const bool selected = state.focus.panel == Shared::Panel::Moves &&
                               state.focus.row == row;
         if (selected) {
@@ -687,18 +712,25 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const uint16_t move = p.moves[static_cast<std::size_t>(row)];
         fb.drawText(rightX + 18, yy, move == 0 ? "Empty" : Names::getMoveName(move),
                     Colors::Text, TextStyle::Caption);
-        fb.drawText(rightX + rightW - 174, yy,
+        fb.drawText(rightX + 186, yy,
                     std::to_string(p.pp[static_cast<std::size_t>(row)]),
                     Colors::Text, TextStyle::Caption);
-        fb.drawText(rightX + rightW - 98, yy,
+        fb.drawText(rightX + 242, yy,
                     std::to_string(p.ppUps[static_cast<std::size_t>(row)]),
                     Colors::Text, TextStyle::Caption);
     }
-    fb.drawText(rightX + 18, y + 324, "Move selection: READ ONLY", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + 18, y + 350, "Exact learnset provider deferred", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + 18, y + 392, "Nature / Gender / Shiny", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + 18, y + 416, "Ability / PID: READ ONLY", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + 18, y + 448, "Legality: Not Checked", Colors::TextDim, TextStyle::Caption);
+    fb.drawHDivider(rightX + 14, y + 184, rightW - 28);
+    fb.drawText(rightX + 18, y + 194, "Move compatibility: Not checked", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(rightX + 18, y + 220, "Move selection: READ ONLY", Colors::TextDim, TextStyle::Caption);
+    struct DataRow { std::string label, value; };
+    const std::vector<DataRow> rows{
+        {"Origin", std::to_string(p.originGame)}, {"Language", std::to_string(p.language)},
+        {"Ball", std::to_string(p.ball)}, {"PID fields", "READ ONLY"},
+        {"Legality", "Not checked"},
+        {"Preview", state.previewError.empty() ? "Exact PK3" : "Invalid draft"}
+    };
+    SharedPokemonShell::drawDataAndGraph(fb, rightX, y + 244, rightW, h - 256,
+        "GEN III DATA", rows, state.previewError.empty() ? p.calculatedStats : std::array<uint16_t,6>{});
 
     if (state.session.mode == SessionModel::Mode::View) {
         drawNavBar(fb, {{"B", "Back"}, {"L/R", "Panel"}});
@@ -823,6 +855,30 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
 
 } // namespace
 
+bool beginPassiveView(TrainerViewScreen& screen) {
+    if (!screen.details.active) return false;
+    auto* target = screen.detailsTargetPokemon();
+    if (!target || target->getGameGroup() != Enums::GameVersion::FRLG || target->getData().size() < 80)
+        return false;
+    auto& state = stateFor(screen);
+    if (state.passive && workspaceActive(state)) return true;
+    auto* encrypted = Encryption::encryptArray3FRLG(target->getData());
+    std::array<uint8_t,80> raw{};
+    std::memcpy(raw.data(), encrypted, raw.size());
+    delete[] encrypted;
+    std::string error;
+    auto record = Gen3::StagedPokemonEditor::decodeRecord(raw, error);
+    if (!record) {
+        screen.closeDetailsModal();
+        screen.postStatus(error.empty() ? "Invalid native PK3 record" : error, 300);
+        return true;
+    }
+    state.session.begin(*record, SessionModel::Mode::View);
+    state.passive = true;
+    resetWorkspaceFocus(state);
+    return true;
+}
+
 bool ownsFrame(const TrainerViewScreen& screen) noexcept {
     return ownsFrameImpl(screen);
 }
@@ -835,6 +891,7 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     (void)touch;
     if (!isGen3Gba(screen)) return false;
 
+    beginPassiveView(screen);
     auto& state = stateFor(screen);
     if (handleReleaseConfirm(screen, state, down)) return true;
     if (handleReview(screen, state, down)) return true;
@@ -856,6 +913,7 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 }
 
 bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    if (isGen3Gba(screen)) beginPassiveView(screen);
     if (!ownsFrameImpl(screen)) return false;
     auto& state = stateFor(screen);
     if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);

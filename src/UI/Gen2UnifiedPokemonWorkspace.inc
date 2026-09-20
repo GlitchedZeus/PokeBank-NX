@@ -358,10 +358,7 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         !passive && unified.focus.panel == Unified::Panel::Details ? Colors::Accent : Colors::Text,
         TextStyle::Caption);
     const auto& p = state.working;
-    if (auto* sprite = SpriteManager::getSprite(p.species, p.shiny); sprite && sprite->data)
-        fb.drawSpriteStaticContained(x + 63, y + 34, 174, 146,
-                                     sprite->width, sprite->height, sprite->data, sprite->channels);
-    else fb.drawText(x + 82, y + 104, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
+    SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny);
     if (const auto* personal = Gen2::personalRecord(p.species)) {
         int badgeX = x + 18;
         sharedBadge(fb, badgeX, y + 184, sharedTypeName(personal->rawType1));

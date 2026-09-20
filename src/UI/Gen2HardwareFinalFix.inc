@@ -1,3 +1,4 @@
+#include "UI/SharedPokemonShell.h"
 #include "UI/ClassicGameContext.h"
 
 // Final hardware-retest presentation adapter for Generation II.
@@ -16,12 +17,6 @@ ClassicContext::SurfaceMode gen2SurfaceMode(Mode mode) noexcept {
     return ClassicContext::SurfaceMode::EditStaged;
 }
 
-std::string gen2DexLabel(uint16_t species) {
-    std::string dex = std::to_string(species);
-    while (dex.size() < 3) dex = "0" + dex;
-    return dex;
-}
-
 Color gen2MaleColor() noexcept {
     // Pure fixed Blue is too dark against the accepted dark/OLED surfaces on Switch hardware.
     // Keep a cyan-leaning sky blue in dark themes and a deeper companion shade for light mode.
@@ -32,13 +27,6 @@ Color gen2GenderColor(uint8_t gender) noexcept {
     if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Male) return gen2MaleColor();
     if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Female) return Colors::Magenta;
     return Colors::Text;
-}
-
-void drawGen2HeaderGender(PKSEFramebuffer& fb, int x, int y, uint8_t gender) {
-    if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Male)
-        fb.drawSymbol(x, y, "\xE2\x99\x82", gen2MaleColor());
-    else if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Female)
-        fb.drawSymbol(x, y, "\xE2\x99\x80", Colors::Magenta);
 }
 
 int gen2TypeSpriteWidth(uint8_t classicType, int height = 22) {
@@ -234,38 +222,13 @@ void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,
                                  bool passive, const std::string& recordContext) {
     const auto& p = state.working;
     screen.touchButtons.clear();
-    fb.drawVerticalGradient(0, 0, fb.getWidth(), fb.getHeight(),
-        Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 250),
-        Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 255));
-
-    const std::string name = p.nickname.empty() ? std::string(Names::getSpeciesName(p.species)) : p.nickname;
-    fb.drawText(28, 16, name, Colors::Text, TextStyle::Heading);
-    int nw = 0, nh = 0;
-    fb.measureText(name, nw, nh, TextStyle::Heading);
-    drawGen2HeaderGender(fb, 40 + nw, 22, p.gender);
-    if (p.shiny) fb.drawShinyMark(66 + nw, 20, 18, Colors::ShinyStar);
-
-    const std::string rightHeader = "Lv. " + std::to_string(p.level) + "     No. " + gen2DexLabel(p.species);
-    int rw = 0, rh = 0;
-    fb.measureText(rightHeader, rw, rh);
-    fb.drawText(fb.getWidth() - 28 - rw, 24, rightHeader, Colors::TextDim);
-
-    const auto surfaceMode = gen2SurfaceMode(state.mode);
-    const std::string mode = std::string(ClassicContext::modeLabel(surfaceMode));
-    int mw = 0, mh = 0;
-    fb.measureText(mode, mw, mh, TextStyle::Caption);
-    fb.drawText((fb.getWidth() - mw) / 2, 23, mode, Colors::Accent, TextStyle::Caption);
-    fb.drawFilledRect(0, 60, fb.getWidth(), 2, Colors::Accent);
-    fb.drawText(28, 66, ClassicContext::contextLine(recordContext, screen.sourceGameId, surfaceMode),
-                Colors::TextDim, TextStyle::Caption);
-
-    constexpr int contentY = 96;
-    const int contentH = fb.getHeight() - contentY - kNavBarH - 8;
-    constexpr int leftX = 24, leftW = 300;
-    constexpr int gap = 14;
-    constexpr int midX = leftX + leftW + gap, midW = 398;
-    constexpr int rightX = midX + midW + gap;
-    const int rightW = fb.getWidth() - 24 - rightX;
+    SharedPokemonShell::drawChrome(fb, p.species, p.nickname, p.level, p.gender, p.shiny,
+        gen2SurfaceMode(state.mode), recordContext, screen.sourceGameId);
+    const SharedPokemonShell::Geometry geometry(fb.getWidth(), fb.getHeight(), kNavBarH);
+    const int contentY = geometry.y, contentH = geometry.h;
+    const int leftX = geometry.leftX, leftW = geometry.leftW;
+    const int midX = geometry.midX, midW = geometry.midW;
+    const int rightX = geometry.rightX, rightW = geometry.rightW;
 
     drawUnifiedDetails(fb, state, unified, leftX, contentY, leftW, contentH, passive);
     drawUnifiedValues(fb, state, unified, midX, contentY, midW, contentH, passive);

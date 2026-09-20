@@ -167,6 +167,8 @@ void clampSourceBoxSelection(TrainerViewScreen& screen) noexcept {
 }
 
 bool classicPackedMoveLayerAvailable(const TrainerViewScreen& screen) noexcept {
+    if (Gen3SharedEditorSurface::isGen3Gba(screen))
+        return !Gen3SharedEditorSurface::ownsFrame(screen);
     if (Gen1PokemonEditor::isGen1SourceUX(screen)) {
         const auto& state = Gen1PokemonEditor::ux2StateFor(screen);
         return state.mode == decltype(state.mode)::Closed &&
@@ -219,8 +221,8 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     // the adapter's native capacity before any source action/move layer sees it.
     clampSourceBoxSelection(*this);
 
-    if (Gen3SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (classicPackedMoveLayerAvailable(*this) && ClassicPackedMove::handleInput(*this, down, held, touch)) return;
+    if (Gen3SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen1PokemonEditor::handleReleaseActionInput(*this, down)) return;
     if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
 

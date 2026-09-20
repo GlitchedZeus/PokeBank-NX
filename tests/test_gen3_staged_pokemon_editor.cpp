@@ -238,6 +238,70 @@ void runGame(SourceGame game, Family family) {
     assert(editor->stagedBytes() == immutableSource);
     assert(!editor->hasPendingChanges());
 
+    // Hardware regression: exact sparse slots, transactional carry, no overwrite/compaction.
+    assert(editor->stageCloneBoxPokemon(0, 0, 0, 7, error));
+    assert(editor->stageCloneBoxPokemon(0, 0, 0, 2, error));
+    const auto beforeCarry = editor->stagedBytes();
+    const auto changesBeforeCarry = editor->pendingChanges().size();
+    const auto originalMon = editor->boxedPokemon(0, 0, error)->encryptedBytes;
+    assert(!editor->beginSparseMove(0, {0,0}, error));
+    assert(!editor->beginSparseMove(0, {0,30}, error));
+    assert(editor->stagedBytes() == beforeCarry);
+    assert(editor->beginSparseMove(0, {7,0}, error));
+    assert(!editor->boxedPokemon(0, 0, error));
+    assert(!editor->boxedPokemon(0, 7, error));
+    assert(editor->boxedPokemon(0, 2, error)->encryptedBytes == originalMon);
+    const auto carried = editor->stagedBytes();
+    assert(!editor->placeSparseMove(0, 2, error)); // occupied target, whole group rejected
+    assert(!editor->placeSparseMove(0, 5, error)); // row wrap
+    assert(!editor->placeSparseMove(0, 29, error)); // bottom edge
+    assert(!editor->stageReleaseBoxPokemon(0, 2, error));
+    assert(editor->finalizedBytes(error).empty());
+    assert(editor->stagedBytes() == carried);
+    assert(editor->cancelSparseMove(error));
+    assert(editor->stagedBytes() == beforeCarry);
+    assert(editor->pendingChanges().size() == changesBeforeCarry);
+    assert(editor->beginSparseMove(0, {0}, error));
+    assert(editor->placeSparseMove(0, 5, error));
+    assert(!editor->boxedPokemon(0, 0, error));
+    assert(editor->boxedPokemon(0, 5, error)->encryptedBytes == originalMon);
+    assert(editor->boxedPokemon(0, 2, error)->encryptedBytes == originalMon);
+    assert(editor->beginSparseMove(0, {7,2}, error));
+    // First row-major source is 2; slot 7 is one row down, one column left.
+    assert(!editor->placeSparseMove(1, 0, error));
+    assert(editor->placeSparseMove(1, 2, error));
+    assert(editor->boxedPokemon(1, 2, error)->encryptedBytes == originalMon);
+    assert(editor->boxedPokemon(1, 7, error)->encryptedBytes == originalMon);
+    assert(!editor->boxedPokemon(1, 3, error)); // shape hole preserved
+    assert(!editor->boxedPokemon(0, 2, error));
+    assert(!editor->boxedPokemon(0, 7, error));
+    assert(editor->boxedPokemon(0, 5, error)->encryptedBytes == originalMon);
+    assert(editor->originalBytes() == immutableSource && source == immutableSource);
+    assert(!editor->finalizedBytes(error).empty());
+
+    // Preview follows exact Create/Edit serialization, including safe deterministic PID,
+    // native stats, gender/ability and origin, without touching staged bytes or pending changes.
+    const auto beforePreview = editor->stagedBytes();
+    const auto pendingBeforePreview = editor->pendingChanges().size();
+    auto preview = editor->previewCreate(13, 29, create, error);
+    assert(preview && preview->calculatedStats[0] > 0 && preview->originGame == origin(game));
+    assert(editor->stagedBytes() == beforePreview);
+    assert(editor->pendingChanges().size() == pendingBeforePreview);
+    assert(editor->stageAddBoxPokemon(13, 29, create, error));
+    assert(editor->boxedPokemon(13, 29, error)->encryptedBytes == preview->encryptedBytes);
+    const auto beforeEditPreview = editor->stagedBytes();
+    BoxPokemonEdit previewEdit;
+    previewEdit.level = 45;
+    auto editPreview = editor->previewEdit(13, 29, previewEdit, error);
+    assert(editPreview && editPreview->calculatedStats != preview->calculatedStats);
+    assert(editPreview->pid == preview->pid && editPreview->nature == preview->nature);
+    assert(editPreview->gender == preview->gender && editPreview->shiny == preview->shiny);
+    assert(editPreview->ability == preview->ability && editPreview->tid == preview->tid && editPreview->sid == preview->sid);
+    assert(editor->stagedBytes() == beforeEditPreview);
+    assert(editor->stageBoxPokemonEdit(13, 29, previewEdit, error));
+    assert(editor->boxedPokemon(13, 29, error)->encryptedBytes == editPreview->encryptedBytes);
+    editor->discard();
+
     // Wrong family must fail closed.
     const SourceGame mismatch =
         family == Family::FRLG ? SourceGame::RubyGBA : SourceGame::FireRedGBA;

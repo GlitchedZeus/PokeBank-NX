@@ -1,3 +1,4 @@
+#include "UI/SharedPokemonShell.h"
 #pragma once
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen2PokemonSession.h"
@@ -40,30 +41,8 @@ namespace UI::Gen2WorkspacePresentation {
 // Values also exposes the editable Held Item / Friendship / Pokerus capabilities.
 inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
     const PokeVault::Integration::Gen2::PokemonRecord& p, PokeVault::Integration::Gen2::SourceGame game) {
-    constexpr int inset = 12, gap = 10, dataW = 198;
-    const int dataX = x + inset, graphX = dataX + dataW + gap;
-    const int graphW = w - 2 * inset - gap - dataW;
-    for (const auto& pane : {std::pair{dataX, dataW}, std::pair{graphX, graphW}}) {
-        fb.drawFilledRoundedRect(pane.first, y, pane.second, h, 12, Colors::Surface);
-        fb.drawRoundedRect(pane.first, y, pane.second, h, 12, Colors::Divider, 1);
-    }
-    fb.drawText(dataX + 10, y + 10, "GEN II DATA", Colors::Accent, TextStyle::Caption);
-    int rowY = y + 34;
-    for (const auto& row : PokeBank::UIModel::Gen2Workspace::dataRows(p, game)) {
-        const auto combined = row.label + ": " + row.value;
-        int tw = 0, th = 0;
-        fb.measureText(combined, tw, th, TextStyle::Caption);
-        if (tw <= dataW - 20) {
-            fb.drawText(dataX + 10, rowY, combined, Colors::Text, TextStyle::Caption);
-            rowY += 20;
-        } else {
-            fb.drawText(dataX + 10, rowY, row.label, Colors::TextDim, TextStyle::Caption);
-            fb.drawText(dataX + 10, rowY + 20, row.value, Colors::Text, TextStyle::Caption);
-            rowY += 40;
-        }
-    }
-    fb.drawText(graphX + 10, y + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
-    StatsRadar::drawGen2Labeled(fb, graphX + 8, y + 32, graphW - 16, h - 40,
+    SharedPokemonShell::drawDataAndGraph(fb, x, y, w, h, "GEN II DATA",
+        PokeBank::UIModel::Gen2Workspace::dataRows(p, game),
         PokeBank::UIModel::Gen2Workspace::battleStats(p));
 }
 } // namespace UI::Gen2WorkspacePresentation

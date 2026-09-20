@@ -155,3 +155,29 @@ $(HOST_BUILD)/test_gen3_shared_pokemon_session: $(GEN3_SHARED_SESSION_SOURCES)
 $(HOST_BUILD)/test_gen3_shared_pokemon_session_sanitize: $(GEN3_SHARED_SESSION_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+# Hardware-retest routing, shared renderer and scroll/controller contracts.
+HOST_TESTS += $(HOST_BUILD)/test_gen3_hardware_surface_contract
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_hardware_surface_contract_sanitize
+host-test: $(HOST_BUILD)/test_gen3_hardware_surface_contract
+host-sanitize: $(HOST_BUILD)/test_gen3_hardware_surface_contract_sanitize
+$(HOST_BUILD)/test_gen3_hardware_surface_contract: tests/test_gen3_hardware_surface_contract.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gen3_hardware_surface_contract_sanitize: tests/test_gen3_hardware_surface_contract.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+HOST_TESTS += $(HOST_BUILD)/test_gen3_shell_render
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_shell_render_sanitize
+host-test: $(HOST_BUILD)/test_gen3_shell_render
+host-sanitize: $(HOST_BUILD)/test_gen3_shell_render_sanitize
+$(HOST_BUILD)/test_gen3_shell_render: tests/test_gen3_shell_render.cpp include/UI/SharedPokemonShell.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_shell_render.cpp -o $@
+$(HOST_BUILD)/test_gen3_shell_render_sanitize: tests/test_gen3_shell_render.cpp include/UI/SharedPokemonShell.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_shell_render.cpp -o $@
+
+# Header extraction must rebuild accepted Gen II renderer regression binaries as well.
+$(HOST_BUILD)/test_gsc_workspace_render $(HOST_BUILD)/test_gsc_workspace_render_sanitize: include/UI/SharedPokemonShell.h
