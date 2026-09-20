@@ -61,7 +61,7 @@ host-test: $(GSC_RENDER_TEST)
 host-sanitize: $(GSC_RENDER_SANITIZE)
 $(GSC_RENDER_TEST): $(GSC_RENDER_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude $(GSC_RENDER_SOURCES) -o $@
 $(GSC_RENDER_SANITIZE): $(GSC_RENDER_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_RENDER_SOURCES) -o $@
