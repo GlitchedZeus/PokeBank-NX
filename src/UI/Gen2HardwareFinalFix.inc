@@ -98,7 +98,7 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
         {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
         {"Nickname", p.nickname},
         {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
-        {"OT", p.originalTrainer},
+        {"OT Name", p.originalTrainer},
         {"Trainer ID", std::to_string(p.trainerId)},
         {"Held Item", itemText(p.heldItem)},
         {"Friendship", std::to_string(p.friendship)},
@@ -112,16 +112,22 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
         rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
     }
 
-    const auto window = UnifiedContract::scrollWindow(rows.size(), 5, passive ? 0 : unified.detailsFocus);
+    // The semantic repaint is the authoritative visible Details row window. Clear the
+    // previous rows first, then repaint the same eight-row window used by the shared shell.
+    const int viewportY = y + 216;
+    const int viewportBottom = y + h - 34;
+    fb.drawFilledRect(x + 8, viewportY, w - 16, viewportBottom - viewportY, Colors::Panel);
+    const auto window = UnifiedContract::scrollWindow(rows.size(), 8, passive ? 0 : unified.detailsFocus);
+    fb.setClipRect(x + 8, viewportY, w - 16, viewportBottom - viewportY);
     for (std::size_t i = 0; i < window.count; ++i) {
         const std::size_t row = window.first + i;
-        const int yy = y + 224 + static_cast<int>(i) * 43;
+        const int yy = y + 224 + static_cast<int>(i) * 38;
         const bool selected = !passive && unified.focus.panel == UnifiedContract::Panel::Details && unified.focus.row == row;
-        fb.drawFilledRect(x + 8, yy + 2, w - 16, 32, Colors::Panel);
         drawGen2Focus(fb, x + 8, yy + 2, w - 16, 30, selected);
         fb.drawText(x + 18, yy + 7, rows[row].first, Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[row].second, Colors::Text, TextStyle::Caption);
     }
+    fb.clearClip();
     fb.drawFilledRect(x + w - 50, y + h - 34, 38, 26, Colors::Panel);
 }
 

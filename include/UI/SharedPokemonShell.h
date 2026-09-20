@@ -63,6 +63,13 @@ template <class Label, class Value>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
     std::size_t total, std::size_t focus, bool focused, Label label, Value value) {
     const auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, 6, focus);
+    // Scrolling owns one clipped row viewport. Clear it before painting the next window so
+    // an older set of rows can never ghost underneath the current focus position.
+    const int viewportY = y + 216;
+    const int viewportBottom = y + h - 40;
+    const int viewportH = std::max(0, viewportBottom - viewportY);
+    fb.drawFilledRect(x + 8, viewportY, w - 16, viewportH, Colors::Panel);
+    fb.setClipRect(x + 8, viewportY, w - 16, viewportH);
     for (std::size_t i = 0; i < window.count; ++i) {
         const auto row = window.first + i;
         const int yy = y + 224 + static_cast<int>(i) * 48;
@@ -71,6 +78,7 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
         fb.drawText(x + 16, yy, label(row), Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 16, yy + 20, value(row), Colors::Text, TextStyle::Caption);
     }
+    fb.clearClip();
     fb.drawText(x + 16, y + h - 30, "Rows " + std::to_string(window.first + 1) + "-" +
         std::to_string(window.first + window.count) + " / " + std::to_string(total),
         Colors::TextDim, TextStyle::Caption);
