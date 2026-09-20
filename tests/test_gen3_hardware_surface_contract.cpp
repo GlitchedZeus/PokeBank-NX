@@ -75,7 +75,12 @@ int main() {
     contains(surface, "state.session.editable() &&");
     contains(surface, "screen.drawGSCOverlay(fb)");
     contains(surface, "Game/species/location/level constrained");
-    assert(surface.find("fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background)") == std::string::npos);
+    const auto actionsBegin = surface.find("void drawActions(");
+    const auto actionsEnd = surface.find("void drawReview(", actionsBegin);
+    assert(actionsBegin != std::string::npos && actionsEnd != std::string::npos && actionsEnd > actionsBegin);
+    const auto actionsBody = surface.substr(actionsBegin, actionsEnd - actionsBegin);
+    assert(actionsBody.find("screen.drawGSCOverlay(fb)") != std::string::npos);
+    assert(actionsBody.find("Colors::Background") == std::string::npos);
     contains(composite, "return !Gen3SharedEditorSurface::ownsFrame(screen)");
     assert(composite.find("ClassicPackedMove::handleInput") < composite.find("Gen3SharedEditorSurface::handleInput"));
     contains(move, "Move / Hold Multi"); contains(move, "Hold Multi");
