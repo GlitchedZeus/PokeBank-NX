@@ -23,6 +23,8 @@ void PKSEFramebuffer::drawFilledRect(int x,int y,int w,int h,Color) { marks.push
 void PKSEFramebuffer::drawFilledCircle(int x,int y,int r,Color) { marks.push_back({x-r,y-r,2*r,2*r}); }
 void PKSEFramebuffer::drawFilledRoundedRect(int x,int y,int w,int h,int,Color) { marks.push_back({x,y,w,h}); }
 void PKSEFramebuffer::drawRoundedRect(int x,int y,int w,int h,int,Color,int) { marks.push_back({x,y,w,h}); }
+void PKSEFramebuffer::setClipRect(int,int,int,int) {}
+void PKSEFramebuffer::clearClip() {}
 }
 int main() {
     UI::PKSEFramebuffer fb;
@@ -42,8 +44,14 @@ int main() {
                 if (t.value == "Full native value " + std::to_string(focus)) selectedVisible=true;
                 for (std::size_t j=i+1; j<texts.size(); ++j) assert(!intersects(t,texts[j]));
             }
-            assert(selectedVisible && marks.size()==1);
-            assert(marks[0].y>=g.y+220 && marks[0].y+marks[0].h<=g.y+g.h);
+            bool clearedViewport = false;
+            bool focusOutline = false;
+            for (const auto& mark : marks) {
+                clearedViewport |= mark.y == g.y + 216 && mark.h > 100;
+                focusOutline |= mark.h == 45 && mark.y >= g.y + 220 &&
+                                mark.y + mark.h <= g.y + g.h;
+            }
+            assert(selectedVisible && clearedViewport && focusOutline);
         }
         texts.clear(); marks.clear();
         struct Row { std::string label,value; };
