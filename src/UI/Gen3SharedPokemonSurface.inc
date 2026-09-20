@@ -324,6 +324,126 @@ bool detailEditable(const State& state, int row) noexcept {
            row == 13 || row == 14;
 }
 
+std::string pickerValueLabel(const State& state, uint16_t value) {
+    switch (state.pickerTarget) {
+        case PickerTarget::HeldItem: return Names::getItemNameG3(value);
+        case PickerTarget::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
+        case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
+        case PickerTarget::MetLocation: {
+            const char* name = Names::getMetLocationName(state.session.working.originGame, value);
+            return (name && *name) ? std::string(name) : "Unknown (" + std::to_string(value) + ")";
+        }
+        case PickerTarget::Move:
+            return value == 0 ? "Empty" : std::string(Names::getMoveName(value));
+        default: return {};
+    }
+}
+
+const char* pickerTitle(PickerTarget target) noexcept {
+    switch (target) {
+        case PickerTarget::HeldItem: return "Choose Held Item";
+        case PickerTarget::Language: return "Choose Language";
+        case PickerTarget::Ball: return "Choose Ball";
+        case PickerTarget::MetLocation: return "Choose Met Location";
+        case PickerTarget::Move: return "Choose Move";
+        default: return "Choose Value";
+    }
+}
+
+uint16_t currentPickerValue(const State& state, PickerTarget target, int moveSlot = 0) noexcept {
+    const auto& p = state.session.working;
+    switch (target) {
+        case PickerTarget::HeldItem: return p.heldItem;
+        case PickerTarget::Language: return p.language;
+        case PickerTarget::Ball: return p.ball;
+        case PickerTarget::MetLocation: return p.metLocation;
+        case PickerTarget::Move:
+            return moveSlot >= 0 && moveSlot < 4 ? p.moves[static_cast<std::size_t>(moveSlot)] : 0;
+        default: return 0;
+    }
+}
+
+void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget target,
+                     int moveSlot = 0) {
+    state.pickerTarget = target;
+    state.pickerMoveSlot = moveSlot;
+    state.pickerValues.clear();
+
+    if (target == PickerTarget::HeldItem) {
+        const auto count = Names::getItemCountG3();
+        state.pickerValues.reserve(count);
+        for (std::size_t id = 0; id < count; ++id) {
+            const char* name = Names::getItemNameG3(static_cast<uint16_t>(id));
+            if (id == 0 || (name && *name && std::string(name) != "???"))
+                state.pickerValues.push_back(static_cast<uint16_t>(id));
+        }
+    } else if (target == PickerTarget::Language) {
+        state.pickerValues = {1, 2, 3, 4, 5, 7};
+    } else if (target == PickerTarget::Ball) {
+        const auto balls = Enums::getBallList(Enums::GameVersion::FRLG);
+        state.pickerValues.assign(balls.begin(), balls.end());
+    } else if (target == PickerTarget::MetLocation) {
+        const auto table = Names::getLocationTable(state.session.working.originGame);
+        if (table.names) {
+            for (std::size_t id = 0; id < table.count; ++id)
+                if (table.names[id] && *table.names[id])
+                    state.pickerValues.push_back(static_cast<uint16_t>(id));
+        }
+    } else if (target == PickerTarget::Move) {
+        const auto game = PokeVault::Integration::Gen3EditorProvider::sourceGameForId(screen.sourceGameId);
+        if (game) {
+            state.pickerValues = Gen3::Learnset::selectableMoves(
+                *game, state.session.working.species, state.session.baseline.moves);
+        }
+    }
+
+    const uint16_t current = currentPickerValue(state, target, moveSlot);
+    if (std::find(state.pickerValues.begin(), state.pickerValues.end(), current) ==
+        state.pickerValues.end())
+        state.pickerValues.push_back(current);
+
+    if (state.pickerValues.empty()) {
+        state.pickerTarget = PickerTarget::None;
+        screen.postStatus("No valid values are available for this Generation III field", 300);
+        return;
+    }
+
+    state.pickerRow = 0;
+    for (int i = 0; i < static_cast<int>(state.pickerValues.size()); ++i) {
+        if (state.pickerValues[static_cast<std::size_t>(i)] == current) {
+            state.pickerRow = i;
+            break;
+        }
+    }
+    state.valuePicker = true;
+    screen.controllerNavigation.reset();
+}
+
+void applyValuePicker(State& state) {
+    if (!state.valuePicker || state.pickerValues.empty()) return;
+    const auto value = state.pickerValues[static_cast<std::size_t>(state.pickerRow)];
+    auto& p = state.session.working;
+    switch (state.pickerTarget) {
+        case PickerTarget::HeldItem: p.heldItem = value; break;
+        case PickerTarget::Language: p.language = static_cast<uint8_t>(value); break;
+        case PickerTarget::Ball: p.ball = static_cast<uint8_t>(value); break;
+        case PickerTarget::MetLocation: p.metLocation = value; break;
+        case PickerTarget::Move: {
+            const auto slot = static_cast<std::size_t>(state.pickerMoveSlot);
+            p.moves[slot] = value;
+            p.ppUps[slot] = 0;
+            p.pp[slot] = value == 0 ? 0 :
+                Names::getMoveBasePP(value, Enums::GameVersion::FRLG);
+            break;
+        }
+        default: break;
+    }
+    state.valuePicker = false;
+    state.pickerTarget = PickerTarget::None;
+    state.pickerValues.clear();
+    state.previewValid = false;
+}
+
 void editDetail(TrainerViewScreen& screen, State& state, int row) {
     auto& p = state.session.working;
     if (!detailEditable(state, row)) {
@@ -362,27 +482,24 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         return;
     }
 
+    if (row == 7) { openValuePicker(screen, state, PickerTarget::HeldItem); return; }
+    if (row == 9) { openValuePicker(screen, state, PickerTarget::Language); return; }
+    if (row == 11) { openValuePicker(screen, state, PickerTarget::Ball); return; }
+    if (row == 13) { openValuePicker(screen, state, PickerTarget::MetLocation); return; }
+
     int current = 0, minimum = 0, maximum = 255;
     const char* title = "Generation III value";
     switch (row) {
-        case 7: current = p.heldItem; maximum = 376; title = "Held Item ID"; break;
         case 8: current = p.friendship; title = "Friendship"; break;
-        case 9: current = p.language; minimum = 1; maximum = 7; title = "Language ID"; break;
-        case 11: current = p.ball; minimum = 1; maximum = 12; title = "Ball ID"; break;
         case 12: current = p.metLevel; maximum = 100; title = "Met Level"; break;
-        case 13: current = p.metLocation; maximum = 255; title = "Met Location"; break;
         case 14: current = p.pokerus; title = "Pokerus byte"; break;
         default: return;
     }
     const auto r = Utils::promptNumber(title, current, minimum, maximum);
     if (!r.accepted) return;
     switch (row) {
-        case 7: p.heldItem = static_cast<uint16_t>(r.value); break;
         case 8: p.friendship = static_cast<uint8_t>(r.value); break;
-        case 9: p.language = static_cast<uint8_t>(r.value); break;
-        case 11: p.ball = static_cast<uint8_t>(r.value); break;
         case 12: p.metLevel = static_cast<uint8_t>(r.value); break;
-        case 13: p.metLocation = static_cast<uint16_t>(r.value); break;
         case 14: p.pokerus = static_cast<uint8_t>(r.value); break;
         default: break;
     }
@@ -419,13 +536,10 @@ void editStatCell(TrainerViewScreen& screen, State& state) {
 }
 
 void editMoveCell(TrainerViewScreen& screen, State& state) {
-    if (!state.session.editable() || state.session.mode == SessionModel::Mode::Create) {
-        screen.postStatus("Generation III move selection is read-only in this first safe candidate", 300);
-        return;
-    }
+    if (!state.session.editable()) return;
     const std::size_t slot = state.focus.row;
     if (state.focus.column == 0) {
-        screen.postStatus("Move selection is READ ONLY until an exact learnset provider is pinned", 360);
+        openValuePicker(screen, state, PickerTarget::Move, static_cast<int>(slot));
         return;
     }
     if (state.session.working.moves[slot] == 0) {
@@ -439,6 +553,30 @@ void editMoveCell(TrainerViewScreen& screen, State& state) {
         const auto r = Utils::promptNumber("PP Ups", state.session.working.ppUps[slot], 0, 3);
         if (r.accepted) state.session.working.ppUps[slot] = static_cast<uint8_t>(r.value);
     }
+}
+
+bool handleValuePicker(TrainerViewScreen&, State& state, u64 down) {
+    if (!state.valuePicker) return false;
+    const int count = static_cast<int>(state.pickerValues.size());
+    if (count <= 0) {
+        state.valuePicker = false;
+        return true;
+    }
+    if (down & HidNpadButton_Up) state.pickerRow = (state.pickerRow - 1 + count) % count;
+    if (down & HidNpadButton_Down) state.pickerRow = (state.pickerRow + 1) % count;
+    if (down & HidNpadButton_Left) state.pickerRow = std::max(0, state.pickerRow - 10);
+    if (down & HidNpadButton_Right) state.pickerRow = std::min(count - 1, state.pickerRow + 10);
+    if (down & HidNpadButton_B) {
+        state.valuePicker = false;
+        state.pickerTarget = PickerTarget::None;
+        state.pickerValues.clear();
+        return true;
+    }
+    if (down & HidNpadButton_A) {
+        applyValuePicker(state);
+        return true;
+    }
+    return true;
 }
 
 bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {
@@ -467,6 +605,7 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {
 
 bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
     if (!workspaceActive(state)) return false;
+    if (handleValuePicker(screen, state, down)) return true;
     if (handleSpeciesPicker(screen, state, down)) return true;
 
     if (state.session.confirmExit) {
