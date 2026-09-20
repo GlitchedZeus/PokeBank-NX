@@ -162,7 +162,7 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
         }
         fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 114, yy, std::to_string(dvs[static_cast<std::size_t>(r)]) + (r == 0 ? " *" : ""),
-                    Colors::Text, TextStyle::Caption);
+                    r == 0 ? Colors::TextDim : Colors::Text, TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     Colors::Text, TextStyle::Caption);
         const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)]) : "—";

@@ -32,11 +32,12 @@ void normalizeHardwareDerivedHpDvFocus(TrainerViewScreen& screen,
         }
     }
 
-    // Moving left from HP Stat Exp exits to DETAILS rather than landing on HP DV.
+    // HP DV is derived/non-focusable. Moving left from HP Stat Exp must stay
+    // inside STATS and land on the next real editable DV: Attack DV.
     if (previous && previous->panel == Unified::Panel::Values &&
         previous->row == 0 && previous->column == 1) {
-        focus.panel = Unified::Panel::Details;
-        focus.row = 0;
+        focus.panel = Unified::Panel::Values;
+        focus.row = 1;
         focus.column = 0;
         return;
     }
