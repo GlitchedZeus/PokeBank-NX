@@ -333,6 +333,40 @@ bool detailEditable(const State& state, int row) noexcept {
            row == 13 || row == 14;
 }
 
+void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelChanged = false) {
+    state.focus = Shared::normalize(Shared::Generation::Gen3, state.focus);
+    if (!state.session.editable()) return;
+
+    if (state.focus.panel == Shared::Panel::Details) {
+        if (detailEditable(state, state.focus.row)) return;
+        int row = state.focus.row;
+        const int direction = verticalDirection < 0 ? -1 : 1;
+        for (int step = 0; step < static_cast<int>(detailLabels.size()); ++step) {
+            row = (row + direction + static_cast<int>(detailLabels.size())) %
+                  static_cast<int>(detailLabels.size());
+            if (detailEditable(state, row)) {
+                state.focus.row = static_cast<uint8_t>(row);
+                state.focus.column = 0;
+                return;
+            }
+        }
+        return;
+    }
+
+    if (state.focus.panel == Shared::Panel::Values) {
+        // Nature/Gender/Shiny/Ability/PID and the calculated Stat column remain read-only.
+        if (panelChanged || state.focus.row >= 6) state.focus.row = 0;
+        if (state.focus.column >= 2) state.focus.column = 1;
+        return;
+    }
+
+    if (state.focus.panel == Shared::Panel::Moves) {
+        if (panelChanged && state.focus.row >= 4) state.focus.row = 0;
+        state.focus.row = static_cast<uint8_t>(state.focus.row % 4);
+        if (state.focus.column >= 3) state.focus.column = 2;
+    }
+}
+
 std::string pickerValueLabel(const State& state, uint16_t value) {
     switch (state.pickerTarget) {
         case PickerTarget::HeldItem: return Names::getItemNameG3(value);
@@ -697,20 +731,26 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
         return true;
     }
 
+    const bool panelChanged = (down & (HidNpadButton_L | HidNpadButton_R)) != 0;
+    int verticalDirection = 0;
     if (down & HidNpadButton_L)
         state.focus = Shared::switchPanel(Shared::Generation::Gen3, state.focus, -1);
     if (down & HidNpadButton_R)
         state.focus = Shared::switchPanel(Shared::Generation::Gen3, state.focus, 1);
-    if (down & HidNpadButton_Up)
+    if (down & HidNpadButton_Up) {
         state.focus = Shared::moveVertical(Shared::Generation::Gen3, state.focus, -1);
-    if (down & HidNpadButton_Down)
+        verticalDirection = -1;
+    }
+    if (down & HidNpadButton_Down) {
         state.focus = Shared::moveVertical(Shared::Generation::Gen3, state.focus, 1);
+        verticalDirection = 1;
+    }
     if (down & HidNpadButton_Left)
         state.focus = Shared::moveColumn(Shared::Generation::Gen3, state.focus, -1);
     if (down & HidNpadButton_Right)
         state.focus = Shared::moveColumn(Shared::Generation::Gen3, state.focus, 1);
 
-    state.focus = Shared::normalize(Shared::Generation::Gen3, state.focus);
+    normalizeEditableFocus(state, verticalDirection, panelChanged);
     state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
     state.detailsFocus = std::min<int>(state.detailsFocus, static_cast<int>(detailLabels.size()) - 1);
 
@@ -967,8 +1007,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     }
     SharedPokemonShell::drawScrollableDetails(fb, leftX, y, leftW, h,
         detailLabels.size(), state.detailsFocus,
-        state.session.editable() && state.focus.panel == Shared::Panel::Details &&
-            detailEditable(state, state.detailsFocus),
+        state.session.editable() && state.focus.panel == Shared::Panel::Details,
         [](std::size_t row) { return detailLabels[row]; },
         [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); });
     drawPanel(fb, midX, y, midW, h, "STATS");
@@ -1147,7 +1186,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     std::string error;
     const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                 static_cast<std::size_t>(state.slot), error).has_value();
-    const auto actions = Shared::actionsForSlot(occupied, {true, true, false});
+    const auto actions = Shared::actionsForSlot(occupied, {true, true, true});
 
     screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
