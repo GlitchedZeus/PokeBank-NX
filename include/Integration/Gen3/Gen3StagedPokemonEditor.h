@@ -52,6 +52,7 @@ struct BoxPokemonEdit {
     std::optional<uint8_t> level;
     std::optional<uint32_t> experience;
     std::optional<uint16_t> heldItem;
+    std::optional<std::array<uint16_t, 4>> moves;
     std::optional<std::array<uint8_t, 4>> pp;
     std::optional<std::array<uint8_t, 4>> ppUps;
     std::optional<std::array<uint8_t, 6>> ivs;
@@ -70,6 +71,9 @@ struct BoxPokemonCreate {
     uint8_t level = 5;
     std::string nickname;
     uint16_t heldItem = 0;
+    std::array<uint16_t, 4> moves{};
+    std::array<uint8_t, 4> pp{};
+    std::array<uint8_t, 4> ppUps{};
     uint8_t language = 2; // English in PK3
     uint8_t friendship = 70;
     uint8_t ball = 4;     // Poke Ball in PK3
