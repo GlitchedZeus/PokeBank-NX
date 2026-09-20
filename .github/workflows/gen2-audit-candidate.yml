@@ -8,6 +8,7 @@ on:
       - 'Makefile.host*'
       - 'include/UI/SharedSpeciesPicker.h'
       - 'include/Integration/Gen2/**'
+      - 'include/Integration/Encounter/**'
       - 'include/UI/Gen2*'
       - 'include/UI/SharedPokemonEditorContract.h'
       - 'include/UI/ExactSaveCapabilities.h'
@@ -23,6 +24,7 @@ on:
       - 'src/UI/TrainerViewScreenGSCOverlay.inc'
       - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
       - 'tests/test_gsc*'
+      - 'tests/test_encounter_guardrails.cpp'
       - 'tests/test_shared_pokemon_editor_contract.cpp'
       - 'tests/test_passive_pokemon_view_contract.cpp'
       - 'tests/test_source_mutation_policy.cpp'
@@ -95,6 +97,7 @@ jobs:
           set -euo pipefail
           rm -rf build-host
           for target in \
+            test_encounter_guardrails \
             test_shared_pokemon_editor_contract \
             test_gsc_shared_editor_parity \
             test_gsc_workspace_render \
