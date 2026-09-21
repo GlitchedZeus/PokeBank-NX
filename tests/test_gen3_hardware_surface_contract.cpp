@@ -1,6 +1,7 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedPokemonShell.h"
 #include "UI/SharedHeldItemPicker.h"
+#include "UI/Gen3EncounterPickerModel.h"
 #include "UI/ClassicPackedMultiSelect.h"
 #include <cassert>
 #include <fstream>
@@ -23,6 +24,17 @@ int main() {
     namespace HeldItems = PokeBank::UIModel::SharedHeldItemPicker;
     static_assert(HeldItems::columns == 4 && HeldItems::rows == 10 && HeldItems::pageSize == 40);
     static_assert(HeldItems::futureGenerationsUseSharedGrid());
+    namespace EncounterPicker = PokeBank::UIModel::Gen3EncounterPicker;
+    namespace Encounter = PokeVault::Integration::EncounterGuardrails;
+    const std::vector<Encounter::EncounterTemplate> pickerChoices{
+        {"sapphire_gba", 116, 16, 5, 10, Encounter::Method::Surf, 0},
+        {"sapphire_gba", 116, 99, 25, 30, Encounter::Method::SuperRod, 0},
+    };
+    const auto pickerRows = EncounterPicker::rowValues(pickerChoices.size());
+    assert((pickerRows == std::vector<uint16_t>{0, 1}));
+    assert(EncounterPicker::selectedRow(pickerChoices, 99, 27) == 1);
+    assert(EncounterPicker::choiceAt(pickerChoices, pickerRows[1])->location == 99);
+    assert(EncounterPicker::choiceAt(pickerChoices, 99) == nullptr);
     static_assert(geometry.leftX == 24 && geometry.leftW == 300 && geometry.midX == 338);
     static_assert(geometry.midW == 398 && geometry.rightX == 750 && geometry.rightW == 506);
     static_assert(geometry.y + geometry.h == 666);
@@ -77,6 +89,11 @@ int main() {
     contains(surface, "previewCreate"); contains(surface, "previewEdit");
     contains(surface, "SessionModel::sameEditableRecord");
     contains(surface, "Encounter::forGameSpecies(screen.sourceGameId, state.session.working.species)");
+    contains(surface, "EncounterPicker::rowValues");
+    contains(surface, "EncounterPicker::selectedRow");
+    contains(surface, "EncounterPicker::choiceAt");
+    assert(surface.find("state.pickerValues.push_back(current)") != std::string::npos);
+    assert(surface.find("No supported exact-game encounter templates for this Pokemon") != std::string::npos);
     contains(surface, "Met Level for selected encounter");
     contains(surface, "normalizeEditableFocus(state");
     contains(surface, "beginMoveEditor");

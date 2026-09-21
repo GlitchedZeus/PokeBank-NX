@@ -18,6 +18,7 @@
 #include "UI/ClassicGameContext.h"
 #include "UI/Common.h"
 #include "UI/Gen3SharedPokemonSession.h"
+#include "UI/Gen3EncounterPickerModel.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedSpeciesPicker.h"
@@ -39,6 +40,7 @@ namespace HeldItemGrid = PokeBank::UIModel::SharedHeldItemPicker;
 namespace SessionModel = PokeBank::UIModel::Gen3SharedEditor;
 namespace Gen3 = PokeVault::Integration::Gen3;
 namespace Encounter = PokeVault::Integration::EncounterGuardrails;
+namespace EncounterPicker = PokeBank::UIModel::Gen3EncounterPicker;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
 
 enum class PickerTarget : uint8_t {
@@ -383,8 +385,9 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
         case PickerTarget::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
         case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
         case PickerTarget::MetLocation: {
-            if (value >= state.encounterChoices.size()) return "Invalid encounter";
-            const auto& encounter = state.encounterChoices[value];
+            const auto* selected = EncounterPicker::choiceAt(state.encounterChoices, value);
+            if (!selected) return "Invalid encounter";
+            const auto& encounter = *selected;
             const char* name = Names::getMetLocationName(state.session.working.originGame, encounter.location);
             std::string label = (name && *name) ? std::string(name) : "Unknown";
             label += " (ID " + std::to_string(encounter.location) + ") — ";
@@ -450,23 +453,17 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         state.pickerValues.assign(balls.begin(), balls.end());
     } else if (target == PickerTarget::MetLocation) {
         state.encounterChoices = Encounter::forGameSpecies(screen.sourceGameId, state.session.working.species);
-        state.pickerValues.reserve(state.encounterChoices.size());
-        for (std::size_t i = 0; i < state.encounterChoices.size(); ++i)
-            state.pickerValues.push_back(static_cast<uint16_t>(i));
-        if (!state.encounterChoices.empty()) {
-            state.pickerRow = 0;
-            for (int i = 0; i < static_cast<int>(state.encounterChoices.size()); ++i) {
-                const auto& encounter = state.encounterChoices[static_cast<std::size_t>(i)];
-                if (encounter.location == state.session.working.metLocation &&
-                    encounter.containsLevel(state.session.working.metLevel)) {
-                    state.pickerRow = i;
-                    break;
-                }
-            }
-            state.valuePicker = true;
-            screen.controllerNavigation.reset();
+        if (state.encounterChoices.empty()) {
+            state.pickerTarget = PickerTarget::None;
+            screen.postStatus("No supported exact-game encounter templates for this Pokemon", 300);
             return;
         }
+        state.pickerValues = EncounterPicker::rowValues(state.encounterChoices.size());
+        state.pickerRow = EncounterPicker::selectedRow(
+            state.encounterChoices, state.session.working.metLocation, state.session.working.metLevel);
+        state.valuePicker = true;
+        screen.controllerNavigation.reset();
+        return;
     } else if (target == PickerTarget::Move) {
         const auto game = PokeVault::Integration::Gen3EditorProvider::sourceGameForId(screen.sourceGameId);
         if (game) {
@@ -506,11 +503,10 @@ void applyValuePicker(State& state) {
         case PickerTarget::Language: p.language = static_cast<uint8_t>(value); break;
         case PickerTarget::Ball: p.ball = static_cast<uint8_t>(value); break;
         case PickerTarget::MetLocation: {
-            if (value < state.encounterChoices.size()) {
-                const auto encounter = state.encounterChoices[value];
-                p.metLocation = encounter.location;
-                p.metLevel = encounter.minLevel;
-                state.selectedEncounter = encounter;
+            if (const auto* encounter = EncounterPicker::choiceAt(state.encounterChoices, value)) {
+                p.metLocation = encounter->location;
+                p.metLevel = encounter->minLevel;
+                state.selectedEncounter = *encounter;
             }
             break;
         }
