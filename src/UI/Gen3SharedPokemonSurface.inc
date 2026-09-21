@@ -448,15 +448,6 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
             const uint16_t ability = value == 2 ? personal.ability2 : personal.ability1;
             return "Slot " + std::to_string(value) + " - " + Trainer::getAbilityName(ability);
         }
-        case PickerTarget::Nature:
-            state.session.setNature(static_cast<uint8_t>(value));
-            break;
-        case PickerTarget::Gender:
-            state.session.setGender(static_cast<uint8_t>(value));
-            break;
-        case PickerTarget::Ability:
-            state.session.setAbilityNumber(static_cast<uint8_t>(value));
-            break;
         case PickerTarget::MetLocation: {
             const auto* selected = EncounterPicker::choiceAt(state.encounterChoices, value);
             if (!selected) return "Invalid encounter";
@@ -604,6 +595,15 @@ void applyValuePicker(State& state) {
         case PickerTarget::HeldItem: p.heldItem = value; break;
         case PickerTarget::Language: p.language = static_cast<uint8_t>(value); break;
         case PickerTarget::Ball: p.ball = static_cast<uint8_t>(value); break;
+        case PickerTarget::Nature:
+            state.session.setNature(static_cast<uint8_t>(value));
+            break;
+        case PickerTarget::Gender:
+            state.session.setGender(static_cast<uint8_t>(value));
+            break;
+        case PickerTarget::Ability:
+            state.session.setAbilityNumber(static_cast<uint8_t>(value));
+            break;
         case PickerTarget::MetLocation: {
             if (const auto* choice = EncounterPicker::choiceAt(state.encounterChoices, value)) {
                 p.metLocation = choice->encounter.location;
