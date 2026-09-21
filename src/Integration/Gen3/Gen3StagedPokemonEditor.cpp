@@ -406,6 +406,7 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         }
         for (int i = 0; i < 6; ++i) pokemon.setEV(i, (*edit.evs)[static_cast<std::size_t>(i)]);
     }
+    if (edit.tid) pokemon.setTID16(*edit.tid);
     if (edit.otName) {
         const auto value = Utils::utf8ToUtf16(*edit.otName);
         if (value.size() > 7 || !pokemon.canStoreNickname(value)) {
@@ -493,7 +494,7 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         error = "Requested Generation III PID-linked field combination is not representable";
         return false;
     }
-    if (pokemon.tid16() != originalTid || pokemon.sid16() != originalSid) {
+    if (pokemon.tid16() != edit.tid.value_or(originalTid) || pokemon.sid16() != originalSid) {
         error = "Generation III PID-linked edit changed TID/SID";
         return false;
     }
@@ -522,7 +523,7 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         if (error.empty()) error = "Generation III edit did not survive strict reparse";
         return false;
     }
-    if (after->tid != originalTid || after->sid != originalSid ||
+    if (after->tid != edit.tid.value_or(originalTid) || after->sid != originalSid ||
         (!pidLinkedEdit && after->pid != originalPid) ||
         after->nature != expectedNature || after->gender != expectedGender ||
         after->shiny != expectedShiny || after->abilityNumber != expectedAbilityNumber) {
@@ -571,8 +572,9 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     Pokemon::Pokemon3FRLG pokemon(std::span<const std::byte>(
         reinterpret_cast<const std::byte*>(blank.data()), blank.size()));
 
-    pokemon.setPID(deterministicCreatePid(trainer_.tid16, trainer_.sid16, box, slot, create.species));
-    pokemon.setTID16(trainer_.tid16);
+    const uint16_t tid = create.tid.value_or(trainer_.tid16);
+    pokemon.setPID(deterministicCreatePid(tid, trainer_.sid16, box, slot, create.species));
+    pokemon.setTID16(tid);
     pokemon.setSID16(trainer_.sid16);
     pokemon.setSpecies(create.species);
     pokemon.setLanguage(create.language);
@@ -583,8 +585,12 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     pokemon.setMetLevel(create.level);
     pokemon.setMetLocation(create.metLocation);
     pokemon.setOTGender(trainer_.gender & 1);
-    const auto ot = Utils::utf8ToUtf16(trainer_.name);
-    if (ot.size() <= 7 && pokemon.canStoreNickname(ot)) pokemon.setOTName(ot);
+    const auto ot = Utils::utf8ToUtf16(create.otName.value_or(trainer_.name));
+    if (ot.size() > 7 || !pokemon.canStoreNickname(ot)) {
+        error = "Create OT name cannot be represented in the Generation III character set";
+        return false;
+    }
+    pokemon.setOTName(ot);
 
     std::string nickname = create.nickname;
     if (nickname.empty()) nickname = Names::getSpeciesName(create.species);

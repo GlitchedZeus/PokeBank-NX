@@ -164,6 +164,30 @@ void runGame(SourceGame game, Family family) {
 
     auto before = editor->boxedPokemon(0, 0, error);
     assert(before && error.empty());
+    // Left-panel edits round-trip for every exact Gen III game without source writes.
+    {
+        auto identity = StagedPokemonEditor::create(source, game, error); assert(identity);
+        BoxPokemonEdit edit; edit.nickname = "BLUE"; edit.level = 50;
+        edit.otName = "WILL"; edit.tid = 65535;
+        assert(identity->stageBoxPokemonEdit(0, 0, edit, error));
+        const auto after = identity->boxedPokemon(0, 0, error); assert(after);
+        assert(after->nickname == "BLUE" && after->level == 50 && after->otName == "WILL" && after->tid == 65535);
+        assert(after->pid == before->pid && after->sid == before->sid);
+        assert(after->shiny == ((after->tid ^ after->sid ^ (after->pid & 65535) ^ (after->pid >> 16)) < 8));
+        assert(identity->originalBytes() == immutableSource && source == immutableSource);
+        identity->discard(); assert(identity->stagedBytes() == immutableSource);
+        BoxPokemonCreate create; create.nickname = "DRAFT"; create.level = 50;
+        create.otName = "BLUE"; create.tid = 0;
+        assert(identity->stageAddBoxPokemon(0, 1, create, error));
+        const auto added = identity->boxedPokemon(0, 1, error); assert(added);
+        assert(added->nickname == "DRAFT" && added->level == 50 && added->otName == "BLUE" && added->tid == 0);
+        assert(identity->originalBytes() == immutableSource);
+        identity->discard(); assert(identity->stagedBytes() == immutableSource);
+        create.otName = "TOOLONGOT";
+        assert(!identity->stageAddBoxPokemon(0, 1, create, error));
+        assert(identity->stagedBytes() == immutableSource);
+        error.clear();
+    }
     assert(before->species == 25);
     assert(before->level == 20);
     assert(before->moves[0] == 33);

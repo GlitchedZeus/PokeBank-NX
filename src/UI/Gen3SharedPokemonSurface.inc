@@ -350,13 +350,14 @@ std::string detailsValue(const TrainerViewScreen& screen,
 }
 
 constexpr std::array<const char*,15> detailLabels{{
-    "Species", "Nickname", "Level", "Experience", "OT", "TID (read-only)", "SID (read-only)",
+    "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID (read-only)",
     "Held Item", "Friendship", "Language", "Origin", "Ball",
     "Met Level", "Met Location", "Pokerus"
 }};
 
 bool detailEditable(const State& state, int row) noexcept {
     if (!state.session.editable()) return false;
+    if (row == 1 || row == 2 || row == 4 || row == 5) return true;
     if (state.session.mode == SessionModel::Mode::Create)
         return row == 0 || row == 1 || row == 2 || row == 7 ||
                row == 8 || row == 9 || row == 11 || row == 12 || row == 13;
@@ -667,6 +668,12 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         return;
     }
 
+    if (row == 5) {
+        const auto r = Utils::promptNumber("Trainer ID", p.tid, 0, 65535);
+        if (r.accepted) p.tid = static_cast<uint16_t>(r.value);
+        return;
+    }
+
     if (row == 7) { openValuePicker(screen, state, PickerTarget::HeldItem); return; }
     if (row == 9) { openValuePicker(screen, state, PickerTarget::Language); return; }
     if (row == 11) { openValuePicker(screen, state, PickerTarget::Ball); return; }
@@ -855,9 +862,9 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {
         state.speciesPreview = static_cast<uint16_t>(std::max<int>(1, state.speciesPreview - 1));
     if (down & HidNpadButton_Down)
         state.speciesPreview = static_cast<uint16_t>(std::min<int>(386, state.speciesPreview + 1));
-    if (down & HidNpadButton_Left)
+    if (down & (HidNpadButton_Left | HidNpadButton_L))
         state.speciesPreview = static_cast<uint16_t>(std::max<int>(1, state.speciesPreview - 10));
-    if (down & HidNpadButton_Right)
+    if (down & (HidNpadButton_Right | HidNpadButton_R))
         state.speciesPreview = static_cast<uint16_t>(std::min<int>(386, state.speciesPreview + 10));
     if (down & HidNpadButton_B) {
         state.speciesPicker = false;

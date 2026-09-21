@@ -88,7 +88,11 @@ int main() {
     contains(surface, "PickerTarget::Ability");
     contains(surface, "state.session.setShiny");
     contains(surface, "PID (read-only)");
-    contains(surface, "TID (read-only)"); contains(surface, "SID (read-only)");
+    contains(surface, "Trainer ID");
+    contains(surface, "down & (HidNpadButton_Left | HidNpadButton_L)");
+    contains(surface, "down & (HidNpadButton_Right | HidNpadButton_R)");
+    contains(surface, "if (row == 1 || row == 2 || row == 4 || row == 5) return true;");
+    contains(surface, "p.tid = static_cast<uint16_t>(r.value)"); contains(surface, "SID (read-only)");
     contains(surface, "SharedPokemonShell::drawChrome");
     contains(gen2, "SharedPokemonShell::drawChrome");
     contains(surface, "SharedPokemonShell::Geometry"); contains(gen2, "SharedPokemonShell::Geometry");

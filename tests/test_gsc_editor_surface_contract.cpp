@@ -23,6 +23,8 @@ int main() {
     const auto workspaceFix = readFile("src/UI/Gen2HardwareWorkspaceFix.inc");
     const auto finalFix = readFile("src/UI/Gen2HardwareFinalFix.inc");
     const auto picker = readFile("src/UI/Gen2PokemonPickerOverlay.inc");
+    assert(picker.find("(nav & HidNpadButton_Left)) picker.model.stepList(-10)") != std::string::npos);
+    assert(picker.find("(nav & HidNpadButton_Right)) picker.model.stepList(10)") != std::string::npos);
     const auto pickerModel = readFile("include/UI/Gen2PokemonPickerModel.h");
     const auto heldItemModel = readFile("include/UI/Gen2HeldItemPicker.h");
 

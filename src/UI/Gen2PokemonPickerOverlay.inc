@@ -257,8 +257,8 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         if (nav & HidNpadButton_Up) picker.model.stepList(-1);
         if (nav & HidNpadButton_Down) picker.model.stepList(1);
         if (picker.model.kind == Gen2Picker::Kind::Species) {
-            if (down & HidNpadButton_L) picker.model.stepList(-10);
-            if (down & HidNpadButton_R) picker.model.stepList(10);
+            if ((down & HidNpadButton_L) || (nav & HidNpadButton_Left)) picker.model.stepList(-10);
+            if ((down & HidNpadButton_R) || (nav & HidNpadButton_Right)) picker.model.stepList(10);
             if (down & HidNpadButton_Y) picker.model.previewShiny = !picker.model.previewShiny;
         } else {
             if (nav & HidNpadButton_Left) picker.model.stepList(-10);

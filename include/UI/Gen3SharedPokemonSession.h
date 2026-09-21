@@ -32,6 +32,7 @@ inline bool sameEditableRecord(const Gen3::StagedPokemonRecord& a,
            a.ivs == b.ivs &&
            a.evs == b.evs &&
            a.otName == b.otName &&
+           a.tid == b.tid &&
            a.language == b.language &&
            a.friendship == b.friendship &&
            a.pokerus == b.pokerus &&
@@ -162,6 +163,7 @@ struct Session {
         if (baseline.ivs != working.ivs) edit.ivs = working.ivs;
         if (baseline.evs != working.evs) edit.evs = working.evs;
         if (baseline.otName != working.otName) edit.otName = working.otName;
+        if (baseline.tid != working.tid) edit.tid = working.tid;
         if (baseline.language != working.language) edit.language = working.language;
         if (baseline.friendship != working.friendship) edit.friendship = working.friendship;
         if (baseline.pokerus != working.pokerus) edit.pokerus = working.pokerus;
@@ -180,6 +182,8 @@ struct Session {
         create.species = working.species;
         create.level = working.level;
         create.nickname = working.nickname;
+        create.otName = working.otName;
+        create.tid = working.tid;
         create.heldItem = working.heldItem;
         create.moves = working.moves;
         create.pp = working.pp;

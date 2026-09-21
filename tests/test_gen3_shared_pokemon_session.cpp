@@ -26,6 +26,22 @@ int main() {
     source.ability = 9;
     source.abilityNumber = 1;
 
+    for (const auto mode : {Mode::Create, Mode::Edit}) {
+        Session identity; identity.begin(source, mode);
+        identity.working.nickname = "TEST";
+        identity.working.otName = "BLUE";
+        identity.working.tid = 65535;
+        assert(identity.setLevel(50) && identity.dirty());
+        if (mode == Mode::Create) {
+            const auto request = identity.createRequest();
+            assert(request.otName == "BLUE" && request.tid == 65535 && request.level == 50);
+        } else {
+            const auto request = identity.editRequest();
+            assert(request.otName == "BLUE" && request.tid == 65535 && request.level == 50);
+        }
+        identity.discardDraft();
+        assert(identity.working.tid == source.tid && identity.working.otName == source.otName);
+    }
     Session edit{};
     edit.begin(source, Mode::Edit);
     assert(!edit.dirty());

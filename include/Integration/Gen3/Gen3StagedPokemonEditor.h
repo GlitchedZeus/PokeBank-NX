@@ -58,6 +58,7 @@ struct BoxPokemonEdit {
     std::optional<std::array<uint8_t, 6>> ivs;
     std::optional<std::array<uint8_t, 6>> evs;
     std::optional<std::string> otName;
+    std::optional<uint16_t> tid;
     std::optional<uint8_t> language;
     std::optional<uint8_t> friendship;
     std::optional<uint8_t> pokerus;
@@ -71,6 +72,8 @@ struct BoxPokemonEdit {
 };
 
 struct BoxPokemonCreate {
+    std::optional<std::string> otName;
+    std::optional<uint16_t> tid;
     uint16_t species = 25;
     uint8_t level = 5;
     std::string nickname;
