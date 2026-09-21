@@ -52,8 +52,8 @@ $(PRE_GEN3_REUSE_GUARD_SANITIZE): $(PRE_GEN3_REUSE_GUARD_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
-GSC_RENDER_SOURCES := tests/test_gsc_workspace_render.cpp src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/Experience.cpp \
-    src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+GSC_RENDER_SOURCES := tests/test_gsc_workspace_render.cpp src/Integration/Gen2/Gen2PersonalData.cpp \
+    $(GEN1_POKEMON_COMMON) src/Pokemon/PersonalInfoTable.cpp
 GSC_RENDER_TEST := $(HOST_BUILD)/test_gsc_workspace_render
 GSC_RENDER_SANITIZE := $(HOST_BUILD)/test_gsc_workspace_render_sanitize
 HOST_TESTS += $(GSC_RENDER_TEST)
