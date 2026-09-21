@@ -3,7 +3,8 @@
 # executable data coverage, not only source-text coverage.
 CLASSIC_PICKER_TYPE_SOURCES := tests/test_classic_picker_type_contract.cpp \
 	$(GEN1_POKEMON_COMMON) \
-	src/Integration/Gen2/Gen2PersonalData.cpp
+	src/Integration/Gen2/Gen2PersonalData.cpp \
+	src/Pokemon/PersonalInfoTable.cpp
 CLASSIC_PICKER_TYPE_TEST := $(HOST_BUILD)/test_classic_picker_type_contract
 CLASSIC_PICKER_TYPE_SANITIZE := $(HOST_BUILD)/test_classic_picker_type_contract_sanitize
 
