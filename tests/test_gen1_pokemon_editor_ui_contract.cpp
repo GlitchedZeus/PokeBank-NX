@@ -155,8 +155,19 @@ int main() {
 
     const auto workspace = readFile("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
     assert(workspace.find("ExitGuard::requiresConfirmation") != std::string::npos);
-    assert(workspace.find("A Add Staged     X Discard Draft     B Continue Editing") != std::string::npos);
-    assert(workspace.find("No fields changed; leaving Edit still requires an explicit choice.") != std::string::npos);
+    assert(workspace.find("Dialogs::drawDialogFrame") != std::string::npos);
+    assert(workspace.find("\"New Pokémon\"") != std::string::npos);
+    assert(workspace.find("\"Unsaved changes\"") != std::string::npos);
+    assert(workspace.find("\"B\", \"Back\"") != std::string::npos);
+    assert(workspace.find("\"Y\", \"Discard\"") != std::string::npos);
+    assert(workspace.find("create ? \"Keep\" : \"Save\"") != std::string::npos);
+    assert(workspace.find("A Add Staged     X Discard Draft     B Continue Editing") == std::string::npos);
+    const auto exitInputBegin = workspace.find("if (foundation.editExitConfirm)");
+    const auto exitInputEnd = workspace.find("if (down & HidNpadButton_Up)", exitInputBegin);
+    assert(exitInputBegin != std::string::npos && exitInputEnd != std::string::npos && exitInputEnd > exitInputBegin);
+    const auto exitInput = workspace.substr(exitInputBegin, exitInputEnd - exitInputBegin);
+    assert(exitInput.find("HidNpadButton_Y") != std::string::npos);
+    assert(exitInput.find("HidNpadButton_X") == std::string::npos);
     assert(workspace.find("MoveCompatibility::canLearnMove") != std::string::npos);
     assert(workspace.find("fb.drawText(statusX, rowY + 9, status") != std::string::npos);
     assert(workspace.find("centerX + 142") == std::string::npos);
