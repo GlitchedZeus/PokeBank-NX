@@ -1,6 +1,7 @@
 #include "Encryption/Encryption3FRLG.h"
 #include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
+#include "UI/SpeciesChangeLevelPolicy.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Utils/StringHelpers.h"
 
@@ -42,6 +43,17 @@ uint8_t origin(SourceGame game) {
         case SourceGame::LeafGreenGBA: return 5;
     }
     return 0;
+}
+
+const char* exactSourceGameId(SourceGame game) {
+    switch (game) {
+        case SourceGame::RubyGBA: return "ruby_gba";
+        case SourceGame::SapphireGBA: return "sapphire_gba";
+        case SourceGame::EmeraldGBA: return "emerald_gba";
+        case SourceGame::FireRedGBA: return "firered_gba";
+        case SourceGame::LeafGreenGBA: return "leafgreen_gba";
+    }
+    return "";
 }
 
 std::array<uint8_t,80> samplePokemon(SourceGame game) {
@@ -160,6 +172,61 @@ void runGame(SourceGame game, Family family) {
     const uint16_t sid = before->sid;
     const uint8_t nature = before->nature;
     const bool shiny = before->shiny;
+
+    // Shared species-change policy regression at the real staged serializer boundary.
+    // R/S/E use Poochyena and FR/LG use Pidgey so every exact game exercises a
+    // populated encounter minimum rather than a generation-only constant.
+    const uint16_t replacementSpecies =
+        family == Family::FRLG ? uint16_t{16} : uint16_t{261};
+    const auto replacementLevel =
+        PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
+            exactSourceGameId(game), replacementSpecies);
+    assert(replacementLevel == 2);
+    const auto stagedBeforeSpeciesPolicy = editor->stagedBytes();
+    BoxPokemonEdit speciesPolicyEdit;
+    speciesPolicyEdit.species = replacementSpecies;
+    speciesPolicyEdit.level = replacementLevel;
+    auto speciesPreview = editor->previewEdit(0, 0, speciesPolicyEdit, error);
+    assert(speciesPreview && error.empty());
+    assert(speciesPreview->species == replacementSpecies);
+    assert(speciesPreview->level == replacementLevel);
+    assert(speciesPreview->level != before->level);
+    assert(speciesPreview->experience ==
+           Pokemon::getExpForLevel(
+               replacementLevel, Pokemon::getGrowthRate(replacementSpecies)));
+    assert(speciesPreview->calculatedStats != before->calculatedStats);
+    assert(editor->stagedBytes() == stagedBeforeSpeciesPolicy);
+    assert(editor->originalBytes() == immutableSource && source == immutableSource);
+
+    assert(editor->stageBoxPokemonEdit(0, 0, speciesPolicyEdit, error));
+    auto speciesChanged = editor->boxedPokemon(0, 0, error);
+    assert(speciesChanged && speciesChanged->species == replacementSpecies);
+    assert(speciesChanged->level == replacementLevel);
+    assert(speciesChanged->experience == speciesPreview->experience);
+    assert(speciesChanged->calculatedStats == speciesPreview->calculatedStats);
+    assert(editor->originalBytes() == immutableSource && source == immutableSource);
+
+    std::array<uint16_t,6> levelOneStats{};
+    for (uint8_t manual : {uint8_t(1), uint8_t(50), uint8_t(100)}) {
+        BoxPokemonEdit manualLevel;
+        manualLevel.level = manual;
+        assert(editor->stageBoxPokemonEdit(0, 0, manualLevel, error));
+        speciesChanged = editor->boxedPokemon(0, 0, error);
+        assert(speciesChanged && speciesChanged->level == manual);
+        assert(speciesChanged->experience ==
+               Pokemon::getExpForLevel(
+                   manual, Pokemon::getGrowthRate(replacementSpecies)));
+        if (manual == 1) levelOneStats = speciesChanged->calculatedStats;
+        if (manual == 100) assert(speciesChanged->calculatedStats != levelOneStats);
+        assert(editor->originalBytes() == immutableSource && source == immutableSource);
+    }
+
+    // Cancel/discard restores the staged workspace only; the source remains byte-identical.
+    editor->discard();
+    assert(editor->stagedBytes() == immutableSource);
+    assert(editor->originalBytes() == immutableSource && source == immutableSource);
+    before = editor->boxedPokemon(0, 0, error);
+    assert(before && before->species == 25 && before->level == 20);
 
     BoxPokemonEdit edit;
     edit.nickname = "SPARKY";
