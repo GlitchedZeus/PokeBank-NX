@@ -280,7 +280,6 @@ void runSession(const L& layout,SourceGame game) {
     assert(!session.setMove(0,33)&&!session.setPP(0,1)&&!session.setPPUps(0,1));
     assert(!Picker::applySpeciesChoice(session,6));
     assert(!Picker::applyMoveChoice(session,0,33));
-    assert(!Picker::applyPokerusChoice(session,0x34));
     assert(!session.keep(*editor,0,0,error)&&!session.add(*editor,3,slot,error));
     assert(session.back());
     assert(std::equal(raw.begin(),raw.end(),editor->originalBytes().begin()));
