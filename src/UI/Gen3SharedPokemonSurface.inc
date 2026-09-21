@@ -19,6 +19,7 @@
 #include "UI/Common.h"
 #include "UI/Gen3SharedPokemonSession.h"
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "Utils/Keyboard.h"
 
@@ -34,6 +35,7 @@ namespace UI::Gen3SharedEditorSurface {
 namespace {
 
 namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+namespace HeldItemGrid = PokeBank::UIModel::SharedHeldItemPicker;
 namespace SessionModel = PokeBank::UIModel::Gen3SharedEditor;
 namespace Gen3 = PokeVault::Integration::Gen3;
 namespace Encounter = PokeVault::Integration::EncounterGuardrails;
@@ -686,10 +688,27 @@ bool handleValuePicker(TrainerViewScreen&, State& state, u64 down) {
         state.valuePicker = false;
         return true;
     }
-    if (down & HidNpadButton_Up) state.pickerRow = (state.pickerRow - 1 + count) % count;
-    if (down & HidNpadButton_Down) state.pickerRow = (state.pickerRow + 1) % count;
-    if (down & HidNpadButton_Left) state.pickerRow = std::max(0, state.pickerRow - 10);
-    if (down & HidNpadButton_Right) state.pickerRow = std::min(count - 1, state.pickerRow + 10);
+
+    if (state.pickerTarget == PickerTarget::HeldItem) {
+        if (down & HidNpadButton_Up)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, -1);
+        if (down & HidNpadButton_Down)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 1);
+        if (down & HidNpadButton_Left)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, -1, 0);
+        if (down & HidNpadButton_Right)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 1, 0);
+        if (down & HidNpadButton_L)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 0, -1);
+        if (down & HidNpadButton_R)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 0, 1);
+    } else {
+        if (down & HidNpadButton_Up) state.pickerRow = (state.pickerRow - 1 + count) % count;
+        if (down & HidNpadButton_Down) state.pickerRow = (state.pickerRow + 1) % count;
+        if (down & HidNpadButton_Left) state.pickerRow = std::max(0, state.pickerRow - 10);
+        if (down & HidNpadButton_Right) state.pickerRow = std::min(count - 1, state.pickerRow + 10);
+    }
+
     if (down & HidNpadButton_B) {
         state.valuePicker = false;
         state.pickerTarget = PickerTarget::None;
@@ -1000,18 +1019,51 @@ void drawFocus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selected) {
 
 void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     if (!state.valuePicker || state.pickerValues.empty()) return;
-    constexpr int x = 300, y = 74, w = 680, h = 560;
+    const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
+    const int x = heldItems ? 120 : 300;
+    constexpr int y = 74;
+    const int w = heldItems ? 1040 : 680;
+    constexpr int h = 560;
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 105));
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::PanelAlt);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
     fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget), Colors::Text, TextStyle::Heading);
+
+    const int count = static_cast<int>(state.pickerValues.size());
+    if (heldItems) {
+        const int pages = (count + HeldItemGrid::pageSize - 1) / HeldItemGrid::pageSize;
+        fb.drawText(x + 28, y + 55,
+                    "Page " + std::to_string(state.pickerRow / HeldItemGrid::pageSize + 1) +
+                        " / " + std::to_string(pages),
+                    Colors::TextDim, TextStyle::Caption);
+        const int first = state.pickerRow / HeldItemGrid::pageSize * HeldItemGrid::pageSize;
+        const int last = std::min(count, first + HeldItemGrid::pageSize);
+        const int gridX = x + 22;
+        const int gridY = y + 90;
+        const int cellWidth = (w - 44) / HeldItemGrid::columns;
+        constexpr int cellHeight = 40;
+        for (int i = first; i < last; ++i) {
+            const int offset = i - first;
+            const int cellX = gridX + (offset % HeldItemGrid::columns) * cellWidth;
+            const int cellY = gridY + (offset / HeldItemGrid::columns) * cellHeight;
+            const bool selected = i == state.pickerRow;
+            if (selected)
+                fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, cellHeight - 4);
+            const auto value = state.pickerValues[static_cast<std::size_t>(i)];
+            fb.drawText(cellX + 10, cellY + 7, pickerValueLabel(state, value),
+                        selected ? Colors::Text : Colors::TextDim, TextStyle::Caption);
+        }
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
+                        {"A", "Choose"}, {"B", "Cancel"}});
+        return;
+    }
+
     fb.drawText(x + 28, y + 55,
                 std::to_string(state.pickerRow + 1) + " / " +
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
 
     constexpr int visible = 10;
-    const int count = static_cast<int>(state.pickerValues.size());
     const int first = std::clamp(state.pickerRow - visible / 2, 0, std::max(0, count - visible));
     const int last = std::min(count, first + visible);
     for (int i = first; i < last; ++i) {

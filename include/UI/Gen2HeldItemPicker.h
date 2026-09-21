@@ -1,28 +1,19 @@
 #pragma once
 #include "Inventory/ClassicInventoryCatalog.h"
+#include "UI/SharedHeldItemPicker.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/Common.h"
-#include <algorithm>
 #include <vector>
 
 namespace PokeBank::UIModel::Gen2HeldItemPicker {
-inline constexpr int columns = 2, rows = 12, pageSize = columns * rows;
+inline constexpr int columns = SharedHeldItemPicker::columns;
+inline constexpr int rows = SharedHeldItemPicker::rows;
+inline constexpr int pageSize = SharedHeldItemPicker::pageSize;
 inline int initialIndex(const std::vector<uint8_t>& items, uint8_t current) {
-    const auto found = std::find(items.begin(), items.end(), current);
-    return found == items.end() ? 0 : static_cast<int>(found - items.begin());
+    return SharedHeldItemPicker::initialIndex(items, current);
 }
 constexpr int move(int index, int count, int dx, int dy, int pages = 0) noexcept {
-    if (count <= 0) return 0;
-    index = std::clamp(index, 0, count - 1);
-    if (pages) {
-        const int page = std::clamp(index / pageSize + pages, 0, (count - 1) / pageSize);
-        int next = page * pageSize + index % pageSize;
-        while (next >= count && next >= page * pageSize + columns) next -= columns;
-        return next < count ? next : page * pageSize;
-    }
-    if (dx && (index % columns + dx < 0 || index % columns + dx >= columns)) return index;
-    const int next = index + dx + columns * dy;
-    return next >= 0 && next < count ? next : index;
+    return SharedHeldItemPicker::move(index, count, dx, dy, pages);
 }
 inline std::string itemName(uint8_t item) {
     if (item == 0) return "None";

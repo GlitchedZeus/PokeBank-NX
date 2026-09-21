@@ -1,5 +1,6 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/PokemonEditorExitGuard.h"
+#include "UI/SharedHeldItemPicker.h"
 
 #include <cassert>
 #include <iostream>
@@ -13,6 +14,15 @@ int main() {
     static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Edit, false));
     static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Edit, true));
     static_assert(ExitGuard::futureGenerationsUseSharedExitGuard());
+    namespace HeldItems = PokeBank::UIModel::SharedHeldItemPicker;
+    static_assert(HeldItems::columns == 4);
+    static_assert(HeldItems::rows == 10);
+    static_assert(HeldItems::pageSize == 40);
+    static_assert(HeldItems::futureGenerationsUseSharedGrid());
+    static_assert(HeldItems::move(0, 240, 1, 0) == 1);
+    static_assert(HeldItems::move(0, 240, 0, 1) == 4);
+    static_assert(HeldItems::move(39, 240, 0, 0, 1) == 79);
+    static_assert(HeldItems::move(200, 240, 0, 0, -1) == 160);
 
     static_assert(!generationOwnsSeparateEditorUI());
     static_assert(futureGenerationsExtendSameFoundation());

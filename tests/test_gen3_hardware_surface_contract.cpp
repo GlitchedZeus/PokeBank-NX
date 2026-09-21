@@ -1,5 +1,6 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedPokemonShell.h"
+#include "UI/SharedHeldItemPicker.h"
 #include "UI/ClassicPackedMultiSelect.h"
 #include <cassert>
 #include <fstream>
@@ -19,6 +20,9 @@ int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
     namespace Multi = PokeBank::UIModel::ClassicPackedMove;
     constexpr UI::SharedPokemonShell::Geometry geometry(1280, 720, 46);
+    namespace HeldItems = PokeBank::UIModel::SharedHeldItemPicker;
+    static_assert(HeldItems::columns == 4 && HeldItems::rows == 10 && HeldItems::pageSize == 40);
+    static_assert(HeldItems::futureGenerationsUseSharedGrid());
     static_assert(geometry.leftX == 24 && geometry.leftW == 300 && geometry.midX == 338);
     static_assert(geometry.midW == 398 && geometry.rightX == 750 && geometry.rightW == 506);
     static_assert(geometry.y + geometry.h == 666);
@@ -82,6 +86,11 @@ int main() {
     contains(surface, "Discard these move details");
     contains(surface, "000 - Empty move slot");
     contains(surface, "openValuePicker(screen, state, PickerTarget::Move, state.moveEditorSlot)");
+    contains(surface, "state.pickerTarget == PickerTarget::HeldItem");
+    contains(surface, "HeldItemGrid::move");
+    contains(surface, "HeldItemGrid::columns");
+    contains(surface, "HeldItemGrid::pageSize");
+    contains(surface, "{\"D-pad/Stick\", \"Navigate\"}, {\"L/R\", \"Page\"}");
     assert(surface.find("Add Pokemon") != std::string::npos); // Box action still exists.
     const auto moveEditorBegin = surface.find("void drawMoveEditor(");
     const auto workspaceBegin = surface.find("void drawWorkspace(", moveEditorBegin);

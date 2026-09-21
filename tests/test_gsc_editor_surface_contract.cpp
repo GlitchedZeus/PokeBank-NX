@@ -24,6 +24,7 @@ int main() {
     const auto finalFix = readFile("src/UI/Gen2HardwareFinalFix.inc");
     const auto picker = readFile("src/UI/Gen2PokemonPickerOverlay.inc");
     const auto pickerModel = readFile("include/UI/Gen2PokemonPickerModel.h");
+    const auto heldItemModel = readFile("include/UI/Gen2HeldItemPicker.h");
 
     // Active Create/Edit routes consume Species A and picker cancel/accept before box actions.
     const auto editorGuard = parity.find("if (stateFor(screen).mode != Mode::None)", parity.find("bool handleFinalGen2SurfaceInput"));
@@ -48,6 +49,10 @@ int main() {
     const auto boxBase = readFile("src/UI/TrainerViewScreenBase.inc");
     assert(boxBase.find("subtitle += titleName") != std::string::npos);
     assert(foundation.find("Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem)") != std::string::npos);
+    assert(heldItemModel.find("#include \"UI/SharedHeldItemPicker.h\"") != std::string::npos);
+    assert(heldItemModel.find("columns = SharedHeldItemPicker::columns") != std::string::npos);
+    assert(heldItemModel.find("rows = SharedHeldItemPicker::rows") != std::string::npos);
+    assert(heldItemModel.find("pageSize = SharedHeldItemPicker::pageSize") != std::string::npos);
     const auto cancel = foundation.substr(foundation.find("bool handleItemPicker"));
     assert(cancel.find("if (down & HidNpadButton_B)") < cancel.find("state.working.heldItem ="));
 
