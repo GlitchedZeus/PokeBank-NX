@@ -663,7 +663,7 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         {"Y", "Random DVs"}, {"B", "Back"}});
     }
     if (state.itemPicker) drawHeldItemPicker(fb, state);
-    if (state.confirmExit) drawConfirm(fb);
+    if (state.confirmExit) drawConfirm(fb, state);
     if (unified.progressionEditor) drawProgressionEditor(fb, state, unified);
 }
 
