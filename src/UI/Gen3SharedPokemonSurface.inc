@@ -17,6 +17,8 @@
 #include "Trainer/Trainer.h"
 #include "UI/ClassicGameContext.h"
 #include "UI/Common.h"
+#include "UI/ScreenChrome.h"
+#include "UI/Dialogs/DialogFrame.h"
 #include "UI/Gen3SharedPokemonSession.h"
 #include "UI/Gen3EncounterPickerModel.h"
 #include "UI/SharedPokemonEditorContract.h"
@@ -955,7 +957,7 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
             if (keepWorkspace(screen)) state.session.confirmExit = false;
             return true;
         }
-        if (down & HidNpadButton_X) {
+        if (down & HidNpadButton_Y) {
             const bool create = state.session.mode == SessionModel::Mode::Create;
             state.session.discardDraft();
             screen.postStatus(create
@@ -1440,23 +1442,30 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     }
 
     if (state.session.confirmExit) {
-        constexpr int w = 620, hh = 178;
+        // Reuse PKSE's native creator/details confirmation chrome. The Generation III
+        // session still targets only the staged copy; original source bytes remain immutable.
+        const bool create = state.session.mode == SessionModel::Mode::Create;
+        const int w = create ? 540 : 560;
+        constexpr int hh = 226;
         const int xx = (fb.getWidth() - w) / 2;
         const int yy = (fb.getHeight() - hh) / 2;
-        fb.drawFilledRoundedRect(xx, yy, w, hh, 16, Colors::PanelAlt);
-        fb.drawRoundedRect(xx, yy, w, hh, 16, Colors::FocusBorder, 2);
-        const bool create = state.session.mode == SessionModel::Mode::Create;
-        const auto kind = create
-            ? PokeBank::UIModel::PokemonEditorExitGuard::SessionKind::Create
-            : PokeBank::UIModel::PokemonEditorExitGuard::SessionKind::Edit;
-        fb.drawText(xx + 28, yy + 24, PokeBank::UIModel::PokemonEditorExitGuard::heading(kind),
-                    Colors::Text, TextStyle::Heading);
-        fb.drawText(xx + 28, yy + 70,
-                    create ? "A Add Staged    X Discard Draft    B Continue Editing"
-                           : "A Keep Staged   X Discard Session  B Continue Editing",
-                    Colors::TextDim, TextStyle::Body);
-        fb.drawText(xx + 28, yy + 112, "Original RetroArch save remains immutable.",
+        const char* title = create ? "New Pokémon" : "Unsaved changes";
+        const Color accent = create ? Colors::Primary : Colors::Orange;
+        const int cy = Dialogs::drawDialogFrame(fb, xx, yy, w, hh, title, accent);
+
+        fb.drawText(xx + 28, cy,
+                    create ? "Keep this new Pokémon?" : "This Pokémon has unsaved changes.",
+                    Colors::Text);
+        fb.drawText(xx + 28, cy + 34,
+                    create ? "Discard removes it; Back keeps editing."
+                           : "Discard loses them; Back keeps editing.",
                     Colors::TextDim, TextStyle::Caption);
+
+        const int cbw = 160, cbh = TouchTargetMin, cby = yy + hh - cbh - 18;
+        drawGlyphButton(fb, xx + 24, cby, cbw, cbh, "B", "Back", Colors::PanelAlt);
+        drawGlyphButton(fb, xx + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
+        drawGlyphButton(fb, xx + w - 24 - cbw, cby, cbw, cbh, "A",
+                        create ? "Keep" : "Save", Colors::PanelAlt);
     }
 
     if (state.moveEditor) drawMoveEditor(fb, state);
