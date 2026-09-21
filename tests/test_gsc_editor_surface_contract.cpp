@@ -47,6 +47,9 @@ int main() {
     assert(closeBody.find("stage") == std::string::npos);
     const auto boxBase = readFile("src/UI/TrainerViewScreenBase.inc");
     assert(boxBase.find("subtitle += titleName") != std::string::npos);
+    assert(foundation.find("Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem)") != std::string::npos);
+    const auto cancel = foundation.substr(foundation.find("bool handleItemPicker"));
+    assert(cancel.find("if (down & HidNpadButton_B)") < cancel.find("state.working.heldItem ="));
 
     assert(foundation.find("Gen II Level") != std::string::npos);
     assert(foundation.find("Gen II Experience") != std::string::npos);

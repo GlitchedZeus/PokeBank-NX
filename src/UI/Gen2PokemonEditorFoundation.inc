@@ -7,6 +7,7 @@
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
+#include "UI/Gen2HeldItemPicker.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "Names/MoveNames.h"
@@ -90,8 +91,7 @@ uint32_t minimumExpFor(const Gen2::PokemonRecord& p) noexcept {
 
 std::string itemText(uint8_t item) {
     if (item == 0) return "None";
-    const auto name = Gen2::gen2ItemName(item);
-    return Gen2::selectableHeldItem(item) ? std::string(name) : "Raw item " + std::to_string(item);
+    return PokeBank::UIModel::Gen2HeldItemPicker::itemName(item);
 }
 
 std::string genderText(uint8_t gender) {
@@ -378,10 +378,7 @@ void randomizeDVs(State& state) {
 
 void openHeldItemPicker(State& state) {
     state.itemChoices = Rules::heldItemChoices();
-    state.itemChoiceIndex = 0;
-    const auto it = std::find(state.itemChoices.begin(), state.itemChoices.end(), state.working.heldItem);
-    if (it != state.itemChoices.end())
-        state.itemChoiceIndex = static_cast<int>(std::distance(state.itemChoices.begin(), it));
+    state.itemChoiceIndex = PokeBank::UIModel::Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem);
     state.itemPicker = true;
 }
 
@@ -502,8 +499,13 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         down, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
     const int count = static_cast<int>(state.itemChoices.size());
-    if (nav & HidNpadButton_Up) state.itemChoiceIndex = (state.itemChoiceIndex - 1 + count) % count;
-    if (nav & HidNpadButton_Down) state.itemChoiceIndex = (state.itemChoiceIndex + 1) % count;
+    using PokeBank::UIModel::Gen2HeldItemPicker::move;
+    if (nav & HidNpadButton_Up) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, -1);
+    if (nav & HidNpadButton_Down) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 1);
+    if (nav & HidNpadButton_Left) state.itemChoiceIndex = move(state.itemChoiceIndex, count, -1, 0);
+    if (nav & HidNpadButton_Right) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 1, 0);
+    if (down & HidNpadButton_L) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, -1);
+    if (down & HidNpadButton_R) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, 1);
     if (down & HidNpadButton_B) {
         state.itemPicker = false;
         screen.controllerNavigation.reset();
@@ -764,24 +766,18 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
 
 void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
     const int W = fb.getWidth(), H = fb.getHeight();
-    constexpr int w = 560, h = 520;
+    constexpr int w = 1040, h = 520;
     const int x = (W - w) / 2, y = (H - h) / 2;
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 150));
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawText(x + 24, y + 18, "Held Item — Generation II", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, "None + authentic Gen II item IDs only", Colors::TextDim, TextStyle::Caption);
-    const int count = static_cast<int>(state.itemChoices.size());
-    const int first = std::clamp(state.itemChoiceIndex - 6, 0, std::max(0, count - 12));
-    const int last = std::min(count, first + 12);
-    for (int i = first; i < last; ++i) {
-        const int yy = y + 90 + (i - first) * 32;
-        const bool selected = i == state.itemChoiceIndex;
-        selectedRowBackground(fb, x + 18, yy, w - 36, selected);
-        const uint8_t item = state.itemChoices[static_cast<std::size_t>(i)];
-        fb.drawText(x + 30, yy, itemText(item), selected ? Colors::Accent : Colors::Text, TextStyle::Caption);
-        fb.drawText(x + w - 82, yy, std::to_string(item), Colors::TextDim, TextStyle::Caption);
-    }
-    drawNavBar(fb, {{"A", "Select"}, {"B", "Cancel"}});
+    namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
+    const int pages = (static_cast<int>(state.itemChoices.size()) + Model::pageSize - 1) / Model::pageSize;
+    fb.drawText(x + 24, y + 52,
+        "Page " + std::to_string(state.itemChoiceIndex / Model::pageSize + 1) + " / " + std::to_string(pages),
+        Colors::TextDim, TextStyle::Caption);
+    Gen2HeldItemPickerPresentation::drawList(fb, x + 24, y + 90, w - 48, state.itemChoices, state.itemChoiceIndex);
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
 void drawConfirm(PKSEFramebuffer& fb) {

@@ -1,5 +1,6 @@
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/SharedSpeciesPicker.h"
+#include "UI/Gen2HeldItemPicker.h"
 #include <cassert>
 #include <iostream>
 #include <vector>
@@ -70,6 +71,33 @@ int main() {
             else assert(W::battleStats(p)[0] != 999);
         }
     }
+    namespace Held = PokeBank::UIModel::Gen2HeldItemPicker;
+    const auto items = PokeBank::UIModel::Gen2PokemonEditor::heldItemChoices();
+    assert(Held::itemName(218) == "TM27 — Return");
+    assert(Held::itemName(219) == "TM28 — Dig");
+    assert(Held::itemName(243) == "HM01 — Cut");
+    for (int i = 0; i < static_cast<int>(items.size()); ++i) {
+        assert(Held::initialIndex(items, items[i]) == i);
+        for (int direction : {-1, 1}) {
+            const int horizontal = Held::move(i, items.size(), direction, 0);
+            assert(horizontal / 2 == i / 2);
+            const int vertical = Held::move(i, items.size(), 0, direction);
+            assert(vertical % 2 == i % 2);
+            const int paged = Held::move(i, items.size(), 0, 0, direction);
+            assert(paged >= 0 && paged < static_cast<int>(items.size()));
+        }
+        texts.clear();
+        UI::Gen2HeldItemPickerPresentation::drawList(fb, 0, 0, 992, items, i);
+        assert(texts.size() <= 24);
+        for (const auto& text : texts)
+            assert(text.x >= 0 && text.y >= 0 && text.x + text.w <= 992 && text.y + text.h <= 384);
+        for (std::size_t j = 0; j < texts.size(); ++j)
+            for (std::size_t k = j + 1; k < texts.size(); ++k) assert(!intersects(texts[j], texts[k]));
+    }
+    assert(Held::move(22, items.size(), 0, 1) == 24);
+    assert(Held::move(5, items.size(), 0, 0, 1) == 29);
+    assert(Held::move(29, items.size(), 0, 0, -1) == 5);
+
     // The actual shared renderer must request both sprite appearances for the
     // hovered species, including the Gen II-only dex range, without a session write.
     // Type drawing is deliberately mocked here; generation-correct type data has its
