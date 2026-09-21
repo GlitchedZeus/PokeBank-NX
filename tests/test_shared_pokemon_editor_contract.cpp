@@ -118,7 +118,7 @@ int main() {
     focus = moveColumn(Generation::Gen2, focus, 1);
     assert(focus.column == 1);
     focus = moveColumn(Generation::Gen2, focus, 1);
-    assert(focus.column == 2);
+    assert(focus.panel == Panel::Moves && focus.column == 0);
     focus = moveVertical(Generation::Gen2, Focus{Panel::Values, 6, 2}, 0);
     assert((focus == Focus{Panel::Values, 6, 0}));
     focus = switchPanel(Generation::Gen2, Focus{Panel::Moves, 3, 2}, 1);
@@ -150,8 +150,13 @@ int main() {
 
     assert(std::string(statsHeading()) == "STATS");
     assert((moveColumn(Generation::Gen2, {Panel::Details, 4, 0}, 1) == Focus{Panel::Values, 4, 0}));
-    assert((moveColumn(Generation::Gen2, {Panel::Values, 4, 2}, 1) == Focus{Panel::Moves, 0, 0}));
-    assert((moveColumn(Generation::Gen2, {Panel::Moves, 3, 0}, -1) == Focus{Panel::Values, 3, 2}));
+    assert((moveColumn(Generation::Gen2, {Panel::Values, 4, 1}, 1) == Focus{Panel::Moves, 0, 0}));
+    assert((moveColumn(Generation::Gen2, {Panel::Moves, 3, 0}, -1) == Focus{Panel::Values, 3, 1}));
+    static_assert(valueCellFocusable(Generation::Gen1, 4, 0));
+    static_assert(valueCellFocusable(Generation::Gen1, 4, 1));
+    static_assert(!valueCellFocusable(Generation::Gen1, 4, 2));
+    static_assert(!valueCellFocusable(Generation::Gen2, 4, 2));
+    static_assert(!valueCellFocusable(Generation::Gen3, 5, 2));
     assert(moveColumn(Generation::Gen2, {Panel::Values, 6, 0}, 1).panel == Panel::Moves);
     assert(moveColumn(Generation::Gen2, {Panel::Values, 6, 0}, -1).panel == Panel::Details);
     assert(moveVertical(Generation::Gen2, {}, -1, true).row == 11);
@@ -162,7 +167,8 @@ int main() {
         assert(detailsScrollFocus({Panel::Moves, static_cast<uint8_t>(row), 0}, detailsFocus) == 7);
     for (auto panel : {Panel::Values, Panel::Moves}) {
         int end = 0;
-        for (uint8_t column = 0; column < 3; ++column) {
+        const uint8_t columns = panel == Panel::Values ? 2 : 3;
+        for (uint8_t column = 0; column < columns; ++column) {
             const auto cell = cellFocus({panel, 1, column});
             assert(cell.x >= end && cell.width > 0 && cell.width < 200);
             end = cell.x + cell.width;

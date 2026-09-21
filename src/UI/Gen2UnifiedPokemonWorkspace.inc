@@ -440,8 +440,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     rowSelected && unified.focus.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
         const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)]) : "—";
-        fb.drawText(x + 282, yy, stat,
-                    rowSelected && unified.focus.column == 2 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+        fb.drawText(x + 282, yy, stat, Colors::TextDim, TextStyle::Caption);
     }
     fb.drawText(x + 18, y + 246, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 18, y + 274, "SpA", Colors::TextDim, TextStyle::Caption);

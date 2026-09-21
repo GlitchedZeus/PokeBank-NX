@@ -366,6 +366,20 @@ constexpr uint8_t rowsFor(Generation generation, Panel panel, bool crystal = fal
     return layout.movesRows;
 }
 
+constexpr uint8_t maximumFocusableValueColumn(Generation generation, uint8_t row,
+                                               bool crystal = false) noexcept {
+    const auto layout = layoutFor(generation, crystal);
+    if (row >= layout.valueStatRows) return 0;
+    // The third STATS column is a calculated/presentation-only value in every
+    // shared editor generation. IV/DV and EV/Stat Exp are the editable cells.
+    return layout.valueColumns > 1 ? 1 : 0;
+}
+
+constexpr bool valueCellFocusable(Generation generation, uint8_t row, uint8_t column,
+                                  bool crystal = false) noexcept {
+    return column <= maximumFocusableValueColumn(generation, row, crystal);
+}
+
 constexpr Focus normalize(Generation generation, Focus focus, bool crystal = false) noexcept {
     const auto layout = layoutFor(generation, crystal);
     const uint8_t rows = rowsFor(generation, focus.panel, crystal);
@@ -373,10 +387,8 @@ constexpr Focus normalize(Generation generation, Focus focus, bool crystal = fal
     if (focus.panel == Panel::Details) {
         focus.column = 0;
     } else if (focus.panel == Panel::Values) {
-        if (focus.row >= layout.valueStatRows)
-            focus.column = 0;
-        else if (focus.column >= layout.valueColumns)
-            focus.column = static_cast<uint8_t>(layout.valueColumns - 1);
+        const auto maxColumn = maximumFocusableValueColumn(generation, focus.row, crystal);
+        if (focus.column > maxColumn) focus.column = maxColumn;
     } else {
         if (focus.column >= 3) focus.column = 2;
     }
@@ -407,7 +419,7 @@ constexpr Focus moveColumn(Generation generation, Focus focus, int direction, bo
         focus.panel == Panel::Values && focus.row == 0 && focus.column == 1 && direction < 0)
         return normalize(generation, {Panel::Values, 1, 0}, crystal);
     const int maxColumn = focus.panel == Panel::Details ? 0 : focus.panel == Panel::Moves ? 2 :
-        (focus.row < layout.valueStatRows ? static_cast<int>(layout.valueColumns) - 1 : 0);
+        static_cast<int>(maximumFocusableValueColumn(generation, focus.row, crystal));
     const int next = static_cast<int>(focus.column) + direction;
     if (next < 0 || next > maxColumn) {
         const int panel = static_cast<int>(focus.panel) + (direction < 0 ? -1 : 1);

@@ -122,6 +122,8 @@ int main() {
     assert(unified.find("\"DV\"") != std::string::npos);
     assert(unified.find("\"Stat Exp\"") != std::string::npos);
     assert(unified.find("CALCULATED SPECIAL STATS") != std::string::npos);
+    assert(unified.find("fb.drawText(x + 282, yy, stat, Colors::TextDim") != std::string::npos);
+    assert(unified.find("unified.focus.column == 2 ? Colors::Accent") == std::string::npos);
     assert(unified.find("\"SpA\"") != std::string::npos);
     assert(unified.find("\"SpD\"") != std::string::npos);
     assert(unified.find("{\"Held Item\", itemText(p.heldItem)}") != std::string::npos);
