@@ -88,7 +88,7 @@ int main() {
     contains(shell, "fb.clearClip()");
     contains(surface, "previewCreate"); contains(surface, "previewEdit");
     contains(surface, "SessionModel::sameEditableRecord");
-    contains(surface, "Encounter::forGameSpecies(screen.sourceGameId, state.session.working.species)");
+    contains(surface, "Encounter::forGameSpeciesWithGen3Provenance");
     contains(surface, "EncounterPicker::rowValues");
     contains(surface, "EncounterPicker::selectedRow");
     contains(surface, "EncounterPicker::choiceAt");
