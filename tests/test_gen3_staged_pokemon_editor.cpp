@@ -2,6 +2,7 @@
 #include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "Pokemon/Experience.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Utils/StringHelpers.h"
 
