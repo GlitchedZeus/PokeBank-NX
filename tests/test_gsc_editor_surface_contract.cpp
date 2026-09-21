@@ -56,14 +56,17 @@ int main() {
 
     assert(foundation.find("state.baseline = *pokemon") != std::string::npos);
     assert(foundation.find("state.working = *pokemon") != std::string::npos);
-    assert(foundation.find("Keep staged Pokemon edits?") != std::string::npos);
+    assert(foundation.find("PokemonEditorExitGuard::heading(kind)") != std::string::npos);
+    assert(foundation.find("create ? stageCreate(screen) : stageEdit(screen)") != std::string::npos);
+    assert(foundation.find("Create draft discarded; staged/source bytes unchanged") != std::string::npos);
     assert(foundation.find("This Edit session discarded; earlier staged work preserved") != std::string::npos);
-    assert(foundation.find("{\"A\", \"Keep\"}") != std::string::npos);
-    assert(foundation.find("{\"X\", \"Discard\"}") != std::string::npos);
+    assert(foundation.find("{\"A\", create ? \"Add Staged\" : \"Keep Staged\"}") != std::string::npos);
+    assert(foundation.find("{\"X\", create ? \"Discard Draft\" : \"Discard Session\"}") != std::string::npos);
     assert(foundation.find("{\"B\", \"Continue\"}") != std::string::npos);
 
     assert(foundation.find("Add blocked: correct red incompatible move rows first") != std::string::npos);
-    assert(foundation.find("Create draft cancelled; staged save unchanged") != std::string::npos);
+    assert(foundation.find("Create draft cancelled; staged save unchanged") == std::string::npos);
+    assert(unified.find("No local draft is lost on a stray Back press.") != std::string::npos);
     assert(unified.find("{\"X\", \"Add\"}") != std::string::npos);
     assert(unified.find("Stage Add") == std::string::npos);
     assert(foundation.find("Pokemon added to staged copy only; source .srm unchanged") == std::string::npos);
