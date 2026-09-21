@@ -1,4 +1,4 @@
-#include "UI/ClassicSpeciesLevelPolicy.h"
+#include "UI/SpeciesChangeLevelPolicy.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
@@ -165,7 +165,8 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
     if (state.mode == UX2Mode::AddDraft) {
         const bool beforeShiny = ux3IsShiny(state.draft);
         if (species != state.draft.species)
-            state.draft.level = PokeBank::UIModel::classicSpeciesChangeLevel(true, state.draft.level);
+            state.draft.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
+                screen.sourceGameId, species);
         state.draft.nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(state.draft.nickname, state.draft.species, species);
         state.draft.species = species; // Moves stay intact and are revalidated visibly below.
         if (beforeShiny != ux3.pickerPreviewShiny)
@@ -183,7 +184,8 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
         BoxPokemonEdit edit;
         edit.species = species;
         if (species != pokemon->species)
-            edit.level = PokeBank::UIModel::classicSpeciesChangeLevel(false, pokemon->level);
+            edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
+                screen.sourceGameId, species);
         const auto nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(pokemon->nickname, pokemon->species, species);
         if (nickname != pokemon->nickname) edit.nickname = nickname;
         if (beforeShiny != ux3.pickerPreviewShiny) {
