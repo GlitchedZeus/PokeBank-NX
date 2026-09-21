@@ -151,7 +151,7 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     fb.drawFilledRect(x + 10, clearTop, w - 20, semanticClearBottom - clearTop, Colors::Panel);
     fb.drawText(x + 114, y + 42, "DV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 184, y + 42, "Stat Exp", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 292, y + 42, "Stat", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 292, y + 42, "Calculated", Colors::TextDim, TextStyle::Caption);
 
     for (int r = 0; r < 5; ++r) {
         const int yy = y + 70 + r * 34;
@@ -168,16 +168,16 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
         const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)]) : "—";
         fb.drawText(x + 282, yy, stat, Colors::Accent, TextStyle::Caption);
     }
-    fb.drawText(x + 18, y + 246, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 18, y + 274, "SpA", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 84, y + 274, std::to_string(battle[4]), Colors::Accent, TextStyle::Caption);
-    fb.drawText(x + 200, y + 274, "SpD", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 266, y + 274, std::to_string(battle[5]), Colors::Accent, TextStyle::Caption);
+    fb.drawText(x + 18, y + 246, "SPECIAL", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 274, "Sp. Atk", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 92, y + 274, std::to_string(battle[4]), Colors::Accent, TextStyle::Caption);
+    fb.drawText(x + 200, y + 274, "Sp. Def", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 274, y + 274, std::to_string(battle[5]), Colors::Accent, TextStyle::Caption);
 
-    // Keep derivation/storage notes on dedicated baselines so they cannot collide
-    // with calculated Special values or the Shiny/Gender rows at 1280x720.
-    fb.drawText(x + 18, y + 304, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 18, y + 328, "* one stored Special DV / Stat Exp", Colors::TextDim, TextStyle::Caption);
+    // Generation II stores exactly one Special DV and one Special Stat Exp value.
+    // Both split battle stats are calculated from that same authentic pair.
+    fb.drawText(x + 18, y + 304, "One Gen II Special DV / Stat Exp feeds both", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
 
     const bool shinySelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 5;
     const bool genderSelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 6;
