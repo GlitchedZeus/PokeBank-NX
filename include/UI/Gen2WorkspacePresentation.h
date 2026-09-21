@@ -26,11 +26,18 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
         rows.push_back({"HP", std::to_string(party->currentHP) + " / " + std::to_string(party->maxHP)});
         rows.push_back({"Status", party->statusText});
     }
-    if (game == G::SourceGame::Crystal) {
-        const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
-        rows.push_back({"Met", std::string(Gen2Native::crystalMetTimeName(caught.timeOfDay)) + " / " + Gen2Native::crystalCaughtLevelText(caught)});
-        rows.push_back({"Location", Gen2Native::crystalCaughtLocationName(caught.location)});
+    const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
+    if (caught.present) {
+        rows.push_back({"Caught history", game == G::SourceGame::Crystal
+            ? "Crystal caught data" : "Retained Crystal data"});
+        rows.push_back({"Met", Gen2Native::crystalCaughtLocationName(caught.location)});
+        rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
+        rows.push_back({"Time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});
         rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
+    } else if (game == G::SourceGame::Gold || game == G::SourceGame::Silver) {
+        rows.push_back({"Caught history", "Not recorded by Gold/Silver"});
+    } else {
+        rows.push_back({"Caught history", "No caught data recorded"});
     }
     return rows;
 }
