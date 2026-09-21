@@ -249,6 +249,10 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             if (result.accepted) p.friendship = static_cast<uint8_t>(result.value);
             return true;
         }
+        if (focus.row == 7) {
+            p.pokerus = Gen2Native::cyclePokerusState(p.pokerus);
+            return true;
+        }
         if (focus.row >= 8 && screen.sourceGameId == "crystal_gbc") {
             auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
             if (focus.row == 8) caught.timeOfDay = static_cast<uint8_t>((caught.timeOfDay + 1) % 4);
@@ -302,8 +306,7 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             p.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
             return true;
         }
-        mirrorPickerFocus(state, focus);
-        return false; // named Pokérus picker owns A.
+        return true;
     }
 
     if (focus.panel == Unified::Panel::Values) {
@@ -421,7 +424,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
         TextStyle::Heading);
     fb.drawText(x + 114, y + 42, "DV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 184, y + 42, "Stat Exp", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 292, y + 42, "Stat", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 292, y + 42, "Calculated", Colors::TextDim, TextStyle::Caption);
 
     const auto& p = state.working;
     const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p);
@@ -442,12 +445,13 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
         const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)]) : "—";
         fb.drawText(x + 282, yy, stat, Colors::TextDim, TextStyle::Caption);
     }
-    fb.drawText(x + 18, y + 246, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 18, y + 274, "SpA", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 84, y + 274, std::to_string(battle[4]), Colors::Text, TextStyle::Caption);
-    fb.drawText(x + 200, y + 274, "SpD", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 266, y + 274, std::to_string(battle[5]), Colors::Text, TextStyle::Caption);
-    fb.drawText(x + 18, y + 304, "* HP DV derived • one stored Special DV / Stat Exp", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 246, "SPECIAL", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 274, "Sp. Atk", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 92, y + 274, std::to_string(battle[4]), Colors::Text, TextStyle::Caption);
+    fb.drawText(x + 200, y + 274, "Sp. Def", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 274, y + 274, std::to_string(battle[5]), Colors::Text, TextStyle::Caption);
+    fb.drawText(x + 18, y + 304, "One Gen II Special DV / Stat Exp feeds both", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
 
     const std::array<std::pair<std::string, std::string>, 2> capabilityRows{{
         {"Shiny", p.shiny ? "Yes (DV-derived)" : "No (DV-derived)"},
