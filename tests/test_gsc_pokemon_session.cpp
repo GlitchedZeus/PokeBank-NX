@@ -177,7 +177,14 @@ void runSession(const L& layout,SourceGame game) {
     // Staged work at entry is the baseline. Continue keeps the local edits; Discard
     // never calls StagedEditor and preserves prior staged changes byte-for-byte.
     const std::vector<uint8_t> prior(editor->stagedBytes().begin(),editor->stagedBytes().end());
-    session.begin(kept,SessionMode::Edit);assert(session.back()&&session.mode==SessionMode::None);
+    session.begin(kept,SessionMode::Edit);
+    assert(!session.back() && session.confirmExit && session.mode==SessionMode::Edit);
+    session.continueEditing();
+    assert(!session.confirmExit && session.mode==SessionMode::Edit);
+    session.begin(kept,SessionMode::Create);
+    assert(!session.back() && session.confirmExit && session.mode==SessionMode::Create);
+    session.continueEditing();
+    assert(!session.confirmExit && session.mode==SessionMode::Create);
     session.begin(kept,SessionMode::Edit);session.working.nickname="LOCAL";
     assert(!session.back()&&session.confirmExit);session.continueEditing();
     assert(!session.confirmExit&&session.working.nickname=="LOCAL");

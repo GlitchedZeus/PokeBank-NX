@@ -1,4 +1,5 @@
 #include "UI/PokemonEditorFoundationContract.h"
+#include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen1PokemonPresentation.h"
 
 #include <map>
@@ -7,6 +8,7 @@ namespace UI::Gen1PokemonEditor {
 namespace {
 
 namespace Foundation = PokeBank::UIModel::PokemonEditorFoundation;
+namespace ExitGuard = PokeBank::UIModel::PokemonEditorExitGuard;
 
 struct FoundationState {
     const TrainerViewScreen* owner = nullptr;
@@ -259,19 +261,32 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
     const bool editable = !view;
 
     if (foundation.editExitConfirm) {
+        const bool create = state.mode == UX2Mode::AddDraft;
         if (down & HidNpadButton_B) {
             foundation.editExitConfirm = false;
-            screen.postStatus("Continue editing; no edit-session decision made", 220);
+            screen.postStatus("Continue editing; no exit decision made", 220);
             return;
         }
         if (down & HidNpadButton_X) {
-            if (!foundationRestoreEditBaseline(screen)) return;
-            screen.postStatus("Edit-session changes discarded; pre-edit staged Pokemon restored", 320);
+            if (create) {
+                state.draft = BoxPokemonCreate{};
+                screen.postStatus("Create draft discarded; staged/source bytes unchanged", 300);
+            } else {
+                if (!foundationRestoreEditBaseline(screen)) return;
+                screen.postStatus("Edit-session changes discarded; pre-edit staged Pokemon restored", 320);
+            }
             foundationExitMainMode(screen);
             return;
         }
         if (down & HidNpadButton_A) {
-            screen.postStatus("Edit-session changes kept staged; source .srm unchanged", 300);
+            if (create) {
+                if (!ux3StageAdd(screen)) return;
+                foundation.lastMainMode = UX2Mode::Closed;
+                foundation.editBaseline.reset();
+                foundation.editExitConfirm = false;
+                return;
+            }
+            screen.postStatus("Edit session confirmed and kept staged; source .srm unchanged", 300);
             foundationExitMainMode(screen);
             return;
         }
@@ -287,13 +302,13 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
 
     if (add && (down & HidNpadButton_X)) { ux3StageAdd(screen); return; }
     if (down & HidNpadButton_B) {
-        if (add) {
-            state.draft = BoxPokemonCreate{};
-            foundationExitMainMode(screen);
-            return;
-        }
-        if (state.mode == UX2Mode::Edit && foundationEditSessionDirty(screen)) {
+        const auto exitKind = add ? ExitGuard::SessionKind::Create
+                            : state.mode == UX2Mode::Edit ? ExitGuard::SessionKind::Edit
+                                                         : ExitGuard::SessionKind::View;
+        if (ExitGuard::requiresConfirmation(exitKind,
+                state.mode == UX2Mode::Edit && foundationEditSessionDirty(screen))) {
             foundation.editExitConfirm = true;
+            screen.controllerNavigation.reset();
             return;
         }
         foundationExitMainMode(screen);
@@ -344,18 +359,29 @@ void foundationDrawExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     constexpr int x = (1280 - w) / 2;
     constexpr int y = 190;
     ux2DrawPanel(fb, x, y, w, h);
-    fb.drawText(x + 28, y + 24, "Keep staged Pokemon edits?", Colors::Text, TextStyle::Heading);
+    const auto& state = ux2StateFor(screen);
+    const bool create = state.mode == UX2Mode::AddDraft;
+    const bool dirty = !create && foundationEditSessionDirty(screen);
+    const auto kind = create ? ExitGuard::SessionKind::Create : ExitGuard::SessionKind::Edit;
+    fb.drawText(x + 28, y + 24, ExitGuard::heading(kind), Colors::Text, TextStyle::Heading);
     fb.drawText(x + 28, y + 72,
-                "You changed this Pokemon during the current Edit session.", Colors::Text, TextStyle::Body);
+                create ? "This Pokemon is still a local Create draft and has not been staged."
+                       : dirty ? "You changed this Pokemon during the current Edit session."
+                               : "No fields changed; leaving Edit still requires an explicit choice.",
+                Colors::Text, TextStyle::Body);
     fb.drawText(x + 28, y + 108,
-                "A keeps those edits staged. X restores the Pokemon exactly as it was when Edit opened.",
+                create ? "A adds it to the staged copy. X discards only this local draft."
+                       : "A keeps the staged entry. X restores exactly what Edit opened with.",
                 Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 28, y + 138,
                 "The original source save remains immutable either way.", Colors::Success, TextStyle::Caption);
     fb.drawText(x + 28, y + 188,
-                "A Keep Staged     X Discard Session     B Continue Editing",
+                create ? "A Add Staged     X Discard Draft     B Continue Editing"
+                       : "A Keep Staged     X Discard Session     B Continue Editing",
                 Colors::Accent, TextStyle::Body);
-    drawFooter(fb, "A Keep staged edits   X Discard this edit session   B Continue editing");
+    drawFooter(fb, create
+        ? "A Add staged Pokemon   X Discard this draft   B Continue editing"
+        : "A Keep staged edit   X Discard this edit session   B Continue editing");
 }
 
 void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {

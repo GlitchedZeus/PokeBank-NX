@@ -1,4 +1,5 @@
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/PokemonEditorExitGuard.h"
 
 #include <cassert>
 #include <iostream>
@@ -6,6 +7,13 @@
 using namespace PokeBank::UIModel::SharedPokemonEditor;
 
 int main() {
+    namespace ExitGuard = PokeBank::UIModel::PokemonEditorExitGuard;
+    static_assert(!ExitGuard::requiresConfirmation(ExitGuard::SessionKind::View));
+    static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Create));
+    static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Edit, false));
+    static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Edit, true));
+    static_assert(ExitGuard::futureGenerationsUseSharedExitGuard());
+
     static_assert(!generationOwnsSeparateEditorUI());
     static_assert(futureGenerationsExtendSameFoundation());
     static_assert(oneTopLevelPokemonSurfaceOwnsFrame());

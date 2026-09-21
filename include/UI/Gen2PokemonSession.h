@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "UI/ClassicDefaultNickname.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen2PokemonEditorRules.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
@@ -173,9 +174,17 @@ struct Session {
         if (!editor.stageAddBoxPokemon(box,createRequest(),slot,error)) return false;
         mode = SessionMode::None; return true;
     }
-    // true means return to the caller; false means present Keep/Discard/Continue.
+    // true means return to the caller; false means present Add/Keep, Discard, Continue.
+    // Create and Edit always confirm, even when Edit is clean.
     bool back() noexcept {
-        if (mode == SessionMode::Edit && dirty()) { confirmExit = true; return false; }
+        using Guard = PokeBank::UIModel::PokemonEditorExitGuard::SessionKind;
+        const Guard kind = mode == SessionMode::Create ? Guard::Create
+                         : mode == SessionMode::Edit ? Guard::Edit
+                                                     : Guard::View;
+        if (PokeBank::UIModel::PokemonEditorExitGuard::requiresConfirmation(kind, dirty())) {
+            confirmExit = true;
+            return false;
+        }
         mode = SessionMode::None; confirmExit = false; return true;
     }
     void discard() { working = baseline; mode = SessionMode::None; confirmExit = false; }

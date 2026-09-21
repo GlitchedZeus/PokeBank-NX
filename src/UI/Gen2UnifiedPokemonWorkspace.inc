@@ -389,12 +389,12 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         return true;
     }
     if (down & HidNpadButton_B) {
-        if (state.mode == Mode::Create)
-            screen.postStatus("Create draft cancelled; staged save unchanged", 240);
         if (state.back()) {
             closeToActions(screen);
             resetUnifiedFocus(screen);
         } else {
+            // Create/Edit now always stop here for an explicit Add/Keep, Discard,
+            // or Continue decision. No local draft is lost on a stray Back press.
             screen.controllerNavigation.reset();
         }
         return true;

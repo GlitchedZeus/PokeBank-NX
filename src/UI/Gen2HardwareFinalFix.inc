@@ -248,10 +248,10 @@ void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,
         drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
     } else if (state.mode == Mode::Create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel Draft"}});
+                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"B", "Back"}});
+                        {"Y", "Random DVs"}, {"B", "Exit"}});
     }
 }
 
@@ -261,7 +261,7 @@ void drawFullscreenGen2Active(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     drawFullscreenGen2Workspace(screen, fb, state, unified, state.mode == Mode::View, gen2RecordContext(state));
     if (unified.moveEditor) drawUnifiedMoveEditor(screen, fb, state, unified);
     if (state.itemPicker) drawHeldItemPicker(fb, state);
-    if (state.confirmExit) drawConfirm(fb);
+    if (state.confirmExit) drawConfirm(fb, state);
     if (unified.progressionEditor) drawProgressionEditor(fb, state, unified);
 }
 

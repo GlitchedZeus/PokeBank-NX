@@ -29,6 +29,9 @@ int main() {
     Session edit{};
     edit.begin(source, Mode::Edit);
     assert(!edit.dirty());
+    assert(!edit.back() && edit.confirmExit && edit.mode == Mode::Edit);
+    edit.continueEditing();
+    assert(!edit.confirmExit && edit.mode == Mode::Edit);
     assert(edit.setLevel(25));
     assert(edit.working.level == 25);
     assert(edit.working.pid == source.pid);
@@ -110,6 +113,9 @@ int main() {
         Session create{};
         create.beginCreate(trainer);
         assert(create.mode == Mode::Create);
+        assert(!create.back() && create.confirmExit && create.mode == Mode::Create);
+        create.continueEditing();
+        assert(!create.confirmExit && create.mode == Mode::Create);
         assert(create.working.species == 25);
         assert(create.working.level == 5);
         assert(create.working.language == 2);

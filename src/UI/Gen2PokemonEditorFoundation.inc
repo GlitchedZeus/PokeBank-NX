@@ -520,13 +520,16 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
 }
 
 bool handleConfirm(TrainerViewScreen& screen, State& state, uint64_t down) {
+    const bool create = state.mode == Mode::Create;
     if (down & HidNpadButton_A) {
-        if (stageEdit(screen)) return true;
+        if (create ? stageCreate(screen) : stageEdit(screen)) return true;
     }
     if (down & HidNpadButton_X) {
-        // The session never touched StagedEditor, so discard reveals the exact staged entry captured
-        // in baseline, including unrelated work that existed before Edit opened.
-        screen.postStatus("This Edit session discarded; earlier staged work preserved", 300);
+        // The local session has not touched source bytes. Edit restores the exact staged
+        // entry captured at open; Create simply abandons its local draft.
+        screen.postStatus(create
+            ? "Create draft discarded; staged/source bytes unchanged"
+            : "This Edit session discarded; earlier staged work preserved", 300);
         state.discard();
         closeToActions(screen);
         return true;
@@ -780,19 +783,30 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
-void drawConfirm(PKSEFramebuffer& fb) {
+void drawConfirm(PKSEFramebuffer& fb, const State& state) {
     const int W = fb.getWidth(), H = fb.getHeight();
     constexpr int w = 620, h = 230;
     const int x = (W - w) / 2, y = (H - h) / 2;
+    const bool create = state.mode == Mode::Create;
+    const auto kind = create
+        ? PokeBank::UIModel::PokemonEditorExitGuard::SessionKind::Create
+        : PokeBank::UIModel::PokemonEditorExitGuard::SessionKind::Edit;
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 160));
     drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 28, y + 28, "Keep staged Pokemon edits?", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 28, y + 78, "A keeps this Edit session in the staged copy.", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 28, y + 108, "X discards only this session and restores the staged entry state.",
+    fb.drawText(x + 28, y + 28, PokeBank::UIModel::PokemonEditorExitGuard::heading(kind),
+                Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 28, y + 78,
+                create ? "A adds this Create draft to the staged copy."
+                       : "A confirms this Edit session in the staged copy.",
+                Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 28, y + 108,
+                create ? "X discards only this local Create draft."
+                       : "X discards only this session and restores the staged entry state.",
                 Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 28, y + 138, "B continues editing. Original source bytes are untouched.",
                 Colors::TextDim, TextStyle::Caption);
-    drawNavBar(fb, {{"A", "Keep"}, {"X", "Discard"}, {"B", "Continue"}});
+    drawNavBar(fb, {{"A", create ? "Add Staged" : "Keep Staged"},
+                    {"X", create ? "Discard Draft" : "Discard Session"}, {"B", "Continue"}});
 }
 
 } // namespace
@@ -837,7 +851,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         {"Y", "Random DVs"}, {"B", "Back"}});
 
     if (state.itemPicker) drawHeldItemPicker(fb, state);
-    if (state.confirmExit) drawConfirm(fb);
+    if (state.confirmExit) drawConfirm(fb, state);
 }
 
 } // namespace UI::Gen2PokemonEditor

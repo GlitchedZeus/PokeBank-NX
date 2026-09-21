@@ -552,13 +552,13 @@ void drawSharedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
     } else if (create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel Draft"}});
+                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"B", "Back"}});
+                        {"Y", "Random DVs"}, {"B", "Exit"}});
     }
     if (state.itemPicker) drawHeldItemPicker(fb, state);
-    if (state.confirmExit) drawConfirm(fb);
+    if (state.confirmExit) drawConfirm(fb, state);
 }
 
 } // namespace

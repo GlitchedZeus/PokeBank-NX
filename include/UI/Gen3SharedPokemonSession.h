@@ -3,6 +3,7 @@
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 #include "Pokemon/Experience.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/PokemonEditorExitGuard.h"
 
 #include <algorithm>
 #include <array>
@@ -160,7 +161,11 @@ struct Session {
     }
 
     bool back() noexcept {
-        if (mode == Mode::Edit && dirty()) {
+        using Guard = PokeBank::UIModel::PokemonEditorExitGuard::SessionKind;
+        const Guard kind = mode == Mode::Create ? Guard::Create
+                         : mode == Mode::Edit ? Guard::Edit
+                                              : Guard::View;
+        if (PokeBank::UIModel::PokemonEditorExitGuard::requiresConfirmation(kind, dirty())) {
             confirmExit = true;
             return false;
         }

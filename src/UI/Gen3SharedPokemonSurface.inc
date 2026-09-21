@@ -803,8 +803,11 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
             return true;
         }
         if (down & HidNpadButton_X) {
+            const bool create = state.session.mode == SessionModel::Mode::Create;
             state.session.discardDraft();
-            screen.postStatus("Generation III edit draft discarded; staged/source bytes unchanged");
+            screen.postStatus(create
+                ? "Generation III Create draft discarded; staged/source bytes unchanged"
+                : "Generation III Edit session discarded; staged/source bytes unchanged");
             return true;
         }
         if (down & HidNpadButton_B) {
@@ -841,10 +844,8 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
         if (state.session.mode == SessionModel::Mode::View) {
             state.session.mode = SessionModel::Mode::None;
             if (state.passive) { screen.closeDetailsModal(); state.passive = false; }
-        } else if (state.session.mode == SessionModel::Mode::Create) {
-            state.session.discardDraft();
-            screen.postStatus("Generation III Create draft cancelled; staged/source bytes unchanged");
         } else {
+            // Create and Edit both enter the shared explicit exit safeguard.
             state.session.back();
         }
         return true;
@@ -1242,10 +1243,10 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         drawNavBar(fb, {{"B", "Back"}, {"L/R", "Panel"}});
     } else if (state.session.mode == SessionModel::Mode::Create) {
         drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"X", "Add"}, {"B", "Cancel Draft"}});
+                        {"X", "Add"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"X", "Keep"}, {"B", "Back"}});
+                        {"X", "Keep"}, {"B", "Exit"}});
     }
 
     if (state.session.confirmExit) {
@@ -1254,8 +1255,15 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const int yy = (fb.getHeight() - hh) / 2;
         fb.drawFilledRoundedRect(xx, yy, w, hh, 16, Colors::PanelAlt);
         fb.drawRoundedRect(xx, yy, w, hh, 16, Colors::FocusBorder, 2);
-        fb.drawText(xx + 28, yy + 24, "Keep staged edit?", Colors::Text, TextStyle::Heading);
-        fb.drawText(xx + 28, yy + 70, "A Keep    X Discard Draft    B Continue Editing",
+        const bool create = state.session.mode == SessionModel::Mode::Create;
+        const auto kind = create
+            ? PokeBank::UIModel::PokemonEditorExitGuard::SessionKind::Create
+            : PokeBank::UIModel::PokemonEditorExitGuard::SessionKind::Edit;
+        fb.drawText(xx + 28, yy + 24, PokeBank::UIModel::PokemonEditorExitGuard::heading(kind),
+                    Colors::Text, TextStyle::Heading);
+        fb.drawText(xx + 28, yy + 70,
+                    create ? "A Add Staged    X Discard Draft    B Continue Editing"
+                           : "A Keep Staged   X Discard Session  B Continue Editing",
                     Colors::TextDim, TextStyle::Body);
         fb.drawText(xx + 28, yy + 112, "Original RetroArch save remains immutable.",
                     Colors::TextDim, TextStyle::Caption);

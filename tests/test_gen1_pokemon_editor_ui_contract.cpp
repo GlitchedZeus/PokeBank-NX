@@ -1,4 +1,5 @@
 #include "UI/Gen1PokemonEditorUIContract.h"
+#include "UI/PokemonEditorExitGuard.h"
 
 #include <array>
 #include <cassert>
@@ -22,6 +23,10 @@ static std::string readFile(const char* path) {
 }
 
 int main() {
+    namespace ExitGuard = PokeBank::UIModel::PokemonEditorExitGuard;
+    static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Create));
+    static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Edit, false));
+
     const auto occupied = actionsForSlot(true);
     assert(occupied.count == 7);
     assert(occupied[0] == Action::View);
@@ -149,6 +154,9 @@ int main() {
     assert(composite.find("Gen1MoveStatusParity") == std::string::npos);
 
     const auto workspace = readFile("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
+    assert(workspace.find("ExitGuard::requiresConfirmation") != std::string::npos);
+    assert(workspace.find("A Add Staged     X Discard Draft     B Continue Editing") != std::string::npos);
+    assert(workspace.find("No fields changed; leaving Edit still requires an explicit choice.") != std::string::npos);
     assert(workspace.find("MoveCompatibility::canLearnMove") != std::string::npos);
     assert(workspace.find("fb.drawText(statusX, rowY + 9, status") != std::string::npos);
     assert(workspace.find("centerX + 142") == std::string::npos);
