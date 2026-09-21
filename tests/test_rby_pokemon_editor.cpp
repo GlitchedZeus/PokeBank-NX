@@ -4,7 +4,7 @@
 #include <algorithm>
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/ClassicDefaultNickname.h"
-#include "UI/ClassicSpeciesLevelPolicy.h"
+#include "UI/SpeciesChangeLevelPolicy.h"
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -71,21 +71,34 @@ void currentBoxAdd(SourceGame game) {
 void speciesLevelPolicy(SourceGame game) {
     const auto raw = fixture(game); const auto source = parse(raw, game); assert(source);
     std::string error; auto editor = StagedPokemonEditor::create(*source.save, error); assert(editor);
+    const auto id = sourceGameId(game);
+    const auto expected = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(id, 16);
+    assert(expected == 5); // RBY encounter provider is not populated yet: deterministic fallback.
+
     BoxPokemonCreate draft; draft.species = 25; draft.level = 50;
     draft.moves = {}; draft.pp = {};
     draft.species = 16;
-    draft.level = PokeBank::UIModel::classicSpeciesChangeLevel(true, draft.level);
-    assert(draft.level == 5);
+    draft.level = expected;
+    assert(draft.level != 50);
     assert(std::equal(raw.begin(), raw.end(), editor->stagedBytes().begin())); // cancel is local only
     assert(editor->stageAdd(2, 1, draft, error));
-    const auto added = editor->boxedPokemon(2, 1, error); assert(added && added->level == 5);
-    assert(added->experience == Pokemon::getExpForLevel(5, StagedPokemonEditor::growthRate(16)));
+    const auto added = editor->boxedPokemon(2, 1, error); assert(added && added->level == expected);
+    assert(added->experience == Pokemon::getExpForLevel(expected, StagedPokemonEditor::growthRate(16)));
+
     BoxPokemonEdit edit; edit.level = 50; assert(editor->stageEdit(2, 0, edit, error));
-    edit = {}; edit.species = 16;
-    edit.level = PokeBank::UIModel::classicSpeciesChangeLevel(false, 50);
+    edit = {}; edit.species = 16; edit.level = expected;
     assert(editor->stageEdit(2, 0, edit, error));
-    const auto changed = editor->boxedPokemon(2, 0, error); assert(changed && changed->level == 50);
-    assert(changed->experience == Pokemon::getExpForLevel(50, StagedPokemonEditor::growthRate(16)));
+    auto changed = editor->boxedPokemon(2, 0, error); assert(changed && changed->level == expected);
+    assert(changed->experience == Pokemon::getExpForLevel(expected, StagedPokemonEditor::growthRate(16)));
+
+    for (uint8_t level : {uint8_t(1), uint8_t(50), uint8_t(100)}) {
+        BoxPokemonEdit manual; manual.level = level;
+        assert(editor->stageEdit(2, 0, manual, error));
+        changed = editor->boxedPokemon(2, 0, error);
+        assert(changed && changed->level == level);
+        assert(changed->experience ==
+               Pokemon::getExpForLevel(level, StagedPokemonEditor::growthRate(changed->species)));
+    }
     assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
     assert(std::equal(raw.begin(), raw.end(), source.save->sourceBytes().begin()));
 }
