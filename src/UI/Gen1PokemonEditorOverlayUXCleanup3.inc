@@ -211,8 +211,8 @@ void ux3HandleSpeciesPicker(TrainerViewScreen& screen, uint64_t down) {
     auto& ux3 = ux3StateFor(screen);
     if (down & HidNpadButton_Up) state.pickerValue = std::max(1, state.pickerValue - 1);
     if (down & HidNpadButton_Down) state.pickerValue = std::min(151, state.pickerValue + 1);
-    if (down & HidNpadButton_L) state.pickerValue = std::max(1, state.pickerValue - 10);
-    if (down & HidNpadButton_R) state.pickerValue = std::min(151, state.pickerValue + 10);
+    if (down & (HidNpadButton_L | HidNpadButton_Left)) state.pickerValue = std::max(1, state.pickerValue - 10);
+    if (down & (HidNpadButton_R | HidNpadButton_Right)) state.pickerValue = std::min(151, state.pickerValue + 10);
     if (down & HidNpadButton_Y) ux3.pickerPreviewShiny = !ux3.pickerPreviewShiny;
     if (down & HidNpadButton_B) { state.picker = UX2Picker::None; return; }
     if (down & HidNpadButton_A) ux3ApplySpeciesPicker(screen);

@@ -103,26 +103,28 @@ void drawNeutralGen1WorkspaceHeadings(PKSEFramebuffer& fb) {
     redraw(rightX, "MOVES", TextStyle::Heading);
 }
 
-void drawExactGen1WorkspaceSubtitle(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+void drawExactGen1WorkspaceSubtitle(TrainerViewScreen& screen, PKSEFramebuffer& fb, UX2Mode workspaceMode) {
     auto* e = editor(screen);
     if (!e) return;
     const auto& state = ux2StateFor(screen);
     const std::string record = "Box " + std::to_string(state.box + 1) +
         " / Slot " + std::to_string(state.slot + 1);
     const std::string exact = foundationExactGameName(screen, e->metadata().sourceGame);
-    const std::string context = ClassicContext::contextLine(record, exact, foundationSurfaceMode(state.mode));
+    const std::string context = ClassicContext::contextLine(record, exact, foundationSurfaceMode(workspaceMode));
     fb.drawText(28, 66, context, Colors::TextDim, TextStyle::Caption);
 }
 
 void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& state = ux2StateFor(screen);
+    const auto workspaceMode = state.mode == UX2Mode::MoveEditor
+        ? (state.subForAdd ? UX2Mode::AddDraft : UX2Mode::Edit) : state.mode;
     auto& foundation = foundationStateFor(screen);
     foundationSyncMainMode(screen);
     auto* e = editor(screen);
-    if (!e || !foundationMainMode(state.mode)) return;
+    if (!e || !foundationMainMode(workspaceMode)) return;
 
-    const bool view = state.mode == UX2Mode::View;
-    const bool add = state.mode == UX2Mode::AddDraft;
+    const bool view = workspaceMode == UX2Mode::View;
+    const bool add = workspaceMode == UX2Mode::AddDraft;
     std::string error;
     const auto pokemon = add ? std::optional<PokemonRecord>{} : ux2SelectedPokemon(screen, error);
     if (!add && !pokemon) return;
@@ -160,12 +162,12 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.measureText(rightHeader, rw, rh);
     fb.drawText(fb.getWidth() - 28 - rw, 24, rightHeader, Colors::TextDim);
 
-    const std::string mode = std::string(ClassicContext::modeLabel(foundationSurfaceMode(state.mode)));
+    const std::string mode = std::string(ClassicContext::modeLabel(foundationSurfaceMode(workspaceMode)));
     int mw = 0, mh = 0;
     fb.measureText(mode, mw, mh, TextStyle::Caption);
     fb.drawText((fb.getWidth() - mw) / 2, 23, mode, Colors::Accent, TextStyle::Caption);
     fb.drawFilledRect(0, 60, fb.getWidth(), 2, Colors::Accent);
-    drawExactGen1WorkspaceSubtitle(screen, fb);
+    drawExactGen1WorkspaceSubtitle(screen, fb, workspaceMode);
 
     constexpr int contentY = 96;
     const int contentH = fb.getHeight() - contentY - kNavBarH - 8;
@@ -326,7 +328,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
 // The picker owns input while the current fullscreen workspace owns its backdrop.
 void drawFoundationPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& state = ux2StateFor(screen);
-    if (!foundationMainMode(state.mode)) {
+    if (!foundationMainMode(state.mode) && state.mode != UX2Mode::MoveEditor) {
         drawOverlayUXCleanup3(screen, fb);
         return;
     }

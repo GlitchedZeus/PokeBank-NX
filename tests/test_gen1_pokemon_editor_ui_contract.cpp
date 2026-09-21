@@ -186,9 +186,14 @@ int main() {
     assert(hardware.find("editable && !(r == 0 && c == 0)") != std::string::npos);
     assert(hardware.find("(r == 0 && c == 0) ? Colors::TextDim") != std::string::npos);
     assert(composite.find("Gen1PokemonEditor::drawFoundationPicker(*this, fb)") != std::string::npos);
+    assert(hardware.find("state.mode != UX2Mode::MoveEditor") != std::string::npos);
+    assert(hardware.find("state.subForAdd ? UX2Mode::AddDraft : UX2Mode::Edit") != std::string::npos);
+    assert(hardware.find("const bool add = workspaceMode == UX2Mode::AddDraft") != std::string::npos);
     const auto speciesBackdrop = hardware.substr(hardware.find("void drawFoundationPicker"));
     assert(speciesBackdrop.find("drawFullscreenGen1Workspace(screen, fb)") < speciesBackdrop.find("ux3DrawPicker"));
     const auto pickerSource = readFile("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
+    assert(pickerSource.find("down & (HidNpadButton_L | HidNpadButton_Left)") != std::string::npos);
+    assert(pickerSource.find("down & (HidNpadButton_R | HidNpadButton_Right)") != std::string::npos);
     const auto pickerDraw = pickerSource.substr(pickerSource.find("void ux3DrawPicker"));
     assert(pickerDraw.find("fb.drawFilledRect") < pickerDraw.find("ux2DrawPanel"));
     assert(speciesBackdrop.substr(0, speciesBackdrop.find("void drawFoundationBottomSplit")).find("fb.drawFilledRect") == std::string::npos);
