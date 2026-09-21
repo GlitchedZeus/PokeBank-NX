@@ -20,6 +20,8 @@
 #include "Pokemon/Pokemon2ReadOnly.h"
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/StatsRadar.h"
+#include "UI/ScreenChrome.h"
+#include "UI/Dialogs/DialogFrame.h"
 
 #include <algorithm>
 #include <array>
@@ -524,9 +526,9 @@ bool handleConfirm(TrainerViewScreen& screen, State& state, uint64_t down) {
     if (down & HidNpadButton_A) {
         if (create ? stageCreate(screen) : stageEdit(screen)) return true;
     }
-    if (down & HidNpadButton_X) {
-        // The local session has not touched source bytes. Edit restores the exact staged
-        // entry captured at open; Create simply abandons its local draft.
+    if (down & HidNpadButton_Y) {
+        // Match PKSE's native creator/details confirmation mapping: B Back, Y Discard, A Keep/Save.
+        // The local session still never mutates source bytes; only the PokeBank staged copy can change.
         screen.postStatus(create
             ? "Create draft discarded; staged/source bytes unchanged"
             : "This Edit session discarded; earlier staged work preserved", 300);
@@ -783,29 +785,30 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
 }
 
 void drawConfirm(PKSEFramebuffer& fb, const State& state) {
-    const int W = fb.getWidth(), H = fb.getHeight();
-    constexpr int w = 620, h = 230;
-    const int x = (W - w) / 2, y = (H - h) / 2;
+    // Reuse PKSE's native creator/details confirmation chrome. Generation II keeps its
+    // existing PokeBank staging semantics underneath; this changes presentation/input only.
     const bool create = state.mode == Mode::Create;
-    const auto kind = create
-        ? PokeBank::UIModel::PokemonEditorExitGuard::SessionKind::Create
-        : PokeBank::UIModel::PokemonEditorExitGuard::SessionKind::Edit;
-    fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 160));
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 28, y + 28, PokeBank::UIModel::PokemonEditorExitGuard::heading(kind),
-                Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 28, y + 78,
-                create ? "A adds this Create draft to the staged copy."
-                       : "A confirms this Edit session in the staged copy.",
+    const int w = create ? 540 : 560;
+    constexpr int h = 226;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - h) / 2;
+    const char* title = create ? "New Pokémon" : "Unsaved changes";
+    const Color accent = create ? Colors::Primary : Colors::Orange;
+    const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, title, accent);
+
+    fb.drawText(x + 28, cy,
+                create ? "Keep this new Pokémon?" : "This Pokémon has unsaved changes.",
+                Colors::Text);
+    fb.drawText(x + 28, cy + 34,
+                create ? "Discard removes it; Back keeps editing."
+                       : "Discard loses them; Back keeps editing.",
                 Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 28, y + 108,
-                create ? "X discards only this local Create draft."
-                       : "X discards only this session and restores the staged entry state.",
-                Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 28, y + 138, "B continues editing. Original source bytes are untouched.",
-                Colors::TextDim, TextStyle::Caption);
-    drawNavBar(fb, {{"A", create ? "Add Staged" : "Keep Staged"},
-                    {"X", create ? "Discard Draft" : "Discard Session"}, {"B", "Continue"}});
+
+    const int cbw = 160, cbh = TouchTargetMin, cby = y + h - cbh - 18;
+    drawGlyphButton(fb, x + 24, cby, cbw, cbh, "B", "Back", Colors::PanelAlt);
+    drawGlyphButton(fb, x + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
+    drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
+                    create ? "Keep" : "Save", Colors::PanelAlt);
 }
 
 } // namespace
