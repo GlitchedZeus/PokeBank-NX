@@ -1,6 +1,8 @@
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen1PokemonPresentation.h"
+#include "UI/ScreenChrome.h"
+#include "UI/Dialogs/DialogFrame.h"
 
 #include <map>
 
@@ -267,7 +269,7 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
             screen.postStatus("Continue editing; no exit decision made", 220);
             return;
         }
-        if (down & HidNpadButton_X) {
+        if (down & HidNpadButton_Y) {
             if (create) {
                 state.draft = BoxPokemonCreate{};
                 screen.postStatus("Create draft discarded; staged/source bytes unchanged", 300);
@@ -353,35 +355,31 @@ void foundationDrawExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& foundation = foundationStateFor(screen);
     if (!foundation.editExitConfirm) return;
 
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 150));
-    constexpr int w = 760;
-    constexpr int h = 250;
-    constexpr int x = (1280 - w) / 2;
-    constexpr int y = 190;
-    ux2DrawPanel(fb, x, y, w, h);
+    // Reuse PKSE's native creator/details confirmation chrome instead of maintaining
+    // a second PokeBank-specific modal. Only the underlying staged-session actions differ.
     const auto& state = ux2StateFor(screen);
     const bool create = state.mode == UX2Mode::AddDraft;
-    const bool dirty = !create && foundationEditSessionDirty(screen);
-    const auto kind = create ? ExitGuard::SessionKind::Create : ExitGuard::SessionKind::Edit;
-    fb.drawText(x + 28, y + 24, ExitGuard::heading(kind), Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 28, y + 72,
-                create ? "This Pokemon is still a local Create draft and has not been staged."
-                       : dirty ? "You changed this Pokemon during the current Edit session."
-                               : "No fields changed; leaving Edit still requires an explicit choice.",
-                Colors::Text, TextStyle::Body);
-    fb.drawText(x + 28, y + 108,
-                create ? "A adds it to the staged copy. X discards only this local draft."
-                       : "A keeps the staged entry. X restores exactly what Edit opened with.",
+    const int w = create ? 540 : 560;
+    constexpr int h = 226;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - h) / 2;
+    const char* title = create ? "New Pokémon" : "Unsaved changes";
+    const Color accent = create ? Colors::Primary : Colors::Orange;
+    int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, title, accent);
+
+    fb.drawText(x + 28, cy,
+                create ? "Keep this new Pokémon?" : "This Pokémon has unsaved changes.",
+                Colors::Text);
+    fb.drawText(x + 28, cy + 34,
+                create ? "Discard removes it; Back keeps editing."
+                       : "Discard loses them; Back keeps editing.",
                 Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 28, y + 138,
-                "The original source save remains immutable either way.", Colors::Success, TextStyle::Caption);
-    fb.drawText(x + 28, y + 188,
-                create ? "A Add Staged     X Discard Draft     B Continue Editing"
-                       : "A Keep Staged     X Discard Session     B Continue Editing",
-                Colors::Accent, TextStyle::Body);
-    drawFooter(fb, create
-        ? "A Add staged Pokemon   X Discard this draft   B Continue editing"
-        : "A Keep staged edit   X Discard this edit session   B Continue editing");
+
+    const int cbw = 160, cbh = TouchTargetMin, cby = y + h - cbh - 18;
+    drawGlyphButton(fb, x + 24, cby, cbw, cbh, "B", "Back", Colors::PanelAlt);
+    drawGlyphButton(fb, x + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
+    drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
+                    create ? "Keep" : "Save", Colors::PanelAlt);
 }
 
 void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
