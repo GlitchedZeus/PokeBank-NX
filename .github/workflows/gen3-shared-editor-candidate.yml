@@ -165,7 +165,12 @@ jobs:
           echo "tree=$tree" >> "$GITHUB_OUTPUT"
           echo "short=$short" >> "$GITHUB_OUTPUT"
           echo "parent=$parent" >> "$GITHUB_OUTPUT"
-          git -C application diff --check "$BASE_SHA"..HEAD
+          git -C application fetch --no-tags origin "$BASE_SHA" || true
+          if git -C application cat-file -e "$BASE_SHA^{commit}" 2>/dev/null && [ "$BASE_SHA" != "$APP_SHA" ]; then
+            git -C application diff --check "$BASE_SHA"..HEAD
+          else
+            git -C application diff --check HEAD^
+          fi
           git -C application diff --quiet
           git -C application diff --cached --quiet
 
