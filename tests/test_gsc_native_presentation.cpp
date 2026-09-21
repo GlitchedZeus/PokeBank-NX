@@ -67,7 +67,8 @@ int main() {
     box.status = 0x08;
     assert(!Native::partyViewData(box));
 
-    // Pokérus helper is exact-byte round-trip infrastructure for both passive display and editor UX.
+    // Pokérus helpers preserve exact raw bytes for decoding, while the normal UI
+    // exposes only the authentic three-state None / Infected / Cured workflow.
     for (uint8_t strain = 0; strain < 16; ++strain) {
         for (uint8_t days = 0; days < 16; ++days) {
             const uint8_t raw = Native::encodePokerus(strain, days);
@@ -77,8 +78,17 @@ int main() {
         }
     }
     assert(Native::pokerusText(0) == "None");
-    assert(Native::pokerusText(Native::encodePokerus(3, 4)) == "S3 / 4d");
-    assert(Native::pokerusText(Native::encodePokerus(3, 0)) == "S3 / cured");
+    assert(Native::pokerusText(Native::encodePokerus(3, 4)) == "Infected");
+    assert(Native::pokerusText(Native::encodePokerus(3, 0)) == "Cured");
+
+    const uint8_t unusualActive = Native::encodePokerus(13, 9);
+    assert(Native::pokerusText(unusualActive) == "Infected");
+    assert(Native::decodePokerus(unusualActive).strain == 13);
+    assert(Native::decodePokerus(unusualActive).days == 9);
+    const uint8_t cured = Native::cyclePokerusState(unusualActive);
+    assert(Native::pokerusText(cured) == "Cured");
+    assert(Native::decodePokerus(cured).strain == 13);
+    assert(Native::cyclePokerusState(cured) == 0);
 
     std::cout << "GSC Crystal/party native presentation: PASS\n";
     return 0;
