@@ -4,12 +4,15 @@
 #include "UI/PokemonViewActions.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include "UI/BattleStatRadarModel.h"
+#include "UI/SpeciesChangeLevelPolicy.h"
 namespace Rules = PokeBank::UIModel::Gen2PokemonEditor;
 namespace Picker = PokeBank::UIModel::Gen2PokemonPicker;
 using Rules::Session;
 using Rules::SessionMode;
 
 void runSession(const L& layout,SourceGame game) {
+    const std::string_view sourceId = game == SourceGame::Gold ? "gold_gbc" :
+                                      game == SourceGame::Silver ? "silver_gbc" : "crystal_gbc";
     const auto raw=fixture(layout,true);
     auto parsed=parse(raw,game);assert(parsed);
     std::string error;auto editor=StagedEditor::create(*parsed.save,error);assert(editor);
@@ -19,11 +22,11 @@ void runSession(const L& layout,SourceGame game) {
     for (auto mode : {SessionMode::Create, SessionMode::Edit}) {
         Session names; names.begin(entry, mode);
         names.working.nickname = "Pikachu";
-        assert(names.setSpecies(6)); assert(names.working.nickname == "Charizard");
+        assert(names.setSpecies(6, sourceId)); assert(names.working.nickname == "Charizard");
         names.working.nickname = "FlameBoy";
-        assert(names.setSpecies(9)); assert(names.working.nickname == "FlameBoy");
+        assert(names.setSpecies(9, sourceId)); assert(names.working.nickname == "FlameBoy");
         names.working.nickname = "BLASTOISE";
-        assert(names.setSpecies(25)); assert(names.working.nickname == "PIKACHU");
+        assert(names.setSpecies(25, sourceId)); assert(names.working.nickname == "PIKACHU");
     }
     if (game == SourceGame::Crystal) {
         Session caughtSession; caughtSession.begin(entry, SessionMode::Edit);
@@ -42,8 +45,12 @@ void runSession(const L& layout,SourceGame game) {
         Session species; species.begin(entry, mode); assert(species.setLevel(50));
         species.working.moves = {}; species.working.pp = {}; species.working.ppUps = {};
         const auto stagedBefore = std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end());
-        assert(species.setSpecies(16));
-        assert(species.working.level == (mode == SessionMode::Create ? 5 : 50));
+        const auto expectedLevel =
+            PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 16);
+        assert(species.setSpecies(16, sourceId));
+        assert(species.working.level == expectedLevel);
+        assert(species.working.level != 50);
+        assert(expectedLevel == (game == SourceGame::Crystal ? 2 : 5));
         assert(species.working.experience == Pokemon::getExpForLevel(species.working.level, personalRecord(16)->experienceGrowth));
         assert(std::equal(stagedBefore.begin(), stagedBefore.end(), editor->stagedBytes().begin()));
         assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
@@ -53,11 +60,12 @@ void runSession(const L& layout,SourceGame game) {
         if (mode == SessionMode::Create) assert(species.add(*committed, 2, changedSlot, error));
         else assert(species.keep(*committed, 0, 0, error));
         const auto result = committed->boxedPokemon(mode == SessionMode::Create ? 2 : 0, changedSlot, error);
-        assert(result && result->species == 16 && result->level == (mode == SessionMode::Create ? 5 : 50));
+        assert(result && result->species == 16 && result->level ==
+               PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 16));
         assert(result->experience == Pokemon::getExpForLevel(result->level, personalRecord(16)->experienceGrowth));
         assert(std::equal(raw.begin(), raw.end(), committed->originalBytes().begin()));
         // Discard a fresh local change, preserving the pre-existing staged bytes.
-        species.begin(entry, mode); assert(species.setLevel(50)); assert(species.setSpecies(16));
+        species.begin(entry, mode); assert(species.setLevel(50)); assert(species.setSpecies(16, sourceId));
         species.discard();
         assert(std::equal(stagedBefore.begin(), stagedBefore.end(), editor->stagedBytes().begin()));
     }
@@ -116,7 +124,16 @@ void runSession(const L& layout,SourceGame game) {
     session.begin(kept,SessionMode::Edit);assert(session.setLevel(20));assert(session.setExperience(27001));
     assert(!session.editRequest().level && session.editRequest().experience==27001);
     assert(session.setLevel(40));assert(session.editRequest().level==40&&!session.editRequest().experience);
-    session.setSpecies(1);assert(session.working.experience==Pokemon::getExpForLevel(40,3));
+    assert(session.setSpecies(1, sourceId));
+    const auto speciesOneLevel =
+        PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 1);
+    assert(session.working.level == speciesOneLevel);
+    assert(session.working.experience==Pokemon::getExpForLevel(speciesOneLevel,3));
+    for (uint8_t manual : {uint8_t(1), uint8_t(50), uint8_t(100)}) {
+        assert(session.setLevel(manual));
+        assert(session.working.level == manual);
+        assert(session.working.experience == Pokemon::getExpForLevel(manual, 3));
+    }
     assert(session.working.gender==static_cast<uint8_t>(genderFromAttackDV(1,session.working.dvs[1])));
     assert(session.working.dvs[0]==StagedEditor::derivedHPDV(Rules::storedDVs(session.working)));
     assert(!session.setExperience(session.maximumExperience()+1));
@@ -129,8 +146,10 @@ void runSession(const L& layout,SourceGame game) {
     picker.stepList(-24); // Pikachu #25 -> Bulbasaur #1, without touching the edit transaction.
     assert(Rules::sameEditableRecord(beforeSpeciesBrowse,session.working));
     assert(picker.speciesChoice()==1);
-    assert(Picker::applySpeciesChoice(session,picker.speciesChoice()));
-    assert(session.working.species==1 && session.working.level==beforeSpeciesBrowse.level);
+    assert(Picker::applySpeciesChoice(session,picker.speciesChoice(), sourceId));
+    assert(session.working.species==1);
+    assert(session.working.level ==
+           PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 1));
     assert(session.working.level==Pokemon::getLevelFromExp(session.working.experience,3));
     assert(session.working.gender==static_cast<uint8_t>(genderFromAttackDV(1,session.working.dvs[1])));
 
