@@ -166,31 +166,30 @@ void runSession(const L& layout,SourceGame game) {
     assert(picker.moveChoice()==0 && Picker::applyMoveChoice(session,0,0));
     assert(session.working.moves[0]==0 && session.working.pp[0]==0 && session.working.ppUps[0]==0);
 
+    // Pokérus is an inline three-state row, not a picker. Reading an unusual
+    // valid raw byte only classifies it; explicit activation is what changes bytes.
+    namespace Native = PokeBank::UIModel::Gen2Native;
+    uint8_t unusualPokerus = Native::encodePokerus(14, 7);
+    const uint8_t viewedPokerus = unusualPokerus;
+    assert(Native::pokerusText(0) == "None");
+    assert(Native::pokerusText(unusualPokerus) == "Infected");
+    assert(Native::pokerusText(Native::encodePokerus(14, 0)) == "Cured");
+    assert(unusualPokerus == viewedPokerus);
+    const uint8_t infected = Native::cyclePokerusState(0);
+    const auto infectedState = Native::decodePokerus(infected);
+    assert(infectedState.present && infectedState.active && infectedState.strain != 0 && infectedState.days != 0);
+    const uint8_t cured = Native::cyclePokerusState(unusualPokerus);
+    const auto curedState = Native::decodePokerus(cured);
+    assert(curedState.present && !curedState.active && curedState.strain == 14);
+    assert(Native::cyclePokerusState(cured) == 0);
+
     session.begin(kept,SessionMode::Edit);
-    const auto beforePokerusBrowse=session.working;
-    picker.openPokerus(PokeBank::UIModel::Gen2Native::encodePokerus(3,4));
-    assert(Gen2Picker::pokerusRowCount == 4 && Gen2Picker::pokerusApplyRow == 3);
-    picker.stepPokerusRow(1);picker.adjustPokerus(2);
-    assert(Rules::sameEditableRecord(beforePokerusBrowse,session.working));
-    assert(Picker::applyPokerusChoice(session,picker.pokerusRaw()));
-    const auto appliedPokerus=PokeBank::UIModel::Gen2Native::decodePokerus(session.working.pokerus);
-    assert(appliedPokerus.strain==5 && appliedPokerus.days==4 && appliedPokerus.active);
-    picker.openPokerus(0);
-    assert(picker.pokerusMode==Gen2Picker::PokerusMode::None && picker.pokerusRow==0);
-    picker.adjustPokerus(1);
-    assert(picker.pokerusMode==Gen2Picker::PokerusMode::Active);
-    picker.stepPokerusRow(1); picker.setPokerusStrain(15);
-    picker.stepPokerusRow(1); picker.setPokerusDays(15);
-    picker.stepPokerusRow(1);
-    assert(picker.pokerusApplyFocused());
-    const auto roundTripRaw=picker.pokerusRaw();
-    const auto roundTrip=PokeBank::UIModel::Gen2Native::decodePokerus(roundTripRaw);
-    assert(roundTrip.present && roundTrip.active && roundTrip.strain==15 && roundTrip.days==15);
-    const auto applyRowBefore=picker.pokerusRow;
-    picker.adjustPokerus(1);
-    assert(picker.pokerusRow==applyRowBefore && picker.pokerusRaw()==roundTripRaw);
-    picker.stepPokerusRow(1);
-    assert(picker.pokerusRow==0);
+    session.working.pokerus = unusualPokerus;
+    const auto beforePokerusView = session.working;
+    assert(Native::pokerusText(session.working.pokerus) == "Infected");
+    assert(Rules::sameEditableRecord(beforePokerusView, session.working));
+    session.working.pokerus = Native::cyclePokerusState(session.working.pokerus);
+    assert(Native::pokerusText(session.working.pokerus) == "Cured");
 
     // Staged work at entry is the baseline. Continue keeps the local edits; Discard
     // never calls StagedEditor and preserves prior staged changes byte-for-byte.
