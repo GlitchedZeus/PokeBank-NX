@@ -119,7 +119,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     auto& foundation = foundationStateFor(screen);
     foundationSyncMainMode(screen);
     auto* e = editor(screen);
-    if (!e || !foundationMainMode(state.mode) || foundationPickerActive(screen)) return;
+    if (!e || !foundationMainMode(state.mode)) return;
 
     const bool view = state.mode == UX2Mode::View;
     const bool add = state.mode == UX2Mode::AddDraft;
@@ -219,14 +219,16 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         fb.drawText(gridX + 6, rowY + 9, statLabels[static_cast<size_t>(r)], Colors::TextDim, TextStyle::Caption);
         for (int c = 0; c < 3; ++c) {
             const int cellX = gridX + labelW + c * cellW;
-            const bool selected = editable && foundation.focus.panel == Foundation::Panel::Values &&
+            const bool selected = editable && !(r == 0 && c == 0) &&
+                                  foundation.focus.panel == Foundation::Panel::Values &&
                                   foundation.focus.row == r && foundation.focus.column == c;
             drawClassicFocus(fb, cellX, rowY, cellW - 4, 34, selected);
             std::string value;
             if (c == 0) value = r == 0 ? std::to_string(Editor::derivedHPDV(dvs)) + " *" : std::to_string(dvs[static_cast<size_t>(r - 1)]);
             else if (c == 1) value = std::to_string(statExp[static_cast<size_t>(r)]);
             else value = std::to_string(stats[static_cast<size_t>(r)]);
-            const Color valueColor = c == 2 ? Colors::Accent : Colors::Text;
+            const Color valueColor = (r == 0 && c == 0) ? Colors::TextDim :
+                                     c == 2 ? Colors::Accent : Colors::Text;
             fb.drawText(cellX + 10, rowY + 8, value, valueColor, TextStyle::Caption);
         }
     }
@@ -319,6 +321,21 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"B", "Back"}});
     }
+}
+
+// The picker owns input while the current fullscreen workspace owns its backdrop.
+void drawFoundationPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    auto& state = ux2StateFor(screen);
+    if (!foundationMainMode(state.mode)) {
+        drawOverlayUXCleanup3(screen, fb);
+        return;
+    }
+    drawFullscreenGen1Workspace(screen, fb);
+    // ux3DrawPicker applies the existing dimmer exactly once.
+    const int w = state.picker == UX2Picker::Species ? 1080 : 760;
+    constexpr int h = 520;
+    ux3DrawPicker(screen, fb, (1280 - w) / 2, (672 - h) / 2, w, h);
+    drawFooter(fb, ux3FooterText(screen, state));
 }
 
 // Final Gen I presentation pass. The accepted editor still runs underneath, but this

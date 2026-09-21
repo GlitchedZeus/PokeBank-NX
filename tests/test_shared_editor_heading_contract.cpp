@@ -126,8 +126,8 @@ int main() {
     assert(gen1Fix.find("SpriteManager::getTypeSprite") != std::string::npos);
     assert(gen2Final.find("SpriteManager::getTypeSprite") != std::string::npos);
 
-    // Calculated Stat is semantic accent; DV and Stat Exp stay neutral on both final and passive routes.
-    assert(gen1Fix.find("const Color valueColor = c == 2 ? Colors::Accent : Colors::Text") != std::string::npos);
+    // Calculated Stat is semantic accent; stored DV/Stat Exp are neutral, derived HP DV is dim.
+    assert(gen1Fix.find("const Color valueColor = (r == 0 && c == 0) ? Colors::TextDim") != std::string::npos);
     assert(gen1Passive.find("p.hasBattleStats ? std::to_string(p.battleStats") != std::string::npos);
     assert(gen1Passive.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
     assert(gen2Final.find("std::to_string(p.statExperience") != std::string::npos);

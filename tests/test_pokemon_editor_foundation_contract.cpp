@@ -38,6 +38,12 @@ int main() {
 
     // Gen I Values are truthful: HP DV and calculated stats are display-only, other DVs and
     // all five Stat Exp values are editable, while Shiny and Level remain real focusable rows.
+    // Exhaust every panel/cell/direction: no route can land on the derived HP DV.
+    for (auto panel : {Panel::Identity, Panel::Values, Panel::Moves})
+        for (uint8_t row = 0; row < 7; ++row)
+            for (uint8_t column = 0; column < 3; ++column)
+                for (auto direction : {Direction::Up, Direction::Down, Direction::Left, Direction::Right})
+                    assert(!derivedHpDvFocus(moveFocus({panel, row, column}, direction)));
     assert(hpDVIsDerived());
     assert(!valueCellEditable(ValueRow::HP, ValueColumn::DV));
     assert(valueCellEditable(ValueRow::Attack, ValueColumn::DV));

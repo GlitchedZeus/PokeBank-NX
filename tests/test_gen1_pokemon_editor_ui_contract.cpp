@@ -174,6 +174,16 @@ int main() {
     assert(passivePresentation.find("p.moveCompatible[i] ? \"OK\" : \"Unusual\"") != std::string::npos);
     assert(passivePresentation.find("Encounter legality\", \"Not checked") != std::string::npos);
 
+    const auto hardware = readFile("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
+    assert(hardware.find("editable && !(r == 0 && c == 0)") != std::string::npos);
+    assert(hardware.find("(r == 0 && c == 0) ? Colors::TextDim") != std::string::npos);
+    assert(composite.find("Gen1PokemonEditor::drawFoundationPicker(*this, fb)") != std::string::npos);
+    const auto speciesBackdrop = hardware.substr(hardware.find("void drawFoundationPicker"));
+    assert(speciesBackdrop.find("drawFullscreenGen1Workspace(screen, fb)") < speciesBackdrop.find("ux3DrawPicker"));
+    const auto pickerSource = readFile("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
+    const auto pickerDraw = pickerSource.substr(pickerSource.find("void ux3DrawPicker"));
+    assert(pickerDraw.find("fb.drawFilledRect") < pickerDraw.find("ux2DrawPanel"));
+    assert(speciesBackdrop.substr(0, speciesBackdrop.find("void drawFoundationBottomSplit")).find("fb.drawFilledRect") == std::string::npos);
     std::cout << "Gen I cleanup2 logical-editor + packed-Add + move-status parity contract: PASS\n";
     return 0;
 }
