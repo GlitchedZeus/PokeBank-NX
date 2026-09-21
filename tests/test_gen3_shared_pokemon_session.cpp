@@ -1,6 +1,7 @@
 #include "UI/Gen3SharedPokemonSession.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 
+#include <array>
 #include <cassert>
 #include <iostream>
 
@@ -49,62 +50,115 @@ int main() {
     assert(source.ivs[0] == 10);
     assert(source.pid == 0x12345678);
 
-    // Species replacement is a new-species initialization in Edit too: it never
-    // inherits the old Pokemon's level. Sapphire Poochyena has a real Lv2 minimum.
-    Session speciesEdit{};
-    speciesEdit.begin(source, Mode::Edit);
-    assert(speciesEdit.setLevel(80));
-    assert(speciesEdit.setSpecies(261, "sapphire_gba"));
-    assert(speciesEdit.working.level == 2);
-    assert(speciesEdit.working.experience ==
-           Pokemon::getExpForLevel(2, Pokemon::getGrowthRate(261)));
-    for (uint8_t manual : {uint8_t(1), uint8_t(50), uint8_t(100)}) {
-        assert(speciesEdit.setLevel(manual));
-        assert(speciesEdit.working.level == manual);
-        assert(speciesEdit.working.experience ==
-               Pokemon::getExpForLevel(manual, Pokemon::getGrowthRate(261)));
-    }
-    assert(source.species == 25 && source.level == 20 && source.experience ==
-           Pokemon::getExpForLevel(20, Pokemon::getGrowthRate(25)));
-
-    edit.discardDraft();
-    assert(edit.mode == Mode::None);
+    // Species replacement is one shared new-species initialization policy in both
+    // Edit and Create. Exercise every exact Generation III game identity here so a
+    // future per-game integration cannot silently restore inherited level semantics.
+    struct ExactGameCase {
+        const char* sourceGameId;
+        uint16_t replacementSpecies;
+        uint8_t expectedMinimum;
+    };
+    constexpr std::array exactGames{
+        ExactGameCase{"ruby_gba", 261, 2},
+        ExactGameCase{"sapphire_gba", 261, 2},
+        ExactGameCase{"emerald_gba", 261, 2},
+        ExactGameCase{"firered_gba", 16, 2},
+        ExactGameCase{"leafgreen_gba", 16, 2},
+    };
 
     Gen3::TrainerRecord trainer{};
     trainer.name = "RED";
     trainer.tid16 = 1111;
     trainer.sid16 = 2222;
 
-    Session create{};
-    create.beginCreate(trainer);
-    assert(create.mode == Mode::Create);
-    assert(create.working.species == 25);
-    assert(create.working.level == 5);
-    assert(create.working.language == 2);
-    assert(create.working.friendship == 70);
-    assert(create.working.ball == 4);
-    assert(create.working.tid == 1111);
-    assert(create.working.sid == 2222);
+    for (const auto& game : exactGames) {
+        const uint8_t expected =
+            PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
+                game.sourceGameId, game.replacementSpecies);
+        assert(expected == game.expectedMinimum);
 
-    assert(create.setLevel(50));
-    assert(create.setSpecies(261, "sapphire_gba"));
-    assert(create.working.level == 2);
-    assert(create.working.experience ==
-           Pokemon::getExpForLevel(2, Pokemon::getGrowthRate(261)));
-    assert(create.setSpecies(133, "sapphire_gba")); // no template -> shared fallback, never old level
-    assert(create.working.level == PokeBank::UIModel::SpeciesChangeLevelPolicy::fallbackLevel);
-    assert(create.setLevel(10));
-    const auto add = create.createRequest();
-    assert(add.species == 133);
-    assert(add.level == 10);
-    assert(add.language == 2);
-    assert(add.friendship == 70);
+        Session speciesEdit{};
+        speciesEdit.begin(source, Mode::Edit);
+        assert(speciesEdit.setLevel(80));
+        assert(speciesEdit.setSpecies(game.replacementSpecies, game.sourceGameId));
+        assert(speciesEdit.working.species == game.replacementSpecies);
+        assert(speciesEdit.working.level == expected);
+        assert(speciesEdit.working.level != 80);
+        assert(speciesEdit.working.experience ==
+               Pokemon::getExpForLevel(
+                   expected, Pokemon::getGrowthRate(game.replacementSpecies)));
+        const auto speciesRequest = speciesEdit.editRequest();
+        assert(speciesRequest.species &&
+               *speciesRequest.species == game.replacementSpecies);
+        assert(speciesRequest.level && *speciesRequest.level == expected);
+        assert(!speciesRequest.experience);
+
+        // Encounter legality is reporting context, not an editing restriction.
+        // Manual progression remains freely stageable across the full 1..100 range.
+        for (uint8_t manual : {uint8_t(1), uint8_t(50), uint8_t(100)}) {
+            assert(speciesEdit.setLevel(manual));
+            assert(speciesEdit.working.level == manual);
+            assert(speciesEdit.working.experience ==
+                   Pokemon::getExpForLevel(
+                       manual, Pokemon::getGrowthRate(game.replacementSpecies)));
+            const auto manualRequest = speciesEdit.editRequest();
+            assert(manualRequest.level && *manualRequest.level == manual);
+        }
+        speciesEdit.discardDraft();
+        assert(speciesEdit.mode == Mode::None);
+
+        Session create{};
+        create.beginCreate(trainer);
+        assert(create.mode == Mode::Create);
+        assert(create.working.species == 25);
+        assert(create.working.level == 5);
+        assert(create.working.language == 2);
+        assert(create.working.friendship == 70);
+        assert(create.working.ball == 4);
+        assert(create.working.tid == 1111);
+        assert(create.working.sid == 2222);
+        assert(create.setLevel(50));
+        assert(create.setSpecies(game.replacementSpecies, game.sourceGameId));
+        assert(create.working.species == game.replacementSpecies);
+        assert(create.working.level == expected);
+        assert(create.working.level != 50);
+        assert(create.working.experience ==
+               Pokemon::getExpForLevel(
+                   expected, Pokemon::getGrowthRate(game.replacementSpecies)));
+        const auto add = create.createRequest();
+        assert(add.species == game.replacementSpecies);
+        assert(add.level == expected);
+        assert(add.language == 2);
+        assert(add.friendship == 70);
+    }
+
+    // Missing encounter data uses one deterministic shared fallback and never a stale
+    // prior level/EXP. The fallback is independent of generation-specific UI code.
+    Session fallback{};
+    fallback.beginCreate(trainer);
+    assert(fallback.setLevel(50));
+    assert(fallback.setSpecies(133, "mock_no_encounter_provider"));
+    assert(fallback.working.level ==
+           PokeBank::UIModel::SpeciesChangeLevelPolicy::fallbackLevel);
+    assert(fallback.working.level != 50);
+    assert(fallback.working.experience ==
+           Pokemon::getExpForLevel(
+               PokeBank::UIModel::SpeciesChangeLevelPolicy::fallbackLevel,
+               Pokemon::getGrowthRate(133)));
+
+    // The source snapshot remains immutable through all draft edits/discards above.
+    assert(source.species == 25 && source.level == 20 && source.experience ==
+           Pokemon::getExpForLevel(20, Pokemon::getGrowthRate(25)));
+    assert(source.ivs[0] == 10 && source.pid == 0x12345678);
+
+    edit.discardDraft();
+    assert(edit.mode == Mode::None);
 
     // Unsupported source-range choices fail in the draft before reaching the staged save.
-    assert(!create.setSpecies(0));
-    assert(!create.setSpecies(387));
-    assert(!create.setLevel(0));
-    assert(!create.setLevel(101));
+    assert(!fallback.setSpecies(0));
+    assert(!fallback.setSpecies(387));
+    assert(!fallback.setLevel(0));
+    assert(!fallback.setLevel(101));
 
     std::cout << "Generation III shared editor draft session: PASS\n";
 }
