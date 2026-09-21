@@ -113,6 +113,24 @@ int main() {
             ? "Crystal caught data" : "Retained Crystal data"));
     }
 
+    // Generation II has five displayed DV/Stat Exp rows: HP is derived and
+    // there is only one stored Special pair. That one pair feeds both split stats.
+    p.partyRecord = false;
+    p.species = 155;
+    p.level = 50;
+    p.dvs = {0, 10, 10, 10, 2};
+    p.statExperience = {0, 0, 0, 0, 0};
+    assert(p.dvs.size() == 5 && p.statExperience.size() == 5);
+    const auto lowSpecialDV = W::battleStats(p);
+    p.dvs[4] = 14;
+    const auto highSpecialDV = W::battleStats(p);
+    assert(lowSpecialDV[4] != highSpecialDV[4]);
+    assert(lowSpecialDV[5] != highSpecialDV[5]);
+    p.statExperience[4] = 65535;
+    const auto highSpecialExp = W::battleStats(p);
+    assert(highSpecialDV[4] != highSpecialExp[4]);
+    assert(highSpecialDV[5] != highSpecialExp[5]);
+
     namespace Held = PokeBank::UIModel::Gen2HeldItemPicker;
     const auto items = PokeBank::UIModel::Gen2PokemonEditor::heldItemChoices();
     assert(Held::itemName(218) == "TM27 — Return");
