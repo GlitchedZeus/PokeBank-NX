@@ -118,7 +118,10 @@ void runCreateParity(const L& layout, SourceGame game) {
     while (picker.speciesChoice() != 155) picker.stepList(1); // Cyndaquil
     assert(Picker::applySpeciesChoice(session, picker.speciesChoice()));
     assert(session.working.species == 155);
-    assert(session.back());
+    assert(!session.back());
+    assert(session.confirmExit);
+    assert(session.mode == SessionMode::Create);
+    session.discard();
     assert(session.mode == SessionMode::None);
     assert(std::equal(afterAdd.begin(), afterAdd.end(), editor->stagedBytes().begin()));
 }
