@@ -145,7 +145,7 @@ int main() {
     assert(gen1Passive.find("* HP DV derived / read-only") != std::string::npos);
     assert(gen1Passive.find("* one stored Gen I Special stat; split display only") != std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only") != std::string::npos);
-    assert(gen2Final.find("* one stored Special DV / Stat Exp") != std::string::npos);
+    assert(gen2Final.find("One Gen II Special DV / Stat Exp feeds both") != std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only • one stored Special DV / Stat Exp") == std::string::npos);
     assert(gen2Final.find("const int shinyY = y + 366") != std::string::npos);
     assert(gen2Final.find("const int genderY = y + 408") != std::string::npos);
