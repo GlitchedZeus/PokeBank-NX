@@ -66,11 +66,53 @@ int main() {
             const auto rows = W::dataRows(p, game);
             auto has = [&](const char* label) { return std::any_of(rows.begin(),rows.end(),[&](const auto& r){return r.label==label;}); };
             assert(has("HP") == party && has("Status") == party);
-            assert(has("Location") == (game == G::SourceGame::Crystal));
+            assert(has("Caught history"));
+            assert(has("Met") && has("Met level") && has("Time") && has("OT gender"));
             if (party) assert((W::battleStats(p) == std::array<uint16_t,6>{999,998,997,996,995,994}));
             else assert(W::battleStats(p)[0] != 999);
         }
     }
+    // Native Gold/Silver records with zero caught-data bytes must say that the
+    // history was not recorded, without manufacturing met fields.
+    p.partyRecord = false;
+    p.caughtData = 0;
+    for (auto game : {G::SourceGame::Gold, G::SourceGame::Silver}) {
+        const auto rows = W::dataRows(p, game);
+        const auto caught = std::find_if(rows.begin(), rows.end(), [](const auto& row) {
+            return row.label == "Caught history";
+        });
+        assert(caught != rows.end() && caught->value == "Not recorded by Gold/Silver");
+        for (const char* label : {"Met", "Met level", "Time", "OT gender"})
+            assert(std::none_of(rows.begin(), rows.end(), [label](const auto& row) { return row.label == label; }));
+    }
+
+    // A Crystal-origin Pokémon retains its caught-data bytes when traded into
+    // Gold/Silver. Decode the record itself rather than gating on the current save.
+    namespace Native = PokeBank::UIModel::Gen2Native;
+    Native::CrystalCaughtData retained{};
+    retained.present = true;
+    retained.timeOfDay = 3;
+    retained.levelCode = 12;
+    retained.originalTrainerFemale = true;
+    retained.location = 16; // Goldenrod City
+    p.caughtData = Native::encodeCrystalCaughtData(retained);
+    for (auto game : {G::SourceGame::Gold, G::SourceGame::Silver, G::SourceGame::Crystal}) {
+        const auto rows = W::dataRows(p, game);
+        const auto value = [&](const char* label) -> std::string {
+            const auto it = std::find_if(rows.begin(), rows.end(), [label](const auto& row) {
+                return row.label == label;
+            });
+            assert(it != rows.end());
+            return it->value;
+        };
+        assert(value("Met") == "Goldenrod City");
+        assert(value("Met level") == "Lv 12");
+        assert(value("Time") == "Night");
+        assert(value("OT gender") == "Female");
+        assert(value("Caught history") == (game == G::SourceGame::Crystal
+            ? "Crystal caught data" : "Retained Crystal data"));
+    }
+
     namespace Held = PokeBank::UIModel::Gen2HeldItemPicker;
     const auto items = PokeBank::UIModel::Gen2PokemonEditor::heldItemChoices();
     assert(Held::itemName(218) == "TM27 — Return");
