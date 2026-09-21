@@ -124,13 +124,15 @@ struct Model {
     }
 };
 
-inline bool applySpeciesChoice(Gen2PokemonEditor::Session& session, uint16_t species) noexcept {
-    return session.setSpecies(species);
+inline bool applySpeciesChoice(Gen2PokemonEditor::Session& session, uint16_t species,
+                               std::string_view sourceGameId = {}) noexcept {
+    return session.setSpecies(species, sourceGameId);
 }
 
 // Appearance is translated into the native DVs, never a stored shiny flag.
-inline bool applySpeciesAppearance(Gen2PokemonEditor::Session& session, uint16_t species, bool shiny) noexcept {
-    if (!session.setSpecies(species)) return false;
+inline bool applySpeciesAppearance(Gen2PokemonEditor::Session& session, uint16_t species,
+                                   bool shiny, std::string_view sourceGameId = {}) noexcept {
+    if (!session.setSpecies(species, sourceGameId)) return false;
     namespace G = PokeVault::Integration::Gen2;
     auto dvs = Gen2PokemonEditor::storedDVs(session.working);
     if (G::StagedEditor::isShinyDVs(dvs) != shiny) {
