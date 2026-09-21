@@ -718,7 +718,7 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {
         return true;
     }
     if (down & HidNpadButton_A) {
-        if (state.session.setSpecies(state.speciesPreview)) {
+        if (state.session.setSpecies(state.speciesPreview, screen.sourceGameId)) {
             state.speciesPicker = false;
             const auto& p = state.session.working;
             if (p.metLocation != 0 &&
