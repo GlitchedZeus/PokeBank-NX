@@ -48,6 +48,25 @@ int main() {
     request = edit.editRequest();
     assert(request.ivs && (*request.ivs)[0] == 31);
 
+    assert(edit.setNature(7));
+    assert(edit.setGender(1));
+    assert(edit.setShiny(true));
+    assert(!edit.setAbilityNumber(2)); // Pikachu has one Gen III ability.
+    request = edit.editRequest();
+    assert(request.nature && *request.nature == 7);
+    assert(request.gender && *request.gender == 1);
+    assert(request.shiny && *request.shiny);
+    assert(!request.abilityNumber);
+
+    Gen3::StagedPokemonRecord ralts = source;
+    ralts.species = 280;
+    ralts.ability = Pokemon::getPersonalInfoG3(280).ability1;
+    ralts.abilityNumber = 1;
+    Session correlated{};
+    correlated.begin(ralts, Mode::Edit);
+    assert(correlated.setAbilityNumber(2));
+    assert(correlated.editRequest().abilityNumber == 2);
+
     // Browsing / draft edits never mutate the source snapshot.
     assert(source.level == 20);
     assert(source.ivs[0] == 10);

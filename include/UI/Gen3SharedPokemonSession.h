@@ -2,12 +2,14 @@
 
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 #include "Pokemon/Experience.h"
+#include "Pokemon/PersonalInfoTable.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "UI/PokemonEditorExitGuard.h"
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace PokeBank::UIModel::Gen3SharedEditor {
@@ -35,7 +37,11 @@ inline bool sameEditableRecord(const Gen3::StagedPokemonRecord& a,
            a.pokerus == b.pokerus &&
            a.ball == b.ball &&
            a.metLevel == b.metLevel &&
-           a.metLocation == b.metLocation;
+           a.metLocation == b.metLocation &&
+           a.nature == b.nature &&
+           a.gender == b.gender &&
+           a.shiny == b.shiny &&
+           a.abilityNumber == b.abilityNumber;
 }
 
 struct Session {
@@ -44,11 +50,19 @@ struct Session {
     ProgressionSource progression = ProgressionSource::Unchanged;
     Gen3::StagedPokemonRecord baseline{};
     Gen3::StagedPokemonRecord working{};
+    std::optional<uint8_t> requestedNature;
+    std::optional<uint8_t> requestedGender;
+    std::optional<bool> requestedShiny;
+    std::optional<uint8_t> requestedAbilityNumber;
 
     void begin(const Gen3::StagedPokemonRecord& record, Mode next) {
         baseline = working = record;
         mode = next;
         confirmExit = false;
+        requestedNature.reset();
+        requestedGender.reset();
+        requestedShiny.reset();
+        requestedAbilityNumber.reset();
         progression = next == Mode::Create ? ProgressionSource::Level
                                            : ProgressionSource::Unchanged;
     }
@@ -96,6 +110,43 @@ struct Session {
         return true;
     }
 
+    bool setNature(uint8_t value) noexcept {
+        if (!editable() || value >= 25) return false;
+        working.nature = value;
+        requestedNature = value;
+        return true;
+    }
+
+    bool setGender(uint8_t value) noexcept {
+        if (!editable() || working.species == 0 || value > 2) return false;
+        const auto ratio = Pokemon::getPersonalInfo(working.species, working.form).genderRatio;
+        if ((ratio == 255 && value != 2) ||
+            (ratio == 254 && value != 1) ||
+            (ratio == 0 && value != 0) ||
+            (ratio > 0 && ratio < 254 && value > 1))
+            return false;
+        working.gender = value;
+        requestedGender = value;
+        return true;
+    }
+
+    bool setShiny(bool value) noexcept {
+        if (!editable()) return false;
+        working.shiny = value;
+        requestedShiny = value;
+        return true;
+    }
+
+    bool setAbilityNumber(uint8_t value) noexcept {
+        if (!editable() || working.species == 0 || value < 1 || value > 2) return false;
+        const auto& personal = Pokemon::getPersonalInfoG3(working.species);
+        if (value == 2 && personal.ability2 == personal.ability1) return false;
+        working.abilityNumber = value;
+        working.ability = value == 2 ? personal.ability2 : personal.ability1;
+        requestedAbilityNumber = value;
+        return true;
+    }
+
     Gen3::BoxPokemonEdit editRequest() const {
         Gen3::BoxPokemonEdit edit;
         if (baseline.species != working.species) edit.species = working.species;
@@ -117,6 +168,10 @@ struct Session {
         if (baseline.ball != working.ball) edit.ball = working.ball;
         if (baseline.metLevel != working.metLevel) edit.metLevel = working.metLevel;
         if (baseline.metLocation != working.metLocation) edit.metLocation = working.metLocation;
+        edit.nature = requestedNature;
+        edit.gender = requestedGender;
+        edit.shiny = requestedShiny;
+        edit.abilityNumber = requestedAbilityNumber;
         return edit;
     }
 
@@ -133,6 +188,10 @@ struct Session {
         create.friendship = working.friendship;
         create.ball = working.ball;
         create.metLocation = working.metLocation;
+        create.nature = requestedNature;
+        create.gender = requestedGender;
+        create.shiny = requestedShiny;
+        create.abilityNumber = requestedAbilityNumber;
         return create;
     }
 

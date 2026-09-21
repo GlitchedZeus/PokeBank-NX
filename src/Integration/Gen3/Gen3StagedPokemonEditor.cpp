@@ -455,10 +455,50 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         }
     }
 
-    // This milestone must never silently rewrite a PID-correlated identity.
-    if (pokemon.pid() != originalPid || pokemon.tid16() != originalTid ||
-        pokemon.sid16() != originalSid) {
-        error = "Generation III safe-edit policy rejected a PID/TID/SID-correlated mutation";
+    const bool pidLinkedEdit =
+        edit.nature.has_value() || edit.gender.has_value() ||
+        edit.shiny.has_value() || edit.abilityNumber.has_value();
+    const uint8_t expectedNature = edit.nature.value_or(pokemon.nature());
+    const uint8_t expectedGender = edit.gender.value_or(pokemon.gender());
+    const bool expectedShiny = edit.shiny.value_or(pokemon.isShiny(pokemon.id32(), ""));
+    const uint8_t expectedAbilityNumber = edit.abilityNumber.value_or(pokemon.abilityNumber());
+
+    if (edit.nature) {
+        if (*edit.nature >= 25) {
+            error = "Generation III nature must be between 0 and 24";
+            return false;
+        }
+        pokemon.setNature(*edit.nature);
+    }
+    if (edit.gender) {
+        if (*edit.gender > 2) {
+            error = "Generation III gender selector is outside the native range";
+            return false;
+        }
+        pokemon.setGender(*edit.gender);
+    }
+    if (edit.shiny) pokemon.setShiny(*edit.shiny, pokemon.id32());
+    if (edit.abilityNumber) {
+        if (*edit.abilityNumber < 1 || *edit.abilityNumber > 2) {
+            error = "Generation III ability slot must be 1 or 2";
+            return false;
+        }
+        pokemon.setAbilityNumber(*edit.abilityNumber);
+    }
+
+    if (pokemon.nature() != expectedNature ||
+        pokemon.gender() != expectedGender ||
+        pokemon.isShiny(pokemon.id32(), "") != expectedShiny ||
+        pokemon.abilityNumber() != expectedAbilityNumber) {
+        error = "Requested Generation III PID-linked field combination is not representable";
+        return false;
+    }
+    if (pokemon.tid16() != originalTid || pokemon.sid16() != originalSid) {
+        error = "Generation III PID-linked edit changed TID/SID";
+        return false;
+    }
+    if (!pidLinkedEdit && pokemon.pid() != originalPid) {
+        error = "Generation III non-PID edit unexpectedly changed PID";
         return false;
     }
 
@@ -482,10 +522,13 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         if (error.empty()) error = "Generation III edit did not survive strict reparse";
         return false;
     }
-    if (after->pid != originalPid || after->tid != originalTid || after->sid != originalSid) {
+    if (after->tid != originalTid || after->sid != originalSid ||
+        (!pidLinkedEdit && after->pid != originalPid) ||
+        after->nature != expectedNature || after->gender != expectedGender ||
+        after->shiny != expectedShiny || after->abilityNumber != expectedAbilityNumber) {
         staged_ = stagedBackup;
         changes_ = changesBackup;
-        error = "Generation III edit changed PID/TID/SID after reparse";
+        error = "Generation III PID-linked edit failed strict semantic reparse";
         return false;
     }
 
@@ -565,6 +608,40 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     }
     if (!validPpForMoves(pokemon, create.pp, create.ppUps, error)) return false;
 
+    const uint8_t expectedNature = create.nature.value_or(pokemon.nature());
+    const uint8_t expectedGender = create.gender.value_or(pokemon.gender());
+    const bool expectedShiny = create.shiny.value_or(pokemon.isShiny(pokemon.id32(), ""));
+    const uint8_t expectedAbilityNumber = create.abilityNumber.value_or(pokemon.abilityNumber());
+    if (create.nature) {
+        if (*create.nature >= 25) {
+            error = "Generation III nature must be between 0 and 24";
+            return false;
+        }
+        pokemon.setNature(*create.nature);
+    }
+    if (create.gender) {
+        if (*create.gender > 2) {
+            error = "Generation III gender selector is outside the native range";
+            return false;
+        }
+        pokemon.setGender(*create.gender);
+    }
+    if (create.shiny) pokemon.setShiny(*create.shiny, pokemon.id32());
+    if (create.abilityNumber) {
+        if (*create.abilityNumber < 1 || *create.abilityNumber > 2) {
+            error = "Generation III ability slot must be 1 or 2";
+            return false;
+        }
+        pokemon.setAbilityNumber(*create.abilityNumber);
+    }
+    if (pokemon.nature() != expectedNature ||
+        pokemon.gender() != expectedGender ||
+        pokemon.isShiny(pokemon.id32(), "") != expectedShiny ||
+        pokemon.abilityNumber() != expectedAbilityNumber) {
+        error = "Requested Generation III Create PID-linked field combination is not representable";
+        return false;
+    }
+
     const auto replacement = encryptedBytes(pokemon);
     const auto stagedBackup = staged_;
     const auto changesBackup = changes_;
@@ -575,7 +652,9 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     }
     auto after = boxedPokemon(box, slot, error);
     if (!after || after->species != create.species || after->level != create.level ||
-        after->originGame != originVersion(sourceGame_)) {
+        after->originGame != originVersion(sourceGame_) ||
+        after->nature != expectedNature || after->gender != expectedGender ||
+        after->shiny != expectedShiny || after->abilityNumber != expectedAbilityNumber) {
         staged_ = stagedBackup;
         changes_ = changesBackup;
         if (error.empty()) error = "Generation III Create failed strict semantic reparse";

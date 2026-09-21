@@ -159,7 +159,7 @@ void runGame(SourceGame game, Family family) {
     assert(editor && error.empty());
     assert(editor->boxCount() == 14);
     assert(editor->boxCapacity() == 30);
-    assert(!StagedPokemonEditor::pidCorrelatedEditingEnabled());
+    assert(StagedPokemonEditor::pidCorrelatedEditingEnabled());
     assert(!StagedPokemonEditor::moveSelectionEditingEnabled());
 
     auto before = editor->boxedPokemon(0, 0, error);
@@ -287,6 +287,59 @@ void runGame(SourceGame game, Family family) {
     assert(created->originGame == origin(game));
     assert((created->moves == std::array<uint16_t,4>{}));
     assert(!created->shiny);
+
+    if (game == SourceGame::RubyGBA) {
+        // PID-linked edits use the real Gen III correlation rules and survive strict reparse.
+        BoxPokemonCreate correlatedCreate;
+        correlatedCreate.species = 280; // Ralts: variable gender + two native abilities.
+        correlatedCreate.level = 10;
+        correlatedCreate.nickname = "RALTS";
+        correlatedCreate.nature = 3;
+        correlatedCreate.gender = 1;
+        correlatedCreate.shiny = true;
+        correlatedCreate.abilityNumber = 2;
+        const auto sourceBeforeCorrelated = editor->originalBytes();
+        auto correlatedPreview = editor->previewCreate(0, 3, correlatedCreate, error);
+        assert(correlatedPreview && error.empty());
+        assert(correlatedPreview->nature == 3);
+        assert(correlatedPreview->gender == 1);
+        assert(correlatedPreview->shiny);
+        assert(correlatedPreview->abilityNumber == 2);
+        assert(editor->stageAddBoxPokemon(0, 3, correlatedCreate, error));
+        auto correlated = editor->boxedPokemon(0, 3, error);
+        assert(correlated && correlated->nature == 3 && correlated->gender == 1);
+        assert(correlated->shiny && correlated->abilityNumber == 2);
+        assert(correlated->tid == editor->trainer().tid16 && correlated->sid == editor->trainer().sid16);
+        assert(editor->originalBytes() == sourceBeforeCorrelated);
+
+        const auto correlatedPid = correlated->pid;
+        BoxPokemonEdit correlatedEdit;
+        correlatedEdit.nature = 7;
+        correlatedEdit.gender = 0;
+        correlatedEdit.shiny = false;
+        correlatedEdit.abilityNumber = 1;
+        auto correlatedEditPreview = editor->previewEdit(0, 3, correlatedEdit, error);
+        assert(correlatedEditPreview && error.empty());
+        assert(correlatedEditPreview->nature == 7 && correlatedEditPreview->gender == 0);
+        assert(!correlatedEditPreview->shiny && correlatedEditPreview->abilityNumber == 1);
+        assert(correlatedEditPreview->tid == correlated->tid && correlatedEditPreview->sid == correlated->sid);
+        assert(correlatedEditPreview->pid != correlatedPid);
+        assert(editor->stageBoxPokemonEdit(0, 3, correlatedEdit, error));
+        correlated = editor->boxedPokemon(0, 3, error);
+        assert(correlated && correlated->encryptedBytes == correlatedEditPreview->encryptedBytes);
+
+        const auto beforeImpossible = editor->stagedBytes();
+        BoxPokemonEdit impossibleGender;
+        impossibleGender.species = 81; // Magnemite is genderless.
+        impossibleGender.gender = 0;
+        assert(!editor->stageBoxPokemonEdit(0, 3, impossibleGender, error));
+        assert(editor->stagedBytes() == beforeImpossible);
+        BoxPokemonEdit impossibleAbility;
+        impossibleAbility.species = 25; // Pikachu has one Gen III ability.
+        impossibleAbility.abilityNumber = 2;
+        assert(!editor->stageBoxPokemonEdit(0, 3, impossibleAbility, error));
+        assert(editor->stagedBytes() == beforeImpossible);
+    }
 
     // Release is staged sparse removal; neighboring slots do not shift.
     const auto cloneBytes = clone->encryptedBytes;

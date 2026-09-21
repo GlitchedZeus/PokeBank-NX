@@ -64,6 +64,10 @@ struct BoxPokemonEdit {
     std::optional<uint8_t> ball;
     std::optional<uint8_t> metLevel;
     std::optional<uint16_t> metLocation;
+    std::optional<uint8_t> nature;
+    std::optional<uint8_t> gender;
+    std::optional<bool> shiny;
+    std::optional<uint8_t> abilityNumber;
 };
 
 struct BoxPokemonCreate {
@@ -78,6 +82,10 @@ struct BoxPokemonCreate {
     uint8_t friendship = 70;
     uint8_t ball = 4;     // Poke Ball in PK3
     uint16_t metLocation = 0;
+    std::optional<uint8_t> nature;
+    std::optional<uint8_t> gender;
+    std::optional<bool> shiny;
+    std::optional<uint8_t> abilityNumber;
 };
 
 struct StagedPokemonChange {
@@ -134,7 +142,7 @@ public:
     [[nodiscard]] std::vector<uint8_t> finalizedBytes(std::string& error) const;
 
     // PID-correlated fields remain read-only in the first Gen III device candidate.
-    static constexpr bool pidCorrelatedEditingEnabled() noexcept { return false; }
+    static constexpr bool pidCorrelatedEditingEnabled() noexcept { return true; }
     static constexpr bool moveSelectionEditingEnabled() noexcept { return false; }
 
 private:
