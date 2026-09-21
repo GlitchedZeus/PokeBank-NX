@@ -17,6 +17,8 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedSpeciesPicker.h"
+
+// Species changes use the shared exact-game level/EXP initialization policy; overlays must not reintroduce inherited level semantics.
 #include "UI/TouchInput.h"
 #include "Trainer/Trainer.h"
 #include "Utils/FileUtilities.h"
