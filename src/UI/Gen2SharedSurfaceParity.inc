@@ -224,6 +224,11 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     if (!isGSC(screen)) return false;
     if (handleTrainerSession(screen, down, held, stickX, stickY, touch)) return true;
     if (handleParityExternalPassiveInput(screen, down, touch)) return true;
+    if (stateFor(screen).mode != Mode::None) {
+        if (!handleUnifiedGen2SurfaceInput(screen, down, held, stickX, stickY, touch))
+            handlePickerInput(screen, down, held, stickX, stickY, touch);
+        return true; // Editor Species activation must never fall through to Box Empty Slot.
+    }
     if (handleUnifiedGen2SurfaceInput(screen, down, held, stickX, stickY, touch)) return true;
 
     // The named Species/Move/Pokerus picker is handled immediately after this

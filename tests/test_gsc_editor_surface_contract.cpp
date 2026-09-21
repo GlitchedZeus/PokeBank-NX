@@ -25,6 +25,29 @@ int main() {
     const auto picker = readFile("src/UI/Gen2PokemonPickerOverlay.inc");
     const auto pickerModel = readFile("include/UI/Gen2PokemonPickerModel.h");
 
+    // Active Create/Edit routes consume Species A and picker cancel/accept before box actions.
+    const auto editorGuard = parity.find("if (stateFor(screen).mode != Mode::None)", parity.find("bool handleFinalGen2SurfaceInput"));
+    const auto boxRoute = parity.find("namespace Access", editorGuard);
+    assert(editorGuard < boxRoute);
+    const auto dispatch = parity.substr(editorGuard, boxRoute - editorGuard);
+    assert(dispatch.find("handlePickerInput(screen, down, held, stickX, stickY, touch)") != std::string::npos);
+    assert(dispatch.find("return true; // Editor Species") != std::string::npos);
+    const auto release = readFile("src/UI/ClassicReleaseActionFix.inc");
+    const auto gen2Release = release.substr(release.find("namespace UI::Gen2PokemonEditor"));
+    assert(gen2Release.find("stateFor(screen).mode != Mode::None") != std::string::npos);
+    const auto drawing = gen2Release.substr(gen2Release.find("bool drawReleaseActionSurface"));
+    assert(drawing.find("screen.drawLegacyBase(fb)") < drawing.find("fb.drawFilledRect"));
+    assert(drawing.find("Colors::FocusBorder, 2") != std::string::npos);
+    const auto input = gen2Release.substr(gen2Release.find("bool handleReleaseActionInput"));
+    const auto close = input.substr(input.find("if (down & HidNpadButton_B)", input.find("const uint64_t nav")));
+    const auto closeBody = close.substr(0, close.find("return true;"));
+    assert(closeBody.find("legacy.active = false") != std::string::npos);
+    assert(closeBody.find("selectedBoxIndex") == std::string::npos);
+    assert(closeBody.find("selectedItemIndex") == std::string::npos);
+    assert(closeBody.find("stage") == std::string::npos);
+    const auto boxBase = readFile("src/UI/TrainerViewScreenBase.inc");
+    assert(boxBase.find("subtitle += titleName") != std::string::npos);
+
     assert(foundation.find("Gen II Level") != std::string::npos);
     assert(foundation.find("Gen II Experience") != std::string::npos);
 

@@ -181,7 +181,7 @@ bool confirmRelease(TrainerViewScreen& screen) {
 
 bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                               int stickX, int stickY) {
-    if (!isGSC(screen)) return false;
+    if (!isGSC(screen) || stateFor(screen).mode != Mode::None) return false;
     auto& legacy = editorOverlayState(screen);
     if (!legacy.active || legacy.review || !legacy.pokemonActions) return false;
     auto* editor = stagedEditor(screen);
@@ -279,18 +279,22 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
 }
 
 bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    if (!isGSC(screen)) return false;
+    if (!isGSC(screen) || stateFor(screen).mode != Mode::None) return false;
     auto& legacy = editorOverlayState(screen);
     if (!legacy.active || legacy.review || !legacy.pokemonActions) return false;
     auto* editor = stagedEditor(screen);
     if (!editor) return false;
     auto& confirm = releaseConfirmStateFor(screen);
 
+    // Draw the actual box browser once before the compact action-sheet dimmer.
+    // The legacy GSC overlay would draw a second popup here, so use its base page.
+    screen.drawLegacyBase(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     if (confirm.active) {
         constexpr int w = 650, h = 240;
         constexpr int x = (1280 - w) / 2, y = (672 - h) / 2;
         drawPanelSurface(fb, x, y, w, h, false, 18);
+        fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
         fb.drawText(x + 24, y + 18, "Release Pokemon?", Colors::Text, TextStyle::Heading);
         fb.drawText(x + 28, y + 86, "Release compacts the Generation II staged box only.", Colors::Text);
         fb.drawText(x + 28, y + 126, "Original RetroArch .srm remains immutable and is never written.", Colors::Accent);
@@ -310,6 +314,7 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const int y = (672 - h) / 2;
     const auto geometry = PokeBank::UIModel::SharedPokemonEditor::actionMenuGeometry();
     drawPanelSurface(fb, x, y, w, h, false, 18);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
     fb.drawText(x + 24, y + 18, pokemon ? "Pokemon Actions" : "Empty Slot", Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
         "Box " + std::to_string(legacy.pokemonBox + 1) + " / Slot " +
