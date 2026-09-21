@@ -1,4 +1,4 @@
-// Named Generation II picker layer. It intercepts only Species, Move and Pokerus activation before
+// Named Generation II picker layer. It intercepts only Species and Move activation before
 // the preserved shared editor launches its legacy numeric prompts. Browsing lives entirely in this
 // overlay model; the Gen2PokemonSession changes only when A explicitly applies a selected value.
 
@@ -39,8 +39,6 @@ bool openPickerForFocusedField(TrainerViewScreen& screen, State& state,
     } else if (state.panel == Foundation::Panel::Moves && state.column == 0) {
         picker.model.openMove(state.working.moves[static_cast<std::size_t>(state.row)],
                               static_cast<std::size_t>(state.row));
-    } else if (state.panel == Foundation::Panel::Values && state.row == 7) {
-        picker.model.openPokerus(state.working.pokerus);
     } else {
         return false;
     }
@@ -84,8 +82,6 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
             }
         }
         state.working.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
-    } else if (picker.model.kind == Gen2Picker::Kind::Pokerus) {
-        if (!Gen2Picker::applyPokerusChoice(state, picker.model.pokerusRaw())) return false;
     } else {
         return false;
     }
@@ -188,35 +184,6 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
-void drawPokerusPicker(PKSEFramebuffer& fb, const Gen2Picker::Model& model) {
-    const int W = fb.getWidth(), H = fb.getHeight();
-    constexpr int panelW = 650, panelH = 440;
-    const int x = (W - panelW) / 2, y = (H - panelH) / 2;
-    fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
-    drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
-    fb.drawText(x + 24, y + 18, "Pokerus — Generation II", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, "Edit fields first; Apply / Done is a separate explicit action.",
-                Colors::TextDim, TextStyle::Caption);
-
-    const std::array<std::pair<std::string, std::string>, 4> rows{{
-        {"State", Gen2Picker::pokerusModeText(model.pokerusMode)},
-        {"Strain", model.pokerusMode == Gen2Picker::PokerusMode::None ? "—" : std::to_string(model.strain)},
-        {"Days remaining", model.pokerusMode == Gen2Picker::PokerusMode::Active ? std::to_string(model.days) : "0"},
-        {"Apply / Done", "Keep this Pokérus value"},
-    }};
-    for (int i = 0; i < Gen2Picker::pokerusRowCount; ++i) {
-        const int yy = y + 100 + i * 56;
-        drawPickerRow(fb, x + 24, yy, panelW - 48, rows[static_cast<std::size_t>(i)].first,
-                      model.pokerusRow == i);
-        fb.drawText(x + 270, yy, rows[static_cast<std::size_t>(i)].second,
-                    model.pokerusRow == i ? Colors::Accent : Colors::Text, TextStyle::Caption);
-    }
-    fb.drawText(x + 24, y + 334,
-                "Stored byte preview (read-only): " + std::to_string(model.pokerusRaw()),
-                Colors::TextDim, TextStyle::Caption);
-    drawNavBar(fb, {{"Up/Down", "Field"}, {"Left/Right", "Adjust"},
-                    {"A", "Edit / Apply"}, {"B", "Cancel"}});
-}
 
 } // namespace
 
@@ -264,38 +231,6 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             if (nav & HidNpadButton_Left) picker.model.stepList(-10);
             if (nav & HidNpadButton_Right) picker.model.stepList(10);
         }
-    } else if (picker.model.kind == Gen2Picker::Kind::Pokerus) {
-        if (nav & HidNpadButton_Up) picker.model.stepPokerusRow(-1);
-        if (nav & HidNpadButton_Down) picker.model.stepPokerusRow(1);
-        if (nav & HidNpadButton_Left) picker.model.adjustPokerus(-1);
-        if (nav & HidNpadButton_Right) picker.model.adjustPokerus(1);
-
-        if (down & HidNpadButton_A) {
-            if (picker.model.pokerusRow == 0) {
-                picker.model.adjustPokerus(1);
-                return true;
-            }
-            if (picker.model.pokerusRow == 1) {
-                if (picker.model.pokerusMode == Gen2Picker::PokerusMode::None)
-                    picker.model.pokerusMode = Gen2Picker::PokerusMode::Active;
-                const auto result = Utils::promptNumber(
-                    "Pokerus strain", picker.model.strain, 1, 15);
-                if (result.accepted)
-                    picker.model.setPokerusStrain(static_cast<uint8_t>(result.value));
-                return true;
-            }
-            if (picker.model.pokerusRow == 2) {
-                if (picker.model.pokerusMode != Gen2Picker::PokerusMode::Active)
-                    picker.model.pokerusMode = Gen2Picker::PokerusMode::Active;
-                const auto result = Utils::promptNumber(
-                    "Pokerus days remaining", picker.model.days, 1, 15);
-                if (result.accepted)
-                    picker.model.setPokerusDays(static_cast<uint8_t>(result.value));
-                return true;
-            }
-            applyPickerChoice(screen, state, picker);
-            return true;
-        }
     }
 
     if (down & HidNpadButton_A) applyPickerChoice(screen, state, picker);
@@ -311,8 +246,7 @@ void drawPickerOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
     const auto& picker = pickerStateFor(screen).model;
     if (!picker.active()) return;
-    if (picker.kind == Gen2Picker::Kind::Pokerus) drawPokerusPicker(fb, picker);
-    else drawListPicker(screen, fb, state, picker);
+    drawListPicker(screen, fb, state, picker);
 }
 
 } // namespace UI::Gen2PokemonEditor
