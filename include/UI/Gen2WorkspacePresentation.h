@@ -4,6 +4,7 @@
 #include "UI/Gen2PokemonSession.h"
 #include "UI/StatsRadar.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
+#include <algorithm>
 #include <vector>
 
 namespace PokeBank::UIModel::Gen2Workspace {
@@ -48,8 +49,17 @@ namespace UI::Gen2WorkspacePresentation {
 // Values also exposes the editable Held Item / Friendship / Pokerus capabilities.
 inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
     const PokeVault::Integration::Gen2::PokemonRecord& p, PokeVault::Integration::Gen2::SourceGame game) {
-    SharedPokemonShell::drawDataAndGraph(fb, x, y, w, h, "GEN II DATA",
-        PokeBank::UIModel::Gen2Workspace::dataRows(p, game),
+    auto rows = PokeBank::UIModel::Gen2Workspace::dataRows(p, game);
+    // The accepted shared legacy layer gives this sibling panel only 260 px.
+    // When genuine caught history is present, prioritize those record bytes over
+    // auxiliary party HP/status here. The final 1280x720 hardware surface is
+    // taller (312 px) and therefore keeps every real row.
+    if (h < 300 && p.caughtData != 0) {
+        rows.erase(std::remove_if(rows.begin(), rows.end(), [](const auto& row) {
+            return row.label == "HP" || row.label == "Status";
+        }), rows.end());
+    }
+    SharedPokemonShell::drawDataAndGraph(fb, x, y, w, h, "GEN II DATA", rows,
         PokeBank::UIModel::Gen2Workspace::battleStats(p));
 }
 } // namespace UI::Gen2WorkspacePresentation
