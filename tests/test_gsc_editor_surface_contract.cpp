@@ -138,8 +138,6 @@ int main() {
     assert(valuesBegin != std::string::npos && valuesEnd != std::string::npos && valuesEnd > valuesBegin);
     const auto valuesSurface = unified.substr(valuesBegin, valuesEnd - valuesBegin);
     assert(valuesSurface.find("unified.focus.column == 2 ? Colors::Accent") == std::string::npos);
-    assert(unified.find("\"SpA\"") != std::string::npos);
-    assert(unified.find("\"SpD\"") != std::string::npos);
     assert(unified.find("{\"Held Item\", itemText(p.heldItem)}") != std::string::npos);
     assert(unified.find("{\"Friendship\", std::to_string(p.friendship)}") != std::string::npos);
     assert(unified.find("{\"Pokerus\", Gen2Native::pokerusText(p.pokerus)}") != std::string::npos);
@@ -175,11 +173,13 @@ int main() {
     assert(picker.find("Species-valid Crystal encounters") != std::string::npos);
     assert(picker.find("encounter->minLevel") != std::string::npos);
     assert(picker.find("encounter->timeMask") != std::string::npos);
-    assert(picker.find("Apply / Done") != std::string::npos);
-    assert(picker.find("picker.model.pokerusRow == 0") != std::string::npos);
-    assert(picker.find("picker.model.pokerusRow == 1") != std::string::npos);
-    assert(picker.find("picker.model.pokerusRow == 2") != std::string::npos);
-    assert(picker.find("applyPickerChoice(screen, state, picker);") != std::string::npos);
+    assert(picker.find("drawPokerusPicker") == std::string::npos);
+    assert(picker.find("Kind::Pokerus") == std::string::npos);
+    assert(picker.find("Pokerus strain") == std::string::npos);
+    assert(picker.find("Pokerus days remaining") == std::string::npos);
+    assert(picker.find("Stored byte preview") == std::string::npos);
+    assert(unified.find("if (focus.row == 7)") != std::string::npos);
+    assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus)") != std::string::npos);
     assert(picker.find("state.working.caughtData = 0") != std::string::npos);
 
     // Move slots must enter the accepted Gen I-style Move N contextual editor first.
