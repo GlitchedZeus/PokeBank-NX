@@ -49,6 +49,9 @@ enum class PickerTarget : uint8_t {
     Language,
     Ball,
     MetLocation,
+    Nature,
+    Gender,
+    Ability,
     Move,
 };
 
@@ -362,6 +365,24 @@ bool detailEditable(const State& state, int row) noexcept {
            row == 13 || row == 14;
 }
 
+bool variableGenderSpecies(uint16_t species) noexcept {
+    const auto ratio = Pokemon::getPersonalInfo(species, 0).genderRatio;
+    return ratio > 0 && ratio < 254;
+}
+
+bool dualAbilitySpecies(uint16_t species) noexcept {
+    const auto& personal = Pokemon::getPersonalInfoG3(species);
+    return personal.ability1 != personal.ability2;
+}
+
+bool pidLinkedRowEditable(const State& state, int row) noexcept {
+    if (!state.session.editable()) return false;
+    if (row == 6 || row == 8) return true; // Nature / Shiny
+    if (row == 7) return variableGenderSpecies(state.session.working.species);
+    if (row == 9) return dualAbilitySpecies(state.session.working.species);
+    return false; // PID itself is always derived/read-only.
+}
+
 void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelChanged = false) {
     state.focus = Shared::normalize(Shared::Generation::Gen3, state.focus);
     if (!state.session.editable()) return;
@@ -383,9 +404,28 @@ void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelC
     }
 
     if (state.focus.panel == Shared::Panel::Values) {
-        // Nature/Gender/Shiny/Ability/PID and the calculated Stat column remain read-only.
-        if (panelChanged || state.focus.row >= 6) state.focus.row = 0;
-        if (state.focus.column >= 2) state.focus.column = 1;
+        if (state.focus.row < 6) {
+            if (state.focus.column >= 2) state.focus.column = 1;
+            return;
+        }
+
+        state.focus.column = 0;
+        if (pidLinkedRowEditable(state, state.focus.row)) return;
+
+        int row = state.focus.row;
+        const int direction = verticalDirection < 0 ? -1 : 1;
+        for (int step = 0; step < 5; ++step) {
+            row += direction;
+            if (row < 6) row = 10;
+            if (row > 10) row = 6;
+            if (pidLinkedRowEditable(state, row)) {
+                state.focus.row = static_cast<uint8_t>(row);
+                return;
+            }
+        }
+        // If a panel transition landed on PID/fixed-only rows, choose the first
+        // editable stat cell instead of trapping focus.
+        if (panelChanged) state.focus = {Shared::Panel::Values, 0, 0};
         return;
     }
 
@@ -401,6 +441,22 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
         case PickerTarget::HeldItem: return Names::getItemNameG3(value);
         case PickerTarget::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
         case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
+        case PickerTarget::Nature: return Trainer::getNatureName(static_cast<uint8_t>(value));
+        case PickerTarget::Gender: return genderText(static_cast<uint8_t>(value));
+        case PickerTarget::Ability: {
+            const auto& personal = Pokemon::getPersonalInfoG3(state.session.working.species);
+            const uint16_t ability = value == 2 ? personal.ability2 : personal.ability1;
+            return "Slot " + std::to_string(value) + " - " + Trainer::getAbilityName(ability);
+        }
+        case PickerTarget::Nature:
+            state.session.setNature(static_cast<uint8_t>(value));
+            break;
+        case PickerTarget::Gender:
+            state.session.setGender(static_cast<uint8_t>(value));
+            break;
+        case PickerTarget::Ability:
+            state.session.setAbilityNumber(static_cast<uint8_t>(value));
+            break;
         case PickerTarget::MetLocation: {
             const auto* selected = EncounterPicker::choiceAt(state.encounterChoices, value);
             if (!selected) return "Invalid encounter";
@@ -436,6 +492,9 @@ const char* pickerTitle(PickerTarget target) noexcept {
         case PickerTarget::Language: return "Choose Language";
         case PickerTarget::Ball: return "Choose Ball";
         case PickerTarget::MetLocation: return "Choose Met Location";
+        case PickerTarget::Nature: return "Choose Nature";
+        case PickerTarget::Gender: return "Choose Gender";
+        case PickerTarget::Ability: return "Choose Ability";
         case PickerTarget::Move: return "Choose Move";
         default: return "Choose Value";
     }
@@ -448,6 +507,9 @@ uint16_t currentPickerValue(const State& state, PickerTarget target, int moveSlo
         case PickerTarget::Language: return p.language;
         case PickerTarget::Ball: return p.ball;
         case PickerTarget::MetLocation: return p.metLocation;
+        case PickerTarget::Nature: return p.nature;
+        case PickerTarget::Gender: return p.gender;
+        case PickerTarget::Ability: return p.abilityNumber;
         case PickerTarget::Move:
             return moveSlot >= 0 && moveSlot < 4 ? p.moves[static_cast<std::size_t>(moveSlot)] : 0;
         default: return 0;
@@ -488,6 +550,22 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         state.valuePicker = true;
         screen.controllerNavigation.reset();
         return;
+    } else if (target == PickerTarget::Nature) {
+        for (uint16_t value = 0; value < 25; ++value) state.pickerValues.push_back(value);
+    } else if (target == PickerTarget::Gender) {
+        if (!variableGenderSpecies(state.session.working.species)) {
+            state.pickerTarget = PickerTarget::None;
+            screen.postStatus("Gender is fixed for this Generation III species", 240);
+            return;
+        }
+        state.pickerValues = {0, 1};
+    } else if (target == PickerTarget::Ability) {
+        if (!dualAbilitySpecies(state.session.working.species)) {
+            state.pickerTarget = PickerTarget::None;
+            screen.postStatus("This species has one native Generation III ability", 240);
+            return;
+        }
+        state.pickerValues = {1, 2};
     } else if (target == PickerTarget::Move) {
         const auto game = PokeVault::Integration::Gen3EditorProvider::sourceGameForId(screen.sourceGameId);
         if (game) {
@@ -643,10 +721,36 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
 
 void editStatCell(TrainerViewScreen& screen, State& state) {
     if (!state.session.editable()) return;
-    if (state.focus.row >= 6 || state.focus.column >= 2) {
-        screen.postStatus("Nature, Gender, Shiny, Ability and PID are read-only for PID safety", 300);
-        return;
+
+    if (state.focus.row >= 6) {
+        state.focus.column = 0;
+        switch (state.focus.row) {
+            case 6:
+                openValuePicker(screen, state, PickerTarget::Nature);
+                return;
+            case 7:
+                if (pidLinkedRowEditable(state, 7))
+                    openValuePicker(screen, state, PickerTarget::Gender);
+                else
+                    screen.postStatus("Gender is fixed for this Generation III species", 240);
+                return;
+            case 8:
+                state.session.setShiny(!state.session.working.shiny);
+                state.previewValid = false;
+                return;
+            case 9:
+                if (pidLinkedRowEditable(state, 9))
+                    openValuePicker(screen, state, PickerTarget::Ability);
+                else
+                    screen.postStatus("This species has one native Generation III ability", 240);
+                return;
+            default:
+                screen.postStatus("PID is derived from the selected Generation III traits", 260);
+                return;
+        }
     }
+
+    if (state.focus.column >= 2) return;
     const std::size_t stat = state.focus.row;
     if (state.focus.column == 0) {
         const auto r = Utils::promptNumber("Generation III IV",
@@ -666,6 +770,7 @@ void editStatCell(TrainerViewScreen& screen, State& state) {
         }
         state.session.working.evs = evs;
     }
+    state.previewValid = false;
 }
 
 int gen3MoveMaxPP(uint16_t move, uint8_t ppUps) {
@@ -858,7 +963,7 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
         return true;
     }
 
-    const bool panelChanged = (down & (HidNpadButton_L | HidNpadButton_R)) != 0;
+    const auto panelBeforeNavigation = state.focus.panel;
     int verticalDirection = 0;
     if (down & HidNpadButton_L)
         state.focus = Shared::switchPanel(Shared::Generation::Gen3, state.focus, -1);
@@ -877,6 +982,7 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
     if (down & HidNpadButton_Right)
         state.focus = Shared::moveColumn(Shared::Generation::Gen3, state.focus, 1);
 
+    const bool panelChanged = state.focus.panel != panelBeforeNavigation;
     normalizeEditableFocus(state, verticalDirection, panelChanged);
     state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
     state.detailsFocus = std::min<int>(state.detailsFocus, static_cast<int>(detailLabels.size()) - 1);
@@ -1226,23 +1332,27 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         fb.drawText(midX + 274, yy, state.previewError.empty() ? std::to_string(p.calculatedStats[static_cast<std::size_t>(row)]) : "—", Colors::Accent, TextStyle::Caption);
     }
     fb.drawHDivider(midX + 14, y + 310, midW - 28);
-    fb.drawText(midX + 18, y + 318, "PID-LINKED / DERIVED (READ ONLY)",
+    fb.drawText(midX + 18, y + 318, "PID-LINKED / SAFE EDIT",
                 Colors::TextDim, TextStyle::Caption);
     const std::array<std::pair<const char*,std::string>,5> derived{{
         {"Nature", Trainer::getNatureName(p.nature)},
         {"Gender", genderText(p.gender)},
         {"Shiny", p.shiny ? "Yes" : "No"},
         {"Ability", Trainer::getAbilityName(p.ability)},
-        {"PID", std::to_string(p.pid)},
+        {"PID (read-only)", std::to_string(p.pid)},
     }};
     for (int i = 0; i < 5; ++i) {
         const int row = i + 6;
         const int yy = y + 346 + i * 35;
-        const bool selected = false; // PID-correlated rows are intentionally frozen.
+        const bool editableRow = row < 10 && pidLinkedRowEditable(state, row);
+        const bool selected = state.session.editable() &&
+                              state.focus.panel == Shared::Panel::Values &&
+                              state.focus.row == row && editableRow;
         drawFocus(fb, midX + 8, yy - 5, midW - 16, 29, selected);
         fb.drawText(midX + 18, yy, derived[static_cast<std::size_t>(i)].first,
-                    Colors::TextDim, TextStyle::Caption);
-        const Color valueColor = i == 1 ? genderValueColor(p.gender) : Colors::Text;
+                    editableRow ? Colors::TextDim : Colors::Divider, TextStyle::Caption);
+        Color valueColor = editableRow ? Colors::Text : Colors::TextDim;
+        if (i == 1 && editableRow) valueColor = genderValueColor(p.gender);
         fb.drawText(midX + 130, yy, derived[static_cast<std::size_t>(i)].second,
                     valueColor, TextStyle::Caption);
     }

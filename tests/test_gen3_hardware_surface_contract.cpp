@@ -59,6 +59,15 @@ int main() {
     for (unsigned i = 0; i < rectangle.count; ++i) assert(rectangle[i] == expected[i]);
     assert(Multi::moveCursor(29, Multi::Direction::Right, 30) == 29);
     assert(Multi::moveCursor(29, Multi::Direction::Down, 30) == 29);
+    // D-pad horizontal navigation crosses shared panels without requiring L/R.
+    assert(Shared::moveColumn(Shared::Generation::Gen3, {Shared::Panel::Details, 0, 0}, 1).panel ==
+           Shared::Panel::Values);
+    assert((Shared::moveColumn(Shared::Generation::Gen3, {Shared::Panel::Values, 0, 1}, 1) ==
+            Shared::Focus{Shared::Panel::Moves, 0, 0}));
+    assert((Shared::moveColumn(Shared::Generation::Gen3, {Shared::Panel::Moves, 0, 0}, -1) ==
+            Shared::Focus{Shared::Panel::Values, 0, 1}));
+    assert((Shared::moveColumn(Shared::Generation::Gen3, {Shared::Panel::Values, 0, 0}, -1) ==
+            Shared::Focus{Shared::Panel::Details, 0, 0}));
 
     // Production routing and renderer wiring (Switch compilation is a separate native gate).
     const auto surface = read("src/UI/Gen3SharedPokemonSurface.inc");
@@ -72,7 +81,12 @@ int main() {
     contains(surface, "state.session.begin(*record, SessionModel::Mode::View)");
     contains(surface, "screen.closeDetailsModal()");
     contains(surface, "if (!(down & HidNpadButton_A) || !state.session.editable()) return true");
-    contains(surface, "Nature, Gender, Shiny, Ability and PID are read-only");
+    contains(surface, "PID-LINKED / SAFE EDIT");
+    contains(surface, "PickerTarget::Nature");
+    contains(surface, "PickerTarget::Gender");
+    contains(surface, "PickerTarget::Ability");
+    contains(surface, "state.session.setShiny");
+    contains(surface, "PID (read-only)");
     contains(surface, "TID (read-only)"); contains(surface, "SID (read-only)");
     contains(surface, "SharedPokemonShell::drawChrome");
     contains(gen2, "SharedPokemonShell::drawChrome");

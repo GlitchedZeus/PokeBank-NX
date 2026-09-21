@@ -194,6 +194,10 @@ int main() {
     assert((moveColumn(Generation::Gen1, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 1, 0}));
     assert((moveColumn(Generation::Gen2, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 1, 0}));
     assert((moveColumn(Generation::Gen3, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 0, 0}));
+    assert((moveColumn(Generation::Gen3, {Panel::Details, 0, 0}, 1) == Focus{Panel::Values, 0, 0}));
+    assert((moveColumn(Generation::Gen3, {Panel::Values, 0, 1}, 1) == Focus{Panel::Moves, 0, 0}));
+    assert((moveColumn(Generation::Gen3, {Panel::Moves, 0, 0}, -1) == Focus{Panel::Values, 0, 1}));
+    assert((moveColumn(Generation::Gen3, {Panel::Values, 0, 0}, -1) == Focus{Panel::Details, 0, 0}));
 
     assert(draftDecision(DraftEvent::Navigate).mutateStagedSave == false);
     assert(draftDecision(DraftEvent::BrowsePicker).mutateStagedSave == false);
