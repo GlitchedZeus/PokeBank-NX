@@ -144,7 +144,7 @@ $(HOST_BUILD)/test_gen3_staged_pokemon_editor_sanitize: $(GEN3_POKEMON_EDITOR_SO
 
 # Host-testable Generation III shared editor draft/session contract. Draft browsing and field edits
 # stay UI-owned until explicit Keep/Add delegates to the staged PK3 backend.
-GEN3_SHARED_SESSION_SOURCES := tests/test_gen3_shared_pokemon_session.cpp src/Pokemon/Experience.cpp
+GEN3_SHARED_SESSION_SOURCES := tests/test_gen3_shared_pokemon_session.cpp src/Pokemon/Experience.cpp src/Pokemon/PersonalInfoTable.cpp
 HOST_TESTS += $(HOST_BUILD)/test_gen3_shared_pokemon_session
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_shared_pokemon_session_sanitize
 host-test: $(HOST_BUILD)/test_gen3_shared_pokemon_session
