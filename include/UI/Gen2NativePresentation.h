@@ -128,8 +128,18 @@ constexpr uint8_t encodePokerus(uint8_t strain, uint8_t days) noexcept {
 inline std::string pokerusText(uint8_t raw) {
     const auto state = decodePokerus(raw);
     if (!state.present) return "None";
-    if (!state.active) return "S" + std::to_string(state.strain) + " / cured";
-    return "S" + std::to_string(state.strain) + " / " + std::to_string(state.days) + "d";
+    return state.active ? "Infected" : "Cured";
+}
+
+// PKSE-style three-state editor semantics. Merely displaying a raw Pokérus byte
+// never normalizes it; only an explicit user activation advances the state.
+// None -> Infected uses a canonical valid active value. Existing infected data
+// keeps its strain when becoming cured, then Cured -> None clears the byte.
+constexpr uint8_t cyclePokerusState(uint8_t raw) noexcept {
+    const auto state = decodePokerus(raw);
+    if (!state.present) return encodePokerus(1, 1);
+    if (state.active) return encodePokerus(state.strain == 0 ? 1 : state.strain, 0);
+    return 0;
 }
 
 } // namespace PokeBank::UIModel::Gen2Native
