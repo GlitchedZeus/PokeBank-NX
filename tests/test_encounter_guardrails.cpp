@@ -1,4 +1,5 @@
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "UI/SpeciesChangeLevelPolicy.h"
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -44,6 +45,24 @@ int main() {
         assert(e.minLevel <= e.maxLevel);
     }
     assert(sawCrystal && sawGen3);
+
+    // Shared species-change policy consumes the exact-game encounter minimum.
+    namespace LevelPolicy = PokeBank::UIModel::SpeciesChangeLevelPolicy;
+    assert(E::minimumLevel("crystal_gbc", 16) == 2); // Pidgey
+    assert(E::minimumLevel("ruby_gba", 261) == 2); // Poochyena
+    assert(E::minimumLevel("sapphire_gba", 261) == 2);
+    assert(E::minimumLevel("emerald_gba", 261) == 2);
+    assert(E::minimumLevel("firered_gba", 16) == 2);
+    assert(E::minimumLevel("leafgreen_gba", 16) == 2);
+    assert(LevelPolicy::defaultLevel("crystal_gbc", 16) == 2);
+    assert(LevelPolicy::defaultLevel("sapphire_gba", 261) == 2);
+
+    // Games not yet represented by the encounter provider use one stable fallback;
+    // they never inherit the previous species' level.
+    assert(!E::minimumLevel("red_gb", 16));
+    assert(!E::minimumLevel("gold_gbc", 16));
+    assert(LevelPolicy::defaultLevel("red_gb", 16) == LevelPolicy::fallbackLevel);
+    assert(LevelPolicy::defaultLevel("gold_gbc", 16) == LevelPolicy::fallbackLevel);
 
     // Same numeric location in the wrong exact game is not treated as equivalent.
     assert(!E::locationAllowed("sapphire_gba", 1, 88));
