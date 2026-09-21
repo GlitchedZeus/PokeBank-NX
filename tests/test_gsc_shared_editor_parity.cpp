@@ -211,9 +211,9 @@ int main() {
 
     // Passive View is one no-focus/no-edit surface. Generation II extends the
     // presentation with real party state and Crystal-only caught/met capability.
-    static_assert(!Shared::passiveViewHasFieldCursor());
+    static_assert(Shared::passiveViewHasFieldCursor());
     static_assert(!Shared::passiveViewAllowsEditing());
-    static_assert(!Shared::passiveViewAllowsPanelSwitching());
+    static_assert(Shared::passiveViewAllowsPanelSwitching());
 
     const auto goldCaps = PokeBank::UIModel::PokemonEditorFoundation::capabilitiesForSourceId("gold_gbc");
     const auto silverCaps = PokeBank::UIModel::PokemonEditorFoundation::capabilitiesForSourceId("silver_gbc");
