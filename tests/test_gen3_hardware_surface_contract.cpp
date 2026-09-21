@@ -151,5 +151,15 @@ int main() {
     contains(move, "beginSparseMove"); contains(move, "placeSparseMove"); contains(move, "cancelSparseMove");
     contains(move, "beginPackedMove"); contains(move, "placePackedGroupMove"); // accepted packed backend remains
     contains(move, "if (isGen3(screen)) return beginGen3");
+    contains(move, "if (state.active)");
+    contains(move, "if (down & HidNpadButton_B) return cancel(screen, state)");
+    contains(move, "if (down & HidNpadButton_Y) return place(screen, state)");
+    contains(move, "down & (HidNpadButton_A | HidNpadButton_X)");
+    contains(move, "D-pad and L/R keep using the accepted box navigation path");
+    contains(move, "screen.currentlySelecting = true");
+    contains(move, "setLegacyHoldingPresentation(screen, true)");
+    contains(move, "drawVisual(fb");
+    contains(surface, "state.previewRecord");
+    contains(surface, "p.calculatedStats");
     std::cout << "Gen III hardware routing, shared shell, Details scroll and Y contract: PASS\n";
 }

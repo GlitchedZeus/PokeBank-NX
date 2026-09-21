@@ -324,6 +324,9 @@ void runGame(SourceGame game, Family family) {
         assert(!correlatedEditPreview->shiny && correlatedEditPreview->abilityNumber == 1);
         assert(correlatedEditPreview->tid == correlated->tid && correlatedEditPreview->sid == correlated->sid);
         assert(correlatedEditPreview->pid != correlatedPid);
+        // The UI radar consumes calculatedStats from this exact preview; a Nature edit
+        // must therefore refresh the visible battle-stat shape before Keep is pressed.
+        assert(correlatedEditPreview->calculatedStats != correlated->calculatedStats);
         assert(editor->stageBoxPokemonEdit(0, 3, correlatedEdit, error));
         correlated = editor->boxedPokemon(0, 3, error);
         assert(correlated && correlated->encryptedBytes == correlatedEditPreview->encryptedBytes);
