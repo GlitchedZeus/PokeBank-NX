@@ -131,7 +131,10 @@ int main() {
     assert(foundation.find("HP DV is derived") != std::string::npos);
     assert(unified.find("\"DV\"") != std::string::npos);
     assert(unified.find("\"Stat Exp\"") != std::string::npos);
-    assert(unified.find("CALCULATED SPECIAL STATS") != std::string::npos);
+    assert(unified.find("\"SPECIAL\"") != std::string::npos);
+    assert(unified.find("\"Sp. Atk\"") != std::string::npos);
+    assert(unified.find("\"Sp. Def\"") != std::string::npos);
+    assert(unified.find("One Gen II Special DV / Stat Exp feeds both") != std::string::npos);
     assert(unified.find("fb.drawText(x + 282, yy, stat, Colors::TextDim") != std::string::npos);
     const auto valuesBegin = unified.find("void drawUnifiedValues");
     const auto valuesEnd = unified.find("void drawUnifiedMoveEditor", valuesBegin);
