@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -60,6 +61,18 @@ inline std::vector<EncounterTemplate> forSpeciesAllSupported(uint16_t species) {
     for (const auto& encounter : kEncounterTemplates)
         if (encounter.species == species) out.push_back(encounter);
     return out;
+}
+
+inline std::optional<uint8_t> minimumLevel(std::string_view sourceGameId,
+                                           uint16_t species) noexcept {
+    std::optional<uint8_t> result;
+    for (const auto& encounter : kEncounterTemplates) {
+        if (encounter.sourceGameId != sourceGameId || encounter.species != species ||
+            encounter.minLevel < 1 || encounter.minLevel > 100)
+            continue;
+        if (!result || encounter.minLevel < *result) result = encounter.minLevel;
+    }
+    return result;
 }
 
 inline const EncounterTemplate* find(std::string_view sourceGameId, uint16_t species,
