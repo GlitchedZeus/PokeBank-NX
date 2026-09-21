@@ -1,7 +1,7 @@
 #pragma once
 #include <algorithm>
 #include "UI/ClassicDefaultNickname.h"
-#include "UI/ClassicSpeciesLevelPolicy.h"
+#include "UI/SpeciesChangeLevelPolicy.h"
 #include "UI/Gen2PokemonEditorRules.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
@@ -55,10 +55,11 @@ struct Session {
         progression = ProgressionSource::Experience;
         return true;
     }
-    bool setSpecies(uint16_t species) noexcept {
+    bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept {
         if (!editable() || !Gen2::personalRecord(species)) return false;
         if (species == working.species) return true;
-        const uint8_t nextLevel = classicSpeciesChangeLevel(mode == SessionMode::Create, working.level);
+        const uint8_t nextLevel =
+            SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species);
         working.nickname = nicknameAfterSpeciesChange(working.nickname, working.species, species);
         working.species = species;
         const auto dvs = storedDVs(working);
