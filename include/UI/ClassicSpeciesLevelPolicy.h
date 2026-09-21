@@ -1,8 +1,17 @@
 #pragma once
+#include "UI/SpeciesChangeLevelPolicy.h"
+
 #include <cstdint>
+
 namespace PokeBank::UIModel {
-inline constexpr uint8_t classicCreateDefaultLevel = 5;
-constexpr uint8_t classicSpeciesChangeLevel(bool create, uint8_t existingLevel) noexcept {
-    return create ? classicCreateDefaultLevel : existingLevel;
+
+// Compatibility names for older classic-editor call sites. New code must use
+// SpeciesChangeLevelPolicy with exact game + species context.
+inline constexpr uint8_t classicCreateDefaultLevel =
+    SpeciesChangeLevelPolicy::fallbackLevel;
+
+constexpr uint8_t classicSpeciesChangeLevel(bool, uint8_t) noexcept {
+    return classicCreateDefaultLevel;
 }
-}
+
+} // namespace PokeBank::UIModel
