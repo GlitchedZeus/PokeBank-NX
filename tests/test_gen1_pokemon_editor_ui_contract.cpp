@@ -189,7 +189,10 @@ int main() {
     assert(hardware.find("state.mode != UX2Mode::MoveEditor") != std::string::npos);
     assert(hardware.find("state.subForAdd ? UX2Mode::AddDraft : UX2Mode::Edit") != std::string::npos);
     assert(hardware.find("const bool add = workspaceMode == UX2Mode::AddDraft") != std::string::npos);
+    assert(composite.find("Gen1PokemonEditor::foundationMoveEditorActive(*this)") != std::string::npos);
     const auto speciesBackdrop = hardware.substr(hardware.find("void drawFoundationPicker"));
+    const auto moveDialog = speciesBackdrop.substr(speciesBackdrop.find("if (!foundationPickerActive(screen))"));
+    assert(moveDialog.find("drawOverlayUXCleanup3(screen, fb)") < moveDialog.find("ux3DrawPicker"));
     assert(speciesBackdrop.find("drawFullscreenGen1Workspace(screen, fb)") < speciesBackdrop.find("ux3DrawPicker"));
     const auto pickerSource = readFile("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
     assert(pickerSource.find("down & (HidNpadButton_L | HidNpadButton_Left)") != std::string::npos);

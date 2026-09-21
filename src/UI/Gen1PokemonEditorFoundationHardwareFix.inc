@@ -12,6 +12,10 @@ bool foundationPickerActive(const TrainerViewScreen& screen) noexcept {
     return ux2StateFor(screen).picker != UX2Picker::None;
 }
 
+bool foundationMoveEditorActive(const TrainerViewScreen& screen) noexcept {
+    return ux2StateFor(screen).mode == UX2Mode::MoveEditor;
+}
+
 const char* foundationGen1GameShort(SourceGame game) noexcept {
     switch (game) {
         case SourceGame::Red: return "Red";
@@ -333,6 +337,11 @@ void drawFoundationPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         return;
     }
     drawFullscreenGen1Workspace(screen, fb);
+    if (!foundationPickerActive(screen)) {
+        // The move-details dialog retains the same workspace before/after choosing a move.
+        drawOverlayUXCleanup3(screen, fb);
+        return;
+    }
     // ux3DrawPicker applies the existing dimmer exactly once.
     const int w = state.picker == UX2Picker::Species ? 1080 : 760;
     constexpr int h = 520;

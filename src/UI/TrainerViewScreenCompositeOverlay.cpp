@@ -266,7 +266,8 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
         return;
     }
 
-    if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) &&
+        (Gen1PokemonEditor::foundationPickerActive(*this) || Gen1PokemonEditor::foundationMoveEditorActive(*this))) {
         Gen1PokemonEditor::drawFoundationPicker(*this, fb);
         return;
     }
