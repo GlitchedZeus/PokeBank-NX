@@ -63,13 +63,21 @@ int main() {
 
     assert(foundation.find("state.baseline = *pokemon") != std::string::npos);
     assert(foundation.find("state.working = *pokemon") != std::string::npos);
-    assert(foundation.find("PokemonEditorExitGuard::heading(kind)") != std::string::npos);
+    assert(foundation.find("Dialogs::drawDialogFrame") != std::string::npos);
+    assert(foundation.find("\"New Pokémon\"") != std::string::npos);
+    assert(foundation.find("\"Unsaved changes\"") != std::string::npos);
+    assert(foundation.find("\"B\", \"Back\"") != std::string::npos);
+    assert(foundation.find("\"Y\", \"Discard\"") != std::string::npos);
+    assert(foundation.find("create ? \"Keep\" : \"Save\"") != std::string::npos);
     assert(foundation.find("create ? stageCreate(screen) : stageEdit(screen)") != std::string::npos);
     assert(foundation.find("Create draft discarded; staged/source bytes unchanged") != std::string::npos);
     assert(foundation.find("This Edit session discarded; earlier staged work preserved") != std::string::npos);
-    assert(foundation.find("{\"A\", create ? \"Add Staged\" : \"Keep Staged\"}") != std::string::npos);
-    assert(foundation.find("{\"X\", create ? \"Discard Draft\" : \"Discard Session\"}") != std::string::npos);
-    assert(foundation.find("{\"B\", \"Continue\"}") != std::string::npos);
+    const auto confirmInputBegin = foundation.find("bool handleConfirm");
+    const auto confirmInputEnd = foundation.find("} // namespace", confirmInputBegin);
+    assert(confirmInputBegin != std::string::npos && confirmInputEnd != std::string::npos);
+    const auto confirmInput = foundation.substr(confirmInputBegin, confirmInputEnd - confirmInputBegin);
+    assert(confirmInput.find("HidNpadButton_Y") != std::string::npos);
+    assert(confirmInput.find("HidNpadButton_X") == std::string::npos);
 
     assert(foundation.find("Add blocked: correct red incompatible move rows first") != std::string::npos);
     assert(foundation.find("Create draft cancelled; staged save unchanged") == std::string::npos);
