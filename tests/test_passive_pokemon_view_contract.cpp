@@ -26,6 +26,7 @@ int main() {
     const auto gen2Modal = readFile("src/UI/Modals/Gen2PokemonDetailsModal.cpp");
     const auto gen2Final = readFile("src/UI/Gen2HardwareFinalFix.inc");
     const auto composite = readFile("src/UI/TrainerViewScreenCompositeOverlay.cpp");
+    const auto gen3Surface = readFile("src/UI/Gen3SharedPokemonSurface.inc");
 
     const auto gen2Actions = readFile("src/UI/Gen2PokemonEditorFoundation.inc");
     const auto gen2Routes = readFile("src/UI/TrainerViewScreenGSCOverlay.inc");
@@ -71,6 +72,13 @@ int main() {
     assert(gen2Final.find("drawFullscreenGen2Passive") != std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only • one stored Special DV / Stat Exp") == std::string::npos);
     assert(gen2Final.find("x + w - 18 - statusW") != std::string::npos);
+
+    // Gen III read-only Party/Box View keeps navigation visible without enabling mutation.
+    assert(gen3Surface.find("state.focus.panel == Shared::Panel::Details") != std::string::npos);
+    assert(gen3Surface.find("state.focus.panel == Shared::Panel::Values") != std::string::npos);
+    assert(gen3Surface.find("state.focus.panel == Shared::Panel::Moves") != std::string::npos);
+    assert(gen3Surface.find("{\"D-pad\", \"Navigate\"}, {\"L/R\", \"Panel\"}, {\"B\", \"Back\"}") != std::string::npos);
+    assert(gen3Surface.find("if (!(down & HidNpadButton_A) || !state.session.editable()) return true") != std::string::npos);
 
     std::cout << "Passive Pokemon View surface contract: PASS\n";
     return 0;

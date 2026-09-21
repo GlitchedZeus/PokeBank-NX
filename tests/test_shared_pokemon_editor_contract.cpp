@@ -27,9 +27,9 @@ int main() {
     static_assert(!generationOwnsSeparateEditorUI());
     static_assert(futureGenerationsExtendSameFoundation());
     static_assert(oneTopLevelPokemonSurfaceOwnsFrame());
-    static_assert(!passiveViewHasFieldCursor());
+    static_assert(passiveViewHasFieldCursor());
     static_assert(!passiveViewAllowsEditing());
-    static_assert(!passiveViewAllowsPanelSwitching());
+    static_assert(passiveViewAllowsPanelSwitching());
     static_assert(createBrowsingMutatesStagedSave() == false);
     static_assert(editBrowsingMutatesSource() == false);
     static_assert(stageAddRequiresExplicitAction());

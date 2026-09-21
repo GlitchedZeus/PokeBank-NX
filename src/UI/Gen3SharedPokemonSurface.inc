@@ -1309,7 +1309,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     }
     SharedPokemonShell::drawScrollableDetails(fb, leftX, y, leftW, h,
         detailLabels.size(), state.detailsFocus,
-        state.session.editable() && state.focus.panel == Shared::Panel::Details,
+        state.focus.panel == Shared::Panel::Details,
         [](std::size_t row) { return detailLabels[row]; },
         [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); });
     drawPanel(fb, midX, y, midW, h, "STATS");
@@ -1319,8 +1319,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     constexpr std::array<const char*,6> statLabels{{"HP","Attack","Defense","Speed","Sp. Atk","Sp. Def"}};
     for (int row = 0; row < 6; ++row) {
         const int yy = y + 78 + row * 40;
-        const bool selected = state.session.editable() &&
-                              state.focus.panel == Shared::Panel::Values &&
+        const bool selected = state.focus.panel == Shared::Panel::Values &&
                               state.focus.row == row;
         if (selected) {
             const auto cell = Shared::cellFocusFor(Shared::Generation::Gen3, state.focus);
@@ -1345,9 +1344,9 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const int row = i + 6;
         const int yy = y + 346 + i * 35;
         const bool editableRow = row < 10 && pidLinkedRowEditable(state, row);
-        const bool selected = state.session.editable() &&
-                              state.focus.panel == Shared::Panel::Values &&
-                              state.focus.row == row && editableRow;
+        const bool selected = state.focus.panel == Shared::Panel::Values &&
+                              state.focus.row == row &&
+                              (state.session.mode == SessionModel::Mode::View || editableRow);
         drawFocus(fb, midX + 8, yy - 5, midW - 16, 29, selected);
         fb.drawText(midX + 18, yy, derived[static_cast<std::size_t>(i)].first,
                     editableRow ? Colors::TextDim : Colors::Divider, TextStyle::Caption);
@@ -1362,8 +1361,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     fb.drawText(rightX + 242, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
     for (int row = 0; row < 4; ++row) {
         const int yy = y + 62 + row * 32;
-        const bool selected = state.session.editable() &&
-                              state.focus.panel == Shared::Panel::Moves &&
+        const bool selected = state.focus.panel == Shared::Panel::Moves &&
                               state.focus.row == row;
         if (selected) {
             const auto cell = Shared::cellFocusFor(Shared::Generation::Gen3, state.focus);
@@ -1425,7 +1423,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         "GEN III DATA", rows, state.previewError.empty() ? p.calculatedStats : std::array<uint16_t,6>{});
 
     if (state.session.mode == SessionModel::Mode::View) {
-        drawNavBar(fb, {{"B", "Back"}, {"L/R", "Panel"}});
+        drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     } else if (state.session.mode == SessionModel::Mode::Create) {
         drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"X", "Add"}, {"B", "Exit"}});

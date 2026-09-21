@@ -81,6 +81,7 @@ int main() {
     contains(surface, "state.session.begin(*record, SessionModel::Mode::View)");
     contains(surface, "screen.closeDetailsModal()");
     contains(surface, "if (!(down & HidNpadButton_A) || !state.session.editable()) return true");
+    contains(surface, "{\"D-pad\", \"Navigate\"}, {\"L/R\", \"Panel\"}, {\"B\", \"Back\"}");
     contains(surface, "PID-LINKED / SAFE EDIT");
     contains(surface, "PickerTarget::Nature");
     contains(surface, "PickerTarget::Gender");

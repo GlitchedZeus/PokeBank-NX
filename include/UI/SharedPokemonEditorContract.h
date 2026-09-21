@@ -502,9 +502,9 @@ enum class Gen2LegacyPath : uint8_t {
 constexpr bool gen2LegacyPathProductionReachable(Gen2LegacyPath) noexcept { return false; }
 constexpr bool gen2ExternalPassiveViewUsesSharedSurface() noexcept { return true; }
 
-constexpr bool passiveViewHasFieldCursor() noexcept { return false; }
+constexpr bool passiveViewHasFieldCursor() noexcept { return true; }
 constexpr bool passiveViewAllowsEditing() noexcept { return false; }
-constexpr bool passiveViewAllowsPanelSwitching() noexcept { return false; }
+constexpr bool passiveViewAllowsPanelSwitching() noexcept { return true; }
 constexpr bool createBrowsingMutatesStagedSave() noexcept { return false; }
 constexpr bool editBrowsingMutatesSource() noexcept { return false; }
 constexpr bool stageAddRequiresExplicitAction() noexcept { return true; }
