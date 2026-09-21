@@ -49,7 +49,9 @@ bool openPickerForFocusedField(TrainerViewScreen& screen, State& state,
 
 bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlayState& picker) {
     if (picker.model.kind == Gen2Picker::Kind::Species) {
-        if (!Gen2Picker::applySpeciesAppearance(state, picker.model.speciesChoice(), picker.model.previewShiny)) return false;
+        if (!Gen2Picker::applySpeciesAppearance(
+                state, picker.model.speciesChoice(), picker.model.previewShiny,
+                screen.sourceGameId)) return false;
         refreshDerived(state.working);
         if (screen.sourceGameId == "crystal_gbc") {
             const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
