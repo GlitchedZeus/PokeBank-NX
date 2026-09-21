@@ -614,7 +614,6 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int st
     if ((down & HidNpadButton_X) && state.mode == Mode::Create) stageCreate(screen);
 
     if (down & HidNpadButton_B) {
-        if (state.mode == Mode::Create) screen.postStatus("Create draft cancelled; staged save unchanged", 240);
         if (state.back()) closeToActions(screen);
         else screen.controllerNavigation.reset();
     }
