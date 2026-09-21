@@ -142,7 +142,7 @@ void nextPanel(State& state, int direction) noexcept {
 Gen2::PokemonRecord defaultCreateRecord(Gen2::StagedEditor& editor) {
     Gen2::PokemonRecord p;
     p.species = 25;
-    p.level = 5;
+    p.level = PokeBank::UIModel::classicCreateDefaultLevel;
     p.nickname = Names::getSpeciesName(p.species);
     p.originalTrainer = editor.trainerName();
     p.trainerId = editor.trainerId();

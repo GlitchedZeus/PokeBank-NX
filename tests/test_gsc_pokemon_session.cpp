@@ -38,6 +38,46 @@ void runSession(const L& layout,SourceGame game) {
         editor->discard();
         assert(editor->stageBoxPokemonEdit(0,0,level5,error));
     }
+    for (auto mode : {SessionMode::Create, SessionMode::Edit}) {
+        Session species; species.begin(entry, mode); assert(species.setLevel(50));
+        species.working.moves = {}; species.working.pp = {}; species.working.ppUps = {};
+        const auto stagedBefore = std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end());
+        assert(species.setSpecies(16));
+        assert(species.working.level == (mode == SessionMode::Create ? 5 : 50));
+        assert(species.working.experience == Pokemon::getExpForLevel(species.working.level, personalRecord(16)->experienceGrowth));
+        assert(std::equal(stagedBefore.begin(), stagedBefore.end(), editor->stagedBytes().begin()));
+        assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
+        // Serialize the same visible result into a separate staged workspace.
+        auto committed = StagedEditor::create(*parsed.save, error); assert(committed);
+        size_t changedSlot = 0;
+        if (mode == SessionMode::Create) assert(species.add(*committed, 2, changedSlot, error));
+        else assert(species.keep(*committed, 0, 0, error));
+        const auto result = committed->boxedPokemon(mode == SessionMode::Create ? 2 : 0, changedSlot, error);
+        assert(result && result->species == 16 && result->level == (mode == SessionMode::Create ? 5 : 50));
+        assert(result->experience == Pokemon::getExpForLevel(result->level, personalRecord(16)->experienceGrowth));
+        assert(std::equal(raw.begin(), raw.end(), committed->originalBytes().begin()));
+        // Discard a fresh local change, preserving the pre-existing staged bytes.
+        species.begin(entry, mode); assert(species.setLevel(50)); assert(species.setSpecies(16));
+        species.discard();
+        assert(std::equal(stagedBefore.begin(), stagedBefore.end(), editor->stagedBytes().begin()));
+    }
+    // Held-item browse/cancel and staged selection preserve source bytes for G/S/C.
+    {
+        Session held; held.begin(entry, SessionMode::Edit);
+        const auto before = std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end());
+        const auto choices = Rules::heldItemChoices();
+        for (const auto item : choices) {
+            held.working.heldItem = item;
+            assert(std::equal(before.begin(), before.end(), editor->stagedBytes().begin()));
+        }
+        held.discard(); assert(held.working.heldItem == entry.heldItem);
+        held.begin(entry, SessionMode::Edit); held.working.heldItem = 218;
+        auto committed = StagedEditor::create(*parsed.save, error); assert(committed);
+        assert(held.keep(*committed, 0, 0, error));
+        assert(committed->boxedPokemon(0, 0, error)->heldItem == 218);
+        assert(std::equal(raw.begin(), raw.end(), committed->originalBytes().begin()));
+        assert(std::equal(before.begin(), before.end(), editor->stagedBytes().begin()));
+    }
     Picker::Model locations;
     locations.openLocation("crystal_gbc", 25, 71, 25);
     assert(locations.locationCount() > 0);
@@ -90,7 +130,7 @@ void runSession(const L& layout,SourceGame game) {
     assert(Rules::sameEditableRecord(beforeSpeciesBrowse,session.working));
     assert(picker.speciesChoice()==1);
     assert(Picker::applySpeciesChoice(session,picker.speciesChoice()));
-    assert(session.working.species==1 && session.working.experience==beforeSpeciesBrowse.experience);
+    assert(session.working.species==1 && session.working.level==beforeSpeciesBrowse.level);
     assert(session.working.level==Pokemon::getLevelFromExp(session.working.experience,3));
     assert(session.working.gender==static_cast<uint8_t>(genderFromAttackDV(1,session.working.dvs[1])));
 
