@@ -7,6 +7,7 @@
 #include "UI/SpeciesChangeLevelPolicy.h"
 namespace Rules = PokeBank::UIModel::Gen2PokemonEditor;
 namespace Picker = PokeBank::UIModel::Gen2PokemonPicker;
+namespace Gen2Picker = PokeBank::UIModel::Gen2PokemonPicker;
 using Rules::Session;
 using Rules::SessionMode;
 

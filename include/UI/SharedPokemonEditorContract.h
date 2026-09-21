@@ -381,7 +381,6 @@ constexpr bool valueCellFocusable(Generation generation, uint8_t row, uint8_t co
 }
 
 constexpr Focus normalize(Generation generation, Focus focus, bool crystal = false) noexcept {
-    const auto layout = layoutFor(generation, crystal);
     const uint8_t rows = rowsFor(generation, focus.panel, crystal);
     if (rows != 0) focus.row = static_cast<uint8_t>(focus.row % rows);
     if (focus.panel == Panel::Details) {
@@ -412,7 +411,6 @@ constexpr Focus switchPanel(Generation generation, Focus focus, int direction, b
 
 constexpr Focus moveColumn(Generation generation, Focus focus, int direction, bool crystal = false) noexcept {
     focus = normalize(generation, focus, crystal);
-    const auto layout = layoutFor(generation, crystal);
     // Classic DV generations display HP DV but derive it from the stored DVs. Keep
     // LEFT from HP Stat Exp inside STATS by skipping that non-focusable cell.
     if ((generation == Generation::Gen1 || generation == Generation::Gen2) &&
