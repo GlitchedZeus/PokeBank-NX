@@ -72,6 +72,32 @@ int main() {
             else assert(W::battleStats(p)[0] != 999);
         }
     }
+    // The cramped accepted legacy layer prioritizes real caught history over
+    // auxiliary party rows, while the final 1280x720 hardware panel has room for both.
+    p.partyRecord = true;
+    p.currentHP = 123;
+    p.maxHP = 999;
+    p.status = 8;
+    p.caughtData = static_cast<uint16_t>(0xFF80 | 16);
+    texts.clear();
+    UI::Gen2WorkspacePresentation::drawDataAndGraph(fb, 0, 0, 438, 260, p, G::SourceGame::Silver);
+    const auto renderedContains = [](std::string_view needle) {
+        return std::any_of(texts.begin(), texts.end(), [needle](const Text& t) {
+            return t.value.find(needle) != std::string::npos;
+        });
+    };
+    assert(renderedContains("Caught history"));
+    assert(renderedContains("Met"));
+    assert(renderedContains("OT gender"));
+    assert(!renderedContains("HP:"));
+    assert(!renderedContains("Status:"));
+
+    texts.clear();
+    UI::Gen2WorkspacePresentation::drawDataAndGraph(fb, 0, 0, 506, 312, p, G::SourceGame::Silver);
+    assert(renderedContains("HP:"));
+    assert(renderedContains("Status:"));
+    assert(renderedContains("Caught history"));
+
     // Native Gold/Silver records with zero caught-data bytes must say that the
     // history was not recorded, without manufacturing met fields.
     p.partyRecord = false;
