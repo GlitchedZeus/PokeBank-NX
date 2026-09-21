@@ -95,6 +95,21 @@ int main() {
     contains(surface, "p.tid = static_cast<uint16_t>(r.value)"); contains(surface, "SID (read-only)");
     contains(surface, "SharedPokemonShell::drawChrome");
     contains(gen2, "SharedPokemonShell::drawChrome");
+
+    // Create/Edit Back uses PKSE's established New Pokemon / Unsaved changes dialog chrome.
+    contains(surface, "Dialogs::drawDialogFrame");
+    contains(surface, "\"New Pokémon\"");
+    contains(surface, "\"Unsaved changes\"");
+    contains(surface, "\"B\", \"Back\"");
+    contains(surface, "\"Y\", \"Discard\"");
+    contains(surface, "create ? \"Keep\" : \"Save\"");
+    const auto exitInputBegin = surface.find("if (state.session.confirmExit)");
+    const auto exitInputEnd = surface.find("const auto panelBeforeNavigation", exitInputBegin);
+    assert(exitInputBegin != std::string::npos && exitInputEnd != std::string::npos &&
+           exitInputEnd > exitInputBegin);
+    const auto exitInput = surface.substr(exitInputBegin, exitInputEnd - exitInputBegin);
+    assert(exitInput.find("HidNpadButton_Y") != std::string::npos);
+    assert(exitInput.find("HidNpadButton_X") == std::string::npos);
     contains(surface, "SharedPokemonShell::Geometry"); contains(gen2, "SharedPokemonShell::Geometry");
     contains(surface, "SharedPokemonShell::drawPortrait"); contains(surface, "getTypeSprite");
     contains(surface, "SharedPokemonShell::drawDataAndGraph");
