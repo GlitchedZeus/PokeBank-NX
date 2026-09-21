@@ -29,6 +29,35 @@ int main() {
     assert(std::any_of(sapphireTorchic.begin(), sapphireTorchic.end(), [](const auto& e) {
         return e.location == 16 && e.minLevel == 5 && e.maxLevel == 5;
     }));
+    // Evolved provenance: Sapphire contains Horsea encounters but no direct Seadra
+    // encounter. Keep the current species Seadra while preserving Horsea as origin.
+    assert(E::forGameSpecies("sapphire_gba", 117).empty());
+    const auto sapphireSeadra = E::forGameSpeciesWithGen3Provenance("sapphire_gba", 117);
+    assert(!sapphireSeadra.empty());
+    assert(std::all_of(sapphireSeadra.begin(), sapphireSeadra.end(), [](const auto& choice) {
+        return choice.evolved && choice.currentSpecies == 117 &&
+               choice.originalEncounterSpecies == 116 &&
+               choice.minimumEvolutionLevel == 32 &&
+               choice.encounter.sourceGameId == "sapphire_gba" &&
+               choice.encounter.species == 116;
+    }));
+    assert(std::any_of(sapphireSeadra.begin(), sapphireSeadra.end(), [](const auto& choice) {
+        return choice.encounter.location == 47 &&
+               choice.encounter.minLevel == 25 && choice.encounter.maxLevel == 30;
+    }));
+    assert(E::locationAllowedWithGen3Provenance("sapphire_gba", 117, 47));
+    assert(!E::locationAllowedWithGen3Provenance("sapphire_gba", 117, 88));
+    const auto sapphireTorchicProvenance =
+        E::forGameSpeciesWithGen3Provenance("sapphire_gba", 255);
+    assert(!sapphireTorchicProvenance.empty());
+    assert(std::all_of(sapphireTorchicProvenance.begin(), sapphireTorchicProvenance.end(),
+        [](const auto& choice) {
+            return !choice.evolved && choice.currentSpecies == 255 &&
+                   choice.originalEncounterSpecies == 255 &&
+                   choice.encounter.species == 255;
+        }));
+    assert(E::forGameSpeciesWithGen3Provenance("sapphire_gba", 150).empty());
+
     const auto fireRedBulbasaur = E::forGameSpecies("firered_gba", 1);
     assert(std::any_of(fireRedBulbasaur.begin(), fireRedBulbasaur.end(), [](const auto& e) {
         return e.location == 88 && e.minLevel == 5 && e.maxLevel == 5;

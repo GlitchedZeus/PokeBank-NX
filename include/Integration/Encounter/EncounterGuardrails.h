@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -48,6 +49,38 @@ constexpr const char* methodName(Method method) noexcept {
 
 #include "Integration/Encounter/EncounterGuardrailsData.inc"
 
+struct Gen3EvolutionParent {
+    uint16_t currentSpecies;
+    uint16_t originSpecies;
+    uint8_t minimumEvolutionLevel; // 0 when the evolution is not level-gated.
+};
+
+// Verified ancestry edges used by the current Gen III encounter-provenance guardrail.
+// This stays data-driven so UI code never special-cases individual species.
+inline constexpr std::array<Gen3EvolutionParent, 1> kGen3EvolutionParents{{
+    {117, 116, 32}, // Horsea -> Seadra, Level 32
+}};
+
+inline std::optional<Gen3EvolutionParent> gen3EvolutionParent(uint16_t currentSpecies) noexcept {
+    for (const auto& edge : kGen3EvolutionParents)
+        if (edge.currentSpecies == currentSpecies) return edge;
+    return std::nullopt;
+}
+
+inline std::vector<Gen3EvolutionParent> gen3EvolutionAncestry(uint16_t currentSpecies) {
+    std::vector<Gen3EvolutionParent> out;
+    uint16_t species = currentSpecies;
+    for (std::size_t depth = 0; depth < 8; ++depth) {
+        const auto parent = gen3EvolutionParent(species);
+        if (!parent) break;
+        out.push_back(*parent);
+        if (parent->originSpecies == species) break;
+        species = parent->originSpecies;
+    }
+    return out;
+}
+
+
 inline std::vector<EncounterTemplate> forGameSpecies(std::string_view sourceGameId, uint16_t species) {
     std::vector<EncounterTemplate> out;
     for (const auto& encounter : kEncounterTemplates)
@@ -55,6 +88,44 @@ inline std::vector<EncounterTemplate> forGameSpecies(std::string_view sourceGame
             out.push_back(encounter);
     return out;
 }
+
+struct EncounterProvenanceChoice {
+    EncounterTemplate encounter;
+    uint16_t currentSpecies = 0;
+    uint16_t originalEncounterSpecies = 0;
+    uint8_t minimumEvolutionLevel = 0;
+    bool evolved = false;
+};
+
+inline std::vector<EncounterProvenanceChoice> forGameSpeciesWithGen3Provenance(
+    std::string_view sourceGameId, uint16_t currentSpecies) {
+    std::vector<EncounterProvenanceChoice> out;
+    const auto direct = forGameSpecies(sourceGameId, currentSpecies);
+    if (!direct.empty()) {
+        out.reserve(direct.size());
+        for (const auto& encounter : direct)
+            out.push_back({encounter, currentSpecies, currentSpecies, 0, false});
+        return out;
+    }
+    for (const auto& edge : gen3EvolutionAncestry(currentSpecies)) {
+        const auto inherited = forGameSpecies(sourceGameId, edge.originSpecies);
+        for (const auto& encounter : inherited)
+            out.push_back({encounter, currentSpecies, edge.originSpecies,
+                           edge.minimumEvolutionLevel, true});
+        if (!out.empty()) break;
+    }
+    return out;
+}
+
+inline bool locationAllowedWithGen3Provenance(std::string_view sourceGameId,
+                                               uint16_t currentSpecies,
+                                               uint16_t location) {
+    const auto choices = forGameSpeciesWithGen3Provenance(sourceGameId, currentSpecies);
+    return std::any_of(choices.begin(), choices.end(), [location](const auto& choice) {
+        return choice.encounter.location == location;
+    });
+}
+
 
 inline std::vector<EncounterTemplate> forSpeciesAllSupported(uint16_t species) {
     std::vector<EncounterTemplate> out;

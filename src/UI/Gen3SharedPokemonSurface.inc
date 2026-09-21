@@ -76,8 +76,8 @@ struct State {
     uint8_t movePpBaseline = 0;
     uint8_t movePpUpsBaseline = 0;
     std::vector<uint16_t> pickerValues;
-    std::vector<Encounter::EncounterTemplate> encounterChoices;
-    std::optional<Encounter::EncounterTemplate> selectedEncounter;
+    std::vector<Encounter::EncounterProvenanceChoice> encounterChoices;
+    std::optional<Encounter::EncounterProvenanceChoice> selectedEncounter;
     int actionRow = 0;
     int box = 0;
     int slot = 0;
@@ -300,6 +300,23 @@ std::string metLocationText(const Gen3::StagedPokemonRecord& p) {
     return "Unknown (" + id + ")";
 }
 
+std::string encounterOriginText(const TrainerViewScreen& screen,
+                                const Gen3::StagedPokemonRecord& p) {
+    if (p.metLocation == 0) return "Unknown";
+    const auto choices = Encounter::forGameSpeciesWithGen3Provenance(
+        screen.sourceGameId, p.species);
+    const Encounter::EncounterProvenanceChoice* selected = nullptr;
+    for (const auto& choice : choices) {
+        if (choice.encounter.location != p.metLocation) continue;
+        if (!selected) selected = &choice;
+        if (choice.encounter.containsLevel(p.metLevel)) { selected = &choice; break; }
+    }
+    if (!selected) return "Unresolved";
+    if (!selected->evolved) return std::string(Names::getSpeciesName(p.species));
+    return std::string(Names::getSpeciesName(selected->originalEncounterSpecies)) +
+           " → " + Names::getSpeciesName(p.species);
+}
+
 Color genderValueColor(uint8_t gender) {
     if (gender == 0)
         return g_themeMode == ThemeMode::Light ? Color(24,112,184) : Color(92,205,255);
@@ -387,7 +404,7 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
         case PickerTarget::MetLocation: {
             const auto* selected = EncounterPicker::choiceAt(state.encounterChoices, value);
             if (!selected) return "Invalid encounter";
-            const auto& encounter = *selected;
+            const auto& encounter = selected->encounter;
             const char* name = Names::getMetLocationName(state.session.working.originGame, encounter.location);
             std::string label = (name && *name) ? std::string(name) : "Unknown";
             label += " (ID " + std::to_string(encounter.location) + ") — ";
@@ -395,6 +412,12 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
             label += " — Lv. " + std::to_string(encounter.minLevel);
             if (encounter.maxLevel != encounter.minLevel)
                 label += "–" + std::to_string(encounter.maxLevel);
+            if (selected->evolved) {
+                label = std::string(Names::getSpeciesName(selected->originalEncounterSpecies)) +
+                        " origin → " + Names::getSpeciesName(selected->currentSpecies) + " • " + label;
+                if (selected->minimumEvolutionLevel != 0)
+                    label += " • evolves Lv. " + std::to_string(selected->minimumEvolutionLevel);
+            }
             return label;
         }
         case PickerTarget::Move: {
@@ -452,7 +475,8 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         const auto balls = Enums::getBallList(Enums::GameVersion::FRLG);
         state.pickerValues.assign(balls.begin(), balls.end());
     } else if (target == PickerTarget::MetLocation) {
-        state.encounterChoices = Encounter::forGameSpecies(screen.sourceGameId, state.session.working.species);
+        state.encounterChoices = Encounter::forGameSpeciesWithGen3Provenance(
+            screen.sourceGameId, state.session.working.species);
         if (state.encounterChoices.empty()) {
             state.pickerTarget = PickerTarget::None;
             screen.postStatus("No supported exact-game encounter templates for this Pokemon", 300);
@@ -503,10 +527,10 @@ void applyValuePicker(State& state) {
         case PickerTarget::Language: p.language = static_cast<uint8_t>(value); break;
         case PickerTarget::Ball: p.ball = static_cast<uint8_t>(value); break;
         case PickerTarget::MetLocation: {
-            if (const auto* encounter = EncounterPicker::choiceAt(state.encounterChoices, value)) {
-                p.metLocation = encounter->location;
-                p.metLevel = encounter->minLevel;
-                state.selectedEncounter = *encounter;
+            if (const auto* choice = EncounterPicker::choiceAt(state.encounterChoices, value)) {
+                p.metLocation = choice->encounter.location;
+                p.metLevel = choice->encounter.minLevel;
+                state.selectedEncounter = *choice;
             }
             break;
         }
@@ -570,28 +594,30 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
     if (row == 11) { openValuePicker(screen, state, PickerTarget::Ball); return; }
     if (row == 13) { openValuePicker(screen, state, PickerTarget::MetLocation); return; }
     if (row == 12) {
-        auto choices = Encounter::forGameSpecies(screen.sourceGameId, p.species);
-        std::optional<Encounter::EncounterTemplate> chosen = state.selectedEncounter;
-        if (!chosen || chosen->location != p.metLocation) {
+        auto choices = Encounter::forGameSpeciesWithGen3Provenance(screen.sourceGameId, p.species);
+        std::optional<Encounter::EncounterProvenanceChoice> chosen = state.selectedEncounter;
+        if (!chosen || chosen->encounter.location != p.metLocation) {
             chosen.reset();
-            for (const auto& encounter : choices) {
+            for (const auto& choice : choices) {
+                const auto& encounter = choice.encounter;
                 if (encounter.location != p.metLocation) continue;
-                if (encounter.containsLevel(p.metLevel)) { chosen = encounter; break; }
-                if (!chosen) chosen = encounter;
+                if (encounter.containsLevel(p.metLevel)) { chosen = choice; break; }
+                if (!chosen) chosen = choice;
             }
         }
         if (!chosen) {
             screen.postStatus("Choose a legitimate Met Location encounter first", 300);
             return;
         }
-        if (chosen->fixedLevel()) {
-            p.metLevel = chosen->minLevel;
+        const auto& encounter = chosen->encounter;
+        if (encounter.fixedLevel()) {
+            p.metLevel = encounter.minLevel;
             state.selectedEncounter = *chosen;
-            screen.postStatus("This encounter has fixed met level " + std::to_string(chosen->minLevel), 240);
+            screen.postStatus("This encounter has fixed met level " + std::to_string(encounter.minLevel), 240);
             return;
         }
         const auto r = Utils::promptNumber("Met Level for selected encounter", p.metLevel,
-                                           chosen->minLevel, chosen->maxLevel);
+                                           encounter.minLevel, encounter.maxLevel);
         if (r.accepted) {
             p.metLevel = static_cast<uint8_t>(r.value);
             state.selectedEncounter = *chosen;
@@ -737,7 +763,7 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {
             state.speciesPicker = false;
             const auto& p = state.session.working;
             if (p.metLocation != 0 &&
-                !Encounter::locationAllowed(screen.sourceGameId, p.species, p.metLocation)) {
+                !Encounter::locationAllowedWithGen3Provenance(screen.sourceGameId, p.species, p.metLocation)) {
                 state.session.working.metLocation = 0;
                 state.session.working.metLevel = 0;
                 state.selectedEncounter.reset();
@@ -1281,6 +1307,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Language", Enums::getLanguageName(p.language)},
         {"Ball", Enums::getBallName(p.ball)},
         {"Met Location", metLocationText(p)},
+        {"Encounter origin", encounterOriginText(screen, p)},
         {"PID fields", "READ ONLY"},
         {"Legality", "Encounter not checked"}
     };

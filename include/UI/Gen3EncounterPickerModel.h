@@ -18,11 +18,18 @@ inline std::vector<uint16_t> rowValues(std::size_t count) {
     return rows;
 }
 
-inline int selectedRow(const std::vector<Encounter::EncounterTemplate>& choices,
+template <typename Choice>
+inline const Encounter::EncounterTemplate& encounterOf(const Choice& choice) noexcept {
+    if constexpr (requires { choice.encounter; }) return choice.encounter;
+    else return choice;
+}
+
+template <typename Choice>
+inline int selectedRow(const std::vector<Choice>& choices,
                        uint16_t currentLocation, uint8_t currentLevel) noexcept {
     int locationFallback = -1;
     for (int i = 0; i < static_cast<int>(choices.size()); ++i) {
-        const auto& encounter = choices[static_cast<std::size_t>(i)];
+        const auto& encounter = encounterOf(choices[static_cast<std::size_t>(i)]);
         if (encounter.location != currentLocation) continue;
         if (locationFallback < 0) locationFallback = i;
         if (currentLevel == 0 || encounter.containsLevel(currentLevel)) return i;
@@ -30,8 +37,8 @@ inline int selectedRow(const std::vector<Encounter::EncounterTemplate>& choices,
     return locationFallback >= 0 ? locationFallback : 0;
 }
 
-inline const Encounter::EncounterTemplate* choiceAt(
-    const std::vector<Encounter::EncounterTemplate>& choices, uint16_t rowValue) noexcept {
+template <typename Choice>
+inline const Choice* choiceAt(const std::vector<Choice>& choices, uint16_t rowValue) noexcept {
     return rowValue < choices.size() ? &choices[static_cast<std::size_t>(rowValue)] : nullptr;
 }
 
