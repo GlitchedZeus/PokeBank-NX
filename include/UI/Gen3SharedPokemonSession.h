@@ -2,6 +2,7 @@
 
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 #include "Pokemon/Experience.h"
+#include "UI/SpeciesChangeLevelPolicy.h"
 
 #include <algorithm>
 #include <array>
@@ -68,10 +69,11 @@ struct Session {
     bool editable() const noexcept { return mode == Mode::Edit || mode == Mode::Create; }
     bool dirty() const noexcept { return !sameEditableRecord(baseline, working); }
 
-    bool setSpecies(uint16_t species) noexcept {
+    bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept {
         if (!editable() || species == 0 || species > 386) return false;
+        if (species == working.species) return true;
         working.species = species;
-        return true;
+        return setLevel(SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species));
     }
 
     bool setLevel(uint8_t level) noexcept {
