@@ -80,23 +80,23 @@ int main() {
         assert(Held::initialIndex(items, items[i]) == i);
         for (int direction : {-1, 1}) {
             const int horizontal = Held::move(i, items.size(), direction, 0);
-            assert(horizontal / 2 == i / 2);
+            assert(horizontal / Held::columns == i / Held::columns);
             const int vertical = Held::move(i, items.size(), 0, direction);
-            assert(vertical % 2 == i % 2);
+            assert(vertical % Held::columns == i % Held::columns);
             const int paged = Held::move(i, items.size(), 0, 0, direction);
             assert(paged >= 0 && paged < static_cast<int>(items.size()));
         }
         texts.clear();
         UI::Gen2HeldItemPickerPresentation::drawList(fb, 0, 0, 992, items, i);
-        assert(texts.size() <= 24);
+        assert(texts.size() <= static_cast<std::size_t>(Held::pageSize));
         for (const auto& text : texts)
             assert(text.x >= 0 && text.y >= 0 && text.x + text.w <= 992 && text.y + text.h <= 384);
         for (std::size_t j = 0; j < texts.size(); ++j)
             for (std::size_t k = j + 1; k < texts.size(); ++k) assert(!intersects(texts[j], texts[k]));
     }
-    assert(Held::move(22, items.size(), 0, 1) == 24);
-    assert(Held::move(5, items.size(), 0, 0, 1) == 29);
-    assert(Held::move(29, items.size(), 0, 0, -1) == 5);
+    assert(Held::move(22, items.size(), 0, 1) == 26);
+    assert(Held::move(5, items.size(), 0, 0, 1) == 45);
+    assert(Held::move(45, items.size(), 0, 0, -1) == 5);
 
     // The actual shared renderer must request both sprite appearances for the
     // hovered species, including the Gen II-only dex range, without a session write.
