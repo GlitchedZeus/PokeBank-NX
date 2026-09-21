@@ -1,4 +1,5 @@
 #include "UI/Gen3SharedPokemonSession.h"
+#include "UI/SpeciesChangeLevelPolicy.h"
 
 #include <cassert>
 #include <iostream>
@@ -48,6 +49,24 @@ int main() {
     assert(source.ivs[0] == 10);
     assert(source.pid == 0x12345678);
 
+    // Species replacement is a new-species initialization in Edit too: it never
+    // inherits the old Pokemon's level. Sapphire Poochyena has a real Lv2 minimum.
+    Session speciesEdit{};
+    speciesEdit.begin(source, Mode::Edit);
+    assert(speciesEdit.setLevel(80));
+    assert(speciesEdit.setSpecies(261, "sapphire_gba"));
+    assert(speciesEdit.working.level == 2);
+    assert(speciesEdit.working.experience ==
+           Pokemon::getExpForLevel(2, Pokemon::getGrowthRate(261)));
+    for (uint8_t manual : {uint8_t(1), uint8_t(50), uint8_t(100)}) {
+        assert(speciesEdit.setLevel(manual));
+        assert(speciesEdit.working.level == manual);
+        assert(speciesEdit.working.experience ==
+               Pokemon::getExpForLevel(manual, Pokemon::getGrowthRate(261)));
+    }
+    assert(source.species == 25 && source.level == 20 && source.experience ==
+           Pokemon::getExpForLevel(20, Pokemon::getGrowthRate(25)));
+
     edit.discardDraft();
     assert(edit.mode == Mode::None);
 
@@ -67,7 +86,13 @@ int main() {
     assert(create.working.tid == 1111);
     assert(create.working.sid == 2222);
 
-    assert(create.setSpecies(133));
+    assert(create.setLevel(50));
+    assert(create.setSpecies(261, "sapphire_gba"));
+    assert(create.working.level == 2);
+    assert(create.working.experience ==
+           Pokemon::getExpForLevel(2, Pokemon::getGrowthRate(261)));
+    assert(create.setSpecies(133, "sapphire_gba")); // no template -> shared fallback, never old level
+    assert(create.working.level == PokeBank::UIModel::SpeciesChangeLevelPolicy::fallbackLevel);
     assert(create.setLevel(10));
     const auto add = create.createRequest();
     assert(add.species == 133);
