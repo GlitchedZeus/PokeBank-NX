@@ -15,21 +15,13 @@
 namespace PokeBank::UIModel::Gen2PokemonPicker {
 namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 
-enum class Kind : uint8_t { None, Species, Move, Pokerus, Location };
-enum class PokerusMode : uint8_t { None, Active, Cured };
-inline constexpr int pokerusFieldRows = 3;
-inline constexpr int pokerusApplyRow = 3;
-inline constexpr int pokerusRowCount = 4;
+enum class Kind : uint8_t { None, Species, Move, Location };
 
 struct Model {
     Kind kind = Kind::None;
     int index = 0;
     bool previewShiny = false;
     std::size_t moveSlot = 0;
-    PokerusMode pokerusMode = PokerusMode::None;
-    uint8_t strain = 1;
-    uint8_t days = 1;
-    int pokerusRow = 0;
     std::vector<Encounter::EncounterTemplate> encounterChoices;
 
     bool active() const noexcept { return kind != Kind::None; }
@@ -82,58 +74,6 @@ struct Model {
         index = next;
     }
 
-    void openPokerus(uint8_t raw) noexcept {
-        kind = Kind::Pokerus;
-        const auto decoded = Gen2Native::decodePokerus(raw);
-        pokerusMode = !decoded.present ? PokerusMode::None
-                    : decoded.active ? PokerusMode::Active : PokerusMode::Cured;
-        strain = decoded.strain == 0 ? 1 : decoded.strain;
-        days = decoded.days == 0 ? 1 : decoded.days;
-        pokerusRow = 0;
-    }
-
-    void stepPokerusRow(int delta) noexcept {
-        int next = (pokerusRow + delta) % pokerusRowCount;
-        if (next < 0) next += pokerusRowCount;
-        pokerusRow = next;
-    }
-
-    void adjustPokerus(int delta) noexcept {
-        if (pokerusRow == pokerusApplyRow) return;
-        if (pokerusRow == 0) {
-            int value = static_cast<int>(pokerusMode);
-            value = (value + delta) % 3;
-            if (value < 0) value += 3;
-            pokerusMode = static_cast<PokerusMode>(value);
-            return;
-        }
-        if (pokerusRow == 1) {
-            int value = (static_cast<int>(strain) - 1 + delta) % 15;
-            if (value < 0) value += 15;
-            strain = static_cast<uint8_t>(value + 1);
-            return;
-        }
-        int value = (static_cast<int>(days) - 1 + delta) % 15;
-        if (value < 0) value += 15;
-        days = static_cast<uint8_t>(value + 1);
-    }
-
-    void setPokerusStrain(uint8_t value) noexcept {
-        strain = std::clamp<uint8_t>(value, 1, 15);
-    }
-    void setPokerusDays(uint8_t value) noexcept {
-        days = std::clamp<uint8_t>(value, 1, 15);
-    }
-    bool pokerusApplyFocused() const noexcept { return pokerusRow == pokerusApplyRow; }
-
-    uint8_t pokerusRaw() const noexcept {
-        switch (pokerusMode) {
-            case PokerusMode::None: return 0;
-            case PokerusMode::Cured: return Gen2Native::encodePokerus(strain, 0);
-            case PokerusMode::Active: return Gen2Native::encodePokerus(strain, days);
-        }
-        return 0;
-    }
 };
 
 inline bool applySpeciesChoice(Gen2PokemonEditor::Session& session, uint16_t species,
@@ -175,21 +115,6 @@ inline bool applyMoveChoice(Gen2PokemonEditor::Session& session, std::size_t slo
     if (!session.editable() || slot >= session.working.moves.size()) return false;
     if (session.working.moves[slot] == move) return true;
     return session.setMove(slot, move);
-}
-
-inline bool applyPokerusChoice(Gen2PokemonEditor::Session& session, uint8_t raw) noexcept {
-    if (!session.editable()) return false;
-    session.working.pokerus = raw;
-    return true;
-}
-
-constexpr const char* pokerusModeText(PokerusMode mode) noexcept {
-    switch (mode) {
-        case PokerusMode::None: return "None";
-        case PokerusMode::Active: return "Active";
-        case PokerusMode::Cured: return "Cured / inactive";
-    }
-    return "None";
 }
 
 } // namespace PokeBank::UIModel::Gen2PokemonPicker
