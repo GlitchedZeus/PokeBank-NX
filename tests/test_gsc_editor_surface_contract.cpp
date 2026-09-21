@@ -159,6 +159,11 @@ int main() {
     assert(picker.find("Species-valid Crystal encounters") != std::string::npos);
     assert(picker.find("encounter->minLevel") != std::string::npos);
     assert(picker.find("encounter->timeMask") != std::string::npos);
+    assert(picker.find("Apply / Done") != std::string::npos);
+    assert(picker.find("picker.model.pokerusRow == 0") != std::string::npos);
+    assert(picker.find("picker.model.pokerusRow == 1") != std::string::npos);
+    assert(picker.find("picker.model.pokerusRow == 2") != std::string::npos);
+    assert(picker.find("applyPickerChoice(screen, state, picker);") != std::string::npos);
     assert(picker.find("state.working.caughtData = 0") != std::string::npos);
 
     // Move slots must enter the accepted Gen I-style Move N contextual editor first.

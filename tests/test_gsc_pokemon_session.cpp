@@ -168,11 +168,28 @@ void runSession(const L& layout,SourceGame game) {
     session.begin(kept,SessionMode::Edit);
     const auto beforePokerusBrowse=session.working;
     picker.openPokerus(PokeBank::UIModel::Gen2Native::encodePokerus(3,4));
+    assert(Gen2Picker::pokerusRowCount == 4 && Gen2Picker::pokerusApplyRow == 3);
     picker.stepPokerusRow(1);picker.adjustPokerus(2);
     assert(Rules::sameEditableRecord(beforePokerusBrowse,session.working));
     assert(Picker::applyPokerusChoice(session,picker.pokerusRaw()));
     const auto appliedPokerus=PokeBank::UIModel::Gen2Native::decodePokerus(session.working.pokerus);
     assert(appliedPokerus.strain==5 && appliedPokerus.days==4 && appliedPokerus.active);
+    picker.openPokerus(0);
+    assert(picker.pokerusMode==Gen2Picker::PokerusMode::None && picker.pokerusRow==0);
+    picker.adjustPokerus(1);
+    assert(picker.pokerusMode==Gen2Picker::PokerusMode::Active);
+    picker.stepPokerusRow(1); picker.setPokerusStrain(15);
+    picker.stepPokerusRow(1); picker.setPokerusDays(15);
+    picker.stepPokerusRow(1);
+    assert(picker.pokerusApplyFocused());
+    const auto roundTripRaw=picker.pokerusRaw();
+    const auto roundTrip=PokeBank::UIModel::Gen2Native::decodePokerus(roundTripRaw);
+    assert(roundTrip.present && roundTrip.active && roundTrip.strain==15 && roundTrip.days==15);
+    const auto applyRowBefore=picker.pokerusRow;
+    picker.adjustPokerus(1);
+    assert(picker.pokerusRow==applyRowBefore && picker.pokerusRaw()==roundTripRaw);
+    picker.stepPokerusRow(1);
+    assert(picker.pokerusRow==0);
 
     // Staged work at entry is the baseline. Continue keeps the local edits; Discard
     // never calls StagedEditor and preserves prior staged changes byte-for-byte.

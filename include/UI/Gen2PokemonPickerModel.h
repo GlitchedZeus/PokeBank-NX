@@ -17,6 +17,9 @@ namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 
 enum class Kind : uint8_t { None, Species, Move, Pokerus, Location };
 enum class PokerusMode : uint8_t { None, Active, Cured };
+inline constexpr int pokerusFieldRows = 3;
+inline constexpr int pokerusApplyRow = 3;
+inline constexpr int pokerusRowCount = 4;
 
 struct Model {
     Kind kind = Kind::None;
@@ -90,12 +93,13 @@ struct Model {
     }
 
     void stepPokerusRow(int delta) noexcept {
-        int next = (pokerusRow + delta) % 3;
-        if (next < 0) next += 3;
+        int next = (pokerusRow + delta) % pokerusRowCount;
+        if (next < 0) next += pokerusRowCount;
         pokerusRow = next;
     }
 
     void adjustPokerus(int delta) noexcept {
+        if (pokerusRow == pokerusApplyRow) return;
         if (pokerusRow == 0) {
             int value = static_cast<int>(pokerusMode);
             value = (value + delta) % 3;
@@ -113,6 +117,14 @@ struct Model {
         if (value < 0) value += 15;
         days = static_cast<uint8_t>(value + 1);
     }
+
+    void setPokerusStrain(uint8_t value) noexcept {
+        strain = std::clamp<uint8_t>(value, 1, 15);
+    }
+    void setPokerusDays(uint8_t value) noexcept {
+        days = std::clamp<uint8_t>(value, 1, 15);
+    }
+    bool pokerusApplyFocused() const noexcept { return pokerusRow == pokerusApplyRow; }
 
     uint8_t pokerusRaw() const noexcept {
         switch (pokerusMode) {
