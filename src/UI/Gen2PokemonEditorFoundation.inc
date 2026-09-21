@@ -142,7 +142,7 @@ void nextPanel(State& state, int direction) noexcept {
 Gen2::PokemonRecord defaultCreateRecord(Gen2::StagedEditor& editor) {
     Gen2::PokemonRecord p;
     p.species = 25;
-    p.level = PokeBank::UIModel::classicCreateDefaultLevel;
+    p.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::fallbackLevel;
     p.nickname = Names::getSpeciesName(p.species);
     p.originalTrainer = editor.trainerName();
     p.trainerId = editor.trainerId();
@@ -391,7 +391,7 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
             const std::string oldDefault = Names::getSpeciesName(oldSpecies);
             const auto result = Utils::promptNumber("Gen II Species ID", p.species, 1, 251);
             if (!result.accepted) return;
-            state.setSpecies(static_cast<uint16_t>(result.value));
+            state.setSpecies(static_cast<uint16_t>(result.value), screen.sourceGameId);
             if (state.mode == Mode::Create && p.nickname == oldDefault)
                 p.nickname = Names::getSpeciesName(p.species);
             refreshDerived(p);
