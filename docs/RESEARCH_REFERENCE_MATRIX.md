@@ -1,6 +1,8 @@
 # PokeBank NX — Research / Reference Matrix
 
-Last updated: 2026-09-08
+> **2026-09-22 navigation update:** use `docs/REFERENCE_INDEX.md` as the consolidated current lookup for external repositories, license/reuse classification, and “what to use this for.” This file remains valuable deeper research/history and is intentionally preserved.
+
+Last updated: 2026-09-22
 
 > **Research-only / scope-control document.** This inventory exists to reduce duplicated reverse-engineering work and to preserve useful external references. It does **not** expand the current FRLG/RSE implementation task. `CURRENT_STATUS.md` and `docs/NEXT_CODEX_PROMPT.md` remain authoritative for active coding work.
 
