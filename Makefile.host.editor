@@ -151,10 +151,10 @@ host-test: $(HOST_BUILD)/test_gen3_shared_pokemon_session
 host-sanitize: $(HOST_BUILD)/test_gen3_shared_pokemon_session_sanitize
 $(HOST_BUILD)/test_gen3_shared_pokemon_session: $(GEN3_SHARED_SESSION_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN3_SHARED_SESSION_SOURCES) -o $@
 $(HOST_BUILD)/test_gen3_shared_pokemon_session_sanitize: $(GEN3_SHARED_SESSION_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_SHARED_SESSION_SOURCES) -o $@
 
 # Hardware-retest routing, shared renderer and scroll/controller contracts.
 HOST_TESTS += $(HOST_BUILD)/test_gen3_hardware_surface_contract
@@ -181,3 +181,6 @@ $(HOST_BUILD)/test_gen3_shell_render_sanitize: tests/test_gen3_shell_render.cpp 
 
 # Header extraction must rebuild accepted Gen II renderer regression binaries as well.
 $(HOST_BUILD)/test_gsc_workspace_render $(HOST_BUILD)/test_gsc_workspace_render_sanitize: include/UI/SharedPokemonShell.h
+
+# Populated and Empty outer move-focus regressions exercise both real session models.
+$(HOST_BUILD)/test_gsc_pokemon_session $(HOST_BUILD)/test_gsc_pokemon_session_sanitize $(HOST_BUILD)/test_gen3_shared_pokemon_session $(HOST_BUILD)/test_gen3_shared_pokemon_session_sanitize: tests/fixtures/main_workspace_move_focus.h include/UI/SharedPokemonEditorContract.h

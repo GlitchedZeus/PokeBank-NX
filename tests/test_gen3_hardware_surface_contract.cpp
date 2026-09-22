@@ -76,10 +76,10 @@ int main() {
     assert((Shared::normalizePassiveViewFocus(
                 Shared::Generation::Gen3, {Shared::Panel::Moves, 2, 2}) ==
             Shared::Focus{Shared::Panel::Moves, 2, 0}));
-    // Edit/Create still retain PP / PP Ups sub-column navigation.
-    assert((Shared::moveColumn(
+    // Edit/Create outer workspaces also keep the cursor on the move name.
+    assert((Shared::moveRowColumn(
                 Shared::Generation::Gen3, {Shared::Panel::Moves, 2, 0}, 1) ==
-            Shared::Focus{Shared::Panel::Moves, 2, 1}));
+            Shared::Focus{Shared::Panel::Moves, 2, 0}));
 
     // Production routing and renderer wiring (Switch compilation is a separate native gate).
     const auto surface = read("src/UI/Gen3SharedPokemonSurface.inc");
@@ -145,10 +145,21 @@ int main() {
     assert(surface.find("No supported exact-game encounter templates for this Pokemon") != std::string::npos);
     contains(surface, "Met Level for selected encounter");
     contains(surface, "normalizeEditableFocus(state");
+    contains(surface, "state.focus = Shared::normalizeMoveRowFocus");
+    contains(surface, "Shared::moveRowColumn");
     contains(surface, "Shared::passiveViewMoveColumn");
     contains(surface, "Shared::normalizePassiveViewFocus");
-    contains(surface, "visibleMoveFocus = state.session.mode == SessionModel::Mode::View");
+    contains(surface, "visibleMoveFocus = Shared::normalizeMoveRowFocus");
     contains(surface, "cellFocusFor(Shared::Generation::Gen3, visibleMoveFocus)");
+    contains(surface, "beginMoveEditor(screen, state, static_cast<int>(state.focus.row))");
+    const auto contextStart = surface.find("bool handleMoveEditor(");
+    const auto contextEnd = surface.find("bool handleWorkspace(", contextStart);
+    assert(contextStart != std::string::npos && contextEnd > contextStart);
+    const auto contextualMoveEditor = surface.substr(contextStart, contextEnd - contextStart);
+    assert(contextualMoveEditor.find("normalizeMoveRowFocus") == std::string::npos);
+    contains(contextualMoveEditor, "state.moveEditorRow == 0");
+    contains(contextualMoveEditor, "state.moveEditorRow == 1");
+    contains(contextualMoveEditor, "state.moveEditorRow == 2");
     contains(surface, "beginMoveEditor");
     contains(surface, "drawMoveEditor");
     contains(surface, "Contextual editor — B always cancels this dialog");

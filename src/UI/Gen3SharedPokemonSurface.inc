@@ -387,7 +387,7 @@ bool pidLinkedRowEditable(const State& state, int row) noexcept {
 }
 
 void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelChanged = false) {
-    state.focus = Shared::normalize(Shared::Generation::Gen3, state.focus);
+    state.focus = Shared::normalizeMoveRowFocus(Shared::Generation::Gen3, state.focus);
     if (!state.session.editable()) return;
 
     if (state.focus.panel == Shared::Panel::Details) {
@@ -435,7 +435,7 @@ void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelC
     if (state.focus.panel == Shared::Panel::Moves) {
         if (panelChanged && state.focus.row >= 4) state.focus.row = 0;
         state.focus.row = static_cast<uint8_t>(state.focus.row % 4);
-        if (state.focus.column >= 3) state.focus.column = 2;
+        state.focus.column = 0;
     }
 }
 
@@ -998,11 +998,11 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
     if (down & HidNpadButton_Left)
         state.focus = passiveView
             ? Shared::passiveViewMoveColumn(Shared::Generation::Gen3, state.focus, -1)
-            : Shared::moveColumn(Shared::Generation::Gen3, state.focus, -1);
+            : Shared::moveRowColumn(Shared::Generation::Gen3, state.focus, -1);
     if (down & HidNpadButton_Right)
         state.focus = passiveView
             ? Shared::passiveViewMoveColumn(Shared::Generation::Gen3, state.focus, 1)
-            : Shared::moveColumn(Shared::Generation::Gen3, state.focus, 1);
+            : Shared::moveRowColumn(Shared::Generation::Gen3, state.focus, 1);
 
     const bool panelChanged = state.focus.panel != panelBeforeNavigation;
     if (passiveView)
@@ -1384,9 +1384,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     drawPanel(fb, rightX, y, rightW, h, "MOVES");
     fb.drawText(rightX + 186, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(rightX + 242, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
-    const auto visibleMoveFocus = state.session.mode == SessionModel::Mode::View
-        ? Shared::normalizePassiveViewFocus(Shared::Generation::Gen3, state.focus)
-        : state.focus;
+    const auto visibleMoveFocus = Shared::normalizeMoveRowFocus(Shared::Generation::Gen3, state.focus);
     for (int row = 0; row < 4; ++row) {
         const int yy = y + 62 + row * 32;
         const bool selected = visibleMoveFocus.panel == Shared::Panel::Moves &&

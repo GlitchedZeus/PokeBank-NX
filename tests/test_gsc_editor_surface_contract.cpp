@@ -176,8 +176,14 @@ int main() {
     assert(picker.find("encounterTimeLabel(encounter.timeMask)") != std::string::npos);
     assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
     assert(finalFix.find("drawVerticalScrollIndicator") != std::string::npos);
-    assert(finalFix.find("visibleMoveFocus = passive") != std::string::npos);
+    assert(finalFix.find("visibleMoveFocus = UnifiedContract::normalizeMoveRowFocus") != std::string::npos);
     assert(finalFix.find("cellFocus(visibleMoveFocus)") != std::string::npos);
+    assert(unified.find("Unified::moveRowColumn") != std::string::npos);
+    const auto movePanel = unified.substr(unified.find("void drawUnifiedMoves("),
+        unified.find("void drawProgressionEditor(") - unified.find("void drawUnifiedMoves("));
+    assert(movePanel.find("Unified::cellFocus(visibleMoveFocus)") != std::string::npos);
+    assert(movePanel.find("unified.focus.column == 1") == std::string::npos);
+    assert(movePanel.find("unified.focus.column == 2") == std::string::npos);
     assert(unified.find("A/Y/X never mutate a View session") != std::string::npos);
     assert(finalFix.find("{\"D-pad\", \"Navigate\"}, {\"L/R\", \"Panel\"}") != std::string::npos);
 
@@ -213,6 +219,14 @@ int main() {
     assert(picker.find("state.working.caughtData = 0") != std::string::npos);
 
     // Move slots must enter the accepted Gen I-style Move N contextual editor first.
+    const auto contextualMoveEditor = unified.substr(unified.find("bool handleUnifiedMoveEditor("),
+        unified.find("uint8_t crystalAllowedTimeMask(") - unified.find("bool handleUnifiedMoveEditor("));
+    assert(contextualMoveEditor.find("normalizeMoveRowFocus") == std::string::npos);
+    assert(contextualMoveEditor.find("unified.moveEditorRow == 0") != std::string::npos);
+    assert(contextualMoveEditor.find("unified.moveEditorRow == 1") != std::string::npos);
+    assert(contextualMoveEditor.find("unified.moveEditorRow == 2") != std::string::npos);
+    assert(contextualMoveEditor.find("state.setPP(") != std::string::npos);
+    assert(contextualMoveEditor.find("state.setPPUps(") != std::string::npos);
     assert(unified.find("beginUnifiedMoveEditor") != std::string::npos);
     assert(unified.find("drawUnifiedMoveEditor") != std::string::npos);
     assert(unified.find("Contextual editor — B always cancels this dialog") != std::string::npos);
@@ -232,9 +246,9 @@ int main() {
     assert(pickerFix.find("Needs correction") == std::string::npos);
 
     // Empty move rows cannot focus PP/Ups and their meaningless numeric cells are hidden.
-    assert(workspaceFix.find("normalizeHardwareEmptyMoveFocus") != std::string::npos);
-    assert(workspaceFix.find("state.working.moves[row] == 0 && unified.focus.column > 0") != std::string::npos);
-    assert(workspaceFix.find("unified.focus.column = 0") != std::string::npos);
+    assert(workspaceFix.find("normalizeHardwareMoveRowFocus") != std::string::npos);
+    assert(workspaceFix.find("Unified::normalizeMoveRowFocus") != std::string::npos);
+    assert(workspaceFix.find("state.working.moves[row] == 0") == std::string::npos);
     assert(workspaceFix.find("state.working.moves[static_cast<std::size_t>(slot)] != 0") != std::string::npos);
     assert(workspaceFix.find("rightX + 184") != std::string::npos);
 

@@ -467,9 +467,10 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     if (down & HidNpadButton_R) unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
     if (nav & HidNpadButton_Up) unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
     if (nav & HidNpadButton_Down) unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
-    if (nav & HidNpadButton_Left) unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
-    if (nav & HidNpadButton_Right) unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+    if (nav & HidNpadButton_Left) unified.focus = Unified::moveRowColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+    if (nav & HidNpadButton_Right) unified.focus = Unified::moveRowColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
 
+    unified.focus = Unified::normalizeMoveRowFocus(Unified::Generation::Gen2, unified.focus, unified.crystal);
     unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
 
     if (down & HidNpadButton_Y) {
@@ -670,21 +671,23 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
         TextStyle::Heading);
     fb.drawText(x + 190, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 246, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
+    const auto visibleMoveFocus = Unified::normalizeMoveRowFocus(
+        Unified::Generation::Gen2, unified.focus, unified.crystal);
     for (int slot = 0; slot < 4; ++slot) {
         const int yy = y + 62 + slot * 32;
-        const bool selected = !passive && unified.focus.panel == Unified::Panel::Moves && unified.focus.row == slot;
+        const bool selected = !passive && visibleMoveFocus.panel == Unified::Panel::Moves && visibleMoveFocus.row == slot;
         if (selected) {
-            const auto cell = Unified::cellFocus(unified.focus);
+            const auto cell = Unified::cellFocus(visibleMoveFocus);
             fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::Accent, 2);
         }
         const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];
         const auto status = moveStatus(screen, state, slot);
         fb.drawText(x + 18, yy, move == 0 ? "Empty" : Names::getMoveName(move),
-                    selected && unified.focus.column == 0 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    selected ? Colors::Accent : Colors::Text, TextStyle::Caption);
         fb.drawText(x + 190, yy, std::to_string(state.working.pp[static_cast<std::size_t>(slot)]),
-                    selected && unified.focus.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 246, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]),
-                    selected && unified.focus.column == 2 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 292, yy, status == Rules::CompatibilityState::Ok ? "OK" :
             status == Rules::CompatibilityState::UnusualPreserved ? "Unusual" : "Invalid", unifiedStatusColor(status), TextStyle::Caption);
     }

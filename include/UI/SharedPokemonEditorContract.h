@@ -456,13 +456,25 @@ constexpr Focus moveColumn(Generation generation, Focus focus, int direction, bo
     return focus;
 }
 
-constexpr Focus normalizePassiveViewFocus(Generation generation, Focus focus,
-                                          bool crystal = false) noexcept {
+// Main View/Edit/Create workspaces select one move row. Contextual move editors
+// own their independent Move/PP/PP Ups fields and do not use this normalization.
+constexpr Focus normalizeMoveRowFocus(Generation generation, Focus focus,
+                                      bool crystal = false) noexcept {
     focus = normalize(generation, focus, crystal);
-    // Passive/View mode reads a move as one row. PP and PP Ups stay visible,
-    // but never become separate cursor targets.
     if (focus.panel == Panel::Moves) focus.column = 0;
     return focus;
+}
+
+constexpr Focus moveRowColumn(Generation generation, Focus focus, int direction,
+                               bool crystal = false) noexcept {
+    focus = normalizeMoveRowFocus(generation, focus, crystal);
+    return normalizeMoveRowFocus(
+        generation, moveColumn(generation, focus, direction, crystal), crystal);
+}
+
+constexpr Focus normalizePassiveViewFocus(Generation generation, Focus focus,
+                                          bool crystal = false) noexcept {
+    return normalizeMoveRowFocus(generation, focus, crystal);
 }
 
 constexpr Focus passiveViewSwitchPanel(Generation generation, Focus focus, int direction,

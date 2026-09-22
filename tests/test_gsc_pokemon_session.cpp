@@ -1,3 +1,4 @@
+#include "fixtures/main_workspace_move_focus.h"
 #include "fixtures/gsc_pokemon_fixture.h"
 #include "UI/Gen2PokemonSession.h"
 #include "UI/Gen2PokemonPickerModel.h"
@@ -20,6 +21,25 @@ void runSession(const L& layout,SourceGame game) {
     BoxPokemonEdit level5;level5.level=5;
     assert(editor->stageBoxPokemonEdit(0,0,level5,error));
     auto entry=*editor->boxedPokemon(0,0,error);
+    for (auto mode : {SessionMode::View, SessionMode::Edit, SessionMode::Create}) {
+        Session moves; moves.begin(entry, mode);
+        moves.working.moves = {204, 3, 84, 0}; // Charm, Double Slap, ThunderShock, Empty
+        moves.working.pp = {20, 10, 30, 0};
+        moves.working.ppUps = {0, 1, 2, 0};
+        const auto before = moves.working;
+        checkMainMoveFocus(PokeBank::UIModel::SharedPokemonEditor::Generation::Gen2,
+            moves.working, mode == SessionMode::View, game == SourceGame::Crystal);
+        assert(moves.working.moves == before.moves && moves.working.pp == before.pp &&
+               moves.working.ppUps == before.ppUps);
+        if (mode != SessionMode::View) {
+            // Contextual Move/PP/Ups setters remain independently usable.
+            assert(moves.setMove(1, 33));
+            assert(moves.setPPUps(1, 2));
+            assert(moves.setPP(1, 10));
+            assert(moves.working.moves[1] == 33 && moves.working.pp[1] == 10 && moves.working.ppUps[1] == 2);
+        } else assert(!moves.setMove(1, 33) && !moves.setPP(1, 1) && !moves.setPPUps(1, 2));
+        assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
+    }
     for (auto mode : {SessionMode::Create, SessionMode::Edit}) {
         Session names; names.begin(entry, mode);
         names.working.nickname = "Pikachu";

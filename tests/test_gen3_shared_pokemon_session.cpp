@@ -1,3 +1,4 @@
+#include "fixtures/main_workspace_move_focus.h"
 #include "UI/Gen3SharedPokemonSession.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 
@@ -26,6 +27,36 @@ int main() {
     source.ability = 9;
     source.abilityNumber = 1;
 
+    for (const auto game : {"ruby_gba", "sapphire_gba", "emerald_gba", "firered_gba", "leafgreen_gba"}) {
+        for (const auto mode : {Mode::View, Mode::Edit, Mode::Create}) {
+            Session moves; moves.begin(source, mode);
+            moves.working.moves = {204, 3, 84, 0};
+            moves.working.pp = {20, 10, 30, 0};
+            moves.working.ppUps = {0, 1, 2, 0};
+            const auto before = moves.working;
+            checkMainMoveFocus(PokeBank::UIModel::SharedPokemonEditor::Generation::Gen3,
+                moves.working, mode == Mode::View);
+            assert(moves.working.moves == before.moves && moves.working.pp == before.pp &&
+                   moves.working.ppUps == before.ppUps);
+            if (mode != Mode::View) {
+                assert(moves.setSpecies(25, game));
+                // The contextual editor changes the draft fields; requests preserve all three.
+                moves.working.moves[1] = 33;
+                moves.working.pp[1] = 10;
+                moves.working.ppUps[1] = 2;
+                if (mode == Mode::Edit) {
+                    const auto request = moves.editRequest();
+                    assert(request.moves && (*request.moves)[1] == 33);
+                    assert(request.pp && (*request.pp)[1] == 10);
+                    assert(request.ppUps && (*request.ppUps)[1] == 2);
+                } else {
+                    const auto request = moves.createRequest();
+                    assert(request.moves[1] == 33 && request.pp[1] == 10 && request.ppUps[1] == 2);
+                }
+            } else assert(!moves.editable());
+            assert((source.moves == std::array<uint16_t,4>{}));
+        }
+    }
     for (const auto mode : {Mode::Create, Mode::Edit}) {
         Session identity; identity.begin(source, mode);
         identity.working.nickname = "TEST";

@@ -202,7 +202,7 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
 
 void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                               const UnifiedWorkspaceState& unified,
-                              int x, int y, int w, bool passive) {
+                              int x, int y, int w, bool /*passive*/) {
     fb.drawFilledRect(x + 10, y + 6, 150, 34, Colors::Panel);
     fb.drawText(x + 14, y + 10, "MOVES", Colors::Text, TextStyle::Heading);
     fb.drawFilledRect(x + 10, y + 38, w - 20, 146, Colors::Panel);
@@ -210,10 +210,8 @@ void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& scre
     const int upsX = x + w - 154;
     fb.drawText(ppX, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(upsX, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
-    const auto visibleMoveFocus = passive
-        ? UnifiedContract::normalizePassiveViewFocus(
-              UnifiedContract::Generation::Gen2, unified.focus, unified.crystal)
-        : unified.focus;
+    const auto visibleMoveFocus = UnifiedContract::normalizeMoveRowFocus(
+        UnifiedContract::Generation::Gen2, unified.focus, unified.crystal);
     for (int slot = 0; slot < 4; ++slot) {
         const int yy = y + 62 + slot * 32;
         const bool selected = visibleMoveFocus.panel == UnifiedContract::Panel::Moves &&
