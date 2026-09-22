@@ -225,7 +225,9 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         fb.drawText(gridX + 6, rowY + 9, statLabels[static_cast<size_t>(r)], Colors::TextDim, TextStyle::Caption);
         for (int c = 0; c < 3; ++c) {
             const int cellX = gridX + labelW + c * cellW;
-            const bool selected = editable && !(r == 0 && c == 0) &&
+            const bool selected = editable &&
+                                  Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
+                                                                static_cast<Foundation::ValueColumn>(c)) &&
                                   foundation.focus.panel == Foundation::Panel::Values &&
                                   foundation.focus.row == r && foundation.focus.column == c;
             drawClassicFocus(fb, cellX, rowY, cellW - 4, 34, selected);

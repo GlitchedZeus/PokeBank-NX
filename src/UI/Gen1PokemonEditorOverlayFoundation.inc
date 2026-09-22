@@ -227,22 +227,51 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
 void foundationEditValue(TrainerViewScreen& screen, const Foundation::Focus& focus,
                          bool add, const PokemonRecord* pokemon) {
     auto& state = ux2StateFor(screen);
-    if (focus.row < 5) {
-        if (focus.column == static_cast<uint8_t>(Foundation::ValueColumn::DV)) {
-            if (focus.row == 0) {
-                screen.postStatus("HP DV is derived from Attack, Defense, Speed and Special DVs", 260);
-                return;
+    if (focus.row < Foundation::valueStatRowCount()) {
+        const auto row = static_cast<Foundation::ValueRow>(focus.row);
+        const auto column = static_cast<Foundation::ValueColumn>(focus.column);
+        if (!Foundation::valueCellEditable(row, column)) {
+            screen.postStatus(row == Foundation::ValueRow::HP && column == Foundation::ValueColumn::DV
+                ? "HP DV is derived from Attack, Defense, Speed and Special DVs"
+                : "Calculated Generation I stats are read-only; edit DVs or Stat Exp instead", 300);
+            return;
+        }
+
+        constexpr auto labels = Foundation::gen1StatLabels();
+        const std::string label = labels[static_cast<size_t>(focus.row)];
+        if (column == Foundation::ValueColumn::DV) {
+            const size_t index = static_cast<size_t>(focus.row - 1);
+            auto dvs = add ? state.draft.dvs : storedDVs(*pokemon);
+            const auto result = Utils::promptNumber("Generation I " + label + " DV (0-15)",
+                                                    dvs[index], 0, 15);
+            if (!result.accepted) return;
+            dvs[index] = static_cast<uint8_t>(result.value);
+            auto& ux3 = ux3StateFor(screen);
+            if (add) {
+                state.draft.dvs = dvs;
+                ux3.preShinyDraftDVs.reset();
+            } else {
+                BoxPokemonEdit edit;
+                edit.dvs = dvs;
+                if (ux2CommitEdit(screen, edit, "DV change staged in this edit session; source .srm unchanged"))
+                    ux3.preShinyEditDVs.reset();
             }
-            ux2OpenDVEditor(screen, add);
-            state.subRow = static_cast<int>(focus.row) - 1;
             return;
         }
-        if (focus.column == static_cast<uint8_t>(Foundation::ValueColumn::StatExperience)) {
-            ux2OpenStatExpEditor(screen, add);
-            state.subRow = static_cast<int>(focus.row);
-            return;
+
+        auto statExperience = add ? state.draft.statExperience : pokemon->statExperience;
+        const size_t index = static_cast<size_t>(focus.row);
+        const auto result = Utils::promptNumber("Generation I " + label + " Stat Exp (0-65535)",
+                                                statExperience[index], 0, 65535);
+        if (!result.accepted) return;
+        statExperience[index] = static_cast<uint16_t>(result.value);
+        if (add) {
+            state.draft.statExperience = statExperience;
+        } else {
+            BoxPokemonEdit edit;
+            edit.statExperience = statExperience;
+            ux2CommitEdit(screen, edit, "Stat Exp change staged in this edit session; source .srm unchanged");
         }
-        screen.postStatus("Calculated Generation I stats are read-only; edit DVs or Stat Exp instead", 300);
         return;
     }
     if (focus.row == static_cast<uint8_t>(Foundation::ValueRow::Shiny)) {
@@ -250,8 +279,18 @@ void foundationEditValue(TrainerViewScreen& screen, const Foundation::Focus& foc
         else ux3SetExistingShiny(screen, !ux3IsShiny(*pokemon));
         return;
     }
-    if (focus.row == static_cast<uint8_t>(Foundation::ValueRow::Level))
-        ux2OpenLevelExpEditor(screen, add);
+    if (focus.row == static_cast<uint8_t>(Foundation::ValueRow::Level)) {
+        const int current = add ? state.draft.level : pokemon->level;
+        const auto result = Utils::promptNumber("Generation I Level", current, 1, 100);
+        if (!result.accepted) return;
+        if (add) {
+            state.draft.level = static_cast<uint8_t>(result.value);
+        } else {
+            BoxPokemonEdit edit;
+            edit.level = static_cast<uint8_t>(result.value);
+            ux2CommitEdit(screen, edit, "Level change staged in this edit session; source .srm unchanged");
+        }
+    }
 }
 
 void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {

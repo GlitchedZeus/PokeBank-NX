@@ -36,6 +36,19 @@ int main() {
     assert((moveFocus({Panel::Identity, 0, 0}, Direction::Up) == Focus{Panel::Identity, 4, 0}));
     assert((moveFocus({Panel::Moves, 3, 0}, Direction::Down) == Focus{Panel::Moves, 0, 0}));
 
+    // HP-row horizontal navigation never enters the derived HP DV or calculated Stat column.
+    assert((moveFocus({Panel::Values, static_cast<uint8_t>(ValueRow::HP),
+                       static_cast<uint8_t>(ValueColumn::StatExperience)}, Direction::Left) ==
+            Focus{Panel::Values, static_cast<uint8_t>(ValueRow::Attack),
+                  static_cast<uint8_t>(ValueColumn::DV)}));
+    assert((moveFocus({Panel::Values, static_cast<uint8_t>(ValueRow::HP),
+                       static_cast<uint8_t>(ValueColumn::StatExperience)}, Direction::Right) ==
+            Focus{Panel::Moves, 0, 0}));
+    assert((normalize({Panel::Values, static_cast<uint8_t>(ValueRow::HP),
+                       static_cast<uint8_t>(ValueColumn::DV)}) ==
+            Focus{Panel::Values, static_cast<uint8_t>(ValueRow::HP),
+                  static_cast<uint8_t>(ValueColumn::StatExperience)}));
+
     // Gen I Values are truthful: HP DV and calculated stats are display-only, other DVs and
     // all five Stat Exp values are editable, while Shiny and Level remain real focusable rows.
     // Exhaust every panel/cell/direction: no route can land on the derived HP DV.
@@ -43,16 +56,26 @@ int main() {
         for (uint8_t row = 0; row < 7; ++row)
             for (uint8_t column = 0; column < 3; ++column)
                 for (auto direction : {Direction::Up, Direction::Down, Direction::Left, Direction::Right})
-                    assert(!derivedHpDvFocus(moveFocus({panel, row, column}, direction)));
+                    {
+                        const auto moved = moveFocus({panel, row, column}, direction);
+                        assert(!derivedHpDvFocus(moved));
+                        if (moved.panel == Panel::Values && moved.row < valueStatRowCount())
+                            assert(moved.column != static_cast<uint8_t>(ValueColumn::CalculatedStat));
+                    }
     assert(hpDVIsDerived());
     assert(!valueCellEditable(ValueRow::HP, ValueColumn::DV));
     assert(valueCellEditable(ValueRow::Attack, ValueColumn::DV));
     assert(valueCellEditable(ValueRow::Defense, ValueColumn::DV));
     assert(valueCellEditable(ValueRow::Speed, ValueColumn::DV));
     assert(valueCellEditable(ValueRow::Special, ValueColumn::DV));
-    assert(valueCellEditable(ValueRow::HP, ValueColumn::StatExperience));
-    assert(valueCellEditable(ValueRow::Special, ValueColumn::StatExperience));
-    assert(!valueCellEditable(ValueRow::Attack, ValueColumn::CalculatedStat));
+    for (const auto row : {ValueRow::HP, ValueRow::Attack, ValueRow::Defense,
+                           ValueRow::Speed, ValueRow::Special})
+        assert(valueCellEditable(row, ValueColumn::StatExperience));
+    for (const auto row : {ValueRow::HP, ValueRow::Attack, ValueRow::Defense,
+                           ValueRow::Speed, ValueRow::Special})
+        assert(!valueCellEditable(row, ValueColumn::CalculatedStat));
+    assert(valueCellEditable(ValueRow::Shiny, ValueColumn::DV));
+    assert(valueCellEditable(ValueRow::Level, ValueColumn::DV));
     assert(calculatedStatsAreReadOnly());
     assert(!calculatedStatsAreFocusable());
     assert(moveRowsAreIndividuallyFocusable());

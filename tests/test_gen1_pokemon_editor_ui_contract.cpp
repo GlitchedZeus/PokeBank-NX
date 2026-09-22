@@ -22,6 +22,13 @@ static std::string readFile(const char* path) {
     return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
+static std::size_t countOccurrences(const std::string& text, const std::string& needle) {
+    std::size_t count = 0;
+    for (std::size_t pos = 0; (pos = text.find(needle, pos)) != std::string::npos; pos += needle.size())
+        ++count;
+    return count;
+}
+
 int main() {
     namespace ExitGuard = PokeBank::UIModel::PokemonEditorExitGuard;
     static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Create));
@@ -172,6 +179,29 @@ int main() {
     assert(workspace.find("fb.drawText(statusX, rowY + 9, status") != std::string::npos);
     assert(workspace.find("centerX + 142") == std::string::npos);
 
+    // The active three-panel Values surface edits one exact cell per A press. It must
+    // never enter the legacy grouped DV / Stat Exp / Level+EXP contextual editors.
+    const auto valueEditBegin = workspace.find("void foundationEditValue");
+    const auto valueEditEnd = workspace.find("void foundationHandleMainInput", valueEditBegin);
+    assert(valueEditBegin != std::string::npos && valueEditEnd != std::string::npos &&
+           valueEditEnd > valueEditBegin);
+    const auto valueEdit = workspace.substr(valueEditBegin, valueEditEnd - valueEditBegin);
+    assert(valueEdit.find("ux2OpenDVEditor(") == std::string::npos);
+    assert(valueEdit.find("ux2OpenStatExpEditor(") == std::string::npos);
+    assert(valueEdit.find("ux2OpenLevelExpEditor(") == std::string::npos);
+    assert(countOccurrences(valueEdit, "Utils::promptNumber(") == 3);
+    assert(valueEdit.find(" DV (0-15)") != std::string::npos);
+    assert(valueEdit.find("dvs[index], 0, 15") != std::string::npos);
+    assert(valueEdit.find(" Stat Exp (0-65535)") != std::string::npos);
+    assert(valueEdit.find("statExperience[index], 0, 65535") != std::string::npos);
+    assert(valueEdit.find("\"Generation I Level\", current, 1, 100") != std::string::npos);
+    assert(valueEdit.find("state.draft.dvs = dvs") != std::string::npos);
+    assert(valueEdit.find("edit.dvs = dvs") != std::string::npos);
+    assert(valueEdit.find("state.draft.statExperience = statExperience") != std::string::npos);
+    assert(valueEdit.find("edit.statExperience = statExperience") != std::string::npos);
+    assert(valueEdit.find("preShinyDraftDVs.reset()") != std::string::npos);
+    assert(valueEdit.find("preShinyEditDVs.reset()") != std::string::npos);
+
     // The fullscreen hardware layer now owns passive View presentation as well as
     // Edit/Create. Compatibility must therefore be proven at the renderer it
     // delegates to, rather than requiring the old passive modal object to call
@@ -194,8 +224,18 @@ int main() {
     assert(passivePresentation.find("Encounter legality\", \"Not checked") != std::string::npos);
 
     const auto hardware = readFile("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
-    assert(hardware.find("editable && !(r == 0 && c == 0)") != std::string::npos);
+    assert(hardware.find("Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r)") != std::string::npos);
     assert(hardware.find("(r == 0 && c == 0) ? Colors::TextDim") != std::string::npos);
+    assert(hardware.find("std::to_string(Editor::derivedHPDV(dvs)) + \" *\"") != std::string::npos);
+    const auto specialBegin = hardware.find("\"CALCULATED SPECIAL STATS\"");
+    const auto specialEnd = hardware.find("// MOVES", specialBegin);
+    assert(specialBegin != std::string::npos && specialEnd != std::string::npos && specialEnd > specialBegin);
+    const auto specialBlock = hardware.substr(specialBegin, specialEnd - specialBegin);
+    assert(specialBlock.find("\"SpA\"") != std::string::npos);
+    assert(specialBlock.find("\"SpD\"") != std::string::npos);
+    assert(specialBlock.find("one stored Gen I Special stat; split display only") != std::string::npos);
+    assert(specialBlock.find("drawClassicFocus") == std::string::npos);
+    assert(specialBlock.find("drawSelectionHighlight") == std::string::npos);
     assert(composite.find("Gen1PokemonEditor::drawFoundationPicker(*this, fb)") != std::string::npos);
     assert(hardware.find("state.mode != UX2Mode::MoveEditor") != std::string::npos);
     assert(hardware.find("state.subForAdd ? UX2Mode::AddDraft : UX2Mode::Edit") != std::string::npos);

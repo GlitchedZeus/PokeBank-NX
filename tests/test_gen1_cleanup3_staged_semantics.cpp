@@ -85,6 +85,47 @@ int main() {
     assert(renamed->pp == sourcePP);
     assert(renamed->ppUps == sourcePPUps);
 
+    // Per-cell DV semantics: changing Attack copies the current four stored DVs, mutates only
+    // that one cell, and lets the staged Gen I adapter re-derive HP DV. Shiny and battle-stat
+    // presentation are then derived from the updated native values, never from a stored flag.
+    const auto beforeDVEdit = *renamed;
+    auto attackOnlyDVs = stored(beforeDVEdit);
+    const auto originalDVs = attackOnlyDVs;
+    attackOnlyDVs[0] = originalDVs[0] == 15 ? 0 : 15;
+    BoxPokemonEdit attackOnly;
+    attackOnly.dvs = attackOnlyDVs;
+    assert(editor->stageEdit(2, 0, attackOnly, error));
+    const auto afterDVEdit = editor->boxedPokemon(2, 0, error);
+    assert(afterDVEdit);
+    assert(stored(*afterDVEdit) == attackOnlyDVs);
+    for (std::size_t i = 1; i < attackOnlyDVs.size(); ++i)
+        assert(stored(*afterDVEdit)[i] == originalDVs[i]);
+    assert(afterDVEdit->dvs[0] == StagedPokemonEditor::derivedHPDV(attackOnlyDVs));
+    assert(afterDVEdit->statExperience == beforeDVEdit.statExperience);
+    const auto beforeDVPresentation = PokeBank::UIModel::presentGen1Pokemon(beforeDVEdit);
+    const auto afterDVPresentation = PokeBank::UIModel::presentGen1Pokemon(*afterDVEdit);
+    assert(afterDVPresentation.shiny == ShinyDVs::isShiny(attackOnlyDVs));
+    assert(afterDVPresentation.battleStats != beforeDVPresentation.battleStats);
+
+    // Per-cell Stat Exp semantics: changing HP Stat Exp preserves all four sibling Stat Exp
+    // cells and all stored DVs, while the calculated battle-stat presentation refreshes.
+    const auto beforeStatExpEdit = *afterDVEdit;
+    auto hpOnlyStatExp = beforeStatExpEdit.statExperience;
+    const auto originalStatExp = hpOnlyStatExp;
+    hpOnlyStatExp[0] = originalStatExp[0] == 65535 ? 0 : 65535;
+    BoxPokemonEdit hpStatOnly;
+    hpStatOnly.statExperience = hpOnlyStatExp;
+    assert(editor->stageEdit(2, 0, hpStatOnly, error));
+    const auto afterStatExpEdit = editor->boxedPokemon(2, 0, error);
+    assert(afterStatExpEdit);
+    assert(afterStatExpEdit->statExperience == hpOnlyStatExp);
+    for (std::size_t i = 1; i < hpOnlyStatExp.size(); ++i)
+        assert(afterStatExpEdit->statExperience[i] == originalStatExp[i]);
+    assert(stored(*afterStatExpEdit) == stored(beforeStatExpEdit));
+    const auto beforeStatPresentation = PokeBank::UIModel::presentGen1Pokemon(beforeStatExpEdit);
+    const auto afterStatPresentation = PokeBank::UIModel::presentGen1Pokemon(*afterStatExpEdit);
+    assert(afterStatPresentation.battleStats != beforeStatPresentation.battleStats);
+
     // New shiny Charizard uses only real Gen I DVs. No shiny flag or extension is serialized.
     BoxPokemonCreate create;
     create.species = 6;
@@ -95,6 +136,7 @@ int main() {
     create.pp = {15,0,0,0};
     create.ppUps = {0,0,0,0};
     create.dvs = ShinyDVs::makeShiny({8,8,8,8});
+    create.statExperience = {111,222,333,444,555};
     const auto shinyDVs = create.dvs;
     assert(ShinyDVs::isShiny(shinyDVs));
     assert(!MoveCompatibility::firstIncompatible(SourceGame::Red, create.species, create.moves));
@@ -107,6 +149,7 @@ int main() {
     assert(draftPresentation.shiny && stagedPresentation.shiny);
     assert(draftPresentation.battleStats == stagedPresentation.battleStats);
     assert(stored(*staged) == shinyDVs);
+    assert(staged->statExperience == create.statExperience);
     assert(ShinyDVs::isShiny(stored(*staged)));
 
     // Exercise the actual serialization boundary: staged bytes -> finalized save -> strict normal parser.
