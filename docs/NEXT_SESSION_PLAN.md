@@ -1,5 +1,97 @@
 # PokeBank NX — Next Session Plan
 
+Last updated: 2026-09-22
+
+Status: **PR #77 EXACT CI CANDIDATE IS UNDER PHYSICAL DEVICE RETEST — DO NOT CHANGE THE CANDIDATE WHILE TESTING**
+
+## CURRENT PLAN — 2026-09-22
+
+```text
+Repository: GlitchedZeus/PokeBank-NX
+Production: feature/pokebank-playable
+Active branch: feature/gen3-shared-pokemon-editor-20260919
+PR #77: OPEN / DRAFT / NOT MERGED
+
+Exact candidate:
+2e4780412377abab3ffbe4fc2e4757339214a90f
+
+Tree:
+cdbf0b8faae901c8d765d06b95cac3140bd69e75
+
+NRO:
+PokeBank-NX-Gen1-UX4-Retest-2e478041.nro
+
+NRO SHA-256:
+32b08c1cf589252022e68bf50fe0847fea7cbf1b86835178e7d2a2c268e3b43c
+```
+
+Current state:
+
+```text
+CI VERIFIED
+DEVICE RETEST REQUIRED
+NOT DEVICE ACCEPTED
+```
+
+### While the owner is testing
+
+- do not push cleanup/refactor commits to PR #77;
+- do not merge PR #77;
+- do not change branches or restart Gen III;
+- do not delete branches, commits, recovery assets, or old audit evidence;
+- documentation/issue cleanup belongs on `main` and must not alter the tested candidate SHA;
+- log any newly discovered hardware bug against the exact NRO/SHA.
+
+### If the exact candidate passes
+
+Record the physical result against the exact NRO/hash first.
+
+Then decide whether the whole Gen I/II/III editor milestone is ready to freeze or whether known Gen II/Gen III behavior still needs another exact candidate.
+
+Before major feature expansion, execute the safety work in:
+
+`docs/FULL_PROJECT_AUDIT_2026-09-22.md`
+
+Priority begins with:
+
+1. atomic/durable Bank persistence;
+2. no-loss carried-Pokémon rollback;
+3. destination-first transfer custody;
+4. cross-Bank/save transaction journal;
+5. recovery-generation preservation;
+6. malformed/truncated save boundaries;
+7. exact-current conversion revalidation.
+
+After those fixes, re-run full host/sanitizer/native gates and physical storage/recovery testing before trusting Master Vault with unique Pokémon.
+
+### If the exact candidate fails
+
+1. record the exact hardware reproduction;
+2. re-fetch PR #77 live head;
+3. preserve any concurrent newer commits;
+4. make only the narrow demonstrated fix on the same branch;
+5. create a new SHA;
+6. run the entire required exact-SHA gate;
+7. produce a new exact Actions-built NRO;
+8. classify it DEVICE RETEST REQUIRED;
+9. never combine CI/device evidence from different SHAs.
+
+### Reference map
+
+Before implementing a new parser, conversion, legality rule, bank format, event subsystem, or DS/3DS adapter, check:
+
+- `docs/REFERENCE_INDEX.md`
+- `docs/UPSTREAM_AUDIT.md`
+- `docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`
+- `docs/ISSUE71_UNIVERSAL_EDITOR_REUSE_FREEZE.md`
+
+---
+
+## HISTORICAL 2026-09-14 NEXT-SESSION PLAN — RETAINED FOR PROVENANCE
+
+The old PR #68 plan below is intentionally preserved as historical evidence. It is not the current continuation point.
+
+
 Last updated: 2026-09-14
 
 Status: **GEN II SHARED POKÉMON EDITOR IMPLEMENTED ON PR #68 / FINAL EXACT-HEAD VALIDATION + DEVICE CANDIDATE NEXT**
