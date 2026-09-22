@@ -131,7 +131,7 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
         const bool selected = unified.focus.panel == UnifiedContract::Panel::Details && unified.focus.row == row;
         // Leave a clean gutter between the selection outline and the scrollbar track.
         drawGen2Focus(fb, x + 8, yy + 2, std::max(0, w - 36), 30, selected);
-        fb.drawText(x + 18, yy + 7, rows[row].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy + 7, rows[row].first, selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[row].second, Colors::Text, TextStyle::Caption);
     }
     fb.clearClip();
@@ -170,19 +170,19 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
             const auto cell = UnifiedContract::cellFocus(unified.focus);
             drawGen2Focus(fb, x + cell.x, yy - 5, cell.width, 28, true);
         }
-        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], rowSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 114, yy, std::to_string(dvs[static_cast<std::size_t>(r)]) + (r == 0 ? " *" : ""),
                     r == 0 ? Colors::TextDim : Colors::Text, TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     Colors::Text, TextStyle::Caption);
         const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)]) : "—";
-        fb.drawText(x + 282, yy, stat, Colors::Accent, TextStyle::Caption);
+        fb.drawText(x + 282, yy, stat, Colors::TextSecondary, TextStyle::Caption);
     }
     fb.drawText(x + 18, y + 246, "SPECIAL", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 18, y + 274, "Sp. Atk", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 92, y + 274, std::to_string(battle[4]), Colors::Accent, TextStyle::Caption);
+    fb.drawText(x + 92, y + 274, std::to_string(battle[4]), Colors::TextSecondary, TextStyle::Caption);
     fb.drawText(x + 200, y + 274, "Sp. Def", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 274, y + 274, std::to_string(battle[5]), Colors::Accent, TextStyle::Caption);
+    fb.drawText(x + 274, y + 274, std::to_string(battle[5]), Colors::TextSecondary, TextStyle::Caption);
 
     // Generation II stores exactly one Special DV and one Special Stat Exp value.
     // Both split battle stats are calculated from that same authentic pair.
@@ -192,12 +192,12 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     const bool shinySelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 5;
     const bool genderSelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 6;
     drawGen2Focus(fb, x + 8, shinyY - 5, w - 16, 30, shinySelected);
-    fb.drawText(x + 18, shinyY, "Shiny", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, shinyY, "Shiny", shinySelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 134, shinyY, p.shiny ? "Yes (DV-derived)" : "No (DV-derived)",
-                p.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+                shinySelected ? Colors::SelectedText : (p.shiny ? Colors::ShinyStar : Colors::Text), TextStyle::Caption);
     drawGen2Focus(fb, x + 8, genderY - 5, w - 16, 30, genderSelected);
-    fb.drawText(x + 18, genderY, "Gender", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 134, genderY, genderText(p.gender), gen2GenderColor(p.gender), TextStyle::Caption);
+    fb.drawText(x + 18, genderY, "Gender", genderSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 134, genderY, genderText(p.gender), genderSelected ? Colors::SelectedText : gen2GenderColor(p.gender), TextStyle::Caption);
 }
 
 void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,

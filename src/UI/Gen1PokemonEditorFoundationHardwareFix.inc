@@ -223,7 +223,12 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     constexpr auto statLabels = Foundation::gen1StatLabels();
     for (int r = 0; r < 5; ++r) {
         const int rowY = gridY + 28 + r * 42;
-        fb.drawText(gridX + 6, rowY + 9, statLabels[static_cast<size_t>(r)], Colors::TextDim, TextStyle::Caption);
+        const bool rowSelected = editable && foundation.focus.panel == Foundation::Panel::Values &&
+                                 foundation.focus.row == r &&
+                                 Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
+                                                               static_cast<Foundation::ValueColumn>(foundation.focus.column));
+        fb.drawText(gridX + 6, rowY + 9, statLabels[static_cast<size_t>(r)],
+                    rowSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         for (int c = 0; c < 3; ++c) {
             const int cellX = gridX + labelW + c * cellW;
             const bool selected = editable &&
@@ -248,7 +253,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.drawText(gridX + 12, gridY + 286, "Shiny",
                 shinySelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 130, gridY + 286, presentation.shiny ? "Yes" : "No",
-                presentation.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+                shinySelected ? Colors::SelectedText : (presentation.shiny ? Colors::ShinyStar : Colors::Text), TextStyle::Caption);
     drawClassicFocus(fb, gridX, gridY + 320, midW - 20, 38, levelSelected);
     fb.drawText(gridX + 12, gridY + 330, "Level",
                 levelSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);

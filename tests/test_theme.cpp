@@ -145,4 +145,24 @@ int main() {
     const std::string gen2Shared = readFile("src/UI/Gen2SharedPokemonSurface.inc");
     assert(gen2Shared.find("selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
 
+    // The final hardware repaint must preserve focus readability; checking only the
+    // underlying shared surface misses labels that are immediately painted over.
+    const std::string gen2Hardware = readFile("src/UI/Gen2HardwareFinalFix.inc");
+    const auto repaintStart = gen2Hardware.find("void redrawGen2DetailsSemantics");
+    const auto repaintEnd = gen2Hardware.find("void redrawGen2MovesSemantics");
+    assert(repaintStart != std::string::npos && repaintEnd > repaintStart);
+    const auto repaint = gen2Hardware.substr(repaintStart, repaintEnd - repaintStart);
+    assert(repaint.find("rows[row].first, selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    assert(repaint.find("rowSelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    assert(repaint.find("shinySelected ? Colors::SelectedText : (p.shiny") != std::string::npos);
+    assert(repaint.find("genderSelected ? Colors::SelectedText : gen2GenderColor") != std::string::npos);
+    assert(repaint.find("Colors::Accent") == std::string::npos);
+    assert(repaint.find("stat, Colors::TextSecondary") != std::string::npos);
+    assert(repaint.find("r == 0 ? Colors::TextDim : Colors::Text") != std::string::npos);
+    const std::string unified = readFile("src/UI/Gen2UnifiedPokemonWorkspace.inc");
+    assert(unified.find("rows[row].first, selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    assert(unified.find("rowSelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    assert(gen1.find("rowSelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    assert(gen1.find("shinySelected ? Colors::SelectedText : (presentation.shiny") != std::string::npos);
+
 }

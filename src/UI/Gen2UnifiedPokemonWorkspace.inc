@@ -528,7 +528,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
             const auto cell = Unified::cellFocus(unified.focus);
             fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::Accent, 2);
         }
-        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], rowSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 114, yy, std::to_string(dvs[static_cast<std::size_t>(r)]) + (r == 0 ? " *" : ""),
                     Colors::Text, TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
@@ -556,7 +556,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
             const auto cell = Unified::cellFocus(unified.focus);
             fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::Accent, 2);
         }
-        fb.drawText(x + 18, yy, capabilityRows[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy, capabilityRows[static_cast<std::size_t>(i)].first, selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 134, yy, capabilityRows[static_cast<std::size_t>(i)].second,
                     selected ? Colors::Text : (i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text),
                     TextStyle::Caption);
@@ -654,7 +654,7 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
             const auto cell = Unified::cellFocus(unified.focus);
             fb.drawRoundedRect(x + cell.x, yy + 2, cell.width, 30, 6, Colors::Accent, 2);
         }
-        fb.drawText(x + 18, yy + 7, rows[row].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy + 7, rows[row].first, selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[row].second,
                     Colors::Text, TextStyle::Caption);
     }
