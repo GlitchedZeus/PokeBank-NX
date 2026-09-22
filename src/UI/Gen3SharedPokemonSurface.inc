@@ -1384,12 +1384,15 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     drawPanel(fb, rightX, y, rightW, h, "MOVES");
     fb.drawText(rightX + 186, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(rightX + 242, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
+    const auto visibleMoveFocus = state.session.mode == SessionModel::Mode::View
+        ? Shared::normalizePassiveViewFocus(Shared::Generation::Gen3, state.focus)
+        : state.focus;
     for (int row = 0; row < 4; ++row) {
         const int yy = y + 62 + row * 32;
-        const bool selected = state.focus.panel == Shared::Panel::Moves &&
-                              state.focus.row == row;
+        const bool selected = visibleMoveFocus.panel == Shared::Panel::Moves &&
+                              visibleMoveFocus.row == row;
         if (selected) {
-            const auto cell = Shared::cellFocusFor(Shared::Generation::Gen3, state.focus);
+            const auto cell = Shared::cellFocusFor(Shared::Generation::Gen3, visibleMoveFocus);
             drawFocus(fb, rightX + cell.x, yy - 5, cell.width, 32, true);
         }
         const uint16_t move = p.moves[static_cast<std::size_t>(row)];

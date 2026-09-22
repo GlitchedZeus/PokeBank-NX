@@ -176,6 +176,8 @@ int main() {
     assert(picker.find("encounterTimeLabel(encounter.timeMask)") != std::string::npos);
     assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
     assert(finalFix.find("drawVerticalScrollIndicator") != std::string::npos);
+    assert(finalFix.find("visibleMoveFocus = passive") != std::string::npos);
+    assert(finalFix.find("cellFocus(visibleMoveFocus)") != std::string::npos);
     assert(unified.find("A/Y/X never mutate a View session") != std::string::npos);
     assert(finalFix.find("{\"D-pad\", \"Navigate\"}, {\"L/R\", \"Panel\"}") != std::string::npos);
 

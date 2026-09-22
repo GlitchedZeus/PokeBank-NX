@@ -147,6 +147,8 @@ int main() {
     contains(surface, "normalizeEditableFocus(state");
     contains(surface, "Shared::passiveViewMoveColumn");
     contains(surface, "Shared::normalizePassiveViewFocus");
+    contains(surface, "visibleMoveFocus = state.session.mode == SessionModel::Mode::View");
+    contains(surface, "cellFocusFor(Shared::Generation::Gen3, visibleMoveFocus)");
     contains(surface, "beginMoveEditor");
     contains(surface, "drawMoveEditor");
     contains(surface, "Contextual editor — B always cancels this dialog");

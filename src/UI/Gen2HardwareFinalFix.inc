@@ -210,11 +210,16 @@ void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& scre
     const int upsX = x + w - 154;
     fb.drawText(ppX, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(upsX, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
+    const auto visibleMoveFocus = passive
+        ? UnifiedContract::normalizePassiveViewFocus(
+              UnifiedContract::Generation::Gen2, unified.focus, unified.crystal)
+        : unified.focus;
     for (int slot = 0; slot < 4; ++slot) {
         const int yy = y + 62 + slot * 32;
-        const bool selected = unified.focus.panel == UnifiedContract::Panel::Moves && unified.focus.row == slot;
+        const bool selected = visibleMoveFocus.panel == UnifiedContract::Panel::Moves &&
+                              visibleMoveFocus.row == slot;
         if (selected) {
-            const auto cell = UnifiedContract::cellFocus(unified.focus);
+            const auto cell = UnifiedContract::cellFocus(visibleMoveFocus);
             drawGen2Focus(fb, x + cell.x, yy - 5, cell.width, 28, true);
         }
         const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];
