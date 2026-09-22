@@ -163,7 +163,8 @@ std::array<uint8_t, 4> storedDVs(const PokemonRecord& pokemon) {
 }
 
 uint32_t draftExperience(const BoxPokemonCreate& draft) noexcept {
-    return Pokemon::getExpForLevel(draft.level, Editor::growthRate(draft.species));
+    return draft.experience.value_or(
+        Pokemon::getExpForLevel(draft.level, Editor::growthRate(draft.species)));
 }
 
 const char* sectionForRow(int row) noexcept {

@@ -36,22 +36,22 @@ int main() {
             UI::SharedPokemonShell::drawScrollableDetails(fb,g.leftX,g.y,g.leftW,g.h,15,focus,true,
                 [](std::size_t row) { return "Field " + std::to_string(row); },
                 [](std::size_t row) { return "Full native value " + std::to_string(row); });
-            bool selectedVisible=false;
+            bool selectedLabelVisible=false;
             for (std::size_t i=0; i<texts.size(); ++i) {
                 const auto& t=texts[i];
                 assert(t.x>=g.leftX && t.x+t.w<=g.leftX+g.leftW);
                 assert(t.y>=g.y+224 && t.y+t.h<=g.y+g.h);
-                if (t.value == "Full native value " + std::to_string(focus)) selectedVisible=true;
+                if (t.value == "Field " + std::to_string(focus)) selectedLabelVisible=true;
                 for (std::size_t j=i+1; j<texts.size(); ++j) assert(!intersects(t,texts[j]));
             }
             bool clearedViewport = false;
             bool focusOutline = false;
             for (const auto& mark : marks) {
                 clearedViewport |= mark.y == g.y + 216 && mark.h > 100;
-                focusOutline |= mark.h == 45 && mark.y >= g.y + 220 &&
+                focusOutline |= mark.h == 30 && mark.y >= g.y + 220 &&
                                 mark.y + mark.h <= g.y + g.h;
             }
-            assert(selectedVisible && clearedViewport && focusOutline);
+            assert(selectedLabelVisible && clearedViewport && focusOutline);
         }
         texts.clear(); marks.clear();
         struct Row { std::string label,value; };

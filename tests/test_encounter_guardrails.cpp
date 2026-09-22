@@ -1,5 +1,6 @@
 #include "Integration/Encounter/EncounterGuardrails.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "Names/LocationNames.h"
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -92,6 +93,15 @@ int main() {
     assert(!E::minimumLevel("gold_gbc", 16));
     assert(LevelPolicy::defaultLevel("red_gb", 16) == LevelPolicy::fallbackLevel);
     assert(LevelPolicy::defaultLevel("gold_gbc", 16) == LevelPolicy::fallbackLevel);
+
+    // Met-location names use the exact native origin byte. A valid Create origin must
+    // never turn known Gen III IDs into Unknown merely because originGame was left zero.
+    assert(std::string_view(Names::getMetLocationName(1, 57)) == "Safari Zone (RSE)");
+    assert(std::string_view(Names::getMetLocationName(2, 57)) == "Safari Zone (RSE)");
+    assert(std::string_view(Names::getMetLocationName(3, 57)) == "Safari Zone (RSE)");
+    assert(std::string_view(Names::getMetLocationName(4, 88)) == "Pallet Town");
+    assert(std::string_view(Names::getMetLocationName(5, 88)) == "Pallet Town");
+    assert(std::string_view(Names::getMetLocationName(0, 57)).empty());
 
     // Same numeric location in the wrong exact game is not treated as equivalent.
     assert(!E::locationAllowed("sapphire_gba", 1, 88));

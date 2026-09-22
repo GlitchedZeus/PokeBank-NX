@@ -246,6 +246,10 @@ StagedPokemonEditor::StagedPokemonEditor(
       sectorOffsets_(offsets), trainer_(std::move(trainer)),
       original_(source.begin(), source.end()), staged_(source.begin(), source.end()) {}
 
+uint8_t StagedPokemonEditor::originGame() const noexcept {
+    return originVersion(sourceGame_);
+}
+
 std::unique_ptr<StagedPokemonEditor> StagedPokemonEditor::create(
     std::span<const uint8_t> source, SourceGame game, std::string& error) {
     error.clear();
@@ -563,7 +567,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         !validHeldItem(sourceGame_, create.heldItem) ||
         !validLanguage(create.language) ||
         create.ball < 1 || create.ball > 12 ||
-        create.metLocation > 255) {
+        create.metLevel > 100 || create.metLocation > 255) {
         error = "Generation III Create draft contains an unsupported field value";
         return false;
     }
@@ -580,9 +584,10 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     pokemon.setLanguage(create.language);
     pokemon.setHeldItem(create.heldItem);
     pokemon.setFriendship(create.friendship);
+    pokemon.setPokerus(create.pokerus);
     pokemon.setOriginGame(originVersion(sourceGame_));
     pokemon.setBall(create.ball);
-    pokemon.setMetLevel(create.level);
+    pokemon.setMetLevel(create.metLevel);
     pokemon.setMetLocation(create.metLocation);
     pokemon.setOTGender(trainer_.gender & 1);
     const auto ot = Utils::utf8ToUtf16(create.otName.value_or(trainer_.name));
@@ -601,6 +606,23 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     }
     pokemon.setNickname(nickname16);
     pokemon.setLevel(create.level);
+    if (create.experience) {
+        if (Pokemon::getLevelFromExp(*create.experience, Pokemon::getGrowthRate(create.species)) != create.level) {
+            error = "Generation III Create Level and Experience disagree";
+            return false;
+        }
+        pokemon.setExp(*create.experience);
+    }
+    unsigned evTotal = 0;
+    for (uint8_t value : create.ivs) {
+        if (value > 31) { error = "Generation III IVs must be between 0 and 31"; return false; }
+    }
+    for (uint8_t value : create.evs) evTotal += value;
+    if (evTotal > 510) { error = "Generation III EV total cannot exceed 510"; return false; }
+    for (int i = 0; i < 6; ++i) {
+        pokemon.setIV(i, create.ivs[static_cast<std::size_t>(i)]);
+        pokemon.setEV(i, create.evs[static_cast<std::size_t>(i)]);
+    }
     for (uint16_t move : create.moves) {
         if (move > kMaxGen3Move) {
             error = "Generation III move id is outside the native move table";
@@ -657,7 +679,18 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         return false;
     }
     auto after = boxedPokemon(box, slot, error);
+    const std::string expectedNickname = create.nickname.empty()
+        ? std::string(Names::getSpeciesName(create.species)) : create.nickname;
+    const std::string expectedOt = create.otName.value_or(trainer_.name);
     if (!after || after->species != create.species || after->level != create.level ||
+        (create.experience && after->experience != *create.experience) ||
+        after->nickname != expectedNickname || after->otName != expectedOt ||
+        after->tid != tid || after->heldItem != create.heldItem ||
+        after->moves != create.moves || after->pp != create.pp || after->ppUps != create.ppUps ||
+        after->ivs != create.ivs || after->evs != create.evs ||
+        after->language != create.language || after->friendship != create.friendship ||
+        after->pokerus != create.pokerus || after->ball != create.ball ||
+        after->metLocation != create.metLocation || after->metLevel != create.metLevel ||
         after->originGame != originVersion(sourceGame_) ||
         after->nature != expectedNature || after->gender != expectedGender ||
         after->shiny != expectedShiny || after->abilityNumber != expectedAbilityNumber) {

@@ -21,7 +21,7 @@ $(CLASSIC_PICKER_TYPE_SANITIZE): $(CLASSIC_PICKER_TYPE_SOURCES) src/Integration/
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CLASSIC_PICKER_TYPE_SOURCES) -o $@
 
-ENCOUNTER_GUARDRAILS_SOURCES := tests/test_encounter_guardrails.cpp
+ENCOUNTER_GUARDRAILS_SOURCES := tests/test_encounter_guardrails.cpp src/Names/LocationNames.cpp
 ENCOUNTER_GUARDRAILS_TEST := $(HOST_BUILD)/test_encounter_guardrails
 ENCOUNTER_GUARDRAILS_SANITIZE := $(HOST_BUILD)/test_encounter_guardrails_sanitize
 

@@ -97,7 +97,8 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
     std::vector<std::pair<std::string, std::string>> rows{
         {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
         {"Nickname", p.nickname},
-        {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
+        {"Level", std::to_string(p.level)},
+        {"Experience", std::to_string(p.experience)},
         {"OT Name", p.originalTrainer},
         {"Trainer ID", std::to_string(p.trainerId)},
         {"Held Item", itemText(p.heldItem)},
@@ -217,7 +218,7 @@ void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& scre
         const bool selected = visibleMoveFocus.panel == UnifiedContract::Panel::Moves &&
                               visibleMoveFocus.row == slot;
         if (selected) {
-            const auto cell = UnifiedContract::cellFocus(visibleMoveFocus);
+            const auto cell = UnifiedContract::moveRowFocus(w);
             drawGen2Focus(fb, x + cell.x, yy - 5, cell.width, 28, true);
         }
         const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];

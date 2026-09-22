@@ -68,11 +68,12 @@ inline void drawVerticalScrollIndicator(PKSEFramebuffer& fb, int x, int y, int h
 }
 
 // Scroll only the Details rows below the fixed portrait/type header.
-// Two baselines keep full native values visible without clipping the narrow panel.
+// Shared inline rows keep label and value on one baseline with a full-row focus outline.
 template <class Label, class Value>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
     std::size_t total, std::size_t focus, bool focused, Label label, Value value) {
-    const auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, 6, focus);
+    constexpr std::size_t visibleRows = 8;
+    const auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, visibleRows, focus);
     // Scrolling owns one clipped row viewport. Clear it before painting the next window so
     // an older set of rows can never ghost underneath the current focus position.
     const int viewportY = y + 216;
@@ -82,15 +83,29 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
     fb.setClipRect(x + 8, viewportY, w - 16, viewportH);
     for (std::size_t i = 0; i < window.count; ++i) {
         const auto row = window.first + i;
-        const int yy = y + 224 + static_cast<int>(i) * 48;
+        const int yy = y + 224 + static_cast<int>(i) * 38;
         const bool selected = focused && row == focus;
         if (selected)
-            fb.drawRoundedRect(x + 8, yy - 4, w - 16, 45, 6, Colors::FocusBorder, 2);
-        fb.drawText(x + 16, yy, label(row),
+            fb.drawRoundedRect(x + 8, yy + 2, std::max(0, w - 36), 30, 6, Colors::FocusBorder, 2);
+        const std::string rowLabel = label(row);
+        const std::string fullValue = value(row);
+        std::string rowValue = fullValue;
+        fb.drawText(x + 16, yy + 7, rowLabel,
                     selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
-        fb.drawText(x + 16, yy + 20, value(row), Colors::Text, TextStyle::Caption);
+        constexpr int valueInset = 112;
+        const int available = std::max(0, w - valueInset - 28);
+        int tw = 0, th = 0;
+        fb.measureText(rowValue, tw, th, TextStyle::Caption);
+        while (tw > available && rowValue.size() > 4) {
+            rowValue.resize(rowValue.size() - 1);
+            fb.measureText(rowValue + "...", tw, th, TextStyle::Caption);
+        }
+        if (rowValue != fullValue) rowValue += "...";
+        fb.drawText(x + valueInset, yy + 7, rowValue, Colors::Text, TextStyle::Caption);
     }
     fb.clearClip();
+    drawVerticalScrollIndicator(fb, x + w - 10, viewportY + 6,
+        std::max(0, viewportH - 12), total, visibleRows, window.first);
     fb.drawText(x + 16, y + h - 30, "Rows " + std::to_string(window.first + 1) + "-" +
         std::to_string(window.first + window.count) + " / " + std::to_string(total),
         Colors::TextDim, TextStyle::Caption);
@@ -122,6 +137,6 @@ inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
         }
     }
     fb.drawText(graphX + 10, y + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
-    StatsRadar::drawGen2Labeled(fb, graphX + 8, y + 32, graphW - 16, h - 40, stats);
+    StatsRadar::drawGen3Labeled(fb, graphX + 8, y + 32, graphW - 16, h - 40, stats);
 }
 } // namespace UI::SharedPokemonShell

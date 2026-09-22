@@ -64,7 +64,7 @@ inline void fillPolygon(PKSEFramebuffer& fb, const std::array<PointF,N>& points,
 template <std::size_t N>
 inline void draw(PKSEFramebuffer& fb, int cx, int cy, int radius,
                  const std::array<float,N>& values, float maxValue,
-                 Color fill, Color web, Color outline) {
+                 Color web, Color outline) {
     static_assert(N >= 3 && N <= 8);
     if (radius <= 0 || maxValue <= 0.0f) return;
 
@@ -84,9 +84,11 @@ inline void draw(PKSEFramebuffer& fb, int cx, int cy, int radius,
         data[i] = vertex(cx, cy, static_cast<float>(radius) * normalized,
                          static_cast<int>(i), static_cast<int>(N));
     }
-    fillPolygon(fb, data, fill);
-    for (std::size_t i = 0; i < N; ++i)
+    for (std::size_t i = 0; i < N; ++i) {
         dottedLine(fb, data[i], data[(i + 1) % N], outline, 2);
+        fb.drawFilledCircle(static_cast<int>(std::lround(data[i].x)),
+                            static_cast<int>(std::lround(data[i].y)), 2, outline);
+    }
 }
 
 // Shared bounded five-axis renderer. Axis labels show raw battle stats; the scale
@@ -109,7 +111,7 @@ inline void drawGen1Labeled(PKSEFramebuffer& fb, int x, int y, int width, int he
     if (radius <= 0) return;
     const int cx = x + width / 2, cy = y + lineH + 4 + radius;
     draw(fb, cx, cy, radius, model.normalized, 1.0f,
-         Color(232, 60, 70, 58), Colors::Divider, Colors::Accent);
+         Colors::Divider, Colors::FocusBorder);
     for (size_t i = 0; i < labels.size(); ++i) {
         const auto v = vertex(cx, cy, static_cast<float>(radius), static_cast<int>(i), 5);
         const bool right = i == 1 || i == 2;
@@ -145,7 +147,7 @@ inline void drawGen2Labeled(PKSEFramebuffer& fb, int x, int y, int width, int he
     const int cx = x + width / 2;
     const int cy = y + lineH + 6 + radius;
     draw(fb, cx, cy, radius, model.normalized, 1.0f,
-         Color(232, 60, 70, 58), Colors::Divider, Colors::Accent);
+         Colors::Divider, Colors::FocusBorder);
 
     for (size_t i = 0; i < labels.size(); ++i) {
         const auto v = vertex(cx, cy, static_cast<float>(radius), static_cast<int>(i), 6);
@@ -164,6 +166,11 @@ inline void drawGen2Labeled(PKSEFramebuffer& fb, int x, int y, int width, int he
     int sw = 0, sh = 0;
     fb.measureText(scale, sw, sh, TextStyle::Caption);
     fb.drawText(cx - sw / 2, y + height - sh, scale, Colors::TextDim, TextStyle::Caption);
+}
+
+inline void drawGen3Labeled(PKSEFramebuffer& fb, int x, int y, int width, int height,
+                            const std::array<uint16_t,6>& stats) {
+    drawGen2Labeled(fb, x, y, width, height, stats);
 }
 
 } // namespace UI::StatsRadar

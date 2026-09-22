@@ -707,7 +707,7 @@ std::array<uint16_t,5> ux2StatsForDisplay(TrainerViewScreen& screen, uint16_t sp
 void ux2DrawRadar(PKSEFramebuffer& fb, int cx, int cy, int radius, const std::array<uint16_t,5>& stats) {
     const auto model = PokeBank::UIModel::gen1RadarModel(stats);
     StatsRadar::draw(fb, cx, cy, radius, model.normalized, 1.0f,
-                     Color(Colors::FocusBorder.r, Colors::FocusBorder.g, Colors::FocusBorder.b, 58), Colors::Divider, Colors::Accent);
+                     Colors::Divider, Colors::FocusBorder);
 }
 
 void ux2DrawPreview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w,

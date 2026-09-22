@@ -134,7 +134,7 @@ int main() {
     // Focus readability: active labels/values stay bright without introducing a selection fill.
     assert(gen1.find("selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
     assert(gen1.find("shinySelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
-    assert(gen1.find("levelSelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    assert(gen1.find("levelSelected") == std::string::npos);
     assert(gen2.find("Colors::SelectedText : Colors::TextDim") != std::string::npos);
     assert(gen3.find("selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
     assert(trainer.find("sel ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
@@ -165,4 +165,8 @@ int main() {
     assert(gen1.find("rowSelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
     assert(gen1.find("shinySelected ? Colors::SelectedText : (presentation.shiny") != std::string::npos);
 
+    const std::string radar = readFile("include/UI/StatsRadar.h");
+    assert(radar.find("fillPolygon(fb, data") == std::string::npos);
+    assert(radar.find("Color(232, 60, 70, 58)") == std::string::npos);
+    assert(radar.find("Colors::FocusBorder") != std::string::npos);
 }

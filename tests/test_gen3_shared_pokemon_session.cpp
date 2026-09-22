@@ -126,13 +126,14 @@ int main() {
         const char* sourceGameId;
         uint16_t replacementSpecies;
         uint8_t expectedMinimum;
+        uint8_t originGame;
     };
     constexpr std::array exactGames{
-        ExactGameCase{"ruby_gba", 261, 2},
-        ExactGameCase{"sapphire_gba", 261, 2},
-        ExactGameCase{"emerald_gba", 261, 2},
-        ExactGameCase{"firered_gba", 16, 2},
-        ExactGameCase{"leafgreen_gba", 16, 2},
+        ExactGameCase{"ruby_gba", 261, 2, 2},
+        ExactGameCase{"sapphire_gba", 261, 2, 1},
+        ExactGameCase{"emerald_gba", 261, 2, 3},
+        ExactGameCase{"firered_gba", 16, 2, 4},
+        ExactGameCase{"leafgreen_gba", 16, 2, 5},
     };
 
     Gen3::TrainerRecord trainer{};
@@ -177,8 +178,9 @@ int main() {
         assert(speciesEdit.mode == Mode::None);
 
         Session create{};
-        create.beginCreate(trainer);
+        create.beginCreate(trainer, game.originGame);
         assert(create.mode == Mode::Create);
+        assert(create.working.originGame == game.originGame);
         assert(!create.back() && create.confirmExit && create.mode == Mode::Create);
         create.continueEditing();
         assert(!create.confirmExit && create.mode == Mode::Create);
@@ -197,11 +199,22 @@ int main() {
         assert(create.working.experience ==
                Pokemon::getExpForLevel(
                    expected, Pokemon::getGrowthRate(game.replacementSpecies)));
+        create.working.metLocation = 57;
+        create.working.metLevel = 25;
+        create.working.ivs = {31, 30, 29, 28, 27, 26};
+        create.working.evs = {100, 90, 80, 70, 60, 50};
+        create.working.pokerus = 0x21;
+        assert(create.setAbilityNumber(1)); // native slot 1 is explicit even for one-ability species.
         const auto add = create.createRequest();
         assert(add.species == game.replacementSpecies);
         assert(add.level == expected);
+        assert(add.experience && *add.experience == create.working.experience);
         assert(add.language == 2);
         assert(add.friendship == 70);
+        assert(add.metLocation == 57 && add.metLevel == 25);
+        assert(add.ivs == create.working.ivs && add.evs == create.working.evs);
+        assert(add.pokerus == 0x21);
+        assert(add.abilityNumber && *add.abilityNumber == 1);
     }
 
     // Missing encounter data uses one deterministic shared fallback and never a stale

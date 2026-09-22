@@ -203,10 +203,39 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
             else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change staged in this edit session; source .srm unchanged"); }
             break;
         }
-        case 2:
-            ux2OpenLevelExpEditor(screen, add);
+        case 2: {
+            const int current = add ? state.draft.level : pokemon->level;
+            const auto result = Utils::promptNumber("Generation I Level", current, 1, 100);
+            if (!result.accepted) break;
+            if (add) {
+                state.draft.level = static_cast<uint8_t>(result.value);
+                state.draft.experience = Pokemon::getExpForLevel(
+                    state.draft.level, Editor::growthRate(state.draft.species));
+            } else {
+                BoxPokemonEdit edit; edit.level = static_cast<uint8_t>(result.value);
+                ux2CommitEdit(screen, edit, "Level change staged in this edit session; source .srm unchanged");
+            }
             break;
+        }
         case 3: {
+            const uint16_t species = add ? state.draft.species : pokemon->species;
+            const uint32_t maximum = Pokemon::getExpForLevel(100, Editor::growthRate(species));
+            const uint32_t current = foundationExperience(state, pokemon, add);
+            const auto result = Utils::promptNumber("Generation I Experience",
+                static_cast<int>(current), 0, static_cast<int>(maximum));
+            if (!result.accepted) break;
+            const uint32_t experience = static_cast<uint32_t>(result.value);
+            const uint8_t level = Pokemon::getLevelFromExp(experience, Editor::growthRate(species));
+            if (add) {
+                state.draft.experience = experience;
+                state.draft.level = level;
+            } else {
+                BoxPokemonEdit edit; edit.experience = experience;
+                ux2CommitEdit(screen, edit, "Experience change staged in this edit session; source .srm unchanged");
+            }
+            break;
+        }
+        case 4: {
             const auto result = Utils::promptText("Generation I OT", "1-7 supported Gen I characters",
                                                   foundationOT(state, *e, pokemon, add), 7);
             if (!result.accepted) break;
@@ -214,7 +243,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
             else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change staged in this edit session; source .srm unchanged"); }
             break;
         }
-        case 4: {
+        case 5: {
             const auto result = Utils::promptNumber("Generation I Trainer ID", foundationTID(state, *e, pokemon, add), 0, 65535);
             if (!result.accepted) break;
             if (add) state.draft.trainerId = static_cast<uint16_t>(result.value);
@@ -278,18 +307,6 @@ void foundationEditValue(TrainerViewScreen& screen, const Foundation::Focus& foc
         if (add) ux3SetDraftShiny(screen, !ux3IsShiny(state.draft));
         else ux3SetExistingShiny(screen, !ux3IsShiny(*pokemon));
         return;
-    }
-    if (focus.row == static_cast<uint8_t>(Foundation::ValueRow::Level)) {
-        const int current = add ? state.draft.level : pokemon->level;
-        const auto result = Utils::promptNumber("Generation I Level", current, 1, 100);
-        if (!result.accepted) return;
-        if (add) {
-            state.draft.level = static_cast<uint8_t>(result.value);
-        } else {
-            BoxPokemonEdit edit;
-            edit.level = static_cast<uint8_t>(result.value);
-            ux2CommitEdit(screen, edit, "Level change staged in this edit session; source .srm unchanged");
-        }
     }
 }
 
@@ -488,15 +505,16 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         foundationDrawBadge(fb, badgeX, contentY + 184, foundationTypeName(types[1]));
     }
 
-    const std::array<std::string,5> leftLabels{"Species", "Nickname", "Level / EXP", "OT", "Trainer ID"};
-    const std::array<std::string,5> leftValues{
+    const std::array<std::string,6> leftLabels{"Species", "Nickname", "Level", "EXP", "OT", "Trainer ID"};
+    const std::array<std::string,6> leftValues{
         speciesCompact(species),
         foundationNickname(state, pokemon ? &*pokemon : nullptr, add, species),
-        "Lv " + std::to_string(level) + " / " + std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
+        std::to_string(level),
+        std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
         foundationOT(state, *e, pokemon ? &*pokemon : nullptr, add),
         std::to_string(foundationTID(state, *e, pokemon ? &*pokemon : nullptr, add)),
     };
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
         const bool selected = foundation.focus.panel == Foundation::Panel::Identity && foundation.focus.row == i;
         foundationDrawIdentityRow(fb, leftX + 8, contentY + 224 + i * 43, leftW - 16,
                                   leftLabels[static_cast<size_t>(i)], leftValues[static_cast<size_t>(i)], selected);

@@ -33,7 +33,7 @@ int main() {
             Focus{Panel::Values, 2, static_cast<uint8_t>(ValueColumn::StatExperience)}));
 
     // Vertical movement remains local to the focused panel and wraps cleanly.
-    assert((moveFocus({Panel::Identity, 0, 0}, Direction::Up) == Focus{Panel::Identity, 4, 0}));
+    assert((moveFocus({Panel::Identity, 0, 0}, Direction::Up) == Focus{Panel::Identity, 5, 0}));
     assert((moveFocus({Panel::Moves, 3, 0}, Direction::Down) == Focus{Panel::Moves, 0, 0}));
 
     // HP-row horizontal navigation never enters the derived HP DV or calculated Stat column.
@@ -50,10 +50,14 @@ int main() {
                   static_cast<uint8_t>(ValueColumn::StatExperience)}));
 
     // Gen I Values are truthful: HP DV and calculated stats are display-only, other DVs and
-    // all five Stat Exp values are editable, while Shiny and Level remain real focusable rows.
-    // Exhaust every panel/cell/direction: no route can land on the derived HP DV.
+    // all five Stat Exp values are editable, while Shiny remains the only supplemental Values row.
+    // Level/EXP live only in Details. Exhaust every panel/cell/direction: no route can land
+    // on the derived HP DV or a removed middle-panel Level coordinate.
+    static_assert(identityRowCount() == 6);
+    static_assert(valueRowCount() == 6);
+    assert((normalize({Panel::Values, 6, 0}) == Focus{Panel::Values, 0, 1}));
     for (auto panel : {Panel::Identity, Panel::Values, Panel::Moves})
-        for (uint8_t row = 0; row < 7; ++row)
+        for (uint8_t row = 0; row < 8; ++row)
             for (uint8_t column = 0; column < 3; ++column)
                 for (auto direction : {Direction::Up, Direction::Down, Direction::Left, Direction::Right})
                     {
@@ -75,7 +79,6 @@ int main() {
                            ValueRow::Speed, ValueRow::Special})
         assert(!valueCellEditable(row, ValueColumn::CalculatedStat));
     assert(valueCellEditable(ValueRow::Shiny, ValueColumn::DV));
-    assert(valueCellEditable(ValueRow::Level, ValueColumn::DV));
     assert(calculatedStatsAreReadOnly());
     assert(!calculatedStatsAreFocusable());
     assert(moveRowsAreIndividuallyFocusable());

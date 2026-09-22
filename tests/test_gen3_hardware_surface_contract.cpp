@@ -42,12 +42,12 @@ int main() {
     Shared::Focus focus{Shared::Panel::Details, 0, 0};
     for (int row = 0; row < 15; ++row) {
         assert(focus.row == row);
-        const auto window = Shared::scrollWindow(15, 6, focus.row);
-        assert(window.scrolls && window.count == 6);
+        const auto window = Shared::scrollWindow(15, 8, focus.row);
+        assert(window.scrolls && window.count == 8);
         assert(window.first <= focus.row && focus.row < window.first + window.count);
         assert(window.first + window.count <= 15);
         // Last value baseline fits the Details panel; sprite/type header remains above it.
-        assert(224 + int(window.count - 1) * 48 + 20 + 20 < geometry.h - 30);
+        assert(224 + int(window.count - 1) * 38 + 18 < geometry.h - 30);
         if (row < 14) focus = Shared::moveVertical(Shared::Generation::Gen3, focus, 1);
     }
     const auto lastDetails = Shared::detailsScrollFocus(focus, 0);
@@ -85,9 +85,11 @@ int main() {
     const auto surface = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     const auto move = read("src/UI/ClassicPackedMoveOverlay.inc");
+    const auto bridge = read("src/Legacy/FRLGReadOnlyTrainer.cpp");
     const auto shell = read("include/UI/SharedPokemonShell.h");
     const auto gen2 = read("src/UI/Gen2HardwareFinalFix.inc");
     contains(surface, "beginPassiveView(screen)");
+    contains(surface, "if (workspaceActive(state)) return state.passive");
     contains(surface, "screen.detailsTargetPokemon()"); // Box, Party and Bank exact target resolver
     contains(surface, "target->getGameGroup() != Enums::GameVersion::FRLG");
     contains(surface, "state.session.begin(*record, SessionModel::Mode::View)");
@@ -98,6 +100,8 @@ int main() {
     contains(surface, "PickerTarget::Nature");
     contains(surface, "PickerTarget::Gender");
     contains(surface, "PickerTarget::Ability");
+    contains(surface, "? std::vector<uint16_t>{1, 2}");
+    contains(surface, ": std::vector<uint16_t>{1}");
     contains(surface, "state.session.setShiny");
     contains(surface, "PID (read-only)");
     contains(surface, "Trainer ID");
@@ -125,10 +129,13 @@ int main() {
     contains(surface, "SharedPokemonShell::Geometry"); contains(gen2, "SharedPokemonShell::Geometry");
     contains(surface, "SharedPokemonShell::drawPortrait"); contains(surface, "getTypeSprite");
     contains(surface, "SharedPokemonShell::drawDataAndGraph");
-    contains(shell, "BATTLE STATS"); contains(shell, "StatsRadar::drawGen2Labeled");
+    contains(shell, "BATTLE STATS"); contains(shell, "StatsRadar::drawGen3Labeled");
     contains(surface, "GEN III DATA"); contains(surface, "Colors::Panel");
     contains(surface, "SharedPokemonShell::drawScrollableDetails");
-    contains(shell, "scrollWindow(total, 6, focus)");
+    contains(shell, "scrollWindow(total, visibleRows, focus)");
+    contains(shell, "visibleRows = 8");
+    contains(shell, "valueInset = 112");
+    contains(shell, "drawVerticalScrollIndicator");
     contains(shell, "viewportY = y + 216");
     contains(shell, "fb.setClipRect");
     contains(shell, "fb.clearClip()");
@@ -150,7 +157,7 @@ int main() {
     contains(surface, "Shared::passiveViewMoveColumn");
     contains(surface, "Shared::normalizePassiveViewFocus");
     contains(surface, "visibleMoveFocus = Shared::normalizeMoveRowFocus");
-    contains(surface, "cellFocusFor(Shared::Generation::Gen3, visibleMoveFocus)");
+    contains(surface, "Shared::moveRowFocus(rightW)");
     contains(surface, "beginMoveEditor(screen, state, static_cast<int>(state.focus.row))");
     const auto contextStart = surface.find("bool handleMoveEditor(");
     const auto contextEnd = surface.find("bool handleWorkspace(", contextStart);
@@ -196,8 +203,16 @@ int main() {
     contains(move, "Move / Hold Multi"); contains(move, "Hold Multi");
     contains(move, "kMultiHoldFrames"); contains(move, "rectangleSlots");
     contains(move, "beginSparseMove"); contains(move, "placeSparseMove"); contains(move, "cancelSparseMove");
+    // Sparse carry presentation reads validated staged bytes so source holes can be shown,
+    // while finalizedBytes remains blocked by the backend until place/cancel.
+    contains(bridge, "const auto& bytes = stagedPokemon_->stagedBytes()");
+    const auto refreshStart = bridge.find("bool FRLGReadOnlyTrainer::refreshStagedPokemonPresentation");
+    const auto refreshEnd = bridge.find("bool FRLGReadOnlyTrainer::populate", refreshStart);
+    assert(refreshStart != std::string::npos && refreshEnd > refreshStart);
+    assert(bridge.substr(refreshStart, refreshEnd - refreshStart).find("finalizedBytes") == std::string::npos);
     contains(move, "beginPackedMove"); contains(move, "placePackedGroupMove"); // accepted packed backend remains
     contains(move, "if (isGen3(screen)) return beginGen3");
+    contains(move, "The selected sparse rectangle contains no Pokemon");
     contains(move, "if (state.active)");
     contains(move, "if (down & HidNpadButton_B) return cancel(screen, state)");
     contains(move, "if (down & HidNpadButton_Y) return place(screen, state)");

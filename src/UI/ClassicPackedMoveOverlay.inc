@@ -279,6 +279,11 @@ std::vector<std::size_t> occupiedSelectionGen2(TrainerViewScreen& screen, int bo
 
 bool beginGen3(TrainerViewScreen& screen, CarryState& state, int box,
                const std::vector<std::size_t>& slots) {
+    if (slots.empty()) {
+        screen.postStatus("The selected sparse rectangle contains no Pokemon", 220);
+        clearTransientSelection(screen, state);
+        return true;
+    }
     auto& trainer = static_cast<PokeVault::Legacy::FRLGReadOnlyTrainer&>(screen.trainer);
     auto* editor = trainer.stagedPokemon();
     if (!editor) return true;

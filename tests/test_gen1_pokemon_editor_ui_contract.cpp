@@ -179,8 +179,19 @@ int main() {
     assert(workspace.find("fb.drawText(statusX, rowY + 9, status") != std::string::npos);
     assert(workspace.find("centerX + 142") == std::string::npos);
 
-    // The active three-panel Values surface edits one exact cell per A press. It must
-    // never enter the legacy grouped DV / Stat Exp / Level+EXP contextual editors.
+    // DETAILS owns progression. Level and EXP each use one direct Nintendo numeric prompt;
+    // the legacy combined Level/Experience contextual editor is not reachable here.
+    const auto identityEditBegin = workspace.find("void foundationEditIdentity");
+    const auto identityEditEnd = workspace.find("void foundationEditValue", identityEditBegin);
+    assert(identityEditBegin != std::string::npos && identityEditEnd > identityEditBegin);
+    const auto identityEdit = workspace.substr(identityEditBegin, identityEditEnd - identityEditBegin);
+    assert(identityEdit.find("ux2OpenLevelExpEditor(") == std::string::npos);
+    assert(countOccurrences(identityEdit, "Utils::promptNumber(") == 3); // Level, EXP, Trainer ID
+    assert(identityEdit.find("\"Generation I Level\", current, 1, 100") != std::string::npos);
+    assert(identityEdit.find("\"Generation I Experience\"") != std::string::npos);
+    assert(identityEdit.find("Pokemon::getLevelFromExp") != std::string::npos);
+
+    // The active three-panel Values surface edits one exact stat cell per A press.
     const auto valueEditBegin = workspace.find("void foundationEditValue");
     const auto valueEditEnd = workspace.find("void foundationHandleMainInput", valueEditBegin);
     assert(valueEditBegin != std::string::npos && valueEditEnd != std::string::npos &&
@@ -189,12 +200,12 @@ int main() {
     assert(valueEdit.find("ux2OpenDVEditor(") == std::string::npos);
     assert(valueEdit.find("ux2OpenStatExpEditor(") == std::string::npos);
     assert(valueEdit.find("ux2OpenLevelExpEditor(") == std::string::npos);
-    assert(countOccurrences(valueEdit, "Utils::promptNumber(") == 3);
+    assert(countOccurrences(valueEdit, "Utils::promptNumber(") == 2);
     assert(valueEdit.find(" DV (0-15)") != std::string::npos);
     assert(valueEdit.find("dvs[index], 0, 15") != std::string::npos);
     assert(valueEdit.find(" Stat Exp (0-65535)") != std::string::npos);
     assert(valueEdit.find("statExperience[index], 0, 65535") != std::string::npos);
-    assert(valueEdit.find("\"Generation I Level\", current, 1, 100") != std::string::npos);
+    assert(valueEdit.find("Generation I Level") == std::string::npos);
     assert(valueEdit.find("state.draft.dvs = dvs") != std::string::npos);
     assert(valueEdit.find("edit.dvs = dvs") != std::string::npos);
     assert(valueEdit.find("state.draft.statExperience = statExperience") != std::string::npos);
@@ -227,6 +238,8 @@ int main() {
     assert(hardware.find("Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r)") != std::string::npos);
     assert(hardware.find("(r == 0 && c == 0) ? Colors::TextDim") != std::string::npos);
     assert(hardware.find("std::to_string(Editor::derivedHPDV(dvs)) + \" *\"") != std::string::npos);
+    assert(hardware.find("leftLabels{\"Species\", \"Nickname\", \"Level\", \"EXP\", \"OT\", \"Trainer ID\"}") != std::string::npos);
+    assert(hardware.find("levelSelected") == std::string::npos);
     const auto specialBegin = hardware.find("\"CALCULATED SPECIAL STATS\"");
     const auto specialEnd = hardware.find("// MOVES", specialBegin);
     assert(specialBegin != std::string::npos && specialEnd != std::string::npos && specialEnd > specialBegin);

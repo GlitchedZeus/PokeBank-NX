@@ -76,14 +76,19 @@ struct BoxPokemonCreate {
     std::optional<uint16_t> tid;
     uint16_t species = 25;
     uint8_t level = 5;
+    std::optional<uint32_t> experience;
     std::string nickname;
     uint16_t heldItem = 0;
     std::array<uint16_t, 4> moves{};
     std::array<uint8_t, 4> pp{};
     std::array<uint8_t, 4> ppUps{};
+    std::array<uint8_t, 6> ivs{};
+    std::array<uint8_t, 6> evs{};
     uint8_t language = 2; // English in PK3
     uint8_t friendship = 70;
+    uint8_t pokerus = 0;
     uint8_t ball = 4;     // Poke Ball in PK3
+    uint8_t metLevel = 5;
     uint16_t metLocation = 0;
     std::optional<uint8_t> nature;
     std::optional<uint8_t> gender;
@@ -105,6 +110,7 @@ public:
         std::span<const uint8_t> source, SourceGame game, std::string& error);
 
     [[nodiscard]] SourceGame sourceGame() const noexcept { return sourceGame_; }
+    [[nodiscard]] uint8_t originGame() const noexcept;
     [[nodiscard]] uint8_t activeSlot() const noexcept { return activeSlot_; }
     [[nodiscard]] uint32_t saveCounter() const noexcept { return saveCounter_; }
     [[nodiscard]] uint8_t boxCount() const noexcept { return 14; }

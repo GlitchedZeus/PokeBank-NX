@@ -6,9 +6,10 @@
 #include <cstdint>
 namespace PokeBank::UIModel {
 inline constexpr std::array<const char*,5> gen1RadarLabels{"HP", "Atk", "Def", "Spe", "Spc"};
-// Canonical Gen II display order. Storage/calculation code keeps its historical
-// HP/Atk/Def/Spe/SpA/SpD array layout; canonicalGen2RadarStats performs the UI-only remap.
-inline constexpr std::array<const char*,6> gen2RadarLabels{"HP", "Atk", "Def", "SpA", "SpD", "Spe"};
+// Shared six-stat display order. Storage/calculation code is already
+// HP/Atk/Def/Spe/SpA/SpD, so Gen II and III use one neutral visual language.
+inline constexpr std::array<const char*,6> gen2RadarLabels{"HP", "Atk", "Def", "Spe", "SpA", "SpD"};
+inline constexpr auto gen3RadarLabels = gen2RadarLabels;
 
 template <std::size_t N>
 struct BattleStatRadarModelN {
@@ -38,10 +39,8 @@ inline BattleStatRadarModel gen1RadarModel(const std::array<uint16_t,5>& stats) 
 
 inline constexpr std::array<uint16_t,6> canonicalGen2RadarStats(
     const std::array<uint16_t,6>& internalStats) noexcept {
-    // Internal battle-stat order: HP, Atk, Def, Spe, SpA, SpD.
-    // User-facing radar order:    HP, Atk, Def, SpA, SpD, Spe.
-    return {internalStats[0], internalStats[1], internalStats[2],
-            internalStats[4], internalStats[5], internalStats[3]};
+    // Internal and shared user-facing order: HP, Atk, Def, Spe, SpA, SpD.
+    return internalStats;
 }
 
 inline Gen2BattleStatRadarModel gen2RadarModel(const std::array<uint16_t,6>& internalStats) noexcept {

@@ -101,17 +101,17 @@ int main() {
     // numeric/stat material. MOVES stays identical.
     constexpr auto gen1Layout = layoutFor(Generation::Gen1);
     constexpr auto gen2Layout = layoutFor(Generation::Gen2);
-    static_assert(gen1Layout.detailsRows == 5);
-    static_assert(gen2Layout.detailsRows == 8);
+    static_assert(gen1Layout.detailsRows == 6);
+    static_assert(gen2Layout.detailsRows == 9);
     static_assert(gen1Layout.movesRows == gen2Layout.movesRows);
-    static_assert(gen1Layout.valuesRows == 7);
+    static_assert(gen1Layout.valuesRows == 6);
     static_assert(gen2Layout.valuesRows == 7);
     static_assert(gen2Layout.valueStatRows == 5);
 
     Focus focus{};
     assert((focus == Focus{Panel::Details, 0, 0}));
     focus = moveVertical(Generation::Gen2, focus, -1);
-    assert((focus == Focus{Panel::Details, 7, 0}));
+    assert((focus == Focus{Panel::Details, 8, 0}));
     focus = switchPanel(Generation::Gen2, focus, 1);
     assert(focus.panel == Panel::Values);
     focus = Focus{Panel::Values, 4, 0};
@@ -159,12 +159,12 @@ int main() {
     static_assert(!valueCellFocusable(Generation::Gen3, 5, 2));
     assert(moveColumn(Generation::Gen2, {Panel::Values, 6, 0}, 1).panel == Panel::Moves);
     assert(moveColumn(Generation::Gen2, {Panel::Values, 6, 0}, -1).panel == Panel::Details);
-    assert(moveVertical(Generation::Gen2, {}, -1, true).row == 11);
-    std::size_t detailsFocus = detailsScrollFocus({Panel::Details, 7, 0}, 0);
+    assert(moveVertical(Generation::Gen2, {}, -1, true).row == 12);
+    std::size_t detailsFocus = detailsScrollFocus({Panel::Details, 8, 0}, 0);
     for (int row = 0; row < 7; ++row)
-        assert(detailsScrollFocus({Panel::Values, static_cast<uint8_t>(row), 0}, detailsFocus) == 7);
+        assert(detailsScrollFocus({Panel::Values, static_cast<uint8_t>(row), 0}, detailsFocus) == 8);
     for (int row = 0; row < 4; ++row)
-        assert(detailsScrollFocus({Panel::Moves, static_cast<uint8_t>(row), 0}, detailsFocus) == 7);
+        assert(detailsScrollFocus({Panel::Moves, static_cast<uint8_t>(row), 0}, detailsFocus) == 8);
     for (auto panel : {Panel::Values, Panel::Moves}) {
         int end = 0;
         const uint8_t columns = panel == Panel::Values ? 2 : 3;
@@ -177,25 +177,26 @@ int main() {
 
     auto scroll = scrollWindow(5, 5, 4);
     assert(!scroll.scrolls && scroll.first == 0 && scroll.count == 5);
-    // Gold/Silver fit the full eight-row Details window without scrolling.
-    scroll = scrollWindow(gen2Layout.detailsRows, 8, 7);
-    assert(!scroll.scrolls && scroll.first == 0 && scroll.count == 8);
-    // Crystal has twelve Details rows and keeps exactly eight visible at once.
+    // Splitting Level/Experience makes Gold/Silver nine Details rows; the shared
+    // eight-row viewport scrolls by one without changing panel geometry.
+    scroll = scrollWindow(gen2Layout.detailsRows, 8, 8);
+    assert(scroll.scrolls && scroll.first == 1 && scroll.count == 8);
+    // Crystal has thirteen Details rows and keeps exactly eight visible at once.
     constexpr auto crystalLayout = layoutFor(Generation::Gen2, true);
-    static_assert(crystalLayout.detailsRows == 12);
+    static_assert(crystalLayout.detailsRows == 13);
     scroll = scrollWindow(crystalLayout.detailsRows, 8, 0);
     assert(scroll.scrolls && scroll.first == 0 && scroll.count == 8);
-    scroll = scrollWindow(crystalLayout.detailsRows, 8, 8);
-    assert(scroll.scrolls && scroll.first == 1 && 8 < scroll.first + scroll.count);
-    scroll = scrollWindow(crystalLayout.detailsRows, 8, 11);
-    assert(scroll.scrolls && scroll.first == 4 && 11 < scroll.first + scroll.count);
+    scroll = scrollWindow(crystalLayout.detailsRows, 8, 9);
+    assert(scroll.scrolls && scroll.first == 2 && 9 < scroll.first + scroll.count);
+    scroll = scrollWindow(crystalLayout.detailsRows, 8, 12);
+    assert(scroll.scrolls && scroll.first == 5 && 12 < scroll.first + scroll.count);
 
     // A real scrollbar is visible only when the Details window overflows.
     auto thumb = scrollThumb(gen2Layout.detailsRows, 8, 0, 288);
-    assert(!thumb.visible);
+    assert(thumb.visible);
     const auto crystalTopThumb = scrollThumb(crystalLayout.detailsRows, 8, 0, 288);
     const auto crystalMidThumb = scrollThumb(crystalLayout.detailsRows, 8, 1, 288);
-    const auto crystalBottomThumb = scrollThumb(crystalLayout.detailsRows, 8, 4, 288);
+    const auto crystalBottomThumb = scrollThumb(crystalLayout.detailsRows, 8, 5, 288);
     assert(crystalTopThumb.visible && crystalTopThumb.offset == 0);
     assert(crystalTopThumb.length > 0 && crystalTopThumb.length < 288);
     assert(crystalMidThumb.offset > crystalTopThumb.offset);
@@ -204,6 +205,7 @@ int main() {
            crystalBottomThumb.offset + crystalBottomThumb.length <= 288);
 
     // Derived HP DV is visible but skipped: LEFT from HP Stat Exp stays in STATS.
+    static_assert(moveRowFocus(506).x == 8 && moveRowFocus(506).width == 490);
     assert((moveColumn(Generation::Gen1, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 1, 0}));
     assert((moveColumn(Generation::Gen2, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 1, 0}));
     assert((moveColumn(Generation::Gen3, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 0, 0}));

@@ -59,9 +59,9 @@ void resetUnifiedFocus(TrainerViewScreen& screen) {
 
 void mirrorPickerFocus(State& state, const Unified::Focus& focus) {
     if (focus.panel == Unified::Panel::Details) {
-        // Pokérus moved to shared DETAILS row 7, but the proven named picker adapter still uses
+        // Pokérus lives on shared DETAILS row 8; the proven named picker adapter still uses
         // its internal legacy Values row 7. Keep that backend detail hidden behind the shared shell.
-        if (focus.row == 7) {
+        if (focus.row == 8) {
             state.panel = Foundation::Panel::Values;
             state.row = 7;
             state.column = 0;
@@ -84,7 +84,7 @@ void mirrorPickerFocus(State& state, const Unified::Focus& focus) {
 }
 
 bool sharedPickerField(const Unified::Focus& focus) noexcept {
-    return (focus.panel == Unified::Panel::Details && (focus.row == 0 || focus.row == 7)) ||
+    return (focus.panel == Unified::Panel::Details && (focus.row == 0 || focus.row == 8)) ||
            (focus.panel == Unified::Panel::Moves && focus.column == 0);
 }
 
@@ -270,42 +270,70 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return true;
         }
         if (focus.row == 2) {
-            beginProgressionEditor(screen);
+            const auto result = Utils::promptNumber("Generation II Level", p.level, 1, 100);
+            if (!result.accepted) return true;
+            const uint8_t requested = static_cast<uint8_t>(result.value);
+            if (screen.sourceGameId == "crystal_gbc") {
+                const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
+                if (caught.present && caught.levelCode >= 2 && requested < caught.levelCode) {
+                    screen.postStatus("Current level cannot be below Crystal met level", 300);
+                    return true;
+                }
+            }
+            state.setLevel(requested);
             return true;
         }
         if (focus.row == 3) {
+            const auto result = Utils::promptNumber("Generation II Experience",
+                static_cast<int>(p.experience), 0,
+                static_cast<int>(state.maximumExperience()));
+            if (!result.accepted) return true;
+            const uint32_t experience = static_cast<uint32_t>(result.value);
+            const uint8_t requestedLevel = Pokemon::getLevelFromExp(
+                experience, Pokemon::getGrowthRate(p.species));
+            if (screen.sourceGameId == "crystal_gbc") {
+                const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
+                if (caught.present && caught.levelCode >= 2 && requestedLevel < caught.levelCode) {
+                    screen.postStatus("Experience would put current level below Crystal met level", 300);
+                    return true;
+                }
+            }
+            state.setExperience(experience);
+            return true;
+        }
+        if (focus.row == 4) {
             const auto result = Utils::promptText("OT Name", "1-10 Generation II characters",
                                                   p.originalTrainer, 10);
             if (result.accepted) p.originalTrainer = result.text;
             return true;
         }
-        if (focus.row == 4) {
+        if (focus.row == 5) {
             const auto result = Utils::promptNumber("Trainer ID", p.trainerId, 0, 65535);
             if (result.accepted) p.trainerId = static_cast<uint16_t>(result.value);
             return true;
         }
-        if (focus.row == 5) {
+        if (focus.row == 6) {
             openHeldItemPicker(state);
             return true;
         }
-        if (focus.row == 6) {
+        if (focus.row == 7) {
             const auto result = Utils::promptNumber("Friendship", p.friendship, 0, 255);
             if (result.accepted) p.friendship = static_cast<uint8_t>(result.value);
             return true;
         }
-        if (focus.row == 7) {
+        if (focus.row == 8) {
             p.pokerus = Gen2Native::cyclePokerusState(p.pokerus);
             return true;
         }
-        if (focus.row >= 8 && screen.sourceGameId == "crystal_gbc") {
+        if (focus.row >= 9 && screen.sourceGameId == "crystal_gbc") {
             auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
             // Time, met-level and OT-gender belong to an existing Crystal caught record.
             // Raw zero means "not recorded"; never manufacture partial history from it.
-            if (focus.row == 9 && !caught.present) {
+            if (focus.row == 10 && !caught.present) {
                 screen.postStatus("Choose a legitimate Crystal encounter first", 300);
                 return true;
             }
-            if (focus.row == 8) {
+            if (focus.row == 9) {
                 if (!caught.present) {
                     state.crystalMetTime = static_cast<uint8_t>((state.crystalMetTime + 1) % 4);
                     // Pending Met Time is editor-only until a legitimate location creates caught history.
@@ -315,7 +343,7 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                     crystalAllowedTimeMask(screen, p, caught), caught.timeOfDay);
                 state.crystalMetTime = caught.timeOfDay;
             }
-            if (focus.row == 9) {
+            if (focus.row == 10) {
                 const auto choices = Encounter::forGameSpecies(screen.sourceGameId, p.species);
                 const Encounter::EncounterTemplate* selected = nullptr;
                 for (const auto& encounter : choices) {
@@ -352,7 +380,7 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                     caught.levelCode = static_cast<uint8_t>(result.value);
                 }
             }
-            if (focus.row == 10) {
+            if (focus.row == 11) {
                 pickerStateFor(screen).model.openLocation(
                     screen.sourceGameId, p.species, caught.location, caught.levelCode);
                 if (pickerStateFor(screen).model.locationCount() == 0) {
@@ -363,7 +391,7 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                 screen.controllerNavigation.reset();
                 return true;
             }
-            if (focus.row == 11) {
+            if (focus.row == 12) {
                 if (!caught.present) {
                     state.crystalOtGender =
                         Gen2Native::cycleUnrecordedCrystalOtGender(state.crystalOtGender);
@@ -624,7 +652,8 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
     std::vector<std::pair<std::string, std::string>> rows{
         {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
         {"Nickname", p.nickname},
-        {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
+        {"Level", std::to_string(p.level)},
+        {"Experience", std::to_string(p.experience)},
         {"OT Name", p.originalTrainer},
         {"Trainer ID", std::to_string(p.trainerId)},
         {"Held Item", itemText(p.heldItem)},
@@ -677,8 +706,8 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
         const int yy = y + 62 + slot * 32;
         const bool selected = !passive && visibleMoveFocus.panel == Unified::Panel::Moves && visibleMoveFocus.row == slot;
         if (selected) {
-            const auto cell = Unified::cellFocus(visibleMoveFocus);
-            fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::Accent, 2);
+            const auto cell = Unified::moveRowFocus(w);
+            fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::FocusBorder, 2);
         }
         const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];
         const auto status = moveStatus(screen, state, slot);

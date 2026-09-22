@@ -368,10 +368,10 @@ constexpr Layout layoutFor(Generation generation, bool crystal = false) noexcept
     // Gen II extends the accepted shared shell by putting descriptive/native identity
     // capabilities in DETAILS. VALUES stays stat-focused: five DV/Stat Exp rows + Shiny/Gender.
     if (generation == Generation::Gen2)
-        return {/*details*/static_cast<uint8_t>(crystal ? 12 : 8), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
+        return {/*details*/static_cast<uint8_t>(crystal ? 13 : 9), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
     if (generation == Generation::Gen3)
         return {/*details*/15, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
-    return {/*details*/5, /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
+    return {/*details*/6, /*values*/6, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
 
 struct Focus {
@@ -499,6 +499,9 @@ constexpr Focus passiveViewMoveColumn(Generation generation, Focus focus, int di
 
 constexpr const char* statsHeading() noexcept { return "STATS"; }
 struct CellFocus { int x, width; };
+constexpr CellFocus moveRowFocus(int panelWidth) noexcept {
+    return {8, panelWidth > 16 ? panelWidth - 16 : 0};
+}
 constexpr CellFocus cellFocus(Focus focus) noexcept {
     if (focus.panel == Panel::Details) return {104, 186};
     if (focus.panel == Panel::Moves) {

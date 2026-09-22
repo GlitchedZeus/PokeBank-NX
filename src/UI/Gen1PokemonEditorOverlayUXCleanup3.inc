@@ -164,9 +164,11 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
     const uint16_t species = static_cast<uint16_t>(state.pickerValue);
     if (state.mode == UX2Mode::AddDraft) {
         const bool beforeShiny = ux3IsShiny(state.draft);
-        if (species != state.draft.species)
+        if (species != state.draft.species) {
             state.draft.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
                 screen.sourceGameId, species);
+            state.draft.experience.reset();
+        }
         state.draft.nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(state.draft.nickname, state.draft.species, species);
         state.draft.species = species; // Moves stay intact and are revalidated visibly below.
         if (beforeShiny != ux3.pickerPreviewShiny)

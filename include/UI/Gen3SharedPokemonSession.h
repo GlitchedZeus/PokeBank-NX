@@ -68,14 +68,16 @@ struct Session {
                                            : ProgressionSource::Unchanged;
     }
 
-    void beginCreate(const Gen3::TrainerRecord& trainer) {
+    void beginCreate(const Gen3::TrainerRecord& trainer, uint8_t originGame = 4) {
         Gen3::StagedPokemonRecord record{};
         record.species = 25;
         record.level = 5;
+        record.experience = Pokemon::getExpForLevel(5, Pokemon::getGrowthRate(25));
         record.language = 2;
         record.friendship = 70;
         record.ball = 4;
         record.metLevel = 5;
+        record.originGame = originGame;
         record.otName = trainer.name;
         record.tid = trainer.tid16;
         record.sid = trainer.sid16;
@@ -181,6 +183,7 @@ struct Session {
         Gen3::BoxPokemonCreate create;
         create.species = working.species;
         create.level = working.level;
+        create.experience = working.experience;
         create.nickname = working.nickname;
         create.otName = working.otName;
         create.tid = working.tid;
@@ -188,9 +191,13 @@ struct Session {
         create.moves = working.moves;
         create.pp = working.pp;
         create.ppUps = working.ppUps;
+        create.ivs = working.ivs;
+        create.evs = working.evs;
         create.language = working.language;
         create.friendship = working.friendship;
+        create.pokerus = working.pokerus;
         create.ball = working.ball;
+        create.metLevel = working.metLevel;
         create.metLocation = working.metLocation;
         create.nature = requestedNature;
         create.gender = requestedGender;

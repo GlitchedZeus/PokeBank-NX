@@ -253,7 +253,7 @@ bool beginCreate(TrainerViewScreen& screen, int box, int slot) {
     state.legality = false;
     state.confirmRelease = false;
     state.passive = false;
-    state.session.beginCreate(staged->trainer());
+    state.session.beginCreate(staged->trainer(), staged->originGame());
     resetWorkspaceFocus(state);
     return true;
 }
@@ -382,7 +382,7 @@ bool pidLinkedRowEditable(const State& state, int row) noexcept {
     if (!state.session.editable()) return false;
     if (row == 6 || row == 8) return true; // Nature / Shiny
     if (row == 7) return variableGenderSpecies(state.session.working.species);
-    if (row == 9) return dualAbilitySpecies(state.session.working.species);
+    if (row == 9) return true;
     return false; // PID itself is always derived/read-only.
 }
 
@@ -554,12 +554,9 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         }
         state.pickerValues = {0, 1};
     } else if (target == PickerTarget::Ability) {
-        if (!dualAbilitySpecies(state.session.working.species)) {
-            state.pickerTarget = PickerTarget::None;
-            screen.postStatus("This species has one native Generation III ability", 240);
-            return;
-        }
-        state.pickerValues = {1, 2};
+        state.pickerValues = dualAbilitySpecies(state.session.working.species)
+            ? std::vector<uint16_t>{1, 2}
+            : std::vector<uint16_t>{1};
     } else if (target == PickerTarget::Move) {
         const auto game = PokeVault::Integration::Gen3EditorProvider::sourceGameForId(screen.sourceGameId);
         if (game) {
@@ -748,10 +745,7 @@ void editStatCell(TrainerViewScreen& screen, State& state) {
                 state.previewValid = false;
                 return;
             case 9:
-                if (pidLinkedRowEditable(state, 9))
-                    openValuePicker(screen, state, PickerTarget::Ability);
-                else
-                    screen.postStatus("This species has one native Generation III ability", 240);
+                openValuePicker(screen, state, PickerTarget::Ability);
                 return;
             default:
                 screen.postStatus("PID is derived from the selected Generation III traits", 260);
@@ -876,12 +870,24 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {
         if (state.session.setSpecies(state.speciesPreview, screen.sourceGameId)) {
             state.speciesPicker = false;
             const auto& p = state.session.working;
-            if (p.metLocation != 0 &&
-                !Encounter::locationAllowedWithGen3Provenance(screen.sourceGameId, p.species, p.metLocation)) {
-                state.session.working.metLocation = 0;
-                state.session.working.metLevel = 0;
-                state.selectedEncounter.reset();
-                screen.postStatus("Species changed; choose a new legitimate encounter", 300);
+            if (p.metLocation != 0) {
+                const auto encounters = Encounter::forGameSpeciesWithGen3Provenance(
+                    screen.sourceGameId, p.species);
+                bool stillValid = false;
+                for (const auto& choice : encounters) {
+                    if (choice.encounter.location == p.metLocation &&
+                        choice.encounter.containsLevel(p.metLevel)) {
+                        stillValid = true;
+                        state.selectedEncounter = choice;
+                        break;
+                    }
+                }
+                if (!stillValid) {
+                    state.session.working.metLocation = 0;
+                    state.session.working.metLevel = 0;
+                    state.selectedEncounter.reset();
+                    screen.postStatus("Species changed; choose a new legitimate encounter", 300);
+                }
             }
         }
         else
@@ -1393,7 +1399,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const bool selected = visibleMoveFocus.panel == Shared::Panel::Moves &&
                               visibleMoveFocus.row == row;
         if (selected) {
-            const auto cell = Shared::cellFocusFor(Shared::Generation::Gen3, visibleMoveFocus);
+            const auto cell = Shared::moveRowFocus(rightW);
             drawFocus(fb, rightX + cell.x, yy - 5, cell.width, 32, true);
         }
         const uint16_t move = p.moves[static_cast<std::size_t>(row)];
@@ -1615,11 +1621,13 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
 } // namespace
 
 bool beginPassiveView(TrainerViewScreen& screen) {
+    auto& state = stateFor(screen);
+    // Never let inherited Details bootstrap replace an active shared Create/Edit/View session.
+    if (workspaceActive(state)) return state.passive;
     if (!screen.details.active) return false;
     auto* target = screen.detailsTargetPokemon();
     if (!target || target->getGameGroup() != Enums::GameVersion::FRLG || target->getData().size() < 80)
         return false;
-    auto& state = stateFor(screen);
     if (state.passive && workspaceActive(state)) return true;
     auto* encrypted = Encryption::encryptArray3FRLG(target->getData());
     std::array<uint8_t,80> raw{};

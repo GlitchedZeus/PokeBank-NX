@@ -130,6 +130,7 @@ int main() {
     BoxPokemonCreate create;
     create.species = 6;
     create.level = 36;
+    create.experience = Pokemon::getExpForLevel(36, StagedPokemonEditor::growthRate(create.species));
     create.nickname = "Charizard";
     create.otName = "RED";
     create.moves = {53,0,0,0}; // Flamethrower is compatible in Red.
@@ -143,6 +144,7 @@ int main() {
     assert(editor->stageAdd(2, 1, create, error));
     const auto staged = editor->boxedPokemon(2, 1, error);
     assert(staged && staged->species == 6);
+    assert(staged->level == create.level && staged->experience == *create.experience);
     const auto draftPresentation = PokeBank::UIModel::presentGen1Pokemon(
         create.species, create.level, create.dvs, create.statExperience);
     const auto stagedPresentation = PokeBank::UIModel::presentGen1Pokemon(*staged);
@@ -159,6 +161,7 @@ int main() {
     assert(reparsed && reparsed.save);
     const auto reparsedShiny = reparsed.save->boxes()[2].slots[1];
     assert(reparsedShiny);
+    assert(reparsedShiny->level == create.level && reparsedShiny->experience == *create.experience);
     assert(PokeBank::UIModel::presentGen1Pokemon(*reparsedShiny).battleStats == draftPresentation.battleStats);
     assert(stored(*reparsedShiny) == shinyDVs);
     assert(ShinyDVs::isShiny(stored(*reparsedShiny)));

@@ -194,15 +194,16 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         fb.drawText(leftX + 82, contentY + 100, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
     drawClassicTypePair(fb, leftX, leftW, contentY + 176, types[0], types[1]);
 
-    const std::array<std::string, 5> leftLabels{"Species", "Nickname", "Level / EXP", "OT", "Trainer ID"};
-    const std::array<std::string, 5> leftValues{
+    const std::array<std::string, 6> leftLabels{"Species", "Nickname", "Level", "EXP", "OT", "Trainer ID"};
+    const std::array<std::string, 6> leftValues{
         speciesCompact(species),
         name,
-        "Lv " + std::to_string(level) + " / " + std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
+        std::to_string(level),
+        std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
         foundationOT(state, *e, pokemon ? &*pokemon : nullptr, add),
         std::to_string(foundationTID(state, *e, pokemon ? &*pokemon : nullptr, add)),
     };
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
         const int yy = contentY + 214 + i * 43;
         const bool selected = editable && foundation.focus.panel == Foundation::Panel::Identity && foundation.focus.row == i;
         drawClassicFocus(fb, leftX + 8, yy, leftW - 16, 38, selected);
@@ -248,24 +249,19 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     }
     fb.drawText(gridX + 8, gridY + 244, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
     const bool shinySelected = editable && foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 5;
-    const bool levelSelected = editable && foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 6;
     drawClassicFocus(fb, gridX, gridY + 276, midW - 20, 38, shinySelected);
     fb.drawText(gridX + 12, gridY + 286, "Shiny",
                 shinySelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 130, gridY + 286, presentation.shiny ? "Yes" : "No",
                 shinySelected ? Colors::SelectedText : (presentation.shiny ? Colors::ShinyStar : Colors::Text), TextStyle::Caption);
-    drawClassicFocus(fb, gridX, gridY + 320, midW - 20, 38, levelSelected);
-    fb.drawText(gridX + 12, gridY + 330, "Level",
-                levelSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 130, gridY + 330, std::to_string(level), Colors::Text, TextStyle::Caption);
 
     const std::string splitSpecial = std::to_string(stats[4]);
-    fb.drawText(gridX + 12, gridY + 374, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 12, gridY + 402, "SpA", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 78, gridY + 402, splitSpecial, Colors::TextSecondary, TextStyle::Caption);
-    fb.drawText(gridX + 194, gridY + 402, "SpD", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 260, gridY + 402, splitSpecial, Colors::TextSecondary, TextStyle::Caption);
-    fb.drawText(gridX + 12, gridY + 432, "one stored Gen I Special stat; split display only", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(gridX + 12, gridY + 334, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(gridX + 12, gridY + 362, "SpA", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(gridX + 78, gridY + 362, splitSpecial, Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(gridX + 194, gridY + 362, "SpD", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(gridX + 260, gridY + 362, splitSpecial, Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(gridX + 12, gridY + 392, "one stored Gen I Special stat; split display only", Colors::TextDim, TextStyle::Caption);
 
     // MOVES — selected row gets only the compact focus outline; text does not become red.
     fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);

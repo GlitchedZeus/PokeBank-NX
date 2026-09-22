@@ -62,6 +62,13 @@ int main() {
 
     assert(foundation.find("Gen II Level") != std::string::npos);
     assert(foundation.find("Gen II Experience") != std::string::npos);
+    const auto directProgression = unified.substr(unified.find("bool activateUnifiedField"),
+        unified.find("bool handleUnifiedWorkspaceInput") - unified.find("bool activateUnifiedField"));
+    assert(directProgression.find("beginProgressionEditor(screen)") == std::string::npos);
+    assert(directProgression.find("\"Generation II Level\"") != std::string::npos);
+    assert(directProgression.find("\"Generation II Experience\"") != std::string::npos);
+    assert(directProgression.find("state.setLevel(requested)") != std::string::npos);
+    assert(directProgression.find("state.setExperience(experience)") != std::string::npos);
 
     assert(foundation.find("state.baseline = *pokemon") != std::string::npos);
     assert(foundation.find("state.working = *pokemon") != std::string::npos);
@@ -158,7 +165,7 @@ int main() {
     assert(unified.find("Encounter::forGameSpecies(screen.sourceGameId, p.species)") != std::string::npos);
 
     assert(unified.find("Choose a legitimate Crystal encounter first") != std::string::npos);
-    assert(unified.find("focus.row == 9 && !caught.present") != std::string::npos);
+    assert(unified.find("focus.row == 10 && !caught.present") != std::string::npos);
     assert(unified.find("cycleUnrecordedCrystalOtGender") != std::string::npos);
     assert(foundation.find("uint8_t crystalMetTime = 0") != std::string::npos);
     assert(unified.find("Pending Met Time is editor-only") != std::string::npos);
@@ -177,11 +184,11 @@ int main() {
     assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
     assert(finalFix.find("drawVerticalScrollIndicator") != std::string::npos);
     assert(finalFix.find("visibleMoveFocus = UnifiedContract::normalizeMoveRowFocus") != std::string::npos);
-    assert(finalFix.find("cellFocus(visibleMoveFocus)") != std::string::npos);
+    assert(finalFix.find("moveRowFocus(w)") != std::string::npos);
     assert(unified.find("Unified::moveRowColumn") != std::string::npos);
     const auto movePanel = unified.substr(unified.find("void drawUnifiedMoves("),
         unified.find("void drawProgressionEditor(") - unified.find("void drawUnifiedMoves("));
-    assert(movePanel.find("Unified::cellFocus(visibleMoveFocus)") != std::string::npos);
+    assert(movePanel.find("Unified::moveRowFocus(w)") != std::string::npos);
     assert(movePanel.find("unified.focus.column == 1") == std::string::npos);
     assert(movePanel.find("unified.focus.column == 2") == std::string::npos);
     assert(unified.find("A/Y/X never mutate a View session") != std::string::npos);
@@ -214,7 +221,7 @@ int main() {
     assert(picker.find("Pokerus strain") == std::string::npos);
     assert(picker.find("Pokerus days remaining") == std::string::npos);
     assert(picker.find("Stored byte preview") == std::string::npos);
-    assert(unified.find("if (focus.row == 7)") != std::string::npos);
+    assert(unified.find("if (focus.row == 8)") != std::string::npos);
     assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus)") != std::string::npos);
     assert(picker.find("state.working.caughtData = 0") != std::string::npos);
 

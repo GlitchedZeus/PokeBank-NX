@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <string>
 
@@ -311,8 +312,16 @@ namespace Panels {
             StatsRadar::drawGen2Labeled(fb, x + 18, cy2 + 4, width - 36,
                 std::min(236, y + height - 36 - (cy2 + 4)),
                 PokeBank::UIModel::Gen2Workspace::battleStats(record));
+        } else if (p->getGameGroup() == Enums::GameVersion::FRLG) {
+            const std::array<uint16_t,6> stats{
+                p->statHPMax(), p->statATK(), p->statDEF(),
+                p->statSPE(), p->statSPA(), p->statSPD()
+            };
+            const int radarH = std::min(236, y + height - 36 - (cy2 + 4));
+            StatsRadar::drawGen3Labeled(fb, x + 18, cy2 + 4, width - 36, radarH, stats);
+            iy = cy2 + radarH + 8;
         } else {
-            // Stat hexagon (actual stats, HOME vertex order [HP, Atk, Def, Spe, SpD, SpA]).
+            // Later formats keep the inherited summary renderer until their shared-editor pass.
             float vals[6] = {
                 static_cast<float>(p->statHPMax()), static_cast<float>(p->statATK()), static_cast<float>(p->statDEF()),
                 static_cast<float>(p->statSPE()),   static_cast<float>(p->statSPD()), static_cast<float>(p->statSPA())

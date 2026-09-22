@@ -304,12 +304,33 @@ void runGame(SourceGame game, Family family) {
     BoxPokemonCreate create;
     create.species = 133;
     create.level = 10;
+    create.experience = Pokemon::getExpForLevel(10, Pokemon::getGrowthRate(133));
     create.nickname = "EEVEE";
+    create.heldItem = 13;
+    create.moves = {33, 45, 0, 0};
+    create.pp = {35, 40, 0, 0};
+    create.ppUps = {0, 1, 0, 0};
+    create.ivs = {31, 30, 29, 28, 27, 26};
+    create.evs = {100, 90, 80, 70, 60, 50};
+    create.language = 2;
+    create.friendship = 88;
+    create.pokerus = 0x21;
+    create.ball = 4;
+    create.metLocation = family == Family::FRLG ? 1 : 57;
+    create.metLevel = 25;
+    create.abilityNumber = 1;
     assert(editor->stageAddBoxPokemon(0, 2, create, error));
     auto created = editor->boxedPokemon(0, 2, error);
     assert(created && created->species == 133 && created->level == 10);
+    assert(created->experience == *create.experience);
     assert(created->originGame == origin(game));
-    assert((created->moves == std::array<uint16_t,4>{}));
+    assert(created->heldItem == create.heldItem);
+    assert(created->moves == create.moves && created->pp == create.pp && created->ppUps == create.ppUps);
+    assert(created->ivs == create.ivs && created->evs == create.evs);
+    assert(created->language == create.language && created->friendship == create.friendship);
+    assert(created->pokerus == create.pokerus && created->ball == create.ball);
+    assert(created->metLocation == create.metLocation && created->metLevel == create.metLevel);
+    assert(created->abilityNumber == 1);
     assert(!created->shiny);
 
     if (game == SourceGame::RubyGBA) {
@@ -317,6 +338,8 @@ void runGame(SourceGame game, Family family) {
         BoxPokemonCreate correlatedCreate;
         correlatedCreate.species = 280; // Ralts: variable gender + two native abilities.
         correlatedCreate.level = 10;
+        correlatedCreate.experience = Pokemon::getExpForLevel(10, Pokemon::getGrowthRate(280));
+        correlatedCreate.metLevel = 10;
         correlatedCreate.nickname = "RALTS";
         correlatedCreate.nature = 3;
         correlatedCreate.gender = 1;

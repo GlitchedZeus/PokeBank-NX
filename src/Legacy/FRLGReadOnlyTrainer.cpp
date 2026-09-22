@@ -99,8 +99,14 @@ namespace PokeVault::Legacy {
             error = "Generation III staged Pokemon editing unavailable";
             return false;
         }
-        const auto bytes = stagedPokemon_->finalizedBytes(error);
-        if (bytes.empty()) return false;
+        // Presentation must reflect the in-progress sparse carry (source holes visible)
+        // without turning that transaction into an exportable save. begin/place/cancel validate
+        // staged_ themselves; strict parse below is a second presentation-only check.
+        const auto& bytes = stagedPokemon_->stagedBytes();
+        if (bytes.empty()) {
+            error = "Generation III staged Pokemon presentation is empty";
+            return false;
+        }
         auto parsed = Integration::Gen3::parse(bytes, stagedPokemon_->sourceGame());
         if (!parsed) {
             error = parsed.detail.empty()
