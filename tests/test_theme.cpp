@@ -139,4 +139,10 @@ int main() {
     assert(gen3.find("selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
     assert(trainer.find("sel ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
 
+    const std::string shell = readFile("include/UI/SharedPokemonShell.h");
+    assert(shell.find("selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+
+    const std::string gen2Shared = readFile("src/UI/Gen2SharedPokemonSurface.inc");
+    assert(gen2Shared.find("selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+
 }

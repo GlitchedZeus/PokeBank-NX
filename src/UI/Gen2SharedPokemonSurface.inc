@@ -441,7 +441,8 @@ void drawSharedDetails(PKSEFramebuffer& fb, const State& state, int x, int y, in
         const int yy = y + 224 + i * 43;
         const bool selected = !passive && state.panel == Foundation::Panel::Identity && state.row == i;
         if (selected) fb.drawSelectionHighlight(x + 8, yy, w - 16, 38);
-        fb.drawText(x + 18, yy + 7, rows[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy + 7, rows[static_cast<std::size_t>(i)].first,
+                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[static_cast<std::size_t>(i)].second, Colors::Text, TextStyle::Caption);
     }
 }

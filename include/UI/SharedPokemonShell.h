@@ -83,9 +83,11 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
     for (std::size_t i = 0; i < window.count; ++i) {
         const auto row = window.first + i;
         const int yy = y + 224 + static_cast<int>(i) * 48;
-        if (focused && row == focus)
+        const bool selected = focused && row == focus;
+        if (selected)
             fb.drawRoundedRect(x + 8, yy - 4, w - 16, 45, 6, Colors::FocusBorder, 2);
-        fb.drawText(x + 16, yy, label(row), Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 16, yy, label(row),
+                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 16, yy + 20, value(row), Colors::Text, TextStyle::Caption);
     }
     fb.clearClip();
