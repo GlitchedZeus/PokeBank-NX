@@ -123,7 +123,8 @@ int main() {
     assert(base.find("constexpr int kEditRows = 2") != std::string::npos);
     assert(unified.find("Unified::statsHeading()") != std::string::npos);
     assert(unified.find("Unified::cellFocus(unified.focus)") != std::string::npos);
-    assert(unified.find("passive ? 0 : unified.detailsFocus") != std::string::npos);
+    assert(unified.find("scrollWindow(rows.size(), 8, unified.detailsFocus)") != std::string::npos);
+    assert(unified.find("passive ? 0 : unified.detailsFocus") == std::string::npos);
     const auto summary = readFile("src/UI/Panels/BoxPokemonPanel.cpp");
     assert(summary.find("StatsRadar::drawGen2Labeled") != std::string::npos);
     assert(summary.find("Gen2Workspace::battleStats(record)") != std::string::npos);
