@@ -131,4 +131,12 @@ int main() {
 
     const std::string gen3 = readFile("src/UI/Gen3SharedPokemonSurface.inc");
     assert(gen3.find("18, Colors::FocusBorder, 2") == std::string::npos);
+    // Focus readability: active labels/values stay bright without introducing a selection fill.
+    assert(gen1.find("selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    assert(gen1.find("shinySelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    assert(gen1.find("levelSelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    assert(gen2.find("Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    assert(gen3.find("selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    assert(trainer.find("sel ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+
 }

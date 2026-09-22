@@ -206,7 +206,8 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         const int yy = contentY + 214 + i * 43;
         const bool selected = editable && foundation.focus.panel == Foundation::Panel::Identity && foundation.focus.row == i;
         drawClassicFocus(fb, leftX + 8, yy, leftW - 16, 38, selected);
-        fb.drawText(leftX + 18, yy + 7, leftLabels[static_cast<size_t>(i)], Colors::TextDim, TextStyle::Caption);
+        fb.drawText(leftX + 18, yy + 7, leftLabels[static_cast<size_t>(i)],
+                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(leftX + 108, yy + 7, leftValues[static_cast<size_t>(i)], Colors::Text, TextStyle::Caption);
     }
 
@@ -244,11 +245,13 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     const bool shinySelected = editable && foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 5;
     const bool levelSelected = editable && foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 6;
     drawClassicFocus(fb, gridX, gridY + 276, midW - 20, 38, shinySelected);
-    fb.drawText(gridX + 12, gridY + 286, "Shiny", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(gridX + 12, gridY + 286, "Shiny",
+                shinySelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 130, gridY + 286, presentation.shiny ? "Yes" : "No",
                 presentation.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
     drawClassicFocus(fb, gridX, gridY + 320, midW - 20, 38, levelSelected);
-    fb.drawText(gridX + 12, gridY + 330, "Level", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(gridX + 12, gridY + 330, "Level",
+                levelSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 130, gridY + 330, std::to_string(level), Colors::Text, TextStyle::Caption);
 
     const std::string splitSpecial = std::to_string(stats[4]);

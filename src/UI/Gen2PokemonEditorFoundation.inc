@@ -669,7 +669,9 @@ void drawIdentity(PKSEFramebuffer& fb, const State& state, int x, int y, int w, 
         const int yy = y + 54 + i * 43;
         selectedRowBackground(fb, x + 10, yy, w - 20,
                               state.panel == Foundation::Panel::Identity && state.row == i);
-        fb.drawText(x + 18, yy, rows[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy, rows[static_cast<std::size_t>(i)].first,
+                    state.panel == Foundation::Panel::Identity && state.row == i
+                        ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 110, yy, rows[static_cast<std::size_t>(i)].second, Colors::Text, TextStyle::Caption);
     }
     fb.drawText(x + 18, y + h - 48, "Gen II format fields only", Colors::TextDim, TextStyle::Caption);
@@ -693,7 +695,9 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
         const int yy = y + 78 + i * 45;
         selectedRowBackground(fb, x + 10, yy, w - 20,
                               state.panel == Foundation::Panel::Values && state.row == i);
-        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(i)], Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(i)],
+                    state.panel == Foundation::Panel::Values && state.row == i
+                        ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         const Color dvColor = Colors::Text;
         const Color statExpColor = Colors::Text;
         fb.drawText(x + 116, yy, std::to_string(dvs[static_cast<std::size_t>(i)]) + (i == 0 ? " *" : ""),
@@ -716,7 +720,9 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
         const int yy = y + 314 + i * 48;
         selectedRowBackground(fb, x + 10, yy, w - 20,
                               state.panel == Foundation::Panel::Values && state.row == row);
-        fb.drawText(x + 18, yy, extras[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy, extras[static_cast<std::size_t>(i)].first,
+                    state.panel == Foundation::Panel::Values && state.row == row
+                        ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 130, yy, extras[static_cast<std::size_t>(i)].second,
                     i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
     }

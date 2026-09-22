@@ -1350,7 +1350,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             const auto cell = Shared::cellFocusFor(Shared::Generation::Gen3, state.focus);
             drawFocus(fb, midX + cell.x, yy - 5, cell.width, 30, true);
         }
-        fb.drawText(midX + 18, yy, statLabels[static_cast<std::size_t>(row)], Colors::TextDim, TextStyle::Caption);
+        fb.drawText(midX + 18, yy, statLabels[static_cast<std::size_t>(row)],
+                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(midX + 126, yy, std::to_string(p.ivs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(midX + 190, yy, std::to_string(p.evs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(midX + 274, yy, state.previewError.empty() ? std::to_string(p.calculatedStats[static_cast<std::size_t>(row)]) : "—", Colors::TextSecondary, TextStyle::Caption);
@@ -1374,9 +1375,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
                               (state.session.mode == SessionModel::Mode::View || editableRow);
         drawFocus(fb, midX + 8, yy - 5, midW - 16, 29, selected);
         fb.drawText(midX + 18, yy, derived[static_cast<std::size_t>(i)].first,
-                    editableRow ? Colors::TextDim : Colors::Divider, TextStyle::Caption);
-        Color valueColor = editableRow ? Colors::Text : Colors::TextDim;
-        if (i == 1 && editableRow) valueColor = genderValueColor(p.gender);
+                    selected ? Colors::SelectedText
+                             : (editableRow ? Colors::TextDim : Colors::Divider), TextStyle::Caption);
+        Color valueColor = selected ? Colors::SelectedText
+                                    : (editableRow ? Colors::Text : Colors::TextDim);
+        if (i == 1 && editableRow && !selected) valueColor = genderValueColor(p.gender);
         fb.drawText(midX + 130, yy, derived[static_cast<std::size_t>(i)].second,
                     valueColor, TextStyle::Caption);
     }

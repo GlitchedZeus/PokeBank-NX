@@ -460,7 +460,8 @@ namespace UI {
             fb.drawSoftShadow(cardX, cy, cardW, rowH, 14);
             fb.drawFilledRoundedRect(cardX, cy, cardW, rowH, 14, Colors::PanelAlt);
             if (sel) fb.drawRoundedRect(cardX, cy, cardW, rowH, 14, Colors::FocusBorder, 2);
-            fb.drawText(cardX + 24, cy + (rowH - fb.lineHeight(TextStyle::Body)) / 2, labels[i], Colors::TextDim, TextStyle::Body);
+            fb.drawText(cardX + 24, cy + (rowH - fb.lineHeight(TextStyle::Body)) / 2, labels[i],
+                        sel ? Colors::SelectedText : Colors::TextDim, TextStyle::Body);
             int vw, vh; fb.measureText(values[i], vw, vh, TextStyle::Body);
             const int pillW = vw + 44, pillH = 38;
             const int px = cardX + cardW - pillW - 20, py = cy + (rowH - pillH) / 2;
