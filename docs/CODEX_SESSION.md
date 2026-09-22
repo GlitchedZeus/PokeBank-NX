@@ -26,7 +26,7 @@ tools/recover_workspace.py
 Routine recovery:
 
 ```text
-origin/feature/pokebank-playable
+authoritative branch from CURRENT_STATUS.md / NEXT_CODEX_PROMPT.md
         ↓
 python3 tools/recover_workspace.py
         ↓
@@ -106,7 +106,7 @@ Then open only the one note relevant to the active task.
 6. Treat `README.md`, future vision/roadmap/backlog docs and product planning as context only unless `NEXT_CODEX_PROMPT.md` explicitly promotes something into the active milestone.
 7. Treat `docs/history/`, old `PROMPT_*` files, session logs, `PROJECT_MAP.md`, `NEXT_SESSION_PLAN.md`, old device reports and older `BUILD_RECORD.md` sections as historical/recovery evidence, not current state, unless the authoritative prompt points to them.
 8. Reuse completed verification and generated assets when the exact application source is unchanged and the authoritative prompt permits reuse. Do not rerun expensive work merely because a session restarted.
-9. Push coherent checkpoints early to `origin/feature/pokebank-playable` unless the authoritative prompt says otherwise.
+9. Push coherent checkpoints only to the branch named by `CURRENT_STATUS.md` / `docs/NEXT_CODEX_PROMPT.md`. Do not assume `feature/pokebank-playable` when an active draft PR branch exists.
 10. Before calling a session safely saved, every project-authored code/test/mapping/generator/manual correction must be committed, pushed and remote-verified. A generated/manual fix may not live only in ignored `romfs/` output.
 11. Never push PokeBank NX custom code upstream to PKSE.
 12. Keep application-source SHA, documentation SHA and artifact SHA distinct.
@@ -126,11 +126,11 @@ Older standalone recovery/session prompts remain in `docs/` for archaeology and 
 ## Short launcher for normal coding
 
 ```text
-Continue PokeBank NX on feature/pokebank-playable. Use HIGH reasoning. Read CURRENT_STATUS.md and docs/CODEX_SESSION.md, then execute docs/NEXT_CODEX_PROMPT.md exactly. Use docs/PROJECT_RESOURCE_INDEX.md to open only the relevant game/system chunk and docs/RESEARCH_CURRENT_INDEX.md only when reference research is needed. Push coherent checkpoints early only to origin/feature/pokebank-playable; never push custom code upstream.
+Continue PokeBank NX from GitHub's current authoritative state. Use HIGH reasoning. Read CURRENT_STATUS.md and docs/CODEX_SESSION.md, then execute docs/NEXT_CODEX_PROMPT.md exactly. Re-fetch the active PR before editing and push only to the branch named by the authoritative prompt; never reset backward and never push custom code upstream. Use docs/PROJECT_RESOURCE_INDEX.md only for the relevant game/system chunk and docs/REFERENCE_INDEX.md / docs/RESEARCH_CURRENT_INDEX.md when external research is needed.
 ```
 
 ## Short launcher when the user says RECOVERY
 
 ```text
-RECOVERY. Use origin/feature/pokebank-playable as the normal source of truth. Read docs/RECOVERY_CONTRACT.md, CURRENT_STATUS.md and docs/NEXT_CODEX_PROMPT.md, then run `python3 tools/recover_workspace.py`. If it prints RECOVERY COMPLETE, continue the active task immediately. Do not inspect reflogs/worktrees/history unless that deterministic recovery path fails or I explicitly ask you to rescue unsaved local-only work.
+RECOVERY. Use GitHub plus CURRENT_STATUS.md / docs/NEXT_CODEX_PROMPT.md to determine the authoritative active branch; do not assume production when a focused PR is active. Read docs/RECOVERY_CONTRACT.md, CURRENT_STATUS.md and docs/NEXT_CODEX_PROMPT.md, then run `python3 tools/recover_workspace.py`. If it prints RECOVERY COMPLETE, continue the active task immediately. Do not reset backward or inspect reflogs/worktrees/history unless deterministic recovery fails or I explicitly ask you to rescue unsaved local-only work.
 ```
