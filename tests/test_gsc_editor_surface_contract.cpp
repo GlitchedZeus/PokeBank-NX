@@ -158,7 +158,7 @@ int main() {
     assert(unified.find("Encounter::forGameSpecies(screen.sourceGameId, p.species)") != std::string::npos);
 
     assert(unified.find("Choose a legitimate Crystal encounter first") != std::string::npos);
-    assert(unified.find("(focus.row == 8 || focus.row == 9) && !caught.present") != std::string::npos);
+    assert(unified.find("focus.row == 9 && !caught.present") != std::string::npos);
     assert(unified.find("cycleUnrecordedCrystalOtGender") != std::string::npos);
     assert(foundation.find("uint8_t crystalMetTime = 0") != std::string::npos);
     assert(unified.find("Pending Met Time is editor-only") != std::string::npos);
