@@ -1,122 +1,141 @@
-# NEXT CODEX PROMPT — FINISH GEN II SHARED EDITOR DEVICE CANDIDATE
+# NEXT CODEX PROMPT — PR #77 HARDWARE RETEST HOLD
 
-Continue PokeBank NX from the existing Gen II work. Do not restart, create a replacement branch, or reset newer commits.
+Continue PokeBank NX from the current GitHub state. Do not restart, replace the branch, reset backward, or merge the active PR.
 
-## Repository state
-
-```text
-Repository: GlitchedZeus/PokeBank-NX
-Production branch: feature/pokebank-playable
-Production checkpoint: a9fc4521087cdc80078c7db620f1be0107adce58
-Focused branch: feature/gen2-shared-pokemon-editor-20260914
-PR #68: OPEN / DRAFT / NOT MERGED
-Known implementation head: 43b8563d4177b58ae0f341c1ebd58f86e2ee4fdb
-Known implementation tree: e791463ef438b5795da28c636de7bcac1105806f
-```
-
-First re-fetch PR #68. If it has advanced, preserve the newer head and continue from it.
-
-## Accepted milestones — do not reopen without evidence
-
-- Gen I RBY read-only: DEVICE ACCEPTED
-- Gen II GSC read-only: DEVICE ACCEPTED
-- Gen III GBA read-only: DEVICE ACCEPTED
-- Classic staged Inventory: DEVICE ACCEPTED
-- Gen I boxed staged Pokémon editor: DEVICE ACCEPTED
-- Gen I passive View unification: DEVICE ACCEPTED
-
-Accepted Gen I editor artifact:
+## Authoritative current state
 
 ```text
-source 69668bc81629228ef25c1bdada7c7ce1aed9b666
-NRO PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
-SHA-256 3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
+Repository:
+GlitchedZeus/PokeBank-NX
+
+Production branch:
+feature/pokebank-playable
+
+Active PR:
+#77 — Generation III: extend the shared Pokemon editor
+
+Active branch:
+feature/gen3-shared-pokemon-editor-20260919
+
+Exact candidate under physical test:
+2e4780412377abab3ffbe4fc2e4757339214a90f
+
+Tree:
+cdbf0b8faae901c8d765d06b95cac3140bd69e75
+
+NRO:
+PokeBank-NX-Gen1-UX4-Retest-2e478041.nro
+
+NRO SHA-256:
+32b08c1cf589252022e68bf50fe0847fea7cbf1b86835178e7d2a2c268e3b43c
+
+PR #77:
+OPEN / DRAFT / NOT MERGED
+
+Candidate:
+CI VERIFIED
+DEVICE RETEST REQUIRED
+NOT DEVICE ACCEPTED
 ```
 
-## Current Gen II implementation
+GitHub is authoritative. At the beginning of a coding session, re-fetch PR #77. If its head has advanced, preserve the newer head and reconcile forward. Never reset/rebase backward to the SHA above merely because it is recorded here.
 
-The focused branch already contains the shared Gen II View/Create/Edit work. Do not redo research or regenerate compatibility data unless a failing test proves the existing data is wrong.
+## Current STOP condition
 
-Implemented:
+The owner is physically testing the exact Actions-built NRO above.
 
-- Gold/Silver vs Crystal exact-game move compatibility;
-- pinned offline compatibility tables derived from PKHeX reference commit `77dcd3a7895bceaafbbff12d25bdf77c1acd8ca5`;
-- passive View live compatibility: green `OK` / orange `Unusual preserved`;
-- encounter legality remains `Not checked`;
-- passive View does not show editor-internal `PKSE three-panel workspace` wording;
-- shared Gen II `DETAILS | VALUES | MOVES` View/Create/Edit;
-- authentic DVs / derived HP DV / Stat Exp;
-- one Special DV feeding split SpA/SpD battle presentation;
-- six-stat and six-axis radar presentation;
-- Held Item picker using the Gen II item domain;
-- Friendship and Pokérus;
-- Crystal-only caught/met data where actually stored;
-- species + Attack-DV gender;
-- DV-derived shiny;
-- local Add/Edit drafts;
-- Y random 0–15 DVs;
-- L/R previous/next panel;
-- Create explicit Stage Add;
-- transactional Edit baseline + Keep/Discard/Continue;
-- discard restores the exact staged state that existed when Edit opened;
-- unrelated edits preserve pre-existing unusual move/PP/PP-Up bytes;
-- Level and EXP use separate applet invocations;
-- permanent compatibility/passive-view/editor-surface host/sanitizer tests.
+Until a hardware result is reported:
 
-## Non-negotiable safety
+- do not add source-code cleanup/refactor commits to PR #77;
+- do not merge PR #77;
+- do not start another generation;
+- do not start Vault/EventDex/DS/3DS/new-feature work;
+- do not delete branches, commits, recovery assets, fixtures, or historical audit files;
+- documentation/issue housekeeping belongs on `main` and must not alter the tested candidate.
+
+## Hardware focus
+
+The current retest includes the Gen I middle-values regression:
+
+- HP DV visible/derived but completely non-focusable;
+- Attack/Defense/Speed/Special DVs individually editable through one numeric keyboard;
+- HP/Attack/Defense/Speed/Special Stat Exp individually editable;
+- calculated Stat column visible but non-focusable;
+- calculated Special display retained and non-focusable;
+- Level and Shiny remain selectable;
+- Create/Edit preserve exact Gen I storage semantics.
+
+The owner may also continue reporting Gen II/Gen III hardware bugs. Record every report against the exact NRO/SHA.
+
+## If the candidate fails
+
+1. re-fetch live PR #77;
+2. preserve any newer concurrent work;
+3. reproduce/understand the exact hardware failure;
+4. make only the narrow demonstrated fix on the same branch;
+5. create a new SHA;
+6. rerun the entire required exact-SHA gate;
+7. never combine CI evidence from one SHA with another;
+8. retrieve the exact CI artifact;
+9. classify it `CI VERIFIED / DEVICE RETEST REQUIRED / NOT DEVICE ACCEPTED`;
+10. stop for physical retest.
+
+## If the candidate passes
+
+Record the physical result against the exact NRO/hash first.
+
+Do not automatically call all of Gen II/Gen III accepted if the owner has not explicitly accepted those exact behaviors.
+
+Once the first three generations' editor milestone is explicitly frozen/accepted, the next engineering phase is **safety hardening**, not feature expansion.
+
+Read:
+
+```text
+docs/FULL_PROJECT_AUDIT_2026-09-22.md
+issue #69
+```
+
+Priority:
+
+1. atomic/durable Bank persistence;
+2. no-loss held-Pokémon rollback;
+3. destination-first conversion/custody;
+4. Bank + save transaction journaling;
+5. non-destructive recovery generations;
+6. malformed/truncated save guards;
+7. revalidate prior conversion findings against the accepted source;
+8. physical Switch/SD crash-recovery tests;
+9. Master Vault immutable-original persistence/recovery;
+10. only then broader feature expansion.
+
+## References
+
+Use `docs/REFERENCE_INDEX.md` before implementing a subsystem from scratch.
+
+Important boundaries:
+
+- PKHeX = primary current correctness oracle/reference;
+- PKSM-Core = vendored/reference/adapter candidate;
+- PKSM/pkmn-chest/OpenHomeNX = bank/save/transfer references;
+- PKSM-Scripts + pret/pokediamond = future DS/event/native-game research;
+- Project Pokémon Pokemon-Legality-Checker = historical legality reference only; no license found, so do not copy its source;
+- no upstream write behavior overrides PokeBank NX source-write locks.
+
+## Permanent safety
 
 ```text
 ORIGINAL SOURCE SAVE: IMMUTABLE
 LIVE INSTALLED-GAME WRITE: HARD DISABLED
 LIVE RETROARCH WRITE: HARD DISABLED
 LIVE OTHER-EMULATOR WRITE: HARD DISABLED
-PARTY MUTATION: DEFERRED WHERE NOT SEPARATELY PROVEN
+POKEBANK STAGED EDITING: ALLOWED
+UNKNOWN SAVE VARIANTS: FAIL CLOSED
 ```
 
-## Primary task — freeze and validate one exact candidate
+## PR cleanup state
 
-Do not start Gen III editor, Vault, DS/3DS, or another roadmap milestone.
+- issue #71 / PR #75: COMPLETE / MERGED architecture freeze;
+- PR #72: CLOSED WITHOUT MERGE as superseded; branch/history preserved;
+- PR #77: ONLY ACTIVE DEVELOPMENT PR; OPEN / DRAFT / NOT MERGED.
 
-On the exact current PR #68 head:
-
-1. run `git diff --check`;
-2. run all focused Gen II staged/editor/compatibility/passive-view tests;
-3. run Gen I accepted editor regressions;
-4. run GSC/RBY/FRLG/RSE/inventory regressions;
-5. run source mutation/immutability gates;
-6. run the full permanent host suite;
-7. run ASan and UBSan;
-8. run device asset preflight;
-9. perform a clean devkitA64 compile and final NRO link;
-10. verify embedded application SHA;
-11. verify complete embedded RomFS;
-12. produce source-addressed artifact packaging with manifest and SHA256SUMS.
-
-Earlier CI results from older SHAs are not final-candidate evidence.
-
-If anything fails, inspect the exact failure, fix only the real regression, commit/push, and restart verification from the new exact SHA.
-
-## PR metadata
-
-Update PR #68 body/status summary so it no longer claims Create/Edit, Held Item, compatibility, or transactional editing are still unimplemented. Keep PR #68 OPEN / DRAFT / NOT MERGED.
-
-## Exact hardware handoff
-
-Once every required gate is green on one frozen SHA, retrieve the CI-produced physical-test artifact and independently verify:
-
-- application SHA + tree;
-- workflow/run identity;
-- artifact name/id/size/digest;
-- `BUILD_MANIFEST.json`;
-- `SHA256SUMS.txt`;
-- standalone NRO size + SHA-256;
-- packaged ZIP size + SHA-256;
-- ZIP NRO byte-identical to standalone NRO;
-- embedded source identity;
-- complete RomFS count.
-
-Then provide the actual downloadable `.nro` and STOP coding.
-
-Physical test checklist must cover Gold/Silver/Crystal View/Create/Edit, move compatibility, Held Item, Friendship, Pokérus, Crystal caught/met, six stats/radar, shiny/gender/DVs, L/R/Y controls, transactional discard, invalid Add move blocking, unusual existing move preservation, and unchanged source `.srm`.
-
-Do not merge PR #68 or declare Gen II DEVICE ACCEPTED before the owner reports the physical result.
+Do not reopen PR #72 or create a replacement Gen III branch.
