@@ -145,7 +145,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     fb.drawText(x + 24, y + 18, location ? "Met location — Crystal" : species ? "Species — Generation II" : "Move — Generation II",
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                location ? "Species-valid Crystal encounters • selecting defaults Met Level to encounter minimum" : species ? "#001–#251 • browsing does not change the staged Pokemon"
+                location ? "Species-valid Crystal encounters • time shown when relevant • Met Level defaults to encounter minimum" : species ? "#001–#251 • browsing does not change the staged Pokemon"
                         : "Empty + moves 1–251 • compatibility shown for this exact game",
                 Colors::TextDim, TextStyle::Caption);
 
@@ -164,6 +164,8 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
                 std::to_string(encounter.minLevel);
             if (encounter.maxLevel != encounter.minLevel)
                 label += "–" + std::to_string(encounter.maxLevel);
+            const auto time = Gen2Picker::encounterTimeLabel(encounter.timeMask);
+            if (!time.empty()) label += " — " + time;
             drawPickerRow(fb, x + 20, yy, panelW - 40, label, selected);
         } else if (species) {
             const uint16_t dex = static_cast<uint16_t>(i + 1);

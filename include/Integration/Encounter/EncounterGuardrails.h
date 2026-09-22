@@ -28,6 +28,19 @@ struct EncounterTemplate {
     }
 };
 
+constexpr bool sameEncounterTemplate(const EncounterTemplate& a,
+                                     const EncounterTemplate& b) noexcept {
+    return a.sourceGameId == b.sourceGameId && a.species == b.species &&
+           a.location == b.location && a.minLevel == b.minLevel &&
+           a.maxLevel == b.maxLevel && a.method == b.method && a.timeMask == b.timeMask;
+}
+
+constexpr bool timeAllowed(const EncounterTemplate& encounter, uint8_t timeOfDay) noexcept {
+    if (encounter.timeMask == 0) return true;
+    if (timeOfDay < 1 || timeOfDay > 3) return false;
+    return (encounter.timeMask & static_cast<uint8_t>(1u << timeOfDay)) != 0;
+}
+
 constexpr const char* methodName(Method method) noexcept {
     switch (method) {
         case Method::Grass: return "Wild";
@@ -81,12 +94,25 @@ inline std::vector<Gen3EvolutionParent> gen3EvolutionAncestry(uint16_t currentSp
 }
 
 
-inline std::vector<EncounterTemplate> forGameSpecies(std::string_view sourceGameId, uint16_t species) {
+inline std::vector<EncounterTemplate> deduplicateExactEncounterTemplates(
+    const std::vector<EncounterTemplate>& input) {
     std::vector<EncounterTemplate> out;
+    out.reserve(input.size());
+    for (const auto& encounter : input) {
+        if (std::none_of(out.begin(), out.end(), [&](const auto& existing) {
+                return sameEncounterTemplate(existing, encounter);
+            }))
+            out.push_back(encounter);
+    }
+    return out;
+}
+
+inline std::vector<EncounterTemplate> forGameSpecies(std::string_view sourceGameId, uint16_t species) {
+    std::vector<EncounterTemplate> matches;
     for (const auto& encounter : kEncounterTemplates)
         if (encounter.sourceGameId == sourceGameId && encounter.species == species)
-            out.push_back(encounter);
-    return out;
+            matches.push_back(encounter);
+    return deduplicateExactEncounterTemplates(matches);
 }
 
 struct EncounterProvenanceChoice {

@@ -190,6 +190,19 @@ int main() {
     scroll = scrollWindow(crystalLayout.detailsRows, 8, 11);
     assert(scroll.scrolls && scroll.first == 4 && 11 < scroll.first + scroll.count);
 
+    // A real scrollbar is visible only when the Details window overflows.
+    auto thumb = scrollThumb(gen2Layout.detailsRows, 8, 0, 288);
+    assert(!thumb.visible);
+    const auto crystalTopThumb = scrollThumb(crystalLayout.detailsRows, 8, 0, 288);
+    const auto crystalMidThumb = scrollThumb(crystalLayout.detailsRows, 8, 1, 288);
+    const auto crystalBottomThumb = scrollThumb(crystalLayout.detailsRows, 8, 4, 288);
+    assert(crystalTopThumb.visible && crystalTopThumb.offset == 0);
+    assert(crystalTopThumb.length > 0 && crystalTopThumb.length < 288);
+    assert(crystalMidThumb.offset > crystalTopThumb.offset);
+    assert(crystalBottomThumb.offset == 288 - crystalBottomThumb.length);
+    assert(crystalBottomThumb.offset >= 0 &&
+           crystalBottomThumb.offset + crystalBottomThumb.length <= 288);
+
     // Derived HP DV is visible but skipped: LEFT from HP Stat Exp stays in STATS.
     assert((moveColumn(Generation::Gen1, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 1, 0}));
     assert((moveColumn(Generation::Gen2, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 1, 0}));

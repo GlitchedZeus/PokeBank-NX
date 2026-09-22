@@ -55,6 +55,34 @@ constexpr const char* crystalOriginalTrainerGenderText(const CrystalCaughtData& 
     return !caught.present ? "Unknown" : (caught.originalTrainerFemale ? "Female" : "Male");
 }
 
+enum class CaughtLevelLegality : uint8_t {
+    NotRecorded,
+    UnknownMetLevel,
+    EggMarker,
+    Valid,
+    CurrentBelowMet,
+};
+
+constexpr CaughtLevelLegality caughtLevelLegality(
+    uint8_t currentLevel, const CrystalCaughtData& caught) noexcept {
+    if (!caught.present) return CaughtLevelLegality::NotRecorded;
+    if (caught.levelCode == 0) return CaughtLevelLegality::UnknownMetLevel;
+    if (caught.levelCode == 1) return CaughtLevelLegality::EggMarker;
+    return currentLevel < caught.levelCode ? CaughtLevelLegality::CurrentBelowMet
+                                           : CaughtLevelLegality::Valid;
+}
+
+constexpr const char* caughtLevelLegalityText(CaughtLevelLegality status) noexcept {
+    switch (status) {
+        case CaughtLevelLegality::NotRecorded: return "Not recorded";
+        case CaughtLevelLegality::UnknownMetLevel: return "Met level unknown";
+        case CaughtLevelLegality::EggMarker: return "Egg marker";
+        case CaughtLevelLegality::Valid: return "Level history OK";
+        case CaughtLevelLegality::CurrentBelowMet: return "Current level below met level";
+    }
+    return "Not checked";
+}
+
 // Exact retail Crystal landmark order from pret/pokecrystal landmark_constants.asm + landmarks.asm.
 inline constexpr std::array<const char*, 0x60> crystalLandmarkNames{{
     "Unknown", "New Bark Town", "Route 29", "Cherrygrove City", "Route 30", "Route 31",

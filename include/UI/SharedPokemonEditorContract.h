@@ -328,6 +328,32 @@ constexpr ScrollWindow scrollWindow(std::size_t totalRows, std::size_t visibleCa
     return {first, visibleCapacity, true};
 }
 
+struct ScrollThumb {
+    bool visible = false;
+    int offset = 0;
+    int length = 0;
+};
+
+constexpr ScrollThumb scrollThumb(std::size_t totalRows, std::size_t visibleCapacity,
+                                  std::size_t firstVisible, int trackLength,
+                                  int minimumThumbLength = 18) noexcept {
+    if (totalRows == 0 || visibleCapacity == 0 || visibleCapacity >= totalRows || trackLength <= 0)
+        return {};
+    const std::size_t maxFirst = totalRows - visibleCapacity;
+    if (firstVisible > maxFirst) firstVisible = maxFirst;
+    int length = static_cast<int>((static_cast<long long>(trackLength) *
+                                   static_cast<long long>(visibleCapacity)) /
+                                  static_cast<long long>(totalRows));
+    if (length < minimumThumbLength) length = minimumThumbLength;
+    if (length > trackLength) length = trackLength;
+    const int travel = trackLength - length;
+    const int offset = maxFirst == 0 ? 0 :
+        static_cast<int>((static_cast<long long>(travel) * static_cast<long long>(firstVisible) +
+                          static_cast<long long>(maxFirst) / 2) /
+                         static_cast<long long>(maxFirst));
+    return {true, offset, length};
+}
+
 enum class Panel : uint8_t { Details, Values, Moves };
 
 struct Layout {

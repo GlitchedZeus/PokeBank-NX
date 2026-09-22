@@ -117,17 +117,20 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
     const int viewportY = y + 216;
     const int viewportBottom = y + h - 34;
     fb.drawFilledRect(x + 8, viewportY, w - 16, viewportBottom - viewportY, Colors::Panel);
-    const auto window = UnifiedContract::scrollWindow(rows.size(), 8, passive ? 0 : unified.detailsFocus);
+    const auto window = UnifiedContract::scrollWindow(rows.size(), 8, unified.detailsFocus);
     fb.setClipRect(x + 8, viewportY, w - 16, viewportBottom - viewportY);
     for (std::size_t i = 0; i < window.count; ++i) {
         const std::size_t row = window.first + i;
         const int yy = y + 224 + static_cast<int>(i) * 38;
-        const bool selected = !passive && unified.focus.panel == UnifiedContract::Panel::Details && unified.focus.row == row;
+        const bool selected = unified.focus.panel == UnifiedContract::Panel::Details && unified.focus.row == row;
         drawGen2Focus(fb, x + 8, yy + 2, w - 16, 30, selected);
         fb.drawText(x + 18, yy + 7, rows[row].first, Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[row].second, Colors::Text, TextStyle::Caption);
     }
     fb.clearClip();
+    SharedPokemonShell::drawVerticalScrollIndicator(
+        fb, x + w - 10, viewportY + 6, std::max(0, viewportBottom - viewportY - 12),
+        rows.size(), 8, window.first);
     fb.drawFilledRect(x + w - 50, y + h - 34, 38, 26, Colors::Panel);
 }
 
@@ -155,7 +158,7 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
 
     for (int r = 0; r < 5; ++r) {
         const int yy = y + 70 + r * 34;
-        const bool rowSelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == r;
+        const bool rowSelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == r;
         if (rowSelected) {
             const auto cell = UnifiedContract::cellFocus(unified.focus);
             drawGen2Focus(fb, x + cell.x, yy - 5, cell.width, 28, true);
@@ -179,8 +182,8 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     fb.drawText(x + 18, y + 304, "One Gen II Special DV / Stat Exp feeds both", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
 
-    const bool shinySelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 5;
-    const bool genderSelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 6;
+    const bool shinySelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 5;
+    const bool genderSelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 6;
     drawGen2Focus(fb, x + 8, shinyY - 5, w - 16, 30, shinySelected);
     fb.drawText(x + 18, shinyY, "Shiny", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 134, shinyY, p.shiny ? "Yes (DV-derived)" : "No (DV-derived)",
@@ -202,7 +205,7 @@ void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& scre
     fb.drawText(upsX, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
     for (int slot = 0; slot < 4; ++slot) {
         const int yy = y + 62 + slot * 32;
-        const bool selected = !passive && unified.focus.panel == UnifiedContract::Panel::Moves && unified.focus.row == slot;
+        const bool selected = unified.focus.panel == UnifiedContract::Panel::Moves && unified.focus.row == slot;
         if (selected) {
             const auto cell = UnifiedContract::cellFocus(unified.focus);
             drawGen2Focus(fb, x + cell.x, yy - 5, cell.width, 28, true);
@@ -245,7 +248,7 @@ void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,
 
     if (passive || state.mode == Mode::View) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
-        drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
     } else if (state.mode == Mode::Create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
@@ -270,7 +273,7 @@ void drawFullscreenGen2Passive(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     State visual{};
     visual.begin(pokemon.strictRecord(), Mode::View);
     refreshDerived(visual.working);
-    UnifiedWorkspaceState unified{};
+    auto& unified = unifiedStateFor(screen);
     unified.crystal = screen.sourceGameId == "crystal_gbc";
     drawFullscreenGen2Workspace(screen, fb, visual, unified, true, gen2PassiveRecordContext(screen));
 }

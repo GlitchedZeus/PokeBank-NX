@@ -9,11 +9,25 @@
 #include <cstdint>
 #include <cstdlib>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
 namespace PokeBank::UIModel::Gen2PokemonPicker {
 namespace Encounter = PokeVault::Integration::EncounterGuardrails;
+
+inline std::string encounterTimeLabel(uint8_t timeMask) {
+    if (timeMask == 0) return {};
+    std::string out;
+    const auto add = [&](const char* text) {
+        if (!out.empty()) out += "/";
+        out += text;
+    };
+    if (timeMask & (1u << 1)) add("Morning");
+    if (timeMask & (1u << 2)) add("Day");
+    if (timeMask & (1u << 3)) add("Night");
+    return out;
+}
 
 enum class Kind : uint8_t { None, Species, Move, Location };
 

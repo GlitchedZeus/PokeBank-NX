@@ -57,6 +57,16 @@ inline void drawPortrait(PKSEFramebuffer& fb, int x, int y, uint16_t species, bo
             sprite->width, sprite->height, sprite->data, sprite->channels);
     else fb.drawText(x + 82, y + 104, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
 }
+inline void drawVerticalScrollIndicator(PKSEFramebuffer& fb, int x, int y, int height,
+    std::size_t totalRows, std::size_t visibleCapacity, std::size_t firstVisible) {
+    constexpr int width = 4;
+    const auto thumb = PokeBank::UIModel::SharedPokemonEditor::scrollThumb(
+        totalRows, visibleCapacity, firstVisible, height);
+    if (!thumb.visible) return;
+    fb.drawFilledRoundedRect(x, y, width, height, 2, Colors::Divider);
+    fb.drawFilledRoundedRect(x, y + thumb.offset, width, thumb.length, 2, Colors::TextDim);
+}
+
 // Scroll only the Details rows below the fixed portrait/type header.
 // Two baselines keep full native values visible without clipping the narrow panel.
 template <class Label, class Value>

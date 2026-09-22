@@ -116,11 +116,31 @@ bool handleProgressionEditor(TrainerViewScreen& screen, uint64_t down, uint64_t 
 
     if (unified.progressionRow == 0) {
         const auto result = Utils::promptNumber("Level", state.working.level, 1, 100);
-        if (result.accepted) state.setLevel(static_cast<uint8_t>(result.value));
+        if (result.accepted) {
+            const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+            if (screen.sourceGameId == "crystal_gbc" && caught.present && caught.levelCode >= 2 &&
+                result.value < caught.levelCode) {
+                screen.postStatus("Current level cannot be below this Crystal met level", 300);
+            } else {
+                state.setLevel(static_cast<uint8_t>(result.value));
+            }
+        }
     } else if (unified.progressionRow == 1) {
         const auto result = Utils::promptNumber("Experience", static_cast<int>(state.working.experience),
                                                 0, static_cast<int>(state.maximumExperience()));
-        if (result.accepted) state.setExperience(static_cast<uint32_t>(result.value));
+        if (result.accepted) {
+            const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+            const auto* personal = Gen2::personalRecord(state.working.species);
+            const uint8_t nextLevel = personal
+                ? Pokemon::getLevelFromExp(static_cast<uint32_t>(result.value), personal->experienceGrowth)
+                : state.working.level;
+            if (screen.sourceGameId == "crystal_gbc" && caught.present && caught.levelCode >= 2 &&
+                nextLevel < caught.levelCode) {
+                screen.postStatus("Experience would put current level below this Crystal met level", 300);
+            } else {
+                state.setExperience(static_cast<uint32_t>(result.value));
+            }
+        }
     } else if (unified.progressionRow == 2) {
         unified.progressionEditor = false;
         screen.controllerNavigation.reset();
@@ -255,18 +275,26 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
         }
         if (focus.row >= 8 && screen.sourceGameId == "crystal_gbc") {
             auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
+            // Time, met-level and OT-gender belong to an existing Crystal caught record.
+            // Raw zero means "not recorded"; never manufacture partial history from it.
+            if ((focus.row == 8 || focus.row == 9 || focus.row == 11) && !caught.present) {
+                screen.postStatus("Choose a legitimate Crystal encounter first", 300);
+                return true;
+            }
             if (focus.row == 8) caught.timeOfDay = static_cast<uint8_t>((caught.timeOfDay + 1) % 4);
             if (focus.row == 9) {
                 const auto choices = Encounter::forGameSpecies(screen.sourceGameId, p.species);
                 const Encounter::EncounterTemplate* selected = nullptr;
                 for (const auto& encounter : choices) {
                     if (encounter.location != caught.location) continue;
-                    if (caught.levelCode == 1 && encounter.method == Encounter::Method::Egg) {
+                    const bool timeMatches = Encounter::timeAllowed(encounter, caught.timeOfDay);
+                    if (caught.levelCode == 1 && encounter.method == Encounter::Method::Egg && timeMatches) {
                         selected = &encounter; break;
                     }
-                    if (caught.levelCode >= 2 && encounter.containsLevel(caught.levelCode)) {
+                    if (caught.levelCode >= 2 && encounter.containsLevel(caught.levelCode) && timeMatches) {
                         selected = &encounter; break;
                     }
+                    if (!selected && timeMatches) selected = &encounter;
                     if (!selected) selected = &encounter;
                 }
                 if (!selected) {
@@ -360,8 +388,25 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
             PokeBank::UIModel::PassiveViewAction::Back) {
             closeToActions(screen);
             resetUnifiedFocus(screen);
+            return true;
         }
-        return true;
+        const uint64_t nav = screen.controllerNavigation.apply(
+            down, held, stickX, stickY,
+            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
+        if (down & HidNpadButton_L)
+            unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+        if (down & HidNpadButton_R)
+            unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+        if (nav & HidNpadButton_Up)
+            unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+        if (nav & HidNpadButton_Down)
+            unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+        if (nav & HidNpadButton_Left)
+            unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+        if (nav & HidNpadButton_Right)
+            unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+        unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
+        return true; // A/Y/X never mutate a View session.
     }
 
     if (pickerStateFor(screen).model.active()) return false;
@@ -548,12 +593,11 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
     }
 
-    const auto window = Unified::scrollWindow(rows.size(), 8,
-        passive ? 0 : unified.detailsFocus);
+    const auto window = Unified::scrollWindow(rows.size(), 8, unified.detailsFocus);
     for (std::size_t i = 0; i < window.count; ++i) {
         const std::size_t row = window.first + i;
         const int yy = y + 224 + static_cast<int>(i) * 38;
-        const bool selected = !passive && unified.focus.panel == Unified::Panel::Details && unified.focus.row == row;
+        const bool selected = unified.focus.panel == Unified::Panel::Details && unified.focus.row == row;
         if (selected) {
             const auto cell = Unified::cellFocus(unified.focus);
             fb.drawRoundedRect(x + cell.x, yy + 2, cell.width, 30, 6, Colors::Accent, 2);
@@ -562,8 +606,9 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         fb.drawText(x + 108, yy + 7, rows[row].second,
                     selected ? Colors::Accent : Colors::Text, TextStyle::Caption);
     }
-    if (window.scrolls)
-        fb.drawText(x + w - 44, y + h - 26, "↕", Colors::TextDim, TextStyle::Caption);
+    SharedPokemonShell::drawVerticalScrollIndicator(
+        fb, x + w - 10, y + 222, std::max(0, h - 262),
+        rows.size(), 8, window.first);
 }
 
 void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
@@ -602,7 +647,18 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
         std::string("Move compatibility: ") + (summary == Rules::CompatibilityState::NeedsCorrection
             ? "Invalid draft" : Rules::compatibilityText(summary)),
         unifiedStatusColor(summary), TextStyle::Caption);
-    fb.drawText(x + 18, y + 220, "Encounter legality: Not checked", Colors::TextDim, TextStyle::Caption);
+    if (screen.sourceGameId == "crystal_gbc") {
+        const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+        const auto legality = Gen2Native::caughtLevelLegality(state.working.level, caught);
+        const Color legalityColor = legality == Gen2Native::CaughtLevelLegality::CurrentBelowMet
+            ? Colors::Error
+            : legality == Gen2Native::CaughtLevelLegality::Valid ? Colors::Success : Colors::TextDim;
+        fb.drawText(x + 18, y + 220,
+            std::string("Encounter legality: ") + Gen2Native::caughtLevelLegalityText(legality),
+            legalityColor, TextStyle::Caption);
+    } else {
+        fb.drawText(x + 18, y + 220, "Encounter legality: Not checked", Colors::TextDim, TextStyle::Caption);
+    }
     if (const auto game = Rules::exactGameFromSourceId(screen.sourceGameId))
         Gen2WorkspacePresentation::drawDataAndGraph(fb, x, y + 244, w, h - 256, state.working, *game);
 }
@@ -657,7 +713,7 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (view) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
-        drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
     } else if (create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel Draft"}});

@@ -103,6 +103,39 @@ void runSession(const L& layout,SourceGame game) {
     assert(selectedLocation);
     assert(selectedLocation->sourceGameId == "crystal_gbc");
     assert(selectedLocation->species == 25);
+
+    // Graveler's repeated-looking rows are genuine Morning/Day/Night variants.
+    Picker::Model gravelerLocations;
+    gravelerLocations.openLocation("crystal_gbc", 75, 35, 31);
+    int mtMortar31 = 0;
+    bool sawMorning = false, sawDay = false, sawNight = false, sawRoute45NightRange = false;
+    for (const auto& encounter : gravelerLocations.encounterChoices) {
+        assert(encounter.minLevel >= 2 ||
+               encounter.method == PokeVault::Integration::EncounterGuardrails::Method::Egg);
+        if (encounter.location == 35 && encounter.minLevel == 31 && encounter.maxLevel == 31) {
+            ++mtMortar31;
+            const auto time = Picker::encounterTimeLabel(encounter.timeMask);
+            sawMorning |= time == "Morning";
+            sawDay |= time == "Day";
+            sawNight |= time == "Night";
+        }
+        if (encounter.location == 43 && encounter.minLevel == 23 && encounter.maxLevel == 27 &&
+            Picker::encounterTimeLabel(encounter.timeMask) == "Night")
+            sawRoute45NightRange = true;
+    }
+    assert(mtMortar31 == 3 && sawMorning && sawDay && sawNight);
+    assert(sawRoute45NightRange);
+
+    using EncounterTemplate = PokeVault::Integration::EncounterGuardrails::EncounterTemplate;
+    using EncounterMethod = PokeVault::Integration::EncounterGuardrails::Method;
+    const EncounterTemplate duplicate{"crystal_gbc", 75, 35, 31, 31, EncounterMethod::Grass, 2};
+    const EncounterTemplate distinct{"crystal_gbc", 75, 35, 31, 31, EncounterMethod::Grass, 4};
+    const auto deduped = PokeVault::Integration::EncounterGuardrails::deduplicateExactEncounterTemplates(
+        std::vector<EncounterTemplate>{duplicate, duplicate, distinct});
+    assert(deduped.size() == 2);
+    assert(PokeVault::Integration::EncounterGuardrails::sameEncounterTemplate(deduped[0], duplicate));
+    assert(!PokeVault::Integration::EncounterGuardrails::sameEncounterTemplate(deduped[0], distinct));
+
     Session session;session.begin(entry,SessionMode::Edit);
     assert(session.setLevel(20));
     assert(session.working.level==20 && session.working.experience==8000);

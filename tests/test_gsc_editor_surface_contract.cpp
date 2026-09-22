@@ -26,6 +26,8 @@ int main() {
     assert(picker.find("(nav & HidNpadButton_Left)) picker.model.stepList(-10)") != std::string::npos);
     assert(picker.find("(nav & HidNpadButton_Right)) picker.model.stepList(10)") != std::string::npos);
     const auto pickerModel = readFile("include/UI/Gen2PokemonPickerModel.h");
+    const auto nativePresentation = readFile("include/UI/Gen2NativePresentation.h");
+    const auto sharedShell = readFile("include/UI/SharedPokemonShell.h");
     const auto heldItemModel = readFile("include/UI/Gen2HeldItemPicker.h");
 
     // Active Create/Edit routes consume Species A and picker cancel/accept before box actions.
@@ -153,6 +155,15 @@ int main() {
     assert(unified.find("\"OT Name\", p.originalTrainer") != std::string::npos);
     assert(unified.find("Met Level for selected Crystal encounter") != std::string::npos);
     assert(unified.find("Encounter::forGameSpecies(screen.sourceGameId, p.species)") != std::string::npos);
+
+    assert(unified.find("Choose a legitimate Crystal encounter first") != std::string::npos);
+    assert(unified.find("Current level cannot be below this Crystal met level") != std::string::npos);
+    assert(nativePresentation.find("Current level below met level") != std::string::npos);
+    assert(picker.find("encounterTimeLabel(encounter.timeMask)") != std::string::npos);
+    assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
+    assert(finalFix.find("drawVerticalScrollIndicator") != std::string::npos);
+    assert(unified.find("A/Y/X never mutate a View session") != std::string::npos);
+    assert(finalFix.find("{\"D-pad\", \"Navigate\"}, {\"L/R\", \"Panel\"}") != std::string::npos);
 
     const auto overlay = readFile("src/UI/TrainerViewScreenGSCOverlay.inc");
     assert(overlay.find("publishVerifiedStagedEditorExport(editor, request)") != std::string::npos);

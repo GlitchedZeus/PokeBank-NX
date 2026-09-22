@@ -47,7 +47,8 @@ void drawParityExternalPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& f
     State visual{};
     visual.begin(pokemon.strictRecord(), Mode::View);
     refreshDerived(visual.working); // presentation only: native DVs determine gender/shiny
-    UnifiedWorkspaceState unified{};
+    auto& unified = unifiedStateFor(screen);
+    unified.crystal = screen.sourceGameId == "crystal_gbc";
     const auto g = SharedEditor::geometry720p();
 
     screen.touchButtons.clear();
@@ -69,15 +70,37 @@ void drawParityExternalPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& f
 
     screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget,
                                    16, fb.getHeight() - 68, 190, 58});
-    drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
+    drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
 }
 
-bool handleParityExternalPassiveInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
+bool handleParityExternalPassiveInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                      int stickX, int stickY, const TouchInput& touch) {
     if (!parityPassiveDetailsTarget(screen)) return false;
     if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B, screen.touchedButtonId(touch)) ==
-        PokeBank::UIModel::PassiveViewAction::Back)
+        PokeBank::UIModel::PassiveViewAction::Back) {
         screen.closeDetailsModal();
-    // View is passive by contract: A/Y/L/R/D-pad never reach the old GSC details editor.
+        resetUnifiedFocus(screen);
+        return true;
+    }
+    auto& unified = unifiedStateFor(screen);
+    unified.crystal = screen.sourceGameId == "crystal_gbc";
+    const uint64_t nav = screen.controllerNavigation.apply(
+        down, held, stickX, stickY,
+        HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
+    if (down & HidNpadButton_L)
+        unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+    if (down & HidNpadButton_R)
+        unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+    if (nav & HidNpadButton_Up)
+        unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+    if (nav & HidNpadButton_Down)
+        unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+    if (nav & HidNpadButton_Left)
+        unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+    if (nav & HidNpadButton_Right)
+        unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+    unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
+    // A/Y/X are intentionally ignored: passive View remains strictly read-only.
     return true;
 }
 
@@ -223,7 +246,7 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
                                  int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
     if (handleTrainerSession(screen, down, held, stickX, stickY, touch)) return true;
-    if (handleParityExternalPassiveInput(screen, down, touch)) return true;
+    if (handleParityExternalPassiveInput(screen, down, held, stickX, stickY, touch)) return true;
     if (stateFor(screen).mode != Mode::None) {
         if (!handleUnifiedGen2SurfaceInput(screen, down, held, stickX, stickY, touch))
             handlePickerInput(screen, down, held, stickX, stickY, touch);
