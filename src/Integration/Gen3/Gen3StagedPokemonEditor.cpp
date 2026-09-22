@@ -7,6 +7,7 @@
 #include "Names/MoveInfo.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
+#include "Pokemon/Experience.h"
 #include "Utils/StringHelpers.h"
 
 #include <algorithm>

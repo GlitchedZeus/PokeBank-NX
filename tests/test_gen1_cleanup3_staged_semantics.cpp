@@ -2,6 +2,7 @@
 #include "UI/Gen1PokemonPresentation.h"
 #include "Integration/Gen1/Gen1Shiny.h"
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
+#include "Pokemon/Experience.h"
 
 #include <algorithm>
 #include <array>
