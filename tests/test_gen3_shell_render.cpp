@@ -29,19 +29,26 @@ void PKSEFramebuffer::clearClip() {}
 int main() {
     UI::PKSEFramebuffer fb;
     constexpr UI::SharedPokemonShell::Geometry g(1280,720,46);
+    // Ellipsis must fit and preserve complete UTF-8 characters (the font stub measures bytes).
+    assert(UI::SharedPokemonShell::fitDetailsText(fb, "Pokémon", 200) == "Pokémon");
+    assert(UI::SharedPokemonShell::fitDetailsText(fb, "Pokémon", 63) == "Pok...");
+    assert(UI::SharedPokemonShell::fitDetailsText(fb, "Pokémon", 9).empty());
     for (const auto theme : {UI::ThemeMode::Dark, UI::ThemeMode::Light}) {
         UI::applyTheme(theme);
+        const std::array<const char*,15> labels{{"Species", "Nickname", "Level", "Experience",
+            "OT", "Trainer ID", "SID (read-only)", "Held Item", "Friendship", "Language",
+            "Origin", "Ball", "Met Level", "Met Location", "Pokerus"}};
         for (std::size_t focus=0; focus<15; ++focus) {
             texts.clear(); marks.clear();
             UI::SharedPokemonShell::drawScrollableDetails(fb,g.leftX,g.y,g.leftW,g.h,15,focus,true,
-                [](std::size_t row) { return "Field " + std::to_string(row); },
+                [&](std::size_t row) { return labels[row]; },
                 [](std::size_t row) { return "Full native value " + std::to_string(row); });
             bool selectedLabelVisible=false;
             for (std::size_t i=0; i<texts.size(); ++i) {
                 const auto& t=texts[i];
                 assert(t.x>=g.leftX && t.x+t.w<=g.leftX+g.leftW);
                 assert(t.y>=g.y+224 && t.y+t.h<=g.y+g.h);
-                if (t.value == "Field " + std::to_string(focus)) selectedLabelVisible=true;
+                if (t.value == labels[focus]) selectedLabelVisible=true;
                 for (std::size_t j=i+1; j<texts.size(); ++j) assert(!intersects(t,texts[j]));
             }
             bool clearedViewport = false;
@@ -52,6 +59,12 @@ int main() {
                                 mark.y + mark.h <= g.y + g.h;
             }
             assert(selectedLabelVisible && clearedViewport && focusOutline);
+            // Every field/value pair shares its baseline and leaves the scrollbar gutter clear.
+            for (std::size_t i=0; i+1<texts.size()-1; i+=2) {
+                assert(texts[i].y == texts[i+1].y);
+                assert(texts[i].x + texts[i].w + 12 <= texts[i+1].x);
+                assert(texts[i+1].x + texts[i+1].w <= g.leftX + g.leftW - 28);
+            }
         }
         texts.clear(); marks.clear();
         struct Row { std::string label,value; };

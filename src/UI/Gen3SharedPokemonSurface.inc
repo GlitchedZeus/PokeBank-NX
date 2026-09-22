@@ -373,11 +373,6 @@ bool variableGenderSpecies(uint16_t species) noexcept {
     return ratio > 0 && ratio < 254;
 }
 
-bool dualAbilitySpecies(uint16_t species) noexcept {
-    const auto& personal = Pokemon::getPersonalInfoG3(species);
-    return personal.ability1 != personal.ability2;
-}
-
 bool pidLinkedRowEditable(const State& state, int row) noexcept {
     if (!state.session.editable()) return false;
     if (row == 6 || row == 8) return true; // Nature / Shiny
@@ -554,9 +549,7 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         }
         state.pickerValues = {0, 1};
     } else if (target == PickerTarget::Ability) {
-        state.pickerValues = dualAbilitySpecies(state.session.working.species)
-            ? std::vector<uint16_t>{1, 2}
-            : std::vector<uint16_t>{1};
+        state.pickerValues = SessionModel::nativeAbilitySlots(state.session.working.species);
     } else if (target == PickerTarget::Move) {
         const auto game = PokeVault::Integration::Gen3EditorProvider::sourceGameForId(screen.sourceGameId);
         if (game) {
@@ -566,7 +559,9 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
     }
 
     const uint16_t current = currentPickerValue(state, target, moveSlot);
-    if (std::find(state.pickerValues.begin(), state.pickerValues.end(), current) ==
+    // A stale/zero current ability must never add a non-native slot to this picker.
+    if (target != PickerTarget::Ability &&
+        std::find(state.pickerValues.begin(), state.pickerValues.end(), current) ==
         state.pickerValues.end())
         state.pickerValues.push_back(current);
 

@@ -100,8 +100,8 @@ int main() {
     contains(surface, "PickerTarget::Nature");
     contains(surface, "PickerTarget::Gender");
     contains(surface, "PickerTarget::Ability");
-    contains(surface, "? std::vector<uint16_t>{1, 2}");
-    contains(surface, ": std::vector<uint16_t>{1}");
+    contains(surface, "SessionModel::nativeAbilitySlots(state.session.working.species)");
+    contains(surface, "target != PickerTarget::Ability &&");
     contains(surface, "state.session.setShiny");
     contains(surface, "PID (read-only)");
     contains(surface, "Trainer ID");
@@ -134,7 +134,8 @@ int main() {
     contains(surface, "SharedPokemonShell::drawScrollableDetails");
     contains(shell, "scrollWindow(total, visibleRows, focus)");
     contains(shell, "visibleRows = 8");
-    contains(shell, "valueInset = 112");
+    contains(shell, "labelWidth + 28");
+    contains(shell, "fitDetailsText");
     contains(shell, "drawVerticalScrollIndicator");
     contains(shell, "viewportY = y + 216");
     contains(shell, "fb.setClipRect");

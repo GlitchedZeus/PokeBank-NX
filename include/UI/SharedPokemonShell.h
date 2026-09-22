@@ -67,12 +67,39 @@ inline void drawVerticalScrollIndicator(PKSEFramebuffer& fb, int x, int y, int h
     fb.drawFilledRoundedRect(x, y + thumb.offset, width, thumb.length, 2, Colors::TextDim);
 }
 
+// Bound inline text without splitting a UTF-8 code point when adding an ellipsis.
+inline std::string fitDetailsText(PKSEFramebuffer& fb, const std::string& text, int available) {
+    int width = 0, height = 0;
+    fb.measureText(text, width, height, TextStyle::Caption);
+    if (width <= available) return text;
+    const std::string suffix = "...";
+    fb.measureText(suffix, width, height, TextStyle::Caption);
+    if (width > available) return {};
+    std::string prefix = text;
+    while (!prefix.empty()) {
+        std::size_t end = prefix.size() - 1;
+        while (end > 0 && (static_cast<unsigned char>(prefix[end]) & 0xc0) == 0x80) --end;
+        prefix.resize(end);
+        fb.measureText(prefix + suffix, width, height, TextStyle::Caption);
+        if (width <= available) return prefix + suffix;
+    }
+    return suffix;
+}
+
 // Scroll only the Details rows below the fixed portrait/type header.
 // Shared inline rows keep label and value on one baseline with a full-row focus outline.
 template <class Label, class Value>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
     std::size_t total, std::size_t focus, bool focused, Label label, Value value) {
     constexpr std::size_t visibleRows = 8;
+    // Keep one value column across scrolling windows, sized for the real field labels.
+    int labelWidth = 0;
+    for (std::size_t row = 0; row < total; ++row) {
+        int width = 0, height = 0;
+        fb.measureText(label(row), width, height, TextStyle::Caption);
+        labelWidth = std::max(labelWidth, width);
+    }
+    const int valueInset = std::max(112, std::min(labelWidth + 28, w - 100));
     const auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, visibleRows, focus);
     // Scrolling owns one clipped row viewport. Clear it before painting the next window so
     // an older set of rows can never ghost underneath the current focus position.
@@ -87,20 +114,10 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
         const bool selected = focused && row == focus;
         if (selected)
             fb.drawRoundedRect(x + 8, yy + 2, std::max(0, w - 36), 30, 6, Colors::FocusBorder, 2);
-        const std::string rowLabel = label(row);
-        const std::string fullValue = value(row);
-        std::string rowValue = fullValue;
+        const std::string rowLabel = fitDetailsText(fb, label(row), valueInset - 28);
+        const std::string rowValue = fitDetailsText(fb, value(row), std::max(0, w - valueInset - 28));
         fb.drawText(x + 16, yy + 7, rowLabel,
                     selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
-        constexpr int valueInset = 112;
-        const int available = std::max(0, w - valueInset - 28);
-        int tw = 0, th = 0;
-        fb.measureText(rowValue, tw, th, TextStyle::Caption);
-        while (tw > available && rowValue.size() > 4) {
-            rowValue.resize(rowValue.size() - 1);
-            fb.measureText(rowValue + "...", tw, th, TextStyle::Caption);
-        }
-        if (rowValue != fullValue) rowValue += "...";
         fb.drawText(x + valueInset, yy + 7, rowValue, Colors::Text, TextStyle::Caption);
     }
     fb.clearClip();

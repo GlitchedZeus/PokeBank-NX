@@ -221,6 +221,33 @@ int main() {
     }
     assert(trainer->createBlankPokemon() == nullptr);
 
+    // Reproduce the hardware pickup path through the actual trainer presentation bridge.
+    // Export stays locked during carry, but the staged source hole must still be drawable.
+    auto* staged = trainer->stagedPokemon();
+    assert(staged);
+    const auto sourceBox = strictBoxes.front().location.box;
+    const auto sourceSlot = strictBoxes.front().location.slot;
+    const auto beforeCarry = staged->stagedBytes();
+    const auto original = staged->boxedPokemon(sourceBox, sourceSlot, error)->encryptedBytes;
+    assert(staged->beginSparseMove(sourceBox, {sourceSlot}, error));
+    assert(staged->finalizedBytes(error).empty());
+    assert(trainer->refreshStagedPokemonPresentation(error));
+    assert(!trainer->boxes[sourceBox][sourceSlot]);
+    assert(staged->cancelSparseMove(error));
+    assert(trainer->refreshStagedPokemonPresentation(error));
+    assert(trainer->boxes[sourceBox][sourceSlot]);
+    assert(staged->stagedBytes() == beforeCarry);
+    assert(staged->boxedPokemon(sourceBox, sourceSlot, error)->encryptedBytes == original);
+    assert(!trainer->boxes[13][29]);
+    assert(staged->beginSparseMove(sourceBox, {sourceSlot}, error));
+    assert(trainer->refreshStagedPokemonPresentation(error));
+    assert(staged->placeSparseMove(13, 29, error));
+    assert(trainer->refreshStagedPokemonPresentation(error));
+    assert(!trainer->boxes[sourceBox][sourceSlot]);
+    assert(trainer->boxes[13][29]);
+    assert(staged->boxedPokemon(13, 29, error)->encryptedBytes == original);
+    assert(staged->originalBytes() == sourceBefore);
+
     // Parsing and view-model construction retain source bytes exactly. The new source kind grants
     // View only; every inherited mutation category remains blocked.
     assert(fixture == sourceBefore);

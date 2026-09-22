@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace PokeBank::UIModel::Gen3SharedEditor {
 
@@ -18,6 +19,12 @@ namespace Gen3 = PokeVault::Integration::Gen3;
 
 enum class Mode : uint8_t { None, View, Edit, Create };
 enum class ProgressionSource : uint8_t { Unchanged, Level, Experience };
+
+inline std::vector<uint16_t> nativeAbilitySlots(uint16_t species) {
+    const auto& personal = Pokemon::getPersonalInfoG3(species);
+    return personal.ability1 != personal.ability2
+        ? std::vector<uint16_t>{1, 2} : std::vector<uint16_t>{1};
+}
 
 inline bool sameEditableRecord(const Gen3::StagedPokemonRecord& a,
                                const Gen3::StagedPokemonRecord& b) noexcept {

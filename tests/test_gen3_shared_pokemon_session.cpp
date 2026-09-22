@@ -10,6 +10,13 @@ using namespace PokeBank::UIModel::Gen3SharedEditor;
 namespace Gen3 = PokeVault::Integration::Gen3;
 
 int main() {
+    assert((nativeAbilitySlots(25) == std::vector<uint16_t>{1}));
+    assert((nativeAbilitySlots(280) == std::vector<uint16_t>{1, 2}));
+    for (uint16_t species = 1; species <= 386; ++species) {
+        const auto slots = nativeAbilitySlots(species);
+        assert(slots.front() == 1 && slots.size() <= 2);
+        assert(slots.size() == 1 || slots[1] == 2);
+    }
     Gen3::StagedPokemonRecord source{};
     source.species = 25;
     source.nickname = "PIKACHU";
