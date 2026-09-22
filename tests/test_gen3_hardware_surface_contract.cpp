@@ -188,7 +188,8 @@ int main() {
     assert(actionsBody.find("const int w = occupied ? 650 : 560") != std::string::npos);
     assert(actionsBody.find("const int h = occupied ? 500 : 350") != std::string::npos);
     assert(actionsBody.find("Shared::actionMenuGeometry()") != std::string::npos);
-    assert(actionsBody.find("Colors::FocusBorder, 2") != std::string::npos);
+    assert(actionsBody.find("Colors::Divider, 1") != std::string::npos);
+    assert(actionsBody.find("Colors::FocusBorder, 2") == std::string::npos);
     assert(actionsBody.find("constexpr int x = 250, y = 72, w = 780, h = 560") == std::string::npos);
     contains(composite, "return !Gen3SharedEditorSurface::ownsFrame(screen)");
     assert(composite.find("ClassicPackedMove::handleInput") < composite.find("Gen3SharedEditorSurface::handleInput"));
