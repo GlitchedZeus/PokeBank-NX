@@ -1179,7 +1179,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     constexpr int h = 560;
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 105));
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::PanelAlt);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
     fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget), Colors::Text, TextStyle::Heading);
 
     const int count = static_cast<int>(state.pickerValues.size());
@@ -1260,7 +1260,7 @@ void drawMoveEditor(PKSEFramebuffer& fb, State& state) {
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 95));
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
     fb.drawText(x + 24, y + 18, "Move " + std::to_string(state.moveEditorSlot + 1),
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52, "Contextual editor — B always cancels this dialog",
@@ -1353,7 +1353,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         fb.drawText(midX + 18, yy, statLabels[static_cast<std::size_t>(row)], Colors::TextDim, TextStyle::Caption);
         fb.drawText(midX + 126, yy, std::to_string(p.ivs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(midX + 190, yy, std::to_string(p.evs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
-        fb.drawText(midX + 274, yy, state.previewError.empty() ? std::to_string(p.calculatedStats[static_cast<std::size_t>(row)]) : "—", Colors::Accent, TextStyle::Caption);
+        fb.drawText(midX + 274, yy, state.previewError.empty() ? std::to_string(p.calculatedStats[static_cast<std::size_t>(row)]) : "—", Colors::TextSecondary, TextStyle::Caption);
     }
     fb.drawHDivider(midX + 14, y + 310, midW - 28);
     fb.drawText(midX + 18, y + 318, "PID-LINKED / SAFE EDIT",
@@ -1489,7 +1489,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.speciesPicker) {
         constexpr int px = 110, py = 56, pw = 1060, ph = 600;
         fb.drawFilledRoundedRect(px, py, pw, ph, 18, Colors::Panel);
-        fb.drawRoundedRect(px, py, pw, ph, 18, Colors::FocusBorder, 2);
+        fb.drawRoundedRect(px, py, pw, ph, 18, Colors::Divider, 1);
         fb.drawText(px + 24, py + 16, "Choose Species — Generation III", Colors::Text, TextStyle::Heading);
         SharedSpeciesPicker::drawContent(
             fb, px + 18, py + 12, state.speciesPreview, 386, p.shiny,
@@ -1535,7 +1535,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     const auto actions = Shared::actionsForSlot(occupied, {true, true, true});
 
     // Match the accepted Gen I/Yellow box action sheet: keep the box visible,
-    // dim it, then draw one compact red-outlined modal on top.
+    // dim it, then draw one compact neutral modal on top.
     screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 105));
     const int w = occupied ? 650 : 560;
@@ -1544,7 +1544,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
     const auto geometry = Shared::actionMenuGeometry();
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
     fb.drawText(x + 24, y + 18, occupied ? "Pokemon Actions" : "Empty Slot",
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
@@ -1597,7 +1597,7 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - h) / 2;
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
     fb.drawText(x + 34, y + 30, "Release this Pokemon?", Colors::Text, TextStyle::Heading);
     fb.drawText(x + 34, y + 88,
         "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),

@@ -70,8 +70,8 @@ namespace Panels {
         // Amber pill when the header is focused (navigate up to it, or tap it, to rename). The name
         // is a touch target between the two arrow zones.
         const bool headerFocused = screen.detailViewActive && screen.selectedItemIndex == -1;
-        fb.drawPill(pillX, pillY, pillW, pillH, headerFocused ? Colors::Primary : Colors::Panel);
-        fb.drawText(x + (width - bnW) / 2, pillY + (pillH - bnH) / 2, boxName, headerFocused ? Colors::PrimaryText : Colors::Text);
+        fb.drawPill(pillX, pillY, pillW, pillH, Colors::Panel);
+        fb.drawText(x + (width - bnW) / 2, pillY + (pillH - bnH) / 2, boxName, Colors::Text);
         screen.touchButtons.push_back({ kBoxNameId, x + 64, y, width - 128, headerH });
 
         // ‹ › box arrows — geometric triangles via the symbol font (guaranteed glyphs, unlike

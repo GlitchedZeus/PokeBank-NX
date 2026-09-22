@@ -210,7 +210,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         fb.drawText(leftX + 108, yy + 7, leftValues[static_cast<size_t>(i)], Colors::Text, TextStyle::Caption);
     }
 
-    // STATS — DV and Stat Exp stay neutral; calculated Stat is semantic accent.
+    // STATS — editable values stay bright; calculated/read-only values are visually quieter.
     fb.drawText(midX + 14, contentY + 10, "STATS", Colors::Text, TextStyle::Heading);
     constexpr int labelW = 76;
     constexpr int cellW = 96;
@@ -236,7 +236,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
             else if (c == 1) value = std::to_string(statExp[static_cast<size_t>(r)]);
             else value = std::to_string(stats[static_cast<size_t>(r)]);
             const Color valueColor = (r == 0 && c == 0) ? Colors::TextDim :
-                                     c == 2 ? Colors::Accent : Colors::Text;
+                                     c == 2 ? Colors::TextSecondary : Colors::Text;
             fb.drawText(cellX + 10, rowY + 8, value, valueColor, TextStyle::Caption);
         }
     }
@@ -254,9 +254,9 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     const std::string splitSpecial = std::to_string(stats[4]);
     fb.drawText(gridX + 12, gridY + 374, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 12, gridY + 402, "SpA", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 78, gridY + 402, splitSpecial, Colors::Accent, TextStyle::Caption);
+    fb.drawText(gridX + 78, gridY + 402, splitSpecial, Colors::TextSecondary, TextStyle::Caption);
     fb.drawText(gridX + 194, gridY + 402, "SpD", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 260, gridY + 402, splitSpecial, Colors::Accent, TextStyle::Caption);
+    fb.drawText(gridX + 260, gridY + 402, splitSpecial, Colors::TextSecondary, TextStyle::Caption);
     fb.drawText(gridX + 12, gridY + 432, "one stored Gen I Special stat; split display only", Colors::TextDim, TextStyle::Caption);
 
     // MOVES — selected row gets only the compact focus outline; text does not become red.

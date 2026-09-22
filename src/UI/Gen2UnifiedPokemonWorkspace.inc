@@ -530,9 +530,9 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
         }
         fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 114, yy, std::to_string(dvs[static_cast<std::size_t>(r)]) + (r == 0 ? " *" : ""),
-                    rowSelected && unified.focus.column == 0 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
-                    rowSelected && unified.focus.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)]) : "—";
         fb.drawText(x + 282, yy, stat, Colors::TextDim, TextStyle::Caption);
     }
@@ -558,7 +558,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
         }
         fb.drawText(x + 18, yy, capabilityRows[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 134, yy, capabilityRows[static_cast<std::size_t>(i)].second,
-                    selected ? Colors::Accent : (i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text),
+                    selected ? Colors::Text : (i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text),
                     TextStyle::Caption);
     }
 }
@@ -573,7 +573,7 @@ void drawUnifiedMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     const int y = (fb.getHeight() - navH - h) / 2;
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - navH, Color(0, 0, 0, 95));
     drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
     fb.drawText(x + 24, y + 18, "Move " + std::to_string(unified.moveEditorSlot + 1),
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52, "Contextual editor — B always cancels this dialog",
@@ -656,7 +656,7 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         }
         fb.drawText(x + 18, yy + 7, rows[row].first, Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[row].second,
-                    selected ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
     }
     SharedPokemonShell::drawVerticalScrollIndicator(
         fb, x + w - 10, y + 222, std::max(0, h - 262),
@@ -683,7 +683,7 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
         const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];
         const auto status = moveStatus(screen, state, slot);
         fb.drawText(x + 18, yy, move == 0 ? "Empty" : Names::getMoveName(move),
-                    selected ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 190, yy, std::to_string(state.working.pp[static_cast<std::size_t>(slot)]),
                     Colors::Text, TextStyle::Caption);
         fb.drawText(x + 246, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]),
@@ -734,7 +734,7 @@ void drawProgressionEditor(PKSEFramebuffer& fb, const State& state, const Unifie
         const int yy = y + 96 + i * 48;
         if (unified.progressionRow == i) fb.drawSelectionHighlight(x + 22, yy - 5, w - 44, 40);
         fb.drawText(x + 38, yy + 5, rows[static_cast<std::size_t>(i)].first,
-                    unified.progressionRow == i ? Colors::Accent : Colors::TextDim, TextStyle::Caption);
+                    unified.progressionRow == i ? Colors::Text : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 250, yy + 5, rows[static_cast<std::size_t>(i)].second, Colors::Text, TextStyle::Caption);
     }
     drawNavBar(fb, {{"Up/Down", "Field"}, {"A", "Edit/Apply"}, {"B", "Cancel"}});

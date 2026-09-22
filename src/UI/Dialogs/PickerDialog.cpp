@@ -112,7 +112,7 @@ namespace Dialogs {
         const int ph = H - 2 * py;
         const int px = (W - pw) / 2;
         fb.drawFilledRoundedRect(px, py, pw, ph, 16, Colors::Panel);
-        fb.drawRoundedRect(px, py, pw, ph, 16, Colors::Accent, 2);
+        fb.drawRoundedRect(px, py, pw, ph, 16, Colors::Divider, 1);
 
         // Title + position caption. A pouch picker opened to change an existing item's type says so
         // rather than "Add Item to Pouch".
@@ -157,10 +157,7 @@ namespace Dialogs {
             const int val = (reorder && idx < static_cast<int>(screen.pickerOrder.size())) ? screen.pickerOrder[idx] : idx;
             const int ry = listTop + i * rowH;
             const bool s = (idx == sel);
-            if (s) {
-                fb.drawFilledRoundedRect(px + 12, ry, pw - 24, rowH - 4, 8, Colors::Selected);
-                fb.drawRoundedRect(px + 12, ry, pw - 24, rowH - 4, 8, Colors::Accent, 2);
-            }
+            if (s) fb.drawSelectionHighlight(px + 12, ry, pw - 24, rowH - 4);
             const bool legal = reorder && idx < screen.pickerLegalCount;
             const Color col = legal ? Color(120, 210, 130) : (s ? Colors::Text : Colors::TextDim);
             // Met Location / Form resolve their names through mon-specific context (origin version /

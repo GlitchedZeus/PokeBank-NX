@@ -132,9 +132,9 @@ namespace Panels {
         for (const auto& p : pills) {
             const bool focused = (screen.homeMenuIndex == p.idx);
             fb.drawSoftShadow(rX, py, rW, pillH, pillH / 2);
-            fb.drawPill(rX, py, rW, pillH, focused ? Colors::Primary : Colors::PanelAlt);
-            const Color txt = focused ? Colors::PrimaryText : Colors::Text;
-            if (focused) fb.drawSymbol(rX - 30, py + pillH / 2 - 12, "\xE2\x96\xB6", Colors::Primary);  // ▶ pointer
+            fb.drawPill(rX, py, rW, pillH, Colors::PanelAlt);
+            const Color txt = Colors::Text;
+            if (focused) fb.drawSymbol(rX - 30, py + pillH / 2 - 12, "\xE2\x96\xB6", Colors::FocusBorder);  // ▶ pointer
 
             int lW, lH; fb.measureText(p.label, lW, lH, TextStyle::Heading);
             fb.drawText(rX + 36, py + (pillH - lH) / 2, p.label, txt, TextStyle::Heading);
@@ -143,8 +143,8 @@ namespace Panels {
             int sW, sH; fb.measureText(p.sub, sW, sH, TextStyle::Caption);
             const int subW = sW + 28, subH = 30;
             const int subX = rX + rW - subW - 20, subY = py + (pillH - subH) / 2;
-            fb.drawPill(subX, subY, subW, subH, focused ? Colors::PrimaryText : Colors::Panel);
-            fb.drawText(subX + 14, subY + (subH - sH) / 2, p.sub, focused ? Colors::Primary : Colors::TextDim, TextStyle::Caption);
+            fb.drawPill(subX, subY, subW, subH, Colors::Panel);
+            fb.drawText(subX + 14, subY + (subH - sH) / 2, p.sub, focused ? Colors::Text : Colors::TextDim, TextStyle::Caption);
 
             screen.touchButtons.push_back({ 100 + p.idx, rX, py, rW, pillH });
             py += pillH + pillGap;
@@ -161,15 +161,15 @@ namespace Panels {
             const int cx = rX + slot * j + slot / 2;
             const int cy = iconTop + iconR;
             const bool focused = (screen.homeMenuIndex == ic.idx);
-            if (focused) fb.drawFilledCircle(cx, cy, iconR + 5, Color(Colors::Primary.r, Colors::Primary.g, Colors::Primary.b, 70));
-            fb.drawFilledCircle(cx, cy, iconR, focused ? Colors::Primary : Colors::PanelAlt);
-            fb.drawCircle(cx, cy, iconR, focused ? Colors::Primary : Colors::Border, 2);
+            if (focused) fb.drawCircle(cx, cy, iconR + 5, Colors::FocusBorder, 2);
+            fb.drawFilledCircle(cx, cy, iconR, Colors::PanelAlt);
+            fb.drawCircle(cx, cy, iconR, focused ? Colors::FocusBorder : Colors::Border, 2);
 
-            drawMenuIcon(fb, cx, cy, iconR - 12, j, focused ? Colors::PrimaryText : Colors::Text,
-                         focused ? Colors::Primary : Colors::PanelAlt);
+            drawMenuIcon(fb, cx, cy, iconR - 12, j, Colors::Text,
+                         Colors::PanelAlt);
 
             int lW, lH; fb.measureText(ic.label, lW, lH, TextStyle::Caption);
-            fb.drawText(cx - lW / 2, cy + iconR + 8, ic.label, focused ? Colors::Primary : Colors::TextDim, TextStyle::Caption);
+            fb.drawText(cx - lW / 2, cy + iconR + 8, ic.label, focused ? Colors::Text : Colors::TextDim, TextStyle::Caption);
 
             screen.touchButtons.push_back({ 100 + ic.idx, cx - iconR, cy - iconR, 2 * iconR, 2 * iconR + 24 });
         }

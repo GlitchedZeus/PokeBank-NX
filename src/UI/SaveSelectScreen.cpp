@@ -621,7 +621,7 @@ namespace UI {
             if (av && av->valid())
                 fb.drawImageScaled(avX, avY, av->width, av->height, AVATAR, AVATAR, av->data, 4);
             else {
-                fb.drawFilledRoundedRect(avX, avY, AVATAR, AVATAR, 10, Colors::Selected);
+                fb.drawFilledRoundedRect(avX, avY, AVATAR, AVATAR, 10, Colors::PanelAlt);
                 if (u->name == "Game Sources") {
                     int rw, rh;
                     fb.measureText("PB", rw, rh, TextStyle::Heading);
@@ -629,7 +629,7 @@ namespace UI {
                                 "PB", Colors::Accent, TextStyle::Heading);
                 }
             }
-            fb.drawRoundedRect(avX, avY, AVATAR, AVATAR, 10, Colors::Accent, 2);
+            fb.drawRoundedRect(avX, avY, AVATAR, AVATAR, 10, Colors::Border, 1);
         }
 
         const int nameX = avX + AVATAR + 20;
@@ -654,8 +654,8 @@ namespace UI {
                 if (av.valid())
                     fb.drawImageScaled(cx, chipY, av.width, av.height, CHIP, CHIP, av.data, 4);
                 else
-                    fb.drawFilledRoundedRect(cx, chipY, CHIP, CHIP, 8, Colors::Selected);
-                if (i == userIndex) fb.drawRoundedRect(cx, chipY, CHIP, CHIP, 8, Colors::Primary, 3);
+                    fb.drawFilledRoundedRect(cx, chipY, CHIP, CHIP, 8, Colors::PanelAlt);
+                if (i == userIndex) fb.drawRoundedRect(cx, chipY, CHIP, CHIP, 8, Colors::FocusBorder, 3);
                 else                fb.drawRoundedRect(cx, chipY, CHIP, CHIP, 8, Colors::Border, 1);
                 userRects.push_back({cx, chipY, CHIP, CHIP, i});
             }
@@ -688,7 +688,7 @@ namespace UI {
 
                 drawFocusedCard(fb, tileX, tileY, TILE_W, TILE_H, sel, 16);
                 fb.drawFilledRoundedRect(tileX + 12, tileY + 8, TILE_W - 24, 5, 3,
-                                         sel ? Colors::FocusBorder : withAlpha(Colors::AccentPrimary, 90));
+                                         sel ? Colors::FocusBorder : withAlpha(Colors::AccentDim, 90));
 
                 int iconX = tileX + (TILE_W - ICON) / 2;
                 int iconY = tileY + 16;
@@ -763,7 +763,7 @@ namespace UI {
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
             fb.drawText(x + 28, y + 18, "RETROARCH / GAME BOY ADVANCE / READ ONLY",
-                        Colors::AccentPrimary, TextStyle::Caption);
+                        Colors::Accent, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, "Pokemon " + parent.label + " — Save Instances",
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
@@ -806,7 +806,7 @@ namespace UI {
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
             fb.drawText(x + 28, y + 18, "RETROARCH / EXPLICIT PROFILE ASSIGNMENT",
-                        Colors::AccentPrimary, TextStyle::Caption);
+                        Colors::Accent, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, "Assign a Legacy Save to " + u->name,
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
@@ -839,7 +839,7 @@ namespace UI {
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
             fb.drawText(x + 28, y + 18, "RETROARCH / SOURCE DIAGNOSTICS / READ ONLY",
-                        Colors::AccentPrimary, TextStyle::Caption);
+                        Colors::Accent, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, legacyDetailsInstance.label,
                         Colors::TextPrimary, TextStyle::Heading);
             int lineY = y + 88;

@@ -639,8 +639,8 @@ namespace {
 
 void selectedRowBackground(PKSEFramebuffer& fb, int x, int y, int w, bool selected) {
     if (!selected) return;
-    fb.drawFilledRoundedRect(x, y - 5, w, 28, 8, Colors::SurfaceSelected);
-    fb.drawRoundedRect(x, y - 5, w, 28, 8, Colors::FocusBorder, 1);
+    // Keep the normal dark row surface; selection is outline-only.
+    fb.drawRoundedRect(x, y - 5, w, 28, 8, Colors::FocusBorder, 2);
 }
 
 Color statusColor(Rules::CompatibilityState status) {
@@ -694,10 +694,8 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
         selectedRowBackground(fb, x + 10, yy, w - 20,
                               state.panel == Foundation::Panel::Values && state.row == i);
         fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(i)], Colors::TextDim, TextStyle::Caption);
-        const Color dvColor = state.panel == Foundation::Panel::Values && state.row == i && state.column == 0
-            ? Colors::Accent : Colors::Text;
-        const Color statExpColor = state.panel == Foundation::Panel::Values && state.row == i && state.column == 1
-            ? Colors::Accent : Colors::Text;
+        const Color dvColor = Colors::Text;
+        const Color statExpColor = Colors::Text;
         fb.drawText(x + 116, yy, std::to_string(dvs[static_cast<std::size_t>(i)]) + (i == 0 ? " *" : ""),
                     dvColor, TextStyle::Caption);
         fb.drawText(x + 190, yy, std::to_string(p.statExperience[static_cast<std::size_t>(i)]),
@@ -742,12 +740,12 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
         const std::string name = move == 0 ? "Empty" : std::string(Names::getMoveName(move));
         const auto status = moveStatus(screen, state, slot);
         const bool selected = state.panel == Foundation::Panel::Moves && state.row == slot;
-        fb.drawText(x + 18, yy, name, selected && state.column == 0 ? Colors::Accent : Colors::Text,
+        fb.drawText(x + 18, yy, name, Colors::Text,
                     TextStyle::Caption);
         fb.drawText(x + 198, yy, std::to_string(state.working.pp[static_cast<std::size_t>(slot)]),
-                    selected && state.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 260, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]),
-                    selected && state.column == 2 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 310, yy, Rules::compatibilityText(status), statusColor(status), TextStyle::Caption);
     }
 

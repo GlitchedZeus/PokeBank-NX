@@ -550,8 +550,8 @@ bool selectPickerItem(TrainerViewScreen& screen) {
 
 void drawRow(PKSEFramebuffer& fb, int x, int y, int width, const std::string& text,
              bool selected, int height = 48, bool brightUnselected = false) {
-    fb.drawFilledRoundedRect(x, y, width, height, 10, selected ? Colors::AccentDim : Colors::PanelAlt);
-    if (selected) fb.drawRoundedRect(x, y, width, height, 10, Colors::Accent, 2);
+    fb.drawFilledRoundedRect(x, y, width, height, 10, Colors::PanelAlt);
+    if (selected) fb.drawRoundedRect(x, y, width, height, 10, Colors::FocusBorder, 2);
     const int ty = y + (height - fb.lineHeight(TextStyle::Body)) / 2;
     const auto textColor = (selected || brightUnselected) ? Colors::Text : Colors::TextDim;
     fb.drawText(x + 18, ty, text, textColor, TextStyle::Body);
@@ -797,7 +797,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const int radius = compactPicker ? 16 : 18;
     fb.drawSoftShadow(x, y, width, height, radius);
     fb.drawFilledRoundedRect(x, y, width, height, radius, Colors::Panel);
-    fb.drawRoundedRect(x, y, width, height, radius, Colors::Accent, 2);
+    fb.drawRoundedRect(x, y, width, height, radius, Colors::Divider, 1);
 
     const auto game = exactGame(screen);
     const auto pocket = game ? PokeBank::UIModel::classicInventoryPocketAt(*game, screen.selectedCategory)

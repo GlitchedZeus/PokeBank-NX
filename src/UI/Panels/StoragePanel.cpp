@@ -140,8 +140,8 @@ namespace UI
                 // Amber pill when the header itself is focused (navigate up to it, or tap it, to rename
                 // this box). cursorSlot == -1 is the "header focused" sentinel.
                 const bool headerFocused = focused && entered && cursorSlot == -1;
-                fb.drawPill(pillX, pillY, pillW, pillH, headerFocused ? Colors::Primary : Colors::Panel);
-                fb.drawText(px + (pw - lw) / 2, pillY + (pillH - lh) / 2, label, headerFocused ? Colors::PrimaryText : Colors::Text);
+                fb.drawPill(pillX, pillY, pillW, pillH, Colors::Panel);
+                fb.drawText(px + (pw - lw) / 2, pillY + (pillH - lh) / 2, label, Colors::Text);
 
                 const int arrowY = py + (headerH - lh) / 2;
                 fb.drawSymbol(px + 18, arrowY, "\xE2\x97\x80", focused ? Colors::Text : Colors::TextDim);      // left

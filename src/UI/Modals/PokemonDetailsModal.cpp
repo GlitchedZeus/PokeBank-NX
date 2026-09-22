@@ -171,11 +171,11 @@ namespace Modals {
             const bool es = (sel == fieldIdx);
             if (es) selRowY = iy;
             if (rowVisible(ry)) {
-                if (es) { fb.drawFilledRoundedRect(Lx + 8, ry + 2, Lw - 16, RH - 6, 8, Colors::Selected);
+                if (es) {
                           fb.drawRoundedRect(Lx + 8, ry + 2, Lw - 16, RH - 6, 8, Colors::Accent, 2); }
                 fb.drawText(Lx + 18, ry + 11, label, es ? Colors::Text : Colors::TextDim, TextStyle::Body);
                 int vw, vh; fb.measureText(value, vw, vh, TextStyle::Body);
-                fb.drawText(Lx + Lw - 18 - vw, ry + 11, value, es ? Colors::Accent : Colors::Text, TextStyle::Body);
+                fb.drawText(Lx + Lw - 18 - vw, ry + 11, value, Colors::Text, TextStyle::Body);
                 screen.touchButtons.push_back({ fieldIdx, Lx + 8, ry, Lw - 16, RH });
             }
             iy += RH;
@@ -364,12 +364,12 @@ namespace Modals {
         const int statRowH = 44;
         for (int i = 0; i < 6; ++i) {
             const bool s = (sel == i);
-            if (s) { fb.drawFilledRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Selected);
+            if (s) {
                      fb.drawRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Accent, 2); }
             fb.drawText(nameX, ty, rows[i].nm, s ? Colors::Text : Colors::TextDim);
             fb.drawText(cIV,   ty, std::to_string(rows[i].iv),   Colors::Text);
             fb.drawText(cEV,   ty, std::to_string(rows[i].evav), Colors::Text);
-            fb.drawText(cStat, ty, std::to_string(rows[i].stat), Colors::Accent);
+            fb.drawText(cStat, ty, std::to_string(rows[i].stat), Colors::TextSecondary);
             screen.touchButtons.push_back({ i, Cx + 8, ty - 6, Cw - 16, statRowH - 6 });
             ty += statRowH;
         }
@@ -378,7 +378,7 @@ namespace Modals {
         ty += 10;
         {
             const bool s = (sel == 6);
-            if (s) { fb.drawFilledRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Selected);
+            if (s) {
                      fb.drawRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Accent, 2); }
             fb.drawText(nameX, ty, "Shiny", s ? Colors::Text : Colors::TextDim);
             // Right-aligned to the panel edge, flush with Nature/Gender/Level below it.
@@ -392,12 +392,12 @@ namespace Modals {
         ty += 6;
         {
             const bool s = (sel == 7);
-            if (s) { fb.drawFilledRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Selected);
+            if (s) {
                      fb.drawRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Accent, 2); }
             fb.drawText(nameX, ty, "Nature", s ? Colors::Text : Colors::TextDim);
             std::string nat = getNatureName(p->nature());
             int nw, nh; fb.measureText(nat, nw, nh);
-            fb.drawText(Cx + Cw - 18 - nw, ty, nat, Colors::Accent);
+            fb.drawText(Cx + Cw - 18 - nw, ty, nat, Colors::Text);
             screen.touchButtons.push_back({ 7, Cx + 8, ty - 6, Cw - 16, statRowH - 6 });
             ty += statRowH;
         }
@@ -410,7 +410,7 @@ namespace Modals {
         {
             const bool editable = screen.genderEditable(*p);
             const bool s = editable && (sel == 8);
-            if (s) { fb.drawFilledRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Selected);
+            if (s) {
                      fb.drawRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Accent, 2); }
             fb.drawText(nameX, ty, "Gender", s ? Colors::Text : Colors::TextDim);
             const uint8_t gv = p->gender();
@@ -426,12 +426,12 @@ namespace Modals {
         ty += 6;
         {
             const bool s = (sel == 9);
-            if (s) { fb.drawFilledRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Selected);
+            if (s) {
                      fb.drawRoundedRect(Cx + 8, ty - 6, Cw - 16, statRowH - 6, 10, Colors::Accent, 2); }
             fb.drawText(nameX, ty, "Level", s ? Colors::Text : Colors::TextDim);
             const std::string lvlStr = std::to_string(dispLevel);
             int lw, lh; fb.measureText(lvlStr, lw, lh);
-            fb.drawText(Cx + Cw - 18 - lw, ty, lvlStr, Colors::Accent);
+            fb.drawText(Cx + Cw - 18 - lw, ty, lvlStr, Colors::Text);
             screen.touchButtons.push_back({ 9, Cx + 8, ty - 6, Cw - 16, statRowH - 6 });
             ty += statRowH;
         }
@@ -450,7 +450,7 @@ namespace Modals {
         for (int i = 0; i < 4; ++i) {
             const uint16_t mv = p->move(i);
             const bool s = (sel == 10 + i);
-            if (s) { fb.drawFilledRoundedRect(Rx + 14, iy - 8, Rw - 28, 38, 10, Colors::Selected);
+            if (s) {
                      fb.drawRoundedRect(Rx + 14, iy - 8, Rw - 28, 38, 10, Colors::Accent, 2); }
             const std::string mn = mv ? std::string(Names::getMoveName(mv)) : std::string("-");
             fb.drawText(Rx + 24, iy, mn, (mv || s) ? Colors::Text : Colors::TextDim, TextStyle::Body);
@@ -469,7 +469,7 @@ namespace Modals {
         iy += 30;
         {
             const bool s = (sel == 14);
-            if (s) { fb.drawFilledRoundedRect(Rx + 14, iy - 8, Rw - 28, 38, 10, Colors::Selected);
+            if (s) {
                      fb.drawRoundedRect(Rx + 14, iy - 8, Rw - 28, 38, 10, Colors::Accent, 2); }
             const uint16_t it = p->heldItem();
             const std::string iname = it

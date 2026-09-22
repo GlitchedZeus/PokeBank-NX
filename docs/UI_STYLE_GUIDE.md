@@ -1,7 +1,7 @@
 # PokeBank NX — Visual UI Style Guide
 
 Status: TARGET VISUAL CONTRACT  
-Last updated: 2026-09-01
+Last updated: 2026-09-22
 
 This document translates the current visual references into a native PokeBank NX design language. The goal is **not** to reproduce another application's UI pixel-for-pixel. Use the references for layout hierarchy, readability, controller ergonomics, and the friendly Pokémon-console feel while keeping PokeBank NX visually distinct.
 
@@ -132,17 +132,29 @@ No fake buttons that exist only for decoration.
 
 The focused item must be obvious without relying on tiny text changes.
 
-Preferred combination:
+PokeBank NX now separates **brand color** from **interaction color**:
 
-- clear border or outline;
-- small scale/elevation change if cheap and stable;
-- higher-contrast label;
-- optional accent underline/header change;
-- never rely on color alone for critical state.
+- the Poké Ball / PokeBank NX identity keeps its established red branding;
+- focus, selection, active editable fields, and navigation use a muted teal-blue interaction accent;
+- red is reserved for semantic warning/error/illegal/destructive meaning outside the brand;
+- green remains success/valid/compatible.
 
-For OLED/Dark themes, a bright accent outline around the selected card is preferred.
+Focused rows and fields keep their normal surface color. **Do not add a colored or translucent
+selection fill.** The standard focus treatment is:
 
-For Light theme, use a saturated but clean accent outline/header and subtle raised surface.
+- unchanged dark/light surface;
+- teal focus outline;
+- bright primary label text;
+- bright primary value text.
+
+Read-only/derived values use secondary or muted text and never gain a focus target merely for
+presentation. Ordinary calculated stats use normal/secondary text rather than warning red.
+
+Dialogs, action sheets, pickers, and sub-editors use a neutral container edge. The dialog itself is
+not outlined in teal; only the active control inside it receives the focus outline.
+
+For Light theme, the teal focus token is deliberately darker so the outline remains visible against
+a near-white surface.
 
 Animations should be short and optional. Never block input waiting for a cosmetic transition.
 

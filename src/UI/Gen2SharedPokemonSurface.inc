@@ -365,7 +365,7 @@ void drawSharedCloneSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         fb.drawText(xx + 10, yy + 8, "Slot " + std::to_string(slot + 1), Colors::TextDim, TextStyle::Caption);
         fb.drawText(xx + 10, yy + 34,
                     pokemon ? std::string(Names::getSpeciesName(pokemon->species)) : (target ? "Clone here" : "Empty"),
-                    target ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
     }
     if (destination < 0)
         fb.drawText(x + 28, y + h - 62, "This box is full — choose another box with L/R", Colors::Error, TextStyle::Body);
@@ -394,7 +394,7 @@ void drawSharedReviewSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             const bool selected = i == legacy.reviewRow;
             if (selected) fb.drawSelectionHighlight(x + 24, yy - 5, w - 48, 39);
             const auto& change = changes[static_cast<std::size_t>(i)];
-            fb.drawText(x + 36, yy, change.label, selected ? Colors::Accent : Colors::Text, TextStyle::Caption);
+            fb.drawText(x + 36, yy, change.label, selected ? Colors::Text : Colors::Text, TextStyle::Caption);
             fb.drawText(x + 350, yy, change.beforeValue + "  ->  " + change.afterValue,
                         Colors::TextDim, TextStyle::Caption);
         }
@@ -461,11 +461,11 @@ void drawSharedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const
         const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];
         const auto status = moveStatus(screen, state, slot);
         fb.drawText(x + 18, yy, move == 0 ? "Empty" : Names::getMoveName(move),
-                    selected && state.column == 0 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 190, yy, std::to_string(state.working.pp[static_cast<std::size_t>(slot)]),
-                    selected && state.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 246, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]),
-                    selected && state.column == 2 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 292, yy, Rules::compatibilityText(status), statusColor(status), TextStyle::Caption);
     }
     const int statusY = y + 246;
