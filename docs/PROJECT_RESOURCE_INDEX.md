@@ -1,5 +1,48 @@
 # PokeBank NX — AI / Codex Resource Map
 
+## CURRENT RECOVERY HEADER — 2026-09-22
+
+The material below this header contains valuable older project/research history and is intentionally retained, but its 2026-09-06/09 checkpoint text is **not** the current continuation point.
+
+Current authority order:
+
+1. `CURRENT_STATUS.md`
+2. `docs/NEXT_SESSION_PLAN.md`
+3. `docs/FULL_PROJECT_AUDIT_2026-09-22.md`
+4. `docs/REFERENCE_INDEX.md`
+5. `PROJECT_STATUS.md`
+6. issue #69 — full audit/safety backlog
+7. issue #29 — v1 roadmap
+8. PR #77 — active exact candidate line
+
+Current exact development/hardware checkpoint:
+
+```text
+PR #77
+feature/gen3-shared-pokemon-editor-20260919
+
+Application:
+2e4780412377abab3ffbe4fc2e4757339214a90f
+
+NRO:
+PokeBank-NX-Gen1-UX4-Retest-2e478041.nro
+
+NRO SHA-256:
+32b08c1cf589252022e68bf50fe0847fea7cbf1b86835178e7d2a2c268e3b43c
+
+Status:
+CI VERIFIED
+DEVICE RETEST REQUIRED
+NOT DEVICE ACCEPTED
+```
+
+Issue #71 / PR #75 completed the universal editor freeze. PR #72 is closed without merge as superseded; its history is preserved. Do not modify PR #77 merely for documentation cleanup while the exact NRO is under physical test.
+
+---
+
+## HISTORICAL / RESEARCH MATERIAL RETAINED BELOW
+
+
 Last updated: 2026-09-09
 
 > **Navigation only. This file does not define active scope.**
