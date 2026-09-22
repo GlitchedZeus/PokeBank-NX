@@ -157,13 +157,12 @@ namespace UI {
         inline Color PrimaryText  = Color(43, 32, 36);
         // Attention accent for warning dialog titles ("Unsaved Changes", "Delete Backup?"). Theme-aware
         // because a bright amber that reads on the dark UI is nearly invisible on light-mode white.
-        // Shiny marker (star / "Yes"), HOME-style red rather than yellow. Theme-aware: yellow washed
-        // out on light-mode white exactly like Warning did, and red reads on both sprites and panels.
-        inline Color ShinyStar    = Color(255, 96, 86);
-        // Storage cursor-mode colors, one per CursorMode — a red/blue/green scheme across the three
-        // pointer arrows (Menu / Move / Multi). Theme-aware: the light variants are deepened so
-        // the arrow, the selection wash and the carried-block backing still read against a white panel.
-        inline Color CursorMenu   = Color(232, 92, 92);
+        // Shiny marker is gold rather than red so red stays reserved for brand/danger semantics.
+        // It remains theme-aware for readable contrast on dark and light panels.
+        inline Color ShinyStar    = Color(255, 208, 92);
+        // Storage cursor-mode colors: ordinary Menu navigation follows the global teal focus accent;
+        // Move and Multi retain distinct blue/green mode semantics.
+        inline Color CursorMenu   = DARK_PALETTE.focusBorder;
         inline Color CursorMove   = Color(86, 148, 244);
         inline Color CursorMulti  = Color(96, 205, 128);
 
@@ -212,8 +211,8 @@ namespace UI {
         Info            = palette.info;
         Primary         = palette.focusBorder;
         PrimaryText     = Color(43, 32, 36);
-        ShinyStar       = (mode == ThemeMode::Light) ? Color(190, 48, 52) : Color(255, 96, 86);
-        CursorMenu      = (mode == ThemeMode::Light) ? Color(196, 52, 57) : Color(232, 92, 92);
+        ShinyStar       = (mode == ThemeMode::Light) ? Color(156, 105, 0) : Color(255, 208, 92);
+        CursorMenu      = palette.focusBorder;
         CursorMove      = (mode == ThemeMode::Light) ? Color(37, 99, 201) : Color(86, 148, 244);
         CursorMulti     = (mode == ThemeMode::Light) ? Color(35, 143, 81) : Color(96, 205, 128);
     }

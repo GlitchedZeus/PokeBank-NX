@@ -425,12 +425,12 @@ namespace UI
                 constexpr int r = Dialogs::kDialogRadius; // same card shape as every other modal
                 drawModalSurface(fb, x, y, w, h, r);
                 if (!eyebrow.empty()) {
-                    fb.drawText(x + 22, y + 13, eyebrow, Colors::AccentPrimary, TextStyle::Caption);
+                    fb.drawText(x + 22, y + 13, eyebrow, Colors::Accent, TextStyle::Caption);
                     fb.drawText(x + 22, y + 36, title, Colors::TextPrimary, TextStyle::Heading);
                 } else {
                     fb.drawText(x + 22, y + 16, title, Colors::TextPrimary, TextStyle::Heading);
                 }
-                fb.drawFilledRect(x + r, y + headerH - 4, w - r * 2, 2, Colors::AccentPrimary);
+                fb.drawFilledRect(x + r, y + headerH - 4, w - r * 2, 2, Colors::Accent);
                 screen.touchButtons.clear();
                 int ry = y + headerH;
                 for (int i = 0; i < count; ++i)

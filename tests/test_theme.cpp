@@ -75,6 +75,9 @@ int main() {
         assert(Colors::BrandAccent == palette.accentPrimary);
         assert(Colors::SelectedText == palette.textPrimary);
         assert(Colors::Primary == palette.focusBorder);
+        assert(Colors::CursorMenu == palette.focusBorder);
+        assert(Colors::ShinyStar != palette.error);
+        assert(Colors::ShinyStar != palette.accentPrimary);
         assert(Colors::Warning == palette.warning);
     }
 
@@ -116,6 +119,9 @@ int main() {
 
     const std::string details = readFile("src/UI/Modals/PokemonDetailsModal.cpp");
     assert(details.find("Colors::Selected") == std::string::npos);
+
+    const std::string storage = readFile("src/UI/Panels/StoragePanel.cpp");
+    assert(storage.find("Colors::AccentPrimary") == std::string::npos);
 
     const std::string gen1 = readFile("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
     assert(gen1.find("c == 2 ? Colors::TextSecondary : Colors::Text") != std::string::npos);
