@@ -49,7 +49,8 @@ int main() {
            female.location == male.location);
 
     using OtChoice = Native::CrystalOtGenderChoice;
-    assert(Native::crystalOtGenderChoiceFromCaught(absent) == OtChoice::Unknown);
+    constexpr auto absentGender = Native::decodeCrystalCaughtData(0);
+    assert(Native::crystalOtGenderChoiceFromCaught(absentGender) == OtChoice::Unknown);
     assert(Native::crystalOtGenderChoiceFromCaught(male) == OtChoice::Male);
     assert(Native::crystalOtGenderChoiceFromCaught(female) == OtChoice::Female);
     assert(Native::cycleUnrecordedCrystalOtGender(OtChoice::Unknown) == OtChoice::Male);
