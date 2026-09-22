@@ -38,7 +38,7 @@ An editable screen does **not** mean PokeBank NX will overwrite the original sav
 
 # 📍 Current project state
 
-Last updated: **2026-09-20**
+Last updated: **2026-09-22**
 
 ## Production / accepted baseline
 
@@ -61,14 +61,35 @@ The Gen I/II editor and storage interaction foundation is now physically accepte
 Branch: feature/gen3-shared-pokemon-editor-20260919
 PR #77 — Generation III: extend the shared Pokemon editor
 State: OPEN / DRAFT / NOT MERGED
-Current head: dcbd1ff92f1b4f1127c071d3ccb958495436e539
-Automated CI: GREEN
-Device acceptance: PENDING
+Current CI candidate: 2e4780412377abab3ffbe4fc2e4757339214a90f
+Candidate tree: cdbf0b8faae901c8d765d06b95cac3140bd69e75
+Automated CI: VERIFIED for the exact candidate
+Hardware state: DEVICE RETEST IN PROGRESS
+Device acceptance: NOT DEVICE ACCEPTED
 ```
 
 Generation III is now being brought onto the **same shared editor architecture** used by the accepted Gen I/II work. The current PR includes exact-format Gen III capabilities/providers, a generation-native staged Pokémon editor, shared View/Edit/Create surfaces, safety-focused field policies, and Gen III-specific sparse box movement behavior.
 
-The current exact PR #77 head is CI-green across host tests, Gen I/II regressions, packed-move regressions, Gen III candidate gates, sanitizers, and native candidate validation. It is **not DEVICE ACCEPTED** until the exact CI-built NRO is physically tested and accepted.
+The current exact PR #77 candidate is CI-verified across the required host/regression/source-safety/sanitizer/native/package gates. The owner is physically retesting the exact GitHub Actions-built NRO now. It is **not DEVICE ACCEPTED** until that exact artifact is accepted on hardware.
+
+Exact candidate being tested:
+
+```text
+Application SHA: 2e4780412377abab3ffbe4fc2e4757339214a90f
+Tree SHA:        cdbf0b8faae901c8d765d06b95cac3140bd69e75
+NRO:             PokeBank-NX-Gen1-UX4-Retest-2e478041.nro
+NRO SHA-256:     32b08c1cf589252022e68bf50fe0847fea7cbf1b86835178e7d2a2c268e3b43c
+Actions run:     35684844741
+Status:          CI VERIFIED / DEVICE RETEST REQUIRED / NOT DEVICE ACCEPTED
+```
+
+### Why some editor work was redone
+
+PokeBank NX started from inherited PKSE-era editor behavior, but physical Switch testing exposed places where generation-specific overlays and legacy modal paths had drifted apart. The project therefore froze a **one shared editor** contract in issue #71 / PR #75 and has been moving Gen I, II, and III onto that same capability-driven shell instead of maintaining separate editor products.
+
+That rewrite/reconciliation work is intentional: exact-game storage rules still live in generation-native adapters, while navigation, presentation, staged edit lifecycle, and safety semantics are shared. Hardware findings are treated as regressions to fix on the same line rather than permission to fork another editor.
+
+Current testing is still finding edge cases in shared Gen I/II/III interaction. A green CI build remains only a candidate until the exact Actions artifact is physically accepted.
 
 ---
 
@@ -158,6 +179,14 @@ Current implementation includes:
 PID-correlated fields such as Nature, Gender, Shiny, Ability/PID relationships remain deliberately constrained until an atomic policy can prove they can be changed without silently breaking related values.
 
 PR #77 is **OPEN / DRAFT / NOT MERGED** and remains hardware-pending.
+
+### Safety work immediately after Gen I–III acceptance
+
+Feature expansion does **not** jump straight from editor acceptance to live writeback. After the first three generations have exact hardware-accepted editor artifacts, the next milestone is a full storage/transfer/conversion audit and hardening pass, followed by Master Vault persistence/recovery validation.
+
+Current audit tracking already includes atomic bank persistence, crash recovery, transfer custody/rollback, malformed-save boundaries, conversion correctness, account/profile namespacing, provenance, and exact-artifact reproducibility. See `docs/FULL_PROJECT_AUDIT_2026-09-22.md` and issue #69.
+
+External technical references and their reuse/license status are indexed in `docs/REFERENCE_INDEX.md`.
 
 ---
 
