@@ -479,6 +479,8 @@ constexpr Focus passiveViewMoveVertical(Generation generation, Focus focus, int 
 
 constexpr Focus passiveViewMoveColumn(Generation generation, Focus focus, int direction,
                                       bool crystal = false) noexcept {
+    // Collapse any stale Edit/Create move sub-column before applying View navigation.
+    focus = normalizePassiveViewFocus(generation, focus, crystal);
     return normalizePassiveViewFocus(
         generation, moveColumn(generation, focus, direction, crystal), crystal);
 }
