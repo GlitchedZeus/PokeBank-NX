@@ -55,6 +55,48 @@ constexpr const char* crystalOriginalTrainerGenderText(const CrystalCaughtData& 
     return !caught.present ? "Unknown" : (caught.originalTrainerFemale ? "Female" : "Male");
 }
 
+enum class CrystalOtGenderChoice : int8_t {
+    Unknown = -1,
+    Male = 0,
+    Female = 1,
+};
+
+constexpr CrystalOtGenderChoice crystalOtGenderChoiceFromCaught(
+    const CrystalCaughtData& caught) noexcept {
+    if (!caught.present) return CrystalOtGenderChoice::Unknown;
+    return caught.originalTrainerFemale ? CrystalOtGenderChoice::Female
+                                        : CrystalOtGenderChoice::Male;
+}
+
+constexpr const char* crystalOtGenderChoiceText(CrystalOtGenderChoice choice) noexcept {
+    switch (choice) {
+        case CrystalOtGenderChoice::Male: return "Male";
+        case CrystalOtGenderChoice::Female: return "Female";
+        default: return "Unknown";
+    }
+}
+
+constexpr CrystalOtGenderChoice cycleUnrecordedCrystalOtGender(
+    CrystalOtGenderChoice choice) noexcept {
+    switch (choice) {
+        case CrystalOtGenderChoice::Unknown: return CrystalOtGenderChoice::Male;
+        case CrystalOtGenderChoice::Male: return CrystalOtGenderChoice::Female;
+        case CrystalOtGenderChoice::Female: return CrystalOtGenderChoice::Unknown;
+    }
+    return CrystalOtGenderChoice::Unknown;
+}
+
+constexpr CrystalOtGenderChoice cycleRecordedCrystalOtGender(
+    CrystalOtGenderChoice choice) noexcept {
+    return choice == CrystalOtGenderChoice::Male
+        ? CrystalOtGenderChoice::Female
+        : CrystalOtGenderChoice::Male;
+}
+
+constexpr bool crystalOtGenderFemale(CrystalOtGenderChoice choice) noexcept {
+    return choice == CrystalOtGenderChoice::Female;
+}
+
 enum class CaughtLevelLegality : uint8_t {
     NotRecorded,
     UnknownMetLevel,

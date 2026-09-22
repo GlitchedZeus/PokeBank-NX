@@ -109,7 +109,10 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
         rows.push_back({"Met time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});
         rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
         rows.push_back({"Location", Gen2Native::crystalCaughtLocationName(caught.location)});
-        rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
+        const auto displayedOtGender = state.mode == Mode::View
+            ? Gen2Native::crystalOtGenderChoiceFromCaught(caught)
+            : state.crystalOtGender;
+        rows.push_back({"OT gender", Gen2Native::crystalOtGenderChoiceText(displayedOtGender)});
     }
 
     // The semantic repaint is the authoritative visible Details row window. Clear the
@@ -123,7 +126,8 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
         const std::size_t row = window.first + i;
         const int yy = y + 224 + static_cast<int>(i) * 38;
         const bool selected = unified.focus.panel == UnifiedContract::Panel::Details && unified.focus.row == row;
-        drawGen2Focus(fb, x + 8, yy + 2, w - 16, 30, selected);
+        // Leave a clean gutter between the selection outline and the scrollbar track.
+        drawGen2Focus(fb, x + 8, yy + 2, std::max(0, w - 36), 30, selected);
         fb.drawText(x + 18, yy + 7, rows[row].first, Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[row].second, Colors::Text, TextStyle::Caption);
     }

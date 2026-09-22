@@ -277,7 +277,7 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
             // Time, met-level and OT-gender belong to an existing Crystal caught record.
             // Raw zero means "not recorded"; never manufacture partial history from it.
-            if ((focus.row == 8 || focus.row == 9 || focus.row == 11) && !caught.present) {
+            if ((focus.row == 8 || focus.row == 9) && !caught.present) {
                 screen.postStatus("Choose a legitimate Crystal encounter first", 300);
                 return true;
             }
@@ -330,7 +330,19 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                 screen.controllerNavigation.reset();
                 return true;
             }
-            if (focus.row == 11) caught.originalTrainerFemale = !caught.originalTrainerFemale;
+            if (focus.row == 11) {
+                if (!caught.present) {
+                    state.crystalOtGender =
+                        Gen2Native::cycleUnrecordedCrystalOtGender(state.crystalOtGender);
+                    // Intentionally do not touch p.caughtData: pending OT gender must not
+                    // fabricate Crystal met location/level/time history.
+                    return true;
+                }
+                state.crystalOtGender =
+                    Gen2Native::cycleRecordedCrystalOtGender(state.crystalOtGender);
+                caught.originalTrainerFemale =
+                    Gen2Native::crystalOtGenderFemale(state.crystalOtGender);
+            }
             p.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
             return true;
         }
@@ -590,7 +602,10 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         rows.push_back({"Met time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});
         rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
         rows.push_back({"Location", Gen2Native::crystalCaughtLocationName(caught.location)});
-        rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
+        const auto displayedOtGender = state.mode == Mode::View
+            ? Gen2Native::crystalOtGenderChoiceFromCaught(caught)
+            : state.crystalOtGender;
+        rows.push_back({"OT gender", Gen2Native::crystalOtGenderChoiceText(displayedOtGender)});
     }
 
     const auto window = Unified::scrollWindow(rows.size(), 8, unified.detailsFocus);

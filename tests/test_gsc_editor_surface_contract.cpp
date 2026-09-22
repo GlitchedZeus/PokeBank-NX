@@ -158,6 +158,12 @@ int main() {
     assert(unified.find("Encounter::forGameSpecies(screen.sourceGameId, p.species)") != std::string::npos);
 
     assert(unified.find("Choose a legitimate Crystal encounter first") != std::string::npos);
+    assert(unified.find("(focus.row == 8 || focus.row == 9) && !caught.present") != std::string::npos);
+    assert(unified.find("cycleUnrecordedCrystalOtGender") != std::string::npos);
+    assert(unified.find("Intentionally do not touch p.caughtData") != std::string::npos);
+    assert(unified.find("crystalOtGenderChoiceText(displayedOtGender)") != std::string::npos);
+    assert(finalFix.find("crystalOtGenderChoiceText(displayedOtGender)") != std::string::npos);
+    assert(finalFix.find("std::max(0, w - 36)") != std::string::npos);
     assert(unified.find("Current level cannot be below this Crystal met level") != std::string::npos);
     assert(nativePresentation.find("Current level below met level") != std::string::npos);
     assert(picker.find("encounterTimeLabel(encounter.timeMask)") != std::string::npos);

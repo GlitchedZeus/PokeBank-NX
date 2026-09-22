@@ -48,6 +48,18 @@ int main() {
     assert(female.timeOfDay == male.timeOfDay && female.levelCode == male.levelCode &&
            female.location == male.location);
 
+    using OtChoice = Native::CrystalOtGenderChoice;
+    assert(Native::crystalOtGenderChoiceFromCaught(absent) == OtChoice::Unknown);
+    assert(Native::crystalOtGenderChoiceFromCaught(male) == OtChoice::Male);
+    assert(Native::crystalOtGenderChoiceFromCaught(female) == OtChoice::Female);
+    assert(Native::cycleUnrecordedCrystalOtGender(OtChoice::Unknown) == OtChoice::Male);
+    assert(Native::cycleUnrecordedCrystalOtGender(OtChoice::Male) == OtChoice::Female);
+    assert(Native::cycleUnrecordedCrystalOtGender(OtChoice::Female) == OtChoice::Unknown);
+    assert(Native::cycleRecordedCrystalOtGender(OtChoice::Male) == OtChoice::Female);
+    assert(Native::cycleRecordedCrystalOtGender(OtChoice::Female) == OtChoice::Male);
+    assert(Native::crystalOtGenderFemale(OtChoice::Female));
+    assert(!Native::crystalOtGenderFemale(OtChoice::Male));
+
     constexpr auto absent = Native::decodeCrystalCaughtData(0);
     static_assert(!absent.present);
     assert(Native::crystalCaughtLevelText(absent) == "Unknown");

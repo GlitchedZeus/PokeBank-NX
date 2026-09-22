@@ -8,6 +8,7 @@
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
 #include "UI/Gen2HeldItemPicker.h"
+#include "UI/Gen2NativePresentation.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "Names/MoveNames.h"
@@ -39,6 +40,7 @@ namespace Gen2 = PokeVault::Integration::Gen2;
 namespace Rules = PokeBank::UIModel::Gen2PokemonEditor;
 namespace Foundation = PokeBank::UIModel::PokemonEditorFoundation;
 namespace SharedEditor = PokeBank::UIModel::SharedPokemonEditor;
+namespace Gen2Native = PokeBank::UIModel::Gen2Native;
 
 using Mode = Rules::SessionMode;
 
@@ -53,6 +55,9 @@ struct State : Rules::Session {
     uint32_t rng = 0x2A6F19D3u;
     std::vector<uint8_t> itemChoices;
     int itemChoiceIndex = 0;
+    // UI-only until a real Crystal caught-history record exists. This lets Create/Edit
+    // choose OT gender before choosing a met location without fabricating caughtData.
+    Gen2Native::CrystalOtGenderChoice crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
 };
 
 State& stateFor(const TrainerViewScreen& screen) {
@@ -175,6 +180,7 @@ bool beginCreate(TrainerViewScreen& screen, int box) {
     state.column = 0;
     state.working = defaultCreateRecord(*editor);
     state.begin(state.working, Mode::Create);
+    state.crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
     state.rng ^= static_cast<uint32_t>((box + 1) * 0x9E3779B9u);
     screen.controllerNavigation.reset();
     return true;
@@ -201,6 +207,8 @@ bool beginEdit(TrainerViewScreen& screen, int box, int slot) {
     state.baseline = *pokemon; // exact staged state at Edit entry, not original source bytes.
     state.working = *pokemon;
     state.begin(*pokemon, Mode::Edit);
+    state.crystalOtGender = Gen2Native::crystalOtGenderChoiceFromCaught(
+        Gen2Native::decodeCrystalCaughtData(state.working.caughtData));
     state.rng ^= static_cast<uint32_t>((box + 1) * 0x85EBCA6Bu + (slot + 1));
     screen.controllerNavigation.reset();
     return true;

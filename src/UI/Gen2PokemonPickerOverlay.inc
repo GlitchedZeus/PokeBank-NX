@@ -81,6 +81,12 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
                 }
             }
         }
+        // A real Crystal caught record must encode Male or Female. If the user already
+        // chose one while caught history was unset, preserve it. Otherwise use the
+        // authentic clear-bit Male encoding as the deterministic default.
+        if (state.crystalOtGender == Gen2Native::CrystalOtGenderChoice::Unknown)
+            state.crystalOtGender = Gen2Native::CrystalOtGenderChoice::Male;
+        caught.originalTrainerFemale = Gen2Native::crystalOtGenderFemale(state.crystalOtGender);
         state.working.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
     } else {
         return false;
