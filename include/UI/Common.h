@@ -18,7 +18,7 @@ namespace UI {
         constexpr bool operator==(const Color&) const = default;
     };
 
-    enum class ThemeMode { OLEDBlack, Dark, Light };
+    enum class ThemeMode { OLEDBlack, Dark, Light, Red, Blue, Green, Gray, PokeClassic, Purple, Orange };
 
     struct ThemePalette {
         Color background;
@@ -39,50 +39,121 @@ namespace UI {
     };
 
     inline constexpr ThemePalette OLED_BLACK_PALETTE{
-        Color(0, 0, 0),       Color(14, 15, 20),    Color(27, 29, 38),    Color(27, 29, 38),
-        Color(244, 244, 249), Color(194, 194, 207), Color(129, 130, 147), Color(236, 62, 72),
-        Color(58, 142, 153),  Color(69, 184, 196),  Color(49, 51, 64),    Color(79, 205, 137),
-        Color(255, 199, 66),  Color(255, 94, 94),   Color(87, 169, 255)
+        Color(0, 0, 0),       Color(14, 15, 20),    Color(30, 32, 42),    Color(30, 32, 42),
+        Color(250, 250, 252), Color(218, 220, 230), Color(166, 170, 186), Color(236, 62, 72),
+        Color(35, 86, 94),    Color(90, 210, 222), Color(65, 68, 82),    Color(85, 220, 150),
+        Color(255, 205, 80),  Color(255, 110, 110), Color(100, 185, 255)
     };
 
     inline constexpr ThemePalette DARK_PALETTE{
-        Color(24, 27, 38),    Color(35, 39, 53),    Color(47, 52, 69),    Color(47, 52, 69),
-        Color(239, 240, 247), Color(185, 188, 204), Color(126, 130, 151), Color(232, 60, 70),
-        Color(62, 149, 160),  Color(69, 184, 196),  Color(67, 72, 91),    Color(72, 190, 126),
-        Color(255, 195, 61),  Color(243, 86, 89),   Color(82, 158, 240)
+        Color(20, 23, 32),    Color(31, 35, 47),    Color(44, 49, 65),    Color(44, 49, 65),
+        Color(248, 249, 252), Color(218, 220, 230), Color(166, 170, 188), Color(232, 60, 70),
+        Color(42, 94, 103),   Color(87, 204, 216), Color(73, 78, 98),    Color(82, 205, 137),
+        Color(255, 202, 76),  Color(250, 103, 108), Color(96, 176, 255)
     };
 
-    // Light is intentionally designed as a warm/pastel palette, not as an inverted dark palette.
+    // Light is intentionally designed as a bright high-contrast palette, not an inverted dark palette.
     inline constexpr ThemePalette LIGHT_PALETTE{
-        Color(246, 247, 252), Color(255, 255, 255), Color(235, 239, 249), Color(235, 239, 249),
-        Color(29, 32, 45),    Color(75, 80, 101),   Color(113, 119, 140), Color(200, 48, 58),
-        Color(50, 137, 148),  Color(43, 127, 137),  Color(205, 210, 226), Color(35, 137, 83),
-        Color(166, 91, 0),    Color(190, 48, 52),   Color(28, 105, 184)
+        Color(246, 247, 252), Color(255, 255, 255), Color(232, 236, 245), Color(232, 236, 245),
+        Color(18, 20, 28),    Color(48, 53, 69),    Color(78, 84, 103),  Color(184, 36, 46),
+        Color(218, 224, 232), Color(16, 18, 24),    Color(188, 195, 214), Color(24, 116, 66),
+        Color(148, 78, 0),    Color(166, 38, 44),   Color(21, 88, 160)
+    };
+
+    inline constexpr ThemePalette RED_PALETTE{
+        Color(28, 14, 16),    Color(43, 21, 24),    Color(61, 29, 33),    Color(61, 29, 33),
+        Color(252, 244, 245), Color(231, 207, 210), Color(190, 155, 160), Color(241, 70, 80),
+        Color(87, 38, 44),    Color(255, 140, 145), Color(90, 48, 52),    Color(88, 214, 145),
+        Color(255, 207, 86),  Color(255, 120, 126), Color(120, 190, 255)
+    };
+
+    inline constexpr ThemePalette BLUE_PALETTE{
+        Color(12, 20, 34),    Color(20, 31, 50),    Color(29, 44, 68),    Color(29, 44, 68),
+        Color(245, 249, 255), Color(206, 220, 240), Color(155, 177, 207), Color(74, 140, 255),
+        Color(31, 68, 111),   Color(110, 180, 255), Color(52, 70, 98),    Color(82, 210, 142),
+        Color(255, 205, 82),  Color(255, 112, 120), Color(120, 200, 255)
+    };
+
+    inline constexpr ThemePalette GREEN_PALETTE{
+        Color(11, 25, 19),    Color(18, 39, 29),    Color(27, 55, 41),    Color(27, 55, 41),
+        Color(244, 252, 248), Color(207, 232, 219), Color(155, 190, 172), Color(67, 196, 119),
+        Color(28, 76, 53),    Color(112, 232, 158), Color(47, 83, 64),    Color(96, 224, 150),
+        Color(255, 207, 82),  Color(255, 112, 120), Color(112, 192, 255)
+    };
+
+    inline constexpr ThemePalette GRAY_PALETTE{
+        Color(24, 25, 27),    Color(38, 40, 44),    Color(54, 57, 62),    Color(54, 57, 62),
+        Color(249, 249, 250), Color(219, 221, 225), Color(170, 174, 181), Color(195, 198, 204),
+        Color(74, 78, 86),    Color(235, 238, 243), Color(80, 84, 91),    Color(91, 210, 145),
+        Color(255, 207, 82),  Color(255, 112, 120), Color(120, 190, 255)
+    };
+
+    // Original PokeBank-NX take on the familiar red/blue/yellow monster-RPG palette.
+    inline constexpr ThemePalette POKE_CLASSIC_PALETTE{
+        Color(18, 24, 39),    Color(29, 38, 61),    Color(42, 54, 84),    Color(42, 54, 84),
+        Color(250, 249, 245), Color(221, 225, 236), Color(171, 180, 205), Color(226, 58, 68),
+        Color(31, 72, 126),   Color(255, 207, 64),  Color(63, 77, 108),   Color(80, 205, 130),
+        Color(255, 207, 64),  Color(255, 108, 112), Color(87, 169, 255)
+    };
+
+    inline constexpr ThemePalette PURPLE_PALETTE{
+        Color(24, 16, 32),    Color(38, 25, 48),    Color(55, 36, 68),    Color(55, 36, 68),
+        Color(250, 246, 253), Color(224, 210, 234), Color(177, 156, 193), Color(188, 100, 255),
+        Color(77, 45, 96),    Color(215, 145, 255), Color(83, 58, 98),    Color(88, 214, 145),
+        Color(255, 207, 82),  Color(255, 112, 120), Color(122, 190, 255)
+    };
+
+    inline constexpr ThemePalette ORANGE_PALETTE{
+        Color(30, 20, 10),    Color(46, 30, 15),    Color(64, 42, 20),    Color(64, 42, 20),
+        Color(255, 248, 238), Color(236, 216, 193), Color(191, 163, 130), Color(255, 138, 48),
+        Color(100, 57, 23),   Color(255, 181, 92), Color(94, 65, 36),    Color(90, 215, 145),
+        Color(255, 211, 94),  Color(255, 116, 116), Color(122, 190, 255)
     };
 
     constexpr const ThemePalette& themePalette(ThemeMode mode) {
         switch (mode) {
-            case ThemeMode::OLEDBlack: return OLED_BLACK_PALETTE;
-            case ThemeMode::Light:     return LIGHT_PALETTE;
-            case ThemeMode::Dark:      return DARK_PALETTE;
+            case ThemeMode::OLEDBlack:   return OLED_BLACK_PALETTE;
+            case ThemeMode::Dark:        return DARK_PALETTE;
+            case ThemeMode::Light:       return LIGHT_PALETTE;
+            case ThemeMode::Red:         return RED_PALETTE;
+            case ThemeMode::Blue:        return BLUE_PALETTE;
+            case ThemeMode::Green:       return GREEN_PALETTE;
+            case ThemeMode::Gray:        return GRAY_PALETTE;
+            case ThemeMode::PokeClassic: return POKE_CLASSIC_PALETTE;
+            case ThemeMode::Purple:      return PURPLE_PALETTE;
+            case ThemeMode::Orange:      return ORANGE_PALETTE;
         }
         return DARK_PALETTE;
     }
 
     constexpr std::string_view themeModeName(ThemeMode mode) {
         switch (mode) {
-            case ThemeMode::OLEDBlack: return "OLED Black";
-            case ThemeMode::Dark:      return "Dark";
-            case ThemeMode::Light:     return "Light";
+            case ThemeMode::OLEDBlack:   return "OLED Black";
+            case ThemeMode::Dark:        return "Dark";
+            case ThemeMode::Light:       return "Light";
+            case ThemeMode::Red:         return "Red";
+            case ThemeMode::Blue:        return "Blue";
+            case ThemeMode::Green:       return "Green";
+            case ThemeMode::Gray:        return "Grey";
+            case ThemeMode::PokeClassic: return "Poke Classic";
+            case ThemeMode::Purple:      return "Purple";
+            case ThemeMode::Orange:      return "Orange";
         }
         return "Dark";
     }
 
     constexpr std::string_view themeModeKey(ThemeMode mode) {
         switch (mode) {
-            case ThemeMode::OLEDBlack: return "oled-black";
-            case ThemeMode::Dark:      return "dark";
-            case ThemeMode::Light:     return "light";
+            case ThemeMode::OLEDBlack:   return "oled-black";
+            case ThemeMode::Dark:        return "dark";
+            case ThemeMode::Light:       return "light";
+            case ThemeMode::Red:         return "red";
+            case ThemeMode::Blue:        return "blue";
+            case ThemeMode::Green:       return "green";
+            case ThemeMode::Gray:        return "gray";
+            case ThemeMode::PokeClassic: return "poke-classic";
+            case ThemeMode::Purple:      return "purple";
+            case ThemeMode::Orange:      return "orange";
         }
         return "dark";
     }
@@ -90,14 +161,28 @@ namespace UI {
     constexpr ThemeMode themeModeFromKey(std::string_view key) {
         if (key == "oled-black" || key == "oled" || key == "black") return ThemeMode::OLEDBlack;
         if (key == "light") return ThemeMode::Light;
+        if (key == "red") return ThemeMode::Red;
+        if (key == "blue") return ThemeMode::Blue;
+        if (key == "green") return ThemeMode::Green;
+        if (key == "gray" || key == "grey") return ThemeMode::Gray;
+        if (key == "poke-classic" || key == "pokemon" || key == "poke") return ThemeMode::PokeClassic;
+        if (key == "purple") return ThemeMode::Purple;
+        if (key == "orange") return ThemeMode::Orange;
         return ThemeMode::Dark;
     }
 
     constexpr ThemeMode nextThemeMode(ThemeMode mode) {
         switch (mode) {
-            case ThemeMode::OLEDBlack: return ThemeMode::Dark;
-            case ThemeMode::Dark:      return ThemeMode::Light;
-            case ThemeMode::Light:     return ThemeMode::OLEDBlack;
+            case ThemeMode::OLEDBlack:   return ThemeMode::Dark;
+            case ThemeMode::Dark:        return ThemeMode::Light;
+            case ThemeMode::Light:       return ThemeMode::Red;
+            case ThemeMode::Red:         return ThemeMode::Blue;
+            case ThemeMode::Blue:        return ThemeMode::Green;
+            case ThemeMode::Green:       return ThemeMode::Gray;
+            case ThemeMode::Gray:        return ThemeMode::PokeClassic;
+            case ThemeMode::PokeClassic: return ThemeMode::Purple;
+            case ThemeMode::Purple:      return ThemeMode::Orange;
+            case ThemeMode::Orange:      return ThemeMode::OLEDBlack;
         }
         return ThemeMode::Dark;
     }
@@ -210,11 +295,13 @@ namespace UI {
         Error           = palette.error;
         Info            = palette.info;
         Primary         = palette.focusBorder;
-        PrimaryText     = Color(43, 32, 36);
-        ShinyStar       = (mode == ThemeMode::Light) ? Color(156, 105, 0) : Color(255, 208, 92);
-        CursorMenu      = palette.focusBorder;
-        CursorMove      = (mode == ThemeMode::Light) ? Color(37, 99, 201) : Color(86, 148, 244);
-        CursorMulti     = (mode == ThemeMode::Light) ? Color(35, 143, 81) : Color(96, 205, 128);
+        PrimaryText     = (mode == ThemeMode::Light) ? Colors::White : Color(32, 28, 24);
+        ShinyStar       = (mode == ThemeMode::Light) ? Color(132, 91, 0) : Color(255, 218, 90);
+        // Light mode deliberately uses a near-black cursor/focus treatment. The dark and
+        // colored themes use their brighter theme focus color.
+        CursorMenu      = (mode == ThemeMode::Light) ? Colors::Black : palette.focusBorder;
+        CursorMove      = (mode == ThemeMode::Light) ? Color(20, 56, 130) : Color(86, 148, 244);
+        CursorMulti     = (mode == ThemeMode::Light) ? Color(24, 112, 61) : Color(96, 205, 128);
     }
 }
 

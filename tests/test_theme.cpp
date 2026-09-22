@@ -40,26 +40,41 @@ int main() {
     // untinted: the selected token equals the ordinary raised surface in every theme.
     assert(OLED_BLACK_PALETTE.surfaceSelected == OLED_BLACK_PALETTE.surfaceRaised);
     assert(OLED_BLACK_PALETTE.accentPrimary == Color(236, 62, 72));
-    assert(OLED_BLACK_PALETTE.accentSecondary == Color(58, 142, 153));
-    assert(OLED_BLACK_PALETTE.focusBorder == Color(69, 184, 196));
+    assert(OLED_BLACK_PALETTE.accentSecondary == Color(35, 86, 94));
+    assert(OLED_BLACK_PALETTE.focusBorder == Color(90, 210, 222));
     assert(DARK_PALETTE.surfaceSelected == DARK_PALETTE.surfaceRaised);
     assert(DARK_PALETTE.accentPrimary == Color(232, 60, 70));
-    assert(DARK_PALETTE.accentSecondary == Color(62, 149, 160));
-    assert(DARK_PALETTE.focusBorder == Color(69, 184, 196));
+    assert(DARK_PALETTE.accentSecondary == Color(42, 94, 103));
+    assert(DARK_PALETTE.focusBorder == Color(87, 204, 216));
     assert(LIGHT_PALETTE.surfaceSelected == LIGHT_PALETTE.surfaceRaised);
-    assert(LIGHT_PALETTE.accentPrimary == Color(200, 48, 58));
-    assert(LIGHT_PALETTE.accentSecondary == Color(50, 137, 148));
-    assert(LIGHT_PALETTE.focusBorder == Color(43, 127, 137));
+    assert(LIGHT_PALETTE.accentPrimary == Color(184, 36, 46));
+    assert(LIGHT_PALETTE.accentSecondary == Color(218, 224, 232));
+    assert(LIGHT_PALETTE.focusBorder == Color(16, 18, 24));
+    assert(RED_PALETTE.accentPrimary == Color(241, 70, 80));
+    assert(BLUE_PALETTE.accentPrimary == Color(74, 140, 255));
+    assert(GREEN_PALETTE.accentPrimary == Color(67, 196, 119));
+    assert(GRAY_PALETTE.accentPrimary == Color(195, 198, 204));
+    assert(POKE_CLASSIC_PALETTE.focusBorder == Color(255, 207, 64));
+    assert(PURPLE_PALETTE.accentPrimary == Color(188, 100, 255));
+    assert(ORANGE_PALETTE.accentPrimary == Color(255, 138, 48));
 
-    assert(DARK_PALETTE.success == Color(72, 190, 126));
-    assert(DARK_PALETTE.warning == Color(255, 195, 61));
-    assert(DARK_PALETTE.error == Color(243, 86, 89));
-    assert(DARK_PALETTE.info == Color(82, 158, 240));
+    assert(DARK_PALETTE.success == Color(82, 205, 137));
+    assert(DARK_PALETTE.warning == Color(255, 202, 76));
+    assert(DARK_PALETTE.error == Color(250, 103, 108));
+    assert(DARK_PALETTE.info == Color(96, 176, 255));
 
-    for (ThemeMode mode : {ThemeMode::OLEDBlack, ThemeMode::Dark, ThemeMode::Light}) {
+    for (ThemeMode mode : {ThemeMode::OLEDBlack, ThemeMode::Dark, ThemeMode::Light,
+                           ThemeMode::Red, ThemeMode::Blue, ThemeMode::Green,
+                           ThemeMode::Gray, ThemeMode::PokeClassic,
+                           ThemeMode::Purple, ThemeMode::Orange}) {
         const ThemePalette& palette = themePalette(mode);
         assert(contrast(palette.textPrimary, palette.background) >= 7.0);
         assert(contrast(palette.textPrimary, palette.surface) >= 7.0);
+        assert(contrast(palette.textSecondary, palette.background) >= 4.5);
+        assert(contrast(palette.textSecondary, palette.surface) >= 4.5);
+        assert(contrast(palette.textMuted, palette.background) >= 4.5);
+        assert(contrast(palette.textMuted, palette.surface) >= 4.5);
+        assert(contrast(palette.textPrimary, palette.accentSecondary) >= 4.5);
         assert(palette.focusBorder != palette.divider);
         assert(palette.focusBorder != palette.error);
         assert(palette.focusBorder != palette.accentPrimary);
@@ -75,17 +90,32 @@ int main() {
         assert(Colors::BrandAccent == palette.accentPrimary);
         assert(Colors::SelectedText == palette.textPrimary);
         assert(Colors::Primary == palette.focusBorder);
-        assert(Colors::CursorMenu == palette.focusBorder);
+        assert(Colors::CursorMenu == (mode == ThemeMode::Light ? Colors::Black : palette.focusBorder));
         assert(Colors::ShinyStar != palette.error);
         assert(Colors::ShinyStar != palette.accentPrimary);
         assert(Colors::Warning == palette.warning);
     }
 
     assert(themeModeFromKey("old-or-corrupt-value") == ThemeMode::Dark);
+    assert(themeModeFromKey("grey") == ThemeMode::Gray);
+    assert(themeModeFromKey("pokemon") == ThemeMode::PokeClassic);
     assert(themeModeName(ThemeMode::OLEDBlack) == std::string_view("OLED Black"));
+    assert(themeModeName(ThemeMode::Gray) == std::string_view("Grey"));
+    assert(themeModeName(ThemeMode::PokeClassic) == std::string_view("Poke Classic"));
     assert(nextThemeMode(ThemeMode::OLEDBlack) == ThemeMode::Dark);
     assert(nextThemeMode(ThemeMode::Dark) == ThemeMode::Light);
-    assert(nextThemeMode(ThemeMode::Light) == ThemeMode::OLEDBlack);
+    assert(nextThemeMode(ThemeMode::Light) == ThemeMode::Red);
+    assert(nextThemeMode(ThemeMode::Red) == ThemeMode::Blue);
+    assert(nextThemeMode(ThemeMode::Blue) == ThemeMode::Green);
+    assert(nextThemeMode(ThemeMode::Green) == ThemeMode::Gray);
+    assert(nextThemeMode(ThemeMode::Gray) == ThemeMode::PokeClassic);
+    assert(nextThemeMode(ThemeMode::PokeClassic) == ThemeMode::Purple);
+    assert(nextThemeMode(ThemeMode::Purple) == ThemeMode::Orange);
+    assert(nextThemeMode(ThemeMode::Orange) == ThemeMode::OLEDBlack);
+    applyTheme(ThemeMode::Light);
+    assert(Colors::FocusBorder == Color(16, 18, 24));
+    assert(Colors::CursorMenu == Colors::Black);
+    assert(Colors::PrimaryText == Colors::White);
 
     const std::string framebuffer = readFile("src/UI/PKSEFramebuffer.cpp");
     const auto hi = framebuffer.find("void PKSEFramebuffer::drawSelectionHighlight");

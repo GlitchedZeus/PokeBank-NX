@@ -602,7 +602,7 @@ void applyValuePicker(State& state) {
         case PickerTarget::MetLocation: {
             if (const auto* choice = EncounterPicker::choiceAt(state.encounterChoices, value)) {
                 p.metLocation = choice->encounter.location;
-                p.metLevel = choice->encounter.minLevel;
+                state.session.setEncounterMetLevel(choice->encounter.minLevel);
                 state.selectedEncounter = *choice;
             }
             break;
@@ -690,7 +690,7 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         }
         const auto& encounter = chosen->encounter;
         if (encounter.fixedLevel()) {
-            p.metLevel = encounter.minLevel;
+            state.session.setEncounterMetLevel(encounter.minLevel);
             state.selectedEncounter = *chosen;
             screen.postStatus("This encounter has fixed met level " + std::to_string(encounter.minLevel), 240);
             return;
@@ -698,7 +698,7 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         const auto r = Utils::promptNumber("Met Level for selected encounter", p.metLevel,
                                            encounter.minLevel, encounter.maxLevel);
         if (r.accepted) {
-            p.metLevel = static_cast<uint8_t>(r.value);
+            state.session.setEncounterMetLevel(static_cast<uint8_t>(r.value));
             state.selectedEncounter = *chosen;
         }
         return;
@@ -730,18 +730,29 @@ void editStatCell(TrainerViewScreen& screen, State& state) {
                 openValuePicker(screen, state, PickerTarget::Nature);
                 return;
             case 7:
-                if (pidLinkedRowEditable(state, 7))
-                    openValuePicker(screen, state, PickerTarget::Gender);
-                else
+                if (pidLinkedRowEditable(state, 7)) {
+                    if (!state.session.cycleGender())
+                        screen.postStatus("Gender is fixed for this Generation III species", 240);
+                    state.previewValid = false;
+                } else {
                     screen.postStatus("Gender is fixed for this Generation III species", 240);
+                }
                 return;
             case 8:
                 state.session.setShiny(!state.session.working.shiny);
                 state.previewValid = false;
                 return;
-            case 9:
+            case 9: {
+                const auto slots = SessionModel::nativeAbilitySlots(state.session.working.species);
+                if (slots.size() <= 1) {
+                    const auto& personal = Pokemon::getPersonalInfoG3(state.session.working.species);
+                    screen.postStatus(std::string(Trainer::getAbilityName(personal.ability1)) +
+                        " is this species' only native Generation III ability", 300);
+                    return;
+                }
                 openValuePicker(screen, state, PickerTarget::Ability);
                 return;
+            }
             default:
                 screen.postStatus("PID is derived from the selected Generation III traits", 260);
                 return;

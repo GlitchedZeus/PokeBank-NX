@@ -10,8 +10,8 @@ using namespace PokeBank::UIModel::Gen3SharedEditor;
 namespace Gen3 = PokeVault::Integration::Gen3;
 
 int main() {
-    assert((nativeAbilitySlots(25) == std::vector<uint16_t>{1}));
-    assert((nativeAbilitySlots(280) == std::vector<uint16_t>{1, 2}));
+    assert((nativeAbilitySlots(25) == std::vector<uint16_t>{1})); // Pikachu: Static only in Gen III.
+    assert((nativeAbilitySlots(280) == std::vector<uint16_t>{1, 2})); // Ralts: two native slots.
     for (uint16_t species = 1; species <= 386; ++species) {
         const auto slots = nativeAbilitySlots(species);
         assert(slots.front() == 1 && slots.size() <= 2);
@@ -92,6 +92,29 @@ int main() {
     assert(edit.working.tid == source.tid);
     assert(edit.working.sid == source.sid);
     assert(edit.dirty());
+
+    Session encounterFloor{};
+    encounterFloor.begin(source, Mode::Create);
+    assert(encounterFloor.setLevel(5));
+    assert(encounterFloor.setEncounterMetLevel(25));
+    assert(encounterFloor.working.metLevel == 25);
+    assert(encounterFloor.working.level == 25);
+    assert(encounterFloor.working.experience ==
+           Pokemon::getExpForLevel(25, Pokemon::getGrowthRate(25)));
+    assert(encounterFloor.setLevel(50));
+    const auto level50Exp = encounterFloor.working.experience;
+    assert(encounterFloor.setEncounterMetLevel(25));
+    assert(encounterFloor.working.level == 50);
+    assert(encounterFloor.working.experience == level50Exp);
+    assert(!encounterFloor.setEncounterMetLevel(101));
+
+    Session genderCycle{};
+    genderCycle.begin(source, Mode::Edit);
+    const auto firstGender = genderCycle.working.gender;
+    assert(genderCycle.cycleGender());
+    assert(genderCycle.working.gender != firstGender);
+    assert(genderCycle.cycleGender());
+    assert(genderCycle.working.gender == firstGender);
 
     auto request = edit.editRequest();
     assert(request.level && *request.level == 25);

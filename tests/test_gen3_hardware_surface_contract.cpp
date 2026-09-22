@@ -98,7 +98,8 @@ int main() {
     contains(surface, "{\"D-pad\", \"Navigate\"}, {\"L/R\", \"Panel\"}, {\"B\", \"Back\"}");
     contains(surface, "PID-LINKED / SAFE EDIT");
     contains(surface, "PickerTarget::Nature");
-    contains(surface, "PickerTarget::Gender");
+    contains(surface, "state.session.cycleGender()");
+    assert(surface.find("openValuePicker(screen, state, PickerTarget::Gender)") == std::string::npos);
     contains(surface, "PickerTarget::Ability");
     contains(surface, "SessionModel::nativeAbilitySlots(state.session.working.species)");
     contains(surface, "target != PickerTarget::Ability &&");
@@ -152,6 +153,9 @@ int main() {
     assert(surface.find("state.pickerValues.push_back(current)") != std::string::npos);
     assert(surface.find("No supported exact-game encounter templates for this Pokemon") != std::string::npos);
     contains(surface, "Met Level for selected encounter");
+    contains(surface, "state.session.setEncounterMetLevel(choice->encounter.minLevel)");
+    contains(surface, "state.session.setEncounterMetLevel(static_cast<uint8_t>(r.value))");
+    contains(surface, "only native Generation III ability");
     contains(surface, "normalizeEditableFocus(state");
     contains(surface, "state.focus = Shared::normalizeMoveRowFocus");
     contains(surface, "Shared::moveRowColumn");

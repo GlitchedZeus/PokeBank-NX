@@ -22,8 +22,8 @@ enum class ProgressionSource : uint8_t { Unchanged, Level, Experience };
 
 inline std::vector<uint16_t> nativeAbilitySlots(uint16_t species) {
     const auto& personal = Pokemon::getPersonalInfoG3(species);
-    return personal.ability1 != personal.ability2
-        ? std::vector<uint16_t>{1, 2} : std::vector<uint16_t>{1};
+    const bool secondSlot = personal.ability2 != 0 && personal.ability2 != personal.ability1;
+    return secondSlot ? std::vector<uint16_t>{1, 2} : std::vector<uint16_t>{1};
 }
 
 inline bool sameEditableRecord(const Gen3::StagedPokemonRecord& a,
@@ -120,6 +120,17 @@ struct Session {
         return true;
     }
 
+    // A Pokemon cannot currently be below the level at which this draft says it was met.
+    // Choosing/editing encounter provenance raises current Level only when necessary; a
+    // higher current Level is preserved and remains freely editable afterward.
+    bool setEncounterMetLevel(uint8_t metLevel) noexcept {
+        if (!editable() || metLevel > 100) return false;
+        working.metLevel = metLevel;
+        if (metLevel != 0 && working.level < metLevel)
+            return setLevel(metLevel);
+        return true;
+    }
+
     bool setNature(uint8_t value) noexcept {
         if (!editable() || value >= 25) return false;
         working.nature = value;
@@ -140,6 +151,13 @@ struct Session {
         return true;
     }
 
+    bool cycleGender() noexcept {
+        if (!editable() || working.species == 0) return false;
+        const auto ratio = Pokemon::getPersonalInfo(working.species, working.form).genderRatio;
+        if (ratio == 255 || ratio == 254 || ratio == 0) return false;
+        return setGender(working.gender == 0 ? 1 : 0);
+    }
+
     bool setShiny(bool value) noexcept {
         if (!editable()) return false;
         working.shiny = value;
@@ -150,7 +168,7 @@ struct Session {
     bool setAbilityNumber(uint8_t value) noexcept {
         if (!editable() || working.species == 0 || value < 1 || value > 2) return false;
         const auto& personal = Pokemon::getPersonalInfoG3(working.species);
-        if (value == 2 && personal.ability2 == personal.ability1) return false;
+        if (value == 2 && (personal.ability2 == 0 || personal.ability2 == personal.ability1)) return false;
         working.abilityNumber = value;
         working.ability = value == 2 ? personal.ability2 : personal.ability1;
         requestedAbilityNumber = value;
