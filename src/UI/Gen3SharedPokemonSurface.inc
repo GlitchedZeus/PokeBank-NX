@@ -973,26 +973,42 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
     }
 
     const auto panelBeforeNavigation = state.focus.panel;
+    const bool passiveView = state.session.mode == SessionModel::Mode::View;
     int verticalDirection = 0;
     if (down & HidNpadButton_L)
-        state.focus = Shared::switchPanel(Shared::Generation::Gen3, state.focus, -1);
+        state.focus = passiveView
+            ? Shared::passiveViewSwitchPanel(Shared::Generation::Gen3, state.focus, -1)
+            : Shared::switchPanel(Shared::Generation::Gen3, state.focus, -1);
     if (down & HidNpadButton_R)
-        state.focus = Shared::switchPanel(Shared::Generation::Gen3, state.focus, 1);
+        state.focus = passiveView
+            ? Shared::passiveViewSwitchPanel(Shared::Generation::Gen3, state.focus, 1)
+            : Shared::switchPanel(Shared::Generation::Gen3, state.focus, 1);
     if (down & HidNpadButton_Up) {
-        state.focus = Shared::moveVertical(Shared::Generation::Gen3, state.focus, -1);
+        state.focus = passiveView
+            ? Shared::passiveViewMoveVertical(Shared::Generation::Gen3, state.focus, -1)
+            : Shared::moveVertical(Shared::Generation::Gen3, state.focus, -1);
         verticalDirection = -1;
     }
     if (down & HidNpadButton_Down) {
-        state.focus = Shared::moveVertical(Shared::Generation::Gen3, state.focus, 1);
+        state.focus = passiveView
+            ? Shared::passiveViewMoveVertical(Shared::Generation::Gen3, state.focus, 1)
+            : Shared::moveVertical(Shared::Generation::Gen3, state.focus, 1);
         verticalDirection = 1;
     }
     if (down & HidNpadButton_Left)
-        state.focus = Shared::moveColumn(Shared::Generation::Gen3, state.focus, -1);
+        state.focus = passiveView
+            ? Shared::passiveViewMoveColumn(Shared::Generation::Gen3, state.focus, -1)
+            : Shared::moveColumn(Shared::Generation::Gen3, state.focus, -1);
     if (down & HidNpadButton_Right)
-        state.focus = Shared::moveColumn(Shared::Generation::Gen3, state.focus, 1);
+        state.focus = passiveView
+            ? Shared::passiveViewMoveColumn(Shared::Generation::Gen3, state.focus, 1)
+            : Shared::moveColumn(Shared::Generation::Gen3, state.focus, 1);
 
     const bool panelChanged = state.focus.panel != panelBeforeNavigation;
-    normalizeEditableFocus(state, verticalDirection, panelChanged);
+    if (passiveView)
+        state.focus = Shared::normalizePassiveViewFocus(Shared::Generation::Gen3, state.focus);
+    else
+        normalizeEditableFocus(state, verticalDirection, panelChanged);
     state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
     state.detailsFocus = std::min<int>(state.detailsFocus, static_cast<int>(detailLabels.size()) - 1);
 

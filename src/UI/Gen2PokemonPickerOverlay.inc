@@ -71,16 +71,18 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
         caught.location = static_cast<uint8_t>(encounter->location);
         caught.levelCode = encounter->method == Encounter::Method::Egg
             ? 1 : static_cast<uint8_t>(std::clamp<int>(encounter->minLevel, 2, 63));
-        if (encounter->timeMask != 0) {
-            const auto allowed = [encounter](uint8_t value) {
-                return (encounter->timeMask & (1u << value)) != 0;
-            };
-            if (!allowed(caught.timeOfDay)) {
-                for (uint8_t value = 1; value <= 3; ++value) {
-                    if (allowed(value)) { caught.timeOfDay = value; break; }
+        uint8_t resolvedMetTime = state.crystalMetTime;
+        if (resolvedMetTime < 1 || resolvedMetTime > 3 ||
+            !Encounter::timeAllowed(*encounter, resolvedMetTime)) {
+            for (uint8_t value = 1; value <= 3; ++value) {
+                if (Encounter::timeAllowed(*encounter, value)) {
+                    resolvedMetTime = value;
+                    break;
                 }
             }
         }
+        state.crystalMetTime = resolvedMetTime;
+        caught.timeOfDay = resolvedMetTime;
         // A real Crystal caught record must encode Male or Female. If the user already
         // chose one while caught history was unset, preserve it. Otherwise use the
         // authentic clear-bit Male encoding as the deterministic default.

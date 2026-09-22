@@ -106,7 +106,10 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
     };
     if (unified.crystal) {
         const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
-        rows.push_back({"Met time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});
+        const uint8_t displayedMetTime = state.mode == Mode::View
+            ? caught.timeOfDay
+            : state.crystalMetTime;
+        rows.push_back({"Met time", Gen2Native::crystalMetTimeName(displayedMetTime)});
         rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
         rows.push_back({"Location", Gen2Native::crystalCaughtLocationName(caught.location)});
         const auto displayedOtGender = state.mode == Mode::View

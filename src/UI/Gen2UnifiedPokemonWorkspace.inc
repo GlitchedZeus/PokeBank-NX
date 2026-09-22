@@ -233,6 +233,30 @@ bool handleUnifiedMoveEditor(TrainerViewScreen& screen, State& state, uint64_t d
     return true;
 }
 
+uint8_t crystalAllowedTimeMask(const TrainerViewScreen& screen,
+                               const Gen2::PokemonRecord& p,
+                               const Gen2Native::CrystalCaughtData& caught) {
+    uint8_t mask = 0;
+    for (const auto& encounter : Encounter::forGameSpecies(screen.sourceGameId, p.species)) {
+        if (encounter.location != caught.location) continue;
+        const bool levelMatches = caught.levelCode == 1
+            ? encounter.method == Encounter::Method::Egg
+            : caught.levelCode >= 2 && encounter.containsLevel(caught.levelCode);
+        if (!levelMatches) continue;
+        mask |= encounter.timeMask == 0 ? static_cast<uint8_t>(0x0E) : encounter.timeMask;
+    }
+    return mask == 0 ? static_cast<uint8_t>(0x0E) : mask;
+}
+
+uint8_t nextCrystalAllowedMetTime(uint8_t allowedMask, uint8_t current) noexcept {
+    for (int step = 1; step <= 3; ++step) {
+        const uint8_t candidate = static_cast<uint8_t>(
+            ((static_cast<int>(current) - 1 + step + 3) % 3) + 1);
+        if (allowedMask & static_cast<uint8_t>(1u << candidate)) return candidate;
+    }
+    return current >= 1 && current <= 3 ? current : 1;
+}
+
 bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified::Focus& focus) {
     auto& p = state.working;
     if (focus.panel == Unified::Panel::Details) {
@@ -277,11 +301,20 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
             // Time, met-level and OT-gender belong to an existing Crystal caught record.
             // Raw zero means "not recorded"; never manufacture partial history from it.
-            if ((focus.row == 8 || focus.row == 9) && !caught.present) {
+            if (focus.row == 9 && !caught.present) {
                 screen.postStatus("Choose a legitimate Crystal encounter first", 300);
                 return true;
             }
-            if (focus.row == 8) caught.timeOfDay = static_cast<uint8_t>((caught.timeOfDay + 1) % 4);
+            if (focus.row == 8) {
+                if (!caught.present) {
+                    state.crystalMetTime = static_cast<uint8_t>((state.crystalMetTime + 1) % 4);
+                    // Pending Met Time is editor-only until a legitimate location creates caught history.
+                    return true;
+                }
+                caught.timeOfDay = nextCrystalAllowedMetTime(
+                    crystalAllowedTimeMask(screen, p, caught), caught.timeOfDay);
+                state.crystalMetTime = caught.timeOfDay;
+            }
             if (focus.row == 9) {
                 const auto choices = Encounter::forGameSpecies(screen.sourceGameId, p.species);
                 const Encounter::EncounterTemplate* selected = nullptr;
@@ -406,17 +439,17 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
             down, held, stickX, stickY,
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
         if (down & HidNpadButton_L)
-            unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+            unified.focus = Unified::passiveViewSwitchPanel(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
         if (down & HidNpadButton_R)
-            unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+            unified.focus = Unified::passiveViewSwitchPanel(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
         if (nav & HidNpadButton_Up)
-            unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+            unified.focus = Unified::passiveViewMoveVertical(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
         if (nav & HidNpadButton_Down)
-            unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+            unified.focus = Unified::passiveViewMoveVertical(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
         if (nav & HidNpadButton_Left)
-            unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+            unified.focus = Unified::passiveViewMoveColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
         if (nav & HidNpadButton_Right)
-            unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+            unified.focus = Unified::passiveViewMoveColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
         unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
         return true; // A/Y/X never mutate a View session.
     }
@@ -599,7 +632,10 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
     };
     if (unified.crystal) {
         const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
-        rows.push_back({"Met time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});
+        const uint8_t displayedMetTime = state.mode == Mode::View
+            ? caught.timeOfDay
+            : state.crystalMetTime;
+        rows.push_back({"Met time", Gen2Native::crystalMetTimeName(displayedMetTime)});
         rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
         rows.push_back({"Location", Gen2Native::crystalCaughtLocationName(caught.location)});
         const auto displayedOtGender = state.mode == Mode::View

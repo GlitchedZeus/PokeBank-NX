@@ -212,6 +212,20 @@ int main() {
     assert((moveColumn(Generation::Gen3, {Panel::Moves, 0, 0}, -1) == Focus{Panel::Values, 0, 1}));
     assert((moveColumn(Generation::Gen3, {Panel::Values, 0, 0}, -1) == Focus{Panel::Details, 0, 0}));
 
+    // View selects the move row itself only. PP / PP Ups remain display metadata.
+    assert((normalizePassiveViewFocus(Generation::Gen2, {Panel::Moves, 2, 2}, true) ==
+            Focus{Panel::Moves, 2, 0}));
+    assert((passiveViewMoveColumn(Generation::Gen2, {Panel::Moves, 2, 0}, 1, true) ==
+            Focus{Panel::Moves, 2, 0}));
+    assert((passiveViewMoveColumn(Generation::Gen2, {Panel::Moves, 2, 0}, -1, true) ==
+            Focus{Panel::Values, 2, 1}));
+    assert((moveColumn(Generation::Gen2, {Panel::Moves, 2, 0}, 1, true) ==
+            Focus{Panel::Moves, 2, 1}));
+    assert((passiveViewMoveColumn(Generation::Gen3, {Panel::Values, 1, 1}, 1) ==
+            Focus{Panel::Moves, 1, 0}));
+    assert((passiveViewMoveColumn(Generation::Gen3, {Panel::Moves, 1, 0}, 1) ==
+            Focus{Panel::Moves, 1, 0}));
+
     assert(draftDecision(DraftEvent::Navigate).mutateStagedSave == false);
     assert(draftDecision(DraftEvent::BrowsePicker).mutateStagedSave == false);
     assert(draftDecision(DraftEvent::AcceptPicker).mutateStagedSave == false);

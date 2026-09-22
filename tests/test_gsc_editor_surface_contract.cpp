@@ -160,6 +160,13 @@ int main() {
     assert(unified.find("Choose a legitimate Crystal encounter first") != std::string::npos);
     assert(unified.find("(focus.row == 8 || focus.row == 9) && !caught.present") != std::string::npos);
     assert(unified.find("cycleUnrecordedCrystalOtGender") != std::string::npos);
+    assert(foundation.find("uint8_t crystalMetTime = 0") != std::string::npos);
+    assert(unified.find("Pending Met Time is editor-only") != std::string::npos);
+    assert(unified.find("crystalAllowedTimeMask") != std::string::npos);
+    assert(unified.find("nextCrystalAllowedMetTime") != std::string::npos);
+    assert(picker.find("resolvedMetTime = state.crystalMetTime") != std::string::npos);
+    assert(unified.find("passiveViewMoveColumn") != std::string::npos);
+    assert(parity.find("passiveViewMoveColumn") != std::string::npos);
     assert(unified.find("Intentionally do not touch p.caughtData") != std::string::npos);
     assert(unified.find("crystalOtGenderChoiceText(displayedOtGender)") != std::string::npos);
     assert(finalFix.find("crystalOtGenderChoiceText(displayedOtGender)") != std::string::npos);

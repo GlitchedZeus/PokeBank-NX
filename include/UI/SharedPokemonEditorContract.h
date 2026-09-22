@@ -456,6 +456,33 @@ constexpr Focus moveColumn(Generation generation, Focus focus, int direction, bo
     return focus;
 }
 
+constexpr Focus normalizePassiveViewFocus(Generation generation, Focus focus,
+                                          bool crystal = false) noexcept {
+    focus = normalize(generation, focus, crystal);
+    // Passive/View mode reads a move as one row. PP and PP Ups stay visible,
+    // but never become separate cursor targets.
+    if (focus.panel == Panel::Moves) focus.column = 0;
+    return focus;
+}
+
+constexpr Focus passiveViewSwitchPanel(Generation generation, Focus focus, int direction,
+                                       bool crystal = false) noexcept {
+    return normalizePassiveViewFocus(
+        generation, switchPanel(generation, focus, direction, crystal), crystal);
+}
+
+constexpr Focus passiveViewMoveVertical(Generation generation, Focus focus, int direction,
+                                        bool crystal = false) noexcept {
+    return normalizePassiveViewFocus(
+        generation, moveVertical(generation, focus, direction, crystal), crystal);
+}
+
+constexpr Focus passiveViewMoveColumn(Generation generation, Focus focus, int direction,
+                                      bool crystal = false) noexcept {
+    return normalizePassiveViewFocus(
+        generation, moveColumn(generation, focus, direction, crystal), crystal);
+}
+
 constexpr const char* statsHeading() noexcept { return "STATS"; }
 struct CellFocus { int x, width; };
 constexpr CellFocus cellFocus(Focus focus) noexcept {

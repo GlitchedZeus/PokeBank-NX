@@ -69,6 +69,18 @@ int main() {
     assert((Shared::moveColumn(Shared::Generation::Gen3, {Shared::Panel::Values, 0, 0}, -1) ==
             Shared::Focus{Shared::Panel::Details, 0, 0}));
 
+    // Passive View selects only the move row. PP and PP Ups remain display-only.
+    assert((Shared::passiveViewMoveColumn(
+                Shared::Generation::Gen3, {Shared::Panel::Moves, 2, 0}, 1) ==
+            Shared::Focus{Shared::Panel::Moves, 2, 0}));
+    assert((Shared::normalizePassiveViewFocus(
+                Shared::Generation::Gen3, {Shared::Panel::Moves, 2, 2}) ==
+            Shared::Focus{Shared::Panel::Moves, 2, 0}));
+    // Edit/Create still retain PP / PP Ups sub-column navigation.
+    assert((Shared::moveColumn(
+                Shared::Generation::Gen3, {Shared::Panel::Moves, 2, 0}, 1) ==
+            Shared::Focus{Shared::Panel::Moves, 2, 1}));
+
     // Production routing and renderer wiring (Switch compilation is a separate native gate).
     const auto surface = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
@@ -133,6 +145,8 @@ int main() {
     assert(surface.find("No supported exact-game encounter templates for this Pokemon") != std::string::npos);
     contains(surface, "Met Level for selected encounter");
     contains(surface, "normalizeEditableFocus(state");
+    contains(surface, "Shared::passiveViewMoveColumn");
+    contains(surface, "Shared::normalizePassiveViewFocus");
     contains(surface, "beginMoveEditor");
     contains(surface, "drawMoveEditor");
     contains(surface, "Contextual editor — B always cancels this dialog");

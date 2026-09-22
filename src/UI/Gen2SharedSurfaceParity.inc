@@ -88,17 +88,17 @@ bool handleParityExternalPassiveInput(TrainerViewScreen& screen, uint64_t down, 
         down, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
     if (down & HidNpadButton_L)
-        unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+        unified.focus = Unified::passiveViewSwitchPanel(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
     if (down & HidNpadButton_R)
-        unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+        unified.focus = Unified::passiveViewSwitchPanel(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
     if (nav & HidNpadButton_Up)
-        unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+        unified.focus = Unified::passiveViewMoveVertical(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
     if (nav & HidNpadButton_Down)
-        unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+        unified.focus = Unified::passiveViewMoveVertical(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
     if (nav & HidNpadButton_Left)
-        unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+        unified.focus = Unified::passiveViewMoveColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
     if (nav & HidNpadButton_Right)
-        unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+        unified.focus = Unified::passiveViewMoveColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
     unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
     // A/Y/X are intentionally ignored: passive View remains strictly read-only.
     return true;

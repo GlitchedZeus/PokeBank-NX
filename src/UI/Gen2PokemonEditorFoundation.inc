@@ -58,6 +58,8 @@ struct State : Rules::Session {
     // UI-only until a real Crystal caught-history record exists. This lets Create/Edit
     // choose OT gender before choosing a met location without fabricating caughtData.
     Gen2Native::CrystalOtGenderChoice crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
+    // Pending editor-only Crystal met time. It must not create caught history by itself.
+    uint8_t crystalMetTime = 0; // 0 Unknown, 1 Morning, 2 Day, 3 Night
 };
 
 State& stateFor(const TrainerViewScreen& screen) {
@@ -181,6 +183,7 @@ bool beginCreate(TrainerViewScreen& screen, int box) {
     state.working = defaultCreateRecord(*editor);
     state.begin(state.working, Mode::Create);
     state.crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
+    state.crystalMetTime = 0;
     state.rng ^= static_cast<uint32_t>((box + 1) * 0x9E3779B9u);
     screen.controllerNavigation.reset();
     return true;
@@ -207,8 +210,9 @@ bool beginEdit(TrainerViewScreen& screen, int box, int slot) {
     state.baseline = *pokemon; // exact staged state at Edit entry, not original source bytes.
     state.working = *pokemon;
     state.begin(*pokemon, Mode::Edit);
-    state.crystalOtGender = Gen2Native::crystalOtGenderChoiceFromCaught(
-        Gen2Native::decodeCrystalCaughtData(state.working.caughtData));
+    const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+    state.crystalOtGender = Gen2Native::crystalOtGenderChoiceFromCaught(caught);
+    state.crystalMetTime = caught.present ? caught.timeOfDay : 0;
     state.rng ^= static_cast<uint32_t>((box + 1) * 0x85EBCA6Bu + (slot + 1));
     screen.controllerNavigation.reset();
     return true;
