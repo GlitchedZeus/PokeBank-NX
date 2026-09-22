@@ -1,6 +1,8 @@
 # PokeBank NX — Current Research Router
 
-Last updated: 2026-09-09
+> **2026-09-22 navigation update:** use `docs/REFERENCE_INDEX.md` as the consolidated current lookup for external repositories, license/reuse classification, and “what to use this for.” This file remains valuable deeper research/history and is intentionally preserved.
+
+Last updated: 2026-09-22
 
 > **Research/navigation only.** This file does not expand the active coding milestone. `CURRENT_STATUS.md`, `docs/CODEX_SESSION.md`, and `docs/NEXT_CODEX_PROMPT.md` remain authoritative.
 
