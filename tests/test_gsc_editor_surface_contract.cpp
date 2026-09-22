@@ -202,7 +202,7 @@ int main() {
     assert(pickerModel.find("Encounter::forGameSpecies(sourceGameId, species)") != std::string::npos);
     assert(picker.find("Species-valid Crystal encounters") != std::string::npos);
     assert(picker.find("encounter->minLevel") != std::string::npos);
-    assert(picker.find("encounter->timeMask") != std::string::npos);
+    assert(picker.find("Encounter::timeAllowed(*encounter, resolvedMetTime)") != std::string::npos);
     assert(picker.find("drawPokerusPicker") == std::string::npos);
     assert(picker.find("Kind::Pokerus") == std::string::npos);
     assert(picker.find("Pokerus strain") == std::string::npos);
