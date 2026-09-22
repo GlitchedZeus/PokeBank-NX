@@ -248,6 +248,73 @@ Required direction:
 - preserve the full foreign/newer file;
 - never allow a save operation that knowingly truncates unseen records.
 
+## A08 — P1/P2 — Backup workspaces are not namespaced by Switch account
+
+Files:
+
+- `include/Utils/PokeBankPaths.h`
+- `src/UI/BackupSelectionScreen.cpp`
+- `src/UI/SaveSelectScreen.cpp`
+
+Observed behavior:
+
+- installed-save discovery correctly enumerates `FsSaveDataType_Account` entries and filters them by the selected `AccountUid`;
+- legacy filesystem saves use an explicit persistent profile binding;
+- but the PokeBank-owned backup UI constructs the workspace directory as:
+
+```text
+sdmc:/switch/PokeBank-NX/backups/<sanitized title name>/
+```
+
+with no account UID in that path.
+
+Risk:
+
+Two Switch users with the same Pokémon title share one backup namespace. A user can therefore see/select/delete/edit backup workspaces created from another profile, and generic `Working`/timestamp naming can collide semantically even if source discovery itself was profile-correct.
+
+Required direction:
+
+```text
+backups/<profile-id>/<exact-game-id>/<timestamp-or-working>/
+```
+
+Migration must preserve every existing unscoped backup and require explicit ownership assignment when it cannot be inferred safely.
+
+Do not silently move/delete old backups.
+
+## A09 — P1/P2 — Mutable backup save files are also overwritten in place
+
+File: `src/Save/GetSaveFileContents.cpp`.
+
+Observed across LGPE / SwSh / BDSP / PLA / SV / Z-A / FRLG backup writers:
+
+```text
+fopen(destination, "wb")
+fwrite(...)
+fclose(...)   // close result not checked
+then only the fwrite byte count is checked
+```
+
+BDSP additionally writes `SaveData.bin` and `Backup.bin` sequentially, so a failure between the two can leave the pair inconsistent.
+
+Risk:
+
+Although these are PokeBank-owned mutable backup workspaces rather than original installed saves, a crash, SD removal, disk-full condition, or close/flush failure can corrupt the working copy. If the user has made significant staged edits since the last immutable copy, those edits can be lost. A partially updated multi-file save can also become internally inconsistent.
+
+Required direction:
+
+Use the same durable replacement primitive as Bank/Vault storage:
+
+```text
+write temp
+-> flush/close/check
+-> re-open/reparse/checksum validate
+-> preserve prior generation
+-> promote atomically/transactionally
+```
+
+For multi-file saves, journal the set so all required files advance as one logical generation.
+
 ---
 
 # Prior audit findings requiring exact-current revalidation
