@@ -1,6 +1,6 @@
 # PokeBank NX — Upstream Reuse Audit
 
-Last reviewed: 2026-09-02
+Last reviewed: 2026-09-22
 
 This is the permanent research map for external projects that can accelerate PokeBank NX. Before writing a major Pokémon-format, save-parser, legality, conversion, Pokédex, generated-Pokémon, bank, or transfer subsystem from scratch, check this file and the companion bank-project audit first.
 
@@ -9,6 +9,14 @@ Companion audit added 2026-09-02:
 ```text
 docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md
 ```
+
+Consolidated current lookup map added 2026-09-22:
+
+```text
+docs/REFERENCE_INDEX.md
+```
+
+The consolidated index adds/clarifies newer research references such as OpenHomeNX, PKSM-Scripts, pret/pokediamond, the historical Project Pokémon legality checker, transaction/atomic-replacement research, and fixture sources. Use it first for reuse/license classification, then return here for the deeper original audit notes.
 
 The pins below are **research pins**, not permanent dependency versions. Any future pin change must record the new revision and rerun relevant comparison/regression tests.
 
