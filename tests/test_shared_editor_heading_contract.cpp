@@ -126,12 +126,13 @@ int main() {
     assert(gen1Fix.find("SpriteManager::getTypeSprite") != std::string::npos);
     assert(gen2Final.find("SpriteManager::getTypeSprite") != std::string::npos);
 
-    // Calculated Stat is semantic accent; stored DV/Stat Exp are neutral, derived HP DV is dim.
+    // Calculated Gen II stats are neutral; stored DV/Stat Exp stay bright and derived HP DV stays dim.
     assert(gen1Fix.find("const Color valueColor = (r == 0 && c == 0) ? Colors::TextDim") != std::string::npos);
     assert(gen1Passive.find("p.hasBattleStats ? std::to_string(p.battleStats") != std::string::npos);
     assert(gen1Passive.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
     assert(gen2Final.find("std::to_string(p.statExperience") != std::string::npos);
-    assert(gen2Final.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
+    assert(gen2Final.find("stat, Colors::TextSecondary, TextStyle::Caption") != std::string::npos);
+    assert(gen2Final.find("stat, Colors::Accent, TextStyle::Caption") == std::string::npos);
 
     // Move status owns a far-right region independent of PP/Ups; empty rows skip PP/Ups.
     assert(gen1Passive.find("moveStatusRightPad") != std::string::npos);
@@ -161,7 +162,7 @@ int main() {
     assert(gen2Final.find("const int semanticClearBottom = genderY + 30") != std::string::npos);
     assert(gen2Final.find("semanticClearBottom - clearTop") != std::string::npos);
     assert(countOccurrences(gen2Final, "fb.drawText(x + 18, genderY, \"Gender\"") == 1);
-    assert(countOccurrences(gen2Final, "genderText(p.gender), gen2GenderColor(p.gender)") == 1);
+    assert(countOccurrences(gen2Final, "genderText(p.gender), genderSelected ? Colors::SelectedText : gen2GenderColor(p.gender)") == 1);
 
     // Generation II has a fullscreen final repaint for both active shared modes and external passive View.
     assert(gen2Final.find("drawFullscreenGen2Active") != std::string::npos);
