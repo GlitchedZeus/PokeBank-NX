@@ -1,6 +1,62 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-14
+Last updated: 2026-09-22
+
+## CURRENT CHECKPOINT — 2026-09-22
+
+```text
+Repository: GlitchedZeus/PokeBank-NX
+Production branch: feature/pokebank-playable
+Production safe checkpoint: 3aeecb8061a3cf8cf19670c042c5ce4cd06330fb
+
+Active development PR: #77
+Active branch: feature/gen3-shared-pokemon-editor-20260919
+Exact CI candidate under physical test:
+2e4780412377abab3ffbe4fc2e4757339214a90f
+Tree:
+cdbf0b8faae901c8d765d06b95cac3140bd69e75
+
+PR #77: OPEN / DRAFT / NOT MERGED
+Candidate: CI VERIFIED / DEVICE RETEST REQUIRED / NOT DEVICE ACCEPTED
+```
+
+The owner is physically testing the exact GitHub Actions-built NRO:
+
+```text
+PokeBank-NX-Gen1-UX4-Retest-2e478041.nro
+SHA-256:
+32b08c1cf589252022e68bf50fe0847fea7cbf1b86835178e7d2a2c268e3b43c
+```
+
+Do not modify PR #77 just for cleanup while this exact artifact is under test. Any source change creates a new candidate and requires the full exact-SHA gate again.
+
+Issue #71 / PR #75 completed the universal-editor architecture freeze. Generation III is already active in PR #77 and must continue on that line. Superseded PR #72 has been closed without merge; its branch/commits/history are preserved.
+
+Current project sequence:
+
+```text
+finish Gen I/II/III exact hardware test/fix cycle
+-> freeze accepted first-three-generation editor milestone
+-> full storage/transfer/conversion safety hardening (#69)
+-> durable Bank/Vault recovery
+-> Master Vault validation
+-> broader feature expansion
+```
+
+New durable recovery maps:
+
+- `docs/FULL_PROJECT_AUDIT_2026-09-22.md`
+- `docs/REFERENCE_INDEX.md`
+- issue #69 — current audit backlog
+- issue #29 — current v1 roadmap
+
+Permanent source-write locks remain unchanged.
+
+---
+
+## HISTORICAL 2026-09-14 SNAPSHOT — RETAINED FOR PROVENANCE
+
+The material below is intentionally kept because it records the older PR #68 stage and accepted evidence. It is not the current continuation point.
 
 For the shortest handoff, read `CURRENT_STATUS.md` and `docs/NEXT_CODEX_PROMPT.md`.
 
