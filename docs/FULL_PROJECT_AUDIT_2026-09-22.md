@@ -315,6 +315,27 @@ write temp
 
 For multi-file saves, journal the set so all required files advance as one logical generation.
 
+## Existing internal safe-write pattern worth reusing
+
+File: `src/Legacy/LegacySourceBindings.cpp`.
+
+This subsystem already implements a much safer replacement sequence than `Bank::save()` and the backup save writers:
+
+- write `.tmp`;
+- check `fwrite`;
+- `fflush`;
+- `fsync(fileno(...))`;
+- check `fclose`;
+- re-open and validate the temporary bytes;
+- preserve the prior primary as `.bak`;
+- promote temp to primary;
+- validate the promoted target;
+- rollback on promotion/validation failure.
+
+Do not duplicate three different persistence strategies. After the current hardware gate, extract/generalize the proven pieces into one PokeBank-owned durable replacement/transaction layer and then use it for Bank, profile bindings, editable backup workspaces, and later Vault metadata/payload indices.
+
+Still audit actual Switch/FAT32/exFAT rename + directory-durability semantics before calling this fully power-loss safe.
+
 ---
 
 # Prior audit findings requiring exact-current revalidation
@@ -534,3 +555,40 @@ During the current hardware test:
 - prefer additive documentation, issue updates, and closing only clearly superseded PRs while preserving their commits/history.
 
 This keeps the tested candidate reproducible while still making the repository understandable when development resumes.
+
+
+---
+
+# Documentation-only maintenance performed during hardware test
+
+The following maintenance was intentionally performed on `main` / issue/PR metadata only. It did **not** change PR #77's candidate source SHA.
+
+```text
+README public status refresh                     2dd22fe6f9d38fcc6ab4f0f73b632949b404e21a
+Reference index                                 77f45d88371f59b712fe24f5f10c49e631b1e428
+Initial full-project audit record               4e1b9c3c5450d04074390c181f1485e33f5b653d
+Current status recovery header                  d82c2208f245f315512eb4cbefd3625bb7641b7e
+Project status recovery header                  33df759bf55dd18b87b65d4a6223eddabe1481b7
+Next-session recovery plan                      2d881ee97e2fc669c8f74b3ec784e70326282225
+Upstream audit -> reference-index pointer       1bb886862bba34caf679850c763ef87325466c37
+Project map current recovery header             97f385f32d720a1011f1ea969adc230740d0bd84
+Project resource index current recovery header  9ed08b2e283378b3d037d52e0f33cdb72249b600
+Research current-index navigation refresh       918c073e668ee4ede52c9c320f9126d9f86b3e58
+Research reference-matrix navigation refresh    d632dce409e476ee938ea9021fb4268c3d082e2c
+Archived old PR #68 Codex prompt                0840e5f8a9411dda374c408eeaf6f062df44a34b
+Current PR #77 Codex prompt                     af8fe5c7728b8a1fd8d96269d13617f541898c23
+Codex active-branch recovery discipline         b5891869338fd33bde36cc3d22d659b77314330c
+Recovery contract active-branch correction      b9f64d60b3b3718110d8ed9ae3c1c441e6875d84
+Audit A08/A09 additions                         72564522b77db087fd0ab3f35ddf059af54ab6a5
+```
+
+Issue metadata:
+
+- issue #69 updated with the current exact candidate + confirmed audit backlog;
+- issue #29 updated with the current v1 checkpoint/critical path.
+
+Pull-request metadata:
+
+- PR #72 closed **without merge** as superseded by completed issue #71 / merged PR #75; its branch/commits/history were intentionally left intact;
+- PR #77 body updated with exact current candidate identity/status only;
+- PR #77 was not merged and its head was not changed by this documentation pass.
