@@ -94,8 +94,8 @@ void runCreateParity(const L& layout, SourceGame game) {
     static_assert(PokeBank::UIModel::gen2RadarLabels.size() == 6);
     static_assert(PokeBank::UIModel::gen2RadarLabels[0][0] == 'H');
     static_assert(PokeBank::UIModel::gen2RadarLabels[3][0] == 'S'); // Speed
-    assert(PokeBank::UIModel::canonicalGen2RadarStats(
-        std::array<uint16_t,6>{1,2,3,4,5,6}) == std::array<uint16_t,6>{1,2,3,4,5,6});
+    assert((PokeBank::UIModel::canonicalGen2RadarStats(
+        std::array<uint16_t,6>{1,2,3,4,5,6}) == std::array<uint16_t,6>{1,2,3,4,5,6}));
 
     size_t slot = 0;
     assert(session.add(*editor, 2, slot, error));
