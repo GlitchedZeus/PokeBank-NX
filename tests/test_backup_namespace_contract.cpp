@@ -114,6 +114,17 @@ int main() {
     assert(ui.find("BackupSelectionScreen backupScreen(userUid, titleId, titleName)") !=
            std::string::npos);
 
+    const std::string trainerView = read("src/UI/TrainerViewScreenBase.inc");
+    const auto namedBegin = trainerView.find("TrainerViewScreen::createNamedBackupDir");
+    const auto namedEnd = trainerView.find("std::vector<int> TrainerViewScreen::visibleItemIndices", namedBegin);
+    assert(namedBegin != std::string::npos);
+    assert(namedEnd != std::string::npos && namedEnd > namedBegin);
+    const std::string namedBody = trainerView.substr(namedBegin, namedEnd - namedBegin);
+    assert(namedBody.find("PokeVault::Games::findSwitchGame(titleId)") != std::string::npos);
+    assert(namedBody.find("exactGameBackupsRoot(userUid, identity->id)") != std::string::npos);
+    assert(namedBody.find("BASE_SAVE_DIRECTORY + \"/\" + titleName") == std::string::npos);
+    assert(namedBody.find("backupDir.rfind(gameDir + \"/\", 0)") != std::string::npos);
+
     const std::string fileHeader = read("include/Utils/FileUtilities.h");
     assert(fileHeader.find(
         "listBackupDirectories(const char* gameDirectory, bool includeWorking = false)") !=
