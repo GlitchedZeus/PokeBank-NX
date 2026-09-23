@@ -128,3 +128,21 @@ $(DURABLE_FILE_TEST): $(DURABLE_FILE_SOURCES) include/Utils/DurableFile.h
 $(DURABLE_FILE_SANITIZE): $(DURABLE_FILE_SOURCES) include/Utils/DurableFile.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(DURABLE_FILE_SOURCES) -o $@
+
+
+# A09: mutable backup workspaces must not overwrite their authoritative files in place.
+BACKUP_WORKSPACE_DURABILITY_TEST := $(HOST_BUILD)/test_backup_workspace_durability
+BACKUP_WORKSPACE_DURABILITY_SANITIZE := $(HOST_BUILD)/test_backup_workspace_durability_sanitize
+
+HOST_TESTS += $(BACKUP_WORKSPACE_DURABILITY_TEST)
+HOST_SANITIZE_TESTS += $(BACKUP_WORKSPACE_DURABILITY_SANITIZE)
+host-test: $(BACKUP_WORKSPACE_DURABILITY_TEST)
+host-sanitize: $(BACKUP_WORKSPACE_DURABILITY_SANITIZE)
+
+$(BACKUP_WORKSPACE_DURABILITY_TEST): tests/test_backup_workspace_durability.cpp src/Save/GetSaveFileContents.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_backup_workspace_durability.cpp -o $@
+
+$(BACKUP_WORKSPACE_DURABILITY_SANITIZE): tests/test_backup_workspace_durability.cpp src/Save/GetSaveFileContents.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_backup_workspace_durability.cpp -o $@

@@ -17,6 +17,7 @@
 #include "Utils/Logger.h"
 #include "Utils/HelperUtilities.h"
 #include "Utils/StringHelpers.h"
+#include "Utils/DurableFile.h"
 #include "Trainer/Trainer.h"
 #include "Trainer/Trainer7LGPE.h"
 #include "Trainer/Trainer8SWSH.h"
@@ -50,6 +51,106 @@ namespace Save {
                     break;
             }
             return "The save format is not supported by this build.";
+        }
+
+        bool validateSCWorkspace(std::span<const uint8_t> bytes, std::string& error) {
+            if (bytes.empty() || bytes.size() > MAX_SC_SAVE_BYTES) {
+                error = "save container size is empty, unexpectedly large, or unsupported";
+                return false;
+            }
+
+            std::vector<Save::Block> blocks;
+            const auto status = Encryption::tryDecrypt(bytes.data(), bytes.size(), blocks);
+            if (status != Encryption::DecryptStatus::Ok) {
+                error = decryptFailureMessage(status);
+                return false;
+            }
+            return true;
+        }
+
+        bool validatePLAWorkspace(std::span<const uint8_t> bytes, std::string& error) {
+            if (bytes.empty() || bytes.size() > MAX_SC_SAVE_BYTES) {
+                error = "PLA save container size is empty, unexpectedly large, or unsupported";
+                return false;
+            }
+
+            std::vector<Save::Block> blocks;
+            const auto status = Encryption::tryDecrypt(bytes.data(), bytes.size(), blocks);
+            if (status != Encryption::DecryptStatus::Ok) {
+                error = decryptFailureMessage(status);
+                return false;
+            }
+            const auto layoutError = validatePLAReadLayout(blocks);
+            if (!layoutError.empty()) {
+                error = std::string("PLA layout validation failed: ") + layoutError;
+                return false;
+            }
+            return true;
+        }
+
+        bool validateLGPEWorkspace(std::span<const uint8_t> bytes, std::string& error) {
+            if (bytes.size() != SAVE_SIZE7_LGPE) {
+                error = "Let's Go save size does not match the supported layout";
+                return false;
+            }
+
+            std::vector<uint8_t> candidate(bytes.begin(), bytes.end());
+            const auto blocks = createBlocksFromSaveData7LGPE(candidate);
+            if (blocks.size() != 7) {
+                error = "Let's Go save did not expose the complete supported block set";
+                return false;
+            }
+
+            auto checksumProbe = candidate;
+            writeBlocksToSaveData7LGPE(checksumProbe, blocks);
+            if (checksumProbe != candidate) {
+                error = "Let's Go block checksum verification failed";
+                return false;
+            }
+            return true;
+        }
+
+        bool validateFRLGWorkspace(std::span<const uint8_t> bytes, std::string& error) {
+            if (bytes.size() != Trainer::FRLG_SAVE_SIZE) {
+                error = "FRLG save size does not match the supported 128 KiB layout";
+                return false;
+            }
+
+            std::vector<uint8_t> candidate(bytes.begin(), bytes.end());
+            Trainer::Trainer3FRLG parsed(std::move(candidate), "durable-validation.sav");
+            if (!parsed.isValid()) {
+                error = "FRLG active slot/sector table is invalid";
+                return false;
+            }
+
+            const auto before = parsed.getSaveData();
+            parsed.finalizeChecksums();
+            if (parsed.getSaveData() != before) {
+                error = "FRLG active-slot sector checksum verification failed";
+                return false;
+            }
+            return true;
+        }
+
+        bool persistWorkspaceFile(const char* family,
+                                  const std::string& path,
+                                  std::span<const uint8_t> bytes,
+                                  const PokeBank::Storage::DurableFile::Validator& validator) {
+            const auto result =
+                PokeBank::Storage::DurableFile::replace(path, bytes, validator);
+            if (result.ok) return true;
+
+            std::string message = std::string(family) +
+                " durable backup replacement failed";
+            if (!result.error.empty()) message += ": " + result.error;
+            logErrorToFile(message.c_str(), path.c_str());
+            if (!result.previousPath.empty())
+                logInfoToFile("Previous backup generation preserved at",
+                              result.previousPath.c_str());
+            if (!result.failedPath.empty())
+                logInfoToFile("Failed backup candidate preserved at",
+                              result.failedPath.c_str());
+            return false;
         }
     }
 
@@ -325,18 +426,14 @@ namespace Save {
         trainer.updatePokedexBlock();       // Zukan flags for everything in storage; also before the copy
         writeBlocksToSaveData7LGPE(raw, trainer.getBlocks());
 
-        // Write the full file back over the backup's savedata.bin.
+        // Persist only the mutable PokeBank-owned workspace copy. The installed source is
+        // still protected by the independent hard write lock.
         char savePath[1024];
         snprintf(savePath, sizeof(savePath), "%s/savedata.bin", backupDir);
-        FILE* outFile = fopen(savePath, "wb");
-        if (!outFile) {
-            logErrorToFile("Failed to open file for writing", savePath);
-            return false;
-        }
-        size_t written = fwrite(raw.data(), 1, raw.size(), outFile);
-        fclose(outFile);
-        if (written != raw.size()) {
-            logErrorToFile("Failed to write complete save file", savePath);
+        if (!persistWorkspaceFile(
+                "Let's Go", savePath,
+                std::span<const uint8_t>(raw.data(), raw.size()),
+                validateLGPEWorkspace)) {
             return false;
         }
 
@@ -396,21 +493,13 @@ namespace Save {
         trainer.updatePokedexBlock();       // Zukan flags for everything in storage; before the hash pass
         std::vector<uint8_t> encryptedData = encrypt(trainer.getBlocks());
 
-        // Write to file
         char savePath[1024];
         snprintf(savePath, sizeof(savePath), "%s/main", backupDir);
 
-        FILE* outFile = fopen(savePath, "wb");
-        if (!outFile) {
-            logErrorToFile("Failed to open file for writing", savePath);
-            return false;
-        }
-
-        size_t written = fwrite(encryptedData.data(), 1, encryptedData.size(), outFile);
-        fclose(outFile);
-
-        if (written != encryptedData.size()) {
-            logErrorToFile("Failed to write complete save file", savePath);
+        if (!persistWorkspaceFile(
+                "Sword/Shield", savePath,
+                std::span<const uint8_t>(encryptedData.data(), encryptedData.size()),
+                validateSCWorkspace)) {
             return false;
         }
 
@@ -509,47 +598,18 @@ namespace Save {
     }
 
     bool saveTrainerInfoBDSP(Trainer8BDSP& trainer, const char* backupDir, u64 titleId, AccountUid userUid, bool injectToTitle) {
-        // BDSP is a FLAT blob (no SwishCrypto). Re-serialize party + box into the buffer, then
-        // recompute the whole-file MD5 — after which getSaveData() IS the final on-disk save. Write
-        // both SaveData.bin and its Backup.bin mirror so the game loads the edits either way.
-        trainer.updateItemBlock();
-        trainer.updatePartyBlock();
-        trainer.updateBoxBlock();
-        trainer.updateBoxNameBlock();   // must precede this game's checksum/hash pass
-        trainer.updateCurrentBoxBlock();
-        trainer.updateTrainerInfoBlock();   // money / OT name; before the MD5 hash pass
-        trainer.updatePokedexBlock();       // Zukan flags for everything in storage; before the hash pass
-        trainer.recomputeHash();
-        const std::vector<uint8_t>& saveData = trainer.getSaveData();
+        (void)trainer;
+        (void)backupDir;
+        (void)titleId;
+        (void)userUid;
+        (void)injectToTitle;
 
-        const char* fileNames[] = { "SaveData.bin", "Backup.bin" };
-        for (const char* fname : fileNames) {
-            char savePath[1024];
-            snprintf(savePath, sizeof(savePath), "%s/%s", backupDir, fname);
-            FILE* outFile = fopen(savePath, "wb");
-            if (!outFile) {
-                logErrorToFile("Failed to open file for writing", savePath);
-                return false;
-            }
-            size_t written = fwrite(saveData.data(), 1, saveData.size(), outFile);
-            fclose(outFile);
-            if (written != saveData.size()) {
-                logErrorToFile("Failed to write complete save file", savePath);
-                return false;
-            }
-        }
-        logInfoToFile("Successfully wrote BDSP backup (SaveData.bin + Backup.bin)");
-
-        if (injectToTitle) {
-            logInfoToFile("Restoring modified BDSP save to game save device...");
-            if (!restoreBackupToTitle(userUid, titleId, backupDir, "SaveData.bin", {"Backup.bin"})) {
-                logErrorToFile("Failed to restore modified save to game");
-                return false;
-            }
-        } else {
-            logInfoToFile("Not injecting to the game save - written to the backup only");
-        }
-        return true;
+        // SaveData.bin and Backup.bin are one logical generation. Two independent
+        // DurableFile promotions are not atomic as a set, so fail closed until the
+        // audit implements a recoverable multi-file transaction journal.
+        logErrorToFile(
+            "BDSP mutable backup save blocked: MULTI-FILE JOURNAL REQUIRED; nothing was written.");
+        return false;
     }
 
     bool saveTrainerInfoLA(Trainer8LA& trainer, const char* backupDir, u64 titleId, AccountUid userUid, bool injectToTitle) {
@@ -567,17 +627,10 @@ namespace Save {
         char savePath[1024];
         snprintf(savePath, sizeof(savePath), "%s/main", backupDir);
 
-        FILE* outFile = fopen(savePath, "wb");
-        if (!outFile) {
-            logErrorToFile("Failed to open file for writing", savePath);
-            return false;
-        }
-
-        size_t written = fwrite(encryptedData.data(), 1, encryptedData.size(), outFile);
-        fclose(outFile);
-
-        if (written != encryptedData.size()) {
-            logErrorToFile("Failed to write complete save file", savePath);
+        if (!persistWorkspaceFile(
+                "Legends: Arceus", savePath,
+                std::span<const uint8_t>(encryptedData.data(), encryptedData.size()),
+                validatePLAWorkspace)) {
             return false;
         }
 
@@ -615,21 +668,13 @@ namespace Save {
         trainer.updatePokedexBlock();       // Zukan flags for everything in storage; before the hash pass
         std::vector<uint8_t> encryptedData = encrypt(trainer.getBlocks());
 
-        // Write to file
         char savePath[1024];
         snprintf(savePath, sizeof(savePath), "%s/main", backupDir);
 
-        FILE* outFile = fopen(savePath, "wb");
-        if (!outFile) {
-            logErrorToFile("Failed to open file for writing", savePath);
-            return false;
-        }
-
-        size_t written = fwrite(encryptedData.data(), 1, encryptedData.size(), outFile);
-        fclose(outFile);
-
-        if (written != encryptedData.size()) {
-            logErrorToFile("Failed to write complete save file", savePath);
+        if (!persistWorkspaceFile(
+                "Legends: Z-A", savePath,
+                std::span<const uint8_t>(encryptedData.data(), encryptedData.size()),
+                validateSCWorkspace)) {
             return false;
         }
 
@@ -667,17 +712,10 @@ namespace Save {
         char savePath[1024];
         snprintf(savePath, sizeof(savePath), "%s/main", backupDir);
 
-        FILE* outFile = fopen(savePath, "wb");
-        if (!outFile) {
-            logErrorToFile("Failed to open file for writing", savePath);
-            return false;
-        }
-
-        size_t written = fwrite(encryptedData.data(), 1, encryptedData.size(), outFile);
-        fclose(outFile);
-
-        if (written != encryptedData.size()) {
-            logErrorToFile("Failed to write complete save file", savePath);
+        if (!persistWorkspaceFile(
+                "Scarlet/Violet", savePath,
+                std::span<const uint8_t>(encryptedData.data(), encryptedData.size()),
+                validateSCWorkspace)) {
             return false;
         }
 
@@ -767,15 +805,10 @@ namespace Save {
         snprintf(savePath, sizeof(savePath), "%s/%s", backupDir, name.c_str());
 
         const std::vector<uint8_t>& raw = trainer.getSaveData();
-        FILE* outFile = fopen(savePath, "wb");
-        if (!outFile) {
-            logErrorToFile("Failed to open FRLG save for writing", savePath);
-            return false;
-        }
-        const size_t written = fwrite(raw.data(), 1, raw.size(), outFile);
-        fclose(outFile);
-        if (written != raw.size()) {
-            logErrorToFile("Failed to write complete FRLG save file", savePath);
+        if (!persistWorkspaceFile(
+                "FireRed/LeafGreen", savePath,
+                std::span<const uint8_t>(raw.data(), raw.size()),
+                validateFRLGWorkspace)) {
             return false;
         }
         logInfoToFile("Successfully wrote modified FRLG save", savePath);

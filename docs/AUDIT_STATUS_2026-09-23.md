@@ -66,6 +66,27 @@ The repository has roughly five dozen retained branches. They currently fall int
 
 No destructive branch cleanup is authorized.
 
+## A09 hardening tranche — durable mutable backup workspaces
+
+Current disposition after this tranche:
+
+| Family | Disposition | Candidate validation |
+|---|---|---|
+| Let's Go Pikachu/Eevee | MIGRATED TO DURABLE REPLACEMENT | exact supported size + complete known block set + checksum round-trip probe |
+| Sword/Shield | MIGRATED TO DURABLE REPLACEMENT | SC container integrity hash + complete block parse through `tryDecrypt` |
+| Legends: Arceus | MIGRATED TO DURABLE REPLACEMENT | SC container integrity + complete block parse + PLA layout validation |
+| Scarlet/Violet | MIGRATED TO DURABLE REPLACEMENT | SC container integrity hash + complete block parse through `tryDecrypt` |
+| Legends: Z-A | MIGRATED TO DURABLE REPLACEMENT | SC container integrity hash + complete block parse through `tryDecrypt` |
+| FireRed/LeafGreen | MIGRATED TO DURABLE REPLACEMENT | exact 128 KiB size + active sector table + active-sector checksum no-op probe |
+| Brilliant Diamond/Shining Pearl | MULTI-FILE JOURNAL REQUIRED / FAIL CLOSED | `SaveData.bin` + `Backup.bin` are a coupled generation; saving is blocked until a recoverable file-set transaction exists |
+
+The migrated single-file writers now use the same reviewed `PokeBank::Storage::DurableFile::replace` primitive as Bank persistence rather than direct `fopen(..., "wb") / fwrite / fclose` replacement.
+
+BDSP is deliberately not treated as fixed by two sequential single-file writes. A crash between two promotions could leave a mixed generation, so the mutable BDSP save path fails closed until a recoverable multi-file journal/state machine exists.
+
+This changes only PokeBank-owned mutable backup workspaces. Original installed saves and emulator-source files remain protected by the existing hard live-write locks.
+
+
 # A01–A09 exact-current disposition
 
 ## A01 — P1 — CONFIRMED — Bank persistence is not atomic/durable
