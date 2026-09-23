@@ -112,7 +112,7 @@ namespace UI {
     }
 
     void UIManager::handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName) {
-        BackupSelectionScreen backupScreen(titleId, titleName);
+        BackupSelectionScreen backupScreen(userUid, titleId, titleName);
         fb.startFade();
 
         while (appletMainLoop() && running && !backupScreen.shouldExit()) {
