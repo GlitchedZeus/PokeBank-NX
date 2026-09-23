@@ -82,7 +82,7 @@ namespace Save {
             }
             const auto layoutError = validatePLAReadLayout(blocks);
             if (!layoutError.empty()) {
-                error = std::string("PLA layout validation failed: ") + layoutError;
+                error = std::string("PLA layout validation failed: ") + std::string(layoutError);
                 return false;
             }
             return true;
