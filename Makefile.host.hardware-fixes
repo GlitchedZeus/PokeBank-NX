@@ -109,3 +109,22 @@ $(BANK_RECOVERY_CONTRACT_TEST): tests/test_bank_recovery_contract.cpp src/Traine
 $(BANK_RECOVERY_CONTRACT_SANITIZE): tests/test_bank_recovery_contract.cpp src/Trainer/Bank.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bank_recovery_contract.cpp -o $@
+
+# Audit-phase durable persistence primitive: exercise real host file replacement and
+# rollback before Bank / mutable save writers depend on it.
+DURABLE_FILE_TEST := $(HOST_BUILD)/test_durable_file
+DURABLE_FILE_SANITIZE := $(HOST_BUILD)/test_durable_file_sanitize
+DURABLE_FILE_SOURCES := tests/test_durable_file.cpp src/Utils/DurableFile.cpp
+
+HOST_TESTS += $(DURABLE_FILE_TEST)
+HOST_SANITIZE_TESTS += $(DURABLE_FILE_SANITIZE)
+host-test: $(DURABLE_FILE_TEST)
+host-sanitize: $(DURABLE_FILE_SANITIZE)
+
+$(DURABLE_FILE_TEST): $(DURABLE_FILE_SOURCES) include/Utils/DurableFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(DURABLE_FILE_SOURCES) -o $@
+
+$(DURABLE_FILE_SANITIZE): $(DURABLE_FILE_SOURCES) include/Utils/DurableFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(DURABLE_FILE_SOURCES) -o $@
