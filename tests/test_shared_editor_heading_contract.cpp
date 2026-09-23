@@ -126,12 +126,13 @@ int main() {
     assert(gen1Fix.find("SpriteManager::getTypeSprite") != std::string::npos);
     assert(gen2Final.find("SpriteManager::getTypeSprite") != std::string::npos);
 
-    // Calculated Stat is semantic accent; DV and Stat Exp stay neutral on both final and passive routes.
-    assert(gen1Fix.find("const Color valueColor = c == 2 ? Colors::Accent : Colors::Text") != std::string::npos);
+    // Calculated Gen II stats are neutral; stored DV/Stat Exp stay bright and derived HP DV stays dim.
+    assert(gen1Fix.find("const Color valueColor = (r == 0 && c == 0) ? Colors::TextDim") != std::string::npos);
     assert(gen1Passive.find("p.hasBattleStats ? std::to_string(p.battleStats") != std::string::npos);
     assert(gen1Passive.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
     assert(gen2Final.find("std::to_string(p.statExperience") != std::string::npos);
-    assert(gen2Final.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
+    assert(gen2Final.find("stat, Colors::TextSecondary, TextStyle::Caption") != std::string::npos);
+    assert(gen2Final.find("stat, Colors::Accent, TextStyle::Caption") == std::string::npos);
 
     // Move status owns a far-right region independent of PP/Ups; empty rows skip PP/Ups.
     assert(gen1Passive.find("moveStatusRightPad") != std::string::npos);
@@ -145,7 +146,7 @@ int main() {
     assert(gen1Passive.find("* HP DV derived / read-only") != std::string::npos);
     assert(gen1Passive.find("* one stored Gen I Special stat; split display only") != std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only") != std::string::npos);
-    assert(gen2Final.find("* one stored Special DV / Stat Exp") != std::string::npos);
+    assert(gen2Final.find("One Gen II Special DV / Stat Exp feeds both") != std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only • one stored Special DV / Stat Exp") == std::string::npos);
     assert(gen2Final.find("const int shinyY = y + 366") != std::string::npos);
     assert(gen2Final.find("const int genderY = y + 408") != std::string::npos);
@@ -161,13 +162,15 @@ int main() {
     assert(gen2Final.find("const int semanticClearBottom = genderY + 30") != std::string::npos);
     assert(gen2Final.find("semanticClearBottom - clearTop") != std::string::npos);
     assert(countOccurrences(gen2Final, "fb.drawText(x + 18, genderY, \"Gender\"") == 1);
-    assert(countOccurrences(gen2Final, "genderText(p.gender), gen2GenderColor(p.gender)") == 1);
+    assert(countOccurrences(gen2Final, "genderText(p.gender), genderSelected ? Colors::SelectedText : gen2GenderColor(p.gender)") == 1);
 
     // Generation II has a fullscreen final repaint for both active shared modes and external passive View.
     assert(gen2Final.find("drawFullscreenGen2Active") != std::string::npos);
     assert(gen2Final.find("drawFullscreenGen2Passive") != std::string::npos);
-    assert(gen2Final.find("fb.drawText(28, 16, name") != std::string::npos);
-    assert(gen2Final.find("No. \" + gen2DexLabel(p.species)") != std::string::npos);
+    const auto shell = readText("include/UI/SharedPokemonShell.h");
+    assert(gen2Final.find("SharedPokemonShell::drawChrome(fb, p.species, p.nickname, p.level, p.gender, p.shiny") != std::string::npos);
+    assert(shell.find("fb.drawText(28, 16, name") != std::string::npos);
+    assert(shell.find("No. \" + dexLabel(species)") != std::string::npos);
 
     // Gen I HP DV is derived and must never be a focus/edit target.
     assert(Foundation::hpDVIsDerived());
@@ -183,12 +186,18 @@ int main() {
     const auto hpStatExpLeft = Foundation::moveFocus(
         {Foundation::Panel::Values, 0, static_cast<uint8_t>(Foundation::ValueColumn::StatExperience)},
         Foundation::Direction::Left);
-    assert(hpStatExpLeft.panel == Foundation::Panel::Identity);
+    assert(hpStatExpLeft.panel == Foundation::Panel::Values);
+    assert(hpStatExpLeft.row == static_cast<uint8_t>(Foundation::ValueRow::Attack));
+    assert(hpStatExpLeft.column == static_cast<uint8_t>(Foundation::ValueColumn::DV));
 
     // Gen II final input normalization keeps derived HP DV visible but unreachable by focus.
     assert(gen2Fix.find("normalizeHardwareDerivedHpDvFocus") != std::string::npos);
     assert(gen2Fix.find("focus.panel != Unified::Panel::Values || focus.row != 0 || focus.column != 0") != std::string::npos);
     assert(gen2Fix.find("normalizeHardwareDerivedHpDvFocus(screen, &previous);") != std::string::npos);
+    assert(gen2Fix.find("focus.row = 1;") != std::string::npos);
+    assert(gen2Fix.find("focus.column = 0;") != std::string::npos);
+    assert(gen2Fix.find("focus.panel = Unified::Panel::Details") == std::string::npos);
+    assert(gen2Final.find("r == 0 ? Colors::TextDim : Colors::Text") != std::string::npos);
 
     // Final hardware layers must never present the stale workspace label.
     assert(gen1Fix.find("PKSE three-panel workspace") == std::string::npos);

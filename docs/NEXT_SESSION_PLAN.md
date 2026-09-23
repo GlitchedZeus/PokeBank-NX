@@ -1,8 +1,8 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: 2026-09-19
+Last updated: 2026-09-20
 
-Status: **ISSUE #71 ARCHITECTURE FREEZE COMPLETE / PR #75 MERGED / GEN III READY FOR EXPLICIT START**
+Status: **GEN III ACTIVE IN PR #77 / SAME BRANCH / HARDWARE FIX + RETEST CYCLE / NOT MERGED**
 
 ## Recover this project state first
 
@@ -16,9 +16,13 @@ PR #74: MERGED
 Issue #71: COMPLETE
 PR #75: MERGED
 Issue #71 merge commit: fb0f3c6573eac12d2350253d5c225dae8fc02277
+Active PR: #77 — Generation III: extend the shared Pokemon editor
+Active branch: feature/gen3-shared-pokemon-editor-20260919
+PR #77 state: OPEN / DRAFT / NOT MERGED
+Last observed pre-cleanup head: be030f31690cfbedaa1fc5763bd23fbfebd112eb (observation only; always re-fetch)
 ```
 
-GitHub is authoritative. Re-fetch production before any new modification. If GitHub contains a newer production head, preserve it; never reset/rebase backward to the checkpoint above.
+GitHub is authoritative. **Re-fetch PR #77 and production before any new modification.** The PR head is dynamic while hardware fixes are underway. Preserve every newer head and never reset/rebase backward to a recorded checkpoint.
 
 ## Exact frozen hardware checkpoint
 
@@ -83,16 +87,20 @@ Read/editor/device acceptance never grants permission to weaken those locks.
 
 ## First action next session
 
-1. Re-fetch `feature/pokebank-playable`.
-2. Record the exact current production head/tree/parent.
-3. Preserve any newer production work.
-4. Confirm both the accepted `c24859ce...` checkpoint and the merged #71 architecture freeze remain in production ancestry.
-5. If the owner explicitly starts Generation III, create one new focused Gen III branch/PR from current production.
+1. Re-fetch **PR #77** and `feature/pokebank-playable`.
+2. Record the exact live PR #77 head/tree/parent and current exact-head workflows.
+3. Preserve any newer PR #77 or production work; never reset/rebase backward to the SHA recorded in an older handoff.
+4. Continue the **same** `feature/gen3-shared-pokemon-editor-20260919` branch. Do not create another Gen III branch and do not start over.
+5. Confirm the accepted `c24859ce...` Gen I/II checkpoint and merged #71 architecture freeze remain preserved.
+6. Keep PR #77 OPEN / DRAFT / NOT MERGED until the owner explicitly accepts an exact fully-green Actions-built NRO.
+7. If the owner reports bugs from hardware, treat those findings as authoritative for the next fixes without transferring acceptance from an older SHA to a newer one.
 
-## Next milestone boundary
+## Active milestone boundary
 
-Generation III is the prepared next editor milestone only when explicitly started by the owner.
+Generation III is already active in PR #77. The current work is an ongoing hardware fix/retest cycle, not a future milestone waiting to start.
 
-Do not reopen PR #74 or PR #75 for unrelated work. Gen III must use a new focused branch/PR and follow the completed #71 architecture freeze.
+Do not reopen PR #74 or PR #75 for unrelated work. Do not resume stale PR #72 as the Gen III implementation line. Older PR #77 SHAs are historical evidence only unless GitHub still reports them as the live head.
 
-No further physical testing is required for PR #74 unless a future change intentionally touches one of its accepted behaviors.
+Because PR #77 has touched shared Gen I/II surfaces while implementing Gen III, the exact final candidate must preserve the accepted Gen I/II behavior and should receive the required hardware regression coverage before merge.
+
+No future session may claim DEVICE ACCEPTED solely from CI success; acceptance belongs only to the exact artifact/SHA physically accepted by the owner.

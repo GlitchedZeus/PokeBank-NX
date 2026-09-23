@@ -1,3 +1,4 @@
+#include "UI/SpeciesChangeLevelPolicy.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
@@ -163,6 +164,11 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
     const uint16_t species = static_cast<uint16_t>(state.pickerValue);
     if (state.mode == UX2Mode::AddDraft) {
         const bool beforeShiny = ux3IsShiny(state.draft);
+        if (species != state.draft.species) {
+            state.draft.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
+                screen.sourceGameId, species);
+            state.draft.experience.reset();
+        }
         state.draft.nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(state.draft.nickname, state.draft.species, species);
         state.draft.species = species; // Moves stay intact and are revalidated visibly below.
         if (beforeShiny != ux3.pickerPreviewShiny)
@@ -179,6 +185,9 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
         const bool beforeShiny = ShinyDVs::isShiny(oldDVs);
         BoxPokemonEdit edit;
         edit.species = species;
+        if (species != pokemon->species)
+            edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
+                screen.sourceGameId, species);
         const auto nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(pokemon->nickname, pokemon->species, species);
         if (nickname != pokemon->nickname) edit.nickname = nickname;
         if (beforeShiny != ux3.pickerPreviewShiny) {
@@ -204,8 +213,8 @@ void ux3HandleSpeciesPicker(TrainerViewScreen& screen, uint64_t down) {
     auto& ux3 = ux3StateFor(screen);
     if (down & HidNpadButton_Up) state.pickerValue = std::max(1, state.pickerValue - 1);
     if (down & HidNpadButton_Down) state.pickerValue = std::min(151, state.pickerValue + 1);
-    if (down & HidNpadButton_L) state.pickerValue = std::max(1, state.pickerValue - 10);
-    if (down & HidNpadButton_R) state.pickerValue = std::min(151, state.pickerValue + 10);
+    if (down & (HidNpadButton_L | HidNpadButton_Left)) state.pickerValue = std::max(1, state.pickerValue - 10);
+    if (down & (HidNpadButton_R | HidNpadButton_Right)) state.pickerValue = std::min(151, state.pickerValue + 10);
     if (down & HidNpadButton_Y) ux3.pickerPreviewShiny = !ux3.pickerPreviewShiny;
     if (down & HidNpadButton_B) { state.picker = UX2Picker::None; return; }
     if (down & HidNpadButton_A) ux3ApplySpeciesPicker(screen);

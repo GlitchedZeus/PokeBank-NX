@@ -3,7 +3,8 @@
 # executable data coverage, not only source-text coverage.
 CLASSIC_PICKER_TYPE_SOURCES := tests/test_classic_picker_type_contract.cpp \
 	$(GEN1_POKEMON_COMMON) \
-	src/Integration/Gen2/Gen2PersonalData.cpp
+	src/Integration/Gen2/Gen2PersonalData.cpp \
+	src/Pokemon/PersonalInfoTable.cpp
 CLASSIC_PICKER_TYPE_TEST := $(HOST_BUILD)/test_classic_picker_type_contract
 CLASSIC_PICKER_TYPE_SANITIZE := $(HOST_BUILD)/test_classic_picker_type_contract_sanitize
 
@@ -19,3 +20,20 @@ $(CLASSIC_PICKER_TYPE_TEST): $(CLASSIC_PICKER_TYPE_SOURCES) src/Integration/Gen1
 $(CLASSIC_PICKER_TYPE_SANITIZE): $(CLASSIC_PICKER_TYPE_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CLASSIC_PICKER_TYPE_SOURCES) -o $@
+
+ENCOUNTER_GUARDRAILS_SOURCES := tests/test_encounter_guardrails.cpp src/Names/LocationNames.cpp
+ENCOUNTER_GUARDRAILS_TEST := $(HOST_BUILD)/test_encounter_guardrails
+ENCOUNTER_GUARDRAILS_SANITIZE := $(HOST_BUILD)/test_encounter_guardrails_sanitize
+
+HOST_TESTS += $(ENCOUNTER_GUARDRAILS_TEST)
+HOST_SANITIZE_TESTS += $(ENCOUNTER_GUARDRAILS_SANITIZE)
+host-test: $(ENCOUNTER_GUARDRAILS_TEST)
+host-sanitize: $(ENCOUNTER_GUARDRAILS_SANITIZE)
+
+$(ENCOUNTER_GUARDRAILS_TEST): $(ENCOUNTER_GUARDRAILS_SOURCES) include/Integration/Encounter/EncounterGuardrailsData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(ENCOUNTER_GUARDRAILS_SOURCES) -o $@
+
+$(ENCOUNTER_GUARDRAILS_SANITIZE): $(ENCOUNTER_GUARDRAILS_SOURCES) include/Integration/Encounter/EncounterGuardrailsData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(ENCOUNTER_GUARDRAILS_SOURCES) -o $@

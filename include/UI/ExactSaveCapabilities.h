@@ -6,8 +6,14 @@
 
 namespace PokeBank::UIModel::PokemonEditorFoundation {
 // Format is the current serialization layout, never the Pokemon's origin game.
-enum class SaveFormat : uint8_t { Unknown, RBYInternational, RBYJapanese, GSCInternational, GSCJapanese, PB7, PA8, PK9 };
-enum class SaveFamily : uint8_t { RBY, GoldSilver, Crystal, LetsGo, LegendsArceus, ScarletViolet };
+enum class SaveFormat : uint8_t {
+    Unknown, RBYInternational, RBYJapanese, GSCInternational, GSCJapanese,
+    PK3GBA, PB7, PA8, PK9
+};
+enum class SaveFamily : uint8_t {
+    RBY, GoldSilver, Crystal, RubySapphire, Emerald, FireRedLeafGreen,
+    LetsGo, LegendsArceus, ScarletViolet
+};
 enum class StatModel : uint8_t { DVStatExpSingleSpecial, DVStatExpSplitSpecial, IVAwakening, IVEffortLevel, IVEV };
 struct ExactSaveIdentity {
     std::string_view gameId;
@@ -48,6 +54,22 @@ constexpr std::optional<ExactSaveCapabilities> exactSaveCapabilities(const Exact
         return ExactSaveCapabilities{id,crystal ? SaveFamily::Crystal : SaveFamily::GoldSilver,
             StatModel::DVStatExpSplitSpecial,fields,15,65535,true,crystal};
     }
+    if (game == "ruby_gba" || game == "sapphire_gba" || game == "emerald_gba" ||
+        game == "firered_gba" || game == "leafgreen_gba") {
+        if (id.platform != Platform::GameBoyAdvance || id.generation != Generation::Gen3 ||
+            id.format != SaveFormat::PK3GBA) return std::nullopt;
+        auto fields = capabilitiesForGeneration(Generation::Gen3);
+        // Ribbons/egg state are not exposed by the current staged product adapter yet.
+        // They stay unavailable instead of being synthesized from generic generation defaults.
+        fields.supportsRibbons = false;
+        fields.supportsEgg = false;
+        const SaveFamily family =
+            (game == "emerald_gba") ? SaveFamily::Emerald :
+            (game == "firered_gba" || game == "leafgreen_gba")
+                ? SaveFamily::FireRedLeafGreen : SaveFamily::RubySapphire;
+        return ExactSaveCapabilities{id, family, StatModel::IVEV, fields,
+                                     31, 255, true, false};
+    }
     if (id.platform != Platform::NintendoSwitch) return std::nullopt;
     if (game == "letsgo_pikachu_switch" || game == "letsgo_eevee_switch") {
         if (id.generation != Generation::Gen7 || id.format != SaveFormat::PB7) return std::nullopt;
@@ -78,6 +100,9 @@ constexpr std::optional<ExactSaveCapabilities> capabilitiesForSourceId(std::stri
         return exactSaveCapabilities({id,Platform::GameBoy,Generation::Gen1,SaveFormat::RBYInternational});
     if (id == "gold_gbc" || id == "silver_gbc" || id == "crystal_gbc")
         return exactSaveCapabilities({id,Platform::GameBoyColor,Generation::Gen2,SaveFormat::GSCInternational});
+    if (id == "ruby_gba" || id == "sapphire_gba" || id == "emerald_gba" ||
+        id == "firered_gba" || id == "leafgreen_gba")
+        return exactSaveCapabilities({id,Platform::GameBoyAdvance,Generation::Gen3,SaveFormat::PK3GBA});
     if (id == "letsgo_pikachu_switch" || id == "letsgo_eevee_switch")
         return exactSaveCapabilities({id,Platform::NintendoSwitch,Generation::Gen7,SaveFormat::PB7});
     if (id == "legends_arceus_switch")

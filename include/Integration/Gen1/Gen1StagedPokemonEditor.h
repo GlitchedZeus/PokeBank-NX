@@ -22,6 +22,7 @@ struct BoxPokemonEdit {
 struct BoxPokemonCreate {
     uint16_t species = 1;
     uint8_t level = 5;
+    std::optional<uint32_t> experience;
     std::string nickname, otName;
     std::optional<uint16_t> trainerId;
     std::array<uint8_t,4> moves{33,0,0,0}, pp{35,0,0,0}, ppUps{}, dvs{8,8,8,8};

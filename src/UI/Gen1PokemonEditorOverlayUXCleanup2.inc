@@ -682,7 +682,7 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
 void ux2DrawPanel(PKSEFramebuffer& fb, int x, int y, int w, int h) {
     fb.drawSoftShadow(x, y, w, h, 18);
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Accent, 2);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
 }
 
 void ux2DrawLogicalRow(PKSEFramebuffer& fb, int x, int y, int w,
@@ -707,7 +707,7 @@ std::array<uint16_t,5> ux2StatsForDisplay(TrainerViewScreen& screen, uint16_t sp
 void ux2DrawRadar(PKSEFramebuffer& fb, int cx, int cy, int radius, const std::array<uint16_t,5>& stats) {
     const auto model = PokeBank::UIModel::gen1RadarModel(stats);
     StatsRadar::draw(fb, cx, cy, radius, model.normalized, 1.0f,
-                     Color(232, 60, 70, 58), Colors::Divider, Colors::Accent);
+                     Colors::Divider, Colors::FocusBorder);
 }
 
 void ux2DrawPreview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w,

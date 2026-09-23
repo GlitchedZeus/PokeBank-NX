@@ -1,6 +1,6 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-19
+Last updated: 2026-09-20
 
 For the shortest recovery handoff, read `CURRENT_STATUS.md` and `docs/NEXT_SESSION_PLAN.md`.
 
@@ -20,6 +20,10 @@ PR #75: MERGED
 Issue #71 merge commit: fb0f3c6573eac12d2350253d5c225dae8fc02277
 Writable remote: origin
 Upstream/reference: kiasta/PKSE
+Active development PR: #77 — Generation III: extend the shared Pokemon editor
+Active development branch: feature/gen3-shared-pokemon-editor-20260919
+PR #77 state: OPEN / DRAFT / NOT MERGED
+Last observed PR #77 head: be030f31690cfbedaa1fc5763bd23fbfebd112eb (observation only; always re-fetch)
 ```
 
 `DEVICE ACCEPTED` is reserved for an exact artifact physically tested and accepted by the owner.
@@ -35,7 +39,10 @@ Upstream/reference: kiasta/PKSE
 - Gen I/II staged Y movement, Y-hold rectangular multi-select, packed group movement, Release, and fullscreen View/Edit/Create are hardware accepted.
 - The Gen II empty-slot action-sheet/fullscreen ownership bug is physically confirmed fixed.
 - Original source saves remain immutable and every live source-write path remains HARD DISABLED.
-- Generation III is ready for explicit owner start under the completed #71 shared-editor architecture.
+- **Generation III development is ACTIVE in PR #77.** Do not create another Gen III branch or restart from an older checkpoint.
+- PR #77 is in an active hardware-fix/retest cycle and is **NOT DEVICE ACCEPTED** unless the owner explicitly accepts an exact Actions-built NRO for an exact SHA.
+- The PR #77 head is intentionally treated as dynamic. Every recovery session must re-fetch GitHub before using a recorded SHA.
+- Production remains `feature/pokebank-playable`; PR #77 has not been merged.
 
 ## Exact hardware-accepted checkpoint
 
@@ -146,14 +153,27 @@ The accepted PR #74 milestone does not weaken any source-write lock.
 
 ## Continuation boundary
 
-Production now contains the exact hardware-accepted `c24859ce...` source through merge commit `e0815da5...`.
+Production contains the frozen accepted Gen I/II history and remains separate from the active Generation III development line.
+
+PR #77 is the **only active Generation III implementation line**:
+
+```text
+PR: #77 — Generation III: extend the shared Pokemon editor
+Branch: feature/gen3-shared-pokemon-editor-20260919
+State: OPEN / DRAFT / NOT MERGED
+Hardware state: ACTIVE FIX / RETEST CYCLE
+Device acceptance: NOT FROZEN FOR THE CURRENT DYNAMIC HEAD
+```
+
+The recorded PR head is only an observation. GitHub is authoritative because concurrent hardware-fix work may advance the branch at any time.
 
 At the beginning of the next development session:
 
-1. re-fetch `feature/pokebank-playable` and treat GitHub as authoritative;
-2. preserve any newer production head and never reset backward;
-3. retain all accepted Gen I/II behavior and safety invariants above;
-4. do not reopen PR #74 or rewrite its accepted source checkpoint;
-5. start Generation III only from explicit owner direction, on a new focused branch that follows the completed #71 architecture freeze.
+1. re-fetch PR #77 and `feature/pokebank-playable` before making any assumption about the current head;
+2. preserve any newer PR #77 head and never reset/rebase backward to a handoff SHA;
+3. continue the same PR #77 / same branch — do not create another Gen III branch and do not start over;
+4. preserve all accepted Gen I/II behavior and every source-write safety invariant above;
+5. do not merge PR #77 until the owner explicitly accepts an exact fully-green Actions-built NRO for an exact SHA;
+6. treat older PR #77 candidates and older handoff SHAs as historical evidence only unless they are still the live GitHub head.
 
-**GEN III READY FOR EXPLICIT START.**
+**GEN III IS ACTIVE IN PR #77 — RE-FETCH THE LIVE HEAD BEFORE CONTINUING.**

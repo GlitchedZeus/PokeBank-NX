@@ -158,13 +158,14 @@ namespace Panels {
             const InventoryItem& item = pouch[visible[i]];
             const bool selected = screen.detailViewActive && i == screen.selectedItemIndex;
             fb.drawSoftShadow(tileX, ry, tileW, tileH, tileH / 2);
-            fb.drawFilledRoundedRect(tileX, ry, tileW, tileH, 12,
-                                     selected ? Colors::Primary : Colors::PanelAlt);
+            fb.drawFilledRoundedRect(tileX, ry, tileW, tileH, 12, Colors::PanelAlt);
+            if (selected)
+                fb.drawRoundedRect(tileX, ry, tileW, tileH, 12, Colors::FocusBorder, 2);
             const auto presentation = screen.inventoryItemPresentationState(
                 screen.selectedCategory, item.itemId, item.count, item.isNew, selected);
             const auto nameRole = PokeBank::UIModel::itemNameColorRole(presentation);
             const Color nameCol = nameRole == PokeBank::UIModel::ItemNameColorRole::SelectedText
-                                ? Colors::PrimaryText
+                                ? Colors::Text
                                 : nameRole == PokeBank::UIModel::ItemNameColorRole::ModifiedText
                                     ? Colors::Accent : Colors::Text;
             int nx = tileX + 22;
@@ -196,7 +197,7 @@ namespace Panels {
             std::string cnt = "\xC3\x97" + std::to_string(item.count);
             int cw, ch; fb.measureText(cnt, cw, ch, TextStyle::Body);
             fb.drawText(tileX + tileW - 24 - cw, ry + (tileH - ch) / 2,
-                        cnt, selected ? Colors::PrimaryText : Colors::TextDim, TextStyle::Body);
+                        cnt, selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
             screen.touchButtons.push_back({ i, tileX, ry, tileW, tileH });
             ry += rowPitch;
         }

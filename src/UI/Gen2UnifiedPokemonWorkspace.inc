@@ -1,10 +1,12 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2WorkspacePresentation.h"
+#include "Integration/Encounter/EncounterGuardrails.h"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
 
 namespace Unified = PokeBank::UIModel::SharedPokemonEditor;
+namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 
 struct UnifiedWorkspaceState {
     const TrainerViewScreen* owner = nullptr;
@@ -16,6 +18,12 @@ struct UnifiedWorkspaceState {
     bool progressionEditor = false;
     int progressionRow = 0;
     Gen2::PokemonRecord progressionBaseline{};
+    bool moveEditor = false;
+    int moveEditorRow = 0;
+    int moveEditorSlot = 0;
+    uint16_t moveBaseline = 0;
+    uint8_t movePpBaseline = 0;
+    uint8_t movePpUpsBaseline = 0;
 };
 
 UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
@@ -43,15 +51,17 @@ void resetUnifiedFocus(TrainerViewScreen& screen) {
     unified.detailsFocus = 0;
     unified.progressionEditor = false;
     unified.progressionRow = 0;
+    unified.moveEditor = false;
+    unified.moveEditorRow = 0;
     unified.lastMode = stateFor(screen).mode;
     screen.controllerNavigation.reset();
 }
 
 void mirrorPickerFocus(State& state, const Unified::Focus& focus) {
     if (focus.panel == Unified::Panel::Details) {
-        // Pokérus moved to shared DETAILS row 7, but the proven named picker adapter still uses
+        // Pokérus lives on shared DETAILS row 8; the proven named picker adapter still uses
         // its internal legacy Values row 7. Keep that backend detail hidden behind the shared shell.
-        if (focus.row == 7) {
+        if (focus.row == 8) {
             state.panel = Foundation::Panel::Values;
             state.row = 7;
             state.column = 0;
@@ -74,7 +84,7 @@ void mirrorPickerFocus(State& state, const Unified::Focus& focus) {
 }
 
 bool sharedPickerField(const Unified::Focus& focus) noexcept {
-    return (focus.panel == Unified::Panel::Details && (focus.row == 0 || focus.row == 7)) ||
+    return (focus.panel == Unified::Panel::Details && (focus.row == 0 || focus.row == 8)) ||
            (focus.panel == Unified::Panel::Moves && focus.column == 0);
 }
 
@@ -106,11 +116,31 @@ bool handleProgressionEditor(TrainerViewScreen& screen, uint64_t down, uint64_t 
 
     if (unified.progressionRow == 0) {
         const auto result = Utils::promptNumber("Level", state.working.level, 1, 100);
-        if (result.accepted) state.setLevel(static_cast<uint8_t>(result.value));
+        if (result.accepted) {
+            const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+            if (screen.sourceGameId == "crystal_gbc" && caught.present && caught.levelCode >= 2 &&
+                result.value < caught.levelCode) {
+                screen.postStatus("Current level cannot be below this Crystal met level", 300);
+            } else {
+                state.setLevel(static_cast<uint8_t>(result.value));
+            }
+        }
     } else if (unified.progressionRow == 1) {
         const auto result = Utils::promptNumber("Experience", static_cast<int>(state.working.experience),
                                                 0, static_cast<int>(state.maximumExperience()));
-        if (result.accepted) state.setExperience(static_cast<uint32_t>(result.value));
+        if (result.accepted) {
+            const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+            const auto* personal = Gen2::personalRecord(state.working.species);
+            const uint8_t nextLevel = personal
+                ? Pokemon::getLevelFromExp(static_cast<uint32_t>(result.value), personal->experienceGrowth)
+                : state.working.level;
+            if (screen.sourceGameId == "crystal_gbc" && caught.present && caught.levelCode >= 2 &&
+                nextLevel < caught.levelCode) {
+                screen.postStatus("Experience would put current level below this Crystal met level", 300);
+            } else {
+                state.setExperience(static_cast<uint32_t>(result.value));
+            }
+        }
     } else if (unified.progressionRow == 2) {
         unified.progressionEditor = false;
         screen.controllerNavigation.reset();
@@ -120,6 +150,111 @@ bool handleProgressionEditor(TrainerViewScreen& screen, uint64_t down, uint64_t 
         screen.controllerNavigation.reset();
     }
     return true;
+}
+
+
+void beginUnifiedMoveEditor(TrainerViewScreen& screen, State& state, int slot) {
+    auto& unified = unifiedStateFor(screen);
+    unified.moveEditor = true;
+    unified.moveEditorRow = 0;
+    unified.moveEditorSlot = std::clamp(slot, 0, 3);
+    const auto index = static_cast<std::size_t>(unified.moveEditorSlot);
+    unified.moveBaseline = state.working.moves[index];
+    unified.movePpBaseline = state.working.pp[index];
+    unified.movePpUpsBaseline = state.working.ppUps[index];
+    screen.controllerNavigation.reset();
+}
+
+void cancelUnifiedMoveEditor(TrainerViewScreen& screen, State& state) {
+    auto& unified = unifiedStateFor(screen);
+    if (!unified.moveEditor) return;
+    const auto index = static_cast<std::size_t>(unified.moveEditorSlot);
+    state.working.moves[index] = unified.moveBaseline;
+    state.working.pp[index] = unified.movePpBaseline;
+    state.working.ppUps[index] = unified.movePpUpsBaseline;
+    unified.moveEditor = false;
+    unified.moveEditorRow = 0;
+    screen.controllerNavigation.reset();
+}
+
+bool handleUnifiedMoveEditor(TrainerViewScreen& screen, State& state, uint64_t down,
+                             uint64_t held, int stickX, int stickY) {
+    auto& unified = unifiedStateFor(screen);
+    if (!unified.moveEditor) return false;
+    if (pickerStateFor(screen).model.active()) return false;
+
+    const uint64_t nav = screen.controllerNavigation.apply(
+        down, held, stickX, stickY,
+        HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
+    if (nav & HidNpadButton_Up) unified.moveEditorRow = (unified.moveEditorRow + 4) % 5;
+    if (nav & HidNpadButton_Down) unified.moveEditorRow = (unified.moveEditorRow + 1) % 5;
+    if (down & HidNpadButton_B) {
+        cancelUnifiedMoveEditor(screen, state);
+        return true;
+    }
+    if (!(down & HidNpadButton_A)) return true;
+
+    const int slot = unified.moveEditorSlot;
+    const auto index = static_cast<std::size_t>(slot);
+    if (unified.moveEditorRow == 0) {
+        Unified::Focus moveFocus{Unified::Panel::Moves, static_cast<uint8_t>(slot), 0};
+        mirrorPickerFocus(state, moveFocus);
+        auto& picker = pickerStateFor(screen);
+        openPickerForFocusedField(screen, state, picker, HidNpadButton_A);
+        return true;
+    }
+    if (unified.moveEditorRow == 1) {
+        if (state.working.moves[index] == 0) {
+            screen.postStatus("Choose a move before editing PP", 220);
+            return true;
+        }
+        const auto result = Utils::promptNumber(
+            "Move PP", std::min(state.working.pp[index], state.maximumPP(slot)),
+            0, state.maximumPP(slot));
+        if (result.accepted) state.setPP(slot, static_cast<uint8_t>(result.value));
+        return true;
+    }
+    if (unified.moveEditorRow == 2) {
+        if (state.working.moves[index] == 0) {
+            screen.postStatus("Empty move slots keep PP Ups at zero", 220);
+            return true;
+        }
+        const auto result = Utils::promptNumber("PP Ups", state.working.ppUps[index], 0, 3);
+        if (result.accepted) state.setPPUps(slot, static_cast<uint8_t>(result.value));
+        return true;
+    }
+    if (unified.moveEditorRow == 3) {
+        unified.moveEditor = false;
+        unified.moveEditorRow = 0;
+        screen.controllerNavigation.reset();
+        return true;
+    }
+    cancelUnifiedMoveEditor(screen, state);
+    return true;
+}
+
+uint8_t crystalAllowedTimeMask(const TrainerViewScreen& screen,
+                               const Gen2::PokemonRecord& p,
+                               const Gen2Native::CrystalCaughtData& caught) {
+    uint8_t mask = 0;
+    for (const auto& encounter : Encounter::forGameSpecies(screen.sourceGameId, p.species)) {
+        if (encounter.location != caught.location) continue;
+        const bool levelMatches = caught.levelCode == 1
+            ? encounter.method == Encounter::Method::Egg
+            : caught.levelCode >= 2 && encounter.containsLevel(caught.levelCode);
+        if (!levelMatches) continue;
+        mask |= encounter.timeMask == 0 ? static_cast<uint8_t>(0x0E) : encounter.timeMask;
+    }
+    return mask == 0 ? static_cast<uint8_t>(0x0E) : mask;
+}
+
+uint8_t nextCrystalAllowedMetTime(uint8_t allowedMask, uint8_t current) noexcept {
+    for (int step = 1; step <= 3; ++step) {
+        const uint8_t candidate = static_cast<uint8_t>(
+            ((static_cast<int>(current) - 1 + step + 3) % 3) + 1);
+        if (allowedMask & static_cast<uint8_t>(1u << candidate)) return candidate;
+    }
+    return current >= 1 && current <= 3 ? current : 1;
 }
 
 bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified::Focus& focus) {
@@ -135,48 +270,144 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return true;
         }
         if (focus.row == 2) {
-            beginProgressionEditor(screen);
+            const auto result = Utils::promptNumber("Generation II Level", p.level, 1, 100);
+            if (!result.accepted) return true;
+            const uint8_t requested = static_cast<uint8_t>(result.value);
+            if (screen.sourceGameId == "crystal_gbc") {
+                const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
+                if (caught.present && caught.levelCode >= 2 && requested < caught.levelCode) {
+                    screen.postStatus("Current level cannot be below Crystal met level", 300);
+                    return true;
+                }
+            }
+            state.setLevel(requested);
             return true;
         }
         if (focus.row == 3) {
-            const auto result = Utils::promptText("Original Trainer", "1-10 Generation II characters",
+            const auto result = Utils::promptNumber("Generation II Experience",
+                static_cast<int>(p.experience), 0,
+                static_cast<int>(state.maximumExperience()));
+            if (!result.accepted) return true;
+            const uint32_t experience = static_cast<uint32_t>(result.value);
+            const uint8_t requestedLevel = Pokemon::getLevelFromExp(
+                experience, Pokemon::getGrowthRate(p.species));
+            if (screen.sourceGameId == "crystal_gbc") {
+                const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
+                if (caught.present && caught.levelCode >= 2 && requestedLevel < caught.levelCode) {
+                    screen.postStatus("Experience would put current level below Crystal met level", 300);
+                    return true;
+                }
+            }
+            state.setExperience(experience);
+            return true;
+        }
+        if (focus.row == 4) {
+            const auto result = Utils::promptText("OT Name", "1-10 Generation II characters",
                                                   p.originalTrainer, 10);
             if (result.accepted) p.originalTrainer = result.text;
             return true;
         }
-        if (focus.row == 4) {
+        if (focus.row == 5) {
             const auto result = Utils::promptNumber("Trainer ID", p.trainerId, 0, 65535);
             if (result.accepted) p.trainerId = static_cast<uint16_t>(result.value);
             return true;
         }
-        if (focus.row == 5) {
+        if (focus.row == 6) {
             openHeldItemPicker(state);
             return true;
         }
-        if (focus.row == 6) {
+        if (focus.row == 7) {
             const auto result = Utils::promptNumber("Friendship", p.friendship, 0, 255);
             if (result.accepted) p.friendship = static_cast<uint8_t>(result.value);
             return true;
         }
-        if (focus.row >= 8 && screen.sourceGameId == "crystal_gbc") {
+        if (focus.row == 8) {
+            p.pokerus = Gen2Native::cyclePokerusState(p.pokerus);
+            return true;
+        }
+        if (focus.row >= 9 && screen.sourceGameId == "crystal_gbc") {
             auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
-            if (focus.row == 8) caught.timeOfDay = static_cast<uint8_t>((caught.timeOfDay + 1) % 4);
+            // Time, met-level and OT-gender belong to an existing Crystal caught record.
+            // Raw zero means "not recorded"; never manufacture partial history from it.
+            if (focus.row == 10 && !caught.present) {
+                screen.postStatus("Choose a legitimate Crystal encounter first", 300);
+                return true;
+            }
             if (focus.row == 9) {
-                const auto result = Utils::promptNumber("Met level: 0 unknown, 1 egg marker", caught.levelCode, 0, 63);
-                if (!result.accepted) return true;
-                caught.levelCode = static_cast<uint8_t>(result.value);
+                if (!caught.present) {
+                    state.crystalMetTime = static_cast<uint8_t>((state.crystalMetTime + 1) % 4);
+                    // Pending Met Time is editor-only until a legitimate location creates caught history.
+                    return true;
+                }
+                caught.timeOfDay = nextCrystalAllowedMetTime(
+                    crystalAllowedTimeMask(screen, p, caught), caught.timeOfDay);
+                state.crystalMetTime = caught.timeOfDay;
             }
             if (focus.row == 10) {
-                pickerStateFor(screen).model.openLocation(caught.location);
+                const auto choices = Encounter::forGameSpecies(screen.sourceGameId, p.species);
+                const Encounter::EncounterTemplate* selected = nullptr;
+                for (const auto& encounter : choices) {
+                    if (encounter.location != caught.location) continue;
+                    const bool timeMatches = Encounter::timeAllowed(encounter, caught.timeOfDay);
+                    if (caught.levelCode == 1 && encounter.method == Encounter::Method::Egg && timeMatches) {
+                        selected = &encounter; break;
+                    }
+                    if (caught.levelCode >= 2 && encounter.containsLevel(caught.levelCode) && timeMatches) {
+                        selected = &encounter; break;
+                    }
+                    if (!selected && timeMatches) selected = &encounter;
+                    if (!selected) selected = &encounter;
+                }
+                if (!selected) {
+                    screen.postStatus("Choose a legitimate Crystal encounter first", 300);
+                    return true;
+                }
+                if (selected->method == Encounter::Method::Egg) {
+                    caught.levelCode = 1;
+                    screen.postStatus("Egg encounter uses Crystal's native egg marker", 240);
+                } else if (selected->fixedLevel()) {
+                    caught.levelCode = static_cast<uint8_t>(std::clamp<int>(selected->minLevel, 2, 63));
+                    screen.postStatus("This encounter has fixed met level " +
+                                      std::to_string(caught.levelCode), 240);
+                } else {
+                    const int minLevel = std::clamp<int>(selected->minLevel, 2, 63);
+                    const int maxLevel = std::clamp<int>(selected->maxLevel, minLevel, 63);
+                    const int current = caught.levelCode >= minLevel && caught.levelCode <= maxLevel
+                        ? caught.levelCode : minLevel;
+                    const auto result = Utils::promptNumber("Met Level for selected Crystal encounter",
+                                                             current, minLevel, maxLevel);
+                    if (!result.accepted) return true;
+                    caught.levelCode = static_cast<uint8_t>(result.value);
+                }
+            }
+            if (focus.row == 11) {
+                pickerStateFor(screen).model.openLocation(
+                    screen.sourceGameId, p.species, caught.location, caught.levelCode);
+                if (pickerStateFor(screen).model.locationCount() == 0) {
+                    pickerStateFor(screen).model.close();
+                    screen.postStatus("No supported Crystal encounter templates for this species", 300);
+                    return true;
+                }
                 screen.controllerNavigation.reset();
                 return true;
             }
-            if (focus.row == 11) caught.originalTrainerFemale = !caught.originalTrainerFemale;
+            if (focus.row == 12) {
+                if (!caught.present) {
+                    state.crystalOtGender =
+                        Gen2Native::cycleUnrecordedCrystalOtGender(state.crystalOtGender);
+                    // Intentionally do not touch p.caughtData: pending OT gender must not
+                    // fabricate Crystal met location/level/time history.
+                    return true;
+                }
+                state.crystalOtGender =
+                    Gen2Native::cycleRecordedCrystalOtGender(state.crystalOtGender);
+                caught.originalTrainerFemale =
+                    Gen2Native::crystalOtGenderFemale(state.crystalOtGender);
+            }
             p.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
             return true;
         }
-        mirrorPickerFocus(state, focus);
-        return false; // named Pokérus picker owns A.
+        return true;
     }
 
     if (focus.panel == Unified::Panel::Values) {
@@ -213,19 +444,9 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
         return true;
     }
 
-    if (focus.column == 0) {
-        mirrorPickerFocus(state, focus);
-        return false;
-    }
-    const int slot = focus.row;
-    if (focus.column == 1) {
-        const auto result = Utils::promptNumber("Move PP", std::min(p.pp[slot], state.maximumPP(slot)),
-                                                0, state.maximumPP(slot));
-        if (result.accepted) state.setPP(slot, static_cast<uint8_t>(result.value));
-        return true;
-    }
-    const auto result = Utils::promptNumber("PP Ups", p.ppUps[slot], 0, p.moves[slot] == 0 ? 0 : 3);
-    if (result.accepted) state.setPPUps(slot, static_cast<uint8_t>(result.value));
+    // Move rows share the accepted Gen I interaction: A opens Move N first.
+    // The Choose Move picker is a child of that editor, never the box Empty Slot action sheet.
+    beginUnifiedMoveEditor(screen, state, static_cast<int>(focus.row));
     return true;
 }
 
@@ -240,14 +461,32 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
             PokeBank::UIModel::PassiveViewAction::Back) {
             closeToActions(screen);
             resetUnifiedFocus(screen);
+            return true;
         }
-        return true;
+        const uint64_t nav = screen.controllerNavigation.apply(
+            down, held, stickX, stickY,
+            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
+        if (down & HidNpadButton_L)
+            unified.focus = Unified::passiveViewSwitchPanel(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+        if (down & HidNpadButton_R)
+            unified.focus = Unified::passiveViewSwitchPanel(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+        if (nav & HidNpadButton_Up)
+            unified.focus = Unified::passiveViewMoveVertical(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+        if (nav & HidNpadButton_Down)
+            unified.focus = Unified::passiveViewMoveVertical(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+        if (nav & HidNpadButton_Left)
+            unified.focus = Unified::passiveViewMoveColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+        if (nav & HidNpadButton_Right)
+            unified.focus = Unified::passiveViewMoveColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+        unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
+        return true; // A/Y/X never mutate a View session.
     }
 
     if (pickerStateFor(screen).model.active()) return false;
     if (state.itemPicker) return handleItemPicker(screen, state, down, held, stickX, stickY);
     if (state.confirmExit) return handleConfirm(screen, state, down);
     if (handleProgressionEditor(screen, down, held, stickX, stickY)) return true;
+    if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;
 
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,
@@ -256,9 +495,10 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     if (down & HidNpadButton_R) unified.focus = Unified::switchPanel(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
     if (nav & HidNpadButton_Up) unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
     if (nav & HidNpadButton_Down) unified.focus = Unified::moveVertical(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
-    if (nav & HidNpadButton_Left) unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
-    if (nav & HidNpadButton_Right) unified.focus = Unified::moveColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
+    if (nav & HidNpadButton_Left) unified.focus = Unified::moveRowColumn(Unified::Generation::Gen2, unified.focus, -1, unified.crystal);
+    if (nav & HidNpadButton_Right) unified.focus = Unified::moveRowColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
 
+    unified.focus = Unified::normalizeMoveRowFocus(Unified::Generation::Gen2, unified.focus, unified.crystal);
     unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
 
     if (down & HidNpadButton_Y) {
@@ -271,12 +511,12 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         return true;
     }
     if (down & HidNpadButton_B) {
-        if (state.mode == Mode::Create)
-            screen.postStatus("Create draft cancelled; staged save unchanged", 240);
         if (state.back()) {
             closeToActions(screen);
             resetUnifiedFocus(screen);
         } else {
+            // Create/Edit now always stop here for an explicit Add/Keep, Discard,
+            // or Continue decision. No local draft is lost on a stray Back press.
             screen.controllerNavigation.reset();
         }
         return true;
@@ -303,7 +543,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
         TextStyle::Heading);
     fb.drawText(x + 114, y + 42, "DV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 184, y + 42, "Stat Exp", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 292, y + 42, "Stat", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 292, y + 42, "Calculated", Colors::TextDim, TextStyle::Caption);
 
     const auto& p = state.working;
     const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p);
@@ -316,21 +556,21 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
             const auto cell = Unified::cellFocus(unified.focus);
             fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::Accent, 2);
         }
-        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], rowSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 114, yy, std::to_string(dvs[static_cast<std::size_t>(r)]) + (r == 0 ? " *" : ""),
-                    rowSelected && unified.focus.column == 0 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
-                    rowSelected && unified.focus.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)]) : "—";
-        fb.drawText(x + 282, yy, stat,
-                    rowSelected && unified.focus.column == 2 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+        fb.drawText(x + 282, yy, stat, Colors::TextDim, TextStyle::Caption);
     }
-    fb.drawText(x + 18, y + 246, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 18, y + 274, "SpA", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 84, y + 274, std::to_string(battle[4]), Colors::Text, TextStyle::Caption);
-    fb.drawText(x + 200, y + 274, "SpD", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 266, y + 274, std::to_string(battle[5]), Colors::Text, TextStyle::Caption);
-    fb.drawText(x + 18, y + 304, "* HP DV derived • one stored Special DV / Stat Exp", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 246, "SPECIAL", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 274, "Sp. Atk", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 92, y + 274, std::to_string(battle[4]), Colors::Text, TextStyle::Caption);
+    fb.drawText(x + 200, y + 274, "Sp. Def", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 274, y + 274, std::to_string(battle[5]), Colors::Text, TextStyle::Caption);
+    fb.drawText(x + 18, y + 304, "One Gen II Special DV / Stat Exp feeds both", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
 
     const std::array<std::pair<std::string, std::string>, 2> capabilityRows{{
         {"Shiny", p.shiny ? "Yes (DV-derived)" : "No (DV-derived)"},
@@ -344,11 +584,51 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
             const auto cell = Unified::cellFocus(unified.focus);
             fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::Accent, 2);
         }
-        fb.drawText(x + 18, yy, capabilityRows[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy, capabilityRows[static_cast<std::size_t>(i)].first, selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 134, yy, capabilityRows[static_cast<std::size_t>(i)].second,
-                    selected ? Colors::Accent : (i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text),
+                    selected ? Colors::Text : (i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text),
                     TextStyle::Caption);
     }
+}
+
+
+void drawUnifiedMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb,
+                           State& state, const UnifiedWorkspaceState& unified) {
+    if (!unified.moveEditor) return;
+    const auto slot = static_cast<std::size_t>(unified.moveEditorSlot);
+    constexpr int w = 650, h = 390, navH = 48;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - navH - h) / 2;
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - navH, Color(0, 0, 0, 95));
+    drawPanelSurface(fb, x, y, w, h, false, 18);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+    fb.drawText(x + 24, y + 18, "Move " + std::to_string(unified.moveEditorSlot + 1),
+                Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 52, "Contextual editor — B always cancels this dialog",
+                Colors::TextDim, TextStyle::Caption);
+
+    const uint16_t move = state.working.moves[slot];
+    const std::array<std::pair<std::string, std::string>, 5> rows{{
+        {"Move", move == 0 ? std::string("Empty") : std::string(Names::getMoveName(move))},
+        {"PP", std::to_string(state.working.pp[slot]) + "/" +
+               std::to_string(state.maximumPP(unified.moveEditorSlot))},
+        {"PP Ups", std::to_string(state.working.ppUps[slot])},
+        {"Apply", "Keep these move details"},
+        {"Cancel", "Discard these move details"},
+    }};
+    int rowY = y + 88;
+    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
+        const bool selected = i == unified.moveEditorRow;
+        if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);
+        fb.drawText(x + 38, rowY + 10, rows[static_cast<std::size_t>(i)].first,
+                    selected ? Colors::Text : Colors::TextDim);
+        int valueW = 0, valueH = 0;
+        fb.measureText(rows[static_cast<std::size_t>(i)].second, valueW, valueH, TextStyle::Body);
+        fb.drawText(x + w - 38 - valueW, rowY + 10, rows[static_cast<std::size_t>(i)].second,
+                    selected ? Colors::Text : Colors::TextDim);
+        rowY += 48;
+    }
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Edit / Apply"}, {"B", "Cancel"}});
 }
 
 void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWorkspaceState& unified,
@@ -358,10 +638,7 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         !passive && unified.focus.panel == Unified::Panel::Details ? Colors::Accent : Colors::Text,
         TextStyle::Caption);
     const auto& p = state.working;
-    if (auto* sprite = SpriteManager::getSprite(p.species, p.shiny); sprite && sprite->data)
-        fb.drawSpriteStaticContained(x + 63, y + 34, 174, 146,
-                                     sprite->width, sprite->height, sprite->data, sprite->channels);
-    else fb.drawText(x + 82, y + 104, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
+    SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny);
     if (const auto* personal = Gen2::personalRecord(p.species)) {
         int badgeX = x + 18;
         sharedBadge(fb, badgeX, y + 184, sharedTypeName(personal->rawType1));
@@ -375,8 +652,9 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
     std::vector<std::pair<std::string, std::string>> rows{
         {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
         {"Nickname", p.nickname},
-        {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
-        {"OT", p.originalTrainer},
+        {"Level", std::to_string(p.level)},
+        {"Experience", std::to_string(p.experience)},
+        {"OT Name", p.originalTrainer},
         {"Trainer ID", std::to_string(p.trainerId)},
         {"Held Item", itemText(p.heldItem)},
         {"Friendship", std::to_string(p.friendship)},
@@ -384,28 +662,34 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
     };
     if (unified.crystal) {
         const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
-        rows.push_back({"Met time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});
+        const uint8_t displayedMetTime = state.mode == Mode::View
+            ? caught.timeOfDay
+            : state.crystalMetTime;
+        rows.push_back({"Met time", Gen2Native::crystalMetTimeName(displayedMetTime)});
         rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
         rows.push_back({"Location", Gen2Native::crystalCaughtLocationName(caught.location)});
-        rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
+        const auto displayedOtGender = state.mode == Mode::View
+            ? Gen2Native::crystalOtGenderChoiceFromCaught(caught)
+            : state.crystalOtGender;
+        rows.push_back({"OT gender", Gen2Native::crystalOtGenderChoiceText(displayedOtGender)});
     }
 
-    const auto window = Unified::scrollWindow(rows.size(), 5,
-        passive ? 0 : unified.detailsFocus);
+    const auto window = Unified::scrollWindow(rows.size(), 8, unified.detailsFocus);
     for (std::size_t i = 0; i < window.count; ++i) {
         const std::size_t row = window.first + i;
-        const int yy = y + 224 + static_cast<int>(i) * 43;
-        const bool selected = !passive && unified.focus.panel == Unified::Panel::Details && unified.focus.row == row;
+        const int yy = y + 224 + static_cast<int>(i) * 38;
+        const bool selected = unified.focus.panel == Unified::Panel::Details && unified.focus.row == row;
         if (selected) {
             const auto cell = Unified::cellFocus(unified.focus);
             fb.drawRoundedRect(x + cell.x, yy + 2, cell.width, 30, 6, Colors::Accent, 2);
         }
-        fb.drawText(x + 18, yy + 7, rows[row].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy + 7, rows[row].first, selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[row].second,
-                    selected ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
     }
-    if (window.scrolls)
-        fb.drawText(x + w - 44, y + h - 26, "↕", Colors::TextDim, TextStyle::Caption);
+    SharedPokemonShell::drawVerticalScrollIndicator(
+        fb, x + w - 10, y + 222, std::max(0, h - 262),
+        rows.size(), 8, window.first);
 }
 
 void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
@@ -416,21 +700,23 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
         TextStyle::Heading);
     fb.drawText(x + 190, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 246, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
+    const auto visibleMoveFocus = Unified::normalizeMoveRowFocus(
+        Unified::Generation::Gen2, unified.focus, unified.crystal);
     for (int slot = 0; slot < 4; ++slot) {
         const int yy = y + 62 + slot * 32;
-        const bool selected = !passive && unified.focus.panel == Unified::Panel::Moves && unified.focus.row == slot;
+        const bool selected = !passive && visibleMoveFocus.panel == Unified::Panel::Moves && visibleMoveFocus.row == slot;
         if (selected) {
-            const auto cell = Unified::cellFocus(unified.focus);
-            fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::Accent, 2);
+            const auto cell = Unified::moveRowFocus(w);
+            fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::FocusBorder, 2);
         }
         const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];
         const auto status = moveStatus(screen, state, slot);
         fb.drawText(x + 18, yy, move == 0 ? "Empty" : Names::getMoveName(move),
-                    selected && unified.focus.column == 0 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 190, yy, std::to_string(state.working.pp[static_cast<std::size_t>(slot)]),
-                    selected && unified.focus.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 246, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]),
-                    selected && unified.focus.column == 2 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 292, yy, status == Rules::CompatibilityState::Ok ? "OK" :
             status == Rules::CompatibilityState::UnusualPreserved ? "Unusual" : "Invalid", unifiedStatusColor(status), TextStyle::Caption);
     }
@@ -444,7 +730,18 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
         std::string("Move compatibility: ") + (summary == Rules::CompatibilityState::NeedsCorrection
             ? "Invalid draft" : Rules::compatibilityText(summary)),
         unifiedStatusColor(summary), TextStyle::Caption);
-    fb.drawText(x + 18, y + 220, "Encounter legality: Not checked", Colors::TextDim, TextStyle::Caption);
+    if (screen.sourceGameId == "crystal_gbc") {
+        const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+        const auto legality = Gen2Native::caughtLevelLegality(state.working.level, caught);
+        const Color legalityColor = legality == Gen2Native::CaughtLevelLegality::CurrentBelowMet
+            ? Colors::Error
+            : legality == Gen2Native::CaughtLevelLegality::Valid ? Colors::Success : Colors::TextDim;
+        fb.drawText(x + 18, y + 220,
+            std::string("Encounter legality: ") + Gen2Native::caughtLevelLegalityText(legality),
+            legalityColor, TextStyle::Caption);
+    } else {
+        fb.drawText(x + 18, y + 220, "Encounter legality: Not checked", Colors::TextDim, TextStyle::Caption);
+    }
     if (const auto game = Rules::exactGameFromSourceId(screen.sourceGameId))
         Gen2WorkspacePresentation::drawDataAndGraph(fb, x, y + 244, w, h - 256, state.working, *game);
 }
@@ -466,7 +763,7 @@ void drawProgressionEditor(PKSEFramebuffer& fb, const State& state, const Unifie
         const int yy = y + 96 + i * 48;
         if (unified.progressionRow == i) fb.drawSelectionHighlight(x + 22, yy - 5, w - 44, 40);
         fb.drawText(x + 38, yy + 5, rows[static_cast<std::size_t>(i)].first,
-                    unified.progressionRow == i ? Colors::Accent : Colors::TextDim, TextStyle::Caption);
+                    unified.progressionRow == i ? Colors::Text : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 250, yy + 5, rows[static_cast<std::size_t>(i)].second, Colors::Text, TextStyle::Caption);
     }
     drawNavBar(fb, {{"Up/Down", "Field"}, {"A", "Edit/Apply"}, {"B", "Cancel"}});
@@ -499,7 +796,7 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (view) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
-        drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
     } else if (create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel Draft"}});
@@ -508,7 +805,7 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         {"Y", "Random DVs"}, {"B", "Back"}});
     }
     if (state.itemPicker) drawHeldItemPicker(fb, state);
-    if (state.confirmExit) drawConfirm(fb);
+    if (state.confirmExit) drawConfirm(fb, state);
     if (unified.progressionEditor) drawProgressionEditor(fb, state, unified);
 }
 

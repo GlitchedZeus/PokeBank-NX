@@ -39,7 +39,7 @@ namespace Dialogs {
         // IV row (tap -> select IV, id 10)
         if (ivMode) fb.drawSelectionHighlight(x + 16, cy - 4, w - 32, 34);
         fb.drawText(labelX, cy + 2, "IV", ivMode ? Colors::Text : Colors::TextDim);
-        fb.drawText(valX,   cy + 2, std::to_string(screen.statEdit.currentIV), ivMode ? Colors::Accent : Colors::Text);
+        fb.drawText(valX,   cy + 2, std::to_string(screen.statEdit.currentIV), Colors::Text);
         fb.drawText(rangeX, cy + 4, "(0 - 31)", Colors::TextDim, TextStyle::Caption);
         screen.touchButtons.push_back({10, x + 16, cy - 4, w - 32, 34});
         cy += 42;
@@ -48,7 +48,7 @@ namespace Dialogs {
         if (!ivMode) fb.drawSelectionHighlight(x + 16, cy - 4, w - 32, 34);
         fb.drawText(labelX, cy + 2, usesAV ? "AV" : "EV", !ivMode ? Colors::Text : Colors::TextDim);
         fb.drawText(valX,   cy + 2, std::to_string(usesAV ? screen.statEdit.currentAV : screen.statEdit.currentEV),
-                    !ivMode ? Colors::Accent : Colors::Text);
+                    Colors::Text);
         fb.drawText(rangeX, cy + 4, usesAV ? (g_allowIllegalEdits ? "(0 - 255)" : "(0 - 200)")
                                           : (g_allowIllegalEdits ? "(0 - 255)" : "(0 - 252)"),
                     Colors::TextDim, TextStyle::Caption);

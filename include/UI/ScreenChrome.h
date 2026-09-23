@@ -34,7 +34,7 @@ namespace UI {
     inline void drawAppBackdrop(PKSEFramebuffer& fb) {
         const int w = fb.getWidth();
         fb.clear(Colors::Background);
-        fb.drawCircle(w - 58, 126, 112, withAlpha(Colors::AccentPrimary, 24), 18);
+        fb.drawCircle(w - 58, 126, 112, withAlpha(Colors::BrandAccent, 24), 18);
         fb.drawCircle(w - 58, 126, 76, withAlpha(Colors::AccentSecondary, 20), 10);
     }
 
@@ -79,8 +79,8 @@ namespace UI {
     inline void drawFocusedCard(PKSEFramebuffer& fb, int x, int y, int w, int h,
                                 bool focused, int radius = 14) {
         if (focused) fb.drawSoftShadow(x, y, w, h, radius);
-        fb.drawFilledRoundedRect(x, y, w, h, radius,
-                                 focused ? Colors::SurfaceSelected : Colors::Surface);
+        // Focus never changes the card fill: teal outline + readable text carries selection.
+        fb.drawFilledRoundedRect(x, y, w, h, radius, Colors::Surface);
         fb.drawRoundedRect(x, y, w, h, radius,
                            focused ? Colors::FocusBorder : Colors::Divider, focused ? 3 : 1);
     }
@@ -326,7 +326,7 @@ namespace UI {
         // Drawing from semantic AccentPrimary keeps the red consistent across all three themes.
         fb.drawFilledCircle(cx, cy, r, ballWhite);
         fb.setClipRect(cx - r, cy - r, r * 2, r);
-        fb.drawFilledCircle(cx, cy, r, Colors::AccentPrimary);
+        fb.drawFilledCircle(cx, cy, r, Colors::BrandAccent);
         fb.clearClip();
         fb.drawFilledRect(cx - r, cy - 3, r * 2, 6, ballBand);
         fb.drawFilledCircle(cx, cy, 8, ballBand);
@@ -338,7 +338,7 @@ namespace UI {
         fb.drawText(brandX, 8, "PokeBank", Colors::TextPrimary, TextStyle::Title);
         int brandW, brandH; fb.measureText("PokeBank", brandW, brandH, TextStyle::Title);
         const int nxX = brandX + brandW + 8;
-        fb.drawFilledRoundedRect(nxX, 15, 40, 28, 9, Colors::AccentPrimary);
+        fb.drawFilledRoundedRect(nxX, 15, 40, 28, 9, Colors::BrandAccent);
         int nxW, nxH; fb.measureText("NX", nxW, nxH, TextStyle::Caption);
         fb.drawText(nxX + (40 - nxW) / 2, 15 + (28 - nxH) / 2, "NX",
                     Colors::Surface, TextStyle::Caption);
@@ -385,10 +385,10 @@ namespace UI {
         const int x = (fb.getWidth() - w) / 2;
         const int y = (fb.getHeight() - h) / 2;
         drawModalSurface(fb, x, y, w, h);
-        fb.drawText(x + 28, y + 18, "POKEBANK NX  /  HELP", Colors::AccentPrimary,
+        fb.drawText(x + 28, y + 18, "POKEBANK NX  /  HELP", Colors::BrandAccent,
                     TextStyle::Caption);
         fb.drawText(x + 28, y + 44, title, Colors::TextPrimary, TextStyle::Heading);
-        fb.drawFilledRoundedRect(x + 28, y + 86, w - 56, 3, 2, Colors::AccentPrimary);
+        fb.drawFilledRoundedRect(x + 28, y + 86, w - 56, 3, 2, Colors::BrandAccent);
         int ly = y + 108;
         for (const std::string& line : lines) {
             fb.drawText(x + 30, ly, line, Colors::TextSecondary, TextStyle::Body);
@@ -397,23 +397,20 @@ namespace UI {
         drawNavBar(fb, {{"B", "Close"}});
     }
 
-    // A HOME-style selectable list tile: rounded (stadium), soft shadow, amber when
-    // selected. `accent` marks a special/primary row (indigo-tinted when not selected, e.g. the
-    // "Create New Backup" action); `enabled` false dims it (e.g. a "no saves" placeholder).
+    // A HOME-style selectable list tile. Selection never tints the tile: the normal dark surface
+    // stays put, a teal outline identifies focus, and selected text remains bright/readable.
     inline void drawHomeTile(PKSEFramebuffer& fb, int x, int y, int w, int h,
                              const std::string& label, bool selected, bool accent = false, bool enabled = true) {
         fb.drawSoftShadow(x, y, w, h, h / 2);
-        const Color fill = selected ? Colors::Primary : Colors::PanelAlt;
-        fb.drawPill(x, y, w, h, fill);
-        // An accent (primary-action) row is a normal tile with accent text + a thin accent outline —
-        // NOT a filled highlight, which would read as a false selection next to the real (amber) one.
-        if (accent && !selected) fb.drawPillBorder(x, y, w, h, Colors::Accent, 2);
+        fb.drawPill(x, y, w, h, Colors::PanelAlt);
+        if (selected) fb.drawPillBorder(x, y, w, h, Colors::FocusBorder, 2);
+        else if (accent) fb.drawPillBorder(x, y, w, h, Colors::Accent, 2);
         const Color txt = !enabled ? Colors::TextDim
-                        : selected  ? Colors::PrimaryText
+                        : selected  ? Colors::SelectedText
                         : accent    ? Colors::Accent
                         :             Colors::Text;
         int lx = x + 28;
-        if (selected) { fb.drawSymbol(x + 20, y + h / 2 - 12, "\xE2\x96\xB6", Colors::PrimaryText); lx = x + 48; }
+        if (selected) { fb.drawSymbol(x + 20, y + h / 2 - 12, "\xE2\x96\xB6", Colors::FocusBorder); lx = x + 48; }
         int lw, lh; fb.measureText(label, lw, lh, TextStyle::Body);
         fb.drawText(lx, y + (h - lh) / 2, label, txt, TextStyle::Body);
     }

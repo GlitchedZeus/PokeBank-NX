@@ -60,4 +60,11 @@ int main() {
     assert(controller.apply(0, 0, 0, 20000, up, down, left, right) == up);
     assert(controller.apply(0, 0, 0, 0, up, down, left, right) == 0);
     assert(controller.apply(0, 0, 0, -20000, up, down, left, right) == down);
+
+    // Horizontal stick navigation uses the same held-repeat contract as paged/grid menus.
+    ControllerNavigation horizontalController;
+    assert(horizontalController.apply(0, 0, 20000, 0, up, down, left, right) == right);
+    for (int frame = 1; frame < NavigationRepeat::INITIAL_DELAY_FRAMES; ++frame)
+        assert(horizontalController.apply(0, 0, 20000, 0, up, down, left, right) == 0);
+    assert(horizontalController.apply(0, 0, 20000, 0, up, down, left, right) == right);
 }

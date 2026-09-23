@@ -163,7 +163,8 @@ std::array<uint8_t, 4> storedDVs(const PokemonRecord& pokemon) {
 }
 
 uint32_t draftExperience(const BoxPokemonCreate& draft) noexcept {
-    return Pokemon::getExpForLevel(draft.level, Editor::growthRate(draft.species));
+    return draft.experience.value_or(
+        Pokemon::getExpForLevel(draft.level, Editor::growthRate(draft.species)));
 }
 
 const char* sectionForRow(int row) noexcept {
@@ -918,7 +919,7 @@ void drawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int outerX, int 
     fb.drawFilledRect(outerX, outerY, outerW, outerH, Color(0, 0, 0, 105));
     fb.drawSoftShadow(x, y, w, h, 16);
     fb.drawFilledRoundedRect(x, y, w, h, 16, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 16, Colors::Accent, 2);
+    fb.drawRoundedRect(x, y, w, h, 16, Colors::Divider, 1);
     fb.drawText(x + 24, y + 18,
         state.picker == PickerKind::Species ? "Choose Species" : "Choose Move",
         Colors::Text, TextStyle::Heading);
@@ -1154,7 +1155,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     fb.drawSoftShadow(x, y, w, h, 18);
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Accent, 2);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
 
     switch (state.mode) {
         case Mode::Actions: drawActions(screen, fb, x, y, w, h); break;

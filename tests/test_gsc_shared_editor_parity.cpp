@@ -92,6 +92,10 @@ void runCreateParity(const L& layout, SourceGame game) {
     assert(radar.scale > 0.0f);
     assert(std::any_of(radar.normalized.begin(), radar.normalized.end(), [](float value) { return value > 0.0f; }));
     static_assert(PokeBank::UIModel::gen2RadarLabels.size() == 6);
+    static_assert(PokeBank::UIModel::gen2RadarLabels[0][0] == 'H');
+    static_assert(PokeBank::UIModel::gen2RadarLabels[3][0] == 'S'); // Speed
+    assert((PokeBank::UIModel::canonicalGen2RadarStats(
+        std::array<uint16_t,6>{1,2,3,4,5,6}) == std::array<uint16_t,6>{1,2,3,4,5,6}));
 
     size_t slot = 0;
     assert(session.add(*editor, 2, slot, error));
@@ -118,7 +122,10 @@ void runCreateParity(const L& layout, SourceGame game) {
     while (picker.speciesChoice() != 155) picker.stepList(1); // Cyndaquil
     assert(Picker::applySpeciesChoice(session, picker.speciesChoice()));
     assert(session.working.species == 155);
-    assert(session.back());
+    assert(!session.back());
+    assert(session.confirmExit);
+    assert(session.mode == SessionMode::Create);
+    session.discard();
     assert(session.mode == SessionMode::None);
     assert(std::equal(afterAdd.begin(), afterAdd.end(), editor->stagedBytes().begin()));
 }
@@ -208,9 +215,9 @@ int main() {
 
     // Passive View is one no-focus/no-edit surface. Generation II extends the
     // presentation with real party state and Crystal-only caught/met capability.
-    static_assert(!Shared::passiveViewHasFieldCursor());
+    static_assert(Shared::passiveViewHasFieldCursor());
     static_assert(!Shared::passiveViewAllowsEditing());
-    static_assert(!Shared::passiveViewAllowsPanelSwitching());
+    static_assert(Shared::passiveViewAllowsPanelSwitching());
 
     const auto goldCaps = PokeBank::UIModel::PokemonEditorFoundation::capabilitiesForSourceId("gold_gbc");
     const auto silverCaps = PokeBank::UIModel::PokemonEditorFoundation::capabilitiesForSourceId("silver_gbc");

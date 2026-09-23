@@ -31,6 +31,36 @@ int main() {
     assert(std::string(Native::crystalMetTimeName(night.timeOfDay)) == "Night");
     assert(std::string(Native::crystalCaughtLocationName(night.location)) == "Silver Cave");
 
+    // Within a real caught record, bit 7 represents Male/Female without
+    // changing the other caught-history fields.
+    auto genderRecord = night;
+    genderRecord.originalTrainerFemale = false;
+    const uint16_t maleRaw = Native::encodeCrystalCaughtData(genderRecord);
+    const auto male = Native::decodeCrystalCaughtData(maleRaw);
+    assert(male.present && std::string(Native::crystalOriginalTrainerGenderText(male)) == "Male");
+    assert(male.timeOfDay == night.timeOfDay && male.levelCode == night.levelCode &&
+           male.location == night.location);
+    genderRecord.originalTrainerFemale = true;
+    const uint16_t femaleRaw = Native::encodeCrystalCaughtData(genderRecord);
+    const auto female = Native::decodeCrystalCaughtData(femaleRaw);
+    assert(female.present && std::string(Native::crystalOriginalTrainerGenderText(female)) == "Female");
+    assert((femaleRaw ^ maleRaw) == 0x0080);
+    assert(female.timeOfDay == male.timeOfDay && female.levelCode == male.levelCode &&
+           female.location == male.location);
+
+    using OtChoice = Native::CrystalOtGenderChoice;
+    constexpr auto absentGender = Native::decodeCrystalCaughtData(0);
+    assert(Native::crystalOtGenderChoiceFromCaught(absentGender) == OtChoice::Unknown);
+    assert(Native::crystalOtGenderChoiceFromCaught(male) == OtChoice::Male);
+    assert(Native::crystalOtGenderChoiceFromCaught(female) == OtChoice::Female);
+    assert(Native::cycleUnrecordedCrystalOtGender(OtChoice::Unknown) == OtChoice::Male);
+    assert(Native::cycleUnrecordedCrystalOtGender(OtChoice::Male) == OtChoice::Female);
+    assert(Native::cycleUnrecordedCrystalOtGender(OtChoice::Female) == OtChoice::Unknown);
+    assert(Native::cycleRecordedCrystalOtGender(OtChoice::Male) == OtChoice::Female);
+    assert(Native::cycleRecordedCrystalOtGender(OtChoice::Female) == OtChoice::Male);
+    assert(Native::crystalOtGenderFemale(OtChoice::Female));
+    assert(!Native::crystalOtGenderFemale(OtChoice::Male));
+
     constexpr auto absent = Native::decodeCrystalCaughtData(0);
     static_assert(!absent.present);
     assert(Native::crystalCaughtLevelText(absent) == "Unknown");
@@ -39,6 +69,16 @@ int main() {
     assert(std::string(Native::crystalCaughtLocationName(0x7E)) == "Gift");
     assert(std::string(Native::crystalCaughtLocationName(0x7F)) == "Event");
     assert(std::string(Native::crystalCaughtLocationName(0x60)) == "Unused / invalid");
+
+    assert(Native::caughtLevelLegality(5, absent) == Native::CaughtLevelLegality::NotRecorded);
+    auto levelHistory = night;
+    levelHistory.levelCode = 31;
+    assert(Native::caughtLevelLegality(5, levelHistory) == Native::CaughtLevelLegality::CurrentBelowMet);
+    assert(std::string(Native::caughtLevelLegalityText(
+        Native::caughtLevelLegality(5, levelHistory))) == "Current level below met level");
+    assert(Native::caughtLevelLegality(31, levelHistory) == Native::CaughtLevelLegality::Valid);
+    levelHistory.levelCode = 1;
+    assert(Native::caughtLevelLegality(1, levelHistory) == Native::CaughtLevelLegality::EggMarker);
 
     constexpr auto egg = Native::decodeCrystalCaughtData(
         static_cast<uint16_t>((2u << 14) | (1u << 8) | 0x7Eu));
@@ -67,7 +107,8 @@ int main() {
     box.status = 0x08;
     assert(!Native::partyViewData(box));
 
-    // Pokérus helper is exact-byte round-trip infrastructure for both passive display and editor UX.
+    // Pokérus helpers preserve exact raw bytes for decoding, while the normal UI
+    // exposes only the authentic three-state None / Infected / Cured workflow.
     for (uint8_t strain = 0; strain < 16; ++strain) {
         for (uint8_t days = 0; days < 16; ++days) {
             const uint8_t raw = Native::encodePokerus(strain, days);
@@ -77,8 +118,17 @@ int main() {
         }
     }
     assert(Native::pokerusText(0) == "None");
-    assert(Native::pokerusText(Native::encodePokerus(3, 4)) == "S3 / 4d");
-    assert(Native::pokerusText(Native::encodePokerus(3, 0)) == "S3 / cured");
+    assert(Native::pokerusText(Native::encodePokerus(3, 4)) == "Infected");
+    assert(Native::pokerusText(Native::encodePokerus(3, 0)) == "Cured");
+
+    const uint8_t unusualActive = Native::encodePokerus(13, 9);
+    assert(Native::pokerusText(unusualActive) == "Infected");
+    assert(Native::decodePokerus(unusualActive).strain == 13);
+    assert(Native::decodePokerus(unusualActive).days == 9);
+    const uint8_t cured = Native::cyclePokerusState(unusualActive);
+    assert(Native::pokerusText(cured) == "Cured");
+    assert(Native::decodePokerus(cured).strain == 13);
+    assert(Native::cyclePokerusState(cured) == 0);
 
     std::cout << "GSC Crystal/party native presentation: PASS\n";
     return 0;

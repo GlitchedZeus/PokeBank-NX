@@ -270,6 +270,44 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
                 return FieldAccess::Hidden;
         }
     }
+    if (generation == Generation::Gen3) {
+        // First Gen III editor milestone deliberately keeps every PID-correlated
+        // presentation field read-only. Nature, gender, shiny and ability share
+        // PID/ability-slot constraints and must not silently rewrite one another.
+        switch (field) {
+            case FieldIdentity::Species:
+            case FieldIdentity::Nickname:
+            case FieldIdentity::Language:
+            case FieldIdentity::Level:
+            case FieldIdentity::Experience:
+            case FieldIdentity::Friendship:
+            case FieldIdentity::IV:
+            case FieldIdentity::EV:
+            case FieldIdentity::HeldItem:
+            case FieldIdentity::Pokerus:
+            case FieldIdentity::OriginalTrainer:
+            case FieldIdentity::Ball:
+            case FieldIdentity::MetLevel:
+            case FieldIdentity::MetLocation:
+                return FieldAccess::Editable;
+            case FieldIdentity::Form:
+            case FieldIdentity::Gender:
+            case FieldIdentity::Shiny:
+            case FieldIdentity::Nature:
+            case FieldIdentity::Ability:
+            case FieldIdentity::CalculatedStats:
+            case FieldIdentity::TrainerId:
+            case FieldIdentity::SecretId:
+            case FieldIdentity::PersonalityId:
+            case FieldIdentity::OriginGame:
+            case FieldIdentity::MoveCompatibility:
+            case FieldIdentity::EncounterLegality:
+            case FieldIdentity::Provenance:
+                return FieldAccess::ReadOnly;
+            default:
+                return FieldAccess::Hidden;
+        }
+    }
     return FieldAccess::Hidden;
 }
 
@@ -290,6 +328,32 @@ constexpr ScrollWindow scrollWindow(std::size_t totalRows, std::size_t visibleCa
     return {first, visibleCapacity, true};
 }
 
+struct ScrollThumb {
+    bool visible = false;
+    int offset = 0;
+    int length = 0;
+};
+
+constexpr ScrollThumb scrollThumb(std::size_t totalRows, std::size_t visibleCapacity,
+                                  std::size_t firstVisible, int trackLength,
+                                  int minimumThumbLength = 18) noexcept {
+    if (totalRows == 0 || visibleCapacity == 0 || visibleCapacity >= totalRows || trackLength <= 0)
+        return {};
+    const std::size_t maxFirst = totalRows - visibleCapacity;
+    if (firstVisible > maxFirst) firstVisible = maxFirst;
+    int length = static_cast<int>((static_cast<long long>(trackLength) *
+                                   static_cast<long long>(visibleCapacity)) /
+                                  static_cast<long long>(totalRows));
+    if (length < minimumThumbLength) length = minimumThumbLength;
+    if (length > trackLength) length = trackLength;
+    const int travel = trackLength - length;
+    const int offset = maxFirst == 0 ? 0 :
+        static_cast<int>((static_cast<long long>(travel) * static_cast<long long>(firstVisible) +
+                          static_cast<long long>(maxFirst) / 2) /
+                         static_cast<long long>(maxFirst));
+    return {true, offset, length};
+}
+
 enum class Panel : uint8_t { Details, Values, Moves };
 
 struct Layout {
@@ -304,8 +368,10 @@ constexpr Layout layoutFor(Generation generation, bool crystal = false) noexcept
     // Gen II extends the accepted shared shell by putting descriptive/native identity
     // capabilities in DETAILS. VALUES stays stat-focused: five DV/Stat Exp rows + Shiny/Gender.
     if (generation == Generation::Gen2)
-        return {/*details*/static_cast<uint8_t>(crystal ? 12 : 8), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
-    return {/*details*/5, /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
+        return {/*details*/static_cast<uint8_t>(crystal ? 13 : 9), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
+    if (generation == Generation::Gen3)
+        return {/*details*/15, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
+    return {/*details*/6, /*values*/6, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
 
 struct Focus {
@@ -326,17 +392,28 @@ constexpr uint8_t rowsFor(Generation generation, Panel panel, bool crystal = fal
     return layout.movesRows;
 }
 
-constexpr Focus normalize(Generation generation, Focus focus, bool crystal = false) noexcept {
+constexpr uint8_t maximumFocusableValueColumn(Generation generation, uint8_t row,
+                                               bool crystal = false) noexcept {
     const auto layout = layoutFor(generation, crystal);
+    if (row >= layout.valueStatRows) return 0;
+    // The third STATS column is a calculated/presentation-only value in every
+    // shared editor generation. IV/DV and EV/Stat Exp are the editable cells.
+    return layout.valueColumns > 1 ? 1 : 0;
+}
+
+constexpr bool valueCellFocusable(Generation generation, uint8_t row, uint8_t column,
+                                  bool crystal = false) noexcept {
+    return column <= maximumFocusableValueColumn(generation, row, crystal);
+}
+
+constexpr Focus normalize(Generation generation, Focus focus, bool crystal = false) noexcept {
     const uint8_t rows = rowsFor(generation, focus.panel, crystal);
     if (rows != 0) focus.row = static_cast<uint8_t>(focus.row % rows);
     if (focus.panel == Panel::Details) {
         focus.column = 0;
     } else if (focus.panel == Panel::Values) {
-        if (focus.row >= layout.valueStatRows)
-            focus.column = 0;
-        else if (focus.column >= layout.valueColumns)
-            focus.column = static_cast<uint8_t>(layout.valueColumns - 1);
+        const auto maxColumn = maximumFocusableValueColumn(generation, focus.row, crystal);
+        if (focus.column > maxColumn) focus.column = maxColumn;
     } else {
         if (focus.column >= 3) focus.column = 2;
     }
@@ -360,9 +437,13 @@ constexpr Focus switchPanel(Generation generation, Focus focus, int direction, b
 
 constexpr Focus moveColumn(Generation generation, Focus focus, int direction, bool crystal = false) noexcept {
     focus = normalize(generation, focus, crystal);
-    const auto layout = layoutFor(generation, crystal);
+    // Classic DV generations display HP DV but derive it from the stored DVs. Keep
+    // LEFT from HP Stat Exp inside STATS by skipping that non-focusable cell.
+    if ((generation == Generation::Gen1 || generation == Generation::Gen2) &&
+        focus.panel == Panel::Values && focus.row == 0 && focus.column == 1 && direction < 0)
+        return normalize(generation, {Panel::Values, 1, 0}, crystal);
     const int maxColumn = focus.panel == Panel::Details ? 0 : focus.panel == Panel::Moves ? 2 :
-        (focus.row < layout.valueStatRows ? static_cast<int>(layout.valueColumns) - 1 : 0);
+        static_cast<int>(maximumFocusableValueColumn(generation, focus.row, crystal));
     const int next = static_cast<int>(focus.column) + direction;
     if (next < 0 || next > maxColumn) {
         const int panel = static_cast<int>(focus.panel) + (direction < 0 ? -1 : 1);
@@ -375,8 +456,52 @@ constexpr Focus moveColumn(Generation generation, Focus focus, int direction, bo
     return focus;
 }
 
+// Main View/Edit/Create workspaces select one move row. Contextual move editors
+// own their independent Move/PP/PP Ups fields and do not use this normalization.
+constexpr Focus normalizeMoveRowFocus(Generation generation, Focus focus,
+                                      bool crystal = false) noexcept {
+    focus = normalize(generation, focus, crystal);
+    if (focus.panel == Panel::Moves) focus.column = 0;
+    return focus;
+}
+
+constexpr Focus moveRowColumn(Generation generation, Focus focus, int direction,
+                               bool crystal = false) noexcept {
+    focus = normalizeMoveRowFocus(generation, focus, crystal);
+    return normalizeMoveRowFocus(
+        generation, moveColumn(generation, focus, direction, crystal), crystal);
+}
+
+constexpr Focus normalizePassiveViewFocus(Generation generation, Focus focus,
+                                          bool crystal = false) noexcept {
+    return normalizeMoveRowFocus(generation, focus, crystal);
+}
+
+constexpr Focus passiveViewSwitchPanel(Generation generation, Focus focus, int direction,
+                                       bool crystal = false) noexcept {
+    return normalizePassiveViewFocus(
+        generation, switchPanel(generation, focus, direction, crystal), crystal);
+}
+
+constexpr Focus passiveViewMoveVertical(Generation generation, Focus focus, int direction,
+                                        bool crystal = false) noexcept {
+    return normalizePassiveViewFocus(
+        generation, moveVertical(generation, focus, direction, crystal), crystal);
+}
+
+constexpr Focus passiveViewMoveColumn(Generation generation, Focus focus, int direction,
+                                      bool crystal = false) noexcept {
+    // Collapse any stale Edit/Create move sub-column before applying View navigation.
+    focus = normalizePassiveViewFocus(generation, focus, crystal);
+    return normalizePassiveViewFocus(
+        generation, moveColumn(generation, focus, direction, crystal), crystal);
+}
+
 constexpr const char* statsHeading() noexcept { return "STATS"; }
 struct CellFocus { int x, width; };
+constexpr CellFocus moveRowFocus(int panelWidth) noexcept {
+    return {8, panelWidth > 16 ? panelWidth - 16 : 0};
+}
 constexpr CellFocus cellFocus(Focus focus) noexcept {
     if (focus.panel == Panel::Details) return {104, 186};
     if (focus.panel == Panel::Moves) {
@@ -384,6 +509,17 @@ constexpr CellFocus cellFocus(Focus focus) noexcept {
         return focus.column == 1 ? CellFocus{186, 50} : CellFocus{242, 42};
     }
     if (focus.row >= 5) return {130, 244};
+    if (focus.column == 0) return {110, 64};
+    return focus.column == 1 ? CellFocus{180, 90} : CellFocus{278, 98};
+}
+constexpr CellFocus cellFocusFor(Generation generation, Focus focus) noexcept {
+    if (generation != Generation::Gen3) return cellFocus(focus);
+    if (focus.panel == Panel::Details) return {104, 186};
+    if (focus.panel == Panel::Moves) {
+        if (focus.column == 0) return {14, 170};
+        return focus.column == 1 ? CellFocus{186, 50} : CellFocus{242, 42};
+    }
+    if (focus.row >= 6) return {130, 244};
     if (focus.column == 0) return {110, 64};
     return focus.column == 1 ? CellFocus{180, 90} : CellFocus{278, 98};
 }
@@ -436,9 +572,9 @@ enum class Gen2LegacyPath : uint8_t {
 constexpr bool gen2LegacyPathProductionReachable(Gen2LegacyPath) noexcept { return false; }
 constexpr bool gen2ExternalPassiveViewUsesSharedSurface() noexcept { return true; }
 
-constexpr bool passiveViewHasFieldCursor() noexcept { return false; }
+constexpr bool passiveViewHasFieldCursor() noexcept { return true; }
 constexpr bool passiveViewAllowsEditing() noexcept { return false; }
-constexpr bool passiveViewAllowsPanelSwitching() noexcept { return false; }
+constexpr bool passiveViewAllowsPanelSwitching() noexcept { return true; }
 constexpr bool createBrowsingMutatesStagedSave() noexcept { return false; }
 constexpr bool editBrowsingMutatesSource() noexcept { return false; }
 constexpr bool stageAddRequiresExplicitAction() noexcept { return true; }

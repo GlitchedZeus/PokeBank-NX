@@ -1,29 +1,53 @@
+#include "fixtures/main_workspace_move_focus.h"
 #include "fixtures/gsc_pokemon_fixture.h"
 #include "UI/Gen2PokemonSession.h"
 #include "UI/Gen2PokemonPickerModel.h"
 #include "UI/PokemonViewActions.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include "UI/BattleStatRadarModel.h"
+#include "UI/SpeciesChangeLevelPolicy.h"
 namespace Rules = PokeBank::UIModel::Gen2PokemonEditor;
 namespace Picker = PokeBank::UIModel::Gen2PokemonPicker;
+namespace Gen2Picker = PokeBank::UIModel::Gen2PokemonPicker;
 using Rules::Session;
 using Rules::SessionMode;
 
 void runSession(const L& layout,SourceGame game) {
+    const std::string_view sourceId = game == SourceGame::Gold ? "gold_gbc" :
+                                      game == SourceGame::Silver ? "silver_gbc" : "crystal_gbc";
     const auto raw=fixture(layout,true);
     auto parsed=parse(raw,game);assert(parsed);
     std::string error;auto editor=StagedEditor::create(*parsed.save,error);assert(editor);
     BoxPokemonEdit level5;level5.level=5;
     assert(editor->stageBoxPokemonEdit(0,0,level5,error));
     auto entry=*editor->boxedPokemon(0,0,error);
+    for (auto mode : {SessionMode::View, SessionMode::Edit, SessionMode::Create}) {
+        Session moves; moves.begin(entry, mode);
+        moves.working.moves = {204, 3, 84, 0}; // Charm, Double Slap, ThunderShock, Empty
+        moves.working.pp = {20, 10, 30, 0};
+        moves.working.ppUps = {0, 1, 2, 0};
+        const auto before = moves.working;
+        checkMainMoveFocus(PokeBank::UIModel::SharedPokemonEditor::Generation::Gen2,
+            moves.working, mode == SessionMode::View, game == SourceGame::Crystal);
+        assert(moves.working.moves == before.moves && moves.working.pp == before.pp &&
+               moves.working.ppUps == before.ppUps);
+        if (mode != SessionMode::View) {
+            // Contextual Move/PP/Ups setters remain independently usable.
+            assert(moves.setMove(1, 33));
+            assert(moves.setPPUps(1, 2));
+            assert(moves.setPP(1, 10));
+            assert(moves.working.moves[1] == 33 && moves.working.pp[1] == 10 && moves.working.ppUps[1] == 2);
+        } else assert(!moves.setMove(1, 33) && !moves.setPP(1, 1) && !moves.setPPUps(1, 2));
+        assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
+    }
     for (auto mode : {SessionMode::Create, SessionMode::Edit}) {
         Session names; names.begin(entry, mode);
         names.working.nickname = "Pikachu";
-        assert(names.setSpecies(6)); assert(names.working.nickname == "Charizard");
+        assert(names.setSpecies(6, sourceId)); assert(names.working.nickname == "Charizard");
         names.working.nickname = "FlameBoy";
-        assert(names.setSpecies(9)); assert(names.working.nickname == "FlameBoy");
+        assert(names.setSpecies(9, sourceId)); assert(names.working.nickname == "FlameBoy");
         names.working.nickname = "BLASTOISE";
-        assert(names.setSpecies(25)); assert(names.working.nickname == "PIKACHU");
+        assert(names.setSpecies(25, sourceId)); assert(names.working.nickname == "PIKACHU");
     }
     if (game == SourceGame::Crystal) {
         Session caughtSession; caughtSession.begin(entry, SessionMode::Edit);
@@ -38,13 +62,100 @@ void runSession(const L& layout,SourceGame game) {
         editor->discard();
         assert(editor->stageBoxPokemonEdit(0,0,level5,error));
     }
+    for (auto mode : {SessionMode::Create, SessionMode::Edit}) {
+        Session species; species.begin(entry, mode); assert(species.setLevel(50));
+        species.working.moves = {}; species.working.pp = {}; species.working.ppUps = {};
+        const auto stagedBefore = std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end());
+        const auto expectedLevel =
+            PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 16);
+        assert(species.setSpecies(16, sourceId));
+        assert(species.working.level == expectedLevel);
+        assert(species.working.level != 50);
+        assert(expectedLevel == (game == SourceGame::Crystal ? 2 : 5));
+        assert(species.working.experience == Pokemon::getExpForLevel(species.working.level, personalRecord(16)->experienceGrowth));
+        assert(std::equal(stagedBefore.begin(), stagedBefore.end(), editor->stagedBytes().begin()));
+        assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
+        // Serialize the same visible result into a separate staged workspace.
+        auto committed = StagedEditor::create(*parsed.save, error); assert(committed);
+        size_t changedSlot = 0;
+        if (mode == SessionMode::Create) assert(species.add(*committed, 2, changedSlot, error));
+        else assert(species.keep(*committed, 0, 0, error));
+        const auto result = committed->boxedPokemon(mode == SessionMode::Create ? 2 : 0, changedSlot, error);
+        assert(result && result->species == 16 && result->level ==
+               PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 16));
+        assert(result->experience == Pokemon::getExpForLevel(result->level, personalRecord(16)->experienceGrowth));
+        assert(std::equal(raw.begin(), raw.end(), committed->originalBytes().begin()));
+        // Discard a fresh local change, preserving the pre-existing staged bytes.
+        species.begin(entry, mode); assert(species.setLevel(50)); assert(species.setSpecies(16, sourceId));
+        species.discard();
+        assert(std::equal(stagedBefore.begin(), stagedBefore.end(), editor->stagedBytes().begin()));
+    }
+    // Held-item browse/cancel and staged selection preserve source bytes for G/S/C.
+    {
+        Session held; held.begin(entry, SessionMode::Edit);
+        const auto before = std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end());
+        const auto choices = Rules::heldItemChoices();
+        for (const auto item : choices) {
+            held.working.heldItem = item;
+            assert(std::equal(before.begin(), before.end(), editor->stagedBytes().begin()));
+        }
+        held.discard(); assert(held.working.heldItem == entry.heldItem);
+        held.begin(entry, SessionMode::Edit); held.working.heldItem = 218;
+        auto committed = StagedEditor::create(*parsed.save, error); assert(committed);
+        assert(held.keep(*committed, 0, 0, error));
+        assert(committed->boxedPokemon(0, 0, error)->heldItem == 218);
+        assert(std::equal(raw.begin(), raw.end(), committed->originalBytes().begin()));
+        assert(std::equal(before.begin(), before.end(), editor->stagedBytes().begin()));
+    }
     Picker::Model locations;
-    locations.openLocation(16);
-    assert(locations.locationChoice() == 16);
+    locations.openLocation("crystal_gbc", 25, 71, 25);
+    assert(locations.locationCount() > 0);
+    const auto* selectedLocation = locations.locationChoice();
+    assert(selectedLocation);
+    assert(selectedLocation->sourceGameId == "crystal_gbc");
+    assert(selectedLocation->species == 25);
+    assert(selectedLocation->location == 71);
+    assert(selectedLocation->minLevel == 25 && selectedLocation->maxLevel == 25);
+    assert(selectedLocation->containsLevel(25));
+    assert(!selectedLocation->containsLevel(83));
     locations.stepList(1);
-    assert(std::string(PokeBank::UIModel::Gen2Native::crystalCaughtLocationName(locations.locationChoice())) == "Radio Tower");
-    locations.openLocation(127); assert(locations.locationChoice() == 127);
-    locations.stepList(1); assert(locations.locationChoice() == 0);
+    selectedLocation = locations.locationChoice();
+    assert(selectedLocation);
+    assert(selectedLocation->sourceGameId == "crystal_gbc");
+    assert(selectedLocation->species == 25);
+
+    // Graveler's repeated-looking rows are genuine Morning/Day/Night variants.
+    Picker::Model gravelerLocations;
+    gravelerLocations.openLocation("crystal_gbc", 75, 35, 31);
+    int mtMortar31 = 0;
+    bool sawMorning = false, sawDay = false, sawNight = false, sawRoute45NightRange = false;
+    for (const auto& encounter : gravelerLocations.encounterChoices) {
+        assert(encounter.minLevel >= 2 ||
+               encounter.method == PokeVault::Integration::EncounterGuardrails::Method::Egg);
+        if (encounter.location == 35 && encounter.minLevel == 31 && encounter.maxLevel == 31) {
+            ++mtMortar31;
+            const auto time = Picker::encounterTimeLabel(encounter.timeMask);
+            sawMorning |= time == "Morning";
+            sawDay |= time == "Day";
+            sawNight |= time == "Night";
+        }
+        if (encounter.location == 43 && encounter.minLevel == 23 && encounter.maxLevel == 27 &&
+            Picker::encounterTimeLabel(encounter.timeMask) == "Night")
+            sawRoute45NightRange = true;
+    }
+    assert(mtMortar31 == 3 && sawMorning && sawDay && sawNight);
+    assert(sawRoute45NightRange);
+
+    using EncounterTemplate = PokeVault::Integration::EncounterGuardrails::EncounterTemplate;
+    using EncounterMethod = PokeVault::Integration::EncounterGuardrails::Method;
+    const EncounterTemplate duplicate{"crystal_gbc", 75, 35, 31, 31, EncounterMethod::Grass, 2};
+    const EncounterTemplate distinct{"crystal_gbc", 75, 35, 31, 31, EncounterMethod::Grass, 4};
+    const auto deduped = PokeVault::Integration::EncounterGuardrails::deduplicateExactEncounterTemplates(
+        std::vector<EncounterTemplate>{duplicate, duplicate, distinct});
+    assert(deduped.size() == 2);
+    assert(PokeVault::Integration::EncounterGuardrails::sameEncounterTemplate(deduped[0], duplicate));
+    assert(!PokeVault::Integration::EncounterGuardrails::sameEncounterTemplate(deduped[0], distinct));
+
     Session session;session.begin(entry,SessionMode::Edit);
     assert(session.setLevel(20));
     assert(session.working.level==20 && session.working.experience==8000);
@@ -67,7 +178,16 @@ void runSession(const L& layout,SourceGame game) {
     session.begin(kept,SessionMode::Edit);assert(session.setLevel(20));assert(session.setExperience(27001));
     assert(!session.editRequest().level && session.editRequest().experience==27001);
     assert(session.setLevel(40));assert(session.editRequest().level==40&&!session.editRequest().experience);
-    session.setSpecies(1);assert(session.working.experience==Pokemon::getExpForLevel(40,3));
+    assert(session.setSpecies(1, sourceId));
+    const auto speciesOneLevel =
+        PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 1);
+    assert(session.working.level == speciesOneLevel);
+    assert(session.working.experience==Pokemon::getExpForLevel(speciesOneLevel,3));
+    for (uint8_t manual : {uint8_t(1), uint8_t(50), uint8_t(100)}) {
+        assert(session.setLevel(manual));
+        assert(session.working.level == manual);
+        assert(session.working.experience == Pokemon::getExpForLevel(manual, 3));
+    }
     assert(session.working.gender==static_cast<uint8_t>(genderFromAttackDV(1,session.working.dvs[1])));
     assert(session.working.dvs[0]==StagedEditor::derivedHPDV(Rules::storedDVs(session.working)));
     assert(!session.setExperience(session.maximumExperience()+1));
@@ -80,8 +200,10 @@ void runSession(const L& layout,SourceGame game) {
     picker.stepList(-24); // Pikachu #25 -> Bulbasaur #1, without touching the edit transaction.
     assert(Rules::sameEditableRecord(beforeSpeciesBrowse,session.working));
     assert(picker.speciesChoice()==1);
-    assert(Picker::applySpeciesChoice(session,picker.speciesChoice()));
-    assert(session.working.species==1 && session.working.experience==beforeSpeciesBrowse.experience);
+    assert(Picker::applySpeciesChoice(session,picker.speciesChoice(), sourceId));
+    assert(session.working.species==1);
+    assert(session.working.level ==
+           PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 1));
     assert(session.working.level==Pokemon::getLevelFromExp(session.working.experience,3));
     assert(session.working.gender==static_cast<uint8_t>(genderFromAttackDV(1,session.working.dvs[1])));
 
@@ -97,19 +219,42 @@ void runSession(const L& layout,SourceGame game) {
     assert(picker.moveChoice()==0 && Picker::applyMoveChoice(session,0,0));
     assert(session.working.moves[0]==0 && session.working.pp[0]==0 && session.working.ppUps[0]==0);
 
+    // Pokérus is an inline three-state row, not a picker. Reading an unusual
+    // valid raw byte only classifies it; explicit activation is what changes bytes.
+    namespace Native = PokeBank::UIModel::Gen2Native;
+    uint8_t unusualPokerus = Native::encodePokerus(14, 7);
+    const uint8_t viewedPokerus = unusualPokerus;
+    assert(Native::pokerusText(0) == "None");
+    assert(Native::pokerusText(unusualPokerus) == "Infected");
+    assert(Native::pokerusText(Native::encodePokerus(14, 0)) == "Cured");
+    assert(unusualPokerus == viewedPokerus);
+    const uint8_t infected = Native::cyclePokerusState(0);
+    const auto infectedState = Native::decodePokerus(infected);
+    assert(infectedState.present && infectedState.active && infectedState.strain != 0 && infectedState.days != 0);
+    const uint8_t cured = Native::cyclePokerusState(unusualPokerus);
+    const auto curedState = Native::decodePokerus(cured);
+    assert(curedState.present && !curedState.active && curedState.strain == 14);
+    assert(Native::cyclePokerusState(cured) == 0);
+
     session.begin(kept,SessionMode::Edit);
-    const auto beforePokerusBrowse=session.working;
-    picker.openPokerus(PokeBank::UIModel::Gen2Native::encodePokerus(3,4));
-    picker.stepPokerusRow(1);picker.adjustPokerus(2);
-    assert(Rules::sameEditableRecord(beforePokerusBrowse,session.working));
-    assert(Picker::applyPokerusChoice(session,picker.pokerusRaw()));
-    const auto appliedPokerus=PokeBank::UIModel::Gen2Native::decodePokerus(session.working.pokerus);
-    assert(appliedPokerus.strain==5 && appliedPokerus.days==4 && appliedPokerus.active);
+    session.working.pokerus = unusualPokerus;
+    const auto beforePokerusView = session.working;
+    assert(Native::pokerusText(session.working.pokerus) == "Infected");
+    assert(Rules::sameEditableRecord(beforePokerusView, session.working));
+    session.working.pokerus = Native::cyclePokerusState(session.working.pokerus);
+    assert(Native::pokerusText(session.working.pokerus) == "Cured");
 
     // Staged work at entry is the baseline. Continue keeps the local edits; Discard
     // never calls StagedEditor and preserves prior staged changes byte-for-byte.
     const std::vector<uint8_t> prior(editor->stagedBytes().begin(),editor->stagedBytes().end());
-    session.begin(kept,SessionMode::Edit);assert(session.back()&&session.mode==SessionMode::None);
+    session.begin(kept,SessionMode::Edit);
+    assert(!session.back() && session.confirmExit && session.mode==SessionMode::Edit);
+    session.continueEditing();
+    assert(!session.confirmExit && session.mode==SessionMode::Edit);
+    session.begin(kept,SessionMode::Create);
+    assert(!session.back() && session.confirmExit && session.mode==SessionMode::Create);
+    session.continueEditing();
+    assert(!session.confirmExit && session.mode==SessionMode::Create);
     session.begin(kept,SessionMode::Edit);session.working.nickname="LOCAL";
     assert(!session.back()&&session.confirmExit);session.continueEditing();
     assert(!session.confirmExit&&session.working.nickname=="LOCAL");
@@ -188,7 +333,6 @@ void runSession(const L& layout,SourceGame game) {
     assert(!session.setMove(0,33)&&!session.setPP(0,1)&&!session.setPPUps(0,1));
     assert(!Picker::applySpeciesChoice(session,6));
     assert(!Picker::applyMoveChoice(session,0,33));
-    assert(!Picker::applyPokerusChoice(session,0x34));
     assert(!session.keep(*editor,0,0,error)&&!session.add(*editor,3,slot,error));
     assert(session.back());
     assert(std::equal(raw.begin(),raw.end(),editor->originalBytes().begin()));

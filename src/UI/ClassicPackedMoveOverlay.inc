@@ -1,6 +1,7 @@
 #include "Integration/Gen1/Gen1Shiny.h"
 #include "Legacy/RBYReadOnlyTrainer.h"
 #include "Legacy/GSCReadOnlyTrainer.h"
+#include "Legacy/FRLGReadOnlyTrainer.h"
 #include "UI/ClassicPackedMultiSelect.h"
 #include "UI/SpriteManager.h"
 
@@ -12,7 +13,7 @@ namespace UI::ClassicPackedMove {
 namespace {
 
 namespace Multi = PokeBank::UIModel::ClassicPackedMove;
-enum class CarryGeneration : uint8_t { None, Gen1, Gen2 };
+enum class CarryGeneration : uint8_t { None, Gen1, Gen2, Gen3 };
 
 struct CarriedVisual {
     uint16_t species = 0;
@@ -64,8 +65,14 @@ bool isGen2(const TrainerViewScreen& screen) noexcept {
            screen.sourceGameId == "crystal_gbc";
 }
 
+bool isGen3(const TrainerViewScreen& screen) noexcept {
+    return screen.sourceGameId == "ruby_gba" || screen.sourceGameId == "sapphire_gba" ||
+           screen.sourceGameId == "emerald_gba" || screen.sourceGameId == "firered_gba" ||
+           screen.sourceGameId == "leafgreen_gba";
+}
+
 bool classicSource(const TrainerViewScreen& screen) noexcept {
-    return isGen1(screen) || isGen2(screen);
+    return isGen1(screen) || isGen2(screen) || isGen3(screen);
 }
 
 bool gridOwnsInput(const TrainerViewScreen& screen) noexcept {
@@ -82,6 +89,10 @@ bool gridOwnsInput(const TrainerViewScreen& screen) noexcept {
 }
 
 int classicCapacity(TrainerViewScreen& screen) {
+    if (isGen3(screen)) {
+        auto& trainer = static_cast<PokeVault::Legacy::FRLGReadOnlyTrainer&>(screen.trainer);
+        return trainer.stagedPokemon() ? 30 : 0;
+    }
     if (isGen1(screen)) {
         auto& trainer = static_cast<PokeVault::Legacy::RBYReadOnlyTrainer&>(screen.trainer);
         return trainer.stagedPokemon() ? 20 : 0;
@@ -104,11 +115,13 @@ void clearTransientSelection(TrainerViewScreen& screen, CarryState& state) noexc
     state.yFrames = 0;
     state.selecting = false;
     screen.currentlySelecting = false;
+    screen.controllerNavigation.reset();
 }
 
 void clearState(TrainerViewScreen& screen, CarryState& state) noexcept {
     setLegacyHoldingPresentation(screen, false);
     screen.currentlySelecting = false;
+    screen.controllerNavigation.reset();
     const auto owner = state.owner;
     const auto sourceGameId = state.sourceGameId;
     state = {};
@@ -266,13 +279,63 @@ std::vector<std::size_t> occupiedSelectionGen2(TrainerViewScreen& screen, int bo
     return slots;
 }
 
+bool beginGen3(TrainerViewScreen& screen, CarryState& state, int box,
+               const std::vector<std::size_t>& slots) {
+    if (slots.empty()) {
+        screen.postStatus("The selected sparse rectangle contains no Pokemon", 220);
+        clearTransientSelection(screen, state);
+        return true;
+    }
+    auto& trainer = static_cast<PokeVault::Legacy::FRLGReadOnlyTrainer&>(screen.trainer);
+    auto* editor = trainer.stagedPokemon();
+    if (!editor) return true;
+    std::string error;
+    std::vector<CarriedVisual> visuals;
+    for (auto slot : slots) {
+        auto p = editor->boxedPokemon(box, slot, error);
+        if (p) visuals.push_back({p->species, p->form, p->shiny});
+    }
+    if (!editor->beginSparseMove(box, slots, error)) {
+        screen.postStatus(error, 300); clearTransientSelection(screen, state); return true;
+    }
+    if (!trainer.refreshStagedPokemonPresentation(error)) {
+        std::string restoreError;
+        editor->cancelSparseMove(restoreError);
+        trainer.refreshStagedPokemonPresentation(restoreError);
+        screen.postStatus(error, 300); clearTransientSelection(screen, state); return true;
+    }
+    state.active = true;
+    state.generation = CarryGeneration::Gen3;
+    state.sourceBox = box;
+    state.sourceSlot = static_cast<int>(slots.front());
+    state.visuals = std::move(visuals);
+    clearTransientSelection(screen, state);
+    setLegacyHoldingPresentation(screen, true);
+    screen.postStatus("Pokemon picked up - Y places in empty slots, B restores", 260);
+    return true;
+}
+
 bool beginSelectedGroup(TrainerViewScreen& screen, CarryState& state) {
     const int capacity = classicCapacity(screen);
     const auto rectangle = Multi::rectangleSlots(state.selectionAnchor, state.selectionCursor, capacity);
     std::vector<CarriedVisual> visuals;
     std::vector<std::size_t> slots;
     if (isGen1(screen)) slots = occupiedSelectionGen1(screen, state.selectionBox, rectangle, visuals);
-    else slots = occupiedSelectionGen2(screen, state.selectionBox, rectangle, visuals);
+    else if (isGen2(screen)) slots = occupiedSelectionGen2(screen, state.selectionBox, rectangle, visuals);
+    else {
+        auto& trainer = static_cast<PokeVault::Legacy::FRLGReadOnlyTrainer&>(screen.trainer);
+        if (auto* editor = trainer.stagedPokemon()) {
+            for (std::size_t i = 0; i < rectangle.count; ++i) {
+                std::string error;
+                if (editor->boxedPokemon(state.selectionBox, rectangle[i], error))
+                    slots.push_back(rectangle[i]);
+                else if (!error.empty()) {
+                    screen.postStatus(error, 300); clearTransientSelection(screen, state); return true;
+                }
+            }
+        }
+        return beginGen3(screen, state, state.selectionBox, slots);
+    }
 
     if (slots.empty()) {
         screen.postStatus("The selected rectangle contains no Pokemon", 220);
@@ -327,6 +390,11 @@ bool cancel(TrainerViewScreen& screen, CarryState& state) {
             ok = editor->cancelPackedMove(error) && refreshGen2(screen, error);
     }
 
+    if (state.generation == CarryGeneration::Gen3) {
+        auto& trainer = static_cast<PokeVault::Legacy::FRLGReadOnlyTrainer&>(screen.trainer);
+        if (auto* editor = trainer.stagedPokemon())
+            ok = editor->cancelSparseMove(error) && trainer.refreshStagedPokemonPresentation(error);
+    }
     if (ok) {
         screen.selectedBoxIndex = state.sourceBox;
         screen.selectedItemIndex = state.sourceSlot;
@@ -365,6 +433,15 @@ bool place(TrainerViewScreen& screen, CarryState& state) {
         }
     }
 
+    if (state.generation == CarryGeneration::Gen3) {
+        auto& trainer = static_cast<PokeVault::Legacy::FRLGReadOnlyTrainer&>(screen.trainer);
+        if (auto* editor = trainer.stagedPokemon()) {
+            ok = editor->placeSparseMove(screen.selectedBoxIndex, screen.selectedItemIndex, error);
+            placedSlot = screen.selectedItemIndex;
+            if (ok) trainer.refreshStagedPokemonPresentation(error);
+        }
+    }
+
     if (!ok) {
         screen.postStatus(error.empty() ? "That destination cannot accept the carried Pokemon" : error, 320);
         setLegacyHoldingPresentation(screen, true);
@@ -372,7 +449,7 @@ bool place(TrainerViewScreen& screen, CarryState& state) {
     }
 
     screen.selectedItemIndex = static_cast<int>(placedSlot);
-    screen.postStatus(state.visuals.size() == 1
+    screen.postStatus(state.generation == CarryGeneration::Gen3 ? "Pokemon moved to exact sparse slots" : state.visuals.size() == 1
         ? "Pokemon moved with packed box ordering"
         : std::to_string(state.visuals.size()) + " Pokemon moved in deterministic packed order", 260);
     clearState(screen, state);
@@ -416,7 +493,8 @@ void drawVisual(PKSEFramebuffer& fb, const CarriedVisual& visual, int cx, int cy
 
 } // namespace
 
-bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, const TouchInput& touch) {
+bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                 int stickX, int stickY, const TouchInput& touch) {
     auto& state = stateFor(screen);
 
     if (state.active) {
@@ -455,10 +533,14 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, const 
         }
         if (!(held & HidNpadButton_Y)) return beginSelectedGroup(screen, state);
         if (down & (HidNpadButton_L | HidNpadButton_R | HidNpadButton_A | HidNpadButton_X)) {
-            screen.postStatus("Hold Y and use the D-pad to resize; release Y to pick up", 180);
+            screen.postStatus("Hold Y and use D-pad/Stick to resize; release Y to pick up", 180);
             return true;
         }
-        resizeSelection(screen, state, down);
+        const uint64_t nav = screen.controllerNavigation.apply(
+            down, held, stickX, stickY,
+            HidNpadButton_Up, HidNpadButton_Down,
+            HidNpadButton_Left, HidNpadButton_Right);
+        resizeSelection(screen, state, nav);
         return true;
     }
 
@@ -482,7 +564,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, const 
                 screen.selectedBoxIndex = state.selectionBox;
                 screen.selectedItemIndex = state.selectionCursor;
                 screen.currentlySelecting = true;
-                screen.postStatus("Multi-select: hold Y, resize with D-pad, release Y to pick up", 260);
+                screen.controllerNavigation.reset();
+                screen.postStatus("Multi-select: hold Y, resize with D-pad/Stick, release Y to pick up", 260);
             }
             return true;
         }
@@ -493,6 +576,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, const 
         state.yFrames = 0;
         if (isGen1(screen)) return beginGen1(screen, state, box, slot);
         if (isGen2(screen)) return beginGen2(screen, state, box, slot);
+        if (isGen3(screen)) return beginGen3(screen, state, box, {static_cast<std::size_t>(slot)});
         return false;
     }
 
@@ -520,7 +604,7 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 break;
             }
         }
-        drawNavBar(fb, {{"Y", "Hold / Release Pick Up"}, {"D-pad", "Resize Selection"}, {"B", "Cancel"}});
+        drawNavBar(fb, {{"Y", "Hold / Release Pick Up"}, {"D-pad/Stick", "Resize Selection"}, {"B", "Cancel"}});
         return;
     }
 

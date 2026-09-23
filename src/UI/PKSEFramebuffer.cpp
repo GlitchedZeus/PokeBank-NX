@@ -521,7 +521,8 @@ namespace UI {
     }
 
     void PKSEFramebuffer::drawSelectionHighlight(int x, int y, int w, int h) {
-        drawFilledRoundedRect(x, y, w, h, 10, Colors::SurfaceSelected);
+        // Global focus treatment: preserve the underlying dark surface. A teal outline is enough to
+        // identify focus; callers render selected labels/values with the normal bright text token.
         drawRoundedRect(x, y, w, h, 10, Colors::FocusBorder, 2);
     }
 

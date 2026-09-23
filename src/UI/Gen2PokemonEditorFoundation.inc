@@ -7,6 +7,8 @@
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
+#include "UI/Gen2HeldItemPicker.h"
+#include "UI/Gen2NativePresentation.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "Names/MoveNames.h"
@@ -19,6 +21,8 @@
 #include "Pokemon/Pokemon2ReadOnly.h"
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/StatsRadar.h"
+#include "UI/ScreenChrome.h"
+#include "UI/Dialogs/DialogFrame.h"
 
 #include <algorithm>
 #include <array>
@@ -36,6 +40,7 @@ namespace Gen2 = PokeVault::Integration::Gen2;
 namespace Rules = PokeBank::UIModel::Gen2PokemonEditor;
 namespace Foundation = PokeBank::UIModel::PokemonEditorFoundation;
 namespace SharedEditor = PokeBank::UIModel::SharedPokemonEditor;
+namespace Gen2Native = PokeBank::UIModel::Gen2Native;
 
 using Mode = Rules::SessionMode;
 
@@ -50,6 +55,11 @@ struct State : Rules::Session {
     uint32_t rng = 0x2A6F19D3u;
     std::vector<uint8_t> itemChoices;
     int itemChoiceIndex = 0;
+    // UI-only until a real Crystal caught-history record exists. This lets Create/Edit
+    // choose OT gender before choosing a met location without fabricating caughtData.
+    Gen2Native::CrystalOtGenderChoice crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
+    // Pending editor-only Crystal met time. It must not create caught history by itself.
+    uint8_t crystalMetTime = 0; // 0 Unknown, 1 Morning, 2 Day, 3 Night
 };
 
 State& stateFor(const TrainerViewScreen& screen) {
@@ -90,8 +100,7 @@ uint32_t minimumExpFor(const Gen2::PokemonRecord& p) noexcept {
 
 std::string itemText(uint8_t item) {
     if (item == 0) return "None";
-    const auto name = Gen2::gen2ItemName(item);
-    return Gen2::selectableHeldItem(item) ? std::string(name) : "Raw item " + std::to_string(item);
+    return PokeBank::UIModel::Gen2HeldItemPicker::itemName(item);
 }
 
 std::string genderText(uint8_t gender) {
@@ -142,7 +151,7 @@ void nextPanel(State& state, int direction) noexcept {
 Gen2::PokemonRecord defaultCreateRecord(Gen2::StagedEditor& editor) {
     Gen2::PokemonRecord p;
     p.species = 25;
-    p.level = 5;
+    p.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::fallbackLevel;
     p.nickname = Names::getSpeciesName(p.species);
     p.originalTrainer = editor.trainerName();
     p.trainerId = editor.trainerId();
@@ -173,6 +182,8 @@ bool beginCreate(TrainerViewScreen& screen, int box) {
     state.column = 0;
     state.working = defaultCreateRecord(*editor);
     state.begin(state.working, Mode::Create);
+    state.crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
+    state.crystalMetTime = 0;
     state.rng ^= static_cast<uint32_t>((box + 1) * 0x9E3779B9u);
     screen.controllerNavigation.reset();
     return true;
@@ -199,6 +210,9 @@ bool beginEdit(TrainerViewScreen& screen, int box, int slot) {
     state.baseline = *pokemon; // exact staged state at Edit entry, not original source bytes.
     state.working = *pokemon;
     state.begin(*pokemon, Mode::Edit);
+    const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+    state.crystalOtGender = Gen2Native::crystalOtGenderChoiceFromCaught(caught);
+    state.crystalMetTime = caught.present ? caught.timeOfDay : 0;
     state.rng ^= static_cast<uint32_t>((box + 1) * 0x85EBCA6Bu + (slot + 1));
     screen.controllerNavigation.reset();
     return true;
@@ -378,10 +392,7 @@ void randomizeDVs(State& state) {
 
 void openHeldItemPicker(State& state) {
     state.itemChoices = Rules::heldItemChoices();
-    state.itemChoiceIndex = 0;
-    const auto it = std::find(state.itemChoices.begin(), state.itemChoices.end(), state.working.heldItem);
-    if (it != state.itemChoices.end())
-        state.itemChoiceIndex = static_cast<int>(std::distance(state.itemChoices.begin(), it));
+    state.itemChoiceIndex = PokeBank::UIModel::Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem);
     state.itemPicker = true;
 }
 
@@ -394,7 +405,7 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
             const std::string oldDefault = Names::getSpeciesName(oldSpecies);
             const auto result = Utils::promptNumber("Gen II Species ID", p.species, 1, 251);
             if (!result.accepted) return;
-            state.setSpecies(static_cast<uint16_t>(result.value));
+            state.setSpecies(static_cast<uint16_t>(result.value), screen.sourceGameId);
             if (state.mode == Mode::Create && p.nickname == oldDefault)
                 p.nickname = Names::getSpeciesName(p.species);
             refreshDerived(p);
@@ -502,8 +513,13 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         down, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
     const int count = static_cast<int>(state.itemChoices.size());
-    if (nav & HidNpadButton_Up) state.itemChoiceIndex = (state.itemChoiceIndex - 1 + count) % count;
-    if (nav & HidNpadButton_Down) state.itemChoiceIndex = (state.itemChoiceIndex + 1) % count;
+    using PokeBank::UIModel::Gen2HeldItemPicker::move;
+    if (nav & HidNpadButton_Up) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, -1);
+    if (nav & HidNpadButton_Down) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 1);
+    if (nav & HidNpadButton_Left) state.itemChoiceIndex = move(state.itemChoiceIndex, count, -1, 0);
+    if (nav & HidNpadButton_Right) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 1, 0);
+    if (down & HidNpadButton_L) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, -1);
+    if (down & HidNpadButton_R) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, 1);
     if (down & HidNpadButton_B) {
         state.itemPicker = false;
         screen.controllerNavigation.reset();
@@ -518,13 +534,16 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
 }
 
 bool handleConfirm(TrainerViewScreen& screen, State& state, uint64_t down) {
+    const bool create = state.mode == Mode::Create;
     if (down & HidNpadButton_A) {
-        if (stageEdit(screen)) return true;
+        if (create ? stageCreate(screen) : stageEdit(screen)) return true;
     }
-    if (down & HidNpadButton_X) {
-        // The session never touched StagedEditor, so discard reveals the exact staged entry captured
-        // in baseline, including unrelated work that existed before Edit opened.
-        screen.postStatus("This Edit session discarded; earlier staged work preserved", 300);
+    if (down & HidNpadButton_Y) {
+        // Match PKSE's native creator/details confirmation mapping: B Back, Y Discard, A Keep/Save.
+        // The local session still never mutates source bytes; only the PokeBank staged copy can change.
+        screen.postStatus(create
+            ? "Create draft discarded; staged/source bytes unchanged"
+            : "This Edit session discarded; earlier staged work preserved", 300);
         state.discard();
         closeToActions(screen);
         return true;
@@ -609,7 +628,6 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int st
     if ((down & HidNpadButton_X) && state.mode == Mode::Create) stageCreate(screen);
 
     if (down & HidNpadButton_B) {
-        if (state.mode == Mode::Create) screen.postStatus("Create draft cancelled; staged save unchanged", 240);
         if (state.back()) closeToActions(screen);
         else screen.controllerNavigation.reset();
     }
@@ -621,8 +639,8 @@ namespace {
 
 void selectedRowBackground(PKSEFramebuffer& fb, int x, int y, int w, bool selected) {
     if (!selected) return;
-    fb.drawFilledRoundedRect(x, y - 5, w, 28, 8, Colors::SurfaceSelected);
-    fb.drawRoundedRect(x, y - 5, w, 28, 8, Colors::FocusBorder, 1);
+    // Keep the normal dark row surface; selection is outline-only.
+    fb.drawRoundedRect(x, y - 5, w, 28, 8, Colors::FocusBorder, 2);
 }
 
 Color statusColor(Rules::CompatibilityState status) {
@@ -651,7 +669,9 @@ void drawIdentity(PKSEFramebuffer& fb, const State& state, int x, int y, int w, 
         const int yy = y + 54 + i * 43;
         selectedRowBackground(fb, x + 10, yy, w - 20,
                               state.panel == Foundation::Panel::Identity && state.row == i);
-        fb.drawText(x + 18, yy, rows[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy, rows[static_cast<std::size_t>(i)].first,
+                    state.panel == Foundation::Panel::Identity && state.row == i
+                        ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 110, yy, rows[static_cast<std::size_t>(i)].second, Colors::Text, TextStyle::Caption);
     }
     fb.drawText(x + 18, y + h - 48, "Gen II format fields only", Colors::TextDim, TextStyle::Caption);
@@ -675,11 +695,11 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
         const int yy = y + 78 + i * 45;
         selectedRowBackground(fb, x + 10, yy, w - 20,
                               state.panel == Foundation::Panel::Values && state.row == i);
-        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(i)], Colors::TextDim, TextStyle::Caption);
-        const Color dvColor = state.panel == Foundation::Panel::Values && state.row == i && state.column == 0
-            ? Colors::Accent : Colors::Text;
-        const Color statExpColor = state.panel == Foundation::Panel::Values && state.row == i && state.column == 1
-            ? Colors::Accent : Colors::Text;
+        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(i)],
+                    state.panel == Foundation::Panel::Values && state.row == i
+                        ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+        const Color dvColor = Colors::Text;
+        const Color statExpColor = Colors::Text;
         fb.drawText(x + 116, yy, std::to_string(dvs[static_cast<std::size_t>(i)]) + (i == 0 ? " *" : ""),
                     dvColor, TextStyle::Caption);
         fb.drawText(x + 190, yy, std::to_string(p.statExperience[static_cast<std::size_t>(i)]),
@@ -700,7 +720,9 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
         const int yy = y + 314 + i * 48;
         selectedRowBackground(fb, x + 10, yy, w - 20,
                               state.panel == Foundation::Panel::Values && state.row == row);
-        fb.drawText(x + 18, yy, extras[static_cast<std::size_t>(i)].first, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy, extras[static_cast<std::size_t>(i)].first,
+                    state.panel == Foundation::Panel::Values && state.row == row
+                        ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 130, yy, extras[static_cast<std::size_t>(i)].second,
                     i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
     }
@@ -724,12 +746,12 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
         const std::string name = move == 0 ? "Empty" : std::string(Names::getMoveName(move));
         const auto status = moveStatus(screen, state, slot);
         const bool selected = state.panel == Foundation::Panel::Moves && state.row == slot;
-        fb.drawText(x + 18, yy, name, selected && state.column == 0 ? Colors::Accent : Colors::Text,
+        fb.drawText(x + 18, yy, name, Colors::Text,
                     TextStyle::Caption);
         fb.drawText(x + 198, yy, std::to_string(state.working.pp[static_cast<std::size_t>(slot)]),
-                    selected && state.column == 1 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 260, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]),
-                    selected && state.column == 2 ? Colors::Accent : Colors::Text, TextStyle::Caption);
+                    Colors::Text, TextStyle::Caption);
         fb.drawText(x + 310, yy, Rules::compatibilityText(status), statusColor(status), TextStyle::Caption);
     }
 
@@ -764,39 +786,45 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
 
 void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
     const int W = fb.getWidth(), H = fb.getHeight();
-    constexpr int w = 560, h = 520;
+    constexpr int w = 1040, h = 520;
     const int x = (W - w) / 2, y = (H - h) / 2;
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 150));
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawText(x + 24, y + 18, "Held Item — Generation II", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, "None + authentic Gen II item IDs only", Colors::TextDim, TextStyle::Caption);
-    const int count = static_cast<int>(state.itemChoices.size());
-    const int first = std::clamp(state.itemChoiceIndex - 6, 0, std::max(0, count - 12));
-    const int last = std::min(count, first + 12);
-    for (int i = first; i < last; ++i) {
-        const int yy = y + 90 + (i - first) * 32;
-        const bool selected = i == state.itemChoiceIndex;
-        selectedRowBackground(fb, x + 18, yy, w - 36, selected);
-        const uint8_t item = state.itemChoices[static_cast<std::size_t>(i)];
-        fb.drawText(x + 30, yy, itemText(item), selected ? Colors::Accent : Colors::Text, TextStyle::Caption);
-        fb.drawText(x + w - 82, yy, std::to_string(item), Colors::TextDim, TextStyle::Caption);
-    }
-    drawNavBar(fb, {{"A", "Select"}, {"B", "Cancel"}});
+    namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
+    const int pages = (static_cast<int>(state.itemChoices.size()) + Model::pageSize - 1) / Model::pageSize;
+    fb.drawText(x + 24, y + 52,
+        "Page " + std::to_string(state.itemChoiceIndex / Model::pageSize + 1) + " / " + std::to_string(pages),
+        Colors::TextDim, TextStyle::Caption);
+    Gen2HeldItemPickerPresentation::drawList(fb, x + 24, y + 90, w - 48, state.itemChoices, state.itemChoiceIndex);
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
-void drawConfirm(PKSEFramebuffer& fb) {
-    const int W = fb.getWidth(), H = fb.getHeight();
-    constexpr int w = 620, h = 230;
-    const int x = (W - w) / 2, y = (H - h) / 2;
-    fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 160));
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 28, y + 28, "Keep staged Pokemon edits?", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 28, y + 78, "A keeps this Edit session in the staged copy.", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 28, y + 108, "X discards only this session and restores the staged entry state.",
+void drawConfirm(PKSEFramebuffer& fb, const State& state) {
+    // Reuse PKSE's native creator/details confirmation chrome. Generation II keeps its
+    // existing PokeBank staging semantics underneath; this changes presentation/input only.
+    const bool create = state.mode == Mode::Create;
+    const int w = create ? 540 : 560;
+    constexpr int h = 226;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - h) / 2;
+    const char* title = create ? "New Pokémon" : "Unsaved changes";
+    const Color accent = create ? Colors::Primary : Colors::Orange;
+    const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, title, accent);
+
+    fb.drawText(x + 28, cy,
+                create ? "Keep this new Pokémon?" : "This Pokémon has unsaved changes.",
+                Colors::Text);
+    fb.drawText(x + 28, cy + 34,
+                create ? "Discard removes it; Back keeps editing."
+                       : "Discard loses them; Back keeps editing.",
                 Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 28, y + 138, "B continues editing. Original source bytes are untouched.",
-                Colors::TextDim, TextStyle::Caption);
-    drawNavBar(fb, {{"A", "Keep"}, {"X", "Discard"}, {"B", "Continue"}});
+
+    const int cbw = 160, cbh = TouchTargetMin, cby = y + h - cbh - 18;
+    drawGlyphButton(fb, x + 24, cby, cbw, cbh, "B", "Back", Colors::PanelAlt);
+    drawGlyphButton(fb, x + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
+    drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
+                    create ? "Keep" : "Save", Colors::PanelAlt);
 }
 
 } // namespace
@@ -841,7 +869,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         {"Y", "Random DVs"}, {"B", "Back"}});
 
     if (state.itemPicker) drawHeldItemPicker(fb, state);
-    if (state.confirmExit) drawConfirm(fb);
+    if (state.confirmExit) drawConfirm(fb, state);
 }
 
 } // namespace UI::Gen2PokemonEditor

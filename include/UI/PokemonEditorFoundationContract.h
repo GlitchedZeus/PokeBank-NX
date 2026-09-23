@@ -13,7 +13,8 @@ enum class SurfaceOwner : uint8_t { FoundationWorkspace, Cleanup3 };
 enum class IdentityField : uint8_t {
     Species,
     Nickname,
-    LevelExperience,
+    Level,
+    Experience,
     OriginalTrainer,
     TrainerId,
 };
@@ -27,7 +28,6 @@ enum class ValueRow : uint8_t {
     Speed,
     Special,
     Shiny,
-    Level,
 };
 
 enum class MoveField : uint8_t { Move1, Move2, Move3, Move4 };
@@ -50,8 +50,8 @@ struct Focus {
     constexpr bool operator!=(const Focus& other) const noexcept { return !(*this == other); }
 };
 
-constexpr uint8_t identityRowCount() noexcept { return 5; }
-constexpr uint8_t valueRowCount() noexcept { return 7; }
+constexpr uint8_t identityRowCount() noexcept { return 6; }
+constexpr uint8_t valueRowCount() noexcept { return 6; }
 constexpr uint8_t moveRowCount() noexcept { return 4; }
 constexpr uint8_t valueStatRowCount() noexcept { return 5; }
 
@@ -126,11 +126,12 @@ constexpr Focus moveFocus(Focus focus, Direction direction) noexcept {
         return normalize({Panel::Values, static_cast<uint8_t>(focus.row), static_cast<uint8_t>(ValueColumn::StatExperience)});
     }
     if (focus.panel == Panel::Values) {
-        // Moving left from HP Stat Exp must leave the panel instead of landing on
-        // the derived HP DV cell.
+        // HP DV is derived/non-focusable. Moving left from HP Stat Exp stays in
+        // STATS and skips directly to the next real editable DV: Attack DV.
         if (focus.row == static_cast<uint8_t>(ValueRow::HP) &&
             focus.column == static_cast<uint8_t>(ValueColumn::StatExperience)) {
-            return normalize({Panel::Identity, static_cast<uint8_t>(ValueRow::HP), 0});
+            return normalize({Panel::Values, static_cast<uint8_t>(ValueRow::Attack),
+                              static_cast<uint8_t>(ValueColumn::DV)});
         }
         if (focus.row < valueStatRowCount() && focus.column > 0) {
             --focus.column;
@@ -152,7 +153,7 @@ constexpr Focus nextPanel(Focus focus) noexcept {
 
 constexpr bool panelIsInteractive(Panel) noexcept { return true; }
 constexpr bool valueCellEditable(ValueRow row, ValueColumn column) noexcept {
-    if (row == ValueRow::Shiny || row == ValueRow::Level) return column == ValueColumn::DV;
+    if (row == ValueRow::Shiny) return column == ValueColumn::DV;
     if (column == ValueColumn::CalculatedStat) return false;
     if (row == ValueRow::HP && column == ValueColumn::DV) return false;
     return true;

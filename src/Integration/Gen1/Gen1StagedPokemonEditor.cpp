@@ -246,7 +246,11 @@ bool StagedPokemonEditor::stageAdd(size_t b,size_t s,const BoxPokemonCreate& c,s
     const auto owner=c.otName.empty()?original_->trainer().name:c.otName;
     if(!encodeName(nickname,10,nick,error) || !encodeName(owner,7,ot,error)) return false;
     for(auto v:c.dvs) if(v>15) {error="DVs must be 0..15";return false;}
-    PokemonRecord p; p.species=c.species;p.level=c.level;p.experience=Pokemon::getExpForLevel(c.level,growthRate(c.species));
+    PokemonRecord p; p.species=c.species;p.level=c.level;
+    p.experience=c.experience.value_or(Pokemon::getExpForLevel(c.level,growthRate(c.species)));
+    if(Pokemon::getLevelFromExp(p.experience,growthRate(c.species))!=c.level) {
+        error="Create Level and EXP disagree for the species growth rate"; return false;
+    }
     p.moves=c.moves;p.pp=c.pp;p.ppUps=c.ppUps;
     if(!validPokemon(p,error)) return false;
     std::vector<uint8_t> bytes(stagedBytes().begin(),stagedBytes().end());

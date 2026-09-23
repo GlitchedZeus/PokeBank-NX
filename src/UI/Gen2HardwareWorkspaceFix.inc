@@ -5,13 +5,9 @@
 namespace UI::Gen2PokemonEditor {
 namespace {
 
-void normalizeHardwareEmptyMoveFocus(TrainerViewScreen& screen) {
-    auto& state = stateFor(screen);
+void normalizeHardwareMoveRowFocus(TrainerViewScreen& screen) {
     auto& unified = unifiedStateFor(screen);
-    if (unified.focus.panel != Unified::Panel::Moves || unified.focus.row >= 4) return;
-    const auto row = static_cast<std::size_t>(unified.focus.row);
-    if (state.working.moves[row] == 0 && unified.focus.column > 0)
-        unified.focus.column = 0;
+    unified.focus = Unified::normalizeMoveRowFocus(Unified::Generation::Gen2, unified.focus, unified.crystal);
 }
 
 void normalizeHardwareDerivedHpDvFocus(TrainerViewScreen& screen,
@@ -32,11 +28,12 @@ void normalizeHardwareDerivedHpDvFocus(TrainerViewScreen& screen,
         }
     }
 
-    // Moving left from HP Stat Exp exits to DETAILS rather than landing on HP DV.
+    // HP DV is derived/non-focusable. Moving left from HP Stat Exp must stay
+    // inside STATS and land on the next real editable DV: Attack DV.
     if (previous && previous->panel == Unified::Panel::Values &&
         previous->row == 0 && previous->column == 1) {
-        focus.panel = Unified::Panel::Details;
-        focus.row = 0;
+        focus.panel = Unified::Panel::Values;
+        focus.row = 1;
         focus.column = 0;
         return;
     }
@@ -85,11 +82,11 @@ bool handleUnifiedGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uin
                                    int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
     if (stateFor(screen).mode != Mode::None) {
-        normalizeHardwareEmptyMoveFocus(screen);
+        normalizeHardwareMoveRowFocus(screen);
         normalizeHardwareDerivedHpDvFocus(screen);
         const auto previous = unifiedStateFor(screen).focus;
         const bool handled = handleUnifiedWorkspaceInput(screen, down, held, stickX, stickY, touch);
-        normalizeHardwareEmptyMoveFocus(screen);
+        normalizeHardwareMoveRowFocus(screen);
         normalizeHardwareDerivedHpDvFocus(screen, &previous);
         return handled;
     }

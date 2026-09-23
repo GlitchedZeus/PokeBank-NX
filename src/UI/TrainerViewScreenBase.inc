@@ -406,8 +406,8 @@ namespace UI {
         for (int i = 0; i < kRows; ++i) {
             const bool sel = (screen.settingsSelectedRow == i);
             fb.drawSoftShadow(rx, ry, rowW, rowH, 14);
-            fb.drawFilledRoundedRect(rx, ry, rowW, rowH, 14, sel ? Colors::Selected : Colors::PanelAlt);
-            if (sel) fb.drawRoundedRect(rx, ry, rowW, rowH, 14, Colors::Accent, 2);
+            fb.drawFilledRoundedRect(rx, ry, rowW, rowH, 14, Colors::PanelAlt);
+            if (sel) fb.drawRoundedRect(rx, ry, rowW, rowH, 14, Colors::FocusBorder, 2);
             fb.drawText(rx + 24, ry + (rowH - fb.lineHeight(TextStyle::Body)) / 2, labels[i], Colors::Text, TextStyle::Body);
             int vw, vh; fb.measureText(values[i], vw, vh, TextStyle::Body);
             const int pillW = vw + 48, pillH = 40;
@@ -458,14 +458,15 @@ namespace UI {
         for (int i = 0; i < kEditRows; ++i) {
             const bool sel = (screen.trainerSelectedRow == i);
             fb.drawSoftShadow(cardX, cy, cardW, rowH, 14);
-            fb.drawFilledRoundedRect(cardX, cy, cardW, rowH, 14, sel ? Colors::Selected : Colors::PanelAlt);
-            if (sel) fb.drawRoundedRect(cardX, cy, cardW, rowH, 14, Colors::Accent, 2);
-            fb.drawText(cardX + 24, cy + (rowH - fb.lineHeight(TextStyle::Body)) / 2, labels[i], Colors::TextDim, TextStyle::Body);
+            fb.drawFilledRoundedRect(cardX, cy, cardW, rowH, 14, Colors::PanelAlt);
+            if (sel) fb.drawRoundedRect(cardX, cy, cardW, rowH, 14, Colors::FocusBorder, 2);
+            fb.drawText(cardX + 24, cy + (rowH - fb.lineHeight(TextStyle::Body)) / 2, labels[i],
+                        sel ? Colors::SelectedText : Colors::TextDim, TextStyle::Body);
             int vw, vh; fb.measureText(values[i], vw, vh, TextStyle::Body);
             const int pillW = vw + 44, pillH = 38;
             const int px = cardX + cardW - pillW - 20, py = cy + (rowH - pillH) / 2;
-            fb.drawPill(px, py, pillW, pillH, sel ? Colors::Primary : Colors::Background);
-            fb.drawText(px + (pillW - vw) / 2, py + (pillH - vh) / 2, values[i], sel ? Colors::PrimaryText : Colors::Text, TextStyle::Body);
+            fb.drawPill(px, py, pillW, pillH, Colors::Background);
+            fb.drawText(px + (pillW - vw) / 2, py + (pillH - vh) / 2, values[i], Colors::Text, TextStyle::Body);
             screen.touchButtons.push_back({ i, cardX, cy, cardW, rowH });
             cy += rowH + 14;
         }

@@ -1,3 +1,4 @@
+#include "UI/SharedPokemonShell.h"
 #include "UI/ClassicGameContext.h"
 
 // Final hardware-retest presentation adapter for Generation II.
@@ -16,12 +17,6 @@ ClassicContext::SurfaceMode gen2SurfaceMode(Mode mode) noexcept {
     return ClassicContext::SurfaceMode::EditStaged;
 }
 
-std::string gen2DexLabel(uint16_t species) {
-    std::string dex = std::to_string(species);
-    while (dex.size() < 3) dex = "0" + dex;
-    return dex;
-}
-
 Color gen2MaleColor() noexcept {
     // Pure fixed Blue is too dark against the accepted dark/OLED surfaces on Switch hardware.
     // Keep a cyan-leaning sky blue in dark themes and a deeper companion shade for light mode.
@@ -32,13 +27,6 @@ Color gen2GenderColor(uint8_t gender) noexcept {
     if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Male) return gen2MaleColor();
     if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Female) return Colors::Magenta;
     return Colors::Text;
-}
-
-void drawGen2HeaderGender(PKSEFramebuffer& fb, int x, int y, uint8_t gender) {
-    if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Male)
-        fb.drawSymbol(x, y, "\xE2\x99\x82", gen2MaleColor());
-    else if (static_cast<Gen2::PokemonGender>(gender) == Gen2::PokemonGender::Female)
-        fb.drawSymbol(x, y, "\xE2\x99\x80", Colors::Magenta);
 }
 
 int gen2TypeSpriteWidth(uint8_t classicType, int height = 22) {
@@ -109,8 +97,9 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
     std::vector<std::pair<std::string, std::string>> rows{
         {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
         {"Nickname", p.nickname},
-        {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
-        {"OT", p.originalTrainer},
+        {"Level", std::to_string(p.level)},
+        {"Experience", std::to_string(p.experience)},
+        {"OT Name", p.originalTrainer},
         {"Trainer ID", std::to_string(p.trainerId)},
         {"Held Item", itemText(p.heldItem)},
         {"Friendship", std::to_string(p.friendship)},
@@ -118,22 +107,38 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
     };
     if (unified.crystal) {
         const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
-        rows.push_back({"Met time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});
+        const uint8_t displayedMetTime = state.mode == Mode::View
+            ? caught.timeOfDay
+            : state.crystalMetTime;
+        rows.push_back({"Met time", Gen2Native::crystalMetTimeName(displayedMetTime)});
         rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
         rows.push_back({"Location", Gen2Native::crystalCaughtLocationName(caught.location)});
-        rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
+        const auto displayedOtGender = state.mode == Mode::View
+            ? Gen2Native::crystalOtGenderChoiceFromCaught(caught)
+            : state.crystalOtGender;
+        rows.push_back({"OT gender", Gen2Native::crystalOtGenderChoiceText(displayedOtGender)});
     }
 
-    const auto window = UnifiedContract::scrollWindow(rows.size(), 5, passive ? 0 : unified.detailsFocus);
+    // The semantic repaint is the authoritative visible Details row window. Clear the
+    // previous rows first, then repaint the same eight-row window used by the shared shell.
+    const int viewportY = y + 216;
+    const int viewportBottom = y + h - 34;
+    fb.drawFilledRect(x + 8, viewportY, w - 16, viewportBottom - viewportY, Colors::Panel);
+    const auto window = UnifiedContract::scrollWindow(rows.size(), 8, unified.detailsFocus);
+    fb.setClipRect(x + 8, viewportY, w - 16, viewportBottom - viewportY);
     for (std::size_t i = 0; i < window.count; ++i) {
         const std::size_t row = window.first + i;
-        const int yy = y + 224 + static_cast<int>(i) * 43;
-        const bool selected = !passive && unified.focus.panel == UnifiedContract::Panel::Details && unified.focus.row == row;
-        fb.drawFilledRect(x + 8, yy + 2, w - 16, 32, Colors::Panel);
-        drawGen2Focus(fb, x + 8, yy + 2, w - 16, 30, selected);
-        fb.drawText(x + 18, yy + 7, rows[row].first, Colors::TextDim, TextStyle::Caption);
+        const int yy = y + 224 + static_cast<int>(i) * 38;
+        const bool selected = unified.focus.panel == UnifiedContract::Panel::Details && unified.focus.row == row;
+        // Leave a clean gutter between the selection outline and the scrollbar track.
+        drawGen2Focus(fb, x + 8, yy + 2, std::max(0, w - 36), 30, selected);
+        fb.drawText(x + 18, yy + 7, rows[row].first, selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[row].second, Colors::Text, TextStyle::Caption);
     }
+    fb.clearClip();
+    SharedPokemonShell::drawVerticalScrollIndicator(
+        fb, x + w - 10, viewportY + 6, std::max(0, viewportBottom - viewportY - 12),
+        rows.size(), 8, window.first);
     fb.drawFilledRect(x + w - 50, y + h - 34, 38, 26, Colors::Panel);
 }
 
@@ -157,48 +162,48 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     fb.drawFilledRect(x + 10, clearTop, w - 20, semanticClearBottom - clearTop, Colors::Panel);
     fb.drawText(x + 114, y + 42, "DV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 184, y + 42, "Stat Exp", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 292, y + 42, "Stat", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 292, y + 42, "Calculated", Colors::TextDim, TextStyle::Caption);
 
     for (int r = 0; r < 5; ++r) {
         const int yy = y + 70 + r * 34;
-        const bool rowSelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == r;
+        const bool rowSelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == r;
         if (rowSelected) {
             const auto cell = UnifiedContract::cellFocus(unified.focus);
             drawGen2Focus(fb, x + cell.x, yy - 5, cell.width, 28, true);
         }
-        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], rowSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 114, yy, std::to_string(dvs[static_cast<std::size_t>(r)]) + (r == 0 ? " *" : ""),
-                    Colors::Text, TextStyle::Caption);
+                    r == 0 ? Colors::TextDim : Colors::Text, TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     Colors::Text, TextStyle::Caption);
         const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)]) : "—";
-        fb.drawText(x + 282, yy, stat, Colors::Accent, TextStyle::Caption);
+        fb.drawText(x + 282, yy, stat, Colors::TextSecondary, TextStyle::Caption);
     }
-    fb.drawText(x + 18, y + 246, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 18, y + 274, "SpA", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 84, y + 274, std::to_string(battle[4]), Colors::Accent, TextStyle::Caption);
-    fb.drawText(x + 200, y + 274, "SpD", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 266, y + 274, std::to_string(battle[5]), Colors::Accent, TextStyle::Caption);
+    fb.drawText(x + 18, y + 246, "SPECIAL", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 274, "Sp. Atk", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 92, y + 274, std::to_string(battle[4]), Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(x + 200, y + 274, "Sp. Def", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 274, y + 274, std::to_string(battle[5]), Colors::TextSecondary, TextStyle::Caption);
 
-    // Keep derivation/storage notes on dedicated baselines so they cannot collide
-    // with calculated Special values or the Shiny/Gender rows at 1280x720.
-    fb.drawText(x + 18, y + 304, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 18, y + 328, "* one stored Special DV / Stat Exp", Colors::TextDim, TextStyle::Caption);
+    // Generation II stores exactly one Special DV and one Special Stat Exp value.
+    // Both split battle stats are calculated from that same authentic pair.
+    fb.drawText(x + 18, y + 304, "One Gen II Special DV / Stat Exp feeds both", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
 
-    const bool shinySelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 5;
-    const bool genderSelected = !passive && unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 6;
+    const bool shinySelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 5;
+    const bool genderSelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 6;
     drawGen2Focus(fb, x + 8, shinyY - 5, w - 16, 30, shinySelected);
-    fb.drawText(x + 18, shinyY, "Shiny", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, shinyY, "Shiny", shinySelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 134, shinyY, p.shiny ? "Yes (DV-derived)" : "No (DV-derived)",
-                p.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+                shinySelected ? Colors::SelectedText : (p.shiny ? Colors::ShinyStar : Colors::Text), TextStyle::Caption);
     drawGen2Focus(fb, x + 8, genderY - 5, w - 16, 30, genderSelected);
-    fb.drawText(x + 18, genderY, "Gender", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 134, genderY, genderText(p.gender), gen2GenderColor(p.gender), TextStyle::Caption);
+    fb.drawText(x + 18, genderY, "Gender", genderSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 134, genderY, genderText(p.gender), genderSelected ? Colors::SelectedText : gen2GenderColor(p.gender), TextStyle::Caption);
 }
 
 void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                               const UnifiedWorkspaceState& unified,
-                              int x, int y, int w, bool passive) {
+                              int x, int y, int w, bool /*passive*/) {
     fb.drawFilledRect(x + 10, y + 6, 150, 34, Colors::Panel);
     fb.drawText(x + 14, y + 10, "MOVES", Colors::Text, TextStyle::Heading);
     fb.drawFilledRect(x + 10, y + 38, w - 20, 146, Colors::Panel);
@@ -206,11 +211,14 @@ void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& scre
     const int upsX = x + w - 154;
     fb.drawText(ppX, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(upsX, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
+    const auto visibleMoveFocus = UnifiedContract::normalizeMoveRowFocus(
+        UnifiedContract::Generation::Gen2, unified.focus, unified.crystal);
     for (int slot = 0; slot < 4; ++slot) {
         const int yy = y + 62 + slot * 32;
-        const bool selected = !passive && unified.focus.panel == UnifiedContract::Panel::Moves && unified.focus.row == slot;
+        const bool selected = visibleMoveFocus.panel == UnifiedContract::Panel::Moves &&
+                              visibleMoveFocus.row == slot;
         if (selected) {
-            const auto cell = UnifiedContract::cellFocus(unified.focus);
+            const auto cell = UnifiedContract::moveRowFocus(w);
             drawGen2Focus(fb, x + cell.x, yy - 5, cell.width, 28, true);
         }
         const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];
@@ -234,38 +242,13 @@ void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,
                                  bool passive, const std::string& recordContext) {
     const auto& p = state.working;
     screen.touchButtons.clear();
-    fb.drawVerticalGradient(0, 0, fb.getWidth(), fb.getHeight(),
-        Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 250),
-        Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 255));
-
-    const std::string name = p.nickname.empty() ? std::string(Names::getSpeciesName(p.species)) : p.nickname;
-    fb.drawText(28, 16, name, Colors::Text, TextStyle::Heading);
-    int nw = 0, nh = 0;
-    fb.measureText(name, nw, nh, TextStyle::Heading);
-    drawGen2HeaderGender(fb, 40 + nw, 22, p.gender);
-    if (p.shiny) fb.drawShinyMark(66 + nw, 20, 18, Colors::ShinyStar);
-
-    const std::string rightHeader = "Lv. " + std::to_string(p.level) + "     No. " + gen2DexLabel(p.species);
-    int rw = 0, rh = 0;
-    fb.measureText(rightHeader, rw, rh);
-    fb.drawText(fb.getWidth() - 28 - rw, 24, rightHeader, Colors::TextDim);
-
-    const auto surfaceMode = gen2SurfaceMode(state.mode);
-    const std::string mode = std::string(ClassicContext::modeLabel(surfaceMode));
-    int mw = 0, mh = 0;
-    fb.measureText(mode, mw, mh, TextStyle::Caption);
-    fb.drawText((fb.getWidth() - mw) / 2, 23, mode, Colors::Accent, TextStyle::Caption);
-    fb.drawFilledRect(0, 60, fb.getWidth(), 2, Colors::Accent);
-    fb.drawText(28, 66, ClassicContext::contextLine(recordContext, screen.sourceGameId, surfaceMode),
-                Colors::TextDim, TextStyle::Caption);
-
-    constexpr int contentY = 96;
-    const int contentH = fb.getHeight() - contentY - kNavBarH - 8;
-    constexpr int leftX = 24, leftW = 300;
-    constexpr int gap = 14;
-    constexpr int midX = leftX + leftW + gap, midW = 398;
-    constexpr int rightX = midX + midW + gap;
-    const int rightW = fb.getWidth() - 24 - rightX;
+    SharedPokemonShell::drawChrome(fb, p.species, p.nickname, p.level, p.gender, p.shiny,
+        gen2SurfaceMode(state.mode), recordContext, screen.sourceGameId);
+    const SharedPokemonShell::Geometry geometry(fb.getWidth(), fb.getHeight(), kNavBarH);
+    const int contentY = geometry.y, contentH = geometry.h;
+    const int leftX = geometry.leftX, leftW = geometry.leftW;
+    const int midX = geometry.midX, midW = geometry.midW;
+    const int rightX = geometry.rightX, rightW = geometry.rightW;
 
     drawUnifiedDetails(fb, state, unified, leftX, contentY, leftW, contentH, passive);
     drawUnifiedValues(fb, state, unified, midX, contentY, midW, contentH, passive);
@@ -276,13 +259,13 @@ void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,
 
     if (passive || state.mode == Mode::View) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
-        drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
     } else if (state.mode == Mode::Create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel Draft"}});
+                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"B", "Back"}});
+                        {"Y", "Random DVs"}, {"B", "Exit"}});
     }
 }
 
@@ -290,8 +273,9 @@ void drawFullscreenGen2Active(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& state = stateFor(screen);
     auto& unified = unifiedStateFor(screen);
     drawFullscreenGen2Workspace(screen, fb, state, unified, state.mode == Mode::View, gen2RecordContext(state));
+    if (unified.moveEditor) drawUnifiedMoveEditor(screen, fb, state, unified);
     if (state.itemPicker) drawHeldItemPicker(fb, state);
-    if (state.confirmExit) drawConfirm(fb);
+    if (state.confirmExit) drawConfirm(fb, state);
     if (unified.progressionEditor) drawProgressionEditor(fb, state, unified);
 }
 
@@ -300,7 +284,7 @@ void drawFullscreenGen2Passive(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     State visual{};
     visual.begin(pokemon.strictRecord(), Mode::View);
     refreshDerived(visual.working);
-    UnifiedWorkspaceState unified{};
+    auto& unified = unifiedStateFor(screen);
     unified.crystal = screen.sourceGameId == "crystal_gbc";
     drawFullscreenGen2Workspace(screen, fb, visual, unified, true, gen2PassiveRecordContext(screen));
 }

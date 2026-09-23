@@ -12,6 +12,10 @@ bool foundationPickerActive(const TrainerViewScreen& screen) noexcept {
     return ux2StateFor(screen).picker != UX2Picker::None;
 }
 
+bool foundationMoveEditorActive(const TrainerViewScreen& screen) noexcept {
+    return ux2StateFor(screen).mode == UX2Mode::MoveEditor;
+}
+
 const char* foundationGen1GameShort(SourceGame game) noexcept {
     switch (game) {
         case SourceGame::Red: return "Red";
@@ -103,26 +107,28 @@ void drawNeutralGen1WorkspaceHeadings(PKSEFramebuffer& fb) {
     redraw(rightX, "MOVES", TextStyle::Heading);
 }
 
-void drawExactGen1WorkspaceSubtitle(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+void drawExactGen1WorkspaceSubtitle(TrainerViewScreen& screen, PKSEFramebuffer& fb, UX2Mode workspaceMode) {
     auto* e = editor(screen);
     if (!e) return;
     const auto& state = ux2StateFor(screen);
     const std::string record = "Box " + std::to_string(state.box + 1) +
         " / Slot " + std::to_string(state.slot + 1);
     const std::string exact = foundationExactGameName(screen, e->metadata().sourceGame);
-    const std::string context = ClassicContext::contextLine(record, exact, foundationSurfaceMode(state.mode));
+    const std::string context = ClassicContext::contextLine(record, exact, foundationSurfaceMode(workspaceMode));
     fb.drawText(28, 66, context, Colors::TextDim, TextStyle::Caption);
 }
 
 void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& state = ux2StateFor(screen);
+    const auto workspaceMode = state.mode == UX2Mode::MoveEditor
+        ? (state.subForAdd ? UX2Mode::AddDraft : UX2Mode::Edit) : state.mode;
     auto& foundation = foundationStateFor(screen);
     foundationSyncMainMode(screen);
     auto* e = editor(screen);
-    if (!e || !foundationMainMode(state.mode) || foundationPickerActive(screen)) return;
+    if (!e || !foundationMainMode(workspaceMode)) return;
 
-    const bool view = state.mode == UX2Mode::View;
-    const bool add = state.mode == UX2Mode::AddDraft;
+    const bool view = workspaceMode == UX2Mode::View;
+    const bool add = workspaceMode == UX2Mode::AddDraft;
     std::string error;
     const auto pokemon = add ? std::optional<PokemonRecord>{} : ux2SelectedPokemon(screen, error);
     if (!add && !pokemon) return;
@@ -160,12 +166,12 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.measureText(rightHeader, rw, rh);
     fb.drawText(fb.getWidth() - 28 - rw, 24, rightHeader, Colors::TextDim);
 
-    const std::string mode = std::string(ClassicContext::modeLabel(foundationSurfaceMode(state.mode)));
+    const std::string mode = std::string(ClassicContext::modeLabel(foundationSurfaceMode(workspaceMode)));
     int mw = 0, mh = 0;
     fb.measureText(mode, mw, mh, TextStyle::Caption);
     fb.drawText((fb.getWidth() - mw) / 2, 23, mode, Colors::Accent, TextStyle::Caption);
     fb.drawFilledRect(0, 60, fb.getWidth(), 2, Colors::Accent);
-    drawExactGen1WorkspaceSubtitle(screen, fb);
+    drawExactGen1WorkspaceSubtitle(screen, fb, workspaceMode);
 
     constexpr int contentY = 96;
     const int contentH = fb.getHeight() - contentY - kNavBarH - 8;
@@ -188,23 +194,25 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         fb.drawText(leftX + 82, contentY + 100, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
     drawClassicTypePair(fb, leftX, leftW, contentY + 176, types[0], types[1]);
 
-    const std::array<std::string, 5> leftLabels{"Species", "Nickname", "Level / EXP", "OT", "Trainer ID"};
-    const std::array<std::string, 5> leftValues{
+    const std::array<std::string, 6> leftLabels{"Species", "Nickname", "Level", "EXP", "OT", "Trainer ID"};
+    const std::array<std::string, 6> leftValues{
         speciesCompact(species),
         name,
-        "Lv " + std::to_string(level) + " / " + std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
+        std::to_string(level),
+        std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
         foundationOT(state, *e, pokemon ? &*pokemon : nullptr, add),
         std::to_string(foundationTID(state, *e, pokemon ? &*pokemon : nullptr, add)),
     };
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
         const int yy = contentY + 214 + i * 43;
         const bool selected = editable && foundation.focus.panel == Foundation::Panel::Identity && foundation.focus.row == i;
         drawClassicFocus(fb, leftX + 8, yy, leftW - 16, 38, selected);
-        fb.drawText(leftX + 18, yy + 7, leftLabels[static_cast<size_t>(i)], Colors::TextDim, TextStyle::Caption);
+        fb.drawText(leftX + 18, yy + 7, leftLabels[static_cast<size_t>(i)],
+                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(leftX + 108, yy + 7, leftValues[static_cast<size_t>(i)], Colors::Text, TextStyle::Caption);
     }
 
-    // STATS — DV and Stat Exp stay neutral; calculated Stat is semantic accent.
+    // STATS — editable values stay bright; calculated/read-only values are visually quieter.
     fb.drawText(midX + 14, contentY + 10, "STATS", Colors::Text, TextStyle::Heading);
     constexpr int labelW = 76;
     constexpr int cellW = 96;
@@ -216,38 +224,44 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     constexpr auto statLabels = Foundation::gen1StatLabels();
     for (int r = 0; r < 5; ++r) {
         const int rowY = gridY + 28 + r * 42;
-        fb.drawText(gridX + 6, rowY + 9, statLabels[static_cast<size_t>(r)], Colors::TextDim, TextStyle::Caption);
+        const bool rowSelected = editable && foundation.focus.panel == Foundation::Panel::Values &&
+                                 foundation.focus.row == r &&
+                                 Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
+                                                               static_cast<Foundation::ValueColumn>(foundation.focus.column));
+        fb.drawText(gridX + 6, rowY + 9, statLabels[static_cast<size_t>(r)],
+                    rowSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         for (int c = 0; c < 3; ++c) {
             const int cellX = gridX + labelW + c * cellW;
-            const bool selected = editable && foundation.focus.panel == Foundation::Panel::Values &&
+            const bool selected = editable &&
+                                  Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
+                                                                static_cast<Foundation::ValueColumn>(c)) &&
+                                  foundation.focus.panel == Foundation::Panel::Values &&
                                   foundation.focus.row == r && foundation.focus.column == c;
             drawClassicFocus(fb, cellX, rowY, cellW - 4, 34, selected);
             std::string value;
             if (c == 0) value = r == 0 ? std::to_string(Editor::derivedHPDV(dvs)) + " *" : std::to_string(dvs[static_cast<size_t>(r - 1)]);
             else if (c == 1) value = std::to_string(statExp[static_cast<size_t>(r)]);
             else value = std::to_string(stats[static_cast<size_t>(r)]);
-            const Color valueColor = c == 2 ? Colors::Accent : Colors::Text;
+            const Color valueColor = (r == 0 && c == 0) ? Colors::TextDim :
+                                     c == 2 ? Colors::TextSecondary : Colors::Text;
             fb.drawText(cellX + 10, rowY + 8, value, valueColor, TextStyle::Caption);
         }
     }
     fb.drawText(gridX + 8, gridY + 244, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
     const bool shinySelected = editable && foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 5;
-    const bool levelSelected = editable && foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 6;
     drawClassicFocus(fb, gridX, gridY + 276, midW - 20, 38, shinySelected);
-    fb.drawText(gridX + 12, gridY + 286, "Shiny", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(gridX + 12, gridY + 286, "Shiny",
+                shinySelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 130, gridY + 286, presentation.shiny ? "Yes" : "No",
-                presentation.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
-    drawClassicFocus(fb, gridX, gridY + 320, midW - 20, 38, levelSelected);
-    fb.drawText(gridX + 12, gridY + 330, "Level", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 130, gridY + 330, std::to_string(level), Colors::Text, TextStyle::Caption);
+                shinySelected ? Colors::SelectedText : (presentation.shiny ? Colors::ShinyStar : Colors::Text), TextStyle::Caption);
 
     const std::string splitSpecial = std::to_string(stats[4]);
-    fb.drawText(gridX + 12, gridY + 374, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 12, gridY + 402, "SpA", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 78, gridY + 402, splitSpecial, Colors::Accent, TextStyle::Caption);
-    fb.drawText(gridX + 194, gridY + 402, "SpD", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 260, gridY + 402, splitSpecial, Colors::Accent, TextStyle::Caption);
-    fb.drawText(gridX + 12, gridY + 432, "one stored Gen I Special stat; split display only", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(gridX + 12, gridY + 334, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(gridX + 12, gridY + 362, "SpA", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(gridX + 78, gridY + 362, splitSpecial, Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(gridX + 194, gridY + 362, "SpD", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(gridX + 260, gridY + 362, splitSpecial, Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(gridX + 12, gridY + 392, "one stored Gen I Special stat; split display only", Colors::TextDim, TextStyle::Caption);
 
     // MOVES — selected row gets only the compact focus outline; text does not become red.
     fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
@@ -314,11 +328,31 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
     } else if (add) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel Draft"}});
+                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"B", "Back"}});
+                        {"Y", "Random DVs"}, {"B", "Exit"}});
     }
+}
+
+// The picker owns input while the current fullscreen workspace owns its backdrop.
+void drawFoundationPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    auto& state = ux2StateFor(screen);
+    if (!foundationMainMode(state.mode) && state.mode != UX2Mode::MoveEditor) {
+        drawOverlayUXCleanup3(screen, fb);
+        return;
+    }
+    drawFullscreenGen1Workspace(screen, fb);
+    if (!foundationPickerActive(screen)) {
+        // The move-details dialog retains the same workspace before/after choosing a move.
+        drawOverlayUXCleanup3(screen, fb);
+        return;
+    }
+    // ux3DrawPicker applies the existing dimmer exactly once.
+    const int w = state.picker == UX2Picker::Species ? 1080 : 760;
+    constexpr int h = 520;
+    ux3DrawPicker(screen, fb, (1280 - w) / 2, (672 - h) / 2, w, h);
+    drawFooter(fb, ux3FooterText(screen, state));
 }
 
 // Final Gen I presentation pass. The accepted editor still runs underneath, but this

@@ -1,6 +1,6 @@
 # PokeBank NX — Current Verified Engineering State
 
-Last updated: 2026-09-19
+Last updated: 2026-09-20
 
 ## Current repository state
 
@@ -16,6 +16,10 @@ PR #75: MERGED
 Issue #71 merge commit: fb0f3c6573eac12d2350253d5c225dae8fc02277
 Writable remote: origin
 Upstream/reference: kiasta/PKSE
+Active development PR: #77 — Generation III: extend the shared Pokemon editor
+Active development branch: feature/gen3-shared-pokemon-editor-20260919
+PR #77 state: OPEN / DRAFT / NOT MERGED
+Last observed pre-cleanup head: be030f31690cfbedaa1fc5763bd23fbfebd112eb (historical observation only)
 ```
 
 Always re-fetch production before new work. Preserve any newer GitHub head; never reset backward to one of the checkpoints recorded here.
@@ -30,6 +34,21 @@ DEVICE ACCEPTED      owner physically tested and accepted that exact artifact/ha
 ```
 
 Never promote a future milestone to DEVICE ACCEPTED without an owner hardware result.
+
+## Active Generation III development
+
+Generation III is already underway in **PR #77** on `feature/gen3-shared-pokemon-editor-20260919`.
+
+```text
+PR #77: OPEN / DRAFT / NOT MERGED
+Development state: ACTIVE
+Hardware state: FIX / RETEST CYCLE
+Current-head device acceptance: NOT FROZEN
+Recovery rule: RE-FETCH THE LIVE PR HEAD BEFORE CONTINUING
+```
+
+The PR head is dynamic because hardware fixes may be pushed concurrently. A SHA written in this document is never permission to reset/rebase backward. Preserve the newest GitHub head, continue the same branch, and do not create a replacement Gen III branch.
+
 
 ## Latest device-accepted milestone
 
@@ -118,14 +137,17 @@ No accepted milestone authorizes live source writeback.
 
 ## Continuation boundary
 
-PR #74 and issue #71 / PR #75 are complete and merged. Do not reopen their accepted checkpoints for unrelated work.
+PR #74 and issue #71 / PR #75 are complete and merged. Their accepted evidence remains frozen.
+
+The current development boundary is **PR #77**, not a future Gen III start.
 
 At the start of the next session:
 
-1. re-fetch `feature/pokebank-playable`;
-2. preserve any newer production head;
-3. treat the exact `c24859ce...` hardware result as frozen accepted evidence;
-4. preserve Gen I/II packed movement, native source capacities, Legacy Storage 30-slot layout, fullscreen surfaces, Release semantics, and all source-write locks;
-5. if the owner explicitly starts Generation III, create a new focused branch from current production and follow the completed #71 architecture freeze.
+1. re-fetch PR #77 and `feature/pokebank-playable`;
+2. preserve the newest PR #77 head and any newer production head;
+3. continue `feature/gen3-shared-pokemon-editor-20260919` — do not create another branch, start over, reset, or rebase backward;
+4. treat `c24859ce...` as frozen Gen I/II acceptance evidence, not as the current development head;
+5. preserve Gen I/II packed movement, native source capacities, Legacy Storage 30-slot layout, fullscreen surfaces, Release semantics, and all source-write locks;
+6. do not call PR #77 DEVICE ACCEPTED and do not merge it until the owner explicitly accepts an exact Actions-built NRO for an exact fully-green SHA.
 
-**GEN III READY FOR EXPLICIT START.**
+**GEN III ACTIVE: PR #77 / SAME BRANCH / LIVE HEAD MUST BE RE-FETCHED.**

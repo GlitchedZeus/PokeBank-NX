@@ -182,6 +182,14 @@ namespace Pokemon {
         refreshChecksum();
     }
 
+    void Pokemon3FRLG::setExp(uint32_t value) noexcept {
+        const uint32_t level100 = getExpForLevel(100, getGrowthRate(speciesID()));
+        if (value > level100) value = level100;
+        wr32(0x24, value);
+        recalculateStats();
+        refreshChecksum();
+    }
+
     namespace {
         // Unown's LETTER is PID-derived too: four 2-bit fields (bits 0-1, 8-9, 16-17, 24-25) form an
         // 8-bit value, and the letter is that value % 28.

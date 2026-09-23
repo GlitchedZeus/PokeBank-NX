@@ -4,10 +4,12 @@ on:
   pull_request:
     branches: [feature/pokebank-playable]
     paths:
+      - 'include/UI/Common.h'
       - 'Makefile'
       - 'Makefile.host*'
       - 'include/UI/SharedSpeciesPicker.h'
       - 'include/Integration/Gen2/**'
+      - 'include/Integration/Encounter/**'
       - 'include/UI/Gen2*'
       - 'include/UI/SharedPokemonEditorContract.h'
       - 'include/UI/ExactSaveCapabilities.h'
@@ -23,6 +25,7 @@ on:
       - 'src/UI/TrainerViewScreenGSCOverlay.inc'
       - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
       - 'tests/test_gsc*'
+      - 'tests/test_encounter_guardrails.cpp'
       - 'tests/test_shared_pokemon_editor_contract.cpp'
       - 'tests/test_passive_pokemon_view_contract.cpp'
       - 'tests/test_source_mutation_policy.cpp'
@@ -95,6 +98,7 @@ jobs:
           set -euo pipefail
           rm -rf build-host
           for target in \
+            test_encounter_guardrails \
             test_shared_pokemon_editor_contract \
             test_gsc_shared_editor_parity \
             test_gsc_workspace_render \
@@ -187,8 +191,9 @@ jobs:
             src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
             src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
             src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp \
-            src/Integration/Gen3/Gen3StagedInventoryEditor.cpp src/Inventory/ClassicInventoryCatalog.cpp \
-            src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp"
+            src/Integration/Gen3/Gen3StagedInventoryEditor.cpp src/Integration/Gen3/Gen3StagedPokemonEditor.cpp \
+            src/Inventory/ClassicInventoryCatalog.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp \
+            src/Integration/Gen2/Gen2ReadOnlyInventory.cpp"
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \
             -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
             -o build-host/test_rse_open_regression

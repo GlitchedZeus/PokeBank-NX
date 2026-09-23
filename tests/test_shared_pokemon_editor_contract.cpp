@@ -1,4 +1,6 @@
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/PokemonEditorExitGuard.h"
+#include "UI/SharedHeldItemPicker.h"
 
 #include <cassert>
 #include <iostream>
@@ -6,12 +8,28 @@
 using namespace PokeBank::UIModel::SharedPokemonEditor;
 
 int main() {
+    namespace ExitGuard = PokeBank::UIModel::PokemonEditorExitGuard;
+    static_assert(!ExitGuard::requiresConfirmation(ExitGuard::SessionKind::View));
+    static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Create));
+    static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Edit, false));
+    static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Edit, true));
+    static_assert(ExitGuard::futureGenerationsUseSharedExitGuard());
+    namespace HeldItems = PokeBank::UIModel::SharedHeldItemPicker;
+    static_assert(HeldItems::columns == 4);
+    static_assert(HeldItems::rows == 10);
+    static_assert(HeldItems::pageSize == 40);
+    static_assert(HeldItems::futureGenerationsUseSharedGrid());
+    static_assert(HeldItems::move(0, 240, 1, 0) == 1);
+    static_assert(HeldItems::move(0, 240, 0, 1) == 4);
+    static_assert(HeldItems::move(39, 240, 0, 0, 1) == 79);
+    static_assert(HeldItems::move(200, 240, 0, 0, -1) == 160);
+
     static_assert(!generationOwnsSeparateEditorUI());
     static_assert(futureGenerationsExtendSameFoundation());
     static_assert(oneTopLevelPokemonSurfaceOwnsFrame());
-    static_assert(!passiveViewHasFieldCursor());
+    static_assert(passiveViewHasFieldCursor());
     static_assert(!passiveViewAllowsEditing());
-    static_assert(!passiveViewAllowsPanelSwitching());
+    static_assert(passiveViewAllowsPanelSwitching());
     static_assert(createBrowsingMutatesStagedSave() == false);
     static_assert(editBrowsingMutatesSource() == false);
     static_assert(stageAddRequiresExplicitAction());
@@ -83,24 +101,24 @@ int main() {
     // numeric/stat material. MOVES stays identical.
     constexpr auto gen1Layout = layoutFor(Generation::Gen1);
     constexpr auto gen2Layout = layoutFor(Generation::Gen2);
-    static_assert(gen1Layout.detailsRows == 5);
-    static_assert(gen2Layout.detailsRows == 8);
+    static_assert(gen1Layout.detailsRows == 6);
+    static_assert(gen2Layout.detailsRows == 9);
     static_assert(gen1Layout.movesRows == gen2Layout.movesRows);
-    static_assert(gen1Layout.valuesRows == 7);
+    static_assert(gen1Layout.valuesRows == 6);
     static_assert(gen2Layout.valuesRows == 7);
     static_assert(gen2Layout.valueStatRows == 5);
 
     Focus focus{};
     assert((focus == Focus{Panel::Details, 0, 0}));
     focus = moveVertical(Generation::Gen2, focus, -1);
-    assert((focus == Focus{Panel::Details, 7, 0}));
+    assert((focus == Focus{Panel::Details, 8, 0}));
     focus = switchPanel(Generation::Gen2, focus, 1);
     assert(focus.panel == Panel::Values);
     focus = Focus{Panel::Values, 4, 0};
     focus = moveColumn(Generation::Gen2, focus, 1);
     assert(focus.column == 1);
     focus = moveColumn(Generation::Gen2, focus, 1);
-    assert(focus.column == 2);
+    assert(focus.panel == Panel::Moves && focus.column == 0);
     focus = moveVertical(Generation::Gen2, Focus{Panel::Values, 6, 2}, 0);
     assert((focus == Focus{Panel::Values, 6, 0}));
     focus = switchPanel(Generation::Gen2, Focus{Panel::Moves, 3, 2}, 1);
@@ -132,19 +150,25 @@ int main() {
 
     assert(std::string(statsHeading()) == "STATS");
     assert((moveColumn(Generation::Gen2, {Panel::Details, 4, 0}, 1) == Focus{Panel::Values, 4, 0}));
-    assert((moveColumn(Generation::Gen2, {Panel::Values, 4, 2}, 1) == Focus{Panel::Moves, 0, 0}));
-    assert((moveColumn(Generation::Gen2, {Panel::Moves, 3, 0}, -1) == Focus{Panel::Values, 3, 2}));
+    assert((moveColumn(Generation::Gen2, {Panel::Values, 4, 1}, 1) == Focus{Panel::Moves, 0, 0}));
+    assert((moveColumn(Generation::Gen2, {Panel::Moves, 3, 0}, -1) == Focus{Panel::Values, 3, 1}));
+    static_assert(valueCellFocusable(Generation::Gen1, 4, 0));
+    static_assert(valueCellFocusable(Generation::Gen1, 4, 1));
+    static_assert(!valueCellFocusable(Generation::Gen1, 4, 2));
+    static_assert(!valueCellFocusable(Generation::Gen2, 4, 2));
+    static_assert(!valueCellFocusable(Generation::Gen3, 5, 2));
     assert(moveColumn(Generation::Gen2, {Panel::Values, 6, 0}, 1).panel == Panel::Moves);
     assert(moveColumn(Generation::Gen2, {Panel::Values, 6, 0}, -1).panel == Panel::Details);
-    assert(moveVertical(Generation::Gen2, {}, -1, true).row == 11);
-    std::size_t detailsFocus = detailsScrollFocus({Panel::Details, 7, 0}, 0);
+    assert(moveVertical(Generation::Gen2, {}, -1, true).row == 12);
+    std::size_t detailsFocus = detailsScrollFocus({Panel::Details, 8, 0}, 0);
     for (int row = 0; row < 7; ++row)
-        assert(detailsScrollFocus({Panel::Values, static_cast<uint8_t>(row), 0}, detailsFocus) == 7);
+        assert(detailsScrollFocus({Panel::Values, static_cast<uint8_t>(row), 0}, detailsFocus) == 8);
     for (int row = 0; row < 4; ++row)
-        assert(detailsScrollFocus({Panel::Moves, static_cast<uint8_t>(row), 0}, detailsFocus) == 7);
+        assert(detailsScrollFocus({Panel::Moves, static_cast<uint8_t>(row), 0}, detailsFocus) == 8);
     for (auto panel : {Panel::Values, Panel::Moves}) {
         int end = 0;
-        for (uint8_t column = 0; column < 3; ++column) {
+        const uint8_t columns = panel == Panel::Values ? 2 : 3;
+        for (uint8_t column = 0; column < columns; ++column) {
             const auto cell = cellFocus({panel, 1, column});
             assert(cell.x >= end && cell.width > 0 && cell.width < 200);
             end = cell.x + cell.width;
@@ -153,12 +177,72 @@ int main() {
 
     auto scroll = scrollWindow(5, 5, 4);
     assert(!scroll.scrolls && scroll.first == 0 && scroll.count == 5);
-    scroll = scrollWindow(gen2Layout.detailsRows, 5, 0);
-    assert(scroll.scrolls && scroll.first == 0 && scroll.count == 5);
-    scroll = scrollWindow(gen2Layout.detailsRows, 5, 5);
-    assert(scroll.scrolls && scroll.first == 1 && 5 >= scroll.first && 5 < scroll.first + scroll.count);
-    scroll = scrollWindow(gen2Layout.detailsRows, 5, 7);
-    assert(scroll.scrolls && scroll.first == 3 && 7 < scroll.first + scroll.count);
+    // Splitting Level/Experience makes Gold/Silver nine Details rows; the shared
+    // eight-row viewport scrolls by one without changing panel geometry.
+    scroll = scrollWindow(gen2Layout.detailsRows, 8, 8);
+    assert(scroll.scrolls && scroll.first == 1 && scroll.count == 8);
+    // Crystal has thirteen Details rows and keeps exactly eight visible at once.
+    constexpr auto crystalLayout = layoutFor(Generation::Gen2, true);
+    static_assert(crystalLayout.detailsRows == 13);
+    scroll = scrollWindow(crystalLayout.detailsRows, 8, 0);
+    assert(scroll.scrolls && scroll.first == 0 && scroll.count == 8);
+    scroll = scrollWindow(crystalLayout.detailsRows, 8, 9);
+    assert(scroll.scrolls && scroll.first == 2 && 9 < scroll.first + scroll.count);
+    scroll = scrollWindow(crystalLayout.detailsRows, 8, 12);
+    assert(scroll.scrolls && scroll.first == 5 && 12 < scroll.first + scroll.count);
+
+    // A real scrollbar is visible only when the Details window overflows.
+    auto thumb = scrollThumb(gen2Layout.detailsRows, 8, 0, 288);
+    assert(thumb.visible);
+    const auto crystalTopThumb = scrollThumb(crystalLayout.detailsRows, 8, 0, 288);
+    const auto crystalMidThumb = scrollThumb(crystalLayout.detailsRows, 8, 1, 288);
+    const auto crystalBottomThumb = scrollThumb(crystalLayout.detailsRows, 8, 5, 288);
+    assert(crystalTopThumb.visible && crystalTopThumb.offset == 0);
+    assert(crystalTopThumb.length > 0 && crystalTopThumb.length < 288);
+    assert(crystalMidThumb.offset > crystalTopThumb.offset);
+    assert(crystalBottomThumb.offset == 288 - crystalBottomThumb.length);
+    assert(crystalBottomThumb.offset >= 0 &&
+           crystalBottomThumb.offset + crystalBottomThumb.length <= 288);
+
+    // Derived HP DV is visible but skipped: LEFT from HP Stat Exp stays in STATS.
+    static_assert(moveRowFocus(506).x == 8 && moveRowFocus(506).width == 490);
+    assert((moveColumn(Generation::Gen1, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 1, 0}));
+    assert((moveColumn(Generation::Gen2, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 1, 0}));
+    assert((moveColumn(Generation::Gen3, {Panel::Values, 0, 1}, -1) == Focus{Panel::Values, 0, 0}));
+    assert((moveColumn(Generation::Gen3, {Panel::Details, 0, 0}, 1) == Focus{Panel::Values, 0, 0}));
+    assert((moveColumn(Generation::Gen3, {Panel::Values, 0, 1}, 1) == Focus{Panel::Moves, 0, 0}));
+    assert((moveColumn(Generation::Gen3, {Panel::Moves, 0, 0}, -1) == Focus{Panel::Values, 0, 1}));
+    assert((moveColumn(Generation::Gen3, {Panel::Values, 0, 0}, -1) == Focus{Panel::Details, 0, 0}));
+
+    // All main workspace modes share row-only moves, without changing the lower-level
+    // cell model used by accepted Gen I and independent contextual editors.
+    for (const auto generation : {Generation::Gen2, Generation::Gen3}) {
+        for (uint8_t column = 0; column < 3; ++column) {
+            const Focus stale{Panel::Moves, 2, column};
+            assert((normalizeMoveRowFocus(generation, stale) == Focus{Panel::Moves, 2, 0}));
+            assert((moveRowColumn(generation, stale, 1) == Focus{Panel::Moves, 2, 0}));
+            assert((moveRowColumn(generation, stale, -1) == Focus{Panel::Values, 2, 1}));
+        }
+    }
+    assert((moveColumn(Generation::Gen1, {Panel::Moves, 2, 0}, 1) == Focus{Panel::Moves, 2, 1}));
+
+    // View selects the move row itself only. PP / PP Ups remain display metadata.
+    assert((normalizePassiveViewFocus(Generation::Gen2, {Panel::Moves, 2, 2}, true) ==
+            Focus{Panel::Moves, 2, 0}));
+    assert((passiveViewMoveColumn(Generation::Gen2, {Panel::Moves, 2, 0}, 1, true) ==
+            Focus{Panel::Moves, 2, 0}));
+    assert((passiveViewMoveColumn(Generation::Gen2, {Panel::Moves, 2, 0}, -1, true) ==
+            Focus{Panel::Values, 2, 1}));
+    assert((passiveViewMoveColumn(Generation::Gen2, {Panel::Moves, 2, 2}, -1, true) ==
+            Focus{Panel::Values, 2, 1}));
+    assert((passiveViewMoveColumn(Generation::Gen3, {Panel::Moves, 1, 2}, -1) ==
+            Focus{Panel::Values, 1, 1}));
+    assert((moveColumn(Generation::Gen2, {Panel::Moves, 2, 0}, 1, true) ==
+            Focus{Panel::Moves, 2, 1}));
+    assert((passiveViewMoveColumn(Generation::Gen3, {Panel::Values, 1, 1}, 1) ==
+            Focus{Panel::Moves, 1, 0}));
+    assert((passiveViewMoveColumn(Generation::Gen3, {Panel::Moves, 1, 0}, 1) ==
+            Focus{Panel::Moves, 1, 0}));
 
     assert(draftDecision(DraftEvent::Navigate).mutateStagedSave == false);
     assert(draftDecision(DraftEvent::BrowsePicker).mutateStagedSave == false);

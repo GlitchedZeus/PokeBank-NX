@@ -1,8 +1,10 @@
+#include "UI/SharedPokemonShell.h"
 #pragma once
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen2PokemonSession.h"
 #include "UI/StatsRadar.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
+#include <algorithm>
 #include <vector>
 
 namespace PokeBank::UIModel::Gen2Workspace {
@@ -25,11 +27,18 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
         rows.push_back({"HP", std::to_string(party->currentHP) + " / " + std::to_string(party->maxHP)});
         rows.push_back({"Status", party->statusText});
     }
-    if (game == G::SourceGame::Crystal) {
-        const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
-        rows.push_back({"Met", std::string(Gen2Native::crystalMetTimeName(caught.timeOfDay)) + " / " + Gen2Native::crystalCaughtLevelText(caught)});
-        rows.push_back({"Location", Gen2Native::crystalCaughtLocationName(caught.location)});
+    const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
+    if (caught.present) {
+        rows.push_back({"Caught history", game == G::SourceGame::Crystal
+            ? "Crystal caught data" : "Retained Crystal data"});
+        rows.push_back({"Met", Gen2Native::crystalCaughtLocationName(caught.location)});
+        rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
+        rows.push_back({"Time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});
         rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
+    } else if (game == G::SourceGame::Gold || game == G::SourceGame::Silver) {
+        rows.push_back({"Caught history", "Not recorded by Gold/Silver"});
+    } else {
+        rows.push_back({"Caught history", "No caught data recorded"});
     }
     return rows;
 }
@@ -40,30 +49,17 @@ namespace UI::Gen2WorkspacePresentation {
 // Values also exposes the editable Held Item / Friendship / Pokerus capabilities.
 inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
     const PokeVault::Integration::Gen2::PokemonRecord& p, PokeVault::Integration::Gen2::SourceGame game) {
-    constexpr int inset = 12, gap = 10, dataW = 198;
-    const int dataX = x + inset, graphX = dataX + dataW + gap;
-    const int graphW = w - 2 * inset - gap - dataW;
-    for (const auto& pane : {std::pair{dataX, dataW}, std::pair{graphX, graphW}}) {
-        fb.drawFilledRoundedRect(pane.first, y, pane.second, h, 12, Colors::Surface);
-        fb.drawRoundedRect(pane.first, y, pane.second, h, 12, Colors::Divider, 1);
+    auto rows = PokeBank::UIModel::Gen2Workspace::dataRows(p, game);
+    // The accepted shared legacy layer gives this sibling panel only 260 px.
+    // When genuine caught history is present, prioritize those record bytes over
+    // auxiliary party HP/status here. The final 1280x720 hardware surface is
+    // taller (312 px) and therefore keeps every real row.
+    if (h < 300 && p.caughtData != 0) {
+        rows.erase(std::remove_if(rows.begin(), rows.end(), [](const auto& row) {
+            return row.label == "HP" || row.label == "Status";
+        }), rows.end());
     }
-    fb.drawText(dataX + 10, y + 10, "GEN II DATA", Colors::Accent, TextStyle::Caption);
-    int rowY = y + 34;
-    for (const auto& row : PokeBank::UIModel::Gen2Workspace::dataRows(p, game)) {
-        const auto combined = row.label + ": " + row.value;
-        int tw = 0, th = 0;
-        fb.measureText(combined, tw, th, TextStyle::Caption);
-        if (tw <= dataW - 20) {
-            fb.drawText(dataX + 10, rowY, combined, Colors::Text, TextStyle::Caption);
-            rowY += 20;
-        } else {
-            fb.drawText(dataX + 10, rowY, row.label, Colors::TextDim, TextStyle::Caption);
-            fb.drawText(dataX + 10, rowY + 20, row.value, Colors::Text, TextStyle::Caption);
-            rowY += 40;
-        }
-    }
-    fb.drawText(graphX + 10, y + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
-    StatsRadar::drawGen2Labeled(fb, graphX + 8, y + 32, graphW - 16, h - 40,
+    SharedPokemonShell::drawDataAndGraph(fb, x, y, w, h, "GEN II DATA", rows,
         PokeBank::UIModel::Gen2Workspace::battleStats(p));
 }
 } // namespace UI::Gen2WorkspacePresentation

@@ -92,15 +92,15 @@ int main() {
     assert(!heldItems.empty() && heldItems.front() == 0);
     assert(std::find(heldItems.begin(), heldItems.end(), static_cast<uint8_t>(6)) == heldItems.end());
 
-    // Internal battle-stat storage order remains HP/Atk/Def/Spe/SpA/SpD; the permanent Gen II
-    // radar presentation contract remaps it to HP/Atk/Def/SpA/SpD/Spe.
+    // Internal battle-stat storage and the shared Gen II/III radar presentation use
+    // HP/Atk/Def/Spe/SpA/SpD. No UI-only reorder remains.
     constexpr std::array<uint16_t, 6> internalStats{101, 102, 103, 106, 104, 105};
     constexpr auto radarStats = PokeBank::UIModel::canonicalGen2RadarStats(internalStats);
-    static_assert(radarStats == std::array<uint16_t, 6>{101, 102, 103, 104, 105, 106});
+    static_assert(radarStats == internalStats);
     static_assert(PokeBank::UIModel::gen2RadarLabels[0][0] == 'H');
-    static_assert(PokeBank::UIModel::gen2RadarLabels[3][2] == 'A');
-    static_assert(PokeBank::UIModel::gen2RadarLabels[4][2] == 'D');
-    static_assert(PokeBank::UIModel::gen2RadarLabels[5][0] == 'S');
+    static_assert(PokeBank::UIModel::gen2RadarLabels[3][0] == 'S');
+    static_assert(PokeBank::UIModel::gen2RadarLabels[4][2] == 'A');
+    static_assert(PokeBank::UIModel::gen2RadarLabels[5][2] == 'D');
 
     std::cout << "GSC shared editor UI/capability rules: PASS\n";
 }

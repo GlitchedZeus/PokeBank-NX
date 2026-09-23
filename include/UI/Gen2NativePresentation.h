@@ -55,6 +55,76 @@ constexpr const char* crystalOriginalTrainerGenderText(const CrystalCaughtData& 
     return !caught.present ? "Unknown" : (caught.originalTrainerFemale ? "Female" : "Male");
 }
 
+enum class CrystalOtGenderChoice : int8_t {
+    Unknown = -1,
+    Male = 0,
+    Female = 1,
+};
+
+constexpr CrystalOtGenderChoice crystalOtGenderChoiceFromCaught(
+    const CrystalCaughtData& caught) noexcept {
+    if (!caught.present) return CrystalOtGenderChoice::Unknown;
+    return caught.originalTrainerFemale ? CrystalOtGenderChoice::Female
+                                        : CrystalOtGenderChoice::Male;
+}
+
+constexpr const char* crystalOtGenderChoiceText(CrystalOtGenderChoice choice) noexcept {
+    switch (choice) {
+        case CrystalOtGenderChoice::Male: return "Male";
+        case CrystalOtGenderChoice::Female: return "Female";
+        default: return "Unknown";
+    }
+}
+
+constexpr CrystalOtGenderChoice cycleUnrecordedCrystalOtGender(
+    CrystalOtGenderChoice choice) noexcept {
+    switch (choice) {
+        case CrystalOtGenderChoice::Unknown: return CrystalOtGenderChoice::Male;
+        case CrystalOtGenderChoice::Male: return CrystalOtGenderChoice::Female;
+        case CrystalOtGenderChoice::Female: return CrystalOtGenderChoice::Unknown;
+    }
+    return CrystalOtGenderChoice::Unknown;
+}
+
+constexpr CrystalOtGenderChoice cycleRecordedCrystalOtGender(
+    CrystalOtGenderChoice choice) noexcept {
+    return choice == CrystalOtGenderChoice::Male
+        ? CrystalOtGenderChoice::Female
+        : CrystalOtGenderChoice::Male;
+}
+
+constexpr bool crystalOtGenderFemale(CrystalOtGenderChoice choice) noexcept {
+    return choice == CrystalOtGenderChoice::Female;
+}
+
+enum class CaughtLevelLegality : uint8_t {
+    NotRecorded,
+    UnknownMetLevel,
+    EggMarker,
+    Valid,
+    CurrentBelowMet,
+};
+
+constexpr CaughtLevelLegality caughtLevelLegality(
+    uint8_t currentLevel, const CrystalCaughtData& caught) noexcept {
+    if (!caught.present) return CaughtLevelLegality::NotRecorded;
+    if (caught.levelCode == 0) return CaughtLevelLegality::UnknownMetLevel;
+    if (caught.levelCode == 1) return CaughtLevelLegality::EggMarker;
+    return currentLevel < caught.levelCode ? CaughtLevelLegality::CurrentBelowMet
+                                           : CaughtLevelLegality::Valid;
+}
+
+constexpr const char* caughtLevelLegalityText(CaughtLevelLegality status) noexcept {
+    switch (status) {
+        case CaughtLevelLegality::NotRecorded: return "Not recorded";
+        case CaughtLevelLegality::UnknownMetLevel: return "Met level unknown";
+        case CaughtLevelLegality::EggMarker: return "Egg marker";
+        case CaughtLevelLegality::Valid: return "Level history OK";
+        case CaughtLevelLegality::CurrentBelowMet: return "Current level below met level";
+    }
+    return "Not checked";
+}
+
 // Exact retail Crystal landmark order from pret/pokecrystal landmark_constants.asm + landmarks.asm.
 inline constexpr std::array<const char*, 0x60> crystalLandmarkNames{{
     "Unknown", "New Bark Town", "Route 29", "Cherrygrove City", "Route 30", "Route 31",
@@ -128,8 +198,18 @@ constexpr uint8_t encodePokerus(uint8_t strain, uint8_t days) noexcept {
 inline std::string pokerusText(uint8_t raw) {
     const auto state = decodePokerus(raw);
     if (!state.present) return "None";
-    if (!state.active) return "S" + std::to_string(state.strain) + " / cured";
-    return "S" + std::to_string(state.strain) + " / " + std::to_string(state.days) + "d";
+    return state.active ? "Infected" : "Cured";
+}
+
+// PKSE-style three-state editor semantics. Merely displaying a raw Pokérus byte
+// never normalizes it; only an explicit user activation advances the state.
+// None -> Infected uses a canonical valid active value. Existing infected data
+// keeps its strain when becoming cured, then Cured -> None clears the byte.
+constexpr uint8_t cyclePokerusState(uint8_t raw) noexcept {
+    const auto state = decodePokerus(raw);
+    if (!state.present) return encodePokerus(1, 1);
+    if (state.active) return encodePokerus(state.strain == 0 ? 1 : state.strain, 0);
+    return 0;
 }
 
 } // namespace PokeBank::UIModel::Gen2Native

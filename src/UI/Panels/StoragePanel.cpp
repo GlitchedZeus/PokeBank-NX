@@ -140,8 +140,8 @@ namespace UI
                 // Amber pill when the header itself is focused (navigate up to it, or tap it, to rename
                 // this box). cursorSlot == -1 is the "header focused" sentinel.
                 const bool headerFocused = focused && entered && cursorSlot == -1;
-                fb.drawPill(pillX, pillY, pillW, pillH, headerFocused ? Colors::Primary : Colors::Panel);
-                fb.drawText(px + (pw - lw) / 2, pillY + (pillH - lh) / 2, label, headerFocused ? Colors::PrimaryText : Colors::Text);
+                fb.drawPill(pillX, pillY, pillW, pillH, Colors::Panel);
+                fb.drawText(px + (pw - lw) / 2, pillY + (pillH - lh) / 2, label, Colors::Text);
 
                 const int arrowY = py + (headerH - lh) / 2;
                 fb.drawSymbol(px + 18, arrowY, "\xE2\x97\x80", focused ? Colors::Text : Colors::TextDim);      // left
@@ -425,12 +425,12 @@ namespace UI
                 constexpr int r = Dialogs::kDialogRadius; // same card shape as every other modal
                 drawModalSurface(fb, x, y, w, h, r);
                 if (!eyebrow.empty()) {
-                    fb.drawText(x + 22, y + 13, eyebrow, Colors::AccentPrimary, TextStyle::Caption);
+                    fb.drawText(x + 22, y + 13, eyebrow, Colors::Accent, TextStyle::Caption);
                     fb.drawText(x + 22, y + 36, title, Colors::TextPrimary, TextStyle::Heading);
                 } else {
                     fb.drawText(x + 22, y + 16, title, Colors::TextPrimary, TextStyle::Heading);
                 }
-                fb.drawFilledRect(x + r, y + headerH - 4, w - r * 2, 2, Colors::AccentPrimary);
+                fb.drawFilledRect(x + r, y + headerH - 4, w - r * 2, 2, Colors::Accent);
                 screen.touchButtons.clear();
                 int ry = y + headerH;
                 for (int i = 0; i < count; ++i)

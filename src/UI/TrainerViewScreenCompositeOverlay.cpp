@@ -17,6 +17,8 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedSpeciesPicker.h"
+
+// Species changes use the shared exact-game level/EXP initialization policy; overlays must not reintroduce inherited level semantics.
 #include "UI/TouchInput.h"
 #include "Trainer/Trainer.h"
 #include "Utils/FileUtilities.h"
@@ -146,6 +148,7 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 
 #include "ClassicPackedMoveOverlay.inc"
 #include "ClassicReleaseActionFix.inc"
+#include "Gen3SharedPokemonSurface.inc"
 
 namespace UI {
 namespace {
@@ -166,6 +169,8 @@ void clampSourceBoxSelection(TrainerViewScreen& screen) noexcept {
 }
 
 bool classicPackedMoveLayerAvailable(const TrainerViewScreen& screen) noexcept {
+    if (Gen3SharedEditorSurface::isGen3Gba(screen))
+        return !Gen3SharedEditorSurface::ownsFrame(screen);
     if (Gen1PokemonEditor::isGen1SourceUX(screen)) {
         const auto& state = Gen1PokemonEditor::ux2StateFor(screen);
         return state.mode == decltype(state.mode)::Closed &&
@@ -218,8 +223,10 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     // the adapter's native capacity before any source action/move layer sees it.
     clampSourceBoxSelection(*this);
 
-    if (classicPackedMoveLayerAvailable(*this) && ClassicPackedMove::handleInput(*this, down, held, touch)) return;
-    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down)) return;
+    if (classicPackedMoveLayerAvailable(*this) &&
+        ClassicPackedMove::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
+    if (Gen3SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
+    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
     if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
 
     if (Gen2PokemonEditor::handleFinalGen2SurfaceInput(*this, down, held, stick.x, stick.y, touch)) return;
@@ -240,6 +247,8 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
+    if (Gen3SharedEditorSurface::draw(*this, fb)) return;
+
     // Prevent a base-navigation transition from ever presenting a non-existent source slot, even
     // for the single frame in which the shared 30-slot navigation math crosses the native edge.
     clampSourceBoxSelection(*this);
@@ -258,8 +267,9 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
         return;
     }
 
-    if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
-        Gen1PokemonEditor::drawOverlayUXCleanup3(*this, fb);
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) &&
+        (Gen1PokemonEditor::foundationPickerActive(*this) || Gen1PokemonEditor::foundationMoveEditorActive(*this))) {
+        Gen1PokemonEditor::drawFoundationPicker(*this, fb);
         return;
     }
 

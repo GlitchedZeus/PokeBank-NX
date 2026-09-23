@@ -1,6 +1,8 @@
 #pragma once
 #include <algorithm>
 #include "UI/ClassicDefaultNickname.h"
+#include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen2PokemonEditorRules.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
@@ -54,16 +56,18 @@ struct Session {
         progression = ProgressionSource::Experience;
         return true;
     }
-    bool setSpecies(uint16_t species) noexcept {
+    bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept {
         if (!editable() || !Gen2::personalRecord(species)) return false;
+        if (species == working.species) return true;
+        const uint8_t nextLevel =
+            SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species);
         working.nickname = nicknameAfterSpeciesChange(working.nickname, working.species, species);
         working.species = species;
         const auto dvs = storedDVs(working);
         working.dvs[0] = Gen2::StagedEditor::derivedHPDV(dvs);
         working.shiny = Gen2::StagedEditor::isShinyDVs(dvs);
         working.gender = static_cast<uint8_t>(Gen2::genderFromAttackDV(species, dvs[0]));
-        return progression == ProgressionSource::Level ? setLevel(working.level)
-            : setExperience(std::min(working.experience, maximumExperience()));
+        return setLevel(nextLevel);
     }
     uint8_t maximumPP(size_t slot) const noexcept {
         return slot < 4 ? Gen2::StagedEditor::gen2MoveMaxPP(working.moves[slot],working.ppUps[slot]) : 0;
@@ -170,9 +174,17 @@ struct Session {
         if (!editor.stageAddBoxPokemon(box,createRequest(),slot,error)) return false;
         mode = SessionMode::None; return true;
     }
-    // true means return to the caller; false means present Keep/Discard/Continue.
+    // true means return to the caller; false means present Add/Keep, Discard, Continue.
+    // Create and Edit always confirm, even when Edit is clean.
     bool back() noexcept {
-        if (mode == SessionMode::Edit && dirty()) { confirmExit = true; return false; }
+        using Guard = PokeBank::UIModel::PokemonEditorExitGuard::SessionKind;
+        const Guard kind = mode == SessionMode::Create ? Guard::Create
+                         : mode == SessionMode::Edit ? Guard::Edit
+                                                     : Guard::View;
+        if (PokeBank::UIModel::PokemonEditorExitGuard::requiresConfirmation(kind, dirty())) {
+            confirmExit = true;
+            return false;
+        }
         mode = SessionMode::None; confirmExit = false; return true;
     }
     void discard() { working = baseline; mode = SessionMode::None; confirmExit = false; }

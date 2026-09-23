@@ -19,6 +19,11 @@ inline std::string_view exactGameName(std::string_view sourceGameId) noexcept {
     if (sourceGameId == "gold_gbc" || sourceGameId == "gold" || sourceGameId == "Gold") return "Gold";
     if (sourceGameId == "silver_gbc" || sourceGameId == "silver" || sourceGameId == "Silver") return "Silver";
     if (sourceGameId == "crystal_gbc" || sourceGameId == "crystal" || sourceGameId == "Crystal") return "Crystal";
+    if (sourceGameId == "ruby_gba") return "Ruby";
+    if (sourceGameId == "sapphire_gba") return "Sapphire";
+    if (sourceGameId == "emerald_gba") return "Emerald";
+    if (sourceGameId == "firered_gba") return "FireRed";
+    if (sourceGameId == "leafgreen_gba") return "LeafGreen";
     return {};
 }
 

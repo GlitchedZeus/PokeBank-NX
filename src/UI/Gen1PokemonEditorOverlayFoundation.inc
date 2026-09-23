@@ -1,5 +1,8 @@
 #include "UI/PokemonEditorFoundationContract.h"
+#include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen1PokemonPresentation.h"
+#include "UI/ScreenChrome.h"
+#include "UI/Dialogs/DialogFrame.h"
 
 #include <map>
 
@@ -7,6 +10,7 @@ namespace UI::Gen1PokemonEditor {
 namespace {
 
 namespace Foundation = PokeBank::UIModel::PokemonEditorFoundation;
+namespace ExitGuard = PokeBank::UIModel::PokemonEditorExitGuard;
 
 struct FoundationState {
     const TrainerViewScreen* owner = nullptr;
@@ -199,10 +203,39 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
             else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change staged in this edit session; source .srm unchanged"); }
             break;
         }
-        case 2:
-            ux2OpenLevelExpEditor(screen, add);
+        case 2: {
+            const int current = add ? state.draft.level : pokemon->level;
+            const auto result = Utils::promptNumber("Generation I Level", current, 1, 100);
+            if (!result.accepted) break;
+            if (add) {
+                state.draft.level = static_cast<uint8_t>(result.value);
+                state.draft.experience = Pokemon::getExpForLevel(
+                    state.draft.level, Editor::growthRate(state.draft.species));
+            } else {
+                BoxPokemonEdit edit; edit.level = static_cast<uint8_t>(result.value);
+                ux2CommitEdit(screen, edit, "Level change staged in this edit session; source .srm unchanged");
+            }
             break;
+        }
         case 3: {
+            const uint16_t species = add ? state.draft.species : pokemon->species;
+            const uint32_t maximum = Pokemon::getExpForLevel(100, Editor::growthRate(species));
+            const uint32_t current = foundationExperience(state, pokemon, add);
+            const auto result = Utils::promptNumber("Generation I Experience",
+                static_cast<int>(current), 0, static_cast<int>(maximum));
+            if (!result.accepted) break;
+            const uint32_t experience = static_cast<uint32_t>(result.value);
+            const uint8_t level = Pokemon::getLevelFromExp(experience, Editor::growthRate(species));
+            if (add) {
+                state.draft.experience = experience;
+                state.draft.level = level;
+            } else {
+                BoxPokemonEdit edit; edit.experience = experience;
+                ux2CommitEdit(screen, edit, "Experience change staged in this edit session; source .srm unchanged");
+            }
+            break;
+        }
+        case 4: {
             const auto result = Utils::promptText("Generation I OT", "1-7 supported Gen I characters",
                                                   foundationOT(state, *e, pokemon, add), 7);
             if (!result.accepted) break;
@@ -210,7 +243,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
             else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change staged in this edit session; source .srm unchanged"); }
             break;
         }
-        case 4: {
+        case 5: {
             const auto result = Utils::promptNumber("Generation I Trainer ID", foundationTID(state, *e, pokemon, add), 0, 65535);
             if (!result.accepted) break;
             if (add) state.draft.trainerId = static_cast<uint16_t>(result.value);
@@ -223,22 +256,51 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
 void foundationEditValue(TrainerViewScreen& screen, const Foundation::Focus& focus,
                          bool add, const PokemonRecord* pokemon) {
     auto& state = ux2StateFor(screen);
-    if (focus.row < 5) {
-        if (focus.column == static_cast<uint8_t>(Foundation::ValueColumn::DV)) {
-            if (focus.row == 0) {
-                screen.postStatus("HP DV is derived from Attack, Defense, Speed and Special DVs", 260);
-                return;
+    if (focus.row < Foundation::valueStatRowCount()) {
+        const auto row = static_cast<Foundation::ValueRow>(focus.row);
+        const auto column = static_cast<Foundation::ValueColumn>(focus.column);
+        if (!Foundation::valueCellEditable(row, column)) {
+            screen.postStatus(row == Foundation::ValueRow::HP && column == Foundation::ValueColumn::DV
+                ? "HP DV is derived from Attack, Defense, Speed and Special DVs"
+                : "Calculated Generation I stats are read-only; edit DVs or Stat Exp instead", 300);
+            return;
+        }
+
+        constexpr auto labels = Foundation::gen1StatLabels();
+        const std::string label = labels[static_cast<size_t>(focus.row)];
+        if (column == Foundation::ValueColumn::DV) {
+            const size_t index = static_cast<size_t>(focus.row - 1);
+            auto dvs = add ? state.draft.dvs : storedDVs(*pokemon);
+            const auto result = Utils::promptNumber("Generation I " + label + " DV (0-15)",
+                                                    dvs[index], 0, 15);
+            if (!result.accepted) return;
+            dvs[index] = static_cast<uint8_t>(result.value);
+            auto& ux3 = ux3StateFor(screen);
+            if (add) {
+                state.draft.dvs = dvs;
+                ux3.preShinyDraftDVs.reset();
+            } else {
+                BoxPokemonEdit edit;
+                edit.dvs = dvs;
+                if (ux2CommitEdit(screen, edit, "DV change staged in this edit session; source .srm unchanged"))
+                    ux3.preShinyEditDVs.reset();
             }
-            ux2OpenDVEditor(screen, add);
-            state.subRow = static_cast<int>(focus.row) - 1;
             return;
         }
-        if (focus.column == static_cast<uint8_t>(Foundation::ValueColumn::StatExperience)) {
-            ux2OpenStatExpEditor(screen, add);
-            state.subRow = static_cast<int>(focus.row);
-            return;
+
+        auto statExperience = add ? state.draft.statExperience : pokemon->statExperience;
+        const size_t index = static_cast<size_t>(focus.row);
+        const auto result = Utils::promptNumber("Generation I " + label + " Stat Exp (0-65535)",
+                                                statExperience[index], 0, 65535);
+        if (!result.accepted) return;
+        statExperience[index] = static_cast<uint16_t>(result.value);
+        if (add) {
+            state.draft.statExperience = statExperience;
+        } else {
+            BoxPokemonEdit edit;
+            edit.statExperience = statExperience;
+            ux2CommitEdit(screen, edit, "Stat Exp change staged in this edit session; source .srm unchanged");
         }
-        screen.postStatus("Calculated Generation I stats are read-only; edit DVs or Stat Exp instead", 300);
         return;
     }
     if (focus.row == static_cast<uint8_t>(Foundation::ValueRow::Shiny)) {
@@ -246,8 +308,6 @@ void foundationEditValue(TrainerViewScreen& screen, const Foundation::Focus& foc
         else ux3SetExistingShiny(screen, !ux3IsShiny(*pokemon));
         return;
     }
-    if (focus.row == static_cast<uint8_t>(Foundation::ValueRow::Level))
-        ux2OpenLevelExpEditor(screen, add);
 }
 
 void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
@@ -259,19 +319,32 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
     const bool editable = !view;
 
     if (foundation.editExitConfirm) {
+        const bool create = state.mode == UX2Mode::AddDraft;
         if (down & HidNpadButton_B) {
             foundation.editExitConfirm = false;
-            screen.postStatus("Continue editing; no edit-session decision made", 220);
+            screen.postStatus("Continue editing; no exit decision made", 220);
             return;
         }
-        if (down & HidNpadButton_X) {
-            if (!foundationRestoreEditBaseline(screen)) return;
-            screen.postStatus("Edit-session changes discarded; pre-edit staged Pokemon restored", 320);
+        if (down & HidNpadButton_Y) {
+            if (create) {
+                state.draft = BoxPokemonCreate{};
+                screen.postStatus("Create draft discarded; staged/source bytes unchanged", 300);
+            } else {
+                if (!foundationRestoreEditBaseline(screen)) return;
+                screen.postStatus("Edit-session changes discarded; pre-edit staged Pokemon restored", 320);
+            }
             foundationExitMainMode(screen);
             return;
         }
         if (down & HidNpadButton_A) {
-            screen.postStatus("Edit-session changes kept staged; source .srm unchanged", 300);
+            if (create) {
+                if (!ux3StageAdd(screen)) return;
+                foundation.lastMainMode = UX2Mode::Closed;
+                foundation.editBaseline.reset();
+                foundation.editExitConfirm = false;
+                return;
+            }
+            screen.postStatus("Edit session confirmed and kept staged; source .srm unchanged", 300);
             foundationExitMainMode(screen);
             return;
         }
@@ -287,13 +360,13 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
 
     if (add && (down & HidNpadButton_X)) { ux3StageAdd(screen); return; }
     if (down & HidNpadButton_B) {
-        if (add) {
-            state.draft = BoxPokemonCreate{};
-            foundationExitMainMode(screen);
-            return;
-        }
-        if (state.mode == UX2Mode::Edit && foundationEditSessionDirty(screen)) {
+        const auto exitKind = add ? ExitGuard::SessionKind::Create
+                            : state.mode == UX2Mode::Edit ? ExitGuard::SessionKind::Edit
+                                                         : ExitGuard::SessionKind::View;
+        if (ExitGuard::requiresConfirmation(exitKind,
+                state.mode == UX2Mode::Edit && foundationEditSessionDirty(screen))) {
             foundation.editExitConfirm = true;
+            screen.controllerNavigation.reset();
             return;
         }
         foundationExitMainMode(screen);
@@ -338,24 +411,31 @@ void foundationDrawExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& foundation = foundationStateFor(screen);
     if (!foundation.editExitConfirm) return;
 
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 150));
-    constexpr int w = 760;
-    constexpr int h = 250;
-    constexpr int x = (1280 - w) / 2;
-    constexpr int y = 190;
-    ux2DrawPanel(fb, x, y, w, h);
-    fb.drawText(x + 28, y + 24, "Keep staged Pokemon edits?", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 28, y + 72,
-                "You changed this Pokemon during the current Edit session.", Colors::Text, TextStyle::Body);
-    fb.drawText(x + 28, y + 108,
-                "A keeps those edits staged. X restores the Pokemon exactly as it was when Edit opened.",
+    // Reuse PKSE's native creator/details confirmation chrome instead of maintaining
+    // a second PokeBank-specific modal. Only the underlying staged-session actions differ.
+    const auto& state = ux2StateFor(screen);
+    const bool create = state.mode == UX2Mode::AddDraft;
+    const int w = create ? 540 : 560;
+    constexpr int h = 226;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - h) / 2;
+    const char* title = create ? "New Pokémon" : "Unsaved changes";
+    const Color accent = create ? Colors::Primary : Colors::Orange;
+    int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, title, accent);
+
+    fb.drawText(x + 28, cy,
+                create ? "Keep this new Pokémon?" : "This Pokémon has unsaved changes.",
+                Colors::Text);
+    fb.drawText(x + 28, cy + 34,
+                create ? "Discard removes it; Back keeps editing."
+                       : "Discard loses them; Back keeps editing.",
                 Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 28, y + 138,
-                "The original source save remains immutable either way.", Colors::Success, TextStyle::Caption);
-    fb.drawText(x + 28, y + 188,
-                "A Keep Staged     X Discard Session     B Continue Editing",
-                Colors::Accent, TextStyle::Body);
-    drawFooter(fb, "A Keep staged edits   X Discard this edit session   B Continue editing");
+
+    const int cbw = 160, cbh = TouchTargetMin, cby = y + h - cbh - 18;
+    drawGlyphButton(fb, x + 24, cby, cbw, cbh, "B", "Back", Colors::PanelAlt);
+    drawGlyphButton(fb, x + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
+    drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
+                    create ? "Keep" : "Save", Colors::PanelAlt);
 }
 
 void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -425,15 +505,16 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         foundationDrawBadge(fb, badgeX, contentY + 184, foundationTypeName(types[1]));
     }
 
-    const std::array<std::string,5> leftLabels{"Species", "Nickname", "Level / EXP", "OT", "Trainer ID"};
-    const std::array<std::string,5> leftValues{
+    const std::array<std::string,6> leftLabels{"Species", "Nickname", "Level", "EXP", "OT", "Trainer ID"};
+    const std::array<std::string,6> leftValues{
         speciesCompact(species),
         foundationNickname(state, pokemon ? &*pokemon : nullptr, add, species),
-        "Lv " + std::to_string(level) + " / " + std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
+        std::to_string(level),
+        std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
         foundationOT(state, *e, pokemon ? &*pokemon : nullptr, add),
         std::to_string(foundationTID(state, *e, pokemon ? &*pokemon : nullptr, add)),
     };
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
         const bool selected = foundation.focus.panel == Foundation::Panel::Identity && foundation.focus.row == i;
         foundationDrawIdentityRow(fb, leftX + 8, contentY + 224 + i * 43, leftW - 16,
                                   leftLabels[static_cast<size_t>(i)], leftValues[static_cast<size_t>(i)], selected);
