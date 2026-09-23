@@ -4,8 +4,8 @@
 #include <cassert>
 #include <cstdio>
 #include <fstream>
-#include <iostream>
 #include <iterator>
+#include <iostream>
 #include <span>
 #include <string>
 #include <vector>
@@ -22,6 +22,11 @@ void writeFile(const std::string& path, const std::vector<uint8_t>& bytes) {
     assert(out);
     out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
     assert(out.good());
+}
+std::string readText(const char* path) {
+    std::ifstream in(path);
+    assert(in);
+    return {std::istreambuf_iterator<char>(in), {}};
 }
 }
 
@@ -84,6 +89,18 @@ int main() {
     if (!ok.previousPath.empty()) std::remove(ok.previousPath.c_str());
     if (!rolledBack.previousPath.empty()) std::remove(rolledBack.previousPath.c_str());
     if (!rolledBack.failedPath.empty()) std::remove(rolledBack.failedPath.c_str());
+
+    // A01 integration contract: the authoritative Bank writer must use the reviewed
+    // durable replacement path rather than keeping a direct write-through fallback.
+    const auto bank = readText("src/Trainer/Bank.cpp");
+    const auto saveBegin = bank.find("bool Bank::save() const");
+    const auto changedBegin = bank.find("bool Bank::hasChanged() const", saveBegin);
+    assert(saveBegin != std::string::npos);
+    assert(changedBegin != std::string::npos);
+    const auto saveBody = bank.substr(saveBegin, changedBegin - saveBegin);
+    assert(saveBody.find("DurableFile::replace") != std::string::npos);
+    assert(saveBody.find("fopen(path.c_str(), \"wb\")") == std::string::npos);
+    assert(saveBody.find("verifyFailures != 0") != std::string::npos);
 
     std::cout << "Durable file replacement + rollback: PASS\n";
 }
