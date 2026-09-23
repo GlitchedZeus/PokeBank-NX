@@ -11,6 +11,7 @@
 #include "Globals.h"
 #include "Save/Block.h"
 #include "Save/PLAReadValidation.h"
+#include "Save/BDSPReadValidation.h"
 #include "Save/GetSaveFileContents.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Logger.h"
@@ -104,6 +105,23 @@ namespace Save {
     bool validateTrainerSaveForOpen(const char* backupDir, u64 titleId, std::string& error) {
         error.clear();
         const GameVersion group = getGameGroup(getGameVersion(titleId));
+
+        if (group == GameVersion::BDSP) {
+            char path[512];
+            snprintf(path, sizeof(path), "%s/SaveData.bin", backupDir);
+            struct stat st{};
+            if (stat(path, &st) != 0 || !S_ISREG(st.st_mode)) {
+                error = "BDSP save file 'SaveData.bin' is missing.";
+                return false;
+            }
+            if (!PokeBank::SaveValidation::BDSP::hasMinimumLayout(
+                    static_cast<std::size_t>(st.st_size))) {
+                error = "BDSP save is truncated or unsupported; it was not opened or changed.";
+                return false;
+            }
+            return true;
+        }
+
         if (group != GameVersion::PLA) return true;
 
         char mainPath[512];
