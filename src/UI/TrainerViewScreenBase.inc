@@ -707,48 +707,61 @@ namespace UI {
         exitRequested = true;
     }
 
-    // Convert `pk` in place into the format needed to live in `destPane`. The bank (pane 1) accepts
-    // anything as-is; a save slot (pane 0) requires the open game's format, so a foreign mon is CONVERTED
-    // in place if a supported route exists (M5 Phase B). Returns false + posts a status when it can't go
-    // there (out-of-dex / unsupported gen pair). Shared by the single-mon and bulk placement paths.
-    bool TrainerViewScreen::convertForPane(std::unique_ptr<Pokemon::Pokemon>& pk, int destPane) {
-        if (destPane != 0 || !pk) return true;                          // bank: store as-is
-        if (pk->getGameGroup() == trainer.getGameGroup()) {
-            // Same game, so no conversion -- but repair an invalid AffixedRibbon and re-checksum
-            // before it enters the save. The re-checksum SHOULD be a no-op writing back the identical
-            // value, since the bank stores native bytes untouched; that is exactly why it is cheap
-            // insurance, because a stale checksum reaching the game's box writer is a Bad Egg in-game.
-            //
-            // The ribbon repair is NOT a no-op for legacy stock: mons banked before the creator learned
-            // to set AffixedRibbon carry 0, which the game reads as "display ribbon index 0" -- the
-            // Kalos Champion ribbon. Cross-gen withdrawals get this inside convert(); a same-group one
-            // never calls convert() at all, so without this the 0 rides straight back into the save.
-            // Repairing here rather than in the bank keeps the bank's never-mutate rule intact
-            // (see Appendix C) -- the fix lands on the way INTO a save, where it belongs.
-            Conversion::normalizeAffixedRibbon(*pk);
-            pk->refreshChecksum();
-            return true;
+    // Prepare a destination representation without mutating authoritative carried custody.
+    // Bank accepts the native object as-is and therefore needs no candidate. Save placement always
+    // adapts a separate object: same-group placement clones then applies destination-only repair;
+    // cross-group placement asks Conversion::convert() for a new destination-format entity.
+    // The caller may discard this object freely. moveMon is not retired until slot commit.
+    TrainerViewScreen::PreparedPlacement TrainerViewScreen::prepareForPane(
+        const Pokemon::Pokemon& original, int destPane) {
+        PreparedPlacement prepared;
+
+        if (destPane != 0) {
+            // Bank custody is format-neutral. The native object itself is moved only at the commit
+            // boundary, preserving its bytes and avoiding conversion/normalization side effects.
+            prepared.useOriginal = true;
+            return prepared;
         }
-        Conversion::Result res;
-        const std::string species = pk->species();
-        // The exact destination game, not just its group: a mon transferred down into Gen 3 cannot keep a
-        // modern origin (4-bit field) and gets restamped, and "FRLG" alone can't say which half it is.
-        auto converted = Conversion::convert(*pk, trainer.getGameGroup(), res,
-                                             saveOriginVersion(trainer, titleId));
-        if (converted) {
-            // Cross-gen conversion is where the subtle transfer bugs have historically lived
-            // (fainted arrivals, deleted moves, garbage levels), so every one gets a line.
-            Utils::logTest("CONVERT  species=\"" + species + "\" -> " +
-                           std::to_string(static_cast<int>(trainer.getGameGroup())) +
-                           " lvl=" + std::to_string(converted->level()) +
-                           " hp=" + std::to_string(converted->statHPMax()) + " result=OK");
-            pk = std::move(converted); return true;      // convert in place
+
+        const std::string species = original.species();
+        if (original.getGameGroup() == trainer.getGameGroup()) {
+            auto candidate = original.clone();
+            if (!candidate) {
+                prepared.failure = "Could not prepare a safe destination copy.";
+                Utils::logTest("CONVERT  species=\"" + species +
+                               "\" result=REFUSED msg=\"" + prepared.failure + "\"");
+                return prepared;
+            }
+
+            // These are destination-save repairs, not custody mutations. Applying them to the
+            // disposable clone means B/cancel/failure can still return the exact original bytes.
+            Conversion::normalizeAffixedRibbon(*candidate);
+            candidate->refreshChecksum();
+            prepared.candidate = std::move(candidate);
+            prepared.normalized = true;
+            Utils::logTest("CONVERT  species=\"" + species +
+                           "\" result=PREPARED same_group=Y");
+            return prepared;
         }
-        Utils::logTest("CONVERT  species=\"" + species + "\" result=REFUSED msg=\"" +
-                       Conversion::resultMessage(res) + "\"");
-        storageStatus = Conversion::resultMessage(res);
-        storageStatusFrames = 150;   // ~2.5s at 60fps
-        return false;
+
+        Conversion::Result res{};
+        auto converted = Conversion::convert(
+            original, trainer.getGameGroup(), res, saveOriginVersion(trainer, titleId));
+        if (!converted) {
+            prepared.failure = Conversion::resultMessage(res);
+            Utils::logTest("CONVERT  species=\"" + species + "\" result=REFUSED msg=\"" +
+                           prepared.failure + "\"");
+            return prepared;
+        }
+
+        prepared.converted = true;
+        prepared.candidate = std::move(converted);
+        Utils::logTest("CONVERT  species=\"" + species + "\" -> " +
+                       std::to_string(static_cast<int>(trainer.getGameGroup())) +
+                       " lvl=" + std::to_string(prepared.candidate->level()) +
+                       " hp=" + std::to_string(prepared.candidate->statHPMax()) +
+                       " result=PREPARED");
+        return prepared;
     }
 
     // True if placing `pk` into `pane` would run a Let's Go conversion (exactly one side is LGPE), which
@@ -1714,75 +1727,107 @@ namespace UI {
 
         const int w = selectDimensions.first, h = selectDimensions.second;
         int placed = 0, lockedHit = 0, blocked = 0;
-        bool converted = false;      // any cell crossed a game boundary -> noted on each MOVE event
         std::string firstName;
-        const char* firstWhy = nullptr;
+        std::string firstWhy;
 
         for (int y = 0; y < h; ++y) {
             for (int x = 0; x < w; ++x) {
-                const size_t idx = static_cast<size_t>(y) * static_cast<size_t>(w) + static_cast<size_t>(x);
+                const size_t idx = static_cast<size_t>(y) * static_cast<size_t>(w) +
+                                   static_cast<size_t>(x);
                 const int dSlot = slot + x + y * cols;
                 if (dSlot < 0 || dSlot >= slots) continue;
+
                 // Never disturb a party-linked slot -- not even with an empty cell, which would
                 // silently delete a party member out from under its pointer.
                 if (storageSlotLocked(pane, box, dSlot)) {
                     if (moveMon[idx]) ++lockedHit;
                     continue;
                 }
+
+                auto& dst = storageSlot(pane, box, dSlot);
+                bool cellConverted = false;
+
                 if (moveMon[idx]) {
-                    // Ask whether there is a route (for a species-named message), then honour what
-                    // the conversion ACTUALLY returns. Writing an unconverted foreign Pokemon into a
-                    // save is what produces a Bad Egg in game, so a failure here must not fall through.
-                    const bool foreign = (pane == 0 && moveMon[idx]->getGameGroup() != trainer.getGameGroup());
-                    Conversion::Result res{};
-                    const bool routed = !foreign || Conversion::canConvert(*moveMon[idx], trainer.getGameGroup(), res);
-                    if (!routed || !convertForPane(moveMon[idx], pane)) {
+                    // A03: preparation reads authoritative custody but never mutates/replaces it.
+                    // If this fails, moveMon[idx] is still the exact object that was picked up.
+                    PreparedPlacement prepared = prepareForPane(*moveMon[idx], pane);
+                    if (!prepared.ready()) {
                         ++blocked;
-                        if (!firstWhy) {
-                            firstName = Names::getDisplayName(moveMon[idx]->speciesID(), moveMon[idx]->form(),
-                                                              Trainer::getSpeciesName(moveMon[idx]->speciesID()));
-                            firstWhy  = routed ? "conversion failed" : Conversion::resultMessage(res);
+                        if (firstWhy.empty()) {
+                            firstName = Names::getDisplayName(
+                                moveMon[idx]->speciesID(), moveMon[idx]->form(),
+                                Trainer::getSpeciesName(moveMon[idx]->speciesID()));
+                            firstWhy = prepared.failure.empty()
+                                ? std::string("conversion failed") : prepared.failure;
                         }
                         if (g_debugLogging) {
                             Utils::logEventToFile(
                                 "MOVE result=BLOCKED " + Utils::logSlot("to", pane, box, dSlot)
-                                + " " + Utils::logField("reason", routed ? "conversion failed"
-                                                                         : Conversion::resultMessage(res))
+                                + " " + Utils::logField(
+                                    "reason", prepared.failure.empty()
+                                        ? "conversion failed" : prepared.failure)
                                 + " " + Utils::describeMon(*moveMon[idx], trainer));
                         }
-                        continue;                                   // leave it in hand, untouched
+                        continue;
                     }
+
                     ++placed;
-                    converted = converted || foreign;
+                    cellConverted = prepared.converted;
+
+                    if (prepared.useOriginal) {
+                        // Bank destination: commit the native object itself byte-for-byte. The
+                        // displaced native Bank occupant (if any) becomes the new held custody.
+                        std::swap(dst, moveMon[idx]);
+                    } else {
+                        // Save destination: candidate reaches the destination FIRST. Only after
+                        // destination ownership succeeds do we retire/replace the authoritative
+                        // original with the displaced slot occupant. If dst was empty, custody clears.
+                        auto displaced = std::move(dst);
+                        dst = std::move(prepared.candidate);
+                        moveMon[idx] = std::move(displaced);
+                    }
+
+                    if (g_debugLogging && dst) {
+                        std::string line =
+                            "MOVE result=OK stage=COMMITTED " +
+                            Utils::logSlot("from", heldPane, heldFromBox, heldFromSlot) +
+                            " " + Utils::logSlot("to", pane, box, dSlot) +
+                            (cellConverted ? " converted=Y" : "") +
+                            " " + Utils::describeMon(*dst, trainer);
+                        if (moveMon[idx])
+                            line += " displaced=[" + Utils::briefMon(*moveMon[idx]) + "]";
+                        Utils::logEventToFile(line);
+                    }
+                } else {
+                    // Preserve positional block-swap semantics for holes: an occupied destination
+                    // comes back up into the corresponding carried cell.
+                    std::swap(dst, moveMon[idx]);
                 }
-                auto& dst = storageSlot(pane, box, dSlot);
-                std::swap(dst, moveMon[idx]);                       // block swap: the occupant comes up
-                if (g_debugLogging && dst) {
-                    std::string line = "MOVE result=OK " + Utils::logSlot("from", heldPane, heldFromBox, heldFromSlot)
-                                     + " " + Utils::logSlot("to", pane, box, dSlot)
-                                     + (converted ? " converted=Y" : "")
-                                     + " " + Utils::describeMon(*dst, trainer);
-                    if (moveMon[idx]) line += " displaced=[" + Utils::briefMon(*moveMon[idx]) + "]";
-                    Utils::logEventToFile(line);
-                }
-                if (moveMon[idx] && moveMon[idx]->speciesID() == 0) moveMon[idx] = nullptr;  // ghost -> hole
+
+                if (moveMon[idx] && moveMon[idx]->speciesID() == 0)
+                    moveMon[idx] = nullptr;  // ghost -> hole
             }
         }
 
         if (placed > 0) hasUnsavedChanges = true;
+
         // The block's origin is now this drop site, so B returns the swapped-out Pokemon here.
-        heldPane = pane; heldFromBox = box; heldFromSlot = slot;
-        postPickup();                       // may trim the swapped-out leftovers, moving heldFromSlot
-        if (carrying()) {                   // keep the cursor on the leftovers' top-left corner
-            if (pane == 0) stSaveSlot = heldFromSlot; else stBankSlot = heldFromSlot;
+        heldPane = pane;
+        heldFromBox = box;
+        heldFromSlot = slot;
+        postPickup();  // may trim the swapped-out leftovers, moving heldFromSlot
+        if (carrying()) {
+            if (pane == 0) stSaveSlot = heldFromSlot;
+            else           stBankSlot = heldFromSlot;
         }
 
         if (blocked > 0) {
-            postStatus(firstName + ": " + (firstWhy ? firstWhy : "no transfer route")
+            postStatus(firstName + ": " + (firstWhy.empty() ? "no transfer route" : firstWhy)
                        + (blocked > 1 ? "  (+" + std::to_string(blocked - 1) + " more)" : "")
                        + " - still in hand", 240);
         } else if (lockedHit > 0) {
-            postStatus(std::to_string(lockedHit) + " couldn't land on a party-linked slot - still in hand", 240);
+            postStatus(std::to_string(lockedHit)
+                       + " couldn't land on a party-linked slot - still in hand", 240);
         }
     }
 
