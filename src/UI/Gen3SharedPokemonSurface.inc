@@ -1398,15 +1398,25 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const int row = i + 6;
         const int yy = y + 346 + i * 35;
         const bool editableRow = row < 10 && pidLinkedRowEditable(state, row);
+        const bool passiveView = state.session.mode == SessionModel::Mode::View;
+        // Read-only data is still information, not a disabled control. Keep the derived
+        // block readable in passive View mode, and keep PID readable in Create/Edit
+        // even though PID itself remains derived and non-editable.
+        const bool readableReadOnly = !editableRow && (passiveView || i == 4);
         const bool selected = state.focus.panel == Shared::Panel::Values &&
                               state.focus.row == row &&
-                              (state.session.mode == SessionModel::Mode::View || editableRow);
+                              (passiveView || editableRow);
         drawFocus(fb, midX + 8, yy - 5, midW - 16, 29, selected);
+        const Color labelColor = selected ? Colors::SelectedText
+            : editableRow ? Colors::TextDim
+            : readableReadOnly ? Colors::TextSecondary
+            : Colors::Divider;
         fb.drawText(midX + 18, yy, derived[static_cast<std::size_t>(i)].first,
-                    selected ? Colors::SelectedText
-                             : (editableRow ? Colors::TextDim : Colors::Divider), TextStyle::Caption);
+                    labelColor, TextStyle::Caption);
         Color valueColor = selected ? Colors::SelectedText
-                                    : (editableRow ? Colors::Text : Colors::TextDim);
+            : editableRow ? Colors::Text
+            : readableReadOnly ? Colors::Text
+            : Colors::TextDim;
         if (i == 1 && editableRow && !selected) valueColor = genderValueColor(p.gender);
         fb.drawText(midX + 130, yy, derived[static_cast<std::size_t>(i)].second,
                     valueColor, TextStyle::Caption);

@@ -121,6 +121,12 @@ int main() {
     contains(surface, "state.speciesPreview, 386, state.speciesPreviewShiny");
     contains(surface, "{{\"D-pad/Stick\", \"Browse\"}, {\"Y\", \"Shiny\"}, {\"A\", \"Choose\"}, {\"B\", \"Cancel\"}}");
     contains(surface, "PID (read-only)");
+    // Read-only Gen III PID-linked information must remain legible. In passive View
+    // mode every derived row is informational; in Create/Edit PID remains readable
+    // while still non-editable.
+    contains(surface, "const bool readableReadOnly = !editableRow && (passiveView || i == 4);");
+    contains(surface, "readableReadOnly ? Colors::TextSecondary");
+    contains(surface, "readableReadOnly ? Colors::Text");
     contains(surface, "Trainer ID");
     contains(surface, "down & (HidNpadButton_Left | HidNpadButton_L)");
     contains(surface, "down & (HidNpadButton_Right | HidNpadButton_R)");
