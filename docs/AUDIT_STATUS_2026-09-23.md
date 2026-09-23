@@ -66,6 +66,122 @@ The repository has roughly five dozen retained branches. They currently fall int
 
 No destructive branch cleanup is authorized.
 
+## A08 hardening tranche — profile/account + exact-game backup namespaces
+
+The pre-A08 installed-save backup layout was:
+
+```text
+backups/<sanitized-display-title>/<workspace>
+```
+
+That directory had neither Switch-account ownership nor stable release/platform identity, so two
+accounts using the same title could target the same mutable `Working` directory.
+
+The writable layout is now:
+
+```text
+backups/account-<AccountUid-hex>/<exact-game-id>/<workspace>
+```
+
+Profile path encoding is deterministic lower-case hexadecimal:
+
+```text
+account-<uid.uid[0] as 16 hex digits><uid.uid[1] as 16 hex digits>
+```
+
+An all-zero/invalid `AccountUid` has no writable namespace. Display name is never part of the
+authoritative profile identity.
+
+Exact game identity is resolved from the selected Switch title ID through
+`PokeVault::Games::findSwitchGame(titleId)`. There is no writable fallback to title text or a broad
+generation name. This preserves release/platform distinctions such as:
+
+- `sword_switch` vs `shield_switch`
+- `letsgo_pikachu_switch` vs `letsgo_eevee_switch`
+- `firered_switch` vs `leafgreen_switch`
+- `firered_switch` vs `firered_gba`
+
+Current path ownership:
+
+- installed-save snapshot creation -> profile + exact-game root;
+- reusable `Working` -> profile + exact-game root;
+- timestamped backups -> profile + exact-game root;
+- existing backup selection/deletion -> profile + exact-game root;
+- trainer-screen `New backup...` -> derives the same profile/exact-game root and refuses a session
+  whose current workspace is outside it;
+- restore/injection staging consumes the selected workspace path and the separate live-write policy
+  remains hard-disabled;
+- installed-save discovery was already `AccountUid` aware and exact title-ID aware;
+- RetroArch/legacy source assignment remains its separate explicit profile-binding/read-only flow.
+
+No additional source-instance key is required for the current installed-save path: save discovery
+deduplicates the selected account + application title into one game tile. If the platform later
+supports multiple simultaneously editable source instances for one account/title, that must be
+designed explicitly rather than silently sharing this namespace.
+
+### Legacy unscoped policy
+
+Pre-A08 title-only folders contain no reliable persisted `AccountUid` ownership metadata. The audit
+therefore does **not** auto-migrate, auto-move, delete, or assign them to whichever account is
+currently selected.
+
+They remain in place and are surfaced separately as:
+
+```text
+LEGACY UNSCOPED / OWNERSHIP UNKNOWN
+```
+
+They are read-only/import-required from the normal backup picker:
+
+- they cannot be selected as an editable workspace;
+- they cannot be deleted from the normal profile-scoped picker;
+- old `Working` folders are included so they do not disappear;
+- discovered custom folder names are preserved verbatim, including spaces;
+- future assignment/import must explicitly establish profile + exact-game ownership before creating
+  a writable scoped copy.
+
+### A08 regression coverage
+
+`tests/test_backup_namespace_contract.cpp` locks:
+
+- deterministic same-profile/same-game paths;
+- different profiles -> different paths;
+- different exact releases -> different paths;
+- FireRed Switch != FireRed GBA;
+- invalid/zero profile identity fails closed;
+- traversal/absolute unsafe workspace components fail closed;
+- writable path construction derives exact game identity from title ID rather than display title;
+- legacy ownership-unknown folders remain quarantined;
+- old/new custom folder names remain discoverable;
+- trainer-screen named backups cannot escape/recreate the old title-only namespace.
+
+### N06 — P2 — OPEN — backup-directory seeding is not a durable directory transaction
+
+`Utils::copyDirectory` still seeds installed-save snapshots and named backup folders file-by-file.
+If that directory copy fails partway through, the caller returns failure and does not open/commit the
+operation, and the immutable source remains untouched, but a partial PokeBank-owned destination
+directory can remain on disk. Timestamped/named partial folders could later be rediscovered.
+
+This is not authorization for live writes and is not an A08 ownership collision. It is a remaining
+directory-generation/recovery problem: future hardening should stage the complete directory
+generation, verify it, then promote/recover it as one logical snapshot.
+
+## Current A01–A09 status
+
+| ID | Current status | Remaining gate |
+|---|---|---|
+| A01 | IMPLEMENTED | Durable single-file Bank replacement exists; physical Switch SD/FAT32/exFAT recovery behavior still needs hardware testing |
+| A02 | FIXED | Failed rollback retains held Pokémon custody |
+| A03 | OPEN / P1 | Conversion still replaces authoritative held representation before destination commit |
+| A04 | OPEN / P1 | No cross-store destination-first Move transaction journal/recovery yet |
+| A05 | FIXED | Unreadable Bank casualties use unique preserved generations |
+| A06 | FIXED | BDSP minimum-layout/truncation refusal is guarded before fixed-offset parsing |
+| A07 | FIXED | Newer/larger Bank layouts become migration-required/write-blocked; invalid counts fail closed |
+| A08 | IMPLEMENTED | Profile + exact-game mutable workspace namespace is enforced; ownership-unknown legacy data is quarantined; physical multi-profile UX verification remains |
+| A09 | PARTIAL / FAIL-CLOSED | Single-file mutable backup writers use DurableFile; BDSP remains blocked pending a recoverable multi-file journal |
+
+CI validation on the exact audit head does not imply physical device acceptance.
+
 ## A09 hardening tranche — durable mutable backup workspaces
 
 Current disposition after this tranche:
@@ -93,7 +209,10 @@ The first DurableFile migration preserves same-directory `.previous.N`, `.failed
 The FRLG scanner now explicitly ignores DurableFile `.tmp.`, `.previous.` and `.failed.` siblings. Regression coverage locks this rule. Recovery evidence remains preserved but is never treated as the active save.
 
 
-# A01–A09 exact-current disposition
+# Original A01–A09 findings at audit start — historical evidence
+
+The detailed sections below preserve what was confirmed at the start of this audit. They are not the
+current disposition; use the current-status table above for the hardened branch state.
 
 ## A01 — P1 — CONFIRMED — Bank persistence is not atomic/durable
 
