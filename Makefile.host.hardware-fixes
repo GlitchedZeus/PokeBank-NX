@@ -73,3 +73,21 @@ $(BDSP_LAYOUT_GUARD_TEST): tests/test_bdsp_layout_guard.cpp include/Save/BDSPRea
 $(BDSP_LAYOUT_GUARD_SANITIZE): tests/test_bdsp_layout_guard.cpp include/Save/BDSPReadValidation.h src/Trainer/Trainer8BDSP.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bdsp_layout_guard.cpp -o $@
+
+# Audit-phase Bank compatibility regression: a newer/larger Bank may be inspected
+# but must become non-writable; invalid box-count headers fail closed.
+BANK_FORMAT_POLICY_TEST := $(HOST_BUILD)/test_bank_format_policy
+BANK_FORMAT_POLICY_SANITIZE := $(HOST_BUILD)/test_bank_format_policy_sanitize
+
+HOST_TESTS += $(BANK_FORMAT_POLICY_TEST)
+HOST_SANITIZE_TESTS += $(BANK_FORMAT_POLICY_SANITIZE)
+host-test: $(BANK_FORMAT_POLICY_TEST)
+host-sanitize: $(BANK_FORMAT_POLICY_SANITIZE)
+
+$(BANK_FORMAT_POLICY_TEST): tests/test_bank_format_policy.cpp include/Trainer/BankFormatPolicy.h src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_bank_format_policy.cpp -o $@
+
+$(BANK_FORMAT_POLICY_SANITIZE): tests/test_bank_format_policy.cpp include/Trainer/BankFormatPolicy.h src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bank_format_policy.cpp -o $@
