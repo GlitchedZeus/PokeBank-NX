@@ -86,6 +86,12 @@ BDSP is deliberately not treated as fixed by two sequential single-file writes. 
 
 This changes only PokeBank-owned mutable backup workspaces. Original installed saves and emulator-source files remain protected by the existing hard live-write locks.
 
+### N05 — P1/P2 — FIXED IN A09 — FRLG recovery generations could shadow the authoritative save
+
+The first DurableFile migration preserves same-directory `.previous.N`, `.failed.N` and temporary sibling files. FRLG's legacy save discovery scans for any 128 KiB file, so without an exclusion a recovery generation could be selected as the editable save purely because its size also matches.
+
+The FRLG scanner now explicitly ignores DurableFile `.tmp.`, `.previous.` and `.failed.` siblings. Regression coverage locks this rule. Recovery evidence remains preserved but is never treated as the active save.
+
 
 # A01–A09 exact-current disposition
 
