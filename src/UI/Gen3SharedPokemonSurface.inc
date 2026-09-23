@@ -361,7 +361,7 @@ constexpr std::array<const char*,15> detailLabels{{
 
 bool detailEditable(const State& state, int row) noexcept {
     if (!state.session.editable()) return false;
-    if (row == 1 || row == 2 || row == 4 || row == 5) return true;
+    if (row == 1 || row == 2 || row == 3 || row == 4 || row == 5) return true;
     if (state.session.mode == SessionModel::Mode::Create)
         return row == 0 || row == 1 || row == 2 || row == 7 ||
                row == 8 || row == 9 || row == 11 || row == 12 || row == 13;
@@ -467,12 +467,8 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
             }
             return label;
         }
-        case PickerTarget::Move: {
-            std::string id = std::to_string(value);
-            while (id.size() < 3) id = "0" + id;
-            return value == 0 ? "000 - Empty move slot" :
-                                id + " - " + std::string(Names::getMoveName(value));
-        }
+        case PickerTarget::Move:
+            return value == 0 ? "Empty" : std::string(Names::getMoveName(value));
         default: return {};
     }
 }
@@ -555,14 +551,21 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
     } else if (target == PickerTarget::Move) {
         const auto game = PokeVault::Integration::Gen3EditorProvider::sourceGameForId(screen.sourceGameId);
         if (game) {
-            state.pickerValues = Gen3::Learnset::selectableMoves(
-                *game, state.session.working.species, state.session.baseline.moves);
+            // Match the accepted Gen I/II picker contract: Empty + moves the species can
+            // learn in this exact current game. Cross-version Transfer/Preserved entries
+            // remain valid for an untouched existing Pokemon, but are not offered as new edits.
+            state.pickerValues.push_back(0);
+            for (uint16_t move = 1; move < Gen3::Learnset::kMoveCount; ++move) {
+                if (Gen3::Learnset::directlyLearnable(*game, state.session.working.species, move))
+                    state.pickerValues.push_back(move);
+            }
         }
     }
 
     const uint16_t current = currentPickerValue(state, target, moveSlot);
-    // A stale/zero current ability must never add a non-native slot to this picker.
-    if (target != PickerTarget::Ability &&
+    // A stale/zero current ability or a cross-version/preserved move must never add a
+    // non-native choice to its picker. Cancel still leaves the original draft untouched.
+    if (target != PickerTarget::Ability && target != PickerTarget::Move &&
         std::find(state.pickerValues.begin(), state.pickerValues.end(), current) ==
         state.pickerValues.end())
         state.pickerValues.push_back(current);
@@ -1194,16 +1197,42 @@ void drawFocus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selected) {
 void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     if (!state.valuePicker || state.pickerValues.empty()) return;
     const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
-    const int x = heldItems ? 120 : 300;
-    constexpr int y = 74;
-    const int w = heldItems ? 1040 : 680;
-    constexpr int h = 560;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 105));
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::PanelAlt);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget), Colors::Text, TextStyle::Heading);
+    const bool movePicker = state.pickerTarget == PickerTarget::Move;
+    const int w = heldItems ? 1040 : movePicker ? 760 : 680;
+    const int h = movePicker ? 568 : 560;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - h) / 2;
 
+    // Keep every Gen III picker in the same dark modal family as Gen I/II.
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+
+    if (movePicker) {
+        fb.drawText(x + 24, y + 18, "Move — Generation III", Colors::Text, TextStyle::Heading);
+        fb.drawText(x + 24, y + 52,
+                    "Empty + compatible moves only • exact current game",
+                    Colors::TextDim, TextStyle::Caption);
+        const int count = static_cast<int>(state.pickerValues.size());
+        constexpr int visible = 13;
+        const int first = std::clamp(state.pickerRow - visible / 2, 0, std::max(0, count - visible));
+        const int last = std::min(count, first + visible);
+        for (int i = first; i < last; ++i) {
+            const int yy = y + 88 + (i - first) * 33;
+            const bool selected = i == state.pickerRow;
+            if (selected) fb.drawSelectionHighlight(x + 20, yy - 3, w - 40, 30);
+            const auto value = state.pickerValues[static_cast<std::size_t>(i)];
+            fb.drawText(x + 32, yy + 3, pickerValueLabel(state, value),
+                        selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
+        }
+        drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
+                        {"A", "Select"}, {"B", "Cancel"}});
+        return;
+    }
+
+    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget), Colors::Text, TextStyle::Heading);
     const int count = static_cast<int>(state.pickerValues.size());
+
     if (heldItems) {
         const int pages = (count + HeldItemGrid::pageSize - 1) / HeldItemGrid::pageSize;
         fb.drawText(x + 28, y + 55,
@@ -1236,7 +1265,6 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                 std::to_string(state.pickerRow + 1) + " / " +
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
-
     constexpr int visible = 10;
     const int first = std::clamp(state.pickerRow - visible / 2, 0, std::max(0, count - visible));
     const int last = std::min(count, first + visible);
@@ -1245,33 +1273,12 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         const bool selected = i == state.pickerRow;
         if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44, 38);
         const auto value = state.pickerValues[static_cast<std::size_t>(i)];
-        std::string label = pickerValueLabel(state, value);
-        Color color = selected ? Colors::Text : Colors::TextDim;
-        std::string suffix;
-        if (state.pickerTarget == PickerTarget::Move) {
-            const auto game =
-                PokeVault::Integration::Gen3EditorProvider::sourceGameForId(screen.sourceGameId);
-            if (game) {
-                const auto status = Gen3::Learnset::classify(
-                    *game, state.session.working.species, value, state.session.baseline.moves);
-                if (status == Gen3::Learnset::Availability::Direct) {
-                    suffix = "  OK";
-                    color = selected ? Colors::Text : Colors::Success;
-                } else if (status == Gen3::Learnset::Availability::Transfer) {
-                    suffix = "  Transfer";
-                    color = Colors::Warning;
-                } else if (status == Gen3::Learnset::Availability::Preserved) {
-                    suffix = "  Preserved";
-                    color = Colors::Warning;
-                }
-            }
-        }
-        fb.drawText(x + 38, yy + 7, label + suffix, color, TextStyle::Body);
+        fb.drawText(x + 38, yy + 7, pickerValueLabel(state, value),
+                    selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
     }
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Choose"}, {"B", "Cancel"}});
 }
-
 
 void drawMoveEditor(PKSEFramebuffer& fb, State& state) {
     if (!state.moveEditor) return;

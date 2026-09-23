@@ -57,6 +57,10 @@ int main() {
     assert(POKE_CLASSIC_PALETTE.focusBorder == Color(255, 207, 64));
     assert(PURPLE_PALETTE.accentPrimary == Color(188, 100, 255));
     assert(ORANGE_PALETTE.accentPrimary == Color(255, 138, 48));
+    assert(PS5_PALETTE.focusBorder == Color(150, 184, 255));
+    assert(XBOX_PALETTE.focusBorder == Color(116, 218, 132));
+    assert(POKEMON_HOME_PALETTE.accentPrimary == Color(239, 104, 163));
+    assert(SWITCH_PALETTE.focusBorder == Color(226, 231, 240));
 
     assert(DARK_PALETTE.success == Color(82, 205, 137));
     assert(DARK_PALETTE.warning == Color(255, 202, 76));
@@ -66,14 +70,21 @@ int main() {
     for (ThemeMode mode : {ThemeMode::OLEDBlack, ThemeMode::Dark, ThemeMode::Light,
                            ThemeMode::Red, ThemeMode::Blue, ThemeMode::Green,
                            ThemeMode::Gray, ThemeMode::PokeClassic,
-                           ThemeMode::Purple, ThemeMode::Orange}) {
+                           ThemeMode::Purple, ThemeMode::Orange,
+                           ThemeMode::PS5, ThemeMode::Xbox, ThemeMode::PokemonHome,
+                           ThemeMode::Switch, ThemeMode::Midnight, ThemeMode::Graphite,
+                           ThemeMode::Arctic, ThemeMode::Ivory, ThemeMode::Aurora,
+                           ThemeMode::Sunset}) {
         const ThemePalette& palette = themePalette(mode);
         assert(contrast(palette.textPrimary, palette.background) >= 7.0);
         assert(contrast(palette.textPrimary, palette.surface) >= 7.0);
         assert(contrast(palette.textSecondary, palette.background) >= 4.5);
         assert(contrast(palette.textSecondary, palette.surface) >= 4.5);
-        assert(contrast(palette.textMuted, palette.background) >= 4.5);
-        assert(contrast(palette.textMuted, palette.surface) >= 4.5);
+        // Comfort/readability floor is stronger than AA for ordinary dim copy.
+        assert(contrast(palette.textMuted, palette.background) >= 6.0);
+        assert(contrast(palette.textMuted, palette.surface) >= 6.0);
+        assert(contrast(palette.textMuted, palette.surfaceRaised) >= 5.5);
+        assert(contrast(palette.textSecondary, palette.surfaceRaised) >= 7.0);
         assert(contrast(palette.textPrimary, palette.accentSecondary) >= 4.5);
         assert(palette.focusBorder != palette.divider);
         assert(palette.focusBorder != palette.error);
@@ -102,6 +113,15 @@ int main() {
     assert(themeModeName(ThemeMode::OLEDBlack) == std::string_view("OLED Black"));
     assert(themeModeName(ThemeMode::Gray) == std::string_view("Grey"));
     assert(themeModeName(ThemeMode::PokeClassic) == std::string_view("Poke Classic"));
+    assert(themeModeName(ThemeMode::PS5) == std::string_view("PS5"));
+    assert(themeModeName(ThemeMode::PokemonHome) == std::string_view("Pokemon HOME"));
+    assert(themeModeFromKey("playstation") == ThemeMode::PS5);
+    assert(themeModeFromKey("home") == ThemeMode::PokemonHome);
+    assert(themeModeFromKey("cream") == ThemeMode::Ivory);
+    assert(isLightTheme(ThemeMode::Light));
+    assert(isLightTheme(ThemeMode::Arctic));
+    assert(isLightTheme(ThemeMode::Ivory));
+    assert(!isLightTheme(ThemeMode::PokeClassic));
     assert(nextThemeMode(ThemeMode::OLEDBlack) == ThemeMode::Dark);
     assert(nextThemeMode(ThemeMode::Dark) == ThemeMode::Light);
     assert(nextThemeMode(ThemeMode::Light) == ThemeMode::Red);
@@ -111,11 +131,26 @@ int main() {
     assert(nextThemeMode(ThemeMode::Gray) == ThemeMode::PokeClassic);
     assert(nextThemeMode(ThemeMode::PokeClassic) == ThemeMode::Purple);
     assert(nextThemeMode(ThemeMode::Purple) == ThemeMode::Orange);
-    assert(nextThemeMode(ThemeMode::Orange) == ThemeMode::OLEDBlack);
+    assert(nextThemeMode(ThemeMode::Orange) == ThemeMode::PS5);
+    assert(nextThemeMode(ThemeMode::PS5) == ThemeMode::Xbox);
+    assert(nextThemeMode(ThemeMode::Xbox) == ThemeMode::PokemonHome);
+    assert(nextThemeMode(ThemeMode::PokemonHome) == ThemeMode::Switch);
+    assert(nextThemeMode(ThemeMode::Switch) == ThemeMode::Midnight);
+    assert(nextThemeMode(ThemeMode::Midnight) == ThemeMode::Graphite);
+    assert(nextThemeMode(ThemeMode::Graphite) == ThemeMode::Arctic);
+    assert(nextThemeMode(ThemeMode::Arctic) == ThemeMode::Ivory);
+    assert(nextThemeMode(ThemeMode::Ivory) == ThemeMode::Aurora);
+    assert(nextThemeMode(ThemeMode::Aurora) == ThemeMode::Sunset);
+    assert(nextThemeMode(ThemeMode::Sunset) == ThemeMode::OLEDBlack);
     applyTheme(ThemeMode::Light);
     assert(Colors::FocusBorder == Color(16, 18, 24));
     assert(Colors::CursorMenu == Colors::Black);
     assert(Colors::PrimaryText == Colors::White);
+    applyTheme(ThemeMode::Arctic);
+    assert(Colors::PrimaryText == Colors::White);
+    assert(Colors::CursorMenu == ARCTIC_PALETTE.focusBorder);
+    applyTheme(ThemeMode::PokeClassic);
+    assert(themeModeKey(g_themeMode) == std::string_view("poke-classic"));
 
     const std::string framebuffer = readFile("src/UI/PKSEFramebuffer.cpp");
     const auto hi = framebuffer.find("void PKSEFramebuffer::drawSelectionHighlight");

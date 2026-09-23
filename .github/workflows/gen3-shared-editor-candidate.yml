@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [feature/pokebank-playable]
     paths:
+      - 'include/UI/Common.h'
       - 'Makefile'
       - 'Makefile.host*'
       - 'include/Integration/Gen3/**'

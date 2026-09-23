@@ -6,6 +6,7 @@ on:
       - feature/gen12-packed-y-multimove-20260917
   pull_request:
     paths:
+      - 'include/UI/Common.h'
       - "include/Integration/Gen1/Gen1StagedPokemonEditor.h"
       - "include/Integration/Gen2/Gen2StagedEditor.h"
       - "src/Integration/Gen1/Gen1PackedMove.cpp"

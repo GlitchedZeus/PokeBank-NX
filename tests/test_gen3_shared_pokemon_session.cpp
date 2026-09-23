@@ -77,6 +77,24 @@ int main() {
             const auto request = identity.editRequest();
             assert(request.otName == "BLUE" && request.tid == 65535 && request.level == 50);
         }
+
+        // EXP is a first-class progression edit in both Create and Edit. The Switch UI
+        // opens promptNumber for this row; the session maps entered EXP back to Level.
+        const uint32_t exp42 =
+            Pokemon::getExpForLevel(42, Pokemon::getGrowthRate(identity.working.species));
+        assert(identity.setExperience(exp42));
+        assert(identity.working.experience == exp42);
+        assert(identity.working.level == 42);
+        if (mode == Mode::Create) {
+            const auto request = identity.createRequest();
+            assert(request.experience && *request.experience == exp42);
+            assert(request.level == 42);
+        } else {
+            const auto request = identity.editRequest();
+            assert(request.experience && *request.experience == exp42);
+            assert(!request.level);
+        }
+
         identity.discardDraft();
         assert(identity.working.tid == source.tid && identity.working.otName == source.otName);
     }
