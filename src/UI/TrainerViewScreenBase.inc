@@ -610,25 +610,74 @@ namespace UI {
         const int boxCount = (pane == 0) ? static_cast<int>(trainer.getBoxCount())
                                          : static_cast<int>(Trainer::Bank::BANK_BOX_COUNT);
         const int cols = (pane == 0) ? ((slots == 25) ? 5 : 6) : 6;
-        auto place = [&](int box, int slot, std::unique_ptr<Pokemon::Pokemon>& pk) -> bool {
+
+        // A02 custody rule: plan the ENTIRE rollback before moving a single Pokemon.
+        // The old implementation moved what it could, then unconditionally cleared moveMon.
+        // If the origin pane was full, any unplaced unique_ptr was destroyed. A failed rollback
+        // must instead leave the carried block byte-for-byte in our custody.
+        struct ReturnPlan {
+            bool complete = true;
+            std::vector<std::pair<int, int>> destinations;
+        } returnPlan;
+        returnPlan.destinations.assign(moveMon.size(), {-1, -1});
+
+        std::vector<bool> reserved(static_cast<size_t>(boxCount * slots), false);
+        const auto available = [&](int box, int slot) -> bool {
             if (box < 0 || box >= boxCount || slot < 0 || slot >= slots) return false;
             if (storageSlotLocked(pane, box, slot)) return false;
-            auto& dst = storageSlot(pane, box, slot);
-            if (!dst || dst->speciesID() == 0) { dst = std::move(pk); return true; }   // species-0 = empty (S/V ghost)
-            return false;
+            const size_t flat = static_cast<size_t>(box * slots + slot);
+            if (reserved[flat]) return false;
+            const auto& dst = storageSlot(pane, box, slot);
+            return !dst || dst->speciesID() == 0;   // species-0 = empty (S/V ghost)
         };
+        const auto reserve = [&](size_t index, int box, int slot) {
+            returnPlan.destinations[index] = {box, slot};
+            reserved[static_cast<size_t>(box * slots + slot)] = true;
+        };
+
         const int w = selectDimensions.first > 0 ? selectDimensions.first : 1;
         for (size_t i = 0; i < moveMon.size(); ++i) {
             if (!moveMon[i]) continue;
-            const int x = static_cast<int>(i) % w, y = static_cast<int>(i) / w;
-            int box = heldFromBox, slot = heldFromSlot + x + y * cols;
-            while (slot >= slots) { slot -= slots; ++box; }        // defensive: a grab is bounds-checked to one box
-            if (place(box, slot, moveMon[i])) continue;
-            bool placed = false;
-            for (int b = 0; b < boxCount && !placed; ++b)
-                for (int s = 0; s < slots && !placed; ++s)
-                    placed = place(b, s, moveMon[i]);
+
+            const int x = static_cast<int>(i) % w;
+            const int y = static_cast<int>(i) / w;
+            int box = heldFromBox;
+            int slot = heldFromSlot + x + y * cols;
+            while (slot >= slots) { slot -= slots; ++box; }
+
+            if (available(box, slot)) {
+                reserve(i, box, slot);
+                continue;
+            }
+
+            bool planned = false;
+            for (int b = 0; b < boxCount && !planned; ++b) {
+                for (int s = 0; s < slots && !planned; ++s) {
+                    if (!available(b, s)) continue;
+                    reserve(i, b, s);
+                    planned = true;
+                }
+            }
+            if (!planned) {
+                returnPlan.complete = false;
+                break;
+            }
         }
+
+        if (!returnPlan.complete) {
+            postStatus("Could not return the held Pokemon safely - custody retained.", 360);
+            return;
+        }
+
+        // Every carried Pokemon now has a unique, still-empty destination. The UI is single-threaded,
+        // so nothing can invalidate the plan between this point and the moves below.
+        for (size_t i = 0; i < moveMon.size(); ++i) {
+            if (!moveMon[i]) continue;
+            const auto [box, slot] = returnPlan.destinations[i];
+            auto& dst = storageSlot(pane, box, slot);
+            dst = std::move(moveMon[i]);
+        }
+
         moveMon.clear();
         selectDimensions = {0, 0};
     }
