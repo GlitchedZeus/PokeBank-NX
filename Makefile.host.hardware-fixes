@@ -55,3 +55,21 @@ $(STORAGE_CUSTODY_TEST): tests/test_storage_custody_contract.cpp src/UI/TrainerV
 $(STORAGE_CUSTODY_SANITIZE): tests/test_storage_custody_contract.cpp src/UI/TrainerViewScreenBase.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_storage_custody_contract.cpp -o $@
+
+# Audit-phase malformed-input regression: BDSP must reject a short flat blob before
+# any fixed-offset parser touches PARTY_COUNT / MyStatus / hash fields.
+BDSP_LAYOUT_GUARD_TEST := $(HOST_BUILD)/test_bdsp_layout_guard
+BDSP_LAYOUT_GUARD_SANITIZE := $(HOST_BUILD)/test_bdsp_layout_guard_sanitize
+
+HOST_TESTS += $(BDSP_LAYOUT_GUARD_TEST)
+HOST_SANITIZE_TESTS += $(BDSP_LAYOUT_GUARD_SANITIZE)
+host-test: $(BDSP_LAYOUT_GUARD_TEST)
+host-sanitize: $(BDSP_LAYOUT_GUARD_SANITIZE)
+
+$(BDSP_LAYOUT_GUARD_TEST): tests/test_bdsp_layout_guard.cpp include/Save/BDSPReadValidation.h src/Trainer/Trainer8BDSP.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_bdsp_layout_guard.cpp -o $@
+
+$(BDSP_LAYOUT_GUARD_SANITIZE): tests/test_bdsp_layout_guard.cpp include/Save/BDSPReadValidation.h src/Trainer/Trainer8BDSP.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bdsp_layout_guard.cpp -o $@
