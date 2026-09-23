@@ -751,6 +751,12 @@ namespace Save {
             // "ModifiedSave" is a leftover directory from builds before saves went straight
             // into the backup; skip it so an old copy is never picked as the save to edit.
             if (name == "." || name == ".." || name == "ModifiedSave") continue;
+            // DurableFile keeps unique sibling generations next to the authoritative save.
+            // They are recovery evidence, never candidates for normal game-save discovery.
+            if (name.find(".tmp.") != std::string::npos ||
+                name.find(".previous.") != std::string::npos ||
+                name.find(".failed.") != std::string::npos)
+                continue;
             char full[1024];
             snprintf(full, sizeof(full), "%s/%s", dir, name.c_str());
             struct stat st;
