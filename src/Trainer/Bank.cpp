@@ -1,6 +1,7 @@
 #include "Trainer/Bank.h"
 
 #include <algorithm>
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <span>
@@ -52,6 +53,24 @@ namespace Trainer {
         // v1 file with it is still read correctly by code that predates the section. Per box:
         // u16 LE length + that many UTF-8 bytes.
         constexpr uint8_t  NAMES_MARKER[4] = { 'N','A','M','S' };
+
+        // Never overwrite earlier corruption evidence. The old fixed
+        // bank.dat.unreadable path deleted the previous casualty before preserving
+        // the next one. Numbered generations remain deterministic even when the
+        // console clock is unset or wrong.
+        std::string uniqueUnreadablePath(const std::string& path) {
+            for (uint64_t generation = 0; generation < 1000000; ++generation) {
+                const std::string candidate =
+                    path + ".unreadable." + std::to_string(generation);
+                struct stat st{};
+                errno = 0;
+                if (stat(candidate.c_str(), &st) != 0) {
+                    if (errno == ENOENT) return candidate;
+                    return {};  // filesystem error: do not guess that the name is free
+                }
+            }
+            return {};  // fail closed rather than overwrite an existing recovery generation
+        }
 
         // Frozen on-disk group tags -- written into every slot record. NEVER renumber these;
         // add-only. (Deliberately independent of the Enums::GameVersion numeric values, which are
@@ -245,12 +264,18 @@ namespace Trainer {
         // it is the user's only copy of those Pokemon, and starting empty over the top of it would
         // destroy them. Renaming lets us proceed with an empty bank while the original survives.
         auto abandonFile = [&](const char* why) {
-            const std::string aside = path + ".unreadable";
-            std::remove(aside.c_str());                     // keep only the most recent casualty
-            if (std::rename(path.c_str(), aside.c_str()) == 0)
-                logErrorToFile("Bank: unreadable file preserved as bank.dat.unreadable", why);
-            else
-                logErrorToFile("Bank: unreadable file could NOT be preserved", why);
+            const std::string aside = uniqueUnreadablePath(path);
+            if (!aside.empty() && std::rename(path.c_str(), aside.c_str()) == 0) {
+                logErrorToFile("Bank: unreadable file preserved as unique recovery generation",
+                               aside.c_str());
+            } else {
+                // The authoritative bad file is still in place. Never allow a later
+                // empty-bank save to overwrite it merely because quarantine failed.
+                writeBlocked = true;
+                writeBlockReasonText =
+                    "Unreadable Bank could not be preserved safely; original file left untouched.";
+                logErrorToFile("Bank: unreadable file could NOT be preserved; writes blocked", why);
+            }
             delete[] file;
             savedImage = serialize();
         };
