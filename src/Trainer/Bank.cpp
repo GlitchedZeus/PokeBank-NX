@@ -24,6 +24,7 @@
 #include "Encryption/Encryption8BDSP.h"
 #include "Encryption/Encryption3FRLG.h"
 #include "Utils/FileUtilities.h"
+#include "Utils/DurableFile.h"
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
 #include "Globals.h"
@@ -474,26 +475,35 @@ namespace Trainer {
 
         std::vector<uint8_t> buf = serialize();
 
-        // The bank's contract is byte-in == byte-out, and nothing used to check it. Verify the
-        // image reproduces every live Pokemon before it goes to disk.
-        //
-        // Deliberately does NOT abort the save. A failed bank save blocks leaving the storage view
-        // so a false positive here would trap the user in the UI; and if the mismatch is
-        // real, refusing to write leaves them with a stale file rather than a fresh one. Record it,
-        // log which slot, and let the caller surface it.
+        // A01: a Bank image that cannot round-trip every live Pokemon is not a candidate
+        // for persistence. The accepted pre-audit code logged verification failures and
+        // wrote the image anyway; safety now wins over convenience.
         verifyFailures = verifyImage(buf);
-
-        const std::string path = filePath();
-        FILE* f = fopen(path.c_str(), "wb");
-        if (!f) {
-            logErrorToFile("Bank: failed to open bank file for writing", path.c_str());
+        if (verifyFailures != 0) {
+            logErrorToFile("Bank: refusing to persist an image that failed round-trip verification",
+                           std::to_string(verifyFailures).c_str());
             return false;
         }
-        const size_t written = fwrite(buf.data(), 1, buf.size(), f);
-        fclose(f);
-        if (written != buf.size()) return false;
 
-        savedImage = std::move(buf);  // in sync with disk again
+        const std::string path = filePath();
+        const auto validator = [this](std::span<const uint8_t> bytes, std::string& error) {
+            std::vector<uint8_t> image(bytes.begin(), bytes.end());
+            verifyFailures = verifyImage(image);
+            if (verifyFailures != 0) {
+                error = "Bank image failed slot round-trip verification";
+                return false;
+            }
+            return true;
+        };
+
+        const auto durable = PokeBank::Storage::DurableFile::replace(
+            path, std::span<const uint8_t>(buf.data(), buf.size()), validator);
+        if (!durable.ok) {
+            logErrorToFile("Bank: durable replacement failed", durable.error.c_str());
+            return false;
+        }
+
+        savedImage = std::move(buf);  // exact promoted image
         return true;
     }
 
