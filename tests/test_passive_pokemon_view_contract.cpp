@@ -77,7 +77,7 @@ int main() {
     assert(gen3Surface.find("state.focus.panel == Shared::Panel::Details") != std::string::npos);
     assert(gen3Surface.find("state.focus.panel == Shared::Panel::Values") != std::string::npos);
     assert(gen3Surface.find("state.focus.panel == Shared::Panel::Moves") != std::string::npos);
-    assert(gen3Surface.find("{\"D-pad\", \"Navigate\"}, {\"L/R\", \"Panel\"}, {\"B\", \"Back\"}") != std::string::npos);
+    assert(gen3Surface.find("{\"D-pad/Stick\", \"Navigate\"}, {\"L/R\", \"Panel\"}, {\"B\", \"Back\"}") != std::string::npos);
     assert(gen3Surface.find("if (!(down & HidNpadButton_A) || !state.session.editable()) return true") != std::string::npos);
 
     std::cout << "Passive Pokemon View surface contract: PASS\n";
