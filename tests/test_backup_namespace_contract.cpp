@@ -105,6 +105,10 @@ int main() {
     assert(screen.find("listBackupDirectories(legacyGameDirectory.c_str(), true)") != std::string::npos);
     assert(screen.find("LEGACY UNSCOPED / OWNERSHIP UNKNOWN") != std::string::npos);
     assert(screen.find("if (chosen.legacyUnscoped)") != std::string::npos);
+    // Legacy folder names came from readdir under the already-owned title directory. Preserve
+    // historical custom names verbatim rather than sanitizing them into a different/nonexistent path.
+    assert(screen.find("legacyGameDirectory + \"/\" + name") != std::string::npos);
+    assert(screen.find("child(legacyGameDirectory, name)") == std::string::npos);
 
     const std::string ui = read("src/UI/UI.cpp");
     assert(ui.find("BackupSelectionScreen backupScreen(userUid, titleId, titleName)") !=
