@@ -119,7 +119,7 @@ int main() {
     contains(surface, "state.session.setShiny(state.speciesPreviewShiny)");
     assert(surface.find("state.session.mode == SessionModel::Mode::Create && (down & HidNpadButton_Y)") == std::string::npos);
     contains(surface, "state.speciesPreview, 386, state.speciesPreviewShiny");
-    contains(surface, "{{\"D-pad\", \"Browse\"}, {\"Y\", \"Shiny\"}, {\"A\", \"Choose\"}, {\"B\", \"Cancel\"}}");
+    contains(surface, "{{\"D-pad/Stick\", \"Browse\"}, {\"Y\", \"Shiny\"}, {\"A\", \"Choose\"}, {\"B\", \"Cancel\"}}");
     contains(surface, "PID (read-only)");
     contains(surface, "Trainer ID");
     contains(surface, "down & (HidNpadButton_Left | HidNpadButton_L)");
