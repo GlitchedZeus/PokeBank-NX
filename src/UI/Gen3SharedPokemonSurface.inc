@@ -1268,7 +1268,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         }
         fb.drawText(x + 38, yy + 7, label + suffix, color, TextStyle::Body);
     }
-    drawNavBar(fb, {{"Up/Down", "Browse"}, {"Left/Right", "Page"},
+    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Choose"}, {"B", "Cancel"}});
 }
 
@@ -1473,12 +1473,12 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         "GEN III DATA", rows, state.previewError.empty() ? p.calculatedStats : std::array<uint16_t,6>{});
 
     if (state.session.mode == SessionModel::Mode::View) {
-        drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     } else if (state.session.mode == SessionModel::Mode::Create) {
-        drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"X", "Add"}, {"B", "Exit"}});
     } else {
-        drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"X", "Keep"}, {"B", "Exit"}});
     }
 

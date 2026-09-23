@@ -168,6 +168,8 @@ int main() {
     assert(gen1ReleaseInput.find("nav & HidNpadButton_Up") != std::string::npos);
     assert(gen1ReleaseInput.find("nav & HidNpadButton_Down") != std::string::npos);
     assert(composite.find("handleReleaseActionInput(*this, down, held, stick.x, stick.y)") != std::string::npos);
+    const auto packedMove = readFile("src/UI/ClassicPackedMoveOverlay.inc");
+    assert(packedMove.find("{\"D-pad/Stick\", \"Resize Selection\"}") != std::string::npos);
 
     const auto workspace = readFile("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
     assert(workspace.find("ExitGuard::requiresConfirmation") != std::string::npos);

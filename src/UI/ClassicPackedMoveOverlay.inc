@@ -604,7 +604,7 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 break;
             }
         }
-        drawNavBar(fb, {{"Y", "Hold / Release Pick Up"}, {"D-pad", "Resize Selection"}, {"B", "Cancel"}});
+        drawNavBar(fb, {{"Y", "Hold / Release Pick Up"}, {"D-pad/Stick", "Resize Selection"}, {"B", "Cancel"}});
         return;
     }
 

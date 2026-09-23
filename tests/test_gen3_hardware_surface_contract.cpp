@@ -95,7 +95,7 @@ int main() {
     contains(surface, "state.session.begin(*record, SessionModel::Mode::View)");
     contains(surface, "screen.closeDetailsModal()");
     contains(surface, "if (!(down & HidNpadButton_A) || !state.session.editable()) return true");
-    contains(surface, "{\"D-pad\", \"Navigate\"}, {\"L/R\", \"Panel\"}, {\"B\", \"Back\"}");
+    contains(surface, "{\"D-pad/Stick\", \"Navigate\"}, {\"L/R\", \"Panel\"}, {\"B\", \"Back\"}");
     contains(surface, "PID-LINKED / SAFE EDIT");
     contains(surface, "PickerTarget::Nature");
     contains(surface, "state.session.cycleGender()");
@@ -244,6 +244,7 @@ int main() {
     contains(move, "screen.controllerNavigation.apply(");
     contains(move, "resizeSelection(screen, state, nav)");
     contains(move, "D-pad/Stick to resize");
+    contains(move, "{\"D-pad/Stick\", \"Resize Selection\"}");
     contains(surface, "{\"D-pad/Stick\", \"Browse\"}, {\"Y\", \"Shiny\"}");
     contains(move, "setLegacyHoldingPresentation(screen, true)");
     contains(move, "drawVisual(fb");
