@@ -1,3 +1,44 @@
+# CURRENT CHECKPOINT — 2026-09-23
+
+The hardware gate that originally blocked this audit is complete.
+
+```text
+Gen I / II / III editor milestone:
+DEVICE ACCEPTED
+
+Accepted Gen III application SHA:
+996e6aa40c96e4408282f3d55476dae8e64968b2
+
+Tree:
+8826147ff5dc1b498b4b8505c9212243ed2f9498
+
+NRO SHA-256:
+ac3f6bd03d2a6733aee509729b81b6636cabe836095715c7b575b5dc84c8076c
+
+PR #77:
+OPEN / DRAFT / NOT MERGED
+```
+
+**This audit is now the active engineering phase.** The previous wording below that says “wait for the current hardware test” is historical context from 2026-09-22; that gate has now passed.
+
+Immediate order:
+
+```text
+repository/evidence organization
+-> A01-A09 reproduction tests
+-> durable Bank/backup replacement primitive
+-> custody/transaction hardening
+-> exact-current conversion re-audit
+-> malformed-input parser hardening
+-> physical Switch recovery testing
+-> Master Vault persistence/recovery
+-> broader feature expansion
+```
+
+Do not begin Gen IV/DS/3DS or authorize live source writes before this safety gate is complete.
+
+---
+
 # PokeBank NX — Full Project Audit / Recovery Map
 
 Date: 2026-09-22
