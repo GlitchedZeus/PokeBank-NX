@@ -1,14 +1,8 @@
 # PokeBank NX — v1.0 Roadmap
 
-Last updated: 2026-09-14
+Last updated: **2026-09-23**
 
 `CURRENT_STATUS.md` is authoritative for exact current state. Issue #29 is the master release tracker.
-
-## Product target
-
-PokeBank NX v1 should be a stable native Switch application that can safely discover advertised Pokémon save sources, browse and stage edits, preserve Pokémon in a profile-aware Master Vault, organize named Banks, provide generation-aware Summary/provenance/search/Dex tooling, and only perform source writeback through individually approved adapters.
-
-GameCube/Stadium remain valuable later expansion targets and do not block v1.
 
 ## Phase 0 — repository / safety / native foundation — COMPLETE
 
@@ -18,129 +12,121 @@ GameCube/Stadium remain valuable later expansion targets and do not block v1.
 - [x] hard live-source write locks
 - [x] stable game/platform identities
 - [x] source immutability discipline
-- [x] host regressions + ASan/UBSan + native build gates
+- [x] host regressions + ASan/UBSan + native gates
 
-## Phase 1 — legacy read foundation — COMPLETE / DEVICE ACCEPTED
+## Phase 1 — legacy read foundation — DEVICE ACCEPTED
 
-- [x] Gen I Red/Blue/Yellow read-only
-- [x] Gen II Gold/Silver/Crystal read-only
-- [x] Gen III FireRed/LeafGreen/Ruby/Sapphire/Emerald read-only
-- [x] Trainer / Party / Boxes
-- [x] generation-appropriate Pokémon details
+- [x] Gen I Red/Blue/Yellow
+- [x] Gen II Gold/Silver/Crystal
+- [x] Gen III FireRed/LeafGreen/Ruby/Sapphire/Emerald
+- [x] Trainer / Party / Boxes / generation-appropriate details
 - [x] legacy inventory browsing
-- [x] bounded RetroArch battery-save discovery
+- [x] bounded RetroArch discovery
 - [x] malformed/unsupported safe failure
-- [x] physical Switch acceptance for the tracked read milestone
-
-## Phase 2 — shared Inventory editor — COMPLETE FOR CURRENT CLASSIC MILESTONE / DEVICE ACCEPTED
-
-- [x] staged inventory mutation
-- [x] `A Edit / X Add / Y Remove`
-- [x] exact-game + exact-pocket catalogs
-- [x] empty valid pocket handling
-- [x] TM/HM/TR move-name display
-- [x] Key Item warnings
-- [x] semantic Pending Changes
-- [x] source immutability
-- [x] physical hardware acceptance
-
-Issue #59 remains open because the universal inventory architecture must continue forward into future DS/3DS/modern adapters.
-
-## Phase 3 — shared Pokémon editor foundation — IN PROGRESS
-
-### Generation I — COMPLETE / DEVICE ACCEPTED
-
-- [x] capability-driven `DETAILS | VALUES | MOVES`
-- [x] staged Create/Edit
-- [x] transactional existing-Pokémon Edit sessions
-- [x] authentic DVs/Stat Exp
-- [x] DV-derived shiny state
-- [x] exact-game move compatibility
-- [x] five-stat battle presentation/radar
-- [x] passive no-cursor View presentation
 - [x] physical Switch acceptance
 
-### Generation II — CURRENT / PR #68 / HARDWARE PENDING
+## Phase 2 — classic staged Inventory — DEVICE ACCEPTED
 
-Current implementation includes:
+- [x] staged-only mutation
+- [x] exact-game/exact-pocket catalogs
+- [x] `A Edit / X Add / Y Remove`
+- [x] empty valid pockets
+- [x] machine move labels
+- [x] source immutability
+- [x] physical acceptance
 
-- [x] passive shared View shell
-- [x] Gold/Silver vs Crystal exact-game move compatibility data
-- [x] passive `OK` / `Unusual preserved` compatibility status
-- [x] shared Create/Edit surface
-- [x] local Add/Edit drafts
-- [x] transactional Keep/Discard/Continue Edit flow
-- [x] authentic DVs + derived HP DV
-- [x] one Special DV feeding split SpA/SpD battle display
-- [x] six-stat / six-axis battle presentation
-- [x] Held Item picker
-- [x] Friendship
-- [x] Pokérus
-- [x] Crystal-specific caught/met support
-- [x] DV-derived shiny
-- [x] species/Attack-DV gender
-- [x] preservation of unusual existing move bytes
-- [x] permanent compatibility/passive-view/editor-surface tests
-- [ ] freeze one exact final candidate SHA
-- [ ] full latest-head host/regression pass
-- [ ] ASan / UBSan latest-head pass
-- [ ] devkitA64 + final NRO link latest-head pass
-- [ ] complete RomFS / embedded source identity verification
-- [ ] exact candidate artifact package
-- [ ] physical Gold/Silver/Crystal acceptance
+Universal Inventory architecture remains open for future game families under issue #59.
 
-### Generation III — NEXT AFTER GEN II ACCEPTANCE
+## Phase 3 — shared Pokémon editor foundation — DEVICE ACCEPTED FOR GEN I–III
 
-- [ ] bring RSE/FRLG boxed Pokémon editing onto the same shared capability-driven shell
-- [ ] expose exact Gen III-native fields only
-- [ ] retain accepted read foundation
-- [ ] preserve source immutability
-- [ ] exact hardware acceptance before moving on
+### Generation I
+- [x] shared `DETAILS | VALUES | MOVES`
+- [x] staged Create/Edit
+- [x] authentic DVs/Stat Exp
+- [x] exact-game move compatibility
+- [x] passive View
+- [x] device acceptance
 
-## Phase 4 — Master Vault + named Banks
+### Generation II
+- [x] shared View/Create/Edit
+- [x] authentic DV/Stat Exp model
+- [x] Held Item / Friendship / Pokérus
+- [x] Crystal-native caught/met behavior
+- [x] six-stat battle presentation
+- [x] exact-game move compatibility
+- [x] packed movement / multi-select
+- [x] device acceptance
+
+### Generation III
+- [x] shared View/Create/Edit for RSE/FRLG
+- [x] exact-game Gen III capability provider
+- [x] staged PK3 editor
+- [x] IV/EV/Nature/Ability/held-item/origin presentation where native
+- [x] shiny species-preview interaction
+- [x] editable EXP
+- [x] exact-game clean move picker
+- [x] D-pad/Left Stick parity
+- [x] readable PID/read-only presentation
+- [x] device acceptance at `996e6aa40c96e4408282f3d55476dae8e64968b2`
+
+## Phase 4 — FULL AUDIT / ORGANIZATION / DURABILITY HARDENING — CURRENT
+
+Primary tracker: issue #69.
+
+- [ ] turn A01–A09 into regression/reproduction tests
+- [ ] atomic/durable Bank replacement
+- [ ] custody-safe held Pokémon rollback
+- [ ] destination conversion candidate separate from original custody
+- [ ] cross-store transaction journal
+- [ ] preserve multiple recovery/corruption generations
+- [ ] malformed/truncated parser hardening
+- [ ] block writes that would truncate unsupported newer Bank formats
+- [ ] profile/account namespace mutable backup workspaces
+- [ ] durable replacement for mutable backup saves
+- [ ] re-run conversion findings against exact-current source
+- [ ] golden conversion matrix/fixtures
+- [ ] repository/reference/license/documentation organization
+- [ ] physical Switch crash/recovery test matrix
+
+This phase intentionally blocks trusting Master Vault with unique Pokémon.
+
+## Phase 5 — Master Vault + named Banks
 
 - [ ] immutable Pokémon entity records
 - [ ] SHA-256 + stable Vault IDs
-- [ ] source game/save/platform provenance
+- [ ] provenance + origin/current-location/history separation
 - [ ] parent/clone/derived relationships
-- [ ] journal/recovery
+- [ ] durable journal/recovery using Phase 4 primitives
 - [ ] profile-aware ownership
 - [ ] named Banks as logical references/views
-- [ ] migration/import path from legacy storage where appropriate
+- [ ] legacy Storage migration/import
 
-## Phase 5 — universal SaveSource adapters
+## Phase 6 — universal SaveSource adapters
 
-- [ ] RetroArch adapter generalized
-- [ ] Tico
-- [ ] mGBA standalone
-- [ ] melonDS standalone/libretro
+- [ ] generalized RetroArch adapter
+- [ ] mGBA
+- [ ] melonDS
 - [ ] DraStic
 - [ ] Azahar
 - [ ] custom folders
-- [ ] unknown-but-valid validated saves
-- [ ] bounded fast scan + cancellable deep scan
-- [ ] source provenance + deduplication
-- [ ] source-change detection before future writes
+- [ ] validated unknown-but-valid sources
+- [ ] bounded/cancellable scanning
+- [ ] provenance + deduplication
+- [ ] source-change detection
 
-## Phase 6 — Nintendo DS / 3DS
+## Phase 7 — Nintendo DS / 3DS
 
 ### DS
-
 - [ ] Diamond / Pearl / Platinum
 - [ ] HeartGold / SoulSilver
 - [ ] Black / White / Black 2 / White 2
-- [ ] validated read adapters
-- [ ] source-provider integrations
 
 ### 3DS
-
 - [ ] X / Y
 - [ ] Omega Ruby / Alpha Sapphire
 - [ ] Sun / Moon / Ultra Sun / Ultra Moon
-- [ ] validated read adapters
-- [ ] Azahar/source-provider integrations
 
-## Phase 7 — modern Switch validation
+## Phase 8 — modern Switch validation
 
 - [ ] Let's Go Pikachu/Eevee
 - [ ] Sword/Shield
@@ -149,47 +135,43 @@ Current implementation includes:
 - [ ] Scarlet/Violet
 - [ ] Legends: Z-A
 - [ ] FireRed Switch / LeafGreen Switch
-- [ ] explicit save-revision/update/DLC handling
+- [ ] explicit save revision/update/DLC handling
 - [ ] strict unsupported-version behavior
-- [ ] per-game read/edit/write capability matrix
+- [ ] per-game capability matrix
 
-## Phase 8 — collection / Summary / provenance
+## Phase 9 — collection / Summary / provenance
 
 - [ ] professional generation-aware Summary
 - [ ] origin/current-location/provenance separation
 - [ ] search/filter/favorites/recent
 - [ ] National/game Pokédex
-- [ ] Living Dex / shiny collection views
+- [ ] Living Dex / Shiny Dex views
 - [ ] legality state
-- [ ] optional cry playback where appropriate
 
-## Phase 9 — conversion / legality / transfer workspace
+## Phase 10 — conversion / legality / transfer workspace
 
-- [ ] host PKHeX Oracle
+- [ ] PKHeX host oracle
 - [ ] golden fixture corpus
-- [ ] generation-aware compatibility/conversion
+- [ ] generation-aware conversion/compatibility
 - [ ] legality/provenance validation
 - [ ] legality-aware editing
-- [ ] controlled creation / Make Shiny safeguards
 - [ ] staged destination representations
-- [ ] `COPY`, `MOVE`, `CLONE` remain distinct
+- [ ] explicit COPY / MOVE / CLONE semantics
 
-## Phase 10 — staged transaction framework / approved writes
+## Phase 11 — staged transactions / individually approved writes
 
-- [ ] fingerprint source
+- [ ] source fingerprint
 - [ ] backup
-- [ ] stage mutation
-- [ ] repair checksums/container
+- [ ] staged mutation
+- [ ] checksum/container repair
 - [ ] strict reparse/validate
-- [ ] write
-- [ ] readback
-- [ ] rollback/recovery
-- [ ] approve live-write adapters individually
-- [ ] true Move only after durable validated destination
+- [ ] write/readback/rollback
+- [ ] approve write adapters individually
+- [ ] true Move only after durable verified destination
 
-No global unsafe write switch.
+There is no global unsafe write switch.
 
-## Phase 11 — full touch-only coverage
+## Phase 12 — full touch-only handheld operation
 
 - [ ] Home/source selection
 - [ ] Trainer/Inventory/Party/Boxes
@@ -197,32 +179,28 @@ No global unsafe write switch.
 - [ ] Vault/Banks
 - [ ] keyboard/numeric/dialog flows
 - [ ] scrolling/back/cancel
-- [ ] controller + touch coexistence
 - [ ] physical touch-only acceptance
 
-## Phase 12 — release hardening
+## Phase 13 — release hardening
 
 - [ ] diagnostics/privacy-safe export
 - [ ] constrained-memory handling
-- [ ] bounded caches / virtualized large grids
+- [ ] bounded caches / virtualized grids
 - [ ] storage health + Vault recovery UI
 - [ ] accessibility / Reduced Motion
-- [ ] final title/icon/NACP/startup polish
+- [ ] final metadata/branding
 - [ ] handheld + docked pass
 - [ ] exact release artifact preservation
-- [ ] README/support matrix/release notes match reality
-- [ ] release-candidate hardware torture pass
+- [ ] documentation matches release capability
+- [ ] RC hardware torture pass
 - [ ] v1.0 tag/release
 
 ## Critical path
 
 ```text
-legacy Gen I/II/III reads            DEVICE ACCEPTED
-classic Inventory                    DEVICE ACCEPTED
-Gen I boxed Pokémon editor           DEVICE ACCEPTED
-Gen II shared Pokémon editor         CURRENT
+Gen I / II / III reads + editors       DEVICE ACCEPTED
         ↓
-Gen III shared Pokémon editor
+full audit / organization / durability CURRENT
         ↓
 Master Vault + Banks
         ↓
@@ -236,11 +214,9 @@ Summary / Dex / provenance / search
         ↓
 conversion / legality / transfers
         ↓
-staged transaction framework
+approved writes
         ↓
-approved writes / true Move
-        ↓
-full touch-only completion
+touch-only completion
         ↓
 release hardening
         ↓
