@@ -66,7 +66,15 @@ namespace UI {
         void returnHeldToOrigin();
         std::unique_ptr<Pokemon::Pokemon>& storageSlot(int pane, int box, int slot);  // pane 0=save,1=bank
         bool storageSlotLocked(int pane, int box, int slot);   // LGPE party members (save pane) are locked
-        bool convertForPane(std::unique_ptr<Pokemon::Pokemon>& pk, int destPane);  // convert a mon in place for a dest pane (Phase B)
+        struct PreparedPlacement {
+            std::unique_ptr<Pokemon::Pokemon> candidate;
+            bool useOriginal = false;  // Bank destination: native payload moves unchanged at commit.
+            bool converted = false;    // Cross-game destination candidate.
+            bool normalized = false;   // Same-game save candidate received destination-only repair.
+            std::string failure;
+            bool ready() const { return useOriginal || static_cast<bool>(candidate); }
+        };
+        PreparedPlacement prepareForPane(const Pokemon::Pokemon& original, int destPane);
         void buildAbilityPickerOrder(uint16_t species, uint8_t form, Enums::GameVersion group, uint16_t current);  // the species' legal ability slots (all ids too, when illegal edits are allowed)
         void buildCreatorSpeciesOrder();  // creator: filter the species picker to the open game's dex
         void buildMovePickerOrder(uint16_t species, uint8_t form, Enums::GameVersion group, uint16_t current);  // learnable moves first
