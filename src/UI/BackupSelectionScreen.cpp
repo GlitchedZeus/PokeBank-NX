@@ -65,8 +65,12 @@ namespace UI {
 
         if (namespaceReady) {
             for (const auto& name : listBackupDirectories(gameDirectory.c_str())) {
-                const std::string path = PokeBank::Paths::child(gameDirectory, name);
-                if (path.empty()) continue;
+                // Named backups may contain spaces. The name came from readdir below an already
+                // profile/exact-game-scoped root, so preserve it verbatim after rejecting traversal.
+                if (name.empty() || name == "." || name == ".." ||
+                    name.find('/') != std::string::npos) continue;
+                const std::string path = gameDirectory + "/" + name;
+                if (!PokeBank::Paths::isOwnedPath(path)) continue;
                 BackupInfo info;
                 info.timestamp = name;
                 info.displayName = "Edit backup workspace: " + formatTimestamp(name);
