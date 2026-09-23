@@ -43,6 +43,13 @@ int main() {
     requireDurable(source, "saveTrainerInfoSV", "validateSCWorkspace");
     requireDurable(source, "saveTrainerInfoFRLG", "validateFRLGWorkspace");
 
+    // N05/A09: same-directory DurableFile recovery generations are evidence, not
+    // authoritative FRLG save candidates. Their size is also 128 KiB, so the scanner
+    // must exclude them explicitly.
+    assert(source.find("name.find(\".tmp.\")") != std::string::npos);
+    assert(source.find("name.find(\".previous.\")") != std::string::npos);
+    assert(source.find("name.find(\".failed.\")") != std::string::npos);
+
     const auto bdsp = functionBody(source, "saveTrainerInfoBDSP");
     assert(bdsp.find("MULTI-FILE JOURNAL REQUIRED") != std::string::npos);
     assert(bdsp.find("return false") != std::string::npos);
