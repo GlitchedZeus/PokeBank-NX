@@ -129,9 +129,12 @@ int main() {
     assert(namedBody.find("backupDir.rfind(gameDir + \"/\", 0)") != std::string::npos);
 
     const std::string fileHeader = read("include/Utils/FileUtilities.h");
-    assert(fileHeader.find(
-        "listBackupDirectories(const char* gameDirectory, bool includeWorking = false)") !=
-        std::string::npos);
+    const auto listDecl = fileHeader.find("listBackupDirectories(const char* gameDirectory");
+    assert(listDecl != std::string::npos);
+    const auto listDeclEnd = fileHeader.find(");", listDecl);
+    assert(listDeclEnd != std::string::npos);
+    const std::string listSignature = fileHeader.substr(listDecl, listDeclEnd - listDecl);
+    assert(listSignature.find("bool includeWorking = false") != std::string::npos);
 
     std::cout << "Profile/exact-game backup namespace contract: PASS\n";
 }
