@@ -1,6 +1,8 @@
 # PokeBank NX — Technical Reference Index
 
-Last reviewed: 2026-09-22
+Last reviewed: 2026-09-23
+> **Current use:** Gen I–III editing is device accepted. This index now supports the active issue #69 audit/durability phase: classify reuse, pin exact revisions/licenses, and prefer tests/fixtures over unreviewed source copying.
+
 
 This is the quick lookup map for external projects, research repositories, fixtures, and implementation oracles used while designing PokeBank NX.
 
