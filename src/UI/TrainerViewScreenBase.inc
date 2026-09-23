@@ -22,6 +22,7 @@
 #include "UI/TouchInput.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
+#include "UI/StoragePlacementCommit.h"
 #include "UI/Panels/PartyPokemonPanel.h"
 #include "UI/Panels/BoxPokemonPanel.h"
 #include "UI/Panels/ItemsPanel.h"
@@ -1777,14 +1778,13 @@ namespace UI {
                     if (prepared.useOriginal) {
                         // Bank destination: commit the native object itself byte-for-byte. The
                         // displaced native Bank occupant (if any) becomes the new held custody.
-                        std::swap(dst, moveMon[idx]);
+                        PokeBank::UIModel::commitNativeSwap(moveMon[idx], dst);
                     } else {
                         // Save destination: candidate reaches the destination FIRST. Only after
                         // destination ownership succeeds do we retire/replace the authoritative
                         // original with the displaced slot occupant. If dst was empty, custody clears.
-                        auto displaced = std::move(dst);
-                        dst = std::move(prepared.candidate);
-                        moveMon[idx] = std::move(displaced);
+                        PokeBank::UIModel::commitPreparedCandidate(
+                            moveMon[idx], dst, prepared.candidate);
                     }
 
                     if (g_debugLogging && dst) {
