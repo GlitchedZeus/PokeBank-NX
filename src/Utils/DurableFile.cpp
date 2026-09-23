@@ -1,5 +1,6 @@
 #include "Utils/DurableFile.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
