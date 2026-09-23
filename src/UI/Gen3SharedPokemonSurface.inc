@@ -875,14 +875,13 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {
         state.speciesPicker = false;
         return true;
     }
-    if (state.session.mode == SessionModel::Mode::Create && (down & HidNpadButton_Y)) {
+    if (down & HidNpadButton_Y) {
         state.speciesPreviewShiny = !state.speciesPreviewShiny;
         return true;
     }
     if (down & HidNpadButton_A) {
         if (state.session.setSpecies(state.speciesPreview, screen.sourceGameId)) {
-            if (state.session.mode == SessionModel::Mode::Create)
-                state.session.setShiny(state.speciesPreviewShiny);
+            state.session.setShiny(state.speciesPreviewShiny);
             state.speciesPicker = false;
             const auto& p = state.session.working;
             if (p.metLocation != 0) {
@@ -1516,18 +1515,14 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         fb.drawRoundedRect(px, py, pw, ph, 18, Colors::Divider, 1);
         fb.drawText(px + 24, py + 16, "Choose Species — Generation III", Colors::Text, TextStyle::Heading);
         SharedSpeciesPicker::drawContent(
-            fb, px + 18, py + 12, state.speciesPreview, 386,
-            state.session.mode == SessionModel::Mode::Create ? state.speciesPreviewShiny : p.shiny,
+            fb, px + 18, py + 12, state.speciesPreview, 386, state.speciesPreviewShiny,
             [](uint16_t species) {
                 return std::to_string(species) + "  " + Names::getSpeciesName(species);
             },
             [](uint16_t species) {
                 return std::string(Names::getSpeciesName(species));
             });
-        if (state.session.mode == SessionModel::Mode::Create)
-            drawNavBar(fb, {{"D-pad", "Browse"}, {"Y", "Shiny"}, {"A", "Choose"}, {"B", "Cancel"}});
-        else
-            drawNavBar(fb, {{"D-pad", "Browse"}, {"A", "Choose"}, {"B", "Cancel"}});
+        drawNavBar(fb, {{"D-pad", "Browse"}, {"Y", "Shiny"}, {"A", "Choose"}, {"B", "Cancel"}});
     }
     if (state.valuePicker) drawValuePicker(screen, fb, state);
 }
