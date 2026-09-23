@@ -115,11 +115,13 @@ void clearTransientSelection(TrainerViewScreen& screen, CarryState& state) noexc
     state.yFrames = 0;
     state.selecting = false;
     screen.currentlySelecting = false;
+    screen.controllerNavigation.reset();
 }
 
 void clearState(TrainerViewScreen& screen, CarryState& state) noexcept {
     setLegacyHoldingPresentation(screen, false);
     screen.currentlySelecting = false;
+    screen.controllerNavigation.reset();
     const auto owner = state.owner;
     const auto sourceGameId = state.sourceGameId;
     state = {};
@@ -491,7 +493,8 @@ void drawVisual(PKSEFramebuffer& fb, const CarriedVisual& visual, int cx, int cy
 
 } // namespace
 
-bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, const TouchInput& touch) {
+bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                 int stickX, int stickY, const TouchInput& touch) {
     auto& state = stateFor(screen);
 
     if (state.active) {
@@ -530,10 +533,14 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, const 
         }
         if (!(held & HidNpadButton_Y)) return beginSelectedGroup(screen, state);
         if (down & (HidNpadButton_L | HidNpadButton_R | HidNpadButton_A | HidNpadButton_X)) {
-            screen.postStatus("Hold Y and use the D-pad to resize; release Y to pick up", 180);
+            screen.postStatus("Hold Y and use D-pad/Stick to resize; release Y to pick up", 180);
             return true;
         }
-        resizeSelection(screen, state, down);
+        const uint64_t nav = screen.controllerNavigation.apply(
+            down, held, stickX, stickY,
+            HidNpadButton_Up, HidNpadButton_Down,
+            HidNpadButton_Left, HidNpadButton_Right);
+        resizeSelection(screen, state, nav);
         return true;
     }
 
@@ -557,7 +564,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, const 
                 screen.selectedBoxIndex = state.selectionBox;
                 screen.selectedItemIndex = state.selectionCursor;
                 screen.currentlySelecting = true;
-                screen.postStatus("Multi-select: hold Y, resize with D-pad, release Y to pick up", 260);
+                screen.controllerNavigation.reset();
+                screen.postStatus("Multi-select: hold Y, resize with D-pad/Stick, release Y to pick up", 260);
             }
             return true;
         }

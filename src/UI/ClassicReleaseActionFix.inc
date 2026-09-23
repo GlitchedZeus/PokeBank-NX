@@ -21,18 +21,27 @@ const char* releaseActionLabel(PokeBank::UIModel::Gen1Editor::Action action) noe
 
 } // namespace
 
-bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down) {
+bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                              int stickX, int stickY) {
     if (!isGen1SourceUX(screen)) return false;
     auto& state = ux2StateFor(screen);
     if (state.mode == UX2Mode::Actions) {
+        const uint64_t nav = screen.controllerNavigation.apply(
+            down, held, stickX, stickY,
+            HidNpadButton_Up, HidNpadButton_Down,
+            HidNpadButton_Left, HidNpadButton_Right);
         std::string error;
         const auto pokemon = ux2SelectedPokemon(screen, error);
         const auto actions = PokeBank::UIModel::Gen1Editor::actionsForSlot(static_cast<bool>(pokemon));
         const int rows = static_cast<int>(actions.count);
         if (rows <= 0) return true;
-        if (down & HidNpadButton_Up) state.row = (state.row + rows - 1) % rows;
-        if (down & HidNpadButton_Down) state.row = (state.row + 1) % rows;
-        if (down & HidNpadButton_B) { ux2Close(state); return true; }
+        if (nav & HidNpadButton_Up) state.row = (state.row + rows - 1) % rows;
+        if (nav & HidNpadButton_Down) state.row = (state.row + 1) % rows;
+        if (down & HidNpadButton_B) {
+            ux2Close(state);
+            screen.controllerNavigation.reset();
+            return true;
+        }
         if (!(down & HidNpadButton_A)) return true;
         using Action = PokeBank::UIModel::Gen1Editor::Action;
         switch (actions[static_cast<std::size_t>(state.row)]) {

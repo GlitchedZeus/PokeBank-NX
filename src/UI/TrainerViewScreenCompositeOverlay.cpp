@@ -223,9 +223,10 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     // the adapter's native capacity before any source action/move layer sees it.
     clampSourceBoxSelection(*this);
 
-    if (classicPackedMoveLayerAvailable(*this) && ClassicPackedMove::handleInput(*this, down, held, touch)) return;
+    if (classicPackedMoveLayerAvailable(*this) &&
+        ClassicPackedMove::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen3SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
-    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down)) return;
+    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
     if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
 
     if (Gen2PokemonEditor::handleFinalGen2SurfaceInput(*this, down, held, stick.x, stick.y, touch)) return;

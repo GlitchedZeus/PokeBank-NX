@@ -720,6 +720,8 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const u64 down = padGetButtonsDown(&pad);
+    const u64 heldButtons = padGetButtons(&pad);
+    const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 
     const bool validatedGSC = trainer.getGameGroup() == Enums::GameVersion::GSC && isGSCSource(*this);
     if (validatedGSC && details.active) {
@@ -730,7 +732,12 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     if (validatedGSC) {
         auto& overlay = editorOverlayState(*this);
         if (overlay.active) {
-            handleStagedEditorInput(*this, down);
+            const u64 navigated = controllerNavigation.apply(
+                down, heldButtons, stick.x, stick.y,
+                HidNpadButton_Up, HidNpadButton_Down,
+                HidNpadButton_Left, HidNpadButton_Right);
+            handleStagedEditorInput(*this, navigated);
+            if (!overlay.active) controllerNavigation.reset();
             return;
         }
 
@@ -739,6 +746,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
             !saveConfirmActive && !pickerActive && !itemEditDialogActive;
         if (pokemonEntrySurface && (down & HidNpadButton_X)) {
             openPokemonActions(*this);
+            controllerNavigation.reset();
             return;
         }
 
@@ -748,6 +756,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
             !saveConfirmActive && !pickerActive && !itemEditDialogActive;
         if (editorEntrySurface && (down & HidNpadButton_X)) {
             openStagedEditor(*this);
+            controllerNavigation.reset();
             return; // never let the inherited save/edit handlers interpret this X press
         }
     }
