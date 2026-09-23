@@ -159,6 +159,15 @@ int main() {
     assert(composite.find("text.replace(pos, std::char_traits<char>::length(oldLabel), \"Add\")") != std::string::npos);
     assert(composite.find("added to Box") != std::string::npos);
     assert(composite.find("Gen1MoveStatusParity") == std::string::npos);
+    const auto releaseActions = readFile("src/UI/ClassicReleaseActionFix.inc");
+    const auto gen1ReleaseStart = releaseActions.find(
+        "bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t held");
+    assert(gen1ReleaseStart != std::string::npos);
+    const auto gen1ReleaseInput = releaseActions.substr(gen1ReleaseStart);
+    assert(gen1ReleaseInput.find("screen.controllerNavigation.apply(") != std::string::npos);
+    assert(gen1ReleaseInput.find("nav & HidNpadButton_Up") != std::string::npos);
+    assert(gen1ReleaseInput.find("nav & HidNpadButton_Down") != std::string::npos);
+    assert(composite.find("handleReleaseActionInput(*this, down, held, stick.x, stick.y)") != std::string::npos);
 
     const auto workspace = readFile("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
     assert(workspace.find("ExitGuard::requiresConfirmation") != std::string::npos);

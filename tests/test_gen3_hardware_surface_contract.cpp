@@ -240,6 +240,11 @@ int main() {
     contains(move, "down & (HidNpadButton_A | HidNpadButton_X)");
     contains(move, "D-pad and L/R keep using the accepted box navigation path");
     contains(move, "screen.currentlySelecting = true");
+    contains(move, "int stickX, int stickY, const TouchInput& touch");
+    contains(move, "screen.controllerNavigation.apply(");
+    contains(move, "resizeSelection(screen, state, nav)");
+    contains(move, "D-pad/Stick to resize");
+    contains(surface, "{\"D-pad/Stick\", \"Browse\"}, {\"Y\", \"Shiny\"}");
     contains(move, "setLegacyHoldingPresentation(screen, true)");
     contains(move, "drawVisual(fb");
     contains(surface, "state.previewRecord");

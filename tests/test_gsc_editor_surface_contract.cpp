@@ -22,6 +22,11 @@ int main() {
     const auto pickerFix = readFile("src/UI/Gen2HardwarePickerFix.inc");
     const auto workspaceFix = readFile("src/UI/Gen2HardwareWorkspaceFix.inc");
     const auto finalFix = readFile("src/UI/Gen2HardwareFinalFix.inc");
+    const auto legacyOverlay = readFile("src/UI/TrainerViewScreenGSCOverlay.inc");
+    assert(legacyOverlay.find("const u64 heldButtons = padGetButtons(&pad)") != std::string::npos);
+    assert(legacyOverlay.find("const HidAnalogStickState stick = padGetStickPos(&pad, 0)") != std::string::npos);
+    assert(legacyOverlay.find("const u64 navigated = controllerNavigation.apply(") != std::string::npos);
+    assert(legacyOverlay.find("handleStagedEditorInput(*this, navigated)") != std::string::npos);
     const auto picker = readFile("src/UI/Gen2PokemonPickerOverlay.inc");
     assert(picker.find("(nav & HidNpadButton_Left)) picker.model.stepList(-10)") != std::string::npos);
     assert(picker.find("(nav & HidNpadButton_Right)) picker.model.stepList(10)") != std::string::npos);

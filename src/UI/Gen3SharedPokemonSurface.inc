@@ -1523,7 +1523,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             [](uint16_t species) {
                 return std::string(Names::getSpeciesName(species));
             });
-        drawNavBar(fb, {{"D-pad", "Browse"}, {"Y", "Shiny"}, {"A", "Choose"}, {"B", "Cancel"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Y", "Shiny"}, {"A", "Choose"}, {"B", "Cancel"}});
     }
     if (state.valuePicker) drawValuePicker(screen, fb, state);
 }
