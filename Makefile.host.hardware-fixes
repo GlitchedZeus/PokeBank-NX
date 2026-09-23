@@ -146,3 +146,21 @@ $(BACKUP_WORKSPACE_DURABILITY_TEST): tests/test_backup_workspace_durability.cpp 
 $(BACKUP_WORKSPACE_DURABILITY_SANITIZE): tests/test_backup_workspace_durability.cpp src/Save/GetSaveFileContents.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_backup_workspace_durability.cpp -o $@
+
+# A08: mutable backup workspaces are namespaced by Switch profile + exact game identity.
+BACKUP_NAMESPACE_TEST := $(HOST_BUILD)/test_backup_namespace_contract
+BACKUP_NAMESPACE_SANITIZE := $(HOST_BUILD)/test_backup_namespace_contract_sanitize
+BACKUP_NAMESPACE_SOURCES := tests/test_backup_namespace_contract.cpp src/Games/GameIdentity.cpp
+
+HOST_TESTS += $(BACKUP_NAMESPACE_TEST)
+HOST_SANITIZE_TESTS += $(BACKUP_NAMESPACE_SANITIZE)
+host-test: $(BACKUP_NAMESPACE_TEST)
+host-sanitize: $(BACKUP_NAMESPACE_SANITIZE)
+
+$(BACKUP_NAMESPACE_TEST): $(BACKUP_NAMESPACE_SOURCES) include/Utils/PokeBankPaths.h src/Utils/FileUtilities.cpp src/UI/BackupSelectionScreen.cpp src/UI/UI.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(BACKUP_NAMESPACE_SOURCES) -o $@
+
+$(BACKUP_NAMESPACE_SANITIZE): $(BACKUP_NAMESPACE_SOURCES) include/Utils/PokeBankPaths.h src/Utils/FileUtilities.cpp src/UI/BackupSelectionScreen.cpp src/UI/UI.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(BACKUP_NAMESPACE_SOURCES) -o $@
