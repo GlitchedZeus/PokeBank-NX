@@ -19,6 +19,7 @@
 
 #include "Pokemon/Pokemon.h"
 #include "Enums/GameVersion.h"
+#include "Trainer/BankFormatPolicy.h"
 
 namespace Trainer {
     class Bank {
@@ -28,7 +29,7 @@ namespace Trainer {
         /// slot N sits at a computable offset, which makes the file grow with this constant --
         /// 100 boxes is ~1.1 MB. Raising it is safe: the header stores the count the file was written
         /// with, and load() honours THAT, so a smaller older bank still opens (see load()).
-        static constexpr size_t BANK_BOX_COUNT = 100;
+        static constexpr size_t BANK_BOX_COUNT = BankFormatPolicy::currentBoxCount;
         static constexpr size_t BANK_SLOTS_PER_BOX = 30;    // 6x5 grid per box
 
         /// Constructs the unified bank and loads any existing on-SD contents. On first run it
@@ -76,6 +77,11 @@ namespace Trainer {
         /// UI over what may be a false positive. Writing proceeds; the anomaly is surfaced instead.
         size_t lastVerifyFailures() const noexcept { return verifyFailures; }
 
+        /// True when the on-disk Bank is valid enough to inspect but was written with a
+        /// newer/larger layout this build cannot round-trip without data loss.
+        bool isWriteBlocked() const noexcept { return writeBlocked; }
+        const std::string& writeBlockReason() const noexcept { return writeBlockReasonText; }
+
     private:
         std::string filePath() const;
         std::vector<uint8_t> serialize() const;    // full on-disk image of the current boxes
@@ -86,6 +92,8 @@ namespace Trainer {
         mutable std::vector<uint8_t> savedImage;   // serialized image as of the last load()/save()
         mutable size_t verifyFailures = 0;
         size_t loadRejects = 0;
+        bool writeBlocked = false;
+        std::string writeBlockReasonText;
     };
 }
 
