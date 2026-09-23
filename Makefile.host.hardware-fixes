@@ -164,3 +164,22 @@ $(BACKUP_NAMESPACE_TEST): $(BACKUP_NAMESPACE_SOURCES) include/Utils/PokeBankPath
 $(BACKUP_NAMESPACE_SANITIZE): $(BACKUP_NAMESPACE_SOURCES) include/Utils/PokeBankPaths.h src/Utils/FileUtilities.cpp src/UI/BackupSelectionScreen.cpp src/UI/UI.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(BACKUP_NAMESPACE_SOURCES) -o $@
+
+
+# A03: conversion/save-normalization must prepare a separate destination
+# candidate and keep the carried original immutable until slot commit.
+STORAGE_CONVERSION_CUSTODY_TEST := $(HOST_BUILD)/test_storage_conversion_custody_contract
+STORAGE_CONVERSION_CUSTODY_SANITIZE := $(HOST_BUILD)/test_storage_conversion_custody_contract_sanitize
+
+HOST_TESTS += $(STORAGE_CONVERSION_CUSTODY_TEST)
+HOST_SANITIZE_TESTS += $(STORAGE_CONVERSION_CUSTODY_SANITIZE)
+host-test: $(STORAGE_CONVERSION_CUSTODY_TEST)
+host-sanitize: $(STORAGE_CONVERSION_CUSTODY_SANITIZE)
+
+$(STORAGE_CONVERSION_CUSTODY_TEST): tests/test_storage_conversion_custody_contract.cpp include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_storage_conversion_custody_contract.cpp -o $@
+
+$(STORAGE_CONVERSION_CUSTODY_SANITIZE): tests/test_storage_conversion_custody_contract.cpp include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_storage_conversion_custody_contract.cpp -o $@
