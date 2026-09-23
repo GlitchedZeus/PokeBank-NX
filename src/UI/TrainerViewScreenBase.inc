@@ -1286,7 +1286,27 @@ namespace UI {
         while (!leaf.empty() && leaf.front() == ' ') leaf.erase(leaf.begin());
         if (leaf.empty()) return "";
 
-        const std::string gameDir = BASE_SAVE_DIRECTORY + "/" + titleName;
+        const auto* identity = PokeVault::Games::findSwitchGame(titleId);
+        if (!identity) {
+            Utils::logErrorToFile("Named backup refused: exact Switch game identity unavailable");
+            return "";
+        }
+        const std::string gameDir =
+            PokeBank::Paths::exactGameBackupsRoot(userUid, identity->id);
+        if (gameDir.empty()) {
+            Utils::logErrorToFile("Named backup refused: profile/exact-game namespace unavailable");
+            return "";
+        }
+
+        // The session itself must already be inside this exact profile/game root. This prevents
+        // an ownership-unknown legacy folder (or any unrelated owned path) from seeding a new
+        // writable backup merely because it reached this screen.
+        if (backupDir.rfind(gameDir + "/", 0) != 0) {
+            Utils::logErrorToFile("Named backup refused: current workspace is outside scoped game root",
+                                  backupDir.c_str());
+            return "";
+        }
+
         auto exists = [](const std::string& p) { struct stat st{}; return stat(p.c_str(), &st) == 0; };
 
         // Suffix rather than overwrite -- silently replacing a backup the user made earlier would be
