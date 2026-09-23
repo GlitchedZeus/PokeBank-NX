@@ -37,3 +37,21 @@ $(ENCOUNTER_GUARDRAILS_TEST): $(ENCOUNTER_GUARDRAILS_SOURCES) include/Integratio
 $(ENCOUNTER_GUARDRAILS_SANITIZE): $(ENCOUNTER_GUARDRAILS_SOURCES) include/Integration/Encounter/EncounterGuardrailsData.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(ENCOUNTER_GUARDRAILS_SOURCES) -o $@
+
+# Audit-phase custody regression. This source-contract test intentionally failed on the
+# accepted pre-audit checkpoint because returnHeldToOrigin() could clear an unplaced mon.
+STORAGE_CUSTODY_TEST := $(HOST_BUILD)/test_storage_custody_contract
+STORAGE_CUSTODY_SANITIZE := $(HOST_BUILD)/test_storage_custody_contract_sanitize
+
+HOST_TESTS += $(STORAGE_CUSTODY_TEST)
+HOST_SANITIZE_TESTS += $(STORAGE_CUSTODY_SANITIZE)
+host-test: $(STORAGE_CUSTODY_TEST)
+host-sanitize: $(STORAGE_CUSTODY_SANITIZE)
+
+$(STORAGE_CUSTODY_TEST): tests/test_storage_custody_contract.cpp src/UI/TrainerViewScreenBase.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_storage_custody_contract.cpp -o $@
+
+$(STORAGE_CUSTODY_SANITIZE): tests/test_storage_custody_contract.cpp src/UI/TrainerViewScreenBase.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_storage_custody_contract.cpp -o $@
