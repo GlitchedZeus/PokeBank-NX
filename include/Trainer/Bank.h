@@ -70,11 +70,8 @@ namespace Trainer {
         size_t lastLoadRejects() const noexcept { return loadRejects; }
 
         /// Occupied slots whose bytes did not survive an encrypt->decrypt round trip during the
-        /// last save(). The bank's contract is byte-in == byte-out, so non-zero means a PKSE bug.
-        ///
-        /// Reported rather than enforced ON PURPOSE. A failed bank save blocks leaving the storage
-        /// view, so treating a verification miss as a save failure would trap the user in the
-        /// UI over what may be a false positive. Writing proceeds; the anomaly is surfaced instead.
+        /// last save attempt. The bank's contract is byte-in == byte-out, so non-zero means the
+        /// image is NOT safe to persist. Audit hardening makes this a fail-closed save condition.
         size_t lastVerifyFailures() const noexcept { return verifyFailures; }
 
         /// True when the on-disk Bank is valid enough to inspect but was written with a
