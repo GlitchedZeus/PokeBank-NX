@@ -223,6 +223,8 @@ namespace Trainer {
             for (auto& slot : box)
                 slot.reset();
         for (auto& n : boxNames) n.clear();   // names revert on reload/discard too
+        writeBlocked = false;
+        writeBlockReasonText.clear();
 
         const std::string path = filePath();
         size_t fileSize = 0;
@@ -269,16 +271,20 @@ namespace Trainer {
         // where its names section begins -- using our own BANK_BOX_COUNT instead would look past the end
         // of any smaller, older bank and silently drop every custom box name the first time the count
         // was raised. Records are position-indexed, so a shorter table simply fills the low boxes.
-        uint32_t fileBoxes = readUInt32LittleEndian(file + 12);
-        if (fileBoxes == 0 || fileBoxes > 4096) {
-            // Header damaged or absurd; fall back to the record count the file can actually hold rather
-            // than trusting it to compute an offset.
-            fileBoxes = static_cast<uint32_t>(BANK_BOX_COUNT);
+        const uint32_t fileBoxes = readUInt32LittleEndian(file + 12);
+        const auto boxDisposition = BankFormatPolicy::classifyBoxCount(fileBoxes);
+        if (boxDisposition == BankFormatPolicy::Disposition::Invalid) {
+            abandonFile("invalid or unsupported bank box-count header");
+            return;
         }
-        if (fileBoxes > BANK_BOX_COUNT) {
-            // The bank was written by a build with MORE boxes. Everything past ours cannot be loaded,
-            // and saving would drop it, so say so loudly rather than quietly truncating someone's bank.
-            logErrorToFile("Bank: file has more boxes than this build supports; extra boxes will be lost if saved",
+        if (boxDisposition == BankFormatPolicy::Disposition::MigrationRequired) {
+            // Load only the prefix this build understands for inspection/export, but NEVER allow
+            // this process to overwrite the authoritative file: doing so would truncate every
+            // unseen box. A future explicit migration must preserve the full original generation.
+            writeBlocked = true;
+            writeBlockReasonText =
+                "This Bank was created with more boxes than this build supports; migration is required.";
+            logErrorToFile("Bank: newer/larger layout opened read-only; migration required",
                            std::to_string(fileBoxes).c_str());
         }
         const size_t fileTotal = static_cast<size_t>(fileBoxes) * BANK_SLOTS_PER_BOX;
@@ -427,6 +433,12 @@ namespace Trainer {
     }
 
     bool Bank::save() const {
+        if (writeBlocked) {
+            logErrorToFile("Bank: save blocked to prevent truncating a newer/larger layout",
+                           writeBlockReasonText.c_str());
+            return false;
+        }
+
         // Ensure the bank directory exists.
         const std::string dir = PokeBank::Paths::legacyBankRoot();
         std::string pathError;
