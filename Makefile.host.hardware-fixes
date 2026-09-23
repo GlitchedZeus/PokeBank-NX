@@ -91,3 +91,21 @@ $(BANK_FORMAT_POLICY_TEST): tests/test_bank_format_policy.cpp include/Trainer/Ba
 $(BANK_FORMAT_POLICY_SANITIZE): tests/test_bank_format_policy.cpp include/Trainer/BankFormatPolicy.h src/Trainer/Bank.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bank_format_policy.cpp -o $@
+
+# Audit-phase recovery evidence regression: preserving a new unreadable Bank must never
+# delete a previously preserved casualty.
+BANK_RECOVERY_CONTRACT_TEST := $(HOST_BUILD)/test_bank_recovery_contract
+BANK_RECOVERY_CONTRACT_SANITIZE := $(HOST_BUILD)/test_bank_recovery_contract_sanitize
+
+HOST_TESTS += $(BANK_RECOVERY_CONTRACT_TEST)
+HOST_SANITIZE_TESTS += $(BANK_RECOVERY_CONTRACT_SANITIZE)
+host-test: $(BANK_RECOVERY_CONTRACT_TEST)
+host-sanitize: $(BANK_RECOVERY_CONTRACT_SANITIZE)
+
+$(BANK_RECOVERY_CONTRACT_TEST): tests/test_bank_recovery_contract.cpp src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_bank_recovery_contract.cpp -o $@
+
+$(BANK_RECOVERY_CONTRACT_SANITIZE): tests/test_bank_recovery_contract.cpp src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bank_recovery_contract.cpp -o $@
