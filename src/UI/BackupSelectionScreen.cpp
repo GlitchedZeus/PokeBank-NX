@@ -79,8 +79,12 @@ namespace UI {
         // never stored AccountUid, so current-user ownership cannot be proven. Include old Working/
         // as well: it may contain the only surviving edited staging copy and must not disappear.
         for (const auto& name : listBackupDirectories(legacyGameDirectory.c_str(), true)) {
-            const std::string path = PokeBank::Paths::child(legacyGameDirectory, name);
-            if (path.empty()) continue;
+            // name is a directory entry discovered under legacyGameDirectory. Preserve historical
+            // custom names verbatim (including spaces); reject only traversal/separator shapes.
+            if (name.empty() || name == "." || name == ".." ||
+                name.find('/') != std::string::npos) continue;
+            const std::string path = legacyGameDirectory + "/" + name;
+            if (!PokeBank::Paths::isOwnedPath(path)) continue;
             BackupInfo info;
             info.timestamp = name;
             info.path = path;
