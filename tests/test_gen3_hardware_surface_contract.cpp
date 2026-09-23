@@ -104,6 +104,12 @@ int main() {
     contains(surface, "SessionModel::nativeAbilitySlots(state.session.working.species)");
     contains(surface, "target != PickerTarget::Ability &&");
     contains(surface, "state.session.setShiny");
+    // Gen III Create species picker owns a cancellable shiny preview on Y.
+    contains(surface, "state.speciesPreviewShiny = p.shiny");
+    contains(surface, "state.session.mode == SessionModel::Mode::Create && (down & HidNpadButton_Y)");
+    contains(surface, "state.speciesPreviewShiny = !state.speciesPreviewShiny");
+    contains(surface, "state.session.setShiny(state.speciesPreviewShiny)");
+    contains(surface, "{{\"D-pad\", \"Browse\"}, {\"Y\", \"Shiny\"}, {\"A\", \"Choose\"}, {\"B\", \"Cancel\"}}");
     contains(surface, "PID (read-only)");
     contains(surface, "Trainer ID");
     contains(surface, "down & (HidNpadButton_Left | HidNpadButton_L)");
