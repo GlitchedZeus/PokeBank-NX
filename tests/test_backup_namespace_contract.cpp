@@ -103,6 +103,9 @@ int main() {
     assert(screen.find("exactGameBackupsRoot(userUid, identity->id)") != std::string::npos);
     assert(screen.find("legacyUnscopedGameBackupsRoot(titleName)") != std::string::npos);
     assert(screen.find("listBackupDirectories(legacyGameDirectory.c_str(), true)") != std::string::npos);
+    // Scoped named backups are also discovered directory entries; preserve safe names with spaces.
+    assert(screen.find("gameDirectory + \"/\" + name") != std::string::npos);
+    assert(screen.find("child(gameDirectory, name)") == std::string::npos);
     assert(screen.find("LEGACY UNSCOPED / OWNERSHIP UNKNOWN") != std::string::npos);
     assert(screen.find("if (chosen.legacyUnscoped)") != std::string::npos);
     // Legacy folder names came from readdir under the already-owned title directory. Preserve
