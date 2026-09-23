@@ -166,13 +166,93 @@ This is not authorization for live writes and is not an A08 ownership collision.
 directory-generation/recovery problem: future hardening should stage the complete directory
 generation, verify it, then promote/recover it as one logical snapshot.
 
+## A03 hardening tranche — immutable custody + prepared destination candidates
+
+The pre-A03 storage placement path adapted the authoritative carried object in place before final
+slot placement. Cross-game placement could replace `moveMon[idx]` with the converted representation,
+while same-game placement could run destination-only AffixedRibbon/checksum repair directly against
+the carried object. A refused/cancelled/blocked placement therefore risked returning a representation
+different from the one originally picked up.
+
+The storage path now separates **authoritative custody** from a disposable **PreparedPlacement**:
+
+```text
+authoritative carried original
+-> prepare destination candidate from const source
+-> validate/accept candidate
+-> commit destination ownership
+-> only then retire/replace original custody
+```
+
+Implementation pieces:
+
+- `TrainerViewScreen::prepareForPane(const Pokemon::Pokemon&, int)` reads the carried original
+  without replacing it;
+- Bank destination sets `useOriginal` and performs no conversion, normalization or checksum rewrite;
+- same-game save placement clones to a candidate, then runs destination-only
+  `normalizeAffixedRibbon` + `refreshChecksum` on that candidate;
+- cross-game save placement calls `Conversion::convert()` with the const original and keeps the
+  returned destination-format object separate;
+- `PokeBank::UIModel::commitNativeSwap()` moves the exact native object for Bank placement;
+- `PokeBank::UIModel::commitPreparedCandidate()` assigns destination ownership first, then replaces
+  carried custody with the displaced destination occupant (or clears custody when destination was empty).
+
+Occupied-slot swaps therefore preserve the displaced Pokémon as native held custody. A blocked cell
+never executes either commit primitive, so its original remains in `moveMon` unchanged. Multi-cell
+placement retains the existing partial-success UX: successful cells may commit while blocked cells
+remain original and in hand.
+
+Warnings for LGPE/Gen III downgrade are still resolved before `putDownBlock()` performs preparation,
+so cancelling the warning cannot leave a hidden converted candidate in custody. A02 rollback remains
+in force: return-to-origin restores the still-authoritative carried representation.
+
+`hasUnsavedChanges` is set by successful placement, not merely by candidate preparation.
+
+### A03 regression coverage
+
+`tests/test_storage_conversion_custody_contract.cpp` now locks:
+
+- the old mutating `convertForPane(unique_ptr&, ...)` API is gone;
+- preparation accepts a const original;
+- Bank placement uses the original object with no candidate conversion;
+- same-game normalization occurs only on a cloned candidate;
+- cross-game conversion produces a separate candidate;
+- locked destinations are rejected before preparation;
+- failed preparation continues without any commit;
+- warning/cancel flow occurs before candidate preparation;
+- A02 return-to-origin custody protection remains present;
+- executable occupied/empty destination commit-order tests prove the candidate owns the destination
+  before the original is retired;
+- executable Bank swap tests prove the exact native object changes location and the displaced object
+  becomes custody.
+
+A03 implementation checkpoint:
+
+```text
+application SHA:
+cfb0d6901962c5cd8286dba3f60bab9144c3f60a
+
+PokeBank NX Host Tests:
+35889300643 / #1098 / SUCCESS
+
+Audit Hardening Native Validation:
+35889293109 / #15 / SUCCESS
+```
+
+This is CI verification only. It does not transfer physical-device acceptance from the accepted Gen
+I–III checkpoint.
+
+A03 does **not** solve A04. Slot ownership is now ordered safely in memory, but Bank persistence,
+destination-save persistence, source retirement and crash recovery are not yet one durable
+cross-store transaction.
+
 ## Current A01–A09 status
 
 | ID | Current status | Remaining gate |
 |---|---|---|
 | A01 | IMPLEMENTED | Durable single-file Bank replacement exists; physical Switch SD/FAT32/exFAT recovery behavior still needs hardware testing |
 | A02 | FIXED | Failed rollback retains held Pokémon custody |
-| A03 | OPEN / P1 | Conversion still replaces authoritative held representation before destination commit |
+| A03 | IMPLEMENTED | Authoritative carried Pokémon remains unchanged until destination candidate/native placement commit; A04 durable cross-store transaction still required |
 | A04 | OPEN / P1 | No cross-store destination-first Move transaction journal/recovery yet |
 | A05 | FIXED | Unreadable Bank casualties use unique preserved generations |
 | A06 | FIXED | BDSP minimum-layout/truncation refusal is guarded before fixed-offset parsing |
