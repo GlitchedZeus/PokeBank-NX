@@ -176,10 +176,10 @@ HOST_SANITIZE_TESTS += $(STORAGE_CONVERSION_CUSTODY_SANITIZE)
 host-test: $(STORAGE_CONVERSION_CUSTODY_TEST)
 host-sanitize: $(STORAGE_CONVERSION_CUSTODY_SANITIZE)
 
-$(STORAGE_CONVERSION_CUSTODY_TEST): tests/test_storage_conversion_custody_contract.cpp include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc
+$(STORAGE_CONVERSION_CUSTODY_TEST): tests/test_storage_conversion_custody_contract.cpp include/UI/StoragePlacementCommit.h include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude tests/test_storage_conversion_custody_contract.cpp -o $@
 
-$(STORAGE_CONVERSION_CUSTODY_SANITIZE): tests/test_storage_conversion_custody_contract.cpp include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc
+$(STORAGE_CONVERSION_CUSTODY_SANITIZE): tests/test_storage_conversion_custody_contract.cpp include/UI/StoragePlacementCommit.h include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_storage_conversion_custody_contract.cpp -o $@
