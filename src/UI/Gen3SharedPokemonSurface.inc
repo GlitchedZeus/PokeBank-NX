@@ -636,6 +636,7 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         state.speciesPreview = std::clamp<uint16_t>(p.species, 1, 386);
         state.speciesPreviewShiny = p.shiny;
         state.speciesPicker = true;
+        screen.controllerNavigation.reset();
         return;
     }
     if (row == 1) {
@@ -1666,26 +1667,31 @@ bool ownsFrame(const TrainerViewScreen& screen) noexcept {
 
 bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
                  int stickX, int stickY, const TouchInput& touch) {
-    (void)held;
-    (void)stickX;
-    (void)stickY;
     (void)touch;
     if (!isGen3Gba(screen)) return false;
 
     beginPassiveView(screen);
     auto& state = stateFor(screen);
+    const bool ownsNavigation = state.legality || state.confirmRelease || state.review ||
+                                workspaceActive(state) || state.actions;
+    const u64 navigated = ownsNavigation
+        ? screen.controllerNavigation.apply(
+              down, held, stickX, stickY,
+              HidNpadButton_Up, HidNpadButton_Down,
+              HidNpadButton_Left, HidNpadButton_Right)
+        : down;
     if (state.legality) {
-        if (down & HidNpadButton_B) {
+        if (navigated & HidNpadButton_B) {
             state.legality = false;
             state.actions = true;
             screen.controllerNavigation.reset();
         }
         return true;
     }
-    if (handleReleaseConfirm(screen, state, down)) return true;
-    if (handleReview(screen, state, down)) return true;
-    if (handleWorkspace(screen, state, down)) return true;
-    if (handleActions(screen, state, down)) return true;
+    if (handleReleaseConfirm(screen, state, navigated)) return true;
+    if (handleReview(screen, state, navigated)) return true;
+    if (handleWorkspace(screen, state, navigated)) return true;
+    if (handleActions(screen, state, navigated)) return true;
 
     if (!boxEntrySurface(screen)) return false;
     const bool occupied = selectedOccupied(screen);
