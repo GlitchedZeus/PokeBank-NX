@@ -856,6 +856,10 @@ namespace Conversion {
                 if (report) {
                     report->addLoss(Loss::StatTrainingReset);
                     report->addLoss(Loss::RibbonDataDropped);
+                    // PB7 has a legacy item field but Let's Go has no held-item mechanic. The remap
+                    // deliberately clears it before the general destination sanitizer runs, so report
+                    // the semantic loss here while the source value is still observable.
+                    if (rd16(buf, 0x0A) != 0) report->addLoss(Loss::HeldItemDropped);
                 }
                 buf = remapPK8toPB7(buf);
             } else if (destGroup == GameVersion::FRLG) {
