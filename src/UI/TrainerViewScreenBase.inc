@@ -676,9 +676,11 @@ namespace UI {
         crossStoreBaseline.editorDirtyBeforePickup =
             details.editing || creator.editing || statEdit.dialogActive ||
             itemEditDialogActive || swapActive;
+        // The snapshot exists even if this exact source cannot later participate in true Move.
+        // That lets B/return restore the pre-pickup dirty state for ordinary same-store staging too.
+        crossStoreBaseline.captured = true;
 
         if (copyOperation) {
-            crossStoreBaseline.captured = true;
             return true;
         }
 
@@ -2005,7 +2007,6 @@ namespace UI {
         heldPane = pane; heldFromBox = box; heldFromSlot = baseY * cols + baseX;
         currentlySelecting = false;
 
-        if (remove && carriedCount() > 0 && pane == 0) hasUnsavedChanges = true;
         if (lockedLeft > 0)
             postStatus(std::to_string(lockedLeft) + " party-linked slot(s) stayed behind.", 180);
 
