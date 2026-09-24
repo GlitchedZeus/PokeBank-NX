@@ -474,7 +474,7 @@ namespace Trainer {
         }
         const uint32_t fileBoxes = readUInt32LittleEndian(image.data() + 12);
         const auto disposition = BankFormatPolicy::classifyBoxCount(fileBoxes);
-        if (disposition != BankFormatPolicy::Disposition::CurrentCompatible) {
+        if (disposition != BankFormatPolicy::Disposition::Supported) {
             error = disposition == BankFormatPolicy::Disposition::MigrationRequired
                 ? "Bank image requires migration before write"
                 : "Bank image box count is invalid";
