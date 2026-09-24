@@ -35,6 +35,7 @@
 #include "Utils/Logger.h"
 #include "Utils/EventLog.h"
 #include "Utils/FileUtilities.h"
+#include "Utils/PokeBankPaths.h"
 #include "Utils/Settings.h"
 #include "Trainer/Trainer.h"
 #include "Trainer/Inventory.h"
