@@ -266,113 +266,206 @@ void proveSourceUnchanged(const Pokemon::Pokemon& source,
 int main() {
     using namespace Conversion;
 
-    // F05: real PK3 -> PK8 -> PK3 entity path at the Gen III/modern shiny threshold boundary.
+    // F05: real PK3 -> PK8 -> PK3 entity paths across the Gen III/modern shiny threshold.
     {
-        const uint32_t id32 = 0x12345678u;
-        const uint32_t pid = id32 ^ 8u; // Gen III non-shiny; modern threshold would call it shiny.
-        auto source = blankPK3(pid, id32);
-        configurePK3(*source, 25, pid, id32);
-        assert(!source->isShiny(id32, ""));
+        struct ShinyCase { uint32_t xorValue; bool shiny; bool adjusted; const char* name; };
+        const ShinyCase cases[] = {
+            {0u,  true,  false, "xor-0-shiny"},
+            {8u,  false, true,  "xor-8-boundary"},
+            {16u, false, false, "xor-16-nonshiny"},
+        };
+        for (const auto& c : cases) {
+            const uint32_t id32 = 0x12345678u;
+            const uint32_t pid = id32 ^ c.xorValue;
+            auto source = blankPK3(pid, id32);
+            configurePK3(*source, 25, pid, id32);
+            assert(source->isShiny(id32, "") == c.shiny);
 
-        const auto before = nativeBytes(*source);
-        const auto sourceHash = hashBytes(before);
-        Report upReport;
-        Result result = Result::Unsupported;
-        auto modern = convert(*source, GameVersion::SWSH, result,
-                              static_cast<uint8_t>(GameVersion::SW), &upReport);
-        assert(result == Result::Ok && modern);
-        proveSourceUnchanged(*source, before, sourceHash);
-        assert(modern->speciesID() == source->speciesID());
-        assert(modern->nature() == source->nature());
-        assert(modern->gender() == source->gender());
-        assert(modern->ability() == source->ability());
-        assert(!modern->isShiny(id32, ""));
-        assert(modern->pid() == (pid ^ 0x80000000u));
-        assert(modern->encryptionConstant() == pid);
-        assert(upReport.hasAdaptation(Adaptation::PidAdjustedForShinyThreshold));
-        assertSerializedReparse(*modern);
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Report upReport;
+            Result result = Result::Unsupported;
+            auto modern = convert(*source, GameVersion::SWSH, result,
+                                  static_cast<uint8_t>(GameVersion::SW), &upReport);
+            assert(result == Result::Ok && modern);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(modern->speciesID() == source->speciesID());
+            assert(modern->nature() == source->nature());
+            assert(modern->gender() == source->gender());
+            assert(modern->ability() == source->ability());
+            assert(modern->isShiny(id32, "") == c.shiny);
+            assert(upReport.hasAdaptation(Adaptation::PidAdjustedForShinyThreshold) == c.adjusted);
+            assert(modern->pid() == (c.adjusted ? (pid ^ 0x80000000u) : pid));
+            assert(modern->encryptionConstant() == pid);
+            assertSerializedReparse(*modern);
 
-        const auto modernBefore = nativeBytes(*modern);
-        const auto modernHash = hashBytes(modernBefore);
-        Report downReport;
-        auto roundTrip = convert(*modern, GameVersion::FRLG, result,
-                                 static_cast<uint8_t>(GameVersion::FR), &downReport);
-        assert(result == Result::Ok && roundTrip);
-        proveSourceUnchanged(*modern, modernBefore, modernHash);
-        assert(roundTrip->speciesID() == source->speciesID());
-        assert(roundTrip->nature() == source->nature());
-        assert(roundTrip->gender() == source->gender());
-        assert(roundTrip->ability() == source->ability());
-        assert(roundTrip->isShiny(id32, "") == source->isShiny(id32, ""));
-        assertSerializedReparse(*roundTrip);
+            const auto modernBefore = nativeBytes(*modern);
+            const auto modernHash = hashBytes(modernBefore);
+            Report downReport;
+            auto roundTrip = convert(*modern, GameVersion::FRLG, result,
+                                     static_cast<uint8_t>(GameVersion::FR), &downReport);
+            assert(result == Result::Ok && roundTrip);
+            proveSourceUnchanged(*modern, modernBefore, modernHash);
+            assert(roundTrip->speciesID() == source->speciesID());
+            assert(roundTrip->nature() == source->nature());
+            assert(roundTrip->gender() == source->gender());
+            assert(roundTrip->ability() == source->ability());
+            assert(roundTrip->isShiny(id32, "") == c.shiny);
+            assertSerializedReparse(*roundTrip);
 
-        std::cout << "fixture f05-pk3-swsh-boundary source-sha256=" << hexHash(sourceHash) << "\n";
+            std::cout << "fixture f05-pk3-swsh-" << c.name
+                      << " source-sha256=" << hexHash(sourceHash) << "\n";
+        }
     }
 
-    // F06: explicit modern Unown form -> PK3 PID-derived form -> modern form round trip.
+    // F06: multiple real modern Unown forms -> PK3 PID-derived form -> modern round trip.
     {
-        constexpr int wantedForm = 13;
-        const uint32_t pid = Gen3PidSearch::stampUnownForm(0x13579BDFu, wantedForm);
-        const uint32_t id32 = pid ^ 0x00000100u; // non-shiny under both thresholds
-        auto source = blankBDSP();
-        configureModern(*source, 201, wantedForm, pid, id32,
-                        static_cast<uint8_t>(GameVersion::BD), u"UNOWN", false);
-        assert(source->form() == wantedForm);
+        for (const int wantedForm : {0, 1, 13, 27}) {
+            const uint32_t pid = Gen3PidSearch::stampUnownForm(
+                0x13579BDFu + static_cast<uint32_t>(wantedForm) * 0x10101u, wantedForm);
+            const uint32_t id32 = pid ^ 0x00000100u; // non-shiny under both thresholds
+            auto source = blankBDSP(0x21314151u + static_cast<uint32_t>(wantedForm));
+            configureModern(*source, 201, static_cast<uint8_t>(wantedForm), pid, id32,
+                            static_cast<uint8_t>(GameVersion::BD), u"UNOWN", false);
+            assert(source->form() == wantedForm);
 
-        const auto before = nativeBytes(*source);
-        const auto sourceHash = hashBytes(before);
-        Report downReport;
-        Result result = Result::Unsupported;
-        auto pk3 = convert(*source, GameVersion::FRLG, result,
-                           static_cast<uint8_t>(GameVersion::FR), &downReport);
-        assert(result == Result::Ok && pk3);
-        proveSourceUnchanged(*source, before, sourceHash);
-        assert(pk3->speciesID() == 201);
-        assert(pk3->form() == wantedForm);
-        assert(pk3->nature() == source->nature());
-        assert(pk3->gender() == 2);
-        assert(pk3->isShiny(id32, "") == source->isShiny(id32, ""));
-        assert(downReport.hasLoss(Loss::OriginGameRestamped));
-        assertSerializedReparse(*pk3);
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Report downReport;
+            Result result = Result::Unsupported;
+            auto pk3 = convert(*source, GameVersion::FRLG, result,
+                               static_cast<uint8_t>(GameVersion::FR), &downReport);
+            assert(result == Result::Ok && pk3);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(pk3->speciesID() == 201);
+            assert(pk3->form() == wantedForm);
+            assert(pk3->nature() == source->nature());
+            assert(pk3->gender() == 2);
+            assert(pk3->isShiny(id32, "") == source->isShiny(id32, ""));
+            assert(downReport.hasLoss(Loss::OriginGameRestamped));
+            assertSerializedReparse(*pk3);
 
-        const auto pk3Before = nativeBytes(*pk3);
-        const auto pk3Hash = hashBytes(pk3Before);
-        Report upReport;
-        auto roundTrip = convert(*pk3, GameVersion::BDSP, result,
-                                 static_cast<uint8_t>(GameVersion::BD), &upReport);
-        assert(result == Result::Ok && roundTrip);
-        proveSourceUnchanged(*pk3, pk3Before, pk3Hash);
-        assert(roundTrip->speciesID() == 201);
-        assert(roundTrip->form() == wantedForm);
-        assert(roundTrip->nature() == pk3->nature());
-        assert(roundTrip->isShiny(id32, "") == pk3->isShiny(id32, ""));
-        assertSerializedReparse(*roundTrip);
+            const auto pk3Before = nativeBytes(*pk3);
+            const auto pk3Hash = hashBytes(pk3Before);
+            Report upReport;
+            auto roundTrip = convert(*pk3, GameVersion::BDSP, result,
+                                     static_cast<uint8_t>(GameVersion::BD), &upReport);
+            assert(result == Result::Ok && roundTrip);
+            proveSourceUnchanged(*pk3, pk3Before, pk3Hash);
+            assert(roundTrip->speciesID() == 201);
+            assert(roundTrip->form() == wantedForm);
+            assert(roundTrip->nature() == pk3->nature());
+            assert(roundTrip->isShiny(id32, "") == pk3->isShiny(id32, ""));
+            assertSerializedReparse(*roundTrip);
 
-        std::cout << "fixture f06-bdsp-unown13-pk3 source-sha256=" << hexHash(sourceHash) << "\n";
+            std::cout << "fixture f06-bdsp-unown" << wantedForm
+                      << "-pk3 source-sha256=" << hexHash(sourceHash) << "\n";
+        }
     }
 
-    // F08: hidden ability cannot be represented by PK3. Conversion must fail and source stays exact.
+    // F08: production ability ID + slot/number semantics, including duplicate and hidden ability.
     {
-        const uint32_t pid = 0x2468ACE0u;
-        const uint32_t id32 = pid ^ 0x00000100u;
-        auto source = blankSWSH();
-        configureModern(*source, 25, 0, pid, id32,
-                        static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
-        const auto& pi = Pokemon::getPersonalInfo(25, 0);
-        source->setAbility(pi.abilityHidden);
-        source->setAbilityNumber(4);
-        const auto before = nativeBytes(*source);
-        const auto sourceHash = hashBytes(before);
+        // Ralts has distinct Gen III normal abilities (Synchronize / Trace): both slots must round-trip.
+        const auto& raltsG3 = Pokemon::getPersonalInfoG3(280);
+        assert(raltsG3.ability1 != 0 && raltsG3.ability2 != 0 && raltsG3.ability1 != raltsG3.ability2);
+        for (const uint8_t slot : {uint8_t{1}, uint8_t{2}}) {
+            const uint32_t pid = 0x2468ACE0u + slot;
+            const uint32_t id32 = pid ^ 0x00000100u;
+            auto source = blankSWSH(0x10203040u + slot);
+            configureModern(*source, 280, 0, pid, id32,
+                            static_cast<uint8_t>(GameVersion::SW), u"RALTS", false);
+            const uint16_t ability = slot == 1 ? raltsG3.ability1 : raltsG3.ability2;
+            source->setAbility(ability);
+            source->setAbilityNumber(slot);
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
 
-        Report report;
-        Result result = Result::Ok;
-        auto failed = convert(*source, GameVersion::FRLG, result,
-                              static_cast<uint8_t>(GameVersion::FR), &report);
-        assert(!failed);
-        assert(result == Result::AbilityNotRepresentable);
-        proveSourceUnchanged(*source, before, sourceHash);
+            Report downReport;
+            Result result = Result::Unsupported;
+            auto pk3 = convert(*source, GameVersion::FRLG, result,
+                               static_cast<uint8_t>(GameVersion::FR), &downReport);
+            assert(result == Result::Ok && pk3);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(pk3->ability() == ability);
+            assertSerializedReparse(*pk3);
 
-        std::cout << "fixture f08-swsh-hidden-pk3-fail source-sha256=" << hexHash(sourceHash) << "\n";
+            const auto pk3Before = nativeBytes(*pk3);
+            const auto pk3Hash = hashBytes(pk3Before);
+            Report upReport;
+            auto roundTrip = convert(*pk3, GameVersion::SWSH, result,
+                                     static_cast<uint8_t>(GameVersion::SW), &upReport);
+            assert(result == Result::Ok && roundTrip);
+            proveSourceUnchanged(*pk3, pk3Before, pk3Hash);
+            assert(roundTrip->ability() == ability);
+            assert(roundTrip->abilityNumber() == slot);
+            assertSerializedReparse(*roundTrip);
+
+            std::cout << "fixture f08-ralts-slot" << static_cast<unsigned>(slot)
+                      << "-pk3 source-sha256=" << hexHash(sourceHash) << "\n";
+        }
+
+        // Pikachu has the same Gen III ability in both native slots. Slot 2 can be represented in PK3,
+        // but a later modern representation normalizes the redundant selector to slot 1 and declares it.
+        const auto& pikachuG3 = Pokemon::getPersonalInfoG3(25);
+        assert(pikachuG3.ability1 == pikachuG3.ability2 && pikachuG3.ability1 != 0);
+        {
+            const uint32_t pid = 0x2468ACF2u;
+            const uint32_t id32 = pid ^ 0x00000100u;
+            auto source = blankSWSH(0x10203052u);
+            configureModern(*source, 25, 0, pid, id32,
+                            static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
+            source->setAbility(pikachuG3.ability2);
+            source->setAbilityNumber(2);
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Report downReport;
+            Result result = Result::Unsupported;
+            auto pk3 = convert(*source, GameVersion::FRLG, result,
+                               static_cast<uint8_t>(GameVersion::FR), &downReport);
+            assert(result == Result::Ok && pk3);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(pk3->ability() == pikachuG3.ability1);
+            assertSerializedReparse(*pk3);
+
+            Report upReport;
+            auto roundTrip = convert(*pk3, GameVersion::SWSH, result,
+                                     static_cast<uint8_t>(GameVersion::SW), &upReport);
+            assert(result == Result::Ok && roundTrip);
+            assert(roundTrip->ability() == pikachuG3.ability1);
+            assert(roundTrip->abilityNumber() == 1);
+            assert(upReport.hasLoss(Loss::AbilitySlotNormalized));
+            assertSerializedReparse(*roundTrip);
+            std::cout << "fixture f08-pikachu-duplicate-slot2-pk3 source-sha256="
+                      << hexHash(sourceHash) << "\n";
+        }
+
+        // Hidden ability has no Gen III representation: fail closed and keep exact source bytes.
+        {
+            const uint32_t pid = 0x2468ACE0u;
+            const uint32_t id32 = pid ^ 0x00000100u;
+            auto source = blankSWSH();
+            configureModern(*source, 25, 0, pid, id32,
+                            static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
+            const auto& pi = Pokemon::getPersonalInfo(25, 0);
+            source->setAbility(pi.abilityHidden);
+            source->setAbilityNumber(4);
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+
+            Report report;
+            Result result = Result::Ok;
+            auto failed = convert(*source, GameVersion::FRLG, result,
+                                  static_cast<uint8_t>(GameVersion::FR), &report);
+            assert(!failed);
+            assert(result == Result::AbilityNotRepresentable);
+            proveSourceUnchanged(*source, before, sourceHash);
+
+            std::cout << "fixture f08-swsh-hidden-pk3-fail source-sha256="
+                      << hexHash(sourceHash) << "\n";
+        }
     }
 
     // F09: S/V -> Z-A drops Tera semantics explicitly and reparses as a valid PA9 entity.
@@ -459,6 +552,41 @@ int main() {
         assertSerializedReparse(*modern);
 
         std::cout << "fixture f10-pk3-ev-252-255 source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // F10 reverse: modern raw EV bytes 252/253/254/255 are representable by PK3 and are not
+    // silently clamped on down-conversion. Each fixture uses one nonzero stat so the destination total
+    // remains within the Gen III 510-EV gameplay limit; this distinguishes format/game validity from
+    // the later-generation per-stat 252 legality convention.
+    {
+        for (const uint8_t value : {uint8_t{252}, uint8_t{253}, uint8_t{254}, uint8_t{255}}) {
+            const uint32_t pid = 0x44556600u + value;
+            const uint32_t id32 = pid ^ 0x00000100u;
+            auto source = blankSWSH(0x40506000u + value);
+            configureModern(*source, 25, 0, pid, id32,
+                            static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
+            source->getData()[0x26] = static_cast<std::byte>(value); // raw HP EV byte in PK8 layout
+            for (int i = 1; i < 6; ++i) source->getData()[0x26 + i] = std::byte{0};
+            source->refreshChecksum();
+            assert(source->evHP() == value);
+
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Report report;
+            Result result = Result::Unsupported;
+            auto pk3 = convert(*source, GameVersion::FRLG, result,
+                               static_cast<uint8_t>(GameVersion::FR), &report);
+            assert(result == Result::Ok && pk3);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(pk3->evHP() == value);
+            assert(pk3->evATK() == 0 && pk3->evDEF() == 0 && pk3->evSPE() == 0
+                   && pk3->evSPA() == 0 && pk3->evSPD() == 0);
+            assert(!report.hasLoss(Loss::Gen3EVClamped));
+            assertSerializedReparse(*pk3);
+
+            std::cout << "fixture f10-swsh-raw-ev-" << static_cast<unsigned>(value)
+                      << "-pk3 source-sha256=" << hexHash(sourceHash) << "\n";
+        }
     }
 
     // F11/F13: representable custom nickname survives modern -> PK3 -> modern; modern origin

@@ -268,7 +268,8 @@ CONVERSION_ENTITY_GOLDEN_SOURCES := tests/test_conversion_entity_golden.cpp \
 	src/Pokemon/Pokemon9SV.cpp src/Pokemon/Pokemon9LZA.cpp \
 	src/Pokemon/BaseStatsGen7.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
 	src/Pokemon/PokemonTypes.cpp src/Pokemon/LearnsetTable.cpp src/Pokemon/Experience.cpp src/Pokemon/FormInfo.cpp \
-	src/Encryption/Encryption.cpp src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption7LGPE.cpp \
+	src/Encryption/Encryption.cpp src/Save/Block.cpp src/Enums/SCTypeCode.cpp \
+	src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption7LGPE.cpp \
 	src/Encryption/Encryption8SWSH.cpp src/Encryption/Encryption8BDSP.cpp src/Encryption/Encryption8LA.cpp \
 	src/Encryption/Encryption9SV.cpp src/Encryption/Encryption9LZA.cpp \
 	src/Names/ItemNames.cpp src/Names/ItemPresence.cpp src/Names/MoveInfo.cpp src/Names/SpeciesNames.cpp \
