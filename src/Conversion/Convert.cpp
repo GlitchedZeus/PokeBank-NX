@@ -84,6 +84,47 @@ namespace Conversion {
         inline bool isG8(GameVersion g) { return g == GameVersion::SWSH || g == GameVersion::BDSP; }
         inline bool isG9(GameVersion g) { return g == GameVersion::SV   || g == GameVersion::ZA;   }
 
+        uint64_t readU64(std::span<const std::byte> data, size_t offset) noexcept {
+            if (offset + 8 > data.size()) return 0;
+            uint64_t value = 0;
+            for (int i = 0; i < 8; ++i)
+                value |= static_cast<uint64_t>(static_cast<uint8_t>(data[offset + static_cast<size_t>(i)])) << (8 * i);
+            return value;
+        }
+
+        bool anyNonZero(std::span<const std::byte> data, size_t offset, size_t count) noexcept {
+            if (offset >= data.size()) return false;
+            const size_t end = std::min(data.size(), offset + count);
+            for (size_t i = offset; i < end; ++i)
+                if (static_cast<uint8_t>(data[i]) != 0) return true;
+            return false;
+        }
+
+        uint64_t homeTracker(const Pokemon::Pokemon& src) noexcept {
+            const auto data = src.getData();
+            switch (src.getGameGroup()) {
+                case GameVersion::SWSH:
+                case GameVersion::BDSP: return readU64(data, 0x135);
+                case GameVersion::PLA:  return readU64(data, 0x14D);
+                case GameVersion::SV:
+                case GameVersion::ZA:   return readU64(data, 0x127);
+                default:                return 0; // PB7 / PK3 have no HOME tracker field
+            }
+        }
+
+        bool hasModernMarks(const Pokemon::Pokemon& src) noexcept {
+            switch (src.getGameGroup()) {
+                case GameVersion::SWSH:
+                case GameVersion::BDSP:
+                case GameVersion::PLA:
+                case GameVersion::SV:
+                case GameVersion::ZA:
+                    return anyNonZero(src.getData(), 0x40, 0x08);
+                default:
+                    return false;
+            }
+        }
+
         // PK8/PK9 party record: the 0x148 stored block + a 0x10-byte battle-stat tail (level @0x148,
         // HP/ATK/DEF/SPE/SPA/SPD @0x14A-0x155). The tail is NOT part of the checksummed/encrypted region,
         // but it IS real storage the entity's level()/statXXX() accessors index -- so every buffer handed
@@ -522,6 +563,8 @@ namespace Conversion {
             const uint32_t iv32     = rd32(s, 0x48);
             const uint16_t origins  = rd16(s, 0x46);
             const uint8_t  abilBit  = (iv32 >> 31) & 1;
+            const uint32_t ribbons  = rd32(s, 0x4C);
+            if ((ribbons & 0x7FFFFFFFu) != 0 && report) report->addLoss(Loss::RibbonDataDropped);
             const uint32_t transferPid = Fidelity::adaptGen3PidForModern(pid, rd32(s, 0x04), report);
 
             uint8_t form = 0;   // Gen 3 stores no form except Unown (PID-derived)
@@ -611,6 +654,12 @@ namespace Conversion {
             const uint16_t national = rd16(s, 0x08);
             const uint32_t pk8iv    = rd32(s, 0x8C);
             const bool     isEgg    = (pk8iv >> 30) & 1;
+            if (report) {
+                if (anyNonZero(std::span<const std::byte>(s.data(), s.size()), 0x34, 0x0A))
+                    report->addLoss(Loss::RibbonDataDropped);
+                if (anyNonZero(std::span<const std::byte>(s.data(), s.size()), 0x40, 0x08))
+                    report->addLoss(Loss::MarkDataDropped);
+            }
 
             // Gen 3 derives nature/gender/shiny/ability ALL from the PID, but the source stores nature
             // and gender explicitly. A down-convert therefore needs a PID whose Gen-3-derived traits match
@@ -698,6 +747,18 @@ namespace Conversion {
 
         const GameVersion from = src.getGameGroup();
         const bool sourceNicknamed = src.isNicknamed();
+
+        // PB7 and PK3 have no HOME tracker field. A nonzero modern tracker is historical/provenance
+        // data, so dropping it must be explicit before any future source-retiring Move can be allowed.
+        if (report && (destGroup == GameVersion::GG || destGroup == GameVersion::FRLG)
+            && homeTracker(src) != 0)
+            report->addLoss(Loss::HomeTrackerDropped);
+
+        // PB7 and PK3 likewise cannot carry modern marks. Ribbon loss is handled by the format-specific
+        // remaps; marks are separate semantics and get their own loss bit.
+        if (report && (destGroup == GameVersion::GG || destGroup == GameVersion::FRLG)
+            && hasModernMarks(src))
+            report->addLoss(Loss::MarkDataDropped);
 
         // Current Gen III text support is the international table only. Fail closed rather than
         // corrupting/truncating Japanese or later-generation Korean/Chinese text.

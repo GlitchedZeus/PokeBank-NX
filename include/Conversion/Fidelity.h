@@ -23,6 +23,8 @@ namespace Conversion {
         PLAExclusiveDataDropped = 1u << 9,
         RibbonDataDropped       = 1u << 10,
         AbilitySlotNormalized    = 1u << 11,
+        HomeTrackerDropped       = 1u << 12,
+        MarkDataDropped           = 1u << 13,
     };
 
     enum class Adaptation : uint32_t {

@@ -730,7 +730,6 @@ int main() {
     // destination format (PB7 / PK3) has no tracker field. The loss bit is intentionally referenced
     // by its next stable mask value so this test compiles before the production enum is extended.
     {
-        constexpr Loss HomeTrackerDropped = static_cast<Loss>(1u << 12);
         const uint64_t tracker = 0x1122334455667788ULL;
         auto source = blankSWSH(0x70000001u);
         configureModern(*source, 25, 0, 0x1234ABCDu, 0x1234AACDu,
@@ -746,7 +745,7 @@ int main() {
                           static_cast<uint8_t>(GameVersion::GP), &ggReport);
         assert(result == Result::Ok && gg);
         proveSourceUnchanged(*source, before, sourceHash);
-        assert(ggReport.hasLoss(HomeTrackerDropped));
+        assert(ggReport.hasLoss(Loss::HomeTrackerDropped));
         assertSerializedReparse(*gg);
 
         Report g3Report;
@@ -754,7 +753,7 @@ int main() {
                            static_cast<uint8_t>(GameVersion::FR), &g3Report);
         assert(result == Result::Ok && pk3);
         proveSourceUnchanged(*source, before, sourceHash);
-        assert(g3Report.hasLoss(HomeTrackerDropped));
+        assert(g3Report.hasLoss(Loss::HomeTrackerDropped));
         assertSerializedReparse(*pk3);
 
         std::cout << "fixture route-home-tracker-to-trackerless source-sha256="
@@ -828,6 +827,8 @@ int main() {
                         static_cast<uint8_t>(GameVersion::SW), u"SPARKY", true);
         source->setHeldItem(1);
         source->setEV(0, 100);
+        source->getData()[0x40] = std::byte{0x04};
+        source->refreshChecksum();
         const auto before = nativeBytes(*source);
         const auto sourceHash = hashBytes(before);
         Report report;
@@ -840,6 +841,7 @@ int main() {
         assert(gg->evHP() == 0 && gg->avHP() == 0);
         assert(report.hasLoss(Loss::HeldItemDropped));
         assert(report.hasLoss(Loss::StatTrainingReset));
+        assert(report.hasLoss(Loss::MarkDataDropped));
         assertSerializedReparse(*gg);
         std::cout << "fixture route-swsh-lgpe-helditem-stat-reset source-sha256=" << hexHash(sourceHash) << "\n";
     }
