@@ -1232,3 +1232,175 @@ These fixtures are intentionally **route slices**, not blanket proof for every s
 combination. They do not unlock A04b cross-game source retirement. Route enablement remains a
 separate future decision after broader corpus coverage (ribbons/marks/HOME side data, forms, events,
 language tables and game-specific edge cases).
+
+
+## F05-F13 final fidelity checkpoint — 2026-09-24
+
+This checkpoint closes the requested **conversion-fidelity / golden-fixture audit tranche** only.
+It does **not** enable any cross-game A04b source retirement, live source write, Master Vault,
+another generation, BDSP file-set work, or N06.
+
+### Exact implementation checkpoint before this documentation capture
+
+```text
+application SHA:
+ff42ae8bc127942e19613d27e710aef89c25d31d
+
+tree:
+7de87c152ab395c9fc1ca0b90ed246efa35379cf
+
+PokeBank NX Host Tests:
+35970439207 / #1132 / SUCCESS
+
+Host normal suite:
+SUCCESS
+
+Focused RSE regression:
+SUCCESS
+
+ASan + UBSan:
+SUCCESS
+```
+
+The earlier native run `35970151738 / #39 / SUCCESS` belongs to
+`c0d4ec96da875a7c2d5e4e4c7ef3ea20a6ddf835`, immediately before the final F09
+loss-report fix, so it is retained as historical evidence only and is **not** transferred to
+`ff42ae8...`. This documentation update is on the native workflow trigger list; the exact-head
+native result for the final documented checkpoint is recorded in issue #69 / PR #79 after it completes.
+
+### Final F05-F13 disposition
+
+| ID | Classification | Exact tested conclusion |
+|---|---|---|
+| F05 shiny preservation | **PROVEN CORRECT BY FIXTURE** for tested PK3 <-> PK8 slice | Real PK3 -> Sword -> PK3 fixtures cover XOR 0 shiny, XOR 8 threshold boundary, and XOR 16 ordinary non-shiny. The Gen III XOR<8 vs modern XOR<16 difference uses the transfer-style top-PID-bit adaptation only when required; source bytes/hash remain exact and destination serialize/reparse/checksum passes. |
+| F06 PID-derived Unown form | **PROVEN CORRECT BY FIXTURE** for tested BDSP <-> PK3 slice | Real entity round trips cover forms 0, 1, 13 and 27. The Gen III PID search constrains the requested Unown form and the form-stamping helper is idempotent. |
+| F07 PID search exhaustion | **ALREADY FIXED** | Deterministic impossible-trait exhaustion returns no candidate and `TraitPreservationFailed`; the original incompatible PID is never silently reused. |
+| F08 ability slot / number | **PROVEN CORRECT BY FIXTURE** for tested semantics; impossible hidden ability is **UNSUPPORTED / FAIL CLOSED** | Real Ralts slot-1 and slot-2 conversions round-trip through PK3. Pikachu's duplicate Gen III ability selector is explicitly normalized/loss-declared on return to modern. Hidden ability -> PK3 returns `AbilityNotRepresentable`. |
+| F09 S/V <-> Z-A divergent fields | **CONFIRMED DEFECT -> FIXED / PROVEN BY FIXTURE** for tested slices | S/V -> Z-A declares Tera loss. Z-A -> S/V declares Alpha and divergent-field loss and synthesizes target-native Tera. Audit found that nonzero Z-A `0x94-0x9F` Plus-side data was being zeroed without contributing to `DivergentGameDataDropped`; `ff42ae8...` fixes both direct sibling and PK8-hub paths and adds real Z-A -> S/V and Z-A -> Sword fixtures. |
+| F10 Gen III EV 252/253/254/255 | **NEEDS POLICY -> POLICY CHOSEN / PROVEN BY FIXTURE** | Gen III -> modern preserves 252 and clamps 253/254/255 to 252 with `Gen3EVClamped`. Reverse modern raw-byte fixtures prove 252/253/254/255 are retained entering PK3 when each destination total remains within the Gen III gameplay limit. This distinguishes later 252 legality policy from Gen III's byte representation. |
+| F11 nickname / language / text | **PROVEN CORRECT BY FIXTURE** where representable; otherwise **UNSUPPORTED / FAIL CLOSED** | Representable custom nickname/OT/language survives Sword -> PK3 -> Sword. Default names canonicalize explicitly. Unmappable text and unsupported Gen III language tables return `TextNotRepresentable` / `LanguageNotRepresentable` instead of truncating or silently replacing. |
+| F13 profile / provenance implications | **NEEDS MORE FIXTURES / EXPLICIT BOUNDARY** | PKM conversion reports source origin separately from destination entity origin. Modern -> PK3 origin restamping is a declared `OriginGameRestamped` loss and must not overwrite historical provenance. Profile/account/current-location ownership is not a Pokémon payload field; it remains in the A08/A04b StoreDescriptor/session layer and must be carried into future Vault provenance rather than fabricated by conversion. |
+
+### Production entity fixtures now exercised
+
+```text
+F05
+- f05-pk3-swsh-xor-0-shiny
+- f05-pk3-swsh-xor-8-boundary
+- f05-pk3-swsh-xor-16-nonshiny
+
+F06
+- f06-bdsp-unown0-pk3
+- f06-bdsp-unown1-pk3
+- f06-bdsp-unown13-pk3
+- f06-bdsp-unown27-pk3
+
+F08
+- f08-ralts-slot1-pk3
+- f08-ralts-slot2-pk3
+- f08-pikachu-duplicate-slot2-pk3
+- f08-swsh-hidden-pk3-fail
+
+F09
+- f09-sv-za-tera
+- f09-za-sv-alpha-plus
+- f09-za-swsh-plus-hub
+
+F10
+- f10-pk3-ev-252-255
+- f10-swsh-raw-ev-252-pk3
+- f10-swsh-raw-ev-253-pk3
+- f10-swsh-raw-ev-254-pk3
+- f10-swsh-raw-ev-255-pk3
+
+F11 / F13
+- f11-f13-swsh-pk3-sparky
+- unsupported nickname/text -> PK3 explicit failure
+- unsupported language -> PK3 explicit failure
+```
+
+The generated policy-golden layer remains in addition to these production entity vectors.
+
+### Permanent golden-fixture assertions
+
+For each production fixture where conversion succeeds:
+
+1. serialize and capture exact native source bytes;
+2. SHA-256 the source;
+3. call `Conversion::convert(const Pokemon::Pokemon&, ...)`;
+4. prove source native bytes and SHA-256 are unchanged;
+5. serialize the destination candidate to its native encrypted entity form;
+6. reparse through the destination Pokémon class;
+7. require destination checksum validity;
+8. compare target-native semantic fields exercised by that route.
+
+Round trips are used where the formats can meaningfully support them. Byte differences caused by
+fields that do not exist in the opposite format are not hidden: they must be a declared `Loss`,
+a declared `Adaptation`, or an explicit conversion failure.
+
+### Declared conversion losses at tranche close
+
+```text
+Gen3EVClamped
+TeraDataDropped
+ZAAlphaDropped
+DivergentGameDataDropped
+OriginGameRestamped
+MoveDropped
+RelearnMoveDropped
+HeldItemDropped
+StatTrainingReset
+PLAExclusiveDataDropped
+RibbonDataDropped
+AbilitySlotNormalized
+```
+
+Declared deterministic adaptations:
+
+```text
+PidAdjustedForShinyThreshold
+TargetDefaultTeraSynthesized
+MovePPClamped
+Gen3TransferDateSynthesized
+DefaultNicknameCanonicalized
+```
+
+### Route-level true-Move gate
+
+**ROUTE ELIGIBLE FOR FUTURE TRUE-MOVE ENABLEMENT: none yet.**
+
+Every cross-game A04b route remains:
+
+```text
+ROUTE MUST REMAIN DISABLED
+```
+
+The fixture tranche proves specific semantic rules and route slices; it does not yet prove every
+species/form/event/ribbon/mark/HOME-tracker/game-specific side field for an entire game-pair corpus.
+It also does not yet provide the user-visible acknowledgement required before retiring a source
+behind a candidate with declared loss.
+
+Species or forms absent from the destination remain hard fail-closed through the destination dex gate.
+A Pokémon with target-unrepresentable semantics such as a hidden ability entering Gen III likewise
+fails with no candidate. Representable-as-loss cases such as Z-A Alpha/Tera/divergent data may be
+built as staged candidates with declared loss, but **cannot retire the source through cross-game
+true Move** in the current product.
+
+### Remaining conversion risks / enablement blockers
+
+- broader real fixture corpus for forms, events, ribbons, marks and HOME tracker behavior;
+- LGPE and PLA route-specific production goldens beyond the policy-level loss declarations;
+- full language tables, especially Japanese Gen III, if those routes are to become supported rather
+  than fail-closed;
+- user-visible loss acknowledgement and persisted provenance before any route with declared loss can
+  be source-retiring;
+- `canConvert()` is a coarse dex/route preflight; final candidate creation remains authoritative for
+  ability/text/language fidelity failures. This is safe today because conversion failure retains
+  custody, but UI preflight should eventually expose the more specific reason before route enablement;
+- profile/account/current-location provenance remains a store/session responsibility rather than a
+  PKM field and needs end-to-end fixtures before future Vault authority.
+
+### Tranche stop
+
+F05-F13 conversion-fidelity work stops here. Do not automatically begin BDSP multi-file
+transactions, N06 directory promotion, Master Vault, Gen IV/DS/3DS, or live source writes.
