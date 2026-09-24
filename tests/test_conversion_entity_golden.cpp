@@ -2,14 +2,18 @@
 #include "Conversion/Fidelity.h"
 #include "Conversion/Gen3PidSearch.h"
 #include "Encryption/Encryption3FRLG.h"
+#include "Encryption/Encryption7LGPE.h"
 #include "Encryption/Encryption8SWSH.h"
+#include "Encryption/Encryption8LA.h"
 #include "Encryption/Encryption8BDSP.h"
 #include "Encryption/Encryption9SV.h"
 #include "Encryption/Encryption9LZA.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/PersonalInfoTable.h"
 #include "Pokemon/Pokemon3FRLG.h"
+#include "Pokemon/Pokemon7LGPE.h"
 #include "Pokemon/Pokemon8SWSH.h"
+#include "Pokemon/Pokemon8LA.h"
 #include "Pokemon/Pokemon8BDSP.h"
 #include "Pokemon/Pokemon9SV.h"
 #include "Pokemon/Pokemon9LZA.h"
@@ -43,6 +47,14 @@ void wr32(std::vector<std::byte>& b, std::size_t o, uint32_t v) {
     wr16(b, o, static_cast<uint16_t>(v));
     wr16(b, o + 2, static_cast<uint16_t>(v >> 16));
 }
+void wr64(std::span<std::byte> b, std::size_t o, uint64_t v) {
+    for (int i = 0; i < 8; ++i) b[o + static_cast<std::size_t>(i)] = static_cast<std::byte>(v >> (8 * i));
+}
+uint64_t rd64(std::span<const std::byte> b, std::size_t o) {
+    uint64_t v = 0;
+    for (int i = 0; i < 8; ++i) v |= static_cast<uint64_t>(static_cast<uint8_t>(b[o + static_cast<std::size_t>(i)])) << (8 * i);
+    return v;
+}
 
 std::array<uint8_t, 32> hashBytes(std::span<const std::byte> bytes) {
     Utils::SHA256 sha;
@@ -65,11 +77,17 @@ std::vector<std::byte> nativeBytes(const Pokemon::Pokemon& pk) {
         case GameVersion::FRLG:
             encrypted = Encryption::encryptArray3FRLG(data);
             break;
+        case GameVersion::GG:
+            encrypted = Encryption::encryptArray7LGPE(data, pk.encryptionConstant());
+            break;
         case GameVersion::SWSH:
             encrypted = Encryption::encryptArray8SWSH(data, pk.encryptionConstant());
             break;
         case GameVersion::BDSP:
             encrypted = Encryption::encryptArray8BDSP(data, pk.encryptionConstant());
+            break;
+        case GameVersion::PLA:
+            encrypted = Encryption::encryptArray8LA(data, pk.encryptionConstant());
             break;
         case GameVersion::SV:
             encrypted = Encryption::encryptArray9SV(data, pk.encryptionConstant());
@@ -90,8 +108,10 @@ std::unique_ptr<Pokemon::Pokemon> reparse(GameVersion group, const std::vector<s
     const std::span<const std::byte> bytes(native.data(), native.size());
     switch (group) {
         case GameVersion::FRLG: return std::make_unique<Pokemon::Pokemon3FRLG>(bytes);
+        case GameVersion::GG:   return std::make_unique<Pokemon::Pokemon7LGPE>(bytes);
         case GameVersion::SWSH: return std::make_unique<Pokemon::Pokemon8SWSH>(bytes);
         case GameVersion::BDSP: return std::make_unique<Pokemon::Pokemon8BDSP>(bytes);
+        case GameVersion::PLA:  return std::make_unique<Pokemon::Pokemon8LA>(bytes);
         case GameVersion::SV:   return std::make_unique<Pokemon::Pokemon9SV>(bytes);
         case GameVersion::ZA:   return std::make_unique<Pokemon::Pokemon9LZA>(bytes);
         default: return nullptr;
@@ -158,6 +178,17 @@ std::unique_ptr<Pokemon::Pokemon3FRLG> blankPK3(uint32_t pid, uint32_t id32) {
     return out;
 }
 
+std::unique_ptr<Pokemon::Pokemon7LGPE> blankGG(uint32_t ec = 0x0A0B0C0Du) {
+    std::vector<std::byte> dec(0x104, std::byte{0});
+    wr32(dec, 0x00, ec);
+    std::byte* enc = Encryption::encryptArray7LGPE(dec, ec);
+    auto out = std::make_unique<Pokemon::Pokemon7LGPE>(
+        std::span<const std::byte>(enc, dec.size()));
+    delete[] enc;
+    assert(out->checksumValid());
+    return out;
+}
+
 std::unique_ptr<Pokemon::Pokemon8SWSH> blankSWSH(uint32_t ec = 0x10203040u) {
     std::vector<std::byte> dec(Encryption::SIZE_PARTY8_SWSH, std::byte{0});
     wr32(dec, 0x00, ec);
@@ -175,6 +206,17 @@ std::unique_ptr<Pokemon::Pokemon8BDSP> blankBDSP(uint32_t ec = 0x21314151u) {
     wr32(dec, 0x00, ec);
     std::byte* enc = Encryption::encryptArray8BDSP(dec, ec);
     auto out = std::make_unique<Pokemon::Pokemon8BDSP>(
+        std::span<const std::byte>(enc, dec.size()));
+    delete[] enc;
+    assert(out->checksumValid());
+    return out;
+}
+
+std::unique_ptr<Pokemon::Pokemon8LA> blankPLA(uint32_t ec = 0x55667788u) {
+    std::vector<std::byte> dec(Encryption::SIZE_PARTY8_LA, std::byte{0});
+    wr32(dec, 0x00, ec);
+    std::byte* enc = Encryption::encryptArray8LA(dec, ec);
+    auto out = std::make_unique<Pokemon::Pokemon8LA>(
         std::span<const std::byte>(enc, dec.size()));
     delete[] enc;
     assert(out->checksumValid());
@@ -682,6 +724,361 @@ int main() {
                          static_cast<uint8_t>(GameVersion::FR), &report);
         assert(!failed && result == Result::LanguageNotRepresentable);
         proveSourceUnchanged(*languageSource, before, languageHash);
+    }
+
+    // Route-corpus regression: modern HOME tracker bytes must never disappear silently when the
+    // destination format (PB7 / PK3) has no tracker field. The loss bit is intentionally referenced
+    // by its next stable mask value so this test compiles before the production enum is extended.
+    {
+        constexpr Loss HomeTrackerDropped = static_cast<Loss>(1u << 12);
+        const uint64_t tracker = 0x1122334455667788ULL;
+        auto source = blankSWSH(0x70000001u);
+        configureModern(*source, 25, 0, 0x1234ABCDu, 0x1234AACDu,
+                        static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
+        wr64(source->getData(), 0x135, tracker);
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+
+        Report ggReport;
+        Result result = Result::Unsupported;
+        auto gg = convert(*source, GameVersion::GG, result,
+                          static_cast<uint8_t>(GameVersion::GP), &ggReport);
+        assert(result == Result::Ok && gg);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(ggReport.hasLoss(HomeTrackerDropped));
+        assertSerializedReparse(*gg);
+
+        Report g3Report;
+        auto pk3 = convert(*source, GameVersion::FRLG, result,
+                           static_cast<uint8_t>(GameVersion::FR), &g3Report);
+        assert(result == Result::Ok && pk3);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(g3Report.hasLoss(HomeTrackerDropped));
+        assertSerializedReparse(*pk3);
+
+        std::cout << "fixture route-home-tracker-to-trackerless source-sha256="
+                  << hexHash(sourceHash) << "\n";
+    }
+
+    // Route-corpus regression: Gen III ribbon bits other than Fateful Encounter are not represented
+    // by the current PK3 -> modern remap, so they must be declared rather than silently erased.
+    {
+        auto source = blankPK3(0x2468ACE0u, 0x2468ADE0u);
+        configurePK3(*source, 25, 0x2468ACE0u, 0x2468ADE0u);
+        source->getData()[0x4C] = std::byte{0x02}; // non-fateful Gen III ribbon bit
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto swsh = convert(*source, GameVersion::SWSH, result,
+                            static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(result == Result::Ok && swsh);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(report.hasLoss(Loss::RibbonDataDropped));
+        assertSerializedReparse(*swsh);
+        std::cout << "fixture route-pk3-ribbon-loss source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // Route corpus foundation: LGPE real entities participate in encrypted serialization/reparse.
+    // This fixture also covers an Alolan form, AV reset, event/fateful state, and round-trip form custody.
+    {
+        auto source = blankGG();
+        configureModern(*source, 37, 1, 0x10293847u, 0x10293947u,
+                        static_cast<uint8_t>(GameVersion::GP), u"VULPIX", false);
+        source->setAV(0, 120);
+        source->setFatefulEncounter(true);
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report upReport;
+        Result result = Result::Unsupported;
+        auto swsh = convert(*source, GameVersion::SWSH, result,
+                            static_cast<uint8_t>(GameVersion::SW), &upReport);
+        assert(result == Result::Ok && swsh);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(swsh->speciesID() == 37 && swsh->form() == 1);
+        assert(swsh->isFatefulEncounter());
+        assert(swsh->evHP() == 0);
+        assert(upReport.hasLoss(Loss::StatTrainingReset));
+        assert(upReport.hasLoss(Loss::RibbonDataDropped));
+        assertSerializedReparse(*swsh);
+
+        const auto swBefore = nativeBytes(*swsh);
+        const auto swHash = hashBytes(swBefore);
+        Report downReport;
+        auto roundTrip = convert(*swsh, GameVersion::GG, result,
+                                 static_cast<uint8_t>(GameVersion::GP), &downReport);
+        assert(result == Result::Ok && roundTrip);
+        proveSourceUnchanged(*swsh, swBefore, swHash);
+        assert(roundTrip->speciesID() == 37 && roundTrip->form() == 1);
+        assert(roundTrip->isFatefulEncounter());
+        assert(roundTrip->avHP() == 0);
+        assert(downReport.hasLoss(Loss::StatTrainingReset));
+        assert(downReport.hasLoss(Loss::RibbonDataDropped));
+        assertSerializedReparse(*roundTrip);
+        std::cout << "fixture route-lgpe-alolan-vulpix-swsh source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // LGPE destination semantics: held items and modern EV training are intentionally unavailable.
+    {
+        auto source = blankSWSH(0x70000002u);
+        configureModern(*source, 25, 0, 0x22334455u, 0x22334555u,
+                        static_cast<uint8_t>(GameVersion::SW), u"SPARKY", true);
+        source->setHeldItem(1);
+        source->setEV(0, 100);
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto gg = convert(*source, GameVersion::GG, result,
+                          static_cast<uint8_t>(GameVersion::GP), &report);
+        assert(result == Result::Ok && gg);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(gg->heldItem() == 0);
+        assert(gg->evHP() == 0 && gg->avHP() == 0);
+        assert(report.hasLoss(Loss::HeldItemDropped));
+        assert(report.hasLoss(Loss::StatTrainingReset));
+        assertSerializedReparse(*gg);
+        std::cout << "fixture route-swsh-lgpe-helditem-stat-reset source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // LGPE mythical/genderless route coverage.
+    {
+        auto source = blankGG(0x0A0B0C0Eu);
+        configureModern(*source, 809, 0, 0x33445566u, 0x33445466u,
+                        static_cast<uint8_t>(GameVersion::GP), u"MELMETAL", false);
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto swsh = convert(*source, GameVersion::SWSH, result,
+                            static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(result == Result::Ok && swsh);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(swsh->speciesID() == 809 && swsh->gender() == 2);
+        assertSerializedReparse(*swsh);
+        std::cout << "fixture route-lgpe-melmetal-swsh source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // PLA -> PK8: HOME tracker, common ribbons/marks and Fateful Encounter survive; Alpha/PLA-only
+    // state is explicitly loss-classified instead of leaking overlapping bytes into PK8.
+    {
+        const uint64_t tracker = 0x8877665544332211ULL;
+        auto source = blankPLA();
+        configureModern(*source, 25, 0, 0x44556677u, 0x44556777u,
+                        static_cast<uint8_t>(GameVersion::PLA), u"ALPHA", true);
+        source->setFatefulEncounter(true);
+        auto d = source->getData();
+        d[0x16] = static_cast<std::byte>(static_cast<uint8_t>(d[0x16]) | 0x20); // Alpha
+        d[0x34] = std::byte{0x02}; // common ribbon bit
+        d[0x40] = std::byte{0x04}; // common mark bit
+        d[0xF8] = std::byte{1};    // affixed ribbon index
+        wr64(d, 0x14D, tracker);
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto swsh = convert(*source, GameVersion::SWSH, result,
+                            static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(result == Result::Ok && swsh);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(report.hasLoss(Loss::PLAExclusiveDataDropped));
+        assert((static_cast<uint8_t>(swsh->getData()[0x16]) & 0x20) == 0);
+        assert(static_cast<uint8_t>(swsh->getData()[0x34]) == 0x02);
+        assert(static_cast<uint8_t>(swsh->getData()[0x40]) == 0x04);
+        assert(static_cast<uint8_t>(swsh->getData()[0xE8]) == 1);
+        assert(rd64(swsh->getData(), 0x135) == tracker);
+        assert(swsh->isFatefulEncounter());
+        assertSerializedReparse(*swsh);
+        std::cout << "fixture route-pla-alpha-ribbon-mark-tracker-swsh source-sha256="
+                  << hexHash(sourceHash) << "\n";
+    }
+
+    // PK8 -> PLA: tracker/ribbons/marks survive while unsupported held items are explicitly dropped.
+    {
+        const uint64_t tracker = 0x0102030405060708ULL;
+        auto source = blankSWSH(0x70000003u);
+        configureModern(*source, 25, 0, 0x55667788u, 0x55667688u,
+                        static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
+        source->setHeldItem(1);
+        auto d = source->getData();
+        d[0x34] = std::byte{0x02};
+        d[0x40] = std::byte{0x04};
+        d[0xE8] = std::byte{1};
+        wr64(d, 0x135, tracker);
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto pla = convert(*source, GameVersion::PLA, result,
+                           static_cast<uint8_t>(GameVersion::PLA), &report);
+        assert(result == Result::Ok && pla);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(pla->heldItem() == 0);
+        assert(report.hasLoss(Loss::HeldItemDropped));
+        assert(static_cast<uint8_t>(pla->getData()[0x34]) == 0x02);
+        assert(static_cast<uint8_t>(pla->getData()[0x40]) == 0x04);
+        assert(static_cast<uint8_t>(pla->getData()[0xF8]) == 1);
+        assert(rd64(pla->getData(), 0x14D) == tracker);
+        assertSerializedReparse(*pla);
+        std::cout << "fixture route-swsh-pla-ribbon-mark-tracker source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // A Hisuian form absent from Sword must fail closed instead of flattening to the base form.
+    {
+        auto source = blankPLA(0x55667789u);
+        configureModern(*source, 570, 1, 0x66778899u, 0x66778999u,
+                        static_cast<uint8_t>(GameVersion::PLA), u"ZORUA", false);
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Ok;
+        auto failed = convert(*source, GameVersion::SWSH, result,
+                              static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(!failed && result == Result::NotInDex);
+        proveSourceUnchanged(*source, before, sourceHash);
+        std::cout << "fixture route-pla-hisuian-zorua-swsh-fail source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // PK8 <-> PK9 route coverage: HOME tracker, common ribbon/mark and fateful metadata survive,
+    // while destination-native Tera is synthesized entering S/V and explicitly lost on the return.
+    {
+        const uint64_t tracker = 0xA1A2A3A4A5A6A7A8ULL;
+        auto source = blankSWSH(0x70000004u);
+        configureModern(*source, 25, 0, 0x778899AAu, 0x778898AAu,
+                        static_cast<uint8_t>(GameVersion::SW), u"EVENT", true);
+        source->setFatefulEncounter(true);
+        auto d = source->getData();
+        d[0x34] = std::byte{0x02};
+        d[0x40] = std::byte{0x04};
+        d[0xE8] = std::byte{1};
+        wr64(d, 0x135, tracker);
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report toSV;
+        Result result = Result::Unsupported;
+        auto sv = convert(*source, GameVersion::SV, result,
+                          static_cast<uint8_t>(GameVersion::SL), &toSV);
+        assert(result == Result::Ok && sv);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(toSV.hasAdaptation(Adaptation::TargetDefaultTeraSynthesized));
+        assert(rd64(sv->getData(), 0x127) == tracker);
+        assert(static_cast<uint8_t>(sv->getData()[0x34]) == 0x02);
+        assert(static_cast<uint8_t>(sv->getData()[0x40]) == 0x04);
+        assert(static_cast<uint8_t>(sv->getData()[0xD4]) == 1);
+        assert(sv->isFatefulEncounter());
+        assertSerializedReparse(*sv);
+
+        const auto svBefore = nativeBytes(*sv);
+        const auto svHash = hashBytes(svBefore);
+        Report back;
+        auto swsh = convert(*sv, GameVersion::SWSH, result,
+                            static_cast<uint8_t>(GameVersion::SW), &back);
+        assert(result == Result::Ok && swsh);
+        proveSourceUnchanged(*sv, svBefore, svHash);
+        assert(back.hasLoss(Loss::TeraDataDropped));
+        assert(rd64(swsh->getData(), 0x135) == tracker);
+        assert(static_cast<uint8_t>(swsh->getData()[0x34]) == 0x02);
+        assert(static_cast<uint8_t>(swsh->getData()[0x40]) == 0x04);
+        assert(static_cast<uint8_t>(swsh->getData()[0xE8]) == 1);
+        assert(swsh->isFatefulEncounter());
+        assertSerializedReparse(*swsh);
+        std::cout << "fixture route-swsh-sv-event-tracker-ribbon source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // PK8 <-> Z-A route coverage with no Alpha/divergent payload: tracker survives both directions.
+    {
+        const uint64_t tracker = 0xB1B2B3B4B5B6B7B8ULL;
+        auto source = blankSWSH(0x70000005u);
+        configureModern(*source, 25, 0, 0x8899AABBu, 0x8899ABBBu,
+                        static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
+        wr64(source->getData(), 0x135, tracker);
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report toZA;
+        Result result = Result::Unsupported;
+        auto za = convert(*source, GameVersion::ZA, result,
+                          static_cast<uint8_t>(GameVersion::ZA), &toZA);
+        assert(result == Result::Ok && za);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(rd64(za->getData(), 0x127) == tracker);
+        assertSerializedReparse(*za);
+
+        const auto zaBefore = nativeBytes(*za);
+        const auto zaHash = hashBytes(zaBefore);
+        Report back;
+        auto swsh = convert(*za, GameVersion::SWSH, result,
+                            static_cast<uint8_t>(GameVersion::SW), &back);
+        assert(result == Result::Ok && swsh);
+        proveSourceUnchanged(*za, zaBefore, zaHash);
+        assert(!back.hasLoss(Loss::ZAAlphaDropped));
+        assert(rd64(swsh->getData(), 0x135) == tracker);
+        assertSerializedReparse(*swsh);
+        std::cout << "fixture route-swsh-za-tracker source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // G8 sibling route: BDSP <-> Sword preserves the HOME tracker even though TR flags are target-specific.
+    {
+        const uint64_t tracker = 0xC1C2C3C4C5C6C7C8ULL;
+        auto source = blankBDSP(0x70000006u);
+        configureModern(*source, 25, 0, 0x99AABBCCu, 0x99AABACCu,
+                        static_cast<uint8_t>(GameVersion::BD), u"PIKACHU", false);
+        wr64(source->getData(), 0x135, tracker);
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto swsh = convert(*source, GameVersion::SWSH, result,
+                            static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(result == Result::Ok && swsh);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(rd64(swsh->getData(), 0x135) == tracker);
+        assertSerializedReparse(*swsh);
+        std::cout << "fixture route-bdsp-swsh-tracker source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // Gen III international language corpus: every currently supported table id must round-trip;
+    // Japanese/Korean/Chinese remain explicit fail-closed until actual tables exist.
+    {
+        for (const uint8_t language : {uint8_t{2}, uint8_t{3}, uint8_t{4}, uint8_t{5}, uint8_t{7}}) {
+            auto source = blankSWSH(0x71000000u + language);
+            configureModern(*source, 25, 0, 0xAABBCC00u + language, 0xAABBCD00u + language,
+                            static_cast<uint8_t>(GameVersion::SW), u"SPARKY", true);
+            source->setLanguage(language);
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Report report;
+            Result result = Result::Unsupported;
+            auto pk3 = convert(*source, GameVersion::FRLG, result,
+                               static_cast<uint8_t>(GameVersion::FR), &report);
+            assert(result == Result::Ok && pk3);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(pk3->language() == language);
+            assertSerializedReparse(*pk3);
+            std::cout << "fixture route-language-" << static_cast<unsigned>(language)
+                      << "-swsh-pk3 source-sha256=" << hexHash(sourceHash) << "\n";
+        }
+        for (const uint8_t language : {uint8_t{1}, uint8_t{8}, uint8_t{9}, uint8_t{10}}) {
+            auto source = blankSWSH(0x72000000u + language);
+            configureModern(*source, 25, 0, 0xBBCCDD00u + language, 0xBBCCDC00u + language,
+                            static_cast<uint8_t>(GameVersion::SW), u"SPARKY", true);
+            source->setLanguage(language);
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Report report;
+            Result result = Result::Ok;
+            auto failed = convert(*source, GameVersion::FRLG, result,
+                                  static_cast<uint8_t>(GameVersion::FR), &report);
+            assert(!failed && result == Result::LanguageNotRepresentable);
+            proveSourceUnchanged(*source, before, sourceHash);
+        }
     }
 
     std::cout << "F05-F13 production conversion entity goldens: PASS\n";
