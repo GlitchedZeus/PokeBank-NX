@@ -207,7 +207,7 @@ $(MOVE_TRANSACTION_SANITIZE): $(MOVE_TRANSACTION_SOURCES) include/Utils/MoveTran
 # A04b: production Bank <-> PokeBank-owned single-file workspace true-Move integration.
 MOVE_TRANSACTION_PRODUCTION_TEST := $(HOST_BUILD)/test_move_transaction_production
 MOVE_TRANSACTION_PRODUCTION_SANITIZE := $(HOST_BUILD)/test_move_transaction_production_sanitize
-MOVE_TRANSACTION_PRODUCTION_SOURCES := tests/test_move_transaction_production.cpp src/Games/GameIdentity.cpp
+MOVE_TRANSACTION_PRODUCTION_SOURCES := tests/test_move_transaction_production.cpp src/Games/GameIdentity.cpp src/Utils/MoveTransaction.cpp src/Utils/DurableFile.cpp
 
 HOST_TESTS += $(MOVE_TRANSACTION_PRODUCTION_TEST)
 HOST_SANITIZE_TESTS += $(MOVE_TRANSACTION_PRODUCTION_SANITIZE)
