@@ -289,6 +289,8 @@ namespace Conversion {
             if (source == GameVersion::ZA && rd8(b, 0x23) != 0 && report) report->addLoss(Loss::ZAAlphaDropped);
             bool divergentData = false;
             for (size_t o = 0x4B; o <= 0x57; ++o) divergentData |= rd8(b, o) != 0;
+            if (source == GameVersion::ZA)
+                for (size_t o = 0x94; o <= 0x9F; ++o) divergentData |= rd8(b, o) != 0;
             if (divergentData && report) report->addLoss(Loss::DivergentGameDataDropped);
             wr8(b, 0x23, 0);
             // 0x08 species: PK9/PA9 store the Gen 9 INTERNAL index; the PK8 hub (and every format fed
@@ -733,6 +735,9 @@ namespace Conversion {
             bool divergentData = false;
             for (size_t o = 0x4B; o <= 0x57 && o < buf.size(); ++o)
                 divergentData |= static_cast<uint8_t>(buf[o]) != 0;
+            if (from == GameVersion::ZA)
+                for (size_t o = 0x94; o <= 0x9F && o < buf.size(); ++o)
+                    divergentData |= static_cast<uint8_t>(buf[o]) != 0;
             if (divergentData && report) report->addLoss(Loss::DivergentGameDataDropped);
 
             if (from == GameVersion::SV && destGroup == GameVersion::ZA) {

@@ -429,10 +429,13 @@ int main() {
             assert(pk3->ability() == pikachuG3.ability1);
             assertSerializedReparse(*pk3);
 
+            const auto pk3Before = nativeBytes(*pk3);
+            const auto pk3Hash = hashBytes(pk3Before);
             Report upReport;
             auto roundTrip = convert(*pk3, GameVersion::SWSH, result,
                                      static_cast<uint8_t>(GameVersion::SW), &upReport);
             assert(result == Result::Ok && roundTrip);
+            proveSourceUnchanged(*pk3, pk3Before, pk3Hash);
             assert(roundTrip->ability() == pikachuG3.ability1);
             assert(roundTrip->abilityNumber() == 1);
             assert(upReport.hasLoss(Loss::AbilitySlotNormalized));
@@ -503,7 +506,7 @@ int main() {
         configureModern(*source, 25, 0, pid, id32,
                         static_cast<uint8_t>(GameVersion::ZA), u"PIKACHU", false);
         source->getData()[0x23] = std::byte{1}; // Alpha
-        source->getData()[0x4B] = std::byte{1}; // Z-A divergent field
+        source->getData()[0x94] = std::byte{1}; // Z-A Plus-side divergent field
         source->refreshChecksum();
 
         const auto before = nativeBytes(*source);
@@ -518,11 +521,33 @@ int main() {
         assert(report.hasLoss(Loss::DivergentGameDataDropped));
         assert(report.hasAdaptation(Adaptation::TargetDefaultTeraSynthesized));
         assert(static_cast<uint8_t>(sv->getData()[0x23]) == 0);
-        assert(static_cast<uint8_t>(sv->getData()[0x4B]) == 0);
-        assert(static_cast<uint8_t>(sv->getData()[0x94]) != 0);
+        assert(static_cast<uint8_t>(sv->getData()[0x94]) != 0); // source Plus byte was discarded; target Tera synthesized
         assertSerializedReparse(*sv);
 
-        std::cout << "fixture f09-za-sv-alpha source-sha256=" << hexHash(sourceHash) << "\n";
+        std::cout << "fixture f09-za-sv-alpha-plus source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // F09 hub path: Z-A Plus-side divergent data must also be declared when normalizing through PK8.
+    {
+        const uint32_t pid = 0x66778899u;
+        const uint32_t id32 = pid ^ 0x00000100u;
+        auto source = blankZA(0x27182819u);
+        configureModern(*source, 25, 0, pid, id32,
+                        static_cast<uint8_t>(GameVersion::ZA), u"PIKACHU", false);
+        source->getData()[0x94] = std::byte{1};
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+
+        Report report;
+        Result result = Result::Unsupported;
+        auto swsh = convert(*source, GameVersion::SWSH, result,
+                            static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(result == Result::Ok && swsh);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(report.hasLoss(Loss::DivergentGameDataDropped));
+        assertSerializedReparse(*swsh);
+        std::cout << "fixture f09-za-swsh-plus-hub source-sha256=" << hexHash(sourceHash) << "\n";
     }
 
     // F10: real PK3 -> PK8 EV policy, including legacy 253/254/255 bytes.
