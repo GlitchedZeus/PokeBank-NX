@@ -100,11 +100,14 @@ public:
     std::string destinationEvidencePath(const std::string& id) const;
     std::string sourceRetiredEvidencePath(const std::string& id) const;
 
-    bool idAvailable(const std::string& id) const;
-    bool persist(const Transaction& transaction, std::string& error) const;
     LoadResult load(const std::string& id) const;
     std::vector<ScanEntry> scan() const;
 
+private:
+    friend class Engine;
+
+    bool idAvailable(const std::string& id) const;
+    bool persist(const Transaction& transaction, std::string& error) const;
     bool storeEvidence(const Transaction& transaction,
                        std::span<const uint8_t> destinationAfter,
                        std::span<const uint8_t> sourceRetired,
@@ -114,7 +117,6 @@ public:
                       std::vector<uint8_t>& sourceRetired,
                       std::string& error) const;
 
-private:
     std::string root_;
     std::string recordsRoot_;
 };
@@ -160,6 +162,8 @@ using PersistGate = std::function<bool(State)>;
 
 class Engine {
 public:
+    // Production constructor: journals live only under PokeBank's owned transactions root.
+    Engine();
     explicit Engine(std::string root, PersistGate persistGate = {});
 
     Journal& journal() noexcept { return journal_; }

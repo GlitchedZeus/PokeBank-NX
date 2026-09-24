@@ -1,4 +1,5 @@
 #include "Utils/MoveTransaction.h"
+#include "Utils/PokeBankPaths.h"
 #include "Safety/SourceMutationPolicy.h"
 
 #include <algorithm>
@@ -174,11 +175,16 @@ int main() {
         PokeVault::Safety::SourceKind::RetroArchLegacy,
         PokeVault::Safety::SourceMutation::SaveChanges));
 
-    // Strong whole-store fingerprint contract.
+    // Strong whole-store fingerprint contract: verify the implementation against the
+    // standard SHA-256 "abc" vector, not merely against itself.
+    const std::vector<uint8_t> abc{'a','b','c'};
+    assert(digestHex(sha256(abc)) ==
+           "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     const auto sourceDigest = sha256(sourceBefore);
     assert(sourceDigest == sha256(sourceBefore));
     assert(sourceDigest != sha256(sourceRetired));
     assert(digestHex(sourceDigest).size() == 64);
+    assert(PokeBank::Paths::transactionsRoot() == "sdmc:/switch/PokeBank-NX/transactions");
 
     // PREPARED only: journal + evidence become durable; neither store changes.
     {
@@ -188,6 +194,11 @@ int main() {
         FileStore dst(workspaceDescriptor(), root + ".dst", destinationBefore);
         Engine engine(root);
         auto tx = baseTx("tx-0000000000000001", src.descriptor(), dst.descriptor());
+        auto secondMove = tx.moves.front();
+        secondMove.sourceSlot = "bank:0:1";
+        secondMove.destinationSlot = "box:0:1";
+        secondMove.species = 133;
+        tx.moves.push_back(secondMove);
         std::string error;
         assert(engine.prepare(tx, src, dst, destinationAfter, sourceRetired, error));
         const auto loaded = engine.journal().load(tx.id);
@@ -199,7 +210,7 @@ int main() {
         assert(loaded.transaction.sourceRetired == sha256(sourceRetired));
         assert(loaded.transaction.destinationBefore == sha256(destinationBefore));
         assert(loaded.transaction.destinationAfter == sha256(destinationAfter));
-        assert(loaded.transaction.moves.size() == 1);
+        assert(loaded.transaction.moves.size() == 2);
         cleanup(root, {src.path, dst.path});
     }
 
@@ -479,6 +490,59 @@ int main() {
         assert(readFile(srcA.path) == sourceBefore);
         assert(readFile(srcB.path) == sourceBefore);
         cleanup(root, {srcA.path, dstA.path, srcB.path, dstB.path});
+    }
+
+    // Every declared crash boundary must be resumable and converge to COMMITTED.
+    {
+        const std::vector<FaultPoint> faults{
+            FaultPoint::AfterPreparedJournal,
+            FaultPoint::AfterDestinationWrite,
+            FaultPoint::AfterDestinationVerify,
+            FaultPoint::AfterDestinationVerifiedJournal,
+            FaultPoint::BeforeSourceRetire,
+            FaultPoint::AfterSourceWrite,
+            FaultPoint::AfterSourceVerify,
+            FaultPoint::AfterSourceRetiredJournal,
+            FaultPoint::BeforeCommitted,
+        };
+        for (size_t i = 0; i < faults.size(); ++i) {
+            const std::string root = base + "-fault-" + std::to_string(i);
+            ensureDir(root);
+            FileStore src(bankDescriptor(), root + ".src", sourceBefore);
+            FileStore dst(workspaceDescriptor(), root + ".dst", destinationBefore);
+            Engine engine(root);
+            auto tx = baseTx("tx-00000000000000" + std::to_string(20 + i),
+                             src.descriptor(), dst.descriptor());
+            std::string error;
+            assert(engine.prepare(tx, src, dst, destinationAfter, sourceRetired, error));
+            const auto interrupted = engine.recover(tx.id, src, dst, faults[i]);
+            assert(interrupted.status == RecoveryStatus::Interrupted);
+            assert(engine.recover(tx.id, src, dst).status == RecoveryStatus::Committed);
+            const auto retained = engine.journal().load(tx.id);
+            assert(retained.status == LoadStatus::Ok);
+            assert(retained.transaction.state == State::Committed);
+            struct stat st{};
+            assert(::stat(engine.journal().journalPath(tx.id).c_str(), &st) == 0);
+            assert(::stat(engine.journal().destinationEvidencePath(tx.id).c_str(), &st) == 0);
+            assert(::stat(engine.journal().sourceRetiredEvidencePath(tx.id).c_str(), &st) == 0);
+            cleanup(root, {src.path, dst.path});
+        }
+    }
+
+    // A MOVE that changes neither side would make before/after fingerprints ambiguous.
+    // Reject it before any PREPARED journal/evidence can become authoritative.
+    {
+        const std::string root = base + "-noop";
+        ensureDir(root);
+        FileStore src(bankDescriptor(), root + ".src", sourceBefore);
+        FileStore dst(workspaceDescriptor(), root + ".dst", destinationBefore);
+        Engine engine(root);
+        auto tx = baseTx("tx-0000000000000030", src.descriptor(), dst.descriptor());
+        std::string error;
+        assert(!engine.prepare(tx, src, dst, destinationBefore, sourceBefore, error));
+        assert(readFile(src.path) == sourceBefore);
+        assert(readFile(dst.path) == destinationBefore);
+        cleanup(root, {src.path, dst.path});
     }
 
     // Transaction IDs allocated against retained journals never reuse an existing record.

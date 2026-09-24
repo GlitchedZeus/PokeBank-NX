@@ -541,10 +541,17 @@ bool Journal::loadEvidence(const Transaction& transaction,
     return true;
 }
 
+Engine::Engine()
+    : journal_(PokeBank::Paths::transactionsRoot()) {}
+
 Engine::Engine(std::string root, PersistGate persistGate)
     : journal_(std::move(root)), persistGate_(std::move(persistGate)) {}
 
 bool Engine::persistState(Transaction& transaction, State next, std::string& error) {
+    if (static_cast<uint8_t>(next) != static_cast<uint8_t>(transaction.state) + 1u) {
+        error = "refusing non-sequential transaction state transition";
+        return false;
+    }
     if (persistGate_ && !persistGate_(next)) {
         error = "journal persistence rejected by injected gate";
         return false;
@@ -587,6 +594,11 @@ bool Engine::prepare(Transaction& transaction,
     transaction.sourceRetired = sha256(sourceRetired);
     transaction.destinationBefore = sha256(destinationBefore);
     transaction.destinationAfter = sha256(destinationAfter);
+    if (transaction.sourceBefore == transaction.sourceRetired ||
+        transaction.destinationBefore == transaction.destinationAfter) {
+        error = "MOVE transaction must change both authoritative stores";
+        return false;
+    }
 
     std::string metadataError;
     if (!validTransaction(transaction, metadataError)) {
