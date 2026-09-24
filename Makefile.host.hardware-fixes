@@ -183,3 +183,22 @@ $(STORAGE_CONVERSION_CUSTODY_TEST): tests/test_storage_conversion_custody_contra
 $(STORAGE_CONVERSION_CUSTODY_SANITIZE): tests/test_storage_conversion_custody_contract.cpp include/UI/StoragePlacementCommit.h include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_storage_conversion_custody_contract.cpp -o $@
+
+
+# A04a: durable destination-first Move transaction journal/recovery core.
+MOVE_TRANSACTION_TEST := $(HOST_BUILD)/test_move_transaction_journal
+MOVE_TRANSACTION_SANITIZE := $(HOST_BUILD)/test_move_transaction_journal_sanitize
+MOVE_TRANSACTION_SOURCES := tests/test_move_transaction_journal.cpp src/Utils/MoveTransaction.cpp src/Utils/DurableFile.cpp
+
+HOST_TESTS += $(MOVE_TRANSACTION_TEST)
+HOST_SANITIZE_TESTS += $(MOVE_TRANSACTION_SANITIZE)
+host-test: $(MOVE_TRANSACTION_TEST)
+host-sanitize: $(MOVE_TRANSACTION_SANITIZE)
+
+$(MOVE_TRANSACTION_TEST): $(MOVE_TRANSACTION_SOURCES) include/Utils/MoveTransaction.h include/Utils/DurableFile.h include/Utils/PokeBankPaths.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MOVE_TRANSACTION_SOURCES) -o $@
+
+$(MOVE_TRANSACTION_SANITIZE): $(MOVE_TRANSACTION_SOURCES) include/Utils/MoveTransaction.h include/Utils/DurableFile.h include/Utils/PokeBankPaths.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MOVE_TRANSACTION_SOURCES) -o $@
