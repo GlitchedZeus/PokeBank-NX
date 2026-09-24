@@ -1188,5 +1188,100 @@ int main() {
         assert(evidence.lossPolicySatisfied());
     }
 
+    // HOME tracker format matrix: PA8/PK9/PA9 sources explicitly declare loss entering PB7/PK3,
+    // while tracker-less PB7 and PK3 sources do not synthesize a tracker when entering PK8.
+    {
+        const uint64_t plaTracker = 0x1111222233334444ULL;
+        auto plaSource = blankPLA(0x75000001u);
+        configureModern(*plaSource, 25, 0, 0x12344321u, 0x12344221u,
+                        static_cast<uint8_t>(GameVersion::PLA), u"PIKACHU", false);
+        wr64(plaSource->getData(), 0x14D, plaTracker);
+        plaSource->refreshChecksum();
+        const auto plaBefore = nativeBytes(*plaSource);
+        const auto plaHash = hashBytes(plaBefore);
+        Report plaReport;
+        Result result = Result::Unsupported;
+        auto gg = convert(*plaSource, GameVersion::GG, result,
+                          static_cast<uint8_t>(GameVersion::GP), &plaReport);
+        assert(result == Result::Ok && gg);
+        proveSourceUnchanged(*plaSource, plaBefore, plaHash);
+        assert(plaReport.hasLoss(Loss::HomeTrackerDropped));
+        assertSerializedReparse(*gg);
+
+        const uint64_t svTracker = 0x2222333344445555ULL;
+        auto svSource = blankSV(0x75000002u);
+        configureModern(*svSource, 25, 0, 0x23455432u, 0x23455532u,
+                        static_cast<uint8_t>(GameVersion::SL), u"PIKACHU", false);
+        wr64(svSource->getData(), 0x127, svTracker);
+        svSource->refreshChecksum();
+        const auto svBefore = nativeBytes(*svSource);
+        const auto svHash = hashBytes(svBefore);
+        Report svReport;
+        auto pk3 = convert(*svSource, GameVersion::FRLG, result,
+                           static_cast<uint8_t>(GameVersion::FR), &svReport);
+        assert(result == Result::Ok && pk3);
+        proveSourceUnchanged(*svSource, svBefore, svHash);
+        assert(svReport.hasLoss(Loss::HomeTrackerDropped));
+        assertSerializedReparse(*pk3);
+
+        const uint64_t zaTracker = 0x3333444455556666ULL;
+        auto zaSource = blankZA(0x75000003u);
+        configureModern(*zaSource, 25, 0, 0x34566543u, 0x34566443u,
+                        static_cast<uint8_t>(GameVersion::ZA), u"PIKACHU", false);
+        wr64(zaSource->getData(), 0x127, zaTracker);
+        zaSource->refreshChecksum();
+        const auto zaBefore = nativeBytes(*zaSource);
+        const auto zaHash = hashBytes(zaBefore);
+        Report zaReport;
+        auto ggFromZA = convert(*zaSource, GameVersion::GG, result,
+                                static_cast<uint8_t>(GameVersion::GP), &zaReport);
+        assert(result == Result::Ok && ggFromZA);
+        proveSourceUnchanged(*zaSource, zaBefore, zaHash);
+        assert(zaReport.hasLoss(Loss::HomeTrackerDropped));
+        assertSerializedReparse(*ggFromZA);
+
+        auto ggSource = blankGG(0x75000004u);
+        configureModern(*ggSource, 25, 0, 0x45677654u, 0x45677754u,
+                        static_cast<uint8_t>(GameVersion::GP), u"PIKACHU", false);
+        const auto ggBefore = nativeBytes(*ggSource);
+        const auto ggHash = hashBytes(ggBefore);
+        Report ggUp;
+        auto swFromGG = convert(*ggSource, GameVersion::SWSH, result,
+                                static_cast<uint8_t>(GameVersion::SW), &ggUp);
+        assert(result == Result::Ok && swFromGG);
+        proveSourceUnchanged(*ggSource, ggBefore, ggHash);
+        assert(rd64(swFromGG->getData(), 0x135) == 0);
+        assertSerializedReparse(*swFromGG);
+
+        auto pk3Source = blankPK3(0x56788765u, 0x56788665u);
+        configurePK3(*pk3Source, 25, 0x56788765u, 0x56788665u);
+        const auto pk3Before = nativeBytes(*pk3Source);
+        const auto pk3Hash = hashBytes(pk3Before);
+        Report pk3Up;
+        auto swFromPK3 = convert(*pk3Source, GameVersion::SWSH, result,
+                                 static_cast<uint8_t>(GameVersion::SW), &pk3Up);
+        assert(result == Result::Ok && swFromPK3);
+        proveSourceUnchanged(*pk3Source, pk3Before, pk3Hash);
+        assert(rd64(swFromPK3->getData(), 0x135) == 0);
+        assertSerializedReparse(*swFromPK3);
+
+        std::cout << "fixture route-home-tracker-format-matrix: PASS\n";
+    }
+
+    // Shared production preflight also exposes text/language fidelity failures exactly, with no source mutation.
+    {
+        auto source = blankSWSH(0x76000001u);
+        configureModern(*source, 25, 0, 0x67899876u, 0x67899976u,
+                        static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
+        source->setLanguage(1);
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        const auto pre = preflightConvert(*source, GameVersion::FRLG,
+                                          static_cast<uint8_t>(GameVersion::FR));
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(!pre.candidateAvailable);
+        assert(pre.result == Result::LanguageNotRepresentable);
+    }
+
     std::cout << "F05-F13 production conversion entity goldens: PASS\n";
 }
