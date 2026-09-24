@@ -13,6 +13,7 @@
 #include "UI/ActionSheetModel.h"
 #include "Safety/SourceMutationPolicy.h"
 #include "UI/NavigationRepeat.h"
+#include "Utils/MoveTransactionProduction.h"
 #include "UI/InventoryUIContract.h"
 #include "UI/UIScreen.h"
 #include "UI/PKSEFramebuffer.h"
@@ -98,6 +99,14 @@ namespace UI {
         void postPickup();             // drop an all-empty block so the hands read as free
         bool checkPutDownBounds() const;   // does the block fit in the focused pane from the cursor cell?
         void putDownBlock();           // exact-slot placement: cell (x,y) -> cursor slot + x + y*cols
+        bool captureCrossStoreMoveBaseline(int sourcePane, bool copyOperation);
+        void clearCrossStoreMoveBaseline();
+        bool tryCommitCrossStoreMove(int destPane, int destBox, int destSlot);
+        void setMoveRecoveryState(bool locked, const std::string& notice) {
+            moveRecoveryLocked = locked;
+            moveRecoveryNotice = notice;
+            if (!notice.empty()) postStatus(notice, locked ? 600 : 300);
+        }
         void cancelSelection();        // abandon an in-progress rectangle
 
         bool lgpeConversionInvolved(int destPane, const Pokemon::Pokemon* pk) const;  // would placing pk into destPane run an LGPE (AV/EV-reset) conversion?
@@ -208,6 +217,23 @@ namespace UI {
         int selectPane = 0, selectBox = 0;       // which pane/box the in-progress rectangle lives in
         // Origin of the block's TOP-LEFT cell, so B can put the whole thing back where it came from.
         int heldPane = 0, heldFromBox = 0, heldFromSlot = 0;
+        struct CrossStoreMoveBaseline {
+            bool captured = false;
+            bool workspaceDirtyBeforePickup = false;
+            bool bankDirtyBeforePickup = false;
+            bool editorDirtyBeforePickup = false;
+            bool copyOperation = false;
+            int sourcePane = -1;
+            PokeBank::Storage::MoveTx::Digest bankDigest{};
+            PokeBank::Storage::MoveTx::Digest workspaceDigest{};
+            PokeBank::Storage::MoveTx::StoreDescriptor bankDescriptor;
+            PokeBank::Storage::MoveTx::StoreDescriptor workspaceDescriptor;
+        };
+        CrossStoreMoveBaseline crossStoreBaseline;
+        bool carriedCopyMode = false;
+        bool moveRecoveryLocked = false;
+        std::string moveRecoveryNotice;
+
         bool carrying() const { return !moveMon.empty(); }
         int carriedCount() const;                // non-null cells in moveMon
         const Pokemon::Pokemon* firstCarried() const;   // first non-null cell, or nullptr
@@ -272,6 +298,12 @@ namespace UI {
             return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy;
         }
         bool requireMutableWorkspace() {
+            if (moveRecoveryLocked) {
+                postStatus(moveRecoveryNotice.empty()
+                    ? "Pokemon Move recovery is required. Storage changes are locked."
+                    : moveRecoveryNotice, 480);
+                return false;
+            }
             if (!sourceReadOnly()) return true;
             postStatus(legacyReadOnlySource()
                 ? "RetroArch source is read-only. Editing this file is disabled."
