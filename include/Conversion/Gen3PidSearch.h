@@ -43,7 +43,10 @@ namespace Conversion::Gen3PidSearch {
         std::size_t count = 0;
         for (uint32_t value = static_cast<uint32_t>(form); value <= 0xFFu; value += 28)
             patterns[count++] = value;
-        return withUnownFormValue(pid, patterns[(pid >> 2) % count]);
+        // Choose the pattern from bits outside the form mask, so stamping is idempotent:
+        // stampUnownForm(stampUnownForm(pid, f), f) == stampUnownForm(pid, f).
+        const uint32_t stable = pid & ~0x03030303u;
+        return withUnownFormValue(pid, patterns[(stable >> 2) % count]);
     }
 
     inline std::optional<uint32_t> find(uint32_t startPid,

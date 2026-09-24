@@ -58,6 +58,7 @@ int main() {
         for (int form : {0, 1, 13, 27}) {
             const uint32_t stamped = Gen3PidSearch::stampUnownForm(raw, form);
             assert(Gen3PidSearch::unownForm(stamped) == form);
+            assert(Gen3PidSearch::stampUnownForm(stamped, form) == stamped);
 
             Gen3PidSearch::Traits wanted;
             wanted.nature = static_cast<uint8_t>(stamped % 25);
@@ -96,6 +97,9 @@ int main() {
         assert(!Fidelity::mapModernAbilityToGen3(158, 4, 9, 31).ok);
         assert(!Fidelity::mapModernAbilityToGen3(31, 1, 9, 31).ok);
         assert(Fidelity::gen3AbilityNumberForModern(1, 51, 51) == 1);
+        Report normalized;
+        normalized.addLoss(Loss::AbilitySlotNormalized);
+        assert(normalized.hasLoss(Loss::AbilitySlotNormalized));
     }
 
     // F09: destination semantics, not overlapping bytes, determine Tera defaults.

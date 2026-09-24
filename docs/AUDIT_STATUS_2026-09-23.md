@@ -1151,6 +1151,7 @@ Future cross-game true Move must treat an unacknowledged declared loss as non-re
 - `StatTrainingReset`
 - `PLAExclusiveDataDropped`
 - `RibbonDataDropped`
+- `AbilitySlotNormalized` (duplicate Gen III ability with a set native selector bit becomes modern slot 1; ability identity is preserved but the redundant native slot bit cannot round-trip)
 
 ## Declared adaptations added
 
@@ -1194,3 +1195,15 @@ not replace the original modern origin in future provenance.
 
 CI evidence for the exact implementation head is recorded in issue #69 / PR #79 after the permanent
 Host + ASan/UBSan + Audit Hardening Native Validation gates complete.
+
+
+### Follow-up from Host #1127
+
+The first generated F06 test exposed a non-idempotent Unown form-stamping helper. The helper selected
+the form pattern from PID bits that it then overwrote, so restamping could alter unrelated PID-derived
+constraints. The forward fix selects the pattern only from bits outside the Unown form mask and asserts
+idempotence.
+
+The same follow-up hardens F11 default-name detection to ignore non-semantic Gen III bytes after the
+0xFF string terminator, and records duplicate-ability selector normalization explicitly rather than
+calling that round-trip byte drift lossless.

@@ -22,6 +22,7 @@ namespace Conversion {
         StatTrainingReset       = 1u << 8,
         PLAExclusiveDataDropped = 1u << 9,
         RibbonDataDropped       = 1u << 10,
+        AbilitySlotNormalized    = 1u << 11,
     };
 
     enum class Adaptation : uint32_t {

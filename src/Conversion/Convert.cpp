@@ -207,6 +207,19 @@ namespace Conversion {
             }
             for (; gi < maxG3; ++gi) wr8(d, doff + gi, Utils::GEN3_TERMINATOR);   // Gen 3 pads names with 0xFF
         }
+        bool g3NameEqualsIgnoringTrash(const std::vector<std::byte>& lhs, size_t lhsOff,
+                                           const std::vector<std::byte>& rhs, size_t rhsOff,
+                                           int maxG3) {
+            for (int i = 0; i < maxG3; ++i) {
+                const uint8_t a = rd8(lhs, lhsOff + i);
+                const uint8_t b = rd8(rhs, rhsOff + i);
+                if (a == Utils::GEN3_TERMINATOR || b == Utils::GEN3_TERMINATOR)
+                    return a == b; // bytes after the shared terminator are non-semantic trash
+                if (a != b) return false;
+            }
+            return true;
+        }
+
         // Write a UTF-8 string UPPERCASED as a Gen 3 name (0xFF-terminated/padded) -- the species
         // name, for the Gen 3 nickname. Must decode UTF-8 rather than walk bytes: the species table
         // is game-canonical, so five of the names in Gen 3's own range carry a multi-byte character
@@ -524,6 +537,8 @@ namespace Conversion {
             copyBytes(d, 0x0C, s, 0x04, 4);                         // ID32 (TID16 + SID16)
             copyBytes(d, 0x10, s, 0x24, 4);                         // EXP
             wr16(d, 0x14, Fidelity::gen3AbilityId(abilBit, g3.ability1, g3.ability2));
+            if (abilBit && g3.ability1 == g3.ability2 && report)
+                report->addLoss(Loss::AbilitySlotNormalized);
             wr8(d, 0x16, Fidelity::gen3AbilityNumberForModern(abilBit, g3.ability1, g3.ability2));
             wr32(d, 0x1C, transferPid);                             // PID adapted only for Gen III->modern shiny threshold
             wr8(d, 0x20, static_cast<uint8_t>(pid % 25));           // Nature
@@ -547,8 +562,7 @@ namespace Conversion {
             { const uint8_t pu = rd8(s, 0x28); for (int i = 0; i < 4; ++i) wr8(d, 0x7E + i, (pu >> (i * 2)) & 3); }
             std::vector<std::byte> canonicalName(10, static_cast<std::byte>(Utils::GEN3_TERMINATOR));
             utf8UpperToG3Name(canonicalName, 0, Pokemon::getSpeciesNameGen89(national), 10);
-            bool customNickname = false;
-            for (size_t i = 0; i < 10; ++i) customNickname |= s[0x08 + i] != canonicalName[i];
+            const bool customNickname = !g3NameEqualsIgnoringTrash(s, 0x08, canonicalName, 0, 10);
             uint32_t modernIv32 = iv32 & 0x7FFFFFFFu;               // clear Gen III ability bit
             if (customNickname) modernIv32 |= 0x80000000u;          // modern IsNicknamed bit
             wr32(d, 0x8C, modernIv32);
