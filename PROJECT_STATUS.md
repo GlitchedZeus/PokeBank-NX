@@ -1,126 +1,130 @@
 # PokeBank NX Project Status
 
-Last updated: **2026-09-23**
+Last updated: **2026-09-24**
 
 ## Headline
 
-PokeBank NX has completed the first major editor foundation milestone:
+PokeBank NX has two major foundations in place:
 
-**Generation I, II, and III shared staged Pokémon editing is DEVICE ACCEPTED.**
+1. **Generation I–III shared staged editing is DEVICE ACCEPTED.**
+2. **The storage/custody/transaction hardening pass is largely implemented in software on draft PR #79.**
 
-Accepted Gen III checkpoint:
+The physically accepted Gen III editor checkpoint remains:
 
-```text
-source: 996e6aa40c96e4408282f3d55476dae8e64968b2
-tree:   8826147ff5dc1b498b4b8505c9212243ed2f9498
-NRO:    PokeBank-NX-Gen3-SharedEditor-996e6aa4.nro
-SHA256: ac3f6bd03d2a6733aee509729b81b6636cabe836095715c7b575b5dc84c8076c
-run:    35825830004
-artifact: 10735208869
-status: CI VERIFIED / DEVICE ACCEPTED
-```
+~~~text
+Application SHA:
+996e6aa40c96e4408282f3d55476dae8e64968b2
 
-PR #77 remains OPEN / DRAFT / NOT MERGED.
+NRO SHA-256:
+ac3f6bd03d2a6733aee509729b81b6636cabe836095715c7b575b5dc84c8076c
 
-## What is complete
+Status:
+CI VERIFIED
+DEVICE ACCEPTED
+~~~
 
-| Milestone | Status |
-|---|---|
-| Native Switch runtime | DEVICE ACCEPTED foundation |
-| Gen I read-only | DEVICE ACCEPTED |
-| Gen II read-only | DEVICE ACCEPTED |
-| Gen III GBA read-only | DEVICE ACCEPTED |
-| Classic staged Inventory | DEVICE ACCEPTED |
-| Gen I boxed staged editor | DEVICE ACCEPTED |
-| Gen II shared staged editor | DEVICE ACCEPTED |
-| Gen III shared staged editor | DEVICE ACCEPTED |
-| Gen I/II packed move + multi-select | DEVICE ACCEPTED |
-| Universal editor/reuse architecture freeze (#71) | COMPLETE |
-| Live source writing | HARD DISABLED |
+The current audit line is newer and is **not** device accepted.
+
+## Current audit line
+
+~~~text
+PR #79 — OPEN / DRAFT / NOT MERGED
+Branch: audit/full-project-hardening-20260923
+Head: 59ced7c81db457ce4e59cd8b15268d6a2296537d
+
+Host Tests:
+35961226077 / #1124 / SUCCESS
+
+Native Validation:
+35961222076 / #33 / SUCCESS
+~~~
+
+## Completed or substantially hardened
+
+- durable verified Bank replacement and preserved recovery generations;
+- custody-safe held Pokémon rollback;
+- immutable held source representation + separate destination conversion candidate;
+- profile/account + exact-game mutable workspace namespacing;
+- durable supported single-file workspace persistence;
+- versioned SHA-256 Move transaction journal;
+- crash/idempotent recovery and conflict refusal;
+- production Bank ↔ PokeBank-workspace true-Move integration for supported single-file routes;
+- startup transaction recovery and mutation locking;
+- bidirectional Moves serialized as separate committed transactions;
+- strict continued exclusion of installed-game / RetroArch / other emulator writes.
+
+## Current limitations
+
+- physical Switch power-loss recovery has not yet accepted A04;
+- cross-game true Move is disabled pending conversion fidelity fixtures;
+- BDSP true Move is disabled pending a recoverable multi-file save generation;
+- N06 directory-copy promotion remains a separate durability issue;
+- conversion findings F05–F13 still need exact-current golden fixtures;
+- parser hardening remains incomplete across all families;
+- Master Vault is not yet ready to become authoritative storage.
 
 ## Current phase
 
-The project is now in a **full audit / organization / storage-durability phase**, not a new-generation feature sprint.
+The project remains in **audit / durability / conversion validation**, but the center of gravity has moved.
 
-Primary tracker: **issue #69**.
+The next software task is no longer basic Bank durability. It is:
 
-The audit exists because the next major feature—Master Vault—must not become the authoritative home of unique Pokémon until the underlying persistence, custody, rollback, conversion, parser, and recovery behavior has stronger guarantees than the inherited Bank/backup implementation currently provides.
+**prove generation-to-generation conversion behavior before permitting irreversible cross-game source retirement.**
 
-### Confirmed audit work
+Main tracker: issue #69.
 
-- atomic/durable Bank persistence;
-- custody-safe held Pokémon rollback;
-- destination conversion candidates separated from immutable source representation;
-- cross-store transaction journal/recovery;
-- preservation of multiple corrupt/unreadable generations;
-- malformed/truncated parser boundaries;
-- read-only handling of unsupported newer/larger Bank formats;
-- Switch-account/profile namespacing for mutable workspaces;
-- durable replacement of mutable backup saves;
-- conversion re-audit using exact-current fixtures;
-- repository/reference/license organization;
-- physical Switch recovery tests.
+## Critical path
 
-## After the audit
-
-```text
-audit + durable persistence
+~~~text
+Gen I–III shared editor             DEVICE ACCEPTED
         ↓
-Master Vault + named Banks hardening
+A01–A09 storage/custody hardening   MOSTLY IMPLEMENTED
         ↓
-legacy Storage migration/import
+F05–F13 conversion fidelity audit   NEXT SOFTWARE TRANCHE
+        ↓
+parser hardening + hardware recovery
+        ↓
+Master Vault + named Banks
         ↓
 universal SaveSource adapters
         ↓
 DS / 3DS
         ↓
-modern Switch validation
+broader modern Switch validation
         ↓
-Summary / Dex / provenance / search
+legality / provenance / transfer tooling
         ↓
-conversion / legality / transfer workspace
-        ↓
-approved per-source writes only after proof
+approved source-write adapters
         ↓
 v1.0
-```
+~~~
 
 ## Permanent architecture rules
 
-### One editor
+### One shared editor
 
-```text
+~~~text
 shared editor UI/lifecycle
 + exact-game capabilities/provider
 + generation-native staged adapter
-```
-
-Do not create parallel generation-specific editor products.
+~~~
 
 ### Source safety
 
-```text
+~~~text
 ORIGINAL SOURCE SAVE: IMMUTABLE
 LIVE INSTALLED-GAME WRITE: HARD DISABLED
 LIVE RETROARCH WRITE: HARD DISABLED
 LIVE OTHER-EMULATOR WRITE: HARD DISABLED
 POKEBANK STAGED EDITING: ALLOWED
-```
+~~~
+
+### Move semantics
+
+Normal Move means one logical Pokémon changes active location. Destination verification happens before source retirement.
+
+Copy/Exact Clone/Derived Clone remain explicit operations and must never be accidental side effects of Move.
 
 ### Device acceptance
 
-`DEVICE ACCEPTED` applies only to the exact artifact physically accepted by the owner. It is not inherited by later SHAs.
-
-## Canonical recovery files
-
-- `README.md`
-- `CURRENT_STATUS.md`
-- `PROJECT_STATUS.md`
-- `docs/FULL_PROJECT_AUDIT_2026-09-22.md`
-- `docs/REFERENCE_INDEX.md`
-- `docs/V1_ROADMAP.md`
-- `docs/NEXT_SESSION_PLAN.md`
-- `docs/NEXT_CODEX_PROMPT.md`
-- `docs/GAME_SUPPORT_MATRIX.md`
-
-Issue #29 remains the v1 master roadmap. Issue #69 is the current engineering gate.
+DEVICE ACCEPTED applies only to the exact artifact physically accepted by the owner. It does not automatically transfer to later SHAs.

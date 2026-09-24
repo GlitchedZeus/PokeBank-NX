@@ -1,171 +1,178 @@
-# NEXT CODEX PROMPT — FULL PROJECT AUDIT / ORGANIZATION / DURABILITY HARDENING
+# NEXT ENGINEERING PROMPT — CONVERSION FIDELITY / GOLDEN FIXTURE AUDIT
 
-Continue PokeBank NX exactly from the device-accepted Gen I–III milestone.
+Continue PokeBank NX from the exact CURRENT LIVE GitHub state.
 
-## Authoritative accepted checkpoint
-
-```text
 Repository:
 GlitchedZeus/PokeBank-NX
 
-PR:
-#77
+Active audit PR:
+#79
 
-Branch:
-feature/gen3-shared-pokemon-editor-20260919
+Active audit branch:
+audit/full-project-hardening-20260923
 
-Accepted application SHA:
-996e6aa40c96e4408282f3d55476dae8e64968b2
+Known documentation checkpoint:
+59ced7c81db457ce4e59cd8b15268d6a2296537d
 
-Accepted tree:
-8826147ff5dc1b498b4b8505c9212243ed2f9498
+Before any write:
 
-Accepted NRO:
-PokeBank-NX-Gen3-SharedEditor-996e6aa4.nro
+- re-fetch PR #79 and its live head;
+- preserve newer work;
+- never reset/rebase backward;
+- keep PR #79 draft/open;
+- do not merge PR #77 or #79;
+- keep all live-source write locks hard disabled.
 
-NRO SHA-256:
-ac3f6bd03d2a6733aee509729b81b6636cabe836095715c7b575b5dc84c8076c
+## Completed foundation to preserve
 
-Gen III Actions run:
-35825830004
+A01 durable Bank persistence
+A02 custody-safe rollback
+A03 immutable original + destination candidate
+A04a durable Move journal/recovery
+A04b Bank ↔ PokeBank-owned workspace transaction integration for supported single-file routes
+A05 recovery evidence preservation
+A06 BDSP malformed-layout guard
+A07 newer/larger Bank write block
+A08 profile/exact-game namespaces
+A09 supported single-file workspace durability
 
-Artifact ID:
-10735208869
-
-Status:
-CI VERIFIED
-DEVICE ACCEPTED
-GENERATION III DONE
-```
-
-PR #77 is still OPEN / DRAFT / NOT MERGED. Do not merge it unless explicitly instructed.
-
-## Before any write
-
-1. Re-fetch GitHub.
-2. Preserve any newer head.
-3. Never reset/rebase backward.
-4. Do not create a feature branch just to restart already accepted editor work.
-5. Do not weaken source immutability or write locks.
-
-## Permanent safety
-
-```text
-ORIGINAL SOURCE SAVE: IMMUTABLE
-LIVE RETROARCH WRITE: HARD DISABLED
-LIVE INSTALLED-GAME WRITE: HARD DISABLED
-LIVE OTHER-EMULATOR WRITE: HARD DISABLED
-POKEBANK STAGED EDITING: ALLOWED
-```
+Do not redo those systems unless a new regression proves a defect.
 
 ## Primary task
 
-The next milestone is **issue #69: full project audit / organization / durability hardening**.
+Perform the exact-current F05–F13 conversion fidelity audit using golden fixtures.
 
-Do **not** start Gen IV, DS/3DS, broad UI expansion, or live-write work.
+Start with N01/F07 because it is already confirmed:
 
-### First deliverable — exact-current audit map
+Modern/PK8-layout -> Gen III PID search can exhaust and silently fall back to an incompatible PID while still reporting successful conversion.
 
-Audit the live source and repository organization. Reverify the already-confirmed findings and classify every item as:
+Required behavior:
+if required correlated traits cannot be preserved, conversion must fail explicitly and must not produce a source-retiring true-Move candidate.
 
-```text
-CONFIRMED
-FIXED ALREADY
-STALE / NO LONGER REPRODUCES
-NEEDS FIXTURE
-NEEDS HARDWARE TEST
-DEFERRED WITH REASON
-```
+## Audit matrix
 
-Current confirmed backlog to begin with:
+Reverify:
 
-- A01 Bank persistence not atomic/durable.
-- A02 held Pokémon can be lost on failed return-to-origin.
-- A03 conversion mutates custody before final placement/commit.
-- A04 Bank + destination save are not one durable transaction.
-- A05 fixed unreadable-bank casualty path can destroy older recovery evidence.
-- A06 truncated BDSP input can reach unchecked fixed offsets.
-- A07 unsupported larger Bank can later be truncated on save.
-- A08 mutable backup workspaces are not namespaced by Switch profile.
-- A09 mutable backup save files are overwritten in place.
+F05 shiny preservation
+F06 Unown/PID-derived form
+F07 PID-search exhaustion
+F08 ability slot/number mapping
+F09 S/V ↔ Z-A Tera/divergent fields
+F10 Gen III EV 252/253/255 policy
+F11 nickname/language/loss semantics
+F13 profile/account provenance implications
 
-### Test-first rule
+Classify each exact-current item:
 
-For each confirmed defect:
+CONFIRMED DEFECT
+ALREADY FIXED
+PROVEN CORRECT BY FIXTURE
+NEEDS POLICY
+NEEDS MORE FIXTURES
+UNSUPPORTED / FAIL CLOSED
 
-1. add the smallest reproduction/regression test;
-2. prove it fails for the expected reason;
-3. make only the narrow fix;
-4. rerun relevant focused + permanent regressions;
-5. keep source-write locks unchanged.
+## Golden fixture contract
 
-### Durable persistence target
+For every supported conversion pair under test:
 
-Unify Bank, profile bindings, mutable backup workspaces, and later Vault persistence behind one reviewed primitive.
+- capture exact source bytes/hash;
+- conversion must not mutate source;
+- serialize destination;
+- reparse destination;
+- verify destination checksum/container;
+- verify species/form;
+- verify shiny;
+- verify PID/EC correlations where applicable;
+- verify gender;
+- verify nature;
+- verify ability slot/number;
+- verify IV/EV/DV/Stat Exp policy;
+- verify moves/PP;
+- verify nickname/language;
+- verify origin/version/met data;
+- verify held item/ball where applicable;
+- verify all declared losses.
 
-Required conceptual contract:
+No silent fallback.
 
-```text
-serialize
--> strict pre-write validation
--> unique temporary generation
--> write/flush/close/check
--> reopen/verify
--> preserve prior known-good generation
--> promote target
--> verify promoted target
--> deterministic rollback/recovery
-```
+No silent trait drift.
 
-For multi-file formats, use a journal/state machine so a generation is committed as one logical unit.
+No claim of legality without evidence.
 
-### Custody/transfer rule
+## F07 fix policy
 
-Never destroy or replace the authoritative in-memory/source representation until a destination has been durably committed and verified.
+If PID search cannot satisfy all required Gen III correlated traits within the supported algorithm:
 
-Original payload and destination-converted candidate must remain distinct until commit.
+return explicit conversion failure.
 
-### Conversion re-audit
+Do not:
+- leave the original incompatible PID;
+- silently change nature/gender/shiny/ability slot;
+- allow A04b to retire the source behind that candidate.
 
-Re-run the older F05–F13 conversion questions against exact-current code using golden fixtures. Do not blindly inherit old findings.
+Add a permanent regression for forced/exhausted search failure.
 
-### Parser hardening
+## A04b integration gate
 
-Every fixed-offset parser should have:
+Cross-game true Move remains disabled until a conversion route is fixture-proven.
 
-- minimum whole-layout guard before indexed reads;
-- revision/version validation;
-- malformed-count bounds;
-- truncated fixtures;
-- unknown-version fail closed;
-- ASan/UBSan coverage.
+When a route becomes proven, document whether it is eligible for later A04b enablement.
 
-### Repository organization
+Do not broadly enable all cross-game true Move during this tranche.
 
-Audit:
+Do not change same-game/native-compatible true-Move behavior unless required by a proven bug.
 
-- stale/superseded PRs and branches;
-- duplicate/outdated status docs;
-- reference/license provenance;
-- recovery assets;
-- generated data ownership;
-- build/test duplication;
-- active vs historical documentation.
+## Source safety
 
-Do not delete branches/history/recovery assets without explicit approval.
+ORIGINAL SOURCE SAVE: IMMUTABLE
+LIVE INSTALLED-GAME WRITE: HARD DISABLED
+LIVE RETROARCH WRITE: HARD DISABLED
+LIVE OTHER-EMULATOR WRITE: HARD DISABLED
+UNKNOWN SAVE VARIANTS: FAIL CLOSED
 
-## Completion gate
+## Validation
 
-The audit phase is complete only when:
+Run:
 
-- A01–A09 each have a clear tested disposition;
-- durable storage/recovery is shared and tested;
-- conversion/parser re-audit has current fixtures;
-- full host + ASan/UBSan are green;
-- devkitA64/native build is green;
-- physical Switch recovery testing passes;
-- source writes remain hard disabled.
+- new golden conversion tests;
+- existing A01–A09 regressions;
+- A04a transaction tests;
+- A04b production transaction tests;
+- full Host Tests;
+- ASan;
+- UBSan;
+- Audit Hardening Native Validation.
 
-Then hand off to Master Vault / named Banks hardening (#3/#27).
+Do not claim DEVICE ACCEPTED from CI.
 
-Do not merge PR #77 or begin the next major feature unless explicitly instructed.
+## Documentation
+
+Update docs/AUDIT_STATUS_2026-09-23.md with exact-current F05–F13 disposition, fixtures, policies, route gating and exact CI evidence.
+
+Update the conversion section of CURRENT_STATUS/roadmap only when the tranche is complete.
+
+## Stop condition
+
+When the F05–F13 conversion fidelity tranche is complete, STOP.
+
+Do not automatically start:
+
+- BDSP multi-file journal;
+- N06 directory transaction;
+- Master Vault;
+- Gen IV;
+- DS/3DS;
+- live source writes.
+
+Final report must include:
+
+- exact final SHA/tree;
+- every conversion pair/fixture tested;
+- F05–F13 disposition table;
+- exact F07 failure behavior;
+- any newly confirmed P0/P1/P2 findings;
+- route-level cross-game true-Move eligibility;
+- Host/ASan/UBSan/native results;
+- remaining conversion limitations;
+- updated A01–A09 status;
+- recommended next tranche.

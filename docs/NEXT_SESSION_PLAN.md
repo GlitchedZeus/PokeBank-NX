@@ -1,138 +1,148 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: **2026-09-23**
+Last updated: **2026-09-24**
 
-Status: **GEN I–III DEVICE ACCEPTED / AUDIT + ORGANIZATION PHASE NEXT**
+Status: **GEN I–III DEVICE ACCEPTED / A01–A09 HARDENING MOSTLY IMPLEMENTED / CONVERSION AUDIT NEXT**
 
-## Recover exact accepted state
+## Recover current live state
 
-```text
-Repository: GlitchedZeus/PokeBank-NX
-Default/docs branch: main
-Production branch: feature/pokebank-playable
+Before any write, re-fetch GitHub.
 
-PR #77:
-OPEN / DRAFT / NOT MERGED
+Known checkpoint at this documentation update:
 
-Branch:
-feature/gen3-shared-pokemon-editor-20260919
+~~~text
+Repository:
+GlitchedZeus/PokeBank-NX
 
-Accepted application SHA:
+Accepted editor PR:
+#77 — OPEN / DRAFT / NOT MERGED
+
+Accepted Gen III application:
 996e6aa40c96e4408282f3d55476dae8e64968b2
 
-Accepted tree:
-8826147ff5dc1b498b4b8505c9212243ed2f9498
+Audit PR:
+#79 — OPEN / DRAFT / NOT MERGED
 
-Accepted NRO:
-PokeBank-NX-Gen3-SharedEditor-996e6aa4.nro
+Audit branch:
+audit/full-project-hardening-20260923
 
-Accepted NRO SHA-256:
-ac3f6bd03d2a6733aee509729b81b6636cabe836095715c7b575b5dc84c8076c
+Documented audit head:
+59ced7c81db457ce4e59cd8b15268d6a2296537d
 
-Actions:
-35825830004
+Host:
+35961226077 / #1124 / SUCCESS
 
-Artifact:
-10735208869
-```
+Native:
+35961222076 / #33 / SUCCESS
+~~~
 
-GitHub is authoritative. Re-fetch PR #77 and any branch you intend to modify before writing. Preserve newer work and never reset/rebase backward.
+If the live audit branch has advanced, audit forward. Never reset/rebase backward to this checkpoint.
 
-## Permanent accepted boundary
+## Preserve completed hardening
 
-Do not reopen Gen I–III editor behavior without new evidence.
+Do not redo or weaken:
 
-Preserve:
+- A01 durable Bank replacement;
+- A02 custody-safe rollback;
+- A03 immutable original + separate destination candidate;
+- A04 transaction journal/recovery core;
+- A04 production Bank ↔ PokeBank-workspace integration for supported single-file routes;
+- A05 recovery evidence preservation;
+- A06 BDSP truncation guard;
+- A07 unsupported Bank write blocking;
+- A08 profile/exact-game workspace namespace;
+- A09 single-file workspace DurableFile persistence.
 
-- source immutability;
-- all live-write locks;
-- one shared editor architecture;
-- exact-game capability providers;
-- Gen I/II packed source movement semantics;
-- Gen III sparse/exact-format semantics;
-- D-pad/Left Stick parity;
-- themes/readability;
-- accepted Gen III shiny/EXP/move-picker/PID behavior.
+Keep installed-game, RetroArch and other emulator-source writes hard disabled.
 
-## Primary task next session
+Keep BDSP true Move disabled.
 
-**Start the full project audit/hardening milestone tracked by issue #69.**
+Keep cross-game true Move disabled until conversion routes are proven.
 
-Do not begin Gen IV/DS/3DS or Master Vault feature expansion first.
+## Primary next task — F05–F13 conversion fidelity audit
 
-### Stage A — repository and evidence organization
+Reverify exact-current conversion behavior rather than carrying old findings forward by assumption.
 
-1. Re-fetch main, production, PR #77, issue #69 and issue #29.
-2. Inventory active/open PRs and branches; classify ACTIVE / ACCEPTED / SUPERSEDED / HISTORICAL.
-3. Do not delete branches or rewrite history.
-4. Preserve recovery assets.
-5. Confirm README/status/roadmap/reference docs agree.
-6. Record exact external reference revisions/licenses where code/data is reused.
+Start with the already confirmed high-risk item:
 
-### Stage B — turn confirmed findings into tests
+**N01 / F07 — Gen III downgrade PID-search exhaustion can silently fall back instead of failing explicitly.**
 
-Create narrow reproduction/regression tests for:
+Then cover:
 
-```text
-A01 Bank non-atomic persistence
-A02 held Pokémon loss on failed rollback
-A03 conversion mutates custody before commit
-A04 Bank + destination lack one durable transaction
-A05 unreadable-bank casualty overwrite
-A06 truncated BDSP whole-layout boundary
-A07 unsupported larger Bank can later truncate
-A08 backup workspace profile/account collision
-A09 mutable backup saves overwritten in place
-```
+- F05 shiny preservation across Gen III threshold differences;
+- F06 PID-derived Unown form;
+- F08 ability slot/ability-number mapping;
+- F09 S/V ↔ Z-A divergent/Tera data;
+- F10 Gen III EV 252/253/255 policy;
+- F11 nickname/language/loss behavior;
+- F13 account/profile provenance where relevant.
 
-Do not fix a finding until the test demonstrates it against the live source.
+## Test-first rule
 
-### Stage C — durable persistence primitive
+For each conversion path:
 
-Extract/generalize one PokeBank-owned safe replacement layer based on the strongest existing in-tree pattern:
+1. build a minimal golden source fixture;
+2. hash/capture original bytes;
+3. run conversion;
+4. prove original bytes are unchanged;
+5. serialize destination;
+6. reparse destination;
+7. verify checksum/container integrity;
+8. verify required identity traits;
+9. record every intentional loss;
+10. if required traits cannot be preserved, fail explicitly.
 
-```text
-write temp
--> flush/fsync where available
--> close/check
--> reopen/validate
--> preserve prior generation
--> promote
--> verify promoted target
--> rollback/recover
-```
+Do not silently generate a different Pokémon.
 
-Apply it first to Bank and mutable backup workspaces. Multi-file formats need a transaction journal.
+## Required traits to verify where applicable
 
-### Stage D — conversion + parser re-audit
+- species/form;
+- shiny;
+- PID/EC;
+- gender;
+- nature;
+- ability slot/number;
+- IVs/EVs/DVs/Stat Exp;
+- moves/PP;
+- nickname flags/text;
+- language;
+- origin/version;
+- held item;
+- met data;
+- ball;
+- Tera/divergent modern fields;
+- Unown/PID-derived form.
 
-Reverify older conversion findings against exact-current code with golden fixtures. Harden all fixed-offset parsers to fail closed on truncated/unknown layouts.
+## Transaction safety interaction
 
-### Stage E — physical recovery testing
+A04b cross-game true Move must remain fail-closed while a route is unproven.
 
-On real Switch storage, deliberately test:
+A warning dialog is not enough to authorize source retirement for a conversion whose correctness is unknown.
 
-- interrupted writes where safely simulatable;
-- corrupt target + valid prior generation;
-- target/temp/backup combinations;
-- full SD / short write failure paths where practical;
-- multiple Switch profiles;
-- recovery UX/data preservation.
+Same-game/native-compatible transaction routes may remain enabled according to the current A04b gate.
 
-## Completion gate for the audit milestone
+## Validation
 
-Do not declare the audit phase complete until:
+After the conversion tranche:
 
-- known P1/P2 findings have tests and disposition;
-- durable persistence is shared rather than duplicated;
-- source-write locks remain hard disabled;
-- sanitizer/permanent suite is green;
-- native build is green;
-- storage/recovery paths have physical evidence;
-- Master Vault can safely depend on the new persistence layer.
+- focused golden conversion tests;
+- permanent host suite;
+- A01–A09 hardening regressions;
+- A04a/A04b transaction tests;
+- ASan;
+- UBSan;
+- native devkitA64 compile/link/NRO.
 
-## After that
+Do not claim device acceptance from CI.
 
-Proceed to issue #3 / #27 Master Vault + named Banks hardening/migration.
+## Still deferred
 
-No live source write work is authorized by this plan.
+Do not start these automatically:
+
+- BDSP multi-file journal;
+- N06 directory-generation transaction;
+- Master Vault;
+- Gen IV / DS / 3DS;
+- live source writing.
+
+After conversion fixtures are green, reassess parser hardening and the physical Switch power-loss/recovery matrix before Master Vault becomes authoritative storage.
