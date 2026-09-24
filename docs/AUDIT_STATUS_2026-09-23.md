@@ -1404,3 +1404,214 @@ true Move** in the current product.
 
 F05-F13 conversion-fidelity work stops here. Do not automatically begin BDSP multi-file
 transactions, N06 directory promotion, Master Vault, Gen IV/DS/3DS, or live source writes.
+
+
+---
+
+# Route-level conversion golden corpus expansion — 2026-09-24
+
+This tranche audits forward from the F05–F13 closeout and keeps every cross-game A04b true-Move route disabled.
+
+## Exact code checkpoint before this documentation capture
+
+```text
+application SHA:
+0e67c7be80a395db730f290d79844e3e0b22dafa
+
+tree:
+f292fc3be568b8c86cbad0e80f4adc3bcc2cd84d
+
+PokeBank NX Host Tests:
+36029879834 / #1142 / SUCCESS
+
+normal host suite:
+SUCCESS
+
+focused RSE regression:
+SUCCESS
+
+ASan + UBSan:
+SUCCESS
+
+Audit Hardening Native Validation:
+36029871975 / #46 / SUCCESS
+```
+
+This is CI verification only. It is not physical-device acceptance.
+
+## Commits in the route-corpus tranche
+
+```text
+15966d976600a229b2077f1b62684989c36eb645  test(conversion): expand route-level production goldens
+05752187fca86260834ac50a2c7d285615ffec92  fix(conversion): declare tracker ribbon and mark loss
+ee03c7841163cf8c44cee36c9592dd69f3779130  feat(conversion): add route preflight and provenance evidence contract
+146f9956dcce83420819aa8267dbd4887df3d21e  ci: validate conversion fidelity changes natively
+d2ff53857b5acb249c77cda8fbc1660c247e5c31  fix(conversion): declare LGPE held-item loss before remap
+8efd8d122c2705aee4fbd24cd5383d884e655453  test(conversion): complete tracker and preflight route matrix
+5419710cb337a5b9e63cdf860a6f6db2f100eb6d  test(conversion): use route-legal event move fixture
+809e1f568ea9b1c457b127e498814cc0d1b1502f  test(conversion): derive route move fixtures from learnsets
+0e67c7be80a395db730f290d79844e3e0b22dafa  test(conversion): scope SWSH-SV learnset fixtures correctly
+```
+
+## New production golden fixtures / route slices
+
+The expanded production-entity corpus now exercises:
+
+- modern tracker-bearing Pokémon -> PB7/LGPE and PK3/Gen III trackerless targets, with explicit `HomeTrackerDropped`;
+- Gen III ribbon payload -> Sword, with explicit `RibbonDataDropped`;
+- LGPE Alolan Vulpix -> Sword -> LGPE, including form custody, fateful state and AV/EV reset policy;
+- Sword -> LGPE, including held-item loss, stat-training reset and modern-mark loss;
+- LGPE Melmetal -> Sword, covering mythical/genderless/shiny semantics;
+- PLA Alpha/event Pokémon -> Sword, covering tracker, ribbons/marks, Alpha/PLA-exclusive loss and destination reparse;
+- Sword -> PLA, covering tracker/ribbon/mark survival and held-item loss;
+- Hisuian Zorua -> Sword fail-closed when the destination form is unavailable;
+- Sword -> Scarlet/Violet -> Sword event-style fixture with HOME tracker, ribbon/mark, fateful state, one route-legal carried move and one route-illegal move that is explicitly dropped;
+- Sword <-> Z-A tracker preservation in the tested no-Alpha/no-divergent-payload slice;
+- BDSP -> Sword tracker preservation;
+- BDSP <-> Scarlet/Violet tracker preservation plus target-default Tera synthesis / Tera-loss reporting;
+- supported international Gen III language IDs through Sword -> PK3;
+- Japanese/Korean/Chinese-style unsupported Gen III language IDs remaining explicit `LanguageNotRepresentable`;
+- HOME-tracker matrix across PA8/PK9/PA9 -> PB7/PK3 and trackerless PB7/PK3 -> PK8 without tracker invention;
+- production `preflightConvert()` using the real converter to expose held-item/stat losses and hidden-ability/language failures without mutating the source;
+- F13 `RouteEvidence` data contract separating historical origin, native source/destination formats, store ownership, profile/account identity, source/destination payload digests and explicit loss acknowledgement.
+
+Earlier F05–F13 fixtures remain part of the corpus, including direct S/V <-> Z-A divergent/Tera tests and Gen III shiny/PID/ability/text/EV coverage.
+
+## New exact-current defects found and fixed
+
+### P2 — HOME tracker / mark / ribbon loss could be silent on trackerless down-conversion
+
+PB7 and PK3 have no HOME tracker field. Modern marks are also not representable there, and current Gen III ribbon remaps do not preserve every ribbon bit.
+
+The route corpus reproduced silent semantic disappearance. Production conversion now declares:
+
+```text
+HomeTrackerDropped
+MarkDataDropped
+RibbonDataDropped
+```
+
+before a future source-retiring policy could ever accept such a candidate.
+
+### P2 — LGPE held-item loss was cleared before generic loss reporting
+
+LGPE has no held-item mechanic. The PB7 remap cleared the field before the later destination sanitizer could observe it, so `HeldItemDropped` could be omitted from the fidelity report.
+
+The conversion now reports `HeldItemDropped` while the source held item is still observable, before PB7 remapping.
+
+### P2 — route event-move fixture was not initially route-valid / correctly scoped
+
+The expanded host corpus exposed that hard-coded move assumptions were not reliable across the current learnset tables. The fixture now derives a move legal in both Sword and S/V plus a Sword-only move from the production learnset table, assigns them in the SWSH->SV fixture itself, proves the shared move survives, and proves the Sword-only move is dropped with `MoveDropped`.
+
+This was a test-fixture/build defect, not a newly proven production conversion defect.
+
+No new P0 finding was produced by this tranche.
+
+## HOME tracker disposition
+
+- PK8/PA8/PK9/PA9 routes with tracker fields: preservation is fixture-proven only for the tested route slices.
+- PB7 and PK3: no tracker field; nonzero incoming tracker is an explicit `HomeTrackerDropped` loss.
+- PB7/PK3 -> tracker-capable modern formats: conversion does not invent a tracker.
+- A tracker-loss candidate is not eligible for unacknowledged source-retiring true Move.
+
+## Ribbon / mark disposition
+
+- Common modern ribbon/mark bytes survive in the tested PLA/SWSH and SWSH/SV slices where both representations carry them.
+- Gen III ribbon payload that the current modern remap cannot preserve is explicitly `RibbonDataDropped`.
+- Modern marks entering PB7/PK3 are explicitly `MarkDataDropped`.
+- No route is considered fully ribbon/mark proven across all species/events/formats.
+
+## LGPE disposition
+
+**ROUTE MUST REMAIN DISABLED** for source-retiring cross-game true Move.
+
+Proven slices now include:
+
+- ordinary modern <-> LGPE conversion infrastructure;
+- Alolan Vulpix form custody;
+- Melmetal mythical/genderless/shiny case;
+- held-item loss;
+- EV/AV stat-training reset;
+- modern mark loss entering PB7;
+- source immutability + destination serialize/reparse/checksum.
+
+Remaining blockers include broader Kanto/Alolan form corpus, LGPE-specific balls/met semantics, event corpus, language breadth, move/relearn coverage, ribbon edge cases and acknowledgement/provenance for declared losses.
+
+## PLA disposition
+
+**ROUTE MUST REMAIN DISABLED** for source-retiring cross-game true Move.
+
+Proven slices now include:
+
+- ordinary SWSH <-> PLA entity conversion;
+- Alpha/PLA-exclusive loss declaration on PLA -> SWSH;
+- tracker/ribbon/mark survival in tested slices;
+- held-item loss on SWSH -> PLA;
+- Hisuian Zorua destination absence failing closed instead of flattening.
+
+Remaining blockers include broader Hisuian/permanent-form coverage, PLA balls, mastery/GV semantics, event/special cases, language breadth and explicit acknowledgement/provenance for loss-bearing candidates.
+
+## Event / special-Pokémon disposition
+
+The corpus now includes event-style/fateful metadata, tracker, ribbon/mark and route-legal/route-illegal move behavior in representative modern fixtures.
+
+This is **NEEDS MORE FIXTURES**, not route-wide proof. Fixed-PID/EC distributions, broader Cherish/event-ball semantics, special ribbons/marks, species-specific event moves and historical distribution quirks remain incomplete.
+
+## F13 provenance / loss-acknowledgement result
+
+A data-only `Conversion::RouteEvidence` contract now exists for future source-retiring policy. It keeps these concepts separate:
+
+- historical origin;
+- source native format;
+- destination native format;
+- source store;
+- destination store;
+- profile/account exact-game ownership;
+- source payload digest;
+- destination payload digest;
+- fidelity losses/adaptations;
+- explicit loss acknowledgement.
+
+`preflightConvert()` reuses the production converter rather than creating a second rules engine. It can expose semantic conversion failures and loss reports without mutating the source.
+
+This contract **does not enable Move** and is not yet persisted end-to-end through the A04b journal/UI/provenance flow.
+
+## Route-level future true-Move gate
+
+```text
+ROUTE ELIGIBLE FOR FUTURE TRUE-MOVE ENABLEMENT:
+NONE
+```
+
+Every cross-game route remains:
+
+```text
+ROUTE MUST REMAIN DISABLED
+```
+
+Current route slices are materially stronger, but no entire pair has a sufficiently broad species/form/event/ribbon/mark/language/game-specific corpus plus persisted loss acknowledgement/provenance to authorize source retirement.
+
+In particular:
+
+- LGPE routes remain blocked by incomplete PB7-specific corpus and unavoidable declared-loss cases;
+- PLA routes remain blocked by incomplete Hisuian/Alpha/ball/mastery/GV/event coverage;
+- SWSH <-> SV remains blocked despite event/tracker/move/Tera fixtures because full forms/events/ribbons/marks and loss acknowledgement are incomplete;
+- SWSH <-> Z-A remains blocked because Alpha/divergent/form/event coverage is not route-complete;
+- BDSP <-> SWSH and BDSP <-> SV remain blocked because tested tracker/Tera slices do not constitute route-wide proof;
+- Gen III <-> modern remains blocked by language gaps, ribbon/history loss, PID-correlated semantics and incomplete event/form corpus;
+- direct S/V <-> Z-A remains blocked by broader forms/events/marks/ribbons and loss acknowledgement/provenance.
+
+## Remaining conversion risks
+
+- broader species/form corpus per exact game pair;
+- event distributions and special ribbons/marks/balls;
+- HOME-tracker semantics across more real migrated entities;
+- LGPE ball/met/AV and PLA ball/mastery/GV edge cases;
+- Japanese Gen III and other unsupported text tables;
+- persisted/user-visible declared-loss acknowledgement;
+- end-to-end F13 provenance carried through A04b journal/recovery and future Vault history;
+- route-specific preflight UX using the shared production result without weakening final candidate validation.
+
+## Tranche stop
+
+The route-level golden-corpus expansion stops here. Do not automatically enable cross-game true Move or begin BDSP multi-file transactions, N06, Master Vault, Gen IV/DS/3DS, or live source writes.
