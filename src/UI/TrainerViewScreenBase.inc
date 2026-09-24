@@ -1928,6 +1928,7 @@ namespace UI {
 
         carriedCopyMode = false;
         captureCrossStoreMoveBaseline(pane, false);
+        if (moveRecoveryLocked) return;
         moveMon.clear();
         moveMon.push_back(std::move(src));
         selectDimensions = {1, 1};
@@ -1971,6 +1972,10 @@ namespace UI {
         if (remove) {
             carriedCopyMode = false;
             captureCrossStoreMoveBaseline(pane, false);
+            if (moveRecoveryLocked) {
+                currentlySelecting = false;
+                return;
+            }
         } else {
             carriedCopyMode = true;
             clearCrossStoreMoveBaseline();
