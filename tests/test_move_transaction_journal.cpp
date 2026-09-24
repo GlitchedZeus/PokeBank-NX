@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
+#include <dirent.h>
 #include <fstream>
 #include <iostream>
 #include <iterator>

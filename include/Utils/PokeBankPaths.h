@@ -19,6 +19,7 @@ inline std::string exportsRoot() { return root() + "/exports"; }
 inline std::string gen1ExportsRoot() { return exportsRoot() + "/gen1"; }
 inline std::string gen2ExportsRoot() { return exportsRoot() + "/gen2"; }
 inline std::string backupsRoot() { return root() + "/backups"; }
+inline std::string transactionsRoot() { return root() + "/transactions"; }
 
 inline bool hasValidAccountUid(AccountUid uid) noexcept {
     return uid.uid[0] != 0 || uid.uid[1] != 0;
@@ -169,6 +170,9 @@ inline bool ensureLogsRoot(std::string* error = nullptr) {
 }
 inline bool ensureBackupsRoot(std::string* error = nullptr) {
     return ensureDirectoryTree(backupsRoot(), error);
+}
+inline bool ensureTransactionsRoot(std::string* error = nullptr) {
+    return ensureDirectoryTree(transactionsRoot(), error);
 }
 inline bool ensureLegacyBankRoot(std::string* error = nullptr) {
     return ensureDirectoryTree(legacyBankRoot(), error);
