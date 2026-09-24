@@ -182,6 +182,10 @@ namespace Trainer {
         return PokeBank::Paths::legacyBankRoot() + "/bank.dat";
     }
 
+    std::string Bank::authoritativePath() const {
+        return filePath();
+    }
+
     std::string Bank::boxDisplayName(size_t box) const {
         if (box < BANK_BOX_COUNT && !boxNames[box].empty()) return boxNames[box];
         return "Bank " + std::to_string(box + 1);   // default, 1-indexed
@@ -458,6 +462,105 @@ namespace Trainer {
         return failures;
     }
 
+    bool Bank::validateStorageImage(std::span<const uint8_t> image, std::string& error) {
+        if (image.size() < HEADER_SIZE || std::memcmp(image.data(), BANK_MAGIC, 8) != 0) {
+            error = "Bank image has bad magic or truncated header";
+            return false;
+        }
+        const uint32_t version = readUInt32LittleEndian(image.data() + 8);
+        if (version != BANK_VERSION) {
+            error = "Bank image version is unsupported";
+            return false;
+        }
+        const uint32_t fileBoxes = readUInt32LittleEndian(image.data() + 12);
+        const auto disposition = BankFormatPolicy::classifyBoxCount(fileBoxes);
+        if (disposition != BankFormatPolicy::Disposition::CurrentCompatible) {
+            error = disposition == BankFormatPolicy::Disposition::MigrationRequired
+                ? "Bank image requires migration before write"
+                : "Bank image box count is invalid";
+            return false;
+        }
+
+        const size_t payload = maxPayloadSize();
+        const size_t recSize = 4 + payload;
+        const size_t total = static_cast<size_t>(fileBoxes) * BANK_SLOTS_PER_BOX;
+        const size_t tableEnd = HEADER_SIZE + total * recSize;
+        if (tableEnd < HEADER_SIZE || tableEnd > image.size()) {
+            error = "Bank image record table is truncated";
+            return false;
+        }
+
+        for (size_t n = 0; n < total; ++n) {
+            const size_t off = HEADER_SIZE + n * recSize;
+            const uint32_t tag = readUInt32LittleEndian(image.data() + off);
+            if (tag == BTAG_EMPTY) continue;
+            GameVersion group;
+            if (!groupForBankTag(tag, group)) {
+                error = "Bank image contains an unknown Pokemon format tag";
+                return false;
+            }
+            auto pk = makePokemon(group, std::span<const std::byte>(
+                reinterpret_cast<const std::byte*>(image.data() + off + 4),
+                recordSizeFor(group)));
+            if (!pk || pk->speciesID() == 0 || pk->checksum() != pk->calculateChecksum()) {
+                error = "Bank image contains an invalid Pokemon record";
+                return false;
+            }
+        }
+
+        if (image.size() == tableEnd) return true;
+        if (image.size() < tableEnd + 4 ||
+            std::memcmp(image.data() + tableEnd, NAMES_MARKER, 4) != 0) {
+            error = "Bank image trailing section is unsupported";
+            return false;
+        }
+        size_t p = tableEnd + 4;
+        for (size_t box = 0; box < fileBoxes; ++box) {
+            if (p + 2 > image.size()) {
+                error = "Bank box-name section is truncated";
+                return false;
+            }
+            const uint16_t len = static_cast<uint16_t>(image[p] | (image[p + 1] << 8));
+            p += 2;
+            if (len > MAX_BOX_NAME_LEN * 4 || p + len > image.size()) {
+                error = "Bank box-name entry is invalid";
+                return false;
+            }
+            p += len;
+        }
+        if (p != image.size()) {
+            error = "Bank image has unexpected trailing bytes";
+            return false;
+        }
+        return true;
+    }
+
+    bool Bank::buildVerifiedImage(std::vector<uint8_t>& out, std::string& error) const {
+        if (writeBlocked) {
+            error = writeBlockReasonText.empty() ? "Bank is write-blocked" : writeBlockReasonText;
+            return false;
+        }
+        out = serialize();
+        verifyFailures = verifyImage(out);
+        if (verifyFailures != 0) {
+            error = "Bank image failed live slot round-trip verification";
+            return false;
+        }
+        return validateStorageImage(out, error);
+    }
+
+    bool Bank::acceptCommittedImage(std::span<const uint8_t> image, std::string& error) const {
+        if (!validateStorageImage(image, error)) return false;
+        const std::vector<uint8_t> current = serialize();
+        if (current.size() != image.size() ||
+            !std::equal(current.begin(), current.end(), image.begin())) {
+            error = "committed Bank image does not match current in-memory Bank";
+            return false;
+        }
+        savedImage.assign(image.begin(), image.end());
+        return true;
+    }
+
     bool Bank::save() const {
         if (writeBlocked) {
             logErrorToFile("Bank: save blocked to prevent truncating a newer/larger layout",
@@ -473,15 +576,10 @@ namespace Trainer {
             return false;
         }  // ignore EEXIST
 
-        std::vector<uint8_t> buf = serialize();
-
-        // A01: a Bank image that cannot round-trip every live Pokemon is not a candidate
-        // for persistence. The accepted pre-audit code logged verification failures and
-        // wrote the image anyway; safety now wins over convenience.
-        verifyFailures = verifyImage(buf);
-        if (verifyFailures != 0) {
-            logErrorToFile("Bank: refusing to persist an image that failed round-trip verification",
-                           std::to_string(verifyFailures).c_str());
+        std::vector<uint8_t> buf;
+        std::string imageError;
+        if (!buildVerifiedImage(buf, imageError)) {
+            logErrorToFile("Bank: refusing to persist an invalid image", imageError.c_str());
             return false;
         }
 
