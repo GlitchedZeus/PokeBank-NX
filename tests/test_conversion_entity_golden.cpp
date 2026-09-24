@@ -11,6 +11,7 @@
 #include "Encryption/Encryption9LZA.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/PersonalInfoTable.h"
+#include "Pokemon/LearnsetTable.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Pokemon/Pokemon7LGPE.h"
 #include "Pokemon/Pokemon8SWSH.h"
@@ -876,9 +877,22 @@ int main() {
                         static_cast<uint8_t>(GameVersion::PLA), u"ALPHA", true);
         assert(source->isShiny(source->id32(), ""));
         source->setFatefulEncounter(true);
-        source->setMove(0, 98); // Quick Attack: legal for Pikachu in both tested games
-        source->setMovePP(0, 30);
+        uint16_t commonMove = 0;
+        uint16_t swordOnlyMove = 0;
+        for (uint16_t move = 1; move <= Pokemon::LEARN_MAX_MOVE_ID; ++move) {
+            const bool sw = Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
+            const bool sv = Pokemon::isLearnable(25, 0, GameVersion::SV, move);
+            if (sw && sv && commonMove == 0) commonMove = move;
+            if (sw && !sv && swordOnlyMove == 0) swordOnlyMove = move;
+            if (commonMove != 0 && swordOnlyMove != 0) break;
+        }
+        assert(commonMove != 0 && swordOnlyMove != 0);
+        source->setMove(0, commonMove);
+        source->setMovePP(0, 1);
         source->setMovePPUps(0, 0);
+        source->setMove(1, swordOnlyMove);
+        source->setMovePP(1, 1);
+        source->setMovePPUps(1, 0);
         auto d = source->getData();
         d[0x16] = static_cast<std::byte>(static_cast<uint8_t>(d[0x16]) | 0x20); // Alpha
         d[0x34] = std::byte{0x02}; // common ribbon bit
@@ -982,7 +996,9 @@ int main() {
         assert(static_cast<uint8_t>(sv->getData()[0x40]) == 0x04);
         assert(static_cast<uint8_t>(sv->getData()[0xD4]) == 1);
         assert(sv->isFatefulEncounter());
-        assert(sv->move(0) == 98 && sv->movePP(0) == 30 && sv->movePPUps(0) == 0);
+        assert(sv->move(0) == commonMove && sv->movePP(0) == 1 && sv->movePPUps(0) == 0);
+        assert(sv->move(1) == 0 && sv->movePP(1) == 0 && sv->movePPUps(1) == 0);
+        assert(toSV.hasLoss(Loss::MoveDropped));
         assert(sv->metLevel() == source->metLevel());
         assert(sv->metLocation() == source->metLocation());
         assert(sv->originGame() == source->originGame());
