@@ -1207,3 +1207,28 @@ idempotence.
 The same follow-up hardens F11 default-name detection to ignore non-semantic Gen III bytes after the
 0xFF string terminator, and records duplicate-ability selector normalization explicitly rather than
 calling that round-trip byte drift lossless.
+
+
+## Production entity golden layer
+
+In addition to the generated policy vectors, `test_conversion_entity_golden.cpp` exercises the real
+`Conversion::convert()` path on deterministic native entities:
+
+- FireRed/LeafGreen PK3 -> Sword PK8 -> PK3 at the shiny-threshold boundary;
+- Brilliant Diamond/Shining Pearl PK8 Unown form 13 -> PK3 -> PK8;
+- Sword hidden-ability Pikachu -> PK3 explicit failure;
+- Scarlet PK9 -> Z-A PA9 with Tera loss declaration;
+- Z-A PA9 Alpha/divergent state -> Scarlet PK9 with declared loss + destination Tera synthesis;
+- PK3 EV 252/253/254/255 -> Sword with declared 252 clamp;
+- Sword custom nickname -> PK3 -> Sword with origin-restamp provenance declaration;
+- unsupported Gen III text/language failure cases.
+
+For each successful fixture the test serializes the destination back to its encrypted native entity
+format, reparses it with the destination class, validates the checksum, and compares the reparsed
+semantic fields. Every fixture hashes the exact encrypted source bytes and proves both the bytes and
+SHA-256 are unchanged after conversion. Failed conversions prove the same source immutability.
+
+These fixtures are intentionally **route slices**, not blanket proof for every species/form/field
+combination. They do not unlock A04b cross-game source retirement. Route enablement remains a
+separate future decision after broader corpus coverage (ribbons/marks/HOME side data, forms, events,
+language tables and game-specific edge cases).
