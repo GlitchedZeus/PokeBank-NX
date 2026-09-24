@@ -18,6 +18,7 @@
 #include "Utils/HelperUtilities.h"
 #include "Utils/StringHelpers.h"
 #include "Utils/DurableFile.h"
+#include "Utils/PokeBankPaths.h"
 #include "Trainer/Trainer.h"
 #include "Trainer/Trainer7LGPE.h"
 #include "Trainer/Trainer8SWSH.h"
@@ -154,6 +155,172 @@ namespace Save {
         }
     }
 
+    static std::string findGen3SaveFile(const char* dir);
+
+    std::string authoritativeWorkspaceFileId(const char* backupDir, u64 titleId,
+                                             std::string& error) {
+        const GameVersion group = getGameGroup(getGameVersion(titleId));
+        switch (group) {
+            case GameVersion::GG:   return "savedata.bin";
+            case GameVersion::SWSH:
+            case GameVersion::ZA:
+            case GameVersion::SV:
+            case GameVersion::PLA:  return "main";
+            case GameVersion::FRLG: {
+                const std::string name = findGen3SaveFile(backupDir);
+                if (name.empty()) error = "FRLG authoritative workspace file was not found";
+                return name;
+            }
+            case GameVersion::BDSP:
+                error = "BDSP is a multi-file workspace and is excluded from A04b";
+                return {};
+            default:
+                error = "game is not supported by the single-file workspace transaction layer";
+                return {};
+        }
+    }
+
+    bool validateWorkspaceImage(u64 titleId, std::span<const uint8_t> bytes, std::string& error) {
+        switch (getGameGroup(getGameVersion(titleId))) {
+            case GameVersion::GG:   return validateLGPEWorkspace(bytes, error);
+            case GameVersion::SWSH:
+            case GameVersion::ZA:
+            case GameVersion::SV:   return validateSCWorkspace(bytes, error);
+            case GameVersion::PLA:  return validatePLAWorkspace(bytes, error);
+            case GameVersion::FRLG: return validateFRLGWorkspace(bytes, error);
+            case GameVersion::BDSP:
+                error = "BDSP multi-file workspace validation is not enabled for A04b";
+                return false;
+            default:
+                error = "unsupported single-file workspace format";
+                return false;
+        }
+    }
+
+    bool buildWorkspaceImage(Trainer::Trainer& trainer, const char* backupDir, u64 titleId,
+                             WorkspaceImage& out, std::string& error) {
+        out = {};
+        const GameVersion group = trainer.getGameGroup();
+        if (group != getGameGroup(getGameVersion(titleId))) {
+            error = "trainer/game identity mismatch";
+            return false;
+        }
+
+        if (group == GameVersion::GG) {
+            auto& t = static_cast<Trainer7LGPE&>(trainer);
+            t.updateItemBlock();
+            t.updateBoxBlock();
+            t.updatePartyBlock();
+            t.updateTrainerInfoBlock();
+            t.updatePokedexBlock();
+            out.fileId = "savedata.bin";
+            const std::string path = std::string(backupDir) + "/" + out.fileId;
+            size_t size = 0;
+            uint8_t* file = readAllBytes(path.c_str(), &size);
+            if (!file || size < SAVE_SIZE7_LGPE) {
+                delete[] file;
+                error = "failed to read complete Let's Go workspace image";
+                return false;
+            }
+            out.bytes.assign(file, file + size);
+            delete[] file;
+            writeBlocksToSaveData7LGPE(out.bytes, t.getBlocks());
+        } else if (group == GameVersion::SWSH) {
+            auto& t = static_cast<Trainer8SWSH&>(trainer);
+            t.updateItemBlock();
+            t.updatePartyBlock();
+            t.updateBoxBlock();
+            t.updateBoxNameBlock();
+            t.updateCurrentBoxBlock();
+            t.updateTrainerInfoBlock();
+            t.updatePokedexBlock();
+            out.fileId = "main";
+            out.bytes = encrypt(t.getBlocks());
+        } else if (group == GameVersion::ZA) {
+            auto& t = static_cast<Trainer9LZA&>(trainer);
+            t.updateItemBlock();
+            t.updatePartyBlock();
+            t.updateBoxBlock();
+            t.updateBoxNameBlock();
+            t.updateCurrentBoxBlock();
+            t.updateTrainerInfoBlock();
+            t.updatePokedexBlock();
+            out.fileId = "main";
+            out.bytes = encrypt(t.getBlocks());
+        } else if (group == GameVersion::SV) {
+            auto& t = static_cast<Trainer9SV&>(trainer);
+            t.updateItemBlock();
+            t.updatePartyBlock();
+            t.updateBoxBlock();
+            t.updateBoxNameBlock();
+            t.updateCurrentBoxBlock();
+            t.updateTrainerInfoBlock();
+            t.updatePokedexBlock();
+            out.fileId = "main";
+            out.bytes = encrypt(t.getBlocks());
+        } else if (group == GameVersion::PLA) {
+            auto& t = static_cast<Trainer8LA&>(trainer);
+            t.updateItemBlock();
+            t.updatePartyBlock();
+            t.updateBoxBlock();
+            t.updateBoxNameBlock();
+            t.updateCurrentBoxBlock();
+            t.updateTrainerInfoBlock();
+            t.updatePokedexBlock();
+            out.fileId = "main";
+            out.bytes = encrypt(t.getBlocks());
+        } else if (group == GameVersion::FRLG) {
+            auto& t = static_cast<Trainer3FRLG&>(trainer);
+            t.updateItemBlock();
+            t.updateBoxBlock();
+            t.updateBoxNameBlock();
+            t.updateCurrentBoxBlock();
+            t.updatePartyBlock();
+            t.updatePokedexBlock();
+            t.updateTrainerInfoBlock();
+            t.finalizeChecksums();
+            out.fileId = t.fileName();
+            if (out.fileId.empty())
+                out.fileId = authoritativeWorkspaceFileId(backupDir, titleId, error);
+            if (out.fileId.empty() || !PokeBank::Paths::isSafeComponent(out.fileId)) {
+                if (error.empty()) error = "FRLG authoritative workspace filename is invalid";
+                return false;
+            }
+            out.bytes = t.getSaveData();
+        } else {
+            error = group == GameVersion::BDSP
+                ? "BDSP true Move is blocked until a recoverable file-set transaction exists"
+                : "unsupported workspace image format";
+            return false;
+        }
+
+        if (out.bytes.empty()) {
+            error = "workspace serialization produced an empty image";
+            return false;
+        }
+        return validateWorkspaceImage(titleId, out.bytes, error);
+    }
+
+    bool persistWorkspaceImage(u64 titleId, const char* backupDir,
+                               const WorkspaceImage& image, std::string& error) {
+        const std::string expected = authoritativeWorkspaceFileId(backupDir, titleId, error);
+        if (expected.empty() || expected != image.fileId) {
+            if (error.empty()) error = "workspace image file id does not match authoritative file";
+            return false;
+        }
+        if (!validateWorkspaceImage(titleId, image.bytes, error)) return false;
+        const std::string path = std::string(backupDir) + "/" + image.fileId;
+        const auto validator = [titleId](std::span<const uint8_t> bytes, std::string& e) {
+            return validateWorkspaceImage(titleId, bytes, e);
+        };
+        if (!persistWorkspaceFile("PokeBank workspace", path,
+                std::span<const uint8_t>(image.bytes.data(), image.bytes.size()), validator)) {
+            if (error.empty()) error = "durable workspace replacement failed";
+            return false;
+        }
+        return true;
+    }
+
     // ========================================
     // Generic Functions (Auto-detect game)
     // ========================================
@@ -288,45 +455,21 @@ namespace Save {
     }
 
     bool saveTrainerInfo(Trainer::Trainer& trainer, const char* backupDir, u64 titleId, AccountUid userUid) {
-        /**
-         * Auto-detects the game version and calls the appropriate saving function.
-         * Uses virtual getGameGroup() method to determine concrete type without RTTI.
-         */
-
-        GameVersion version = getGameVersion(titleId);
-        GameVersion group = getGameGroup(version);
-
-        char buffer[512];
-        snprintf(buffer, sizeof(buffer), "Saving for game: %s (Group: %s)",
-            getGameVersionName(version).c_str(), getGameVersionName(group).c_str());
-        Utils::logInfoToFile(buffer);
-
-        GameVersion trainerGroup = trainer.getGameGroup();
-
-        bool ok;
-        if (trainerGroup == GameVersion::GG) {
-            // Let's Go - cast is safe because we checked the type via virtual method
-            ok = saveTrainerInfoLetsGo(static_cast<Trainer::Trainer7LGPE&>(trainer), backupDir, titleId, userUid, false);
-        } else if (trainerGroup == GameVersion::SWSH) {
-            // Sword/Shield - cast is safe because we checked the type via virtual method
-            ok = saveTrainerInfoSwSh(static_cast<Trainer::Trainer8SWSH&>(trainer), backupDir, titleId, userUid, false);
-        } else if (trainerGroup == GameVersion::ZA) {
-            ok = saveTrainerInfoLZA(static_cast<Trainer9LZA&>(trainer), backupDir, titleId, userUid, false);
-        } else if (trainerGroup == GameVersion::SV) {
-            ok = saveTrainerInfoSV(static_cast<Trainer9SV&>(trainer), backupDir, titleId, userUid, false);
-        } else if (trainerGroup == GameVersion::PLA) {
-            ok = saveTrainerInfoLA(static_cast<Trainer8LA&>(trainer), backupDir, titleId, userUid, false);
-        } else if (trainerGroup == GameVersion::BDSP) {
-            ok = saveTrainerInfoBDSP(static_cast<Trainer8BDSP&>(trainer), backupDir, titleId, userUid, false);
-        } else if (trainerGroup == GameVersion::FRLG) {
-            ok = saveTrainerInfoFRLG(static_cast<Trainer3FRLG&>(trainer), backupDir, titleId, userUid, false);
-        } else {
-            logErrorToFile("Unsupported trainer type");
-            return false;
+        if (trainer.getGameGroup() == GameVersion::BDSP) {
+            return saveTrainerInfoBDSP(static_cast<Trainer8BDSP&>(trainer),
+                                       backupDir, titleId, userUid, false);
         }
 
-        if (ok) purgeLegacyModifiedSave(backupDir);
-        return ok;
+        WorkspaceImage image;
+        std::string error;
+        const bool ok = buildWorkspaceImage(trainer, backupDir, titleId, image, error) &&
+                        persistWorkspaceImage(titleId, backupDir, image, error);
+        if (!ok) {
+            logErrorToFile("Workspace save failed", error.c_str());
+            return false;
+        }
+        purgeLegacyModifiedSave(backupDir);
+        return true;
     }
 
     // ========================================
