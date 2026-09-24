@@ -72,6 +72,29 @@ int main() {
     assert(header.find("tryCommitCrossStoreMove") != std::string::npos);
     assert(source.find("tryCommitCrossStoreMove") != std::string::npos);
     assert(source.find("MOVE COMMITTED") != std::string::npos);
+    assert(source.find("Save or discard existing Bank/workspace edits before a cross-store Move.") !=
+           std::string::npos);
+    assert(source.find("Cross-store true Move requires empty destination slots.") !=
+           std::string::npos);
+    assert(source.find("Cross-game true Move is locked until conversion preservation is proven.") !=
+           std::string::npos);
+    assert(source.find("engine.prepare(") != std::string::npos);
+    assert(source.find("engine.recover(") != std::string::npos);
+
+    // Successful true Move establishes a new committed baseline instead of leaving legacy
+    // Save/Discard snapshots capable of undoing one side of the transaction.
+    const auto bankReload = source.find("bank->load()");
+    const auto committedStatus = source.find("MOVE COMMITTED");
+    assert(bankReload != std::string::npos);
+    assert(committedStatus != std::string::npos);
+    assert(bankReload < committedStatus);
+    assert(source.find("hasUnsavedChanges = false") != std::string::npos);
+
+    // Pickup is staging only. Returning the held object restores the dirty state that existed
+    // before pickup; it must not invent a dirty workspace just because a Move was cancelled.
+    assert(source.find("crossStoreBaseline.workspaceDirtyBeforePickup") != std::string::npos);
+    assert(source.find("hasUnsavedChanges = crossStoreBaseline.workspaceDirtyBeforePickup") !=
+           std::string::npos);
 
     // Startup/session open must run transaction recovery before parsing the workspace.
     const auto recovery = ui.find("recoverPendingMoveTransactions");
@@ -84,6 +107,15 @@ int main() {
     const std::string prod = readText("src/Utils/MoveTransactionProduction.cpp");
     assert(prod.find("restoreBackupToTitle") == std::string::npos);
     assert(prod.find("injectToTitle") == std::string::npos);
+
+    const std::string save = readText("src/Save/GetSaveFileContents.cpp");
+    assert(save.find("buildWorkspaceImage(") != std::string::npos);
+    assert(save.find("persistWorkspaceImage(") != std::string::npos);
+    assert(save.find("BDSP true Move is blocked") != std::string::npos);
+
+    const std::string bank = readText("src/Trainer/Bank.cpp");
+    assert(bank.find("buildVerifiedImage(") != std::string::npos);
+    assert(bank.find("validateStorageImage(") != std::string::npos);
 
     std::cout << "A04b production true-Move contract: PASS\n";
 }
