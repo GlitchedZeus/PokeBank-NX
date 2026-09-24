@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <span>
 #include <vector>
 
 #include "Pokemon/Pokemon.h"
@@ -42,6 +43,18 @@ namespace Trainer {
 
         /// Writes the bank to its SD file (tagged, encrypted records). Returns true on success.
         bool save() const;
+
+        /// Canonical authoritative file used by durable transaction adapters.
+        std::string authoritativePath() const;
+
+        /// Build the exact current Bank image and prove every occupied slot round-trips.
+        bool buildVerifiedImage(std::vector<uint8_t>& out, std::string& error) const;
+
+        /// Structural validator for an arbitrary supported Bank image. Does not depend on live boxes.
+        static bool validateStorageImage(std::span<const uint8_t> image, std::string& error);
+
+        /// Mark a verified committed image as the current dirty-state baseline.
+        bool acceptCommittedImage(std::span<const uint8_t> image, std::string& error) const;
 
         /// True if the in-memory boxes differ from the last saved/loaded on-disk state.
         /// Used to prompt Save/Discard when leaving the storage view (HOME-style).
