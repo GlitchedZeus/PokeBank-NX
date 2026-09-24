@@ -976,6 +976,22 @@ int main() {
         configureModern(*source, 25, 0, 0x778899AAu, 0x778898AAu,
                         static_cast<uint8_t>(GameVersion::SW), u"EVENT", true);
         source->setFatefulEncounter(true);
+        uint16_t commonMove = 0;
+        uint16_t swordOnlyMove = 0;
+        for (uint16_t move = 1; move <= Pokemon::LEARN_MAX_MOVE_ID; ++move) {
+            const bool sw = Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
+            const bool sv = Pokemon::isLearnable(25, 0, GameVersion::SV, move);
+            if (sw && sv && commonMove == 0) commonMove = move;
+            if (sw && !sv && swordOnlyMove == 0) swordOnlyMove = move;
+            if (commonMove != 0 && swordOnlyMove != 0) break;
+        }
+        assert(commonMove != 0 && swordOnlyMove != 0);
+        source->setMove(0, commonMove);
+        source->setMovePP(0, 1);
+        source->setMovePPUps(0, 0);
+        source->setMove(1, swordOnlyMove);
+        source->setMovePP(1, 1);
+        source->setMovePPUps(1, 0);
         auto d = source->getData();
         d[0x34] = std::byte{0x02};
         d[0x40] = std::byte{0x04};
