@@ -73,6 +73,17 @@ namespace Conversion {
     /// (no allocation) for gating UI without performing the conversion.
     bool canConvert(const Pokemon::Pokemon& src, Enums::GameVersion destGroup, Result& result);
 
+    /// Exact dry-run preflight using the production converter itself. Unlike canConvert(), this can
+    /// surface ability/text/language and declared-loss outcomes without duplicating conversion rules.
+    /// The candidate is discarded; the const source remains immutable. This does NOT authorize Move.
+    struct PreflightResult {
+        Result result = Result::Unsupported;
+        Report report{};
+        bool candidateAvailable = false;
+    };
+    PreflightResult preflightConvert(const Pokemon::Pokemon& src, Enums::GameVersion destGroup,
+                                     uint8_t destOriginVersion = 0);
+
     /// Short human-facing reason for a non-Ok/SameGroup result, for on-screen feedback.
     const char* resultMessage(Result r);
 

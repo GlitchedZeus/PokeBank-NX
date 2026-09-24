@@ -1,6 +1,7 @@
 #include "Conversion/Convert.h"
 #include "Conversion/Fidelity.h"
 #include "Conversion/Gen3PidSearch.h"
+#include "Conversion/RouteEvidence.h"
 #include "Encryption/Encryption3FRLG.h"
 #include "Encryption/Encryption7LGPE.h"
 #include "Encryption/Encryption8SWSH.h"
@@ -849,8 +850,9 @@ int main() {
     // LGPE mythical/genderless route coverage.
     {
         auto source = blankGG(0x0A0B0C0Eu);
-        configureModern(*source, 809, 0, 0x33445566u, 0x33445466u,
+        configureModern(*source, 809, 0, 0x33445566u, 0x33445566u,
                         static_cast<uint8_t>(GameVersion::GP), u"MELMETAL", false);
+        assert(source->isShiny(source->id32(), ""));
         const auto before = nativeBytes(*source);
         const auto sourceHash = hashBytes(before);
         Report report;
@@ -860,6 +862,7 @@ int main() {
         assert(result == Result::Ok && swsh);
         proveSourceUnchanged(*source, before, sourceHash);
         assert(swsh->speciesID() == 809 && swsh->gender() == 2);
+        assert(swsh->isShiny(swsh->id32(), ""));
         assertSerializedReparse(*swsh);
         std::cout << "fixture route-lgpe-melmetal-swsh source-sha256=" << hexHash(sourceHash) << "\n";
     }
@@ -869,9 +872,13 @@ int main() {
     {
         const uint64_t tracker = 0x8877665544332211ULL;
         auto source = blankPLA();
-        configureModern(*source, 25, 0, 0x44556677u, 0x44556777u,
+        configureModern(*source, 25, 0, 0x44556677u, 0x44556677u,
                         static_cast<uint8_t>(GameVersion::PLA), u"ALPHA", true);
+        assert(source->isShiny(source->id32(), ""));
         source->setFatefulEncounter(true);
+        source->setMove(0, 33); // Tackle: retained on the tested Pikachu route
+        source->setMovePP(0, 20);
+        source->setMovePPUps(0, 1);
         auto d = source->getData();
         d[0x16] = static_cast<std::byte>(static_cast<uint8_t>(d[0x16]) | 0x20); // Alpha
         d[0x34] = std::byte{0x02}; // common ribbon bit
@@ -888,6 +895,7 @@ int main() {
         assert(result == Result::Ok && swsh);
         proveSourceUnchanged(*source, before, sourceHash);
         assert(report.hasLoss(Loss::PLAExclusiveDataDropped));
+        assert(swsh->isShiny(swsh->id32(), ""));
         assert((static_cast<uint8_t>(swsh->getData()[0x16]) & 0x20) == 0);
         assert(static_cast<uint8_t>(swsh->getData()[0x34]) == 0x02);
         assert(static_cast<uint8_t>(swsh->getData()[0x40]) == 0x04);
@@ -974,6 +982,10 @@ int main() {
         assert(static_cast<uint8_t>(sv->getData()[0x40]) == 0x04);
         assert(static_cast<uint8_t>(sv->getData()[0xD4]) == 1);
         assert(sv->isFatefulEncounter());
+        assert(sv->move(0) == 33 && sv->movePP(0) == 20 && sv->movePPUps(0) == 1);
+        assert(sv->metLevel() == source->metLevel());
+        assert(sv->metLocation() == source->metLocation());
+        assert(sv->originGame() == source->originGame());
         assertSerializedReparse(*sv);
 
         const auto svBefore = nativeBytes(*sv);
@@ -1081,6 +1093,99 @@ int main() {
             assert(!failed && result == Result::LanguageNotRepresentable);
             proveSourceUnchanged(*source, before, sourceHash);
         }
+    }
+
+    // BDSP <-> S/V route slice: the PK8/PK9 tracker survives the hub transform while target-native
+    // Tera is synthesized entering S/V and explicitly reported as lost on the return.
+    {
+        const uint64_t tracker = 0xD1D2D3D4D5D6D7D8ULL;
+        auto source = blankBDSP(0x73000001u);
+        configureModern(*source, 25, 0, 0xCCDDEEFFu, 0xCCDDEFFFu,
+                        static_cast<uint8_t>(GameVersion::BD), u"PIKACHU", false);
+        wr64(source->getData(), 0x135, tracker);
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report toSV;
+        Result result = Result::Unsupported;
+        auto sv = convert(*source, GameVersion::SV, result,
+                          static_cast<uint8_t>(GameVersion::SL), &toSV);
+        assert(result == Result::Ok && sv);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(toSV.hasAdaptation(Adaptation::TargetDefaultTeraSynthesized));
+        assert(rd64(sv->getData(), 0x127) == tracker);
+        assertSerializedReparse(*sv);
+
+        const auto svBefore = nativeBytes(*sv);
+        const auto svHash = hashBytes(svBefore);
+        Report back;
+        auto bdsp = convert(*sv, GameVersion::BDSP, result,
+                            static_cast<uint8_t>(GameVersion::BD), &back);
+        assert(result == Result::Ok && bdsp);
+        proveSourceUnchanged(*sv, svBefore, svHash);
+        assert(back.hasLoss(Loss::TeraDataDropped));
+        assert(rd64(bdsp->getData(), 0x135) == tracker);
+        assertSerializedReparse(*bdsp);
+        std::cout << "fixture route-bdsp-sv-tracker source-sha256=" << hexHash(sourceHash) << "\n";
+    }
+
+    // Exact shared preflight must report the same candidate viability/losses as production conversion
+    // without inventing a second rules engine or mutating the source.
+    {
+        auto source = blankSWSH(0x74000001u);
+        configureModern(*source, 25, 0, 0xDDEEFF00u, 0xDDEEFE00u,
+                        static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
+        source->setHeldItem(1);
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        const auto pre = preflightConvert(*source, GameVersion::GG,
+                                          static_cast<uint8_t>(GameVersion::GP));
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(pre.candidateAvailable && pre.result == Result::Ok);
+        assert(pre.report.hasLoss(Loss::HeldItemDropped));
+        assert(pre.report.hasLoss(Loss::StatTrainingReset));
+
+        const auto& pi = Pokemon::getPersonalInfo(25, 0);
+        source->setAbility(pi.abilityHidden);
+        source->setAbilityNumber(4);
+        source->refreshChecksum();
+        const auto hiddenBefore = nativeBytes(*source);
+        const auto hiddenHash = hashBytes(hiddenBefore);
+        const auto hidden = preflightConvert(*source, GameVersion::FRLG,
+                                             static_cast<uint8_t>(GameVersion::FR));
+        proveSourceUnchanged(*source, hiddenBefore, hiddenHash);
+        assert(!hidden.candidateAvailable && hidden.result == Result::AbilityNotRepresentable);
+    }
+
+    // F13 data contract: historical origin/native format/current store/profile are intentionally
+    // distinct, and any declared loss requires acknowledgement before future retirement policy could pass.
+    {
+        RouteEvidence evidence;
+        evidence.sourceFormat = GameVersion::SWSH;
+        evidence.destinationFormat = GameVersion::SV;
+        evidence.historicalOriginVersion = static_cast<uint8_t>(GameVersion::SW);
+        evidence.fidelity.sourceOriginVersion = static_cast<uint8_t>(GameVersion::SW);
+        evidence.fidelity.destinationEntityOriginVersion = static_cast<uint8_t>(GameVersion::SW);
+        evidence.fidelity.addLoss(Loss::HeldItemDropped);
+        evidence.sourceStore.type = PokeBank::Storage::MoveTx::StoreType::Bank;
+        evidence.sourceStore.fileId = "bank.dat";
+        evidence.destinationStore.type = PokeBank::Storage::MoveTx::StoreType::MutableWorkspaceSingleFile;
+        evidence.destinationStore.profile = "account-11111111111111112222222222222222";
+        evidence.destinationStore.gameId = "scarlet_switch";
+        evidence.destinationStore.workspace = "Working";
+        evidence.destinationStore.fileId = "main";
+        evidence.sourcePayload[0] = 0x11;
+        evidence.destinationPayload[0] = 0x22;
+
+        assert(evidence.historicalOriginVersion == static_cast<uint8_t>(GameVersion::SW));
+        assert(evidence.fidelity.destinationEntityOriginVersion == static_cast<uint8_t>(GameVersion::SW));
+        assert(evidence.destinationFormat == GameVersion::SV);
+        assert(evidence.destinationStore.gameId == "scarlet_switch");
+        assert(evidence.destinationStore.profile.find("account-") == 0);
+        assert(evidence.requiresLossAcknowledgement());
+        assert(!evidence.lossPolicySatisfied());
+        evidence.lossesAcknowledged = true;
+        assert(evidence.lossPolicySatisfied());
     }
 
     std::cout << "F05-F13 production conversion entity goldens: PASS\n";

@@ -983,6 +983,21 @@ namespace Conversion {
         return out;
     }
 
+    PreflightResult preflightConvert(const Pokemon::Pokemon& src, GameVersion destGroup,
+                                     uint8_t destOriginVersion) {
+        PreflightResult out;
+        if (src.getGameGroup() == destGroup) {
+            out.result = Result::SameGroup;
+            out.report.sourceOriginVersion = src.originGame();
+            out.report.destinationEntityOriginVersion = src.originGame();
+            out.candidateAvailable = true;
+            return out;
+        }
+        auto candidate = convert(src, destGroup, out.result, destOriginVersion, &out.report);
+        out.candidateAvailable = static_cast<bool>(candidate);
+        return out;
+    }
+
     bool normalizeAffixedRibbon(Pokemon::Pokemon& pk) {
         const size_t affix = affixedRibbonOffset(pk.getGameGroup());
         if (affix == 0) return false;                       // format has no such field
