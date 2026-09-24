@@ -876,9 +876,9 @@ int main() {
                         static_cast<uint8_t>(GameVersion::PLA), u"ALPHA", true);
         assert(source->isShiny(source->id32(), ""));
         source->setFatefulEncounter(true);
-        source->setMove(0, 33); // Tackle: retained on the tested Pikachu route
-        source->setMovePP(0, 20);
-        source->setMovePPUps(0, 1);
+        source->setMove(0, 98); // Quick Attack: legal for Pikachu in both tested games
+        source->setMovePP(0, 30);
+        source->setMovePPUps(0, 0);
         auto d = source->getData();
         d[0x16] = static_cast<std::byte>(static_cast<uint8_t>(d[0x16]) | 0x20); // Alpha
         d[0x34] = std::byte{0x02}; // common ribbon bit
@@ -982,7 +982,7 @@ int main() {
         assert(static_cast<uint8_t>(sv->getData()[0x40]) == 0x04);
         assert(static_cast<uint8_t>(sv->getData()[0xD4]) == 1);
         assert(sv->isFatefulEncounter());
-        assert(sv->move(0) == 33 && sv->movePP(0) == 20 && sv->movePPUps(0) == 1);
+        assert(sv->move(0) == 98 && sv->movePP(0) == 30 && sv->movePPUps(0) == 0);
         assert(sv->metLevel() == source->metLevel());
         assert(sv->metLocation() == source->metLocation());
         assert(sv->originGame() == source->originGame());
