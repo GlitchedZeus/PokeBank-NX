@@ -1,6 +1,9 @@
 #include "Utils/MoveTransactionProduction.h"
 
 #include <cassert>
+#include <cstdio>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -12,6 +15,52 @@ std::string readText(const char* path) {
     assert(in);
     return {std::istreambuf_iterator<char>(in), {}};
 }
+
+struct BidirectionalStore final : PokeBank::Storage::MoveTx::Store {
+    PokeBank::Storage::MoveTx::StoreDescriptor d;
+    std::string path;
+
+    BidirectionalStore(PokeBank::Storage::MoveTx::StoreDescriptor descriptor,
+                       std::string p,
+                       std::span<const uint8_t> initial)
+        : d(std::move(descriptor)), path(std::move(p)) {
+        std::ofstream out(path, std::ios::binary | std::ios::trunc);
+        assert(out);
+        out.write(reinterpret_cast<const char*>(initial.data()),
+                  static_cast<std::streamsize>(initial.size()));
+        assert(out.good());
+    }
+
+    const PokeBank::Storage::MoveTx::StoreDescriptor& descriptor() const noexcept override {
+        return d;
+    }
+    bool read(std::vector<uint8_t>& out, std::string& error) const override {
+        std::ifstream in(path, std::ios::binary);
+        if (!in) { error = "read failed"; return false; }
+        out.assign(std::istreambuf_iterator<char>(in), {});
+        return true;
+    }
+    bool validate(std::span<const uint8_t> bytes, std::string& error) const override {
+        if (bytes.empty()) { error = "empty image"; return false; }
+        return true;
+    }
+    bool replace(std::span<const uint8_t> bytes, std::string& error) override {
+        auto validator = [&](std::span<const uint8_t> candidate, std::string& e) {
+            return validate(candidate, e);
+        };
+        const auto result = PokeBank::Storage::DurableFile::replace(path, bytes, validator);
+        if (!result.ok) { error = result.error; return false; }
+        return true;
+    }
+};
+
+std::vector<uint8_t> readStore(const BidirectionalStore& store) {
+    std::vector<uint8_t> out;
+    std::string error;
+    assert(store.read(out, error));
+    return out;
+}
+
 }
 
 int main() {
@@ -116,6 +165,80 @@ int main() {
     const std::string bank = readText("src/Trainer/Bank.cpp");
     assert(bank.find("buildVerifiedImage(") != std::string::npos);
     assert(bank.find("validateStorageImage(") != std::string::npos);
+
+    // A04b bidirectional serialization: the reverse Move may start only after the first
+    // transaction commits, and its before-fingerprints must be the first transaction's post-state.
+    {
+        using namespace PokeBank::Storage::MoveTx;
+        const std::string base = "/tmp/pokebank-a04b-bidir-" +
+            std::to_string(static_cast<long long>(getpid()));
+        ::mkdir(base.c_str(), 0777);
+
+        StoreDescriptor bankDesc;
+        bankDesc.type = StoreType::Bank;
+        bankDesc.fileId = "bank.dat";
+
+        StoreDescriptor wsDesc;
+        wsDesc.type = StoreType::MutableWorkspaceSingleFile;
+        wsDesc.profile = "account-11111111111111112222222222222222";
+        wsDesc.gameId = "sword_switch";
+        wsDesc.workspace = "Working";
+        wsDesc.fileId = "main";
+
+        const std::vector<uint8_t> bank0{1,2,3,4};
+        const std::vector<uint8_t> workspace0{8,8,8,8};
+        const std::vector<uint8_t> bank1{1,2,3,0};
+        const std::vector<uint8_t> workspace1{8,8,8,8,25};
+        const std::vector<uint8_t> bank2{1,2,3,0,133};
+        const std::vector<uint8_t> workspace2{8,8,8,8,25,0};
+
+        BidirectionalStore bank(bankDesc, base + "/bank.dat", bank0);
+        BidirectionalStore workspace(wsDesc, base + "/main", workspace0);
+        Engine engine(base + "/transactions");
+
+        Transaction toWorkspace;
+        toWorkspace.id = "tx-0000000000001001";
+        toWorkspace.source = bankDesc;
+        toWorkspace.destination = wsDesc;
+        MoveRecord firstMove;
+        firstMove.sourceSlot = "0:0";
+        firstMove.destinationSlot = "0:0";
+        firstMove.species = 25;
+        firstMove.sourcePayload = sha256(bank0);
+        firstMove.destinationPayload = sha256(workspace1);
+        toWorkspace.moves.push_back(firstMove);
+        std::string error;
+        assert(engine.prepare(toWorkspace, bank, workspace, workspace1, bank1, error));
+        assert(engine.recover(toWorkspace.id, bank, workspace).status == RecoveryStatus::Committed);
+        assert(readStore(bank) == bank1);
+        assert(readStore(workspace) == workspace1);
+
+        Transaction backToBank;
+        backToBank.id = "tx-0000000000001002";
+        backToBank.source = wsDesc;
+        backToBank.destination = bankDesc;
+        MoveRecord secondMove;
+        secondMove.sourceSlot = "0:1";
+        secondMove.destinationSlot = "0:1";
+        secondMove.species = 133;
+        secondMove.sourcePayload = sha256(workspace1);
+        secondMove.destinationPayload = sha256(bank2);
+        backToBank.moves.push_back(secondMove);
+        assert(engine.prepare(backToBank, workspace, bank, bank2, workspace2, error));
+
+        const auto loaded = engine.journal().load(backToBank.id);
+        assert(loaded.status == LoadStatus::Ok);
+        assert(loaded.transaction.sourceBefore == sha256(workspace1));
+        assert(loaded.transaction.destinationBefore == sha256(bank1));
+        assert(engine.recover(backToBank.id, workspace, bank).status == RecoveryStatus::Committed);
+        assert(readStore(bank) == bank2);
+        assert(readStore(workspace) == workspace2);
+
+        std::remove((base + "/bank.dat").c_str());
+        std::remove((base + "/main").c_str());
+        // Transaction evidence is intentionally retained in product code; test cleanup is best-effort.
+        std::cout << "A04b bidirectional serialization: PASS\n";
+    }
 
     std::cout << "A04b production true-Move contract: PASS\n";
 }
