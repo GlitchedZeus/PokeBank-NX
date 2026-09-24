@@ -246,6 +246,281 @@ A03 does **not** solve A04. Slot ownership is now ordered safely in memory, but 
 destination-save persistence, source retirement and crash recovery are not yet one durable
 cross-store transaction.
 
+## A04a hardening tranche — durable Move transaction journal/recovery core
+
+A03 established correct **in-memory** custody ordering, but the exact-current persistence paths still
+saved Bank and mutable workspace state independently. Individually durable files are not enough for a
+true Move: a crash between separate persistence decisions can leave the app unable to prove which
+store is authoritative.
+
+A04a adds the persistence/recovery core without wiring final Storage UI Move semantics.
+
+### Canonical journal ownership
+
+Production transaction metadata is PokeBank-owned:
+
+```text
+sdmc:/switch/PokeBank-NX/transactions/
+    records/
+        tx-<generation>.pbtx
+        tx-<generation>.destination.bin
+        tx-<generation>.source-retired.bin
+```
+
+`PokeBank::Paths::transactionsRoot()` is the canonical production root. Host tests inject an
+isolated temporary root; A04b production integration must use the canonical PokeBank-owned root.
+
+The `.destination.bin` and `.source-retired.bin` files are immutable **recovery evidence/post-state
+images**. They are not active Pokémon, Bank entries, Copies, Clones, or withdrawable entities.
+
+### Journal schema and identity
+
+Current schema: **binary v1**.
+
+The journal uses:
+
+- fixed magic/version;
+- explicit transaction state;
+- stable transaction ID;
+- typed source/destination store descriptors;
+- whole-store expected SHA-256 fingerprints;
+- one or more Move records with source/destination slot diagnostics plus payload SHA-256 evidence;
+- bounded string/move counts;
+- SHA-256 integrity over the serialized journal body.
+
+The SHA-256 implementation is locked against the standard `abc` test vector.
+
+Current transaction IDs are allocated as retained monotonically-scanned IDs such as
+`tx-0000000000000001`. IDs are never reused while a current journal or recovery-evidence sidecar
+exists. The current Switch app is single-process; A04b must serialize transaction creation rather
+than introducing concurrent ID allocation.
+
+### Typed stores
+
+A04a deliberately does not accept arbitrary source paths as transaction identity.
+
+Current descriptor types are:
+
+```text
+BANK
+MUTABLE_WORKSPACE_SINGLE_FILE
+MUTABLE_WORKSPACE_FILE_SET   (reserved for future file-set support)
+```
+
+A mutable workspace descriptor carries filesystem-safe semantic identity:
+
+```text
+account/profile component
+exact game identity
+workspace identity
+file identity
+```
+
+Bank uses the stable Bank descriptor rather than a caller-supplied arbitrary path.
+
+A04b still needs the production resolver that maps these descriptors through reviewed PokeBank path
+APIs to the exact authoritative Bank/workspace files. Installed-game, RetroArch, and other emulator
+sources are not representable as writable A04 stores.
+
+### State machine
+
+The engine permits only sequential transitions:
+
+```text
+PREPARED
+  -> DESTINATION_WRITTEN
+  -> DESTINATION_VERIFIED
+  -> SOURCE_RETIRE_PENDING
+  -> SOURCE_RETIRED
+  -> COMMITTED
+```
+
+Only the transaction `Engine` can persist state/evidence; external callers can inspect/load/scan
+journals but cannot directly skip states.
+
+Critical ordering:
+
+```text
+durable PREPARED
+-> destination durable replace
+-> destination reread / SHA-256 / store validation
+-> durable DESTINATION_VERIFIED
+-> durable SOURCE_RETIRE_PENDING
+-> source durable retirement
+-> source reread / SHA-256 / store validation
+-> durable SOURCE_RETIRED
+-> final destination re-verification
+-> COMMITTED
+```
+
+A source retirement is never attempted before the durable
+`SOURCE_RETIRE_PENDING` authorization state, which itself can only be reached after destination
+verification.
+
+A MOVE whose expected before/after images do not change both stores is rejected before PREPARED
+becomes authoritative. This avoids ambiguous before/after fingerprint states.
+
+### Recovery reconciliation
+
+Recovery does not trust the journal state alone. It reconciles:
+
+```text
+journal state
++
+actual current source SHA-256
++
+actual current destination SHA-256
++
+expected source-before/source-retired SHA-256
++
+expected destination-before/destination-after SHA-256
++
+retained post-state evidence
+```
+
+Examples:
+
+- destination bytes landed but journal still says PREPARED -> recognize the exact destination
+  post-hash, do not write it twice, then continue;
+- destination is verified while source is still present -> treat that duplicate as a temporary
+  transaction state, not Clone semantics, and safely retire source;
+- source retirement landed but journal still says SOURCE_RETIRE_PENDING -> recognize the exact
+  retired post-hash and never retire another Pokémon;
+- COMMITTED -> repeated recovery performs no Move mutation.
+
+Recovery is intentionally idempotent.
+
+If source/destination matches neither the recorded before nor post fingerprint, recovery returns
+**CONFLICT** and performs no destructive mutation.
+
+Corrupt journal/evidence returns **CORRUPT** and performs no store mutation. A newer/unsupported
+schema returns **UNSUPPORTED VERSION** and is not rewritten. Evidence remains retained for manual
+recovery/audit.
+
+`Journal::scan()` enumerates current `.pbtx` records deterministically by transaction ID and
+classifies neighboring records independently, so one corrupt journal cannot erase or execute
+another.
+
+### Durable journal transitions
+
+Journal files and post-state evidence use the existing reviewed
+`PokeBank::Storage::DurableFile::replace` primitive. A failed journal transition blocks the next
+destructive step. The transaction system does not introduce a weaker raw `fopen("wb")` persistence
+path.
+
+Completed journals/evidence are retained. A future bounded retention/cleanup policy may archive old
+completed evidence, but cleanup is not allowed to make a committed transaction executable again.
+
+### Fault-injection coverage
+
+The executable A04a regression covers recovery after every declared boundary:
+
+```text
+AFTER_PREPARED_JOURNAL
+AFTER_DESTINATION_WRITE
+AFTER_DESTINATION_VERIFY
+AFTER_DESTINATION_VERIFIED_JOURNAL
+BEFORE_SOURCE_RETIRE
+AFTER_SOURCE_WRITE
+AFTER_SOURCE_VERIFY
+AFTER_SOURCE_RETIRED_JOURNAL
+BEFORE_COMMITTED
+```
+
+Each injected interruption must resume and converge to COMMITTED without duplicate destination
+writes or double source retirement.
+
+Additional tests cover:
+
+- destination write failure;
+- destination validation failure;
+- source-retirement validation failure;
+- source precondition conflict;
+- destination precondition conflict;
+- corrupt journal;
+- unsupported newer schema;
+- repeated recovery after COMMITTED;
+- journal persistence failure before source retirement;
+- multiple pending journals with one corrupt neighbor;
+- profile/exact-game descriptor mismatch;
+- path traversal/unsafe descriptor rejection;
+- installed/RetroArch mutation policy remaining hard-disabled;
+- multi-Pokémon Move-record serialization;
+- retained completed journal/evidence;
+- non-colliding retained transaction IDs.
+
+### Bidirectional-session conclusion
+
+A04b must **not** persist an arbitrary mixed-direction session by simply writing Bank first or
+workspace first.
+
+For example, a session containing both:
+
+```text
+Bank -> Game
+Game -> Bank
+```
+
+has opposite destination-first requirements.
+
+Current A04b prerequisite:
+
+- cross-store logical Moves must be converted into individually ordered durable transactions from
+  fresh authoritative store snapshots;
+- a multi-Pokémon block moving in one direction may be represented by multiple Move records inside
+  one transaction;
+- opposite-direction Moves must be serialized as separate transactions;
+- a second cross-store durable Move must not race an unresolved transaction;
+- if the product cannot safely serialize that sequence, mixed-direction durable commit must be
+  blocked rather than guessed.
+
+### BDSP disposition
+
+BDSP remains excluded from true-Move integration.
+
+`SaveData.bin` + `Backup.bin` still require their own recoverable file-set generation primitive.
+The A04a descriptor model reserves a future file-set store type but does not authorize sequential
+two-file BDSP writes.
+
+### A04b prerequisites
+
+Before A04 can be called fixed, A04b must add and prove:
+
+1. production descriptor -> canonical-path resolution;
+2. a Bank store adapter using Bank serialization/round-trip validation/DurableFile;
+3. single-file mutable-workspace adapters using the existing A09 validators/DurableFile;
+4. exact A03 PreparedPlacement -> durable post-image integration;
+5. cross-store UI flow that creates the durable transaction before source retirement;
+6. startup recovery that resolves typed stores and presents conflict/corrupt results without guessing;
+7. serialized handling of bidirectional session moves;
+8. user-visible transaction failure/recovery status;
+9. physical Switch FAT32/exFAT power-loss/recovery testing;
+10. continued hard exclusion of BDSP until its file-set journal exists.
+
+A04a itself does **not** auto-save Storage moves, change exit prompts, write installed-game saves,
+write RetroArch saves, or enable other emulator writes.
+
+### A04a exact code checkpoint
+
+```text
+application SHA:
+bf799d5843bf9863233488664484187d14114659
+
+PokeBank NX Host Tests:
+35954237696 / #1103 / SUCCESS
+
+Audit Hardening Native Validation:
+35954234400 / #19 / SUCCESS
+```
+
+Host #1103 passed the permanent suite, focused RSE regression, and the sanitizer build/run. The
+managed runner cannot perform LeakSanitizer's `/proc` inspection, but AddressSanitizer and
+UndefinedBehaviorSanitizer ran, including the A04a transaction test.
+
+Native #19 passed clean devkitA64 compile/link, AArch64 linkage verification, and NRO production.
+
+This is CI verification only. It is not physical device acceptance.
+
 ## Current A01–A09 status
 
 | ID | Current status | Remaining gate |
@@ -253,7 +528,7 @@ cross-store transaction.
 | A01 | IMPLEMENTED | Durable single-file Bank replacement exists; physical Switch SD/FAT32/exFAT recovery behavior still needs hardware testing |
 | A02 | FIXED | Failed rollback retains held Pokémon custody |
 | A03 | IMPLEMENTED | Authoritative carried Pokémon remains unchanged until destination candidate/native placement commit; A04 durable cross-store transaction still required |
-| A04 | OPEN / P1 | No cross-store destination-first Move transaction journal/recovery yet |
+| A04 | PARTIAL / TRANSACTION CORE IMPLEMENTED | A04a durable journal/recovery engine is proven; A04b still must wire real Bank <-> mutable-workspace Move, startup recovery, conflict UX, and physical recovery testing |
 | A05 | FIXED | Unreadable Bank casualties use unique preserved generations |
 | A06 | FIXED | BDSP minimum-layout/truncation refusal is guarded before fixed-offset parsing |
 | A07 | FIXED | Newer/larger Bank layouts become migration-required/write-blocked; invalid counts fail closed |
