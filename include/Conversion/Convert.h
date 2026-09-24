@@ -49,6 +49,7 @@ namespace Conversion {
         Unsupported,  // not one of the seven supported mainline games (all of which now interconvert)
         NotInDex,     // species/form does not exist in the destination game's dex
         Blocked,      // destination refuses this species (e.g. BDSP Spinda / Nincada)
+        TraitPreservationFailed, // required PID-derived Gen III traits could not be preserved
     };
 
     /// Converts `src` into `destGroup`'s entity format, preserving origin identity and refreshing the

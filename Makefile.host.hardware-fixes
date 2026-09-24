@@ -221,3 +221,21 @@ $(MOVE_TRANSACTION_PRODUCTION_TEST): $(MOVE_TRANSACTION_PRODUCTION_SOURCES) incl
 $(MOVE_TRANSACTION_PRODUCTION_SANITIZE): $(MOVE_TRANSACTION_PRODUCTION_SOURCES) include/Utils/MoveTransactionProduction.h include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc src/UI/UI.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MOVE_TRANSACTION_PRODUCTION_SOURCES) -o $@
+
+# F07 / N01: Gen III PID search exhaustion must fail closed. Cross-game true Move
+# remains locked until conversion fidelity is proven route-by-route.
+GEN3_PID_SEARCH_TEST := $(HOST_BUILD)/test_gen3_pid_search_fail_closed
+GEN3_PID_SEARCH_SANITIZE := $(HOST_BUILD)/test_gen3_pid_search_fail_closed_sanitize
+GEN3_PID_SEARCH_SOURCES := tests/test_gen3_pid_search_fail_closed.cpp
+HOST_TESTS += $(GEN3_PID_SEARCH_TEST)
+HOST_SANITIZE_TESTS += $(GEN3_PID_SEARCH_SANITIZE)
+host-test: $(GEN3_PID_SEARCH_TEST)
+host-sanitize: $(GEN3_PID_SEARCH_SANITIZE)
+
+$(GEN3_PID_SEARCH_TEST): $(GEN3_PID_SEARCH_SOURCES) include/Conversion/Gen3PidSearch.h src/Conversion/Convert.cpp include/Conversion/Convert.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN3_PID_SEARCH_SOURCES) -o $@
+
+$(GEN3_PID_SEARCH_SANITIZE): $(GEN3_PID_SEARCH_SOURCES) include/Conversion/Gen3PidSearch.h src/Conversion/Convert.cpp include/Conversion/Convert.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_PID_SEARCH_SOURCES) -o $@

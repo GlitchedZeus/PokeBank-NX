@@ -1,4 +1,5 @@
 #include "Conversion/Convert.h"
+#include "Conversion/Gen3PidSearch.h"
 
 #include <cstdint>
 #include <span>
@@ -564,7 +565,7 @@ namespace Conversion {
         // `destOriginVersion` is the exact destination game's origin byte (FR = 4, LG = 5). It has to be
         // passed in: a game GROUP collapses the pair into one value by design, so FRLG alone cannot say
         // which of the two the save actually is.
-        std::vector<std::byte> remapPK8toPK3(const std::vector<std::byte>& s, uint8_t destOriginVersion) {
+        std::optional<std::vector<std::byte>> remapPK8toPK3(const std::vector<std::byte>& s, uint8_t destOriginVersion) {
             std::vector<std::byte> d(0x64, std::byte{0});
             const uint32_t pid      = rd32(s, 0x1C);
             const uint16_t national = rd16(s, 0x08);
@@ -572,31 +573,20 @@ namespace Conversion {
             const bool     isEgg    = (pk8iv >> 30) & 1;
 
             // Gen 3 derives nature/gender/shiny/ability ALL from the PID, but the source stores nature
-            // and gender EXPLICITLY -- copying the PID verbatim silently changes them (an LGPE Calm mon
-            // read as Jolly in FR/LG). The standard down-convert answer is to reroll the PID so its
-            // Gen-3-derived traits match the source's: nature, gender, shiny status and ability slot are
-            // preserved. IVs are NOT touched (separate field at 0x48). This DOES change the PID (the mon's
-            // identity) and yields a PID/IV pair that won't match a real Gen 3 RNG frame -- the UI warns
-            // the user first. Falls back to the original PID if no match is found within the budget.
-            uint32_t outPid = pid;
-            {
-                const uint8_t  natWant = rd8(s, 0x20) % 25;                                    // source nature
-                const uint8_t  genWant = static_cast<uint8_t>((rd8(s, 0x22) >> 2) & 3);        // 0=M,1=F,2=genderless
-                const uint8_t  gr      = getPersonalInfo(national, rd8(s, 0x24)).genderRatio;  // by species+form
-                const uint8_t  abilBit = (rd8(s, 0x16) == 2) ? 1u : 0u;                        // AbilityNumber 2 -> slot 2
-                const uint32_t tid32   = rd32(s, 0x0C);
-                const uint16_t tsv     = static_cast<uint16_t>((tid32 & 0xFFFF) ^ (tid32 >> 16));
-                const bool     shWant  = (static_cast<uint16_t>(((pid & 0xFFFF) ^ (pid >> 16)) ^ tsv) < 16);  // source threshold
-                uint32_t cand = pid;
-                for (int i = 0; i < 1000000; ++i) {
-                    const uint8_t  g   = (gr == 255) ? 2 : (gr == 254) ? 1 : (gr == 0) ? 0 : (((cand & 0xFF) < gr) ? 1 : 0);
-                    const uint16_t psv = static_cast<uint16_t>((cand & 0xFFFF) ^ (cand >> 16));
-                    const bool     sh  = (static_cast<uint16_t>(psv ^ tsv) < 8);               // Gen 3 shiny threshold
-                    if ((cand % 25) == natWant && g == genWant && sh == shWant && (cand & 1u) == abilBit) { outPid = cand; break; }
-                    cand = cand * 0x41C64E6Du + 0x00006073u;                                   // Gen 3 LCG walk
-                }
-            }
-            wr32(d, 0x00, outPid);                                 // PID rerolled to preserve nature/gender/shiny/ability
+            // and gender explicitly. A down-convert therefore needs a PID whose Gen-3-derived traits match
+            // the source. This is a hard preservation requirement: if the bounded search cannot find one,
+            // conversion fails closed instead of silently falling back to the original PID.
+            const uint8_t  natWant = rd8(s, 0x20) % 25;
+            const uint8_t  genWant = static_cast<uint8_t>((rd8(s, 0x22) >> 2) & 3);
+            const uint8_t  gr      = getPersonalInfo(national, rd8(s, 0x24)).genderRatio;
+            const uint8_t  abilBit = (rd8(s, 0x16) == 2) ? 1u : 0u;
+            const uint32_t tid32   = rd32(s, 0x0C);
+            const uint16_t tsv     = static_cast<uint16_t>((tid32 & 0xFFFF) ^ (tid32 >> 16));
+            const bool     shWant  = (static_cast<uint16_t>(((pid & 0xFFFF) ^ (pid >> 16)) ^ tsv) < 16);
+            const Gen3PidSearch::Traits wanted{natWant, genWant, gr, abilBit, tid32, shWant};
+            const auto outPid = Gen3PidSearch::find(pid, wanted);
+            if (!outPid) return std::nullopt;
+            wr32(d, 0x00, *outPid);                                 // PID rerolled to preserve nature/gender/shiny/ability
             copyBytes(d, 0x04, s, 0x0C, 4);                         // OTID32
             wr8(d, 0x12, rd8(s, 0xE2));                             // Language
             wr8(d, 0x13, static_cast<uint8_t>(0x02 | (isEgg ? 0x04 : 0)));   // Flags: HasSpecies (+ IsEgg)
@@ -699,7 +689,11 @@ namespace Conversion {
             if (isG9(destGroup))                     transformG8toG9(buf, src.speciesID(), src.form());  // PK8 -> PK9
             else if (destGroup == GameVersion::PLA)  buf = remapPK8toPA8(buf);                           // PK8 -> PA8
             else if (destGroup == GameVersion::GG)   buf = remapPK8toPB7(buf);                           // PK8 -> PB7
-            else if (destGroup == GameVersion::FRLG) buf = remapPK8toPK3(buf, destOriginVersion);         // PK8 -> PK3
+            else if (destGroup == GameVersion::FRLG) {
+                auto pk3 = remapPK8toPK3(buf, destOriginVersion);                                      // PK8 -> PK3
+                if (!pk3) { result = Result::TraitPreservationFailed; return nullptr; }
+                buf = std::move(*pk3);
+            }
         }
 
         // Re-key into the destination format, rebuild the entity, refresh its checksum.
@@ -836,6 +830,7 @@ namespace Conversion {
             case Result::NotInDex:    return "Not obtainable in this game";
             // Names the way out: this one is lifted by a setting, unlike NotInDex which is absolute.
             case Result::Blocked:     return "HOME can't transfer this species here (Allow Illegal Values overrides)";
+            case Result::TraitPreservationFailed: return "Could not preserve required Gen III PID-derived traits";
             case Result::Unsupported: return "Transfer to/from this game isn't supported yet";
         }
         return "";
