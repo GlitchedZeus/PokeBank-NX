@@ -521,6 +521,208 @@ Native #19 passed clean devkitA64 compile/link, AArch64 linkage verification, an
 
 This is CI verification only. It is not physical device acceptance.
 
+## A04b hardening tranche — production true-Move integration
+
+A04b now wires the A04a transaction engine into the real PokeBank-owned stores used by Storage:
+
+```text
+PokeBank bank.dat
+<->
+profile/exact-game PokeBank mutable workspace
+```
+
+This still does **not** write the installed-game filesystem, RetroArch saves, or other emulator source
+files. The transactional workspace is the PokeBank-owned backup/staging copy only.
+
+### Production store resolution
+
+`MoveTransactionProduction` resolves typed transaction descriptors rather than accepting arbitrary
+paths.
+
+Supported writable descriptors are:
+
+- canonical Bank `bank.dat`;
+- `MUTABLE_WORKSPACE_SINGLE_FILE` beneath the A08 profile + exact-game + workspace namespace.
+
+The exact-game allowlist currently enables:
+
+- Let's Go Pikachu/Eevee -> `savedata.bin`;
+- Sword/Shield -> `main`;
+- Legends: Arceus -> `main`;
+- Scarlet/Violet -> `main`;
+- Legends: Z-A -> `main`;
+- FireRed/LeafGreen Switch -> the one validated authoritative 128 KiB workspace file.
+
+BDSP remains excluded because `SaveData.bin` + `Backup.bin` are still a coupled multi-file
+generation. Legacy-unscoped folders, arbitrary safe-looking file names, traversal paths, live title
+paths, RetroArch paths and other emulator paths are not valid production transaction stores.
+
+The Bank adapter reuses Bank image serialization/round-trip validation and DurableFile. A missing
+first-run `bank.dat` is represented by a semantic missing-Bank sentinel so recovery can distinguish
+legitimate initial absence from unexpected disappearance of an established Bank.
+
+Workspace adapters reuse the A09 exact-game validators and DurableFile. The transaction layer never
+calls `restoreBackupToTitle` or `injectToTitle`.
+
+### Serialization before persistence
+
+Supported workspace save logic is now separable into:
+
+```text
+buildWorkspaceImage
+validateWorkspaceImage
+persistWorkspaceImage
+```
+
+and Bank exposes the narrow verified-image operations required by the transaction coordinator.
+
+This lets A04b build the destination and retired-source whole-store images before any transaction
+persistence begins.
+
+### Clean-baseline rule
+
+Cross-store true Move starts only from a clean transactional baseline.
+
+Before pickup the UI records:
+
+- workspace dirty state;
+- Bank dirty state;
+- editor/modal dirty state;
+- authoritative Bank/workspace SHA-256 baselines.
+
+Unrelated pre-existing staged changes block true Move with a Save/Discard-first message. Pickup itself
+is treated as transaction staging rather than unrelated dirty state. Returning the held Pokémon to
+origin restores the pre-pickup workspace dirty flag rather than inventing a new dirty state.
+
+### Cross-store restrictions
+
+For this first safe production integration:
+
+- destination slots must be empty;
+- destination slots must be unlocked;
+- a block is prepared completely before transaction mutation;
+- a same-direction multi-Pokémon block uses one transaction with multiple Move records;
+- occupied-slot cross-store swaps are refused;
+- Copy does not use source-retirement semantics;
+- cross-game true Move is fail-closed until the F05-F13 conversion preservation audit proves those
+  routes.
+
+Game -> Bank deposits preserve the native Pokémon payload. Bank -> workspace true Move is enabled only
+for same-game-group/native-compatible placement through the A03 prepared-candidate path.
+
+### Production coordinator
+
+Normal cross-store placement no longer falls through to the historical independently-saved Bank/save
+staging path.
+
+The coordinator performs:
+
+```text
+capture clean authoritative baseline
+-> verify no unresolved transaction
+-> verify empty/unlocked destinations
+-> prepare every A03 destination candidate
+-> re-read and compare authoritative pre-state fingerprints
+-> stage destination candidates in memory
+-> build verified Bank and workspace post-images
+-> allocate transaction
+-> durable PREPARED
+-> A04a destination-first recovery/commit engine
+-> COMMITTED
+-> reload/rebaseline authoritative state
+```
+
+If the transaction becomes unresolved, normal cross-store mutation is locked and the user receives a
+recovery-required status instead of the UI pretending that transient RAM is authoritative.
+
+A successful transaction clears pending carry state, reloads the Bank from its committed disk image,
+and makes the committed workspace state the new clean baseline. This prevents later legacy
+Save/Discard behavior from resurrecting the retired Bank source or discarding only the destination
+side of a committed Move.
+
+### Startup recovery
+
+Before a mutable workspace is parsed, UI startup now scans the canonical transaction journal and
+attempts deterministic A04a recovery using the production resolver.
+
+- recoverable active transaction -> reconcile and finish;
+- committed -> do not execute again;
+- corrupt / unsupported / conflicting / unresolvable -> no store mutation and Storage Move remains
+  locked.
+
+Visible notices distinguish recovered transactions from recovery-required cases. Account identifiers
+are not required in the user-facing message.
+
+### Bidirectional serialization
+
+Opposite-direction Moves are serialized as separate transactions.
+
+```text
+Bank -> workspace
+COMMITTED
+rebaseline
+
+workspace -> Bank
+COMMITTED
+```
+
+The second transaction reads the first transaction's post-state fingerprints as its authoritative
+baseline. An unresolved transaction blocks another cross-store Move.
+
+### A04b tests
+
+`tests/test_move_transaction_production.cpp` plus the permanent A04a suite lock:
+
+- exact-game/file allowlist;
+- first-run Bank sentinel behavior;
+- dirty-state eligibility;
+- occupied-destination refusal;
+- cross-game true-Move refusal;
+- coordinator `prepare` + `recover` wiring;
+- committed Bank rebaseline before the success status;
+- pickup/return dirty-state restoration;
+- startup recovery before workspace parse;
+- no live-title injection calls in the production transaction adapter;
+- workspace image build/persist separation;
+- BDSP true-Move refusal;
+- sequential Bank -> workspace then workspace -> Bank transactions using the prior committed
+  fingerprints as the next baseline.
+
+### Remaining A04 gate
+
+A04b is implemented in software for the supported single-file PokeBank-owned workspace routes, but
+physical power-loss behavior is not device accepted yet.
+
+Required physical matrix remains:
+
+- Bank -> workspace Move;
+- workspace -> Bank Move;
+- power loss after destination write;
+- after destination verification;
+- before source retirement;
+- after source retirement;
+- restart/recovery;
+- FAT32;
+- exFAT where a supported test environment exists.
+
+Cross-game routes remain intentionally disabled until the conversion audit proves preservation.
+BDSP remains excluded until its multi-file generation transaction exists.
+
+A04b exact code checkpoint:
+
+```text
+application SHA:
+ca270828be90cc181cce67cf1cc6c5461a4b98db
+
+PokeBank NX Host Tests:
+35959492840 / #1123 / SUCCESS
+
+Audit Hardening Native Validation:
+35959488284 / #32 / SUCCESS
+```
+
+This is CI verification only. It is not physical device acceptance.
+
 ## Current A01–A09 status
 
 | ID | Current status | Remaining gate |
@@ -528,7 +730,7 @@ This is CI verification only. It is not physical device acceptance.
 | A01 | IMPLEMENTED | Durable single-file Bank replacement exists; physical Switch SD/FAT32/exFAT recovery behavior still needs hardware testing |
 | A02 | FIXED | Failed rollback retains held Pokémon custody |
 | A03 | IMPLEMENTED | Authoritative carried Pokémon remains unchanged until destination candidate/native placement commit; A04 durable cross-store transaction still required |
-| A04 | PARTIAL / TRANSACTION CORE IMPLEMENTED | A04a durable journal/recovery engine is proven; A04b still must wire real Bank <-> mutable-workspace Move, startup recovery, conflict UX, and physical recovery testing |
+| A04 | IMPLEMENTED / PHYSICAL RECOVERY GATE REMAINS | A04a journal/recovery + A04b real Bank <-> supported single-file mutable-workspace true Move/startup recovery are wired; cross-game routes remain gated and physical Switch power-loss recovery is not yet accepted |
 | A05 | FIXED | Unreadable Bank casualties use unique preserved generations |
 | A06 | FIXED | BDSP minimum-layout/truncation refusal is guarded before fixed-offset parsing |
 | A07 | FIXED | Newer/larger Bank layouts become migration-required/write-blocked; invalid counts fail closed |
