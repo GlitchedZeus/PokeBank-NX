@@ -41,6 +41,7 @@
 
 #include "Pokemon/Pokemon.h"
 #include "Enums/GameVersion.h"
+#include "Conversion/Fidelity.h"
 
 namespace Conversion {
     enum class Result {
@@ -50,6 +51,9 @@ namespace Conversion {
         NotInDex,     // species/form does not exist in the destination game's dex
         Blocked,      // destination refuses this species (e.g. BDSP Spinda / Nincada)
         TraitPreservationFailed, // required PID-derived Gen III traits could not be preserved
+        AbilityNotRepresentable,  // target cannot preserve the source ability semantics
+        TextNotRepresentable,     // target text encoding/length cannot preserve nickname or OT
+        LanguageNotRepresentable, // target language/text encoding is not implemented safely
     };
 
     /// Converts `src` into `destGroup`'s entity format, preserving origin identity and refreshing the
@@ -63,7 +67,7 @@ namespace Conversion {
     /// and stamping a fixed member of the pair is wrong half the time. 0 = unknown, which falls back to
     /// the group's representative version (the old, always-FireRed behaviour).
     std::unique_ptr<Pokemon::Pokemon> convert(const Pokemon::Pokemon& src, Enums::GameVersion destGroup, Result& result,
-                                              uint8_t destOriginVersion = 0);
+                                              uint8_t destOriginVersion = 0, Report* report = nullptr);
 
     /// True if `destGroup` can accept `src` (same group, or a supported+allowed conversion). Pure check
     /// (no allocation) for gating UI without performing the conversion.

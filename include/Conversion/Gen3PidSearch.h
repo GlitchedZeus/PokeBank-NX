@@ -13,6 +13,8 @@ namespace Conversion::Gen3PidSearch {
         uint8_t abilityBit = 0;   // PID bit 0: 0 slot 1, 1 slot 2
         uint32_t tid32 = 0;
         bool shiny = false;
+        int unownForm = -1;              // 0..27 when PID-derived Unown letter must survive
+        bool constrainAbilityBit = true; // false for Gen III duplicate/single-ability semantics
     };
 
     inline uint8_t genderForPid(uint32_t pid, uint8_t ratio) noexcept {
@@ -22,21 +24,45 @@ namespace Conversion::Gen3PidSearch {
         return static_cast<uint8_t>((pid & 0xFF) < ratio ? 1 : 0);
     }
 
+    inline uint8_t unownForm(uint32_t pid) noexcept {
+        const uint32_t value = ((pid & 0x03000000u) >> 18) | ((pid & 0x00030000u) >> 12)
+                             | ((pid & 0x00000300u) >> 6)  | (pid & 0x00000003u);
+        return static_cast<uint8_t>(value % 28);
+    }
+
+    inline uint32_t withUnownFormValue(uint32_t pid, uint32_t value) noexcept {
+        constexpr uint32_t formBits = 0x03030303u;
+        return (pid & ~formBits)
+             | ((value & 0xC0u) << 18) | ((value & 0x30u) << 12)
+             | ((value & 0x0Cu) << 6)  | (value & 0x03u);
+    }
+
+    inline uint32_t stampUnownForm(uint32_t pid, int form) noexcept {
+        if (form < 0 || form >= 28) return pid;
+        uint32_t patterns[10] = {};
+        std::size_t count = 0;
+        for (uint32_t value = static_cast<uint32_t>(form); value <= 0xFFu; value += 28)
+            patterns[count++] = value;
+        return withUnownFormValue(pid, patterns[(pid >> 2) % count]);
+    }
+
     inline std::optional<uint32_t> find(uint32_t startPid,
                                         const Traits& wanted,
                                         std::size_t maxAttempts = 1000000) noexcept {
         const uint16_t tsv = static_cast<uint16_t>((wanted.tid32 & 0xFFFF) ^ (wanted.tid32 >> 16));
-        uint32_t candidate = startPid;
+        uint32_t walk = startPid;
         for (std::size_t i = 0; i < maxAttempts; ++i) {
+            uint32_t candidate = wanted.unownForm >= 0 ? stampUnownForm(walk, wanted.unownForm) : walk;
             const uint16_t psv = static_cast<uint16_t>((candidate & 0xFFFF) ^ (candidate >> 16));
             const bool shiny = static_cast<uint16_t>(psv ^ tsv) < 8;
             if ((candidate % 25) == wanted.nature
                 && genderForPid(candidate, wanted.genderRatio) == wanted.gender
                 && shiny == wanted.shiny
-                && (candidate & 1u) == wanted.abilityBit) {
+                && (!wanted.constrainAbilityBit || (candidate & 1u) == wanted.abilityBit)
+                && (wanted.unownForm < 0 || unownForm(candidate) == wanted.unownForm)) {
                 return candidate;
             }
-            candidate = candidate * 0x41C64E6Du + 0x00006073u;
+            walk = walk * 0x41C64E6Du + 0x00006073u;
         }
         return std::nullopt;
     }

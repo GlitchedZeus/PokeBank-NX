@@ -1,5 +1,6 @@
 #include "Conversion/Convert.h"
 #include "Conversion/Gen3PidSearch.h"
+#include "Conversion/Fidelity.h"
 
 #include <cstdint>
 #include <span>
@@ -226,7 +227,8 @@ namespace Conversion {
         }
 
         // PK8 -> PK9, in place. `species`/`form` are the source's (for the imported Tera type).
-        void transformG8toG9(std::vector<std::byte>& b, uint16_t species, uint8_t form) {
+        void transformG8toG9(std::vector<std::byte>& b, uint16_t species, uint8_t form,
+                              GameVersion destination, Report* report) {
             if (b.size() < 0x148) return;
             // 0x08 species: the PK8 hub stores the NATIONAL dex number, but PK9/PA9 store the Gen 9
             // INTERNAL index (diverges from #917 on) -- convert, or the game shows a shifted species.
@@ -243,11 +245,12 @@ namespace Conversion {
             // 0x90-0x9F: PK8 DynamaxLevel(0x90)/Status(0x94)/Palma(0x98) -> PK9 Status(0x90)/Tera(0x94,0x95).
             //            Zero, then import a Tera from the species' primary type (Normal falls back to type2).
             { zeroRange(b, 0x90, 0x10);
-              // SV, not the source game: the Tera type is being written INTO a PK9, so it has
-              // to name a type Scarlet/Violet has (and the source here is PK8 either way).
-              Pokemon::TypePair tp = Pokemon::getPokemonTypes(species, form, Enums::GameVersion::SV);
-              uint8_t tera = (tp.type1 == 0 /*Normal*/ && tp.type2 != 255) ? tp.type2 : tp.type1;
-              wr8(b, 0x94, tera); wr8(b, 0x95, tera); }
+              if (destination == GameVersion::SV) {
+                  Pokemon::TypePair tp = Pokemon::getPokemonTypes(species, form, Enums::GameVersion::SV);
+                  const uint8_t tera = Fidelity::defaultTeraType(tp.type1, tp.type2);
+                  wr8(b, 0x94, tera); wr8(b, 0x95, tera);
+                  if (report) report->addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
+              } }
             // 0xCE-0xF7 Block C: PK8 PokeJob/Version(0xDE)/BattleVer(0xDF)/Language(0xE2)/FormArg(0xE4)/
             //            AffixedRibbon(0xE8) -> PK9 Version(0xCE)/BattleVer(0xCF)/FormArg(0xD0)/Affixed(0xD4)/
             //            Language(0xD5). Capture, wipe the whole block, rewrite at PK9 offsets.
@@ -267,8 +270,14 @@ namespace Conversion {
         }
 
         // PK9 -> PK8, in place (the mirror of transformG8toG9). Tera / ObedienceLevel / records are dropped.
-        void transformG9toG8(std::vector<std::byte>& b) {
+        void transformG9toG8(std::vector<std::byte>& b, GameVersion source, Report* report) {
             if (b.size() < 0x148) return;
+            if (source == GameVersion::SV && report) report->addLoss(Loss::TeraDataDropped);
+            if (source == GameVersion::ZA && rd8(b, 0x23) != 0 && report) report->addLoss(Loss::ZAAlphaDropped);
+            bool divergentData = false;
+            for (size_t o = 0x4B; o <= 0x57; ++o) divergentData |= rd8(b, o) != 0;
+            if (divergentData && report) report->addLoss(Loss::DivergentGameDataDropped);
+            wr8(b, 0x23, 0);
             // 0x08 species: PK9/PA9 store the Gen 9 INTERNAL index; the PK8 hub (and every format fed
             // from it) uses the NATIONAL dex number -- convert (mirror of transformG8toG9).
             wr16(b, 0x08, Pokemon::gen9InternalToNational(rd16(b, 0x08)));
@@ -491,13 +500,14 @@ namespace Conversion {
         // held item + moveset are remapped/sanitized to the true destination in convert().
 
         // PK3 (canonical decrypted, 80/100 B) -> PK8 layout (0x148 stored).
-        std::vector<std::byte> remapPK3toPK8(const std::vector<std::byte>& s) {
+        std::vector<std::byte> remapPK3toPK8(const std::vector<std::byte>& s, Report* report) {
             std::vector<std::byte> d(0x148, std::byte{0});
             const uint32_t pid      = rd32(s, 0x00);
             const uint16_t national = Pokemon::g3ToNational(rd16(s, 0x20));
             const uint32_t iv32     = rd32(s, 0x48);
             const uint16_t origins  = rd16(s, 0x46);
             const uint8_t  abilBit  = (iv32 >> 31) & 1;
+            const uint32_t transferPid = Fidelity::adaptGen3PidForModern(pid, rd32(s, 0x04), report);
 
             uint8_t form = 0;   // Gen 3 stores no form except Unown (PID-derived)
             if (national == 201) {
@@ -506,15 +516,16 @@ namespace Conversion {
                 form = static_cast<uint8_t>(v % 28);
             }
             const Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(national, form);
+            const Pokemon::PersonalInfoG3& g3 = Pokemon::getPersonalInfoG3(national);
 
-            wr32(d, 0x00, pid);                                     // EC := PID
+            wr32(d, 0x00, pid);                                     // EC := original Gen III PID
             wr16(d, 0x08, national);                                // Species (National)
             wr16(d, 0x0A, Names::itemG3ToModern(rd16(s, 0x22)));    // Held item (Gen 3 -> modern; 0 if none)
             copyBytes(d, 0x0C, s, 0x04, 4);                         // ID32 (TID16 + SID16)
             copyBytes(d, 0x10, s, 0x24, 4);                         // EXP
-            wr16(d, 0x14, abilBit ? pi.ability2 : pi.ability1);     // Ability id (from the slot bit)
-            wr8(d, 0x16, abilBit ? 2 : 1);                          // AbilityNumber (1=slot1 / 2=slot2)
-            wr32(d, 0x1C, pid);                                     // PID
+            wr16(d, 0x14, Fidelity::gen3AbilityId(abilBit, g3.ability1, g3.ability2));
+            wr8(d, 0x16, Fidelity::gen3AbilityNumberForModern(abilBit, g3.ability1, g3.ability2));
+            wr32(d, 0x1C, transferPid);                             // PID adapted only for Gen III->modern shiny threshold
             wr8(d, 0x20, static_cast<uint8_t>(pid % 25));           // Nature
             wr8(d, 0x21, static_cast<uint8_t>(pid % 25));           // StatNature (no mints pre-Gen 8)
 
@@ -526,14 +537,21 @@ namespace Conversion {
             wr8(d, 0x22, static_cast<uint8_t>(fateful | (gender << 2)));
             wr8(d, 0x24, form);
 
-            copyBytes(d, 0x26, s, 0x38, 6);                         // EVs (HP,ATK,DEF,SPE,SPA,SPD -- same order)
+            for (int i = 0; i < 6; ++i)
+                wr8(d, 0x26 + i, Fidelity::modernEvFromGen3(rd8(s, 0x38 + i), report));
             copyBytes(d, 0x2C, s, 0x3E, 6);                         // Contest stats
             wr8(d, 0x32, rd8(s, 0x44));                             // Pokerus
 
             copyBytes(d, 0x72, s, 0x2C, 8);                         // Moves 1-4
             copyBytes(d, 0x7A, s, 0x34, 4);                         // Move PP
             { const uint8_t pu = rd8(s, 0x28); for (int i = 0; i < 4; ++i) wr8(d, 0x7E + i, (pu >> (i * 2)) & 3); }
-            wr32(d, 0x8C, iv32 & 0x7FFFFFFFu);                      // IVs + isEgg(bit30); clear Gen 3 ability bit(31)
+            std::vector<std::byte> canonicalName(10, static_cast<std::byte>(Utils::GEN3_TERMINATOR));
+            utf8UpperToG3Name(canonicalName, 0, Pokemon::getSpeciesNameGen89(national), 10);
+            bool customNickname = false;
+            for (size_t i = 0; i < 10; ++i) customNickname |= s[0x08 + i] != canonicalName[i];
+            uint32_t modernIv32 = iv32 & 0x7FFFFFFFu;               // clear Gen III ability bit
+            if (customNickname) modernIv32 |= 0x80000000u;          // modern IsNicknamed bit
+            wr32(d, 0x8C, modernIv32);
 
             g3NameToUtf16(d, 0x58, s, 0x08, 10, 26);                // Nickname (Gen 3 -> UTF-16)
             g3NameToUtf16(d, 0xF8, s, 0x14, 7, 26);                 // OT name
@@ -554,6 +572,7 @@ namespace Conversion {
                     wr8(d, 0x11C, static_cast<uint8_t>(year - 2000));      // Met_Year
                     wr8(d, 0x11D, static_cast<uint8_t>(lt->tm_mon + 1));   // Met_Month (1-12)
                     wr8(d, 0x11E, static_cast<uint8_t>(lt->tm_mday));      // Met_Day (1-31)
+                    if (report) report->addAdaptation(Adaptation::Gen3TransferDateSynthesized);
                 }
             }
             wr8(d, 0xDE, static_cast<uint8_t>((origins >> 7) & 0x0F));   // Origin game (FR=4/LG=5, same PK8 enum)
@@ -565,7 +584,12 @@ namespace Conversion {
         // `destOriginVersion` is the exact destination game's origin byte (FR = 4, LG = 5). It has to be
         // passed in: a game GROUP collapses the pair into one value by design, so FRLG alone cannot say
         // which of the two the save actually is.
-        std::optional<std::vector<std::byte>> remapPK8toPK3(const std::vector<std::byte>& s, uint8_t destOriginVersion) {
+        std::optional<std::vector<std::byte>> remapPK8toPK3(const std::vector<std::byte>& s,
+                                                               uint8_t destOriginVersion,
+                                                               bool sourceNicknamed,
+                                                               uint8_t targetAbilityBit,
+                                                               bool constrainPidAbilityBit,
+                                                               Report* report) {
             std::vector<std::byte> d(0x64, std::byte{0});
             const uint32_t pid      = rd32(s, 0x1C);
             const uint16_t national = rd16(s, 0x08);
@@ -583,8 +607,10 @@ namespace Conversion {
             const uint32_t tid32   = rd32(s, 0x0C);
             const uint16_t tsv     = static_cast<uint16_t>((tid32 & 0xFFFF) ^ (tid32 >> 16));
             const bool     shWant  = (static_cast<uint16_t>(((pid & 0xFFFF) ^ (pid >> 16)) ^ tsv) < 16);
-            const Gen3PidSearch::Traits wanted{natWant, genWant, gr, abilBit, tid32, shWant};
-            const auto outPid = Gen3PidSearch::find(pid, wanted);
+            Gen3PidSearch::Traits wanted{natWant, genWant, gr, abilBit, tid32, shWant};
+            wanted.constrainAbilityBit = constrainPidAbilityBit;
+            if (national == 201) wanted.unownForm = rd8(s, 0x24);
+            const auto outPid = Gen3PidSearch::find(pid, wanted, national == 201 ? 8000000 : 1000000);
             if (!outPid) return std::nullopt;
             wr32(d, 0x00, *outPid);                                 // PID rerolled to preserve nature/gender/shiny/ability
             copyBytes(d, 0x04, s, 0x0C, 4);                         // OTID32
@@ -594,8 +620,12 @@ namespace Conversion {
             wr16(d, 0x22, Names::itemModernToG3(rd16(s, 0x0A)));    // Held item (modern -> Gen 3; 0 if none)
             copyBytes(d, 0x24, s, 0x10, 4);                         // EXP
 
-            // Gen 3 nickname = the uppercase species name (custom nicknames aren't carried down to Gen 3).
-            utf8UpperToG3Name(d, 0x08, Pokemon::getSpeciesNameGen89(national), 10);
+            if (sourceNicknamed) {
+                utf16ToG3Name(d, 0x08, s, 0x58, 26, 10);            // representable custom nickname survives
+            } else {
+                utf8UpperToG3Name(d, 0x08, Pokemon::getSpeciesNameGen89(national), 10);
+                if (report) report->addAdaptation(Adaptation::DefaultNicknameCanonicalized);
+            }
             utf16ToG3Name(d, 0x14, s, 0xF8, 26, 7);                 // OT name (UTF-16 -> Gen 3)
 
             copyBytes(d, 0x2C, s, 0x72, 8);                         // Moves 1-4
@@ -617,14 +647,16 @@ namespace Conversion {
             // path, not a rare edge: every cross-gen transfer into Gen 3 takes it. It used to substitute a
             // literal 4, which is FireRed -- so a LeafGreen save stamped FireRed 100% of the time.
             uint8_t version = rd8(s, 0xDE);
-            if (version < 1 || version > 5) version = destOriginVersion;
+            if (version < 1 || version > 5) {
+                version = destOriginVersion;
+                if (report) report->addLoss(Loss::OriginGameRestamped);
+            }
             wr16(d, 0x46, static_cast<uint16_t>((metLevel & 0x7F) | ((version & 0x0F) << 7)
                                               | ((ball & 0x0F) << 11) | ((otGender & 1) << 15)));
             wr8(d, 0x45, static_cast<uint8_t>(rd16(s, 0x122)));     // Met location (Gen 3 ids are u8)
 
             // IVs: keep bits 0-29 (IVs) + bit30 (isEgg); set bit31 = ability slot from the PK8 ability number.
-            const uint8_t abilNum = rd8(s, 0x16);                  // 1=slot1, 2=slot2, 4=hidden (-> slot1 in Gen 3)
-            wr32(d, 0x48, (pk8iv & 0x7FFFFFFFu) | ((abilNum == 2) ? 0x80000000u : 0u));
+            wr32(d, 0x48, (pk8iv & 0x7FFFFFFFu) | (targetAbilityBit ? 0x80000000u : 0u));
             return d;
         }
     }
@@ -635,7 +667,11 @@ namespace Conversion {
     }
 
     std::unique_ptr<Pokemon::Pokemon> convert(const Pokemon::Pokemon& src, GameVersion destGroup, Result& result,
-                                              uint8_t destOriginVersion) {
+                                              uint8_t destOriginVersion, Report* report) {
+        if (report) {
+            *report = Report{};
+            report->sourceOriginVersion = src.originGame();
+        }
         result = gate(src, destGroup);
         if (result != Result::Ok) return nullptr;   // SameGroup / NotInDex / Blocked / Unsupported
 
@@ -645,6 +681,26 @@ namespace Conversion {
         if (destOriginVersion == 0) destOriginVersion = Enums::getGroupRepVersion(destGroup);
 
         const GameVersion from = src.getGameGroup();
+        const bool sourceNicknamed = src.isNicknamed();
+
+        // Current Gen III text support is the international table only. Fail closed rather than
+        // corrupting/truncating Japanese or later-generation Korean/Chinese text.
+        if (destGroup == GameVersion::FRLG && from != GameVersion::FRLG) {
+            if (!Fidelity::gen3InternationalLanguageSupported(src.language())) {
+                result = Result::LanguageNotRepresentable;
+                return nullptr;
+            }
+            if ((sourceNicknamed && !Fidelity::gen3TextRepresentable(src.nickname(), 10))
+                || !Fidelity::gen3TextRepresentable(src.otName(), 7)) {
+                result = Result::TextNotRepresentable;
+                return nullptr;
+            }
+        }
+        if (from == GameVersion::FRLG && destGroup != GameVersion::FRLG
+            && !Fidelity::gen3InternationalLanguageSupported(src.language())) {
+            result = Result::LanguageNotRepresentable;
+            return nullptr;
+        }
 
         // Copy the source's decrypted bytes; every field at a shared offset (identity, IVs/EVs, moves,
         // nickname/OT/HT, ribbons/marks, dates, ...) carries verbatim. Then fix only the regions that
@@ -659,17 +715,43 @@ namespace Conversion {
         // destination -- so PB7 / PA8 / PK9 all interoperate through one hub.
         if (isG8(from) && isG8(destGroup)) {         // SwSh <-> BDSP: drop the Technical-Record flags (BDSP has no TRs).
             for (size_t o = 0x127; o <= 0x134 && o < buf.size(); ++o) buf[o] = std::byte{0};
-        } else if (isG9(from) && isG9(destGroup)) {  // S/V <-> Z-A: drop the fields that diverge between PK9 and PA9.
-            for (size_t o = 0x94; o <= 0x9F && o < buf.size(); ++o) buf[o] = std::byte{0};  // Tera (PK9) / Plus-flags (PA9)
-            for (size_t o = 0x4B; o <= 0x57 && o < buf.size(); ++o) buf[o] = std::byte{0};  // DLC-TM (PK9) / LevelBoost (PA9)
-            if (0x23 < buf.size()) buf[0x23] = std::byte{0};                                // Alpha (PA9) / alignment (PK9)
+        } else if (isG9(from) && isG9(destGroup)) {
+            bool divergentData = false;
+            for (size_t o = 0x4B; o <= 0x57 && o < buf.size(); ++o)
+                divergentData |= static_cast<uint8_t>(buf[o]) != 0;
+            if (divergentData && report) report->addLoss(Loss::DivergentGameDataDropped);
+
+            if (from == GameVersion::SV && destGroup == GameVersion::ZA) {
+                if (report) report->addLoss(Loss::TeraDataDropped);
+            } else if (from == GameVersion::ZA && destGroup == GameVersion::SV) {
+                if (0x23 < buf.size() && static_cast<uint8_t>(buf[0x23]) != 0 && report)
+                    report->addLoss(Loss::ZAAlphaDropped);
+            }
+
+            for (size_t o = 0x94; o <= 0x9F && o < buf.size(); ++o) buf[o] = std::byte{0};
+            for (size_t o = 0x4B; o <= 0x57 && o < buf.size(); ++o) buf[o] = std::byte{0};
+            if (0x23 < buf.size()) buf[0x23] = std::byte{0};
+
+            if (destGroup == GameVersion::SV) {
+                const Pokemon::TypePair tp = Pokemon::getPokemonTypes(src.speciesID(), src.form(), GameVersion::SV);
+                const uint8_t tera = Fidelity::defaultTeraType(tp.type1, tp.type2);
+                wr8(buf, 0x94, tera); wr8(buf, 0x95, tera);
+                if (report) report->addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
+            }
         } else {
             viaHub = true;
             // 1. Normalize the source into the PK8 layout.
-            if (isG9(from))                     transformG9toG8(buf);        // PK9 -> PK8
-            else if (from == GameVersion::PLA)  buf = remapPA8toPK8(buf);    // PA8 -> PK8
-            else if (from == GameVersion::GG)   buf = remapPB7toPK8(buf);    // PB7 -> PK8
-            else if (from == GameVersion::FRLG) buf = remapPK3toPK8(buf);    // PK3 -> PK8
+            if (isG9(from))                     transformG9toG8(buf, from, report); // PK9/PA9 -> PK8
+            else if (from == GameVersion::PLA) {
+                if (report) report->addLoss(Loss::PLAExclusiveDataDropped);
+                buf = remapPA8toPK8(buf);
+            } else if (from == GameVersion::GG) {
+                if (report) {
+                    report->addLoss(Loss::StatTrainingReset);
+                    report->addLoss(Loss::RibbonDataDropped);
+                }
+                buf = remapPB7toPK8(buf);
+            } else if (from == GameVersion::FRLG) buf = remapPK3toPK8(buf, report);
 
             // 1b. Those three hub remaps emit a STORED-size (0x148) buffer -- no battle-stat tail. Handing
             // that to a Gen 8/9 entity makes level()/statXXX() index PAST the allocation, so the mon shows a
@@ -686,11 +768,23 @@ namespace Conversion {
             }
 
             // 2. Denormalize the PK8 layout into the destination.
-            if (isG9(destGroup))                     transformG8toG9(buf, src.speciesID(), src.form());  // PK8 -> PK9
-            else if (destGroup == GameVersion::PLA)  buf = remapPK8toPA8(buf);                           // PK8 -> PA8
-            else if (destGroup == GameVersion::GG)   buf = remapPK8toPB7(buf);                           // PK8 -> PB7
-            else if (destGroup == GameVersion::FRLG) {
-                auto pk3 = remapPK8toPK3(buf, destOriginVersion);                                      // PK8 -> PK3
+            if (isG9(destGroup)) {
+                transformG8toG9(buf, src.speciesID(), src.form(), destGroup, report);
+            } else if (destGroup == GameVersion::PLA) {
+                buf = remapPK8toPA8(buf);
+            } else if (destGroup == GameVersion::GG) {
+                if (report) {
+                    report->addLoss(Loss::StatTrainingReset);
+                    report->addLoss(Loss::RibbonDataDropped);
+                }
+                buf = remapPK8toPB7(buf);
+            } else if (destGroup == GameVersion::FRLG) {
+                const Pokemon::PersonalInfoG3& g3 = Pokemon::getPersonalInfoG3(src.speciesID());
+                const auto abilityMap = Fidelity::mapModernAbilityToGen3(
+                    rd16(buf, 0x14), rd8(buf, 0x16) & 0x07, g3.ability1, g3.ability2);
+                if (!abilityMap.ok) { result = Result::AbilityNotRepresentable; return nullptr; }
+                auto pk3 = remapPK8toPK3(buf, destOriginVersion, sourceNicknamed,
+                                         abilityMap.abilityBit, g3.ability1 != g3.ability2, report);
                 if (!pk3) { result = Result::TraitPreservationFailed; return nullptr; }
                 buf = std::move(*pk3);
             }
@@ -714,11 +808,14 @@ namespace Conversion {
             const uint8_t  fm = out->form();
             for (int i = 0; i < 4; ++i) {
                 if (out->move(i) != 0 && !Pokemon::isLearnable(sp, fm, destGroup, out->move(i))) {
+                    if (report) report->addLoss(Loss::MoveDropped);
                     out->setMove(i, 0); out->setMovePP(i, 0); out->setMovePPUps(i, 0);
                 }
                 if (destGroup != GameVersion::FRLG && out->relearnMove(i) != 0
-                    && !Pokemon::isLearnable(sp, fm, destGroup, out->relearnMove(i)))
+                    && !Pokemon::isLearnable(sp, fm, destGroup, out->relearnMove(i))) {
+                    if (report) report->addLoss(Loss::RelearnMoveDropped);
                     out->setRelearnMove(i, 0);   // Gen 3 has no relearn moves (remap leaves them 0)
+                }
             }
 
             // Compact the surviving moves upward. Clearing slot 2 of 4 otherwise leaves a HOLE,
@@ -745,7 +842,10 @@ namespace Conversion {
             for (int i = 0; i < 4; ++i) {
                 if (out->move(i) == 0) continue;
                 const uint8_t mx = Names::getMoveMaxPP(out->move(i), out->movePPUps(i), destGroup);
-                if (out->movePP(i) > mx) out->setMovePP(i, mx);
+                if (out->movePP(i) > mx) {
+                    if (report) report->addAdaptation(Adaptation::MovePPClamped);
+                    out->setMovePP(i, mx);
+                }
             }
         }
 
@@ -754,8 +854,10 @@ namespace Conversion {
         // HeldItems_LA are both empty), and every other game has its own item space where an id that
         // doesn't exist is meaningless. `out` is already in the destination's format, so its held-item id
         // is in that game's own space -- Gen 3 ids for FRLG, modern ids everywhere else.
-        if (out->heldItem() != 0 && !Names::isHeldItemPresent(out->heldItem(), destGroup))
+        if (out->heldItem() != 0 && !Names::isHeldItemPresent(out->heldItem(), destGroup)) {
+            if (report) report->addLoss(Loss::HeldItemDropped);
             out->setHeldItem(0);
+        }
 
         // Fill the destination's (un-checksummed) battle-stat tail whenever this conversion created a fresh
         // one: Let's Go and Gen 3 always build theirs from scratch (they store Level + stats + Combat Power
@@ -796,6 +898,7 @@ namespace Conversion {
         normalizeAffixedRibbon(*out);
 
         out->refreshChecksum();   // stored bytes changed -> recompute the entity checksum
+        if (report) report->destinationEntityOriginVersion = out->originGame();
         result = Result::Ok;
         return out;
     }
@@ -831,6 +934,9 @@ namespace Conversion {
             // Names the way out: this one is lifted by a setting, unlike NotInDex which is absolute.
             case Result::Blocked:     return "HOME can't transfer this species here (Allow Illegal Values overrides)";
             case Result::TraitPreservationFailed: return "Could not preserve required Gen III PID-derived traits";
+            case Result::AbilityNotRepresentable: return "This ability cannot be represented in the destination game";
+            case Result::TextNotRepresentable: return "Nickname or trainer name cannot be represented without loss";
+            case Result::LanguageNotRepresentable: return "This language encoding is not supported safely for Gen III conversion";
             case Result::Unsupported: return "Transfer to/from this game isn't supported yet";
         }
         return "";

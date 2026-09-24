@@ -239,3 +239,20 @@ $(GEN3_PID_SEARCH_TEST): $(GEN3_PID_SEARCH_SOURCES) include/Conversion/Gen3PidSe
 $(GEN3_PID_SEARCH_SANITIZE): $(GEN3_PID_SEARCH_SOURCES) include/Conversion/Gen3PidSearch.h src/Conversion/Convert.cpp include/Conversion/Convert.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_PID_SEARCH_SOURCES) -o $@
+
+# F05-F13 conversion fidelity / generated golden fixture policy.
+CONVERSION_FIDELITY_GOLDEN_TEST := $(HOST_BUILD)/test_conversion_fidelity_golden
+CONVERSION_FIDELITY_GOLDEN_SANITIZE := $(HOST_BUILD)/test_conversion_fidelity_golden_sanitize
+CONVERSION_FIDELITY_GOLDEN_SOURCES := tests/test_conversion_fidelity_golden.cpp src/Utils/SHA256.cpp
+HOST_TESTS += $(CONVERSION_FIDELITY_GOLDEN_TEST)
+HOST_SANITIZE_TESTS += $(CONVERSION_FIDELITY_GOLDEN_SANITIZE)
+host-test: $(CONVERSION_FIDELITY_GOLDEN_TEST)
+host-sanitize: $(CONVERSION_FIDELITY_GOLDEN_SANITIZE)
+
+$(CONVERSION_FIDELITY_GOLDEN_TEST): $(CONVERSION_FIDELITY_GOLDEN_SOURCES) include/Conversion/Fidelity.h include/Conversion/Gen3PidSearch.h include/Conversion/Convert.h src/Conversion/Convert.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(CONVERSION_FIDELITY_GOLDEN_SOURCES) -o $@
+
+$(CONVERSION_FIDELITY_GOLDEN_SANITIZE): $(CONVERSION_FIDELITY_GOLDEN_SOURCES) include/Conversion/Fidelity.h include/Conversion/Gen3PidSearch.h include/Conversion/Convert.h src/Conversion/Convert.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CONVERSION_FIDELITY_GOLDEN_SOURCES) -o $@

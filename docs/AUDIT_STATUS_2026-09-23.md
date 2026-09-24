@@ -1102,3 +1102,95 @@ conversion golden fixture helpers
 ```
 
 Do not implement the full Vault until these primitives are reviewed and physically recovery-tested.
+
+
+---
+
+# F05-F13 conversion fidelity / generated golden fixture tranche — 2026-09-24
+
+This tranche begins from the CI-green F07 checkpoint `a999ed708a546d88717642bdf58c65c014314feb` and keeps cross-game true Move
+globally disabled. It does not enable live source writes, Master Vault, another generation, BDSP
+multi-file transactions, or N06.
+
+## Permanent fixture contract
+
+Generated fixtures are deterministic, redistributable byte/semantic vectors. Every policy fixture
+calculates a SHA-256 before conversion-policy evaluation and asserts the source bytes remain unchanged.
+Production conversion continues to receive `const Pokemon::Pokemon&` and returns a separate candidate.
+
+The new `Conversion::Report` separates:
+
+- **declared losses** — semantics/data that cannot exist unchanged in the target;
+- **adaptations** — deterministic representation changes needed to preserve meaning.
+
+Future cross-game true Move must treat an unacknowledged declared loss as non-retirable source state.
+
+## F05-F13 disposition
+
+| ID | Exact-current disposition | Fixture / policy |
+|---|---|---|
+| F05 shiny preservation | FIXED / GENERATED GOLDEN FIXTURE | Gen III XOR<8 vs modern XOR<16 boundary is tested; XOR 8..15 gets the transfer-style top-PID-bit adjustment so a Gen III non-shiny does not become shiny merely by entering a modern representation |
+| F06 Unown form | FIXED / GENERATED GOLDEN FIXTURE | multiple PID-derived forms are stamped/verified; modern->Gen III PID search now constrains the requested Unown letter |
+| F07 PID search exhaustion | ALREADY FIXED / PROVEN BY REGRESSION | bounded search returns no candidate and `TraitPreservationFailed`; no original-PID fallback |
+| F08 ability slot/number | FIXED / GENERATED GOLDEN FIXTURE | slot 1, slot 2, duplicate ability and hidden-ability cases covered; hidden or changed/unrepresentable ability fails instead of silently becoming a normal ability |
+| F09 S/V <-> Z-A divergent data | FIXED + DECLARED LOSS POLICY | S/V->Z-A declares Tera loss; Z-A->S/V synthesizes target-default Tera and declares Alpha loss when present; divergent record/level data is not preserved merely because offsets overlap |
+| F10 Gen III EV policy | POLICY CHOSEN / GENERATED GOLDEN FIXTURE | 252 remains exact; Gen III 253/254/255 -> modern clamps to 252 and records `Gen3EVClamped`; modern->Gen III keeps representable raw byte values |
+| F11 nickname/language/text | FIXED / FAIL CLOSED WHERE UNREPRESENTABLE | representable custom nickname survives modern->Gen III; default name canonicalizes to Gen III species spelling; overlength/unmappable text and unsupported Gen III language tables fail explicitly |
+| F13 profile/provenance | PARTIAL / EXPLICIT BOUNDARY | source origin and destination entity origin are reported separately; modern->Gen III origin restamp is a declared provenance loss. Profile/account/current-location ownership remains outside PKM conversion in the A04b StoreDescriptor and must be retained by future Vault provenance |
+
+## Declared loss bits added
+
+- `Gen3EVClamped`
+- `TeraDataDropped`
+- `ZAAlphaDropped`
+- `DivergentGameDataDropped`
+- `OriginGameRestamped`
+- `MoveDropped`
+- `RelearnMoveDropped`
+- `HeldItemDropped`
+- `StatTrainingReset`
+- `PLAExclusiveDataDropped`
+- `RibbonDataDropped`
+
+## Declared adaptations added
+
+- Gen III -> modern shiny-threshold PID adjustment;
+- target-default Tera synthesis where the destination is S/V;
+- destination PP clamp;
+- Gen III transfer-date synthesis;
+- default Gen III nickname canonicalization.
+
+## Generated fixture list
+
+- `f05-gen3-modern-shiny-xor-0`
+- `f05-gen3-modern-shiny-xor-8-boundary`
+- `f05-gen3-modern-shiny-xor-16-nonshiny`
+- `f06-unown-forms-0-1-13-27`
+- `f07-impossible-gender-pid-search`
+- `f08-ability-slot1-slot2-duplicate-hidden`
+- `f09-sv-za-tera-alpha-policy`
+- `f10-gen3-ev-252-253-254-255`
+- `f11-gen3-international-text-and-language`
+- `f13-origin-restamp-provenance`
+
+## Route-level true-Move disposition
+
+No cross-game route is broadly enabled by this tranche.
+
+The generated fixtures prove the listed fidelity rules, but full route eligibility still requires
+real serialized/reparsed entity golden vectors for every target-native field (including ribbons,
+marks, HOME tracker behavior and game-specific side data) plus user-visible loss acknowledgement.
+Therefore every cross-game A04b route remains **ROUTE MUST REMAIN DISABLED** for source retirement.
+
+Specific candidate generation can continue for staged/copy-like workflows because source custody is
+immutable and failures return no destination candidate.
+
+## Provenance rule
+
+A target format field is not allowed to overwrite historical truth in PokeBank provenance. In
+particular, a modern Pokemon converted into PK3 may need a Gen III origin field value to serialize,
+but that value is a compatibility representation and is recorded as `OriginGameRestamped`; it must
+not replace the original modern origin in future provenance.
+
+CI evidence for the exact implementation head is recorded in issue #69 / PR #79 after the permanent
+Host + ASan/UBSan + Audit Hardening Native Validation gates complete.
