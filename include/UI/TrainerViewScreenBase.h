@@ -99,6 +99,10 @@ namespace UI {
         void postPickup();             // drop an all-empty block so the hands read as free
         bool checkPutDownBounds() const;   // does the block fit in the focused pane from the cursor cell?
         void putDownBlock();           // exact-slot placement: cell (x,y) -> cursor slot + x + y*cols
+        bool buildCrossStoreDescriptors(
+            PokeBank::Storage::MoveTx::StoreDescriptor& bankDescriptor,
+            PokeBank::Storage::MoveTx::StoreDescriptor& workspaceDescriptor,
+            std::string& error) const;
         bool captureCrossStoreMoveBaseline(int sourcePane, bool copyOperation);
         void clearCrossStoreMoveBaseline();
         bool tryCommitCrossStoreMove(int destPane, int destBox, int destSlot);
