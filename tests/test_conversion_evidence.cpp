@@ -473,10 +473,10 @@ int main() {
         EvidenceStore evidenceStore(root);
         std::string error;
         auto evidence = makeEvidence(tx);
-        assert(evidenceStore.persist(evidence, error));
 
         Engine first(root, {}, makeEvidenceRetirementGate(evidenceStore, true));
         assert(first.prepare(tx, src, dst, destinationAfter, sourceRetired, error));
+        assert(evidenceStore.persist(evidence, error));
         const auto interrupted = first.recover(tx.id, src, dst, FaultPoint::BeforeSourceRetire);
         assert(interrupted.status == RecoveryStatus::Interrupted);
         assert(interrupted.state == State::SourceRetirePending);
@@ -521,10 +521,10 @@ int main() {
             EvidenceStore evidenceStore(root);
             std::string error;
             auto evidence = makeEvidence(tx);
-            assert(evidenceStore.persist(evidence, error));
 
             Engine engine(root, {}, makeEvidenceRetirementGate(evidenceStore, true));
             assert(engine.prepare(tx, src, dst, destinationAfter, sourceRetired, error));
+            assert(evidenceStore.persist(evidence, error));
             const auto interrupted = engine.recover(tx.id, src, dst, faults[i]);
             assert(interrupted.status == RecoveryStatus::Interrupted);
             Engine restarted(root, {}, makeEvidenceRetirementGate(EvidenceStore(root), true));
