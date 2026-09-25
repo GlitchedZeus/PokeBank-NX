@@ -224,9 +224,9 @@ int main() {
 
     // Mapping completeness contract for every currently declared fidelity bit.
     assert(lossPresentationCatalog().size() == 14);
-    assert(adaptationPresentationCatalog().size() == 7);
+    assert(adaptationPresentationCatalog().size() == 8);
     assert(knownLossMask() == ((1u << 14) - 1u));
-    assert(knownAdaptationMask() == ((1u << 7) - 1u));
+    assert(knownAdaptationMask() == ((1u << 8) - 1u));
     for (const auto& item : lossPresentationCatalog()) {
         assert(item.bit != 0 && item.key && *item.key && item.message && *item.message);
     }
@@ -256,9 +256,10 @@ int main() {
     presentationReport.addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
     presentationReport.addAdaptation(Adaptation::TargetScaleSynthesized);
     presentationReport.addAdaptation(Adaptation::TargetObedienceLevelSynthesized);
+    presentationReport.addAdaptation(Adaptation::TargetHistoryRepresentationRemapped);
     const auto summary = summarizeFidelity(presentationReport);
     assert(summary.losses.size() == 4);
-    assert(summary.adaptations.size() == 4);
+    assert(summary.adaptations.size() == 5);
     assert(contains(summary.losses, "The held item cannot be carried into the destination and will be removed."));
     assert(contains(summary.losses, "The HOME tracker cannot be stored in the destination format and will be removed."));
     assert(contains(summary.losses, "Tera data cannot be stored in the destination format and will be removed."));
@@ -266,6 +267,7 @@ int main() {
     assert(contains(summary.adaptations, "A destination-native default Tera type will be synthesized."));
     assert(contains(summary.adaptations, "A destination-native scale value will be synthesized from the source height scalar."));
     assert(contains(summary.adaptations, "A destination-native obedience level will be synthesized from the source met level."));
+    assert(contains(summary.adaptations, "Historical origin/met representation will be remapped into the destination format while provenance retains the original history."));
     assert(!summary.unknownLossBits && !summary.unknownAdaptationBits);
 
     // Clone/copy/conversion provenance relationships stay semantically distinct.
@@ -666,7 +668,12 @@ int main() {
             evidence.destinationFormat = route.destinationFormat;
             evidence.historicalOriginVersion = route.historicalOrigin;
             evidence.fidelity.sourceOriginVersion = route.historicalOrigin;
-            evidence.fidelity.destinationEntityOriginVersion = route.historicalOrigin;
+            evidence.fidelity.destinationEntityOriginVersion =
+                route.sourceFormat == Enums::GameVersion::SV
+                    ? static_cast<uint8_t>(route.historicalOrigin == static_cast<uint8_t>(Enums::GameVersion::VL)
+                                               ? Enums::GameVersion::SH
+                                               : Enums::GameVersion::SW)
+                    : route.historicalOrigin;
 
             // Both directions can be loss-bearing: entering S/V can drop source-only game state;
             // returning to SWSH necessarily drops Tera. This exercises the exact acknowledgement
@@ -678,6 +685,7 @@ int main() {
                 evidence.fidelity.addAdaptation(Adaptation::TargetObedienceLevelSynthesized);
             } else {
                 evidence.fidelity.addLoss(Loss::TeraDataDropped);
+                evidence.fidelity.addAdaptation(Adaptation::TargetHistoryRepresentationRemapped);
             }
             evidence.lossesShownToUser = true;
             std::string error;
