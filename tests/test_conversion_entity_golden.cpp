@@ -57,6 +57,16 @@ uint64_t rd64(std::span<const std::byte> b, std::size_t o) {
     for (int i = 0; i < 8; ++i) v |= static_cast<uint64_t>(static_cast<uint8_t>(b[o + static_cast<std::size_t>(i)])) << (8 * i);
     return v;
 }
+uint32_t rd32(std::span<const std::byte> b, std::size_t o) {
+    return static_cast<uint32_t>(static_cast<uint8_t>(b[o])) |
+           (static_cast<uint32_t>(static_cast<uint8_t>(b[o + 1])) << 8) |
+           (static_cast<uint32_t>(static_cast<uint8_t>(b[o + 2])) << 16) |
+           (static_cast<uint32_t>(static_cast<uint8_t>(b[o + 3])) << 24);
+}
+void wr32s(std::span<std::byte> b, std::size_t o, uint32_t v) {
+    for (int i = 0; i < 4; ++i)
+        b[o + static_cast<std::size_t>(i)] = static_cast<std::byte>(v >> (8 * i));
+}
 
 std::array<uint8_t, 32> hashBytes(std::span<const std::byte> bytes) {
     Utils::SHA256 sha;
@@ -1315,6 +1325,62 @@ int main() {
         proveSourceUnchanged(*source, before, sourceHash);
         assert(!pre.candidateAvailable);
         assert(pre.result == Result::LanguageNotRepresentable);
+    }
+
+    // SWSH <-> S/V exact-pair audit: known format-specific fields must never disappear silently,
+    // and status condition has a destination-native field in both formats so it must relocate rather
+    // than be reset. This is intentionally a focused regression before the broader route corpus.
+    {
+        auto source = blankSWSH(0x77000001u);
+        configureModern(*source, 25, 0, 0x11223344u, 0x11223244u,
+                        static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
+        auto d = source->getData();
+        d[0x16] = static_cast<std::byte>(static_cast<uint8_t>(d[0x16]) | 0x10u); // CanGigantamax
+        wr32s(d, 0x48, 0x01020304u); // Sociability
+        d[0x90] = std::byte{7};       // Dynamax level
+        wr32s(d, 0x94, 0x00000008u); // Status condition
+        wr32s(d, 0x98, 0x00000001u); // PK8 Palma/source-only field
+        d[0xCE] = std::byte{1};       // PokeJob flag
+        d[0xDC] = std::byte{2};       // Fullness
+        d[0x127] = std::byte{1};      // TR record flag
+        source->refreshChecksum();
+
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto sv = convert(*source, GameVersion::SV, result,
+                          static_cast<uint8_t>(GameVersion::SL), &report);
+        assert(result == Result::Ok && sv);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(report.hasLoss(Loss::DivergentGameDataDropped));
+        assert(rd32(sv->getData(), 0x90) == 0x00000008u);
+        assertSerializedReparse(*sv);
+    }
+
+    {
+        auto source = blankSV(0x77000002u);
+        configureModern(*source, 25, 0, 0x55667788u, 0x55667688u,
+                        static_cast<uint8_t>(GameVersion::SL), u"PIKACHU", false);
+        auto d = source->getData();
+        wr32s(d, 0x90, 0x00000010u); // Status condition
+        d[0x4A] = std::byte{77};      // Scale distinct from height
+        d[0x11F] = std::byte{42};     // Obedience level distinct from met level
+        d[0x12F] = std::byte{1};      // PK9 base TM-record flag
+        source->refreshChecksum();
+
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto swsh = convert(*source, GameVersion::SWSH, result,
+                            static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(result == Result::Ok && swsh);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(report.hasLoss(Loss::TeraDataDropped));
+        assert(report.hasLoss(Loss::DivergentGameDataDropped));
+        assert(rd32(swsh->getData(), 0x94) == 0x00000010u);
+        assertSerializedReparse(*swsh);
     }
 
     std::cout << "F05-F13 production conversion entity goldens: PASS\n";
