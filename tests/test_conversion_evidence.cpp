@@ -297,11 +297,17 @@ int main() {
         assert(!missing.allowed);
         assert(missing.reason.find("explicitly acknowledged") != std::string::npos);
 
+        std::string error;
+        assert(!markLossesAcknowledged(evidence, 1001, error));
+        assert(error.find("loss summary was shown") != std::string::npos);
+        assert(!evidence.lossesShownToUser);
+        assert(!evidence.lossesAcknowledged);
+
         evidence.lossesShownToUser = true;
         auto notAcknowledged = authorizeSourceRetirement(evidence, tx, true);
         assert(!notAcknowledged.allowed);
 
-        std::string error;
+        error.clear();
         assert(markLossesAcknowledged(evidence, 1001, error));
         assert(evidence.lossesAcknowledged);
         assert(!std::all_of(evidence.acknowledgementBinding.begin(),
