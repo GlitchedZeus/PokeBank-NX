@@ -430,6 +430,33 @@ int main() {
         cleanup(root, {});
     }
 
+    // Closure refusal reasons are first-class PBCE v1 values. They round-trip durably even
+    // though candidateAvailable=false means they can never authorize source retirement.
+    {
+        const std::array<EvidenceConversionResult, 3> refusalResults{{
+            EvidenceConversionResult::BallNotRepresentable,
+            EvidenceConversionResult::FormNotTransferable,
+            EvidenceConversionResult::RibbonMarkNotRepresentable,
+        }};
+        for (size_t i = 0; i < refusalResults.size(); ++i) {
+            const std::string root = base + "-closure-refusal-" + std::to_string(i);
+            ensureDir(root);
+            EvidenceStore store(root);
+            auto tx = makeTransaction("tx-00000000000020" + std::to_string(30 + i), srcDesc, dstDesc);
+            auto evidence = makeEvidence(tx);
+            evidence.candidateAvailable = false;
+            evidence.conversionResult = refusalResults[i];
+            std::string error;
+            assert(store.persist(evidence, error));
+            const auto loaded = store.load(tx.id);
+            assert(loaded.status == EvidenceLoadStatus::Ok);
+            assert(!loaded.evidence.candidateAvailable);
+            assert(loaded.evidence.conversionResult == refusalResults[i]);
+            assert(!authorizeSourceRetirement(loaded.evidence, tx, true).allowed);
+            cleanup(root, {});
+        }
+    }
+
     // Missing evidence blocks retirement. Destination may be prepared, but source stays authoritative.
     {
         const std::string root = base + "-missing";
