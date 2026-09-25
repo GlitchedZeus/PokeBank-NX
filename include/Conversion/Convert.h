@@ -55,6 +55,7 @@ namespace Conversion {
         TextNotRepresentable,     // target text encoding/length cannot preserve nickname or OT
         LanguageNotRepresentable, // target language/text encoding is not implemented safely
         BallNotRepresentable,     // target game cannot represent the source Poke Ball id safely
+        FormNotTransferable,       // source carries a fused/battle-only transient form state
     };
 
     /// Converts `src` into `destGroup`'s entity format, preserving origin identity and refreshing the
