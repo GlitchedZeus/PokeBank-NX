@@ -789,6 +789,60 @@ namespace Conversion {
     }
 
 
+    bool swshSvFormTransferable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        const GameVersion from = src.getGameGroup();
+        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            return true;
+
+        const uint16_t species = src.speciesID();
+        const uint8_t form = src.form();
+        if (form == 0) return true;
+
+        // Mirror the relevant Gen 8/9 subset of the pinned PKHeX FormInfo/TradeRestrictions oracle.
+        // These values are transient battle states or fused entities and must not be moved as an
+        // ordinary standalone Pokemon even when the personal table says the form exists.
+        switch (species) {
+            case 646: // Kyurem: White/Black are fused
+            case 800: // Necrozma: Dusk/Dawn fused; Ultra is battle-only
+            case 898: // Calyrex: Ice/Shadow Rider are fused
+                return false;
+
+            case 555: // Darmanitan: odd forms are Zen battle states
+                return (form & 1u) == 0;
+            case 658: // Greninja: Ash battle state
+                return form != 2;
+            case 718: // Zygarde Complete
+                return form != 4;
+            case 774: // Minior shields-up battle forms are 0..6
+                return form >= 7;
+            case 778: // Mimikyu Busted
+                return (form & 1u) == 0;
+            case 1017: // Ogerpon Embody Aspect
+                return form < 4;
+
+            case 351: // Castform weather
+            case 382: // Kyogre Primal
+            case 383: // Groudon Primal
+            case 421: // Cherrim Sunshine
+            case 648: // Meloetta Pirouette
+            case 681: // Aegislash Blade
+            case 716: // Xerneas Active
+            case 746: // Wishiwashi School
+            case 845: // Cramorant Gulping/Gorging
+            case 875: // Eiscue Noice
+            case 877: // Morpeko Hangry
+            case 888: // Zacian Crowned
+            case 889: // Zamazenta Crowned
+            case 890: // Eternatus Eternamax
+            case 964: // Palafin Hero
+            case 1024: // Terapagos battle forms
+                return false;
+            default:
+                return true;
+        }
+    }
+
     bool swshSvAbilityRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
         const GameVersion from = src.getGameGroup();
         if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
@@ -838,6 +892,11 @@ namespace Conversion {
             *report = Report{};
             report->sourceOriginVersion = src.originGame();
         }
+        if (!swshSvFormTransferable(src, destGroup)) {
+            result = Result::FormNotTransferable;
+            return nullptr;
+        }
+
         result = gate(src, destGroup);
         if (result != Result::Ok) return nullptr;   // SameGroup / NotInDex / Blocked / Unsupported
 
@@ -1167,6 +1226,7 @@ namespace Conversion {
             case Result::TextNotRepresentable: return "Nickname or trainer name cannot be represented without loss";
             case Result::LanguageNotRepresentable: return "This language encoding is not supported safely for Gen III conversion";
             case Result::BallNotRepresentable: return "This Poke Ball cannot be represented in the destination game";
+            case Result::FormNotTransferable: return "This fused or battle-only form cannot be moved between games";
             case Result::Unsupported: return "Transfer to/from this game isn't supported yet";
         }
         return "";
