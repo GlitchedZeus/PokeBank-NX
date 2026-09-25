@@ -1886,6 +1886,74 @@ int main() {
         exercise(false, svOnly, true);
     }
 
+
+    // SWSH and S/V changed the base stats of five shared species/form entries. Cresselia is the
+    // simplest proof that the cached party-stat tail must be recalculated with destination-native
+    // base stats instead of copied across generations.
+    {
+        auto sw = blankSWSH(0x7D800001u);
+        configureModern(*sw, 488, 0, 0x10203040u, 0x10203140u,
+                        static_cast<uint8_t>(GameVersion::SW), u"CRESSELIA", false);
+        sw->setNature(0);
+        sw->setStatNature(0);
+        for (int s = 0; s < 6; ++s) {
+            sw->setIV(s, 31);
+            sw->setEV(s, 0);
+        }
+        sw->setLevel(50);
+        sw->recalculateStats();
+        sw->refreshChecksum();
+        assert(sw->baseDEF() == 120);
+        assert(sw->baseSPD() == 130);
+        assert(sw->statDEF() == 140);
+        assert(sw->statSPD() == 150);
+
+        const auto before = nativeBytes(*sw);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto sv = convert(*sw, GameVersion::SV, result,
+                          static_cast<uint8_t>(GameVersion::SL), &report);
+        assert(result == Result::Ok && sv);
+        proveSourceUnchanged(*sw, before, sourceHash);
+        assert(sv->baseDEF() == 110);
+        assert(sv->baseSPD() == 120);
+        assert(sv->statDEF() == 130);
+        assert(sv->statSPD() == 140);
+        assertSerializedReparse(*sv);
+
+        auto reverse = blankSV(0x7D800002u);
+        configureModern(*reverse, 488, 0, 0x20304050u, 0x20304150u,
+                        static_cast<uint8_t>(GameVersion::SL), u"CRESSELIA", false);
+        reverse->setNature(0);
+        reverse->setStatNature(0);
+        for (int s = 0; s < 6; ++s) {
+            reverse->setIV(s, 31);
+            reverse->setEV(s, 0);
+        }
+        reverse->setLevel(50);
+        reverse->getData()[0x11F] = static_cast<std::byte>(reverse->metLevel());
+        reverse->getData()[0x4A] = reverse->getData()[0x48];
+        reverse->recalculateStats();
+        reverse->refreshChecksum();
+        assert(reverse->baseDEF() == 110);
+        assert(reverse->baseSPD() == 120);
+        assert(reverse->statDEF() == 130);
+        assert(reverse->statSPD() == 140);
+
+        const auto reverseBefore = nativeBytes(*reverse);
+        const auto reverseHash = hashBytes(reverseBefore);
+        auto back = convert(*reverse, GameVersion::SWSH, result,
+                            static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(result == Result::Ok && back);
+        proveSourceUnchanged(*reverse, reverseBefore, reverseHash);
+        assert(back->baseDEF() == 120);
+        assert(back->baseSPD() == 130);
+        assert(back->statDEF() == 140);
+        assert(back->statSPD() == 150);
+        assertSerializedReparse(*back);
+    }
+
     // Shared ribbon/mark storage, HOME tracker zero/nonzero, balls and modern languages/text.
     {
         const uint8_t languages[] = {1,2,3,4,5,7,8,9,10};
