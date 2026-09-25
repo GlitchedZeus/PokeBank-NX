@@ -2335,6 +2335,22 @@ int main() {
             proveSourceUnchanged(*source, before, sourceHash);
         }
 
+        auto noBall = blankSV(0x7E1C0000u);
+        configureModern(*noBall, 25, 0, 0x71710000u, 0x71710100u,
+                        static_cast<uint8_t>(GameVersion::SL), u"NOBALL", true);
+        noBall->setBall(0);
+        noBall->getData()[0x11F] = static_cast<std::byte>(noBall->metLevel());
+        noBall->getData()[0x4A] = noBall->getData()[0x48];
+        noBall->refreshChecksum();
+        const auto noBallBefore = nativeBytes(*noBall);
+        const auto noBallHash = hashBytes(noBallBefore);
+        Result noBallResult = Result::Unsupported;
+        Report noBallReport;
+        auto noBallCandidate = convert(*noBall, GameVersion::SWSH, noBallResult,
+                                       static_cast<uint8_t>(GameVersion::SW), &noBallReport);
+        assert(!noBallCandidate && noBallResult == Result::BallNotRepresentable);
+        proveSourceUnchanged(*noBall, noBallBefore, noBallHash);
+
         auto malformed = blankSWSH(0x7E1D001Bu);
         configureModern(*malformed, 25, 0, 0x7272001Bu, 0x7272011Bu,
                         static_cast<uint8_t>(GameVersion::SW), u"BADPK8BALL", true);
@@ -2544,6 +2560,69 @@ int main() {
                 assertSerializedReparse(*candidate);
             }
         }
+    }
+
+    // Modern text closure: 12 UTF-16 code units plus NUL is valid, while raw fields with no
+    // terminator or an unpaired surrogate fail preflight/conversion without touching the source.
+    {
+        for (const bool fromG8 : {true, false}) {
+            std::unique_ptr<Pokemon::Pokemon> maxText =
+                fromG8 ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7EA00001u))
+                       : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7EA10001u));
+            configureModern(*maxText, 25, 0, 0xABABABABu, 0xABABAAABu,
+                            static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                            u"ABCDEFGHIJKL", true); // exactly 12
+            maxText->setOTName(u"TRAINER12345"); // exactly 12
+            if (!fromG8) {
+                maxText->getData()[0x11F] = static_cast<std::byte>(maxText->metLevel());
+                maxText->getData()[0x4A] = maxText->getData()[0x48];
+            }
+            maxText->refreshChecksum();
+            const auto before = nativeBytes(*maxText);
+            const auto sourceHash = hashBytes(before);
+            Result result = Result::Unsupported;
+            Report report;
+            auto candidate = convert(*maxText, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                                     result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW),
+                                     &report);
+            assert(result == Result::Ok && candidate);
+            proveSourceUnchanged(*maxText, before, sourceHash);
+            assert(candidate->nickname() == maxText->nickname());
+            assert(candidate->otName() == maxText->otName());
+            assertSerializedReparse(*candidate);
+        }
+
+        auto unterminated = blankSWSH(0x7EA20001u);
+        configureModern(*unterminated, 25, 0, 0xBCBCBCBCu, 0xBCBCBDBCu,
+                        static_cast<uint8_t>(GameVersion::SW), u"VALID", true);
+        auto u = unterminated->getData();
+        for (size_t i = 0; i < 13; ++i) {
+            u[0x58 + i * 2] = std::byte{'A'};
+            u[0x58 + i * 2 + 1] = std::byte{0};
+        }
+        unterminated->refreshChecksum();
+        const auto ub = nativeBytes(*unterminated);
+        const auto uh = hashBytes(ub);
+        auto pre = preflightConvert(*unterminated, GameVersion::SV,
+                                    static_cast<uint8_t>(GameVersion::SL));
+        assert(!pre.candidateAvailable && pre.result == Result::TextNotRepresentable);
+        proveSourceUnchanged(*unterminated, ub, uh);
+
+        auto surrogate = blankSV(0x7EA30001u);
+        configureModern(*surrogate, 25, 0, 0xCDCDCDCDu, 0xCDCDCCCDu,
+                        static_cast<uint8_t>(GameVersion::SL), u"VALID", true);
+        auto s = surrogate->getData();
+        s[0x58] = std::byte{0x00}; s[0x59] = std::byte{0xD8}; // lone high surrogate U+D800
+        s[0x5A] = std::byte{0}; s[0x5B] = std::byte{0};
+        s[0x11F] = static_cast<std::byte>(surrogate->metLevel());
+        s[0x4A] = s[0x48];
+        surrogate->refreshChecksum();
+        const auto sb = nativeBytes(*surrogate);
+        const auto sh = hashBytes(sb);
+        pre = preflightConvert(*surrogate, GameVersion::SWSH,
+                               static_cast<uint8_t>(GameVersion::SW));
+        assert(!pre.candidateAvailable && pre.result == Result::TextNotRepresentable);
+        proveSourceUnchanged(*surrogate, sb, sh);
     }
 
     // Requested exact round trips. Equality is required only for shared semantics; Tera and
