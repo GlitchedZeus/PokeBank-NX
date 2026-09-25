@@ -1952,3 +1952,359 @@ at the code checkpoint above.
 
 Do not automatically begin route enablement, Master Vault, BDSP multi-file transactions, N06,
 Gen IV/DS/3DS, live writes, or clone expansion.
+
+
+---
+
+# SWSH <-> S/V exact-pair route completion audit — 2026-09-25
+
+This tranche audits Sword / Shield <-> Scarlet / Violet as eight exact title directions. It does
+**not** enable any cross-game true-Move route.
+
+## Starting checkpoint
+
+```text
+starting head:
+62b638cd614bbb322581b032afb845559a0d572c
+
+starting tree:
+1d0ab45b705e409cff8a73dfaeeffa1028db3177
+```
+
+GitHub advanced before this audit resumed. The branch was audited forward without reset/rebase.
+
+## Exact code checkpoint before this documentation capture
+
+```text
+application SHA:
+8979478043d305378cb3e10340be6209d2382991
+
+PokeBank NX Host Tests:
+36101608492 / #1182 / SUCCESS
+
+Audit Hardening Native Validation:
+36101605089 / #83 / SUCCESS
+```
+
+This is CI verification only, not device acceptance.
+
+## Forward commits included in this tranche
+
+```text
+190a6c34f57e08dc1c0b692eb524ed5799eaaae2  test(conversion): expose SWSH-SV divergent field loss
+1e4f64ab1bec906e05b2bfa9022b9606c6e1dcfc  fix(conversion): preserve status and declare SWSH-SV divergent loss
+55ac1e30e21c15253edfe1eb4f877e3a5da672c8  test(conversion): require explicit SWSH-SV synthesized-field adaptations
+b4c2aec9e2540533d70b1d83373205933d7eedd0  fix(conversion): declare SWSH-SV synthesized field adaptations
+53475e6579181ab0772161a9d13123d8898f6ac5  fix(conversion): declare SWSH-SV synthesized field adaptations
+1f36ba1117592883998ac2a638191ab187ceb3f3  fix(conversion): declare SWSH-SV synthesized field adaptations
+01104beeae7171ce9907654b273dba631ef5b4d2  fix(conversion): declare SWSH-SV synthesized field adaptations
+94af61125a816039e16c73cd8ba314c7bfc29b04  test(conversion): expand SWSH-SV exact-pair production corpus
+a8bcedb3df36934170aaae3bc5400b0bdc03736c  test(conversion): use native IV EV accessors in exact-pair corpus
+4a65467b4ab971af330079c691598f32de96c648  test(conversion): bind all SWSH-SV exact title routes
+2ca694d3bd6f6f77dd8aa619e61d63e97da34034  test(conversion): fail closed on SWSH-SV ability-table divergence
+9040a34c043a3be4dec3f66abdf51ea538d8080d  fix(conversion): fail closed on SWSH-SV ability changes
+d8f122298431dc4fc4c52b7bff4f853b387a7b5d  test(conversion): expose SWSH-SV base-stat tail drift
+e1ad0a3ab8a7ded90fdbbde56a9d5f17dd1473a7  fix(pokemon): add Sword Shield base-stat override accessor
+98e6ced199c9b85f6c77643d7aeca25194d98d95  fix(pokemon): model SWSH generation-specific base stats
+5011dfd03459b6333c38789abfdad5f7e22b274d  fix(pokemon): use SWSH-native base stats for PK8
+4d604fcb0f06fd31d9d99c62925939cd0e18de4e  fix(conversion): recalculate SWSH-SV destination battle stats
+49a0807576947a6476640fe9217f032ced15f86a  test(conversion): fix exact-pair corpus compile warnings
+f4d926eb81f6792377529dc4871526b29831067d  test(conversion): close SWSH-SV PP text and immutability gaps
+c94acf9e9769dc6cd092fcfde4aab36fa911797c  test(conversion): pin friendship and historical origin across SWSH-SV
+8979478043d305378cb3e10340be6209d2382991  test(conversion): expose SWSH-SV fidelity in presentation model
+```
+
+## Files changed in the forward exact-pair implementation
+
+```text
+include/Conversion/Fidelity.h
+include/Pokemon/BaseStatsGen89.h
+src/Conversion/Convert.cpp
+src/Conversion/RouteEvidence.cpp
+src/Pokemon/BaseStatsGen89.cpp
+src/Pokemon/Pokemon8SWSH.cpp
+tests/test_conversion_entity_golden.cpp
+tests/test_conversion_evidence.cpp
+```
+
+## Exact-pair species / form matrix
+
+The production personal table now pins the current SWSH/SV intersection rather than inferring
+compatibility from one species:
+
+```text
+base species:
+shared       420
+SWSH-only    244
+SV-only      313
+neither       48
+
+alternate forms:
+shared        71
+SWSH-only     50
+SV-only      175
+neither      169
+```
+
+Production fixtures prove representative base-species absence and regional-form absence return
+`NotInDex`, produce no candidate and leave the source bytes/hash exact.
+
+Representative shared forms currently covered include:
+
+```text
+Alolan Vulpix
+Galarian Meowth
+Rotom alternate form
+```
+
+Unavailable Galarian Ponyta and Paldean Tauros form examples fail closed instead of flattening.
+
+Classification: **PROVEN BY SHARED IMPLEMENTATION + FIXTURE** for the personal-table gate itself;
+**NEEDS MORE EVIDENCE** for route-wide species-specific form semantics and special/battle-only forms.
+
+## Exact title identities
+
+Production fixtures bind and exercise all eight exact title identities:
+
+```text
+Sword  -> Scarlet
+Sword  -> Violet
+Shield -> Scarlet
+Shield -> Violet
+Scarlet -> Sword
+Scarlet -> Shield
+Violet  -> Sword
+Violet  -> Shield
+```
+
+Sword/Shield share the PK8 transform and Scarlet/Violet share the PK9 transform, but exact source
+and destination versions remain separately represented in the conversion/provenance evidence.
+
+## Coverage matrix
+
+| Semantic category | Exact-pair result |
+|---|---|
+| species availability | **PROVEN BY SHARED IMPLEMENTATION + FIXTURE** — generated personal-table presence matrix + representative fail-closed source-immutability fixtures |
+| forms | **NEEDS MORE EVIDENCE** — representative regional/permanent form preservation and fail-closed absence proven; not every special/form-specific rule class is closed |
+| shiny / PID / EC | **PROVEN BY PRODUCTION FIXTURE** — modern XOR shiny classes plus non-shiny; PID/EC preserved |
+| abilities | **PROVEN BY PRODUCTION FIXTURE / UNSUPPORTED FAIL CLOSED** — slots 1/2/hidden/duplicate covered; Shiftry/Gallade generation-specific slot-2 changes fail `AbilityNotRepresentable` |
+| moves | **PROVEN BY PRODUCTION FIXTURE** — production learnsets dynamically derive shared/source-only classes; source-only moves are `MoveDropped` |
+| relearn moves | **PROVEN BY PRODUCTION FIXTURE** — shared survive; destination-impossible relearns are `RelearnMoveDropped` |
+| PP / PP Ups | **PROVEN BY PRODUCTION FIXTURE** — carried with moves and destination PP drift clamps with `MovePPClamped` |
+| held items | **PROVEN BY SHARED IMPLEMENTATION + FIXTURE** — generated item-presence tables cover shared/source-only classes; unsupported item reports `HeldItemDropped` |
+| ribbons | **NEEDS MORE EVIDENCE** — representative shared ribbon bytes preserve; broad event/special/distribution ribbon semantics are not route-complete |
+| marks | **NEEDS MORE EVIDENCE** — representative mark-byte regions preserve; full semantic mark catalog/reserved-bit classification is incomplete |
+| HOME tracker | **PROVEN BY PRODUCTION FIXTURE** — zero and multiple nonzero u64 values survive both directions and serialize/reparse |
+| event / fateful | **NEEDS MORE EVIDENCE** — fateful, Cherish Ball, tracker, representative ribbon/mark and special-move style state covered; historical distribution-specific PID/EC/met/ribbon constraints remain incomplete |
+| balls | **PROVEN BY REPRESENTATIVE PRODUCTION FIXTURE / NEEDS MORE EVIDENCE** — ordinary + special representative IDs serialize/reparse; complete generation-specific invalid-ball policy is not yet proven |
+| language / text | **PROVEN BY REPRESENTATIVE PRODUCTION FIXTURE / NEEDS MORE EVIDENCE** — language IDs 1,2,3,4,5,7,8,9,10 and Japanese/Korean/Chinese UTF-16 examples preserve; full boundary/invalid UTF-16 policy remains incomplete |
+| origin / met / history | **PROVEN BY PRODUCTION FIXTURE** for current transform — entity historical origin remains source history, including older BDSP origin living in Sword; exact store provenance remains F13 metadata |
+| Tera | **LOSS / ADAPTATION EXPLICIT** — SWSH->SV synthesizes destination-default Tera with `TargetDefaultTeraSynthesized`; SV->SWSH reports `TeraDataDropped` |
+| IV / EV / nature / mint nature | **PROVEN BY PRODUCTION FIXTURE** for representative shared values |
+| friendship | **PROVEN BY PRODUCTION FIXTURE** |
+| Hyper Training flags | **PROVEN BY PRODUCTION FIXTURE** for representative shared flag bytes |
+| Pokerus | **PROVEN BY REPRESENTATIVE FIXTURE** for carried native state |
+| battle-stat tail | **CONFIRMED DEFECT -> FIXED / PROVEN BY FIXTURE** — destination stats now recalculate against generation-specific base stats |
+| PK8-only semantics | **LOSS DECLARED** — G-Max flag, Sociability, Dynamax level, Palma, PokeJob, Fullness/Enjoyment, TR records contribute to `DivergentGameDataDropped`; status is relocated, not lost |
+| PK9-only semantics | **LOSS / ADAPTATION EXPLICIT** — Tera loss, Scale/Obedience divergence and TM-record regions feed explicit fidelity behavior |
+| Scale | **ADAPTATION / LOSS POLICY EXPLICIT** — SWSH->SV synthesizes Scale from Height via `TargetScaleSynthesized`; SV->SWSH reports divergent loss when Scale differs from Height |
+| ObedienceLevel | **ADAPTATION / LOSS POLICY EXPLICIT** — SWSH->SV synthesizes from MetLevel via `TargetObedienceLevelSynthesized`; SV->SWSH reports divergent loss when distinct |
+| unknown / reserved bytes | **BLOCKER** — no proof yet that every remaining unmodeled PK8/PK9 byte is harmless padding; route-complete source retirement cannot be claimed |
+| round trips | **PROVEN BY REPRESENTATIVE PRODUCTION FIXTURE** — Sword->Scarlet->Sword, Shield->Violet->Shield, Scarlet->Sword->Scarlet, Violet->Shield->Violet |
+| preflight | **PROVEN BY PRODUCTION FIXTURE** — preflight and conversion Loss/Adaptation bitsets match on tested exact-pair cases |
+| acknowledgement / F13 | **PROVEN BY EVIDENCE FIXTURE** — all eight exact game-store identities bind into acknowledgement; stale hashes/route identity fail closed |
+| route-disabled override | **PROVEN** — product route gate remains false |
+
+## New fidelity semantics
+
+The SWSH/SV audit adds deterministic adaptations for destination-only fields:
+
+```text
+TargetScaleSynthesized
+TargetObedienceLevelSynthesized
+```
+
+They are separate from destructive Loss values and are included in the presentation-model
+completeness contract.
+
+SWSH-specific source semantics that cannot exist in PK9 contribute to:
+
+```text
+DivergentGameDataDropped
+```
+
+SV -> SWSH continues to report:
+
+```text
+TeraDataDropped
+```
+
+and reports divergent loss when Scale, ObedienceLevel or move-record data cannot survive exactly.
+
+## Confirmed defects found and fixed during the exact-pair audit
+
+### P1 — SWSH/SV source-only fields could disappear without complete fidelity accounting
+
+The focused corpus exposed known generation-specific regions that were being cleared/relocated
+without all semantic changes being represented. The converter now preserves status condition and
+declares source-only divergence instead of silently zeroing meaningful state.
+
+### P1 — destination-only Scale / Obedience synthesis was implicit
+
+PK8 has no independent PK9 Scale or ObedienceLevel fields. SWSH -> S/V now reports deterministic:
+
+```text
+TargetScaleSynthesized
+TargetObedienceLevelSynthesized
+```
+
+rather than silently creating those fields.
+
+### P1 — two shared species have incompatible normal ability slot 2 across generations
+
+Current personal data identifies:
+
+```text
+Shiftry
+Gallade
+```
+
+with slot-2 ability changes between SWSH and S/V.
+
+The route now fails closed with `AbilityNotRepresentable` instead of carrying a destination-invalid
+ability ID or silently substituting another effect.
+
+### P1 — copied battle-stat tail could use the wrong generation's base stats
+
+Cresselia and other shared species have base-stat changes between SWSH and S/V. Copying cached party
+stats across generations could therefore create a destination entity whose stored battle stats did
+not match destination-native base stats.
+
+The converter now models SWSH-specific base-stat overrides for PK8 and recalculates the destination
+battle-stat tail. Cresselia provides the focused two-way regression.
+
+No new P0 was found by this tranche.
+
+## Event / ribbon / mark disposition
+
+The exact-pair corpus now proves representative event-like state:
+
+- fateful encounter;
+- Cherish Ball;
+- HOME tracker;
+- custom OT/nickname;
+- representative ribbon and mark bytes;
+- route-legal moves and route-illegal move loss;
+- exact PID/EC preservation for modern representation.
+
+This is still **NEEDS MORE EVIDENCE**, not historical event-distribution completeness. The converter
+does not yet have a route-wide proof for every special/distribution ribbon, mark, event met rule,
+fixed PID/EC distribution rule or event-specific move exception.
+
+## Language / text disposition
+
+Modern PK8 and PK9 use compatible UTF-16-style name storage in the current project model. Fixtures
+cover the project language IDs:
+
+```text
+1  Japanese
+2  English
+3  French
+4  Italian
+5  German
+7  Spanish
+8  Korean
+9  Simplified Chinese
+10 Traditional Chinese
+```
+
+Non-Latin Japanese/Korean/Chinese nickname + OT examples preserve across both directions.
+
+Remaining text blocker for a route-complete claim: explicit boundary corpus for maximum lengths,
+terminators/trash handling and malformed/unpaired UTF-16 code units is not yet complete.
+
+## HOME tracker result
+
+Tracker values tested include zero and multiple nonzero 64-bit values. PK8 offset `0x135` and PK9
+offset `0x127` relocate exactly in both directions, survive destination serialization/reparse and
+round trips, and are not invented or randomized.
+
+## Origin / F13 result
+
+Historical origin remains an entity-history field, not the current store. A BDSP-origin entity
+currently living in Sword and converted to Scarlet remains BDSP-origin.
+
+All eight exact title/store identities are included in the persisted acknowledgement binding.
+Changing Sword<->Shield, Scarlet<->Violet, either StoreDescriptor or either payload digest invalidates
+the evidence.
+
+This does not authorize retirement.
+
+## Source immutability
+
+Exact-pair success and failure fixtures capture encrypted native source bytes and SHA-256 before
+conversion/preflight. They require the exact source bytes and SHA-256 to remain unchanged afterward.
+
+`NotInDex` and `AbilityNotRepresentable` failure fixtures also prove no candidate is created and
+the source remains byte-identical.
+
+No route test retires a source slot.
+
+## Unknown / reserved-data blocker
+
+The known PK8/PK9 divergent regions now have materially better coverage, but the audit cannot prove
+that every remaining unmodeled/reserved byte is semantically inert across all legitimate entities.
+
+Per the fail-closed route-completion policy, that uncertainty is a **BLOCKER** to declaring an exact
+direction route-complete for source-retiring true Move.
+
+## Direction-by-direction decision
+
+All directions remain disabled:
+
+```text
+Sword  -> Scarlet   ROUTE MUST REMAIN DISABLED
+Sword  -> Violet    ROUTE MUST REMAIN DISABLED
+Shield -> Scarlet   ROUTE MUST REMAIN DISABLED
+Shield -> Violet    ROUTE MUST REMAIN DISABLED
+Scarlet -> Sword    ROUTE MUST REMAIN DISABLED
+Scarlet -> Shield   ROUTE MUST REMAIN DISABLED
+Violet -> Sword     ROUTE MUST REMAIN DISABLED
+Violet -> Shield    ROUTE MUST REMAIN DISABLED
+```
+
+None is promoted to `POTENTIAL ROUTE CANDIDATE FOR FUTURE ENABLEMENT` yet.
+
+Shared blockers:
+
+- unknown/reserved PK8/PK9 semantic classification is incomplete;
+- route-wide special/event distribution semantics are incomplete;
+- ribbon/mark semantic catalog coverage is incomplete;
+- special/form-specific edge corpus remains incomplete;
+- complete invalid/special-ball policy is not fully fixture-proven;
+- full text-boundary/malformed-text corpus is incomplete;
+- physical Switch FAT32/exFAT power-loss acceptance remains separate and open.
+
+## True-Move gate
+
+```text
+ROUTE ELIGIBLE FOR FUTURE TRUE-MOVE ENABLEMENT:
+NONE
+```
+
+Product `routeEnabledForTrueMove()` remains false.
+
+No cross-game source retirement is enabled by this tranche.
+
+## Recommended next tranche
+
+Do not activate SWSH/SV yet.
+
+The highest-value next work is a **PK8/PK9 unknown-reserved-byte + event/ribbon/mark closure audit**,
+focused only on the exact fields still preventing SWSH/SV from being classified as a potential route
+candidate. Keep route enablement off until that closure audit is complete.
+
+## Tranche stop
+
+Stop here. Do not begin route activation, BDSP multi-file transactions, N06, Master Vault,
+Gen IV/DS/3DS, live source writes or clone expansion.
