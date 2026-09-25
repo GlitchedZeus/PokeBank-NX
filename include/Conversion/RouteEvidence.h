@@ -24,6 +24,9 @@ enum class EvidenceConversionResult : uint8_t {
     AbilityNotRepresentable = 6,
     TextNotRepresentable = 7,
     LanguageNotRepresentable = 8,
+    BallNotRepresentable = 9,
+    FormNotTransferable = 10,
+    RibbonMarkNotRepresentable = 11,
 };
 
 enum class ProvenanceRelation : uint8_t {
