@@ -1536,6 +1536,59 @@ int main() {
         }
     }
 
+    // PK9 -> PK8 history representation closure. HOME does not store Scarlet/Violet's raw
+    // Version/met/egg fields verbatim inside PK8: it maps them to target-valid SWSH representation
+    // while external/core provenance retains the historical S/V origin.
+    {
+        struct HistoryCase {
+            uint8_t sourceVersion;
+            uint8_t destinationVersion;
+            uint8_t expectedPk8Version;
+            uint16_t expectedMet;
+        };
+        const HistoryCase cases[] = {
+            {static_cast<uint8_t>(GameVersion::SL), static_cast<uint8_t>(GameVersion::SW),
+             static_cast<uint8_t>(GameVersion::SW), 59997},
+            {static_cast<uint8_t>(GameVersion::VL), static_cast<uint8_t>(GameVersion::SH),
+             static_cast<uint8_t>(GameVersion::SH), 59996},
+        };
+        for (size_t i = 0; i < std::size(cases); ++i) {
+            const auto& hc = cases[i];
+            auto source = blankSV(0x77120000u + static_cast<uint32_t>(i));
+            configureModern(*source, 25, 0, 0x71717171u + static_cast<uint32_t>(i),
+                            0x71717071u + static_cast<uint32_t>(i), hc.sourceVersion,
+                            u"HISTORYMAP", true);
+            auto raw = source->getData();
+            wr16(raw, 0x120, 5678); // S/V egg location that cannot stay raw in PK8.
+            wr16(raw, 0x122, 1234); // S/V met location that cannot stay raw in PK8.
+            raw[0x11F] = raw[0x125];
+            raw[0x4A] = raw[0x48];
+            source->refreshChecksum();
+
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            const auto pre = preflightConvert(*source, GameVersion::SWSH, hc.destinationVersion);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(pre.candidateAvailable && pre.result == Result::Ok);
+
+            Report report;
+            Result result = Result::Unsupported;
+            auto candidate = convert(*source, GameVersion::SWSH, result, hc.destinationVersion, &report);
+            assert(result == Result::Ok && candidate);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(candidate->originGame() == hc.expectedPk8Version);
+            assert(candidate->metLocation() == hc.expectedMet);
+            assert(rd32(candidate->getData(), 0x120) ==
+                   (static_cast<uint32_t>(hc.expectedMet) << 16 | 65534u));
+            assert(report.sourceOriginVersion == hc.sourceVersion);
+            assert(report.destinationEntityOriginVersion == hc.expectedPk8Version);
+            assert((report.adaptations & (1u << 7)) != 0);
+            assert(pre.report.losses == report.losses);
+            assert(pre.report.adaptations == report.adaptations);
+            assertSerializedReparse(*candidate);
+        }
+    }
+
     // SWSH <-> S/V exact-pair route-completion corpus.
     // The personal table is generated from production PKHeX resources and carries game-presence
     // bits per species+form. Pin the exact current intersection rather than calling the pair
