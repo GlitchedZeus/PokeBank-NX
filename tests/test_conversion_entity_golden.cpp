@@ -10,6 +10,8 @@
 #include "Encryption/Encryption9SV.h"
 #include "Encryption/Encryption9LZA.h"
 #include "Names/SpeciesNames.h"
+#include "Names/ItemPresence.h"
+#include "Names/MoveInfo.h"
 #include "Pokemon/PersonalInfoTable.h"
 #include "Pokemon/LearnsetTable.h"
 #include "Pokemon/Pokemon3FRLG.h"
@@ -1386,6 +1388,603 @@ int main() {
         assert(report.hasLoss(Loss::DivergentGameDataDropped));
         assert(rd32(swsh->getData(), 0x94) == 0x00000010u);
         assertSerializedReparse(*swsh);
+    }
+
+
+    // SWSH <-> S/V exact-pair route-completion corpus.
+    // The personal table is generated from production PKHeX resources and carries game-presence
+    // bits per species+form. Pin the exact current intersection rather than calling the pair
+    // "compatible" from a small sample.
+    {
+        size_t sharedBase = 0, swshOnlyBase = 0, svOnlyBase = 0, neitherBase = 0;
+        size_t sharedForms = 0, swshOnlyForms = 0, svOnlyForms = 0, neitherForms = 0;
+        for (uint16_t sp = 1; sp <= Pokemon::PERSONAL_MAX_SPECIES; ++sp) {
+            const auto& base = Pokemon::getPersonalInfo(sp, 0);
+            const bool sw = (base.presence & Pokemon::PERSONAL_GAME_SWSH) != 0;
+            const bool sv = (base.presence & Pokemon::PERSONAL_GAME_SV) != 0;
+            if (sw && sv) ++sharedBase;
+            else if (sw) ++swshOnlyBase;
+            else if (sv) ++svOnlyBase;
+            else ++neitherBase;
+
+            for (uint8_t form = 1; form < base.formCount; ++form) {
+                const auto& pi = Pokemon::getPersonalInfo(sp, form);
+                const bool fsw = (pi.presence & Pokemon::PERSONAL_GAME_SWSH) != 0;
+                const bool fsv = (pi.presence & Pokemon::PERSONAL_GAME_SV) != 0;
+                if (fsw && fsv) ++sharedForms;
+                else if (fsw) ++swshOnlyForms;
+                else if (fsv) ++svOnlyForms;
+                else ++neitherForms;
+            }
+        }
+        assert(sharedBase == 420);
+        assert(swshOnlyBase == 244);
+        assert(svOnlyBase == 313);
+        assert(neitherBase == 48);
+        assert(sharedForms == 71);
+        assert(swshOnlyForms == 50);
+        assert(svOnlyForms == 175);
+        assert(neitherForms == 169);
+
+        auto expectNotInDex = [&](std::unique_ptr<Pokemon::Pokemon> source,
+                                  GameVersion destinationGroup,
+                                  uint8_t destinationVersion) {
+            const auto before = nativeBytes(*source);
+            const auto hash = hashBytes(before);
+            const auto pre = preflightConvert(*source, destinationGroup, destinationVersion);
+            assert(!pre.candidateAvailable);
+            assert(pre.result == Result::NotInDex);
+            proveSourceUnchanged(*source, before, hash);
+            Result result = Result::Ok;
+            Report report;
+            auto candidate = convert(*source, destinationGroup, result, destinationVersion, &report);
+            assert(!candidate);
+            assert(result == Result::NotInDex);
+            proveSourceUnchanged(*source, before, hash);
+        };
+
+        // Base species absent from the destination.
+        {
+            auto source = blankSWSH(0x78000001u);
+            configureModern(*source, 10, 0, 0x11112222u, 0x11112322u,
+                            static_cast<uint8_t>(GameVersion::SW), u"CATERPIE", false);
+            expectNotInDex(std::move(source), GameVersion::SV,
+                           static_cast<uint8_t>(GameVersion::SL));
+        }
+        {
+            auto source = blankSV(0x78000002u);
+            configureModern(*source, 23, 0, 0x22223333u, 0x22223233u,
+                            static_cast<uint8_t>(GameVersion::SL), u"EKANS", false);
+            source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+            source->refreshChecksum();
+            expectNotInDex(std::move(source), GameVersion::SWSH,
+                           static_cast<uint8_t>(GameVersion::SW));
+        }
+
+        // Regional forms absent from the destination must not flatten to form 0.
+        {
+            auto source = blankSWSH(0x78000003u);
+            configureModern(*source, 77, 1, 0x33334444u, 0x33334544u,
+                            static_cast<uint8_t>(GameVersion::SH), u"PONYTA", false);
+            assert(source->form() == 1);
+            expectNotInDex(std::move(source), GameVersion::SV,
+                           static_cast<uint8_t>(GameVersion::VL));
+        }
+        {
+            auto source = blankSV(0x78000004u);
+            configureModern(*source, 128, 1, 0x44445555u, 0x44445455u,
+                            static_cast<uint8_t>(GameVersion::VL), u"TAUROS", false);
+            source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+            source->refreshChecksum();
+            assert(source->form() == 1);
+            expectNotInDex(std::move(source), GameVersion::SWSH,
+                           static_cast<uint8_t>(GameVersion::SH));
+        }
+
+        // Shared regional/permanent forms survive as the same form through production serialization.
+        for (const auto [sp, form] : std::array<std::pair<uint16_t, uint8_t>, 3>{{
+                 {37, 1},   // Alolan Vulpix
+                 {52, 2},   // Galarian Meowth
+                 {479, 1},  // Rotom form
+             }}) {
+            auto source = blankSWSH(0x78100000u + sp + form);
+            configureModern(*source, sp, form, 0x55550000u + sp, 0x55550100u + sp,
+                            static_cast<uint8_t>(GameVersion::SW), u"FORMTEST", true);
+            const auto before = nativeBytes(*source);
+            const auto hash = hashBytes(before);
+            Report report;
+            Result result = Result::Unsupported;
+            auto sv = convert(*source, GameVersion::SV, result,
+                              static_cast<uint8_t>(GameVersion::SL), &report);
+            assert(result == Result::Ok && sv);
+            proveSourceUnchanged(*source, before, hash);
+            assert(sv->speciesID() == sp && sv->form() == form);
+            assertSerializedReparse(*sv);
+        }
+    }
+
+    // Every exact title direction uses the same PK8<->PK9 format transform but keeps exact
+    // source/destination identity outside the format group. Exercise all eight identities rather
+    // than inferring Sword=Shield or Scarlet=Violet.
+    {
+        struct ExactRoute {
+            bool sourceG8;
+            uint8_t sourceVersion;
+            uint8_t destinationVersion;
+            const char* label;
+        };
+        const ExactRoute routes[] = {
+            {true,  static_cast<uint8_t>(GameVersion::SW), static_cast<uint8_t>(GameVersion::SL), "sword-scarlet"},
+            {true,  static_cast<uint8_t>(GameVersion::SW), static_cast<uint8_t>(GameVersion::VL), "sword-violet"},
+            {true,  static_cast<uint8_t>(GameVersion::SH), static_cast<uint8_t>(GameVersion::SL), "shield-scarlet"},
+            {true,  static_cast<uint8_t>(GameVersion::SH), static_cast<uint8_t>(GameVersion::VL), "shield-violet"},
+            {false, static_cast<uint8_t>(GameVersion::SL), static_cast<uint8_t>(GameVersion::SW), "scarlet-sword"},
+            {false, static_cast<uint8_t>(GameVersion::SL), static_cast<uint8_t>(GameVersion::SH), "scarlet-shield"},
+            {false, static_cast<uint8_t>(GameVersion::VL), static_cast<uint8_t>(GameVersion::SW), "violet-sword"},
+            {false, static_cast<uint8_t>(GameVersion::VL), static_cast<uint8_t>(GameVersion::SH), "violet-shield"},
+        };
+
+        uint16_t commonMove = 0;
+        for (uint16_t move = 1; move <= Pokemon::LEARN_MAX_MOVE_ID; ++move) {
+            if (Pokemon::isLearnable(25, 0, GameVersion::SWSH, move) &&
+                Pokemon::isLearnable(25, 0, GameVersion::SV, move)) {
+                commonMove = move;
+                break;
+            }
+        }
+        assert(commonMove != 0);
+
+        uint16_t commonItem = 0;
+        for (uint16_t item = 1; item <= Names::ITEM_PRESENCE_MAX_ID; ++item) {
+            if (Names::isHeldItemPresent(item, GameVersion::SWSH) &&
+                Names::isHeldItemPresent(item, GameVersion::SV)) {
+                commonItem = item;
+                break;
+            }
+        }
+        assert(commonItem != 0);
+
+        for (size_t r = 0; r < std::size(routes); ++r) {
+            const auto& route = routes[r];
+            std::unique_ptr<Pokemon::Pokemon> source;
+            if (route.sourceG8) source = blankSWSH(0x79000000u + static_cast<uint32_t>(r));
+            else source = blankSV(0x79000000u + static_cast<uint32_t>(r));
+
+            const uint32_t pid = 0x60001000u + static_cast<uint32_t>(r) * 0x101u;
+            const uint32_t id32 = pid ^ 0x00000100u;
+            configureModern(*source, 25, 0, pid, id32, route.sourceVersion, u"PAIRTEST", true);
+            source->setOTName(u"ROUTEOT");
+            source->setLanguage(2);
+            source->setBall(16); // Cherish Ball, representative event ball
+            source->setHeldItem(commonItem);
+            source->setMove(0, commonMove);
+            source->setMovePPUps(0, 1);
+            source->setMovePP(0, Names::getMoveMaxPP(commonMove, 1,
+                route.sourceG8 ? GameVersion::SWSH : GameVersion::SV));
+            source->setRelearnMove(0, commonMove);
+            source->setNature(3);
+            source->setStatNature(10);
+            for (int i = 0; i < 6; ++i) {
+                source->setIV(i, static_cast<uint8_t>(20 + i));
+                source->setEV(i, static_cast<uint8_t>(4 * i));
+            }
+            auto raw = source->getData();
+            raw[0x22] = static_cast<std::byte>(static_cast<uint8_t>(raw[0x22]) | 0x01u); // fateful
+            raw[0x37] = std::byte{0x14}; // representative event ribbons
+            raw[0x3A] = std::byte{0x24}; // Galar ribbon + encounter mark
+            raw[0x40] = std::byte{0x11}; // representative mark bits
+            raw[0x126] = std::byte{0x15}; // hyper-training flags
+            raw[0x32] = std::byte{0x21};  // Pokerus state
+            const uint64_t tracker = 0xABCDEF0000000000ULL + static_cast<uint64_t>(r + 1);
+            if (route.sourceG8) {
+                wr64(raw, 0x135, tracker);
+                wr32s(raw, 0x94, 0x00000008u + static_cast<uint32_t>(r));
+            } else {
+                wr64(raw, 0x127, tracker);
+                wr32s(raw, 0x90, 0x00000008u + static_cast<uint32_t>(r));
+                raw[0x11F] = static_cast<std::byte>(source->metLevel()); // reversible obedience case
+                raw[0x4A] = raw[0x48]; // reversible scale case
+            }
+            source->refreshChecksum();
+
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            const GameVersion destinationGroup = route.sourceG8 ? GameVersion::SV : GameVersion::SWSH;
+
+            const auto pre = preflightConvert(*source, destinationGroup, route.destinationVersion);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(pre.candidateAvailable && pre.result == Result::Ok);
+
+            Report report;
+            Result result = Result::Unsupported;
+            auto candidate = convert(*source, destinationGroup, result, route.destinationVersion, &report);
+            assert(result == Result::Ok && candidate);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(pre.report.losses == report.losses);
+            assert(pre.report.adaptations == report.adaptations);
+            assert(candidate->originGame() == route.sourceVersion); // historical origin, not destination
+            assert(candidate->pid() == source->pid());
+            assert(candidate->encryptionConstant() == source->encryptionConstant());
+            assert(candidate->speciesID() == 25 && candidate->form() == 0);
+            assert(candidate->language() == source->language());
+            assert(candidate->nickname() == source->nickname());
+            assert(candidate->otName() == source->otName());
+            assert(candidate->ball() == source->ball());
+            assert(candidate->heldItem() == source->heldItem());
+            assert(candidate->nature() == source->nature());
+            assert(candidate->statNature() == source->statNature());
+            assert(candidate->move(0) == commonMove);
+            assert(candidate->relearnMove(0) == commonMove);
+            assert(candidate->isFatefulEncounter());
+            assert(static_cast<uint8_t>(candidate->getData()[0x37]) == 0x14);
+            assert(static_cast<uint8_t>(candidate->getData()[0x3A]) == 0x24);
+            assert(static_cast<uint8_t>(candidate->getData()[0x40]) == 0x11);
+            assert(static_cast<uint8_t>(candidate->getData()[0x126]) == 0x15);
+            assert(static_cast<uint8_t>(candidate->getData()[0x32]) == 0x21);
+            for (int i = 0; i < 6; ++i) {
+                assert(candidate->getIV(i) == source->getIV(i));
+                assert(candidate->getEV(i) == source->getEV(i));
+            }
+            if (route.sourceG8) {
+                assert(rd64(candidate->getData(), 0x127) == tracker);
+                assert(report.hasAdaptation(Adaptation::TargetDefaultTeraSynthesized));
+                assert(report.hasAdaptation(Adaptation::TargetScaleSynthesized));
+                assert(report.hasAdaptation(Adaptation::TargetObedienceLevelSynthesized));
+                assert(rd32(candidate->getData(), 0x90) == 0x00000008u + static_cast<uint32_t>(r));
+            } else {
+                assert(rd64(candidate->getData(), 0x135) == tracker);
+                assert(report.hasLoss(Loss::TeraDataDropped));
+                assert(!report.hasLoss(Loss::DivergentGameDataDropped));
+                assert(rd32(candidate->getData(), 0x94) == 0x00000008u + static_cast<uint32_t>(r));
+            }
+            assertSerializedReparse(*candidate);
+            std::cout << "fixture exact-pair-" << route.label
+                      << " source-sha256=" << hexHash(sourceHash) << "\n";
+        }
+    }
+
+    // Modern shiny/PID/EC semantics are shared by PK8 and PK9. Cover both shiny classes and an
+    // ordinary non-shiny without allowing conversion to regenerate identity.
+    {
+        for (const bool fromG8 : {true, false}) {
+            for (const uint16_t shinyXor : {uint16_t{0}, uint16_t{15}, uint16_t{16}}) {
+                const uint32_t pid = 0x13572468u + shinyXor;
+                const uint32_t id32 = pid ^ shinyXor;
+                std::unique_ptr<Pokemon::Pokemon> source;
+                if (fromG8) source = blankSWSH(0x7A000000u + shinyXor);
+                else source = blankSV(0x7A100000u + shinyXor);
+                configureModern(*source, 25, 0, pid, id32,
+                                static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                                u"SHINYTEST", true);
+                if (!fromG8) {
+                    source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+                    source->getData()[0x4A] = source->getData()[0x48];
+                    source->refreshChecksum();
+                }
+                const bool expectedShiny = Fidelity::isModernShiny(pid, id32);
+                assert(expectedShiny == (shinyXor < 16));
+                const uint32_t sourceEC = source->encryptionConstant();
+                const auto before = nativeBytes(*source);
+                const auto sourceHash = hashBytes(before);
+                Report report;
+                Result result = Result::Unsupported;
+                auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                    result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
+                assert(result == Result::Ok && candidate);
+                proveSourceUnchanged(*source, before, sourceHash);
+                assert(candidate->pid() == pid);
+                assert(candidate->encryptionConstant() == sourceEC);
+                assert(candidate->isShiny(id32, "") == expectedShiny);
+                assertSerializedReparse(*candidate);
+            }
+        }
+    }
+
+    // Ability slots are byte-compatible for tested shared species. Exercise normal slot 1,
+    // distinct slot 2, duplicate slot semantics, and hidden ability without substitution.
+    {
+        const uint16_t species[] = {280, 25}; // Ralts has distinct normal slots; Pikachu duplicates
+        for (const uint16_t sp : species) {
+            const auto& pi = Pokemon::getPersonalInfo(sp, 0);
+            assert((pi.presence & Pokemon::PERSONAL_GAME_SWSH) != 0);
+            assert((pi.presence & Pokemon::PERSONAL_GAME_SV) != 0);
+            const std::array<std::pair<uint16_t, uint8_t>, 3> abilities{{
+                {pi.ability1, 1},
+                {pi.ability2, 2},
+                {pi.abilityHidden, 4},
+            }};
+            for (const bool fromG8 : {true, false}) {
+                for (const auto [ability, slot] : abilities) {
+                    auto source = fromG8
+                        ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7B000000u + sp + slot).release())
+                        : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7B100000u + sp + slot).release());
+                    configureModern(*source, sp, 0, 0x24680000u + sp + slot, 0x24680100u + sp + slot,
+                                    static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                                    u"ABILITY", true);
+                    source->setAbility(ability);
+                    source->setAbilityNumber(slot);
+                    if (!fromG8) {
+                        source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+                        source->getData()[0x4A] = source->getData()[0x48];
+                    }
+                    source->refreshChecksum();
+                    const auto before = nativeBytes(*source);
+                    const auto sourceHash = hashBytes(before);
+                    Report report;
+                    Result result = Result::Unsupported;
+                    auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                        result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
+                    assert(result == Result::Ok && candidate);
+                    proveSourceUnchanged(*source, before, sourceHash);
+                    assert(candidate->ability() == ability);
+                    assert(candidate->abilityNumber() == slot);
+                    assertSerializedReparse(*candidate);
+                }
+            }
+        }
+    }
+
+    // Moves/relearn moves: derive route classes from production learnsets rather than hard-coding
+    // stale move ids. Shared moves survive; source-only moves and relearns are explicitly dropped.
+    {
+        std::vector<uint16_t> common, swOnly, svOnly;
+        for (uint16_t move = 1; move <= Pokemon::LEARN_MAX_MOVE_ID; ++move) {
+            const bool sw = Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
+            const bool sv = Pokemon::isLearnable(25, 0, GameVersion::SV, move);
+            if (sw && sv) common.push_back(move);
+            else if (sw) swOnly.push_back(move);
+            else if (sv) svOnly.push_back(move);
+        }
+        assert(common.size() >= 2 && swOnly.size() >= 2 && svOnly.size() >= 2);
+
+        auto exercise = [&](bool fromG8,
+                            const std::vector<uint16_t>& sourceOnly) {
+            std::unique_ptr<Pokemon::Pokemon> source;
+            if (fromG8) source = blankSWSH(fromG8 ? 0x7C000001u : 0x7C100001u);
+            else source = blankSV(0x7C100001u);
+            configureModern(*source, 25, 0, 0x33445566u, 0x33445466u,
+                            static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                            u"MOVETEST", true);
+            const uint16_t moves[4] = {common[0], sourceOnly[0], common[1], sourceOnly[1]};
+            for (int i = 0; i < 4; ++i) {
+                source->setMove(i, moves[i]);
+                source->setMovePPUps(i, static_cast<uint8_t>(i % 2));
+                source->setMovePP(i, Names::getMoveMaxPP(moves[i], source->movePPUps(i),
+                    fromG8 ? GameVersion::SWSH : GameVersion::SV));
+                source->setRelearnMove(i, moves[i]);
+            }
+            if (!fromG8) {
+                source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+                source->getData()[0x4A] = source->getData()[0x48];
+            }
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Report report;
+            Result result = Result::Unsupported;
+            auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
+            assert(result == Result::Ok && candidate);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(report.hasLoss(Loss::MoveDropped));
+            assert(report.hasLoss(Loss::RelearnMoveDropped));
+            assert(candidate->move(0) == common[0]);
+            assert(candidate->move(1) == common[1]);
+            assert(candidate->move(2) == 0 && candidate->move(3) == 0);
+            assert(candidate->relearnMove(0) == common[0]);
+            assert(candidate->relearnMove(1) == 0);
+            assert(candidate->relearnMove(2) == common[1]);
+            assert(candidate->relearnMove(3) == 0);
+            assertSerializedReparse(*candidate);
+        };
+        exercise(true, swOnly);
+        exercise(false, svOnly);
+    }
+
+    // Held-item route classes from the generated per-game presence tables.
+    {
+        uint16_t common = 0, swOnly = 0, svOnly = 0;
+        for (uint16_t item = 1; item <= Names::ITEM_PRESENCE_MAX_ID; ++item) {
+            const bool sw = Names::isHeldItemPresent(item, GameVersion::SWSH);
+            const bool sv = Names::isHeldItemPresent(item, GameVersion::SV);
+            if (sw && sv && common == 0) common = item;
+            if (sw && !sv && swOnly == 0) swOnly = item;
+            if (!sw && sv && svOnly == 0) svOnly = item;
+        }
+        assert(common != 0 && swOnly != 0 && svOnly != 0);
+
+        auto exercise = [&](bool fromG8, uint16_t item, bool expectDrop) {
+            std::unique_ptr<Pokemon::Pokemon> source;
+            if (fromG8) source = blankSWSH(0x7D000000u + item);
+            else source = blankSV(0x7D100000u + item);
+            configureModern(*source, 25, 0, 0x44556677u, 0x44556777u,
+                            static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                            u"ITEMTEST", true);
+            source->setHeldItem(item);
+            if (!fromG8) {
+                source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+                source->getData()[0x4A] = source->getData()[0x48];
+            }
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Report report;
+            Result result = Result::Unsupported;
+            auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
+            assert(result == Result::Ok && candidate);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(report.hasLoss(Loss::HeldItemDropped) == expectDrop);
+            assert(candidate->heldItem() == (expectDrop ? 0 : item));
+            assertSerializedReparse(*candidate);
+        };
+        exercise(true, common, false);
+        exercise(false, common, false);
+        exercise(true, swOnly, true);
+        exercise(false, svOnly, true);
+    }
+
+    // Shared ribbon/mark storage, HOME tracker zero/nonzero, balls and modern languages/text.
+    {
+        const uint8_t languages[] = {1,2,3,4,5,7,8,9,10};
+        const uint8_t balls[] = {1,4,16,17,25,26};
+        for (const bool fromG8 : {true, false}) {
+            for (const uint8_t language : languages) {
+                std::unique_ptr<Pokemon::Pokemon> source;
+                if (fromG8) source = blankSWSH(0x7E000000u + language);
+                else source = blankSV(0x7E100000u + language);
+                configureModern(*source, 25, 0, 0x55667700u + language, 0x55667600u + language,
+                                static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                                u"ABCDEFGHIJKL", true);
+                source->setOTName(u"TRAINER12345");
+                source->setLanguage(language);
+                auto raw = source->getData();
+                raw[0x34] = std::byte{0x8B};
+                raw[0x37] = std::byte{0xFC};
+                raw[0x3A] = std::byte{0xFC};
+                raw[0x40] = std::byte{0xA5};
+                raw[0x44] = std::byte{0x73};
+                raw[0x45] = std::byte{0x67};
+                if (!fromG8) {
+                    raw[0x11F] = static_cast<std::byte>(source->metLevel());
+                    raw[0x4A] = raw[0x48];
+                }
+                source->refreshChecksum();
+                const auto before = nativeBytes(*source);
+                const auto sourceHash = hashBytes(before);
+                Report report;
+                Result result = Result::Unsupported;
+                auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                    result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
+                assert(result == Result::Ok && candidate);
+                proveSourceUnchanged(*source, before, sourceHash);
+                assert(candidate->language() == language);
+                assert(candidate->nickname() == source->nickname());
+                assert(candidate->otName() == source->otName());
+                for (const size_t o : {size_t{0x34}, size_t{0x37}, size_t{0x3A},
+                                       size_t{0x40}, size_t{0x44}, size_t{0x45}})
+                    assert(candidate->getData()[o] == source->getData()[o]);
+                assertSerializedReparse(*candidate);
+            }
+
+            for (const uint8_t ball : balls) {
+                std::unique_ptr<Pokemon::Pokemon> source;
+                if (fromG8) source = blankSWSH(0x7E200000u + ball);
+                else source = blankSV(0x7E300000u + ball);
+                configureModern(*source, 25, 0, 0x66778800u + ball, 0x66778900u + ball,
+                                static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                                u"BALLTEST", true);
+                source->setBall(ball);
+                if (!fromG8) {
+                    source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+                    source->getData()[0x4A] = source->getData()[0x48];
+                }
+                source->refreshChecksum();
+                Result result = Result::Unsupported;
+                Report report;
+                auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                    result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
+                assert(result == Result::Ok && candidate);
+                assert(candidate->ball() == ball);
+                assertSerializedReparse(*candidate);
+            }
+
+            for (const uint64_t tracker : {uint64_t{0}, 0x0102030405060708ULL, 0xFFEEDDCCBBAA9988ULL}) {
+                std::unique_ptr<Pokemon::Pokemon> source;
+                if (fromG8) source = blankSWSH(static_cast<uint32_t>(0x7E400000u + (tracker & 0xFF)));
+                else source = blankSV(static_cast<uint32_t>(0x7E500000u + (tracker & 0xFF)));
+                configureModern(*source, 25, 0, 0x77889900u, 0x77889800u,
+                                static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                                u"TRACKER", true);
+                if (fromG8) wr64(source->getData(), 0x135, tracker);
+                else {
+                    wr64(source->getData(), 0x127, tracker);
+                    source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+                    source->getData()[0x4A] = source->getData()[0x48];
+                }
+                source->refreshChecksum();
+                const auto before = nativeBytes(*source);
+                const auto sourceHash = hashBytes(before);
+                Result result = Result::Unsupported;
+                Report report;
+                auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                    result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
+                assert(result == Result::Ok && candidate);
+                proveSourceUnchanged(*source, before, sourceHash);
+                assert(rd64(candidate->getData(), fromG8 ? 0x127 : 0x135) == tracker);
+                assertSerializedReparse(*candidate);
+            }
+        }
+    }
+
+    // Requested exact round trips. Equality is required only for shared semantics; Tera and
+    // destination-native synthesized fields remain explicitly explained by the fidelity reports.
+    {
+        struct RoundTrip {
+            bool startG8;
+            uint8_t sourceVersion;
+            uint8_t middleVersion;
+        };
+        const RoundTrip cases[] = {
+            {true,  static_cast<uint8_t>(GameVersion::SW), static_cast<uint8_t>(GameVersion::SL)},
+            {true,  static_cast<uint8_t>(GameVersion::SH), static_cast<uint8_t>(GameVersion::VL)},
+            {false, static_cast<uint8_t>(GameVersion::SL), static_cast<uint8_t>(GameVersion::SW)},
+            {false, static_cast<uint8_t>(GameVersion::VL), static_cast<uint8_t>(GameVersion::SH)},
+        };
+        for (size_t i = 0; i < std::size(cases); ++i) {
+            const auto& rt = cases[i];
+            std::unique_ptr<Pokemon::Pokemon> source;
+            if (rt.startG8) source = blankSWSH(0x7F000000u + static_cast<uint32_t>(i));
+            else source = blankSV(0x7F100000u + static_cast<uint32_t>(i));
+            configureModern(*source, 25, 0, 0x88990000u + static_cast<uint32_t>(i),
+                            0x88990100u + static_cast<uint32_t>(i), rt.sourceVersion,
+                            u"ROUNDTRIP", true);
+            const uint64_t tracker = 0x1234000000000000ULL + i;
+            if (rt.startG8) wr64(source->getData(), 0x135, tracker);
+            else {
+                wr64(source->getData(), 0x127, tracker);
+                source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+                source->getData()[0x4A] = source->getData()[0x48];
+            }
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+
+            Result result = Result::Unsupported;
+            Report first;
+            auto middle = convert(*source, rt.startG8 ? GameVersion::SV : GameVersion::SWSH,
+                                  result, rt.middleVersion, &first);
+            assert(result == Result::Ok && middle);
+            proveSourceUnchanged(*source, before, sourceHash);
+            const auto middleBefore = nativeBytes(*middle);
+            const auto middleHash = hashBytes(middleBefore);
+
+            Report second;
+            auto back = convert(*middle, rt.startG8 ? GameVersion::SWSH : GameVersion::SV,
+                                result, rt.sourceVersion, &second);
+            assert(result == Result::Ok && back);
+            proveSourceUnchanged(*middle, middleBefore, middleHash);
+            assert(back->speciesID() == source->speciesID());
+            assert(back->form() == source->form());
+            assert(back->pid() == source->pid());
+            assert(back->encryptionConstant() == source->encryptionConstant());
+            assert(back->originGame() == source->originGame());
+            assert(back->nickname() == source->nickname());
+            assert(back->otName() == source->otName());
+            assert(back->id32() == source->id32());
+            assert(back->exp() == source->exp());
+            assert(back->nature() == source->nature());
+            assert(back->statNature() == source->statNature());
+            assert(rd64(back->getData(), rt.startG8 ? 0x135 : 0x127) == tracker);
+            if (rt.startG8) {
+                assert(first.hasAdaptation(Adaptation::TargetDefaultTeraSynthesized));
+                assert(second.hasLoss(Loss::TeraDataDropped));
+            } else {
+                assert(first.hasLoss(Loss::TeraDataDropped));
+                assert(second.hasAdaptation(Adaptation::TargetDefaultTeraSynthesized));
+            }
+            assertSerializedReparse(*back);
+        }
     }
 
     std::cout << "F05-F13 production conversion entity goldens: PASS\n";
