@@ -27,7 +27,7 @@ constexpr size_t kMaxStringBytes = 128;
 constexpr std::array<uint8_t, 8> kEvidenceMagic{'P','B','C','E','V','0','1',0};
 constexpr std::array<uint8_t, 8> kBindingMagic{'P','B','C','E','B','0','1',0};
 
-constexpr std::array<PresentationItem, 14> kLossPresentation{{
+constexpr std::array<PresentationItem, 15> kLossPresentation{{
     {static_cast<uint32_t>(Loss::Gen3EVClamped), "Gen3EVClamped",
      "Gen III EV values above 252 will be clamped to 252."},
     {static_cast<uint32_t>(Loss::TeraDataDropped), "TeraDataDropped",
@@ -56,6 +56,8 @@ constexpr std::array<PresentationItem, 14> kLossPresentation{{
      "The HOME tracker cannot be stored in the destination format and will be removed."},
     {static_cast<uint32_t>(Loss::MarkDataDropped), "MarkDataDropped",
      "One or more marks cannot be represented in the destination and will be removed."},
+    {static_cast<uint32_t>(Loss::LocationDetailDropped), "LocationDetailDropped",
+     "Exact source-game met or egg location detail cannot be carried in the destination entity and will be reduced to a transfer marker."},
 }};
 
 constexpr std::array<PresentationItem, 8> kAdaptationPresentation{{
