@@ -94,17 +94,17 @@ bool validRelation(ProvenanceRelation relation) noexcept {
            v <= static_cast<uint8_t>(ProvenanceRelation::ArchiveRecovery);
 }
 
-bool validResult(Result result) noexcept {
+bool validResult(EvidenceConversionResult result) noexcept {
     switch (result) {
-        case Result::Ok:
-        case Result::SameGroup:
-        case Result::Unsupported:
-        case Result::NotInDex:
-        case Result::Blocked:
-        case Result::TraitPreservationFailed:
-        case Result::AbilityNotRepresentable:
-        case Result::TextNotRepresentable:
-        case Result::LanguageNotRepresentable:
+        case EvidenceConversionResult::Ok:
+        case EvidenceConversionResult::SameGroup:
+        case EvidenceConversionResult::Unsupported:
+        case EvidenceConversionResult::NotInDex:
+        case EvidenceConversionResult::Blocked:
+        case EvidenceConversionResult::TraitPreservationFailed:
+        case EvidenceConversionResult::AbilityNotRepresentable:
+        case EvidenceConversionResult::TextNotRepresentable:
+        case EvidenceConversionResult::LanguageNotRepresentable:
             return true;
     }
     return false;
@@ -342,7 +342,7 @@ std::vector<uint8_t> serializeEvidence(const RouteEvidence& e, std::string& erro
 }
 
 EvidenceLoadResult parseEvidence(std::span<const uint8_t> bytes) {
-    EvidenceLoadResult result;
+    EvidenceLoadEvidenceConversionResult result;
     result.status = EvidenceLoadStatus::Corrupt;
 
     if (bytes.size() < kEvidenceMagic.size() + 2 + 32) {
@@ -408,7 +408,7 @@ EvidenceLoadResult parseEvidence(std::span<const uint8_t> bytes) {
     e.relation = static_cast<ProvenanceRelation>(relation);
     e.sourceFormat = static_cast<Enums::GameVersion>(sourceFormat);
     e.destinationFormat = static_cast<Enums::GameVersion>(destinationFormat);
-    e.conversionResult = static_cast<Result>(conversionResult);
+    e.conversionResult = static_cast<EvidenceConversionResult>(conversionResult);
     e.candidateAvailable = (flags & 0x01u) != 0;
     e.lossesShownToUser = (flags & 0x02u) != 0;
     e.lossesAcknowledged = (flags & 0x04u) != 0;
@@ -493,7 +493,7 @@ Digest computeAcknowledgementBinding(const RouteEvidence& evidence) {
 bool markLossesAcknowledged(RouteEvidence& evidence,
                             uint64_t acknowledgedAtUnix,
                             std::string& error) {
-    if (!evidence.candidateAvailable || evidence.conversionResult != Result::Ok) {
+    if (!evidence.candidateAvailable || evidence.conversionResult != EvidenceConversionResult::Ok) {
         error = "cannot acknowledge a failed or unavailable conversion candidate";
         return false;
     }
@@ -562,7 +562,7 @@ bool EvidenceStore::persist(const RouteEvidence& evidence, std::string& error) c
 }
 
 EvidenceLoadResult EvidenceStore::load(const std::string& transactionId) const {
-    EvidenceLoadResult result;
+    EvidenceLoadEvidenceConversionResult result;
     const std::string path = evidencePath(transactionId);
     if (path.empty()) {
         result.status = EvidenceLoadStatus::Corrupt;
@@ -607,7 +607,7 @@ RetirementAuthorization authorizeSourceRetirement(
         out.reason = "conversion evidence does not match transaction identity/stores";
         return out;
     }
-    if (!evidence.candidateAvailable || evidence.conversionResult != Result::Ok) {
+    if (!evidence.candidateAvailable || evidence.conversionResult != EvidenceConversionResult::Ok) {
         out.reason = "conversion candidate is unavailable or failed";
         return out;
     }
