@@ -411,7 +411,12 @@ std::string Journal::sourceRetiredEvidencePath(const std::string& id) const {
 
 bool Journal::idAvailable(const std::string& id) const {
     const auto j = journalPath(id), d = destinationEvidencePath(id), s = sourceRetiredEvidencePath(id);
-    return !j.empty() && !exists(j) && !exists(d) && !exists(s);
+    // Conversion evidence is a separate durable file, but it owns the same transaction ID.
+    // An orphaned/stale record must therefore reserve that ID as well.
+    const std::string conversion =
+        validTransactionId(id) ? recordsRoot_ + "/" + id + ".conversion-evidence.pbce" : std::string{};
+    return !j.empty() && !conversion.empty() &&
+           !exists(j) && !exists(d) && !exists(s) && !exists(conversion);
 }
 
 std::string Journal::allocateTransactionId(std::string& error) const {
