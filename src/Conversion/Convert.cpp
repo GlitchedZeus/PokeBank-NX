@@ -751,6 +751,31 @@ namespace Conversion {
         }
     }
 
+
+    bool swshSvAbilityRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        const GameVersion from = src.getGameGroup();
+        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            return true;
+
+        // PKHeX's current SWSH/SV personal tables have exactly two shared species whose
+        // normal slot-2 ability changed between the generations. Slots 1 and Hidden are
+        // identical for both. Preserve the normal-slot meaning only when the raw ability id
+        // is valid in the destination; otherwise fail closed rather than silently creating
+        // a destination-illegal Pokemon or substituting a different effect.
+        if (src.abilityNumber() != 2)
+            return true;
+
+        switch (src.speciesID()) {
+            case 275: // Shiftry: Early Bird (48) -> Wind Rider (274)
+                return src.ability() == (destGroup == GameVersion::SV ? 274 : 48);
+            case 475: // Gallade: duplicate Steadfast (80) -> Sharpness (292)
+                return src.ability() == (destGroup == GameVersion::SV ? 292 : 80);
+            default:
+                return true;
+        }
+    }
+
     bool canConvert(const Pokemon::Pokemon& src, GameVersion destGroup, Result& result) {
         result = gate(src, destGroup);
         return result == Result::Ok || result == Result::SameGroup;
@@ -764,6 +789,11 @@ namespace Conversion {
         }
         result = gate(src, destGroup);
         if (result != Result::Ok) return nullptr;   // SameGroup / NotInDex / Blocked / Unsupported
+
+        if (!swshSvAbilityRepresentable(src, destGroup)) {
+            result = Result::AbilityNotRepresentable;
+            return nullptr;
+        }
 
         // 0 means the caller could not name the exact destination game; fall back to the group's
         // representative. That is what this did unconditionally before, so an un-updated caller keeps
