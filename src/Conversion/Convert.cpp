@@ -308,7 +308,8 @@ namespace Conversion {
             // 0x48-0x57: PK8 Sociability(0x48) + Height(0x50)/Weight(0x51) -> PK9 Height(0x48)/Weight(0x49)/
             //            Scale(0x4A) + DLC move-record flags(0x4B-0x57). PK8 has no scale -> reuse height.
             { uint8_t h = rd8(b, 0x50), w = rd8(b, 0x51); zeroRange(b, 0x48, 0x10);
-              wr8(b, 0x48, h); wr8(b, 0x49, w); wr8(b, 0x4A, h); }
+              wr8(b, 0x48, h); wr8(b, 0x49, w); wr8(b, 0x4A, h);
+              if (report) report->addAdaptation(Adaptation::TargetScaleSynthesized); }
             // 0x90-0x9F: PK8 DynamaxLevel(0x90)/Status(0x94)/Palma(0x98) -> PK9 Status(0x90)/Tera(0x94,0x95).
             //            Status is shared semantics at a different offset; relocate it instead of zeroing it.
             //            Dynamax/Palma are source-only and were declared above.
@@ -331,6 +332,7 @@ namespace Conversion {
               wr8(b, 0xD4, affixed); wr8(b, 0xD5, language); }
             // 0x11F ObedienceLevel (PK9 adds this; PK8 leaves it padding) = MetLevel.
             wr8(b, 0x11F, rd8(b, 0x125) & 0x7F);
+            if (report) report->addAdaptation(Adaptation::TargetObedienceLevelSynthesized);
             // 0x127-0x147: PK8 TR flags(0x127-0x134) + HOME Tracker(0x135) -> PK9 HOME Tracker(0x127) +
             //              move-record base flags(0x12F-0x147). Carry the tracker; drop the record flags.
             { uint64_t tracker = rd64(b, 0x135); zeroRange(b, 0x127, 0x21); wr64(b, 0x127, tracker); }
