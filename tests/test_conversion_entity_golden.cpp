@@ -1734,6 +1734,58 @@ int main() {
         }
     }
 
+
+    // Two shared species have a real slot-2 ability-table change between PK8 and PK9.
+    // Until an official-style remap policy is deliberately implemented, fail closed rather than
+    // preserving an ability id that is invalid in the destination game.
+    {
+        struct AbilityDivergence {
+            uint16_t species;
+            uint16_t swshSlot2;
+            uint16_t svSlot2;
+        };
+        const AbilityDivergence cases[] = {
+            {275, 48, 274}, // Shiftry
+            {475, 80, 292}, // Gallade
+        };
+        for (const auto& x : cases) {
+            for (const bool fromG8 : {true, false}) {
+                std::unique_ptr<Pokemon::Pokemon> source;
+                if (fromG8) source = blankSWSH(0x7B800000u + x.species);
+                else source = blankSV(0x7B900000u + x.species);
+                configureModern(*source, x.species, 0, 0x76540000u + x.species,
+                                0x76540100u + x.species,
+                                static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                                u"ABILITYFAIL", true);
+                source->setAbility(fromG8 ? x.swshSlot2 : x.svSlot2);
+                source->setAbilityNumber(2);
+                if (!fromG8) {
+                    source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+                    source->getData()[0x4A] = source->getData()[0x48];
+                }
+                source->refreshChecksum();
+                const auto before = nativeBytes(*source);
+                const auto sourceHash = hashBytes(before);
+                const auto pre = preflightConvert(*source,
+                    fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                    static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW));
+                assert(!pre.candidateAvailable);
+                assert(pre.result == Result::AbilityNotRepresentable);
+                proveSourceUnchanged(*source, before, sourceHash);
+                Report report;
+                Result result = Result::Ok;
+                auto candidate = convert(*source,
+                    fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                    result,
+                    static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW),
+                    &report);
+                assert(!candidate);
+                assert(result == Result::AbilityNotRepresentable);
+                proveSourceUnchanged(*source, before, sourceHash);
+            }
+        }
+    }
+
     // Moves/relearn moves: derive route classes from production learnsets rather than hard-coding
     // stale move ids. Shared moves survive; source-only moves and relearns are explicitly dropped.
     {
