@@ -34,6 +34,8 @@ namespace Conversion {
         MovePPClamped                = 1u << 2,
         Gen3TransferDateSynthesized  = 1u << 3,
         DefaultNicknameCanonicalized = 1u << 4,
+        TargetScaleSynthesized          = 1u << 5,
+        TargetObedienceLevelSynthesized = 1u << 6,
     };
 
     struct Report {
