@@ -444,6 +444,13 @@ namespace Conversion {
             //            -> PK8 Version(0xDE)/BattleVer(0xDF)/Language(0xE2)/FormArg(0xE4)/Affixed(0xE8).
             { uint8_t version = targetPk8Version, battleVer = rd8(b, 0xCF), affixed = rd8(b, 0xD4), language = rd8(b, 0xD5);
               uint8_t f0 = rd8(b, 0xD0), f1 = rd8(b, 0xD1), f2 = rd8(b, 0xD2), f3 = rd8(b, 0xD3);
+              // PK8 BattleVersion is a Sword/Shield battle-eligibility reset marker, not historical
+              // origin. Carrying a Scarlet/Violet value into PK8 creates a destination-invalid marker.
+              // Clear it and declare the fidelity loss; historical origin remains in F13 provenance.
+              if (source == GameVersion::SV && destination == GameVersion::SWSH && battleVer != 0) {
+                  if (report) report->addLoss(Loss::BattleVersionDropped);
+                  battleVer = 0;
+              }
               zeroRange(b, 0xCE, 0x2A);   // 0xCE..0xF7
               wr8(b, 0xDE, version); wr8(b, 0xDF, battleVer); wr8(b, 0xE2, language);
               wr8(b, 0xE4, f0); wr8(b, 0xE5, f1); wr8(b, 0xE6, f2); wr8(b, 0xE7, f3);
