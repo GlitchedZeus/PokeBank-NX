@@ -1801,7 +1801,13 @@ int main() {
             proveSourceUnchanged(*source, before, sourceHash);
             assert(pre.report.losses == report.losses);
             assert(pre.report.adaptations == report.adaptations);
-            assert(candidate->originGame() == route.sourceVersion); // historical origin, not destination
+            const uint8_t expectedNativeVersion = route.sourceG8
+                ? route.sourceVersion
+                : static_cast<uint8_t>(route.sourceVersion == static_cast<uint8_t>(GameVersion::VL)
+                                           ? GameVersion::SH : GameVersion::SW);
+            assert(candidate->originGame() == expectedNativeVersion);
+            assert(report.sourceOriginVersion == route.sourceVersion);
+            assert(report.destinationEntityOriginVersion == expectedNativeVersion);
             assert(candidate->pid() == source->pid());
             assert(candidate->encryptionConstant() == source->encryptionConstant());
             assert(candidate->speciesID() == 25 && candidate->form() == 0);
@@ -1845,6 +1851,9 @@ int main() {
                 assert(rd64(candidate->getData(), 0x135) == tracker);
                 assert(report.hasLoss(Loss::TeraDataDropped));
                 assert(!report.hasLoss(Loss::DivergentGameDataDropped));
+                assert(report.hasAdaptation(Adaptation::TargetHistoryRepresentationRemapped));
+                assert(candidate->metLocation() ==
+                    (route.sourceVersion == static_cast<uint8_t>(GameVersion::VL) ? 59996 : 59997));
                 assert(rd32(candidate->getData(), 0x94) == 0x00000008u + static_cast<uint32_t>(r));
             }
             assertSerializedReparse(*candidate);
@@ -2766,7 +2775,21 @@ int main() {
             assert(back->form() == source->form());
             assert(back->pid() == source->pid());
             assert(back->encryptionConstant() == source->encryptionConstant());
-            assert(back->originGame() == source->originGame());
+            if (rt.startG8) {
+                assert(back->originGame() == source->originGame());
+            } else {
+                const uint8_t remapped = static_cast<uint8_t>(
+                    rt.sourceVersion == static_cast<uint8_t>(GameVersion::VL)
+                        ? GameVersion::SH : GameVersion::SW);
+                // A standalone PK8 payload stores the HOME remap, not the original S/V native
+                // location/version. F13 retains the true source origin, but a later reverse
+                // conversion cannot reconstruct the original raw S/V met location from PK8 alone.
+                assert(middle->originGame() == remapped);
+                assert(back->originGame() == remapped);
+                assert(first.sourceOriginVersion == rt.sourceVersion);
+                assert(first.destinationEntityOriginVersion == remapped);
+                assert(first.hasAdaptation(Adaptation::TargetHistoryRepresentationRemapped));
+            }
             assert(back->nickname() == source->nickname());
             assert(back->otName() == source->otName());
             assert(back->id32() == source->id32());
@@ -2779,6 +2802,7 @@ int main() {
                 assert(second.hasLoss(Loss::TeraDataDropped));
             } else {
                 assert(first.hasLoss(Loss::TeraDataDropped));
+                assert(first.hasAdaptation(Adaptation::TargetHistoryRepresentationRemapped));
                 assert(second.hasAdaptation(Adaptation::TargetDefaultTeraSynthesized));
             }
             assertSerializedReparse(*back);
