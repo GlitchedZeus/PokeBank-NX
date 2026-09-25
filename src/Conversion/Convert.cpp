@@ -289,10 +289,13 @@ namespace Conversion {
             // real destination-native field and is relocated below; the remaining fields do not.
             const uint32_t statusCondition = rd32(b, 0x94);
             bool divergentData = (rd8(b, 0x16) & 0x10u) != 0 || // CanGigantamax
+                                 (rd8(b, 0x22) & 0x02u) != 0 ||   // PK8 Flag2: no PK9 representation
                                  rd32(b, 0x48) != 0 ||            // Sociability
                                  rd8(b, 0x90) != 0 ||             // DynamaxLevel
                                  rd32(b, 0x98) != 0 ||            // Palma
                                  rd8(b, 0xDC) != 0 || rd8(b, 0xDD) != 0; // Fullness / Enjoyment
+            // PK8 party records carry DynamaxType at 0x156-0x157; PK9 has no equivalent field.
+            if (b.size() >= 0x158) divergentData |= rd16(b, 0x156) != 0;
             for (size_t o = 0xCE; o <= 0xDB; ++o) divergentData |= rd8(b, o) != 0; // PokeJob
             for (size_t o = 0x127; o <= 0x134; ++o) divergentData |= rd8(b, o) != 0; // TR records
             if (divergentData && report) report->addLoss(Loss::DivergentGameDataDropped);
@@ -776,6 +779,21 @@ namespace Conversion {
         }
     }
 
+    bool swshSvBallRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        const GameVersion from = src.getGameGroup();
+        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            return true;
+
+        const uint8_t ball = src.ball();
+        // PK8/SWSH's defined ball domain ends at Beast Ball (26). PK9 can encode later HOME/PLA
+        // ball ids, including Strange Ball. Never copy one of those into a PK8 destination.
+        // Also reject an already-invalid PK8 source instead of laundering it through PK9.
+        if (from == GameVersion::SWSH)
+            return ball <= 26;
+        return ball <= 26; // destination is SWSH
+    }
+
     bool canConvert(const Pokemon::Pokemon& src, GameVersion destGroup, Result& result) {
         result = gate(src, destGroup);
         return result == Result::Ok || result == Result::SameGroup;
@@ -792,6 +810,10 @@ namespace Conversion {
 
         if (!swshSvAbilityRepresentable(src, destGroup)) {
             result = Result::AbilityNotRepresentable;
+            return nullptr;
+        }
+        if (!swshSvBallRepresentable(src, destGroup)) {
+            result = Result::BallNotRepresentable;
             return nullptr;
         }
 
@@ -1063,13 +1085,25 @@ namespace Conversion {
 
     bool normalizeAffixedRibbon(Pokemon::Pokemon& pk) {
         const size_t affix = affixedRibbonOffset(pk.getGameGroup());
-        if (affix == 0) return false;                       // format has no such field
+        if (affix == 0) return false; // format has no such field
         std::span<std::byte> d = pk.getData();
-        if (d.size() <= affix || d.size() < 0x46) return false;
-        if (static_cast<uint8_t>(d[affix]) != 0) return false;          // already names something / None
-        if ((static_cast<uint8_t>(d[0x34]) & 0x01) != 0) return false;  // genuinely owns Kalos Champion
+        if (d.size() <= affix || d.size() < 0x48) return false;
+
+        const uint8_t index = static_cast<uint8_t>(d[affix]);
+        if (index == AFFIXED_RIBBON_NONE) return false;
+
+        bool owned = false;
+        if (index < 128) {
+            const size_t byteOffset = index < 64
+                ? 0x34 + static_cast<size_t>(index >> 3)
+                : 0x40 + static_cast<size_t>((index - 64) >> 3);
+            const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
+            owned = (static_cast<uint8_t>(d[byteOffset]) & bit) != 0;
+        }
+        if (owned) return false;
+
         d[affix] = std::byte{AFFIXED_RIBBON_NONE};
-        pk.refreshChecksum();                               // the field is inside the checksummed region
+        pk.refreshChecksum(); // the field is inside the checksummed region
         return true;
     }
 
@@ -1095,6 +1129,7 @@ namespace Conversion {
             case Result::AbilityNotRepresentable: return "This ability cannot be represented in the destination game";
             case Result::TextNotRepresentable: return "Nickname or trainer name cannot be represented without loss";
             case Result::LanguageNotRepresentable: return "This language encoding is not supported safely for Gen III conversion";
+            case Result::BallNotRepresentable: return "This Poke Ball cannot be represented in the destination game";
             case Result::Unsupported: return "Transfer to/from this game isn't supported yet";
         }
         return "";
