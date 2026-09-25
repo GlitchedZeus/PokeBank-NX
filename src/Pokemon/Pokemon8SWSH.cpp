@@ -46,32 +46,32 @@ namespace Pokemon {
 
     uint8_t Pokemon8SWSH::baseHP() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->hp;
+        return getBaseStatsSWSH(speciesID(), form())->hp;
     }
 
     uint8_t Pokemon8SWSH::baseATK() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->atk;
+        return getBaseStatsSWSH(speciesID(), form())->atk;
     }
 
     uint8_t Pokemon8SWSH::baseDEF() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->def;
+        return getBaseStatsSWSH(speciesID(), form())->def;
     }
 
     uint8_t Pokemon8SWSH::baseSPE() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->spe;
+        return getBaseStatsSWSH(speciesID(), form())->spe;
     }
 
     uint8_t Pokemon8SWSH::baseSPA() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->spa;
+        return getBaseStatsSWSH(speciesID(), form())->spa;
     }
 
     uint8_t Pokemon8SWSH::baseSPD() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->spd;
+        return getBaseStatsSWSH(speciesID(), form())->spd;
     }
 
     // ========================================
