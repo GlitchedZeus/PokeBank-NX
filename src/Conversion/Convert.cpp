@@ -415,6 +415,26 @@ namespace Conversion {
                     }
                 }
             }
+            // SWSH's ribbon/mark semantic domain stops at MarkSlump (97). PK9 adds
+            // Hisui/TwinklingStar plus Paldea ribbons/marks at 98..110. The raw storage bytes overlap,
+            // but those later indexes are not valid SWSH semantics, so clear them with declared loss.
+            if (source == GameVersion::SV && destination == GameVersion::SWSH) {
+                constexpr uint8_t ribbonIndexes[] = {98, 99, 100, 106, 110};
+                constexpr uint8_t markIndexes[] = {101, 102, 103, 104, 105, 107, 108, 109};
+                for (uint8_t index : ribbonIndexes) {
+                    if (ribbonBitSet(std::span<const std::byte>(b.data(), b.size()), index)) {
+                        clearRibbonBit(b, index);
+                        if (report) report->addLoss(Loss::RibbonDataDropped);
+                    }
+                }
+                for (uint8_t index : markIndexes) {
+                    if (ribbonBitSet(std::span<const std::byte>(b.data(), b.size()), index)) {
+                        clearRibbonBit(b, index);
+                        if (report) report->addLoss(Loss::MarkDataDropped);
+                    }
+                }
+            }
+
             const uint8_t height = rd8(b, 0x48);
             const uint8_t scale = rd8(b, 0x4A);
             const uint8_t obedience = rd8(b, 0x11F);
@@ -919,6 +939,40 @@ namespace Conversion {
         return ball <= 26;
     }
 
+    bool ribbonBitSet(std::span<const std::byte> data, uint8_t index) noexcept {
+        if (index >= 128 || data.size() < 0x48) return false;
+        const size_t byteOffset = index < 64
+            ? 0x34 + static_cast<size_t>(index >> 3)
+            : 0x40 + static_cast<size_t>((index - 64) >> 3);
+        const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
+        return (static_cast<uint8_t>(data[byteOffset]) & bit) != 0;
+    }
+
+    void clearRibbonBit(std::vector<std::byte>& data, uint8_t index) noexcept {
+        if (index >= 128 || data.size() < 0x48) return;
+        const size_t byteOffset = index < 64
+            ? 0x34 + static_cast<size_t>(index >> 3)
+            : 0x40 + static_cast<size_t>((index - 64) >> 3);
+        const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
+        data[byteOffset] = static_cast<std::byte>(static_cast<uint8_t>(data[byteOffset]) & ~bit);
+    }
+
+    bool swshSvRibbonMarkRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        const GameVersion from = src.getGameGroup();
+        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            return true;
+
+        // Pinned PKHeX RibbonIndex maxima: SWSH supports through MarkSlump=97; PK9 through
+        // Partner=110. Values above the source format's domain are unknown/reserved semantics.
+        // Do not launder them through conversion merely because the raw 128-bit storage exists.
+        const uint8_t firstInvalid = from == GameVersion::SWSH ? 98 : 111;
+        for (uint16_t index = firstInvalid; index < 128; ++index)
+            if (ribbonBitSet(src.getData(), static_cast<uint8_t>(index)))
+                return false;
+        return true;
+    }
+
     bool canConvert(const Pokemon::Pokemon& src, GameVersion destGroup, Result& result) {
         result = gate(src, destGroup);
         return result == Result::Ok || result == Result::SameGroup;
@@ -944,6 +998,10 @@ namespace Conversion {
         }
         if (!swshSvBallRepresentable(src, destGroup)) {
             result = Result::BallNotRepresentable;
+            return nullptr;
+        }
+        if (!swshSvRibbonMarkRepresentable(src, destGroup)) {
+            result = Result::RibbonMarkNotRepresentable;
             return nullptr;
         }
         if (!swshSvTextRepresentable(src, destGroup)) {
@@ -1280,6 +1338,7 @@ namespace Conversion {
             case Result::LanguageNotRepresentable: return "This language encoding is not supported safely for Gen III conversion";
             case Result::BallNotRepresentable: return "This Poke Ball cannot be represented in the destination game";
             case Result::FormNotTransferable: return "This fused or battle-only form cannot be moved between games";
+            case Result::RibbonMarkNotRepresentable: return "This ribbon or mark state cannot be represented safely in the destination game";
             case Result::Unsupported: return "Transfer to/from this game isn't supported yet";
         }
         return "";
