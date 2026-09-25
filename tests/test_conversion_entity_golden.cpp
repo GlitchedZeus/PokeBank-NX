@@ -1354,6 +1354,11 @@ int main() {
         assert(result == Result::Ok && sv);
         proveSourceUnchanged(*source, before, sourceHash);
         assert(report.hasLoss(Loss::DivergentGameDataDropped));
+        // G8 has no independent Scale or ObedienceLevel fields. Entering S/V deterministically
+        // synthesizes Scale from Height and ObedienceLevel from MetLevel; reserve adaptation bits
+        // 5 and 6 for those explicit representation changes.
+        assert((report.adaptations & (1u << 5)) != 0);
+        assert((report.adaptations & (1u << 6)) != 0);
         assert(rd32(sv->getData(), 0x90) == 0x00000008u);
         assertSerializedReparse(*sv);
     }
