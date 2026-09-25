@@ -2471,9 +2471,10 @@ int main() {
         proveSourceUnchanged(*malformed, before, sourceHash);
     }
 
-    // Handler/history fields shared at identical offsets must survive untouched; Version,
-    // BattleVersion and FormArgument are relocated explicitly between PK8 and PK9. This is a
-    // representation-preserving conversion, not a synthetic HOME trade-handler update.
+    // Handler/history fields shared at identical offsets must survive untouched. Version and
+    // FormArgument relocate explicitly. BattleVersion is destination-context battle eligibility:
+    // SWSH values can be represented in PK9, but an S/V BattleVersion cannot be copied into PK8 and
+    // is cleared with an explicit loss. This is not a synthetic HOME trade-handler update.
     {
         for (const bool fromG8 : {true, false}) {
             std::unique_ptr<Pokemon::Pokemon> source =
@@ -2535,7 +2536,17 @@ int main() {
             const size_t dstFormArg = fromG8 ? 0xD0 : 0xE4;
             const size_t dstAffix = fromG8 ? 0xD4 : 0xE8;
             assert(dst[dstVersion] == raw[versionOffset]);
-            assert(dst[dstBattle] == raw[battleOffset]);
+            if (fromG8) {
+                assert(dst[dstBattle] == raw[battleOffset]);
+            } else {
+                assert(static_cast<uint8_t>(dst[dstBattle]) == 0);
+                assert(report.hasLoss(Loss::BattleVersionDropped));
+                const auto pre = preflightConvert(*source, GameVersion::SWSH,
+                                                  static_cast<uint8_t>(GameVersion::SW));
+                assert(pre.candidateAvailable && pre.result == Result::Ok);
+                assert(pre.report.hasLoss(Loss::BattleVersionDropped));
+                proveSourceUnchanged(*source, before, sourceHash);
+            }
             assert(rd32(dst, dstFormArg) == 3u);
             assert(static_cast<uint8_t>(dst[dstAffix]) == 0);
             assertSerializedReparse(*candidate);
