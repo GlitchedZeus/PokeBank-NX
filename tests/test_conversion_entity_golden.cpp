@@ -1499,6 +1499,29 @@ int main() {
         assertSerializedReparse(*normalizedSV);
     }
 
+    // Special-form closure: destination presence alone is not sufficient. The pinned transfer
+    // oracle classifies battle-only/transient forms as untradable states, so a shared species must
+    // not carry one of those transient form values across saves as if it were an ordinary form.
+    {
+        for (const auto& [species, form] : std::array<std::pair<uint16_t, uint8_t>, 2>{{
+                 {778, 1}, // Mimikyu Busted
+                 {875, 1}, // Eiscue Noice
+             }}) {
+            auto source = blankSWSH(0x77110000u + species);
+            configureModern(*source, species, form, 0x61610000u + species, 0x61610100u + species,
+                            static_cast<uint8_t>(GameVersion::SW), u"TRANSIENT", true);
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Result result = Result::Unsupported;
+            Report report;
+            auto candidate = convert(*source, GameVersion::SV, result,
+                                     static_cast<uint8_t>(GameVersion::SL), &report);
+            assert(!candidate);
+            assert(result != Result::Ok);
+            proveSourceUnchanged(*source, before, sourceHash);
+        }
+    }
+
     // SWSH <-> S/V exact-pair route-completion corpus.
     // The personal table is generated from production PKHeX resources and carries game-presence
     // bits per species+form. Pin the exact current intersection rather than calling the pair
