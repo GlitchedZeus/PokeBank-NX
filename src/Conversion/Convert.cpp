@@ -100,6 +100,40 @@ namespace Conversion {
             return false;
         }
 
+        bool validTerminatedUtf16(std::span<const std::byte> data, size_t offset, size_t bytes) noexcept {
+            if ((bytes & 1u) != 0 || offset + bytes > data.size()) return false;
+            const size_t units = bytes / 2;
+            for (size_t i = 0; i < units; ++i) {
+                const uint16_t ch = static_cast<uint16_t>(static_cast<uint8_t>(data[offset + i * 2])) |
+                                    (static_cast<uint16_t>(static_cast<uint8_t>(data[offset + i * 2 + 1])) << 8);
+                if (ch == 0) return true;
+                if (ch >= 0xD800 && ch <= 0xDBFF) {
+                    if (++i >= units) return false;
+                    const uint16_t low = static_cast<uint16_t>(static_cast<uint8_t>(data[offset + i * 2])) |
+                                         (static_cast<uint16_t>(static_cast<uint8_t>(data[offset + i * 2 + 1])) << 8);
+                    if (low < 0xDC00 || low > 0xDFFF) return false;
+                } else if (ch >= 0xDC00 && ch <= 0xDFFF) {
+                    return false;
+                }
+            }
+            // Modern name fields reserve one UTF-16 code unit for NUL. No terminator means the raw
+            // field represents more than the supported 12-character payload (or malformed trash).
+            return false;
+        }
+
+        bool swshSvTextRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+            const GameVersion from = src.getGameGroup();
+            if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+                  (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+                return true;
+            const auto data = src.getData();
+            // Nickname, Handling Trainer and Original Trainer use the same 13 UTF-16-code-unit
+            // storage in PK8/PK9: up to 12 characters plus an in-field terminator.
+            return validTerminatedUtf16(data, 0x58, 26) &&
+                   validTerminatedUtf16(data, 0xA8, 26) &&
+                   validTerminatedUtf16(data, 0xF8, 26);
+        }
+
         uint64_t homeTracker(const Pokemon::Pokemon& src) noexcept {
             const auto data = src.getData();
             switch (src.getGameGroup()) {
@@ -786,12 +820,11 @@ namespace Conversion {
             return true;
 
         const uint8_t ball = src.ball();
-        // PK8/SWSH's defined ball domain ends at Beast Ball (26). PK9 can encode later HOME/PLA
-        // ball ids, including Strange Ball. Never copy one of those into a PK8 destination.
-        // Also reject an already-invalid PK8 source instead of laundering it through PK9.
-        if (from == GameVersion::SWSH)
-            return ball <= 26;
-        return ball <= 26; // destination is SWSH
+        // A real modern Pokemon has a defined ball (1..). PK8/SWSH ends at Beast Ball (26).
+        // PK9 can encode later HOME/PLA ball ids, including Strange Ball. Never copy one of those
+        // into a PK8 destination, and never launder an out-of-domain PK8 source through PK9.
+        if (ball == 0) return false;
+        return ball <= 26;
     }
 
     bool canConvert(const Pokemon::Pokemon& src, GameVersion destGroup, Result& result) {
@@ -814,6 +847,10 @@ namespace Conversion {
         }
         if (!swshSvBallRepresentable(src, destGroup)) {
             result = Result::BallNotRepresentable;
+            return nullptr;
+        }
+        if (!swshSvTextRepresentable(src, destGroup)) {
+            result = Result::TextNotRepresentable;
             return nullptr;
         }
 
