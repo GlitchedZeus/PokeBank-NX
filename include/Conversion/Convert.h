@@ -54,6 +54,7 @@ namespace Conversion {
         AbilityNotRepresentable,  // target cannot preserve the source ability semantics
         TextNotRepresentable,     // target text encoding/length cannot preserve nickname or OT
         LanguageNotRepresentable, // target language/text encoding is not implemented safely
+        BallNotRepresentable,     // target game cannot represent the source Poke Ball id safely
     };
 
     /// Converts `src` into `destGroup`'s entity format, preserving origin identity and refreshing the
@@ -103,10 +104,10 @@ namespace Conversion {
     /// Repairs an invalid AffixedRibbon on `pk` **in place**, re-checksumming if it changed. Returns
     /// true when it changed something.
     ///
-    /// Invalid means the byte reads 0 -- "display ribbon index 0", the Kalos Champion ribbon -- while
-    /// the mon does not own that ribbon. Verified against real saves: every genuinely game-caught mon
-    /// carries 0xFF, including ones that DO own ribbons, so a 0 here is never something the game wrote.
-    /// The owned-ribbon guard means a deliberately affixed ribbon is never disturbed.
+    /// AffixedRibbon is an index into the shared 128-bit ribbon/mark set. 0xFF means "none".
+    /// Any other value is valid only when the corresponding owned ribbon/mark bit is set; out-of-range
+    /// or dangling indexes are normalized to 0xFF. This generalizes the original index-0/Kalos-Champion
+    /// guard without disturbing any genuinely owned affix, including marks and unnamed reserved bits.
     ///
     /// Call on the way INTO a save (conversion, and the same-group path that skips conversion). Not on
     /// deposit: the bank stores native bytes untouched by design.
