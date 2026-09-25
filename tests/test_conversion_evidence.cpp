@@ -8,6 +8,7 @@
 #include <iostream>
 #include <iterator>
 #include <span>
+#include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -34,6 +35,37 @@ std::vector<uint8_t> readFile(const std::string& path) {
     std::ifstream in(path, std::ios::binary);
     assert(in);
     return {std::istreambuf_iterator<char>(in), {}};
+}
+
+std::string readText(const std::string& path) {
+    std::ifstream in(path);
+    assert(in);
+    return {std::istreambuf_iterator<char>(in), {}};
+}
+
+std::string trim(std::string value) {
+    const auto first = value.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) return {};
+    const auto last = value.find_last_not_of(" \t\r\n");
+    return value.substr(first, last - first + 1);
+}
+
+std::vector<std::string> enumMembers(const std::string& text, const std::string& marker) {
+    const size_t begin = text.find(marker);
+    assert(begin != std::string::npos);
+    const size_t end = text.find("};", begin);
+    assert(end != std::string::npos);
+    std::istringstream lines(text.substr(begin, end - begin));
+    std::vector<std::string> names;
+    std::string line;
+    while (std::getline(lines, line)) {
+        const size_t eq = line.find('=');
+        if (eq == std::string::npos) continue;
+        std::string name = trim(line.substr(0, eq));
+        if (name.empty() || name == "None") continue;
+        names.push_back(std::move(name));
+    }
+    return names;
 }
 
 void mutateByte(const std::string& path, std::streamoff offset, uint8_t value) {
@@ -201,6 +233,19 @@ int main() {
     for (const auto& item : adaptationPresentationCatalog()) {
         assert(item.bit != 0 && item.key && *item.key && item.message && *item.message);
     }
+
+    // Source-level completeness guard: adding a new fidelity enum without a presentation-key
+    // entry must break this test rather than silently producing an unexplainable loss/adaptation.
+    const std::string fidelityHeader = readText("include/Conversion/Fidelity.h");
+    const std::string evidenceSource = readText("src/Conversion/RouteEvidence.cpp");
+    const auto declaredLosses = enumMembers(fidelityHeader, "enum class Loss");
+    const auto declaredAdaptations = enumMembers(fidelityHeader, "enum class Adaptation");
+    assert(declaredLosses.size() == lossPresentationCatalog().size());
+    assert(declaredAdaptations.size() == adaptationPresentationCatalog().size());
+    for (const auto& name : declaredLosses)
+        assert(evidenceSource.find("\"" + name + "\"") != std::string::npos);
+    for (const auto& name : declaredAdaptations)
+        assert(evidenceSource.find("\"" + name + "\"") != std::string::npos);
 
     Report presentationReport;
     presentationReport.addLoss(Loss::HeldItemDropped);
@@ -494,6 +539,37 @@ int main() {
         assert(refused.status == RecoveryStatus::Failed);
         assert(refused.state == State::SourceRetirePending);
         assertSourceSafe(src, sourceBefore);
+        cleanup(root, {src.path, dst.path});
+    }
+
+    // Once SOURCE_RETIRED is durable, evidence must still exist before COMMITTED can be
+    // recorded. Missing history leaves the transaction unresolved for manual reconciliation.
+    {
+        const std::string root = base + "-retired-missing-evidence";
+        ensureDir(root);
+        FileStore src(srcDesc, root + ".src", sourceBefore);
+        FileStore dst(dstDesc, root + ".dst", destinationBefore);
+        auto tx = makeTransaction("tx-0000000000002026", src.descriptor(), dst.descriptor());
+        EvidenceStore evidenceStore(root);
+        std::string error;
+        Engine first(root, {}, makeEvidenceRetirementGate(evidenceStore, true));
+        assert(first.prepare(tx, src, dst, destinationAfter, sourceRetired, error));
+        auto evidence = makeEvidence(tx);
+        assert(evidenceStore.persist(evidence, error));
+        const auto interrupted =
+            first.recover(tx.id, src, dst, FaultPoint::AfterSourceRetiredJournal);
+        assert(interrupted.status == RecoveryStatus::Interrupted);
+        assert(interrupted.state == State::SourceRetired);
+        assert(readFile(src.path) == sourceRetired);
+        assert(std::remove(evidenceStore.evidencePath(tx.id).c_str()) == 0);
+
+        Engine restarted(root, {}, makeEvidenceRetirementGate(EvidenceStore(root), true));
+        const auto refused = restarted.recover(tx.id, src, dst);
+        assert(refused.status == RecoveryStatus::Failed);
+        assert(refused.state == State::SourceRetired);
+        assert(readFile(src.path) == sourceRetired);
+        assert(readFile(dst.path) == destinationAfter);
+        assert(restarted.journal().load(tx.id).transaction.state == State::SourceRetired);
         cleanup(root, {src.path, dst.path});
     }
 
