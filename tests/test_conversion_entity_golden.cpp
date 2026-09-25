@@ -1621,10 +1621,20 @@ int main() {
             assert(static_cast<uint8_t>(candidate->getData()[0x40]) == 0x11);
             assert(static_cast<uint8_t>(candidate->getData()[0x126]) == 0x15);
             assert(static_cast<uint8_t>(candidate->getData()[0x32]) == 0x21);
-            for (int i = 0; i < 6; ++i) {
-                assert(candidate->getIV(i) == source->getIV(i));
-                assert(candidate->getEV(i) == source->getEV(i));
-            }
+            const std::array<uint8_t, 6> candidateIVs{
+                candidate->ivHP(), candidate->ivATK(), candidate->ivDEF(),
+                candidate->ivSPE(), candidate->ivSPA(), candidate->ivSPD()};
+            const std::array<uint8_t, 6> sourceIVs{
+                source->ivHP(), source->ivATK(), source->ivDEF(),
+                source->ivSPE(), source->ivSPA(), source->ivSPD()};
+            const std::array<uint8_t, 6> candidateEVs{
+                candidate->evHP(), candidate->evATK(), candidate->evDEF(),
+                candidate->evSPE(), candidate->evSPA(), candidate->evSPD()};
+            const std::array<uint8_t, 6> sourceEVs{
+                source->evHP(), source->evATK(), source->evDEF(),
+                source->evSPE(), source->evSPA(), source->evSPD()};
+            assert(candidateIVs == sourceIVs);
+            assert(candidateEVs == sourceEVs);
             if (route.sourceG8) {
                 assert(rd64(candidate->getData(), 0x127) == tracker);
                 assert(report.hasAdaptation(Adaptation::TargetDefaultTeraSynthesized));
