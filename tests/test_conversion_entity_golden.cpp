@@ -2413,6 +2413,60 @@ int main() {
         }
     }
 
+    // PK9 owns additional ribbon/mark semantics that SWSH PK8 cannot represent. A legitimate
+    // Gen-9-only ribbon/mark must be removed with an explicit fidelity loss; undefined/reserved
+    // ribbon bits must fail closed rather than becoming opaque "owned" data in PK8.
+    {
+        auto source = blankSV(0x7E195001u);
+        configureModern(*source, 25, 0, 0x51515151u, 0x51515051u,
+                        static_cast<uint8_t>(GameVersion::SL), u"G9RIBMARK", true);
+        auto raw = source->getData();
+        constexpr uint8_t championPaldeaIndex = 100;
+        constexpr uint8_t jumboMarkIndex = 101;
+        raw[0x40 + ((championPaldeaIndex - 64) >> 3)] |=
+            static_cast<std::byte>(1u << (championPaldeaIndex & 7));
+        raw[0x40 + ((jumboMarkIndex - 64) >> 3)] |=
+            static_cast<std::byte>(1u << (jumboMarkIndex & 7));
+        raw[0x11F] = static_cast<std::byte>(source->metLevel());
+        raw[0x4A] = raw[0x48];
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto candidate = convert(*source, GameVersion::SWSH, result,
+                                 static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(result == Result::Ok && candidate);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(report.hasLoss(Loss::RibbonDataDropped));
+        assert(report.hasLoss(Loss::MarkDataDropped));
+        const auto dst = candidate->getData();
+        assert((static_cast<uint8_t>(dst[0x40 + ((championPaldeaIndex - 64) >> 3)]) &
+                (1u << (championPaldeaIndex & 7))) == 0);
+        assert((static_cast<uint8_t>(dst[0x40 + ((jumboMarkIndex - 64) >> 3)]) &
+                (1u << (jumboMarkIndex & 7))) == 0);
+        assertSerializedReparse(*candidate);
+
+        auto reserved = blankSV(0x7E195002u);
+        configureModern(*reserved, 25, 0, 0x52525252u, 0x52525352u,
+                        static_cast<uint8_t>(GameVersion::SL), u"RIBRESERVE", true);
+        constexpr uint8_t reservedIndex = 127;
+        reserved->getData()[0x40 + ((reservedIndex - 64) >> 3)] |=
+            static_cast<std::byte>(1u << (reservedIndex & 7));
+        reserved->getData()[0x11F] = static_cast<std::byte>(reserved->metLevel());
+        reserved->getData()[0x4A] = reserved->getData()[0x48];
+        reserved->refreshChecksum();
+        const auto reservedBefore = nativeBytes(*reserved);
+        const auto reservedHash = hashBytes(reservedBefore);
+        report = Report{};
+        result = Result::Ok;
+        auto refused = convert(*reserved, GameVersion::SWSH, result,
+                               static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(!refused);
+        assert(result != Result::Ok);
+        proveSourceUnchanged(*reserved, reservedBefore, reservedHash);
+    }
+
     // Complete current PK8 ball domain (1..26) survives both directions. PK9-only ids 27..37 must
     // fail closed when targeting SWSH, and a malformed PK8 source outside its own domain is refused.
     {
