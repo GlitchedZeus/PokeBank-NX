@@ -403,9 +403,16 @@ namespace Conversion {
                 }
                 if (homeMet != 0) {
                     const uint16_t sourceEgg = rd16(b, 0x120);
-                    wr16(b, 0x120, sourceEgg != 0 && sourceEgg != 0xFFFFu ? 65534u : 0u);
+                    const uint16_t sourceMet = rd16(b, 0x122);
+                    const uint16_t targetEgg =
+                        sourceEgg != 0 && sourceEgg != 0xFFFFu ? static_cast<uint16_t>(65534u) : 0u;
+                    wr16(b, 0x120, targetEgg);
                     wr16(b, 0x122, homeMet);
-                    if (report) report->addAdaptation(Adaptation::TargetHistoryRepresentationRemapped);
+                    if (report) {
+                        report->addAdaptation(Adaptation::TargetHistoryRepresentationRemapped);
+                        if (sourceMet != homeMet || sourceEgg != targetEgg)
+                            report->addLoss(Loss::LocationDetailDropped);
+                    }
                 }
             }
             const uint8_t height = rd8(b, 0x48);
