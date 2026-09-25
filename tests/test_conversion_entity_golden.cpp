@@ -1216,6 +1216,8 @@ int main() {
         assert(evidence.destinationStore.profile.find("account-") == 0);
         assert(evidence.requiresLossAcknowledgement());
         assert(!evidence.lossPolicySatisfied());
+        evidence.lossesShownToUser = true;
+        assert(!evidence.lossPolicySatisfied());
         evidence.lossesAcknowledged = true;
         assert(evidence.lossPolicySatisfied());
     }
