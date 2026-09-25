@@ -1,6 +1,6 @@
 # PokeBank NX — v1.0 Roadmap
 
-Last updated: **2026-09-24**
+Last updated: **2026-09-25**
 
 CURRENT_STATUS.md is authoritative for the exact current engineering checkpoint. Issue #29 is the master release tracker.
 
@@ -62,7 +62,7 @@ Universal Inventory architecture remains open for future game families under iss
 - [x] exact-game clean move picker
 - [x] D-pad / Left Stick parity
 - [x] readable PID/read-only presentation
-- [x] device acceptance at 996e6aa40c96e4408286dba3f60bab9144c3f60a
+- [x] device acceptance at 996e6aa40c96e4408282f3d55476dae8e64968b2
 
 ## Phase 4 — audit / durability / transaction hardening — MOSTLY IMPLEMENTED
 
@@ -78,30 +78,47 @@ Primary tracker: issue #69.
 - [x] A07 newer/larger Bank write block
 - [x] A08 profile/account + exact-game workspace namespaces
 - [x] A09 supported single-file mutable workspace durability
+- [x] F05–F13 conversion golden-fixture foundation
+- [x] production conversion preflight + declared Loss/Adaptation model
+- [x] persisted PBCE conversion evidence + explicit loss acknowledgement
+- [x] F13 historical-origin / current-location provenance separation
+- [x] SWSH ↔ S/V exact-pair audit across all eight title directions
 - [ ] A09-BDSP recoverable multi-file generation
-- [ ] F05–F13 conversion golden fixture matrix
 - [ ] remaining malformed/truncated parser hardening
 - [ ] N06 durable directory-generation promotion/recovery
 - [ ] physical Switch FAT32/exFAT transaction recovery matrix
 
 A04 is implemented in software for supported single-file PokeBank-owned workspaces, but physical power-loss acceptance remains open.
 
-Cross-game true Move remains disabled until the conversion audit proves each route.
+Cross-game true Move remains disabled until each exact route passes its own closure and enablement gate.
 
-## Phase 5 — conversion fidelity / compatibility gate — CURRENT NEXT
+## Phase 5 — conversion fidelity / exact-route qualification — CURRENT
 
-- [ ] F05 Gen III/modern shiny preservation fixtures
-- [ ] F06 PID-derived Unown form preservation fixtures
-- [ ] F07/N01 PID-search exhaustion must fail explicitly
-- [ ] F08 ability slot/ability-number fixtures
-- [ ] F09 S/V ↔ Z-A divergent/Tera normalization fixtures
-- [ ] F10 Gen III EV 252/253/255 policy fixtures
-- [ ] F11 nickname/language/loss declaration fixtures
-- [ ] F13 profile/account conversion provenance verification
-- [ ] source bytes remain unchanged for every conversion
-- [ ] destination reparse/checksum verification
-- [ ] declared-loss / refusal policy for unsupported preservation
-- [ ] cross-game true-Move routes enabled only after route-specific proof
+Broad conversion fidelity is substantially implemented. The current work is closing route-specific gaps rather than proving the basic framework again.
+
+Completed foundations:
+
+- [x] F05 Gen III/modern shiny preservation fixtures
+- [x] F06 PID-derived Unown form preservation fixtures
+- [x] F07/N01 PID-search exhaustion fails explicitly
+- [x] F08 ability slot/ability-number fixtures
+- [x] F09 S/V ↔ Z-A divergent/Tera normalization fixtures
+- [x] F10 Gen III EV boundary policy fixtures
+- [x] F11 nickname/language/loss declaration fixtures
+- [x] F13 provenance/evidence foundation
+- [x] source-byte immutability regressions
+- [x] destination serialize/reparse/checksum verification
+- [x] explicit declared-loss / refusal policy
+- [x] SWSH ↔ S/V exact-title production corpus
+
+Current closure gates:
+
+- [ ] classify remaining unknown/reserved PK8/PK9 semantics
+- [ ] close SWSH↔SV event/distribution edge coverage
+- [ ] close ribbon/mark semantic edge coverage
+- [ ] close special-form / special-ball / text-boundary cases
+- [ ] classify any exact SWSH↔SV direction as a POTENTIAL route candidate
+- [ ] enable a cross-game true-Move route only in a later, separately authorized tranche
 
 ## Phase 6 — Master Vault + named Banks
 
@@ -200,13 +217,15 @@ Cross-game true Move remains disabled until the conversion audit proves each rou
 ## Critical path
 
 ~~~text
-Gen I / II / III editors                 DEVICE ACCEPTED
+Gen I / II / III editors                    DEVICE ACCEPTED
         ↓
-storage / custody / transaction safety   SOFTWARE FOUNDATION BUILT
+storage / custody / transaction safety      SOFTWARE FOUNDATION BUILT
         ↓
-conversion fidelity fixtures             CURRENT NEXT
+conversion fidelity / provenance foundation SUBSTANTIALLY COMPLETE
         ↓
-parser + physical recovery gates
+exact-route closure + parser/recovery gates  CURRENT
+        ↓
+route-by-route enablement decisions
         ↓
 Master Vault + Banks
         ↓
