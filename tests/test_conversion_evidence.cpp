@@ -619,5 +619,92 @@ int main() {
         }
     }
 
+
+    // Exact SWSH <-> S/V title identities are part of the acknowledgement binding even though
+    // Sword/Shield share PK8 and Scarlet/Violet share PK9. Prove all eight current-store pairs.
+    {
+        struct ExactEvidenceRoute {
+            const char* sourceGame;
+            const char* destinationGame;
+            Enums::GameVersion sourceFormat;
+            Enums::GameVersion destinationFormat;
+            uint8_t historicalOrigin;
+        };
+        const ExactEvidenceRoute routes[] = {
+            {"sword_switch",   "scarlet_switch", Enums::GameVersion::SWSH, Enums::GameVersion::SV,   static_cast<uint8_t>(Enums::GameVersion::SW)},
+            {"sword_switch",   "violet_switch",  Enums::GameVersion::SWSH, Enums::GameVersion::SV,   static_cast<uint8_t>(Enums::GameVersion::SW)},
+            {"shield_switch",  "scarlet_switch", Enums::GameVersion::SWSH, Enums::GameVersion::SV,   static_cast<uint8_t>(Enums::GameVersion::SH)},
+            {"shield_switch",  "violet_switch",  Enums::GameVersion::SWSH, Enums::GameVersion::SV,   static_cast<uint8_t>(Enums::GameVersion::SH)},
+            {"scarlet_switch", "sword_switch",   Enums::GameVersion::SV,   Enums::GameVersion::SWSH, static_cast<uint8_t>(Enums::GameVersion::SL)},
+            {"scarlet_switch", "shield_switch",  Enums::GameVersion::SV,   Enums::GameVersion::SWSH, static_cast<uint8_t>(Enums::GameVersion::SL)},
+            {"violet_switch",  "sword_switch",   Enums::GameVersion::SV,   Enums::GameVersion::SWSH, static_cast<uint8_t>(Enums::GameVersion::VL)},
+            {"violet_switch",  "shield_switch",  Enums::GameVersion::SV,   Enums::GameVersion::SWSH, static_cast<uint8_t>(Enums::GameVersion::VL)},
+        };
+
+        for (size_t i = 0; i < std::size(routes); ++i) {
+            const auto& route = routes[i];
+            const auto src = workspaceDescriptor(route.sourceGame, sourceProfile);
+            const auto dst = workspaceDescriptor(route.destinationGame, destinationProfile);
+            char id[32];
+            std::snprintf(id, sizeof(id), "tx-%016llx",
+                          static_cast<unsigned long long>(0x3000u + i));
+            auto tx = makeTransaction(id, src, dst);
+            auto evidence = makeEvidence(tx);
+            evidence.sourceGameIdentity = route.sourceGame;
+            evidence.destinationGameIdentity = route.destinationGame;
+            evidence.sourceFormat = route.sourceFormat;
+            evidence.destinationFormat = route.destinationFormat;
+            evidence.historicalOriginVersion = route.historicalOrigin;
+            evidence.fidelity.sourceOriginVersion = route.historicalOrigin;
+            evidence.fidelity.destinationEntityOriginVersion = route.historicalOrigin;
+
+            // Both directions can be loss-bearing: entering S/V can drop source-only game state;
+            // returning to SWSH necessarily drops Tera. This exercises the exact acknowledgement
+            // binding without changing product route policy.
+            if (route.sourceFormat == Enums::GameVersion::SWSH) {
+                evidence.fidelity.addLoss(Loss::DivergentGameDataDropped);
+                evidence.fidelity.addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
+                evidence.fidelity.addAdaptation(Adaptation::TargetScaleSynthesized);
+                evidence.fidelity.addAdaptation(Adaptation::TargetObedienceLevelSynthesized);
+            } else {
+                evidence.fidelity.addLoss(Loss::TeraDataDropped);
+            }
+            evidence.lossesShownToUser = true;
+            std::string error;
+            assert(markLossesAcknowledged(evidence, 2000 + i, error));
+            assert(evidence.lossPolicySatisfied());
+
+            const auto harnessEnabled = authorizeSourceRetirement(evidence, tx, true);
+            assert(harnessEnabled.allowed);
+            const auto productDisabled = authorizeSourceRetirement(evidence, tx, false);
+            assert(!productDisabled.allowed);
+            assert(productDisabled.reason.find("route is disabled") != std::string::npos);
+            assert(!routeEnabledForTrueMove(evidence));
+
+            // Exact title/store identity is cryptographically bound. Re-labeling Sword as Shield,
+            // Scarlet as Violet, or changing either candidate hash invalidates the acknowledgement.
+            auto staleGame = evidence;
+            staleGame.destinationGameIdentity =
+                std::string(route.destinationGame) == "scarlet_switch" ? "violet_switch" : "scarlet_switch";
+            staleGame.destinationStore.gameId = staleGame.destinationGameIdentity;
+            assert(!authorizeSourceRetirement(staleGame, tx, true).allowed);
+
+            auto staleSource = evidence;
+            staleSource.sourcePayload[0] ^= 0x01;
+            assert(!authorizeSourceRetirement(staleSource, tx, true).allowed);
+
+            auto staleDestination = evidence;
+            staleDestination.destinationPayload[0] ^= 0x01;
+            assert(!authorizeSourceRetirement(staleDestination, tx, true).allowed);
+
+            const auto provenance = makeProvenanceNode(evidence, static_cast<uint64_t>(i + 1));
+            assert(provenance.historicalOriginVersion == route.historicalOrigin);
+            assert(provenance.sourceGameIdentity == route.sourceGame);
+            assert(provenance.destinationGameIdentity == route.destinationGame);
+            assert(provenance.sourceStore.gameId == route.sourceGame);
+            assert(provenance.destinationStore.gameId == route.destinationGame);
+        }
+    }
+
     std::cout << "Declared-loss acknowledgement + F13 persisted provenance: PASS\n";
 }
