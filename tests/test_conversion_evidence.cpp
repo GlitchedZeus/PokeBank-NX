@@ -250,12 +250,22 @@ int main() {
     Report presentationReport;
     presentationReport.addLoss(Loss::HeldItemDropped);
     presentationReport.addLoss(Loss::HomeTrackerDropped);
+    presentationReport.addLoss(Loss::TeraDataDropped);
+    presentationReport.addLoss(Loss::DivergentGameDataDropped);
     presentationReport.addAdaptation(Adaptation::PidAdjustedForShinyThreshold);
+    presentationReport.addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
+    presentationReport.addAdaptation(Adaptation::TargetScaleSynthesized);
+    presentationReport.addAdaptation(Adaptation::TargetObedienceLevelSynthesized);
     const auto summary = summarizeFidelity(presentationReport);
-    assert(summary.losses.size() == 2);
-    assert(summary.adaptations.size() == 1);
+    assert(summary.losses.size() == 4);
+    assert(summary.adaptations.size() == 4);
     assert(contains(summary.losses, "The held item cannot be carried into the destination and will be removed."));
     assert(contains(summary.losses, "The HOME tracker cannot be stored in the destination format and will be removed."));
+    assert(contains(summary.losses, "Tera data cannot be stored in the destination format and will be removed."));
+    assert(contains(summary.losses, "Destination-incompatible game-specific data will be removed."));
+    assert(contains(summary.adaptations, "A destination-native default Tera type will be synthesized."));
+    assert(contains(summary.adaptations, "A destination-native scale value will be synthesized from the source height scalar."));
+    assert(contains(summary.adaptations, "A destination-native obedience level will be synthesized from the source met level."));
     assert(!summary.unknownLossBits && !summary.unknownAdaptationBits);
 
     // Clone/copy/conversion provenance relationships stay semantically distinct.
