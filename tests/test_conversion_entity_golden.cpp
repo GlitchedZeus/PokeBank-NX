@@ -1582,7 +1582,8 @@ int main() {
                    (static_cast<uint32_t>(hc.expectedMet) << 16 | 65534u));
             assert(report.sourceOriginVersion == hc.sourceVersion);
             assert(report.destinationEntityOriginVersion == hc.expectedPk8Version);
-            assert((report.adaptations & (1u << 7)) != 0);
+            assert(report.hasAdaptation(Adaptation::TargetHistoryRepresentationRemapped));
+            assert(report.hasLoss(Loss::LocationDetailDropped));
             assert(pre.report.losses == report.losses);
             assert(pre.report.adaptations == report.adaptations);
             assertSerializedReparse(*candidate);
@@ -1850,6 +1851,7 @@ int main() {
             } else {
                 assert(rd64(candidate->getData(), 0x135) == tracker);
                 assert(report.hasLoss(Loss::TeraDataDropped));
+                assert(report.hasLoss(Loss::LocationDetailDropped));
                 assert(!report.hasLoss(Loss::DivergentGameDataDropped));
                 assert(report.hasAdaptation(Adaptation::TargetHistoryRepresentationRemapped));
                 assert(candidate->metLocation() ==
@@ -2802,6 +2804,7 @@ int main() {
                 assert(second.hasLoss(Loss::TeraDataDropped));
             } else {
                 assert(first.hasLoss(Loss::TeraDataDropped));
+                assert(first.hasLoss(Loss::LocationDetailDropped));
                 assert(first.hasAdaptation(Adaptation::TargetHistoryRepresentationRemapped));
                 assert(second.hasAdaptation(Adaptation::TargetDefaultTeraSynthesized));
             }
