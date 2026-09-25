@@ -378,12 +378,36 @@ namespace Conversion {
         }
 
         // PK9 -> PK8, in place (the mirror of transformG8toG9). Tera / ObedienceLevel / records are dropped.
-        void transformG9toG8(std::vector<std::byte>& b, GameVersion source, Report* report) {
+        void transformG9toG8(std::vector<std::byte>& b, GameVersion source, GameVersion destination, Report* report) {
             if (b.size() < 0x148) return;
             if (source == GameVersion::SV && report) report->addLoss(Loss::TeraDataDropped);
             if (source == GameVersion::ZA && rd8(b, 0x23) != 0 && report) report->addLoss(Loss::ZAAlphaDropped);
 
             const uint32_t statusCondition = rd32(b, 0x90);
+            uint8_t targetPk8Version = rd8(b, 0xCE);
+            if (source == GameVersion::SV && destination == GameVersion::SWSH) {
+                uint16_t homeMet = 0;
+                switch (targetPk8Version) {
+                    case static_cast<uint8_t>(GameVersion::PLA):
+                        targetPk8Version = static_cast<uint8_t>(GameVersion::SW); homeMet = 60000; break;
+                    case static_cast<uint8_t>(GameVersion::BD):
+                        targetPk8Version = static_cast<uint8_t>(GameVersion::SW); homeMet = 59999; break;
+                    case static_cast<uint8_t>(GameVersion::SP):
+                        targetPk8Version = static_cast<uint8_t>(GameVersion::SH); homeMet = 59998; break;
+                    case static_cast<uint8_t>(GameVersion::SL):
+                        targetPk8Version = static_cast<uint8_t>(GameVersion::SW); homeMet = 59997; break;
+                    case static_cast<uint8_t>(GameVersion::VL):
+                        targetPk8Version = static_cast<uint8_t>(GameVersion::SH); homeMet = 59996; break;
+                    default:
+                        break;
+                }
+                if (homeMet != 0) {
+                    const uint16_t sourceEgg = rd16(b, 0x120);
+                    wr16(b, 0x120, sourceEgg != 0 && sourceEgg != 0xFFFFu ? 65534u : 0u);
+                    wr16(b, 0x122, homeMet);
+                    if (report) report->addAdaptation(Adaptation::TargetHistoryRepresentationRemapped);
+                }
+            }
             const uint8_t height = rd8(b, 0x48);
             const uint8_t scale = rd8(b, 0x4A);
             const uint8_t obedience = rd8(b, 0x11F);
@@ -411,7 +435,7 @@ namespace Conversion {
             wr32(b, 0x94, statusCondition);
             // 0xCE-0xF7 Block C: PK9 Version(0xCE)/BattleVer(0xCF)/FormArg(0xD0)/Affixed(0xD4)/Language(0xD5)
             //            -> PK8 Version(0xDE)/BattleVer(0xDF)/Language(0xE2)/FormArg(0xE4)/Affixed(0xE8).
-            { uint8_t version = rd8(b, 0xCE), battleVer = rd8(b, 0xCF), affixed = rd8(b, 0xD4), language = rd8(b, 0xD5);
+            { uint8_t version = targetPk8Version, battleVer = rd8(b, 0xCF), affixed = rd8(b, 0xD4), language = rd8(b, 0xD5);
               uint8_t f0 = rd8(b, 0xD0), f1 = rd8(b, 0xD1), f2 = rd8(b, 0xD2), f3 = rd8(b, 0xD3);
               zeroRange(b, 0xCE, 0x2A);   // 0xCE..0xF7
               wr8(b, 0xDE, version); wr8(b, 0xDF, battleVer); wr8(b, 0xE2, language);
@@ -994,7 +1018,7 @@ namespace Conversion {
         } else {
             viaHub = true;
             // 1. Normalize the source into the PK8 layout.
-            if (isG9(from))                     transformG9toG8(buf, from, report); // PK9/PA9 -> PK8
+            if (isG9(from))                     transformG9toG8(buf, from, destGroup, report); // PK9/PA9 -> PK8
             else if (from == GameVersion::PLA) {
                 if (report) report->addLoss(Loss::PLAExclusiveDataDropped);
                 buf = remapPA8toPK8(buf);
