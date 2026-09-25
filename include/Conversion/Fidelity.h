@@ -25,6 +25,7 @@ namespace Conversion {
         AbilitySlotNormalized    = 1u << 11,
         HomeTrackerDropped       = 1u << 12,
         MarkDataDropped           = 1u << 13,
+        LocationDetailDropped     = 1u << 14,
     };
 
     enum class Adaptation : uint32_t {
