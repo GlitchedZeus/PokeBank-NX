@@ -1510,6 +1510,28 @@ int main() {
         assert(normalizeAffixedRibbon(*danglingPK9));
         assert(static_cast<uint8_t>(danglingPK9->getData()[0xD4]) == AFFIXED_RIBBON_NONE);
         assert(danglingPK9->checksumValid());
+
+        // Gen-9-only ribbon/mark indexes can be owned in PK9 but are not valid affixed titles in
+        // Sword/Shield. A raw set bit is not enough to make the affix representable in PK8.
+        // PKHeX RibbonIndex: Gen 8 ends at MarkSlump (97); Gen 9 adds indexes 98..110.
+        auto gen9OnlyAffix = blankSV(0x77100007u);
+        configureModern(*gen9OnlyAffix, 25, 0, 0x70707070u, 0x70707170u,
+                        static_cast<uint8_t>(GameVersion::SL), u"AFFIXG9", true);
+        constexpr uint8_t championPaldeaIndex = 100;
+        gen9OnlyAffix->getData()[0x40 + ((championPaldeaIndex - 64) >> 3)] =
+            static_cast<std::byte>(1u << (championPaldeaIndex & 7));
+        gen9OnlyAffix->getData()[0xD4] = static_cast<std::byte>(championPaldeaIndex);
+        gen9OnlyAffix->getData()[0x11F] = static_cast<std::byte>(gen9OnlyAffix->metLevel());
+        gen9OnlyAffix->getData()[0x4A] = gen9OnlyAffix->getData()[0x48];
+        gen9OnlyAffix->refreshChecksum();
+        const auto g9Before = nativeBytes(*gen9OnlyAffix);
+        const auto g9Hash = hashBytes(g9Before);
+        auto swshAffix = convert(*gen9OnlyAffix, GameVersion::SWSH, result,
+                                 static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(result == Result::Ok && swshAffix);
+        proveSourceUnchanged(*gen9OnlyAffix, g9Before, g9Hash);
+        assert(static_cast<uint8_t>(swshAffix->getData()[0xE8]) == AFFIXED_RIBBON_NONE);
+        assertSerializedReparse(*swshAffix);
     }
 
     // Special-form closure: destination presence alone is not sufficient. The pinned transfer
