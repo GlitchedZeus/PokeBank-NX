@@ -1497,6 +1497,15 @@ int main() {
         proveSourceUnchanged(*dangling, danglingBefore, danglingHash);
         assert(static_cast<uint8_t>(normalizedSV->getData()[0xD4]) == AFFIXED_RIBBON_NONE);
         assertSerializedReparse(*normalizedSV);
+
+        auto danglingPK9 = blankSV(0x77100006u);
+        configureModern(*danglingPK9, 25, 0, 0x60606060u, 0x60606160u,
+                        static_cast<uint8_t>(GameVersion::SL), u"AFFIXPK9", true);
+        danglingPK9->getData()[0xD4] = std::byte{64};
+        danglingPK9->refreshChecksum();
+        assert(normalizeAffixedRibbon(*danglingPK9));
+        assert(static_cast<uint8_t>(danglingPK9->getData()[0xD4]) == AFFIXED_RIBBON_NONE);
+        assert(danglingPK9->checksumValid());
     }
 
     // Special-form closure: destination presence alone is not sufficient. The pinned transfer
@@ -1517,7 +1526,12 @@ int main() {
             auto candidate = convert(*source, GameVersion::SV, result,
                                      static_cast<uint8_t>(GameVersion::SL), &report);
             assert(!candidate);
-            assert(result != Result::Ok);
+            assert(result == Result::FormNotTransferable);
+            proveSourceUnchanged(*source, before, sourceHash);
+            const auto pre = preflightConvert(*source, GameVersion::SV,
+                                              static_cast<uint8_t>(GameVersion::SL));
+            assert(!pre.candidateAvailable);
+            assert(pre.result == Result::FormNotTransferable);
             proveSourceUnchanged(*source, before, sourceHash);
         }
     }
