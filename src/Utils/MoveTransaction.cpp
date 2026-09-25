@@ -764,6 +764,17 @@ RecoveryResult Engine::recover(const std::string& transactionId,
     if (tx.state == State::SourceRetired) {
         if (fault == FaultPoint::AfterSourceRetiredJournal)
             return result(RecoveryStatus::Interrupted, tx.state, "injected interruption after source-retired journal");
+        // Evidence remains part of the durable provenance contract through COMMITTED. If it
+        // disappears after retirement, stop here for manual reconciliation rather than silently
+        // finalizing a cross-game transaction with missing history.
+        if (tx.crossGameConversion) {
+            if (!retirementGate_)
+                return result(RecoveryStatus::Failed, tx.state,
+                              "cross-game commit requires conversion evidence authorization");
+            if (!retirementGate_(tx, error))
+                return result(RecoveryStatus::Failed, tx.state,
+                              error.empty() ? "conversion evidence authorization failed before commit" : error);
+        }
         // Final destination re-verification prevents COMMITTED from being recorded after an
         // unrelated destination change between source retirement and the final journal state.
         if (!destination.read(dstBytes, error))
