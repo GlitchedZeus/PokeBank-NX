@@ -1564,6 +1564,7 @@ int main() {
             source->setRelearnMove(0, commonMove);
             source->setNature(3);
             source->setStatNature(10);
+            source->setFriendship(187);
             for (int i = 0; i < 6; ++i) {
                 source->setIV(i, static_cast<uint8_t>(20 + i));
                 source->setEV(i, static_cast<uint8_t>(4 * i));
@@ -1613,6 +1614,7 @@ int main() {
             assert(candidate->heldItem() == source->heldItem());
             assert(candidate->nature() == source->nature());
             assert(candidate->statNature() == source->statNature());
+            assert(candidate->friendship() == source->friendship());
             assert(candidate->move(0) == commonMove);
             assert(candidate->relearnMove(0) == commonMove);
             assert(candidate->isFatefulEncounter());
@@ -1651,6 +1653,28 @@ int main() {
             std::cout << "fixture exact-pair-" << route.label
                       << " source-sha256=" << hexHash(sourceHash) << "\n";
         }
+    }
+
+
+    // Historical origin is entity history, not the current store. A BDSP-origin entity currently
+    // living in a Sword workspace and converted to Scarlet must remain BDSP-origin.
+    {
+        auto source = blankSWSH(0x79F00001u);
+        configureModern(*source, 25, 0, 0x31415926u, 0x31415826u,
+                        static_cast<uint8_t>(GameVersion::BD), u"OLDORIGIN", true);
+        assert(source->originGame() == static_cast<uint8_t>(GameVersion::BD));
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto candidate = convert(*source, GameVersion::SV, result,
+                                 static_cast<uint8_t>(GameVersion::SL), &report);
+        assert(result == Result::Ok && candidate);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(candidate->originGame() == static_cast<uint8_t>(GameVersion::BD));
+        assert(report.sourceOriginVersion == static_cast<uint8_t>(GameVersion::BD));
+        assert(report.destinationEntityOriginVersion == static_cast<uint8_t>(GameVersion::BD));
+        assertSerializedReparse(*candidate);
     }
 
     // Modern shiny/PID/EC semantics are shared by PK8 and PK9. Cover both shiny classes and an
