@@ -377,8 +377,23 @@ namespace Conversion {
             zeroRange(b, 0x156, 0x02);
         }
 
-        bool ribbonBitSet(std::span<const std::byte> data, uint8_t index) noexcept;
-        void clearRibbonBit(std::vector<std::byte>& data, uint8_t index) noexcept;
+        bool ribbonBitSet(std::span<const std::byte> data, uint8_t index) noexcept {
+            if (index >= 128 || data.size() < 0x48) return false;
+            const size_t byteOffset = index < 64
+                ? 0x34 + static_cast<size_t>(index >> 3)
+                : 0x40 + static_cast<size_t>((index - 64) >> 3);
+            const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
+            return (static_cast<uint8_t>(data[byteOffset]) & bit) != 0;
+        }
+
+        void clearRibbonBit(std::vector<std::byte>& data, uint8_t index) noexcept {
+            if (index >= 128 || data.size() < 0x48) return;
+            const size_t byteOffset = index < 64
+                ? 0x34 + static_cast<size_t>(index >> 3)
+                : 0x40 + static_cast<size_t>((index - 64) >> 3);
+            const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
+            data[byteOffset] = static_cast<std::byte>(static_cast<uint8_t>(data[byteOffset]) & ~bit);
+        }
 
         // PK9 -> PK8, in place (the mirror of transformG8toG9). Tera / ObedienceLevel / records are dropped.
         void transformG9toG8(std::vector<std::byte>& b, GameVersion source, GameVersion destination, Report* report) {
@@ -940,24 +955,6 @@ namespace Conversion {
         // into a PK8 destination, and never launder an out-of-domain PK8 source through PK9.
         if (ball == 0) return false;
         return ball <= 26;
-    }
-
-    bool ribbonBitSet(std::span<const std::byte> data, uint8_t index) noexcept {
-        if (index >= 128 || data.size() < 0x48) return false;
-        const size_t byteOffset = index < 64
-            ? 0x34 + static_cast<size_t>(index >> 3)
-            : 0x40 + static_cast<size_t>((index - 64) >> 3);
-        const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
-        return (static_cast<uint8_t>(data[byteOffset]) & bit) != 0;
-    }
-
-    void clearRibbonBit(std::vector<std::byte>& data, uint8_t index) noexcept {
-        if (index >= 128 || data.size() < 0x48) return;
-        const size_t byteOffset = index < 64
-            ? 0x34 + static_cast<size_t>(index >> 3)
-            : 0x40 + static_cast<size_t>((index - 64) >> 3);
-        const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
-        data[byteOffset] = static_cast<std::byte>(static_cast<uint8_t>(data[byteOffset]) & ~bit);
     }
 
     bool swshSvRibbonMarkRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
