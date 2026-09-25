@@ -2371,8 +2371,9 @@ int main() {
         proveAccounting(pk9);
     }
 
-    // All 128 ribbon/mark storage bits occupy the same byte/index space in the pinned PK8 and PK9
-    // reference models. Preserve the complete shared payload, including currently unnamed RIB bits;
+    // The shared SWSH/PK9 ribbon/mark semantic domain is indexes 0..97 (through MarkSlump).
+    // Those bits plus the two memory-count bytes preserve exactly. PK9-only 98..110 and reserved
+    // 111..127 are covered separately below and must not be treated as ordinary shared SWSH data.
     // 0x3E-0x3F are authoritative padding and stay zero.
     {
         for (const bool fromG8 : {true, false}) {
@@ -2387,7 +2388,9 @@ int main() {
                 raw[o] = static_cast<std::byte>(0xA5u ^ static_cast<uint8_t>(o));
             raw[0x3E] = raw[0x3F] = std::byte{0};
             for (size_t o = 0x40; o <= 0x47; ++o)
-                raw[o] = static_cast<std::byte>(0x5Au ^ static_cast<uint8_t>(o));
+                raw[o] = std::byte{0};
+            for (uint8_t index = 64; index <= 97; ++index)
+                raw[0x40 + ((index - 64) >> 3)] |= static_cast<std::byte>(1u << (index & 7));
             raw[fromG8 ? 0xE8 : 0xD4] = std::byte{AFFIXED_RIBBON_NONE};
             if (!fromG8) {
                 raw[0x11F] = static_cast<std::byte>(source->metLevel());
@@ -2407,8 +2410,11 @@ int main() {
                 assert(candidate->getData()[o] == source->getData()[o]);
             assert(candidate->getData()[0x3E] == std::byte{0});
             assert(candidate->getData()[0x3F] == std::byte{0});
-            for (size_t o = 0x40; o <= 0x47; ++o)
-                assert(candidate->getData()[o] == source->getData()[o]);
+            for (uint8_t index = 64; index <= 97; ++index) {
+                const size_t o = 0x40 + ((index - 64) >> 3);
+                const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
+                assert((static_cast<uint8_t>(candidate->getData()[o]) & bit) != 0);
+            }
             assertSerializedReparse(*candidate);
         }
     }
@@ -2463,7 +2469,12 @@ int main() {
         auto refused = convert(*reserved, GameVersion::SWSH, result,
                                static_cast<uint8_t>(GameVersion::SW), &report);
         assert(!refused);
-        assert(result != Result::Ok);
+        assert(result == Result::RibbonMarkNotRepresentable);
+        proveSourceUnchanged(*reserved, reservedBefore, reservedHash);
+        const auto reservedPre = preflightConvert(*reserved, GameVersion::SWSH,
+                                                   static_cast<uint8_t>(GameVersion::SW));
+        assert(!reservedPre.candidateAvailable);
+        assert(reservedPre.result == Result::RibbonMarkNotRepresentable);
         proveSourceUnchanged(*reserved, reservedBefore, reservedHash);
     }
 
