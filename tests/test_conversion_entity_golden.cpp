@@ -1482,7 +1482,7 @@ int main() {
         }
 
         // Shared regional/permanent forms survive as the same form through production serialization.
-        for (const auto [sp, form] : std::array<std::pair<uint16_t, uint8_t>, 3>{{
+        for (const auto& [sp, form] : std::array<std::pair<uint16_t, uint8_t>, 3>{{
                  {37, 1},   // Alolan Vulpix
                  {52, 2},   // Galarian Meowth
                  {479, 1},  // Rotom form
@@ -1704,7 +1704,7 @@ int main() {
                 {pi.abilityHidden, 4},
             }};
             for (const bool fromG8 : {true, false}) {
-                for (const auto [ability, slot] : abilities) {
+                for (const auto& [ability, slot] : abilities) {
                     auto source = fromG8
                         ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7B000000u + sp + slot).release())
                         : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7B100000u + sp + slot).release());
@@ -2019,7 +2019,8 @@ int main() {
                 assertSerializedReparse(*candidate);
             }
 
-            for (const uint64_t tracker : {uint64_t{0}, 0x0102030405060708ULL, 0xFFEEDDCCBBAA9988ULL}) {
+            for (const uint64_t tracker : std::array<uint64_t, 3>{
+                     uint64_t{0}, uint64_t{0x0102030405060708ULL}, uint64_t{0xFFEEDDCCBBAA9988ULL}}) {
                 std::unique_ptr<Pokemon::Pokemon> source;
                 if (fromG8) source = blankSWSH(static_cast<uint32_t>(0x7E400000u + (tracker & 0xFF)));
                 else source = blankSV(static_cast<uint32_t>(0x7E500000u + (tracker & 0xFF)));
