@@ -58,7 +58,7 @@ constexpr std::array<PresentationItem, 14> kLossPresentation{{
      "One or more marks cannot be represented in the destination and will be removed."},
 }};
 
-constexpr std::array<PresentationItem, 7> kAdaptationPresentation{{
+constexpr std::array<PresentationItem, 8> kAdaptationPresentation{{
     {static_cast<uint32_t>(Adaptation::PidAdjustedForShinyThreshold),
      "PidAdjustedForShinyThreshold",
      "PID representation will be adjusted to preserve shiny status across generation rules."},
@@ -80,6 +80,9 @@ constexpr std::array<PresentationItem, 7> kAdaptationPresentation{{
     {static_cast<uint32_t>(Adaptation::TargetObedienceLevelSynthesized),
      "TargetObedienceLevelSynthesized",
      "A destination-native obedience level will be synthesized from the source met level."},
+    {static_cast<uint32_t>(Adaptation::TargetHistoryRepresentationRemapped),
+     "TargetHistoryRepresentationRemapped",
+     "Historical origin/met representation will be remapped into the destination format while provenance retains the original history."},
 }};
 
 bool zeroDigest(const Digest& digest) noexcept {
