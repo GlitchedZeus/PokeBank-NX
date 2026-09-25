@@ -1391,6 +1391,114 @@ int main() {
     }
 
 
+    // PK8/PK9 closure regressions: each fixture changes ONE semantic so silent loss cannot hide
+    // behind an unrelated loss bit. These are intentionally written before the production fixes.
+    {
+        // PK8 Flag2 (0x22 bit1) has no PK9 representation. If a legitimate/nonzero source carries
+        // it, the conversion must at least declare the generation-specific semantic loss.
+        auto source = blankSWSH(0x77100001u);
+        configureModern(*source, 25, 0, 0x10101010u, 0x10101110u,
+                        static_cast<uint8_t>(GameVersion::SW), u"FLAG2", true);
+        auto raw = source->getData();
+        raw[0x22] = static_cast<std::byte>(static_cast<uint8_t>(raw[0x22]) | 0x02u);
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto candidate = convert(*source, GameVersion::SV, result,
+                                 static_cast<uint8_t>(GameVersion::SL), &report);
+        assert(result == Result::Ok && candidate);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(report.hasLoss(Loss::DivergentGameDataDropped));
+        assertSerializedReparse(*candidate);
+    }
+
+    {
+        // PK8's party-only DynamaxType (0x156-0x157) has no PK9 counterpart. A nonzero value must
+        // be declared lost rather than merely zeroed while constructing the PK9 party tail.
+        auto source = blankSWSH(0x77100002u);
+        configureModern(*source, 25, 0, 0x20202020u, 0x20202120u,
+                        static_cast<uint8_t>(GameVersion::SW), u"DMAXTYPE", true);
+        auto raw = source->getData();
+        assert(raw.size() >= 0x158);
+        raw[0x156] = std::byte{1};
+        raw[0x157] = std::byte{0};
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto candidate = convert(*source, GameVersion::SV, result,
+                                 static_cast<uint8_t>(GameVersion::SL), &report);
+        assert(result == Result::Ok && candidate);
+        proveSourceUnchanged(*source, before, sourceHash);
+        assert(report.hasLoss(Loss::DivergentGameDataDropped));
+        assertSerializedReparse(*candidate);
+    }
+
+    {
+        // S/V can represent ball ids beyond SWSH's PK8 domain (PK8 ends at Beast Ball = 26).
+        // The converter must fail closed instead of copying a destination-invalid ball byte.
+        auto source = blankSV(0x77100003u);
+        configureModern(*source, 25, 0, 0x30303030u, 0x30303130u,
+                        static_cast<uint8_t>(GameVersion::SL), u"BALL27", true);
+        source->setBall(27); // Strange Ball: valid PK9 id, not representable by PK8/SWSH.
+        source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+        source->getData()[0x4A] = source->getData()[0x48];
+        source->refreshChecksum();
+        const auto before = nativeBytes(*source);
+        const auto sourceHash = hashBytes(before);
+        Report report;
+        Result result = Result::Unsupported;
+        auto candidate = convert(*source, GameVersion::SWSH, result,
+                                 static_cast<uint8_t>(GameVersion::SW), &report);
+        assert(!candidate);
+        assert(result != Result::Ok);
+        proveSourceUnchanged(*source, before, sourceHash);
+
+        const auto pre = preflightConvert(*source, GameVersion::SWSH,
+                                          static_cast<uint8_t>(GameVersion::SW));
+        assert(!pre.candidateAvailable);
+        assert(pre.result != Result::Ok);
+        proveSourceUnchanged(*source, before, sourceHash);
+    }
+
+    {
+        // AffixedRibbon is an index into the shared 128-bit ribbon/mark set. Preserve a valid mark
+        // affix, but clear a dangling one instead of leaving a title that the Pokemon does not own.
+        auto valid = blankSWSH(0x77100004u);
+        configureModern(*valid, 25, 0, 0x40404040u, 0x40404140u,
+                        static_cast<uint8_t>(GameVersion::SW), u"AFFIXOK", true);
+        valid->getData()[0x40] = std::byte{0x01}; // index 64 owned
+        valid->getData()[0xE8] = std::byte{64};
+        valid->refreshChecksum();
+        const auto validBefore = nativeBytes(*valid);
+        const auto validHash = hashBytes(validBefore);
+        Report report;
+        Result result = Result::Unsupported;
+        auto validSV = convert(*valid, GameVersion::SV, result,
+                               static_cast<uint8_t>(GameVersion::SL), &report);
+        assert(result == Result::Ok && validSV);
+        proveSourceUnchanged(*valid, validBefore, validHash);
+        assert(static_cast<uint8_t>(validSV->getData()[0xD4]) == 64);
+        assertSerializedReparse(*validSV);
+
+        auto dangling = blankSWSH(0x77100005u);
+        configureModern(*dangling, 25, 0, 0x50505050u, 0x50505150u,
+                        static_cast<uint8_t>(GameVersion::SW), u"AFFIXBAD", true);
+        dangling->getData()[0xE8] = std::byte{64}; // index 64, but 0x40 bit0 is NOT owned
+        dangling->refreshChecksum();
+        const auto danglingBefore = nativeBytes(*dangling);
+        const auto danglingHash = hashBytes(danglingBefore);
+        auto normalizedSV = convert(*dangling, GameVersion::SV, result,
+                                    static_cast<uint8_t>(GameVersion::SL), &report);
+        assert(result == Result::Ok && normalizedSV);
+        proveSourceUnchanged(*dangling, danglingBefore, danglingHash);
+        assert(static_cast<uint8_t>(normalizedSV->getData()[0xD4]) == AFFIXED_RIBBON_NONE);
+        assertSerializedReparse(*normalizedSV);
+    }
+
     // SWSH <-> S/V exact-pair route-completion corpus.
     // The personal table is generated from production PKHeX resources and carries game-presence
     // bits per species+form. Pin the exact current intersection rather than calling the pair
