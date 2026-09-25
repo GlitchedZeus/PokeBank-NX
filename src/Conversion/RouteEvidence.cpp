@@ -342,7 +342,7 @@ std::vector<uint8_t> serializeEvidence(const RouteEvidence& e, std::string& erro
 }
 
 EvidenceLoadResult parseEvidence(std::span<const uint8_t> bytes) {
-    EvidenceLoadEvidenceConversionResult result;
+    EvidenceLoadResult result;
     result.status = EvidenceLoadStatus::Corrupt;
 
     if (bytes.size() < kEvidenceMagic.size() + 2 + 32) {
@@ -562,7 +562,7 @@ bool EvidenceStore::persist(const RouteEvidence& evidence, std::string& error) c
 }
 
 EvidenceLoadResult EvidenceStore::load(const std::string& transactionId) const {
-    EvidenceLoadEvidenceConversionResult result;
+    EvidenceLoadResult result;
     const std::string path = evidencePath(transactionId);
     if (path.empty()) {
         result.status = EvidenceLoadStatus::Corrupt;
