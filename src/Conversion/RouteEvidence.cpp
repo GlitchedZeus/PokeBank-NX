@@ -118,6 +118,9 @@ bool validResult(EvidenceConversionResult result) noexcept {
         case EvidenceConversionResult::AbilityNotRepresentable:
         case EvidenceConversionResult::TextNotRepresentable:
         case EvidenceConversionResult::LanguageNotRepresentable:
+        case EvidenceConversionResult::BallNotRepresentable:
+        case EvidenceConversionResult::FormNotTransferable:
+        case EvidenceConversionResult::RibbonMarkNotRepresentable:
             return true;
     }
     return false;
