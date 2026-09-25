@@ -12,7 +12,8 @@
 
 namespace PokeBank::Storage::MoveTx {
 
-inline constexpr uint16_t kSchemaVersion = 1;
+inline constexpr uint16_t kOldestSupportedSchemaVersion = 1;
+inline constexpr uint16_t kSchemaVersion = 2;
 inline constexpr size_t kMaxMoves = 512;
 
 using Digest = std::array<uint8_t, 32>;
@@ -67,6 +68,9 @@ struct Transaction {
     Digest destinationBefore{};
     Digest destinationAfter{};
     std::vector<MoveRecord> moves;
+    // v2 journal flag. Cross-game transactions must pass a retirement gate on every
+    // recovery attempt before SOURCE_RETIRE_PENDING may mutate the authoritative source.
+    bool crossGameConversion = false;
 };
 
 enum class LoadStatus : uint8_t {
@@ -159,12 +163,13 @@ struct RecoveryResult {
 };
 
 using PersistGate = std::function<bool(State)>;
+using RetirementGate = std::function<bool(const Transaction&, std::string&)>;
 
 class Engine {
 public:
     // Production constructor: journals live only under PokeBank's owned transactions root.
     Engine();
-    explicit Engine(std::string root, PersistGate persistGate = {});
+    explicit Engine(std::string root, PersistGate persistGate = {}, RetirementGate retirementGate = {});
 
     Journal& journal() noexcept { return journal_; }
     const Journal& journal() const noexcept { return journal_; }
@@ -186,6 +191,7 @@ private:
 
     Journal journal_;
     PersistGate persistGate_;
+    RetirementGate retirementGate_;
 };
 
 } // namespace PokeBank::Storage::MoveTx
