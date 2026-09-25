@@ -27,7 +27,7 @@ The project is still in active alpha development. The current focus is not addin
 
 The shared Gen I–III editor milestone is physically tested and accepted on Switch.
 
-The durability audit that followed it has also made major progress on the active audit branch:
+The project has since moved deep into its safety and conversion audit. The active audit line now includes:
 
 - crash-safer Bank persistence with verified replacement and preserved recovery generations;
 - custody-safe rollback so a failed move cannot silently destroy a held Pokémon;
@@ -36,9 +36,12 @@ The durability audit that followed it has also made major progress on the active
 - durable single-file workspace saves for supported modern Switch formats;
 - a versioned Move transaction journal with SHA-256 fingerprints and crash recovery;
 - software-integrated true Move between PokeBank storage and supported PokeBank-owned workspaces;
-- startup recovery, conflict detection and fail-closed transaction locking.
+- persisted conversion evidence that records exact source/destination hashes, losses and adaptations;
+- explicit user acknowledgement rules for any future loss-bearing cross-game Move;
+- production golden fixtures for Gen III ↔ modern and modern Switch conversion routes;
+- an exact-pair Sword/Shield ↔ Scarlet/Violet audit covering all eight title directions.
 
-The true-Move layer is **CI verified but not yet power-loss accepted on physical hardware**. Cross-game true Move is intentionally disabled until the conversion-preservation audit is complete, and BDSP remains excluded until its two-file save generation can be committed atomically.
+The current safety model is intentionally conservative: **cross-game true Move is still disabled**. Sword/Shield ↔ Scarlet/Violet is much better understood now, but still needs a final closure pass for unknown/reserved PK8/PK9 fields plus event, ribbon, mark, special-form, ball and text-boundary edge cases. The transaction layer is also **CI verified but not yet power-loss accepted on physical Switch hardware**. BDSP remains excluded until its two-file save generation can be committed atomically.
 
 ### At a glance
 
@@ -53,9 +56,9 @@ The true-Move layer is **CI verified but not yet power-loss accepted on physical
 | Durable Bank storage foundation | ✅ Implemented / CI verified |
 | Profile-scoped mutable workspaces | ✅ Implemented / CI verified |
 | Bank ↔ supported PokeBank workspace true Move | 🟨 Implemented / CI verified / hardware recovery test pending |
-| Cross-game true Move | 🔒 Disabled pending conversion audit |
+| Cross-game true Move | 🔒 Disabled; route-by-route proof in progress |
 | BDSP true Move | 🔒 Disabled pending multi-file transaction support |
-| Master Vault | 🚧 Planned after durability/conversion gates |
+| Master Vault | 🚧 Planned after remaining audit + recovery gates |
 | DS / 3DS | 🗺️ Planned |
 | Live installed-game writes | 🔒 Hard disabled |
 | Live emulator-source writes | 🔒 Hard disabled |
@@ -198,21 +201,18 @@ Fields are hidden, derived, read-only or editable according to the actual game f
 
 ## What is being worked on now
 
-The next engineering pass is the **conversion fidelity audit**.
+The broad conversion-fidelity audit is no longer the next step — it has produced a substantial golden-fixture corpus, explicit loss/adaptation reporting, persisted conversion evidence, and route-specific preflight checks.
 
-The current transfer foundation can safely commit same-format/native-compatible moves between supported PokeBank-owned stores, but cross-game source retirement stays disabled until conversion behavior is proven with golden fixtures.
+The current engineering focus is **closing the final blockers for the first modern cross-game route candidate**, starting with Sword/Shield ↔ Scarlet/Violet:
 
-That work covers things such as:
+- classify remaining unknown/reserved PK8/PK9 bytes instead of assuming they are harmless;
+- expand event/distribution, ribbon and mark edge coverage;
+- close special-form, special-ball and text-boundary cases;
+- keep exact source-byte immutability proof on every success and failure fixture;
+- keep all route gates disabled until the evidence is complete;
+- complete physical FAT32/exFAT transaction-recovery testing on Switch.
 
-- Gen III shiny/PID preservation;
-- gender, nature and ability-slot correlations;
-- Unown form preservation;
-- EV legality across generations;
-- nickname/language semantics;
-- modern ↔ Gen III conversion loss reporting;
-- explicit failure when required traits cannot be preserved.
-
-After that come the remaining parser/recovery hardware gates and Master Vault persistence.
+After those gates, the project can begin evaluating individual routes for enablement and then move toward Master Vault persistence.
 
 See [Current Status](CURRENT_STATUS.md) and the [v1 Roadmap](docs/V1_ROADMAP.md) for the technical plan.
 
@@ -225,9 +225,11 @@ Gen I–III shared editor                     DEVICE ACCEPTED
         ↓
 storage / custody / transaction hardening   MOSTLY IMPLEMENTED
         ↓
-conversion fidelity + golden fixtures       CURRENT NEXT
+conversion fidelity + golden fixtures       SUBSTANTIALLY COMPLETE
         ↓
-parser hardening + physical recovery tests
+exact-pair closure + parser/recovery gates  CURRENT
+        ↓
+route-by-route enablement decisions
         ↓
 Master Vault + named Banks
         ↓
