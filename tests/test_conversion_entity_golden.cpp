@@ -2232,8 +2232,8 @@ int main() {
                 raw[0x37] = std::byte{0xFC};
                 raw[0x3A] = std::byte{0xFC};
                 raw[0x40] = std::byte{0xA5};
-                raw[0x44] = std::byte{0x73};
-                raw[0x45] = std::byte{0x67};
+                raw[0x44] = std::byte{0x03}; // shared indexes 96-97 only; 98+ are Gen9-only
+                raw[0x45] = std::byte{0x00};
                 if (!fromG8) {
                     raw[0x11F] = static_cast<std::byte>(source->metLevel());
                     raw[0x4A] = raw[0x48];
@@ -2251,8 +2251,9 @@ int main() {
                 assert(candidate->nickname() == source->nickname());
                 assert(candidate->otName() == source->otName());
                 for (const size_t o : {size_t{0x34}, size_t{0x37}, size_t{0x3A},
-                                       size_t{0x40}, size_t{0x44}, size_t{0x45}})
+                                       size_t{0x40}, size_t{0x44}})
                     assert(candidate->getData()[o] == source->getData()[o]);
+                assert(candidate->getData()[0x45] == std::byte{0});
                 assertSerializedReparse(*candidate);
             }
 
