@@ -1615,3 +1615,340 @@ In particular:
 ## Tranche stop
 
 The route-level golden-corpus expansion stops here. Do not automatically enable cross-game true Move or begin BDSP multi-file transactions, N06, Master Vault, Gen IV/DS/3DS, or live source writes.
+
+
+---
+
+# Declared-loss acknowledgement + F13 persisted provenance — 2026-09-25
+
+This tranche audits forward from the route-level conversion corpus checkpoint and builds the durable
+evidence/policy layer required before any future loss-bearing cross-game true Move could retire its
+source. **No cross-game route is enabled by this work.**
+
+## Exact starting checkpoint
+
+```text
+starting audit head:
+65bf91b2790d1a0a12b9d889b4bd60730933f289
+
+starting tree:
+a823e92c6f9bb0273845bc73daf57f692cffd79b
+```
+
+GitHub had already advanced with the core implementation when this audit resumed, so the work was
+audited forward rather than reset/rebased backward.
+
+## Exact code checkpoint before this documentation capture
+
+```text
+application SHA:
+5a1cd9685dfe3dd37a3002ac1193795dcb676e0d
+
+tree:
+3bf1f2882d4c1c44c1b76be22e5b7b7a99a3a27b
+
+PokeBank NX Host Tests:
+36095559792 / #1162 / SUCCESS
+
+normal host suite:
+SUCCESS
+
+focused RSE regression:
+SUCCESS
+
+ASan + UBSan:
+SUCCESS
+
+Audit Hardening Native Validation:
+36095556266 / #64 / SUCCESS
+```
+
+This is CI verification only, not physical-device acceptance.
+
+## Durable conversion-evidence format
+
+A separate durable conversion-evidence record is stored beside the transaction journal under the
+same transaction ID:
+
+```text
+transactions/records/<tx-id>.conversion-evidence.pbce
+```
+
+Current conversion-evidence schema:
+
+```text
+PBCE v1
+kRouteEvidenceVersion = 1
+magic = PBCEV01
+maximum record size = 64 KiB
+SHA-256 integrity trailer
+persistence = DurableFile::replace() + parse/round-trip validator
+```
+
+The record is fail-closed on truncation, malformed payloads, bad integrity hash, unknown fidelity
+bits, invalid store/game identity, invalid acknowledgement state, and unsupported/newer schema.
+
+Stored evidence includes:
+
+- transaction ID;
+- exact source game identity;
+- exact destination game identity;
+- source native format;
+- destination native format;
+- historical origin version;
+- source StoreDescriptor;
+- destination StoreDescriptor;
+- source payload SHA-256;
+- destination candidate payload SHA-256;
+- diagnostic source species/form/PID/EC;
+- diagnostic destination species/form/PID/EC;
+- conversion result;
+- candidate-available flag;
+- fidelity Loss bitset;
+- fidelity Adaptation bitset;
+- source-origin / destination-entity-origin fidelity metadata;
+- whether losses were shown to the user;
+- whether losses were explicitly acknowledged;
+- creation timestamp;
+- acknowledgement timestamp;
+- acknowledgement binding SHA-256;
+- provenance relation.
+
+Profile/account identity remains in StoreDescriptor/provenance metadata. It is not written into PKM
+payload fields.
+
+## Fidelity presentation contract
+
+Every current Loss has a stable user-facing mapping:
+
+```text
+Gen3EVClamped
+TeraDataDropped
+ZAAlphaDropped
+DivergentGameDataDropped
+OriginGameRestamped
+MoveDropped
+RelearnMoveDropped
+HeldItemDropped
+StatTrainingReset
+PLAExclusiveDataDropped
+RibbonDataDropped
+AbilitySlotNormalized
+HomeTrackerDropped
+MarkDataDropped
+```
+
+Every current Adaptation also has a stable separate mapping:
+
+```text
+PidAdjustedForShinyThreshold
+TargetDefaultTeraSynthesized
+MovePPClamped
+Gen3TransferDateSynthesized
+DefaultNicknameCanonicalized
+```
+
+The mapping-completeness regression checks the Fidelity enum declarations against the presentation
+catalog. Unknown/unrecognized Loss or Adaptation bits are not treated as safe and cannot authorize
+retirement.
+
+Losses and adaptations remain separate concepts in the presentation model.
+
+## Acknowledgement policy
+
+A successful candidate with no Loss entries does not require a loss acknowledgement. That does
+**not** imply route enablement.
+
+A candidate with any declared Loss requires:
+
+1. the exact loss summary to have been shown;
+2. explicit user acknowledgement;
+3. a nonzero acknowledgement timestamp;
+4. an acknowledgement SHA-256 binding matching the exact evidence semantics.
+
+The acknowledgement binding covers the transaction ID, exact source/destination game identities,
+native formats, historical origin, relation, both store descriptors, source/destination payload
+hashes, diagnostic entity identities, conversion result/candidate state, Loss bitset, Adaptation
+bitset, and source/destination origin metadata.
+
+If any bound field changes, the acknowledgement becomes stale and retirement fails closed.
+
+### P2 found during forward audit — shown-vs-acknowledged conflation
+
+At the live forward head, `markLossesAcknowledged()` was setting `lossesShownToUser = true`
+itself. That allowed an acknowledgement call to manufacture the evidence that the loss-summary
+presentation step had happened.
+
+Fixed in:
+
+```text
+36e87c578e23a56d704c418b47d9e602efbbcb17
+fix(conversion): require loss summary before acknowledgement
+
+9f64df839d6ef0f3e593ddfae80faacca252f110
+test(conversion): separate shown-loss proof from acknowledgement
+
+5a1cd9685dfe3dd37a3002ac1193795dcb676e0d
+test(conversion): mark loss summary shown before acknowledgement
+```
+
+The helper now refuses a loss-bearing acknowledgement until the caller has independently recorded
+that the deterministic loss summary was shown.
+
+## A04a integration / recovery boundary
+
+The Move journal is versioned through schema v2 for the cross-game conversion flag while retaining
+support for the older v1 journal. Unknown newer journal versions remain fail-closed.
+
+Conversion evidence is a separate durable file keyed by transaction ID. The transaction engine uses
+a retirement gate for cross-game transactions.
+
+Evidence is checked before:
+
+```text
+DESTINATION_VERIFIED -> SOURCE_RETIRE_PENDING
+```
+
+It is checked again after restart while in:
+
+```text
+SOURCE_RETIRE_PENDING
+```
+
+before touching the source, and checked again while in:
+
+```text
+SOURCE_RETIRED
+```
+
+before allowing the journal to reach:
+
+```text
+COMMITTED
+```
+
+Therefore missing/corrupt/unsupported/stale evidence cannot silently authorize source retirement
+after a restart. If evidence disappears after SOURCE_RETIRED, COMMITTED is withheld for manual
+reconciliation rather than finalizing a transaction without provenance.
+
+Transaction-ID allocation also treats an existing conversion-evidence record as reserving that ID,
+so stale/orphan evidence is not silently reused by a new transaction.
+
+## Corruption / mismatch regressions
+
+The evidence suite covers fail-closed behavior for:
+
+- truncated evidence;
+- corrupted bytes / integrity mismatch;
+- unsupported newer evidence schema;
+- missing evidence at retirement;
+- stale Loss bitset after acknowledgement;
+- stale Adaptation bitset after acknowledgement;
+- source payload hash mismatch;
+- destination payload hash mismatch;
+- store/profile mismatch;
+- route/exact-game mismatch;
+- transaction-ID mismatch;
+- ambiguous duplicate move match inside a transaction;
+- unknown fidelity bits;
+- failed/unavailable conversion candidate;
+- evidence removal/corruption after SOURCE_RETIRE_PENDING;
+- evidence removal after SOURCE_RETIRED before COMMITTED;
+- restart/recovery at every A04a interruption boundary.
+
+Negative retirement tests prove the source bytes remain exact, source SHA-256 remains exact, and the
+source Store remains authoritative until an authorized retirement actually occurs.
+
+## Route-policy separation
+
+The retirement policy keeps these concepts distinct:
+
+```text
+candidate valid
+loss policy satisfied
+evidence matches transaction/candidate
+route enabled
+transaction state safe
+```
+
+Product policy remains:
+
+```text
+routeEnabledForTrueMove(...) = false
+```
+
+for every cross-game route.
+
+A regression proves that even a valid, zero-loss conversion with valid persisted evidence cannot
+retire the source while the route gate is disabled.
+
+## F13 provenance result
+
+The persisted record and `ProvenanceNode` keep historical origin separate from current transaction
+location/ownership.
+
+The provenance contract can represent:
+
+```text
+historical origin
+source exact game / source store
+destination exact game / destination store
+profile/account ownership
+transaction ID / sequence
+source payload hash
+destination payload hash
+Losses
+Adaptations
+relationship
+```
+
+Historical origin is not rewritten merely because the current destination changes.
+
+Relationship names remain explicitly separated for future history:
+
+```text
+CONVERSION
+MOVE
+COPY
+EXACT_CLONE_OF
+DERIVED_FROM
+ARCHIVE_RECOVERY
+```
+
+This does not begin Master Vault or clone expansion.
+
+## Route gate after this tranche
+
+```text
+ROUTE ELIGIBLE FOR FUTURE TRUE-MOVE ENABLEMENT:
+NONE
+```
+
+Every cross-game route remains:
+
+```text
+ROUTE MUST REMAIN DISABLED
+```
+
+This tranche removes a major shared infrastructure blocker but does not make incomplete route
+coverage disappear. Exact-pair species/form/event/ribbon/mark/language/game-specific evidence and
+the physical recovery gate remain separate requirements.
+
+No route is promoted to enabled status by this tranche.
+
+## Findings classification
+
+- **P0:** none newly confirmed.
+- **P1:** none newly confirmed by this tranche.
+- **P2:** acknowledgement helper conflated "loss summary shown" with "user acknowledged"; fixed and
+  regression-covered.
+- Existing physical FAT32/exFAT recovery acceptance, BDSP multi-file durability and N06 remain
+  outside this tranche and unchanged.
+
+## Tranche stop
+
+Declared-loss acknowledgement + persisted F13 provenance infrastructure is implemented and tested
+at the code checkpoint above.
+
+Do not automatically begin route enablement, Master Vault, BDSP multi-file transactions, N06,
+Gen IV/DS/3DS, live writes, or clone expansion.
