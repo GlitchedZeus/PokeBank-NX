@@ -6,7 +6,6 @@
 #include <string>
 #include <vector>
 
-#include "Conversion/Convert.h"
 #include "Conversion/Fidelity.h"
 #include "Enums/GameVersion.h"
 #include "Utils/MoveTransaction.h"
@@ -14,6 +13,18 @@
 namespace Conversion {
 
 inline constexpr uint16_t kRouteEvidenceVersion = 1;
+
+enum class EvidenceConversionResult : uint8_t {
+    Ok = 0,
+    SameGroup = 1,
+    Unsupported = 2,
+    NotInDex = 3,
+    Blocked = 4,
+    TraitPreservationFailed = 5,
+    AbilityNotRepresentable = 6,
+    TextNotRepresentable = 7,
+    LanguageNotRepresentable = 8,
+};
 
 enum class ProvenanceRelation : uint8_t {
     Conversion = 1,
@@ -46,7 +57,7 @@ struct RouteEvidence {
     PokeBank::Storage::MoveTx::Digest destinationPayload{};
     EntityIdentity sourceEntity{};
     EntityIdentity destinationEntity{};
-    Result conversionResult = Result::Unsupported;
+    EvidenceConversionResult conversionResult = EvidenceConversionResult::Unsupported;
     bool candidateAvailable = false;
     bool lossesShownToUser = false;
     bool lossesAcknowledged = false;
