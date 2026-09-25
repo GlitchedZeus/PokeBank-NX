@@ -224,9 +224,9 @@ int main() {
 
     // Mapping completeness contract for every currently declared fidelity bit.
     assert(lossPresentationCatalog().size() == 14);
-    assert(adaptationPresentationCatalog().size() == 5);
+    assert(adaptationPresentationCatalog().size() == 7);
     assert(knownLossMask() == ((1u << 14) - 1u));
-    assert(knownAdaptationMask() == ((1u << 5) - 1u));
+    assert(knownAdaptationMask() == ((1u << 7) - 1u));
     for (const auto& item : lossPresentationCatalog()) {
         assert(item.bit != 0 && item.key && *item.key && item.message && *item.message);
     }
