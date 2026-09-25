@@ -287,3 +287,24 @@ $(CONVERSION_ENTITY_GOLDEN_TEST): $(CONVERSION_ENTITY_GOLDEN_SOURCES)
 $(CONVERSION_ENTITY_GOLDEN_SANITIZE): $(CONVERSION_ENTITY_GOLDEN_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(CONVERSION_ENTITY_GOLDEN_SOURCES) -o $@
+
+
+# F13 persisted conversion evidence: exact loss acknowledgement, provenance binding,
+# cross-game retirement gating, corruption/version handling and recovery semantics.
+CONVERSION_EVIDENCE_TEST := $(HOST_BUILD)/test_conversion_evidence
+CONVERSION_EVIDENCE_SANITIZE := $(HOST_BUILD)/test_conversion_evidence_sanitize
+CONVERSION_EVIDENCE_SOURCES := tests/test_conversion_evidence.cpp \
+	src/Conversion/RouteEvidence.cpp src/Utils/MoveTransaction.cpp src/Utils/DurableFile.cpp
+
+HOST_TESTS += $(CONVERSION_EVIDENCE_TEST)
+HOST_SANITIZE_TESTS += $(CONVERSION_EVIDENCE_SANITIZE)
+host-test: $(CONVERSION_EVIDENCE_TEST)
+host-sanitize: $(CONVERSION_EVIDENCE_SANITIZE)
+
+$(CONVERSION_EVIDENCE_TEST): $(CONVERSION_EVIDENCE_SOURCES) include/Conversion/RouteEvidence.h include/Conversion/Fidelity.h include/Utils/MoveTransaction.h include/Utils/DurableFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(CONVERSION_EVIDENCE_SOURCES) -o $@
+
+$(CONVERSION_EVIDENCE_SANITIZE): $(CONVERSION_EVIDENCE_SOURCES) include/Conversion/RouteEvidence.h include/Conversion/Fidelity.h include/Utils/MoveTransaction.h include/Utils/DurableFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CONVERSION_EVIDENCE_SOURCES) -o $@
