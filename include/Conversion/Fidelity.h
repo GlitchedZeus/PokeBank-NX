@@ -26,6 +26,7 @@ namespace Conversion {
         HomeTrackerDropped       = 1u << 12,
         MarkDataDropped           = 1u << 13,
         LocationDetailDropped     = 1u << 14,
+        BattleVersionDropped      = 1u << 15,
     };
 
     enum class Adaptation : uint32_t {
