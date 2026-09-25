@@ -1218,7 +1218,8 @@ namespace Conversion {
     }
 
     bool normalizeAffixedRibbon(Pokemon::Pokemon& pk) {
-        const size_t affix = affixedRibbonOffset(pk.getGameGroup());
+        const GameVersion group = pk.getGameGroup();
+        const size_t affix = affixedRibbonOffset(group);
         if (affix == 0) return false; // format has no such field
         std::span<std::byte> d = pk.getData();
         if (d.size() <= affix || d.size() < 0x48) return false;
@@ -1226,8 +1227,22 @@ namespace Conversion {
         const uint8_t index = static_cast<uint8_t>(d[affix]);
         if (index == AFFIXED_RIBBON_NONE) return false;
 
+        // PKHeX RibbonIndex maxima for the pinned format families:
+        // SWSH (G8) ends at MarkSlump=97, PLA (G8A) at Hisui=98,
+        // BDSP (G8B) at TwinklingStar=99, and Gen 9 at Partner=110.
+        // A set bit outside the destination format's index domain is not a valid title.
+        uint8_t maxIndex = 0;
+        switch (group) {
+            case GameVersion::SWSH: maxIndex = 97; break;
+            case GameVersion::PLA:  maxIndex = 98; break;
+            case GameVersion::BDSP: maxIndex = 99; break;
+            case GameVersion::SV:
+            case GameVersion::ZA:   maxIndex = 110; break;
+            default: return false;
+        }
+
         bool owned = false;
-        if (index < 128) {
+        if (index <= maxIndex) {
             const size_t byteOffset = index < 64
                 ? 0x34 + static_cast<size_t>(index >> 3)
                 : 0x40 + static_cast<size_t>((index - 64) >> 3);
