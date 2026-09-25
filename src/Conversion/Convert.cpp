@@ -1003,7 +1003,11 @@ namespace Conversion {
         // there, so a zeroed tail shows Level/CP 0), a Gen 8/9 mon arriving through a hub remap had its tail
         // seeded above, and a PA8 built by remapPK8toPA8 starts with a zeroed tail too. A same-gen *sibling*
         // pairing carries the source's tail verbatim and needs nothing.
-        const bool freshTail = seededPartyTail || (viaHub && destGroup == GameVersion::PLA);
+        const bool swshSvCrossGeneration =
+            (from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+            (from == GameVersion::SV && destGroup == GameVersion::SWSH);
+        const bool freshTail = seededPartyTail || (viaHub && destGroup == GameVersion::PLA) ||
+                               swshSvCrossGeneration;
         if (destGroup == GameVersion::GG || destGroup == GameVersion::FRLG || freshTail)
             out->recalculateStats();
 
