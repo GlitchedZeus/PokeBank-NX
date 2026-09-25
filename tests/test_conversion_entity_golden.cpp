@@ -1454,13 +1454,13 @@ int main() {
         auto candidate = convert(*source, GameVersion::SWSH, result,
                                  static_cast<uint8_t>(GameVersion::SW), &report);
         assert(!candidate);
-        assert(result != Result::Ok);
+        assert(result == Result::BallNotRepresentable);
         proveSourceUnchanged(*source, before, sourceHash);
 
         const auto pre = preflightConvert(*source, GameVersion::SWSH,
                                           static_cast<uint8_t>(GameVersion::SW));
         assert(!pre.candidateAvailable);
-        assert(pre.result != Result::Ok);
+        assert(pre.result == Result::BallNotRepresentable);
         proveSourceUnchanged(*source, before, sourceHash);
     }
 
@@ -2183,6 +2183,243 @@ int main() {
         }
     }
 
+
+    // Closure audit: the pinned PKHeX PK8/G8PKM + PK9 models account for the complete 0x158
+    // party record. Every byte is classified exactly once so a future layout edit cannot hide an
+    // unexplained hole behind a broad memcpy.
+    {
+        struct LayoutRange { size_t first; size_t last; const char* meaning; };
+        const std::vector<LayoutRange> pk8{
+            {0x000,0x016,"header/identity/ability"}, {0x017,0x017,"alignment"},
+            {0x018,0x019,"markings"}, {0x01A,0x01B,"alignment"},
+            {0x01C,0x022,"PID/nature/fateful/Flag2/gender"}, {0x023,0x023,"alignment"},
+            {0x024,0x032,"form/EV/contest/Pokerus"}, {0x033,0x033,"padding"},
+            {0x034,0x03D,"ribbons/memory counts"}, {0x03E,0x03F,"padding"},
+            {0x040,0x047,"ribbons/marks"}, {0x048,0x04B,"Sociability"},
+            {0x04C,0x04F,"alignment"}, {0x050,0x051,"height/weight"},
+            {0x052,0x057,"alignment"}, {0x058,0x08F,"nickname/moves/current HP/IV"},
+            {0x090,0x090,"DynamaxLevel"}, {0x091,0x093,"alignment"},
+            {0x094,0x09B,"status/Palma"}, {0x09C,0x0A7,"alignment"},
+            {0x0A8,0x0C4,"HT name/gender/language/current handler"}, {0x0C5,0x0C5,"alignment"},
+            {0x0C6,0x0DD,"HT id/memory/PokeJob/fullness/enjoyment"},
+            {0x0DE,0x0DF,"origin/BattleVersion"}, {0x0E0,0x0E1,"legacy region extra bytes"},
+            {0x0E2,0x0E2,"language"}, {0x0E3,0x0E3,"alignment"},
+            {0x0E4,0x0E8,"FormArgument/AffixedRibbon"}, {0x0E9,0x0F7,"padding"},
+            {0x0F8,0x114,"OT name/friendship/memory"}, {0x115,0x115,"alignment"},
+            {0x116,0x11E,"OT memory/dates"}, {0x11F,0x11F,"alignment"},
+            {0x120,0x126,"locations/ball/met/HyperTraining"}, {0x127,0x134,"TR records"},
+            {0x135,0x13C,"HOME tracker"}, {0x13D,0x147,"alignment"},
+            {0x148,0x148,"party level"}, {0x149,0x149,"alignment"},
+            {0x14A,0x155,"party battle stats"}, {0x156,0x157,"DynamaxType"},
+        };
+        const std::vector<LayoutRange> pk9{
+            {0x000,0x016,"header/identity/ability"}, {0x017,0x017,"alignment"},
+            {0x018,0x019,"markings"}, {0x01A,0x01B,"alignment"},
+            {0x01C,0x022,"PID/nature/fateful/gender"}, {0x023,0x023,"alignment"},
+            {0x024,0x032,"form/EV/contest/Pokerus"}, {0x033,0x033,"padding"},
+            {0x034,0x03D,"ribbons/memory counts"}, {0x03E,0x03F,"padding"},
+            {0x040,0x047,"ribbons/marks"}, {0x048,0x04A,"height/weight/Scale"},
+            {0x04B,0x057,"DLC TM records"}, {0x058,0x08F,"nickname/moves/current HP/IV"},
+            {0x090,0x095,"status/Tera"}, {0x096,0x0A7,"padding"},
+            {0x0A8,0x0C4,"HT name/gender/language/current handler"}, {0x0C5,0x0C5,"alignment"},
+            {0x0C6,0x0D5,"HT id/memory/origin/BattleVersion/FormArgument/AffixedRibbon/language"},
+            {0x0D6,0x0F7,"padding"}, {0x0F8,0x114,"OT name/friendship/memory"},
+            {0x115,0x115,"alignment"}, {0x116,0x11E,"OT memory/dates"},
+            {0x11F,0x11F,"ObedienceLevel"}, {0x120,0x126,"locations/ball/met/HyperTraining"},
+            {0x127,0x12E,"HOME tracker"}, {0x12F,0x147,"TM records"},
+            {0x148,0x148,"party level"}, {0x149,0x149,"alignment"},
+            {0x14A,0x155,"party battle stats"}, {0x156,0x157,"unused PK9 party tail"},
+        };
+        auto proveAccounting = [](const std::vector<LayoutRange>& ranges) {
+            std::array<uint8_t, 0x158> covered{};
+            for (const auto& r : ranges) {
+                assert(r.first <= r.last && r.last < covered.size());
+                assert(r.meaning && r.meaning[0] != '\0');
+                for (size_t o = r.first; o <= r.last; ++o)
+                    assert(++covered[o] == 1);
+            }
+            for (const uint8_t count : covered) assert(count == 1);
+        };
+        proveAccounting(pk8);
+        proveAccounting(pk9);
+    }
+
+    // All 128 ribbon/mark storage bits occupy the same byte/index space in the pinned PK8 and PK9
+    // reference models. Preserve the complete shared payload, including currently unnamed RIB bits;
+    // 0x3E-0x3F are authoritative padding and stay zero.
+    {
+        for (const bool fromG8 : {true, false}) {
+            std::unique_ptr<Pokemon::Pokemon> source =
+                fromG8 ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7E180000u))
+                       : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7E190000u));
+            configureModern(*source, 25, 0, 0x12344321u, 0x12344221u,
+                            static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                            u"RIBBONBITS", true);
+            auto raw = source->getData();
+            for (size_t o = 0x34; o <= 0x3D; ++o)
+                raw[o] = static_cast<std::byte>(0xA5u ^ static_cast<uint8_t>(o));
+            raw[0x3E] = raw[0x3F] = std::byte{0};
+            for (size_t o = 0x40; o <= 0x47; ++o)
+                raw[o] = static_cast<std::byte>(0x5Au ^ static_cast<uint8_t>(o));
+            raw[fromG8 ? 0xE8 : 0xD4] = std::byte{AFFIXED_RIBBON_NONE};
+            if (!fromG8) {
+                raw[0x11F] = static_cast<std::byte>(source->metLevel());
+                raw[0x4A] = raw[0x48];
+            }
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Report report;
+            Result result = Result::Unsupported;
+            auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                                     result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW),
+                                     &report);
+            assert(result == Result::Ok && candidate);
+            proveSourceUnchanged(*source, before, sourceHash);
+            for (size_t o = 0x34; o <= 0x3D; ++o)
+                assert(candidate->getData()[o] == source->getData()[o]);
+            assert(candidate->getData()[0x3E] == std::byte{0});
+            assert(candidate->getData()[0x3F] == std::byte{0});
+            for (size_t o = 0x40; o <= 0x47; ++o)
+                assert(candidate->getData()[o] == source->getData()[o]);
+            assertSerializedReparse(*candidate);
+        }
+    }
+
+    // Complete current PK8 ball domain (1..26) survives both directions. PK9-only ids 27..37 must
+    // fail closed when targeting SWSH, and a malformed PK8 source outside its own domain is refused.
+    {
+        for (uint8_t ball = 1; ball <= 26; ++ball) {
+            for (const bool fromG8 : {true, false}) {
+                std::unique_ptr<Pokemon::Pokemon> source =
+                    fromG8 ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7E1A0000u + ball))
+                           : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7E1B0000u + ball));
+                configureModern(*source, 25, 0, 0x70700000u + ball, 0x70700100u + ball,
+                                static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                                u"BALLDOMAIN", true);
+                source->setBall(ball);
+                if (!fromG8) {
+                    source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+                    source->getData()[0x4A] = source->getData()[0x48];
+                }
+                source->refreshChecksum();
+                const auto before = nativeBytes(*source);
+                const auto sourceHash = hashBytes(before);
+                Report report;
+                Result result = Result::Unsupported;
+                auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                                         result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW),
+                                         &report);
+                assert(result == Result::Ok && candidate);
+                proveSourceUnchanged(*source, before, sourceHash);
+                assert(candidate->ball() == ball);
+                assertSerializedReparse(*candidate);
+            }
+        }
+
+        for (uint8_t ball = 27; ball <= 37; ++ball) {
+            auto source = blankSV(0x7E1C0000u + ball);
+            configureModern(*source, 25, 0, 0x71710000u + ball, 0x71710100u + ball,
+                            static_cast<uint8_t>(GameVersion::SL), u"PK9BALL", true);
+            source->setBall(ball);
+            source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+            source->getData()[0x4A] = source->getData()[0x48];
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Result result = Result::Unsupported;
+            Report report;
+            auto candidate = convert(*source, GameVersion::SWSH, result,
+                                     static_cast<uint8_t>(GameVersion::SW), &report);
+            assert(!candidate && result == Result::BallNotRepresentable);
+            proveSourceUnchanged(*source, before, sourceHash);
+        }
+
+        auto malformed = blankSWSH(0x7E1D001Bu);
+        configureModern(*malformed, 25, 0, 0x7272001Bu, 0x7272011Bu,
+                        static_cast<uint8_t>(GameVersion::SW), u"BADPK8BALL", true);
+        malformed->setBall(27);
+        malformed->refreshChecksum();
+        const auto before = nativeBytes(*malformed);
+        const auto sourceHash = hashBytes(before);
+        Result result = Result::Unsupported;
+        Report report;
+        auto candidate = convert(*malformed, GameVersion::SV, result,
+                                 static_cast<uint8_t>(GameVersion::SL), &report);
+        assert(!candidate && result == Result::BallNotRepresentable);
+        proveSourceUnchanged(*malformed, before, sourceHash);
+    }
+
+    // Handler/history fields shared at identical offsets must survive untouched; Version,
+    // BattleVersion and FormArgument are relocated explicitly between PK8 and PK9. This is a
+    // representation-preserving conversion, not a synthetic HOME trade-handler update.
+    {
+        for (const bool fromG8 : {true, false}) {
+            std::unique_ptr<Pokemon::Pokemon> source =
+                fromG8 ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7E1E0001u))
+                       : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7E1F0001u));
+            configureModern(*source, 869 /*Alcremie*/, 0, 0x81818181u, 0x81818081u,
+                            static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                            u"ALCREMIE", true);
+            const auto& pi = Pokemon::getPersonalInfo(869, 0);
+            assert((pi.presence & Pokemon::PERSONAL_GAME_SWSH) != 0);
+            assert((pi.presence & Pokemon::PERSONAL_GAME_SV) != 0);
+            auto raw = source->getData();
+            raw[0xC2] = std::byte{1}; raw[0xC3] = std::byte{2}; raw[0xC4] = std::byte{1};
+            raw[0xC6] = std::byte{0x34}; raw[0xC7] = std::byte{0x12};
+            raw[0xC8] = std::byte{177}; raw[0xC9] = std::byte{3}; raw[0xCA] = std::byte{7};
+            raw[0xCB] = std::byte{4}; raw[0xCC] = std::byte{0x78}; raw[0xCD] = std::byte{0x56};
+            raw[0x112] = std::byte{166}; raw[0x113] = std::byte{2}; raw[0x114] = std::byte{6};
+            raw[0x116] = std::byte{0xBC}; raw[0x117] = std::byte{0x9A}; raw[0x118] = std::byte{5};
+            raw[0x119] = std::byte{24}; raw[0x11A] = std::byte{7}; raw[0x11B] = std::byte{14};
+            raw[0x11C] = std::byte{25}; raw[0x11D] = std::byte{8}; raw[0x11E] = std::byte{15};
+            raw[0x120] = std::byte{0x11}; raw[0x121] = std::byte{0x22};
+            raw[0x122] = std::byte{0x33}; raw[0x123] = std::byte{0x44};
+            raw[0x124] = std::byte{16}; raw[0x125] = std::byte{25}; raw[0x126] = std::byte{0x15};
+            const size_t versionOffset = fromG8 ? 0xDE : 0xCE;
+            const size_t battleOffset = fromG8 ? 0xDF : 0xCF;
+            const size_t formArgOffset = fromG8 ? 0xE4 : 0xD0;
+            const size_t affixOffset = fromG8 ? 0xE8 : 0xD4;
+            raw[versionOffset] = static_cast<std::byte>(
+                static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL));
+            raw[battleOffset] = static_cast<std::byte>(
+                static_cast<uint8_t>(fromG8 ? GameVersion::SH : GameVersion::VL));
+            wr32s(raw, formArgOffset, 3u); // Alcremie decoration/form argument is meaningful.
+            raw[0x34] = std::byte{0x01};
+            raw[affixOffset] = std::byte{0};
+            if (!fromG8) {
+                raw[0x11F] = raw[0x125];
+                raw[0x4A] = raw[0x48];
+            }
+            source->refreshChecksum();
+
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Report report;
+            Result result = Result::Unsupported;
+            auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                                     result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW),
+                                     &report);
+            assert(result == Result::Ok && candidate);
+            proveSourceUnchanged(*source, before, sourceHash);
+            const auto dst = candidate->getData();
+            for (size_t o = 0xC2; o <= 0xCD; ++o)
+                assert(dst[o] == raw[o]);
+            for (size_t o = 0x112; o <= 0x11E; ++o)
+                if (o != 0x115) assert(dst[o] == raw[o]);
+            for (size_t o = 0x120; o <= 0x126; ++o)
+                assert(dst[o] == raw[o]);
+            const size_t dstVersion = fromG8 ? 0xCE : 0xDE;
+            const size_t dstBattle = fromG8 ? 0xCF : 0xDF;
+            const size_t dstFormArg = fromG8 ? 0xD0 : 0xE4;
+            const size_t dstAffix = fromG8 ? 0xD4 : 0xE8;
+            assert(dst[dstVersion] == raw[versionOffset]);
+            assert(dst[dstBattle] == raw[battleOffset]);
+            assert(rd32(dst, dstFormArg) == 3u);
+            assert(static_cast<uint8_t>(dst[dstAffix]) == 0);
+            assertSerializedReparse(*candidate);
+        }
+    }
 
     // Route-specific PP drift: dynamically find a shared species+move whose source-generation
     // maximum exceeds the destination-generation maximum, then prove the converter clamps only
