@@ -223,9 +223,9 @@ int main() {
     const std::vector<uint8_t> destinationAfter{9,9,9,9,2,5};
 
     // Mapping completeness contract for every currently declared fidelity bit.
-    assert(lossPresentationCatalog().size() == 15);
+    assert(lossPresentationCatalog().size() == 16);
     assert(adaptationPresentationCatalog().size() == 8);
-    assert(knownLossMask() == ((1u << 15) - 1u));
+    assert(knownLossMask() == ((1u << 16) - 1u));
     assert(knownAdaptationMask() == ((1u << 8) - 1u));
     for (const auto& item : lossPresentationCatalog()) {
         assert(item.bit != 0 && item.key && *item.key && item.message && *item.message);
@@ -253,19 +253,21 @@ int main() {
     presentationReport.addLoss(Loss::TeraDataDropped);
     presentationReport.addLoss(Loss::DivergentGameDataDropped);
     presentationReport.addLoss(Loss::LocationDetailDropped);
+    presentationReport.addLoss(Loss::BattleVersionDropped);
     presentationReport.addAdaptation(Adaptation::PidAdjustedForShinyThreshold);
     presentationReport.addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
     presentationReport.addAdaptation(Adaptation::TargetScaleSynthesized);
     presentationReport.addAdaptation(Adaptation::TargetObedienceLevelSynthesized);
     presentationReport.addAdaptation(Adaptation::TargetHistoryRepresentationRemapped);
     const auto summary = summarizeFidelity(presentationReport);
-    assert(summary.losses.size() == 5);
+    assert(summary.losses.size() == 6);
     assert(summary.adaptations.size() == 5);
     assert(contains(summary.losses, "The held item cannot be carried into the destination and will be removed."));
     assert(contains(summary.losses, "The HOME tracker cannot be stored in the destination format and will be removed."));
     assert(contains(summary.losses, "Tera data cannot be stored in the destination format and will be removed."));
     assert(contains(summary.losses, "Destination-incompatible game-specific data will be removed."));
     assert(contains(summary.losses, "Exact source-game met or egg location detail cannot be carried in the destination entity and will be reduced to a transfer marker."));
+    assert(contains(summary.losses, "The source battle-eligibility reset marker cannot be represented safely in the destination and will be cleared."));
     assert(contains(summary.adaptations, "A destination-native default Tera type will be synthesized."));
     assert(contains(summary.adaptations, "A destination-native scale value will be synthesized from the source height scalar."));
     assert(contains(summary.adaptations, "A destination-native obedience level will be synthesized from the source met level."));
