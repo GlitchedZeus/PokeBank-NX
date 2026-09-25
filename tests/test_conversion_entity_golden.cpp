@@ -51,6 +51,10 @@ void wr32(std::vector<std::byte>& b, std::size_t o, uint32_t v) {
     wr16(b, o, static_cast<uint16_t>(v));
     wr16(b, o + 2, static_cast<uint16_t>(v >> 16));
 }
+void wr16s(std::span<std::byte> b, std::size_t o, uint16_t v) {
+    b[o] = static_cast<std::byte>(v & 0xFF);
+    b[o + 1] = static_cast<std::byte>(v >> 8);
+}
 void wr64(std::span<std::byte> b, std::size_t o, uint64_t v) {
     for (int i = 0; i < 8; ++i) b[o + static_cast<std::size_t>(i)] = static_cast<std::byte>(v >> (8 * i));
 }
@@ -1559,8 +1563,8 @@ int main() {
                             0x71717071u + static_cast<uint32_t>(i), hc.sourceVersion,
                             u"HISTORYMAP", true);
             auto raw = source->getData();
-            wr16(raw, 0x120, 5678); // S/V egg location that cannot stay raw in PK8.
-            wr16(raw, 0x122, 1234); // S/V met location that cannot stay raw in PK8.
+            wr16s(raw, 0x120, 5678); // S/V egg location that cannot stay raw in PK8.
+            wr16s(raw, 0x122, 1234); // S/V met location that cannot stay raw in PK8.
             raw[0x11F] = raw[0x125];
             raw[0x4A] = raw[0x48];
             source->refreshChecksum();
