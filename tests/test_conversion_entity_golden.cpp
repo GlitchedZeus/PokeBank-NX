@@ -2010,11 +2010,14 @@ int main() {
                     source->getData()[0x4A] = source->getData()[0x48];
                 }
                 source->refreshChecksum();
+                const auto before = nativeBytes(*source);
+                const auto sourceHash = hashBytes(before);
                 Result result = Result::Unsupported;
                 Report report;
                 auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
                     result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
                 assert(result == Result::Ok && candidate);
+                proveSourceUnchanged(*source, before, sourceHash);
                 assert(candidate->ball() == ball);
                 assertSerializedReparse(*candidate);
             }
@@ -2043,6 +2046,132 @@ int main() {
                 assert(result == Result::Ok && candidate);
                 proveSourceUnchanged(*source, before, sourceHash);
                 assert(rd64(candidate->getData(), fromG8 ? 0x127 : 0x135) == tracker);
+                assertSerializedReparse(*candidate);
+            }
+        }
+    }
+
+
+    // Route-specific PP drift: dynamically find a shared species+move whose source-generation
+    // maximum exceeds the destination-generation maximum, then prove the converter clamps only
+    // the destination candidate and reports the deterministic adaptation.
+    {
+        struct PPCandidate {
+            uint16_t species = 0;
+            uint16_t move = 0;
+            uint8_t sourceMax = 0;
+            uint8_t destinationMax = 0;
+        };
+        auto findPPDrop = [](GameVersion sourceGroup, GameVersion destinationGroup) {
+            PPCandidate found{};
+            for (uint16_t sp = 1; sp <= Pokemon::PERSONAL_MAX_SPECIES && found.species == 0; ++sp) {
+                const auto& pi = Pokemon::getPersonalInfo(sp, 0);
+                const bool presentSource =
+                    sourceGroup == GameVersion::SWSH
+                        ? (pi.presence & Pokemon::PERSONAL_GAME_SWSH) != 0
+                        : (pi.presence & Pokemon::PERSONAL_GAME_SV) != 0;
+                const bool presentDestination =
+                    destinationGroup == GameVersion::SWSH
+                        ? (pi.presence & Pokemon::PERSONAL_GAME_SWSH) != 0
+                        : (pi.presence & Pokemon::PERSONAL_GAME_SV) != 0;
+                if (!presentSource || !presentDestination) continue;
+                for (uint16_t move = 1; move <= Pokemon::LEARN_MAX_MOVE_ID; ++move) {
+                    if (!Pokemon::isLearnable(sp, 0, sourceGroup, move) ||
+                        !Pokemon::isLearnable(sp, 0, destinationGroup, move))
+                        continue;
+                    const uint8_t srcMax = Names::getMoveMaxPP(move, 0, sourceGroup);
+                    const uint8_t dstMax = Names::getMoveMaxPP(move, 0, destinationGroup);
+                    if (srcMax > dstMax && dstMax != 0) {
+                        found = PPCandidate{sp, move, srcMax, dstMax};
+                        break;
+                    }
+                }
+            }
+            return found;
+        };
+
+        const std::array<std::pair<GameVersion, GameVersion>, 2> directions{{
+            {GameVersion::SWSH, GameVersion::SV},
+            {GameVersion::SV, GameVersion::SWSH},
+        }};
+        size_t provenDirections = 0;
+        for (const auto& [sourceGroup, destinationGroup] : directions) {
+            const auto pp = findPPDrop(sourceGroup, destinationGroup);
+            if (pp.species == 0) continue; // only require a fixture where current tables contain drift
+            ++provenDirections;
+            const bool fromG8 = sourceGroup == GameVersion::SWSH;
+            std::unique_ptr<Pokemon::Pokemon> source;
+            if (fromG8) source = blankSWSH(0x7E600000u + pp.species);
+            else source = blankSV(0x7E700000u + pp.species);
+            configureModern(*source, pp.species, 0, 0x99000000u + pp.species,
+                            0x99000100u + pp.species,
+                            static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                            u"PPCLAMP", true);
+            source->setMove(0, pp.move);
+            source->setMovePPUps(0, 0);
+            source->setMovePP(0, pp.sourceMax);
+            if (!fromG8) {
+                source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+                source->getData()[0x4A] = source->getData()[0x48];
+            }
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto sourceHash = hashBytes(before);
+            Report report;
+            Result result = Result::Unsupported;
+            auto candidate = convert(*source, destinationGroup, result,
+                static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
+            assert(result == Result::Ok && candidate);
+            proveSourceUnchanged(*source, before, sourceHash);
+            assert(report.hasAdaptation(Adaptation::MovePPClamped));
+            assert(candidate->move(0) == pp.move);
+            assert(candidate->movePP(0) == pp.destinationMax);
+            assertSerializedReparse(*candidate);
+        }
+        assert(provenDirections >= 1);
+    }
+
+    // Both formats use the same modern UTF-16 text representation. Exercise non-Latin scripts
+    // for the supported modern language IDs so language/text coverage is not ASCII-only.
+    {
+        struct TextCase {
+            uint8_t language;
+            const char16_t* nickname;
+            const char16_t* ot;
+        };
+        const TextCase textCases[] = {
+            {1,  u"ピカチュウ", u"トレーナー"},
+            {8,  u"피카츄",     u"트레이너"},
+            {9,  u"皮卡丘",     u"训练家"},
+            {10, u"皮卡丘",     u"訓練家"},
+        };
+        for (const bool fromG8 : {true, false}) {
+            for (const auto& tc : textCases) {
+                std::unique_ptr<Pokemon::Pokemon> source;
+                if (fromG8) source = blankSWSH(0x7E800000u + tc.language);
+                else source = blankSV(0x7E900000u + tc.language);
+                configureModern(*source, 25, 0, 0xAA000000u + tc.language,
+                                0xAA000100u + tc.language,
+                                static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                                tc.nickname, true);
+                source->setOTName(tc.ot);
+                source->setLanguage(tc.language);
+                if (!fromG8) {
+                    source->getData()[0x11F] = static_cast<std::byte>(source->metLevel());
+                    source->getData()[0x4A] = source->getData()[0x48];
+                }
+                source->refreshChecksum();
+                const auto before = nativeBytes(*source);
+                const auto sourceHash = hashBytes(before);
+                Report report;
+                Result result = Result::Unsupported;
+                auto candidate = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                    result, static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
+                assert(result == Result::Ok && candidate);
+                proveSourceUnchanged(*source, before, sourceHash);
+                assert(candidate->language() == tc.language);
+                assert(candidate->nickname() == source->nickname());
+                assert(candidate->otName() == source->otName());
                 assertSerializedReparse(*candidate);
             }
         }
