@@ -1,6 +1,6 @@
 # PokeBank NX — Game Support / Verification Matrix
 
-Last updated: **2026-09-24**
+Last updated: **2026-09-25**
 
 This matrix separates source/read support, staged editing, PokeBank-owned workspace transaction support, and physical acceptance.
 
@@ -71,7 +71,7 @@ supported PokeBank-owned mutable single-file workspace
 
 The transaction layer is CI verified but not physically power-loss accepted.
 
-Cross-game true Move remains disabled until the F05–F13 conversion audit proves route fidelity.
+Cross-game true Move remains disabled. The F05–F13 foundation and the SWSH ↔ S/V exact-pair audit are complete, but exact routes still require closure of remaining semantic/recovery blockers and a separate route-enablement decision.
 
 BDSP remains disabled because SaveData.bin + Backup.bin require a recoverable multi-file generation.
 
