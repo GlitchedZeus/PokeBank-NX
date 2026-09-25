@@ -376,6 +376,7 @@ int main() {
         auto tx = makeTransaction("tx-0000000000002010", srcDesc, dstDesc);
         auto evidence = makeEvidence(tx);
         evidence.fidelity.addLoss(Loss::HeldItemDropped);
+        evidence.lossesShownToUser = true;
         std::string error;
         assert(markLossesAcknowledged(evidence, 1001, error));
         assert(store.persist(evidence, error));
@@ -499,6 +500,7 @@ int main() {
         assert(engine.prepare(tx, src, dst, destinationAfter, sourceRetired, error));
         auto evidence = makeEvidence(tx);
         evidence.fidelity.addLoss(Loss::HeldItemDropped);
+        evidence.lossesShownToUser = true;
         assert(markLossesAcknowledged(evidence, 1001, error));
         assert(evidenceStore.persist(evidence, error));
 
