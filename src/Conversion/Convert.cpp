@@ -377,6 +377,9 @@ namespace Conversion {
             zeroRange(b, 0x156, 0x02);
         }
 
+        bool ribbonBitSet(std::span<const std::byte> data, uint8_t index) noexcept;
+        void clearRibbonBit(std::vector<std::byte>& data, uint8_t index) noexcept;
+
         // PK9 -> PK8, in place (the mirror of transformG8toG9). Tera / ObedienceLevel / records are dropped.
         void transformG9toG8(std::vector<std::byte>& b, GameVersion source, GameVersion destination, Report* report) {
             if (b.size() < 0x148) return;
