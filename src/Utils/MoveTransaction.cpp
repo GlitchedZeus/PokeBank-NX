@@ -89,8 +89,12 @@ bool validTransactionId(std::string_view id) noexcept {
 }
 
 bool validTransaction(const Transaction& tx, std::string& error) {
-    if (tx.schemaVersion != kSchemaVersion) {
+    if (tx.schemaVersion < kOldestSupportedSchemaVersion || tx.schemaVersion > kSchemaVersion) {
         error = "unsupported transaction schema";
+        return false;
+    }
+    if (tx.schemaVersion == 1 && tx.crossGameConversion) {
+        error = "v1 transaction cannot require cross-game conversion evidence";
         return false;
     }
     if (!validTransactionId(tx.id) || !validState(tx.state)) {
@@ -181,7 +185,7 @@ std::vector<uint8_t> serialize(const Transaction& tx, std::string& error) {
     out.insert(out.end(), kMagic.begin(), kMagic.end());
     appendU16(out, tx.schemaVersion);
     appendU8(out, static_cast<uint8_t>(tx.state));
-    appendU8(out, 0);
+    appendU8(out, tx.crossGameConversion ? 0x01u : 0x00u);
     if (!appendString(out, tx.id) ||
         !appendDescriptor(out, tx.source) ||
         !appendDescriptor(out, tx.destination)) {
@@ -226,7 +230,7 @@ LoadResult parse(std::span<const uint8_t> bytes) {
     }
     const uint16_t version = static_cast<uint16_t>(bytes[8]) |
                              (static_cast<uint16_t>(bytes[9]) << 8);
-    if (version != kSchemaVersion) {
+    if (version < kOldestSupportedSchemaVersion || version > kSchemaVersion) {
         result.status = LoadStatus::UnsupportedVersion;
         result.error = "journal schema is newer/unsupported";
         return result;
@@ -245,10 +249,12 @@ LoadResult parse(std::span<const uint8_t> bytes) {
 
     Reader r{bytes.first(bodySize)};
     r.pos = 10;
-    uint8_t state = 0, reserved = 0;
+    uint8_t state = 0, flags = 0;
     Transaction tx;
     tx.schemaVersion = version;
-    if (!r.u8(state) || !r.u8(reserved) || reserved != 0 || !r.str(tx.id) ||
+    if (!r.u8(state) || !r.u8(flags) ||
+        (version == 1 && flags != 0) || (version >= 2 && (flags & ~0x01u) != 0) ||
+        !r.str(tx.id) ||
         !readDescriptor(r, tx.source) || !readDescriptor(r, tx.destination) ||
         !r.digest(tx.sourceBefore) || !r.digest(tx.sourceRetired) ||
         !r.digest(tx.destinationBefore) || !r.digest(tx.destinationAfter)) {
@@ -256,6 +262,7 @@ LoadResult parse(std::span<const uint8_t> bytes) {
         return result;
     }
     tx.state = static_cast<State>(state);
+    tx.crossGameConversion = version >= 2 && (flags & 0x01u) != 0;
     uint16_t moveCount = 0;
     if (!r.u16(moveCount) || moveCount > kMaxMoves) {
         result.error = "journal move count is invalid";
@@ -544,8 +551,10 @@ bool Journal::loadEvidence(const Transaction& transaction,
 Engine::Engine()
     : journal_(PokeBank::Paths::transactionsRoot()) {}
 
-Engine::Engine(std::string root, PersistGate persistGate)
-    : journal_(std::move(root)), persistGate_(std::move(persistGate)) {}
+Engine::Engine(std::string root, PersistGate persistGate, RetirementGate retirementGate)
+    : journal_(std::move(root)),
+      persistGate_(std::move(persistGate)),
+      retirementGate_(std::move(retirementGate)) {}
 
 bool Engine::persistState(Transaction& transaction, State next, std::string& error) {
     if (static_cast<uint8_t>(next) != static_cast<uint8_t>(transaction.state) + 1u) {
@@ -694,6 +703,16 @@ RecoveryResult Engine::recover(const std::string& transactionId,
         if (fault == FaultPoint::AfterDestinationVerifiedJournal)
             return result(RecoveryStatus::Interrupted, tx.state, "injected interruption after destination verified journal");
         // This durable state is the authorization boundary for source retirement.
+        // Cross-game transactions must prove their persisted conversion evidence on EVERY
+        // recovery attempt before the journal may authorize retirement.
+        if (tx.crossGameConversion) {
+            if (!retirementGate_)
+                return result(RecoveryStatus::Failed, tx.state,
+                              "cross-game source retirement requires conversion evidence authorization");
+            if (!retirementGate_(tx, error))
+                return result(RecoveryStatus::Failed, tx.state,
+                              error.empty() ? "conversion evidence authorization failed" : error);
+        }
         if (!persistState(tx, State::SourceRetirePending, error))
             return result(RecoveryStatus::Failed, tx.state, error);
     }
@@ -701,6 +720,17 @@ RecoveryResult Engine::recover(const std::string& transactionId,
     if (tx.state == State::SourceRetirePending) {
         if (fault == FaultPoint::BeforeSourceRetire)
             return result(RecoveryStatus::Interrupted, tx.state, "injected interruption before source retirement");
+
+        // Re-check after restart as well: a crash may have happened after persisting
+        // SOURCE_RETIRE_PENDING but before the source write.
+        if (tx.crossGameConversion) {
+            if (!retirementGate_)
+                return result(RecoveryStatus::Failed, tx.state,
+                              "cross-game source retirement requires conversion evidence authorization");
+            if (!retirementGate_(tx, error))
+                return result(RecoveryStatus::Failed, tx.state,
+                              error.empty() ? "conversion evidence authorization failed" : error);
+        }
 
         if (!source.read(srcBytes, error))
             return result(RecoveryStatus::Failed, tx.state, error);
