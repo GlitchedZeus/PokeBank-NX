@@ -2617,8 +2617,16 @@ int main() {
                 assert(dst[o] == raw[o]);
             for (size_t o = 0x112; o <= 0x11E; ++o)
                 if (o != 0x115) assert(dst[o] == raw[o]);
-            for (size_t o = 0x120; o <= 0x126; ++o)
+            for (size_t o = 0x120; o <= 0x126; ++o) {
+                if (!fromG8 && o <= 0x123) continue; // S/V locations remap to HOME-compatible PK8 history.
                 assert(dst[o] == raw[o]);
+            }
+            if (!fromG8) {
+                assert(rd16(dst, 0x120) == 65534u); // transferred egg location sentinel
+                assert(rd16(dst, 0x122) == 59997u); // Scarlet -> Sword HOME met location
+                assert(report.hasLoss(Loss::LocationDetailDropped));
+                assert(report.hasAdaptation(Adaptation::TargetHistoryRepresentationRemapped));
+            }
             const size_t dstVersion = fromG8 ? 0xCE : 0xDE;
             const size_t dstBattle = fromG8 ? 0xCF : 0xDF;
             const size_t dstFormArg = fromG8 ? 0xD0 : 0xE4;
