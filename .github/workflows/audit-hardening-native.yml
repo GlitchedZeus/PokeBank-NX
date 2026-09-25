@@ -30,6 +30,8 @@ on:
       - 'include/Conversion/Fidelity.h'
       - 'include/Conversion/Gen3PidSearch.h'
       - 'include/Conversion/RouteEvidence.h'
+      - 'src/Conversion/RouteEvidence.cpp'
+      - 'tests/test_conversion_evidence.cpp'
       - 'tests/test_conversion_fidelity_golden.cpp'
       - 'tests/test_conversion_entity_golden.cpp'
       - 'src/UI/UI.cpp'
