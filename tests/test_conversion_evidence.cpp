@@ -155,7 +155,7 @@ RouteEvidence makeEvidence(const Transaction& tx) {
     evidence.destinationPayload = tx.moves.front().destinationPayload;
     evidence.sourceEntity = EntityIdentity{25, 0, 0x12345678u, 0x01020304u};
     evidence.destinationEntity = EntityIdentity{25, 0, 0x12345678u, 0x01020304u};
-    evidence.conversionResult = Result::Ok;
+    evidence.conversionResult = EvidenceConversionResult::Ok;
     evidence.candidateAvailable = true;
     evidence.createdAtUnix = 1000;
     evidence.relation = ProvenanceRelation::Conversion;
@@ -313,7 +313,7 @@ int main() {
 
         auto failed = evidence;
         failed.candidateAvailable = false;
-        failed.conversionResult = Result::TextNotRepresentable;
+        failed.conversionResult = EvidenceConversionResult::TextNotRepresentable;
         assert(!authorizeSourceRetirement(failed, tx, true).allowed);
     }
 
