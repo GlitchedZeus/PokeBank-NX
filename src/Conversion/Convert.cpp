@@ -284,6 +284,19 @@ namespace Conversion {
         void transformG8toG9(std::vector<std::byte>& b, uint16_t species, uint8_t form,
                               GameVersion destination, Report* report) {
             if (b.size() < 0x148) return;
+
+            // Capture every meaningful PK8-only semantic before relayout. Status condition has a
+            // real destination-native field and is relocated below; the remaining fields do not.
+            const uint32_t statusCondition = rd32(b, 0x94);
+            bool divergentData = (rd8(b, 0x16) & 0x10u) != 0 || // CanGigantamax
+                                 rd32(b, 0x48) != 0 ||            // Sociability
+                                 rd8(b, 0x90) != 0 ||             // DynamaxLevel
+                                 rd32(b, 0x98) != 0 ||            // Palma
+                                 rd8(b, 0xDC) != 0 || rd8(b, 0xDD) != 0; // Fullness / Enjoyment
+            for (size_t o = 0xCE; o <= 0xDB; ++o) divergentData |= rd8(b, o) != 0; // PokeJob
+            for (size_t o = 0x127; o <= 0x134; ++o) divergentData |= rd8(b, o) != 0; // TR records
+            if (divergentData && report) report->addLoss(Loss::DivergentGameDataDropped);
+
             // 0x08 species: the PK8 hub stores the NATIONAL dex number, but PK9/PA9 store the Gen 9
             // INTERNAL index (diverges from #917 on) -- convert, or the game shows a shifted species.
             wr16(b, 0x08, Pokemon::gen9NationalToInternal(rd16(b, 0x08)));
@@ -297,8 +310,10 @@ namespace Conversion {
             { uint8_t h = rd8(b, 0x50), w = rd8(b, 0x51); zeroRange(b, 0x48, 0x10);
               wr8(b, 0x48, h); wr8(b, 0x49, w); wr8(b, 0x4A, h); }
             // 0x90-0x9F: PK8 DynamaxLevel(0x90)/Status(0x94)/Palma(0x98) -> PK9 Status(0x90)/Tera(0x94,0x95).
-            //            Zero, then import a Tera from the species' primary type (Normal falls back to type2).
+            //            Status is shared semantics at a different offset; relocate it instead of zeroing it.
+            //            Dynamax/Palma are source-only and were declared above.
             { zeroRange(b, 0x90, 0x10);
+              wr32(b, 0x90, statusCondition);
               if (destination == GameVersion::SV) {
                   Pokemon::TypePair tp = Pokemon::getPokemonTypes(species, form, Enums::GameVersion::SV);
                   const uint8_t tera = Fidelity::defaultTeraType(tp.type1, tp.type2);
@@ -328,8 +343,15 @@ namespace Conversion {
             if (b.size() < 0x148) return;
             if (source == GameVersion::SV && report) report->addLoss(Loss::TeraDataDropped);
             if (source == GameVersion::ZA && rd8(b, 0x23) != 0 && report) report->addLoss(Loss::ZAAlphaDropped);
-            bool divergentData = false;
-            for (size_t o = 0x4B; o <= 0x57; ++o) divergentData |= rd8(b, o) != 0;
+
+            const uint32_t statusCondition = rd32(b, 0x90);
+            const uint8_t height = rd8(b, 0x48);
+            const uint8_t scale = rd8(b, 0x4A);
+            const uint8_t obedience = rd8(b, 0x11F);
+            const uint8_t metLevel = rd8(b, 0x125) & 0x7Fu;
+            bool divergentData = scale != height || obedience != metLevel;
+            for (size_t o = 0x4B; o <= 0x57; ++o) divergentData |= rd8(b, o) != 0; // DLC TM records
+            for (size_t o = 0x12F; o <= 0x147; ++o) divergentData |= rd8(b, o) != 0; // base TM records
             if (source == GameVersion::ZA)
                 for (size_t o = 0x94; o <= 0x9F; ++o) divergentData |= rd8(b, o) != 0;
             if (divergentData && report) report->addLoss(Loss::DivergentGameDataDropped);
@@ -345,8 +367,9 @@ namespace Conversion {
             { uint8_t h = rd8(b, 0x48), w = rd8(b, 0x49); zeroRange(b, 0x48, 0x10);
               wr8(b, 0x50, h); wr8(b, 0x51, w); }
             // 0x90-0x9F: PK9 Status(0x90)/Tera(0x94,0x95) -> PK8 DynamaxLevel(0x90)/Status(0x94)/Palma.
-            //            Tera is dropped; leave Dynamax/Status/Palma zeroed.
+            //            Tera is dropped; preserve status by relocating it to PK8's native offset.
             zeroRange(b, 0x90, 0x10);
+            wr32(b, 0x94, statusCondition);
             // 0xCE-0xF7 Block C: PK9 Version(0xCE)/BattleVer(0xCF)/FormArg(0xD0)/Affixed(0xD4)/Language(0xD5)
             //            -> PK8 Version(0xDE)/BattleVer(0xDF)/Language(0xE2)/FormArg(0xE4)/Affixed(0xE8).
             { uint8_t version = rd8(b, 0xCE), battleVer = rd8(b, 0xCF), affixed = rd8(b, 0xD4), language = rd8(b, 0xD5);
