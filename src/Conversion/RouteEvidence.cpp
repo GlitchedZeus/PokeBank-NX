@@ -502,12 +502,15 @@ bool markLossesAcknowledged(RouteEvidence& evidence,
         error = "cannot acknowledge unknown fidelity semantics";
         return false;
     }
+    if (evidence.requiresLossAcknowledgement() && !evidence.lossesShownToUser) {
+        error = "cannot acknowledge declared losses before the loss summary was shown";
+        return false;
+    }
     if (acknowledgedAtUnix == 0 ||
         (evidence.createdAtUnix != 0 && acknowledgedAtUnix < evidence.createdAtUnix)) {
         error = "invalid acknowledgement timestamp";
         return false;
     }
-    evidence.lossesShownToUser = true;
     evidence.lossesAcknowledged = true;
     evidence.acknowledgedAtUnix = acknowledgedAtUnix;
     evidence.acknowledgementBinding = computeAcknowledgementBinding(evidence);
