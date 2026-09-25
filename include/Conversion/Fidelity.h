@@ -36,6 +36,7 @@ namespace Conversion {
         DefaultNicknameCanonicalized = 1u << 4,
         TargetScaleSynthesized          = 1u << 5,
         TargetObedienceLevelSynthesized = 1u << 6,
+        TargetHistoryRepresentationRemapped = 1u << 7,
     };
 
     struct Report {
