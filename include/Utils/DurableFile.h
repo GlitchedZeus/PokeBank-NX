@@ -47,6 +47,19 @@ bool installAuditHook(std::string allowedRoot, AuditHook hook);
 void clearAuditHook() noexcept;
 const char* auditCheckpointName(AuditCheckpoint checkpoint) noexcept;
 
+struct RecoveryResult {
+    bool ok = false;
+    bool restored = false;
+    std::string error;
+    std::string restoredFrom;
+};
+
+/// Conservative restart repair for the narrow crash window where the authoritative filename is
+/// missing after its old generation was preserved but before the new temp generation was promoted.
+/// Only a previously preserved generation that rereads and passes the caller's validator may be
+/// restored. Temp/failed candidates are never promoted by this helper.
+RecoveryResult recoverMissingTarget(const std::string& target, const Validator& validator);
+
 struct Result {
     bool ok = false;
     std::string error;
