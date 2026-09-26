@@ -1,3 +1,27 @@
+# PK8/PK9 CLOSURE FOLLOW-UP — 2026-09-26
+
+Forward audit from the live branch found and corrected two stale/unsafe assumptions after the initial closure commits:
+
+- the exact-route golden corpus still expected SWSH/SV battle status to relocate unchanged even though the pinned HOME reconstruction contract clears status; the fixture now requires `StatusConditionCleared` and a zero destination status;
+- **P1 form-gate fix:** pinned PKHeX `FormInfo.IsBattleOnlyForm` classifies Minior forms 0..6 as battle-only shield states. The local oracle's ordinary form-0 fast path accidentally allowed Minior form 0. The gate now special-cases Minior before that fast path, and an independent regression pins forms 0 and 6 as blocked and form 7 as transferable.
+
+Pinned PKHeX revision `6501f0ab46e8f8ca048539dbaf8cae8cb104e722` was reverified directly:
+- `GameDataPK8.ConvertToPKM()` and `GameDataPK9.ConvertToPKM()` call `ResetPartyStats()`;
+- `PKM.ResetPartyStats()` recalculates party stats, sets current HP to maximum through `SetStats()`, and clears status;
+- PK9 `ExtraBytes` lists `0xD6..0xF7`;
+- PK9 exposes HT ID at `0xC6` with the pinned `unused?` comment;
+- PK8 identifies `0xE0/0xE1` as old Console Region / Region bytes;
+- the SWSH/SV form gate is aligned to the relevant pinned `IsBattleOnlyForm` / `IsFusedForm` rules, including the Minior form-0 exception.
+
+Code checkpoint before this documentation commit:
+- application SHA: `3bfb9d2697e3c16ea451029d7e8d72a4ccbdf7e2`
+- PR #77 remains untouched at `996e6aa40c96e4408282f3d55476dae8e64968b2`.
+- No True Move route is enabled and no physical-device acceptance is claimed.
+
+The converter-readiness conclusion below remains conditional on exact final-head Host + Native CI being green.
+
+---
+
 # PK8/PK9 UNKNOWN-SEMANTIC + PARTY-STATE + SHARED-FORM CLOSURE — 2026-09-26
 
 Closure code checkpoint before this documentation update:
