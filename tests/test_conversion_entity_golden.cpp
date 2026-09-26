@@ -3091,6 +3091,171 @@ int main() {
         }
     }
 
+    // Closure: every still-unmodeled PK8/PK9 bit/byte fails closed if nonzero.
+    // Zero is accepted only as the pinned format model's canonical absence; it is not used
+    // as evidence that the underlying semantics have been discovered.
+    {
+        struct ReservedCase { bool g8; size_t offset; uint8_t bits; };
+        const ReservedCase fixed[] = {
+            {true, 0x16, 0xE0}, {true, 0x19, 0xF0}, {true, 0x22, 0xF0},
+            {true, 0x25, 0x01}, {true, 0x126, 0xC0},
+            {false, 0x16, 0xF0}, {false, 0x19, 0xF0}, {false, 0x22, 0xF8},
+            {false, 0x25, 0x01}, {false, 0x126, 0xC0},
+            {false, 0x156, 0x01}, {false, 0x157, 0x01},
+        };
+        for (size_t i = 0; i < std::size(fixed); ++i) {
+            const auto& c = fixed[i];
+            std::unique_ptr<Pokemon::Pokemon> source = c.g8
+                ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7FB00000u + static_cast<uint32_t>(i)))
+                : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7FC00000u + static_cast<uint32_t>(i)));
+            configureModern(*source, 25, 0, 0x11110000u + static_cast<uint32_t>(i),
+                            0x22220000u + static_cast<uint32_t>(i),
+                            static_cast<uint8_t>(c.g8 ? GameVersion::SW : GameVersion::SL),
+                            u"RESERVED", true);
+            source->getData()[c.offset] =
+                static_cast<std::byte>(static_cast<uint8_t>(source->getData()[c.offset]) | c.bits);
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto hash = hashBytes(before);
+            Result result = Result::Ok;
+            auto out = convert(*source, c.g8 ? GameVersion::SV : GameVersion::SWSH, result,
+                               static_cast<uint8_t>(c.g8 ? GameVersion::SL : GameVersion::SW));
+            assert(!out && result == Result::UnknownSourceSemantics);
+            const auto pre = preflightConvert(*source, c.g8 ? GameVersion::SV : GameVersion::SWSH,
+                                              static_cast<uint8_t>(c.g8 ? GameVersion::SL : GameVersion::SW));
+            assert(!pre.candidateAvailable && pre.result == Result::UnknownSourceSemantics);
+            proveSourceUnchanged(*source, before, hash);
+        }
+
+        // The entire PK9 0xD6..0xF7 pinned ExtraBytes region is guarded, not just endpoints.
+        for (size_t o = 0xD6; o <= 0xF7; ++o) {
+            auto source = blankSV(0x7FD00000u + static_cast<uint32_t>(o));
+            configureModern(*source, 25, 0, 0x33330000u + static_cast<uint32_t>(o),
+                            0x44440000u + static_cast<uint32_t>(o),
+                            static_cast<uint8_t>(GameVersion::SL), u"EXTRABYTE", true);
+            source->getData()[o] = std::byte{1};
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto hash = hashBytes(before);
+            Result result = Result::Ok;
+            auto out = convert(*source, GameVersion::SWSH, result,
+                               static_cast<uint8_t>(GameVersion::SW));
+            assert(!out && result == Result::UnknownSourceSemantics);
+            proveSourceUnchanged(*source, before, hash);
+        }
+
+        // PK8 0xE0/0xE1 are no longer classified unknown: pinned PKHeX identifies them
+        // as retired ConsoleRegion/Region bytes. Nonzero values are dropped, but explicitly reported.
+        auto retired = blankSWSH(0x7FE00001u);
+        configureModern(*retired, 25, 0, 0x55550000u, 0x66660000u,
+                        static_cast<uint8_t>(GameVersion::SW), u"REGION", true);
+        retired->getData()[0xE0] = std::byte{2};
+        retired->getData()[0xE1] = std::byte{1};
+        retired->refreshChecksum();
+        const auto retiredBefore = nativeBytes(*retired);
+        const auto retiredHash = hashBytes(retiredBefore);
+        Report retiredReport;
+        Result retiredResult = Result::Unsupported;
+        auto retiredOut = convert(*retired, GameVersion::SV, retiredResult,
+                                  static_cast<uint8_t>(GameVersion::SL), &retiredReport);
+        assert(retiredOut && retiredResult == Result::Ok);
+        assert(retiredReport.hasLoss(Loss::DivergentGameDataDropped));
+        proveSourceUnchanged(*retired, retiredBefore, retiredHash);
+        assertSerializedReparse(*retiredOut);
+
+        std::cout << "fixture reserved-source-semantics-fail-closed: PASS\n";
+    }
+
+    // Closure: pinned HOME side-data reconstruction resets destination party state.
+    // Exercise healthy, damaged, 1 HP, fainted, over-max, and statused inputs in both directions.
+    {
+        for (const bool fromG8 : {true, false}) {
+            for (int variant = 0; variant < 6; ++variant) {
+                std::unique_ptr<Pokemon::Pokemon> source = fromG8
+                    ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7FF00000u + variant))
+                    : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7FF10000u + variant));
+                configureModern(*source, 25, 0, 0x77770000u + variant, 0x88880000u + variant,
+                                static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                                u"HPSTATE", true);
+                source->recalculateStats();
+                const uint16_t sourceMax = static_cast<uint16_t>(source->statHPMax());
+                uint16_t hp = sourceMax;
+                if (variant == 1) hp = sourceMax > 1 ? static_cast<uint16_t>(sourceMax - 1) : 1;
+                if (variant == 2) hp = 1;
+                if (variant == 3) hp = 0;
+                if (variant == 4) hp = static_cast<uint16_t>(sourceMax + 10);
+                if (variant == 5) hp = 0;
+                wr16s(source->getData(), 0x8A, hp);
+                const size_t status = fromG8 ? 0x94 : 0x90;
+                wr32s(source->getData(), status, variant == 5 ? 1u : 0u);
+                source->refreshChecksum();
+
+                const auto before = nativeBytes(*source);
+                const auto hash = hashBytes(before);
+                Report report;
+                Result result = Result::Unsupported;
+                auto out = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH, result,
+                                   static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
+                assert(out && result == Result::Ok);
+                proveSourceUnchanged(*source, before, hash);
+                assert(rd16(out->getData(), 0x8A) == out->statHPMax());
+                const size_t outStatus = fromG8 ? 0x90 : 0x94;
+                assert(rd32(out->getData(), outStatus) == 0);
+                assert(report.hasLoss(Loss::StatusConditionCleared) == (variant == 5));
+                assert(report.hasAdaptation(Adaptation::TargetCurrentHpResetToMax) ==
+                       (hp != static_cast<uint16_t>(out->statHPMax())));
+                assertSerializedReparse(*out);
+            }
+        }
+        std::cout << "fixture home-party-state-reconstruction: PASS\n";
+    }
+
+    // Exhaustive generated shared-form matrix: iterate every form in the generated personal table.
+    // For forms present in BOTH SWSH and SV, the pinned FormInfo oracle is the only form-state
+    // blocker. This prevents a forgotten one-off battle/fusion form from slipping through a list.
+    {
+        size_t shared = 0;
+        size_t blocked = 0;
+        for (uint16_t species = 1; species <= Pokemon::PERSONAL_MAX_SPECIES; ++species) {
+            const auto& base = Pokemon::getPersonalInfo(species, 0);
+            for (uint8_t form = 0; form < base.formCount; ++form) {
+                const auto& pi = Pokemon::getPersonalInfo(species, form);
+                const uint8_t both = Pokemon::PERSONAL_GAME_SWSH | Pokemon::PERSONAL_GAME_SV;
+                if ((pi.presence & both) != both) continue;
+                ++shared;
+                const bool transferable = swshSvFormTransferable(species, form);
+                if (!transferable) ++blocked;
+
+                for (const bool fromG8 : {true, false}) {
+                    std::unique_ptr<Pokemon::Pokemon> source = fromG8
+                        ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x81000000u + species * 16u + form))
+                        : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x82000000u + species * 16u + form));
+                    configureModern(*source, species, form, 0x12340000u + species,
+                                    0x56780000u + species,
+                                    static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                                    u"FORMTEST", true);
+                    source->refreshChecksum();
+                    const auto before = nativeBytes(*source);
+                    const auto hash = hashBytes(before);
+                    Result result = Result::Unsupported;
+                    auto out = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH, result,
+                                       static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW));
+                    if (transferable) {
+                        assert(out && result == Result::Ok);
+                        assert(out->speciesID() == species && out->form() == form);
+                        assertSerializedReparse(*out);
+                    } else {
+                        assert(!out && result == Result::FormNotTransferable);
+                    }
+                    proveSourceUnchanged(*source, before, hash);
+                }
+            }
+        }
+        assert(shared > 0 && blocked > 0);
+        std::cout << "fixture exhaustive-swsh-sv-shared-form-matrix: shared=" << shared
+                  << " blocked=" << blocked << " PASS\n";
+    }
+
     // Checked PK8/PK9 modern text input contract. The storage limit is 12 UTF-16 code
     // units plus one NUL terminator in a 26-byte field. Rejections are transactional.
     {
