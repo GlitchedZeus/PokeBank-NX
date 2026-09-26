@@ -867,6 +867,9 @@ namespace Conversion {
 
 
     bool swshSvFormTransferable(uint16_t species, uint8_t form) noexcept {
+        // Minior is the pinned FormInfo exception where form 0 itself is a battle-only
+        // shield state; core forms are 7..13. Do this before the ordinary form-0 fast path.
+        if (species == 774 && form < 7) return false;
         if (form == 0) return true;
 
         // Exact relevant subset of pinned PKHeX FormInfo.IsBattleOnlyForm/IsFusedForm
