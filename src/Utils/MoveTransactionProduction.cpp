@@ -172,6 +172,24 @@ FileStore::FileStore(ResolvedStorePath resolved,
 bool FileStore::read(std::vector<uint8_t>& out, std::string& error) const {
     errno = 0;
     if (readRegularFile(resolved_.path, out, error)) return true;
+
+    if (errno == ENOENT) {
+        // Power loss can land after DurableFile preserved the old authoritative generation but
+        // before the new temp was promoted. Recover only a validated .previous.* generation;
+        // never guess by promoting a leftover temp/failed candidate.
+        const auto recovered =
+            PokeBank::Storage::DurableFile::recoverMissingTarget(resolved_.path, validator_);
+        if (!recovered.ok) {
+            error = recovered.error;
+            return false;
+        }
+        if (recovered.restored) {
+            error.clear();
+            if (readRegularFile(resolved_.path, out, error)) return true;
+            return false;
+        }
+    }
+
     if (resolved_.bankMayBeMissing && errno == ENOENT && !missingReadImage_.empty()) {
         out = missingReadImage_;
         error.clear();
