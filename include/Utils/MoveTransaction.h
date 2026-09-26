@@ -137,15 +137,22 @@ public:
 enum class FaultPoint : uint8_t {
     None,
     AfterPreparedJournal,
+    BeforeDestinationWrite,
     AfterDestinationWrite,
+    AfterDestinationWrittenJournal,
+    BeforeDestinationVerify,
     AfterDestinationVerify,
     AfterDestinationVerifiedJournal,
+    AfterSourceRetirePendingJournal,
     BeforeSourceRetire,
     AfterSourceWrite,
     AfterSourceVerify,
     AfterSourceRetiredJournal,
     BeforeCommitted,
+    AfterCommitted,
 };
+
+const char* faultPointName(FaultPoint point) noexcept;
 
 enum class RecoveryStatus : uint8_t {
     Committed,
