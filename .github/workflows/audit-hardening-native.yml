@@ -8,6 +8,9 @@ on:
       - 'src/Save/GetSaveFileContents.cpp'
       - 'src/Utils/DurableFile.cpp'
       - 'include/Utils/DurableFile.h'
+      - 'src/Utils/PhysicalMoveAudit.cpp'
+      - 'include/Utils/PhysicalMoveAudit.h'
+      - 'src/main.cpp'
       - 'src/Utils/MoveTransaction.cpp'
       - 'src/Utils/MoveTransactionProduction.cpp'
       - 'include/Utils/MoveTransactionProduction.h'
@@ -109,6 +112,34 @@ jobs:
           test -s PokeBankNX.nro
           echo "AUDIT NATIVE DEVKITA64 COMPILE/LINK: PASS"
 
+      - name: Package physical durability audit artifact
+        run: |
+          set -euo pipefail
+          short="${GITHUB_SHA:0:8}"
+          out="physical-audit-artifact"
+          mkdir -p "$out/switch/PokeBank-NX/audit"
+          cp PokeBankNX.nro "$out/PokeBank-NX-PhysicalAudit-${short}.nro"
+          cat > "$out/switch/PokeBank-NX/audit/ENABLE_PHYSICAL_AUDIT_V1.txt" <<'EOF'
+          POKEBANK-NX-PHYSICAL-AUDIT-V1
+          DISPOSABLE-POKEBANK-OWNED-DATA-ONLY
+          EOF
+          cat > "$out/PHYSICAL-TEST.txt" <<'EOF'
+          PokeBank NX physical durability audit
+
+          1. Copy the NRO to your normal homebrew location.
+          2. Copy switch/PokeBank-NX/audit/ENABLE_PHYSICAL_AUDIT_V1.txt to the same path on the SD card.
+          3. Launch the NRO. It must say POKEBANK NX - AUDIT MODE.
+          4. Follow tests 1 through 8. When CHECKPOINT REACHED appears, close/reboot exactly as shown.
+          5. Reopen the same NRO after each interruption. It automatically runs recovery twice and shows PASS/FAIL.
+          6. Do not delete the audit folder until results are recorded.
+          7. Remove ENABLE_PHYSICAL_AUDIT_V1.txt when finished to return to the normal app.
+
+          This harness uses only sdmc:/switch/PokeBank-NX/audit/physical disposable fixture data.
+          Product cross-game True Move remains disabled.
+          EOF
+          sha256sum "$out/PokeBank-NX-PhysicalAudit-${short}.nro" > "$out/SHA256SUMS.txt"
+          printf 'APPLICATION_SHA=%s\nTREE_SHA=%s\n' "$GITHUB_SHA" "$(git rev-parse 'HEAD^{tree}')" > "$out/BUILD_IDENTITY.txt"
+
       - name: Upload native validation logs
         uses: actions/upload-artifact@v4
         with:
@@ -116,5 +147,13 @@ jobs:
           path: |
             audit-native-build.log
             audit-native-linkage.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload physical durability audit NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: PokeBank-NX-PhysicalAudit-${{ github.sha }}
+          path: physical-audit-artifact/
           if-no-files-found: error
           retention-days: 30
