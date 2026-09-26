@@ -375,6 +375,27 @@ std::string digestHex(const Digest& digest) {
     return out;
 }
 
+const char* faultPointName(FaultPoint point) noexcept {
+    switch (point) {
+        case FaultPoint::None: return "NONE";
+        case FaultPoint::AfterPreparedJournal: return "AFTER_PREPARED_JOURNAL";
+        case FaultPoint::BeforeDestinationWrite: return "BEFORE_DESTINATION_WRITE";
+        case FaultPoint::AfterDestinationWrite: return "AFTER_DESTINATION_WRITE";
+        case FaultPoint::AfterDestinationWrittenJournal: return "AFTER_DESTINATION_WRITTEN_JOURNAL";
+        case FaultPoint::BeforeDestinationVerify: return "BEFORE_DESTINATION_VERIFY";
+        case FaultPoint::AfterDestinationVerify: return "AFTER_DESTINATION_VERIFY";
+        case FaultPoint::AfterDestinationVerifiedJournal: return "AFTER_DESTINATION_VERIFIED_JOURNAL";
+        case FaultPoint::AfterSourceRetirePendingJournal: return "AFTER_SOURCE_RETIRE_PENDING_JOURNAL";
+        case FaultPoint::BeforeSourceRetire: return "BEFORE_SOURCE_RETIRE";
+        case FaultPoint::AfterSourceWrite: return "AFTER_SOURCE_WRITE";
+        case FaultPoint::AfterSourceVerify: return "AFTER_SOURCE_VERIFY";
+        case FaultPoint::AfterSourceRetiredJournal: return "AFTER_SOURCE_RETIRED_JOURNAL";
+        case FaultPoint::BeforeCommitted: return "BEFORE_COMMITTED";
+        case FaultPoint::AfterCommitted: return "AFTER_COMMITTED";
+    }
+    return "UNKNOWN";
+}
+
 bool StoreDescriptor::valid() const noexcept {
     if (type == StoreType::Bank) {
         return profile.empty() && gameId.empty() && workspace.empty() && fileId == "bank.dat";
@@ -682,6 +703,8 @@ RecoveryResult Engine::recover(const std::string& transactionId,
     // destination still exactly matches its recorded precondition.
     if (tx.state == State::Prepared || tx.state == State::DestinationWritten) {
         if (dstBefore) {
+            if (fault == FaultPoint::BeforeDestinationWrite)
+                return result(RecoveryStatus::Interrupted, tx.state, "injected interruption before destination write");
             if (!destination.replace(destinationEvidence, error))
                 return result(RecoveryStatus::Failed, tx.state, error);
             if (fault == FaultPoint::AfterDestinationWrite)
@@ -695,7 +718,11 @@ RecoveryResult Engine::recover(const std::string& transactionId,
         if (tx.state == State::Prepared) {
             if (!persistState(tx, State::DestinationWritten, error))
                 return result(RecoveryStatus::Failed, tx.state, error);
+            if (fault == FaultPoint::AfterDestinationWrittenJournal)
+                return result(RecoveryStatus::Interrupted, tx.state, "injected interruption after destination-written journal");
         }
+        if (fault == FaultPoint::BeforeDestinationVerify)
+            return result(RecoveryStatus::Interrupted, tx.state, "injected interruption before destination validation");
         if (!destination.validate(dstBytes, error))
             return result(RecoveryStatus::Failed, tx.state, error);
         if (fault == FaultPoint::AfterDestinationVerify)
@@ -720,6 +747,8 @@ RecoveryResult Engine::recover(const std::string& transactionId,
         }
         if (!persistState(tx, State::SourceRetirePending, error))
             return result(RecoveryStatus::Failed, tx.state, error);
+        if (fault == FaultPoint::AfterSourceRetirePendingJournal)
+            return result(RecoveryStatus::Interrupted, tx.state, "injected interruption after SOURCE_RETIRE_PENDING journal");
     }
 
     if (tx.state == State::SourceRetirePending) {
@@ -787,6 +816,8 @@ RecoveryResult Engine::recover(const std::string& transactionId,
             return result(RecoveryStatus::Interrupted, tx.state, "injected interruption before COMMITTED");
         if (!persistState(tx, State::Committed, error))
             return result(RecoveryStatus::Failed, tx.state, error);
+        if (fault == FaultPoint::AfterCommitted)
+            return result(RecoveryStatus::Interrupted, tx.state, "injected interruption after COMMITTED journal");
     }
 
     return result(tx.state == State::Committed ? RecoveryStatus::Committed : RecoveryStatus::Failed,
