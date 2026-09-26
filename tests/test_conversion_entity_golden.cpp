@@ -3163,6 +3163,28 @@ int main() {
         proveSourceUnchanged(*retired, retiredBefore, retiredHash);
         assertSerializedReparse(*retiredOut);
 
+        // Shared HT ID at 0xC6-0xC7 remains semantically uncertain in the pinned model
+        // ("unused?"), but it is representation-safe because the exact two bytes preserve both ways.
+        for (const bool fromG8 : {true, false}) {
+            std::unique_ptr<Pokemon::Pokemon> source = fromG8
+                ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7FE10001u))
+                : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7FE10002u));
+            configureModern(*source, 25, 0, 0x55551111u, 0x66661111u,
+                            static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
+                            u"HTID", true);
+            wr16s(source->getData(), 0xC6, 0xBEEF);
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto hash = hashBytes(before);
+            Result result = Result::Unsupported;
+            auto out = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH, result,
+                               static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW));
+            assert(out && result == Result::Ok);
+            assert(rd16(out->getData(), 0xC6) == 0xBEEF);
+            proveSourceUnchanged(*source, before, hash);
+            assertSerializedReparse(*out);
+        }
+
         std::cout << "fixture reserved-source-semantics-fail-closed: PASS\n";
     }
 
