@@ -1056,8 +1056,14 @@ namespace Conversion {
         uint16_t sourceCurrentHp = 0;
         uint32_t sourceStatus = 0;
         if (swshSvCrossGeneration) {
-            sourceCurrentHp = rd16(src.getData(), 0x8A);
-            sourceStatus = rd32(src.getData(), from == GameVersion::SWSH ? 0x94 : 0x90);
+            const auto sourceData = src.getData();
+            sourceCurrentHp = static_cast<uint16_t>(static_cast<uint8_t>(sourceData[0x8A])) |
+                              (static_cast<uint16_t>(static_cast<uint8_t>(sourceData[0x8B])) << 8);
+            const size_t statusOffset = from == GameVersion::SWSH ? 0x94 : 0x90;
+            sourceStatus = static_cast<uint32_t>(static_cast<uint8_t>(sourceData[statusOffset])) |
+                           (static_cast<uint32_t>(static_cast<uint8_t>(sourceData[statusOffset + 1])) << 8) |
+                           (static_cast<uint32_t>(static_cast<uint8_t>(sourceData[statusOffset + 2])) << 16) |
+                           (static_cast<uint32_t>(static_cast<uint8_t>(sourceData[statusOffset + 3])) << 24);
         }
 
         // PB7 and PK3 have no HOME tracker field. A nonzero modern tracker is historical/provenance
