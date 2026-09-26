@@ -27,7 +27,7 @@ constexpr size_t kMaxStringBytes = 128;
 constexpr std::array<uint8_t, 8> kEvidenceMagic{'P','B','C','E','V','0','1',0};
 constexpr std::array<uint8_t, 8> kBindingMagic{'P','B','C','E','B','0','1',0};
 
-constexpr std::array<PresentationItem, 17> kLossPresentation{{
+constexpr std::array<PresentationItem, 18> kLossPresentation{{
     {static_cast<uint32_t>(Loss::Gen3EVClamped), "Gen3EVClamped",
      "Gen III EV values above 252 will be clamped to 252."},
     {static_cast<uint32_t>(Loss::TeraDataDropped), "TeraDataDropped",
@@ -62,9 +62,11 @@ constexpr std::array<PresentationItem, 17> kLossPresentation{{
      "The source battle-eligibility reset marker cannot be represented safely in the destination and will be cleared."},
     {static_cast<uint32_t>(Loss::AffixedTitleDropped), "AffixedTitleDropped",
      "The selected ribbon or mark title cannot remain affixed in the destination and will be cleared."},
+    {static_cast<uint32_t>(Loss::StatusConditionCleared), "StatusConditionCleared",
+     "Battle status will be cleared when the destination game reconstructs party state."},
 }};
 
-constexpr std::array<PresentationItem, 8> kAdaptationPresentation{{
+constexpr std::array<PresentationItem, 9> kAdaptationPresentation{{
     {static_cast<uint32_t>(Adaptation::PidAdjustedForShinyThreshold),
      "PidAdjustedForShinyThreshold",
      "PID representation will be adjusted to preserve shiny status across generation rules."},
@@ -89,6 +91,9 @@ constexpr std::array<PresentationItem, 8> kAdaptationPresentation{{
     {static_cast<uint32_t>(Adaptation::TargetHistoryRepresentationRemapped),
      "TargetHistoryRepresentationRemapped",
      "Historical origin/met representation will be remapped into the destination format while provenance retains the original history."},
+    {static_cast<uint32_t>(Adaptation::TargetCurrentHpResetToMax),
+     "TargetCurrentHpResetToMax",
+     "Current HP will be reset to the destination's recalculated maximum during party-state reconstruction."},
 }};
 
 bool zeroDigest(const Digest& digest) noexcept {
@@ -123,6 +128,7 @@ bool validResult(EvidenceConversionResult result) noexcept {
         case EvidenceConversionResult::BallNotRepresentable:
         case EvidenceConversionResult::FormNotTransferable:
         case EvidenceConversionResult::RibbonMarkNotRepresentable:
+        case EvidenceConversionResult::UnknownSourceSemantics:
             return true;
     }
     return false;
