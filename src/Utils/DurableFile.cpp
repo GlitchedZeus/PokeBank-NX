@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <utility>
@@ -164,6 +165,98 @@ const char* auditCheckpointName(AuditCheckpoint checkpoint) noexcept {
         case AuditCheckpoint::DuringCleanup: return "DURING_CLEANUP";
     }
     return "UNKNOWN";
+}
+
+RecoveryResult recoverMissingTarget(const std::string& target, const Validator& validator) {
+    RecoveryResult out;
+
+    struct stat current{};
+    errno = 0;
+    if (::stat(target.c_str(), &current) == 0) {
+        out.ok = S_ISREG(current.st_mode);
+        if (!out.ok) out.error = "durable target exists but is not a regular file";
+        return out;
+    }
+    if (errno != ENOENT) {
+        out.error = "could not inspect missing durable target";
+        return out;
+    }
+
+    const size_t slash = target.find_last_of('/');
+    const std::string directory = slash == std::string::npos ? "." : target.substr(0, slash);
+    const std::string basename = slash == std::string::npos ? target : target.substr(slash + 1);
+    const std::string prefix = basename + ".previous.";
+
+    DIR* dir = ::opendir(directory.c_str());
+    if (!dir) {
+        out.error = "could not inspect durable recovery generations";
+        return out;
+    }
+
+    std::vector<std::pair<uint64_t, std::string>> candidates;
+    while (dirent* ent = ::readdir(dir)) {
+        const std::string name = ent->d_name;
+        if (name.rfind(prefix, 0) != 0) continue;
+        const std::string suffix = name.substr(prefix.size());
+        if (suffix.empty() || !std::all_of(suffix.begin(), suffix.end(),
+                                            [](unsigned char ch) { return ch >= '0' && ch <= '9'; }))
+            continue;
+        uint64_t generation = 0;
+        for (const char ch : suffix) {
+            generation = generation * 10u + static_cast<uint64_t>(ch - '0');
+            if (generation >= 1000000u) break;
+        }
+        if (generation >= 1000000u) continue;
+        const std::string path = directory + "/" + name;
+        struct stat st{};
+        if (::stat(path.c_str(), &st) == 0 && S_ISREG(st.st_mode))
+            candidates.emplace_back(generation, path);
+    }
+    ::closedir(dir);
+
+    if (candidates.empty()) {
+        // A missing target can be a legitimate semantic state (for example a Bank that has never
+        // existed). The caller decides whether that is allowed.
+        out.ok = true;
+        return out;
+    }
+
+    std::sort(candidates.begin(), candidates.end(),
+              [](const auto& a, const auto& b) { return a.first > b.first; });
+
+    for (const auto& candidate : candidates) {
+        std::vector<uint8_t> bytes;
+        std::string readError;
+        if (!readExact(candidate.second, bytes, readError)) continue;
+
+        std::string validationError;
+        if (!validator(std::span<const uint8_t>(bytes.data(), bytes.size()), validationError))
+            continue;
+
+        audit(AuditCheckpoint::DuringRollback, target, candidate.second);
+        if (::rename(candidate.second.c_str(), target.c_str()) != 0) {
+            out.error = "validated previous generation could not be restored";
+            return out;
+        }
+
+        std::vector<uint8_t> reread;
+        if (!readExact(target, reread, out.error)) return out;
+        validationError.clear();
+        if (!validator(std::span<const uint8_t>(reread.data(), reread.size()), validationError)) {
+            out.error = validationError.empty()
+                ? "restored previous generation failed validation"
+                : validationError;
+            return out;
+        }
+
+        out.ok = true;
+        out.restored = true;
+        out.restoredFrom = candidate.second;
+        return out;
+    }
+
+    out.error = "durable target is missing and no preserved previous generation validates";
+    return out;
 }
 
 Result replace(const std::string& target,
