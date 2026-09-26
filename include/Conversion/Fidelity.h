@@ -28,6 +28,7 @@ namespace Conversion {
         LocationDetailDropped     = 1u << 14,
         BattleVersionDropped      = 1u << 15,
         AffixedTitleDropped       = 1u << 16,
+        StatusConditionCleared    = 1u << 17,
     };
 
     enum class Adaptation : uint32_t {
@@ -40,6 +41,7 @@ namespace Conversion {
         TargetScaleSynthesized          = 1u << 5,
         TargetObedienceLevelSynthesized = 1u << 6,
         TargetHistoryRepresentationRemapped = 1u << 7,
+        TargetCurrentHpResetToMax             = 1u << 8,
     };
 
     struct Report {
