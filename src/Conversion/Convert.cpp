@@ -327,7 +327,8 @@ namespace Conversion {
                                  rd32(b, 0x48) != 0 ||            // Sociability
                                  rd8(b, 0x90) != 0 ||             // DynamaxLevel
                                  rd32(b, 0x98) != 0 ||            // Palma
-                                 rd8(b, 0xDC) != 0 || rd8(b, 0xDD) != 0; // Fullness / Enjoyment
+                                 rd8(b, 0xDC) != 0 || rd8(b, 0xDD) != 0 || // Fullness / Enjoyment
+                                 rd8(b, 0xE0) != 0 || rd8(b, 0xE1) != 0; // retired ConsoleRegion / Region
             // PK8 party records carry DynamaxType at 0x156-0x157; PK9 has no equivalent field.
             if (b.size() >= 0x158) divergentData |= rd16(b, 0x156) != 0;
             for (size_t o = 0xCE; o <= 0xDB; ++o) divergentData |= rd8(b, o) != 0; // PokeJob
@@ -865,17 +866,12 @@ namespace Conversion {
     }
 
 
-    bool swshSvFormTransferable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
-        const GameVersion from = src.getGameGroup();
-        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
-              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
-            return true;
-
-        const uint16_t species = src.speciesID();
-        const uint8_t form = src.form();
+    bool swshSvFormTransferable(uint16_t species, uint8_t form) noexcept {
         if (form == 0) return true;
 
-        // Mirror the relevant Gen 8/9 subset of the pinned PKHeX FormInfo/TradeRestrictions oracle.
+        // Exact relevant subset of pinned PKHeX FormInfo.IsBattleOnlyForm/IsFusedForm
+        // (6501f0ab46e8f8ca048539dbaf8cae8cb104e722). Target presence is a separate
+        // generated-personal-table gate; this oracle only rejects transient/fused state.
         // These values are transient battle states or fused entities and must not be moved as an
         // ordinary standalone Pokemon even when the personal table says the form exists.
         switch (species) {
@@ -917,6 +913,40 @@ namespace Conversion {
             default:
                 return true;
         }
+    }
+
+    bool swshSvFormTransferable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        const GameVersion from = src.getGameGroup();
+        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            return true;
+        return swshSvFormTransferable(src.speciesID(), src.form());
+    }
+
+    bool swshSvKnownSourceSemantics(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        const GameVersion from = src.getGameGroup();
+        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            return true;
+
+        const auto d = src.getData();
+        auto nz = [&](size_t o) { return o < d.size() && static_cast<uint8_t>(d[o]) != 0; };
+        auto masked = [&](size_t o, uint8_t mask) {
+            return o < d.size() && (static_cast<uint8_t>(d[o]) & mask) != 0;
+        };
+
+        if (from == GameVersion::SWSH) {
+            return !masked(0x16, 0xE0) && !masked(0x19, 0xF0) &&
+                   !masked(0x22, 0xF0) && !nz(0x25) &&
+                   !masked(0x126, 0xC0);
+        }
+
+        if (masked(0x16, 0xF0) || masked(0x19, 0xF0) ||
+            masked(0x22, 0xF8) || nz(0x25) || masked(0x126, 0xC0))
+            return false;
+        for (size_t o = 0xD6; o <= 0xF7 && o < d.size(); ++o)
+            if (nz(o)) return false;
+        return !(nz(0x156) || nz(0x157));
     }
 
     bool swshSvAbilityRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
@@ -988,6 +1018,10 @@ namespace Conversion {
             result = Result::FormNotTransferable;
             return nullptr;
         }
+        if (!swshSvKnownSourceSemantics(src, destGroup)) {
+            result = Result::UnknownSourceSemantics;
+            return nullptr;
+        }
 
         result = gate(src, destGroup);
         if (result != Result::Ok) return nullptr;   // SameGroup / NotInDex / Blocked / Unsupported
@@ -1016,6 +1050,15 @@ namespace Conversion {
 
         const GameVersion from = src.getGameGroup();
         const bool sourceNicknamed = src.isNicknamed();
+        const bool swshSvCrossGeneration =
+            (from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+            (from == GameVersion::SV && destGroup == GameVersion::SWSH);
+        uint16_t sourceCurrentHp = 0;
+        uint32_t sourceStatus = 0;
+        if (swshSvCrossGeneration) {
+            sourceCurrentHp = rd16(src.getData(), 0x8A);
+            sourceStatus = rd32(src.getData(), from == GameVersion::SWSH ? 0x94 : 0x90);
+        }
 
         // PB7 and PK3 have no HOME tracker field. A nonzero modern tracker is historical/provenance
         // data, so dropping it must be explicit before any future source-retiring Move can be allowed.
@@ -1217,33 +1260,29 @@ namespace Conversion {
         // there, so a zeroed tail shows Level/CP 0), a Gen 8/9 mon arriving through a hub remap had its tail
         // seeded above, and a PA8 built by remapPK8toPA8 starts with a zeroed tail too. A same-gen *sibling*
         // pairing carries the source's tail verbatim and needs nothing.
-        const bool swshSvCrossGeneration =
-            (from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
-            (from == GameVersion::SV && destGroup == GameVersion::SWSH);
         const bool freshTail = seededPartyTail || (viaHub && destGroup == GameVersion::PLA) ||
                                swshSvCrossGeneration;
         if (destGroup == GameVersion::GG || destGroup == GameVersion::FRLG || freshTail)
             out->recalculateStats();
 
-        // Heal to full if current HP reads 0. Current HP is NOT in the party stat tail -- it sits INSIDE the
-        // stored (checksummed) region, so a hub remap that only maps the fields it knows about leaves it
-        // zero and the converted mon arrives FAINTED in the destination game. Observed on hardware: a
-        // FireRed Rattata in Shining Pearl with every stat correct but 0/15 HP. Offsets per PKHeX:
-        // PK8/PB8/PK9/PA9 = 0x8A, PA8 = 0x92; PB7 and PK3 write their own in recalculateStats().
-        // Guarded on "reads 0" so a sibling/transform path keeps the source's real (possibly damaged) HP.
-        {
-            size_t hpOfs = 0;
-            if (isG8(destGroup) || isG9(destGroup)) hpOfs = 0x8A;
-            else if (destGroup == GameVersion::PLA) hpOfs = 0x92;
-            if (hpOfs != 0 && hpOfs + 1 < out->getDataSize()) {
-                std::span<std::byte> d = out->getData();
-                const uint16_t cur = static_cast<uint16_t>(static_cast<uint8_t>(d[hpOfs]))
-                                   | (static_cast<uint16_t>(static_cast<uint8_t>(d[hpOfs + 1])) << 8);
-                if (cur == 0) {
-                    const uint16_t full = out->statHPMax();
-                    d[hpOfs]     = static_cast<std::byte>(full & 0xFF);
-                    d[hpOfs + 1] = static_cast<std::byte>((full >> 8) & 0xFF);
-                }
+        // SWSH<->SV destination reconstruction follows pinned PKHeX HOME side-data output:
+        // GameDataPK8/GameDataPK9 ConvertToPKM() call ResetPartyStats(), which recalculates
+        // destination stats, restores current HP to the new maximum, and clears battle status.
+        if (swshSvCrossGeneration) {
+            const uint16_t targetMaxHp = static_cast<uint16_t>(out->statHPMax());
+            if (report && sourceCurrentHp != targetMaxHp)
+                report->addAdaptation(Adaptation::TargetCurrentHpResetToMax);
+            if (report && sourceStatus != 0)
+                report->addLoss(Loss::StatusConditionCleared);
+
+            auto d = out->getData();
+            if (d.size() > 0x8B) {
+                d[0x8A] = static_cast<std::byte>(targetMaxHp & 0xFFu);
+                d[0x8B] = static_cast<std::byte>((targetMaxHp >> 8) & 0xFFu);
+            }
+            const size_t statusOffset = destGroup == GameVersion::SWSH ? 0x94 : 0x90;
+            if (statusOffset + 3 < d.size()) {
+                d[statusOffset] = d[statusOffset + 1] = d[statusOffset + 2] = d[statusOffset + 3] = std::byte{0};
             }
         }
 
@@ -1343,6 +1382,7 @@ namespace Conversion {
             case Result::BallNotRepresentable: return "This Poke Ball cannot be represented in the destination game";
             case Result::FormNotTransferable: return "This fused or battle-only form cannot be moved between games";
             case Result::RibbonMarkNotRepresentable: return "This ribbon or mark state cannot be represented safely in the destination game";
+            case Result::UnknownSourceSemantics: return "This Pokemon contains reserved data PokeBank NX cannot interpret safely";
             case Result::Unsupported: return "Transfer to/from this game isn't supported yet";
         }
         return "";
