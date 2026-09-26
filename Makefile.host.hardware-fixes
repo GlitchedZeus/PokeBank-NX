@@ -222,6 +222,25 @@ $(MOVE_TRANSACTION_PRODUCTION_SANITIZE): $(MOVE_TRANSACTION_PRODUCTION_SOURCES) 
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MOVE_TRANSACTION_PRODUCTION_SOURCES) -o $@
 
+# Physical durability gate: restart-safe DurableFile promotion recovery plus the complete
+# Move-engine interruption/idempotence matrix used before the Switch FAT32 test.
+MOVE_TRANSACTION_FAULT_MATRIX_TEST := $(HOST_BUILD)/test_move_transaction_fault_matrix
+MOVE_TRANSACTION_FAULT_MATRIX_SANITIZE := $(HOST_BUILD)/test_move_transaction_fault_matrix_sanitize
+MOVE_TRANSACTION_FAULT_MATRIX_SOURCES := tests/test_move_transaction_fault_matrix.cpp src/Utils/MoveTransaction.cpp src/Utils/DurableFile.cpp
+
+HOST_TESTS += $(MOVE_TRANSACTION_FAULT_MATRIX_TEST)
+HOST_SANITIZE_TESTS += $(MOVE_TRANSACTION_FAULT_MATRIX_SANITIZE)
+host-test: $(MOVE_TRANSACTION_FAULT_MATRIX_TEST)
+host-sanitize: $(MOVE_TRANSACTION_FAULT_MATRIX_SANITIZE)
+
+$(MOVE_TRANSACTION_FAULT_MATRIX_TEST): $(MOVE_TRANSACTION_FAULT_MATRIX_SOURCES) include/Utils/MoveTransaction.h include/Utils/DurableFile.h include/Utils/PokeBankPaths.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MOVE_TRANSACTION_FAULT_MATRIX_SOURCES) -o $@
+
+$(MOVE_TRANSACTION_FAULT_MATRIX_SANITIZE): $(MOVE_TRANSACTION_FAULT_MATRIX_SOURCES) include/Utils/MoveTransaction.h include/Utils/DurableFile.h include/Utils/PokeBankPaths.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MOVE_TRANSACTION_FAULT_MATRIX_SOURCES) -o $@
+
 # F07 / N01: Gen III PID search exhaustion must fail closed. Cross-game true Move
 # remains locked until conversion fidelity is proven route-by-route.
 GEN3_PID_SEARCH_TEST := $(HOST_BUILD)/test_gen3_pid_search_fail_closed
