@@ -1888,7 +1888,8 @@ int main() {
                 assert(report.hasAdaptation(Adaptation::TargetDefaultTeraSynthesized));
                 assert(report.hasAdaptation(Adaptation::TargetScaleSynthesized));
                 assert(report.hasAdaptation(Adaptation::TargetObedienceLevelSynthesized));
-                assert(rd32(candidate->getData(), 0x90) == 0x00000008u + static_cast<uint32_t>(r));
+                assert(report.hasLoss(Loss::StatusConditionCleared));
+                assert(rd32(candidate->getData(), 0x90) == 0);
             } else {
                 assert(rd64(candidate->getData(), 0x135) == tracker);
                 assert(report.hasLoss(Loss::TeraDataDropped));
@@ -1897,7 +1898,8 @@ int main() {
                 assert(report.hasAdaptation(Adaptation::TargetHistoryRepresentationRemapped));
                 assert(candidate->metLocation() ==
                     (route.sourceVersion == static_cast<uint8_t>(GameVersion::VL) ? 59996 : 59997));
-                assert(rd32(candidate->getData(), 0x94) == 0x00000008u + static_cast<uint32_t>(r));
+                assert(report.hasLoss(Loss::StatusConditionCleared));
+                assert(rd32(candidate->getData(), 0x94) == 0);
             }
             assertSerializedReparse(*candidate);
             std::cout << "fixture exact-pair-" << route.label
