@@ -5,10 +5,47 @@
 #include <functional>
 #include <span>
 #include <string>
+#include <string_view>
 
 namespace PokeBank::Storage::DurableFile {
 
 using Validator = std::function<bool(std::span<const uint8_t>, std::string&)>;
+
+// Audit-only visibility into the real durable-replacement pipeline. The hook is dormant unless
+// explicitly installed and, on Switch, installation is accepted only for the PokeBank-owned
+// /audit/physical subtree. Production callers never need to know about these checkpoints.
+enum class AuditCheckpoint : uint8_t {
+    BeforeTempOpen,
+    AfterTempOpen,
+    BeforeTempWrite,
+    AfterTempWrite,
+    BeforeTempFlush,
+    AfterTempFlush,
+    BeforeTempFsync,
+    AfterTempFsync,
+    AfterTempClose,
+    BeforePreviousPreserve,
+    AfterPreviousPreserve,
+    BeforePromote,
+    AfterPromote,
+    BeforePromotedRead,
+    AfterPromotedRead,
+    AfterPromotedValidate,
+    DuringFailurePreserve,
+    DuringRollback,
+    DuringCleanup,
+};
+
+using AuditHook = std::function<void(AuditCheckpoint,
+                                     std::string_view target,
+                                     std::string_view workingPath)>;
+
+/// Installs a process-local audit hook. On Switch, allowedRoot must be under
+/// sdmc:/switch/PokeBank-NX/audit/physical; ordinary runtime roots are rejected.
+/// Host tests may use /tmp. Returns false if the root is not audit-safe.
+bool installAuditHook(std::string allowedRoot, AuditHook hook);
+void clearAuditHook() noexcept;
+const char* auditCheckpointName(AuditCheckpoint checkpoint) noexcept;
 
 struct Result {
     bool ok = false;
