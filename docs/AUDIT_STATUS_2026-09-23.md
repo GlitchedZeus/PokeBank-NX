@@ -2878,3 +2878,150 @@ Each range is counted exactly once; sizes are bound to production encryption con
 | 149–149 | 1 | alignment |
 | 14A–155 | 12 | party battle stats |
 | 156–157 | 2 | UNKNOWN: PK9 unmodeled party tail |
+
+
+# PK8/PK9 checked-input / handler / HP policy closure — 2026-09-26
+
+## Audit-forward identity
+
+This tranche audited forward from application SHA `1912cf01f211c809b17a98326652c778bd389dd4`,
+tree `34a411b7a9ecc38c423779228435c6e6acc5c9fb`. The preceding exact-head Host run
+`36216422831` / #1230 completed SUCCESS and Native Validation `36216420184` / #126
+remained the prior native checkpoint. PR #79 stayed OPEN / DRAFT / NOT MERGED and PR #77
+was not modified. Main remained `9ec20730e23681c6f7451f3da4944a156303f494`.
+
+## Unknown-region disposition
+
+No new authoritative legitimate nonzero fixture was found in-repository that proves the
+remaining partial-byte/retired-tail semantics. Therefore this tranche does **not** promote
+an `unused` comment, checksum participation, or synthetic zero to semantic proof.
+
+The following remain **STILL UNKNOWN** and continue to block route promotion:
+
+- PK8: 0x016 mask 0xE0; 0x019 mask 0xF0; 0x022 mask 0xF0; 0x025 mask 0xFF;
+  0x0E0-0x0E1; 0x126 mask 0xC0.
+- PK9: 0x016 mask 0xF0; 0x019 mask 0xF0; 0x022 mask 0xF8; 0x025 mask 0xFF;
+  0x126 mask 0xC0; party tail 0x156-0x157.
+- Shared HT ID 0x0C6-0x0C7 remains STILL UNKNOWN semantically, even though it is copied.
+- PK8 Flag2 and Palma remain named-but-incompletely-explained semantics. Their nonzero
+  SWSH->SV disappearance remains declared through existing `DivergentGameDataDropped`.
+- PK9 0x0D6-0x0F7 remains STILL UNKNOWN for route-readiness purposes. The pinned model's
+  "remainder unused" description is useful evidence, but this audit deliberately requires
+  stronger proof before treating arbitrary nonzero bytes as canonical zero.
+
+No unknown region is silently normalized as a readiness claim. All eight routes remain disabled.
+
+## Checked modern text contract
+
+PK8 and PK9 Nickname, Handling Trainer name and Original Trainer name now expose checked
+setters returning exactly:
+
+- `Accepted`
+- `Overlength`
+- `MalformedUtf16`
+
+The storage contract is **12 UTF-16 code units plus one U+0000 terminator** in each 26-byte
+field. This is a code-unit limit, not a Unicode-code-point or display-character limit.
+
+The compatibility void setters now call the checked path. They no longer silently truncate:
+invalid input leaves the entity unchanged. A caller that needs the reason must use the checked
+setter.
+
+The boundary corpus covers empty, 1 unit, 11 units, 12 units, one-past-maximum, Japanese at
+12 units, a surrogate pair ending exactly at unit 12, a pair crossing the boundary, lone high
+and low surrogates, and embedded NUL. Embedded NUL inside a requested logical string is rejected
+as non-canonical storage text because accepting it would silently discard the suffix after the
+field terminator.
+
+Accepted cases are set, checksummed, serialized/encrypted, reparsed and compared exactly.
+Rejected cases prove native bytes and SHA-256 are unchanged with no partial field write.
+
+## Handler / ownership policy
+
+The audited contract is:
+
+`conversion = representation conversion only`
+
+Destination owner / handler updates are a separate destination-placement policy. Conversion
+continues to preserve the stored CurrentHandler, HT name/gender/language/friendship/memory
+fields and the shared 0x0C6-0x0C7 bytes without inventing a new handler. F13 profile/account
+ownership remains provenance/store metadata and is not written into PKM trainer fields.
+
+This separation is intentional. A future destination-write readiness review may implement an
+explicit owner/handler update, but it must not be hidden inside representation conversion.
+
+## Current HP / status / party-state policy
+
+For PK8/PK9 cross-generation conversion:
+
+- Max HP, ATK, DEF, SPE, SpA, SpD and party Level are destination-derived cached party stats
+  and are recalculated from destination personal data.
+- Status condition is persistent representational state for this converter and is relocated
+  between the PK8 and PK9 offsets rather than dropped.
+- PK8 DynamaxType is source-generation party-only state with no PK9 counterpart; nonzero loss
+  remains reported through `DivergentGameDataDropped`.
+- PK9 0x156-0x157 remains STILL UNKNOWN and therefore blocks route-readiness promotion.
+- Current HP at 0x08A is not part of the recalculated party-stat tail. Existing production
+  behavior keeps a nonzero carried value, but refills a zero value to destination max HP after
+  a fresh remap. That zero->full rule is retained as an **unresolved readiness policy** rather
+  than being claimed as official HOME behavior.
+
+Because fainted/0-HP semantics are not authoritatively closed, HP policy is not considered
+fully route-ready in this tranche.
+
+## Shared-form policy result
+
+The converter continues to fail closed for the explicit fused/transient set already encoded
+in `swshSvFormTransferable()`, including Kyurem/Necrozma/Calyrex fusions and the enumerated
+battle-only states (Zen, Ash-Greninja, Complete Zygarde, Minior shields, Busted Mimikyu,
+weather/battle forms, Crowned forms, Eternamax, Hero Palafin, Ogerpon/Terapagos battle states).
+
+Target personal-table absence still returns `NotInDex`; unsupported forms are never flattened
+to form 0 and are never silently unfused.
+
+However, the repository does not yet contain a generated/exhaustive authoritative table proving
+**every** SWSH/SV shared species/form pair. The hand-written deny-list is therefore still a
+readiness blocker. This tranche records that limitation instead of relabeling partial evidence
+as a complete shared-form policy.
+
+## Event-policy boundary
+
+Representation conversion preserves or reports representable stored event metadata. The existing
+fixtures prove representation behavior for fateful encounter, Cherish Ball, PID/EC, HOME tracker,
+event ribbons/marks, moves/relearn moves, OT/name/language, dates and met/history fields.
+
+Those fixtures do **not** certify that an arbitrary synthetic combination corresponds to a real
+historical distribution. Distribution-authenticity belongs to future legality tooling unless a
+target-format structural requirement is needed for the entity itself to be valid. No full legality
+checker was added here.
+
+## Fidelity / provenance / acknowledgement impact
+
+No new `Loss`, `Adaptation`, or conversion `Result` enum was introduced by the checked-text
+fix, so the existing presentation catalog, known masks, PBCE mapping and acknowledgement schema
+remain unchanged. Existing stale-evidence invalidation remains bound to source payload,
+destination candidate, Loss/Adaptation masks, route, game identity, store descriptor and profile.
+
+F13's historical-origin separation is unchanged, including the S/V historical origin represented
+inside PK8 through the HOME-like Sword/Shield representation remap.
+
+## Exact route decisions
+
+All eight exact directions remain **ROUTE MUST REMAIN DISABLED**:
+
+- Sword -> Scarlet
+- Sword -> Violet
+- Shield -> Scarlet
+- Shield -> Violet
+- Scarlet -> Sword
+- Scarlet -> Shield
+- Violet -> Sword
+- Violet -> Shield
+
+No direction qualifies as a POTENTIAL ROUTE CANDIDATE because unknown semantic regions, the
+zero-current-HP policy, and exhaustive shared-form proof remain open converter/readiness blockers.
+`routeEnabledForTrueMove()` remains false and source retirement remains gate-protected.
+
+Final exact-head Host and Native run IDs/conclusions are recorded in PR #79 / issue #69 metadata
+after the final code/document head finishes CI; they are intentionally not baked into another
+self-invalidating docs-only commit.
