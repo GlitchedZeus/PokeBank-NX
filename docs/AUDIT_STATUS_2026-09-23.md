@@ -1,3 +1,110 @@
+# PK8/PK9 UNKNOWN-SEMANTIC + PARTY-STATE + SHARED-FORM CLOSURE — 2026-09-26
+
+Closure code checkpoint before this documentation update:
+
+- application SHA: `6faa1a17ca52ab7a08d013c30f517b9c354b0c7d`
+- starting application SHA: `f6d0f52e8a4c73ad016836bea7fdc041a41fedab`
+- pinned PKHeX reference reverified: `6501f0ab46e8f8ca048539dbaf8cae8cb104e722`
+- PR #79 remains OPEN / DRAFT / NOT MERGED.
+- PR #77 remains untouched at accepted Gen III SHA `996e6aa40c96e4408282f3d55476dae8e64968b2`.
+- Cross-game True Move product policy remains disabled. No source-retirement permission was enabled.
+
+## Exact unresolved-region disposition
+
+No byte is promoted to "padding" merely because current fixtures contain zero.
+
+PK8:
+- `0x016 mask 0xE0` — **FAIL CLOSED** when nonzero.
+- `0x019 mask 0xF0` — **FAIL CLOSED** when nonzero.
+- `0x022 mask 0xF0` — **FAIL CLOSED** when nonzero.
+- `0x025 mask 0xFF` — **FAIL CLOSED** when nonzero.
+- `0x0E0-0x0E1` — **DROPPED + REPORTED** when nonzero. The pinned PK8 model identifies these retired bytes as old ConsoleRegion / Region representation rather than an unexplained gap.
+- `0x126 mask 0xC0` — **FAIL CLOSED** when nonzero.
+- Flag2 — explicit PK8 field; nonzero SWSH->SV disappearance remains **DROPPED + REPORTED** through `DivergentGameDataDropped`.
+- Palma — explicit PK8 field; nonzero SWSH->SV disappearance remains **DROPPED + REPORTED** through `DivergentGameDataDropped`.
+
+PK9:
+- `0x016 mask 0xF0` — **FAIL CLOSED** when nonzero.
+- `0x019 mask 0xF0` — **FAIL CLOSED** when nonzero.
+- `0x022 mask 0xF8` — **FAIL CLOSED** when nonzero.
+- `0x025 mask 0xFF` — **FAIL CLOSED** when nonzero.
+- `0x126 mask 0xC0` — **FAIL CLOSED** when nonzero.
+- `0x0D6-0x0F7` — pinned PK9 `ExtraBytes` treats the region as unused/reserved; every nonzero byte now **FAILS CLOSED** rather than being erased.
+- `0x156-0x157` — no pinned PK9 semantic field exists in this party tail; any nonzero value **FAILS CLOSED**.
+
+Shared:
+- HT ID `0x0C6-0x0C7` remains semantically uncertain in the pinned model (`unused?`), but its route classification is **PRESERVED**: a nonzero `0xBEEF` fixture proves exact byte survival PK8->PK9 and PK9->PK8, including serialize/encrypt/reparse.
+- Therefore semantic uncertainty in this shared field does not require inventing meaning or losing data.
+
+A new `UnknownSourceSemantics` refusal exists for the fail-closed cases above. Preflight returns no candidate, source bytes/SHA remain unchanged, and no source-retirement path can be authorized.
+
+## Current HP / fainted / status policy
+
+The previous "preserve nonzero current HP, but turn zero into max HP" behavior is retired for SWSH<->SV conversion.
+
+Pinned PKHeX HOME evidence shows:
+- HOME core can represent current HP and status.
+- PK8 and PK9 reconstruction each call `ResetPartyStats()`.
+- reconstruction recalculates destination stats, sets current HP to the destination maximum, and clears battle status.
+
+PokeBank NX now models that as **destination placement/reconstruction policy**, not as a limitation of the raw PK8/PK9 formats:
+
+- healthy input -> destination current HP = destination MaxHP;
+- damaged input -> destination current HP = destination MaxHP;
+- 1 HP -> destination current HP = destination MaxHP;
+- 0 HP / fainted -> destination current HP = destination MaxHP;
+- over-max source value -> destination current HP = destination MaxHP;
+- nonzero battle status -> cleared;
+- destination stats are recalculated from destination personal data first.
+
+Semantic changes are explicit:
+- `TargetCurrentHpResetToMax` adaptation is emitted when the current-HP value changes.
+- `StatusConditionCleared` loss is emitted when nonzero source status is cleared.
+
+Golden fixtures exercise the policy in both PK8->PK9 and PK9->PK8 directions and prove source immutability.
+
+## Exhaustive SWSH/SV shared-form policy
+
+The route no longer relies on an informal partial checklist.
+
+`swshSvFormTransferable(species, form)` is now an explicit oracle mirroring the relevant pinned PKHeX `FormInfo.IsBattleOnlyForm` / `IsFusedForm` rules. Target-game presence remains independently derived from the generated PKHeX-backed personal table.
+
+The exhaustive golden test iterates every generated species/form entry present in BOTH SWSH and SV, in BOTH conversion directions:
+- representable shared forms must produce a valid same-species/same-form candidate;
+- fused / battle-only / transient states must return `FormNotTransferable`;
+- source bytes and source SHA remain unchanged in both outcomes;
+- unsupported forms are never silently flattened to form 0.
+
+## Reverified boundaries
+
+- checked PK8/PK9 Nickname / HT / OT text setters remain Accepted / Overlength / MalformedUtf16 with zero mutation on rejection;
+- conversion remains representation conversion; it does not invent destination ownership/handler changes;
+- F13 profile/account identity remains provenance/store metadata;
+- event fixtures prove representation behavior, not historical distribution authenticity;
+- existing loss/adaptation acknowledgement binding remains tied to exact route/source/candidate/fidelity/game/store/profile state;
+- `routeEnabledForTrueMove()` remains false.
+
+## Converter readiness decision
+
+With unknown nonzero data now fail-closed, known source-only state reported, shared uncertain state preserved exactly, HOME-style destination party reconstruction specified, and the shared-form space exhaustively gated, the conversion-level blockers audited in this tranche are closed.
+
+All eight exact format-compatible title directions are therefore **CONVERTER READY** at the software/conversion layer:
+
+- Sword -> Scarlet
+- Sword -> Violet
+- Shield -> Scarlet
+- Shield -> Violet
+- Scarlet -> Sword
+- Scarlet -> Shield
+- Violet -> Sword
+- Violet -> Shield
+
+**CONVERTER READY does not enable True Move.** All eight product routes remain disabled until the later transaction/durability/device gate is accepted.
+
+The next audit phase may proceed to the physical Switch FAT32/exFAT interruption/recovery matrix after exact-head Host + Native CI is green. This tranche does not perform or claim those physical tests.
+
+---
+
 # PokeBank NX — Current Full-Project Audit Status
 
 Date: 2026-09-23
