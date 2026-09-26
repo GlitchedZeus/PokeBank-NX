@@ -63,6 +63,10 @@ uint64_t rd64(std::span<const std::byte> b, std::size_t o) {
     for (int i = 0; i < 8; ++i) v |= static_cast<uint64_t>(static_cast<uint8_t>(b[o + static_cast<std::size_t>(i)])) << (8 * i);
     return v;
 }
+uint16_t rd16(std::span<const std::byte> b, std::size_t o) {
+    return static_cast<uint16_t>(static_cast<uint8_t>(b[o])) |
+           (static_cast<uint16_t>(static_cast<uint8_t>(b[o + 1])) << 8);
+}
 uint32_t rd32(std::span<const std::byte> b, std::size_t o) {
     return static_cast<uint32_t>(static_cast<uint8_t>(b[o])) |
            (static_cast<uint32_t>(static_cast<uint8_t>(b[o + 1])) << 8) |
