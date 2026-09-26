@@ -223,10 +223,10 @@ int main() {
     const std::vector<uint8_t> destinationAfter{9,9,9,9,2,5};
 
     // Mapping completeness contract for every currently declared fidelity bit.
-    assert(lossPresentationCatalog().size() == 17);
-    assert(adaptationPresentationCatalog().size() == 8);
-    assert(knownLossMask() == ((1u << 17) - 1u));
-    assert(knownAdaptationMask() == ((1u << 8) - 1u));
+    assert(lossPresentationCatalog().size() == 18);
+    assert(adaptationPresentationCatalog().size() == 9);
+    assert(knownLossMask() == ((1u << 18) - 1u));
+    assert(knownAdaptationMask() == ((1u << 9) - 1u));
     for (const auto& item : lossPresentationCatalog()) {
         assert(item.bit != 0 && item.key && *item.key && item.message && *item.message);
     }
@@ -255,14 +255,16 @@ int main() {
     presentationReport.addLoss(Loss::LocationDetailDropped);
     presentationReport.addLoss(Loss::BattleVersionDropped);
     presentationReport.addLoss(Loss::AffixedTitleDropped);
+    presentationReport.addLoss(Loss::StatusConditionCleared);
     presentationReport.addAdaptation(Adaptation::PidAdjustedForShinyThreshold);
     presentationReport.addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
     presentationReport.addAdaptation(Adaptation::TargetScaleSynthesized);
     presentationReport.addAdaptation(Adaptation::TargetObedienceLevelSynthesized);
     presentationReport.addAdaptation(Adaptation::TargetHistoryRepresentationRemapped);
+    presentationReport.addAdaptation(Adaptation::TargetCurrentHpResetToMax);
     const auto summary = summarizeFidelity(presentationReport);
-    assert(summary.losses.size() == 7);
-    assert(summary.adaptations.size() == 5);
+    assert(summary.losses.size() == 8);
+    assert(summary.adaptations.size() == 6);
     assert(contains(summary.losses, "The selected ribbon or mark title cannot remain affixed in the destination and will be cleared."));
     assert(contains(summary.losses, "The held item cannot be carried into the destination and will be removed."));
     assert(contains(summary.losses, "The HOME tracker cannot be stored in the destination format and will be removed."));
@@ -270,10 +272,12 @@ int main() {
     assert(contains(summary.losses, "Destination-incompatible game-specific data will be removed."));
     assert(contains(summary.losses, "Exact source-game met or egg location detail cannot be carried in the destination entity and will be reduced to a transfer marker."));
     assert(contains(summary.losses, "The source battle-eligibility reset marker cannot be represented safely in the destination and will be cleared."));
+    assert(contains(summary.losses, "Battle status will be cleared when the destination game reconstructs party state."));
     assert(contains(summary.adaptations, "A destination-native default Tera type will be synthesized."));
     assert(contains(summary.adaptations, "A destination-native scale value will be synthesized from the source height scalar."));
     assert(contains(summary.adaptations, "A destination-native obedience level will be synthesized from the source met level."));
     assert(contains(summary.adaptations, "Historical origin/met representation will be remapped into the destination format while provenance retains the original history."));
+    assert(contains(summary.adaptations, "Current HP will be reset to the destination's recalculated maximum during party-state reconstruction."));
     assert(!summary.unknownLossBits && !summary.unknownAdaptationBits);
 
     // Clone/copy/conversion provenance relationships stay semantically distinct.
@@ -437,10 +441,11 @@ int main() {
     // Closure refusal reasons are first-class PBCE v1 values. They round-trip durably even
     // though candidateAvailable=false means they can never authorize source retirement.
     {
-        const std::array<EvidenceConversionResult, 3> refusalResults{{
+        const std::array<EvidenceConversionResult, 4> refusalResults{{
             EvidenceConversionResult::BallNotRepresentable,
             EvidenceConversionResult::FormNotTransferable,
             EvidenceConversionResult::RibbonMarkNotRepresentable,
+            EvidenceConversionResult::UnknownSourceSemantics,
         }};
         for (size_t i = 0; i < refusalResults.size(); ++i) {
             const std::string root = base + "-closure-refusal-" + std::to_string(i);
