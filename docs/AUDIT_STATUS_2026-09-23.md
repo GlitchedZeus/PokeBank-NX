@@ -2308,3 +2308,573 @@ candidate. Keep route enablement off until that closure audit is complete.
 
 Stop here. Do not begin route activation, BDSP multi-file transactions, N06, Master Vault,
 Gen IV/DS/3DS, live source writes or clone expansion.
+
+# PK8/PK9 semantic closure audit — 2026-09-25
+
+## Identity, scope and verdict
+
+Live starting PR #79 SHA: `48ca1386571262e133ab9975d35caf59fe549970`.
+This is newer than the supplied `be39c6f1eb422a3b5410ddaa9004294e1e709650` checkpoint.
+All intervening work was retained. Main was fetched at
+`9ec20730e23681c6f7451f3da4944a156303f494`; its public status pages were read.
+PR #77 and its device-accepted `996e6aa4` application were not changed.
+
+**All eight directions remain ROUTE MUST REMAIN DISABLED.** No route is a potential
+candidate yet. This audit closes specific representation and reporting cases; it does
+not claim every unmodeled bit, official trade rule or distribution is understood.
+`routeEnabledForTrueMove()` remains false. Original saves remain immutable and all
+installed-game/emulator write locks remain hard off.
+
+The final exact SHA, tree and workflow run IDs are recorded in PR #79 / issue #69
+metadata after both workflows finish. They are intentionally not baked into an extra
+self-invalidating documentation-only commit. A workflow success is CI VERIFIED, never
+DEVICE ACCEPTED.
+
+## Reference basis
+
+Use the production data-generator pin, PKHeX
+`6501f0ab46e8f8ca048539dbaf8cae8cb104e722` (`tools/pkhex_source.py`), rather than
+silently mixing current upstream with the older design-oracle pin in `PKHEX_ORACLE.md`.
+Reference models were read at that exact revision:
+
+- [G8PKM](https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/PKM/Shared/G8PKM.cs), [PK8](https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/PKM/PK8.cs), [PK9](https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/PKM/PK9.cs): offsets, widths, unused comments and named properties.
+- [RibbonIndex](https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Ribbons/RibbonIndex.cs): semantic names and MAX_G8 / MAX_G9 boundaries.
+- [Ball](https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Game/Enums/Ball.cs): complete named numeric domain.
+- [LocationsHOME](https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Game/Locations/LocationsHOME.cs), [PKH](https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/PKM/HOME/PKH.cs): target representation versus historical origin.
+- [FormInfo](https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Tables/FormInfo.cs), [TradeRestrictions](https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Tables/TradeRestrictions.cs): transient/fused transfer restrictions.
+
+Project counterparts are `Pokemon8SWSH.h`, `Pokemon9SV.h`, the encryption size
+constants, `Convert.cpp`, and generated personal/move/item tables. Synthetic fixtures
+exercise representation rules; no additional real event-save corpus was available.
+A model's `ExtraBytes` list alone is not padding proof: PK8 PokéJob is on that list but
+has named, meaningful flag accessors and is explicitly loss-reported.
+
+## Exact semantic field comparison
+
+Offsets are inclusive hexadecimal decrypted offsets; widths are bytes unless bits are
+specified. P = preserved, R = relocated, A = deterministic adaptation, L = explicit loss,
+F = fail closed, U = UNKNOWN SEMANTIC REGION, X = model-declared unused/alignment.
+The tables below plus the full-address partition account for all 328 stored bytes and
+16 party bytes. P means representational preservation, not historical-event legality.
+
+| PK8 | PK9 | Width | Meaning and disposition |
+|---|---|---:|---|
+| 000–003 | same | 4 | EC P; encryption/shuffling regenerated |
+| 004–005 | same | 2 | Sanity header copied; legal-domain validation not newly claimed |
+| 006–007 | same | 2 | Checksum recomputed over stored 008–147 |
+| 008–009 | same | 2 | Species national↔Gen9 internal index A; target absence F |
+| 00A–00B | same | 2 | Held item P if target supports it, else HeldItemDropped |
+| 00C–00F | same | 4 | TID/SID P |
+| 010–013 | same | 4 | EXP P; target party stats recalculated |
+| 014–015 | same | 2 | Ability P or AbilityNotRepresentable F |
+| 016 bits0–2 | same | 3 bits | Ability slot P / existing checked ability policy |
+| 016 bit3 | same | 1 bit | Favorite legacy property P; oracle labels unused |
+| 016 bit4 | — | 1 bit | CanGigantamax L: DivergentGameDataDropped |
+| 016 bits5–7 | 016 bits4–7 | 3/4 bits | U; not ordinary ability data |
+| 018–019 low12 | same | 12 bits | Six two-bit markings P; high4 U |
+| 01C–01F | same | 4 | PID P, same modern shiny threshold |
+| 020 / 021 | same | 1 each | Nature / mint stat nature P |
+| 022 bit0 | same | 1 bit | Fateful encounter P |
+| 022 bit1 | — | 1 bit | Flag2, named but meaning uncertain; L if set; semantic U remains |
+| 022 bits2–3 | 022 bits1–2 | 2 bits | Gender R |
+| 022 bits4–7 | 022 bits3–7 | 4/5 bits | U; reconstruction clears these bits |
+| 024 | same | 1 | Form P if present and transferable; otherwise NotInDex / FormNotTransferable |
+| 025 | same | 1 | U for nonzero values: oracle form getter byte, setter clears upper ushort byte |
+| 026–02B | same | 6 | Individual EVs P |
+| 02C–031 | same | 6 | Contest values and sheen P as carried history |
+| 032 | same | 1 | Pokérus strain/days P as stored history |
+| 034–03B | same | 8 | Ribbon/mark indexes0–63; semantic catalog below |
+| 03C / 03D | same | 1 each | Contest/battle memory ribbon counts P |
+| 040–047 | same | 8 | Ribbon/mark indexes64–127; semantic catalog below |
+| 048–04B | — | 4 | Sociability L: DivergentGameDataDropped |
+| 050 / 051 | 048 / 049 | 1 each | Height / weight R |
+| — | 04A | 1 | Scale A from height entering SV; L on exit if different from height |
+| — | 04B–057 | 13 | DLC TM flags L if nonzero; target synthesized zero |
+| 058–071 | same | 26 | Nickname UTF-16 P including terminator/trash; malformed F |
+| 072–079 | same | 8 | Four moves P or MoveDropped |
+| 07A–07D | same | 4 | PP P or MovePPClamped A for destination maximum |
+| 07E–081 | same | 4 | PP Ups P |
+| 082–089 | same | 8 | Relearn moves P or RelearnMoveDropped |
+| 08A–08B | same | 2 | Current HP, destination stats reconciliation; zero HP can refill under existing policy |
+| 08C–08F | same | 4 | Six IVs, egg/nicknamed flags P |
+| 090 | — | 1 | Dynamax Level L if nonzero |
+| 094–097 | 090–093 | 4 | Status condition R |
+| 098–09B | — | 4 | Palma L if nonzero; domain meaning remains incompletely evidenced |
+| — | 094 / 095 | 1 each | Original/override Tera A from target type entering SV; TeraDataDropped on exit |
+| 0A8–0C1 | same | 26 | HT name UTF-16 P, malformed F |
+| 0C2 / 0C3 / 0C4 | same | 1 each | HT gender / HT language / current handler P |
+| 0C6–0C7 | same | 2 | HT ID copied P; reference says unused? so semantic U |
+| 0C8–0CB | same | 4 | HT friendship/intensity/memory/feeling P |
+| 0CC–0CD | same | 2 | HT memory variable P |
+| 0CE–0DB | — | 14 | PokéJob flags L if any nonzero |
+| 0DC / 0DD | — | 1 each | Fullness/enjoyment L if nonzero |
+| 0DE | 0CE | 1 | Historical-origin representation R / HOME-like remap A on return; F13 keeps original |
+| 0DF | 0CF | 1 | BattleVersion R entering SV; any nonzero SV marker cleared with BattleVersionDropped |
+| 0E0–0E1 | — | 2 | Retired region/console-region comments: U, not proven harmless historical bytes |
+| 0E2 | 0D5 | 1 | Language R |
+| 0E4–0E7 | 0D0–0D3 | 4 | Entire FormArgument R, not just low byte |
+| 0E8 | 0D4 | 1 | Affixed title R if retained/owned; otherwise AffixedTitleDropped, none=FF |
+| 0F8–111 | same | 26 | OT name UTF-16 P, malformed F |
+| 112–114 | same | 3 | OT friendship / memory intensity / memory P |
+| 116–117 / 118 | same | 2 / 1 | OT memory variable / feeling P |
+| 119–11B | same | 3 | Egg date P |
+| 11C–11E | same | 3 | Met date P |
+| — | 11F | 1 | Obedience A from met level entering SV; L on exit if different |
+| 120–121 / 122–123 | same | 2 each | Egg/met locations P or HOME-like markers + LocationDetailDropped |
+| 124 | same | 1 | Ball P for1–26; every other byte F |
+| 125 low7 / high1 | same | 7 / 1 bits | Met level / OT gender P |
+| 126 low6 | same | 6 bits | Hyper Training flags P; upper2 U |
+| 127–134 | — | 14 | TR records L if nonzero |
+| 135–13C | 127–12E | 8 | HOME tracker R |
+| — | 12F–147 | 25 | Base TM records L if nonzero; target synthesized zero |
+| 148 | same | 1 | Party level deterministic destination calculation |
+| 14A–155 | same | 12 | Party stat cache recalculated with destination personal data |
+| 156–157 | — | 2 | DynamaxType L if nonzero; target cleared |
+| — | 156–157 | 2 | PK9 unmodeled party tail U |
+
+All PK8-only losses in the table use `DivergentGameDataDropped` unless a specific name
+is shown. SV scale/obedience equal to their deterministic reconstruction do not add that
+loss; independent non-default values do. This is an explicit project reconstruction
+policy, not a claim of identical official HOME behavior.
+
+## Unused-region evidence and unknown-bit ledger
+
+The following are X on the basis of explicit `unused`, `alignment` or `padding` comments
+and absent semantic accessors in the pinned models, NOT because synthetic samples are zero:
+
+- Shared: 017, 01A–01B, 023, 033, 03E–03F, 0C5, 115, 149.
+- PK8: 04C–04F, 052–057, 091–093, 09C–0A7, 0E3, 0E9–0F7,
+  11F, 13D–147. PK8 ExtraBytes corroborates the stored ranges.
+- PK9: 096–0A7; 0D6–0F7 is described as “remainder unused” in the model.
+  Conservatively its absence of semantic accessors is recorded, not proof from real saves.
+
+Checksum inclusion does not make a region meaningful; these stored bytes are inside the
+checksum domain. Party bytes are outside that checksum but include meaningful stats.
+No inference of padding was made from checksum exclusion alone.
+
+**Remaining UNKNOWN SEMANTIC REGION inventory:** PK8 016/E0 mask, 019/F0,
+022/F0, 025/FF, 0E0–0E1, 126/C0; PK9 016/F0, 019/F0, 022/F8,
+025/FF, 126/C0, 156–157. Shared HT ID 0C6–0C7 has uncertain use;
+PK8 Flag2 and Palma are named but not fully explained. PK9 0D6–0F7 is retained
+as a conservative evidence gap despite the model's unused comment. Whole-byte accounting
+labels it UNKNOWN, so it cannot be quietly promoted by a zero-filled fixture.
+
+Unknown values can currently be copied or cleared by the experimental converter; that
+is not authorization to retire a source. No new general-purpose refusal code was invented
+for semantics we cannot name. The product route gate is the fail-closed boundary for
+these unresolved cases. Before readiness review: obtain legitimate nonzero fixtures or
+an authoritative constraint for each range, then preserve/report/refuse explicitly.
+
+## Ribbon and mark catalog
+
+Index0–63 lives at `034 + index/8`; index64–127 at `040 + (index-64)/8`.
+Bit is `index % 8`. The two count bytes 03C/03D are not ribbon bits. The complete
+named-index table follows. Shared indexes are tested individually in both directions,
+including the selected-title reference. Multiple simultaneous ribbons and memory counts
+also have a separate fixture. Naming comes from RibbonIndex, not guessed raw bytes.
+
+| Index | Semantic | PK8→PK9 | PK9→PK8 |
+|---:|---|---|---|
+| 0 | ChampionKalos | P | P |
+| 1 | ChampionG3 | P | P |
+| 2 | ChampionSinnoh | P | P |
+| 3 | BestFriends | P | P |
+| 4 | Training | P | P |
+| 5 | BattlerSkillful | P | P |
+| 6 | BattlerExpert | P | P |
+| 7 | Effort | P | P |
+| 8 | Alert | P | P |
+| 9 | Shock | P | P |
+| 10 | Downcast | P | P |
+| 11 | Careless | P | P |
+| 12 | Relax | P | P |
+| 13 | Snooze | P | P |
+| 14 | Smile | P | P |
+| 15 | Gorgeous | P | P |
+| 16 | Royal | P | P |
+| 17 | GorgeousRoyal | P | P |
+| 18 | Artist | P | P |
+| 19 | Footprint | P | P |
+| 20 | Record | P | P |
+| 21 | Legend | P | P |
+| 22 | Country | P | P |
+| 23 | National | P | P |
+| 24 | Earth | P | P |
+| 25 | World | P | P |
+| 26 | Classic | P | P |
+| 27 | Premier | P | P |
+| 28 | Event | P | P |
+| 29 | Birthday | P | P |
+| 30 | Special | P | P |
+| 31 | Souvenir | P | P |
+| 32 | Wishing | P | P |
+| 33 | ChampionBattle | P | P |
+| 34 | ChampionRegional | P | P |
+| 35 | ChampionNational | P | P |
+| 36 | ChampionWorld | P | P |
+| 37 | CountMemoryContest | P | P |
+| 38 | CountMemoryBattle | P | P |
+| 39 | ChampionG6Hoenn | P | P |
+| 40 | ContestStar | P | P |
+| 41 | MasterCoolness | P | P |
+| 42 | MasterBeauty | P | P |
+| 43 | MasterCuteness | P | P |
+| 44 | MasterCleverness | P | P |
+| 45 | MasterToughness | P | P |
+| 46 | ChampionAlola | P | P |
+| 47 | BattleRoyale | P | P |
+| 48 | BattleTreeGreat | P | P |
+| 49 | BattleTreeMaster | P | P |
+| 50 | ChampionGalar | P | P |
+| 51 | TowerMaster | P | P |
+| 52 | MasterRank | P | P |
+| 53 | MarkLunchtime | P | P |
+| 54 | MarkSleepyTime | P | P |
+| 55 | MarkDusk | P | P |
+| 56 | MarkDawn | P | P |
+| 57 | MarkCloudy | P | P |
+| 58 | MarkRainy | P | P |
+| 59 | MarkStormy | P | P |
+| 60 | MarkSnowy | P | P |
+| 61 | MarkBlizzard | P | P |
+| 62 | MarkDry | P | P |
+| 63 | MarkSandstorm | P | P |
+| 64 | MarkMisty | P | P |
+| 65 | MarkDestiny | P | P |
+| 66 | MarkFishing | P | P |
+| 67 | MarkCurry | P | P |
+| 68 | MarkUncommon | P | P |
+| 69 | MarkRare | P | P |
+| 70 | MarkRowdy | P | P |
+| 71 | MarkAbsentMinded | P | P |
+| 72 | MarkJittery | P | P |
+| 73 | MarkExcited | P | P |
+| 74 | MarkCharismatic | P | P |
+| 75 | MarkCalmness | P | P |
+| 76 | MarkIntense | P | P |
+| 77 | MarkZonedOut | P | P |
+| 78 | MarkJoyful | P | P |
+| 79 | MarkAngry | P | P |
+| 80 | MarkSmiley | P | P |
+| 81 | MarkTeary | P | P |
+| 82 | MarkUpbeat | P | P |
+| 83 | MarkPeeved | P | P |
+| 84 | MarkIntellectual | P | P |
+| 85 | MarkFerocious | P | P |
+| 86 | MarkCrafty | P | P |
+| 87 | MarkScowling | P | P |
+| 88 | MarkKindly | P | P |
+| 89 | MarkFlustered | P | P |
+| 90 | MarkPumpedUp | P | P |
+| 91 | MarkZeroEnergy | P | P |
+| 92 | MarkPrideful | P | P |
+| 93 | MarkUnsure | P | P |
+| 94 | MarkHumble | P | P |
+| 95 | MarkThorny | P | P |
+| 96 | MarkVigor | P | P |
+| 97 | MarkSlump | P | P |
+| 98 | Hisui | F if present in PK8 source | L: RibbonDataDropped |
+| 99 | TwinklingStar | F if present in PK8 source | L: RibbonDataDropped |
+| 100 | ChampionPaldea | F if present in PK8 source | L: RibbonDataDropped |
+| 101 | MarkJumbo | F if present in PK8 source | L: MarkDataDropped |
+| 102 | MarkMini | F if present in PK8 source | L: MarkDataDropped |
+| 103 | MarkItemfinder | F if present in PK8 source | L: MarkDataDropped |
+| 104 | MarkPartner | F if present in PK8 source | L: MarkDataDropped |
+| 105 | MarkGourmand | F if present in PK8 source | L: MarkDataDropped |
+| 106 | OnceInALifetime | F if present in PK8 source | L: RibbonDataDropped |
+| 107 | MarkAlpha | F if present in PK8 source | L: MarkDataDropped |
+| 108 | MarkMightiest | F if present in PK8 source | L: MarkDataDropped |
+| 109 | MarkTitan | F if present in PK8 source | L: MarkDataDropped |
+| 110 | Partner | F if present in PK8 source | L: RibbonDataDropped |
+| 111–127 | Unnamed/reserved | RibbonMarkNotRepresentable F | RibbonMarkNotRepresentable F |
+
+Indexes0–52 cover champion, effort/friendship, contest, memory, event and battle ribbons.
+53–97 cover time/weather, destiny/rare and personality marks. 98–110 cover later Hisui,
+Sinnoh remake and Paldea ribbon/mark semantics. This project intentionally refuses
+post-MAX_G8 source bits even though the shared G8PKM model exposes future index accessors.
+A named getter in a common model is not proof that Sword/Shield can display that title.
+
+Affixed-title behavior: shared owned indexes survive; unowned/out-of-domain selection
+becomes FF. Clearing it now adds `AffixedTitleDropped = 1u << 16`, whether the lost
+selection was dangling or its owned ribbon/mark was explicitly removed. Valid carried
+ribbons and marks do not produce this loss. The production change is scoped to SWSH↔SV.
+
+## Ball domain
+
+| ID | Name | Audit disposition |
+|---:|---|---|
+| 0 | None | F: no-ball invalid entity input |
+| 1 | Master | P both directions |
+| 2 | Ultra | P both directions |
+| 3 | Great | P both directions |
+| 4 | Poke | P both directions |
+| 5 | Safari | P both directions |
+| 6 | Net | P both directions |
+| 7 | Dive | P both directions |
+| 8 | Nest | P both directions |
+| 9 | Repeat | P both directions |
+| 10 | Timer | P both directions |
+| 11 | Luxury | P both directions |
+| 12 | Premier | P both directions |
+| 13 | Dusk | P both directions |
+| 14 | Heal | P both directions |
+| 15 | Quick | P both directions |
+| 16 | Cherish | P both directions; event-only acquisition |
+| 17 | Fast | P both directions |
+| 18 | Level | P both directions |
+| 19 | Lure | P both directions |
+| 20 | Heavy | P both directions |
+| 21 | Love | P both directions |
+| 22 | Friend | P both directions |
+| 23 | Moon | P both directions |
+| 24 | Sport | P both directions |
+| 25 | Dream | P both directions |
+| 26 | Beast | P both directions |
+| 27 | Strange | F: later/PLA representation outside conservative shared domain |
+| 28 | LAPoke | F: later/PLA representation outside conservative shared domain |
+| 29 | LAGreat | F: later/PLA representation outside conservative shared domain |
+| 30 | LAUltra | F: later/PLA representation outside conservative shared domain |
+| 31 | LAFeather | F: later/PLA representation outside conservative shared domain |
+| 32 | LAWing | F: later/PLA representation outside conservative shared domain |
+| 33 | LAJet | F: later/PLA representation outside conservative shared domain |
+| 34 | LAHeavy | F: later/PLA representation outside conservative shared domain |
+| 35 | LALeaden | F: later/PLA representation outside conservative shared domain |
+| 36 | LAGigaton | F: later/PLA representation outside conservative shared domain |
+| 37 | LAOrigin | F: later/PLA representation outside conservative shared domain |
+| 38–255 | Unnamed/reserved at pin | F: BallNotRepresentable |
+
+No SWSH-only accepted ball exists in this common-domain policy. Strange/Hisui balls
+are known IDs, not arbitrarily called corrupt bytes; the converter conservatively
+refuses them instead of pretending they share SWSH meaning or coercing them to Poké Ball.
+The new exhaustive fixture tests all256 values in both directions (512 cases).
+
+## Event, forms, text, history and round-trip results
+
+**Event rule classes:** the existing eight exact-title fixtures combine fateful encounter,
+Cherish Ball, event/distribution ribbon bits, shared marks, HOME tracker, custom OT and
+nickname, language, moves/relearns, locations, level, fixed PID/EC, dates and origin.
+The single-field/ribbon/text suites separate those concerns so unrelated loss flags cannot
+hide disappearance. Both shiny and non-shiny modern states use the same threshold; no
+new PID/EC is invented. Shiny-lock authenticity and a real event's exact allowed OT,
+move set, gender, ribbon combination and PID-generation restrictions belong to future
+legality tooling. Synthetic combinations are not asserted to be legal distributed events.
+
+**Forms:** target personal-table availability remains fail closed. Existing representative
+corpus covers regional/permanent/gender variants, Rotom, Alcremie, authenticity forms,
+Urshifu, item-associated forms and target-absent forms. Transient/fused states are explicitly
+refused by `FormNotTransferable` before output creation. This includes fused Kyurem,
+Necrozma/Calyrex, Crowned Zacian/Zamazenta, battle/weather forms, and other enumerated
+transients in `swshSvFormTransferable`. Held-item/form consistency beyond that list remains
+a legality/readiness concern; stored source form is never intentionally flattened to0.
+Alcremie decoration3 tests a real FormArgument use in both directions and all four round trips.
+Full32-bit relocation is implemented; semantic validity of every species-specific argument
+value is not claimed by this representative fixture.
+
+**Text:** exact12-code-unit ASCII and Japanese payloads, a surrogate pair ending at the
+boundary, raw13-unit unterminated input, lone high/low surrogates, high-surrogate followed
+by non-low, embedded NUL with trailing data, and control/zero-width characters are tested
+for nickname/HT/OT in both directions. All26 raw bytes survive accepted conversion,
+including data after the first NUL. Malformed pre-terminator UTF-16 / missing terminator
+fails preflight and conversion. Control and non-display code points are preserved, not
+claimed game-font-valid. A separate display-character policy remains unresolved.
+
+One-past-maximum **model setter** attempts have a distinct boundary: existing void
+`setNickname`, `setOTName`, `setHTName` wrappers call `Utils::setString(...,12)`, which
+truncates before conversion can see the requested thirteenth unit. The converter cannot
+recover or acknowledge discarded API input. This is an OPEN input-contract limitation,
+not evidence of safe normalization. A checked caller-visible setter contract and tests
+are required before any route promotion; this tranche does not rewrite shared text APIs
+used by unrelated formats. Raw13-unit source entities do fail closed now.
+
+**Met/date/version:** dates, OT gender and level preserve. Origin/history is not the
+current store or destination title. Entering SV preserves historical origin representation.
+Returning SL/VL/PLA/BD/SP-origin payloads to PK8 uses the pinned HOME-like origin/met
+mapping; nonzero/non-FFFF egg location becomes65534. Lost location detail is reported.
+F13 retains historical origin separately; a subsequent standalone PK8→PK9 conversion
+cannot reconstruct discarded location detail without provenance. No false round-trip
+identity claim is made.
+
+**Handler:** HT name/gender/language/current-handler, friendship and memories preserve
+at their own offsets. No invented handler or ownership switch is performed. Official
+trade-handler update logic is deliberately not emulated; a future True-Move readiness
+review must decide and validate that policy. HT ID's uncertain use remains in the ledger.
+
+**BattleVersion:** zero stays zero; SW/SH marker entering SV relocates; any nonzero
+marker returning from SV is cleared with `BattleVersionDropped`, including later markers
+on older-origin Pokémon. That conservative policy does not claim an exact HOME battle-
+eligibility simulation. Existing SH/VL fixtures and round-trip SW/SH/SL/VL fixtures cover
+both directions and distinguish the marker from historical origin.
+
+**Round trips:** Sword→Scarlet→Sword, Shield→Violet→Shield,
+Scarlet→Sword→Scarlet and Violet→Shield→Violet preserve shared event/ribbon/mark/title,
+handler, Alcremie decoration, Cherish Ball, maximum ASCII/Japanese text, PID/EC and tracker.
+BattleVersion clearing, Tera disappearance/synthesis and HOME-like historical representation
+are explicitly explained. Source and intermediate-source encrypted bytes+SHA remain unchanged.
+Cached destination stats are recalculated. The inherited current-HP zero→full policy is
+not proof of official fainted-state transfer behavior and remains a readiness policy question.
+
+## Findings and fixes at the live starting head
+
+| ID | Severity | Evidence / disposition |
+|---|---|---|
+| C01 | P2 fixed | Exact48ca Host run36213950230 failed a stale handler/history assertion demanding SL in PK8 after the deliberate remap. Locally reproduced, test now expects SW representation and preserved Report source origin. Native run36213948166 was green but did not prove the host contract. |
+| C02 | P1 fixed | Dangling-affix fixture reproduced clearing a title without any title-loss bit. Narrow production fix adds AffixedTitleDropped whenever normalization clears a SWSH↔SV title. Valid-title, removed-title, every-index, preflight and PBCE tests cover it. |
+| C03 | P2 fixed | Existing whole-byte labels could imply complete semantics. Explicit unknown region/partial-bit ledger and size-bound full-address partition now separate address coverage from meaning. |
+| C05 | P2 fixed | Starting Host checkout log proves it tested synthetic merge836b095, not application48ca138. PR79 checkout now selects the exact PR head and asserts/logs application SHA + tree before running tests; other PR behavior unchanged. |
+| C04 | P1 open boundary | Void modern text setters truncate overlength requested input before conversion. Existing-native-source conversion is protected by raw UTF-16 checks; checked input API/display policy remains prerequisite, outside this converter-only production patch. |
+
+No P0 was discovered. Unresolved semantic/policy questions are blockers, not passed
+assertions. Existing GCC16 diagnosed a self-vector `push_back(front())` fixture expression;
+the test now copies the identical move from the original transaction, avoiding the diagnostic
+without weakening the ambiguous-transaction rejection. No product transaction code changed.
+
+## Presentation, PBCE/F13 and custody evidence
+
+`AffixedTitleDropped` has a stable bit, human-readable presentation, catalog/mask completeness,
+preflight visibility, persisted PBCE v1 round-trip and acknowledgement binding tests.
+All eight exact-route evidence fixtures require explicit acknowledgement and reject a changed
+loss mask; the product-disabled gate still prevents retirement even with valid evidence.
+Existing LocationDetailDropped/BattleVersionDropped and history adaptation mappings remain.
+Unknown enum/mask values fail closed. F13 keeps original origin, exact current source/destination
+identity, source payload hash and candidate hash separate.
+
+Every new conversion success/refusal captures native encrypted bytes and SHA-256 before
+conversion, compares both afterward, and where applicable repeats the proof after preflight.
+The four round trips also protect their intermediate entity. These pure converter tests do
+not write stores. Persisted evidence recovery tests prove authoritative source bytes remain
+and replacement count is zero when route permission/acknowledgement is absent. A04a/A04b
+provide transaction-level no-retirement/no-custody-disappearance coverage.
+
+## Fixture inventory and validation plan
+
+Permanent tests: `test_conversion_entity_golden`, `test_conversion_evidence`,
+`test_move_transaction_journal` (A04a), `test_move_transaction_production` (A04b).
+The closure fixture groups in the golden executable are:
+
+- `FLAG2`, `DMAXTYPE`, `BALL27`; `AFFIXOK`, `AFFIXBAD`, `AFFIXPK9`, `AFFIXG9`.
+- Transient-form refusal; source-only field differential matrix; history remap/egg sentinel cases.
+- `exact-pair-{sword,shield}-{scarlet,violet}` and the four reverse labels: eight event routes.
+- Whole PK8/PK9 address partition plus partial-byte known/unknown masks.
+- `RIBBONBITS` (multiple/counts), `G9RIBMARK`, `RIBRESERVE`.
+- `BALLDOMAIN`, `PK9BALL`, `NOBALL`, `BADPK8BALL`; new `closure-ball-domain` all256×2.
+- Handler/Alcremie history and BattleVersion; PP-difference, language and tracker families.
+- Maximum text, unterminated and lone-surrogate fixtures; new `closure-text-fields` nine cases×three fields×two directions.
+- New `closure-ribbon-domain` all128 indexes×two directions, including affix and preflight.
+- Four requested round-trip cases extended with event/handler/title/form-argument/text state.
+
+Focused goldens/evidence/A04a/A04b pass locally before candidate publication. Final verification
+requires exact-head Host Tests (full host, focused RSE plus sanitizer, ASan and UBSan), and
+Audit Hardening Native Validation (full devkitA64 compile/link, AArch64 inspection, recovered
+RomFS asset preflight). GitHub run IDs and actual conclusions go in PR/issue metadata only
+after completion; no old-SHA success is substituted. No downloadable application acceptance
+or device acceptance is claimed by this tranche.
+
+## Exact route decisions and remaining gates
+
+| Direction | Decision | Exact outstanding blocker set |
+|---|---|---|
+| Sword→Scarlet | ROUTE MUST REMAIN DISABLED | PK8 unknown bits/retired regions; input/display text contract; handler/HP/form/event policy |
+| Sword→Violet | ROUTE MUST REMAIN DISABLED | Same PK8 ledger, independently checked exact-title evidence |
+| Shield→Scarlet | ROUTE MUST REMAIN DISABLED | Same PK8 ledger, independently checked exact-title evidence |
+| Shield→Violet | ROUTE MUST REMAIN DISABLED | Same PK8 ledger, independently checked exact-title evidence |
+| Scarlet→Sword | ROUTE MUST REMAIN DISABLED | PK9 unknown bits/tail; input/display text contract; handler/HP/form/event policy |
+| Scarlet→Shield | ROUTE MUST REMAIN DISABLED | Same PK9 ledger, independently checked exact-title evidence |
+| Violet→Sword | ROUTE MUST REMAIN DISABLED | Same PK9 ledger, independently checked exact-title evidence |
+| Violet→Shield | ROUTE MUST REMAIN DISABLED | Same PK9 ledger, independently checked exact-title evidence |
+
+**Potential route candidates: none.** Non-conversion gates remain exact title/account/store
+qualification, staged workspace adapters, explicit loss acknowledgement and provenance recovery,
+physical Switch FAT32/exFAT interruption/power-loss testing, and explicit route-enablement review.
+A01–A09 are preserved infrastructure, not proof of those physical gates.
+
+Recommended next tranche: resolve the enumerated PK8/PK9 unknown-value and checked-text-input
+contracts with authoritative/legitimate fixtures, plus decide handler/HP and per-form legality
+policy. Do not start another broad audit or another generation pair. Only once those blockers
+are closed should a separate SWSH/SV True-Move enablement readiness review be proposed.
+No merge, route activation or live-source write belongs to this tranche.
+
+## Full-address partition (regression data)
+
+Each range is counted exactly once; sizes are bound to production encryption constants.
+
+### PK8
+
+| Range | Bytes | Classification |
+|---|---:|---|
+| 000–016 | 23 | header/identity/ability |
+| 017–017 | 1 | alignment |
+| 018–019 | 2 | markings |
+| 01A–01B | 2 | alignment |
+| 01C–022 | 7 | PID/nature/fateful/Flag2/gender |
+| 023–023 | 1 | alignment |
+| 024–032 | 15 | form/EV/contest/Pokerus |
+| 033–033 | 1 | padding |
+| 034–03D | 10 | ribbons/memory counts |
+| 03E–03F | 2 | padding |
+| 040–047 | 8 | ribbons/marks |
+| 048–04B | 4 | Sociability |
+| 04C–04F | 4 | alignment |
+| 050–051 | 2 | height/weight |
+| 052–057 | 6 | alignment |
+| 058–08F | 56 | nickname/moves/current HP/IV |
+| 090–090 | 1 | DynamaxLevel |
+| 091–093 | 3 | alignment |
+| 094–09B | 8 | status/Palma |
+| 09C–0A7 | 12 | alignment |
+| 0A8–0C4 | 29 | HT name/gender/language/current handler |
+| 0C5–0C5 | 1 | alignment |
+| 0C6–0DD | 24 | HT id/memory/PokeJob/fullness/enjoyment |
+| 0DE–0DF | 2 | origin/BattleVersion |
+| 0E0–0E1 | 2 | UNKNOWN: retired region history |
+| 0E2–0E2 | 1 | language |
+| 0E3–0E3 | 1 | alignment |
+| 0E4–0E8 | 5 | FormArgument/AffixedRibbon |
+| 0E9–0F7 | 15 | padding |
+| 0F8–114 | 29 | OT name/friendship/memory |
+| 115–115 | 1 | alignment |
+| 116–11E | 9 | OT memory/dates |
+| 11F–11F | 1 | alignment |
+| 120–126 | 7 | locations/ball/met/HyperTraining |
+| 127–134 | 14 | TR records |
+| 135–13C | 8 | HOME tracker |
+| 13D–147 | 11 | alignment |
+| 148–148 | 1 | party level |
+| 149–149 | 1 | alignment |
+| 14A–155 | 12 | party battle stats |
+| 156–157 | 2 | DynamaxType |
+
+### PK9
+
+| Range | Bytes | Classification |
+|---|---:|---|
+| 000–016 | 23 | header/identity/ability |
+| 017–017 | 1 | alignment |
+| 018–019 | 2 | markings |
+| 01A–01B | 2 | alignment |
+| 01C–022 | 7 | PID/nature/fateful/gender |
+| 023–023 | 1 | alignment |
+| 024–032 | 15 | form/EV/contest/Pokerus |
+| 033–033 | 1 | padding |
+| 034–03D | 10 | ribbons/memory counts |
+| 03E–03F | 2 | padding |
+| 040–047 | 8 | ribbons/marks |
+| 048–04A | 3 | height/weight/Scale |
+| 04B–057 | 13 | DLC TM records |
+| 058–08F | 56 | nickname/moves/current HP/IV |
+| 090–095 | 6 | status/Tera |
+| 096–0A7 | 18 | padding |
+| 0A8–0C4 | 29 | HT name/gender/language/current handler |
+| 0C5–0C5 | 1 | alignment |
+| 0C6–0D5 | 16 | HT id/memory/origin/BattleVersion/FormArgument/AffixedRibbon/language |
+| 0D6–0F7 | 34 | UNKNOWN: PK9 remainder unused; real-value evidence absent |
+| 0F8–114 | 29 | OT name/friendship/memory |
+| 115–115 | 1 | alignment |
+| 116–11E | 9 | OT memory/dates |
+| 11F–11F | 1 | ObedienceLevel |
+| 120–126 | 7 | locations/ball/met/HyperTraining |
+| 127–12E | 8 | HOME tracker |
+| 12F–147 | 25 | TM records |
+| 148–148 | 1 | party level |
+| 149–149 | 1 | alignment |
+| 14A–155 | 12 | party battle stats |
+| 156–157 | 2 | UNKNOWN: PK9 unmodeled party tail |

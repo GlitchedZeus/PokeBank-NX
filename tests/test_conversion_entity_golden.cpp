@@ -1490,6 +1490,7 @@ int main() {
         assert(result == Result::Ok && validSV);
         proveSourceUnchanged(*valid, validBefore, validHash);
         assert(static_cast<uint8_t>(validSV->getData()[0xD4]) == 64);
+        assert(!report.hasLoss(Loss::AffixedTitleDropped));
         assertSerializedReparse(*validSV);
 
         auto dangling = blankSWSH(0x77100005u);
@@ -1504,6 +1505,12 @@ int main() {
         assert(result == Result::Ok && normalizedSV);
         proveSourceUnchanged(*dangling, danglingBefore, danglingHash);
         assert(static_cast<uint8_t>(normalizedSV->getData()[0xD4]) == AFFIXED_RIBBON_NONE);
+        assert(report.hasLoss(Loss::AffixedTitleDropped));
+        const auto titlePreflight = preflightConvert(*dangling, GameVersion::SV,
+                                                     static_cast<uint8_t>(GameVersion::SL));
+        assert(titlePreflight.candidateAvailable);
+        assert(titlePreflight.report.hasLoss(Loss::AffixedTitleDropped));
+        proveSourceUnchanged(*dangling, danglingBefore, danglingHash);
         assertSerializedReparse(*normalizedSV);
 
         auto danglingPK9 = blankSV(0x77100006u);
@@ -1535,6 +1542,8 @@ int main() {
         assert(result == Result::Ok && swshAffix);
         proveSourceUnchanged(*gen9OnlyAffix, g9Before, g9Hash);
         assert(static_cast<uint8_t>(swshAffix->getData()[0xE8]) == AFFIXED_RIBBON_NONE);
+        assert(report.hasLoss(Loss::AffixedTitleDropped));
+        assert(report.hasLoss(Loss::RibbonDataDropped));
         assertSerializedReparse(*swshAffix);
     }
 
@@ -2317,7 +2326,8 @@ int main() {
 
 
     // Closure audit: the pinned PKHeX PK8/G8PKM + PK9 models account for the complete 0x158
-    // party record. Every byte is classified exactly once so a future layout edit cannot hide an
+    // party record, including explicitly UNKNOWN regions. Address coverage is not semantic closure.
+    // Every byte is classified exactly once so a future layout edit cannot hide an
     // unexplained hole behind a broad memcpy.
     {
         struct LayoutRange { size_t first; size_t last; const char* meaning; };
@@ -2334,7 +2344,7 @@ int main() {
             {0x094,0x09B,"status/Palma"}, {0x09C,0x0A7,"alignment"},
             {0x0A8,0x0C4,"HT name/gender/language/current handler"}, {0x0C5,0x0C5,"alignment"},
             {0x0C6,0x0DD,"HT id/memory/PokeJob/fullness/enjoyment"},
-            {0x0DE,0x0DF,"origin/BattleVersion"}, {0x0E0,0x0E1,"legacy region extra bytes"},
+            {0x0DE,0x0DF,"origin/BattleVersion"}, {0x0E0,0x0E1,"UNKNOWN: retired region history"},
             {0x0E2,0x0E2,"language"}, {0x0E3,0x0E3,"alignment"},
             {0x0E4,0x0E8,"FormArgument/AffixedRibbon"}, {0x0E9,0x0F7,"padding"},
             {0x0F8,0x114,"OT name/friendship/memory"}, {0x115,0x115,"alignment"},
@@ -2355,12 +2365,12 @@ int main() {
             {0x090,0x095,"status/Tera"}, {0x096,0x0A7,"padding"},
             {0x0A8,0x0C4,"HT name/gender/language/current handler"}, {0x0C5,0x0C5,"alignment"},
             {0x0C6,0x0D5,"HT id/memory/origin/BattleVersion/FormArgument/AffixedRibbon/language"},
-            {0x0D6,0x0F7,"padding"}, {0x0F8,0x114,"OT name/friendship/memory"},
+            {0x0D6,0x0F7,"UNKNOWN: PK9 remainder unused; real-value evidence absent"}, {0x0F8,0x114,"OT name/friendship/memory"},
             {0x115,0x115,"alignment"}, {0x116,0x11E,"OT memory/dates"},
             {0x11F,0x11F,"ObedienceLevel"}, {0x120,0x126,"locations/ball/met/HyperTraining"},
             {0x127,0x12E,"HOME tracker"}, {0x12F,0x147,"TM records"},
             {0x148,0x148,"party level"}, {0x149,0x149,"alignment"},
-            {0x14A,0x155,"party battle stats"}, {0x156,0x157,"unused PK9 party tail"},
+            {0x14A,0x155,"party battle stats"}, {0x156,0x157,"UNKNOWN: PK9 unmodeled party tail"},
         };
         auto proveAccounting = [](const std::vector<LayoutRange>& ranges) {
             std::array<uint8_t, 0x158> covered{};
@@ -2374,6 +2384,20 @@ int main() {
         };
         proveAccounting(pk8);
         proveAccounting(pk9);
+        assert(Encryption::SIZE_STORED8_SWSH == 0x148 && Encryption::SIZE_STORED9_SV == 0x148);
+        assert(Encryption::SIZE_PARTY8_SWSH == 0x158 && Encryption::SIZE_PARTY9_SV == 0x158);
+        // Unexplained high bits must not disappear under a whole-byte "known" label.
+        struct PartialByte { size_t offset; uint8_t known; uint8_t unknown; };
+        const PartialByte partial8[] = {{0x16,0x1F,0xE0}, {0x19,0x0F,0xF0},
+            {0x22,0x0F,0xF0}, {0x25,0,0xFF}, {0x126,0x3F,0xC0}};
+        const PartialByte partial9[] = {{0x16,0x0F,0xF0}, {0x19,0x0F,0xF0},
+            {0x22,0x07,0xF8}, {0x25,0,0xFF}, {0x126,0x3F,0xC0}};
+        for (const auto& table : {std::span<const PartialByte>(partial8), std::span<const PartialByte>(partial9)})
+            for (const auto& bits : table) {
+                assert(bits.offset < 0x148 && (bits.known & bits.unknown) == 0);
+                assert((bits.known | bits.unknown) == 0xFF && bits.unknown != 0);
+            }
+
     }
 
     // The shared SWSH/PK9 ribbon/mark semantic domain is indexes 0..97 (through MarkSlump).
@@ -2635,7 +2659,14 @@ int main() {
             const size_t dstBattle = fromG8 ? 0xCF : 0xDF;
             const size_t dstFormArg = fromG8 ? 0xD0 : 0xE4;
             const size_t dstAffix = fromG8 ? 0xD4 : 0xE8;
-            assert(dst[dstVersion] == raw[versionOffset]);
+            // Historical source origin stays in Report/F13; PK8 uses the explicit HOME-style
+            // target representation for Scarlet-origin entities rather than an invalid SL byte.
+            assert(static_cast<uint8_t>(dst[dstVersion]) ==
+                   (fromG8 ? static_cast<uint8_t>(raw[versionOffset])
+                           : static_cast<uint8_t>(GameVersion::SW)));
+            assert(report.sourceOriginVersion == static_cast<uint8_t>(raw[versionOffset]));
+            if (!fromG8)
+                assert(report.hasAdaptation(Adaptation::TargetHistoryRepresentationRemapped));
             if (fromG8) {
                 assert(dst[dstBattle] == raw[battleOffset]);
             } else {
@@ -2841,6 +2872,114 @@ int main() {
         proveSourceUnchanged(*surrogate, sb, sh);
     }
 
+    // closure-ribbon-domain: every named/shared index, every later semantic, every reserved bit.
+    // The index-to-name catalog is pinned in the audit document; byte survival alone is insufficient.
+    for (const bool fromG8 : {true, false}) {
+        for (unsigned index = 0; index < 128; ++index) {
+            std::unique_ptr<Pokemon::Pokemon> source = fromG8
+                ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0xC1050000u + index))
+                : std::unique_ptr<Pokemon::Pokemon>(blankSV(0xC1060000u + index));
+            configureModern(*source, 25, 0, 0x12345678u, 0x87654321u,
+                static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL), u"TITLE", true);
+            auto raw = source->getData();
+            const size_t offset = index < 64 ? 0x34 + index / 8 : 0x40 + (index - 64) / 8;
+            const auto mask = static_cast<std::byte>(1u << (index & 7));
+            raw[offset] |= mask;
+            raw[fromG8 ? 0xE8 : 0xD4] = static_cast<std::byte>(index);
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto hash = hashBytes(before);
+            Report report;
+            Result result;
+            auto out = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH, result,
+                static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW), &report);
+            const bool supported = index <= (fromG8 ? 97u : 110u);
+            assert(static_cast<bool>(out) == supported);
+            if (!supported) {
+                assert(result == Result::RibbonMarkNotRepresentable);
+            } else if (index <= 97) {
+                assert(result == Result::Ok);
+                assert((out->getData()[offset] & mask) != std::byte{0});
+                assert(static_cast<uint8_t>(out->getData()[fromG8 ? 0xD4 : 0xE8]) == index);
+                assert(!report.hasLoss(Loss::AffixedTitleDropped));
+            } else {
+                assert((out->getData()[offset] & mask) == std::byte{0});
+                const bool ribbon = index == 98 || index == 99 || index == 100 || index == 106 || index == 110;
+                assert(report.hasLoss(ribbon ? Loss::RibbonDataDropped : Loss::MarkDataDropped));
+                assert(report.hasLoss(Loss::AffixedTitleDropped));
+                assert(static_cast<uint8_t>(out->getData()[0xE8]) == AFFIXED_RIBBON_NONE);
+            }
+            const auto pre = preflightConvert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW));
+            assert(pre.result == result && pre.candidateAvailable == supported);
+            assert(pre.report.losses == report.losses);
+            proveSourceUnchanged(*source, before, hash);
+            if (out) assertSerializedReparse(*out);
+        }
+    }
+
+    // closure-ball-domain: exercise every byte value, not just a few special/reserved examples.
+    for (const bool fromG8 : {true, false}) {
+        for (unsigned ball = 0; ball < 256; ++ball) {
+            std::unique_ptr<Pokemon::Pokemon> source = fromG8
+                ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0xC1070000u + ball))
+                : std::unique_ptr<Pokemon::Pokemon>(blankSV(0xC1080000u + ball));
+            configureModern(*source, 25, 0, 0x12345678u, 0x87654321u,
+                static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL), u"BALL", true);
+            source->setBall(static_cast<uint8_t>(ball));
+            source->refreshChecksum();
+            const auto before = nativeBytes(*source);
+            const auto hash = hashBytes(before);
+            Result result;
+            auto out = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH, result,
+                static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW));
+            assert(static_cast<bool>(out) == (ball >= 1 && ball <= 26));
+            if (out) assert(result == Result::Ok && out->ball() == ball);
+            else assert(result == Result::BallNotRepresentable);
+            proveSourceUnchanged(*source, before, hash);
+        }
+    }
+
+    // closure-text-fields: exact storage preservation of all three fields; well-formed Unicode
+    // is a format claim only, not a claim that the Switch font displays every accepted code point.
+    struct TextBoundary { std::u16string value; bool accepted; };
+    const TextBoundary textCases[] = {
+        {u"ABCDEFGHIJKL", true}, {u"日本語日本語日本語日本語", true},
+        {u"ABCDEFGHIJ\U0001F600", true}, {u"ABCDEFGHIJKLM", false},
+        {std::u16string{0xD800}, false}, {std::u16string{0xDC00}, false},
+        {std::u16string{0xD800, u'A'}, false}, {std::u16string{u'A', 0, u'B'}, true},
+        {std::u16string{u'A', 1, 0x200B, u'B'}, true},
+    };
+    for (const bool fromG8 : {true, false}) {
+        for (const size_t field : {0x58u, 0xA8u, 0xF8u}) {
+            for (const auto& tc : textCases) {
+                std::unique_ptr<Pokemon::Pokemon> source = fromG8
+                    ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0xC1090000u))
+                    : std::unique_ptr<Pokemon::Pokemon>(blankSV(0xC10A0000u));
+                configureModern(*source, 25, 0, 0x12345678u, 0x87654321u,
+                    static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL), u"TEXT", true);
+                auto raw = source->getData();
+                for (size_t i = 0; i < 13; ++i)
+                    wr16s(raw, field + 2 * i, i < tc.value.size() ? tc.value[i] : 0);
+                source->refreshChecksum();
+                const auto before = nativeBytes(*source);
+                const auto hash = hashBytes(before);
+                Result result;
+                auto out = convert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH, result,
+                    static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW));
+                assert(static_cast<bool>(out) == tc.accepted);
+                if (out) {
+                    for (size_t i = 0; i < 26; ++i) assert(out->getData()[field+i] == raw[field+i]);
+                    assertSerializedReparse(*out);
+                } else assert(result == Result::TextNotRepresentable);
+                const auto pre = preflightConvert(*source, fromG8 ? GameVersion::SV : GameVersion::SWSH,
+                    static_cast<uint8_t>(fromG8 ? GameVersion::SL : GameVersion::SW));
+                assert(pre.candidateAvailable == tc.accepted && pre.result == result);
+                proveSourceUnchanged(*source, before, hash);
+            }
+        }
+    }
+
     // Requested exact round trips. Equality is required only for shared semantics; Tera and
     // destination-native synthesized fields remain explicitly explained by the fidelity reports.
     {
@@ -2860,9 +2999,23 @@ int main() {
             std::unique_ptr<Pokemon::Pokemon> source;
             if (rt.startG8) source = blankSWSH(0x7F000000u + static_cast<uint32_t>(i));
             else source = blankSV(0x7F100000u + static_cast<uint32_t>(i));
-            configureModern(*source, 25, 0, 0x88990000u + static_cast<uint32_t>(i),
+            configureModern(*source, 869 /*Alcremie*/, 0, 0x88990000u + static_cast<uint32_t>(i),
                             0x88990100u + static_cast<uint32_t>(i), rt.sourceVersion,
-                            u"ROUNDTRIP", true);
+                            u"ABCDEFGHIJKL", true);
+            source->setOTName(u"日本語日本語日本語日本語");
+            source->setBall(16);
+            auto raw = source->getData();
+            raw[0x22] |= std::byte{1}; // fateful
+            raw[0x37] |= std::byte{0x10}; // Classic ribbon, index28
+            raw[0x40] |= std::byte{1}; // shared mark64
+            raw[rt.startG8 ? 0xE8 : 0xD4] = std::byte{64};
+            raw[0xC4] = std::byte{1};
+            raw[0xC3] = std::byte{2};
+            raw[0xC8] = std::byte{177};
+            raw[0xCA] = std::byte{7};
+            wr16s(raw, 0xCC, 0x1234);
+            wr32s(raw, rt.startG8 ? 0xE4 : 0xD0, 3); // decoration
+            raw[rt.startG8 ? 0xDF : 0xCF] = static_cast<std::byte>(rt.sourceVersion);
             const uint64_t tracker = 0x1234000000000000ULL + i;
             if (rt.startG8) wr64(source->getData(), 0x135, tracker);
             else {
@@ -2907,6 +3060,17 @@ int main() {
                 assert(first.destinationEntityOriginVersion == remapped);
                 assert(first.hasAdaptation(Adaptation::TargetHistoryRepresentationRemapped));
             }
+            assert(back->ball() == 16);
+            assert((back->getData()[0x22] & std::byte{1}) != std::byte{0});
+            assert(back->getData()[0x37] == raw[0x37]);
+            assert(back->getData()[0x40] == raw[0x40]);
+            assert(back->getData()[rt.startG8 ? 0xE8 : 0xD4] == std::byte{64});
+            for (size_t field = 0xA8; field <= 0xCD; ++field)
+                assert(back->getData()[field] == raw[field]);
+            assert(rd32(back->getData(), rt.startG8 ? 0xE4 : 0xD0) == 3);
+            assert(back->getData()[rt.startG8 ? 0xDF : 0xCF] == std::byte{0});
+            assert((rt.startG8 ? second : first).hasLoss(Loss::BattleVersionDropped));
+            assert(!first.hasLoss(Loss::AffixedTitleDropped) && !second.hasLoss(Loss::AffixedTitleDropped));
             assert(back->nickname() == source->nickname());
             assert(back->otName() == source->otName());
             assert(back->id32() == source->id32());

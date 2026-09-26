@@ -1252,7 +1252,11 @@ namespace Conversion {
         // naming the Kalos Champion ribbon, not "none" (that is 0xFF). Every mon arriving from FireRed
         // or Let's Go therefore displayed a ribbon it does not own. The same 0 also rides across a
         // Gen 8 <-> Gen 9 hop unchanged, so a mon banked before the creator was fixed keeps it.
-        normalizeAffixedRibbon(*out);
+        const bool titleCleared = normalizeAffixedRibbon(*out);
+        if (titleCleared && report &&
+            ((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+             (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            report->addLoss(Loss::AffixedTitleDropped);
 
         out->refreshChecksum();   // stored bytes changed -> recompute the entity checksum
         if (report) report->destinationEntityOriginVersion = out->originGame();

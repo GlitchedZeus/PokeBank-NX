@@ -27,7 +27,7 @@ constexpr size_t kMaxStringBytes = 128;
 constexpr std::array<uint8_t, 8> kEvidenceMagic{'P','B','C','E','V','0','1',0};
 constexpr std::array<uint8_t, 8> kBindingMagic{'P','B','C','E','B','0','1',0};
 
-constexpr std::array<PresentationItem, 16> kLossPresentation{{
+constexpr std::array<PresentationItem, 17> kLossPresentation{{
     {static_cast<uint32_t>(Loss::Gen3EVClamped), "Gen3EVClamped",
      "Gen III EV values above 252 will be clamped to 252."},
     {static_cast<uint32_t>(Loss::TeraDataDropped), "TeraDataDropped",
@@ -60,6 +60,8 @@ constexpr std::array<PresentationItem, 16> kLossPresentation{{
      "Exact source-game met or egg location detail cannot be carried in the destination entity and will be reduced to a transfer marker."},
     {static_cast<uint32_t>(Loss::BattleVersionDropped), "BattleVersionDropped",
      "The source battle-eligibility reset marker cannot be represented safely in the destination and will be cleared."},
+    {static_cast<uint32_t>(Loss::AffixedTitleDropped), "AffixedTitleDropped",
+     "The selected ribbon or mark title cannot remain affixed in the destination and will be cleared."},
 }};
 
 constexpr std::array<PresentationItem, 8> kAdaptationPresentation{{

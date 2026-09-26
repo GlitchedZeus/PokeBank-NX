@@ -223,9 +223,9 @@ int main() {
     const std::vector<uint8_t> destinationAfter{9,9,9,9,2,5};
 
     // Mapping completeness contract for every currently declared fidelity bit.
-    assert(lossPresentationCatalog().size() == 16);
+    assert(lossPresentationCatalog().size() == 17);
     assert(adaptationPresentationCatalog().size() == 8);
-    assert(knownLossMask() == ((1u << 16) - 1u));
+    assert(knownLossMask() == ((1u << 17) - 1u));
     assert(knownAdaptationMask() == ((1u << 8) - 1u));
     for (const auto& item : lossPresentationCatalog()) {
         assert(item.bit != 0 && item.key && *item.key && item.message && *item.message);
@@ -254,14 +254,16 @@ int main() {
     presentationReport.addLoss(Loss::DivergentGameDataDropped);
     presentationReport.addLoss(Loss::LocationDetailDropped);
     presentationReport.addLoss(Loss::BattleVersionDropped);
+    presentationReport.addLoss(Loss::AffixedTitleDropped);
     presentationReport.addAdaptation(Adaptation::PidAdjustedForShinyThreshold);
     presentationReport.addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
     presentationReport.addAdaptation(Adaptation::TargetScaleSynthesized);
     presentationReport.addAdaptation(Adaptation::TargetObedienceLevelSynthesized);
     presentationReport.addAdaptation(Adaptation::TargetHistoryRepresentationRemapped);
     const auto summary = summarizeFidelity(presentationReport);
-    assert(summary.losses.size() == 6);
+    assert(summary.losses.size() == 7);
     assert(summary.adaptations.size() == 5);
+    assert(contains(summary.losses, "The selected ribbon or mark title cannot remain affixed in the destination and will be cleared."));
     assert(contains(summary.losses, "The held item cannot be carried into the destination and will be removed."));
     assert(contains(summary.losses, "The HOME tracker cannot be stored in the destination format and will be removed."));
     assert(contains(summary.losses, "Tera data cannot be stored in the destination format and will be removed."));
@@ -369,7 +371,7 @@ int main() {
         assert(!authorizeSourceRetirement(wrongId, tx, true).allowed);
 
         auto ambiguousTx = tx;
-        ambiguousTx.moves.push_back(ambiguousTx.moves.front());
+        ambiguousTx.moves.push_back(tx.moves.front());
         const auto ambiguous = authorizeSourceRetirement(evidence, ambiguousTx, true);
         assert(!ambiguous.allowed);
         assert(ambiguous.reason.find("ambiguously") != std::string::npos);
@@ -392,6 +394,7 @@ int main() {
         auto tx = makeTransaction("tx-0000000000002010", srcDesc, dstDesc);
         auto evidence = makeEvidence(tx);
         evidence.fidelity.addLoss(Loss::HeldItemDropped);
+        evidence.fidelity.addLoss(Loss::AffixedTitleDropped);
         evidence.lossesShownToUser = true;
         std::string error;
         assert(markLossesAcknowledged(evidence, 1001, error));
@@ -399,6 +402,7 @@ int main() {
         const auto loaded = store.load(tx.id);
         assert(loaded.status == EvidenceLoadStatus::Ok);
         assert(loaded.evidence.transactionId == tx.id);
+        assert(loaded.evidence.fidelity.hasLoss(Loss::AffixedTitleDropped));
         assert(loaded.evidence.acknowledgementBinding == evidence.acknowledgementBinding);
         assert(authorizeSourceRetirement(loaded.evidence, tx, true).allowed);
         cleanup(root, {});
@@ -719,9 +723,14 @@ int main() {
                 evidence.fidelity.addLoss(Loss::LocationDetailDropped);
                 evidence.fidelity.addAdaptation(Adaptation::TargetHistoryRepresentationRemapped);
             }
+            evidence.fidelity.addLoss(Loss::AffixedTitleDropped);
+            assert(!authorizeSourceRetirement(evidence, tx, true).allowed);
             evidence.lossesShownToUser = true;
             std::string error;
             assert(markLossesAcknowledged(evidence, 2000 + i, error));
+            auto staleTitle = evidence;
+            staleTitle.fidelity.losses &= ~static_cast<uint32_t>(Loss::AffixedTitleDropped);
+            assert(!authorizeSourceRetirement(staleTitle, tx, true).allowed);
             assert(evidence.lossPolicySatisfied());
 
             const auto harnessEnabled = authorizeSourceRetirement(evidence, tx, true);
