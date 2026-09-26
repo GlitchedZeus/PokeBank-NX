@@ -115,6 +115,15 @@ int main() {
         assert(report.hasAdaptation(Adaptation::TargetDefaultTeraSynthesized));
     }
 
+    // SWSH/SV HOME-style party reconstruction is explicit fidelity, not an invisible mutation.
+    {
+        Report report;
+        report.addLoss(Loss::StatusConditionCleared);
+        report.addAdaptation(Adaptation::TargetCurrentHpResetToMax);
+        assert(report.hasLoss(Loss::StatusConditionCleared));
+        assert(report.hasAdaptation(Adaptation::TargetCurrentHpResetToMax));
+    }
+
     // F10: Gen III 252 is exact; 253/254/255 clamp only with a declared loss.
     {
         for (uint8_t v : {uint8_t{252}, uint8_t{253}, uint8_t{254}, uint8_t{255}}) {
