@@ -3091,5 +3091,77 @@ int main() {
         }
     }
 
+    // Checked PK8/PK9 modern text input contract. The storage limit is 12 UTF-16 code
+    // units plus one NUL terminator in a 26-byte field. Rejections are transactional.
+    {
+        using Utils::CheckedTextResult;
+        struct TextCase {
+            std::u16string value;
+            CheckedTextResult expected;
+        };
+        const std::u16string japanese12 = u"日本語日本語日本語日本語"; // 12 UTF-16 units
+        const std::u16string pairAtBoundary = u"AAAAAAAAAA\U0001F600"; // 10 + surrogate pair = 12 units
+        const std::u16string pairCrossing = u"AAAAAAAAAAA\U0001F600"; // 11 + pair = 13 units
+        const TextCase cases[] = {
+            {u"", CheckedTextResult::Accepted},
+            {u"A", CheckedTextResult::Accepted},
+            {u"ABCDEFGHIJK", CheckedTextResult::Accepted},
+            {u"ABCDEFGHIJKL", CheckedTextResult::Accepted},
+            {u"ABCDEFGHIJKLM", CheckedTextResult::Overlength},
+            {japanese12, CheckedTextResult::Accepted},
+            {pairAtBoundary, CheckedTextResult::Accepted},
+            {pairCrossing, CheckedTextResult::Overlength},
+            {std::u16string(1, static_cast<char16_t>(0xD83D)), CheckedTextResult::MalformedUtf16},
+            {std::u16string(1, static_cast<char16_t>(0xDE00)), CheckedTextResult::MalformedUtf16},
+            {std::u16string({u'A', u'\0', u'B'}), CheckedTextResult::MalformedUtf16},
+        };
+
+        auto exercise = [&](auto makePk) {
+            for (int field = 0; field < 3; ++field) {
+                for (const auto& tc : cases) {
+                    auto pk = makePk();
+                    configureModern(*pk, 25, 0, 0xA0A0A0A0u, 0xA0A0A1A0u,
+                                    pk->getGameGroup() == GameVersion::SWSH
+                                        ? static_cast<uint8_t>(GameVersion::SW)
+                                        : static_cast<uint8_t>(GameVersion::SL),
+                                    u"BASE", false);
+                    pk->setOTName(u"OTBASE");
+                    pk->setHTName(u"HTBASE");
+                    const auto before = nativeBytes(*pk);
+                    const auto beforeHash = hashBytes(before);
+
+                    CheckedTextResult result = CheckedTextResult::MalformedUtf16;
+                    if (field == 0) result = pk->setNicknameChecked(tc.value);
+                    if (field == 1) result = pk->setHTNameChecked(tc.value);
+                    if (field == 2) result = pk->setOTNameChecked(tc.value);
+                    assert(result == tc.expected);
+
+                    if (tc.expected == CheckedTextResult::Accepted) {
+                        const std::u16string observed =
+                            field == 0 ? pk->nickname() : (field == 1 ? pk->htName() : pk->otName());
+                        assert(observed == tc.value);
+                        assertSerializedReparse(*pk);
+                    } else {
+                        proveSourceUnchanged(*pk, before, beforeHash);
+                    }
+                }
+            }
+        };
+
+        exercise([] { return blankSWSH(0x7FA00001u); });
+        exercise([] { return blankSV(0x7FA00002u); });
+
+        // Compatibility void setter is now reject-without-mutation, not truncate-and-accept.
+        auto pk8 = blankSWSH(0x7FA00003u);
+        configureModern(*pk8, 25, 0, 0xB0B0B0B0u, 0xB0B0B1B0u,
+                        static_cast<uint8_t>(GameVersion::SW), u"BASE", false);
+        const auto before = nativeBytes(*pk8);
+        const auto beforeHash = hashBytes(before);
+        pk8->setNickname(u"ABCDEFGHIJKLM");
+        proveSourceUnchanged(*pk8, before, beforeHash);
+
+        std::cout << "fixture checked-modern-text-input-contract: PASS\n";
+    }
+
     std::cout << "F05-F13 production conversion entity goldens: PASS\n";
 }
