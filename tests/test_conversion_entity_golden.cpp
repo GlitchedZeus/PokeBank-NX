@@ -1337,9 +1337,9 @@ int main() {
         assert(pre.result == Result::LanguageNotRepresentable);
     }
 
-    // SWSH <-> S/V exact-pair audit: known format-specific fields must never disappear silently,
-    // and status condition has a destination-native field in both formats so it must relocate rather
-    // than be reset. This is intentionally a focused regression before the broader route corpus.
+    // SWSH <-> S/V exact-pair audit: known format-specific fields must never disappear silently.
+    // HOME-style destination reconstruction deliberately clears battle status; that semantic change
+    // must be reported rather than mistaken for raw-format inability.
     {
         auto source = blankSWSH(0x77000001u);
         configureModern(*source, 25, 0, 0x11223344u, 0x11223244u,
@@ -1369,7 +1369,8 @@ int main() {
         // 5 and 6 for those explicit representation changes.
         assert((report.adaptations & (1u << 5)) != 0);
         assert((report.adaptations & (1u << 6)) != 0);
-        assert(rd32(sv->getData(), 0x90) == 0x00000008u);
+        assert(report.hasLoss(Loss::StatusConditionCleared));
+        assert(rd32(sv->getData(), 0x90) == 0);
         assertSerializedReparse(*sv);
     }
 
@@ -1394,7 +1395,8 @@ int main() {
         proveSourceUnchanged(*source, before, sourceHash);
         assert(report.hasLoss(Loss::TeraDataDropped));
         assert(report.hasLoss(Loss::DivergentGameDataDropped));
-        assert(rd32(swsh->getData(), 0x94) == 0x00000010u);
+        assert(report.hasLoss(Loss::StatusConditionCleared));
+        assert(rd32(swsh->getData(), 0x94) == 0);
         assertSerializedReparse(*swsh);
     }
 
