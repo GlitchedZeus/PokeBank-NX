@@ -3240,6 +3240,12 @@ int main() {
     // For forms present in BOTH SWSH and SV, the pinned FormInfo oracle is the only form-state
     // blocker. This prevents a forgotten one-off battle/fusion form from slipping through a list.
     {
+        // Independent pinned-oracle edge: Minior form 0 is a shield-up battle state.
+        // Keep this explicit so the generated matrix cannot merely agree with a buggy helper.
+        assert(!swshSvFormTransferable(774, 0));
+        assert(!swshSvFormTransferable(774, 6));
+        assert(swshSvFormTransferable(774, 7));
+
         size_t shared = 0;
         size_t blocked = 0;
         for (uint16_t species = 1; species <= Pokemon::PERSONAL_MAX_SPECIES; ++species) {
