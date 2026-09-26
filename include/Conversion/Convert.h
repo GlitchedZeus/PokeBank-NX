@@ -57,6 +57,7 @@ namespace Conversion {
         BallNotRepresentable,     // target game cannot represent the source Poke Ball id safely
         FormNotTransferable,       // source carries a fused/battle-only transient form state
         RibbonMarkNotRepresentable,// source carries unknown/reserved ribbon/mark semantics
+        UnknownSourceSemantics,    // source uses reserved/unmodeled bits that cannot be interpreted safely
     };
 
     /// Converts `src` into `destGroup`'s entity format, preserving origin identity and refreshing the
@@ -89,6 +90,11 @@ namespace Conversion {
 
     /// Short human-facing reason for a non-Ok/SameGroup result, for on-screen feedback.
     const char* resultMessage(Result r);
+
+    /// Pinned PKHeX FormInfo oracle used by the SWSH<->SV route gate. Returns false only for
+    /// fused or battle-only/transient forms that cannot exist as ordinary standalone transfers.
+    /// Target-game presence is checked separately by the generated personal table.
+    bool swshSvFormTransferable(uint16_t species, uint8_t form) noexcept;
 
     /// Byte offset of **AffixedRibbon** in a game's entity format, or 0 for the formats that have no
     /// such field (Gen 3's PK3 and Let's Go's PB7).
