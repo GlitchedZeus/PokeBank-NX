@@ -22,6 +22,7 @@
 #include "UI/TouchInput.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
+#include "UI/StoragePlacementCommit.h"
 #include "UI/Panels/PartyPokemonPanel.h"
 #include "UI/Panels/BoxPokemonPanel.h"
 #include "UI/Panels/ItemsPanel.h"
@@ -598,6 +599,370 @@ namespace UI {
         return nullptr;
     }
 
+    bool TrainerViewScreen::buildCrossStoreDescriptors(
+        PokeBank::Storage::MoveTx::StoreDescriptor& bankDescriptor,
+        PokeBank::Storage::MoveTx::StoreDescriptor& workspaceDescriptor,
+        std::string& error) const {
+        using namespace PokeBank::Storage::MoveTx;
+        bankDescriptor = {};
+        workspaceDescriptor = {};
+
+        if (sourceReadOnly()) {
+            error = "true Move requires a PokeBank-owned mutable workspace";
+            return false;
+        }
+        const auto* identity = PokeVault::Games::findSwitchGame(titleId);
+        if (!identity ||
+            !PokeBank::Storage::MoveTx::Production::supportsSingleFileTrueMove(identity->id)) {
+            error = identity &&
+                    (identity->id == "brilliant_diamond_switch" ||
+                     identity->id == "shining_pearl_switch")
+                ? "BDSP true Move is blocked until multi-file transaction support is ready"
+                : "this exact game is not enabled for durable true Move";
+            return false;
+        }
+
+        const std::string profile = PokeBank::Paths::backupProfileComponent(userUid);
+        const std::string gameRoot =
+            PokeBank::Paths::exactGameBackupsRoot(userUid, identity->id);
+        if (profile.empty() || gameRoot.empty()) {
+            error = "profile/exact-game transaction namespace is unavailable";
+            return false;
+        }
+        const std::string prefix = gameRoot + "/";
+        if (backupDir.rfind(prefix, 0) != 0) {
+            error = "current workspace is not inside its profile/exact-game namespace";
+            return false;
+        }
+        const std::string workspace = backupDir.substr(prefix.size());
+        if (!PokeBank::Paths::isSafeComponent(workspace)) {
+            error = "current workspace identity is not a single safe component";
+            return false;
+        }
+
+        std::string fileError;
+        const std::string fileId =
+            Save::authoritativeWorkspaceFileId(backupDir.c_str(), titleId, fileError);
+        if (fileId.empty() || !PokeBank::Paths::isSafeComponent(fileId)) {
+            error = fileError.empty() ? "authoritative workspace file is unavailable" : fileError;
+            return false;
+        }
+
+        bankDescriptor.type = StoreType::Bank;
+        bankDescriptor.fileId = "bank.dat";
+
+        workspaceDescriptor.type = StoreType::MutableWorkspaceSingleFile;
+        workspaceDescriptor.profile = profile;
+        workspaceDescriptor.gameId = std::string(identity->id);
+        workspaceDescriptor.workspace = workspace;
+        workspaceDescriptor.fileId = fileId;
+
+        if (!bankDescriptor.valid() || !workspaceDescriptor.valid()) {
+            error = "transaction descriptors failed validation";
+            return false;
+        }
+        return true;
+    }
+
+    bool TrainerViewScreen::captureCrossStoreMoveBaseline(int sourcePane, bool copyOperation) {
+        using namespace PokeBank::Storage::MoveTx;
+        using namespace PokeBank::Storage::MoveTx::Production;
+
+        crossStoreBaseline = {};
+        crossStoreBaseline.sourcePane = sourcePane;
+        crossStoreBaseline.copyOperation = copyOperation;
+        crossStoreBaseline.workspaceDirtyBeforePickup = hasUnsavedChanges;
+        crossStoreBaseline.bankDirtyBeforePickup = bank && bank->hasChanged();
+        crossStoreBaseline.editorDirtyBeforePickup =
+            details.editing || creator.editing || statEdit.dialogActive ||
+            itemEditDialogActive || swapActive;
+        // The snapshot exists even if this exact source cannot later participate in true Move.
+        // That lets B/return restore the pre-pickup dirty state for ordinary same-store staging too.
+        crossStoreBaseline.captured = true;
+
+        if (copyOperation) {
+            return true;
+        }
+
+        std::string error;
+        if (!buildCrossStoreDescriptors(crossStoreBaseline.bankDescriptor,
+                                        crossStoreBaseline.workspaceDescriptor,
+                                        error)) {
+            Utils::logEventToFile("MOVE_TX baseline=UNAVAILABLE reason=\"" + error + "\"");
+            return false;
+        }
+
+        // Dirty pre-existing state is intentionally recorded but not serialized. It will make the
+        // eventual cross-store drop fail before any journal/store mutation.
+        if (crossStoreBaseline.workspaceDirtyBeforePickup ||
+            crossStoreBaseline.bankDirtyBeforePickup ||
+            crossStoreBaseline.editorDirtyBeforePickup) {
+            crossStoreBaseline.captured = true;
+            return true;
+        }
+
+        Engine engine;
+        for (const auto& entry : engine.journal().scan()) {
+            if (entry.status != LoadStatus::Ok || entry.state != State::Committed) {
+                moveRecoveryLocked = true;
+                moveRecoveryNotice =
+                    "Pokemon Move recovery is required before another storage Move.";
+                postStatus(moveRecoveryNotice, 600);
+                return false;
+            }
+        }
+
+        Resolver resolver;
+        auto bankStore = makeStore(crossStoreBaseline.bankDescriptor, resolver, error);
+        auto workspaceStore = makeStore(crossStoreBaseline.workspaceDescriptor, resolver, error);
+        std::vector<uint8_t> bankBytes, workspaceBytes;
+        if (!bankStore || !workspaceStore ||
+            !bankStore->read(bankBytes, error) ||
+            !workspaceStore->read(workspaceBytes, error)) {
+            Utils::logEventToFile("MOVE_TX baseline=FAILED reason=\"" + error + "\"");
+            return false;
+        }
+
+        crossStoreBaseline.bankDigest = sha256(bankBytes);
+        crossStoreBaseline.workspaceDigest = sha256(workspaceBytes);
+        crossStoreBaseline.captured = true;
+        return true;
+    }
+
+    void TrainerViewScreen::clearCrossStoreMoveBaseline() {
+        crossStoreBaseline = {};
+    }
+
+    bool TrainerViewScreen::tryCommitCrossStoreMove(int destPane, int destBox, int destSlot) {
+        using namespace PokeBank::Storage::MoveTx;
+        using namespace PokeBank::Storage::MoveTx::Production;
+
+        if (!carrying() || heldPane == destPane || carriedCopyMode) return false;
+
+        const auto refuse = [&](const std::string& why) {
+            postStatus(why, 420);
+            Utils::logEventToFile("MOVE_TX result=REFUSED reason=\"" + why + "\"");
+            return true;
+        };
+
+        if (moveRecoveryLocked)
+            return refuse(moveRecoveryNotice.empty()
+                ? "Pokemon Move recovery is required. Storage moves are locked."
+                : moveRecoveryNotice);
+        if (!crossStoreBaseline.captured || crossStoreBaseline.sourcePane != heldPane)
+            return refuse("True Move baseline is unavailable. Return the Pokemon and pick it up again.");
+        if (!bank || bank->isWriteBlocked())
+            return refuse(bank && !bank->writeBlockReason().empty()
+                ? bank->writeBlockReason()
+                : "The Bank is not writable, so true Move is blocked.");
+
+        Eligibility eligibility;
+        eligibility.workspaceDirtyBeforePickup = crossStoreBaseline.workspaceDirtyBeforePickup;
+        eligibility.bankDirtyBeforePickup = crossStoreBaseline.bankDirtyBeforePickup;
+        eligibility.editorDirtyBeforePickup = crossStoreBaseline.editorDirtyBeforePickup;
+        eligibility.copyOperation = crossStoreBaseline.copyOperation || carriedCopyMode;
+        if (eligibility.workspaceDirtyBeforePickup || eligibility.bankDirtyBeforePickup ||
+            eligibility.editorDirtyBeforePickup) {
+            return refuse("Save or discard existing Bank/workspace edits before a cross-store Move.");
+        }
+
+        const int cols = paneCols(destPane);
+        const int slots = paneSlots(destPane);
+        const int w = selectDimensions.first > 0 ? selectDimensions.first : 1;
+        const int h = selectDimensions.second > 0 ? selectDimensions.second : 1;
+        if (destSlot < 0 ||
+            destSlot + (w - 1) + (h - 1) * cols >= slots) {
+            return refuse("That group does not fit in the destination.");
+        }
+
+        struct PreparedCell {
+            size_t index = 0;
+            int destinationSlot = -1;
+            std::unique_ptr<Pokemon::Pokemon> candidate;
+            MoveRecord record;
+        };
+        std::vector<PreparedCell> preparedCells;
+        preparedCells.reserve(moveMon.size());
+
+        for (int y = 0; y < h; ++y) {
+            for (int x = 0; x < w; ++x) {
+                const size_t index = static_cast<size_t>(y) * static_cast<size_t>(w) +
+                                     static_cast<size_t>(x);
+                if (index >= moveMon.size() || !moveMon[index]) continue;
+                const int dSlot = destSlot + x + y * cols;
+                if (dSlot < 0 || dSlot >= slots)
+                    return refuse("That group does not fit in the destination.");
+                if (storageSlotLocked(destPane, destBox, dSlot))
+                    return refuse("Cross-store true Move requires every destination slot to be unlocked.");
+                const auto& existing = storageSlot(destPane, destBox, dSlot);
+                if (existing && existing->speciesID() != 0)
+                    return refuse("Cross-store true Move requires empty destination slots.");
+
+                if (destPane == 0 &&
+                    moveMon[index]->getGameGroup() != trainer.getGameGroup()) {
+                    return refuse("Cross-game true Move is locked until conversion preservation is proven.");
+                }
+
+                PreparedCell cell;
+                cell.index = index;
+                cell.destinationSlot = dSlot;
+
+                if (destPane == 1) {
+                    // Recovery candidate only: verify clone() preserves the exact native payload.
+                    cell.candidate = moveMon[index]->clone();
+                    if (!cell.candidate ||
+                        cell.candidate->getDataSize() != moveMon[index]->getDataSize() ||
+                        std::memcmp(cell.candidate->getData().data(),
+                                    moveMon[index]->getData().data(),
+                                    moveMon[index]->getDataSize()) != 0) {
+                        return refuse("Could not build an exact native Bank destination candidate.");
+                    }
+                } else {
+                    PreparedPlacement placement = prepareForPane(*moveMon[index], destPane);
+                    if (!placement.ready() || placement.useOriginal || !placement.candidate)
+                        return refuse(placement.failure.empty()
+                            ? "Could not prepare a safe save destination candidate."
+                            : placement.failure);
+                    cell.candidate = std::move(placement.candidate);
+                }
+
+                const auto payloadDigest = [](const Pokemon::Pokemon& mon) {
+                    return sha256(std::span<const uint8_t>(
+                        reinterpret_cast<const uint8_t*>(mon.getData().data()),
+                        mon.getDataSize()));
+                };
+                cell.record.sourceSlot =
+                    std::to_string(heldFromBox) + ":" +
+                    std::to_string(heldFromSlot + x + y * paneCols(heldPane));
+                cell.record.destinationSlot =
+                    std::to_string(destBox) + ":" + std::to_string(dSlot);
+                cell.record.sourcePayload = payloadDigest(*moveMon[index]);
+                cell.record.destinationPayload = payloadDigest(*cell.candidate);
+                cell.record.species = moveMon[index]->speciesID();
+                cell.record.form = moveMon[index]->form();
+                preparedCells.push_back(std::move(cell));
+            }
+        }
+        if (preparedCells.empty()) return refuse("There is no Pokemon to move.");
+
+        std::string error;
+        StoreDescriptor bankDescriptor, workspaceDescriptor;
+        if (!buildCrossStoreDescriptors(bankDescriptor, workspaceDescriptor, error))
+            return refuse(error);
+
+        Resolver resolver;
+        auto bankStore = makeStore(bankDescriptor, resolver, error);
+        auto workspaceStore = makeStore(workspaceDescriptor, resolver, error);
+        if (!bankStore || !workspaceStore) return refuse(error);
+
+        std::vector<uint8_t> bankBefore, workspaceBefore;
+        if (!bankStore->read(bankBefore, error) || !workspaceStore->read(workspaceBefore, error))
+            return refuse("Could not re-read the authoritative transaction baseline: " + error);
+        if (sha256(bankBefore) != crossStoreBaseline.bankDigest ||
+            sha256(workspaceBefore) != crossStoreBaseline.workspaceDigest) {
+            return refuse("Bank/workspace changed after pickup. Return the Pokemon and try again.");
+        }
+
+        // Stage only destination candidates. Authoritative originals remain in moveMon until the
+        // durable transaction reaches COMMITTED. Destination slots were proven empty above.
+        for (auto& cell : preparedCells)
+            storageSlot(destPane, destBox, cell.destinationSlot) = std::move(cell.candidate);
+
+        const auto rollbackStagedDestinations = [&]() {
+            for (const auto& cell : preparedCells)
+                storageSlot(destPane, destBox, cell.destinationSlot).reset();
+        };
+
+        std::vector<uint8_t> bankAfter;
+        if (!bank->buildVerifiedImage(bankAfter, error)) {
+            rollbackStagedDestinations();
+            return refuse("Could not build a verified Bank post-image: " + error);
+        }
+
+        Save::WorkspaceImage workspaceAfter;
+        if (!Save::buildWorkspaceImage(trainer, backupDir.c_str(), titleId,
+                                       workspaceAfter, error) ||
+            workspaceAfter.fileId != workspaceDescriptor.fileId) {
+            rollbackStagedDestinations();
+            return refuse("Could not build a verified workspace post-image: " + error);
+        }
+
+        Engine engine;
+        Transaction tx;
+        tx.id = engine.journal().allocateTransactionId(error);
+        if (tx.id.empty()) {
+            rollbackStagedDestinations();
+            return refuse("Could not allocate a durable Move transaction: " + error);
+        }
+        tx.moves.reserve(preparedCells.size());
+        for (const auto& cell : preparedCells) tx.moves.push_back(cell.record);
+
+        Store* sourceStore = nullptr;
+        Store* destinationStore = nullptr;
+        std::span<const uint8_t> destinationAfter;
+        std::span<const uint8_t> sourceRetired;
+
+        if (heldPane == 1) {
+            tx.source = bankDescriptor;
+            tx.destination = workspaceDescriptor;
+            sourceStore = bankStore.get();
+            destinationStore = workspaceStore.get();
+            destinationAfter = workspaceAfter.bytes;
+            sourceRetired = bankAfter;
+        } else {
+            tx.source = workspaceDescriptor;
+            tx.destination = bankDescriptor;
+            sourceStore = workspaceStore.get();
+            destinationStore = bankStore.get();
+            destinationAfter = bankAfter;
+            sourceRetired = workspaceAfter.bytes;
+        }
+
+        if (!engine.prepare(tx, *sourceStore, *destinationStore,
+                            destinationAfter, sourceRetired, error)) {
+            rollbackStagedDestinations();
+            return refuse("True Move was not started: " + error);
+        }
+
+        const RecoveryResult committed = engine.recover(tx.id, *sourceStore, *destinationStore);
+        if (committed.status != RecoveryStatus::Committed) {
+            // Disk/journal is now the authority. Hide transient RAM copies and lock all mutation
+            // until startup/session recovery can deterministically reconcile the transaction.
+            rollbackStagedDestinations();
+            moveMon.clear();
+            selectDimensions = {0, 0};
+            if (bank) bank->load();
+            hasUnsavedChanges = false;
+            carriedCopyMode = false;
+            clearCrossStoreMoveBaseline();
+            moveRecoveryLocked = true;
+            moveRecoveryNotice =
+                "Pokemon Move recovery is required. Storage changes are locked.";
+            postStatus(moveRecoveryNotice, 600);
+            Utils::logEventToFile("MOVE_TX id=" + tx.id + " result=RECOVERY_REQUIRED state=" +
+                                  std::to_string(static_cast<int>(committed.state)) +
+                                  " reason=\"" + committed.error + "\"");
+            return true;
+        }
+
+        // The transaction is authoritative now. The staged destination already represents the
+        // committed workspace model; re-load Bank from disk so its saved baseline cannot resurrect
+        // a retired source through the legacy Discard prompt.
+        moveMon.clear();
+        selectDimensions = {0, 0};
+        if (bank) bank->load();
+        hasUnsavedChanges = false;
+        carriedCopyMode = false;
+        clearCrossStoreMoveBaseline();
+        heldPane = destPane;
+        heldFromBox = destBox;
+        heldFromSlot = destSlot;
+        postStatus("MOVE COMMITTED - destination verified before source retirement.", 300);
+        Utils::logEventToFile("MOVE_TX id=" + tx.id + " result=COMMITTED moves=" +
+                              std::to_string(tx.moves.size()));
+        return true;
+    }
+
     // Put the whole carried block back where it was lifted from. Each cell prefers its own original
     // slot; if something has since filled that slot, it falls back to any empty slot in the origin
     // pane, because a carried Pokemon must never be dropped on the floor.
@@ -610,27 +975,80 @@ namespace UI {
         const int boxCount = (pane == 0) ? static_cast<int>(trainer.getBoxCount())
                                          : static_cast<int>(Trainer::Bank::BANK_BOX_COUNT);
         const int cols = (pane == 0) ? ((slots == 25) ? 5 : 6) : 6;
-        auto place = [&](int box, int slot, std::unique_ptr<Pokemon::Pokemon>& pk) -> bool {
+
+        // A02 custody rule: plan the ENTIRE rollback before moving a single Pokemon.
+        // The old implementation moved what it could, then unconditionally cleared moveMon.
+        // If the origin pane was full, any unplaced unique_ptr was destroyed. A failed rollback
+        // must instead leave the carried block byte-for-byte in our custody.
+        struct ReturnPlan {
+            bool complete = true;
+            std::vector<std::pair<int, int>> destinations;
+        } returnPlan;
+        returnPlan.destinations.assign(moveMon.size(), {-1, -1});
+
+        std::vector<bool> reserved(static_cast<size_t>(boxCount * slots), false);
+        const auto available = [&](int box, int slot) -> bool {
             if (box < 0 || box >= boxCount || slot < 0 || slot >= slots) return false;
             if (storageSlotLocked(pane, box, slot)) return false;
-            auto& dst = storageSlot(pane, box, slot);
-            if (!dst || dst->speciesID() == 0) { dst = std::move(pk); return true; }   // species-0 = empty (S/V ghost)
-            return false;
+            const size_t flat = static_cast<size_t>(box * slots + slot);
+            if (reserved[flat]) return false;
+            const auto& dst = storageSlot(pane, box, slot);
+            return !dst || dst->speciesID() == 0;   // species-0 = empty (S/V ghost)
         };
+        const auto reserve = [&](size_t index, int box, int slot) {
+            returnPlan.destinations[index] = {box, slot};
+            reserved[static_cast<size_t>(box * slots + slot)] = true;
+        };
+
         const int w = selectDimensions.first > 0 ? selectDimensions.first : 1;
         for (size_t i = 0; i < moveMon.size(); ++i) {
             if (!moveMon[i]) continue;
-            const int x = static_cast<int>(i) % w, y = static_cast<int>(i) / w;
-            int box = heldFromBox, slot = heldFromSlot + x + y * cols;
-            while (slot >= slots) { slot -= slots; ++box; }        // defensive: a grab is bounds-checked to one box
-            if (place(box, slot, moveMon[i])) continue;
-            bool placed = false;
-            for (int b = 0; b < boxCount && !placed; ++b)
-                for (int s = 0; s < slots && !placed; ++s)
-                    placed = place(b, s, moveMon[i]);
+
+            const int x = static_cast<int>(i) % w;
+            const int y = static_cast<int>(i) / w;
+            int box = heldFromBox;
+            int slot = heldFromSlot + x + y * cols;
+            while (slot >= slots) { slot -= slots; ++box; }
+
+            if (available(box, slot)) {
+                reserve(i, box, slot);
+                continue;
+            }
+
+            bool planned = false;
+            for (int b = 0; b < boxCount && !planned; ++b) {
+                for (int s = 0; s < slots && !planned; ++s) {
+                    if (!available(b, s)) continue;
+                    reserve(i, b, s);
+                    planned = true;
+                }
+            }
+            if (!planned) {
+                returnPlan.complete = false;
+                break;
+            }
         }
+
+        if (!returnPlan.complete) {
+            postStatus("Could not return the held Pokemon safely - custody retained.", 360);
+            return;
+        }
+
+        // Every carried Pokemon now has a unique, still-empty destination. The UI is single-threaded,
+        // so nothing can invalidate the plan between this point and the moves below.
+        for (size_t i = 0; i < moveMon.size(); ++i) {
+            if (!moveMon[i]) continue;
+            const auto [box, slot] = returnPlan.destinations[i];
+            auto& dst = storageSlot(pane, box, slot);
+            dst = std::move(moveMon[i]);
+        }
+
         moveMon.clear();
         selectDimensions = {0, 0};
+        if (crossStoreBaseline.captured)
+            hasUnsavedChanges = crossStoreBaseline.workspaceDirtyBeforePickup;
+        carriedCopyMode = false;
+        clearCrossStoreMoveBaseline();
     }
 
     // Reference to a storage slot's unique_ptr (pane 0 = save boxes, 1 = bank). Callers must
@@ -658,48 +1076,61 @@ namespace UI {
         exitRequested = true;
     }
 
-    // Convert `pk` in place into the format needed to live in `destPane`. The bank (pane 1) accepts
-    // anything as-is; a save slot (pane 0) requires the open game's format, so a foreign mon is CONVERTED
-    // in place if a supported route exists (M5 Phase B). Returns false + posts a status when it can't go
-    // there (out-of-dex / unsupported gen pair). Shared by the single-mon and bulk placement paths.
-    bool TrainerViewScreen::convertForPane(std::unique_ptr<Pokemon::Pokemon>& pk, int destPane) {
-        if (destPane != 0 || !pk) return true;                          // bank: store as-is
-        if (pk->getGameGroup() == trainer.getGameGroup()) {
-            // Same game, so no conversion -- but repair an invalid AffixedRibbon and re-checksum
-            // before it enters the save. The re-checksum SHOULD be a no-op writing back the identical
-            // value, since the bank stores native bytes untouched; that is exactly why it is cheap
-            // insurance, because a stale checksum reaching the game's box writer is a Bad Egg in-game.
-            //
-            // The ribbon repair is NOT a no-op for legacy stock: mons banked before the creator learned
-            // to set AffixedRibbon carry 0, which the game reads as "display ribbon index 0" -- the
-            // Kalos Champion ribbon. Cross-gen withdrawals get this inside convert(); a same-group one
-            // never calls convert() at all, so without this the 0 rides straight back into the save.
-            // Repairing here rather than in the bank keeps the bank's never-mutate rule intact
-            // (see Appendix C) -- the fix lands on the way INTO a save, where it belongs.
-            Conversion::normalizeAffixedRibbon(*pk);
-            pk->refreshChecksum();
-            return true;
+    // Prepare a destination representation without mutating authoritative carried custody.
+    // Bank accepts the native object as-is and therefore needs no candidate. Save placement always
+    // adapts a separate object: same-group placement clones then applies destination-only repair;
+    // cross-group placement asks Conversion::convert() for a new destination-format entity.
+    // The caller may discard this object freely. moveMon is not retired until slot commit.
+    TrainerViewScreen::PreparedPlacement TrainerViewScreen::prepareForPane(
+        const Pokemon::Pokemon& original, int destPane) {
+        PreparedPlacement prepared;
+
+        if (destPane != 0) {
+            // Bank custody is format-neutral. The native object itself is moved only at the commit
+            // boundary, preserving its bytes and avoiding conversion/normalization side effects.
+            prepared.useOriginal = true;
+            return prepared;
         }
-        Conversion::Result res;
-        const std::string species = pk->species();
-        // The exact destination game, not just its group: a mon transferred down into Gen 3 cannot keep a
-        // modern origin (4-bit field) and gets restamped, and "FRLG" alone can't say which half it is.
-        auto converted = Conversion::convert(*pk, trainer.getGameGroup(), res,
-                                             saveOriginVersion(trainer, titleId));
-        if (converted) {
-            // Cross-gen conversion is where the subtle transfer bugs have historically lived
-            // (fainted arrivals, deleted moves, garbage levels), so every one gets a line.
-            Utils::logTest("CONVERT  species=\"" + species + "\" -> " +
-                           std::to_string(static_cast<int>(trainer.getGameGroup())) +
-                           " lvl=" + std::to_string(converted->level()) +
-                           " hp=" + std::to_string(converted->statHPMax()) + " result=OK");
-            pk = std::move(converted); return true;      // convert in place
+
+        const std::string species = original.species();
+        if (original.getGameGroup() == trainer.getGameGroup()) {
+            auto candidate = original.clone();
+            if (!candidate) {
+                prepared.failure = "Could not prepare a safe destination copy.";
+                Utils::logTest("CONVERT  species=\"" + species +
+                               "\" result=REFUSED msg=\"" + prepared.failure + "\"");
+                return prepared;
+            }
+
+            // These are destination-save repairs, not custody mutations. Applying them to the
+            // disposable clone means B/cancel/failure can still return the exact original bytes.
+            Conversion::normalizeAffixedRibbon(*candidate);
+            candidate->refreshChecksum();
+            prepared.candidate = std::move(candidate);
+            prepared.normalized = true;
+            Utils::logTest("CONVERT  species=\"" + species +
+                           "\" result=PREPARED same_group=Y");
+            return prepared;
         }
-        Utils::logTest("CONVERT  species=\"" + species + "\" result=REFUSED msg=\"" +
-                       Conversion::resultMessage(res) + "\"");
-        storageStatus = Conversion::resultMessage(res);
-        storageStatusFrames = 150;   // ~2.5s at 60fps
-        return false;
+
+        Conversion::Result res{};
+        auto converted = Conversion::convert(
+            original, trainer.getGameGroup(), res, saveOriginVersion(trainer, titleId));
+        if (!converted) {
+            prepared.failure = Conversion::resultMessage(res);
+            Utils::logTest("CONVERT  species=\"" + species + "\" result=REFUSED msg=\"" +
+                           prepared.failure + "\"");
+            return prepared;
+        }
+
+        prepared.converted = true;
+        prepared.candidate = std::move(converted);
+        Utils::logTest("CONVERT  species=\"" + species + "\" -> " +
+                       std::to_string(static_cast<int>(trainer.getGameGroup())) +
+                       " lvl=" + std::to_string(prepared.candidate->level()) +
+                       " hp=" + std::to_string(prepared.candidate->statHPMax()) +
+                       " result=PREPARED");
+        return prepared;
     }
 
     // True if placing `pk` into `pane` would run a Let's Go conversion (exactly one side is LGPE), which
@@ -1237,7 +1668,27 @@ namespace UI {
         while (!leaf.empty() && leaf.front() == ' ') leaf.erase(leaf.begin());
         if (leaf.empty()) return "";
 
-        const std::string gameDir = BASE_SAVE_DIRECTORY + "/" + titleName;
+        const auto* identity = PokeVault::Games::findSwitchGame(titleId);
+        if (!identity) {
+            Utils::logErrorToFile("Named backup refused: exact Switch game identity unavailable");
+            return "";
+        }
+        const std::string gameDir =
+            PokeBank::Paths::exactGameBackupsRoot(userUid, identity->id);
+        if (gameDir.empty()) {
+            Utils::logErrorToFile("Named backup refused: profile/exact-game namespace unavailable");
+            return "";
+        }
+
+        // The session itself must already be inside this exact profile/game root. This prevents
+        // an ownership-unknown legacy folder (or any unrelated owned path) from seeding a new
+        // writable backup merely because it reached this screen.
+        if (backupDir.rfind(gameDir + "/", 0) != 0) {
+            Utils::logErrorToFile("Named backup refused: current workspace is outside scoped game root",
+                                  backupDir.c_str());
+            return "";
+        }
+
         auto exists = [](const std::string& p) { struct stat st{}; return stat(p.c_str(), &st) == 0; };
 
         // Suffix rather than overwrite -- silently replacing a backup the user made earlier would be
@@ -1477,6 +1928,9 @@ namespace UI {
         auto& src = storageSlot(pane, box, slot);
         if (!src || src->speciesID() == 0) return;           // species-0 = empty (S/V ghost)
 
+        carriedCopyMode = false;
+        captureCrossStoreMoveBaseline(pane, false);
+        if (moveRecoveryLocked) return;
         moveMon.clear();
         moveMon.push_back(std::move(src));
         selectDimensions = {1, 1};
@@ -1517,6 +1971,17 @@ namespace UI {
         const int baseX = std::min(ax, curX), baseY = std::min(ay, curY);
         const int w = std::abs(ax - curX) + 1, h = std::abs(ay - curY) + 1;
 
+        if (remove) {
+            carriedCopyMode = false;
+            captureCrossStoreMoveBaseline(pane, false);
+            if (moveRecoveryLocked) {
+                currentlySelecting = false;
+                return;
+            }
+        } else {
+            carriedCopyMode = true;
+            clearCrossStoreMoveBaseline();
+        }
         moveMon.clear();
         moveMon.reserve(static_cast<size_t>(w) * static_cast<size_t>(h));
         int lockedLeft = 0;
@@ -1542,7 +2007,6 @@ namespace UI {
         heldPane = pane; heldFromBox = box; heldFromSlot = baseY * cols + baseX;
         currentlySelecting = false;
 
-        if (remove && carriedCount() > 0) hasUnsavedChanges = true;
         if (lockedLeft > 0)
             postStatus(std::to_string(lockedLeft) + " party-linked slot(s) stayed behind.", 180);
 
@@ -1643,77 +2107,114 @@ namespace UI {
             return;
         }
 
+        if (heldPane != pane && !carriedCopyMode) {
+            // A04b: normal cross-store Move is an immediate durable transaction. Never fall back to
+            // the historical independently-saved Bank/workspace staging path.
+            if (tryCommitCrossStoreMove(pane, box, slot)) return;
+        }
+
         const int w = selectDimensions.first, h = selectDimensions.second;
         int placed = 0, lockedHit = 0, blocked = 0;
-        bool converted = false;      // any cell crossed a game boundary -> noted on each MOVE event
         std::string firstName;
-        const char* firstWhy = nullptr;
+        std::string firstWhy;
 
         for (int y = 0; y < h; ++y) {
             for (int x = 0; x < w; ++x) {
-                const size_t idx = static_cast<size_t>(y) * static_cast<size_t>(w) + static_cast<size_t>(x);
+                const size_t idx = static_cast<size_t>(y) * static_cast<size_t>(w) +
+                                   static_cast<size_t>(x);
                 const int dSlot = slot + x + y * cols;
                 if (dSlot < 0 || dSlot >= slots) continue;
+
                 // Never disturb a party-linked slot -- not even with an empty cell, which would
                 // silently delete a party member out from under its pointer.
                 if (storageSlotLocked(pane, box, dSlot)) {
                     if (moveMon[idx]) ++lockedHit;
                     continue;
                 }
+
+                auto& dst = storageSlot(pane, box, dSlot);
+                bool cellConverted = false;
+
                 if (moveMon[idx]) {
-                    // Ask whether there is a route (for a species-named message), then honour what
-                    // the conversion ACTUALLY returns. Writing an unconverted foreign Pokemon into a
-                    // save is what produces a Bad Egg in game, so a failure here must not fall through.
-                    const bool foreign = (pane == 0 && moveMon[idx]->getGameGroup() != trainer.getGameGroup());
-                    Conversion::Result res{};
-                    const bool routed = !foreign || Conversion::canConvert(*moveMon[idx], trainer.getGameGroup(), res);
-                    if (!routed || !convertForPane(moveMon[idx], pane)) {
+                    // A03: preparation reads authoritative custody but never mutates/replaces it.
+                    // If this fails, moveMon[idx] is still the exact object that was picked up.
+                    PreparedPlacement prepared = prepareForPane(*moveMon[idx], pane);
+                    if (!prepared.ready()) {
                         ++blocked;
-                        if (!firstWhy) {
-                            firstName = Names::getDisplayName(moveMon[idx]->speciesID(), moveMon[idx]->form(),
-                                                              Trainer::getSpeciesName(moveMon[idx]->speciesID()));
-                            firstWhy  = routed ? "conversion failed" : Conversion::resultMessage(res);
+                        if (firstWhy.empty()) {
+                            firstName = Names::getDisplayName(
+                                moveMon[idx]->speciesID(), moveMon[idx]->form(),
+                                Trainer::getSpeciesName(moveMon[idx]->speciesID()));
+                            firstWhy = prepared.failure.empty()
+                                ? std::string("conversion failed") : prepared.failure;
                         }
                         if (g_debugLogging) {
                             Utils::logEventToFile(
                                 "MOVE result=BLOCKED " + Utils::logSlot("to", pane, box, dSlot)
-                                + " " + Utils::logField("reason", routed ? "conversion failed"
-                                                                         : Conversion::resultMessage(res))
+                                + " " + Utils::logField(
+                                    "reason", prepared.failure.empty()
+                                        ? "conversion failed" : prepared.failure)
                                 + " " + Utils::describeMon(*moveMon[idx], trainer));
                         }
-                        continue;                                   // leave it in hand, untouched
+                        continue;
                     }
+
                     ++placed;
-                    converted = converted || foreign;
+                    cellConverted = prepared.converted;
+
+                    if (prepared.useOriginal) {
+                        // Bank destination: commit the native object itself byte-for-byte. The
+                        // displaced native Bank occupant (if any) becomes the new held custody.
+                        PokeBank::UIModel::commitNativeSwap(moveMon[idx], dst);
+                    } else {
+                        // Save destination: candidate reaches the destination FIRST. Only after
+                        // destination ownership succeeds do we retire/replace the authoritative
+                        // original with the displaced slot occupant. If dst was empty, custody clears.
+                        PokeBank::UIModel::commitPreparedCandidate(
+                            moveMon[idx], dst, prepared.candidate);
+                    }
+
+                    if (g_debugLogging && dst) {
+                        std::string line =
+                            "MOVE result=OK stage=COMMITTED " +
+                            Utils::logSlot("from", heldPane, heldFromBox, heldFromSlot) +
+                            " " + Utils::logSlot("to", pane, box, dSlot) +
+                            (cellConverted ? " converted=Y" : "") +
+                            " " + Utils::describeMon(*dst, trainer);
+                        if (moveMon[idx])
+                            line += " displaced=[" + Utils::briefMon(*moveMon[idx]) + "]";
+                        Utils::logEventToFile(line);
+                    }
+                } else {
+                    // Preserve positional block-swap semantics for holes: an occupied destination
+                    // comes back up into the corresponding carried cell.
+                    std::swap(dst, moveMon[idx]);
                 }
-                auto& dst = storageSlot(pane, box, dSlot);
-                std::swap(dst, moveMon[idx]);                       // block swap: the occupant comes up
-                if (g_debugLogging && dst) {
-                    std::string line = "MOVE result=OK " + Utils::logSlot("from", heldPane, heldFromBox, heldFromSlot)
-                                     + " " + Utils::logSlot("to", pane, box, dSlot)
-                                     + (converted ? " converted=Y" : "")
-                                     + " " + Utils::describeMon(*dst, trainer);
-                    if (moveMon[idx]) line += " displaced=[" + Utils::briefMon(*moveMon[idx]) + "]";
-                    Utils::logEventToFile(line);
-                }
-                if (moveMon[idx] && moveMon[idx]->speciesID() == 0) moveMon[idx] = nullptr;  // ghost -> hole
+
+                if (moveMon[idx] && moveMon[idx]->speciesID() == 0)
+                    moveMon[idx] = nullptr;  // ghost -> hole
             }
         }
 
         if (placed > 0) hasUnsavedChanges = true;
+
         // The block's origin is now this drop site, so B returns the swapped-out Pokemon here.
-        heldPane = pane; heldFromBox = box; heldFromSlot = slot;
-        postPickup();                       // may trim the swapped-out leftovers, moving heldFromSlot
-        if (carrying()) {                   // keep the cursor on the leftovers' top-left corner
-            if (pane == 0) stSaveSlot = heldFromSlot; else stBankSlot = heldFromSlot;
+        heldPane = pane;
+        heldFromBox = box;
+        heldFromSlot = slot;
+        postPickup();  // may trim the swapped-out leftovers, moving heldFromSlot
+        if (carrying()) {
+            if (pane == 0) stSaveSlot = heldFromSlot;
+            else           stBankSlot = heldFromSlot;
         }
 
         if (blocked > 0) {
-            postStatus(firstName + ": " + (firstWhy ? firstWhy : "no transfer route")
+            postStatus(firstName + ": " + (firstWhy.empty() ? "no transfer route" : firstWhy)
                        + (blocked > 1 ? "  (+" + std::to_string(blocked - 1) + " more)" : "")
                        + " - still in hand", 240);
         } else if (lockedHit > 0) {
-            postStatus(std::to_string(lockedHit) + " couldn't land on a party-linked slot - still in hand", 240);
+            postStatus(std::to_string(lockedHit)
+                       + " couldn't land on a party-linked slot - still in hand", 240);
         }
     }
 

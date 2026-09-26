@@ -10,6 +10,7 @@
 #include "Utils/FileUtilities.h"
 #include "Utils/PokeBankPaths.h"
 #include "Globals.h"
+#include "Games/GameIdentity.h"
 
 using namespace Utils;
 
@@ -30,36 +31,71 @@ namespace UI {
         return first;
     }
 
-    BackupSelectionScreen::BackupSelectionScreen(u64 titleId, const std::string& titleName)
-        : titleId(titleId), titleName(titleName), selectedIndex(0), backupSelected(false),
-        createNewBackup(false), goBack(false), showDeleteConfirmation(false), deleteConfirmationIndex(-1) {
+    BackupSelectionScreen::BackupSelectionScreen(
+        AccountUid userUid, u64 titleId, const std::string& titleName)
+        : userUid(userUid), titleId(titleId), titleName(titleName), selectedIndex(0),
+          backupSelected(false), createNewBackup(false), goBack(false),
+          showDeleteConfirmation(false), deleteConfirmationIndex(-1) {
 
-        const std::string safeTitle = PokeBank::Paths::sanitizeComponent(titleName);
-        gameDirectory = PokeBank::Paths::backupsRoot() + "/" + safeTitle;
+        const auto* identity = PokeVault::Games::findSwitchGame(titleId);
+        if (identity) {
+            exactGameId = std::string(identity->id);
+            gameDirectory = PokeBank::Paths::exactGameBackupsRoot(userUid, identity->id);
+            namespaceReady = !gameDirectory.empty();
+        }
+
+        // Historical title-only backups have no persisted AccountUid ownership. Keep them visible
+        // as quarantined recovery evidence, never silently claim them for the current profile.
+        legacyGameDirectory = PokeBank::Paths::legacyUnscopedGameBackupsRoot(titleName);
 
         loadBackups();
     }
 
     void BackupSelectionScreen::loadBackups() {
-        // Get list of timestamped backup directories
-        std::vector<std::string> backupDirs = listBackupDirectories(gameDirectory.c_str());
+        backups.clear();
 
-        // Add the "Load from Title" action. With auto-backup ON this creates a new timestamped
-        // backup; with it OFF the load reuses a single "Working" copy (see UIManager::handleBackupSelection),
-        // so label it honestly rather than always promising a new backup.
         BackupInfo newBackupOption;
         newBackupOption.timestamp = "";
-        newBackupOption.displayName = g_autoBackupEnabled
-            ? "Browse installed source (read-only / new backup)"
-            : "Browse installed source (read-only / working copy)";
-        backups.push_back(newBackupOption);
+        newBackupOption.displayName = namespaceReady
+            ? (g_autoBackupEnabled
+                ? "Browse installed source (read-only / new backup)"
+                : "Browse installed source (read-only / working copy)")
+            : "Backup namespace unavailable (profile/game identity required)";
+        backups.push_back(std::move(newBackupOption));
 
-        // Add existing backups
-        for (const auto& timestamp : backupDirs) {
+        if (namespaceReady) {
+            for (const auto& name : listBackupDirectories(gameDirectory.c_str())) {
+                // Named backups may contain spaces. The name came from readdir below an already
+                // profile/exact-game-scoped root, so preserve it verbatim after rejecting traversal.
+                if (name.empty() || name == "." || name == ".." ||
+                    name.find('/') != std::string::npos) continue;
+                const std::string path = gameDirectory + "/" + name;
+                if (!PokeBank::Paths::isOwnedPath(path)) continue;
+                BackupInfo info;
+                info.timestamp = name;
+                info.displayName = "Edit backup workspace: " + formatTimestamp(name);
+                info.path = path;
+                backups.push_back(std::move(info));
+            }
+        }
+
+        // Legacy unscoped folders are deliberately visible but not editable. The historical layout
+        // never stored AccountUid, so current-user ownership cannot be proven. Include old Working/
+        // as well: it may contain the only surviving edited staging copy and must not disappear.
+        for (const auto& name : listBackupDirectories(legacyGameDirectory.c_str(), true)) {
+            // name is a directory entry discovered under legacyGameDirectory. Preserve historical
+            // custom names verbatim (including spaces); reject only traversal/separator shapes.
+            if (name.empty() || name == "." || name == ".." ||
+                name.find('/') != std::string::npos) continue;
+            const std::string path = legacyGameDirectory + "/" + name;
+            if (!PokeBank::Paths::isOwnedPath(path)) continue;
             BackupInfo info;
-            info.timestamp = timestamp;
-            info.displayName = "Edit backup workspace: " + formatTimestamp(timestamp);
-            backups.push_back(info);
+            info.timestamp = name;
+            info.path = path;
+            info.legacyUnscoped = true;
+            info.displayName = "LEGACY UNSCOPED / OWNERSHIP UNKNOWN — " +
+                (name == "Working" ? std::string("Working workspace") : formatTimestamp(name));
+            backups.push_back(std::move(info));
         }
     }
 
@@ -135,7 +171,8 @@ namespace UI {
 
         if (kDown & HidNpadButton_X) {
             // X button pressed - show delete confirmation for existing backups only
-            if (selectedIndex > 0 && selectedIndex < (int)backups.size()) {
+            if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
+                !backups[selectedIndex].legacyUnscoped) {
                 showDeleteConfirmation = true;
                 deleteConfirmationIndex = selectedIndex;
             }
@@ -155,16 +192,25 @@ namespace UI {
 
         if (kDown & HidNpadButton_A) {
             if (selectedIndex == 0) {
-                // First option: Load from Title (Create New Backup)
+                if (!namespaceReady) {
+                    reportFailure("No safe profile/exact-game backup namespace is available.");
+                    return;
+                }
                 createNewBackup = true;
                 backupSelected = true;
             } else {
-                // Existing backup selected
+                const auto& chosen = backups[selectedIndex];
+                if (chosen.legacyUnscoped) {
+                    reportFailure(
+                        "Legacy backup ownership is unknown; explicit import/assignment is required.");
+                    return;
+                }
+                if (chosen.path.empty() || !PokeBank::Paths::isOwnedPath(chosen.path)) {
+                    reportFailure("Backup path failed the PokeBank-owned path policy.");
+                    return;
+                }
                 createNewBackup = false;
-                char backupPath[512];
-                snprintf(backupPath, sizeof(backupPath), "%s/%s",
-                    gameDirectory.c_str(), backups[selectedIndex].timestamp.c_str());
-                selectedBackupPath = backupPath;
+                selectedBackupPath = chosen.path;
                 backupSelected = true;
             }
         }
@@ -183,7 +229,10 @@ namespace UI {
 
         drawBackupList(fb);
 
-        if (selectedIndex > 0) {
+        if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
+            backups[selectedIndex].legacyUnscoped) {
+            drawNavBar(fb, "A: Ownership Info  |  B: Back");
+        } else if (selectedIndex > 0) {
             drawNavBar(fb, "A: Select  |  X: Delete  |  B: Back");
         } else {
             drawNavBar(fb, "A: Select  |  B: Back");
@@ -243,16 +292,15 @@ namespace UI {
     }
 
     void BackupSelectionScreen::deleteBackup(int index) {
-        if (index <= 0 || index >= (int)backups.size()) {
-            return;  // Can't delete the "Load from Title" option or invalid index
+        if (index <= 0 || index >= (int)backups.size() || backups[index].legacyUnscoped) {
+            return;  // Action row, invalid entry, or ownership-unknown legacy evidence.
         }
 
-        char backupPath[512];
-        snprintf(backupPath, sizeof(backupPath), "%s/%s",
-            gameDirectory.c_str(), backups[index].timestamp.c_str());
+        const std::string& backupPath = backups[index].path;
+        if (backupPath.empty() || !PokeBank::Paths::isOwnedPath(backupPath)) return;
 
-        // Delete the directory
-        if (deleteDirectoryRecursive(backupPath)) {
+        // Delete only a profile/exact-game scoped workspace selected through normal navigation.
+        if (deleteDirectoryRecursive(backupPath.c_str())) {
             // Remove from backups list
             backups.erase(backups.begin() + index);
 

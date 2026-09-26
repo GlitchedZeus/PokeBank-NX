@@ -1,0 +1,159 @@
+name: Audit Hardening Native Validation
+
+on:
+  push:
+    branches:
+      - audit/full-project-hardening-20260923
+    paths:
+      - 'src/Save/GetSaveFileContents.cpp'
+      - 'src/Utils/DurableFile.cpp'
+      - 'include/Utils/DurableFile.h'
+      - 'src/Utils/PhysicalMoveAudit.cpp'
+      - 'include/Utils/PhysicalMoveAudit.h'
+      - 'src/main.cpp'
+      - 'src/Utils/MoveTransaction.cpp'
+      - 'src/Utils/MoveTransactionProduction.cpp'
+      - 'include/Utils/MoveTransactionProduction.h'
+      - 'tests/test_move_transaction_production.cpp'
+      - 'src/Trainer/Bank.cpp'
+      - 'include/Trainer/Bank.h'
+      - 'include/Utils/MoveTransaction.h'
+      - 'tests/test_move_transaction_journal.cpp'
+      - 'src/Utils/FileUtilities.cpp'
+      - 'include/Utils/FileUtilities.h'
+      - 'include/Utils/PokeBankPaths.h'
+      - 'src/UI/BackupSelectionScreen.cpp'
+      - 'include/UI/BackupSelectionScreen.h'
+      - 'src/UI/TrainerViewScreenBase.inc'
+      - 'include/UI/TrainerViewScreenBase.h'
+      - 'include/UI/StoragePlacementCommit.h'
+      - 'tests/test_storage_conversion_custody_contract.cpp'
+      - 'src/Conversion/Convert.cpp'
+      - 'include/Conversion/Convert.h'
+      - 'include/Conversion/Fidelity.h'
+      - 'include/Conversion/Gen3PidSearch.h'
+      - 'include/Conversion/RouteEvidence.h'
+      - 'src/Conversion/RouteEvidence.cpp'
+      - 'tests/test_conversion_evidence.cpp'
+      - 'tests/test_conversion_fidelity_golden.cpp'
+      - 'tests/test_conversion_entity_golden.cpp'
+      - 'src/UI/UI.cpp'
+      - 'tests/test_backup_namespace_contract.cpp'
+      - 'docs/AUDIT_STATUS_2026-09-23.md'
+      - 'Makefile.host.hardware-fixes'
+      - 'Makefile'
+      - '.github/workflows/audit-hardening-native.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+
+jobs:
+  native:
+    name: devkitA64 full compile and link
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout audit head
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 2
+
+      - name: Verify exact audit identity
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git diff --check HEAD^ HEAD
+          echo "APPLICATION_SHA=$GITHUB_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Recover complete RomFS and run asset preflight
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py)
+          rm -rf romfs
+          cp -a recovery-work/romfs romfs
+          for f in gold_gbc silver_gbc crystal_gbc; do
+            test -s "assets/game_cards/$f.png"
+            cp "assets/game_cards/$f.png" "romfs/game_cards/$f.png"
+          done
+          python3 tools/check_device_assets.py
+
+      - name: Clean devkitA64 compile and link
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            : "${DEVKITPRO:?DEVKITPRO is not set}"
+            devkita64_root="${DEVKITA64:-${DEVKITPRO}/devkitA64}"
+            readelf="${devkita64_root}/bin/aarch64-none-elf-readelf"
+            test -x "$readelf"
+            git config --global --add safe.directory /work
+            make clean || true
+            make -j1
+            test -s PokeBankNX.elf
+            test -s PokeBankNX.nro
+            "$readelf" -h PokeBankNX.elf > /work/audit-native-linkage.txt
+          ' 2>&1 | tee audit-native-build.log
+          grep -q 'AArch64' audit-native-linkage.txt
+          test -s PokeBankNX.nro
+          echo "AUDIT NATIVE DEVKITA64 COMPILE/LINK: PASS"
+
+      - name: Package physical durability audit artifact
+        run: |
+          set -euo pipefail
+          short="${GITHUB_SHA:0:8}"
+          out="physical-audit-artifact"
+          mkdir -p "$out/switch/PokeBank-NX/audit"
+          cp PokeBankNX.nro "$out/PokeBank-NX-PhysicalAudit-${short}.nro"
+          cat > "$out/switch/PokeBank-NX/audit/ENABLE_PHYSICAL_AUDIT_V1.txt" <<'EOF'
+          POKEBANK-NX-PHYSICAL-AUDIT-V1
+          DISPOSABLE-POKEBANK-OWNED-DATA-ONLY
+          EOF
+          cat > "$out/PHYSICAL-TEST.txt" <<'EOF'
+          PokeBank NX physical durability audit
+
+          1. Copy the NRO to your normal homebrew location.
+          2. Copy switch/PokeBank-NX/audit/ENABLE_PHYSICAL_AUDIT_V1.txt to the same path on the SD card.
+          3. Launch the NRO. It must say POKEBANK NX - AUDIT MODE.
+          4. Follow tests 1 through 8. When CHECKPOINT REACHED appears, close/reboot exactly as shown.
+          5. Reopen the same NRO after each interruption. It automatically runs recovery twice and shows PASS/FAIL.
+          6. Do not delete the audit folder until results are recorded.
+          7. Remove ENABLE_PHYSICAL_AUDIT_V1.txt when finished to return to the normal app.
+
+          This harness uses only sdmc:/switch/PokeBank-NX/audit/physical disposable fixture data.
+          Product cross-game True Move remains disabled.
+          EOF
+          sha256sum "$out/PokeBank-NX-PhysicalAudit-${short}.nro" > "$out/SHA256SUMS.txt"
+          printf 'APPLICATION_SHA=%s\nTREE_SHA=%s\n' "$GITHUB_SHA" "$(git rev-parse 'HEAD^{tree}')" > "$out/BUILD_IDENTITY.txt"
+
+      - name: Upload native validation logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audit-Native-Validation-${{ github.sha }}
+          path: |
+            audit-native-build.log
+            audit-native-linkage.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload physical durability audit NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: PokeBank-NX-PhysicalAudit-${{ github.sha }}
+          path: physical-audit-artifact/
+          if-no-files-found: error
+          retention-days: 30

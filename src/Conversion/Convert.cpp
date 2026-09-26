@@ -1,4 +1,6 @@
 #include "Conversion/Convert.h"
+#include "Conversion/Gen3PidSearch.h"
+#include "Conversion/Fidelity.h"
 
 #include <cstdint>
 #include <span>
@@ -81,6 +83,81 @@ namespace Conversion {
         // (PLA) use different containers/crypto and are handled by neither -> Unsupported.
         inline bool isG8(GameVersion g) { return g == GameVersion::SWSH || g == GameVersion::BDSP; }
         inline bool isG9(GameVersion g) { return g == GameVersion::SV   || g == GameVersion::ZA;   }
+
+        uint64_t readU64(std::span<const std::byte> data, size_t offset) noexcept {
+            if (offset + 8 > data.size()) return 0;
+            uint64_t value = 0;
+            for (int i = 0; i < 8; ++i)
+                value |= static_cast<uint64_t>(static_cast<uint8_t>(data[offset + static_cast<size_t>(i)])) << (8 * i);
+            return value;
+        }
+
+        bool anyNonZero(std::span<const std::byte> data, size_t offset, size_t count) noexcept {
+            if (offset >= data.size()) return false;
+            const size_t end = std::min(data.size(), offset + count);
+            for (size_t i = offset; i < end; ++i)
+                if (static_cast<uint8_t>(data[i]) != 0) return true;
+            return false;
+        }
+
+        bool validTerminatedUtf16(std::span<const std::byte> data, size_t offset, size_t bytes) noexcept {
+            if ((bytes & 1u) != 0 || offset + bytes > data.size()) return false;
+            const size_t units = bytes / 2;
+            for (size_t i = 0; i < units; ++i) {
+                const uint16_t ch = static_cast<uint16_t>(static_cast<uint8_t>(data[offset + i * 2])) |
+                                    (static_cast<uint16_t>(static_cast<uint8_t>(data[offset + i * 2 + 1])) << 8);
+                if (ch == 0) return true;
+                if (ch >= 0xD800 && ch <= 0xDBFF) {
+                    if (++i >= units) return false;
+                    const uint16_t low = static_cast<uint16_t>(static_cast<uint8_t>(data[offset + i * 2])) |
+                                         (static_cast<uint16_t>(static_cast<uint8_t>(data[offset + i * 2 + 1])) << 8);
+                    if (low < 0xDC00 || low > 0xDFFF) return false;
+                } else if (ch >= 0xDC00 && ch <= 0xDFFF) {
+                    return false;
+                }
+            }
+            // Modern name fields reserve one UTF-16 code unit for NUL. No terminator means the raw
+            // field represents more than the supported 12-character payload (or malformed trash).
+            return false;
+        }
+
+        bool swshSvTextRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+            const GameVersion from = src.getGameGroup();
+            if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+                  (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+                return true;
+            const auto data = src.getData();
+            // Nickname, Handling Trainer and Original Trainer use the same 13 UTF-16-code-unit
+            // storage in PK8/PK9: up to 12 characters plus an in-field terminator.
+            return validTerminatedUtf16(data, 0x58, 26) &&
+                   validTerminatedUtf16(data, 0xA8, 26) &&
+                   validTerminatedUtf16(data, 0xF8, 26);
+        }
+
+        uint64_t homeTracker(const Pokemon::Pokemon& src) noexcept {
+            const auto data = src.getData();
+            switch (src.getGameGroup()) {
+                case GameVersion::SWSH:
+                case GameVersion::BDSP: return readU64(data, 0x135);
+                case GameVersion::PLA:  return readU64(data, 0x14D);
+                case GameVersion::SV:
+                case GameVersion::ZA:   return readU64(data, 0x127);
+                default:                return 0; // PB7 / PK3 have no HOME tracker field
+            }
+        }
+
+        bool hasModernMarks(const Pokemon::Pokemon& src) noexcept {
+            switch (src.getGameGroup()) {
+                case GameVersion::SWSH:
+                case GameVersion::BDSP:
+                case GameVersion::PLA:
+                case GameVersion::SV:
+                case GameVersion::ZA:
+                    return anyNonZero(src.getData(), 0x40, 0x08);
+                default:
+                    return false;
+            }
+        }
 
         // PK8/PK9 party record: the 0x148 stored block + a 0x10-byte battle-stat tail (level @0x148,
         // HP/ATK/DEF/SPE/SPA/SPD @0x14A-0x155). The tail is NOT part of the checksummed/encrypted region,
@@ -205,6 +282,19 @@ namespace Conversion {
             }
             for (; gi < maxG3; ++gi) wr8(d, doff + gi, Utils::GEN3_TERMINATOR);   // Gen 3 pads names with 0xFF
         }
+        bool g3NameEqualsIgnoringTrash(const std::vector<std::byte>& lhs, size_t lhsOff,
+                                           const std::vector<std::byte>& rhs, size_t rhsOff,
+                                           int maxG3) {
+            for (int i = 0; i < maxG3; ++i) {
+                const uint8_t a = rd8(lhs, lhsOff + i);
+                const uint8_t b = rd8(rhs, rhsOff + i);
+                if (a == Utils::GEN3_TERMINATOR || b == Utils::GEN3_TERMINATOR)
+                    return a == b; // bytes after the shared terminator are non-semantic trash
+                if (a != b) return false;
+            }
+            return true;
+        }
+
         // Write a UTF-8 string UPPERCASED as a Gen 3 name (0xFF-terminated/padded) -- the species
         // name, for the Gen 3 nickname. Must decode UTF-8 rather than walk bytes: the species table
         // is game-canonical, so five of the names in Gen 3's own range carry a multi-byte character
@@ -225,8 +315,26 @@ namespace Conversion {
         }
 
         // PK8 -> PK9, in place. `species`/`form` are the source's (for the imported Tera type).
-        void transformG8toG9(std::vector<std::byte>& b, uint16_t species, uint8_t form) {
+        void transformG8toG9(std::vector<std::byte>& b, uint16_t species, uint8_t form,
+                              GameVersion destination, Report* report) {
             if (b.size() < 0x148) return;
+
+            // Capture every meaningful PK8-only semantic before relayout. Status condition has a
+            // real destination-native field and is relocated below; the remaining fields do not.
+            const uint32_t statusCondition = rd32(b, 0x94);
+            bool divergentData = (rd8(b, 0x16) & 0x10u) != 0 || // CanGigantamax
+                                 (rd8(b, 0x22) & 0x02u) != 0 ||   // PK8 Flag2: no PK9 representation
+                                 rd32(b, 0x48) != 0 ||            // Sociability
+                                 rd8(b, 0x90) != 0 ||             // DynamaxLevel
+                                 rd32(b, 0x98) != 0 ||            // Palma
+                                 rd8(b, 0xDC) != 0 || rd8(b, 0xDD) != 0 || // Fullness / Enjoyment
+                                 rd8(b, 0xE0) != 0 || rd8(b, 0xE1) != 0; // retired ConsoleRegion / Region
+            // PK8 party records carry DynamaxType at 0x156-0x157; PK9 has no equivalent field.
+            if (b.size() >= 0x158) divergentData |= rd16(b, 0x156) != 0;
+            for (size_t o = 0xCE; o <= 0xDB; ++o) divergentData |= rd8(b, o) != 0; // PokeJob
+            for (size_t o = 0x127; o <= 0x134; ++o) divergentData |= rd8(b, o) != 0; // TR records
+            if (divergentData && report) report->addLoss(Loss::DivergentGameDataDropped);
+
             // 0x08 species: the PK8 hub stores the NATIONAL dex number, but PK9/PA9 store the Gen 9
             // INTERNAL index (diverges from #917 on) -- convert, or the game shows a shifted species.
             wr16(b, 0x08, Pokemon::gen9NationalToInternal(rd16(b, 0x08)));
@@ -238,15 +346,19 @@ namespace Conversion {
             // 0x48-0x57: PK8 Sociability(0x48) + Height(0x50)/Weight(0x51) -> PK9 Height(0x48)/Weight(0x49)/
             //            Scale(0x4A) + DLC move-record flags(0x4B-0x57). PK8 has no scale -> reuse height.
             { uint8_t h = rd8(b, 0x50), w = rd8(b, 0x51); zeroRange(b, 0x48, 0x10);
-              wr8(b, 0x48, h); wr8(b, 0x49, w); wr8(b, 0x4A, h); }
+              wr8(b, 0x48, h); wr8(b, 0x49, w); wr8(b, 0x4A, h);
+              if (report) report->addAdaptation(Adaptation::TargetScaleSynthesized); }
             // 0x90-0x9F: PK8 DynamaxLevel(0x90)/Status(0x94)/Palma(0x98) -> PK9 Status(0x90)/Tera(0x94,0x95).
-            //            Zero, then import a Tera from the species' primary type (Normal falls back to type2).
+            //            Status is shared semantics at a different offset; relocate it instead of zeroing it.
+            //            Dynamax/Palma are source-only and were declared above.
             { zeroRange(b, 0x90, 0x10);
-              // SV, not the source game: the Tera type is being written INTO a PK9, so it has
-              // to name a type Scarlet/Violet has (and the source here is PK8 either way).
-              Pokemon::TypePair tp = Pokemon::getPokemonTypes(species, form, Enums::GameVersion::SV);
-              uint8_t tera = (tp.type1 == 0 /*Normal*/ && tp.type2 != 255) ? tp.type2 : tp.type1;
-              wr8(b, 0x94, tera); wr8(b, 0x95, tera); }
+              wr32(b, 0x90, statusCondition);
+              if (destination == GameVersion::SV) {
+                  Pokemon::TypePair tp = Pokemon::getPokemonTypes(species, form, Enums::GameVersion::SV);
+                  const uint8_t tera = Fidelity::defaultTeraType(tp.type1, tp.type2);
+                  wr8(b, 0x94, tera); wr8(b, 0x95, tera);
+                  if (report) report->addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
+              } }
             // 0xCE-0xF7 Block C: PK8 PokeJob/Version(0xDE)/BattleVer(0xDF)/Language(0xE2)/FormArg(0xE4)/
             //            AffixedRibbon(0xE8) -> PK9 Version(0xCE)/BattleVer(0xCF)/FormArg(0xD0)/Affixed(0xD4)/
             //            Language(0xD5). Capture, wipe the whole block, rewrite at PK9 offsets.
@@ -258,6 +370,7 @@ namespace Conversion {
               wr8(b, 0xD4, affixed); wr8(b, 0xD5, language); }
             // 0x11F ObedienceLevel (PK9 adds this; PK8 leaves it padding) = MetLevel.
             wr8(b, 0x11F, rd8(b, 0x125) & 0x7F);
+            if (report) report->addAdaptation(Adaptation::TargetObedienceLevelSynthesized);
             // 0x127-0x147: PK8 TR flags(0x127-0x134) + HOME Tracker(0x135) -> PK9 HOME Tracker(0x127) +
             //              move-record base flags(0x12F-0x147). Carry the tracker; drop the record flags.
             { uint64_t tracker = rd64(b, 0x135); zeroRange(b, 0x127, 0x21); wr64(b, 0x127, tracker); }
@@ -265,9 +378,93 @@ namespace Conversion {
             zeroRange(b, 0x156, 0x02);
         }
 
+        bool ribbonBitSet(std::span<const std::byte> data, uint8_t index) noexcept {
+            if (index >= 128 || data.size() < 0x48) return false;
+            const size_t byteOffset = index < 64
+                ? 0x34 + static_cast<size_t>(index >> 3)
+                : 0x40 + static_cast<size_t>((index - 64) >> 3);
+            const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
+            return (static_cast<uint8_t>(data[byteOffset]) & bit) != 0;
+        }
+
+        void clearRibbonBit(std::vector<std::byte>& data, uint8_t index) noexcept {
+            if (index >= 128 || data.size() < 0x48) return;
+            const size_t byteOffset = index < 64
+                ? 0x34 + static_cast<size_t>(index >> 3)
+                : 0x40 + static_cast<size_t>((index - 64) >> 3);
+            const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
+            data[byteOffset] = static_cast<std::byte>(static_cast<uint8_t>(data[byteOffset]) & ~bit);
+        }
+
         // PK9 -> PK8, in place (the mirror of transformG8toG9). Tera / ObedienceLevel / records are dropped.
-        void transformG9toG8(std::vector<std::byte>& b) {
+        void transformG9toG8(std::vector<std::byte>& b, GameVersion source, GameVersion destination, Report* report) {
             if (b.size() < 0x148) return;
+            if (source == GameVersion::SV && report) report->addLoss(Loss::TeraDataDropped);
+            if (source == GameVersion::ZA && rd8(b, 0x23) != 0 && report) report->addLoss(Loss::ZAAlphaDropped);
+
+            const uint32_t statusCondition = rd32(b, 0x90);
+            uint8_t targetPk8Version = rd8(b, 0xCE);
+            if (source == GameVersion::SV && destination == GameVersion::SWSH) {
+                uint16_t homeMet = 0;
+                switch (targetPk8Version) {
+                    case static_cast<uint8_t>(GameVersion::PLA):
+                        targetPk8Version = static_cast<uint8_t>(GameVersion::SW); homeMet = 60000; break;
+                    case static_cast<uint8_t>(GameVersion::BD):
+                        targetPk8Version = static_cast<uint8_t>(GameVersion::SW); homeMet = 59999; break;
+                    case static_cast<uint8_t>(GameVersion::SP):
+                        targetPk8Version = static_cast<uint8_t>(GameVersion::SH); homeMet = 59998; break;
+                    case static_cast<uint8_t>(GameVersion::SL):
+                        targetPk8Version = static_cast<uint8_t>(GameVersion::SW); homeMet = 59997; break;
+                    case static_cast<uint8_t>(GameVersion::VL):
+                        targetPk8Version = static_cast<uint8_t>(GameVersion::SH); homeMet = 59996; break;
+                    default:
+                        break;
+                }
+                if (homeMet != 0) {
+                    const uint16_t sourceEgg = rd16(b, 0x120);
+                    const uint16_t sourceMet = rd16(b, 0x122);
+                    const uint16_t targetEgg =
+                        sourceEgg != 0 && sourceEgg != 0xFFFFu ? static_cast<uint16_t>(65534u) : 0u;
+                    wr16(b, 0x120, targetEgg);
+                    wr16(b, 0x122, homeMet);
+                    if (report) {
+                        report->addAdaptation(Adaptation::TargetHistoryRepresentationRemapped);
+                        if (sourceMet != homeMet || sourceEgg != targetEgg)
+                            report->addLoss(Loss::LocationDetailDropped);
+                    }
+                }
+            }
+            // SWSH's ribbon/mark semantic domain stops at MarkSlump (97). PK9 adds
+            // Hisui/TwinklingStar plus Paldea ribbons/marks at 98..110. The raw storage bytes overlap,
+            // but those later indexes are not valid SWSH semantics, so clear them with declared loss.
+            if (source == GameVersion::SV && destination == GameVersion::SWSH) {
+                constexpr uint8_t ribbonIndexes[] = {98, 99, 100, 106, 110};
+                constexpr uint8_t markIndexes[] = {101, 102, 103, 104, 105, 107, 108, 109};
+                for (uint8_t index : ribbonIndexes) {
+                    if (ribbonBitSet(std::span<const std::byte>(b.data(), b.size()), index)) {
+                        clearRibbonBit(b, index);
+                        if (report) report->addLoss(Loss::RibbonDataDropped);
+                    }
+                }
+                for (uint8_t index : markIndexes) {
+                    if (ribbonBitSet(std::span<const std::byte>(b.data(), b.size()), index)) {
+                        clearRibbonBit(b, index);
+                        if (report) report->addLoss(Loss::MarkDataDropped);
+                    }
+                }
+            }
+
+            const uint8_t height = rd8(b, 0x48);
+            const uint8_t scale = rd8(b, 0x4A);
+            const uint8_t obedience = rd8(b, 0x11F);
+            const uint8_t metLevel = rd8(b, 0x125) & 0x7Fu;
+            bool divergentData = scale != height || obedience != metLevel;
+            for (size_t o = 0x4B; o <= 0x57; ++o) divergentData |= rd8(b, o) != 0; // DLC TM records
+            for (size_t o = 0x12F; o <= 0x147; ++o) divergentData |= rd8(b, o) != 0; // base TM records
+            if (source == GameVersion::ZA)
+                for (size_t o = 0x94; o <= 0x9F; ++o) divergentData |= rd8(b, o) != 0;
+            if (divergentData && report) report->addLoss(Loss::DivergentGameDataDropped);
+            wr8(b, 0x23, 0);
             // 0x08 species: PK9/PA9 store the Gen 9 INTERNAL index; the PK8 hub (and every format fed
             // from it) uses the NATIONAL dex number -- convert (mirror of transformG8toG9).
             wr16(b, 0x08, Pokemon::gen9InternalToNational(rd16(b, 0x08)));
@@ -279,12 +476,20 @@ namespace Conversion {
             { uint8_t h = rd8(b, 0x48), w = rd8(b, 0x49); zeroRange(b, 0x48, 0x10);
               wr8(b, 0x50, h); wr8(b, 0x51, w); }
             // 0x90-0x9F: PK9 Status(0x90)/Tera(0x94,0x95) -> PK8 DynamaxLevel(0x90)/Status(0x94)/Palma.
-            //            Tera is dropped; leave Dynamax/Status/Palma zeroed.
+            //            Tera is dropped; preserve status by relocating it to PK8's native offset.
             zeroRange(b, 0x90, 0x10);
+            wr32(b, 0x94, statusCondition);
             // 0xCE-0xF7 Block C: PK9 Version(0xCE)/BattleVer(0xCF)/FormArg(0xD0)/Affixed(0xD4)/Language(0xD5)
             //            -> PK8 Version(0xDE)/BattleVer(0xDF)/Language(0xE2)/FormArg(0xE4)/Affixed(0xE8).
-            { uint8_t version = rd8(b, 0xCE), battleVer = rd8(b, 0xCF), affixed = rd8(b, 0xD4), language = rd8(b, 0xD5);
+            { uint8_t version = targetPk8Version, battleVer = rd8(b, 0xCF), affixed = rd8(b, 0xD4), language = rd8(b, 0xD5);
               uint8_t f0 = rd8(b, 0xD0), f1 = rd8(b, 0xD1), f2 = rd8(b, 0xD2), f3 = rd8(b, 0xD3);
+              // PK8 BattleVersion is a Sword/Shield battle-eligibility reset marker, not historical
+              // origin. Carrying a Scarlet/Violet value into PK8 creates a destination-invalid marker.
+              // Clear it and declare the fidelity loss; historical origin remains in F13 provenance.
+              if (source == GameVersion::SV && destination == GameVersion::SWSH && battleVer != 0) {
+                  if (report) report->addLoss(Loss::BattleVersionDropped);
+                  battleVer = 0;
+              }
               zeroRange(b, 0xCE, 0x2A);   // 0xCE..0xF7
               wr8(b, 0xDE, version); wr8(b, 0xDF, battleVer); wr8(b, 0xE2, language);
               wr8(b, 0xE4, f0); wr8(b, 0xE5, f1); wr8(b, 0xE6, f2); wr8(b, 0xE7, f3);
@@ -490,13 +695,16 @@ namespace Conversion {
         // held item + moveset are remapped/sanitized to the true destination in convert().
 
         // PK3 (canonical decrypted, 80/100 B) -> PK8 layout (0x148 stored).
-        std::vector<std::byte> remapPK3toPK8(const std::vector<std::byte>& s) {
+        std::vector<std::byte> remapPK3toPK8(const std::vector<std::byte>& s, Report* report) {
             std::vector<std::byte> d(0x148, std::byte{0});
             const uint32_t pid      = rd32(s, 0x00);
             const uint16_t national = Pokemon::g3ToNational(rd16(s, 0x20));
             const uint32_t iv32     = rd32(s, 0x48);
             const uint16_t origins  = rd16(s, 0x46);
             const uint8_t  abilBit  = (iv32 >> 31) & 1;
+            const uint32_t ribbons  = rd32(s, 0x4C);
+            if ((ribbons & 0x7FFFFFFFu) != 0 && report) report->addLoss(Loss::RibbonDataDropped);
+            const uint32_t transferPid = Fidelity::adaptGen3PidForModern(pid, rd32(s, 0x04), report);
 
             uint8_t form = 0;   // Gen 3 stores no form except Unown (PID-derived)
             if (national == 201) {
@@ -505,15 +713,18 @@ namespace Conversion {
                 form = static_cast<uint8_t>(v % 28);
             }
             const Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(national, form);
+            const Pokemon::PersonalInfoG3& g3 = Pokemon::getPersonalInfoG3(national);
 
-            wr32(d, 0x00, pid);                                     // EC := PID
+            wr32(d, 0x00, pid);                                     // EC := original Gen III PID
             wr16(d, 0x08, national);                                // Species (National)
             wr16(d, 0x0A, Names::itemG3ToModern(rd16(s, 0x22)));    // Held item (Gen 3 -> modern; 0 if none)
             copyBytes(d, 0x0C, s, 0x04, 4);                         // ID32 (TID16 + SID16)
             copyBytes(d, 0x10, s, 0x24, 4);                         // EXP
-            wr16(d, 0x14, abilBit ? pi.ability2 : pi.ability1);     // Ability id (from the slot bit)
-            wr8(d, 0x16, abilBit ? 2 : 1);                          // AbilityNumber (1=slot1 / 2=slot2)
-            wr32(d, 0x1C, pid);                                     // PID
+            wr16(d, 0x14, Fidelity::gen3AbilityId(abilBit, g3.ability1, g3.ability2));
+            if (abilBit && g3.ability1 == g3.ability2 && report)
+                report->addLoss(Loss::AbilitySlotNormalized);
+            wr8(d, 0x16, Fidelity::gen3AbilityNumberForModern(abilBit, g3.ability1, g3.ability2));
+            wr32(d, 0x1C, transferPid);                             // PID adapted only for Gen III->modern shiny threshold
             wr8(d, 0x20, static_cast<uint8_t>(pid % 25));           // Nature
             wr8(d, 0x21, static_cast<uint8_t>(pid % 25));           // StatNature (no mints pre-Gen 8)
 
@@ -525,14 +736,20 @@ namespace Conversion {
             wr8(d, 0x22, static_cast<uint8_t>(fateful | (gender << 2)));
             wr8(d, 0x24, form);
 
-            copyBytes(d, 0x26, s, 0x38, 6);                         // EVs (HP,ATK,DEF,SPE,SPA,SPD -- same order)
+            for (int i = 0; i < 6; ++i)
+                wr8(d, 0x26 + i, Fidelity::modernEvFromGen3(rd8(s, 0x38 + i), report));
             copyBytes(d, 0x2C, s, 0x3E, 6);                         // Contest stats
             wr8(d, 0x32, rd8(s, 0x44));                             // Pokerus
 
             copyBytes(d, 0x72, s, 0x2C, 8);                         // Moves 1-4
             copyBytes(d, 0x7A, s, 0x34, 4);                         // Move PP
             { const uint8_t pu = rd8(s, 0x28); for (int i = 0; i < 4; ++i) wr8(d, 0x7E + i, (pu >> (i * 2)) & 3); }
-            wr32(d, 0x8C, iv32 & 0x7FFFFFFFu);                      // IVs + isEgg(bit30); clear Gen 3 ability bit(31)
+            std::vector<std::byte> canonicalName(10, static_cast<std::byte>(Utils::GEN3_TERMINATOR));
+            utf8UpperToG3Name(canonicalName, 0, Pokemon::getSpeciesNameGen89(national), 10);
+            const bool customNickname = !g3NameEqualsIgnoringTrash(s, 0x08, canonicalName, 0, 10);
+            uint32_t modernIv32 = iv32 & 0x7FFFFFFFu;               // clear Gen III ability bit
+            if (customNickname) modernIv32 |= 0x80000000u;          // modern IsNicknamed bit
+            wr32(d, 0x8C, modernIv32);
 
             g3NameToUtf16(d, 0x58, s, 0x08, 10, 26);                // Nickname (Gen 3 -> UTF-16)
             g3NameToUtf16(d, 0xF8, s, 0x14, 7, 26);                 // OT name
@@ -553,6 +770,7 @@ namespace Conversion {
                     wr8(d, 0x11C, static_cast<uint8_t>(year - 2000));      // Met_Year
                     wr8(d, 0x11D, static_cast<uint8_t>(lt->tm_mon + 1));   // Met_Month (1-12)
                     wr8(d, 0x11E, static_cast<uint8_t>(lt->tm_mday));      // Met_Day (1-31)
+                    if (report) report->addAdaptation(Adaptation::Gen3TransferDateSynthesized);
                 }
             }
             wr8(d, 0xDE, static_cast<uint8_t>((origins >> 7) & 0x0F));   // Origin game (FR=4/LG=5, same PK8 enum)
@@ -564,39 +782,41 @@ namespace Conversion {
         // `destOriginVersion` is the exact destination game's origin byte (FR = 4, LG = 5). It has to be
         // passed in: a game GROUP collapses the pair into one value by design, so FRLG alone cannot say
         // which of the two the save actually is.
-        std::vector<std::byte> remapPK8toPK3(const std::vector<std::byte>& s, uint8_t destOriginVersion) {
+        std::optional<std::vector<std::byte>> remapPK8toPK3(const std::vector<std::byte>& s,
+                                                               uint8_t destOriginVersion,
+                                                               bool sourceNicknamed,
+                                                               uint8_t targetAbilityBit,
+                                                               bool constrainPidAbilityBit,
+                                                               Report* report) {
             std::vector<std::byte> d(0x64, std::byte{0});
             const uint32_t pid      = rd32(s, 0x1C);
             const uint16_t national = rd16(s, 0x08);
             const uint32_t pk8iv    = rd32(s, 0x8C);
             const bool     isEgg    = (pk8iv >> 30) & 1;
+            if (report) {
+                if (anyNonZero(std::span<const std::byte>(s.data(), s.size()), 0x34, 0x0A))
+                    report->addLoss(Loss::RibbonDataDropped);
+                if (anyNonZero(std::span<const std::byte>(s.data(), s.size()), 0x40, 0x08))
+                    report->addLoss(Loss::MarkDataDropped);
+            }
 
             // Gen 3 derives nature/gender/shiny/ability ALL from the PID, but the source stores nature
-            // and gender EXPLICITLY -- copying the PID verbatim silently changes them (an LGPE Calm mon
-            // read as Jolly in FR/LG). The standard down-convert answer is to reroll the PID so its
-            // Gen-3-derived traits match the source's: nature, gender, shiny status and ability slot are
-            // preserved. IVs are NOT touched (separate field at 0x48). This DOES change the PID (the mon's
-            // identity) and yields a PID/IV pair that won't match a real Gen 3 RNG frame -- the UI warns
-            // the user first. Falls back to the original PID if no match is found within the budget.
-            uint32_t outPid = pid;
-            {
-                const uint8_t  natWant = rd8(s, 0x20) % 25;                                    // source nature
-                const uint8_t  genWant = static_cast<uint8_t>((rd8(s, 0x22) >> 2) & 3);        // 0=M,1=F,2=genderless
-                const uint8_t  gr      = getPersonalInfo(national, rd8(s, 0x24)).genderRatio;  // by species+form
-                const uint8_t  abilBit = (rd8(s, 0x16) == 2) ? 1u : 0u;                        // AbilityNumber 2 -> slot 2
-                const uint32_t tid32   = rd32(s, 0x0C);
-                const uint16_t tsv     = static_cast<uint16_t>((tid32 & 0xFFFF) ^ (tid32 >> 16));
-                const bool     shWant  = (static_cast<uint16_t>(((pid & 0xFFFF) ^ (pid >> 16)) ^ tsv) < 16);  // source threshold
-                uint32_t cand = pid;
-                for (int i = 0; i < 1000000; ++i) {
-                    const uint8_t  g   = (gr == 255) ? 2 : (gr == 254) ? 1 : (gr == 0) ? 0 : (((cand & 0xFF) < gr) ? 1 : 0);
-                    const uint16_t psv = static_cast<uint16_t>((cand & 0xFFFF) ^ (cand >> 16));
-                    const bool     sh  = (static_cast<uint16_t>(psv ^ tsv) < 8);               // Gen 3 shiny threshold
-                    if ((cand % 25) == natWant && g == genWant && sh == shWant && (cand & 1u) == abilBit) { outPid = cand; break; }
-                    cand = cand * 0x41C64E6Du + 0x00006073u;                                   // Gen 3 LCG walk
-                }
-            }
-            wr32(d, 0x00, outPid);                                 // PID rerolled to preserve nature/gender/shiny/ability
+            // and gender explicitly. A down-convert therefore needs a PID whose Gen-3-derived traits match
+            // the source. This is a hard preservation requirement: if the bounded search cannot find one,
+            // conversion fails closed instead of silently falling back to the original PID.
+            const uint8_t  natWant = rd8(s, 0x20) % 25;
+            const uint8_t  genWant = static_cast<uint8_t>((rd8(s, 0x22) >> 2) & 3);
+            const uint8_t  gr      = getPersonalInfo(national, rd8(s, 0x24)).genderRatio;
+            const uint8_t  abilBit = (rd8(s, 0x16) == 2) ? 1u : 0u;
+            const uint32_t tid32   = rd32(s, 0x0C);
+            const uint16_t tsv     = static_cast<uint16_t>((tid32 & 0xFFFF) ^ (tid32 >> 16));
+            const bool     shWant  = (static_cast<uint16_t>(((pid & 0xFFFF) ^ (pid >> 16)) ^ tsv) < 16);
+            Gen3PidSearch::Traits wanted{natWant, genWant, gr, abilBit, tid32, shWant};
+            wanted.constrainAbilityBit = constrainPidAbilityBit;
+            if (national == 201) wanted.unownForm = rd8(s, 0x24);
+            const auto outPid = Gen3PidSearch::find(pid, wanted, national == 201 ? 8000000 : 1000000);
+            if (!outPid) return std::nullopt;
+            wr32(d, 0x00, *outPid);                                 // PID rerolled to preserve nature/gender/shiny/ability
             copyBytes(d, 0x04, s, 0x0C, 4);                         // OTID32
             wr8(d, 0x12, rd8(s, 0xE2));                             // Language
             wr8(d, 0x13, static_cast<uint8_t>(0x02 | (isEgg ? 0x04 : 0)));   // Flags: HasSpecies (+ IsEgg)
@@ -604,8 +824,12 @@ namespace Conversion {
             wr16(d, 0x22, Names::itemModernToG3(rd16(s, 0x0A)));    // Held item (modern -> Gen 3; 0 if none)
             copyBytes(d, 0x24, s, 0x10, 4);                         // EXP
 
-            // Gen 3 nickname = the uppercase species name (custom nicknames aren't carried down to Gen 3).
-            utf8UpperToG3Name(d, 0x08, Pokemon::getSpeciesNameGen89(national), 10);
+            if (sourceNicknamed) {
+                utf16ToG3Name(d, 0x08, s, 0x58, 26, 10);            // representable custom nickname survives
+            } else {
+                utf8UpperToG3Name(d, 0x08, Pokemon::getSpeciesNameGen89(national), 10);
+                if (report) report->addAdaptation(Adaptation::DefaultNicknameCanonicalized);
+            }
             utf16ToG3Name(d, 0x14, s, 0xF8, 26, 7);                 // OT name (UTF-16 -> Gen 3)
 
             copyBytes(d, 0x2C, s, 0x72, 8);                         // Moves 1-4
@@ -627,16 +851,159 @@ namespace Conversion {
             // path, not a rare edge: every cross-gen transfer into Gen 3 takes it. It used to substitute a
             // literal 4, which is FireRed -- so a LeafGreen save stamped FireRed 100% of the time.
             uint8_t version = rd8(s, 0xDE);
-            if (version < 1 || version > 5) version = destOriginVersion;
+            if (version < 1 || version > 5) {
+                version = destOriginVersion;
+                if (report) report->addLoss(Loss::OriginGameRestamped);
+            }
             wr16(d, 0x46, static_cast<uint16_t>((metLevel & 0x7F) | ((version & 0x0F) << 7)
                                               | ((ball & 0x0F) << 11) | ((otGender & 1) << 15)));
             wr8(d, 0x45, static_cast<uint8_t>(rd16(s, 0x122)));     // Met location (Gen 3 ids are u8)
 
             // IVs: keep bits 0-29 (IVs) + bit30 (isEgg); set bit31 = ability slot from the PK8 ability number.
-            const uint8_t abilNum = rd8(s, 0x16);                  // 1=slot1, 2=slot2, 4=hidden (-> slot1 in Gen 3)
-            wr32(d, 0x48, (pk8iv & 0x7FFFFFFFu) | ((abilNum == 2) ? 0x80000000u : 0u));
+            wr32(d, 0x48, (pk8iv & 0x7FFFFFFFu) | (targetAbilityBit ? 0x80000000u : 0u));
             return d;
         }
+    }
+
+
+    bool swshSvFormTransferable(uint16_t species, uint8_t form) noexcept {
+        // Minior is the pinned FormInfo exception where form 0 itself is a battle-only
+        // shield state; core forms are 7..13. Do this before the ordinary form-0 fast path.
+        if (species == 774 && form < 7) return false;
+        if (form == 0) return true;
+
+        // Exact relevant subset of pinned PKHeX FormInfo.IsBattleOnlyForm/IsFusedForm
+        // (6501f0ab46e8f8ca048539dbaf8cae8cb104e722). Target presence is a separate
+        // generated-personal-table gate; this oracle only rejects transient/fused state.
+        // These values are transient battle states or fused entities and must not be moved as an
+        // ordinary standalone Pokemon even when the personal table says the form exists.
+        switch (species) {
+            case 646: // Kyurem: White/Black are fused
+            case 800: // Necrozma: Dusk/Dawn fused; Ultra is battle-only
+            case 898: // Calyrex: Ice/Shadow Rider are fused
+                return false;
+
+            case 555: // Darmanitan: odd forms are Zen battle states
+                return (form & 1u) == 0;
+            case 658: // Greninja: Ash battle state
+                return form != 2;
+            case 718: // Zygarde Complete
+                return form != 4;
+            case 774: // Minior shields-up battle forms are 0..6
+                return form >= 7;
+            case 778: // Mimikyu Busted
+                return (form & 1u) == 0;
+            case 1017: // Ogerpon Embody Aspect
+                return form < 4;
+
+            case 351: // Castform weather
+            case 382: // Kyogre Primal
+            case 383: // Groudon Primal
+            case 421: // Cherrim Sunshine
+            case 648: // Meloetta Pirouette
+            case 681: // Aegislash Blade
+            case 716: // Xerneas Active
+            case 746: // Wishiwashi School
+            case 845: // Cramorant Gulping/Gorging
+            case 875: // Eiscue Noice
+            case 877: // Morpeko Hangry
+            case 888: // Zacian Crowned
+            case 889: // Zamazenta Crowned
+            case 890: // Eternatus Eternamax
+            case 964: // Palafin Hero
+            case 1024: // Terapagos battle forms
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    bool swshSvFormTransferable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        const GameVersion from = src.getGameGroup();
+        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            return true;
+        return swshSvFormTransferable(src.speciesID(), src.form());
+    }
+
+    bool swshSvKnownSourceSemantics(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        const GameVersion from = src.getGameGroup();
+        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            return true;
+
+        const auto d = src.getData();
+        auto nz = [&](size_t o) { return o < d.size() && static_cast<uint8_t>(d[o]) != 0; };
+        auto masked = [&](size_t o, uint8_t mask) {
+            return o < d.size() && (static_cast<uint8_t>(d[o]) & mask) != 0;
+        };
+
+        if (from == GameVersion::SWSH) {
+            return !masked(0x16, 0xE0) && !masked(0x19, 0xF0) &&
+                   !masked(0x22, 0xF0) && !nz(0x25) &&
+                   !masked(0x126, 0xC0);
+        }
+
+        if (masked(0x16, 0xF0) || masked(0x19, 0xF0) ||
+            masked(0x22, 0xF8) || nz(0x25) || masked(0x126, 0xC0))
+            return false;
+        for (size_t o = 0xD6; o <= 0xF7 && o < d.size(); ++o)
+            if (nz(o)) return false;
+        return !(nz(0x156) || nz(0x157));
+    }
+
+    bool swshSvAbilityRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        const GameVersion from = src.getGameGroup();
+        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            return true;
+
+        // PKHeX's current SWSH/SV personal tables have exactly two shared species whose
+        // normal slot-2 ability changed between the generations. Slots 1 and Hidden are
+        // identical for both. Preserve the normal-slot meaning only when the raw ability id
+        // is valid in the destination; otherwise fail closed rather than silently creating
+        // a destination-illegal Pokemon or substituting a different effect.
+        if (src.abilityNumber() != 2)
+            return true;
+
+        switch (src.speciesID()) {
+            case 275: // Shiftry: Early Bird (48) -> Wind Rider (274)
+                return src.ability() == (destGroup == GameVersion::SV ? 274 : 48);
+            case 475: // Gallade: duplicate Steadfast (80) -> Sharpness (292)
+                return src.ability() == (destGroup == GameVersion::SV ? 292 : 80);
+            default:
+                return true;
+        }
+    }
+
+    bool swshSvBallRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        const GameVersion from = src.getGameGroup();
+        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            return true;
+
+        const uint8_t ball = src.ball();
+        // A real modern Pokemon has a defined ball (1..). PK8/SWSH ends at Beast Ball (26).
+        // PK9 can encode later HOME/PLA ball ids, including Strange Ball. Never copy one of those
+        // into a PK8 destination, and never launder an out-of-domain PK8 source through PK9.
+        if (ball == 0) return false;
+        return ball <= 26;
+    }
+
+    bool swshSvRibbonMarkRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        const GameVersion from = src.getGameGroup();
+        if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+              (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            return true;
+
+        // Pinned PKHeX RibbonIndex maxima: SWSH supports through MarkSlump=97; PK9 through
+        // Partner=110. Values above the source format's domain are unknown/reserved semantics.
+        // Do not launder them through conversion merely because the raw 128-bit storage exists.
+        const uint8_t firstInvalid = from == GameVersion::SWSH ? 98 : 111;
+        for (uint16_t index = firstInvalid; index < 128; ++index)
+            if (ribbonBitSet(src.getData(), static_cast<uint8_t>(index)))
+                return false;
+        return true;
     }
 
     bool canConvert(const Pokemon::Pokemon& src, GameVersion destGroup, Result& result) {
@@ -645,9 +1012,39 @@ namespace Conversion {
     }
 
     std::unique_ptr<Pokemon::Pokemon> convert(const Pokemon::Pokemon& src, GameVersion destGroup, Result& result,
-                                              uint8_t destOriginVersion) {
+                                              uint8_t destOriginVersion, Report* report) {
+        if (report) {
+            *report = Report{};
+            report->sourceOriginVersion = src.originGame();
+        }
+        if (!swshSvFormTransferable(src, destGroup)) {
+            result = Result::FormNotTransferable;
+            return nullptr;
+        }
+        if (!swshSvKnownSourceSemantics(src, destGroup)) {
+            result = Result::UnknownSourceSemantics;
+            return nullptr;
+        }
+
         result = gate(src, destGroup);
         if (result != Result::Ok) return nullptr;   // SameGroup / NotInDex / Blocked / Unsupported
+
+        if (!swshSvAbilityRepresentable(src, destGroup)) {
+            result = Result::AbilityNotRepresentable;
+            return nullptr;
+        }
+        if (!swshSvBallRepresentable(src, destGroup)) {
+            result = Result::BallNotRepresentable;
+            return nullptr;
+        }
+        if (!swshSvRibbonMarkRepresentable(src, destGroup)) {
+            result = Result::RibbonMarkNotRepresentable;
+            return nullptr;
+        }
+        if (!swshSvTextRepresentable(src, destGroup)) {
+            result = Result::TextNotRepresentable;
+            return nullptr;
+        }
 
         // 0 means the caller could not name the exact destination game; fall back to the group's
         // representative. That is what this did unconditionally before, so an un-updated caller keeps
@@ -655,6 +1052,53 @@ namespace Conversion {
         if (destOriginVersion == 0) destOriginVersion = Enums::getGroupRepVersion(destGroup);
 
         const GameVersion from = src.getGameGroup();
+        const bool sourceNicknamed = src.isNicknamed();
+        const bool swshSvCrossGeneration =
+            (from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+            (from == GameVersion::SV && destGroup == GameVersion::SWSH);
+        uint16_t sourceCurrentHp = 0;
+        uint32_t sourceStatus = 0;
+        if (swshSvCrossGeneration) {
+            const auto sourceData = src.getData();
+            sourceCurrentHp = static_cast<uint16_t>(static_cast<uint8_t>(sourceData[0x8A])) |
+                              (static_cast<uint16_t>(static_cast<uint8_t>(sourceData[0x8B])) << 8);
+            const size_t statusOffset = from == GameVersion::SWSH ? 0x94 : 0x90;
+            sourceStatus = static_cast<uint32_t>(static_cast<uint8_t>(sourceData[statusOffset])) |
+                           (static_cast<uint32_t>(static_cast<uint8_t>(sourceData[statusOffset + 1])) << 8) |
+                           (static_cast<uint32_t>(static_cast<uint8_t>(sourceData[statusOffset + 2])) << 16) |
+                           (static_cast<uint32_t>(static_cast<uint8_t>(sourceData[statusOffset + 3])) << 24);
+        }
+
+        // PB7 and PK3 have no HOME tracker field. A nonzero modern tracker is historical/provenance
+        // data, so dropping it must be explicit before any future source-retiring Move can be allowed.
+        if (report && (destGroup == GameVersion::GG || destGroup == GameVersion::FRLG)
+            && homeTracker(src) != 0)
+            report->addLoss(Loss::HomeTrackerDropped);
+
+        // PB7 and PK3 likewise cannot carry modern marks. Ribbon loss is handled by the format-specific
+        // remaps; marks are separate semantics and get their own loss bit.
+        if (report && (destGroup == GameVersion::GG || destGroup == GameVersion::FRLG)
+            && hasModernMarks(src))
+            report->addLoss(Loss::MarkDataDropped);
+
+        // Current Gen III text support is the international table only. Fail closed rather than
+        // corrupting/truncating Japanese or later-generation Korean/Chinese text.
+        if (destGroup == GameVersion::FRLG && from != GameVersion::FRLG) {
+            if (!Fidelity::gen3InternationalLanguageSupported(src.language())) {
+                result = Result::LanguageNotRepresentable;
+                return nullptr;
+            }
+            if ((sourceNicknamed && !Fidelity::gen3TextRepresentable(src.nickname(), 10))
+                || !Fidelity::gen3TextRepresentable(src.otName(), 7)) {
+                result = Result::TextNotRepresentable;
+                return nullptr;
+            }
+        }
+        if (from == GameVersion::FRLG && destGroup != GameVersion::FRLG
+            && !Fidelity::gen3InternationalLanguageSupported(src.language())) {
+            result = Result::LanguageNotRepresentable;
+            return nullptr;
+        }
 
         // Copy the source's decrypted bytes; every field at a shared offset (identity, IVs/EVs, moves,
         // nickname/OT/HT, ribbons/marks, dates, ...) carries verbatim. Then fix only the regions that
@@ -669,17 +1113,46 @@ namespace Conversion {
         // destination -- so PB7 / PA8 / PK9 all interoperate through one hub.
         if (isG8(from) && isG8(destGroup)) {         // SwSh <-> BDSP: drop the Technical-Record flags (BDSP has no TRs).
             for (size_t o = 0x127; o <= 0x134 && o < buf.size(); ++o) buf[o] = std::byte{0};
-        } else if (isG9(from) && isG9(destGroup)) {  // S/V <-> Z-A: drop the fields that diverge between PK9 and PA9.
-            for (size_t o = 0x94; o <= 0x9F && o < buf.size(); ++o) buf[o] = std::byte{0};  // Tera (PK9) / Plus-flags (PA9)
-            for (size_t o = 0x4B; o <= 0x57 && o < buf.size(); ++o) buf[o] = std::byte{0};  // DLC-TM (PK9) / LevelBoost (PA9)
-            if (0x23 < buf.size()) buf[0x23] = std::byte{0};                                // Alpha (PA9) / alignment (PK9)
+        } else if (isG9(from) && isG9(destGroup)) {
+            bool divergentData = false;
+            for (size_t o = 0x4B; o <= 0x57 && o < buf.size(); ++o)
+                divergentData |= static_cast<uint8_t>(buf[o]) != 0;
+            if (from == GameVersion::ZA)
+                for (size_t o = 0x94; o <= 0x9F && o < buf.size(); ++o)
+                    divergentData |= static_cast<uint8_t>(buf[o]) != 0;
+            if (divergentData && report) report->addLoss(Loss::DivergentGameDataDropped);
+
+            if (from == GameVersion::SV && destGroup == GameVersion::ZA) {
+                if (report) report->addLoss(Loss::TeraDataDropped);
+            } else if (from == GameVersion::ZA && destGroup == GameVersion::SV) {
+                if (0x23 < buf.size() && static_cast<uint8_t>(buf[0x23]) != 0 && report)
+                    report->addLoss(Loss::ZAAlphaDropped);
+            }
+
+            for (size_t o = 0x94; o <= 0x9F && o < buf.size(); ++o) buf[o] = std::byte{0};
+            for (size_t o = 0x4B; o <= 0x57 && o < buf.size(); ++o) buf[o] = std::byte{0};
+            if (0x23 < buf.size()) buf[0x23] = std::byte{0};
+
+            if (destGroup == GameVersion::SV) {
+                const Pokemon::TypePair tp = Pokemon::getPokemonTypes(src.speciesID(), src.form(), GameVersion::SV);
+                const uint8_t tera = Fidelity::defaultTeraType(tp.type1, tp.type2);
+                wr8(buf, 0x94, tera); wr8(buf, 0x95, tera);
+                if (report) report->addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
+            }
         } else {
             viaHub = true;
             // 1. Normalize the source into the PK8 layout.
-            if (isG9(from))                     transformG9toG8(buf);        // PK9 -> PK8
-            else if (from == GameVersion::PLA)  buf = remapPA8toPK8(buf);    // PA8 -> PK8
-            else if (from == GameVersion::GG)   buf = remapPB7toPK8(buf);    // PB7 -> PK8
-            else if (from == GameVersion::FRLG) buf = remapPK3toPK8(buf);    // PK3 -> PK8
+            if (isG9(from))                     transformG9toG8(buf, from, destGroup, report); // PK9/PA9 -> PK8
+            else if (from == GameVersion::PLA) {
+                if (report) report->addLoss(Loss::PLAExclusiveDataDropped);
+                buf = remapPA8toPK8(buf);
+            } else if (from == GameVersion::GG) {
+                if (report) {
+                    report->addLoss(Loss::StatTrainingReset);
+                    report->addLoss(Loss::RibbonDataDropped);
+                }
+                buf = remapPB7toPK8(buf);
+            } else if (from == GameVersion::FRLG) buf = remapPK3toPK8(buf, report);
 
             // 1b. Those three hub remaps emit a STORED-size (0x148) buffer -- no battle-stat tail. Handing
             // that to a Gen 8/9 entity makes level()/statXXX() index PAST the allocation, so the mon shows a
@@ -696,10 +1169,30 @@ namespace Conversion {
             }
 
             // 2. Denormalize the PK8 layout into the destination.
-            if (isG9(destGroup))                     transformG8toG9(buf, src.speciesID(), src.form());  // PK8 -> PK9
-            else if (destGroup == GameVersion::PLA)  buf = remapPK8toPA8(buf);                           // PK8 -> PA8
-            else if (destGroup == GameVersion::GG)   buf = remapPK8toPB7(buf);                           // PK8 -> PB7
-            else if (destGroup == GameVersion::FRLG) buf = remapPK8toPK3(buf, destOriginVersion);         // PK8 -> PK3
+            if (isG9(destGroup)) {
+                transformG8toG9(buf, src.speciesID(), src.form(), destGroup, report);
+            } else if (destGroup == GameVersion::PLA) {
+                buf = remapPK8toPA8(buf);
+            } else if (destGroup == GameVersion::GG) {
+                if (report) {
+                    report->addLoss(Loss::StatTrainingReset);
+                    report->addLoss(Loss::RibbonDataDropped);
+                    // PB7 has a legacy item field but Let's Go has no held-item mechanic. The remap
+                    // deliberately clears it before the general destination sanitizer runs, so report
+                    // the semantic loss here while the source value is still observable.
+                    if (rd16(buf, 0x0A) != 0) report->addLoss(Loss::HeldItemDropped);
+                }
+                buf = remapPK8toPB7(buf);
+            } else if (destGroup == GameVersion::FRLG) {
+                const Pokemon::PersonalInfoG3& g3 = Pokemon::getPersonalInfoG3(src.speciesID());
+                const auto abilityMap = Fidelity::mapModernAbilityToGen3(
+                    rd16(buf, 0x14), rd8(buf, 0x16) & 0x07, g3.ability1, g3.ability2);
+                if (!abilityMap.ok) { result = Result::AbilityNotRepresentable; return nullptr; }
+                auto pk3 = remapPK8toPK3(buf, destOriginVersion, sourceNicknamed,
+                                         abilityMap.abilityBit, g3.ability1 != g3.ability2, report);
+                if (!pk3) { result = Result::TraitPreservationFailed; return nullptr; }
+                buf = std::move(*pk3);
+            }
         }
 
         // Re-key into the destination format, rebuild the entity, refresh its checksum.
@@ -720,11 +1213,14 @@ namespace Conversion {
             const uint8_t  fm = out->form();
             for (int i = 0; i < 4; ++i) {
                 if (out->move(i) != 0 && !Pokemon::isLearnable(sp, fm, destGroup, out->move(i))) {
+                    if (report) report->addLoss(Loss::MoveDropped);
                     out->setMove(i, 0); out->setMovePP(i, 0); out->setMovePPUps(i, 0);
                 }
                 if (destGroup != GameVersion::FRLG && out->relearnMove(i) != 0
-                    && !Pokemon::isLearnable(sp, fm, destGroup, out->relearnMove(i)))
+                    && !Pokemon::isLearnable(sp, fm, destGroup, out->relearnMove(i))) {
+                    if (report) report->addLoss(Loss::RelearnMoveDropped);
                     out->setRelearnMove(i, 0);   // Gen 3 has no relearn moves (remap leaves them 0)
+                }
             }
 
             // Compact the surviving moves upward. Clearing slot 2 of 4 otherwise leaves a HOLE,
@@ -751,7 +1247,10 @@ namespace Conversion {
             for (int i = 0; i < 4; ++i) {
                 if (out->move(i) == 0) continue;
                 const uint8_t mx = Names::getMoveMaxPP(out->move(i), out->movePPUps(i), destGroup);
-                if (out->movePP(i) > mx) out->setMovePP(i, mx);
+                if (out->movePP(i) > mx) {
+                    if (report) report->addAdaptation(Adaptation::MovePPClamped);
+                    out->setMovePP(i, mx);
+                }
             }
         }
 
@@ -760,37 +1259,39 @@ namespace Conversion {
         // HeldItems_LA are both empty), and every other game has its own item space where an id that
         // doesn't exist is meaningless. `out` is already in the destination's format, so its held-item id
         // is in that game's own space -- Gen 3 ids for FRLG, modern ids everywhere else.
-        if (out->heldItem() != 0 && !Names::isHeldItemPresent(out->heldItem(), destGroup))
+        if (out->heldItem() != 0 && !Names::isHeldItemPresent(out->heldItem(), destGroup)) {
+            if (report) report->addLoss(Loss::HeldItemDropped);
             out->setHeldItem(0);
+        }
 
         // Fill the destination's (un-checksummed) battle-stat tail whenever this conversion created a fresh
         // one: Let's Go and Gen 3 always build theirs from scratch (they store Level + stats + Combat Power
         // there, so a zeroed tail shows Level/CP 0), a Gen 8/9 mon arriving through a hub remap had its tail
         // seeded above, and a PA8 built by remapPK8toPA8 starts with a zeroed tail too. A same-gen *sibling*
         // pairing carries the source's tail verbatim and needs nothing.
-        const bool freshTail = seededPartyTail || (viaHub && destGroup == GameVersion::PLA);
+        const bool freshTail = seededPartyTail || (viaHub && destGroup == GameVersion::PLA) ||
+                               swshSvCrossGeneration;
         if (destGroup == GameVersion::GG || destGroup == GameVersion::FRLG || freshTail)
             out->recalculateStats();
 
-        // Heal to full if current HP reads 0. Current HP is NOT in the party stat tail -- it sits INSIDE the
-        // stored (checksummed) region, so a hub remap that only maps the fields it knows about leaves it
-        // zero and the converted mon arrives FAINTED in the destination game. Observed on hardware: a
-        // FireRed Rattata in Shining Pearl with every stat correct but 0/15 HP. Offsets per PKHeX:
-        // PK8/PB8/PK9/PA9 = 0x8A, PA8 = 0x92; PB7 and PK3 write their own in recalculateStats().
-        // Guarded on "reads 0" so a sibling/transform path keeps the source's real (possibly damaged) HP.
-        {
-            size_t hpOfs = 0;
-            if (isG8(destGroup) || isG9(destGroup)) hpOfs = 0x8A;
-            else if (destGroup == GameVersion::PLA) hpOfs = 0x92;
-            if (hpOfs != 0 && hpOfs + 1 < out->getDataSize()) {
-                std::span<std::byte> d = out->getData();
-                const uint16_t cur = static_cast<uint16_t>(static_cast<uint8_t>(d[hpOfs]))
-                                   | (static_cast<uint16_t>(static_cast<uint8_t>(d[hpOfs + 1])) << 8);
-                if (cur == 0) {
-                    const uint16_t full = out->statHPMax();
-                    d[hpOfs]     = static_cast<std::byte>(full & 0xFF);
-                    d[hpOfs + 1] = static_cast<std::byte>((full >> 8) & 0xFF);
-                }
+        // SWSH<->SV destination reconstruction follows pinned PKHeX HOME side-data output:
+        // GameDataPK8/GameDataPK9 ConvertToPKM() call ResetPartyStats(), which recalculates
+        // destination stats, restores current HP to the new maximum, and clears battle status.
+        if (swshSvCrossGeneration) {
+            const uint16_t targetMaxHp = static_cast<uint16_t>(out->statHPMax());
+            if (report && sourceCurrentHp != targetMaxHp)
+                report->addAdaptation(Adaptation::TargetCurrentHpResetToMax);
+            if (report && sourceStatus != 0)
+                report->addLoss(Loss::StatusConditionCleared);
+
+            auto d = out->getData();
+            if (d.size() > 0x8B) {
+                d[0x8A] = static_cast<std::byte>(targetMaxHp & 0xFFu);
+                d[0x8B] = static_cast<std::byte>((targetMaxHp >> 8) & 0xFFu);
+            }
+            const size_t statusOffset = destGroup == GameVersion::SWSH ? 0x94 : 0x90;
+            if (statusOffset + 3 < d.size()) {
+                d[statusOffset] = d[statusOffset + 1] = d[statusOffset + 2] = d[statusOffset + 3] = std::byte{0};
             }
         }
 
@@ -799,22 +1300,69 @@ namespace Conversion {
         // naming the Kalos Champion ribbon, not "none" (that is 0xFF). Every mon arriving from FireRed
         // or Let's Go therefore displayed a ribbon it does not own. The same 0 also rides across a
         // Gen 8 <-> Gen 9 hop unchanged, so a mon banked before the creator was fixed keeps it.
-        normalizeAffixedRibbon(*out);
+        const bool titleCleared = normalizeAffixedRibbon(*out);
+        if (titleCleared && report &&
+            ((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
+             (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
+            report->addLoss(Loss::AffixedTitleDropped);
 
         out->refreshChecksum();   // stored bytes changed -> recompute the entity checksum
+        if (report) report->destinationEntityOriginVersion = out->originGame();
         result = Result::Ok;
         return out;
     }
 
+    PreflightResult preflightConvert(const Pokemon::Pokemon& src, GameVersion destGroup,
+                                     uint8_t destOriginVersion) {
+        PreflightResult out;
+        if (src.getGameGroup() == destGroup) {
+            out.result = Result::SameGroup;
+            out.report.sourceOriginVersion = src.originGame();
+            out.report.destinationEntityOriginVersion = src.originGame();
+            out.candidateAvailable = true;
+            return out;
+        }
+        auto candidate = convert(src, destGroup, out.result, destOriginVersion, &out.report);
+        out.candidateAvailable = static_cast<bool>(candidate);
+        return out;
+    }
+
     bool normalizeAffixedRibbon(Pokemon::Pokemon& pk) {
-        const size_t affix = affixedRibbonOffset(pk.getGameGroup());
-        if (affix == 0) return false;                       // format has no such field
+        const GameVersion group = pk.getGameGroup();
+        const size_t affix = affixedRibbonOffset(group);
+        if (affix == 0) return false; // format has no such field
         std::span<std::byte> d = pk.getData();
-        if (d.size() <= affix || d.size() < 0x46) return false;
-        if (static_cast<uint8_t>(d[affix]) != 0) return false;          // already names something / None
-        if ((static_cast<uint8_t>(d[0x34]) & 0x01) != 0) return false;  // genuinely owns Kalos Champion
+        if (d.size() <= affix || d.size() < 0x48) return false;
+
+        const uint8_t index = static_cast<uint8_t>(d[affix]);
+        if (index == AFFIXED_RIBBON_NONE) return false;
+
+        // PKHeX RibbonIndex maxima for the pinned format families:
+        // SWSH (G8) ends at MarkSlump=97, PLA (G8A) at Hisui=98,
+        // BDSP (G8B) at TwinklingStar=99, and Gen 9 at Partner=110.
+        // A set bit outside the destination format's index domain is not a valid title.
+        uint8_t maxIndex = 0;
+        switch (group) {
+            case GameVersion::SWSH: maxIndex = 97; break;
+            case GameVersion::PLA:  maxIndex = 98; break;
+            case GameVersion::BDSP: maxIndex = 99; break;
+            case GameVersion::SV:
+            case GameVersion::ZA:   maxIndex = 110; break;
+            default: return false;
+        }
+
+        bool owned = false;
+        if (index <= maxIndex) {
+            const size_t byteOffset = index < 64
+                ? 0x34 + static_cast<size_t>(index >> 3)
+                : 0x40 + static_cast<size_t>((index - 64) >> 3);
+            const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
+            owned = (static_cast<uint8_t>(d[byteOffset]) & bit) != 0;
+        }
+        if (owned) return false;
+
         d[affix] = std::byte{AFFIXED_RIBBON_NONE};
-        pk.refreshChecksum();                               // the field is inside the checksummed region
+        pk.refreshChecksum(); // the field is inside the checksummed region
         return true;
     }
 
@@ -836,6 +1384,14 @@ namespace Conversion {
             case Result::NotInDex:    return "Not obtainable in this game";
             // Names the way out: this one is lifted by a setting, unlike NotInDex which is absolute.
             case Result::Blocked:     return "HOME can't transfer this species here (Allow Illegal Values overrides)";
+            case Result::TraitPreservationFailed: return "Could not preserve required Gen III PID-derived traits";
+            case Result::AbilityNotRepresentable: return "This ability cannot be represented in the destination game";
+            case Result::TextNotRepresentable: return "Nickname or trainer name cannot be represented without loss";
+            case Result::LanguageNotRepresentable: return "This language encoding is not supported safely for Gen III conversion";
+            case Result::BallNotRepresentable: return "This Poke Ball cannot be represented in the destination game";
+            case Result::FormNotTransferable: return "This fused or battle-only form cannot be moved between games";
+            case Result::RibbonMarkNotRepresentable: return "This ribbon or mark state cannot be represented safely in the destination game";
+            case Result::UnknownSourceSemantics: return "This Pokemon contains reserved data PokeBank NX cannot interpret safely";
             case Result::Unsupported: return "Transfer to/from this game isn't supported yet";
         }
         return "";

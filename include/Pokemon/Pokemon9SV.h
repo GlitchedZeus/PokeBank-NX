@@ -454,11 +454,17 @@ namespace Pokemon {
         // Names & handler (Block B/C/D)
         // ========================================
 
-        /** Sets the nickname (UTF-16, max 12 chars). Location: 0x58 (26 bytes). */
+        /** Sets the nickname. Storage accepts at most 12 UTF-16 code units plus terminator. */
+        [[nodiscard]] Utils::CheckedTextResult setNicknameChecked(const std::u16string& value) noexcept
+        {
+            const auto result = Utils::setStringChecked(
+                reinterpret_cast<uint8_t*>(data.data() + 0x58), 26, value, 12);
+            if (result == Utils::CheckedTextResult::Accepted) refreshChecksum();
+            return result;
+        }
         void setNickname(const std::u16string& value) noexcept override
         {
-            setString(reinterpret_cast<uint8_t*>(data.data() + 0x58), 26, value, 12);
-            refreshChecksum();
+            (void)setNicknameChecked(value);
         }
 
         /** Original Trainer name. Location: 0xF8 (26 bytes). */
@@ -466,10 +472,16 @@ namespace Pokemon {
         {
             return getString(reinterpret_cast<const uint8_t*>(data.data() + 0xF8), 26);
         }
+        [[nodiscard]] Utils::CheckedTextResult setOTNameChecked(const std::u16string& value) noexcept
+        {
+            const auto result = Utils::setStringChecked(
+                reinterpret_cast<uint8_t*>(data.data() + 0xF8), 26, value, 12);
+            if (result == Utils::CheckedTextResult::Accepted) refreshChecksum();
+            return result;
+        }
         void setOTName(const std::u16string& value) noexcept override
         {
-            setString(reinterpret_cast<uint8_t*>(data.data() + 0xF8), 26, value, 12);
-            refreshChecksum();
+            (void)setOTNameChecked(value);
         }
 
         /** Handling (current) Trainer name. Location: 0xA8 (26 bytes). */
@@ -477,10 +489,16 @@ namespace Pokemon {
         {
             return getString(reinterpret_cast<const uint8_t*>(data.data() + 0xA8), 26);
         }
+        [[nodiscard]] Utils::CheckedTextResult setHTNameChecked(const std::u16string& value) noexcept
+        {
+            const auto result = Utils::setStringChecked(
+                reinterpret_cast<uint8_t*>(data.data() + 0xA8), 26, value, 12);
+            if (result == Utils::CheckedTextResult::Accepted) refreshChecksum();
+            return result;
+        }
         void setHTName(const std::u16string& value) noexcept override
         {
-            setString(reinterpret_cast<uint8_t*>(data.data() + 0xA8), 26, value, 12);
-            refreshChecksum();
+            (void)setHTNameChecked(value);
         }
 
         /** Handling Trainer gender (0=Male, 1=Female). Location: 0xC2. */

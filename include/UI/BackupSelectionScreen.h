@@ -13,7 +13,7 @@
 namespace UI {
     class BackupSelectionScreen : public UIScreen {
     public:
-        BackupSelectionScreen(u64 titleId, const std::string& titleName);
+        BackupSelectionScreen(AccountUid userUid, u64 titleId, const std::string& titleName);
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return goBack; }
@@ -40,11 +40,17 @@ namespace UI {
         struct BackupInfo {
             std::string timestamp;
             std::string displayName;
+            std::string path;
+            bool legacyUnscoped = false;
         };
 
+        AccountUid userUid{};
         u64 titleId;
         std::string titleName;
+        std::string exactGameId;
         std::string gameDirectory;
+        std::string legacyGameDirectory;
+        bool namespaceReady = false;
         std::vector<BackupInfo> backups;
         int selectedIndex;
         bool backupSelected;

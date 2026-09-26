@@ -37,3 +37,293 @@ $(ENCOUNTER_GUARDRAILS_TEST): $(ENCOUNTER_GUARDRAILS_SOURCES) include/Integratio
 $(ENCOUNTER_GUARDRAILS_SANITIZE): $(ENCOUNTER_GUARDRAILS_SOURCES) include/Integration/Encounter/EncounterGuardrailsData.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(ENCOUNTER_GUARDRAILS_SOURCES) -o $@
+
+# Audit-phase custody regression. This source-contract test intentionally failed on the
+# accepted pre-audit checkpoint because returnHeldToOrigin() could clear an unplaced mon.
+STORAGE_CUSTODY_TEST := $(HOST_BUILD)/test_storage_custody_contract
+STORAGE_CUSTODY_SANITIZE := $(HOST_BUILD)/test_storage_custody_contract_sanitize
+
+HOST_TESTS += $(STORAGE_CUSTODY_TEST)
+HOST_SANITIZE_TESTS += $(STORAGE_CUSTODY_SANITIZE)
+host-test: $(STORAGE_CUSTODY_TEST)
+host-sanitize: $(STORAGE_CUSTODY_SANITIZE)
+
+$(STORAGE_CUSTODY_TEST): tests/test_storage_custody_contract.cpp src/UI/TrainerViewScreenBase.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_storage_custody_contract.cpp -o $@
+
+$(STORAGE_CUSTODY_SANITIZE): tests/test_storage_custody_contract.cpp src/UI/TrainerViewScreenBase.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_storage_custody_contract.cpp -o $@
+
+# Audit-phase malformed-input regression: BDSP must reject a short flat blob before
+# any fixed-offset parser touches PARTY_COUNT / MyStatus / hash fields.
+BDSP_LAYOUT_GUARD_TEST := $(HOST_BUILD)/test_bdsp_layout_guard
+BDSP_LAYOUT_GUARD_SANITIZE := $(HOST_BUILD)/test_bdsp_layout_guard_sanitize
+
+HOST_TESTS += $(BDSP_LAYOUT_GUARD_TEST)
+HOST_SANITIZE_TESTS += $(BDSP_LAYOUT_GUARD_SANITIZE)
+host-test: $(BDSP_LAYOUT_GUARD_TEST)
+host-sanitize: $(BDSP_LAYOUT_GUARD_SANITIZE)
+
+$(BDSP_LAYOUT_GUARD_TEST): tests/test_bdsp_layout_guard.cpp include/Save/BDSPReadValidation.h src/Trainer/Trainer8BDSP.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_bdsp_layout_guard.cpp -o $@
+
+$(BDSP_LAYOUT_GUARD_SANITIZE): tests/test_bdsp_layout_guard.cpp include/Save/BDSPReadValidation.h src/Trainer/Trainer8BDSP.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bdsp_layout_guard.cpp -o $@
+
+# Audit-phase Bank compatibility regression: a newer/larger Bank may be inspected
+# but must become non-writable; invalid box-count headers fail closed.
+BANK_FORMAT_POLICY_TEST := $(HOST_BUILD)/test_bank_format_policy
+BANK_FORMAT_POLICY_SANITIZE := $(HOST_BUILD)/test_bank_format_policy_sanitize
+
+HOST_TESTS += $(BANK_FORMAT_POLICY_TEST)
+HOST_SANITIZE_TESTS += $(BANK_FORMAT_POLICY_SANITIZE)
+host-test: $(BANK_FORMAT_POLICY_TEST)
+host-sanitize: $(BANK_FORMAT_POLICY_SANITIZE)
+
+$(BANK_FORMAT_POLICY_TEST): tests/test_bank_format_policy.cpp include/Trainer/BankFormatPolicy.h src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_bank_format_policy.cpp -o $@
+
+$(BANK_FORMAT_POLICY_SANITIZE): tests/test_bank_format_policy.cpp include/Trainer/BankFormatPolicy.h src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bank_format_policy.cpp -o $@
+
+# Audit-phase recovery evidence regression: preserving a new unreadable Bank must never
+# delete a previously preserved casualty.
+BANK_RECOVERY_CONTRACT_TEST := $(HOST_BUILD)/test_bank_recovery_contract
+BANK_RECOVERY_CONTRACT_SANITIZE := $(HOST_BUILD)/test_bank_recovery_contract_sanitize
+
+HOST_TESTS += $(BANK_RECOVERY_CONTRACT_TEST)
+HOST_SANITIZE_TESTS += $(BANK_RECOVERY_CONTRACT_SANITIZE)
+host-test: $(BANK_RECOVERY_CONTRACT_TEST)
+host-sanitize: $(BANK_RECOVERY_CONTRACT_SANITIZE)
+
+$(BANK_RECOVERY_CONTRACT_TEST): tests/test_bank_recovery_contract.cpp src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_bank_recovery_contract.cpp -o $@
+
+$(BANK_RECOVERY_CONTRACT_SANITIZE): tests/test_bank_recovery_contract.cpp src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bank_recovery_contract.cpp -o $@
+
+# Audit-phase durable persistence primitive: exercise real host file replacement and
+# rollback before Bank / mutable save writers depend on it.
+DURABLE_FILE_TEST := $(HOST_BUILD)/test_durable_file
+DURABLE_FILE_SANITIZE := $(HOST_BUILD)/test_durable_file_sanitize
+DURABLE_FILE_SOURCES := tests/test_durable_file.cpp src/Utils/DurableFile.cpp
+
+HOST_TESTS += $(DURABLE_FILE_TEST)
+HOST_SANITIZE_TESTS += $(DURABLE_FILE_SANITIZE)
+host-test: $(DURABLE_FILE_TEST)
+host-sanitize: $(DURABLE_FILE_SANITIZE)
+
+$(DURABLE_FILE_TEST): $(DURABLE_FILE_SOURCES) include/Utils/DurableFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(DURABLE_FILE_SOURCES) -o $@
+
+$(DURABLE_FILE_SANITIZE): $(DURABLE_FILE_SOURCES) include/Utils/DurableFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(DURABLE_FILE_SOURCES) -o $@
+
+
+# A09: mutable backup workspaces must not overwrite their authoritative files in place.
+BACKUP_WORKSPACE_DURABILITY_TEST := $(HOST_BUILD)/test_backup_workspace_durability
+BACKUP_WORKSPACE_DURABILITY_SANITIZE := $(HOST_BUILD)/test_backup_workspace_durability_sanitize
+
+HOST_TESTS += $(BACKUP_WORKSPACE_DURABILITY_TEST)
+HOST_SANITIZE_TESTS += $(BACKUP_WORKSPACE_DURABILITY_SANITIZE)
+host-test: $(BACKUP_WORKSPACE_DURABILITY_TEST)
+host-sanitize: $(BACKUP_WORKSPACE_DURABILITY_SANITIZE)
+
+$(BACKUP_WORKSPACE_DURABILITY_TEST): tests/test_backup_workspace_durability.cpp src/Save/GetSaveFileContents.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_backup_workspace_durability.cpp -o $@
+
+$(BACKUP_WORKSPACE_DURABILITY_SANITIZE): tests/test_backup_workspace_durability.cpp src/Save/GetSaveFileContents.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_backup_workspace_durability.cpp -o $@
+
+# A08: mutable backup workspaces are namespaced by Switch profile + exact game identity.
+BACKUP_NAMESPACE_TEST := $(HOST_BUILD)/test_backup_namespace_contract
+BACKUP_NAMESPACE_SANITIZE := $(HOST_BUILD)/test_backup_namespace_contract_sanitize
+BACKUP_NAMESPACE_SOURCES := tests/test_backup_namespace_contract.cpp src/Games/GameIdentity.cpp
+
+HOST_TESTS += $(BACKUP_NAMESPACE_TEST)
+HOST_SANITIZE_TESTS += $(BACKUP_NAMESPACE_SANITIZE)
+host-test: $(BACKUP_NAMESPACE_TEST)
+host-sanitize: $(BACKUP_NAMESPACE_SANITIZE)
+
+$(BACKUP_NAMESPACE_TEST): $(BACKUP_NAMESPACE_SOURCES) include/Utils/PokeBankPaths.h src/Utils/FileUtilities.cpp src/UI/BackupSelectionScreen.cpp src/UI/UI.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(BACKUP_NAMESPACE_SOURCES) -o $@
+
+$(BACKUP_NAMESPACE_SANITIZE): $(BACKUP_NAMESPACE_SOURCES) include/Utils/PokeBankPaths.h src/Utils/FileUtilities.cpp src/UI/BackupSelectionScreen.cpp src/UI/UI.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(BACKUP_NAMESPACE_SOURCES) -o $@
+
+
+# A03: conversion/save-normalization must prepare a separate destination
+# candidate and keep the carried original immutable until slot commit.
+STORAGE_CONVERSION_CUSTODY_TEST := $(HOST_BUILD)/test_storage_conversion_custody_contract
+STORAGE_CONVERSION_CUSTODY_SANITIZE := $(HOST_BUILD)/test_storage_conversion_custody_contract_sanitize
+
+HOST_TESTS += $(STORAGE_CONVERSION_CUSTODY_TEST)
+HOST_SANITIZE_TESTS += $(STORAGE_CONVERSION_CUSTODY_SANITIZE)
+host-test: $(STORAGE_CONVERSION_CUSTODY_TEST)
+host-sanitize: $(STORAGE_CONVERSION_CUSTODY_SANITIZE)
+
+$(STORAGE_CONVERSION_CUSTODY_TEST): tests/test_storage_conversion_custody_contract.cpp include/UI/StoragePlacementCommit.h include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_storage_conversion_custody_contract.cpp -o $@
+
+$(STORAGE_CONVERSION_CUSTODY_SANITIZE): tests/test_storage_conversion_custody_contract.cpp include/UI/StoragePlacementCommit.h include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_storage_conversion_custody_contract.cpp -o $@
+
+
+# A04a: durable destination-first Move transaction journal/recovery core.
+MOVE_TRANSACTION_TEST := $(HOST_BUILD)/test_move_transaction_journal
+MOVE_TRANSACTION_SANITIZE := $(HOST_BUILD)/test_move_transaction_journal_sanitize
+MOVE_TRANSACTION_SOURCES := tests/test_move_transaction_journal.cpp src/Utils/MoveTransaction.cpp src/Utils/DurableFile.cpp
+
+HOST_TESTS += $(MOVE_TRANSACTION_TEST)
+HOST_SANITIZE_TESTS += $(MOVE_TRANSACTION_SANITIZE)
+host-test: $(MOVE_TRANSACTION_TEST)
+host-sanitize: $(MOVE_TRANSACTION_SANITIZE)
+
+$(MOVE_TRANSACTION_TEST): $(MOVE_TRANSACTION_SOURCES) include/Utils/MoveTransaction.h include/Utils/DurableFile.h include/Utils/PokeBankPaths.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MOVE_TRANSACTION_SOURCES) -o $@
+
+$(MOVE_TRANSACTION_SANITIZE): $(MOVE_TRANSACTION_SOURCES) include/Utils/MoveTransaction.h include/Utils/DurableFile.h include/Utils/PokeBankPaths.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MOVE_TRANSACTION_SOURCES) -o $@
+
+
+# A04b: production Bank <-> PokeBank-owned single-file workspace true-Move integration.
+MOVE_TRANSACTION_PRODUCTION_TEST := $(HOST_BUILD)/test_move_transaction_production
+MOVE_TRANSACTION_PRODUCTION_SANITIZE := $(HOST_BUILD)/test_move_transaction_production_sanitize
+MOVE_TRANSACTION_PRODUCTION_SOURCES := tests/test_move_transaction_production.cpp src/Games/GameIdentity.cpp src/Utils/MoveTransaction.cpp src/Utils/DurableFile.cpp
+
+HOST_TESTS += $(MOVE_TRANSACTION_PRODUCTION_TEST)
+HOST_SANITIZE_TESTS += $(MOVE_TRANSACTION_PRODUCTION_SANITIZE)
+host-test: $(MOVE_TRANSACTION_PRODUCTION_TEST)
+host-sanitize: $(MOVE_TRANSACTION_PRODUCTION_SANITIZE)
+
+$(MOVE_TRANSACTION_PRODUCTION_TEST): $(MOVE_TRANSACTION_PRODUCTION_SOURCES) include/Utils/MoveTransactionProduction.h include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc src/UI/UI.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MOVE_TRANSACTION_PRODUCTION_SOURCES) -o $@
+
+$(MOVE_TRANSACTION_PRODUCTION_SANITIZE): $(MOVE_TRANSACTION_PRODUCTION_SOURCES) include/Utils/MoveTransactionProduction.h include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc src/UI/UI.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MOVE_TRANSACTION_PRODUCTION_SOURCES) -o $@
+
+# Physical durability gate: restart-safe DurableFile promotion recovery plus the complete
+# Move-engine interruption/idempotence matrix used before the Switch FAT32 test.
+MOVE_TRANSACTION_FAULT_MATRIX_TEST := $(HOST_BUILD)/test_move_transaction_fault_matrix
+MOVE_TRANSACTION_FAULT_MATRIX_SANITIZE := $(HOST_BUILD)/test_move_transaction_fault_matrix_sanitize
+MOVE_TRANSACTION_FAULT_MATRIX_SOURCES := tests/test_move_transaction_fault_matrix.cpp src/Utils/MoveTransaction.cpp src/Utils/DurableFile.cpp
+
+HOST_TESTS += $(MOVE_TRANSACTION_FAULT_MATRIX_TEST)
+HOST_SANITIZE_TESTS += $(MOVE_TRANSACTION_FAULT_MATRIX_SANITIZE)
+host-test: $(MOVE_TRANSACTION_FAULT_MATRIX_TEST)
+host-sanitize: $(MOVE_TRANSACTION_FAULT_MATRIX_SANITIZE)
+
+$(MOVE_TRANSACTION_FAULT_MATRIX_TEST): $(MOVE_TRANSACTION_FAULT_MATRIX_SOURCES) include/Utils/MoveTransaction.h include/Utils/DurableFile.h include/Utils/PokeBankPaths.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MOVE_TRANSACTION_FAULT_MATRIX_SOURCES) -o $@
+
+$(MOVE_TRANSACTION_FAULT_MATRIX_SANITIZE): $(MOVE_TRANSACTION_FAULT_MATRIX_SOURCES) include/Utils/MoveTransaction.h include/Utils/DurableFile.h include/Utils/PokeBankPaths.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MOVE_TRANSACTION_FAULT_MATRIX_SOURCES) -o $@
+
+# F07 / N01: Gen III PID search exhaustion must fail closed. Cross-game true Move
+# remains locked until conversion fidelity is proven route-by-route.
+GEN3_PID_SEARCH_TEST := $(HOST_BUILD)/test_gen3_pid_search_fail_closed
+GEN3_PID_SEARCH_SANITIZE := $(HOST_BUILD)/test_gen3_pid_search_fail_closed_sanitize
+GEN3_PID_SEARCH_SOURCES := tests/test_gen3_pid_search_fail_closed.cpp
+HOST_TESTS += $(GEN3_PID_SEARCH_TEST)
+HOST_SANITIZE_TESTS += $(GEN3_PID_SEARCH_SANITIZE)
+host-test: $(GEN3_PID_SEARCH_TEST)
+host-sanitize: $(GEN3_PID_SEARCH_SANITIZE)
+
+$(GEN3_PID_SEARCH_TEST): $(GEN3_PID_SEARCH_SOURCES) include/Conversion/Gen3PidSearch.h src/Conversion/Convert.cpp include/Conversion/Convert.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN3_PID_SEARCH_SOURCES) -o $@
+
+$(GEN3_PID_SEARCH_SANITIZE): $(GEN3_PID_SEARCH_SOURCES) include/Conversion/Gen3PidSearch.h src/Conversion/Convert.cpp include/Conversion/Convert.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_PID_SEARCH_SOURCES) -o $@
+
+# F05-F13 conversion fidelity / generated golden fixture policy.
+CONVERSION_FIDELITY_GOLDEN_TEST := $(HOST_BUILD)/test_conversion_fidelity_golden
+CONVERSION_FIDELITY_GOLDEN_SANITIZE := $(HOST_BUILD)/test_conversion_fidelity_golden_sanitize
+CONVERSION_FIDELITY_GOLDEN_SOURCES := tests/test_conversion_fidelity_golden.cpp src/Utils/SHA256.cpp
+HOST_TESTS += $(CONVERSION_FIDELITY_GOLDEN_TEST)
+HOST_SANITIZE_TESTS += $(CONVERSION_FIDELITY_GOLDEN_SANITIZE)
+host-test: $(CONVERSION_FIDELITY_GOLDEN_TEST)
+host-sanitize: $(CONVERSION_FIDELITY_GOLDEN_SANITIZE)
+
+$(CONVERSION_FIDELITY_GOLDEN_TEST): $(CONVERSION_FIDELITY_GOLDEN_SOURCES) include/Conversion/Fidelity.h include/Conversion/Gen3PidSearch.h include/Conversion/Convert.h src/Conversion/Convert.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(CONVERSION_FIDELITY_GOLDEN_SOURCES) -o $@
+
+$(CONVERSION_FIDELITY_GOLDEN_SANITIZE): $(CONVERSION_FIDELITY_GOLDEN_SOURCES) include/Conversion/Fidelity.h include/Conversion/Gen3PidSearch.h include/Conversion/Convert.h src/Conversion/Convert.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CONVERSION_FIDELITY_GOLDEN_SOURCES) -o $@
+
+# F05-F13: production converter entity goldens. These exercise native encrypted bytes,
+# source immutability, conversion, destination serialization, checksum and reparse.
+CONVERSION_ENTITY_GOLDEN_TEST := $(HOST_BUILD)/test_conversion_entity_golden
+CONVERSION_ENTITY_GOLDEN_SANITIZE := $(HOST_BUILD)/test_conversion_entity_golden_sanitize
+CONVERSION_ENTITY_GOLDEN_SOURCES := tests/test_conversion_entity_golden.cpp \
+	src/Conversion/Convert.cpp \
+	src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/Pokemon7LGPE.cpp \
+	src/Pokemon/Pokemon8SWSH.cpp src/Pokemon/Pokemon8BDSP.cpp src/Pokemon/Pokemon8LA.cpp \
+	src/Pokemon/Pokemon9SV.cpp src/Pokemon/Pokemon9LZA.cpp \
+	src/Pokemon/BaseStatsGen7.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
+	src/Pokemon/PokemonTypes.cpp src/Pokemon/LearnsetTable.cpp src/Pokemon/Experience.cpp src/Pokemon/FormInfo.cpp \
+	src/Encryption/Encryption.cpp src/Save/Block.cpp src/Enums/SCTypeCode.cpp \
+	src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption7LGPE.cpp \
+	src/Encryption/Encryption8SWSH.cpp src/Encryption/Encryption8BDSP.cpp src/Encryption/Encryption8LA.cpp \
+	src/Encryption/Encryption9SV.cpp src/Encryption/Encryption9LZA.cpp \
+	src/Names/ItemNames.cpp src/Names/ItemPresence.cpp src/Names/MoveInfo.cpp src/Names/SpeciesNames.cpp \
+	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp \
+	src/Utils/HelperUtilities.cpp src/Utils/StringHelpers.cpp src/Utils/SHA256.cpp
+HOST_TESTS += $(CONVERSION_ENTITY_GOLDEN_TEST)
+HOST_SANITIZE_TESTS += $(CONVERSION_ENTITY_GOLDEN_SANITIZE)
+host-test: $(CONVERSION_ENTITY_GOLDEN_TEST)
+host-sanitize: $(CONVERSION_ENTITY_GOLDEN_SANITIZE)
+
+$(CONVERSION_ENTITY_GOLDEN_TEST): $(CONVERSION_ENTITY_GOLDEN_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(CONVERSION_ENTITY_GOLDEN_SOURCES) -o $@
+
+$(CONVERSION_ENTITY_GOLDEN_SANITIZE): $(CONVERSION_ENTITY_GOLDEN_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(CONVERSION_ENTITY_GOLDEN_SOURCES) -o $@
+
+
+# F13 persisted conversion evidence: exact loss acknowledgement, provenance binding,
+# cross-game retirement gating, corruption/version handling and recovery semantics.
+CONVERSION_EVIDENCE_TEST := $(HOST_BUILD)/test_conversion_evidence
+CONVERSION_EVIDENCE_SANITIZE := $(HOST_BUILD)/test_conversion_evidence_sanitize
+CONVERSION_EVIDENCE_SOURCES := tests/test_conversion_evidence.cpp \
+	src/Conversion/RouteEvidence.cpp src/Utils/MoveTransaction.cpp src/Utils/DurableFile.cpp
+
+HOST_TESTS += $(CONVERSION_EVIDENCE_TEST)
+HOST_SANITIZE_TESTS += $(CONVERSION_EVIDENCE_SANITIZE)
+host-test: $(CONVERSION_EVIDENCE_TEST)
+host-sanitize: $(CONVERSION_EVIDENCE_SANITIZE)
+
+$(CONVERSION_EVIDENCE_TEST): $(CONVERSION_EVIDENCE_SOURCES) include/Conversion/RouteEvidence.h include/Conversion/Fidelity.h include/Utils/MoveTransaction.h include/Utils/DurableFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(CONVERSION_EVIDENCE_SOURCES) -o $@
+
+$(CONVERSION_EVIDENCE_SANITIZE): $(CONVERSION_EVIDENCE_SOURCES) include/Conversion/RouteEvidence.h include/Conversion/Fidelity.h include/Utils/MoveTransaction.h include/Utils/DurableFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CONVERSION_EVIDENCE_SOURCES) -o $@

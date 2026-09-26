@@ -11,6 +11,7 @@
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
 #include "Utils/FileUtilities.h"
+#include "Utils/MoveTransactionProduction.h"
 #include "Utils/PokeBankPaths.h"
 #include "Trainer/Trainer.h"
 #include "Games/GameIdentity.h"
@@ -112,7 +113,7 @@ namespace UI {
     }
 
     void UIManager::handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName) {
-        BackupSelectionScreen backupScreen(titleId, titleName);
+        BackupSelectionScreen backupScreen(userUid, titleId, titleName);
         fb.startFade();
 
         while (appletMainLoop() && running && !backupScreen.shouldExit()) {
@@ -161,6 +162,19 @@ namespace UI {
                                       std::string& error) {
         logInfoToFile("Loading save from", backupDir.c_str());
 
+        // A04b startup gate: reconcile any interrupted durable Move BEFORE parsing this workspace.
+        // If recovery changes a Bank/workspace image, the Trainer below is therefore constructed
+        // from the committed/recovered authoritative bytes rather than a stale pre-recovery model.
+        const auto moveRecovery =
+            PokeBank::Storage::MoveTx::Production::recoverPendingMoveTransactions();
+        if (moveRecovery.mutationLocked) {
+            logErrorToFile("Move transaction recovery requires attention",
+                           moveRecovery.notice.c_str());
+        } else if (moveRecovery.recovered > 0) {
+            logInfoToFile("Recovered interrupted Pokemon Move transaction(s)",
+                          std::to_string(moveRecovery.recovered).c_str());
+        }
+
         if (!Save::validateTrainerSaveForOpen(backupDir.c_str(), titleId, error)) {
             logErrorToFile("Save validation refused open", error.c_str());
             return false;
@@ -173,6 +187,7 @@ namespace UI {
                 trainer, titleName, backupDir, titleId, userUid,
                 loadedFromCart ? PokeVault::Safety::SourceKind::InstalledGame
                                : PokeVault::Safety::SourceKind::BackupOrStaged);
+            trainerScreen.setMoveRecoveryState(moveRecovery.mutationLocked, moveRecovery.notice);
             fb.startFade();
 
             while (appletMainLoop() && !trainerScreen.shouldExit() && !trainerScreen.hasRequestedExit()) {

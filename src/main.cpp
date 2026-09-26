@@ -18,6 +18,7 @@
 #include "Utils/HelperUtilities.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Settings.h"
+#include "Utils/PhysicalMoveAudit.h"
 
 int main()
 {
@@ -29,6 +30,11 @@ int main()
     // (libnx mounts sdmc before main), applyTheme just swaps colour globals, and nothing in it
     // logs. It needs no service, no ROMFS and no SDL, none of which exist yet.
     Utils::loadSettings();
+
+    // Exact-marker opt-in only. The normal product never enters this path; the physical durability
+    // harness owns only sdmc:/switch/PokeBank-NX/audit/physical and exits before account/ns/SDL UI.
+    if (PokeBank::Storage::PhysicalAudit::shouldRun())
+        return PokeBank::Storage::PhysicalAudit::run();
 
     logInfoToFile("Initializing PokeBank NX...");
 

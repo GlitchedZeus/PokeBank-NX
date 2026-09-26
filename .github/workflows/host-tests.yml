@@ -21,6 +21,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          # PR79 requires evidence for its exact application head, not GitHub's merge ref.
+          ref: ${{ github.event.pull_request.number == 79 && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact audit application identity
+        if: github.event.pull_request.number == 79
+        env:
+          EXPECTED_AUDIT_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_AUDIT_SHA"
+          echo "APPLICATION_SHA=$EXPECTED_AUDIT_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
 
       - name: Toolchain info
         run: |
