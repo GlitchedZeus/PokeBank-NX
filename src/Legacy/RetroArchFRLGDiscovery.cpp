@@ -178,7 +178,7 @@ namespace PokeVault::Legacy {
             const size_t size = static_cast<size_t>(metadata.st_size);
             std::size_t rtcFooterSize = 0;
             if (!PokeVault::Save::splitRtcPayloadSize(
-                    size, Integration::Gen3::Detail::kSaveSize, rtcFooterSize)) {
+                    size, Integration::Gen3::GEN3_SAVE_SIZE, rtcFooterSize)) {
                 source.status = LegacySourceStatus::InvalidSave;
                 source.parseError = Integration::Gen3::SaveError::WrongSize;
                 source.detail = "candidate is not a 128 KiB Gen III save with a recognized RTC footer";
