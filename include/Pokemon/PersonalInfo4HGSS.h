@@ -1,18 +1,5 @@
-/**
- * GENERATED from PKHeX's personal_hgss -- do not hand-edit. Regenerate with
- * `python tools/gen_personaltables.py`.
- *
- * Fields this group's generation does not have read 0 -- gate them on the predicates in
- * PersonalRecord.h rather than reading them as data.
- *
- * AN ALL-ZERO ROW IS REAL DATA, NOT A GAP, and it does not mean the same thing in every
- * table. Sword/Shield and Legends: Arceus ZERO the ids their game does not have (664 of
- * 898, and 226 of 905) -- there, an empty row is the roster speaking. Let's Go and
- * Scarlet/Violet carry full stats for every id whether the game has it or not, so an
- * empty row there means nothing at all. DO NOT READ DEX PRESENCE OUT OF THIS TABLE:
- * PersonalInfoTable's `presence` bits are the cross-game answer and are still the only
- * one. What a caller must do here is not compute against a zero base stat.
- */
+/** Generated from PKHeX personal_hgss at 6501f0ab46e8f8ca048539dbaf8cae8cb104e722.
+ * Regenerate with python3 tools/gen_gen4_personal.py. Unavailable fields are zero. */
 #ifndef POKEMON_PERSONALINFO4HGSS_H
 #define POKEMON_PERSONALINFO4HGSS_H
 

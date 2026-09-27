@@ -17,6 +17,16 @@ namespace PokeVault::Legacy {
         // Optional stable game-card identity (for example diamond_nds). Empty means the
         // pre-Gen-IV two-column binding semantics with no exact external game claim.
         std::string gameIdentity;
+        // Optional generic file assignment, separate from original save bytes.
+        std::string sourcePath;
+        std::string sourceType;
+        std::string expectedRawFamily;
+    };
+    enum class AssignedFileStatus { Unassigned, Ambiguous, Missing, Unreadable, Ready };
+    struct AssignedFile {
+        AssignedFileStatus status = AssignedFileStatus::Unassigned;
+        std::string sourceIdentity;
+        BindingRecord binding;
     };
 
     // Persistent, explicit ownership for filesystem-backed legacy saves. The physical discovery
@@ -39,6 +49,10 @@ namespace PokeVault::Legacy {
         [[nodiscard]] bool assignAndSave(std::string_view sourceIdentity,
                                         std::string_view profileIdentity,
                                         std::string_view gameIdentity);
+        [[nodiscard]] bool assignFileAndSave(std::string_view sourceIdentity, BindingRecord binding);
+        // Rechecks only explicitly bound paths. Never scans or substitutes another save.
+        [[nodiscard]] AssignedFile resolveFileForGame(std::string_view profileIdentity,
+                                                       std::string_view gameIdentity) const;
         [[nodiscard]] const std::string& lastError() const noexcept { return lastError_; }
         [[nodiscard]] bool unassign(std::string_view sourceIdentity);
         [[nodiscard]] bool isAssigned(std::string_view sourceIdentity) const;

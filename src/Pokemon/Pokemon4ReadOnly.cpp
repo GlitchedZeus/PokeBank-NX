@@ -23,9 +23,10 @@ bool Pokemon4ReadOnly::checksumValid() const noexcept {
 bool Pokemon4ReadOnly::sanityValid() const noexcept { return sizeValid() && sanity() == 0; }
 bool Pokemon4ReadOnly::valid() const noexcept { return sizeValid() && sanityValid() && checksumValid(); }
 bool Pokemon4ReadOnly::isParty() const noexcept { return encrypted_.size() == Encryption::SIZE_PARTY4; }
-bool Pokemon4ReadOnly::empty() const noexcept { return sizeValid() && species() == 0; }
+bool Pokemon4ReadOnly::empty() const noexcept { return valid() && species() == 0; }
 
 uint8_t Pokemon4ReadOnly::byteAt(size_t offset) const noexcept {
+    if (offset >= 8 && !valid()) return 0; // Quarantine malformed semantic fields.
     return offset < decrypted_.size() ? static_cast<uint8_t>(decrypted_[offset]) : 0;
 }
 uint16_t Pokemon4ReadOnly::u16At(size_t offset) const noexcept {
@@ -55,6 +56,7 @@ uint32_t Pokemon4ReadOnly::experience() const noexcept { return u32At(0x10); }
 uint8_t Pokemon4ReadOnly::friendship() const noexcept { return byteAt(0x14); }
 uint8_t Pokemon4ReadOnly::ability() const noexcept { return byteAt(0x15); }
 uint8_t Pokemon4ReadOnly::markings() const noexcept { return byteAt(0x16); }
+std::array<uint32_t,3> Pokemon4ReadOnly::ribbons() const noexcept { return {u32At(0x24),u32At(0x3C),u32At(0x60)}; }
 uint8_t Pokemon4ReadOnly::language() const noexcept { return byteAt(0x17); }
 
 std::array<uint8_t, 6> Pokemon4ReadOnly::evs() const noexcept {
@@ -83,12 +85,12 @@ uint8_t Pokemon4ReadOnly::gender() const noexcept { return static_cast<uint8_t>(
 uint8_t Pokemon4ReadOnly::form() const noexcept { return static_cast<uint8_t>(byteAt(0x40) >> 3); }
 
 std::u16string Pokemon4ReadOnly::nickname() const {
-    if (decrypted_.size() < 0x5E) return {};
+    if (!valid()) return {};
     return Utils::decodeGen4Field(std::span<const std::byte>(decrypted_.data() + 0x48, 22));
 }
 uint8_t Pokemon4ReadOnly::originVersion() const noexcept { return byteAt(0x5F); }
 std::u16string Pokemon4ReadOnly::originalTrainerName() const {
-    if (decrypted_.size() < 0x78) return {};
+    if (!valid()) return {};
     return Utils::decodeGen4Field(std::span<const std::byte>(decrypted_.data() + 0x68, 16));
 }
 uint16_t Pokemon4ReadOnly::eggLocationExtended() const noexcept { return u16At(0x44); }

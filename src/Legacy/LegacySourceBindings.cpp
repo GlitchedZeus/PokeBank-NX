@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <utility>
 #include <vector>
 #ifdef __SWITCH__
@@ -78,21 +79,31 @@ namespace PokeVault::Legacy {
             while (offset < bytes.size()) {
                 const size_t end = bytes.find('\n', offset);
                 const std::string_view row(bytes.data() + offset, end - offset);
-                const size_t sep = row.find('\t');
-                const size_t sep2 = sep == std::string_view::npos
-                    ? std::string_view::npos : row.find('\t', sep + 1);
-                std::string source, profile, game;
-                const bool tooMany = sep2 != std::string_view::npos &&
-                    row.find('\t', sep2 + 1) != std::string_view::npos;
-                const bool gameOk = sep2 == std::string_view::npos ||
-                    hexDecode(row.substr(sep2 + 1), game);
-                const std::string_view profileField = sep2 == std::string_view::npos
-                    ? row.substr(sep + 1) : row.substr(sep + 1, sep2 - sep - 1);
-                if (sep == std::string_view::npos || tooMany ||
-                    !hexDecode(row.substr(0, sep), source) ||
-                    !hexDecode(profileField, profile) || !gameOk ||
-                    !owners.emplace(std::move(source),
-                                    BindingRecord{std::move(profile), std::move(game)}).second) {
+                std::vector<std::string> fields;
+                size_t start = 0;
+                bool decoded = true;
+                do {
+                    const size_t tab = row.find('\t', start);
+                    std::string field;
+                    if (!hexDecode(row.substr(start, tab == std::string_view::npos
+                        ? row.size() - start : tab - start), field) ||
+                        field.find('\0') != std::string::npos) { decoded = false; break; }
+                    fields.push_back(std::move(field));
+                    if (tab == std::string_view::npos) break;
+                    start = tab + 1;
+                } while (fields.size() <= 6);
+                if (!decoded || (fields.size() != 2 && fields.size() != 3 && fields.size() != 6)) {
+                    owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
+                }
+                BindingRecord binding;
+                binding.profileIdentity = fields[1];
+                if (fields.size() >= 3) binding.gameIdentity = fields[2];
+                if (fields.size() == 6) {
+                    binding.sourcePath = fields[3];
+                    binding.sourceType = fields[4];
+                    binding.expectedRawFamily = fields[5];
+                }
+                if (!owners.emplace(fields[0], std::move(binding)).second) {
                     owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
                 }
                 offset = end + 1;
@@ -109,6 +120,9 @@ namespace PokeVault::Legacy {
                 bytes += hexEncode(source) + "\t" + hexEncode(binding.profileIdentity);
                 if (!binding.gameIdentity.empty())
                     bytes += "\t" + hexEncode(binding.gameIdentity);
+                if (!binding.sourcePath.empty())
+                    bytes += "\t" + hexEncode(binding.sourcePath) + "\t" +
+                        hexEncode(binding.sourceType) + "\t" + hexEncode(binding.expectedRawFamily);
                 bytes += "\n";
             }
             return bytes;
@@ -261,7 +275,7 @@ namespace PokeVault::Legacy {
         if (sourceIdentity.empty() || profileIdentity.empty()) return false;
         auto [it, inserted] = owners_.try_emplace(
             std::string(sourceIdentity),
-            BindingRecord{std::string(profileIdentity), {}});
+            BindingRecord{std::string(profileIdentity), {}, {}, {}, {}});
         if (!inserted) it->second.profileIdentity = profileIdentity;
         return true;
     }
@@ -271,8 +285,59 @@ namespace PokeVault::Legacy {
                                       std::string_view gameIdentity) {
         if (sourceIdentity.empty() || profileIdentity.empty() || gameIdentity.empty()) return false;
         owners_[std::string(sourceIdentity)] =
-            BindingRecord{std::string(profileIdentity), std::string(gameIdentity)};
+            BindingRecord{std::string(profileIdentity), std::string(gameIdentity), {}, {}, {}};
         return true;
+    }
+
+    bool LegacySourceBindings::assignFileAndSave(std::string_view source, BindingRecord binding) {
+        const auto safe = [](std::string_view value) {
+            return !value.empty() && value.find('\0') == std::string_view::npos;
+        };
+        if (!safe(source) || !safe(binding.profileIdentity) || !safe(binding.gameIdentity) ||
+            !safe(binding.sourcePath) || !safe(binding.sourceType) || !safe(binding.expectedRawFamily)) {
+            errno = EINVAL; return fail("assign-file");
+        }
+        // Metadata transaction paths must never alias an assigned source save.
+        struct stat sourceInfo{};
+        const bool sourceExists = ::stat(binding.sourcePath.c_str(), &sourceInfo) == 0;
+        for (const auto& metadataPath : {storagePath_, storagePath_ + ".tmp", storagePath_ + ".bak"}) {
+            struct stat metadataInfo{};
+            const bool sameFile = sourceExists && ::stat(metadataPath.c_str(), &metadataInfo) == 0 &&
+                sourceInfo.st_ino != 0 && sourceInfo.st_dev == metadataInfo.st_dev &&
+                sourceInfo.st_ino == metadataInfo.st_ino;
+            if (binding.sourcePath == metadataPath || sameFile) {
+                errno = EINVAL; return fail("assignment-aliases-metadata");
+            }
+        }
+        const auto before = owners_;
+        owners_[std::string(source)] = std::move(binding);
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
+    AssignedFile LegacySourceBindings::resolveFileForGame(std::string_view profile,
+                                                          std::string_view game) const {
+        AssignedFile result;
+        for (const auto& [identity, binding] : owners_) {
+            if (binding.profileIdentity != profile || binding.gameIdentity != game) continue;
+            if (!result.sourceIdentity.empty()) {
+                result.status = AssignedFileStatus::Ambiguous;
+                return result; // Never pick an arbitrary one, even if one file is missing.
+            }
+            result.sourceIdentity = identity;
+            result.binding = binding;
+        }
+        if (result.sourceIdentity.empty()) return result;
+        if (result.binding.sourcePath.empty()) return result; // Old catalog-only assignment.
+        struct stat info{};
+        if (::stat(result.binding.sourcePath.c_str(), &info) != 0) {
+            result.status = errno == ENOENT || errno == ENOTDIR
+                ? AssignedFileStatus::Missing : AssignedFileStatus::Unreadable;
+        } else {
+            result.status = S_ISREG(info.st_mode) ? AssignedFileStatus::Ready : AssignedFileStatus::Unreadable;
+        }
+        return result;
     }
 
     bool LegacySourceBindings::unassign(std::string_view sourceIdentity) {

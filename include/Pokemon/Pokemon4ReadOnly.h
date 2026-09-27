@@ -26,6 +26,7 @@ public:
     [[nodiscard]] bool empty() const noexcept;
 
     [[nodiscard]] std::span<const std::byte> originalEncryptedBytes() const noexcept { return encrypted_; }
+    // Diagnostic raw bytes only; invalid records expose no semantic fields.
     [[nodiscard]] std::span<const std::byte> decryptedBytes() const noexcept { return decrypted_; }
 
     [[nodiscard]] uint32_t pid() const noexcept;
@@ -41,6 +42,7 @@ public:
     [[nodiscard]] uint8_t friendship() const noexcept;
     [[nodiscard]] uint8_t ability() const noexcept;
     [[nodiscard]] uint8_t markings() const noexcept;
+    [[nodiscard]] std::array<uint32_t, 3> ribbons() const noexcept;
     [[nodiscard]] uint8_t language() const noexcept;
     [[nodiscard]] std::array<uint8_t, 6> evs() const noexcept;
     [[nodiscard]] std::array<uint16_t, 4> moves() const noexcept;

@@ -3,7 +3,9 @@ GEN4_FOUNDATION_SOURCES := tests/test_gen4_readonly_foundation.cpp \
 	src/Integration/Gen4/Gen4ReadOnlySave.cpp \
 	src/Pokemon/Pokemon4ReadOnly.cpp src/Pokemon/PersonalRecord4.cpp \
 	src/Pokemon/PersonalInfo4DP.cpp src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp \
-	src/Encryption/Encryption4.cpp
+	src/Encryption/Encryption4.cpp src/Utils/SHA256.cpp \
+	src/Integration/Gen4/Gen4AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp \
+	vendor/PKSM-Core/source/utils/crypto_checksums.cpp
 
 GEN4_TEST := $(HOST_BUILD)/test_gen4_readonly_foundation
 GEN4_SANITIZE := $(HOST_BUILD)/test_gen4_readonly_foundation_sanitize
@@ -13,10 +15,18 @@ HOST_SANITIZE_TESTS += $(GEN4_SANITIZE)
 host-test: $(GEN4_TEST)
 host-sanitize: $(GEN4_SANITIZE)
 
-$(GEN4_TEST): $(GEN4_FOUNDATION_SOURCES)
-	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_FOUNDATION_SOURCES) -o $@
+GEN4_HEADERS := $(wildcard include/Integration/Gen4/*.h include/Pokemon/*4*.h include/Utils/Gen4*.h) include/Encryption/Encryption4.h include/Legacy/LegacySourceBindings.h
 
-$(GEN4_SANITIZE): $(GEN4_FOUNDATION_SOURCES)
+$(GEN4_TEST): $(GEN4_FOUNDATION_SOURCES) $(GEN4_HEADERS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_FOUNDATION_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude -Ivendor/PKSM-Core/include $(GEN4_FOUNDATION_SOURCES) -o $@
+
+$(GEN4_SANITIZE): $(GEN4_FOUNDATION_SOURCES) $(GEN4_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Ivendor/PKSM-Core/include $(GEN4_FOUNDATION_SOURCES) -o $@
+
+.PHONY: gen4-safety-contract
+gen4-safety-contract:
+	python3 tests/test_gen4_safety_contract.py
+host-test: gen4-safety-contract
+host-sanitize: gen4-safety-contract

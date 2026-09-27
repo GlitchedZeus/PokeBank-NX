@@ -1,6 +1,6 @@
 /**
  * GENERATED from PKHeX's personal_dp; regenerate with
- * `python tools/gen_personaltables.py`.
+ * `python tools/gen_gen4_personal.py`.
  */
 #include "Pokemon/PersonalInfo4DP.h"
 

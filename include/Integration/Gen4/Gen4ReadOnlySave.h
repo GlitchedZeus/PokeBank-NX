@@ -59,7 +59,9 @@ public:
     }
 
     [[nodiscard]] const TrainerReadOnly& trainer() const noexcept { return trainer_; }
-    [[nodiscard]] std::span<const Pokemon::Pokemon4ReadOnly> party() const noexcept { return party_; }
+    [[nodiscard]] std::span<const Pokemon::Pokemon4ReadOnly> party() const noexcept { return std::span<const Pokemon::Pokemon4ReadOnly>(party_).first(partyCount_); }
+    [[nodiscard]] uint8_t partyCount() const noexcept { return partyCount_; }
+    [[nodiscard]] std::span<const Pokemon::Pokemon4ReadOnly> nativePartySlots() const noexcept { return party_; }
     [[nodiscard]] const Pokemon::Pokemon4ReadOnly& box(size_t boxIndex, size_t slotIndex) const;
     [[nodiscard]] uint8_t currentBox() const noexcept { return currentBox_; }
     [[nodiscard]] std::span<const std::u16string> boxNames() const noexcept { return boxNames_; }
@@ -85,6 +87,7 @@ private:
     std::vector<Pokemon::Pokemon4ReadOnly> party_;
     std::vector<Pokemon::Pokemon4ReadOnly> boxes_;
     std::vector<std::u16string> boxNames_;
+    uint8_t partyCount_ = 0;
     uint8_t currentBox_ = 0;
     size_t storageOffset_ = 0;
     std::vector<uint8_t> source_;

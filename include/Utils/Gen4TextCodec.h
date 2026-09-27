@@ -61,9 +61,9 @@ namespace Utils {
                                                   uint8_t language) {
         std::vector<std::byte> out(slotCount * 2, std::byte{0});
         if (slotCount == 0) return out;
-        const bool halfWidth =
-            language == static_cast<uint8_t>(Enums::LanguageID::Korean) || !gen4IsFullWidth(value);
         const size_t count = std::min({value.size(), maxCharacters, slotCount - 1});
+        const bool halfWidth = language == static_cast<uint8_t>(Enums::LanguageID::Korean) ||
+            !gen4IsFullWidth(value.substr(0, count));
         for (size_t i = 0; i < count; ++i) {
             const uint16_t encoded = encodeGen4CodePoint(value[i], halfWidth);
             out[i * 2] = static_cast<std::byte>(encoded & 0xFF);

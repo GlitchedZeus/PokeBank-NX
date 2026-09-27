@@ -1,4 +1,12 @@
 #include "Encryption/Encryption4.h"
+#include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Utils/SHA256.h"
+#include "utils/crypto.hpp"
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+#include <unistd.h>
 #include "Enums/LanguageID.h"
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
@@ -100,7 +108,8 @@ void stamp(std::vector<uint8_t>& save,size_t off,size_t len,size_t footer,
     const size_t end=off+len;
     w32(save,end-0x14,major); w32(save,end-0x10,minor);
     w32(save,end-0x0C,static_cast<uint32_t>(len)); w32(save,end-0x08,magic);
-    const uint16_t crc=Utils::crc16ccitt(save.data()+off,len-footer);
+    // Independent pinned PKSM-Core CRC oracle, not the implementation under test.
+    const uint16_t crc=pksm::crypto::ccitt16(std::span<const uint8_t>(save).subspan(off,len-footer));
     w16(save,end-2,crc);
 }
 
@@ -169,6 +178,60 @@ void restampCounter(std::vector<uint8_t>& save, Layout layout, bool storage, int
     stamp(save,off,len,s.footerSize,major,minor,magic);
 }
 
+std::vector<std::byte> oracleEncrypt(std::vector<std::byte> d) {
+    // PKSM-Core aa22d7a: PK4::encrypt, invoked without its heuristic isEncrypted check.
+    auto* b = reinterpret_cast<uint8_t*>(d.data());
+    uint16_t sum = 0;
+    for (size_t i=8; i<0x88; i+=2) sum += static_cast<uint16_t>(b[i] | (b[i+1]<<8));
+    wb16(d,6,sum);
+    const uint32_t pid = b[0] | (uint32_t(b[1])<<8) | (uint32_t(b[2])<<16) | (uint32_t(b[3])<<24);
+    const uint8_t shuffle = (pid>>13)&31;
+    pksm::crypto::pkm::blockShuffle<0x20>(b+8,pksm::crypto::pkm::InvertedBlockPositions[shuffle]);
+    pksm::crypto::pkm::crypt<0x80>(b+8,sum);
+    if (d.size()==0xEC) pksm::crypto::pkm::crypt<0x64>(b+0x88,pid);
+    return d;
+}
+std::string hex(std::span<const std::byte> bytes) {
+    std::ostringstream out;
+    for (auto b:bytes) out << std::hex << std::setw(2) << std::setfill('0') << unsigned(b);
+    return out.str();
+}
+std::string digest(std::span<const uint8_t> bytes) {
+    Utils::SHA256 hash;
+    hash.update(bytes.data(),bytes.size());
+    std::array<uint8_t,32> result{};
+    hash.finalize(result.data());
+    return hex(std::as_bytes(std::span(result)));
+}
+void testOracle() {
+    for (size_t size : {size_t(0x88),size_t(0xEC)}) {
+        for (uint32_t shuffle=0;shuffle<32;++shuffle) {
+            std::vector<std::byte> d(size);
+            for(size_t i=0;i<size;++i) d[i]=static_cast<std::byte>((i*71+shuffle*3)&255);
+            wb32(d,0,(shuffle<<13)|0x523); wb16(d,4,0);
+            const auto oracle=oracleEncrypt(d);
+            assert(Encryption::encryptArray4(d)==oracle);
+            wb16(d,6,Encryption::checksum4(d));
+            assert(Encryption::decryptArray4(oracle)==d);
+            assert(Encryption::encryptArray4(Encryption::decryptArray4(oracle))==oracle);
+        }
+        const auto blank=oracleEncrypt(std::vector<std::byte>(size));
+        std::ifstream in(size==0x88 ? "tests/fixtures/gen4/blank-stored.hex" : "tests/fixtures/gen4/blank-party.hex");
+        std::string pinned; in>>pinned;
+        assert(in && pinned==hex(blank));
+        assert(Encryption::blankRecord4(size)==blank);
+    }
+    for(size_t badSize : {size_t(0),size_t(1),size_t(0x87),size_t(0x89),size_t(0xEB),size_t(0xED)}) {
+        std::vector<std::byte> bad(badSize);
+        assert(Encryption::decryptArray4(bad).empty() && Encryption::encryptArray4(bad).empty());
+        Pokemon::Pokemon4ReadOnly p(bad);
+        assert(!p.valid() && !p.empty() && p.species()==0 && p.nickname().empty());
+    }
+    auto badSanity=Encryption::decryptArray4(makeEntity(false));wb16(badSanity,4,1);
+    Pokemon::Pokemon4ReadOnly bad(oracleEncrypt(badSanity));
+    assert(bad.checksumValid() && !bad.valid() && bad.species()==0 && !bad.empty());
+}
+
 void testCryptoAndEntity() {
     for(uint32_t shuffle=0;shuffle<32;++shuffle) {
         auto d=std::vector<std::byte>(Encryption::SIZE_STORED4,std::byte{0});
@@ -181,6 +244,11 @@ void testCryptoAndEntity() {
         assert(round==d);
         assert(Encryption::encryptArray4(round)==e);
     }
+    // Caller-provided stale checksum must be refreshed on encryption.
+    auto stale = Encryption::decryptArray4(makeEntity(false));
+    wb16(stale, 0x08, 133);
+    Pokemon::Pokemon4ReadOnly refreshed(Encryption::encryptArray4(stale), Enums::GameVersion::DP);
+    assert(refreshed.valid() && refreshed.species() == 133);
     auto partyRaw=makeEntity(true);
     Pokemon::Pokemon4ReadOnly p(partyRaw,Enums::GameVersion::DP);
     assert(p.valid() && p.isParty() && p.species()==25);
@@ -189,11 +257,13 @@ void testCryptoAndEntity() {
     assert(p.nickname()==u"PIKA" && p.originalTrainerName()==u"ASH");
     assert(p.personal().hp==35);
 
-    auto bad=Encryption::decryptArray4(partyRaw);
-    wb16(bad,0x06,static_cast<uint16_t>(Encryption::checksum4(bad)+1));
-    auto badRaw=Encryption::encryptArray4(bad);
+    auto badRaw = partyRaw;
+    badRaw[0x08] ^= std::byte{1}; // Corrupt ciphertext, not the encryptor's input checksum.
     Pokemon::Pokemon4ReadOnly invalid(badRaw,Enums::GameVersion::DP);
     assert(!invalid.checksumValid() && !invalid.valid());
+    assert(!invalid.empty() && invalid.species() == 0 && invalid.nickname().empty());
+    assert(invalid.currentHP() == 0 && invalid.heldItem() == 0);
+    assert(std::equal(invalid.originalEncryptedBytes().begin(), invalid.originalEncryptedBytes().end(), badRaw.begin()));
 
     for(size_t size:{Encryption::SIZE_STORED4,Encryption::SIZE_PARTY4}) {
         auto blank=Encryption::blankRecord4(size);
@@ -229,7 +299,12 @@ void testLayoutsAndAssignments() {
         assert(parsed && error.empty() && save==before);
         assert(parsed->generalSelection().partition==0);
         assert(parsed->storageSelection().partition==1);
-        assert(parsed->party().size()==1);
+        assert(parsed->party().size()==1 && parsed->partyCount()==1);
+        assert(parsed->nativePartySlots().size()==6);
+        const auto inactive = parsed->nativePartySlots()[5].originalEncryptedBytes();
+        assert(inactive.size()==0xEC);
+        for (size_t i=0;i<inactive.size();++i)
+            assert(static_cast<uint8_t>(inactive[i]) == save[spec(layout).party+5*0xEC+i]);
         assert(parsed->party()[0].currentHP()==7);
         assert(parsed->box(0,0).species()==25);
         assert(parsed->currentBox()==3);
@@ -335,9 +410,204 @@ void testSelectionAndDamage() {
     auto badRom=makeSave(Layout::HeartGoldSoulSilver,0,0,9);
     assert(!Gen4ReadOnlySave::parse(badRom,Layout::HeartGoldSoulSilver));
 }
+void testEveryLayoutMatrix() {
+    for(Layout layout:{Layout::DiamondPearl,Layout::Platinum,Layout::HeartGoldSoulSilver}) {
+        const auto sp=spec(layout);
+        for (int general=0;general<2;++general) for(int storage=0;storage<2;++storage) {
+            auto bytes=makeSave(layout,general,storage);
+            const auto before=digest(bytes);
+            auto parsed=Gen4ReadOnlySave::parse(bytes,layout);
+            assert(parsed && parsed->generalSelection().partition==general && parsed->storageSelection().partition==storage);
+            assert(!parsed->recovered() && digest(parsed->sourceBytes())==before && digest(bytes)==before);
+            // Last slot of last box proves packed DP/Pt vs HGSS padded geometry.
+            auto last=makeEntity(false,0x67890123);
+            const size_t off=storage*PARTITION+sp.storageStart+sp.boxData+17*sp.boxStride+29*0x88;
+            copy(bytes,off,last); restampCounter(bytes,layout,true,storage,50,0);
+            parsed=Gen4ReadOnlySave::parse(bytes,layout);
+            assert(parsed && parsed->box(17,29).pid()==0x67890123);
+            assert(hex(parsed->box(17,29).originalEncryptedBytes())==hex(last));
+            assert(!parsed->box(18,0).valid() && !parsed->box(0,30).valid());
+        }
+        for(bool storage:{false,true}) {
+            const size_t offset=storage?sp.storageStart:0;
+            const size_t len=storage?sp.storageSize:sp.generalSize;
+            auto selection=[&](const Gen4ReadOnlySave& p){return storage?p.storageSelection():p.generalSelection();};
+            for(int newest:{0,1}) for(int damage:{0,1,2}) {
+                auto bytes=makeSave(layout,newest,newest);
+                const size_t base=newest*PARTITION+offset;
+                if(damage==0) bytes[base+1]^=1;
+                if(damage==1) w32(bytes,base+len-12,1);
+                if(damage==2) w32(bytes,base+len-8,0xBAD);
+                const auto before=digest(bytes);
+                auto parsed=Gen4ReadOnlySave::parse(bytes,layout);
+                assert(parsed && selection(*parsed).partition==1-newest && selection(*parsed).recoveredOlderCopy);
+                assert(digest(bytes)==before && digest(parsed->sourceBytes())==before);
+                bytes[(1-newest)*PARTITION+offset+1]^=1;
+                const auto failedHash=digest(bytes);
+                assert(!Gen4ReadOnlySave::parse(bytes,layout));
+                assert(digest(bytes)==failedHash);
+            }
+            auto olderBad=makeSave(layout,1,1);olderBad[offset+1]^=1;
+            auto parsed=Gen4ReadOnlySave::parse(olderBad,layout);
+            assert(parsed && !selection(*parsed).recoveredOlderCopy && selection(*parsed).partition==1);
+            // Exact PKHeX CompareCounters edge behavior, applied to General and Storage.
+            struct Counters {uint32_t a,b;int expected;};
+            for(auto c:{Counters{100,101,1},Counters{101,100,0},Counters{0xFFFFFFFF,5,1},
+                        Counters{5,0xFFFFFFFF,0},Counters{0xFFFFFFFE,0xFFFFFFFF,1},
+                        Counters{0xFFFFFFFF,0xFFFFFFFE,0},Counters{0xFFFFFFFF,0xFFFFFFFF,1}}) {
+                auto bytes=makeSave(layout);
+                restampCounter(bytes,layout,storage,0,c.a,1);
+                restampCounter(bytes,layout,storage,1,c.b,1);
+                parsed=Gen4ReadOnlySave::parse(bytes,layout);
+                assert(parsed && selection(*parsed).partition==c.expected);
+                restampCounter(bytes,layout,storage,0,25,c.a);
+                restampCounter(bytes,layout,storage,1,25,c.b);
+                parsed=Gen4ReadOnlySave::parse(bytes,layout);
+                assert(parsed && selection(*parsed).partition==c.expected);
+            }
+            auto tied=makeSave(layout);
+            for(int i:{0,1})restampCounter(tied,layout,storage,i,123,456);
+            parsed=Gen4ReadOnlySave::parse(tied,layout);
+            assert(parsed && selection(*parsed).partition==0);
+        }
+        for(uint8_t lang:{1,2,3,4,5,7,8}) {
+            auto bytes=makeSave(layout,0,1,7,lang);
+            const std::u16string name=lang==1?u"ヒカリ":lang==8?u"빛나":u"ÉLISE";
+            copy(bytes,sp.trainer,Utils::encodeGen4Field(name,8,7,lang));
+            restampCounter(bytes,layout,false,0,100,0);
+            auto parsed=Gen4ReadOnlySave::parse(bytes,layout);
+            assert(parsed && parsed->trainer().language==lang && parsed->trainer().name==name);
+        }
+        for (bool count : {false,true}) {
+            auto bytes=makeSave(layout);
+            if(count)bytes[sp.party-4]=7;else bytes[sp.storageStart+sp.currentBox]=18;
+            restampCounter(bytes,layout,!count,0,100,0);
+            auto hash=digest(bytes);
+            assert(!Gen4ReadOnlySave::parse(bytes,layout) && digest(bytes)==hash);
+        }
+        auto bytes=makeSave(layout);
+        for(auto wrong:{Layout::DiamondPearl,Layout::Platinum,Layout::HeartGoldSoulSilver})
+            if(wrong!=layout)assert(!Gen4ReadOnlySave::parse(bytes,wrong));
+        for(size_t size : {size_t(0),size_t(1),size_t(0x7FFFF),size_t(0x80001)}) {
+            auto malformed=bytes;malformed.resize(size);
+            const auto before=digest(malformed);
+            assert(!Gen4ReadOnlySave::parse(malformed,layout) && digest(malformed)==before);
+        }
+    }
 }
 
-int main() {
+void testFieldFidelity() {
+    auto d=Encryption::decryptArray4(makeEntity(true));
+    wb32(d,0x24,0x12345678);wb32(d,0x3C,0x87654321);wb32(d,0x60,0xAABBCCDD);
+    wb32(d,0x38,0xC000001F); d[0x16]=std::byte{0x2A};d[0x40]=std::byte{0x1B};
+    // Native trash and reserved bytes, including after both text terminators.
+    d[0x5D]=std::byte{0xAD};d[0x77]=std::byte{0xBE};d[0x64]=std::byte{0xCA};
+    for(uint16_t hp:{0,1,7}) {
+        wb16(d,0x8E,hp);
+        auto raw=oracleEncrypt(d);Pokemon::Pokemon4ReadOnly p(raw,Enums::GameVersion::PT);
+        assert(p.valid() && p.currentHP()==hp && p.partyStatus()==0x40 && p.maxHP()==60);
+        assert(p.isEgg() && p.isNicknamed() && p.fatefulEncounter() && p.gender()==1 && p.form()==3);
+        assert(p.markings()==0x2A && p.ribbons()[2]==0xAABBCCDD);
+        assert(p.tid()==12345 && p.sid()==54321 && p.experience()==10000 && p.friendship()==70);
+        assert(p.ability()==9 && p.language()==2 && p.evs()[5]==6 && p.ivs()[0]==31);
+        assert(p.moves()[0]==85 && p.pp()[1]==30 && p.ppUps()[2]==3);
+        assert(p.eggLocationExtended()==3001 && p.metLocationExtended()==2001);
+        assert(p.eggLocationDP()==1 && p.metLocationDP()==2 && p.originVersion()==10);
+        assert(p.ballDPPt()==4 && p.ballHGSS()==17 && p.pokerusState()==0x21 && p.metLevel()==25);
+        assert(p.ballCapsuleIndex()==2 && p.battleStats()[0]==35);
+        assert(Encryption::encryptArray4(p.decryptedBytes())==raw);
+    }
+    // PID-correlated identity is observed without rerolling either PID or IDs.
+    for(uint32_t pid:{0u,1u,0x12345678u}) {
+        wb32(d,0,pid);wb16(d,0x0C,0);wb16(d,0x0E,0);
+        const auto raw=oracleEncrypt(d);Pokemon::Pokemon4ReadOnly p(raw,Enums::GameVersion::DP);
+        assert(p.valid() && p.pid()==pid && p.tid()==0 && p.sid()==0);
+        assert(Encryption::encryptArray4(p.decryptedBytes())==raw);
+    }
+    // Current container group, not origin Version, selects form/base-stat policy.
+    for (auto species : {386,413,479,487,492}) {
+        wb16(d,0x08,species);d[0x40]=std::byte{8};
+        auto raw=oracleEncrypt(d);
+        Pokemon::Pokemon4ReadOnly dp(raw,Enums::GameVersion::DP),pt(raw,Enums::GameVersion::PT),hg(raw,Enums::GameVersion::HGSS);
+        assert(dp.personal().hp>0 && pt.personal().hp>0 && hg.personal().hp>0);
+        if(species==479)assert(dp.personal().spa==95 && pt.personal().spa==105 && hg.personal().spa==105);
+        if(species==487)assert(dp.personal().atk==100 && pt.personal().atk==120 && hg.personal().atk==120);
+        if(species==492)assert(dp.personal().spe==100 && pt.personal().spe==127 && hg.personal().spe==127);
+        if(species==386)assert(dp.personal().atk==180 && pt.personal().atk==180 && hg.personal().atk==180);
+    }
+    auto code=[](const std::vector<std::byte>& b,size_t i){return unsigned(b[i*2])|(unsigned(b[i*2+1])<<8);};
+    auto jp=Utils::encodeGen4Field(u"ピ♂",8,7,1),ko=Utils::encodeGen4Field(u"피♂",8,7,8);
+    assert(code(jp,1)==0xEE && code(ko,1)==0x1BB);
+    assert(Utils::decodeGen4Field(jp)==u"ピ♂" && Utils::decodeGen4Field(ko)==u"피♂");
+    assert(code(Utils::encodeGen4Field(u"A♂ピ",8,2,2),1)==0x1BB);
+    assert(code(Utils::encodeGen4Field(u"’",8,7,2),0)==0x1B3);
+    assert(code(Utils::encodeGen4Field(u"\u0378",8,7,2),0)==0x1AC);
+}
+
+void testAssignmentsOnDisk() {
+    using namespace PokeVault::Integration::Gen4;
+    namespace fs=std::filesystem;
+    const auto root=fs::temp_directory_path()/("pokebank-g4-"+std::to_string(getpid()));
+    fs::create_directories(root);
+    const auto savePath=root/"assigned.sav";
+    const auto otherPath=root/"another.sav";
+    const auto database=root/"bindings.cfg";
+    auto bytes=makeSave(Layout::DiamondPearl);
+    auto write=[&](const fs::path& path,const auto& data){std::ofstream f(path,std::ios::binary);f.write(reinterpret_cast<const char*>(data.data()),data.size());assert(f);};
+    write(savePath,bytes);write(otherPath,bytes);
+    PokeVault::Legacy::LegacySourceBindings bindings(database.string());
+    assert(bindings.load());
+    assert(!bindings.assignFileAndSave("metadata-alias",{"user","diamond_nds",database.string()+".tmp","manual","DP"}));
+    assert(openAssignedSource(bindings,"user","diamond_nds").status==OpenStatus::Unassigned);
+    assert(bindings.assignFileAndSave("explicit-source",{"user","diamond_nds",savePath.string(),"manual","DP"}));
+    PokeVault::Legacy::LegacySourceBindings restarted(database.string());assert(restarted.load());
+    auto opened=openAssignedSource(restarted,"user","diamond_nds");
+    assert(opened.status==OpenStatus::Ready && opened.save);
+    assert(opened.save->assignedExactGame()==Enums::GameVersion::D && opened.save->exactGameFromSave()==Enums::GameVersion::Invalid);
+    assert(digest(opened.save->sourceBytes())==digest(bytes));
+    std::ifstream original(savePath,std::ios::binary);
+    std::vector<uint8_t> stillOriginal((std::istreambuf_iterator<char>(original)),{});
+    assert(digest(stillOriginal)==digest(bytes));
+    original.close();
+    fs::remove(savePath);
+    assert(fs::exists(otherPath));
+    assert(openAssignedSource(restarted,"user","diamond_nds").status==OpenStatus::Missing);
+    assert(openAssignedSource(restarted,"other-user","diamond_nds").status==OpenStatus::Unassigned);
+    write(savePath,bytes);
+    assert(restarted.assignFileAndSave("explicit-source",{"user","pearl_nds",savePath.string(),"melonDS","DP"}));
+    opened=openAssignedSource(restarted,"user","pearl_nds");
+    assert(opened.status==OpenStatus::Ready && opened.save->assignedExactGame()==Enums::GameVersion::P);
+    assert(restarted.assignFileAndSave("explicit-source",{"user","platinum_nds",savePath.string(),"manual","PT"}));
+    assert(openAssignedSource(restarted,"user","platinum_nds").status==OpenStatus::AssignmentMismatch);
+    for(uint8_t rom:{7,8})for(const std::string game:{"heartgold_nds","soulsilver_nds"}) {
+        write(savePath,makeSave(Layout::HeartGoldSoulSilver,0,0,rom));
+        assert(restarted.assignFileAndSave("explicit-source",{"user",game,savePath.string(),"DraStic","HGSS"}));
+        opened=openAssignedSource(restarted,"user",game);
+        const bool matches=(rom==7)==(game=="heartgold_nds");
+        assert(opened.status==(matches?OpenStatus::Ready:OpenStatus::AssignmentMismatch));
+    }
+    assert(restarted.assignFileAndSave("explicit-source",{"user","diamond_nds",savePath.string(),"manual","DP"}));
+    assert(restarted.assignFileAndSave("second-source",{"user","diamond_nds",otherPath.string(),"manual","DP"}));
+    assert(openAssignedSource(restarted,"user","diamond_nds").status==OpenStatus::Ambiguous);
+    fs::remove_all(root);
+}
+
+}
+
+int main(int argc,char** argv) {
+    if(argc==2 && std::string_view(argv[1])=="--generate-oracles") {
+        std::filesystem::create_directories("tests/fixtures/gen4");
+        for(size_t size:{size_t(0x88),size_t(0xEC)}) {
+            const auto blank=oracleEncrypt(std::vector<std::byte>(size));
+            std::ofstream out(size==0x88?"tests/fixtures/gen4/blank-stored.hex":"tests/fixtures/gen4/blank-party.hex");
+            out<<hex(blank)<<"\n";
+        }
+        return 0;
+    }
+    testFieldFidelity();
+    testOracle();
+    testEveryLayoutMatrix();
+    testAssignmentsOnDisk();
     testCryptoAndEntity();
     testText();
     testLayoutsAndAssignments();

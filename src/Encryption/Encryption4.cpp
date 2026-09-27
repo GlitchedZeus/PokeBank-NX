@@ -84,10 +84,13 @@ std::vector<std::byte> decryptArray4(std::span<const std::byte> encrypted) {
 std::vector<std::byte> encryptArray4(std::span<const std::byte> decrypted) {
     if (!validRecordSize4(decrypted.size())) return {};
     const uint32_t pid = read32(decrypted.data());
-    const uint16_t checksum = read16(decrypted.data() + 6);
-
+    // This operates on a copy. Parsing never repairs a source record.
+    const uint16_t checksum = checksum4(decrypted);
+    std::vector<std::byte> refreshed(decrypted.begin(), decrypted.end());
+    refreshed[6] = static_cast<std::byte>(checksum);
+    refreshed[7] = static_cast<std::byte>(checksum >> 8);
     std::vector<std::byte> shuffled(decrypted.size());
-    shuffle4(decrypted, shuffled, (pid >> 13) & 31u, true);
+    shuffle4(refreshed, shuffled, (pid >> 13) & 31u, true);
     crypt4(shuffled, pid, checksum);
     return shuffled;
 }

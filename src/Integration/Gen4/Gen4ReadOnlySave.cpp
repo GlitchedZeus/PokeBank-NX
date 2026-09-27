@@ -5,7 +5,6 @@
 #include "Utils/Gen4TextCodec.h"
 
 #include <array>
-#include <cassert>
 
 namespace PokeVault::Integration::Gen4 {
 namespace {
@@ -227,8 +226,9 @@ std::optional<Gen4ReadOnlySave> Gen4ReadOnlySave::parse(std::span<const uint8_t>
         setError("Gen IV party count exceeds six");
         return std::nullopt;
     }
-    out.party_.reserve(partyCount);
-    for (uint8_t slot = 0; slot < partyCount; ++slot) {
+    out.partyCount_ = partyCount;
+    out.party_.reserve(6);
+    for (uint8_t slot = 0; slot < 6; ++slot) {
         const size_t offset = general->offset + spec.partyOffset +
                               static_cast<size_t>(slot) * Encryption::SIZE_PARTY4;
         if (offset + Encryption::SIZE_PARTY4 > general->offset + spec.generalSize) {
@@ -256,7 +256,13 @@ std::optional<Gen4ReadOnlySave> Gen4ReadOnlySave::parse(std::span<const uint8_t>
         setError("current-box field outside selected Storage block");
         return std::nullopt;
     }
-    out.currentBox_ = out.source_[current];
+    const uint32_t currentBox = layout == Layout::HeartGoldSoulSilver
+        ? out.source_[current] : read32(out.source_, current);
+    if (currentBox >= BOX_COUNT) {
+        setError("Gen IV current-box index exceeds seventeen");
+        return std::nullopt;
+    }
+    out.currentBox_ = static_cast<uint8_t>(currentBox);
 
     out.boxNames_.reserve(BOX_COUNT);
     for (size_t box = 0; box < BOX_COUNT; ++box) {
@@ -273,7 +279,9 @@ std::optional<Gen4ReadOnlySave> Gen4ReadOnlySave::parse(std::span<const uint8_t>
 }
 
 const Pokemon::Pokemon4ReadOnly& Gen4ReadOnlySave::box(size_t boxIndex, size_t slotIndex) const {
-    assert(boxIndex < BOX_COUNT && slotIndex < BOX_SLOTS);
+    // Native builds disable exceptions. Return an invalid, immutable record for bad indices.
+    static const Pokemon::Pokemon4ReadOnly invalid;
+    if (boxIndex >= BOX_COUNT || slotIndex >= BOX_SLOTS) return invalid;
     return boxes_[boxIndex * BOX_SLOTS + slotIndex];
 }
 
