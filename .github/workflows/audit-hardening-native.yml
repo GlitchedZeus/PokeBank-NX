@@ -62,6 +62,8 @@ on:
       - 'Makefile'
       - 'Makefile.host.base'
       - 'Makefile.host.gsc'
+      - 'Makefile.host.editor'
+      - 'Makefile.host.classic_inventory'
       - '.github/workflows/audit-hardening-native.yml'
   workflow_dispatch:
 
