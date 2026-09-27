@@ -45,6 +45,7 @@ namespace Trainer {
         size_t   m_slotBase = 0;                    // active slot base offset
         size_t   m_sectorOfs[FRLG_SECTORS] = {0};   // absolute offset of the sector holding logical id i
         uint32_t m_key = 0;                         // security key (Small+0xF20)
+        uint8_t  m_languageId = 2;                   // English represents the shared international table
         bool     m_valid = false;
 
         // Logical-block base sector ids.
@@ -53,6 +54,7 @@ namespace Trainer {
         static constexpr int STORAGE_ID = 5;   // ids 5..13
 
         void selectActiveSlot();
+        void detectLanguage(size_t smallBlockOffset);
         void parseTrainer();
         void parseParty();
         void parseBoxes();
@@ -97,6 +99,7 @@ namespace Trainer {
         const std::string& fileName() const noexcept { return m_fileName; }
         const std::vector<uint8_t>& getSaveData() const noexcept { return saveData; }
         uint32_t securityKey() const noexcept { return m_key; }
+        uint8_t language() const noexcept { return m_languageId; }
 
         // Recompute all 14 active-slot sector checksums into their footers (call before writing to disk).
         void finalizeChecksums();
