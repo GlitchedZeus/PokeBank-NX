@@ -153,7 +153,17 @@ namespace Pokemon {
         uint8_t otFriendship() const noexcept override { return rd8(0x29); }
         uint8_t language() const noexcept override { return rd8(0x12); }
         bool eggTextIsPlaceholder() const noexcept { return isEgg(); }
-        uint8_t otTextLanguage() const noexcept { return eggTextIsPlaceholder() ? saveLanguage : language(); }
+        uint8_t otTextLanguage() const noexcept {
+            // A freshly-created PK3 may not have its record language byte initialized yet.
+            // OT text still belongs to the containing save's charset in that state. Eggs are the
+            // other special case: their record language is deliberately Japanese for the タマゴ
+            // placeholder, while their OT remains encoded in the save/origin charset.
+            const uint8_t recordLanguage = language();
+            const bool validRecordLanguage =
+                recordLanguage == 1 || recordLanguage == 2 || recordLanguage == 3 ||
+                recordLanguage == 4 || recordLanguage == 5 || recordLanguage == 7;
+            return (eggTextIsPlaceholder() || !validRecordLanguage) ? saveLanguage : recordLanguage;
+        }
         void setSaveLanguage(uint8_t languageId) noexcept { saveLanguage = languageId; }
         uint8_t friendship() const noexcept override { return rd8(0x29); }
         uint8_t pokerus() const noexcept { return rd8(0x44); }
