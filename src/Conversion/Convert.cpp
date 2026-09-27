@@ -31,6 +31,8 @@
 #include "Names/ItemNames.h"         // itemG3ToModern / itemModernToG3 (Gen 3 <-> modern held item)
 #include "Names/ItemPresence.h"      // isHeldItemPresent -> sanitize the held item to the destination
 #include "Names/MoveInfo.h"          // getMoveMaxPP -> clamp carried-over PP to the destination's max
+#include "Names/SpeciesNames.h"      // localized canonical species names for native nickname semantics
+#include "Names/NameLanguage.h"       // languageIndexFor -- record language -> generated table index
 #include "Globals.h"                // g_allowIllegalEdits -- lifts the BDSP Spinda/Nincada transfer block
 #include "Utils/Gen3Text.h"          // the Gen 3 character set, shared with Pokemon3FRLG + Trainer3FRLG
 #include "Utils/HelperUtilities.h"   // readUInt32LittleEndian; pulls in Utils::utf8ToUtf16
