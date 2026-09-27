@@ -3,6 +3,7 @@
 #include "Legacy/RetroArchGSCDiscovery.h"
 
 #include "Utils/SHA256.h"
+#include "Save/RtcFooter.h"
 
 #include <algorithm>
 #include <array>
@@ -175,10 +176,12 @@ namespace PokeVault::Legacy {
             source.fileSize = static_cast<uint64_t>(metadata.st_size);
             source.modifiedTime = static_cast<int64_t>(metadata.st_mtime);
             const size_t size = static_cast<size_t>(metadata.st_size);
-            if (size != 0x20000) {
+            std::size_t rtcFooterSize = 0;
+            if (!PokeVault::Save::splitRtcPayloadSize(
+                    size, Integration::Gen3::Detail::kSaveSize, rtcFooterSize)) {
                 source.status = LegacySourceStatus::InvalidSave;
                 source.parseError = Integration::Gen3::SaveError::WrongSize;
-                source.detail = "candidate is not an exact 128 KiB Gen III save";
+                source.detail = "candidate is not a 128 KiB Gen III save with a recognized RTC footer";
                 return source;
             }
 
