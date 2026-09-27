@@ -21,6 +21,7 @@
 namespace PokeVault::Integration::Gen3 {
     inline constexpr std::string_view PKSM_CORE_REVISION =
         "aa22d7a4f87c0351baf7da5962ba5acd01039a7c";
+    inline constexpr std::size_t GEN3_SAVE_SIZE = 0x20000;
 
     enum class SourceGame : uint8_t {
         FireRedGBA,
