@@ -1,6 +1,7 @@
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -99,6 +100,15 @@ int main(){
     {
         auto d=fixture(IGS);for(int i=0;i<7;i++)d.push_back(0);auto r=parse(d,SourceGame::Gold);
         assert(r&&r.save->metadata().rtcFooterSize==7&&r.save->sourceBytes().size()==0x8007);
+    }
+    {
+        auto d=fixture(IGS);
+        d[IGS.party+3]=25;
+        putChecksum(d,IGS);
+        auto r=parse(d,SourceGame::Gold);
+        assert(r&&r.save->party().size()==1);
+        const std::array<uint8_t,2> ligature{{0xEA,0x50}};
+        assert(decodeGen2String(ligature,RegionLayout::International)=="%");
     }
     {
         auto d=fixture(IGS);d[0x2100]^=1;auto r=parse(d,SourceGame::Gold);assert(!r&&r.error==SaveError::ChecksumMismatch);
