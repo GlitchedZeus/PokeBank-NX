@@ -840,10 +840,11 @@ namespace Conversion {
             if (!outPid) return std::nullopt;
             wr32(d, 0x00, *outPid);                                 // PID rerolled to preserve nature/gender/shiny/ability
             copyBytes(d, 0x04, s, 0x0C, 4);                         // OTID32
-            const GameVersion gen3DestinationGroup =
-                destOriginVersion <= 3 ? GameVersion::RSE : GameVersion::FRLG;
+            // All Gen III GBA games share the same language availability: Japanese plus the
+            // five international languages, with no Korean/Chinese release. FRLG is the current
+            // PokeBank NX Gen III grouping and is therefore sufficient for the safe-language clamp.
             const uint8_t destinationLanguage =
-                Enums::safeLanguageForGroup(gen3DestinationGroup, rd8(s, 0xE2));
+                Enums::safeLanguageForGroup(GameVersion::FRLG, rd8(s, 0xE2));
             wr8(d, 0x12, destinationLanguage);
             wr8(d, 0x13, 0x02);                                    // HasSpecies; eggs fail closed above
             wr16(d, 0x20, Pokemon::nationalToG3(national));         // Species (INTERNAL Gen 3 id)
