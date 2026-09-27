@@ -151,7 +151,7 @@ namespace Pokemon {
         uint8_t ball() const noexcept override { return (origins() >> 11) & 0x0F; }
         uint8_t otFriendship() const noexcept override { return rd8(0x29); }
         uint8_t language() const noexcept override { return rd8(0x12); }
-        bool eggTextIsPlaceholder() const noexcept override { return isEgg(); }
+        bool eggTextIsPlaceholder() const noexcept { return isEgg(); }
         uint8_t otTextLanguage() const noexcept { return eggTextIsPlaceholder() ? saveLanguage : language(); }
         void setSaveLanguage(uint8_t languageId) noexcept { saveLanguage = languageId; }
         uint8_t friendship() const noexcept override { return rd8(0x29); }
