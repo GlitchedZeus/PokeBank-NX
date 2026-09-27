@@ -13,6 +13,7 @@
 #include <cstring>
 
 #include "Trainer/Trainer3FRLG.h"
+#include "Pokemon/Gen3PartyRecord.h"
 #include "Utils/Gen3Text.h"        // the Gen 3 character set, shared with Pokemon3FRLG + Convert
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
@@ -74,23 +75,19 @@ namespace Trainer {
             return true;
         }
 
-        // Build a 100-byte ENCRYPTED party record from an entity, computing the party-only battle stats
-        // (0x50-0x63) so a mon promoted from a box (80 B, no stats) serializes correctly. Caller writes 100 B.
+        // Preserve an existing 100-byte party tail exactly. Derive it only for an 80-byte
+        // box record (or an explicitly zero-padded bank record) promoted into the party.
         void buildPartyRecord(::Pokemon::Pokemon& pk, uint8_t out[100]) {
-            uint8_t buf[100];
-            std::memset(buf, 0, sizeof(buf));
+            uint8_t buf[100] = {0};
             const size_t n = std::min<size_t>(pk.getDataSize(), 100);
-            std::memcpy(buf, pk.getData().data(), n);           // canonical header + G/A/E/M (+ stats if party)
-            const uint16_t maxHP = pk.statHPMax();
-            const uint16_t curHP = ::Pokemon::Pokemon3FRLG::carryCurrentHP(readUInt16LittleEndian(buf + 0x56), readUInt16LittleEndian(buf + 0x58), maxHP);
-            buf[0x54] = pk.level();
-            writeUInt16LittleEndian(buf + 0x56, curHP);           // current HP (the mon's own, carried over)
-            writeUInt16LittleEndian(buf + 0x58, maxHP);           // max HP
-            writeUInt16LittleEndian(buf + 0x5A, pk.statATK());
-            writeUInt16LittleEndian(buf + 0x5C, pk.statDEF());
-            writeUInt16LittleEndian(buf + 0x5E, pk.statSPE());
-            writeUInt16LittleEndian(buf + 0x60, pk.statSPA());
-            writeUInt16LittleEndian(buf + 0x62, pk.statSPD());
+            std::memcpy(buf, pk.getData().data(), n);
+            const auto bytes = std::span<uint8_t>(buf, sizeof(buf));
+            if (!::Pokemon::hasStoredGen3PartyTail(bytes, n)) {
+                const ::Pokemon::Gen3PartyDerivedStats stats{
+                    pk.level(), pk.statHPMax(), pk.statATK(), pk.statDEF(),
+                    pk.statSPE(), pk.statSPA(), pk.statSPD()};
+                ::Pokemon::initializeGen3PartyTail(bytes, stats);
+            }
             std::byte* enc = encryptArray3FRLG(
                 std::span<const std::byte>(reinterpret_cast<const std::byte*>(buf), 100));
             std::memcpy(out, enc, 100);
@@ -385,7 +382,8 @@ namespace Trainer {
                 buildPartyRecord(*party[i], rec);
                 writeBlock(LARGE_ID, logical, rec, 100);
             } else {
-                uint8_t blank[100] = {0};   // Gen 3 empty party slot = all zero (species 0); seed-0 crypt keeps it clean
+                uint8_t blank[100];
+                ::Pokemon::makeEmptyGen3PartySlot(std::span<uint8_t>(blank, sizeof(blank)));
                 writeBlock(LARGE_ID, logical, blank, 100);
             }
         }
