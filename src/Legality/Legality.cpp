@@ -9,7 +9,9 @@
 
 #include "Legality/Legality.h"
 
+#include <array>
 #include <string>
+#include <string_view>
 
 #include "Pokemon/Pokemon.h"
 #include "Pokemon/Experience.h"
@@ -20,6 +22,7 @@
 #include "Trainer/Trainer.h"     // Trainer::getSpeciesName / getItemName (name-table sentinels)
 #include "Names/MoveNames.h"     // Names::getMoveName
 #include "Names/ItemNames.h"     // Names::getItemNameG3 (Gen 3 item id space)
+#include "Integration/Gen3/Gen3LearnsetTable.h"
 
 namespace Legality {
 
@@ -43,10 +46,28 @@ namespace Legality {
                 default:                       return 0;
             }
         }
+
+        // PK3 is one binary entity format, but the five GBA games do not share one native
+        // move pool. Keep the container/save identity separate from Pokemon::getGameGroup()
+        // so generic format capabilities can stay FRLG without pretending a Ruby save is FRLG.
+        bool exactGen3Source(std::string_view id,
+                             PokeVault::Integration::Gen3::SourceGame& game) noexcept {
+            using SourceGame = PokeVault::Integration::Gen3::SourceGame;
+            if (id == "ruby_gba")      { game = SourceGame::RubyGBA;      return true; }
+            if (id == "sapphire_gba")  { game = SourceGame::SapphireGBA;  return true; }
+            if (id == "emerald_gba")   { game = SourceGame::EmeraldGBA;   return true; }
+            if (id == "firered_gba")   { game = SourceGame::FireRedGBA;   return true; }
+            if (id == "leafgreen_gba") { game = SourceGame::LeafGreenGBA; return true; }
+            return false;
+        }
     }
 
-    Report analyze(const Pokemon::Pokemon& pk, Enums::GameVersion originGroup) {
+    Report analyze(const Pokemon::Pokemon& pk, Enums::GameVersion originGroup,
+                   std::string_view exactSourceGameId) {
         Report r;
+        PokeVault::Integration::Gen3::SourceGame gen3Source =
+            PokeVault::Integration::Gen3::SourceGame::FireRedGBA;
+        const bool hasExactGen3Source = exactGen3Source(exactSourceGameId, gen3Source);
         const uint16_t species = pk.speciesID();
         if (species == 0) return r;  // empty slot — nothing to validate
 
@@ -148,7 +169,32 @@ namespace Legality {
         // express *when* a move was legal (move tutors that came and went, event moves, trade-backs).
         // All seven games have a table now, but keep the nullptr guard honest -- if a group ever lacks one,
         // getLearnableBits() returns nullptr meaning "unknown", which must not be reported as illegal.
-        if (Pokemon::getLearnableBits(species, pk.form(), originGroup) != nullptr) {
+        if (hasExactGen3Source) {
+            // The staged Gen III editor already owns exact Ruby/Sapphire/Emerald/FRLG tables.
+            // Reuse those instead of laundering every PK3 through the FRLG generic group.
+            const std::array<uint16_t, 4> sourceMoves{
+                pk.move(0), pk.move(1), pk.move(2), pk.move(3)
+            };
+            for (const uint16_t m : sourceMoves) {
+                if (m == 0) continue;
+                const auto availability =
+                    PokeVault::Integration::Gen3::Learnset::classify(
+                        gen3Source, species, m, sourceMoves);
+                using Availability = PokeVault::Integration::Gen3::Learnset::Availability;
+                if (availability == Availability::Transfer) {
+                    add(r, Severity::Warning,
+                        "Move is not native to this exact Gen III game (transfer required): " +
+                        std::string(Names::getMoveName(m)));
+                } else if (availability == Availability::Preserved) {
+                    add(r, Severity::Warning,
+                        "Move is preserved but not in the audited Gen III native/transfer pool: " +
+                        std::string(Names::getMoveName(m)));
+                } else if (availability == Availability::Invalid) {
+                    add(r, Severity::Warning,
+                        "Move may not be learnable: " + std::string(Names::getMoveName(m)));
+                }
+            }
+        } else if (Pokemon::getLearnableBits(species, pk.form(), originGroup) != nullptr) {
             for (int i = 0; i < 4; ++i) {
                 const uint16_t m = pk.move(i);
                 if (m != 0 && !Pokemon::isLearnable(species, pk.form(), originGroup, m))
@@ -160,7 +206,7 @@ namespace Legality {
         // Resolve through the id space the mon's own game uses -- a Gen 3 held item checked against
         // the modern table would either name the wrong item or be reported "unknown" when it is fine.
         if (pk.heldItem() != 0) {
-            const char* heldName = (originGroup == Enums::GameVersion::FRLG)
+            const char* heldName = (hasExactGen3Source || originGroup == Enums::GameVersion::FRLG)
                                  ? Names::getItemNameG3(pk.heldItem())
                                  : Trainer::getItemName(pk.heldItem());
             if (std::string(heldName) == "???")
