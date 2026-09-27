@@ -473,6 +473,14 @@ void runGame(SourceGame game, Family family) {
     assert(editor->boxedPokemon(13, 29, error)->encryptedBytes == editPreview->encryptedBytes);
     editor->discard();
 
+    auto rtcSource=source;
+    const std::array<uint8_t,7> rtcFooter{{0x52,0x54,0x43,0x01,0x02,0x03,0x04}};
+    rtcSource.insert(rtcSource.end(),rtcFooter.begin(),rtcFooter.end());
+    auto rtcEditor=StagedPokemonEditor::create(rtcSource,game,error);
+    assert(rtcEditor&&error.empty());
+    const auto rtcFinal=rtcEditor->finalizedBytes(error);
+    assert(rtcFinal==rtcSource);
+
     // Wrong family must fail closed.
     const SourceGame mismatch =
         family == Family::FRLG ? SourceGame::RubyGBA : SourceGame::FireRedGBA;
@@ -493,6 +501,19 @@ void runGame(SourceGame game, Family family) {
 } // namespace
 
 int main() {
+    {
+        const auto raw=samplePokemon(SourceGame::FireRedGBA);
+        Pokemon::Pokemon3FRLG egg(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(raw.data()),raw.size()));
+        egg.setEgg(true);
+        assert(egg.isEgg());
+        assert((egg.rd8(0x13)&0x04)!=0);
+        assert(egg.language()==1);
+        assert(egg.nickname()==u"\u30bf\u30de\u30b4");
+        egg.setEgg(false);
+        assert(!egg.isEgg());
+        assert((egg.rd8(0x13)&0x04)==0);
+    }
     runGame(SourceGame::RubyGBA, Family::RS);
     runGame(SourceGame::SapphireGBA, Family::RS);
     runGame(SourceGame::EmeraldGBA, Family::Emerald);
