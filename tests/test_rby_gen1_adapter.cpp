@@ -306,7 +306,10 @@ int main() {
         const std::array<uint8_t,3> tradeOt{{0x5D,0x80,0x50}};
         assert(decodeGen1String(tradeOt,RegionLayout::International)=="*");
         const std::array<uint8_t,3> embedded{{0x80,0x5D,0x50}};
-        assert(decodeGen1String(embedded,RegionLayout::International)!="*");
+        assert(decodeGen1String(embedded,RegionLayout::International)=="A*");
+        // PKHeX StringConverter1 stops at any byte with no glyph, not only 0x00/0x50.
+        const std::array<uint8_t,4> glyphlessTerminator{{0x80,0x01,0x81,0x50}};
+        assert(decodeGen1String(glyphlessTerminator,RegionLayout::International)=="A");
     }
 
     std::cout << "Gen I RBY strict read-only adapter/oracle tests passed\n";
