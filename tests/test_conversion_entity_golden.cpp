@@ -779,7 +779,7 @@ int main() {
         auto languageSource = blankSWSH(0x50607080u);
         configureModern(*languageSource, 25, 0, pid, id32,
                         static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
-        languageSource->setLanguage(1); // Japanese requires a separate Gen III table not implemented here.
+        languageSource->setLanguage(8); // Korean has no native Gen III encoding.
         before = nativeBytes(*languageSource);
         const auto languageHash = hashBytes(before);
         failed = convert(*languageSource, GameVersion::FRLG, result,
@@ -1150,13 +1150,14 @@ int main() {
         std::cout << "fixture route-bdsp-swsh-tracker source-sha256=" << hexHash(sourceHash) << "\n";
     }
 
-    // Gen III international language corpus: every currently supported table id must round-trip;
-    // Japanese/Korean/Chinese remain explicit fail-closed until actual tables exist.
+    // Gen III language corpus: Japanese plus all international release languages round-trip;
+    // Korean/Chinese remain explicit fail-closed because Gen III has no native encoding.
     {
-        for (const uint8_t language : {uint8_t{2}, uint8_t{3}, uint8_t{4}, uint8_t{5}, uint8_t{7}}) {
+        for (const uint8_t language : {uint8_t{1}, uint8_t{2}, uint8_t{3}, uint8_t{4}, uint8_t{5}, uint8_t{7}}) {
             auto source = blankSWSH(0x71000000u + language);
             configureModern(*source, 25, 0, 0xAABBCC00u + language, 0xAABBCD00u + language,
-                            static_cast<uint8_t>(GameVersion::SW), u"SPARKY", true);
+                            static_cast<uint8_t>(GameVersion::SW),
+                            language == 1 ? u"ピカチュウ" : u"SPARKY", true);
             source->setLanguage(language);
             const auto before = nativeBytes(*source);
             const auto sourceHash = hashBytes(before);
@@ -1171,7 +1172,7 @@ int main() {
             std::cout << "fixture route-language-" << static_cast<unsigned>(language)
                       << "-swsh-pk3 source-sha256=" << hexHash(sourceHash) << "\n";
         }
-        for (const uint8_t language : {uint8_t{1}, uint8_t{8}, uint8_t{9}, uint8_t{10}}) {
+        for (const uint8_t language : {uint8_t{8}, uint8_t{9}, uint8_t{10}}) {
             auto source = blankSWSH(0x72000000u + language);
             configureModern(*source, 25, 0, 0xBBCCDD00u + language, 0xBBCCDC00u + language,
                             static_cast<uint8_t>(GameVersion::SW), u"SPARKY", true);
@@ -1367,7 +1368,7 @@ int main() {
         auto source = blankSWSH(0x76000001u);
         configureModern(*source, 25, 0, 0x67899876u, 0x67899976u,
                         static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
-        source->setLanguage(1);
+        source->setLanguage(8);
         const auto before = nativeBytes(*source);
         const auto sourceHash = hashBytes(before);
         const auto pre = preflightConvert(*source, GameVersion::FRLG,
