@@ -5,7 +5,7 @@
 <h1 align="center">PokeBank NX</h1>
 
 <p align="center">
-  An offline-first Pokémon bank, save manager and editor for CFW Nintendo Switch.
+  Offline-first Pokémon storage, save browsing and editing for CFW Nintendo Switch.
 </p>
 
 <p align="center">
@@ -15,33 +15,33 @@
   <img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-lightgrey" />
 </p>
 
-PokeBank NX is a native Switch homebrew project for browsing, editing, organizing and preserving Pokémon without depending on a PC or cloud service for normal use.
+PokeBank NX is a native Nintendo Switch homebrew project for browsing, editing, organizing and preserving Pokémon without requiring a PC or cloud service for normal use.
 
-The project is still in active alpha development. The current focus is not adding more generations as fast as possible; it is making storage, transfers and recovery safe enough that the app can eventually be trusted with unique Pokémon.
+The project is still in active **alpha** development. The goal is not to race through generation support; it is to build a bank and save-management foundation that can be trusted with Pokémon people actually care about.
 
-> **Original game saves are treated as read-only sources.** PokeBank NX works through its own staged workspaces and storage. Live installed-game, RetroArch and other emulator-source writes remain disabled.
+> **Original game saves are treated as immutable sources.** Editing happens in PokeBank-owned staged workspaces. Live writes to installed games, RetroArch saves and other emulator sources remain disabled.
 
 ---
 
 ## Current status
 
-The shared Gen I–III editor milestone is physically tested and accepted on Switch.
+The **Generation I–III shared editor milestone is physically tested and device accepted** on Switch.
 
-The project has since moved deep into its safety and conversion audit. The active audit line now includes:
+Since that milestone, most engineering work has focused on storage safety, crash recovery, conversion fidelity and byte-exact save behavior.
 
-- crash-safer Bank persistence with verified replacement and preserved recovery generations;
-- custody-safe rollback so a failed move cannot silently destroy a held Pokémon;
-- destination conversion candidates kept separate from the authoritative held Pokémon until commit;
-- profile + exact-game namespacing for mutable workspaces;
-- durable single-file workspace saves for supported modern Switch formats;
-- a versioned Move transaction journal with SHA-256 fingerprints and crash recovery;
-- software-integrated true Move between PokeBank storage and supported PokeBank-owned workspaces;
-- persisted conversion evidence that records exact source/destination hashes, losses and adaptations;
-- explicit user acknowledgement rules for any future loss-bearing cross-game Move;
-- production golden fixtures for Gen III ↔ modern and modern Switch conversion routes;
-- an exact-pair Sword/Shield ↔ Scarlet/Violet audit covering all eight title directions.
+Current highlights:
 
-The current safety model is intentionally conservative: **cross-game true Move is still disabled**. Sword/Shield ↔ Scarlet/Violet is much better understood now, but still needs a final closure pass for unknown/reserved PK8/PK9 fields plus event, ribbon, mark, special-form, ball and text-boundary edge cases. The transaction layer is also **CI verified but not yet power-loss accepted on physical Switch hardware**. BDSP remains excluded until its two-file save generation can be committed atomically.
+- Red / Blue / Yellow, Gold / Silver / Crystal and Ruby / Sapphire / Emerald / FireRed / LeafGreen have the shared staged Pokémon editor;
+- controller navigation, left-stick parity, held-repeat scrolling, themes and the accepted legacy editor UI have been tested on real hardware;
+- PokeBank-owned storage uses verified durable replacement and retained recovery generations;
+- Move transactions use a journal, SHA-256 evidence and restart recovery rather than assuming a write completed;
+- the physical interruption/recovery harness passed **all 8 tests on a FAT32 Switch SD setup**;
+- Sword/Shield ↔ Scarlet/Violet has completed its converter-level audit for all eight title directions;
+- unsupported or unexplained conversion data now fails closed instead of being silently erased;
+- Gen I–III has been re-audited against **PKSE 1.2** for format correctness and byte fidelity, with fixes landed for several real legacy-save edge cases;
+- PKSE 1.2 is now also being treated as a high-value reference/port source for future Gen IV–VII format support.
+
+**Cross-game product True Move is still disabled.** Converter readiness and transaction safety are prerequisites, not permission to remove a Pokémon from its source.
 
 ### At a glance
 
@@ -52,52 +52,108 @@ The current safety model is intentionally conservative: **cross-game true Move i
 | Gen III R/S/E/FR/LG read + staged Pokémon editor | ✅ Device accepted |
 | Classic staged Inventory editor | ✅ Device accepted |
 | Controller + left-stick navigation / held repeat | ✅ Device accepted |
-| Themes / readability system | ✅ Device accepted |
-| Durable Bank storage foundation | ✅ Implemented / CI verified |
-| Profile-scoped mutable workspaces | ✅ Implemented / CI verified |
-| Bank ↔ supported PokeBank workspace true Move | 🟨 Implemented / CI verified / hardware recovery test pending |
-| Cross-game true Move | 🔒 Disabled; route-by-route proof in progress |
+| Themes / dark-light readability system | ✅ Device accepted |
+| Durable Bank persistence foundation | ✅ Implemented / validated |
+| Move journal + restart recovery | ✅ Implemented |
+| Physical interruption/recovery on FAT32 | ✅ Device accepted — 8/8 tests |
+| Sword/Shield ↔ Scarlet/Violet conversion layer | ✅ Converter ready, product route still locked |
+| Gen I–III PKSE 1.2 correctness audit | 🛠️ Source fixes landed; exact evidence tracked in Issue #81 |
+| Cross-game True Move | 🔒 Disabled |
 | BDSP true Move | 🔒 Disabled pending multi-file transaction support |
-| Master Vault | 🚧 Planned after remaining audit + recovery gates |
-| DS / 3DS | 🗺️ Planned |
+| Nintendo DS / 3DS | 🗺️ Next expansion family after the current audit gate |
+| Master Vault | 🚧 Planned — not started |
 | Live installed-game writes | 🔒 Hard disabled |
 | Live emulator-source writes | 🔒 Hard disabled |
 
 ---
 
-## What PokeBank NX is building toward
+## Supported legacy games
 
-The long-term goal is one Switch-native app that can:
+### Generation I
+- Pokémon Red
+- Pokémon Blue
+- Pokémon Yellow
 
-- discover supported Pokémon saves and profiles;
-- browse Party, Boxes, Trainer data and Inventory;
-- stage edits without touching the original source;
-- store Pokémon in PokeBank-owned storage;
-- move Pokémon between supported workspaces with crash-safe transaction recovery;
-- keep provenance, origin and transfer history;
-- provide named Banks and an immutable Master Vault;
-- support explicit Move, Copy, Exact Clone and Derived Clone semantics;
-- grow into DS, 3DS and broader modern Switch support;
-- add legality/conversion tooling without hiding data loss or unsupported cases.
+### Generation II
+- Pokémon Gold
+- Pokémon Silver
+- Pokémon Crystal
 
-The project deliberately separates **finding a save**, **editing a staged copy**, and **permission to write back to a source**. Those are not the same thing.
+### Generation III
+- Pokémon Ruby
+- Pokémon Sapphire
+- Pokémon Emerald
+- Pokémon FireRed
+- Pokémon LeafGreen
+
+These are currently treated as **read-only source saves**. PokeBank NX can create and edit staged copies without mutating the original file.
+
+The editor is shared across generations rather than being rebuilt from scratch for every game:
+
+~~~text
+shared editor UI
+        ↓
+exact-game capability provider
+        ↓
+generation-native staged adapter
+        ↓
+strict serialization + validation
+~~~
+
+The format decides what exists. Gen I uses DVs and Stat Exp; Gen II adds Held Item, Friendship and Pokérus; Gen III uses IVs/EVs, Nature, Ability, richer origin data and PID-linked mechanics.
 
 ---
 
-## Safety model
+## What the PKSE 1.2 audit changed
 
-PokeBank NX is designed around a few rules that do not change just because a screen is editable:
+PokeBank NX already had a substantial Gen I–III implementation, but PKSE 1.2 added enough old-generation work that it became worth doing a direct delta audit before moving to Gen IV.
+
+That audit has already caught useful edge cases, including:
+
+- the proper Gen III empty-party **no-mail sentinel**;
+- preserving an existing Gen III 100-byte party tail instead of recalculating unrelated stored battle state;
+- complete Gen III egg placeholder/language behavior;
+- recognized emulator RTC-footer preservation;
+- Gen I/II list-marker and text-decoding edge cases;
+- language-aware Gen III text handling;
+- exact Ruby/Sapphire/Emerald/FireRed/LeafGreen source context for legality feedback;
+- byte-preserving Gen II Clone behavior for native OT/nickname data.
+
+PokeBank NX does **not** blindly replace its architecture with PKSE.
+
+The intended split is:
+
+~~~text
+PKSE / PKHeX / PKSM-Core
+        ↓
+format knowledge, tables, parsers, correctness oracles
+
+PokeBank NX
+        ↓
+staging, source immutability, UI, storage,
+durability, provenance, recovery and Move policy
+~~~
+
+If upstream behavior is safer or more correct, it can be ported or adapted. If PokeBank NX already has the safer design, it stays.
+
+---
+
+## Storage and recovery safety
+
+PokeBank NX treats editing and source-write permission as separate concepts.
+
+Permanent rules:
 
 - **Original source saves stay immutable.**
-- **Installed Switch saves are read-only.**
-- **RetroArch and other emulator sources are read-only.**
-- **PokeBank-owned staged workspaces may be edited and validated.**
-- **Unknown or unsupported save layouts fail closed.**
-- **A normal Move must verify the destination before the source is retired.**
-- **Recovery evidence is not another withdrawable Pokémon.**
-- **Device acceptance belongs to the exact artifact that was physically tested.**
+- **Installed Switch saves are read-only sources.**
+- **RetroArch and other emulator saves are read-only sources.**
+- **PokeBank-owned staged workspaces may be edited.**
+- **Unknown or unsupported layouts fail closed.**
+- **A Move must prove the destination before source retirement can even be authorized.**
+- **Recovery evidence is not an extra withdrawable Pokémon.**
+- **Hardware acceptance belongs only to the exact artifact that was actually tested.**
 
-For durable Move operations, the intended order is:
+The durable Move order is designed around:
 
 ~~~text
 prepare transaction
@@ -105,159 +161,102 @@ prepare transaction
 → read back + verify destination
 → authorize source retirement
 → retire source
-→ read back + verify source retirement
+→ read back + verify retirement
 → commit
 ~~~
 
-If recovery cannot prove what happened, the transaction locks instead of guessing.
+If recovery cannot prove what happened, it stops instead of guessing.
 
----
+### FAT32 physical durability checkpoint
 
-## Move, Copy and Clone are different things
-
-PokeBank NX keeps these concepts separate by design.
-
-**Move** means the same logical Pokémon changes active location. A normal Move must not silently create a permanent duplicate.
-
-**Copy** is an explicit duplication operation where the source stays active.
-
-**Exact Clone** is the intentional byte-identical clone path where the native payload is preserved as closely as the format allows. The eventual Vault model will still give the clone its own PokeBank identity and lineage.
-
-**Derived Clone** creates a separate related Pokémon and can regenerate generation-specific identity fields when required. It will be recorded as derived rather than pretending to have encounter history it never had.
-
-Transaction/archive bytes are recovery evidence only. They are not active Pokémon and cannot be withdrawn as extra copies.
-
----
-
-## Game support
-
-### Device-accepted legacy editor milestone
-
-**Generation I**
-- Pokémon Red
-- Pokémon Blue
-- Pokémon Yellow
-
-**Generation II**
-- Pokémon Gold
-- Pokémon Silver
-- Pokémon Crystal
-
-**Generation III**
-- Pokémon Ruby
-- Pokémon Sapphire
-- Pokémon Emerald
-- Pokémon FireRed
-- Pokémon LeafGreen
-
-These legacy sources currently remain read-only at the source level; editing is staged inside PokeBank NX.
-
-### Modern Switch workspace foundation
-
-The current PokeBank-owned single-file workspace transaction layer supports the validated save-file path for:
-
-- Pokémon: Let's Go, Pikachu! / Let's Go, Eevee!
-- Pokémon Sword / Shield
-- Pokémon Legends: Arceus
-- Pokémon Scarlet / Violet
-- Pokémon Legends: Z-A
-- Pokémon FireRed / LeafGreen Switch releases
-
-This does **not** mean PokeBank NX writes those installed-game saves. It means the app can operate on its own validated mutable workspace copies.
-
-**Brilliant Diamond / Shining Pearl** remain excluded from true Move because <code>SaveData.bin</code> and <code>Backup.bin</code> must be treated as one recoverable generation.
-
-FireRed/LeafGreen **GBA** and FireRed/LeafGreen **Switch** are separate game/platform identities throughout the project.
-
-See [Game Support Matrix](docs/GAME_SUPPORT_MATRIX.md) for the engineering-level breakdown.
-
----
-
-## Shared editor architecture
-
-PokeBank NX uses one shared Pokémon editor rather than a different editor shell for every generation.
+The dedicated physical audit NRO was run through all eight guided interruption/restart cases on real Switch hardware using a FAT32 SD setup.
 
 ~~~text
-shared editor UI + lifecycle
-        ↓
-exact-game capability/provider
-        ↓
-generation-native staged adapter
-        ↓
-strict serialization + validation
+Application SHA:
+cf1e390f9f9cba13c64c6f500df0bf3ff5060048
+
+NRO SHA-256:
+122302db3189d532e82833400eab0453301c56dc7d48c3966648b02ec62c101a
+
+Result:
+8 / 8 PASS
+journal = COMMITTED
+idempotent recovery = PASS
+product True Move = DISABLED
 ~~~
 
-The save format decides which fields exist.
-
-For example:
-
-- Gen I uses DVs and Stat Exp, with no Held Item, Nature or Ability.
-- Gen II adds Held Item, Friendship, Pokérus and its own DV/gender/shiny rules.
-- Gen III uses IVs/EVs, Nature, Ability, richer met/origin data and PID-linked behavior.
-
-Fields are hidden, derived, read-only or editable according to the actual game format instead of being invented for older games.
+That acceptance proves the tested durability/recovery gate on that hardware/filesystem environment. It does not automatically enable a product Move route.
 
 ---
 
-## What is being worked on now
+## Conversion work
 
-The broad conversion-fidelity audit is no longer the next step — it has produced a substantial golden-fixture corpus, explicit loss/adaptation reporting, persisted conversion evidence, and route-specific preflight checks.
+PokeBank NX conversion is intentionally fail-closed.
 
-The current engineering focus is **closing the final blockers for the first modern cross-game route candidate**, starting with Sword/Shield ↔ Scarlet/Violet:
+For Sword / Shield ↔ Scarlet / Violet, all eight exact title directions have completed the current converter-level audit:
 
-- classify remaining unknown/reserved PK8/PK9 bytes instead of assuming they are harmless;
-- expand event/distribution, ribbon and mark edge coverage;
-- close special-form, special-ball and text-boundary cases;
-- keep exact source-byte immutability proof on every success and failure fixture;
-- keep all route gates disabled until the evidence is complete;
-- complete physical FAT32/exFAT transaction-recovery testing on Switch.
+- Sword → Scarlet
+- Sword → Violet
+- Shield → Scarlet
+- Shield → Violet
+- Scarlet → Sword
+- Scarlet → Shield
+- Violet → Sword
+- Violet → Shield
 
-After those gates, the project can begin evaluating individual routes for enablement and then move toward Master Vault persistence.
+The converter now has explicit handling for destination stat reconstruction, HP/status changes, unsupported forms, reserved/unknown data and declared losses/adaptations.
 
-See [Current Status](CURRENT_STATUS.md) and the [v1 Roadmap](docs/V1_ROADMAP.md) for the technical plan.
+**Converter ready does not mean True Move enabled.** The product gate remains locked until an individual route is intentionally approved.
 
 ---
 
-## Roadmap
+## Move, Copy and Clone
+
+These operations are deliberately separate.
+
+**Move** — the same logical Pokémon changes active location. The source is retired only after the destination is durably committed and verified.
+
+**Copy** — an explicit duplicate where the source remains active.
+
+**Exact Clone** — intentional native-payload duplication as closely as the format allows.
+
+**Derived / Legit Clone** — a separate related Pokémon with its own future Vault identity and lineage relationship rather than pretending it is the same encounter object.
+
+Transaction evidence and backup bytes are recovery material, not extra active Pokémon.
+
+---
+
+## What comes next
+
+The immediate engineering sequence is:
 
 ~~~text
 Gen I–III shared editor                     DEVICE ACCEPTED
         ↓
-storage / custody / transaction hardening   MOSTLY IMPLEMENTED
+storage / transaction hardening             IMPLEMENTED
         ↓
-conversion fidelity + golden fixtures       SUBSTANTIALLY COMPLETE
+FAT32 interruption / recovery               DEVICE ACCEPTED
         ↓
-exact-pair closure + parser/recovery gates  CURRENT
+modern conversion fidelity                  CONVERTER CLOSURE COMPLETE
         ↓
-route-by-route enablement decisions
+Gen I–III vs PKSE 1.2 audit                 CURRENT CLOSURE GATE
         ↓
-Master Vault + named Banks
+PKSE 1.2 Gen IV reuse / delta audit
         ↓
-universal SaveSource adapters
+Diamond / Pearl / Platinum / HGSS backend
         ↓
-Nintendo DS / 3DS
+Black / White / B2W2
         ↓
-broader modern Switch validation
+X / Y / ORAS
         ↓
-legality / provenance / transfer tooling
+Sun / Moon / USUM
         ↓
-individually approved source-write adapters
-        ↓
-v1.0 hardening
+Master Vault / broader v1 hardening
 ~~~
 
-There is no global "unsafe write" switch planned.
+For Gen IV–VII, the plan is **not** to rebuild everything from zero. PKSE 1.2 already contains useful Pokémon-format, encryption, save-layout, checksum, trainer, inventory and data-table implementations. Those will be audited against PKHeX and adapted behind PokeBank NX's existing safety architecture.
 
----
-
-## Development
-
-PokeBank NX is built as a native Switch <code>.nro</code> using the devkitPro/devkitA64 toolchain.
-
-The project uses host regression tests, sanitizer builds and native devkitA64 CI before hardware acceptance. Storage and transaction work is also tested with deliberate failure injection so recovery behavior can be exercised without pretending CI is the same as pulling power on a real Switch.
-
-Useful project documents:
-
+See:
 - [Current Status](CURRENT_STATUS.md)
 - [Project Status](PROJECT_STATUS.md)
 - [v1 Roadmap](docs/V1_ROADMAP.md)
@@ -265,10 +264,12 @@ Useful project documents:
 - [Full Project Audit](docs/FULL_PROJECT_AUDIT_2026-09-22.md)
 - [Reference Index](docs/REFERENCE_INDEX.md)
 
-### Hardware-tested editor checkpoint
+---
+
+## Hardware-tested editor checkpoint
 
 <details>
-<summary>Exact accepted Gen I–III / Gen III editor artifact</summary>
+<summary>Exact accepted Gen I–III editor artifact</summary>
 
 ~~~text
 PR:               #77
@@ -283,7 +284,7 @@ Artifact ID:      10735208869
 Status:
 CI VERIFIED
 DEVICE ACCEPTED
-GENERATION III DONE
+GENERATION III EDITOR MILESTONE ACCEPTED
 ~~~
 
 Device acceptance applies only to that exact tested artifact.
@@ -292,11 +293,30 @@ Device acceptance applies only to that exact tested artifact.
 
 ---
 
+## Development
+
+PokeBank NX is built as a native Switch `.nro` using devkitPro/devkitA64.
+
+The project uses:
+
+- host regression tests;
+- ASan / UBSan;
+- native devkitA64 compile/link validation;
+- byte-exact save fixtures;
+- golden conversion fixtures;
+- source-immutability tests;
+- deliberate transaction interruption/fault injection;
+- exact artifact hashes for hardware checkpoints.
+
+The project remains an alpha and should be treated accordingly. Unique saves should always be backed up independently.
+
+---
+
 ## License
 
 PokeBank NX is licensed under **AGPL-3.0**. See [LICENSE](LICENSE).
 
-External projects such as PKHeX, PKSM/PKSM-Core, PKSE, pkmn-chest and other Pokémon tooling are used as references, compatibility oracles, or selective sources only where their licensing and provenance allow it. See the [Reference Index](docs/REFERENCE_INDEX.md).
+PKHeX, PKSM / PKSM-Core, PKSE, pkmn-chest and other Pokémon tooling are used as references, compatibility oracles or selective upstream sources where appropriate. PokeBank NX keeps its own safety, storage, provenance and product-policy boundaries.
 
 ---
 
