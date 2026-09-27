@@ -302,6 +302,13 @@ int main() {
     bad=parse(std::span<const uint8_t>(red.data(),red.size()-1),SourceGame::Red);
     assert(!bad && bad.error==SaveError::WrongSize);
 
+    {
+        const std::array<uint8_t,3> tradeOt{{0x5D,0x80,0x50}};
+        assert(decodeGen1String(tradeOt,RegionLayout::International)=="*");
+        const std::array<uint8_t,3> embedded{{0x80,0x5D,0x50}};
+        assert(decodeGen1String(embedded,RegionLayout::International)!="*");
+    }
+
     std::cout << "Gen I RBY strict read-only adapter/oracle tests passed\n";
     return 0;
 }
