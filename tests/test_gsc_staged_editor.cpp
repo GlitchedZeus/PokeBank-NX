@@ -183,5 +183,28 @@ int main(){
         assert(editor->stagedBytes().size()==raw.size());
         assert(std::equal(editor->stagedBytes().begin(),editor->stagedBytes().end(),raw.begin()));
     }
+    {
+        // Clone is byte identity, not a text-edit operation. 0xBC is a valid accented Gen II
+        // nickname glyph that the deliberately conservative staged name encoder does not accept.
+        auto raw=fixture(GS);
+        constexpr std::size_t cap=20,bodySize=32,str=11;
+        const std::size_t body=boxStart(0)+1+(cap+1);
+        const std::size_t ot=body+cap*bodySize;
+        const std::size_t nick=ot+cap*str;
+        raw[nick]=0xBC;
+        raw[nick+1]=0x50;
+        checksum(raw,GS);
+        auto parsed=parse(raw,SourceGame::Gold);assert(parsed);
+        const auto sourceNickname=parsed.save->boxes()[0].slots[0]->nickname;
+        std::string error;auto editor=StagedEditor::create(*parsed.save,error);assert(editor);
+        std::size_t destination=99;
+        assert(editor->stageCloneBoxPokemon(0,0,0,destination,error));
+        assert(destination==1);
+        const auto staged=editor->stagedBytes();
+        assert(staged[nick+str]==0xBC);
+        assert(staged[nick+str+1]==0x50);
+        auto clone=editor->boxedPokemon(0,1,error);assert(clone);
+        assert(clone->nickname==sourceNickname);
+    }
     std::cout<<"Generation II staged editor round-trip tests: PASS\n";
 }
