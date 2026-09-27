@@ -15,6 +15,7 @@
 #include <string>
 
 #include "Pokemon/Pokemon.h"
+#include "Enums/LanguageID.h"
 #include "Pokemon/SpeciesConverter3.h"   // the real Gen 3 internal <-> National tables (PKHeX-derived)
 #include "Encryption/Encryption3FRLG.h"
 
@@ -207,8 +208,15 @@ namespace Pokemon {
         void setOriginGame(uint8_t v) noexcept override { wr16(0x46, (origins() & ~(0x0Fu << 7)) | ((v & 0x0Fu) << 7)); refreshChecksum(); }
         void setOTGender(uint8_t v) noexcept override { wr16(0x46, (origins() & ~(1u << 15)) | ((v & 1u) << 15)); refreshChecksum(); }
         void setEgg(bool egg) noexcept override {
-            uint32_t iv = iv32(); if (egg) iv |= (1u << 30); else iv &= ~(1u << 30);
-            wr32(0x48, iv); refreshChecksum();
+            uint32_t iv = iv32();
+            if (egg) iv |= (1u << 30); else iv &= ~(1u << 30);
+            wr32(0x48, iv);
+            wr8(0x13, static_cast<uint8_t>(egg ? (rd8(0x13) | 0x04) : (rd8(0x13) & ~0x04)));
+            if (egg) {
+                setLanguage(static_cast<uint8_t>(Enums::LanguageID::Japanese));
+                setNickname(EGG_NICKNAME_JAPANESE);
+            }
+            refreshChecksum();
         }
         void setLevel(uint8_t level) noexcept override;      // writes EXP for the level, recalcs
         void setExp(uint32_t value) noexcept override;        // writes total EXP, recalcs level/stats
@@ -219,6 +227,7 @@ namespace Pokemon {
         void recalculateStats() noexcept override;
 
     private:
+        static constexpr const char16_t* EGG_NICKNAME_JAPANESE = u"\u30bf\u30de\u30b4"; // タマゴ
         // Compute a battle stat (0=HP..5=SPD) from base/IV/EV/level/nature (Gen3 formula).
         uint16_t computeStat(int idx) const noexcept;
         // Re-roll the PID (bounded search) to satisfy the given constraints; each is -1 for "don't care".
