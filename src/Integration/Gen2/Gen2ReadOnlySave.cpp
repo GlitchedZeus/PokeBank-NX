@@ -150,7 +150,11 @@ std::string decodeInternational(std::span<const uint8_t> bytes) {
         if (b >= 0xA0 && b <= 0xB9) { out += static_cast<char>('a' + b - 0xA0); continue; }
         if (b >= 0xF6) { out += static_cast<char>('0' + b - 0xF6); continue; }
         switch (b) {
-            case 0x70: out += "Po"; break; case 0x71: out += "Ke"; break;
+            // Match PKSE 1.2 / PKHeX StringConverter2 exactly. Gen II shares much of the
+            // Gen I Latin table, but its D0-D6 range and ligature handling are different.
+            // The ligatures stay as one-character stand-ins so decode -> encode can remain
+            // byte-for-byte reversible instead of expanding one stored byte into two chars.
+            case 0x70: out += "@"; break; case 0x71: out += "#"; break;
             case 0x72: out += "“"; break; case 0x73: out += "”"; break;
             case 0x75: out += "…"; break; case 0x7F: out += ' '; break;
             case 0x9A: out += '('; break; case 0x9B: out += ')'; break;
@@ -167,12 +171,16 @@ std::string decodeInternational(std::span<const uint8_t> bytes) {
             case 0xCA: out += "Ñ"; break; case 0xCB: out += "Ò"; break;
             case 0xCC: out += "Ó"; break; case 0xCD: out += "Ù"; break;
             case 0xCE: out += "Ú"; break; case 0xCF: out += "á"; break;
+            case 0xD0: out += "０"; break; case 0xD1: out += "１"; break;
+            case 0xD2: out += "２"; break; case 0xD3: out += "３"; break;
+            case 0xD4: out += "４"; break; case 0xD5: out += "５"; break;
+            case 0xD6: out += "６"; break;
             case 0xDF: out += "←"; break; case 0xE0: out += "’"; break;
-            case 0xE1: out += "Pk"; break; case 0xE2: out += "Mn"; break;
+            case 0xE1: out += "{"; break; case 0xE2: out += "}"; break;
             case 0xE3: out += '-'; break; case 0xE4: out += '+'; break;
             case 0xE6: out += '?'; break; case 0xE7: out += '!'; break;
             case 0xE8: out += "․"; break; case 0xE9: out += '&'; break;
-            case 0xEA: out += "%"; // Gen II one-byte e-acute ligature stand-in; 0xBC is the real é glyph. break; case 0xEB: out += "→"; break;
+            case 0xEA: out += "%"; break; case 0xEB: out += "→"; break;
             case 0xEC: out += "▷"; break; case 0xED: out += "▶"; break;
             case 0xEE: out += "▼"; break; case 0xEF: out += "♂"; break;
             case 0xF0: out += "¥"; break; case 0xF1: out += "×"; break;
