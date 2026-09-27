@@ -53,6 +53,7 @@ GEN3_LEGALITY_CONTEXT_SOURCES := tests/test_gen3_legality_context.cpp \
 	src/Pokemon/AbilityInfo.cpp src/Pokemon/FormInfo.cpp src/Pokemon/LearnsetTable.cpp \
 	src/Names/MoveNames.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
 	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+GEN3_LEGALITY_CONTEXT_FLAGS := -Wno-unused-parameter
 GEN1_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \
 	$(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES)
 CLASSIC_UI_MODEL_SOURCES := tests/test_classic_inventory_ui_model.cpp \
@@ -161,11 +162,11 @@ $(HOST_BUILD)/test_gen3_party_record_sanitize: tests/test_gen3_party_record.cpp 
 
 $(HOST_BUILD)/test_gen3_legality_context: $(GEN3_LEGALITY_CONTEXT_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_gen3_legality_context_sanitize: $(GEN3_LEGALITY_CONTEXT_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_source_mutation_policy: tests/test_source_mutation_policy.cpp
 	@mkdir -p $(HOST_BUILD)
