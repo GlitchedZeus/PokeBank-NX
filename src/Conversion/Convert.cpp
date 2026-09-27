@@ -253,60 +253,69 @@ namespace Conversion {
             wr16(b, o, static_cast<uint16_t>(v)); wr16(b, o + 2, static_cast<uint16_t>(v >> 16));
         }
 
-        // ---- Gen 3 (GBA) <-> Unicode text for cross-gen nickname/OT (table: Utils/Gen3Text.h) ----
-        // Gen 3 name (maxG3 bytes @ s+soff) -> UTF-16LE (dstBytes @ d+doff, zero-terminated + zero-padded).
-        void g3NameToUtf16(std::vector<std::byte>& d, size_t doff, const std::vector<std::byte>& s, size_t soff,
-                           int maxG3, int dstBytes) {
+        // ---- Gen 3 (GBA) <-> Unicode text -----------------------------------------------
+        constexpr int GEN3_NICKNAME_CHARS = 10;
+        constexpr int GEN3_OT_NAME_CHARS = 7;
+
+        void g3NameToUtf16(std::vector<std::byte>& d, size_t doff,
+                           const std::vector<std::byte>& src, size_t soff,
+                           int maxG3, int dstBytes, uint8_t languageId) {
             int di = 0;
             for (int i = 0; i < maxG3 && di + 2 <= dstBytes; ++i) {
-                const uint8_t b = rd8(s, soff + i);
+                const uint8_t b = rd8(src, soff + i);
                 if (b == Utils::GEN3_TERMINATOR) break;
-                const char16_t c = Utils::gen3ToChar(b);
-                if (c == u'\0') continue;   // no glyph at that byte -> skip it
+                const char16_t c = Utils::gen3ToChar(b, languageId);
+                if (c == u'\0') continue;
                 wr16(d, doff + di, static_cast<uint16_t>(c));
                 di += 2;
             }
-            for (; di + 1 < dstBytes; di += 2) wr16(d, doff + di, 0);   // terminator + padding
+            for (; di + 1 < dstBytes; di += 2) wr16(d, doff + di, 0);
         }
-        // UTF-16LE name (srcBytes @ s+soff) -> Gen 3 (maxG3 bytes @ d+doff, 0xFF-terminated + 0xFF-padded).
-        void utf16ToG3Name(std::vector<std::byte>& d, size_t doff, const std::vector<std::byte>& s, size_t soff,
-                           int srcBytes, int maxG3) {
+
+        // All-or-nothing for unmappable characters. Truncation at the native field width is allowed,
+        // but storing only a mappable prefix would silently change the player's name.
+        bool utf16ToG3Name(std::vector<std::byte>& d, size_t doff,
+                           const std::vector<std::byte>& src, size_t soff,
+                           int srcBytes, int maxG3, uint8_t languageId) {
+            uint8_t staged[GEN3_NICKNAME_CHARS] = {0};
+            const int writable = std::min(maxG3, GEN3_NICKNAME_CHARS);
             int gi = 0;
-            for (int i = 0; i + 2 <= srcBytes && gi < maxG3; i += 2) {
-                const char16_t c = static_cast<char16_t>(rd16(s, soff + i));
+            bool mapped = true;
+            for (int i = 0; i + 2 <= srcBytes; i += 2) {
+                const char16_t c = static_cast<char16_t>(rd16(src, soff + i));
                 if (c == 0) break;
-                const uint8_t b = Utils::charToGen3(c);
-                if (b == Utils::GEN3_TERMINATOR) break;
-                wr8(d, doff + gi, b);
-                ++gi;
+                if (gi >= writable) break;
+                const uint8_t b = Utils::charToGen3(c, languageId);
+                if (b == Utils::GEN3_TERMINATOR) { mapped = false; break; }
+                staged[gi++] = b;
             }
-            for (; gi < maxG3; ++gi) wr8(d, doff + gi, Utils::GEN3_TERMINATOR);   // Gen 3 pads names with 0xFF
+            if (!mapped) gi = 0;
+            for (int i = 0; i < gi; ++i) wr8(d, doff + i, staged[i]);
+            for (int i = gi; i < maxG3; ++i) wr8(d, doff + i, Utils::GEN3_TERMINATOR);
+            return mapped;
         }
+
         bool g3NameEqualsIgnoringTrash(const std::vector<std::byte>& lhs, size_t lhsOff,
-                                           const std::vector<std::byte>& rhs, size_t rhsOff,
-                                           int maxG3) {
+                                       const std::vector<std::byte>& rhs, size_t rhsOff,
+                                       int maxG3) {
             for (int i = 0; i < maxG3; ++i) {
                 const uint8_t a = rd8(lhs, lhsOff + i);
                 const uint8_t b = rd8(rhs, rhsOff + i);
                 if (a == Utils::GEN3_TERMINATOR || b == Utils::GEN3_TERMINATOR)
-                    return a == b; // bytes after the shared terminator are non-semantic trash
+                    return a == b;
                 if (a != b) return false;
             }
             return true;
         }
 
-        // Write a UTF-8 string UPPERCASED as a Gen 3 name (0xFF-terminated/padded) -- the species
-        // name, for the Gen 3 nickname. Must decode UTF-8 rather than walk bytes: the species table
-        // is game-canonical, so five of the names in Gen 3's own range carry a multi-byte character
-        // (Nidoran♀/♂, Farfetch'd) and a per-byte walk would encode their continuation bytes as
-        // garbage or drop the character. Only ASCII is uppercased; ♀/♂ have no case.
-        void utf8UpperToG3Name(std::vector<std::byte>& d, size_t doff, const char* str, int maxG3) {
-            const std::u16string s = Utils::utf8ToUtf16(std::string(str));
+        void utf8UpperToG3Name(std::vector<std::byte>& d, size_t doff,
+                               const char* text, int maxG3, uint8_t languageId) {
+            const std::u16string value = Utils::utf8ToUtf16(std::string(text));
             int gi = 0;
-            for (char16_t c : s) {
+            for (char16_t c : value) {
                 if (gi >= maxG3) break;
                 if (c >= u'a' && c <= u'z') c = static_cast<char16_t>(c - u'a' + u'A');
-                const uint8_t b = Utils::charToGen3(c);
+                const uint8_t b = Utils::charToGen3(c, languageId);
                 if (b == Utils::GEN3_TERMINATOR) continue;
                 wr8(d, doff + gi, b);
                 ++gi;
@@ -744,15 +753,24 @@ namespace Conversion {
             copyBytes(d, 0x72, s, 0x2C, 8);                         // Moves 1-4
             copyBytes(d, 0x7A, s, 0x34, 4);                         // Move PP
             { const uint8_t pu = rd8(s, 0x28); for (int i = 0; i < 4; ++i) wr8(d, 0x7E + i, (pu >> (i * 2)) & 3); }
-            std::vector<std::byte> canonicalName(10, static_cast<std::byte>(Utils::GEN3_TERMINATOR));
-            utf8UpperToG3Name(canonicalName, 0, Pokemon::getSpeciesNameGen89(national), 10);
-            const bool customNickname = !g3NameEqualsIgnoringTrash(s, 0x08, canonicalName, 0, 10);
-            uint32_t modernIv32 = iv32 & 0x7FFFFFFFu;               // clear Gen III ability bit
-            if (customNickname) modernIv32 |= 0x80000000u;          // modern IsNicknamed bit
+            const uint8_t sourceLanguage = rd8(s, 0x12);
+            std::vector<std::byte> canonicalName(
+                GEN3_NICKNAME_CHARS, static_cast<std::byte>(Utils::GEN3_TERMINATOR));
+            utf8UpperToG3Name(
+                canonicalName, 0,
+                Names::getSpeciesNameLocalized(
+                    national, Names::languageIndexFor(static_cast<Enums::LanguageID>(sourceLanguage))),
+                GEN3_NICKNAME_CHARS, sourceLanguage);
+            const bool customNickname =
+                !g3NameEqualsIgnoringTrash(s, 0x08, canonicalName, 0, GEN3_NICKNAME_CHARS);
+            uint32_t modernIv32 = iv32 & 0x7FFFFFFFu;
+            if (customNickname) modernIv32 |= 0x80000000u;
             wr32(d, 0x8C, modernIv32);
 
-            g3NameToUtf16(d, 0x58, s, 0x08, 10, 26);                // Nickname (Gen 3 -> UTF-16)
-            g3NameToUtf16(d, 0xF8, s, 0x14, 7, 26);                 // OT name
+            g3NameToUtf16(d, 0x58, s, 0x08, GEN3_NICKNAME_CHARS, 26, sourceLanguage);
+            // Standalone PK3 bytes do not carry the source save charset needed by an egg's OT.
+            // Product transfer routes remain disabled; ordinary non-egg records use their own language.
+            g3NameToUtf16(d, 0xF8, s, 0x14, GEN3_OT_NAME_CHARS, 26, sourceLanguage);
             wr8(d, 0x112, rd8(s, 0x29));                            // OT friendship (Gen 3 single friendship)
             wr8(d, 0x124, static_cast<uint8_t>((origins >> 11) & 0x0F));                             // Ball
             wr8(d, 0x125, static_cast<uint8_t>((origins & 0x7F) | (((origins >> 15) & 1) << 7)));    // MetLevel + OTgender
@@ -793,6 +811,10 @@ namespace Conversion {
             const uint16_t national = rd16(s, 0x08);
             const uint32_t pk8iv    = rd32(s, 0x8C);
             const bool     isEgg    = (pk8iv >> 30) & 1;
+            // A Gen III egg's nickname/language are Japanese placeholders but its OT bytes use the
+            // destination SAVE charset. This converter has only a game id, not that save context.
+            // Refuse rather than fabricate an internally inconsistent egg.
+            if (isEgg) return std::nullopt;
             if (report) {
                 if (anyNonZero(std::span<const std::byte>(s.data(), s.size()), 0x34, 0x0A))
                     report->addLoss(Loss::RibbonDataDropped);
@@ -818,19 +840,30 @@ namespace Conversion {
             if (!outPid) return std::nullopt;
             wr32(d, 0x00, *outPid);                                 // PID rerolled to preserve nature/gender/shiny/ability
             copyBytes(d, 0x04, s, 0x0C, 4);                         // OTID32
-            wr8(d, 0x12, rd8(s, 0xE2));                             // Language
-            wr8(d, 0x13, static_cast<uint8_t>(0x02 | (isEgg ? 0x04 : 0)));   // Flags: HasSpecies (+ IsEgg)
+            const GameVersion gen3DestinationGroup =
+                destOriginVersion <= 3 ? GameVersion::RSE : GameVersion::FRLG;
+            const uint8_t destinationLanguage =
+                Enums::safeLanguageForGroup(gen3DestinationGroup, rd8(s, 0xE2));
+            wr8(d, 0x12, destinationLanguage);
+            wr8(d, 0x13, 0x02);                                    // HasSpecies; eggs fail closed above
             wr16(d, 0x20, Pokemon::nationalToG3(national));         // Species (INTERNAL Gen 3 id)
             wr16(d, 0x22, Names::itemModernToG3(rd16(s, 0x0A)));    // Held item (modern -> Gen 3; 0 if none)
             copyBytes(d, 0x24, s, 0x10, 4);                         // EXP
 
-            if (sourceNicknamed) {
-                utf16ToG3Name(d, 0x08, s, 0x58, 26, 10);            // representable custom nickname survives
-            } else {
-                utf8UpperToG3Name(d, 0x08, Pokemon::getSpeciesNameGen89(national), 10);
+            const bool nicknameCarried =
+                sourceNicknamed &&
+                utf16ToG3Name(d, 0x08, s, 0x58, 26, GEN3_NICKNAME_CHARS, destinationLanguage);
+            if (!nicknameCarried) {
+                utf8UpperToG3Name(
+                    d, 0x08,
+                    Names::getSpeciesNameLocalized(
+                        national, Names::languageIndexFor(
+                            static_cast<Enums::LanguageID>(destinationLanguage))),
+                    GEN3_NICKNAME_CHARS, destinationLanguage);
                 if (report) report->addAdaptation(Adaptation::DefaultNicknameCanonicalized);
             }
-            utf16ToG3Name(d, 0x14, s, 0xF8, 26, 7);                 // OT name (UTF-16 -> Gen 3)
+            // If OT text cannot be represented, leave the native field blank rather than write a prefix.
+            utf16ToG3Name(d, 0x14, s, 0xF8, 26, GEN3_OT_NAME_CHARS, destinationLanguage);
 
             copyBytes(d, 0x2C, s, 0x72, 8);                         // Moves 1-4
             copyBytes(d, 0x34, s, 0x7A, 4);                         // Move PP
