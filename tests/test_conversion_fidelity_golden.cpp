@@ -134,17 +134,18 @@ int main() {
         }
     }
 
-    // F11: international Gen III text is preserved only when it can be represented exactly.
+    // F11: Gen III text is preserved only when it can be represented in the source language table.
     {
-        assert(Fidelity::gen3InternationalLanguageSupported(2)); // English
-        assert(Fidelity::gen3InternationalLanguageSupported(3)); // French
-        assert(Fidelity::gen3InternationalLanguageSupported(5)); // German
-        assert(Fidelity::gen3InternationalLanguageSupported(7)); // Spanish
-        assert(!Fidelity::gen3InternationalLanguageSupported(1)); // Japanese table not implemented here
-        assert(!Fidelity::gen3InternationalLanguageSupported(8)); // Korean has no Gen III mapping
-        assert(Fidelity::gen3TextRepresentable(u"SPARKY", 10));
-        assert(!Fidelity::gen3TextRepresentable(u"TOO-LONG-NAME", 10));
-        assert(!Fidelity::gen3TextRepresentable(u"Ω", 10));
+        assert(Fidelity::gen3LanguageSupported(1)); // Japanese
+        assert(Fidelity::gen3LanguageSupported(2)); // English
+        assert(Fidelity::gen3LanguageSupported(3)); // French
+        assert(Fidelity::gen3LanguageSupported(5)); // German
+        assert(Fidelity::gen3LanguageSupported(7)); // Spanish
+        assert(!Fidelity::gen3LanguageSupported(8)); // Korean has no Gen III mapping
+        assert(Fidelity::gen3TextRepresentable(u"SPARKY", 10, 2));
+        assert(Fidelity::gen3TextRepresentable(u"ピカチュウ", 10, 1));
+        assert(!Fidelity::gen3TextRepresentable(u"TOO-LONG-NAME", 10, 2));
+        assert(!Fidelity::gen3TextRepresentable(u"Ω", 10, 2));
     }
 
     // F13: origin restamping is a declared provenance loss, never silently treated as historical truth.
