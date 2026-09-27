@@ -23,12 +23,14 @@
 
 namespace PokeVault::Integration::Gen3 {
     namespace {
-        std::string decodeName(std::span<const uint8_t> bytes, size_t offset, size_t length) {
+        std::string decodeName(std::span<const uint8_t> bytes, size_t offset, size_t length,
+                               uint8_t languageId) {
             std::u16string text;
             for (size_t index = 0; index < length; ++index) {
                 const uint8_t value = bytes[offset + index];
                 if (value == Utils::GEN3_TERMINATOR) break;
-                if (const char16_t character = Utils::gen3ToChar(value)) text.push_back(character);
+                if (const char16_t character = Utils::gen3ToChar(value, languageId))
+                    text.push_back(character);
             }
             return Utils::utf16ToUtf8(text);
         }
@@ -109,8 +111,11 @@ namespace PokeVault::Integration::Gen3 {
             const uint32_t packedIvs = Detail::read32(bytes, 0x48);
             for (size_t index = 0; index < 6; ++index)
                 out.ivs[index] = static_cast<uint8_t>((packedIvs >> (index * 5)) & 0x1F);
-            out.nickname = decodeName(bytes, 0x08, 10);
-            out.otName = decodeName(bytes, 0x14, 7);
+            const uint8_t recordLanguage = bytes[0x12];
+            const bool isEgg = ((packedIvs >> 30) & 1u) != 0;
+            out.nickname = decodeName(bytes, 0x08, 10, recordLanguage);
+            out.otName = decodeName(bytes, 0x14, 7,
+                                    isEgg ? readModel.trainer.language : recordLanguage);
 
             std::unique_ptr<std::byte[]> serialized(Encryption::encryptArray3FRLG(
                 std::span<const std::byte>(decrypted.get(), out.originalBytes.size())));
