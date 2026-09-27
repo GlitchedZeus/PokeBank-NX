@@ -309,6 +309,18 @@ int main(int argc, char** argv) {
     auto leafGreen = parse(fixture, SourceGame::LeafGreenGBA);
     assert(leafGreen && leafGreen.save->metadata().sourceGameId == "leafgreen_gba");
 
+    auto rtcFootered=fixture;
+    const std::array<uint8_t,7> rtcFooter{{0x52,0x54,0x43,0x01,0x02,0x03,0x04}};
+    rtcFootered.insert(rtcFootered.end(),rtcFooter.begin(),rtcFooter.end());
+    auto rtcParsed=parse(rtcFootered,SourceGame::FireRedGBA);
+    assert(rtcParsed);
+    assert(rtcParsed.save->sourceBytes().size()==rtcFootered.size());
+    assert(std::equal(rtcFooter.begin(),rtcFooter.end(),
+        rtcParsed.save->sourceBytes().end()-static_cast<std::ptrdiff_t>(rtcFooter.size())));
+    auto unknownFooter=fixture;
+    unknownFooter.push_back(0);
+    assert(parse(unknownFooter,SourceGame::FireRedGBA).error==SaveError::WrongSize);
+
     auto truncated = fixture;
     truncated.pop_back();
     assert(parse(truncated, SourceGame::FireRedGBA).error == SaveError::WrongSize);
