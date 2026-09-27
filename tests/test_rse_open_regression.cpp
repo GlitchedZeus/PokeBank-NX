@@ -59,7 +59,7 @@ namespace {
         std::fill_n(bytes.begin() + static_cast<std::ptrdiff_t>(offset), length,
                     Utils::GEN3_TERMINATOR);
         for (size_t index = 0; index < std::min(length, name.size()); ++index)
-            bytes[offset + index] = Utils::charToGen3(name[index]);
+            bytes[offset + index] = Utils::charToGen3(name[index], 2);
     }
 
     bool emerald(SourceGame game) {
