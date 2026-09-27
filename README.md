@@ -37,24 +37,17 @@ An editable screen does **not** mean PokeBank NX will overwrite the original sav
 
 # 📍 Where the project is now
 
-Last updated: **2026-09-14**
+Last updated: **2026-09-27**
 
-Production/development line:
-
-```text
-feature/pokebank-playable
-production checkpoint: a9fc4521087cdc80078c7db620f1be0107adce58
-```
-
-Current focused milestone:
+Current engineering line:
 
 ```text
-feature/gen2-shared-pokemon-editor-20260914
-PR #68 — OPEN / DRAFT / NOT MERGED
-current implementation head: 43b8563d4177b58ae0f341c1ebd58f86e2ee4fdb
+audit/full-project-hardening-20260923
+PR #79 — OPEN / DRAFT / NOT MERGED
+Generation IV read-only preview checkpoint: CI verified; hardware/UI smoke test pending
 ```
 
-The project now has physically accepted read-only foundations for the first three generations, a hardware-accepted classic inventory editor, a hardware-accepted Gen I boxed Pokémon editor, and a shared generation-aware Pokémon editor foundation that is being extended to Gold/Silver/Crystal.
+PokeBank NX now has hardware-accepted Gen I–III workflows plus a CI-verified **Generation IV read-only preview**. Diamond, Pearl, Platinum, HeartGold and SoulSilver use the same game-cover-first source-assignment model as the earlier generations: once a compatible save is deliberately assigned, the game card remembers it and opens that exact source read-only. Gen IV editing, conversion, live writes and True Move remain disabled.
 
 ### Current snapshot
 
@@ -70,14 +63,15 @@ The project now has physically accepted read-only foundations for the first thre
 | Gen I boxed staged Pokémon editor | ✅ **Device accepted** |
 | Gen I passive View / Summary presentation | ✅ **Device accepted** |
 | Shared capability-driven Pokémon editor foundation | ✅ Established |
-| Gen II shared View / Create / Edit | 🚧 Implemented on PR #68; final exact-head validation + hardware test pending |
-| Gen II exact-game move compatibility | 🚧 Implemented on PR #68; final device candidate pending |
-| Gen II Held Item / Friendship / Pokérus editor surfaces | 🚧 Implemented on PR #68; final device candidate pending |
-| Gen II six-stat / six-axis presentation | 🚧 Implemented on PR #68; final device candidate pending |
+| Gen II shared View / Create / Edit | ✅ Hardware accepted |
+| Gen III shared View / Create / Edit | ✅ Hardware accepted |
+| Gen IV Diamond / Pearl / Platinum / HG / SS read-only backend | ✅ CI verified |
+| Gen IV persistent game cards + assigned-save opening | ✅ CI verified preview; hardware smoke test pending |
+| Gen IV editing / conversion / True Move | 🔒 Disabled |
 | Master Vault | ⬜ Planned for v1 |
 | Named Banks | ⬜ Planned for v1 |
-| Universal emulator discovery | ⬜ Planned for v1 |
-| Nintendo DS / 3DS support | ⬜ Planned |
+| Emulator/source provider discovery | 🚧 RetroArch / DraStic / melonDS + manual Gen IV assignment implemented; provider architecture expanding |
+| Nintendo 3DS support | ⬜ Planned |
 | Modern Switch per-game validation | 🟨 Foundation exists; production validation pending |
 | Full touch-only UI | ⬜ v1 requirement |
 | Live save writing | 🔒 **HARD DISABLED** |
@@ -149,45 +143,31 @@ A later accepted UI follow-up unified Party/Storage/action-sheet **View Pokémon
 
 ---
 
-# 🚧 Current milestone — Generation II shared Pokémon editor
+# 🚧 Current milestone — Generation IV read-only preview
 
-PR **#68** brings Gold/Silver/Crystal onto the same reusable editor foundation instead of creating another one-off editor.
+Generation IV is being introduced read-only-first rather than by immediately exposing another writable editor.
 
-Current implementation on the focused branch includes:
+Current CI-verified preview includes:
 
-- passive Gen II `DETAILS | VALUES | MOVES` View;
-- exact-game Gold/Silver vs Crystal move compatibility tables;
-- pinned offline compatibility data generated from PKHeX reference data;
-- green `OK` / orange `Unusual preserved` passive View semantics;
-- encounter legality still truthfully shown as `Not checked`;
-- clean passive View wording with editor-internal wording removed;
-- Gen II Create and Edit surfaces using local drafts/staged edits;
-- authentic 0–15 DVs with derived HP DV;
-- one stored Special DV feeding split SpA/SpD battle presentation;
-- six displayed battle stats and a six-axis radar;
-- Held Item picker constrained to the Gen II item domain;
-- Friendship and Pokérus support;
-- Crystal-specific caught/met handling without pretending Gold/Silver store the same data;
-- species/Attack-DV-derived gender behavior;
-- DV-derived shiny behavior;
-- transactional existing-Pokémon Edit sessions that restore the exact pre-edit staged state on discard;
-- preservation of pre-existing unusual move/PP bytes during unrelated edits;
-- separate Level and EXP applet invocations to avoid chained library-applet failures;
-- permanent host/sanitizer contract tests for the editor surface and compatibility behavior.
+- separate Diamond, Pearl, Platinum, HeartGold and SoulSilver game cards;
+- persistent per-profile source assignment;
+- bounded discovery for known RetroArch, DraStic and melonDS locations plus manual assignment;
+- strict validation before a candidate can be assigned;
+- raw Diamond/Pearl ambiguity preserved honestly while the chosen game card retains the user's exact external identity;
+- exact HeartGold/SoulSilver ROMCode validation;
+- trainer, party, PC boxes and Pokémon details routed through the shared PokeBank presentation;
+- explicit Missing, Invalid, Assignment mismatch and Recovered older copy states;
+- source files opened read-only with no automatic repair, normalization or reassignment.
 
 ### Important status boundary
 
-This Gen II milestone is **not device accepted yet**.
+This Generation IV preview is **CI verified, not device accepted**.
 
-The latest implementation head is:
+A CI-built NRO is suitable for the owner's first Gen IV hardware/UI smoke test, but the feature will not be called device accepted until that exact artifact is tested on a real Switch.
 
-```text
-43b8563d4177b58ae0f341c1ebd58f86e2ee4fdb
-```
+Generation IV editing, Create/Delete, inventory editing, conversion and True Move remain disabled.
 
-The remaining work is to freeze one exact candidate SHA and complete the full host/regression/source-safety/ASan/UBSan/devkitA64/RomFS/source-identity/package gates against that exact SHA, then produce one exact `.nro` for physical Gold/Silver/Crystal testing.
-
-PR #68 must remain **open, draft, and unmerged** until that hardware result.
+Azahar and Dekopon are planned as future **Nintendo 3DS** source providers using the same persistent game-card/source-assignment architecture; they are not searched for Nintendo DS saves.
 
 ---
 
@@ -251,9 +231,9 @@ Named Banks will organize Vault IDs into collections such as Living Dex, Shiny D
 
 PokeBank NX v1 is planned to use a reusable Save Source Adapter architecture rather than staying RetroArch-only.
 
-Target sources include RetroArch, Tico, mGBA, melonDS, DraStic, Azahar, custom folders, and validated unknown-but-valid save files.
+Target providers include RetroArch, Tico, mGBA, melonDS, DraStic, DeSmuME-compatible sources where their wrappers are understood, Azahar, Dekopon, custom folders, and validated manual files.
 
-Discovery should be config-aware, bounded, provenance-preserving, deduplicated, and separated from write authorization.
+Discovery is provider-aware, bounded, provenance-preserving, deduplicated, and separated from write authorization. Azahar and Dekopon are 3DS providers and therefore are not scanned for Diamond/Pearl/Platinum/HeartGold/SoulSilver saves.
 
 ---
 
@@ -278,18 +258,20 @@ Modern families require explicit save-revision/update/DLC validation. One writab
 # 🛣️ High-level v1 path
 
 ```text
-Gen I / II / III legacy reads          DEVICE ACCEPTED
-classic inventory editor               DEVICE ACCEPTED
-Gen I boxed Pokémon editor             DEVICE ACCEPTED
-Gen II shared Pokémon editor           CURRENT / PR #68 / HARDWARE PENDING
+Gen I / II / III legacy workflows      DEVICE ACCEPTED
+shared Gen I / II / III editors        DEVICE ACCEPTED
+Gen IV strict read-only backend        CI VERIFIED
+Gen IV game cards/source assignment    CURRENT PREVIEW / HARDWARE PENDING
         ↓
-Gen III shared Pokémon editor
+Gen IV read-only hardware acceptance
+        ↓
+Gen IV staged editing only after safety gates
         ↓
 Master Vault + named Banks
         ↓
-universal SaveSource adapters
+broader SaveSource provider adapters
         ↓
-DS + 3DS identities/read adapters
+DS Gen V + 3DS identities/read adapters
         ↓
 modern Switch validation
         ↓
@@ -337,8 +319,8 @@ Before any new device-accepted milestone, PokeBank NX expects the relevant combi
 ```text
 Repository: GlitchedZeus/PokeBank-NX
 Production branch: feature/pokebank-playable
-Current focused branch: feature/gen2-shared-pokemon-editor-20260914
-Current draft PR: #68
+Current focused branch: audit/full-project-hardening-20260923
+Current draft PR: #79
 Writable remote: origin
 Upstream/reference: kiasta/PKSE
 ```

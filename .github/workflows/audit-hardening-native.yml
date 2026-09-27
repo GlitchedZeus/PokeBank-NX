@@ -29,6 +29,7 @@ on:
       - 'tests/fixtures/gen4/**'
       - 'tools/gen_gen4*.py'
       - 'docs/audit/G4-01-READONLY-FOUNDATION.md'
+      - 'README.md'
       - 'include/Integration/Gen3/**'
       - 'src/Legacy/**'
       - 'include/Legacy/**'
