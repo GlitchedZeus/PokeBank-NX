@@ -1,3 +1,50 @@
+# GEN I–III / PKSE 1.2 AUDIT FOLLOW-UP — 2026-09-27
+
+This checkpoint documents the completed source-level Gen I–III comparison before re-running exact-head CI after the repository returned to public visibility.
+
+Current source checkpoint before this documentation commit:
+
+```text
+PR #79: OPEN / DRAFT / NOT MERGED
+Application SHA: 42fae49ac425bb6377c5432a3c6cb005f5272c1b
+PR #77 accepted editor SHA: 996e6aa40c96e4408282f3d55476dae8e64968b2
+Pinned PKSE 1.2: 55039848bbeeda114484614a9ed2e1d29804dc47
+```
+
+Source-level audit outcome:
+
+- all currently confirmed Gen I–III P0/P1 format/custody defects found in the PKSE 1.2 comparison are fixed forward;
+- Gen III empty-party records use the retail no-mail sentinel `0x55 = 0xFF`;
+- existing 100-byte Gen III party tails are preserved for unrelated edits and only fresh box->party tails are derived;
+- Gen III egg state stamps the native flag/placeholder/language state together;
+- recognized Gen II/III RTC footers are detected and preserved;
+- Gen I/II list parsing follows immediate logical terminator semantics rather than rejecting harmless stale markers after the list cap;
+- Gen I/II text decoding now terminates on glyphless bytes and preserves special/trade-marker semantics;
+- Gen III text handling is language-aware and save charset identity is retained;
+- exact R/S/E/FR/LG source context is now passed into Summary legality instead of treating every PK3 source as FRLG;
+- Gen II Clone preserves raw native OT/nickname bytes instead of round-tripping through the conservative editor encoder.
+
+Intentional lower-priority debt remains:
+- staged Gen I/II name editing is still international-only and intentionally conservative;
+- read/edit text tables can be unified later;
+- a future shared PK3 entity type could carry explicit container-game context instead of retaining the historical FRLG-named class.
+
+Safety state remains unchanged:
+
+```text
+ORIGINAL SOURCE SAVE: IMMUTABLE
+LIVE INSTALLED-GAME WRITE: HARD DISABLED
+LIVE RETROARCH WRITE: HARD DISABLED
+LIVE OTHER-EMULATOR WRITE: HARD DISABLED
+PRODUCT CROSS-GAME TRUE MOVE: DISABLED
+```
+
+Physical durability evidence already accepted earlier on the exact FAT32 hardware test artifact remains valid and is not transferred to this new source head.
+
+This documentation commit intentionally touches the native-audit workflow trigger set so exact-head Host + Native CI can execute after public-repository runner access was restored. Do not claim this source head CI verified until those runs actually pass.
+
+---
+
 # PK8/PK9 CLOSURE FOLLOW-UP — 2026-09-26
 
 Forward audit from the live branch found and corrected two stale/unsafe assumptions after the initial closure commits:
