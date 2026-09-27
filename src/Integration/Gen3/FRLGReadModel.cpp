@@ -74,13 +74,13 @@ namespace PokeVault::Integration::Gen3::Detail {
             return true;
         }
 
-        std::string decodeTrainerName(std::span<const uint8_t> bytes) {
+        std::string decodeTrainerName(std::span<const uint8_t> bytes, uint8_t languageId) {
             std::u16string text;
             for (uint8_t value : bytes) {
                 if (value == Utils::GEN3_TERMINATOR) break;
-                if (const char16_t character = Utils::gen3ToChar(value)) text.push_back(character);
+                if (const char16_t character = Utils::gen3ToChar(value, languageId)) text.push_back(character);
             }
-            while (!text.empty() && text.back() == u' ') text.pop_back();
+            while (!text.empty() && (text.back() == u' ' || text.back() == u'　')) text.pop_back();
             return Utils::utf16ToUtf8(text);
         }
 
@@ -89,7 +89,13 @@ namespace PokeVault::Integration::Gen3::Detail {
                                  TrainerRecord& trainer) noexcept {
             std::array<uint8_t, 16> trainerBytes{};
             if (!readLogical(source, sectors, 0, 0, trainerBytes)) return false;
-            trainer.name = decodeTrainerName(std::span<const uint8_t>(trainerBytes.data(), 7));
+            // PKHeX/PKSM detect Japanese Gen III saves from the 5-character trainer-name shape:
+            // bytes 6-7 remain zero on Japanese saves; international saves use the shared table.
+            trainer.language = static_cast<uint8_t>(
+                (trainerBytes[6] == 0 && trainerBytes[7] == 0)
+                    ? Enums::LanguageID::Japanese : Enums::LanguageID::English);
+            trainer.name = decodeTrainerName(
+                std::span<const uint8_t>(trainerBytes.data(), 7), trainer.language);
             trainer.gender = static_cast<uint8_t>(trainerBytes[8] & 1);
             trainer.tid16 = read16(trainerBytes, 0x0A);
             trainer.sid16 = read16(trainerBytes, 0x0C);
