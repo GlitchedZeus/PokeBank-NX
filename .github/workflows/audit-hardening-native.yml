@@ -61,6 +61,7 @@ on:
       - 'Makefile.host.hardware-fixes'
       - 'Makefile'
       - 'Makefile.host.base'
+      - 'Makefile.host.gsc'
       - '.github/workflows/audit-hardening-native.yml'
   workflow_dispatch:
 

@@ -1,6 +1,6 @@
 # Generation II GSC permanent host gates.
 GEN2_ADAPTER_SOURCES := tests/test_gsc_gen2_adapter.cpp \
-	src/Integration/Gen2/Gen2ReadOnlySave.cpp
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Utils/StringHelpers.cpp
 GSC_INVENTORY_SOURCES := tests/test_gsc_inventory.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
 GSC_PERSONAL_SOURCES := tests/test_gsc_gen2_personal.cpp \
@@ -10,10 +10,10 @@ GSC_MOVE_COMPAT_SOURCES := tests/test_gsc_move_compatibility.cpp \
 	src/Integration/Gen1/Gen1MoveCompatibility.cpp
 GSC_DISCOVERY_SOURCES := tests/test_gsc_discovery.cpp \
 	src/Legacy/RetroArchGSCDiscovery.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
-	src/Utils/SHA256.cpp
+	src/Utils/StringHelpers.cpp src/Utils/SHA256.cpp
 GSC_SOURCE_BROWSER_SOURCES := tests/test_gsc_source_browser.cpp \
 	src/Legacy/GSCSourceBrowser.cpp src/Legacy/LegacySourceBindings.cpp \
-	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Games/GameIdentity.cpp
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Utils/StringHelpers.cpp src/Games/GameIdentity.cpp
 GSC_BRIDGE_SOURCES := tests/test_gsc_readonly_bridge.cpp \
 	src/Legacy/GSCReadOnlyTrainer.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
 	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
@@ -33,7 +33,7 @@ GSC_EXPORT_TRANSACTION_SOURCES := tests/test_gsc_export_transaction.cpp \
 	src/Integration/Gen2/Gen2ReadOnlySave.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
 	src/Integration/Gen2/Gen2PersonalData.cpp \
-	src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp src/Utils/SHA256.cpp
+	src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/SHA256.cpp
 
 GSC_RUNTIME_DISCOVERY_SOURCES := src/Legacy/RetroArchGSCDiscovery.cpp \
 	src/Integration/Gen2/Gen2ReadOnlySave.cpp
