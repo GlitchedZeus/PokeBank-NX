@@ -42,6 +42,9 @@ namespace Enums {
             case GameVersion::FRLG:
                 return false; // Gen I/III never shipped in Korean/Chinese/Spanish-LATAM.
             case GameVersion::GSC:
+            case GameVersion::DP:
+            case GameVersion::PT:
+            case GameVersion::HGSS:
                 return language == LanguageID::Korean;
             case GameVersion::ZA:
                 return true;

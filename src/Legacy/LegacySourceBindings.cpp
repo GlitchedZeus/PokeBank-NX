@@ -14,7 +14,7 @@ extern "C" Result fsdevGetLastResult(void) __attribute__((weak));
 
 namespace PokeVault::Legacy {
     namespace {
-        using Owners = std::unordered_map<std::string, std::string>;
+        using Owners = std::unordered_map<std::string, BindingRecord>;
         constexpr const char* Header = "# PokeBank NX legacy source bindings v1\n";
         enum class ReadStatus { Missing, Valid, Invalid };
         char hexDigit(unsigned value) noexcept {
@@ -79,12 +79,20 @@ namespace PokeVault::Legacy {
                 const size_t end = bytes.find('\n', offset);
                 const std::string_view row(bytes.data() + offset, end - offset);
                 const size_t sep = row.find('\t');
-                std::string source, profile;
-                if (sep == std::string_view::npos ||
-                    row.find('\t', sep + 1) != std::string_view::npos ||
+                const size_t sep2 = sep == std::string_view::npos
+                    ? std::string_view::npos : row.find('\t', sep + 1);
+                std::string source, profile, game;
+                const bool tooMany = sep2 != std::string_view::npos &&
+                    row.find('\t', sep2 + 1) != std::string_view::npos;
+                const bool gameOk = sep2 == std::string_view::npos ||
+                    hexDecode(row.substr(sep2 + 1), game);
+                const std::string_view profileField = sep2 == std::string_view::npos
+                    ? row.substr(sep + 1) : row.substr(sep + 1, sep2 - sep - 1);
+                if (sep == std::string_view::npos || tooMany ||
                     !hexDecode(row.substr(0, sep), source) ||
-                    !hexDecode(row.substr(sep + 1), profile) ||
-                    !owners.emplace(std::move(source), std::move(profile)).second) {
+                    !hexDecode(profileField, profile) || !gameOk ||
+                    !owners.emplace(std::move(source),
+                                    BindingRecord{std::move(profile), std::move(game)}).second) {
                     owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
                 }
                 offset = end + 1;
@@ -93,11 +101,16 @@ namespace PokeVault::Legacy {
         }
 
         std::string serialize(const Owners& owners) {
-            std::vector<std::pair<std::string, std::string>> ordered(owners.begin(), owners.end());
-            std::sort(ordered.begin(), ordered.end());
+            std::vector<std::pair<std::string, BindingRecord>> ordered(owners.begin(), owners.end());
+            std::sort(ordered.begin(), ordered.end(),
+                      [](const auto& a, const auto& b) { return a.first < b.first; });
             std::string bytes = Header;
-            for (const auto& [source, profile] : ordered)
-                bytes += hexEncode(source) + "\t" + hexEncode(profile) + "\n";
+            for (const auto& [source, binding] : ordered) {
+                bytes += hexEncode(source) + "\t" + hexEncode(binding.profileIdentity);
+                if (!binding.gameIdentity.empty())
+                    bytes += "\t" + hexEncode(binding.gameIdentity);
+                bytes += "\n";
+            }
             return bytes;
         }
     }
@@ -234,10 +247,31 @@ namespace PokeVault::Legacy {
         return false;
     }
 
+    bool LegacySourceBindings::assignAndSave(std::string_view source, std::string_view profile,
+                                             std::string_view game) {
+        const auto before = owners_;
+        if (!assign(source, profile, game)) { errno = EINVAL; return fail("assign"); }
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
     bool LegacySourceBindings::assign(std::string_view sourceIdentity,
                                       std::string_view profileIdentity) {
         if (sourceIdentity.empty() || profileIdentity.empty()) return false;
-        owners_.insert_or_assign(std::string(sourceIdentity), std::string(profileIdentity));
+        auto [it, inserted] = owners_.try_emplace(
+            std::string(sourceIdentity),
+            BindingRecord{std::string(profileIdentity), {}});
+        if (!inserted) it->second.profileIdentity = profileIdentity;
+        return true;
+    }
+
+    bool LegacySourceBindings::assign(std::string_view sourceIdentity,
+                                      std::string_view profileIdentity,
+                                      std::string_view gameIdentity) {
+        if (sourceIdentity.empty() || profileIdentity.empty() || gameIdentity.empty()) return false;
+        owners_[std::string(sourceIdentity)] =
+            BindingRecord{std::string(profileIdentity), std::string(gameIdentity)};
         return true;
     }
 
@@ -246,17 +280,22 @@ namespace PokeVault::Legacy {
     }
 
     bool LegacySourceBindings::isAssigned(std::string_view sourceIdentity) const {
-        return owners_.contains(std::string(sourceIdentity));
+        return owners_.find(std::string(sourceIdentity)) != owners_.end();
     }
 
     bool LegacySourceBindings::isVisibleTo(std::string_view sourceIdentity,
                                            std::string_view profileIdentity) const {
         const auto found = owners_.find(std::string(sourceIdentity));
-        return found != owners_.end() && found->second == profileIdentity;
+        return found != owners_.end() && found->second.profileIdentity == profileIdentity;
     }
 
     std::string LegacySourceBindings::assignedProfile(std::string_view sourceIdentity) const {
         const auto found = owners_.find(std::string(sourceIdentity));
-        return found == owners_.end() ? std::string{} : found->second;
+        return found == owners_.end() ? std::string{} : found->second.profileIdentity;
+    }
+
+    std::string LegacySourceBindings::assignedGame(std::string_view sourceIdentity) const {
+        const auto found = owners_.find(std::string(sourceIdentity));
+        return found == owners_.end() ? std::string{} : found->second.gameIdentity;
     }
 }

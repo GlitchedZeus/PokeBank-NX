@@ -8,7 +8,7 @@ using namespace PokeVault::Games;
 
 int main() {
     const auto games = allGameDescriptors();
-    assert(games.size() == 23);
+    assert(games.size() == 28);
 
     std::set<std::string> ids;
     std::set<uint64_t> switchIds;
@@ -35,11 +35,17 @@ int main() {
     const auto* sapphire = findGame("sapphire_gba");
     const auto* emerald = findGame("emerald_gba");
     const auto* fireRedGba = findGame("firered_gba");
+    const auto* diamond = findGame("diamond_nds");
+    const auto* pearl = findGame("pearl_nds");
+    const auto* platinum = findGame("platinum_nds");
+    const auto* heartGold = findGame("heartgold_nds");
+    const auto* soulSilver = findGame("soulsilver_nds");
     const auto* fireRedSwitch = findGame("firered_switch");
     const auto* leafGreenGba = findGame("leafgreen_gba");
     const auto* leafGreenSwitch = findGame("leafgreen_switch");
     assert(red && blue && yellow && gold && silver && crystal && ruby && sapphire && emerald &&
-           fireRedGba && fireRedSwitch && leafGreenGba && leafGreenSwitch);
+           fireRedGba && fireRedSwitch && leafGreenGba && leafGreenSwitch &&
+           diamond && pearl && platinum && heartGold && soulSilver);
     assert(red->support == SourceSupport::ReadOnly);
     assert(blue->support == SourceSupport::ReadOnly);
     assert(yellow->support == SourceSupport::ReadOnly);
@@ -58,10 +64,15 @@ int main() {
     assert(fireRedGba->id != fireRedSwitch->id);
     assert(leafGreenGba->id != leafGreenSwitch->id);
     assert(fireRedGba->platform == Platform::GameBoyAdvance);
+    assert(diamond->platform == Platform::NintendoDS && diamond->support == SourceSupport::Planned);
+    assert(pearl->platform == Platform::NintendoDS && pearl->support == SourceSupport::Planned);
+    assert(platinum->platform == Platform::NintendoDS && platinum->support == SourceSupport::Planned);
+    assert(heartGold->platform == Platform::NintendoDS && soulSilver->platform == Platform::NintendoDS);
     assert(fireRedSwitch->platform == Platform::NintendoSwitch);
     assert(platformName(Platform::GameBoy) == "Game Boy");
     assert(platformName(Platform::GameBoyColor) == "Game Boy Color");
     assert(platformName(Platform::GameBoyAdvance) == "Game Boy Advance");
+    assert(platformName(Platform::NintendoDS) == "Nintendo DS");
     assert(platformName(Platform::NintendoSwitch) == "Nintendo Switch");
     assert(legacyPlatformAbbreviation("red_gb") == "GB");
     assert(legacyPlatformAbbreviation("blue_gb") == "GB");
@@ -75,6 +86,9 @@ int main() {
     assert(legacyPlatformAbbreviation("sapphire_gba") == "GBA");
     assert(legacyPlatformAbbreviation("emerald_gba") == "GBA");
     assert(legacyPlatformAbbreviation("firered_switch").empty());
+    // Planned Gen IV entries are not exposed as working game cards yet.
+    assert(legacyPlatformAbbreviation("diamond_nds").empty());
+    assert(gameCardArtworkPath("platinum_nds").empty());
     assert(gameCardArtworkPath("red_gb") == "romfs:/game_cards/red_gb.png");
     assert(gameCardArtworkPath("blue_gb") == "romfs:/game_cards/blue_gb.png");
     assert(gameCardArtworkPath("yellow_gb") == "romfs:/game_cards/yellow_gb.png");

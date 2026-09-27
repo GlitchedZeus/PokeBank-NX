@@ -160,6 +160,22 @@ int main() {
     assert(ordinary.assignAndSave("firered_gba:save-a", "will"));
     assert(ordinary.assignAndSave("leafgreen_gba:save-b", "niece"));
     verify(root / "ordinary.cfg", "niece");
+
+    // Gen IV reuses this SAME persistent binding database. The optional third field carries
+    // exact external game-card identity without changing source bytes or invalidating old rows.
+    const fs::path gen4Db = root / "gen4.cfg";
+    LegacySourceBindings gen4(gen4Db.string(), ops);
+    assert(gen4.load());
+    assert(gen4.assignAndSave("nds:/saves/pokemon.dsv", "will", "diamond_nds"));
+    assert(gen4.assignedProfile("nds:/saves/pokemon.dsv") == "will");
+    assert(gen4.assignedGame("nds:/saves/pokemon.dsv") == "diamond_nds");
+    LegacySourceBindings gen4Reload(gen4Db.string(), ops);
+    assert(gen4Reload.load());
+    assert(gen4Reload.assignedGame("nds:/saves/pokemon.dsv") == "diamond_nds");
+    // Profile-only reassignment preserves the exact cover identity.
+    assert(gen4Reload.assignAndSave("nds:/saves/pokemon.dsv", "niece"));
+    assert(gen4Reload.assignedProfile("nds:/saves/pokemon.dsv") == "niece");
+    assert(gen4Reload.assignedGame("nds:/saves/pokemon.dsv") == "diamond_nds");
     assert(renameAttemptsOverExisting == 0);
     fs::remove_all(root);
     std::cout << "Legacy binding transactions: first/second, isolation, rollback and recovery PASS\n";

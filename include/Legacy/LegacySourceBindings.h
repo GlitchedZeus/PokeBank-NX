@@ -12,6 +12,13 @@ namespace PokeVault::Legacy {
         // Optional fault-injection checkpoint. Production leaves this null.
         int (*checkpoint)(const char*) = nullptr;
     };
+    struct BindingRecord {
+        std::string profileIdentity;
+        // Optional stable game-card identity (for example diamond_nds). Empty means the
+        // pre-Gen-IV two-column binding semantics with no exact external game claim.
+        std::string gameIdentity;
+    };
+
     // Persistent, explicit ownership for filesystem-backed legacy saves. The physical discovery
     // catalog is shared, but normal Game Sources visibility is private to the assigned profile.
     // Trainer data and save contents are deliberately never used to infer ownership.
@@ -26,12 +33,19 @@ namespace PokeVault::Legacy {
                                   std::string_view profileIdentity);
         [[nodiscard]] bool assignAndSave(std::string_view sourceIdentity,
                                         std::string_view profileIdentity);
+        [[nodiscard]] bool assign(std::string_view sourceIdentity,
+                                  std::string_view profileIdentity,
+                                  std::string_view gameIdentity);
+        [[nodiscard]] bool assignAndSave(std::string_view sourceIdentity,
+                                        std::string_view profileIdentity,
+                                        std::string_view gameIdentity);
         [[nodiscard]] const std::string& lastError() const noexcept { return lastError_; }
         [[nodiscard]] bool unassign(std::string_view sourceIdentity);
         [[nodiscard]] bool isAssigned(std::string_view sourceIdentity) const;
         [[nodiscard]] bool isVisibleTo(std::string_view sourceIdentity,
                                        std::string_view profileIdentity) const;
         [[nodiscard]] std::string assignedProfile(std::string_view sourceIdentity) const;
+        [[nodiscard]] std::string assignedGame(std::string_view sourceIdentity) const;
         [[nodiscard]] size_t size() const noexcept { return owners_.size(); }
         [[nodiscard]] const std::string& storagePath() const noexcept { return storagePath_; }
 
@@ -41,7 +55,7 @@ namespace PokeVault::Legacy {
         mutable std::string lastError_;
         bool checkpoint(const char* stage) const;
         bool fail(const char* stage) const;
-        std::unordered_map<std::string, std::string> owners_;
+        std::unordered_map<std::string, BindingRecord> owners_;
     };
 }
 
