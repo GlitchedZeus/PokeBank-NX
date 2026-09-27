@@ -72,6 +72,11 @@ on:
       - 'tests/test_conversion_fidelity_golden.cpp'
       - 'tests/test_conversion_entity_golden.cpp'
       - 'src/UI/UI.cpp'
+      - 'src/UI/SaveSelectScreen.cpp'
+      - 'include/UI/SaveSelectScreen.h'
+      - 'src/Games/GameIdentity.cpp'
+      - 'assets/game_cards/**'
+      - 'tools/check_device_assets.py'
       - 'tests/test_backup_namespace_contract.cpp'
       - 'docs/AUDIT_STATUS_2026-09-23.md'
       - 'Makefile.host.hardware-fixes'
@@ -124,7 +129,7 @@ jobs:
           (cd recovery-work && python3 tools/recover_workspace.py)
           rm -rf romfs
           cp -a recovery-work/romfs romfs
-          for f in gold_gbc silver_gbc crystal_gbc; do
+          for f in gold_gbc silver_gbc crystal_gbc diamond_nds pearl_nds platinum_nds heartgold_nds soulsilver_nds; do
             test -s "assets/game_cards/$f.png"
             cp "assets/game_cards/$f.png" "romfs/game_cards/$f.png"
           done

@@ -22,11 +22,11 @@ GEN4_HEADERS := $(wildcard include/Integration/Gen4/*.h include/Pokemon/*4*.h in
 
 $(GEN4_TEST): $(GEN4_FOUNDATION_SOURCES) $(GEN4_HEADERS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude -Ivendor/PKSM-Core/include $(GEN4_FOUNDATION_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude -Ivendor/PKSM-Core/include $(GEN4_FOUNDATION_SOURCES) -o $@
 
 $(GEN4_SANITIZE): $(GEN4_FOUNDATION_SOURCES) $(GEN4_HEADERS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Ivendor/PKSM-Core/include $(GEN4_FOUNDATION_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude -Ivendor/PKSM-Core/include $(GEN4_FOUNDATION_SOURCES) -o $@
 
 .PHONY: gen4-safety-contract
 gen4-safety-contract:
