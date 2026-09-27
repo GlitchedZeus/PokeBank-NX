@@ -9,6 +9,7 @@ namespace PokeVault::Safety {
         BackupOrStaged,
         AppOwnedStorage,
         RetroArchLegacy,
+        ExternalLegacy,
     };
 
     enum class SourceMutation : uint8_t {

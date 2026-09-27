@@ -529,14 +529,16 @@ namespace UI {
         const std::string& sourceLocation, u64 titleId, AccountUid userUid,
         PokeVault::Safety::SourceKind sourceKind, std::string sourceGameId)
         : trainer(trainer), titleName(titleName), backupDir(sourceLocation),
-          gameVersion(sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy
+          gameVersion((sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy ||
+                       sourceKind == PokeVault::Safety::SourceKind::ExternalLegacy)
                           ? std::string() : Utils::getTitleVersion(titleId)),
           titleId(titleId), userUid(userUid) {
         // Assigned in the body rather than the init list: these members are declared below much of
         // the immediate-mode state, and C++ initialises in declaration order.
         this->sourceKind = sourceKind;
         this->sourceGameId = std::move(sourceGameId);
-        if (this->sourceKind != PokeVault::Safety::SourceKind::RetroArchLegacy)
+        if (this->sourceKind != PokeVault::Safety::SourceKind::RetroArchLegacy &&
+            this->sourceKind != PokeVault::Safety::SourceKind::ExternalLegacy)
             captureInventorySourceBaseline();
         saveDestIndex = defaultSaveDestRow();
 
@@ -4734,7 +4736,8 @@ namespace UI {
         // --- Title bar: the shared chrome, with game name + version + DLC as the subtitle ---
         const std::string legacyPlatform(PokeVault::Games::legacyPlatformAbbreviation(sourceGameId));
         std::string subtitle = legacyReadOnlySource()
-            ? std::string("RETROARCH / ") + (legacyPlatform.empty() ? std::string("GBA") : legacyPlatform) + " / READ ONLY — "
+            ? std::string(sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy ? "RETROARCH / " : "EXTERNAL / ") +
+                (legacyPlatform.empty() ? std::string("LEGACY") : legacyPlatform) + " / READ ONLY — "
             : sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — " : "BACKUP WORKSPACE — ";
         subtitle += titleName;
         if (!gameVersion.empty()) {
@@ -5034,7 +5037,8 @@ namespace UI {
         if (helpOverlayActive) {
             drawInfoOverlay(fb, "Game Browser Controls", {
                 legacyReadOnlySource()
-                    ? std::string("RETROARCH ") + (legacyPlatform.empty() ? std::string("GBA") : legacyPlatform) + " SOURCE: read-only browsing"
+                    ? std::string(sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy ? "RETROARCH " : "EXTERNAL ") +
+                        (legacyPlatform.empty() ? std::string("LEGACY") : legacyPlatform) + " SOURCE: read-only browsing"
                     : sourceReadOnly() ? "INSTALLED SOURCE: read-only browsing"
                                        : "BACKUP WORKSPACE: edits affect backup files only",
                 "Legacy Storage is app-owned bank.dat, NOT Master Vault",

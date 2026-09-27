@@ -38,6 +38,68 @@
       "tree_mode": "120000",
       "png_signature": "PASS",
       "local_destination": "assets/game_cards/crystal_gbc.png"
+    },
+    {
+      "label": "DIAMOND",
+      "game_id": "diamond_nds",
+      "upstream_repository": "https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_DS",
+      "pinned_commit": "a119dcab8fa04c9974b9c229eda824318d923322",
+      "upstream_path": "Named_Boxarts/Pokemon - Diamond Version (USA) (Rev 5).png",
+      "git_blob_sha": "95001303f666b4c284a366018299151d62386005",
+      "tree_mode": "100644",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/diamond_nds.png"
+    },
+    {
+      "label": "PEARL",
+      "game_id": "pearl_nds",
+      "upstream_repository": "https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_DS",
+      "pinned_commit": "a119dcab8fa04c9974b9c229eda824318d923322",
+      "upstream_path": "Named_Boxarts/Pokemon - Pearl Version (USA) (Rev 5).png",
+      "git_blob_sha": "d45bf7726688c258eb6da187cfc812636d6b926d",
+      "tree_mode": "100644",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/pearl_nds.png"
+    },
+    {
+      "label": "PLATINUM",
+      "game_id": "platinum_nds",
+      "upstream_repository": "https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_DS",
+      "pinned_commit": "a119dcab8fa04c9974b9c229eda824318d923322",
+      "upstream_path": "Named_Boxarts/Pokemon - Platinum Version (USA).png",
+      "git_blob_sha": "fe7266bc321006c5d1d74056c6e3ddd6310b07b3",
+      "tree_mode": "100644",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/platinum_nds.png"
+    },
+    {
+      "label": "HEARTGOLD",
+      "game_id": "heartgold_nds",
+      "upstream_repository": "https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_DS",
+      "pinned_commit": "a119dcab8fa04c9974b9c229eda824318d923322",
+      "upstream_path": "Named_Boxarts/Pokemon - HeartGold Version (USA).png",
+      "git_blob_sha": "c05b42b020bc5f06a24b3f9afbe5f55fb6447d4b",
+      "tree_mode": "100644",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/heartgold_nds.png"
+    },
+    {
+      "label": "SOULSILVER",
+      "game_id": "soulsilver_nds",
+      "upstream_repository": "https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_DS",
+      "pinned_commit": "a119dcab8fa04c9974b9c229eda824318d923322",
+      "upstream_path": "Named_Boxarts/Pokemon - SoulSilver Version (USA).png",
+      "git_blob_sha": "17001b8c49e3f1aa228f8c968fb0ec055179218a",
+      "tree_mode": "100644",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/soulsilver_nds.png"
+    }
+  ],
+  "additional_upstreams": [
+    {
+      "repository": "https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_DS",
+      "pinned_commit": "a119dcab8fa04c9974b9c229eda824318d923322",
+      "named_boxarts_tree": "7aad4cd04862e2e501a8a35bae5ef29018a0e33f"
     }
   ]
 }

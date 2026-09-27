@@ -1,6 +1,8 @@
 
 #include <cstdio>
 #include <sys/stat.h>
+#include <iomanip>
+#include <sstream>
 
 #include "Globals.h"
 #include "Save/GetSaveFileContents.h"
@@ -19,11 +21,23 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 #include "Legacy/GSCReadOnlyTrainer.h"
 #include "Legacy/FRLGSourceBrowser.h"
+#include "Legacy/Gen4ReadOnlyTrainer.h"
+#include "Integration/Gen4/Gen4AssignedSource.h"
 
 using namespace Utils;
 using namespace Trainer;
 
 namespace UI {
+    namespace {
+        std::string profileIdentity(AccountUid uid) {
+            std::ostringstream output;
+            output << std::hex << std::setfill('0')
+                   << std::setw(16) << static_cast<unsigned long long>(uid.uid[0])
+                   << std::setw(16) << static_cast<unsigned long long>(uid.uid[1]);
+            return output.str();
+        }
+    }
+
     UIManager::UIManager()
         : running(true),
           legacySourceBindings(PokeBank::Paths::legacySourceBindingsFile()) {
@@ -99,6 +113,12 @@ namespace UI {
                                               selectScreen.getSelectedLegacySourceIndex(),
                                               selectScreen.getSelectedGameId(), error))
                         logErrorToFile("Legacy RetroArch source refused open", error.c_str());
+                } else if (selectScreen.getSelectedSourceKind() ==
+                           SaveSelectScreen::SelectedSourceKind::Gen4AssignedFile) {
+                    std::string error;
+                    if (!handleGen4View(selectScreen.getSelectedUser(),
+                                        selectScreen.getSelectedGameId(), error))
+                        logErrorToFile("Generation IV assigned source refused open", error.c_str());
                 } else {
                     handleBackupSelection(selectScreen.getSelectedUser(),
                                           selectScreen.getSelectedTitleId(),
@@ -277,4 +297,50 @@ namespace UI {
         if (trainerScreen.hasRequestedExit()) running = false;
         return true;
     }
+    bool UIManager::handleGen4View(
+        AccountUid userUid, const std::string& gameId, std::string& error) {
+        error.clear();
+        const auto* identity = PokeVault::Games::findGame(gameId);
+        if (!identity || identity->platform != PokeVault::Games::Platform::NintendoDS ||
+            identity->dataGeneration != 4 ||
+            identity->support != PokeVault::Games::SourceSupport::ReadOnly) {
+            error = "Generation IV game card is not a registered read-only Nintendo DS source";
+            return false;
+        }
+
+        auto opened = PokeVault::Integration::Gen4::openAssignedSource(
+            legacySourceBindings, profileIdentity(userUid), gameId);
+        if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready || !opened.save) {
+            error = opened.diagnostic.empty()
+                ? "Generation IV assigned source failed strict validation"
+                : opened.diagnostic;
+            return false;
+        }
+
+        auto trainer = PokeVault::Legacy::Gen4ReadOnlyTrainer::create(
+            *opened.save, gameId, error);
+        if (!trainer) {
+            if (error.empty()) error = "Generation IV read-only presentation bridge failed";
+            return false;
+        }
+
+        const std::string sourcePath = opened.source.binding.sourcePath;
+        logInfoToFile("Opening assigned Generation IV source read-only", sourcePath.c_str());
+        TrainerViewScreen trainerScreen(
+            *trainer, "Pokemon " + std::string(identity->title), sourcePath, 0, userUid,
+            PokeVault::Safety::SourceKind::ExternalLegacy, gameId);
+        fb.startFade();
+        while (appletMainLoop() && !trainerScreen.shouldExit() &&
+               !trainerScreen.hasRequestedExit()) {
+            padUpdate(&pad);
+            touch.update();
+            trainerScreen.update(pad, touch);
+            trainerScreen.draw(fb);
+            fb.drawFadeOverlay();
+            fb.flush();
+        }
+        if (trainerScreen.hasRequestedExit()) running = false;
+        return true;
+    }
+
 }

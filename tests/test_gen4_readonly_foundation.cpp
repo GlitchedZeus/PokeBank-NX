@@ -1,6 +1,7 @@
 #include "Encryption/Encryption4.h"
 #include "Integration/Gen4/Gen4AssignedSource.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Utils/SHA256.h"
 #include "utils/crypto.hpp"
 #include <filesystem>
@@ -590,6 +591,17 @@ void testAssignmentsOnDisk() {
     assert(restarted.assignFileAndSave("explicit-source",{"user","diamond_nds",savePath.string(),"manual","DP"}));
     assert(restarted.assignFileAndSave("second-source",{"user","diamond_nds",otherPath.string(),"manual","DP"}));
     assert(openAssignedSource(restarted,"user","diamond_nds").status==OpenStatus::Ambiguous);
+
+    // Change Assigned Save replaces this profile/game atomically instead of creating ambiguity.
+    assert(restarted.replaceFileAssignmentAndSave(
+        "second-source",{"user","diamond_nds",otherPath.string(),"manual","DP"}));
+    assert(openAssignedSource(restarted,"user","diamond_nds").status==OpenStatus::Ready);
+    // A physical source cannot silently jump to another profile/game.
+    assert(!restarted.replaceFileAssignmentAndSave(
+        "second-source",{"other-user","pearl_nds",otherPath.string(),"manual","DP"}));
+    assert(restarted.isVisibleTo("second-source","user"));
+    assert(restarted.unassignGameAndSave("user","diamond_nds"));
+    assert(openAssignedSource(restarted,"user","diamond_nds").status==OpenStatus::Unassigned);
     fs::remove_all(root);
 }
 
@@ -671,6 +683,41 @@ void testSourceDiscovery() {
     fs::remove_all(root);
 }
 
+void testPresentationBridge() {
+    using namespace PokeVault::Integration::Gen4;
+    auto bytes=makeSave(Layout::DiamondPearl);
+    const auto before=digest(bytes);
+    auto parsed=Gen4ReadOnlySave::parse(bytes,Layout::DiamondPearl,"diamond_nds");
+    assert(parsed && parsed->assignmentStatus()==AssignmentStatus::Match);
+    std::string error;
+    auto trainer=PokeVault::Legacy::Gen4ReadOnlyTrainer::create(*parsed,"diamond_nds",error);
+    assert(trainer && error.empty());
+    assert(trainer->trainerName=="ASH" && trainer->TID16==12345 && trainer->SID16==54321);
+    assert(trainer->getGameGroup()==Enums::GameVersion::DP);
+    assert(trainer->getBoxCount()==18 && trainer->getSlotsPerBox()==30);
+    assert(trainer->getPartySize()==1 && trainer->party.size()==1 && trainer->party[0]);
+    assert(trainer->party[0]->speciesID()==25 && trainer->party[0]->level()==25);
+    assert(trainer->party[0]->statHPCurrent()==7 && trainer->party[0]->statHPMax()==60);
+    assert(trainer->party[0]->move(0)==85 && trainer->party[0]->movePP(1)==30);
+    assert(trainer->party[0]->clone()==nullptr);
+    assert(trainer->boxes.size()==18 && trainer->boxes[0][0]);
+    assert(trainer->boxes[0][0]->speciesID()==25);
+    assert(trainer->sourceSave().nativePartySlots().size()==6);
+    assert(digest(trainer->sourceSave().sourceBytes())==before && digest(bytes)==before);
+    assert(trainer->createBlankPokemon()==nullptr);
+
+    // Recovery state is presented, never repaired into the source.
+    auto recoveredBytes=makeSave(Layout::DiamondPearl,1,1);
+    recoveredBytes[PARTITION+1]^=1; // newest General invalid; older remains valid
+    const auto recoveredHash=digest(recoveredBytes);
+    auto recovered=Gen4ReadOnlySave::parse(recoveredBytes,Layout::DiamondPearl,"diamond_nds");
+    assert(recovered && recovered->recovered());
+    auto recoveryTrainer=PokeVault::Legacy::Gen4ReadOnlyTrainer::create(
+        *recovered,"diamond_nds",error);
+    assert(recoveryTrainer && recoveryTrainer->saveRevisionString=="Recovered older copy");
+    assert(digest(recoveryTrainer->sourceSave().sourceBytes())==recoveredHash);
+}
+
 }
 
 int main(int argc,char** argv) {
@@ -688,6 +735,7 @@ int main(int argc,char** argv) {
     testEveryLayoutMatrix();
     testAssignmentsOnDisk();
     testSourceDiscovery();
+    testPresentationBridge();
     testCryptoAndEntity();
     testText();
     testLayoutsAndAssignments();

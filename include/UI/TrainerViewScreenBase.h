@@ -299,7 +299,8 @@ namespace UI {
                 sourceKind, PokeVault::Safety::SourceMutation::Edit);
         }
         bool legacyReadOnlySource() const {
-            return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy;
+            return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy ||
+                   sourceKind == PokeVault::Safety::SourceKind::ExternalLegacy;
         }
         bool requireMutableWorkspace() {
             if (moveRecoveryLocked) {
@@ -310,7 +311,7 @@ namespace UI {
             }
             if (!sourceReadOnly()) return true;
             postStatus(legacyReadOnlySource()
-                ? "RetroArch source is read-only. Editing this file is disabled."
+                ? "External source is read-only. Editing this file is disabled."
                 : "Installed source is read-only. Open a backup workspace explicitly to edit.", 300);
             return false;
         }

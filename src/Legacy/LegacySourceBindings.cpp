@@ -316,6 +316,79 @@ namespace PokeVault::Legacy {
         return false;
     }
 
+    bool LegacySourceBindings::replaceFileAssignmentAndSave(
+        std::string_view sourceIdentity, BindingRecord binding) {
+        const auto safe = [](std::string_view value) {
+            return !value.empty() && value.find('\0') == std::string_view::npos;
+        };
+        if (!safe(sourceIdentity) || !safe(binding.profileIdentity) ||
+            !safe(binding.gameIdentity) || !safe(binding.sourcePath) ||
+            !safe(binding.sourceType) || !safe(binding.expectedRawFamily)) {
+            errno = EINVAL;
+            return fail("replace-file-assignment");
+        }
+
+        const auto existing = owners_.find(std::string(sourceIdentity));
+        if (existing != owners_.end() &&
+            (existing->second.profileIdentity != binding.profileIdentity ||
+             existing->second.gameIdentity != binding.gameIdentity)) {
+            errno = EEXIST;
+            return fail("replace-file-assignment-conflict");
+        }
+
+        struct stat sourceInfo{};
+        const bool sourceExists = ::stat(binding.sourcePath.c_str(), &sourceInfo) == 0;
+        for (const auto& metadataPath : {storagePath_, storagePath_ + ".tmp", storagePath_ + ".bak"}) {
+            struct stat metadataInfo{};
+            const bool sameFile = sourceExists && ::stat(metadataPath.c_str(), &metadataInfo) == 0 &&
+                sourceInfo.st_ino != 0 && sourceInfo.st_dev == metadataInfo.st_dev &&
+                sourceInfo.st_ino == metadataInfo.st_ino;
+            if (binding.sourcePath == metadataPath || sameFile) {
+                errno = EINVAL;
+                return fail("assignment-aliases-metadata");
+            }
+        }
+
+        const auto before = owners_;
+        for (auto it = owners_.begin(); it != owners_.end();) {
+            if (it->second.profileIdentity == binding.profileIdentity &&
+                it->second.gameIdentity == binding.gameIdentity)
+                it = owners_.erase(it);
+            else
+                ++it;
+        }
+        owners_[std::string(sourceIdentity)] = std::move(binding);
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
+    bool LegacySourceBindings::unassignGameAndSave(
+        std::string_view profileIdentity, std::string_view gameIdentity) {
+        if (profileIdentity.empty() || gameIdentity.empty()) {
+            errno = EINVAL;
+            return fail("unassign-game");
+        }
+        const auto before = owners_;
+        size_t removed = 0;
+        for (auto it = owners_.begin(); it != owners_.end();) {
+            if (it->second.profileIdentity == profileIdentity &&
+                it->second.gameIdentity == gameIdentity) {
+                it = owners_.erase(it);
+                ++removed;
+            } else {
+                ++it;
+            }
+        }
+        if (removed == 0) {
+            errno = ENOENT;
+            return fail("unassign-game");
+        }
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
     AssignedFile LegacySourceBindings::resolveFileForGame(std::string_view profile,
                                                           std::string_view game) const {
         AssignedFile result;

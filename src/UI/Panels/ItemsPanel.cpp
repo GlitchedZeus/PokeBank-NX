@@ -48,6 +48,11 @@ namespace Panels {
             return id == "ruby_gba" || id == "sapphire_gba" || id == "emerald_gba";
         }
 
+        bool isGen4NdsSource(std::string_view id) noexcept {
+            return id == "diamond_nds" || id == "pearl_nds" || id == "platinum_nds" ||
+                   id == "heartgold_nds" || id == "soulsilver_nds";
+        }
+
         const char* gscPouchDisplayName(int category) noexcept {
             constexpr std::array<const char*, 5> names = {
                 "TM/HM", "Items", "Key Items", "Balls", "PC Items",
@@ -90,6 +95,7 @@ namespace Panels {
         const bool rbySource = screen.legacyReadOnlySource() && isRBYSource(screen.sourceGameId);
         const bool gscSource = screen.legacyReadOnlySource() && isGSCSource(screen.sourceGameId);
         const bool rseSource = screen.legacyReadOnlySource() && isRSESource(screen.sourceGameId);
+        const bool gen4Source = screen.legacyReadOnlySource() && isGen4NdsSource(screen.sourceGameId);
         const auto classicGame = PokeBank::UIModel::classicInventoryGame(screen.sourceGameId);
         const auto classicPocket = classicGame
             ? PokeBank::UIModel::classicInventoryPocketAt(*classicGame, screen.selectedCategory)
@@ -125,6 +131,14 @@ namespace Panels {
             fb.drawText(x + 24, y + hH + 30, "Inventory unavailable", Colors::Text, TextStyle::Body);
             fb.drawText(x + 24, y + hH + 58, "RSE inventory validation failed", Colors::TextDim, TextStyle::Caption);
             fb.drawText(x + 24, y + hH + 82, "Trainer, party and boxes remain read-only and available.", Colors::TextDim, TextStyle::Caption);
+            return;
+        }
+        if (gen4Source && screen.trainer.items.empty()) {
+            fb.drawText(x + 24, y + hH + 30, "Inventory unavailable in G4-02", Colors::Text, TextStyle::Body);
+            fb.drawText(x + 24, y + hH + 58, "Generation IV inventory is intentionally deferred in this read-only preview.",
+                        Colors::TextDim, TextStyle::Caption);
+            fb.drawText(x + 24, y + hH + 82, "Trainer, party, boxes and Pokémon details remain available.",
+                        Colors::TextDim, TextStyle::Caption);
             return;
         }
 

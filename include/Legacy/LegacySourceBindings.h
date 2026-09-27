@@ -50,6 +50,10 @@ namespace PokeVault::Legacy {
                                         std::string_view profileIdentity,
                                         std::string_view gameIdentity);
         [[nodiscard]] bool assignFileAndSave(std::string_view sourceIdentity, BindingRecord binding);
+        [[nodiscard]] bool replaceFileAssignmentAndSave(std::string_view sourceIdentity,
+                                                        BindingRecord binding);
+        [[nodiscard]] bool unassignGameAndSave(std::string_view profileIdentity,
+                                               std::string_view gameIdentity);
         // Rechecks only explicitly bound paths. Never scans or substitutes another save.
         [[nodiscard]] AssignedFile resolveFileForGame(std::string_view profileIdentity,
                                                        std::string_view gameIdentity) const;

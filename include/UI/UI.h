@@ -51,6 +51,7 @@ namespace UI {
                                std::string& error);
         bool handleLegacyFRLGView(AccountUid userUid, size_t sourceIndex, const std::string& gameId,
                                   std::string& error);
+        bool handleGen4View(AccountUid userUid, const std::string& gameId, std::string& error);
     };
 }
 

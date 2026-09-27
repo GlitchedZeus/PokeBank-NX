@@ -64,10 +64,11 @@ int main() {
     assert(fireRedGba->id != fireRedSwitch->id);
     assert(leafGreenGba->id != leafGreenSwitch->id);
     assert(fireRedGba->platform == Platform::GameBoyAdvance);
-    assert(diamond->platform == Platform::NintendoDS && diamond->support == SourceSupport::Planned);
-    assert(pearl->platform == Platform::NintendoDS && pearl->support == SourceSupport::Planned);
-    assert(platinum->platform == Platform::NintendoDS && platinum->support == SourceSupport::Planned);
-    assert(heartGold->platform == Platform::NintendoDS && soulSilver->platform == Platform::NintendoDS);
+    assert(diamond->platform == Platform::NintendoDS && diamond->support == SourceSupport::ReadOnly);
+    assert(pearl->platform == Platform::NintendoDS && pearl->support == SourceSupport::ReadOnly);
+    assert(platinum->platform == Platform::NintendoDS && platinum->support == SourceSupport::ReadOnly);
+    assert(heartGold->platform == Platform::NintendoDS && heartGold->support == SourceSupport::ReadOnly);
+    assert(soulSilver->platform == Platform::NintendoDS && soulSilver->support == SourceSupport::ReadOnly);
     assert(fireRedSwitch->platform == Platform::NintendoSwitch);
     assert(platformName(Platform::GameBoy) == "Game Boy");
     assert(platformName(Platform::GameBoyColor) == "Game Boy Color");
@@ -86,9 +87,16 @@ int main() {
     assert(legacyPlatformAbbreviation("sapphire_gba") == "GBA");
     assert(legacyPlatformAbbreviation("emerald_gba") == "GBA");
     assert(legacyPlatformAbbreviation("firered_switch").empty());
-    // Planned Gen IV entries are not exposed as working game cards yet.
-    assert(legacyPlatformAbbreviation("diamond_nds").empty());
-    assert(gameCardArtworkPath("platinum_nds").empty());
+    assert(legacyPlatformAbbreviation("diamond_nds") == "NDS");
+    assert(legacyPlatformAbbreviation("pearl_nds") == "NDS");
+    assert(legacyPlatformAbbreviation("platinum_nds") == "NDS");
+    assert(legacyPlatformAbbreviation("heartgold_nds") == "NDS");
+    assert(legacyPlatformAbbreviation("soulsilver_nds") == "NDS");
+    assert(gameCardArtworkPath("diamond_nds") == "romfs:/game_cards/diamond_nds.png");
+    assert(gameCardArtworkPath("pearl_nds") == "romfs:/game_cards/pearl_nds.png");
+    assert(gameCardArtworkPath("platinum_nds") == "romfs:/game_cards/platinum_nds.png");
+    assert(gameCardArtworkPath("heartgold_nds") == "romfs:/game_cards/heartgold_nds.png");
+    assert(gameCardArtworkPath("soulsilver_nds") == "romfs:/game_cards/soulsilver_nds.png");
     assert(gameCardArtworkPath("red_gb") == "romfs:/game_cards/red_gb.png");
     assert(gameCardArtworkPath("blue_gb") == "romfs:/game_cards/blue_gb.png");
     assert(gameCardArtworkPath("yellow_gb") == "romfs:/game_cards/yellow_gb.png");

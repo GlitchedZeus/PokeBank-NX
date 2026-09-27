@@ -91,6 +91,11 @@ namespace PokeVault::Games {
         if (id == "emerald_gba") return "romfs:/game_cards/emerald_gba.png";
         if (id == "firered_gba") return "romfs:/game_cards/firered_gba.png";
         if (id == "leafgreen_gba") return "romfs:/game_cards/leafgreen_gba.png";
+        if (id == "diamond_nds") return "romfs:/game_cards/diamond_nds.png";
+        if (id == "pearl_nds") return "romfs:/game_cards/pearl_nds.png";
+        if (id == "platinum_nds") return "romfs:/game_cards/platinum_nds.png";
+        if (id == "heartgold_nds") return "romfs:/game_cards/heartgold_nds.png";
+        if (id == "soulsilver_nds") return "romfs:/game_cards/soulsilver_nds.png";
         return {};
     }
 }

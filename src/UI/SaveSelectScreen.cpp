@@ -12,6 +12,9 @@
 #include "UI/TouchInput.h"
 #include "Enums/GameVersion.h"
 #include "Games/GameIdentity.h"
+#include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "Utils/Keyboard.h"
 #include "Utils/Logger.h"
 #include "Utils/Settings.h"
 
@@ -63,6 +66,7 @@ namespace UI {
         : legacyCatalog(&legacySources), legacyBindings(&bindings) {
         loadUsers();
         loadLegacySources(legacySources);
+        loadGen4Cards();
     }
 
     void SaveSelectScreen::loadLegacySources(
@@ -102,6 +106,57 @@ namespace UI {
             }
         }
         rebuildUnassignedLegacySources();
+    }
+
+    void SaveSelectScreen::loadGen4Cards() {
+        for (auto& user : users) {
+            user.titles.erase(std::remove_if(user.titles.begin(), user.titles.end(),
+                [](const auto& title) {
+                    return title.sourceKind == SelectedSourceKind::Gen4AssignedFile;
+                }), user.titles.end());
+
+            const std::string profile = profileIdentity(user.uid);
+            for (const auto& game : PokeVault::Games::allGameDescriptors()) {
+                if (game.platform != PokeVault::Games::Platform::NintendoDS ||
+                    game.dataGeneration != 4 ||
+                    game.support != PokeVault::Games::SourceSupport::ReadOnly) continue;
+
+                TitleEntry entry;
+                entry.name = "Pokemon " + std::string(game.title);
+                entry.label = std::string(game.title);
+                entry.gameId = std::string(game.id);
+                entry.platformLabel = std::string(PokeVault::Games::platformName(game.platform));
+                entry.artworkKey = entry.gameId;
+                entry.sourceKind = SelectedSourceKind::Gen4AssignedFile;
+
+                if (!legacyBindings) {
+                    entry.sourceLabel = "UNASSIGNED";
+                } else {
+                    const auto assigned = legacyBindings->resolveFileForGame(profile, game.id);
+                    switch (assigned.status) {
+                        case PokeVault::Legacy::AssignedFileStatus::Ready:
+                            entry.sourceLabel = "ASSIGNED";
+                            entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
+                            break;
+                        case PokeVault::Legacy::AssignedFileStatus::Missing:
+                            entry.sourceLabel = "MISSING";
+                            entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
+                            break;
+                        case PokeVault::Legacy::AssignedFileStatus::Unreadable:
+                            entry.sourceLabel = "INVALID";
+                            entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
+                            break;
+                        case PokeVault::Legacy::AssignedFileStatus::Ambiguous:
+                            entry.sourceLabel = "AMBIGUOUS";
+                            break;
+                        case PokeVault::Legacy::AssignedFileStatus::Unassigned:
+                            entry.sourceLabel = "UNASSIGNED";
+                            break;
+                    }
+                }
+                user.titles.push_back(std::move(entry));
+            }
+        }
     }
 
     void SaveSelectScreen::rebuildUnassignedLegacySources() {
@@ -388,6 +443,134 @@ namespace UI {
         scrollRow  = 0;   // a different user has a different title count; start at the top
     }
 
+    void SaveSelectScreen::openGen4Setup(const std::string& gameId, std::string notice) {
+        gen4TargetGameId = gameId;
+        gen4Notice = std::move(notice);
+        gen4Candidates.clear();
+        gen4SetupIndex = 0;
+        gen4CandidateIndex = 0;
+        gen4CandidateScroll = 0;
+        overlay = Overlay::Gen4Setup;
+    }
+
+    void SaveSelectScreen::discoverGen4Candidates() {
+        gen4Candidates.clear();
+        auto discovered = PokeVault::Integration::Gen4::discoverKnownSources();
+        size_t unsupported = 0;
+        for (auto& candidate : discovered.candidates) {
+            if (candidate.status == PokeVault::Integration::Gen4::CandidateStatus::UnsupportedWrapper)
+                ++unsupported;
+            if (candidate.ready() &&
+                PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId))
+                gen4Candidates.push_back(std::move(candidate));
+        }
+        std::sort(gen4Candidates.begin(), gen4Candidates.end(), [](const auto& a, const auto& b) {
+            if (a.sourceType != b.sourceType) return a.sourceType < b.sourceType;
+            return a.normalizedPath < b.normalizedPath;
+        });
+        gen4CandidateIndex = 0;
+        gen4CandidateScroll = 0;
+        if (gen4Candidates.empty()) {
+            gen4Notice = discovered.limitReached
+                ? "No compatible save found before the bounded scan limit."
+                : unsupported > 0
+                    ? "No raw save found. A DeSmuME wrapper was detected but is not trimmed automatically."
+                    : "No compatible Gen IV save found in known emulator locations.";
+            overlay = Overlay::Gen4Setup;
+        } else {
+            gen4Notice = std::to_string(gen4Candidates.size()) +
+                (gen4Candidates.size() == 1 ? " compatible save found." : " compatible saves found. Choose one.");
+            overlay = Overlay::Gen4Candidates;
+        }
+    }
+
+    bool SaveSelectScreen::assignGen4Candidate(
+        const PokeVault::Integration::Gen4::SourceCandidate& candidate) {
+        if (!legacyBindings || !candidate.ready() ||
+            !PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId))
+            return false;
+        const std::string profile = currentProfileIdentity();
+        if (profile.empty()) return false;
+
+        PokeVault::Legacy::BindingRecord binding;
+        binding.profileIdentity = profile;
+        binding.gameIdentity = gen4TargetGameId;
+        binding.sourcePath = candidate.path;
+        binding.sourceType = candidate.sourceType;
+        binding.expectedRawFamily = candidate.expectedRawFamily;
+        if (!legacyBindings->replaceFileAssignmentAndSave(candidate.sourceIdentity, std::move(binding))) {
+            gen4Notice = legacyBindings->lastError().find("conflict") != std::string::npos
+                ? "That physical save is already assigned to another profile or game. Unassign it there first."
+                : "The save assignment could not be stored safely.";
+            overlay = Overlay::Gen4Setup;
+            return false;
+        }
+
+        loadGen4Cards();
+        overlay = Overlay::None;
+        gen4Notice.clear();
+        selectAssignedGen4Title();
+        return titleSelected;
+    }
+
+    void SaveSelectScreen::chooseGen4ManualFile() {
+        const auto chosen = Utils::promptText(
+            "Choose Generation IV Save",
+            "Full SD path to a .sav/.srm/raw save",
+            "", 240);
+        if (!chosen.accepted) return;
+
+        auto candidate = PokeVault::Integration::Gen4::inspectSourceFile(
+            chosen.text, "Manual", gen4TargetGameId);
+        if (!candidate.ready()) {
+            gen4Notice = candidate.diagnostic.empty()
+                ? "That file is not a compatible save for this game card."
+                : candidate.diagnostic;
+            overlay = Overlay::Gen4Setup;
+            return;
+        }
+        assignGen4Candidate(candidate);
+    }
+
+    bool SaveSelectScreen::unassignCurrentGen4Game() {
+        if (!legacyBindings) return false;
+        const std::string profile = currentProfileIdentity();
+        if (!legacyBindings->unassignGameAndSave(profile, gen4TargetGameId)) {
+            gen4Notice = "No stored assignment could be removed for this game.";
+            return false;
+        }
+        loadGen4Cards();
+        gen4Notice = "Assigned save removed. The source file itself was not changed.";
+        overlay = Overlay::Gen4Setup;
+        return true;
+    }
+
+    void SaveSelectScreen::selectAssignedGen4Title() {
+        const UserEntry* user = currentUser();
+        if (!user) return;
+        const auto found = std::find_if(user->titles.begin(), user->titles.end(),
+            [&](const auto& title) {
+                return title.sourceKind == SelectedSourceKind::Gen4AssignedFile &&
+                       title.gameId == gen4TargetGameId;
+            });
+        if (found == user->titles.end()) return;
+        titleIndex = static_cast<int>(std::distance(user->titles.begin(), found));
+        const auto opened = legacyBindings
+            ? PokeVault::Integration::Gen4::openAssignedSource(
+                *legacyBindings, currentProfileIdentity(), found->gameId)
+            : PokeVault::Integration::Gen4::AssignedSourceReadOnly{};
+        if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready) {
+            openGen4Setup(found->gameId, opened.diagnostic);
+            return;
+        }
+        selectedUserUid = user->uid;
+        selectedTitleId = 0;
+        selectedTitleName = found->name;
+        selectedGameId = found->gameId;
+        selectedSourceKind = found->sourceKind;
+        titleSelected = true;
+    }
+
     void SaveSelectScreen::selectCurrentTitle() {
         const UserEntry* u = currentUser();
         if (!u || titleIndex < 0 || titleIndex >= (int)u->titles.size()) return;
@@ -396,6 +579,38 @@ namespace UI {
             const std::string gameId = title.gameId;
             refreshLegacySources(gameId);
             return;
+        }
+        if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+            gen4TargetGameId = title.gameId;
+            if (!legacyBindings) {
+                openGen4Setup(title.gameId, "Source assignments are unavailable.");
+                return;
+            }
+            const auto assigned = legacyBindings->resolveFileForGame(
+                currentProfileIdentity(), title.gameId);
+            if (assigned.status != PokeVault::Legacy::AssignedFileStatus::Ready) {
+                std::string notice;
+                switch (assigned.status) {
+                    case PokeVault::Legacy::AssignedFileStatus::Missing:
+                        notice = "Assigned save is missing. Choose its new location explicitly."; break;
+                    case PokeVault::Legacy::AssignedFileStatus::Ambiguous:
+                        notice = "Multiple stored assignments exist. Choose one replacement explicitly."; break;
+                    case PokeVault::Legacy::AssignedFileStatus::Unreadable:
+                        notice = "Assigned path is not a readable regular file."; break;
+                    case PokeVault::Legacy::AssignedFileStatus::Unassigned:
+                        notice = "No save is assigned to this game yet."; break;
+                    case PokeVault::Legacy::AssignedFileStatus::Ready: break;
+                }
+                openGen4Setup(title.gameId, std::move(notice));
+                return;
+            }
+            const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
+                *legacyBindings, currentProfileIdentity(), title.gameId);
+            if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready) {
+                openGen4Setup(title.gameId,
+                    opened.diagnostic.empty() ? "Assigned save failed strict validation." : opened.diagnostic);
+                return;
+            }
         }
         selectedUserUid  = u->uid;
         selectedTitleId  = title.titleId;
@@ -476,6 +691,36 @@ namespace UI {
             if (kDown & HidNpadButton_A) assignCurrentLegacySource();
             return;
         }
+        if (overlay == Overlay::Gen4Setup) {
+            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_Up) gen4SetupIndex = (gen4SetupIndex + 3) % 4;
+            if (kDown & HidNpadButton_Down) gen4SetupIndex = (gen4SetupIndex + 1) % 4;
+            if (kDown & HidNpadButton_A) {
+                if (gen4SetupIndex == 0) discoverGen4Candidates();
+                else if (gen4SetupIndex == 1) chooseGen4ManualFile();
+                else if (gen4SetupIndex == 2) unassignCurrentGen4Game();
+                else overlay = Overlay::None;
+            }
+            return;
+        }
+        if (overlay == Overlay::Gen4Candidates) {
+            const int count = static_cast<int>(gen4Candidates.size());
+            if (kDown & HidNpadButton_B) { overlay = Overlay::Gen4Setup; return; }
+            if (count == 0) { overlay = Overlay::Gen4Setup; return; }
+            if (kDown & HidNpadButton_Up)
+                gen4CandidateIndex = (gen4CandidateIndex - 1 + count) % count;
+            if (kDown & HidNpadButton_Down)
+                gen4CandidateIndex = (gen4CandidateIndex + 1) % count;
+            constexpr int visibleRows = 5;
+            if (gen4CandidateIndex < gen4CandidateScroll)
+                gen4CandidateScroll = gen4CandidateIndex;
+            else if (gen4CandidateIndex >= gen4CandidateScroll + visibleRows)
+                gen4CandidateScroll = gen4CandidateIndex - visibleRows + 1;
+            if (kDown & HidNpadButton_A)
+                assignGen4Candidate(gen4Candidates[static_cast<size_t>(gen4CandidateIndex)]);
+            return;
+        }
+
         if (overlay == Overlay::Options) {
             if (kDown & HidNpadButton_Up)   optionsIndex = (optionsIndex + 2) % 3;
             if (kDown & HidNpadButton_Down) optionsIndex = (optionsIndex + 1) % 3;
@@ -546,6 +791,16 @@ namespace UI {
         if (kDown & HidNpadButton_Minus) {
             overlay = Overlay::Help;
             return;
+        }
+        {
+            const UserEntry* current = currentUser();
+            if ((kDown & HidNpadButton_Y) && current && titleIndex >= 0 &&
+                titleIndex < static_cast<int>(current->titles.size()) &&
+                current->titles[titleIndex].sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+                openGen4Setup(current->titles[titleIndex].gameId,
+                              "Choose a new assignment only if you want to change this game card's save.");
+                return;
+            }
         }
         if ((kDown & HidNpadButton_X) && !unassignedLegacySources.empty()) {
             overlay = Overlay::LegacyAssignment;
@@ -754,6 +1009,9 @@ namespace UI {
             : PokeBank::UIModel::ControllerContext::SelectGame);
         if (!unassignedLegacySources.empty())
             homeHints.push_back({"X", "Assign Legacy Save"});
+        if (u && titleIndex >= 0 && titleIndex < static_cast<int>(u->titles.size()) &&
+            u->titles[titleIndex].sourceKind == SelectedSourceKind::Gen4AssignedFile)
+            homeHints.push_back({"Y", "Save Assignment"});
         drawNavBar(fb, homeHints);
 
         if (overlay == Overlay::LegacyInstances && u && titleIndex >= 0 &&
@@ -862,12 +1120,72 @@ namespace UI {
             for (size_t offset = 70; offset < path.size() && offset < 210; offset += 70)
                 drawLine("", path.substr(offset, 70));
             drawNavBar(fb, {{"B", "Back to Save List"}});
+        } else if (overlay == Overlay::Gen4Setup && u) {
+            constexpr int w = 760, h = 430, rowH = 64;
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            const auto* identity = PokeVault::Games::findGame(gen4TargetGameId);
+            const std::string title = identity ? std::string(identity->title) : std::string("Generation IV");
+            fb.drawText(x + 28, y + 18, "NINTENDO DS / PERSISTENT SAVE ASSIGNMENT / READ ONLY",
+                        Colors::Accent, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44, "Pokemon " + title,
+                        Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 28, y + 76,
+                        "The game card is primary. Browsing is only for assigning or repairing its source.",
+                        Colors::TextSecondary, TextStyle::Caption);
+            const std::string rows[4] = {
+                "Find Save Automatically",
+                "Choose Save File Manually",
+                "Unassign Current Save",
+                "Cancel"
+            };
+            int ry = y + 112;
+            for (int i = 0; i < 4; ++i) {
+                drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 8, i == gen4SetupIndex, 10);
+                fb.drawText(x + 44, ry + 15, rows[i],
+                            i == gen4SetupIndex ? Colors::TextPrimary : Colors::TextSecondary);
+                ry += rowH;
+            }
+            if (!gen4Notice.empty())
+                fb.drawText(x + 28, y + h - 42, gen4Notice.substr(0, 100),
+                            Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"B", "Back"}});
+        } else if (overlay == Overlay::Gen4Candidates && u) {
+            constexpr int w = 900, h = 540, rowH = 76, visibleRows = 5;
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 28, y + 18, "NINTENDO DS / VALIDATED SAVE CANDIDATES / READ ONLY",
+                        Colors::Accent, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44, "Choose the save to remember for this game card",
+                        Colors::TextPrimary, TextStyle::Heading);
+            const int first = gen4CandidateScroll;
+            const int last = std::min<int>(static_cast<int>(gen4Candidates.size()),
+                                           first + visibleRows);
+            int ry = y + 92;
+            for (int i = first; i < last; ++i) {
+                const auto& candidate = gen4Candidates[static_cast<size_t>(i)];
+                drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 6,
+                                i == gen4CandidateIndex, 10);
+                fb.drawText(x + 44, ry + 7,
+                            candidate.sourceType + " — " + sourceLeafName(candidate.path),
+                            i == gen4CandidateIndex ? Colors::TextPrimary : Colors::TextSecondary,
+                            TextStyle::Body);
+                std::string detail = candidate.expectedRawFamily;
+                if (!candidate.trainerName.empty()) detail += " / Trainer " + candidate.trainerName;
+                if (candidate.recoveredOlderCopy) detail += " / RECOVERED OLDER COPY";
+                fb.drawText(x + 44, ry + 36, detail, Colors::TextMuted, TextStyle::Caption);
+                ry += rowH;
+            }
+            if (!gen4Notice.empty())
+                fb.drawText(x + 28, y + h - 38, gen4Notice, Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"Up/Down", "Choose Save"}, {"A", "Assign & Open"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
             drawInfoOverlay(fb, "Game Sources & Controls", {
                 "D-pad / Left Stick   Navigate (hold to scroll)",
                 "A   Open the focused game source",
                 "L / R   Previous or next Switch user",
                 "X   Assign an unassigned legacy save to this profile",
+                "Y   Change the focused Gen IV save assignment",
                 "+   Options and appearance",
                 "-   Help for the current screen"
             });

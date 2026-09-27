@@ -244,6 +244,11 @@ game-card-art:
 	@cp -f "$(GAME_CARD_ART_SOURCE)/ruby_gba.png" "$(GAME_CARD_ART_DIR)/ruby_gba.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/sapphire_gba.png" "$(GAME_CARD_ART_DIR)/sapphire_gba.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/emerald_gba.png" "$(GAME_CARD_ART_DIR)/emerald_gba.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/diamond_nds.png" "$(GAME_CARD_ART_DIR)/diamond_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/pearl_nds.png" "$(GAME_CARD_ART_DIR)/pearl_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/platinum_nds.png" "$(GAME_CARD_ART_DIR)/platinum_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/heartgold_nds.png" "$(GAME_CARD_ART_DIR)/heartgold_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/soulsilver_nds.png" "$(GAME_CARD_ART_DIR)/soulsilver_nds.png"
 
 #---------------------------------------------------------------------------------
 # Type sprite download (generation-ix scarlet-violet style)
