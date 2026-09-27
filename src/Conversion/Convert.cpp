@@ -884,14 +884,30 @@ namespace Conversion {
             // 4-bit field, so the mon is stamped with the game it is being written INTO. This is the normal
             // path, not a rare edge: every cross-gen transfer into Gen 3 takes it. It used to substitute a
             // literal 4, which is FireRed -- so a LeafGreen save stamped FireRed 100% of the time.
-            uint8_t version = rd8(s, 0xDE);
-            if (version < 1 || version > 5) {
+            const uint8_t sourceVersion = rd8(s, 0xDE);
+            const bool sourceHasGen3Origin = sourceVersion >= 1 && sourceVersion <= 5;
+            uint8_t version = sourceVersion;
+            if (!sourceHasGen3Origin) {
                 version = destOriginVersion;
                 if (report) report->addLoss(Loss::OriginGameRestamped);
             }
             wr16(d, 0x46, static_cast<uint16_t>((metLevel & 0x7F) | ((version & 0x0F) << 7)
                                               | ((ball & 0x0F) << 11) | ((otGender & 1) << 15)));
-            wr8(d, 0x45, static_cast<uint8_t>(rd16(s, 0x122)));     // Met location (Gen 3 ids are u8)
+
+            // A modern u16 met-location id is NOT a Gen III u8 location id. Truncating it
+            // produced convincing-but-wrong places (for example a transfer sentinel becoming a
+            // Hoenn/Kanto map id). Preserve the byte only when the modern container is carrying
+            // an actual Gen III-origin record; otherwise use the explicit unresolved value 0.
+            // PokeBank NX deliberately does NOT copy PKSE's optional auto-legalize behavior here:
+            // inventing a plausible native encounter would violate our fail-closed conversion policy.
+            const uint16_t sourceMetLocation = rd16(s, 0x122);
+            if (sourceHasGen3Origin) {
+                wr8(d, 0x45, static_cast<uint8_t>(sourceMetLocation));
+            } else {
+                wr8(d, 0x45, 0);
+                if (sourceMetLocation != 0 && report)
+                    report->addLoss(Loss::LocationDetailDropped);
+            }
 
             // IVs: keep bits 0-29 (IVs) + bit30 (isEgg); set bit31 = ability slot from the PK8 ability number.
             wr32(d, 0x48, (pk8iv & 0x7FFFFFFFu) | (targetAbilityBit ? 0x80000000u : 0u));
