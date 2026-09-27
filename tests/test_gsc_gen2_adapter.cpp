@@ -121,6 +121,14 @@ int main(){
         assert(decodeGen2String(mn,RegionLayout::International)=="}");
         assert(decodeGen2String(arrow,RegionLayout::International)=="→");
         assert(decodeGen2String(gen2Digits,RegionLayout::International)=="０１２３４５６");
+        const std::array<uint8_t,2> jpBe{{0x3D,0x50}};
+        const std::array<uint8_t,2> jpRi{{0xD8,0x50}};
+        const std::array<uint8_t,2> jpHandakuten{{0xE4,0x50}};
+        assert(decodeGen2String(jpBe,RegionLayout::Japanese)=="ベ");
+        assert(decodeGen2String(jpRi,RegionLayout::Japanese)=="リ");
+        assert(decodeGen2String(jpHandakuten,RegionLayout::Japanese)=="ﾟ");
+        const std::array<uint8_t,3> tradeOt{{0x5D,0x80,0x50}};
+        assert(decodeGen2String(tradeOt,RegionLayout::International)=="*");
     }
     {
         auto d=fixture(IGS);d[0x2100]^=1;auto r=parse(d,SourceGame::Gold);assert(!r&&r.error==SaveError::ChecksumMismatch);
