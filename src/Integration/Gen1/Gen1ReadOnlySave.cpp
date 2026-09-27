@@ -321,19 +321,23 @@ uint16_t gen1InternalToNational(uint8_t rawSpecies) noexcept {
 
 std::string decodeGen1String(std::span<const uint8_t> bytes, RegionLayout region) {
     std::string out;
+    bool first = true;
     for (uint8_t b : bytes) {
         if (b == 0x00 || b == 0x50) break;
-        if (b == 0x5D) { out += '*'; continue; }
+        // 0x5D at byte zero marks an in-game-trade OT and represents the whole name.
+        if (first && b == 0x5D) return "*";
         if (region == RegionLayout::Japanese) {
             if (const char* g = jpGlyph(b)) out += g;
             else out += "�";
+            first = false;
             continue;
         }
-        if (b >= 0x80 && b <= 0x99) { out += static_cast<char>('A' + (b - 0x80)); continue; }
-        if (b >= 0xA0 && b <= 0xB9) { out += static_cast<char>('a' + (b - 0xA0)); continue; }
-        if (b >= 0xF6) { out += static_cast<char>('0' + (b - 0xF6)); continue; }
+        if (b >= 0x80 && b <= 0x99) { out += static_cast<char>('A' + (b - 0x80)); first = false; continue; }
+        if (b >= 0xA0 && b <= 0xB9) { out += static_cast<char>('a' + (b - 0xA0)); first = false; continue; }
+        if (b >= 0xF6) { out += static_cast<char>('0' + (b - 0xF6)); first = false; continue; }
         if (const char* g = enSpecial(b)) out += g;
         else out += "�";
+        first = false;
     }
     return out;
 }
