@@ -63,57 +63,56 @@ namespace Pokemon {
         return ((iv32() >> 31) & 1) ? g3.ability2 : g3.ability1;
     }
 
-    // A byte with no glyph is SKIPPED, not shown. Substituting '?' for it is what made a real
-    // FireRed FARFETCH'D read back as FARFETCH?D -- and worse, made the substitute indistinguishable
-    // from the genuine '?' at 0xAC.
-    std::u16string Pokemon3FRLG::readG3Name(size_t offset, int maxChars) const {
-        std::u16string s;
+    // Gen III bytes are font indices. A traded Pokemon keeps the table selected by its own
+    // language byte; an egg's nickname is deliberately Japanese while its OT stays in the save's
+    // original charset, which is carried separately as saveLanguage.
+    std::u16string Pokemon3FRLG::readG3Name(size_t offset, int maxChars, uint8_t languageId) const {
+        std::u16string text;
         for (int i = 0; i < maxChars; ++i) {
-            const uint8_t b = rd8(offset + i);
-            if (b == Utils::GEN3_TERMINATOR) break;
-            if (const char16_t c = Utils::gen3ToChar(b)) s += c;
+            const uint8_t value = rd8(offset + i);
+            if (value == Utils::GEN3_TERMINATOR) break;
+            if (const char16_t character = Utils::gen3ToChar(value, languageId))
+                text += character;
         }
-        return s;
+        return text;
     }
 
-    std::u16string Pokemon3FRLG::nickname() const { return readG3Name(0x08, 10); }
-    std::u16string Pokemon3FRLG::otName()   const { return readG3Name(0x14, 7); }
+    std::u16string Pokemon3FRLG::nickname() const {
+        return readG3Name(0x08, 10, language());
+    }
 
-    // Encode a name into the Gen 3 character table at dst[offset..]: up to maxChars glyphs,
-    // then a 0xFF terminator IF there is room. The PK3 name fields have NO space past maxChars (nickname
-    // 10 @ 0x08, OT name 7 @ 0x14 -- 0x1B right after it is Markings), so the terminator is only written
-    // when the name is short. Unrepresentable chars end the name; bytes past the terminator are left
-    // untouched. Without these setters a created mon's OT name + nickname were BLANK, so Gen 3 read the
-    // mon as traded-in ("Apparently met") and showed no name.
-    static void g3EncodeName(std::byte* dst, size_t offset, const std::u16string& value, size_t maxChars) {
+    std::u16string Pokemon3FRLG::otName() const {
+        return readG3Name(0x14, 7, otTextLanguage());
+    }
+
+    static void g3EncodeName(std::byte* dst, size_t offset, const std::u16string& value,
+                             size_t maxChars, uint8_t languageId) {
         size_t n = 0;
         for (const char16_t c : value) {
             if (n >= maxChars) break;
-            const uint8_t b = Utils::charToGen3(c);
-            if (b == Utils::GEN3_TERMINATOR) break;   // no Gen 3 glyph -> end the name here
-            dst[offset + n] = static_cast<std::byte>(b);
+            const uint8_t packed = Utils::charToGen3(c, languageId);
+            if (packed == Utils::GEN3_TERMINATOR) break;
+            dst[offset + n] = static_cast<std::byte>(packed);
             ++n;
         }
         if (n < maxChars) dst[offset + n] = static_cast<std::byte>(Utils::GEN3_TERMINATOR);
     }
 
     void Pokemon3FRLG::setOTName(const std::u16string& value) noexcept {
-        g3EncodeName(data.data(), 0x14, value, 7);    // OT name: 7 chars @ 0x14 (0x1B is Markings)
+        g3EncodeName(data.data(), 0x14, value, 7, otTextLanguage());
         refreshChecksum();
     }
 
-    // Every character must have a byte in the Gen 3 table. Callers check this and refuse the name
-    // outright, because g3EncodeName ends the name at the first unmappable character -- which would
-    // store a truncated name instead of reporting that it can't be stored.
     bool Pokemon3FRLG::canStoreNickname(const std::u16string& value) const noexcept {
+        const uint8_t languageId = language();
         for (const char16_t c : value) {
-            if (Utils::charToGen3(c) == Utils::GEN3_TERMINATOR) return false;
+            if (Utils::charToGen3(c, languageId) == Utils::GEN3_TERMINATOR) return false;
         }
         return true;
     }
 
     void Pokemon3FRLG::setNickname(const std::u16string& value) noexcept {
-        g3EncodeName(data.data(), 0x08, value, 10);   // nickname: 10 chars @ 0x08 (no isNicknamed flag)
+        g3EncodeName(data.data(), 0x08, value, 10, language());
         refreshChecksum();
     }
 
