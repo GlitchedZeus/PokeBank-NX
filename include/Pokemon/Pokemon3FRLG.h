@@ -88,8 +88,8 @@ namespace Pokemon {
         void setAbility(uint16_t abilityValue) noexcept override;      // id -> slot, then setAbilityNumber
         void setAbilityNumber(uint8_t number) noexcept override;       // 1/2; flips the bit + re-rolls the PID
 
-        // Decode a Gen 3 name field: maxChars bytes at `offset`, stopping at the 0xFF terminator.
-        std::u16string readG3Name(size_t offset, int maxChars) const;
+        // Decode through the PK3 record/save language-specific Gen III character table.
+        std::u16string readG3Name(size_t offset, int maxChars, uint8_t languageId) const;
         std::u16string nickname() const override;   // Gen3 char table @0x08 (10 bytes)
         void setNickname(const std::u16string& value) noexcept override;   // encode into the Gen3 table @0x08
         int getMaxNicknameLength() const noexcept override { return 10; }  // 10 bytes @0x08, 1 byte per glyph
@@ -122,7 +122,9 @@ namespace Pokemon {
             uint32_t iv = iv32();
             const int shift = statIndex * 5;
             iv = (iv & ~(0x1Fu << shift)) | (static_cast<uint32_t>(v & 0x1F) << shift);
-            wr32(0x48, iv); refreshChecksum();
+            wr32(0x48, iv);
+            recalculateStats();
+            refreshChecksum();
         }
 
         // ---- EVs (EVs/Condition substructure @0x38) ----
@@ -133,7 +135,11 @@ namespace Pokemon {
         uint8_t evSPA() const noexcept override { return rd8(0x3C); }
         uint8_t evSPD() const noexcept override { return rd8(0x3D); }
         void setEV(int statIndex, uint8_t v) noexcept override {
-            if (statIndex >= 0 && statIndex < 6) { wr8(0x38 + statIndex, v); refreshChecksum(); }
+            if (statIndex >= 0 && statIndex < 6) {
+                wr8(0x38 + statIndex, v);
+                recalculateStats();
+                refreshChecksum();
+            }
         }
 
         // ---- OT / origin / met (Misc substructure @0x44 + header) ----
@@ -145,6 +151,9 @@ namespace Pokemon {
         uint8_t ball() const noexcept override { return (origins() >> 11) & 0x0F; }
         uint8_t otFriendship() const noexcept override { return rd8(0x29); }
         uint8_t language() const noexcept override { return rd8(0x12); }
+        bool eggTextIsPlaceholder() const noexcept override { return isEgg(); }
+        uint8_t otTextLanguage() const noexcept { return eggTextIsPlaceholder() ? saveLanguage : language(); }
+        void setSaveLanguage(uint8_t languageId) noexcept { saveLanguage = languageId; }
         uint8_t friendship() const noexcept override { return rd8(0x29); }
         uint8_t pokerus() const noexcept { return rd8(0x44); }
         bool isPokerusInfected() const noexcept override { return (pokerus() & 0x0F) != 0; }
@@ -228,6 +237,7 @@ namespace Pokemon {
 
     private:
         static constexpr const char16_t* EGG_NICKNAME_JAPANESE = u"\u30bf\u30de\u30b4"; // タマゴ
+        uint8_t saveLanguage = static_cast<uint8_t>(Enums::LanguageID::English);
         // Compute a battle stat (0=HP..5=SPD) from base/IV/EV/level/nature (Gen3 formula).
         uint16_t computeStat(int idx) const noexcept;
         // Re-roll the PID (bounded search) to satisfy the given constraints; each is -1 for "don't care".
