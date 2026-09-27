@@ -7,7 +7,7 @@ namespace PokeVault::Legacy {
 
 Gen4ReadOnlyTrainer::Gen4ReadOnlyTrainer(
     Integration::Gen4::Gen4ReadOnlySave save, std::string sourceGameId)
-    : Trainer::Trainer({}), save_(std::move(save)), sourceGameId_(std::move(sourceGameId)) {}
+    : Trainer::Trainer(std::vector<Save::Block>{}), save_(std::move(save)), sourceGameId_(std::move(sourceGameId)) {}
 
 std::unique_ptr<Gen4ReadOnlyTrainer> Gen4ReadOnlyTrainer::create(
     const Integration::Gen4::Gen4ReadOnlySave& save,
