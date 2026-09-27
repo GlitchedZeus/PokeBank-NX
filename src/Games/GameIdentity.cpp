@@ -19,13 +19,13 @@ namespace PokeVault::Games {
             {"emerald_gba",                  "Emerald",           GameBoyAdvance, 3, 0, ReadOnly},
             {"firered_gba",                  "FireRed",           GameBoyAdvance, 3, 0, ReadOnly},
             {"leafgreen_gba",                "LeafGreen",         GameBoyAdvance, 3, 0, ReadOnly},
-            // Gen IV identities are registered now so persistent cover assignments have stable ids.
-            // They stay Planned until the DS source browser/menu integration tranche exposes them.
-            {"diamond_nds",                   "Diamond",           NintendoDS,     4, 0, Planned},
-            {"pearl_nds",                     "Pearl",             NintendoDS,     4, 0, Planned},
-            {"platinum_nds",                  "Platinum",          NintendoDS,     4, 0, Planned},
-            {"heartgold_nds",                 "HeartGold",         NintendoDS,     4, 0, Planned},
-            {"soulsilver_nds",                "SoulSilver",        NintendoDS,     4, 0, Planned},
+            // G4-02 exposes these through the persistent game-card assignment flow.
+            // Support remains strictly read-only: no Gen IV editor, source writes or True Move.
+            {"diamond_nds",                   "Diamond",           NintendoDS,     4, 0, ReadOnly},
+            {"pearl_nds",                     "Pearl",             NintendoDS,     4, 0, ReadOnly},
+            {"platinum_nds",                  "Platinum",          NintendoDS,     4, 0, ReadOnly},
+            {"heartgold_nds",                 "HeartGold",         NintendoDS,     4, 0, ReadOnly},
+            {"soulsilver_nds",                "SoulSilver",        NintendoDS,     4, 0, ReadOnly},
             {"firered_switch",               "FireRed",           NintendoSwitch, 3, 0x0100554023408000ULL, NativeSwitch},
             {"leafgreen_switch",             "LeafGreen",         NintendoSwitch, 3, 0x010034D02340E000ULL, NativeSwitch},
             {"letsgo_pikachu_switch",        "Let's Go Pikachu",  NintendoSwitch, 7, 0x010003F003A34000ULL, NativeSwitch},
