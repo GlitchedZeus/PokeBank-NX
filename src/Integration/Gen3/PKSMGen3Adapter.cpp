@@ -9,6 +9,7 @@
 #include "Integration/Gen3/PKSMGen3Adapter.h"
 #include "Integration/Gen3/FRLGReadModel.h"
 #include "Integration/Gen3/Gen3SaveValidation.h"
+#include "Save/RtcFooter.h"
 
 #include "pkx/PK3.hpp"
 #include "pkx/PKX.hpp"
@@ -86,7 +87,8 @@ namespace PokeVault::Integration::Gen3 {
              uint32_t saveCounter,
              const std::array<size_t, Detail::kSectorCount>& offsets)
             : original(bytes.begin(), bytes.end()),
-              coreBytes(copyForCoreSlot(original, activeSlot)),
+              coreBytes(copyForCoreSlot(
+                  std::span<const uint8_t>(original.data(), Detail::kSaveSize), activeSlot)),
               core(makeCore(sourceGame, coreBytes)),
               metadata{sourceGame, Gen3::sourceGameId(sourceGame), activeSlot, saveCounter,
                        core ? core->partyCount() : static_cast<uint8_t>(0xFF),
@@ -200,24 +202,28 @@ namespace PokeVault::Integration::Gen3 {
     SaveError ReadOnlySave::lastEnumerationError() const noexcept { return impl_->enumerationError; }
 
     ParseResult parse(std::span<const uint8_t> bytes, SourceGame sourceGame) {
-        if (bytes.size() != Detail::kSaveSize)
-            return {nullptr, SaveError::WrongSize, "Gen III GBA save must be exactly 128 KiB"};
+        std::size_t rtcFooterSize = 0;
+        if (!PokeVault::Save::splitRtcPayloadSize(bytes.size(), Detail::kSaveSize, rtcFooterSize))
+            return {nullptr, SaveError::WrongSize,
+                    "Gen III GBA save must be 128 KiB with only a recognized RTC footer"};
+        (void)rtcFooterSize;
         if (!Detail::sourceGameSupported(sourceGame))
             return {nullptr, SaveError::UnsupportedGame, "unsupported Generation III source identity"};
 
+        const auto payload = bytes.first(Detail::kSaveSize);
         const Detail::SlotValidation slots[2] = {
-            Detail::validateSlot(bytes, 0), Detail::validateSlot(bytes, 1)};
+            Detail::validateSlot(payload, 0), Detail::validateSlot(payload, 1)};
         if (!slots[0].valid && !slots[1].valid) {
             const SaveError error = slots[0].error != SaveError::None ? slots[0].error : slots[1].error;
             return {nullptr, error, std::string(errorMessage(error))};
         }
         const uint8_t active = Detail::selectActiveSlot(slots);
         const auto& selected = slots[active];
-        if (!Detail::familyMatches(sourceGame, Detail::detectFamily(bytes, selected)))
+        if (!Detail::familyMatches(sourceGame, Detail::detectFamily(payload, selected)))
             return {nullptr, SaveError::UnsupportedGame,
                     "validated Gen III save family does not match the selected source release"};
 
-        auto coreProbe = copyForCoreSlot(bytes, active);
+        auto coreProbe = copyForCoreSlot(payload, active);
         if (!pksm::Sav3::isValid(coreProbe))
             return {nullptr, SaveError::CoreRejected, "pinned PKSM-Core rejected the validated save"};
 
