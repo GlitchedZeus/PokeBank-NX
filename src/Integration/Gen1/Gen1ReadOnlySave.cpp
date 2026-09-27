@@ -157,12 +157,12 @@ bool isListHeaderValid(std::span<const uint8_t> raw, std::size_t offset, std::si
     if (offset + capacity + 2 > raw.size()) return false;
     const uint8_t count = raw[offset];
     if (count > capacity) return false;
+    // Count plus the immediate 0xFF cap define the logical PokeList. Real saves may retain stale
+    // species markers after that cap when a Pokemon was moved/released; those bytes are not entries.
     if (raw[offset + 1 + count] != 0xFF) return false;
-    for (std::size_t i = 0; i < capacity; ++i) {
+    for (std::size_t i = 0; i < count; ++i) {
         const uint8_t mark = raw[offset + 1 + i];
-        const bool present = mark != 0 && mark != 0xFF;
-        if (present != (i < count)) return false;
-        if (present && gen1InternalToNational(mark) == 0) return false;
+        if (mark == 0 || mark == 0xFF || gen1InternalToNational(mark) == 0) return false;
     }
     return true;
 }
