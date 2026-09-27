@@ -501,6 +501,20 @@ void runGame(SourceGame game, Family family) {
 } // namespace
 
 int main() {
+    // A PK3 egg stores language=Japanese as a placeholder, so its OT charset comes from the
+    // containing save. clone() must carry that non-byte context or a Japanese OT becomes Latin.
+    {
+        std::array<uint8_t, 80> blank{};
+        Pokemon::Pokemon3FRLG japaneseEgg(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(blank.data()), blank.size()));
+        japaneseEgg.setSaveLanguage(1);
+        japaneseEgg.setOTName(u"ア");
+        japaneseEgg.setEgg(true);
+        assert(japaneseEgg.otName() == u"ア");
+        auto cloned = japaneseEgg.clone();
+        assert(cloned && cloned->otName() == u"ア");
+    }
+
     {
         const auto raw=samplePokemon(SourceGame::FireRedGBA);
         Pokemon::Pokemon3FRLG egg(std::span<const std::byte>(
