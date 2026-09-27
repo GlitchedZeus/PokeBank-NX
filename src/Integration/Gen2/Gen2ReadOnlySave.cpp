@@ -1,4 +1,5 @@
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
+#include "Save/RtcFooter.h"
 
 #include <algorithm>
 #include <array>
@@ -73,13 +74,11 @@ bool validListHeader(std::span<const uint8_t> bytes, std::size_t ofs, std::size_
     if (ofs >= bytes.size() || capacity > bytes.size() - ofs - 2) return false;
     const uint8_t count = bytes[ofs];
     if (count > capacity) return false;
-    for (std::size_t i = 0; i < capacity; ++i) {
-        const bool present = presentMarker(bytes[ofs + 1 + i]);
-        if (present != (i < count)) return false;
-    }
-    // Both PKSM-Core's probe and the retail list representation require the first empty marker
-    // immediately after the logical list to be 0xFF.
+    // Count plus the immediate 0xFF cap define the logical list. Marker bytes after the cap can
+    // legitimately retain stale species values and must not reject an otherwise-valid cartridge.
     if (bytes[ofs + 1 + count] != 0xFF) return false;
+    for (std::size_t i = 0; i < count; ++i)
+        if (!presentMarker(bytes[ofs + 1 + i])) return false;
     return true;
 }
 
@@ -173,7 +172,7 @@ std::string decodeInternational(std::span<const uint8_t> bytes) {
             case 0xE3: out += '-'; break; case 0xE4: out += '+'; break;
             case 0xE6: out += '?'; break; case 0xE7: out += '!'; break;
             case 0xE8: out += "․"; break; case 0xE9: out += '&'; break;
-            case 0xEA: out += "é"; break; case 0xEB: out += "→"; break;
+            case 0xEA: out += "%"; // Gen II one-byte e-acute ligature stand-in; 0xBC is the real é glyph. break; case 0xEB: out += "→"; break;
             case 0xEC: out += "▷"; break; case 0xED: out += "▶"; break;
             case 0xEE: out += "▼"; break; case 0xEF: out += "♂"; break;
             case 0xF0: out += "¥"; break; case 0xF1: out += "×"; break;
@@ -324,8 +323,7 @@ bool parseList(
 } // namespace
 
 bool isKnownRTCFooterSize(std::size_t size) noexcept {
-    if (size == 7) return true; // FlashGBX >2.0 exception mirrored by PKHeX.
-    return size >= 0x0C && size <= 0x30 && (size & 1u) == 0;
+    return PokeVault::Save::isKnownRtcFooterSize(size);
 }
 
 uint16_t calculateChecksum(
