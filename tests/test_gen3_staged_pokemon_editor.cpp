@@ -480,6 +480,12 @@ void runGame(SourceGame game, Family family) {
     assert(rtcEditor&&error.empty());
     const auto rtcFinal=rtcEditor->finalizedBytes(error);
     assert(rtcFinal==rtcSource);
+    assert(rtcEditor->stageAddBoxPokemon(0,2,create,error));
+    const auto rtcEdited=rtcEditor->finalizedBytes(error);
+    assert(rtcEdited.size()==rtcSource.size());
+    assert(rtcEdited!=rtcSource);
+    assert(std::equal(rtcFooter.begin(),rtcFooter.end(),
+                      rtcEdited.end()-static_cast<std::ptrdiff_t>(rtcFooter.size())));
 
     // Wrong family must fail closed.
     const SourceGame mismatch =
