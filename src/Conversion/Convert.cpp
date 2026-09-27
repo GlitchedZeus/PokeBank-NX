@@ -1131,21 +1131,21 @@ namespace Conversion {
             && hasModernMarks(src))
             report->addLoss(Loss::MarkDataDropped);
 
-        // Current Gen III text support is the international table only. Fail closed rather than
-        // corrupting/truncating Japanese or later-generation Korean/Chinese text.
+        // Gen III supports Japanese plus the five international release languages. Fail closed
+        // rather than corrupting/truncating Korean or later-generation Chinese text.
         if (destGroup == GameVersion::FRLG && from != GameVersion::FRLG) {
-            if (!Fidelity::gen3InternationalLanguageSupported(src.language())) {
+            if (!Fidelity::gen3LanguageSupported(src.language())) {
                 result = Result::LanguageNotRepresentable;
                 return nullptr;
             }
-            if ((sourceNicknamed && !Fidelity::gen3TextRepresentable(src.nickname(), 10))
-                || !Fidelity::gen3TextRepresentable(src.otName(), 7)) {
+            if ((sourceNicknamed && !Fidelity::gen3TextRepresentable(src.nickname(), 10, src.language()))
+                || !Fidelity::gen3TextRepresentable(src.otName(), 7, src.language())) {
                 result = Result::TextNotRepresentable;
                 return nullptr;
             }
         }
         if (from == GameVersion::FRLG && destGroup != GameVersion::FRLG
-            && !Fidelity::gen3InternationalLanguageSupported(src.language())) {
+            && !Fidelity::gen3LanguageSupported(src.language())) {
             result = Result::LanguageNotRepresentable;
             return nullptr;
         }
