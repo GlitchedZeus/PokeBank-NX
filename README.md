@@ -59,7 +59,7 @@ Current highlights:
 | Move journal + restart recovery | ✅ Implemented |
 | Physical interruption/recovery on FAT32 | ✅ Device accepted — 8/8 tests |
 | Sword/Shield ↔ Scarlet/Violet conversion layer | ✅ Converter ready, product route still locked |
-| Gen I–III PKSE 1.2 correctness audit | ✅ Source audit/fixes complete; exact-head CI closure in progress on PR #79 |
+| Gen I–III PKSE 1.2 correctness audit | ✅ Complete / CI verified |
 | Cross-game True Move | 🔒 Disabled |
 | BDSP true Move | 🔒 Disabled pending multi-file transaction support |
 | Nintendo DS / 3DS | 🗺️ Next expansion family after the current audit gate |
@@ -230,7 +230,7 @@ Transaction evidence and backup bytes are recovery material, not extra active Po
 
 ## What comes next
 
-The current engineering line is **PR #79 — `audit/full-project-hardening-20260923`**. Gen I–III source-level PKSE 1.2 delta findings are closed; the remaining audit gate is one exact-head green Host + sanitizer + native validation checkpoint before Gen IV begins.
+The current engineering line is **PR #79 — `audit/full-project-hardening-20260923`**. The Gen I–III PKSE 1.2 correctness audit is complete and exact-head CI verified at `5b62e2ba`. PR #79 remains open/draft/unmerged. The next tranche is a **Gen IV file-by-file PKSE 1.2 reuse/delta audit** before any Gen IV implementation begins.
 
 The immediate engineering sequence is:
 
@@ -243,7 +243,7 @@ FAT32 interruption / recovery               DEVICE ACCEPTED
         ↓
 modern conversion fidelity                  CONVERTER CLOSURE COMPLETE
         ↓
-Gen I–III vs PKSE 1.2 audit                 SOURCE COMPLETE / CI CLOSURE GATE
+Gen I–III vs PKSE 1.2 audit                 COMPLETE / CI VERIFIED
         ↓
 PKSE 1.2 Gen IV reuse / delta audit
         ↓
