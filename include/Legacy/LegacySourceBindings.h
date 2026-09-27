@@ -55,6 +55,7 @@ namespace PokeVault::Legacy {
                                                        std::string_view gameIdentity) const;
         [[nodiscard]] const std::string& lastError() const noexcept { return lastError_; }
         [[nodiscard]] bool unassign(std::string_view sourceIdentity);
+        [[nodiscard]] bool unassignAndSave(std::string_view sourceIdentity);
         [[nodiscard]] bool isAssigned(std::string_view sourceIdentity) const;
         [[nodiscard]] bool isVisibleTo(std::string_view sourceIdentity,
                                        std::string_view profileIdentity) const;

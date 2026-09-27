@@ -344,6 +344,14 @@ namespace PokeVault::Legacy {
         return owners_.erase(std::string(sourceIdentity)) != 0;
     }
 
+    bool LegacySourceBindings::unassignAndSave(std::string_view sourceIdentity) {
+        const auto before = owners_;
+        if (!unassign(sourceIdentity)) { errno = EINVAL; return fail("unassign"); }
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
     bool LegacySourceBindings::isAssigned(std::string_view sourceIdentity) const {
         return owners_.find(std::string(sourceIdentity)) != owners_.end();
     }

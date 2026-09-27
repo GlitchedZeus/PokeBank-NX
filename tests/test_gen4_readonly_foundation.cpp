@@ -1,5 +1,6 @@
 #include "Encryption/Encryption4.h"
 #include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Integration/Gen4/Gen4SourceDiscovery.h"
 #include "Utils/SHA256.h"
 #include "utils/crypto.hpp"
 #include <filesystem>
@@ -592,6 +593,84 @@ void testAssignmentsOnDisk() {
     fs::remove_all(root);
 }
 
+void testSourceDiscovery() {
+    using namespace PokeVault::Integration::Gen4;
+    namespace fs=std::filesystem;
+    const auto root=fs::temp_directory_path()/("pokebank-g4-discovery-"+std::to_string(getpid()));
+    const auto retro=root/"retroarch";
+    const auto drastic=root/"drastic";
+    fs::create_directories(retro);
+    fs::create_directories(drastic);
+    auto write=[&](const fs::path& path,const auto& data){
+        std::ofstream f(path,std::ios::binary);
+        f.write(reinterpret_cast<const char*>(data.data()),static_cast<std::streamsize>(data.size()));
+        assert(f);
+    };
+    const auto dp=makeSave(Layout::DiamondPearl);
+    const auto pt=makeSave(Layout::Platinum);
+    const auto hg=makeSave(Layout::HeartGoldSoulSilver,0,0,7);
+    write(retro/"Diamond.srm",dp);
+    write(retro/"Platinum.sav",pt);
+    write(drastic/"HeartGold.dsv",hg);
+
+    auto wrapped=pt;
+    const std::string marker="|-DESMUME SAVE-|";
+    wrapped.insert(wrapped.end(),marker.begin(),marker.end());
+    write(retro/"Wrapped.dsv",wrapped);
+
+    const std::array<DiscoveryRoot,2> roots{{
+        {retro.string(),"RetroArch",1},
+        {drastic.string(),"DraStic",1},
+    }};
+    const auto beforeDp=digest(dp),beforePt=digest(pt),beforeHg=digest(hg);
+    auto found=discoverSources(roots,{64});
+    assert(!found.limitReached && found.filesExamined==4);
+    size_t ready=0,wrappedCount=0;
+    bool sawDP=false,sawPT=false,sawHG=false;
+    for(const auto& candidate:found.candidates) {
+        if(candidate.ready()) {
+            ++ready;
+            if(candidate.layout==Layout::DiamondPearl) {
+                sawDP=true;
+                assert(candidateMatchesGame(candidate,"diamond_nds"));
+                assert(candidateMatchesGame(candidate,"pearl_nds"));
+                assert(!candidateMatchesGame(candidate,"platinum_nds"));
+            }
+            if(candidate.layout==Layout::Platinum) {
+                sawPT=true;
+                assert(candidateMatchesGame(candidate,"platinum_nds"));
+            }
+            if(candidate.layout==Layout::HeartGoldSoulSilver) {
+                sawHG=true;
+                assert(candidate.exactGameFromSave==Enums::GameVersion::HG);
+                assert(candidateMatchesGame(candidate,"heartgold_nds"));
+                assert(!candidateMatchesGame(candidate,"soulsilver_nds"));
+            }
+        } else if(candidate.status==CandidateStatus::UnsupportedWrapper) {
+            ++wrappedCount;
+            assert(candidate.diagnostic.find("does not trim")!=std::string::npos);
+        }
+    }
+    assert(ready==3 && wrappedCount==1 && sawDP && sawPT && sawHG);
+
+    auto manual=inspectSourceFile((retro/"Diamond.srm").string(),"Manual","diamond_nds");
+    assert(manual.ready() && manual.expectedRawFamily=="DP");
+    auto mismatch=inspectSourceFile((retro/"Platinum.sav").string(),"Manual","diamond_nds");
+    assert(mismatch.status==CandidateStatus::AssignmentMismatch);
+
+    auto read=[&](const fs::path& path){
+        std::ifstream f(path,std::ios::binary);
+        return std::vector<uint8_t>((std::istreambuf_iterator<char>(f)),{});
+    };
+    assert(digest(read(retro/"Diamond.srm"))==beforeDp);
+    assert(digest(read(retro/"Platinum.sav"))==beforePt);
+    assert(digest(read(drastic/"HeartGold.dsv"))==beforeHg);
+    assert(inspectSourceFile((retro/"Diamond.srm").string(),"Manual").sourceIdentity==
+           inspectSourceFile((retro/"Diamond.srm").string(),"RetroArch").sourceIdentity);
+
+    fs::remove_all(root);
+}
+
 }
 
 int main(int argc,char** argv) {
@@ -608,9 +687,10 @@ int main(int argc,char** argv) {
     testOracle();
     testEveryLayoutMatrix();
     testAssignmentsOnDisk();
+    testSourceDiscovery();
     testCryptoAndEntity();
     testText();
     testLayoutsAndAssignments();
     testSelectionAndDamage();
-    std::cout << "G4-01 shared PK4 + strict read-only DP/Pt/HGSS foundation PASS\n";
+    std::cout << "G4-02 strict Gen IV foundation + bounded source discovery PASS\n";
 }
