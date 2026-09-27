@@ -92,16 +92,18 @@ namespace Conversion {
             return value;
         }
 
-        inline bool gen3InternationalLanguageSupported(uint8_t language) noexcept {
-            // Current Gen3Text table is the international character table. Japanese requires
-            // a separate table and later-generation Korean/Chinese language ids have no Gen III encoding.
-            return language == 2 || language == 3 || language == 4 || language == 5 || language == 7;
+        inline bool gen3LanguageSupported(uint8_t language) noexcept {
+            // Gen III GBA releases support Japanese plus English/French/Italian/German/Spanish.
+            // Korean and later Chinese language ids have no native Gen III encoding.
+            return language == 1 || language == 2 || language == 3 ||
+                   language == 4 || language == 5 || language == 7;
         }
 
-        inline bool gen3TextRepresentable(const std::u16string& value, std::size_t maxChars) noexcept {
-            if (value.size() > maxChars) return false;
+        inline bool gen3TextRepresentable(const std::u16string& value, std::size_t maxChars,
+                                          uint8_t language) noexcept {
+            if (!gen3LanguageSupported(language) || value.size() > maxChars) return false;
             for (char16_t c : value) {
-                if (Utils::charToGen3(c) == Utils::GEN3_TERMINATOR) return false;
+                if (Utils::charToGen3(c, language) == Utils::GEN3_TERMINATOR) return false;
             }
             return true;
         }
