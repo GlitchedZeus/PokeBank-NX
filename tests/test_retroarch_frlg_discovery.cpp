@@ -85,7 +85,9 @@ int main() {
     const fs::path ambiguousPath = saves / "FRLG Mystery.sav";
     const fs::path brokenPath = saves / "FireRed Broken.sav";
     writeFile(fireRedPath, fixture);
-    writeFile(leafGreenPath, fixture);
+    auto leafGreenRtc=fixture;
+    leafGreenRtc.insert(leafGreenRtc.end(),{0x52,0x54,0x43,0x01,0x02,0x03,0x04});
+    writeFile(leafGreenPath,leafGreenRtc);
     writeFile(ambiguousPath, fixture);
     writeFile(brokenPath, {1, 2, 3, 4});
     writeFile(saves / "unrelated.sav", {9, 8, 7});
@@ -130,7 +132,10 @@ int main() {
     assert(fireRed->sourceIdentity != leafGreen->sourceIdentity);
     assert(fireRed->contentFingerprint.size() == 64);
     assert(fireRed->normalizedPath == fireRedPath.string());
-    assert(fireRed->fileSize == 0x20000 && leafGreen->fileSize == 0x20000);
+    assert(fireRed->fileSize == 0x20000 && leafGreen->fileSize == 0x20007);
+    assert(leafGreen->save->sourceBytes().size()==0x20007);
+    assert(std::equal(leafGreenRtc.end()-7,leafGreenRtc.end(),
+                      leafGreen->save->sourceBytes().end()-7));
     assert(std::count_if(result.sources.begin(), result.sources.end(), [&](const auto& source) {
         return source.ready() && source.gameId == "firered_gba";
     }) == 1);
