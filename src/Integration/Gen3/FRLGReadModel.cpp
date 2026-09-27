@@ -1,6 +1,7 @@
 #include "Integration/Gen3/FRLGReadModel.h"
 
 #include "Trainer/Inventory3FRLG.h"
+#include "Enums/LanguageID.h"
 #include "Utils/Gen3Text.h"
 #include "Utils/StringHelpers.h"
 
