@@ -427,6 +427,46 @@ int main() {
         }
     }
 
+    // F06b: modern met-location ids must never be truncated into Gen III's unrelated u8 space.
+    {
+        const uint32_t pid = 0x13572468u;
+        const uint32_t id32 = pid ^ 0x00000100u;
+
+        auto foreign = blankSWSH(0xA1B2C3D4u);
+        configureModern(*foreign, 25, 0, pid, id32,
+                        static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
+        foreign->setMetLocation(30013); // transfer-era sentinel; low byte 61 is a different Gen III place.
+        foreign->refreshChecksum();
+
+        Report foreignReport;
+        Result result = Result::Unsupported;
+        auto foreignPk3 = convert(*foreign, GameVersion::FRLG, result,
+                                  static_cast<uint8_t>(GameVersion::FR), &foreignReport);
+        assert(result == Result::Ok && foreignPk3);
+        assert(foreignPk3->metLocation() == 0);
+        assert(foreignPk3->originGame() == static_cast<uint8_t>(GameVersion::FR));
+        assert(foreignReport.hasLoss(Loss::OriginGameRestamped));
+        assert(foreignReport.hasLoss(Loss::LocationDetailDropped));
+        assertSerializedReparse(*foreignPk3);
+
+        // A modern container carrying a genuine Gen III-origin record keeps that native u8 id.
+        auto gen3Origin = blankSWSH(0xA1B2C3D5u);
+        configureModern(*gen3Origin, 25, 0, pid, id32,
+                        static_cast<uint8_t>(GameVersion::FR), u"PIKACHU", false);
+        gen3Origin->setMetLocation(61);
+        gen3Origin->refreshChecksum();
+
+        Report preservedReport;
+        auto preserved = convert(*gen3Origin, GameVersion::FRLG, result,
+                                 static_cast<uint8_t>(GameVersion::LG), &preservedReport);
+        assert(result == Result::Ok && preserved);
+        assert(preserved->metLocation() == 61);
+        assert(preserved->originGame() == static_cast<uint8_t>(GameVersion::FR));
+        assert(!preservedReport.hasLoss(Loss::OriginGameRestamped));
+        assert(!preservedReport.hasLoss(Loss::LocationDetailDropped));
+        assertSerializedReparse(*preserved);
+    }
+
     // F08: production ability ID + slot/number semantics, including duplicate and hidden ability.
     {
         // Ralts has distinct Gen III normal abilities (Synchronize / Trace): both slots must round-trip.
