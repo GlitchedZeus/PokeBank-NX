@@ -74,7 +74,7 @@ namespace {
         std::fill_n(bytes.begin() + static_cast<std::ptrdiff_t>(offset), length,
                     Utils::GEN3_TERMINATOR);
         for (size_t i = 0; i < std::min(length, name.size()); ++i) {
-            bytes[offset + i] = Utils::charToGen3(name[i]);
+            bytes[offset + i] = Utils::charToGen3(name[i], 2); // fixture language: English
         }
     }
 
