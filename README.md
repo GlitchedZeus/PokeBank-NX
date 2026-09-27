@@ -19,6 +19,8 @@ PokeBank NX is a native Nintendo Switch homebrew project for browsing, editing, 
 
 The project is still in active **alpha** development. The goal is not to race through generation support; it is to build a bank and save-management foundation that can be trusted with Pokémon people actually care about.
 
+**Last updated:** September 27, 2026
+
 > **Original game saves are treated as immutable sources.** Editing happens in PokeBank-owned staged workspaces. Live writes to installed games, RetroArch saves and other emulator sources remain disabled.
 
 ---
@@ -57,7 +59,7 @@ Current highlights:
 | Move journal + restart recovery | ✅ Implemented |
 | Physical interruption/recovery on FAT32 | ✅ Device accepted — 8/8 tests |
 | Sword/Shield ↔ Scarlet/Violet conversion layer | ✅ Converter ready, product route still locked |
-| Gen I–III PKSE 1.2 correctness audit | 🛠️ Source fixes landed; exact evidence tracked in Issue #81 |
+| Gen I–III PKSE 1.2 correctness audit | ✅ Source audit/fixes complete; exact-head CI closure in progress on PR #79 |
 | Cross-game True Move | 🔒 Disabled |
 | BDSP true Move | 🔒 Disabled pending multi-file transaction support |
 | Nintendo DS / 3DS | 🗺️ Next expansion family after the current audit gate |
@@ -228,6 +230,8 @@ Transaction evidence and backup bytes are recovery material, not extra active Po
 
 ## What comes next
 
+The current engineering line is **PR #79 — `audit/full-project-hardening-20260923`**. Gen I–III source-level PKSE 1.2 delta findings are closed; the remaining audit gate is one exact-head green Host + sanitizer + native validation checkpoint before Gen IV begins.
+
 The immediate engineering sequence is:
 
 ~~~text
@@ -239,7 +243,7 @@ FAT32 interruption / recovery               DEVICE ACCEPTED
         ↓
 modern conversion fidelity                  CONVERTER CLOSURE COMPLETE
         ↓
-Gen I–III vs PKSE 1.2 audit                 CURRENT CLOSURE GATE
+Gen I–III vs PKSE 1.2 audit                 SOURCE COMPLETE / CI CLOSURE GATE
         ↓
 PKSE 1.2 Gen IV reuse / delta audit
         ↓
