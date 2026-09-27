@@ -83,6 +83,7 @@ bool decodeBCD3(std::span<const uint8_t> raw, std::size_t o, uint32_t& out) {
 
 const char* enSpecial(uint8_t b) {
     switch (b) {
+        case 0x5D: return "*";
         case 0x70: return "@"; case 0x71: return "#"; case 0x72: return "“";
         case 0x73: return "”"; case 0x75: return "…"; case 0x7F: return " ";
         case 0x9A: return "("; case 0x9B: return ")"; case 0x9C: return ":";
@@ -327,16 +328,18 @@ std::string decodeGen1String(std::span<const uint8_t> bytes, RegionLayout region
         // 0x5D at byte zero marks an in-game-trade OT and represents the whole name.
         if (first && b == 0x5D) return "*";
         if (region == RegionLayout::Japanese) {
-            if (const char* g = jpGlyph(b)) out += g;
-            else out += "�";
+            const char* g = jpGlyph(b);
+            if (!g) break; // PKHeX StringConverter1: a glyphless byte terminates the field.
+            out += g;
             first = false;
             continue;
         }
         if (b >= 0x80 && b <= 0x99) { out += static_cast<char>('A' + (b - 0x80)); first = false; continue; }
         if (b >= 0xA0 && b <= 0xB9) { out += static_cast<char>('a' + (b - 0xA0)); first = false; continue; }
         if (b >= 0xF6) { out += static_cast<char>('0' + (b - 0xF6)); first = false; continue; }
-        if (const char* g = enSpecial(b)) out += g;
-        else out += "�";
+        const char* g = enSpecial(b);
+        if (!g) break; // Gen I treats unmapped bytes as terminators, not replacement glyphs.
+        out += g;
         first = false;
     }
     return out;
