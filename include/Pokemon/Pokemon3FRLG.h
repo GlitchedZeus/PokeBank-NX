@@ -43,6 +43,7 @@ namespace Pokemon {
         std::unique_ptr<Pokemon> clone() const override {
             std::byte* enc = Encryption::encryptArray3FRLG(std::span<const std::byte>(data.data(), dataSize));
             auto c = std::make_unique<Pokemon3FRLG>(std::span<const std::byte>(enc, dataSize));
+            c->setSaveLanguage(saveLanguage); // egg OT charset is save context, not encoded in PK3 bytes
             delete[] enc;
             return c;
         }
