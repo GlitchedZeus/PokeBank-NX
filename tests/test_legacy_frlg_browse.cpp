@@ -187,9 +187,14 @@ int main() {
     assert(Legacy::resolveFRLGSaveInstance(discovery, cards[0], 2) == &discovery.sources[0]);
     assert(Legacy::resolveFRLGSaveInstance(discovery, cards[1], 0) == &discovery.sources[2]);
 
-    // The physical catalog is shared, but normal cards are visible only to the explicitly bound
-    // profile. Save contents and trainer identity never decide ownership.
+    // Unassigned validated saves are browseable by every profile; assigning one claims it for
+    // that profile and hides it from the others. Viewing never mutates source ownership.
     Legacy::LegacySourceBindings bindings;
+    const auto unassignedA = Legacy::buildFRLGSourceCardsForProfile(discovery, bindings, "profile-a");
+    const auto unassignedB = Legacy::buildFRLGSourceCardsForProfile(discovery, bindings, "profile-b");
+    assert(unassignedA.size() == cards.size() && unassignedB.size() == cards.size());
+    assert(unassignedA[0].instances.size() == cards[0].instances.size());
+
     assert(bindings.assign("source-firered-primary", "profile-a"));
     assert(bindings.assign("source-firered-backup", "profile-a"));
     assert(bindings.assign("source-firered-mgba", "profile-a"));

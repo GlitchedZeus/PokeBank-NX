@@ -80,7 +80,8 @@ std::vector<FRLGSourceCard> buildGSCSourceCardsForProfile(
     for (auto& card : cards) {
         card.instances.erase(std::remove_if(card.instances.begin(), card.instances.end(),
             [&](const auto& instance) {
-                return !bindings.isVisibleTo(instance.sourceIdentity, profileIdentity);
+                const std::string owner = bindings.assignedProfile(instance.sourceIdentity);
+                return !owner.empty() && owner != profileIdentity;
             }), card.instances.end());
         if (!card.instances.empty()) {
             for (auto& instance : card.instances) instance.mostRecentlyModified = false;

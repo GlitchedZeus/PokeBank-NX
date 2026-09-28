@@ -50,7 +50,11 @@ assert '{"Y", "Source Setup"}' in instances
 assert '{"X", "Refresh Saves"}' in instances
 
 legacy_model = (root / 'include/Legacy/FRLGSourceBrowser.h').read_text()
+legacy_browser = (root / 'src/Legacy/FRLGSourceBrowser.cpp').read_text()
 assert 'std::string providerLabel;' in legacy_model
+assert 'bindings.assignedProfile(instance.sourceIdentity)' in legacy_browser
+assert 'return !owner.empty() && owner != profileIdentity;' in legacy_browser
+assert '!bindings.isVisibleTo(instance.sourceIdentity, profileIdentity)' not in legacy_browser
 assert 'SAVE INSTANCES / ' in select
 assert 'instance.providerLabel' in select
 assert 'providerSummary(parent.legacyInstances)' in select

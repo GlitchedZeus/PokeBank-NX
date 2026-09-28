@@ -115,6 +115,10 @@ int main(){
     assert(Legacy::resolveGSCSaveInstance(discovery,wrong,0)==nullptr);
 
     Legacy::LegacySourceBindings bindings;
+    const auto unassignedA=Legacy::buildGSCSourceCardsForProfile(discovery,bindings,"profile-a");
+    const auto unassignedB=Legacy::buildGSCSourceCardsForProfile(discovery,bindings,"profile-b");
+    assert(unassignedA.size()==3&&unassignedB.size()==3);
+
     assert(bindings.assign("source-gold","profile-a"));
     assert(bindings.assign("source-crystal","profile-a"));
     assert(bindings.assign("source-silver","profile-b"));
