@@ -17,7 +17,7 @@
 
 PokeBank NX is a native Nintendo Switch homebrew application for browsing, preserving and editing Pokémon without requiring a PC or cloud service for normal use.
 
-The project is intentionally conservative with save data. External game and emulator saves are treated as **immutable sources**; editing happens in PokeBank-owned staged workspaces. Unsupported or ambiguous data fails closed instead of being guessed into a new format.
+The project is intentionally conservative with save data. External game and emulator saves are treated as **immutable sources**. Editing is allowed only through PokeBank-owned staged workspaces and exact-format adapters that have passed validation. Unsupported or ambiguous data fails closed instead of being guessed into another format.
 
 **Last updated:** September 28, 2026
 
@@ -27,9 +27,7 @@ The project is intentionally conservative with save data. External game and emul
 
 ## Project status
 
-PokeBank NX currently has a hardware-tested Gen I-IV source-browser foundation and a device-accepted shared editor for Generations I-III.
-
-### Hardware-accepted milestones
+PokeBank NX currently has a device-accepted Gen I-III shared staged editor, a device-accepted Gen I-IV Save Instances/source-browser foundation, and an active Gen IV boxed Pokémon View/Edit milestone in draft testing.
 
 | Area | Status |
 |---|---|
@@ -37,17 +35,21 @@ PokeBank NX currently has a hardware-tested Gen I-IV source-browser foundation a
 | Gold / Silver / Crystal staged Pokémon editor | ✅ Device accepted |
 | Ruby / Sapphire / Emerald / FireRed / LeafGreen staged Pokémon editor | ✅ Device accepted |
 | Classic staged inventory editing | ✅ Device accepted |
-| D-pad / Left Stick navigation parity and held-repeat scrolling | ✅ Device accepted |
-| Multi-provider **Save Instances** browser across Gen I-IV | ✅ Device accepted at exact tested checkpoint |
+| D-pad / Left Stick parity + held-repeat scrolling | ✅ Device accepted |
+| Multi-provider Save Instances across Gen I-IV | ✅ Device accepted |
+| Provider-neutral Save Instance backend | ✅ Device accepted |
 | Platinum / DraStic .dsv read-only loading | ✅ Hardware tested |
-| FAT32 transaction interruption/recovery harness | ✅ 8 / 8 hardware tests passed |
+| FAT32 interruption/recovery harness | ✅ 8 / 8 hardware tests passed |
+| Gen IV boxed Pokémon View/Edit | 🧪 Active draft / hardware candidate pending |
 | Cross-game True Move | 🔒 Disabled |
 | Live external-source writes | 🔒 Disabled |
-| Master Vault | 🗺️ Planned, not started |
+| Master Vault | 🗺️ Planned |
 
-The latest hardware-accepted Save Instances checkpoint is **d49efd0c16433aaa1aa171501671a6e811c9da64**.
+The latest device-accepted provider-neutral source-browser checkpoint is:
 
-The active development line is **PR #79** on **audit/full-project-hardening-20260923**. Its current provider-neutral Save Instance architecture is newer than the accepted artifact and therefore does **not** inherit device acceptance automatically.
+`00ee7a6ed7ac1b5a93c43246d70c252e135acec0`
+
+The active feature line is **PR #87 — G4-03: Gen IV shared staged Pokémon editor**, stacked on the accepted audit/source architecture in PR #79.
 
 ---
 
@@ -73,7 +75,7 @@ The active development line is **PR #79** on **audit/full-project-hardening-2026
 - Pokémon FireRed
 - Pokémon LeafGreen
 
-### Generation IV — read only
+### Generation IV — read foundation + staged editor in active development
 
 - Pokémon Diamond
 - Pokémon Pearl
@@ -81,15 +83,44 @@ The active development line is **PR #79** on **audit/full-project-hardening-2026
 - Pokémon HeartGold
 - Pokémon SoulSilver
 
-Generation IV currently supports read-only Trainer, Party, Boxes and Pokémon detail browsing. Editing, Create/Delete, conversion and source writeback are intentionally not enabled for Gen IV.
+Generation IV already supports strict Trainer, Party, Boxes and Pokémon-detail browsing.
+
+The active G4-03 work adds **boxed Pokémon View/Edit** through the same shared editor used by Gen I-III. It is still a draft milestone and must pass exact-head CI plus physical Switch testing before it can be called device accepted.
+
+Gen IV Create, Party mutation, Inventory editing, source writeback and cross-game True Move remain disabled.
+
+---
+
+## One shared Pokémon editor
+
+PokeBank NX does not build a new editor UI for every generation.
+
+~~~text
+shared Pokémon editor
+        ↓
+exact-game capability provider
+        ↓
+generation-native staged adapter
+        ↓
+strict serialization + validation
+~~~
+
+That keeps the interface familiar while each generation preserves its real mechanics.
+
+Examples:
+
+- Gen I: DVs, Stat Exp and generation-specific move/data rules
+- Gen II: DVs, Stat Exp, Held Item, Friendship and Pokérus
+- Gen III: IVs/EVs, Nature, Ability, PID-linked mechanics and richer origin data
+- Gen IV: PK4 encryption/checksum rules, exact DP/Pt/HGSS save-block integrity and PID-linked Nature/Gender/Shiny/Ability behavior
+
+The active Gen IV milestone intentionally reuses the existing editor layout, numpad/keyboard/picker patterns, move editor, joystick behavior, themes, discard confirmation and direct inline controls such as Gender.
 
 ---
 
 ## Save Instances
 
 A game card represents the **game**, not one hard-coded emulator path.
-
-Opening an external game source follows one model:
 
 ~~~text
 GAME IDENTITY
@@ -103,101 +134,73 @@ VALIDATED SAVE
 OPEN READ ONLY / authorized staged workspace
 ~~~
 
-Example:
+A single game may expose independent validated saves from different providers without silently substituting one source for another.
 
-~~~text
-Pokémon Crystal
-  ├─ RetroArch — Pokemon Crystal.srm
-  ├─ Tico      — Pokemon Crystal.sav
-  ├─ mGBA      — Pokemon Crystal.sav
-  └─ Manual    — MyOldCrystal.sav
-
-Pokémon Platinum
-  ├─ DraStic   — Platinum.dsv
-  ├─ melonDS   — Platinum.sav
-  ├─ RetroArch — Platinum.srm
-  └─ Manual    — PlatinumBackup.sav
-~~~
-
-The browser preserves provider identity, deduplicates the same physical file, sorts trustworthy timestamps newest-first and keeps profile claims isolated.
-
-### Current provider support
+Current provider support includes:
 
 **Generation I-III**
-
 - RetroArch
 - configured mGBA battery-save directory
-- Tico GB / GBC / GBA battery-save directories
+- Tico GB / GBC / GBA save roots
 - explicit/manual sources where supported
 
 **Generation IV**
-
 - RetroArch
 - DraStic cartridge backups
 - melonDS
 - explicit/manual remembered files
 
-Provider scans are deliberately bounded. PokeBank NX does not recursively crawl arbitrary ROM directories or the entire SD card. DraStic .dss files are savestates and remain unsupported as cartridge saves.
+Provider scans are deliberately bounded. PokeBank NX does not recursively crawl arbitrary ROM directories or the entire SD card. DraStic `.dss` files are savestates and remain unsupported as cartridge saves.
 
 ---
 
 ## Safety model
 
-PokeBank NX separates **what can be viewed or edited** from **what may be written back**.
-
 Permanent project rules:
 
 - original external saves remain immutable;
-- installed Switch saves are never modified by browsing;
+- installed-game live writes remain disabled;
 - RetroArch, mGBA, Tico, DraStic, melonDS and other emulator sources remain read only;
-- staged PokeBank-owned workspaces may be edited only where already supported;
+- PokeBank-owned staged workspaces may be edited only where explicitly supported;
 - unknown save variants and exact-game mismatches fail closed;
+- a remembered source may never silently substitute another physical file;
 - selecting or opening a save is non-destructive;
-- a remembered source may never silently substitute a different file;
-- recovery evidence is not treated as another active Pokémon;
-- device acceptance belongs only to the exact NRO that was physically tested.
+- device acceptance belongs only to the exact NRO physically tested;
+- cross-game True Move remains locked until route-specific safety is proven.
 
-The project uses verified replacement, journaling, SHA-256 evidence and restart recovery for PokeBank-owned durable operations rather than assuming a filesystem write completed successfully.
-
----
-
-## Shared editor architecture
-
-The Gen I-III editor is one shared UI backed by generation-native adapters:
-
-~~~text
-shared Pokémon editor
-        ↓
-exact-game capability provider
-        ↓
-generation-native staged adapter
-        ↓
-strict serialization + validation
-~~~
-
-That keeps the interface consistent while each generation preserves its actual mechanics.
-
-- Gen I: DVs, Stat Exp and generation-specific move/data rules
-- Gen II: DVs, Stat Exp, Held Item, Friendship and Pokérus
-- Gen III: IVs/EVs, Nature, Ability, PID-linked mechanics and richer origin data
-
-The same principle now applies to source discovery: generation-specific parsers remain separate, while provider metadata, Save Instances presentation, deduplication, sorting and profile visibility converge on one shared model.
+PokeBank-owned durable operations use validation, hashes, journaling and recovery rather than assuming a filesystem write completed successfully.
 
 ---
 
-## Current engineering work
+## Active engineering work
 
-The current tranche is **Issue #85 — provider-neutral Save Instance architecture**.
+### G4-03 — Gen IV shared staged Pokémon editor
 
-The active PR #79 head at the latest project checkpoint is **00ee7a6ed7ac1b5a93c43246d70c252e135acec0**.
+Tracking issue: **#86**  
+Draft PR: **#87**
 
-This work is consolidating duplicated source-browser plumbing used by Gen I-IV while preserving the already proven generation-specific parsers.
+Current scope is deliberately narrow:
 
-The shared source-instance layer carries common metadata such as exact game identity, provider identity, physical and normalized paths, stable source identity, file size/time, trainer and party summary, validation state, recovery diagnostics, provenance/fingerprint data, profile claims and an opaque generation-specific validation handle when needed.
+- boxed PK4 View/Edit;
+- shared Gen I-III editor UX reused;
+- exact DP / Platinum / HGSS capability mapping;
+- mutable PK4 serialization using the existing Gen IV crypto/checksum layer;
+- staged save mutation only;
+- strict reparse after commit;
+- Storage CRC refresh;
+- unrelated-byte preservation;
+- constrained PID-linked edits for Nature, Gender, Shiny and Ability;
+- source-save immutability.
 
-The goal is a cleaner architecture, not a giant universal parser.
+Not part of this milestone:
 
-A fresh hardware test will be required for the newer runtime refactor before it can be called device accepted.
+- Gen IV Create;
+- Party mutation;
+- Inventory editing;
+- live source writeback;
+- cross-game True Move;
+- Gen V;
+- Master Vault.
 
 ---
 
@@ -219,28 +222,25 @@ Cross-game product True Move remains locked. Converter research and transaction 
 
 ## Validation and testing
 
-PokeBank NX is developed with permanent regression gates rather than one-off manual checks.
+PokeBank NX uses permanent regression gates rather than relying only on manual testing.
 
-Current engineering practices include:
+Current practices include:
 
 - host C++ regression suites;
 - ASan and UBSan;
-- exact-head GitHub Actions checks;
+- exact-head GitHub Actions;
 - native devkitA64 compile/link validation;
-- byte-exact save fixtures;
+- byte-exact fixtures;
 - source-immutability checks;
-- strict malformed/unsupported-input rejection;
-- conversion golden fixtures;
+- malformed/unsupported-input rejection;
 - transaction fault injection and restart recovery;
-- exact NRO hashes for hardware checkpoints.
+- exact NRO hashes for physical checkpoints.
 
 Generated source tables are committed to the repository. Normal builds do not regenerate data or require network access.
 
 ---
 
 ## Roadmap
-
-PokeBank NX progresses by proven layers rather than adding generations as quickly as possible.
 
 ~~~text
 Gen I-III shared staged editor              DEVICE ACCEPTED
@@ -251,22 +251,24 @@ Gen IV strict read-only foundation          IMPLEMENTED
         ↓
 multi-provider Save Instances               DEVICE ACCEPTED
         ↓
-provider-neutral source architecture        CURRENT
+provider-neutral source architecture        DEVICE ACCEPTED
         ↓
-Gen IV read-only stabilization
+Gen IV boxed shared View/Edit               ACTIVE / PR #87
         ↓
-future generation work                      ONLY WHEN EXPLICITLY STARTED
+Gen IV editor stabilization + hardware pass
         ↓
-Master Vault / broader v1 hardening         PLANNED
+Gen IV Create / broader staged features     AFTER EDIT IS PROVEN
+        ↓
+broader v1 hardening
 ~~~
 
-Gen V and Master Vault are **not** current implementation tranches.
+Gen V, Master Vault and live external-source writeback are not current implementation tranches.
 
 ---
 
 ## Project documents
 
-For exact engineering state and audit evidence, see:
+For engineering state and audit evidence:
 
 - [Current Status](CURRENT_STATUS.md)
 - [Project Status](PROJECT_STATUS.md)
@@ -276,15 +278,15 @@ For exact engineering state and audit evidence, see:
 - [Full Project Audit](docs/FULL_PROJECT_AUDIT_2026-09-22.md)
 - [Reference Index](docs/REFERENCE_INDEX.md)
 
-The README is intentionally the public-facing overview. Exact CI run IDs, tree hashes and audit history belong in the engineering documents and GitHub issues.
+The README is intentionally the public-facing overview. Exact CI run IDs, tree hashes and audit breadcrumbs belong in engineering documents and GitHub issues/PRs.
 
 ---
 
 ## Building
 
-PokeBank NX is a native Switch .nro built with devkitPro / devkitA64 and libnx.
+PokeBank NX is a native Switch `.nro` built with devkitPro / devkitA64 and libnx.
 
-The repository is intended to remain reproducible from committed source and generated data. Upstream data tables are refreshed only as deliberate maintenance work; a normal build does not silently pull new PKHeX or PokeAPI data.
+The repository is intended to remain reproducible from committed source and generated data. Upstream tables are refreshed only as deliberate maintenance work; a normal build does not silently pull new PKHeX or PokeAPI data.
 
 ---
 
