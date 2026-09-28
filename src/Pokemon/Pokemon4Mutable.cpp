@@ -180,9 +180,14 @@ bool Pokemon4Mutable::writeTextPreservingTrash(
     const std::u16string& value) noexcept {
     if (!valid_ || offset + slotCount * 2 > decrypted_.size() || slotCount == 0)
         return false;
+    const std::u16string bounded =
+        value.substr(0, std::min(value.size(), maxCharacters));
     const auto encoded =
-        Utils::encodeGen4Field(value, slotCount, maxCharacters, language());
+        Utils::encodeGen4Field(bounded, slotCount, maxCharacters, language());
     if (encoded.size() != slotCount * 2) return false;
+    // The codec deliberately substitutes '?' for unsupported glyphs. Editing should
+    // refuse an unrepresentable keyboard result rather than silently mangling it.
+    if (Utils::decodeGen4Field(encoded) != bounded) return false;
 
     size_t copyBytes = encoded.size();
     for (size_t i = 0; i + 1 < encoded.size(); i += 2) {
@@ -200,7 +205,11 @@ bool Pokemon4Mutable::writeTextPreservingTrash(
 }
 
 bool Pokemon4Mutable::setNickname(const std::u16string& value) noexcept {
-    return writeTextPreservingTrash(0x48, 11, 10, value);
+    if (!writeTextPreservingTrash(0x48, 11, 10, value)) return false;
+    // A user-initiated nickname edit is a nickname even when it happens to spell
+    // the species name. Preserve the rest of IV32 and set only the native flag.
+    write32(0x38, u32At(0x38) | 0x80000000u);
+    return true;
 }
 
 bool Pokemon4Mutable::setLevel(uint8_t level) noexcept {
@@ -212,6 +221,10 @@ bool Pokemon4Mutable::setLevel(uint8_t level) noexcept {
 
 bool Pokemon4Mutable::setExperience(uint32_t value) noexcept {
     if (!valid_) return false;
+    const auto& personal = personalFor(sourceGroup_, species(), form());
+    if (personal.hp == 0) return false;
+    const uint32_t maximum = getExpForLevel(100, personal.growthRate);
+    if (value > maximum) return false;
     write32(0x10, value);
     return true;
 }
