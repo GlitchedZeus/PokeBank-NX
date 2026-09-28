@@ -100,7 +100,7 @@ int main() {
 
     // Outer move focus is exactly one row. PP / PP Ups live in the contextual dialog.
     contains(surface, "openMoveEditor(screen, state, state.focus.row)");
-    contains(surface, "Same shared contextual editor");
+    contains(surface, "A edits Move / PP / PP Ups contextually");
     contains(surface, "PP Ups");
     contains(surface, "state.moveEditorRow = 0; // Shared move editor opens on the Move row");
     contains(surface, "state.moveEditorRow == 1");
