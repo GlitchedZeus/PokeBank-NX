@@ -206,7 +206,7 @@ include/Enums/Ball.h	blob	100644	3262		unknown		PENDING			0
 include/Enums/GameVersion.h	blob	100644	16083		unknown		PENDING			0	
 include/Enums/LanguageID.h	blob	100644	2448		unknown		PENDING			0	
 include/Enums/SCTypeCode.h	blob	100644	738		unknown		PENDING			0	
-include/Games/GameIdentity.h	blob	100644	1562		unknown		PENDING			0	
+include/Games/GameIdentity.h	blob	100644	1562	game/source identity descriptor API	text	48	AUDITED			0	no
 include/Globals.h	blob	100644	3371		unknown		PENDING			0	
 include/Integration/Encounter/EncounterGuardrails.h	blob	100644	7503		unknown		PENDING			0	
 include/Integration/Encounter/EncounterGuardrailsData.inc	blob	100644	294637		unknown		PENDING			0	
@@ -225,26 +225,26 @@ include/Integration/Gen2/Gen2ReadOnlyInventory.h	blob	100644	1384		unknown		PEND
 include/Integration/Gen2/Gen2ReadOnlySave.h	blob	100644	4073		unknown		PENDING			0	
 include/Integration/Gen2/Gen2StagedEditor.h	blob	100644	8057		unknown		PENDING			0	
 include/Integration/Gen3/FRLGReadModel.h	blob	100644	1019		unknown		PENDING			0	
-include/Integration/Gen3/Gen3ExactFormatEditorProvider.h	blob	100644	3293		unknown		PENDING			0	
+include/Integration/Gen3/Gen3ExactFormatEditorProvider.h	blob	100644	3293	Gen III staged editor capability provider	text	74	AUDITED			0	no
 include/Integration/Gen3/Gen3LearnsetTable.h	blob	100644	325875		unknown		PENDING			0	
 include/Integration/Gen3/Gen3SaveValidation.h	blob	100644	6786		unknown		PENDING			0	
 include/Integration/Gen3/Gen3StagedInventoryEditor.h	blob	100644	2376		unknown		PENDING			0	
 include/Integration/Gen3/Gen3StagedPokemonEditor.h	blob	100644	7053		unknown		PENDING			0	
 include/Integration/Gen3/PKSMGen3Adapter.h	blob	100644	5080		unknown		PENDING			0	
 include/Integration/Gen4/Gen4AssignedSource.h	blob	100644	759		unknown		PENDING			0	
-include/Integration/Gen4/Gen4ExactFormatEditorProvider.h	blob	100644	2446		unknown		PENDING			0	
+include/Integration/Gen4/Gen4ExactFormatEditorProvider.h	blob	100644	2446	Gen IV staged editor capability provider	text	58	AUDITED			0	no
 include/Integration/Gen4/Gen4ReadOnlySave.h	blob	100644	4491		unknown		PENDING			0	
-include/Integration/Gen4/Gen4SourceDiscovery.h	blob	100644	4071		unknown		PENDING			0	
+include/Integration/Gen4/Gen4SourceDiscovery.h	blob	100644	4071	Gen IV source discovery/container contract	text	126	AUDITED			0	no
 include/Integration/Gen4/Gen4StagedPokemonEditor.h	blob	100644	3893		unknown		PENDING			0	
 include/Inventory/ClassicInventoryCatalog.h	blob	100644	1530		unknown		PENDING			0	
 include/Legacy/FRLGReadOnlyTrainer.h	blob	100644	2870		unknown		PENDING			0	
-include/Legacy/FRLGSourceBrowser.h	blob	100644	2122		unknown		PENDING			0	
+include/Legacy/FRLGSourceBrowser.h	blob	100644	2122	classic source-card browser contract	text	48	AUDITED			0	no
 include/Legacy/GSCReadOnlyTrainer.h	blob	100644	3081		unknown		PENDING			0	
-include/Legacy/GSCSourceBrowser.h	blob	100644	810		unknown		PENDING			0	
+include/Legacy/GSCSourceBrowser.h	blob	100644	810	Gen II source browser contract	text	27	AUDITED			0	no
 include/Legacy/Gen4ReadOnlyTrainer.h	blob	100644	2823		unknown		PENDING			0	
 include/Legacy/LegacySourceBindings.h	blob	100644	4373		unknown		PENDING			0	
 include/Legacy/RBYReadOnlyTrainer.h	blob	100644	3202		unknown		PENDING			0	
-include/Legacy/RBYSourceBrowser.h	blob	100644	1076		unknown		PENDING			0	
+include/Legacy/RBYSourceBrowser.h	blob	100644	1076	Gen I source browser contract	text	27	AUDITED			0	no
 include/Legacy/RetroArchFRLGDiscovery.h	blob	100644	5404		unknown		PENDING			0	
 include/Legacy/RetroArchGSCDiscovery.h	blob	100644	1986		unknown		PENDING			0	
 include/Legacy/RetroArchRBYDiscovery.h	blob	100644	2363		unknown		PENDING			0	
@@ -305,7 +305,7 @@ include/Save/EditableSaveCapabilities.h	blob	100644	1408		unknown		PENDING			0
 include/Save/GetSaveFileContents.h	blob	100644	8252		unknown		PENDING			0	
 include/Save/PLAReadValidation.h	blob	100644	2426		unknown		PENDING			0	
 include/Save/RtcFooter.h	blob	100644	582		unknown		PENDING			0	
-include/Source/SaveInstance.h	blob	100644	7242		unknown		PENDING			0	
+include/Source/SaveInstance.h	blob	100644	7242	provider-neutral source instance/identity/access model	text	187	AUDITED			0	no
 include/Trainer/Bank.h	blob	100644	5839		unknown		PENDING			0	
 include/Trainer/BankFormatPolicy.h	blob	100644	711		unknown		PENDING			0	
 include/Trainer/Inventory.h	blob	100644	234		unknown		PENDING			0	
@@ -342,7 +342,7 @@ include/UI/Dialogs/ItemEditDialog.h	blob	100644	496		unknown		PENDING			0
 include/UI/Dialogs/PickerDialog.h	blob	100644	2308		unknown		PENDING			0	
 include/UI/Dialogs/SaveConfirmDialog.h	blob	100644	316		unknown		PENDING			0	
 include/UI/Dialogs/StatEditDialog.h	blob	100644	525		unknown		PENDING			0	
-include/UI/ExactFormatEditorProvider.h	blob	100644	5158		unknown		PENDING			0	
+include/UI/ExactFormatEditorProvider.h	blob	100644	5158	exact-format editor/source capability bridge	text	148	AUDITED			1	yes
 include/UI/ExactSaveCapabilities.h	blob	100644	7867		unknown		PENDING			0	
 include/UI/Gen1PokemonDetailsPresentation.h	blob	100644	2144		unknown		PENDING			0	
 include/UI/Gen1PokemonEditorOverlay.h	blob	100644	578		unknown		PENDING			0	
@@ -381,7 +381,7 @@ include/UI/ScreenChrome.h	blob	100644	23745		unknown		PENDING			0
 include/UI/SharedHeldItemPicker.h	blob	100644	1420		unknown		PENDING			0	
 include/UI/SharedPokemonEditorContract.h	blob	100644	25200		unknown		PENDING			0	
 include/UI/SharedPokemonShell.h	blob	100644	8429		unknown		PENDING			0	
-include/UI/SharedSpeciesPicker.h	blob	100644	6009		unknown		PENDING			0	
+include/UI/SharedSpeciesPicker.h	blob	100644	6009	shared species picker layout/behavior	text	135	AUDITED			0	no
 include/UI/SpeciesChangeLevelPolicy.h	blob	100644	671		unknown		PENDING			0	
 include/UI/SpriteLayout.h	blob	100644	1266		unknown		PENDING			0	
 include/UI/SpriteManager.h	blob	100644	4079		unknown		PENDING			0	
@@ -390,7 +390,7 @@ include/UI/StoragePlacementCommit.h	blob	100644	1096		unknown		PENDING			0
 include/UI/SystemIcons.h	blob	100644	1456		unknown		PENDING			0	
 include/UI/TouchInput.h	blob	100644	1581		unknown		PENDING			0	
 include/UI/TrainerViewScreen.h	blob	100644	1398		unknown		PENDING			0	
-include/UI/TrainerViewScreenBase.h	blob	100644	29588		unknown		PENDING			0	
+include/UI/TrainerViewScreenBase.h	blob	100644	29588	trainer/storage UI state and source mutation gate	text	449	AUDITED			1	yes
 include/UI/UI.h	blob	100644	2003		unknown		PENDING			0	
 include/UI/UIScreen.h	blob	100644	405		unknown		PENDING			0	
 include/Utils/CRC16.h	blob	100644	3316		unknown		PENDING			0	
@@ -438,7 +438,7 @@ src/Encryption/Encryption8SWSH.cpp	blob	100644	6839		unknown		PENDING			0
 src/Encryption/Encryption9LZA.cpp	blob	100644	7011		unknown		PENDING			0	
 src/Encryption/Encryption9SV.cpp	blob	100644	6987		unknown		PENDING			0	
 src/Enums/SCTypeCode.cpp	blob	100644	1798		unknown		PENDING			0	
-src/Games/GameIdentity.cpp	blob	100644	6303		unknown		PENDING			0	
+src/Games/GameIdentity.cpp	blob	100644	6303	game/source identity registry	text	101	AUDITED			0	no
 src/Integration/Gen1/Gen1BattleStats.cpp	blob	100644	2213		unknown		PENDING			0	
 src/Integration/Gen1/Gen1MoveCompatibility.cpp	blob	100644	1699		unknown		PENDING			0	
 src/Integration/Gen1/Gen1MoveCompatibilityData.inc	blob	100644	11885		unknown		PENDING			0	
@@ -447,7 +447,7 @@ src/Integration/Gen1/Gen1PersonalData.inc	blob	100644	6275		unknown		PENDING			0
 src/Integration/Gen1/Gen1ReadOnlyInventory.cpp	blob	100644	3960		unknown		PENDING			0	
 src/Integration/Gen1/Gen1ReadOnlySave.cpp	blob	100644	22773		unknown		PENDING			0	
 src/Integration/Gen1/Gen1StagedInventoryEditor.cpp	blob	100644	8558		unknown		PENDING			0	
-src/Integration/Gen1/Gen1StagedPokemonEditor.cpp	blob	100644	20016		unknown		PENDING			0	
+src/Integration/Gen1/Gen1StagedPokemonEditor.cpp	blob	100644	20016	Gen I in-memory staged Pokémon editor	text	322	AUDITED			0	no
 src/Integration/Gen2/Gen2ExportTransaction.cpp	blob	100644	10982		unknown		PENDING			0	
 src/Integration/Gen2/Gen2MoveCompatibility.cpp	blob	100644	2758		unknown		PENDING			0	
 src/Integration/Gen2/Gen2MoveCompatibilityData.inc	blob	100644	99931		unknown		PENDING			0	
@@ -458,26 +458,26 @@ src/Integration/Gen2/Gen2ReadOnlySave.cpp	blob	100644	16694		unknown		PENDING			
 src/Integration/Gen2/Gen2StagedEditor.cpp	blob	100644	53914		unknown		PENDING			0	
 src/Integration/Gen2/Gen2UniversalInventory.cpp	blob	100644	12249		unknown		PENDING			0	
 src/Integration/Gen3/FRLGReadModel.cpp	blob	100644	15298		unknown		PENDING			0	
-src/Integration/Gen3/Gen3StagedInventoryEditor.cpp	blob	100644	17301		unknown		PENDING			0	
+src/Integration/Gen3/Gen3StagedInventoryEditor.cpp	blob	100644	17301	Gen III in-memory staged inventory editor	text	394	AUDITED			0	no
 src/Integration/Gen3/Gen3StagedPokemonEditor.cpp	blob	100644	38706		unknown		PENDING			0	
 src/Integration/Gen3/PKSMGen3Adapter.cpp	blob	100644	13703		unknown		PENDING			0	
 src/Integration/Gen3/PKSMGen3NativeAdapter.cpp	blob	100644	11997		unknown		PENDING			0	
 src/Integration/Gen4/Gen4AssignedSource.cpp	blob	100644	3011		unknown		PENDING			0	
 src/Integration/Gen4/Gen4ReadOnlySave.cpp	blob	100644	13359		unknown		PENDING			0	
-src/Integration/Gen4/Gen4SourceDiscovery.cpp	blob	100644	22450		unknown		PENDING			0	
+src/Integration/Gen4/Gen4SourceDiscovery.cpp	blob	100644	22450	bounded Gen IV emulator/manual source discovery	text	556	AUDITED			0	no
 src/Integration/Gen4/Gen4StagedPokemonEditor.cpp	blob	100644	17352	Gen IV staged save mutation/rollback	text	486	AUDITED			0	no
 src/Inventory/ClassicInventoryCatalog.cpp	blob	100644	15510		unknown		PENDING			0	
 src/Legacy/FRLGReadOnlyTrainer.cpp	blob	100644	9585		unknown		PENDING			0	
-src/Legacy/FRLGSourceBrowser.cpp	blob	100644	9438		unknown		PENDING			0	
+src/Legacy/FRLGSourceBrowser.cpp	blob	100644	9438	Gen I-III source-card construction/resolution	text	190	AUDITED			0	no
 src/Legacy/GSCReadOnlyTrainer.cpp	blob	100644	7735		unknown		PENDING			0	
-src/Legacy/GSCSourceBrowser.cpp	blob	100644	5810		unknown		PENDING			0	
+src/Legacy/GSCSourceBrowser.cpp	blob	100644	5810	Gen II source-card construction/resolution	text	126	AUDITED			0	no
 src/Legacy/Gen4ReadOnlyTrainer.cpp	blob	100644	7162		unknown		PENDING			0	
 src/Legacy/LegacySourceBindings.cpp	blob	100644	23027		unknown		PENDING			0	
 src/Legacy/RBYReadOnlyTrainer.cpp	blob	100644	7963		unknown		PENDING			0	
-src/Legacy/RBYSourceBrowser.cpp	blob	100644	6041		unknown		PENDING			0	
-src/Legacy/RetroArchFRLGDiscovery.cpp	blob	100644	29302		unknown		PENDING			0	
-src/Legacy/RetroArchGSCDiscovery.cpp	blob	100644	8308		unknown		PENDING			0	
-src/Legacy/RetroArchRBYDiscovery.cpp	blob	100644	14619		unknown		PENDING			0	
+src/Legacy/RBYSourceBrowser.cpp	blob	100644	6041	Gen I source-card construction/resolution	text	131	AUDITED			0	no
+src/Legacy/RetroArchFRLGDiscovery.cpp	blob	100644	29302	bounded RetroArch/mGBA/Tico Gen I-III discovery	text	616	AUDITED			0	no
+src/Legacy/RetroArchGSCDiscovery.cpp	blob	100644	8308	bounded RetroArch Gen II discovery	text	46	AUDITED			0	yes
+src/Legacy/RetroArchRBYDiscovery.cpp	blob	100644	14619	bounded RetroArch Gen I discovery	text	362	AUDITED			0	no
 src/Legality/Legality.cpp	blob	100644	16500		unknown		PENDING			0	
 src/Names/AbilityNames.cpp	blob	100644	11612		unknown		PENDING			0	
 src/Names/FormNames.cpp	blob	100644	30424		unknown		PENDING			0	
@@ -690,11 +690,11 @@ tests/test_save_instance_architecture_contract.py	blob	100644	5437		unknown		PEN
 tests/test_save_instance_model.cpp	blob	100644	5311		unknown		PENDING			0	
 tests/test_shared_editor_heading_contract.cpp	blob	100644	12864		unknown		PENDING			0	
 tests/test_shared_pokemon_editor_contract.cpp	blob	100644	15519		unknown		PENDING			0	
-tests/test_shared_species_picker_surface_contract.cpp	blob	100644	2643		unknown		PENDING			0	
-tests/test_source_mutation_policy.cpp	blob	100644	1841		unknown		PENDING			0	
+tests/test_shared_species_picker_surface_contract.cpp	blob	100644	2643	shared species picker source contract test	text	66	AUDITED			0	no
+tests/test_source_mutation_policy.cpp	blob	100644	1841	source mutation policy/action-sheet regression	text	38	AUDITED			1	yes
 tests/test_sprite_layout.cpp	blob	100644	1051		unknown		PENDING			0	
-tests/test_storage_conversion_custody_contract.cpp	blob	100644	8891		unknown		PENDING			0	
-tests/test_storage_custody_contract.cpp	blob	100644	1531		unknown		PENDING			0	
+tests/test_storage_conversion_custody_contract.cpp	blob	100644	8891	conversion placement custody regression	text	185	AUDITED			0	no
+tests/test_storage_custody_contract.cpp	blob	100644	1531	storage custody rollback regression	text	40	AUDITED			0	no
 tests/test_theme.cpp	blob	100644	13980		unknown		PENDING			0	
 tests/test_v1_polish_contract.py	blob	100644	7989		unknown		PENDING			0	
 tests/test_write_policy.cpp	blob	100644	1007		unknown		PENDING			0	
