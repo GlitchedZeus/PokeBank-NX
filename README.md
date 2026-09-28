@@ -49,7 +49,7 @@ The latest device-accepted provider-neutral source-browser checkpoint is:
 
 `00ee7a6ed7ac1b5a93c43246d70c252e135acec0`
 
-The active feature line is **PR #87 — G4-03: Gen IV shared staged Pokémon editor**, stacked on the accepted audit/source architecture in PR #79.
+The current hardware-test line is **PR #90 — combined Gen IV editor + v1 polish**, built from the accepted audit/source architecture in PR #79 and integrating the corrected Gen IV work plus a frozen QoL snapshot.
 
 ---
 
@@ -85,7 +85,7 @@ The active feature line is **PR #87 — G4-03: Gen IV shared staged Pokémon edi
 
 Generation IV already supports strict Trainer, Party, Boxes and Pokémon-detail browsing.
 
-The first G4-03 hardware candidate was **rejected on Switch** because a party-only Platinum save could not reach the editor and Party View fell through to an older generic read-only screen. The corrected work now routes **Party and Box Pokémon** into the shared View/Edit surface and stages both PK4 record types safely. The corrected exact Actions-built candidate has passed all required automated gates and is ready for physical Switch retesting.
+The first G4-03 hardware candidate was **rejected on Switch** because a party-only Platinum save could not reach the editor and Party View fell through to an older generic read-only screen. The corrected work now routes **Party and Box Pokémon** into the shared View/Edit surface and stages both PK4 record types safely. The current **combined PR #90** candidate also includes the latest frozen v1 polish snapshot plus independent-audit fixes, and all required automated gates pass.
 
 Gen IV Create, Inventory editing, source injection and cross-game True Move remain disabled.
 
@@ -253,7 +253,7 @@ multi-provider Save Instances               DEVICE ACCEPTED
         ↓
 provider-neutral source architecture        DEVICE ACCEPTED
         ↓
-Gen IV Party + Box shared View/Edit         HARDWARE RETEST / PR #87
+Gen IV Party + Box shared View/Edit         HARDWARE RETEST / PR #90
         ↓
 Gen IV editor stabilization + hardware pass
         ↓
