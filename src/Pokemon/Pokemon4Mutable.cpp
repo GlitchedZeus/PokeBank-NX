@@ -9,6 +9,7 @@
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
 #include "Names/Gen4HeldItemCatalog.h"
+#include "Names/MoveInfo.h"
 #include "Names/MovePresence.h"
 #include "Names/NameLanguage.h"
 #include "Names/SpeciesNames.h"
@@ -561,6 +562,10 @@ bool Pokemon4Mutable::setMove(size_t slot, uint16_t move) noexcept {
             return false;
     }
     write16(0x28 + slot * 2, move);
+    // A move selection is one coherent edit: clear PP Ups and initialize current PP
+    // from the exact Generation IV base-PP table. Empty slots stay 0/0.
+    write8(0x34 + slot, 0);
+    write8(0x30 + slot, Names::getMoveBasePP(move, sourceGroup_));
     return true;
 }
 
