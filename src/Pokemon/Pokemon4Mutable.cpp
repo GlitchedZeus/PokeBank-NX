@@ -182,6 +182,46 @@ int Pokemon4Mutable::constrainedAbilityBit() const noexcept {
     return static_cast<int>(pid() & 1u);
 }
 
+uint16_t Pokemon4Mutable::calculatedStat(size_t stat) const noexcept {
+    if (!valid_ || stat >= 6) return 0;
+    const auto& personal = personalFor(sourceGroup_, species(), form());
+    const std::array<uint8_t,6> base{{
+        personal.hp, personal.atk, personal.def,
+        personal.spe, personal.spa, personal.spd
+    }};
+    if (base[stat] == 0) return 0;
+    const auto iv = ivs();
+    const auto ev = evs();
+    const uint32_t lv = level();
+    const uint32_t common =
+        ((2u * base[stat] + iv[stat] + ev[stat] / 4u) * lv) / 100u;
+    if (stat == 0) return static_cast<uint16_t>(common + lv + 10u);
+
+    uint32_t value = common + 5u;
+    const uint8_t n = nature();
+    const int up = n / 5;
+    const int down = n % 5;
+    const int natureIndex = static_cast<int>(stat) - 1;
+    if (up != down) {
+        if (natureIndex == up) value = value * 110u / 100u;
+        else if (natureIndex == down) value = value * 90u / 100u;
+    }
+    return static_cast<uint16_t>(value);
+}
+
+void Pokemon4Mutable::refreshPartyDerivedData() noexcept {
+    if (!isParty() || !valid_) return;
+    const uint16_t oldCurrentHp = u16At(0x8E);
+    write8(0x8C, level());
+    const uint16_t newMaxHp = calculatedStat(0);
+    write16(0x90, newMaxHp);
+    for (size_t stat = 1; stat < 6; ++stat)
+        write16(0x90 + stat * 2, calculatedStat(stat));
+    // Preserve fainted state and otherwise keep the current HP value, clamped to
+    // the recalculated maximum. Ordinary edits must not unexpectedly heal a party member.
+    write16(0x8E, oldCurrentHp == 0 ? 0 : std::min(oldCurrentHp, newMaxHp));
+}
+
 bool Pokemon4Mutable::writeTextPreservingTrash(
     size_t offset, size_t slotCount, size_t maxCharacters,
     const std::u16string& value) noexcept {
@@ -233,6 +273,7 @@ bool Pokemon4Mutable::setExperience(uint32_t value) noexcept {
     const uint32_t maximum = getExpForLevel(100, personal.growthRate);
     if (value > maximum) return false;
     write32(0x10, value);
+    refreshPartyDerivedData();
     return true;
 }
 
@@ -261,12 +302,14 @@ bool Pokemon4Mutable::setIV(size_t stat, uint8_t value) noexcept {
     packed &= ~(31u << shift);
     packed |= static_cast<uint32_t>(value) << shift;
     write32(0x38, packed);
+    refreshPartyDerivedData();
     return true;
 }
 
 bool Pokemon4Mutable::setEV(size_t stat, uint8_t value) noexcept {
     if (!valid_ || stat >= 6) return false;
     write8(0x18 + stat, value);
+    refreshPartyDerivedData();
     return true;
 }
 
@@ -349,7 +392,10 @@ bool Pokemon4Mutable::rerollPid(
 bool Pokemon4Mutable::setNature(uint8_t value) noexcept {
     if (value >= 25) return false;
     if (value == nature()) return true;
-    return rerollPid(shiny() ? 1 : 0, gender(), value, constrainedAbilityBit());
+    if (!rerollPid(shiny() ? 1 : 0, gender(), value, constrainedAbilityBit()))
+        return false;
+    refreshPartyDerivedData();
+    return true;
 }
 
 bool Pokemon4Mutable::setGender(uint8_t value) noexcept {
