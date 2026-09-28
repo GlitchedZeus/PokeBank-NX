@@ -14,7 +14,7 @@ Branch:
 Current exact head:
 **00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
 
-Current tranche:
+Completed tranche:
 **Issue #85 — provider-neutral Save Instance architecture**
 
 PR #77 remains untouched at **996e6aa40c96e4408282f3d55476dae8e64968b2** and remains OPEN / DRAFT / NOT MERGED.
@@ -40,7 +40,7 @@ NRO SHA-256:
 Status:
 **DEVICE ACCEPTED**
 
-The current 00ee7a6e runtime refactor is newer than this hardware checkpoint and is **not device accepted yet**.
+The provider-neutral Save Instances runtime at 00ee7a6e has now passed owner hardware testing and is **DEVICE ACCEPTED**.
 
 ## Supported game state
 
@@ -141,7 +141,7 @@ Artifact ID:
 
 **AUTOMATED GATES: PASS**
 
-**DEVICE ACCEPTANCE: PENDING OWNER HARDWARE TEST**
+**DEVICE ACCEPTANCE: PASS**
 
 The artifact's build identity and SHA256 manifest were independently checked after download and match the frozen application/tree/NRO identity above.
 
@@ -161,9 +161,7 @@ The artifact's build identity and SHA256 manifest were independently checked aft
 
 ## Next gate
 
-Owner physical Switch testing of the exact frozen Actions-built NRO.
-
-Until that hardware test passes, the provider-neutral runtime candidate remains **automated PASS / hardware pending**, not DEVICE ACCEPTED.
+Issue #85 is complete. The next major tranche may begin Gen IV staged editor work while preserving the strict external-source immutability boundary. Gen IV editing must operate only on PokeBank-owned staged data until a separate future writeback policy is explicitly authorized.
 
 ## Canonical project documents
 
