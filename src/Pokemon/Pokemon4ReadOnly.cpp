@@ -6,12 +6,24 @@
 #include "Pokemon/PersonalInfo4PT.h"
 #include "Utils/Gen4TextCodec.h"
 
+#include <algorithm>
+
 namespace Pokemon {
 
 Pokemon4ReadOnly::Pokemon4ReadOnly(std::span<const std::byte> encrypted,
                                    Enums::GameVersion sourceGroup)
     : encrypted_(encrypted.begin(), encrypted.end()), sourceGroup_(sourceGroup) {
-    decrypted_ = Encryption::decryptArray4(encrypted);
+    // Retail Gen IV saves can represent an unused party/box slot as an exact all-zero record.
+    // PKHeX/PKSM treat that as a plaintext empty PK4 rather than forcing one crypto pass over it.
+    // Preserve that semantics explicitly so empty slots are valid+empty, while every nonzero record
+    // still goes through the strict encrypted PK4 path and checksum/sanity quarantine.
+    const bool rawZeroEmpty = Encryption::validRecordSize4(encrypted.size()) &&
+        std::all_of(encrypted.begin(), encrypted.end(),
+                    [](std::byte value) { return value == std::byte{0}; });
+    if (rawZeroEmpty)
+        decrypted_.assign(encrypted.size(), std::byte{0});
+    else
+        decrypted_ = Encryption::decryptArray4(encrypted);
 }
 
 bool Pokemon4ReadOnly::sizeValid() const noexcept {
