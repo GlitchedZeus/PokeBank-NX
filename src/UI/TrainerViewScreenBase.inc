@@ -22,6 +22,7 @@
 #include "UI/TouchInput.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
+#include "UI/SharedPokemonEditorContract.h"
 #include "UI/StoragePlacementCommit.h"
 #include "UI/Panels/PartyPokemonPanel.h"
 #include "UI/Panels/BoxPokemonPanel.h"
@@ -2547,13 +2548,21 @@ namespace UI {
         // Defense in depth: inherited modal flags must never create a writable path in an
         // installed-source session, including touch/deferred entry points. Browse/View is kept.
         if (sourceReadOnly()) {
+            // A dirty-session exit confirmation is safe on an immutable source: it does not write
+            // the source, it only asks whether to abandon staged app-owned work or keep editing.
+            // All ordinary Save/write dialogs stay blocked.
+            const bool exitOnlySaveConfirm = saveConfirmActive && exitingWithUnsavedChanges;
             const bool blocked = pickerActive || itemEditDialogActive || itemRemoveConfirmActive ||
-                statEdit.dialogActive || saveConfirmActive || releaseConfirmActive ||
-                creator.active || creator.editing || groupMenuActive || storageExitConfirmActive ||
-                gen3ConvertConfirmActive || lgpeTransferConfirmActive;
+                statEdit.dialogActive ||
+                PokeBank::UIModel::SharedPokemonEditor::immutableSourceBlocksSaveDialog(
+                    saveConfirmActive, exitingWithUnsavedChanges) ||
+                releaseConfirmActive || creator.active || creator.editing || groupMenuActive ||
+                storageExitConfirmActive || gen3ConvertConfirmActive || lgpeTransferConfirmActive;
             if (blocked) {
                 pickerActive = itemEditDialogActive = itemRemoveConfirmActive = false;
-                statEdit.dialogActive = saveConfirmActive = releaseConfirmActive = false;
+                statEdit.dialogActive = false;
+                if (!exitOnlySaveConfirm) saveConfirmActive = false;
+                releaseConfirmActive = false;
                 creator.active = creator.editing = creator.keepConfirmActive = false;
                 groupMenuActive = false;
                 storageExitConfirmActive = gen3ConvertConfirmActive = lgpeTransferConfirmActive = false;
