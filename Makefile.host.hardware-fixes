@@ -327,3 +327,26 @@ $(CONVERSION_EVIDENCE_TEST): $(CONVERSION_EVIDENCE_SOURCES) include/Conversion/R
 $(CONVERSION_EVIDENCE_SANITIZE): $(CONVERSION_EVIDENCE_SOURCES) include/Conversion/RouteEvidence.h include/Conversion/Fidelity.h include/Utils/MoveTransaction.h include/Utils/DurableFile.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CONVERSION_EVIDENCE_SOURCES) -o $@
+
+
+# Hardware-smoke follow-up: Gen I / II / III species selection must share one quiet modal shell.
+SHARED_SPECIES_PICKER_SURFACE_TEST := $(HOST_BUILD)/test_shared_species_picker_surface_contract
+SHARED_SPECIES_PICKER_SURFACE_SANITIZE := $(HOST_BUILD)/test_shared_species_picker_surface_contract_sanitize
+SHARED_SPECIES_PICKER_SURFACE_SOURCES := tests/test_shared_species_picker_surface_contract.cpp
+
+HOST_TESTS += $(SHARED_SPECIES_PICKER_SURFACE_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_SPECIES_PICKER_SURFACE_SANITIZE)
+host-test: $(SHARED_SPECIES_PICKER_SURFACE_TEST)
+host-sanitize: $(SHARED_SPECIES_PICKER_SURFACE_SANITIZE)
+
+$(SHARED_SPECIES_PICKER_SURFACE_TEST): $(SHARED_SPECIES_PICKER_SURFACE_SOURCES) \
+		include/UI/SharedSpeciesPicker.h src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc \
+		src/UI/Gen2PokemonPickerOverlay.inc src/UI/Gen3SharedPokemonSurface.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(SHARED_SPECIES_PICKER_SURFACE_SOURCES) -o $@
+
+$(SHARED_SPECIES_PICKER_SURFACE_SANITIZE): $(SHARED_SPECIES_PICKER_SURFACE_SOURCES) \
+		include/UI/SharedSpeciesPicker.h src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc \
+		src/UI/Gen2PokemonPickerOverlay.inc src/UI/Gen3SharedPokemonSurface.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_SPECIES_PICKER_SURFACE_SOURCES) -o $@

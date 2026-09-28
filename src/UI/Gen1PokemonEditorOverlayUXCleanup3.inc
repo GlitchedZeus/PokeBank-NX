@@ -471,16 +471,19 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     auto& state = ux2StateFor(screen);
     auto& ux3 = ux3StateFor(screen);
     const bool speciesPicker = state.picker == UX2Picker::Species;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    ux2DrawPanel(fb, x, y, w, h);
-    fb.drawText(x + 24, y + 18, speciesPicker ? "Choose Species" : "Choose Move", Colors::Text, TextStyle::Heading);
 
     if (speciesPicker) {
-        SharedSpeciesPicker::drawContent(fb, x, y, state.pickerValue, 151, ux3.pickerPreviewShiny,
+        const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        SharedSpeciesPicker::drawContent(
+            fb, modal.x, modal.y, state.pickerValue, 151, ux3.pickerPreviewShiny,
             [](uint16_t species) { return UX::speciesPickerRow(species, Names::getSpeciesName(species)); },
             [](uint16_t species) { return speciesCompact(species); });
         return;
     }
+
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
+    ux2DrawPanel(fb, x, y, w, h);
+    fb.drawText(x + 24, y + 18, "Choose Move", Colors::Text, TextStyle::Heading);
 
     const auto choices = ux3MoveChoices(screen);
     int selectedIndex = 0;

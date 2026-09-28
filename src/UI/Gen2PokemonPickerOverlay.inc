@@ -126,13 +126,9 @@ void drawPickerRow(PKSEFramebuffer& fb, int x, int y, int w, const std::string& 
 void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
                     const Gen2Picker::Model& model) {
     if (model.kind == Gen2Picker::Kind::Species) {
-        constexpr int w = 1080, h = 520, x = (1280 - w) / 2, y = (672 - h) / 2;
-        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-        fb.drawSoftShadow(x, y, w, h, 18);
-        fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-        fb.drawRoundedRect(x, y, w, h, 18, Colors::Accent, 2);
-        fb.drawText(x + 24, y + 18, "Choose Species", Colors::Text, TextStyle::Heading);
-        SharedSpeciesPicker::drawContent(fb, x, y, model.speciesChoice(), 251, model.previewShiny,
+        const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        SharedSpeciesPicker::drawContent(
+            fb, modal.x, modal.y, model.speciesChoice(), 251, model.previewShiny,
             [](uint16_t species) {
                 char prefix[16]{};
                 std::snprintf(prefix, sizeof(prefix), "%03u - ", static_cast<unsigned>(species));
