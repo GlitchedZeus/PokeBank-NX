@@ -60,6 +60,7 @@ struct State {
     bool moveEditor = false;
     int moveEditorSlot = 0;
     int moveEditorRow = 0;
+    uint16_t moveBaseline = 0;
     uint8_t movePpBaseline = 0;
     uint8_t movePpUpsBaseline = 0;
 };
@@ -407,7 +408,7 @@ constexpr std::array<const char*, 15> detailLabels{{
 }};
 
 bool detailEditable(int row) noexcept {
-    return row == 0 || row == 1 || row == 2 || row == 3 || row == 8 || row == 12;
+    return (row >= 0 && row <= 9) || row == 11 || row == 12 || row == 14;
 }
 
 bool variableGenderSpecies(const Pokemon::Pokemon4ReadOnly& p) noexcept {
@@ -434,18 +435,9 @@ void normalizeEditableFocus(State& state, const Pokemon::Pokemon4ReadOnly& p,
     if (!state.session.editable()) return;
 
     if (state.focus.panel == Shared::Panel::Details) {
-        if (detailEditable(state.focus.row)) return;
-        int row = state.focus.row;
-        const int direction = verticalDirection < 0 ? -1 : 1;
-        for (int step = 0; step < static_cast<int>(detailLabels.size()); ++step) {
-            row = (row + direction + static_cast<int>(detailLabels.size())) %
-                  static_cast<int>(detailLabels.size());
-            if (detailEditable(row)) {
-                state.focus.row = static_cast<uint8_t>(row);
-                state.focus.column = 0;
-                return;
-            }
-        }
+        // G4-04 keeps read-only/native-inspection rows focusable instead of silently skipping them.
+        state.focus.row = static_cast<uint8_t>(state.focus.row % detailLabels.size());
+        state.focus.column = 0;
         return;
     }
 
@@ -492,14 +484,19 @@ std::string detailValue(const Pokemon::Pokemon4ReadOnly& p,
         }
         case 5: return std::to_string(p.tid());
         case 6: return std::to_string(p.sid());
-        case 7: return "Item #" + std::to_string(p.heldItem()) + " (read-only)";
+        case 7: return p.heldItem() == 0 ? "(None)" : Names::getItemName(p.heldItem());
         case 8: return std::to_string(p.friendship());
         case 9: return Enums::getLanguageName(p.language());
         case 10: return Enums::getOriginGameName(p.originVersion());
         case 11: return Enums::getBallName(view.ball());
         case 12: return std::to_string(p.metLevel());
-        case 13: return "ID " + std::to_string(view.metLocation()) + " (read-only)";
-        case 14: return std::to_string(p.pokerusState()) + " (read-only)";
+        case 13: return "ID " + std::to_string(view.metLocation()) + " (inspect only)";
+        case 14: {
+            const uint8_t pkrs = p.pokerusState();
+            if (pkrs == 0) return "None";
+            if ((pkrs & 0x0Fu) != 0) return "Infected";
+            return "Cured";
+        }
         default: return {};
     }
 }
