@@ -346,14 +346,8 @@ void testCatalogBackedFieldValidation() {
     assert(!pt->setEV(2, 7));
     assert(pt->encryptedBytes() == beforeTooMany);
 
-    uint16_t holdable = 0;
-    for (uint16_t item = 1; item < Names::ITEM_PRESENCE_MAX_ID; ++item) {
-        if (Names::isHeldItemPresent(item, Enums::GameVersion::PT)) {
-            holdable = item;
-            break;
-        }
-    }
-    assert(holdable != 0 && pt->setHeldItem(holdable));
+    assert(pt->setHeldItem(112)); // Griseous Orb is holdable in Platinum/HGSS.
+    assert(!pt->setHeldItem(420)); // HM01 is not a holdable PK4 item.
     assert(!pt->setHeldItem(65535));
     assert(pt->setMove(0, 1));   // Pound exists in Gen IV.
     assert(pt->setMove(0, 467)); // Shadow Force is the final native Gen IV move.
