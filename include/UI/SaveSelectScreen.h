@@ -95,8 +95,10 @@ namespace UI {
         PokeVault::Legacy::FRLGSaveInstance legacyDetailsInstance;
         std::string legacyDetailsGameId;
 
-        // Gen IV game cards are always visible. Discovery runs only from the explicit setup flow,
-        // never at startup, and assignments persist in the same LegacySourceBindings database.
+        // Gen IV game cards are always visible. Pressing A discovers/refreshes validated save
+        // instances and always shows a chooser before opening. The existing assignment database is
+        // retained only as a remembered/manual source so paths outside known emulator roots remain
+        // reachable; it must never bypass the Save Instances chooser.
         std::string gen4TargetGameId;
         std::string gen4Notice;
         std::vector<PokeVault::Integration::Gen4::SourceCandidate> gen4Candidates;

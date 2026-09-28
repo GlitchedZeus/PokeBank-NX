@@ -20,6 +20,32 @@ assert 'handleGen4View' in ui
 assert 'SourceKind::ExternalLegacy' in ui
 select = (root / 'src/UI/SaveSelectScreen.cpp').read_text()
 assert 'Gen4AssignedFile' in select and 'discoverKnownSources' in select
+
+# Gen IV game cards must never auto-open the remembered adapter source. A always enters a
+# validated Save Instances chooser, whose rows retain provider identity for future emulator roots.
+current_title = select[select.index('void SaveSelectScreen::selectCurrentTitle()'):
+                       select.index('void SaveSelectScreen::selectCurrentLegacyInstance()')]
+gen4_branch = current_title[current_title.index('SelectedSourceKind::Gen4AssignedFile'):]
+assert 'discoverGen4Candidates();' in gen4_branch
+assert 'openAssignedSource(' not in gen4_branch
+assert 'titleSelected = true' not in gen4_branch
+
+discover = select[select.index('void SaveSelectScreen::discoverGen4Candidates()'):
+                  select.index('bool SaveSelectScreen::assignGen4Candidate')]
+assert 'resolveFileForGame' in discover
+assert 'inspectSourceFile' in discover
+assert 'existing.sourceIdentity == candidate.sourceIdentity' in discover
+assert 'a.modifiedTime > b.modifiedTime' in discover
+
+instances = select[select.index('} else if (overlay == Overlay::Gen4Candidates && u) {'):
+                   select.index('} else if (overlay == Overlay::Help)')]
+assert 'NINTENDO DS / SAVE INSTANCES / READ ONLY' in instances
+assert ' — Save Instances' in instances
+assert 'candidate.sourceType' in instances
+assert 'MOST RECENTLY MODIFIED' in instances
+assert '{"A", "Open Read Only"}' in instances
+assert '{"Y", "Source Setup"}' in instances
+assert '{"X", "Refresh Saves"}' in instances
 bridge = (root / 'src/Pokemon/Pokemon4ReadOnlyView.cpp').read_text()
 assert not re.search(r'\b(fwrite|pwrite|rename|remove|unlink)\s*\(', bridge)
 assert 'clone() const override { return nullptr; }' in (root / 'include/Pokemon/Pokemon4ReadOnlyView.h').read_text()

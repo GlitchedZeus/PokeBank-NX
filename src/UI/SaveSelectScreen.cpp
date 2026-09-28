@@ -458,24 +458,62 @@ namespace UI {
         auto discovered = PokeVault::Integration::Gen4::discoverKnownSources();
         size_t wrappers = 0;
         size_t savestates = 0;
+        std::string rememberedDiagnostic;
+
+        auto appendReady = [&](PokeVault::Integration::Gen4::SourceCandidate candidate) {
+            if (!candidate.ready() ||
+                !PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId))
+                return;
+            const auto duplicate = std::find_if(gen4Candidates.begin(), gen4Candidates.end(),
+                [&](const auto& existing) {
+                    return existing.sourceIdentity == candidate.sourceIdentity;
+                });
+            if (duplicate == gen4Candidates.end())
+                gen4Candidates.push_back(std::move(candidate));
+        };
+
         for (auto& candidate : discovered.candidates) {
             if (candidate.status == PokeVault::Integration::Gen4::CandidateStatus::UnsupportedWrapper)
                 ++wrappers;
             else if (candidate.status == PokeVault::Integration::Gen4::CandidateStatus::UnsupportedSavestate)
                 ++savestates;
-            if (candidate.ready() &&
-                PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId))
-                gen4Candidates.push_back(std::move(candidate));
+            appendReady(std::move(candidate));
         }
+
+        // A manually chosen source may live outside every known emulator root. Keep the remembered
+        // assignment as one candidate in the chooser, but never let it skip the chooser.
+        if (legacyBindings) {
+            const auto remembered = legacyBindings->resolveFileForGame(
+                currentProfileIdentity(), gen4TargetGameId);
+            if (remembered.status == PokeVault::Legacy::AssignedFileStatus::Ready) {
+                auto candidate = PokeVault::Integration::Gen4::inspectSourceFile(
+                    remembered.binding.sourcePath,
+                    remembered.binding.sourceType.empty() ? "Remembered" : remembered.binding.sourceType,
+                    gen4TargetGameId);
+                if (!candidate.ready())
+                    rememberedDiagnostic = candidate.diagnostic;
+                appendReady(std::move(candidate));
+            } else if (remembered.status == PokeVault::Legacy::AssignedFileStatus::Missing) {
+                rememberedDiagnostic = "Remembered save is missing; choose or discover another source.";
+            } else if (remembered.status == PokeVault::Legacy::AssignedFileStatus::Unreadable) {
+                rememberedDiagnostic = "Remembered save is unreadable; choose or discover another source.";
+            } else if (remembered.status == PokeVault::Legacy::AssignedFileStatus::Ambiguous) {
+                rememberedDiagnostic = "Remembered source assignment is ambiguous; choose a replacement.";
+            }
+        }
+
+        // Match the Gen I-III instance chooser: most-recent physical save first, then stable provider/path.
         std::sort(gen4Candidates.begin(), gen4Candidates.end(), [](const auto& a, const auto& b) {
+            if (a.modifiedTime != b.modifiedTime) return a.modifiedTime > b.modifiedTime;
             if (a.sourceType != b.sourceType) return a.sourceType < b.sourceType;
             return a.normalizedPath < b.normalizedPath;
         });
         gen4CandidateIndex = 0;
         gen4CandidateScroll = 0;
         if (gen4Candidates.empty()) {
-            gen4Notice = discovered.limitReached
-                ? "No compatible save found before the bounded scan limit."
+            gen4Notice = !rememberedDiagnostic.empty() ? rememberedDiagnostic
+                : discovered.limitReached
+                    ? "No compatible save found before the bounded scan limit."
                 : savestates > 0
                     ? "DraStic savestate found (.dss). PokeBank needs the cartridge save in /switch/drastic/user/backup/."
                 : wrappers > 0
@@ -484,7 +522,7 @@ namespace UI {
             overlay = Overlay::Gen4Setup;
         } else {
             gen4Notice = std::to_string(gen4Candidates.size()) +
-                (gen4Candidates.size() == 1 ? " compatible save found." : " compatible saves found. Choose one.");
+                (gen4Candidates.size() == 1 ? " validated save instance." : " validated save instances.");
             overlay = Overlay::Gen4Candidates;
         }
     }
@@ -586,36 +624,11 @@ namespace UI {
             return;
         }
         if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+            // Never auto-open a remembered adapter path. Gen IV now matches the classic source UX:
+            // game identity first, then an explicit validated Save Instances choice every time.
             gen4TargetGameId = title.gameId;
-            if (!legacyBindings) {
-                openGen4Setup(title.gameId, "Source assignments are unavailable.");
-                return;
-            }
-            const auto assigned = legacyBindings->resolveFileForGame(
-                currentProfileIdentity(), title.gameId);
-            if (assigned.status != PokeVault::Legacy::AssignedFileStatus::Ready) {
-                std::string notice;
-                switch (assigned.status) {
-                    case PokeVault::Legacy::AssignedFileStatus::Missing:
-                        notice = "Assigned save is missing. Choose its new location explicitly."; break;
-                    case PokeVault::Legacy::AssignedFileStatus::Ambiguous:
-                        notice = "Multiple stored assignments exist. Choose one replacement explicitly."; break;
-                    case PokeVault::Legacy::AssignedFileStatus::Unreadable:
-                        notice = "Assigned path is not a readable regular file."; break;
-                    case PokeVault::Legacy::AssignedFileStatus::Unassigned:
-                        notice = "No save is assigned to this game yet."; break;
-                    case PokeVault::Legacy::AssignedFileStatus::Ready: break;
-                }
-                openGen4Setup(title.gameId, std::move(notice));
-                return;
-            }
-            const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
-                *legacyBindings, currentProfileIdentity(), title.gameId);
-            if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready) {
-                openGen4Setup(title.gameId,
-                    opened.diagnostic.empty() ? "Assigned save failed strict validation." : opened.diagnostic);
-                return;
-            }
+            discoverGen4Candidates();
+            return;
         }
         selectedUserUid  = u->uid;
         selectedTitleId  = title.titleId;
@@ -710,7 +723,13 @@ namespace UI {
         }
         if (overlay == Overlay::Gen4Candidates) {
             const int count = static_cast<int>(gen4Candidates.size());
-            if (kDown & HidNpadButton_B) { overlay = Overlay::Gen4Setup; return; }
+            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_X) { discoverGen4Candidates(); return; }
+            if (kDown & HidNpadButton_Y) {
+                openGen4Setup(gen4TargetGameId,
+                    "Add, repair, or forget a remembered source. Opening still happens from Save Instances.");
+                return;
+            }
             if (count == 0) { overlay = Overlay::Gen4Setup; return; }
             if (kDown & HidNpadButton_Up)
                 gen4CandidateIndex = (gen4CandidateIndex - 1 + count) % count;
@@ -803,7 +822,7 @@ namespace UI {
                 titleIndex < static_cast<int>(current->titles.size()) &&
                 current->titles[titleIndex].sourceKind == SelectedSourceKind::Gen4AssignedFile) {
                 openGen4Setup(current->titles[titleIndex].gameId,
-                              "Choose a new assignment only if you want to change this game card's save.");
+                              "Add, repair, or forget a remembered source for this game.");
                 return;
             }
         }
@@ -1016,7 +1035,7 @@ namespace UI {
             homeHints.push_back({"X", "Assign Legacy Save"});
         if (u && titleIndex >= 0 && titleIndex < static_cast<int>(u->titles.size()) &&
             u->titles[titleIndex].sourceKind == SelectedSourceKind::Gen4AssignedFile)
-            homeHints.push_back({"Y", "Save Assignment"});
+            homeHints.push_back({"Y", "Source Setup"});
         drawNavBar(fb, homeHints);
 
         if (overlay == Overlay::LegacyInstances && u && titleIndex >= 0 &&
@@ -1131,17 +1150,17 @@ namespace UI {
             drawModalSurface(fb, x, y, w, h);
             const auto* identity = PokeVault::Games::findGame(gen4TargetGameId);
             const std::string title = identity ? std::string(identity->title) : std::string("Generation IV");
-            fb.drawText(x + 28, y + 18, "NINTENDO DS / PERSISTENT SAVE ASSIGNMENT / READ ONLY",
+            fb.drawText(x + 28, y + 18, "NINTENDO DS / SOURCE SETUP / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, "Pokemon " + title,
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
-                        "The game card is primary. Browsing is only for assigning or repairing its source.",
+                        "Add or repair sources here. Opening always happens from Save Instances.",
                         Colors::TextSecondary, TextStyle::Caption);
             const std::string rows[4] = {
-                "Find Save Automatically",
+                "Refresh Known Emulator Saves",
                 "Choose Save File Manually",
-                "Unassign Current Save",
+                "Forget Remembered Save",
                 "Cancel"
             };
             int ry = y + 112;
@@ -1159,38 +1178,56 @@ namespace UI {
             constexpr int w = 900, h = 540, rowH = 76, visibleRows = 5;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
-            fb.drawText(x + 28, y + 18, "NINTENDO DS / VALIDATED SAVE CANDIDATES / READ ONLY",
+            const auto* identity = PokeVault::Games::findGame(gen4TargetGameId);
+            const std::string title = identity ? std::string(identity->title) : std::string("Generation IV");
+            fb.drawText(x + 28, y + 18, "NINTENDO DS / SAVE INSTANCES / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
-            fb.drawText(x + 28, y + 44, "Choose the save to remember for this game card",
+            fb.drawText(x + 28, y + 44, "Pokemon " + title + " — Save Instances",
                         Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 28, y + 76,
+                        "Choose a validated cartridge save. The source file will not be modified.",
+                        Colors::TextSecondary, TextStyle::Caption);
+
+            int64_t newestModified = 0;
+            for (const auto& candidate : gen4Candidates)
+                newestModified = std::max(newestModified, candidate.modifiedTime);
+
             const int first = gen4CandidateScroll;
             const int last = std::min<int>(static_cast<int>(gen4Candidates.size()),
                                            first + visibleRows);
-            int ry = y + 92;
+            int ry = y + 108;
             for (int i = first; i < last; ++i) {
                 const auto& candidate = gen4Candidates[static_cast<size_t>(i)];
                 drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 6,
                                 i == gen4CandidateIndex, 10);
-                fb.drawText(x + 44, ry + 7,
-                            candidate.sourceType + " — " + sourceLeafName(candidate.path),
+                fb.drawText(x + 44, ry + 7, sourceLeafName(candidate.path),
                             i == gen4CandidateIndex ? Colors::TextPrimary : Colors::TextSecondary,
                             TextStyle::Body);
-                std::string detail = candidate.expectedRawFamily;
-                if (!candidate.trainerName.empty()) detail += " / Trainer " + candidate.trainerName;
+                if (candidate.modifiedTime > 0 && candidate.modifiedTime == newestModified) {
+                    constexpr const char* recency = "MOST RECENTLY MODIFIED";
+                    int rw = 0, rh = 0;
+                    fb.measureText(recency, rw, rh, TextStyle::Caption);
+                    fb.drawText(x + w - 44 - rw, ry + 10, recency, Colors::TextMuted,
+                                TextStyle::Caption);
+                }
+                std::string detail = candidate.sourceType + " / " + candidate.expectedRawFamily;
+                if (!candidate.trainerName.empty()) detail += " / " + candidate.trainerName;
+                detail += " / Party " + std::to_string(candidate.partyCount);
                 if (candidate.recoveredOlderCopy) detail += " / RECOVERED OLDER COPY";
                 fb.drawText(x + 44, ry + 36, detail, Colors::TextMuted, TextStyle::Caption);
                 ry += rowH;
             }
             if (!gen4Notice.empty())
-                fb.drawText(x + 28, y + h - 38, gen4Notice, Colors::TextMuted, TextStyle::Caption);
-            drawNavBar(fb, {{"Up/Down", "Choose Save"}, {"A", "Assign & Open"}, {"B", "Back"}});
+                fb.drawText(x + 28, y + h - 34, gen4Notice, Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"Up/Down", "Choose Save"}, {"A", "Open Read Only"},
+                            {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
             drawInfoOverlay(fb, "Game Sources & Controls", {
                 "D-pad / Left Stick   Navigate (hold to scroll)",
-                "A   Open the focused game source",
+                "A   Open the focused game and choose a save instance",
                 "L / R   Previous or next Switch user",
                 "X   Assign an unassigned legacy save to this profile",
-                "Y   Change the focused Gen IV save assignment",
+                "Y   Add or repair sources for the focused Gen IV game",
                 "+   Options and appearance",
                 "-   Help for the current screen"
             });
