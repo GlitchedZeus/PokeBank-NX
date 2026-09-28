@@ -274,6 +274,15 @@ void testSpeciesAndTrainerFieldEdits() {
     assert(static_cast<uint8_t>(speciesChanged.pid() % 25u) == beforeNature);
     assert(created->shiny() == beforeShiny);
 
+    // Fixed-gender / genderless species must update both PID constraints and stored Gen IV bits.
+    assert(created->setSpecies(29)); // Nidoran female
+    Pokemon::Pokemon4ReadOnly fixedFemale(created->encryptedBytes(), Enums::GameVersion::PT);
+    assert(fixedFemale.valid() && fixedFemale.gender() == 1);
+    assert(created->setSpecies(81)); // Magnemite, genderless
+    Pokemon::Pokemon4ReadOnly genderless(created->encryptedBytes(), Enums::GameVersion::PT);
+    assert(genderless.valid() && genderless.gender() == 2);
+    assert(created->setSpecies(25));
+
     assert(created->setNickname(u"SPARK"));
     assert(created->setSpecies(26));
     Pokemon::Pokemon4ReadOnly customName(created->encryptedBytes(), Enums::GameVersion::PT);
