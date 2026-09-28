@@ -313,6 +313,7 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
         // targets only when the exact Gen IV staged provider is present; the provider is
         // responsible for preserving nature/gender/shiny/ability relationships.
         switch (field) {
+            case FieldIdentity::Species:
             case FieldIdentity::Nickname:
             case FieldIdentity::Gender:
             case FieldIdentity::Shiny:
@@ -330,10 +331,8 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::MetLevel:
             case FieldIdentity::MetLocation:
                 return FieldAccess::Editable;
-            // Existing-PK4 Species/Form stay read-only until their reconciliation setters
-            // (growth, nickname, PID/gender/ability/form) are pinned. Create has its own
-            // native Species draft path.
-            case FieldIdentity::Species:
+            // Alternate Form remains read-only until species-specific Gen IV form
+            // availability/side effects are audited. Species itself is now transactional.
             case FieldIdentity::Form:
             case FieldIdentity::OriginalTrainer:
             case FieldIdentity::TrainerId:
