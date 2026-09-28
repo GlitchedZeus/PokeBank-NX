@@ -3,6 +3,7 @@
 #include "Pokemon/PersonalInfo4PT.h"
 #include "Pokemon/Pokemon4Mutable.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
+#include "Names/ItemPresence.h"
 #include "Utils/Gen4TextCodec.h"
 
 #include <algorithm>
@@ -101,7 +102,15 @@ void testNoOpAndSimpleFields() {
     assert(editable && error.empty());
     assert(editable->encryptedBytes() == encrypted);
 
-    assert(editable->setHeldItem(1));
+    uint16_t validHeldItem = 0;
+    for (uint16_t item = 1; item < Names::ITEM_PRESENCE_MAX_ID; ++item) {
+        if (Names::isHeldItemPresent(item, Enums::GameVersion::PT)) {
+            validHeldItem = item;
+            break;
+        }
+    }
+    assert(validHeldItem != 0);
+    assert(editable->setHeldItem(validHeldItem));
     assert(editable->setFriendship(123));
     assert(editable->setEV(0, 252));
     assert(editable->setIV(5, 31));
@@ -116,7 +125,7 @@ void testNoOpAndSimpleFields() {
     Pokemon::Pokemon4ReadOnly parsed(
         editable->encryptedBytes(), Enums::GameVersion::PT);
     assert(parsed.valid());
-    assert(parsed.heldItem() == 1);
+    assert(parsed.heldItem() == validHeldItem);
     assert(parsed.friendship() == 123);
     assert(parsed.evs()[0] == 252);
     assert(parsed.ivs()[5] == 31);
@@ -330,7 +339,14 @@ void testCatalogBackedFieldValidation() {
     assert(!pt->setEV(2, 7));
     assert(pt->encryptedBytes() == beforeTooMany);
 
-    assert(pt->setHeldItem(1)); // Master Ball is a native holdable Gen IV item.
+    uint16_t holdable = 0;
+    for (uint16_t item = 1; item < Names::ITEM_PRESENCE_MAX_ID; ++item) {
+        if (Names::isHeldItemPresent(item, Enums::GameVersion::PT)) {
+            holdable = item;
+            break;
+        }
+    }
+    assert(holdable != 0 && pt->setHeldItem(holdable));
     assert(!pt->setHeldItem(65535));
     assert(pt->setMove(0, 1)); // Pound exists in Gen IV.
     assert(!pt->setMove(0, 1000));
