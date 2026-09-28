@@ -6,7 +6,7 @@ Last updated: **2026-09-28**
 
 PokeBank NX now has a device-accepted Gen I-III shared staged editor, a strict read-only Gen IV foundation, and a hardware-tested multi-provider Save Instances browser across Gen I-IV.
 
-The current engineering focus is no longer adding another generation. It is consolidating the source-browser backend so all supported external saves use one provider-neutral Save Instance architecture without weakening the proven generation-specific parsers.
+The provider-neutral Save Instances backend is now device accepted. The next major product tranche can move into Gen IV staged editor support while preserving the proven generation-specific parsers and the external-source immutability boundary.
 
 ## Current development line
 
@@ -18,7 +18,7 @@ Branch:
 Current head:
 **00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
 
-Tracked by:
+Completed:
 **Issue #85 — Source browser: unified multi-provider Save Instances for classic games**
 
 PR #77 remains untouched, open and draft.
@@ -49,7 +49,7 @@ The currently accepted Save Instances runtime checkpoint remains:
 
 That exact candidate passed physical testing on Switch.
 
-The newer provider-neutral architecture at 00ee7a6e changes shared rendering, stale-source validation and alias/profile claim behavior. Its exact-head automated gates now pass, but it still requires a fresh owner hardware test before receiving DEVICE ACCEPTED status.
+The provider-neutral architecture at 00ee7a6e changes shared rendering, stale-source validation and alias/profile claim behavior. Its exact-head automated gates passed and the owner hardware test also passed, so this exact candidate is now DEVICE ACCEPTED.
 
 ## Current architecture direction
 
@@ -105,7 +105,7 @@ At the frozen 00ee7a6e application head:
 
 **AUTOMATED GATES: PASS**
 
-**DEVICE ACCEPTANCE: PENDING OWNER HARDWARE TEST**
+**DEVICE ACCEPTANCE: PASS**
 
 ## Near-term sequence
 
@@ -116,13 +116,11 @@ Gen IV strict read-only foundation          IMPLEMENTED
         ↓
 multi-provider Save Instances               DEVICE ACCEPTED
         ↓
-provider-neutral Save Instance backend      AUTOMATED PASS
+provider-neutral Save Instance backend      DEVICE ACCEPTED
         ↓
-exact Actions-built NRO                     FROZEN
+Gen IV staged editor foundation             NEXT
         ↓
-owner Switch hardware acceptance            NEXT
-        ↓
-continue Gen IV/source-browser stabilization
+Gen IV editor parity / stabilization
 ~~~
 
 Another generation, Gen V, Master Vault and cross-game True Move are outside the current tranche.
