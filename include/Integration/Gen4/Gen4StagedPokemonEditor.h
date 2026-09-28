@@ -55,7 +55,8 @@ private:
 
     [[nodiscard]] std::optional<size_t> boxRecordOffset(
         const Gen4ReadOnlySave& parsed, size_t box, size_t slot) const noexcept;
-    bool reparse(Gen4ReadOnlySave& out, std::string* error = nullptr) const;
+    [[nodiscard]] std::optional<Gen4ReadOnlySave> reparse(
+        std::string* error = nullptr) const;
     bool refreshStorageCrc(const Gen4ReadOnlySave& parsed, std::string* error = nullptr);
 
     std::vector<uint8_t> original_;
