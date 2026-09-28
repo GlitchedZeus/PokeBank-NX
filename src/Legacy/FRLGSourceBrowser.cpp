@@ -134,15 +134,20 @@ namespace PokeVault::Legacy {
                 partyCount,
                 false,
             });
+            auto& instance = instances.back();
+            instance.gameId = std::string(game->id);
+            instance.generation = static_cast<uint8_t>(game->dataGeneration);
+            instance.platformLabel = platformLabelFor(source, *game);
+            instance.providerId = PokeVault::Source::providerIdFor(instance.providerLabel);
+            instance.sourcePath = source.path;
+            instance.physicalIdentity = identity;
+            instance.containerType = "Battery save";
+            instance.validation = PokeVault::Source::ValidationStatus::Ready;
+            instance.access = PokeVault::Source::AccessMode::ReadOnly;
+            instance.diagnostic = source.detail;
         }
         for (auto& card : cards) {
-            std::sort(card.instances.begin(), card.instances.end(), [](const auto& left,
-                                                                        const auto& right) {
-                if (left.modifiedTime != right.modifiedTime)
-                    return left.modifiedTime > right.modifiedTime;
-                return left.normalizedPath < right.normalizedPath;
-            });
-            if (!card.instances.empty()) card.instances.front().mostRecentlyModified = true;
+            PokeVault::Source::sortNewestFirst(card.instances);
             card.sourceLabel = cardProviderFor(card.instances);
         }
         return cards;
@@ -153,14 +158,14 @@ namespace PokeVault::Legacy {
         std::string_view profileIdentity) {
         auto cards = buildFRLGSourceCards(discovery);
         for (auto& card : cards) {
+            for (auto& instance : card.instances)
+                instance.claimedProfile = bindings.assignedProfile(instance.sourceIdentity);
             card.instances.erase(std::remove_if(card.instances.begin(), card.instances.end(),
                 [&](const auto& instance) {
-                    const std::string owner = bindings.assignedProfile(instance.sourceIdentity);
-                return !owner.empty() && owner != profileIdentity;
+                    return !PokeVault::Source::visibleToProfile(instance, profileIdentity);
                 }), card.instances.end());
             if (!card.instances.empty()) {
-                for (auto& instance : card.instances) instance.mostRecentlyModified = false;
-                card.instances.front().mostRecentlyModified = true;
+                PokeVault::Source::sortNewestFirst(card.instances);
                 card.sourceLabel = cardProviderFor(card.instances);
             }
         }
