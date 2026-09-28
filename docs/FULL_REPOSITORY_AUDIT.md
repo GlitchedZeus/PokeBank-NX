@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 232 / 725
-- Fully read text files: 198 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 234 / 725
+- Fully read text files: 200 / 692 (text/unknown classification remains provisional until content inspection completes)
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -297,4 +297,19 @@ No findings are recorded here until supported by direct evidence from the frozen
 - Missing tests: corrupt newest/valid older slot must select the older valid slot; both invalid slots must refuse open; no mutation may occur merely to make an invalid selected slot checksum-valid.
 - Recommended fix: reuse the checksum-aware Gen III slot validator/selection policy (or one shared lower-level implementation) before constructing mutable FRLG state. Make FRLG participate in `validateTrainerSaveForOpen()` and keep the original corrupted candidate only as recovery evidence, never auto-repair it on ordinary save.
 - Risk of fix: medium because active-slot selection changes; validate against real FR/LG saves and RTC-footer variants.
+- Owner: MAIN / save-integrity lane.
+
+### AUDIT-018 — LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: Let's Go Pikachu/Eevee mutable backup workspace / save integrity
+- Files: `src/Trainer/Trainer7LGPE.cpp`, `src/Save/GetSaveFileContents.cpp`
+- Exact symbols: `createBlocksFromSaveData7LGPE()`, `writeBlocksToSaveData7LGPE()`, `validateTrainerSaveForOpen()`, `saveTrainerInfoLetsGo()`, `validateLGPEWorkspace()`.
+- Problem: the LGPE read/open path extracts fixed-offset blocks from a correctly-sized file but does not verify the existing BEEF footer CRC for those blocks before constructing mutable trainer/storage state. The generic pre-open gate does not currently perform LGPE integrity validation.
+- Why it matters: a workspace with a corrupted block can still be parsed and edited. During save, `writeBlocksToSaveData7LGPE()` patches the selected blocks and recomputes their CRCs before `persistWorkspaceFile()` invokes `validateLGPEWorkspace()`. The validator therefore sees a newly rechecksummed candidate, not proof that the source workspace was valid before mutation. Pre-existing corruption can be normalized into a checksum-valid new generation.
+- Evidence: `createBlocksFromSaveData7LGPE()` gates only on total file size and fixed offset/length bounds. It does not compare block bytes against footer CRCs. `writeBlocksToSaveData7LGPE()` unconditionally computes fresh CRC-16/ARC values for the extracted blocks. `validateTrainerSaveForOpen()` special-cases BDSP and PLA but otherwise returns success, including LGPE.
+- Current tests: no dedicated LGPE integrity/CRC-open regression was found by filename in the current test tree; existing save validation checks the post-serialization candidate rather than the pre-edit source state.
+- Missing tests: corrupt one covered LGPE block while leaving the old footer CRC unchanged and require open to fail; verify an untouched valid fixture passes; prove save never repairs an invalid source merely as a side effect of ordinary editing.
+- Recommended fix: add a read-only LGPE integrity validator that verifies every consumed Beluga block against its existing BEEF footer CRC before constructing `Trainer7LGPE`; invoke it from `validateTrainerSaveForOpen()` and from any direct LGPE load path. Keep rechecksum-on-write only after a valid source has been established.
+- Risk of fix: low to medium; validate checksum geometry against real Pikachu/Eevee saves before gating hardware opens.
 - Owner: MAIN / save-integrity lane.
