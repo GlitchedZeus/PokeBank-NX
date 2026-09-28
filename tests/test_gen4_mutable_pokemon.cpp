@@ -483,6 +483,56 @@ void testExactGameForms() {
     }
 }
 
+void testItemDrivenAndStorageFormRules() {
+    // Diamond/Pearl do not expose Giratina Origin Forme in their personal table.
+    auto dpGiratina = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(487, 0x12345678u, 46), Enums::GameVersion::DP);
+    assert(dpGiratina && dpGiratina->formCount() == 1);
+    assert(!dpGiratina->setForm(1));
+
+    for (const auto group : {Enums::GameVersion::PT, Enums::GameVersion::HGSS}) {
+        auto giratina = Pokemon::Pokemon4Mutable::fromEncrypted(
+            makeEntity(487, 0x12345678u, 46), group);
+        assert(giratina && giratina->formCount() == 2);
+        assert(giratina->setForm(1));
+        assert(giratina->form() == 1 && giratina->heldItem() == 112);
+        // Editing the held item away from Griseous Orb must return Altered Forme.
+        assert(giratina->setHeldItem(1));
+        assert(giratina->heldItem() == 1 && giratina->form() == 0);
+        assert(giratina->setHeldItem(112));
+        assert(giratina->heldItem() == 112 && giratina->form() == 1);
+
+        auto arceus = Pokemon::Pokemon4Mutable::fromEncrypted(
+            makeEntity(493, 0x12345678u, 121), group);
+        assert(arceus && arceus->formCount() == 18);
+        assert(arceus->setForm(1));
+        assert(arceus->form() == 1 && arceus->heldItem() == 303);
+        const auto beforeCurse = arceus->encryptedBytes();
+        assert(!arceus->setForm(9)); // Gen IV's unused ???-type slot has no Plate.
+        assert(arceus->encryptedBytes() == beforeCurse);
+        assert(arceus->setForm(10));
+        assert(arceus->form() == 10 && arceus->heldItem() == 298);
+        assert(arceus->setHeldItem(299));
+        assert(arceus->heldItem() == 299 && arceus->form() == 11);
+        assert(arceus->setHeldItem(1));
+        assert(arceus->heldItem() == 1 && arceus->form() == 0);
+
+        // Sky Forme is Party-only in Gen IV; a boxed PK4 must fail closed.
+        auto boxedShaymin = Pokemon::Pokemon4Mutable::fromEncrypted(
+            makeEntity(492, 0x12345678u, 30), group);
+        assert(boxedShaymin && boxedShaymin->formCount() == 2);
+        const auto boxBefore = boxedShaymin->encryptedBytes();
+        assert(!boxedShaymin->setForm(1));
+        assert(boxedShaymin->encryptedBytes() == boxBefore);
+
+        auto partyShaymin = Pokemon::Pokemon4Mutable::fromEncrypted(
+            makePartyEntity(492, 0x12345678u, 30), group);
+        assert(partyShaymin && partyShaymin->isParty());
+        assert(partyShaymin->setForm(1));
+        assert(partyShaymin->form() == 1);
+    }
+}
+
 void testBadInputFailsClosed() {
     std::vector<std::byte> empty(Encryption::SIZE_STORED4, std::byte{0});
     std::string error;
@@ -509,6 +559,7 @@ int main() {
     testSpeciesReconciliation();
     testCatalogBackedFieldValidation();
     testExactGameForms();
+    testItemDrivenAndStorageFormRules();
     testNativeStoredCreateDraft();
     testBadInputFailsClosed();
     std::cout << "Gen IV mutable PK4 core PASS\n";
