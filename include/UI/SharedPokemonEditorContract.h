@@ -543,6 +543,15 @@ constexpr Focus passiveViewMoveColumn(Generation generation, Focus focus, int di
         generation, moveColumn(generation, focus, direction, crystal), crystal);
 }
 
+constexpr bool immutableSourceBlocksSaveDialog(bool saveConfirmActive,
+                                               bool exitingWithUnsavedChanges) noexcept {
+    // Ordinary Save dialogs would write a backup/current destination and remain blocked on an
+    // immutable source. The exit-only dirty-session confirmation is different: it only asks the
+    // user whether to discard staged in-memory work or keep editing, so it must survive the
+    // read-only guard long enough to receive A/B input on the next frame.
+    return saveConfirmActive && !exitingWithUnsavedChanges;
+}
+
 constexpr const char* statsHeading() noexcept { return "STATS"; }
 struct CellFocus { int x, width; };
 constexpr CellFocus moveRowFocus(int panelWidth) noexcept {
@@ -559,7 +568,10 @@ constexpr CellFocus cellFocus(Focus focus) noexcept {
     return focus.column == 1 ? CellFocus{180, 90} : CellFocus{278, 98};
 }
 constexpr CellFocus cellFocusFor(Generation generation, Focus focus) noexcept {
-    if (generation != Generation::Gen3) return cellFocus(focus);
+    // Gen III and Gen IV both expose six IV/EV stat rows. Earlier generations use the five-row
+    // fallback where row 5 is a derived/full-width row instead of an editable IV/EV cell pair.
+    if (generation != Generation::Gen3 && generation != Generation::Gen4)
+        return cellFocus(focus);
     if (focus.panel == Panel::Details) return {104, 186};
     if (focus.panel == Panel::Moves) {
         if (focus.column == 0) return {14, 170};
