@@ -3,7 +3,7 @@
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
 #include "Names/ItemNames.h"
-#include "Names/ItemPresence.h"
+#include "Names/Gen4HeldItemCatalog.h"
 #include "Names/LocationNames.h"
 #include "Names/MoveInfo.h"
 #include "Names/MoveNames.h"
@@ -491,8 +491,9 @@ void openHeldItemPicker(TrainerViewScreen& screen, State& state) {
     state.pickerValues.push_back(0);
     const auto group = bridge(screen).sourceSave().rawFamily();
     const size_t count = Names::getItemCount();
-    for (uint16_t item = 1; item < count && item <= 0xFFFFu; ++item)
-        if (Names::isHeldItemPresent(item, group))
+    const uint16_t maximum = Names::gen4MaximumHeldItemId(group);
+    for (uint16_t item = 1; item < count && item <= maximum; ++item)
+        if (Names::isGen4HeldItemPresent(item, group))
             state.pickerValues.push_back(item);
     const uint16_t current = state.session.working ? state.session.working->heldItem() : 0;
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
