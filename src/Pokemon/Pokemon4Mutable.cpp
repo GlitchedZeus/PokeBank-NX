@@ -378,6 +378,9 @@ bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
         decrypted_ = backup;
         return false;
     }
+    // Gen IV stores the presentation gender alongside the PID-linked value. Keep both coherent,
+    // especially when changing into a fixed-gender or genderless species.
+    write8(0x40, static_cast<uint8_t>((byteAt(0x40) & ~0x06u) | ((desiredGender & 3u) << 1)));
     const uint8_t slot = dual ? static_cast<uint8_t>(pid() & 1u) : 0;
     write8(0x15, static_cast<uint8_t>(slot ? nextPersonal.ability2 : nextPersonal.ability1));
 
