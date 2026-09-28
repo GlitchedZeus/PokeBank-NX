@@ -75,6 +75,24 @@ std::vector<std::byte> makeEntity(
     return Encryption::encryptArray4(d);
 }
 
+std::vector<std::byte> makePartyEntity(
+    uint16_t species = 25, uint32_t pid = 0x12345678u,
+    uint16_t ability = 9, uint16_t currentHp = 20) {
+    const auto stored = makeEntity(species, pid, ability);
+    const auto decryptedStored = Encryption::decryptArray4(stored);
+    std::vector<std::byte> d(Encryption::SIZE_PARTY4, std::byte{0});
+    std::copy(decryptedStored.begin(), decryptedStored.end(), d.begin());
+    d[0x8C] = std::byte{25};
+    w16(d, 0x8E, currentHp);
+    w16(d, 0x90, species == 292 ? 1 : 60);
+    w16(d, 0x92, 35);
+    w16(d, 0x94, 30);
+    w16(d, 0x96, 55);
+    w16(d, 0x98, 40);
+    w16(d, 0x9A, 40);
+    return Encryption::encryptArray4(d);
+}
+
 void testNoOpAndSimpleFields() {
     auto encrypted = makeEntity();
     std::string error;
@@ -202,6 +220,40 @@ void testFixedGenderAndAbilitySlots() {
     assert(parsed.valid() && parsed.ability() == pidgey.ability2);
 }
 
+void testShedinjaPartyHpRule() {
+    for (const auto group : {Enums::GameVersion::DP, Enums::GameVersion::PT,
+                             Enums::GameVersion::HGSS}) {
+        auto editable = Pokemon::Pokemon4Mutable::fromEncrypted(
+            makePartyEntity(292, 0x12345678u, 25, 1), group);
+        assert(editable && editable->isParty());
+
+        const auto assertOneHp = [&]() {
+            Pokemon::Pokemon4ReadOnly parsed(editable->encryptedBytes(), group);
+            assert(parsed.valid() && parsed.isParty());
+            assert(parsed.maxHP() == 1);
+            assert(parsed.currentHP() <= 1);
+        };
+
+        assert(editable->setLevel(50));
+        assertOneHp();
+        assert(editable->setIV(0, 31));
+        assertOneHp();
+        assert(editable->setEV(0, 252));
+        assertOneHp();
+        const uint8_t nextNature = static_cast<uint8_t>((editable->nature() + 1) % 25);
+        assert(editable->setNature(nextNature));
+        assertOneHp();
+
+        // Fainted state must stay fainted while the derived maximum remains the Shedinja constant.
+        auto fainted = Pokemon::Pokemon4Mutable::fromEncrypted(
+            makePartyEntity(292, 0x22345678u, 25, 0), group);
+        assert(fainted && fainted->setLevel(60));
+        Pokemon::Pokemon4ReadOnly faintedParsed(fainted->encryptedBytes(), group);
+        assert(faintedParsed.valid() && faintedParsed.maxHP() == 1 &&
+               faintedParsed.currentHP() == 0);
+    }
+}
+
 void testBadInputFailsClosed() {
     std::vector<std::byte> empty(Encryption::SIZE_STORED4, std::byte{0});
     std::string error;
@@ -224,6 +276,7 @@ int main() {
     testNicknamePreservesTrash();
     testPidCoupledEdits();
     testFixedGenderAndAbilitySlots();
+    testShedinjaPartyHpRule();
     testBadInputFailsClosed();
     std::cout << "Gen IV mutable PK4 core PASS\n";
     return 0;
