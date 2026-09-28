@@ -11,6 +11,7 @@
 #include "UI/ClassicInventoryUIModel.h"
 #include "UI/InventoryUIContract.h"
 #include "UI/Common.h"
+#include "UI/ScreenChrome.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/TrainerViewScreen.h"
 #include "Utils/FileUtilities.h"
@@ -809,7 +810,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         fb.drawText(x + 30, y + 142, "Changing inventory does not reproduce or reverse the associated story event.",
                     Colors::TextDim, TextStyle::Body);
         fb.drawText(x + 30, y + 196, "No unrelated event flags will be modified.", Colors::TextDim, TextStyle::Body);
-        fb.drawText(x + 30, y + height - 54, "A Confirm    B Cancel", Colors::Text, TextStyle::Body);
+        drawNavBar(fb, {{"A", "Confirm"}, {"B", "Cancel"}});
         return;
     }
 
@@ -817,7 +818,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         fb.drawText(x + 30, y + 24, "Discard Staged Changes?", Colors::Text, TextStyle::Heading);
         fb.drawText(x + 30, y + 104, "This discards the shared staged classic-save transaction.", Colors::Text, TextStyle::Body);
         fb.drawText(x + 30, y + 148, "The original source save remains unchanged.", Colors::TextDim, TextStyle::Body);
-        fb.drawText(x + 30, y + height - 54, "A Discard Staged Changes    B Cancel", Colors::Text, TextStyle::Body);
+        drawNavBar(fb, {{"A", "Discard Changes"}, {"B", "Cancel"}});
         return;
     }
 
@@ -835,7 +836,8 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
         const int rowH = PokeBank::UIModel::InventoryPickerLayout::RowHeight;
         const int listTop = y + PokeBank::UIModel::InventoryPickerLayout::ClassicListTopOffset;
-        const int listBottom = y + height - PokeBank::UIModel::InventoryPickerLayout::FooterHeight;
+        // Controls live in the shared bottom glyph bar now, so the modal can use the old footer space.
+        const int listBottom = y + height - 18;
         const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
         const int start = std::clamp(state.pickerRow - visibleRows / 2, 0, std::max(0, count - visibleRows));
         int rowY = listTop;
@@ -847,13 +849,8 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             screen.touchButtons.push_back({i, x + 12, rowY, width - 24, rowH - 4});
             rowY += rowH;
         }
-        // Two readable lines fit the fixed 560px panel without shrinking the text.
-        fb.drawText(x + pad, y + height - 56,
-                    "D-pad/Stick Navigate     A Add/Select",
-                    Colors::Text, TextStyle::Caption);
-        fb.drawText(x + pad, y + height - 30,
-                    "B Cancel                  L/R Page",
-                    Colors::Text, TextStyle::Caption);
+        drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Add / Select"},
+                        {"B", "Cancel"}, {"L/R", "Page"}});
         return;
     }
 
@@ -872,7 +869,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         };
         int rowY = y + 78;
         for (const auto& line : lines) { fb.drawText(x + 34, rowY, line, Colors::TextDim, TextStyle::Body); rowY += 48; }
-        fb.drawText(x + 30, y + height - 42, "B Close Help", Colors::Text, TextStyle::Body);
+        drawNavBar(fb, {{"B", "Close Help"}});
         return;
     }
 
@@ -887,8 +884,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             drawRow(fb, x + 30, rowY, width - 60, rows[static_cast<std::size_t>(i)], i == state.optionsRow);
             rowY += 62;
         }
-        fb.drawText(x + 30, y + height - 42, "D-pad / Left Stick Select    A Open    B Close",
-                    Colors::TextDim, TextStyle::Caption);
+        drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Open"}, {"B", "Close"}});
         return;
     }
 
@@ -909,8 +905,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 rowY += 57;
             }
         }
-        fb.drawText(x + 30, y + height - 72, "D-pad / Left Stick Browse    B Back to Options",
-                    Colors::Text, TextStyle::Body);
+        drawNavBar(fb, {{"Up/Down", "Browse"}, {"B", "Back to Options"}});
         if (!state.lastExportDirectory.empty())
             fb.drawText(x + 30, y + height - 40, "Last export: " + state.lastExportDirectory,
                         Colors::TextDim, TextStyle::Caption);

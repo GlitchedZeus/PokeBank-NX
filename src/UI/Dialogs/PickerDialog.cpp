@@ -130,7 +130,8 @@ namespace Dialogs {
         // Scrollable list window centered on the selection.
         const int rowH = PokeBank::UIModel::InventoryPickerLayout::RowHeight;
         const int listTop = py + PokeBank::UIModel::InventoryPickerLayout::ListTopOffset;
-        const int listBottom = py + ph - PokeBank::UIModel::InventoryPickerLayout::FooterHeight;
+        // Controls live in the shared bottom glyph bar now, so the modal can use the old footer space.
+        const int listBottom = py + ph - 18;
         int visible = (listBottom - listTop) / rowH;
         if (visible < 1) visible = 1;
         int first = sel - visible / 2;
@@ -188,7 +189,7 @@ namespace Dialogs {
         // Scrollbar on the panel's right edge (same thumb as everywhere else) when the list overflows.
         drawScrollbar(fb, px + pw - 14, listTop, visible * rowH, count * rowH, first * rowH);
 
-        fb.drawText(px + 20, py + ph - 34, "D-pad/Stick Navigate   A Select   B Cancel   L/R Page", Colors::TextDim, TextStyle::Caption);
+        drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}, {"L/R", "Page"}});
     }
 }
 }

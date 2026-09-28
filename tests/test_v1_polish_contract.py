@@ -19,6 +19,8 @@ chrome = read("include/UI/ScreenChrome.h")
 makefile = read("Makefile")
 system_icons = read("src/UI/SystemIcons.cpp")
 backup_selection = read("src/UI/BackupSelectionScreen.cpp")
+picker_dialog = read("src/UI/Dialogs/PickerDialog.cpp")
+classic_inventory = read("src/UI/ClassicInventoryOverlay.cpp")
 
 # Settings owns build/safety identity; the global nav bar owns controls.
 require("A: toggle / info" not in trainer,
@@ -75,6 +77,28 @@ require('{{"Up/Down", "Choose"}, {"A", "Select"}, {"X", "Delete"}, {"B", "Back"}
         "Save Backups must advertise D-pad/Left Stick selection alongside active actions")
 require("Colors::Warning, 2" in backup_selection and "Colors::Orange, 2" not in backup_selection,
         "transient backup failures must use the semantic theme warning color")
+
+# Pickers and Classic Inventory overlays must use the shared colored controller bar, not embedded
+# plain-text footer instructions that duplicate/contradict the app-wide legend.
+require("D-pad/Stick Navigate   A Select   B Cancel   L/R Page" not in picker_dialog,
+        "generic picker must not render the old embedded text control footer")
+require('{{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}, {"L/R", "Page"}}' in picker_dialog,
+        "generic picker must publish its controls through the shared glyph bar")
+for stale in (
+    "A Confirm    B Cancel",
+    "A Discard Staged Changes    B Cancel",
+    "D-pad/Stick Navigate     A Add/Select",
+    "B Cancel                  L/R Page",
+    "B Close Help",
+    "D-pad / Left Stick Select    A Open    B Close",
+    "D-pad / Left Stick Browse    B Back to Options",
+):
+    require(stale not in classic_inventory,
+            "Classic Inventory overlays must not restore old embedded controller footers")
+require('{{"Up/Down", "Navigate"}, {"A", "Add / Select"}' in classic_inventory,
+        "Classic Inventory picker must use the shared glyph bar")
+require('{{"Up/Down", "Choose"}, {"A", "Open"}, {"B", "Close"}}' in classic_inventory,
+        "Classic Inventory options must use the shared glyph bar")
 
 # The shared legend is one implementation for all screens.
 for token in (

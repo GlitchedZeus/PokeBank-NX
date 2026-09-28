@@ -10,6 +10,8 @@ on:
       - 'include/UI/SystemIcons.h'
       - 'src/UI/SaveSelectScreen.cpp'
       - 'src/UI/BackupSelectionScreen.cpp'
+      - 'src/UI/Dialogs/PickerDialog.cpp'
+      - 'src/UI/ClassicInventoryOverlay.cpp'
       - 'src/UI/TrainerViewScreenBase.inc'
       - 'Makefile'
       - 'tests/test_v1_polish_contract.py'
