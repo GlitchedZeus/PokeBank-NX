@@ -1,23 +1,23 @@
 path	git_type	mode	bytes	role	readability	line_count	audit_status	references_in	references_out	findings	follow_up
-.gitattributes	blob	100644	2161		unknown		PENDING			0	
-.github/ISSUE_TEMPLATE/device_bug_report.md	blob	100644	1983		unknown		PENDING			0	
-.github/pull_request_template.md	blob	100644	2005		unknown		PENDING			0	
-.github/workflows/audit-hardening-native.yml	blob	100644	8075		unknown		PENDING			0	
-.github/workflows/gen1-cleanup3-candidate.yml	blob	100644	14205		unknown		PENDING			0	
-.github/workflows/gen1-cleanup3-focused.yml	blob	100644	8975		unknown		PENDING			0	
-.github/workflows/gen1-editor-candidate.yml	blob	100644	15930		unknown		PENDING			0	
-.github/workflows/gen12-packed-move-focused.yml	blob	100644	2977		unknown		PENDING			0	
-.github/workflows/gen12-packed-multimove-focused.yml	blob	100644	3132		unknown		PENDING			0	
-.github/workflows/gen2-audit-candidate.yml	blob	100644	20783		unknown		PENDING			0	
-.github/workflows/gen2-compat-data.yml	blob	100644	1380		unknown		PENDING			0	
-.github/workflows/gen3-shared-editor-candidate.yml	blob	100644	13512		unknown		PENDING			0	
-.github/workflows/gen4-shared-editor-candidate.yml	blob	100644	7028		unknown		PENDING			0	
-.github/workflows/host-tests.yml	blob	100644	3800		unknown		PENDING			0	
-.github/workflows/import-pkse.yml	blob	100644	1147		unknown		PENDING			0	
-.github/workflows/inventory-hardware-retest.yml	blob	100644	18446		unknown		PENDING			0	
-.github/workflows/leafgreen-device-build.yml	blob	100644	10590		unknown		PENDING			0	
-.github/workflows/recovery-snapshot.yml	blob	100644	4942		unknown		PENDING			0	
-.github/workflows/v1-polish-native.yml	blob	100644	7136		unknown		PENDING			0	
+.gitattributes	blob	100644	2161	Git normalization	text		AUDITED			0	no
+.github/ISSUE_TEMPLATE/device_bug_report.md	blob	100644	1983	Issue template	text		AUDITED			1	yes
+.github/pull_request_template.md	blob	100644	2005	PR template	text		AUDITED			0	no
+.github/workflows/audit-hardening-native.yml	blob	100644	8075	GitHub Actions workflow	text		AUDITED			2	yes
+.github/workflows/gen1-cleanup3-candidate.yml	blob	100644	14205	GitHub Actions workflow	text		AUDITED			1	yes
+.github/workflows/gen1-cleanup3-focused.yml	blob	100644	8975	GitHub Actions workflow	text		AUDITED			1	yes
+.github/workflows/gen1-editor-candidate.yml	blob	100644	15930	GitHub Actions workflow	text		AUDITED			1	yes
+.github/workflows/gen12-packed-move-focused.yml	blob	100644	2977	GitHub Actions workflow	text		AUDITED			0	no
+.github/workflows/gen12-packed-multimove-focused.yml	blob	100644	3132	GitHub Actions workflow	text		AUDITED			0	no
+.github/workflows/gen2-audit-candidate.yml	blob	100644	20783	GitHub Actions workflow	text		AUDITED			1	yes
+.github/workflows/gen2-compat-data.yml	blob	100644	1380	GitHub Actions workflow	text		AUDITED			0	no
+.github/workflows/gen3-shared-editor-candidate.yml	blob	100644	13512	GitHub Actions workflow	text		AUDITED			1	yes
+.github/workflows/gen4-shared-editor-candidate.yml	blob	100644	7028	GitHub Actions workflow	text		AUDITED			2	yes
+.github/workflows/host-tests.yml	blob	100644	3800	GitHub Actions workflow	text		AUDITED			0	no
+.github/workflows/import-pkse.yml	blob	100644	1147	GitHub Actions workflow	text		AUDITED			1	yes
+.github/workflows/inventory-hardware-retest.yml	blob	100644	18446	GitHub Actions workflow	text		AUDITED			2	yes
+.github/workflows/leafgreen-device-build.yml	blob	100644	10590	GitHub Actions workflow	text		AUDITED			2	yes
+.github/workflows/recovery-snapshot.yml	blob	100644	4942	GitHub Actions workflow	text		AUDITED			0	no
+.github/workflows/v1-polish-native.yml	blob	100644	7136	GitHub Actions workflow	text		AUDITED			2	yes
 .gitignore	blob	100644	730		unknown		PENDING			0	
 .gitmodules	blob	100644	105		unknown		PENDING			0	
 CURRENT_STATUS.md	blob	100644	4217		unknown		PENDING			0	
