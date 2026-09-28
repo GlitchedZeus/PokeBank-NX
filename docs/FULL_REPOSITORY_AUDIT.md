@@ -25,9 +25,9 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 84 / 725
-- Fully read text files: 50 / 692 (classification still provisional)n provisional until content inspection)
-- Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
+- Audited tracked paths: 155 / 725
+- Fully read text files: 121 / 692n still provisional)n provisional until content inspection)
+- Binary/non-text inspected: 34 / 34 currently identified by extension/manifest scanntly identified by exact extension/manifest scan
 
 ## Findings
 
@@ -131,3 +131,14 @@ No findings are recorded here until supported by direct evidence from the frozen
 - The 94 tracked C/C++ files outside those native source directories are tests; no production translation unit was found silently omitted from the Switch source list.
 - All 32 tracked image assets were inspected by decoded binary signature and dimensions. Game-card PNG Git blob IDs match the manifest where listed; the icon is a valid 256x256 JPEG; all 14 screenshots are valid 1280x720 JPEGs; the banner is a valid 848x208 PNG.
 - The two 80-MiB-class recovery tar parts are accounted for indirectly through the tracked manifest: their tree sizes match the manifest and the manifest records SHA-256 for each part and the reconstructed archive.
+
+
+### AUDIT-010 — canonical engineering authority chain points to obsolete work
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: operational documentation / development safety
+- Files: `docs/PROJECT_RESOURCE_INDEX.md`, `docs/RESEARCH_CURRENT_INDEX.md`, `docs/CODEX_SESSION.md`, `docs/NEXT_CODEX_PROMPT.md`, `docs/NEXT_SESSION_PLAN.md`, `docs/RECOVERY_CONTRACT.md`
+- Evidence: the resource/index documents explicitly instruct normal coding sessions to treat `CURRENT_STATUS.md -> CODEX_SESSION.md -> NEXT_CODEX_PROMPT.md` as current engineering authority and still name `origin/feature/pokebank-playable` as the writable target. Yet `NEXT_CODEX_PROMPT.md` is the old Gen II PR #68 candidate prompt, `NEXT_SESSION_PLAN.md` is the older Gen III PR #77 handoff, and `RECOVERY_CONTRACT.md` still assumes the old branch/repository visibility state. Live GitHub on this audit is PR #79 -> #90 with #92 MAIN and #97 UI overlays.
+- Why it matters: unlike dated reports explicitly kept as history, these files advertise themselves as the fast/current authority path. A fresh agent or contributor following repository instructions can resume an obsolete milestone or write to an obsolete branch.
+- Recommended fix: keep one tiny live handoff/authority file that starts by re-fetching GitHub and records only the current integration hierarchy; move obsolete prompts to `docs/history/` or mark them historical at the top; make recovery branch-agnostic where possible.
+- Owner: docs-only / MAIN.
