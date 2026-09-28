@@ -2,7 +2,6 @@
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Names/MoveInfo.h"
 #include "Names/MoveNames.h"
-#include "Names/MovePresence.h"
 #include "Names/ItemNames.h"
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
@@ -598,9 +597,8 @@ void openMovePicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
     state.pickerTarget = PickerTarget::Move;
     state.pickerValues = {0};
-    const auto group = bridge(screen).sourceSave().rawFamily();
     for (uint16_t move = 1; move <= 467; ++move)
-        if (Names::isMovePresent(move, group)) state.pickerValues.push_back(move);
+        state.pickerValues.push_back(move);
     const uint16_t current = state.session.working->moves()[static_cast<size_t>(state.moveEditorSlot)];
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
     state.pickerRow = it == state.pickerValues.end() ? 0
