@@ -196,6 +196,8 @@ void testLayout(Layout layout, uint8_t romCode = 7, bool soulSilver = false) {
     assert(mon->setIV(0, 31));
     assert(mon->setEV(1, 200));
     assert(mon->setNature(static_cast<uint8_t>((beforeNature + 1) % 25)));
+    assert(mon->setMove(0, 105)); // Recover
+    assert(mon->pp()[0] == 10 && mon->ppUps()[0] == 0);
     assert(editor->commitBoxPokemon(0, 0, *mon, &error));
     assert(error.empty());
     assert(editor->hasChanges());
@@ -214,6 +216,9 @@ void testLayout(Layout layout, uint8_t romCode = 7, bool soulSilver = false) {
     assert(parsed->box(0, 0).evs()[1] == 200);
     assert(parsed->box(0, 0).pid() % 25 ==
            static_cast<uint8_t>((beforeNature + 1) % 25));
+    assert(parsed->box(0, 0).moves()[0] == 105);
+    assert(parsed->box(0, 0).pp()[0] == 10);
+    assert(parsed->box(0, 0).ppUps()[0] == 0);
 
     // Party editing uses the same mutable PK4 core but commits a full 0xEC party
     // record into the selected General block, refreshes its CRC and keeps live stats coherent.
@@ -356,6 +361,8 @@ void testEmptySlotCreateTransaction() {
         assert(created->species() == 393);
         assert(created->tid() == 12150 && created->sid() == 22558);
         assert(created->originalTrainerName() == u"Kylie");
+        assert(created->nickname() == u"PIPLUP");
+        assert(!created->isNicknamed());
         assert(created->originalEncryptedBytes() == draft->encryptedBytes());
 
         // Create must never replace an occupied target.
