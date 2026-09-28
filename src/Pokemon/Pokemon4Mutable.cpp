@@ -39,6 +39,35 @@ uint8_t fixedGender(uint8_t ratio) noexcept {
     return 3;
 }
 
+std::u16string gen4DefaultSpeciesName(uint16_t species, uint8_t language) {
+    const auto nameIndex = Names::languageIndexFor(
+        static_cast<Enums::LanguageID>(language));
+    auto value = Utils::utf8ToUtf16(
+        Names::getSpeciesNameLocalized(species, nameIndex));
+
+    // PKHeX SpeciesName.GetSpeciesNameGeneration(..., 4):
+    // Japanese/Korean keep their native casing; other Gen IV species names are uppercase.
+    if (language == static_cast<uint8_t>(Enums::LanguageID::Japanese) ||
+        language == static_cast<uint8_t>(Enums::LanguageID::Korean))
+        return value;
+
+    for (auto& ch : value) {
+        if (ch >= u'a' && ch <= u'z') ch = static_cast<char16_t>(ch - (u'a' - u'A'));
+        // French Gen IV strips E/I diacritics from default species names.
+        if (language == static_cast<uint8_t>(Enums::LanguageID::French)) {
+            switch (ch) {
+                case u'É': case u'È': case u'Ê': case u'Ë':
+                case u'é': case u'è': case u'ê': case u'ë': ch = u'E'; break;
+                case u'Î': case u'Ï': case u'î': case u'ï': ch = u'I'; break;
+                default: break;
+            }
+        }
+        // Gen III/IV Farfetch'd uses a straight apostrophe.
+        if (ch == u'’') ch = u'\'';
+    }
+    return value;
+}
+
 } // namespace
 
 Pokemon4Mutable::Pokemon4Mutable(std::vector<std::byte> decrypted,
@@ -104,10 +133,8 @@ std::optional<Pokemon4Mutable> Pokemon4Mutable::createStored(
     const uint8_t gender = result.genderForPid(pid);
     result.write8(0x40, static_cast<uint8_t>((gender & 3u) << 1));
 
-    const auto nameIndex = Names::languageIndexFor(
-        static_cast<Enums::LanguageID>(defaults.language));
-    const auto speciesName = Utils::utf8ToUtf16(
-        Names::getSpeciesNameLocalized(defaults.species, nameIndex));
+    const auto speciesName =
+        gen4DefaultSpeciesName(defaults.species, defaults.language);
     if (!result.writeTextPreservingTrash(0x48, 11, 10, speciesName)) {
         if (error) *error = "Gen IV Create species name is not representable in the target language";
         return std::nullopt;
@@ -419,10 +446,7 @@ bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
     write8(0x15, static_cast<uint8_t>(abilityId));
 
     if (!nicknamed) {
-        const auto nameIndex = Names::languageIndexFor(
-            static_cast<Enums::LanguageID>(language()));
-        const auto speciesName = Utils::utf8ToUtf16(
-            Names::getSpeciesNameLocalized(value, nameIndex));
+        const auto speciesName = gen4DefaultSpeciesName(value, language());
         if (!writeTextPreservingTrash(0x48, 11, 10, speciesName)) {
             decrypted_ = backup;
             return false;
@@ -491,10 +515,7 @@ bool Pokemon4Mutable::setLanguage(uint8_t value) noexcept {
     const uint8_t oldLanguage = language();
     write8(0x17, value);
     if (!nicknamed) {
-        const auto nameIndex = Names::languageIndexFor(
-            static_cast<Enums::LanguageID>(value));
-        const auto speciesName = Utils::utf8ToUtf16(
-            Names::getSpeciesNameLocalized(species(), nameIndex));
+        const auto speciesName = gen4DefaultSpeciesName(species(), value);
         if (!writeTextPreservingTrash(0x48, 11, 10, speciesName)) {
             write8(0x17, oldLanguage);
             return false;
