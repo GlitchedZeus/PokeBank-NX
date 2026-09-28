@@ -96,8 +96,15 @@ Current automated state:
 - real devkitA64 shared UI compile: **PASS**
 - Packed Move: **PASS**
 - Packed Multi-Move: **PASS**
-- broad Host #1449: **IN PROGRESS**
-- full native candidate package #21: **IN PROGRESS**
+- broad Host #1449: **PASS**
+- Host ASan/UBSan: **PASS**
+- Candidate Gate #21: **PASS**
+- full native candidate package: **PASS**
+- Artifact ID: **10963476019**
+- NRO SHA-256: **9f3e0ccccfaaf3f3b219820c688b9aa30504d340d115c805cf11a099e49b7c51**
+
+Automated status:
+**PASS**
 
 Hardware status:
 **RETEST REQUIRED**
