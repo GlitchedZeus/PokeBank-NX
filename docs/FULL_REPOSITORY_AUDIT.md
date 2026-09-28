@@ -25,9 +25,9 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 19 / 725
-- Fully read text files: 19 / 692 (classification provisional until content inspection)
-- Binary/non-text inspected: 0 / 32
+- Audited tracked paths: 84 / 725
+- Fully read text files: 50 / 692 (classification still provisional)n provisional until content inspection)
+- Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Findings
 
@@ -83,3 +83,51 @@ No findings are recorded here until supported by direct evidence from the frozen
 - Evidence: several jobs are permanently tied to `feature/pokebank-playable` or frozen historical SHAs while live work now flows through PR #79 → #90 with #92/#97 overlays.
 - Recommended fix: preserve historical evidence in docs/releases, then retire or clearly mark historical/manual workflows.
 - Owner: dedicated cleanup.
+
+
+### AUDIT-006 — LeakSanitizer is disabled even where comments say CI keeps it enabled
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: test/sanitizer coverage
+- File: `Makefile.host.base`
+- Exact symbol: `host-sanitize`
+- Evidence: every sanitizer executable is launched with `ASAN_OPTIONS=detect_leaks=0`. The adjacent comment says leak checks “remain enabled in unrestricted CI builds,” but the reviewed CI workflows invoke this same target and therefore inherit `detect_leaks=0`.
+- Why it matters: ASan/UBSan still provide useful coverage, but leak detection is absent and the comment overstates the gate.
+- Recommended fix: either enable leak detection in Linux CI with an environment override, or correct the comment and add a separate leak-capable job if practical.
+- Owner: MAIN / CI.
+
+### AUDIT-007 — top-level README materially understates current Gen IV implementation
+- Severity: P4
+- Confidence: CONFIRMED
+- Area: public documentation
+- File: `README.md`
+- Evidence: it is dated 2026-09-27 and still labels Gen IV as a read-only preview with editing/Create disabled and hardware smoke pending, while current authoritative status documents and PR #92 describe the later G4-03 accepted staged View/Edit milestone and active G4-04 Create/editor work.
+- Why it matters: the public front page gives contributors/users the wrong current support boundary.
+- Recommended fix: refresh only the human-facing current-status sections after the active Gen IV lane reaches the intended documentation checkpoint.
+- Owner: docs-only / MAIN.
+
+### AUDIT-008 — checked-in Visual Studio metadata is stale PKSE-era configuration
+- Severity: P4
+- Confidence: CONFIRMED
+- Area: developer tooling / stale code metadata
+- Files: `CppProperties.json`, `PKSE.sln`, `PKSE.vcxproj`, `PKSE.vcxproj.filters`
+- Evidence: the project remains named `PKSE`, expects `PKSE.nro` while the Makefile target is `PokeBankNX`, carries `PKSE_VERSION="1.1.3"` in IntelliSense configuration, hard-codes a devkitA64 GCC 16.1.0 Windows include layout, and enumerates an old subset of sources that omits the newer Gen I/II/IV integration tree.
+- Why it matters: the files are vestigial/IDE-facing rather than the authoritative build, but they can mislead contributors and produce incorrect IDE diagnostics/up-to-date expectations.
+- Recommended fix: either regenerate/rename the VS metadata for PokeBank NX or remove it and document the supported editor setup.
+- Owner: dedicated cleanup.
+
+### AUDIT-009 — recovery metadata still describes the repository as private / old production branch
+- Severity: P4
+- Confidence: CONFIRMED
+- Area: recovery documentation
+- Files: `recovery/RECOVERY_STATE.json`, `recovery/assets_snapshot/README.md`
+- Evidence: recovery state is dated 2026-09-10 and points at `feature/pokebank-playable`; the snapshot README states “The project repository is private” and instructs pushing recovery material to that historical branch. The repository is currently public and active development has moved to the #79/#90/#92/#97 hierarchy.
+- Why it matters: recovery bytes themselves remain pinned and usable, but operational instructions are stale.
+- Recommended fix: separate immutable historical snapshot identity from current recovery/publishing instructions.
+- Owner: docs-only / dedicated cleanup.
+
+## Completed build-system checks at this checkpoint
+- The native Makefile directory wildcard covers all 148 tracked production `.cpp/.c/.s` files under `src/` and `nanovg/`.
+- The 94 tracked C/C++ files outside those native source directories are tests; no production translation unit was found silently omitted from the Switch source list.
+- All 32 tracked image assets were inspected by decoded binary signature and dimensions. Game-card PNG Git blob IDs match the manifest where listed; the icon is a valid 256x256 JPEG; all 14 screenshots are valid 1280x720 JPEGs; the banner is a valid 848x208 PNG.
+- The two 80-MiB-class recovery tar parts are accounted for indirectly through the tracked manifest: their tree sizes match the manifest and the manifest records SHA-256 for each part and the reconstructed archive.
