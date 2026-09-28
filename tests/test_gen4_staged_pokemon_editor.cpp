@@ -121,7 +121,8 @@ void stamp(std::vector<uint8_t>& save, size_t off, size_t len,
         Utils::crc16ccitt(save.data() + off, len - footer));
 }
 
-std::vector<uint8_t> makeSave(Layout layout, uint8_t romCode = 7) {
+std::vector<uint8_t> makeSave(Layout layout, uint8_t romCode = 7,
+                                  int newerGeneral = 0, int newerStorage = 0) {
     const auto sp = spec(layout);
     std::vector<uint8_t> save(SAVE_SIZE, 0xFF);
     const auto blank = Encryption::blankRecord4(Encryption::SIZE_STORED4);
@@ -160,9 +161,9 @@ std::vector<uint8_t> makeSave(Layout layout, uint8_t romCode = 7) {
             save[storage] = 0;
 
         stamp(save, base, sp.generalSize, sp.footerSize,
-              partition == 0 ? 20 : 10);
+              partition == newerGeneral ? 20 : 10);
         stamp(save, storage, sp.storageSize, sp.footerSize,
-              partition == 0 ? 30 : 15);
+              partition == newerStorage ? 30 : 15);
     }
     return save;
 }
@@ -260,6 +261,72 @@ void testLayout(Layout layout, uint8_t romCode = 7, bool soulSilver = false) {
     assert(editor->finalizedBytes(&error) == original);
 }
 
+void testMixedPartitionMutationFootprint() {
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum,
+                              Layout::HeartGoldSoulSilver}) {
+        const uint8_t romCode = layout == Layout::HeartGoldSoulSilver ? 7 : 7;
+        const auto sp = spec(layout);
+        for (int generalPart = 0; generalPart < 2; ++generalPart) {
+            for (int storagePart = 0; storagePart < 2; ++storagePart) {
+                auto source = makeSave(layout, romCode, generalPart, storagePart);
+                const auto original = source;
+                std::string error;
+                auto editor = Gen4StagedPokemonEditor::create(
+                    source, layout, gameId(layout), &error);
+                assert(editor && error.empty());
+
+                auto party = editor->editablePartyPokemon(0, &error);
+                assert(party && error.empty());
+                assert(party->setFriendship(211));
+                assert(editor->commitPartyPokemon(0, *party, &error) && error.empty());
+
+                auto boxed = editor->editableBoxPokemon(0, 0, &error);
+                assert(boxed && error.empty());
+                assert(boxed->setFriendship(199));
+                assert(editor->commitBoxPokemon(0, 0, *boxed, &error) && error.empty());
+
+                const auto finalBytes = editor->finalizedBytes(&error);
+                assert(!finalBytes.empty() && error.empty());
+                assert(source == original);
+
+                const size_t generalBase = static_cast<size_t>(generalPart) * PARTITION;
+                const size_t partyBegin = generalBase + sp.party;
+                const size_t partyEnd = partyBegin + Encryption::SIZE_PARTY4;
+                const size_t generalCrcBegin = generalBase + sp.generalSize - 2;
+                const size_t generalCrcEnd = generalCrcBegin + 2;
+
+                const size_t storageBase = static_cast<size_t>(storagePart) * PARTITION + sp.storageStart;
+                const size_t boxBegin = storageBase + sp.boxData;
+                const size_t boxEnd = boxBegin + Encryption::SIZE_STORED4;
+                const size_t storageCrcBegin = storageBase + sp.storageSize - 2;
+                const size_t storageCrcEnd = storageCrcBegin + 2;
+
+                bool partyChanged = false;
+                bool boxChanged = false;
+                for (size_t i = 0; i < finalBytes.size(); ++i) {
+                    if (finalBytes[i] == original[i]) continue;
+                    const bool inParty = i >= partyBegin && i < partyEnd;
+                    const bool inGeneralCrc = i >= generalCrcBegin && i < generalCrcEnd;
+                    const bool inBox = i >= boxBegin && i < boxEnd;
+                    const bool inStorageCrc = i >= storageCrcBegin && i < storageCrcEnd;
+                    assert(inParty || inGeneralCrc || inBox || inStorageCrc);
+                    partyChanged = partyChanged || inParty;
+                    boxChanged = boxChanged || inBox;
+                }
+                assert(partyChanged && boxChanged);
+
+                auto reparsed = Gen4ReadOnlySave::parse(
+                    finalBytes, layout, gameId(layout), &error);
+                assert(reparsed && error.empty());
+                assert(reparsed->generalSelection().partition == generalPart);
+                assert(reparsed->storageSelection().partition == storagePart);
+                assert(reparsed->nativePartySlots()[0].friendship() == 211);
+                assert(reparsed->box(0, 0).friendship() == 199);
+            }
+        }
+    }
+}
+
 void testNoOpAndFailureRollback() {
     auto source = makeSave(Layout::Platinum);
     auto editor = Gen4StagedPokemonEditor::create(
@@ -330,6 +397,7 @@ int main() {
     testLayout(Layout::Platinum);
     testLayout(Layout::HeartGoldSoulSilver, 7, false);
     testLayout(Layout::HeartGoldSoulSilver, 8, true);
+    testMixedPartitionMutationFootprint();
     testNoOpAndFailureRollback();
     testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();
