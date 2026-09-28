@@ -124,6 +124,9 @@ int main() {
     contains(surface, "PickerTarget::Ball");
     contains(surface, "PickerTarget::MetLocation");
     contains(surface, "PickerTarget::Pokerus");
+    contains(surface, "PickerTarget::Form");
+    contains(surface, "openFormPicker");
+    contains(surface, "state.session.working->setForm");
     contains(surface, "Names::isGen4HeldItemPresent");
     contains(surface, "Names::getLocationTable");
     contains(surface, "Enums::getBallList");
