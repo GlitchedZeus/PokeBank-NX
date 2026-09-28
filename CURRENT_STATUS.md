@@ -2,84 +2,148 @@
 
 Last updated: **2026-09-28**
 
-GitHub is authoritative. Re-fetch live heads before new work and preserve any newer commits.
+GitHub is authoritative. Re-fetch live heads before new work and preserve newer commits.
 
 ## Active development line
 
-PR #79 — **OPEN / DRAFT / NOT MERGED**
+### PR #87 — Gen IV shared staged Pokémon editor
+
+State:
+**OPEN / DRAFT / NOT MERGED**
 
 Branch:
+**feature/gen4-shared-pokemon-editor-20260928**
+
+Base:
 **audit/full-project-hardening-20260923**
 
 Current exact head:
+**5e79e9f8e038f2f940070edd92a70b692df7a7b5**
+
+Tracking issue:
+**#86 — G4-03 Gen IV shared staged Pokémon editor**
+
+Current milestone:
+**boxed PK4 View/Edit through the existing shared Pokémon editor**
+
+### Accepted base checkpoint
+
+PR #79 branch:
+**audit/full-project-hardening-20260923**
+
+Exact accepted head:
 **00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
 
-Completed tranche:
-**Issue #85 — provider-neutral Save Instance architecture**
+Status:
+**DEVICE ACCEPTED**
 
-PR #77 remains untouched at **996e6aa40c96e4408282f3d55476dae8e64968b2** and remains OPEN / DRAFT / NOT MERGED.
+Issue #85 is complete/closed.
 
-## Hardware-accepted checkpoints
+## Historical accepted checkpoints
 
 ### Gen I-III shared editor
 
 Application SHA:
 **996e6aa40c96e4408282f3d55476dae8e64968b2**
 
+NRO SHA-256:
+**ac3f6bd03d2a6733aee509729b81b6636cabe836095715c7b575b5dc84c8076c**
+
 Status:
 **DEVICE ACCEPTED**
 
-### Multi-provider Save Instances
+### Provider-neutral Save Instances
 
 Application SHA:
-**d49efd0c16433aaa1aa171501671a6e811c9da64**
+**00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
+
+Tree SHA:
+**b0832910df44898114a413191ebad3228bded8af**
 
 NRO SHA-256:
-**5b724f2de948bc666957699ecd76319ae54deaa5d85e5c9d9b62c92675ef8d18**
+**5fad07002c5074ffb3d1d2bdd91275ef29fbdf199f7db263f39c5a3a9f86ca25**
+
+Artifact ID:
+**10956604914**
 
 Status:
 **DEVICE ACCEPTED**
-
-The provider-neutral Save Instances runtime at 00ee7a6e has now passed owner hardware testing and is **DEVICE ACCEPTED**.
 
 ## Supported game state
 
 | Area | Current state |
 |---|---|
-| Gen I Red / Blue / Yellow | Read + staged Pokémon editing |
-| Gen II Gold / Silver / Crystal | Read + staged Pokémon editing |
+| Gen I R/B/Y | Read + staged Pokémon editing |
+| Gen II G/S/C | Read + staged Pokémon editing |
 | Gen III R/S/E/FRLG | Read + staged Pokémon editing |
-| Gen IV D/P/Pt/HG/SS | Strict read-only Trainer / Party / Boxes / Pokémon details |
-| Classic Inventory | Staged editing where already supported |
-| Multi-provider Save Instances | Implemented for Gen I-IV |
+| Gen IV D/P/Pt/HG/SS | Read foundation + boxed staged View/Edit in active draft |
+| Classic Inventory | Staged editing where supported |
+| Save Instances | Device accepted for Gen I-IV |
+| Gen IV Create | Disabled |
+| Gen IV Party mutation | Disabled |
+| Gen IV Inventory editing | Disabled |
 | Cross-game True Move | Disabled |
-| Gen IV editing / Create / Delete / conversion | Disabled |
 | Live external-source writes | Disabled |
 | Master Vault | Not started |
+| Gen V | Not started |
 
-## Provider-neutral Save Instance architecture
+## G4-03 implementation state
 
-The current refactor unifies duplicated source-browser metadata and presentation without replacing generation-specific parsers.
+The active Gen IV tranche reuses the existing shared editor UI rather than creating a generation-specific shell.
 
-Shared responsibilities now include:
+Implemented on PR #87:
 
-- provider identity;
-- source path and normalized path;
-- physical/stable source identity;
-- file size and modified time;
-- trainer / party summary where available;
-- validation and access state;
-- recovered-copy diagnostics;
-- source fingerprints;
-- remembered-source state;
-- profile claims;
-- Save Instances sorting and deduplication;
-- shared row rendering;
-- changed/missing-source revalidation before open.
+- exact Gen IV editor capabilities for Diamond/Pearl, Platinum and HeartGold/SoulSilver;
+- mutable PK4 layer built around existing Encryption4;
+- boxed PK4 staged mutation;
+- Storage CRC refresh and strict save reparse;
+- rollback on failed validation;
+- shared View/Edit surface;
+- inline Gender toggle;
+- direct Shiny toggle;
+- Nature picker;
+- legal Ability picker with ability names;
+- numeric Level/EXP/Friendship/IV/EV editing;
+- shared move editor behavior;
+- joystick/D-pad parity and existing exit/discard rules;
+- constrained PID-linked Nature/Gender/Shiny/Ability edits;
+- repeated PID-linked edit stability;
+- source-save immutability.
 
-Generation-specific parser/validation handles remain generation-specific.
+Still intentionally deferred:
 
-Important safety fixes at 00ee7a6e include preserving remembered/alias metadata through dedupe, transactional alias claims, cross-profile and cross-game conflict refusal, and refusing a source that changed after its row was displayed.
+- Gen IV Create;
+- Party mutation;
+- Inventory editing;
+- source writeback;
+- cross-game True Move.
+
+## Current exact-head verification
+
+At application head:
+**5e79e9f8e038f2f940070edd92a70b692df7a7b5**
+
+Confirmed PASS:
+
+- Gen IV focused PK4/staged-editor host gates;
+- Gen IV focused ASan/UBSan gates;
+- Gen IV shared hardware-surface contract;
+- real devkitA64 shared UI compile;
+- Gen I/II Packed Move regression;
+- Gen I/II Packed Multi-Move regression.
+
+Still running at the latest check:
+
+- PokeBank NX Host Tests #1427;
+- Gen IV devkitA64 compile/link + exact candidate NRO package.
+
+Therefore:
+
+**AUTOMATED CANDIDATE: IN PROGRESS**
+
+**DEVICE ACCEPTANCE: NOT YET**
+
+Do not call PR #87 device accepted until an exact Actions-built NRO finishes all required gates and the owner passes it on physical Switch hardware.
 
 ## Provider support
 
@@ -87,14 +151,11 @@ Important safety fixes at 00ee7a6e include preserving remembered/alias metadata 
 
 - RetroArch
 - configured mGBA battery-save directory only
-- Tico GB / GBC / GBA verified save roots only
+- Tico roots:
+  - sdmc:/tico/saves/gb
+  - sdmc:/tico/saves/gbc
+  - sdmc:/tico/saves/gba
 - Manual where supported
-
-Verified Tico roots remain:
-
-- sdmc:/tico/saves/gb
-- sdmc:/tico/saves/gbc
-- sdmc:/tico/saves/gba
 
 No Tico DS root is authorized.
 
@@ -105,45 +166,7 @@ No Tico DS root is authorized.
 - melonDS
 - Manual / remembered sources
 
-DraStic .dsv cartridge backups are supported read only. DraStic .dss savestates remain unsupported.
-
-## Frozen hardware-test candidate
-
-Application SHA:
-**00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
-
-Tree SHA:
-**b0832910df44898114a413191ebad3228bded8af**
-
-Exact Actions NRO:
-**PokeBank-NX-PhysicalAudit-00ee7a6e.nro**
-
-NRO SHA-256:
-**5fad07002c5074ffb3d1d2bdd91275ef29fbdf199f7db263f39c5a3a9f86ca25**
-
-Artifact:
-**PokeBank-NX-PhysicalAudit-00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
-
-Artifact ID:
-**10956604914**
-
-## Exact-head automated verification
-
-- GitHub Actions Host Tests #1385 / run ID 36392644853: **PASS**
-  - exact application identity: PASS
-  - clean host build: PASS
-  - full host tests: PASS
-  - focused RSE save-open bridge regression: PASS
-  - ASan / UBSan: PASS
-- Audit Hardening Native Validation #226 / run ID 36392639705: **PASS**
-- Focused Packed Multi-Move #201 / run ID 36392644998: **PASS**
-- Focused Packed Move #202 / run ID 36392645087: **PASS**
-
-**AUTOMATED GATES: PASS**
-
-**DEVICE ACCEPTANCE: PASS**
-
-The artifact's build identity and SHA256 manifest were independently checked after download and match the frozen application/tree/NRO identity above.
+DraStic `.dsv` cartridge backups are supported read only. DraStic `.dss` savestates remain unsupported.
 
 ## Permanent safety invariants
 
@@ -155,13 +178,22 @@ The artifact's build identity and SHA256 manifest were independently checked aft
 - DraStic live writes are disabled.
 - melonDS live writes are disabled.
 - Unknown / ambiguous saves fail closed.
-- Remembered sources may not silently substitute a different physical file.
+- Remembered sources may not silently substitute another physical file.
 - A-button is never destructive by itself.
 - Cross-game True Move remains locked.
 
 ## Next gate
 
-Issue #85 is complete. The next major tranche may begin Gen IV staged editor work while preserving the strict external-source immutability boundary. Gen IV editing must operate only on PokeBank-owned staged data until a separate future writeback policy is explicitly authorized.
+Finish the exact-head PR #87 CI/package run.
+
+If all gates pass:
+
+1. freeze exact SHA/tree;
+2. retrieve exact Actions-built NRO;
+3. verify artifact identity and SHA-256;
+4. hardware-test boxed Gen IV View/Edit on Switch;
+5. fix only hardware-observed regressions;
+6. only after Edit is device accepted, consider Gen IV Create.
 
 ## Canonical project documents
 
@@ -169,6 +201,6 @@ Issue #85 is complete. The next major tranche may begin Gen IV staged editor wor
 - CURRENT_STATUS.md — exact engineering checkpoint
 - PROJECT_STATUS.md — high-level project state
 - docs/V1_ROADMAP.md — release roadmap
-- docs/GAME_SUPPORT_MATRIX.md — game support matrix
+- docs/GAME_SUPPORT_MATRIX.md — support matrix
 - docs/audit/ISSUE85-SAVE-INSTANCES.md — provider-neutral source architecture audit
 - docs/REFERENCE_INDEX.md — upstream/reference index
