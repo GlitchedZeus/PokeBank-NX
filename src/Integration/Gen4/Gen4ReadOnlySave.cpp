@@ -227,6 +227,7 @@ std::optional<Gen4ReadOnlySave> Gen4ReadOnlySave::parse(std::span<const uint8_t>
         return std::nullopt;
     }
     out.partyCount_ = partyCount;
+    out.diagnostics_.declaredPartyCount = partyCount;
     out.party_.reserve(6);
     for (uint8_t slot = 0; slot < 6; ++slot) {
         const size_t offset = general->offset + spec.partyOffset +
@@ -236,6 +237,10 @@ std::optional<Gen4ReadOnlySave> Gen4ReadOnlySave::parse(std::span<const uint8_t>
             return std::nullopt;
         }
         out.party_.emplace_back(byteSpan(out.source_, offset, Encryption::SIZE_PARTY4), spec.group);
+        if (slot < partyCount) {
+            if (out.party_.back().valid()) ++out.diagnostics_.validPartyRecords;
+            else ++out.diagnostics_.invalidPartyRecords;
+        }
     }
 
     out.boxes_.reserve(BOX_COUNT * BOX_SLOTS);
@@ -248,6 +253,9 @@ std::optional<Gen4ReadOnlySave> Gen4ReadOnlySave::parse(std::span<const uint8_t>
                 return std::nullopt;
             }
             out.boxes_.emplace_back(byteSpan(out.source_, offset, Encryption::SIZE_STORED4), spec.group);
+            const auto& parsed = out.boxes_.back();
+            if (!parsed.valid()) ++out.diagnostics_.invalidBoxRecords;
+            else if (!parsed.empty()) ++out.diagnostics_.occupiedBoxRecords;
         }
     }
 
@@ -256,8 +264,9 @@ std::optional<Gen4ReadOnlySave> Gen4ReadOnlySave::parse(std::span<const uint8_t>
         setError("current-box field outside selected Storage block");
         return std::nullopt;
     }
-    const uint32_t currentBox = layout == Layout::HeartGoldSoulSilver
-        ? out.source_[current] : read32(out.source_, current);
+    // PKHeX SAV4Sinnoh and PKSM-Core both read only Storage[0] for D/P/Pt CurrentBox;
+    // the field is 32-bit aligned, but the semantic value is one byte.
+    const uint32_t currentBox = out.source_[current];
     if (currentBox >= BOX_COUNT) {
         setError("Gen IV current-box index exceeds seventeen");
         return std::nullopt;
