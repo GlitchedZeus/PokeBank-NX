@@ -742,12 +742,8 @@ void drawValuePicker(PKSEFramebuffer& fb, State& state) {
         std::string label;
         if (state.pickerTarget == PickerTarget::Nature)
             label = Trainer::getNatureName(static_cast<uint8_t>(value));
-        else if (state.session.working) {
-            const auto record = workingRecord(state, state.session.working->encryptedBytes().empty()
-                ? Enums::GameVersion::Invalid : Enums::GameVersion::PT);
-            (void)record;
+        else
             label = "Ability Slot " + std::to_string(value + 1);
-        }
         fb.drawText(x + 38, yy + 7, label,
                     selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
     }
@@ -985,9 +981,10 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     fb.drawText(44, 270, "Original emulator source: HARD READ ONLY", Colors::Accent);
     fb.drawText(44, 308, "Create / Release / Clone / party mutation: not enabled in G4-03",
                 Colors::TextDim, TextStyle::Caption);
-    drawNavBar(fb, changed
-        ? std::initializer_list<std::pair<std::string,std::string>>{{"Y","Discard All Staged"},{"B","Back"}}
-        : std::initializer_list<std::pair<std::string,std::string>>{{"B","Back"}});
+    if (changed)
+        drawNavBar(fb, {{"Y", "Discard All Staged"}, {"B", "Back"}});
+    else
+        drawNavBar(fb, {{"B", "Back"}});
 }
 
 } // namespace
