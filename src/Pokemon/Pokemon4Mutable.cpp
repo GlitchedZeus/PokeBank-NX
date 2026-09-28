@@ -9,6 +9,7 @@
 #include "Enums/LanguageID.h"
 #include "Names/NameLanguage.h"
 #include "Names/SpeciesNames.h"
+#include "Enums/LanguageID.h"
 #include "Utils/StringHelpers.h"
 #include "Utils/Gen4TextCodec.h"
 
@@ -120,11 +121,9 @@ std::optional<Pokemon4Mutable> Pokemon4Mutable::createStored(
     }
     result.write8(0x84, static_cast<uint8_t>(
         (result.byteAt(0x84) & 0x7Fu) | ((defaults.otGender & 1u) << 7)));
-    if (sourceGroup == Enums::GameVersion::DP) {
-        result.write16(0x80, defaults.metLocation);
-    } else {
-        result.write16(0x46, defaults.metLocation);
-        result.write16(0x80, defaults.metLocation);
+    if (!result.setMetLocation(defaults.metLocation)) {
+        if (error) *error = "Gen IV Create could not encode default Met Location";
+        return std::nullopt;
     }
 
     Pokemon4ReadOnly verify(result.encryptedBytes(), sourceGroup);
@@ -396,8 +395,16 @@ bool Pokemon4Mutable::setHeldItem(uint16_t value) noexcept {
 }
 
 bool Pokemon4Mutable::setLanguage(uint8_t value) noexcept {
-    if (!valid_) return false;
+    if (!valid_ || !Enums::groupHasLanguage(sourceGroup_, value)) return false;
+    const bool nicknamed = (u32At(0x38) & 0x80000000u) != 0;
     write8(0x17, value);
+    if (!nicknamed) {
+        const auto nameIndex = Names::languageIndexFor(
+            static_cast<Enums::LanguageID>(value));
+        const auto speciesName = Utils::utf8ToUtf16(
+            Names::getSpeciesNameLocalized(species(), nameIndex));
+        if (!writeTextPreservingTrash(0x48, 11, 10, speciesName)) return false;
+    }
     return true;
 }
 
@@ -414,6 +421,11 @@ bool Pokemon4Mutable::setIV(size_t stat, uint8_t value) noexcept {
 
 bool Pokemon4Mutable::setEV(size_t stat, uint8_t value) noexcept {
     if (!valid_ || stat >= 6) return false;
+    const auto current = evs();
+    uint32_t total = value;
+    for (size_t i = 0; i < current.size(); ++i)
+        if (i != stat) total += current[i];
+    if (total > 510) return false;
     write8(0x18 + stat, value);
     refreshPartyDerivedData();
     return true;
@@ -456,6 +468,20 @@ bool Pokemon4Mutable::setMetLevel(uint8_t value) noexcept {
     if (!valid_ || value > 100) return false;
     write8(0x84, static_cast<uint8_t>((byteAt(0x84) & 0x80u) | value));
     return true;
+}
+
+bool Pokemon4Mutable::setMetLocation(uint16_t value) noexcept {
+    if (!valid_) return false;
+    if (sourceGroup_ == Enums::GameVersion::DP) {
+        write16(0x80, value);
+        return true;
+    }
+    if (sourceGroup_ == Enums::GameVersion::PT ||
+        sourceGroup_ == Enums::GameVersion::HGSS) {
+        write16(0x46, value);
+        return true;
+    }
+    return false;
 }
 
 bool Pokemon4Mutable::rerollPid(
