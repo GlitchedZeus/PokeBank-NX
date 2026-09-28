@@ -316,14 +316,14 @@ include/Trainer/Inventory8LA.h	blob	100644	2075		unknown		PENDING			0
 include/Trainer/Inventory8SWSH.h	blob	100644	2333		unknown		PENDING			0	
 include/Trainer/Inventory9LZA.h	blob	100644	3630		unknown		PENDING			0	
 include/Trainer/Inventory9SV.h	blob	100644	4041		unknown		PENDING			0	
-include/Trainer/Trainer.h	blob	100644	23219		unknown		PENDING			0	
+include/Trainer/Trainer.h	blob	100644	23219	shared mutable Trainer model/API	text	508	AUDITED			0	no
 include/Trainer/Trainer3FRLG.h	blob	100644	5993	FRLG mutable trainer/save serializer API	text	109	AUDITED			1	yes
 include/Trainer/Trainer7LGPE.h	blob	100644	14302	LGPE mutable trainer/save serializer API	text	340	AUDITED			1	yes
-include/Trainer/Trainer8BDSP.h	blob	100644	4288		unknown		PENDING			0	
-include/Trainer/Trainer8LA.h	blob	100644	11080		unknown		PENDING			0	
-include/Trainer/Trainer8SWSH.h	blob	100644	9892		unknown		PENDING			0	
-include/Trainer/Trainer9LZA.h	blob	100644	10108		unknown		PENDING			0	
-include/Trainer/Trainer9SV.h	blob	100644	10575		unknown		PENDING			0	
+include/Trainer/Trainer8BDSP.h	blob	100644	4288	BDSP flat-save trainer API	text	77	AUDITED			1	yes
+include/Trainer/Trainer8LA.h	blob	100644	11080	Legends Arceus trainer/save serializer API	text	268	AUDITED			1	yes
+include/Trainer/Trainer8SWSH.h	blob	100644	9892	Sword/Shield trainer/save serializer API	text	263	AUDITED			2	yes
+include/Trainer/Trainer9LZA.h	blob	100644	10108	Legends Z-A trainer/save serializer API	text	265	AUDITED			3	yes
+include/Trainer/Trainer9SV.h	blob	100644	10575	Scarlet/Violet trainer/save serializer API	text	265	AUDITED			3	yes
 include/UI/ActionSheetModel.h	blob	100644	4742		unknown		PENDING			0	
 include/UI/BackupSelectionScreen.h	blob	100644	2962		unknown		PENDING			0	
 include/UI/BattleStatRadarModel.h	blob	100644	2187		unknown		PENDING			0	
@@ -525,14 +525,14 @@ src/Pokemon/SWSHDexTable.cpp	blob	100644	25413		unknown		PENDING			0
 src/Save/Block.cpp	blob	100644	7048	SC block parser/serializer	text	199	AUDITED			0	yes
 src/Save/GetSaveFileContents.cpp	blob	100644	41176		unknown		PENDING			0	
 src/Trainer/Bank.cpp	blob	100644	29556	legacy Bank serialization/recovery/migration	text	611	AUDITED			1	yes
-src/Trainer/Trainer.cpp	blob	100644	1480		unknown		PENDING			0	
+src/Trainer/Trainer.cpp	blob	100644	1480	shared Trainer model implementation	text	50	AUDITED			0	no
 src/Trainer/Trainer3FRLG.cpp	blob	100644	23130	FRLG mutable trainer/save serializer	text	461	AUDITED			1	yes
 src/Trainer/Trainer7LGPE.cpp	blob	100644	48284	LGPE mutable trainer/save serializer	text	1005	AUDITED			1	yes
-src/Trainer/Trainer8BDSP.cpp	blob	100644	20776		unknown		PENDING			0	
-src/Trainer/Trainer8LA.cpp	blob	100644	36866		unknown		PENDING			0	
-src/Trainer/Trainer8SWSH.cpp	blob	100644	40486		unknown		PENDING			0	
-src/Trainer/Trainer9LZA.cpp	blob	100644	45084		unknown		PENDING			0	
-src/Trainer/Trainer9SV.cpp	blob	100644	40540		unknown		PENDING			0	
+src/Trainer/Trainer8BDSP.cpp	blob	100644	20776	BDSP flat-save parser/serializer	text	415	AUDITED			1	yes
+src/Trainer/Trainer8LA.cpp	blob	100644	36866	Legends Arceus trainer/save parser/serializer	text	741	AUDITED			1	yes
+src/Trainer/Trainer8SWSH.cpp	blob	100644	40486	Sword/Shield trainer/save parser/serializer	text	852	AUDITED			2	yes
+src/Trainer/Trainer9LZA.cpp	blob	100644	45084	Legends Z-A trainer/save parser/serializer	text	911	AUDITED			3	yes
+src/Trainer/Trainer9SV.cpp	blob	100644	40540	Scarlet/Violet trainer/save parser/serializer	text	819	AUDITED			3	yes
 src/UI/BackupSelectionScreen.cpp	blob	100644	14155	profile/game backup browser/delete UI	text	313	AUDITED			1	yes
 src/UI/ClassicInventoryOverlay.cpp	blob	100644	40334		unknown		PENDING			0	
 src/UI/ClassicInventoryUIModel.cpp	blob	100644	3480		unknown		PENDING			0	
