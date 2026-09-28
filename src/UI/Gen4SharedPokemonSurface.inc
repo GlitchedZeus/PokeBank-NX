@@ -529,6 +529,82 @@ void openSpeciesPicker(TrainerViewScreen& screen, State& state) {
     screen.controllerNavigation.reset();
 }
 
+std::vector<uint16_t> gen4HeldItemValues(Enums::GameVersion group) {
+    std::vector<uint16_t> values{0};
+    values.reserve(420);
+    for (uint16_t id = 1; id <= 419; ++id) {
+        if (id == 5) continue;               // Safari Ball cannot be held in Gen IV.
+        if (id >= 113 && id <= 134) continue;
+        if (id == 112 && group == Enums::GameVersion::DP) continue; // Griseous Orb is Pt/HGSS.
+        values.push_back(id);
+    }
+    return values;
+}
+
+void openHeldItemPicker(TrainerViewScreen& screen, State& state) {
+    state.valuePicker = true;
+    state.pickerTarget = PickerTarget::HeldItem;
+    state.pickerValues = gen4HeldItemValues(bridge(screen).sourceSave().rawFamily());
+    const uint16_t current = state.session.working ? state.session.working->heldItem() : 0;
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end() ? 0
+        : static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    screen.controllerNavigation.reset();
+}
+
+void openLanguagePicker(TrainerViewScreen& screen, State& state) {
+    state.valuePicker = true;
+    state.pickerTarget = PickerTarget::Language;
+    state.pickerValues.clear();
+    const auto group = bridge(screen).sourceSave().rawFamily();
+    for (uint16_t id = 1; id <= 8; ++id)
+        if (Enums::groupHasLanguage(group, static_cast<uint8_t>(id)))
+            state.pickerValues.push_back(id);
+    const uint16_t current = state.session.working ? state.session.working->language() : 2;
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end() ? 0
+        : static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    screen.controllerNavigation.reset();
+}
+
+void openBallPicker(TrainerViewScreen& screen, State& state) {
+    state.valuePicker = true;
+    state.pickerTarget = PickerTarget::Ball;
+    state.pickerValues.clear();
+    const auto group = bridge(screen).sourceSave().rawFamily();
+    const uint16_t maximum = group == Enums::GameVersion::HGSS ? 24 : 16;
+    for (uint16_t id = 1; id <= maximum; ++id) state.pickerValues.push_back(id);
+    const uint16_t current = state.session.working ? state.session.working->ball() : 4;
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end() ? 0
+        : static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    screen.controllerNavigation.reset();
+}
+
+void openPokerusPicker(TrainerViewScreen& screen, State& state) {
+    state.valuePicker = true;
+    state.pickerTarget = PickerTarget::Pokerus;
+    state.pickerValues = {0x00, 0x10, 0x11}; // None, cured, infected (strain 1/day 1).
+    const uint8_t current = state.session.working ? state.session.working->pokerus() : 0;
+    state.pickerRow = current == 0 ? 0 : ((current & 0x0Fu) != 0 ? 2 : 1);
+    screen.controllerNavigation.reset();
+}
+
+void openMovePicker(TrainerViewScreen& screen, State& state) {
+    if (!state.session.working || state.moveEditorSlot < 0 || state.moveEditorSlot >= 4) return;
+    state.valuePicker = true;
+    state.pickerTarget = PickerTarget::Move;
+    state.pickerValues = {0};
+    const auto group = bridge(screen).sourceSave().rawFamily();
+    for (uint16_t move = 1; move <= 467; ++move)
+        if (Names::isMovePresent(move, group)) state.pickerValues.push_back(move);
+    const uint16_t current = state.session.working->moves()[static_cast<size_t>(state.moveEditorSlot)];
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end() ? 0
+        : static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    screen.controllerNavigation.reset();
+}
+
 void openNaturePicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
     state.pickerTarget = PickerTarget::Nature;
@@ -579,11 +655,34 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
         ok = state.session.working->setNature(static_cast<uint8_t>(value));
     else if (state.pickerTarget == PickerTarget::Ability)
         ok = state.session.working->setAbilitySlot(static_cast<uint8_t>(value));
+    else if (state.pickerTarget == PickerTarget::HeldItem)
+        ok = state.session.working->setHeldItem(value);
+    else if (state.pickerTarget == PickerTarget::Language)
+        ok = state.session.working->setLanguage(static_cast<uint8_t>(value));
+    else if (state.pickerTarget == PickerTarget::Ball)
+        ok = state.session.working->setBall(static_cast<uint8_t>(value));
+    else if (state.pickerTarget == PickerTarget::Pokerus)
+        ok = state.session.working->setPokerus(static_cast<uint8_t>(value));
+    else if (state.pickerTarget == PickerTarget::Move) {
+        const auto slot = static_cast<size_t>(state.moveEditorSlot);
+        ok = state.session.working->setMove(slot, value);
+        if (ok) {
+            state.session.working->setPPUps(slot, 0);
+            const int base = value == 0 ? 0 : Names::getMoveBasePP(
+                value, bridge(screen).sourceSave().rawFamily());
+            state.session.working->setPP(slot, static_cast<uint8_t>(std::max(0, base)));
+        }
+    }
 
     if (!ok) {
-        screen.postStatus(state.pickerTarget == PickerTarget::Species
-            ? "That species could not be represented safely in this Generation IV draft"
-            : "Could not preserve the other PID-linked Generation IV traits", 300);
+        const char* message = "Generation IV field edit was refused";
+        if (state.pickerTarget == PickerTarget::Species)
+            message = "That species could not be represented safely in this Generation IV draft";
+        else if (state.pickerTarget == PickerTarget::Nature || state.pickerTarget == PickerTarget::Ability)
+            message = "Could not preserve the other PID-linked Generation IV traits";
+        else if (state.pickerTarget == PickerTarget::Language)
+            message = "That language cannot preserve the current Generation IV text";
+        screen.postStatus(message, 300);
         return true;
     }
     state.valuePicker = false;
@@ -596,7 +695,8 @@ void openMoveEditor(TrainerViewScreen& screen, State& state, int slot) {
     if (!state.session.working || slot < 0 || slot >= 4) return;
     state.moveEditor = true;
     state.moveEditorSlot = slot;
-    state.moveEditorRow = 1; // Move itself stays read-only in G4-03; start on PP.
+    state.moveEditorRow = 0;
+    state.moveBaseline = state.session.working->moves()[static_cast<size_t>(slot)];
     state.movePpBaseline = state.session.working->pp()[static_cast<size_t>(slot)];
     state.movePpUpsBaseline = state.session.working->ppUps()[static_cast<size_t>(slot)];
     screen.controllerNavigation.reset();
@@ -605,6 +705,7 @@ void openMoveEditor(TrainerViewScreen& screen, State& state, int slot) {
 void cancelMoveEditor(State& state) {
     if (state.session.working && state.moveEditorSlot >= 0 && state.moveEditorSlot < 4) {
         const auto slot = static_cast<size_t>(state.moveEditorSlot);
+        state.session.working->setMove(slot, state.moveBaseline);
         state.session.working->setPP(slot, state.movePpBaseline);
         state.session.working->setPPUps(slot, state.movePpUpsBaseline);
     }
@@ -626,7 +727,7 @@ bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {
     const auto slot = static_cast<size_t>(state.moveEditorSlot);
     const auto move = state.session.working->moves()[slot];
     if (state.moveEditorRow == 0) {
-        screen.postStatus("Move selection stays read-only until exact Gen IV learnsets are pinned", 300);
+        openMovePicker(screen, state);
     } else if (state.moveEditorRow == 1) {
         if (move == 0) {
             screen.postStatus("Choose a move in a later milestone before editing PP", 240);
