@@ -350,9 +350,9 @@ void drawFocus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selected) {
         fb.drawRoundedRect(x, y, w, h, 6, Colors::FocusBorder, 2);
 }
 
-int moveMaxPP(uint16_t move, uint8_t ppUps) {
+int moveMaxPP(uint16_t move, uint8_t ppUps, Enums::GameVersion group) {
     if (move == 0) return 0;
-    const int base = Names::getMoveBasePP(move);
+    const int base = Names::getMoveBasePP(move, group);
     return base <= 0 ? 0 : base * (5 + std::min<int>(ppUps, 3)) / 5;
 }
 
@@ -454,7 +454,9 @@ bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {
         if (move == 0) {
             screen.postStatus("Choose a move in a later milestone before editing PP", 240);
         } else {
-            const int maximum = moveMaxPP(move, state.session.working->ppUps()[slot]);
+            const int maximum = moveMaxPP(
+                move, state.session.working->ppUps()[slot],
+                bridge(screen).sourceSave().rawFamily());
             const auto r = Utils::promptNumber("Current PP",
                 std::min<int>(state.session.working->pp()[slot], maximum), 0, maximum);
             if (r.accepted) state.session.working->setPP(slot, static_cast<uint8_t>(r.value));
@@ -467,7 +469,9 @@ bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {
                 "PP Ups", state.session.working->ppUps()[slot], 0, 3);
             if (r.accepted) {
                 state.session.working->setPPUps(slot, static_cast<uint8_t>(r.value));
-                const int maximum = moveMaxPP(move, static_cast<uint8_t>(r.value));
+                const int maximum = moveMaxPP(
+                    move, static_cast<uint8_t>(r.value),
+                    bridge(screen).sourceSave().rawFamily());
                 if (state.session.working->pp()[slot] > maximum)
                     state.session.working->setPP(slot, static_cast<uint8_t>(maximum));
             }
@@ -750,7 +754,7 @@ void drawValuePicker(PKSEFramebuffer& fb, State& state) {
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"A", "Choose"}, {"B", "Cancel"}});
 }
 
-void drawMoveEditor(PKSEFramebuffer& fb, State& state) {
+void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     if (!state.moveEditor || !state.session.working) return;
     const auto slot = static_cast<size_t>(state.moveEditorSlot);
     const uint16_t move = state.session.working->moves()[slot];
@@ -767,7 +771,9 @@ void drawMoveEditor(PKSEFramebuffer& fb, State& state) {
     const std::array<std::pair<std::string,std::string>,5> rows{{
         {"Move", move == 0 ? "Empty" : std::string(Names::getMoveName(move)) + " (read-only)"},
         {"PP", std::to_string(state.session.working->pp()[slot]) + "/" +
-               std::to_string(moveMaxPP(move, state.session.working->ppUps()[slot]))},
+               std::to_string(moveMaxPP(
+                   move, state.session.working->ppUps()[slot],
+                   bridge(screen).sourceSave().rawFamily()))},
         {"PP Ups", std::to_string(state.session.working->ppUps()[slot])},
         {"Apply", "Keep these move details"},
         {"Cancel", "Discard these move details"},
@@ -927,7 +933,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     }
 
     if (state.valuePicker) drawValuePicker(fb, state);
-    if (state.moveEditor) drawMoveEditor(fb, state);
+    if (state.moveEditor) drawMoveEditor(screen, fb, state);
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
