@@ -355,10 +355,6 @@ constexpr std::array<const char*, 15> detailLabels{{
     "Met Level", "Met Location", "Pokerus"
 }};
 
-bool detailEditable(int row) noexcept {
-    return row == 1 || row == 2 || row == 3 || row == 8 || row == 12;
-}
-
 bool variableGenderSpecies(const Pokemon::Pokemon4ReadOnly& p) noexcept {
     const uint8_t ratio = p.personal().genderRatio;
     return ratio > 0 && ratio < 254;
@@ -535,6 +531,15 @@ void openBallPicker(TrainerViewScreen& screen, State& state) {
 
 void openMetLocationPicker(TrainerViewScreen& screen, State& state,
                            const Pokemon::Pokemon4ReadOnly& record) {
+    const auto originGroup = Enums::getGameGroup(
+        static_cast<Enums::GameVersion>(record.originVersion()));
+    if (originGroup != Enums::GameVersion::DP &&
+        originGroup != Enums::GameVersion::PT &&
+        originGroup != Enums::GameVersion::HGSS) {
+        screen.postStatus(
+            "Met Location editing is read-only for transferred non-Gen-IV origins", 300);
+        return;
+    }
     state.valuePicker = true;
     state.pickerTarget = PickerTarget::MetLocation;
     state.pickerValues.clear();
@@ -608,12 +613,19 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
         state.valuePicker = false;
         return true;
     }
+    const int pickerCount = static_cast<int>(state.pickerValues.size());
     if (down & HidNpadButton_Up)
-        state.pickerRow = (state.pickerRow - 1 + static_cast<int>(state.pickerValues.size())) %
-                          static_cast<int>(state.pickerValues.size());
+        state.pickerRow = (state.pickerRow - 1 + pickerCount) % pickerCount;
     if (down & HidNpadButton_Down)
-        state.pickerRow = (state.pickerRow + 1) %
-                          static_cast<int>(state.pickerValues.size());
+        state.pickerRow = (state.pickerRow + 1) % pickerCount;
+    if (down & HidNpadButton_L)
+        state.pickerRow = (state.pickerRow - (10 % pickerCount) + pickerCount) % pickerCount;
+    if (down & HidNpadButton_R)
+        state.pickerRow = (state.pickerRow + 10) % pickerCount;
+    if (down & HidNpadButton_ZL)
+        state.pickerRow = (state.pickerRow - (50 % pickerCount) + pickerCount) % pickerCount;
+    if (down & HidNpadButton_ZR)
+        state.pickerRow = (state.pickerRow + 50) % pickerCount;
     if (down & HidNpadButton_B) {
         state.valuePicker = false;
         state.pickerTarget = PickerTarget::None;
@@ -1096,7 +1108,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         fb.drawText(x + 38, yy + 7, label,
                     selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
     }
-    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"A", "Choose"}, {"B", "Cancel"}});
+    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"L/R", "Page"}, {"ZL/ZR", "Jump"},
+                    {"A", "Choose"}, {"B", "Cancel"}});
 }
 
 void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
