@@ -38,6 +38,12 @@ Status: IN PROGRESS
 - The Gen IV UI bounds Current PP to the move-specific maximum and clamps PP when PP Ups decrease. The lower-level `Pokemon4Mutable::setPP` API itself does not enforce that semantic bound; this remains a follow-up/API-hardening question until whole-repository callers are traced, not a classified finding yet.
 - `DurableFile` deliberately documents Switch SD directory-entry durability as a separate hardware gate; absence of a directory fsync in this primitive is therefore not being misreported as a newly discovered hidden guarantee violation.
 
+## Sibling PR #97 overlay coverage
+
+- Delta from PR #90: 6 commits / 18 changed paths.
+- Fully read so far: 9 / 18 changed paths, including the complete 582-line `src/UI/AppShellScreen.cpp`, new app-shell/organization model headers, native UI workflow/build fragment, and their focused tests.
+- This overlay count is intentionally separate from the 725-path PR #92 MAIN ledger.
+
 ## Findings
 
 No findings are recorded here until supported by direct evidence from the frozen tree or active-overlay delta.
@@ -151,3 +157,18 @@ No findings are recorded here until supported by direct evidence from the frozen
 - Why it matters: unlike dated reports explicitly kept as history, these files advertise themselves as the fast/current authority path. A fresh agent or contributor following repository instructions can resume an obsolete milestone or write to an obsolete branch.
 - Recommended fix: keep one tiny live handoff/authority file that starts by re-fetching GitHub and records only the current integration hierarchy; move obsolete prompts to `docs/history/` or mark them historical at the top; make recovery branch-agnostic where possible.
 - Owner: docs-only / MAIN.
+
+### AUDIT-011 — Search preview vertical wrap changes columns and the test blesses it
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: UI/controller navigation / test correctness
+- Files: `include/UI/OrganizationPreviewModel.h`, `tests/test_organization_preview_model.cpp` on sibling UI PR #97
+- Exact symbols: `previewMoveSelection`; Search regression assertion `previewMoveSelection(OrganizationPreviewKind::Search, 6, 0, 1) == 1`
+- Problem: Search renders seven filters in a two-column grid. Vertical movement adds/subtracts the column count and then wraps the flat index modulo seven. Because seven is not divisible by two, vertical wrapping changes columns: index 6 (bottom-left) + Down becomes index 1 (top-right); Up from index 0 similarly lands on index 5 (bottom-right).
+- Why it matters: controller movement no longer matches the visible two-column geometry at the incomplete final row, contrary to the stated spatial-navigation contract. The existing test currently codifies the defect instead of detecting it.
+- Evidence: the model computes `next = current + dy * cols` and repeatedly adds/subtracts `count`; the Search model has `count=7`, `cols=2`. The test explicitly expects the 6 -> 1 transition.
+- Current tests: host test covers and accepts the incorrect transition.
+- Missing tests: column-preserving wrap for incomplete rows, including Search 0 + Up and 6 + Down.
+- Recommended fix: perform row/column navigation geometrically. On vertical wrap, preserve the current column and choose the nearest valid row entry; for the one-item final Search row, bottom-left should wrap to top-left. Update the regression expectations accordingly.
+- Risk of fix: low; UI-model/controller behavior only.
+- Owner: UI/QoL.
