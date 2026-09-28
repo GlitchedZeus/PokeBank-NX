@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 224 / 725
-- Fully read text files: 190 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 232 / 725
+- Fully read text files: 198 / 692 (text/unknown classification remains provisional until content inspection completes)
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -283,3 +283,18 @@ No findings are recorded here until supported by direct evidence from the frozen
 - Recommended fix: gather all viable matches first. If exactly one remains, launch it. If multiple remain, require an explicit stored content binding or chooser keyed by exact source/game identity; never pick by directory iteration order.
 - Risk of fix: low; launch resolution only, no save mutation.
 - Owner: sibling UI/QoL lane.
+
+### AUDIT-017 — FRLG mutable workspace selects rotating slot before checksum validation
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: FireRed/LeafGreen mutable backup workspace / save integrity
+- Files: `src/Trainer/Trainer3FRLG.cpp`, `src/Save/GetSaveFileContents.cpp`; contrast with `tests/test_gen3_staged_pokemon_editor.cpp`
+- Exact symbols: `Trainer3FRLG::selectActiveSlot()`, `validateTrainerSaveForOpen()`, `saveTrainerInfoFRLG()`, `Trainer3FRLG::finalizeChecksums()`.
+- Problem: the legacy mutable FRLG trainer chooses the active rotating save slot from save counters and sector-id presence only. It does not verify the selected slot's 14 sector checksums before parsing trainer/party/boxes. The generic pre-open validation path special-cases BDSP and PLA but currently returns success for FRLG without running a checksum/slot-recovery gate.
+- Why it matters: if the higher-counter slot is corrupt while the older slot is still valid, this path can parse and present the corrupt slot instead of recovering from the valid one. A later save calls `finalizeChecksums()` before durable workspace validation, which rewrites all active-slot checksums; corruption can therefore be normalized into a newly checksum-valid workspace generation rather than refused.
+- Evidence: `selectActiveSlot()` compares counters, builds an id table, and sets `m_valid` from all ids being present; there is no checksum predicate. `validateFRLGWorkspace()` detects checksum disagreement only on the bytes it is given, but `saveTrainerInfoFRLG()` calls `finalizeChecksums()` before that validator sees the candidate. The newer staged Gen III implementation already tests the intended policy: one corrupt rotating slot recovers from the other, while two corrupt slots fail closed.
+- Current tests: staged Gen III tests cover checksum-aware rotating-slot recovery, but the `Trainer3FRLG` mutable workspace path does not share that implementation and has no equivalent regression in the reviewed tests.
+- Missing tests: corrupt newest/valid older slot must select the older valid slot; both invalid slots must refuse open; no mutation may occur merely to make an invalid selected slot checksum-valid.
+- Recommended fix: reuse the checksum-aware Gen III slot validator/selection policy (or one shared lower-level implementation) before constructing mutable FRLG state. Make FRLG participate in `validateTrainerSaveForOpen()` and keep the original corrupted candidate only as recovery evidence, never auto-repair it on ordinary save.
+- Risk of fix: medium because active-slot selection changes; validate against real FR/LG saves and RTC-footer variants.
+- Owner: MAIN / save-integrity lane.
