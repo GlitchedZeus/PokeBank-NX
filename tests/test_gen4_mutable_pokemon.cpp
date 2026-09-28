@@ -255,6 +255,53 @@ void testShedinjaPartyHpRule() {
     }
 }
 
+void testStrictCreateFactory() {
+    struct Case { Enums::GameVersion group; uint8_t origin; };
+    const std::array<Case,3> cases{{
+        {Enums::GameVersion::DP, static_cast<uint8_t>(Enums::GameVersion::D)},
+        {Enums::GameVersion::PT, static_cast<uint8_t>(Enums::GameVersion::Pt)},
+        {Enums::GameVersion::HGSS, static_cast<uint8_t>(Enums::GameVersion::HG)},
+    }};
+    for (const auto& tc : cases) {
+        std::string error;
+        auto created = Pokemon::Pokemon4Mutable::createStored(
+            393, tc.group, tc.origin, u"ASH", 12345, 54321, 0, 2, 5,
+            0x13572468u, &error);
+        assert(created && error.empty() && !created->isParty());
+        Pokemon::Pokemon4ReadOnly parsed(created->encryptedBytes(), tc.group);
+        assert(parsed.valid() && !parsed.empty() && !parsed.isParty());
+        assert(parsed.species() == 393);
+        assert(parsed.tid() == 12345 && parsed.sid() == 54321);
+        assert(parsed.language() == 2);
+        assert(parsed.originVersion() == tc.origin);
+        assert(parsed.originalTrainerName() == u"ASH");
+        assert(parsed.nickname() == u"PIPLUP");
+        assert(!parsed.isNicknamed());
+        assert(parsed.metLevel() == 5);
+        assert(parsed.originalTrainerGender() == 0);
+        assert(Pokemon::getLevelFromExp(parsed.experience(), parsed.personal().growthRate) == 5);
+        assert(parsed.friendship() == parsed.personal().baseFriendship);
+        assert(parsed.ability() == parsed.personal().ability1 ||
+               parsed.ability() == parsed.personal().ability2);
+        if (tc.group == Enums::GameVersion::HGSS) assert(parsed.ballHGSS() == 4);
+        else assert(parsed.ballDPPt() == 4);
+        assert(parsed.moves() == std::array<uint16_t,4>{0,0,0,0});
+        assert(parsed.pp() == std::array<uint8_t,4>{0,0,0,0});
+        assert(parsed.ppUps() == std::array<uint8_t,4>{0,0,0,0});
+    }
+
+    std::string error;
+    assert(!Pokemon::Pokemon4Mutable::createStored(
+        494, Enums::GameVersion::PT, static_cast<uint8_t>(Enums::GameVersion::Pt),
+        u"ASH", 1, 2, 0, 2, 5, 1, &error));
+    assert(!error.empty());
+    error.clear();
+    assert(!Pokemon::Pokemon4Mutable::createStored(
+        25, Enums::GameVersion::PT, static_cast<uint8_t>(Enums::GameVersion::Pt),
+        u"ASH", 1, 2, 0, 9, 5, 1, &error)); // Chinese is not native to Gen IV.
+    assert(!error.empty());
+}
+
 void testBadInputFailsClosed() {
     std::vector<std::byte> empty(Encryption::SIZE_STORED4, std::byte{0});
     std::string error;
@@ -278,6 +325,7 @@ int main() {
     testPidCoupledEdits();
     testFixedGenderAndAbilitySlots();
     testShedinjaPartyHpRule();
+    testStrictCreateFactory();
     testBadInputFailsClosed();
     std::cout << "Gen IV mutable PK4 core PASS\n";
     return 0;
