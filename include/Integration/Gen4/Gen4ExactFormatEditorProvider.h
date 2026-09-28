@@ -17,9 +17,10 @@ constexpr bool isGen4NdsId(std::string_view id) noexcept {
 constexpr PokeVault::SaveEdit::Capabilities stagedPokemonCapabilities() noexcept {
     PokeVault::SaveEdit::Capabilities caps;
     caps.add(PokeVault::SaveEdit::Capability::BoxPokemon)
-        .add(PokeVault::SaveEdit::Capability::PokemonEditing);
-    // Create remains deliberately absent until boxed PK4 Edit has passed exact
-    // serialize/reparse and owner hardware acceptance.
+        .add(PokeVault::SaveEdit::Capability::PokemonEditing)
+        .add(PokeVault::SaveEdit::Capability::PokemonCreation);
+    // G4-03 boxed/party Edit passed exact CI and owner hardware acceptance at
+    // 84dae170...; G4-04 now has a native empty-slot Create transaction.
     return caps;
 }
 
