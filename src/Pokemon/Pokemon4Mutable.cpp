@@ -107,7 +107,7 @@ uint16_t Pokemon4Mutable::tid() const noexcept { return u16At(0x0C); }
 uint16_t Pokemon4Mutable::sid() const noexcept { return u16At(0x0E); }
 uint32_t Pokemon4Mutable::experience() const noexcept { return u32At(0x10); }
 uint8_t Pokemon4Mutable::friendship() const noexcept { return byteAt(0x14); }
-uint8_t Pokemon4Mutable::ability() const noexcept { return byteAt(0x15); }
+uint16_t Pokemon4Mutable::ability() const noexcept { return byteAt(0x15); }
 uint8_t Pokemon4Mutable::language() const noexcept { return byteAt(0x17); }
 uint8_t Pokemon4Mutable::level() const noexcept {
     const auto& personal = personalFor(sourceGroup_, species(), form());
