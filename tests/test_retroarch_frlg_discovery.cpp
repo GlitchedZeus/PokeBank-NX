@@ -130,6 +130,7 @@ int main() {
     assert(!fireRed->canonicalPath.empty() && !leafGreen->canonicalPath.empty());
     assert(!fireRed->sourceIdentity.empty() && !leafGreen->sourceIdentity.empty());
     assert(fireRed->sourceIdentity != leafGreen->sourceIdentity);
+    assert(fireRed->providerLabel == "RetroArch");
     assert(fireRed->contentFingerprint.size() == 64);
     assert(fireRed->normalizedPath == fireRedPath.string());
     assert(fireRed->fileSize == 0x20000 && leafGreen->fileSize == 0x20007);
@@ -195,6 +196,41 @@ int main() {
     assert(fallbackSelected.activeRootKind ==
            PokeVault::Legacy::FRLGDiscoveryResult::RootKind::ConventionalFallback);
     assert(fallbackSelected.sources.size() == 1 && fallbackSelected.sources[0].ready());
+
+    const fs::path mgbaDir = temp / "mGBA";
+    const fs::path mgbaSaves = mgbaDir / "battery";
+    fs::create_directories(mgbaSaves);
+    const fs::path mgbaFireRed = mgbaSaves / "Pokemon FireRed.sav";
+    writeFile(mgbaFireRed, fixture);
+    const fs::path mgbaConfig = mgbaDir / "config.ini";
+    {
+        std::ofstream output(mgbaConfig);
+        output << "savegamePath=battery\n";
+        output << "[ports.switch]\n";
+        output << "foo=bar\n";
+    }
+    const auto mgbaRoots = PokeVault::Legacy::mGBASaveRootsFromConfig(mgbaConfig.string());
+    assert(mgbaRoots.size() == 1 && mgbaRoots.front() == mgbaSaves.string());
+
+    const fs::path mgbaNoRootConfig = mgbaDir / "no-save-root.ini";
+    {
+        std::ofstream output(mgbaNoRootConfig);
+        output << "[ports.switch]\n";
+        output << "savegamePath=must-not-be-read-from-a-section\n";
+    }
+    assert(PokeVault::Legacy::mGBASaveRootsFromConfig(mgbaNoRootConfig.string()).empty());
+
+    const auto unified = PokeVault::Legacy::discoverConfiguredLegacySaves(
+        {}, (temp / "missing-retroarch.cfg").string(),
+        (temp / "missing-retroarch-root").string(), mgbaConfig.string());
+    const auto unifiedFireRed = std::find_if(unified.sources.begin(), unified.sources.end(),
+        [&](const auto& source) {
+            return source.ready() && source.gameId == "firered_gba" &&
+                   source.normalizedPath == mgbaFireRed.string();
+        });
+    assert(unifiedFireRed != unified.sources.end());
+    assert(unifiedFireRed->providerLabel == "mGBA");
+    assert(unified.activeRoot == mgbaSaves.string());
 
     auto limited = PokeVault::Legacy::discoverFRLGSaves(roots, {.maxDepth = 2, .maxFiles = 1});
     assert(limited.filesExamined == 1 && limited.limitReached);

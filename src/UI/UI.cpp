@@ -51,10 +51,11 @@ namespace UI {
         if (!legacySourceBindings.load())
             logErrorToFile("Legacy source bindings contain malformed or unreadable rows");
 
-        // Discover only RetroArch's configured/conventional save roots. Generation-specific strict
-        // parsers remain separate; the catalog only shares presentation/profile binding and is
-        // permanently read-only for Gen I R/B/Y, Gen II G/S/C, and Gen III R/S/E/FR/LG.
-        legacyFRLGSources = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
+        // Discover only explicitly bounded emulator battery-save roots. RetroArch keeps its
+        // configured/conventional root; mGBA is additive only when /mGBA/config.ini explicitly
+        // defines savegamePath. Same-directory-as-ROM mGBA saves are never found by crawling ROMs.
+        // Generation-specific strict parsers remain separate and every source stays read-only.
+        legacyFRLGSources = PokeVault::Legacy::discoverConfiguredLegacySaves();
         size_t ready = 0;
         size_t ambiguous = 0;
         size_t rejected = 0;
@@ -75,7 +76,7 @@ namespace UI {
         }
         char legacySummary[256];
         snprintf(legacySummary, sizeof(legacySummary),
-                 "RetroArch legacy: %zu files checked, %zu ready (Gen I %zu, Gen II %zu, Gen III %zu), %zu ambiguous, %zu rejected%s",
+                 "Legacy emulator sources: %zu files checked, %zu ready (Gen I %zu, Gen II %zu, Gen III %zu), %zu ambiguous, %zu rejected%s",
                  legacyFRLGSources.filesExamined, ready, gen1Ready, gen2Ready, gen3Ready,
                  ambiguous, rejected,
                  legacyFRLGSources.limitReached ? ", scan limit reached" : "");

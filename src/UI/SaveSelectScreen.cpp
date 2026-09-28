@@ -211,11 +211,11 @@ namespace UI {
         const std::string& gameId, const std::string& preferredSourceIdentity,
         bool requirePreferred) {
         if (!legacyCatalog) return false;
-        auto refreshed = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
+        auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
         *legacyCatalog = std::move(refreshed);
         loadLegacySources(*legacyCatalog);
 
-        logInfoToFile("RetroArch active battery-save root",
+        logInfoToFile("Legacy active battery-save root",
             legacyCatalog->activeRoot.empty() ? "(none)" : legacyCatalog->activeRoot.c_str());
         const UserEntry* user = currentUser();
         if (!user) return false;
@@ -250,7 +250,7 @@ namespace UI {
                 std::distance(parent->legacyInstances.begin(), instance));
         }
         legacyInstanceScroll = std::max(0, legacyInstanceIndex - 5);
-        legacyNotice = "Save list refreshed from the active RetroArch root.";
+        legacyNotice = "Save list refreshed from configured emulator roots.";
         overlay = Overlay::LegacyInstances;
         scrollSelectionIntoView();
         return true;
