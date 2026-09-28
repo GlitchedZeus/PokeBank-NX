@@ -72,10 +72,18 @@ struct Session {
             return false;
         }
         if (!editor.commitBoxPokemon(box, slot, *working, &error)) return false;
-        mode = Mode::None;
-        confirmExit = false;
-        baselineEncrypted.clear();
-        working.reset();
+        close();
+        return true;
+    }
+
+    bool keepParty(Gen4::Gen4StagedPokemonEditor& editor,
+                   std::size_t slot, std::string& error) {
+        if (!editable()) {
+            error = "Generation IV Keep is only available for an Edit draft";
+            return false;
+        }
+        if (!editor.commitPartyPokemon(slot, *working, &error)) return false;
+        close();
         return true;
     }
 
