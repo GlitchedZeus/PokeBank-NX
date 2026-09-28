@@ -6,9 +6,9 @@ Status: IN PROGRESS
 
 - Repository: GlitchedZeus/PokeBank-NX
 - Audit branch: `audit/full-repository-line-by-line-20260928`
-- Primary MAIN tree audited: PR #92 head `acfca273eff0fb145f2e18a8f6d07817e1475572`
+- Primary MAIN tree audited: PR #92 head `09c168ddfd4493ed5d06a33066c0ba56cdc9dff8`
 - PR #92 branch: `feature/gen4-full-editor-20260928`
-- Sibling UI overlay: PR #97 head `c63ce48ad6952128cabe94aaeaba627a460b04bd` (delta audited separately)
+- Sibling UI overlay baseline: PR #97 head `c63ce48ad6952128cabe94aaeaba627a460b04bd`; live head `ec3ddbcd566353040255007ddb9c5ecf02fcbb8e` has a bounded 7-file catch-up delta still audited separately
 - Integration parent: PR #90 head `8b3bcc16c804247bfe8d1314b686974ce73051d8`
 - Hardening parent: PR #79 head `00ee7a6ed7ac1b5a93c43246d70c252e135acec0`
 - Default branch main: `aca2bf41c83d81084886a46d53195f6cead81ccc`
@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 234 / 725
-- Fully read text files: 200 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 246 / 725
+- Fully read text files: 212 / 692 (text/unknown classification remains provisional until content inspection completes)
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -80,9 +80,18 @@ Status: IN PROGRESS
 - Persisted cross-game evidence binds transaction/store identities, source/destination payload hashes, species/form identity, declared fidelity semantics and acknowledgement state. Product true-Move cross-game retirement remains disabled by policy.
 - No new conversion-corruption defect was confirmed in this tranche. Remaining follow-up is broader caller/test coverage, not an identified failing conversion rule.
 
+### Modern Trainer/save serializer checkpoint
+
+- Fully read the shared Trainer base plus the BDSP, Sword/Shield, Legends: Arceus, Scarlet/Violet and Legends: Z-A Trainer headers and complete parser/serializer implementations at live PR #92 head `09c168ddfd4493ed5d06a33066c0ba56cdc9dff8`.
+- Reconciled the #92 head drift against the ledger. The two changed paths that were already marked AUDITED — `src/Pokemon/Pokemon4Mutable.cpp` and `tests/test_shared_species_picker_surface_contract.cpp` — were re-read at the live head; the other changed paths were already PENDING, so no stale audited status remains.
+- PLA remains the strongest SC-save open path in this group: it verifies container hash/parse completion, required block uniqueness/size, and every nonempty party/pasture Pokémon checksum before opening.
+- BDSP fixed-offset parsing is now length-gated and its mutable save route is still deliberately blocked until a recoverable multi-file journal exists. Its pre-open gate still does not verify the stored whole-file MD5.
+- Sword/Shield, Scarlet/Violet and Z-A still rely on the generic SC hash/container validator rather than a game-specific required-block layout validator. This is now recorded separately because their mutators can grow malformed short fixed-role blocks and emit a fresh valid SC hash.
+- The Gen IV mutable core added exact native Create/OT/form behavior at the new #92 head and continues to reparse/verify transactional edits. The previously noted unrestricted low-level `setPP()` API remains a caller-hardening follow-up rather than a confirmed production corruption path.
+
 ## Findings
 
-No findings are recorded here until supported by direct evidence from the frozen tree or active-overlay delta.
+Confirmed findings below are recorded only when supported by direct evidence from the audited tree or an explicitly identified active-overlay delta.
 
 
 ## Confirmed findings — repository metadata / CI
@@ -313,3 +322,60 @@ No findings are recorded here until supported by direct evidence from the frozen
 - Recommended fix: add a read-only LGPE integrity validator that verifies every consumed Beluga block against its existing BEEF footer CRC before constructing `Trainer7LGPE`; invoke it from `validateTrainerSaveForOpen()` and from any direct LGPE load path. Keep rechecksum-on-write only after a valid source has been established.
 - Risk of fix: low to medium; validate checksum geometry against real Pikachu/Eevee saves before gating hardware opens.
 - Owner: MAIN / save-integrity lane.
+
+### AUDIT-019 — modern encrypted blank slots are parsed as live species-0 objects
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: SWSH / PLA / SV / Z-A party and box model correctness
+- Files: `src/Trainer/Trainer8SWSH.cpp`, `src/Trainer/Trainer8LA.cpp`, `src/Trainer/Trainer9SV.cpp`, `src/Trainer/Trainer9LZA.cpp`, corresponding Trainer headers, `src/UI/TrainerViewScreenBase.inc`
+- Exact symbols: each game's `parsePartyBlock()` / `parseBoxBlock()`, derived `getPartySize()`, direct Boxes-mode Y/swap occupancy check.
+- Problem: these parsers decide emptiness from whether the RAW encrypted slot bytes are all zero. Their own write paths document the opposite native fact: a legitimate empty slot is normally a non-zero encrypted blank which decrypts to species 0. The parser therefore constructs live Pokémon objects for native empty slots instead of representing them as empty/null.
+- Why it matters: party vectors can contain species-0 ghost entries and `getPartySize()` returns the vector size, not the number of real Pokémon. Most modern UI paths defensively test `speciesID()!=0`, but not all do: direct Boxes-mode Y/swap currently computes `cursorOccupied` from pointer non-nullness alone, so a visually empty ghost slot can enter the grab/swap flow as though occupied.
+- Evidence: SWSH and PLA writer comments explicitly state that native empty party slots are non-zero encrypted blanks and note that the old parser inflates `party.size()`; SV/Z-A use the same raw-all-zero parse test and encrypted-blank writer model. The shared UI already contains multiple comments/workarounds naming “species-0 ghost” slots.
+- Current tests: no dedicated modern Trainer party/box blank-round-trip test was found in the current test tree. PLA read-validation tests validate structural Pokémon records but do not assert Trainer representation of encrypted empty slots.
+- Missing tests: a native party with two real Pokémon plus four encrypted blanks must parse to two real party entries; native encrypted empty box slots must become null/empty model cells; Y on a visually empty box cell must remain a no-op; round-trip must preserve valid native blank bytes/count semantics.
+- Recommended fix: decrypt/validate each slot before deciding occupancy and store only species-nonzero entities in the logical model (or explicitly preserve positional empties as null). Where the save has an authoritative party count, parse and validate it rather than deriving party size from raw slot nonzeroness. Keep species-aware UI occupancy checks as defense in depth.
+- Risk of fix: medium because party index/count behavior is shared by several screens; validate on real saves for all four families.
+- Owner: MAIN / modern save-model lane.
+
+### AUDIT-020 — SV/Z-A MyStatus size guard permits an out-of-bounds gender read
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: malformed-save safety / Gen IX trainer parsing
+- Files: `src/Trainer/Trainer9SV.cpp`, `src/Trainer/Trainer9LZA.cpp`
+- Exact symbol: `parseMyStatusBlock()`.
+- Problem: both functions reject only when `block.data.size() < 4`, read ID32, conditionally guard the OT-name field, and then unconditionally read `block.data[0x05]` for trainer gender. A 4- or 5-byte MyStatus object therefore passes the initial guard and indexes past the vector.
+- Why it matters: SC container validity only proves the block stream/hash is self-consistent; Object block lengths are data. A hash-valid but malformed/unsupported save can reach this read and trigger undefined behavior instead of failing closed.
+- Evidence: the generic SC parser accepts arbitrary object lengths that fit inside the authenticated container. SV/Z-A have no game-specific pre-open layout validator comparable to PLA's `validatePLAReadLayout()`.
+- Missing tests: authenticated SC fixtures with MyStatus sizes 4 and 5 must be rejected cleanly without constructing a Trainer; size 6 must not read beyond bounds; full expected native MyStatus geometry should pass.
+- Recommended fix: require the complete minimum region actually consumed by the parser before any field access (at minimum through gender byte, preferably the full supported MyStatus layout), and make that requirement part of a pre-open game-specific layout validator.
+- Risk of fix: low.
+- Owner: MAIN / save-integrity lane.
+
+### AUDIT-021 — SWSH/SV/Z-A authenticate the SC container but do not validate required game layout
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: modern save structural validation / durable writeback
+- Files: `src/Save/GetSaveFileContents.cpp`, `src/Save/Block.cpp`, `src/Trainer/Trainer8SWSH.cpp`, `src/Trainer/Trainer9SV.cpp`, `src/Trainer/Trainer9LZA.cpp`
+- Exact symbols: `validateTrainerSaveForOpen()`, `validateSCWorkspace()`, `parseAllBlocks()`, the modern Trainer constructors and fixed-role block writers.
+- Problem: unlike PLA, Sword/Shield, Scarlet/Violet and Z-A have no per-game semantic layout gate. Their open preflight returns success without validating the SC file, and their post-write validator verifies only the SC hash plus complete syntactic block parsing. It does not require unique keys or required block types/sizes. The generic parser also permits duplicate keys.
+- Why it matters: an ordinary random byte corruption is caught by the SC hash, but a hash-valid malformed/unsupported image (for example from another tool, a bad migration, or future layout) can be interpreted ambiguously. Duplicate Party/MyStatus keys are parsed more than once while several writers update only the first matching key. Short Party/Box blocks in these classes can be automatically resized, populated and then re-encrypted with a fresh valid hash, converting an unsupported input geometry into a newly authenticated PokeBank output rather than refusing it.
+- Evidence: `validateSCWorkspace()` returns true immediately after `Encryption::tryDecrypt()`; `parseAllBlocks()` has no duplicate-key set; PLA's validator explicitly rejects duplicate keys and enforces required sizes, demonstrating the intended stronger boundary. SWSH/SV/Z-A Party/Box writers call `resize()` when their fixed-role blocks are short.
+- Missing tests: duplicate required keys; missing required blocks; short Party/Box/MyStatus blocks with a valid outer hash; unsupported block type for a required key; all must fail before Trainer construction and before any serializer mutation.
+- Recommended fix: add game-specific SWSH/SV/Z-A read/layout validators modeled on `validatePLAReadLayout()`: unique keys, exact/minimum supported type and size for every consumed block, Pokémon checksum/basic-domain validation for occupied slots, and fail-closed open/write validation. Do not use resize as recovery for a malformed required native block.
+- Risk of fix: medium; geometry must be pinned to real saves/revisions so valid DLC/version differences are not rejected.
+- Owner: MAIN / save-integrity lane.
+
+### AUDIT-022 — BDSP pre-open validation ignores its stored whole-file MD5
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: BDSP flat-save integrity / open gate
+- Files: `include/Save/BDSPReadValidation.h`, `src/Save/GetSaveFileContents.cpp`, `src/Trainer/Trainer8BDSP.cpp`, `tests/test_bdsp_layout_guard.cpp`
+- Exact symbols: `hasMinimumLayout()`, `validateTrainerSaveForOpen()`, `Trainer8BDSP::Trainer8BDSP()`, `Trainer8BDSP::recomputeHash()`.
+- Problem: BDSP is documented and implemented as a flat blob guarded by a 16-byte whole-file MD5. The open gate and Trainer constructor verify only that the file extends through that hash field; neither compares the stored digest with a computed digest before parsing trainer/party/box data.
+- Why it matters: a corrupt but correctly-sized `SaveData.bin` can be surfaced as editable in-memory state. This is currently contained because the normal BDSP save path is hard-blocked until a recoverable multi-file journal exists, so this is P3 rather than a current write-corruption P2. Once BDSP writeback is enabled, the missing read-integrity gate must be fixed first or `recomputeHash()` could certify already-corrupt input.
+- Current tests: `test_bdsp_layout_guard.cpp` covers undersized/exact-minimum/oversized length behavior and verifies the pre-open size guard, but not MD5 mismatch.
+- Missing tests: flip one covered byte in a valid BDSP fixture without updating its stored digest and require open refusal; confirm a correct digest passes; confirm the validator itself does not mutate the candidate while checking.
+- Recommended fix: implement a read-only whole-file MD5 verifier using the same zero-the-hash-field convention as `recomputeHash()`, call it from the BDSP pre-open gate and Trainer validity boundary, and add fixture tests before enabling multi-file writeback.
+- Risk of fix: low once the exact BDSP digest convention is fixture-verified.
+- Owner: MAIN / BDSP integrity lane.
