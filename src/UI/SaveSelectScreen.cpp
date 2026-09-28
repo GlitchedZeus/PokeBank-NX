@@ -579,8 +579,11 @@ namespace UI {
                     addParty(i, party[i].species, party[i].level);
             } else if (source.isGen3()) {
                 const auto party = source.save->party();
+                // The strict Gen III read-only record intentionally exposes experience rather than
+                // a cached level. Do not invent a growth-curve conversion in presentation code:
+                // species is authoritative here and the level line stays omitted for this preview.
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                    addParty(i, party[i].species, party[i].level);
+                    addParty(i, party[i].species, 0);
             }
             partyPreviewStatus = "Validated read-only source party";
             return;
@@ -1181,7 +1184,7 @@ namespace UI {
         if (count == 0) {
             fb.drawText(38, HUB_Y + 145,
                         (!u || u->name == "Game Sources")
-                            ? "No validated game sources found."
+                            ? "No validated Pokémon game sources found."
                             : "No Pokémon saves found for this profile.",
                         Colors::TextMuted, TextStyle::Body);
         } else {
@@ -1272,8 +1275,12 @@ namespace UI {
                     std::string name = p.name;
                     if (name.size() > 12) name = name.substr(0, 11) + "…";
                     fb.drawText(sx + 10, slotY + 18, name, Colors::TextPrimary, TextStyle::Caption);
-                    fb.drawText(sx + 10, slotY + 50, "Lv. " + std::to_string(p.level),
-                                Colors::TextSecondary, TextStyle::Caption);
+                    if (p.level > 0)
+                        fb.drawText(sx + 10, slotY + 50, "Lv. " + std::to_string(p.level),
+                                    Colors::TextSecondary, TextStyle::Caption);
+                    else
+                        fb.drawText(sx + 10, slotY + 50, "Party Pokémon",
+                                    Colors::TextMuted, TextStyle::Caption);
                 } else {
                     fb.drawFilledCircle(sx + slotW / 2, slotY + 32, 14, Colors::PanelAlt);
                     fb.drawText(sx + 12, slotY + 58, "Empty", Colors::TextMuted, TextStyle::Caption);
