@@ -18,16 +18,16 @@ Base:
 **integration/gen4-polish-hardware-20260928**
 
 Current exact head at this documentation update:
-**c46ed887ae6ce44e662d8cbfb32e68970846a2f0**
+**d72e1f0fbb3c0be0d24c42ebb73b44f5c6984ee8**
 
 Canonical tracking:
 **Issue #95 — G4-04 Complete Gen IV shared editor: Create + remaining fields**
 
 Current exact-head workflow state:
 
-- Gen I/II Packed Multi-Move #287 — **PASS**
-- PokeBank NX Host Tests #1578 — **IN PROGRESS**
-- Gen IV Shared Editor Candidate Gate #92 — **IN PROGRESS**
+- Gen I/II Packed Multi-Move #289 — **PASS**
+- PokeBank NX Host Tests #1583 — **IN PROGRESS**
+- Gen IV Shared Editor Candidate Gate #94 — **IN PROGRESS**
 
 Re-fetch before claiming full automated acceptance.
 
