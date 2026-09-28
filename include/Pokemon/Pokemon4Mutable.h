@@ -20,6 +20,21 @@ public:
         Enums::GameVersion sourceGroup,
         std::string* error = nullptr);
 
+    // Construct a fresh stored PK4 for an app-owned staged box slot. The result is
+    // encrypted and strict-parsed before being returned; external save bytes are never touched.
+    static std::optional<Pokemon4Mutable> createStored(
+        uint16_t species,
+        Enums::GameVersion sourceGroup,
+        uint8_t originVersion,
+        const std::u16string& originalTrainerName,
+        uint16_t tid,
+        uint16_t sid,
+        uint8_t originalTrainerGender,
+        uint8_t language,
+        uint8_t level = 5,
+        uint32_t pidSeed = 0x12345678u,
+        std::string* error = nullptr);
+
     [[nodiscard]] bool valid() const noexcept { return valid_; }
     [[nodiscard]] bool isParty() const noexcept;
     [[nodiscard]] std::span<const std::byte> decryptedBytes() const noexcept { return decrypted_; }
