@@ -32,12 +32,14 @@ namespace Context = PokeBank::UIModel::ClassicGameContext;
 namespace Gen4 = PokeVault::Integration::Gen4;
 
 enum class PickerTarget : uint8_t { None, Nature, Ability };
+enum class TargetKind : uint8_t { Box, Party };
 
 struct State {
     const TrainerViewScreen* owner = nullptr;
     bool actions = false;
     bool review = false;
     int actionRow = 0;
+    TargetKind target = TargetKind::Box;
     int box = 0;
     int slot = 0;
     Shared::Focus focus{};
@@ -108,6 +110,20 @@ bool boxEntrySurface(const TrainerViewScreen& screen) noexcept {
            !screen.currentlySelecting;
 }
 
+bool partyEntrySurface(const TrainerViewScreen& screen) noexcept {
+    return isGen4Nds(screen) &&
+           screen.selectedMode == TrainerViewScreen::ViewMode::Party &&
+           screen.detailViewActive &&
+           screen.selectedPartyIndex >= 0 &&
+           screen.selectedPartyIndex < static_cast<int>(screen.trainer.getPartySize()) &&
+           !screen.helpOverlayActive &&
+           !screen.details.active &&
+           !screen.actionSheet.isOpen() &&
+           !screen.saveConfirmActive &&
+           !screen.pickerActive &&
+           !screen.itemEditDialogActive;
+}
+
 std::optional<Pokemon::Pokemon4ReadOnly> boxRecord(
     TrainerViewScreen& screen, int box, int slot, std::string& error) {
     if (box < 0 || box >= 18 || slot < 0 || slot >= 30) {
@@ -128,10 +144,44 @@ std::optional<Pokemon::Pokemon4ReadOnly> boxRecord(
     return source;
 }
 
+std::optional<Pokemon::Pokemon4ReadOnly> partyRecord(
+    TrainerViewScreen& screen, int slot, std::string& error) {
+    if (slot < 0 || slot >= static_cast<int>(bridge(screen).sourceSave().partyCount())) {
+        error = "Generation IV party selection is outside the occupied party";
+        return std::nullopt;
+    }
+    if (auto* staged = editor(screen))
+        return staged->partyPokemon(static_cast<size_t>(slot), &error);
+
+    const auto party = bridge(screen).sourceSave().nativePartySlots();
+    if (static_cast<size_t>(slot) >= party.size()) {
+        error = "Generation IV party selection is outside the native party records";
+        return std::nullopt;
+    }
+    const auto& source = party[static_cast<size_t>(slot)];
+    if (!source.valid() || source.empty() || !source.isParty()) {
+        error = source.empty() ? "Selected Generation IV party slot is empty"
+                               : "Selected Generation IV party PK4 failed strict validation";
+        return std::nullopt;
+    }
+    error.clear();
+    return source;
+}
+
+std::optional<Pokemon::Pokemon4ReadOnly> selectedRecord(
+    TrainerViewScreen& screen, const State& state, std::string& error) {
+    return state.target == TargetKind::Party
+        ? partyRecord(screen, state.slot, error)
+        : boxRecord(screen, state.box, state.slot, error);
+}
+
 bool selectedOccupied(TrainerViewScreen& screen) {
-    if (!boxEntrySurface(screen)) return false;
     std::string error;
-    return boxRecord(screen, screen.selectedBoxIndex, screen.selectedItemIndex, error).has_value();
+    if (partyEntrySurface(screen))
+        return partyRecord(screen, screen.selectedPartyIndex, error).has_value();
+    if (boxEntrySurface(screen))
+        return boxRecord(screen, screen.selectedBoxIndex, screen.selectedItemIndex, error).has_value();
+    return false;
 }
 
 void resetWorkspaceFocus(State& state) noexcept {
@@ -149,9 +199,47 @@ void beginActions(TrainerViewScreen& screen) {
     state.actions = true;
     state.review = false;
     state.actionRow = 0;
-    state.box = screen.selectedBoxIndex;
-    state.slot = screen.selectedItemIndex;
+    if (partyEntrySurface(screen)) {
+        state.target = TargetKind::Party;
+        state.box = 0;
+        state.slot = screen.selectedPartyIndex;
+    } else {
+        state.target = TargetKind::Box;
+        state.box = screen.selectedBoxIndex;
+        state.slot = screen.selectedItemIndex;
+    }
     screen.controllerNavigation.reset();
+}
+
+bool beginPassiveView(TrainerViewScreen& screen) {
+    if (!isGen4Nds(screen) || !screen.details.active) return false;
+    if (screen.details.source == TrainerViewScreen::EditSource::Bank) return false;
+    auto* target = screen.detailsTargetPokemon();
+    if (!target) return false;
+    const auto group = target->getGameGroup();
+    if (group != Enums::GameVersion::DP && group != Enums::GameVersion::PT &&
+        group != Enums::GameVersion::HGSS) return false;
+
+    auto* view = static_cast<Pokemon::Pokemon4ReadOnlyView*>(target);
+    auto& state = stateFor(screen);
+    std::string error;
+    if (!state.session.begin(view->source(), bridge(screen).sourceSave().rawFamily(),
+                             SessionModel::Mode::View, error)) {
+        screen.closeDetailsModal();
+        screen.postStatus(error.empty() ? "Could not open Generation IV shared View" : error, 360);
+        return true;
+    }
+    state.target = screen.details.source == TrainerViewScreen::EditSource::Party
+        ? TargetKind::Party : TargetKind::Box;
+    state.box = screen.selectedBoxIndex;
+    state.slot = state.target == TargetKind::Party
+        ? screen.details.partyIndex : screen.selectedItemIndex;
+    state.actions = false;
+    state.review = false;
+    resetWorkspaceFocus(state);
+    screen.closeDetailsModal();
+    screen.controllerNavigation.reset();
+    return true;
 }
 
 bool beginViewOrEdit(TrainerViewScreen& screen, SessionModel::Mode mode) {
@@ -165,7 +253,7 @@ bool beginViewOrEdit(TrainerViewScreen& screen, SessionModel::Mode mode) {
     }
 
     std::string error;
-    auto record = boxRecord(screen, state.box, state.slot, error);
+    auto record = selectedRecord(screen, state, error);
     if (!record) {
         screen.postStatus(error.empty() ? "Selected Generation IV slot is empty" : error, 300);
         return false;
@@ -195,14 +283,21 @@ bool keepWorkspace(TrainerViewScreen& screen) {
         return false;
     }
     std::string error;
-    if (!state.session.keep(*staged, static_cast<size_t>(state.box),
-                            static_cast<size_t>(state.slot), error)) {
+    const bool kept = state.target == TargetKind::Party
+        ? state.session.keepParty(*staged, static_cast<size_t>(state.slot), error)
+        : state.session.keep(*staged, static_cast<size_t>(state.box),
+                             static_cast<size_t>(state.slot), error);
+    if (!kept) {
         screen.postStatus(error.empty() ? "Generation IV staged edit failed" : error, 360);
         return false;
     }
     refreshPresentation(screen);
-    screen.selectedBoxIndex = state.box;
-    screen.selectedItemIndex = state.slot;
+    if (state.target == TargetKind::Party)
+        screen.selectedPartyIndex = state.slot;
+    else {
+        screen.selectedBoxIndex = state.box;
+        screen.selectedItemIndex = state.slot;
+    }
     screen.postStatus("Generation IV Pokemon change staged; external source unchanged", 300);
     return true;
 }
@@ -671,7 +766,7 @@ Shared::ActionSet gen4Actions(bool occupied) {
 bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
     if (!state.actions) return false;
     std::string error;
-    const bool occupied = boxRecord(screen, state.box, state.slot, error).has_value();
+    const bool occupied = selectedRecord(screen, state, error).has_value();
     const auto actions = gen4Actions(occupied);
     if (down & HidNpadButton_Up)
         state.actionRow = (state.actionRow - 1 + static_cast<int>(actions.count)) %
@@ -809,7 +904,9 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     SharedPokemonShell::drawChrome(
         fb, raw->species(), Utils::utf16ToUtf8(raw->nickname()), view.level(),
         raw->gender(), view.isShiny(raw->id32(), {}), mode,
-        "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
+        state.target == TargetKind::Party
+            ? "Party / Slot " + std::to_string(state.slot + 1)
+            : "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
         screen.sourceGameId);
 
     const SharedPokemonShell::Geometry g(fb.getWidth(), fb.getHeight(), kNavBarH);
@@ -944,7 +1041,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     std::string error;
-    const bool occupied = boxRecord(screen, state.box, state.slot, error).has_value();
+    const bool occupied = selectedRecord(screen, state, error).has_value();
     const auto actions = gen4Actions(occupied);
 
     screen.drawGSCOverlay(fb);
@@ -956,8 +1053,10 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     fb.drawText(x + 24, y + 18, occupied ? "Pokemon Actions" : "Empty Slot",
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                std::string(gameName(screen.sourceGameId)) + " • Box " +
-                std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
+                std::string(gameName(screen.sourceGameId)) + " • " +
+                (state.target == TargetKind::Party
+                    ? "Party / Slot " + std::to_string(state.slot + 1)
+                    : "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1)),
                 Colors::TextDim, TextStyle::Caption);
     const auto geometry = Shared::actionMenuGeometry();
     int yy = y + geometry.rowStart;
@@ -991,7 +1090,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         : "Original source remains the current baseline",
                 Colors::TextDim, TextStyle::Caption);
     fb.drawText(44, 270, "Original emulator source: HARD READ ONLY", Colors::Accent);
-    fb.drawText(44, 308, "Create / Release / Clone / party mutation: not enabled in G4-03",
+    fb.drawText(44, 308, "Create / Release / Clone remain deferred; Party + Box Edit use staged bytes",
                 Colors::TextDim, TextStyle::Caption);
     if (changed)
         drawNavBar(fb, {{"Y", "Discard All Staged"}, {"B", "Back"}});
@@ -1010,6 +1109,7 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     (void)touch;
     if (!isGen4Nds(screen)) return false;
 
+    beginPassiveView(screen);
     auto& state = stateFor(screen);
     const bool ownsNavigation =
         state.actions || state.review || state.valuePicker || state.moveEditor || workspaceActive(state);
@@ -1024,14 +1124,17 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     if (handleWorkspace(screen, state, navigated)) return true;
     if (handleActions(screen, state, navigated)) return true;
 
-    if (!boxEntrySurface(screen)) return false;
+    const bool partyEntry = partyEntrySurface(screen);
+    const bool boxEntry = boxEntrySurface(screen);
+    if (!partyEntry && !boxEntry) return false;
     if (navigated & HidNpadButton_A) {
         if (selectedOccupied(screen)) beginActions(screen);
-        else screen.postStatus("Generation IV Create follows after boxed Edit hardware acceptance", 300);
+        else if (boxEntry)
+            screen.postStatus("Generation IV Create follows after Edit hardware acceptance", 300);
         return true;
     }
-    if (navigated & HidNpadButton_X) {
-        screen.postStatus("Generation IV Create is not enabled in the first Edit milestone", 300);
+    if ((navigated & HidNpadButton_X) && boxEntry) {
+        screen.postStatus("Generation IV Create is not enabled in the Edit milestone", 300);
         return true;
     }
     return false;
