@@ -148,6 +148,11 @@ int main() {
     assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLevel, true) == FieldAccess::Editable);
     assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::OriginalTrainerGender, true) == FieldAccess::Editable);
 
+    assert(fieldAccessForGeneration(Generation::Gen4, FieldIdentity::OriginalTrainer) == FieldAccess::Editable);
+    assert(fieldAccessForGeneration(Generation::Gen4, FieldIdentity::TrainerId) == FieldAccess::Editable);
+    assert(fieldAccessForGeneration(Generation::Gen4, FieldIdentity::SecretId) == FieldAccess::ReadOnly);
+    assert(fieldAccessForGeneration(Generation::Gen4, FieldIdentity::OriginGame) == FieldAccess::ReadOnly);
+
     assert(std::string(statsHeading()) == "STATS");
     assert((moveColumn(Generation::Gen2, {Panel::Details, 4, 0}, 1) == Focus{Panel::Values, 4, 0}));
     assert((moveColumn(Generation::Gen2, {Panel::Values, 4, 1}, 1) == Focus{Panel::Moves, 0, 0}));

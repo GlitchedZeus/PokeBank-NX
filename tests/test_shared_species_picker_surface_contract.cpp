@@ -54,6 +54,10 @@ int main() {
     contains(gen2, "model.speciesChoice(), 251");
     contains(gen3, "state.speciesPreview, 386");
     contains(gen4, "species, 493, previewShiny");
+    contains(gen4, "state.speciesPreviewShiny");
+    contains(gen4, "\"Y\", \"Normal/Shiny\"");
+    contains(gen4, "true, previewTypes");
+    contains(gen4, "gen4DexLabel(value)");
     contains(gen4, "Pokemon::getPersonalInfo4HGSS(species, 0)");
     contains(gen4, "canonicalToClassicType(speciesPersonal.type1)");
     assert(shared.find("PersonalInfo4HGSS.h") == std::string::npos);

@@ -331,9 +331,9 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::MetLevel:
             case FieldIdentity::MetLocation:
             case FieldIdentity::Form:
-                return FieldAccess::Editable;
             case FieldIdentity::OriginalTrainer:
             case FieldIdentity::TrainerId:
+                return FieldAccess::Editable;
             case FieldIdentity::SecretId:
             case FieldIdentity::PersonalityId:
             case FieldIdentity::OriginGame:

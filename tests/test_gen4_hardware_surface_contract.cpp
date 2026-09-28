@@ -125,8 +125,12 @@ int main() {
     contains(surface, "case Shared::Action::Add");
     contains(surface, "beginCreate(screen)");
     contains(surface, "PickerTarget::Species");
-    contains(surface, "createSpeciesInitialized");
+    assert(surface.find("createSpeciesInitialized") == std::string::npos);
     contains(surface, "state.session.working->setSpecies(value)");
+    contains(surface, "state.speciesPreviewShiny = !state.speciesPreviewShiny");
+    contains(surface, "state.session.working->setShiny(state.speciesPreviewShiny)");
+    contains(surface, "\"Y\", \"Normal/Shiny\"");
+    contains(surface, "return \"#\" + number + \"  \" + Names::getSpeciesName(value);");
     contains(surface, "PickerTarget::HeldItem");
     contains(surface, "PickerTarget::Language");
     contains(surface, "PickerTarget::Ball");
@@ -157,15 +161,25 @@ int main() {
     contains(surface, "beginPassiveView");
     contains(surface, "screen.closeDetailsModal()");
 
-    // Create/Edit focus must only land on actual controls. Read-only identity rows remain
-    // visible for inspection, while fixed gender/single ability/no-alternate-form rows are skipped.
+    // Create opens the editor itself, like Gen I-III; Species is an explicit field action.
+    const auto beginCreateAt = surface.find("bool beginCreate(TrainerViewScreen& screen)");
+    const auto heldItemAt = surface.find("void openHeldItemPicker", beginCreateAt);
+    assert(beginCreateAt != std::string::npos && heldItemAt > beginCreateAt);
+    const auto beginCreateBody = surface.substr(beginCreateAt, heldItemAt - beginCreateAt);
+    assert(beginCreateBody.find("openSpeciesPicker(screen, state)") == std::string::npos);
+
+    // Create/Edit focus must only land on actual controls. OT/TID are true editable Pokémon
+    // metadata, SID/Origin remain inspectable read-only, and fixed-only rows are skipped.
     contains(surface, "bool detailEditable(const State& state");
     contains(surface, "hasAlternateValidForm");
     contains(surface, "if (detailEditable(state, state.focus.row, p)) return;");
     contains(surface, "if (pidLinkedRowEditable(state, state.focus.row, p)) return;");
-    contains(surface, "OT (read-only)");
-    contains(surface, "TID (read-only)");
+    contains(surface, "\"OT\", \"Trainer ID\"");
+    assert(surface.find("OT (read-only)") == std::string::npos);
+    assert(surface.find("TID (read-only)") == std::string::npos);
     contains(surface, "SID (read-only)");
+    contains(surface, "setOriginalTrainerName");
+    contains(surface, "setTID");
     contains(surface, "Origin (read-only)");
     contains(surface, "state.session.mode == SessionModel::Mode::View || editable");
 
@@ -178,7 +192,10 @@ int main() {
     contains(surface, "HeldItemGrid::move");
     contains(surface, "const int w = heldItems ? 1040");
     contains(surface, "const int w = occupied ? 650 : 560;");
-    contains(surface, "const int h = occupied ? 500 : 350;");
+    contains(surface, "static_cast<int>(actions.count) * geometry.rowStep + 62");
+    assert(surface.find("const int h = occupied ? 500 : 350;") == std::string::npos);
+    contains(surface, "— Met Lv. ");
+    assert(surface.find("\") + \" (#\" + std::to_string(value)") == std::string::npos);
 
     // Generated location strings must never retain a source UTF-8 BOM as a visible glyph.
     assert(locations.find("\xEF\xBB\xBF") == std::string::npos);

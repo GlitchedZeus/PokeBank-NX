@@ -337,6 +337,36 @@ void testSpeciesReconciliation() {
     assert(dual->encryptedBytes() == stable);
 }
 
+
+void testOriginalTrainerIdentityEdits() {
+    auto mon = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(16), Enums::GameVersion::PT);
+    assert(mon);
+
+    const uint16_t oldSid = mon->sid();
+    const uint8_t oldNature = mon->nature();
+    const uint8_t oldGender = mon->gender();
+    const bool oldShiny = mon->shiny();
+    const uint16_t oldAbility = mon->ability();
+
+    assert(mon->setOriginalTrainerName(u"RED"));
+    Pokemon::Pokemon4ReadOnly renamed(mon->encryptedBytes(), Enums::GameVersion::PT);
+    assert(renamed.valid() && renamed.originalTrainerName() == u"RED");
+
+    assert(mon->setTID(54321));
+    Pokemon::Pokemon4ReadOnly retid(mon->encryptedBytes(), Enums::GameVersion::PT);
+    assert(retid.valid() && retid.tid() == 54321 && retid.sid() == oldSid);
+    assert(retid.originalTrainerName() == u"RED");
+    assert(static_cast<uint8_t>(retid.pid() % 25u) == oldNature);
+    const uint16_t psv = static_cast<uint16_t>(
+        (retid.pid() & 0xFFFFu) ^ (retid.pid() >> 16));
+    const bool stillShiny =
+        static_cast<uint16_t>(retid.tid() ^ retid.sid() ^ psv) < 8u;
+    assert(stillShiny == oldShiny);
+    assert(retid.gender() == oldGender);
+    assert(retid.ability() == oldAbility);
+}
+
 void testCatalogBackedFieldValidation() {
     auto pt = Pokemon::Pokemon4Mutable::fromEncrypted(
         makeEntity(), Enums::GameVersion::PT);
@@ -737,6 +767,7 @@ int main() {
     testFixedGenderAndAbilitySlots();
     testShedinjaPartyHpRule();
     testSpeciesReconciliation();
+    testOriginalTrainerIdentityEdits();
     testCatalogBackedFieldValidation();
     testLanguageTransitions();
     testPokerusModes();

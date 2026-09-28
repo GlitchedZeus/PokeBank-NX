@@ -515,6 +515,55 @@ bool Pokemon4Mutable::setNickname(const std::u16string& value) noexcept {
     return true;
 }
 
+bool Pokemon4Mutable::setOriginalTrainerName(const std::u16string& value) noexcept {
+    if (!valid_) return false;
+    const auto backup = decrypted_;
+    if (!writeTextPreservingTrash(0x68, 8, 7, value)) return false;
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid() || verify.empty() || verify.originalTrainerName() != value) {
+        decrypted_ = backup;
+        return false;
+    }
+    return true;
+}
+
+bool Pokemon4Mutable::setTID(uint16_t value) noexcept {
+    if (!valid_) return false;
+    if (value == tid()) return true;
+
+    const auto backup = decrypted_;
+    const uint16_t oldSid = sid();
+    const bool oldShiny = shiny();
+    const uint8_t oldNature = nature();
+    const uint8_t oldGender = gender();
+    const uint16_t oldAbility = ability();
+
+    write16(0x0C, value);
+    // Trainer ID participates in Gen IV shininess. Re-roll PID transactionally so
+    // editing OT identity does not silently change Nature/Gender/Shiny/Ability.
+    if (!rerollPid(oldShiny ? 1 : 0, oldGender, oldNature, constrainedAbilityBit())) {
+        decrypted_ = backup;
+        return false;
+    }
+    refreshPartyDerivedData();
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    const uint8_t verifyNature = static_cast<uint8_t>(verify.pid() % 25u);
+    const uint16_t verifyPsv = static_cast<uint16_t>(
+        (verify.pid() & 0xFFFFu) ^ (verify.pid() >> 16));
+    const bool verifyShiny =
+        static_cast<uint16_t>(verify.tid() ^ verify.sid() ^ verifyPsv) < 8u;
+    if (!verify.valid() || verify.empty() ||
+        verify.tid() != value || verify.sid() != oldSid ||
+        verifyNature != oldNature || verifyShiny != oldShiny ||
+        verify.gender() != oldGender || verify.ability() != oldAbility) {
+        decrypted_ = backup;
+        return false;
+    }
+    return true;
+}
+
 bool Pokemon4Mutable::setLevel(uint8_t level) noexcept {
     if (!valid_ || level < 1 || level > 100) return false;
     const auto& personal = personalFor(sourceGroup_, species(), form());

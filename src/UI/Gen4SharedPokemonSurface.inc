@@ -50,7 +50,7 @@ struct State {
     const TrainerViewScreen* owner = nullptr;
     bool actions = false;
     bool review = false;
-    bool createSpeciesInitialized = false;
+    bool speciesPreviewShiny = false;
     int actionRow = 0;
     TargetKind target = TargetKind::Box;
     int box = 0;
@@ -204,6 +204,7 @@ void resetWorkspaceFocus(State& state) noexcept {
     state.valuePicker = false;
     state.pickerTarget = PickerTarget::None;
     state.pickerValues.clear();
+    state.speciesPreviewShiny = false;
     state.moveEditor = false;
     state.moveEditorRow = 0;
 }
@@ -399,7 +400,7 @@ std::string gen4FormLabel(uint16_t species, uint8_t form) {
 }
 
 constexpr std::array<const char*, 16> detailLabels{{
-    "Species", "Nickname", "Level", "Experience", "OT (read-only)", "TID (read-only)",
+    "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID",
     "SID (read-only)", "Held Item", "Friendship", "Language", "Origin (read-only)", "Ball",
     "Met Level", "Met Location", "Pokerus", "Form"
 }};
@@ -441,6 +442,8 @@ bool detailEditable(const State& state, int row,
         case 1:  // Nickname
         case 2:  // Level
         case 3:  // Experience
+        case 4:  // Original Trainer
+        case 5:  // Trainer ID
         case 7:  // Held Item
         case 8:  // Friendship
         case 9:  // Language
@@ -453,7 +456,7 @@ bool detailEditable(const State& state, int row,
         case 15: // Form
             return hasAlternateValidForm(state);
         default:
-            return false; // OT/TID/SID/Origin stay visible but are not controls.
+            return false; // SID/Origin stay visible but are not controls.
     }
 }
 
@@ -579,6 +582,8 @@ void openSpeciesPicker(TrainerViewScreen& screen, State& state) {
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
     state.pickerRow = it == state.pickerValues.end()
         ? 0 : static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    state.speciesPreviewShiny =
+        state.session.working ? state.session.working->shiny() : false;
     screen.controllerNavigation.reset();
 }
 
@@ -602,10 +607,10 @@ bool beginCreate(TrainerViewScreen& screen) {
     }
     state.actions = false;
     state.review = false;
-    state.createSpeciesInitialized = false;
     resetWorkspaceFocus(state);
     state.focus = {Shared::Panel::Details, 0, 0};
-    openSpeciesPicker(screen, state);
+    // Match Gen I-III: Create opens the shared editor first. Species is edited
+    // explicitly from the focused Species row rather than forcing a picker modal.
     return true;
 }
 
@@ -803,10 +808,11 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
         if (down & HidNpadButton_ZR)
             state.pickerRow = std::min(pickerCount - 1, state.pickerRow + 50);
     }
+    if (state.pickerTarget == PickerTarget::Species && (down & HidNpadButton_Y)) {
+        state.speciesPreviewShiny = !state.speciesPreviewShiny;
+        return true;
+    }
     if (down & HidNpadButton_B) {
-        if (state.pickerTarget == PickerTarget::Species &&
-            state.session.creating() && !state.createSpeciesInitialized)
-            state.createSpeciesInitialized = true;
         state.valuePicker = false;
         state.pickerTarget = PickerTarget::None;
         screen.controllerNavigation.reset();
@@ -817,31 +823,18 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
     const uint16_t value = state.pickerValues[static_cast<size_t>(state.pickerRow)];
     bool ok = false;
     if (state.pickerTarget == PickerTarget::Species) {
-        if (state.session.creating() && !state.createSpeciesInitialized) {
-            auto* staged = editor(screen);
-            std::string error;
-            auto replacement = staged
-                ? staged->createBoxDraft(static_cast<size_t>(state.box),
-                                         static_cast<size_t>(state.slot), value, &error)
-                : std::nullopt;
-            if (replacement) {
-                ok = state.session.beginCreate(std::move(*replacement), error);
-                state.createSpeciesInitialized = true;
-                state.focus = {Shared::Panel::Details, 0, 0};
-                state.detailsFocus = 0;
-            } else {
-                screen.postStatus(error.empty()
-                    ? "That species cannot start a native Generation IV Create draft" : error, 360);
-                return true;
-            }
-        } else {
-            ok = state.session.working->setSpecies(value);
-            if (!ok) {
-                screen.postStatus(
-                    "Could not reconcile Species while preserving Level/Nature/Shiny/PID-linked traits",
-                    360);
-                return true;
-            }
+        const auto before = state.session.working->encryptedBytes();
+        ok = state.session.working->setSpecies(value);
+        if (ok && state.session.working->shiny() != state.speciesPreviewShiny)
+            ok = state.session.working->setShiny(state.speciesPreviewShiny);
+        if (!ok) {
+            auto restored = Pokemon::Pokemon4Mutable::fromEncrypted(
+                before, bridge(screen).sourceSave().rawFamily());
+            if (restored) state.session.working = std::move(*restored);
+            screen.postStatus(
+                "Could not reconcile Species/Shiny while preserving PID-linked traits",
+                360);
+            return true;
         }
     } else if (state.pickerTarget == PickerTarget::HeldItem) {
         ok = state.session.working->setHeldItem(value);
@@ -981,6 +974,22 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
             0, static_cast<int>(maximum));
         if (r.accepted && !mon.setExperience(static_cast<uint32_t>(r.value)))
             screen.postStatus("Generation IV EXP edit was refused", 240);
+        return true;
+    }
+    if (row == 4) {
+        const auto current = Utils::utf16ToUtf8(p.originalTrainerName());
+        const auto r = Utils::promptText(
+            "Original Trainer", "1-7 Generation IV characters", current, 7);
+        if (r.accepted &&
+            !mon.setOriginalTrainerName(Utils::utf8ToUtf16(r.text)))
+            screen.postStatus("That OT name cannot be represented by this Generation IV save", 300);
+        return true;
+    }
+    if (row == 5) {
+        const auto r = Utils::promptNumber("Trainer ID", mon.tid(), 0, 65535);
+        if (r.accepted && !mon.setTID(static_cast<uint16_t>(r.value)))
+            screen.postStatus(
+                "Could not change Trainer ID while preserving PID-linked traits", 360);
         return true;
     }
     if (row == 7) {
@@ -1227,10 +1236,16 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
     return true;
 }
 
+std::string gen4DexLabel(uint16_t value) {
+    std::string number = std::to_string(value);
+    while (number.size() < 3) number = "0" + number;
+    return "#" + number + "  " + Names::getSpeciesName(value);
+}
+
 std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
                              uint16_t value) {
     if (state.pickerTarget == PickerTarget::Species)
-        return std::to_string(value) + " - " + Names::getSpeciesName(value);
+        return gen4DexLabel(value);
     if (state.pickerTarget == PickerTarget::HeldItem)
         return value == 0 ? "(none)" : Names::getItemName(value);
     if (state.pickerTarget == PickerTarget::Language)
@@ -1241,8 +1256,11 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
         const auto preview = workingRecord(state, bridge(screen).sourceSave().rawFamily());
         const char* name = preview
             ? Names::getMetLocationName(preview->originVersion(), value) : "";
-        return name && name[0] ? std::string(name)
-                               : "Location " + std::to_string(value);
+        std::string label = name && name[0] ? std::string(name)
+                                            : "Location " + std::to_string(value);
+        if (preview)
+            label += " — Met Lv. " + std::to_string(preview->metLevel()) + " (current)";
+        return label;
     }
     if (state.pickerTarget == PickerTarget::Pokerus)
         return value == 0 ? "None" : value == 0x10 ? "Cured" : "Infected";
@@ -1251,8 +1269,7 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
         return gen4FormLabel(species, static_cast<uint8_t>(value));
     }
     if (state.pickerTarget == PickerTarget::Move)
-        return value == 0 ? "Empty" :
-            std::string(Names::getMoveName(value)) + " (#" + std::to_string(value) + ")";
+        return value == 0 ? "Empty" : std::string(Names::getMoveName(value));
     if (state.pickerTarget == PickerTarget::Nature)
         return Trainer::getNatureName(static_cast<uint8_t>(value));
     if (state.session.working) {
@@ -1300,11 +1317,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
 
     if (speciesPicker) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
-        bool previewShiny = false;
-        if (const auto preview = workingRecord(state, bridge(screen).sourceSave().rawFamily())) {
-            Pokemon::Pokemon4ReadOnlyView previewView(*preview);
-            previewShiny = previewView.isShiny(preview->id32(), {});
-        }
+        const bool previewShiny = state.speciesPreviewShiny;
         const uint16_t species =
             state.pickerValues[static_cast<size_t>(state.pickerRow)];
         const auto& speciesPersonal = Pokemon::getPersonalInfo4HGSS(species, 0);
@@ -1314,14 +1327,15 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, species, 493, previewShiny,
             [](uint16_t value) {
-                return std::to_string(value) + "  " + Names::getSpeciesName(value);
+                return gen4DexLabel(value);
             },
             [](uint16_t value) {
-                return std::string(Names::getSpeciesName(value));
+                return gen4DexLabel(value);
             },
-            false, previewTypes);
+            true, previewTypes);
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
-                        {"ZL/ZR", "Jump"}, {"A", "Choose"}, {"B", "Cancel"}});
+                        {"ZL/ZR", "Jump"}, {"Y", "Normal/Shiny"},
+                        {"A", "Choose"}, {"B", "Cancel"}});
         return;
     }
 
@@ -1599,8 +1613,10 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
 
     screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,105));
+    const auto geometry = Shared::actionMenuGeometry();
     const int w = occupied ? 650 : 560;
-    const int h = occupied ? 500 : 350;
+    const int h = geometry.rowStart +
+                  static_cast<int>(actions.count) * geometry.rowStep + 62;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
     drawPanelSurface(fb, x, y, w, h, false, 18);
@@ -1612,7 +1628,6 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
                     ? "Party / Slot " + std::to_string(state.slot + 1)
                     : "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1)),
                 Colors::TextDim, TextStyle::Caption);
-    const auto geometry = Shared::actionMenuGeometry();
     int yy = y + geometry.rowStart;
     for (size_t i = 0; i < actions.count; ++i) {
         const bool selected = static_cast<int>(i) == state.actionRow;

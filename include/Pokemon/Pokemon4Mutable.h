@@ -78,6 +78,8 @@ public:
 
     bool setSpecies(uint16_t value) noexcept;
     bool setNickname(const std::u16string& value) noexcept;
+    bool setOriginalTrainerName(const std::u16string& value) noexcept;
+    bool setTID(uint16_t value) noexcept;
     bool setLevel(uint8_t level) noexcept;
     bool setExperience(uint32_t value) noexcept;
     bool setFriendship(uint8_t value) noexcept;
