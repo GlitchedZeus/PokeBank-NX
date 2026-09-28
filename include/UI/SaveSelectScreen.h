@@ -101,7 +101,10 @@ namespace UI {
         // reachable; it must never bypass the Save Instances chooser.
         std::string gen4TargetGameId;
         std::string gen4Notice;
+        // Generation-specific candidates stay as opaque validation handles; the chooser itself
+        // consumes the same provider-neutral SaveInstance rows used by Gen I-III.
         std::vector<PokeVault::Integration::Gen4::SourceCandidate> gen4Candidates;
+        std::vector<PokeVault::Source::SaveInstance> gen4Instances;
         int gen4SetupIndex = 0;
         int gen4CandidateIndex = 0;
         int gen4CandidateScroll = 0;
