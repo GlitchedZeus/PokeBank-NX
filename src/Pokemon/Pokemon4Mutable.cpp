@@ -479,8 +479,19 @@ bool Pokemon4Mutable::setHeldItem(uint16_t value) noexcept {
 }
 
 bool Pokemon4Mutable::setLanguage(uint8_t value) noexcept {
-    if (!valid_) return false;
+    if (!valid_ || !Enums::groupHasLanguage(sourceGroup_, value)) return false;
+    if (value == language()) return true;
+    const auto backup = decrypted_;
+    const auto keepNickname = nickname();
+    Pokemon4ReadOnly current(encryptedBytes(), sourceGroup_);
+    if (!current.valid()) return false;
+    const auto keepOt = current.originalTrainerName();
     write8(0x17, value);
+    if (!writeTextPreservingTrash(0x48, 11, 10, keepNickname) ||
+        !writeTextPreservingTrash(0x68, 8, 7, keepOt)) {
+        decrypted_ = backup;
+        return false;
+    }
     return true;
 }
 
