@@ -47,7 +47,11 @@ int main() {
     assert(gen2Release.find("stateFor(screen).mode != Mode::None") != std::string::npos);
     const auto drawing = gen2Release.substr(gen2Release.find("bool drawReleaseActionSurface"));
     assert(drawing.find("screen.drawLegacyBase(fb)") < drawing.find("fb.drawFilledRect"));
-    assert(drawing.find("Colors::FocusBorder, 2") != std::string::npos);
+    // Hardware regression: neither Pokemon Actions / Empty Slot nor Release confirmation may
+    // focus-outline the entire modal. Only the selected row/action owns the theme focus color.
+    assert(drawing.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
+    assert(drawing.find("fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight)") != std::string::npos);
+    assert(drawing.find("drawPanelSurface(fb, x, y, w, h, false, 18)") != std::string::npos);
     const auto input = gen2Release.substr(gen2Release.find("bool handleReleaseActionInput"));
     const auto close = input.substr(input.find("if (down & HidNpadButton_B)", input.find("const uint64_t nav")));
     const auto closeBody = close.substr(0, close.find("return true;"));
