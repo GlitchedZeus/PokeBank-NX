@@ -282,6 +282,26 @@ int main() {
                (source.providerLabel == "mGBA" || source.providerLabel == "Tico");
     }) == 2);
 
+    // Cross-provider aliases retain the path identities needed to enforce existing claims.
+    const fs::path ticoAlias = ticoGbaRoot / "mGBA alias.sav";
+    fs::create_hard_link(mgbaFireRed, ticoAlias);
+    const auto aliasCatalog = PokeVault::Legacy::discoverConfiguredLegacySaves(
+        {}, (temp / "missing-retroarch.cfg").string(),
+        (temp / "missing-retroarch-root").string(), mgbaConfig.string(), ticoSaveBase.string());
+    const auto merged = std::find_if(aliasCatalog.sources.begin(), aliasCatalog.sources.end(),
+        [&](const auto& source) { return source.normalizedPath == mgbaFireRed.string(); });
+    assert(merged != aliasCatalog.sources.end() && merged->providerLabel == "mGBA");
+    assert(merged->sourceAliases.size() == 1);
+    assert(std::none_of(aliasCatalog.sources.begin(), aliasCatalog.sources.end(),
+        [&](const auto& source) { return source.normalizedPath == ticoAlias.string(); }));
+    assert(readFile(mgbaFireRed) == readFile(ticoAlias));
+
+    fs::create_hard_link(fireRedPath, core / "Z FireRed alias.sav");
+    const auto withinProvider = PokeVault::Legacy::discoverFRLGSaves(roots);
+    const auto original = std::find_if(withinProvider.sources.begin(), withinProvider.sources.end(),
+        [&](const auto& source) { return source.normalizedPath == fireRedPath.string(); });
+    assert(original != withinProvider.sources.end() && original->sourceAliases.size() == 1);
+
     auto limited = PokeVault::Legacy::discoverFRLGSaves(roots, {.maxDepth = 2, .maxFiles = 1});
     assert(limited.filesExamined == 1 && limited.limitReached);
 

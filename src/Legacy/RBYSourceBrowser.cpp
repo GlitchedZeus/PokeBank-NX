@@ -3,7 +3,6 @@
 #include "Games/GameIdentity.h"
 
 #include <algorithm>
-#include <set>
 
 namespace PokeVault::Legacy {
 namespace {
@@ -20,7 +19,6 @@ std::string stableIdentity(const RBYSource& source) {
 
 std::vector<FRLGSourceCard> buildRBYSourceCards(const RBYDiscoveryResult& discovery) {
     std::vector<FRLGSourceCard> cards;
-    std::vector<std::set<std::string>> instanceKeys;
     for (size_t index = 0; index < discovery.sources.size(); ++index) {
         const auto& source = discovery.sources[index];
         if (!source.ready()) continue;
@@ -43,15 +41,12 @@ std::vector<FRLGSourceCard> buildRBYSourceCards(const RBYDiscoveryResult& discov
                 std::string(game->id),
                 {},
             });
-            instanceKeys.emplace_back();
             cardIndex = cards.size() - 1;
         } else {
             cardIndex = static_cast<size_t>(std::distance(cards.begin(), cardIt));
         }
 
         const std::string identity = source.canonicalPath.empty() ? source.path : source.canonicalPath;
-        if (!instanceKeys[cardIndex].insert(identity).second) continue;
-        auto& instances = cards[cardIndex].instances;
         const auto& strictTrainer = source.save->trainer();
         const std::string fingerprint = source.contentFingerprint.empty()
             ? std::string("unavailable") : source.contentFingerprint;
@@ -59,23 +54,21 @@ std::vector<FRLGSourceCard> buildRBYSourceCards(const RBYDiscoveryResult& discov
                                                                  : strictTrainer.name) +
             " | Party " + std::to_string(source.save->party().size()) + " | FP " +
             fingerprint.substr(0, std::min<size_t>(12, fingerprint.size()));
-        instances.push_back({
-            index,
-            LegacySaveInstanceKind::BatterySave,
-            leafName(source.path),
-            "RetroArch",
-            details,
-            source.path,
-            source.normalizedPath,
-            stableIdentity(source),
-            fingerprint,
-            strictTrainer.name,
-            source.fileSize,
-            source.modifiedTime,
-            source.save->party().size(),
-            false,
-        });
-        auto& instance = instances.back();
+        FRLGSaveInstance instance;
+        instance.sourceIndex = index;
+        instance.kind = LegacySaveInstanceKind::BatterySave;
+        instance.label = leafName(source.path);
+        instance.providerLabel = "RetroArch";
+        instance.sourceLabel = details;
+        instance.location = source.path;
+        instance.normalizedPath = source.normalizedPath;
+        instance.sourceIdentity = stableIdentity(source);
+        instance.sourceAliases = source.sourceAliases;
+        instance.contentFingerprint = fingerprint;
+        instance.trainerName = strictTrainer.name;
+        instance.fileSize = source.fileSize;
+        instance.modifiedTime = source.modifiedTime;
+        instance.partyCount = source.save->party().size();
         instance.gameId = std::string(game->id);
         instance.generation = 1;
         instance.platformLabel = std::string(Games::platformName(game->platform));
@@ -86,6 +79,7 @@ std::vector<FRLGSourceCard> buildRBYSourceCards(const RBYDiscoveryResult& discov
         instance.validation = PokeVault::Source::ValidationStatus::Ready;
         instance.access = PokeVault::Source::AccessMode::ReadOnly;
         instance.diagnostic = source.detail;
+        PokeVault::Source::appendDeduplicated(cards[cardIndex].instances, std::move(instance));
     }
 
     for (auto& card : cards)
@@ -99,7 +93,7 @@ std::vector<FRLGSourceCard> buildRBYSourceCardsForProfile(
     auto cards = buildRBYSourceCards(discovery);
     for (auto& card : cards) {
         for (auto& instance : card.instances)
-            instance.claimedProfile = bindings.assignedProfile(instance.sourceIdentity);
+            bindings.applyClaims(instance);
         card.instances.erase(std::remove_if(card.instances.begin(), card.instances.end(),
             [&](const auto& instance) {
                 return !PokeVault::Source::visibleToProfile(instance, profileIdentity);

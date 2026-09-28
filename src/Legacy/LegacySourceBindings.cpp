@@ -328,6 +328,14 @@ namespace PokeVault::Legacy {
             return fail("replace-file-assignment");
         }
 
+        Source::SaveInstance selected;
+        selected.sourceIdentity = sourceIdentity;
+        selected.sourcePath = binding.sourcePath;
+        selected.gameId = binding.gameIdentity;
+        applyClaims(selected);
+        if (!Source::visibleToProfile(selected, binding.profileIdentity)) {
+            errno = EEXIST; return fail("replace-file-assignment-conflict");
+        }
         const auto existing = owners_.find(std::string(sourceIdentity));
         if (existing != owners_.end() &&
             (existing->second.profileIdentity != binding.profileIdentity ||
@@ -358,6 +366,43 @@ namespace PokeVault::Legacy {
                 ++it;
         }
         owners_[std::string(sourceIdentity)] = std::move(binding);
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
+    void LegacySourceBindings::applyClaims(Source::SaveInstance& instance) const {
+        struct stat selected{};
+        const bool exists = ::stat(instance.path().c_str(), &selected) == 0 && selected.st_ino != 0;
+        for (const auto& [identity, binding] : owners_) {
+            bool matches = identity == instance.sourceIdentity ||
+                std::find(instance.sourceAliases.begin(), instance.sourceAliases.end(), identity) != instance.sourceAliases.end();
+            if (!binding.sourcePath.empty()) {
+                struct stat bound{};
+                matches |= binding.sourcePath == instance.path() || (exists &&
+                    ::stat(binding.sourcePath.c_str(), &bound) == 0 &&
+                    selected.st_dev == bound.st_dev && selected.st_ino == bound.st_ino);
+            }
+            if (matches) {
+                Source::mergeProfileClaim(instance, binding.profileIdentity);
+                if (!instance.gameId.empty() && !binding.gameIdentity.empty() &&
+                    instance.gameId != binding.gameIdentity) instance.claimConflict = true;
+            }
+        }
+    }
+
+    bool LegacySourceBindings::claimInstanceAndSave(const Source::SaveInstance& instance,
+                                                    std::string_view profile) {
+        auto checked = instance;
+        applyClaims(checked);
+        if (profile.empty() || !instance.ready() || !Source::visibleToProfile(checked, profile)) {
+            errno = EEXIST; return fail("claim-source-conflict");
+        }
+        const auto before = owners_;
+        if (!assign(instance.sourceIdentity, profile)) { errno = EINVAL; return fail("claim-source"); }
+        for (const auto& alias : instance.sourceAliases) {
+            if (!assign(alias, profile)) { owners_ = before; errno = EINVAL; return fail("claim-alias"); }
+        }
         if (save()) return true;
         owners_ = before;
         return false;

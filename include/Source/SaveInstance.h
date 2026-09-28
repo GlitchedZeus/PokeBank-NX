@@ -76,6 +76,8 @@ struct SaveInstance {
     bool rememberedSource = false;
     std::string claimedProfile;
     std::string diagnostic;
+    std::vector<std::string> sourceAliases; // Path-stable IDs seen for the same physical file.
+    bool claimConflict = false;
 
     [[nodiscard]] bool ready() const noexcept {
         return validation == ValidationStatus::Ready;
@@ -119,14 +121,41 @@ struct SaveInstance {
     return !a.empty() && !b.empty() && a == b;
 }
 
-// Returns false when the same physical file is already represented. Provider labels never create a
-// second row for one physical file discovered through overlapping roots.
+inline void mergeProfileClaim(SaveInstance& instance, std::string_view owner) {
+    if (owner.empty()) return;
+    if (!instance.claimedProfile.empty() && instance.claimedProfile != owner)
+        instance.claimConflict = true;
+    else instance.claimedProfile = owner;
+}
+
+template <typename SourceMetadata>
+inline void addSourceAlias(SourceMetadata& instance, const std::string& identity) {
+    if (!identity.empty() && identity != instance.sourceIdentity &&
+        std::find(instance.sourceAliases.begin(), instance.sourceAliases.end(), identity) == instance.sourceAliases.end())
+        instance.sourceAliases.push_back(identity);
+}
+
+// Keep the first provider/validation handle, but retain provenance and claims from aliases.
 inline bool appendDeduplicated(std::vector<SaveInstance>& instances, SaveInstance instance) {
-    if (std::any_of(instances.begin(), instances.end(),
-            [&](const auto& existing) { return samePhysicalSource(existing, instance); }))
+    for (auto& existing : instances) {
+        if (!samePhysicalSource(existing, instance)) continue;
+        addSourceAlias(existing, instance.sourceIdentity);
+        for (const auto& identity : instance.sourceAliases) addSourceAlias(existing, identity);
+        existing.rememberedSource |= instance.rememberedSource;
+        mergeProfileClaim(existing, instance.claimedProfile);
+        existing.claimConflict |= instance.claimConflict;
         return false;
+    }
     instances.push_back(std::move(instance));
     return true;
+}
+
+// Used after strict generation-specific revalidation, never as a substitute for parsing.
+[[nodiscard]] inline bool sameValidatedSnapshot(const SaveInstance& shown, const SaveInstance& fresh) noexcept {
+    return shown.ready() && fresh.ready() && shown.gameId == fresh.gameId &&
+        shown.sourceIdentity == fresh.sourceIdentity && shown.normalizedPath == fresh.normalizedPath &&
+        shown.fileSize == fresh.fileSize && shown.modifiedTime == fresh.modifiedTime &&
+        shown.contentFingerprint == fresh.contentFingerprint && samePhysicalSource(shown, fresh);
 }
 
 // One shared ordering rule for every generation: trustworthy physical mtime first, then stable
@@ -149,7 +178,8 @@ inline void sortNewestFirst(std::vector<SaveInstance>& instances) {
 
 [[nodiscard]] inline bool visibleToProfile(
     const SaveInstance& instance, std::string_view profileIdentity) noexcept {
-    return instance.claimedProfile.empty() || instance.claimedProfile == profileIdentity;
+    return !instance.claimConflict &&
+        (instance.claimedProfile.empty() || instance.claimedProfile == profileIdentity);
 }
 
 } // namespace PokeVault::Source

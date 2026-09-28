@@ -364,9 +364,10 @@ PokeVault::Source::SaveInstance toSaveInstance(
     instance.platformLabel = "Nintendo DS";
     instance.providerId = PokeVault::Source::providerIdFor(instance.providerLabel);
     instance.sourcePath = candidate.path;
-    // Gen IV sourceIdentity is deliberately provider-neutral and path-stable, so it is also the
-    // correct shared dedupe key for overlapping known roots.
-    instance.physicalIdentity = candidate.sourceIdentity;
+    // Persist path-stable binding IDs separately from the physical dedupe key.
+    instance.physicalIdentity = candidate.physicalIdentity.empty()
+        ? candidate.sourceIdentity : candidate.physicalIdentity;
+    instance.contentFingerprint = candidate.contentFingerprint;
     const std::string ext = extension(candidate.path);
     if (ext == ".dss") {
         instance.kind = SaveInstanceKind::SaveState;
@@ -435,6 +436,10 @@ SourceCandidate inspectSourceFile(
     }
     result.fileSize = static_cast<uint64_t>(st.st_size);
     result.modifiedTime = static_cast<int64_t>(st.st_mtime);
+    result.physicalIdentity = st.st_ino
+        ? "inode:" + std::to_string(static_cast<unsigned long long>(st.st_dev)) + ":" +
+          std::to_string(static_cast<unsigned long long>(st.st_ino))
+        : result.normalizedPath;
 
     // DraStic .dss is a savestate snapshot, not the cartridge/in-game backup file. Never try to
     // reinterpret it based on size or embedded bytes; savestate extraction is outside G4-02H.
@@ -457,6 +462,8 @@ SourceCandidate inspectSourceFile(
         return result;
     }
     const auto& bytes = payload.bytes;
+    result.contentFingerprint = sha256Hex(std::string_view(
+        reinterpret_cast<const char*>(bytes.data()), bytes.size()));
 
     std::optional<Gen4ReadOnlySave> parsed;
     size_t validLayouts = 0;

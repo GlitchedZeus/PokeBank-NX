@@ -37,24 +37,26 @@ discover = select[select.index('void SaveSelectScreen::discoverGen4Candidates()'
                   select.index('bool SaveSelectScreen::assignGen4Candidate')]
 assert 'resolveFileForGame' in discover
 assert 'inspectSourceFile' in discover
-assert 'existing.sourceIdentity == candidate.sourceIdentity' in discover
-assert 'a.modifiedTime > b.modifiedTime' in discover
+assert 'Source::appendDeduplicated(gen4Instances' in discover
+assert 'Source::sortNewestFirst(gen4Instances)' in discover
 
 instances = select[select.index('} else if (overlay == Overlay::Gen4Candidates && u) {'):
                    select.index('} else if (overlay == Overlay::Help)')]
 assert 'NINTENDO DS / SAVE INSTANCES / READ ONLY' in instances
 assert ' — Save Instances' in instances
-assert 'candidate.sourceType' in instances
-assert 'MOST RECENTLY MODIFIED' in instances
+assert 'drawSaveInstanceRows(fb, gen4Instances' in instances
+shared_rows = select[select.index('void drawSaveInstanceRows('):select.index('SaveSelectScreen::SaveSelectScreen')]
+assert 'instance.providerLabel' in shared_rows
+assert 'MOST RECENTLY MODIFIED' in shared_rows
 assert '{"A", "Open Read Only"}' in instances
 assert '{"Y", "Source Setup"}' in instances
 assert '{"X", "Refresh Saves"}' in instances
 
 legacy_model = (root / 'include/Legacy/FRLGSourceBrowser.h').read_text()
 legacy_browser = (root / 'src/Legacy/FRLGSourceBrowser.cpp').read_text()
-assert 'std::string providerLabel;' in legacy_model
-assert 'bindings.assignedProfile(instance.sourceIdentity)' in legacy_browser
-assert 'return !owner.empty() && owner != profileIdentity;' in legacy_browser
+assert 'using FRLGSaveInstance = PokeVault::Source::SaveInstance;' in legacy_model
+assert 'bindings.applyClaims(instance)' in legacy_browser
+assert 'Source::visibleToProfile(instance, profileIdentity)' in legacy_browser
 assert '!bindings.isVisibleTo(instance.sourceIdentity, profileIdentity)' not in legacy_browser
 assert 'Unassigned files are hidden from every profile until you choose one.' not in select
 assert 'Assigning claims this save for this profile and hides it from other profiles.' in select

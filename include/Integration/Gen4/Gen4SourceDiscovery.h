@@ -48,6 +48,8 @@ struct SourceCandidate {
     std::string trainerName;
     uint8_t partyCount = 0;
     std::string diagnostic;
+    std::string physicalIdentity;
+    std::string contentFingerprint;
 
     [[nodiscard]] bool ready() const noexcept { return status == CandidateStatus::Ready; }
 };

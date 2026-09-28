@@ -826,6 +826,35 @@ void testSourceDiscovery() {
     assert(inspectSourceFile((retro/"Diamond.srm").string(),"Manual").sourceIdentity==
            inspectSourceFile((retro/"Diamond.srm").string(),"RetroArch").sourceIdentity);
 
+    // Known-root + remembered alias: one physical row with stable provider and retained provenance.
+    const auto aliasPath=root/"Manual Diamond.sav";
+    fs::create_hard_link(retro/"Diamond.srm",aliasPath);
+    auto known=inspectSourceFile((retro/"Diamond.srm").string(),"RetroArch","diamond_nds");
+    auto alias=inspectSourceFile(aliasPath.string(),"Manual","diamond_nds");
+    assert(known.ready() && alias.ready() && known.sourceIdentity!=alias.sourceIdentity);
+    assert(known.physicalIdentity==alias.physicalIdentity);
+    auto knownRow=toSaveInstance(known,"diamond_nds");
+    auto aliasRow=toSaveInstance(alias,"diamond_nds",0,true);
+    std::vector<PokeVault::Source::SaveInstance> sharedRows{knownRow};
+    assert(!PokeVault::Source::appendDeduplicated(sharedRows,aliasRow));
+    assert(sharedRows.size()==1 && sharedRows[0].rememberedSource && sharedRows[0].providerLabel=="RetroArch");
+    PokeVault::Legacy::LegacySourceBindings ownership((root/"claims.cfg").string());
+    assert(ownership.load());
+    assert(ownership.replaceFileAssignmentAndSave(alias.sourceIdentity,
+        {"owner","diamond_nds",alias.path,"Manual","DP"}));
+    ownership.applyClaims(knownRow);
+    assert(!PokeVault::Source::visibleToProfile(knownRow,"another-profile"));
+    assert(!ownership.replaceFileAssignmentAndSave(known.sourceIdentity,
+        {"another-profile","diamond_nds",known.path,"RetroArch","DP"}));
+    auto fresh=inspectSourceFile(known.path,"RetroArch","diamond_nds");
+    assert(PokeVault::Source::sameValidatedSnapshot(knownRow,toSaveInstance(fresh,"diamond_nds")));
+    auto changed=dp;changed[spec(Layout::DiamondPearl).trainer+0x10]^=1;
+    restampCounter(changed,Layout::DiamondPearl,false,0,200,0);
+    write(retro/"Diamond.srm",changed);
+    fresh=inspectSourceFile(known.path,"RetroArch","diamond_nds");
+    assert(fresh.ready() && !PokeVault::Source::sameValidatedSnapshot(knownRow,toSaveInstance(fresh,"diamond_nds")));
+    assert(digest(read(retro/"Diamond.srm"))==digest(changed));
+
     fs::remove_all(root);
 }
 

@@ -6,6 +6,9 @@ on:
       - audit/full-project-hardening-20260923
     paths:
       - 'src/Save/GetSaveFileContents.cpp'
+      - 'include/Source/**'
+      - 'Makefile.host.source-instances'
+      - 'tests/test_save_instance*'
       - 'include/Enums/LanguageID.h'
       - 'include/Save/RtcFooter.h'
       - 'src/Integration/Gen1/**'

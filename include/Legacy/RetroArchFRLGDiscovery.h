@@ -29,6 +29,7 @@ namespace PokeVault::Legacy {
         std::string normalizedPath;
         std::string sourceIdentity;
         std::string canonicalPath;
+        std::vector<std::string> sourceAliases;
         uint64_t fileSize = 0;
         int64_t modifiedTime = 0;
         std::string contentFingerprint;

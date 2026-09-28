@@ -176,6 +176,40 @@ int main() {
     assert(gen4Reload.assignAndSave("nds:/saves/pokemon.dsv", "niece"));
     assert(gen4Reload.assignedProfile("nds:/saves/pokemon.dsv") == "niece");
     assert(gen4Reload.assignedGame("nds:/saves/pokemon.dsv") == "diamond_nds");
+    // Claiming a deduplicated row persists every observed path identity atomically.
+    const fs::path aliasDb = root / "aliases.cfg";
+    LegacySourceBindings aliases(aliasDb.string(), ops);
+    PokeVault::Source::SaveInstance instance;
+    instance.sourceIdentity = "primary";
+    instance.sourceAliases = {"alternate"};
+    instance.validation = PokeVault::Source::ValidationStatus::Ready;
+    faultStage = "validate-target";
+    assert(!aliases.claimInstanceAndSave(instance, "will"));
+    assert(aliases.size() == 0);
+    faultStage.clear();
+    assert(aliases.claimInstanceAndSave(instance, "will"));
+    LegacySourceBindings aliasReload(aliasDb.string(), ops);
+    assert(aliasReload.load());
+    assert(aliasReload.assignedProfile("primary") == "will");
+    assert(aliasReload.assignedProfile("alternate") == "will");
+    const auto committedAliases = contents(aliasDb);
+    assert(!aliasReload.claimInstanceAndSave(instance, "niece"));
+    assert(contents(aliasDb) == committedAliases);
+    instance.sourceIdentity = "alternate";
+    instance.sourceAliases.clear();
+    aliasReload.applyClaims(instance);
+    assert(!PokeVault::Source::visibleToProfile(instance, "niece"));
+
+    // A file alias cannot change its already assigned exact game, even for the same owner.
+    const fs::path physical = root / "physical.sav", alternate = root / "alternate.sav";
+    write(physical, "immutable source");
+    fs::create_hard_link(physical, alternate);
+    PokeVault::Legacy::BindingRecord record{"will", "diamond_nds", physical.string(), "Manual", "dp"};
+    assert(aliasReload.replaceFileAssignmentAndSave("diamond-file", record));
+    record.sourcePath = alternate.string();
+    record.gameIdentity = "pearl_nds";
+    assert(!aliasReload.replaceFileAssignmentAndSave("pearl-alias", record));
+    assert(contents(physical) == "immutable source");
     assert(renameAttemptsOverExisting == 0);
     fs::remove_all(root);
     std::cout << "Legacy binding transactions: first/second, isolation, rollback and recovery PASS\n";

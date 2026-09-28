@@ -85,4 +85,12 @@ require(ui_manager, "handleGen4View", "Gen IV strict open bridge missing")
 require(ui_manager, "SourceKind::RetroArchLegacy", "classic external-source read-only kind missing")
 require(ui_manager, "SourceKind::ExternalLegacy", "Gen IV external-source read-only kind missing")
 
+for adapter in ("FRLG", "RBY", "GSC"):
+    body = text(f"src/Legacy/{adapter}SourceBrowser.cpp")
+    require(body, "appendDeduplicated", f"{adapter} bypasses shared dedupe")
+    require(body, "applyClaims(instance)", f"{adapter} drops alias ownership")
+require(ui, "sameValidatedSnapshot(shownInstance, freshInstance)", "stale source snapshot opens silently")
+require(ui, "claimInstanceAndSave(entry.instance, profile)", "classic claim drops source aliases")
+require(text(".github/workflows/audit-hardening-native.yml"), "include/Source/**", "shared source model changes skip native CI")
+
 print("Provider-neutral Save Instances architecture contract: PASS")

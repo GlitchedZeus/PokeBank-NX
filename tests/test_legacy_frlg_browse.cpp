@@ -211,6 +211,14 @@ int main() {
     assert(profileB[0].instances.size() == 1);
     assert(Legacy::buildFRLGSourceCardsForProfile(discovery, bindings, "profile-c").empty());
 
+    // An alternate physical-file identity must not hide an existing ownership claim.
+    discovery.sources[0].sourceAliases.push_back("alias-claimed-elsewhere");
+    assert(bindings.assign("alias-claimed-elsewhere","profile-b"));
+    const auto conflicted = Legacy::buildFRLGSourceCardsForProfile(discovery,bindings,"profile-a");
+    assert(conflicted[0].instances.size()==2);
+    discovery.sources[0].sourceAliases.clear();
+    assert(bindings.unassign("alias-claimed-elsewhere"));
+
     auto staleCard = cards[0];
     staleCard.gameId = "firered_switch";
     assert(Legacy::resolveFRLGSaveInstance(discovery, staleCard, 0) == nullptr);

@@ -38,8 +38,10 @@ int main() {
     alias.location = alias.sourcePath;
     alias.normalizedPath = alias.sourcePath;
     alias.sourceIdentity = "tico-alias";
+    alias.rememberedSource = true;
     assert(!appendDeduplicated(instances, alias));
     assert(instances.size() == 1);
+    assert(instances.front().rememberedSource);
     assert(instances.front().providerLabel == "RetroArch");
 
     SaveInstance mgba = retro;
@@ -99,6 +101,23 @@ int main() {
         assert(instance.readOnly());
         assert(instance.access != AccessMode::StagedWorkspace);
     }
+
+    assert(instances.back().sourceAliases.size()==1);
+    auto shown=instances.front(),fresh=shown;
+    assert(sameValidatedSnapshot(shown,fresh));
+    fresh.contentFingerprint="changed";assert(!sameValidatedSnapshot(shown,fresh));
+    fresh=shown;fresh.gameId="gold_gbc";assert(!sameValidatedSnapshot(shown,fresh));
+    fresh=shown;fresh.modifiedTime++;assert(!sameValidatedSnapshot(shown,fresh));
+    fresh=shown;fresh.validation=ValidationStatus::Missing;assert(!sameValidatedSnapshot(shown,fresh));
+    fresh=shown;fresh.physicalIdentity="replacement-file";assert(!sameValidatedSnapshot(shown,fresh));
+    std::vector<SaveInstance> conflicting{retro};
+    conflicting.front().claimedProfile="a";alias.claimedProfile="b";
+    assert(!appendDeduplicated(conflicting,alias));
+    assert(!visibleToProfile(conflicting.front(),"a") && !visibleToProfile(conflicting.front(),"b"));
+    std::vector<SaveInstance> unknownTimes{retro,mgba};
+    for(auto& i:unknownTimes)i.modifiedTime=0;
+    sortNewestFirst(unknownTimes);
+    assert(!unknownTimes[0].mostRecentlyModified && !unknownTimes[1].mostRecentlyModified);
 
     std::cout << "Provider-neutral SaveInstance model: dedupe/order/provider/profile/manual/read-only PASS\n";
 }

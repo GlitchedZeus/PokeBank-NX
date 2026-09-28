@@ -198,6 +198,7 @@ int main() {
     for (const auto& source : aliasResult.sources)
         if (source.ready() && source.gameId == "red_gb") ++readyRed;
     assert(readyRed == 1);
+    assert(aliasResult.sources.front().sourceAliases.size() == 1);
 
     // Byte-identical but physically separate files remain separate source instances.
     const fs::path copiesRoot = temp.root / "copies";

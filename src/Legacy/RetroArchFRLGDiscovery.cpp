@@ -1,3 +1,4 @@
+#include "Source/SaveInstance.h"
 #include "Legacy/RetroArchFRLGDiscovery.h"
 #include "Legacy/RetroArchRBYDiscovery.h"
 #include "Legacy/RetroArchGSCDiscovery.h"
@@ -257,7 +258,12 @@ namespace PokeVault::Legacy {
                 struct stat metadata{};
                 if (!isRegularFile(path, &metadata)) continue;
                 const std::string fileIdentity = filesystemIdentity(path);
-                if (!state.visitedFiles.insert(fileIdentity).second) continue;
+                if (!state.visitedFiles.insert(fileIdentity).second) {
+                    for (auto& existing : state.result.sources)
+                        if (existing.canonicalPath == fileIdentity)
+                            Source::addSourceAlias(existing, sourceIdentity(path));
+                    continue;
+                }
                 if (state.result.filesExamined >= state.limits.maxFiles) {
                     state.result.limitReached = true;
                     break;
@@ -303,6 +309,7 @@ namespace PokeVault::Legacy {
             output.path = input.path;
             output.normalizedPath = input.normalizedPath;
             output.sourceIdentity = input.sourceIdentity;
+            output.sourceAliases = input.sourceAliases;
             output.canonicalPath = input.canonicalPath;
             output.fileSize = input.fileSize;
             output.modifiedTime = input.modifiedTime;
@@ -322,6 +329,7 @@ namespace PokeVault::Legacy {
             output.path = input.path;
             output.normalizedPath = input.normalizedPath;
             output.sourceIdentity = input.sourceIdentity;
+            output.sourceAliases = input.sourceAliases;
             output.canonicalPath = input.canonicalPath;
             output.fileSize = input.fileSize;
             output.modifiedTime = input.modifiedTime;
@@ -522,9 +530,13 @@ namespace PokeVault::Legacy {
         };
         auto appendUnique = [&](FRLGSource source) {
             const std::string key = physicalKey(source);
-            const bool duplicate = std::any_of(result.sources.begin(), result.sources.end(),
+            auto duplicate = std::find_if(result.sources.begin(), result.sources.end(),
                 [&](const auto& existing) { return physicalKey(existing) == key; });
-            if (!duplicate) result.sources.push_back(std::move(source));
+            if (duplicate == result.sources.end()) result.sources.push_back(std::move(source));
+            else {
+                Source::addSourceAlias(*duplicate, source.sourceIdentity);
+                for (const auto& alias : source.sourceAliases) Source::addSourceAlias(*duplicate, alias);
+            }
         };
 
         // Every additive provider must hand us an exact approved battery-save root. This helper

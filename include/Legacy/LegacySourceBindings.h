@@ -1,6 +1,8 @@
 #ifndef POKEBANK_LEGACY_SOURCE_BINDINGS_H
 #define POKEBANK_LEGACY_SOURCE_BINDINGS_H
 
+#include "Source/SaveInstance.h"
+
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -57,6 +59,8 @@ namespace PokeVault::Legacy {
         // Rechecks only explicitly bound paths. Never scans or substitutes another save.
         [[nodiscard]] AssignedFile resolveFileForGame(std::string_view profileIdentity,
                                                        std::string_view gameIdentity) const;
+        void applyClaims(Source::SaveInstance& instance) const;
+        [[nodiscard]] bool claimInstanceAndSave(const Source::SaveInstance& instance, std::string_view profile);
         [[nodiscard]] const std::string& lastError() const noexcept { return lastError_; }
         [[nodiscard]] bool unassign(std::string_view sourceIdentity);
         [[nodiscard]] bool unassignAndSave(std::string_view sourceIdentity);

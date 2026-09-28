@@ -214,8 +214,9 @@ namespace UI {
         unassignedLegacySources.clear();
         if (!legacyCatalog || !legacyBindings) return;
         for (const auto& card : PokeVault::Legacy::buildFRLGSourceCards(*legacyCatalog)) {
-            for (const auto& instance : card.instances) {
-                if (legacyBindings->isAssigned(instance.sourceIdentity)) continue;
+            for (auto instance : card.instances) {
+                legacyBindings->applyClaims(instance);
+                if (instance.claimConflict || !instance.claimedProfile.empty()) continue;
                 unassignedLegacySources.push_back({card.gameId, card.title, instance});
             }
         }
@@ -245,7 +246,7 @@ namespace UI {
         const std::string profile = currentProfileIdentity();
         if (profile.empty()) return false;
         const auto& entry = unassignedLegacySources[static_cast<size_t>(legacyAssignmentIndex)];
-        if (!legacyBindings->assignAndSave(entry.instance.sourceIdentity, profile)) {
+        if (!legacyBindings->claimInstanceAndSave(entry.instance, profile)) {
             logErrorToFile("Legacy binding assignment failed", legacyBindings->lastError().c_str());
             legacyNotice = "Assignment could not be saved; source remains unassigned.";
             return false;
@@ -518,11 +519,10 @@ namespace UI {
             if (!candidate.ready() ||
                 !PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId))
                 return;
-            const std::string claimedProfile = legacyBindings
-                ? legacyBindings->assignedProfile(candidate.sourceIdentity) : std::string{};
             auto instance = PokeVault::Integration::Gen4::toSaveInstance(
                 candidate, gen4TargetGameId, gen4Candidates.size(), rememberedSource,
-                claimedProfile);
+                {});
+            if (legacyBindings) legacyBindings->applyClaims(instance);
             if (!PokeVault::Source::visibleToProfile(instance, currentProfileIdentity()))
                 return;
             if (!PokeVault::Source::appendDeduplicated(gen4Instances, std::move(instance)))
@@ -588,6 +588,17 @@ namespace UI {
             return false;
         const std::string profile = currentProfileIdentity();
         if (profile.empty()) return false;
+        const auto fresh = PokeVault::Integration::Gen4::inspectSourceFile(
+            candidate.path, candidate.sourceType, gen4TargetGameId);
+        const auto shownInstance = PokeVault::Integration::Gen4::toSaveInstance(candidate, gen4TargetGameId);
+        auto freshInstance = PokeVault::Integration::Gen4::toSaveInstance(fresh, gen4TargetGameId);
+        legacyBindings->applyClaims(freshInstance);
+        if (!PokeVault::Source::sameValidatedSnapshot(shownInstance, freshInstance) ||
+            !PokeVault::Source::visibleToProfile(freshInstance, profile)) {
+            discoverGen4Candidates();
+            gen4Notice = "That save changed or is no longer available to this profile. Review the refreshed list.";
+            return false;
+        }
 
         PokeVault::Legacy::BindingRecord binding;
         binding.profileIdentity = profile;
@@ -702,8 +713,8 @@ namespace UI {
         // Reread the active physical root at the selection boundary. If this child was replaced or
         // deleted while the picker was open, the stale instance can no longer resolve to anything.
         const std::string gameId = title.gameId;
-        const std::string sourceIdentity =
-            title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)].sourceIdentity;
+        const auto shownInstance = title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
+        const std::string sourceIdentity = shownInstance.sourceIdentity;
         if (!refreshLegacySources(gameId, sourceIdentity, true)) return;
         u = currentUser();
         if (!u || titleIndex < 0 || titleIndex >= static_cast<int>(u->titles.size())) return;
@@ -711,6 +722,12 @@ namespace UI {
         if (legacyInstanceIndex < 0 ||
             legacyInstanceIndex >= static_cast<int>(refreshedTitle.legacyInstances.size())) return;
 
+        const auto& freshInstance = refreshedTitle.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
+        if (!PokeVault::Source::sameValidatedSnapshot(shownInstance, freshInstance)) {
+            legacyNotice = "That save changed. Review the refreshed list before opening.";
+            overlay = Overlay::LegacyInstances;
+            return;
+        }
         selectedUserUid = u->uid;
         selectedTitleId = 0;
         selectedTitleName = refreshedTitle.name;
