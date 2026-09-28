@@ -153,13 +153,33 @@ Confirmed PASS on this corrected head:
 - Gen I/II Packed Move #225;
 - Gen I/II Packed Multi-Move #224.
 
-Still running at the latest check:
-- PokeBank NX Host Tests #1449;
-- Gen IV full devkitA64 compile/link/package in Candidate Gate #21.
+All required automated gates are now green.
 
-**DEVICE ACCEPTANCE: NOT YET**
+Exact corrected retest candidate:
 
-The next NRO must be built from the corrected exact head and physically retested with the same party-only Platinum save.
+- Application SHA: **6e9f54f2a9a0cea79f14942912ba76aaca3fa0ed**
+- Tree SHA: **42b6f13e299f1ec5306f75844ae3f90718676a30**
+- Artifact: **Gen4-SharedEditor-Candidate-6e9f54f2**
+- Artifact ID: **10963476019**
+- NRO: **PokeBank-NX-Gen4-SharedEditor-6e9f54f2.nro**
+- NRO SHA-256: **9f3e0ccccfaaf3f3b219820c688b9aa30504d340d115c805cf11a099e49b7c51**
+- Downloaded artifact ZIP SHA-256: **7285c2fd894241d4d9b63154bdb50a3ed311b849e73a7073c8293a186ecf8d81**
+
+Exact-head verification:
+- Candidate Gate #21: **PASS**
+- full devkitA64 compile/link/package: **PASS**
+- Host Tests #1449 full suite: **PASS**
+- Host ASan/UBSan: **PASS**
+- Packed Move #225: **PASS**
+- Packed Multi-Move #224: **PASS**
+
+The downloaded artifact identity and NRO hash were independently verified.
+
+**AUTOMATED GATES: PASS**
+
+**DEVICE ACCEPTANCE: PENDING OWNER RETEST**
+
+The same party-only Platinum save should be used for the retest.
 
 ### Save-session backup / injection direction
 
@@ -218,16 +238,16 @@ DraStic `.dsv` cartridge backups are supported read only. DraStic `.dss` savesta
 
 ## Next gate
 
-Finish Host Tests #1449 and Gen IV Candidate Gate #21 for exact head 6e9f54f2.
+Owner retest of the exact Actions-built NRO above.
 
-If green:
+Retest the same Platinum DraStic save with one Party Pokémon and zero boxed Pokémon:
 
-1. freeze exact application/tree identity;
-2. retrieve and independently hash the Actions-built NRO;
-3. retest the same Platinum DraStic save with one Party Pokémon and zero boxed Pokémon;
-4. verify Party A → Actions → shared View/Edit;
-5. verify B-spam cannot discard staged save-session changes;
-6. keep the external .dsv unchanged in this build;
+1. Party → Piplup → A opens Generation IV Actions;
+2. View uses the shared Pokémon editor presentation, not the old generic READ ONLY page;
+3. Edit is reachable for the Party Pokémon;
+4. stage a small supported edit and Keep it;
+5. repeated B cannot silently discard staged save-session changes;
+6. external .dsv remains unchanged in this build;
 7. only after hardware acceptance proceed to Create or Issue #89 injection implementation.
 
 ## Canonical project documents
