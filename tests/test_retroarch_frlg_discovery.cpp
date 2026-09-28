@@ -220,6 +220,20 @@ int main() {
     }
     assert(PokeVault::Legacy::mGBASaveRootsFromConfig(mgbaNoRootConfig.string()).empty());
 
+    const fs::path mgbaTraversalConfig = mgbaDir / "unsafe-parent.ini";
+    {
+        std::ofstream output(mgbaTraversalConfig);
+        output << "savegamePath=../..\n";
+    }
+    assert(PokeVault::Legacy::mGBASaveRootsFromConfig(mgbaTraversalConfig.string()).empty());
+
+    const fs::path mgbaRootConfig = mgbaDir / "unsafe-root.ini";
+    {
+        std::ofstream output(mgbaRootConfig);
+        output << "savegamePath=/\n";
+    }
+    assert(PokeVault::Legacy::mGBASaveRootsFromConfig(mgbaRootConfig.string()).empty());
+
     const auto unified = PokeVault::Legacy::discoverConfiguredLegacySaves(
         {}, (temp / "missing-retroarch.cfg").string(),
         (temp / "missing-retroarch-root").string(), mgbaConfig.string());

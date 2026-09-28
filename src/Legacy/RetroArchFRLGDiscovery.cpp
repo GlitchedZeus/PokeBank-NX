@@ -396,16 +396,42 @@ namespace PokeVault::Legacy {
                 value = value.substr(1, value.size() - 2);
             if (value.empty()) break; // Empty means "same directory as ROM"; never crawl it.
 
+            // A provider config is permission to inspect that provider's save directory, not a
+            // license to crawl the SD card. Reject parent traversal and filesystem roots even if
+            // an unusual/malicious config asks mGBA itself to use them.
+            auto hasParentSegment = [](std::string_view path) {
+                size_t start = 0;
+                while (start <= path.size()) {
+                    const size_t end = path.find_first_of("/\\", start);
+                    const std::string_view segment =
+                        path.substr(start, end == std::string_view::npos
+                            ? path.size() - start : end - start);
+                    if (segment == "..") return true;
+                    if (end == std::string_view::npos) break;
+                    start = end + 1;
+                }
+                return false;
+            };
+            if (hasParentSegment(value)) break;
+
             const size_t device = configPath.find(":/");
+            std::string candidate;
             if (value.front() == '/' && device != std::string::npos) {
                 // mGBA's Switch build sees /foo at the SD filesystem root. PokeBank uses fsdev's
                 // explicit sdmc:/ spelling, so preserve the same root without guessing.
-                roots.push_back(configPath.substr(0, device + 1) + value);
+                candidate = configPath.substr(0, device + 1) + value;
             } else if (isAbsoluteOrDevicePath(value)) {
-                roots.push_back(value);
+                candidate = value;
             } else {
-                roots.push_back(join(dirname(configPath), value));
+                candidate = join(dirname(configPath), value);
             }
+
+            const std::string normalized = normalizedPath(candidate);
+            const size_t candidateDevice = normalized.find(":/");
+            const bool deviceRoot = candidateDevice != std::string::npos &&
+                normalized.size() == candidateDevice + 2;
+            if (normalized == "/" || deviceRoot) break;
+            roots.push_back(std::move(candidate));
             break;
         }
         std::fclose(file);
