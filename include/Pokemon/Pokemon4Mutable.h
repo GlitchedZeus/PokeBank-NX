@@ -87,6 +87,8 @@ private:
 
     [[nodiscard]] uint8_t genderForPid(uint32_t value) const noexcept;
     [[nodiscard]] int constrainedAbilityBit() const noexcept;
+    [[nodiscard]] uint16_t calculatedStat(size_t stat) const noexcept;
+    void refreshPartyDerivedData() noexcept;
     bool rerollPid(int wantShiny, int wantGender, int wantNature,
                    int wantAbilityBit) noexcept;
     bool writeTextPreservingTrash(size_t offset, size_t slotCount,
