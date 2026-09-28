@@ -299,6 +299,70 @@ bool Gen4StagedPokemonEditor::commitBoxPokemon(
     return true;
 }
 
+bool Gen4StagedPokemonEditor::stageCreateBoxPokemon(
+    size_t box, size_t slot, const Pokemon::Pokemon4Mutable& pokemon,
+    std::string* error) {
+    auto parsedBefore = reparse(error);
+    if (!parsedBefore) return false;
+
+    if (box >= 18 || slot >= 30) {
+        setError(error, "Gen IV Create target is outside the native 18 x 30 storage");
+        return false;
+    }
+    const auto& destination = parsedBefore->box(box, slot);
+    if (!destination.valid()) {
+        setError(error, "Gen IV Create target failed strict slot validation");
+        return false;
+    }
+    if (!destination.empty()) {
+        setError(error, "Gen IV Create refuses to overwrite an occupied box slot");
+        return false;
+    }
+
+    const auto offset = boxRecordOffset(*parsedBefore, box, slot);
+    if (!offset) {
+        setError(error, "Gen IV Create target is outside the selected Storage block");
+        return false;
+    }
+
+    const auto encrypted = pokemon.encryptedBytes();
+    if (encrypted.size() != Encryption::SIZE_STORED4) {
+        setError(error, "Gen IV Create draft did not serialize to a 0x88-byte stored PK4");
+        return false;
+    }
+    Pokemon::Pokemon4ReadOnly candidate(encrypted, sourceGroup_);
+    if (!candidate.valid() || candidate.empty() || candidate.isParty()) {
+        setError(error, "Gen IV Create draft is not a valid occupied stored PK4");
+        return false;
+    }
+
+    const auto backup = staged_;
+    for (size_t i = 0; i < encrypted.size(); ++i)
+        staged_[*offset + i] = static_cast<uint8_t>(encrypted[i]);
+
+    if (!refreshStorageCrc(*parsedBefore, error)) {
+        staged_ = backup;
+        return false;
+    }
+
+    auto parsedAfter = reparse(error);
+    if (!parsedAfter) {
+        staged_ = backup;
+        return false;
+    }
+    const auto& reparsed = parsedAfter->box(box, slot);
+    if (!reparsed.valid() || reparsed.empty() ||
+        !std::equal(reparsed.originalEncryptedBytes().begin(),
+                    reparsed.originalEncryptedBytes().end(), encrypted.begin())) {
+        staged_ = backup;
+        setError(error, "Gen IV staged Create failed exact PK4 reparse verification");
+        return false;
+    }
+
+    if (error) error->clear();
+    return true;
+}
+
 bool Gen4StagedPokemonEditor::commitPartyPokemon(
     size_t slot, const Pokemon::Pokemon4Mutable& pokemon,
     std::string* error) {
