@@ -147,18 +147,20 @@ bool parseBindings(std::string_view text, BindingMap& bindings) {
             start, (end == std::string_view::npos ? text.size() : end) - start);
         if (!row.empty()) {
             std::array<std::string, 5> fields{};
-            size_t field = 0, pos = 0;
-            while (field < fields.size()) {
+            size_t pos = 0;
+            for (size_t field = 0; field < fields.size(); ++field) {
                 const size_t tab = row.find('\t', pos);
-                const std::string_view encoded = row.substr(
-                    pos, tab == std::string_view::npos ? row.size() - pos : tab - pos);
-                if (!hexDecode(encoded, fields[field])) return false;
-                ++field;
-                if (tab == std::string_view::npos) break;
-                pos = tab + 1;
+                if (field + 1 < fields.size()) {
+                    if (tab == std::string_view::npos) return false;
+                    if (!hexDecode(row.substr(pos, tab - pos), fields[field])) return false;
+                    pos = tab + 1;
+                } else {
+                    // The fifth field must consume the rest of the row. A sixth tab/field is
+                    // malformed rather than something we silently ignore.
+                    if (tab != std::string_view::npos) return false;
+                    if (!hexDecode(row.substr(pos), fields[field])) return false;
+                }
             }
-            if (field != fields.size() || pos < row.size() && row.find('\t', pos) != std::string_view::npos)
-                return false;
             if (fields[0].empty() || fields[1].empty() || fields[3].empty()) return false;
             StoredLaunchBinding binding;
             binding.providerId = std::move(fields[1]);
@@ -405,11 +407,13 @@ GameLaunchDescriptor descriptorFromStored(std::string_view gameId,
     result.backend = kind == GameLaunchProviderKind::RetroArch
         ? GameLaunchBackend::RetroArch : GameLaunchBackend::HomebrewNro;
     result.providerId = std::string(providerId);
-    result.launcherPath = stored.launcherPath.empty()
-        ? defaultLauncherPath(kind, gameId, stored.contentPath) : stored.launcherPath;
+
+    // A launch binding may remember CONTENT, but it never gets to choose executable code.
+    // Recompute the NRO/core from the provider adapter every time so a hand-edited/stale config
+    // cannot redirect PokeBank NX to an arbitrary executable path.
+    result.launcherPath = defaultLauncherPath(kind, gameId, stored.contentPath);
     result.contentPath = stored.contentPath;
-    result.corePath = stored.corePath;
-    if (kind == GameLaunchProviderKind::RetroArch && result.corePath.empty())
+    if (kind == GameLaunchProviderKind::RetroArch)
         result.corePath = defaultRetroArchCore(gameId);
 
     if (result.launcherPath.empty() || !regularFile(result.launcherPath)) {
