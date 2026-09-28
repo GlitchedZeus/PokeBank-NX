@@ -255,6 +255,48 @@ void testShedinjaPartyHpRule() {
     }
 }
 
+void testSpeciesAndTrainerFieldEdits() {
+    std::string error;
+    auto created = Pokemon::Pokemon4Mutable::createStored(
+        393, Enums::GameVersion::PT, static_cast<uint8_t>(Enums::GameVersion::Pt),
+        u"DAWN", 1111, 2222, 1, 2, 12, 0x13572468u, &error);
+    assert(created && error.empty());
+    const uint8_t beforeLevel = created->level();
+    const uint8_t beforeNature = created->nature();
+    const bool beforeShiny = created->shiny();
+
+    assert(created->setSpecies(25));
+    Pokemon::Pokemon4ReadOnly speciesChanged(created->encryptedBytes(), Enums::GameVersion::PT);
+    assert(speciesChanged.valid() && speciesChanged.species() == 25);
+    assert(speciesChanged.nickname() == u"PIKACHU");
+    assert(!speciesChanged.isNicknamed());
+    assert(Pokemon::getLevelFromExp(speciesChanged.experience(), speciesChanged.personal().growthRate) == beforeLevel);
+    assert(static_cast<uint8_t>(speciesChanged.pid() % 25u) == beforeNature);
+    assert(created->shiny() == beforeShiny);
+
+    assert(created->setNickname(u"SPARK"));
+    assert(created->setSpecies(26));
+    Pokemon::Pokemon4ReadOnly customName(created->encryptedBytes(), Enums::GameVersion::PT);
+    assert(customName.valid() && customName.species() == 26);
+    assert(customName.nickname() == u"SPARK" && customName.isNicknamed());
+
+    const bool shinyBeforeIds = created->shiny();
+    const uint8_t natureBeforeIds = created->nature();
+    const uint8_t genderBeforeIds = created->gender();
+    assert(created->setTID(3333));
+    assert(created->setSID(4444));
+    assert(created->setOriginalTrainerName(u"LUCAS"));
+    assert(created->setOriginalTrainerGender(0));
+    Pokemon::Pokemon4ReadOnly trainerChanged(created->encryptedBytes(), Enums::GameVersion::PT);
+    assert(trainerChanged.valid());
+    assert(trainerChanged.tid() == 3333 && trainerChanged.sid() == 4444);
+    assert(trainerChanged.originalTrainerName() == u"LUCAS");
+    assert(trainerChanged.originalTrainerGender() == 0);
+    assert(created->shiny() == shinyBeforeIds);
+    assert(created->nature() == natureBeforeIds);
+    assert(created->gender() == genderBeforeIds);
+}
+
 void testStrictCreateFactory() {
     struct Case { Enums::GameVersion group; uint8_t origin; };
     const std::array<Case,3> cases{{
@@ -325,6 +367,7 @@ int main() {
     testPidCoupledEdits();
     testFixedGenderAndAbilitySlots();
     testShedinjaPartyHpRule();
+    testSpeciesAndTrainerFieldEdits();
     testStrictCreateFactory();
     testBadInputFailsClosed();
     std::cout << "Gen IV mutable PK4 core PASS\n";
