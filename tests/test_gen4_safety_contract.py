@@ -63,6 +63,8 @@ assert '"Active root: " + sourceLeafName(legacyCatalog->activeRoot)' not in sele
 assert 'drawLine("Provider", legacyDetailsInstance.providerLabel.empty()' in select
 assert 'detailsProvider + " / SOURCE DIAGNOSTICS / READ ONLY"' in select
 assert '"RETROARCH / SOURCE DIAGNOSTICS / READ ONLY"' not in select
+assert 'discoverConfiguredRetroArchFRLGSaves()' not in select
+assert select.count('discoverConfiguredLegacySaves()') >= 1
 viewer_header = (root / 'include/UI/TrainerViewScreenBase.h').read_text()
 viewer_impl = (root / 'src/UI/TrainerViewScreenBase.inc').read_text()
 assert 'std::string sourceProviderLabel' in viewer_header

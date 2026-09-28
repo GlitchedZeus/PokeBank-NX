@@ -709,7 +709,7 @@ namespace UI {
             if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
             if (kDown & HidNpadButton_X) {
                 if (legacyCatalog) {
-                    *legacyCatalog = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
+                    *legacyCatalog = PokeVault::Legacy::discoverConfiguredLegacySaves();
                     loadLegacySources(*legacyCatalog);
                     legacyNotice = "Unassigned source list refreshed.";
                 }
