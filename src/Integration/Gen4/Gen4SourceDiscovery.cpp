@@ -130,22 +130,29 @@ bool readExactly(const std::string& path, size_t expected, std::vector<uint8_t>&
     return true;
 }
 
+uint32_t readLe32(const uint8_t* p) noexcept {
+    return static_cast<uint32_t>(p[0]) |
+           (static_cast<uint32_t>(p[1]) << 8) |
+           (static_cast<uint32_t>(p[2]) << 16) |
+           (static_cast<uint32_t>(p[3]) << 24);
+}
+
 bool hasDesmumeFooterMarker(const std::string& path, uint64_t size) {
-    if (size <= SAVE_SIZE) return false;
+    if (size < 16) return false;
     FILE* file = std::fopen(path.c_str(), "rb");
     if (!file) return false;
-    constexpr size_t tailSize = 512;
-    const size_t want = static_cast<size_t>(std::min<uint64_t>(size, tailSize));
-    if (std::fseek(file, static_cast<long>(size - want), SEEK_SET) != 0) {
+    if (std::fseek(file, static_cast<long>(size - 16), SEEK_SET) != 0) {
         std::fclose(file);
         return false;
     }
-    std::vector<char> tail(want);
-    const size_t got = std::fread(tail.data(), 1, tail.size(), file);
-    std::fclose(file);
-    static constexpr std::string_view marker = "|-DESMUME SAVE-|";
-    return std::search(tail.begin(), tail.begin() + static_cast<std::ptrdiff_t>(got),
-                       marker.begin(), marker.end()) != tail.begin() + static_cast<std::ptrdiff_t>(got);
+    std::array<char,16> cookie{};
+    const bool readOk = std::fread(cookie.data(), 1, cookie.size(), file) == cookie.size();
+    const bool closeOk = std::fclose(file) == 0;
+    const bool ok = readOk && closeOk;
+    static constexpr std::array<char,16> marker{
+        '|','-','D','E','S','M','U','M','E',' ','S','A','V','E','-','|'
+    };
+    return ok && cookie == marker;
 }
 
 const char* familyName(Layout layout) noexcept {
@@ -223,6 +230,89 @@ void scanDirectory(const DiscoveryRoot& root, const std::string& path, size_t de
 
 }
 
+SourcePayloadRead readSourcePayloadReadOnly(const std::string& path) {
+    SourcePayloadRead out;
+    struct stat st{};
+    if (!isRegular(path, &st)) {
+        out.status = SourcePayloadStatus::ReadError;
+        out.diagnostic = "source is missing or is not a regular file";
+        return out;
+    }
+    const uint64_t size = static_cast<uint64_t>(st.st_size);
+
+    if (size == SAVE_SIZE) {
+        if (!readExactly(path, SAVE_SIZE, out.bytes)) {
+            out.status = SourcePayloadStatus::ReadError;
+            out.diagnostic = "raw save could not be read completely";
+            return out;
+        }
+        out.status = SourcePayloadStatus::Ready;
+        out.kind = SourceContainerKind::Raw;
+        out.diagnostic = "exact raw 0x80000-byte save";
+        return out;
+    }
+
+    if (extension(path) != ".dsv") {
+        out.status = SourcePayloadStatus::InvalidSize;
+        out.diagnostic = "source is not an exact 0x80000-byte Gen IV save";
+        return out;
+    }
+
+    // DeSmuME documents a fixed 40-byte footer at EOF:
+    // six little-endian u32 values followed by the 16-byte "|-DESMUME SAVE-|" cookie.
+    // DraStic's normal .dsv is compatible with this container contract on supported files.
+    constexpr size_t footerSize = 40;
+    if (size < SAVE_SIZE + footerSize || !hasDesmumeFooterMarker(path, size)) {
+        out.status = SourcePayloadStatus::UnsupportedWrapper;
+        out.diagnostic = ".dsv wrapper is not the documented footer format";
+        return out;
+    }
+
+    FILE* file = std::fopen(path.c_str(), "rb");
+    if (!file) {
+        out.status = SourcePayloadStatus::ReadError;
+        out.diagnostic = "could not open .dsv read-only";
+        return out;
+    }
+    std::array<uint8_t, footerSize> footer{};
+    bool ok = std::fseek(file, static_cast<long>(size - footerSize), SEEK_SET) == 0 &&
+              std::fread(footer.data(), 1, footer.size(), file) == footer.size();
+    const uint32_t actuallyWritten = ok ? readLe32(footer.data() + 0) : 0;
+    const uint32_t paddedSize      = ok ? readLe32(footer.data() + 4) : 0;
+    const uint32_t version         = ok ? readLe32(footer.data() + 20) : 0xFFFFFFFFu;
+
+    if (!ok || paddedSize != SAVE_SIZE || actuallyWritten > paddedSize || version != 0 ||
+        size < static_cast<uint64_t>(paddedSize) + footerSize) {
+        std::fclose(file);
+        out.status = SourcePayloadStatus::UnsupportedWrapper;
+        out.diagnostic =
+            ".dsv footer is present but its padded size/version is not a supported Gen IV container";
+        return out;
+    }
+
+    if (std::fseek(file, 0, SEEK_SET) != 0) {
+        std::fclose(file);
+        out.status = SourcePayloadStatus::ReadError;
+        out.diagnostic = "could not seek to the .dsv raw payload";
+        return out;
+    }
+    out.bytes.resize(SAVE_SIZE);
+    const size_t read = std::fread(out.bytes.data(), 1, out.bytes.size(), file);
+    const bool readError = std::ferror(file) != 0;
+    const bool closed = std::fclose(file) == 0;
+    if (read != out.bytes.size() || readError || !closed) {
+        out.bytes.clear();
+        out.status = SourcePayloadStatus::ReadError;
+        out.diagnostic = "could not read the .dsv raw payload";
+        return out;
+    }
+
+    out.status = SourcePayloadStatus::Ready;
+    out.kind = SourceContainerKind::DsvFooter;
+    out.diagnostic = "validated read-only .dsv container; raw payload ends at padded_size 0x80000";
+    return out;
+}
+
 const char* candidateStatusName(CandidateStatus status) noexcept {
     switch (status) {
         case CandidateStatus::Ready: return "Ready";
@@ -269,24 +359,18 @@ SourceCandidate inspectSourceFile(
         return result;
     }
 
-    if (result.fileSize != SAVE_SIZE) {
-        if (extension(path) == ".dsv" && hasDesmumeFooterMarker(path, result.fileSize)) {
+    const auto payload = readSourcePayloadReadOnly(path);
+    if (!payload.ready()) {
+        if (payload.status == SourcePayloadStatus::UnsupportedWrapper)
             result.status = CandidateStatus::UnsupportedWrapper;
-            result.diagnostic =
-                "DeSmuME .dsv footer wrapper detected; G4-02 does not trim wrapper bytes";
-        } else {
+        else if (payload.status == SourcePayloadStatus::ReadError)
+            result.status = CandidateStatus::ReadError;
+        else
             result.status = CandidateStatus::InvalidSave;
-            result.diagnostic = "candidate is not an exact 0x80000-byte Generation IV save";
-        }
+        result.diagnostic = payload.diagnostic;
         return result;
     }
-
-    std::vector<uint8_t> bytes;
-    if (!readExactly(path, SAVE_SIZE, bytes)) {
-        result.status = CandidateStatus::ReadError;
-        result.diagnostic = "candidate could not be read completely without trailing bytes";
-        return result;
-    }
+    const auto& bytes = payload.bytes;
 
     std::optional<Gen4ReadOnlySave> parsed;
     size_t validLayouts = 0;
@@ -325,9 +409,11 @@ SourceCandidate inspectSourceFile(
     }
 
     result.status = CandidateStatus::Ready;
+    const std::string container =
+        payload.kind == SourceContainerKind::DsvFooter ? " / .dsv container" : "";
     result.diagnostic = result.recoveredOlderCopy
-        ? "validated read-only Gen IV source; RecoveredOlderCopy"
-        : "validated read-only Gen IV source";
+        ? "validated read-only Gen IV source" + container + "; RecoveredOlderCopy"
+        : "validated read-only Gen IV source" + container;
     return result;
 }
 

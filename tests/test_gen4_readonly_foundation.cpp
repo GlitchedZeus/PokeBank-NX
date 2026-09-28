@@ -602,6 +602,31 @@ void testAssignmentsOnDisk() {
     assert(restarted.isVisibleTo("second-source","user"));
     assert(restarted.unassignGameAndSave("user","diamond_nds"));
     assert(openAssignedSource(restarted,"user","diamond_nds").status==OpenStatus::Unassigned);
+
+    // A documented .dsv container is read through its footer-declared raw payload only.
+    const auto ptRaw=makeSave(Layout::Platinum);
+    std::vector<uint8_t> ptDsv=ptRaw;
+    ptDsv.insert(ptDsv.end(),7,0xCC);
+    auto append32=[&](uint32_t v) {
+        ptDsv.push_back(static_cast<uint8_t>(v));
+        ptDsv.push_back(static_cast<uint8_t>(v>>8));
+        ptDsv.push_back(static_cast<uint8_t>(v>>16));
+        ptDsv.push_back(static_cast<uint8_t>(v>>24));
+    };
+    append32(0x80000u); append32(0x80000u); append32(0); append32(0); append32(0); append32(0);
+    const std::string cookie="|-DESMUME SAVE-|";
+    ptDsv.insert(ptDsv.end(),cookie.begin(),cookie.end());
+    const auto dsvPath=root/"Pokemon - Platinum Version (USA) (Rev 1).dsv";
+    write(dsvPath,ptDsv);
+    const auto dsvBefore=digest(ptDsv);
+    assert(restarted.replaceFileAssignmentAndSave(
+        "drastic-pt",{"user","platinum_nds",dsvPath.string(),"DraStic","PT"}));
+    opened=openAssignedSource(restarted,"user","platinum_nds");
+    assert(opened.status==OpenStatus::Ready && opened.save &&
+           opened.save->layout()==Layout::Platinum);
+    std::ifstream dsvAfterFile(dsvPath,std::ios::binary);
+    std::vector<uint8_t> dsvAfter((std::istreambuf_iterator<char>(dsvAfterFile)),{});
+    assert(digest(dsvAfter)==dsvBefore);
     fs::remove_all(root);
 }
 
@@ -630,10 +655,31 @@ void testSourceDiscovery() {
     auto fakeState=pt;
     write(drasticStates/"Pokemon - Platinum Version (USA) (Rev 1)_0.dss",fakeState);
 
-    auto wrapped=pt;
-    const std::string marker="|-DESMUME SAVE-|";
-    wrapped.insert(wrapped.end(),marker.begin(),marker.end());
+    auto makeDsv=[](const std::vector<uint8_t>& raw, uint32_t paddedSize=0x80000u,
+                         uint32_t version=0u) {
+        std::vector<uint8_t> out=raw;
+        out.insert(out.end(),13,0xA5); // documented gap/junk between padded raw data and footer
+        auto append32=[&](uint32_t v) {
+            out.push_back(static_cast<uint8_t>(v));
+            out.push_back(static_cast<uint8_t>(v>>8));
+            out.push_back(static_cast<uint8_t>(v>>16));
+            out.push_back(static_cast<uint8_t>(v>>24));
+        };
+        append32(static_cast<uint32_t>(raw.size())); // actually_written_size
+        append32(paddedSize);
+        append32(0); // save_type
+        append32(0); // address_size
+        append32(0); // save_size
+        append32(version);
+        const std::string cookie="|-DESMUME SAVE-|";
+        out.insert(out.end(),cookie.begin(),cookie.end());
+        return out;
+    };
+    const auto wrapped=makeDsv(pt);
     write(retro/"Wrapped.dsv",wrapped);
+    write(drasticBackup/"Pokemon - Platinum Version (USA) (Rev 1).dsv",wrapped);
+    const auto badWrapped=makeDsv(pt,0x40000u);
+    write(retro/"BadWrapped.dsv",badWrapped);
 
     const std::array<DiscoveryRoot,3> roots{{
         {retro.string(),"RetroArch",1},
@@ -642,12 +688,16 @@ void testSourceDiscovery() {
     }};
     const auto beforeDp=digest(dp),beforePt=digest(pt),beforeHg=digest(hg);
     auto found=discoverSources(roots,{64});
-    assert(!found.limitReached && found.filesExamined==5);
-    size_t ready=0,wrappedCount=0,savestateCount=0;
+    assert(!found.limitReached && found.filesExamined==7);
+    size_t ready=0,wrappedCount=0,savestateCount=0,dsvReady=0;
     bool sawDP=false,sawPT=false,sawHG=false;
     for(const auto& candidate:found.candidates) {
         if(candidate.ready()) {
             ++ready;
+            if(candidate.path.ends_with(".dsv") && candidate.layout==Layout::Platinum) {
+                ++dsvReady;
+                assert(candidate.diagnostic.find(".dsv container")!=std::string::npos);
+            }
             if(candidate.layout==Layout::DiamondPearl) {
                 sawDP=true;
                 assert(candidateMatchesGame(candidate,"diamond_nds"));
@@ -666,19 +716,30 @@ void testSourceDiscovery() {
             }
         } else if(candidate.status==CandidateStatus::UnsupportedWrapper) {
             ++wrappedCount;
-            assert(candidate.diagnostic.find("does not trim")!=std::string::npos);
+            assert(candidate.diagnostic.find(".dsv")!=std::string::npos);
         } else if(candidate.status==CandidateStatus::UnsupportedSavestate) {
             ++savestateCount;
             assert(candidate.diagnostic.find("savestate")!=std::string::npos);
             assert(candidate.diagnostic.find("/switch/drastic/user/backup/")!=std::string::npos);
         }
     }
-    assert(ready==3 && wrappedCount==1 && savestateCount==1 && sawDP && sawPT && sawHG);
+    assert(ready==5 && dsvReady==2 && wrappedCount==1 && savestateCount==1 &&
+           sawDP && sawPT && sawHG);
 
     auto manual=inspectSourceFile((retro/"Diamond.srm").string(),"Manual","diamond_nds");
     assert(manual.ready() && manual.expectedRawFamily=="DP");
     auto mismatch=inspectSourceFile((retro/"Platinum.sav").string(),"Manual","diamond_nds");
     assert(mismatch.status==CandidateStatus::AssignmentMismatch);
+    auto wrappedPt=inspectSourceFile(
+        (drasticBackup/"Pokemon - Platinum Version (USA) (Rev 1).dsv").string(),
+        "DraStic","platinum_nds");
+    assert(wrappedPt.ready() && wrappedPt.layout==Layout::Platinum);
+    const auto payload=readSourcePayloadReadOnly(
+        (drasticBackup/"Pokemon - Platinum Version (USA) (Rev 1).dsv").string());
+    assert(payload.ready() && payload.kind==SourceContainerKind::DsvFooter);
+    assert(digest(payload.bytes)==beforePt);
+    const auto badPayload=readSourcePayloadReadOnly((retro/"BadWrapped.dsv").string());
+    assert(badPayload.status==SourcePayloadStatus::UnsupportedWrapper);
     auto state=inspectSourceFile((drasticStates/"Pokemon - Platinum Version (USA) (Rev 1)_0.dss").string(),
                                  "Manual","platinum_nds");
     assert(state.status==CandidateStatus::UnsupportedSavestate);
@@ -698,6 +759,7 @@ void testSourceDiscovery() {
     };
     assert(digest(read(retro/"Diamond.srm"))==beforeDp);
     assert(digest(read(retro/"Platinum.sav"))==beforePt);
+    assert(read(drasticBackup/"Pokemon - Platinum Version (USA) (Rev 1).dsv")==wrapped);
     assert(digest(read(drasticBackup/"HeartGold.dsv"))==beforeHg);
     assert(digest(read(drasticStates/"Pokemon - Platinum Version (USA) (Rev 1)_0.dss"))==beforePt);
     assert(inspectSourceFile((retro/"Diamond.srm").string(),"Manual").sourceIdentity==

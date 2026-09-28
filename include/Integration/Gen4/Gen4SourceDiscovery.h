@@ -57,6 +57,34 @@ struct DiscoveryResult {
     bool limitReached = false;
 };
 
+enum class SourceContainerKind : uint8_t {
+    Raw,
+    DsvFooter,
+};
+
+enum class SourcePayloadStatus : uint8_t {
+    Ready,
+    InvalidSize,
+    UnsupportedWrapper,
+    ReadError,
+};
+
+struct SourcePayloadRead {
+    SourcePayloadStatus status = SourcePayloadStatus::ReadError;
+    SourceContainerKind kind = SourceContainerKind::Raw;
+    std::vector<uint8_t> bytes;
+    std::string diagnostic;
+
+    [[nodiscard]] bool ready() const noexcept { return status == SourcePayloadStatus::Ready; }
+};
+
+// Read-only container adapter shared by discovery and assigned-source open.
+// Supported:
+// - exact 0x80000 raw payloads
+// - documented DeSmuME-compatible .dsv footer containers where padded_size == 0x80000
+// The source file is never modified, truncated, normalized or rewritten.
+[[nodiscard]] SourcePayloadRead readSourcePayloadReadOnly(const std::string& path);
+
 [[nodiscard]] SourceCandidate inspectSourceFile(
     const std::string& path,
     std::string_view sourceType,

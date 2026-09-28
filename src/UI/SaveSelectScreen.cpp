@@ -479,7 +479,7 @@ namespace UI {
                 : savestates > 0
                     ? "DraStic savestate found (.dss). PokeBank needs the cartridge save in /switch/drastic/user/backup/."
                 : wrappers > 0
-                    ? "DeSmuME .dsv wrapper found. PokeBank does not trim wrapper bytes automatically."
+                    ? "Unsupported .dsv wrapper found. Valid footer-declared 0x80000 containers are supported read-only."
                     : "No compatible Gen IV cartridge save found in known emulator locations.";
             overlay = Overlay::Gen4Setup;
         } else {

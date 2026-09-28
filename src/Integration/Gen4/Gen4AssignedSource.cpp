@@ -1,4 +1,5 @@
 #include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Integration/Gen4/Gen4SourceDiscovery.h"
 
 #include <cstdio>
 
@@ -18,27 +19,14 @@ AssignedSourceReadOnly openAssignedSource(const Legacy::LegacySourceBindings& bi
         out.diagnostic = "Assigned save unavailable; choose or reassign a source explicitly";
         return out;
     }
-    std::vector<uint8_t> bytes(0x80000);
-    FILE* file = std::fopen(out.source.binding.sourcePath.c_str(), "rb");
-    if (!file) {
-        out.status = OpenStatus::Unreadable;
-        out.diagnostic = "Could not open the assigned save read-only";
+    const auto payload = readSourcePayloadReadOnly(out.source.binding.sourcePath);
+    if (!payload.ready()) {
+        out.status = payload.status == SourcePayloadStatus::ReadError
+            ? OpenStatus::Unreadable : OpenStatus::InvalidSave;
+        out.diagnostic = payload.diagnostic;
         return out;
     }
-    const size_t count = std::fread(bytes.data(), 1, bytes.size(), file);
-    const int extra = std::fgetc(file);
-    const bool readError = std::ferror(file) != 0;
-    const bool closed = std::fclose(file) == 0;
-    if (readError || !closed) {
-        out.status = OpenStatus::Unreadable;
-        out.diagnostic = "Assigned save read failed";
-        return out;
-    }
-    if (count != bytes.size() || extra != EOF) {
-        out.status = OpenStatus::InvalidSave;
-        out.diagnostic = "Assigned Gen IV save must be exactly 0x80000 bytes; wrappers are not yet supported";
-        return out;
-    }
+    const auto& bytes = payload.bytes;
     // Detect actual layout first; an assignment never changes how the bytes are interpreted.
     for (Layout layout : {Layout::DiamondPearl, Layout::Platinum, Layout::HeartGoldSoulSilver}) {
         auto candidate = Gen4ReadOnlySave::parse(bytes, layout, game);
@@ -67,6 +55,8 @@ AssignedSourceReadOnly openAssignedSource(const Legacy::LegacySourceBindings& bi
     out.status = OpenStatus::Ready;
     if (out.save->recovered())
         out.diagnostic = "RecoveredOlderCopy: read-only recovery source, not normal retail-state authority";
+    else if (payload.kind == SourceContainerKind::DsvFooter)
+        out.diagnostic = "Read-only .dsv container adapter; source wrapper remains immutable";
     return out;
 }
 }
