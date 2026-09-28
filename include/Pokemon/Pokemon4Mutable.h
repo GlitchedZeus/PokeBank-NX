@@ -11,8 +11,6 @@
 #include <string>
 #include <vector>
 
-struct Pokemon4CreateDefaults;
-
 namespace Pokemon {
 
 struct Pokemon4CreateDefaults {
