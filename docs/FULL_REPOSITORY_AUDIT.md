@@ -8,7 +8,7 @@ Status: IN PROGRESS
 - Audit branch: `audit/full-repository-line-by-line-20260928`
 - Primary MAIN tree audited: PR #92 head `acfca273eff0fb145f2e18a8f6d07817e1475572`
 - PR #92 branch: `feature/gen4-full-editor-20260928`
-- Sibling UI overlay: PR #97 head `8546e5346d128c9c320f59eb610b8db7f139729e` (delta will be audited separately)
+- Sibling UI overlay: PR #97 head `c63ce48ad6952128cabe94aaeaba627a460b04bd` (delta audited separately)
 - Integration parent: PR #90 head `8b3bcc16c804247bfe8d1314b686974ce73051d8`
 - Hardening parent: PR #79 head `00ee7a6ed7ac1b5a93c43246d70c252e135acec0`
 - Default branch main: `aca2bf41c83d81084886a46d53195f6cead81ccc`
@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 200 / 725
-- Fully read text files: 166 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 218 / 725
+- Fully read text files: 184 / 692 (text/unknown classification remains provisional until content inspection completes)
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -63,6 +63,13 @@ Status: IN PROGRESS
 - Every audited source-card bridge marks external/emulator instances `ReadOnly`; activation rechecks identity/path/size/mtime/content fingerprint and exact game support.
 - The Gen I/III staged mutation cores reviewed here operate on copied in-memory bytes and do not reopen or write the physical source path. Gen IV follows the same source-bytes-to-staged-image pattern already audited.
 - `SourceCapabilityBridge::canWriteOriginalSource()` is hard-coded false. This supports the immutable-source invariant in the audited source/editor boundary.
+
+### Encryption checkpoint
+
+- Fully read the complete tracked `include/Encryption/*` + `src/Encryption/*` tranche: generic SC save crypto plus Gen III, IV, LGPE, SWSH, BDSP, PLA, SV and Z-A Pokémon crypto.
+- Gen III and Gen IV implementations explicitly handle their native record geometry; Gen IV rejects non-0x88/0xEC record sizes before crypt/shuffle.
+- Later-generation helpers assume their callers supply a complete native record span. Current audited callers predominantly construct fixed-size records; malformed-span reachability remains a caller-trace follow-up rather than a confirmed corruption finding.
+- No cryptographic round-trip defect was confirmed in this tranche.
 
 ## Findings
 
@@ -252,3 +259,18 @@ No findings are recorded here until supported by direct evidence from the frozen
 - Recommended fix: create backups under a unique temporary/incomplete directory, copy + close/readback/validate the required game file set there, then promote/rename to the final visible backup name only after success. On failure retain evidence under an explicitly non-browsable failed/incomplete name or remove it only when safe. The picker should ignore transaction temp/failed markers and/or require a completed manifest.
 - Risk of fix: medium because installed-title backups may contain multiple files and directory promotion behavior must be verified on Switch SD storage.
 - Owner: MAIN / backup-storage transaction layer.
+
+### AUDIT-016 — RetroArch launch matching is basename-only and first-match wins
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: Game Hub / emulator launch routing
+- Files: `src/UI/GameLauncher.cpp`, `include/UI/GameLaunchModel.h`, `tests/test_game_launch_model.cpp` on sibling UI PR #97
+- Exact symbols: `normalizedLaunchStem()`, `resolveRetroArch()`.
+- Problem: the resolver reduces the validated save path and each playlist content path to an alphanumeric basename stem, then returns the first playlist entry whose stem matches. Directory, extension, core, exact game identity and content hash are not part of the match key.
+- Why it matters: two ROM/content files in different directories can legitimately share the same basename. In that case ZR Launch can start the wrong game/content even though the selected save itself was validated correctly.
+- Evidence: `resolveRetroArch` compares only `normalizedLaunchStem(content) != wanted`; as soon as a regular file plus usable core is found it returns `Ready` and exits the playlist scan. No ambiguity detection exists.
+- Current tests: normalization and provider classification are tested, but duplicate-stem/ambiguous-playlist behavior is not.
+- Missing tests: two valid playlist entries with the same normalized stem but different paths; ambiguity must not silently select one.
+- Recommended fix: gather all viable matches first. If exactly one remains, launch it. If multiple remain, require an explicit stored content binding or chooser keyed by exact source/game identity; never pick by directory iteration order.
+- Risk of fix: low; launch resolution only, no save mutation.
+- Owner: sibling UI/QoL lane.
