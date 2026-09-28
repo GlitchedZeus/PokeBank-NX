@@ -195,7 +195,7 @@ int main() {
     contains(surface, "static_cast<int>(actions.count) * geometry.rowStep + 62");
     assert(surface.find("const int h = occupied ? 500 : 350;") == std::string::npos);
     contains(surface, "— Met Lv. ");
-    assert(surface.find("\") + \" (#\" + std::to_string(value)") == std::string::npos);
+    assert(surface.find("+ \" (#\" + std::to_string(value)") == std::string::npos);
 
     // Generated location strings must never retain a source UTF-8 BOM as a visible glyph.
     assert(locations.find("\xEF\xBB\xBF") == std::string::npos);
