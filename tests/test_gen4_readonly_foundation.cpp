@@ -222,6 +222,13 @@ void testOracle() {
         std::string pinned; in>>pinned;
         assert(in && pinned==hex(blank));
         assert(Encryption::blankRecord4(size)==blank);
+
+        // Retail saves may also leave an unused slot as exact zero bytes. Reference implementations
+        // treat that representation as an empty plaintext PK4, not as corrupted encrypted payload.
+        const std::vector<std::byte> rawZero(size,std::byte{0});
+        Pokemon::Pokemon4ReadOnly zeroSlot(rawZero,Enums::GameVersion::PT);
+        assert(zeroSlot.valid() && zeroSlot.empty() && zeroSlot.species()==0);
+        assert(zeroSlot.decryptedBytes()==std::span<const std::byte>(rawZero));
     }
     for(size_t badSize : {size_t(0),size_t(1),size_t(0x87),size_t(0x89),size_t(0xEB),size_t(0xED)}) {
         std::vector<std::byte> bad(badSize);
@@ -360,6 +367,22 @@ void testLayoutsAndAssignments() {
         auto parsedPadding=Gen4ReadOnlySave::parse(ptPadding,Layout::Platinum);
         assert(parsedPadding && parsedPadding->currentBox()==3);
         assert(digest(ptPadding)==before);
+    }
+
+    // A raw-zero unused box slot is a legitimate empty representation and must not inflate
+    // the quarantine counter on a real save.
+    {
+        auto zeroEmpty=makeSave(Layout::Platinum);
+        const auto sp=spec(Layout::Platinum);
+        const size_t secondSlot=sp.storageStart+sp.boxData+Encryption::SIZE_STORED4;
+        std::fill(zeroEmpty.begin()+static_cast<std::ptrdiff_t>(secondSlot),
+                  zeroEmpty.begin()+static_cast<std::ptrdiff_t>(secondSlot+Encryption::SIZE_STORED4),0);
+        restampCounter(zeroEmpty,Layout::Platinum,true,0,100,1);
+        auto parsedZero=Gen4ReadOnlySave::parse(zeroEmpty,Layout::Platinum);
+        assert(parsedZero);
+        const auto& z=parsedZero->diagnostics();
+        assert(z.occupiedBoxRecords==1 && z.invalidBoxRecords==0);
+        assert(parsedZero->box(0,1).valid() && parsedZero->box(0,1).empty());
     }
 
     // A corrupt PK4 does not make the whole read-only save disappear. It is counted and quarantined,
