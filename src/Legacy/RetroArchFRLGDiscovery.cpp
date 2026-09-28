@@ -512,7 +512,7 @@ namespace PokeVault::Legacy {
     FRLGDiscoveryResult discoverConfiguredLegacySaves(
         ScanLimits limits, const std::string& retroArchConfigPath,
         const std::string& retroArchConventionalRoot, const std::string& mGBAConfigPath,
-        const std::string& ticoSaveRoot) {
+        const std::string& ticoSaveBase) {
         if (limits.maxFiles == 0) limits.maxFiles = 1;
         auto result = discoverConfiguredRetroArchFRLGSaves(
             limits, retroArchConfigPath, retroArchConventionalRoot);
@@ -590,10 +590,13 @@ namespace PokeVault::Legacy {
 
         appendProvider(mGBASaveRootsFromConfig(mGBAConfigPath), "mGBA");
 
-        // Tico's mGBA core owns this exact save directory and writes native .sav (with .srm
-        // fallback on load). Do not inspect /tico itself, ROM folders, or tico/states.
-        if (!ticoSaveRoot.empty())
-            appendProvider(std::vector<std::string>{ticoSaveRoot}, "Tico");
+        // Tico's public Gambatte core selects /tico/saves/gb or /tico/saves/gbc by slug,
+        // while its mGBA core owns /tico/saves/gba. Both write native .sav and accept .srm as a
+        // load fallback. Inspect only these exact children; never recurse from /tico/saves itself.
+        if (!ticoSaveBase.empty()) {
+            for (const char* slug : {"gb", "gbc", "gba"})
+                appendProvider(std::vector<std::string>{join(ticoSaveBase, slug)}, "Tico");
+        }
 
         return result;
     }

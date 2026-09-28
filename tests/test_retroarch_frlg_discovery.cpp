@@ -236,16 +236,22 @@ int main() {
 
     // Tico's public mGBA core uses one exact battery-save directory. PokeBank may inspect that
     // directory only; it must not infer permission to crawl /tico, ROMs, or savestates.
-    const fs::path ticoSaveRoot = temp / "tico" / "saves" / "gba";
-    fs::create_directories(ticoSaveRoot);
-    const fs::path ticoFireRed = ticoSaveRoot / "Pokemon FireRed.sav";
+    const fs::path ticoSaveBase = temp / "tico" / "saves";
+    const fs::path ticoGbaRoot = ticoSaveBase / "gba";
+    fs::create_directories(ticoGbaRoot);
+    const fs::path ticoFireRed = ticoGbaRoot / "Pokemon FireRed.sav";
     writeFile(ticoFireRed, withTwoPartyPokemon(fixture));
     const auto ticoBefore = readFile(ticoFireRed);
+
+    // A decoy immediately under /tico/saves must never be seen: only the fixed gb/gbc/gba
+    // provider directories are approved.
+    const fs::path ticoDecoy = ticoSaveBase / "Pokemon FireRed.sav";
+    writeFile(ticoDecoy, fixture);
 
     const auto unified = PokeVault::Legacy::discoverConfiguredLegacySaves(
         {}, (temp / "missing-retroarch.cfg").string(),
         (temp / "missing-retroarch-root").string(), mgbaConfig.string(),
-        ticoSaveRoot.string());
+        ticoSaveBase.string());
     const auto unifiedFireRed = std::find_if(unified.sources.begin(), unified.sources.end(),
         [&](const auto& source) {
             return source.ready() && source.gameId == "firered_gba" &&
@@ -264,6 +270,9 @@ int main() {
     assert(unifiedTico->providerLabel == "Tico");
     assert(unifiedTico->save && unifiedTico->save->party().size() == 2);
     assert(readFile(ticoFireRed) == ticoBefore);
+    assert(std::none_of(unified.sources.begin(), unified.sources.end(), [&](const auto& source) {
+        return source.normalizedPath == ticoDecoy.string();
+    }));
     assert(std::count_if(unified.sources.begin(), unified.sources.end(), [&](const auto& source) {
         return source.ready() && source.gameId == "firered_gba" &&
                (source.providerLabel == "mGBA" || source.providerLabel == "Tico");

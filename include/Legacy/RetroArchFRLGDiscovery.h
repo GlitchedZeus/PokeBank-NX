@@ -91,13 +91,13 @@ namespace PokeVault::Legacy {
 
     // Unified bounded Gen I-III runtime catalog. RetroArch keeps its accepted configured/fallback
     // root behavior; mGBA is additive only when savegamePath is explicitly configured. Tico is
-    // additive only through its core-defined battery-save directory -- never by crawling /tico.
+    // additive only through its fixed GB/GBC/GBA battery-save children -- never by crawling /tico.
     [[nodiscard]] FRLGDiscoveryResult discoverConfiguredLegacySaves(
         ScanLimits limits = {},
         const std::string& retroArchConfigPath = "sdmc:/retroarch/retroarch.cfg",
         const std::string& retroArchConventionalRoot = "sdmc:/retroarch/cores/savefiles",
         const std::string& mGBAConfigPath = "sdmc:/mGBA/config.ini",
-        const std::string& ticoSaveRoot = "sdmc:/tico/saves/gba");
+        const std::string& ticoSaveBase = "sdmc:/tico/saves");
 }
 
 #endif
