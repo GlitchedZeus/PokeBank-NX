@@ -829,6 +829,82 @@ void testSourceDiscovery() {
     fs::remove_all(root);
 }
 
+void testHardwareEmptyCartridgeShape() {
+    using namespace PokeVault::Integration::Gen4;
+
+    // Real-hardware regression shape derived from a disposable DraStic Platinum sample:
+    // partition 0 was never initialized, partition 1 was CRC-valid, the trainer had 0:03
+    // playtime, party count was zero, and all 540 box records were genuinely empty.
+    //
+    // No user save bytes or personal trainer metadata are committed here; this synthetic
+    // fixture pins only the structural facts needed to distinguish "empty cartridge save"
+    // from "parser/crypto quarantined every Pokemon".
+    const auto layout = Layout::Platinum;
+    const auto sp = spec(layout);
+    auto bytes = makeSave(layout, 1, 1);
+
+    std::fill(bytes.begin(), bytes.begin() + static_cast<std::ptrdiff_t>(PARTITION), 0xFF);
+
+    const size_t base = PARTITION;
+    bytes[base + sp.party - 4] = 0;
+    std::fill(bytes.begin() + static_cast<std::ptrdiff_t>(base + sp.party),
+              bytes.begin() + static_cast<std::ptrdiff_t>(
+                  base + sp.party + 6 * Encryption::SIZE_PARTY4), 0);
+
+    const size_t storageBase = base + sp.storageStart;
+    for (size_t box = 0; box < 18; ++box) {
+        for (size_t slot = 0; slot < 30; ++slot) {
+            const size_t offset = storageBase + sp.boxData + box * sp.boxStride +
+                                  slot * Encryption::SIZE_STORED4;
+            std::fill(bytes.begin() + static_cast<std::ptrdiff_t>(offset),
+                      bytes.begin() + static_cast<std::ptrdiff_t>(
+                          offset + Encryption::SIZE_STORED4), 0);
+        }
+    }
+
+    const size_t trainer = base + sp.trainer;
+    w16(bytes, trainer + 0x22, 0);
+    bytes[trainer + 0x24] = 3;
+    bytes[trainer + 0x25] = 2;
+
+    restampCounter(bytes, layout, false, 1, 1, 1);
+    restampCounter(bytes, layout, true, 1, 1, 1);
+
+    const auto before = digest(bytes);
+    auto parsed = Gen4ReadOnlySave::parse(bytes, layout, "platinum_nds");
+    assert(parsed && parsed->assignmentStatus() == AssignmentStatus::Match);
+    assert(parsed->generalSelection().partition == 1);
+    assert(parsed->storageSelection().partition == 1);
+    assert(!parsed->recovered());
+
+    const auto& diagnostics = parsed->diagnostics();
+    assert(diagnostics.declaredPartyCount == 0);
+    assert(diagnostics.validPartyRecords == 0);
+    assert(diagnostics.invalidPartyRecords == 0);
+    assert(diagnostics.occupiedBoxRecords == 0);
+    assert(diagnostics.invalidBoxRecords == 0);
+    assert(parsed->party().empty());
+    assert(parsed->trainer().playedHours == 0);
+    assert(parsed->trainer().playedMinutes == 3);
+    assert(parsed->trainer().playedSeconds == 2);
+
+    for (size_t box = 0; box < 18; ++box)
+        for (size_t slot = 0; slot < 30; ++slot)
+            assert(parsed->box(box, slot).valid() && parsed->box(box, slot).empty());
+
+    std::string error;
+    auto view = PokeVault::Legacy::Gen4ReadOnlyTrainer::create(
+        *parsed, "platinum_nds", error);
+    assert(view && error.empty());
+    assert(view->party.empty());
+    for (const auto& box : view->boxes)
+        for (const auto& pokemon : box)
+            assert(!pokemon);
+    assert(view->saveRevisionString.find("G4 P0/0 B0/0 T0:03") != std::string::npos);
+    assert(digest(view->sourceSave().sourceBytes()) == before);
+    assert(digest(bytes) == before);
+}
+
 void testPresentationBridge() {
     using namespace PokeVault::Integration::Gen4;
     auto bytes=makeSave(Layout::DiamondPearl);
@@ -861,7 +937,9 @@ void testPresentationBridge() {
     assert(recovered && recovered->recovered());
     auto recoveryTrainer=PokeVault::Legacy::Gen4ReadOnlyTrainer::create(
         *recovered,"diamond_nds",error);
-    assert(recoveryTrainer && recoveryTrainer->saveRevisionString=="Recovered older copy");
+    assert(recoveryTrainer &&
+           recoveryTrainer->saveRevisionString.find("Recovered older copy | G4 P1/0 B1/0 T321:45") !=
+               std::string::npos);
     assert(digest(recoveryTrainer->sourceSave().sourceBytes())==recoveredHash);
 }
 
@@ -882,6 +960,7 @@ int main(int argc,char** argv) {
     testEveryLayoutMatrix();
     testAssignmentsOnDisk();
     testSourceDiscovery();
+    testHardwareEmptyCartridgeShape();
     testPresentationBridge();
     testCryptoAndEntity();
     testText();
