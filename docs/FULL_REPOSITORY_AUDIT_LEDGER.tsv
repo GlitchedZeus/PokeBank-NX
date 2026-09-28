@@ -533,7 +533,7 @@ src/Trainer/Trainer8LA.cpp	blob	100644	36866		unknown		PENDING			0
 src/Trainer/Trainer8SWSH.cpp	blob	100644	40486		unknown		PENDING			0	
 src/Trainer/Trainer9LZA.cpp	blob	100644	45084		unknown		PENDING			0	
 src/Trainer/Trainer9SV.cpp	blob	100644	40540		unknown		PENDING			0	
-src/UI/BackupSelectionScreen.cpp	blob	100644	14155		unknown		PENDING			0	
+src/UI/BackupSelectionScreen.cpp	blob	100644	14155	profile/game backup browser/delete UI	text	313	AUDITED			1	yes
 src/UI/ClassicInventoryOverlay.cpp	blob	100644	40334		unknown		PENDING			0	
 src/UI/ClassicInventoryUIModel.cpp	blob	100644	3480		unknown		PENDING			0	
 src/UI/ClassicPackedMoveOverlay.inc	blob	100644	27633		unknown		PENDING			0	
@@ -583,7 +583,7 @@ src/UI/TrainerViewScreenGSCOverlay.inc	blob	100644	34758		unknown		PENDING			0
 src/UI/UI.cpp	blob	100644	15976		unknown		PENDING			0	
 src/Utils/DurableFile.cpp	blob	100644	14493	durable file replacement/recovery	text	383	AUDITED			0	yes
 src/Utils/EventLog.cpp	blob	100644	9765		unknown		PENDING			0	
-src/Utils/FileUtilities.cpp	blob	100644	16963		unknown		PENDING			0	
+src/Utils/FileUtilities.cpp	blob	100644	16963	filesystem copy/backup/restore utilities	text	418	AUDITED			1	yes
 src/Utils/HelperUtilities.cpp	blob	100644	4249		unknown		PENDING			0	
 src/Utils/Keyboard.cpp	blob	100644	3770		unknown		PENDING			0	
 src/Utils/Logger.cpp	blob	100644	8442		unknown		PENDING			0	
@@ -602,8 +602,8 @@ tests/fixtures/gen4/blank-stored.hex	blob	100644	273		unknown		PENDING			0
 tests/fixtures/gsc_pokemon_fixture.h	blob	100644	5749		unknown		PENDING			0	
 tests/fixtures/main_workspace_move_focus.h	blob	100644	2354		unknown		PENDING			0	
 tests/test_action_sheet_model.cpp	blob	100644	3297		unknown		PENDING			0	
-tests/test_backup_namespace_contract.cpp	blob	100644	7520		unknown		PENDING			0	
-tests/test_backup_workspace_durability.cpp	blob	100644	2801		unknown		PENDING			0	
+tests/test_backup_namespace_contract.cpp	blob	100644	7520	backup namespace/path ownership contract	text	140	AUDITED			1	yes
+tests/test_backup_workspace_durability.cpp	blob	100644	2801	workspace image durable-write source contract	text	62	AUDITED			0	yes
 tests/test_bank_format_policy.cpp	blob	100644	1274	Bank format fail-closed source-contract test	text	34	AUDITED			0	yes
 tests/test_bank_recovery_contract.cpp	blob	100644	887	Bank recovery preservation source-contract test	text	28	AUDITED			0	yes
 tests/test_bdsp_layout_guard.cpp	blob	100644	1847		unknown		PENDING			0	
