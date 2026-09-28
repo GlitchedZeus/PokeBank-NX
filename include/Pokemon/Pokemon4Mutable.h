@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <array>
 #include <optional>
 #include <span>
 #include <string>
@@ -32,6 +33,16 @@ public:
     [[nodiscard]] uint32_t experience() const noexcept;
     [[nodiscard]] uint8_t friendship() const noexcept;
     [[nodiscard]] uint8_t language() const noexcept;
+    [[nodiscard]] uint8_t level() const noexcept;
+    [[nodiscard]] std::u16string nickname() const;
+    [[nodiscard]] std::array<uint8_t, 6> ivs() const noexcept;
+    [[nodiscard]] std::array<uint8_t, 6> evs() const noexcept;
+    [[nodiscard]] std::array<uint16_t, 4> moves() const noexcept;
+    [[nodiscard]] std::array<uint8_t, 4> pp() const noexcept;
+    [[nodiscard]] std::array<uint8_t, 4> ppUps() const noexcept;
+    [[nodiscard]] uint8_t pokerus() const noexcept;
+    [[nodiscard]] uint8_t ball() const noexcept;
+    [[nodiscard]] uint8_t metLevel() const noexcept;
     [[nodiscard]] uint8_t form() const noexcept;
     [[nodiscard]] uint8_t gender() const noexcept;
     [[nodiscard]] uint8_t nature() const noexcept;
