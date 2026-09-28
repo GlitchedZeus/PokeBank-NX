@@ -49,12 +49,16 @@ int main() {
 
         const auto staged = Provider::descriptorForSource(id, true);
         assert(staged);
-        assert(staged->fieldState(Shared::FieldIdentity::Species) == Exact::FieldState::Editable);
+        assert(staged->fieldState(Shared::FieldIdentity::Species) == Exact::FieldState::ReadOnly);
         assert(staged->fieldState(Shared::FieldIdentity::Gender) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Shiny) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Nature) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Ability) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Form) == Exact::FieldState::ReadOnly);
+        assert(!staged->fieldIsEditorTarget(Shared::FieldIdentity::Species));
+        assert(!staged->fieldIsEditorTarget(Shared::FieldIdentity::Language));
+        assert(!staged->fieldIsEditorTarget(Shared::FieldIdentity::HeldItem));
+        assert(!staged->fieldIsEditorTarget(Shared::FieldIdentity::MetLocation));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Gender));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::IV));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::EV));
