@@ -4,7 +4,7 @@ Last updated: **2026-09-28**
 
 ## Headline
 
-PokeBank NX has a device-accepted Gen I-III shared staged Pokémon editor, a device-accepted Gen I-IV provider-neutral Save Instances/source-browser foundation, and an active Gen IV boxed Pokémon View/Edit milestone.
+PokeBank NX has a device-accepted Gen I-III shared staged Pokémon editor, a device-accepted Gen I-IV provider-neutral Save Instances/source-browser foundation, and an active Gen IV Party + Box Pokémon View/Edit hardware-retest milestone.
 
 The current product goal is not another new editor shell. Generation IV is being plugged into the same shared editor already proven across Gen I-III.
 
@@ -16,7 +16,7 @@ Branch:
 **feature/gen4-shared-pokemon-editor-20260928**
 
 Current head:
-**5e79e9f8e038f2f940070edd92a70b692df7a7b5**
+**6e9f54f2a9a0cea79f14942912ba76aaca3fa0ed**
 
 Tracking:
 **Issue #86 — G4-03 Gen IV shared staged Pokémon editor**
@@ -45,7 +45,7 @@ Accepted base head:
 
 ## Gen IV editor state
 
-The current draft adds **boxed Pokémon View/Edit only**.
+The corrected current draft adds **Party + boxed Pokémon View/Edit** after the first hardware candidate exposed an unreachable party-only path.
 
 It reuses:
 
@@ -63,12 +63,14 @@ Gen IV-specific backend work adds:
 - PK4 mutable serialization;
 - exact DP/Pt/HGSS capabilities;
 - constrained PID-linked edits;
-- Storage CRC refresh;
+- Storage CRC refresh for boxed edits;
+- General-block CRC refresh for Party edits;
+- Party level/HP/battle-stat coherence;
 - strict staged-save reparse;
 - rollback on failed validation;
 - unrelated-byte preservation.
 
-Create, Party mutation, Inventory editing and source writeback remain disabled.
+Create and Inventory editing remain disabled. Current builds also keep emulator injection disabled; automatic backup + explicit Inject Save is tracked in Issue #89.
 
 ## Hardware acceptance
 
@@ -79,48 +81,33 @@ Accepted provider-neutral source-browser checkpoint:
 Status:
 **DEVICE ACCEPTED**
 
-Current Gen IV editor head:
+The first Gen IV editor NRO at:
 
 **5e79e9f8e038f2f940070edd92a70b692df7a7b5**
 
-Status:
-**EXACT ACTIONS NRO BUILT / HARDWARE TEST PENDING / NOT DEVICE ACCEPTED**
+was automated-green but **HARDWARE REJECTED**. A party-only Platinum save could not reach Edit and Party View used the wrong legacy read-only presentation.
 
-Confirmed green on the current Gen IV head:
+Corrected active head:
 
-- focused Gen IV host tests;
-- focused Gen IV sanitizers;
-- Gen IV shared UI contract;
-- real devkitA64 shared UI compile;
-- Packed Move;
-- Packed Multi-Move.
+**6e9f54f2a9a0cea79f14942912ba76aaca3fa0ed**
 
-Gen IV candidate workflow #11 is fully green, including full devkitA64 compile/link and packaging.
+Current automated state:
+- focused Gen IV Party/Box editor + sanitizers: **PASS**
+- real devkitA64 shared UI compile: **PASS**
+- Packed Move: **PASS**
+- Packed Multi-Move: **PASS**
+- broad Host #1449: **IN PROGRESS**
+- full native candidate package #21: **IN PROGRESS**
 
-Exact candidate:
-
-- Application SHA: **5e79e9f8e038f2f940070edd92a70b692df7a7b5**
-- Tree SHA: **c636127b2e52792371e8e55abac8fe1d5cfaf99f**
-- Artifact ID: **10960797638**
-- NRO SHA-256: **8011ef64d269ae42331306c13692d60494fb7ea936619d61e1abc7d7906829d5**
-
-Broad Host Tests #1427 are now **PASS**.
-
-Automated state:
-
-**ALL REQUIRED AUTOMATED GATES: PASS**
-
-Still pending:
-
-- owner physical Switch test of the exact candidate NRO.
+Hardware status:
+**RETEST REQUIRED**
 
 ## Current limitations
 
 - cross-game True Move remains disabled;
 - Gen IV Create remains disabled;
-- Gen IV Party mutation remains disabled;
 - Gen IV Inventory editing remains disabled;
-- Gen IV source writeback remains disabled;
+- explicit emulator Inject Save remains disabled and is tracked in Issue #89;
 - Gen V has not started;
 - Master Vault has not started;
 - DraStic .dss savestates are unsupported;
@@ -139,7 +126,7 @@ multi-provider Save Instances               DEVICE ACCEPTED
         ↓
 provider-neutral source backend             DEVICE ACCEPTED
         ↓
-Gen IV boxed shared View/Edit               ACTIVE / CI CANDIDATE
+Gen IV Party + Box shared View/Edit         ACTIVE / HARDWARE RETEST
         ↓
 owner Switch hardware acceptance
         ↓
@@ -165,9 +152,9 @@ Large new storage, conversion, generation or writeback work should not be mixed 
 ## Permanent project rules
 
 ~~~text
-ORIGINAL EXTERNAL SOURCE: IMMUTABLE
+ORDINARY EDITING: APP-OWNED WORKING COPY ONLY
 LIVE INSTALLED-GAME WRITE: DISABLED
-LIVE EMULATOR WRITEBACK: DISABLED
+EMULATOR INJECT SAVE: DISABLED UNTIL ISSUE #89
 UNKNOWN / AMBIGUOUS SOURCE: FAIL CLOSED
 REMEMBERED SOURCE SUBSTITUTION: FORBIDDEN
 A BUTTON: NON-DESTRUCTIVE
