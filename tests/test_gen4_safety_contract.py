@@ -7,9 +7,14 @@ root = Path(__file__).resolve().parents[1]
 source = (root / 'src/Integration/Gen4/Gen4ReadOnlySave.cpp').read_text()
 entity = (root / 'src/Pokemon/Pokemon4ReadOnly.cpp').read_text()
 assigned = (root / 'src/Integration/Gen4/Gen4AssignedSource.cpp').read_text()
-for name, text in [('container', source), ('entity', entity), ('assigned source', assigned)]:
+discovery = (root / 'src/Integration/Gen4/Gen4SourceDiscovery.cpp').read_text()
+for name, text in [('container', source), ('entity', entity), ('assigned source', assigned),
+                   ('source discovery/adapter', discovery)]:
     assert not re.search(r'\b(fwrite|pwrite|write|rename|remove|unlink|serialize|encryptArray4)\s*\(', text), name
-assert '"rb"' in assigned and not re.search(r'"(?:w|a|r\+)[b+]*"', assigned)
+assert '"rb"' in discovery
+io_source = assigned + "\n" + discovery
+assert not re.search(r'fopen\s*\([^,]+,\s*"(?:w|a|r\+)[b+]*"', io_source)
+assert not re.search(r'freopen\s*\(', io_source)
 ui = (root / 'src/UI/UI.cpp').read_text()
 assert 'handleGen4View' in ui
 assert 'SourceKind::ExternalLegacy' in ui
