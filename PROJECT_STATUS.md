@@ -104,10 +104,15 @@ Exact candidate:
 - Artifact ID: **10960797638**
 - NRO SHA-256: **8011ef64d269ae42331306c13692d60494fb7ea936619d61e1abc7d7906829d5**
 
-Still pending at the latest check:
+Broad Host Tests #1427 are now **PASS**.
 
-- broad Host Tests #1427;
-- owner physical Switch test.
+Automated state:
+
+**ALL REQUIRED AUTOMATED GATES: PASS**
+
+Still pending:
+
+- owner physical Switch test of the exact candidate NRO.
 
 ## Current limitations
 
