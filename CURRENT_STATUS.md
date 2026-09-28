@@ -18,13 +18,13 @@ Base:
 **audit/full-project-hardening-20260923**
 
 Current exact head:
-**5e79e9f8e038f2f940070edd92a70b692df7a7b5**
+**6e9f54f2a9a0cea79f14942912ba76aaca3fa0ed**
 
 Tracking issue:
 **#86 — G4-03 Gen IV shared staged Pokémon editor**
 
 Current milestone:
-**boxed PK4 View/Edit through the existing shared Pokémon editor**
+**Party + boxed PK4 View/Edit through the shared Pokémon editor, correcting the first hardware-rejected route**
 
 ### Accepted base checkpoint
 
@@ -76,14 +76,14 @@ Status:
 | Gen I R/B/Y | Read + staged Pokémon editing |
 | Gen II G/S/C | Read + staged Pokémon editing |
 | Gen III R/S/E/FRLG | Read + staged Pokémon editing |
-| Gen IV D/P/Pt/HG/SS | Read foundation + boxed staged View/Edit in active draft |
+| Gen IV D/P/Pt/HG/SS | Read foundation + Party/Box staged View/Edit in hardware-retest draft |
 | Classic Inventory | Staged editing where supported |
 | Save Instances | Device accepted for Gen I-IV |
 | Gen IV Create | Disabled |
-| Gen IV Party mutation | Disabled |
+| Gen IV Party Pokémon editing | Staged View/Edit implemented on current draft |
 | Gen IV Inventory editing | Disabled |
 | Cross-game True Move | Disabled |
-| Live external-source writes | Disabled |
+| Explicit external-source Inject Save | Planned in Issue #89; disabled in current builds |
 | Master Vault | Not started |
 | Gen V | Not started |
 
@@ -96,7 +96,11 @@ Implemented on PR #87:
 - exact Gen IV editor capabilities for Diamond/Pearl, Platinum and HeartGold/SoulSilver;
 - mutable PK4 layer built around existing Encryption4;
 - boxed PK4 staged mutation;
-- Storage CRC refresh and strict save reparse;
+- full 0xEC Party PK4 staged mutation;
+- Storage CRC refresh for boxed edits;
+- General-block CRC refresh for Party edits;
+- Party level/HP/battle-stat coherence after stat-affecting edits;
+- strict save reparse and exact record verification;
 - rollback on failed validation;
 - shared View/Edit surface;
 - inline Gender toggle;
@@ -113,51 +117,70 @@ Implemented on PR #87:
 Still intentionally deferred:
 
 - Gen IV Create;
-- Party mutation;
 - Inventory editing;
 - source writeback;
 - cross-game True Move.
 
 ## Current exact-head verification
 
-At application head:
+The previous automated-green candidate:
+
 **5e79e9f8e038f2f940070edd92a70b692df7a7b5**
 
-Confirmed PASS:
+was tested on physical Switch hardware and **REJECTED**.
 
-- Gen IV focused PK4/staged-editor host gates;
-- Gen IV focused ASan/UBSan gates;
-- Gen IV shared hardware-surface contract;
+Observed failure:
+- the Platinum DraStic save contained one Party Pokémon and zero boxed Pokémon;
+- the first milestone only exposed boxed Edit, so there was no editable target;
+- Party View fell through to the older generic READ ONLY details surface instead of the shared editor.
+
+Current corrected application head:
+
+**6e9f54f2a9a0cea79f14942912ba76aaca3fa0ed**
+
+Tree observed by the focused candidate gate:
+
+**42b6f13e299f1ec5306f75844ae3f90718676a30**
+
+Confirmed PASS on this corrected head:
+- Gen IV exact-format provider;
+- mutable PK4 core;
+- staged Party + Box editor regression;
+- shared hardware-surface routing contract;
+- strict Gen IV read-only foundation;
+- focused ASan/UBSan;
 - real devkitA64 shared UI compile;
-- Gen I/II Packed Move regression;
-- Gen I/II Packed Multi-Move regression.
+- Gen I/II Packed Move #225;
+- Gen I/II Packed Multi-Move #224.
 
-Gen IV candidate workflow #11 is now fully green, including the exact devkitA64 compile/link/package job.
+Still running at the latest check:
+- PokeBank NX Host Tests #1449;
+- Gen IV full devkitA64 compile/link/package in Candidate Gate #21.
 
-Exact candidate identity:
+**DEVICE ACCEPTANCE: NOT YET**
 
-- Application SHA: **5e79e9f8e038f2f940070edd92a70b692df7a7b5**
-- Tree SHA: **c636127b2e52792371e8e55abac8fe1d5cfaf99f**
-- Artifact: **Gen4-SharedEditor-Candidate-5e79e9f8**
-- Artifact ID: **10960797638**
-- NRO: **PokeBank-NX-Gen4-SharedEditor-5e79e9f8.nro**
-- NRO SHA-256: **8011ef64d269ae42331306c13692d60494fb7ea936619d61e1abc7d7906829d5**
+The next NRO must be built from the corrected exact head and physically retested with the same party-only Platinum save.
 
-The downloaded artifact manifest and actual NRO hash were independently verified and match.
+### Save-session backup / injection direction
 
-Broad Host Tests #1427 are now also **PASS**, including the full host suite, focused RSE regression and ASan/UBSan.
+Issue #89 tracks the future cross-generation model:
 
-Therefore:
+```text
+Current emulator save
+        ↓
+automatic immutable PokeBank backup
+        ↓
+PokeBank working/staged copy
+        ↓
+edit + validate
+        ↓
+explicit Inject Save
+        ↓
+validated edited copy replaces emulator source
+while backup remains available
+```
 
-**GEN IV CANDIDATE WORKFLOW: PASS**
-
-**BROAD HOST SUITE: PASS**
-
-**AUTOMATED GATES: PASS**
-
-**DEVICE ACCEPTANCE: PENDING OWNER HARDWARE TEST**
-
-Do not call PR #87 device accepted until an exact Actions-built NRO finishes all required gates and the owner passes it on physical Switch hardware.
+Current builds do **not** inject. Ordinary editing still leaves emulator source bytes untouched.
 
 ## Provider support
 
@@ -184,13 +207,10 @@ DraStic `.dsv` cartridge backups are supported read only. DraStic `.dss` savesta
 
 ## Permanent safety invariants
 
-- Original external saves are immutable.
-- Installed-game live writes are disabled.
-- RetroArch live writes are disabled.
-- mGBA live writes are disabled.
-- Tico live writes are disabled.
-- DraStic live writes are disabled.
-- melonDS live writes are disabled.
+- Ordinary editing never mutates external emulator source bytes.
+- Installed-game live writes remain disabled.
+- Emulator Inject Save remains disabled until Issue #89 is implemented and validated.
+- Any future injection must first preserve and verify an immutable backup.
 - Unknown / ambiguous saves fail closed.
 - Remembered sources may not silently substitute another physical file.
 - A-button is never destructive by itself.
@@ -198,14 +218,17 @@ DraStic `.dsv` cartridge backups are supported read only. DraStic `.dss` savesta
 
 ## Next gate
 
-Owner hardware-test boxed Gen IV View/Edit using the exact frozen NRO above.
+Finish Host Tests #1449 and Gen IV Candidate Gate #21 for exact head 6e9f54f2.
 
-Next sequence:
+If green:
 
-1. test the exact Actions-built NRO on physical Switch;
-2. fix only hardware-observed regressions;
-3. freeze hardware acceptance if it passes;
-4. only after Edit is device accepted, consider Gen IV Create.
+1. freeze exact application/tree identity;
+2. retrieve and independently hash the Actions-built NRO;
+3. retest the same Platinum DraStic save with one Party Pokémon and zero boxed Pokémon;
+4. verify Party A → Actions → shared View/Edit;
+5. verify B-spam cannot discard staged save-session changes;
+6. keep the external .dsv unchanged in this build;
+7. only after hardware acceptance proceed to Create or Issue #89 injection implementation.
 
 ## Canonical project documents
 
