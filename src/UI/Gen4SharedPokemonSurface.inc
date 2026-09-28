@@ -625,20 +625,30 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
     const uint16_t value = state.pickerValues[static_cast<size_t>(state.pickerRow)];
     bool ok = false;
     if (state.pickerTarget == PickerTarget::Species) {
-        auto* staged = editor(screen);
-        std::string error;
-        auto replacement = staged
-            ? staged->createBoxDraft(static_cast<size_t>(state.box),
-                                     static_cast<size_t>(state.slot), value, &error)
-            : std::nullopt;
-        if (replacement) {
-            ok = state.session.beginCreate(std::move(*replacement), error);
-            state.focus = {Shared::Panel::Details, 0, 0};
-            state.detailsFocus = 0;
+        if (state.session.creating()) {
+            auto* staged = editor(screen);
+            std::string error;
+            auto replacement = staged
+                ? staged->createBoxDraft(static_cast<size_t>(state.box),
+                                         static_cast<size_t>(state.slot), value, &error)
+                : std::nullopt;
+            if (replacement) {
+                ok = state.session.beginCreate(std::move(*replacement), error);
+                state.focus = {Shared::Panel::Details, 0, 0};
+                state.detailsFocus = 0;
+            } else {
+                screen.postStatus(error.empty()
+                    ? "That species cannot start a native Generation IV Create draft" : error, 360);
+                return true;
+            }
         } else {
-            screen.postStatus(error.empty()
-                ? "That species cannot start a native Generation IV Create draft" : error, 360);
-            return true;
+            ok = state.session.working->setSpecies(value);
+            if (!ok) {
+                screen.postStatus(
+                    "Could not reconcile Species while preserving Level/Nature/Shiny/PID-linked traits",
+                    360);
+                return true;
+            }
         }
     } else if (state.pickerTarget == PickerTarget::HeldItem) {
         ok = state.session.working->setHeldItem(value);
@@ -762,11 +772,7 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
     if (!state.session.working) return false;
     auto& mon = *state.session.working;
     if (row == 0) {
-        if (state.session.creating()) {
-            openSpeciesPicker(screen, state);
-        } else {
-            screen.postStatus("Species editing is being added in G4-04; this existing PK4 stays unchanged", 300);
-        }
+        openSpeciesPicker(screen, state);
         return true;
     }
     if (row == 1) {
