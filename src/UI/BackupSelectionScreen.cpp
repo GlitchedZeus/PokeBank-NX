@@ -231,11 +231,11 @@ namespace UI {
 
         if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
             backups[selectedIndex].legacyUnscoped) {
-            drawNavBar(fb, "A: Ownership Info  |  B: Back");
+            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Ownership Info"}, {"B", "Back"}});
         } else if (selectedIndex > 0) {
-            drawNavBar(fb, "A: Select  |  X: Delete  |  B: Back");
+            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"X", "Delete"}, {"B", "Back"}});
         } else {
-            drawNavBar(fb, "A: Select  |  B: Back");
+            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"B", "Back"}});
         }
 
         // Transient failure notice, centred just above the nav bar (same treatment as the editor's).
@@ -245,7 +245,7 @@ namespace UI {
             const int bx = (fb.getWidth() - bw) / 2, by = fb.getHeight() - kNavBarH - bh - 12;
             fb.drawSoftShadow(bx, by, bw, bh, 8);
             fb.drawFilledRoundedRect(bx, by, bw, bh, 8, Colors::Panel);
-            fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Orange, 2);
+            fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Warning, 2);
             fb.drawText(bx + padX, by + 7, statusMessage, Colors::Text);
         }
 
