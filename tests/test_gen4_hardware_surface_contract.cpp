@@ -24,6 +24,30 @@ int main() {
     static_assert(Shared::genderUsesInlineToggle(Shared::Generation::Gen4));
     static_assert(!Shared::genderOpensDedicatedPicker(Shared::Generation::Gen4));
 
+    // Gen IV has six editable IV/EV rows; Sp. Def must retain distinct IV vs EV focus rectangles.
+    constexpr Shared::Focus spDefIv{Shared::Panel::Values, 5, 0};
+    constexpr Shared::Focus spDefEv{Shared::Panel::Values, 5, 1};
+    constexpr auto spDefIvFocus = Shared::cellFocusFor(Shared::Generation::Gen4, spDefIv);
+    constexpr auto spDefEvFocus = Shared::cellFocusFor(Shared::Generation::Gen4, spDefEv);
+    static_assert(spDefIvFocus.x == 110 && spDefIvFocus.width == 64);
+    static_assert(spDefEvFocus.x == 180 && spDefEvFocus.width == 90);
+    static_assert(spDefIvFocus.x != spDefEvFocus.x || spDefIvFocus.width != spDefEvFocus.width);
+
+    // Simulate the two-frame immutable-source dirty-exit path that the first source-only contract
+    // missed: B opens the exit-only prompt, a neutral frame must not clear it, then A may discard.
+    bool saveConfirmActive = true;
+    bool exitingWithUnsavedChanges = true;
+    if (Shared::immutableSourceBlocksSaveDialog(saveConfirmActive, exitingWithUnsavedChanges))
+        saveConfirmActive = false;
+    assert(saveConfirmActive); // neutral frame preserved the exit-only confirmation
+    bool goBack = false;
+    if (saveConfirmActive && exitingWithUnsavedChanges) {
+        saveConfirmActive = false;
+        exitingWithUnsavedChanges = false;
+        goBack = true;
+    }
+    assert(goBack && !saveConfirmActive && !exitingWithUnsavedChanges);
+
     const auto surface = read("src/UI/Gen4SharedPokemonSurface.inc");
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     const auto bridge = read("src/Legacy/Gen4ReadOnlyTrainer.cpp");
@@ -93,6 +117,9 @@ int main() {
     contains(bridge, "Gen4StagedPokemonEditor::create(");
     contains(bridge, "save.sourceBytes()");
     contains(bridge, "refreshStagedPokemonPresentation");
+    contains(bridge, "displayParty.push_back(nullptr)");
+    contains(bridge, "if (!pokemon.valid() || pokemon.empty()) continue;");
+    contains(surface, "if (!refreshPresentation(screen))");
     contains(staged, "original_");
     contains(staged, "staged_");
     contains(staged, "refreshStorageCrc");
@@ -110,8 +137,11 @@ int main() {
     contains(gen3Bridge, "hasStagedChanges() const noexcept override");
     contains(gen4Bridge, "hasStagedChanges() const noexcept override");
     contains(baseUi, "hasUnsavedChanges || trainer.hasStagedChanges()");
+    contains(baseUi, "immutableSourceBlocksSaveDialog(");
+    contains(baseUi, "exitOnlySaveConfirm");
     assert(baseUi.find("!sourceReadOnly() && hasUnsavedChanges") == std::string::npos);
     assert(baseUi.find("!sourceReadOnly() && bank && bank->hasChanged()") == std::string::npos);
+    assert(baseUi.find("statEdit.dialogActive = saveConfirmActive") == std::string::npos);
 
     // Final composite routes Gen IV before generic/Gen III fallback.
     contains(composite, "#include \"Gen4SharedPokemonSurface.inc\"");
