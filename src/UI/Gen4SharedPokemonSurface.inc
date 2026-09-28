@@ -407,7 +407,7 @@ constexpr std::array<const char*, 15> detailLabels{{
 }};
 
 bool detailEditable(int row) noexcept {
-    return row == 1 || row == 2 || row == 3 || row == 8 || row == 12;
+    return row == 0 || row == 1 || row == 2 || row == 3 || row == 8 || row == 12;
 }
 
 bool variableGenderSpecies(const Pokemon::Pokemon4ReadOnly& p) noexcept {
@@ -520,6 +520,18 @@ int moveMaxPP(uint16_t move, uint8_t ppUps, Enums::GameVersion group) {
     return base <= 0 ? 0 : base * (5 + std::min<int>(ppUps, 3)) / 5;
 }
 
+void openSpeciesPicker(TrainerViewScreen& screen, State& state) {
+    state.valuePicker = true;
+    state.pickerTarget = PickerTarget::Species;
+    state.pickerValues.clear();
+    state.pickerValues.reserve(493);
+    for (uint16_t species = 1; species <= 493; ++species)
+        state.pickerValues.push_back(species);
+    const uint16_t current = state.session.working ? state.session.working->species() : 1;
+    state.pickerRow = std::clamp<int>(static_cast<int>(current) - 1, 0, 492);
+    screen.controllerNavigation.reset();
+}
+
 void openNaturePicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
     state.pickerTarget = PickerTarget::Nature;
@@ -564,13 +576,17 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
 
     const uint16_t value = state.pickerValues[static_cast<size_t>(state.pickerRow)];
     bool ok = false;
-    if (state.pickerTarget == PickerTarget::Nature)
+    if (state.pickerTarget == PickerTarget::Species)
+        ok = state.session.working->setSpecies(value);
+    else if (state.pickerTarget == PickerTarget::Nature)
         ok = state.session.working->setNature(static_cast<uint8_t>(value));
     else if (state.pickerTarget == PickerTarget::Ability)
         ok = state.session.working->setAbilitySlot(static_cast<uint8_t>(value));
 
     if (!ok) {
-        screen.postStatus("Could not preserve the other PID-linked Generation IV traits", 300);
+        screen.postStatus(state.pickerTarget == PickerTarget::Species
+            ? "That species could not be represented safely in this Generation IV draft"
+            : "Could not preserve the other PID-linked Generation IV traits", 300);
         return true;
     }
     state.valuePicker = false;
@@ -655,6 +671,10 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
                 const Pokemon::Pokemon4ReadOnly& p) {
     if (!state.session.working) return false;
     auto& mon = *state.session.working;
+    if (row == 0) {
+        openSpeciesPicker(screen, state);
+        return true;
+    }
     if (row == 1) {
         const auto current = Utils::utf16ToUtf8(mon.nickname());
         const auto result = Utils::promptText(
@@ -822,6 +842,8 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
 Shared::ActionSet gen4Actions(bool occupied) {
     Shared::ActionSet result{};
     if (!occupied) {
+        result.values[result.count++] = Shared::Action::Add;
+        result.values[result.count++] = Shared::Action::Review;
         result.values[result.count++] = Shared::Action::Close;
         return result;
     }
@@ -854,6 +876,9 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
             break;
         case Shared::Action::Edit:
             beginViewOrEdit(screen, SessionModel::Mode::Edit);
+            break;
+        case Shared::Action::Add:
+            beginCreate(screen, state.box, state.slot);
             break;
         case Shared::Action::Review:
             state.actions = false;
@@ -897,6 +922,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,130));
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawText(x + 24, y + 18,
+        state.pickerTarget == PickerTarget::Species ? "Choose Species" :
         state.pickerTarget == PickerTarget::Nature ? "Choose Nature" : "Choose Ability",
         Colors::Text, TextStyle::Heading);
     const int first = std::max(0, state.pickerRow - 5);
@@ -908,7 +934,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, 34);
         const auto value = state.pickerValues[static_cast<size_t>(index)];
         std::string label;
-        if (state.pickerTarget == PickerTarget::Nature)
+        if (state.pickerTarget == PickerTarget::Species)
+            label = std::to_string(value) + " - " + Names::getSpeciesName(value);
+        else if (state.pickerTarget == PickerTarget::Nature)
             label = Trainer::getNatureName(static_cast<uint8_t>(value));
         else if (state.session.working) {
             const uint16_t abilityId =
@@ -968,8 +996,9 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (!raw) return;
     Pokemon::Pokemon4ReadOnlyView view(*raw);
 
-    const auto mode = state.session.mode == SessionModel::Mode::Edit
-        ? Context::SurfaceMode::EditStaged : Context::SurfaceMode::ViewReadOnly;
+    auto mode = Context::SurfaceMode::ViewReadOnly;
+    if (state.session.mode == SessionModel::Mode::Edit) mode = Context::SurfaceMode::EditStaged;
+    else if (state.session.mode == SessionModel::Mode::Create) mode = Context::SurfaceMode::CreateDraft;
     SharedPokemonShell::drawChrome(
         fb, raw->species(), Utils::utf16ToUtf8(raw->nickname()), view.level(),
         raw->gender(), view.isShiny(raw->id32(), {}), mode,
@@ -1079,7 +1108,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Ball", Enums::getBallName(view.ball())},
         {"Met", "ID " + std::to_string(view.metLocation()) + " / Lv. " + std::to_string(raw->metLevel())},
         {"Source", "IMMUTABLE"},
-        {"Create", "Deferred until Edit passes"}
+        {"Create", "Available in empty box slots"}
     };
     SharedPokemonShell::drawDataAndGraph(
         fb, g.rightX, g.y + 244, g.rightW, g.h - 256, "GEN IV DATA", rows, stats);
@@ -1115,7 +1144,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
 
     screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,105));
-    const int w = 650, h = occupied ? 360 : 220;
+    const int w = 650, h = occupied ? 360 : 300;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
     drawPanelSurface(fb, x, y, w, h, false, 18);
@@ -1197,13 +1226,14 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     const bool boxEntry = boxEntrySurface(screen);
     if (!partyEntry && !boxEntry) return false;
     if (navigated & HidNpadButton_A) {
-        if (selectedOccupied(screen)) beginActions(screen);
-        else if (boxEntry)
-            screen.postStatus("Generation IV Create follows after Edit hardware acceptance", 300);
+        if (partyEntry || boxEntry) beginActions(screen);
         return true;
     }
     if ((navigated & HidNpadButton_X) && boxEntry) {
-        screen.postStatus("Generation IV Create is not enabled in the Edit milestone", 300);
+        if (selectedOccupied(screen))
+            screen.postStatus("Choose an empty Generation IV box slot to Create", 240);
+        else
+            beginCreate(screen, screen.selectedBoxIndex, screen.selectedItemIndex);
         return true;
     }
     return false;
