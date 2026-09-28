@@ -656,7 +656,7 @@ void openMovePicker(TrainerViewScreen& screen, State& state) {
     state.pickerValues.push_back(0);
     const auto group = bridge(screen).sourceSave().rawFamily();
     const unsigned count = Names::getMoveCount();
-    for (uint16_t move = 1; move < count && move <= 0xFFFFu; ++move)
+    for (uint16_t move = 1; move < count && move <= 467; ++move)
         if (Names::isMovePresent(move, group))
             state.pickerValues.push_back(move);
     const uint16_t current =

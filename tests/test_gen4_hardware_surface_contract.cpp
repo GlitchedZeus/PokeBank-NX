@@ -108,6 +108,7 @@ int main() {
     contains(surface, "state.session.working->setMove(slot, value)");
     contains(surface, "PickerTarget::Move");
     contains(surface, "Names::isMovePresent");
+    contains(surface, "move <= 467");
     contains(surface, "Native Gen IV move catalog");
     assert(surface.find("move choice read-only in G4-03") == std::string::npos);
 
