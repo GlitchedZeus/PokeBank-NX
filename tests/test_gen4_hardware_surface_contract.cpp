@@ -119,6 +119,8 @@ int main() {
     contains(surface, "case Shared::Action::Add");
     contains(surface, "beginCreate(screen)");
     contains(surface, "PickerTarget::Species");
+    contains(surface, "createSpeciesInitialized");
+    contains(surface, "state.session.working->setSpecies(value)");
     contains(surface, "PickerTarget::HeldItem");
     contains(surface, "PickerTarget::Language");
     contains(surface, "PickerTarget::Ball");

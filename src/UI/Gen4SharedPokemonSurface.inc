@@ -46,6 +46,7 @@ struct State {
     const TrainerViewScreen* owner = nullptr;
     bool actions = false;
     bool review = false;
+    bool createSpeciesInitialized = false;
     int actionRow = 0;
     TargetKind target = TargetKind::Box;
     int box = 0;
@@ -523,6 +524,7 @@ bool beginCreate(TrainerViewScreen& screen) {
     }
     state.actions = false;
     state.review = false;
+    state.createSpeciesInitialized = false;
     resetWorkspaceFocus(state);
     state.focus = {Shared::Panel::Details, 0, 0};
     openSpeciesPicker(screen, state);
@@ -709,6 +711,9 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
     if (down & HidNpadButton_ZR)
         state.pickerRow = (state.pickerRow + 50) % pickerCount;
     if (down & HidNpadButton_B) {
+        if (state.pickerTarget == PickerTarget::Species &&
+            state.session.creating() && !state.createSpeciesInitialized)
+            state.createSpeciesInitialized = true;
         state.valuePicker = false;
         state.pickerTarget = PickerTarget::None;
         screen.controllerNavigation.reset();
@@ -719,7 +724,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
     const uint16_t value = state.pickerValues[static_cast<size_t>(state.pickerRow)];
     bool ok = false;
     if (state.pickerTarget == PickerTarget::Species) {
-        if (state.session.creating()) {
+        if (state.session.creating() && !state.createSpeciesInitialized) {
             auto* staged = editor(screen);
             std::string error;
             auto replacement = staged
@@ -728,6 +733,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
                 : std::nullopt;
             if (replacement) {
                 ok = state.session.beginCreate(std::move(*replacement), error);
+                state.createSpeciesInitialized = true;
                 state.focus = {Shared::Panel::Details, 0, 0};
                 state.detailsFocus = 0;
             } else {
