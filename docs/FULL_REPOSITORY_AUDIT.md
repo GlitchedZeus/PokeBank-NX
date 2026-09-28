@@ -6,7 +6,7 @@ Status: IN PROGRESS
 
 - Repository: GlitchedZeus/PokeBank-NX
 - Audit branch: `audit/full-repository-line-by-line-20260928`
-- Primary MAIN tree audited: PR #92 head `11883f8ae46721bf4257b9b75738887bfcb2d42e`
+- Primary MAIN tree audited: PR #92 head `acfca273eff0fb145f2e18a8f6d07817e1475572`
 - PR #92 branch: `feature/gen4-full-editor-20260928`
 - Sibling UI overlay: PR #97 head `8546e5346d128c9c320f59eb610b8db7f139729e` (delta will be audited separately)
 - Integration parent: PR #90 head `8b3bcc16c804247bfe8d1314b686974ce73051d8`
@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 171 / 725
-- Fully read text files: 137 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 196 / 725
+- Fully read text files: 162 / 692 (text/unknown classification remains provisional until content inspection completes)
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -52,6 +52,17 @@ Status: IN PROGRESS
 - Production true-Move store resolution accepts only the app-owned Bank or validated PokeBank backup workspace paths. It does not resolve arbitrary emulator/source paths.
 - Cross-game transactions require a retirement gate before source retirement; the ordinary production recovery engine has no such gate, so a cross-game journal cannot silently retire a source through the default path.
 - These observations support the current immutable-source/live-write-lock invariants for the audited paths; emulator discovery/caller tracing remains pending and is not yet claimed complete.
+
+
+### Emulator/source immutability checkpoint
+
+- Gen I-III RetroArch discovery reads battery saves read-only and validates exact-size/native structures before surfacing them.
+- mGBA discovery consumes only its configured `savegamePath`, rejects parent traversal and filesystem roots, and does not infer permission to crawl the SD card.
+- Tico discovery is restricted to `tico/saves/gb`, `tico/saves/gbc`, and `tico/saves/gba` with depth 0.
+- Gen IV discovery is bounded to configured RetroArch plus known DraStic/melonDS roots; `.dss` savestates are diagnostics-only and are not assignable.
+- Every audited source-card bridge marks external/emulator instances `ReadOnly`; activation rechecks identity/path/size/mtime/content fingerprint and exact game support.
+- The Gen I/III staged mutation cores reviewed here operate on copied in-memory bytes and do not reopen or write the physical source path. Gen IV follows the same source-bytes-to-staged-image pattern already audited.
+- `SourceCapabilityBridge::canWriteOriginalSource()` is hard-coded false. This supports the immutable-source invariant in the audited source/editor boundary.
 
 ## Findings
 
@@ -211,3 +222,18 @@ No findings are recorded here until supported by direct evidence from the frozen
 - Recommended fix: apply the same nonempty + checksum validation predicate before `placeNext`; count/log rejected corrupt migration records separately from capacity overflow.
 - Risk of fix: low to medium because it changes one-time migration acceptance; preserve original legacy files as recovery evidence.
 - Owner: MAIN.
+
+### AUDIT-014 — Session-wide source read-only gate disables app-owned Bank mutation
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: source/destination capability separation / Storage / Bank UI
+- Files: `include/UI/TrainerViewScreenBase.h`, `src/UI/TrainerViewScreenBase.inc`, `include/UI/ExactFormatEditorProvider.h`, `tests/test_source_mutation_policy.cpp`
+- Exact symbols: `sourceReadOnly()`, `requireMutableWorkspace()`, `renameBankBox()`, `openStorageEditor()`, `openActionSheetTargetDetails()`, `pickupSingle()`, `pickupMulti()`, `grabSelection()`, `putDownBlock()`, `sortStorageBox()`.
+- Problem: mutation permission is decided from the session's source kind rather than from the actual mutation target. When a RetroArch/DraStic/melonDS/manual or installed source is read-only, the same gate also blocks operations whose target is PokeBank-owned `Bank` storage.
+- Why it matters: the safety model explicitly distinguishes immutable source material from mutable `AppOwnedStorage`. Today a read-only source session incorrectly makes Bank Pokémon/Bank boxes read-only too, preventing Bank edit, rename, sort and Bank-only move operations even though those operations do not write the source.
+- Evidence: `requireMutableWorkspace()` returns false solely from `sourceReadOnly()`. `renameBankBox()` calls that helper; `openStorageEditor()` calls it before checking `pane == 1`; `openActionSheetTargetDetails()` forces `readOnly = readOnly || sourceReadOnly()` even for a Bank target; Bank carry/sort paths use the same helper. `SourceMutationPolicy` itself correctly permits `AppOwnedStorage`, but the UI does not ask about the destination kind.
+- Current tests: `test_source_mutation_policy.cpp` loops Party, SaveBox **and Bank** using one read-only action-sheet capability and asserts Edit is unavailable for all three, so the current test encodes the conflation rather than catching it.
+- Missing tests: immutable source + mutable Bank target; Bank rename/edit/sort during RetroArch/ExternalLegacy browsing; source-box mutation remains blocked; cross-store source-retiring Move remains blocked; copy/import into Bank must not imply source retirement.
+- Recommended fix: replace the session-wide mutation gate with a target-aware capability decision. Save/Party/SaveBox targets inherit the source/workspace capability; Bank targets use `SourceKind::AppOwnedStorage`. Keep cross-store True Move source retirement behind its existing transaction/evidence gates and do not turn this cleanup into emulator source writing.
+- Risk of fix: medium because Storage input currently shares helpers across both panes; regression tests must prove Bank mutability without weakening source immutability.
+- Owner: MAIN / storage UI architecture.
