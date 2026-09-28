@@ -62,7 +62,7 @@ jobs:
             git diff --check HEAD^
           fi
           echo "APPLICATION_SHA=$APP_SHA"
-          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')" 
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
       - name: Focused Gen IV editor gates
         run: |
           set -euo pipefail
