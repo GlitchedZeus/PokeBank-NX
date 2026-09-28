@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 161 / 725
-- Fully read text files: 127 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 171 / 725
+- Fully read text files: 137 / 692 (text/unknown classification remains provisional until content inspection completes)
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -43,6 +43,15 @@ Status: IN PROGRESS
 - Delta from PR #90: 6 commits / 18 changed paths.
 - Fully read so far: 9 / 18 changed paths, including the complete 582-line `src/UI/AppShellScreen.cpp`, new app-shell/organization model headers, native UI workflow/build fragment, and their focused tests.
 - This overlay count is intentionally separate from the 725-path PR #92 MAIN ledger.
+
+
+### Save-safety checkpoint — write-path trace
+
+- `include/Safety/WritePolicy.h` keeps `LIVE_SAVE_WRITES_ENABLED = false`; `restoreBackupToTitle()` checks the low-level policy before mounting a live title save.
+- `include/Safety/SourceMutationPolicy.h` permits mutation only for `BackupOrStaged` and `AppOwnedStorage`; installed, RetroArch and external legacy sources are not mutation-capable through this policy.
+- Production true-Move store resolution accepts only the app-owned Bank or validated PokeBank backup workspace paths. It does not resolve arbitrary emulator/source paths.
+- Cross-game transactions require a retirement gate before source retirement; the ordinary production recovery engine has no such gate, so a cross-game journal cannot silently retire a source through the default path.
+- These observations support the current immutable-source/live-write-lock invariants for the audited paths; emulator discovery/caller tracing remains pending and is not yet claimed complete.
 
 ## Findings
 
@@ -172,3 +181,33 @@ No findings are recorded here until supported by direct evidence from the frozen
 - Recommended fix: perform row/column navigation geometrically. On vertical wrap, preserve the current column and choose the nearest valid row entry; for the one-item final Search row, bottom-left should wrap to top-left. Update the regression expectations accordingly.
 - Risk of fix: low; UI-model/controller behavior only.
 - Owner: UI/QoL.
+
+### AUDIT-012 — Settings persistence truncates in place and ignores write/close failure
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: app configuration persistence
+- Files: `src/Utils/Settings.cpp`
+- Exact lines/symbols: `saveSettings()`, especially the direct `fopen(settingsPath().c_str(), "w")`, unchecked `fprintf` calls, and unchecked `fclose`.
+- Problem: the authoritative settings file is truncated before the replacement content is known to be complete, and write/close failures are not observed.
+- Why it matters: interruption, ENOSPC, or a short/failed write can leave an empty/partial `settings.cfg` while the caller receives no failure signal. This does not corrupt Pokémon/save data, so it is not a P1/P2 issue.
+- Evidence: unlike Bank/workspace persistence, `saveSettings()` does not use a temp/validate/promote transaction and returns `void`; only the initial `fopen` failure is logged.
+- Current tests: no durable/partial-write settings persistence test found in the audited tranche.
+- Missing tests: injected write failure, close failure, interrupted/truncated file recovery, and successful round-trip of all current keys.
+- Recommended fix: serialize settings to memory and use the app-owned durable replacement primitive (or an equivalent narrow config transaction), validate/read back the promoted text, and return/report failure.
+- Risk of fix: low.
+- Owner: dedicated cleanup / MAIN storage utility owner.
+
+### AUDIT-013 — Legacy Bank migration skips checksum validation used by normal Bank load
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: Bank migration / Pokémon data integrity
+- Files: `src/Trainer/Bank.cpp`, `tests/test_bank_recovery_contract.cpp`, `tests/test_bank_format_policy.cpp`
+- Exact lines/symbols: `Bank::migrateLegacyBanks()` versus the checksum gate in `Bank::load()`.
+- Problem: normal unified Bank loading requires a non-empty Pokémon whose stored checksum equals `calculateChecksum()`. The legacy per-group migration path accepts any record for which `makePokemon(...)` succeeds and `speciesID() != 0`, then places it into the in-memory Bank without the checksum test.
+- Why it matters: a damaged legacy Bank record that happens to decode to a nonzero species can be surfaced as a real migrated Pokémon. Later persistence is likely to fail closed when full Bank validation runs, but the corrupted record has already entered the active in-memory model and can affect browsing/export workflows.
+- Evidence: the two load paths use different acceptance predicates in the same implementation; the normal path explicitly calls the checksum “the decisive test,” while migration omits it.
+- Current tests: the reviewed Bank tests check unreadable-file preservation and box-count fail-closed behavior using source-string assertions; neither constructs a corrupted legacy record and exercises migration.
+- Missing tests: corrupted-checksum legacy record is skipped, valid record migrates, mixed valid/corrupt legacy records preserve only valid entries, and migration never mutates the legacy source file.
+- Recommended fix: apply the same nonempty + checksum validation predicate before `placeNext`; count/log rejected corrupt migration records separately from capacity overflow.
+- Risk of fix: low to medium because it changes one-time migration acceptance; preserve original legacy files as recovery evidence.
+- Owner: MAIN.
