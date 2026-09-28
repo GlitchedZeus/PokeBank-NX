@@ -303,6 +303,10 @@ void testLayoutsAndAssignments() {
         assert(parsed->storageSelection().partition==1);
         assert(parsed->party().size()==1 && parsed->partyCount()==1);
         assert(parsed->nativePartySlots().size()==6);
+        const auto& diagnostics=parsed->diagnostics();
+        assert(diagnostics.declaredPartyCount==1);
+        assert(diagnostics.validPartyRecords==1 && diagnostics.invalidPartyRecords==0);
+        assert(diagnostics.occupiedBoxRecords==1 && diagnostics.invalidBoxRecords==0);
         const auto inactive = parsed->nativePartySlots()[5].originalEncryptedBytes();
         assert(inactive.size()==0xEC);
         for (size_t i=0;i<inactive.size();++i)
@@ -342,6 +346,39 @@ void testLayoutsAndAssignments() {
     assert(hgBad && hgBad->assignmentStatus()==AssignmentStatus::Mismatch);
     assert(ssOk && ssOk->exactGameFromSave()==Enums::GameVersion::SS &&
            ssOk->assignmentStatus()==AssignmentStatus::Match);
+
+    // D/P/Pt CurrentBox is a byte in a 32-bit-aligned region. Pinned PKHeX SAV4Sinnoh
+    // and PKSM-Core both read only the first byte; non-semantic padding must not reject a valid save.
+    {
+        auto ptPadding=makeSave(Layout::Platinum);
+        const auto sp=spec(Layout::Platinum);
+        ptPadding[sp.storageStart+sp.currentBox+1]=0xAA;
+        ptPadding[sp.storageStart+sp.currentBox+2]=0xBB;
+        ptPadding[sp.storageStart+sp.currentBox+3]=0xCC;
+        restampCounter(ptPadding,Layout::Platinum,true,0,100,1);
+        const auto before=digest(ptPadding);
+        auto parsedPadding=Gen4ReadOnlySave::parse(ptPadding,Layout::Platinum);
+        assert(parsedPadding && parsedPadding->currentBox()==3);
+        assert(digest(ptPadding)==before);
+    }
+
+    // A corrupt PK4 does not make the whole read-only save disappear. It is counted and quarantined,
+    // making hardware diagnosis distinguishable from a genuinely empty save.
+    {
+        auto quarantined=makeSave(Layout::Platinum);
+        const auto sp=spec(Layout::Platinum);
+        quarantined[sp.party+0x08]^=0x01; // corrupt encrypted party record 0
+        quarantined[sp.storageStart+sp.boxData+0x08]^=0x01; // corrupt first boxed PK4
+        restampCounter(quarantined,Layout::Platinum,false,0,100,1);
+        restampCounter(quarantined,Layout::Platinum,true,0,100,1);
+        const auto before=digest(quarantined);
+        auto parsedQuarantine=Gen4ReadOnlySave::parse(quarantined,Layout::Platinum);
+        assert(parsedQuarantine);
+        const auto& q=parsedQuarantine->diagnostics();
+        assert(q.declaredPartyCount==1 && q.invalidPartyRecords==1 && q.validPartyRecords==0);
+        assert(q.invalidBoxRecords==1 && q.occupiedBoxRecords==0);
+        assert(digest(quarantined)==before);
+    }
 
     auto kor=makeSave(Layout::Platinum,0,0,0,static_cast<uint8_t>(Enums::LanguageID::Korean));
     auto korParsed=Gen4ReadOnlySave::parse(kor,Layout::Platinum);
@@ -778,6 +815,7 @@ void testPresentationBridge() {
     auto trainer=PokeVault::Legacy::Gen4ReadOnlyTrainer::create(*parsed,"diamond_nds",error);
     assert(trainer && error.empty());
     assert(trainer->trainerName=="ASH" && trainer->TID16==12345 && trainer->SID16==54321);
+    assert(trainer->saveRevisionString.find("G4 P1/0 B1/0")!=std::string::npos);
     assert(trainer->getGameGroup()==Enums::GameVersion::DP);
     assert(trainer->getBoxCount()==18 && trainer->getSlotsPerBox()==30);
     assert(trainer->getPartySize()==1 && trainer->party.size()==1 && trainer->party[0]);
