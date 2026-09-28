@@ -25,6 +25,14 @@ struct BlockSelection {
     uint32_t minorCounter = 0;
 };
 
+struct ReadDiagnostics {
+    uint8_t declaredPartyCount = 0;
+    size_t validPartyRecords = 0;
+    size_t invalidPartyRecords = 0;
+    size_t occupiedBoxRecords = 0;
+    size_t invalidBoxRecords = 0;
+};
+
 struct TrainerReadOnly {
     std::u16string name;
     uint16_t tid = 0;
@@ -59,6 +67,7 @@ public:
     }
 
     [[nodiscard]] const TrainerReadOnly& trainer() const noexcept { return trainer_; }
+    [[nodiscard]] const ReadDiagnostics& diagnostics() const noexcept { return diagnostics_; }
     [[nodiscard]] std::span<const Pokemon::Pokemon4ReadOnly> party() const noexcept { return std::span<const Pokemon::Pokemon4ReadOnly>(party_).first(partyCount_); }
     [[nodiscard]] uint8_t partyCount() const noexcept { return partyCount_; }
     [[nodiscard]] std::span<const Pokemon::Pokemon4ReadOnly> nativePartySlots() const noexcept { return party_; }
@@ -84,6 +93,7 @@ private:
     BlockSelection general_{};
     BlockSelection storage_{};
     TrainerReadOnly trainer_{};
+    ReadDiagnostics diagnostics_{};
     std::vector<Pokemon::Pokemon4ReadOnly> party_;
     std::vector<Pokemon::Pokemon4ReadOnly> boxes_;
     std::vector<std::u16string> boxNames_;
