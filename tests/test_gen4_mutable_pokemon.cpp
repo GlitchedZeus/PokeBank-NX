@@ -60,7 +60,7 @@ std::vector<std::byte> makeEntity(
     d[0x36] = std::byte{3};
     w32(d, 0x38, 31u | (30u << 5) | (29u << 10) | (28u << 15) |
                   (27u << 20) | (26u << 25));
-    d[0x40] = std::byte{0}; // male, form 0
+    d[0x40] = static_cast<std::byte>(species == 292 ? 0x04 : 0x00); // Shedinja genderless; default fixture male
     auto nick = Utils::encodeGen4Field(u"PIKA", 11, 10, 2);
     copy(d, 0x48, nick);
     // Native entity strings may have post-terminator trash. Keep a recognizable tail.
@@ -226,6 +226,7 @@ void testShedinjaPartyHpRule() {
         auto editable = Pokemon::Pokemon4Mutable::fromEncrypted(
             makePartyEntity(292, 0x12345678u, 25, 1), group);
         assert(editable && editable->isParty());
+        assert(editable->gender() == 2);
 
         const auto assertOneHp = [&]() {
             Pokemon::Pokemon4ReadOnly parsed(editable->encryptedBytes(), group);
