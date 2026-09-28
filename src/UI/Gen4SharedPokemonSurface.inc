@@ -426,10 +426,7 @@ std::string detailValue(const Pokemon::Pokemon4ReadOnly& p,
             return pk == 0 ? "None" : (pk & 0x0Fu) == 0 ? "Cured" : "Infected";
         }
         case 15:
-            return p.personal().formCount <= 1
-                ? "Default"
-                : "Form " + std::to_string(p.form()) + " / " +
-                    std::to_string(static_cast<int>(p.personal().formCount) - 1);
+            return p.form() == 0 ? "Default" : "Form " + std::to_string(p.form());
         default: return {};
     }
 }
