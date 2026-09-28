@@ -51,7 +51,7 @@ int main() {
         assert(staged);
         assert(staged->source.saveOperations.supports(
             PokeVault::SaveEdit::Capability::PokemonCreation));
-        assert(staged->fieldState(Shared::FieldIdentity::Species) == Exact::FieldState::ReadOnly);
+        assert(staged->fieldState(Shared::FieldIdentity::Species) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Gender) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Shiny) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Language) == Exact::FieldState::Editable);
@@ -62,7 +62,7 @@ int main() {
         assert(staged->fieldState(Shared::FieldIdentity::Ball) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::MetLocation) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Form) == Exact::FieldState::ReadOnly);
-        assert(!staged->fieldIsEditorTarget(Shared::FieldIdentity::Species));
+        assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Species));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Language));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::HeldItem));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Pokerus));
