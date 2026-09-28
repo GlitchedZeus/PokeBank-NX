@@ -48,7 +48,7 @@ The current 00ee7a6e runtime refactor is newer than this hardware checkpoint and
 |---|---|
 | Gen I Red / Blue / Yellow | Read + staged Pokémon editing |
 | Gen II Gold / Silver / Crystal | Read + staged Pokémon editing |
-| Gen III R/S/E/FR/LG | Read + staged Pokémon editing |
+| Gen III R/S/E/FRLG | Read + staged Pokémon editing |
 | Gen IV D/P/Pt/HG/SS | Strict read-only Trainer / Party / Boxes / Pokémon details |
 | Classic Inventory | Staged editing where already supported |
 | Multi-provider Save Instances | Implemented for Gen I-IV |
@@ -107,16 +107,43 @@ No Tico DS root is authorized.
 
 DraStic .dsv cartridge backups are supported read only. DraStic .dss savestates remain unsupported.
 
-## Current CI state for 00ee7a6e
+## Frozen hardware-test candidate
 
-- Focused Packed Move: **PASS**
-- Focused Packed Multi-Move: **PASS**
-- Full local host suite: **PASS**
-- Full local ASan / UBSan: **PASS**
-- Exact-head native devkitA64 compile/link: reported **PASS** during the tranche
-- GitHub Actions Host Tests #1385: **still in progress at latest re-fetch**
+Application SHA:
+**00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
 
-Do not freeze or label a new hardware candidate all-green until the exact-head Actions host workflow completes successfully.
+Tree SHA:
+**b0832910df44898114a413191ebad3228bded8af**
+
+Exact Actions NRO:
+**PokeBank-NX-PhysicalAudit-00ee7a6e.nro**
+
+NRO SHA-256:
+**5fad07002c5074ffb3d1d2bdd91275ef29fbdf199f7db263f39c5a3a9f86ca25**
+
+Artifact:
+**PokeBank-NX-PhysicalAudit-00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
+
+Artifact ID:
+**10956604914**
+
+## Exact-head automated verification
+
+- GitHub Actions Host Tests #1385 / run ID 36392644853: **PASS**
+  - exact application identity: PASS
+  - clean host build: PASS
+  - full host tests: PASS
+  - focused RSE save-open bridge regression: PASS
+  - ASan / UBSan: PASS
+- Audit Hardening Native Validation #226 / run ID 36392639705: **PASS**
+- Focused Packed Multi-Move #201 / run ID 36392644998: **PASS**
+- Focused Packed Move #202 / run ID 36392645087: **PASS**
+
+**AUTOMATED GATES: PASS**
+
+**DEVICE ACCEPTANCE: PENDING OWNER HARDWARE TEST**
+
+The artifact's build identity and SHA256 manifest were independently checked after download and match the frozen application/tree/NRO identity above.
 
 ## Permanent safety invariants
 
@@ -134,9 +161,9 @@ Do not freeze or label a new hardware candidate all-green until the exact-head A
 
 ## Next gate
 
-Finish Issue #85 exact-head CI, freeze the resulting SHA, produce an Actions-built NRO, verify its SHA-256 and artifact identity, and hand it to the owner for physical Switch testing.
+Owner physical Switch testing of the exact frozen Actions-built NRO.
 
-Until that test passes, the new provider-neutral runtime candidate remains **CI candidate / hardware pending**, not DEVICE ACCEPTED.
+Until that hardware test passes, the provider-neutral runtime candidate remains **automated PASS / hardware pending**, not DEVICE ACCEPTED.
 
 ## Canonical project documents
 
