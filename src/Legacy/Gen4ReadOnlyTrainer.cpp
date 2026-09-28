@@ -66,8 +66,10 @@ bool Gen4ReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
         }
         const auto& pokemon = nativeParty[slot];
         if (!pokemon.valid() || pokemon.empty() || !pokemon.isParty()) {
-            error = "staged Generation IV presentation contains an invalid party PK4";
-            return false;
+            // Match initial read-only presentation semantics: malformed entities remain quarantined
+            // as an empty presentation slot instead of making an unrelated valid staged edit fail.
+            displayParty.push_back(nullptr);
+            continue;
         }
         displayParty.push_back(std::make_unique<Pokemon::Pokemon4ReadOnlyView>(pokemon));
     }
@@ -76,11 +78,10 @@ bool Gen4ReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
     for (size_t box = 0; box < 18; ++box) {
         for (size_t slot = 0; slot < 30; ++slot) {
             const auto& pokemon = parsed->box(box, slot);
-            if (!pokemon.valid()) {
-                error = "staged Generation IV presentation contains an invalid PK4";
-                return false;
-            }
-            if (pokemon.empty()) continue;
+            // Preserve the same quarantine policy used when the save first opens. An invalid
+            // unrelated record stays hidden/quarantined; it must not desynchronize presentation
+            // from an otherwise successful staged edit to another Pokémon.
+            if (!pokemon.valid() || pokemon.empty()) continue;
             displayBoxes[box][slot] =
                 std::make_unique<Pokemon::Pokemon4ReadOnlyView>(pokemon);
         }
