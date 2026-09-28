@@ -70,6 +70,7 @@ public:
     [[nodiscard]] uint16_t ability() const noexcept;
     [[nodiscard]] uint16_t abilityForSlot(uint8_t slot) const noexcept;
 
+    bool setSpecies(uint16_t value) noexcept;
     bool setNickname(const std::u16string& value) noexcept;
     bool setLevel(uint8_t level) noexcept;
     bool setExperience(uint32_t value) noexcept;
