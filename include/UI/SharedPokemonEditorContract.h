@@ -308,6 +308,49 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
                 return FieldAccess::Hidden;
         }
     }
+    if (generation == Generation::Gen4) {
+        // Gen IV plugs PK4 into the same shared shell. PID-correlated fields become editor
+        // targets only when the exact Gen IV staged provider is present; the provider is
+        // responsible for preserving nature/gender/shiny/ability relationships.
+        switch (field) {
+            case FieldIdentity::Species:
+            case FieldIdentity::Nickname:
+            case FieldIdentity::Gender:
+            case FieldIdentity::Shiny:
+            case FieldIdentity::Language:
+            case FieldIdentity::Level:
+            case FieldIdentity::Experience:
+            case FieldIdentity::Friendship:
+            case FieldIdentity::IV:
+            case FieldIdentity::EV:
+            case FieldIdentity::Nature:
+            case FieldIdentity::Ability:
+            case FieldIdentity::HeldItem:
+            case FieldIdentity::Pokerus:
+            case FieldIdentity::Ball:
+            case FieldIdentity::MetLevel:
+            case FieldIdentity::MetLocation:
+                return FieldAccess::Editable;
+            case FieldIdentity::Form:
+            case FieldIdentity::OriginalTrainer:
+            case FieldIdentity::TrainerId:
+            case FieldIdentity::SecretId:
+            case FieldIdentity::PersonalityId:
+            case FieldIdentity::OriginGame:
+            case FieldIdentity::MetDate:
+            case FieldIdentity::Egg:
+            case FieldIdentity::EggLocation:
+            case FieldIdentity::EggDate:
+            case FieldIdentity::OriginalTrainerGender:
+            case FieldIdentity::CalculatedStats:
+            case FieldIdentity::MoveCompatibility:
+            case FieldIdentity::EncounterLegality:
+            case FieldIdentity::Provenance:
+                return FieldAccess::ReadOnly;
+            default:
+                return FieldAccess::Hidden;
+        }
+    }
     return FieldAccess::Hidden;
 }
 
@@ -369,7 +412,7 @@ constexpr Layout layoutFor(Generation generation, bool crystal = false) noexcept
     // capabilities in DETAILS. VALUES stays stat-focused: five DV/Stat Exp rows + Shiny/Gender.
     if (generation == Generation::Gen2)
         return {/*details*/static_cast<uint8_t>(crystal ? 13 : 9), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
-    if (generation == Generation::Gen3)
+    if (generation == Generation::Gen3 || generation == Generation::Gen4)
         return {/*details*/15, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
     return {/*details*/6, /*values*/6, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
@@ -571,6 +614,15 @@ enum class Gen2LegacyPath : uint8_t {
 
 constexpr bool gen2LegacyPathProductionReachable(Gen2LegacyPath) noexcept { return false; }
 constexpr bool gen2ExternalPassiveViewUsesSharedSurface() noexcept { return true; }
+
+// Accepted Gen I-III UX rule carried forward: Gender is a direct field action, not a
+// nested Male/Female modal. Exact adapters still decide whether the field is editable
+// (fixed-gender and genderless species remain non-toggleable).
+constexpr bool genderUsesInlineToggle(Generation generation) noexcept {
+    return generation == Generation::Gen2 || generation == Generation::Gen3 ||
+           generation == Generation::Gen4;
+}
+constexpr bool genderOpensDedicatedPicker(Generation) noexcept { return false; }
 
 constexpr bool passiveViewHasFieldCursor() noexcept { return true; }
 constexpr bool passiveViewAllowsEditing() noexcept { return false; }
