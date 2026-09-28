@@ -839,7 +839,7 @@ void testPresentationBridge() {
     auto trainer=PokeVault::Legacy::Gen4ReadOnlyTrainer::create(*parsed,"diamond_nds",error);
     assert(trainer && error.empty());
     assert(trainer->trainerName=="ASH" && trainer->TID16==12345 && trainer->SID16==54321);
-    assert(trainer->saveRevisionString.find("G4 P1/0 B1/0")!=std::string::npos);
+    assert(trainer->saveRevisionString.find("G4 P1/0 B1/0 T321:45")!=std::string::npos);
     assert(trainer->getGameGroup()==Enums::GameVersion::DP);
     assert(trainer->getBoxCount()==18 && trainer->getSlotsPerBox()==30);
     assert(trainer->getPartySize()==1 && trainer->party.size()==1 && trainer->party[0]);
