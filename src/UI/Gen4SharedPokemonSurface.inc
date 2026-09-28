@@ -38,7 +38,7 @@ namespace Context = PokeBank::UIModel::ClassicGameContext;
 namespace Gen4 = PokeVault::Integration::Gen4;
 
 enum class PickerTarget : uint8_t {
-    None, Species, HeldItem, Language, Ball, MetLocation, Pokerus, Move, Nature, Ability
+    None, Species, HeldItem, Language, Ball, MetLocation, Pokerus, Form, Move, Nature, Ability
 };
 enum class TargetKind : uint8_t { Box, Party };
 
@@ -349,10 +349,10 @@ const char* gameName(std::string_view id) noexcept {
     return "Generation IV";
 }
 
-constexpr std::array<const char*, 15> detailLabels{{
+constexpr std::array<const char*, 16> detailLabels{{
     "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID",
     "Held Item", "Friendship", "Language", "Origin", "Ball",
-    "Met Level", "Met Location", "Pokerus"
+    "Met Level", "Met Location", "Pokerus", "Form"
 }};
 
 bool variableGenderSpecies(const Pokemon::Pokemon4ReadOnly& p) noexcept {
@@ -425,6 +425,11 @@ std::string detailValue(const Pokemon::Pokemon4ReadOnly& p,
             const uint8_t pk = p.pokerusState();
             return pk == 0 ? "None" : (pk & 0x0Fu) == 0 ? "Cured" : "Infected";
         }
+        case 15:
+            return p.personal().formCount <= 1
+                ? "Default"
+                : "Form " + std::to_string(p.form()) + " / " +
+                    std::to_string(static_cast<int>(p.personal().formCount) - 1);
         default: return {};
     }
 }
@@ -567,6 +572,24 @@ void openPokerusPicker(TrainerViewScreen& screen, State& state) {
     screen.controllerNavigation.reset();
 }
 
+void openFormPicker(TrainerViewScreen& screen, State& state) {
+    if (!state.session.working) return;
+    const uint8_t count = state.session.working->formCount();
+    if (count <= 1) {
+        screen.postStatus("This Pokémon has no alternate Form in this Generation IV game", 300);
+        return;
+    }
+    state.valuePicker = true;
+    state.pickerTarget = PickerTarget::Form;
+    state.pickerValues.clear();
+    for (uint16_t form = 0; form < count; ++form)
+        state.pickerValues.push_back(form);
+    const uint8_t current = state.session.working->form();
+    state.pickerRow = std::min<int>(current, static_cast<int>(count) - 1);
+    screen.controllerNavigation.reset();
+}
+
+
 void openMovePicker(TrainerViewScreen& screen, State& state) {
     if (!state.session.working) return;
     state.valuePicker = true;
@@ -671,6 +694,8 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
         ok = state.session.working->setBall(static_cast<uint8_t>(value));
     } else if (state.pickerTarget == PickerTarget::MetLocation) {
         ok = state.session.working->setMetLocation(value);
+    } else if (state.pickerTarget == PickerTarget::Form) {
+        ok = state.session.working->setForm(static_cast<uint8_t>(value));
     } else if (state.pickerTarget == PickerTarget::Pokerus) {
         const uint8_t old = state.session.working->pokerus();
         uint8_t next = 0;
@@ -841,6 +866,10 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
         openPokerusPicker(screen, state);
         return true;
     }
+    if (row == 15) {
+        openFormPicker(screen, state);
+        return true;
+    }
     return false;
 }
 
@@ -951,7 +980,7 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
         normalizeEditableFocus(state, *record, verticalDirection,
                                state.focus.panel != panelBefore);
     state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
-    state.detailsFocus = std::clamp(state.detailsFocus, 0, 14);
+    state.detailsFocus = std::clamp(state.detailsFocus, 0, 15);
 
     if (down & HidNpadButton_B) {
         state.session.back();
@@ -1064,6 +1093,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     else if (state.pickerTarget == PickerTarget::Ball) pickerHeading = "Choose Ball";
     else if (state.pickerTarget == PickerTarget::MetLocation) pickerHeading = "Choose Met Location";
     else if (state.pickerTarget == PickerTarget::Pokerus) pickerHeading = "Choose Pokérus";
+    else if (state.pickerTarget == PickerTarget::Form) pickerHeading = "Choose Form";
     else if (state.pickerTarget == PickerTarget::Move) pickerHeading = "Choose Move";
     else if (state.pickerTarget == PickerTarget::Nature) pickerHeading = "Choose Nature";
     else if (state.pickerTarget == PickerTarget::Ability) pickerHeading = "Choose Ability";
