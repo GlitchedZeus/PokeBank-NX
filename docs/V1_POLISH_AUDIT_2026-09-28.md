@@ -1,6 +1,6 @@
 # PokeBank NX v1 Polish Audit — 2026-09-28
 
-Base checkpoint: `00ee7a6ed7ac1b5a93c43246d70c252e135acec0` (PR #79)  
+Base checkpoint: `00ee7a6ed7ac1b5a93c43246d70c252e135acec0` (PR #79)
 Work branch: `polish/v1-ui-qol-20260928`
 
 This tranche is presentation/diagnostics/QoL only. It does not change save formats, Gen IV serialization,
