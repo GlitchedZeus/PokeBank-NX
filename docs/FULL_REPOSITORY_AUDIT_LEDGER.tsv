@@ -18,66 +18,66 @@ path	git_type	mode	bytes	role	readability	line_count	audit_status	references_in	
 .github/workflows/leafgreen-device-build.yml	blob	100644	10590	GitHub Actions workflow	text		AUDITED			2	yes
 .github/workflows/recovery-snapshot.yml	blob	100644	4942	GitHub Actions workflow	text		AUDITED			0	no
 .github/workflows/v1-polish-native.yml	blob	100644	7136	GitHub Actions workflow	text		AUDITED			2	yes
-.gitignore	blob	100644	730		unknown		PENDING			0	
-.gitmodules	blob	100644	105		unknown		PENDING			0	
-CURRENT_STATUS.md	blob	100644	4217		unknown		PENDING			0	
-CppProperties.json	blob	100644	1122		unknown		PENDING			0	
-LICENSE	blob	100644	34523		unknown		PENDING			0	
-Makefile	blob	100644	17683		unknown		PENDING			0	
-Makefile.host	blob	100644	409		unknown		PENDING			0	
-Makefile.host.base	blob	100644	19259		unknown		PENDING			0	
-Makefile.host.classic_inventory	blob	100644	1880		unknown		PENDING			0	
-Makefile.host.cleanup3	blob	100644	6680		unknown		PENDING			0	
-Makefile.host.editor	blob	100644	13297		unknown		PENDING			0	
-Makefile.host.gen4	blob	100644	6863		unknown		PENDING			0	
-Makefile.host.gsc	blob	100644	8509		unknown		PENDING			0	
-Makefile.host.hardware-fixes	blob	100644	20142		unknown		PENDING			0	
-Makefile.host.machine	blob	100644	760		unknown		PENDING			0	
-Makefile.host.shared-editor	blob	100644	2994		unknown		PENDING			0	
-Makefile.host.source-instances	blob	100644	1095		unknown		PENDING			0	
-Makefile.host.standalone	blob	100644	1457		unknown		PENDING			0	
-PHILOSOPHY.md	blob	100644	1093		unknown		PENDING			0	
-PKSE.sln	blob	100644	1032		unknown		PENDING			0	
-PKSE.vcxproj	blob	100644	14698		unknown		PENDING			0	
-PKSE.vcxproj.filters	blob	100644	23567		unknown		PENDING			0	
-PKSE.vcxproj.user	blob	100644	165		unknown		PENDING			0	
-PROJECT_STATUS.md	blob	100644	4030		unknown		PENDING			0	
-README.md	blob	100644	13599		unknown		PENDING			0	
-assets/banner.png	blob	100644	714084		binary		PENDING			0	
-assets/game_cards/README.md	blob	100644	2883		unknown		PENDING			0	
-assets/game_cards/blue_gb.png	blob	100644	570913		binary		PENDING			0	
-assets/game_cards/crystal_gbc.png	blob	100644	427867		binary		PENDING			0	
-assets/game_cards/diamond_nds.png	blob	100644	344416		binary		PENDING			0	
-assets/game_cards/emerald_gba.png	blob	100644	469902		binary		PENDING			0	
-assets/game_cards/firered_gba.png	blob	100644	522140		binary		PENDING			0	
-assets/game_cards/gold_gbc.png	blob	100644	448661		binary		PENDING			0	
-assets/game_cards/heartgold_nds.png	blob	100644	407072		binary		PENDING			0	
-assets/game_cards/leafgreen_gba.png	blob	100644	519106		binary		PENDING			0	
-assets/game_cards/manifest.json	blob	100644	4892		unknown		PENDING			0	
-assets/game_cards/pearl_nds.png	blob	100644	347156		binary		PENDING			0	
-assets/game_cards/platinum_nds.png	blob	100644	369346		binary		PENDING			0	
-assets/game_cards/red_gb.png	blob	100644	478309		binary		PENDING			0	
-assets/game_cards/ruby_gba.png	blob	100644	455614		binary		PENDING			0	
-assets/game_cards/sapphire_gba.png	blob	100644	479223		binary		PENDING			0	
-assets/game_cards/silver_gbc.png	blob	100644	370307		binary		PENDING			0	
-assets/game_cards/soulsilver_nds.png	blob	100644	349164		binary		PENDING			0	
-assets/game_cards/yellow_gb.png	blob	100644	481547		binary		PENDING			0	
-assets/icon.jpg	blob	100644	22601		binary		PENDING			0	
-assets/recovery_overrides/README.md	blob	100644	1058		unknown		PENDING			0	
-assets/screenshots/0.jpg	blob	100644	194238		binary		PENDING			0	
-assets/screenshots/1.jpg	blob	100644	209665		binary		PENDING			0	
-assets/screenshots/10.jpg	blob	100644	155134		binary		PENDING			0	
-assets/screenshots/11.jpg	blob	100644	171074		binary		PENDING			0	
-assets/screenshots/12.jpg	blob	100644	172022		binary		PENDING			0	
-assets/screenshots/13.jpg	blob	100644	192992		binary		PENDING			0	
-assets/screenshots/2.jpg	blob	100644	116481		binary		PENDING			0	
-assets/screenshots/3.jpg	blob	100644	127772		binary		PENDING			0	
-assets/screenshots/4.jpg	blob	100644	123560		binary		PENDING			0	
-assets/screenshots/5.jpg	blob	100644	135816		binary		PENDING			0	
-assets/screenshots/6.jpg	blob	100644	95780		binary		PENDING			0	
-assets/screenshots/7.jpg	blob	100644	103257		binary		PENDING			0	
-assets/screenshots/8.jpg	blob	100644	83436		binary		PENDING			0	
-assets/screenshots/9.jpg	blob	100644	93360		binary		PENDING			0	
+.gitignore	blob	100644	730	repository/build metadata	text		AUDITED			0	
+.gitmodules	blob	100644	105	repository/build metadata	text		AUDITED			0	
+CURRENT_STATUS.md	blob	100644	4217	repository/build metadata	text		AUDITED			0	
+CppProperties.json	blob	100644	1122	repository/build metadata	text		AUDITED			1	yes
+LICENSE	blob	100644	34523	repository/build metadata	text		AUDITED			0	
+Makefile	blob	100644	17683	repository/build metadata	text		AUDITED			0	
+Makefile.host	blob	100644	409	repository/build metadata	text		AUDITED			0	
+Makefile.host.base	blob	100644	19259	repository/build metadata	text		AUDITED			1	yes
+Makefile.host.classic_inventory	blob	100644	1880	repository/build metadata	text		AUDITED			0	
+Makefile.host.cleanup3	blob	100644	6680	repository/build metadata	text		AUDITED			0	
+Makefile.host.editor	blob	100644	13297	repository/build metadata	text		AUDITED			0	
+Makefile.host.gen4	blob	100644	6863	repository/build metadata	text		AUDITED			0	
+Makefile.host.gsc	blob	100644	8509	repository/build metadata	text		AUDITED			0	
+Makefile.host.hardware-fixes	blob	100644	20142	repository/build metadata	text		AUDITED			0	
+Makefile.host.machine	blob	100644	760	repository/build metadata	text		AUDITED			0	
+Makefile.host.shared-editor	blob	100644	2994	repository/build metadata	text		AUDITED			0	
+Makefile.host.source-instances	blob	100644	1095	repository/build metadata	text		AUDITED			0	
+Makefile.host.standalone	blob	100644	1457	repository/build metadata	text		AUDITED			0	
+PHILOSOPHY.md	blob	100644	1093	repository/build metadata	text		AUDITED			0	
+PKSE.sln	blob	100644	1032	repository/build metadata	text		AUDITED			1	yes
+PKSE.vcxproj	blob	100644	14698	repository/build metadata	text		AUDITED			1	yes
+PKSE.vcxproj.filters	blob	100644	23567	repository/build metadata	text		AUDITED			1	yes
+PKSE.vcxproj.user	blob	100644	165	repository/build metadata	text		AUDITED			0	
+PROJECT_STATUS.md	blob	100644	4030	repository/build metadata	text		AUDITED			0	
+README.md	blob	100644	13599	repository/build metadata	text		AUDITED			1	yes
+assets/banner.png	blob	100644	714084	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/README.md	blob	100644	2883	asset provenance	text		AUDITED			0	
+assets/game_cards/blue_gb.png	blob	100644	570913	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/crystal_gbc.png	blob	100644	427867	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/diamond_nds.png	blob	100644	344416	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/emerald_gba.png	blob	100644	469902	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/firered_gba.png	blob	100644	522140	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/gold_gbc.png	blob	100644	448661	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/heartgold_nds.png	blob	100644	407072	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/leafgreen_gba.png	blob	100644	519106	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/manifest.json	blob	100644	4892	asset provenance	text		AUDITED			0	
+assets/game_cards/pearl_nds.png	blob	100644	347156	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/platinum_nds.png	blob	100644	369346	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/red_gb.png	blob	100644	478309	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/ruby_gba.png	blob	100644	455614	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/sapphire_gba.png	blob	100644	479223	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/silver_gbc.png	blob	100644	370307	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/soulsilver_nds.png	blob	100644	349164	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/yellow_gb.png	blob	100644	481547	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/icon.jpg	blob	100644	22601	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/recovery_overrides/README.md	blob	100644	1058	repository/build metadata	text		AUDITED			0	
+assets/screenshots/0.jpg	blob	100644	194238	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/1.jpg	blob	100644	209665	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/10.jpg	blob	100644	155134	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/11.jpg	blob	100644	171074	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/12.jpg	blob	100644	172022	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/13.jpg	blob	100644	192992	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/2.jpg	blob	100644	116481	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/3.jpg	blob	100644	127772	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/4.jpg	blob	100644	123560	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/5.jpg	blob	100644	135816	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/6.jpg	blob	100644	95780	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/7.jpg	blob	100644	103257	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/8.jpg	blob	100644	83436	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/screenshots/9.jpg	blob	100644	93360	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 docs/ARCHITECTURE.md	blob	100644	11613		unknown		PENDING			0	
 docs/AUDIT_STATUS_2026-09-23.md	blob	100644	145052		unknown		PENDING			0	
 docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md	blob	100644	14081		unknown		PENDING			0	
@@ -421,11 +421,11 @@ nanovg/nanovg_gl.h	blob	100644	46912		unknown		PENDING			0
 nanovg/nanovg_gl_impl.c	blob	100644	315		unknown		PENDING			0	
 nanovg/nanovg_gl_utils.h	blob	100644	4807		unknown		PENDING			0	
 nanovg/stb_truetype.h	blob	100644	195646		unknown		PENDING			0	
-recovery/RECOVERY_STATE.json	blob	100644	2658		unknown		PENDING			0	
-recovery/assets_snapshot/README.md	blob	100644	989		unknown		PENDING			0	
-recovery/assets_snapshot/manifest.json	blob	100644	1218		unknown		PENDING			0	
-recovery/assets_snapshot/romfs-recovery.tar.part000	blob	100644	83886080		unknown		PENDING			0	
-recovery/assets_snapshot/romfs-recovery.tar.part001	blob	100644	69765120		unknown		PENDING			0	
+recovery/RECOVERY_STATE.json	blob	100644	2658	recovery metadata	text		AUDITED			1	yes
+recovery/assets_snapshot/README.md	blob	100644	989	recovery metadata	text		AUDITED			1	yes
+recovery/assets_snapshot/manifest.json	blob	100644	1218	recovery metadata	text		AUDITED			0	
+recovery/assets_snapshot/romfs-recovery.tar.part000	blob	100644	83886080	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+recovery/assets_snapshot/romfs-recovery.tar.part001	blob	100644	69765120	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 src/Conversion/Convert.cpp	blob	100644	91547		unknown		PENDING			0	
 src/Conversion/RouteEvidence.cpp	blob	100644	31361		unknown		PENDING			0	
 src/Encryption/Encryption.cpp	blob	100644	5023		unknown		PENDING			0	
