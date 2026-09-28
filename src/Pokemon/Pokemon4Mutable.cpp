@@ -85,14 +85,16 @@ std::optional<Pokemon4Mutable> Pokemon4Mutable::createStored(
         (static_cast<uint32_t>(defaults.tid) << 16) ^
         static_cast<uint32_t>(defaults.sid) ^
         (static_cast<uint32_t>(defaults.species) * 0x45D9F3Bu);
+    bool foundPid = false;
     for (int i = 0; i < 1000000; ++i) {
         pid = pid * 0x41C64E6Du + 0x00006073u;
         if ((pid & 1u) != 0) continue;
         const uint16_t psv = static_cast<uint16_t>((pid & 0xFFFFu) ^ (pid >> 16));
         if (static_cast<uint16_t>(defaults.tid ^ defaults.sid ^ psv) < 8u) continue;
+        foundPid = true;
         break;
     }
-    if ((pid & 1u) != 0) {
+    if (!foundPid) {
         if (error) *error = "Gen IV Create could not derive a stable default PID";
         return std::nullopt;
     }
@@ -355,6 +357,82 @@ bool Pokemon4Mutable::writeTextPreservingTrash(
     }
     std::copy_n(encoded.begin(), static_cast<std::ptrdiff_t>(copyBytes),
                 decrypted_.begin() + static_cast<std::ptrdiff_t>(offset));
+    return true;
+}
+
+bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
+    if (!valid_ || value == 0 || value > 493) return false;
+    if (value == species()) return true;
+
+    const auto& target = personalFor(sourceGroup_, value, 0);
+    if (target.hp == 0) return false;
+
+    const auto backup = decrypted_;
+    const uint8_t oldLevel = level();
+    const uint8_t oldNature = nature();
+    const bool oldShiny = shiny();
+    const uint8_t oldGender = gender();
+    const uint8_t oldAbilitySlot = abilitySlot();
+    const bool nicknamed = (u32At(0x38) & 0x80000000u) != 0;
+
+    write16(0x08, value);
+    // A cross-species edit starts at the base form unless a later audited Form action
+    // explicitly selects another native form.
+    write8(0x40, static_cast<uint8_t>(byteAt(0x40) & 0x07u));
+
+    const uint8_t fixed = fixedGender(target.genderRatio);
+    int wantedGender = -1;
+    if (fixed != 3) {
+        wantedGender = fixed;
+    } else if (oldGender <= 1) {
+        wantedGender = oldGender;
+    } else {
+        wantedGender = static_cast<int>(genderForPid(pid()));
+    }
+
+    const bool targetDual =
+        target.ability2 != 0 && target.ability2 != target.ability1;
+    const int wantedAbilityBit = targetDual ? static_cast<int>(oldAbilitySlot) : -1;
+
+    // Preserve Level across growth-rate changes, and preserve Nature/Shiny plus Gender
+    // where the target species permits it. PID search is bounded and rollback-safe.
+    write32(0x10, getExpForLevel(oldLevel, target.growthRate));
+    if (!rerollPid(oldShiny ? 1 : 0, wantedGender, oldNature, wantedAbilityBit)) {
+        decrypted_ = backup;
+        return false;
+    }
+
+    const uint8_t actualGender = genderForPid(pid());
+    write8(0x40, static_cast<uint8_t>(
+        (byteAt(0x40) & 0xF9u) | ((actualGender & 3u) << 1)));
+    const uint8_t slot = targetDual ? static_cast<uint8_t>(pid() & 1u) : 0;
+    const uint16_t abilityId = slot == 0 ? target.ability1 : target.ability2;
+    if (abilityId == 0 || abilityId > 0xFFu) {
+        decrypted_ = backup;
+        return false;
+    }
+    write8(0x15, static_cast<uint8_t>(abilityId));
+
+    if (!nicknamed) {
+        const auto nameIndex = Names::languageIndexFor(
+            static_cast<Enums::LanguageID>(language()));
+        const auto speciesName = Utils::utf8ToUtf16(
+            Names::getSpeciesNameLocalized(value, nameIndex));
+        if (!writeTextPreservingTrash(0x48, 11, 10, speciesName)) {
+            decrypted_ = backup;
+            return false;
+        }
+    }
+
+    refreshPartyDerivedData();
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid() || verify.empty() || verify.species() != value ||
+        verify.form() != 0 || verify.nature() != oldNature ||
+        verify.shiny() != oldShiny || verify.gender() != actualGender ||
+        verify.ability() != abilityId) {
+        decrypted_ = backup;
+        return false;
+    }
     return true;
 }
 
