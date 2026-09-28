@@ -4,6 +4,7 @@
 #include "Pokemon/Pokemon4Mutable.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Names/Gen4HeldItemCatalog.h"
+#include "Names/MoveInfo.h"
 #include "Utils/Gen4TextCodec.h"
 
 #include <algorithm>
@@ -115,7 +116,11 @@ void testNoOpAndSimpleFields() {
     assert(editable->setFriendship(123));
     assert(editable->setEV(0, 252));
     assert(editable->setIV(5, 31));
+    assert(Names::getMoveBasePP(105, Enums::GameVersion::PT) == 10); // Recover in Gen IV
+    assert(Names::getMoveBasePP(467, Enums::GameVersion::PT) == 5);  // Shadow Force
     assert(editable->setMove(1, 237));
+    assert(editable->pp()[1] == Names::getMoveBasePP(237, Enums::GameVersion::PT));
+    assert(editable->ppUps()[1] == 0);
     assert(editable->setPP(1, 12));
     assert(editable->setPPUps(1, 3));
     assert(editable->setPokerus(0x43));
@@ -350,7 +355,15 @@ void testCatalogBackedFieldValidation() {
     assert(!pt->setHeldItem(420)); // HM01 is not a holdable PK4 item.
     assert(!pt->setHeldItem(65535));
     assert(pt->setMove(0, 1));   // Pound exists in Gen IV.
+    assert(pt->pp()[0] == 35 && pt->ppUps()[0] == 0);
+    assert(pt->setPPUps(0, 3));
+    assert(pt->setPP(0, 56));
+    assert(pt->setMove(0, 105)); // Recover is 10 PP in Gen IV, not modern fallback PP.
+    assert(pt->pp()[0] == 10 && pt->ppUps()[0] == 0);
+    assert(pt->setMove(0, 0));
+    assert(pt->moves()[0] == 0 && pt->pp()[0] == 0 && pt->ppUps()[0] == 0);
     assert(pt->setMove(0, 467)); // Shadow Force is the final native Gen IV move.
+    assert(pt->pp()[0] == 5 && pt->ppUps()[0] == 0);
     const auto nativeMoveBytes = pt->encryptedBytes();
     assert(!pt->setMove(0, 468)); // Hone Claws begins Generation V.
     assert(pt->encryptedBytes() == nativeMoveBytes);
@@ -411,6 +424,7 @@ void testNativeStoredCreateDraft() {
         assert(parsed.originalTrainerGender() == 1);
         assert(parsed.nickname() == u"PIPLUP");
         assert(!parsed.isNicknamed());
+        assert(draft->nickname() == u"PIPLUP");
         assert(parsed.heldItem() == 0);
         assert(parsed.ballDPPt() == (tc.group == Enums::GameVersion::HGSS ? 0 : 4));
         if (tc.group == Enums::GameVersion::HGSS) assert(parsed.ballHGSS() == 4);
