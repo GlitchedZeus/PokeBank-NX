@@ -475,6 +475,12 @@ bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
     }
     write8(0x15, static_cast<uint8_t>(abilityId));
 
+    // Cross-species edits intentionally start at base Form. Do not carry an item
+    // across the Species change if that item would immediately force a non-base form.
+    if ((value == 487 && heldItem() == 112) ||
+        (value == 493 && isGen4ArceusPlate(heldItem())))
+        write16(0x0A, 0);
+
     if (!nicknamed) {
         const auto speciesName = gen4DefaultSpeciesName(value, language());
         if (!writeTextPreservingTrash(0x48, 11, 10, speciesName)) {
