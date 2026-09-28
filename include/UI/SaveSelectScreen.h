@@ -33,6 +33,7 @@ namespace UI {
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return exitRequested; }
+        bool hasRequestedAppExit() const { return appExitRequested; }
 
         bool hasSelectedTitle() const { return titleSelected; }
         AccountUid getSelectedUser() const { return selectedUserUid; }
@@ -68,7 +69,8 @@ namespace UI {
         int titleIndex = 0;
 
         bool titleSelected = false;
-        bool exitRequested = false;
+        bool exitRequested = false;     // return from Games & Sources to product Home
+        bool appExitRequested = false;  // explicit Options -> Exit PokeBank NX
         enum class Overlay { None, Options, Help, LegacyInstances, LegacyAssignment, LegacyDetails,
                              Gen4Setup, Gen4Candidates };
         Overlay overlay = Overlay::None;

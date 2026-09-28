@@ -1,0 +1,102 @@
+name: PokeBank NX Product UI Native
+
+on:
+  pull_request:
+    branches:
+      - integration/gen4-polish-hardware-20260928
+    paths:
+      - 'include/UI/AppShellModel.h'
+      - 'include/UI/AppShellScreen.h'
+      - 'src/UI/AppShellScreen.cpp'
+      - 'src/UI/UI.cpp'
+      - 'include/UI/SaveSelectScreen.h'
+      - 'src/UI/SaveSelectScreen.cpp'
+      - 'Makefile.host'
+      - 'Makefile.host.product-ui'
+      - 'tests/test_app_shell_model.cpp'
+      - '.github/workflows/product-ui-native.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+
+jobs:
+  native:
+    name: product shell devkitA64 compile/link/package
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout exact application head
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 2
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact application identity and product-shell model
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git diff --check HEAD^ HEAD
+          make -f Makefile.host product-ui-test
+          echo "APPLICATION_SHA=$EXPECTED_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Recover complete RomFS and run asset preflight
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py)
+          rm -rf romfs
+          cp -a recovery-work/romfs romfs
+          for f in gold_gbc silver_gbc crystal_gbc diamond_nds pearl_nds platinum_nds heartgold_nds soulsilver_nds; do
+            test -s "assets/game_cards/$f.png"
+            cp "assets/game_cards/$f.png" "romfs/game_cards/$f.png"
+          done
+          python3 tools/check_device_assets.py
+
+      - name: Clean devkitA64 compile and link
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            : "${DEVKITPRO:?DEVKITPRO is not set}"
+            git config --global --add safe.directory /work
+            make clean || true
+            make -j1
+            test -s PokeBankNX.elf
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee product-ui-native-build.log
+
+      - name: Package product UI hardware artifact
+        run: |
+          set -euo pipefail
+          short="$(git rev-parse --short=8 HEAD)"
+          out="product-ui-artifact"
+          mkdir -p "$out"
+          cp PokeBankNX.nro "$out/PokeBank-NX-Product-UI-$short.nro"
+          sha256sum "$out/PokeBank-NX-Product-UI-$short.nro" > "$out/SHA256SUMS.txt"
+          printf 'APPLICATION_SHA=%s\nTREE_SHA=%s\n' "$(git rev-parse HEAD)" "$(git rev-parse 'HEAD^{tree}')" > "$out/BUILD_IDENTITY.txt"
+
+      - name: Upload product UI NRO and native log
+        uses: actions/upload-artifact@v4
+        with:
+          name: PokeBank-NX-Product-UI-${{ github.run_id }}
+          path: |
+            product-ui-artifact/
+            product-ui-native-build.log
+          if-no-files-found: error
+          retention-days: 30

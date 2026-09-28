@@ -7,6 +7,7 @@
 #include "Globals.h"
 #include "Save/GetSaveFileContents.h"
 #include "UI/UI.h"
+#include "UI/AppShellScreen.h"
 #include "UI/SaveSelectScreen.h"
 #include "UI/BackupSelectionScreen.h"
 #include "UI/TrainerViewScreen.h"
@@ -88,50 +89,75 @@ namespace UI {
     }
 
     void UIManager::run() {
-        while (appletMainLoop() && running) {
-            handleSaveSelection();
-        }
-    }
-
-    // Combined JKSV-style user + title picker: pick a user's avatar and one of their supported
-    // Pokemon game icons in a single screen, then go straight to backup selection.
-    void UIManager::handleSaveSelection() {
-        SaveSelectScreen selectScreen(legacyFRLGSources, legacySourceBindings);
+        AppShellScreen shell;
         fb.startFade();
 
-        while (appletMainLoop() && running && !selectScreen.shouldExit()) {
+        while (appletMainLoop() && running && !shell.shouldExit()) {
             padUpdate(&pad);
             touch.update();
-            selectScreen.update(pad, touch);
-            selectScreen.draw(fb);
+            shell.update(pad, touch);
+            shell.draw(fb);
             fb.drawFadeOverlay();
             fb.flush();
 
-            if (selectScreen.hasSelectedTitle()) {
-                if (selectScreen.getSelectedSourceKind() ==
-                    SaveSelectScreen::SelectedSourceKind::RetroArchFRLG) {
-                    std::string error;
-                    if (!handleLegacyFRLGView(selectScreen.getSelectedUser(),
-                                              selectScreen.getSelectedLegacySourceIndex(),
-                                              selectScreen.getSelectedGameId(), error))
-                        logErrorToFile("Legacy emulator source refused open", error.c_str());
-                } else if (selectScreen.getSelectedSourceKind() ==
-                           SaveSelectScreen::SelectedSourceKind::Gen4AssignedFile) {
-                    std::string error;
-                    if (!handleGen4View(selectScreen.getSelectedUser(),
-                                        selectScreen.getSelectedGameId(), error))
-                        logErrorToFile("Generation IV assigned source refused open", error.c_str());
-                } else {
-                    handleBackupSelection(selectScreen.getSelectedUser(),
-                                          selectScreen.getSelectedTitleId(),
-                                          selectScreen.getSelectedTitleName());
-                }
-                // Back from backup/trainer -> return so run() rebuilds the picker (re-lists saves).
-                return;
+            if (shell.consumeAction() == AppShellScreen::Action::Games) {
+                handleSaveSelection();
+                if (running) fb.startFade();
             }
         }
 
-        running = false;   // + pressed -> exit the app
+        if (shell.shouldExit()) running = false;
+    }
+
+    // Games & Sources is now one destination inside the product shell. B returns to Home, while the
+    // explicit "Exit PokeBank NX" option still exits the application. Returning from a loaded
+    // backup/trainer rebuilds this picker exactly as before so newly-created saves stay visible.
+    void UIManager::handleSaveSelection() {
+        while (running) {
+            SaveSelectScreen selectScreen(legacyFRLGSources, legacySourceBindings);
+            fb.startFade();
+            bool rebuildPicker = false;
+
+            while (appletMainLoop() && running && !selectScreen.shouldExit()) {
+                padUpdate(&pad);
+                touch.update();
+                selectScreen.update(pad, touch);
+                selectScreen.draw(fb);
+                fb.drawFadeOverlay();
+                fb.flush();
+
+                if (selectScreen.hasSelectedTitle()) {
+                    if (selectScreen.getSelectedSourceKind() ==
+                        SaveSelectScreen::SelectedSourceKind::RetroArchFRLG) {
+                        std::string error;
+                        if (!handleLegacyFRLGView(selectScreen.getSelectedUser(),
+                                                  selectScreen.getSelectedLegacySourceIndex(),
+                                                  selectScreen.getSelectedGameId(), error))
+                            logErrorToFile("Legacy emulator source refused open", error.c_str());
+                    } else if (selectScreen.getSelectedSourceKind() ==
+                               SaveSelectScreen::SelectedSourceKind::Gen4AssignedFile) {
+                        std::string error;
+                        if (!handleGen4View(selectScreen.getSelectedUser(),
+                                            selectScreen.getSelectedGameId(), error))
+                            logErrorToFile("Generation IV assigned source refused open", error.c_str());
+                    } else {
+                        handleBackupSelection(selectScreen.getSelectedUser(),
+                                              selectScreen.getSelectedTitleId(),
+                                              selectScreen.getSelectedTitleName());
+                    }
+                    rebuildPicker = true;
+                    break;
+                }
+            }
+
+            if (!running) return;
+            if (selectScreen.hasRequestedAppExit()) {
+                running = false;
+                return;
+            }
+            if (selectScreen.shouldExit()) return;  // B -> product Home.
+            if (!rebuildPicker) return;
+        }
     }
 
     void UIManager::handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName) {

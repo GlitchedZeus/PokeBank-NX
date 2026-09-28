@@ -829,6 +829,7 @@ namespace UI {
                     applyTheme(nextThemeMode(g_themeMode));
                     Utils::saveSettings();
                 } else if (optionsIndex == 1) {
+                    appExitRequested = true;
                     exitRequested = true;
                 } else {
                     overlay = Overlay::None;
@@ -882,6 +883,10 @@ namespace UI {
             return;
         }
 
+        if (kDown & HidNpadButton_B) {
+            exitRequested = true;
+            return;
+        }
         if (kDown & HidNpadButton_Plus) {
             overlay = Overlay::Options;
             optionsIndex = 0;
@@ -1097,6 +1102,7 @@ namespace UI {
         if (u && titleIndex >= 0 && titleIndex < static_cast<int>(u->titles.size()) &&
             u->titles[titleIndex].sourceKind == SelectedSourceKind::Gen4AssignedFile)
             homeHints.push_back({"Y", "Source Setup"});
+        homeHints.push_back({"B", "Home"});
         drawNavBar(fb, homeHints);
 
         if (overlay == Overlay::LegacyInstances && u && titleIndex >= 0 &&
@@ -1251,7 +1257,8 @@ namespace UI {
                 "X   Assign an unassigned legacy save to this profile",
                 "Y   Add or repair sources for the focused Gen IV game",
                 "+   Options and appearance",
-                "-   Help for the current screen"
+                "-   Help for the current screen",
+                "B   Return to PokeBank NX Home"
             });
         } else if (overlay == Overlay::Options) {
             constexpr int w = 560, h = 326, rowH = 64;

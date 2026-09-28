@@ -1,0 +1,19 @@
+# Product-shell model tests are intentionally header-only: they prove navigation and honest
+# capability classification without pulling libnx/UI rendering into the host suite.
+PRODUCT_UI_TESTS := $(HOST_BUILD)/test_app_shell_model
+PRODUCT_UI_SANITIZE_TESTS := $(HOST_BUILD)/test_app_shell_model_sanitize
+
+HOST_TESTS += $(PRODUCT_UI_TESTS)
+HOST_SANITIZE_TESTS += $(PRODUCT_UI_SANITIZE_TESTS)
+
+.PHONY: product-ui-test
+product-ui-test: $(PRODUCT_UI_TESTS)
+	@set -e; for test_bin in $(PRODUCT_UI_TESTS); do ./$$test_bin; done
+
+$(HOST_BUILD)/test_app_shell_model: tests/test_app_shell_model.cpp include/UI/AppShellModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_app_shell_model.cpp -o $@
+
+$(HOST_BUILD)/test_app_shell_model_sanitize: tests/test_app_shell_model.cpp include/UI/AppShellModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_app_shell_model.cpp -o $@
