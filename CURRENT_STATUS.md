@@ -6,25 +6,30 @@ GitHub is authoritative. Re-fetch live heads before new work and preserve newer 
 
 ## Active development line
 
-### PR #87 — Gen IV shared staged Pokémon editor
+### PR #90 — combined Gen IV editor + v1 polish hardware candidate
 
 State:
 **OPEN / DRAFT / NOT MERGED**
 
 Branch:
-**feature/gen4-shared-pokemon-editor-20260928**
+**integration/gen4-polish-hardware-20260928**
 
 Base:
 **audit/full-project-hardening-20260923**
 
 Current exact head:
-**6e9f54f2a9a0cea79f14942912ba76aaca3fa0ed**
+**84dae170deb2756d9b80aec32bf8ad512ce17c31**
 
-Tracking issue:
-**#86 — G4-03 Gen IV shared staged Pokémon editor**
+Tree:
+**7733004cd7b4aebffc3ba687ad0f7df22eea8aa8**
+
+Underlying work:
+- PR #87 — Gen IV shared staged Pokémon editor
+- frozen QoL snapshot from PR #88 through **86002169d3fec073fb8454ee794c85e07b5a3d9a**
+- independent-audit remediations
 
 Current milestone:
-**Party + boxed PK4 View/Edit through the shared Pokémon editor, correcting the first hardware-rejected route**
+**one combined Party + Box Gen IV hardware retest NRO with current integrated polish**
 
 ### Accepted base checkpoint
 
@@ -123,63 +128,45 @@ Still intentionally deferred:
 
 ## Current exact-head verification
 
-The previous automated-green candidate:
+The first Gen IV editor candidate at:
 
 **5e79e9f8e038f2f940070edd92a70b692df7a7b5**
 
-was tested on physical Switch hardware and **REJECTED**.
+was physically tested and **REJECTED** because a party-only Platinum save could not reach Edit and Party View fell through to the legacy read-only presentation.
 
-Observed failure:
-- the Platinum DraStic save contained one Party Pokémon and zero boxed Pokémon;
-- the first milestone only exposed boxed Edit, so there was no editable target;
-- Party View fell through to the older generic READ ONLY details surface instead of the shared editor.
+The current combined retest candidate is:
 
-Current corrected application head:
+- Application SHA: **84dae170deb2756d9b80aec32bf8ad512ce17c31**
+- Tree SHA: **7733004cd7b4aebffc3ba687ad0f7df22eea8aa8**
+- Artifact: **Gen4-SharedEditor-Candidate-84dae170**
+- Artifact ID: **10986964856**
+- NRO: **PokeBank-NX-Gen4-SharedEditor-84dae170.nro**
+- NRO SHA-256: **313b6ed5f209b0fba797deee010d73b753d25294dd3d1c39f279c61df13fe6de**
+- Artifact ZIP SHA-256: **50c2fd1051f0b35ab1eadb5dec3d5f5685389d5b61e45154d5ebd7bc419c93e1**
 
-**6e9f54f2a9a0cea79f14942912ba76aaca3fa0ed**
+This candidate includes:
+- Party + Box shared View/Edit;
+- the party-only Platinum reachability fix;
+- staged dirty B/+ exit protection;
+- independent-audit fixes for immutable-source dirty modal lifetime, Shedinja HP, quarantined-record refresh and Gen IV sixth-stat focus;
+- permanent audit regressions, including the DP/Pt/HGSS mixed General/Storage partition mutation-footprint matrix;
+- integrated v1 polish through PR #88 snapshot **86002169d3fec073fb8454ee794c85e07b5a3d9a**.
 
-Tree observed by the focused candidate gate:
+Exact-head gates:
+- Host Tests #1472 — **PASS**
+- Host ASan/UBSan — **PASS**
+- Gen IV Candidate Gate #36 — **PASS**
+- v1 Polish Native #20 — **PASS**
+- Packed Move #240 — **PASS**
+- Packed Multi-Move #239 — **PASS**
 
-**42b6f13e299f1ec5306f75844ae3f90718676a30**
-
-Confirmed PASS on this corrected head:
-- Gen IV exact-format provider;
-- mutable PK4 core;
-- staged Party + Box editor regression;
-- shared hardware-surface routing contract;
-- strict Gen IV read-only foundation;
-- focused ASan/UBSan;
-- real devkitA64 shared UI compile;
-- Gen I/II Packed Move #225;
-- Gen I/II Packed Multi-Move #224.
-
-All required automated gates are now green.
-
-Exact corrected retest candidate:
-
-- Application SHA: **6e9f54f2a9a0cea79f14942912ba76aaca3fa0ed**
-- Tree SHA: **42b6f13e299f1ec5306f75844ae3f90718676a30**
-- Artifact: **Gen4-SharedEditor-Candidate-6e9f54f2**
-- Artifact ID: **10963476019**
-- NRO: **PokeBank-NX-Gen4-SharedEditor-6e9f54f2.nro**
-- NRO SHA-256: **9f3e0ccccfaaf3f3b219820c688b9aa30504d340d115c805cf11a099e49b7c51**
-- Downloaded artifact ZIP SHA-256: **7285c2fd894241d4d9b63154bdb50a3ed311b849e73a7073c8293a186ecf8d81**
-
-Exact-head verification:
-- Candidate Gate #21: **PASS**
-- full devkitA64 compile/link/package: **PASS**
-- Host Tests #1449 full suite: **PASS**
-- Host ASan/UBSan: **PASS**
-- Packed Move #225: **PASS**
-- Packed Multi-Move #224: **PASS**
-
-The downloaded artifact identity and NRO hash were independently verified.
+Artifact identity and NRO hash were independently verified.
 
 **AUTOMATED GATES: PASS**
 
-**DEVICE ACCEPTANCE: PENDING OWNER RETEST**
+**DEVICE ACCEPTANCE: PENDING OWNER PHYSICAL SWITCH TEST**
 
-The same party-only Platinum save should be used for the retest.
+Later PR #88 QoL commits are intentionally deferred to the next integration cycle so this candidate remains reproducible.
 
 ### Save-session backup / injection direction
 
@@ -238,17 +225,24 @@ DraStic `.dsv` cartridge backups are supported read only. DraStic `.dss` savesta
 
 ## Next gate
 
-Owner retest of the exact Actions-built NRO above.
+Owner physical Switch test of the exact PR #90 NRO above.
 
-Retest the same Platinum DraStic save with one Party Pokémon and zero boxed Pokémon:
+Use the same Platinum DraStic save that previously showed one Party Pokémon and zero boxed Pokémon.
 
-1. Party → Piplup → A opens Generation IV Actions;
-2. View uses the shared Pokémon editor presentation, not the old generic READ ONLY page;
-3. Edit is reachable for the Party Pokémon;
-4. stage a small supported edit and Keep it;
-5. repeated B cannot silently discard staged save-session changes;
-6. external .dsv remains unchanged in this build;
-7. only after hardware acceptance proceed to Create or Issue #89 injection implementation.
+Verify:
+
+1. Party → Piplup → A opens Generation IV Actions.
+2. View uses the shared Pokémon editor presentation.
+3. Edit is reachable for the Party Pokémon.
+4. Stage and Keep a supported edit.
+5. Visible values refresh correctly after Keep.
+6. Repeated B cannot silently discard staged changes.
+7. The dirty exit dialog survives a neutral frame and remains actionable.
+8. DraStic source .dsv remains unchanged in this build.
+9. Integrated Games/Settings/controller polish is present.
+10. Themes remain readable and NRO metadata identifies PokeBank NX correctly.
+
+Do not mark device accepted until the owner explicitly passes this exact NRO.
 
 ## Canonical project documents
 
