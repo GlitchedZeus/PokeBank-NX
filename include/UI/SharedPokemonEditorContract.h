@@ -330,10 +330,8 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Ball:
             case FieldIdentity::MetLevel:
             case FieldIdentity::MetLocation:
-                return FieldAccess::Editable;
-            // Alternate Form remains read-only until species-specific Gen IV form
-            // availability/side effects are audited. Species itself is now transactional.
             case FieldIdentity::Form:
+                return FieldAccess::Editable;
             case FieldIdentity::OriginalTrainer:
             case FieldIdentity::TrainerId:
             case FieldIdentity::SecretId:
@@ -414,8 +412,10 @@ constexpr Layout layoutFor(Generation generation, bool crystal = false) noexcept
     // capabilities in DETAILS. VALUES stays stat-focused: five DV/Stat Exp rows + Shiny/Gender.
     if (generation == Generation::Gen2)
         return {/*details*/static_cast<uint8_t>(crystal ? 13 : 9), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
-    if (generation == Generation::Gen3 || generation == Generation::Gen4)
+    if (generation == Generation::Gen3)
         return {/*details*/15, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
+    if (generation == Generation::Gen4)
+        return {/*details*/16, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
     return {/*details*/6, /*values*/6, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
 
