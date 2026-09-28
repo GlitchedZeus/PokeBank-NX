@@ -17,6 +17,7 @@ trainer = read("src/UI/TrainerViewScreenBase.inc")
 save_select = read("src/UI/SaveSelectScreen.cpp")
 chrome = read("include/UI/ScreenChrome.h")
 makefile = read("Makefile")
+system_icons = read("src/UI/SystemIcons.cpp")
 
 # Settings owns build/safety identity; the global nav bar owns controls.
 require("A: toggle / info" not in trainer,
@@ -40,6 +41,14 @@ require("locationLabel" not in card_draw,
         "game cards must not mix source-count/path metadata conventions")
 require("Save Instances owns source count, provider and path metadata" in card_draw,
         "Save Instances must remain the documented metadata owner")
+
+# Optional artwork failure must degrade to a deliberate shared placeholder rather than a blank card.
+require("IconImage makeGameCardFallback()" in system_icons,
+        "game-card artwork needs a generated missing-art fallback")
+require("if (systemIcon.valid()) return systemIcon;" in system_icons,
+        "installed-title icons must fall through to packaged/fallback artwork on decode failure")
+require("img = makeGameCardFallback();" in system_icons,
+        "missing/corrupt packaged artwork must activate the generated fallback")
 
 # The shared legend is one implementation for all screens.
 for token in (

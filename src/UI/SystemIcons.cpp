@@ -46,6 +46,60 @@ namespace UI {
             img.height = h;
             return img;
         }
+
+        // Deliberate last-resort card art for optional/missing resources. The surrounding game card
+        // still prints the exact release/platform label, so this only needs to prevent a blank hole.
+        // Allocate with malloc because stb_image_free uses the matching free() path by default.
+        IconImage makeGameCardFallback() {
+            IconImage img;
+            constexpr int w = 96, h = 96;
+            constexpr int cx = w / 2, cy = h / 2, r = 32;
+            constexpr int borderR = r - 2, buttonR = 10, buttonInnerR = 6;
+
+            auto* rgba = static_cast<unsigned char*>(std::malloc(static_cast<size_t>(w * h * 4)));
+            if (!rgba) return img;
+
+            for (int i = 0; i < w * h; ++i) {
+                rgba[i * 4 + 0] = 0;
+                rgba[i * 4 + 1] = 0;
+                rgba[i * 4 + 2] = 0;
+                rgba[i * 4 + 3] = 0;
+            }
+
+            for (int y = 0; y < h; ++y) {
+                for (int x = 0; x < w; ++x) {
+                    const int dx = x - cx, dy = y - cy;
+                    const int d2 = dx * dx + dy * dy;
+                    if (d2 > r * r) continue;
+
+                    unsigned char red = y < cy ? 214 : 246;
+                    unsigned char green = y < cy ? 70 : 246;
+                    unsigned char blue = y < cy ? 78 : 248;
+
+                    const bool outerBand = d2 >= borderR * borderR;
+                    const bool centerBand = std::abs(y - cy) <= 2;
+                    const bool button = d2 <= buttonR * buttonR;
+                    const bool buttonInner = d2 <= buttonInnerR * buttonInnerR;
+                    if (outerBand || centerBand || button) {
+                        red = 28; green = 29; blue = 34;
+                    }
+                    if (buttonInner) {
+                        red = 246; green = 246; blue = 248;
+                    }
+
+                    const size_t p = static_cast<size_t>((y * w + x) * 4);
+                    rgba[p + 0] = red;
+                    rgba[p + 1] = green;
+                    rgba[p + 2] = blue;
+                    rgba[p + 3] = 255;
+                }
+            }
+
+            img.data = rgba;
+            img.width = w;
+            img.height = h;
+            return img;
+        }
     }
 
     const IconImage& SystemIcons::userIcon(AccountUid uid) {
@@ -92,16 +146,27 @@ namespace UI {
     }
 
     const IconImage& SystemIcons::gameCardIcon(std::string_view gameId, u64 titleId) {
-        if (titleId != 0) return titleIcon(titleId);
+        // Installed titles prefer Nintendo's control-data icon. If that optional image cannot be
+        // decoded, keep going: exact game identity can still resolve the packaged release artwork.
+        if (titleId != 0) {
+            const IconImage& systemIcon = titleIcon(titleId);
+            if (systemIcon.valid()) return systemIcon;
+        }
 
-        const std::string key(gameId);
+        const std::string key = gameId.empty() ? std::string("__missing_game_card__")
+                                               : std::string(gameId);
         auto it = s_gameCardCache.find(key);
         if (it != s_gameCardCache.end()) return it->second;
 
         IconImage img;
         const std::string_view path = PokeVault::Games::gameCardArtworkPath(gameId);
         if (!path.empty()) img = decodeFileToRGBA(path);
-        if (!img.valid()) logErrorToFile("SystemIcons: failed to load packaged game-card artwork");
+        if (!img.valid()) {
+            logErrorToFile("SystemIcons: failed to load packaged game-card artwork; using generated fallback");
+            img = makeGameCardFallback();
+            if (!img.valid())
+                logErrorToFile("SystemIcons: failed to allocate generated game-card fallback");
+        }
         return s_gameCardCache.emplace(key, img).first->second;
     }
 
