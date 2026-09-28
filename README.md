@@ -17,17 +17,17 @@
 
 PokeBank NX is a native Nintendo Switch homebrew application for browsing, preserving and editing Pokémon without requiring a PC or cloud service for normal use.
 
-The project is intentionally conservative with save data. External game and emulator saves are treated as **immutable sources**. Editing is allowed only through PokeBank-owned staged workspaces and exact-format adapters that have passed validation. Unsupported or ambiguous data fails closed instead of being guessed into another format.
+The project is intentionally conservative with save data. Ordinary editing happens only in **PokeBank-owned staged/working copies**; emulator source files are not modified while you edit. Unsupported or ambiguous data fails closed instead of being guessed into another format. A future explicit **Inject Save** workflow (Issue #89) is planned to write a validated edited copy back only after an automatic immutable backup has been verified.
 
 **Last updated:** September 28, 2026
 
-> **Alpha software:** keep independent backups of irreplaceable saves. PokeBank NX deliberately disables live writeback to installed games and emulator source files.
+> **Alpha software:** keep independent backups of irreplaceable saves. Current builds still disable emulator/source injection; Issue #89 tracks automatic backups plus an explicit validated Inject Save transaction for a later milestone.
 
 ---
 
 ## Project status
 
-PokeBank NX currently has a device-accepted Gen I-III shared staged editor, a device-accepted Gen I-IV Save Instances/source-browser foundation, and an active Gen IV boxed Pokémon View/Edit milestone in draft testing.
+PokeBank NX currently has a device-accepted Gen I-III shared staged editor, a device-accepted Gen I-IV Save Instances/source-browser foundation, and an active Gen IV **Party + Box View/Edit** hardware-retest milestone.
 
 | Area | Status |
 |---|---|
@@ -40,7 +40,7 @@ PokeBank NX currently has a device-accepted Gen I-III shared staged editor, a de
 | Provider-neutral Save Instance backend | ✅ Device accepted |
 | Platinum / DraStic .dsv read-only loading | ✅ Hardware tested |
 | FAT32 interruption/recovery harness | ✅ 8 / 8 hardware tests passed |
-| Gen IV boxed Pokémon View/Edit | 🧪 Automated gates pass / hardware test pending |
+| Gen IV Party + Box Pokémon View/Edit | 🧪 Corrected candidate in CI / hardware retest pending |
 | Cross-game True Move | 🔒 Disabled |
 | Live external-source writes | 🔒 Disabled |
 | Master Vault | 🗺️ Planned |
@@ -85,9 +85,9 @@ The active feature line is **PR #87 — G4-03: Gen IV shared staged Pokémon edi
 
 Generation IV already supports strict Trainer, Party, Boxes and Pokémon-detail browsing.
 
-The active G4-03 work adds **boxed Pokémon View/Edit** through the same shared editor used by Gen I-III. An exact Actions-built candidate now exists and all required automated gates pass, but physical Switch acceptance is still required before Gen IV editing can be called device accepted.
+The first G4-03 hardware candidate was **rejected on Switch** because a party-only Platinum save could not reach the editor and Party View fell through to an older generic read-only screen. The corrected work now routes **Party and Box Pokémon** into the shared View/Edit surface and stages both PK4 record types safely. A fresh exact candidate is being verified before the next hardware test.
 
-Gen IV Create, Party mutation, Inventory editing, source writeback and cross-game True Move remain disabled.
+Gen IV Create, Inventory editing, source injection and cross-game True Move remain disabled.
 
 ---
 
@@ -158,9 +158,9 @@ Provider scans are deliberately bounded. PokeBank NX does not recursively crawl 
 
 Permanent project rules:
 
-- original external saves remain immutable;
+- ordinary editing never mutates an external emulator source;
 - installed-game live writes remain disabled;
-- RetroArch, mGBA, Tico, DraStic, melonDS and other emulator sources remain read only;
+- emulator source injection remains disabled in current builds;
 - PokeBank-owned staged workspaces may be edited only where explicitly supported;
 - unknown save variants and exact-game mismatches fail closed;
 - a remembered source may never silently substitute another physical file;
@@ -181,23 +181,23 @@ Draft PR: **#87**
 
 Current scope is deliberately narrow:
 
-- boxed PK4 View/Edit;
+- Party + boxed PK4 View/Edit;
 - shared Gen I-III editor UX reused;
 - exact DP / Platinum / HGSS capability mapping;
 - mutable PK4 serialization using the existing Gen IV crypto/checksum layer;
 - staged save mutation only;
 - strict reparse after commit;
-- Storage CRC refresh;
+- Storage CRC refresh for boxed edits and General-block CRC refresh for Party edits;
 - unrelated-byte preservation;
 - constrained PID-linked edits for Nature, Gender, Shiny and Ability;
-- source-save immutability.
+- source bytes unchanged during ordinary editing;
+- staged dirty-session exit protection so repeated B cannot silently lose work.
 
 Not part of this milestone:
 
 - Gen IV Create;
-- Party mutation;
 - Inventory editing;
-- live source writeback;
+- explicit source injection (tracked separately in Issue #89);
 - cross-game True Move;
 - Gen V;
 - Master Vault.
@@ -253,7 +253,7 @@ multi-provider Save Instances               DEVICE ACCEPTED
         ↓
 provider-neutral source architecture        DEVICE ACCEPTED
         ↓
-Gen IV boxed shared View/Edit               CI CANDIDATE / PR #87
+Gen IV Party + Box shared View/Edit         HARDWARE RETEST / PR #87
         ↓
 Gen IV editor stabilization + hardware pass
         ↓
@@ -262,7 +262,7 @@ Gen IV Create / broader staged features     AFTER EDIT IS PROVEN
 broader v1 hardening
 ~~~
 
-Gen V, Master Vault and live external-source writeback are not current implementation tranches.
+Gen V and Master Vault are not current implementation tranches. Automatic source backup + explicit Inject Save is tracked separately in Issue #89 and remains disabled in current builds.
 
 ---
 
