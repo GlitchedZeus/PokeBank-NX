@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 246 / 725
-- Fully read text files: 212 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 248 / 725
+- Fully read text files: 214 / 692 (text/unknown classification remains provisional until content inspection completes)
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -88,6 +88,14 @@ Status: IN PROGRESS
 - BDSP fixed-offset parsing is now length-gated and its mutable save route is still deliberately blocked until a recoverable multi-file journal exists. Its pre-open gate still does not verify the stored whole-file MD5.
 - Sword/Shield, Scarlet/Violet and Z-A still rely on the generic SC hash/container validator rather than a game-specific required-block layout validator. This is now recorded separately because their mutators can grow malformed short fixed-role blocks and emit a fresh valid SC hash.
 - The Gen IV mutable core added exact native Create/OT/form behavior at the new #92 head and continues to reparse/verify transactional edits. The previously noted unrestricted low-level `setPP()` API remains a caller-hardening follow-up rather than a confirmed production corruption path.
+
+### Central save orchestration checkpoint
+
+- Fully read `include/Save/GetSaveFileContents.h` and all 977 lines of `src/Save/GetSaveFileContents.cpp` at live PR #92 head `09c168ddfd4493ed5d06a33066c0ba56cdc9dff8`.
+- The generic save path builds a complete post-image first, validates it, then promotes it through `DurableFile::replace()`; BDSP remains excluded because its SaveData.bin + Backup.bin pair still lacks a recoverable file-set journal.
+- PLA's pre-open and post-image path share the stronger semantic validator. SWSH/SV/Z-A still use the weaker generic SC structural/hash validator recorded in AUDIT-021.
+- FRLG and LGPE post-image validators recompute/check native checksums, but the open path still reaches their parsers before the equivalent source-integrity proof, as recorded in AUDIT-017/AUDIT-018.
+- Cross-checking the current PKHeX SaveUtil confirmed LGPE's physical save is `0x100000` bytes and its active Beluga region is the first `0xB8800` bytes. That exposed a current full-file validation mismatch now recorded as AUDIT-023.
 
 ## Findings
 
@@ -379,3 +387,18 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: implement a read-only whole-file MD5 verifier using the same zero-the-hash-field convention as `recomputeHash()`, call it from the BDSP pre-open gate and Trainer validity boundary, and add fixture tests before enabling multi-file writeback.
 - Risk of fix: low once the exact BDSP digest convention is fixture-verified.
 - Owner: MAIN / BDSP integrity lane.
+
+### AUDIT-023 — LGPE durable validator rejects the authentic 1 MiB save image
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: Let's Go backup workspace save / durable promotion
+- Files: `include/Save/GetSaveFileContents.h`, `src/Save/GetSaveFileContents.cpp`, `include/Trainer/Trainer7LGPE.h`
+- Exact symbols: `buildWorkspaceImage()`, `saveTrainerInfoLetsGo()`, `validateWorkspaceImage()`, `validateLGPEWorkspace()`, `readTrainerInfoLetsGo()`.
+- Problem: the read/write code correctly treats LGPE `savedata.bin` as a full file containing an active `0xB8800` region plus trailing data, but the durable validator requires `bytes.size() == SAVE_SIZE7_LGPE`, where `SAVE_SIZE7_LGPE` is `0xB8800`. Both the generic workspace builder and the direct LGPE save function preserve the FULL input file and pass that full image to `validateLGPEWorkspace()`.
+- Why it matters: a normal authentic 1 MiB LGPE save image fails validation before durable promotion, so edits can be prepared in memory but cannot be successfully saved through either current LGPE write route. This is fail-closed (no data loss), but it blocks a supported game's core save workflow.
+- External oracle: current PKHeX `SaveUtil.SIZE_G7GG` is `0x100000`; `IsG7LGPE()` requires that full length and then slices the first `0xB8800` bytes for the active save/footer checks. This matches PokeBank NX's own `readTrainerInfoLetsGo()` comments and full-file-preservation write design.
+- Evidence in PokeBank NX: `buildWorkspaceImage()` reads `savedata.bin` and assigns all `size` bytes into `out.bytes`; `saveTrainerInfoLetsGo()` likewise keeps all `fileSize` bytes; both eventually call `validateLGPEWorkspace()`, whose first condition rejects any size other than `0xB8800`.
+- Missing tests: full `0x100000` LGPE fixture must validate after block patching while preserving bytes `0xB8800..0xFFFFF` exactly; active-region checksum corruption must fail; define explicitly whether cropped `0xB8800` images are supported or rejected rather than conflating active-region size with physical-file size.
+- Recommended fix: introduce separate constants for physical LGPE file size (`0x100000`) and active Beluga region size (`0xB8800`). Validate the physical workspace shape, slice only the active region for block/CRC verification, and preserve the trailing region byte-for-byte during build/persist.
+- Risk of fix: low to medium; hardware-test both Pikachu and Eevee backups and verify untouched trailing bytes remain identical.
+- Owner: MAIN / LGPE save-integrity lane.
