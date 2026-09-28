@@ -297,8 +297,8 @@ include/Pokemon/SVDexTable.h	blob	100644	1761		unknown		PENDING			0
 include/Pokemon/SWSHDexTable.h	blob	100644	1544		unknown		PENDING			0	
 include/Pokemon/SpeciesConverter3.h	blob	100644	7432		unknown		PENDING			0	
 include/Pokemon/SpeciesConverter9.h	blob	100644	4959		unknown		PENDING			0	
-include/Safety/SourceMutationPolicy.h	blob	100644	987		unknown		PENDING			0	
-include/Safety/WritePolicy.h	blob	100644	1060		unknown		PENDING			0	
+include/Safety/SourceMutationPolicy.h	blob	100644	987	source mutation capability gate	text	35	AUDITED			0	no
+include/Safety/WritePolicy.h	blob	100644	1060	low-level live save write policy	text	34	AUDITED			0	no
 include/Save/BDSPReadValidation.h	blob	100644	832		unknown		PENDING			0	
 include/Save/Block.h	blob	100644	1357		unknown		PENDING			0	
 include/Save/EditableSaveCapabilities.h	blob	100644	1408		unknown		PENDING			0	
@@ -405,8 +405,8 @@ include/Utils/HelperUtilities.h	blob	100644	1610		unknown		PENDING			0
 include/Utils/Keyboard.h	blob	100644	2731		unknown		PENDING			0	
 include/Utils/Logger.h	blob	100644	2342		unknown		PENDING			0	
 include/Utils/MD5.h	blob	100644	1003		unknown		PENDING			0	
-include/Utils/MoveTransaction.h	blob	100644	5850		unknown		PENDING			0	
-include/Utils/MoveTransactionProduction.h	blob	100644	3904		unknown		PENDING			0	
+include/Utils/MoveTransaction.h	blob	100644	5850	true-Move transaction API/state machine	text	206	AUDITED			0	no
+include/Utils/MoveTransactionProduction.h	blob	100644	3904	production true-Move store/resolver API	text	123	AUDITED			0	no
 include/Utils/NXTypes.h	blob	100644	1368		unknown		PENDING			0	
 include/Utils/PhysicalMoveAudit.h	blob	100644	529		unknown		PENDING			0	
 include/Utils/PokeBankPaths.h	blob	100644	7508		unknown		PENDING			0	
@@ -524,7 +524,7 @@ src/Pokemon/SVDexTable.cpp	blob	100644	47312		unknown		PENDING			0
 src/Pokemon/SWSHDexTable.cpp	blob	100644	25413		unknown		PENDING			0	
 src/Save/Block.cpp	blob	100644	7048		unknown		PENDING			0	
 src/Save/GetSaveFileContents.cpp	blob	100644	41176		unknown		PENDING			0	
-src/Trainer/Bank.cpp	blob	100644	29556		unknown		PENDING			0	
+src/Trainer/Bank.cpp	blob	100644	29556	legacy Bank serialization/recovery/migration	text	611	AUDITED			1	yes
 src/Trainer/Trainer.cpp	blob	100644	1480		unknown		PENDING			0	
 src/Trainer/Trainer3FRLG.cpp	blob	100644	23130		unknown		PENDING			0	
 src/Trainer/Trainer7LGPE.cpp	blob	100644	48284		unknown		PENDING			0	
@@ -588,12 +588,12 @@ src/Utils/HelperUtilities.cpp	blob	100644	4249		unknown		PENDING			0
 src/Utils/Keyboard.cpp	blob	100644	3770		unknown		PENDING			0	
 src/Utils/Logger.cpp	blob	100644	8442		unknown		PENDING			0	
 src/Utils/MD5.cpp	blob	100644	5471		unknown		PENDING			0	
-src/Utils/MoveTransaction.cpp	blob	100644	36711		unknown		PENDING			0	
-src/Utils/MoveTransactionProduction.cpp	blob	100644	11383		unknown		PENDING			0	
+src/Utils/MoveTransaction.cpp	blob	100644	36711	true-Move journal/recovery engine	text	828	AUDITED			0	yes
+src/Utils/MoveTransactionProduction.cpp	blob	100644	11383	production true-Move store resolver/recovery	text	323	AUDITED			0	no
 src/Utils/PhysicalMoveAudit.cpp	blob	100644	22286		unknown		PENDING			0	
 src/Utils/ReadAllBytes.cpp	blob	100644	922		unknown		PENDING			0	
 src/Utils/SHA256.cpp	blob	100644	4770		unknown		PENDING			0	
-src/Utils/Settings.cpp	blob	100644	3133		unknown		PENDING			0	
+src/Utils/Settings.cpp	blob	100644	3133	application settings persistence	text	78	AUDITED			1	yes
 src/Utils/StringHelpers.cpp	blob	100644	8121		unknown		PENDING			0	
 src/main.cpp	blob	100644	4227		unknown		PENDING			0	
 tests/fixtures/gen4/README.md	blob	100644	791		unknown		PENDING			0	
@@ -604,8 +604,8 @@ tests/fixtures/main_workspace_move_focus.h	blob	100644	2354		unknown		PENDING			
 tests/test_action_sheet_model.cpp	blob	100644	3297		unknown		PENDING			0	
 tests/test_backup_namespace_contract.cpp	blob	100644	7520		unknown		PENDING			0	
 tests/test_backup_workspace_durability.cpp	blob	100644	2801		unknown		PENDING			0	
-tests/test_bank_format_policy.cpp	blob	100644	1274		unknown		PENDING			0	
-tests/test_bank_recovery_contract.cpp	blob	100644	887		unknown		PENDING			0	
+tests/test_bank_format_policy.cpp	blob	100644	1274	Bank format fail-closed source-contract test	text	34	AUDITED			0	yes
+tests/test_bank_recovery_contract.cpp	blob	100644	887	Bank recovery preservation source-contract test	text	28	AUDITED			0	yes
 tests/test_bdsp_layout_guard.cpp	blob	100644	1847		unknown		PENDING			0	
 tests/test_classic_inventory_catalog.cpp	blob	100644	3681		unknown		PENDING			0	
 tests/test_classic_inventory_ui_model.cpp	blob	100644	5765		unknown		PENDING			0	
