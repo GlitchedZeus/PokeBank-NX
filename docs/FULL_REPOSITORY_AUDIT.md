@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 218 / 725
-- Fully read text files: 184 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 224 / 725
+- Fully read text files: 190 / 692 (text/unknown classification remains provisional until content inspection completes)
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -70,6 +70,15 @@ Status: IN PROGRESS
 - Gen III and Gen IV implementations explicitly handle their native record geometry; Gen IV rejects non-0x88/0xEC record sizes before crypt/shuffle.
 - Later-generation helpers assume their callers supply a complete native record span. Current audited callers predominantly construct fixed-size records; malformed-span reachability remains a caller-trace follow-up rather than a confirmed corruption finding.
 - No cryptographic round-trip defect was confirmed in this tranche.
+
+### Conversion fidelity checkpoint
+
+- Fully read the conversion API/fidelity/PID-search core, the complete 1,451-line production converter, the complete 761-line route-evidence implementation, and the storage conversion custody contract test.
+- Production save placement passes `saveOriginVersion(trainer, titleId)` to the converter. That helper resolves the exact installed title first, preserving FireRed vs LeafGreen (and other paired-title identities) instead of relying only on a format group.
+- Cross-game preparation operates on a const authoritative source and produces a separate candidate; commit ordering places the prepared candidate before retiring/replacing carried custody.
+- Conversion sanitizes destination-illegal moves/relearn moves/items, clamps destination PP, refreshes checksum, and records declared fidelity losses/adaptations.
+- Persisted cross-game evidence binds transaction/store identities, source/destination payload hashes, species/form identity, declared fidelity semantics and acknowledgement state. Product true-Move cross-game retirement remains disabled by policy.
+- No new conversion-corruption defect was confirmed in this tranche. Remaining follow-up is broader caller/test coverage, not an identified failing conversion rule.
 
 ## Findings
 
