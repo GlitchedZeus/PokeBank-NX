@@ -2,6 +2,7 @@
 
 #include "Encryption/Encryption4.h"
 #include "Utils/CRC16.h"
+#include "Enums/LanguageID.h"
 
 #include <algorithm>
 #include <utility>
@@ -203,6 +204,46 @@ Gen4StagedPokemonEditor::editablePartyPokemon(
     if (!pokemon) return std::nullopt;
     return Pokemon::Pokemon4Mutable::fromEncrypted(
         pokemon->originalEncryptedBytes(), sourceGroup_, error);
+}
+
+std::optional<Pokemon::Pokemon4Mutable>
+Gen4StagedPokemonEditor::createBoxDraft(
+    size_t box, size_t slot, uint16_t species, std::string* error) const {
+    auto parsed = reparse(error);
+    if (!parsed) return std::nullopt;
+    if (box >= 18 || slot >= 30) {
+        setError(error, "Gen IV Create draft target is outside native storage");
+        return std::nullopt;
+    }
+    const auto& destination = parsed->box(box, slot);
+    if (!destination.valid() || !destination.empty()) {
+        setError(error, destination.valid()
+            ? "Gen IV Create draft target is already occupied"
+            : "Gen IV Create draft target failed strict slot validation");
+        return std::nullopt;
+    }
+
+    const auto exact = parsed->assignedExactGame();
+    const auto origin = static_cast<uint8_t>(exact);
+    if (Enums::getGameGroup(exact) != sourceGroup_) {
+        setError(error, "Gen IV Create draft lost exact target game identity");
+        return std::nullopt;
+    }
+
+    const auto& trainer = parsed->trainer();
+    Pokemon::Pokemon4CreateDefaults defaults;
+    defaults.species = species;
+    defaults.tid = trainer.tid;
+    defaults.sid = trainer.sid;
+    defaults.language = Enums::safeLanguageForGroup(sourceGroup_, trainer.language);
+    defaults.otGender = static_cast<uint8_t>(trainer.gender & 1u);
+    defaults.originVersion = origin;
+    defaults.level = 5;
+    defaults.ball = 4; // native Poké Ball id
+    defaults.metLevel = 5;
+    defaults.metLocation = 0; // UI must choose a real encounter location before legality claims.
+    defaults.otName = trainer.name;
+    return Pokemon::Pokemon4Mutable::createStored(defaults, sourceGroup_, error);
 }
 
 bool Gen4StagedPokemonEditor::refreshStorageCrc(
