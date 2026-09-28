@@ -363,7 +363,10 @@ void testEmptySlotCreateTransaction() {
         assert(created->originalTrainerName() == u"Kylie");
         assert(created->nickname() == u"PIPLUP");
         assert(!created->isNicknamed());
-        assert(created->originalEncryptedBytes() == draft->encryptedBytes());
+        const auto createdBytes = created->originalEncryptedBytes();
+        const auto draftBytes = draft->encryptedBytes();
+        assert(createdBytes.size() == draftBytes.size());
+        assert(std::equal(createdBytes.begin(), createdBytes.end(), draftBytes.begin()));
 
         // Create must never replace an occupied target.
         const auto stagedBeforeRefusal = editor->stagedBytes();
