@@ -62,6 +62,37 @@ namespace UI {
             }
             return summary;
         }
+
+        void drawSaveInstanceRows(
+            PKSEFramebuffer& fb,
+            const std::vector<PokeVault::Source::SaveInstance>& instances,
+            int selectedIndex, int first, int x, int rowY, int width,
+            int rowHeight, int visibleRows, bool showOlderLabel) {
+            const int last = std::min<int>(
+                static_cast<int>(instances.size()), first + visibleRows);
+            for (int i = first; i < last; ++i) {
+                const auto& instance = instances[static_cast<size_t>(i)];
+                drawFocusedCard(fb, x + 24, rowY, width - 48, rowHeight - 6,
+                                i == selectedIndex, 10);
+                fb.drawText(x + 44, rowY + 8, instance.label,
+                            i == selectedIndex ? Colors::TextPrimary : Colors::TextSecondary,
+                            TextStyle::Body);
+                if (instance.mostRecentlyModified || showOlderLabel) {
+                    const std::string recency = instance.mostRecentlyModified
+                        ? "MOST RECENTLY MODIFIED" : "OLDER FILE";
+                    int fw = 0, fh = 0;
+                    fb.measureText(recency, fw, fh, TextStyle::Caption);
+                    fb.drawText(x + width - 44 - fw, rowY + 11, recency, Colors::TextMuted,
+                                TextStyle::Caption);
+                }
+                const std::string sourceLine =
+                    (instance.providerLabel.empty() ? std::string("Source") : instance.providerLabel) +
+                    " / " + instance.sourceLabel;
+                fb.drawText(x + 44, rowY + 34, sourceLine, Colors::TextMuted,
+                            TextStyle::Caption);
+                rowY += rowHeight;
+            }
+        }
     }
 
     // Layout (1280x720).
@@ -467,6 +498,7 @@ namespace UI {
         gen4TargetGameId = gameId;
         gen4Notice = std::move(notice);
         gen4Candidates.clear();
+        gen4Instances.clear();
         gen4SetupIndex = 0;
         gen4CandidateIndex = 0;
         gen4CandidateScroll = 0;
@@ -475,21 +507,27 @@ namespace UI {
 
     void SaveSelectScreen::discoverGen4Candidates() {
         gen4Candidates.clear();
+        gen4Instances.clear();
         auto discovered = PokeVault::Integration::Gen4::discoverKnownSources();
         size_t wrappers = 0;
         size_t savestates = 0;
         std::string rememberedDiagnostic;
 
-        auto appendReady = [&](PokeVault::Integration::Gen4::SourceCandidate candidate) {
+        auto appendReady = [&](PokeVault::Integration::Gen4::SourceCandidate candidate,
+                               bool rememberedSource = false) {
             if (!candidate.ready() ||
                 !PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId))
                 return;
-            const auto duplicate = std::find_if(gen4Candidates.begin(), gen4Candidates.end(),
-                [&](const auto& existing) {
-                    return existing.sourceIdentity == candidate.sourceIdentity;
-                });
-            if (duplicate == gen4Candidates.end())
-                gen4Candidates.push_back(std::move(candidate));
+            const std::string claimedProfile = legacyBindings
+                ? legacyBindings->assignedProfile(candidate.sourceIdentity) : std::string{};
+            auto instance = PokeVault::Integration::Gen4::toSaveInstance(
+                candidate, gen4TargetGameId, gen4Candidates.size(), rememberedSource,
+                claimedProfile);
+            if (!PokeVault::Source::visibleToProfile(instance, currentProfileIdentity()))
+                return;
+            if (!PokeVault::Source::appendDeduplicated(gen4Instances, std::move(instance)))
+                return;
+            gen4Candidates.push_back(std::move(candidate));
         };
 
         for (auto& candidate : discovered.candidates) {
@@ -512,7 +550,7 @@ namespace UI {
                     gen4TargetGameId);
                 if (!candidate.ready())
                     rememberedDiagnostic = candidate.diagnostic;
-                appendReady(std::move(candidate));
+                appendReady(std::move(candidate), true);
             } else if (remembered.status == PokeVault::Legacy::AssignedFileStatus::Missing) {
                 rememberedDiagnostic = "Remembered save is missing; choose or discover another source.";
             } else if (remembered.status == PokeVault::Legacy::AssignedFileStatus::Unreadable) {
@@ -522,15 +560,11 @@ namespace UI {
             }
         }
 
-        // Match the Gen I-III instance chooser: most-recent physical save first, then stable provider/path.
-        std::sort(gen4Candidates.begin(), gen4Candidates.end(), [](const auto& a, const auto& b) {
-            if (a.modifiedTime != b.modifiedTime) return a.modifiedTime > b.modifiedTime;
-            if (a.sourceType != b.sourceType) return a.sourceType < b.sourceType;
-            return a.normalizedPath < b.normalizedPath;
-        });
+        // Match the classic chooser through the same provider-neutral ordering rule.
+        PokeVault::Source::sortNewestFirst(gen4Instances);
         gen4CandidateIndex = 0;
         gen4CandidateScroll = 0;
-        if (gen4Candidates.empty()) {
+        if (gen4Instances.empty()) {
             gen4Notice = !rememberedDiagnostic.empty() ? rememberedDiagnostic
                 : discovered.limitReached
                     ? "No compatible save found before the bounded scan limit."
@@ -541,8 +575,8 @@ namespace UI {
                     : "No compatible Gen IV cartridge save found in known emulator locations.";
             overlay = Overlay::Gen4Setup;
         } else {
-            gen4Notice = std::to_string(gen4Candidates.size()) +
-                (gen4Candidates.size() == 1 ? " validated save instance." : " validated save instances.");
+            gen4Notice = std::to_string(gen4Instances.size()) +
+                (gen4Instances.size() == 1 ? " validated save instance." : " validated save instances.");
             overlay = Overlay::Gen4Candidates;
         }
     }
@@ -742,7 +776,7 @@ namespace UI {
             return;
         }
         if (overlay == Overlay::Gen4Candidates) {
-            const int count = static_cast<int>(gen4Candidates.size());
+            const int count = static_cast<int>(gen4Instances.size());
             if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
             if (kDown & HidNpadButton_X) { discoverGen4Candidates(); return; }
             if (kDown & HidNpadButton_Y) {
@@ -760,8 +794,12 @@ namespace UI {
                 gen4CandidateScroll = gen4CandidateIndex;
             else if (gen4CandidateIndex >= gen4CandidateScroll + visibleRows)
                 gen4CandidateScroll = gen4CandidateIndex - visibleRows + 1;
-            if (kDown & HidNpadButton_A)
-                assignGen4Candidate(gen4Candidates[static_cast<size_t>(gen4CandidateIndex)]);
+            if (kDown & HidNpadButton_A) {
+                const size_t handle =
+                    gen4Instances[static_cast<size_t>(gen4CandidateIndex)].sourceIndex;
+                if (handle < gen4Candidates.size())
+                    assignGen4Candidate(gen4Candidates[handle]);
+            }
             return;
         }
 
@@ -1076,29 +1114,8 @@ namespace UI {
                         Colors::TextMuted, TextStyle::Caption);
 
             const int first = legacyInstanceScroll;
-            const int last = std::min<int>(static_cast<int>(parent.legacyInstances.size()),
-                                           first + visibleRows);
-            int ry = y + 122;
-            for (int i = first; i < last; ++i) {
-                const auto& instance = parent.legacyInstances[static_cast<size_t>(i)];
-                drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 6,
-                                i == legacyInstanceIndex, 10);
-                fb.drawText(x + 44, ry + 8, instance.label,
-                            i == legacyInstanceIndex ? Colors::TextPrimary : Colors::TextSecondary,
-                            TextStyle::Body);
-                const std::string recency = instance.mostRecentlyModified
-                    ? "MOST RECENTLY MODIFIED" : "OLDER FILE";
-                int fw, fh;
-                fb.measureText(recency, fw, fh, TextStyle::Caption);
-                fb.drawText(x + w - 44 - fw, ry + 11, recency, Colors::TextMuted,
-                            TextStyle::Caption);
-                const std::string sourceLine =
-                    (instance.providerLabel.empty() ? std::string("Source") : instance.providerLabel) +
-                    " / " + instance.sourceLabel;
-                fb.drawText(x + 44, ry + 34, sourceLine, Colors::TextMuted,
-                            TextStyle::Caption);
-                ry += rowH;
-            }
+            drawSaveInstanceRows(fb, parent.legacyInstances, legacyInstanceIndex, first,
+                                 x, y + 122, w, rowH, visibleRows, true);
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
@@ -1216,35 +1233,9 @@ namespace UI {
                         "Choose a validated cartridge save. The source file will not be modified.",
                         Colors::TextSecondary, TextStyle::Caption);
 
-            int64_t newestModified = 0;
-            for (const auto& candidate : gen4Candidates)
-                newestModified = std::max(newestModified, candidate.modifiedTime);
-
             const int first = gen4CandidateScroll;
-            const int last = std::min<int>(static_cast<int>(gen4Candidates.size()),
-                                           first + visibleRows);
-            int ry = y + 108;
-            for (int i = first; i < last; ++i) {
-                const auto& candidate = gen4Candidates[static_cast<size_t>(i)];
-                drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 6,
-                                i == gen4CandidateIndex, 10);
-                fb.drawText(x + 44, ry + 7, sourceLeafName(candidate.path),
-                            i == gen4CandidateIndex ? Colors::TextPrimary : Colors::TextSecondary,
-                            TextStyle::Body);
-                if (candidate.modifiedTime > 0 && candidate.modifiedTime == newestModified) {
-                    constexpr const char* recency = "MOST RECENTLY MODIFIED";
-                    int rw = 0, rh = 0;
-                    fb.measureText(recency, rw, rh, TextStyle::Caption);
-                    fb.drawText(x + w - 44 - rw, ry + 10, recency, Colors::TextMuted,
-                                TextStyle::Caption);
-                }
-                std::string detail = candidate.sourceType + " / " + candidate.expectedRawFamily;
-                if (!candidate.trainerName.empty()) detail += " / " + candidate.trainerName;
-                detail += " / Party " + std::to_string(candidate.partyCount);
-                if (candidate.recoveredOlderCopy) detail += " / RECOVERED OLDER COPY";
-                fb.drawText(x + 44, ry + 36, detail, Colors::TextMuted, TextStyle::Caption);
-                ry += rowH;
-            }
+            drawSaveInstanceRows(fb, gen4Instances, gen4CandidateIndex, first,
+                                 x, y + 108, w, rowH, visibleRows, false);
             if (!gen4Notice.empty())
                 fb.drawText(x + 28, y + h - 34, gen4Notice, Colors::TextMuted, TextStyle::Caption);
             drawNavBar(fb, {{"Up/Down", "Choose Save"}, {"A", "Open Read Only"},
