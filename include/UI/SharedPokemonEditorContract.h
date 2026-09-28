@@ -313,11 +313,9 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
         // targets only when the exact Gen IV staged provider is present; the provider is
         // responsible for preserving nature/gender/shiny/ability relationships.
         switch (field) {
-            case FieldIdentity::Species:
             case FieldIdentity::Nickname:
             case FieldIdentity::Gender:
             case FieldIdentity::Shiny:
-            case FieldIdentity::Language:
             case FieldIdentity::Level:
             case FieldIdentity::Experience:
             case FieldIdentity::Friendship:
@@ -325,12 +323,17 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::EV:
             case FieldIdentity::Nature:
             case FieldIdentity::Ability:
-            case FieldIdentity::HeldItem:
             case FieldIdentity::Pokerus:
             case FieldIdentity::Ball:
             case FieldIdentity::MetLevel:
-            case FieldIdentity::MetLocation:
                 return FieldAccess::Editable;
+            // G4-03 first hardware milestone keeps fields read-only when their exact-game
+            // picker/side-effects are not yet pinned. Known bytes alone are not permission
+            // to present a writable control.
+            case FieldIdentity::Species:
+            case FieldIdentity::Language:
+            case FieldIdentity::HeldItem:
+            case FieldIdentity::MetLocation:
             case FieldIdentity::Form:
             case FieldIdentity::OriginalTrainer:
             case FieldIdentity::TrainerId:
