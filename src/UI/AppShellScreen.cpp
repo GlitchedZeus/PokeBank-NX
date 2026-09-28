@@ -9,6 +9,7 @@
 #include "Globals.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/OrganizationPreviewModel.h"
 #include "UI/ScreenChrome.h"
 #include "UI/TouchInput.h"
 #include "Utils/Settings.h"
@@ -104,6 +105,10 @@ void AppShellScreen::activateSelected() {
         overlay = Overlay::Settings;
     } else if (section == AppShellSection::Diagnostics) {
         overlay = Overlay::Diagnostics;
+    } else if (PokeBank::UIModel::appShellPreviewable(section)) {
+        infoSection = section;
+        previewIndex = 0;
+        overlay = Overlay::OrganizationPreview;
     } else {
         infoSection = section;
         overlay = Overlay::SectionInfo;
@@ -163,6 +168,29 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
     if (overlay == Overlay::Help || overlay == Overlay::Diagnostics ||
         overlay == Overlay::SectionInfo) {
         if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) overlay = Overlay::None;
+        return;
+    }
+
+    if (overlay == Overlay::OrganizationPreview) {
+        using PokeBank::UIModel::OrganizationPreviewKind;
+        OrganizationPreviewKind kind = OrganizationPreviewKind::Banks;
+        if (infoSection == PokeBank::UIModel::AppShellSection::Search)
+            kind = OrganizationPreviewKind::Search;
+        else if (infoSection == PokeBank::UIModel::AppShellSection::Collections)
+            kind = OrganizationPreviewKind::Collections;
+
+        const int count = PokeBank::UIModel::previewCount(kind);
+        if (kDown & HidNpadButton_B) {
+            overlay = Overlay::None;
+            return;
+        }
+        if (kDown & (HidNpadButton_Left | HidNpadButton_Up))
+            previewIndex = PokeBank::UIModel::previewWrapIndex(previewIndex, -1, count);
+        if (kDown & (HidNpadButton_Right | HidNpadButton_Down))
+            previewIndex = PokeBank::UIModel::previewWrapIndex(previewIndex, 1, count);
+        if (kDown & HidNpadButton_A) {
+            setStatus("Preview only: no Vault, Bank, search or collection data was changed.", 240);
+        }
         return;
     }
 
@@ -264,7 +292,11 @@ void AppShellScreen::drawHome(PKSEFramebuffer& fb) {
                     std::string(entry.badge), badge, TextStyle::Caption);
 
         if (focused) {
-            const std::string action = entry.rootActionable ? "Open" : "View availability";
+            const std::string action = entry.rootActionable
+                ? "Open"
+                : (PokeBank::UIModel::appShellPreviewable(entry.section)
+                    ? "Preview UI"
+                    : "View availability");
             fb.drawText(x + 22, y + 91, action, Colors::FocusBorder, TextStyle::Caption);
         }
     }
@@ -379,6 +411,114 @@ void AppShellScreen::drawDiagnostics(PKSEFramebuffer& fb) {
     drawNavBar(fb, {{"B", "Close"}});
 }
 
+
+void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
+    using PokeBank::UIModel::AppShellSection;
+    constexpr int x = 66, y = 82, w = 1148, h = 566;
+    drawModalSurface(fb, x, y, w, h);
+
+    const bool isBanks = infoSection == AppShellSection::Banks;
+    const bool isSearch = infoSection == AppShellSection::Search;
+    const char* title = isBanks ? "Banks & Boxes" : (isSearch ? "Search & Filters" : "Collections");
+    const char* subtitle = isBanks
+        ? "Presentation preview only — no Bank or Master Vault data is stored yet."
+        : (isSearch
+            ? "Presentation preview only — the global Vault/search index is not connected."
+            : "Presentation preview only — collection persistence needs the future Master Vault.");
+
+    fb.drawText(x + 28, y + 18, "POKEBANK NX  /  UI PREVIEW  /  NO BACKEND",
+                Colors::Info, TextStyle::Caption);
+    fb.drawText(x + 28, y + 46, title, Colors::TextPrimary, TextStyle::Heading);
+    fb.drawText(x + 28, y + 80, subtitle, Colors::TextSecondary, TextStyle::Caption);
+
+    if (isBanks) {
+        const int bankX = x + 28, bankY = y + 122, bankW = 330, bankH = 364;
+        drawPanelSurface(fb, bankX, bankY, bankW, bankH, false, 14);
+        fb.drawText(bankX + 20, bankY + 18, "Named Banks", Colors::TextPrimary, TextStyle::Heading);
+        fb.drawText(bankX + 20, bankY + 56, "No Banks Created", Colors::TextSecondary, TextStyle::Body);
+        fb.drawText(bankX + 20, bankY + 88, "0 Pokémon  /  0 persistent records",
+                    Colors::TextMuted, TextStyle::Caption);
+        fb.drawText(bankX + 20, bankY + 132, "Future model", Colors::AccentPrimary, TextStyle::Caption);
+        fb.drawText(bankX + 20, bankY + 160, "• Bank names reference Vault IDs", Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(bankX + 20, bankY + 188, "• Deleting a Bank will not delete a Vault entity", Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(bankX + 20, bankY + 216, "• Origin and active location stay separate", Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(bankX + 20, bankY + 266, "Master Vault backend", Colors::TextMuted, TextStyle::Caption);
+        fb.drawText(bankX + 20, bankY + 294, "NOT IMPLEMENTED", Colors::Info, TextStyle::Body);
+
+        const int gridX = bankX + bankW + 24, gridY = bankY, gridW = w - 28 - 28 - bankW - 24;
+        fb.drawText(gridX, gridY + 4, "Example Bank box layout", Colors::TextPrimary, TextStyle::Heading);
+        fb.drawText(gridX, gridY + 38, "UI-only empty boxes — not saved and not populated with demo Pokémon.",
+                    Colors::TextMuted, TextStyle::Caption);
+        constexpr int cols = 3;
+        const int gap = 14;
+        const int boxW = (gridW - gap * 2) / cols;
+        const int boxH = 116;
+        for (int i = 0; i < static_cast<int>(PokeBank::UIModel::BANK_BOX_PREVIEW.size()); ++i) {
+            const int bx = gridX + (i % cols) * (boxW + gap);
+            const int by = gridY + 72 + (i / cols) * (boxH + gap);
+            drawFocusedCard(fb, bx, by, boxW, boxH, i == previewIndex, 12);
+            const auto& box = PokeBank::UIModel::BANK_BOX_PREVIEW[static_cast<std::size_t>(i)];
+            fb.drawText(bx + 16, by + 16, std::string(box.title),
+                        i == previewIndex ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Body);
+            fb.drawText(bx + 16, by + 52, "Empty", Colors::TextSecondary, TextStyle::Caption);
+            fb.drawText(bx + 16, by + 78,
+                        std::to_string(box.count) + " / " + std::to_string(box.capacity),
+                        Colors::TextMuted, TextStyle::Caption);
+        }
+    } else if (isSearch) {
+        const int qx = x + 28, qy = y + 120, qw = w - 56;
+        drawPanelSurface(fb, qx, qy, qw, 66, false, 12);
+        fb.drawText(qx + 18, qy + 14, "Search Pokémon", Colors::TextPrimary, TextStyle::Body);
+        fb.drawText(qx + 190, qy + 14, "No Vault index connected", Colors::TextMuted, TextStyle::Body);
+        fb.drawText(qx + 18, qy + 40, "Keyboard/query execution will connect when the real index exists.",
+                    Colors::TextMuted, TextStyle::Caption);
+
+        fb.drawText(qx, qy + 92, "Filter / organization controls", Colors::TextPrimary, TextStyle::Heading);
+        constexpr int cols = 2;
+        const int gapX = 18, gapY = 10;
+        const int filterW = (qw - gapX) / cols;
+        const int filterH = 54;
+        for (int i = 0; i < static_cast<int>(PokeBank::UIModel::SEARCH_FILTER_PREVIEW.size()); ++i) {
+            const int fx = qx + (i % cols) * (filterW + gapX);
+            const int fy = qy + 132 + (i / cols) * (filterH + gapY);
+            drawFocusedCard(fb, fx, fy, filterW, filterH, i == previewIndex, 10);
+            const auto& f = PokeBank::UIModel::SEARCH_FILTER_PREVIEW[static_cast<std::size_t>(i)];
+            fb.drawText(fx + 14, fy + 16, std::string(f.label),
+                        i == previewIndex ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Caption);
+            int vw = 0, vh = 0;
+            fb.measureText(std::string(f.value), vw, vh, TextStyle::Caption);
+            fb.drawText(fx + filterW - vw - 16, fy + 16, std::string(f.value),
+                        Colors::TextMuted, TextStyle::Caption);
+        }
+
+        const int emptyY = qy + 132 + 4 * (filterH + gapY) + 2;
+        fb.drawText(qx, emptyY, "No results to display — no real Vault/index backend is connected.",
+                    Colors::Info, TextStyle::Caption);
+    } else {
+        const int gx = x + 28, gy = y + 126;
+        const int gap = 18;
+        const int cardW = (w - 56 - gap) / 2;
+        const int cardH = 150;
+        for (int i = 0; i < static_cast<int>(PokeBank::UIModel::COLLECTION_PREVIEW.size()); ++i) {
+            const int cx = gx + (i % 2) * (cardW + gap);
+            const int cy = gy + (i / 2) * (cardH + gap);
+            drawFocusedCard(fb, cx, cy, cardW, cardH, i == previewIndex, 14);
+            const auto& c = PokeBank::UIModel::COLLECTION_PREVIEW[static_cast<std::size_t>(i)];
+            fb.drawText(cx + 20, cy + 18, std::string(c.title),
+                        i == previewIndex ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(cx + 20, cy + 58, std::string(c.subtitle),
+                        Colors::TextSecondary, TextStyle::Caption);
+            fb.drawText(cx + 20, cy + 94, "0 entries", Colors::TextMuted, TextStyle::Body);
+            fb.drawText(cx + 20, cy + 120, "Vault backend required", Colors::Info, TextStyle::Caption);
+        }
+    }
+
+    if (statusFrames > 0 && !statusMessage.empty())
+        fb.drawText(x + 30, y + h - 54, statusMessage, Colors::TextMuted, TextStyle::Caption);
+
+    drawNavBar(fb, {{"D-pad/Stick", "Preview navigation"}, {"A", "Explain"}, {"B", "Back"}});
+}
+
 void AppShellScreen::drawSectionInfo(PKSEFramebuffer& fb) {
     const auto& entry = PokeBank::UIModel::APP_SHELL_ENTRIES[
         static_cast<std::size_t>(infoSection)];
@@ -419,6 +559,8 @@ void AppShellScreen::draw(PKSEFramebuffer& fb) {
         drawSettings(fb);
     } else if (overlay == Overlay::Diagnostics) {
         drawDiagnostics(fb);
+    } else if (overlay == Overlay::OrganizationPreview) {
+        drawOrganizationPreview(fb);
     } else if (overlay == Overlay::SectionInfo) {
         drawSectionInfo(fb);
     } else if (overlay == Overlay::Help) {

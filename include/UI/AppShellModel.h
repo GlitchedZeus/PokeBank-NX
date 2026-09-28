@@ -45,16 +45,16 @@ namespace PokeBank::UIModel {
          "App-owned Legacy Storage inside a workspace", "WORKSPACE",
          AppShellAvailability::WorkspaceRequired, false},
         {AppShellSection::Banks, "Banks",
-         "Named Banks arrive with the Master Vault", "COMING SOON",
+         "Named Banks and Box organization foundation", "UI PREVIEW",
          AppShellAvailability::FutureBackend, false},
         {AppShellSection::Backups, "Backups",
          "PokeBank backups are currently game-scoped", "PER GAME",
          AppShellAvailability::WorkspaceRequired, false},
         {AppShellSection::Search, "Search",
-         "Global search needs the future Vault index", "FOUNDATION",
+         "Filter and sort presentation foundation", "UI PREVIEW",
          AppShellAvailability::FutureBackend, false},
         {AppShellSection::Collections, "Collections",
-         "Living Dex, Shiny Dex, Favorites and Recent", "COMING SOON",
+         "Living Dex, Shiny Dex, Favorites and Recent", "UI PREVIEW",
          AppShellAvailability::FutureBackend, false},
         {AppShellSection::Settings, "Settings",
          "Themes, backups and safety preferences", "READY",
@@ -80,6 +80,12 @@ namespace PokeBank::UIModel {
         col = (col + (dx % APP_SHELL_COLUMNS) + APP_SHELL_COLUMNS) % APP_SHELL_COLUMNS;
         row = (row + (dy % APP_SHELL_ROWS) + APP_SHELL_ROWS) % APP_SHELL_ROWS;
         return row * APP_SHELL_COLUMNS + col;
+    }
+
+    constexpr bool appShellPreviewable(AppShellSection section) {
+        return section == AppShellSection::Banks ||
+               section == AppShellSection::Search ||
+               section == AppShellSection::Collections;
     }
 
     constexpr bool appShellRootActionable(AppShellSection section) {

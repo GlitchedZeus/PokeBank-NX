@@ -8,6 +8,7 @@
 
 #include "UI/AppShellModel.h"
 #include "UI/NavigationRepeat.h"
+#include "UI/OrganizationPreviewModel.h"
 #include "UI/UIScreen.h"
 
 namespace UI {
@@ -30,6 +31,7 @@ namespace UI {
             None,
             Settings,
             Diagnostics,
+            OrganizationPreview,
             SectionInfo,
             Help,
         };
@@ -45,6 +47,7 @@ namespace UI {
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
         int selectedIndex = 0;
         int settingsIndex = 0;
+        int previewIndex = 0;
         bool exitRequested = false;
         Action pendingAction = Action::None;
         Overlay overlay = Overlay::None;
@@ -60,6 +63,7 @@ namespace UI {
         void drawHome(PKSEFramebuffer& fb);
         void drawSettings(PKSEFramebuffer& fb);
         void drawDiagnostics(PKSEFramebuffer& fb);
+        void drawOrganizationPreview(PKSEFramebuffer& fb);
         void drawSectionInfo(PKSEFramebuffer& fb);
         void setStatus(std::string message, int frames = 300);
     };

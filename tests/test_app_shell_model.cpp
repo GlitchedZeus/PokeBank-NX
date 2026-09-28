@@ -2,6 +2,7 @@
 #include <string_view>
 
 #include "UI/AppShellModel.h"
+#include "UI/OrganizationPreviewModel.h"
 
 int main() {
     using namespace PokeBank::UIModel;
@@ -26,6 +27,10 @@ int main() {
     assert(!appShellRootActionable(AppShellSection::Backups));
     assert(!appShellRootActionable(AppShellSection::Search));
     assert(!appShellRootActionable(AppShellSection::Collections));
+    assert(appShellPreviewable(AppShellSection::Banks));
+    assert(appShellPreviewable(AppShellSection::Search));
+    assert(appShellPreviewable(AppShellSection::Collections));
+    assert(!appShellPreviewable(AppShellSection::Games));
 
     assert(appShellEntry(1).availability == AppShellAvailability::WorkspaceRequired);
     assert(appShellEntry(2).availability == AppShellAvailability::FutureBackend);
@@ -39,6 +44,17 @@ int main() {
     assert(appShellMoveSelection(6, 0, 1) == 0);
     assert(appShellMoveSelection(1, 0, -1) == 7);
     assert(appShellMoveSelection(5, -1, 0) == 4);
+
+    assert(previewCount(OrganizationPreviewKind::Banks) == 6);
+    assert(previewCount(OrganizationPreviewKind::Search) == 7);
+    assert(previewCount(OrganizationPreviewKind::Collections) == 4);
+    assert(previewWrapIndex(0, -1, 6) == 5);
+    assert(previewWrapIndex(5, 1, 6) == 0);
+    assert(previewWrapIndex(2, 3, 7) == 5);
+    assert(BANK_BOX_PREVIEW[0].count == 0);
+    assert(BANK_BOX_PREVIEW[0].capacity == 30);
+    assert(SEARCH_FILTER_PREVIEW[0].value == std::string_view("Any"));
+    assert(COLLECTION_PREVIEW[0].title == std::string_view("Living Dex"));
 
     // Invalid selection fails predictably to the first card before movement is applied.
     assert(appShellMoveSelection(-1, 0, 0) == 0);

@@ -7,6 +7,7 @@ on:
     paths:
       - 'include/UI/AppShellModel.h'
       - 'include/UI/AppShellScreen.h'
+      - 'include/UI/OrganizationPreviewModel.h'
       - 'src/UI/AppShellScreen.cpp'
       - 'src/UI/UI.cpp'
       - 'include/UI/SaveSelectScreen.h'
@@ -14,6 +15,7 @@ on:
       - 'Makefile.host'
       - 'Makefile.host.product-ui'
       - 'tests/test_app_shell_model.cpp'
+      - 'tests/test_organization_preview_model.cpp'
       - '.github/workflows/product-ui-native.yml'
   workflow_dispatch:
 
