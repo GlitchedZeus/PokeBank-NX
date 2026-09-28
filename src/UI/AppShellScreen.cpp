@@ -440,7 +440,7 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
                     Colors::TextMuted, TextStyle::Caption);
         fb.drawText(bankX + 20, bankY + 132, "Future model", Colors::AccentPrimary, TextStyle::Caption);
         fb.drawText(bankX + 20, bankY + 160, "• Bank names reference Vault IDs", Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(bankX + 20, bankY + 188, "• Deleting a Bank will not delete a Vault entity", Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(bankX + 20, bankY + 188, "• Bank deletion never implies entity deletion", Colors::TextSecondary, TextStyle::Caption);
         fb.drawText(bankX + 20, bankY + 216, "• Origin and active location stay separate", Colors::TextSecondary, TextStyle::Caption);
         fb.drawText(bankX + 20, bankY + 266, "Master Vault backend", Colors::TextMuted, TextStyle::Caption);
         fb.drawText(bankX + 20, bankY + 294, "NOT IMPLEMENTED", Colors::Info, TextStyle::Body);
@@ -514,7 +514,7 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
     }
 
     if (statusFrames > 0 && !statusMessage.empty())
-        fb.drawText(x + 30, y + h - 54, statusMessage, Colors::TextMuted, TextStyle::Caption);
+        fb.drawText(x + 30, y + h - 28, statusMessage, Colors::TextMuted, TextStyle::Caption);
 
     drawNavBar(fb, {{"D-pad/Stick", "Preview navigation"}, {"A", "Explain"}, {"B", "Back"}});
 }
