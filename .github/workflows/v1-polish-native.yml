@@ -6,6 +6,8 @@ on:
       - audit/full-project-hardening-20260923
     paths:
       - 'include/UI/ScreenChrome.h'
+      - 'src/UI/SystemIcons.cpp'
+      - 'include/UI/SystemIcons.h'
       - 'src/UI/SaveSelectScreen.cpp'
       - 'src/UI/TrainerViewScreenBase.inc'
       - 'Makefile'
