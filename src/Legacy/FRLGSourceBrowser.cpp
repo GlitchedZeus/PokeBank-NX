@@ -105,6 +105,7 @@ namespace PokeVault::Legacy {
                 index,
                 LegacySaveInstanceKind::BatterySave,
                 leafName(source.path),
+                "RetroArch",
                 details,
                 source.path,
                 source.normalizedPath,

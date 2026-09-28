@@ -57,7 +57,7 @@ std::vector<FRLGSourceCard> buildGSCSourceCards(const GSCDiscoveryResult& discov
             " | Party " + std::to_string(source.save->party().size()) + " | FP " +
             fingerprint.substr(0, std::min<std::size_t>(12, fingerprint.size()));
         cards[cardIndex].instances.push_back({
-            index, LegacySaveInstanceKind::BatterySave, leafName(source.path), details,
+            index, LegacySaveInstanceKind::BatterySave, leafName(source.path), "RetroArch", details,
             source.path, source.normalizedPath, stableIdentity(source), fingerprint,
             strictTrainer.name, source.fileSize, source.modifiedTime, source.save->party().size(), false,
         });

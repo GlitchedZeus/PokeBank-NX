@@ -21,6 +21,8 @@ namespace PokeVault::Legacy {
         size_t sourceIndex = 0;
         LegacySaveInstanceKind kind = LegacySaveInstanceKind::BatterySave;
         std::string label;
+        // Emulator/provider name is separate from the trainer/party/fingerprint detail line.
+        std::string providerLabel;
         std::string sourceLabel;
         std::string location;
         std::string normalizedPath;

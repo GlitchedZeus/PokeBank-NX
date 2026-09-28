@@ -63,6 +63,7 @@ std::vector<FRLGSourceCard> buildRBYSourceCards(const RBYDiscoveryResult& discov
             index,
             LegacySaveInstanceKind::BatterySave,
             leafName(source.path),
+            "RetroArch",
             details,
             source.path,
             source.normalizedPath,
