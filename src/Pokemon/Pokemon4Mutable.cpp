@@ -40,6 +40,34 @@ uint8_t fixedGender(uint8_t ratio) noexcept {
     return 3;
 }
 
+constexpr std::array<uint16_t, 16> GEN4_ARCEUS_PLATES{{
+    303, 306, 304, 305, 309, 308, 310, 313,
+    298, 299, 301, 300, 307, 302, 311, 312
+}};
+
+uint8_t gen4ArceusFormForItem(uint16_t item) noexcept {
+    for (size_t i = 0; i < GEN4_ARCEUS_PLATES.size(); ++i) {
+        if (GEN4_ARCEUS_PLATES[i] != item) continue;
+        uint8_t form = static_cast<uint8_t>(i + 1);
+        // Gen IV keeps the unused ???-type form at ID 9.
+        if (form >= 9) ++form;
+        return form;
+    }
+    return 0;
+}
+
+uint16_t gen4ArceusItemForForm(uint8_t form) noexcept {
+    if (form == 0 || form == 9) return 0;
+    size_t index = static_cast<size_t>(form - 1);
+    if (form > 9) --index;
+    return index < GEN4_ARCEUS_PLATES.size() ? GEN4_ARCEUS_PLATES[index] : 0;
+}
+
+bool isGen4ArceusPlate(uint16_t item) noexcept {
+    return std::find(GEN4_ARCEUS_PLATES.begin(), GEN4_ARCEUS_PLATES.end(), item) !=
+           GEN4_ARCEUS_PLATES.end();
+}
+
 std::u16string gen4DefaultSpeciesName(uint16_t species, uint8_t language) {
     const auto nameIndex = Names::languageIndexFor(
         static_cast<Enums::LanguageID>(language));
@@ -506,7 +534,25 @@ bool Pokemon4Mutable::setFriendship(uint8_t value) noexcept {
 bool Pokemon4Mutable::setHeldItem(uint16_t value) noexcept {
     if (!valid_) return false;
     if (value != 0 && !Names::isGen4HeldItemPresent(value, sourceGroup_)) return false;
+
+    const auto backup = decrypted_;
     write16(0x0A, value);
+
+    // Gen IV stores the current form, but these species must remain coherent with
+    // their held-item driven form rules. Keep both edit directions safe.
+    if (species() == 487) { // Giratina
+        const uint8_t desired = value == 112 ? 1 : 0;
+        if (desired != form() && !setForm(desired)) {
+            decrypted_ = backup;
+            return false;
+        }
+    } else if (species() == 493) { // Arceus
+        const uint8_t desired = gen4ArceusFormForItem(value);
+        if (desired != form() && !setForm(desired)) {
+            decrypted_ = backup;
+            return false;
+        }
+    }
     return true;
 }
 
@@ -661,38 +707,53 @@ bool Pokemon4Mutable::setForm(uint8_t value) noexcept {
     if (base.hp == 0 || base.formCount == 0 || value >= base.formCount) return false;
     if (value == form()) return true;
 
-    const uint8_t oldForm = form();
-    const uint8_t oldAbilitySlot = abilitySlot();
-    const uint8_t oldByte40 = byteAt(0x40);
-    const uint8_t oldAbility = byteAt(0x15);
+    // Exact Gen IV legality/storage side effects pinned from PKHeX FormVerifier/FormItem.
+    if (species() == 492 && value != 0 && !isParty())
+        return false; // Shaymin Sky Forme cannot persist in a Gen IV PC box.
 
-    write8(0x40, static_cast<uint8_t>((oldByte40 & 0x07u) | (value << 3)));
+    uint16_t requiredItem = heldItem();
+    if (species() == 487) { // Giratina Origin <=> Griseous Orb
+        requiredItem = value == 1 ? 112 : (heldItem() == 112 ? 0 : heldItem());
+    } else if (species() == 493) { // Arceus type form <=> exact Plate
+        if (value == 9) return false; // unused ???-type form has no obtainable Plate
+        if (value == 0)
+            requiredItem = isGen4ArceusPlate(heldItem()) ? 0 : heldItem();
+        else {
+            requiredItem = gen4ArceusItemForForm(value);
+            if (requiredItem == 0) return false;
+        }
+    }
+    if (requiredItem != 0 && !Names::isGen4HeldItemPresent(requiredItem, sourceGroup_))
+        return false;
+
+    const auto backup = decrypted_;
+    const uint8_t oldAbilitySlot = abilitySlot();
+    write16(0x0A, requiredItem);
+    write8(0x40, static_cast<uint8_t>((byteAt(0x40) & 0x07u) | (value << 3)));
+
     const auto& next = personalFor(sourceGroup_, species(), value);
     if (next.hp == 0) {
-        write8(0x40, oldByte40);
+        decrypted_ = backup;
         return false;
     }
 
     const uint16_t nextAbility =
         oldAbilitySlot == 1 && next.ability2 != 0 ? next.ability2 : next.ability1;
     if (nextAbility == 0 || nextAbility > 0xFFu) {
-        write8(0x40, oldByte40);
-        write8(0x15, oldAbility);
+        decrypted_ = backup;
         return false;
     }
     write8(0x15, static_cast<uint8_t>(nextAbility));
     refreshPartyDerivedData();
 
     Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
-    if (!verify.valid() || verify.form() != value || verify.species() != species()) {
-        write8(0x40, static_cast<uint8_t>((oldByte40 & 0x07u) | (oldForm << 3)));
-        write8(0x15, oldAbility);
-        refreshPartyDerivedData();
+    if (!verify.valid() || verify.form() != value || verify.species() != species() ||
+        verify.heldItem() != requiredItem || verify.ability() != nextAbility) {
+        decrypted_ = backup;
         return false;
     }
     return true;
 }
-
 
 bool Pokemon4Mutable::setNature(uint8_t value) noexcept {
     if (value >= 25) return false;
