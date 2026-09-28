@@ -84,7 +84,7 @@ Current Gen IV editor head:
 **5e79e9f8e038f2f940070edd92a70b692df7a7b5**
 
 Status:
-**CI CANDIDATE IN PROGRESS / NOT DEVICE ACCEPTED**
+**EXACT ACTIONS NRO BUILT / HARDWARE TEST PENDING / NOT DEVICE ACCEPTED**
 
 Confirmed green on the current Gen IV head:
 
@@ -95,10 +95,19 @@ Confirmed green on the current Gen IV head:
 - Packed Move;
 - Packed Multi-Move.
 
+Gen IV candidate workflow #11 is fully green, including full devkitA64 compile/link and packaging.
+
+Exact candidate:
+
+- Application SHA: **5e79e9f8e038f2f940070edd92a70b692df7a7b5**
+- Tree SHA: **c636127b2e52792371e8e55abac8fe1d5cfaf99f**
+- Artifact ID: **10960797638**
+- NRO SHA-256: **8011ef64d269ae42331306c13692d60494fb7ea936619d61e1abc7d7906829d5**
+
 Still pending at the latest check:
 
-- full host workflow;
-- full devkitA64 compile/link + candidate NRO package.
+- broad Host Tests #1427;
+- owner physical Switch test.
 
 ## Current limitations
 
