@@ -46,8 +46,6 @@ inline ModalGeometry drawModalChrome(
     return g;
 }
 
-namespace {
-
 // Convert canonical type ids to the classic badge-table numbering used by the
 // Gen I-IV shared picker previews.
 inline uint8_t canonicalToClassicType(uint8_t normalized) noexcept {
