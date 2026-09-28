@@ -50,6 +50,10 @@ jobs:
           python3 -m py_compile tools/recover_workspace.py
           python3 -m py_compile tools/check_recovery_contract.py
           python3 -m py_compile tools/pack_recovery_snapshot.py
+          python3 -m py_compile tools/regenerate.py
+
+      - name: Verify generated-data maintenance plan
+        run: python3 tools/regenerate.py --list --repo . --tables
 
       - name: Verify GitHub recovery contract
         run: python3 tools/check_recovery_contract.py
