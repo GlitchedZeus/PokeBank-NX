@@ -395,11 +395,9 @@ namespace UI {
             "Locked",
             g_debugLogging ? "On" : "Off",
         };
-        // The panel is a fixed height, so the rows have to fit inside it -- there is no scrolling
-        // here. Six rows leave 10px spare; rowH stays at 64 because it is also the touch target.
-        // The assert is the point: add a seventh row and the build stops rather than quietly
-        // drawing it past the panel edge.
-        constexpr int rowW = 720, rowH = 64, rowGap = 12, rowsTop = 22, footerH = 26;
+        // Keep the six touch rows comfortably above the minimum target while reserving a compact,
+        // read-only build/safety footer. The global control legend remains the only control help.
+        constexpr int rowW = 720, rowH = 62, rowGap = 9, rowsTop = 14, footerH = 48;
         static_assert(hH + rowsTop + kRows * (rowH + rowGap) + footerH <= CONTENT_PANEL_HEIGHT,
                       "Settings rows no longer fit the content panel -- shrink the rows or add scrolling");
         const int rx = x + (w - rowW) / 2;
@@ -426,7 +424,12 @@ namespace UI {
             screen.touchButtons.push_back({ i, rx, ry, rowW, rowH });
             ry += rowH + rowGap;
         }
-        fb.drawText(rx, ry + 8, "A: toggle / info     B: back", Colors::TextDim, TextStyle::Caption);
+        const std::string buildIdentity =
+            "PokeBank NX v" + VERSION_STRING + "  /  build " + BUILD_COMMIT;
+        fb.drawText(rx, ry + 3, buildIdentity, Colors::TextMuted, TextStyle::Caption);
+        fb.drawText(rx, ry + 23,
+                    "External writes: LOCKED  /  Cross-game True Move: LOCKED",
+                    Colors::TextMuted, TextStyle::Caption);
     }
 
     // Trainer view (HOME-style ID card), reached from the HOME menu's Trainer icon. The first two
@@ -564,7 +567,7 @@ namespace UI {
         // which game, where the save came from, and the state of every setting that changes
         // behaviour. Without this a trace is a list of actions with no way to judge them.
         const std::string sessionInfo =
-            "pkse=" + VERSION_STRING +
+            "pokebank=" + VERSION_STRING +
             " game=\"" + titleName + "\" gamever=" + (gameVersion.empty() ? "?" : gameVersion) +
             " src=" + std::string(legacyReadOnlySource()
                                       ? legacyProviderLabel() + "_READ_ONLY"

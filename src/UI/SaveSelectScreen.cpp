@@ -1041,8 +1041,6 @@ namespace UI {
                 bool sel = (i == titleIndex);
 
                 drawFocusedCard(fb, tileX, tileY, TILE_W, TILE_H, sel, 16);
-                fb.drawFilledRoundedRect(tileX + 12, tileY + 8, TILE_W - 24, 5, 3,
-                                         sel ? Colors::FocusBorder : withAlpha(Colors::AccentDim, 90));
 
                 int iconX = tileX + (TILE_W - ICON) / 2;
                 int iconY = tileY + 16;
@@ -1062,17 +1060,8 @@ namespace UI {
                     }
                 }
 
-                // Source badge makes these cards read as a local archive browser, not an inherited
-                // title picker. It is intentionally presentation-only; identity remains gameId.
-                constexpr int sourceW = 88, sourceH = 22;
-                fb.drawFilledRoundedRect(tileX + TILE_W - sourceW - 10, tileY + 14,
-                                         sourceW, sourceH, 8,
-                                         withAlpha(Colors::Info, sel ? 70 : 38));
-                const std::string& sourceLabel = u->titles[i].sourceLabel;
-                int sw, sh; fb.measureText(sourceLabel, sw, sh, TextStyle::Caption);
-                fb.drawText(tileX + TILE_W - sourceW - 10 + (sourceW - sw) / 2,
-                            tileY + 14 + (sourceH - sh) / 2, sourceLabel,
-                            sel ? Colors::TextPrimary : Colors::TextMuted, TextStyle::Caption);
+                // Source/provider details intentionally stay off the cover art. Save Instances is
+                // the authoritative place to choose and inspect validated physical sources.
 
                 // Release name and platform are separate lines. A FireRed tile must always say
                 // whether it is the GBA or Switch release; display names are never identity.
@@ -1084,13 +1073,8 @@ namespace UI {
                 int pw, ph; fb.measureText(platform, pw, ph, TextStyle::Caption);
                 fb.drawText(tileX + (TILE_W - pw) / 2, iconY + ICON + 8 + lh + 1, platform,
                             Colors::TextDim, TextStyle::Caption);
-                if (!u->titles[i].locationLabel.empty()) {
-                    const std::string& location = u->titles[i].locationLabel;
-                    int fw, fh; fb.measureText(location, fw, fh, TextStyle::Caption);
-                    fb.drawText(tileX + (TILE_W - fw) / 2,
-                                iconY + ICON + 8 + lh + ph + 1, location,
-                                Colors::TextMuted, TextStyle::Caption);
-                }
+                // Per-card source counts/paths are deliberately omitted here so every generation
+                // follows one rule. Save Instances owns source count, provider and path metadata.
 
                 titleRects.push_back({tileX, tileY, TILE_W, TILE_H, i});
             }

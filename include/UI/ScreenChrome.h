@@ -98,19 +98,32 @@ namespace UI {
     // the d-pad is a cross with the unused axis dimmed. `cy` is the badge's vertical CENTRE.
     // Returns the width consumed, or 0 if the token isn't a button PKSE knows how to draw.
     inline int buttonGlyph(PKSEFramebuffer& fb, int x, int cy, const std::string& btn, bool measureOnly) {
-        // Primary foreground maintains contrast in OLED/Dark; Light keeps dark readable badges.
+        // Neutral controller glyphs follow the theme. Face buttons use stable familiar colors so
+        // A/B/X/Y remain instantly distinguishable in Light, Dark and OLED Black.
         const Color fill = Colors::TextPrimary;
         const Color ink  = Colors::Panel;
         constexpr int kR = 12;              // face-button radius
 
-        auto centred = [&](const std::string& s, int bx, int bw) {
+        auto centred = [&](const std::string& s, int bx, int bw, Color textColor) {
             int tw, th; fb.measureText(s, tw, th, TextStyle::Caption);
-            fb.drawText(bx + (bw - tw) / 2, cy - th / 2, s, ink, TextStyle::Caption);
+            fb.drawText(bx + (bw - tw) / 2, cy - th / 2, s, textColor, TextStyle::Caption);
         };
 
-        // Face buttons.
+        // Face buttons. These colors are presentation-only and never imply danger/success state.
         if (btn.size() == 1 && (btn[0] == 'A' || btn[0] == 'B' || btn[0] == 'X' || btn[0] == 'Y')) {
-            if (!measureOnly) { fb.drawFilledCircle(x + kR, cy, kR, fill); centred(btn, x, kR * 2); }
+            Color faceFill = fill;
+            Color faceInk = Colors::White;
+            if (btn[0] == 'A') faceFill = Color(62, 166, 96);
+            else if (btn[0] == 'B') faceFill = Color(210, 72, 78);
+            else if (btn[0] == 'X') faceFill = Color(70, 132, 214);
+            else {
+                faceFill = Color(226, 176, 54);
+                faceInk = Color(40, 32, 12);
+            }
+            if (!measureOnly) {
+                fb.drawFilledCircle(x + kR, cy, kR, faceFill);
+                centred(btn, x, kR * 2, faceInk, ink);
+            }
             return kR * 2;
         }
 
@@ -130,20 +143,19 @@ namespace UI {
         if (btn == "L" || btn == "R" || btn == "ZL" || btn == "ZR" || btn == "L/R" || btn == "ZL/ZR") {
             int tw, th; fb.measureText(btn, tw, th, TextStyle::Caption);
             const int w = tw + 14, h = 22;
-            if (!measureOnly) { fb.drawFilledRoundedRect(x, cy - h / 2, w, h, 7, fill); centred(btn, x, w); }
+            if (!measureOnly) { fb.drawFilledRoundedRect(x, cy - h / 2, w, h, 7, fill); centred(btn, x, w, ink); }
             return w;
         }
 
-        // D-pad. "Up/Down" and "Left/Right" dim the axis they don't use, so the badge itself says
-        // which way the stick moves rather than relying on the label to explain it.
+        // D-pad + Left Stick. NavigationRepeat feeds both through the same directional contract, so
+        // the shared legend shows that parity instead of implying D-pad-only navigation.
         if (btn == "Arrows" || btn == "D-Pad" || btn == "Up/Down" || btn == "Left/Right") {
-            constexpr int s = 24, a = 9;    // overall size, arm thickness
+            constexpr int s = 24, a = 9, gap = 5, lsW = 26, lsH = 22;
             if (!measureOnly) {
                 const Color dim(fill.r, fill.g, fill.b, 70);
                 const bool vOnly = (btn == "Up/Down"), hOnly = (btn == "Left/Right");
                 const int vx = x + (s - a) / 2, vy = cy - s / 2;
                 const int hx = x,               hy = cy - a / 2;
-                // Dim arm first, so the solid one wins where they overlap in the middle.
                 if (vOnly) {
                     fb.drawFilledRoundedRect(hx, hy, s, a, 3, dim);
                     fb.drawFilledRoundedRect(vx, vy, a, s, 3, fill);
@@ -154,8 +166,11 @@ namespace UI {
                     fb.drawFilledRoundedRect(vx, vy, a, s, 3, fill);
                     fb.drawFilledRoundedRect(hx, hy, s, a, 3, fill);
                 }
+                const int lsX = x + s + gap;
+                fb.drawFilledRoundedRect(lsX, cy - lsH / 2, lsW, lsH, 7, fill);
+                centred("LS", lsX, lsW, ink);
             }
-            return s;
+            return s + gap + lsW;
         }
 
         // A single d-pad direction: a rounded-square badge with a geometric triangle arrow. Used by
