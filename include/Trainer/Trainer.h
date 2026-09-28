@@ -261,6 +261,13 @@ namespace Trainer {
         virtual size_t getPartySize() const noexcept = 0;
 
         /**
+         * Reports app-owned staged edits that have not been explicitly discarded/exported/saved.
+         * This is intentionally independent of source writability: immutable emulator sources can
+         * still have valuable staged work that B/+ must never silently throw away.
+         */
+        virtual bool hasStagedChanges() const noexcept { return false; }
+
+        /**
          * Gets the game group for this trainer type.
          * Used for type dispatch without RTTI (required for Nintendo Switch builds).
          * @return GameVersion group (GG, SWSH, etc.)
