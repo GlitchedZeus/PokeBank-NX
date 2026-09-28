@@ -130,12 +130,12 @@ namespace UI {
                 entry.sourceKind = SelectedSourceKind::Gen4AssignedFile;
 
                 if (!legacyBindings) {
-                    entry.sourceLabel = "UNASSIGNED";
+                    entry.sourceLabel = "CHOOSE SAVE";
                 } else {
                     const auto assigned = legacyBindings->resolveFileForGame(profile, game.id);
                     switch (assigned.status) {
                         case PokeVault::Legacy::AssignedFileStatus::Ready:
-                            entry.sourceLabel = "ASSIGNED";
+                            entry.sourceLabel = "REMEMBERED";
                             entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
                             break;
                         case PokeVault::Legacy::AssignedFileStatus::Missing:
@@ -150,7 +150,7 @@ namespace UI {
                             entry.sourceLabel = "AMBIGUOUS";
                             break;
                         case PokeVault::Legacy::AssignedFileStatus::Unassigned:
-                            entry.sourceLabel = "UNASSIGNED";
+                            entry.sourceLabel = "CHOOSE SAVE";
                             break;
                     }
                 }
@@ -543,7 +543,7 @@ namespace UI {
         binding.expectedRawFamily = candidate.expectedRawFamily;
         if (!legacyBindings->replaceFileAssignmentAndSave(candidate.sourceIdentity, std::move(binding))) {
             gen4Notice = legacyBindings->lastError().find("conflict") != std::string::npos
-                ? "That physical save is already assigned to another profile or game. Unassign it there first."
+                ? "That physical save is already remembered by another profile or game. Forget it there first."
                 : "The save assignment could not be stored safely.";
             overlay = Overlay::Gen4Setup;
             return false;
@@ -579,11 +579,11 @@ namespace UI {
         if (!legacyBindings) return false;
         const std::string profile = currentProfileIdentity();
         if (!legacyBindings->unassignGameAndSave(profile, gen4TargetGameId)) {
-            gen4Notice = "No stored assignment could be removed for this game.";
+            gen4Notice = "No remembered save could be removed for this game.";
             return false;
         }
         loadGen4Cards();
-        gen4Notice = "Assigned save removed. The source file itself was not changed.";
+        gen4Notice = "Remembered save removed. The source file itself was not changed.";
         overlay = Overlay::Gen4Setup;
         return true;
     }
