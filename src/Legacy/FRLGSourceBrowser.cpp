@@ -3,6 +3,7 @@
 #include "Games/GameIdentity.h"
 
 #include <algorithm>
+#include <cctype>
 #include <set>
 
 namespace PokeVault::Legacy {
@@ -47,6 +48,22 @@ namespace PokeVault::Legacy {
             if (source.isGen2()) return source.gen2Save->party().size();
             if (source.isGen3()) return source.save->party().size();
             return 0;
+        }
+
+        std::string providerFor(const FRLGSource& source) {
+            return source.providerLabel.empty() ? std::string("Source") : source.providerLabel;
+        }
+
+        std::string cardProviderFor(const std::vector<FRLGSaveInstance>& instances) {
+            if (instances.empty()) return "READ ONLY";
+            const std::string provider = instances.front().providerLabel;
+            if (std::any_of(instances.begin() + 1, instances.end(),
+                    [&](const auto& instance) { return instance.providerLabel != provider; }))
+                return "MULTI-SOURCE";
+            std::string label = provider.empty() ? std::string("SOURCE") : provider;
+            std::transform(label.begin(), label.end(), label.begin(),
+                [](unsigned char ch) { return static_cast<char>(std::toupper(ch)); });
+            return label;
         }
 
         std::string platformLabelFor(const FRLGSource& source, const Games::GameDescriptor& game) {
@@ -105,7 +122,7 @@ namespace PokeVault::Legacy {
                 index,
                 LegacySaveInstanceKind::BatterySave,
                 leafName(source.path),
-                "RetroArch",
+                providerFor(source),
                 details,
                 source.path,
                 source.normalizedPath,
@@ -126,6 +143,7 @@ namespace PokeVault::Legacy {
                 return left.normalizedPath < right.normalizedPath;
             });
             if (!card.instances.empty()) card.instances.front().mostRecentlyModified = true;
+            card.sourceLabel = cardProviderFor(card.instances);
         }
         return cards;
     }
@@ -142,6 +160,7 @@ namespace PokeVault::Legacy {
             if (!card.instances.empty()) {
                 for (auto& instance : card.instances) instance.mostRecentlyModified = false;
                 card.instances.front().mostRecentlyModified = true;
+                card.sourceLabel = cardProviderFor(card.instances);
             }
         }
         cards.erase(std::remove_if(cards.begin(), cards.end(), [](const auto& card) {

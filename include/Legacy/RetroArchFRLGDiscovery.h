@@ -33,6 +33,8 @@ namespace PokeVault::Legacy {
         int64_t modifiedTime = 0;
         std::string contentFingerprint;
         std::string gameId;
+        // Provider identity is UI metadata, independent of strict game/save parsing.
+        std::string providerLabel = "RetroArch";
         LegacySourceStatus status = LegacySourceStatus::ReadError;
         Integration::Gen3::SaveError parseError = Integration::Gen3::SaveError::None;
         Integration::Gen1::SaveError gen1ParseError = Integration::Gen1::SaveError::None;
@@ -64,6 +66,12 @@ namespace PokeVault::Legacy {
     [[nodiscard]] std::vector<std::string> retroArchSaveRootsFromConfig(
         const std::string& configPath);
 
+    // mGBA on Switch uses /mGBA/config.ini. Automatic discovery is allowed only when its
+    // root-level savegamePath explicitly names a battery-save directory. If that option is absent,
+    // mGBA saves follow the ROM directory and PokeBank deliberately does not crawl arbitrary ROMs.
+    [[nodiscard]] std::vector<std::string> mGBASaveRootsFromConfig(
+        const std::string& configPath);
+
     // Bounded read-only Gen III traversal. Only .sav/.srm raw battery saves are considered.
     // Arbitrary RetroArch savestates are never parsed. Filename release hints are accepted only
     // after strict family validation; Ruby/Sapphire exact identity necessarily comes from source
@@ -80,6 +88,14 @@ namespace PokeVault::Legacy {
         ScanLimits limits = {},
         const std::string& configPath = "sdmc:/retroarch/retroarch.cfg",
         const std::string& conventionalRoot = "sdmc:/retroarch/cores/savefiles");
+
+    // Unified bounded Gen I-III runtime catalog. RetroArch keeps its accepted configured/fallback
+    // root behavior; mGBA is additive only when savegamePath is explicitly configured.
+    [[nodiscard]] FRLGDiscoveryResult discoverConfiguredLegacySaves(
+        ScanLimits limits = {},
+        const std::string& retroArchConfigPath = "sdmc:/retroarch/retroarch.cfg",
+        const std::string& retroArchConventionalRoot = "sdmc:/retroarch/cores/savefiles",
+        const std::string& mGBAConfigPath = "sdmc:/mGBA/config.ini");
 }
 
 #endif
