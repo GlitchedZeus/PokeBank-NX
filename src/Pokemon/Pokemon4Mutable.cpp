@@ -17,6 +17,7 @@
 #include "Utils/Gen4TextCodec.h"
 
 #include <algorithm>
+#include <array>
 #include <utility>
 
 namespace Pokemon {
