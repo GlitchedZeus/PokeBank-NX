@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 196 / 725
-- Fully read text files: 162 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 200 / 725
+- Fully read text files: 166 / 692 (text/unknown classification remains provisional until content inspection completes)
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -237,3 +237,18 @@ No findings are recorded here until supported by direct evidence from the frozen
 - Recommended fix: replace the session-wide mutation gate with a target-aware capability decision. Save/Party/SaveBox targets inherit the source/workspace capability; Bank targets use `SourceKind::AppOwnedStorage`. Keep cross-store True Move source retirement behind its existing transaction/evidence gates and do not turn this cleanup into emulator source writing.
 - Risk of fix: medium because Storage input currently shares helpers across both panes; regression tests must prove Bank mutability without weakening source immutability.
 - Owner: MAIN / storage UI architecture.
+
+### AUDIT-015 — Failed backup creation can leave a partial folder surfaced as a backup
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: backup creation / filesystem durability / backup picker
+- Files: `src/Utils/FileUtilities.cpp`, `src/UI/TrainerViewScreenBase.inc`, `src/UI/BackupSelectionScreen.cpp`, `tests/test_backup_namespace_contract.cpp`, `tests/test_backup_workspace_durability.cpp`
+- Exact symbols: `copyDirectoryRecursive()`, `copyDirectory()`, `backupSaveData()`, `TrainerViewScreen::createNamedBackupDir()`, `listBackupDirectories()`, `BackupSelectionScreen::loadBackups()`.
+- Problem: backup creation writes directly into the final destination directory. If any recursive file copy fails, the function returns failure but leaves the partially populated destination directory behind. User-named and timestamped folders are then enumerated as ordinary editable backups solely because they are directories under the scoped game root.
+- Why it matters: low-space, read error, short write, or close failure can create a folder the UI later presents as a real backup even though the operation that created it explicitly failed. For most game families the open preflight is not a complete backup-set validator, so a partial workspace can progress farther than it should.
+- Evidence: `copyDirectoryRecursive()` opens destination files directly with `"wb"`, records `overallSuccess=false` on failures, and never rolls back already-created files/directories; `copyDirectory()` creates the final directory before copying. Both `backupSaveData()` and `createNamedBackupDir()` return failure without quarantining/removing the failed destination. `listBackupDirectories()` intentionally treats every ordinary subdirectory (except hidden Working by default) as user-facing, and `BackupSelectionScreen::loadBackups()` does not require a completion marker or validate the backup before listing it.
+- Current tests: namespace tests prove scoped paths and durability tests prove later workspace *writes* use `DurableFile`, but neither injects backup-copy failure or verifies that a failed seed is absent/quarantined from the picker.
+- Missing tests: ENOSPC/short-write/read/close failure while copying; timestamped and named backup failure cleanup/quarantine; incomplete backup excluded from picker; Working-copy recovery semantics; multi-file backup completeness checks.
+- Recommended fix: create backups under a unique temporary/incomplete directory, copy + close/readback/validate the required game file set there, then promote/rename to the final visible backup name only after success. On failure retain evidence under an explicitly non-browsable failed/incomplete name or remove it only when safe. The picker should ignore transaction temp/failed markers and/or require a completed manifest.
+- Risk of fix: medium because installed-title backups may contain multiple files and directory promotion behavior must be verified on Switch SD storage.
+- Owner: MAIN / backup-storage transaction layer.
