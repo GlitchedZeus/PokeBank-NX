@@ -675,7 +675,7 @@ namespace UI {
         crossStoreBaseline = {};
         crossStoreBaseline.sourcePane = sourcePane;
         crossStoreBaseline.copyOperation = copyOperation;
-        crossStoreBaseline.workspaceDirtyBeforePickup = hasUnsavedChanges;
+        crossStoreBaseline.workspaceDirtyBeforePickup = hasUnsavedChanges || trainer.hasStagedChanges();
         crossStoreBaseline.bankDirtyBeforePickup = bank && bank->hasChanged();
         crossStoreBaseline.editorDirtyBeforePickup =
             details.editing || creator.editing || statEdit.dialogActive ||
@@ -1071,7 +1071,7 @@ namespace UI {
     // The tail of the + handler: prompt about unsaved GAME-save changes, else leave. Split out so the
     // bank's Save/Discard prompt can resume the exit once the user has answered it.
     void TrainerViewScreen::beginAppExit() {
-        if (!sourceReadOnly() && hasUnsavedChanges && !saveConfirmActive) {
+        if ((hasUnsavedChanges || trainer.hasStagedChanges()) && !saveConfirmActive) {
             exitingWithUnsavedChanges = true;
             exitingViaPlus = true;   // remember we're exiting via the + button
             saveConfirmActive = true;
@@ -3942,7 +3942,7 @@ namespace UI {
                     // Leaving the storage view: if the bank has unsaved changes, prompt Save / Discard /
                     // Cancel. No changes -> just exit.
                     // The bank is its own entity, saved here rather than with the game (X) save.
-                    if (!sourceReadOnly() && bank && bank->hasChanged()) {
+                    if (bank && bank->hasChanged()) {
                         storageExitConfirmActive = true;
                         storageExitConfirmIndex = 0;
                         return;
@@ -4529,8 +4529,9 @@ namespace UI {
         // Normal mode navigation (not in detail view)
         if (kDown & HidNpadButton_B) {
             // Check for unsaved changes
-            if (!sourceReadOnly() && hasUnsavedChanges && !saveConfirmActive) {
-                // Prompt to save changes before going back
+            if ((hasUnsavedChanges || trainer.hasStagedChanges()) && !saveConfirmActive) {
+                // Prompt before leaving whenever the in-memory/staged session is dirty.
+                // Source immutability is unrelated: read-only sources can still have staged work.
                 exitingWithUnsavedChanges = true;
                 exitingViaPlus = false;  // Exiting via B button (go back)
                 saveConfirmActive = true;
