@@ -56,6 +56,22 @@ bool Gen4ReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
         return false;
     }
 
+    std::vector<std::unique_ptr<Pokemon::Pokemon>> displayParty;
+    displayParty.reserve(parsed->partyCount());
+    const auto nativeParty = parsed->nativePartySlots();
+    for (size_t slot = 0; slot < parsed->partyCount(); ++slot) {
+        if (slot >= nativeParty.size()) {
+            error = "staged Generation IV presentation lost a native party record";
+            return false;
+        }
+        const auto& pokemon = nativeParty[slot];
+        if (!pokemon.valid() || pokemon.empty() || !pokemon.isParty()) {
+            error = "staged Generation IV presentation contains an invalid party PK4";
+            return false;
+        }
+        displayParty.push_back(std::make_unique<Pokemon::Pokemon4ReadOnlyView>(pokemon));
+    }
+
     decltype(boxes) displayBoxes(18);
     for (size_t box = 0; box < 18; ++box) {
         for (size_t slot = 0; slot < 30; ++slot) {
@@ -69,6 +85,7 @@ bool Gen4ReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
                 std::make_unique<Pokemon::Pokemon4ReadOnlyView>(pokemon);
         }
     }
+    party.swap(displayParty);
     boxes.swap(displayBoxes);
     return true;
 }
