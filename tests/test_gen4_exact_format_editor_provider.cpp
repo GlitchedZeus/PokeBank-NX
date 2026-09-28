@@ -49,6 +49,8 @@ int main() {
 
         const auto staged = Provider::descriptorForSource(id, true);
         assert(staged);
+        assert(staged->source.saveOperations.supports(
+            PokeVault::SaveEdit::Capability::PokemonCreation));
         assert(staged->fieldState(Shared::FieldIdentity::Species) == Exact::FieldState::ReadOnly);
         assert(staged->fieldState(Shared::FieldIdentity::Gender) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Shiny) == Exact::FieldState::Editable);
