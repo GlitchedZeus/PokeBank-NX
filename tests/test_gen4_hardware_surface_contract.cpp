@@ -96,7 +96,7 @@ int main() {
     contains(surface, "PickerTarget::Nature");
     contains(surface, "PickerTarget::Ability");
     contains(surface, "state.session.cycleShiny()");
-    contains(surface, "Could not preserve the other PID-linked Generation IV traits");
+    contains(surface, "Could not reconcile Species while preserving Level/Nature/Shiny/PID-linked traits");
 
     // Outer move focus is exactly one row. PP / PP Ups live in the contextual dialog.
     contains(surface, "openMoveEditor(screen, state, state.focus.row)");
