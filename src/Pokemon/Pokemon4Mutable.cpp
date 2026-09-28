@@ -6,6 +6,10 @@
 #include "Pokemon/PersonalInfo4HGSS.h"
 #include "Pokemon/PersonalInfo4PT.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
+#include "Enums/LanguageID.h"
+#include "Names/NameLanguage.h"
+#include "Names/SpeciesNames.h"
+#include "Utils/StringHelpers.h"
 #include "Utils/Gen4TextCodec.h"
 
 #include <algorithm>
@@ -37,6 +41,105 @@ uint8_t fixedGender(uint8_t ratio) noexcept {
 Pokemon4Mutable::Pokemon4Mutable(std::vector<std::byte> decrypted,
                                  Enums::GameVersion sourceGroup) noexcept
     : decrypted_(std::move(decrypted)), sourceGroup_(sourceGroup), valid_(true) {}
+
+std::optional<Pokemon4Mutable> Pokemon4Mutable::createStored(
+    const Pokemon4CreateDefaults& defaults,
+    Enums::GameVersion sourceGroup,
+    std::string* error) {
+    const auto& personal = personalFor(sourceGroup, defaults.species, 0);
+    if (defaults.species == 0 || defaults.species > 493 || personal.hp == 0) {
+        if (error) *error = "Gen IV Create species is not available in the native personal table";
+        return std::nullopt;
+    }
+    if (!Enums::groupHasLanguage(sourceGroup, defaults.language)) {
+        if (error) *error = "Gen IV Create language is not supported by the target game group";
+        return std::nullopt;
+    }
+    if (defaults.level < 1 || defaults.level > 100 || defaults.metLevel > 100 ||
+        defaults.otGender > 1) {
+        if (error) *error = "Gen IV Create defaults contain an unsupported level/gender value";
+        return std::nullopt;
+    }
+    const auto exactOrigin = static_cast<Enums::GameVersion>(defaults.originVersion);
+    if (Enums::getGameGroup(exactOrigin) != sourceGroup) {
+        if (error) *error = "Gen IV Create origin does not match the exact target save group";
+        return std::nullopt;
+    }
+
+    std::vector<std::byte> bytes(Encryption::SIZE_STORED4, std::byte{0});
+    Pokemon4Mutable result(std::move(bytes), sourceGroup);
+    result.write16(0x08, defaults.species);
+    result.write16(0x0A, 0);
+    result.write16(0x0C, defaults.tid);
+    result.write16(0x0E, defaults.sid);
+    result.write32(0x10, getExpForLevel(defaults.level, personal.growthRate));
+    result.write8(0x14, personal.baseFriendship);
+    result.write8(0x17, defaults.language);
+
+    // Deterministic, non-shiny, ability-slot-0 PID. Create starts from a stable native
+    // baseline; Nature/Gender/Shiny/Ability can then use the same constrained editors as Edit.
+    uint32_t pid = 0x6C078965u ^
+        (static_cast<uint32_t>(defaults.tid) << 16) ^
+        static_cast<uint32_t>(defaults.sid) ^
+        (static_cast<uint32_t>(defaults.species) * 0x45D9F3Bu);
+    for (int i = 0; i < 1000000; ++i) {
+        pid = pid * 0x41C64E6Du + 0x00006073u;
+        if ((pid & 1u) != 0) continue;
+        const uint16_t psv = static_cast<uint16_t>((pid & 0xFFFFu) ^ (pid >> 16));
+        if (static_cast<uint16_t>(defaults.tid ^ defaults.sid ^ psv) < 8u) continue;
+        break;
+    }
+    if ((pid & 1u) != 0) {
+        if (error) *error = "Gen IV Create could not derive a stable default PID";
+        return std::nullopt;
+    }
+    result.write32(0x00, pid);
+    result.write8(0x15, static_cast<uint8_t>(personal.ability1));
+
+    const uint8_t gender = result.genderForPid(pid);
+    result.write8(0x40, static_cast<uint8_t>((gender & 3u) << 1));
+
+    const auto nameIndex = Names::languageIndexFor(
+        static_cast<Enums::LanguageID>(defaults.language));
+    const auto speciesName = Utils::utf8ToUtf16(
+        Names::getSpeciesNameLocalized(defaults.species, nameIndex));
+    if (!result.writeTextPreservingTrash(0x48, 11, 10, speciesName)) {
+        if (error) *error = "Gen IV Create species name is not representable in the target language";
+        return std::nullopt;
+    }
+    if (!result.writeTextPreservingTrash(0x68, 8, 7, defaults.otName)) {
+        if (error) *error = "Gen IV Create OT name is not representable in the target language";
+        return std::nullopt;
+    }
+
+    result.write8(0x5F, defaults.originVersion);
+    result.write8(0x82, 0);
+    if (!result.setBall(defaults.ball) || !result.setMetLevel(defaults.metLevel)) {
+        if (error) *error = "Gen IV Create could not encode default Ball/Met Level";
+        return std::nullopt;
+    }
+    result.write8(0x84, static_cast<uint8_t>(
+        (result.byteAt(0x84) & 0x7Fu) | ((defaults.otGender & 1u) << 7)));
+    if (sourceGroup == Enums::GameVersion::DP) {
+        result.write16(0x80, defaults.metLocation);
+    } else {
+        result.write16(0x46, defaults.metLocation);
+        result.write16(0x80, defaults.metLocation);
+    }
+
+    Pokemon4ReadOnly verify(result.encryptedBytes(), sourceGroup);
+    if (!verify.valid() || verify.empty() || verify.isParty() ||
+        verify.species() != defaults.species ||
+        verify.tid() != defaults.tid || verify.sid() != defaults.sid ||
+        verify.language() != defaults.language ||
+        verify.originVersion() != defaults.originVersion ||
+        verify.originalTrainerGender() != defaults.otGender) {
+        if (error) *error = "Gen IV Create draft failed strict native PK4 verification";
+        return std::nullopt;
+    }
+    if (error) error->clear();
+    return result;
+}
 
 std::optional<Pokemon4Mutable> Pokemon4Mutable::fromEncrypted(
     std::span<const std::byte> encrypted,
