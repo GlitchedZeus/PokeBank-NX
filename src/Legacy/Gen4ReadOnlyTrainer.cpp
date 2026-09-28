@@ -40,7 +40,16 @@ void Gen4ReadOnlyTrainer::buildPresentation(std::string& error) {
     money = tr.money;
     trainerGender = tr.gender;
     currentBox = save_.currentBox();
+    const auto& diagnostics = save_.diagnostics();
     saveRevisionString = save_.recovered() ? "Recovered older copy" : "Base";
+    // Keep this compact enough for the title bar while making a real-hardware empty/quarantine
+    // result self-diagnosing. "P" is declared party / invalid-in-party; "B" is occupied boxes /
+    // invalid box records. A genuinely new save reads P0/0 B0/0; a crypto/layout problem exposes
+    // rejected records instead of silently looking like an empty collection.
+    saveRevisionString += " | G4 P" + std::to_string(diagnostics.declaredPartyCount) +
+        "/" + std::to_string(diagnostics.invalidPartyRecords) +
+        " B" + std::to_string(diagnostics.occupiedBoxRecords) +
+        "/" + std::to_string(diagnostics.invalidBoxRecords);
 
     boxNames.clear();
     boxNames.reserve(18);
