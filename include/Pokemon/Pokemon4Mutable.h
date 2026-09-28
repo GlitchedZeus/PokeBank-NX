@@ -11,12 +11,33 @@
 #include <string>
 #include <vector>
 
+struct Pokemon4CreateDefaults;
+
 namespace Pokemon {
+
+struct Pokemon4CreateDefaults {
+    uint16_t species = 1;
+    uint16_t tid = 0;
+    uint16_t sid = 0;
+    uint8_t language = 2;
+    uint8_t otGender = 0;
+    uint8_t originVersion = 10;
+    uint8_t level = 5;
+    uint8_t ball = 4;
+    uint8_t metLevel = 5;
+    uint16_t metLocation = 0;
+    std::u16string otName;
+};
 
 class Pokemon4Mutable {
 public:
     static std::optional<Pokemon4Mutable> fromEncrypted(
         std::span<const std::byte> encrypted,
+        Enums::GameVersion sourceGroup,
+        std::string* error = nullptr);
+
+    static std::optional<Pokemon4Mutable> createStored(
+        const Pokemon4CreateDefaults& defaults,
         Enums::GameVersion sourceGroup,
         std::string* error = nullptr);
 
