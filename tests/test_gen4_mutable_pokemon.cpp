@@ -36,7 +36,7 @@ void copy(std::vector<std::byte>& dst, size_t off, std::span<const std::byte> sr
 
 std::vector<std::byte> makeEntity(
     uint16_t species = 25, uint32_t pid = 0x12345678u,
-    uint16_t ability = 9) {
+    uint16_t ability = 9, uint8_t originVersion = 10) {
     std::vector<std::byte> d(Encryption::SIZE_STORED4, std::byte{0});
     w32(d, 0x00, pid);
     w16(d, 0x08, species);
@@ -68,7 +68,7 @@ std::vector<std::byte> makeEntity(
     // Native entity strings may have post-terminator trash. Keep a recognizable tail.
     for (size_t i = 0x54; i < 0x5E; ++i)
         d[i] = static_cast<std::byte>(0x90 + (i - 0x54));
-    d[0x5F] = std::byte{10};
+    d[0x5F] = static_cast<std::byte>(originVersion);
     auto ot = Utils::encodeGen4Field(u"ASH", 8, 7, 2);
     copy(d, 0x68, ot);
     d[0x82] = std::byte{0x21};
@@ -392,6 +392,63 @@ void testCatalogBackedFieldValidation() {
     assert(hgssParsed.valid() && hgssParsed.metLocationExtended() == 16);
 }
 
+
+void testExactMetLocationSemantics() {
+    // D/P native locations occupy only the original 0..111 bank and do not use
+    // the Pt/HGSS extended field.
+    auto dp = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(25, 0x12345678u, 9, 10), Enums::GameVersion::DP);
+    assert(dp && dp->setMetLocation(16));
+    Pokemon::Pokemon4ReadOnly dpParsed(dp->encryptedBytes(), Enums::GameVersion::DP);
+    assert(dpParsed.valid() && dpParsed.metLocationDP() == 16);
+    assert(dpParsed.metLocationExtended() == 0);
+    const auto dpBeforeInvalid = dp->encryptedBytes();
+    assert(!dp->setMetLocation(112));
+    assert(dp->encryptedBytes() == dpBeforeInvalid);
+
+    // Platinum mirrors common locations, but Platinum-only 112..125 locations use
+    // Faraway Place in D/P's legacy field plus the real extended value.
+    auto pt = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(25, 0x12345678u, 9, 12), Enums::GameVersion::PT);
+    assert(pt && pt->setMetLocation(111));
+    Pokemon::Pokemon4ReadOnly ptCommon(pt->encryptedBytes(), Enums::GameVersion::PT);
+    assert(ptCommon.valid() && ptCommon.metLocationDP() == 111);
+    assert(ptCommon.metLocationExtended() == 111);
+    assert(pt->setMetLocation(125));
+    Pokemon::Pokemon4ReadOnly ptUnique(pt->encryptedBytes(), Enums::GameVersion::PT);
+    assert(ptUnique.valid() && ptUnique.metLocationDP() == 3002);
+    assert(ptUnique.metLocationExtended() == 125);
+    const auto ptBeforeInvalid = pt->encryptedBytes();
+    assert(!pt->setMetLocation(126));
+    assert(pt->encryptedBytes() == ptBeforeInvalid);
+
+    // HG/SS native locations are 126..233 and are represented through the extended
+    // field with Faraway Place for D/P compatibility.
+    auto hg = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(25, 0x12345678u, 9, 7), Enums::GameVersion::HGSS);
+    assert(hg);
+    const auto hgBeforeInvalid = hg->encryptedBytes();
+    assert(!hg->setMetLocation(125));
+    assert(hg->encryptedBytes() == hgBeforeInvalid);
+    assert(hg->setMetLocation(182)); // Route 34 / canonical HGSS hatch area.
+    Pokemon::Pokemon4ReadOnly hgParsed(hg->encryptedBytes(), Enums::GameVersion::HGSS);
+    assert(hgParsed.valid() && hgParsed.metLocationDP() == 3002);
+    assert(hgParsed.metLocationExtended() == 182);
+    const auto hgStable = hg->encryptedBytes();
+    assert(!hg->setMetLocation(234));
+    assert(hg->encryptedBytes() == hgStable);
+
+    // Current save family must not overwrite origin semantics: a Platinum-origin
+    // PK4 stored in a D/P save still uses Platinum's exact field representation.
+    auto ptInDp = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(25, 0x12345678u, 9, 12), Enums::GameVersion::DP);
+    assert(ptInDp && ptInDp->setMetLocation(125));
+    Pokemon::Pokemon4ReadOnly ptInDpParsed(
+        ptInDp->encryptedBytes(), Enums::GameVersion::DP);
+    assert(ptInDpParsed.valid() && ptInDpParsed.metLocationDP() == 3002);
+    assert(ptInDpParsed.metLocationExtended() == 125);
+}
+
 void testNativeStoredCreateDraft() {
     struct Case { Enums::GameVersion group; uint8_t origin; };
     for (const auto tc : {Case{Enums::GameVersion::DP, 10},
@@ -558,6 +615,7 @@ int main() {
     testShedinjaPartyHpRule();
     testSpeciesReconciliation();
     testCatalogBackedFieldValidation();
+    testExactMetLocationSemantics();
     testExactGameForms();
     testItemDrivenAndStorageFormRules();
     testNativeStoredCreateDraft();

@@ -79,7 +79,9 @@ uint8_t Pokemon4ReadOnlyView::ball() const noexcept {
     return source_.ballDPPt();
 }
 uint16_t Pokemon4ReadOnlyView::metLocation() const noexcept {
-    if (source_.sourceGroup() != Enums::GameVersion::DP && source_.metLocationExtended() != 0)
+    // PK4's canonical display value always prefers the Pt/HGSS extended field when
+    // populated, even when the Pokémon is currently stored in a D/P save.
+    if (source_.metLocationExtended() != 0)
         return source_.metLocationExtended();
     return source_.metLocationDP();
 }

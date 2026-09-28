@@ -591,7 +591,9 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
     state.pickerValues.clear();
     const auto table = Names::getLocationTable(record.originVersion());
     for (size_t id = 0; id < table.count && id <= 0xFFFFu; ++id)
-        if (table.names && table.names[id] && table.names[id][0] != '\0')
+        if (table.names && table.names[id] && table.names[id][0] != '\0' &&
+            Names::isGen4NativeMetLocation(
+                record.originVersion(), static_cast<uint16_t>(id)))
             state.pickerValues.push_back(static_cast<uint16_t>(id));
     Pokemon::Pokemon4ReadOnlyView view(record);
     const uint16_t current = view.metLocation();

@@ -9,6 +9,7 @@
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
 #include "Names/Gen4HeldItemCatalog.h"
+#include "Names/LocationNames.h"
 #include "Names/MoveInfo.h"
 #include "Names/MovePresence.h"
 #include "Names/NameLanguage.h"
@@ -659,16 +660,43 @@ bool Pokemon4Mutable::setMetLevel(uint8_t value) noexcept {
 
 bool Pokemon4Mutable::setMetLocation(uint16_t value) noexcept {
     if (!valid_) return false;
-    if (sourceGroup_ == Enums::GameVersion::DP) {
-        write16(0x80, value);
-        return true;
+
+    // Met Location is origin metadata. Validate against the Pokémon's exact Gen IV
+    // origin game rather than whichever compatible save currently contains it.
+    const uint8_t origin = byteAt(0x5F);
+    if (!Names::isGen4NativeMetLocation(origin, value)) return false;
+
+    uint16_t dpLocation = value;
+    uint16_t extendedLocation = 0;
+    const auto exactOrigin = static_cast<Enums::GameVersion>(origin);
+
+    if (exactOrigin == Enums::GameVersion::Pt) {
+        // Platinum mirrors common D/P locations into the extended field. Locations
+        // introduced after D/P use Faraway Place in the legacy field.
+        extendedLocation = value;
+        if (value > 111) dpLocation = 3002;
+    } else if (exactOrigin == Enums::GameVersion::HG ||
+               exactOrigin == Enums::GameVersion::SS) {
+        // HG/SS native locations are extended-only to D/P; legacy games see the
+        // canonical Faraway Place sentinel.
+        dpLocation = 3002;
+        extendedLocation = value;
+    } else if (exactOrigin != Enums::GameVersion::D &&
+               exactOrigin != Enums::GameVersion::P) {
+        return false;
     }
-    if (sourceGroup_ == Enums::GameVersion::PT ||
-        sourceGroup_ == Enums::GameVersion::HGSS) {
-        write16(0x46, value);
-        return true;
+
+    const auto backup = decrypted_;
+    write16(0x80, dpLocation);
+    write16(0x46, extendedLocation);
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid() || verify.metLocationDP() != dpLocation ||
+        verify.metLocationExtended() != extendedLocation) {
+        decrypted_ = backup;
+        return false;
     }
-    return false;
+    return true;
 }
 
 bool Pokemon4Mutable::rerollPid(
