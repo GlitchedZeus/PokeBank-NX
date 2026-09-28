@@ -40,7 +40,7 @@ PokeBank NX currently has a device-accepted Gen I-III shared staged editor, a de
 | Provider-neutral Save Instance backend | ✅ Device accepted |
 | Platinum / DraStic .dsv read-only loading | ✅ Hardware tested |
 | FAT32 interruption/recovery harness | ✅ 8 / 8 hardware tests passed |
-| Gen IV Party + Box Pokémon View/Edit | 🧪 Corrected candidate in CI / hardware retest pending |
+| Gen IV Party + Box Pokémon View/Edit | 🧪 Automated gates pass / hardware retest pending |
 | Cross-game True Move | 🔒 Disabled |
 | Live external-source writes | 🔒 Disabled |
 | Master Vault | 🗺️ Planned |
@@ -85,7 +85,7 @@ The active feature line is **PR #87 — G4-03: Gen IV shared staged Pokémon edi
 
 Generation IV already supports strict Trainer, Party, Boxes and Pokémon-detail browsing.
 
-The first G4-03 hardware candidate was **rejected on Switch** because a party-only Platinum save could not reach the editor and Party View fell through to an older generic read-only screen. The corrected work now routes **Party and Box Pokémon** into the shared View/Edit surface and stages both PK4 record types safely. A fresh exact candidate is being verified before the next hardware test.
+The first G4-03 hardware candidate was **rejected on Switch** because a party-only Platinum save could not reach the editor and Party View fell through to an older generic read-only screen. The corrected work now routes **Party and Box Pokémon** into the shared View/Edit surface and stages both PK4 record types safely. The corrected exact Actions-built candidate has passed all required automated gates and is ready for physical Switch retesting.
 
 Gen IV Create, Inventory editing, source injection and cross-game True Move remain disabled.
 
