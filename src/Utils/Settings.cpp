@@ -1,13 +1,16 @@
 #include "Utils/Settings.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <vector>
 #include <sys/stat.h>
 
 #include "Globals.h"
 #include "UI/Common.h"
 #include "Utils/Logger.h"
+#include "Utils/DurableFile.h"
 #include "Utils/PokeBankPaths.h"
 
 namespace Utils {
@@ -52,27 +55,48 @@ namespace Utils {
         fclose(f);
     }
 
-    void saveSettings() {
+    bool saveSettings() {
         std::string pathError;
         if (!PokeBank::Paths::ensureConfigRoot(&pathError)) {
             logErrorToFile("Failed to create PokeBank NX config directory", pathError.c_str());
-            return;
+            return false;
         }
 
-        FILE* f = fopen(settingsPath().c_str(), "w");
-        if (!f) {
-            logErrorToFile("Failed to write settings file", settingsPath().c_str());
-            return;
-        }
         const std::string_view themeKey = UI::themeModeKey(UI::g_themeMode);
-        fprintf(f, "theme=%.*s\n", static_cast<int>(themeKey.size()), themeKey.data());
-        fprintf(f, "autoBackup=%d\n", g_autoBackupEnabled ? 1 : 0);
-        fprintf(f, "allowIllegal=%d\n", g_allowIllegalEdits ? 1 : 0);
-        fprintf(f, "moveWarn=%d\n", g_moveWarn ? 1 : 0);
+        std::string text;
+        text.reserve(160);
+        text += "theme=";
+        text.append(themeKey.data(), themeKey.size());
+        text += "\n";
+        text += "autoBackup=" + std::to_string(g_autoBackupEnabled ? 1 : 0) + "\n";
+        text += "allowIllegal=" + std::to_string(g_allowIllegalEdits ? 1 : 0) + "\n";
+        text += "moveWarn=" + std::to_string(g_moveWarn ? 1 : 0) + "\n";
         // Keep writing the legacy key as zero so older builds also default to the safe state if the
         // same SD card is used, but never read it as authority in PokeBank NX.
-        fprintf(f, "injectToGame=0\n");
-        fprintf(f, "debugLogging=%d\n", g_debugLogging ? 1 : 0);
-        fclose(f);
+        text += "injectToGame=0\n";
+        text += "debugLogging=" + std::to_string(g_debugLogging ? 1 : 0) + "\n";
+
+        const std::vector<uint8_t> bytes(text.begin(), text.end());
+        const auto validator = [text](std::span<const uint8_t> candidate, std::string& error) {
+            if (candidate.size() != text.size() ||
+                !std::equal(candidate.begin(), candidate.end(), text.begin())) {
+                error = "settings reread differs from requested configuration";
+                return false;
+            }
+            const std::string reread(candidate.begin(), candidate.end());
+            if (reread.find("injectToGame=0\n") == std::string::npos) {
+                error = "settings safety lock is missing";
+                return false;
+            }
+            return true;
+        };
+
+        const auto durable = PokeBank::Storage::DurableFile::replace(
+            settingsPath(), std::span<const uint8_t>(bytes.data(), bytes.size()), validator);
+        if (!durable.ok) {
+            logErrorToFile("Failed to persist settings durably", durable.error.c_str());
+            return false;
+        }
+        return true;
     }
 }
