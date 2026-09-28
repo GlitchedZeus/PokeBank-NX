@@ -57,3 +57,26 @@ $(GEN4_EDITOR_PROVIDER_SANITIZE): tests/test_gen4_exact_format_editor_provider.c
 	include/UI/SharedPokemonEditorContract.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+
+# G4-03: mutable PK4 core. This is entity-only; it cannot write an external save.
+GEN4_MUTABLE_SOURCES := tests/test_gen4_mutable_pokemon.cpp \
+	src/Pokemon/Pokemon4Mutable.cpp src/Pokemon/Pokemon4ReadOnly.cpp \
+	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp \
+	src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp \
+	src/Encryption/Encryption4.cpp src/Pokemon/Experience.cpp
+GEN4_MUTABLE_TEST := $(HOST_BUILD)/test_gen4_mutable_pokemon
+GEN4_MUTABLE_SANITIZE := $(HOST_BUILD)/test_gen4_mutable_pokemon_sanitize
+
+HOST_TESTS += $(GEN4_MUTABLE_TEST)
+HOST_SANITIZE_TESTS += $(GEN4_MUTABLE_SANITIZE)
+host-test: $(GEN4_MUTABLE_TEST)
+host-sanitize: $(GEN4_MUTABLE_SANITIZE)
+
+$(GEN4_MUTABLE_TEST): $(GEN4_MUTABLE_SOURCES) include/Pokemon/Pokemon4Mutable.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN4_MUTABLE_SOURCES) -o $@
+
+$(GEN4_MUTABLE_SANITIZE): $(GEN4_MUTABLE_SOURCES) include/Pokemon/Pokemon4Mutable.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN4_MUTABLE_SOURCES) -o $@
