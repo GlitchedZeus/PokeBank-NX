@@ -595,22 +595,22 @@ void ux3DrawStagedView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
 std::string ux3FooterText(const TrainerViewScreen& screen, const UX2State& state) {
     if (state.picker == UX2Picker::Species)
-        return "D-pad/Stick Navigate   L/R Page   Y Shiny   A Select   B Cancel";
+        return "D-pad/Stick: Navigate | L/R: Page | Y: Shiny | A: Select | B: Cancel";
     if (state.picker == UX2Picker::Move)
-        return "D-pad/Stick Navigate   L/R Page   A Select   B Cancel";
+        return "D-pad/Stick: Navigate | L/R: Page | A: Select | B: Cancel";
     switch (state.mode) {
-        case UX2Mode::View: return "B Back";
-        case UX2Mode::Edit: return "D-pad/Stick Navigate   A Edit   L/R Section   B Back";
-        case UX2Mode::AddDraft: return "D-pad/Stick Navigate   A Edit   L/R Section   X Stage Add   B Cancel Draft";
-        case UX2Mode::Actions: return "D-pad/Stick Navigate   A Select   B Back";
+        case UX2Mode::View: return "B: Back";
+        case UX2Mode::Edit: return "D-pad/Stick: Navigate | A: Edit | L/R: Section | B: Back";
+        case UX2Mode::AddDraft: return "D-pad/Stick: Navigate | A: Edit | L/R: Section | X: Stage Add | B: Cancel Draft";
+        case UX2Mode::Actions: return "D-pad/Stick: Navigate | A: Select | B: Back";
         case UX2Mode::LevelExpEditor:
         case UX2Mode::MoveEditor:
         case UX2Mode::DVEditor:
-        case UX2Mode::StatExpEditor: return "D-pad/Stick Navigate   A Edit/Apply   B Cancel";
-        case UX2Mode::CloneDestination: return "D-pad/Stick Slot   L/R Box   A Stage Clone   B Cancel";
-        case UX2Mode::RemoveConfirm: return "A Confirm Remove   B Cancel";
-        case UX2Mode::Review: return "D-pad/Stick Navigate   A Export Copy   Y Discard Staged   B Back";
-        case UX2Mode::Provenance: return "B Back";
+        case UX2Mode::StatExpEditor: return "D-pad/Stick: Navigate | A: Edit / Apply | B: Cancel";
+        case UX2Mode::CloneDestination: return "D-pad/Stick: Slot | L/R: Box | A: Stage Clone | B: Cancel";
+        case UX2Mode::RemoveConfirm: return "A: Confirm Remove | B: Cancel";
+        case UX2Mode::Review: return "D-pad/Stick: Navigate | A: Export Copy | Y: Discard Staged | B: Back";
+        case UX2Mode::Provenance: return "B: Back";
         case UX2Mode::Closed: break;
     }
     return ux2FooterText(screen, state);

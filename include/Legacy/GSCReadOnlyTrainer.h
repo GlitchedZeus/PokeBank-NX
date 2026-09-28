@@ -27,6 +27,9 @@ public:
     size_t getBoxCount() const noexcept override { return boxCount_; }
     size_t getSlotsPerBox() const noexcept override { return slotsPerBox_; }
     size_t getPartySize() const noexcept override { return party.size(); }
+    bool hasStagedChanges() const noexcept override {
+        return stagedEditor_ && stagedEditor_->hasPendingChanges();
+    }
     Enums::GameVersion getGameGroup() const noexcept override {
         return Enums::GameVersion::GSC;
     }

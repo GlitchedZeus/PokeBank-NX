@@ -8,10 +8,11 @@ namespace PokeBank::UIModel::PokemonEditorFoundation {
 // Format is the current serialization layout, never the Pokemon's origin game.
 enum class SaveFormat : uint8_t {
     Unknown, RBYInternational, RBYJapanese, GSCInternational, GSCJapanese,
-    PK3GBA, PB7, PA8, PK9
+    PK3GBA, PK4, PB7, PA8, PK9
 };
 enum class SaveFamily : uint8_t {
     RBY, GoldSilver, Crystal, RubySapphire, Emerald, FireRedLeafGreen,
+    DiamondPearl, Platinum, HeartGoldSoulSilver,
     LetsGo, LegendsArceus, ScarletViolet
 };
 enum class StatModel : uint8_t { DVStatExpSingleSpecial, DVStatExpSplitSpecial, IVAwakening, IVEffortLevel, IVEV };
@@ -70,6 +71,18 @@ constexpr std::optional<ExactSaveCapabilities> exactSaveCapabilities(const Exact
         return ExactSaveCapabilities{id, family, StatModel::IVEV, fields,
                                      31, 255, true, false};
     }
+    if (game == "diamond_nds" || game == "pearl_nds" || game == "platinum_nds" ||
+        game == "heartgold_nds" || game == "soulsilver_nds") {
+        if (id.platform != Platform::NintendoDS || id.generation != Generation::Gen4 ||
+            id.format != SaveFormat::PK4) return std::nullopt;
+        auto fields = capabilitiesForGeneration(Generation::Gen4);
+        const SaveFamily family =
+            game == "platinum_nds" ? SaveFamily::Platinum :
+            (game == "heartgold_nds" || game == "soulsilver_nds")
+                ? SaveFamily::HeartGoldSoulSilver : SaveFamily::DiamondPearl;
+        return ExactSaveCapabilities{id, family, StatModel::IVEV, fields,
+                                     31, 255, true, false};
+    }
     if (id.platform != Platform::NintendoSwitch) return std::nullopt;
     if (game == "letsgo_pikachu_switch" || game == "letsgo_eevee_switch") {
         if (id.generation != Generation::Gen7 || id.format != SaveFormat::PB7) return std::nullopt;
@@ -103,6 +116,9 @@ constexpr std::optional<ExactSaveCapabilities> capabilitiesForSourceId(std::stri
     if (id == "ruby_gba" || id == "sapphire_gba" || id == "emerald_gba" ||
         id == "firered_gba" || id == "leafgreen_gba")
         return exactSaveCapabilities({id,Platform::GameBoyAdvance,Generation::Gen3,SaveFormat::PK3GBA});
+    if (id == "diamond_nds" || id == "pearl_nds" || id == "platinum_nds" ||
+        id == "heartgold_nds" || id == "soulsilver_nds")
+        return exactSaveCapabilities({id,Platform::NintendoDS,Generation::Gen4,SaveFormat::PK4});
     if (id == "letsgo_pikachu_switch" || id == "letsgo_eevee_switch")
         return exactSaveCapabilities({id,Platform::NintendoSwitch,Generation::Gen7,SaveFormat::PB7});
     if (id == "legends_arceus_switch")

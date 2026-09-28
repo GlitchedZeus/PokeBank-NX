@@ -149,6 +149,7 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 #include "ClassicPackedMoveOverlay.inc"
 #include "ClassicReleaseActionFix.inc"
 #include "Gen3SharedPokemonSurface.inc"
+#include "Gen4SharedPokemonSurface.inc"
 
 namespace UI {
 namespace {
@@ -225,6 +226,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 
     if (classicPackedMoveLayerAvailable(*this) &&
         ClassicPackedMove::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
+    if (Gen4SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen3SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen1PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
     if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
@@ -247,6 +249,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
+    if (Gen4SharedEditorSurface::draw(*this, fb)) return;
     if (Gen3SharedEditorSurface::draw(*this, fb)) return;
 
     // Prevent a base-navigation transition from ever presenting a non-existent source slot, even

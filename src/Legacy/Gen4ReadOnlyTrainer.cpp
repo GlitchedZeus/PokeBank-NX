@@ -26,7 +26,69 @@ std::unique_ptr<Gen4ReadOnlyTrainer> Gen4ReadOnlyTrainer::create(
         new Gen4ReadOnlyTrainer(save, std::move(sourceGameId)));
     trainer->buildPresentation(error);
     if (!error.empty()) return nullptr;
+
+    std::string stagedError;
+    auto staged = Integration::Gen4::Gen4StagedPokemonEditor::create(
+        save.sourceBytes(), save.layout(), trainer->sourceGameId_, &stagedError);
+    if (staged)
+        trainer->stagedPokemon_ =
+            std::make_unique<Integration::Gen4::Gen4StagedPokemonEditor>(std::move(*staged));
+    trainer->stagedPokemonUnavailableReason_ = std::move(stagedError);
     return trainer;
+}
+
+
+bool Gen4ReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
+    error.clear();
+    if (!stagedPokemon_) {
+        error = stagedPokemonUnavailableReason_.empty()
+            ? "Generation IV staged Pokemon editing is unavailable"
+            : stagedPokemonUnavailableReason_;
+        return false;
+    }
+
+    auto bytes = stagedPokemon_->finalizedBytes(&error);
+    if (bytes.empty()) return false;
+    auto parsed = Integration::Gen4::Gen4ReadOnlySave::parse(
+        bytes, save_.layout(), sourceGameId_, &error);
+    if (!parsed || parsed->assignmentStatus() != Integration::Gen4::AssignmentStatus::Match) {
+        if (error.empty()) error = "staged Generation IV presentation failed strict reparse";
+        return false;
+    }
+
+    std::vector<std::unique_ptr<Pokemon::Pokemon>> displayParty;
+    displayParty.reserve(parsed->partyCount());
+    const auto nativeParty = parsed->nativePartySlots();
+    for (size_t slot = 0; slot < parsed->partyCount(); ++slot) {
+        if (slot >= nativeParty.size()) {
+            error = "staged Generation IV presentation lost a native party record";
+            return false;
+        }
+        const auto& pokemon = nativeParty[slot];
+        if (!pokemon.valid() || pokemon.empty() || !pokemon.isParty()) {
+            // Match initial read-only presentation semantics: malformed entities remain quarantined
+            // as an empty presentation slot instead of making an unrelated valid staged edit fail.
+            displayParty.push_back(nullptr);
+            continue;
+        }
+        displayParty.push_back(std::make_unique<Pokemon::Pokemon4ReadOnlyView>(pokemon));
+    }
+
+    decltype(boxes) displayBoxes(18);
+    for (size_t box = 0; box < 18; ++box) {
+        for (size_t slot = 0; slot < 30; ++slot) {
+            const auto& pokemon = parsed->box(box, slot);
+            // Preserve the same quarantine policy used when the save first opens. An invalid
+            // unrelated record stays hidden/quarantined; it must not desynchronize presentation
+            // from an otherwise successful staged edit to another Pokémon.
+            if (!pokemon.valid() || pokemon.empty()) continue;
+            displayBoxes[box][slot] =
+                std::make_unique<Pokemon::Pokemon4ReadOnlyView>(pokemon);
+        }
+    }
+    party.swap(displayParty);
+    boxes.swap(displayBoxes);
+    return true;
 }
 
 void Gen4ReadOnlyTrainer::buildPresentation(std::string& error) {

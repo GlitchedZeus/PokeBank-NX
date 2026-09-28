@@ -22,6 +22,7 @@
 #include "UI/TouchInput.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
+#include "UI/SharedPokemonEditorContract.h"
 #include "UI/StoragePlacementCommit.h"
 #include "UI/Panels/PartyPokemonPanel.h"
 #include "UI/Panels/BoxPokemonPanel.h"
@@ -395,11 +396,9 @@ namespace UI {
             "Locked",
             g_debugLogging ? "On" : "Off",
         };
-        // The panel is a fixed height, so the rows have to fit inside it -- there is no scrolling
-        // here. Six rows leave 10px spare; rowH stays at 64 because it is also the touch target.
-        // The assert is the point: add a seventh row and the build stops rather than quietly
-        // drawing it past the panel edge.
-        constexpr int rowW = 720, rowH = 64, rowGap = 12, rowsTop = 22, footerH = 26;
+        // Keep the six touch rows comfortably above the minimum target while reserving a compact,
+        // read-only build/safety footer. The global control legend remains the only control help.
+        constexpr int rowW = 720, rowH = 62, rowGap = 9, rowsTop = 14, footerH = 48;
         static_assert(hH + rowsTop + kRows * (rowH + rowGap) + footerH <= CONTENT_PANEL_HEIGHT,
                       "Settings rows no longer fit the content panel -- shrink the rows or add scrolling");
         const int rx = x + (w - rowW) / 2;
@@ -426,7 +425,12 @@ namespace UI {
             screen.touchButtons.push_back({ i, rx, ry, rowW, rowH });
             ry += rowH + rowGap;
         }
-        fb.drawText(rx, ry + 8, "A: toggle / info     B: back", Colors::TextDim, TextStyle::Caption);
+        const std::string buildIdentity =
+            "PokeBank NX v" + VERSION_STRING + "  /  build " + BUILD_COMMIT;
+        fb.drawText(rx, ry + 3, buildIdentity, Colors::TextMuted, TextStyle::Caption);
+        fb.drawText(rx, ry + 23,
+                    "External writes: LOCKED  /  Cross-game True Move: LOCKED",
+                    Colors::TextMuted, TextStyle::Caption);
     }
 
     // Trainer view (HOME-style ID card), reached from the HOME menu's Trainer icon. The first two
@@ -564,7 +568,7 @@ namespace UI {
         // which game, where the save came from, and the state of every setting that changes
         // behaviour. Without this a trace is a list of actions with no way to judge them.
         const std::string sessionInfo =
-            "pkse=" + VERSION_STRING +
+            "pokebank=" + VERSION_STRING +
             " game=\"" + titleName + "\" gamever=" + (gameVersion.empty() ? "?" : gameVersion) +
             " src=" + std::string(legacyReadOnlySource()
                                       ? legacyProviderLabel() + "_READ_ONLY"
@@ -675,7 +679,7 @@ namespace UI {
         crossStoreBaseline = {};
         crossStoreBaseline.sourcePane = sourcePane;
         crossStoreBaseline.copyOperation = copyOperation;
-        crossStoreBaseline.workspaceDirtyBeforePickup = hasUnsavedChanges;
+        crossStoreBaseline.workspaceDirtyBeforePickup = hasUnsavedChanges || trainer.hasStagedChanges();
         crossStoreBaseline.bankDirtyBeforePickup = bank && bank->hasChanged();
         crossStoreBaseline.editorDirtyBeforePickup =
             details.editing || creator.editing || statEdit.dialogActive ||
@@ -1071,7 +1075,7 @@ namespace UI {
     // The tail of the + handler: prompt about unsaved GAME-save changes, else leave. Split out so the
     // bank's Save/Discard prompt can resume the exit once the user has answered it.
     void TrainerViewScreen::beginAppExit() {
-        if (!sourceReadOnly() && hasUnsavedChanges && !saveConfirmActive) {
+        if ((hasUnsavedChanges || trainer.hasStagedChanges()) && !saveConfirmActive) {
             exitingWithUnsavedChanges = true;
             exitingViaPlus = true;   // remember we're exiting via the + button
             saveConfirmActive = true;
@@ -2544,13 +2548,21 @@ namespace UI {
         // Defense in depth: inherited modal flags must never create a writable path in an
         // installed-source session, including touch/deferred entry points. Browse/View is kept.
         if (sourceReadOnly()) {
+            // A dirty-session exit confirmation is safe on an immutable source: it does not write
+            // the source, it only asks whether to abandon staged app-owned work or keep editing.
+            // All ordinary Save/write dialogs stay blocked.
+            const bool exitOnlySaveConfirm = saveConfirmActive && exitingWithUnsavedChanges;
             const bool blocked = pickerActive || itemEditDialogActive || itemRemoveConfirmActive ||
-                statEdit.dialogActive || saveConfirmActive || releaseConfirmActive ||
-                creator.active || creator.editing || groupMenuActive || storageExitConfirmActive ||
-                gen3ConvertConfirmActive || lgpeTransferConfirmActive;
+                statEdit.dialogActive ||
+                PokeBank::UIModel::SharedPokemonEditor::immutableSourceBlocksSaveDialog(
+                    saveConfirmActive, exitingWithUnsavedChanges) ||
+                releaseConfirmActive || creator.active || creator.editing || groupMenuActive ||
+                storageExitConfirmActive || gen3ConvertConfirmActive || lgpeTransferConfirmActive;
             if (blocked) {
                 pickerActive = itemEditDialogActive = itemRemoveConfirmActive = false;
-                statEdit.dialogActive = saveConfirmActive = releaseConfirmActive = false;
+                statEdit.dialogActive = false;
+                if (!exitOnlySaveConfirm) saveConfirmActive = false;
+                releaseConfirmActive = false;
                 creator.active = creator.editing = creator.keepConfirmActive = false;
                 groupMenuActive = false;
                 storageExitConfirmActive = gen3ConvertConfirmActive = lgpeTransferConfirmActive = false;
@@ -3942,7 +3954,7 @@ namespace UI {
                     // Leaving the storage view: if the bank has unsaved changes, prompt Save / Discard /
                     // Cancel. No changes -> just exit.
                     // The bank is its own entity, saved here rather than with the game (X) save.
-                    if (!sourceReadOnly() && bank && bank->hasChanged()) {
+                    if (bank && bank->hasChanged()) {
                         storageExitConfirmActive = true;
                         storageExitConfirmIndex = 0;
                         return;
@@ -4529,8 +4541,9 @@ namespace UI {
         // Normal mode navigation (not in detail view)
         if (kDown & HidNpadButton_B) {
             // Check for unsaved changes
-            if (!sourceReadOnly() && hasUnsavedChanges && !saveConfirmActive) {
-                // Prompt to save changes before going back
+            if ((hasUnsavedChanges || trainer.hasStagedChanges()) && !saveConfirmActive) {
+                // Prompt before leaving whenever the in-memory/staged session is dirty.
+                // Source immutability is unrelated: read-only sources can still have staged work.
                 exitingWithUnsavedChanges = true;
                 exitingViaPlus = false;  // Exiting via B button (go back)
                 saveConfirmActive = true;

@@ -308,6 +308,52 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
                 return FieldAccess::Hidden;
         }
     }
+    if (generation == Generation::Gen4) {
+        // Gen IV plugs PK4 into the same shared shell. PID-correlated fields become editor
+        // targets only when the exact Gen IV staged provider is present; the provider is
+        // responsible for preserving nature/gender/shiny/ability relationships.
+        switch (field) {
+            case FieldIdentity::Nickname:
+            case FieldIdentity::Gender:
+            case FieldIdentity::Shiny:
+            case FieldIdentity::Level:
+            case FieldIdentity::Experience:
+            case FieldIdentity::Friendship:
+            case FieldIdentity::IV:
+            case FieldIdentity::EV:
+            case FieldIdentity::Nature:
+            case FieldIdentity::Ability:
+            case FieldIdentity::MetLevel:
+                return FieldAccess::Editable;
+            // G4-03 first hardware milestone keeps fields read-only when their exact-game
+            // picker/side-effects are not yet pinned. Known bytes alone are not permission
+            // to present a writable control.
+            case FieldIdentity::Species:
+            case FieldIdentity::Language:
+            case FieldIdentity::HeldItem:
+            case FieldIdentity::Pokerus:
+            case FieldIdentity::Ball:
+            case FieldIdentity::MetLocation:
+            case FieldIdentity::Form:
+            case FieldIdentity::OriginalTrainer:
+            case FieldIdentity::TrainerId:
+            case FieldIdentity::SecretId:
+            case FieldIdentity::PersonalityId:
+            case FieldIdentity::OriginGame:
+            case FieldIdentity::MetDate:
+            case FieldIdentity::Egg:
+            case FieldIdentity::EggLocation:
+            case FieldIdentity::EggDate:
+            case FieldIdentity::OriginalTrainerGender:
+            case FieldIdentity::CalculatedStats:
+            case FieldIdentity::MoveCompatibility:
+            case FieldIdentity::EncounterLegality:
+            case FieldIdentity::Provenance:
+                return FieldAccess::ReadOnly;
+            default:
+                return FieldAccess::Hidden;
+        }
+    }
     return FieldAccess::Hidden;
 }
 
@@ -369,7 +415,7 @@ constexpr Layout layoutFor(Generation generation, bool crystal = false) noexcept
     // capabilities in DETAILS. VALUES stays stat-focused: five DV/Stat Exp rows + Shiny/Gender.
     if (generation == Generation::Gen2)
         return {/*details*/static_cast<uint8_t>(crystal ? 13 : 9), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
-    if (generation == Generation::Gen3)
+    if (generation == Generation::Gen3 || generation == Generation::Gen4)
         return {/*details*/15, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
     return {/*details*/6, /*values*/6, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
@@ -497,6 +543,15 @@ constexpr Focus passiveViewMoveColumn(Generation generation, Focus focus, int di
         generation, moveColumn(generation, focus, direction, crystal), crystal);
 }
 
+constexpr bool immutableSourceBlocksSaveDialog(bool saveConfirmActive,
+                                               bool exitingWithUnsavedChanges) noexcept {
+    // Ordinary Save dialogs would write a backup/current destination and remain blocked on an
+    // immutable source. The exit-only dirty-session confirmation is different: it only asks the
+    // user whether to discard staged in-memory work or keep editing, so it must survive the
+    // read-only guard long enough to receive A/B input on the next frame.
+    return saveConfirmActive && !exitingWithUnsavedChanges;
+}
+
 constexpr const char* statsHeading() noexcept { return "STATS"; }
 struct CellFocus { int x, width; };
 constexpr CellFocus moveRowFocus(int panelWidth) noexcept {
@@ -513,7 +568,10 @@ constexpr CellFocus cellFocus(Focus focus) noexcept {
     return focus.column == 1 ? CellFocus{180, 90} : CellFocus{278, 98};
 }
 constexpr CellFocus cellFocusFor(Generation generation, Focus focus) noexcept {
-    if (generation != Generation::Gen3) return cellFocus(focus);
+    // Gen III and Gen IV both expose six IV/EV stat rows. Earlier generations use the five-row
+    // fallback where row 5 is a derived/full-width row instead of an editable IV/EV cell pair.
+    if (generation != Generation::Gen3 && generation != Generation::Gen4)
+        return cellFocus(focus);
     if (focus.panel == Panel::Details) return {104, 186};
     if (focus.panel == Panel::Moves) {
         if (focus.column == 0) return {14, 170};
@@ -571,6 +629,15 @@ enum class Gen2LegacyPath : uint8_t {
 
 constexpr bool gen2LegacyPathProductionReachable(Gen2LegacyPath) noexcept { return false; }
 constexpr bool gen2ExternalPassiveViewUsesSharedSurface() noexcept { return true; }
+
+// Accepted Gen I-III UX rule carried forward: Gender is a direct field action, not a
+// nested Male/Female modal. Exact adapters still decide whether the field is editable
+// (fixed-gender and genderless species remain non-toggleable).
+constexpr bool genderUsesInlineToggle(Generation generation) noexcept {
+    return generation == Generation::Gen2 || generation == Generation::Gen3 ||
+           generation == Generation::Gen4;
+}
+constexpr bool genderOpensDedicatedPicker(Generation) noexcept { return false; }
 
 constexpr bool passiveViewHasFieldCursor() noexcept { return true; }
 constexpr bool passiveViewAllowsEditing() noexcept { return false; }

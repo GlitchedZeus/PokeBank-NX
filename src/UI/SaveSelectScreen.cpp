@@ -1018,7 +1018,9 @@ namespace UI {
         // ---- Title grid ----
         int count = u ? (int)u->titles.size() : 0;
         if (count == 0) {
-            const char* msg = "No Pokémon saves found for this user";
+            const char* msg = (!u || u->name == "Game Sources")
+                ? "No validated Pokémon game sources found"
+                : "No Pokémon saves found for this user";
             int mw, mh; fb.measureText(msg, mw, mh, TextStyle::Body);
             fb.drawText((fb.getWidth() - mw) / 2, GRID_Y + 120, msg, Colors::TextDim, TextStyle::Body);
         } else {
@@ -1041,8 +1043,6 @@ namespace UI {
                 bool sel = (i == titleIndex);
 
                 drawFocusedCard(fb, tileX, tileY, TILE_W, TILE_H, sel, 16);
-                fb.drawFilledRoundedRect(tileX + 12, tileY + 8, TILE_W - 24, 5, 3,
-                                         sel ? Colors::FocusBorder : withAlpha(Colors::AccentDim, 90));
 
                 int iconX = tileX + (TILE_W - ICON) / 2;
                 int iconY = tileY + 16;
@@ -1062,17 +1062,8 @@ namespace UI {
                     }
                 }
 
-                // Source badge makes these cards read as a local archive browser, not an inherited
-                // title picker. It is intentionally presentation-only; identity remains gameId.
-                constexpr int sourceW = 88, sourceH = 22;
-                fb.drawFilledRoundedRect(tileX + TILE_W - sourceW - 10, tileY + 14,
-                                         sourceW, sourceH, 8,
-                                         withAlpha(Colors::Info, sel ? 70 : 38));
-                const std::string& sourceLabel = u->titles[i].sourceLabel;
-                int sw, sh; fb.measureText(sourceLabel, sw, sh, TextStyle::Caption);
-                fb.drawText(tileX + TILE_W - sourceW - 10 + (sourceW - sw) / 2,
-                            tileY + 14 + (sourceH - sh) / 2, sourceLabel,
-                            sel ? Colors::TextPrimary : Colors::TextMuted, TextStyle::Caption);
+                // Source/provider details intentionally stay off the cover art. Save Instances is
+                // the authoritative place to choose and inspect validated physical sources.
 
                 // Release name and platform are separate lines. A FireRed tile must always say
                 // whether it is the GBA or Switch release; display names are never identity.
@@ -1084,13 +1075,8 @@ namespace UI {
                 int pw, ph; fb.measureText(platform, pw, ph, TextStyle::Caption);
                 fb.drawText(tileX + (TILE_W - pw) / 2, iconY + ICON + 8 + lh + 1, platform,
                             Colors::TextDim, TextStyle::Caption);
-                if (!u->titles[i].locationLabel.empty()) {
-                    const std::string& location = u->titles[i].locationLabel;
-                    int fw, fh; fb.measureText(location, fw, fh, TextStyle::Caption);
-                    fb.drawText(tileX + (TILE_W - fw) / 2,
-                                iconY + ICON + 8 + lh + ph + 1, location,
-                                Colors::TextMuted, TextStyle::Caption);
-                }
+                // Per-card source counts/paths are deliberately omitted here so every generation
+                // follows one rule. Save Instances owns source count, provider and path metadata.
 
                 titleRects.push_back({tileX, tileY, TILE_W, TILE_H, i});
             }
@@ -1122,7 +1108,7 @@ namespace UI {
             fb.drawText(x + 28, y + 18,
                         "SAVE INSTANCES / " + parent.platformLabel + " / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
-            fb.drawText(x + 28, y + 44, "Pokemon " + parent.label + " — Save Instances",
+            fb.drawText(x + 28, y + 44, "Pokémon " + parent.label + " — Save Instances",
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
                         "Choose a validated battery save. The source file will not be modified.",
@@ -1157,7 +1143,7 @@ namespace UI {
                 const auto& entry = unassignedLegacySources[static_cast<size_t>(index)];
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6,
                                 index == legacyAssignmentIndex, 10);
-                fb.drawText(x + 44, rowY + 7, "Pokemon " + entry.title + " — " +
+                fb.drawText(x + 44, rowY + 7, "Pokémon " + entry.title + " — " +
                             entry.instance.label,
                             index == legacyAssignmentIndex ? Colors::TextPrimary
                                                            : Colors::TextSecondary,
@@ -1214,7 +1200,7 @@ namespace UI {
             const std::string title = identity ? std::string(identity->title) : std::string("Generation IV");
             fb.drawText(x + 28, y + 18, "NINTENDO DS / SOURCE SETUP / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
-            fb.drawText(x + 28, y + 44, "Pokemon " + title,
+            fb.drawText(x + 28, y + 44, "Pokémon " + title,
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
                         "Add or repair sources here. Opening always happens from Save Instances.",
@@ -1244,7 +1230,7 @@ namespace UI {
             const std::string title = identity ? std::string(identity->title) : std::string("Generation IV");
             fb.drawText(x + 28, y + 18, "NINTENDO DS / SAVE INSTANCES / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
-            fb.drawText(x + 28, y + 44, "Pokemon " + title + " — Save Instances",
+            fb.drawText(x + 28, y + 44, "Pokémon " + title + " — Save Instances",
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
                         "Choose a validated cartridge save. The source file will not be modified.",
