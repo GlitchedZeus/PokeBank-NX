@@ -137,6 +137,11 @@ std::vector<uint8_t> makeSave(Layout layout, uint8_t romCode = 7,
         std::fill(save.begin() + static_cast<std::ptrdiff_t>(storage),
                   save.begin() + static_cast<std::ptrdiff_t>(storage + sp.storageSize), 0);
 
+        auto trainerName = Utils::encodeGen4Field(u"Kylie", 8, 7, 2);
+        copy(save, base + sp.trainer, trainerName);
+        w16(save, base + sp.trainer + 0x10, 12150);
+        w16(save, base + sp.trainer + 0x12, 22558);
+        save[base + sp.trainer + 0x18] = 1;
         save[base + sp.trainer + 0x19] = 2;
         save[base + sp.trainer + 0x1C] = romCode;
         save[base + sp.party - 4] = 1;
@@ -337,21 +342,27 @@ void testEmptySlotCreateTransaction() {
             source, layout, gameId(layout), &error);
         assert(editor && error.empty());
 
-        // Use a known-valid native stored PK4 as the draft payload. G4-04 UI draft
-        // construction is tested separately; this pins the save transaction itself.
-        auto draft = editor->editableBoxPokemon(0, 0, &error);
+        auto draft = editor->createBoxDraft(0, 1, 393, &error);
         assert(draft && error.empty());
+        assert(draft->species() == 393);
+        assert(draft->tid() == 12150 && draft->sid() == 22558);
+        assert(draft->language() == 2);
         assert(editor->stageCreateBoxPokemon(0, 1, *draft, &error));
         assert(error.empty());
         assert(source == original);
 
         auto created = editor->boxedPokemon(0, 1, &error);
         assert(created && error.empty());
-        assert(created->species() == draft->species());
+        assert(created->species() == 393);
+        assert(created->tid() == 12150 && created->sid() == 22558);
+        assert(created->originalTrainerName() == u"Kylie");
         assert(created->originalEncryptedBytes() == draft->encryptedBytes());
 
         // Create must never replace an occupied target.
         const auto stagedBeforeRefusal = editor->stagedBytes();
+        assert(!editor->createBoxDraft(0, 0, 393, &error));
+        assert(!error.empty());
+        error.clear();
         assert(!editor->stageCreateBoxPokemon(0, 0, *draft, &error));
         assert(!error.empty());
         assert(editor->stagedBytes() == stagedBeforeRefusal);
