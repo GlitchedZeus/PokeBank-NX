@@ -438,6 +438,37 @@ void testNativeStoredCreateDraft() {
     assert(!error.empty());
 }
 
+void testExactGameForms() {
+    auto dp = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(479, 0x12345678u, 26), Enums::GameVersion::DP);
+    assert(dp);
+    assert(dp->formCount() == 1);
+    assert(dp->form() == 0);
+    const auto dpBefore = dp->encryptedBytes();
+    assert(!dp->setForm(1));
+    assert(dp->encryptedBytes() == dpBefore);
+
+    for (const auto group : {Enums::GameVersion::PT, Enums::GameVersion::HGSS}) {
+        auto rotom = Pokemon::Pokemon4Mutable::fromEncrypted(
+            makeEntity(479, 0x12345678u, 26), group);
+        assert(rotom);
+        assert(rotom->formCount() == 6);
+        assert(rotom->setForm(1));
+        Pokemon::Pokemon4ReadOnly heat(rotom->encryptedBytes(), group);
+        assert(heat.valid() && heat.species() == 479 && heat.form() == 1);
+        assert(heat.ability() == 26);
+        assert(rotom->setForm(5));
+        Pokemon::Pokemon4ReadOnly mow(rotom->encryptedBytes(), group);
+        assert(mow.valid() && mow.form() == 5);
+        const auto beforeBadForm = rotom->encryptedBytes();
+        assert(!rotom->setForm(6));
+        assert(rotom->encryptedBytes() == beforeBadForm);
+        assert(rotom->setForm(0));
+        Pokemon::Pokemon4ReadOnly normal(rotom->encryptedBytes(), group);
+        assert(normal.valid() && normal.form() == 0);
+    }
+}
+
 void testBadInputFailsClosed() {
     std::vector<std::byte> empty(Encryption::SIZE_STORED4, std::byte{0});
     std::string error;
@@ -463,6 +494,7 @@ int main() {
     testShedinjaPartyHpRule();
     testSpeciesReconciliation();
     testCatalogBackedFieldValidation();
+    testExactGameForms();
     testNativeStoredCreateDraft();
     testBadInputFailsClosed();
     std::cout << "Gen IV mutable PK4 core PASS\n";
