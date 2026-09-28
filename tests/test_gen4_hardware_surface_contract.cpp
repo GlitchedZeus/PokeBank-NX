@@ -104,7 +104,9 @@ int main() {
     contains(surface, "PP Ups");
     contains(surface, "state.moveEditorRow == 1");
     contains(surface, "state.moveEditorRow == 2");
-    contains(surface, "Move selection stays read-only until exact Gen IV learnsets are pinned");
+    contains(surface, "PickerTarget::Move");
+    contains(surface, "Names::isMovePresent");
+    contains(surface, "Native Gen IV move catalog");
 
     // G4-04 keeps accepted View/Edit and adds native Create for empty PC slots.
     contains(surface, "result.values[result.count++] = Shared::Action::View");
@@ -113,6 +115,14 @@ int main() {
     contains(surface, "case Shared::Action::Add");
     contains(surface, "beginCreate(screen)");
     contains(surface, "PickerTarget::Species");
+    contains(surface, "PickerTarget::HeldItem");
+    contains(surface, "PickerTarget::Language");
+    contains(surface, "PickerTarget::Ball");
+    contains(surface, "PickerTarget::MetLocation");
+    contains(surface, "PickerTarget::Pokerus");
+    contains(surface, "Names::isHeldItemPresent");
+    contains(surface, "Names::getLocationTable");
+    contains(surface, "Enums::getBallList");
     contains(surface, "createBoxDraft(");
     contains(surface, "keepCreate(");
     contains(session, "Mode::Create");
