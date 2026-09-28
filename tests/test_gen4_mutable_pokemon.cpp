@@ -3,7 +3,7 @@
 #include "Pokemon/PersonalInfo4PT.h"
 #include "Pokemon/Pokemon4Mutable.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
-#include "Names/ItemPresence.h"
+#include "Names/Gen4HeldItemCatalog.h"
 #include "Utils/Gen4TextCodec.h"
 
 #include <algorithm>
@@ -102,14 +102,15 @@ void testNoOpAndSimpleFields() {
     assert(editable && error.empty());
     assert(editable->encryptedBytes() == encrypted);
 
-    uint16_t validHeldItem = 0;
-    for (uint16_t item = 1; item < Names::ITEM_PRESENCE_MAX_ID; ++item) {
-        if (Names::isHeldItemPresent(item, Enums::GameVersion::PT)) {
-            validHeldItem = item;
-            break;
-        }
-    }
-    assert(validHeldItem != 0);
+    static_assert(Names::isGen4HeldItemPresent(1, Enums::GameVersion::DP));
+    static_assert(!Names::isGen4HeldItemPresent(5, Enums::GameVersion::DP));
+    static_assert(!Names::isGen4HeldItemPresent(112, Enums::GameVersion::DP));
+    static_assert(Names::isGen4HeldItemPresent(112, Enums::GameVersion::PT));
+    static_assert(Names::isGen4HeldItemPresent(112, Enums::GameVersion::HGSS));
+    static_assert(Names::isGen4HeldItemPresent(419, Enums::GameVersion::PT));
+    static_assert(!Names::isGen4HeldItemPresent(420, Enums::GameVersion::PT));
+
+    const uint16_t validHeldItem = 1;
     assert(editable->setHeldItem(validHeldItem));
     assert(editable->setFriendship(123));
     assert(editable->setEV(0, 252));
