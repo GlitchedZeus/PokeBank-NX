@@ -1018,7 +1018,9 @@ namespace UI {
         // ---- Title grid ----
         int count = u ? (int)u->titles.size() : 0;
         if (count == 0) {
-            const char* msg = "No Pokémon saves found for this user";
+            const char* msg = (!u || u->name == "Game Sources")
+                ? "No validated Pokémon game sources found"
+                : "No Pokémon saves found for this user";
             int mw, mh; fb.measureText(msg, mw, mh, TextStyle::Body);
             fb.drawText((fb.getWidth() - mw) / 2, GRID_Y + 120, msg, Colors::TextDim, TextStyle::Body);
         } else {
@@ -1106,7 +1108,7 @@ namespace UI {
             fb.drawText(x + 28, y + 18,
                         "SAVE INSTANCES / " + parent.platformLabel + " / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
-            fb.drawText(x + 28, y + 44, "Pokemon " + parent.label + " — Save Instances",
+            fb.drawText(x + 28, y + 44, "Pokémon " + parent.label + " — Save Instances",
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
                         "Choose a validated battery save. The source file will not be modified.",
@@ -1141,7 +1143,7 @@ namespace UI {
                 const auto& entry = unassignedLegacySources[static_cast<size_t>(index)];
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6,
                                 index == legacyAssignmentIndex, 10);
-                fb.drawText(x + 44, rowY + 7, "Pokemon " + entry.title + " — " +
+                fb.drawText(x + 44, rowY + 7, "Pokémon " + entry.title + " — " +
                             entry.instance.label,
                             index == legacyAssignmentIndex ? Colors::TextPrimary
                                                            : Colors::TextSecondary,
@@ -1198,7 +1200,7 @@ namespace UI {
             const std::string title = identity ? std::string(identity->title) : std::string("Generation IV");
             fb.drawText(x + 28, y + 18, "NINTENDO DS / SOURCE SETUP / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
-            fb.drawText(x + 28, y + 44, "Pokemon " + title,
+            fb.drawText(x + 28, y + 44, "Pokémon " + title,
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
                         "Add or repair sources here. Opening always happens from Save Instances.",
@@ -1228,7 +1230,7 @@ namespace UI {
             const std::string title = identity ? std::string(identity->title) : std::string("Generation IV");
             fb.drawText(x + 28, y + 18, "NINTENDO DS / SAVE INSTANCES / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
-            fb.drawText(x + 28, y + 44, "Pokemon " + title + " — Save Instances",
+            fb.drawText(x + 28, y + 44, "Pokémon " + title + " — Save Instances",
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
                         "Choose a validated cartridge save. The source file will not be modified.",
