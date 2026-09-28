@@ -1,7 +1,6 @@
 #pragma once
 
 #include "UI/ExactFormatEditorProvider.h"
-#include "Names/MovePresence.h"
 #include "Enums/GameVersion.h"
 
 #include <optional>
@@ -37,11 +36,13 @@ inline Exact::MoveCompatibilityResult evaluateMove(
         return Exact::MoveCompatibilityResult::Invalid;
     if (query.move == 0) return Exact::MoveCompatibilityResult::Compatible;
     const auto group = groupForSourceId(query.exactGameId);
-    if (group == Enums::GameVersion::Invalid || !Names::isMovePresent(query.move, group))
+    if (group == Enums::GameVersion::Invalid)
+        return Exact::MoveCompatibilityResult::Invalid;
+    // Native Generation IV move IDs are 1-467. Species encounter/learnset legality is a
+    // separate advisory concern and must not be confused with structural PK4 representability.
+    if (query.move > 467)
         return query.existingSourceMove ? Exact::MoveCompatibilityResult::PreserveExisting
                                         : Exact::MoveCompatibilityResult::Unsupported;
-    // G4-04 proves structural/native move presence here. Species encounter/learnset legality is
-    // intentionally a separate advisory concern and must not be confused with representability.
     return Exact::MoveCompatibilityResult::Compatible;
 }
 
