@@ -255,6 +255,107 @@ void testShedinjaPartyHpRule() {
     }
 }
 
+void testSpeciesReconciliation() {
+    const auto& pidgeyPersonal = Pokemon::getPersonalInfo4PT(16, 0);
+    auto mon = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(16, 0x12345678u, pidgeyPersonal.ability1),
+        Enums::GameVersion::PT);
+    assert(mon);
+    const uint8_t oldLevel = mon->level();
+    const uint8_t oldNature = mon->nature();
+    const bool oldShiny = mon->shiny();
+
+    // Magnemite forces genderless + base form while preserving Level/Nature/Shiny.
+    assert(mon->setSpecies(81));
+    Pokemon::Pokemon4ReadOnly magnemite(mon->encryptedBytes(), Enums::GameVersion::PT);
+    assert(magnemite.valid() && magnemite.species() == 81);
+    assert(magnemite.gender() == 2);
+    assert(magnemite.form() == 0);
+    assert(static_cast<uint8_t>(magnemite.pid() % 25u) == oldNature);
+    const uint16_t magPsv = static_cast<uint16_t>(
+        (magnemite.pid() & 0xFFFFu) ^ (magnemite.pid() >> 16));
+    assert((static_cast<uint16_t>(magnemite.tid() ^ magnemite.sid() ^ magPsv) < 8u) == oldShiny);
+    assert(Pokemon::getLevelFromExp(
+        magnemite.experience(), magnemite.personal().growthRate) == oldLevel);
+    assert(magnemite.nickname() == u"MAGNEMITE");
+    assert(!magnemite.isNicknamed());
+
+    // A user nickname is intent, not a species-name cache; keep it across Species edits.
+    auto nicknamed = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(25), Enums::GameVersion::PT);
+    assert(nicknamed && nicknamed->setNickname(u"SPARK"));
+    assert(nicknamed->setSpecies(133));
+    Pokemon::Pokemon4ReadOnly eevee(nicknamed->encryptedBytes(), Enums::GameVersion::PT);
+    assert(eevee.valid() && eevee.species() == 133);
+    assert(eevee.nickname() == u"SPARK" && eevee.isNicknamed());
+
+    // Preserve a requested dual-ability slot where the target species also has two slots.
+    auto dual = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(16, 0x12345678u, pidgeyPersonal.ability1),
+        Enums::GameVersion::PT);
+    assert(dual && dual->setAbilitySlot(1));
+    const uint8_t slotBefore = dual->abilitySlot();
+    assert(slotBefore == 1);
+    assert(dual->setSpecies(133));
+    assert(dual->abilitySlot() == 1);
+    assert(dual->ability() == dual->abilityForSlot(1));
+
+    // Party Species edits refresh live battle fields, including Shedinja's fixed 1 HP.
+    auto party = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makePartyEntity(16, 0x12345678u, pidgeyPersonal.ability1, 20),
+        Enums::GameVersion::PT);
+    assert(party && party->setSpecies(292));
+    Pokemon::Pokemon4ReadOnly shedinja(party->encryptedBytes(), Enums::GameVersion::PT);
+    assert(shedinja.valid() && shedinja.isParty() && shedinja.species() == 292);
+    assert(shedinja.maxHP() == 1 && shedinja.currentHP() <= 1);
+
+    const auto stable = dual->encryptedBytes();
+    assert(!dual->setSpecies(0));
+    assert(dual->encryptedBytes() == stable);
+    assert(!dual->setSpecies(494));
+    assert(dual->encryptedBytes() == stable);
+}
+
+void testCatalogBackedFieldValidation() {
+    auto pt = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(), Enums::GameVersion::PT);
+    assert(pt);
+
+    // EV edits enforce the native total cap, not only the per-stat byte range.
+    assert(pt->setEV(0, 252));
+    assert(pt->setEV(1, 252));
+    const auto beforeTooMany = pt->encryptedBytes();
+    assert(!pt->setEV(2, 252));
+    assert(pt->encryptedBytes() == beforeTooMany);
+
+    assert(pt->setHeldItem(1)); // Master Ball is a native holdable Gen IV item.
+    assert(!pt->setHeldItem(65535));
+    assert(pt->setMove(0, 1)); // Pound exists in Gen IV.
+    assert(!pt->setMove(0, 1000));
+
+    assert(pt->setBall(16)); // Cherish Ball exists in D/P/Pt.
+    const auto beforeInvalidBall = pt->encryptedBytes();
+    assert(!pt->setBall(17)); // Apricorn balls are HGSS-only.
+    assert(pt->encryptedBytes() == beforeInvalidBall);
+
+    const uint8_t oldLanguage = pt->language();
+    assert(!pt->setLanguage(9)); // Chinese is not a PK4 language.
+    assert(pt->language() == oldLanguage);
+    assert(pt->setLanguage(3));
+    Pokemon::Pokemon4ReadOnly french(pt->encryptedBytes(), Enums::GameVersion::PT);
+    assert(french.valid() && french.language() == 3);
+    assert(!french.isNicknamed());
+
+    auto hgss = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(), Enums::GameVersion::HGSS);
+    assert(hgss);
+    assert(hgss->setBall(24)); // Sport Ball is native to HGSS.
+    assert(!hgss->setBall(25)); // Dream Ball is later-generation.
+    assert(hgss->setMetLocation(16));
+    Pokemon::Pokemon4ReadOnly hgssParsed(hgss->encryptedBytes(), Enums::GameVersion::HGSS);
+    assert(hgssParsed.valid() && hgssParsed.metLocationExtended() == 16);
+}
+
 void testNativeStoredCreateDraft() {
     struct Case { Enums::GameVersion group; uint8_t origin; };
     for (const auto tc : {Case{Enums::GameVersion::DP, 10},
@@ -337,6 +438,8 @@ int main() {
     testPidCoupledEdits();
     testFixedGenderAndAbilitySlots();
     testShedinjaPartyHpRule();
+    testSpeciesReconciliation();
+    testCatalogBackedFieldValidation();
     testNativeStoredCreateDraft();
     testBadInputFailsClosed();
     std::cout << "Gen IV mutable PK4 core PASS\n";
