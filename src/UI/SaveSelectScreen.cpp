@@ -42,6 +42,26 @@ namespace UI {
         std::string shortValue(const std::string& value, size_t length = 12) {
             return value.substr(0, std::min(length, value.size()));
         }
+
+        std::string providerSummary(
+            const std::vector<PokeVault::Legacy::FRLGSaveInstance>& instances) {
+            std::vector<std::string> providers;
+            for (const auto& instance : instances) {
+                const std::string provider =
+                    instance.providerLabel.empty() ? std::string("Source") : instance.providerLabel;
+                if (std::find(providers.begin(), providers.end(), provider) == providers.end())
+                    providers.push_back(provider);
+            }
+            if (providers.empty()) return "No validated providers";
+            if (providers.size() == 1) return "Provider: " + providers.front();
+
+            std::string summary = "Providers: ";
+            for (size_t i = 0; i < providers.size(); ++i) {
+                if (i != 0) summary += " + ";
+                summary += providers[i];
+            }
+            return summary;
+        }
     }
 
     // Layout (1280x720).
@@ -1052,11 +1072,8 @@ namespace UI {
             fb.drawText(x + 28, y + 76,
                         "Choose a validated battery save. The source file will not be modified.",
                         Colors::TextSecondary, TextStyle::Caption);
-            if (legacyCatalog && !legacyCatalog->activeRoot.empty()) {
-                fb.drawText(x + 28, y + 96,
-                            "Active root: " + sourceLeafName(legacyCatalog->activeRoot),
-                            Colors::TextMuted, TextStyle::Caption);
-            }
+            fb.drawText(x + 28, y + 96, providerSummary(parent.legacyInstances),
+                        Colors::TextMuted, TextStyle::Caption);
 
             const int first = legacyInstanceScroll;
             const int last = std::min<int>(static_cast<int>(parent.legacyInstances.size()),

@@ -53,6 +53,9 @@ legacy_model = (root / 'include/Legacy/FRLGSourceBrowser.h').read_text()
 assert 'std::string providerLabel;' in legacy_model
 assert 'SAVE INSTANCES / ' in select
 assert 'instance.providerLabel' in select
+assert 'providerSummary(parent.legacyInstances)' in select
+assert '"Providers: "' in select
+assert '"Active root: " + sourceLeafName(legacyCatalog->activeRoot)' not in select
 assert 'drawLine("Provider", legacyDetailsInstance.providerLabel.empty()' in select
 viewer_header = (root / 'include/UI/TrainerViewScreenBase.h').read_text()
 viewer_impl = (root / 'src/UI/TrainerViewScreenBase.inc').read_text()
