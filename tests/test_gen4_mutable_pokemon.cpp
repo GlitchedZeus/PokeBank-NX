@@ -255,6 +255,65 @@ void testShedinjaPartyHpRule() {
     }
 }
 
+void testNativeStoredCreateDraft() {
+    struct Case { Enums::GameVersion group; uint8_t origin; };
+    for (const auto tc : {Case{Enums::GameVersion::DP, 10},
+                          Case{Enums::GameVersion::PT, 12},
+                          Case{Enums::GameVersion::HGSS, 7}}) {
+        Pokemon::Pokemon4CreateDefaults defaults;
+        defaults.species = 393; // Piplup
+        defaults.tid = 12150;
+        defaults.sid = 22558;
+        defaults.language = 2;
+        defaults.otGender = 1;
+        defaults.originVersion = tc.origin;
+        defaults.level = 5;
+        defaults.ball = 4;
+        defaults.metLevel = 5;
+        defaults.otName = u"Kylie";
+
+        std::string error;
+        auto draft = Pokemon::Pokemon4Mutable::createStored(
+            defaults, tc.group, &error);
+        assert(draft && error.empty() && !draft->isParty());
+
+        Pokemon::Pokemon4ReadOnly parsed(draft->encryptedBytes(), tc.group);
+        assert(parsed.valid() && !parsed.empty() && !parsed.isParty());
+        assert(parsed.species() == 393);
+        assert(parsed.tid() == 12150 && parsed.sid() == 22558);
+        assert(parsed.language() == 2);
+        assert(parsed.originVersion() == tc.origin);
+        assert(parsed.originalTrainerName() == u"Kylie");
+        assert(parsed.originalTrainerGender() == 1);
+        assert(parsed.nickname() == u"PIPLUP");
+        assert(!parsed.isNicknamed());
+        assert(parsed.heldItem() == 0);
+        assert(parsed.ballDPPt() == (tc.group == Enums::GameVersion::HGSS ? 0 : 4));
+        if (tc.group == Enums::GameVersion::HGSS) assert(parsed.ballHGSS() == 4);
+        assert(Pokemon::getLevelFromExp(
+            parsed.experience(), parsed.personal().growthRate) == 5);
+        assert(parsed.friendship() == parsed.personal().baseFriendship);
+        assert(parsed.ability() == parsed.personal().ability1);
+        assert((parsed.pid() & 1u) == 0);
+        assert(!draft->shiny());
+    }
+
+    Pokemon::Pokemon4CreateDefaults bad;
+    bad.species = 494;
+    bad.otName = u"ASH";
+    std::string error;
+    assert(!Pokemon::Pokemon4Mutable::createStored(
+        bad, Enums::GameVersion::PT, &error));
+    assert(!error.empty());
+
+    bad.species = 25;
+    bad.originVersion = 10; // Diamond origin does not match Platinum target group.
+    error.clear();
+    assert(!Pokemon::Pokemon4Mutable::createStored(
+        bad, Enums::GameVersion::PT, &error));
+    assert(!error.empty());
+}
+
 void testBadInputFailsClosed() {
     std::vector<std::byte> empty(Encryption::SIZE_STORED4, std::byte{0});
     std::string error;
@@ -278,6 +337,7 @@ int main() {
     testPidCoupledEdits();
     testFixedGenderAndAbilitySlots();
     testShedinjaPartyHpRule();
+    testNativeStoredCreateDraft();
     testBadInputFailsClosed();
     std::cout << "Gen IV mutable PK4 core PASS\n";
     return 0;
