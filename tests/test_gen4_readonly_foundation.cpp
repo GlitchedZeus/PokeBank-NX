@@ -228,7 +228,8 @@ void testOracle() {
         const std::vector<std::byte> rawZero(size,std::byte{0});
         Pokemon::Pokemon4ReadOnly zeroSlot(rawZero,Enums::GameVersion::PT);
         assert(zeroSlot.valid() && zeroSlot.empty() && zeroSlot.species()==0);
-        assert(zeroSlot.decryptedBytes()==std::span<const std::byte>(rawZero));
+        assert(std::equal(zeroSlot.decryptedBytes().begin(), zeroSlot.decryptedBytes().end(),
+                          rawZero.begin()));
     }
     for(size_t badSize : {size_t(0),size_t(1),size_t(0x87),size_t(0x89),size_t(0xEB),size_t(0xED)}) {
         std::vector<std::byte> bad(badSize);
