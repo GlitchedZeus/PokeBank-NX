@@ -31,6 +31,9 @@ public:
     size_t getBoxCount() const noexcept override { return 18; }
     size_t getSlotsPerBox() const noexcept override { return 30; }
     size_t getPartySize() const noexcept override { return save_.partyCount(); }
+    bool hasStagedChanges() const noexcept override {
+        return stagedPokemon_ && stagedPokemon_->hasChanges();
+    }
     Enums::GameVersion getGameGroup() const noexcept override { return save_.rawFamily(); }
     bool supportsBoxNames() const noexcept override { return true; }
     size_t getMaxBoxNameLength() const noexcept override { return 8; }
