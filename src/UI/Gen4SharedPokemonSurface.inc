@@ -274,6 +274,56 @@ bool beginViewOrEdit(TrainerViewScreen& screen, SessionModel::Mode mode) {
     return true;
 }
 
+bool beginCreate(TrainerViewScreen& screen, int box, int slot) {
+    auto* staged = editor(screen);
+    if (!staged) {
+        const auto& why = bridge(screen).stagedPokemonUnavailableReason();
+        screen.postStatus(why.empty()
+            ? "Generation IV staged Create is unavailable for this source"
+            : why, 360);
+        return false;
+    }
+    if (box < 0 || box >= 18 || slot < 0 || slot >= 30) {
+        screen.postStatus("Select a native Generation IV box slot first", 300);
+        return false;
+    }
+    std::string error;
+    if (staged->boxedPokemon(static_cast<size_t>(box), static_cast<size_t>(slot), &error)) {
+        screen.postStatus("Add Pokemon requires an empty Generation IV box slot", 300);
+        return false;
+    }
+    if (error.find("empty") == std::string::npos) {
+        screen.postStatus(error.empty() ? "Generation IV Create target is unavailable" : error, 360);
+        return false;
+    }
+
+    auto& state = stateFor(screen);
+    state.target = TargetKind::Box;
+    state.box = box;
+    state.slot = slot;
+    state.actions = false;
+    state.review = false;
+    const auto& trainer = bridge(screen).sourceSave().trainer();
+    const uint32_t pidSeed = 0x9E3779B9u ^
+        (static_cast<uint32_t>(trainer.tid) << 16) ^ trainer.sid ^
+        (static_cast<uint32_t>(box + 1) * 0x45D9F3Bu) ^
+        (static_cast<uint32_t>(slot + 1) * 0x119DE1F3u);
+    if (!state.session.beginCreate(bridge(screen).sourceSave(), 25, pidSeed, error)) {
+        screen.postStatus(error.empty() ? "Could not start Generation IV Create" : error, 360);
+        return false;
+    }
+    resetWorkspaceFocus(state);
+    // Create starts by choosing species, matching the mature Gen I-III flow.
+    state.valuePicker = true;
+    state.pickerTarget = PickerTarget::Species;
+    state.pickerValues.reserve(493);
+    for (uint16_t species = 1; species <= 493; ++species)
+        state.pickerValues.push_back(species);
+    state.pickerRow = 24; // Pikachu default.
+    screen.controllerNavigation.reset();
+    return true;
+}
+
 bool refreshPresentation(TrainerViewScreen& screen) {
     std::string error;
     if (!bridge(screen).refreshStagedPokemonPresentation(error)) {
@@ -292,10 +342,16 @@ bool keepWorkspace(TrainerViewScreen& screen) {
         return false;
     }
     std::string error;
-    const bool kept = state.target == TargetKind::Party
-        ? state.session.keepParty(*staged, static_cast<size_t>(state.slot), error)
-        : state.session.keep(*staged, static_cast<size_t>(state.box),
-                             static_cast<size_t>(state.slot), error);
+    bool kept = false;
+    if (state.session.mode == SessionModel::Mode::Create) {
+        kept = state.session.add(*staged, static_cast<size_t>(state.box),
+                                 static_cast<size_t>(state.slot), error);
+    } else if (state.target == TargetKind::Party) {
+        kept = state.session.keepParty(*staged, static_cast<size_t>(state.slot), error);
+    } else {
+        kept = state.session.keep(*staged, static_cast<size_t>(state.box),
+                                  static_cast<size_t>(state.slot), error);
+    }
     if (!kept) {
         screen.postStatus(error.empty() ? "Generation IV staged edit failed" : error, 360);
         return false;
