@@ -44,6 +44,12 @@ public:
                           const Pokemon::Pokemon4Mutable& pokemon,
                           std::string* error = nullptr);
 
+    // Create-only path: refuses any occupied or quarantined target rather than
+    // reusing Edit semantics and accidentally replacing an existing Pokémon.
+    bool commitNewBoxPokemon(size_t box, size_t slot,
+                             const Pokemon::Pokemon4Mutable& pokemon,
+                             std::string* error = nullptr);
+
     [[nodiscard]] std::optional<Pokemon::Pokemon4ReadOnly> partyPokemon(
         size_t slot, std::string* error = nullptr) const;
 
