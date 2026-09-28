@@ -268,7 +268,7 @@ void testSpeciesAndTrainerFieldEdits() {
     assert(created->setSpecies(25));
     Pokemon::Pokemon4ReadOnly speciesChanged(created->encryptedBytes(), Enums::GameVersion::PT);
     assert(speciesChanged.valid() && speciesChanged.species() == 25);
-    assert(speciesChanged.nickname() == u"PIKACHU");
+    assert(speciesChanged.nickname() == u"Pikachu");
     assert(!speciesChanged.isNicknamed());
     assert(Pokemon::getLevelFromExp(speciesChanged.experience(), speciesChanged.personal().growthRate) == beforeLevel);
     assert(static_cast<uint8_t>(speciesChanged.pid() % 25u) == beforeNature);
@@ -317,7 +317,7 @@ void testStrictCreateFactory() {
         assert(parsed.language() == 2);
         assert(parsed.originVersion() == tc.origin);
         assert(parsed.originalTrainerName() == u"ASH");
-        assert(parsed.nickname() == u"PIPLUP");
+        assert(parsed.nickname() == u"Piplup");
         assert(!parsed.isNicknamed());
         assert(parsed.metLevel() == 5);
         assert(parsed.originalTrainerGender() == 0);
