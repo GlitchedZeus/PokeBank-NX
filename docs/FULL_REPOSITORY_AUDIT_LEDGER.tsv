@@ -318,7 +318,7 @@ include/Trainer/Inventory9LZA.h	blob	100644	3630		unknown		PENDING			0
 include/Trainer/Inventory9SV.h	blob	100644	4041		unknown		PENDING			0	
 include/Trainer/Trainer.h	blob	100644	23219		unknown		PENDING			0	
 include/Trainer/Trainer3FRLG.h	blob	100644	5993	FRLG mutable trainer/save serializer API	text	109	AUDITED			1	yes
-include/Trainer/Trainer7LGPE.h	blob	100644	14302		unknown		PENDING			0	
+include/Trainer/Trainer7LGPE.h	blob	100644	14302	LGPE mutable trainer/save serializer API	text	340	AUDITED			1	yes
 include/Trainer/Trainer8BDSP.h	blob	100644	4288		unknown		PENDING			0	
 include/Trainer/Trainer8LA.h	blob	100644	11080		unknown		PENDING			0	
 include/Trainer/Trainer8SWSH.h	blob	100644	9892		unknown		PENDING			0	
@@ -527,7 +527,7 @@ src/Save/GetSaveFileContents.cpp	blob	100644	41176		unknown		PENDING			0
 src/Trainer/Bank.cpp	blob	100644	29556	legacy Bank serialization/recovery/migration	text	611	AUDITED			1	yes
 src/Trainer/Trainer.cpp	blob	100644	1480		unknown		PENDING			0	
 src/Trainer/Trainer3FRLG.cpp	blob	100644	23130	FRLG mutable trainer/save serializer	text	461	AUDITED			1	yes
-src/Trainer/Trainer7LGPE.cpp	blob	100644	48284		unknown		PENDING			0	
+src/Trainer/Trainer7LGPE.cpp	blob	100644	48284	LGPE mutable trainer/save serializer	text	1005	AUDITED			1	yes
 src/Trainer/Trainer8BDSP.cpp	blob	100644	20776		unknown		PENDING			0	
 src/Trainer/Trainer8LA.cpp	blob	100644	36866		unknown		PENDING			0	
 src/Trainer/Trainer8SWSH.cpp	blob	100644	40486		unknown		PENDING			0	
