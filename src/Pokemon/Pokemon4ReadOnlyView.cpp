@@ -85,7 +85,7 @@ uint16_t Pokemon4ReadOnlyView::metLocation() const noexcept {
 }
 uint8_t Pokemon4ReadOnlyView::metLevel() const noexcept { return source_.metLevel(); }
 uint16_t Pokemon4ReadOnlyView::eggLocation() const noexcept {
-    if (source_.sourceGroup() != Enums::GameVersion::DP && source_.eggLocationExtended() != 0)
+    if (source_.eggLocationExtended() != 0)
         return source_.eggLocationExtended();
     return source_.eggLocationDP();
 }
