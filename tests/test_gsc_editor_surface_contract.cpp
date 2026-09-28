@@ -120,7 +120,8 @@ int main() {
     assert(shared.find("SharedEditor::actionLabel(action)") != std::string::npos);
     assert(parity.find("SharedEditor::actionMenuGeometry()") != std::string::npos);
     assert(parity.find("screen.drawGSCOverlay(fb)") != std::string::npos);
-    assert(parity.find("Colors::FocusBorder, 2") != std::string::npos);
+    assert(parity.find("drawPanelSurface(fb, x, y, w, h, false, 18)") != std::string::npos);
+    assert(parity.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
     assert(shared.find("drawSharedProvenanceSurface") != std::string::npos);
     assert(shared.find("Encounter legality\", \"Not checked") != std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);
