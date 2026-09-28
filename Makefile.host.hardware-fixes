@@ -341,7 +341,8 @@ host-sanitize: $(SHARED_SPECIES_PICKER_SURFACE_SANITIZE)
 
 $(SHARED_SPECIES_PICKER_SURFACE_TEST): $(SHARED_SPECIES_PICKER_SURFACE_SOURCES) \
 		include/UI/SharedSpeciesPicker.h src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc \
-		src/UI/Gen2PokemonPickerOverlay.inc src/UI/Gen3SharedPokemonSurface.inc
+		src/UI/Gen2PokemonPickerOverlay.inc src/UI/Gen2SharedSurfaceParity.inc \
+		src/UI/Gen3SharedPokemonSurface.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude $(SHARED_SPECIES_PICKER_SURFACE_SOURCES) -o $@
 

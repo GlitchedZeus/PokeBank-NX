@@ -23,6 +23,7 @@ int main() {
     const auto gen1 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
     const auto gen2 = read("src/UI/Gen2PokemonPickerOverlay.inc");
     const auto gen3 = read("src/UI/Gen3SharedPokemonSurface.inc");
+    const auto gen2Actions = read("src/UI/Gen2SharedSurfaceParity.inc");
 
     contains(shared, "inline constexpr int ModalWidth = 1080;");
     contains(shared, "inline constexpr int ModalHeight = 520;");
@@ -40,6 +41,11 @@ int main() {
     assert(gen2.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::Accent, 2)") == std::string::npos);
     assert(gen3.find("constexpr int px = 110, py = 56, pw = 1060, ph = 600") == std::string::npos);
     assert(gen3.find("Choose Species — Generation III") == std::string::npos);
+
+    // Gen II Empty Slot / Pokemon Actions must use the same quiet panel shell as Gen I/III.
+    contains(gen2Actions, "drawPanelSurface(fb, x, y, w, h, false, 18)");
+    assert(gen2Actions.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") ==
+           std::string::npos);
 
     // Selection/preview controls remain generation-specific only in behavior/data, not shell.
     contains(gen1, "state.pickerValue, 151");
