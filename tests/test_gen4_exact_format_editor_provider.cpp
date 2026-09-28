@@ -49,15 +49,20 @@ int main() {
 
         const auto staged = Provider::descriptorForSource(id, true);
         assert(staged);
-        assert(staged->fieldState(Shared::FieldIdentity::Species) == Exact::FieldState::ReadOnly);
+        assert(staged->fieldState(Shared::FieldIdentity::Species) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Gender) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Shiny) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Nature) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Ability) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Form) == Exact::FieldState::ReadOnly);
-        assert(!staged->fieldIsEditorTarget(Shared::FieldIdentity::Species));
-        assert(!staged->fieldIsEditorTarget(Shared::FieldIdentity::Language));
-        assert(!staged->fieldIsEditorTarget(Shared::FieldIdentity::HeldItem));
+        assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Species));
+        assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Language));
+        assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::HeldItem));
+        assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Pokerus));
+        assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::OriginalTrainer));
+        assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::TrainerId));
+        assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::SecretId));
+        assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Ball));
         assert(!staged->fieldIsEditorTarget(Shared::FieldIdentity::MetLocation));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Gender));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::IV));
@@ -66,8 +71,12 @@ int main() {
 
         const Exact::MoveCompatibilityQuery existing{id, 25, 0, 85, true};
         const Exact::MoveCompatibilityQuery newMove{id, 25, 0, 85, false};
-        assert(staged->moves.evaluate(existing) == Exact::MoveCompatibilityResult::PreserveExisting);
-        assert(staged->moves.evaluate(newMove) == Exact::MoveCompatibilityResult::Unsupported);
+        assert(staged->source.saveOperations.supports(
+            PokeVault::SaveEdit::Capability::PokemonCreation));
+        assert(staged->moves.evaluate(existing) == Exact::MoveCompatibilityResult::Compatible);
+        assert(staged->moves.evaluate(newMove) == Exact::MoveCompatibilityResult::Compatible);
+        const Exact::MoveCompatibilityQuery futureMove{id, 25, 0, 468, false};
+        assert(staged->moves.evaluate(futureMove) == Exact::MoveCompatibilityResult::Unsupported);
     }
 
     const auto dp = Foundation::capabilitiesForSourceId("diamond_nds");
