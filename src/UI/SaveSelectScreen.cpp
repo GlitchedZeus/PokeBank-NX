@@ -1044,7 +1044,8 @@ namespace UI {
             constexpr int w = 780, h = 530, rowH = 66, visibleRows = 5;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
-            fb.drawText(x + 28, y + 18, "RETROARCH / GAME BOY ADVANCE / READ ONLY",
+            fb.drawText(x + 28, y + 18,
+                        "RETROARCH / " + parent.platformLabel + " / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, "Pokemon " + parent.label + " — Save Instances",
                         Colors::TextPrimary, TextStyle::Heading);
