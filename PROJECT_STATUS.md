@@ -4,165 +4,187 @@ Last updated: **2026-09-28**
 
 ## Headline
 
-PokeBank NX has a device-accepted Gen I-III shared staged Pokémon editor, a device-accepted Gen I-IV provider-neutral Save Instances/source-browser foundation, and an active Gen IV Party + Box Pokémon View/Edit hardware-retest milestone.
+PokeBank NX now has device-accepted shared staged Pokémon editing for Generations I–III, device-accepted Gen I–IV Save Instances, and a device-accepted first Generation IV Party/Box View/Edit milestone.
 
-The current product goal is not another new editor shell. Generation IV is being plugged into the same shared editor already proven across Gen I-III.
+The project has moved into **G4-04: completing the real Generation IV shared editor**, including Box Create and the remaining native field controls.
 
-## Active development
+## Current active development
 
-PR #90 — **OPEN / DRAFT / NOT MERGED**
+### PR #92 — G4-04
 
 Branch:
-**integration/gen4-polish-hardware-20260928**
+**feature/gen4-full-editor-20260928**
 
-Current head:
-**84dae170deb2756d9b80aec32bf8ad512ce17c31**
+Current head at this update:
+**c46ed887ae6ce44e662d8cbfb32e68970846a2f0**
 
 Tracking:
-**Issue #86 — G4-03 Gen IV shared staged Pokémon editor**
-**PR #88 — frozen v1 polish snapshot integrated through 86002169d3fec073fb8454ee794c85e07b5a3d9a**
+**Issue #95**
 
-Stacked on accepted PR #79 / branch:
-**audit/full-project-hardening-20260923**
+Current focus:
 
-Accepted base head:
-**00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
+- Create Pokémon in empty Gen IV Box slots;
+- Species editing;
+- Held Item / Language / Ball / Pokérus;
+- Met Location;
+- native Gen IV move selection;
+- inspectable read-only information;
+- exact Form support;
+- move/PP consistency;
+- final CI + physical acceptance.
 
-## What works today
+## Stable integration baseline
 
-- Gen I Red / Blue / Yellow read + staged Pokémon editing
-- Gen II Gold / Silver / Crystal read + staged Pokémon editing
-- Gen III Ruby / Sapphire / Emerald / FireRed / LeafGreen read + staged Pokémon editing
-- staged classic Inventory editing where supported
-- joystick/D-pad parity and held-repeat navigation
-- strict Gen IV Trainer / Party / Boxes / Pokémon-detail browsing
-- multi-provider Save Instances across Gen I-IV
-- RetroArch / configured mGBA / bounded Tico support for Gen I-III
-- RetroArch / DraStic / melonDS / Manual support for Gen IV
-- Platinum DraStic .dsv read-only opening on real hardware
-- provider provenance, source dedupe, newest-first ordering and profile claims
-- immutable external source policy
-- durable PokeBank-owned transaction/recovery foundations
+PR #90 remains the current integrated base:
 
-## Gen IV editor state
+**8b3bcc16c804247bfe8d1314b686974ce73051d8**
 
-The corrected current draft adds **Party + boxed Pokémon View/Edit** after the first hardware candidate exposed an unreachable party-only path.
+It contains:
 
-It reuses:
+- accepted G4-03 Gen IV Party/Box View/Edit;
+- independent audit fixes;
+- complete v1 polish/QoL tranche;
+- final shared-control cleanup;
+- picker/inventory/backup-screen polish;
+- final Gen I footer/control cleanup.
 
-- the shared three-panel editor;
-- existing themes and modal style;
-- shared numpad/keyboard/pickers;
-- inline Gender toggle;
-- direct Shiny toggle;
-- shared move editor;
-- joystick/D-pad behavior;
-- dirty-edit confirmation.
+Its exact-head workflows are green.
 
-Gen IV-specific backend work adds:
+## Hardware-accepted Gen IV checkpoint
 
-- PK4 mutable serialization;
-- exact DP/Pt/HGSS capabilities;
-- constrained PID-linked edits;
-- Storage CRC refresh for boxed edits;
-- General-block CRC refresh for Party edits;
-- Party level/HP/battle-stat coherence;
-- strict staged-save reparse;
-- rollback on failed validation;
-- unrelated-byte preservation.
+Exact accepted application:
 
-Create and Inventory editing remain disabled. Current builds also keep emulator injection disabled; automatic backup + explicit Inject Save is tracked in Issue #89.
+**84dae170deb2756d9b80aec32bf8ad512ce17c31**
 
-## Hardware acceptance
+NRO SHA-256:
 
-Accepted provider-neutral source-browser checkpoint:
+**313b6ed5f209b0fba797deee010d73b753d25294dd3d1c39f279c61df13fe6de**
 
-**00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
+Accepted on real Switch hardware for:
 
-Status:
-**DEVICE ACCEPTED**
+- Gen IV Party + Box shared View/Edit;
+- staged Party edits;
+- shared View/Edit presentation;
+- current dirty-session behavior;
+- source-immutable ordinary editing.
 
-The first Gen IV editor NRO at:
+This does not mean the Gen IV editor is feature complete. G4-04 is the completion tranche.
 
-**5e79e9f8e038f2f940070edd92a70b692df7a7b5**
+## Completed parallel lanes
 
-was automated-green but **HARDWARE REJECTED**.
+PR #87:
+closed without merge after G4-03 was carried forward.
 
-The current combined retest candidate is:
+PR #88:
+closed without merge after its final QoL head
+**c8c98d5dd2816fe6bf1b9557c24b3fb09a5dc7c3**
+was fully integrated into #90.
 
-- Application: **84dae170deb2756d9b80aec32bf8ad512ce17c31**
-- Tree: **7733004cd7b4aebffc3ba687ad0f7df22eea8aa8**
-- Artifact ID: **10986964856**
-- NRO SHA-256: **313b6ed5f209b0fba797deee010d73b753d25294dd3d1c39f279c61df13fe6de**
+## Product foundation already working
 
-Automated state:
-- Host #1472: **PASS**
-- Host ASan/UBSan: **PASS**
-- Gen IV Candidate Gate #36: **PASS**
-- v1 Polish Native #20: **PASS**
-- Packed Move #240: **PASS**
-- Packed Multi-Move #239: **PASS**
+- Gen I–III staged Pokémon Create/View/Edit
+- classic staged Inventory
+- Gen IV strict read foundation
+- Gen IV Party/Box staged View/Edit
+- multi-provider Save Instances
+- RetroArch / mGBA / Tico legacy sources
+- RetroArch / DraStic / melonDS Gen IV sources
+- profile/source identity and deduplication
+- staged dirty-session protection
+- recovery/durability foundations
+- controller/Left Stick parity
+- shared themes and control chrome
+- Settings build identity and diagnostics
+- graceful missing-art fallback
 
-This exact candidate includes the independent audit remediations and the frozen QoL snapshot.
+## Product work after G4-04
 
-Hardware status:
-**RETEST REQUIRED**
+Near-term product work is increasingly about turning the engineering foundation into the finished application experience:
 
-## Current limitations
+- automatic immutable source backups + explicit Inject Save (#89);
+- Master Vault + named Banks (#3);
+- clearer writable Storage vs Vault/Bank semantics (#27);
+- search/filter/favorites/recent views;
+- box organization;
+- Living Dex / shiny collection experiences;
+- stronger backup/recovery UI;
+- broader SaveSource support;
+- DS / 3DS;
+- modern Switch save validation (#11).
 
-- cross-game True Move remains disabled;
-- Gen IV Create remains disabled;
-- Gen IV Inventory editing remains disabled;
-- explicit emulator Inject Save remains disabled and is tracked in Issue #89;
-- Gen V has not started;
-- Master Vault has not started;
-- DraStic .dss savestates are unsupported;
-- no Tico DS save root has been verified;
-- mGBA arbitrary ROM-directory crawling remains forbidden;
-- live writes to installed games or emulator sources remain disabled.
+## Nintendo Switch game saves
+
+Modern Switch support is not blocked by lack of references.
+
+The repository already tracks a read-first audit against pkHouse, PKHeX and PKSE behavior.
+
+The reason it remains a separate core-engineering lane is that each family still needs:
+
+- correct title/save discovery;
+- correct user/profile save mounting;
+- exact save/container validation;
+- game/revision handling;
+- box/party format validation;
+- malformed/truncated rejection;
+- staged mutation rules;
+- backup/recovery policy before any write is authorized.
+
+The first product step is read-only validation, not a global write switch.
+
+## Save safety direction
+
+Current:
+
+~~~text
+source
+  ↓
+validated read
+  ↓
+app-owned staged working data
+~~~
+
+Future Issue #89:
+
+~~~text
+source
+  ↓
+automatic immutable backup
+  ↓
+working copy
+  ↓
+edit + strict validation
+  ↓
+explicit Inject Save
+~~~
 
 ## Near-term sequence
 
 ~~~text
-Gen I-III shared editor                     DEVICE ACCEPTED
+Gen I–III editor                         DEVICE ACCEPTED
         ↓
-Gen IV strict read-only foundation          IMPLEMENTED
+Save Instances / source architecture      DEVICE ACCEPTED
         ↓
-multi-provider Save Instances               DEVICE ACCEPTED
+Gen IV Party + Box View/Edit              DEVICE ACCEPTED
         ↓
-provider-neutral source backend             DEVICE ACCEPTED
+Gen IV full Create/Edit parity            ACTIVE / PR #92
         ↓
-Gen IV Party + Box + integrated polish      AUTOMATED PASS / HARDWARE RETEST
+backup + explicit Inject Save
         ↓
-owner Switch hardware acceptance
+Master Vault / named Banks
         ↓
-Gen IV editor stabilization
+broader sources / DS / 3DS / Switch
         ↓
-Gen IV Create only after Edit is proven
+v1.0 product hardening
 ~~~
 
-## Small parallel polish work
-
-Small, low-risk work can proceed beside G4-03 when it does not invalidate the active hardware candidate. Good candidates are tracked in issues #21, #26, #70 and #16, including:
-
-- remove stale/redundant control-help text;
-- clean game-card visual metadata;
-- improve shared bottom-control legend/readability;
-- diagnostics/version/build-SHA presentation;
-- missing-art fallbacks;
-- final PokeBank NX branding/NRO metadata cleanup;
-- normalize non-destructive controller semantics where no save mutation is involved.
-
-Large new storage, conversion, generation or writeback work should not be mixed into the Gen IV editor candidate.
-
-## Permanent project rules
+## Permanent product rules
 
 ~~~text
-ORDINARY EDITING: APP-OWNED WORKING COPY ONLY
-LIVE INSTALLED-GAME WRITE: DISABLED
-EMULATOR INJECT SAVE: DISABLED UNTIL ISSUE #89
+NORMAL EDITING: APP-OWNED WORKING DATA
+SOURCE INJECTION: DISABLED UNTIL EXPLICITLY APPROVED
 UNKNOWN / AMBIGUOUS SOURCE: FAIL CLOSED
 REMEMBERED SOURCE SUBSTITUTION: FORBIDDEN
-A BUTTON: NON-DESTRUCTIVE
+DIRTY WORK: NEVER SILENTLY DISCARDED
 CROSS-GAME TRUE MOVE: LOCKED
+DEVICE ACCEPTED: EXACT PHYSICAL NRO ONLY
 ~~~
