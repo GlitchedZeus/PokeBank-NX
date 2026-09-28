@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - audit/full-project-hardening-20260923
+      - integration/gen4-polish-hardware-20260928
     paths:
       - 'include/Integration/Gen4/**'
       - 'src/Integration/Gen4/**'
@@ -36,7 +37,7 @@ concurrency:
 env:
   APP_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
-  HEAD_REF: ${{ github.event.pull_request.head.ref || 'feature/gen4-shared-pokemon-editor-20260928' }}
+  HEAD_REF: ${{ github.event.pull_request.head.ref || github.ref_name }}
   PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
   RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
 
