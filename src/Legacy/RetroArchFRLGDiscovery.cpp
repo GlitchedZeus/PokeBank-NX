@@ -531,7 +531,7 @@ namespace PokeVault::Legacy {
         // spends only the remaining global file budget and still lets the independent Gen I/II/III
         // parsers validate the bytes; provider identity never changes parsing semantics.
         auto appendProvider = [&](const std::vector<std::string>& roots,
-                                  std::string_view provider) {
+                                  std::string_view provider, size_t providerMaxDepth) {
             if (roots.empty() || !isDirectory(roots.front()) || result.limitReached) return;
             if (result.filesExamined >= limits.maxFiles) {
                 result.limitReached = true;
@@ -539,16 +539,16 @@ namespace PokeVault::Legacy {
             }
 
             const size_t remaining = limits.maxFiles - result.filesExamined;
-            const ScanLimits providerLimits{limits.maxDepth, remaining};
+            const ScanLimits providerLimits{providerMaxDepth, remaining};
             auto gba = discoverFRLGSaves(roots, providerLimits);
 
             RBYScanLimits rbyLimits;
-            rbyLimits.maxDepth = limits.maxDepth;
+            rbyLimits.maxDepth = providerMaxDepth;
             rbyLimits.maxFiles = remaining;
             auto rby = discoverRBYSaves(roots, rbyLimits);
 
             GSCScanLimits gscLimits;
-            gscLimits.maxDepth = limits.maxDepth;
+            gscLimits.maxDepth = providerMaxDepth;
             gscLimits.maxFiles = remaining;
             auto gsc = discoverGSCSaves(roots, gscLimits);
 
@@ -588,14 +588,15 @@ namespace PokeVault::Legacy {
             }
         };
 
-        appendProvider(mGBASaveRootsFromConfig(mGBAConfigPath), "mGBA");
+        appendProvider(mGBASaveRootsFromConfig(mGBAConfigPath), "mGBA", limits.maxDepth);
 
         // Tico's public Gambatte core selects /tico/saves/gb or /tico/saves/gbc by slug,
         // while its mGBA core owns /tico/saves/gba. Both write native .sav and accept .srm as a
-        // load fallback. Inspect only these exact children; never recurse from /tico/saves itself.
+        // load fallback. Files are written directly in those folders, so inspect depth 0 only:
+        // never recurse from /tico/saves or from a Tico battery-save directory.
         if (!ticoSaveBase.empty()) {
             for (const char* slug : {"gb", "gbc", "gba"})
-                appendProvider(std::vector<std::string>{join(ticoSaveBase, slug)}, "Tico");
+                appendProvider(std::vector<std::string>{join(ticoSaveBase, slug)}, "Tico", 0);
         }
 
         return result;

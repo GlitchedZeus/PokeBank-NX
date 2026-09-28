@@ -247,6 +247,9 @@ int main() {
     // provider directories are approved.
     const fs::path ticoDecoy = ticoSaveBase / "Pokemon FireRed.sav";
     writeFile(ticoDecoy, fixture);
+    const fs::path ticoNested = ticoGbaRoot / "nested" / "Pokemon FireRed.sav";
+    fs::create_directories(ticoNested.parent_path());
+    writeFile(ticoNested, fixture);
 
     const auto unified = PokeVault::Legacy::discoverConfiguredLegacySaves(
         {}, (temp / "missing-retroarch.cfg").string(),
@@ -271,7 +274,8 @@ int main() {
     assert(unifiedTico->save && unifiedTico->save->party().size() == 2);
     assert(readFile(ticoFireRed) == ticoBefore);
     assert(std::none_of(unified.sources.begin(), unified.sources.end(), [&](const auto& source) {
-        return source.normalizedPath == ticoDecoy.string();
+        return source.normalizedPath == ticoDecoy.string() ||
+               source.normalizedPath == ticoNested.string();
     }));
     assert(std::count_if(unified.sources.begin(), unified.sources.end(), [&](const auto& source) {
         return source.ready() && source.gameId == "firered_gba" &&
