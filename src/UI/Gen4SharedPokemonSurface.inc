@@ -17,6 +17,7 @@
 #include "UI/Gen4SharedPokemonSession.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedPokemonShell.h"
 #include "Utils/Keyboard.h"
 #include "Utils/StringHelpers.h"
@@ -33,6 +34,7 @@ namespace UI::Gen4SharedEditorSurface {
 namespace {
 
 namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+namespace HeldItemGrid = PokeBank::UIModel::SharedHeldItemPicker;
 namespace SessionModel = PokeBank::UIModel::Gen4SharedEditor;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
 namespace Gen4 = PokeVault::Integration::Gen4;
@@ -394,8 +396,8 @@ std::string gen4FormLabel(uint16_t species, uint8_t form) {
 }
 
 constexpr std::array<const char*, 16> detailLabels{{
-    "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID",
-    "Held Item", "Friendship", "Language", "Origin", "Ball",
+    "Species", "Nickname", "Level", "Experience", "OT (read-only)", "TID (read-only)",
+    "SID (read-only)", "Held Item", "Friendship", "Language", "Origin (read-only)", "Ball",
     "Met Level", "Met Location", "Pokerus", "Form"
 }};
 
@@ -408,6 +410,50 @@ bool dualAbilitySpecies(const Pokemon::Pokemon4ReadOnly& p) noexcept {
     return p.personal().ability2 != 0 && p.personal().ability2 != p.personal().ability1;
 }
 
+bool nativeGen4Origin(const Pokemon::Pokemon4ReadOnly& p) noexcept {
+    const auto originGroup = Enums::getGameGroup(
+        static_cast<Enums::GameVersion>(p.originVersion()));
+    return originGroup == Enums::GameVersion::DP ||
+           originGroup == Enums::GameVersion::PT ||
+           originGroup == Enums::GameVersion::HGSS;
+}
+
+bool hasAlternateValidForm(const State& state) {
+    if (!state.session.working) return false;
+    const uint8_t current = state.session.working->form();
+    const uint8_t count = state.session.working->formCount();
+    for (uint8_t form = 0; form < count; ++form) {
+        if (form == current) continue;
+        auto probe = *state.session.working;
+        if (probe.setForm(form)) return true;
+    }
+    return false;
+}
+
+bool detailEditable(const State& state, int row,
+                    const Pokemon::Pokemon4ReadOnly& p) {
+    if (!state.session.editable()) return false;
+    switch (row) {
+        case 0:  // Species
+        case 1:  // Nickname
+        case 2:  // Level
+        case 3:  // Experience
+        case 7:  // Held Item
+        case 8:  // Friendship
+        case 9:  // Language
+        case 12: // Met Level
+        case 14: // Pokerus
+            return true;
+        case 11: // Ball
+        case 13: // Met Location
+            return nativeGen4Origin(p);
+        case 15: // Form
+            return hasAlternateValidForm(state);
+        default:
+            return false; // OT/TID/SID/Origin stay visible but are not controls.
+    }
+}
+
 bool pidLinkedRowEditable(const State& state, int row,
                           const Pokemon::Pokemon4ReadOnly& p) noexcept {
     if (!state.session.editable()) return false;
@@ -417,23 +463,52 @@ bool pidLinkedRowEditable(const State& state, int row,
     return false;
 }
 
-void normalizeEditableFocus(State& state, const Pokemon::Pokemon4ReadOnly&,
-                            int = 0, bool = false) {
+void normalizeEditableFocus(State& state, const Pokemon::Pokemon4ReadOnly& p,
+                            int verticalDirection = 0, bool panelChanged = false) {
     state.focus = Shared::normalizeMoveRowFocus(Shared::Generation::Gen4, state.focus);
     if (!state.session.editable()) return;
 
     if (state.focus.panel == Shared::Panel::Details) {
         state.focus.column = 0;
-        return;
-    }
-    if (state.focus.panel == Shared::Panel::Values) {
-        if (state.focus.row < 6) {
-            if (state.focus.column > 1) state.focus.column = 1;
-        } else {
-            state.focus.column = 0;
+        if (detailEditable(state, state.focus.row, p)) return;
+
+        int row = state.focus.row;
+        const int direction = verticalDirection < 0 ? -1 : 1;
+        for (int step = 0; step < static_cast<int>(detailLabels.size()); ++step) {
+            row = (row + direction + static_cast<int>(detailLabels.size())) %
+                  static_cast<int>(detailLabels.size());
+            if (detailEditable(state, row, p)) {
+                state.focus.row = static_cast<uint8_t>(row);
+                return;
+            }
         }
         return;
     }
+
+    if (state.focus.panel == Shared::Panel::Values) {
+        if (state.focus.row < 6) {
+            if (state.focus.column > 1) state.focus.column = 1;
+            return;
+        }
+
+        state.focus.column = 0;
+        if (pidLinkedRowEditable(state, state.focus.row, p)) return;
+
+        int row = state.focus.row;
+        const int direction = verticalDirection < 0 ? -1 : 1;
+        for (int step = 0; step < 5; ++step) {
+            row += direction;
+            if (row < 6) row = 10;
+            if (row > 10) row = 6;
+            if (pidLinkedRowEditable(state, row, p)) {
+                state.focus.row = static_cast<uint8_t>(row);
+                return;
+            }
+        }
+        if (panelChanged) state.focus = {Shared::Panel::Values, 0, 0};
+        return;
+    }
+
     state.focus.row = static_cast<uint8_t>(state.focus.row % 4);
     state.focus.column = 0;
 }
@@ -698,18 +773,33 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
         return true;
     }
     const int pickerCount = static_cast<int>(state.pickerValues.size());
-    if (down & HidNpadButton_Up)
-        state.pickerRow = (state.pickerRow - 1 + pickerCount) % pickerCount;
-    if (down & HidNpadButton_Down)
-        state.pickerRow = (state.pickerRow + 1) % pickerCount;
-    if (down & HidNpadButton_L)
-        state.pickerRow = (state.pickerRow - (10 % pickerCount) + pickerCount) % pickerCount;
-    if (down & HidNpadButton_R)
-        state.pickerRow = (state.pickerRow + 10) % pickerCount;
-    if (down & HidNpadButton_ZL)
-        state.pickerRow = (state.pickerRow - (50 % pickerCount) + pickerCount) % pickerCount;
-    if (down & HidNpadButton_ZR)
-        state.pickerRow = (state.pickerRow + 50) % pickerCount;
+    if (state.pickerTarget == PickerTarget::HeldItem) {
+        if (down & HidNpadButton_Up)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, 0, -1);
+        if (down & HidNpadButton_Down)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, 0, 1);
+        if (down & HidNpadButton_Left)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, -1, 0);
+        if (down & HidNpadButton_Right)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, 1, 0);
+        if (down & HidNpadButton_L)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, 0, 0, -1);
+        if (down & HidNpadButton_R)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, 0, 0, 1);
+    } else {
+        if (down & HidNpadButton_Up)
+            state.pickerRow = (state.pickerRow - 1 + pickerCount) % pickerCount;
+        if (down & HidNpadButton_Down)
+            state.pickerRow = (state.pickerRow + 1) % pickerCount;
+        if (down & (HidNpadButton_Left | HidNpadButton_L))
+            state.pickerRow = std::max(0, state.pickerRow - 10);
+        if (down & (HidNpadButton_Right | HidNpadButton_R))
+            state.pickerRow = std::min(pickerCount - 1, state.pickerRow + 10);
+        if (down & HidNpadButton_ZL)
+            state.pickerRow = std::max(0, state.pickerRow - 50);
+        if (down & HidNpadButton_ZR)
+            state.pickerRow = std::min(pickerCount - 1, state.pickerRow + 50);
+    }
     if (down & HidNpadButton_B) {
         if (state.pickerTarget == PickerTarget::Species &&
             state.session.creating() && !state.createSpeciesInitialized)
@@ -1132,70 +1222,151 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
     return true;
 }
 
+std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
+                             uint16_t value) {
+    if (state.pickerTarget == PickerTarget::Species)
+        return std::to_string(value) + " - " + Names::getSpeciesName(value);
+    if (state.pickerTarget == PickerTarget::HeldItem)
+        return value == 0 ? "(none)" : Names::getItemName(value);
+    if (state.pickerTarget == PickerTarget::Language)
+        return Enums::getLanguageName(static_cast<uint8_t>(value));
+    if (state.pickerTarget == PickerTarget::Ball)
+        return Enums::getBallName(static_cast<uint8_t>(value));
+    if (state.pickerTarget == PickerTarget::MetLocation) {
+        const auto preview = workingRecord(state, bridge(screen).sourceSave().rawFamily());
+        const char* name = preview
+            ? Names::getMetLocationName(preview->originVersion(), value) : "";
+        return name && name[0] ? std::string(name)
+                               : "Location " + std::to_string(value);
+    }
+    if (state.pickerTarget == PickerTarget::Pokerus)
+        return value == 0 ? "None" : value == 0x10 ? "Cured" : "Infected";
+    if (state.pickerTarget == PickerTarget::Form) {
+        const uint16_t species = state.session.working ? state.session.working->species() : 0;
+        return gen4FormLabel(species, static_cast<uint8_t>(value));
+    }
+    if (state.pickerTarget == PickerTarget::Move)
+        return value == 0 ? "Empty" :
+            std::string(Names::getMoveName(value)) + " (#" + std::to_string(value) + ")";
+    if (state.pickerTarget == PickerTarget::Nature)
+        return Trainer::getNatureName(static_cast<uint8_t>(value));
+    if (state.session.working) {
+        const uint16_t abilityId =
+            state.session.working->abilityForSlot(static_cast<uint8_t>(value));
+        return abilityId == 0
+            ? "Ability Slot " + std::to_string(value + 1)
+            : std::string(Trainer::getAbilityName(abilityId)) +
+                " (Slot " + std::to_string(value + 1) + ")";
+    }
+    return {};
+}
+
+const char* pickerTitle(PickerTarget target) noexcept {
+    switch (target) {
+        case PickerTarget::Species: return "Choose Species";
+        case PickerTarget::HeldItem: return "Choose Held Item";
+        case PickerTarget::Language: return "Choose Language";
+        case PickerTarget::Ball: return "Choose Ball";
+        case PickerTarget::MetLocation: return "Choose Met Location";
+        case PickerTarget::Pokerus: return "Choose Pokérus";
+        case PickerTarget::Form: return "Choose Form";
+        case PickerTarget::Move: return "Choose Move";
+        case PickerTarget::Nature: return "Choose Nature";
+        case PickerTarget::Ability: return "Choose Ability";
+        default: return "Choose Value";
+    }
+}
+
 void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    constexpr int w = 650, h = 520;
+    if (!state.valuePicker || state.pickerValues.empty()) return;
+    const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
+    const bool movePicker = state.pickerTarget == PickerTarget::Move;
+    const bool speciesPicker = state.pickerTarget == PickerTarget::Species;
+    const int w = heldItems ? 1040 : (movePicker || speciesPicker) ? 760 : 680;
+    const int h = movePicker ? 568 : 560;
     const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,130));
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    std::string pickerHeading = "Choose Value";
-    if (state.pickerTarget == PickerTarget::Species) pickerHeading = "Choose Species";
-    else if (state.pickerTarget == PickerTarget::HeldItem) pickerHeading = "Choose Held Item";
-    else if (state.pickerTarget == PickerTarget::Language) pickerHeading = "Choose Language";
-    else if (state.pickerTarget == PickerTarget::Ball) pickerHeading = "Choose Ball";
-    else if (state.pickerTarget == PickerTarget::MetLocation) pickerHeading = "Choose Met Location";
-    else if (state.pickerTarget == PickerTarget::Pokerus) pickerHeading = "Choose Pokérus";
-    else if (state.pickerTarget == PickerTarget::Form) pickerHeading = "Choose Form";
-    else if (state.pickerTarget == PickerTarget::Move) pickerHeading = "Choose Move";
-    else if (state.pickerTarget == PickerTarget::Nature) pickerHeading = "Choose Nature";
-    else if (state.pickerTarget == PickerTarget::Ability) pickerHeading = "Choose Ability";
-    fb.drawText(x + 24, y + 18, pickerHeading, Colors::Text, TextStyle::Heading);
-    const int first = std::max(0, state.pickerRow - 5);
-    const int count = std::min<int>(10, static_cast<int>(state.pickerValues.size()) - first);
-    for (int i = 0; i < count; ++i) {
-        const int index = first + i;
-        const int yy = y + 72 + i * 40;
-        const bool selected = index == state.pickerRow;
-        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, 34);
-        const auto value = state.pickerValues[static_cast<size_t>(index)];
-        std::string label;
-        if (state.pickerTarget == PickerTarget::Species)
-            label = std::to_string(value) + " - " + Names::getSpeciesName(value);
-        else if (state.pickerTarget == PickerTarget::HeldItem)
-            label = value == 0 ? "(none)" : Names::getItemName(value);
-        else if (state.pickerTarget == PickerTarget::Language)
-            label = Enums::getLanguageName(static_cast<uint8_t>(value));
-        else if (state.pickerTarget == PickerTarget::Ball)
-            label = Enums::getBallName(static_cast<uint8_t>(value));
-        else if (state.pickerTarget == PickerTarget::MetLocation) {
-            const auto preview = workingRecord(state, bridge(screen).sourceSave().rawFamily());
-            const char* name = preview
-                ? Names::getMetLocationName(preview->originVersion(), value) : "";
-            label = name && name[0] ? std::string(name)
-                                   : "Location " + std::to_string(value);
-        } else if (state.pickerTarget == PickerTarget::Pokerus)
-            label = value == 0 ? "None" : value == 0x10 ? "Cured" : "Infected";
-        else if (state.pickerTarget == PickerTarget::Form) {
-            const uint16_t species = state.session.working ? state.session.working->species() : 0;
-            label = gen4FormLabel(species, static_cast<uint8_t>(value));
-        } else if (state.pickerTarget == PickerTarget::Move)
-            label = value == 0 ? "Empty" :
-                std::string(Names::getMoveName(value)) + " (#" + std::to_string(value) + ")";
-        else if (state.pickerTarget == PickerTarget::Nature)
-            label = Trainer::getNatureName(static_cast<uint8_t>(value));
-        else if (state.session.working) {
-            const uint16_t abilityId =
-                state.session.working->abilityForSlot(static_cast<uint8_t>(value));
-            label = abilityId == 0
-                ? "Ability Slot " + std::to_string(value + 1)
-                : std::string(Trainer::getAbilityName(abilityId)) +
-                    " (Slot " + std::to_string(value + 1) + ")";
+    const int y = (fb.getHeight() - h) / 2;
+
+    // Match the accepted Gen I-III picker family: neutral dialog chrome,
+    // theme focus only on the active row/cell, and one authoritative footer.
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+
+    if (movePicker) {
+        fb.drawText(x + 24, y + 18, "Move — Generation IV", Colors::Text, TextStyle::Heading);
+        fb.drawText(x + 24, y + 52,
+                    "Empty + native moves only • exact current Generation IV game",
+                    Colors::TextDim, TextStyle::Caption);
+        const int count = static_cast<int>(state.pickerValues.size());
+        constexpr int visible = 13;
+        const int first = std::clamp(
+            state.pickerRow - visible / 2, 0, std::max(0, count - visible));
+        const int last = std::min(count, first + visible);
+        for (int i = first; i < last; ++i) {
+            const int yy = y + 88 + (i - first) * 33;
+            const bool selected = i == state.pickerRow;
+            if (selected) fb.drawSelectionHighlight(x + 20, yy - 3, w - 40, 30);
+            const auto value = state.pickerValues[static_cast<size_t>(i)];
+            fb.drawText(x + 32, yy + 3, pickerValueLabel(screen, state, value),
+                        selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
         }
-        fb.drawText(x + 38, yy + 7, label,
+        drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
+                        {"ZL/ZR", "Jump"}, {"A", "Select"}, {"B", "Cancel"}});
+        return;
+    }
+
+    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget),
+                Colors::Text, TextStyle::Heading);
+    const int count = static_cast<int>(state.pickerValues.size());
+
+    if (heldItems) {
+        const int pages = (count + HeldItemGrid::pageSize - 1) / HeldItemGrid::pageSize;
+        fb.drawText(x + 28, y + 55,
+                    "Page " + std::to_string(state.pickerRow / HeldItemGrid::pageSize + 1) +
+                        " / " + std::to_string(pages),
+                    Colors::TextDim, TextStyle::Caption);
+        const int first =
+            state.pickerRow / HeldItemGrid::pageSize * HeldItemGrid::pageSize;
+        const int last = std::min(count, first + HeldItemGrid::pageSize);
+        const int gridX = x + 22;
+        const int gridY = y + 90;
+        const int cellWidth = (w - 44) / HeldItemGrid::columns;
+        constexpr int cellHeight = 40;
+        for (int i = first; i < last; ++i) {
+            const int offset = i - first;
+            const int cellX = gridX + (offset % HeldItemGrid::columns) * cellWidth;
+            const int cellY = gridY + (offset / HeldItemGrid::columns) * cellHeight;
+            const bool selected = i == state.pickerRow;
+            if (selected)
+                fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, cellHeight - 4);
+            const auto value = state.pickerValues[static_cast<size_t>(i)];
+            fb.drawText(cellX + 10, cellY + 7, pickerValueLabel(screen, state, value),
+                        selected ? Colors::Text : Colors::TextDim, TextStyle::Caption);
+        }
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
+                        {"A", "Choose"}, {"B", "Cancel"}});
+        return;
+    }
+
+    fb.drawText(x + 28, y + 55,
+                std::to_string(state.pickerRow + 1) + " / " +
+                    std::to_string(state.pickerValues.size()),
+                Colors::TextDim, TextStyle::Caption);
+    constexpr int visible = 10;
+    const int first = std::clamp(
+        state.pickerRow - visible / 2, 0, std::max(0, count - visible));
+    const int last = std::min(count, first + visible);
+    for (int i = first; i < last; ++i) {
+        const int yy = y + 90 + (i - first) * 42;
+        const bool selected = i == state.pickerRow;
+        if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44, 38);
+        const auto value = state.pickerValues[static_cast<size_t>(i)];
+        fb.drawText(x + 38, yy + 7, pickerValueLabel(screen, state, value),
                     selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
     }
-    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"L/R", "Page"}, {"ZL/ZR", "Jump"},
-                    {"A", "Choose"}, {"B", "Cancel"}});
+    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
+                    {"ZL/ZR", "Jump"}, {"A", "Choose"}, {"B", "Cancel"}});
 }
 
 void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
@@ -1313,7 +1484,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const int yy = g.y + 346 + i * 35;
         const bool editable = pidLinkedRowEditable(state, row, *raw);
         const bool selected = state.focus.panel == Shared::Panel::Values &&
-                              state.focus.row == row;
+                              state.focus.row == row &&
+                              (state.session.mode == SessionModel::Mode::View || editable);
         drawFocus(fb, g.midX + 8, yy - 5, g.midW - 16, 29, selected);
         fb.drawText(g.midX + 18, yy, derived[static_cast<size_t>(i)].first,
                     selected ? Colors::SelectedText : editable ? Colors::TextDim : Colors::TextSecondary,
@@ -1384,8 +1556,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
                         state.session.creating() ? "Add" : "Save", Colors::PanelAlt);
     }
 
-    if (state.valuePicker) drawValuePicker(screen, fb, state);
     if (state.moveEditor) drawMoveEditor(screen, fb, state);
+    if (state.valuePicker) drawValuePicker(screen, fb, state);
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
@@ -1395,7 +1567,8 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
 
     screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,105));
-    const int w = 650, h = occupied ? 360 : 220;
+    const int w = occupied ? 650 : 560;
+    const int h = occupied ? 500 : 350;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
     drawPanelSurface(fb, x, y, w, h, false, 18);

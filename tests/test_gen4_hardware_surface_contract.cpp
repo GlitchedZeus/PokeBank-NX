@@ -68,6 +68,9 @@ int main() {
     const auto staged = read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
     const auto session = read("include/UI/Gen4SharedPokemonSession.h");
     const auto baseUi = read("src/UI/TrainerViewScreenBase.inc");
+    const auto locations = read("src/Names/LocationNames.cpp");
+    const auto locationGenerator = read("tools/gen_locations.py");
+    const auto itemsPanel = read("src/UI/Panels/ItemsPanel.cpp");
     const auto trainerBase = read("include/Trainer/Trainer.h");
     const auto rbyBridge = read("include/Legacy/RBYReadOnlyTrainer.h");
     const auto gscBridge = read("include/Legacy/GSCReadOnlyTrainer.h");
@@ -151,11 +154,37 @@ int main() {
     contains(surface, "beginPassiveView");
     contains(surface, "screen.closeDetailsModal()");
 
-    // Visible read-only rows remain navigable in Edit/Create rather than being silently skipped.
-    assert(surface.find("if (detailEditable(state.focus.row)) return;") == std::string::npos);
-    contains(surface, "This Generation IV field is visible but read-only in the current G4-04 slice");
-    contains(surface, "state.focus.panel == Shared::Panel::Values &&");
-    contains(surface, "state.focus.row == row;");
+    // Create/Edit focus must only land on actual controls. Read-only identity rows remain
+    // visible for inspection, while fixed gender/single ability/no-alternate-form rows are skipped.
+    contains(surface, "bool detailEditable(const State& state");
+    contains(surface, "hasAlternateValidForm");
+    contains(surface, "if (detailEditable(state, state.focus.row, p)) return;");
+    contains(surface, "if (pidLinkedRowEditable(state, state.focus.row, p)) return;");
+    contains(surface, "OT (read-only)");
+    contains(surface, "TID (read-only)");
+    contains(surface, "SID (read-only)");
+    contains(surface, "Origin (read-only)");
+    contains(surface, "state.session.mode == SessionModel::Mode::View || editable");
+
+    // A nested move choice must render above the contextual Move editor, never behind it.
+    const auto moveEditorDraw = surface.find("if (state.moveEditor) drawMoveEditor(screen, fb, state);");
+    const auto valuePickerDraw = surface.find("if (state.valuePicker) drawValuePicker(screen, fb, state);");
+    assert(moveEditorDraw != std::string::npos && valuePickerDraw > moveEditorDraw);
+
+    // Gen IV picker/action chrome follows the accepted shared layout instead of the cramped G4-04 prototype.
+    contains(surface, "HeldItemGrid::move");
+    contains(surface, "const int w = heldItems ? 1040");
+    contains(surface, "const int w = occupied ? 650 : 560;");
+    contains(surface, "const int h = occupied ? 500 : 350;");
+
+    // Generated location strings must never retain a source UTF-8 BOM as a visible glyph.
+    assert(locations.find("\xEF\xBB\xBF") == std::string::npos);
+    contains(locationGenerator, "encoding=\"utf-8-sig\"");
+
+    // Inventory is still a later DS capability, but the visible copy must describe current G4 state.
+    assert(itemsPanel.find("G4-02") == std::string::npos);
+    contains(itemsPanel, "Generation IV inventory support is not implemented yet.");
+    contains(itemsPanel, "Party/Box Pokemon View, Edit and Create remain available.");
 
     // A committed staged edit must not claim UI success when the refreshed presentation failed.
     contains(surface, "if (!refreshPresentation(screen))");

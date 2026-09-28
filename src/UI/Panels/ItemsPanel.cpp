@@ -134,10 +134,12 @@ namespace Panels {
             return;
         }
         if (gen4Source && screen.trainer.items.empty()) {
-            fb.drawText(x + 24, y + hH + 30, "Inventory unavailable in G4-02", Colors::Text, TextStyle::Body);
-            fb.drawText(x + 24, y + hH + 58, "Generation IV inventory is intentionally deferred in this read-only preview.",
+            fb.drawText(x + 24, y + hH + 30, "Inventory unavailable", Colors::Text, TextStyle::Body);
+            fb.drawText(x + 24, y + hH + 58, "Generation IV inventory support is not implemented yet.",
                         Colors::TextDim, TextStyle::Caption);
-            fb.drawText(x + 24, y + hH + 82, "Trainer, party, boxes and Pokémon details remain available.",
+            fb.drawText(x + 24, y + hH + 82, "Party/Box Pokemon View, Edit and Create remain available.",
+                        Colors::TextDim, TextStyle::Caption);
+            fb.drawText(x + 24, y + hH + 106, "External emulator source remains read-only.",
                         Colors::TextDim, TextStyle::Caption);
             return;
         }
