@@ -71,6 +71,7 @@ struct SaveInstance {
     ValidationStatus validation = ValidationStatus::Unknown;
     AccessMode access = AccessMode::ReadOnly;
     DiagnosticState diagnosticState = DiagnosticState::None;
+    bool recoveredOlderCopy = false;
     bool rememberedSource = false;
     std::string claimedProfile;
     std::string diagnostic;
