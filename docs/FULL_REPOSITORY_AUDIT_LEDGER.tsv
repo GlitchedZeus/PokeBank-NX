@@ -299,12 +299,12 @@ include/Pokemon/SpeciesConverter3.h	blob	100644	7432		unknown		PENDING			0
 include/Pokemon/SpeciesConverter9.h	blob	100644	4959		unknown		PENDING			0	
 include/Safety/SourceMutationPolicy.h	blob	100644	987	source mutation capability gate	text	35	AUDITED			0	no
 include/Safety/WritePolicy.h	blob	100644	1060	low-level live save write policy	text	34	AUDITED			0	no
-include/Save/BDSPReadValidation.h	blob	100644	832		unknown		PENDING			0	
-include/Save/Block.h	blob	100644	1357		unknown		PENDING			0	
-include/Save/EditableSaveCapabilities.h	blob	100644	1408		unknown		PENDING			0	
+include/Save/BDSPReadValidation.h	blob	100644	832	BDSP minimum-layout read gate	text	23	AUDITED			0	no
+include/Save/Block.h	blob	100644	1357	SC block parse/serialization API	text	39	AUDITED			0	yes
+include/Save/EditableSaveCapabilities.h	blob	100644	1408	editable-save capability flags	text	51	AUDITED			0	no
 include/Save/GetSaveFileContents.h	blob	100644	8252		unknown		PENDING			0	
-include/Save/PLAReadValidation.h	blob	100644	2426		unknown		PENDING			0	
-include/Save/RtcFooter.h	blob	100644	582		unknown		PENDING			0	
+include/Save/PLAReadValidation.h	blob	100644	2426	PLA structural/checksum read gate	text	49	AUDITED			0	no
+include/Save/RtcFooter.h	blob	100644	582	legacy RTC footer sizing helper	text	15	AUDITED			0	no
 include/Source/SaveInstance.h	blob	100644	7242	provider-neutral source instance/identity/access model	text	187	AUDITED			0	no
 include/Trainer/Bank.h	blob	100644	5839		unknown		PENDING			0	
 include/Trainer/BankFormatPolicy.h	blob	100644	711		unknown		PENDING			0	
@@ -317,7 +317,7 @@ include/Trainer/Inventory8SWSH.h	blob	100644	2333		unknown		PENDING			0
 include/Trainer/Inventory9LZA.h	blob	100644	3630		unknown		PENDING			0	
 include/Trainer/Inventory9SV.h	blob	100644	4041		unknown		PENDING			0	
 include/Trainer/Trainer.h	blob	100644	23219		unknown		PENDING			0	
-include/Trainer/Trainer3FRLG.h	blob	100644	5993		unknown		PENDING			0	
+include/Trainer/Trainer3FRLG.h	blob	100644	5993	FRLG mutable trainer/save serializer API	text	109	AUDITED			1	yes
 include/Trainer/Trainer7LGPE.h	blob	100644	14302		unknown		PENDING			0	
 include/Trainer/Trainer8BDSP.h	blob	100644	4288		unknown		PENDING			0	
 include/Trainer/Trainer8LA.h	blob	100644	11080		unknown		PENDING			0	
@@ -522,11 +522,11 @@ src/Pokemon/Pokemon9SV.cpp	blob	100644	18058		unknown		PENDING			0
 src/Pokemon/PokemonTypes.cpp	blob	100644	1613		unknown		PENDING			0	
 src/Pokemon/SVDexTable.cpp	blob	100644	47312		unknown		PENDING			0	
 src/Pokemon/SWSHDexTable.cpp	blob	100644	25413		unknown		PENDING			0	
-src/Save/Block.cpp	blob	100644	7048		unknown		PENDING			0	
+src/Save/Block.cpp	blob	100644	7048	SC block parser/serializer	text	199	AUDITED			0	yes
 src/Save/GetSaveFileContents.cpp	blob	100644	41176		unknown		PENDING			0	
 src/Trainer/Bank.cpp	blob	100644	29556	legacy Bank serialization/recovery/migration	text	611	AUDITED			1	yes
 src/Trainer/Trainer.cpp	blob	100644	1480		unknown		PENDING			0	
-src/Trainer/Trainer3FRLG.cpp	blob	100644	23130		unknown		PENDING			0	
+src/Trainer/Trainer3FRLG.cpp	blob	100644	23130	FRLG mutable trainer/save serializer	text	461	AUDITED			1	yes
 src/Trainer/Trainer7LGPE.cpp	blob	100644	48284		unknown		PENDING			0	
 src/Trainer/Trainer8BDSP.cpp	blob	100644	20776		unknown		PENDING			0	
 src/Trainer/Trainer8LA.cpp	blob	100644	36866		unknown		PENDING			0	
