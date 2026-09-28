@@ -5,8 +5,9 @@ GEN4_FOUNDATION_SOURCES := tests/test_gen4_readonly_foundation.cpp \
 	src/Pokemon/PersonalInfo4DP.cpp src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp \
 	src/Encryption/Encryption4.cpp src/Utils/SHA256.cpp \
 	src/Integration/Gen4/Gen4AssignedSource.cpp src/Integration/Gen4/Gen4SourceDiscovery.cpp \
+	src/Integration/Gen4/Gen4StagedPokemonEditor.cpp \
 	src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen4ReadOnlyTrainer.cpp \
-	src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp \
+	src/Pokemon/Pokemon4Mutable.cpp src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp \
 	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
 	vendor/PKSM-Core/source/utils/crypto_checksums.cpp
 
