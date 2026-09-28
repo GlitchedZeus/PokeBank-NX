@@ -189,10 +189,10 @@ docs/research/2026-09-09/TRANSFER_FIXTURES_PROVENANCE.md	blob	100644	12005		unkn
 docs/research/2026-09-09/VAULT_DATA_EVENTS_PERFORMANCE.md	blob	100644	11906		unknown		PENDING			0	
 docs/research/2026-09-09/VAULT_PERFORMANCE_EVENT_RIGHTS_AUDIT.md	blob	100644	5181		unknown		PENDING			0	
 docs/research/2026-09-11/GSC_FORMAT_ORACLE.md	blob	100644	5618		unknown		PENDING			0	
-include/Conversion/Convert.h	blob	100644	8740		unknown		PENDING			0	
-include/Conversion/Fidelity.h	blob	100644	5970		unknown		PENDING			0	
-include/Conversion/Gen3PidSearch.h	blob	100644	3299		unknown		PENDING			0	
-include/Conversion/RouteEvidence.h	blob	100644	5268		unknown		PENDING			0	
+include/Conversion/Convert.h	blob	100644	8740	conversion API / route policy	text	125	AUDITED			0	no
+include/Conversion/Fidelity.h	blob	100644	5970	conversion fidelity loss/adaptation model	text	143	AUDITED			0	no
+include/Conversion/Gen3PidSearch.h	blob	100644	3299	Gen III PID trait-preservation search	text	74	AUDITED			0	no
+include/Conversion/RouteEvidence.h	blob	100644	5268	cross-game evidence/provenance API	text	167	AUDITED			0	yes
 include/Encryption/Encryption.h	blob	100644	6128	Pokémon/save encryption API	text	154	AUDITED			0	yes
 include/Encryption/Encryption3FRLG.h	blob	100644	2671	Pokémon/save encryption API	text	54	AUDITED			0	no
 include/Encryption/Encryption4.h	blob	100644	769	Pokémon/save encryption API	text	22	AUDITED			0	no
@@ -426,8 +426,8 @@ recovery/assets_snapshot/README.md	blob	100644	989	recovery metadata	text		AUDIT
 recovery/assets_snapshot/manifest.json	blob	100644	1218	recovery metadata	text		AUDITED			0	
 recovery/assets_snapshot/romfs-recovery.tar.part000	blob	100644	83886080	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 recovery/assets_snapshot/romfs-recovery.tar.part001	blob	100644	69765120	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
-src/Conversion/Convert.cpp	blob	100644	91547		unknown		PENDING			0	
-src/Conversion/RouteEvidence.cpp	blob	100644	31361		unknown		PENDING			0	
+src/Conversion/Convert.cpp	blob	100644	91547	cross-generation entity conversion implementation	text	1451	AUDITED			0	yes
+src/Conversion/RouteEvidence.cpp	blob	100644	31361	cross-game evidence persistence/retirement authorization	text	761	AUDITED			0	yes
 src/Encryption/Encryption.cpp	blob	100644	5023	Pokémon/save encryption implementation	text	137	AUDITED			0	yes
 src/Encryption/Encryption3FRLG.cpp	blob	100644	4663	Pokémon/save encryption implementation	text	95	AUDITED			0	no
 src/Encryption/Encryption4.cpp	blob	100644	4196	Pokémon/save encryption implementation	text	103	AUDITED			0	no
@@ -693,7 +693,7 @@ tests/test_shared_pokemon_editor_contract.cpp	blob	100644	15519		unknown		PENDIN
 tests/test_shared_species_picker_surface_contract.cpp	blob	100644	2643	shared species picker source contract test	text	66	AUDITED			0	no
 tests/test_source_mutation_policy.cpp	blob	100644	1841	source mutation policy/action-sheet regression	text	38	AUDITED			1	yes
 tests/test_sprite_layout.cpp	blob	100644	1051		unknown		PENDING			0	
-tests/test_storage_conversion_custody_contract.cpp	blob	100644	8891	conversion placement custody regression	text	185	AUDITED			0	no
+tests/test_storage_conversion_custody_contract.cpp	blob	100644	8891	conversion custody/commit-order regression	text	185	AUDITED			0	no
 tests/test_storage_custody_contract.cpp	blob	100644	1531	storage custody rollback regression	text	40	AUDITED			0	no
 tests/test_theme.cpp	blob	100644	13980		unknown		PENDING			0	
 tests/test_v1_polish_contract.py	blob	100644	7989		unknown		PENDING			0	
