@@ -6,6 +6,10 @@
 #include "Pokemon/PersonalInfo4HGSS.h"
 #include "Pokemon/PersonalInfo4PT.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
+#include "Names/NameLanguage.h"
+#include "Names/SpeciesNames.h"
+#include "Utils/StringHelpers.h"
+#include "Enums/LanguageID.h"
 #include "Utils/Gen4TextCodec.h"
 
 #include <algorithm>
@@ -53,6 +57,95 @@ std::optional<Pokemon4Mutable> Pokemon4Mutable::fromEncrypted(
     return Pokemon4Mutable(
         std::vector<std::byte>(parsed.decryptedBytes().begin(), parsed.decryptedBytes().end()),
         sourceGroup);
+}
+
+std::optional<Pokemon4Mutable> Pokemon4Mutable::createStored(
+    uint16_t species,
+    Enums::GameVersion sourceGroup,
+    uint8_t originVersion,
+    const std::u16string& originalTrainerName,
+    uint16_t tid,
+    uint16_t sid,
+    uint8_t originalTrainerGender,
+    uint8_t language,
+    uint8_t level,
+    uint32_t pidSeed,
+    std::string* error) {
+    const auto fail = [&](const char* message) -> std::optional<Pokemon4Mutable> {
+        if (error) *error = message;
+        return std::nullopt;
+    };
+    if (species == 0 || species > 493) return fail("Generation IV Create species must be 1-493");
+    if (sourceGroup != Enums::GameVersion::DP && sourceGroup != Enums::GameVersion::PT &&
+        sourceGroup != Enums::GameVersion::HGSS)
+        return fail("Generation IV Create requires a DP/Pt/HGSS source group");
+    if (level < 1 || level > 100) return fail("Generation IV Create level must be 1-100");
+    if (originVersion != static_cast<uint8_t>(Enums::GameVersion::D) &&
+        originVersion != static_cast<uint8_t>(Enums::GameVersion::P) &&
+        originVersion != static_cast<uint8_t>(Enums::GameVersion::Pt) &&
+        originVersion != static_cast<uint8_t>(Enums::GameVersion::HG) &&
+        originVersion != static_cast<uint8_t>(Enums::GameVersion::SS))
+        return fail("Generation IV Create requires an exact native origin game");
+    if (originalTrainerGender > 1) return fail("Generation IV trainer gender is outside the native range");
+    if (!Enums::groupHasLanguage(sourceGroup, language))
+        return fail("Generation IV Create language is unavailable in this source group");
+
+    const auto& personal = personalFor(sourceGroup, species, 0);
+    if (personal.hp == 0) return fail("Generation IV species is not representable in this exact game");
+
+    std::vector<std::byte> decrypted(Encryption::SIZE_STORED4, std::byte{0});
+    Pokemon4Mutable result(std::move(decrypted), sourceGroup);
+    result.write32(0x00, pidSeed == 0 ? 1u : pidSeed);
+    result.write16(0x04, 0); // sanity
+    result.write16(0x08, species);
+    result.write16(0x0A, 0); // held item
+    result.write16(0x0C, tid);
+    result.write16(0x0E, sid);
+    result.write32(0x10, getExpForLevel(level, personal.growthRate));
+    result.write8(0x14, personal.baseFriendship);
+    const uint8_t abilitySlot =
+        (personal.ability2 != 0 && personal.ability2 != personal.ability1)
+            ? static_cast<uint8_t>(result.pid() & 1u) : 0;
+    result.write8(0x15, static_cast<uint8_t>(abilitySlot ? personal.ability2 : personal.ability1));
+    result.write8(0x17, language);
+
+    const uint8_t nativeGender = result.genderForPid(result.pid());
+    result.write8(0x40, static_cast<uint8_t>((nativeGender & 3u) << 1));
+
+    const std::size_t nameLanguage = Names::languageIndexFor(
+        static_cast<Enums::LanguageID>(language));
+    const auto speciesName = Utils::utf8ToUtf16(
+        Names::getSpeciesNameLocalized(species, nameLanguage));
+    const auto nick = Utils::encodeGen4Field(speciesName, 11, 10, language);
+    if (Utils::decodeGen4Field(nick) != speciesName.substr(0, std::min<size_t>(10, speciesName.size())))
+        return fail("Generation IV species name is not representable in the selected save language");
+    std::copy(nick.begin(), nick.end(), result.decrypted_.begin() + 0x48);
+
+    result.write8(0x5F, originVersion);
+    const auto ot = Utils::encodeGen4Field(originalTrainerName, 8, 7, language);
+    const auto boundedOt = originalTrainerName.substr(0, std::min<size_t>(7, originalTrainerName.size()));
+    if (Utils::decodeGen4Field(ot) != boundedOt)
+        return fail("Generation IV trainer name is not representable in the selected save language");
+    std::copy(ot.begin(), ot.end(), result.decrypted_.begin() + 0x68);
+
+    result.write16(0x44, 0); // extended egg location
+    result.write16(0x46, 0); // extended met location
+    result.write16(0x7E, 0); // DP egg location
+    result.write16(0x80, 0); // DP met location
+    result.write8(0x82, 0);  // Pokerus none
+    if (!result.setBall(4)) return fail("Generation IV default Poke Ball could not be encoded");
+    result.write8(0x84, static_cast<uint8_t>((originalTrainerGender << 7) | (level & 0x7Fu)));
+
+    const auto encrypted = result.encryptedBytes();
+    Pokemon4ReadOnly reparsed(encrypted, sourceGroup);
+    if (!reparsed.valid() || reparsed.empty() || reparsed.isParty() ||
+        reparsed.species() != species || reparsed.tid() != tid || reparsed.sid() != sid ||
+        reparsed.originVersion() != originVersion || reparsed.language() != language ||
+        reparsed.metLevel() != level || reparsed.originalTrainerGender() != originalTrainerGender)
+        return fail("Generation IV created PK4 failed strict round-trip validation");
+
+    if (error) error->clear();
+    return result;
 }
 
 bool Pokemon4Mutable::isParty() const noexcept {
