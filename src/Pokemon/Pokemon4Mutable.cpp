@@ -426,9 +426,14 @@ bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
 
     refreshPartyDerivedData();
     Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    const uint8_t verifyNature = static_cast<uint8_t>(verify.pid() % 25u);
+    const uint16_t verifyPsv = static_cast<uint16_t>(
+        (verify.pid() & 0xFFFFu) ^ (verify.pid() >> 16));
+    const bool verifyShiny =
+        static_cast<uint16_t>(verify.tid() ^ verify.sid() ^ verifyPsv) < 8u;
     if (!verify.valid() || verify.empty() || verify.species() != value ||
-        verify.form() != 0 || verify.nature() != oldNature ||
-        verify.shiny() != oldShiny || verify.gender() != actualGender ||
+        verify.form() != 0 || verifyNature != oldNature ||
+        verifyShiny != oldShiny || verify.gender() != actualGender ||
         verify.ability() != abilityId) {
         decrypted_ = backup;
         return false;
