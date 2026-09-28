@@ -53,7 +53,8 @@ namespace UI {
 
         // Discover only explicitly bounded emulator battery-save roots. RetroArch keeps its
         // configured/conventional root; mGBA is additive only when /mGBA/config.ini explicitly
-        // defines savegamePath. Same-directory-as-ROM mGBA saves are never found by crawling ROMs.
+        // defines savegamePath; Tico is limited to its fixed GB/GBC/GBA battery-save directories.
+        // Same-directory-as-ROM mGBA saves and arbitrary emulator trees are never crawled.
         // Generation-specific strict parsers remain separate and every source stays read-only.
         legacyFRLGSources = PokeVault::Legacy::discoverConfiguredLegacySaves();
         size_t ready = 0;
@@ -229,18 +230,18 @@ namespace UI {
         AccountUid userUid, size_t sourceIndex, const std::string& gameId, std::string& error) {
         error.clear();
         if (sourceIndex >= legacyFRLGSources.sources.size()) {
-            error = "RetroArch source selection is stale";
+            error = "Emulator source selection is stale";
             return false;
         }
 
         const auto& selected = legacyFRLGSources.sources[sourceIndex];
         if (!selected.ready() || selected.gameId != gameId) {
-            error = "RetroArch source is no longer a validated legacy save";
+            error = "Emulator source is no longer a validated legacy save";
             return false;
         }
         const auto* identity = PokeVault::Games::findGame(selected.gameId);
         if (!identity) {
-            error = "RetroArch source has no stable game identity";
+            error = "Emulator source has no stable game identity";
             return false;
         }
 
@@ -248,14 +249,14 @@ namespace UI {
         if (selected.isGen1()) {
             if (identity->platform != PokeVault::Games::Platform::GameBoy ||
                 selected.gen1Save->metadata().sourceGameId != gameId) {
-                error = "RetroArch source is no longer a validated Generation I save";
+                error = "Emulator source is no longer a validated Generation I save";
                 return false;
             }
             trainer = PokeVault::Legacy::RBYReadOnlyTrainer::create(*selected.gen1Save, error);
         } else if (selected.isGen2()) {
             if (identity->platform != PokeVault::Games::Platform::GameBoyColor ||
                 selected.gen2Save->metadata().sourceGameId != gameId) {
-                error = "RetroArch source is no longer a validated Generation II save";
+                error = "Emulator source is no longer a validated Generation II save";
                 return false;
             }
             auto gscTrainer = PokeVault::Legacy::GSCReadOnlyTrainer::create(*selected.gen2Save, error);
@@ -266,7 +267,7 @@ namespace UI {
         } else if (selected.isGen3()) {
             if (identity->platform != PokeVault::Games::Platform::GameBoyAdvance ||
                 selected.save->metadata().sourceGameId != gameId) {
-                error = "RetroArch source is no longer a validated Generation III save";
+                error = "Emulator source is no longer a validated Generation III save";
                 return false;
             }
             trainer = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*selected.save, error);

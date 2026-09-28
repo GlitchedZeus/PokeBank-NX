@@ -17,6 +17,7 @@ assert not re.search(r'fopen\s*\([^,]+,\s*"(?:w|a|r\+)[b+]*"', io_source)
 assert not re.search(r'freopen\s*\(', io_source)
 ui = (root / 'src/UI/UI.cpp').read_text()
 assert 'handleGen4View' in ui
+assert 'RetroArch source' not in ui
 assert 'SourceKind::ExternalLegacy' in ui
 assert 'opened.source.binding.sourceType' in ui
 select = (root / 'src/UI/SaveSelectScreen.cpp').read_text()
