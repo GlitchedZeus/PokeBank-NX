@@ -18,6 +18,14 @@ save_select = read("src/UI/SaveSelectScreen.cpp")
 chrome = read("include/UI/ScreenChrome.h")
 makefile = read("Makefile")
 system_icons = read("src/UI/SystemIcons.cpp")
+backup_selection = read("src/UI/BackupSelectionScreen.cpp")
+picker_dialog = read("src/UI/Dialogs/PickerDialog.cpp")
+classic_inventory = read("src/UI/ClassicInventoryOverlay.cpp")
+gen1_overlay = read("src/UI/Gen1PokemonEditorOverlay.cpp")
+classic_release = read("src/UI/ClassicReleaseActionFix.inc")
+gen1_ux = read("src/UI/Gen1PokemonEditorOverlayUX.inc")
+gen1_ux2 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc")
+gen1_ux3 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc")
 
 # Settings owns build/safety identity; the global nav bar owns controls.
 require("A: toggle / info" not in trainer,
@@ -62,6 +70,74 @@ require("if (systemIcon.valid()) return systemIcon;" in system_icons,
 require("img = makeGameCardFallback();" in system_icons,
         "missing/corrupt packaged artwork must activate the generated fallback")
 
+# Save Backups uses the same shared controller glyph language as the rest of PokeBank NX.
+for stale in (
+    '"A: Ownership Info  |  B: Back"',
+    '"A: Select  |  X: Delete  |  B: Back"',
+    '"A: Select  |  B: Back"',
+):
+    require(stale not in backup_selection,
+            "Save Backups must not bypass the shared controller glyph legend")
+require('{{"Up/Down", "Choose"}, {"A", "Select"}, {"X", "Delete"}, {"B", "Back"}}' in backup_selection,
+        "Save Backups must advertise D-pad/Left Stick selection alongside active actions")
+require("Colors::Warning, 2" in backup_selection and "Colors::Orange, 2" not in backup_selection,
+        "transient backup failures must use the semantic theme warning color")
+
+# Pickers and Classic Inventory overlays must use the shared colored controller bar, not embedded
+# plain-text footer instructions that duplicate/contradict the app-wide legend.
+require("D-pad/Stick Navigate   A Select   B Cancel   L/R Page" not in picker_dialog,
+        "generic picker must not render the old embedded text control footer")
+require('{{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}, {"L/R", "Page"}}' in picker_dialog,
+        "generic picker must publish its controls through the shared glyph bar")
+for stale in (
+    "A Confirm    B Cancel",
+    "A Discard Staged Changes    B Cancel",
+    "D-pad/Stick Navigate     A Add/Select",
+    "B Cancel                  L/R Page",
+    "B Close Help",
+    "D-pad / Left Stick Select    A Open    B Close",
+    "D-pad / Left Stick Browse    B Back to Options",
+):
+    require(stale not in classic_inventory,
+            "Classic Inventory overlays must not restore old embedded controller footers")
+require('{{"Up/Down", "Navigate"}, {"A", "Add / Select"}' in classic_inventory,
+        "Classic Inventory picker must use the shared glyph bar")
+require('{{"Up/Down", "Choose"}, {"A", "Open"}, {"B", "Close"}}' in classic_inventory,
+        "Classic Inventory options must use the shared glyph bar")
+
+# Reachable Gen I overlays follow the same shared control-bar contract.
+for stale in (
+    "Up/Down 1    Left/Right 10    A Select    B Cancel",
+    "A Select    B Cancel    No live RetroArch or installed-game writes",
+    "A/B Back to Actions",
+    "Left/Right Section    A Edit    B Actions",
+    "Left/Right Step    Up/Down Row    A Edit/Stage",
+    "A Export edited copy + original backup",
+    "Left/Right Destination Box    A Stage Clone    B Cancel",
+    "A Stage Remove    B Cancel",
+):
+    require(stale not in gen1_overlay,
+            "Gen I overlays must not render legacy embedded controller footers")
+require("drawNavBar(fb" in gen1_overlay,
+        "Gen I overlays must publish controls through the shared glyph bar")
+require('drawFooter(fb, "A Confirm Release   B Cancel")' not in classic_release,
+        "Gen I release confirmation must use the shared glyph bar")
+require('drawFooter(fb, "D-pad/Stick Navigate   A Select   B Back")' not in classic_release,
+        "Gen I actions must use the shared glyph bar")
+
+# The current Gen I UX stack centralizes footer hints; that helper must route through shared chrome.
+require("drawNavBar(fb, text);" in gen1_ux,
+        "Gen I footer helper must use the shared controller bar")
+for source in (gen1_ux, gen1_ux2, gen1_ux3):
+    for stale in (
+        "D-pad Navigate   ",
+        "D-pad/Stick Navigate   ",
+        "A/B Back",
+        "A Confirm Remove   B Cancel",
+    ):
+        require(stale not in source,
+                "Gen I UX footer strings must use shared parseable controller hints")
+
 # The shared legend is one implementation for all screens.
 for token in (
     "Color(62, 166, 96)",
@@ -72,6 +148,8 @@ for token in (
     require(token in chrome, "A/B/X/Y shared glyph colors are incomplete")
 require('centred("LS", lsX, lsW, ink)' in chrome,
         "shared navigation glyph must communicate Left Stick parity")
+require('btn == "D-pad/Stick"' in chrome and 'btn == "D-pad"' in chrome,
+        "shared navigation glyph must accept legacy D-pad token aliases")
 
 # User-visible NRO metadata is PokeBank NX-owned. Internal compatibility symbols may retain
 # historical names; this contract intentionally checks only the metadata fields.
