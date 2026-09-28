@@ -75,8 +75,12 @@ int main() {
 
         const Exact::MoveCompatibilityQuery existing{id, 25, 0, 85, true};
         const Exact::MoveCompatibilityQuery newMove{id, 25, 0, 85, false};
-        assert(staged->moves.evaluate(existing) == Exact::MoveCompatibilityResult::PreserveExisting);
-        assert(staged->moves.evaluate(newMove) == Exact::MoveCompatibilityResult::Unsupported);
+        const Exact::MoveCompatibilityQuery lastNative{id, 25, 0, 467, false};
+        const Exact::MoveCompatibilityQuery firstGen5{id, 25, 0, 468, false};
+        assert(staged->moves.evaluate(existing) == Exact::MoveCompatibilityResult::Compatible);
+        assert(staged->moves.evaluate(newMove) == Exact::MoveCompatibilityResult::Compatible);
+        assert(staged->moves.evaluate(lastNative) == Exact::MoveCompatibilityResult::Compatible);
+        assert(staged->moves.evaluate(firstGen5) == Exact::MoveCompatibilityResult::Unsupported);
     }
 
     const auto dp = Foundation::capabilitiesForSourceId("diamond_nds");
