@@ -349,6 +349,49 @@ const char* gameName(std::string_view id) noexcept {
     return "Generation IV";
 }
 
+std::string gen4FormLabel(uint16_t species, uint8_t form) {
+    if (species == 201) {
+        if (form < 26) return std::string(1, static_cast<char>('A' + form));
+        if (form == 26) return "!";
+        if (form == 27) return "?";
+    }
+    if (species == 172)
+        return form == 0 ? "Normal" : form == 1 ? "Spiky-eared" : "Form " + std::to_string(form);
+    if (species == 412 || species == 413 || species == 414) {
+        constexpr std::array<const char*,3> names{{"Plant", "Sandy", "Trash"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 421) {
+        constexpr std::array<const char*,2> names{{"Overcast", "Sunshine"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 422 || species == 423) {
+        constexpr std::array<const char*,2> names{{"West", "East"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 479) {
+        constexpr std::array<const char*,6> names{{"Normal", "Heat", "Wash", "Frost", "Fan", "Mow"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 487) {
+        constexpr std::array<const char*,2> names{{"Altered", "Origin"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 492) {
+        constexpr std::array<const char*,2> names{{"Land", "Sky"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 493) {
+        constexpr std::array<const char*,18> names{{
+            "Normal", "Fighting", "Flying", "Poison", "Ground", "Rock", "Bug", "Ghost",
+            "Steel", "??? (unused)", "Fire", "Water", "Grass", "Electric", "Psychic",
+            "Ice", "Dragon", "Dark"
+        }};
+        if (form < names.size()) return names[form];
+    }
+    return form == 0 ? "Default" : "Form " + std::to_string(form);
+}
+
 constexpr std::array<const char*, 16> detailLabels{{
     "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID",
     "Held Item", "Friendship", "Language", "Origin", "Ball",
@@ -426,7 +469,7 @@ std::string detailValue(const Pokemon::Pokemon4ReadOnly& p,
             return pk == 0 ? "None" : (pk & 0x0Fu) == 0 ? "Cured" : "Infected";
         }
         case 15:
-            return p.form() == 0 ? "Default" : "Form " + std::to_string(p.form());
+            return gen4FormLabel(p.species(), p.form());
         default: return {};
     }
 }
@@ -572,17 +615,22 @@ void openPokerusPicker(TrainerViewScreen& screen, State& state) {
 void openFormPicker(TrainerViewScreen& screen, State& state) {
     if (!state.session.working) return;
     const uint8_t count = state.session.working->formCount();
-    if (count <= 1) {
-        screen.postStatus("This Pokémon has no alternate Form in this Generation IV game", 300);
+    state.pickerValues.clear();
+    for (uint16_t form = 0; form < count; ++form) {
+        auto probe = *state.session.working;
+        if (probe.setForm(static_cast<uint8_t>(form)))
+            state.pickerValues.push_back(form);
+    }
+    if (state.pickerValues.size() <= 1) {
+        screen.postStatus("This Pokémon has no alternate Form valid for this Generation IV slot", 300);
         return;
     }
     state.valuePicker = true;
     state.pickerTarget = PickerTarget::Form;
-    state.pickerValues.clear();
-    for (uint16_t form = 0; form < count; ++form)
-        state.pickerValues.push_back(form);
     const uint8_t current = state.session.working->form();
-    state.pickerRow = std::min<int>(current, static_cast<int>(count) - 1);
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end()
+        ? 0 : static_cast<int>(std::distance(state.pickerValues.begin(), it));
     screen.controllerNavigation.reset();
 }
 
@@ -707,13 +755,6 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
     } else if (state.pickerTarget == PickerTarget::Move) {
         const size_t slot = static_cast<size_t>(state.moveEditorSlot);
         ok = state.session.working->setMove(slot, value);
-        if (ok) {
-            state.session.working->setPPUps(slot, 0);
-            const int basePP = value == 0 ? 0 :
-                Names::getMoveBasePP(value, bridge(screen).sourceSave().rawFamily());
-            state.session.working->setPP(
-                slot, static_cast<uint8_t>(std::clamp(basePP, 0, 255)));
-        }
     } else if (state.pickerTarget == PickerTarget::Nature) {
         ok = state.session.working->setNature(static_cast<uint8_t>(value));
     } else if (state.pickerTarget == PickerTarget::Ability) {
@@ -1120,7 +1161,10 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                                    : "Location " + std::to_string(value);
         } else if (state.pickerTarget == PickerTarget::Pokerus)
             label = value == 0 ? "None" : value == 0x10 ? "Cured" : "Infected";
-        else if (state.pickerTarget == PickerTarget::Move)
+        else if (state.pickerTarget == PickerTarget::Form) {
+            const uint16_t species = state.session.working ? state.session.working->species() : 0;
+            label = gen4FormLabel(species, static_cast<uint8_t>(value));
+        } else if (state.pickerTarget == PickerTarget::Move)
             label = value == 0 ? "Empty" :
                 std::string(Names::getMoveName(value)) + " (#" + std::to_string(value) + ")";
         else if (state.pickerTarget == PickerTarget::Nature)
