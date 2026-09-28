@@ -40,6 +40,10 @@ public:
     [[nodiscard]] std::optional<Pokemon::Pokemon4Mutable> editableBoxPokemon(
         size_t box, size_t slot, std::string* error = nullptr) const;
 
+    [[nodiscard]] std::optional<Pokemon::Pokemon4Mutable> createBoxDraft(
+        size_t box, size_t slot, uint16_t species,
+        std::string* error = nullptr) const;
+
     bool commitBoxPokemon(size_t box, size_t slot,
                           const Pokemon::Pokemon4Mutable& pokemon,
                           std::string* error = nullptr);
