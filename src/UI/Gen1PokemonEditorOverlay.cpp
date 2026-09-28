@@ -788,8 +788,8 @@ void drawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
         drawRow(fb, x + 108, rowY, w - 216, std::to_string(value), text, value == state.pickerValue);
         rowY += 50;
     }
-    fb.drawText(x + 108, y + h - 70, "Up/Down 1    Left/Right 10    A Select    B Cancel",
-                Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"Up/Down", "±1"}, {"Left/Right", "±10"},
+                    {"A", "Select"}, {"B", "Cancel"}});
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -825,8 +825,9 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
         drawRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second, i == state.row);
         rowY += 53;
     }
-    fb.drawText(x + 32, y + h - 38, "A Select    B Cancel    No live RetroArch or installed-game writes",
+    fb.drawText(x + 32, y + h - 38, "No live RetroArch or installed-game writes",
                 Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
 void drawView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -853,7 +854,7 @@ void drawView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int 
         rowY += 47;
         if (rowY > y + h - 70) break;
     }
-    fb.drawText(x + 32, y + h - 38, "A/B Back to Actions", Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"B", "Back to Actions"}});
 }
 
 std::vector<std::pair<std::string, std::string>> editRows(const PokemonRecord& p, EditSection section) {
@@ -907,9 +908,10 @@ void drawEdit(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int 
         drawRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second, i == state.row);
         rowY += 50;
     }
-    fb.drawText(x + 32, y + h - 38,
-        "Left/Right Section    A Edit    B Actions    One keyboard prompt maximum per frame",
-        Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 32, y + h - 38, "One keyboard prompt maximum per frame",
+                Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"Up/Down", "Row"}, {"Left/Right", "Section"},
+                    {"A", "Edit"}, {"B", "Actions"}});
 }
 
 std::vector<std::pair<std::string, std::string>> draftRows(const TrainerViewScreen& screen, const OverlayState& state) {
@@ -962,9 +964,8 @@ void drawAddDraft(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
             "A commits one semantic staged addition. B cancels the draft with zero staged mutation.",
             Colors::Accent, TextStyle::Body);
     }
-    fb.drawText(x + 32, y + h - 38,
-        "Left/Right Step    Up/Down Row    A Edit/Stage    B Cancel entire draft",
-        Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"Left/Right", "Step"}, {"Up/Down", "Row"},
+                    {"A", "Edit / Stage"}, {"B", "Cancel Draft"}});
 }
 
 void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -972,7 +973,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
     const auto lines = pendingLines(screen);
     fb.drawText(x + 28, y + 20, "Generation I Pending Changes", Colors::Text, TextStyle::Heading);
     fb.drawText(x + 28, y + 54,
-        "A Export edited copy + original backup    Y Discard ALL staged RBY changes    B Back",
+        "Review staged Generation I changes before export or discard.",
         Colors::TextDim, TextStyle::Caption);
     if (lines.empty()) {
         fb.drawText(x + 32, y + 118, "No pending changes.", Colors::TextDim);
@@ -990,6 +991,8 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
         fb.drawText(x + 32, y + h - 68, "Last export: " + state.lastExportDirectory, Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 32, y + h - 38,
         "Original RetroArch save is immutable. Export path is PokeBank-owned only.", Colors::Accent, TextStyle::Caption);
+    drawNavBar(fb, {{"Up/Down", "Browse"}, {"A", "Export Copy"},
+                    {"Y", "Discard All"}, {"B", "Back"}});
 }
 
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -1012,7 +1015,7 @@ void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
     fb.drawText(x + 300, y + 332, e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable", Colors::Text);
     fb.drawText(x + 32, y + 372, "Pending semantic changes", Colors::TextDim);
     fb.drawText(x + 300, y + 372, std::to_string(pendingLines(screen).size()), Colors::Text);
-    fb.drawText(x + 32, y + h - 38, "A/B Back to Actions", Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"B", "Back to Actions"}});
 }
 
 } // namespace
@@ -1069,16 +1072,17 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             fb.drawText(x + 32, y + 164,
                 "The source Pokemon stays untouched. Gen I boxes are contiguous, so clone uses the first empty slot.",
                 Colors::TextDim);
-            fb.drawText(x + 32, y + 214, "Left/Right Destination Box    A Stage Clone    B Cancel", Colors::Accent);
+            drawNavBar(fb, {{"Left/Right", "Destination Box"},
+                            {"A", "Stage Clone"}, {"B", "Cancel"}});
             break;
         }
         case Mode::RemoveConfirm:
             fb.drawText(x + 28, y + 20, "Stage Removal?", Colors::Text, TextStyle::Heading);
             fb.drawText(x + 32, y + 110,
-                "A stages removal and synchronizes count/species/record/OT/nickname parallel arrays.", Colors::Text);
+                "Removal synchronizes count/species/record/OT/nickname parallel arrays.", Colors::Text);
             fb.drawText(x + 32, y + 158,
-                "The original RetroArch .srm is not written. B cancels with no mutation.", Colors::TextDim);
-            fb.drawText(x + 32, y + 214, "A Stage Remove    B Cancel", Colors::Accent);
+                "The original RetroArch .srm is not written; cancel leaves staged data unchanged.", Colors::TextDim);
+            drawNavBar(fb, {{"A", "Stage Remove"}, {"B", "Cancel"}});
             break;
         case Mode::Review: drawReview(screen, fb, x, y, w, h); break;
         case Mode::Provenance: drawProvenance(screen, fb, x, y, w, h); break;

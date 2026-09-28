@@ -21,6 +21,8 @@ system_icons = read("src/UI/SystemIcons.cpp")
 backup_selection = read("src/UI/BackupSelectionScreen.cpp")
 picker_dialog = read("src/UI/Dialogs/PickerDialog.cpp")
 classic_inventory = read("src/UI/ClassicInventoryOverlay.cpp")
+gen1_overlay = read("src/UI/Gen1PokemonEditorOverlay.cpp")
+classic_release = read("src/UI/ClassicReleaseActionFix.inc")
 
 # Settings owns build/safety identity; the global nav bar owns controls.
 require("A: toggle / info" not in trainer,
@@ -99,6 +101,26 @@ require('{{"Up/Down", "Navigate"}, {"A", "Add / Select"}' in classic_inventory,
         "Classic Inventory picker must use the shared glyph bar")
 require('{{"Up/Down", "Choose"}, {"A", "Open"}, {"B", "Close"}}' in classic_inventory,
         "Classic Inventory options must use the shared glyph bar")
+
+# Reachable Gen I overlays follow the same shared control-bar contract.
+for stale in (
+    "Up/Down 1    Left/Right 10    A Select    B Cancel",
+    "A Select    B Cancel    No live RetroArch or installed-game writes",
+    "A/B Back to Actions",
+    "Left/Right Section    A Edit    B Actions",
+    "Left/Right Step    Up/Down Row    A Edit/Stage",
+    "A Export edited copy + original backup",
+    "Left/Right Destination Box    A Stage Clone    B Cancel",
+    "A Stage Remove    B Cancel",
+):
+    require(stale not in gen1_overlay,
+            "Gen I overlays must not render legacy embedded controller footers")
+require("drawNavBar(fb" in gen1_overlay,
+        "Gen I overlays must publish controls through the shared glyph bar")
+require('drawFooter(fb, "A Confirm Release   B Cancel")' not in classic_release,
+        "Gen I release confirmation must use the shared glyph bar")
+require('drawFooter(fb, "D-pad/Stick Navigate   A Select   B Back")' not in classic_release,
+        "Gen I actions must use the shared glyph bar")
 
 # The shared legend is one implementation for all screens.
 for token in (

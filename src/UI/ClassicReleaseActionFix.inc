@@ -79,7 +79,7 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         fb.drawText(x + 24, y + 18, "Release Pokemon?", Colors::Text, TextStyle::Heading);
         fb.drawText(x + 28, y + 86, "Release removes this Pokemon from the staged packed box.", Colors::Text);
         fb.drawText(x + 28, y + 126, "Original RetroArch .srm remains immutable and is never written.", Colors::Accent);
-        drawFooter(fb, "A Confirm Release   B Cancel");
+        drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});
         return true;
     }
 
@@ -100,7 +100,7 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         rowY += 46;
     }
     fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
-    drawFooter(fb, "D-pad/Stick Navigate   A Select   B Back");
+    drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
     return true;
 }
 
