@@ -18,6 +18,7 @@ save_select = read("src/UI/SaveSelectScreen.cpp")
 chrome = read("include/UI/ScreenChrome.h")
 makefile = read("Makefile")
 system_icons = read("src/UI/SystemIcons.cpp")
+backup_selection = read("src/UI/BackupSelectionScreen.cpp")
 
 # Settings owns build/safety identity; the global nav bar owns controls.
 require("A: toggle / info" not in trainer,
@@ -61,6 +62,19 @@ require("if (systemIcon.valid()) return systemIcon;" in system_icons,
         "installed-title icons must fall through to packaged/fallback artwork on decode failure")
 require("img = makeGameCardFallback();" in system_icons,
         "missing/corrupt packaged artwork must activate the generated fallback")
+
+# Save Backups uses the same shared controller glyph language as the rest of PokeBank NX.
+for stale in (
+    '"A: Ownership Info  |  B: Back"',
+    '"A: Select  |  X: Delete  |  B: Back"',
+    '"A: Select  |  B: Back"',
+):
+    require(stale not in backup_selection,
+            "Save Backups must not bypass the shared controller glyph legend")
+require('{{"Up/Down", "Choose"}, {"A", "Select"}, {"X", "Delete"}, {"B", "Back"}}' in backup_selection,
+        "Save Backups must advertise D-pad/Left Stick selection alongside active actions")
+require("Colors::Warning, 2" in backup_selection and "Colors::Orange, 2" not in backup_selection,
+        "transient backup failures must use the semantic theme warning color")
 
 # The shared legend is one implementation for all screens.
 for token in (
