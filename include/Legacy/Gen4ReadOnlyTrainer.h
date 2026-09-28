@@ -2,6 +2,7 @@
 #define POKEBANK_LEGACY_GEN4_READ_ONLY_TRAINER_H
 
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
+#include "Integration/Gen4/Gen4StagedPokemonEditor.h"
 #include "Trainer/Trainer.h"
 
 #include <memory>
@@ -39,12 +40,26 @@ public:
     }
     [[nodiscard]] const std::string& sourceGameId() const noexcept { return sourceGameId_; }
 
+    bool stagedPokemonAvailable() const noexcept { return stagedPokemon_ != nullptr; }
+    Integration::Gen4::Gen4StagedPokemonEditor* stagedPokemon() noexcept {
+        return stagedPokemon_.get();
+    }
+    const Integration::Gen4::Gen4StagedPokemonEditor* stagedPokemon() const noexcept {
+        return stagedPokemon_.get();
+    }
+    const std::string& stagedPokemonUnavailableReason() const noexcept {
+        return stagedPokemonUnavailableReason_;
+    }
+    bool refreshStagedPokemonPresentation(std::string& error);
+
 private:
     Gen4ReadOnlyTrainer(Integration::Gen4::Gen4ReadOnlySave save, std::string sourceGameId);
     void buildPresentation(std::string& error);
 
     Integration::Gen4::Gen4ReadOnlySave save_;
     std::string sourceGameId_;
+    std::unique_ptr<Integration::Gen4::Gen4StagedPokemonEditor> stagedPokemon_;
+    std::string stagedPokemonUnavailableReason_;
 };
 
 }
