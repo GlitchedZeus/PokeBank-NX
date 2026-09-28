@@ -106,18 +106,33 @@ int main() {
     contains(surface, "state.moveEditorRow == 2");
     contains(surface, "Move selection stays read-only until exact Gen IV learnsets are pinned");
 
-    // Gen IV remains View/Edit only, now reachable from both Box and Party surfaces.
+    // G4-04 keeps accepted View/Edit and adds native Create for empty PC slots.
     contains(surface, "result.values[result.count++] = Shared::Action::View");
     contains(surface, "result.values[result.count++] = Shared::Action::Edit");
-    assert(surface.find("result.values[result.count++] = Shared::Action::Add") == std::string::npos);
+    contains(surface, "result.values[result.count++] = Shared::Action::Add");
+    contains(surface, "case Shared::Action::Add");
+    contains(surface, "beginCreate(screen)");
+    contains(surface, "PickerTarget::Species");
+    contains(surface, "createBoxDraft(");
+    contains(surface, "keepCreate(");
+    contains(session, "Mode::Create");
+    contains(session, "Guard::Create");
+    contains(staged, "stageCreateBoxPokemon");
+    assert(surface.find("Generation IV Create follows after Edit hardware acceptance") == std::string::npos);
+    assert(surface.find("Create is not enabled in the Edit milestone") == std::string::npos);
     assert(surface.find("result.values[result.count++] = Shared::Action::Clone") == std::string::npos);
     assert(surface.find("result.values[result.count++] = Shared::Action::Remove") == std::string::npos);
-    contains(surface, "Generation IV Create follows after Edit hardware acceptance");
     contains(surface, "partyEntrySurface");
     contains(surface, "TargetKind::Party");
     contains(surface, "keepParty");
     contains(surface, "beginPassiveView");
     contains(surface, "screen.closeDetailsModal()");
+
+    // Visible read-only rows remain navigable in Edit/Create rather than being silently skipped.
+    assert(surface.find("if (detailEditable(state.focus.row)) return;") == std::string::npos);
+    contains(surface, "This Generation IV field is visible but read-only in the current G4-04 slice");
+    contains(surface, "state.focus.panel == Shared::Panel::Values &&");
+    contains(surface, "state.focus.row == row;");
 
     // A committed staged edit must not claim UI success when the refreshed presentation failed.
     contains(surface, "if (!refreshPresentation(screen))");
