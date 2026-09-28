@@ -42,6 +42,18 @@ require("locationLabel" not in card_draw,
 require("Save Instances owns source count, provider and path metadata" in card_draw,
         "Save Instances must remain the documented metadata owner")
 
+# Source-browser wording must distinguish the synthetic Game Sources view from a Switch user.
+require("No validated Pokémon game sources found" in save_select,
+        "Game Sources needs an accurate empty state")
+for stale in (
+    '"Pokemon " + parent.label + " — Save Instances"',
+    '"Pokemon " + entry.title + " — "',
+    '"Pokemon " + title,',
+    '"Pokemon " + title + " — Save Instances"',
+):
+    require(stale not in save_select,
+            "visible source-browser headings must use the product's Pokémon spelling")
+
 # Optional artwork failure must degrade to a deliberate shared placeholder rather than a blank card.
 require("IconImage makeGameCardFallback()" in system_icons,
         "game-card artwork needs a generated missing-art fallback")
