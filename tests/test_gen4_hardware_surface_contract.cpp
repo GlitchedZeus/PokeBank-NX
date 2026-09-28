@@ -105,8 +105,7 @@ int main() {
     contains(surface, "state.moveEditorRow = 0; // Shared move editor opens on the Move row");
     contains(surface, "state.moveEditorRow == 1");
     contains(surface, "state.moveEditorRow == 2");
-    contains(surface, "state.session.working->setPPUps(slot, 0)");
-    contains(surface, "Names::getMoveBasePP(value");
+    contains(surface, "state.session.working->setMove(slot, value)");
     contains(surface, "PickerTarget::Move");
     contains(surface, "Names::isMovePresent");
     contains(surface, "Native Gen IV move catalog");
@@ -126,6 +125,9 @@ int main() {
     contains(surface, "PickerTarget::Pokerus");
     contains(surface, "PickerTarget::Form");
     contains(surface, "openFormPicker");
+    contains(surface, "auto probe = *state.session.working");
+    contains(surface, "probe.setForm");
+    contains(surface, "gen4FormLabel");
     contains(surface, "state.session.working->setForm");
     contains(surface, "Names::isGen4HeldItemPresent");
     contains(surface, "Names::getLocationTable");
