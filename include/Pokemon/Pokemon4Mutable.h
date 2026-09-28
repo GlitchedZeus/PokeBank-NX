@@ -49,6 +49,7 @@ public:
     [[nodiscard]] bool shiny() const noexcept;
     [[nodiscard]] uint8_t abilitySlot() const noexcept;
     [[nodiscard]] uint16_t ability() const noexcept;
+    [[nodiscard]] uint16_t abilityForSlot(uint8_t slot) const noexcept;
 
     bool setNickname(const std::u16string& value) noexcept;
     bool setLevel(uint8_t level) noexcept;
