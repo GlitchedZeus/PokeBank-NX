@@ -94,6 +94,22 @@ std::vector<std::byte> occupiedPk4() {
     return Encryption::encryptArray4(d);
 }
 
+std::vector<std::byte> occupiedPartyPk4() {
+    std::vector<std::byte> d(Encryption::SIZE_PARTY4, std::byte{0});
+    const auto stored = occupiedPk4();
+    const auto decoded = Encryption::decryptArray4(stored);
+    std::copy(decoded.begin(), decoded.end(), d.begin());
+    d[0x8C] = std::byte{20};
+    wb16(d, 0x8E, 35);
+    wb16(d, 0x90, 35);
+    wb16(d, 0x92, 25);
+    wb16(d, 0x94, 20);
+    wb16(d, 0x96, 30);
+    wb16(d, 0x98, 25);
+    wb16(d, 0x9A, 20);
+    return Encryption::encryptArray4(d);
+}
+
 void stamp(std::vector<uint8_t>& save, size_t off, size_t len,
            size_t footer, uint32_t major) {
     const size_t end = off + len;
@@ -110,6 +126,7 @@ std::vector<uint8_t> makeSave(Layout layout, uint8_t romCode = 7) {
     std::vector<uint8_t> save(SAVE_SIZE, 0xFF);
     const auto blank = Encryption::blankRecord4(Encryption::SIZE_STORED4);
     const auto occupied = occupiedPk4();
+    const auto party = occupiedPartyPk4();
 
     for (int partition = 0; partition < 2; ++partition) {
         const size_t base = static_cast<size_t>(partition) * PARTITION;
@@ -121,7 +138,8 @@ std::vector<uint8_t> makeSave(Layout layout, uint8_t romCode = 7) {
 
         save[base + sp.trainer + 0x19] = 2;
         save[base + sp.trainer + 0x1C] = romCode;
-        save[base + sp.party - 4] = 0;
+        save[base + sp.party - 4] = 1;
+        copy(save, base + sp.party, party);
 
         for (size_t box = 0; box < 18; ++box) {
             const size_t boxBase = storage + sp.boxData + box * sp.boxStride;
@@ -191,6 +209,35 @@ void testLayout(Layout layout, uint8_t romCode = 7, bool soulSilver = false) {
     assert(parsed->box(0, 0).pid() % 25 ==
            static_cast<uint8_t>((beforeNature + 1) % 25));
 
+    // Party editing uses the same mutable PK4 core but commits a full 0xEC party
+    // record into the selected General block, refreshes its CRC and keeps live stats coherent.
+    auto partyMon = editor->editablePartyPokemon(0, &error);
+    assert(partyMon && error.empty() && partyMon->isParty());
+    const auto partyBefore = partyMon->encryptedBytes();
+    assert(partyMon->setLevel(30));
+    assert(partyMon->setIV(0, 31));
+    assert(partyMon->setEV(1, 180));
+    assert(editor->commitPartyPokemon(0, *partyMon, &error));
+    assert(error.empty());
+    assert(source == original);
+
+    const auto partyFinal = editor->finalizedBytes(&error);
+    assert(!partyFinal.empty() && error.empty());
+    auto partyParsed = Gen4ReadOnlySave::parse(
+        partyFinal, layout, gameId(layout, soulSilver), &error);
+    assert(partyParsed && error.empty());
+    const auto nativeParty = partyParsed->nativePartySlots();
+    assert(nativeParty.size() == 6);
+    assert(nativeParty[0].valid() && nativeParty[0].isParty());
+    assert(nativeParty[0].partyLevel() == 30);
+    assert(nativeParty[0].ivs()[0] == 31);
+    assert(nativeParty[0].evs()[1] == 180);
+    assert(nativeParty[0].maxHP() > 0);
+    assert(nativeParty[0].currentHP() <= nativeParty[0].maxHP());
+    assert(nativeParty[0].originalEncryptedBytes().size() == Encryption::SIZE_PARTY4);
+    assert(!std::equal(partyBefore.begin(), partyBefore.end(),
+                       nativeParty[0].originalEncryptedBytes().begin()));
+
     // The inactive partition is not rewritten as a side effect.
     assert(std::equal(finalBytes.begin() + static_cast<std::ptrdiff_t>(PARTITION),
                       finalBytes.end(),
@@ -221,6 +268,10 @@ void testNoOpAndFailureRollback() {
     auto mon = editor->editableBoxPokemon(0, 0);
     assert(mon);
     assert(editor->commitBoxPokemon(0, 0, *mon));
+    assert(!editor->hasChanges());
+    auto party = editor->editablePartyPokemon(0);
+    assert(party && party->isParty());
+    assert(editor->commitPartyPokemon(0, *party));
     assert(!editor->hasChanges());
 
     auto corrupt = mon->encryptedBytes();
