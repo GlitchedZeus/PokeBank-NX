@@ -11,7 +11,7 @@
 #include <span>
 
 namespace PokeVault::Integration::Gen3::Detail {
-    inline constexpr size_t kSaveSize = 0x20000;
+    inline constexpr size_t kSaveSize = GEN3_SAVE_SIZE;
     inline constexpr size_t kSectorSize = 0x1000;
     inline constexpr size_t kSectorDataSize = 0xF80;
     inline constexpr size_t kSectorCount = 14;

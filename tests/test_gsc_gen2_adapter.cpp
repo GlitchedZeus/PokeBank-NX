@@ -1,6 +1,7 @@
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -99,6 +100,35 @@ int main(){
     {
         auto d=fixture(IGS);for(int i=0;i<7;i++)d.push_back(0);auto r=parse(d,SourceGame::Gold);
         assert(r&&r.save->metadata().rtcFooterSize==7&&r.save->sourceBytes().size()==0x8007);
+    }
+    {
+        auto d=fixture(IGS);
+        d[IGS.party+3]=25;
+        putChecksum(d,IGS);
+        auto r=parse(d,SourceGame::Gold);
+        assert(r&&r.save->party().size()==1);
+        const std::array<uint8_t,2> ligature{{0xEA,0x50}};
+        assert(decodeGen2String(ligature,RegionLayout::International)=="%");
+        const std::array<uint8_t,2> po{{0x70,0x50}};
+        const std::array<uint8_t,2> ke{{0x71,0x50}};
+        const std::array<uint8_t,2> pk{{0xE1,0x50}};
+        const std::array<uint8_t,2> mn{{0xE2,0x50}};
+        const std::array<uint8_t,2> arrow{{0xEB,0x50}};
+        const std::array<uint8_t,8> gen2Digits{{0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0x50}};
+        assert(decodeGen2String(po,RegionLayout::International)=="@");
+        assert(decodeGen2String(ke,RegionLayout::International)=="#");
+        assert(decodeGen2String(pk,RegionLayout::International)=="{");
+        assert(decodeGen2String(mn,RegionLayout::International)=="}");
+        assert(decodeGen2String(arrow,RegionLayout::International)=="→");
+        assert(decodeGen2String(gen2Digits,RegionLayout::International)=="０１２３４５６");
+        const std::array<uint8_t,2> jpBe{{0x3D,0x50}};
+        const std::array<uint8_t,2> jpRi{{0xD8,0x50}};
+        const std::array<uint8_t,2> jpHandakuten{{0xE4,0x50}};
+        assert(decodeGen2String(jpBe,RegionLayout::Japanese)=="ベ");
+        assert(decodeGen2String(jpRi,RegionLayout::Japanese)=="リ");
+        assert(decodeGen2String(jpHandakuten,RegionLayout::Japanese)=="ﾟ");
+        const std::array<uint8_t,3> tradeOt{{0x5D,0x80,0x50}};
+        assert(decodeGen2String(tradeOt,RegionLayout::International)=="*");
     }
     {
         auto d=fixture(IGS);d[0x2100]^=1;auto r=parse(d,SourceGame::Gold);assert(!r&&r.error==SaveError::ChecksumMismatch);

@@ -3,7 +3,7 @@
 #include "Games/GameIdentity.h"
 
 #include <algorithm>
-#include <set>
+#include <cctype>
 
 namespace PokeVault::Legacy {
     namespace {
@@ -49,6 +49,22 @@ namespace PokeVault::Legacy {
             return 0;
         }
 
+        std::string providerFor(const FRLGSource& source) {
+            return source.providerLabel.empty() ? std::string("Source") : source.providerLabel;
+        }
+
+        std::string cardProviderFor(const std::vector<FRLGSaveInstance>& instances) {
+            if (instances.empty()) return "READ ONLY";
+            const std::string provider = instances.front().providerLabel;
+            if (std::any_of(instances.begin() + 1, instances.end(),
+                    [&](const auto& instance) { return instance.providerLabel != provider; }))
+                return "MULTI-SOURCE";
+            std::string label = provider.empty() ? std::string("SOURCE") : provider;
+            std::transform(label.begin(), label.end(), label.begin(),
+                [](unsigned char ch) { return static_cast<char>(std::toupper(ch)); });
+            return label;
+        }
+
         std::string platformLabelFor(const FRLGSource& source, const Games::GameDescriptor& game) {
             // GSC is shown explicitly as GBC per the legacy-source UI contract; preserve the
             // accepted long-form Game Boy / Game Boy Advance labels for Gen I and III.
@@ -59,7 +75,6 @@ namespace PokeVault::Legacy {
 
     std::vector<FRLGSourceCard> buildFRLGSourceCards(const FRLGDiscoveryResult& discovery) {
         std::vector<FRLGSourceCard> cards;
-        std::vector<std::set<std::string>> instanceKeys;
         for (size_t index = 0; index < discovery.sources.size(); ++index) {
             const auto& source = discovery.sources[index];
             if (!source.ready()) continue;
@@ -80,7 +95,6 @@ namespace PokeVault::Legacy {
                     std::string(game->id),
                     {},
                 });
-                instanceKeys.emplace_back();
                 cardIndex = cards.size() - 1;
             } else {
                 cardIndex = static_cast<size_t>(std::distance(cards.begin(), cardIt));
@@ -91,8 +105,6 @@ namespace PokeVault::Legacy {
             // trainer name, or game id as the child identity: separate files must remain separate.
             const std::string& identity = source.canonicalPath.empty() ? source.path
                                                                        : source.canonicalPath;
-            if (!instanceKeys[cardIndex].insert(identity).second) continue;
-            auto& instances = cards[cardIndex].instances;
             const std::string trainerName = trainerNameFor(source);
             const size_t partyCount = partyCountFor(source);
             const std::string fingerprint = source.contentFingerprint.empty()
@@ -101,30 +113,36 @@ namespace PokeVault::Legacy {
                                                               : trainerName) +
                 " | Party " + std::to_string(partyCount) + " | FP " +
                 fingerprint.substr(0, std::min<size_t>(12, fingerprint.size()));
-            instances.push_back({
-                index,
-                LegacySaveInstanceKind::BatterySave,
-                leafName(source.path),
-                details,
-                source.path,
-                source.normalizedPath,
-                stableIdentity(source),
-                fingerprint,
-                trainerName,
-                source.fileSize,
-                source.modifiedTime,
-                partyCount,
-                false,
-            });
+            FRLGSaveInstance instance;
+            instance.sourceIndex = index;
+            instance.kind = LegacySaveInstanceKind::BatterySave;
+            instance.label = leafName(source.path);
+            instance.providerLabel = providerFor(source);
+            instance.sourceLabel = details;
+            instance.location = source.path;
+            instance.normalizedPath = source.normalizedPath;
+            instance.sourceIdentity = stableIdentity(source);
+            instance.contentFingerprint = fingerprint;
+            instance.trainerName = trainerName;
+            instance.fileSize = source.fileSize;
+            instance.modifiedTime = source.modifiedTime;
+            instance.partyCount = partyCount;
+            instance.sourceAliases = source.sourceAliases;
+            instance.gameId = std::string(game->id);
+            instance.generation = static_cast<uint8_t>(game->dataGeneration);
+            instance.platformLabel = platformLabelFor(source, *game);
+            instance.providerId = PokeVault::Source::providerIdFor(instance.providerLabel);
+            instance.sourcePath = source.path;
+            instance.physicalIdentity = identity;
+            instance.containerType = "Battery save";
+            instance.validation = PokeVault::Source::ValidationStatus::Ready;
+            instance.access = PokeVault::Source::AccessMode::ReadOnly;
+            instance.diagnostic = source.detail;
+            PokeVault::Source::appendDeduplicated(cards[cardIndex].instances, std::move(instance));
         }
         for (auto& card : cards) {
-            std::sort(card.instances.begin(), card.instances.end(), [](const auto& left,
-                                                                        const auto& right) {
-                if (left.modifiedTime != right.modifiedTime)
-                    return left.modifiedTime > right.modifiedTime;
-                return left.normalizedPath < right.normalizedPath;
-            });
-            if (!card.instances.empty()) card.instances.front().mostRecentlyModified = true;
+            PokeVault::Source::sortNewestFirst(card.instances);
+            card.sourceLabel = cardProviderFor(card.instances);
         }
         return cards;
     }
@@ -134,13 +152,15 @@ namespace PokeVault::Legacy {
         std::string_view profileIdentity) {
         auto cards = buildFRLGSourceCards(discovery);
         for (auto& card : cards) {
+            for (auto& instance : card.instances)
+                bindings.applyClaims(instance);
             card.instances.erase(std::remove_if(card.instances.begin(), card.instances.end(),
                 [&](const auto& instance) {
-                    return !bindings.isVisibleTo(instance.sourceIdentity, profileIdentity);
+                    return !PokeVault::Source::visibleToProfile(instance, profileIdentity);
                 }), card.instances.end());
             if (!card.instances.empty()) {
-                for (auto& instance : card.instances) instance.mostRecentlyModified = false;
-                card.instances.front().mostRecentlyModified = true;
+                PokeVault::Source::sortNewestFirst(card.instances);
+                card.sourceLabel = cardProviderFor(card.instances);
             }
         }
         cards.erase(std::remove_if(cards.begin(), cards.end(), [](const auto& card) {

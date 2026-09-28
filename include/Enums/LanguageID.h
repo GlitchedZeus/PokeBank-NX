@@ -4,53 +4,69 @@
 #include <cstdint>
 #include <cstddef>
 
+#include "Enums/GameVersion.h"
+
 namespace Enums {
-    /// Contiguous series Game Language IDs
-    enum class LanguageID
-    {
-        /// Undefined Language ID, usually indicative of a value not being set.
-        /// Gen5 Japanese In-game Trades happen to not have their Language value set, and express Language=0.
+    enum class LanguageID {
         Hacked,
-
-        /// Japanese (日本語)
         Japanese,
-
-        /// English (US/UK/AU)
         English,
-
-        /// French (Français)
         French,
-
-        /// Italian (Italiano)
         Italian,
-
-        /// German (Deutsch)
         German,
-
-        /// Unused Language ID
-        /// Was reserved for Korean in Gen3 but never utilized.
         UNUSED_6,
-
-        /// Spanish (Español)
         Spanish,
-
-        /// Korean (한국어)
         Korean,
-
-        /// Chinese Simplified (简体中文)
         ChineseSimplified,
-
-        /// Chinese Traditional (繁體中文)
-        ChineseTraditional
+        ChineseTraditional,
+        SpanishL
     };
 
-    /// Short language name for a stored language id (indices match LanguageID above).
     inline const char* getLanguageName(uint8_t id) {
         static const char* const names[] = {
             "-", "Japanese", "English", "French", "Italian", "German",
-            "-", "Spanish", "Korean", "Chinese (S)", "Chinese (T)"
+            "-", "Spanish", "Korean", "Chinese (S)", "Chinese (T)", "Spanish (LATAM)"
         };
         return id < (sizeof(names) / sizeof(names[0])) ? names[id] : "-";
+    }
+
+    // Current PokeBank NX groups only. This is the PKSE 1.2 / PKHeX language-availability rule
+    // narrowed to groups that actually exist before the Gen IV expansion.
+    inline constexpr bool groupHasLanguage(GameVersion group, uint8_t languageId) noexcept {
+        const auto language = static_cast<LanguageID>(languageId);
+        if (language == LanguageID::Hacked || language == LanguageID::UNUSED_6) return false;
+        if (language <= LanguageID::Spanish) return true;
+
+        switch (group) {
+            case GameVersion::RBY:
+            case GameVersion::FRLG:
+                return false; // Gen I/III never shipped in Korean/Chinese/Spanish-LATAM.
+            case GameVersion::GSC:
+            case GameVersion::DP:
+            case GameVersion::PT:
+            case GameVersion::HGSS:
+                return language == LanguageID::Korean;
+            case GameVersion::ZA:
+                return true;
+            case GameVersion::GG:
+            case GameVersion::SWSH:
+            case GameVersion::BDSP:
+            case GameVersion::PLA:
+            case GameVersion::SV:
+            case GameVersion::Gen7B:
+            case GameVersion::Gen8:
+            case GameVersion::Gen9:
+                return language == LanguageID::Korean ||
+                       language == LanguageID::ChineseSimplified ||
+                       language == LanguageID::ChineseTraditional;
+            default:
+                return false;
+        }
+    }
+
+    inline constexpr uint8_t safeLanguageForGroup(GameVersion group, uint8_t languageId) noexcept {
+        return groupHasLanguage(group, languageId)
+            ? languageId : static_cast<uint8_t>(LanguageID::English);
     }
 }
 

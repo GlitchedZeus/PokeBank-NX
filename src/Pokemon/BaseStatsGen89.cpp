@@ -350,6 +350,23 @@ namespace Pokemon {
         return &BASE_STATS_TABLE_GEN89[speciesId];
     }
 
+
+    const BaseStatsGen89* getBaseStatsSWSH(uint16_t speciesId, uint8_t form) {
+        // Current PKHeX personal tables show five SWSH<->SV shared species/form entries whose
+        // base stats changed in Gen 9. Keep the older SWSH values here so PK8 party-stat tails
+        // are calculated with the game that actually owns the entity.
+        static const BaseStatsGen89 cresseliaSwsh = {488, 120, 70, 120, 75, 130, 85};
+        static const BaseStatsGen89 zacianHeroSwsh = {888, 92, 130, 115, 80, 115, 138};
+        static const BaseStatsGen89 zacianCrownedSwsh = {888, 92, 170, 115, 80, 115, 148};
+        static const BaseStatsGen89 zamazentaHeroSwsh = {889, 92, 130, 115, 80, 115, 138};
+        static const BaseStatsGen89 zamazentaCrownedSwsh = {889, 92, 130, 145, 80, 145, 128};
+
+        if (speciesId == 488 && form == 0) return &cresseliaSwsh;
+        if (speciesId == 888) return form == 1 ? &zacianCrownedSwsh : &zacianHeroSwsh;
+        if (speciesId == 889) return form == 1 ? &zamazentaCrownedSwsh : &zamazentaHeroSwsh;
+        return getBaseStatsGen89(speciesId, form);
+    }
+
     // Wrapper functions that forward to Names namespace
     const char* getSpeciesNameGen89(uint16_t speciesId) {
         return Names::getSpeciesName(speciesId);

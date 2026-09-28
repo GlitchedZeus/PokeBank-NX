@@ -85,7 +85,9 @@ int main() {
     const fs::path ambiguousPath = saves / "FRLG Mystery.sav";
     const fs::path brokenPath = saves / "FireRed Broken.sav";
     writeFile(fireRedPath, fixture);
-    writeFile(leafGreenPath, fixture);
+    auto leafGreenRtc=fixture;
+    leafGreenRtc.insert(leafGreenRtc.end(),{0x52,0x54,0x43,0x01,0x02,0x03,0x04});
+    writeFile(leafGreenPath,leafGreenRtc);
     writeFile(ambiguousPath, fixture);
     writeFile(brokenPath, {1, 2, 3, 4});
     writeFile(saves / "unrelated.sav", {9, 8, 7});
@@ -128,9 +130,13 @@ int main() {
     assert(!fireRed->canonicalPath.empty() && !leafGreen->canonicalPath.empty());
     assert(!fireRed->sourceIdentity.empty() && !leafGreen->sourceIdentity.empty());
     assert(fireRed->sourceIdentity != leafGreen->sourceIdentity);
+    assert(fireRed->providerLabel == "RetroArch");
     assert(fireRed->contentFingerprint.size() == 64);
     assert(fireRed->normalizedPath == fireRedPath.string());
-    assert(fireRed->fileSize == 0x20000 && leafGreen->fileSize == 0x20000);
+    assert(fireRed->fileSize == 0x20000 && leafGreen->fileSize == 0x20007);
+    assert(leafGreen->save->sourceBytes().size()==0x20007);
+    assert(std::equal(leafGreenRtc.end()-7,leafGreenRtc.end(),
+                      leafGreen->save->sourceBytes().end()-7));
     assert(std::count_if(result.sources.begin(), result.sources.end(), [&](const auto& source) {
         return source.ready() && source.gameId == "firered_gba";
     }) == 1);
@@ -190,6 +196,111 @@ int main() {
     assert(fallbackSelected.activeRootKind ==
            PokeVault::Legacy::FRLGDiscoveryResult::RootKind::ConventionalFallback);
     assert(fallbackSelected.sources.size() == 1 && fallbackSelected.sources[0].ready());
+
+    const fs::path mgbaDir = temp / "mGBA";
+    const fs::path mgbaSaves = mgbaDir / "battery";
+    fs::create_directories(mgbaSaves);
+    const fs::path mgbaFireRed = mgbaSaves / "Pokemon FireRed.sav";
+    writeFile(mgbaFireRed, fixture);
+    const fs::path mgbaConfig = mgbaDir / "config.ini";
+    {
+        std::ofstream output(mgbaConfig);
+        output << "savegamePath=battery\n";
+        output << "[ports.switch]\n";
+        output << "foo=bar\n";
+    }
+    const auto mgbaRoots = PokeVault::Legacy::mGBASaveRootsFromConfig(mgbaConfig.string());
+    assert(mgbaRoots.size() == 1 && mgbaRoots.front() == mgbaSaves.string());
+
+    const fs::path mgbaNoRootConfig = mgbaDir / "no-save-root.ini";
+    {
+        std::ofstream output(mgbaNoRootConfig);
+        output << "[ports.switch]\n";
+        output << "savegamePath=must-not-be-read-from-a-section\n";
+    }
+    assert(PokeVault::Legacy::mGBASaveRootsFromConfig(mgbaNoRootConfig.string()).empty());
+
+    const fs::path mgbaTraversalConfig = mgbaDir / "unsafe-parent.ini";
+    {
+        std::ofstream output(mgbaTraversalConfig);
+        output << "savegamePath=../..\n";
+    }
+    assert(PokeVault::Legacy::mGBASaveRootsFromConfig(mgbaTraversalConfig.string()).empty());
+
+    const fs::path mgbaRootConfig = mgbaDir / "unsafe-root.ini";
+    {
+        std::ofstream output(mgbaRootConfig);
+        output << "savegamePath=/\n";
+    }
+    assert(PokeVault::Legacy::mGBASaveRootsFromConfig(mgbaRootConfig.string()).empty());
+
+    // Tico's public mGBA core uses one exact battery-save directory. PokeBank may inspect that
+    // directory only; it must not infer permission to crawl /tico, ROMs, or savestates.
+    const fs::path ticoSaveBase = temp / "tico" / "saves";
+    const fs::path ticoGbaRoot = ticoSaveBase / "gba";
+    fs::create_directories(ticoGbaRoot);
+    const fs::path ticoFireRed = ticoGbaRoot / "Pokemon FireRed.sav";
+    writeFile(ticoFireRed, withTwoPartyPokemon(fixture));
+    const auto ticoBefore = readFile(ticoFireRed);
+
+    // A decoy immediately under /tico/saves must never be seen: only the fixed gb/gbc/gba
+    // provider directories are approved.
+    const fs::path ticoDecoy = ticoSaveBase / "Pokemon FireRed.sav";
+    writeFile(ticoDecoy, fixture);
+    const fs::path ticoNested = ticoGbaRoot / "nested" / "Pokemon FireRed.sav";
+    fs::create_directories(ticoNested.parent_path());
+    writeFile(ticoNested, fixture);
+
+    const auto unified = PokeVault::Legacy::discoverConfiguredLegacySaves(
+        {}, (temp / "missing-retroarch.cfg").string(),
+        (temp / "missing-retroarch-root").string(), mgbaConfig.string(),
+        ticoSaveBase.string());
+    const auto unifiedFireRed = std::find_if(unified.sources.begin(), unified.sources.end(),
+        [&](const auto& source) {
+            return source.ready() && source.gameId == "firered_gba" &&
+                   source.normalizedPath == mgbaFireRed.string();
+        });
+    assert(unifiedFireRed != unified.sources.end());
+    assert(unifiedFireRed->providerLabel == "mGBA");
+    assert(unified.activeRoot == mgbaSaves.string());
+
+    const auto unifiedTico = std::find_if(unified.sources.begin(), unified.sources.end(),
+        [&](const auto& source) {
+            return source.ready() && source.gameId == "firered_gba" &&
+                   source.normalizedPath == ticoFireRed.string();
+        });
+    assert(unifiedTico != unified.sources.end());
+    assert(unifiedTico->providerLabel == "Tico");
+    assert(unifiedTico->save && unifiedTico->save->party().size() == 2);
+    assert(readFile(ticoFireRed) == ticoBefore);
+    assert(std::none_of(unified.sources.begin(), unified.sources.end(), [&](const auto& source) {
+        return source.normalizedPath == ticoDecoy.string() ||
+               source.normalizedPath == ticoNested.string();
+    }));
+    assert(std::count_if(unified.sources.begin(), unified.sources.end(), [&](const auto& source) {
+        return source.ready() && source.gameId == "firered_gba" &&
+               (source.providerLabel == "mGBA" || source.providerLabel == "Tico");
+    }) == 2);
+
+    // Cross-provider aliases retain the path identities needed to enforce existing claims.
+    const fs::path ticoAlias = ticoGbaRoot / "mGBA alias.sav";
+    fs::create_hard_link(mgbaFireRed, ticoAlias);
+    const auto aliasCatalog = PokeVault::Legacy::discoverConfiguredLegacySaves(
+        {}, (temp / "missing-retroarch.cfg").string(),
+        (temp / "missing-retroarch-root").string(), mgbaConfig.string(), ticoSaveBase.string());
+    const auto merged = std::find_if(aliasCatalog.sources.begin(), aliasCatalog.sources.end(),
+        [&](const auto& source) { return source.normalizedPath == mgbaFireRed.string(); });
+    assert(merged != aliasCatalog.sources.end() && merged->providerLabel == "mGBA");
+    assert(merged->sourceAliases.size() == 1);
+    assert(std::none_of(aliasCatalog.sources.begin(), aliasCatalog.sources.end(),
+        [&](const auto& source) { return source.normalizedPath == ticoAlias.string(); }));
+    assert(readFile(mgbaFireRed) == readFile(ticoAlias));
+
+    fs::create_hard_link(fireRedPath, core / "Z FireRed alias.sav");
+    const auto withinProvider = PokeVault::Legacy::discoverFRLGSaves(roots);
+    const auto original = std::find_if(withinProvider.sources.begin(), withinProvider.sources.end(),
+        [&](const auto& source) { return source.normalizedPath == fireRedPath.string(); });
+    assert(original != withinProvider.sources.end() && original->sourceAliases.size() == 1);
 
     auto limited = PokeVault::Legacy::discoverFRLGSaves(roots, {.maxDepth = 2, .maxFiles = 1});
     assert(limited.filesExamined == 1 && limited.limitReached);

@@ -13,6 +13,7 @@
 #include "UI/ActionSheetModel.h"
 #include "Safety/SourceMutationPolicy.h"
 #include "UI/NavigationRepeat.h"
+#include "Utils/MoveTransactionProduction.h"
 #include "UI/InventoryUIContract.h"
 #include "UI/UIScreen.h"
 #include "UI/PKSEFramebuffer.h"
@@ -55,7 +56,8 @@ namespace UI {
         TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName,
                           const std::string& sourceLocation, u64 titleId, AccountUid userUid,
                           PokeVault::Safety::SourceKind sourceKind,
-                          std::string sourceGameId = {});
+                          std::string sourceGameId = {},
+                          std::string sourceProviderLabel = {});
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return goBack; }
@@ -66,7 +68,15 @@ namespace UI {
         void returnHeldToOrigin();
         std::unique_ptr<Pokemon::Pokemon>& storageSlot(int pane, int box, int slot);  // pane 0=save,1=bank
         bool storageSlotLocked(int pane, int box, int slot);   // LGPE party members (save pane) are locked
-        bool convertForPane(std::unique_ptr<Pokemon::Pokemon>& pk, int destPane);  // convert a mon in place for a dest pane (Phase B)
+        struct PreparedPlacement {
+            std::unique_ptr<Pokemon::Pokemon> candidate;
+            bool useOriginal = false;  // Bank destination: native payload moves unchanged at commit.
+            bool converted = false;    // Cross-game destination candidate.
+            bool normalized = false;   // Same-game save candidate received destination-only repair.
+            std::string failure;
+            bool ready() const { return useOriginal || static_cast<bool>(candidate); }
+        };
+        PreparedPlacement prepareForPane(const Pokemon::Pokemon& original, int destPane);
         void buildAbilityPickerOrder(uint16_t species, uint8_t form, Enums::GameVersion group, uint16_t current);  // the species' legal ability slots (all ids too, when illegal edits are allowed)
         void buildCreatorSpeciesOrder();  // creator: filter the species picker to the open game's dex
         void buildMovePickerOrder(uint16_t species, uint8_t form, Enums::GameVersion group, uint16_t current);  // learnable moves first
@@ -90,6 +100,18 @@ namespace UI {
         void postPickup();             // drop an all-empty block so the hands read as free
         bool checkPutDownBounds() const;   // does the block fit in the focused pane from the cursor cell?
         void putDownBlock();           // exact-slot placement: cell (x,y) -> cursor slot + x + y*cols
+        bool buildCrossStoreDescriptors(
+            PokeBank::Storage::MoveTx::StoreDescriptor& bankDescriptor,
+            PokeBank::Storage::MoveTx::StoreDescriptor& workspaceDescriptor,
+            std::string& error) const;
+        bool captureCrossStoreMoveBaseline(int sourcePane, bool copyOperation);
+        void clearCrossStoreMoveBaseline();
+        bool tryCommitCrossStoreMove(int destPane, int destBox, int destSlot);
+        void setMoveRecoveryState(bool locked, const std::string& notice) {
+            moveRecoveryLocked = locked;
+            moveRecoveryNotice = notice;
+            if (!notice.empty()) postStatus(notice, locked ? 600 : 300);
+        }
         void cancelSelection();        // abandon an in-progress rectangle
 
         bool lgpeConversionInvolved(int destPane, const Pokemon::Pokemon* pk) const;  // would placing pk into destPane run an LGPE (AV/EV-reset) conversion?
@@ -200,6 +222,23 @@ namespace UI {
         int selectPane = 0, selectBox = 0;       // which pane/box the in-progress rectangle lives in
         // Origin of the block's TOP-LEFT cell, so B can put the whole thing back where it came from.
         int heldPane = 0, heldFromBox = 0, heldFromSlot = 0;
+        struct CrossStoreMoveBaseline {
+            bool captured = false;
+            bool workspaceDirtyBeforePickup = false;
+            bool bankDirtyBeforePickup = false;
+            bool editorDirtyBeforePickup = false;
+            bool copyOperation = false;
+            int sourcePane = -1;
+            PokeBank::Storage::MoveTx::Digest bankDigest{};
+            PokeBank::Storage::MoveTx::Digest workspaceDigest{};
+            PokeBank::Storage::MoveTx::StoreDescriptor bankDescriptor;
+            PokeBank::Storage::MoveTx::StoreDescriptor workspaceDescriptor;
+        };
+        CrossStoreMoveBaseline crossStoreBaseline;
+        bool carriedCopyMode = false;
+        bool moveRecoveryLocked = false;
+        std::string moveRecoveryNotice;
+
         bool carrying() const { return !moveMon.empty(); }
         int carriedCount() const;                // non-null cells in moveMon
         const Pokemon::Pokemon* firstCarried() const;   // first non-null cell, or nullptr
@@ -256,17 +295,31 @@ namespace UI {
         static constexpr SaveDest DestNewBackup = SaveDest::NewBackup;
         PokeVault::Safety::SourceKind sourceKind = PokeVault::Safety::SourceKind::InstalledGame;
         std::string sourceGameId;
+        std::string sourceProviderLabel;
         bool sourceReadOnly() const {
             return !PokeVault::Safety::canPerform(
                 sourceKind, PokeVault::Safety::SourceMutation::Edit);
         }
         bool legacyReadOnlySource() const {
-            return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy;
+            return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy ||
+                   sourceKind == PokeVault::Safety::SourceKind::ExternalLegacy;
+        }
+        std::string legacyProviderLabel() const {
+            if (!sourceProviderLabel.empty())
+                return sourceProviderLabel == "RetroArch" ? "RETROARCH" : sourceProviderLabel;
+            return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy
+                ? "RETROARCH" : "EXTERNAL";
         }
         bool requireMutableWorkspace() {
+            if (moveRecoveryLocked) {
+                postStatus(moveRecoveryNotice.empty()
+                    ? "Pokemon Move recovery is required. Storage changes are locked."
+                    : moveRecoveryNotice, 480);
+                return false;
+            }
             if (!sourceReadOnly()) return true;
             postStatus(legacyReadOnlySource()
-                ? "RetroArch source is read-only. Editing this file is disabled."
+                ? "External source is read-only. Editing this file is disabled."
                 : "Installed source is read-only. Open a backup workspace explicitly to edit.", 300);
             return false;
         }

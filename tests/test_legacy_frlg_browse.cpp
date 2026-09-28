@@ -136,45 +136,88 @@ int main() {
     separate.save = std::move(separateParsed.save);
     discovery.sources.push_back(std::move(separate));
 
+    // Same game from a different emulator/provider must remain a separate child under ONE game
+    // card. This is the user-visible multi-provider Save Instances contract.
+    auto mgbaParsed = Integration::Gen3::parse(fixture, SourceGame::FireRedGBA);
+    assert(mgbaParsed);
+    Legacy::FRLGSource mgba;
+    mgba.path = "/mGBA/battery/Pokemon FireRed.sav";
+    mgba.normalizedPath = mgba.path;
+    mgba.canonicalPath = mgba.path;
+    mgba.sourceIdentity = "source-firered-mgba";
+    mgba.contentFingerprint = "44444444444444444444444444444444";
+    mgba.fileSize = 0x20000;
+    mgba.modifiedTime = 250;
+    mgba.gameId = "firered_gba";
+    mgba.providerLabel = "mGBA";
+    mgba.status = Legacy::LegacySourceStatus::Ready;
+    mgba.save = std::move(mgbaParsed.save);
+    discovery.sources.push_back(std::move(mgba));
+
     const auto cards = Legacy::buildFRLGSourceCards(discovery);
     assert(cards.size() == 2);
     assert(cards[0].gameId == "firered_gba");
     assert(cards[0].title == "FireRed" && cards[0].platformLabel == "Game Boy Advance");
-    assert(cards[0].sourceLabel == "RETROARCH");
+    assert(cards[0].sourceLabel == "MULTI-SOURCE");
     assert(cards[0].artworkKey == "firered_gba");
-    assert(cards[0].instances.size() == 2);
+    assert(cards[0].instances.size() == 3);
     // The rejected build called the lexicographically first old copy "Main Save" and focused it.
     // The model now exposes actual filenames/contents and puts the newest mtime first without
     // claiming that recency alone proves which file RetroArch is actively using.
     assert(cards[0].instances[0].sourceIndex == 4);
     assert(cards[0].instances[0].label == "Pokemon FireRed Current.srm");
+    assert(cards[0].instances[0].providerLabel == "RetroArch");
     assert(cards[0].instances[0].partyCount == 2);
     assert(cards[0].instances[0].contentFingerprint.starts_with("333333"));
     assert(cards[0].instances[0].mostRecentlyModified);
-    assert(cards[0].instances[1].sourceIndex == 0);
+    assert(cards[0].instances[1].sourceIndex == 5);
     assert(cards[0].instances[1].label == "Pokemon FireRed.sav");
+    assert(cards[0].instances[1].providerLabel == "mGBA");
     assert(cards[0].instances[1].partyCount == 1);
     assert(!cards[0].instances[1].mostRecentlyModified);
+    assert(cards[0].instances[2].sourceIndex == 0);
+    assert(cards[0].instances[2].providerLabel == "RetroArch");
+    assert(cards[0].instances[2].partyCount == 1);
+    assert(!cards[0].instances[2].mostRecentlyModified);
     assert(cards[1].gameId == "leafgreen_gba");
     assert(cards[1].artworkKey == "leafgreen_gba");
     assert(cards[1].instances.size() == 1 && cards[1].instances[0].sourceIndex == 2);
     assert(Legacy::resolveFRLGSaveInstance(discovery, cards[0], 0) == &discovery.sources[4]);
-    assert(Legacy::resolveFRLGSaveInstance(discovery, cards[0], 1) == &discovery.sources[0]);
+    assert(Legacy::resolveFRLGSaveInstance(discovery, cards[0], 1) == &discovery.sources[5]);
+    assert(Legacy::resolveFRLGSaveInstance(discovery, cards[0], 2) == &discovery.sources[0]);
     assert(Legacy::resolveFRLGSaveInstance(discovery, cards[1], 0) == &discovery.sources[2]);
 
-    // The physical catalog is shared, but normal cards are visible only to the explicitly bound
-    // profile. Save contents and trainer identity never decide ownership.
+    // Unassigned validated saves are browseable by every profile; assigning one claims it for
+    // that profile and hides it from the others. Viewing never mutates source ownership.
     Legacy::LegacySourceBindings bindings;
+    const auto unassignedA = Legacy::buildFRLGSourceCardsForProfile(discovery, bindings, "profile-a");
+    const auto unassignedB = Legacy::buildFRLGSourceCardsForProfile(discovery, bindings, "profile-b");
+    assert(unassignedA.size() == cards.size() && unassignedB.size() == cards.size());
+    assert(unassignedA[0].instances.size() == cards[0].instances.size());
+
     assert(bindings.assign("source-firered-primary", "profile-a"));
     assert(bindings.assign("source-firered-backup", "profile-a"));
+    assert(bindings.assign("source-firered-mgba", "profile-a"));
     assert(bindings.assign("source-leafgreen", "profile-b"));
     const auto profileA = Legacy::buildFRLGSourceCardsForProfile(discovery, bindings, "profile-a");
     const auto profileB = Legacy::buildFRLGSourceCardsForProfile(discovery, bindings, "profile-b");
     assert(profileA.size() == 1 && profileA[0].gameId == "firered_gba");
-    assert(profileA[0].instances.size() == 2);
+    assert(profileA[0].sourceLabel == "MULTI-SOURCE");
+    assert(profileA[0].instances.size() == 3);
+    assert(profileA[0].instances[0].providerLabel == "RetroArch");
+    assert(profileA[0].instances[1].providerLabel == "mGBA");
+    assert(profileA[0].instances[2].providerLabel == "RetroArch");
     assert(profileB.size() == 1 && profileB[0].gameId == "leafgreen_gba");
     assert(profileB[0].instances.size() == 1);
     assert(Legacy::buildFRLGSourceCardsForProfile(discovery, bindings, "profile-c").empty());
+
+    // An alternate physical-file identity must not hide an existing ownership claim.
+    discovery.sources[0].sourceAliases.push_back("alias-claimed-elsewhere");
+    assert(bindings.assign("alias-claimed-elsewhere","profile-b"));
+    const auto conflicted = Legacy::buildFRLGSourceCardsForProfile(discovery,bindings,"profile-a");
+    assert(conflicted[0].instances.size()==2);
+    discovery.sources[0].sourceAliases.clear();
+    assert(bindings.unassign("alias-claimed-elsewhere"));
 
     auto staleCard = cards[0];
     staleCard.gameId = "firered_switch";
@@ -185,7 +228,7 @@ int main() {
     staleCard = cards[0];
     ++staleCard.instances[0].modifiedTime;
     assert(Legacy::resolveFRLGSaveInstance(discovery, staleCard, 0) == nullptr);
-    assert(Legacy::resolveFRLGSaveInstance(discovery, cards[0], 2) == nullptr);
+    assert(Legacy::resolveFRLGSaveInstance(discovery, cards[0], 3) == nullptr);
 
     const auto strictParty = discovery.sources[0].save->party();
     const auto strictBoxes = discovery.sources[0].save->boxes();

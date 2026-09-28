@@ -1528,12 +1528,9 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
 
     if (state.moveEditor) drawMoveEditor(fb, state);
     if (state.speciesPicker) {
-        constexpr int px = 110, py = 56, pw = 1060, ph = 600;
-        fb.drawFilledRoundedRect(px, py, pw, ph, 18, Colors::Panel);
-        fb.drawRoundedRect(px, py, pw, ph, 18, Colors::Divider, 1);
-        fb.drawText(px + 24, py + 16, "Choose Species — Generation III", Colors::Text, TextStyle::Heading);
+        const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
         SharedSpeciesPicker::drawContent(
-            fb, px + 18, py + 12, state.speciesPreview, 386, state.speciesPreviewShiny,
+            fb, modal.x, modal.y, state.speciesPreview, 386, state.speciesPreviewShiny,
             [](uint16_t species) {
                 return std::to_string(species) + "  " + Names::getSpeciesName(species);
             },

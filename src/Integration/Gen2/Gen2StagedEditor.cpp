@@ -961,9 +961,21 @@ bool StagedEditor::stageCloneBoxPokemon(std::size_t sourceBox, std::size_t sourc
     }
     destinationSlot = count;
 
-    std::vector<uint8_t> otBytes, nicknameBytes;
-    if (!encodePokemonName(source->originalTrainer, otBytes, error) ||
-        !encodePokemonName(source->nickname, nicknameBytes, error)) return false;
+    // Clone means native byte-for-byte Pokemon payload identity. Do not decode and re-encode
+    // OT/nickname: the staged name editor intentionally supports a conservative subset, while a
+    // perfectly valid existing Gen II Pokemon may contain accented or special glyphs outside it.
+    const std::size_t sourceBody = boxBodyStart(layout, sourceBox) + sourceSlot * kStoredBodySize;
+    const std::size_t sourceOT = boxOTStart(layout, sourceBox) + sourceSlot * layout.stringLength;
+    const std::size_t sourceNickname =
+        boxNicknameStart(layout, sourceBox) + sourceSlot * layout.stringLength;
+    std::array<uint8_t, kStoredBodySize> bodyBytes{};
+    std::vector<uint8_t> otBytes(layout.stringLength), nicknameBytes(layout.stringLength);
+    std::copy_n(staged_.begin() + static_cast<std::ptrdiff_t>(sourceBody),
+                kStoredBodySize, bodyBytes.begin());
+    std::copy_n(staged_.begin() + static_cast<std::ptrdiff_t>(sourceOT),
+                layout.stringLength, otBytes.begin());
+    std::copy_n(staged_.begin() + static_cast<std::ptrdiff_t>(sourceNickname),
+                layout.stringLength, nicknameBytes.begin());
 
     const auto stagedBackup = staged_;
     const auto changesBackup = changes_;
@@ -971,7 +983,8 @@ bool StagedEditor::stageCloneBoxPokemon(std::size_t sourceBox, std::size_t sourc
     staged_[list] = static_cast<uint8_t>(count + 1);
     staged_[list + 1 + destinationSlot] = static_cast<uint8_t>(source->species);
     staged_[list + 1 + destinationSlot + 1] = 0xFF;
-    writePokemonBody(staged_, boxBodyStart(layout, destinationBox) + destinationSlot * kStoredBodySize, *source);
+    std::copy(bodyBytes.begin(), bodyBytes.end(), staged_.begin() + static_cast<std::ptrdiff_t>(
+        boxBodyStart(layout, destinationBox) + destinationSlot * kStoredBodySize));
     std::copy(otBytes.begin(), otBytes.end(), staged_.begin() + static_cast<std::ptrdiff_t>(
         boxOTStart(layout, destinationBox) + destinationSlot * layout.stringLength));
     std::copy(nicknameBytes.begin(), nicknameBytes.end(), staged_.begin() + static_cast<std::ptrdiff_t>(

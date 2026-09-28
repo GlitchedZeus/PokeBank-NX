@@ -8,7 +8,7 @@ using namespace PokeVault::Games;
 
 int main() {
     const auto games = allGameDescriptors();
-    assert(games.size() == 23);
+    assert(games.size() == 28);
 
     std::set<std::string> ids;
     std::set<uint64_t> switchIds;
@@ -35,11 +35,17 @@ int main() {
     const auto* sapphire = findGame("sapphire_gba");
     const auto* emerald = findGame("emerald_gba");
     const auto* fireRedGba = findGame("firered_gba");
+    const auto* diamond = findGame("diamond_nds");
+    const auto* pearl = findGame("pearl_nds");
+    const auto* platinum = findGame("platinum_nds");
+    const auto* heartGold = findGame("heartgold_nds");
+    const auto* soulSilver = findGame("soulsilver_nds");
     const auto* fireRedSwitch = findGame("firered_switch");
     const auto* leafGreenGba = findGame("leafgreen_gba");
     const auto* leafGreenSwitch = findGame("leafgreen_switch");
     assert(red && blue && yellow && gold && silver && crystal && ruby && sapphire && emerald &&
-           fireRedGba && fireRedSwitch && leafGreenGba && leafGreenSwitch);
+           fireRedGba && fireRedSwitch && leafGreenGba && leafGreenSwitch &&
+           diamond && pearl && platinum && heartGold && soulSilver);
     assert(red->support == SourceSupport::ReadOnly);
     assert(blue->support == SourceSupport::ReadOnly);
     assert(yellow->support == SourceSupport::ReadOnly);
@@ -58,10 +64,16 @@ int main() {
     assert(fireRedGba->id != fireRedSwitch->id);
     assert(leafGreenGba->id != leafGreenSwitch->id);
     assert(fireRedGba->platform == Platform::GameBoyAdvance);
+    assert(diamond->platform == Platform::NintendoDS && diamond->support == SourceSupport::ReadOnly);
+    assert(pearl->platform == Platform::NintendoDS && pearl->support == SourceSupport::ReadOnly);
+    assert(platinum->platform == Platform::NintendoDS && platinum->support == SourceSupport::ReadOnly);
+    assert(heartGold->platform == Platform::NintendoDS && heartGold->support == SourceSupport::ReadOnly);
+    assert(soulSilver->platform == Platform::NintendoDS && soulSilver->support == SourceSupport::ReadOnly);
     assert(fireRedSwitch->platform == Platform::NintendoSwitch);
     assert(platformName(Platform::GameBoy) == "Game Boy");
     assert(platformName(Platform::GameBoyColor) == "Game Boy Color");
     assert(platformName(Platform::GameBoyAdvance) == "Game Boy Advance");
+    assert(platformName(Platform::NintendoDS) == "Nintendo DS");
     assert(platformName(Platform::NintendoSwitch) == "Nintendo Switch");
     assert(legacyPlatformAbbreviation("red_gb") == "GB");
     assert(legacyPlatformAbbreviation("blue_gb") == "GB");
@@ -75,6 +87,16 @@ int main() {
     assert(legacyPlatformAbbreviation("sapphire_gba") == "GBA");
     assert(legacyPlatformAbbreviation("emerald_gba") == "GBA");
     assert(legacyPlatformAbbreviation("firered_switch").empty());
+    assert(legacyPlatformAbbreviation("diamond_nds") == "NDS");
+    assert(legacyPlatformAbbreviation("pearl_nds") == "NDS");
+    assert(legacyPlatformAbbreviation("platinum_nds") == "NDS");
+    assert(legacyPlatformAbbreviation("heartgold_nds") == "NDS");
+    assert(legacyPlatformAbbreviation("soulsilver_nds") == "NDS");
+    assert(gameCardArtworkPath("diamond_nds") == "romfs:/game_cards/diamond_nds.png");
+    assert(gameCardArtworkPath("pearl_nds") == "romfs:/game_cards/pearl_nds.png");
+    assert(gameCardArtworkPath("platinum_nds") == "romfs:/game_cards/platinum_nds.png");
+    assert(gameCardArtworkPath("heartgold_nds") == "romfs:/game_cards/heartgold_nds.png");
+    assert(gameCardArtworkPath("soulsilver_nds") == "romfs:/game_cards/soulsilver_nds.png");
     assert(gameCardArtworkPath("red_gb") == "romfs:/game_cards/red_gb.png");
     assert(gameCardArtworkPath("blue_gb") == "romfs:/game_cards/blue_gb.png");
     assert(gameCardArtworkPath("yellow_gb") == "romfs:/game_cards/yellow_gb.png");

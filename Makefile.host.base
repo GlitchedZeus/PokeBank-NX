@@ -5,8 +5,10 @@ SANITIZE_FLAGS := -fsanitize=address,undefined -fno-omit-frame-pointer -O1
 HOST_BUILD := build-host
 HOST_TESTS := $(HOST_BUILD)/test_game_identity $(HOST_BUILD)/test_write_policy $(HOST_BUILD)/test_action_sheet_model $(HOST_BUILD)/test_theme $(HOST_BUILD)/test_navigation_repeat $(HOST_BUILD)/test_controller_model $(HOST_BUILD)/test_sprite_layout
 HOST_SANITIZE_TESTS := $(HOST_BUILD)/test_game_identity_sanitize $(HOST_BUILD)/test_write_policy_sanitize $(HOST_BUILD)/test_action_sheet_model_sanitize $(HOST_BUILD)/test_theme_sanitize $(HOST_BUILD)/test_navigation_repeat_sanitize $(HOST_BUILD)/test_controller_model_sanitize $(HOST_BUILD)/test_sprite_layout_sanitize
-HOST_TESTS += $(HOST_BUILD)/test_source_mutation_policy $(HOST_BUILD)/test_pla_read_validation
-HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_source_mutation_policy_sanitize $(HOST_BUILD)/test_pla_read_validation_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_source_mutation_policy $(HOST_BUILD)/test_pla_read_validation \
+	$(HOST_BUILD)/test_gen3_party_record
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_source_mutation_policy_sanitize $(HOST_BUILD)/test_pla_read_validation_sanitize \
+	$(HOST_BUILD)/test_gen3_party_record_sanitize
 PLA_TEST_SOURCES := tests/test_pla_read_validation.cpp src/Save/Block.cpp src/Encryption/Encryption.cpp src/Encryption/Encryption8LA.cpp src/Enums/SCTypeCode.cpp src/Utils/HelperUtilities.cpp src/Utils/StringHelpers.cpp src/Utils/SHA256.cpp src/Utils/ReadAllBytes.cpp
 PKSM_CORE_ROOT := vendor/PKSM-Core
 PKSM_CORE_SOURCES := $(shell find $(PKSM_CORE_ROOT)/source $(PKSM_CORE_ROOT)/memecrypto -type f \( -name '*.cpp' -o -name '*.c' \) -print)
@@ -45,6 +47,14 @@ GEN3_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen3/Gen3StagedInventoryEd
 	$(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES)
 GEN3_STAGED_POKEMON_LINK_SOURCES := src/Integration/Gen3/Gen3StagedPokemonEditor.cpp \
 	src/Names/MoveInfo.cpp
+GEN3_LEGALITY_CONTEXT_SOURCES := tests/test_gen3_legality_context.cpp \
+	src/Legality/Legality.cpp src/Pokemon/Pokemon3FRLG.cpp src/Encryption/Encryption3FRLG.cpp \
+	src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
+	src/Pokemon/AbilityInfo.cpp src/Pokemon/FormInfo.cpp src/Pokemon/LearnsetTable.cpp \
+	src/Names/MoveNames.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
+	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+GEN3_LEGALITY_CONTEXT_FLAGS := -Wno-unused-parameter
 GEN1_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \
 	$(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES)
 CLASSIC_UI_MODEL_SOURCES := tests/test_classic_inventory_ui_model.cpp \
@@ -114,6 +124,8 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_rby_gen1_adapter_sanitize \
 	$(HOST_BUILD)/test_rby_source_browser_sanitize $(HOST_BUILD)/test_rby_readonly_bridge_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_classic_inventory_ui_model $(HOST_BUILD)/test_inventory_ui_contract
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_inventory_ui_model_sanitize $(HOST_BUILD)/test_inventory_ui_contract_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_legality_context
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_legality_context_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -140,6 +152,22 @@ $(HOST_BUILD)/test_inventory_ui_contract: tests/test_inventory_ui_contract.cpp i
 $(HOST_BUILD)/test_inventory_ui_contract_sanitize: tests/test_inventory_ui_contract.cpp include/UI/InventoryUIContract.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_inventory_ui_contract.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_party_record: tests/test_gen3_party_record.cpp include/Pokemon/Gen3PartyRecord.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_party_record.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_party_record_sanitize: tests/test_gen3_party_record.cpp include/Pokemon/Gen3PartyRecord.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_party_record.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_legality_context: $(GEN3_LEGALITY_CONTEXT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gen3_legality_context_sanitize: $(GEN3_LEGALITY_CONTEXT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_source_mutation_policy: tests/test_source_mutation_policy.cpp
 	@mkdir -p $(HOST_BUILD)

@@ -3,6 +3,7 @@
 #include "Encryption/Encryption3FRLG.h"
 #include "Enums/GameVersion.h"
 #include "Integration/Gen3/Gen3SaveValidation.h"
+#include "Save/RtcFooter.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "Names/MoveInfo.h"
 #include "Names/SpeciesNames.h"
@@ -254,23 +255,25 @@ uint8_t StagedPokemonEditor::originGame() const noexcept {
 std::unique_ptr<StagedPokemonEditor> StagedPokemonEditor::create(
     std::span<const uint8_t> source, SourceGame game, std::string& error) {
     error.clear();
-    if (source.size() != Detail::kSaveSize) {
-        error = "Generation III staged save must be exactly 128 KiB";
+    std::size_t rtcFooterSize = 0;
+    if (!PokeVault::Save::splitRtcPayloadSize(source.size(), Detail::kSaveSize, rtcFooterSize)) {
+        error = "Generation III staged save must be 128 KiB with only a recognized RTC footer";
         return nullptr;
     }
     if (!Detail::sourceGameSupported(game)) {
         error = "Unsupported Generation III source identity";
         return nullptr;
     }
+    const auto payload = source.first(Detail::kSaveSize);
     const Detail::SlotValidation slots[2] = {
-        Detail::validateSlot(source, 0), Detail::validateSlot(source, 1)};
+        Detail::validateSlot(payload, 0), Detail::validateSlot(payload, 1)};
     if (!slots[0].valid && !slots[1].valid) {
         error = "No checksum-valid Generation III save slot is available for staged editing";
         return nullptr;
     }
     const uint8_t active = Detail::selectActiveSlot(slots);
     const auto& selected = slots[active];
-    if (!Detail::familyMatches(game, Detail::detectFamily(source, selected))) {
+    if (!Detail::familyMatches(game, Detail::detectFamily(payload, selected))) {
         error = "Generation III save family does not match the selected exact game";
         return nullptr;
     }

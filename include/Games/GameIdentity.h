@@ -10,6 +10,7 @@ namespace PokeVault::Games {
         GameBoy,
         GameBoyColor,
         GameBoyAdvance,
+        NintendoDS,
         NintendoSwitch,
     };
 

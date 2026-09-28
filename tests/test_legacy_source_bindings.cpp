@@ -160,6 +160,56 @@ int main() {
     assert(ordinary.assignAndSave("firered_gba:save-a", "will"));
     assert(ordinary.assignAndSave("leafgreen_gba:save-b", "niece"));
     verify(root / "ordinary.cfg", "niece");
+
+    // Gen IV reuses this SAME persistent binding database. The optional third field carries
+    // exact external game-card identity without changing source bytes or invalidating old rows.
+    const fs::path gen4Db = root / "gen4.cfg";
+    LegacySourceBindings gen4(gen4Db.string(), ops);
+    assert(gen4.load());
+    assert(gen4.assignAndSave("nds:/saves/pokemon.dsv", "will", "diamond_nds"));
+    assert(gen4.assignedProfile("nds:/saves/pokemon.dsv") == "will");
+    assert(gen4.assignedGame("nds:/saves/pokemon.dsv") == "diamond_nds");
+    LegacySourceBindings gen4Reload(gen4Db.string(), ops);
+    assert(gen4Reload.load());
+    assert(gen4Reload.assignedGame("nds:/saves/pokemon.dsv") == "diamond_nds");
+    // Profile-only reassignment preserves the exact cover identity.
+    assert(gen4Reload.assignAndSave("nds:/saves/pokemon.dsv", "niece"));
+    assert(gen4Reload.assignedProfile("nds:/saves/pokemon.dsv") == "niece");
+    assert(gen4Reload.assignedGame("nds:/saves/pokemon.dsv") == "diamond_nds");
+    // Claiming a deduplicated row persists every observed path identity atomically.
+    const fs::path aliasDb = root / "aliases.cfg";
+    LegacySourceBindings aliases(aliasDb.string(), ops);
+    PokeVault::Source::SaveInstance instance;
+    instance.sourceIdentity = "primary";
+    instance.sourceAliases = {"alternate"};
+    instance.validation = PokeVault::Source::ValidationStatus::Ready;
+    faultStage = "validate-target";
+    assert(!aliases.claimInstanceAndSave(instance, "will"));
+    assert(aliases.size() == 0);
+    faultStage.clear();
+    assert(aliases.claimInstanceAndSave(instance, "will"));
+    LegacySourceBindings aliasReload(aliasDb.string(), ops);
+    assert(aliasReload.load());
+    assert(aliasReload.assignedProfile("primary") == "will");
+    assert(aliasReload.assignedProfile("alternate") == "will");
+    const auto committedAliases = contents(aliasDb);
+    assert(!aliasReload.claimInstanceAndSave(instance, "niece"));
+    assert(contents(aliasDb) == committedAliases);
+    instance.sourceIdentity = "alternate";
+    instance.sourceAliases.clear();
+    aliasReload.applyClaims(instance);
+    assert(!PokeVault::Source::visibleToProfile(instance, "niece"));
+
+    // A file alias cannot change its already assigned exact game, even for the same owner.
+    const fs::path physical = root / "physical.sav", alternate = root / "alternate.sav";
+    write(physical, "immutable source");
+    fs::create_hard_link(physical, alternate);
+    PokeVault::Legacy::BindingRecord record{"will", "diamond_nds", physical.string(), "Manual", "dp"};
+    assert(aliasReload.replaceFileAssignmentAndSave("diamond-file", record));
+    record.sourcePath = alternate.string();
+    record.gameIdentity = "pearl_nds";
+    assert(!aliasReload.replaceFileAssignmentAndSave("pearl-alias", record));
+    assert(contents(physical) == "immutable source");
     assert(renameAttemptsOverExisting == 0);
     fs::remove_all(root);
     std::cout << "Legacy binding transactions: first/second, isolation, rollback and recovery PASS\n";

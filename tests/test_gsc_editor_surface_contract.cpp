@@ -47,7 +47,11 @@ int main() {
     assert(gen2Release.find("stateFor(screen).mode != Mode::None") != std::string::npos);
     const auto drawing = gen2Release.substr(gen2Release.find("bool drawReleaseActionSurface"));
     assert(drawing.find("screen.drawLegacyBase(fb)") < drawing.find("fb.drawFilledRect"));
-    assert(drawing.find("Colors::FocusBorder, 2") != std::string::npos);
+    // Hardware regression: neither Pokemon Actions / Empty Slot nor Release confirmation may
+    // focus-outline the entire modal. Only the selected row/action owns the theme focus color.
+    assert(drawing.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
+    assert(drawing.find("fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight)") != std::string::npos);
+    assert(drawing.find("drawPanelSurface(fb, x, y, w, h, false, 18)") != std::string::npos);
     const auto input = gen2Release.substr(gen2Release.find("bool handleReleaseActionInput"));
     const auto close = input.substr(input.find("if (down & HidNpadButton_B)", input.find("const uint64_t nav")));
     const auto closeBody = close.substr(0, close.find("return true;"));
@@ -119,8 +123,18 @@ int main() {
     assert(shared.find("caps.hasLegalityProvenance = true") != std::string::npos);
     assert(shared.find("SharedEditor::actionLabel(action)") != std::string::npos);
     assert(parity.find("SharedEditor::actionMenuGeometry()") != std::string::npos);
-    assert(parity.find("screen.drawGSCOverlay(fb)") != std::string::npos);
-    assert(parity.find("Colors::FocusBorder, 2") != std::string::npos);
+    const auto actionsDraw = parity.substr(parity.find("void drawParityGen2Actions"),
+        parity.find("void drawParityGen2Review") - parity.find("void drawParityGen2Actions"));
+    assert(actionsDraw.find("screen.drawLegacyBase(fb)") != std::string::npos);
+    assert(actionsDraw.find("screen.drawGSCOverlay(fb)") == std::string::npos);
+    assert(actionsDraw.find("drawPanelSurface(fb, x, y, w, h, false, 18)") != std::string::npos);
+    assert(actionsDraw.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
+    // The composite wrapper must not paint the legacy staged-editor Accent shell first.
+    const auto ownsFrame = parity.substr(parity.find("bool finalGen2SurfaceOwnsFrame"),
+        parity.find("bool handleFinalGen2SurfaceInput") - parity.find("bool finalGen2SurfaceOwnsFrame"));
+    assert(ownsFrame.find("legacy.active && legacy.pokemonActions && !legacy.review") != std::string::npos);
+    const auto compositeDraw = composite.substr(composite.find("void TrainerViewScreen::draw(PKSEFramebuffer& fb)"));
+    assert(compositeDraw.find("if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this))") != std::string::npos);
     assert(shared.find("drawSharedProvenanceSurface") != std::string::npos);
     assert(shared.find("Encounter legality\", \"Not checked") != std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);

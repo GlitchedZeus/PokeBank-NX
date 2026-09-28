@@ -98,5 +98,11 @@ int main(){
     auto configuredResult=discoverConfiguredRetroArchGSCSaves({},cfg.string(),fallback.string());assert(configuredResult.activeRootKind==GSCDiscoveryResult::RootKind::Configured);assert(configuredResult.sources.size()==1&&configuredResult.sources[0].gameId=="silver_gbc");
     fs::remove_all(configured);auto fallbackResult=discoverConfiguredRetroArchGSCSaves({},cfg.string(),fallback.string());assert(fallbackResult.activeRootKind==GSCDiscoveryResult::RootKind::ConventionalFallback);assert(fallbackResult.sources.size()==1&&fallbackResult.sources[0].gameId=="gold_gbc");
 
+    fs::create_hard_link(root/"Pokemon Gold.srm", root/"Z Gold alias.sav");
+    const auto aliased=discoverGSCSaves(roots);
+    const auto* aliasedGold=byPath(aliased,"Pokemon Gold.srm");
+    assert(aliasedGold && aliasedGold->sourceAliases.size()==1);
+    assert(byPath(aliased,"Z Gold alias.sav")==nullptr);
+
     fs::remove_all(root);std::cout<<"Generation II bounded RetroArch discovery: PASS\n";
 }

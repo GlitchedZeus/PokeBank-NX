@@ -8,8 +8,44 @@
 #include "UI/Common.h"
 #include <algorithm>
 #include <array>
+#include <string_view>
 
 namespace UI::SharedSpeciesPicker {
+
+struct ModalGeometry {
+    int x = 0;
+    int y = 0;
+    int width = 1080;
+    int height = 520;
+};
+
+inline constexpr int ModalWidth = 1080;
+inline constexpr int ModalHeight = 520;
+inline constexpr int NavBarHeight = 48;
+
+// One shared shell for Gen I / II / III species choice.
+// Theme accent belongs on the focused row and hints, not around the entire dialog.
+inline ModalGeometry modalGeometry(const PKSEFramebuffer& fb) {
+    const int contentHeight = std::max(ModalHeight, fb.getHeight() - NavBarHeight);
+    return {
+        (fb.getWidth() - ModalWidth) / 2,
+        (contentHeight - ModalHeight) / 2,
+        ModalWidth,
+        ModalHeight
+    };
+}
+
+inline ModalGeometry drawModalChrome(
+    PKSEFramebuffer& fb, std::string_view title = "Choose Species") {
+    const auto g = modalGeometry(fb);
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - NavBarHeight, Color(0, 0, 0, 105));
+    fb.drawSoftShadow(g.x, g.y, g.width, g.height, 18);
+    fb.drawFilledRoundedRect(g.x, g.y, g.width, g.height, 18, Colors::Panel);
+    fb.drawRoundedRect(g.x, g.y, g.width, g.height, 18, Colors::Divider, 1);
+    fb.drawText(g.x + 24, g.y + 18, std::string(title), Colors::Text, TextStyle::Heading);
+    return g;
+}
+
 namespace {
 
 // The shared picker is currently used by the supported RBY and GSC editors only.

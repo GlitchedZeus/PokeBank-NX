@@ -190,6 +190,8 @@ def main() -> int:
         "gold_gbc.png", "silver_gbc.png", "crystal_gbc.png",
         "firered_gba.png", "leafgreen_gba.png",
         "ruby_gba.png", "sapphire_gba.png", "emerald_gba.png",
+        "diamond_nds.png", "pearl_nds.png", "platinum_nds.png",
+        "heartgold_nds.png", "soulsilver_nds.png",
     )
     if not GAME_CARD_ART_DIR.is_dir():
         fail(errors, "romfs/game_cards/ is missing; run: make game-card-art")
@@ -198,7 +200,7 @@ def main() -> int:
         if missing_cards:
             fail(errors, f"required game-card artwork missing: {', '.join(missing_cards)}")
         else:
-            ok("Red/Blue/Yellow GB + Gold/Silver/Crystal GBC + FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present")
+            ok("GB/GBC/GBA legacy cards + Diamond/Pearl/Platinum/HeartGold/SoulSilver NDS artwork is present")
 
     print()
     if errors:

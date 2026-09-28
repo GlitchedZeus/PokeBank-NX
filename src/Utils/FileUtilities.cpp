@@ -14,6 +14,7 @@
 #include <sys/unistd.h>
 
 #include "Globals.h"
+#include "Games/GameIdentity.h"
 #include "Safety/WritePolicy.h"
 #include "Utils/Logger.h"
 #include "Utils/FileUtilities.h"
@@ -177,17 +178,24 @@ namespace Utils {
         logInfoToFile("Pokemon titleId: ", titleBuf);
         logInfoToFile("Pokemon Title name: ", titleName.c_str());
 
-        const std::string backupRoot = PokeBank::Paths::backupsRoot();
-        const std::string safeTitle = PokeBank::Paths::sanitizeComponent(titleName);
-        char gameDirectory[512];
-        snprintf(gameDirectory, sizeof(gameDirectory), "%s/%s", backupRoot.c_str(), safeTitle.c_str());
+        const auto* identity = PokeVault::Games::findSwitchGame(titleId);
+        if (!identity) {
+            logErrorToFile("Refusing backup without an exact supported Switch game identity");
+            return "";
+        }
 
-        // History backup -> PokeBank NX backups/<title>/<timestamp>/; otherwise reuse Working/.
-        std::string folderName = timestamped ? getTimestamp() : std::string("Working");
-        char backupDirectory[1024];
-        snprintf(backupDirectory, sizeof(backupDirectory), "%s/%s", gameDirectory, folderName.c_str());
+        const std::string gameDirectory =
+            PokeBank::Paths::exactGameBackupsRoot(userUid, identity->id);
+        const std::string folderName = timestamped ? getTimestamp() : std::string("Working");
+        const std::string backupDirectory =
+            PokeBank::Paths::workspaceBackupPath(userUid, identity->id, folderName);
+        if (gameDirectory.empty() || backupDirectory.empty()) {
+            logErrorToFile("Refusing backup without a valid profile/exact-game namespace");
+            return "";
+        }
 
-        logInfoToFile("Backup directory", backupDirectory);
+        logInfoToFile("Backup exact game identity", std::string(identity->id).c_str());
+        logInfoToFile("Backup directory", backupDirectory.c_str());
         logInfoToFile("Backing up save for title", titleName.c_str());
 
         std::string pathError;
@@ -195,14 +203,12 @@ namespace Utils {
             logErrorToFile("Failed to create PokeBank NX backups directory", pathError.c_str());
             return "";
         }
-        if (mkdir(gameDirectory, 0777) != 0 && errno != EEXIST) {
-            logErrorToFile("Failed to create game directory", gameDirectory);
-            logErrorToFile("mkdir error", strerror(errno));
+        if (!PokeBank::Paths::ensureDirectoryTree(gameDirectory, &pathError)) {
+            logErrorToFile("Failed to create profile/exact-game backup directory", pathError.c_str());
             return "";
         }
-        if (mkdir(backupDirectory, 0777) != 0 && errno != EEXIST) {
-            logErrorToFile("Failed to create backup directory", backupDirectory);
-            logErrorToFile("mkdir error", strerror(errno));
+        if (!PokeBank::Paths::ensureDirectoryTree(backupDirectory, &pathError)) {
+            logErrorToFile("Failed to create backup workspace directory", pathError.c_str());
             return "";
         }
 
@@ -218,13 +224,13 @@ namespace Utils {
 
         logInfoToFile("Successfully mounted save:/");
 
-        bool copySuccess = copyDirectory("save:/", backupDirectory);
+        bool copySuccess = copyDirectory("save:/", backupDirectory.c_str());
 
         fsdevUnmountDevice("save");
 
         if (copySuccess) {
             logInfoToFile("Backup completed successfully!");
-            return std::string(backupDirectory);
+            return backupDirectory;
         }
         logErrorToFile("Backup failed during file copying.");
         return "";
@@ -365,7 +371,7 @@ namespace Utils {
         return true;
     }
 
-    std::vector<std::string> listBackupDirectories(const char* gameDirectory) {
+    std::vector<std::string> listBackupDirectories(const char* gameDirectory, bool includeWorking) {
         std::vector<std::string> backupDirs;
 
         // A missing game directory just means "no backups for this title yet" — the ordinary state
@@ -383,7 +389,7 @@ namespace Utils {
 
             // "Working" is the internal reusable staging copy used when auto-backup is off, not a
             // user backup — keep it out of the picker so it never reads as one (C5).
-            if (strcmp(entry->d_name, "Working") == 0) {
+            if (!includeWorking && strcmp(entry->d_name, "Working") == 0) {
                 continue;
             }
 

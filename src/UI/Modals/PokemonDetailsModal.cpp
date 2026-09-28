@@ -56,7 +56,13 @@ namespace Modals {
         const bool isShiny = p->isShiny(p->id32(), p->species());
         const bool av = p->hasAwakeningValues();
         const int sel = screen.details.selectedField;   // 0-5 stats, 6 shiny, 7 nature, 8 gender, 9 level, 10-13 moves, 14 item
-        const Legality::Report legalityRep = Legality::analyze(*p, p->getGameGroup());
+        // Party/Box targets belong to the open save/workspace, whose exact release id is
+        // known. A Bank target does not: never borrow the currently-open save's identity for it.
+        const std::string_view legalitySource =
+            (screen.details.source == TrainerViewScreen::EditSource::Bank)
+                ? std::string_view{} : std::string_view(screen.sourceGameId);
+        const Legality::Report legalityRep =
+            Legality::analyze(*p, p->getGameGroup(), legalitySource);
 
         screen.touchButtons.clear();
 

@@ -162,4 +162,34 @@ namespace Utils {
             dest[b] = 0;
         }
     }
+
+    CheckedTextResult setStringChecked(uint8_t* dest, size_t data_size,
+                                       const std::u16string& value, size_t maxUnits) {
+        if (value.size() > maxUnits) {
+            return CheckedTextResult::Overlength;
+        }
+
+        for (size_t i = 0; i < value.size(); ++i) {
+            const char16_t unit = value[i];
+            if (unit == u'\0') {
+                return CheckedTextResult::MalformedUtf16;
+            }
+            if (unit >= 0xD800 && unit <= 0xDBFF) {
+                if (i + 1 >= value.size()) {
+                    return CheckedTextResult::MalformedUtf16;
+                }
+                const char16_t low = value[i + 1];
+                if (low < 0xDC00 || low > 0xDFFF) {
+                    return CheckedTextResult::MalformedUtf16;
+                }
+                ++i;
+            } else if (unit >= 0xDC00 && unit <= 0xDFFF) {
+                return CheckedTextResult::MalformedUtf16;
+            }
+        }
+
+        setString(dest, data_size, value, maxUnits);
+        return CheckedTextResult::Accepted;
+    }
+
 }

@@ -18,6 +18,13 @@ namespace Enums {
         FR = 4,  // Pokemon FireRed
         LG = 5,  // Pokemon LeafGreen
 
+        // Gen 4 (Nintendo DS) -- exact values stored in PK4 origin/version fields.
+        HG = 7,
+        SS = 8,
+        D = 10,
+        P = 11,
+        Pt = 12,
+
         // Nintendo Switch
         GP = 42, // Pokemon: Let's Go, Pikachu!
         GE = 43, // Pokemon: Let's Go, Eevee!
@@ -43,6 +50,9 @@ namespace Enums {
         SWSH = 74, // Pokemon Sword & Shield group
         BDSP = 75, // Pokemon Brilliant Diamond & Shining Pearl group
         SV = 76,   // Pokemon Scarlet & Violet group
+        DP = 77,   // Pokemon Diamond/Pearl NDS save-layout group
+        PT = 78,   // Pokemon Platinum NDS save-layout group
+        HGSS = 79, // Pokemon HeartGold/SoulSilver NDS save-layout group
 
         // Generational Groupings
         Gen7B = 84,
@@ -107,6 +117,15 @@ namespace Enums {
             case GameVersion::LG:
                 return GameVersion::FRLG;  // FireRed/LeafGreen group
 
+            case GameVersion::D:
+            case GameVersion::P:
+                return GameVersion::DP;
+            case GameVersion::Pt:
+                return GameVersion::PT;
+            case GameVersion::HG:
+            case GameVersion::SS:
+                return GameVersion::HGSS;
+
             case GameVersion::GP:
             case GameVersion::GE:
                 return GameVersion::GG;  // Let's Go group
@@ -144,6 +163,14 @@ namespace Enums {
         switch (version) {
             case GameVersion::FR: return "FireRed";
             case GameVersion::LG: return "LeafGreen";
+            case GameVersion::HG: return "HeartGold";
+            case GameVersion::SS: return "SoulSilver";
+            case GameVersion::D: return "Diamond";
+            case GameVersion::P: return "Pearl";
+            case GameVersion::Pt: return "Platinum";
+            case GameVersion::DP: return "Diamond/Pearl";
+            case GameVersion::PT: return "Platinum";
+            case GameVersion::HGSS: return "HeartGold/SoulSilver";
             case GameVersion::GSC: return "Gold/Silver/Crystal";
             case GameVersion::RBY: return "Red/Blue/Yellow";
             case GameVersion::FRLG: return "FireRed/LeafGreen";
@@ -284,6 +311,9 @@ namespace Enums {
     inline uint8_t getGroupRepVersion(GameVersion group) {
         switch (group) {
             case GameVersion::GSC:  return 39;  // Gold VC id; presentation-only representative for the GSC group
+            case GameVersion::DP:   return 10;  // Diamond; raw DP saves cannot prove D vs P
+            case GameVersion::PT:   return 12;
+            case GameVersion::HGSS: return 7;   // only a presentation representative; save ROMCode retains exact HG/SS
             case GameVersion::FRLG: return 4;   // FireRed
             case GameVersion::GG:   return 42;  // Let's Go Pikachu
             case GameVersion::SWSH: return 44;  // Sword

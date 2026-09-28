@@ -83,6 +83,7 @@ bool decodeBCD3(std::span<const uint8_t> raw, std::size_t o, uint32_t& out) {
 
 const char* enSpecial(uint8_t b) {
     switch (b) {
+        case 0x5D: return "*";
         case 0x70: return "@"; case 0x71: return "#"; case 0x72: return "“";
         case 0x73: return "”"; case 0x75: return "…"; case 0x7F: return " ";
         case 0x9A: return "("; case 0x9B: return ")"; case 0x9C: return ":";
@@ -157,12 +158,12 @@ bool isListHeaderValid(std::span<const uint8_t> raw, std::size_t offset, std::si
     if (offset + capacity + 2 > raw.size()) return false;
     const uint8_t count = raw[offset];
     if (count > capacity) return false;
+    // Count plus the immediate 0xFF cap define the logical PokeList. Real saves may retain stale
+    // species markers after that cap when a Pokemon was moved/released; those bytes are not entries.
     if (raw[offset + 1 + count] != 0xFF) return false;
-    for (std::size_t i = 0; i < capacity; ++i) {
+    for (std::size_t i = 0; i < count; ++i) {
         const uint8_t mark = raw[offset + 1 + i];
-        const bool present = mark != 0 && mark != 0xFF;
-        if (present != (i < count)) return false;
-        if (present && gen1InternalToNational(mark) == 0) return false;
+        if (mark == 0 || mark == 0xFF || gen1InternalToNational(mark) == 0) return false;
     }
     return true;
 }
@@ -321,19 +322,25 @@ uint16_t gen1InternalToNational(uint8_t rawSpecies) noexcept {
 
 std::string decodeGen1String(std::span<const uint8_t> bytes, RegionLayout region) {
     std::string out;
+    bool first = true;
     for (uint8_t b : bytes) {
         if (b == 0x00 || b == 0x50) break;
-        if (b == 0x5D) { out += '*'; continue; }
+        // 0x5D at byte zero marks an in-game-trade OT and represents the whole name.
+        if (first && b == 0x5D) return "*";
         if (region == RegionLayout::Japanese) {
-            if (const char* g = jpGlyph(b)) out += g;
-            else out += "�";
+            const char* g = jpGlyph(b);
+            if (!g) break; // PKHeX StringConverter1: a glyphless byte terminates the field.
+            out += g;
+            first = false;
             continue;
         }
-        if (b >= 0x80 && b <= 0x99) { out += static_cast<char>('A' + (b - 0x80)); continue; }
-        if (b >= 0xA0 && b <= 0xB9) { out += static_cast<char>('a' + (b - 0xA0)); continue; }
-        if (b >= 0xF6) { out += static_cast<char>('0' + (b - 0xF6)); continue; }
-        if (const char* g = enSpecial(b)) out += g;
-        else out += "�";
+        if (b >= 0x80 && b <= 0x99) { out += static_cast<char>('A' + (b - 0x80)); first = false; continue; }
+        if (b >= 0xA0 && b <= 0xB9) { out += static_cast<char>('a' + (b - 0xA0)); first = false; continue; }
+        if (b >= 0xF6) { out += static_cast<char>('0' + (b - 0xF6)); first = false; continue; }
+        const char* g = enSpecial(b);
+        if (!g) break; // Gen I treats unmapped bytes as terminators, not replacement glyphs.
+        out += g;
+        first = false;
     }
     return out;
 }

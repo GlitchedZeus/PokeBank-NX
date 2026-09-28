@@ -12,6 +12,9 @@
 #include "UI/TouchInput.h"
 #include "Enums/GameVersion.h"
 #include "Games/GameIdentity.h"
+#include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "Utils/Keyboard.h"
 #include "Utils/Logger.h"
 #include "Utils/Settings.h"
 
@@ -39,6 +42,57 @@ namespace UI {
         std::string shortValue(const std::string& value, size_t length = 12) {
             return value.substr(0, std::min(length, value.size()));
         }
+
+        std::string providerSummary(
+            const std::vector<PokeVault::Legacy::FRLGSaveInstance>& instances) {
+            std::vector<std::string> providers;
+            for (const auto& instance : instances) {
+                const std::string provider =
+                    instance.providerLabel.empty() ? std::string("Source") : instance.providerLabel;
+                if (std::find(providers.begin(), providers.end(), provider) == providers.end())
+                    providers.push_back(provider);
+            }
+            if (providers.empty()) return "No validated providers";
+            if (providers.size() == 1) return "Provider: " + providers.front();
+
+            std::string summary = "Providers: ";
+            for (size_t i = 0; i < providers.size(); ++i) {
+                if (i != 0) summary += " + ";
+                summary += providers[i];
+            }
+            return summary;
+        }
+
+        void drawSaveInstanceRows(
+            PKSEFramebuffer& fb,
+            const std::vector<PokeVault::Source::SaveInstance>& instances,
+            int selectedIndex, int first, int x, int rowY, int width,
+            int rowHeight, int visibleRows, bool showOlderLabel) {
+            const int last = std::min<int>(
+                static_cast<int>(instances.size()), first + visibleRows);
+            for (int i = first; i < last; ++i) {
+                const auto& instance = instances[static_cast<size_t>(i)];
+                drawFocusedCard(fb, x + 24, rowY, width - 48, rowHeight - 6,
+                                i == selectedIndex, 10);
+                fb.drawText(x + 44, rowY + 8, instance.label,
+                            i == selectedIndex ? Colors::TextPrimary : Colors::TextSecondary,
+                            TextStyle::Body);
+                if (instance.mostRecentlyModified || showOlderLabel) {
+                    const std::string recency = instance.mostRecentlyModified
+                        ? "MOST RECENTLY MODIFIED" : "OLDER FILE";
+                    int fw = 0, fh = 0;
+                    fb.measureText(recency, fw, fh, TextStyle::Caption);
+                    fb.drawText(x + width - 44 - fw, rowY + 11, recency, Colors::TextMuted,
+                                TextStyle::Caption);
+                }
+                const std::string sourceLine =
+                    (instance.providerLabel.empty() ? std::string("Source") : instance.providerLabel) +
+                    " / " + instance.sourceLabel;
+                fb.drawText(x + 44, rowY + 34, sourceLine, Colors::TextMuted,
+                            TextStyle::Caption);
+                rowY += rowHeight;
+            }
+        }
     }
 
     // Layout (1280x720).
@@ -63,6 +117,7 @@ namespace UI {
         : legacyCatalog(&legacySources), legacyBindings(&bindings) {
         loadUsers();
         loadLegacySources(legacySources);
+        loadGen4Cards();
     }
 
     void SaveSelectScreen::loadLegacySources(
@@ -104,12 +159,64 @@ namespace UI {
         rebuildUnassignedLegacySources();
     }
 
+    void SaveSelectScreen::loadGen4Cards() {
+        for (auto& user : users) {
+            user.titles.erase(std::remove_if(user.titles.begin(), user.titles.end(),
+                [](const auto& title) {
+                    return title.sourceKind == SelectedSourceKind::Gen4AssignedFile;
+                }), user.titles.end());
+
+            const std::string profile = profileIdentity(user.uid);
+            for (const auto& game : PokeVault::Games::allGameDescriptors()) {
+                if (game.platform != PokeVault::Games::Platform::NintendoDS ||
+                    game.dataGeneration != 4 ||
+                    game.support != PokeVault::Games::SourceSupport::ReadOnly) continue;
+
+                TitleEntry entry;
+                entry.name = "Pokemon " + std::string(game.title);
+                entry.label = std::string(game.title);
+                entry.gameId = std::string(game.id);
+                entry.platformLabel = std::string(PokeVault::Games::platformName(game.platform));
+                entry.artworkKey = entry.gameId;
+                entry.sourceKind = SelectedSourceKind::Gen4AssignedFile;
+
+                if (!legacyBindings) {
+                    entry.sourceLabel = "CHOOSE SAVE";
+                } else {
+                    const auto assigned = legacyBindings->resolveFileForGame(profile, game.id);
+                    switch (assigned.status) {
+                        case PokeVault::Legacy::AssignedFileStatus::Ready:
+                            entry.sourceLabel = "REMEMBERED";
+                            entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
+                            break;
+                        case PokeVault::Legacy::AssignedFileStatus::Missing:
+                            entry.sourceLabel = "MISSING";
+                            entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
+                            break;
+                        case PokeVault::Legacy::AssignedFileStatus::Unreadable:
+                            entry.sourceLabel = "INVALID";
+                            entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
+                            break;
+                        case PokeVault::Legacy::AssignedFileStatus::Ambiguous:
+                            entry.sourceLabel = "AMBIGUOUS";
+                            break;
+                        case PokeVault::Legacy::AssignedFileStatus::Unassigned:
+                            entry.sourceLabel = "CHOOSE SAVE";
+                            break;
+                    }
+                }
+                user.titles.push_back(std::move(entry));
+            }
+        }
+    }
+
     void SaveSelectScreen::rebuildUnassignedLegacySources() {
         unassignedLegacySources.clear();
         if (!legacyCatalog || !legacyBindings) return;
         for (const auto& card : PokeVault::Legacy::buildFRLGSourceCards(*legacyCatalog)) {
-            for (const auto& instance : card.instances) {
-                if (legacyBindings->isAssigned(instance.sourceIdentity)) continue;
+            for (auto instance : card.instances) {
+                legacyBindings->applyClaims(instance);
+                if (instance.claimConflict || !instance.claimedProfile.empty()) continue;
                 unassignedLegacySources.push_back({card.gameId, card.title, instance});
             }
         }
@@ -139,7 +246,7 @@ namespace UI {
         const std::string profile = currentProfileIdentity();
         if (profile.empty()) return false;
         const auto& entry = unassignedLegacySources[static_cast<size_t>(legacyAssignmentIndex)];
-        if (!legacyBindings->assignAndSave(entry.instance.sourceIdentity, profile)) {
+        if (!legacyBindings->claimInstanceAndSave(entry.instance, profile)) {
             logErrorToFile("Legacy binding assignment failed", legacyBindings->lastError().c_str());
             legacyNotice = "Assignment could not be saved; source remains unassigned.";
             return false;
@@ -156,11 +263,11 @@ namespace UI {
         const std::string& gameId, const std::string& preferredSourceIdentity,
         bool requirePreferred) {
         if (!legacyCatalog) return false;
-        auto refreshed = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
+        auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
         *legacyCatalog = std::move(refreshed);
         loadLegacySources(*legacyCatalog);
 
-        logInfoToFile("RetroArch active battery-save root",
+        logInfoToFile("Legacy active battery-save root",
             legacyCatalog->activeRoot.empty() ? "(none)" : legacyCatalog->activeRoot.c_str());
         const UserEntry* user = currentUser();
         if (!user) return false;
@@ -195,7 +302,7 @@ namespace UI {
                 std::distance(parent->legacyInstances.begin(), instance));
         }
         legacyInstanceScroll = std::max(0, legacyInstanceIndex - 5);
-        legacyNotice = "Save list refreshed from the active RetroArch root.";
+        legacyNotice = "Save list refreshed from configured emulator roots.";
         overlay = Overlay::LegacyInstances;
         scrollSelectionIntoView();
         return true;
@@ -388,6 +495,190 @@ namespace UI {
         scrollRow  = 0;   // a different user has a different title count; start at the top
     }
 
+    void SaveSelectScreen::openGen4Setup(const std::string& gameId, std::string notice) {
+        gen4TargetGameId = gameId;
+        gen4Notice = std::move(notice);
+        gen4Candidates.clear();
+        gen4Instances.clear();
+        gen4SetupIndex = 0;
+        gen4CandidateIndex = 0;
+        gen4CandidateScroll = 0;
+        overlay = Overlay::Gen4Setup;
+    }
+
+    void SaveSelectScreen::discoverGen4Candidates() {
+        gen4Candidates.clear();
+        gen4Instances.clear();
+        auto discovered = PokeVault::Integration::Gen4::discoverKnownSources();
+        size_t wrappers = 0;
+        size_t savestates = 0;
+        std::string rememberedDiagnostic;
+
+        auto appendReady = [&](PokeVault::Integration::Gen4::SourceCandidate candidate,
+                               bool rememberedSource = false) {
+            if (!candidate.ready() ||
+                !PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId))
+                return;
+            auto instance = PokeVault::Integration::Gen4::toSaveInstance(
+                candidate, gen4TargetGameId, gen4Candidates.size(), rememberedSource,
+                {});
+            if (legacyBindings) legacyBindings->applyClaims(instance);
+            if (!PokeVault::Source::visibleToProfile(instance, currentProfileIdentity()))
+                return;
+            if (!PokeVault::Source::appendDeduplicated(gen4Instances, std::move(instance)))
+                return;
+            gen4Candidates.push_back(std::move(candidate));
+        };
+
+        for (auto& candidate : discovered.candidates) {
+            if (candidate.status == PokeVault::Integration::Gen4::CandidateStatus::UnsupportedWrapper)
+                ++wrappers;
+            else if (candidate.status == PokeVault::Integration::Gen4::CandidateStatus::UnsupportedSavestate)
+                ++savestates;
+            appendReady(std::move(candidate));
+        }
+
+        // A manually chosen source may live outside every known emulator root. Keep the remembered
+        // assignment as one candidate in the chooser, but never let it skip the chooser.
+        if (legacyBindings) {
+            const auto remembered = legacyBindings->resolveFileForGame(
+                currentProfileIdentity(), gen4TargetGameId);
+            if (remembered.status == PokeVault::Legacy::AssignedFileStatus::Ready) {
+                auto candidate = PokeVault::Integration::Gen4::inspectSourceFile(
+                    remembered.binding.sourcePath,
+                    remembered.binding.sourceType.empty() ? "Remembered" : remembered.binding.sourceType,
+                    gen4TargetGameId);
+                if (!candidate.ready())
+                    rememberedDiagnostic = candidate.diagnostic;
+                appendReady(std::move(candidate), true);
+            } else if (remembered.status == PokeVault::Legacy::AssignedFileStatus::Missing) {
+                rememberedDiagnostic = "Remembered save is missing; choose or discover another source.";
+            } else if (remembered.status == PokeVault::Legacy::AssignedFileStatus::Unreadable) {
+                rememberedDiagnostic = "Remembered save is unreadable; choose or discover another source.";
+            } else if (remembered.status == PokeVault::Legacy::AssignedFileStatus::Ambiguous) {
+                rememberedDiagnostic = "Remembered source assignment is ambiguous; choose a replacement.";
+            }
+        }
+
+        // Match the classic chooser through the same provider-neutral ordering rule.
+        PokeVault::Source::sortNewestFirst(gen4Instances);
+        gen4CandidateIndex = 0;
+        gen4CandidateScroll = 0;
+        if (gen4Instances.empty()) {
+            gen4Notice = !rememberedDiagnostic.empty() ? rememberedDiagnostic
+                : discovered.limitReached
+                    ? "No compatible save found before the bounded scan limit."
+                : savestates > 0
+                    ? "DraStic savestate found (.dss). PokeBank needs the cartridge save in /switch/drastic/user/backup/."
+                : wrappers > 0
+                    ? "Unsupported .dsv wrapper found. Valid footer-declared 0x80000 containers are supported read-only."
+                    : "No compatible Gen IV cartridge save found in known emulator locations.";
+            overlay = Overlay::Gen4Setup;
+        } else {
+            gen4Notice = std::to_string(gen4Instances.size()) +
+                (gen4Instances.size() == 1 ? " validated save instance." : " validated save instances.");
+            overlay = Overlay::Gen4Candidates;
+        }
+    }
+
+    bool SaveSelectScreen::assignGen4Candidate(
+        const PokeVault::Integration::Gen4::SourceCandidate& candidate) {
+        if (!legacyBindings || !candidate.ready() ||
+            !PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId))
+            return false;
+        const std::string profile = currentProfileIdentity();
+        if (profile.empty()) return false;
+        const auto fresh = PokeVault::Integration::Gen4::inspectSourceFile(
+            candidate.path, candidate.sourceType, gen4TargetGameId);
+        const auto shownInstance = PokeVault::Integration::Gen4::toSaveInstance(candidate, gen4TargetGameId);
+        auto freshInstance = PokeVault::Integration::Gen4::toSaveInstance(fresh, gen4TargetGameId);
+        legacyBindings->applyClaims(freshInstance);
+        if (!PokeVault::Source::sameValidatedSnapshot(shownInstance, freshInstance) ||
+            !PokeVault::Source::visibleToProfile(freshInstance, profile)) {
+            discoverGen4Candidates();
+            gen4Notice = "That save changed or is no longer available to this profile. Review the refreshed list.";
+            return false;
+        }
+
+        PokeVault::Legacy::BindingRecord binding;
+        binding.profileIdentity = profile;
+        binding.gameIdentity = gen4TargetGameId;
+        binding.sourcePath = candidate.path;
+        binding.sourceType = candidate.sourceType;
+        binding.expectedRawFamily = candidate.expectedRawFamily;
+        if (!legacyBindings->replaceFileAssignmentAndSave(candidate.sourceIdentity, std::move(binding))) {
+            gen4Notice = legacyBindings->lastError().find("conflict") != std::string::npos
+                ? "That physical save is already remembered by another profile or game. Forget it there first."
+                : "The save assignment could not be stored safely.";
+            overlay = Overlay::Gen4Setup;
+            return false;
+        }
+
+        loadGen4Cards();
+        overlay = Overlay::None;
+        gen4Notice.clear();
+        selectAssignedGen4Title();
+        return titleSelected;
+    }
+
+    void SaveSelectScreen::chooseGen4ManualFile() {
+        const auto chosen = Utils::promptText(
+            "Choose Generation IV Save",
+            "Full SD path to a raw cartridge save (.sav/.srm/.dsv; not .dss)",
+            "", 240);
+        if (!chosen.accepted) return;
+
+        auto candidate = PokeVault::Integration::Gen4::inspectSourceFile(
+            chosen.text, "Manual", gen4TargetGameId);
+        if (!candidate.ready()) {
+            gen4Notice = candidate.diagnostic.empty()
+                ? "That file is not a compatible save for this game card."
+                : candidate.diagnostic;
+            overlay = Overlay::Gen4Setup;
+            return;
+        }
+        assignGen4Candidate(candidate);
+    }
+
+    bool SaveSelectScreen::unassignCurrentGen4Game() {
+        if (!legacyBindings) return false;
+        const std::string profile = currentProfileIdentity();
+        if (!legacyBindings->unassignGameAndSave(profile, gen4TargetGameId)) {
+            gen4Notice = "No remembered save could be removed for this game.";
+            return false;
+        }
+        loadGen4Cards();
+        gen4Notice = "Remembered save removed. The source file itself was not changed.";
+        overlay = Overlay::Gen4Setup;
+        return true;
+    }
+
+    void SaveSelectScreen::selectAssignedGen4Title() {
+        const UserEntry* user = currentUser();
+        if (!user) return;
+        const auto found = std::find_if(user->titles.begin(), user->titles.end(),
+            [&](const auto& title) {
+                return title.sourceKind == SelectedSourceKind::Gen4AssignedFile &&
+                       title.gameId == gen4TargetGameId;
+            });
+        if (found == user->titles.end()) return;
+        titleIndex = static_cast<int>(std::distance(user->titles.begin(), found));
+        const auto opened = legacyBindings
+            ? PokeVault::Integration::Gen4::openAssignedSource(
+                *legacyBindings, currentProfileIdentity(), found->gameId)
+            : PokeVault::Integration::Gen4::AssignedSourceReadOnly{};
+        if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready) {
+            openGen4Setup(found->gameId, opened.diagnostic);
+            return;
+        }
+        selectedUserUid = user->uid;
+        selectedTitleId = 0;
+        selectedTitleName = found->name;
+        selectedGameId = found->gameId;
+        selectedSourceKind = found->sourceKind;
+        titleSelected = true;
+    }
+
     void SaveSelectScreen::selectCurrentTitle() {
         const UserEntry* u = currentUser();
         if (!u || titleIndex < 0 || titleIndex >= (int)u->titles.size()) return;
@@ -395,6 +686,13 @@ namespace UI {
         if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
             const std::string gameId = title.gameId;
             refreshLegacySources(gameId);
+            return;
+        }
+        if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+            // Never auto-open a remembered adapter path. Gen IV now matches the classic source UX:
+            // game identity first, then an explicit validated Save Instances choice every time.
+            gen4TargetGameId = title.gameId;
+            discoverGen4Candidates();
             return;
         }
         selectedUserUid  = u->uid;
@@ -415,8 +713,8 @@ namespace UI {
         // Reread the active physical root at the selection boundary. If this child was replaced or
         // deleted while the picker was open, the stale instance can no longer resolve to anything.
         const std::string gameId = title.gameId;
-        const std::string sourceIdentity =
-            title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)].sourceIdentity;
+        const auto shownInstance = title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
+        const std::string sourceIdentity = shownInstance.sourceIdentity;
         if (!refreshLegacySources(gameId, sourceIdentity, true)) return;
         u = currentUser();
         if (!u || titleIndex < 0 || titleIndex >= static_cast<int>(u->titles.size())) return;
@@ -424,6 +722,12 @@ namespace UI {
         if (legacyInstanceIndex < 0 ||
             legacyInstanceIndex >= static_cast<int>(refreshedTitle.legacyInstances.size())) return;
 
+        const auto& freshInstance = refreshedTitle.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
+        if (!PokeVault::Source::sameValidatedSnapshot(shownInstance, freshInstance)) {
+            legacyNotice = "That save changed. Review the refreshed list before opening.";
+            overlay = Overlay::LegacyInstances;
+            return;
+        }
         selectedUserUid = u->uid;
         selectedTitleId = 0;
         selectedTitleName = refreshedTitle.name;
@@ -456,7 +760,7 @@ namespace UI {
             if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
             if (kDown & HidNpadButton_X) {
                 if (legacyCatalog) {
-                    *legacyCatalog = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
+                    *legacyCatalog = PokeVault::Legacy::discoverConfiguredLegacySaves();
                     loadLegacySources(*legacyCatalog);
                     legacyNotice = "Unassigned source list refreshed.";
                 }
@@ -476,6 +780,46 @@ namespace UI {
             if (kDown & HidNpadButton_A) assignCurrentLegacySource();
             return;
         }
+        if (overlay == Overlay::Gen4Setup) {
+            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_Up) gen4SetupIndex = (gen4SetupIndex + 3) % 4;
+            if (kDown & HidNpadButton_Down) gen4SetupIndex = (gen4SetupIndex + 1) % 4;
+            if (kDown & HidNpadButton_A) {
+                if (gen4SetupIndex == 0) discoverGen4Candidates();
+                else if (gen4SetupIndex == 1) chooseGen4ManualFile();
+                else if (gen4SetupIndex == 2) unassignCurrentGen4Game();
+                else overlay = Overlay::None;
+            }
+            return;
+        }
+        if (overlay == Overlay::Gen4Candidates) {
+            const int count = static_cast<int>(gen4Instances.size());
+            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_X) { discoverGen4Candidates(); return; }
+            if (kDown & HidNpadButton_Y) {
+                openGen4Setup(gen4TargetGameId,
+                    "Add, repair, or forget a remembered source. Opening still happens from Save Instances.");
+                return;
+            }
+            if (count == 0) { overlay = Overlay::Gen4Setup; return; }
+            if (kDown & HidNpadButton_Up)
+                gen4CandidateIndex = (gen4CandidateIndex - 1 + count) % count;
+            if (kDown & HidNpadButton_Down)
+                gen4CandidateIndex = (gen4CandidateIndex + 1) % count;
+            constexpr int visibleRows = 5;
+            if (gen4CandidateIndex < gen4CandidateScroll)
+                gen4CandidateScroll = gen4CandidateIndex;
+            else if (gen4CandidateIndex >= gen4CandidateScroll + visibleRows)
+                gen4CandidateScroll = gen4CandidateIndex - visibleRows + 1;
+            if (kDown & HidNpadButton_A) {
+                const size_t handle =
+                    gen4Instances[static_cast<size_t>(gen4CandidateIndex)].sourceIndex;
+                if (handle < gen4Candidates.size())
+                    assignGen4Candidate(gen4Candidates[handle]);
+            }
+            return;
+        }
+
         if (overlay == Overlay::Options) {
             if (kDown & HidNpadButton_Up)   optionsIndex = (optionsIndex + 2) % 3;
             if (kDown & HidNpadButton_Down) optionsIndex = (optionsIndex + 1) % 3;
@@ -546,6 +890,16 @@ namespace UI {
         if (kDown & HidNpadButton_Minus) {
             overlay = Overlay::Help;
             return;
+        }
+        {
+            const UserEntry* current = currentUser();
+            if ((kDown & HidNpadButton_Y) && current && titleIndex >= 0 &&
+                titleIndex < static_cast<int>(current->titles.size()) &&
+                current->titles[titleIndex].sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+                openGen4Setup(current->titles[titleIndex].gameId,
+                              "Add, repair, or forget a remembered source for this game.");
+                return;
+            }
         }
         if ((kDown & HidNpadButton_X) && !unassignedLegacySources.empty()) {
             overlay = Overlay::LegacyAssignment;
@@ -754,6 +1108,9 @@ namespace UI {
             : PokeBank::UIModel::ControllerContext::SelectGame);
         if (!unassignedLegacySources.empty())
             homeHints.push_back({"X", "Assign Legacy Save"});
+        if (u && titleIndex >= 0 && titleIndex < static_cast<int>(u->titles.size()) &&
+            u->titles[titleIndex].sourceKind == SelectedSourceKind::Gen4AssignedFile)
+            homeHints.push_back({"Y", "Source Setup"});
         drawNavBar(fb, homeHints);
 
         if (overlay == Overlay::LegacyInstances && u && titleIndex >= 0 &&
@@ -762,40 +1119,20 @@ namespace UI {
             constexpr int w = 780, h = 530, rowH = 66, visibleRows = 5;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
-            fb.drawText(x + 28, y + 18, "RETROARCH / GAME BOY ADVANCE / READ ONLY",
+            fb.drawText(x + 28, y + 18,
+                        "SAVE INSTANCES / " + parent.platformLabel + " / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, "Pokemon " + parent.label + " — Save Instances",
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
                         "Choose a validated battery save. The source file will not be modified.",
                         Colors::TextSecondary, TextStyle::Caption);
-            if (legacyCatalog && !legacyCatalog->activeRoot.empty()) {
-                fb.drawText(x + 28, y + 96,
-                            "Active root: " + sourceLeafName(legacyCatalog->activeRoot),
-                            Colors::TextMuted, TextStyle::Caption);
-            }
+            fb.drawText(x + 28, y + 96, providerSummary(parent.legacyInstances),
+                        Colors::TextMuted, TextStyle::Caption);
 
             const int first = legacyInstanceScroll;
-            const int last = std::min<int>(static_cast<int>(parent.legacyInstances.size()),
-                                           first + visibleRows);
-            int ry = y + 122;
-            for (int i = first; i < last; ++i) {
-                const auto& instance = parent.legacyInstances[static_cast<size_t>(i)];
-                drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 6,
-                                i == legacyInstanceIndex, 10);
-                fb.drawText(x + 44, ry + 8, instance.label,
-                            i == legacyInstanceIndex ? Colors::TextPrimary : Colors::TextSecondary,
-                            TextStyle::Body);
-                const std::string recency = instance.mostRecentlyModified
-                    ? "MOST RECENTLY MODIFIED" : "OLDER FILE";
-                int fw, fh;
-                fb.measureText(recency, fw, fh, TextStyle::Caption);
-                fb.drawText(x + w - 44 - fw, ry + 11, recency, Colors::TextMuted,
-                            TextStyle::Caption);
-                fb.drawText(x + 44, ry + 34, instance.sourceLabel, Colors::TextMuted,
-                            TextStyle::Caption);
-                ry += rowH;
-            }
+            drawSaveInstanceRows(fb, parent.legacyInstances, legacyInstanceIndex, first,
+                                 x, y + 122, w, rowH, visibleRows, true);
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
@@ -805,12 +1142,12 @@ namespace UI {
             constexpr int w = 800, h = 530, rowH = 70, visibleRows = 5;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
-            fb.drawText(x + 28, y + 18, "RETROARCH / EXPLICIT PROFILE ASSIGNMENT",
+            fb.drawText(x + 28, y + 18, "SAVE SOURCE / EXPLICIT PROFILE ASSIGNMENT",
                         Colors::Accent, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, "Assign a Legacy Save to " + u->name,
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
-                        "Unassigned files are hidden from every profile until you choose one.",
+                        "Assigning claims this save for this profile and hides it from other profiles.",
                         Colors::TextSecondary, TextStyle::Caption);
             const int first = legacyAssignmentScroll;
             const int last = std::min<int>(static_cast<int>(unassignedLegacySources.size()),
@@ -825,7 +1162,10 @@ namespace UI {
                             index == legacyAssignmentIndex ? Colors::TextPrimary
                                                            : Colors::TextSecondary,
                             TextStyle::Body);
-                fb.drawText(x + 44, rowY + 35, entry.instance.sourceLabel,
+                fb.drawText(x + 44, rowY + 35,
+                            (entry.instance.providerLabel.empty() ? std::string("Source")
+                                                                 : entry.instance.providerLabel) +
+                                " / " + entry.instance.sourceLabel,
                             Colors::TextMuted, TextStyle::Caption);
                 rowY += rowH;
             }
@@ -838,7 +1178,10 @@ namespace UI {
             constexpr int w = 900, h = 520;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
-            fb.drawText(x + 28, y + 18, "RETROARCH / SOURCE DIAGNOSTICS / READ ONLY",
+            const std::string detailsProvider = legacyDetailsInstance.providerLabel.empty()
+                ? std::string("SOURCE") : legacyDetailsInstance.providerLabel;
+            fb.drawText(x + 28, y + 18,
+                        detailsProvider + " / SOURCE DIAGNOSTICS / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, legacyDetailsInstance.label,
                         Colors::TextPrimary, TextStyle::Heading);
@@ -848,7 +1191,8 @@ namespace UI {
                 fb.drawText(x + 214, lineY, value, Colors::TextPrimary, TextStyle::Caption);
                 lineY += 30;
             };
-            drawLine("Provider", "RetroArch");
+            drawLine("Provider", legacyDetailsInstance.providerLabel.empty()
+                ? "Source" : legacyDetailsInstance.providerLabel);
             drawLine("Game identity", legacyDetailsGameId);
             drawLine("Trainer", legacyDetailsInstance.trainerName.empty()
                 ? "Unknown" : legacyDetailsInstance.trainerName);
@@ -862,12 +1206,64 @@ namespace UI {
             for (size_t offset = 70; offset < path.size() && offset < 210; offset += 70)
                 drawLine("", path.substr(offset, 70));
             drawNavBar(fb, {{"B", "Back to Save List"}});
+        } else if (overlay == Overlay::Gen4Setup && u) {
+            constexpr int w = 760, h = 430, rowH = 64;
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            const auto* identity = PokeVault::Games::findGame(gen4TargetGameId);
+            const std::string title = identity ? std::string(identity->title) : std::string("Generation IV");
+            fb.drawText(x + 28, y + 18, "NINTENDO DS / SOURCE SETUP / READ ONLY",
+                        Colors::Accent, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44, "Pokemon " + title,
+                        Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 28, y + 76,
+                        "Add or repair sources here. Opening always happens from Save Instances.",
+                        Colors::TextSecondary, TextStyle::Caption);
+            const std::string rows[4] = {
+                "Refresh Known Emulator Saves",
+                "Choose Save File Manually",
+                "Forget Remembered Save",
+                "Cancel"
+            };
+            int ry = y + 112;
+            for (int i = 0; i < 4; ++i) {
+                drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 8, i == gen4SetupIndex, 10);
+                fb.drawText(x + 44, ry + 15, rows[i],
+                            i == gen4SetupIndex ? Colors::TextPrimary : Colors::TextSecondary);
+                ry += rowH;
+            }
+            if (!gen4Notice.empty())
+                fb.drawText(x + 28, y + h - 42, gen4Notice.substr(0, 100),
+                            Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"B", "Back"}});
+        } else if (overlay == Overlay::Gen4Candidates && u) {
+            constexpr int w = 900, h = 540, rowH = 76, visibleRows = 5;
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            const auto* identity = PokeVault::Games::findGame(gen4TargetGameId);
+            const std::string title = identity ? std::string(identity->title) : std::string("Generation IV");
+            fb.drawText(x + 28, y + 18, "NINTENDO DS / SAVE INSTANCES / READ ONLY",
+                        Colors::Accent, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44, "Pokemon " + title + " — Save Instances",
+                        Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 28, y + 76,
+                        "Choose a validated cartridge save. The source file will not be modified.",
+                        Colors::TextSecondary, TextStyle::Caption);
+
+            const int first = gen4CandidateScroll;
+            drawSaveInstanceRows(fb, gen4Instances, gen4CandidateIndex, first,
+                                 x, y + 108, w, rowH, visibleRows, false);
+            if (!gen4Notice.empty())
+                fb.drawText(x + 28, y + h - 34, gen4Notice, Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"Up/Down", "Choose Save"}, {"A", "Open Read Only"},
+                            {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
             drawInfoOverlay(fb, "Game Sources & Controls", {
                 "D-pad / Left Stick   Navigate (hold to scroll)",
-                "A   Open the focused game source",
+                "A   Open the focused game and choose a save instance",
                 "L / R   Previous or next Switch user",
                 "X   Assign an unassigned legacy save to this profile",
+                "Y   Add or repair sources for the focused Gen IV game",
                 "+   Options and appearance",
                 "-   Help for the current screen"
             });

@@ -7,7 +7,7 @@ namespace PokeVault::Games {
         using enum Platform;
         using enum SourceSupport;
 
-        constexpr std::array<GameDescriptor, 23> kGames{{
+        constexpr std::array<GameDescriptor, 28> kGames{{
             {"red_gb",                       "Red",               GameBoy,        1, 0, ReadOnly},
             {"blue_gb",                      "Blue",              GameBoy,        1, 0, ReadOnly},
             {"yellow_gb",                    "Yellow",            GameBoy,        1, 0, ReadOnly},
@@ -19,6 +19,13 @@ namespace PokeVault::Games {
             {"emerald_gba",                  "Emerald",           GameBoyAdvance, 3, 0, ReadOnly},
             {"firered_gba",                  "FireRed",           GameBoyAdvance, 3, 0, ReadOnly},
             {"leafgreen_gba",                "LeafGreen",         GameBoyAdvance, 3, 0, ReadOnly},
+            // G4-02 exposes these through the persistent game-card assignment flow.
+            // Support remains strictly read-only: no Gen IV editor, source writes or True Move.
+            {"diamond_nds",                   "Diamond",           NintendoDS,     4, 0, ReadOnly},
+            {"pearl_nds",                     "Pearl",             NintendoDS,     4, 0, ReadOnly},
+            {"platinum_nds",                  "Platinum",          NintendoDS,     4, 0, ReadOnly},
+            {"heartgold_nds",                 "HeartGold",         NintendoDS,     4, 0, ReadOnly},
+            {"soulsilver_nds",                "SoulSilver",        NintendoDS,     4, 0, ReadOnly},
             {"firered_switch",               "FireRed",           NintendoSwitch, 3, 0x0100554023408000ULL, NativeSwitch},
             {"leafgreen_switch",             "LeafGreen",         NintendoSwitch, 3, 0x010034D02340E000ULL, NativeSwitch},
             {"letsgo_pikachu_switch",        "Let's Go Pikachu",  NintendoSwitch, 7, 0x010003F003A34000ULL, NativeSwitch},
@@ -53,6 +60,7 @@ namespace PokeVault::Games {
             case Platform::GameBoy: return "Game Boy";
             case Platform::GameBoyColor: return "Game Boy Color";
             case Platform::GameBoyAdvance: return "Game Boy Advance";
+            case Platform::NintendoDS: return "Nintendo DS";
             case Platform::NintendoSwitch: return "Nintendo Switch";
         }
         return "Unknown platform";
@@ -65,6 +73,7 @@ namespace PokeVault::Games {
             case Platform::GameBoy: return "GB";
             case Platform::GameBoyColor: return "GBC";
             case Platform::GameBoyAdvance: return "GBA";
+            case Platform::NintendoDS: return "NDS";
             case Platform::NintendoSwitch: return {};
         }
         return {};
@@ -82,6 +91,11 @@ namespace PokeVault::Games {
         if (id == "emerald_gba") return "romfs:/game_cards/emerald_gba.png";
         if (id == "firered_gba") return "romfs:/game_cards/firered_gba.png";
         if (id == "leafgreen_gba") return "romfs:/game_cards/leafgreen_gba.png";
+        if (id == "diamond_nds") return "romfs:/game_cards/diamond_nds.png";
+        if (id == "pearl_nds") return "romfs:/game_cards/pearl_nds.png";
+        if (id == "platinum_nds") return "romfs:/game_cards/platinum_nds.png";
+        if (id == "heartgold_nds") return "romfs:/game_cards/heartgold_nds.png";
+        if (id == "soulsilver_nds") return "romfs:/game_cards/soulsilver_nds.png";
         return {};
     }
 }

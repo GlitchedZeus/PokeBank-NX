@@ -46,6 +46,8 @@ jobs:
             src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
             src/Integration/Gen2/Gen2PersonalData.cpp \
             src/Pokemon/Experience.cpp \
+            src/Utils/StringHelpers.cpp \
+            src/Utils/HelperUtilities.cpp \
             src/Names/SpeciesNames.cpp"
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \
             -I. -Iinclude $SOURCES -o build-host/test_gen12_packed_move
@@ -65,6 +67,8 @@ jobs:
             src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
             src/Integration/Gen2/Gen2PersonalData.cpp \
             src/Pokemon/Experience.cpp \
+            src/Utils/StringHelpers.cpp \
+            src/Utils/HelperUtilities.cpp \
             src/Names/SpeciesNames.cpp"
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O1 \
             -fsanitize=address,undefined -fno-omit-frame-pointer \

@@ -1,0 +1,65 @@
+#include "Legality/Legality.h"
+#include "Names/ItemNames.h"
+#include "Names/SpeciesNames.h"
+#include "Pokemon/Pokemon3FRLG.h"
+
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <iostream>
+#include <span>
+#include <string>
+
+// Legality.cpp uses the historical Trainer namespace name wrappers. Keep this focused host
+// regression independent of the full Trainer implementation.
+namespace Trainer {
+const char* getSpeciesName(uint16_t speciesId) { return Names::getSpeciesName(speciesId); }
+const char* getItemName(uint16_t itemId) { return Names::getItemName(itemId); }
+}
+
+namespace {
+bool hasText(const Legality::Report& report, const std::string& needle) {
+    for (const auto& issue : report.issues)
+        if (issue.text.find(needle) != std::string::npos) return true;
+    return false;
+}
+
+Pokemon::Pokemon3FRLG bulbasaurWithSwordsDance() {
+    std::array<uint8_t, 80> raw{};
+    Pokemon::Pokemon3FRLG p(std::span<const std::byte>(
+        reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
+    p.setPID(0x12345678u);
+    p.setTID16(12345);
+    p.setSID16(54321);
+    p.setLanguage(2);
+    p.setSpecies(1);       // Bulbasaur
+    p.setOTName(u"RED");
+    p.setNickname(u"BULBASAUR");
+    p.setOriginGame(2);    // Ruby
+    p.setBall(4);
+    p.setMetLevel(5);
+    p.setLevel(10);
+    p.setMove(0, 14);      // Swords Dance
+    p.setMovePP(0, 30);
+    return p;
+}
+}
+
+int main() {
+    auto p = bulbasaurWithSwordsDance();
+
+    // Generated Gen III tables: Swords Dance is not direct for Bulbasaur in Ruby/Sapphire,
+    // but it is direct in FireRed/LeafGreen. The old generic path treated every PK3 as FRLG.
+    const auto ruby = Legality::analyze(p, Enums::GameVersion::FRLG, "ruby_gba");
+    assert(hasText(ruby, "not native to this exact Gen III game"));
+
+    const auto fireRed = Legality::analyze(p, Enums::GameVersion::FRLG, "firered_gba");
+    assert(!hasText(fireRed, "not native to this exact Gen III game"));
+
+    // No exact container context is intentional for Bank records; retain generic-format behavior.
+    const auto bank = Legality::analyze(p, Enums::GameVersion::FRLG);
+    assert(!hasText(bank, "not native to this exact Gen III game"));
+
+    std::cout << "Gen III exact-source legality context: PASS\n";
+}

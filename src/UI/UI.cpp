@@ -1,6 +1,8 @@
 
 #include <cstdio>
 #include <sys/stat.h>
+#include <iomanip>
+#include <sstream>
 
 #include "Globals.h"
 #include "Save/GetSaveFileContents.h"
@@ -11,6 +13,7 @@
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
 #include "Utils/FileUtilities.h"
+#include "Utils/MoveTransactionProduction.h"
 #include "Utils/PokeBankPaths.h"
 #include "Trainer/Trainer.h"
 #include "Games/GameIdentity.h"
@@ -18,11 +21,23 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 #include "Legacy/GSCReadOnlyTrainer.h"
 #include "Legacy/FRLGSourceBrowser.h"
+#include "Legacy/Gen4ReadOnlyTrainer.h"
+#include "Integration/Gen4/Gen4AssignedSource.h"
 
 using namespace Utils;
 using namespace Trainer;
 
 namespace UI {
+    namespace {
+        std::string profileIdentity(AccountUid uid) {
+            std::ostringstream output;
+            output << std::hex << std::setfill('0')
+                   << std::setw(16) << static_cast<unsigned long long>(uid.uid[0])
+                   << std::setw(16) << static_cast<unsigned long long>(uid.uid[1]);
+            return output.str();
+        }
+    }
+
     UIManager::UIManager()
         : running(true),
           legacySourceBindings(PokeBank::Paths::legacySourceBindingsFile()) {
@@ -36,10 +51,12 @@ namespace UI {
         if (!legacySourceBindings.load())
             logErrorToFile("Legacy source bindings contain malformed or unreadable rows");
 
-        // Discover only RetroArch's configured/conventional save roots. Generation-specific strict
-        // parsers remain separate; the catalog only shares presentation/profile binding and is
-        // permanently read-only for Gen I R/B/Y, Gen II G/S/C, and Gen III R/S/E/FR/LG.
-        legacyFRLGSources = PokeVault::Legacy::discoverConfiguredRetroArchFRLGSaves();
+        // Discover only explicitly bounded emulator battery-save roots. RetroArch keeps its
+        // configured/conventional root; mGBA is additive only when /mGBA/config.ini explicitly
+        // defines savegamePath; Tico is limited to its fixed GB/GBC/GBA battery-save directories.
+        // Same-directory-as-ROM mGBA saves and arbitrary emulator trees are never crawled.
+        // Generation-specific strict parsers remain separate and every source stays read-only.
+        legacyFRLGSources = PokeVault::Legacy::discoverConfiguredLegacySaves();
         size_t ready = 0;
         size_t ambiguous = 0;
         size_t rejected = 0;
@@ -60,7 +77,7 @@ namespace UI {
         }
         char legacySummary[256];
         snprintf(legacySummary, sizeof(legacySummary),
-                 "RetroArch legacy: %zu files checked, %zu ready (Gen I %zu, Gen II %zu, Gen III %zu), %zu ambiguous, %zu rejected%s",
+                 "Legacy emulator sources: %zu files checked, %zu ready (Gen I %zu, Gen II %zu, Gen III %zu), %zu ambiguous, %zu rejected%s",
                  legacyFRLGSources.filesExamined, ready, gen1Ready, gen2Ready, gen3Ready,
                  ambiguous, rejected,
                  legacyFRLGSources.limitReached ? ", scan limit reached" : "");
@@ -97,7 +114,13 @@ namespace UI {
                     if (!handleLegacyFRLGView(selectScreen.getSelectedUser(),
                                               selectScreen.getSelectedLegacySourceIndex(),
                                               selectScreen.getSelectedGameId(), error))
-                        logErrorToFile("Legacy RetroArch source refused open", error.c_str());
+                        logErrorToFile("Legacy emulator source refused open", error.c_str());
+                } else if (selectScreen.getSelectedSourceKind() ==
+                           SaveSelectScreen::SelectedSourceKind::Gen4AssignedFile) {
+                    std::string error;
+                    if (!handleGen4View(selectScreen.getSelectedUser(),
+                                        selectScreen.getSelectedGameId(), error))
+                        logErrorToFile("Generation IV assigned source refused open", error.c_str());
                 } else {
                     handleBackupSelection(selectScreen.getSelectedUser(),
                                           selectScreen.getSelectedTitleId(),
@@ -112,7 +135,7 @@ namespace UI {
     }
 
     void UIManager::handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName) {
-        BackupSelectionScreen backupScreen(titleId, titleName);
+        BackupSelectionScreen backupScreen(userUid, titleId, titleName);
         fb.startFade();
 
         while (appletMainLoop() && running && !backupScreen.shouldExit()) {
@@ -161,6 +184,19 @@ namespace UI {
                                       std::string& error) {
         logInfoToFile("Loading save from", backupDir.c_str());
 
+        // A04b startup gate: reconcile any interrupted durable Move BEFORE parsing this workspace.
+        // If recovery changes a Bank/workspace image, the Trainer below is therefore constructed
+        // from the committed/recovered authoritative bytes rather than a stale pre-recovery model.
+        const auto moveRecovery =
+            PokeBank::Storage::MoveTx::Production::recoverPendingMoveTransactions();
+        if (moveRecovery.mutationLocked) {
+            logErrorToFile("Move transaction recovery requires attention",
+                           moveRecovery.notice.c_str());
+        } else if (moveRecovery.recovered > 0) {
+            logInfoToFile("Recovered interrupted Pokemon Move transaction(s)",
+                          std::to_string(moveRecovery.recovered).c_str());
+        }
+
         if (!Save::validateTrainerSaveForOpen(backupDir.c_str(), titleId, error)) {
             logErrorToFile("Save validation refused open", error.c_str());
             return false;
@@ -173,6 +209,7 @@ namespace UI {
                 trainer, titleName, backupDir, titleId, userUid,
                 loadedFromCart ? PokeVault::Safety::SourceKind::InstalledGame
                                : PokeVault::Safety::SourceKind::BackupOrStaged);
+            trainerScreen.setMoveRecoveryState(moveRecovery.mutationLocked, moveRecovery.notice);
             fb.startFade();
 
             while (appletMainLoop() && !trainerScreen.shouldExit() && !trainerScreen.hasRequestedExit()) {
@@ -193,18 +230,18 @@ namespace UI {
         AccountUid userUid, size_t sourceIndex, const std::string& gameId, std::string& error) {
         error.clear();
         if (sourceIndex >= legacyFRLGSources.sources.size()) {
-            error = "RetroArch source selection is stale";
+            error = "Emulator source selection is stale";
             return false;
         }
 
         const auto& selected = legacyFRLGSources.sources[sourceIndex];
         if (!selected.ready() || selected.gameId != gameId) {
-            error = "RetroArch source is no longer a validated legacy save";
+            error = "Emulator source is no longer a validated legacy save";
             return false;
         }
         const auto* identity = PokeVault::Games::findGame(selected.gameId);
         if (!identity) {
-            error = "RetroArch source has no stable game identity";
+            error = "Emulator source has no stable game identity";
             return false;
         }
 
@@ -212,14 +249,14 @@ namespace UI {
         if (selected.isGen1()) {
             if (identity->platform != PokeVault::Games::Platform::GameBoy ||
                 selected.gen1Save->metadata().sourceGameId != gameId) {
-                error = "RetroArch source is no longer a validated Generation I save";
+                error = "Emulator source is no longer a validated Generation I save";
                 return false;
             }
             trainer = PokeVault::Legacy::RBYReadOnlyTrainer::create(*selected.gen1Save, error);
         } else if (selected.isGen2()) {
             if (identity->platform != PokeVault::Games::Platform::GameBoyColor ||
                 selected.gen2Save->metadata().sourceGameId != gameId) {
-                error = "RetroArch source is no longer a validated Generation II save";
+                error = "Emulator source is no longer a validated Generation II save";
                 return false;
             }
             auto gscTrainer = PokeVault::Legacy::GSCReadOnlyTrainer::create(*selected.gen2Save, error);
@@ -230,7 +267,7 @@ namespace UI {
         } else if (selected.isGen3()) {
             if (identity->platform != PokeVault::Games::Platform::GameBoyAdvance ||
                 selected.save->metadata().sourceGameId != gameId) {
-                error = "RetroArch source is no longer a validated Generation III save";
+                error = "Emulator source is no longer a validated Generation III save";
                 return false;
             }
             trainer = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*selected.save, error);
@@ -242,13 +279,14 @@ namespace UI {
                                selected.gameId.c_str());
         }
         if (!trainer) {
-            if (error.empty()) error = "validated RetroArch source has no supported read-only trainer bridge";
+            if (error.empty()) error = "validated emulator source has no supported read-only trainer bridge";
             return false;
         }
 
         TrainerViewScreen trainerScreen(
             *trainer, "Pokemon " + std::string(identity->title), selected.path, 0, userUid,
-            PokeVault::Safety::SourceKind::RetroArchLegacy, selected.gameId);
+            PokeVault::Safety::SourceKind::RetroArchLegacy, selected.gameId,
+            selected.providerLabel);
         fb.startFade();
         while (appletMainLoop() && !trainerScreen.shouldExit() &&
                !trainerScreen.hasRequestedExit()) {
@@ -262,4 +300,51 @@ namespace UI {
         if (trainerScreen.hasRequestedExit()) running = false;
         return true;
     }
+    bool UIManager::handleGen4View(
+        AccountUid userUid, const std::string& gameId, std::string& error) {
+        error.clear();
+        const auto* identity = PokeVault::Games::findGame(gameId);
+        if (!identity || identity->platform != PokeVault::Games::Platform::NintendoDS ||
+            identity->dataGeneration != 4 ||
+            identity->support != PokeVault::Games::SourceSupport::ReadOnly) {
+            error = "Generation IV game card is not a registered read-only Nintendo DS source";
+            return false;
+        }
+
+        auto opened = PokeVault::Integration::Gen4::openAssignedSource(
+            legacySourceBindings, profileIdentity(userUid), gameId);
+        if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready || !opened.save) {
+            error = opened.diagnostic.empty()
+                ? "Generation IV assigned source failed strict validation"
+                : opened.diagnostic;
+            return false;
+        }
+
+        auto trainer = PokeVault::Legacy::Gen4ReadOnlyTrainer::create(
+            *opened.save, gameId, error);
+        if (!trainer) {
+            if (error.empty()) error = "Generation IV read-only presentation bridge failed";
+            return false;
+        }
+
+        const std::string sourcePath = opened.source.binding.sourcePath;
+        logInfoToFile("Opening assigned Generation IV source read-only", sourcePath.c_str());
+        TrainerViewScreen trainerScreen(
+            *trainer, "Pokemon " + std::string(identity->title), sourcePath, 0, userUid,
+            PokeVault::Safety::SourceKind::ExternalLegacy, gameId,
+            opened.source.binding.sourceType);
+        fb.startFade();
+        while (appletMainLoop() && !trainerScreen.shouldExit() &&
+               !trainerScreen.hasRequestedExit()) {
+            padUpdate(&pad);
+            touch.update();
+            trainerScreen.update(pad, touch);
+            trainerScreen.draw(fb);
+            fb.drawFadeOverlay();
+            fb.flush();
+        }
+        if (trainerScreen.hasRequestedExit()) running = false;
+        return true;
+    }
+
 }

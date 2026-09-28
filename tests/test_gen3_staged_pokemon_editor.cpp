@@ -473,6 +473,20 @@ void runGame(SourceGame game, Family family) {
     assert(editor->boxedPokemon(13, 29, error)->encryptedBytes == editPreview->encryptedBytes);
     editor->discard();
 
+    auto rtcSource=source;
+    const std::array<uint8_t,7> rtcFooter{{0x52,0x54,0x43,0x01,0x02,0x03,0x04}};
+    rtcSource.insert(rtcSource.end(),rtcFooter.begin(),rtcFooter.end());
+    auto rtcEditor=StagedPokemonEditor::create(rtcSource,game,error);
+    assert(rtcEditor&&error.empty());
+    const auto rtcFinal=rtcEditor->finalizedBytes(error);
+    assert(rtcFinal==rtcSource);
+    assert(rtcEditor->stageAddBoxPokemon(0,2,create,error));
+    const auto rtcEdited=rtcEditor->finalizedBytes(error);
+    assert(rtcEdited.size()==rtcSource.size());
+    assert(rtcEdited!=rtcSource);
+    assert(std::equal(rtcFooter.begin(),rtcFooter.end(),
+                      rtcEdited.end()-static_cast<std::ptrdiff_t>(rtcFooter.size())));
+
     // Wrong family must fail closed.
     const SourceGame mismatch =
         family == Family::FRLG ? SourceGame::RubyGBA : SourceGame::FireRedGBA;
@@ -493,6 +507,33 @@ void runGame(SourceGame game, Family family) {
 } // namespace
 
 int main() {
+    // A PK3 egg stores language=Japanese as a placeholder, so its OT charset comes from the
+    // containing save. clone() must carry that non-byte context or a Japanese OT becomes Latin.
+    {
+        std::array<uint8_t, 80> blank{};
+        Pokemon::Pokemon3FRLG japaneseEgg(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(blank.data()), blank.size()));
+        japaneseEgg.setSaveLanguage(1);
+        japaneseEgg.setOTName(u"ア");
+        japaneseEgg.setEgg(true);
+        assert(japaneseEgg.otName() == u"ア");
+        auto cloned = japaneseEgg.clone();
+        assert(cloned && cloned->otName() == u"ア");
+    }
+
+    {
+        const auto raw=samplePokemon(SourceGame::FireRedGBA);
+        Pokemon::Pokemon3FRLG egg(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(raw.data()),raw.size()));
+        egg.setEgg(true);
+        assert(egg.isEgg());
+        assert((egg.rd8(0x13)&0x04)!=0);
+        assert(egg.language()==1);
+        assert(egg.nickname()==u"\u30bf\u30de\u30b4");
+        egg.setEgg(false);
+        assert(!egg.isEgg());
+        assert((egg.rd8(0x13)&0x04)==0);
+    }
     runGame(SourceGame::RubyGBA, Family::RS);
     runGame(SourceGame::SapphireGBA, Family::RS);
     runGame(SourceGame::EmeraldGBA, Family::Emerald);

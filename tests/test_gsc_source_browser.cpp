@@ -101,6 +101,7 @@ int main(){
     assert(gold->platformLabel=="GBC"&&gold->sourceLabel=="RETROARCH");
     assert(gold->instances.size()==1&&silver->instances.size()==1&&crystal->instances.size()==1);
     assert(gold->instances[0].kind==Legacy::LegacySaveInstanceKind::BatterySave);
+    assert(gold->instances[0].providerLabel=="RetroArch");
     assert(gold->instances[0].sourceIdentity=="source-gold");
     assert(gold->instances[0].partyCount==1);
     assert(gold->instances[0].mostRecentlyModified);
@@ -114,6 +115,10 @@ int main(){
     assert(Legacy::resolveGSCSaveInstance(discovery,wrong,0)==nullptr);
 
     Legacy::LegacySourceBindings bindings;
+    const auto unassignedA=Legacy::buildGSCSourceCardsForProfile(discovery,bindings,"profile-a");
+    const auto unassignedB=Legacy::buildGSCSourceCardsForProfile(discovery,bindings,"profile-b");
+    assert(unassignedA.size()==3&&unassignedB.size()==3);
+
     assert(bindings.assign("source-gold","profile-a"));
     assert(bindings.assign("source-crystal","profile-a"));
     assert(bindings.assign("source-silver","profile-b"));

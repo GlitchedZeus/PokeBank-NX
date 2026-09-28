@@ -13,6 +13,7 @@
 #include <cstring>
 
 #include "Trainer/Trainer8BDSP.h"
+#include "Save/BDSPReadValidation.h"
 #include "Utils/MD5.h"
 #include "Utils/Logger.h"
 
@@ -23,6 +24,18 @@ namespace Trainer {
     Trainer8BDSP::Trainer8BDSP(std::vector<uint8_t> data)
         : Trainer(std::vector<Block>{}), saveData(std::move(data))
     {
+        // A06 fail-closed boundary: no fixed-offset parser runs until the flat save
+        // is large enough to contain every required v1 layout region through the
+        // whole-file MD5. Earlier code let parseMyStatus() return on short input and
+        // then called parseParty(), which indexed BDSP_PARTY_COUNT unconditionally.
+        if (!PokeBank::SaveValidation::BDSP::hasMinimumLayout(saveData.size())) {
+            logErrorToFile("BDSP save is truncated before the minimum supported layout");
+            boxes.clear();
+            boxes.resize(BDSP_BOX_COUNT);
+            boxNames.assign(BDSP_BOX_COUNT, std::string{});
+            return;
+        }
+
         parseMyStatus();
         parseParty();
         parseBoxes();

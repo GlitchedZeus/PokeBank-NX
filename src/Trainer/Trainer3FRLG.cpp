@@ -13,6 +13,8 @@
 #include <cstring>
 
 #include "Trainer/Trainer3FRLG.h"
+#include "Pokemon/Gen3PartyRecord.h"
+#include "Enums/LanguageID.h"
 #include "Utils/Gen3Text.h"        // the Gen 3 character set, shared with Pokemon3FRLG + Convert
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
@@ -24,73 +26,44 @@ using namespace Encryption;
 namespace Trainer {
 
     namespace {
-        // ---- Gen 3 English text for the trainer + box names (table: Utils/Gen3Text.h) ----
-        // Decodes through UTF-16 and hands back UTF-8, so the accents and the ♀/♂ a Gen 3 name may
-        // legitimately contain survive into a std::string. Going straight to narrow chars is what
-        // silently dropped them before -- none of them fit in one.
-        std::string g3Decode(const uint8_t* p, size_t maxLen) {
+        // ---- Gen 3 language-aware text for trainer + box names ----
+        std::string g3Decode(const uint8_t* p, size_t maxLen, uint8_t languageId) {
             std::u16string wide;
             for (size_t i = 0; i < maxLen; ++i) {
                 const uint8_t b = p[i];
                 if (b == Utils::GEN3_TERMINATOR) break;
-                if (const char16_t c = Utils::gen3ToChar(b)) wide += c;   // 0 = no glyph -> skip it
+                if (const char16_t c = Utils::gen3ToChar(b, languageId)) wide += c;
             }
-            // trim trailing spaces (Gen 3 pads short names with spaces)
-            while (!wide.empty() && wide.back() == u' ') wide.pop_back();
+            while (!wide.empty() && (wide.back() == u' ' || wide.back() == u'　')) wide.pop_back();
             return Utils::utf16ToUtf8(wide);
         }
 
-        /**
-         * Inverse of g3Decode. Returns FALSE if any character has no Gen 3 representation, so the
-         * caller can refuse the name outright rather than silently storing a mangled one -- the
-         * Switch keyboard will happily produce accents and emoji that this table cannot express.
-         *
-         * Writes the text plus a single 0xFF terminator and **touches nothing after it**, so `out`
-         * must arrive holding the bytes currently in the save.
-         *
-         * That tail matters more than it looks. The round-trip harness showed a real FireRed
-         * save carries a MIX of 0x00 and 0xFF after the terminator -- the game writes a name and
-         * leaves whatever was already there. Clearing to 0xFF drifted 33 bytes; clearing to 0x00
-         * drifted 19. Only preserving the tail reproduces the file, and it is the safer rule anyway:
-         * don't rewrite bytes you have no reason to touch. Decoding never noticed either way, since
-         * g3Decode stops at the terminator -- which is precisely why only a byte compare found it.
-         *
-         * `in` is UTF-8 and is decoded before mapping. Walking it as raw bytes instead used to reject
-         * every multi-byte character on the lead byte alone, which quietly refused names Gen 3 can in
-         * fact store -- ♀, ♂ and the accented letters all have real bytes in its table.
-         *
-         * maxChars counts Gen 3 bytes, i.e. glyphs, not UTF-8 code units, so a name of accents still
-         * measures against the field the way the player sees it.
-         */
-        bool g3Encode(const std::string& in, uint8_t* out, size_t bytes, size_t maxChars) {
+        bool g3Encode(const std::string& in, uint8_t* out, size_t bytes, size_t maxChars,
+                      uint8_t languageId) {
             size_t n = 0;
             for (const char16_t c : Utils::utf8ToUtf16(in)) {
                 if (n >= maxChars || n >= bytes) break;
-                const uint8_t b = Utils::charToGen3(c);
-                if (b == Utils::GEN3_TERMINATOR) return false;   // no Gen 3 glyph for this character
+                const uint8_t b = Utils::charToGen3(c, languageId);
+                if (b == Utils::GEN3_TERMINATOR) return false;
                 out[n++] = b;
             }
-            if (n < bytes) out[n] = Utils::GEN3_TERMINATOR;   // terminator; everything past it is left alone
+            if (n < bytes) out[n] = Utils::GEN3_TERMINATOR;
             return true;
         }
 
-        // Build a 100-byte ENCRYPTED party record from an entity, computing the party-only battle stats
-        // (0x50-0x63) so a mon promoted from a box (80 B, no stats) serializes correctly. Caller writes 100 B.
+        // Preserve an existing 100-byte party tail exactly. Derive it only for an 80-byte
+        // box record (or an explicitly zero-padded bank record) promoted into the party.
         void buildPartyRecord(::Pokemon::Pokemon& pk, uint8_t out[100]) {
-            uint8_t buf[100];
-            std::memset(buf, 0, sizeof(buf));
+            uint8_t buf[100] = {0};
             const size_t n = std::min<size_t>(pk.getDataSize(), 100);
-            std::memcpy(buf, pk.getData().data(), n);           // canonical header + G/A/E/M (+ stats if party)
-            const uint16_t maxHP = pk.statHPMax();
-            const uint16_t curHP = ::Pokemon::Pokemon3FRLG::carryCurrentHP(readUInt16LittleEndian(buf + 0x56), readUInt16LittleEndian(buf + 0x58), maxHP);
-            buf[0x54] = pk.level();
-            writeUInt16LittleEndian(buf + 0x56, curHP);           // current HP (the mon's own, carried over)
-            writeUInt16LittleEndian(buf + 0x58, maxHP);           // max HP
-            writeUInt16LittleEndian(buf + 0x5A, pk.statATK());
-            writeUInt16LittleEndian(buf + 0x5C, pk.statDEF());
-            writeUInt16LittleEndian(buf + 0x5E, pk.statSPE());
-            writeUInt16LittleEndian(buf + 0x60, pk.statSPA());
-            writeUInt16LittleEndian(buf + 0x62, pk.statSPD());
+            std::memcpy(buf, pk.getData().data(), n);
+            const auto bytes = std::span<uint8_t>(buf, sizeof(buf));
+            if (!::Pokemon::hasStoredGen3PartyTail(bytes, n)) {
+                const ::Pokemon::Gen3PartyDerivedStats stats{
+                    pk.level(), pk.statHPMax(), pk.statATK(), pk.statDEF(),
+                    pk.statSPE(), pk.statSPA(), pk.statSPD()};
+                ::Pokemon::initializeGen3PartyTail(bytes, stats);
+            }
             std::byte* enc = encryptArray3FRLG(
                 std::span<const std::byte>(reinterpret_cast<const std::byte*>(buf), 100));
             std::memcpy(out, enc, 100);
@@ -192,13 +165,22 @@ namespace Trainer {
         uint8_t tmp[100];
         if (size > sizeof(tmp)) size = sizeof(tmp);
         readBlock(blockBaseId, logical, tmp, size);
-        return std::make_unique<Pokemon3FRLG>(
+        auto pokemon = std::make_unique<Pokemon3FRLG>(
             std::span<const std::byte>(reinterpret_cast<const std::byte*>(tmp), size));
+        pokemon->setSaveLanguage(m_languageId);
+        return pokemon;
+    }
+
+    void Trainer3FRLG::detectLanguage(size_t smallBlockOffset) {
+        const bool japanese = readUInt16LittleEndian(&saveData[smallBlockOffset + 0x06]) == 0;
+        m_languageId = static_cast<uint8_t>(japanese ? Enums::LanguageID::Japanese
+                                                     : Enums::LanguageID::English);
     }
 
     void Trainer3FRLG::parseTrainer() {
         const size_t sm = m_sectorOfs[SMALL_ID];
-        this->trainerName = g3Decode(&saveData[sm + 0x00], 7);
+        detectLanguage(sm);
+        this->trainerName = g3Decode(&saveData[sm + 0x00], 7, m_languageId);
         this->TID16 = readUInt16LittleEndian(&saveData[sm + 0x0A]);
         this->SID16 = readUInt16LittleEndian(&saveData[sm + 0x0C]);
         this->trainerGender = saveData[sm + 0x08] & 1;   // 0x08: player gender (0=M, 1=F)
@@ -243,7 +225,7 @@ namespace Trainer {
         // it is not Unicode, so whatever the Switch keyboard adds past it must be refused up front
         // rather than dropped on write.
         uint8_t scratch[FRLG_BOX_NAME_BYTES];
-        return g3Encode(name, scratch, FRLG_BOX_NAME_BYTES, FRLG_BOX_NAME_CHARS);
+        return g3Encode(name, scratch, FRLG_BOX_NAME_BYTES, FRLG_BOX_NAME_CHARS, m_languageId);
     }
 
     void Trainer3FRLG::updateBoxNameBlock() {
@@ -260,7 +242,7 @@ namespace Trainer {
                       nameBuf, FRLG_BOX_NAME_BYTES);
             // A name the Gen 3 table can't express is skipped rather than written mangled. The UI
             // validates before getting here, so this is a backstop, not the primary check.
-            if (!g3Encode(boxNames[b], nameBuf, FRLG_BOX_NAME_BYTES, FRLG_BOX_NAME_CHARS)) continue;
+            if (!g3Encode(boxNames[b], nameBuf, FRLG_BOX_NAME_BYTES, FRLG_BOX_NAME_CHARS, m_languageId)) continue;
             writeBlock(STORAGE_ID, FRLG_BOX_NAME_OFFSET + b * FRLG_BOX_NAME_BYTES,
                        nameBuf, FRLG_BOX_NAME_BYTES);
         }
@@ -346,7 +328,7 @@ namespace Trainer {
         for (size_t b = 0; b < FRLG_BOX_COUNT; ++b) {
             uint8_t nameBuf[9];
             readBlock(STORAGE_ID, 0x8344 + b * 9, nameBuf, 9);
-            std::string name = g3Decode(nameBuf, 8);
+            std::string name = g3Decode(nameBuf, 8, m_languageId);
             if (name.empty()) name = "Box " + std::to_string(b + 1);
             boxNames.push_back(name);
         }
@@ -385,7 +367,8 @@ namespace Trainer {
                 buildPartyRecord(*party[i], rec);
                 writeBlock(LARGE_ID, logical, rec, 100);
             } else {
-                uint8_t blank[100] = {0};   // Gen 3 empty party slot = all zero (species 0); seed-0 crypt keeps it clean
+                uint8_t blank[100];
+                ::Pokemon::makeEmptyGen3PartySlot(std::span<uint8_t>(blank, sizeof(blank)));
                 writeBlock(LARGE_ID, logical, blank, 100);
             }
         }
@@ -417,7 +400,7 @@ namespace Trainer {
         // 0x08; the UI has already rejected any name the Gen-3 glyph table can't store.
         const size_t sm = m_sectorOfs[SMALL_ID];
         if (sm + 0x09 <= saveData.size())
-            g3Encode(this->trainerName, &saveData[sm + 0x00], 8, 7);
+            g3Encode(this->trainerName, &saveData[sm + 0x00], 8, 7, m_languageId);
         uint8_t moneyBuf[4];
         writeUInt32LittleEndian(moneyBuf, this->money ^ m_key);
         writeBlock(LARGE_ID, 0x290, moneyBuf, 4);
@@ -454,7 +437,10 @@ namespace Trainer {
         // (identity), so decrypt leaves zeros, species 0, checksum 0 (valid). Party-sized so the creator
         // can place it into either party or a box.
         std::vector<std::byte> zero(100, std::byte{0});
-        return std::make_unique<Pokemon3FRLG>(std::span<const std::byte>(zero.data(), zero.size()));
+        auto pokemon = std::make_unique<Pokemon3FRLG>(
+            std::span<const std::byte>(zero.data(), zero.size()));
+        pokemon->setSaveLanguage(m_languageId);
+        return pokemon;
     }
 
     void Trainer3FRLG::finalizeChecksums() {

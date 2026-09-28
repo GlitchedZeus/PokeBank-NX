@@ -1,8 +1,10 @@
 #ifndef GET_SAVE_FILE_CONTENTS_H
 #define GET_SAVE_FILE_CONTENTS_H
 
+#include <span>
 #include <string>
 #include <variant>
+#include <vector>
 
 #include <switch.h>
 
@@ -36,6 +38,21 @@ namespace Save {
     // ========================================
     // Generic Functions (Auto-detect game)
     // ========================================
+
+    struct WorkspaceImage {
+        std::string fileId;
+        std::vector<uint8_t> bytes;
+    };
+
+    // A04b: construct and validate a complete PokeBank-owned workspace post-image without
+    // persisting it. This is what lets the Move journal exist before either store changes.
+    bool buildWorkspaceImage(Trainer::Trainer& trainer, const char* backupDir, u64 titleId,
+                             WorkspaceImage& out, std::string& error);
+    bool validateWorkspaceImage(u64 titleId, std::span<const uint8_t> bytes, std::string& error);
+    bool persistWorkspaceImage(u64 titleId, const char* backupDir,
+                               const WorkspaceImage& image, std::string& error);
+    std::string authoritativeWorkspaceFileId(const char* backupDir, u64 titleId,
+                                             std::string& error);
 
     /**
      * Reads trainer info from a save file, auto-detecting the game version.

@@ -11,6 +11,7 @@
 #include "UI/PKSEFramebuffer.h"
 #include "Legacy/FRLGSourceBrowser.h"
 #include "Legacy/LegacySourceBindings.h"
+#include "Integration/Gen4/Gen4SourceDiscovery.h"
 
 namespace UI {
     // JKSV-style combined user + title picker. Shows the selected user's avatar + name at the top
@@ -24,6 +25,7 @@ namespace UI {
             None,
             SwitchTitle,
             RetroArchFRLG,
+            Gen4AssignedFile,
         };
 
         SaveSelectScreen(PokeVault::Legacy::FRLGDiscoveryResult& legacySources,
@@ -67,7 +69,8 @@ namespace UI {
 
         bool titleSelected = false;
         bool exitRequested = false;
-        enum class Overlay { None, Options, Help, LegacyInstances, LegacyAssignment, LegacyDetails };
+        enum class Overlay { None, Options, Help, LegacyInstances, LegacyAssignment, LegacyDetails,
+                             Gen4Setup, Gen4Candidates };
         Overlay overlay = Overlay::None;
         int optionsIndex = 0;
         int legacyInstanceIndex = 0;
@@ -92,12 +95,27 @@ namespace UI {
         PokeVault::Legacy::FRLGSaveInstance legacyDetailsInstance;
         std::string legacyDetailsGameId;
 
+        // Gen IV game cards are always visible. Pressing A discovers/refreshes validated save
+        // instances and always shows a chooser before opening. The existing assignment database is
+        // retained only as a remembered/manual source so paths outside known emulator roots remain
+        // reachable; it must never bypass the Save Instances chooser.
+        std::string gen4TargetGameId;
+        std::string gen4Notice;
+        // Generation-specific candidates stay as opaque validation handles; the chooser itself
+        // consumes the same provider-neutral SaveInstance rows used by Gen I-III.
+        std::vector<PokeVault::Integration::Gen4::SourceCandidate> gen4Candidates;
+        std::vector<PokeVault::Source::SaveInstance> gen4Instances;
+        int gen4SetupIndex = 0;
+        int gen4CandidateIndex = 0;
+        int gen4CandidateScroll = 0;
+
         // Tap targets captured during draw(), hit-tested on the next update().
         std::vector<HitRect> titleRects;
         std::vector<HitRect> userRects;
 
         void loadUsers();
         void loadLegacySources(const PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
+        void loadGen4Cards();
         void rebuildUnassignedLegacySources();
         bool assignCurrentLegacySource();
         [[nodiscard]] std::string currentProfileIdentity() const;
@@ -113,6 +131,12 @@ namespace UI {
         void setUser(int idx);
         void selectCurrentTitle();
         void selectCurrentLegacyInstance();
+        void openGen4Setup(const std::string& gameId, std::string notice = {});
+        void discoverGen4Candidates();
+        bool assignGen4Candidate(const PokeVault::Integration::Gen4::SourceCandidate& candidate);
+        void chooseGen4ManualFile();
+        bool unassignCurrentGen4Game();
+        void selectAssignedGen4Title();
 
         const UserEntry* currentUser() const;
         int titleColumns() const;      // grid columns for the current user's title count (<= 5)

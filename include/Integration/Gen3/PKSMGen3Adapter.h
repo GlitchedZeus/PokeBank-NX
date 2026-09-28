@@ -21,6 +21,7 @@
 namespace PokeVault::Integration::Gen3 {
     inline constexpr std::string_view PKSM_CORE_REVISION =
         "aa22d7a4f87c0351baf7da5962ba5acd01039a7c";
+    inline constexpr std::size_t GEN3_SAVE_SIZE = 0x20000;
 
     enum class SourceGame : uint8_t {
         FireRedGBA,
@@ -53,6 +54,7 @@ namespace PokeVault::Integration::Gen3 {
         uint16_t sid16 = 0;
         uint32_t id32 = 0;
         uint32_t money = 0;
+        uint8_t language = 2; // English represents the shared international Gen III save charset.
     };
 
     enum class InventoryPouch : uint8_t {
