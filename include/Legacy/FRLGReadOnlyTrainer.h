@@ -22,6 +22,10 @@ public:
     size_t getBoxCount() const noexcept override { return boxCount_; }
     size_t getSlotsPerBox() const noexcept override { return slotsPerBox_; }
     size_t getPartySize() const noexcept override { return party.size(); }
+    bool hasStagedChanges() const noexcept override {
+        return (stagedPokemon_ && stagedPokemon_->hasPendingChanges()) ||
+               (stagedInventory_ && stagedInventory_->hasPendingChanges());
+    }
     Enums::GameVersion getGameGroup() const noexcept override { return Enums::GameVersion::FRLG; }
     const std::string& sourceGameId() const noexcept { return sourceGameId_; }
     bool stagedInventoryAvailable() const noexcept { return stagedInventory_ != nullptr; }
