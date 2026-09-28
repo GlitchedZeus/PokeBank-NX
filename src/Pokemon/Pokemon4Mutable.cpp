@@ -566,15 +566,32 @@ bool Pokemon4Mutable::setHeldItem(uint16_t value) noexcept {
 
 bool Pokemon4Mutable::setLanguage(uint8_t value) noexcept {
     if (!valid_ || !Enums::groupHasLanguage(sourceGroup_, value)) return false;
-    const bool nicknamed = (u32At(0x38) & 0x80000000u) != 0;
-    const uint8_t oldLanguage = language();
+
+    Pokemon4ReadOnly before(encryptedBytes(), sourceGroup_);
+    if (!before.valid() || before.empty()) return false;
+    const bool nicknamed = before.isNicknamed();
+    const auto oldNickname = before.nickname();
+    const auto oldOtName = before.originalTrainerName();
+    const auto backup = decrypted_;
+
     write8(0x17, value);
     if (!nicknamed) {
         const auto speciesName = gen4DefaultSpeciesName(species(), value);
         if (!writeTextPreservingTrash(0x48, 11, 10, speciesName)) {
-            write8(0x17, oldLanguage);
+            decrypted_ = backup;
             return false;
         }
+    }
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid() || verify.empty() || verify.language() != value ||
+        verify.originalTrainerName() != oldOtName ||
+        verify.isNicknamed() != nicknamed ||
+        (nicknamed && verify.nickname() != oldNickname) ||
+        (!nicknamed &&
+         verify.nickname() != gen4DefaultSpeciesName(species(), value))) {
+        decrypted_ = backup;
+        return false;
     }
     return true;
 }

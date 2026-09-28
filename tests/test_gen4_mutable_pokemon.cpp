@@ -398,6 +398,50 @@ void testCatalogBackedFieldValidation() {
 }
 
 
+void testLanguageTransitions() {
+    auto custom = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(), Enums::GameVersion::PT);
+    assert(custom);
+    assert(custom->setNickname(u"SPARK"));
+    const auto beforeCustom = std::vector<std::byte>(
+        custom->decryptedBytes().begin(), custom->decryptedBytes().end());
+
+    assert(custom->setLanguage(1)); // Japanese language ID.
+    Pokemon::Pokemon4ReadOnly japanese(
+        custom->encryptedBytes(), Enums::GameVersion::PT);
+    assert(japanese.valid() && japanese.language() == 1);
+    assert(japanese.nickname() == u"SPARK");
+    assert(japanese.originalTrainerName() == u"ASH");
+
+    const auto afterJapanese = custom->decryptedBytes();
+    for (size_t i = 0; i < beforeCustom.size(); ++i) {
+        if (i == 0x17) continue;
+        assert(afterJapanese[i] == beforeCustom[i]);
+    }
+
+    assert(custom->setLanguage(8)); // Korean is supported by Gen IV.
+    Pokemon::Pokemon4ReadOnly koreanCustom(
+        custom->encryptedBytes(), Enums::GameVersion::PT);
+    assert(koreanCustom.valid() && koreanCustom.language() == 8);
+    assert(koreanCustom.nickname() == u"SPARK");
+    assert(koreanCustom.originalTrainerName() == u"ASH");
+
+    const auto stable = custom->encryptedBytes();
+    assert(!custom->setLanguage(9)); // Chinese is not a PK4 language.
+    assert(custom->encryptedBytes() == stable);
+
+    auto nativeName = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(), Enums::GameVersion::PT);
+    assert(nativeName);
+    assert(nativeName->setLanguage(8));
+    Pokemon::Pokemon4ReadOnly koreanDefault(
+        nativeName->encryptedBytes(), Enums::GameVersion::PT);
+    assert(koreanDefault.valid() && koreanDefault.language() == 8);
+    assert(!koreanDefault.isNicknamed());
+    assert(!koreanDefault.nickname().empty());
+    assert(koreanDefault.originalTrainerName() == u"ASH");
+}
+
 void testPokerusModes() {
     auto mon = Pokemon::Pokemon4Mutable::fromEncrypted(
         makeEntity(), Enums::GameVersion::PT);
@@ -694,6 +738,7 @@ int main() {
     testShedinjaPartyHpRule();
     testSpeciesReconciliation();
     testCatalogBackedFieldValidation();
+    testLanguageTransitions();
     testPokerusModes();
     testExactBallSemantics();
     testExactMetLocationSemantics();
