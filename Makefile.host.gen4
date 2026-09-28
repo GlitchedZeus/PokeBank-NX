@@ -37,6 +37,8 @@ host-sanitize: gen4-safety-contract
 
 
 # G4-03: exact Gen IV adapter contract for the one shared Pokemon editor shell.
+GEN4_EDITOR_PROVIDER_SOURCES := tests/test_gen4_exact_format_editor_provider.cpp \
+	src/Names/MovePresence.cpp
 GEN4_EDITOR_PROVIDER_TEST := $(HOST_BUILD)/test_gen4_exact_format_editor_provider
 GEN4_EDITOR_PROVIDER_SANITIZE := $(HOST_BUILD)/test_gen4_exact_format_editor_provider_sanitize
 
@@ -45,19 +47,19 @@ HOST_SANITIZE_TESTS += $(GEN4_EDITOR_PROVIDER_SANITIZE)
 host-test: $(GEN4_EDITOR_PROVIDER_TEST)
 host-sanitize: $(GEN4_EDITOR_PROVIDER_SANITIZE)
 
-$(GEN4_EDITOR_PROVIDER_TEST): tests/test_gen4_exact_format_editor_provider.cpp \
-	include/Integration/Gen4/Gen4ExactFormatEditorProvider.h \
+$(GEN4_EDITOR_PROVIDER_TEST): $(GEN4_EDITOR_PROVIDER_SOURCES) \
+	include/Integration/Gen4/Gen4ExactFormatEditorProvider.h include/Names/MovePresence.h \
 	include/UI/ExactFormatEditorProvider.h include/UI/ExactSaveCapabilities.h \
 	include/UI/SharedPokemonEditorContract.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_EDITOR_PROVIDER_SOURCES) -o $@
 
-$(GEN4_EDITOR_PROVIDER_SANITIZE): tests/test_gen4_exact_format_editor_provider.cpp \
-	include/Integration/Gen4/Gen4ExactFormatEditorProvider.h \
+$(GEN4_EDITOR_PROVIDER_SANITIZE): $(GEN4_EDITOR_PROVIDER_SOURCES) \
+	include/Integration/Gen4/Gen4ExactFormatEditorProvider.h include/Names/MovePresence.h \
 	include/UI/ExactFormatEditorProvider.h include/UI/ExactSaveCapabilities.h \
 	include/UI/SharedPokemonEditorContract.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_EDITOR_PROVIDER_SOURCES) -o $@
 
 
 # G4-03: mutable PK4 core. This is entity-only; it cannot write an external save.
@@ -65,7 +67,8 @@ GEN4_MUTABLE_SOURCES := tests/test_gen4_mutable_pokemon.cpp \
 	src/Pokemon/Pokemon4Mutable.cpp src/Pokemon/Pokemon4ReadOnly.cpp \
 	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp \
 	src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp \
-	src/Encryption/Encryption4.cpp src/Pokemon/Experience.cpp
+	src/Encryption/Encryption4.cpp src/Pokemon/Experience.cpp \
+	src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp
 GEN4_MUTABLE_TEST := $(HOST_BUILD)/test_gen4_mutable_pokemon
 GEN4_MUTABLE_SANITIZE := $(HOST_BUILD)/test_gen4_mutable_pokemon_sanitize
 
@@ -90,7 +93,8 @@ GEN4_STAGED_EDITOR_SOURCES := tests/test_gen4_staged_pokemon_editor.cpp \
 	src/Pokemon/Pokemon4Mutable.cpp src/Pokemon/Pokemon4ReadOnly.cpp \
 	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp \
 	src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp \
-	src/Encryption/Encryption4.cpp src/Pokemon/Experience.cpp
+	src/Encryption/Encryption4.cpp src/Pokemon/Experience.cpp \
+	src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp
 GEN4_STAGED_EDITOR_TEST := $(HOST_BUILD)/test_gen4_staged_pokemon_editor
 GEN4_STAGED_EDITOR_SANITIZE := $(HOST_BUILD)/test_gen4_staged_pokemon_editor_sanitize
 
