@@ -23,7 +23,7 @@ require("restoreBackupToTitle" not in source,
         "game hub preview must never restore/inject a save")
 require("PartyPreviewSlot" in header, "game hub party preview model must be explicit")
 
-require("Overlay::GameFilePicker" in header,
+require("GameFilePicker" in header and "Overlay::GameFilePicker" in source,
         "game hub must provide an in-app game-file browser")
 require("saveGameLaunchBinding" in source,
         "Link Game File must persist app-owned launch metadata")
