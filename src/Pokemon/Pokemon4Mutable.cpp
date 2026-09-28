@@ -523,7 +523,17 @@ bool Pokemon4Mutable::setEV(size_t stat, uint8_t value) noexcept {
 
 bool Pokemon4Mutable::setMove(size_t slot, uint16_t move) noexcept {
     if (!valid_ || slot >= 4) return false;
-    if (move != 0 && !Names::isMovePresent(move, sourceGroup_)) return false;
+    // PK4's native move set ends at Shadow Force (467). Keep this structural
+    // boundary local even though the shared presence table also serves later games.
+    if (move > 467) return false;
+    if (move != 0 && !Names::isMovePresent(move, sourceGroup_)) {
+        // Older shared presence tables may not enumerate DP/Pt/HGSS explicitly;
+        // the native Gen IV contiguous range above remains authoritative here.
+        if (sourceGroup_ != Enums::GameVersion::DP &&
+            sourceGroup_ != Enums::GameVersion::PT &&
+            sourceGroup_ != Enums::GameVersion::HGSS)
+            return false;
+    }
     write16(0x28 + slot * 2, move);
     return true;
 }
