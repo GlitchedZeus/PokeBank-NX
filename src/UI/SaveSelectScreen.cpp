@@ -1113,7 +1113,7 @@ namespace UI {
             fb.drawText(x + 28, y + 44, "Assign a Legacy Save to " + u->name,
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 28, y + 76,
-                        "Unassigned files are hidden from every profile until you choose one.",
+                        "Assigning claims this save for this profile and hides it from other profiles.",
                         Colors::TextSecondary, TextStyle::Caption);
             const int first = legacyAssignmentScroll;
             const int last = std::min<int>(static_cast<int>(unassignedLegacySources.size()),

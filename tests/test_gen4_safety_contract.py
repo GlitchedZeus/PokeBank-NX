@@ -56,6 +56,8 @@ assert 'std::string providerLabel;' in legacy_model
 assert 'bindings.assignedProfile(instance.sourceIdentity)' in legacy_browser
 assert 'return !owner.empty() && owner != profileIdentity;' in legacy_browser
 assert '!bindings.isVisibleTo(instance.sourceIdentity, profileIdentity)' not in legacy_browser
+assert 'Unassigned files are hidden from every profile until you choose one.' not in select
+assert 'Assigning claims this save for this profile and hides it from other profiles.' in select
 assert 'SAVE INSTANCES / ' in select
 assert 'instance.providerLabel' in select
 assert 'providerSummary(parent.legacyInstances)' in select
