@@ -2,6 +2,10 @@
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Names/MoveInfo.h"
 #include "Names/MoveNames.h"
+#include "Names/MovePresence.h"
+#include "Names/ItemNames.h"
+#include "Enums/Ball.h"
+#include "Enums/LanguageID.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon4ReadOnlyView.h"
 #include "Trainer/Trainer.h"
@@ -31,7 +35,9 @@ namespace SessionModel = PokeBank::UIModel::Gen4SharedEditor;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
 namespace Gen4 = PokeVault::Integration::Gen4;
 
-enum class PickerTarget : uint8_t { None, Nature, Ability };
+enum class PickerTarget : uint8_t {
+    None, Species, Nature, Ability, HeldItem, Language, Ball, Pokerus, Move
+};
 enum class TargetKind : uint8_t { Box, Party };
 
 struct State {
