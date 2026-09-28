@@ -510,7 +510,7 @@ src/Pokemon/PersonalRecord4.cpp	blob	100644	109		unknown		PENDING			0
 src/Pokemon/Pokemon1ReadOnly.cpp	blob	100644	975		unknown		PENDING			0	
 src/Pokemon/Pokemon2ReadOnly.cpp	blob	100644	1478		unknown		PENDING			0	
 src/Pokemon/Pokemon3FRLG.cpp	blob	100644	19608		unknown		PENDING			0	
-src/Pokemon/Pokemon4Mutable.cpp	blob	100644	37332	Gen IV mutable PK4 serialization/edit core	text	945	AUDITED			0	yes
+src/Pokemon/Pokemon4Mutable.cpp	blob	100644	37332	Gen IV mutable PK4 serialization/edit core	text	994	AUDITED			0	yes
 src/Pokemon/Pokemon4ReadOnly.cpp	blob	100644	7726		unknown		PENDING			0	
 src/Pokemon/Pokemon4ReadOnlyView.cpp	blob	100644	8598		unknown		PENDING			0	
 src/Pokemon/Pokemon7LGPE.cpp	blob	100644	13067		unknown		PENDING			0	
@@ -690,7 +690,7 @@ tests/test_save_instance_architecture_contract.py	blob	100644	5437		unknown		PEN
 tests/test_save_instance_model.cpp	blob	100644	5311		unknown		PENDING			0	
 tests/test_shared_editor_heading_contract.cpp	blob	100644	12864		unknown		PENDING			0	
 tests/test_shared_pokemon_editor_contract.cpp	blob	100644	15519		unknown		PENDING			0	
-tests/test_shared_species_picker_surface_contract.cpp	blob	100644	2643	shared species picker source contract test	text	66	AUDITED			0	no
+tests/test_shared_species_picker_surface_contract.cpp	blob	100644	2643	shared species picker source contract test	text	70	AUDITED			0	no
 tests/test_source_mutation_policy.cpp	blob	100644	1841	source mutation policy/action-sheet regression	text	38	AUDITED			1	yes
 tests/test_sprite_layout.cpp	blob	100644	1051		unknown		PENDING			0	
 tests/test_storage_conversion_custody_contract.cpp	blob	100644	8891	conversion custody/commit-order regression	text	185	AUDITED			0	no
