@@ -184,6 +184,9 @@ int Pokemon4Mutable::constrainedAbilityBit() const noexcept {
 
 uint16_t Pokemon4Mutable::calculatedStat(size_t stat) const noexcept {
     if (!valid_ || stat >= 6) return 0;
+    // Shedinja is the Gen III+ hard exception to the normal HP formula: its maximum HP is
+    // always exactly 1 regardless of level, IV or EV. Party edits must preserve that native rule.
+    if (stat == 0 && species() == 292) return 1;
     const auto& personal = personalFor(sourceGroup_, species(), form());
     const std::array<uint8_t,6> base{{
         personal.hp, personal.atk, personal.def,
