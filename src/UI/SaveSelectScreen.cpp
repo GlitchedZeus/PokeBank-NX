@@ -1144,7 +1144,10 @@ namespace UI {
             constexpr int w = 900, h = 520;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
-            fb.drawText(x + 28, y + 18, "RETROARCH / SOURCE DIAGNOSTICS / READ ONLY",
+            const std::string detailsProvider = legacyDetailsInstance.providerLabel.empty()
+                ? std::string("SOURCE") : legacyDetailsInstance.providerLabel;
+            fb.drawText(x + 28, y + 18,
+                        detailsProvider + " / SOURCE DIAGNOSTICS / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, legacyDetailsInstance.label,
                         Colors::TextPrimary, TextStyle::Heading);

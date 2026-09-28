@@ -61,6 +61,8 @@ assert 'providerSummary(parent.legacyInstances)' in select
 assert '"Providers: "' in select
 assert '"Active root: " + sourceLeafName(legacyCatalog->activeRoot)' not in select
 assert 'drawLine("Provider", legacyDetailsInstance.providerLabel.empty()' in select
+assert 'detailsProvider + " / SOURCE DIAGNOSTICS / READ ONLY"' in select
+assert '"RETROARCH / SOURCE DIAGNOSTICS / READ ONLY"' not in select
 viewer_header = (root / 'include/UI/TrainerViewScreenBase.h').read_text()
 viewer_impl = (root / 'src/UI/TrainerViewScreenBase.inc').read_text()
 assert 'std::string sourceProviderLabel' in viewer_header
