@@ -68,13 +68,18 @@ int main() {
     contains(surface, "state.moveEditorRow == 2");
     contains(surface, "Move selection stays read-only until exact Gen IV learnsets are pinned");
 
-    // First milestone is deliberately View/Edit only.
+    // Gen IV remains View/Edit only, now reachable from both Box and Party surfaces.
     contains(surface, "result.values[result.count++] = Shared::Action::View");
     contains(surface, "result.values[result.count++] = Shared::Action::Edit");
     assert(surface.find("result.values[result.count++] = Shared::Action::Add") == std::string::npos);
     assert(surface.find("result.values[result.count++] = Shared::Action::Clone") == std::string::npos);
     assert(surface.find("result.values[result.count++] = Shared::Action::Remove") == std::string::npos);
-    contains(surface, "Generation IV Create follows after boxed Edit hardware acceptance");
+    contains(surface, "Generation IV Create follows after Edit hardware acceptance");
+    contains(surface, "partyEntrySurface");
+    contains(surface, "TargetKind::Party");
+    contains(surface, "keepParty");
+    contains(surface, "beginPassiveView");
+    contains(surface, "screen.closeDetailsModal()");
 
     // Dirty Back uses the same shared exit guard and explicit A/Y/B confirmation.
     contains(session, "PokemonEditorExitGuard::requiresConfirmation");
@@ -91,6 +96,8 @@ int main() {
     contains(staged, "original_");
     contains(staged, "staged_");
     contains(staged, "refreshStorageCrc");
+    contains(staged, "refreshGeneralCrc");
+    contains(staged, "commitPartyPokemon");
     contains(staged, "Gen4ReadOnlySave::parse(");
     assert(staged.find("std::fopen") == std::string::npos);
     assert(staged.find("std::fwrite") == std::string::npos);
