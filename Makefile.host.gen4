@@ -37,8 +37,7 @@ host-sanitize: gen4-safety-contract
 
 
 # G4-03: exact Gen IV adapter contract for the one shared Pokemon editor shell.
-GEN4_EDITOR_PROVIDER_SOURCES := tests/test_gen4_exact_format_editor_provider.cpp \
-	src/Names/MovePresence.cpp
+GEN4_EDITOR_PROVIDER_SOURCES := tests/test_gen4_exact_format_editor_provider.cpp
 GEN4_EDITOR_PROVIDER_TEST := $(HOST_BUILD)/test_gen4_exact_format_editor_provider
 GEN4_EDITOR_PROVIDER_SANITIZE := $(HOST_BUILD)/test_gen4_exact_format_editor_provider_sanitize
 
@@ -48,14 +47,14 @@ host-test: $(GEN4_EDITOR_PROVIDER_TEST)
 host-sanitize: $(GEN4_EDITOR_PROVIDER_SANITIZE)
 
 $(GEN4_EDITOR_PROVIDER_TEST): $(GEN4_EDITOR_PROVIDER_SOURCES) \
-	include/Integration/Gen4/Gen4ExactFormatEditorProvider.h include/Names/MovePresence.h \
+	include/Integration/Gen4/Gen4ExactFormatEditorProvider.h \
 	include/UI/ExactFormatEditorProvider.h include/UI/ExactSaveCapabilities.h \
 	include/UI/SharedPokemonEditorContract.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_EDITOR_PROVIDER_SOURCES) -o $@
 
 $(GEN4_EDITOR_PROVIDER_SANITIZE): $(GEN4_EDITOR_PROVIDER_SOURCES) \
-	include/Integration/Gen4/Gen4ExactFormatEditorProvider.h include/Names/MovePresence.h \
+	include/Integration/Gen4/Gen4ExactFormatEditorProvider.h \
 	include/UI/ExactFormatEditorProvider.h include/UI/ExactSaveCapabilities.h \
 	include/UI/SharedPokemonEditorContract.h
 	@mkdir -p $(HOST_BUILD)
