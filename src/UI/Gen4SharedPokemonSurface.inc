@@ -18,6 +18,7 @@
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
+#include "UI/SharedSpeciesPicker.h"
 #include "UI/SharedPokemonShell.h"
 #include "Utils/Keyboard.h"
 #include "Utils/StringHelpers.h"
@@ -1295,6 +1296,29 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+
+    if (speciesPicker) {
+        const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        bool previewShiny = false;
+        if (const auto preview = workingRecord(state, bridge(screen).sourceSave().rawFamily())) {
+            Pokemon::Pokemon4ReadOnlyView previewView(*preview);
+            previewShiny = previewView.isShiny(preview->id32(), {});
+        }
+        const uint16_t species =
+            state.pickerValues[static_cast<size_t>(state.pickerRow)];
+        SharedSpeciesPicker::drawContent(
+            fb, modal.x, modal.y, species, 493, previewShiny,
+            [](uint16_t value) {
+                return std::to_string(value) + "  " + Names::getSpeciesName(value);
+            },
+            [](uint16_t value) {
+                return std::string(Names::getSpeciesName(value));
+            },
+            false);
+        drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
+                        {"ZL/ZR", "Jump"}, {"A", "Choose"}, {"B", "Cancel"}});
+        return;
+    }
 
     if (movePicker) {
         fb.drawText(x + 24, y + 18, "Move — Generation IV", Colors::Text, TextStyle::Heading);

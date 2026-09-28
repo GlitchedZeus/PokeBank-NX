@@ -23,6 +23,7 @@ int main() {
     const auto gen1 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
     const auto gen2 = read("src/UI/Gen2PokemonPickerOverlay.inc");
     const auto gen3 = read("src/UI/Gen3SharedPokemonSurface.inc");
+    const auto gen4 = read("src/UI/Gen4SharedPokemonSurface.inc");
     const auto gen2Actions = read("src/UI/Gen2SharedSurfaceParity.inc");
 
     contains(shared, "inline constexpr int ModalWidth = 1080;");
@@ -36,6 +37,7 @@ int main() {
     contains(gen1, "SharedSpeciesPicker::drawModalChrome(fb)");
     contains(gen2, "SharedSpeciesPicker::drawModalChrome(fb)");
     contains(gen3, "SharedSpeciesPicker::drawModalChrome(fb)");
+    contains(gen4, "SharedSpeciesPicker::drawModalChrome(fb)");
 
     // Hardware regressions that prompted this contract.
     assert(gen2.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::Accent, 2)") == std::string::npos);
@@ -51,6 +53,8 @@ int main() {
     contains(gen1, "state.pickerValue, 151");
     contains(gen2, "model.speciesChoice(), 251");
     contains(gen3, "state.speciesPreview, 386");
+    contains(gen4, "species, 493, previewShiny");
+    contains(shared, "Pokemon::getPersonalInfo4HGSS(species, 0)");
     contains(gen1, "pickerPreviewShiny");
     contains(gen2, "model.previewShiny");
     contains(gen3, "state.speciesPreviewShiny");

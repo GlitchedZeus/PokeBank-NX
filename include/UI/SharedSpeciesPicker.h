@@ -2,6 +2,7 @@
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Pokemon/PersonalInfoTable.h"
+#include "Pokemon/PersonalInfo4HGSS.h"
 #include "UI/ClassicTypeBadges.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SpriteManager.h"
@@ -51,6 +52,16 @@ namespace {
 // The shared picker is currently used by the supported RBY and GSC editors only.
 // Keep their exact native type tables here so the preview never guesses modern typing.
 inline std::array<uint8_t, 2> classicPickerTypes(uint16_t species, int speciesCount) {
+    const auto toClassic = [](uint8_t normalized) -> uint8_t {
+        // Canonical 0-16 type ids need the classic sprite-table gaps restored.
+        if (normalized <= 5) return normalized;
+        if (normalized == 6) return 7;
+        if (normalized == 7) return 8;
+        if (normalized == 8) return 9;
+        if (normalized >= 9 && normalized <= 16)
+            return static_cast<uint8_t>(20 + (normalized - 9));
+        return 0xFF;
+    };
     if (speciesCount == 151)
         return PokeVault::Integration::Gen1::StagedPokemonEditor::personalTypes(species);
     if (speciesCount == 251) {
@@ -59,17 +70,12 @@ inline std::array<uint8_t, 2> classicPickerTypes(uint16_t species, int speciesCo
     }
     if (speciesCount == 386) {
         const auto& personal = Pokemon::getPersonalInfoG3(species);
-        const auto toClassic = [](uint8_t normalized) -> uint8_t {
-            // PersonalInfoG3 uses canonical 0-16 type ids; ClassicTypeBadges
-            // accepts the native RBY/GSC/Gen-III type-byte numbering.
-            if (normalized <= 5) return normalized;
-            if (normalized == 6) return 7;
-            if (normalized == 7) return 8;
-            if (normalized == 8) return 9;
-            if (normalized >= 9 && normalized <= 16)
-                return static_cast<uint8_t>(20 + (normalized - 9));
-            return 0xFF;
-        };
+        return {toClassic(personal.type1), toClassic(personal.type2)};
+    }
+    if (speciesCount == 493) {
+        // Base-species typing is common across D/P/Pt/HG/SS. Use the generated
+        // Gen IV table, never the modern table (which would inject later type changes).
+        const auto& personal = Pokemon::getPersonalInfo4HGSS(species, 0);
         return {toClassic(personal.type1), toClassic(personal.type2)};
     }
     return {0, 0};
@@ -81,8 +87,12 @@ inline std::array<uint8_t, 2> classicPickerTypes(uint16_t species, int speciesCo
 // Browsing is preview-only; the generation supplies only its dex bound and text.
 template <class RowText, class TitleText>
 void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
-                 int speciesCount, bool previewShiny, RowText rowText, TitleText titleText) {
-        fb.drawText(x + 24, y + 50, "One species row • hover preview only • Y chooses intended Normal/Shiny appearance",
+                 int speciesCount, bool previewShiny, RowText rowText, TitleText titleText,
+                 bool shinyToggleAvailable = true) {
+        fb.drawText(x + 24, y + 50,
+                    shinyToggleAvailable
+                        ? "One species row • hover preview only • Y chooses intended Normal/Shiny appearance"
+                        : "One species row • hover preview only • Shiny is edited from the shared field",
                     Colors::TextDim, TextStyle::Caption);
         constexpr int visible = 9;
         const int start = std::clamp(selectedSpecies - visible / 2, 1, speciesCount - visible + 1);
@@ -118,6 +128,9 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
             std::string("Intended: ") + (previewShiny ? "Shiny" : "Normal"),
             previewShiny ? Colors::ShinyStar : Colors::Accent, TextStyle::Body);
         fb.drawText(previewX, y + 406, "A commits to draft/editor only", Colors::TextDim, TextStyle::Caption);
-        fb.drawText(previewX, y + 430, "B restores previous committed choice", Colors::TextDim, TextStyle::Caption);
+        fb.drawText(previewX, y + 430,
+                    shinyToggleAvailable ? "B restores previous committed choice"
+                                         : "B cancels species choice; Shiny remains separate",
+                    Colors::TextDim, TextStyle::Caption);
 }
 } // namespace UI::SharedSpeciesPicker
