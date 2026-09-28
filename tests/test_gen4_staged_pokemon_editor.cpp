@@ -327,6 +327,45 @@ void testMixedPartitionMutationFootprint() {
     }
 }
 
+void testEmptySlotCreateTransaction() {
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum,
+                              Layout::HeartGoldSoulSilver}) {
+        auto source = makeSave(layout, 7);
+        const auto original = source;
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(
+            source, layout, gameId(layout), &error);
+        assert(editor && error.empty());
+
+        // Use a known-valid native stored PK4 as the draft payload. G4-04 UI draft
+        // construction is tested separately; this pins the save transaction itself.
+        auto draft = editor->editableBoxPokemon(0, 0, &error);
+        assert(draft && error.empty());
+        assert(editor->stageCreateBoxPokemon(0, 1, *draft, &error));
+        assert(error.empty());
+        assert(source == original);
+
+        auto created = editor->boxedPokemon(0, 1, &error);
+        assert(created && error.empty());
+        assert(created->species() == draft->species());
+        assert(created->originalEncryptedBytes() == draft->encryptedBytes());
+
+        // Create must never replace an occupied target.
+        const auto stagedBeforeRefusal = editor->stagedBytes();
+        assert(!editor->stageCreateBoxPokemon(0, 0, *draft, &error));
+        assert(!error.empty());
+        assert(editor->stagedBytes() == stagedBeforeRefusal);
+
+        const auto finalBytes = editor->finalizedBytes(&error);
+        assert(!finalBytes.empty() && error.empty());
+        auto reparsed = Gen4ReadOnlySave::parse(
+            finalBytes, layout, gameId(layout), &error);
+        assert(reparsed && error.empty());
+        assert(!reparsed->box(0, 1).empty());
+        assert(source == original);
+    }
+}
+
 void testNoOpAndFailureRollback() {
     auto source = makeSave(Layout::Platinum);
     auto editor = Gen4StagedPokemonEditor::create(
@@ -398,6 +437,7 @@ int main() {
     testLayout(Layout::HeartGoldSoulSilver, 7, false);
     testLayout(Layout::HeartGoldSoulSilver, 8, true);
     testMixedPartitionMutationFootprint();
+    testEmptySlotCreateTransaction();
     testNoOpAndFailureRollback();
     testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();
