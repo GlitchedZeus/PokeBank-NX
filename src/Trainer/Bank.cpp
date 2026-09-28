@@ -1,4 +1,5 @@
 #include "Trainer/Bank.h"
+#include "Trainer/BankPokemonValidation.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -339,7 +340,7 @@ namespace Trainer {
             // dropped, not stored: a non-null slot holding garbage is a "ghost", and it
             // re-encrypts into a Bad Egg the moment it is withdrawn into a real save. The
             // checksum is the decisive test -- every format carries one.
-            if (!pk || pk->speciesID() == 0 || pk->checksum() != pk->calculateChecksum()) {
+            if (!BankPokemonValidation::accepts(pk.get())) {
                 ++loadRejects;
                 continue;
             }
@@ -393,7 +394,7 @@ namespace Trainer {
             return false;  // bank full
         };
 
-        int imported = 0, dropped = 0;
+        int imported = 0, rejected = 0, dropped = 0;
         for (const auto& L : legacy) {
             const std::string p = PokeBank::Paths::legacyBankRoot() + "/" + L.tag + "_bank.dat";
             size_t sz = 0;
@@ -407,15 +408,20 @@ namespace Trainer {
                 if (readUInt32LittleEndian(f + off) == 0) continue;  // legacy empty (EC == 0)
                 std::span<const std::byte> rec(reinterpret_cast<const std::byte*>(f + off), recSize);
                 auto pk = makePokemon(L.group, rec);
-                if (pk && pk->speciesID() != 0) {
-                    if (placeNext(std::move(pk))) ++imported; else ++dropped;
+                if (!BankPokemonValidation::accepts(pk.get())) {
+                    ++rejected;
+                    continue;
                 }
+                if (placeNext(std::move(pk))) ++imported; else ++dropped;
             }
             delete[] f;
         }
 
-        if (imported > 0 || dropped > 0) {
-            const std::string msg = std::to_string(imported) + " imported, " + std::to_string(dropped) + " dropped";
+        if (imported > 0 || rejected > 0 || dropped > 0) {
+            const std::string msg =
+                std::to_string(imported) + " imported, " +
+                std::to_string(rejected) + " corrupt rejected, " +
+                std::to_string(dropped) + " capacity dropped";
             logInfoToFile("Bank: migrated legacy per-group banks", msg.c_str());
         }
     }

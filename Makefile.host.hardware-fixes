@@ -351,3 +351,22 @@ $(SHARED_SPECIES_PICKER_SURFACE_SANITIZE): $(SHARED_SPECIES_PICKER_SURFACE_SOURC
 		src/UI/Gen2PokemonPickerOverlay.inc src/UI/Gen3SharedPokemonSurface.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_SPECIES_PICKER_SURFACE_SOURCES) -o $@
+
+
+# AUDIT-013: legacy per-group Bank migration must reject damaged Pokemon with
+# the same checksum predicate used by normal unified Bank loading.
+BANK_MIGRATION_VALIDATION_TEST := $(HOST_BUILD)/test_bank_migration_validation
+BANK_MIGRATION_VALIDATION_SANITIZE := $(HOST_BUILD)/test_bank_migration_validation_sanitize
+
+HOST_TESTS += $(BANK_MIGRATION_VALIDATION_TEST)
+HOST_SANITIZE_TESTS += $(BANK_MIGRATION_VALIDATION_SANITIZE)
+host-test: $(BANK_MIGRATION_VALIDATION_TEST)
+host-sanitize: $(BANK_MIGRATION_VALIDATION_SANITIZE)
+
+$(BANK_MIGRATION_VALIDATION_TEST): tests/test_bank_migration_validation.cpp include/Trainer/BankPokemonValidation.h src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_bank_migration_validation.cpp -o $@
+
+$(BANK_MIGRATION_VALIDATION_SANITIZE): tests/test_bank_migration_validation.cpp include/Trainer/BankPokemonValidation.h src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bank_migration_validation.cpp -o $@
