@@ -86,6 +86,8 @@ public:
     bool setBall(uint8_t value) noexcept;
     bool setMetLevel(uint8_t value) noexcept;
     bool setMetLocation(uint16_t value) noexcept;
+    bool setForm(uint8_t value) noexcept;
+    [[nodiscard]] uint8_t formCount() const noexcept;
 
     // PID-linked edits are transactional. If no candidate satisfies every pinned
     // trait in the bounded search, the PK4 is left byte-identical and false is returned.
