@@ -193,15 +193,15 @@ include/Conversion/Convert.h	blob	100644	8740		unknown		PENDING			0
 include/Conversion/Fidelity.h	blob	100644	5970		unknown		PENDING			0	
 include/Conversion/Gen3PidSearch.h	blob	100644	3299		unknown		PENDING			0	
 include/Conversion/RouteEvidence.h	blob	100644	5268		unknown		PENDING			0	
-include/Encryption/Encryption.h	blob	100644	6128		unknown		PENDING			0	
-include/Encryption/Encryption3FRLG.h	blob	100644	2671		unknown		PENDING			0	
-include/Encryption/Encryption4.h	blob	100644	769		unknown		PENDING			0	
-include/Encryption/Encryption7LGPE.h	blob	100644	6171		unknown		PENDING			0	
-include/Encryption/Encryption8BDSP.h	blob	100644	4569		unknown		PENDING			0	
-include/Encryption/Encryption8LA.h	blob	100644	4348		unknown		PENDING			0	
-include/Encryption/Encryption8SWSH.h	blob	100644	4274		unknown		PENDING			0	
-include/Encryption/Encryption9LZA.h	blob	100644	5007		unknown		PENDING			0	
-include/Encryption/Encryption9SV.h	blob	100644	4988		unknown		PENDING			0	
+include/Encryption/Encryption.h	blob	100644	6128	Pokémon/save encryption API	text	154	AUDITED			0	yes
+include/Encryption/Encryption3FRLG.h	blob	100644	2671	Pokémon/save encryption API	text	54	AUDITED			0	no
+include/Encryption/Encryption4.h	blob	100644	769	Pokémon/save encryption API	text	22	AUDITED			0	no
+include/Encryption/Encryption7LGPE.h	blob	100644	6171	Pokémon/save encryption API	text	164	AUDITED			0	yes
+include/Encryption/Encryption8BDSP.h	blob	100644	4569	Pokémon/save encryption API	text	120	AUDITED			0	yes
+include/Encryption/Encryption8LA.h	blob	100644	4348	Pokémon/save encryption API	text	116	AUDITED			0	yes
+include/Encryption/Encryption8SWSH.h	blob	100644	4274	Pokémon/save encryption API	text	115	AUDITED			0	yes
+include/Encryption/Encryption9LZA.h	blob	100644	5007	Pokémon/save encryption API	text	135	AUDITED			0	yes
+include/Encryption/Encryption9SV.h	blob	100644	4988	Pokémon/save encryption API	text	135	AUDITED			0	yes
 include/Enums/Ball.h	blob	100644	3262		unknown		PENDING			0	
 include/Enums/GameVersion.h	blob	100644	16083		unknown		PENDING			0	
 include/Enums/LanguageID.h	blob	100644	2448		unknown		PENDING			0	
@@ -428,15 +428,15 @@ recovery/assets_snapshot/romfs-recovery.tar.part000	blob	100644	83886080	asset/r
 recovery/assets_snapshot/romfs-recovery.tar.part001	blob	100644	69765120	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 src/Conversion/Convert.cpp	blob	100644	91547		unknown		PENDING			0	
 src/Conversion/RouteEvidence.cpp	blob	100644	31361		unknown		PENDING			0	
-src/Encryption/Encryption.cpp	blob	100644	5023		unknown		PENDING			0	
-src/Encryption/Encryption3FRLG.cpp	blob	100644	4663		unknown		PENDING			0	
-src/Encryption/Encryption4.cpp	blob	100644	4196		unknown		PENDING			0	
-src/Encryption/Encryption7LGPE.cpp	blob	100644	10799		unknown		PENDING			0	
-src/Encryption/Encryption8BDSP.cpp	blob	100644	6845		unknown		PENDING			0	
-src/Encryption/Encryption8LA.cpp	blob	100644	6790		unknown		PENDING			0	
-src/Encryption/Encryption8SWSH.cpp	blob	100644	6839		unknown		PENDING			0	
-src/Encryption/Encryption9LZA.cpp	blob	100644	7011		unknown		PENDING			0	
-src/Encryption/Encryption9SV.cpp	blob	100644	6987		unknown		PENDING			0	
+src/Encryption/Encryption.cpp	blob	100644	5023	Pokémon/save encryption implementation	text	137	AUDITED			0	yes
+src/Encryption/Encryption3FRLG.cpp	blob	100644	4663	Pokémon/save encryption implementation	text	95	AUDITED			0	no
+src/Encryption/Encryption4.cpp	blob	100644	4196	Pokémon/save encryption implementation	text	103	AUDITED			0	no
+src/Encryption/Encryption7LGPE.cpp	blob	100644	10799	Pokémon/save encryption implementation	text	248	AUDITED			0	yes
+src/Encryption/Encryption8BDSP.cpp	blob	100644	6845	Pokémon/save encryption implementation	text	163	AUDITED			0	yes
+src/Encryption/Encryption8LA.cpp	blob	100644	6790	Pokémon/save encryption implementation	text	163	AUDITED			0	yes
+src/Encryption/Encryption8SWSH.cpp	blob	100644	6839	Pokémon/save encryption implementation	text	163	AUDITED			0	yes
+src/Encryption/Encryption9LZA.cpp	blob	100644	7011	Pokémon/save encryption implementation	text	167	AUDITED			0	yes
+src/Encryption/Encryption9SV.cpp	blob	100644	6987	Pokémon/save encryption implementation	text	167	AUDITED			0	yes
 src/Enums/SCTypeCode.cpp	blob	100644	1798		unknown		PENDING			0	
 src/Games/GameIdentity.cpp	blob	100644	6303	game/source identity registry	text	101	AUDITED			0	no
 src/Integration/Gen1/Gen1BattleStats.cpp	blob	100644	2213		unknown		PENDING			0	
