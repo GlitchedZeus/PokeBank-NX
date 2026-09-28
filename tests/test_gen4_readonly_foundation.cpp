@@ -935,6 +935,61 @@ void testHardwareEmptyCartridgeShape() {
     assert(digest(bytes) == before);
 }
 
+void testQuarantinedPresentationRefresh() {
+    using namespace PokeVault::Integration::Gen4;
+    auto bytes = makeSave(Layout::Platinum);
+    const auto sp = spec(Layout::Platinum);
+
+    // Keep party slot 0 and box slot 0 valid/editable, but add unrelated quarantined records.
+    bytes[sp.party - 4] = 2;
+    std::copy_n(bytes.begin() + static_cast<std::ptrdiff_t>(sp.party),
+                Encryption::SIZE_PARTY4,
+                bytes.begin() + static_cast<std::ptrdiff_t>(sp.party + Encryption::SIZE_PARTY4));
+    bytes[sp.party + Encryption::SIZE_PARTY4 + 0x08] ^= 0x01;
+    const size_t badBox = sp.storageStart + sp.boxData + Encryption::SIZE_STORED4;
+    std::copy_n(bytes.begin() + static_cast<std::ptrdiff_t>(sp.storageStart + sp.boxData),
+                Encryption::SIZE_STORED4,
+                bytes.begin() + static_cast<std::ptrdiff_t>(badBox));
+    bytes[badBox + 0x08] ^= 0x01;
+    restampCounter(bytes, Layout::Platinum, false, 0, 100, 1);
+    restampCounter(bytes, Layout::Platinum, true, 0, 100, 1);
+
+    const auto sourceHash = digest(bytes);
+    std::string error;
+    auto parsed = Gen4ReadOnlySave::parse(bytes, Layout::Platinum, "platinum_nds", &error);
+    assert(parsed && error.empty());
+    assert(parsed->diagnostics().validPartyRecords == 1);
+    assert(parsed->diagnostics().invalidPartyRecords == 1);
+    assert(parsed->diagnostics().occupiedBoxRecords == 1);
+    assert(parsed->diagnostics().invalidBoxRecords == 1);
+
+    auto trainer = PokeVault::Legacy::Gen4ReadOnlyTrainer::create(
+        *parsed, "platinum_nds", error);
+    assert(trainer && error.empty() && trainer->stagedPokemonAvailable());
+    assert(trainer->party.size() == 2 && trainer->party[0] && !trainer->party[1]);
+    assert(trainer->boxes[0][0] && !trainer->boxes[0][1]);
+
+    auto* staged = trainer->stagedPokemon();
+    auto party = staged->editablePartyPokemon(0, &error);
+    assert(party && error.empty() && party->setLevel(30));
+    assert(staged->commitPartyPokemon(0, *party, &error) && error.empty());
+    assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+    assert(trainer->party[0] && trainer->party[0]->level() == 30);
+    assert(!trainer->party[1]);
+    assert(trainer->boxes[0][0] && !trainer->boxes[0][1]);
+
+    auto boxed = staged->editableBoxPokemon(0, 0, &error);
+    assert(boxed && error.empty() && boxed->setFriendship(222));
+    assert(staged->commitBoxPokemon(0, 0, *boxed, &error) && error.empty());
+    assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+    assert(trainer->boxes[0][0] && trainer->boxes[0][0]->friendship() == 222);
+    assert(!trainer->party[1] && !trainer->boxes[0][1]);
+
+    // The bridge refreshes from staged custody only; the immutable source remains byte-identical.
+    assert(digest(trainer->sourceSave().sourceBytes()) == sourceHash);
+    assert(digest(bytes) == sourceHash);
+}
+
 void testPresentationBridge() {
     using namespace PokeVault::Integration::Gen4;
     auto bytes=makeSave(Layout::DiamondPearl);
@@ -991,6 +1046,7 @@ int main(int argc,char** argv) {
     testAssignmentsOnDisk();
     testSourceDiscovery();
     testHardwareEmptyCartridgeShape();
+    testQuarantinedPresentationRefresh();
     testPresentationBridge();
     testCryptoAndEntity();
     testText();
