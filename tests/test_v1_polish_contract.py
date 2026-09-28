@@ -23,6 +23,9 @@ picker_dialog = read("src/UI/Dialogs/PickerDialog.cpp")
 classic_inventory = read("src/UI/ClassicInventoryOverlay.cpp")
 gen1_overlay = read("src/UI/Gen1PokemonEditorOverlay.cpp")
 classic_release = read("src/UI/ClassicReleaseActionFix.inc")
+gen1_ux = read("src/UI/Gen1PokemonEditorOverlayUX.inc")
+gen1_ux2 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc")
+gen1_ux3 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc")
 
 # Settings owns build/safety identity; the global nav bar owns controls.
 require("A: toggle / info" not in trainer,
@@ -122,6 +125,19 @@ require('drawFooter(fb, "A Confirm Release   B Cancel")' not in classic_release,
 require('drawFooter(fb, "D-pad/Stick Navigate   A Select   B Back")' not in classic_release,
         "Gen I actions must use the shared glyph bar")
 
+# The current Gen I UX stack centralizes footer hints; that helper must route through shared chrome.
+require("drawNavBar(fb, text);" in gen1_ux,
+        "Gen I footer helper must use the shared controller bar")
+for source in (gen1_ux, gen1_ux2, gen1_ux3):
+    for stale in (
+        "D-pad Navigate   ",
+        "D-pad/Stick Navigate   ",
+        "A/B Back",
+        "A Confirm Remove   B Cancel",
+    ):
+        require(stale not in source,
+                "Gen I UX footer strings must use shared parseable controller hints")
+
 # The shared legend is one implementation for all screens.
 for token in (
     "Color(62, 166, 96)",
@@ -132,6 +148,8 @@ for token in (
     require(token in chrome, "A/B/X/Y shared glyph colors are incomplete")
 require('centred("LS", lsX, lsW, ink)' in chrome,
         "shared navigation glyph must communicate Left Stick parity")
+require('btn == "D-pad/Stick"' in chrome and 'btn == "D-pad"' in chrome,
+        "shared navigation glyph must accept legacy D-pad token aliases")
 
 # User-visible NRO metadata is PokeBank NX-owned. Internal compatibility symbols may retain
 # historical names; this contract intentionally checks only the metadata fields.
