@@ -47,6 +47,12 @@ assert 'MOST RECENTLY MODIFIED' in instances
 assert '{"A", "Open Read Only"}' in instances
 assert '{"Y", "Source Setup"}' in instances
 assert '{"X", "Refresh Saves"}' in instances
+
+legacy_model = (root / 'include/Legacy/FRLGSourceBrowser.h').read_text()
+assert 'std::string providerLabel;' in legacy_model
+assert 'SAVE INSTANCES / ' in select
+assert 'instance.providerLabel' in select
+assert 'drawLine("Provider", legacyDetailsInstance.providerLabel.empty()' in select
 bridge = (root / 'src/Pokemon/Pokemon4ReadOnlyView.cpp').read_text()
 assert not re.search(r'\b(fwrite|pwrite|rename|remove|unlink)\s*\(', bridge)
 assert 'clone() const override { return nullptr; }' in (root / 'include/Pokemon/Pokemon4ReadOnlyView.h').read_text()

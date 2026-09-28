@@ -32,7 +32,7 @@ int main(){
     fs::remove_all(root);fs::create_directories(root);writeFile(root/"Pokemon Red.srm",fixture());
     const std::array<std::string,1> roots{{root.string()}};auto discovery=discoverRBYSaves(roots);auto cards=buildRBYSourceCards(discovery);
     assert(cards.size()==1);const auto&card=cards[0];assert(card.gameId=="red_gb");assert(card.title=="Red");assert(card.platformLabel=="Game Boy");assert(card.sourceLabel=="RETROARCH");assert(card.artworkKey=="red_gb");assert(card.instances.size()==1);
-    const auto&instance=card.instances[0];assert(instance.kind==LegacySaveInstanceKind::BatterySave);assert(instance.trainerName=="WILL");assert(instance.partyCount==0);assert(instance.sourceIdentity.size()==64);
+    const auto&instance=card.instances[0];assert(instance.kind==LegacySaveInstanceKind::BatterySave);assert(instance.providerLabel=="RetroArch");assert(instance.trainerName=="WILL");assert(instance.partyCount==0);assert(instance.sourceIdentity.size()==64);
     const RBYSource* resolved=resolveRBYSaveInstance(discovery,card,0);assert(resolved&&resolved->ready()&&resolved->gameId=="red_gb");
     LegacySourceBindings bindings;assert(bindings.assign(instance.sourceIdentity,"profile-A"));
     auto visible=buildRBYSourceCardsForProfile(discovery,bindings,"profile-A");assert(visible.size()==1&&visible[0].instances.size()==1);

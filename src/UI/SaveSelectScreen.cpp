@@ -1045,7 +1045,7 @@ namespace UI {
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
             fb.drawText(x + 28, y + 18,
-                        "RETROARCH / " + parent.platformLabel + " / READ ONLY",
+                        "SAVE INSTANCES / " + parent.platformLabel + " / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, "Pokemon " + parent.label + " — Save Instances",
                         Colors::TextPrimary, TextStyle::Heading);
@@ -1075,7 +1075,10 @@ namespace UI {
                 fb.measureText(recency, fw, fh, TextStyle::Caption);
                 fb.drawText(x + w - 44 - fw, ry + 11, recency, Colors::TextMuted,
                             TextStyle::Caption);
-                fb.drawText(x + 44, ry + 34, instance.sourceLabel, Colors::TextMuted,
+                const std::string sourceLine =
+                    (instance.providerLabel.empty() ? std::string("Source") : instance.providerLabel) +
+                    " / " + instance.sourceLabel;
+                fb.drawText(x + 44, ry + 34, sourceLine, Colors::TextMuted,
                             TextStyle::Caption);
                 ry += rowH;
             }
@@ -1088,7 +1091,7 @@ namespace UI {
             constexpr int w = 800, h = 530, rowH = 70, visibleRows = 5;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
-            fb.drawText(x + 28, y + 18, "RETROARCH / EXPLICIT PROFILE ASSIGNMENT",
+            fb.drawText(x + 28, y + 18, "SAVE SOURCE / EXPLICIT PROFILE ASSIGNMENT",
                         Colors::Accent, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, "Assign a Legacy Save to " + u->name,
                         Colors::TextPrimary, TextStyle::Heading);
@@ -1108,7 +1111,10 @@ namespace UI {
                             index == legacyAssignmentIndex ? Colors::TextPrimary
                                                            : Colors::TextSecondary,
                             TextStyle::Body);
-                fb.drawText(x + 44, rowY + 35, entry.instance.sourceLabel,
+                fb.drawText(x + 44, rowY + 35,
+                            (entry.instance.providerLabel.empty() ? std::string("Source")
+                                                                 : entry.instance.providerLabel) +
+                                " / " + entry.instance.sourceLabel,
                             Colors::TextMuted, TextStyle::Caption);
                 rowY += rowH;
             }
@@ -1131,7 +1137,8 @@ namespace UI {
                 fb.drawText(x + 214, lineY, value, Colors::TextPrimary, TextStyle::Caption);
                 lineY += 30;
             };
-            drawLine("Provider", "RetroArch");
+            drawLine("Provider", legacyDetailsInstance.providerLabel.empty()
+                ? "Source" : legacyDetailsInstance.providerLabel);
             drawLine("Game identity", legacyDetailsGameId);
             drawLine("Trainer", legacyDetailsInstance.trainerName.empty()
                 ? "Unknown" : legacyDetailsInstance.trainerName);

@@ -101,6 +101,7 @@ int main(){
     assert(gold->platformLabel=="GBC"&&gold->sourceLabel=="RETROARCH");
     assert(gold->instances.size()==1&&silver->instances.size()==1&&crystal->instances.size()==1);
     assert(gold->instances[0].kind==Legacy::LegacySaveInstanceKind::BatterySave);
+    assert(gold->instances[0].providerLabel=="RetroArch");
     assert(gold->instances[0].sourceIdentity=="source-gold");
     assert(gold->instances[0].partyCount==1);
     assert(gold->instances[0].mostRecentlyModified);
