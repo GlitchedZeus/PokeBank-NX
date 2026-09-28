@@ -99,7 +99,7 @@ namespace Dialogs {
             ry += rowH + rowGap;
         }
 
-        drawDialogFooter(fb, x, y, w, h, "Up/Down: Choose  |  A: Save  |  B: Cancel");
+        drawDialogFooter(fb, x, y, w, h, "D-pad/Stick: Choose  |  A: Save  |  B: Cancel");
     }
 
 }

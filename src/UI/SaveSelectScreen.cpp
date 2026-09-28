@@ -1128,7 +1128,7 @@ namespace UI {
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
-            drawNavBar(fb, {{"Up/Down", "Choose Save"}, {"A", "Open Read Only"},
+            drawNavBar(fb, {{"D-pad/Stick", "Choose Save"}, {"A", "Open Read Only"},
                             {"Y", "Source Details"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::LegacyAssignment && u) {
             constexpr int w = 800, h = 530, rowH = 70, visibleRows = 5;
@@ -1164,7 +1164,7 @@ namespace UI {
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 36, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
-            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Assign to This Profile"},
+            drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Assign to This Profile"},
                             {"X", "Refresh"}, {"B", "Cancel"}});
         } else if (overlay == Overlay::LegacyDetails) {
             constexpr int w = 900, h = 520;
@@ -1227,7 +1227,7 @@ namespace UI {
             if (!gen4Notice.empty())
                 fb.drawText(x + 28, y + h - 42, gen4Notice.substr(0, 100),
                             Colors::TextMuted, TextStyle::Caption);
-            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"B", "Back"}});
+            drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Select"}, {"B", "Back"}});
         } else if (overlay == Overlay::Gen4Candidates && u) {
             constexpr int w = 900, h = 540, rowH = 76, visibleRows = 5;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
@@ -1247,7 +1247,7 @@ namespace UI {
                                  x, y + 108, w, rowH, visibleRows, false);
             if (!gen4Notice.empty())
                 fb.drawText(x + 28, y + h - 34, gen4Notice, Colors::TextMuted, TextStyle::Caption);
-            drawNavBar(fb, {{"Up/Down", "Choose Save"}, {"A", "Open Read Only"},
+            drawNavBar(fb, {{"D-pad/Stick", "Choose Save"}, {"A", "Open Read Only"},
                             {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
             drawInfoOverlay(fb, "Game Sources & Controls", {
@@ -1279,7 +1279,7 @@ namespace UI {
                             i == optionsIndex ? Colors::TextPrimary : Colors::TextSecondary);
                 ry += rowH;
             }
-            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"B", "Cancel"}});
+            drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Select"}, {"B", "Cancel"}});
         }
     }
 }

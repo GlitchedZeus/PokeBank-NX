@@ -9,6 +9,11 @@ on:
       - 'include/UI/AppShellScreen.h'
       - 'include/UI/OrganizationPreviewModel.h'
       - 'src/UI/AppShellScreen.cpp'
+      - 'include/UI/Gen2HeldItemPicker.h'
+      - 'src/UI/Gen2PokemonPickerOverlay.inc'
+      - 'src/UI/Gen2UnifiedPokemonWorkspace.inc'
+      - 'src/UI/Gen2SharedSurfaceParity.inc'
+      - 'src/UI/Dialogs/SaveConfirmDialog.cpp'
       - 'src/UI/UI.cpp'
       - 'include/UI/SaveSelectScreen.h'
       - 'src/UI/SaveSelectScreen.cpp'
@@ -16,6 +21,7 @@ on:
       - 'Makefile.host.product-ui'
       - 'tests/test_app_shell_model.cpp'
       - 'tests/test_organization_preview_model.cpp'
+      - 'tests/test_reachable_ui_consistency.py'
       - '.github/workflows/product-ui-native.yml'
   workflow_dispatch:
 
@@ -47,6 +53,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           git diff --check HEAD^ HEAD
           make -f Makefile.host product-ui-test
+          python3 tests/test_reachable_ui_consistency.py
           echo "APPLICATION_SHA=$EXPECTED_SHA"
           echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
 

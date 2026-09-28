@@ -33,9 +33,13 @@ inline void drawList(PKSEFramebuffer& fb, int x, int y, int width,
     for (int i = first; i < last; ++i) {
         const int cellX = x + (i - first) % Model::columns * cellWidth;
         const int cellY = y + (i - first) / Model::columns * 32;
-        if (i == selected) fb.drawRoundedRect(cellX, cellY, cellWidth - 12, 30, 6, Colors::FocusBorder, 2);
+        const bool focused = i == selected;
+        if (focused) {
+            fb.drawFilledRoundedRect(cellX, cellY, cellWidth - 12, 30, 6, Colors::SurfaceSelected);
+            fb.drawRoundedRect(cellX, cellY, cellWidth - 12, 30, 6, Colors::FocusBorder, 2);
+        }
         fb.drawText(cellX + 10, cellY + 6, Model::itemName(items[static_cast<std::size_t>(i)]),
-                    Colors::Text, TextStyle::Caption);
+                    focused ? Colors::SelectedText : Colors::Text, TextStyle::Caption);
     }
 }
 }
