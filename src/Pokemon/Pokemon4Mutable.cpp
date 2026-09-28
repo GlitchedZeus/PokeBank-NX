@@ -6,7 +6,10 @@
 #include "Pokemon/PersonalInfo4HGSS.h"
 #include "Pokemon/PersonalInfo4PT.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
+#include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
+#include "Names/ItemPresence.h"
+#include "Names/MovePresence.h"
 #include "Names/NameLanguage.h"
 #include "Names/SpeciesNames.h"
 #include "Utils/StringHelpers.h"
@@ -389,6 +392,7 @@ bool Pokemon4Mutable::setFriendship(uint8_t value) noexcept {
 
 bool Pokemon4Mutable::setHeldItem(uint16_t value) noexcept {
     if (!valid_) return false;
+    if (value != 0 && !Names::isHeldItemPresent(value, sourceGroup_)) return false;
     write16(0x0A, value);
     return true;
 }
@@ -396,13 +400,17 @@ bool Pokemon4Mutable::setHeldItem(uint16_t value) noexcept {
 bool Pokemon4Mutable::setLanguage(uint8_t value) noexcept {
     if (!valid_ || !Enums::groupHasLanguage(sourceGroup_, value)) return false;
     const bool nicknamed = (u32At(0x38) & 0x80000000u) != 0;
+    const uint8_t oldLanguage = language();
     write8(0x17, value);
     if (!nicknamed) {
         const auto nameIndex = Names::languageIndexFor(
             static_cast<Enums::LanguageID>(value));
         const auto speciesName = Utils::utf8ToUtf16(
             Names::getSpeciesNameLocalized(species(), nameIndex));
-        if (!writeTextPreservingTrash(0x48, 11, 10, speciesName)) return false;
+        if (!writeTextPreservingTrash(0x48, 11, 10, speciesName)) {
+            write8(0x17, oldLanguage);
+            return false;
+        }
     }
     return true;
 }
@@ -432,6 +440,7 @@ bool Pokemon4Mutable::setEV(size_t stat, uint8_t value) noexcept {
 
 bool Pokemon4Mutable::setMove(size_t slot, uint16_t move) noexcept {
     if (!valid_ || slot >= 4) return false;
+    if (move != 0 && !Names::isMovePresent(move, sourceGroup_)) return false;
     write16(0x28 + slot * 2, move);
     return true;
 }
@@ -456,6 +465,8 @@ bool Pokemon4Mutable::setPokerus(uint8_t value) noexcept {
 
 bool Pokemon4Mutable::setBall(uint8_t value) noexcept {
     if (!valid_) return false;
+    const auto allowed = Enums::getBallList(sourceGroup_);
+    if (std::find(allowed.begin(), allowed.end(), value) == allowed.end()) return false;
     if (sourceGroup_ == Enums::GameVersion::HGSS) write8(0x86, value);
     else if (sourceGroup_ == Enums::GameVersion::DP || sourceGroup_ == Enums::GameVersion::PT)
         write8(0x83, value);
