@@ -641,6 +641,29 @@ bool Pokemon4Mutable::setPokerus(uint8_t value) noexcept {
     return true;
 }
 
+bool Pokemon4Mutable::setPokerusMode(PokerusMode mode) noexcept {
+    if (!valid_) return false;
+    const uint8_t old = pokerus();
+    switch (mode) {
+        case PokerusMode::None:
+            return setPokerus(0);
+        case PokerusMode::Cured: {
+            const uint8_t strain =
+                static_cast<uint8_t>((old & 0xF0u) ? (old & 0xF0u) : 0x10u);
+            return setPokerus(strain);
+        }
+        case PokerusMode::Infected: {
+            const uint8_t strain =
+                static_cast<uint8_t>((old & 0xF0u) ? (old & 0xF0u) : 0x10u);
+            const uint8_t days =
+                static_cast<uint8_t>((old & 0x0Fu) ? (old & 0x0Fu) : 1u);
+            return setPokerus(static_cast<uint8_t>(strain | days));
+        }
+        default:
+            return false;
+    }
+}
+
 bool Pokemon4Mutable::setBall(uint8_t value) noexcept {
     if (!valid_) return false;
     const auto originGroup = Enums::getGameGroup(

@@ -13,6 +13,12 @@
 
 namespace Pokemon {
 
+enum class PokerusMode : uint8_t {
+    None = 0,
+    Cured = 1,
+    Infected = 2,
+};
+
 struct Pokemon4CreateDefaults {
     uint16_t species = 1;
     uint16_t tid = 0;
@@ -83,6 +89,7 @@ public:
     bool setPP(size_t slot, uint8_t pp) noexcept;
     bool setPPUps(size_t slot, uint8_t ppUps) noexcept;
     bool setPokerus(uint8_t value) noexcept;
+    bool setPokerusMode(PokerusMode mode) noexcept;
     bool setBall(uint8_t value) noexcept;
     bool setMetLevel(uint8_t value) noexcept;
     bool setMetLocation(uint16_t value) noexcept;

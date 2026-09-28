@@ -126,6 +126,7 @@ int main() {
     contains(surface, "PickerTarget::Ball");
     contains(surface, "PickerTarget::MetLocation");
     contains(surface, "PickerTarget::Pokerus");
+    contains(surface, "setPokerusMode");
     contains(surface, "PickerTarget::Form");
     contains(surface, "openFormPicker");
     contains(surface, "auto probe = *state.session.working");

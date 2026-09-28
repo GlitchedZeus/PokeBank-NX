@@ -398,6 +398,39 @@ void testCatalogBackedFieldValidation() {
 }
 
 
+void testPokerusModes() {
+    auto mon = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(), Enums::GameVersion::PT);
+    assert(mon);
+    assert(mon->setPokerus(0x43));
+
+    const auto before = std::vector<std::byte>(
+        mon->decryptedBytes().begin(), mon->decryptedBytes().end());
+    assert(mon->setPokerusMode(Pokemon::PokerusMode::Infected));
+    assert(mon->pokerus() == 0x43);
+    assert(std::equal(mon->decryptedBytes().begin(), mon->decryptedBytes().end(),
+                      before.begin()));
+
+    assert(mon->setPokerusMode(Pokemon::PokerusMode::Cured));
+    assert(mon->pokerus() == 0x40);
+    const auto cured = mon->decryptedBytes();
+    for (size_t i = 0; i < before.size(); ++i)
+        if (i != 0x82) assert(cured[i] == before[i]);
+
+    assert(mon->setPokerusMode(Pokemon::PokerusMode::Infected));
+    assert(mon->pokerus() == 0x41);
+    assert(mon->setPokerusMode(Pokemon::PokerusMode::None));
+    assert(mon->pokerus() == 0x00);
+    assert(mon->setPokerusMode(Pokemon::PokerusMode::Cured));
+    assert(mon->pokerus() == 0x10);
+    assert(mon->setPokerusMode(Pokemon::PokerusMode::Infected));
+    assert(mon->pokerus() == 0x11);
+
+    const auto stable = mon->encryptedBytes();
+    assert(!mon->setPokerusMode(static_cast<Pokemon::PokerusMode>(99)));
+    assert(mon->encryptedBytes() == stable);
+}
+
 void testExactBallSemantics() {
     auto dpInHgss = Pokemon::Pokemon4Mutable::fromEncrypted(
         makeEntity(25, 0x12345678u, 9, 10), Enums::GameVersion::HGSS);
@@ -661,6 +694,7 @@ int main() {
     testShedinjaPartyHpRule();
     testSpeciesReconciliation();
     testCatalogBackedFieldValidation();
+    testPokerusModes();
     testExactBallSemantics();
     testExactMetLocationSemantics();
     testExactGameForms();

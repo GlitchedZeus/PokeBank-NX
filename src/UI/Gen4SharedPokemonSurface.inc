@@ -761,16 +761,11 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
     } else if (state.pickerTarget == PickerTarget::Form) {
         ok = state.session.working->setForm(static_cast<uint8_t>(value));
     } else if (state.pickerTarget == PickerTarget::Pokerus) {
-        const uint8_t old = state.session.working->pokerus();
-        uint8_t next = 0;
-        if (value == 0x10)
-            next = static_cast<uint8_t>((old & 0xF0u) ? (old & 0xF0u) : 0x10u);
-        else if (value == 0x11) {
-            const uint8_t strain = static_cast<uint8_t>((old & 0xF0u) ? (old & 0xF0u) : 0x10u);
-            const uint8_t days = static_cast<uint8_t>((old & 0x0Fu) ? (old & 0x0Fu) : 1u);
-            next = static_cast<uint8_t>(strain | days);
-        }
-        ok = state.session.working->setPokerus(next);
+        const auto mode = value == 0x10
+            ? Pokemon::PokerusMode::Cured
+            : value == 0x11 ? Pokemon::PokerusMode::Infected
+                            : Pokemon::PokerusMode::None;
+        ok = state.session.working->setPokerusMode(mode);
     } else if (state.pickerTarget == PickerTarget::Move) {
         const size_t slot = static_cast<size_t>(state.moveEditorSlot);
         ok = state.session.working->setMove(slot, value);
