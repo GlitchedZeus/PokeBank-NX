@@ -712,7 +712,7 @@ void openMoveEditor(TrainerViewScreen& screen, State& state, int slot) {
     if (!state.session.working || slot < 0 || slot >= 4) return;
     state.moveEditor = true;
     state.moveEditorSlot = slot;
-    state.moveEditorRow = 1; // Move itself stays read-only in G4-03; start on PP.
+    state.moveEditorRow = 0; // Shared move editor opens on the Move row; PP/PP Ups stay contextual.
     state.movePpBaseline = state.session.working->pp()[static_cast<size_t>(slot)];
     state.movePpUpsBaseline = state.session.working->ppUps()[static_cast<size_t>(slot)];
     screen.controllerNavigation.reset();
@@ -745,7 +745,7 @@ bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {
         openMovePicker(screen, state);
     } else if (state.moveEditorRow == 1) {
         if (move == 0) {
-            screen.postStatus("Choose a move in a later milestone before editing PP", 240);
+            screen.postStatus("Choose a move before editing PP", 240);
         } else {
             const int maximum = moveMaxPP(
                 move, state.session.working->ppUps()[slot],
