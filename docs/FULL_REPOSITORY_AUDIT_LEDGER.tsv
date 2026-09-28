@@ -394,7 +394,7 @@ include/UI/TrainerViewScreenBase.h	blob	100644	29588		unknown		PENDING			0
 include/UI/UI.h	blob	100644	2003		unknown		PENDING			0	
 include/UI/UIScreen.h	blob	100644	405		unknown		PENDING			0	
 include/Utils/CRC16.h	blob	100644	3316		unknown		PENDING			0	
-include/Utils/DurableFile.h	blob	100644	3140		unknown		PENDING			0	
+include/Utils/DurableFile.h	blob	100644	3140	C++ header	text	78	AUDITED			0	yes
 include/Utils/EventLog.h	blob	100644	4263		unknown		PENDING			0	
 include/Utils/FileUtilities.h	blob	100644	2143		unknown		PENDING			0	
 include/Utils/Gen2Text.h	blob	100644	7534		unknown		PENDING			0	
@@ -465,7 +465,7 @@ src/Integration/Gen3/PKSMGen3NativeAdapter.cpp	blob	100644	11997		unknown		PENDI
 src/Integration/Gen4/Gen4AssignedSource.cpp	blob	100644	3011		unknown		PENDING			0	
 src/Integration/Gen4/Gen4ReadOnlySave.cpp	blob	100644	13359		unknown		PENDING			0	
 src/Integration/Gen4/Gen4SourceDiscovery.cpp	blob	100644	22450		unknown		PENDING			0	
-src/Integration/Gen4/Gen4StagedPokemonEditor.cpp	blob	100644	17352		unknown		PENDING			0	
+src/Integration/Gen4/Gen4StagedPokemonEditor.cpp	blob	100644	17352	Gen IV staged save mutation/rollback	text	327	AUDITED			0	no
 src/Inventory/ClassicInventoryCatalog.cpp	blob	100644	15510		unknown		PENDING			0	
 src/Legacy/FRLGReadOnlyTrainer.cpp	blob	100644	9585		unknown		PENDING			0	
 src/Legacy/FRLGSourceBrowser.cpp	blob	100644	9438		unknown		PENDING			0	
@@ -510,7 +510,7 @@ src/Pokemon/PersonalRecord4.cpp	blob	100644	109		unknown		PENDING			0
 src/Pokemon/Pokemon1ReadOnly.cpp	blob	100644	975		unknown		PENDING			0	
 src/Pokemon/Pokemon2ReadOnly.cpp	blob	100644	1478		unknown		PENDING			0	
 src/Pokemon/Pokemon3FRLG.cpp	blob	100644	19608		unknown		PENDING			0	
-src/Pokemon/Pokemon4Mutable.cpp	blob	100644	37332		unknown		PENDING			0	
+src/Pokemon/Pokemon4Mutable.cpp	blob	100644	37332	Gen IV mutable PK4 serialization/edit core	text	946	AUDITED			0	yes
 src/Pokemon/Pokemon4ReadOnly.cpp	blob	100644	7726		unknown		PENDING			0	
 src/Pokemon/Pokemon4ReadOnlyView.cpp	blob	100644	8598		unknown		PENDING			0	
 src/Pokemon/Pokemon7LGPE.cpp	blob	100644	13067		unknown		PENDING			0	
@@ -581,7 +581,7 @@ src/UI/TrainerViewScreenCompositeOverlay.cpp	blob	100644	12096		unknown		PENDING
 src/UI/TrainerViewScreenGSCOverlay.cpp	blob	100644	430		unknown		PENDING			0	
 src/UI/TrainerViewScreenGSCOverlay.inc	blob	100644	34758		unknown		PENDING			0	
 src/UI/UI.cpp	blob	100644	15976		unknown		PENDING			0	
-src/Utils/DurableFile.cpp	blob	100644	14493		unknown		PENDING			0	
+src/Utils/DurableFile.cpp	blob	100644	14493	durable file replacement/recovery	text	293	AUDITED			0	yes
 src/Utils/EventLog.cpp	blob	100644	9765		unknown		PENDING			0	
 src/Utils/FileUtilities.cpp	blob	100644	16963		unknown		PENDING			0	
 src/Utils/HelperUtilities.cpp	blob	100644	4249		unknown		PENDING			0	
@@ -615,7 +615,7 @@ tests/test_controller_model.cpp	blob	100644	1405		unknown		PENDING			0
 tests/test_conversion_entity_golden.cpp	blob	100644	179590		unknown		PENDING			0	
 tests/test_conversion_evidence.cpp	blob	100644	38044		unknown		PENDING			0	
 tests/test_conversion_fidelity_golden.cpp	blob	100644	7766		unknown		PENDING			0	
-tests/test_durable_file.cpp	blob	100644	4129		unknown		PENDING			0	
+tests/test_durable_file.cpp	blob	100644	4129	durable replacement host regression test	text	92	AUDITED			0	no
 tests/test_encounter_guardrails.cpp	blob	100644	5955		unknown		PENDING			0	
 tests/test_game_identity.cpp	blob	100644	6450		unknown		PENDING			0	
 tests/test_gen12_packed_move.cpp	blob	100644	16995		unknown		PENDING			0	
@@ -707,7 +707,7 @@ tools/gen_hdsprites.py	blob	100644	7465		unknown		PENDING			0
 tools/gen_itempouches.py	blob	100644	10609		unknown		PENDING			0	
 tools/gen_itempresence.py	blob	100644	10167		unknown		PENDING			0	
 tools/gen_learnsets.py	blob	100644	39706		unknown		PENDING			0	
-tools/gen_locations.py	blob	100644	11256		unknown		PENDING			0	
+tools/gen_locations.py	blob	100644	11256	generated location table generator	text	195	AUDITED			0	no
 tools/gen_moveinfo.py	blob	100644	8818		unknown		PENDING			0	
 tools/gen_movenames.py	blob	100644	2884		unknown		PENDING			0	
 tools/gen_movepresence.py	blob	100644	6427		unknown		PENDING			0	
@@ -723,4 +723,4 @@ tools/pkhex_source.py	blob	100644	3041		unknown		PENDING			0
 tools/recover_workspace.py	blob	100644	11689		unknown		PENDING			0	
 tools/regenerate.py	blob	100755	7338		unknown		PENDING			0	
 tools/verify_embedded_romfs.py	blob	100644	3402		unknown		PENDING			0	
-vendor/PKSM-Core	commit	160000			unknown		PENDING			0	
+vendor/PKSM-Core	commit	160000			unknown		PENDING			0
