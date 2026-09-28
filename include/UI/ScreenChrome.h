@@ -122,7 +122,7 @@ namespace UI {
             }
             if (!measureOnly) {
                 fb.drawFilledCircle(x + kR, cy, kR, faceFill);
-                centred(btn, x, kR * 2, faceInk, ink);
+                centred(btn, x, kR * 2, faceInk);
             }
             return kR * 2;
         }
