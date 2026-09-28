@@ -9,6 +9,7 @@
 #include "Utils/Gen4TextCodec.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace Pokemon {
 namespace {
@@ -108,6 +109,39 @@ uint32_t Pokemon4Mutable::experience() const noexcept { return u32At(0x10); }
 uint8_t Pokemon4Mutable::friendship() const noexcept { return byteAt(0x14); }
 uint8_t Pokemon4Mutable::ability() const noexcept { return byteAt(0x15); }
 uint8_t Pokemon4Mutable::language() const noexcept { return byteAt(0x17); }
+uint8_t Pokemon4Mutable::level() const noexcept {
+    const auto& personal = personalFor(sourceGroup_, species(), form());
+    return personal.hp == 0 ? 1 : getLevelFromExp(experience(), personal.growthRate);
+}
+std::u16string Pokemon4Mutable::nickname() const {
+    if (!valid_) return {};
+    return Utils::decodeGen4Field(std::span<const std::byte>(decrypted_.data() + 0x48, 22));
+}
+std::array<uint8_t, 6> Pokemon4Mutable::ivs() const noexcept {
+    const uint32_t v = u32At(0x38);
+    return {static_cast<uint8_t>((v >> 0) & 31u), static_cast<uint8_t>((v >> 5) & 31u),
+            static_cast<uint8_t>((v >> 10) & 31u), static_cast<uint8_t>((v >> 15) & 31u),
+            static_cast<uint8_t>((v >> 20) & 31u), static_cast<uint8_t>((v >> 25) & 31u)};
+}
+std::array<uint8_t, 6> Pokemon4Mutable::evs() const noexcept {
+    return {byteAt(0x18), byteAt(0x19), byteAt(0x1A), byteAt(0x1B), byteAt(0x1C), byteAt(0x1D)};
+}
+std::array<uint16_t, 4> Pokemon4Mutable::moves() const noexcept {
+    return {u16At(0x28), u16At(0x2A), u16At(0x2C), u16At(0x2E)};
+}
+std::array<uint8_t, 4> Pokemon4Mutable::pp() const noexcept {
+    return {byteAt(0x30), byteAt(0x31), byteAt(0x32), byteAt(0x33)};
+}
+std::array<uint8_t, 4> Pokemon4Mutable::ppUps() const noexcept {
+    return {byteAt(0x34), byteAt(0x35), byteAt(0x36), byteAt(0x37)};
+}
+uint8_t Pokemon4Mutable::pokerus() const noexcept { return byteAt(0x82); }
+uint8_t Pokemon4Mutable::ball() const noexcept {
+    return sourceGroup_ == Enums::GameVersion::HGSS ? byteAt(0x86) : byteAt(0x83);
+}
+uint8_t Pokemon4Mutable::metLevel() const noexcept {
+    return static_cast<uint8_t>(byteAt(0x84) & 0x7Fu);
+}
 uint8_t Pokemon4Mutable::form() const noexcept {
     return static_cast<uint8_t>(byteAt(0x40) >> 3);
 }
