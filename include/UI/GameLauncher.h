@@ -10,8 +10,22 @@
 namespace UI {
 
 GameLaunchDescriptor resolveGameLaunch(uint64_t titleId,
+                                       std::string_view gameId,
                                        std::string_view providerId,
-                                       std::string_view sourcePath);
+                                       std::string_view sourcePath,
+                                       std::string_view bindingKey = {});
+
+bool saveGameLaunchBinding(std::string_view bindingKey,
+                           std::string_view gameId,
+                           std::string_view providerId,
+                           std::string_view contentPath,
+                           std::string& error);
+
+bool forgetGameLaunchBinding(std::string_view bindingKey, std::string& error);
+
+std::string suggestedGameLaunchBrowseRoot(std::string_view gameId,
+                                          std::string_view providerId,
+                                          std::string_view sourcePath);
 
 bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& error);
 
