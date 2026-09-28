@@ -274,6 +274,12 @@ void testSpeciesReconciliation() {
     const uint8_t oldNature = mon->nature();
     const bool oldShiny = mon->shiny();
 
+    // Fixed-female and genderless targets must update both the PID-derived constraint
+    // and the stored Gen IV gender bits.
+    assert(mon->setSpecies(29)); // Nidoran F
+    Pokemon::Pokemon4ReadOnly nidoranF(mon->encryptedBytes(), Enums::GameVersion::PT);
+    assert(nidoranF.valid() && nidoranF.species() == 29 && nidoranF.gender() == 1);
+
     // Magnemite forces genderless + base form while preserving Level/Nature/Shiny.
     assert(mon->setSpecies(81));
     Pokemon::Pokemon4ReadOnly magnemite(mon->encryptedBytes(), Enums::GameVersion::PT);
@@ -348,7 +354,11 @@ void testCatalogBackedFieldValidation() {
     }
     assert(holdable != 0 && pt->setHeldItem(holdable));
     assert(!pt->setHeldItem(65535));
-    assert(pt->setMove(0, 1)); // Pound exists in Gen IV.
+    assert(pt->setMove(0, 1));   // Pound exists in Gen IV.
+    assert(pt->setMove(0, 467)); // Shadow Force is the final native Gen IV move.
+    const auto nativeMoveBytes = pt->encryptedBytes();
+    assert(!pt->setMove(0, 468)); // Hone Claws begins Generation V.
+    assert(pt->encryptedBytes() == nativeMoveBytes);
     assert(!pt->setMove(0, 1000));
 
     assert(pt->setBall(16)); // Cherish Ball exists in D/P/Pt.
