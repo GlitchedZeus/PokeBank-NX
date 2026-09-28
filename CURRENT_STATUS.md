@@ -132,14 +132,28 @@ Confirmed PASS:
 - Gen I/II Packed Move regression;
 - Gen I/II Packed Multi-Move regression.
 
+Gen IV candidate workflow #11 is now fully green, including the exact devkitA64 compile/link/package job.
+
+Exact candidate identity:
+
+- Application SHA: **5e79e9f8e038f2f940070edd92a70b692df7a7b5**
+- Tree SHA: **c636127b2e52792371e8e55abac8fe1d5cfaf99f**
+- Artifact: **Gen4-SharedEditor-Candidate-5e79e9f8**
+- Artifact ID: **10960797638**
+- NRO: **PokeBank-NX-Gen4-SharedEditor-5e79e9f8.nro**
+- NRO SHA-256: **8011ef64d269ae42331306c13692d60494fb7ea936619d61e1abc7d7906829d5**
+
+The downloaded artifact manifest and actual NRO hash were independently verified and match.
+
 Still running at the latest check:
 
-- PokeBank NX Host Tests #1427;
-- Gen IV devkitA64 compile/link + exact candidate NRO package.
+- PokeBank NX Host Tests #1427.
 
 Therefore:
 
-**AUTOMATED CANDIDATE: IN PROGRESS**
+**GEN IV CANDIDATE WORKFLOW: PASS**
+
+**BROAD HOST SUITE: IN PROGRESS**
 
 **DEVICE ACCEPTANCE: NOT YET**
 
@@ -184,16 +198,14 @@ DraStic `.dsv` cartridge backups are supported read only. DraStic `.dss` savesta
 
 ## Next gate
 
-Finish the exact-head PR #87 CI/package run.
+Finish broad Host Tests #1427, then hardware-test the exact frozen Gen IV candidate NRO.
 
-If all gates pass:
+Next sequence:
 
-1. freeze exact SHA/tree;
-2. retrieve exact Actions-built NRO;
-3. verify artifact identity and SHA-256;
-4. hardware-test boxed Gen IV View/Edit on Switch;
-5. fix only hardware-observed regressions;
-6. only after Edit is device accepted, consider Gen IV Create.
+1. confirm Host Tests #1427 PASS;
+2. owner hardware-test boxed Gen IV View/Edit using the exact NRO above;
+3. fix only hardware-observed regressions;
+4. only after Edit is device accepted, consider Gen IV Create.
 
 ## Canonical project documents
 
