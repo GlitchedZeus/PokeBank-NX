@@ -323,8 +323,6 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::EV:
             case FieldIdentity::Nature:
             case FieldIdentity::Ability:
-            case FieldIdentity::Pokerus:
-            case FieldIdentity::Ball:
             case FieldIdentity::MetLevel:
                 return FieldAccess::Editable;
             // G4-03 first hardware milestone keeps fields read-only when their exact-game
@@ -333,6 +331,8 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Species:
             case FieldIdentity::Language:
             case FieldIdentity::HeldItem:
+            case FieldIdentity::Pokerus:
+            case FieldIdentity::Ball:
             case FieldIdentity::MetLocation:
             case FieldIdentity::Form:
             case FieldIdentity::OriginalTrainer:
