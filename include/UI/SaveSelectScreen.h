@@ -70,6 +70,11 @@ namespace UI {
             uint8_t level = 0;
             std::string name;
         };
+        struct LaunchFileEntry {
+            std::string name;
+            std::string path;
+            bool directory = false;
+        };
 
         std::vector<UserEntry> users;
         int userIndex = 0;
@@ -81,11 +86,23 @@ namespace UI {
         std::string hubNotice;
         bool launchLegacyMode = false;
 
+        std::vector<LaunchFileEntry> launchFileEntries;
+        std::string launchBrowsePath;
+        std::string launchBrowseRoot;
+        std::string launchLinkBindingKey;
+        std::string launchLinkGameId;
+        std::string launchLinkProviderId;
+        std::string launchLinkSourcePath;
+        std::string launchFileNotice;
+        int launchFileIndex = 0;
+        int launchFileScroll = 0;
+        bool launchFileReturnToLegacy = false;
+
         bool titleSelected = false;
         bool exitRequested = false;     // return from Games & Sources to product Home
         bool appExitRequested = false;  // explicit Options -> Exit PokeBank NX
         enum class Overlay { None, Options, Help, LegacyInstances, LegacyAssignment, LegacyDetails,
-                             Gen4Setup, Gen4Candidates };
+                             Gen4Setup, Gen4Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
         int optionsIndex = 0;
         int legacyInstanceIndex = 0;
@@ -147,6 +164,15 @@ namespace UI {
         void refreshHubPreview();
         bool launchCurrentTitle();
         bool launchCurrentLegacyInstance();
+        bool beginLaunchLinkForCurrentTitle();
+        void openGameFilePicker(const std::string& gameId,
+                                const std::string& providerId,
+                                const std::string& sourcePath,
+                                const std::string& bindingKey,
+                                bool returnToLegacy);
+        void refreshGameFilePicker();
+        void activateGameFilePicker();
+        void browseGameFileParent();
         void selectCurrentTitle();
         void selectCurrentLegacyInstance();
         void openGen4Setup(const std::string& gameId, std::string notice = {});

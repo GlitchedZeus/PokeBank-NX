@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <iomanip>
 #include <sstream>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #include "Globals.h"
 #include "UI/SaveSelectScreen.h"
@@ -64,6 +66,24 @@ namespace UI {
                 summary += providers[i];
             }
             return summary;
+        }
+
+        std::string joinBrowsePath(const std::string& root, const std::string& name) {
+            if (root.empty() || root.back() == '/') return root + name;
+            return root + "/" + name;
+        }
+
+        std::string parentBrowsePath(std::string path) {
+            while (path.size() > 6 && path.back() == '/') path.pop_back();
+            const size_t slash = path.find_last_of("/\\");
+            if (slash == std::string::npos) return {};
+            if (path.rfind("sdmc:/", 0) == 0 && slash <= 5) return "sdmc:/";
+            return path.substr(0, slash);
+        }
+
+        bool browseDirectory(const std::string& path) {
+            struct stat st{};
+            return !path.empty() && ::stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
         }
 
         void drawSaveInstanceRows(
@@ -502,6 +522,7 @@ namespace UI {
 
         std::string providerId;
         std::string sourcePath;
+        std::string bindingKey;
         if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
             if (title.legacyInstances.size() == 1) {
                 const auto& instance = title.legacyInstances.front();
@@ -509,6 +530,8 @@ namespace UI {
                     ? PokeVault::Source::providerIdFor(instance.providerLabel)
                     : instance.providerId;
                 sourcePath = instance.path();
+                bindingKey = gameLaunchBindingKey(
+                    currentProfileIdentity(), title.gameId, instance.sourceIdentity);
                 previewTrainerName = instance.trainerName;
             }
         } else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile && legacyBindings) {
@@ -517,10 +540,13 @@ namespace UI {
             if (assigned.status == PokeVault::Legacy::AssignedFileStatus::Ready) {
                 providerId = PokeVault::Source::providerIdFor(assigned.binding.sourceType);
                 sourcePath = assigned.binding.sourcePath;
+                bindingKey = gameLaunchBindingKey(
+                    currentProfileIdentity(), title.gameId, assigned.sourceIdentity);
             }
         }
 
-        launchDescriptor = resolveGameLaunch(title.titleId, providerId, sourcePath);
+        launchDescriptor = resolveGameLaunch(
+            title.titleId, title.gameId, providerId, sourcePath, bindingKey);
 
         auto addParty = [&](size_t index, uint16_t species, uint8_t level) {
             if (index >= partyPreview.size() || species == 0) return;
@@ -562,7 +588,7 @@ namespace UI {
                     ? "No validated save instance."
                     : "Choose a Save Instance to preview its active party.";
                 if (title.legacyInstances.size() > 1) {
-                    launchDescriptor.backend = GameLaunchBackend::RetroArch;
+                    launchDescriptor.backend = GameLaunchBackend::HomebrewNro;
                     launchDescriptor.state = GameLaunchState::ChooseSource;
                     launchDescriptor.providerId = "source-choice";
                     launchDescriptor.detail = "Choose the exact validated save/source to launch.";
@@ -615,6 +641,144 @@ namespace UI {
         }
     }
 
+    void SaveSelectScreen::openGameFilePicker(
+        const std::string& gameId, const std::string& providerId,
+        const std::string& sourcePath, const std::string& bindingKey,
+        bool returnToLegacy) {
+        launchLinkGameId = gameId;
+        launchLinkProviderId = providerId;
+        launchLinkSourcePath = sourcePath;
+        launchLinkBindingKey = bindingKey;
+        launchFileReturnToLegacy = returnToLegacy;
+        launchBrowseRoot = suggestedGameLaunchBrowseRoot(gameId, providerId, sourcePath);
+        launchBrowsePath = launchBrowseRoot;
+        launchFileIndex = 0;
+        launchFileScroll = 0;
+        launchFileNotice.clear();
+        refreshGameFilePicker();
+        overlay = Overlay::GameFilePicker;
+    }
+
+    void SaveSelectScreen::refreshGameFilePicker() {
+        launchFileEntries.clear();
+        launchFileIndex = 0;
+        launchFileScroll = 0;
+
+        DIR* dir = ::opendir(launchBrowsePath.c_str());
+        if (!dir) {
+            launchFileNotice = "This folder could not be opened.";
+            return;
+        }
+
+        std::vector<LaunchFileEntry> dirs;
+        std::vector<LaunchFileEntry> files;
+        size_t examined = 0;
+        while (const dirent* entry = ::readdir(dir)) {
+            if (++examined > 512) {
+                launchFileNotice = "Folder limit reached; narrow the folder and try again.";
+                break;
+            }
+            const std::string name(entry->d_name);
+            if (name == "." || name == "..") continue;
+            const std::string path = joinBrowsePath(launchBrowsePath, name);
+            struct stat st{};
+            if (::stat(path.c_str(), &st) != 0) continue;
+            if (S_ISDIR(st.st_mode))
+                dirs.push_back({name, path, true});
+            else if (S_ISREG(st.st_mode) &&
+                     gameLaunchContentSupported(launchLinkGameId, path))
+                files.push_back({name, path, false});
+        }
+        ::closedir(dir);
+
+        auto byName = [](const LaunchFileEntry& a, const LaunchFileEntry& b) {
+            return a.name < b.name;
+        };
+        std::sort(dirs.begin(), dirs.end(), byName);
+        std::sort(files.begin(), files.end(), byName);
+        launchFileEntries.reserve(dirs.size() + files.size());
+        launchFileEntries.insert(launchFileEntries.end(), dirs.begin(), dirs.end());
+        launchFileEntries.insert(launchFileEntries.end(), files.begin(), files.end());
+        if (launchFileEntries.empty() && launchFileNotice.empty())
+            launchFileNotice = "No compatible game files in this folder.";
+    }
+
+    void SaveSelectScreen::activateGameFilePicker() {
+        if (launchFileIndex < 0 ||
+            launchFileIndex >= static_cast<int>(launchFileEntries.size())) return;
+        const auto selected = launchFileEntries[static_cast<size_t>(launchFileIndex)];
+        if (selected.directory) {
+            launchBrowsePath = selected.path;
+            refreshGameFilePicker();
+            return;
+        }
+
+        std::string error;
+        if (!saveGameLaunchBinding(
+                launchLinkBindingKey, launchLinkGameId, launchLinkProviderId,
+                selected.path, error)) {
+            launchFileNotice = error.empty() ? "That game file could not be linked." : error;
+            return;
+        }
+
+        const bool backToLegacy = launchFileReturnToLegacy;
+        launchFileNotice.clear();
+        refreshHubPreview();
+        if (backToLegacy) {
+            legacyNotice = "Game file linked. Press A to launch this source.";
+            overlay = Overlay::LegacyInstances;
+            launchLegacyMode = true;
+        } else {
+            hubNotice = "Game file linked. Launch is ready.";
+            overlay = Overlay::None;
+        }
+    }
+
+    void SaveSelectScreen::browseGameFileParent() {
+        const std::string parent = parentBrowsePath(launchBrowsePath);
+        if (parent.empty() || parent == launchBrowsePath) return;
+        launchBrowsePath = parent;
+        refreshGameFilePicker();
+    }
+
+    bool SaveSelectScreen::beginLaunchLinkForCurrentTitle() {
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 ||
+            titleIndex >= static_cast<int>(user->titles.size())) return false;
+        const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+
+        if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+            title.legacyInstances.size() == 1) {
+            const auto& instance = title.legacyInstances.front();
+            const std::string provider = instance.providerId.empty()
+                ? PokeVault::Source::providerIdFor(instance.providerLabel)
+                : instance.providerId;
+            const std::string key = gameLaunchBindingKey(
+                currentProfileIdentity(), title.gameId, instance.sourceIdentity);
+            openGameFilePicker(title.gameId, provider, instance.path(), key, false);
+            return true;
+        }
+
+        if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile && legacyBindings) {
+            const auto assigned = legacyBindings->resolveFileForGame(
+                currentProfileIdentity(), title.gameId);
+            if (assigned.status != PokeVault::Legacy::AssignedFileStatus::Ready) {
+                hubNotice = "Choose a validated save source before linking a game file.";
+                return false;
+            }
+            const std::string provider =
+                PokeVault::Source::providerIdFor(assigned.binding.sourceType);
+            const std::string key = gameLaunchBindingKey(
+                currentProfileIdentity(), title.gameId, assigned.sourceIdentity);
+            openGameFilePicker(
+                title.gameId, provider, assigned.binding.sourcePath, key, false);
+            return true;
+        }
+
+        hubNotice = "This game does not need a separate game-file link.";
+        return false;
+    }
+
     bool SaveSelectScreen::launchCurrentLegacyInstance() {
         const UserEntry* user = currentUser();
         if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size()))
@@ -626,7 +790,14 @@ namespace UI {
         const auto& instance = title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
         const std::string provider = instance.providerId.empty()
             ? PokeVault::Source::providerIdFor(instance.providerLabel) : instance.providerId;
-        const auto descriptor = resolveGameLaunch(0, provider, instance.path());
+        const std::string key = gameLaunchBindingKey(
+            currentProfileIdentity(), title.gameId, instance.sourceIdentity);
+        const auto descriptor = resolveGameLaunch(
+            0, title.gameId, provider, instance.path(), key);
+        if (descriptor.state == GameLaunchState::NeedsContentLink) {
+            openGameFilePicker(title.gameId, provider, instance.path(), key, true);
+            return false;
+        }
         if (!descriptor.ready()) {
             legacyNotice = descriptor.detail;
             return false;
@@ -656,6 +827,9 @@ namespace UI {
             overlay = Overlay::LegacyInstances;
             return false;
         }
+
+        if (launchDescriptor.state == GameLaunchState::NeedsContentLink)
+            return beginLaunchLinkForCurrentTitle();
 
         if (!launchDescriptor.ready()) {
             hubNotice = launchDescriptor.detail.empty()
@@ -932,6 +1106,35 @@ namespace UI {
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
             | navTouchButton(touch);
 
+        if (overlay == Overlay::GameFilePicker) {
+            const int count = static_cast<int>(launchFileEntries.size());
+            if (kDown & HidNpadButton_B) {
+                overlay = launchFileReturnToLegacy ? Overlay::LegacyInstances : Overlay::None;
+                return;
+            }
+            if (kDown & HidNpadButton_Y) {
+                browseGameFileParent();
+                return;
+            }
+            if (kDown & HidNpadButton_X) {
+                launchBrowsePath = launchBrowseRoot;
+                refreshGameFilePicker();
+                return;
+            }
+            if (count > 0) {
+                if (kDown & HidNpadButton_Up)
+                    launchFileIndex = (launchFileIndex - 1 + count) % count;
+                if (kDown & HidNpadButton_Down)
+                    launchFileIndex = (launchFileIndex + 1) % count;
+                constexpr int visibleRows = 7;
+                if (launchFileIndex < launchFileScroll)
+                    launchFileScroll = launchFileIndex;
+                else if (launchFileIndex >= launchFileScroll + visibleRows)
+                    launchFileScroll = launchFileIndex - visibleRows + 1;
+                if (kDown & HidNpadButton_A) activateGameFilePicker();
+            }
+            return;
+        }
         if (overlay == Overlay::Help) {
             if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) overlay = Overlay::None;
             return;
@@ -1271,9 +1474,12 @@ namespace UI {
 
             drawGlyphButton(fb, infoX, HUB_Y + 240, 190, 52, "A", "Open / Edit",
                             Colors::PanelAlt, Colors::TextPrimary);
+            const bool launchActionable = launchDescriptor.ready() ||
+                launchDescriptor.state == GameLaunchState::NeedsContentLink ||
+                launchDescriptor.state == GameLaunchState::ChooseSource;
             drawGlyphButton(fb, infoX + 206, HUB_Y + 240, 190, 52, "ZR", launchLabel,
-                            launchDescriptor.ready() ? Colors::AccentPrimary : Colors::PanelAlt,
-                            launchDescriptor.ready() ? Colors::White : Colors::TextMuted);
+                            launchActionable ? Colors::AccentPrimary : Colors::PanelAlt,
+                            launchActionable ? Colors::White : Colors::TextMuted);
 
             fb.drawText(artX, HUB_Y + 314, "ACTIVE PARTY", Colors::AccentPrimary, TextStyle::Caption);
             if (!partyPreviewStatus.empty())
@@ -1323,7 +1529,7 @@ namespace UI {
         auto homeHints = std::vector<ControllerHint>{
             {"D-pad/Stick", "Choose Game"},
             {"A", "Open / Edit"},
-            {"ZR", "Launch"},
+            {"ZR", gameLaunchActionLabel(launchDescriptor.state)},
             {"B", "Home"}
         };
         if (users.size() > 1) homeHints.insert(homeHints.begin() + 1, {"L/R", "Profile"});
@@ -1333,7 +1539,40 @@ namespace UI {
             homeHints.push_back({"Y", "Source Setup"});
         drawNavBar(fb, homeHints);
 
-        if (overlay == Overlay::LegacyInstances && u && titleIndex >= 0 &&
+        if (overlay == Overlay::GameFilePicker) {
+            constexpr int w = 900, h = 560, rowH = 54, visibleRows = 7;
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 28, y + 18, "GAME LAUNCH / LINK GAME FILE",
+                        Colors::AccentPrimary, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44, "Choose the ROM / game file",
+                        Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 28, y + 78,
+                        "Read-only browser — linking stores only PokeBank-owned launch metadata.",
+                        Colors::TextSecondary, TextStyle::Caption);
+            fb.drawText(x + 28, y + 102,
+                        launchBrowsePath.substr(0, 100), Colors::TextMuted, TextStyle::Caption);
+
+            const int first = launchFileScroll;
+            const int last = std::min<int>(
+                static_cast<int>(launchFileEntries.size()), first + visibleRows);
+            int rowY = y + 132;
+            for (int i = first; i < last; ++i) {
+                const auto& entry = launchFileEntries[static_cast<size_t>(i)];
+                const bool selected = i == launchFileIndex;
+                drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6, selected, 10);
+                fb.drawText(x + 44, rowY + 13,
+                            entry.directory ? "[Folder]  " + entry.name : entry.name,
+                            selected ? Colors::SelectedText : Colors::TextSecondary,
+                            TextStyle::Body);
+                rowY += rowH;
+            }
+            if (!launchFileNotice.empty())
+                fb.drawText(x + 28, y + h - 42, launchFileNotice.substr(0, 108),
+                            Colors::Info, TextStyle::Caption);
+            drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Open / Link"},
+                            {"Y", "Up Folder"}, {"X", "Start Folder"}, {"B", "Cancel"}});
+        } else if (overlay == Overlay::LegacyInstances && u && titleIndex >= 0 &&
             titleIndex < static_cast<int>(u->titles.size())) {
             const auto& parent = u->titles[titleIndex];
             constexpr int w = 780, h = 530, rowH = 66, visibleRows = 5;
@@ -1357,7 +1596,7 @@ namespace UI {
                 fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
             drawNavBar(fb, {{"D-pad/Stick", "Choose Save"},
-                            {"A", launchLegacyMode ? "Launch" : "Open Read Only"},
+                            {"A", launchLegacyMode ? "Launch / Link" : "Open Read Only"},
                             {"Y", "Source Details"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::LegacyAssignment && u) {
             constexpr int w = 800, h = 530, rowH = 70, visibleRows = 5;
@@ -1482,7 +1721,7 @@ namespace UI {
             drawInfoOverlay(fb, "Game Sources & Controls", {
                 "D-pad / Left Stick   Navigate (hold to scroll)",
                 "A   Open/edit the focused game and choose a save instance when needed",
-                "ZR   Launch the focused installed title or resolved RetroArch game",
+                "ZR   Launch, choose a source, or link a game file for the focused game",
                 "L / R   Previous or next Switch user",
                 "X   Assign an unassigned legacy save to this profile",
                 "Y   Add or repair sources for the focused Gen IV game",

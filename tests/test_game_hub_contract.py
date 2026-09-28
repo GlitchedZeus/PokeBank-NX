@@ -21,3 +21,12 @@ require("fsdevCommitDevice" not in source,
 require("restoreBackupToTitle" not in source,
         "game hub preview must never restore/inject a save")
 require("PartyPreviewSlot" in header, "game hub party preview model must be explicit")
+
+require("Overlay::GameFilePicker" in header,
+        "game hub must provide an in-app game-file browser")
+require("saveGameLaunchBinding" in source,
+        "Link Game File must persist app-owned launch metadata")
+require('"Y", "Up Folder"' in source,
+        "game-file browser must support controller folder navigation")
+require("promptText(" not in source[source.find("openGameFilePicker"):source.find("openGen4Setup")],
+        "launch linking must not require typing a raw SD path")
