@@ -44,7 +44,7 @@ SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/G
 DATA		:=	data
 INCLUDES	:=	include nanovg
 APP_TITLE   :=  PokeBank NX
-APP_AUTHOR  :=  GlitchedZeus and PKSE contributors
+APP_AUTHOR  :=  GlitchedZeus and PokeBank NX contributors
 # THE version, in two spellings. Both are set here and nothing downstream needs editing.
 #
 # APP_VERSION is the .nacp one -- the home menu and hbmenu read it. The name is not ours to choose:
