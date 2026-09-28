@@ -8,7 +8,7 @@
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
-#include "Names/ItemPresence.h"
+#include "Names/Gen4HeldItemCatalog.h"
 #include "Names/MovePresence.h"
 #include "Names/NameLanguage.h"
 #include "Names/SpeciesNames.h"
@@ -475,7 +475,7 @@ bool Pokemon4Mutable::setFriendship(uint8_t value) noexcept {
 
 bool Pokemon4Mutable::setHeldItem(uint16_t value) noexcept {
     if (!valid_) return false;
-    if (value != 0 && !Names::isHeldItemPresent(value, sourceGroup_)) return false;
+    if (value != 0 && !Names::isGen4HeldItemPresent(value, sourceGroup_)) return false;
     write16(0x0A, value);
     return true;
 }
