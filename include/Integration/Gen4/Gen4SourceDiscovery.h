@@ -3,6 +3,7 @@
 
 #include "Enums/GameVersion.h"
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
+#include "Source/SaveInstance.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -109,6 +110,13 @@ struct SourcePayloadRead {
 
 [[nodiscard]] bool candidateMatchesGame(
     const SourceCandidate& candidate, std::string_view gameId) noexcept;
+
+// Adapter boundary only: strict Gen IV parsing remains in SourceCandidate/Gen4ReadOnlySave, while
+// Save Instances consumes the same provider-neutral metadata used by classic generations.
+[[nodiscard]] PokeVault::Source::SaveInstance toSaveInstance(
+    const SourceCandidate& candidate, std::string_view gameId,
+    size_t validationHandle = 0, bool rememberedSource = false,
+    std::string_view claimedProfile = {});
 
 [[nodiscard]] const char* candidateStatusName(CandidateStatus status) noexcept;
 
