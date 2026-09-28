@@ -255,6 +255,7 @@ namespace UI {
         overlay = Overlay::None;
         titleIndex = 0;
         scrollSelectionIntoView();
+        refreshHubPreview();
         return true;
     }
 
@@ -281,6 +282,7 @@ namespace UI {
             titleIndex = std::min<int>(titleIndex,
                 std::max<int>(0, static_cast<int>(user->titles.size()) - 1));
             scrollSelectionIntoView();
+            refreshHubPreview();
             return false;
         }
 
@@ -295,6 +297,7 @@ namespace UI {
                 legacyNotice = "That save changed location or was removed; nothing was opened.";
                 overlay = Overlay::LegacyInstances;
                 legacyInstanceScroll = 0;
+                refreshHubPreview();
                 return !requirePreferred;
             }
             legacyInstanceIndex = static_cast<int>(
@@ -304,6 +307,7 @@ namespace UI {
         legacyNotice = "Save list refreshed from configured emulator roots.";
         overlay = Overlay::LegacyInstances;
         scrollSelectionIntoView();
+        refreshHubPreview();
         return true;
     }
 
@@ -557,6 +561,12 @@ namespace UI {
                 partyPreviewStatus = title.legacyInstances.empty()
                     ? "No validated save instance."
                     : "Choose a Save Instance to preview its active party.";
+                if (title.legacyInstances.size() > 1) {
+                    launchDescriptor.backend = GameLaunchBackend::RetroArch;
+                    launchDescriptor.state = GameLaunchState::ChooseSource;
+                    launchDescriptor.providerId = "source-choice";
+                    launchDescriptor.detail = "Choose the exact validated save/source to launch.";
+                }
                 return;
             }
             const size_t handle = title.legacyInstances.front().sourceIndex;
@@ -818,6 +828,11 @@ namespace UI {
             return false;
         }
         loadGen4Cards();
+        const UserEntry* user = currentUser();
+        if (user && !user->titles.empty())
+            titleIndex = std::min<int>(titleIndex, static_cast<int>(user->titles.size()) - 1);
+        scrollSelectionIntoView();
+        refreshHubPreview();
         gen4Notice = "Remembered save removed. The source file itself was not changed.";
         overlay = Overlay::Gen4Setup;
         return true;
@@ -932,6 +947,7 @@ namespace UI {
                 if (legacyCatalog) {
                     *legacyCatalog = PokeVault::Legacy::discoverConfiguredLegacySaves();
                     loadLegacySources(*legacyCatalog);
+                    refreshHubPreview();
                     legacyNotice = "Unassigned source list refreshed.";
                 }
                 if (unassignedLegacySources.empty()) overlay = Overlay::None;

@@ -18,6 +18,7 @@ int main() {
     assert(!launchProviderIsRetroArch("DraStic"));
 
     assert(std::string(gameLaunchActionLabel(GameLaunchState::Ready)) == "Launch");
+    assert(std::string(gameLaunchActionLabel(GameLaunchState::ChooseSource)) == "Choose & Launch");
     assert(std::string(gameLaunchActionLabel(GameLaunchState::NeedsContentLink)) == "Link Game File");
     assert(std::string(gameLaunchActionLabel(GameLaunchState::LauncherMissing)) == "Launcher Missing");
     assert(std::string(gameLaunchActionLabel(GameLaunchState::Unavailable)) == "Unavailable");

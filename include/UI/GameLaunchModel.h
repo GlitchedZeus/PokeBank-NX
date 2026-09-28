@@ -18,6 +18,7 @@ enum class GameLaunchBackend : uint8_t {
 
 enum class GameLaunchState : uint8_t {
     Ready,
+    ChooseSource,
     NeedsContentLink,
     LauncherMissing,
     Unavailable,
@@ -61,6 +62,7 @@ inline bool launchProviderIsRetroArch(std::string_view providerId) {
 inline const char* gameLaunchActionLabel(GameLaunchState state) noexcept {
     switch (state) {
         case GameLaunchState::Ready:            return "Launch";
+        case GameLaunchState::ChooseSource:     return "Choose & Launch";
         case GameLaunchState::NeedsContentLink: return "Link Game File";
         case GameLaunchState::LauncherMissing:  return "Launcher Missing";
         case GameLaunchState::Unavailable:      return "Unavailable";
