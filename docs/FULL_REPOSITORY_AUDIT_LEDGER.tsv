@@ -302,7 +302,7 @@ include/Safety/WritePolicy.h	blob	100644	1060	low-level live save write policy	t
 include/Save/BDSPReadValidation.h	blob	100644	832	BDSP minimum-layout read gate	text	23	AUDITED			0	no
 include/Save/Block.h	blob	100644	1357	SC block parse/serialization API	text	39	AUDITED			0	yes
 include/Save/EditableSaveCapabilities.h	blob	100644	1408	editable-save capability flags	text	51	AUDITED			0	no
-include/Save/GetSaveFileContents.h	blob	100644	8252		unknown		PENDING			0	
+include/Save/GetSaveFileContents.h	blob	100644	8252	save open/build/persist orchestration API	text	187	AUDITED			1	yes
 include/Save/PLAReadValidation.h	blob	100644	2426	PLA structural/checksum read gate	text	49	AUDITED			0	no
 include/Save/RtcFooter.h	blob	100644	582	legacy RTC footer sizing helper	text	15	AUDITED			0	no
 include/Source/SaveInstance.h	blob	100644	7242	provider-neutral source instance/identity/access model	text	187	AUDITED			0	no
@@ -523,7 +523,7 @@ src/Pokemon/PokemonTypes.cpp	blob	100644	1613		unknown		PENDING			0
 src/Pokemon/SVDexTable.cpp	blob	100644	47312		unknown		PENDING			0	
 src/Pokemon/SWSHDexTable.cpp	blob	100644	25413		unknown		PENDING			0	
 src/Save/Block.cpp	blob	100644	7048	SC block parser/serializer	text	199	AUDITED			0	yes
-src/Save/GetSaveFileContents.cpp	blob	100644	41176		unknown		PENDING			0	
+src/Save/GetSaveFileContents.cpp	blob	100644	41176	cross-generation save open/build/validation/persist orchestration	text	977	AUDITED			5	yes
 src/Trainer/Bank.cpp	blob	100644	29556	legacy Bank serialization/recovery/migration	text	611	AUDITED			1	yes
 src/Trainer/Trainer.cpp	blob	100644	1480	shared Trainer model implementation	text	50	AUDITED			0	no
 src/Trainer/Trainer3FRLG.cpp	blob	100644	23130	FRLG mutable trainer/save serializer	text	461	AUDITED			1	yes
