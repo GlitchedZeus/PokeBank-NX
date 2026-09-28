@@ -98,21 +98,24 @@ int main() {
     contains(surface, "state.session.cycleShiny()");
     contains(surface, "Could not preserve the other PID-linked Generation IV traits");
 
-    // Outer move focus is exactly one row. PP / PP Ups live in the contextual dialog.
+    // Outer move focus is exactly one row. Move / PP / PP Ups live in the contextual dialog.
     contains(surface, "openMoveEditor(screen, state, state.focus.row)");
-    contains(surface, "Same shared contextual editor");
+    contains(surface, "Native Gen IV move catalog");
     contains(surface, "PP Ups");
+    contains(surface, "state.moveEditorRow == 0");
     contains(surface, "state.moveEditorRow == 1");
     contains(surface, "state.moveEditorRow == 2");
-    contains(surface, "Move selection stays read-only until exact Gen IV learnsets are pinned");
+    contains(surface, "openMovePicker(screen, state)");
 
-    // Gen IV remains View/Edit only, now reachable from both Box and Party surfaces.
+    // G4-04 adds boxed Create while retaining Party + Box View/Edit.
     contains(surface, "result.values[result.count++] = Shared::Action::View");
     contains(surface, "result.values[result.count++] = Shared::Action::Edit");
-    assert(surface.find("result.values[result.count++] = Shared::Action::Add") == std::string::npos);
+    contains(surface, "result.values[result.count++] = Shared::Action::Add");
     assert(surface.find("result.values[result.count++] = Shared::Action::Clone") == std::string::npos);
     assert(surface.find("result.values[result.count++] = Shared::Action::Remove") == std::string::npos);
-    contains(surface, "Generation IV Create follows after Edit hardware acceptance");
+    contains(surface, "beginCreate(screen, state.box, state.slot)");
+    contains(surface, "PickerTarget::Species");
+    contains(surface, "commitNewBoxPokemon");
     contains(surface, "partyEntrySurface");
     contains(surface, "TargetKind::Party");
     contains(surface, "keepParty");
@@ -122,6 +125,20 @@ int main() {
     // A committed staged edit must not claim UI success when the refreshed presentation failed.
     contains(surface, "if (!refreshPresentation(screen))");
     contains(surface, "Generation IV change is staged, but presentation refresh failed");
+
+    // G4-04 keeps native inspection rows focusable and exposes exact-safe field editors.
+    contains(surface, "G4-04 keeps read-only/native-inspection rows focusable");
+    contains(surface, "openHeldItemPicker");
+    contains(surface, "openLanguagePicker");
+    contains(surface, "openBallPicker");
+    contains(surface, "openPokerusPicker");
+    contains(surface, "setOriginalTrainerName");
+    contains(surface, "setTID");
+    contains(surface, "setSID");
+    contains(surface, "Met Location is inspect-only");
+    contains(session, "Mode::Create");
+    contains(session, "beginCreate");
+    contains(session, "editor.commitNewBoxPokemon");
 
     // Dirty Back uses the same shared exit guard and explicit A/Y/B confirmation.
     contains(session, "PokemonEditorExitGuard::requiresConfirmation");
