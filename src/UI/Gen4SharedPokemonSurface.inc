@@ -343,8 +343,9 @@ bool keepWorkspace(TrainerViewScreen& screen) {
         return false;
     }
     std::string error;
+    const bool creating = state.session.mode == SessionModel::Mode::Create;
     bool kept = false;
-    if (state.session.mode == SessionModel::Mode::Create) {
+    if (creating) {
         kept = state.session.add(*staged, static_cast<size_t>(state.box),
                                  static_cast<size_t>(state.slot), error);
     } else if (state.target == TargetKind::Party) {
@@ -368,7 +369,9 @@ bool keepWorkspace(TrainerViewScreen& screen) {
         screen.selectedBoxIndex = state.box;
         screen.selectedItemIndex = state.slot;
     }
-    screen.postStatus("Generation IV Pokemon change staged; external source unchanged", 300);
+    screen.postStatus(creating
+        ? "Generation IV Pokemon created in staged box; external source unchanged"
+        : "Generation IV Pokemon change staged; external source unchanged", 300);
     return true;
 }
 
@@ -796,14 +799,57 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
             screen.postStatus("Generation IV EXP edit was refused", 240);
         return true;
     }
+    if (row == 4) {
+        const auto current = Utils::utf16ToUtf8(p.originalTrainerName());
+        const auto result = Utils::promptText("Original Trainer", "OT name", current, 7);
+        if (result.accepted && !mon.setOriginalTrainerName(Utils::utf8ToUtf16(result.text)))
+            screen.postStatus("That OT name cannot be represented by this Generation IV save", 300);
+        return true;
+    }
+    if (row == 5) {
+        const auto r = Utils::promptNumber("Trainer ID", mon.tid(), 0, 65535);
+        if (r.accepted && !mon.setTID(static_cast<uint16_t>(r.value)))
+            screen.postStatus("Could not preserve PID-linked traits after TID edit", 300);
+        return true;
+    }
+    if (row == 6) {
+        const auto r = Utils::promptNumber("Secret ID", mon.sid(), 0, 65535);
+        if (r.accepted && !mon.setSID(static_cast<uint16_t>(r.value)))
+            screen.postStatus("Could not preserve PID-linked traits after SID edit", 300);
+        return true;
+    }
+    if (row == 7) {
+        openHeldItemPicker(screen, state);
+        return true;
+    }
     if (row == 8) {
         const auto r = Utils::promptNumber("Friendship", mon.friendship(), 0, 255);
         if (r.accepted) mon.setFriendship(static_cast<uint8_t>(r.value));
         return true;
     }
+    if (row == 9) {
+        openLanguagePicker(screen, state);
+        return true;
+    }
+    if (row == 10) {
+        screen.postStatus("Origin game is inspect-only until exact origin conversion rules are pinned", 300);
+        return true;
+    }
+    if (row == 11) {
+        openBallPicker(screen, state);
+        return true;
+    }
     if (row == 12) {
         const auto r = Utils::promptNumber("Met Level", mon.metLevel(), 0, 100);
         if (r.accepted) mon.setMetLevel(static_cast<uint8_t>(r.value));
+        return true;
+    }
+    if (row == 13) {
+        screen.postStatus("Met Location is inspect-only until DP/Pt/HGSS dual-location encoding is pinned", 330);
+        return true;
+    }
+    if (row == 14) {
+        openPokerusPicker(screen, state);
         return true;
     }
     return false;
@@ -1019,10 +1065,19 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,130));
     drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18,
-        state.pickerTarget == PickerTarget::Species ? "Choose Species" :
-        state.pickerTarget == PickerTarget::Nature ? "Choose Nature" : "Choose Ability",
-        Colors::Text, TextStyle::Heading);
+    std::string pickerTitle = "Choose";
+    switch (state.pickerTarget) {
+        case PickerTarget::Species: pickerTitle = "Choose Species"; break;
+        case PickerTarget::Nature: pickerTitle = "Choose Nature"; break;
+        case PickerTarget::Ability: pickerTitle = "Choose Ability"; break;
+        case PickerTarget::HeldItem: pickerTitle = "Choose Held Item"; break;
+        case PickerTarget::Language: pickerTitle = "Choose Language"; break;
+        case PickerTarget::Ball: pickerTitle = "Choose Ball"; break;
+        case PickerTarget::Pokerus: pickerTitle = "Choose Pokerus"; break;
+        case PickerTarget::Move: pickerTitle = "Choose Move"; break;
+        default: break;
+    }
+    fb.drawText(x + 24, y + 18, pickerTitle, Colors::Text, TextStyle::Heading);
     const int first = std::max(0, state.pickerRow - 5);
     const int count = std::min<int>(10, static_cast<int>(state.pickerValues.size()) - first);
     for (int i = 0; i < count; ++i) {
@@ -1036,6 +1091,16 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
             label = std::to_string(value) + " - " + Names::getSpeciesName(value);
         else if (state.pickerTarget == PickerTarget::Nature)
             label = Trainer::getNatureName(static_cast<uint8_t>(value));
+        else if (state.pickerTarget == PickerTarget::HeldItem)
+            label = value == 0 ? "(None)" : Names::getItemName(value);
+        else if (state.pickerTarget == PickerTarget::Language)
+            label = Enums::getLanguageName(static_cast<uint8_t>(value));
+        else if (state.pickerTarget == PickerTarget::Ball)
+            label = Enums::getBallName(static_cast<uint8_t>(value));
+        else if (state.pickerTarget == PickerTarget::Pokerus)
+            label = value == 0 ? "None" : ((value & 0x0Fu) != 0 ? "Infected" : "Cured");
+        else if (state.pickerTarget == PickerTarget::Move)
+            label = value == 0 ? "(Empty)" : std::to_string(value) + " - " + Names::getMoveName(value);
         else if (state.session.working) {
             const uint16_t abilityId =
                 state.session.working->abilityForSlot(static_cast<uint8_t>(value));
@@ -1062,10 +1127,10 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state
     fb.drawText(x + 24, y + 18, "Move " + std::to_string(state.moveEditorSlot + 1),
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                "Same shared contextual editor • move choice read-only in G4-03",
+                "Native Gen IV move catalog • deep learnset legality is advisory",
                 Colors::TextDim, TextStyle::Caption);
     const std::array<std::pair<std::string,std::string>,5> rows{{
-        {"Move", move == 0 ? "Empty" : std::string(Names::getMoveName(move)) + " (read-only)"},
+        {"Move", move == 0 ? "Empty" : std::string(Names::getMoveName(move))},
         {"PP", std::to_string(state.session.working->pp()[slot]) + "/" +
                std::to_string(moveMaxPP(
                    move, state.session.working->ppUps()[slot],
@@ -1194,9 +1259,9 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
                     Colors::Text, TextStyle::Caption);
     }
     fb.drawText(g.rightX + 18, g.y + 205,
-                "Move selection: READ ONLY in G4-03", Colors::TextDim, TextStyle::Caption);
+                "Move selection: native Gen IV catalog", Colors::TextDim, TextStyle::Caption);
     fb.drawText(g.rightX + 18, g.y + 226,
-                "A edits PP / PP Ups contextually", Colors::TextDim, TextStyle::Caption);
+                "A edits Move / PP / PP Ups contextually", Colors::TextDim, TextStyle::Caption);
 
     struct DataRow { std::string label, value; };
     const std::vector<DataRow> rows{
@@ -1215,7 +1280,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     else
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"X", "Keep"}, {"B", "Exit"}});
+                        {"X", state.session.mode == SessionModel::Mode::Create ? "Add" : "Keep"},
+                        {"B", "Exit"}});
 
     if (state.session.confirmExit) {
         constexpr int w = 560, h = 226;
@@ -1228,7 +1294,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const int cbw = 160, cbh = TouchTargetMin, cby = y + h - cbh - 18;
         drawGlyphButton(fb, x + 24, cby, cbw, cbh, "B", "Back", Colors::PanelAlt);
         drawGlyphButton(fb, x + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
-        drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Save", Colors::PanelAlt);
+        drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
+                        state.session.mode == SessionModel::Mode::Create ? "Add" : "Save", Colors::PanelAlt);
     }
 
     if (state.valuePicker) drawValuePicker(screen, fb, state);
