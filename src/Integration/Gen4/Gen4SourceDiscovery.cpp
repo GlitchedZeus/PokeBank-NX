@@ -93,7 +93,7 @@ std::string extension(std::string_view path) {
 
 bool discoveryExtension(std::string_view path) {
     const std::string ext = extension(path);
-    return ext == ".sav" || ext == ".srm" || ext == ".dsv";
+    return ext == ".sav" || ext == ".srm" || ext == ".dsv" || ext == ".dss";
 }
 
 std::string sha256Hex(std::string_view value) {
@@ -215,6 +215,7 @@ void scanDirectory(const DiscoveryRoot& root, const std::string& path, size_t de
         // Keep ready Gen IV saves and explicit wrapper/invalid candidates that came from
         // a known DS provider. This gives setup diagnostics without surfacing unrelated files.
         if (candidate.ready() || candidate.status == CandidateStatus::UnsupportedWrapper ||
+            candidate.status == CandidateStatus::UnsupportedSavestate ||
             root.sourceType != "RetroArch")
             state.result.candidates.push_back(std::move(candidate));
     }
@@ -227,6 +228,7 @@ const char* candidateStatusName(CandidateStatus status) noexcept {
         case CandidateStatus::Ready: return "Ready";
         case CandidateStatus::InvalidSave: return "Invalid";
         case CandidateStatus::UnsupportedWrapper: return "Unsupported wrapper";
+        case CandidateStatus::UnsupportedSavestate: return "Unsupported savestate";
         case CandidateStatus::ReadError: return "Read error";
         case CandidateStatus::AssignmentMismatch: return "Assignment mismatch";
     }
@@ -257,6 +259,15 @@ SourceCandidate inspectSourceFile(
     }
     result.fileSize = static_cast<uint64_t>(st.st_size);
     result.modifiedTime = static_cast<int64_t>(st.st_mtime);
+
+    // DraStic .dss is a savestate snapshot, not the cartridge/in-game backup file. Never try to
+    // reinterpret it based on size or embedded bytes; savestate extraction is outside G4-02H.
+    if (extension(path) == ".dss") {
+        result.status = CandidateStatus::UnsupportedSavestate;
+        result.diagnostic =
+            "DraStic .dss savestate detected. Savestates are not assignable; use the cartridge save under /switch/drastic/user/backup/.";
+        return result;
+    }
 
     if (result.fileSize != SAVE_SIZE) {
         if (extension(path) == ".dsv" && hasDesmumeFooterMarker(path, result.fileSize)) {
@@ -331,6 +342,15 @@ DiscoveryResult discoverSources(std::span<const DiscoveryRoot> roots, DiscoveryL
     return std::move(state.result);
 }
 
+std::vector<DiscoveryRoot> defaultDraSticRoots() {
+    return {
+        {"sdmc:/switch/drastic/user/backup", "DraStic", 1},
+        {"sdmc:/switch/drastic/backup", "DraStic", 1},
+        {"sdmc:/switch/drastic/user/savestates", "DraStic Savestate", 1},
+        {"sdmc:/switch/drastic/savestates", "DraStic Savestate", 1},
+    };
+}
+
 DiscoveryResult discoverKnownSources(
     DiscoveryLimits limits, const std::string& retroArchConfig,
     const std::string& retroArchFallback) {
@@ -343,9 +363,9 @@ DiscoveryResult discoverKnownSources(
         roots.push_back({retroArchFallback, "RetroArch", 2});
 
     // Switch-native emulator roots only. No sdmc:/ root scan is ever performed.
+    for (const auto& root : defaultDraSticRoots())
+        if (isDirectory(root.path)) roots.push_back(root);
     for (const auto& root : {
-            DiscoveryRoot{"sdmc:/switch/drastic/user/backup", "DraStic", 1},
-            DiscoveryRoot{"sdmc:/switch/drastic/backup", "DraStic", 1},
             DiscoveryRoot{"sdmc:/switch/melonds", "melonDS", 2},
             DiscoveryRoot{"sdmc:/melonds", "melonDS", 2},
         }) {

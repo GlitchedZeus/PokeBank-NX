@@ -456,10 +456,13 @@ namespace UI {
     void SaveSelectScreen::discoverGen4Candidates() {
         gen4Candidates.clear();
         auto discovered = PokeVault::Integration::Gen4::discoverKnownSources();
-        size_t unsupported = 0;
+        size_t wrappers = 0;
+        size_t savestates = 0;
         for (auto& candidate : discovered.candidates) {
             if (candidate.status == PokeVault::Integration::Gen4::CandidateStatus::UnsupportedWrapper)
-                ++unsupported;
+                ++wrappers;
+            else if (candidate.status == PokeVault::Integration::Gen4::CandidateStatus::UnsupportedSavestate)
+                ++savestates;
             if (candidate.ready() &&
                 PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId))
                 gen4Candidates.push_back(std::move(candidate));
@@ -473,9 +476,11 @@ namespace UI {
         if (gen4Candidates.empty()) {
             gen4Notice = discovered.limitReached
                 ? "No compatible save found before the bounded scan limit."
-                : unsupported > 0
-                    ? "No raw save found. A DeSmuME wrapper was detected but is not trimmed automatically."
-                    : "No compatible Gen IV save found in known emulator locations.";
+                : savestates > 0
+                    ? "DraStic savestate found (.dss). PokeBank needs the cartridge save in /switch/drastic/user/backup/."
+                : wrappers > 0
+                    ? "DeSmuME .dsv wrapper found. PokeBank does not trim wrapper bytes automatically."
+                    : "No compatible Gen IV cartridge save found in known emulator locations.";
             overlay = Overlay::Gen4Setup;
         } else {
             gen4Notice = std::to_string(gen4Candidates.size()) +
@@ -516,7 +521,7 @@ namespace UI {
     void SaveSelectScreen::chooseGen4ManualFile() {
         const auto chosen = Utils::promptText(
             "Choose Generation IV Save",
-            "Full SD path to a .sav/.srm/raw save",
+            "Full SD path to a raw cartridge save (.sav/.srm/.dsv; not .dss)",
             "", 240);
         if (!chosen.accepted) return;
 

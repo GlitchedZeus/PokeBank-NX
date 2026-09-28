@@ -17,6 +17,7 @@ enum class CandidateStatus : uint8_t {
     Ready,
     InvalidSave,
     UnsupportedWrapper,
+    UnsupportedSavestate,
     ReadError,
     AssignmentMismatch,
 };
@@ -65,9 +66,14 @@ struct DiscoveryResult {
     std::span<const DiscoveryRoot> roots,
     DiscoveryLimits limits = {});
 
+// Centralized provider roots. Cartridge backups are candidates; savestate roots are scanned only
+// so .dss can be diagnosed explicitly and are never eligible for assignment.
+[[nodiscard]] std::vector<DiscoveryRoot> defaultDraSticRoots();
+
 // Explicitly bounded known-location discovery. This never scans sdmc:/ itself.
 // RetroArch roots come from savefile_directory (or its conventional savefiles folder);
-// DraStic and melonDS use only their known app roots. Manual selection is separate.
+// DraStic and melonDS use only their known app roots. DraStic savestate roots are diagnostics-only.
+ // Manual selection is separate.
 [[nodiscard]] DiscoveryResult discoverKnownSources(
     DiscoveryLimits limits = {},
     const std::string& retroArchConfig = "sdmc:/retroarch/retroarch.cfg",

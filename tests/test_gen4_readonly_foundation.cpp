@@ -611,8 +611,11 @@ void testSourceDiscovery() {
     const auto root=fs::temp_directory_path()/("pokebank-g4-discovery-"+std::to_string(getpid()));
     const auto retro=root/"retroarch";
     const auto drastic=root/"drastic";
+    const auto drasticBackup=drastic/"user"/"backup";
+    const auto drasticStates=drastic/"user"/"savestates";
     fs::create_directories(retro);
-    fs::create_directories(drastic);
+    fs::create_directories(drasticBackup);
+    fs::create_directories(drasticStates);
     auto write=[&](const fs::path& path,const auto& data){
         std::ofstream f(path,std::ios::binary);
         f.write(reinterpret_cast<const char*>(data.data()),static_cast<std::streamsize>(data.size()));
@@ -623,21 +626,24 @@ void testSourceDiscovery() {
     const auto hg=makeSave(Layout::HeartGoldSoulSilver,0,0,7);
     write(retro/"Diamond.srm",dp);
     write(retro/"Platinum.sav",pt);
-    write(drastic/"HeartGold.dsv",hg);
+    write(drasticBackup/"HeartGold.dsv",hg);
+    auto fakeState=pt;
+    write(drasticStates/"Pokemon - Platinum Version (USA) (Rev 1)_0.dss",fakeState);
 
     auto wrapped=pt;
     const std::string marker="|-DESMUME SAVE-|";
     wrapped.insert(wrapped.end(),marker.begin(),marker.end());
     write(retro/"Wrapped.dsv",wrapped);
 
-    const std::array<DiscoveryRoot,2> roots{{
+    const std::array<DiscoveryRoot,3> roots{{
         {retro.string(),"RetroArch",1},
-        {drastic.string(),"DraStic",1},
+        {drasticBackup.string(),"DraStic",1},
+        {drasticStates.string(),"DraStic Savestate",1},
     }};
     const auto beforeDp=digest(dp),beforePt=digest(pt),beforeHg=digest(hg);
     auto found=discoverSources(roots,{64});
-    assert(!found.limitReached && found.filesExamined==4);
-    size_t ready=0,wrappedCount=0;
+    assert(!found.limitReached && found.filesExamined==5);
+    size_t ready=0,wrappedCount=0,savestateCount=0;
     bool sawDP=false,sawPT=false,sawHG=false;
     for(const auto& candidate:found.candidates) {
         if(candidate.ready()) {
@@ -661,14 +667,30 @@ void testSourceDiscovery() {
         } else if(candidate.status==CandidateStatus::UnsupportedWrapper) {
             ++wrappedCount;
             assert(candidate.diagnostic.find("does not trim")!=std::string::npos);
+        } else if(candidate.status==CandidateStatus::UnsupportedSavestate) {
+            ++savestateCount;
+            assert(candidate.diagnostic.find("savestate")!=std::string::npos);
+            assert(candidate.diagnostic.find("/switch/drastic/user/backup/")!=std::string::npos);
         }
     }
-    assert(ready==3 && wrappedCount==1 && sawDP && sawPT && sawHG);
+    assert(ready==3 && wrappedCount==1 && savestateCount==1 && sawDP && sawPT && sawHG);
 
     auto manual=inspectSourceFile((retro/"Diamond.srm").string(),"Manual","diamond_nds");
     assert(manual.ready() && manual.expectedRawFamily=="DP");
     auto mismatch=inspectSourceFile((retro/"Platinum.sav").string(),"Manual","diamond_nds");
     assert(mismatch.status==CandidateStatus::AssignmentMismatch);
+    auto state=inspectSourceFile((drasticStates/"Pokemon - Platinum Version (USA) (Rev 1)_0.dss").string(),
+                                 "Manual","platinum_nds");
+    assert(state.status==CandidateStatus::UnsupportedSavestate);
+    assert(std::string(candidateStatusName(state.status))=="Unsupported savestate");
+
+    const auto drasticRoots=defaultDraSticRoots();
+    bool hasBackup=false,hasStates=false;
+    for(const auto& r:drasticRoots) {
+        if(r.path=="sdmc:/switch/drastic/user/backup" && r.sourceType=="DraStic") hasBackup=true;
+        if(r.path=="sdmc:/switch/drastic/user/savestates" && r.sourceType=="DraStic Savestate") hasStates=true;
+    }
+    assert(hasBackup && hasStates);
 
     auto read=[&](const fs::path& path){
         std::ifstream f(path,std::ios::binary);
@@ -676,7 +698,8 @@ void testSourceDiscovery() {
     };
     assert(digest(read(retro/"Diamond.srm"))==beforeDp);
     assert(digest(read(retro/"Platinum.sav"))==beforePt);
-    assert(digest(read(drastic/"HeartGold.dsv"))==beforeHg);
+    assert(digest(read(drasticBackup/"HeartGold.dsv"))==beforeHg);
+    assert(digest(read(drasticStates/"Pokemon - Platinum Version (USA) (Rev 1)_0.dss"))==beforePt);
     assert(inspectSourceFile((retro/"Diamond.srm").string(),"Manual").sourceIdentity==
            inspectSourceFile((retro/"Diamond.srm").string(),"RetroArch").sourceIdentity);
 
