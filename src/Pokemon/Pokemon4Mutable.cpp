@@ -664,11 +664,20 @@ bool Pokemon4Mutable::setMetLocation(uint16_t value) noexcept {
     // Met Location is origin metadata. Validate against the Pokémon's exact Gen IV
     // origin game rather than whichever compatible save currently contains it.
     const uint8_t origin = byteAt(0x5F);
-    if (!Names::isGen4NativeMetLocation(origin, value)) return false;
+    const auto exactOrigin = static_cast<Enums::GameVersion>(origin);
+    const auto originGroup = Enums::getGameGroup(exactOrigin);
+    if (originGroup != Enums::GameVersion::DP &&
+        originGroup != Enums::GameVersion::PT &&
+        originGroup != Enums::GameVersion::HGSS)
+        return false;
+
+    // Zero is the canonical unset value used by a fresh native Create draft.
+    // It is intentionally not offered as an HG/SS map location in the picker,
+    // but the serializer must still be able to encode an unset draft safely.
+    if (value != 0 && !Names::isGen4NativeMetLocation(origin, value)) return false;
 
     uint16_t dpLocation = value;
     uint16_t extendedLocation = 0;
-    const auto exactOrigin = static_cast<Enums::GameVersion>(origin);
 
     if (exactOrigin == Enums::GameVersion::Pt) {
         // Platinum mirrors common D/P locations into the extended field. Locations

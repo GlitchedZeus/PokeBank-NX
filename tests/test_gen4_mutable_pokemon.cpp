@@ -387,9 +387,12 @@ void testCatalogBackedFieldValidation() {
     assert(hgss);
     assert(hgss->setBall(24)); // Sport Ball is native to HGSS.
     assert(!hgss->setBall(25)); // Dream Ball is later-generation.
+    // This fixture is Diamond-origin even though it currently lives in an HGSS
+    // container; origin metadata therefore remains in the D/P field.
     assert(hgss->setMetLocation(16));
     Pokemon::Pokemon4ReadOnly hgssParsed(hgss->encryptedBytes(), Enums::GameVersion::HGSS);
-    assert(hgssParsed.valid() && hgssParsed.metLocationExtended() == 16);
+    assert(hgssParsed.valid() && hgssParsed.metLocationDP() == 16);
+    assert(hgssParsed.metLocationExtended() == 0);
 }
 
 
