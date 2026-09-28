@@ -268,11 +268,14 @@ bool beginViewOrEdit(TrainerViewScreen& screen, SessionModel::Mode mode) {
     return true;
 }
 
-void refreshPresentation(TrainerViewScreen& screen) {
+bool refreshPresentation(TrainerViewScreen& screen) {
     std::string error;
-    if (!bridge(screen).refreshStagedPokemonPresentation(error))
+    if (!bridge(screen).refreshStagedPokemonPresentation(error)) {
         screen.postStatus(error.empty()
-            ? "Could not refresh staged Generation IV boxes" : error, 360);
+            ? "Could not refresh staged Generation IV presentation" : error, 360);
+        return false;
+    }
+    return true;
 }
 
 bool keepWorkspace(TrainerViewScreen& screen) {
@@ -291,7 +294,11 @@ bool keepWorkspace(TrainerViewScreen& screen) {
         screen.postStatus(error.empty() ? "Generation IV staged edit failed" : error, 360);
         return false;
     }
-    refreshPresentation(screen);
+    if (!refreshPresentation(screen)) {
+        // The staged bytes remain in custody, but do not claim UI success while presentation is stale.
+        screen.postStatus("Generation IV change is staged, but presentation refresh failed", 420);
+        return false;
+    }
     if (state.target == TargetKind::Party)
         screen.selectedPartyIndex = state.slot;
     else {
@@ -810,8 +817,8 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
     if (down & HidNpadButton_Y) {
         if (auto* staged = editor(screen)) {
             staged->discard();
-            refreshPresentation(screen);
-            screen.postStatus("All staged Generation IV edits discarded; source unchanged", 300);
+            if (refreshPresentation(screen))
+                screen.postStatus("All staged Generation IV edits discarded; source unchanged", 300);
         }
         state.review = false;
         state.actions = true;
