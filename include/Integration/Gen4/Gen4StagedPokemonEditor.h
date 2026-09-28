@@ -44,6 +44,16 @@ public:
                           const Pokemon::Pokemon4Mutable& pokemon,
                           std::string* error = nullptr);
 
+    [[nodiscard]] std::optional<Pokemon::Pokemon4ReadOnly> partyPokemon(
+        size_t slot, std::string* error = nullptr) const;
+
+    [[nodiscard]] std::optional<Pokemon::Pokemon4Mutable> editablePartyPokemon(
+        size_t slot, std::string* error = nullptr) const;
+
+    bool commitPartyPokemon(size_t slot,
+                            const Pokemon::Pokemon4Mutable& pokemon,
+                            std::string* error = nullptr);
+
     void discard() noexcept { staged_ = original_; }
 
     [[nodiscard]] std::vector<uint8_t> finalizedBytes(std::string* error = nullptr) const;
@@ -55,9 +65,12 @@ private:
 
     [[nodiscard]] std::optional<size_t> boxRecordOffset(
         const Gen4ReadOnlySave& parsed, size_t box, size_t slot) const noexcept;
+    [[nodiscard]] std::optional<size_t> partyRecordOffset(
+        const Gen4ReadOnlySave& parsed, size_t slot) const noexcept;
     [[nodiscard]] std::optional<Gen4ReadOnlySave> reparse(
         std::string* error = nullptr) const;
     bool refreshStorageCrc(const Gen4ReadOnlySave& parsed, std::string* error = nullptr);
+    bool refreshGeneralCrc(const Gen4ReadOnlySave& parsed, std::string* error = nullptr);
 
     std::vector<uint8_t> original_;
     std::vector<uint8_t> staged_;
