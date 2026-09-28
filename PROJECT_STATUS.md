@@ -10,16 +10,17 @@ The current product goal is not another new editor shell. Generation IV is being
 
 ## Active development
 
-PR #87 — **OPEN / DRAFT / NOT MERGED**
+PR #90 — **OPEN / DRAFT / NOT MERGED**
 
 Branch:
-**feature/gen4-shared-pokemon-editor-20260928**
+**integration/gen4-polish-hardware-20260928**
 
 Current head:
-**6e9f54f2a9a0cea79f14942912ba76aaca3fa0ed**
+**84dae170deb2756d9b80aec32bf8ad512ce17c31**
 
 Tracking:
 **Issue #86 — G4-03 Gen IV shared staged Pokémon editor**
+**PR #88 — frozen v1 polish snapshot integrated through 86002169d3fec073fb8454ee794c85e07b5a3d9a**
 
 Stacked on accepted PR #79 / branch:
 **audit/full-project-hardening-20260923**
@@ -85,26 +86,24 @@ The first Gen IV editor NRO at:
 
 **5e79e9f8e038f2f940070edd92a70b692df7a7b5**
 
-was automated-green but **HARDWARE REJECTED**. A party-only Platinum save could not reach Edit and Party View used the wrong legacy read-only presentation.
+was automated-green but **HARDWARE REJECTED**.
 
-Corrected active head:
+The current combined retest candidate is:
 
-**6e9f54f2a9a0cea79f14942912ba76aaca3fa0ed**
+- Application: **84dae170deb2756d9b80aec32bf8ad512ce17c31**
+- Tree: **7733004cd7b4aebffc3ba687ad0f7df22eea8aa8**
+- Artifact ID: **10986964856**
+- NRO SHA-256: **313b6ed5f209b0fba797deee010d73b753d25294dd3d1c39f279c61df13fe6de**
 
-Current automated state:
-- focused Gen IV Party/Box editor + sanitizers: **PASS**
-- real devkitA64 shared UI compile: **PASS**
-- Packed Move: **PASS**
-- Packed Multi-Move: **PASS**
-- broad Host #1449: **PASS**
+Automated state:
+- Host #1472: **PASS**
 - Host ASan/UBSan: **PASS**
-- Candidate Gate #21: **PASS**
-- full native candidate package: **PASS**
-- Artifact ID: **10963476019**
-- NRO SHA-256: **9f3e0ccccfaaf3f3b219820c688b9aa30504d340d115c805cf11a099e49b7c51**
+- Gen IV Candidate Gate #36: **PASS**
+- v1 Polish Native #20: **PASS**
+- Packed Move #240: **PASS**
+- Packed Multi-Move #239: **PASS**
 
-Automated status:
-**PASS**
+This exact candidate includes the independent audit remediations and the frozen QoL snapshot.
 
 Hardware status:
 **RETEST REQUIRED**
@@ -133,7 +132,7 @@ multi-provider Save Instances               DEVICE ACCEPTED
         ↓
 provider-neutral source backend             DEVICE ACCEPTED
         ↓
-Gen IV Party + Box shared View/Edit         ACTIVE / HARDWARE RETEST
+Gen IV Party + Box + integrated polish      AUTOMATED PASS / HARDWARE RETEST
         ↓
 owner Switch hardware acceptance
         ↓
