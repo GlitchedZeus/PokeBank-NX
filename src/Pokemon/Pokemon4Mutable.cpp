@@ -347,6 +347,99 @@ bool Pokemon4Mutable::writeTextPreservingTrash(
     return true;
 }
 
+bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
+    if (!valid_ || value == 0 || value > 493) return false;
+    if (value == species()) return true;
+    const auto nextPersonal = personalFor(sourceGroup_, value, 0);
+    if (nextPersonal.hp == 0) return false;
+
+    const auto backup = decrypted_;
+    const uint8_t oldLevel = level();
+    const uint8_t oldNature = nature();
+    const uint8_t oldGender = gender();
+    const bool oldShiny = shiny();
+    const bool oldWasNicknamed = (u32At(0x38) & 0x80000000u) != 0;
+    const int oldAbilityBit = constrainedAbilityBit();
+
+    write16(0x08, value);
+    // Changing species resets to the base form; explicit form editing is a separate exact field.
+    write8(0x40, static_cast<uint8_t>(byteAt(0x40) & 0x07u));
+    write32(0x10, getExpForLevel(oldLevel, nextPersonal.growthRate));
+
+    uint8_t desiredGender = oldGender;
+    if (nextPersonal.genderRatio == 255) desiredGender = 2;
+    else if (nextPersonal.genderRatio == 254) desiredGender = 1;
+    else if (nextPersonal.genderRatio == 0) desiredGender = 0;
+    else if (desiredGender > 1) desiredGender = genderForPid(pid());
+
+    const bool dual = nextPersonal.ability2 != 0 && nextPersonal.ability2 != nextPersonal.ability1;
+    const int desiredAbilityBit = dual ? (oldAbilityBit >= 0 ? oldAbilityBit : 0) : -1;
+    if (!rerollPid(oldShiny ? 1 : 0, desiredGender, oldNature, desiredAbilityBit)) {
+        decrypted_ = backup;
+        return false;
+    }
+    const uint8_t slot = dual ? static_cast<uint8_t>(pid() & 1u) : 0;
+    write8(0x15, static_cast<uint8_t>(slot ? nextPersonal.ability2 : nextPersonal.ability1));
+
+    if (!oldWasNicknamed) {
+        const auto nameIndex = Names::languageIndexFor(
+            static_cast<Enums::LanguageID>(language()));
+        const auto speciesName = Utils::utf8ToUtf16(
+            Names::getSpeciesNameLocalized(value, nameIndex));
+        const auto encoded = Utils::encodeGen4Field(speciesName, 11, 10, language());
+        const auto bounded = speciesName.substr(0, std::min<size_t>(10, speciesName.size()));
+        if (Utils::decodeGen4Field(encoded) != bounded) {
+            decrypted_ = backup;
+            return false;
+        }
+        std::copy(encoded.begin(), encoded.end(), decrypted_.begin() + 0x48);
+        write32(0x38, u32At(0x38) & ~0x80000000u);
+    }
+    refreshPartyDerivedData();
+    return true;
+}
+
+bool Pokemon4Mutable::setOriginalTrainerName(const std::u16string& value) noexcept {
+    if (!valid_ || value.size() > 7) return false;
+    return writeTextPreservingTrash(0x68, 8, 7, value);
+}
+
+bool Pokemon4Mutable::setTID(uint16_t value) noexcept {
+    if (!valid_) return false;
+    const auto backup = decrypted_;
+    const bool wasShiny = shiny();
+    const uint8_t keepGender = gender();
+    const uint8_t keepNature = nature();
+    const int keepAbility = constrainedAbilityBit();
+    write16(0x0C, value);
+    if (!rerollPid(wasShiny ? 1 : 0, keepGender, keepNature, keepAbility)) {
+        decrypted_ = backup;
+        return false;
+    }
+    return true;
+}
+
+bool Pokemon4Mutable::setSID(uint16_t value) noexcept {
+    if (!valid_) return false;
+    const auto backup = decrypted_;
+    const bool wasShiny = shiny();
+    const uint8_t keepGender = gender();
+    const uint8_t keepNature = nature();
+    const int keepAbility = constrainedAbilityBit();
+    write16(0x0E, value);
+    if (!rerollPid(wasShiny ? 1 : 0, keepGender, keepNature, keepAbility)) {
+        decrypted_ = backup;
+        return false;
+    }
+    return true;
+}
+
+bool Pokemon4Mutable::setOriginalTrainerGender(uint8_t value) noexcept {
+    if (!valid_ || value > 1) return false;
+    write8(0x84, static_cast<uint8_t>((byteAt(0x84) & 0x7Fu) | (value << 7)));
+    return true;
+}
+
 bool Pokemon4Mutable::setNickname(const std::u16string& value) noexcept {
     if (!writeTextPreservingTrash(0x48, 11, 10, value)) return false;
     // A user-initiated nickname edit is a nickname even when it happens to spell
