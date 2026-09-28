@@ -9,7 +9,6 @@
 #include "Enums/LanguageID.h"
 #include "Names/NameLanguage.h"
 #include "Names/SpeciesNames.h"
-#include "Enums/LanguageID.h"
 #include "Utils/StringHelpers.h"
 #include "Utils/Gen4TextCodec.h"
 
