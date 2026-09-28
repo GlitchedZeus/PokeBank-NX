@@ -251,6 +251,11 @@ uint8_t Pokemon4Mutable::metLevel() const noexcept {
 uint8_t Pokemon4Mutable::form() const noexcept {
     return static_cast<uint8_t>(byteAt(0x40) >> 3);
 }
+
+uint8_t Pokemon4Mutable::formCount() const noexcept {
+    if (!valid_) return 0;
+    return personalFor(sourceGroup_, species(), 0).formCount;
+}
 uint8_t Pokemon4Mutable::gender() const noexcept {
     return static_cast<uint8_t>((byteAt(0x40) >> 1) & 3u);
 }
@@ -623,6 +628,45 @@ bool Pokemon4Mutable::rerollPid(
     }
     return false;
 }
+
+bool Pokemon4Mutable::setForm(uint8_t value) noexcept {
+    if (!valid_) return false;
+    const auto& base = personalFor(sourceGroup_, species(), 0);
+    if (base.hp == 0 || base.formCount == 0 || value >= base.formCount) return false;
+    if (value == form()) return true;
+
+    const uint8_t oldForm = form();
+    const uint8_t oldAbilitySlot = abilitySlot();
+    const uint8_t oldByte40 = byteAt(0x40);
+    const uint8_t oldAbility = byteAt(0x15);
+
+    write8(0x40, static_cast<uint8_t>((oldByte40 & 0x07u) | (value << 3)));
+    const auto& next = personalFor(sourceGroup_, species(), value);
+    if (next.hp == 0) {
+        write8(0x40, oldByte40);
+        return false;
+    }
+
+    const uint16_t nextAbility =
+        oldAbilitySlot == 1 && next.ability2 != 0 ? next.ability2 : next.ability1;
+    if (nextAbility == 0 || nextAbility > 0xFFu) {
+        write8(0x40, oldByte40);
+        write8(0x15, oldAbility);
+        return false;
+    }
+    write8(0x15, static_cast<uint8_t>(nextAbility));
+    refreshPartyDerivedData();
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid() || verify.form() != value || verify.species() != species()) {
+        write8(0x40, static_cast<uint8_t>((oldByte40 & 0x07u) | (oldForm << 3)));
+        write8(0x15, oldAbility);
+        refreshPartyDerivedData();
+        return false;
+    }
+    return true;
+}
+
 
 bool Pokemon4Mutable::setNature(uint8_t value) noexcept {
     if (value >= 25) return false;
