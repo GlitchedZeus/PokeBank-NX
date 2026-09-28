@@ -1,6 +1,8 @@
 #pragma once
 
 #include "UI/ExactFormatEditorProvider.h"
+#include "Names/MovePresence.h"
+#include "Enums/GameVersion.h"
 
 #include <optional>
 #include <string_view>
@@ -17,10 +19,16 @@ constexpr bool isGen4NdsId(std::string_view id) noexcept {
 constexpr PokeVault::SaveEdit::Capabilities stagedPokemonCapabilities() noexcept {
     PokeVault::SaveEdit::Capabilities caps;
     caps.add(PokeVault::SaveEdit::Capability::BoxPokemon)
-        .add(PokeVault::SaveEdit::Capability::PokemonEditing);
-    // Create remains deliberately absent until boxed PK4 Edit has passed exact
-    // serialize/reparse and owner hardware acceptance.
+        .add(PokeVault::SaveEdit::Capability::PokemonEditing)
+        .add(PokeVault::SaveEdit::Capability::PokemonCreation);
     return caps;
+}
+
+inline Enums::GameVersion groupForSourceId(std::string_view id) noexcept {
+    if (id == "diamond_nds" || id == "pearl_nds") return Enums::GameVersion::DP;
+    if (id == "platinum_nds") return Enums::GameVersion::PT;
+    if (id == "heartgold_nds" || id == "soulsilver_nds") return Enums::GameVersion::HGSS;
+    return Enums::GameVersion::Invalid;
 }
 
 inline Exact::MoveCompatibilityResult evaluateMove(
@@ -28,10 +36,13 @@ inline Exact::MoveCompatibilityResult evaluateMove(
     if (!isGen4NdsId(query.exactGameId) || query.species == 0 || query.species > 493)
         return Exact::MoveCompatibilityResult::Invalid;
     if (query.move == 0) return Exact::MoveCompatibilityResult::Compatible;
-    // G4-03 starts fail-closed: existing native moves are preserved, but a new move
-    // is not offered as compatible until an exact-game Gen IV learnset provider is pinned.
-    return query.existingSourceMove ? Exact::MoveCompatibilityResult::PreserveExisting
-                                    : Exact::MoveCompatibilityResult::Unsupported;
+    const auto group = groupForSourceId(query.exactGameId);
+    if (group == Enums::GameVersion::Invalid || !Names::isMovePresent(query.move, group))
+        return query.existingSourceMove ? Exact::MoveCompatibilityResult::PreserveExisting
+                                        : Exact::MoveCompatibilityResult::Unsupported;
+    // G4-04 proves structural/native move presence here. Species encounter/learnset legality is
+    // intentionally a separate advisory concern and must not be confused with representability.
+    return Exact::MoveCompatibilityResult::Compatible;
 }
 
 inline std::optional<Exact::ExactFormatEditorDescriptor> descriptorForSource(
