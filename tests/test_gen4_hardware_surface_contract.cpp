@@ -24,6 +24,20 @@ int main() {
     static_assert(Shared::genderUsesInlineToggle(Shared::Generation::Gen4));
     static_assert(!Shared::genderOpensDedicatedPicker(Shared::Generation::Gen4));
 
+    // Immutable external sources still need the staged dirty-session exit confirmation.
+    static_assert(Shared::immutableSourceBlocksSaveDialog(true, false));
+    static_assert(!Shared::immutableSourceBlocksSaveDialog(true, true));
+    static_assert(!Shared::immutableSourceBlocksSaveDialog(false, false));
+
+    // Gen IV has six native IV/EV rows. The sixth row must stay a column-selectable
+    // IV/EV cell, not collapse into the older-generation full-width fallback row.
+    constexpr auto gen4SixthIv = Shared::cellFocusFor(
+        Shared::Generation::Gen4, {Shared::Panel::Values, 5, 1});
+    static_assert(gen4SixthIv.x == 180 && gen4SixthIv.width == 90);
+    constexpr auto gen2SixthFallback = Shared::cellFocusFor(
+        Shared::Generation::Gen2, {Shared::Panel::Values, 5, 1});
+    static_assert(gen2SixthFallback.x == 130 && gen2SixthFallback.width == 244);
+
     // Gen IV has six editable IV/EV rows; Sp. Def must retain distinct IV vs EV focus rectangles.
     constexpr Shared::Focus spDefIv{Shared::Panel::Values, 5, 0};
     constexpr Shared::Focus spDefEv{Shared::Panel::Values, 5, 1};
@@ -105,6 +119,10 @@ int main() {
     contains(surface, "beginPassiveView");
     contains(surface, "screen.closeDetailsModal()");
 
+    // A committed staged edit must not claim UI success when the refreshed presentation failed.
+    contains(surface, "if (!refreshPresentation(screen))");
+    contains(surface, "Generation IV change is staged, but presentation refresh failed");
+
     // Dirty Back uses the same shared exit guard and explicit A/Y/B confirmation.
     contains(session, "PokemonEditorExitGuard::requiresConfirmation");
     contains(surface, "if (state.session.confirmExit)");
@@ -117,6 +135,11 @@ int main() {
     contains(bridge, "Gen4StagedPokemonEditor::create(");
     contains(bridge, "save.sourceBytes()");
     contains(bridge, "refreshStagedPokemonPresentation");
+
+    // Invalid unrelated Gen IV records remain quarantined instead of making a valid
+    // staged edit to another Pokémon fail presentation refresh.
+    contains(bridge, "displayParty.push_back(nullptr);");
+    contains(bridge, "if (!pokemon.valid() || pokemon.empty()) continue;");
     contains(bridge, "displayParty.push_back(nullptr)");
     contains(bridge, "if (!pokemon.valid() || pokemon.empty()) continue;");
     contains(surface, "if (!refreshPresentation(screen))");
@@ -141,6 +164,9 @@ int main() {
     contains(baseUi, "exitOnlySaveConfirm");
     assert(baseUi.find("!sourceReadOnly() && hasUnsavedChanges") == std::string::npos);
     assert(baseUi.find("!sourceReadOnly() && bank && bank->hasChanged()") == std::string::npos);
+
+    contains(baseUi, "immutableSourceBlocksSaveDialog(");
+    contains(baseUi, "const bool exitOnlySaveConfirm = saveConfirmActive && exitingWithUnsavedChanges;");
     assert(baseUi.find("statEdit.dialogActive = saveConfirmActive") == std::string::npos);
 
     // Final composite routes Gen IV before generic/Gen III fallback.
