@@ -336,9 +336,9 @@ void testStrictCreateFactory() {
                parsed.ability() == parsed.personal().ability2);
         if (tc.group == Enums::GameVersion::HGSS) assert(parsed.ballHGSS() == 4);
         else assert(parsed.ballDPPt() == 4);
-        assert(parsed.moves() == std::array<uint16_t,4>{0,0,0,0});
-        assert(parsed.pp() == std::array<uint8_t,4>{0,0,0,0});
-        assert(parsed.ppUps() == std::array<uint8_t,4>{0,0,0,0});
+        assert((parsed.moves() == std::array<uint16_t,4>{0,0,0,0}));
+        assert((parsed.pp() == std::array<uint8_t,4>{0,0,0,0}));
+        assert((parsed.ppUps() == std::array<uint8_t,4>{0,0,0,0}));
     }
 
     std::string error;
