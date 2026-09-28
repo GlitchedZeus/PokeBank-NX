@@ -104,7 +104,7 @@ int main() {
     }));
 
     constexpr auto layout = Shared::layoutFor(Shared::Generation::Gen4);
-    static_assert(layout.detailsRows == 15);
+    static_assert(layout.detailsRows == 16);
     static_assert(layout.valuesRows == 11);
     static_assert(layout.movesRows == 4);
     static_assert(layout.valueStatRows == 6);
@@ -115,7 +115,7 @@ int main() {
         Shared::FieldAccess::Editable);
     static_assert(Shared::fieldAccessForGeneration(
         Shared::Generation::Gen4, Shared::FieldIdentity::Form) ==
-        Shared::FieldAccess::ReadOnly);
+        Shared::FieldAccess::Editable);
 
     std::cout << "Gen IV exact shared-editor provider contract PASS\n";
     return 0;
