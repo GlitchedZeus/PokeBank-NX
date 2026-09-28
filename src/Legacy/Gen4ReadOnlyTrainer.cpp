@@ -49,7 +49,9 @@ void Gen4ReadOnlyTrainer::buildPresentation(std::string& error) {
     saveRevisionString += " | G4 P" + std::to_string(diagnostics.declaredPartyCount) +
         "/" + std::to_string(diagnostics.invalidPartyRecords) +
         " B" + std::to_string(diagnostics.occupiedBoxRecords) +
-        "/" + std::to_string(diagnostics.invalidBoxRecords);
+        "/" + std::to_string(diagnostics.invalidBoxRecords) +
+        " T" + std::to_string(tr.playedHours) + ":" +
+        (tr.playedMinutes < 10 ? "0" : "") + std::to_string(tr.playedMinutes);
 
     boxNames.clear();
     boxNames.reserve(18);
