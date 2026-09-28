@@ -73,10 +73,10 @@ void copy(std::vector<std::byte>& dst, size_t off, std::span<const std::byte> sr
               dst.begin() + static_cast<std::ptrdiff_t>(off));
 }
 
-std::vector<std::byte> occupiedPk4() {
+std::vector<std::byte> occupiedPk4(uint16_t species = 25) {
     std::vector<std::byte> d(Encryption::SIZE_STORED4, std::byte{0});
     wb32(d, 0x00, 0x12345678u);
-    wb16(d, 0x08, 25);
+    wb16(d, 0x08, species);
     wb16(d, 0x0A, 1);
     wb16(d, 0x0C, 12345);
     wb16(d, 0x0E, 54321);
@@ -94,9 +94,9 @@ std::vector<std::byte> occupiedPk4() {
     return Encryption::encryptArray4(d);
 }
 
-std::vector<std::byte> occupiedPartyPk4() {
+std::vector<std::byte> occupiedPartyPk4(uint16_t species = 25) {
     std::vector<std::byte> d(Encryption::SIZE_PARTY4, std::byte{0});
-    const auto stored = occupiedPk4();
+    const auto stored = occupiedPk4(species);
     const auto decoded = Encryption::decryptArray4(stored);
     std::copy(decoded.begin(), decoded.end(), d.begin());
     d[0x8C] = std::byte{20};
@@ -286,6 +286,26 @@ void testNoOpAndFailureRollback() {
     assert(editor->stagedBytes() == before);
 }
 
+void testShedinjaPartyHpRule() {
+    std::string error;
+    auto shedinja = Pokemon::Pokemon4Mutable::fromEncrypted(
+        occupiedPartyPk4(292), Enums::GameVersion::PT, &error);
+    assert(shedinja && error.empty() && shedinja->isParty());
+
+    // Shedinja is the hard Gen III+ HP-formula exception. Stat-affecting Party edits
+    // must never turn it into an ordinary calculated-HP Pokémon.
+    assert(shedinja->setLevel(50));
+    assert(shedinja->setIV(0, 31));
+    assert(shedinja->setEV(0, 252));
+
+    const auto encrypted = shedinja->encryptedBytes();
+    Pokemon::Pokemon4ReadOnly reparsed(encrypted, Enums::GameVersion::PT);
+    assert(reparsed.valid() && reparsed.isParty());
+    assert(reparsed.partyLevel() == 50);
+    assert(reparsed.maxHP() == 1);
+    assert(reparsed.currentHP() == 1);
+}
+
 void testRecoveredAndMismatchRemainReadOnly() {
     auto recovered = makeSave(Layout::DiamondPearl);
     // Partition 0 is nominally newest. Break its General payload without restamping:
@@ -311,6 +331,7 @@ int main() {
     testLayout(Layout::HeartGoldSoulSilver, 7, false);
     testLayout(Layout::HeartGoldSoulSilver, 8, true);
     testNoOpAndFailureRollback();
+    testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();
     std::cout << "Gen IV staged boxed Pokemon editor PASS\n";
     return 0;
