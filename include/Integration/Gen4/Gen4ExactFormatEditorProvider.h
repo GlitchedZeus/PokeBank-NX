@@ -29,10 +29,13 @@ inline Exact::MoveCompatibilityResult evaluateMove(
     if (!isGen4NdsId(query.exactGameId) || query.species == 0 || query.species > 493)
         return Exact::MoveCompatibilityResult::Invalid;
     if (query.move == 0) return Exact::MoveCompatibilityResult::Compatible;
-    // G4-03 starts fail-closed: existing native moves are preserved, but a new move
-    // is not offered as compatible until an exact-game Gen IV learnset provider is pinned.
-    return query.existingSourceMove ? Exact::MoveCompatibilityResult::PreserveExisting
-                                    : Exact::MoveCompatibilityResult::Unsupported;
+    // PK4 can natively represent the complete Generation IV move set, IDs 1-467.
+    // Species learnset legality remains advisory; structural/editor compatibility stops
+    // exactly where Generation V begins (Hone Claws = 468).
+    if (query.move > 467)
+        return query.existingSourceMove ? Exact::MoveCompatibilityResult::PreserveExisting
+                                        : Exact::MoveCompatibilityResult::Unsupported;
+    return Exact::MoveCompatibilityResult::Compatible;
 }
 
 inline std::optional<Exact::ExactFormatEditorDescriptor> descriptorForSource(
