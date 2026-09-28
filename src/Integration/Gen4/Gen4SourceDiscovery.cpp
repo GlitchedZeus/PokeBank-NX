@@ -91,6 +91,11 @@ std::string extension(std::string_view path) {
     return ext;
 }
 
+std::string leafName(std::string_view path) {
+    const size_t slash = path.find_last_of("/\\");
+    return std::string(slash == std::string_view::npos ? path : path.substr(slash + 1));
+}
+
 bool discoveryExtension(std::string_view path) {
     const std::string ext = extension(path);
     return ext == ".sav" || ext == ".srm" || ext == ".dsv" || ext == ".dss";
@@ -331,6 +336,87 @@ bool candidateMatchesGame(const SourceCandidate& candidate, std::string_view gam
     return Gen4ReadOnlySave::validateAssignment(
         candidate.layout, candidate.exactGameFromSave, gameId, &assigned) !=
         AssignmentStatus::Mismatch;
+}
+
+PokeVault::Source::SaveInstance toSaveInstance(
+    const SourceCandidate& candidate, std::string_view gameId,
+    size_t validationHandle, bool rememberedSource, std::string_view claimedProfile) {
+    using PokeVault::Source::AccessMode;
+    using PokeVault::Source::DiagnosticState;
+    using PokeVault::Source::SaveInstance;
+    using PokeVault::Source::SaveInstanceKind;
+    using PokeVault::Source::ValidationStatus;
+
+    SaveInstance instance;
+    instance.sourceIndex = validationHandle;
+    instance.label = leafName(candidate.path);
+    instance.providerLabel = candidate.sourceType.empty() ? "Source" : candidate.sourceType;
+    instance.location = candidate.path;
+    instance.normalizedPath = candidate.normalizedPath;
+    instance.sourceIdentity = candidate.sourceIdentity;
+    instance.trainerName = candidate.trainerName;
+    instance.fileSize = candidate.fileSize;
+    instance.modifiedTime = candidate.modifiedTime;
+    instance.partyCount = candidate.partyCount;
+
+    instance.gameId = std::string(gameId);
+    instance.generation = 4;
+    instance.platformLabel = "Nintendo DS";
+    instance.providerId = PokeVault::Source::providerIdFor(instance.providerLabel);
+    instance.sourcePath = candidate.path;
+    // Gen IV sourceIdentity is deliberately provider-neutral and path-stable, so it is also the
+    // correct shared dedupe key for overlapping known roots.
+    instance.physicalIdentity = candidate.sourceIdentity;
+    const std::string ext = extension(candidate.path);
+    if (ext == ".dss") {
+        instance.kind = SaveInstanceKind::SaveState;
+        instance.containerType = "Savestate";
+    } else if (ext == ".dsv") {
+        instance.kind = SaveInstanceKind::Backup;
+        instance.containerType = "DSV cartridge backup";
+    } else if (rememberedSource || instance.providerLabel == "Manual" ||
+               instance.providerLabel == "Remembered") {
+        instance.kind = SaveInstanceKind::ManualImport;
+        instance.containerType = "Manual cartridge save";
+    } else {
+        instance.kind = SaveInstanceKind::BatterySave;
+        instance.containerType = "Raw cartridge save";
+    }
+
+    switch (candidate.status) {
+        case CandidateStatus::Ready:
+            instance.validation = candidateMatchesGame(candidate, gameId)
+                ? ValidationStatus::Ready : ValidationStatus::AssignmentMismatch;
+            break;
+        case CandidateStatus::InvalidSave:
+            instance.validation = ValidationStatus::Invalid;
+            break;
+        case CandidateStatus::UnsupportedWrapper:
+        case CandidateStatus::UnsupportedSavestate:
+            instance.validation = ValidationStatus::Unsupported;
+            break;
+        case CandidateStatus::ReadError:
+            instance.validation = ValidationStatus::ReadError;
+            break;
+        case CandidateStatus::AssignmentMismatch:
+            instance.validation = ValidationStatus::AssignmentMismatch;
+            break;
+    }
+    instance.access = AccessMode::ReadOnly;
+    instance.recoveredOlderCopy = candidate.recoveredOlderCopy;
+    instance.diagnosticState = candidate.recoveredOlderCopy
+        ? DiagnosticState::RecoveredOlderCopy : DiagnosticState::None;
+    instance.rememberedSource = rememberedSource;
+    instance.claimedProfile = std::string(claimedProfile);
+    instance.diagnostic = candidate.diagnostic;
+
+    std::string detail = candidate.expectedRawFamily.empty()
+        ? std::string("Validated Gen IV save") : candidate.expectedRawFamily;
+    if (!candidate.trainerName.empty()) detail += " / " + candidate.trainerName;
+    detail += " / Party " + std::to_string(candidate.partyCount);
+    if (candidate.recoveredOlderCopy) detail += " / RECOVERED OLDER COPY";
+    instance.sourceLabel = std::move(detail);
+    return instance;
 }
 
 SourceCandidate inspectSourceFile(
