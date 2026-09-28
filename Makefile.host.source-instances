@@ -15,3 +15,10 @@ $(SAVE_INSTANCE_MODEL_TEST): tests/test_save_instance_model.cpp include/Source/S
 $(SAVE_INSTANCE_MODEL_SANITIZE): tests/test_save_instance_model.cpp include/Source/SaveInstance.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+.PHONY: save-instance-architecture-contract
+save-instance-architecture-contract:
+	python3 tests/test_save_instance_architecture_contract.py
+
+host-test: save-instance-architecture-contract
+host-sanitize: save-instance-architecture-contract
