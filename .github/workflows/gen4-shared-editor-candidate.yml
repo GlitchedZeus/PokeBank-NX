@@ -49,18 +49,24 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.APP_SHA }}
+          fetch-depth: 100
           submodules: recursive
       - name: Verify exact identity and whitespace
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$APP_SHA"
-          git diff --check "$BASE_SHA"..HEAD
+          git fetch --no-tags origin "$BASE_SHA" || true
+          if git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null && [ "$BASE_SHA" != "$APP_SHA" ]; then
+            git diff --check "$BASE_SHA"..HEAD
+          else
+            git diff --check HEAD^
+          fi
           echo "APPLICATION_SHA=$APP_SHA"
-          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')" 
       - name: Focused Gen IV editor gates
         run: |
           set -euo pipefail
-          for target in             test_gen4_exact_format_editor_provider             test_gen4_mutable_pokemon             test_gen4_staged_pokemon_editor             test_gen4_readonly_foundation; do
+          for target in             test_gen4_exact_format_editor_provider             test_gen4_mutable_pokemon             test_gen4_staged_pokemon_editor             test_gen4_hardware_surface_contract             test_gen4_readonly_foundation; do
             make -f Makefile.host "build-host/$target"
             "./build-host/$target"
           done
