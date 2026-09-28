@@ -41,7 +41,14 @@ void Gen4ReadOnlyTrainer::buildPresentation(std::string& error) {
     trainerGender = tr.gender;
     currentBox = save_.currentBox();
     const auto& diagnostics = save_.diagnostics();
-    saveRevisionString = save_.recovered() ? "Recovered older copy" : "Base";
+    const bool cartridgeHasNoPokemon =
+        diagnostics.declaredPartyCount == 0 &&
+        diagnostics.occupiedBoxRecords == 0 &&
+        diagnostics.invalidPartyRecords == 0 &&
+        diagnostics.invalidBoxRecords == 0;
+    saveRevisionString = save_.recovered()
+        ? "Recovered older copy"
+        : cartridgeHasNoPokemon ? "0 Pokemon in cartridge save" : "Base";
     // Keep this compact enough for the title bar while making a real-hardware empty/quarantine
     // result self-diagnosing. "P" is declared party / invalid-in-party; "B" is occupied boxes /
     // invalid box records. A genuinely new save reads P0/0 B0/0; a crypto/layout problem exposes

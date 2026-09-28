@@ -900,6 +900,7 @@ void testHardwareEmptyCartridgeShape() {
     for (const auto& box : view->boxes)
         for (const auto& pokemon : box)
             assert(!pokemon);
+    assert(view->saveRevisionString.find("0 Pokemon in cartridge save") != std::string::npos);
     assert(view->saveRevisionString.find("G4 P0/0 B0/0 T0:03") != std::string::npos);
     assert(digest(view->sourceSave().sourceBytes()) == before);
     assert(digest(bytes) == before);
