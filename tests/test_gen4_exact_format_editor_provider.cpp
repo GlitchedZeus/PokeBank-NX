@@ -61,7 +61,7 @@ int main() {
         assert(staged->fieldState(Shared::FieldIdentity::Pokerus) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::Ball) == Exact::FieldState::Editable);
         assert(staged->fieldState(Shared::FieldIdentity::MetLocation) == Exact::FieldState::Editable);
-        assert(staged->fieldState(Shared::FieldIdentity::Form) == Exact::FieldState::ReadOnly);
+        assert(staged->fieldState(Shared::FieldIdentity::Form) == Exact::FieldState::Editable);
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Species));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Language));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::HeldItem));
