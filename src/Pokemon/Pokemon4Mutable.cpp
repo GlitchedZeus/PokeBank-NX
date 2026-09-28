@@ -301,7 +301,7 @@ std::array<uint8_t, 4> Pokemon4Mutable::ppUps() const noexcept {
 }
 uint8_t Pokemon4Mutable::pokerus() const noexcept { return byteAt(0x82); }
 uint8_t Pokemon4Mutable::ball() const noexcept {
-    return sourceGroup_ == Enums::GameVersion::HGSS ? byteAt(0x86) : byteAt(0x83);
+    return std::max(byteAt(0x83), byteAt(0x86));
 }
 uint8_t Pokemon4Mutable::metLevel() const noexcept {
     return static_cast<uint8_t>(byteAt(0x84) & 0x7Fu);
@@ -643,12 +643,48 @@ bool Pokemon4Mutable::setPokerus(uint8_t value) noexcept {
 
 bool Pokemon4Mutable::setBall(uint8_t value) noexcept {
     if (!valid_) return false;
-    const auto allowed = Enums::getBallList(sourceGroup_);
+    const auto originGroup = Enums::getGameGroup(
+        static_cast<Enums::GameVersion>(byteAt(0x5F)));
+    if (originGroup != Enums::GameVersion::DP &&
+        originGroup != Enums::GameVersion::PT &&
+        originGroup != Enums::GameVersion::HGSS)
+        return false;
+
+    const auto allowed = Enums::getBallList(originGroup);
     if (std::find(allowed.begin(), allowed.end(), value) == allowed.end()) return false;
-    if (sourceGroup_ == Enums::GameVersion::HGSS) write8(0x86, value);
-    else if (sourceGroup_ == Enums::GameVersion::DP || sourceGroup_ == Enums::GameVersion::PT)
+
+    Pokemon4ReadOnly current(encryptedBytes(), sourceGroup_);
+    if (!current.valid()) return false;
+    if ((originGroup == Enums::GameVersion::DP ||
+         originGroup == Enums::GameVersion::PT) &&
+        current.ballHGSS() != 0)
+        return false;
+    if (originGroup == Enums::GameVersion::HGSS &&
+        current.fatefulEncounter() &&
+        current.eggLocationDP() == 0 && current.eggLocationExtended() == 0)
+        return false;
+
+    const auto backup = decrypted_;
+    if (originGroup == Enums::GameVersion::HGSS) {
+        write8(0x83, value <= 16 ? value : 4);
+        write8(0x86, value);
+    } else {
         write8(0x83, value);
-    else return false;
+        write8(0x86, 0);
+    }
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    const uint8_t expectedDPPt =
+        originGroup == Enums::GameVersion::HGSS
+            ? static_cast<uint8_t>(value <= 16 ? value : 4)
+            : value;
+    const uint8_t expectedHGSS =
+        originGroup == Enums::GameVersion::HGSS ? value : 0;
+    if (!verify.valid() || verify.ballDPPt() != expectedDPPt ||
+        verify.ballHGSS() != expectedHGSS) {
+        decrypted_ = backup;
+        return false;
+    }
     return true;
 }
 

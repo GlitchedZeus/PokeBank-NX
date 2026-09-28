@@ -385,8 +385,10 @@ void testCatalogBackedFieldValidation() {
     auto hgss = Pokemon::Pokemon4Mutable::fromEncrypted(
         makeEntity(), Enums::GameVersion::HGSS);
     assert(hgss);
-    assert(hgss->setBall(24)); // Sport Ball is native to HGSS.
-    assert(!hgss->setBall(25)); // Dream Ball is later-generation.
+    const auto beforeWrongOriginBall = hgss->encryptedBytes();
+    assert(!hgss->setBall(24));
+    assert(hgss->encryptedBytes() == beforeWrongOriginBall);
+    assert(!hgss->setBall(25));
     // This fixture is Diamond-origin even though it currently lives in an HGSS
     // container; origin metadata therefore remains in the D/P field.
     assert(hgss->setMetLocation(16));
@@ -395,6 +397,44 @@ void testCatalogBackedFieldValidation() {
     assert(hgssParsed.metLocationExtended() == 0);
 }
 
+
+void testExactBallSemantics() {
+    auto dpInHgss = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(25, 0x12345678u, 9, 10), Enums::GameVersion::HGSS);
+    assert(dpInHgss);
+    const auto dpBeforeSport = dpInHgss->encryptedBytes();
+    assert(!dpInHgss->setBall(24));
+    assert(dpInHgss->encryptedBytes() == dpBeforeSport);
+    assert(dpInHgss->setBall(16));
+    Pokemon::Pokemon4ReadOnly dpBall(
+        dpInHgss->encryptedBytes(), Enums::GameVersion::HGSS);
+    assert(dpBall.valid() && dpBall.ballDPPt() == 16 && dpBall.ballHGSS() == 0);
+    assert(dpInHgss->ball() == 16);
+
+    auto hgInDp = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(25, 0x12345678u, 9, 7), Enums::GameVersion::DP);
+    assert(hgInDp && hgInDp->setBall(4));
+    Pokemon::Pokemon4ReadOnly hgPoke(
+        hgInDp->encryptedBytes(), Enums::GameVersion::DP);
+    assert(hgPoke.valid() && hgPoke.ballDPPt() == 4 && hgPoke.ballHGSS() == 4);
+    assert(hgInDp->ball() == 4);
+
+    assert(hgInDp->setBall(24));
+    Pokemon::Pokemon4ReadOnly hgSport(
+        hgInDp->encryptedBytes(), Enums::GameVersion::DP);
+    assert(hgSport.valid() && hgSport.ballDPPt() == 4 && hgSport.ballHGSS() == 24);
+    assert(hgInDp->ball() == 24);
+    const auto hgStable = hgInDp->encryptedBytes();
+    assert(!hgInDp->setBall(25));
+    assert(hgInDp->encryptedBytes() == hgStable);
+
+    auto ptInHgss = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(25, 0x12345678u, 9, 12), Enums::GameVersion::HGSS);
+    assert(ptInHgss && ptInHgss->setBall(16));
+    const auto ptStable = ptInHgss->encryptedBytes();
+    assert(!ptInHgss->setBall(17));
+    assert(ptInHgss->encryptedBytes() == ptStable);
+}
 
 void testExactMetLocationSemantics() {
     // D/P native locations occupy only the original 0..111 bank and do not use
@@ -486,8 +526,11 @@ void testNativeStoredCreateDraft() {
         assert(!parsed.isNicknamed());
         assert(draft->nickname() == u"PIPLUP");
         assert(parsed.heldItem() == 0);
-        assert(parsed.ballDPPt() == (tc.group == Enums::GameVersion::HGSS ? 0 : 4));
-        if (tc.group == Enums::GameVersion::HGSS) assert(parsed.ballHGSS() == 4);
+        assert(parsed.ballDPPt() == 4);
+        if (tc.group == Enums::GameVersion::HGSS)
+            assert(parsed.ballHGSS() == 4);
+        else
+            assert(parsed.ballHGSS() == 0);
         assert(Pokemon::getLevelFromExp(
             parsed.experience(), parsed.personal().growthRate) == 5);
         assert(parsed.friendship() == parsed.personal().baseFriendship);
@@ -618,6 +661,7 @@ int main() {
     testShedinjaPartyHpRule();
     testSpeciesReconciliation();
     testCatalogBackedFieldValidation();
+    testExactBallSemantics();
     testExactMetLocationSemantics();
     testExactGameForms();
     testItemDrivenAndStorageFormRules();

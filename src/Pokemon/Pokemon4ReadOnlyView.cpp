@@ -74,9 +74,7 @@ uint8_t Pokemon4ReadOnlyView::otGender() const noexcept { return source_.origina
 uint8_t Pokemon4ReadOnlyView::otFriendship() const noexcept { return source_.friendship(); }
 uint8_t Pokemon4ReadOnlyView::language() const noexcept { return source_.language(); }
 uint8_t Pokemon4ReadOnlyView::ball() const noexcept {
-    if (source_.sourceGroup() == Enums::GameVersion::HGSS && source_.ballHGSS() != 0)
-        return source_.ballHGSS();
-    return source_.ballDPPt();
+    return std::max(source_.ballDPPt(), source_.ballHGSS());
 }
 uint16_t Pokemon4ReadOnlyView::metLocation() const noexcept {
     // PK4's canonical display value always prefers the Pt/HGSS extended field when

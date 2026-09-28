@@ -562,11 +562,22 @@ void openLanguagePicker(TrainerViewScreen& screen, State& state) {
     screen.controllerNavigation.reset();
 }
 
-void openBallPicker(TrainerViewScreen& screen, State& state) {
+void openBallPicker(TrainerViewScreen& screen, State& state,
+                    const Pokemon::Pokemon4ReadOnly& record) {
+    const auto originGroup = Enums::getGameGroup(
+        static_cast<Enums::GameVersion>(record.originVersion()));
+    if (originGroup != Enums::GameVersion::DP &&
+        originGroup != Enums::GameVersion::PT &&
+        originGroup != Enums::GameVersion::HGSS) {
+        screen.postStatus(
+            "Ball editing is read-only for transferred non-Gen-IV origins", 300);
+        return;
+    }
+
     state.valuePicker = true;
     state.pickerTarget = PickerTarget::Ball;
     state.pickerValues.clear();
-    for (const auto ball : Enums::getBallList(bridge(screen).sourceSave().rawFamily()))
+    for (const auto ball : Enums::getBallList(originGroup))
         state.pickerValues.push_back(ball);
     const uint16_t current = state.session.working ? state.session.working->ball() : 4;
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
@@ -890,7 +901,7 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
         return true;
     }
     if (row == 11) {
-        openBallPicker(screen, state);
+        openBallPicker(screen, state, p);
         return true;
     }
     if (row == 12) {
