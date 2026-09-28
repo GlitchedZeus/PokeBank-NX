@@ -1,154 +1,128 @@
 # PokeBank NX Project Status
 
-Last updated: **2026-09-25**
+Last updated: **2026-09-28**
 
 ## Headline
 
-PokeBank NX now has three major foundations in place:
+PokeBank NX now has a device-accepted Gen I-III shared staged editor, a strict read-only Gen IV foundation, and a hardware-tested multi-provider Save Instances browser across Gen I-IV.
 
-1. **Generation I–III shared staged editing is DEVICE ACCEPTED.**
-2. **Storage/custody/transaction hardening is largely implemented in software.**
-3. **The broad conversion-fidelity foundation is substantially complete, including persisted loss/provenance evidence and a full SWSH ↔ S/V exact-pair audit.**
+The current engineering focus is no longer adding another generation. It is consolidating the source-browser backend so all supported external saves use one provider-neutral Save Instance architecture without weakening the proven generation-specific parsers.
 
-The physically accepted Gen I–III editor checkpoint remains:
+## Current development line
+
+PR #79 — **OPEN / DRAFT / NOT MERGED**
+
+Branch:
+**audit/full-project-hardening-20260923**
+
+Current head:
+**00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
+
+Tracked by:
+**Issue #85 — Source browser: unified multi-provider Save Instances for classic games**
+
+PR #77 remains untouched, open and draft.
+
+## What works today
+
+- Gen I Red / Blue / Yellow read + staged Pokémon editing
+- Gen II Gold / Silver / Crystal read + staged Pokémon editing
+- Gen III Ruby / Sapphire / Emerald / FireRed / LeafGreen read + staged Pokémon editing
+- staged classic Inventory editing where already supported
+- joystick parity with D-pad and held-repeat navigation
+- strict read-only Gen IV support for Diamond / Pearl / Platinum / HeartGold / SoulSilver
+- Gen IV Trainer / Party / Boxes / Pokémon detail browsing
+- multi-provider Save Instances with provider provenance
+- RetroArch / configured mGBA / bounded Tico support for Gen I-III
+- RetroArch / DraStic / melonDS / Manual support for Gen IV
+- Platinum DraStic .dsv read-only opening on real hardware
+- source deduplication and newest-first ordering
+- explicit profile claims and unassigned-source browsing
+- immutable external source policy
+- durable PokeBank-owned transaction / recovery foundations
+
+## Hardware acceptance
+
+The currently accepted Save Instances runtime checkpoint remains:
+
+**d49efd0c16433aaa1aa171501671a6e811c9da64**
+
+That exact candidate passed physical testing on Switch.
+
+The newer provider-neutral architecture at 00ee7a6e changes shared rendering, stale-source validation and alias/profile claim behavior. It therefore requires a fresh hardware test before receiving DEVICE ACCEPTED status.
+
+## Current architecture direction
 
 ~~~text
-Application SHA:
-996e6aa40c96e4408282f3d55476dae8e64968b2
-
-Tree:
-8826147ff5dc1b498b4b8505c9212243ed2f9498
-
-NRO SHA-256:
-ac3f6bd03d2a6733aee509729b81b6636cabe836095715c7b575b5dc84c8076c
-
-Status:
-CI VERIFIED
-DEVICE ACCEPTED
-GENERATION III DONE
+GAME IDENTITY
+    ↓
+SAVE INSTANCES
+    ↓
+PROVIDER
+    ↓
+VALIDATED SAVE
+    ↓
+OPEN READ ONLY / authorized staged workspace
 ~~~
 
-Later audit heads are newer and **not device accepted**.
+The UI should not care which generation-specific parser created a validated instance.
 
-## Current audit line
+Shared metadata/presentation covers provider identity, paths, physical identity, timestamps, trainer/party summaries, fingerprints, validation state, claims, sorting, dedupe and source details.
 
-~~~text
-PR #79 — OPEN / DRAFT / NOT MERGED
-Branch: audit/full-project-hardening-20260923
-
-Head:
-be39c6f1eb422a3b5410ddaa9004294e1e709650
-
-Tree:
-e3ac245fafde113e472d441cb4961a9e0cc3cb5d
-
-Host Tests:
-36103080464 / #1183 / SUCCESS
-
-Native Validation:
-36103077129 / #84 / SUCCESS
-~~~
-
-## Completed or substantially hardened
-
-- durable verified Bank replacement and preserved recovery generations;
-- custody-safe held Pokémon rollback;
-- immutable source representation + separate destination conversion candidate;
-- profile/account + exact-game mutable workspace namespacing;
-- durable supported single-file workspace persistence;
-- versioned SHA-256 Move transaction journal;
-- crash/idempotent recovery and conflict refusal;
-- production Bank ↔ PokeBank-workspace true-Move integration for supported single-file routes;
-- startup transaction recovery and mutation locking;
-- explicit Loss / Adaptation conversion reporting;
-- production conversion preflight;
-- persisted PBCE conversion evidence;
-- explicit user acknowledgement binding for future loss-bearing source retirement;
-- F13 historical-origin / current-location provenance separation;
-- F05–F13 production golden-fixture foundation;
-- route-level modern conversion corpus;
-- exact Sword/Shield ↔ Scarlet/Violet title-pair audit.
+Strict Gen I, II, III and IV parsing remains generation-specific.
 
 ## Current limitations
 
-- **all cross-game true-Move routes remain disabled**;
-- SWSH↔SV still has closure blockers around unknown/reserved PK8/PK9 bytes, events, ribbons/marks, special forms/balls and text boundaries;
-- physical Switch FAT32/exFAT power-loss recovery is not yet accepted;
-- malformed/truncated parser hardening remains incomplete across some families;
-- BDSP true Move remains disabled pending a recoverable two-file save generation;
-- N06 directory-generation durability remains open;
-- Master Vault is not yet authoritative storage.
+- cross-game True Move remains disabled;
+- Gen IV editing/Create/Delete/source writeback remain disabled;
+- Gen V has not started;
+- Master Vault has not started;
+- DraStic .dss savestates are unsupported;
+- no Tico DS save root has been verified or added;
+- mGBA arbitrary ROM-directory crawling is intentionally forbidden;
+- live writes to installed games or external emulator sources remain disabled.
 
-## Current phase
+## Current verification state
 
-The project remains in **audit / durability / conversion validation**, but it is now in the later part of that phase.
+At the latest re-fetch for 00ee7a6e:
 
-The broad question is no longer:
+- Packed Move workflow: PASS
+- Packed Multi-Move workflow: PASS
+- local host suite: PASS
+- local ASan / UBSan: PASS
+- native compile/link: reported PASS in the tranche
+- GitHub Actions Host Tests #1385: still running
 
-> Can PokeBank NX convert between these formats at all?
+Once every exact-head gate is green, the next deliverable is a fresh Actions-built NRO for owner hardware testing.
 
-The current question is:
-
-> Have we closed every meaningful semantic and recovery gap strongly enough to permit one exact route to retire the source?
-
-For Sword/Shield ↔ Scarlet/Violet, the answer is **not yet**. All eight exact directions remain disabled, but the remaining blockers are now specific and narrow enough to attack directly.
-
-## How much audit work remains?
-
-For the **core safety audit before Master Vault / broader expansion**, the remaining work is concentrated into four major buckets:
-
-1. PK8/PK9 unknown/reserved-byte + event/ribbon/mark closure.
-2. Remaining malformed/truncated parser hardening.
-3. Physical Switch FAT32/exFAT interruption/recovery acceptance.
-4. BDSP two-file durability + N06 directory-generation decision/implementation.
-
-After those, the project should move away from one giant audit and into **route-by-route qualification**, where each exact conversion route is either proven and considered for enablement or left fail-closed.
-
-That means the project is much closer to the end of the broad audit than the beginning, but there is still meaningful proof work before source-retiring cross-game Move should be turned on.
-
-## Critical path
+## Near-term sequence
 
 ~~~text
-Gen I–III shared editor                     DEVICE ACCEPTED
+Gen I-III shared editor                     DEVICE ACCEPTED
         ↓
-storage / custody / transaction safety       SOFTWARE FOUNDATION BUILT
+Gen IV strict read-only foundation          IMPLEMENTED
         ↓
-conversion fidelity / provenance foundation  SUBSTANTIALLY COMPLETE
+multi-provider Save Instances               DEVICE ACCEPTED
         ↓
-PK8/PK9 closure + parser/recovery gates       CURRENT
+provider-neutral Save Instance backend      CURRENT
         ↓
-exact-route enablement decisions
+exact-head CI + fresh NRO
         ↓
-Master Vault + named Banks
+owner Switch hardware acceptance
         ↓
-SaveSource / DS / 3DS / modern expansion
-        ↓
-legality / provenance / approved writes
-        ↓
-release hardening
-        ↓
-v1.0
+continue Gen IV/source-browser stabilization
 ~~~
 
-## Permanent architecture rules
+Another generation, Gen V, Master Vault and cross-game True Move are outside the current tranche.
 
-### Source safety
+## Permanent project rules
 
 ~~~text
-ORIGINAL SOURCE SAVE: IMMUTABLE
-LIVE INSTALLED-GAME WRITE: HARD DISABLED
-LIVE RETROARCH WRITE: HARD DISABLED
-LIVE OTHER-EMULATOR WRITE: HARD DISABLED
-POKEBANK STAGED EDITING: ALLOWED
-UNKNOWN SAVE VARIANTS: FAIL CLOSED
+ORIGINAL EXTERNAL SOURCE: IMMUTABLE
+LIVE INSTALLED-GAME WRITE: DISABLED
+LIVE EMULATOR WRITEBACK: DISABLED
+UNKNOWN / AMBIGUOUS SOURCE: FAIL CLOSED
+REMEMBERED SOURCE SUBSTITUTION: FORBIDDEN
+A BUTTON: NON-DESTRUCTIVE
+CROSS-GAME TRUE MOVE: LOCKED
 ~~~
-
-### Move semantics
-
-Normal Move means one logical Pokémon changes active location. Destination verification happens before source retirement.
-
-Copy / Exact Clone / Derived Clone remain explicit operations and must never be accidental side effects of Move.
-
-### Device acceptance
-
-DEVICE ACCEPTED applies only to the exact artifact physically accepted by the owner. It does not automatically transfer to later SHAs.
