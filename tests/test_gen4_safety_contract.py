@@ -18,6 +18,7 @@ assert not re.search(r'freopen\s*\(', io_source)
 ui = (root / 'src/UI/UI.cpp').read_text()
 assert 'handleGen4View' in ui
 assert 'SourceKind::ExternalLegacy' in ui
+assert 'opened.source.binding.sourceType' in ui
 select = (root / 'src/UI/SaveSelectScreen.cpp').read_text()
 assert 'Gen4AssignedFile' in select and 'discoverKnownSources' in select
 
@@ -53,6 +54,11 @@ assert 'std::string providerLabel;' in legacy_model
 assert 'SAVE INSTANCES / ' in select
 assert 'instance.providerLabel' in select
 assert 'drawLine("Provider", legacyDetailsInstance.providerLabel.empty()' in select
+viewer_header = (root / 'include/UI/TrainerViewScreenBase.h').read_text()
+viewer_impl = (root / 'src/UI/TrainerViewScreenBase.inc').read_text()
+assert 'std::string sourceProviderLabel' in viewer_header
+assert 'legacyProviderLabel()' in viewer_header
+assert 'legacyProviderLabel() + " / "' in viewer_impl
 bridge = (root / 'src/Pokemon/Pokemon4ReadOnlyView.cpp').read_text()
 assert not re.search(r'\b(fwrite|pwrite|rename|remove|unlink)\s*\(', bridge)
 assert 'clone() const override { return nullptr; }' in (root / 'include/Pokemon/Pokemon4ReadOnlyView.h').read_text()

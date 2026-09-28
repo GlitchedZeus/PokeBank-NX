@@ -527,7 +527,8 @@ namespace UI {
     TrainerViewScreen::TrainerViewScreen(
         Trainer::Trainer& trainer, const std::string& titleName,
         const std::string& sourceLocation, u64 titleId, AccountUid userUid,
-        PokeVault::Safety::SourceKind sourceKind, std::string sourceGameId)
+        PokeVault::Safety::SourceKind sourceKind, std::string sourceGameId,
+        std::string sourceProviderLabel)
         : trainer(trainer), titleName(titleName), backupDir(sourceLocation),
           gameVersion((sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy ||
                        sourceKind == PokeVault::Safety::SourceKind::ExternalLegacy)
@@ -537,6 +538,7 @@ namespace UI {
         // the immediate-mode state, and C++ initialises in declaration order.
         this->sourceKind = sourceKind;
         this->sourceGameId = std::move(sourceGameId);
+        this->sourceProviderLabel = std::move(sourceProviderLabel);
         if (this->sourceKind != PokeVault::Safety::SourceKind::RetroArchLegacy &&
             this->sourceKind != PokeVault::Safety::SourceKind::ExternalLegacy)
             captureInventorySourceBaseline();
@@ -564,8 +566,8 @@ namespace UI {
         const std::string sessionInfo =
             "pkse=" + VERSION_STRING +
             " game=\"" + titleName + "\" gamever=" + (gameVersion.empty() ? "?" : gameVersion) +
-            " src=" + std::string(this->sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy
-                                      ? "RETROARCH_READ_ONLY"
+            " src=" + std::string(legacyReadOnlySource()
+                                      ? legacyProviderLabel() + "_READ_ONLY"
                                       : this->sourceKind == PokeVault::Safety::SourceKind::InstalledGame
                                           ? "INSTALLED_READ_ONLY" : "BACKUP") +
             " gameid=" + (this->sourceGameId.empty() ? "?" : this->sourceGameId) +
@@ -4736,7 +4738,7 @@ namespace UI {
         // --- Title bar: the shared chrome, with game name + version + DLC as the subtitle ---
         const std::string legacyPlatform(PokeVault::Games::legacyPlatformAbbreviation(sourceGameId));
         std::string subtitle = legacyReadOnlySource()
-            ? std::string(sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy ? "RETROARCH / " : "EXTERNAL / ") +
+            ? legacyProviderLabel() + " / " +
                 (legacyPlatform.empty() ? std::string("LEGACY") : legacyPlatform) + " / READ ONLY — "
             : sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — " : "BACKUP WORKSPACE — ";
         subtitle += titleName;
@@ -5037,7 +5039,7 @@ namespace UI {
         if (helpOverlayActive) {
             drawInfoOverlay(fb, "Game Browser Controls", {
                 legacyReadOnlySource()
-                    ? std::string(sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy ? "RETROARCH " : "EXTERNAL ") +
+                    ? legacyProviderLabel() + " " +
                         (legacyPlatform.empty() ? std::string("LEGACY") : legacyPlatform) + " SOURCE: read-only browsing"
                     : sourceReadOnly() ? "INSTALLED SOURCE: read-only browsing"
                                        : "BACKUP WORKSPACE: edits affect backup files only",

@@ -113,7 +113,7 @@ namespace UI {
                     if (!handleLegacyFRLGView(selectScreen.getSelectedUser(),
                                               selectScreen.getSelectedLegacySourceIndex(),
                                               selectScreen.getSelectedGameId(), error))
-                        logErrorToFile("Legacy RetroArch source refused open", error.c_str());
+                        logErrorToFile("Legacy emulator source refused open", error.c_str());
                 } else if (selectScreen.getSelectedSourceKind() ==
                            SaveSelectScreen::SelectedSourceKind::Gen4AssignedFile) {
                     std::string error;
@@ -278,13 +278,14 @@ namespace UI {
                                selected.gameId.c_str());
         }
         if (!trainer) {
-            if (error.empty()) error = "validated RetroArch source has no supported read-only trainer bridge";
+            if (error.empty()) error = "validated emulator source has no supported read-only trainer bridge";
             return false;
         }
 
         TrainerViewScreen trainerScreen(
             *trainer, "Pokemon " + std::string(identity->title), selected.path, 0, userUid,
-            PokeVault::Safety::SourceKind::RetroArchLegacy, selected.gameId);
+            PokeVault::Safety::SourceKind::RetroArchLegacy, selected.gameId,
+            selected.providerLabel);
         fb.startFade();
         while (appletMainLoop() && !trainerScreen.shouldExit() &&
                !trainerScreen.hasRequestedExit()) {
@@ -329,7 +330,8 @@ namespace UI {
         logInfoToFile("Opening assigned Generation IV source read-only", sourcePath.c_str());
         TrainerViewScreen trainerScreen(
             *trainer, "Pokemon " + std::string(identity->title), sourcePath, 0, userUid,
-            PokeVault::Safety::SourceKind::ExternalLegacy, gameId);
+            PokeVault::Safety::SourceKind::ExternalLegacy, gameId,
+            opened.source.binding.sourceType);
         fb.startFade();
         while (appletMainLoop() && !trainerScreen.shouldExit() &&
                !trainerScreen.hasRequestedExit()) {

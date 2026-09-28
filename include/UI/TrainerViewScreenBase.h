@@ -56,7 +56,8 @@ namespace UI {
         TrainerViewScreen(Trainer::Trainer& trainer, const std::string& titleName,
                           const std::string& sourceLocation, u64 titleId, AccountUid userUid,
                           PokeVault::Safety::SourceKind sourceKind,
-                          std::string sourceGameId = {});
+                          std::string sourceGameId = {},
+                          std::string sourceProviderLabel = {});
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return goBack; }
@@ -294,6 +295,7 @@ namespace UI {
         static constexpr SaveDest DestNewBackup = SaveDest::NewBackup;
         PokeVault::Safety::SourceKind sourceKind = PokeVault::Safety::SourceKind::InstalledGame;
         std::string sourceGameId;
+        std::string sourceProviderLabel;
         bool sourceReadOnly() const {
             return !PokeVault::Safety::canPerform(
                 sourceKind, PokeVault::Safety::SourceMutation::Edit);
@@ -301,6 +303,12 @@ namespace UI {
         bool legacyReadOnlySource() const {
             return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy ||
                    sourceKind == PokeVault::Safety::SourceKind::ExternalLegacy;
+        }
+        std::string legacyProviderLabel() const {
+            if (!sourceProviderLabel.empty())
+                return sourceProviderLabel == "RetroArch" ? "RETROARCH" : sourceProviderLabel;
+            return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy
+                ? "RETROARCH" : "EXTERNAL";
         }
         bool requireMutableWorkspace() {
             if (moveRecoveryLocked) {
