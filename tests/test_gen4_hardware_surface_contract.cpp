@@ -109,6 +109,9 @@ int main() {
     contains(surface, "state.moveEditorRow == 1");
     contains(surface, "state.moveEditorRow == 2");
     contains(surface, "state.session.working->setMove(slot, value)");
+    contains(surface, "uint16_t moveBaseline = 0;");
+    contains(surface, "state.moveBaseline = state.session.working->moves()");
+    contains(surface, "state.session.working->setMove(slot, state.moveBaseline)");
     contains(surface, "PickerTarget::Move");
     contains(surface, "Names::isMovePresent");
     contains(surface, "move <= 467");

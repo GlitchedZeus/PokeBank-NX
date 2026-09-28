@@ -65,6 +65,7 @@ struct State {
     bool moveEditor = false;
     int moveEditorSlot = 0;
     int moveEditorRow = 0;
+    uint16_t moveBaseline = 0;
     uint8_t movePpBaseline = 0;
     uint8_t movePpUpsBaseline = 0;
 };
@@ -880,6 +881,7 @@ void openMoveEditor(TrainerViewScreen& screen, State& state, int slot) {
     state.moveEditor = true;
     state.moveEditorSlot = slot;
     state.moveEditorRow = 0; // Shared move editor opens on the Move row; PP/PP Ups stay contextual.
+    state.moveBaseline = state.session.working->moves()[static_cast<size_t>(slot)];
     state.movePpBaseline = state.session.working->pp()[static_cast<size_t>(slot)];
     state.movePpUpsBaseline = state.session.working->ppUps()[static_cast<size_t>(slot)];
     screen.controllerNavigation.reset();
@@ -888,8 +890,9 @@ void openMoveEditor(TrainerViewScreen& screen, State& state, int slot) {
 void cancelMoveEditor(State& state) {
     if (state.session.working && state.moveEditorSlot >= 0 && state.moveEditorSlot < 4) {
         const auto slot = static_cast<size_t>(state.moveEditorSlot);
-        state.session.working->setPP(slot, state.movePpBaseline);
+        state.session.working->setMove(slot, state.moveBaseline);
         state.session.working->setPPUps(slot, state.movePpUpsBaseline);
+        state.session.working->setPP(slot, state.movePpBaseline);
     }
     state.moveEditor = false;
     state.moveEditorRow = 0;
