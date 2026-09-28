@@ -29,6 +29,12 @@ int main() {
     const auto bridge = read("src/Legacy/Gen4ReadOnlyTrainer.cpp");
     const auto staged = read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
     const auto session = read("include/UI/Gen4SharedPokemonSession.h");
+    const auto baseUi = read("src/UI/TrainerViewScreenBase.inc");
+    const auto trainerBase = read("include/Trainer/Trainer.h");
+    const auto rbyBridge = read("include/Legacy/RBYReadOnlyTrainer.h");
+    const auto gscBridge = read("include/Legacy/GSCReadOnlyTrainer.h");
+    const auto gen3Bridge = read("include/Legacy/FRLGReadOnlyTrainer.h");
+    const auto gen4Bridge = read("include/Legacy/Gen4ReadOnlyTrainer.h");
 
     contains(surface, "SharedPokemonShell::drawChrome");
     contains(surface, "SharedPokemonShell::Geometry");
@@ -89,6 +95,16 @@ int main() {
     assert(staged.find("std::fopen") == std::string::npos);
     assert(staged.find("std::fwrite") == std::string::npos);
     assert(staged.find("rename(") == std::string::npos);
+
+    // Save-level B/+ exit guards protect staged work even when the external source is immutable.
+    contains(trainerBase, "virtual bool hasStagedChanges() const noexcept { return false; }");
+    contains(rbyBridge, "hasStagedChanges() const noexcept override");
+    contains(gscBridge, "hasStagedChanges() const noexcept override");
+    contains(gen3Bridge, "hasStagedChanges() const noexcept override");
+    contains(gen4Bridge, "hasStagedChanges() const noexcept override");
+    contains(baseUi, "hasUnsavedChanges || trainer.hasStagedChanges()");
+    assert(baseUi.find("!sourceReadOnly() && hasUnsavedChanges") == std::string::npos);
+    assert(baseUi.find("!sourceReadOnly() && bank && bank->hasChanged()") == std::string::npos);
 
     // Final composite routes Gen IV before generic/Gen III fallback.
     contains(composite, "#include \"Gen4SharedPokemonSurface.inc\"");
