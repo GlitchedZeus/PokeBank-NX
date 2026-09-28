@@ -184,10 +184,14 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
             overlay = Overlay::None;
             return;
         }
-        if (kDown & (HidNpadButton_Left | HidNpadButton_Up))
-            previewIndex = PokeBank::UIModel::previewWrapIndex(previewIndex, -1, count);
-        if (kDown & (HidNpadButton_Right | HidNpadButton_Down))
-            previewIndex = PokeBank::UIModel::previewWrapIndex(previewIndex, 1, count);
+        if (kDown & HidNpadButton_Left)
+            previewIndex = PokeBank::UIModel::previewMoveSelection(kind, previewIndex, -1, 0);
+        if (kDown & HidNpadButton_Right)
+            previewIndex = PokeBank::UIModel::previewMoveSelection(kind, previewIndex, 1, 0);
+        if (kDown & HidNpadButton_Up)
+            previewIndex = PokeBank::UIModel::previewMoveSelection(kind, previewIndex, 0, -1);
+        if (kDown & HidNpadButton_Down)
+            previewIndex = PokeBank::UIModel::previewMoveSelection(kind, previewIndex, 0, 1);
         if (kDown & HidNpadButton_A) {
             setStatus("Preview only: no Vault, Bank, search or collection data was changed.", 240);
         }

@@ -58,6 +58,15 @@ namespace PokeBank::UIModel {
         return (current + normalized + count) % count;
     }
 
+    constexpr int previewColumns(OrganizationPreviewKind kind) {
+        switch (kind) {
+            case OrganizationPreviewKind::Banks:       return 3;
+            case OrganizationPreviewKind::Search:      return 2;
+            case OrganizationPreviewKind::Collections: return 2;
+        }
+        return 1;
+    }
+
     constexpr int previewCount(OrganizationPreviewKind kind) {
         switch (kind) {
             case OrganizationPreviewKind::Banks:
@@ -68,6 +77,22 @@ namespace PokeBank::UIModel {
                 return static_cast<int>(COLLECTION_PREVIEW.size());
         }
         return 0;
+    }
+
+    constexpr int previewMoveSelection(OrganizationPreviewKind kind, int current, int dx, int dy) {
+        const int count = previewCount(kind);
+        if (count <= 0) return 0;
+        if (current < 0 || current >= count) current = 0;
+        const int cols = previewColumns(kind);
+        if (dx != 0) return previewWrapIndex(current, dx, count);
+
+        if (dy != 0) {
+            int next = current + dy * cols;
+            while (next < 0) next += count;
+            while (next >= count) next -= count;
+            return next;
+        }
+        return current;
     }
 
 } // namespace PokeBank::UIModel
