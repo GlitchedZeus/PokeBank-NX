@@ -149,7 +149,8 @@ namespace UI {
 
         // D-pad + Left Stick. NavigationRepeat feeds both through the same directional contract, so
         // the shared legend shows that parity instead of implying D-pad-only navigation.
-        if (btn == "Arrows" || btn == "D-Pad" || btn == "Up/Down" || btn == "Left/Right") {
+        if (btn == "Arrows" || btn == "D-Pad" || btn == "D-pad" || btn == "D-pad/Stick" ||
+            btn == "Up/Down" || btn == "Left/Right") {
             constexpr int s = 24, a = 9, gap = 5, lsW = 26, lsH = 22;
             if (!measureOnly) {
                 const Color dim(fill.r, fill.g, fill.b, 70);
