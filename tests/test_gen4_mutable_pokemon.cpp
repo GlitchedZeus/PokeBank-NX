@@ -1,0 +1,230 @@
+#include "Encryption/Encryption4.h"
+#include "Pokemon/Experience.h"
+#include "Pokemon/PersonalInfo4PT.h"
+#include "Pokemon/Pokemon4Mutable.h"
+#include "Pokemon/Pokemon4ReadOnly.h"
+#include "Utils/Gen4TextCodec.h"
+
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <iostream>
+#include <vector>
+
+namespace {
+
+void w16(std::vector<std::byte>& b, size_t o, uint16_t v) {
+    b[o] = static_cast<std::byte>(v);
+    b[o + 1] = static_cast<std::byte>(v >> 8);
+}
+
+void w32(std::vector<std::byte>& b, size_t o, uint32_t v) {
+    b[o] = static_cast<std::byte>(v);
+    b[o + 1] = static_cast<std::byte>(v >> 8);
+    b[o + 2] = static_cast<std::byte>(v >> 16);
+    b[o + 3] = static_cast<std::byte>(v >> 24);
+}
+
+void copy(std::vector<std::byte>& dst, size_t off, std::span<const std::byte> src) {
+    std::copy(src.begin(), src.end(),
+              dst.begin() + static_cast<std::ptrdiff_t>(off));
+}
+
+std::vector<std::byte> makeEntity(
+    uint16_t species = 25, uint32_t pid = 0x12345678u,
+    uint16_t ability = 9) {
+    std::vector<std::byte> d(Encryption::SIZE_STORED4, std::byte{0});
+    w32(d, 0x00, pid);
+    w16(d, 0x08, species);
+    w16(d, 0x0A, 1);
+    w16(d, 0x0C, 12345);
+    w16(d, 0x0E, 54321);
+    w32(d, 0x10, 10000);
+    d[0x14] = std::byte{70};
+    d[0x15] = static_cast<std::byte>(ability);
+    d[0x17] = std::byte{2};
+    for (size_t i = 0; i < 6; ++i)
+        d[0x18 + i] = static_cast<std::byte>(i + 1);
+    w16(d, 0x28, 85);
+    w16(d, 0x2A, 98);
+    w16(d, 0x2C, 86);
+    w16(d, 0x2E, 104);
+    d[0x30] = std::byte{15};
+    d[0x31] = std::byte{30};
+    d[0x32] = std::byte{20};
+    d[0x33] = std::byte{15};
+    d[0x34] = std::byte{1};
+    d[0x35] = std::byte{2};
+    d[0x36] = std::byte{3};
+    w32(d, 0x38, 31u | (30u << 5) | (29u << 10) | (28u << 15) |
+                  (27u << 20) | (26u << 25));
+    d[0x40] = std::byte{0}; // male, form 0
+    auto nick = Utils::encodeGen4Field(u"PIKA", 11, 10, 2);
+    copy(d, 0x48, nick);
+    // Native entity strings may have post-terminator trash. Keep a recognizable tail.
+    for (size_t i = 0x54; i < 0x5E; ++i)
+        d[i] = static_cast<std::byte>(0x90 + (i - 0x54));
+    d[0x5F] = std::byte{10};
+    auto ot = Utils::encodeGen4Field(u"ASH", 8, 7, 2);
+    copy(d, 0x68, ot);
+    d[0x82] = std::byte{0x21};
+    d[0x83] = std::byte{4};
+    d[0x84] = std::byte{25};
+    return Encryption::encryptArray4(d);
+}
+
+void testNoOpAndSimpleFields() {
+    auto encrypted = makeEntity();
+    std::string error;
+    auto editable = Pokemon::Pokemon4Mutable::fromEncrypted(
+        encrypted, Enums::GameVersion::PT, &error);
+    assert(editable && error.empty());
+    assert(editable->encryptedBytes() == encrypted);
+
+    assert(editable->setHeldItem(200));
+    assert(editable->setFriendship(123));
+    assert(editable->setEV(0, 252));
+    assert(editable->setIV(5, 31));
+    assert(editable->setMove(1, 237));
+    assert(editable->setPP(1, 12));
+    assert(editable->setPPUps(1, 3));
+    assert(editable->setPokerus(0x43));
+    assert(editable->setBall(16));
+    assert(editable->setMetLevel(42));
+    assert(editable->setLevel(50));
+
+    Pokemon::Pokemon4ReadOnly parsed(
+        editable->encryptedBytes(), Enums::GameVersion::PT);
+    assert(parsed.valid());
+    assert(parsed.heldItem() == 200);
+    assert(parsed.friendship() == 123);
+    assert(parsed.evs()[0] == 252);
+    assert(parsed.ivs()[5] == 31);
+    assert(parsed.moves()[1] == 237);
+    assert(parsed.pp()[1] == 12);
+    assert(parsed.ppUps()[1] == 3);
+    assert(parsed.pokerusState() == 0x43);
+    assert(parsed.ballDPPt() == 16);
+    assert(parsed.metLevel() == 42);
+    assert(Pokemon::getLevelFromExp(parsed.experience(), parsed.personal().growthRate) == 50);
+}
+
+void testNicknamePreservesTrash() {
+    auto encrypted = makeEntity();
+    auto before = Encryption::decryptArray4(encrypted);
+    auto editable = Pokemon::Pokemon4Mutable::fromEncrypted(
+        encrypted, Enums::GameVersion::PT);
+    assert(editable);
+    assert(editable->setNickname(u"PI"));
+    const auto after = Encryption::decryptArray4(editable->encryptedBytes());
+    Pokemon::Pokemon4ReadOnly parsed(
+        editable->encryptedBytes(), Enums::GameVersion::PT);
+    assert(parsed.valid() && parsed.nickname() == u"PI");
+
+    // "PI" occupies two code units + terminator, so bytes after 0x4D are native trash
+    // and must remain byte-exact rather than being pre-cleared.
+    for (size_t i = 0x4E; i < 0x5E; ++i)
+        assert(after[i] == before[i]);
+}
+
+void testPidCoupledEdits() {
+    auto editable = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(), Enums::GameVersion::PT);
+    assert(editable);
+    const uint8_t startingGender = editable->gender();
+    const bool startingShiny = editable->shiny();
+
+    const uint8_t newNature = static_cast<uint8_t>((editable->nature() + 1) % 25);
+    assert(editable->setNature(newNature));
+    assert(editable->nature() == newNature);
+    assert(editable->gender() == startingGender);
+    assert(editable->shiny() == startingShiny);
+
+    assert(editable->setGender(startingGender == 0 ? 1 : 0));
+    const uint8_t toggledGender = editable->gender();
+    assert(toggledGender != startingGender);
+    assert(editable->nature() == newNature);
+    assert(editable->shiny() == startingShiny);
+
+    assert(editable->setShiny(!startingShiny));
+    assert(editable->shiny() != startingShiny);
+    assert(editable->gender() == toggledGender);
+    assert(editable->nature() == newNature);
+
+    Pokemon::Pokemon4ReadOnly parsed(
+        editable->encryptedBytes(), Enums::GameVersion::PT);
+    assert(parsed.valid());
+    assert(parsed.gender() == toggledGender);
+}
+
+void testFixedGenderAndAbilitySlots() {
+    // Nidoran F is fixed female.
+    auto female = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(29), Enums::GameVersion::PT);
+    assert(female);
+    assert(female->setGender(1));
+    const auto femaleBefore = female->encryptedBytes();
+    assert(!female->setGender(0));
+    assert(female->encryptedBytes() == femaleBefore);
+
+    // Magnemite is genderless.
+    auto genderless = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(81), Enums::GameVersion::PT);
+    assert(genderless);
+    assert(genderless->setGender(2));
+    const auto genderlessBefore = genderless->encryptedBytes();
+    assert(!genderless->setGender(1));
+    assert(genderless->encryptedBytes() == genderlessBefore);
+
+    // Pidgey has two distinct Gen IV ability slots; selecting the other one must
+    // preserve nature, gender and shininess while keeping PID parity consistent.
+    const auto& pidgey = Pokemon::getPersonalInfo4PT(16, 0);
+    assert(pidgey.ability1 != 0 && pidgey.ability2 != 0 &&
+           pidgey.ability1 != pidgey.ability2);
+    auto dual = Pokemon::Pokemon4Mutable::fromEncrypted(
+        makeEntity(16, 0x12345678u, pidgey.ability1),
+        Enums::GameVersion::PT);
+    assert(dual);
+    const uint8_t nature = dual->nature();
+    const uint8_t gender = dual->gender();
+    const bool shiny = dual->shiny();
+    assert(dual->setAbilitySlot(1));
+    assert(dual->abilitySlot() == 1);
+    assert(dual->ability() == pidgey.ability2);
+    assert(dual->nature() == nature);
+    assert(dual->gender() == gender);
+    assert(dual->shiny() == shiny);
+
+    Pokemon::Pokemon4ReadOnly parsed(
+        dual->encryptedBytes(), Enums::GameVersion::PT);
+    assert(parsed.valid() && parsed.ability() == pidgey.ability2);
+}
+
+void testBadInputFailsClosed() {
+    std::vector<std::byte> empty(Encryption::SIZE_STORED4, std::byte{0});
+    std::string error;
+    assert(!Pokemon::Pokemon4Mutable::fromEncrypted(
+        empty, Enums::GameVersion::PT, &error));
+    assert(!error.empty());
+
+    auto corrupt = makeEntity();
+    corrupt[0x20] ^= std::byte{1};
+    error.clear();
+    assert(!Pokemon::Pokemon4Mutable::fromEncrypted(
+        corrupt, Enums::GameVersion::PT, &error));
+    assert(!error.empty());
+}
+
+} // namespace
+
+int main() {
+    testNoOpAndSimpleFields();
+    testNicknamePreservesTrash();
+    testPidCoupledEdits();
+    testFixedGenderAndAbilitySlots();
+    testBadInputFailsClosed();
+    std::cout << "Gen IV mutable PK4 core PASS\n";
+    return 0;
+}
