@@ -122,7 +122,12 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto geometry = SharedEditor::actionMenuGeometry();
     // Action sheets are overlays on the live box browser, never standalone black screens.
     // Gen I/Yellow is the canonical presentation for every classic generation.
-    screen.drawGSCOverlay(fb);
+    //
+    // IMPORTANT: drawGSCOverlay() also paints the legacy staged-editor shell while
+    // editorOverlayState.active is true. Pokemon Actions/Empty Slot are themselves
+    // final surfaces, so using that wrapper here layered the old 860x610 Accent
+    // frame underneath this neutral action sheet on real hardware.
+    screen.drawLegacyBase(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawText(x + 24, y + 18, pokemon ? "Pokemon Actions" : "Empty Slot", Colors::Text, TextStyle::Heading);
@@ -238,7 +243,14 @@ bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 }
 
 bool finalGen2SurfaceOwnsFrame(const TrainerViewScreen& screen) noexcept {
-    return parityPassiveDetailsTarget(screen) != nullptr || unifiedGen2SurfaceOwnsFrame(screen);
+    if (parityPassiveDetailsTarget(screen) != nullptr || unifiedGen2SurfaceOwnsFrame(screen))
+        return true;
+
+    // Pokemon Actions / Empty Slot must bypass drawGSCOverlay() at the composite
+    // wrapper level as well. Otherwise that wrapper paints the legacy full Accent
+    // staged-editor frame before drawParityGen2Actions() gets a chance to replace it.
+    const auto& legacy = editorOverlayState(screen);
+    return legacy.active && legacy.pokemonActions && !legacy.review;
 }
 
 bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,

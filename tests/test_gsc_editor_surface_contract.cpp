@@ -119,9 +119,18 @@ int main() {
     assert(shared.find("caps.hasLegalityProvenance = true") != std::string::npos);
     assert(shared.find("SharedEditor::actionLabel(action)") != std::string::npos);
     assert(parity.find("SharedEditor::actionMenuGeometry()") != std::string::npos);
-    assert(parity.find("screen.drawGSCOverlay(fb)") != std::string::npos);
-    assert(parity.find("drawPanelSurface(fb, x, y, w, h, false, 18)") != std::string::npos);
-    assert(parity.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
+    const auto actionsDraw = parity.substr(parity.find("void drawParityGen2Actions"),
+        parity.find("void drawParityGen2Review") - parity.find("void drawParityGen2Actions"));
+    assert(actionsDraw.find("screen.drawLegacyBase(fb)") != std::string::npos);
+    assert(actionsDraw.find("screen.drawGSCOverlay(fb)") == std::string::npos);
+    assert(actionsDraw.find("drawPanelSurface(fb, x, y, w, h, false, 18)") != std::string::npos);
+    assert(actionsDraw.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
+    // The composite wrapper must not paint the legacy staged-editor Accent shell first.
+    const auto ownsFrame = parity.substr(parity.find("bool finalGen2SurfaceOwnsFrame"),
+        parity.find("bool handleFinalGen2SurfaceInput") - parity.find("bool finalGen2SurfaceOwnsFrame"));
+    assert(ownsFrame.find("legacy.active && legacy.pokemonActions && !legacy.review") != std::string::npos);
+    const auto compositeDraw = composite.substr(composite.find("void TrainerViewScreen::draw(PKSEFramebuffer& fb)"));
+    assert(compositeDraw.find("if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this))") != std::string::npos);
     assert(shared.find("drawSharedProvenanceSurface") != std::string::npos);
     assert(shared.find("Encounter legality\", \"Not checked") != std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);
