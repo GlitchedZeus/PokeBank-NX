@@ -44,6 +44,13 @@ public:
                           const Pokemon::Pokemon4Mutable& pokemon,
                           std::string* error = nullptr);
 
+    // Create/Add transaction primitive. Unlike commitBoxPokemon(), this refuses to
+    // overwrite an occupied slot. The candidate must already be a valid native
+    // 0x88 stored PK4; UI draft construction stays separate from save mutation.
+    bool stageCreateBoxPokemon(size_t box, size_t slot,
+                               const Pokemon::Pokemon4Mutable& pokemon,
+                               std::string* error = nullptr);
+
     [[nodiscard]] std::optional<Pokemon::Pokemon4ReadOnly> partyPokemon(
         size_t slot, std::string* error = nullptr) const;
 
