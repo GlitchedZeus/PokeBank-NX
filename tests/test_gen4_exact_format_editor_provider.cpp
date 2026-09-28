@@ -71,7 +71,7 @@ int main() {
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Gender));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::IV));
         assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::EV));
-        assert(!staged->fieldIsEditorTarget(Shared::FieldIdentity::Form));
+        assert(staged->fieldIsEditorTarget(Shared::FieldIdentity::Form));
 
         const Exact::MoveCompatibilityQuery existing{id, 25, 0, 85, true};
         const Exact::MoveCompatibilityQuery newMove{id, 25, 0, 85, false};
