@@ -1,6 +1,7 @@
 #ifndef UI_SAVE_SELECT_SCREEN_H
 #define UI_SAVE_SELECT_SCREEN_H
 
+#include <array>
 #include <vector>
 #include <string>
 
@@ -9,6 +10,7 @@
 #include "UI/UIScreen.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/GameLaunchModel.h"
 #include "Legacy/FRLGSourceBrowser.h"
 #include "Legacy/LegacySourceBindings.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
@@ -63,10 +65,21 @@ namespace UI {
             std::vector<TitleEntry> titles;
         };
         struct HitRect { int x, y, w, h, idx; };
+        struct PartyPreviewSlot {
+            uint16_t species = 0;
+            uint8_t level = 0;
+            std::string name;
+        };
 
         std::vector<UserEntry> users;
         int userIndex = 0;
         int titleIndex = 0;
+        std::array<PartyPreviewSlot, 6> partyPreview{};
+        std::string partyPreviewStatus;
+        std::string previewTrainerName;
+        GameLaunchDescriptor launchDescriptor;
+        std::string hubNotice;
+        bool launchLegacyMode = false;
 
         bool titleSelected = false;
         bool exitRequested = false;     // return from Games & Sources to product Home
@@ -131,6 +144,9 @@ namespace UI {
         void loadTitlesForUser(UserEntry& user);
         static bool scanSaveSpace(UserEntry& user, int spaceId, int& scanned, int& forUser);
         void setUser(int idx);
+        void refreshHubPreview();
+        bool launchCurrentTitle();
+        bool launchCurrentLegacyInstance();
         void selectCurrentTitle();
         void selectCurrentLegacyInstance();
         void openGen4Setup(const std::string& gameId, std::string notice = {});

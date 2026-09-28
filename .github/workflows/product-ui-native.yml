@@ -26,6 +26,7 @@ on:
       - 'tests/test_app_shell_model.cpp'
       - 'tests/test_organization_preview_model.cpp'
       - 'tests/test_game_launch_model.cpp'
+      - 'tests/test_game_hub_contract.py'
       - 'tests/test_reachable_ui_consistency.py'
       - '.github/workflows/product-ui-native.yml'
   workflow_dispatch:
@@ -59,6 +60,7 @@ jobs:
           git diff --check HEAD^ HEAD
           make -f Makefile.host product-ui-test
           python3 tests/test_reachable_ui_consistency.py
+          python3 tests/test_game_hub_contract.py
           echo "APPLICATION_SHA=$EXPECTED_SHA"
           echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
 
