@@ -261,6 +261,67 @@ void testLayout(Layout layout, uint8_t romCode = 7, bool soulSilver = false) {
     assert(editor->finalizedBytes(&error) == original);
 }
 
+void testCreateIntoEmptyBoxSlot() {
+    struct Case { Layout layout; uint8_t rom; bool soulSilver; uint8_t origin; };
+    const std::array<Case,4> cases{{
+        {Layout::DiamondPearl, 7, false, static_cast<uint8_t>(Enums::GameVersion::D)},
+        {Layout::Platinum, 7, false, static_cast<uint8_t>(Enums::GameVersion::Pt)},
+        {Layout::HeartGoldSoulSilver, 7, false, static_cast<uint8_t>(Enums::GameVersion::HG)},
+        {Layout::HeartGoldSoulSilver, 8, true, static_cast<uint8_t>(Enums::GameVersion::SS)},
+    }};
+    for (const auto& tc : cases) {
+        auto source = makeSave(tc.layout, tc.rom);
+        const auto original = source;
+        const auto sp = spec(tc.layout);
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(
+            source, tc.layout, gameId(tc.layout, tc.soulSilver), &error);
+        assert(editor && error.empty());
+
+        auto created = Pokemon::Pokemon4Mutable::createStored(
+            393, editor->sourceGroup(), tc.origin, u"ASH", 12345, 54321, 0, 2, 5,
+            0x24681357u, &error);
+        assert(created && error.empty());
+        assert(editor->commitNewBoxPokemon(0, 1, *created, &error));
+        assert(error.empty() && editor->hasChanges());
+        assert(source == original);
+
+        const auto finalBytes = editor->finalizedBytes(&error);
+        assert(!finalBytes.empty() && error.empty());
+        auto parsed = Gen4ReadOnlySave::parse(
+            finalBytes, tc.layout, gameId(tc.layout, tc.soulSilver), &error);
+        assert(parsed && error.empty());
+        assert(parsed->box(0, 0).species() == 25); // unrelated occupied slot preserved
+        assert(parsed->box(0, 1).valid() && parsed->box(0, 1).species() == 393);
+        assert(parsed->box(0, 1).originVersion() == tc.origin);
+
+        const size_t storageBase = parsed->storageSelection().offset;
+        const size_t targetBegin = storageBase + sp.boxData + Encryption::SIZE_STORED4;
+        const size_t targetEnd = targetBegin + Encryption::SIZE_STORED4;
+        const size_t crcBegin = storageBase + sp.storageSize - 2;
+        const size_t crcEnd = crcBegin + 2;
+        bool targetChanged = false;
+        for (size_t i = 0; i < finalBytes.size(); ++i) {
+            if (finalBytes[i] == original[i]) continue;
+            const bool target = i >= targetBegin && i < targetEnd;
+            const bool crc = i >= crcBegin && i < crcEnd;
+            assert(target || crc);
+            targetChanged = targetChanged || target;
+        }
+        assert(targetChanged);
+
+        const auto stagedAfterCreate = editor->stagedBytes();
+        error.clear();
+        assert(!editor->commitNewBoxPokemon(0, 1, *created, &error));
+        assert(error.find("empty") != std::string::npos);
+        assert(editor->stagedBytes() == stagedAfterCreate);
+        error.clear();
+        assert(!editor->commitNewBoxPokemon(0, 0, *created, &error));
+        assert(error.find("empty") != std::string::npos);
+        assert(editor->stagedBytes() == stagedAfterCreate);
+    }
+}
+
 void testMixedPartitionMutationFootprint() {
     for (const auto layout : {Layout::DiamondPearl, Layout::Platinum,
                               Layout::HeartGoldSoulSilver}) {
@@ -397,6 +458,7 @@ int main() {
     testLayout(Layout::Platinum);
     testLayout(Layout::HeartGoldSoulSilver, 7, false);
     testLayout(Layout::HeartGoldSoulSilver, 8, true);
+    testCreateIntoEmptyBoxSlot();
     testMixedPartitionMutationFootprint();
     testNoOpAndFailureRollback();
     testShedinjaPartyHpRule();
