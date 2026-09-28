@@ -726,7 +726,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
     return true;
 }
 
-void drawValuePicker(PKSEFramebuffer& fb, State& state) {
+void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     constexpr int w = 650, h = 520;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
@@ -746,8 +746,14 @@ void drawValuePicker(PKSEFramebuffer& fb, State& state) {
         std::string label;
         if (state.pickerTarget == PickerTarget::Nature)
             label = Trainer::getNatureName(static_cast<uint8_t>(value));
-        else
-            label = "Ability Slot " + std::to_string(value + 1);
+        else if (state.session.working) {
+            const uint16_t abilityId =
+                state.session.working->abilityForSlot(static_cast<uint8_t>(value));
+            label = abilityId == 0
+                ? "Ability Slot " + std::to_string(value + 1)
+                : std::string(Trainer::getAbilityName(abilityId)) +
+                    " (Slot " + std::to_string(value + 1) + ")";
+        }
         fb.drawText(x + 38, yy + 7, label,
                     selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
     }
@@ -932,7 +938,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Save", Colors::PanelAlt);
     }
 
-    if (state.valuePicker) drawValuePicker(fb, state);
+    if (state.valuePicker) drawValuePicker(screen, fb, state);
     if (state.moveEditor) drawMoveEditor(screen, fb, state);
 }
 
