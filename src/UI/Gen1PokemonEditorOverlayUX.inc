@@ -817,13 +817,9 @@ void handleActiveInput(TrainerViewScreen& screen, uint64_t down) {
 }
 
 void drawFooter(PKSEFramebuffer& fb, const std::string& text) {
-    const int h = 48;
-    const int y = fb.getHeight() - h;
-    fb.drawFilledRect(0, y, fb.getWidth(), h, Colors::Panel);
-    fb.drawFilledRect(0, y, fb.getWidth(), 2, Colors::Accent);
-    int tw = 0, th = 0;
-    fb.measureText(text, tw, th, TextStyle::Caption);
-    fb.drawText(std::max(16, (fb.getWidth() - tw) / 2), y + (h - th) / 2, text, Colors::Text, TextStyle::Caption);
+    // Legacy Gen I modes still centralize their contextual hints here. Route them through the
+    // app-wide glyph bar so every submenu gets the same A/B/X/Y and D-pad/Left Stick treatment.
+    drawNavBar(fb, text);
 }
 
 void drawRow(PKSEFramebuffer& fb, int x, int y, int w, const std::string& label,
@@ -1070,25 +1066,25 @@ void drawConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int
 
 std::string footerText(const TrainerViewScreen& screen, const OverlayState& state) {
     if (state.picker == PickerKind::Species || state.picker == PickerKind::Move)
-        return "D-pad Navigate   L/R Page ±10   A Select   B Cancel";
+        return "D-pad/Stick: Navigate | L/R: Page ±10 | A: Select | B: Cancel";
     switch (state.mode) {
-        case Mode::Actions: return "D-pad Navigate   A Select   B Back";
-        case Mode::View: return "A/B Back";
-        case Mode::Edit: return "D-pad/Stick Scroll   A Edit   L/R Jump Section   B Back";
-        case Mode::AddDraft: return "D-pad/Stick Scroll   A Edit/Select   L/R Jump Section   X Stage Add   B Cancel Draft";
-        case Mode::CloneConfirm: return "Left/Right Destination Box   A Stage Clone   B Cancel";
-        case Mode::RemoveConfirm: return "A Confirm Remove   B Cancel";
-        case Mode::Review: return "D-pad Navigate   A Export Copy   Y Discard Staged   B Back";
-        case Mode::Provenance: return "A/B Back";
+        case Mode::Actions: return "D-pad/Stick: Navigate | A: Select | B: Back";
+        case Mode::View: return "B: Back";
+        case Mode::Edit: return "D-pad/Stick: Scroll | A: Edit | L/R: Jump Section | B: Back";
+        case Mode::AddDraft: return "D-pad/Stick: Scroll | A: Edit / Select | L/R: Jump Section | X: Stage Add | B: Cancel Draft";
+        case Mode::CloneConfirm: return "Left/Right: Destination Box | A: Stage Clone | B: Cancel";
+        case Mode::RemoveConfirm: return "A: Confirm Remove | B: Cancel";
+        case Mode::Review: return "D-pad/Stick: Navigate | A: Export Copy | Y: Discard Staged | B: Back";
+        case Mode::Provenance: return "B: Back";
         case Mode::Closed: break;
     }
     if (entrySurface(screen)) {
-        if (!editorAvailable(screen)) return "A View   L/R Box   B Back";
+        if (!editorAvailable(screen)) return "A: View | L/R: Box | B: Back";
         std::string error;
         auto* mutableScreen = const_cast<TrainerViewScreen*>(&screen);
         const auto p = pokemonAt(*mutableScreen, screen.selectedBoxIndex, screen.selectedItemIndex, error);
-        if (p) return "A Actions   Y Remove   L/R Box   B Back";
-        return "A Actions   X Add   L/R Box   B Back";
+        if (p) return "A: Actions | Y: Remove | L/R: Box | B: Back";
+        return "A: Actions | X: Add | L/R: Box | B: Back";
     }
     return {};
 }
