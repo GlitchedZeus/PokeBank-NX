@@ -49,7 +49,7 @@ The currently accepted Save Instances runtime checkpoint remains:
 
 That exact candidate passed physical testing on Switch.
 
-The newer provider-neutral architecture at 00ee7a6e changes shared rendering, stale-source validation and alias/profile claim behavior. It therefore requires a fresh hardware test before receiving DEVICE ACCEPTED status.
+The newer provider-neutral architecture at 00ee7a6e changes shared rendering, stale-source validation and alias/profile claim behavior. Its exact-head automated gates now pass, but it still requires a fresh owner hardware test before receiving DEVICE ACCEPTED status.
 
 ## Current architecture direction
 
@@ -82,18 +82,30 @@ Strict Gen I, II, III and IV parsing remains generation-specific.
 - mGBA arbitrary ROM-directory crawling is intentionally forbidden;
 - live writes to installed games or external emulator sources remain disabled.
 
+## Frozen hardware-test candidate
+
+- Application SHA: **00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
+- Tree SHA: **b0832910df44898114a413191ebad3228bded8af**
+- Actions artifact ID: **10956604914**
+- NRO: **PokeBank-NX-PhysicalAudit-00ee7a6e.nro**
+- NRO SHA-256: **5fad07002c5074ffb3d1d2bdd91275ef29fbdf199f7db263f39c5a3a9f86ca25**
+
 ## Current verification state
 
-At the latest re-fetch for 00ee7a6e:
+At the frozen 00ee7a6e application head:
 
-- Packed Move workflow: PASS
-- Packed Multi-Move workflow: PASS
-- local host suite: PASS
-- local ASan / UBSan: PASS
-- native compile/link: reported PASS in the tranche
-- GitHub Actions Host Tests #1385: still running
+- Host Tests #1385: **PASS**
+- host clean build: **PASS**
+- host full suite: **PASS**
+- focused RSE bridge regression: **PASS**
+- ASan / UBSan: **PASS**
+- Audit Hardening Native Validation #226: **PASS**
+- Packed Multi-Move #201: **PASS**
+- Packed Move #202: **PASS**
 
-Once every exact-head gate is green, the next deliverable is a fresh Actions-built NRO for owner hardware testing.
+**AUTOMATED GATES: PASS**
+
+**DEVICE ACCEPTANCE: PENDING OWNER HARDWARE TEST**
 
 ## Near-term sequence
 
@@ -104,11 +116,11 @@ Gen IV strict read-only foundation          IMPLEMENTED
         ↓
 multi-provider Save Instances               DEVICE ACCEPTED
         ↓
-provider-neutral Save Instance backend      CURRENT
+provider-neutral Save Instance backend      AUTOMATED PASS
         ↓
-exact-head CI + fresh NRO
+exact Actions-built NRO                     FROZEN
         ↓
-owner Switch hardware acceptance
+owner Switch hardware acceptance            NEXT
         ↓
 continue Gen IV/source-browser stabilization
 ~~~
