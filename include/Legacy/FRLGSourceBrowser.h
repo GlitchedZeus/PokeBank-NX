@@ -3,6 +3,7 @@
 
 #include "Legacy/RetroArchFRLGDiscovery.h"
 #include "Legacy/LegacySourceBindings.h"
+#include "Source/SaveInstance.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -10,30 +11,10 @@
 #include <vector>
 
 namespace PokeVault::Legacy {
-    enum class LegacySaveInstanceKind : unsigned char {
-        BatterySave,
-        SaveState,
-        Backup,
-        ManualImport,
-    };
-
-    struct FRLGSaveInstance {
-        size_t sourceIndex = 0;
-        LegacySaveInstanceKind kind = LegacySaveInstanceKind::BatterySave;
-        std::string label;
-        // Emulator/provider name is separate from the trainer/party/fingerprint detail line.
-        std::string providerLabel;
-        std::string sourceLabel;
-        std::string location;
-        std::string normalizedPath;
-        std::string sourceIdentity;
-        std::string contentFingerprint;
-        std::string trainerName;
-        uint64_t fileSize = 0;
-        int64_t modifiedTime = 0;
-        size_t partyCount = 0;
-        bool mostRecentlyModified = false;
-    };
+    // Historical names remain source-compatible while every generation now hands the UI the same
+    // provider-neutral Source::SaveInstance metadata. Strict parser results stay generation-native.
+    using LegacySaveInstanceKind = PokeVault::Source::SaveInstanceKind;
+    using FRLGSaveInstance = PokeVault::Source::SaveInstance;
 
     // One UI-neutral parent card per exact game identity/source family. Validated save files are
     // children, not duplicate top-level cards. The child retains the session-catalog index so
