@@ -61,15 +61,21 @@ std::vector<FRLGSourceCard> buildGSCSourceCards(const GSCDiscoveryResult& discov
             source.path, source.normalizedPath, stableIdentity(source), fingerprint,
             strictTrainer.name, source.fileSize, source.modifiedTime, source.save->party().size(), false,
         });
+        auto& instance = cards[cardIndex].instances.back();
+        instance.gameId = std::string(game->id);
+        instance.generation = 2;
+        instance.platformLabel = "GBC";
+        instance.providerId = PokeVault::Source::providerIdFor(instance.providerLabel);
+        instance.sourcePath = source.path;
+        instance.physicalIdentity = identity;
+        instance.containerType = "Battery save";
+        instance.validation = PokeVault::Source::ValidationStatus::Ready;
+        instance.access = PokeVault::Source::AccessMode::ReadOnly;
+        instance.diagnostic = source.detail;
     }
 
-    for (auto& card : cards) {
-        std::sort(card.instances.begin(), card.instances.end(), [](const auto& left, const auto& right) {
-            if (left.modifiedTime != right.modifiedTime) return left.modifiedTime > right.modifiedTime;
-            return left.normalizedPath < right.normalizedPath;
-        });
-        if (!card.instances.empty()) card.instances.front().mostRecentlyModified = true;
-    }
+    for (auto& card : cards)
+        PokeVault::Source::sortNewestFirst(card.instances);
     return cards;
 }
 
@@ -78,15 +84,13 @@ std::vector<FRLGSourceCard> buildGSCSourceCardsForProfile(
     std::string_view profileIdentity) {
     auto cards = buildGSCSourceCards(discovery);
     for (auto& card : cards) {
+        for (auto& instance : card.instances)
+            instance.claimedProfile = bindings.assignedProfile(instance.sourceIdentity);
         card.instances.erase(std::remove_if(card.instances.begin(), card.instances.end(),
             [&](const auto& instance) {
-                const std::string owner = bindings.assignedProfile(instance.sourceIdentity);
-                return !owner.empty() && owner != profileIdentity;
+                return !PokeVault::Source::visibleToProfile(instance, profileIdentity);
             }), card.instances.end());
-        if (!card.instances.empty()) {
-            for (auto& instance : card.instances) instance.mostRecentlyModified = false;
-            card.instances.front().mostRecentlyModified = true;
-        }
+        if (!card.instances.empty()) PokeVault::Source::sortNewestFirst(card.instances);
     }
     cards.erase(std::remove_if(cards.begin(), cards.end(), [](const auto& card) {
         return card.instances.empty();
