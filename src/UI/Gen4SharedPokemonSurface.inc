@@ -10,6 +10,7 @@
 #include "Names/MovePresence.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon4ReadOnlyView.h"
+#include "Pokemon/PersonalInfo4HGSS.h"
 #include "Trainer/Trainer.h"
 #include "UI/ClassicGameContext.h"
 #include "UI/Common.h"
@@ -1306,6 +1307,10 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         }
         const uint16_t species =
             state.pickerValues[static_cast<size_t>(state.pickerRow)];
+        const auto& speciesPersonal = Pokemon::getPersonalInfo4HGSS(species, 0);
+        const std::array<uint8_t, 2> previewTypes{
+            SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type1),
+            SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type2)};
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, species, 493, previewShiny,
             [](uint16_t value) {
@@ -1314,7 +1319,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
             [](uint16_t value) {
                 return std::string(Names::getSpeciesName(value));
             },
-            false);
+            false, previewTypes);
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                         {"ZL/ZR", "Jump"}, {"A", "Choose"}, {"B", "Cancel"}});
         return;

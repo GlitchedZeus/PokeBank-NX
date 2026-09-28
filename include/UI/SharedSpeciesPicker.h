@@ -2,7 +2,6 @@
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Pokemon/PersonalInfoTable.h"
-#include "Pokemon/PersonalInfo4HGSS.h"
 #include "UI/ClassicTypeBadges.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SpriteManager.h"
@@ -49,19 +48,23 @@ inline ModalGeometry drawModalChrome(
 
 namespace {
 
-// The shared picker is currently used by the supported RBY and GSC editors only.
-// Keep their exact native type tables here so the preview never guesses modern typing.
+// Convert canonical type ids to the classic badge-table numbering used by the
+// Gen I-IV shared picker previews.
+inline uint8_t canonicalToClassicType(uint8_t normalized) noexcept {
+    if (normalized <= 5) return normalized;
+    if (normalized == 6) return 7;
+    if (normalized == 7) return 8;
+    if (normalized == 8) return 9;
+    if (normalized >= 9 && normalized <= 16)
+        return static_cast<uint8_t>(20 + (normalized - 9));
+    return 0xFF;
+}
+
+namespace {
+
+// Keep the native pre-Gen-IV tables local. Later generations can pass an exact
+// type pair into drawContent without making every picker user link their data table.
 inline std::array<uint8_t, 2> classicPickerTypes(uint16_t species, int speciesCount) {
-    const auto toClassic = [](uint8_t normalized) -> uint8_t {
-        // Canonical 0-16 type ids need the classic sprite-table gaps restored.
-        if (normalized <= 5) return normalized;
-        if (normalized == 6) return 7;
-        if (normalized == 7) return 8;
-        if (normalized == 8) return 9;
-        if (normalized >= 9 && normalized <= 16)
-            return static_cast<uint8_t>(20 + (normalized - 9));
-        return 0xFF;
-    };
     if (speciesCount == 151)
         return PokeVault::Integration::Gen1::StagedPokemonEditor::personalTypes(species);
     if (speciesCount == 251) {
@@ -70,13 +73,8 @@ inline std::array<uint8_t, 2> classicPickerTypes(uint16_t species, int speciesCo
     }
     if (speciesCount == 386) {
         const auto& personal = Pokemon::getPersonalInfoG3(species);
-        return {toClassic(personal.type1), toClassic(personal.type2)};
-    }
-    if (speciesCount == 493) {
-        // Base-species typing is common across D/P/Pt/HG/SS. Use the generated
-        // Gen IV table, never the modern table (which would inject later type changes).
-        const auto& personal = Pokemon::getPersonalInfo4HGSS(species, 0);
-        return {toClassic(personal.type1), toClassic(personal.type2)};
+        return {canonicalToClassicType(personal.type1),
+                canonicalToClassicType(personal.type2)};
     }
     return {0, 0};
 }
@@ -88,7 +86,8 @@ inline std::array<uint8_t, 2> classicPickerTypes(uint16_t species, int speciesCo
 template <class RowText, class TitleText>
 void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
                  int speciesCount, bool previewShiny, RowText rowText, TitleText titleText,
-                 bool shinyToggleAvailable = true) {
+                 bool shinyToggleAvailable = true,
+                 std::array<uint8_t, 2> previewTypes = {0xFF, 0xFF}) {
         fb.drawText(x + 24, y + 50,
                     shinyToggleAvailable
                         ? "One species row • hover preview only • Y chooses intended Normal/Shiny appearance"
@@ -120,8 +119,10 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
             fb.drawSpriteStaticContained(previewX + 188, y + 152, 165, 190, shiny->width, shiny->height, shiny->data, shiny->channels);
         else fb.drawText(previewX + 208, y + 235, "No shiny sprite", Colors::TextDim, TextStyle::Caption);
 
-        // Generation-correct canonical type badges update with the highlighted species.
-        const auto types = classicPickerTypes(preview, speciesCount);
+        // Generation-correct type badges update with the highlighted species.
+        const auto types = (previewTypes[0] == 0xFF && previewTypes[1] == 0xFF)
+            ? classicPickerTypes(preview, speciesCount)
+            : previewTypes;
         ClassicTypeBadges::drawPairCentered(fb, previewX, previewW, y + 344, types[0], types[1]);
 
         fb.drawText(previewX, y + 374,
