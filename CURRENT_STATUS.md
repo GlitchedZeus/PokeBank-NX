@@ -145,17 +145,17 @@ Exact candidate identity:
 
 The downloaded artifact manifest and actual NRO hash were independently verified and match.
 
-Still running at the latest check:
-
-- PokeBank NX Host Tests #1427.
+Broad Host Tests #1427 are now also **PASS**, including the full host suite, focused RSE regression and ASan/UBSan.
 
 Therefore:
 
 **GEN IV CANDIDATE WORKFLOW: PASS**
 
-**BROAD HOST SUITE: IN PROGRESS**
+**BROAD HOST SUITE: PASS**
 
-**DEVICE ACCEPTANCE: NOT YET**
+**AUTOMATED GATES: PASS**
+
+**DEVICE ACCEPTANCE: PENDING OWNER HARDWARE TEST**
 
 Do not call PR #87 device accepted until an exact Actions-built NRO finishes all required gates and the owner passes it on physical Switch hardware.
 
@@ -198,13 +198,13 @@ DraStic `.dsv` cartridge backups are supported read only. DraStic `.dss` savesta
 
 ## Next gate
 
-Finish broad Host Tests #1427, then hardware-test the exact frozen Gen IV candidate NRO.
+Owner hardware-test boxed Gen IV View/Edit using the exact frozen NRO above.
 
 Next sequence:
 
-1. confirm Host Tests #1427 PASS;
-2. owner hardware-test boxed Gen IV View/Edit using the exact NRO above;
-3. fix only hardware-observed regressions;
+1. test the exact Actions-built NRO on physical Switch;
+2. fix only hardware-observed regressions;
+3. freeze hardware acceptance if it passes;
 4. only after Edit is device accepted, consider Gen IV Create.
 
 ## Canonical project documents
