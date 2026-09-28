@@ -1061,29 +1061,29 @@ void ux2DrawRemoveConfirm(PKSEFramebuffer& fb, int x, int y, int w, int h) {
 
 std::string ux2FooterText(const TrainerViewScreen& screen, const UX2State& state) {
     if (state.picker == UX2Picker::Species || state.picker == UX2Picker::Move)
-        return "D-pad Navigate   L/R Page ±10   A Select   B Cancel";
+        return "D-pad/Stick: Navigate | L/R: Page ±10 | A: Select | B: Cancel";
     switch (state.mode) {
-        case UX2Mode::Actions: return "D-pad Navigate   A Select   B Back";
-        case UX2Mode::View: return "A/B Back";
-        case UX2Mode::Edit: return "D-pad Scroll   A Edit   L/R Section   B Back";
-        case UX2Mode::AddDraft: return "D-pad Scroll   A Edit   L/R Section   X Stage Add   B Cancel Draft";
-        case UX2Mode::LevelExpEditor: return "D-pad Navigate   A Edit/Apply   B Cancel";
-        case UX2Mode::MoveEditor: return "D-pad Navigate   A Edit/Apply   B Cancel";
-        case UX2Mode::DVEditor: return "D-pad Navigate   A Edit/Apply   B Cancel";
-        case UX2Mode::StatExpEditor: return "D-pad Navigate   A Edit/Apply   B Cancel";
-        case UX2Mode::CloneDestination: return "D-pad Slot   L/R Box   A Stage Clone   B Cancel";
-        case UX2Mode::RemoveConfirm: return "A Confirm Remove   B Cancel";
-        case UX2Mode::Review: return "D-pad Navigate   A Export Copy   Y Discard Staged   B Back";
-        case UX2Mode::Provenance: return "A/B Back";
+        case UX2Mode::Actions: return "D-pad/Stick: Navigate | A: Select | B: Back";
+        case UX2Mode::View: return "B: Back";
+        case UX2Mode::Edit: return "D-pad/Stick: Scroll | A: Edit | L/R: Section | B: Back";
+        case UX2Mode::AddDraft: return "D-pad/Stick: Scroll | A: Edit | L/R: Section | X: Stage Add | B: Cancel Draft";
+        case UX2Mode::LevelExpEditor: return "D-pad/Stick: Navigate | A: Edit / Apply | B: Cancel";
+        case UX2Mode::MoveEditor: return "D-pad/Stick: Navigate | A: Edit / Apply | B: Cancel";
+        case UX2Mode::DVEditor: return "D-pad/Stick: Navigate | A: Edit / Apply | B: Cancel";
+        case UX2Mode::StatExpEditor: return "D-pad/Stick: Navigate | A: Edit / Apply | B: Cancel";
+        case UX2Mode::CloneDestination: return "D-pad/Stick: Slot | L/R: Box | A: Stage Clone | B: Cancel";
+        case UX2Mode::RemoveConfirm: return "A: Confirm Remove | B: Cancel";
+        case UX2Mode::Review: return "D-pad/Stick: Navigate | A: Export Copy | Y: Discard Staged | B: Back";
+        case UX2Mode::Provenance: return "B: Back";
         case UX2Mode::Closed: break;
     }
     if (entrySurface(screen)) {
-        if (!editorAvailable(screen)) return "A View   L/R Box   B Back";
+        if (!editorAvailable(screen)) return "A: View | L/R: Box | B: Back";
         std::string error;
         auto* mutableScreen = const_cast<TrainerViewScreen*>(&screen);
         const auto p = pokemonAt(*mutableScreen, screen.selectedBoxIndex, screen.selectedItemIndex, error);
-        if (p) return "A Actions   Y Remove   L/R Box   B Back";
-        return "A Actions   X Add   L/R Box   B Back";
+        if (p) return "A: Actions | Y: Remove | L/R: Box | B: Back";
+        return "A: Actions | X: Add | L/R: Box | B: Back";
     }
     return {};
 }
