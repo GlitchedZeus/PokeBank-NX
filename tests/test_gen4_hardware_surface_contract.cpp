@@ -1,0 +1,106 @@
+#include "UI/SharedPokemonEditorContract.h"
+
+#include <cassert>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <string>
+
+namespace {
+std::string read(const char* path) {
+    std::ifstream in(path, std::ios::binary);
+    assert(in);
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+void contains(const std::string& text, const char* needle) {
+    if (text.find(needle) == std::string::npos)
+        std::cerr << "Missing Gen IV surface contract: " << needle << '\n';
+    assert(text.find(needle) != std::string::npos);
+}
+}
+
+int main() {
+    namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+    static_assert(Shared::genderUsesInlineToggle(Shared::Generation::Gen4));
+    static_assert(!Shared::genderOpensDedicatedPicker(Shared::Generation::Gen4));
+
+    const auto surface = read("src/UI/Gen4SharedPokemonSurface.inc");
+    const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
+    const auto bridge = read("src/Legacy/Gen4ReadOnlyTrainer.cpp");
+    const auto staged = read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
+    const auto session = read("include/UI/Gen4SharedPokemonSession.h");
+
+    contains(surface, "SharedPokemonShell::drawChrome");
+    contains(surface, "SharedPokemonShell::Geometry");
+    contains(surface, "SharedPokemonShell::drawScrollableDetails");
+    contains(surface, "SharedPokemonShell::drawDataAndGraph");
+    contains(surface, "Shared::normalizeMoveRowFocus(Shared::Generation::Gen4");
+    contains(surface, "Shared::moveRowColumn(Shared::Generation::Gen4");
+    contains(surface, "Shared::passiveViewMoveColumn(Shared::Generation::Gen4");
+    contains(surface, "Shared::moveRowFocus(g.rightW)");
+
+    // Gen IV inherits the accepted D-pad / left-stick repeat navigation path.
+    contains(surface, "screen.controllerNavigation.apply(");
+    contains(surface, "down, held, stickX, stickY");
+
+    // Gender is a one-press inline toggle, never a nested Male/Female picker.
+    contains(surface, "state.session.cycleGender()");
+    assert(surface.find("PickerTarget::Gender") == std::string::npos);
+    assert(surface.find("Choose Gender") == std::string::npos);
+
+    // Nature and Ability use bounded pickers; Shiny is another direct field action.
+    contains(surface, "PickerTarget::Nature");
+    contains(surface, "PickerTarget::Ability");
+    contains(surface, "state.session.cycleShiny()");
+    contains(surface, "Could not preserve the other PID-linked Generation IV traits");
+
+    // Outer move focus is exactly one row. PP / PP Ups live in the contextual dialog.
+    contains(surface, "openMoveEditor(screen, state, state.focus.row)");
+    contains(surface, "Same shared contextual editor");
+    contains(surface, "PP Ups");
+    contains(surface, "state.moveEditorRow == 1");
+    contains(surface, "state.moveEditorRow == 2");
+    contains(surface, "Move selection stays read-only until exact Gen IV learnsets are pinned");
+
+    // First milestone is deliberately View/Edit only.
+    contains(surface, "result.values[result.count++] = Shared::Action::View");
+    contains(surface, "result.values[result.count++] = Shared::Action::Edit");
+    assert(surface.find("result.values[result.count++] = Shared::Action::Add") == std::string::npos);
+    assert(surface.find("result.values[result.count++] = Shared::Action::Clone") == std::string::npos);
+    assert(surface.find("result.values[result.count++] = Shared::Action::Remove") == std::string::npos);
+    contains(surface, "Generation IV Create follows after boxed Edit hardware acceptance");
+
+    // Dirty Back uses the same shared exit guard and explicit A/Y/B confirmation.
+    contains(session, "PokemonEditorExitGuard::requiresConfirmation");
+    contains(surface, "if (state.session.confirmExit)");
+    contains(surface, "HidNpadButton_Y");
+    contains(surface, "Dialogs::drawDialogFrame");
+    contains(surface, "\"Unsaved changes\"");
+    contains(surface, "\"Y\", \"Discard\"");
+
+    // Staged trainer bridge exists, but the immutable source stays owned separately.
+    contains(bridge, "Gen4StagedPokemonEditor::create(");
+    contains(bridge, "save.sourceBytes()");
+    contains(bridge, "refreshStagedPokemonPresentation");
+    contains(staged, "original_");
+    contains(staged, "staged_");
+    contains(staged, "refreshStorageCrc");
+    contains(staged, "Gen4ReadOnlySave::parse(");
+    assert(staged.find("std::fopen") == std::string::npos);
+    assert(staged.find("std::fwrite") == std::string::npos);
+    assert(staged.find("rename(") == std::string::npos);
+
+    // Final composite routes Gen IV before generic/Gen III fallback.
+    contains(composite, "#include \"Gen4SharedPokemonSurface.inc\"");
+    const auto update = composite.find("void TrainerViewScreen::update");
+    const auto g4input = composite.find("Gen4SharedEditorSurface::handleInput", update);
+    const auto g3input = composite.find("Gen3SharedEditorSurface::handleInput", update);
+    assert(update != std::string::npos && g4input > update && g3input > g4input);
+    const auto draw = composite.find("void TrainerViewScreen::draw(PKSEFramebuffer& fb)");
+    const auto g4draw = composite.find("Gen4SharedEditorSurface::draw", draw);
+    const auto g3draw = composite.find("Gen3SharedEditorSurface::draw", draw);
+    assert(draw != std::string::npos && g4draw > draw && g3draw > g4draw);
+
+    std::cout << "Gen IV shared editor hardware surface contract PASS\n";
+    return 0;
+}
