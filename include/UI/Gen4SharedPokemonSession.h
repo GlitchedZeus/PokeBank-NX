@@ -90,7 +90,7 @@ struct Session {
 
     bool keep(Gen4::Gen4StagedPokemonEditor& editor,
               std::size_t box, std::size_t slot, std::string& error) {
-        if (!editable()) {
+        if (mode != Mode::Edit || !working) {
             error = "Generation IV Keep is only available for an Edit draft";
             return false;
         }
@@ -101,7 +101,7 @@ struct Session {
 
     bool keepParty(Gen4::Gen4StagedPokemonEditor& editor,
                    std::size_t slot, std::string& error) {
-        if (!editable()) {
+        if (mode != Mode::Edit || !working) {
             error = "Generation IV Keep is only available for an Edit draft";
             return false;
         }
