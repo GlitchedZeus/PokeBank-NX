@@ -28,8 +28,11 @@ std::unique_ptr<Gen4ReadOnlyTrainer> Gen4ReadOnlyTrainer::create(
     if (!error.empty()) return nullptr;
 
     std::string stagedError;
-    trainer->stagedPokemon_ = Integration::Gen4::Gen4StagedPokemonEditor::create(
+    auto staged = Integration::Gen4::Gen4StagedPokemonEditor::create(
         save.sourceBytes(), save.layout(), trainer->sourceGameId_, &stagedError);
+    if (staged)
+        trainer->stagedPokemon_ =
+            std::make_unique<Integration::Gen4::Gen4StagedPokemonEditor>(std::move(*staged));
     trainer->stagedPokemonUnavailableReason_ = std::move(stagedError);
     return trainer;
 }
