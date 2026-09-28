@@ -2,254 +2,215 @@
 
 Last updated: **2026-09-28**
 
-GitHub is authoritative. Re-fetch live heads before new work and preserve newer commits.
+GitHub is authoritative. Re-fetch live heads before new work and preserve anything newer than the checkpoints below.
 
-## Active development line
+## Active main-development line
 
-### PR #90 — combined Gen IV editor + v1 polish hardware candidate
+### PR #92 — G4-04 full Gen IV shared editor + Create
 
 State:
 **OPEN / DRAFT / NOT MERGED**
 
 Branch:
-**integration/gen4-polish-hardware-20260928**
+**feature/gen4-full-editor-20260928**
 
 Base:
-**audit/full-project-hardening-20260923**
+**integration/gen4-polish-hardware-20260928**
 
-Current exact head:
-**84dae170deb2756d9b80aec32bf8ad512ce17c31**
+Current exact head at this documentation update:
+**c46ed887ae6ce44e662d8cbfb32e68970846a2f0**
 
-Tree:
-**7733004cd7b4aebffc3ba687ad0f7df22eea8aa8**
+Canonical tracking:
+**Issue #95 — G4-04 Complete Gen IV shared editor: Create + remaining fields**
 
-Underlying work:
-- PR #87 — Gen IV shared staged Pokémon editor
-- frozen QoL snapshot from PR #88 through **86002169d3fec073fb8454ee794c85e07b5a3d9a**
-- independent-audit remediations
+Current exact-head workflow state:
 
-Current milestone:
-**one combined Party + Box Gen IV hardware retest NRO with current integrated polish**
+- Gen I/II Packed Multi-Move #287 — **PASS**
+- PokeBank NX Host Tests #1578 — **IN PROGRESS**
+- Gen IV Shared Editor Candidate Gate #92 — **IN PROGRESS**
 
-### Accepted base checkpoint
+Re-fetch before claiming full automated acceptance.
 
-PR #79 branch:
-**audit/full-project-hardening-20260923**
+## Accepted Gen IV G4-03 checkpoint
 
-Exact accepted head:
-**00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
-
-Status:
-**DEVICE ACCEPTED**
-
-Issue #85 is complete/closed.
-
-## Historical accepted checkpoints
-
-### Gen I-III shared editor
-
-Application SHA:
-**996e6aa40c96e4408282f3d55476dae8e64968b2**
-
-NRO SHA-256:
-**ac3f6bd03d2a6733aee509729b81b6636cabe836095715c7b575b5dc84c8076c**
-
-Status:
-**DEVICE ACCEPTED**
-
-### Provider-neutral Save Instances
-
-Application SHA:
-**00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
-
-Tree SHA:
-**b0832910df44898114a413191ebad3228bded8af**
-
-NRO SHA-256:
-**5fad07002c5074ffb3d1d2bdd91275ef29fbdf199f7db263f39c5a3a9f86ca25**
-
-Artifact ID:
-**10956604914**
-
-Status:
-**DEVICE ACCEPTED**
-
-## Supported game state
-
-| Area | Current state |
-|---|---|
-| Gen I R/B/Y | Read + staged Pokémon editing |
-| Gen II G/S/C | Read + staged Pokémon editing |
-| Gen III R/S/E/FRLG | Read + staged Pokémon editing |
-| Gen IV D/P/Pt/HG/SS | Read foundation + Party/Box staged View/Edit in hardware-retest draft |
-| Classic Inventory | Staged editing where supported |
-| Save Instances | Device accepted for Gen I-IV |
-| Gen IV Create | Disabled |
-| Gen IV Party Pokémon editing | Staged View/Edit implemented on current draft |
-| Gen IV Inventory editing | Disabled |
-| Cross-game True Move | Disabled |
-| Explicit external-source Inject Save | Planned in Issue #89; disabled in current builds |
-| Master Vault | Not started |
-| Gen V | Not started |
-
-## G4-03 implementation state
-
-The active Gen IV tranche reuses the existing shared editor UI rather than creating a generation-specific shell.
-
-Implemented on PR #87:
-
-- exact Gen IV editor capabilities for Diamond/Pearl, Platinum and HeartGold/SoulSilver;
-- mutable PK4 layer built around existing Encryption4;
-- boxed PK4 staged mutation;
-- full 0xEC Party PK4 staged mutation;
-- Storage CRC refresh for boxed edits;
-- General-block CRC refresh for Party edits;
-- Party level/HP/battle-stat coherence after stat-affecting edits;
-- strict save reparse and exact record verification;
-- rollback on failed validation;
-- shared View/Edit surface;
-- inline Gender toggle;
-- direct Shiny toggle;
-- Nature picker;
-- legal Ability picker with ability names;
-- numeric Level/EXP/Friendship/IV/EV editing;
-- shared move editor behavior;
-- joystick/D-pad parity and existing exit/discard rules;
-- constrained PID-linked Nature/Gender/Shiny/Ability edits;
-- repeated PID-linked edit stability;
-- source-save immutability.
-
-Still intentionally deferred:
-
-- Gen IV Create;
-- Inventory editing;
-- source writeback;
-- cross-game True Move.
-
-## Current exact-head verification
-
-The first Gen IV editor candidate at:
-
-**5e79e9f8e038f2f940070edd92a70b692df7a7b5**
-
-was physically tested and **REJECTED** because a party-only Platinum save could not reach Edit and Party View fell through to the legacy read-only presentation.
-
-The current combined retest candidate is:
+The owner physically accepted:
 
 - Application SHA: **84dae170deb2756d9b80aec32bf8ad512ce17c31**
 - Tree SHA: **7733004cd7b4aebffc3ba687ad0f7df22eea8aa8**
-- Artifact: **Gen4-SharedEditor-Candidate-84dae170**
 - Artifact ID: **10986964856**
-- NRO: **PokeBank-NX-Gen4-SharedEditor-84dae170.nro**
 - NRO SHA-256: **313b6ed5f209b0fba797deee010d73b753d25294dd3d1c39f279c61df13fe6de**
-- Artifact ZIP SHA-256: **50c2fd1051f0b35ab1eadb5dec3d5f5685389d5b61e45154d5ebd7bc419c93e1**
 
-This candidate includes:
-- Party + Box shared View/Edit;
-- the party-only Platinum reachability fix;
-- staged dirty B/+ exit protection;
-- independent-audit fixes for immutable-source dirty modal lifetime, Shedinja HP, quarantined-record refresh and Gen IV sixth-stat focus;
-- permanent audit regressions, including the DP/Pt/HGSS mixed General/Storage partition mutation-footprint matrix;
-- integrated v1 polish through PR #88 snapshot **86002169d3fec073fb8454ee794c85e07b5a3d9a**.
+Accepted scope:
 
-Exact-head gates:
-- Host Tests #1472 — **PASS**
-- Host ASan/UBSan — **PASS**
-- Gen IV Candidate Gate #36 — **PASS**
-- v1 Polish Native #20 — **PASS**
-- Packed Move #240 — **PASS**
-- Packed Multi-Move #239 — **PASS**
+- Gen IV Party + Box staged View/Edit;
+- shared editor routing on real Platinum / DraStic;
+- full 0xEC Party PK4 staged mutation;
+- boxed PK4 staged mutation;
+- General + Storage CRC refresh;
+- strict full-save reparse / exact target verification;
+- rollback on failed validation;
+- Party stat refresh;
+- dirty-session exit protection;
+- independent-audit remediation;
+- source unchanged during ordinary editing.
 
-Artifact identity and NRO hash were independently verified.
+Status:
+**DEVICE ACCEPTED FOR G4-03 SCOPE**
 
-**AUTOMATED GATES: PASS**
+## Integrated baseline — PR #90
 
-**DEVICE ACCEPTANCE: PENDING OWNER PHYSICAL SWITCH TEST**
+PR #90 remains:
 
-Later PR #88 QoL commits are intentionally deferred to the next integration cycle so this candidate remains reproducible.
+**OPEN / DRAFT / NOT MERGED**
 
-### Save-session backup / injection direction
+Branch:
+**integration/gen4-polish-hardware-20260928**
 
-Issue #89 tracks the future cross-generation model:
+Current head:
+**8b3bcc16c804247bfe8d1314b686974ce73051d8**
 
-```text
-Current emulator save
+This line contains:
+
+- the accepted G4-03 implementation;
+- all independent audit fixes/regressions;
+- the complete final v1 polish tranche from PR #88 through
+  **c8c98d5dd2816fe6bf1b9557c24b3fb09a5dc7c3**.
+
+Exact-head PR #90 workflows are green:
+
+- Host Tests #1537 — PASS
+- Gen IV Candidate Gate #51 — PASS
+- v1 Polish Native #35 — PASS
+- Packed Move #250 — PASS
+- Packed Multi-Move #252 — PASS
+
+Hardware acceptance belongs specifically to the exact tested **84dae170...** NRO. The later **8b3bcc16...** integration head adds final QoL/UI work and is the base for G4-04.
+
+## Historical / completed lanes
+
+PR #87:
+**CLOSED WITHOUT MERGE**
+Historical G4-03 implementation branch. Work carried forward into #90.
+
+PR #88:
+**CLOSED WITHOUT MERGE**
+Completed v1 polish branch. Final head:
+**c8c98d5dd2816fe6bf1b9557c24b3fb09a5dc7c3**
+Work carried forward into #90.
+
+PR #79:
+**OPEN / DRAFT / NOT MERGED**
+Accepted audit/source-architecture base:
+**00ee7a6ed7ac1b5a93c43246d70c252e135acec0**
+
+## Current game/editor state
+
+| Area | Current state |
+|---|---|
+| Gen I R/B/Y | Device-accepted staged Create/View/Edit |
+| Gen II G/S/C | Device-accepted staged Create/View/Edit |
+| Gen III R/S/E/FRLG | Device-accepted staged Create/View/Edit |
+| Gen IV D/P/Pt/HG/SS | G4-03 Party/Box View/Edit device accepted; G4-04 full editor active |
+| Classic Inventory | Device accepted where supported |
+| Save Instances | Device accepted for Gen I–IV |
+| Gen IV Create | Implemented on active G4-04 branch; hardware acceptance pending |
+| Gen IV remaining field parity | Active G4-04 work |
+| Emulator Inject Save | Planned in Issue #89; disabled |
+| Cross-game True Move | Disabled |
+| Master Vault | Planned / not started |
+| Gen V | Not started |
+
+## G4-04 implemented surface
+
+PR #92 currently includes work for:
+
+- Box Create transaction;
+- native stored PK4 Create drafts;
+- DP/Pt/HGSS Create defaults;
+- shared Create/Draft flow;
+- inspectable read-only detail rows;
+- exact Held Item picker;
+- exact PK4 Language picker;
+- exact Ball picker;
+- Pokérus picker;
+- real Gen IV Met Location catalog/setter;
+- native Gen IV move picker;
+- transactional Species editing;
+- Species dependent-state reconciliation;
+- native move IDs 1–467 with Gen V IDs rejected;
+- strict staged mutation/reparse/rollback inherited from G4-03.
+
+Remaining G4-04 work includes:
+
+- exact persistent Form editing where applicable;
+- verify move change refreshes PP to native maximum;
+- finish exact-head CI;
+- build one combined Actions NRO;
+- owner physical hardware acceptance for Create + full field parity.
+
+## Save-session backup / injection direction
+
+Issue #89 owns the future writeback model:
+
+~~~text
+current emulator save
         ↓
-automatic immutable PokeBank backup
+automatic immutable backup
         ↓
-PokeBank working/staged copy
+PokeBank working copy
         ↓
 edit + validate
         ↓
 explicit Inject Save
         ↓
-validated edited copy replaces emulator source
+validated source replacement
 while backup remains available
-```
+~~~
 
-Current builds do **not** inject. Ordinary editing still leaves emulator source bytes untouched.
+Current builds do not inject into emulator or installed-game saves.
 
-## Provider support
+## Modern Switch game support
 
-### Gen I-III
+Issue #11 tracks modern Nintendo Switch save adapters.
 
-- RetroArch
-- configured mGBA battery-save directory only
-- Tico roots:
-  - sdmc:/tico/saves/gb
-  - sdmc:/tico/saves/gbc
-  - sdmc:/tico/saves/gba
-- Manual where supported
+Current policy is:
 
-No Tico DS root is authorized.
+**read-only, source-specific validation first**
 
-### Gen IV
+before staged mutation or source-write work.
 
-- RetroArch
-- DraStic cartridge backups
-- melonDS
-- Manual / remembered sources
+Tracked families include:
 
-DraStic `.dsv` cartridge backups are supported read only. DraStic `.dss` savestates remain unsupported.
+- LGPE
+- Sword / Shield
+- BDSP
+- Legends: Arceus
+- Scarlet / Violet
+- Legends Z-A
+- Switch FireRed / LeafGreen
 
-## Permanent safety invariants
+References include pkHouse, PKHeX and existing PKSE behavior, but product support still requires PokeBank NX-specific validation, malformed-input rejection and source policy.
 
-- Ordinary editing never mutates external emulator source bytes.
-- Installed-game live writes remain disabled.
-- Emulator Inject Save remains disabled until Issue #89 is implemented and validated.
-- Any future injection must first preserve and verify an immutable backup.
-- Unknown / ambiguous saves fail closed.
-- Remembered sources may not silently substitute another physical file.
-- A-button is never destructive by itself.
-- Cross-game True Move remains locked.
+## Permanent safety rules
 
-## Next gate
+- ordinary editing targets app-owned staged/working data;
+- emulator and installed-game injection remain disabled in current builds;
+- unknown / ambiguous saves fail closed;
+- remembered-source substitution is forbidden;
+- dirty staged work cannot be silently discarded;
+- A-button browsing actions remain non-destructive;
+- cross-game True Move stays locked until route-specific approval;
+- hardware acceptance belongs only to the exact NRO physically tested.
 
-Owner physical Switch test of the exact PR #90 NRO above.
+## Next main gate
 
-Use the same Platinum DraStic save that previously showed one Party Pokémon and zero boxed Pokémon.
+Continue G4-04 on PR #92 / Issue #95.
 
-Verify:
+Before hardware acceptance:
 
-1. Party → Piplup → A opens Generation IV Actions.
-2. View uses the shared Pokémon editor presentation.
-3. Edit is reachable for the Party Pokémon.
-4. Stage and Keep a supported edit.
-5. Visible values refresh correctly after Keep.
-6. Repeated B cannot silently discard staged changes.
-7. The dirty exit dialog survives a neutral frame and remains actionable.
-8. DraStic source .dsv remains unchanged in this build.
-9. Integrated Games/Settings/controller polish is present.
-10. Themes remain readable and NRO metadata identifies PokeBank NX correctly.
-
-Do not mark device accepted until the owner explicitly passes this exact NRO.
-
-## Canonical project documents
-
-- README.md — public project front page
-- CURRENT_STATUS.md — exact engineering checkpoint
-- PROJECT_STATUS.md — high-level project state
-- docs/V1_ROADMAP.md — release roadmap
-- docs/GAME_SUPPORT_MATRIX.md — support matrix
-- docs/audit/ISSUE85-SAVE-INSTANCES.md — provider-neutral source architecture audit
-- docs/REFERENCE_INDEX.md — upstream/reference index
+1. finish Form/move-PP details;
+2. pass exact-head Host + sanitizer gates;
+3. pass Gen IV native candidate gates;
+4. preserve Gen I–III regressions;
+5. produce one exact Actions NRO;
+6. owner physically tests Create + full Gen IV field parity.
