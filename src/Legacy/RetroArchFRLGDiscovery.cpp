@@ -511,44 +511,11 @@ namespace PokeVault::Legacy {
 
     FRLGDiscoveryResult discoverConfiguredLegacySaves(
         ScanLimits limits, const std::string& retroArchConfigPath,
-        const std::string& retroArchConventionalRoot, const std::string& mGBAConfigPath) {
+        const std::string& retroArchConventionalRoot, const std::string& mGBAConfigPath,
+        const std::string& ticoSaveRoot) {
         if (limits.maxFiles == 0) limits.maxFiles = 1;
         auto result = discoverConfiguredRetroArchFRLGSaves(
             limits, retroArchConfigPath, retroArchConventionalRoot);
-
-        const auto mgbaRoots = mGBASaveRootsFromConfig(mGBAConfigPath);
-        if (mgbaRoots.empty() || !isDirectory(mgbaRoots.front())) return result;
-        if (result.filesExamined >= limits.maxFiles) {
-            result.limitReached = true;
-            return result;
-        }
-
-        const size_t remaining = limits.maxFiles - result.filesExamined;
-        const ScanLimits providerLimits{limits.maxDepth, remaining};
-        auto gba = discoverFRLGSaves(mgbaRoots, providerLimits);
-
-        RBYScanLimits rbyLimits;
-        rbyLimits.maxDepth = limits.maxDepth;
-        rbyLimits.maxFiles = remaining;
-        auto rby = discoverRBYSaves(mgbaRoots, rbyLimits);
-
-        GSCScanLimits gscLimits;
-        gscLimits.maxDepth = limits.maxDepth;
-        gscLimits.maxFiles = remaining;
-        auto gsc = discoverGSCSaves(mgbaRoots, gscLimits);
-
-        const size_t providerExamined =
-            std::max({gba.filesExamined, rby.filesExamined, gsc.filesExamined});
-        result.filesExamined += providerExamined;
-        result.limitReached = result.limitReached || gba.limitReached ||
-                              rby.limitReached || gsc.limitReached;
-        if (result.activeRoot.empty()) {
-            if (!gba.activeRoot.empty()) result.activeRoot = gba.activeRoot;
-            else if (!rby.activeRoot.empty()) result.activeRoot = rby.activeRoot;
-            else if (!gsc.activeRoot.empty()) result.activeRoot = gsc.activeRoot;
-            if (!result.activeRoot.empty())
-                result.activeRootKind = FRLGDiscoveryResult::RootKind::Configured;
-        }
 
         auto physicalKey = [](const FRLGSource& source) -> const std::string& {
             return source.canonicalPath.empty() ? source.normalizedPath : source.canonicalPath;
@@ -560,21 +527,74 @@ namespace PokeVault::Legacy {
             if (!duplicate) result.sources.push_back(std::move(source));
         };
 
-        for (auto& source : gba.sources) {
-            source.providerLabel = "mGBA";
-            if (source.ready()) source.detail = "validated read-only mGBA Generation III source";
-            appendUnique(std::move(source));
-        }
-        for (const auto& source : rby.sources) {
-            auto imported = importRBYSource(source, "mGBA");
-            if (imported.ready()) imported.detail = "validated read-only mGBA Generation I source";
-            appendUnique(std::move(imported));
-        }
-        for (const auto& source : gsc.sources) {
-            auto imported = importGSCSource(source, "mGBA");
-            if (imported.ready()) imported.detail = "validated read-only mGBA Generation II source";
-            appendUnique(std::move(imported));
-        }
+        // Every additive provider must hand us an exact approved battery-save root. This helper
+        // spends only the remaining global file budget and still lets the independent Gen I/II/III
+        // parsers validate the bytes; provider identity never changes parsing semantics.
+        auto appendProvider = [&](const std::vector<std::string>& roots,
+                                  std::string_view provider) {
+            if (roots.empty() || !isDirectory(roots.front()) || result.limitReached) return;
+            if (result.filesExamined >= limits.maxFiles) {
+                result.limitReached = true;
+                return;
+            }
+
+            const size_t remaining = limits.maxFiles - result.filesExamined;
+            const ScanLimits providerLimits{limits.maxDepth, remaining};
+            auto gba = discoverFRLGSaves(roots, providerLimits);
+
+            RBYScanLimits rbyLimits;
+            rbyLimits.maxDepth = limits.maxDepth;
+            rbyLimits.maxFiles = remaining;
+            auto rby = discoverRBYSaves(roots, rbyLimits);
+
+            GSCScanLimits gscLimits;
+            gscLimits.maxDepth = limits.maxDepth;
+            gscLimits.maxFiles = remaining;
+            auto gsc = discoverGSCSaves(roots, gscLimits);
+
+            const size_t providerExamined =
+                std::max({gba.filesExamined, rby.filesExamined, gsc.filesExamined});
+            result.filesExamined += providerExamined;
+            result.limitReached = result.limitReached || gba.limitReached ||
+                                  rby.limitReached || gsc.limitReached;
+            if (result.activeRoot.empty()) {
+                if (!gba.activeRoot.empty()) result.activeRoot = gba.activeRoot;
+                else if (!rby.activeRoot.empty()) result.activeRoot = rby.activeRoot;
+                else if (!gsc.activeRoot.empty()) result.activeRoot = gsc.activeRoot;
+                if (!result.activeRoot.empty())
+                    result.activeRootKind = FRLGDiscoveryResult::RootKind::Configured;
+            }
+
+            for (auto& source : gba.sources) {
+                source.providerLabel = std::string(provider);
+                if (source.ready())
+                    source.detail = "validated read-only " + std::string(provider) +
+                                    " Generation III source";
+                appendUnique(std::move(source));
+            }
+            for (const auto& source : rby.sources) {
+                auto imported = importRBYSource(source, provider);
+                if (imported.ready())
+                    imported.detail = "validated read-only " + std::string(provider) +
+                                      " Generation I source";
+                appendUnique(std::move(imported));
+            }
+            for (const auto& source : gsc.sources) {
+                auto imported = importGSCSource(source, provider);
+                if (imported.ready())
+                    imported.detail = "validated read-only " + std::string(provider) +
+                                      " Generation II source";
+                appendUnique(std::move(imported));
+            }
+        };
+
+        appendProvider(mGBASaveRootsFromConfig(mGBAConfigPath), "mGBA");
+
+        // Tico's mGBA core owns this exact save directory and writes native .sav (with .srm
+        // fallback on load). Do not inspect /tico itself, ROM folders, or tico/states.
+        if (!ticoSaveRoot.empty())
+            appendProvider(std::vector<std::string>{ticoSaveRoot}, "Tico");
+
         return result;
     }
 }

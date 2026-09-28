@@ -234,9 +234,18 @@ int main() {
     }
     assert(PokeVault::Legacy::mGBASaveRootsFromConfig(mgbaRootConfig.string()).empty());
 
+    // Tico's public mGBA core uses one exact battery-save directory. PokeBank may inspect that
+    // directory only; it must not infer permission to crawl /tico, ROMs, or savestates.
+    const fs::path ticoSaveRoot = temp / "tico" / "saves" / "gba";
+    fs::create_directories(ticoSaveRoot);
+    const fs::path ticoFireRed = ticoSaveRoot / "Pokemon FireRed.sav";
+    writeFile(ticoFireRed, withTwoPartyPokemon(fixture));
+    const auto ticoBefore = readFile(ticoFireRed);
+
     const auto unified = PokeVault::Legacy::discoverConfiguredLegacySaves(
         {}, (temp / "missing-retroarch.cfg").string(),
-        (temp / "missing-retroarch-root").string(), mgbaConfig.string());
+        (temp / "missing-retroarch-root").string(), mgbaConfig.string(),
+        ticoSaveRoot.string());
     const auto unifiedFireRed = std::find_if(unified.sources.begin(), unified.sources.end(),
         [&](const auto& source) {
             return source.ready() && source.gameId == "firered_gba" &&
@@ -245,6 +254,20 @@ int main() {
     assert(unifiedFireRed != unified.sources.end());
     assert(unifiedFireRed->providerLabel == "mGBA");
     assert(unified.activeRoot == mgbaSaves.string());
+
+    const auto unifiedTico = std::find_if(unified.sources.begin(), unified.sources.end(),
+        [&](const auto& source) {
+            return source.ready() && source.gameId == "firered_gba" &&
+                   source.normalizedPath == ticoFireRed.string();
+        });
+    assert(unifiedTico != unified.sources.end());
+    assert(unifiedTico->providerLabel == "Tico");
+    assert(unifiedTico->save && unifiedTico->save->party().size() == 2);
+    assert(readFile(ticoFireRed) == ticoBefore);
+    assert(std::count_if(unified.sources.begin(), unified.sources.end(), [&](const auto& source) {
+        return source.ready() && source.gameId == "firered_gba" &&
+               (source.providerLabel == "mGBA" || source.providerLabel == "Tico");
+    }) == 2);
 
     auto limited = PokeVault::Legacy::discoverFRLGSaves(roots, {.maxDepth = 2, .maxFiles = 1});
     assert(limited.filesExamined == 1 && limited.limitReached);
