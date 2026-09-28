@@ -162,6 +162,13 @@ uint8_t Pokemon4Mutable::abilitySlot() const noexcept {
     return static_cast<uint8_t>(pid() & 1u);
 }
 
+uint16_t Pokemon4Mutable::abilityForSlot(uint8_t slot) const noexcept {
+    const auto& personal = personalFor(sourceGroup_, species(), form());
+    if (slot == 0) return personal.ability1;
+    if (slot == 1 && personal.ability2 != 0) return personal.ability2;
+    return 0;
+}
+
 uint8_t Pokemon4Mutable::genderForPid(uint32_t value) const noexcept {
     const uint8_t ratio = personalFor(sourceGroup_, species(), form()).genderRatio;
     const uint8_t fixed = fixedGender(ratio);
@@ -341,11 +348,13 @@ bool Pokemon4Mutable::rerollPid(
 
 bool Pokemon4Mutable::setNature(uint8_t value) noexcept {
     if (value >= 25) return false;
+    if (value == nature()) return true;
     return rerollPid(shiny() ? 1 : 0, gender(), value, constrainedAbilityBit());
 }
 
 bool Pokemon4Mutable::setGender(uint8_t value) noexcept {
     if (value > 2) return false;
+    if (value == gender()) return true;
     const uint32_t oldPid = pid();
     const uint8_t oldPacked = byteAt(0x40);
     if (!rerollPid(shiny() ? 1 : 0, value, nature(), constrainedAbilityBit()))
@@ -360,6 +369,7 @@ bool Pokemon4Mutable::setGender(uint8_t value) noexcept {
 }
 
 bool Pokemon4Mutable::setShiny(bool value) noexcept {
+    if (value == shiny()) return true;
     return rerollPid(value ? 1 : 0, gender(), nature(), constrainedAbilityBit());
 }
 
@@ -371,9 +381,13 @@ bool Pokemon4Mutable::setAbilitySlot(uint8_t slot) noexcept {
     const bool single = personal.ability2 == 0 || personal.ability2 == personal.ability1;
     if (single) {
         if (slot != 0) return false;
+        if (ability() == personal.ability1) return true;
         write8(0x15, static_cast<uint8_t>(personal.ability1));
         return true;
     }
+
+    const uint16_t requestedAbility = slot == 0 ? personal.ability1 : personal.ability2;
+    if (slot == abilitySlot() && ability() == requestedAbility) return true;
 
     const uint32_t oldPid = pid();
     const uint8_t oldAbility = byteAt(0x15);
