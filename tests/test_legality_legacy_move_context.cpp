@@ -74,7 +74,7 @@ int main() {
 
     {
         auto p = baseMon();
-        p.setSpecies(494); // Victini cannot exist in a Gen IV entity.
+        p.setMove(0, 468); // Gen V move id: cannot exist in a Gen IV entity.
         const auto report = Legality::analyze(p, Enums::GameVersion::FRLG, "platinum_nds");
         assert(hasText(report, "cannot exist in a Generation 4 save"));
         assert(report.hasInvalid());
