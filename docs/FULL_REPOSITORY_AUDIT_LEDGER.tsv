@@ -635,7 +635,7 @@ tests/test_gen3_party_record.cpp	blob	100644	1308	Gen III party-tail fidelity/in
 tests/test_gen3_pid_search_fail_closed.cpp	blob	100644	1915	Gen III PID trait-preservation fail-closed contract	text	51	AUDITED			0	yes
 tests/test_gen3_shared_pokemon_session.cpp	blob	100644	13289		unknown		PENDING			0	
 tests/test_gen3_shell_render.cpp	blob	100644	4559	shared Gen III shell renderer bounds contract	text	83	AUDITED			0	yes
-tests/test_gen3_staged_inventory.cpp	blob	100644	11182		unknown		PENDING			0	
+tests/test_gen3_staged_inventory.cpp	blob	100644	11182	Gen III exact-game staged inventory/sector-preservation contract	text	243	AUDITED			0	yes
 tests/test_gen3_staged_pokemon_editor.cpp	blob	100644	25703		unknown		PENDING			0	
 tests/test_gen4_exact_format_editor_provider.cpp	blob	100644	6726	Gen IV exact-format provider contract test	text	138	AUDITED			0	no
 tests/test_gen4_hardware_surface_contract.cpp	blob	100644	19119	Gen IV shared-surface hardware regression contract	text	325	AUDITED			0	yes
@@ -653,14 +653,14 @@ tests/test_gsc_move_compatibility.cpp	blob	100644	3662	Gold/Silver/Crystal exact
 tests/test_gsc_native_presentation.cpp	blob	100644	7334	Gen II Crystal caught-data/party/Pokerus presentation contract	text	135	AUDITED			0	yes
 tests/test_gsc_pokemon_editor.cpp	blob	100644	16135		unknown		PENDING			0	
 tests/test_gsc_pokemon_session.cpp	blob	100644	22201		unknown		PENDING			0	
-tests/test_gsc_readonly_bridge.cpp	blob	100644	11847		unknown		PENDING			0	
+tests/test_gsc_readonly_bridge.cpp	blob	100644	11847	Gen II read-only trainer/party/box + staged presentation bridge contract	text	210	AUDITED			0	yes
 tests/test_gsc_runtime_catalog.cpp	blob	100644	4861	Gen II shared runtime source catalog refresh contract	text	54	AUDITED			0	yes
 tests/test_gsc_shared_editor_parity.cpp	blob	100644	12654		unknown		PENDING			0	
 tests/test_gsc_source_browser.cpp	blob	100644	6606	Gen II source-card/profile/snapshot resolution contract	text	134	AUDITED			0	yes
-tests/test_gsc_staged_editor.cpp	blob	100644	10831		unknown		PENDING			0	
+tests/test_gsc_staged_editor.cpp	blob	100644	10831	Gen II staged trainer/inventory/clone round-trip contract	text	210	AUDITED			0	yes
 tests/test_gsc_ui_rules.cpp	blob	100644	6658	Gen II shared-editor capability/UI rules contract	text	106	AUDITED			0	yes
 tests/test_gsc_universal_inventory.cpp	blob	100644	7825	Gen II universal staged inventory finalize/reparse contract	text	150	AUDITED			0	yes
-tests/test_gsc_workspace_render.cpp	blob	100644	10542		unknown		PENDING			0	
+tests/test_gsc_workspace_render.cpp	blob	100644	10535	Gen II workspace/data/radar/held-item/species presentation contract	text	199	AUDITED			0	yes
 tests/test_inventory_ui_contract.cpp	blob	100644	6977	shared inventory action/footer/dirty-presentation contract	text	125	AUDITED			0	yes
 tests/test_legacy_frlg_browse.cpp	blob	100644	16034		unknown		PENDING			0	
 tests/test_legacy_source_bindings.cpp	blob	100644	10555	legacy source-binding rollback/recovery/isolation test	text	216	AUDITED			0	no
