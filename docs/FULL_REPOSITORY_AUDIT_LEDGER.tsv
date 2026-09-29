@@ -135,12 +135,12 @@ docs/RESEARCH_INTAKE_2026-09-09.md	blob	100644	3567	research intake/router and p
 docs/RESEARCH_REFERENCE_INDEX.md	blob	100644	12271	documentation	text		AUDITED			0	
 docs/RESEARCH_REFERENCE_MATRIX.md	blob	100644	20148	external reference/license/feature research matrix	text	594	AUDITED			0	yes
 docs/RESEARCH_STATUS_2026-09-13.md	blob	100644	8376	documentation	text		AUDITED			0	
-docs/research/2026-09-09/BANK_HOME_PRESERVATION_CAPTURE_PLAN.md	blob	100644	8114		unknown		PENDING			0	
-docs/research/2026-09-09/BANK_HOME_PUBLIC_CORPUS_AUDIT.md	blob	100644	10406		unknown		PENDING			0	
-docs/research/2026-09-09/LEGACY_RECOVERY_GAMECUBE_STADIUM.md	blob	100644	8737		unknown		PENDING			0	
-docs/research/2026-09-09/OFFICIAL_PATH_TRANSFER_CORPUS_AUDIT.md	blob	100644	5406		unknown		PENDING			0	
-docs/research/2026-09-09/POWERLOSS_DURABILITY_TEST_PLAN.md	blob	100644	4500		unknown		PENDING			0	
-docs/research/2026-09-09/RIBBON_BANK_EVENT_PRESERVATION_REFERENCES.md	blob	100644	5206		unknown		PENDING			0	
+docs/research/2026-09-09/BANK_HOME_PRESERVATION_CAPTURE_PLAN.md	blob	100644	8114	Bank→HOME preservation capture research plan	text	344	AUDITED			0	yes
+docs/research/2026-09-09/BANK_HOME_PUBLIC_CORPUS_AUDIT.md	blob	100644	10406	public Bank→HOME corpus evidence audit	text	410	AUDITED			0	yes
+docs/research/2026-09-09/LEGACY_RECOVERY_GAMECUBE_STADIUM.md	blob	100644	8737	legacy recovery/GameCube/Stadium research	text	394	AUDITED			0	yes
+docs/research/2026-09-09/OFFICIAL_PATH_TRANSFER_CORPUS_AUDIT.md	blob	100644	5406	official-path transfer corpus research audit	text	188	AUDITED			0	yes
+docs/research/2026-09-09/POWERLOSS_DURABILITY_TEST_PLAN.md	blob	100644	4500	future Switch/sdmc power-loss durability test plan	text	154	AUDITED			0	yes
+docs/research/2026-09-09/RIBBON_BANK_EVENT_PRESERVATION_REFERENCES.md	blob	100644	5206	ribbon/event/Bank preservation reference notes	text	130	AUDITED			0	yes
 docs/research/2026-09-09/SAVE_FORMATS_PROFILES_CONTAINERS.md	blob	100644	11253		unknown		PENDING			0	
 docs/research/2026-09-09/SOURCE_MANIFEST.md	blob	100644	6761		unknown		PENDING			0	
 docs/research/2026-09-09/TRANSFER_FIXTURES_PROVENANCE.md	blob	100644	12005		unknown		PENDING			0	
