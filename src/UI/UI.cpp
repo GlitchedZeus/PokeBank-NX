@@ -7,7 +7,6 @@
 #include "Globals.h"
 #include "Save/GetSaveFileContents.h"
 #include "UI/UI.h"
-#include "UI/AppShellScreen.h"
 #include "UI/SaveSelectScreen.h"
 #include "UI/BackupSelectionScreen.h"
 #include "UI/TrainerViewScreen.h"
@@ -89,29 +88,13 @@ namespace UI {
     }
 
     void UIManager::run() {
-        AppShellScreen shell;
-        fb.startFade();
-
-        while (appletMainLoop() && running && !shell.shouldExit()) {
-            padUpdate(&pad);
-            touch.update();
-            shell.update(pad, touch);
-            shell.draw(fb);
-            fb.drawFadeOverlay();
-            fb.flush();
-
-            if (shell.consumeAction() == AppShellScreen::Action::Games) {
-                handleSaveSelection();
-                if (running) fb.startFade();
-            }
-        }
-
-        if (shell.shouldExit()) running = false;
+        // The profile/game hub IS PokeBank NX's root screen. Do not put a dashboard/menu in front
+        // of it: profiles, games, party preview, Open/Edit and Launch are the primary product flow.
+        handleSaveSelection();
     }
 
-    // Games & Sources is now one destination inside the product shell. B returns to Home, while the
-    // explicit "Exit PokeBank NX" option still exits the application. Returning from a loaded
-    // backup/trainer rebuilds this picker exactly as before so newly-created saves stay visible.
+    // The HOME-style profile/game hub is the app root. Returning from a loaded backup/trainer
+    // rebuilds this hub exactly as before so newly-created saves stay visible.
     void UIManager::handleSaveSelection() {
         while (running) {
             SaveSelectScreen selectScreen(legacyFRLGSources, legacySourceBindings);
@@ -155,7 +138,7 @@ namespace UI {
                 running = false;
                 return;
             }
-            if (selectScreen.shouldExit()) return;  // B -> product Home.
+            if (selectScreen.shouldExit()) return;  // B exits the root hub/application.
             if (!rebuildPicker) return;
         }
     }

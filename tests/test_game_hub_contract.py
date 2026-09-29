@@ -3,6 +3,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / "src/UI/SaveSelectScreen.cpp").read_text(encoding="utf-8")
 header = (ROOT / "include/UI/SaveSelectScreen.h").read_text(encoding="utf-8")
+ui_manager = (ROOT / "src/UI/UI.cpp").read_text(encoding="utf-8")
 
 def require(cond: bool, message: str) -> None:
     if not cond:
@@ -22,6 +23,15 @@ require("fsdevCommitDevice" not in source,
 require("restoreBackupToTitle" not in source,
         "game hub preview must never restore/inject a save")
 require("PartyPreviewSlot" in header, "game hub party preview model must be explicit")
+
+require("AppShellScreen shell" not in ui_manager,
+        "the old 8-card developer dashboard must never sit in front of the game hub")
+require("handleSaveSelection();" in ui_manager,
+        "PokeBank NX must boot directly into the profile/game hub")
+require('"PokeBank NX  /  v"' in source,
+        "the root hub must present itself as PokeBank NX, not a Games sub-screen")
+require('{"B", "Home"}' not in source and '{"B", "Exit"}' in source,
+        "root hub must not navigate back to the removed dashboard")
 
 require("GameFilePicker" in header and "Overlay::GameFilePicker" in source,
         "game hub must provide an in-app game-file browser")

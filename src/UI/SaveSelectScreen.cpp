@@ -1277,6 +1277,7 @@ namespace UI {
         }
 
         if (kDown & HidNpadButton_B) {
+            appExitRequested = true;
             exitRequested = true;
             return;
         }
@@ -1359,7 +1360,7 @@ namespace UI {
         userRects.clear();
 
         drawAppBackdrop(fb);
-        drawTitleBar(fb, "Games  /  v" + VERSION_STRING + "  /  " + BUILD_COMMIT);
+        drawTitleBar(fb, "PokeBank NX  /  v" + VERSION_STRING + "  /  " + BUILD_COMMIT);
 
         const UserEntry* u = currentUser();
         const int count = u ? static_cast<int>(u->titles.size()) : 0;
@@ -1509,7 +1510,7 @@ namespace UI {
                 }
             }
 
-            // HOME-style dock language. These stay product-shell destinations; B returns Home.
+            // HOME-style secondary dock. The profile/game hub itself is the app root.
             fb.drawText(artX, HUB_Y + 458, "POKEBANK NX", Colors::TextMuted, TextStyle::Caption);
             const char* dock[] = {"Storage", "Banks", "Backups", "Search", "Settings"};
             int dx = artX;
@@ -1530,7 +1531,7 @@ namespace UI {
             {"D-pad/Stick", "Choose Game"},
             {"A", "Open / Edit"},
             {"ZR", gameLaunchActionLabel(launchDescriptor.state)},
-            {"B", "Home"}
+            {"B", "Exit"}
         };
         if (users.size() > 1) homeHints.insert(homeHints.begin() + 1, {"L/R", "Profile"});
         if (!unassignedLegacySources.empty()) homeHints.push_back({"X", "Assign Save"});
