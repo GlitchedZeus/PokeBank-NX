@@ -79,6 +79,11 @@ namespace Pokemon {
             case 890: // Dense row is normal Eternatus; dedicated array contains Eternamax only.
                 return form == 0 ? &BASE_STATS_TABLE_GEN89[speciesId]
                                  : safeFormStat(BASE_STATS_TABLE_ETERNATUS_FORMS_GEN89, form - 1);
+            case 898: { // Dedicated table contains Riders only; the dense slot is a placeholder.
+                static const BaseStatsGen89 calyrexBase = {898, 100, 80, 80, 80, 80, 80};
+                if (form == 0) return &calyrexBase;
+                break;
+            }
             case 901: // Dense row is ordinary Ursaluna; dedicated array contains Bloodmoon only.
                 return form == 0 ? &BASE_STATS_TABLE_GEN89[speciesId]
                                  : safeFormStat(BASE_STATS_TABLE_URSALUNA_FORMS_GEN89, form - 1);
