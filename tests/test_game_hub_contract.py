@@ -17,8 +17,8 @@ require('"PARTY"' in source, "product home must expose the real party strip")
 require('"A", "OPEN"' in source, "selected-game card must expose the Open action")
 require('"ZR", launchLabel' in source,
         "selected-game card must expose the dynamic Launch / Link Game File action")
-require('{"Games", "Banks", "Backups", "Search", "More"}' in source,
-        "persistent dock must reserve Settings for the header and More for future features")
+require('{"Games", "Banks", "Backups", "Search", "More", "Items", "Settings"}' in source,
+        "persistent dock must expose approved Games/Banks/Backups/Search/More plus Items and Settings quick controls")
 require("hubDockFocused" in source and "hubFeatureIndex" in source and "activateHubDock" in source,
         "approved home destinations must be controller-focusable, not decorative")
 require("HidNpadButton_L" in source and "HidNpadButton_R" in source,
