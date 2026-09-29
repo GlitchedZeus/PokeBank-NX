@@ -31,7 +31,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 9 | AUDIT-017 | P2 | FIXED | FRLG mutable workspace selects rotating slot before checksum validation |
 | 10 | AUDIT-023 | P2 | FIXED | LGPE durable validator rejects the authentic 1 MiB save image |
 | 11 | AUDIT-018 | P2 | FIXED | LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity |
-| 12 | AUDIT-022 | P3 | OPEN | BDSP pre-open validation ignores its stored whole-file MD5 |
+| 12 | AUDIT-022 | P3 | FIXED | BDSP pre-open validation ignores its stored whole-file MD5 |
 | 13 | AUDIT-024 | P2 | OPEN | Gen IX inventory decoder leaves persisted flags indeterminate |
 | 14 | AUDIT-039 | P2 | OPEN | Backup save can serialize while held-Pokémon rollback failed |
 | 15 | AUDIT-015 | P2 | OPEN | Failed backup creation can leave a partial folder surfaced as a backup |
@@ -272,7 +272,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** flip one covered byte in a valid BDSP fixture without updating its stored digest and require open refusal; confirm a correct digest passes; confirm the validator itself does not mutate the candidate while checking.
 - **Dependency / sequencing:** Independent; keep BDSP writeback disabled
 - **Proposed remediation order:** 12
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `BDSPReadValidation::wholeFileHashValid()` now copies the candidate, preserves the stored 16-byte digest, zeroes only the copy's hash field, computes MD5 over the complete flat file with the same convention as `Trainer8BDSP::recomputeHash()`, and compares without mutating input. Both `validateTrainerSaveForOpen()` and the `Trainer8BDSP` constructor require a valid stored MD5 before parsing fixed-offset state. `tests/test_bdsp_layout_guard.cpp` now builds a valid digest fixture, proves validation is non-mutating, flips a covered byte to require failure, and asserts both production gates precede parsing; normal and sanitizer targets link the real MD5 implementation. BDSP writeback remains blocked. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 13. AUDIT-024 — Gen IX inventory decoder leaves persisted flags indeterminate
 
