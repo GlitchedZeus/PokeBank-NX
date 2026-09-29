@@ -1178,7 +1178,7 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
 
 MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailable) {
     MenuActionSet result{};
-    const auto add = [&](MenuAction action, const char* label, bool enabled = true) mutable {
+    const auto add = [&](MenuAction action, const char* label, bool enabled = true) {
         result.values[result.count++] = {action, label, enabled};
     };
 
