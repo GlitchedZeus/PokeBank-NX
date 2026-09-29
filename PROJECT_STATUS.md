@@ -1,118 +1,122 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-28
+Last updated: **2026-09-29**
 
-For the shortest engineering recovery handoff, read `CURRENT_STATUS.md` first.
+For exact active head and CI status, read `CURRENT_STATUS.md` first.
 
 ## Project identity
 
 - Product: **PokeBank NX**
 - Repository: `GlitchedZeus/PokeBank-NX`
-- Current integration baseline: PR #90
-- Active implementation lane: **PR #92**
-- Active milestone: **Issue #95 — G4-04 Complete Gen IV shared editor: Create + remaining fields**
-- Active branch: `feature/gen4-full-editor-20260928`
-- Merge state: OPEN / DRAFT / NOT MERGED
+- Platform: Nintendo Switch homebrew
+- Current state: active alpha
+- Active MAIN implementation lane: **PR #92**
+- PR #100 Product UI polish: **MERGED INTO PR #92**
+- PR #92 remains **OPEN / DRAFT / NOT MERGED**
 
-GitHub is authoritative. Recorded SHAs are checkpoints, never instructions to reset backward.
+GitHub is authoritative. Checkpoint SHAs document evidence; they are never instructions to move a branch backward.
 
 ## Headline
 
-Generation I–III remain the accepted shared-editor foundation.
+PokeBank NX has passed its original Gen I–III foundation stage.
 
-Generation IV has moved beyond the first hardware-accepted Party/Box View/Edit milestone and is now in the **proper shared-editor completion tranche**.
+Today the project has:
 
-G4-03 hardware acceptance is anchored to:
-`84dae170deb2756d9b80aec32bf8ad512ce17c31`
+- hardware-accepted Gen I–III shared editor workflows;
+- a real staged Gen IV Party/Box editor with Create and field parity work;
+- provider-aware Gen IV source discovery/assignment;
+- the modern Product Home integrated into the MAIN Gen IV lane;
+- real Party sprite presentation;
+- real Gen I–IV Pokédex progress plumbing;
+- Gen IV trainer-name propagation;
+- game-appropriate trainer portraits driven by proven game/gender data;
+- Classic Game Sources;
+- cursor-memory infrastructure;
+- Backpack/Items quick navigation through the existing safe open flow;
+- compact quick Items/Settings controls;
+- a two-pane Settings screen with remembered cursor state.
 
-PR #90 integrates that accepted Gen IV base plus the completed v1 polish tranche at:
-`8b3bcc16c804247bfe8d1314b686974ce73051d8`
+The next milestone is **one combined Gen I–IV + Product UI NRO** for real Switch testing.
 
-PR #92 is now the canonical live implementation lane for G4-04.
+## Active MAIN lane
 
-## G4-04 implemented surface
+PR #92  
+Branch: `feature/gen4-full-editor-20260928`
 
-The current PR #92 branch includes:
+Last verified head:
+`58a56f8d3b8350283f34fcc4d8dafc495b6515f2`
 
-- shared Party + Box View/Edit;
-- empty Box Add/Create;
-- valid stored PK4 draft creation for DP / Pt / HGSS;
-- staged empty-slot-only Create transaction;
-- trainer identity initialization for Create;
-- Held Item picker with exact Gen IV domains;
-- Language picker with nickname/OT preservation checks;
-- exact DP/Pt/HGSS Ball domains;
-- Pokérus mode editing;
-- named exact-game Met Location picker;
-- native Gen IV move picker;
-- exact Gen IV base-PP table;
-- move selection resets PP and PP Ups coherently;
-- Species mutation with dependent state reconciliation;
-- Form mutation with exact-game and storage constraints;
-- Giratina / Arceus item-driven form handling;
-- Shaymin boxed-form fail-closed behavior;
-- read-only-but-inspectable trainer/origin identity information;
-- source immutability, strict reparse and rollback.
+At the time of this update, exact-head Host Tests and Product UI Native were running and the Gen IV Candidate Gate was queued.
 
-The code checkpoint immediately before this status refresh was:
-`7eed3fa12f455c13bc03c9d55539eb6aa2a842c2`
+## Generation status
 
-Always re-fetch PR #92 because it may already be newer.
+### Gen I — accepted
 
-## Still required before G4-04 device acceptance
+Red / Blue / Yellow read, inventory and shared Pokémon editor workflows are hardware accepted.
 
-- exact-head Host Tests green;
-- exact-head Gen IV Candidate Gate green;
-- exact-head native compile/link/package green;
-- regression gates green;
-- PR/issue evidence refreshed;
-- one combined Actions-built NRO;
-- owner physical Switch test of Create + full field parity.
+### Gen II — accepted
 
-Do not mark G4-04 DEVICE ACCEPTED before that exact NRO is tested.
+Gold / Silver / Crystal read, inventory and shared Pokémon editor workflows are hardware accepted.
 
-## Expected next hardware test
+### Gen III — accepted
 
-The eventual combined candidate should cover:
+Ruby / Sapphire / Emerald / FireRed / LeafGreen read, inventory and shared Pokémon editor workflows are hardware accepted.
 
-- Party View/Edit;
-- Box View/Edit;
-- empty Box → Add/Create;
-- Species;
-- Held Item;
-- Language;
-- Ball;
-- Pokérus;
-- Met Location;
-- Form where valid;
-- move selection / PP / PP Ups;
-- read-only origin inspection;
-- fixed/variable/genderless behavior;
-- one-/dual-ability behavior;
-- Shedinja;
-- staged Keep and re-entry;
-- dirty-exit protection;
-- unchanged external emulator source.
+### Gen IV — active
+
+Diamond / Pearl / Platinum / HeartGold / SoulSilver have a working staged editor foundation.
+
+The first Party/Box View/Edit milestone is already physically accepted. G4-04 extends that foundation with Create, additional native fields, forms, species mutation, move handling, action parity, and current Product UI integration.
+
+The full G4-04 + Product UI combination is **hardware pending**.
+
+## Product experience
+
+The intended top-level UX is now stable:
+
+1. **Product Home** for the selected game, trainer identity, Party, Pokédex progress, Open/Launch and high-level features.
+2. **Classic Game Sources** for users who prefer the familiar direct game grid.
+3. Existing proven Party / Boxes / Trainer / Inventory / editor flows underneath.
+4. Compact access to Backups, Search, future features, Items and Settings.
+5. Two-pane Settings and contextual help.
+6. Remembered navigation state across rebuilt menus.
+
+Master Vault and global Pokédex/collection systems may be previewed in the UI but remain non-persistent until their backends are ready.
+
+## Current technical priorities
+
+Before the next hardware candidate:
+
+- finish exact-head CI cleanup;
+- verify cursor-memory behavior across the intended navigation surfaces;
+- verify Backpack/Items quick entry;
+- verify DraStic/melonDS direct launch handoff;
+- keep explicit Link Game File as the fail-closed fallback;
+- run full host/sanitizer/native regression gates;
+- ship one exact Actions-built NRO for owner hardware testing.
+
+After hardware acceptance:
+
+- full app-wide touch control parity;
+- then Master Vault / Banks and later-generation expansion according to the roadmap.
 
 ## Safety / scope locks
 
-- external emulator/installed-game writes remain disabled;
-- ordinary editing stays app-owned and staged;
+- original source saves stay immutable;
+- external emulator saves remain read-only;
+- installed-game live writes remain disabled;
+- staged editing remains app-owned;
+- Launch never grants write permission;
+- ambiguous source/content matching fails closed;
 - cross-game True Move remains locked;
-- Gen V must not start;
-- Master Vault must not start;
-- Issue #89 is the separate future Inject Save lane.
+- Gen V is not started;
+- Master Vault persistence is not started;
+- future Inject Save work remains separate.
 
-## Repository lane map
+## Hardware acceptance rule
 
-- PR #79 — audit/source architecture base — preserve, do not merge.
-- PR #90 — integrated Gen IV + v1-polish baseline — preserve, do not merge.
-- PR #92 — **active G4-04 implementation** — preserve, do not merge until owner acceptance.
-- PR #87 — historical first Gen IV editor lane — preserved.
-- PR #88 — completed QoL lane — integrated content preserved; do not blindly merge again.
+A feature is not device accepted because CI is green or because a neighboring SHA passed previously.
 
-## Continuation rule
+Acceptance requires the **exact Actions-built NRO** for the exact application commit to be physically tested on a real Switch.
 
-Start from the live PR #92 head, audit forward, and keep working until G4-04 is software-proven enough to justify one scarce hardware test.
-
-**CURRENT PRODUCT PRIORITY: finish the proper Generation IV shared editor before Gen V, Master Vault, or source injection.**
+That rule remains in force for the upcoming integrated Gen IV + Product UI candidate.
