@@ -606,7 +606,7 @@ tests/test_backup_namespace_contract.cpp	blob	100644	7520	backup namespace/path 
 tests/test_backup_workspace_durability.cpp	blob	100644	2801	workspace image durable-write source contract	text	62	AUDITED			0	yes
 tests/test_bank_format_policy.cpp	blob	100644	1274	Bank format fail-closed source-contract test	text	34	AUDITED			0	yes
 tests/test_bank_recovery_contract.cpp	blob	100644	887	Bank recovery preservation source-contract test	text	28	AUDITED			0	yes
-tests/test_bdsp_layout_guard.cpp	blob	100644	1847		unknown		PENDING			0	
+tests/test_bdsp_layout_guard.cpp	blob	100644	1847	BDSP minimum-layout read guard test	text	49	AUDITED			0	yes
 tests/test_classic_inventory_catalog.cpp	blob	100644	3681		unknown		PENDING			0	
 tests/test_classic_inventory_ui_model.cpp	blob	100644	5765		unknown		PENDING			0	
 tests/test_classic_picker_type_contract.cpp	blob	100644	2070		unknown		PENDING			0	
@@ -614,7 +614,7 @@ tests/test_clean_install_runtime.cpp	blob	100644	1793		unknown		PENDING			0
 tests/test_controller_model.cpp	blob	100644	1405		unknown		PENDING			0	
 tests/test_conversion_entity_golden.cpp	blob	100644	179590		unknown		PENDING			0	
 tests/test_conversion_evidence.cpp	blob	100644	38044		unknown		PENDING			0	
-tests/test_conversion_fidelity_golden.cpp	blob	100644	7766		unknown		PENDING			0	
+tests/test_conversion_fidelity_golden.cpp	blob	100644	7766	F05-F13 conversion-fidelity policy goldens	text	181	AUDITED			0	no
 tests/test_durable_file.cpp	blob	100644	4129	durable replacement host regression test	text	106	AUDITED			0	no
 tests/test_encounter_guardrails.cpp	blob	100644	5955		unknown		PENDING			0	
 tests/test_game_identity.cpp	blob	100644	6450		unknown		PENDING			0	
@@ -663,15 +663,15 @@ tests/test_gsc_universal_inventory.cpp	blob	100644	7825		unknown		PENDING			0
 tests/test_gsc_workspace_render.cpp	blob	100644	10542		unknown		PENDING			0	
 tests/test_inventory_ui_contract.cpp	blob	100644	6977		unknown		PENDING			0	
 tests/test_legacy_frlg_browse.cpp	blob	100644	16034		unknown		PENDING			0	
-tests/test_legacy_source_bindings.cpp	blob	100644	10555		unknown		PENDING			0	
+tests/test_legacy_source_bindings.cpp	blob	100644	10555	legacy source-binding rollback/recovery/isolation test	text	216	AUDITED			0	no
 tests/test_machine_display.cpp	blob	100644	2649		unknown		PENDING			0	
-tests/test_move_transaction_fault_matrix.cpp	blob	100644	10475		unknown		PENDING			0	
-tests/test_move_transaction_journal.cpp	blob	100644	25640		unknown		PENDING			0	
-tests/test_move_transaction_production.cpp	blob	100644	10842		unknown		PENDING			0	
+tests/test_move_transaction_fault_matrix.cpp	blob	100644	10475	durable Move interruption/restart matrix	text	278	AUDITED			0	no
+tests/test_move_transaction_journal.cpp	blob	100644	25640	Move journal state/recovery contract	text	569	AUDITED			0	no
+tests/test_move_transaction_production.cpp	blob	100644	10842	production true-Move integration contract	text	244	AUDITED			0	no
 tests/test_navigation_repeat.cpp	blob	100644	3439		unknown		PENDING			0	
 tests/test_passive_pokemon_view_contract.cpp	blob	100644	5186		unknown		PENDING			0	
 tests/test_pksm_gen3_adapter.cpp	blob	100644	20829		unknown		PENDING			0	
-tests/test_pla_read_validation.cpp	blob	100644	4047		unknown		PENDING			0	
+tests/test_pla_read_validation.cpp	blob	100644	4047	PLA SC-container/layout/checksum read validation test	text	82	AUDITED			0	no
 tests/test_pokebank_paths.cpp	blob	100644	2516		unknown		PENDING			0	
 tests/test_pokemon_editor_foundation_contract.cpp	blob	100644	9301		unknown		PENDING			0	
 tests/test_pre_gen3_reuse_guard.cpp	blob	100644	4218		unknown		PENDING			0	
