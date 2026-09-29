@@ -9,6 +9,7 @@
 #include <cstring>
 
 #include "Trainer/Trainer9LZA.h"
+#include "Trainer/Gen9MyStatusValidation.h"
 #include "Pokemon/SpeciesConverter9.h"    // gen9NationalToInternal -- dex entries are keyed by internal id
 #include "Pokemon/PersonalInfoTable.h"    // getPersonalInfo -> presence + genderRatio
 #include "Pokemon/FormInfo.h"             // isMegaForm / hasMegaForm -- the entry's "seen mega" bits
@@ -67,8 +68,10 @@ namespace Trainer {
          * Display TID: ID32 % 1000000
          * Display SID: ID32 / 1000000
          */
-        if (block.data.size() < 0x00 + 4) {
-            logInfoToFile("Insufficient data for UInt32 at offset 0x00 in MY_STATUS block");
+        // ID32 consumes bytes 0x00..0x03 and trainer gender consumes byte 0x05.
+        // Reject the entire core record unless every unconditionally-read byte is present.
+        if (!Gen9MyStatus::hasCoreFields(block.data.size())) {
+            logInfoToFile("Insufficient data for core MY_STATUS fields (need bytes through 0x05)");
             return;
         }
 
