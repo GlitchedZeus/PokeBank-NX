@@ -1,4 +1,5 @@
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
+#include "Integration/Gen4/Gen4MoveCompatibility.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
@@ -739,13 +740,9 @@ void openMovePicker(TrainerViewScreen& screen, State& state) {
     if (!state.session.working) return;
     state.valuePicker = true;
     state.pickerTarget = PickerTarget::Move;
-    state.pickerValues.clear();
-    state.pickerValues.push_back(0);
-    const auto group = bridge(screen).sourceSave().rawFamily();
-    const unsigned count = Names::getMoveCount();
-    for (uint16_t move = 1; move < count && move <= 467; ++move)
-        if (Names::isMovePresent(move, group))
-            state.pickerValues.push_back(move);
+    state.pickerValues = PokeVault::Integration::Gen4MoveCompatibility::selectableMoves(
+        screen.sourceGameId, state.session.working->species(),
+        state.session.working->form(), state.session.working->moves());
     const uint16_t current =
         state.session.working->moves()[static_cast<size_t>(state.moveEditorSlot)];
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
@@ -1344,7 +1341,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     if (movePicker) {
         fb.drawText(x + 24, y + 18, "Move — Generation IV", Colors::Text, TextStyle::Heading);
         fb.drawText(x + 24, y + 52,
-                    "Empty + native moves only • exact Gen IV Acc / Pwr / PP",
+                    "Empty + compatible moves only • exact Gen IV Acc / Pwr / PP",
                     Colors::TextDim, TextStyle::Caption);
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = 13;
@@ -1561,11 +1558,49 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
                     Colors::Text, TextStyle::Caption);
         fb.drawText(g.rightX + 242, yy, std::to_string(raw->ppUps()[static_cast<size_t>(row)]),
                     Colors::Text, TextStyle::Caption);
+
+        bool existingSource = false;
+        if (!state.session.baselineEncrypted.empty()) {
+            Pokemon::Pokemon4ReadOnly baseline(state.session.baselineEncrypted,
+                                               bridge(screen).sourceSave().rawFamily());
+            if (baseline.valid()) {
+                for (const uint16_t sourceMove : baseline.moves())
+                    if (sourceMove != 0 && sourceMove == move) existingSource = true;
+            }
+        }
+        const auto descriptor =
+            PokeVault::Integration::Gen4EditorProvider::descriptorForSource(
+                screen.sourceGameId, editor(screen) != nullptr);
+        auto result = PokeBank::UIModel::ExactFormatEditor::MoveCompatibilityResult::Invalid;
+        if (descriptor)
+            result = descriptor->moves.evaluate(
+                {screen.sourceGameId, raw->species(), raw->form(), move, existingSource});
+        const char* status = "Invalid";
+        Color statusColor = Colors::Error;
+        using MoveResult = PokeBank::UIModel::ExactFormatEditor::MoveCompatibilityResult;
+        if (result == MoveResult::Compatible) {
+            status = "OK";
+            statusColor = Colors::Success;
+        } else if (result == MoveResult::PreserveExisting) {
+            status = "Preserved";
+            statusColor = Colors::Warning;
+        } else if (result == MoveResult::Unsupported) {
+            status = "Transfer";
+            statusColor = Colors::Warning;
+        }
+        int sw = 0, sh = 0;
+        fb.measureText(status, sw, sh, TextStyle::Caption);
+        fb.drawText(g.rightX + g.rightW - 18 - sw, yy, status,
+                    statusColor, TextStyle::Caption);
     }
     fb.drawText(g.rightX + 18, g.y + 205,
-                "Move selection: native Gen IV catalog", Colors::TextDim, TextStyle::Caption);
+                state.session.editable() ? "A: choose compatible Gen IV move"
+                                         : "Move compatibility: checked",
+                state.session.editable() ? Colors::Success : Colors::TextDim,
+                TextStyle::Caption);
     fb.drawText(g.rightX + 18, g.y + 226,
-                "A edits Move / PP / PP Ups contextually", Colors::TextDim, TextStyle::Caption);
+                "OK = native   Transfer/Preserved = warning",
+                Colors::TextDim, TextStyle::Caption);
 
     struct DataRow { std::string label, value; };
     const std::vector<DataRow> rows{

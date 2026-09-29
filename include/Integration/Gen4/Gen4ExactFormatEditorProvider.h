@@ -1,6 +1,7 @@
 #pragma once
 
 #include "UI/ExactFormatEditorProvider.h"
+#include "Integration/Gen4/Gen4MoveCompatibility.h"
 
 #include <optional>
 #include <string_view>
@@ -26,16 +27,20 @@ constexpr PokeVault::SaveEdit::Capabilities stagedPokemonCapabilities() noexcept
 
 inline Exact::MoveCompatibilityResult evaluateMove(
     const Exact::MoveCompatibilityQuery& query) noexcept {
-    if (!isGen4NdsId(query.exactGameId) || query.species == 0 || query.species > 493)
-        return Exact::MoveCompatibilityResult::Invalid;
-    if (query.move == 0) return Exact::MoveCompatibilityResult::Compatible;
-    // PK4 can natively represent the complete Generation IV move set, IDs 1-467.
-    // Species learnset legality remains advisory; structural/editor compatibility stops
-    // exactly where Generation V begins (Hone Claws = 468).
-    if (query.move > 467)
-        return query.existingSourceMove ? Exact::MoveCompatibilityResult::PreserveExisting
-                                        : Exact::MoveCompatibilityResult::Unsupported;
-    return Exact::MoveCompatibilityResult::Compatible;
+    namespace Compat = PokeVault::Integration::Gen4MoveCompatibility;
+    switch (Compat::classify(
+        query.exactGameId, query.species, query.form, query.move,
+        query.existingSourceMove)) {
+        case Compat::Availability::Direct:
+            return Exact::MoveCompatibilityResult::Compatible;
+        case Compat::Availability::Transfer:
+            return Exact::MoveCompatibilityResult::Unsupported;
+        case Compat::Availability::Preserved:
+            return Exact::MoveCompatibilityResult::PreserveExisting;
+        case Compat::Availability::Invalid:
+            return Exact::MoveCompatibilityResult::Invalid;
+    }
+    return Exact::MoveCompatibilityResult::Invalid;
 }
 
 inline std::optional<Exact::ExactFormatEditorDescriptor> descriptorForSource(
