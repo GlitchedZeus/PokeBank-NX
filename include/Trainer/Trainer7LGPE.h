@@ -46,7 +46,8 @@ namespace Trainer {
     constexpr size_t PLAY_TIME7_LGPE = 0x0A;            // idx 10 Play time
 
     // Generation 7 Let's Go constants
-    constexpr size_t SAVE_SIZE7_LGPE = 0xB8800;         // 757,760 bytes
+    constexpr size_t SAVE_SIZE7_LGPE = 0xB8800;         // 757,760-byte active Beluga region
+    constexpr size_t LGPE_FULL_FILE_SIZE = 0x100000;      // authentic 1 MiB savedata.bin container
     constexpr size_t BOX_COUNT7_LGPE = 40;              // Number of boxes
     constexpr size_t SLOTS_PER_BOX7_LGPE = 25;          // Slots per box (different from Gen 8's 30)
     constexpr size_t BOX_NAME_LENGTH7_LGPE = 0x22;      // Box name length (UTF-16LE)
