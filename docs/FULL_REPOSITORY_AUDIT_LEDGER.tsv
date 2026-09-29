@@ -549,15 +549,15 @@ src/UI/Gen1PokemonEditorOverlayFoundation.inc	blob	100644	31073		unknown		PENDIN
 src/UI/Gen1PokemonEditorOverlayUX.inc	blob	100644	50586		unknown		PENDING			0	
 src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc	blob	100644	56095		unknown		PENDING			0	
 src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc	blob	100644	35382		unknown		PENDING			0	
-src/UI/Gen1PokemonEditorPassiveView.inc	blob	100644	1145		unknown		PENDING			0	
+src/UI/Gen1PokemonEditorPassiveView.inc	blob	100644	1145	Gen I passive read-only workspace adapter	text	30	AUDITED			0	no
 src/UI/Gen2HardwareFinalFix.inc	blob	100644	19308		unknown		PENDING			0	
-src/UI/Gen2HardwarePickerFix.inc	blob	100644	5789		unknown		PENDING			0	
-src/UI/Gen2HardwareWorkspaceFix.inc	blob	100644	4629		unknown		PENDING			0	
+src/UI/Gen2HardwarePickerFix.inc	blob	100644	5789	Gen II hardware move-picker compatibility adapter	text	126	AUDITED			0	no
+src/UI/Gen2HardwareWorkspaceFix.inc	blob	100644	4629	Gen II hardware workspace focus/presentation adapter	text	108	AUDITED			0	no
 src/UI/Gen2PokemonEditorFoundation.inc	blob	100644	39358		unknown		PENDING			0	
 src/UI/Gen2PokemonPickerOverlay.inc	blob	100644	12400		unknown		PENDING			0	
 src/UI/Gen2SharedPokemonSurface.inc	blob	100644	29650		unknown		PENDING			0	
 src/UI/Gen2SharedSurfaceParity.inc	blob	100644	18969		unknown		PENDING			0	
-src/UI/Gen2TrainerSessionOverlay.inc	blob	100644	2691		unknown		PENDING			0	
+src/UI/Gen2TrainerSessionOverlay.inc	blob	100644	2691	Gen II staged trainer-session overlay	text	59	AUDITED			0	no
 src/UI/Gen2UnifiedPokemonWorkspace.inc	blob	100644	42404		unknown		PENDING			0	
 src/UI/Gen3SharedPokemonSurface.inc	blob	100644	78589		unknown		PENDING			0	
 src/UI/Gen4SharedPokemonSurface.inc	blob	100644	87336	Gen IV shared View/Edit/Create surface	text	1972	AUDITED			1	yes
@@ -568,8 +568,8 @@ src/UI/Modals/PokemonDetailsModal.cpp	blob	100644	34505		unknown		PENDING			0
 src/UI/PKSEFramebuffer.cpp	blob	100644	27588	NanoVG framebuffer/rendering implementation	text	556	AUDITED			0	no
 src/UI/Panels/BoxPokemonPanel.cpp	blob	100644	21845		unknown		PENDING			0	
 src/UI/Panels/HomeMenuPanel.cpp	blob	100644	8866	loaded-workspace home panel renderer	text	178	AUDITED			0	no
-src/UI/Panels/ItemsPanel.cpp	blob	100644	11918		unknown		PENDING			0	
-src/UI/Panels/PartyPokemonPanel.cpp	blob	100644	7898		unknown		PENDING			0	
+src/UI/Panels/ItemsPanel.cpp	blob	100644	11918	inventory panel renderer	text	223	AUDITED			0	yes
+src/UI/Panels/PartyPokemonPanel.cpp	blob	100644	7898	party card/grid renderer	text	152	AUDITED			0	no
 src/UI/Panels/StoragePanel.cpp	blob	100644	35794		unknown		PENDING			0	
 src/UI/SaveSelectScreen.cpp	blob	100644	64968		unknown		PENDING			0	
 src/UI/SpriteManager.cpp	blob	100644	8162	Pokemon/type sprite cache implementation	text	219	AUDITED			0	no
@@ -577,10 +577,10 @@ src/UI/SystemIcons.cpp	blob	100644	7450	profile/title/game-card icon cache imple
 src/UI/TouchInput.cpp	blob	100644	744	touch polling/edge implementation	text	24	AUDITED			0	no
 src/UI/TrainerViewScreen.cpp	blob	100644	2102	legacy TrainerView implementation composition TU	text	65	AUDITED			0	yes
 src/UI/TrainerViewScreenBase.inc	blob	100644	295298		unknown		PENDING			0	
-src/UI/TrainerViewScreenCompositeOverlay.cpp	blob	100644	12096		unknown		PENDING			0	
+src/UI/TrainerViewScreenCompositeOverlay.cpp	blob	100644	12096	composite Gen I-IV TrainerView dispatch/runtime layering	text	289	AUDITED			0	yes
 src/UI/TrainerViewScreenGSCOverlay.cpp	blob	100644	430	historical Gen II overlay shim TU	text	7	AUDITED			0	no
 src/UI/TrainerViewScreenGSCOverlay.inc	blob	100644	34758		unknown		PENDING			0	
-src/UI/UI.cpp	blob	100644	15976		unknown		PENDING			0	
+src/UI/UI.cpp	blob	100644	15976	MAIN UI lifecycle/source-opening orchestration	text	351	AUDITED			0	no
 src/Utils/DurableFile.cpp	blob	100644	14493	durable file replacement/recovery	text	383	AUDITED			0	yes
 src/Utils/EventLog.cpp	blob	100644	9765	structured Pokémon/item event-log formatting	text	204	AUDITED			0	no
 src/Utils/FileUtilities.cpp	blob	100644	16963	filesystem copy/backup/restore utilities	text	418	AUDITED			1	yes
