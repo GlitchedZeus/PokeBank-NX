@@ -626,7 +626,7 @@ tests/test_classic_inventory_ui_model.cpp	blob	100644	5765	classic inventory UI/
 tests/test_classic_picker_type_contract.cpp	blob	100644	2070	Gen I/II native species-type picker contract	text	44	AUDITED			0	yes
 tests/test_clean_install_runtime.cpp	blob	100644	1793	clean-install PokeBank-owned filesystem contract	text	45	AUDITED			0	yes
 tests/test_controller_model.cpp	blob	100644	1405	context-sensitive controller binding contract	text	27	AUDITED			0	yes
-tests/test_conversion_entity_golden.cpp	blob	100644	179590		unknown		PENDING			0	
+tests/test_conversion_entity_golden.cpp	blob	100644	179449	cross-generation entity conversion golden/fidelity/source-immutability matrix	text	3405	AUDITED			0	no
 tests/test_conversion_evidence.cpp	blob	100644	38044	cross-game fidelity evidence/acknowledgement/provenance/recovery gate contract	text	774	AUDITED			0	no
 tests/test_conversion_fidelity_golden.cpp	blob	100644	7766	F05-F13 conversion-fidelity policy goldens	text	181	AUDITED			0	no
 tests/test_durable_file.cpp	blob	100644	4129	durable replacement host regression test	text	106	AUDITED			0	no
