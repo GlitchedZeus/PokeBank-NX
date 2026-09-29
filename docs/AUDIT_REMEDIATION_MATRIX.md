@@ -49,7 +49,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 27 | AUDIT-043 | P3 | DEFERRED WITH JUSTIFICATION | Device-observed Gen IV save rows can lose trainer-name presentation despite synthetic parser coverage |
 | 28 | AUDIT-033 | P3 | FIXED | Gen IV move-stat presentation uses HGSS values for Diamond/Pearl |
 | 29 | AUDIT-034 | P3 | FIXED | HD sprite recovery/preflight can accept corrupt existing PNGs |
-| 30 | AUDIT-035 | P3 | OPEN | personal/learnset regeneration still searches the removed SPECIES_NAMES symbol |
+| 30 | AUDIT-035 | P3 | FIXED | personal/learnset regeneration still searches the removed SPECIES_NAMES symbol |
 | 31 | AUDIT-044 | P3 | OPEN | Fontstash allocation failures can become null-pointer crashes during text rendering |
 | 32 | AUDIT-006 | P3 | OPEN | LeakSanitizer is disabled even where comments say CI keeps it enabled |
 | 33 | AUDIT-003 | P3 | OPEN | mutable native toolchain image |
@@ -595,7 +595,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** run every discovered table generator against the current tree in a pinned/offline-cache CI job; at minimum invoke both `gen_personal.py` and `gen_learnsets.py` after regenerating species names and require successful no-drift output.
 - **Dependency / sequencing:** Tooling tranche; pair with generated-data CI
 - **Proposed remediation order:** 30
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `gen_personal.py` and `gen_learnsets.py` now parse the generated English `SPECIES_NAMES_EN[]` table rather than the removed `SPECIES_NAMES[]` symbol. `check_device_assets.py` uses the same current symbol for Gen I diagnostic names. `tests/test_generated_species_name_contract.py` imports all three consumers, requires Bulbasaur/Pikachu to resolve from the real generated table, and is wired into Host Tests. Exact-head CI is still required before VERIFIED.
 
 ### 31. AUDIT-044 — Fontstash allocation failures can become null-pointer crashes during text rendering
 
