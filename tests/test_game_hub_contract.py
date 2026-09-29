@@ -4,6 +4,7 @@ ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / "src/UI/SaveSelectScreen.cpp").read_text(encoding="utf-8")
 header = (ROOT / "include/UI/SaveSelectScreen.h").read_text(encoding="utf-8")
 ui_manager = (ROOT / "src/UI/UI.cpp").read_text(encoding="utf-8")
+shell_source = (ROOT / "src/UI/AppShellScreen.cpp").read_text(encoding="utf-8")
 
 def require(cond: bool, message: str) -> None:
     if not cond:
@@ -74,3 +75,13 @@ require('"QUICK ACCESS"' not in source,
         "approved Product Home must not restore the old Quick Access sub-dock")
 require('"Trade is not implemented yet."' not in source,
         "approved dock must not restore the rejected Trade destination")
+
+# Secondary destinations stay inside the approved product shell rather than developer-style modals.
+require("overlay = Overlay::Settings;" in shell_source,
+        "Diagnostics Back must return to Settings")
+require("constexpr int x = 24, y = 78, w = 1232, h = 548;" in shell_source,
+        "Banks/Search/Pokédex must use the wide product destination surface")
+require('"Coming Soon — no save data was changed."' in shell_source,
+        "future destinations must use product-facing unavailable copy")
+require("Colors::FocusBorder, 3" in source,
+        "selected game OPEN action must carry the approved focus treatment")

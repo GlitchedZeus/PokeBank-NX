@@ -186,8 +186,11 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
 
     if (statusFrames > 0) --statusFrames;
 
-    if (overlay == Overlay::Help || overlay == Overlay::Diagnostics ||
-        overlay == Overlay::SectionInfo) {
+    if (overlay == Overlay::Diagnostics) {
+        if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) overlay = Overlay::Settings;
+        return;
+    }
+    if (overlay == Overlay::Help || overlay == Overlay::SectionInfo) {
         if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) overlay = Overlay::None;
         return;
     }
@@ -214,7 +217,7 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         if (kDown & HidNpadButton_Down)
             previewIndex = PokeBank::UIModel::previewMoveSelection(kind, previewIndex, 0, 1);
         if (kDown & HidNpadButton_A) {
-            setStatus("Preview only: no Vault, Bank, search or collection data was changed.", 240);
+            setStatus("Coming Soon — no save data was changed.", 240);
         }
         return;
     }
@@ -364,12 +367,10 @@ void AppShellScreen::drawHome(PKSEFramebuffer& fb) {
 }
 
 void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
-    constexpr int w = 820, h = 608;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - h) / 2;
+    constexpr int x = 52, y = 82, w = 1176, h = 544;
 
-    drawModalSurface(fb, x, y, w, h);
-    fb.drawText(x + 28, y + 18, "POKEBANK NX  /  SETTINGS",
+    drawPanelSurface(fb, x, y, w, h, true, 18);
+    fb.drawText(x + 28, y + 18, "SETTINGS",
                 Colors::AccentPrimary, TextStyle::Caption);
     fb.drawText(x + 28, y + 44, "Application Settings",
                 Colors::TextPrimary, TextStyle::Heading);
@@ -437,12 +438,10 @@ void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
 }
 
 void AppShellScreen::drawDiagnostics(PKSEFramebuffer& fb) {
-    constexpr int w = 820, h = 520;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - h) / 2;
+    constexpr int x = 120, y = 94, w = 1040, h = 506;
 
-    drawModalSurface(fb, x, y, w, h);
-    fb.drawText(x + 28, y + 18, "POKEBANK NX  /  DIAGNOSTICS  /  READ ONLY",
+    drawPanelSurface(fb, x, y, w, h, true, 18);
+    fb.drawText(x + 28, y + 18, "DIAGNOSTICS  /  READ ONLY",
                 Colors::Info, TextStyle::Caption);
     fb.drawText(x + 28, y + 44, "Build & Safety",
                 Colors::TextPrimary, TextStyle::Heading);
@@ -474,8 +473,8 @@ void AppShellScreen::drawDiagnostics(PKSEFramebuffer& fb) {
 
 void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
     using PokeBank::UIModel::AppShellSection;
-    constexpr int x = 66, y = 82, w = 1148, h = 566;
-    drawModalSurface(fb, x, y, w, h);
+    constexpr int x = 24, y = 78, w = 1232, h = 548;
+    drawPanelSurface(fb, x, y, w, h, true, 18);
 
     const bool isBanks = infoSection == AppShellSection::Banks;
     const bool isSearch = infoSection == AppShellSection::Search;
@@ -591,11 +590,9 @@ void AppShellScreen::drawSectionInfo(PKSEFramebuffer& fb) {
         static_cast<std::size_t>(infoSection)];
     const auto& lines = sectionInfoLines(infoSection);
 
-    constexpr int w = 820;
-    const int h = 180 + static_cast<int>(lines.size()) * 44;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - h) / 2;
-    drawModalSurface(fb, x, y, w, h);
+    constexpr int x = 120, y = 118, w = 1040;
+    const int h = std::min(430, 180 + static_cast<int>(lines.size()) * 44);
+    drawPanelSurface(fb, x, y, w, h, true, 18);
 
     fb.drawText(x + 28, y + 18,
                 "POKEBANK NX  /  " + std::string(entry.title),

@@ -1623,6 +1623,9 @@ namespace UI {
             const int buttonY = HUB_Y + 432;
             drawGlyphButton(fb, DETAIL_X + 22, buttonY, 322, 58, "A", "OPEN",
                             Colors::PanelAlt, Colors::TextPrimary);
+            if (gameFocused)
+                fb.drawRoundedRect(DETAIL_X + 22, buttonY, 322, 58, 8,
+                                   Colors::FocusBorder, 3);
             drawGlyphButton(fb, DETAIL_X + 366, buttonY, 332, 58, "ZR", launchLabel,
                             launchActionable ? Colors::AccentPrimary : Colors::PanelAlt,
                             launchActionable ? Colors::White : Colors::TextMuted);
@@ -1658,13 +1661,33 @@ namespace UI {
                     vaultFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
         fb.drawText(RIGHT_X + 28, HUB_Y + 60, "Your central Pokémon library",
                     Colors::TextSecondary, TextStyle::Body);
+        const int vaultArrowX = RIGHT_X + RIGHT_W - 42;
+        fb.drawCircle(vaultArrowX, HUB_Y + 42, 17,
+                      vaultFocused ? Colors::FocusBorder : Colors::Divider, 2);
+        fb.drawText(vaultArrowX - 5, HUB_Y + 29, ">",
+                    vaultFocused ? Colors::SelectedText : Colors::TextSecondary,
+                    TextStyle::Heading);
+
         const int vaultCx = RIGHT_X + RIGHT_W / 2;
-        const int vaultCy = HUB_Y + 174;
-        fb.drawCircle(vaultCx, vaultCy, 62, withAlpha(Colors::AccentPrimary, 110), 8);
-        fb.drawCircle(vaultCx, vaultCy, 42, withAlpha(Colors::FocusBorder, 150), 4);
+        const int vaultCy = HUB_Y + 164;
+        fb.drawFilledRoundedRect(RIGHT_X + 56, HUB_Y + 112, RIGHT_W - 112, 108, 28,
+                                 withAlpha(Colors::AccentSecondary, 22));
+        for (int i = -2; i <= 2; ++i) {
+            const int distance = i < 0 ? -i : i;
+            const int podX = vaultCx + i * 62;
+            const int podH = 48 + (2 - distance) * 8;
+            fb.drawRoundedRect(podX - 22, HUB_Y + 140 - podH / 4, 44, podH, 12,
+                               withAlpha(Colors::AccentSecondary, 90), 2);
+            fb.drawFilledCircle(podX, HUB_Y + 168, 8 + (i == 0 ? 4 : 0),
+                                withAlpha(Colors::AccentPrimary, i == 0 ? 150 : 72));
+        }
+        fb.drawCircle(vaultCx, vaultCy, 58, withAlpha(Colors::AccentPrimary, 120), 7);
+        fb.drawCircle(vaultCx, vaultCy, 39, withAlpha(Colors::FocusBorder, 160), 4);
         fb.drawFilledRoundedRect(vaultCx - 30, vaultCy - 5, 60, 10, 5,
-                                 withAlpha(Colors::AccentPrimary, 100));
+                                 withAlpha(Colors::AccentPrimary, 110));
         fb.drawFilledCircle(vaultCx, vaultCy, 14, Colors::AccentPrimary);
+        fb.drawFilledRoundedRect(RIGHT_X + 78, HUB_Y + 220, RIGHT_W - 156, 3, 2,
+                                 withAlpha(Colors::FocusBorder, 90));
         fb.drawText(RIGHT_X + 28, HUB_Y + featureH - 36,
                     "Coming Soon",
                     Colors::TextMuted, TextStyle::Caption);
@@ -1675,14 +1698,29 @@ namespace UI {
                     dexFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
         fb.drawText(RIGHT_X + 28, dexY + 60, "Species, forms and cries",
                     Colors::TextSecondary, TextStyle::Body);
-        const int bookX = RIGHT_X + 36, bookY = dexY + 116;
-        fb.drawRoundedRect(bookX, bookY, 72, 58, 10, Colors::AccentSecondary, 3);
-        fb.drawFilledRoundedRect(bookX + 34, bookY + 4, 4, 50, 2, Colors::AccentSecondary);
-        for (int i = 0; i < 4; ++i) {
-            const int cx = RIGHT_X + 160 + i * 66;
-            const int r = 18 + (i % 2) * 6;
-            fb.drawFilledCircle(cx, dexY + 151, r,
-                                withAlpha(i == 1 ? Colors::BrandAccent : Colors::AccentPrimary, 80));
+        const int dexArrowX = RIGHT_X + RIGHT_W - 42;
+        fb.drawCircle(dexArrowX, dexY + 42, 17,
+                      dexFocused ? Colors::FocusBorder : Colors::Divider, 2);
+        fb.drawText(dexArrowX - 5, dexY + 29, ">",
+                    dexFocused ? Colors::SelectedText : Colors::TextSecondary,
+                    TextStyle::Heading);
+
+        const int bookX = RIGHT_X + 36, bookY = dexY + 110;
+        fb.drawFilledRoundedRect(RIGHT_X + 24, dexY + 98, RIGHT_W - 48, 126, 22,
+                                 withAlpha(Colors::AccentSecondary, 18));
+        fb.drawRoundedRect(bookX, bookY, 76, 62, 10, Colors::AccentSecondary, 3);
+        fb.drawFilledRoundedRect(bookX + 36, bookY + 4, 4, 54, 2, Colors::AccentSecondary);
+        for (int i = 0; i < 5; ++i) {
+            const int cx = RIGHT_X + 154 + i * 58;
+            const int baseY = dexY + 153;
+            const int r = 15 + (i % 3) * 4;
+            const Color silhouette =
+                i == 2 ? withAlpha(Colors::BrandAccent, 92)
+                       : withAlpha(Colors::AccentPrimary, 76);
+            fb.drawFilledCircle(cx, baseY, r, silhouette);
+            fb.drawFilledRoundedRect(cx - r + 3, baseY + r - 4,
+                                     std::max(12, r * 2 - 6), 18 + (i % 2) * 7,
+                                     8, silhouette);
         }
         fb.drawText(RIGHT_X + 28, dexY + featureH - 36,
                     "Collection progress will appear here when available.",
