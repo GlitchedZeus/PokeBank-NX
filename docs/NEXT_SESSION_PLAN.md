@@ -1,148 +1,105 @@
 # PokeBank NX — Next Session Plan
 
-Last updated: **2026-09-24**
+Last updated: **2026-09-29**
 
-Status: **GEN I–III DEVICE ACCEPTED / A01–A09 HARDENING MOSTLY IMPLEMENTED / CONVERSION AUDIT NEXT**
+Status: **CONTINUE ON PR #92, FINISH INTEGRATED CI/LAUNCH, PRODUCE ONE FINAL HARDWARE NRO**
 
-## Recover current live state
+## Recover live state first
 
-Before any write, re-fetch GitHub.
-
-Known checkpoint at this documentation update:
-
-~~~text
 Repository:
-GlitchedZeus/PokeBank-NX
+`GlitchedZeus/PokeBank-NX`
 
-Accepted editor PR:
-#77 — OPEN / DRAFT / NOT MERGED
+Active PR:
+**#92 — G4-04: complete Gen IV shared editor — Create + field parity**
 
-Accepted Gen III application:
-996e6aa40c96e4408282f3d55476dae8e64968b2
+Branch:
+`feature/gen4-full-editor-20260928`
 
-Audit PR:
-#79 — OPEN / DRAFT / NOT MERGED
+Last verified head:
+`58a56f8d3b8350283f34fcc4d8dafc495b6515f2`
 
-Audit branch:
-audit/full-project-hardening-20260923
+PR #100 Product UI polish is already **merged into PR #92**.
 
-Documented audit head:
-59ced7c81db457ce4e59cd8b15268d6a2296537d
+GitHub is authoritative. Re-fetch before modifying anything. Preserve every newer commit.
 
-Host:
-35961226077 / #1124 / SUCCESS
+## What is already true
 
-Native:
-35961222076 / #33 / SUCCESS
-~~~
+### Gen I–III
 
-If the live audit branch has advanced, audit forward. Never reset/rebase backward to this checkpoint.
+The current shared read/editor foundation is physically accepted.
 
-## Preserve completed hardening
+### Gen IV
 
-Do not redo or weaken:
+The first safe Party/Box View/Edit milestone is hardware accepted.
 
-- A01 durable Bank replacement;
-- A02 custody-safe rollback;
-- A03 immutable original + separate destination candidate;
-- A04 transaction journal/recovery core;
-- A04 production Bank ↔ PokeBank-workspace integration for supported single-file routes;
-- A05 recovery evidence preservation;
-- A06 BDSP truncation guard;
-- A07 unsupported Bank write blocking;
-- A08 profile/exact-game workspace namespace;
-- A09 single-file workspace DurableFile persistence.
+PR #92 carries the active G4-04 shared editor with Create, additional native fields, species/form/move handling, action parity, rollback and source immutability.
 
-Keep installed-game, RetroArch and other emulator-source writes hard disabled.
+### Product UI
 
-Keep BDSP true Move disabled.
+PR #92 now includes:
 
-Keep cross-game true Move disabled until conversion routes are proven.
+- modern Product Home;
+- Party sprite presentation;
+- distinct Vault/Pokédex presentation;
+- real Gen I–IV Pokédex progress;
+- Gen IV trainer-name propagation;
+- game/gender-aware trainer portraits;
+- cursor-memory foundation;
+- Classic Game Sources;
+- Backpack/Items quick intent;
+- compact Items/Settings quick actions;
+- two-pane Settings with remembered category/option cursor.
 
-## Primary next task — F05–F13 conversion fidelity audit
+## Immediate first action
 
-Reverify exact-current conversion behavior rather than carrying old findings forward by assumption.
+1. Re-fetch PR #92 live head and exact-head Actions.
+2. Let Host Tests #1684, Product UI Native #55 and Gen IV Gate #131 resolve.
+3. Fix any failure forward without reverting integrated editor/UI work.
 
-Start with the already confirmed high-risk item:
+## Remaining integration work
 
-**N01 / F07 — Gen III downgrade PID-search exhaustion can silently fall back instead of failing explicitly.**
+### Classic Games / Backpack / Settings
 
-Then cover:
+Hardware-check the integrated flows:
 
-- F05 shiny preservation across Gen III threshold differences;
-- F06 PID-derived Unown form;
-- F08 ability slot/ability-number mapping;
-- F09 S/V ↔ Z-A divergent/Tera data;
-- F10 Gen III EV 252/253/255 policy;
-- F11 nickname/language/loss behavior;
-- F13 account/profile provenance where relevant.
+- Games opens familiar Game Sources;
+- trainer name / portrait / Dex summary are coherent;
+- Backpack enters the selected game’s Items flow through normal source/backup safety;
+- Settings opens the two-pane category/options UI;
+- backing out restores the remembered cursor.
 
-## Test-first rule
+### Emulator launch
 
-For each conversion path:
+Verify the actual direct-launch handoff for:
 
-1. build a minimal golden source fixture;
-2. hash/capture original bytes;
-3. run conversion;
-4. prove original bytes are unchanged;
-5. serialize destination;
-6. reparse destination;
-7. verify checksum/container integrity;
-8. verify required identity traits;
-9. record every intentional loss;
-10. if required traits cannot be preserved, fail explicitly.
+- DraStic;
+- melonDS.
 
-Do not silently generate a different Pokémon.
+Reuse existing GameLauncher/provider/linking architecture.
 
-## Required traits to verify where applicable
+If emulator + content cannot be proven, keep **Link Game File** and store the mapping only in PokeBank-owned configuration.
 
-- species/form;
-- shiny;
-- PID/EC;
-- gender;
-- nature;
-- ability slot/number;
-- IVs/EVs/DVs/Stat Exp;
-- moves/PP;
-- nickname flags/text;
-- language;
-- origin/version;
-- held item;
-- met data;
-- ball;
-- Tera/divergent modern fields;
-- Unown/PID-derived form.
+Never infer a ROM solely from a save path.
 
-## Transaction safety interaction
+## CI and hardware stop condition
 
-A04b cross-game true Move must remain fail-closed while a route is unproven.
+The final integrated candidate must have:
 
-A warning dialog is not enough to authorize source retirement for a conversion whose correctness is unknown.
+- Host Tests green;
+- sanitizer/regression gates green where configured;
+- Gen IV Candidate Gate green;
+- Product UI Native/devkitA64 green;
+- one exact Actions artifact;
+- one exact NRO + SHA-256.
 
-Same-game/native-compatible transaction routes may remain enabled according to the current A04b gate.
+Then STOP.
 
-## Validation
+Do not call the new integrated candidate device accepted until that exact NRO is tested on the real Switch.
 
-After the conversion tranche:
+## After hardware acceptance
 
-- focused golden conversion tests;
-- permanent host suite;
-- A01–A09 hardening regressions;
-- A04a/A04b transaction tests;
-- ASan;
-- UBSan;
-- native devkitA64 compile/link/NRO.
+The next major frontend tranche is:
 
-Do not claim device acceptance from CI.
+**FULL APP-WIDE TOUCH CONTROLS**
 
-## Still deferred
-
-Do not start these automatically:
-
-- BDSP multi-file journal;
-- N06 directory-generation transaction;
-- Master Vault;
-- Gen IV / DS / 3DS;
-- live source writing.
-
-After conversion fixtures are green, reassess parser hardening and the physical Switch power-loss/recovery matrix before Master Vault becomes authoritative storage.
+Do not start Gen V, Master Vault persistence, cross-game True Move, or live source writes before the integrated UI candidate is accepted.
