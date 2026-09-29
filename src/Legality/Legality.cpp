@@ -22,6 +22,7 @@
 #include "Legality/Gen4PokewalkerPid.h"
 #include "Legality/Gen4CuteCharmPid.h"
 #include "Legality/Gen4ChainShiny.h"
+#include "Legality/Gen4MysteryGiftPid.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 
 #include <algorithm>
@@ -252,9 +253,17 @@ namespace Legality {
                                 "PID/IV/trainer IDs match the Gen IV Poké Radar Chain Shiny RNG class; radar-capable encounter-slot provenance remains incomplete",
                                 CheckIdentifier::PidRng);
                         } else {
-                            add(r, Severity::Info,
-                                "No normal Gen IV Method-1, Cute Charm, or Chain Shiny RNG match; event RNG classes remain incomplete",
-                                CheckIdentifier::PidRng);
+                            const auto gift =
+                                Gen4MysteryGiftPid::analyze(pk.pid(), ivs);
+                            if (gift.matched) {
+                                add(r, Severity::Info,
+                                    "PID/IV spread matches a Gen IV Mystery Gift anti-shiny ARNG reroll class; exact event-template provenance remains incomplete",
+                                    CheckIdentifier::PidRng);
+                            } else {
+                                add(r, Severity::Info,
+                                    "No normal Gen IV Method-1, Cute Charm, Chain Shiny, or Mystery Gift anti-shiny RNG match; other event RNG classes remain incomplete",
+                                    CheckIdentifier::PidRng);
+                            }
                         }
                     }
                 }
