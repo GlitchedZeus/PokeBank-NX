@@ -1,5 +1,8 @@
 # PokeBank NX — Controller / UI Flow Contract
 
+> **REFERENCE UX CONTRACT:** This document preserves controller/safety principles and earlier target-flow design. It is not the current Product Home implementation authority. Use `docs/ENGINEERING_AUTHORITY.md`, `docs/UI_OWNERSHIP_STATUS.md`, and live source for current routing/surfaces.
+
+
 Status: TARGET UX CONTRACT  
 Last updated: 2026-09-01
 
