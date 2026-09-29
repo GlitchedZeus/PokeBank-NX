@@ -464,6 +464,20 @@ namespace Save {
                 error = "BDSP save is truncated or unsupported; it was not opened or changed.";
                 return false;
             }
+
+            size_t fileSize = 0;
+            uint8_t* file = readAllBytes(path, &fileSize);
+            if (!file) {
+                error = "BDSP save file could not be read.";
+                return false;
+            }
+            const bool hashValid = PokeBank::SaveValidation::BDSP::wholeFileHashValid(
+                std::span<const uint8_t>(file, fileSize));
+            delete[] file;
+            if (!hashValid) {
+                error = "BDSP save whole-file MD5 does not match; it was not opened or changed.";
+                return false;
+            }
             return true;
         }
 
