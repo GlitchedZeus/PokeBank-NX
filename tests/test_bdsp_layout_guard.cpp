@@ -73,5 +73,5 @@ int main() {
     assert(refusal != std::string::npos);
     assert(boundary < hashBoundary && hashBoundary < refusal);
 
-    std::cout << "BDSP layout + whole-file MD5 guard: PASS\\n";
+    std::cout << "BDSP layout + whole-file MD5 guard: PASS\n";
 }
