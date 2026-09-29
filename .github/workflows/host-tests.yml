@@ -13,6 +13,8 @@ permissions:
 jobs:
   host-tests:
     name: Host tests (GCC)
+    env:
+      ASAN_OPTIONS: detect_leaks=1
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -101,7 +103,7 @@ jobs:
             -fsanitize=address,undefined -fno-omit-frame-pointer \
             -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
             -o build-host/test_rse_open_regression_sanitize
-          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize
+          ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=0}" ./build-host/test_rse_open_regression_sanitize
 
       - name: Run ASan and UBSan tests
         run: make -f Makefile.host host-sanitize
