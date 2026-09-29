@@ -13,6 +13,7 @@
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
 #include "Legality/Gen4WildEncounter.h"
+#include "Legality/Gen4StaticEncounter.h"
 #include "Legality/Gen1CatchRateEvidence.h"
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
@@ -425,9 +426,16 @@ namespace Legality {
                     add(r, Severity::Info,
                         "Met data matches an audited Generation IV wild encounter slot",
                         CheckIdentifier::Encounter);
-                } else if (Legality::Gen4Wild::hasSpecies(exactSourceGameId, species)) {
+                } else if (Legality::Gen4Static::matches(
+                               exactSourceGameId, species, pk.metLocation(), pk.metLevel(),
+                               pk.form(), pk.eggLocation())) {
                     add(r, Severity::Info,
-                        "No matching Gen IV wild slot; static/gift/trade/event evidence is not fully imported",
+                        "Met data matches an audited Generation IV static/gift encounter",
+                        CheckIdentifier::Encounter);
+                } else if (Legality::Gen4Wild::hasSpecies(exactSourceGameId, species) ||
+                           Legality::Gen4Static::hasSpecies(exactSourceGameId, species)) {
+                    add(r, Severity::Info,
+                        "No matching Gen IV wild/static/gift evidence; trade/event/PokeWalker evidence is incomplete",
                         CheckIdentifier::Encounter);
                 }
             } else {
