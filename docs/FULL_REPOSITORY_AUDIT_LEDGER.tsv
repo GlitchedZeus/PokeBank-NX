@@ -655,7 +655,7 @@ tests/test_gsc_pokemon_editor.cpp	blob	100644	16135		unknown		PENDING			0
 tests/test_gsc_pokemon_session.cpp	blob	100644	22201		unknown		PENDING			0	
 tests/test_gsc_readonly_bridge.cpp	blob	100644	11847	Gen II read-only trainer/party/box + staged presentation bridge contract	text	210	AUDITED			0	yes
 tests/test_gsc_runtime_catalog.cpp	blob	100644	4861	Gen II shared runtime source catalog refresh contract	text	54	AUDITED			0	yes
-tests/test_gsc_shared_editor_parity.cpp	blob	100644	12654		unknown		PENDING			0	
+tests/test_gsc_shared_editor_parity.cpp	blob	100644	12654	Gen II shared editor Create/Edit/Trainer parity and source-safety contract	text	250	AUDITED			0	yes
 tests/test_gsc_source_browser.cpp	blob	100644	6606	Gen II source-card/profile/snapshot resolution contract	text	134	AUDITED			0	yes
 tests/test_gsc_staged_editor.cpp	blob	100644	10831	Gen II staged trainer/inventory/clone round-trip contract	text	210	AUDITED			0	yes
 tests/test_gsc_ui_rules.cpp	blob	100644	6658	Gen II shared-editor capability/UI rules contract	text	106	AUDITED			0	yes
@@ -675,7 +675,7 @@ tests/test_pla_read_validation.cpp	blob	100644	4047	PLA SC-container/layout/chec
 tests/test_pokebank_paths.cpp	blob	100644	2516	PokeBank path ownership/safe-component contract	text	58	AUDITED			0	yes
 tests/test_pokemon_editor_foundation_contract.cpp	blob	100644	9301	shared Pokémon editor foundation/focus/capability contract	text	150	AUDITED			0	yes
 tests/test_pre_gen3_reuse_guard.cpp	blob	100644	4218	pre-Gen III shared-editor/source-mutation reuse guard	text	94	AUDITED			0	yes
-tests/test_rby_discovery.cpp	blob	100644	11942		unknown		PENDING			0	
+tests/test_rby_discovery.cpp	blob	100644	11942	RBY bounded read-only discovery/identity/alias/fingerprint contract	text	276	AUDITED			0	yes
 tests/test_rby_gen1_adapter.cpp	blob	100644	13736		unknown		PENDING			0	
 tests/test_rby_inventory.cpp	blob	100644	4740	RBY strict read-only inventory decode contract	text	130	AUDITED			0	yes
 tests/test_rby_pokemon_editor.cpp	blob	100644	13599		unknown		PENDING			0	
