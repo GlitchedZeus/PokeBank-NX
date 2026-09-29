@@ -33,8 +33,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 689 / 746
-- Fully read text files: 655 / 713
+- Audited tracked paths: 693 / 746
+- Fully read text files: 659 / 713
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — integrated Product Home / launch delta
@@ -46,6 +46,7 @@ Status: IN PROGRESS
 
 - Gen I adapter/theme + packed-move host-test tranche fully read at current MAIN `fb7b1d8c…`: strict RBY parser/editor oracles, reachable-theme contrast/focus contract, and Gen I/II packed single/group move transaction tests. The backend tests reconfirm begin/place/cancel rollback semantics, including full-destination failure recovery, but do not add the UI refresh-failure injection missing under AUDIT-037. No new numbered defect was confirmed in this tranche.
 - Legacy browse/classic editor test tranche fully read at current MAIN `fb7b1d8c…`: FRLG multi-provider Save Instances/read-only trainer bridge, Gen II boxed staged editor round-trip, Gen I shared editor UI contract, and bounded RetroArch/mGBA/Tico FRLG discovery/refresh. All four were promoted to AUDITED; no stale expectation or new numbered defect was confirmed.
+- Gen II/III parser-session-editor tranche fully read at current MAIN `fb7b1d8c…`: PKSM-backed Gen III adapter oracle, Gen II shared UI session, Gen III staged sparse editor, and RSE strict adapter/discovery. All four were promoted to AUDITED; no stale expectation or new numbered defect was confirmed.
 
 ## Current checkpoint — live MAIN catch-up
 
@@ -73,7 +74,7 @@ Status: IN PROGRESS
 - `src/UI/Modals/PokemonDetailsModal.cpp` was also fully read at `85762adc…` (571 lines / 34,505 bytes) and is now AUDITED. It is the generic modern summary/edit presentation path; Gen I is explicitly routed to its native modal first, while legality source identity is left empty for Bank targets rather than borrowing the currently-open save. No new confirmed defect was found in this file.
 
 - PR #92 catch-up is reconciled through live head `a86c8d039209bc17ac613524c6631f03309037a0`. The four changed paths that already carried AUDITED status (`include/Integration/Gen4/Gen4StagedPokemonEditor.h`, `src/Integration/Gen4/Gen4StagedPokemonEditor.cpp`, `src/UI/Gen4SharedPokemonSurface.inc`, `tests/test_gen4_staged_pokemon_editor.cpp`) were fully re-read at that head; the other two changed paths were already PENDING and remain PENDING.
-- Live tracked inventory is 746 non-directory paths / 713 text-or-unknown candidates; 689 paths are currently reconciled and 655 text files are fully read at their current audited blobs.
+- Live tracked inventory is 746 non-directory paths / 713 text-or-unknown candidates; 693 paths are currently reconciled and 659 text files are fully read at their current audited blobs.
 - The entire Names tranche is now closed: no `include/Names` or `src/Names` file remains PENDING. Generated species tables contain 1,026 entries in each of nine languages; the modern item-name table contains ids 0..2684; Gen III direct item names cover ids 0..376.
 - MovePresence's unknown-group/id-0 behavior contradicts its comment, but all audited real game-group callers are routed through known groups; kept as a hardening follow-up, not a numbered defect.
 - Recovery/package/source-pin tooling is now substantially audited. Supported CI invokes `verify_embedded_romfs.py` with normal `python3`; its assert-based checks are therefore live today, while replacing asserts with explicit failures remains a robustness follow-up.
