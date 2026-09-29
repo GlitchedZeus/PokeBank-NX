@@ -7,7 +7,7 @@ The forensic audit is closed: 746/746 tracked paths accounted, 711/711 text file
 ## Baseline and invariants
 
 - Original severity counts: P1 2, P2 17, P3 20, P4 5.
-- Remediation base: PR #92 branch `feature/gen4-full-editor-20260928` at `58a56f8d3b8350283f34fcc4d8dafc495b6515f2`.
+- Remediation base: PR #92 branch `feature/gen4-full-editor-20260928` at `710cf37a33ba7a9f29b09953c5d8aa224268e4fd`.
 - Frozen evidence branch remains untouched at `143c5e5c341d4f85af30e013808a37d6719560fe`.
 - Current baseline CI note: upstream MAIN `58a56f8d…` still has Product UI Native red before remediation; Host Tests were in progress and the Gen IV gate was cancelled by newer lane movement when this ledger was refreshed. Treat this as pre-existing UI-lane drift, not a new audit finding.
 - Source saves remain immutable. Emulator/installed-title live writes remain disabled. Cross-game True Move and source injection remain locked. No Gen V or Master Vault backend work is in scope.
@@ -23,7 +23,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 1 | AUDIT-001 | P1 | FIXED | destructive mutable PKSE import workflow |
 | 2 | AUDIT-032 | P1 | FIXED | PR #97 removes AppShellSection::Collections but still references it |
 | 3 | AUDIT-002 | P2 | OPEN | no general unfiltered native PR compile gate |
-| 4 | AUDIT-020 | P2 | OPEN | SV/Z-A MyStatus size guard permits an out-of-bounds gender read |
+| 4 | AUDIT-020 | P2 | FIXED | SV/Z-A MyStatus size guard permits an out-of-bounds gender read |
 | 5 | AUDIT-031 | P2 | OPEN | SC SHA-256 message decoding uses signed-shift undefined behavior |
 | 6 | AUDIT-025 | P3 | OPEN | defaulted Pokémon move operations duplicate raw-buffer ownership |
 | 7 | AUDIT-026 | P3 | OPEN | Gen III and modern entity constructors do not fully enforce/normalize native record length |
@@ -131,7 +131,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** authenticated SC fixtures with MyStatus sizes 4 and 5 must be rejected cleanly without constructing a Trainer; size 6 must not read beyond bounds; full expected native MyStatus geometry should pass.
 - **Dependency / sequencing:** Defense-in-depth with AUDIT-021, but fix independently first
 - **Proposed remediation order:** 4
-- **Status:** OPEN
+- **Status:** FIXED
+- **Current-code reconciliation:** both `Trainer9SV::parseMyStatusBlock()` and `Trainer9LZA::parseMyStatusBlock()` now use shared `Gen9MyStatus::hasCoreFields()` and reject blocks shorter than six bytes before the unconditional gender read. `tests/test_gen9_my_status_guard.cpp` is included in normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 5. AUDIT-031 — SC SHA-256 message decoding uses signed-shift undefined behavior
 
