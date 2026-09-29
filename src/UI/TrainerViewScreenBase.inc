@@ -2543,31 +2543,44 @@ namespace UI {
         // forever. update() runs every frame in every view, which is what a timer needs.
         if (storageStatusFrames > 0) --storageStatusFrames;
 
-        // Defense in depth: inherited modal flags must never create a writable path in an
-        // installed-source session, including touch/deferred entry points. Browse/View is kept.
+        // Defense in depth: immutable source sessions still block source-owned mutators, but
+        // Bank targets are PokeBank-owned AppOwnedStorage and remain independently mutable.
         if (sourceReadOnly()) {
+            const bool bankDetails = details.active && details.source == EditSource::Bank;
+            const bool bankRelease = releaseConfirmActive &&
+                ((releaseGroup && carrying() && heldPane == 1) ||
+                 (!releaseGroup && releasePane == 1));
+            const bool bankGroupMenu = groupMenuActive && carrying() && heldPane == 1;
+
             // A dirty-session exit confirmation is safe on an immutable source: it does not write
             // the source, it only asks whether to abandon staged app-owned work or keep editing.
-            // All ordinary Save/write dialogs stay blocked.
             const bool exitOnlySaveConfirm = saveConfirmActive && exitingWithUnsavedChanges;
-            const bool blocked = pickerActive || itemEditDialogActive || itemRemoveConfirmActive ||
-                statEdit.dialogActive ||
+            const bool blocked =
+                (pickerActive && !bankDetails) ||
+                itemEditDialogActive || itemRemoveConfirmActive ||
+                (statEdit.dialogActive && !bankDetails) ||
                 PokeBank::UIModel::SharedPokemonEditor::immutableSourceBlocksSaveDialog(
                     saveConfirmActive, exitingWithUnsavedChanges) ||
-                releaseConfirmActive || creator.active || creator.editing || groupMenuActive ||
-                storageExitConfirmActive || gen3ConvertConfirmActive || lgpeTransferConfirmActive;
+                (releaseConfirmActive && !bankRelease) ||
+                creator.active || creator.editing ||
+                (groupMenuActive && !bankGroupMenu) ||
+                gen3ConvertConfirmActive || lgpeTransferConfirmActive;
             if (blocked) {
-                pickerActive = itemEditDialogActive = itemRemoveConfirmActive = false;
-                statEdit.dialogActive = false;
+                if (!bankDetails) {
+                    pickerActive = false;
+                    statEdit.dialogActive = false;
+                }
+                itemEditDialogActive = itemRemoveConfirmActive = false;
                 if (!exitOnlySaveConfirm) saveConfirmActive = false;
-                releaseConfirmActive = false;
+                if (!bankRelease) releaseConfirmActive = false;
                 creator.active = creator.editing = creator.keepConfirmActive = false;
-                groupMenuActive = false;
-                storageExitConfirmActive = gen3ConvertConfirmActive = lgpeTransferConfirmActive = false;
+                if (!bankGroupMenu) groupMenuActive = false;
+                gen3ConvertConfirmActive = lgpeTransferConfirmActive = false;
                 requireMutableWorkspace();
                 return;
             }
-            if (details.active) details.readOnly = true;
+            if (details.active && !bankDetails) details.readOnly = true;
+            // storageExitConfirmActive is Bank persistence only and intentionally remains available.
         }
 
         // A box-name pill was tapped last frame: the header highlight has now been drawn once, so it
