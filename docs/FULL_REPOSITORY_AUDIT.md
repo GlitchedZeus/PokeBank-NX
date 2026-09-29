@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 282 / 725
-- Fully read text files: 248 / 692
+- Audited tracked paths: 300 / 725
+- Fully read text files: 266 / 692
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -126,6 +126,14 @@ Status: IN PROGRESS
 - Gen III correctly distinguishes 80-byte stored PK3 from 100-byte party PK3: party-tail reads/writes are guarded by `dataSize`, and its crypto implementation returns a short copied buffer rather than overrunning if called with less than 0x50 bytes. However the resulting entity's ordinary fixed-offset accessors assume a native record, so constructing `Pokemon3FRLG` from an arbitrary short span remains unsafe at the entity boundary.
 - Gen IV is the strongest legacy entity boundary: `Encryption4` rejects any size other than exact 0x88 stored or 0xEC party records before decrypting; the immutable parser additionally requires valid size, sanity and checksum before exposing semantic fields.
 - The raw-buffer move-ownership defect from AUDIT-025 also reaches Gen I/II wrappers through implicitly generated moves and Gen III through explicitly defaulted moves.
+
+### Conversion-critical Pokémon data checkpoint
+
+- Fully audited the shared experience curves, Gen III/IX species-index converters, generated modern + Gen III personal metadata, LGPE/modern base-stat datasets, form-persistence rules, type helpers and ability-slot helpers.
+- Programmatic structural validation covered every one of the 1,491 modern generated `PersonalInfo` rows: base rows 0..1025 are aligned, every alternate-form redirect remains within the table and points back to the expected species/form, presence masks fit the supported six-game domain, and type ids are valid or the explicit monotype sentinel. No structural generated-table defect was found.
+- Gen III and Gen IX internal/National species mappings are bounded and carry compile-time boundary/field-report checks. The Gen IX divergent table covers exactly the National #917..#1025 range.
+- The current PKHeX `BattleForms` / `BattleMegas` source was rechecked against `FormInfo.cpp`, including the newer Z-A Mega set through Glimmora; no stale Mega-membership defect was found.
+- Two handwritten base-stat lookup layers failed independently: LGPE cannot reach the appended Meltan/Melmetal rows (AUDIT-027), while the modern form router has valid-form zero/wrong/OOB routes shared by SWSH/BDSP/PLA/SV/Z-A (AUDIT-028).
 
 ## Findings
 
