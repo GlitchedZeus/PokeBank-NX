@@ -617,11 +617,13 @@ void AppShellScreen::drawSectionInfo(PKSEFramebuffer& fb) {
 
 void AppShellScreen::draw(PKSEFramebuffer& fb) {
     drawAppBackdrop(fb);
-    drawTitleBar(fb, "Main Menu  /  v" + VERSION_STRING);
+    drawTitleBar(fb, "");
 
-    drawHome(fb);
-
-    if (overlay == Overlay::Settings) {
+    // The approved selected-game screen is the product root. Secondary destinations reuse these
+    // overlays without flashing the retired dashboard behind them.
+    if (overlay == Overlay::None) {
+        drawHome(fb);
+    } else if (overlay == Overlay::Settings) {
         drawSettings(fb);
     } else if (overlay == Overlay::Diagnostics) {
         drawDiagnostics(fb);
@@ -630,13 +632,10 @@ void AppShellScreen::draw(PKSEFramebuffer& fb) {
     } else if (overlay == Overlay::SectionInfo) {
         drawSectionInfo(fb);
     } else if (overlay == Overlay::Help) {
-        drawInfoOverlay(fb, "PokeBank NX Main Menu", {
-            "D-pad / Left Stick   Move between menu destinations",
-            "A   Open the focused destination",
-            "Games   Profiles, saves, active party, editing and Launch shortcut",
-            "Settings   Themes, safety preferences and Diagnostics",
-            "+   Open Settings from anywhere on the Main Menu",
-            "B   Exit PokeBank NX"
+        drawInfoOverlay(fb, "PokeBank NX", {
+            "D-pad / Left Stick   Navigate",
+            "A   Open the focused item",
+            "B   Return to Games"
         });
     }
 }
