@@ -153,6 +153,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen4_pokewalker_pid
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_pokewalker_pid_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_cute_charm_pid
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_cute_charm_pid_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_chain_shiny
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_chain_shiny_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -283,6 +285,14 @@ $(HOST_BUILD)/test_gen4_cute_charm_pid: tests/test_gen4_cute_charm_pid.cpp inclu
 $(HOST_BUILD)/test_gen4_cute_charm_pid_sanitize: tests/test_gen4_cute_charm_pid.cpp include/Legality/Gen4CuteCharmPid.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_cute_charm_pid.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_chain_shiny: tests/test_gen4_chain_shiny.cpp include/Legality/Gen4ChainShiny.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_chain_shiny.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_chain_shiny_sanitize: tests/test_gen4_chain_shiny.cpp include/Legality/Gen4ChainShiny.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_chain_shiny.cpp -o $@
 
 $(HOST_BUILD)/test_source_mutation_policy: tests/test_source_mutation_policy.cpp
 	@mkdir -p $(HOST_BUILD)

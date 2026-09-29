@@ -21,6 +21,7 @@
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
 #include "Legality/Gen4CuteCharmPid.h"
+#include "Legality/Gen4ChainShiny.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 
 #include <algorithm>
@@ -244,9 +245,17 @@ namespace Legality {
                             "PID has a valid Gen IV Cute Charm buffered form; Method J/K lead-frame and encounter-slot correlation remain incomplete",
                             CheckIdentifier::PidRng);
                     } else {
-                        add(r, Severity::Info,
-                            "No normal Gen IV Method-1 or Cute Charm PID surface match; Chain Shiny and event RNG classes remain incomplete",
-                            CheckIdentifier::PidRng);
+                        const auto chain =
+                            Gen4ChainShiny::analyze(pk.pid(), pk.id32(), ivs);
+                        if (chain.matched) {
+                            add(r, Severity::Info,
+                                "PID/IV/trainer IDs match the Gen IV Poké Radar Chain Shiny RNG class; radar-capable encounter-slot provenance remains incomplete",
+                                CheckIdentifier::PidRng);
+                        } else {
+                            add(r, Severity::Info,
+                                "No normal Gen IV Method-1, Cute Charm, or Chain Shiny RNG match; event RNG classes remain incomplete",
+                                CheckIdentifier::PidRng);
+                        }
                     }
                 }
             }

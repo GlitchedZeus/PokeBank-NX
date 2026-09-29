@@ -27,7 +27,8 @@ The first legality-engine tranche adds:
 - preservation of the existing exact-game Gen III move context;
 - Gen III handheld PID/IV correlation for Methods 1, 2, 3 and 4, including Unown's reversed-half variants;
 - Gen III truncated-roamer PID/IV correlation for the Ruby/Sapphire and FireRed/LeafGreen roamer bug class;
-- Gen IV Cute Charm buffered-PID surface recognition, including Gen IV evolution/gender-ratio edge cases.
+- Gen IV Cute Charm buffered-PID surface recognition, including Gen IV evolution/gender-ratio edge cases;
+- Gen IV Poké Radar Chain Shiny PID/IV/trainer-ID correlation, with radar-slot provenance kept explicitly partial.
 
 Current encounter coverage is **partial** for R/B/Y, Crystal, the five Gen III games, and all five Gen IV games. Gen I now checks exact-game PK1 catch rates, R/B/Y pre-evolution catch-rate provenance, and Time Capsule held-item-byte compatibility, including ambiguous bytes that can represent either history, without pretending PK1 stores met location/level. Gen IV now has pinned wild-slot, static/gift, and fixed in-game trade evidence for D/P/Pt/HG/SS. External event and PokeWalker templates are still incomplete, so an encounter non-match is not treated as illegal. Gen I now includes released international R/B/Y static/gift/Game Corner and in-game trade templates; Japanese Blue is deliberately separate, and Stadium/external event templates remain incomplete, so unmatched evidence stays unknown rather than illegal.
 
@@ -37,7 +38,7 @@ Current encounter coverage is **partial** for R/B/Y, Crystal, the five Gen III g
 2. **Internal consistency** — level/EXP, names, gender, ability, forms and stats.
 3. **Exact-game move legality** — compatibility tables are wired now; event/tutor chronology and full tradeback provenance remain to be completed.
 4. **Encounter provenance** — Gen I released R/B/Y static/trade templates and Gen IV wild, static/gift, and fixed in-game trade evidence are imported; Stadium/external events, Japanese Blue, full PokéWalker course data, and remaining per-method restrictions are still incomplete.
-5. **PID/RNG correlation** — Gen III handheld Methods 1/2/3/4 plus the truncated R/S/FRLG roamer class, normal Gen IV Method-1 PID/IV, deterministic PokéWalker PID, and Cute Charm buffered-PID surfaces are recognized. PokéWalker IV/course provenance, full Gen IV Method J/K lead frames, Chain Shiny, Mystery Gift anti-shiny, plus Gen III Channel/Colosseum/XD/BACD classes remain incomplete.
+5. **PID/RNG correlation** — Gen III handheld Methods 1/2/3/4 plus the truncated R/S/FRLG roamer class, normal Gen IV Method-1 PID/IV, deterministic PokéWalker PID, Cute Charm buffered-PID surfaces, and Chain Shiny PID/IV/trainer-ID correlation are recognized. PokéWalker IV/course provenance, full Gen IV Method J/K lead frames, radar-slot proof for Chain Shiny, Mystery Gift anti-shiny, plus Gen III Channel/Colosseum/XD/BACD classes remain incomplete.
 6. **Egg / breeding legality** — hatch level/location, inherited moves and generation-specific breeding rules.
 7. **Event / gift legality** — fixed trainer data, fateful flags, ribbons, dates and distribution records.
 8. **Transfer legality** — legitimate movement between generations.
