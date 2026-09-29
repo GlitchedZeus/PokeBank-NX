@@ -422,7 +422,7 @@ nanovg/fontstash.h	blob	100644	48977	vendored Fontstash font atlas/text renderer
 nanovg/nanovg_gl_impl.c	blob	100644	315	NanoVG GL3 backend implementation translation unit	text	7	AUDITED			0	no
 nanovg/nanovg_gl_utils.h	blob	100644	4807	vendored NanoVG framebuffer utility	text	154	AUDITED			0	no
 nanovg/nanovg_gl.h	blob	100644	46912	vendored NanoVG OpenGL backend	text	1660	AUDITED			0	no
-nanovg/nanovg.c	blob	100644	77637		unknown		PENDING			0	
+nanovg/nanovg.c	blob	100644	77637	vendored NanoVG core renderer/text integration	text	2949	AUDITED			1	yes
 nanovg/nanovg.h	blob	100644	28603	vendored NanoVG public API	text	697	AUDITED			0	no
 nanovg/stb_truetype.h	blob	100644	195646		unknown		PENDING			0	
 PHILOSOPHY.md	blob	100644	1093	repository/build metadata	text		AUDITED			0	
