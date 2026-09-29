@@ -99,21 +99,26 @@ namespace Save {
         }
 
         bool validateLGPEWorkspace(std::span<const uint8_t> bytes, std::string& error) {
-            if (bytes.size() != SAVE_SIZE7_LGPE) {
-                error = "Let's Go save size does not match the supported layout";
+            // Runtime reads the active Beluga region from an authentic 1 MiB savedata.bin, while
+            // several focused fixtures contain only that active region. Both are intentional
+            // geometries; arbitrary intermediate/oversized files fail closed.
+            if (bytes.size() != SAVE_SIZE7_LGPE &&
+                bytes.size() != LGPE_FULL_FILE_SIZE) {
+                error = "Let's Go save size does not match the supported active/full-file layout";
                 return false;
             }
 
-            std::vector<uint8_t> candidate(bytes.begin(), bytes.end());
-            const auto blocks = createBlocksFromSaveData7LGPE(candidate);
+            std::vector<uint8_t> active(
+                bytes.begin(), bytes.begin() + static_cast<std::ptrdiff_t>(SAVE_SIZE7_LGPE));
+            const auto blocks = createBlocksFromSaveData7LGPE(active);
             if (blocks.size() != 7) {
                 error = "Let's Go save did not expose the complete supported block set";
                 return false;
             }
 
-            auto checksumProbe = candidate;
+            auto checksumProbe = active;
             writeBlocksToSaveData7LGPE(checksumProbe, blocks);
-            if (checksumProbe != candidate) {
+            if (checksumProbe != active) {
                 error = "Let's Go block checksum verification failed";
                 return false;
             }
