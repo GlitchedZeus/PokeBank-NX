@@ -25,14 +25,14 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 475 / 731
-- Fully read text files: 441 / 698
+- Audited tracked paths: 482 / 731
+- Fully read text files: 448 / 698
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
 
 - PR #92 remains audited through live head `f792a498aaa41793a86c137c0ff74c7a0c2205a3`.
-- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 475 paths are now accounted for and 441 text files have been fully read.
+- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 482 paths are now accounted for and 448 text files have been fully read.
 - The entire Names tranche is now closed: no `include/Names` or `src/Names` file remains PENDING. Generated species tables contain 1,026 entries in each of nine languages; the modern item-name table contains ids 0..2684; Gen III direct item names cover ids 0..376.
 - MovePresence's unknown-group/id-0 behavior contradicts its comment, but all audited real game-group callers are routed through known groups; kept as a hardening follow-up, not a numbered defect.
 - Recovery/package/source-pin tooling is now substantially audited. Supported CI invokes `verify_embedded_romfs.py` with normal `python3`; its assert-based checks are therefore live today, while replacing asserts with explicit failures remains a robustness follow-up.
@@ -670,3 +670,18 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: validate every required HD asset as a non-empty decodable PNG (at minimum PNG signature + dimensions; preferably Pillow verification where available), and have recovery regenerate any invalid file rather than using filename count as completeness. The final preflight should independently repeat the validity check before packaging.
 - Risk of fix: low; runtime assets only, with increased preflight cost.
 - Owner: MAIN / device artifact + recovery lane.
+
+### AUDIT-035 — personal/learnset regeneration still searches the removed SPECIES_NAMES symbol
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: reproducible generated legality/personal data refresh
+- Files: `tools/gen_personal.py`, `tools/gen_learnsets.py`, `tools/gen_speciesnames.py`, `src/Names/SpeciesNames.cpp`, `tools/regenerate.py`
+- Exact symbols: both generators' `load_species_names()`; multilingual species-name emission in `gen_speciesnames.py`.
+- Problem: `gen_personal.py` and `gen_learnsets.py` still parse the checked-in species source with the regex `SPECIES_NAMES\[\]\s*=...`. The multilingual species-name generator no longer emits that symbol: it emits `SPECIES_NAMES_EN[]` (plus the other eight language arrays) and `SPECIES_NAMES_BY_LANGUAGE[]`.
+- Why it matters: both scripts call `load_species_names()` before emitting their tables and explicitly terminate when the old symbol is absent. The documented aggregate command `python tools/regenerate.py --tables` discovers and runs these scripts, so a current clean checkout cannot complete its advertised full generated-table refresh even though normal builds still compile the already-committed outputs.
+- Scope: regeneration/reproducibility blocker, not an immediate runtime/save-data defect. Existing committed PersonalInfoTable/LearnsetTable artifacts remain usable until a deliberate refresh is required.
+- Related drift: `check_device_assets.py::gen1_species_names()` also searches the old `SPECIES_NAMES[]` spelling, but it catches the lookup failure and falls back to generic “Species N” labels; that only weakens missing-asset diagnostics rather than blocking packaging.
+- Missing tests: run every discovered table generator against the current tree in a pinned/offline-cache CI job; at minimum invoke both `gen_personal.py` and `gen_learnsets.py` after regenerating species names and require successful no-drift output.
+- Recommended fix: make both generators consume the shared language helper/current English symbol explicitly (or better, consume PKHeX's source species resource directly rather than reparsing another generated C++ file). Update the asset preflight's parser at the same time. Add a regeneration smoke test so future symbol refactors cannot silently break the generator chain.
+- Risk of fix: low; generator-only parsing change, but regenerated table diffs must still be reviewed before commit.
+- Owner: MAIN / generated-data reproducibility lane.
