@@ -637,7 +637,7 @@ tests/test_game_launch_model.cpp	blob	100644	2315	game-launch provider/content p
 tests/test_gen1_battle_stats.cpp	blob	100644	1603	Gen I five-stat battle calculation fixtures	text	33	AUDITED			0	yes
 tests/test_gen1_cleanup3_staged_semantics.cpp	blob	100644	9777	Gen I staged edit/create/clone preservation semantics contract	text	192	AUDITED			0	yes
 tests/test_gen1_move_compatibility.cpp	blob	100644	3500	R/B/Y exact move compatibility fixtures	text	66	AUDITED			0	yes
-tests/test_gen1_pokemon_editor_ui_contract.cpp	blob	100644	17099		unknown		PENDING			0	
+tests/test_gen1_pokemon_editor_ui_contract.cpp	blob	100644	17387	Gen I shared editor UI/action/exit/focus static contract	text	286	AUDITED			0	no
 tests/test_gen1_pokemon_editor_ux3_contract.cpp	blob	100644	3584	Gen I shared editor UX contract	text	73	AUDITED			0	yes
 tests/test_gen1_radar_render.cpp	blob	100644	2353	Gen I production radar bounded-layout regression	text	46	AUDITED			0	yes
 tests/test_gen1_shiny.cpp	blob	100644	2136	Gen I shiny DV rules/toggle contract	text	51	AUDITED			0	yes
@@ -667,7 +667,7 @@ tests/test_gsc_gen2_personal.cpp	blob	100644	2276	Gen II personal/gender oracle 
 tests/test_gsc_inventory.cpp	blob	100644	3650	Gen II inventory decode/display fail-closed contract	text	90	AUDITED			0	yes
 tests/test_gsc_move_compatibility.cpp	blob	100644	3662	Gold/Silver/Crystal exact move compatibility contract	text	73	AUDITED			0	yes
 tests/test_gsc_native_presentation.cpp	blob	100644	7334	Gen II Crystal caught-data/party/Pokerus presentation contract	text	135	AUDITED			0	yes
-tests/test_gsc_pokemon_editor.cpp	blob	100644	16135		unknown		PENDING			0	
+tests/test_gsc_pokemon_editor.cpp	blob	100644	16135	Gen II boxed Pokémon staged semantic/round-trip editor contract	text	250	AUDITED			0	no
 tests/test_gsc_pokemon_session.cpp	blob	100644	22201		unknown		PENDING			0	
 tests/test_gsc_readonly_bridge.cpp	blob	100644	11847	Gen II read-only trainer/party/box + staged presentation bridge contract	text	210	AUDITED			0	yes
 tests/test_gsc_runtime_catalog.cpp	blob	100644	4861	Gen II shared runtime source catalog refresh contract	text	54	AUDITED			0	yes
@@ -678,7 +678,7 @@ tests/test_gsc_ui_rules.cpp	blob	100644	6658	Gen II shared-editor capability/UI 
 tests/test_gsc_universal_inventory.cpp	blob	100644	7825	Gen II universal staged inventory finalize/reparse contract	text	150	AUDITED			0	yes
 tests/test_gsc_workspace_render.cpp	blob	100644	10535	Gen II workspace/data/radar/held-item/species presentation contract	text	199	AUDITED			0	yes
 tests/test_inventory_ui_contract.cpp	blob	100644	6977	shared inventory action/footer/dirty-presentation contract	text	125	AUDITED			0	yes
-tests/test_legacy_frlg_browse.cpp	blob	100644	16034		unknown		PENDING			0	
+tests/test_legacy_frlg_browse.cpp	blob	100644	16034	FRLG multi-provider Save Instances/read-only trainer bridge contract	text	316	AUDITED			0	no
 tests/test_legacy_source_bindings.cpp	blob	100644	10555	legacy source-binding rollback/recovery/isolation test	text	216	AUDITED			0	no
 tests/test_machine_display.cpp	blob	100644	3553	generation-aware TM/HM/TR presentation contract	text	66	AUDITED			0	yes
 tests/test_move_picker_presentation.cpp	blob	100644	1896	shared move picker presentation contract test	text	14	AUDITED			0	yes
@@ -701,7 +701,7 @@ tests/test_rby_readonly_bridge.cpp	blob	100644	8106	RBY read-only trainer/party/
 tests/test_rby_source_browser.cpp	blob	100644	2894	RBY source card/profile binding contract	text	44	AUDITED			0	yes
 tests/test_rby_staged_inventory.cpp	blob	100644	6678	RBY staged inventory mutation/finalization contract	text	136	AUDITED			0	yes
 tests/test_reachable_ui_consistency.py	blob	100644	1313	reachable product/classic UI consistency static contract	text	36	AUDITED			0	no
-tests/test_retroarch_frlg_discovery.cpp	blob	100644	17720		unknown		PENDING			0	
+tests/test_retroarch_frlg_discovery.cpp	blob	100644	17720	RetroArch/mGBA/Tico bounded FRLG discovery/dedupe/refresh contract	text	351	AUDITED			0	no
 tests/test_rse_gen3_adapter.cpp	blob	100644	25892		unknown		PENDING			0	
 tests/test_rse_open_regression.cpp	blob	100644	9281	RSE save-open optional-inventory regression contract	text	214	AUDITED			0	yes
 tests/test_runtime_dependency_contract.cpp	blob	100644	1077	runtime path/branding textual dependency contract	text	30	AUDITED			0	yes
