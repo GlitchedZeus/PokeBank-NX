@@ -596,9 +596,9 @@ src/Utils/SHA256.cpp	blob	100644	4770	SC save SHA-256 implementation	text	146	AU
 src/Utils/Settings.cpp	blob	100644	3133	application settings persistence	text	78	AUDITED			1	yes
 src/Utils/StringHelpers.cpp	blob	100644	8121	modern UTF/string helper implementation	text	195	AUDITED			0	yes
 src/main.cpp	blob	100644	4227	Switch application startup/service/runtime orchestration	text	117	AUDITED			0	yes
-tests/fixtures/gen4/README.md	blob	100644	791		unknown		PENDING			0	
-tests/fixtures/gen4/blank-party.hex	blob	100644	473		unknown		PENDING			0	
-tests/fixtures/gen4/blank-stored.hex	blob	100644	273		unknown		PENDING			0	
+tests/fixtures/gen4/README.md	blob	100644	791	Gen IV canonical fixture provenance/regeneration notes	text	18	AUDITED			0	yes
+tests/fixtures/gen4/blank-party.hex	blob	100644	473	canonical encrypted Gen IV party blank oracle	text	1	AUDITED			0	yes
+tests/fixtures/gen4/blank-stored.hex	blob	100644	273	canonical encrypted Gen IV stored blank oracle	text	1	AUDITED			0	yes
 tests/fixtures/gsc_pokemon_fixture.h	blob	100644	5749		unknown		PENDING			0	
 tests/fixtures/main_workspace_move_focus.h	blob	100644	2354		unknown		PENDING			0	
 tests/test_action_sheet_model.cpp	blob	100644	3297	Pokemon action-sheet mutation-free/unsupported-action contract	text	89	AUDITED			0	yes
@@ -626,13 +626,13 @@ tests/test_gen1_move_compatibility.cpp	blob	100644	3500	R/B/Y exact move compati
 tests/test_gen1_pokemon_editor_ui_contract.cpp	blob	100644	17099		unknown		PENDING			0	
 tests/test_gen1_pokemon_editor_ux3_contract.cpp	blob	100644	3584		unknown		PENDING			0	
 tests/test_gen1_radar_render.cpp	blob	100644	2353		unknown		PENDING			0	
-tests/test_gen1_shiny.cpp	blob	100644	2136		unknown		PENDING			0	
+tests/test_gen1_shiny.cpp	blob	100644	2136	Gen I shiny DV rules/toggle contract	text	51	AUDITED			0	yes
 tests/test_gen1_summary_presentation.cpp	blob	100644	4985		unknown		PENDING			0	
 tests/test_gen3_exact_format_editor_provider.cpp	blob	100644	7349		unknown		PENDING			0	
 tests/test_gen3_hardware_surface_contract.cpp	blob	100644	18549	Gen III shared-surface hardware regression contract	text	280	AUDITED			0	yes
-tests/test_gen3_legality_context.cpp	blob	100644	2273		unknown		PENDING			0	
-tests/test_gen3_party_record.cpp	blob	100644	1308		unknown		PENDING			0	
-tests/test_gen3_pid_search_fail_closed.cpp	blob	100644	1915		unknown		PENDING			0	
+tests/test_gen3_legality_context.cpp	blob	100644	2273	exact-source Gen III legality-context contract	text	65	AUDITED			0	yes
+tests/test_gen3_party_record.cpp	blob	100644	1308	Gen III party-tail fidelity/initialization contract	text	26	AUDITED			0	yes
+tests/test_gen3_pid_search_fail_closed.cpp	blob	100644	1915	Gen III PID trait-preservation fail-closed contract	text	51	AUDITED			0	yes
 tests/test_gen3_shared_pokemon_session.cpp	blob	100644	13289		unknown		PENDING			0	
 tests/test_gen3_shell_render.cpp	blob	100644	4563		unknown		PENDING			0	
 tests/test_gen3_staged_inventory.cpp	blob	100644	11182		unknown		PENDING			0	
@@ -685,19 +685,19 @@ tests/test_rby_staged_inventory.cpp	blob	100644	6678		unknown		PENDING			0
 tests/test_retroarch_frlg_discovery.cpp	blob	100644	17720		unknown		PENDING			0	
 tests/test_rse_gen3_adapter.cpp	blob	100644	25892		unknown		PENDING			0	
 tests/test_rse_open_regression.cpp	blob	100644	9281		unknown		PENDING			0	
-tests/test_runtime_dependency_contract.cpp	blob	100644	1077		unknown		PENDING			0	
+tests/test_runtime_dependency_contract.cpp	blob	100644	1077	runtime path/branding textual dependency contract	text	30	AUDITED			0	yes
 tests/test_save_instance_architecture_contract.py	blob	100644	5437		unknown		PENDING			0	
 tests/test_save_instance_model.cpp	blob	100644	5311		unknown		PENDING			0	
 tests/test_shared_editor_heading_contract.cpp	blob	100644	12864		unknown		PENDING			0	
 tests/test_shared_pokemon_editor_contract.cpp	blob	100644	16432	shared Pokémon editor architecture/navigation contract test	text	275	AUDITED			0	yes
 tests/test_shared_species_picker_surface_contract.cpp	blob	100644	2643	shared species picker source contract test	text	70	AUDITED			0	no
 tests/test_source_mutation_policy.cpp	blob	100644	1841	source mutation policy/action-sheet regression	text	38	AUDITED			1	yes
-tests/test_sprite_layout.cpp	blob	100644	1051		unknown		PENDING			0	
+tests/test_sprite_layout.cpp	blob	100644	1051	deterministic sprite contain-layout contract	text	28	AUDITED			0	yes
 tests/test_storage_conversion_custody_contract.cpp	blob	100644	8891	conversion custody/commit-order regression	text	185	AUDITED			0	no
 tests/test_storage_custody_contract.cpp	blob	100644	1531	storage custody rollback regression	text	40	AUDITED			0	no
 tests/test_theme.cpp	blob	100644	13980		unknown		PENDING			0	
 tests/test_v1_polish_contract.py	blob	100644	7989		unknown		PENDING			0	
-tests/test_write_policy.cpp	blob	100644	1007		unknown		PENDING			0	
+tests/test_write_policy.cpp	blob	100644	1007	write-policy hard lock regression	text	26	AUDITED			0	yes
 tools/check_device_assets.py	blob	100755	8842	offline device-build asset preflight	text	218	AUDITED			1	yes
 tools/check_recovery_contract.py	blob	100644	2978	tracked recovery-state contract checker	text	75	AUDITED			0	no
 tools/gen_gen2_move_compatibility.py	blob	100644	8295	pinned Gen II move-compatibility table generator	text	195	AUDITED			0	no
