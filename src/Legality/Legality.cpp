@@ -20,6 +20,7 @@
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
+#include "Legality/Gen4CuteCharmPid.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 
 #include <algorithm>
@@ -229,9 +230,24 @@ namespace Legality {
                         "PID/IV spread matches normal Gen IV Method 1; wild lead-frame correlation is still partial",
                         CheckIdentifier::PidRng);
                 } else {
-                    add(r, Severity::Info,
-                        "No normal Gen IV Method-1 PID/IV match; Cute Charm, Chain Shiny and event RNG classes remain incomplete",
-                        CheckIdentifier::PidRng);
+                    const auto identity =
+                        Gen4CuteCharmPid::remapEncounterIdentity(
+                            species, pk.gender(), pk.pid());
+                    const uint8_t ratio =
+                        Pokemon::getPersonalInfo(identity.species, 0).genderRatio;
+                    const uint8_t cuteGender = identity.deriveGenderFromPid
+                        ? Gen4CuteCharmPid::genderFromPid(pk.pid(), ratio)
+                        : identity.gender;
+                    if (Gen4CuteCharmPid::matchesSurface(
+                            pk.pid(), cuteGender, ratio)) {
+                        add(r, Severity::Info,
+                            "PID has a valid Gen IV Cute Charm buffered form; Method J/K lead-frame and encounter-slot correlation remain incomplete",
+                            CheckIdentifier::PidRng);
+                    } else {
+                        add(r, Severity::Info,
+                            "No normal Gen IV Method-1 or Cute Charm PID surface match; Chain Shiny and event RNG classes remain incomplete",
+                            CheckIdentifier::PidRng);
+                    }
                 }
             }
         }
