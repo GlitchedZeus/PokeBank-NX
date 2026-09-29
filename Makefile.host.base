@@ -145,7 +145,7 @@ host-test: $(HOST_TESTS)
 
 host-sanitize: $(HOST_SANITIZE_TESTS)
 	# Local/sandbox default disables LeakSanitizer; unrestricted CI supplies ASAN_OPTIONS=detect_leaks=1.
-	@set -e; for test_bin in $(HOST_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$test_bin; done
+	@set -e; for test_bin in $(HOST_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$$test_bin; done
 
 $(HOST_BUILD)/test_classic_inventory_ui_model: $(CLASSIC_UI_MODEL_SOURCES)
 	@mkdir -p $(HOST_BUILD)
