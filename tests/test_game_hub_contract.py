@@ -165,11 +165,21 @@ require("SystemIcons::trainerPortrait" in source and "portrait.assetKey" in sour
 require('"red"' in source and '"dawn"' in source and '"lucas"' in source and
         '"ethan"' in source and '"lyra"' in source,
         "trainer portrait mapping must reserve canonical Gen I-IV asset keys")
-require("productSourceLabel" in source and '"System save"' in source and '"Linked save"' in source,
+require("productSourceLabel" in source and '"System save"' in source and '"Linked save"' in source and
+        '"Choose save"' in source and '"Needs attention"' in source,
         "Product Home must translate raw source-state diagnostics into consumer-facing labels")
+require('Truthful fallback: a Poké Ball identity badge' in source and
+        'fake "character portrait"' in source,
+        "missing trainer art must fall back to a truthful Poké Ball identity, never fake human art")
 require('"Pokémon storage, transfer & lineage"' in source and
         '"Research species, forms & collection"' in source,
         "Vault and Pokédex cards must carry distinct Pokémon-specific product identities")
+require("padGetButtonsDown(&pad)" in source and
+        "padGetButtons(&pad) & HidNpadButton_A" not in source,
+        "action buttons must remain edge-triggered while held input is reserved for navigation repeat")
+require('"Multiple saves exist. Open Game Sources once to choose the exact save."' in source and
+        '"That save changed while opening. Nothing was opened."' in source,
+        "ambiguous or changed legacy sources must fail closed instead of guessing")
 
 select_start = source.index("void SaveSelectScreen::selectCurrentTitle()")
 select_end = source.index("void SaveSelectScreen::selectCurrentTitleForItems()", select_start)
