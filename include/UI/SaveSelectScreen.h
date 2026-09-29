@@ -30,6 +30,8 @@ namespace UI {
             Gen4AssignedFile,
         };
 
+        enum class OpenIntent { Default, Items };
+
         enum class MainMenuDestination {
             None,
             MasterVault,
@@ -70,6 +72,7 @@ namespace UI {
         const std::string& getSelectedGameId() const { return selectedGameId; }
         SelectedSourceKind getSelectedSourceKind() const { return selectedSourceKind; }
         size_t getSelectedLegacySourceIndex() const { return selectedLegacySourceIndex; }
+        OpenIntent getOpenIntent() const { return openIntent; }
 
     private:
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
@@ -120,6 +123,7 @@ namespace UI {
         GameLaunchDescriptor launchDescriptor;
         std::string hubNotice;
         bool launchLegacyMode = false;
+        OpenIntent openIntent = OpenIntent::Default;
 
         std::vector<LaunchFileEntry> launchFileEntries;
         std::string launchBrowsePath;
