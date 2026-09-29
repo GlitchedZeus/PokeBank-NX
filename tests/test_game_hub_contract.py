@@ -111,6 +111,8 @@ dock_activation = source[activate_start:activate_end]
 require("overlay = Overlay::GameWorkspace;" in dock_activation and
         "classicGamesActive = true;" not in dock_activation,
         "Games dock must enter the new stable Game Workspace, not the retired source grid")
+require("classicGamesActive = true;" not in source,
+        "retired Classic Game Sources grid must have no reachable activation path")
 require("-: Help" in source and "+: Settings" in source,
         "Product Home footer must expose Help and Settings shortcuts")
 require("GameLaunchState::LauncherOnly" in launcher and
