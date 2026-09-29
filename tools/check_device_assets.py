@@ -62,7 +62,7 @@ def gen1_species_names() -> list[str]:
     """Read the same generated species-name table the C++ UI uses; no second hand-written list."""
     try:
         text = SPECIES_NAMES_CPP.read_text(encoding="utf-8")
-        marker = "static const char* const SPECIES_NAMES[] = {"
+        marker = "static const char* const SPECIES_NAMES_EN[] = {"
         block = text.split(marker, 1)[1].split("};", 1)[0]
         names = re.findall(r'"([^"\\]*(?:\\.[^"\\]*)*)"', block)
         if len(names) > GEN1_DEX_MAX:
