@@ -1616,7 +1616,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,105));
     const auto geometry = Shared::actionMenuGeometry();
-    const int w = occupied ? 650 : 560;
+    constexpr int w = 560;
     const int h = geometry.rowStart +
                   static_cast<int>(actions.count) * geometry.rowStep + 62;
     const int x = (fb.getWidth() - w) / 2;

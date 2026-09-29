@@ -191,7 +191,8 @@ int main() {
     // Gen IV picker/action chrome follows the accepted shared layout instead of the cramped G4-04 prototype.
     contains(surface, "HeldItemGrid::move");
     contains(surface, "const int w = heldItems ? 1040");
-    contains(surface, "const int w = occupied ? 650 : 560;");
+    contains(surface, "constexpr int w = 560;");
+    assert(surface.find("const int w = occupied ? 650 : 560;") == std::string::npos);
     contains(surface, "static_cast<int>(actions.count) * geometry.rowStep + 62");
     assert(surface.find("const int h = occupied ? 500 : 350;") == std::string::npos);
     contains(surface, "— Met Lv. ");
