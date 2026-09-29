@@ -207,7 +207,7 @@ include/Enums/GameVersion.h	blob	100644	16083	exact game/version/group/title-id 
 include/Enums/LanguageID.h	blob	100644	2448	language IDs and per-group availability	text	73	AUDITED			0	no
 include/Enums/SCTypeCode.h	blob	100644	738	SC block scalar type enum/API	text	38	AUDITED			0	no
 include/Games/GameIdentity.h	blob	100644	1562	game/source identity descriptor API	text	48	AUDITED			0	no
-include/Globals.h	blob	100644	3371		unknown		PENDING			0	
+include/Globals.h	blob	100644	3371	global version/settings/safety runtime constants	text	59	AUDITED			0	yes
 include/Integration/Encounter/EncounterGuardrails.h	blob	100644	7503	encounter guardrail query/provenance helpers	text	192	AUDITED			0	yes
 include/Integration/Encounter/EncounterGuardrailsData.inc	blob	100644	294637	generated Gen II/III encounter guardrail dataset	text	5205	AUDITED			0	yes
 include/Integration/Gen1/Gen1MoveCompatibility.h	blob	100644	1074	Gen I move compatibility API	text	28	AUDITED			0	no
@@ -236,7 +236,7 @@ include/Integration/Gen4/Gen4ExactFormatEditorProvider.h	blob	100644	2446	Gen IV
 include/Integration/Gen4/Gen4ReadOnlySave.h	blob	100644	4491	Gen IV validated read-only save model	text	108	AUDITED			0	no
 include/Integration/Gen4/Gen4SourceDiscovery.h	blob	100644	4071	Gen IV source discovery/container contract	text	126	AUDITED			0	no
 include/Integration/Gen4/Gen4StagedPokemonEditor.h	blob	100644	4388	Gen IV staged editor transaction API	text	103	AUDITED			0	yes
-include/Inventory/ClassicInventoryCatalog.h	blob	100644	1530		unknown		PENDING			0	
+include/Inventory/ClassicInventoryCatalog.h	blob	100644	1530	classic inventory catalog public contract	text	49	AUDITED			0	yes
 include/Legacy/FRLGReadOnlyTrainer.h	blob	100644	2870	Gen III strict read-only Trainer bridge API	text	53	AUDITED			0	no
 include/Legacy/FRLGSourceBrowser.h	blob	100644	2122	classic source-card browser contract	text	48	AUDITED			0	no
 include/Legacy/GSCReadOnlyTrainer.h	blob	100644	3081	Gen II strict read-only Trainer bridge API	text	70	AUDITED			0	yes
@@ -248,7 +248,7 @@ include/Legacy/RBYSourceBrowser.h	blob	100644	1076	Gen I source browser contract
 include/Legacy/RetroArchFRLGDiscovery.h	blob	100644	5404	bounded legacy Gen I-III emulator discovery contract	text	104	AUDITED			0	no
 include/Legacy/RetroArchGSCDiscovery.h	blob	100644	1986	bounded Gen II emulator discovery contract	text	70	AUDITED			0	no
 include/Legacy/RetroArchRBYDiscovery.h	blob	100644	2363	bounded Gen I emulator discovery contract	text	74	AUDITED			0	no
-include/Legality/Legality.h	blob	100644	2255		unknown		PENDING			0	
+include/Legality/Legality.h	blob	100644	2255	informational legality report public contract	text	59	AUDITED			0	yes
 include/Libs/stb_image.h	blob	100644	283010		unknown		PENDING			0	
 include/Names/FormNames.h	blob	100644	1631	form display-name API	text	43	AUDITED			0	no
 include/Names/Gen4HeldItemCatalog.h	blob	100644	1365	Gen IV held-item structural presence helper	text	51	AUDITED			0	no
@@ -466,7 +466,7 @@ src/Integration/Gen4/Gen4AssignedSource.cpp	blob	100644	3011	Gen IV assigned-sou
 src/Integration/Gen4/Gen4ReadOnlySave.cpp	blob	100644	13359	Gen IV partition/CRC parser	text	304	AUDITED			0	no
 src/Integration/Gen4/Gen4SourceDiscovery.cpp	blob	100644	22450	bounded Gen IV emulator/manual source discovery	text	556	AUDITED			0	no
 src/Integration/Gen4/Gen4StagedPokemonEditor.cpp	blob	100644	21183	Gen IV staged save mutation/rollback	text	590	AUDITED			0	no
-src/Inventory/ClassicInventoryCatalog.cpp	blob	100644	15510		unknown		PENDING			0	
+src/Inventory/ClassicInventoryCatalog.cpp	blob	100644	15510	Gen I-III pocket/item/machine inventory catalog	text	348	AUDITED			0	yes
 src/Legacy/FRLGReadOnlyTrainer.cpp	blob	100644	9585	Gen III strict read-only presentation/staged bridge	text	207	AUDITED			0	no
 src/Legacy/FRLGSourceBrowser.cpp	blob	100644	9438	Gen I-III source-card construction/resolution	text	190	AUDITED			0	no
 src/Legacy/GSCReadOnlyTrainer.cpp	blob	100644	7735	Gen II strict read-only presentation/staged bridge	text	185	AUDITED			0	yes
@@ -478,7 +478,7 @@ src/Legacy/RBYSourceBrowser.cpp	blob	100644	6041	Gen I source-card construction/
 src/Legacy/RetroArchFRLGDiscovery.cpp	blob	100644	29302	bounded RetroArch/mGBA/Tico Gen I-III discovery	text	616	AUDITED			0	no
 src/Legacy/RetroArchGSCDiscovery.cpp	blob	100644	8308	bounded RetroArch Gen II discovery	text	46	AUDITED			0	yes
 src/Legacy/RetroArchRBYDiscovery.cpp	blob	100644	14619	bounded RetroArch Gen I discovery	text	362	AUDITED			0	no
-src/Legality/Legality.cpp	blob	100644	16500		unknown		PENDING			0	
+src/Legality/Legality.cpp	blob	100644	16500	informational structural/internal-consistency legality checks	text	294	AUDITED			0	yes
 src/Names/AbilityNames.cpp	blob	100644	11612	ability-name lookup table	text	329	AUDITED			0	no
 src/Names/FormNames.cpp	blob	100644	30424	hand-maintained species/form display labels	text	751	AUDITED			0	yes
 src/Names/ItemNames.cpp	blob	100644	102371	modern plus Gen I/III item-name tables and conversion lookup	text	3313	AUDITED			0	no
@@ -595,7 +595,7 @@ src/Utils/ReadAllBytes.cpp	blob	100644	922	whole-file read helper	text	22	AUDITE
 src/Utils/SHA256.cpp	blob	100644	4770	SC save SHA-256 implementation	text	146	AUDITED			1	yes
 src/Utils/Settings.cpp	blob	100644	3133	application settings persistence	text	78	AUDITED			1	yes
 src/Utils/StringHelpers.cpp	blob	100644	8121	modern UTF/string helper implementation	text	195	AUDITED			0	yes
-src/main.cpp	blob	100644	4227		unknown		PENDING			0	
+src/main.cpp	blob	100644	4227	Switch application startup/service/runtime orchestration	text	117	AUDITED			0	yes
 tests/fixtures/gen4/README.md	blob	100644	791		unknown		PENDING			0	
 tests/fixtures/gen4/blank-party.hex	blob	100644	473		unknown		PENDING			0	
 tests/fixtures/gen4/blank-stored.hex	blob	100644	273		unknown		PENDING			0	
