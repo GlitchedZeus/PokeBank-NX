@@ -397,7 +397,7 @@ namespace Pokemon {
 
         // If no form-specific entry found, fall back to base form
         if (speciesId >= BASE_STATS_COUNT_GEN89) {
-            return &EMPTY_BASE_STATS
+            return &EMPTY_BASE_STATS;
         }
         return &BASE_STATS_TABLE_GEN89[speciesId];
     }
@@ -414,8 +414,10 @@ namespace Pokemon {
         static const BaseStatsGen89 zamazentaCrownedSwsh = {889, 92, 130, 145, 80, 145, 128};
 
         if (speciesId == 488 && form == 0) return &cresseliaSwsh;
-        if (speciesId == 888) return form == 1 ? &zacianCrownedSwsh : &zacianHeroSwsh;
-        if (speciesId == 889) return form == 1 ? &zamazentaCrownedSwsh : &zamazentaHeroSwsh;
+        if (speciesId == 888 && form <= 1)
+            return form == 1 ? &zacianCrownedSwsh : &zacianHeroSwsh;
+        if (speciesId == 889 && form <= 1)
+            return form == 1 ? &zamazentaCrownedSwsh : &zamazentaHeroSwsh;
         return getBaseStatsGen89(speciesId, form);
     }
 
