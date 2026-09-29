@@ -48,7 +48,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 26 | AUDIT-016 | P3 | FIXED | RetroArch launch matching is basename-only and first-match wins |
 | 27 | AUDIT-043 | P3 | DEFERRED WITH JUSTIFICATION | Device-observed Gen IV save rows can lose trainer-name presentation despite synthetic parser coverage |
 | 28 | AUDIT-033 | P3 | FIXED | Gen IV move-stat presentation uses HGSS values for Diamond/Pearl |
-| 29 | AUDIT-034 | P3 | OPEN | HD sprite recovery/preflight can accept corrupt existing PNGs |
+| 29 | AUDIT-034 | P3 | FIXED | HD sprite recovery/preflight can accept corrupt existing PNGs |
 | 30 | AUDIT-035 | P3 | OPEN | personal/learnset regeneration still searches the removed SPECIES_NAMES symbol |
 | 31 | AUDIT-044 | P3 | OPEN | Fontstash allocation failures can become null-pointer crashes during text rendering |
 | 32 | AUDIT-006 | P3 | OPEN | LeakSanitizer is disabled even where comments say CI keeps it enabled |
@@ -577,7 +577,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** zero-byte required HD sprite; non-PNG bytes under a `.png` name; truncated PNG; recovery with correct filename count but one corrupt required file; preflight must fail all of them.
 - **Dependency / sequencing:** Tooling tranche
 - **Proposed remediation order:** 29
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** added `tools/png_asset_validation.py`, a stdlib structural PNG validator that checks signature, IHDR geometry, chunk bounds/CRCs, IDAT presence and terminal IEND. `check_device_assets.py` now fails corrupt HD sprites, `recover_workspace.py` counts only valid PNGs, and `gen_hdsprites.py` re-fetches an existing invalid file instead of treating existence as success. `tests/test_device_asset_png_validation.py` covers valid, zero-byte, non-PNG, truncated and bad-CRC cases and is wired into Host Tests. Exact-head CI is still required before VERIFIED.
 
 ### 30. AUDIT-035 — personal/learnset regeneration still searches the removed SPECIES_NAMES symbol
 
