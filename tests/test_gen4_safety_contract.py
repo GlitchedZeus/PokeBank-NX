@@ -29,7 +29,8 @@ current_title = select[select.index('void SaveSelectScreen::selectCurrentTitle()
                        select.index('void SaveSelectScreen::selectCurrentLegacyInstance()')]
 gen4_branch = current_title[current_title.index('SelectedSourceKind::Gen4AssignedFile'):]
 gen4_branch = gen4_branch[:gen4_branch.index('selectedUserUid')]
-assert 'discoverGen4Candidates();' in gen4_branch
+assert 'openAssignedSource' in gen4_branch
+assert 'discoverGen4Candidates();' not in gen4_branch
 assert 'openAssignedSource(' not in gen4_branch
 assert 'titleSelected = true' not in gen4_branch
 
