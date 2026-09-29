@@ -227,15 +227,15 @@ include/Integration/Gen2/Gen2StagedEditor.h	blob	100644	8057		unknown		PENDING		
 include/Integration/Gen3/FRLGReadModel.h	blob	100644	1019		unknown		PENDING			0	
 include/Integration/Gen3/Gen3ExactFormatEditorProvider.h	blob	100644	3293	Gen III staged editor capability provider	text	74	AUDITED			0	no
 include/Integration/Gen3/Gen3LearnsetTable.h	blob	100644	325875		unknown		PENDING			0	
-include/Integration/Gen3/Gen3SaveValidation.h	blob	100644	6786		unknown		PENDING			0	
+include/Integration/Gen3/Gen3SaveValidation.h	blob	100644	6786	Gen III sector/save validation primitives	text	168	AUDITED			0	no
 include/Integration/Gen3/Gen3StagedInventoryEditor.h	blob	100644	2376		unknown		PENDING			0	
-include/Integration/Gen3/Gen3StagedPokemonEditor.h	blob	100644	7053		unknown		PENDING			0	
+include/Integration/Gen3/Gen3StagedPokemonEditor.h	blob	100644	7053	Gen III staged Pokémon editor API	text	183	AUDITED			0	yes
 include/Integration/Gen3/PKSMGen3Adapter.h	blob	100644	5080		unknown		PENDING			0	
-include/Integration/Gen4/Gen4AssignedSource.h	blob	100644	759		unknown		PENDING			0	
+include/Integration/Gen4/Gen4AssignedSource.h	blob	100644	759	Gen IV assigned-source read-only API	text	19	AUDITED			0	no
 include/Integration/Gen4/Gen4ExactFormatEditorProvider.h	blob	100644	2446	Gen IV staged editor capability provider	text	58	AUDITED			0	no
-include/Integration/Gen4/Gen4ReadOnlySave.h	blob	100644	4491		unknown		PENDING			0	
+include/Integration/Gen4/Gen4ReadOnlySave.h	blob	100644	4491	Gen IV validated read-only save model	text	108	AUDITED			0	no
 include/Integration/Gen4/Gen4SourceDiscovery.h	blob	100644	4071	Gen IV source discovery/container contract	text	126	AUDITED			0	no
-include/Integration/Gen4/Gen4StagedPokemonEditor.h	blob	100644	3893		unknown		PENDING			0	
+include/Integration/Gen4/Gen4StagedPokemonEditor.h	blob	100644	3893	Gen IV staged editor transaction API	text	95	AUDITED			0	yes
 include/Inventory/ClassicInventoryCatalog.h	blob	100644	1530		unknown		PENDING			0	
 include/Legacy/FRLGReadOnlyTrainer.h	blob	100644	2870		unknown		PENDING			0	
 include/Legacy/FRLGSourceBrowser.h	blob	100644	2122	classic source-card browser contract	text	48	AUDITED			0	no
@@ -459,11 +459,11 @@ src/Integration/Gen2/Gen2StagedEditor.cpp	blob	100644	53914		unknown		PENDING			
 src/Integration/Gen2/Gen2UniversalInventory.cpp	blob	100644	12249		unknown		PENDING			0	
 src/Integration/Gen3/FRLGReadModel.cpp	blob	100644	15298		unknown		PENDING			0	
 src/Integration/Gen3/Gen3StagedInventoryEditor.cpp	blob	100644	17301	Gen III in-memory staged inventory editor	text	394	AUDITED			0	no
-src/Integration/Gen3/Gen3StagedPokemonEditor.cpp	blob	100644	38706		unknown		PENDING			0	
+src/Integration/Gen3/Gen3StagedPokemonEditor.cpp	blob	100644	38706	Gen III staged Pokémon editor implementation	text	944	AUDITED			0	yes
 src/Integration/Gen3/PKSMGen3Adapter.cpp	blob	100644	13703		unknown		PENDING			0	
 src/Integration/Gen3/PKSMGen3NativeAdapter.cpp	blob	100644	11997		unknown		PENDING			0	
-src/Integration/Gen4/Gen4AssignedSource.cpp	blob	100644	3011		unknown		PENDING			0	
-src/Integration/Gen4/Gen4ReadOnlySave.cpp	blob	100644	13359		unknown		PENDING			0	
+src/Integration/Gen4/Gen4AssignedSource.cpp	blob	100644	3011	Gen IV assigned-source open/identity gate	text	62	AUDITED			0	no
+src/Integration/Gen4/Gen4ReadOnlySave.cpp	blob	100644	13359	Gen IV partition/CRC parser	text	304	AUDITED			0	no
 src/Integration/Gen4/Gen4SourceDiscovery.cpp	blob	100644	22450	bounded Gen IV emulator/manual source discovery	text	556	AUDITED			0	no
 src/Integration/Gen4/Gen4StagedPokemonEditor.cpp	blob	100644	17352	Gen IV staged save mutation/rollback	text	486	AUDITED			0	no
 src/Inventory/ClassicInventoryCatalog.cpp	blob	100644	15510		unknown		PENDING			0	
