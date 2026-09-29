@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 248 / 725
-- Fully read text files: 214 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 256 / 725
+- Fully read text files: 222 / 692 (text/unknown classification remains provisional until content inspection completes)
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -96,6 +96,13 @@ Status: IN PROGRESS
 - PLA's pre-open and post-image path share the stronger semantic validator. SWSH/SV/Z-A still use the weaker generic SC structural/hash validator recorded in AUDIT-021.
 - FRLG and LGPE post-image validators recompute/check native checksums, but the open path still reaches their parsers before the equivalent source-integrity proof, as recorded in AUDIT-017/AUDIT-018.
 - Cross-checking the current PKHeX SaveUtil confirmed LGPE's physical save is `0x100000` bytes and its active Beluga region is the first `0xB8800` bytes. That exposed a current full-file validation mismatch now recorded as AUDIT-023.
+
+### Inventory codec checkpoint
+
+- Fully read every tracked generation-specific inventory model/header: shared item state, FRLG, LGPE, SWSH, BDSP, PLA, Scarlet/Violet and Legends: Z-A.
+- FRLG/LGPE/SWSH record layouts initialize every common item field they later persist; BDSP/PLA headers are primarily geometry/catalog definitions and did not introduce a new codec defect in this tranche.
+- Scarlet/Violet and Z-A share a distinct decoder bug: their derived item records decode raw flags but never initialize the inherited common `isNew` / `isFavorite` fields before the object is copied into the base inventory vector. The writer later branches on `isNew`, making the indeterminate state observable in save bytes. This is recorded as AUDIT-024.
+- No dedicated Gen IX inventory round-trip tests were found in the current test tree; existing inventory tests cover classic-generation/UI contracts rather than this native record decoder.
 
 ## Findings
 
@@ -402,3 +409,19 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: introduce separate constants for physical LGPE file size (`0x100000`) and active Beluga region size (`0xB8800`). Validate the physical workspace shape, slice only the active region for block/CRC verification, and preserve the trailing region byte-for-byte during build/persist.
 - Risk of fix: low to medium; hardware-test both Pikachu and Eevee backups and verify untouched trailing bytes remain identical.
 - Owner: MAIN / LGPE save-integrity lane.
+
+### AUDIT-024 — Gen IX inventory decoder leaves persisted flags indeterminate
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: Scarlet/Violet + Legends: Z-A inventory parsing/writeback
+- Files: `include/Trainer/Inventory9SV.h`, `include/Trainer/Inventory9LZA.h`, `src/Trainer/Trainer9SV.cpp`, `src/Trainer/Trainer9LZA.cpp`, `include/Trainer/Trainer.h`
+- Exact symbols: `InventoryItem9SV::fromBytes()`, `InventoryItem9LZA::fromBytes()`, both `parseItemBlock()` and `updateItemBlock()`.
+- Problem: `InventoryItem9SV item;` / `InventoryItem9LZA item;` default-initialize an aggregate whose inherited `InventoryItem::isNew` and `isFavorite` booleans have no default member initializers. `fromBytes()` decodes the native `flags` word but never maps it into those inherited booleans. The derived object is then copied into `Trainer::items`, whose element type is the base `InventoryItem`, preserving the indeterminate boolean state while discarding the decoded `flags` member.
+- Why it matters: both Gen IX writers later execute `if (item.isNew) ... |= 0x01` on that base item. Merely loading and saving an existing item can therefore branch on an indeterminate value and spuriously set the native NEW flag. This is undefined behavior feeding persistent save bytes, even when the user did not request a flag edit.
+- Additional decoder hazard: the same functions assemble 32-bit pouch/count/flags fields with expressions such as `data[3] << 24`. Because each `uint8_t` is integer-promoted to signed `int` first, high-byte values that cannot be represented after the shift invoke undefined behavior. Use unsigned 32-bit widening before shifting or the project's little-endian readers instead.
+- Evidence: `Trainer9SV::parseItemBlock()` and `Trainer9LZA::parseItemBlock()` push the derived decoder result directly into `std::vector<InventoryItem>`; their write paths later branch on `item.isNew`. Existing raw flags remain in the underlying block only by accident because the writer ORs rather than clears; the in-memory flag model itself is not initialized from those bytes.
+- Current tests: no Gen IX inventory record/round-trip test was found among the inventory/item/bag/pouch test filenames; current inventory tests are classic-generation or shared UI-focused.
+- Missing tests: native records with NEW clear/set and FAVORITE clear/set must decode deterministically; parse→write with no edits must be byte-identical; repeated runs under UBSan/ASan-compatible host builds must not depend on stack contents; high-bit 32-bit fields must decode using defined unsigned operations.
+- Recommended fix: value-initialize the record (`InventoryItem9SV item{}` / `InventoryItem9LZA item{}`), decode flags into `isNew` and `isFavorite` explicitly, and replace manual signed-shift assembly with `readUInt32LittleEndian()` or `static_cast<uint32_t>(data[n]) << shift`. Add exact byte round-trip tests for both games.
+- Risk of fix: low; the corrected decoder should make no-byte-change round trips deterministic.
+- Owner: MAIN / Gen IX inventory lane.
