@@ -71,6 +71,9 @@ jobs:
       - name: Verify generated species-name consumers
         run: python3 tests/test_generated_species_name_contract.py
 
+      - name: Verify Fontstash allocation-failure guards
+        run: python3 tests/test_fontstash_allocation_contract.py
+
       - name: Clean host build
         run: make -f Makefile.host host-clean
 
