@@ -480,14 +480,14 @@ src/Legacy/RetroArchGSCDiscovery.cpp	blob	100644	8308	bounded RetroArch Gen II d
 src/Legacy/RetroArchRBYDiscovery.cpp	blob	100644	14619	bounded RetroArch Gen I discovery	text	362	AUDITED			0	no
 src/Legality/Legality.cpp	blob	100644	16500		unknown		PENDING			0	
 src/Names/AbilityNames.cpp	blob	100644	11612	ability-name lookup table	text	329	AUDITED			0	no
-src/Names/FormNames.cpp	blob	100644	30424		unknown		PENDING			0	
+src/Names/FormNames.cpp	blob	100644	30424	hand-maintained species/form display labels	text	751	AUDITED			0	yes
 src/Names/ItemNames.cpp	blob	100644	102371		unknown		PENDING			0	
 src/Names/ItemPouches.cpp	blob	100644	31323	generated per-game item-pouch legal ID catalogs/router	text	524	AUDITED			0	no
 src/Names/ItemPresence.cpp	blob	100644	13455	generated held-item presence bitsets/dispatch	text	176	AUDITED			0	no
 src/Names/LocationNames.cpp	blob	100644	142717	generated Gen III-IX met-location tables and bank router	text	4304	AUDITED			0	no
 src/Names/MachineDisplay.cpp	blob	100644	5972	machine descriptor/search presentation logic	text	132	AUDITED			0	no
 src/Names/MoveInfo.cpp	blob	100644	23722	per-game move PP tables/lookup	text	326	AUDITED			0	no
-src/Names/MoveNames.cpp	blob	100644	21346		unknown		PENDING			0	
+src/Names/MoveNames.cpp	blob	100644	21346	generated move-ID display names	text	938	AUDITED			0	no
 src/Names/MovePresence.cpp	blob	100644	6678	generated per-game move-presence bitmaps/router	text	116	AUDITED			0	yes
 src/Names/NatureNames.cpp	blob	100644	1039	nature-name lookup table	text	42	AUDITED			0	no
 src/Names/RibbonNames.cpp	blob	100644	15624	ribbon/mark bitfield display extraction	text	360	AUDITED			0	no
@@ -709,7 +709,7 @@ tools/gen_itempresence.py	blob	100644	10167		unknown		PENDING			0
 tools/gen_learnsets.py	blob	100644	39706		unknown		PENDING			0	
 tools/gen_locations.py	blob	100644	11256	generated location table generator	text	214	AUDITED			0	no
 tools/gen_moveinfo.py	blob	100644	8818		unknown		PENDING			0	
-tools/gen_movenames.py	blob	100644	2884		unknown		PENDING			0	
+tools/gen_movenames.py	blob	100644	2884	move-name generator from PKHeX text resource	text	76	AUDITED			0	no
 tools/gen_movepresence.py	blob	100644	6427	move-presence generator from pinned PKHeX source	text	170	AUDITED			0	yes
 tools/gen_personal.py	blob	100644	25652		unknown		PENDING			0	
 tools/gen_pladex.py	blob	100644	8089		unknown		PENDING			0	
