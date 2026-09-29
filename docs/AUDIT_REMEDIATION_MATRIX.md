@@ -44,8 +44,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 22 | AUDIT-014 | P2 | FIXED | Session-wide source read-only gate disables app-owned Bank mutation |
 | 23 | AUDIT-019 | P3 | FIXED | modern encrypted blank slots are parsed as live species-0 objects |
 | 24 | AUDIT-012 | P3 | FIXED | Settings persistence truncates in place and ignores write/close failure |
-| 25 | AUDIT-040 | P3 | OPEN | RetroArch playlist auto-match can accept wrong-family game content with the same basename |
-| 26 | AUDIT-016 | P3 | OPEN | RetroArch launch matching is basename-only and first-match wins |
+| 25 | AUDIT-040 | P3 | FIXED | RetroArch playlist auto-match can accept wrong-family game content with the same basename |
+| 26 | AUDIT-016 | P3 | FIXED | RetroArch launch matching is basename-only and first-match wins |
 | 27 | AUDIT-043 | P3 | OPEN | Device-observed Gen IV save rows can lose trainer-name presentation despite synthetic parser coverage |
 | 28 | AUDIT-033 | P3 | OPEN | Gen IV move-stat presentation uses HGSS values for Diamond/Pearl |
 | 29 | AUDIT-034 | P3 | OPEN | HD sprite recovery/preflight can accept corrupt existing PNGs |
@@ -502,7 +502,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** `test_game_launch_model.cpp` proves the pure extension helper rejects mismatched families (for example Platinum vs a `.gba` file) but no resolver-level test proves RetroArch playlist auto-match actually calls that helper before returning Ready.
 - **Dependency / sequencing:** Pair with AUDIT-016 resolver hardening
 - **Proposed remediation order:** 25
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `resolveRetroArch()` now applies `gameLaunchContentSupported(gameId, content)` before accepting a same-stem playlist entry, so a Platinum save cannot auto-resolve to a `.gba` content file merely because the basename matches. The new host resolver fixture proves a wrong-family same-stem entry is skipped in favor of the unique compatible NDS entry and that wrong-family-only input remains `NeedsContentLink`. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 26. AUDIT-016 — RetroArch launch matching is basename-only and first-match wins
 
@@ -518,7 +520,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** two valid playlist entries with the same normalized stem but different paths; ambiguity must not silently select one.
 - **Dependency / sequencing:** Pair with AUDIT-040 in one resolver tranche if tests prove shared root
 - **Proposed remediation order:** 26
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `resolveRetroArch()` now gathers all viable playlist `{content, core}` matches, sorts/deduplicates them, and auto-launches only when exactly one unique match remains. Multiple compatible same-stem entries fail closed to `NeedsContentLink` with an explicit exact-link message instead of picking by playlist/directory order. `test_retroarch_launch_resolution.cpp` exercises two distinct same-stem NDS files and proves no automatic selection occurs. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 27. AUDIT-043 — Device-observed Gen IV save rows can lose trainer-name presentation despite synthetic parser coverage
 
