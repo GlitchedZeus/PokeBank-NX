@@ -6,9 +6,9 @@ Status: IN PROGRESS
 
 - Repository: GlitchedZeus/PokeBank-NX
 - Audit branch: `audit/full-repository-line-by-line-20260928`
-- Primary MAIN tree audited: PR #92 head `a86c8d039209bc17ac613524c6631f03309037a0`
+- Primary MAIN tree audited: PR #92 head `85762adce4a1ce6f30763a0d76b3b11735da7d49`
 - PR #92 branch: `feature/gen4-full-editor-20260928`
-- Sibling UI overlay coverage baseline remains `5f19fd14628c182db135038864036b6eb1b86c49`; live PR #97 is now `3831989f7b320797068e752321ae0c36c2216f49`, with its forward delta tracked separately from the MAIN denominator
+- Sibling UI overlay coverage baseline remains `5f19fd14628c182db135038864036b6eb1b86c49`; live PR #97 is now `068fb5e101780037e79d0f17f457574cdcc800b7`, with its forward delta tracked separately from the MAIN denominator
 - Integration parent: PR #90 head `8b3bcc16c804247bfe8d1314b686974ce73051d8`
 - Hardening parent: PR #79 head `00ee7a6ed7ac1b5a93c43246d70c252e135acec0`
 - Default branch main: `aca2bf41c83d81084886a46d53195f6cead81ccc`
@@ -31,7 +31,7 @@ Status: IN PROGRESS
 
 ## Current checkpoint — live MAIN catch-up
 
-- Live PR #92 advanced again to `85762adce4a1ce6f30763a0d76b3b11735da7d49` (4 commits / 16 changed paths beyond `a86c8d039209bc17ac613524c6631f03309037a0`). The report intentionally does **not** advance the global audited MAIN head yet: several files that previously carried AUDITED status changed in this delta and still require complete re-read. `src/Names/MachineDisplay.cpp`, `src/Names/TMMoves.cpp`, and `src/UI/Gen2HardwarePickerFix.inc` were fully re-read at `85762adc…` in this checkpoint with no new confirmed defect; the remaining changed audited files stay in catch-up scope.
+- PR #92 live-head catch-up is now reconciled through `85762adce4a1ce6f30763a0d76b3b11735da7d49` (4 commits / 16 changed paths beyond `a86c8d039209bc17ac613524c6631f03309037a0`). Every path in that delta that already carried AUDITED status was fully re-read at the new head: `include/UI/Gen1PokemonEditorUIContract.h`, `include/UI/SharedPokemonEditorContract.h`, `src/Names/MachineDisplay.cpp`, `src/Names/TMMoves.cpp`, `src/UI/Gen2HardwarePickerFix.inc`, `src/UI/Gen2SharedPokemonSurface.inc`, and `src/UI/Gen4SharedPokemonSurface.inc`. The remaining changed paths were already PENDING and stay PENDING. No new numbered defect was confirmed from this catch-up; staged/source immutability and row-level move focus semantics remain intact.
 - UI tranche progress: `src/UI/Panels/BoxPokemonPanel.cpp` was fully read at `85762adc…` (381 lines / 22,188 bytes) and is now AUDITED. The file renders native box grids, carried-slot presentation, quick summary fields, and generation-aware stat radars. No new correctness or source-mutation defect was confirmed in this file.
 - `src/UI/Modals/PokemonDetailsModal.cpp` was also fully read at `85762adc…` (571 lines / 34,505 bytes) and is now AUDITED. It is the generic modern summary/edit presentation path; Gen I is explicitly routed to its native modal first, while legality source identity is left empty for Bank targets rather than borrowing the currently-open save. No new confirmed defect was found in this file.
 
@@ -46,10 +46,11 @@ Status: IN PROGRESS
 
 ## Sibling PR #97 overlay coverage
 
-- Current live sibling head: `3831989f7b320797068e752321ae0c36c2216f49`.
+- Current live sibling head: `068fb5e101780037e79d0f17f457574cdcc800b7`.
 - Exact delta from PR #90 `8b3bcc16c804247bfe8d1314b686974ce73051d8`: 21 commits / 26 changed paths.
 - The forward delta from the previously audited sibling head `5f19fd14628c182db135038864036b6eb1b86c49` to the live head is 4 commits / 10 changed paths, and all 10 current-head files in that forward delta were fully read in this checkpoint.
 - The sibling overlay remains intentionally outside the 731-path PR #92 MAIN denominator. Full line-by-line coverage of all 26 sibling-overlay changed paths is still incomplete and is not claimed here.
+- Since the prior sibling checkpoint `3831989f7b320797068e752321ae0c36c2216f49`, PR #97 advanced by 8 commits touching 7 paths (`include/UI/AppShellModel.h`, `include/UI/AppShellScreen.h`, `include/UI/SaveSelectScreen.h`, `include/UI/ScreenChrome.h`, `src/UI/AppShellScreen.cpp`, `src/UI/SaveSelectScreen.cpp`, `src/UI/UI.cpp`). This newer sibling delta is preserved but not yet line-by-line closed, so no current-head sibling coverage claim is made for it.
 - Historical AUDIT-032 is FIXED at the live sibling head: the removed `AppShellSection::Collections` member is no longer referenced by `AppShellScreen.cpp`.
 
 
