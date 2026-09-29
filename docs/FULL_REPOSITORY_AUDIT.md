@@ -33,11 +33,13 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 709 / 746
-- Fully read text files: 675 / 713
+- Audited tracked paths: 715 / 746
+- Fully read text files: 681 / 713
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — integrated Product Home / launch delta
+
+- Preservation/research documentation tranche fully read at current MAIN `fb7b1d8c…`: Bank→HOME capture/public corpus, power-loss durability, legacy recovery/GameCube/Stadium, official transfer corpus, and ribbon/event preservation references. All six are explicitly dated research/reference documents, retain source immutability/live-write gates, and require local hash/parse validation before promoting external binaries to fixtures. No new numbered defect was confirmed.
 
 - MAIN PR #92 `491476b3… → fb7b1d8c…` (56 commits / 27 changed paths) is fully reconciled. All 15 newly tracked product-UI/launch paths were read in full, and all 12 modified previously-audited paths were re-read before status was restored.
 - The integrated Product Home keeps source previews read-only, source opening revalidates snapshots, Gen IV candidate selection re-inspects the physical file, stored launch metadata cannot choose arbitrary executable/core paths, and launch-binding writes use temp + fsync + read-back parse verification + backup/rename.
