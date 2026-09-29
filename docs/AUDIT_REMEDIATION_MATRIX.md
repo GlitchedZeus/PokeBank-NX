@@ -54,7 +54,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 32 | AUDIT-006 | P3 | FIXED | LeakSanitizer is disabled even where comments say CI keeps it enabled |
 | 33 | AUDIT-003 | P3 | FIXED | mutable native toolchain image |
 | 34 | AUDIT-036 | P3 | FIXED | Product Home Help overlay advertises stale controller actions |
-| 35 | AUDIT-011 | P3 | OPEN | Search preview vertical wrap changes columns and the test blesses it |
+| 35 | AUDIT-011 | P3 | FIXED | Search preview vertical wrap changes columns and the test blesses it |
 | 36 | AUDIT-038 | P3 | OPEN | Legacy Save Instances scroll logic assumes one more visible row than the renderer draws |
 | 37 | AUDIT-041 | P3 | OPEN | Standalone runtime contract falsely says RetroArch is never invoked |
 | 38 | AUDIT-010 | P3 | OPEN | canonical engineering authority chain points to obsolete work |
@@ -684,7 +684,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** column-preserving wrap for incomplete rows, including Search 0 + Up and 6 + Down.
 - **Dependency / sequencing:** UI tranche; current MAIN reproduces it
 - **Proposed remediation order:** 35
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `previewMoveSelection()` now computes vertical wrap within the current geometric column instead of applying flat-index modulo arithmetic. Search bottom-left index 6 wraps to top-left 0, top-left wraps back to 6, and the right column 5 ↔ 1 behaves independently. `tests/test_organization_preview_model.cpp` pins all four incomplete-row wrap cases. Exact-head CI is still required before VERIFIED.
 
 ### 36. AUDIT-038 — Legacy Save Instances scroll logic assumes one more visible row than the renderer draws
 
