@@ -211,11 +211,11 @@ include/Globals.h	blob	100644	3371		unknown		PENDING			0
 include/Integration/Encounter/EncounterGuardrails.h	blob	100644	7503		unknown		PENDING			0	
 include/Integration/Encounter/EncounterGuardrailsData.inc	blob	100644	294637		unknown		PENDING			0	
 include/Integration/Gen1/Gen1MoveCompatibility.h	blob	100644	1074		unknown		PENDING			0	
-include/Integration/Gen1/Gen1ReadOnlyInventory.h	blob	100644	859		unknown		PENDING			0	
-include/Integration/Gen1/Gen1ReadOnlySave.h	blob	100644	3786		unknown		PENDING			0	
+include/Integration/Gen1/Gen1ReadOnlyInventory.h	blob	100644	859	Gen I read-only inventory model	text	35	AUDITED			0	no
+include/Integration/Gen1/Gen1ReadOnlySave.h	blob	100644	3786	Gen I strict read-only save model	text	137	AUDITED			0	no
 include/Integration/Gen1/Gen1Shiny.h	blob	100644	2600		unknown		PENDING			0	
-include/Integration/Gen1/Gen1StagedInventoryEditor.h	blob	100644	2602		unknown		PENDING			0	
-include/Integration/Gen1/Gen1StagedPokemonEditor.h	blob	100644	5690		unknown		PENDING			0	
+include/Integration/Gen1/Gen1StagedInventoryEditor.h	blob	100644	2602	Gen I staged inventory API	text	64	AUDITED			0	no
+include/Integration/Gen1/Gen1StagedPokemonEditor.h	blob	100644	5690	Gen I staged Pokémon/carry API	text	112	AUDITED			1	yes
 include/Integration/Gen2/Gen2BattleStats.h	blob	100644	2794		unknown		PENDING			0	
 include/Integration/Gen2/Gen2ExportTransaction.h	blob	100644	1995	Gen II verified export transaction API	text	62	AUDITED			1	yes
 include/Integration/Gen2/Gen2HeldItems.h	blob	100644	1465		unknown		PENDING			0	
@@ -442,12 +442,12 @@ src/Games/GameIdentity.cpp	blob	100644	6303	game/source identity registry	text	1
 src/Integration/Gen1/Gen1BattleStats.cpp	blob	100644	2213		unknown		PENDING			0	
 src/Integration/Gen1/Gen1MoveCompatibility.cpp	blob	100644	1699		unknown		PENDING			0	
 src/Integration/Gen1/Gen1MoveCompatibilityData.inc	blob	100644	11885		unknown		PENDING			0	
-src/Integration/Gen1/Gen1PackedMove.cpp	blob	100644	7239		unknown		PENDING			0	
+src/Integration/Gen1/Gen1PackedMove.cpp	blob	100644	7239	Gen I packed relocation engine	text	128	AUDITED			1	yes
 src/Integration/Gen1/Gen1PersonalData.inc	blob	100644	6275		unknown		PENDING			0	
-src/Integration/Gen1/Gen1ReadOnlyInventory.cpp	blob	100644	3960		unknown		PENDING			0	
-src/Integration/Gen1/Gen1ReadOnlySave.cpp	blob	100644	22773		unknown		PENDING			0	
-src/Integration/Gen1/Gen1StagedInventoryEditor.cpp	blob	100644	8558		unknown		PENDING			0	
-src/Integration/Gen1/Gen1StagedPokemonEditor.cpp	blob	100644	20016	Gen I in-memory staged Pokémon editor	text	322	AUDITED			0	no
+src/Integration/Gen1/Gen1ReadOnlyInventory.cpp	blob	100644	3960	Gen I inventory decoder	text	113	AUDITED			0	no
+src/Integration/Gen1/Gen1ReadOnlySave.cpp	blob	100644	22773	Gen I strict save/parser/checksum validation	text	455	AUDITED			0	no
+src/Integration/Gen1/Gen1StagedInventoryEditor.cpp	blob	100644	8558	Gen I staged inventory implementation	text	217	AUDITED			0	no
+src/Integration/Gen1/Gen1StagedPokemonEditor.cpp	blob	100644	20016	Gen I staged Pokémon editor/finalizer	text	322	AUDITED			1	yes
 src/Integration/Gen2/Gen2ExportTransaction.cpp	blob	100644	10982	Gen II verified staged export publisher	text	270	AUDITED			1	yes
 src/Integration/Gen2/Gen2MoveCompatibility.cpp	blob	100644	2758		unknown		PENDING			0	
 src/Integration/Gen2/Gen2MoveCompatibilityData.inc	blob	100644	99931		unknown		PENDING			0	
