@@ -74,18 +74,18 @@ uint8_t Pokemon4ReadOnlyView::otGender() const noexcept { return source_.origina
 uint8_t Pokemon4ReadOnlyView::otFriendship() const noexcept { return source_.friendship(); }
 uint8_t Pokemon4ReadOnlyView::language() const noexcept { return source_.language(); }
 uint8_t Pokemon4ReadOnlyView::ball() const noexcept {
-    if (source_.sourceGroup() == Enums::GameVersion::HGSS && source_.ballHGSS() != 0)
-        return source_.ballHGSS();
-    return source_.ballDPPt();
+    return std::max(source_.ballDPPt(), source_.ballHGSS());
 }
 uint16_t Pokemon4ReadOnlyView::metLocation() const noexcept {
-    if (source_.sourceGroup() != Enums::GameVersion::DP && source_.metLocationExtended() != 0)
+    // PK4's canonical display value always prefers the Pt/HGSS extended field when
+    // populated, even when the Pokémon is currently stored in a D/P save.
+    if (source_.metLocationExtended() != 0)
         return source_.metLocationExtended();
     return source_.metLocationDP();
 }
 uint8_t Pokemon4ReadOnlyView::metLevel() const noexcept { return source_.metLevel(); }
 uint16_t Pokemon4ReadOnlyView::eggLocation() const noexcept {
-    if (source_.sourceGroup() != Enums::GameVersion::DP && source_.eggLocationExtended() != 0)
+    if (source_.eggLocationExtended() != 0)
         return source_.eggLocationExtended();
     return source_.eggLocationDP();
 }

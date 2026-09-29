@@ -594,7 +594,7 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
     if (state.mode == UX2Mode::Actions) {
         std::string error;
         const auto pokemon = ux2SelectedPokemon(screen, error);
-        const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon));
+        const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
         const int rows = static_cast<int>(actions.count);
         if (down & HidNpadButton_Up) state.row = (state.row + rows - 1) % rows;
         if (down & HidNpadButton_Down) state.row = (state.row + 1) % rows;
@@ -835,7 +835,7 @@ void ux2DrawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
     auto& state = ux2StateFor(screen);
     std::string error;
     const auto pokemon = ux2SelectedPokemon(screen, error);
-    const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon));
+    const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
     fb.drawText(x + 24, y + 18, pokemon ? "Pokemon Actions" : "Empty Slot", Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
         "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1) + "  •  staged copy only",
@@ -1092,8 +1092,12 @@ void ux2DialogGeometry(TrainerViewScreen& screen, int& x, int& y, int& w, int& h
     auto& state = ux2StateFor(screen);
     switch (state.mode) {
         case UX2Mode::Actions: {
-            std::string error; const auto p = ux2SelectedPokemon(screen, error);
-            w = p ? 650 : 560; h = p ? 500 : 350; break;
+            std::string error;
+            const auto p = ux2SelectedPokemon(screen, error);
+            const auto actions = UX::actionsForSlot(static_cast<bool>(p), hasPending(screen));
+            w = p ? 650 : 560;
+            h = 86 + static_cast<int>(actions.count) * 46 + 62;
+            break;
         }
         case UX2Mode::RemoveConfirm: w = 620; h = 230; break;
         case UX2Mode::LevelExpEditor: w = 620; h = 330; break;

@@ -63,11 +63,15 @@ int main() {
     assert(goBack && !saveConfirmActive && !exitingWithUnsavedChanges);
 
     const auto surface = read("src/UI/Gen4SharedPokemonSurface.inc");
+    const auto moveCompatibility = read("include/Integration/Gen4/Gen4MoveCompatibility.h");
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     const auto bridge = read("src/Legacy/Gen4ReadOnlyTrainer.cpp");
     const auto staged = read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
     const auto session = read("include/UI/Gen4SharedPokemonSession.h");
     const auto baseUi = read("src/UI/TrainerViewScreenBase.inc");
+    const auto locations = read("src/Names/LocationNames.cpp");
+    const auto locationGenerator = read("tools/gen_locations.py");
+    const auto itemsPanel = read("src/UI/Panels/ItemsPanel.cpp");
     const auto trainerBase = read("include/Trainer/Trainer.h");
     const auto rbyBridge = read("include/Legacy/RBYReadOnlyTrainer.h");
     const auto gscBridge = read("include/Legacy/GSCReadOnlyTrainer.h");
@@ -96,28 +100,164 @@ int main() {
     contains(surface, "PickerTarget::Nature");
     contains(surface, "PickerTarget::Ability");
     contains(surface, "state.session.cycleShiny()");
-    contains(surface, "Could not preserve the other PID-linked Generation IV traits");
+    contains(surface, "Could not reconcile Species/Shiny while preserving PID-linked traits");
 
     // Outer move focus is exactly one row. PP / PP Ups live in the contextual dialog.
     contains(surface, "openMoveEditor(screen, state, state.focus.row)");
-    contains(surface, "Same shared contextual editor");
+    contains(surface, "A: choose compatible Gen IV move");
+    contains(surface, "OK = native   Transfer/Preserved = warning");
     contains(surface, "PP Ups");
+    contains(surface, "state.moveEditorRow = 0; // Shared move editor opens on the Move row");
     contains(surface, "state.moveEditorRow == 1");
     contains(surface, "state.moveEditorRow == 2");
-    contains(surface, "Move selection stays read-only until exact Gen IV learnsets are pinned");
+    contains(surface, "state.session.working->setMove(slot, value)");
+    contains(surface, "uint16_t moveBaseline = 0;");
+    contains(surface, "state.moveBaseline = state.session.working->moves()");
+    contains(surface, "state.session.working->setMove(slot, state.moveBaseline)");
+    contains(surface, "PickerTarget::Move");
+    contains(surface, "#include \"Integration/Gen4/Gen4MoveCompatibility.h\"");
+    contains(surface, "PokeVault::Integration::Gen4MoveCompatibility::selectableMoves(");
+    contains(surface, "screen.sourceGameId, state.session.working->species()");
+    contains(surface, "state.session.working->form(), state.session.working->moves()");
+    contains(surface, "MoveUI::rowLabel(value, bridge(screen).sourceSave().rawFamily())");
+    contains(surface, "Empty + compatible moves only • exact Gen IV Acc / Pwr / PP");
+    contains(moveCompatibility, "inline constexpr uint16_t MaxMove = 467;");
+    contains(moveCompatibility, "result.push_back(0);");
+    contains(moveCompatibility, "const auto availability = classify(exactGameId, species, form, move, false);");
+    contains(moveCompatibility, "availability == Availability::Direct || availability == Availability::Transfer");
+    contains(moveCompatibility, "if (existingSourceMove) return Availability::Preserved;");
+    contains(surface, "MoveResult::Compatible");
+    contains(surface, "status = \"OK\"");
+    contains(surface, "statusColor = Colors::Success");
+    contains(surface, "MoveResult::PreserveExisting");
+    contains(surface, "status = \"Preserved\"");
+    contains(surface, "MoveResult::Unsupported");
+    contains(surface, "status = \"Transfer\"");
+    contains(surface, "Gen IV move compatibility • event/encounter legality is not fully checked");
+    assert(surface.find("Names::isMovePresent") == std::string::npos);
+    assert(surface.find("Native Gen IV move catalog") == std::string::npos);
+    assert(surface.find("move choice read-only in G4-03") == std::string::npos);
 
-    // Gen IV remains View/Edit only, now reachable from both Box and Party surfaces.
-    contains(surface, "result.values[result.count++] = Shared::Action::View");
-    contains(surface, "result.values[result.count++] = Shared::Action::Edit");
-    assert(surface.find("result.values[result.count++] = Shared::Action::Add") == std::string::npos);
-    assert(surface.find("result.values[result.count++] = Shared::Action::Clone") == std::string::npos);
-    assert(surface.find("result.values[result.count++] = Shared::Action::Remove") == std::string::npos);
-    contains(surface, "Generation IV Create follows after Edit hardware acceptance");
+    // G4-04 keeps accepted View/Edit and adds native Create for empty PC slots.
+    // The current action builder also preserves Gen I-III presentation parity while
+    // keeping intentionally locked Party actions visible but disabled.
+    contains(surface, "MenuActionSet gen4Actions(");
+    contains(surface, "add(MenuAction::View, \"View\", true);");
+    contains(surface, "add(MenuAction::Edit, \"Edit\", stagedAvailable);");
+    contains(surface, "add(MenuAction::Add, \"Add Pokemon\", stagedAvailable);");
+    contains(surface, "case MenuAction::Add:");
+    contains(surface, "beginCreate(screen)");
+    contains(surface, "add(MenuAction::Clone, \"Clone\", stagedAvailable);");
+    contains(surface, "add(MenuAction::Release, \"Release\", stagedAvailable);");
+    contains(surface, "add(MenuAction::AddMasterVault, \"Add to Master Vault\", false);");
+    contains(surface, "add(MenuAction::AddBank, \"Add to Bank...\", false);");
+    contains(surface, "add(MenuAction::TransferGame, \"Transfer to Game...\", false);");
+    contains(surface, "add(MenuAction::Clone, \"Clone\", false);");
+    contains(surface, "add(MenuAction::MakeShiny, \"Make Shiny\", false);");
+    contains(surface, "PickerTarget::Species");
+    assert(surface.find("createSpeciesInitialized") == std::string::npos);
+    contains(surface, "state.session.working->setSpecies(value)");
+    contains(surface, "state.speciesPreviewShiny = !state.speciesPreviewShiny");
+    contains(surface, "state.session.working->setShiny(state.speciesPreviewShiny)");
+    contains(surface, "\"Y\", \"Normal/Shiny\"");
+    contains(surface, "return \"#\" + number + \"  \" + Names::getSpeciesName(value);");
+    contains(surface, "PickerTarget::HeldItem");
+    contains(surface, "PickerTarget::Language");
+    contains(surface, "PickerTarget::Ball");
+    contains(surface, "PickerTarget::MetLocation");
+    contains(surface, "PickerTarget::Pokerus");
+    contains(surface, "setPokerusMode");
+    contains(surface, "PickerTarget::Form");
+    contains(surface, "openFormPicker");
+    contains(surface, "auto probe = *state.session.working");
+    contains(surface, "probe.setForm");
+    contains(surface, "gen4FormLabel");
+    contains(surface, "state.session.working->setForm");
+    contains(surface, "Names::isGen4HeldItemPresent");
+    contains(surface, "Names::getLocationTable");
+    contains(surface, "Enums::getBallList");
+    contains(surface, "createBoxDraft(");
+    contains(surface, "keepCreate(");
+    contains(session, "Mode::Create");
+    contains(session, "Guard::Create");
+    contains(staged, "stageCreateBoxPokemon");
+    assert(surface.find("Generation IV Create follows after Edit hardware acceptance") == std::string::npos);
+    assert(surface.find("Create is not enabled in the Edit milestone") == std::string::npos);
+    contains(surface, "\"Clone\"");
+    contains(surface, "\"Release\"");
+    contains(surface, "\"Legality & Provenance\"");
+    contains(surface, "\"Add to Master Vault\"");
+    contains(surface, "\"Add to Bank...\"");
+    contains(surface, "\"Transfer to Game...\"");
+    contains(surface, "\"Make Shiny\"");
+    contains(staged, "stageCloneBoxPokemon");
+    contains(staged, "stageReleaseBoxPokemon");
     contains(surface, "partyEntrySurface");
     contains(surface, "TargetKind::Party");
     contains(surface, "keepParty");
     contains(surface, "beginPassiveView");
     contains(surface, "screen.closeDetailsModal()");
+
+    // Create opens the editor itself, like Gen I-III; Species is an explicit field action.
+    const auto beginCreateAt = surface.find("bool beginCreate(TrainerViewScreen& screen)");
+    const auto heldItemAt = surface.find("void openHeldItemPicker", beginCreateAt);
+    assert(beginCreateAt != std::string::npos && heldItemAt > beginCreateAt);
+    const auto beginCreateBody = surface.substr(beginCreateAt, heldItemAt - beginCreateAt);
+    assert(beginCreateBody.find("openSpeciesPicker(screen, state)") == std::string::npos);
+
+    // Create/Edit focus must only land on actual controls. OT/TID are true editable Pokémon
+    // metadata, SID/Origin remain inspectable read-only, and fixed-only rows are skipped.
+    contains(surface, "bool detailEditable(const State& state");
+    contains(surface, "hasAlternateValidForm");
+    contains(surface, "if (detailEditable(state, state.focus.row, p)) return;");
+    contains(surface, "if (pidLinkedRowEditable(state, state.focus.row, p)) return;");
+    contains(surface, "\"OT\", \"Trainer ID\"");
+    assert(surface.find("OT (read-only)") == std::string::npos);
+    assert(surface.find("TID (read-only)") == std::string::npos);
+    contains(surface, "SID (read-only)");
+    contains(surface, "setOriginalTrainerName");
+    contains(surface, "setTID");
+    contains(surface, "Origin (read-only)");
+    contains(surface, "state.session.mode == SessionModel::Mode::View || editable");
+
+    // A nested move choice must render above the contextual Move editor, never behind it.
+    const auto moveEditorDraw = surface.find("if (state.moveEditor) drawMoveEditor(screen, fb, state);");
+    const auto valuePickerDraw = surface.find("if (state.valuePicker) drawValuePicker(screen, fb, state);");
+    assert(moveEditorDraw != std::string::npos && valuePickerDraw > moveEditorDraw);
+
+    // Gen IV picker/action chrome follows the accepted shared layout instead of the cramped G4-04 prototype.
+    contains(surface, "HeldItemGrid::move");
+    contains(surface, "const int w = heldItems ? 1040");
+    contains(surface, "constexpr auto moveLayout = MoveUI::compactPickerLayout()");
+    contains(surface, "movePicker ? moveLayout.width");
+    contains(surface, "movePicker ? moveLayout.height");
+    contains(surface, "constexpr int visible = moveLayout.visibleRows");
+    contains(surface, "moveLayout.rowStep");
+    contains(surface, "Held Item — Generation IV");
+    contains(surface, "Names::machineDisplayLabel(bridge(screen).sourceSave().rawFamily()");
+    contains(surface, "constexpr int w = 560;");
+    assert(surface.find("const int w = occupied ? 650 : 560;") == std::string::npos);
+    contains(surface, "static_cast<int>(actions.count) * geometry.rowStep + 62");
+    contains(surface, "state.target == TargetKind::Party");
+    contains(surface, "Master Vault is intentionally not started");
+    contains(surface, "const Color disabledColor(");
+    contains(surface, "Colors::TextSecondary");
+    contains(surface, "Colors::TextDim.b, 105");
+    contains(surface, "Live source writes remain hard disabled");
+    contains(surface, "drawLegality");
+    contains(surface, "drawReleaseConfirm");
+    assert(surface.find("const int h = occupied ? 500 : 350;") == std::string::npos);
+    contains(surface, "— Met Lv. ");
+    assert(surface.find("+ \" (#\" + std::to_string(value)") == std::string::npos);
+
+    // Generated location strings must never retain a source UTF-8 BOM as a visible glyph.
+    assert(locations.find("\xEF\xBB\xBF") == std::string::npos);
+    contains(locationGenerator, "encoding=\"utf-8-sig\"");
+
+    // Inventory is still a later DS capability, but the visible copy must describe current G4 state.
+    assert(itemsPanel.find("G4-02") == std::string::npos);
+    contains(itemsPanel, "Generation IV inventory support is not implemented yet.");
+    contains(itemsPanel, "Party/Box Pokemon View, Edit and Create remain available.");
 
     // A committed staged edit must not claim UI success when the refreshed presentation failed.
     contains(surface, "if (!refreshPresentation(screen))");

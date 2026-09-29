@@ -286,7 +286,7 @@ namespace Names {
     // Gen 4 D/P/Pt + HG/SS (HG=7, SS=8, D=10, P=11, Pt=12) -- bank 0
     // Source: PKHeX text_hgss_00000_en.txt  (235 entries)
     static const char* const G4_LOC_NAMES[] = {
-        "﻿Mystery Zone",  // 0
+        "Mystery Zone",  // 0
         "Twinleaf Town",  // 1
         "Sandgem Town",  // 2
         "Floaroma Town",  // 3
@@ -526,7 +526,7 @@ namespace Names {
     // Gen 5 B/W + B2/W2 (W=20, B=21, W2=22, B2=23) -- bank 0
     // Source: PKHeX text_bw2_00000_en.txt  (154 entries)
     static const char* const G5_LOC_NAMES[] = {
-        "﻿－－－－－－－－－－",  // 0
+        "－－－－－－－－－－",  // 0
         "Mystery Zone",  // 1
         "Faraway place",  // 2
         "\\xf000Ā\\x0001\\x0000’s \\xf000ą\\x0001\\x0001",  // 3
@@ -685,7 +685,7 @@ namespace Names {
     // Gen 6 X/Y + OR/AS (X=24, Y=25, AS=26, OR=27) -- bank 0
     // Source: PKHeX text_xy_00000_en.txt  (355 entries)
     static const char* const G6_LOC_NAMES[] = {
-        "﻿——————",  // 0
+        "——————",  // 0
         "",  // 1
         "Mystery Zone",  // 2
         "",  // 3
@@ -2913,7 +2913,7 @@ namespace Names {
     // Gen 4 D/P/Pt + HG/SS (HG=7, SS=8, D=10, P=11, Pt=12) -- bank 2  [ids 2000+]
     // Source: PKHeX text_hgss_02000_en.txt  (15 entries)
     static const char* const G4_LOC_NAMES_2[] = {
-        "﻿Day-Care Couple",  // 2000
+        "Day-Care Couple",  // 2000
         "Link trade",  // 2001
         "Link trade",  // 2002
         "Kanto",  // 2003
@@ -2933,7 +2933,7 @@ namespace Names {
     // Gen 4 D/P/Pt + HG/SS (HG=7, SS=8, D=10, P=11, Pt=12) -- bank 3  [ids 3000+]
     // Source: PKHeX text_hgss_03000_en.txt  (77 entries)
     static const char* const G4_LOC_NAMES_3[] = {
-        "﻿Lovely place",  // 3000
+        "Lovely place",  // 3000
         "Pokémon Ranger",  // 3001
         "Faraway place",  // 3002
         "Pokémon Movie",  // 3003
@@ -3015,7 +3015,7 @@ namespace Names {
     // Gen 5 B/W + B2/W2 (W=20, B=21, W2=22, B2=23) -- bank 3  [ids 30000+]
     // Source: PKHeX text_bw2_30000_en.txt  (16 entries)
     static const char* const G5_LOC_NAMES_3[] = {
-        "﻿",  // 30000
+        "",  // 30000
         "－－－－－－－－－－",  // 30001
         "Link Trade",  // 30002
         "Link Trade",  // 30003
@@ -3036,7 +3036,7 @@ namespace Names {
     // Gen 5 B/W + B2/W2 (W=20, B=21, W2=22, B2=23) -- bank 4  [ids 40000+]
     // Source: PKHeX text_bw2_40000_en.txt  (110 entries)
     static const char* const G5_LOC_NAMES_4[] = {
-        "﻿",  // 40000
+        "",  // 40000
         "Lovely place",  // 40001
         "Faraway place",  // 40002
         "Pokémon Movie",  // 40003
@@ -3151,7 +3151,7 @@ namespace Names {
     // Gen 5 B/W + B2/W2 (W=20, B=21, W2=22, B2=23) -- bank 6  [ids 60000+]
     // Source: PKHeX text_bw2_60000_en.txt  (4 entries)
     static const char* const G5_LOC_NAMES_6[] = {
-        "﻿",  // 60000
+        "",  // 60000
         "Stranger",  // 60001
         "Day-Care Couple",  // 60002
         "PKMN Breeder",  // 60003
@@ -3262,7 +3262,7 @@ namespace Names {
     // Gen 6 X/Y + OR/AS (X=24, Y=25, AS=26, OR=27) -- bank 6  [ids 60000+]
     // Source: PKHeX text_xy_60000_en.txt  (5 entries)
     static const char* const G6_LOC_NAMES_6[] = {
-        "﻿",  // 60000
+        "",  // 60000
         "a stranger",  // 60001
         "Day Care helpers",  // 60002
         "a treasure hunter",  // 60003
@@ -3399,7 +3399,7 @@ namespace Names {
     // Let's Go, Pikachu! / Eevee! + GO (GO=34, GP=42, GE=43) -- bank 4  [ids 40000+]
     // Source: PKHeX text_gg_40000_en.txt  (78 entries)
     static const char* const GG_LOC_NAMES_4[] = {
-        "﻿",  // 40000
+        "",  // 40000
         "a lovely place",  // 40001
         "a faraway place",  // 40002
         "a Pokémon movie",  // 40003

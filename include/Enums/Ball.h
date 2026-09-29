@@ -77,6 +77,12 @@ namespace Enums {
                 return {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
             case GameVersion::GG:   // Let's Go: Master, Ultra, Great, Poke, Premier only
                 return {1, 2, 3, 4, 12};
+            case GameVersion::DP:
+            case GameVersion::PT:   // D/P/Pt: standard balls through Cherish
+                return {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+            case GameVersion::HGSS: // HGSS adds the seven Apricorn balls + Sport Ball
+                return {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                        17, 18, 19, 20, 21, 22, 23, 24};
             default:                // SwSh / BDSP / SV / Z-A: the standard modern set
                 return {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
                         14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26};
