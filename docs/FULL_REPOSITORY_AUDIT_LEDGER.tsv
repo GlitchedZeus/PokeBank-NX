@@ -627,21 +627,21 @@ tests/test_gen1_pokemon_editor_ui_contract.cpp	blob	100644	17099		unknown		PENDI
 tests/test_gen1_pokemon_editor_ux3_contract.cpp	blob	100644	3584	Gen I shared editor UX contract	text	73	AUDITED			0	yes
 tests/test_gen1_radar_render.cpp	blob	100644	2353	Gen I production radar bounded-layout regression	text	46	AUDITED			0	yes
 tests/test_gen1_shiny.cpp	blob	100644	2136	Gen I shiny DV rules/toggle contract	text	51	AUDITED			0	yes
-tests/test_gen1_summary_presentation.cpp	blob	100644	4985		unknown		PENDING			0	
+tests/test_gen1_summary_presentation.cpp	blob	100644	4985	Gen I summary/shiny/radar presentation contract	text	93	AUDITED			0	yes
 tests/test_gen3_exact_format_editor_provider.cpp	blob	100644	7349		unknown		PENDING			0	
 tests/test_gen3_hardware_surface_contract.cpp	blob	100644	18549	Gen III shared-surface hardware regression contract	text	280	AUDITED			0	yes
 tests/test_gen3_legality_context.cpp	blob	100644	2273	exact-source Gen III legality-context contract	text	65	AUDITED			0	yes
 tests/test_gen3_party_record.cpp	blob	100644	1308	Gen III party-tail fidelity/initialization contract	text	26	AUDITED			0	yes
 tests/test_gen3_pid_search_fail_closed.cpp	blob	100644	1915	Gen III PID trait-preservation fail-closed contract	text	51	AUDITED			0	yes
 tests/test_gen3_shared_pokemon_session.cpp	blob	100644	13289		unknown		PENDING			0	
-tests/test_gen3_shell_render.cpp	blob	100644	4563		unknown		PENDING			0	
+tests/test_gen3_shell_render.cpp	blob	100644	4559	shared Gen III shell renderer bounds contract	text	83	AUDITED			0	yes
 tests/test_gen3_staged_inventory.cpp	blob	100644	11182		unknown		PENDING			0	
 tests/test_gen3_staged_pokemon_editor.cpp	blob	100644	25703		unknown		PENDING			0	
 tests/test_gen4_exact_format_editor_provider.cpp	blob	100644	6726	Gen IV exact-format provider contract test	text	138	AUDITED			0	no
 tests/test_gen4_hardware_surface_contract.cpp	blob	100644	19119	Gen IV shared-surface hardware regression contract	text	325	AUDITED			0	yes
 tests/test_gen4_mutable_pokemon.cpp	blob	100644	32148	Gen IV mutable PK4 semantic/legality regression suite	text	782	AUDITED			0	yes
 tests/test_gen4_readonly_foundation.cpp	blob	100644	56152	Gen IV strict parser/discovery/presentation foundation suite	text	1064	AUDITED			0	no
-tests/test_gen4_safety_contract.py	blob	100755	5437		unknown		PENDING			0	
+tests/test_gen4_safety_contract.py	blob	100755	5435	Gen IV external-source read-only routing safety contract	text	88	AUDITED			0	yes
 tests/test_gen4_staged_pokemon_editor.cpp	blob	100644	21798	Gen IV staged mutation/CRC/footprint/rollback suite	text	522	AUDITED			0	no
 tests/test_gsc_discovery.cpp	blob	100644	7279		unknown		PENDING			0	
 tests/test_gsc_editor_surface_contract.cpp	blob	100644	23647	Gen II shared-editor hardware/regression contract	text	307	AUDITED			0	yes
@@ -654,7 +654,7 @@ tests/test_gsc_native_presentation.cpp	blob	100644	7335		unknown		PENDING			0
 tests/test_gsc_pokemon_editor.cpp	blob	100644	16135		unknown		PENDING			0	
 tests/test_gsc_pokemon_session.cpp	blob	100644	22201		unknown		PENDING			0	
 tests/test_gsc_readonly_bridge.cpp	blob	100644	11847		unknown		PENDING			0	
-tests/test_gsc_runtime_catalog.cpp	blob	100644	4861		unknown		PENDING			0	
+tests/test_gsc_runtime_catalog.cpp	blob	100644	4861	Gen II shared runtime source catalog refresh contract	text	54	AUDITED			0	yes
 tests/test_gsc_shared_editor_parity.cpp	blob	100644	12654		unknown		PENDING			0	
 tests/test_gsc_source_browser.cpp	blob	100644	6606		unknown		PENDING			0	
 tests/test_gsc_staged_editor.cpp	blob	100644	10831		unknown		PENDING			0	
@@ -669,15 +669,15 @@ tests/test_move_transaction_fault_matrix.cpp	blob	100644	10475	durable Move inte
 tests/test_move_transaction_journal.cpp	blob	100644	25640	Move journal state/recovery contract	text	569	AUDITED			0	no
 tests/test_move_transaction_production.cpp	blob	100644	10842	production true-Move integration contract	text	244	AUDITED			0	no
 tests/test_navigation_repeat.cpp	blob	100644	3439	D-pad/analog held-repeat navigation contract	text	70	AUDITED			0	yes
-tests/test_passive_pokemon_view_contract.cpp	blob	100644	5186		unknown		PENDING			0	
+tests/test_passive_pokemon_view_contract.cpp	blob	100644	5183	Gen I-III passive view non-mutation surface contract	text	85	AUDITED			0	yes
 tests/test_pksm_gen3_adapter.cpp	blob	100644	20829		unknown		PENDING			0	
 tests/test_pla_read_validation.cpp	blob	100644	4047	PLA SC-container/layout/checksum read validation test	text	82	AUDITED			0	no
 tests/test_pokebank_paths.cpp	blob	100644	2516	PokeBank path ownership/safe-component contract	text	58	AUDITED			0	yes
 tests/test_pokemon_editor_foundation_contract.cpp	blob	100644	9301		unknown		PENDING			0	
-tests/test_pre_gen3_reuse_guard.cpp	blob	100644	4218		unknown		PENDING			0	
+tests/test_pre_gen3_reuse_guard.cpp	blob	100644	4218	pre-Gen III shared-editor/source-mutation reuse guard	text	94	AUDITED			0	yes
 tests/test_rby_discovery.cpp	blob	100644	11942		unknown		PENDING			0	
 tests/test_rby_gen1_adapter.cpp	blob	100644	13736		unknown		PENDING			0	
-tests/test_rby_inventory.cpp	blob	100644	4740		unknown		PENDING			0	
+tests/test_rby_inventory.cpp	blob	100644	4740	RBY strict read-only inventory decode contract	text	130	AUDITED			0	yes
 tests/test_rby_pokemon_editor.cpp	blob	100644	13599		unknown		PENDING			0	
 tests/test_rby_readonly_bridge.cpp	blob	100644	8106		unknown		PENDING			0	
 tests/test_rby_source_browser.cpp	blob	100644	2894	RBY source card/profile binding contract	text	44	AUDITED			0	yes
@@ -687,7 +687,7 @@ tests/test_rse_gen3_adapter.cpp	blob	100644	25892		unknown		PENDING			0
 tests/test_rse_open_regression.cpp	blob	100644	9281		unknown		PENDING			0	
 tests/test_runtime_dependency_contract.cpp	blob	100644	1077	runtime path/branding textual dependency contract	text	30	AUDITED			0	yes
 tests/test_save_instance_architecture_contract.py	blob	100644	5437		unknown		PENDING			0	
-tests/test_save_instance_model.cpp	blob	100644	5311		unknown		PENDING			0	
+tests/test_save_instance_model.cpp	blob	100644	5311	provider-neutral SaveInstance dedupe/profile/snapshot contract	text	123	AUDITED			0	yes
 tests/test_shared_editor_heading_contract.cpp	blob	100644	12864		unknown		PENDING			0	
 tests/test_shared_pokemon_editor_contract.cpp	blob	100644	16432	shared Pokémon editor architecture/navigation contract test	text	275	AUDITED			0	yes
 tests/test_shared_species_picker_surface_contract.cpp	blob	100644	2643	shared species picker source contract test	text	70	AUDITED			0	no
