@@ -209,7 +209,7 @@ include/Enums/SCTypeCode.h	blob	100644	738		unknown		PENDING			0
 include/Games/GameIdentity.h	blob	100644	1562	game/source identity descriptor API	text	48	AUDITED			0	no
 include/Globals.h	blob	100644	3371		unknown		PENDING			0	
 include/Integration/Encounter/EncounterGuardrails.h	blob	100644	7503	encounter guardrail query/provenance helpers	text	192	AUDITED			0	yes
-include/Integration/Encounter/EncounterGuardrailsData.inc	blob	100644	294637		unknown		PENDING			0	
+include/Integration/Encounter/EncounterGuardrailsData.inc	blob	100644	294637	generated Gen II/III encounter guardrail dataset	text	5205	AUDITED			0	yes
 include/Integration/Gen1/Gen1MoveCompatibility.h	blob	100644	1074	Gen I move compatibility API	text	28	AUDITED			0	no
 include/Integration/Gen1/Gen1ReadOnlyInventory.h	blob	100644	859	Gen I read-only inventory model	text	35	AUDITED			0	no
 include/Integration/Gen1/Gen1ReadOnlySave.h	blob	100644	3786	Gen I strict read-only save model	text	137	AUDITED			0	no
@@ -226,7 +226,7 @@ include/Integration/Gen2/Gen2ReadOnlySave.h	blob	100644	4073	Gen II strict read-
 include/Integration/Gen2/Gen2StagedEditor.h	blob	100644	8057	Gen II staged editor/carry transaction API	text	185	AUDITED			1	yes
 include/Integration/Gen3/FRLGReadModel.h	blob	100644	1019	Gen III trainer/inventory read-model API	text	31	AUDITED			0	no
 include/Integration/Gen3/Gen3ExactFormatEditorProvider.h	blob	100644	3293	Gen III staged editor capability provider	text	74	AUDITED			0	no
-include/Integration/Gen3/Gen3LearnsetTable.h	blob	100644	325875		unknown		PENDING			0	
+include/Integration/Gen3/Gen3LearnsetTable.h	blob	100644	325875	generated Gen III learnset/transfer bitsets and classifier	text	2276	AUDITED			0	yes
 include/Integration/Gen3/Gen3SaveValidation.h	blob	100644	6786	Gen III sector/save validation primitives	text	168	AUDITED			0	no
 include/Integration/Gen3/Gen3StagedInventoryEditor.h	blob	100644	2376	Gen III staged inventory editor API	text	65	AUDITED			0	no
 include/Integration/Gen3/Gen3StagedPokemonEditor.h	blob	100644	7053	Gen III staged Pokémon editor API	text	183	AUDITED			0	yes
@@ -450,7 +450,7 @@ src/Integration/Gen1/Gen1StagedInventoryEditor.cpp	blob	100644	8558	Gen I staged
 src/Integration/Gen1/Gen1StagedPokemonEditor.cpp	blob	100644	20016	Gen I staged Pokémon editor/finalizer	text	322	AUDITED			1	yes
 src/Integration/Gen2/Gen2ExportTransaction.cpp	blob	100644	10982	Gen II verified staged export publisher	text	270	AUDITED			1	yes
 src/Integration/Gen2/Gen2MoveCompatibility.cpp	blob	100644	2758	Gen II move compatibility implementation	text	70	AUDITED			0	no
-src/Integration/Gen2/Gen2MoveCompatibilityData.inc	blob	100644	99931		unknown		PENDING			0	
+src/Integration/Gen2/Gen2MoveCompatibilityData.inc	blob	100644	99931	generated Gen II GS/Crystal move bitsets	text	686	AUDITED			0	no
 src/Integration/Gen2/Gen2PackedMove.cpp	blob	100644	10207	Gen II packed relocation/release engine	text	79	AUDITED			1	yes
 src/Integration/Gen2/Gen2PersonalData.cpp	blob	100644	13636	Gen II personal/base-stat/gender data	text	284	AUDITED			0	no
 src/Integration/Gen2/Gen2ReadOnlyInventory.cpp	blob	100644	11001	Gen II inventory decoder/item labels	text	235	AUDITED			0	yes
