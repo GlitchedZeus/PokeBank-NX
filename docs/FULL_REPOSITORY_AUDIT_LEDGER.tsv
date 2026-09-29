@@ -253,13 +253,13 @@ include/Libs/stb_image.h	blob	100644	283010		unknown		PENDING			0
 include/Names/FormNames.h	blob	100644	1631	form display-name API	text	43	AUDITED			0	no
 include/Names/Gen4HeldItemCatalog.h	blob	100644	1365	Gen IV held-item structural presence helper	text	51	AUDITED			0	no
 include/Names/ItemNames.h	blob	100644	1226	item-name and Gen3-modern item mapping API	text	28	AUDITED			0	no
-include/Names/ItemPouches.h	blob	100644	1195		unknown		PENDING			0	
+include/Names/ItemPouches.h	blob	100644	1195	per-game item-pouch catalog API	text	33	AUDITED			0	no
 include/Names/ItemPresence.h	blob	100644	1033	held-item presence API	text	28	AUDITED			0	no
 include/Names/LocationNames.h	blob	100644	3135		unknown		PENDING			0	
 include/Names/MachineDisplay.h	blob	100644	1157	machine descriptor/display API	text	36	AUDITED			0	no
 include/Names/MoveInfo.h	blob	100644	1596	per-game move PP API	text	35	AUDITED			0	no
 include/Names/MoveNames.h	blob	100644	410	move-name lookup API	text	15	AUDITED			0	no
-include/Names/MovePresence.h	blob	100644	949		unknown		PENDING			0	
+include/Names/MovePresence.h	blob	100644	949	move-presence API contract	text	25	AUDITED			0	yes
 include/Names/NameLanguage.h	blob	100644	2030	entity-language to generated-name-table mapping	text	50	AUDITED			0	no
 include/Names/RibbonNames.h	blob	100644	2705	ribbon/mark display extraction API	text	56	AUDITED			0	no
 include/Names/SpeciesNames.h	blob	100644	286	species-name lookup API	text	12	AUDITED			0	no
@@ -482,13 +482,13 @@ src/Legality/Legality.cpp	blob	100644	16500		unknown		PENDING			0
 src/Names/AbilityNames.cpp	blob	100644	11612	ability-name lookup table	text	329	AUDITED			0	no
 src/Names/FormNames.cpp	blob	100644	30424		unknown		PENDING			0	
 src/Names/ItemNames.cpp	blob	100644	102371		unknown		PENDING			0	
-src/Names/ItemPouches.cpp	blob	100644	31323		unknown		PENDING			0	
+src/Names/ItemPouches.cpp	blob	100644	31323	generated per-game item-pouch legal ID catalogs/router	text	524	AUDITED			0	no
 src/Names/ItemPresence.cpp	blob	100644	13455	generated held-item presence bitsets/dispatch	text	176	AUDITED			0	no
 src/Names/LocationNames.cpp	blob	100644	142717		unknown		PENDING			0	
 src/Names/MachineDisplay.cpp	blob	100644	5972	machine descriptor/search presentation logic	text	132	AUDITED			0	no
 src/Names/MoveInfo.cpp	blob	100644	23722	per-game move PP tables/lookup	text	326	AUDITED			0	no
 src/Names/MoveNames.cpp	blob	100644	21346		unknown		PENDING			0	
-src/Names/MovePresence.cpp	blob	100644	6678		unknown		PENDING			0	
+src/Names/MovePresence.cpp	blob	100644	6678	generated per-game move-presence bitmaps/router	text	116	AUDITED			0	yes
 src/Names/NatureNames.cpp	blob	100644	1039	nature-name lookup table	text	42	AUDITED			0	no
 src/Names/RibbonNames.cpp	blob	100644	15624	ribbon/mark bitfield display extraction	text	360	AUDITED			0	no
 src/Names/SpeciesNames.cpp	blob	100644	199465		unknown		PENDING			0	
@@ -704,13 +704,13 @@ tools/gen_gen2_move_compatibility.py	blob	100644	8295		unknown		PENDING			0
 tools/gen_gen4_personal.py	blob	100644	11443		unknown		PENDING			0	
 tools/gen_gen4text.py	blob	100644	9944		unknown		PENDING			0	
 tools/gen_hdsprites.py	blob	100644	7465		unknown		PENDING			0	
-tools/gen_itempouches.py	blob	100644	10609		unknown		PENDING			0	
+tools/gen_itempouches.py	blob	100644	10609	item-pouch generator from PKHeX storage spans	text	243	AUDITED			0	no
 tools/gen_itempresence.py	blob	100644	10167		unknown		PENDING			0	
 tools/gen_learnsets.py	blob	100644	39706		unknown		PENDING			0	
 tools/gen_locations.py	blob	100644	11256	generated location table generator	text	214	AUDITED			0	no
 tools/gen_moveinfo.py	blob	100644	8818		unknown		PENDING			0	
 tools/gen_movenames.py	blob	100644	2884		unknown		PENDING			0	
-tools/gen_movepresence.py	blob	100644	6427		unknown		PENDING			0	
+tools/gen_movepresence.py	blob	100644	6427	move-presence generator from pinned PKHeX source	text	170	AUDITED			0	yes
 tools/gen_personal.py	blob	100644	25652		unknown		PENDING			0	
 tools/gen_pladex.py	blob	100644	8089		unknown		PENDING			0	
 tools/gen_speciesnames.py	blob	100755	5414		unknown		PENDING			0	
