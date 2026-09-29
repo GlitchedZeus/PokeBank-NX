@@ -1,4 +1,5 @@
 #include "Utils/Settings.h"
+#include "Utils/AtomicTextFile.h"
 
 #include <cstdio>
 #include <cstring>
@@ -16,6 +17,11 @@ namespace Utils {
     }
 
     void loadSettings() {
+        // Recover an interrupted promotion only when the authoritative file is absent.
+        // A complete settings.cfg always wins over transaction artifacts.
+        if (!AtomicTextFile::recoverPreviousIfNeeded(settingsPath())) {
+            logErrorToFile("Failed to recover previous settings generation", settingsPath().c_str());
+        }
         FILE* f = fopen(settingsPath().c_str(), "r");
         if (!f) return;  // no config yet -> keep compiled-in defaults
 
@@ -52,27 +58,35 @@ namespace Utils {
         fclose(f);
     }
 
-    void saveSettings() {
+    bool saveSettings() {
         std::string pathError;
         if (!PokeBank::Paths::ensureConfigRoot(&pathError)) {
             logErrorToFile("Failed to create PokeBank NX config directory", pathError.c_str());
-            return;
+            return false;
         }
 
-        FILE* f = fopen(settingsPath().c_str(), "w");
-        if (!f) {
-            logErrorToFile("Failed to write settings file", settingsPath().c_str());
-            return;
-        }
         const std::string_view themeKey = UI::themeModeKey(UI::g_themeMode);
-        fprintf(f, "theme=%.*s\n", static_cast<int>(themeKey.size()), themeKey.data());
-        fprintf(f, "autoBackup=%d\n", g_autoBackupEnabled ? 1 : 0);
-        fprintf(f, "allowIllegal=%d\n", g_allowIllegalEdits ? 1 : 0);
-        fprintf(f, "moveWarn=%d\n", g_moveWarn ? 1 : 0);
+        std::string text;
+        text.reserve(160);
+        text += "theme=";
+        text.append(themeKey.data(), themeKey.size());
+        text += "\nautoBackup=";
+        text += g_autoBackupEnabled ? "1" : "0";
+        text += "\nallowIllegal=";
+        text += g_allowIllegalEdits ? "1" : "0";
+        text += "\nmoveWarn=";
+        text += g_moveWarn ? "1" : "0";
         // Keep writing the legacy key as zero so older builds also default to the safe state if the
         // same SD card is used, but never read it as authority in PokeBank NX.
-        fprintf(f, "injectToGame=0\n");
-        fprintf(f, "debugLogging=%d\n", g_debugLogging ? 1 : 0);
-        fclose(f);
+        text += "\ninjectToGame=0";
+        text += "\ndebugLogging=";
+        text += g_debugLogging ? "1" : "0";
+        text += "\n";
+
+        if (!AtomicTextFile::replace(settingsPath(), text)) {
+            logErrorToFile("Failed to replace settings file safely", settingsPath().c_str());
+            return false;
+        }
+        return true;
     }
 }
