@@ -120,7 +120,7 @@ void drawPickerRow(PKSEFramebuffer& fb, int x, int y, int w, const std::string& 
         fb.drawFilledRoundedRect(x, y - 5, w, 30, 8, Colors::SurfaceSelected);
         fb.drawRoundedRect(x, y - 5, w, 30, 8, Colors::FocusBorder, 1);
     }
-    fb.drawText(x + 12, y, text, selected ? Colors::Accent : textColor, TextStyle::Caption);
+    fb.drawText(x + 12, y, text, selected ? Colors::SelectedText : textColor, TextStyle::Caption);
 }
 
 void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
