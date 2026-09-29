@@ -66,13 +66,13 @@ HOST_SANITIZE_TESTS += $(BDSP_LAYOUT_GUARD_SANITIZE)
 host-test: $(BDSP_LAYOUT_GUARD_TEST)
 host-sanitize: $(BDSP_LAYOUT_GUARD_SANITIZE)
 
-$(BDSP_LAYOUT_GUARD_TEST): tests/test_bdsp_layout_guard.cpp include/Save/BDSPReadValidation.h src/Trainer/Trainer8BDSP.cpp
+$(BDSP_LAYOUT_GUARD_TEST): tests/test_bdsp_layout_guard.cpp include/Save/BDSPReadValidation.h src/Trainer/Trainer8BDSP.cpp src/Utils/MD5.cpp
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_bdsp_layout_guard.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_bdsp_layout_guard.cpp src/Utils/MD5.cpp -o $@
 
-$(BDSP_LAYOUT_GUARD_SANITIZE): tests/test_bdsp_layout_guard.cpp include/Save/BDSPReadValidation.h src/Trainer/Trainer8BDSP.cpp
+$(BDSP_LAYOUT_GUARD_SANITIZE): tests/test_bdsp_layout_guard.cpp include/Save/BDSPReadValidation.h src/Trainer/Trainer8BDSP.cpp src/Utils/MD5.cpp
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bdsp_layout_guard.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bdsp_layout_guard.cpp src/Utils/MD5.cpp -o $@
 
 # Audit-phase Bank compatibility regression: a newer/larger Bank may be inspected
 # but must become non-writable; invalid box-count headers fail closed.
