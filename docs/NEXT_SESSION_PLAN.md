@@ -16,9 +16,9 @@ Branch:
 `feature/gen4-full-editor-20260928`
 
 Last verified head:
-`58a56f8d3b8350283f34fcc4d8dafc495b6515f2`
+`710cf37a33ba7a9f29b09953c5d8aa224268e4fd`
 
-PR #100 Product UI polish is already **merged into PR #92**.
+PR #100 Product UI polish content is already **integrated into PR #92**; PR #100 itself is closed.
 
 GitHub is authoritative. Re-fetch before modifying anything. Preserve every newer commit.
 
@@ -53,8 +53,9 @@ PR #92 now includes:
 ## Immediate first action
 
 1. Re-fetch PR #92 live head and exact-head Actions.
-2. Let Host Tests #1684, Product UI Native #55 and Gen IV Gate #131 resolve.
-3. Fix any failure forward without reverting integrated editor/UI work.
+2. Preserve anything newer than `710cf37a…`.
+3. Product UI Native #61 and Gen IV Gate #137 are already green on that checkpoint.
+4. Let Host Tests #1701 finish; fix any failure forward without reverting integrated editor/UI work.
 
 ## Remaining integration work
 
@@ -89,8 +90,9 @@ The final integrated candidate must have:
 - sanitizer/regression gates green where configured;
 - Gen IV Candidate Gate green;
 - Product UI Native/devkitA64 green;
-- one exact Actions artifact;
-- one exact NRO + SHA-256.
+- one exact Actions artifact ID/name;
+- one exact NRO filename + SHA-256;
+- no source-write policy regression.
 
 Then STOP.
 
