@@ -974,10 +974,10 @@ namespace UI {
     // Put the whole carried block back where it was lifted from. Each cell prefers its own original
     // slot; if something has since filled that slot, it falls back to any empty slot in the origin
     // pane, because a carried Pokemon must never be dropped on the floor.
-    void TrainerViewScreen::returnHeldToOrigin() {
-        if (!carrying()) return;
+    bool TrainerViewScreen::returnHeldToOrigin() {
+        if (!carrying()) return true;
         const int pane = heldPane;
-        if (pane == 1 && !bank) return;
+        if (pane == 1 && !bank) return false;
         const int slots = (pane == 0) ? static_cast<int>(trainer.getSlotsPerBox())
                                       : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
         const int boxCount = (pane == 0) ? static_cast<int>(trainer.getBoxCount())
@@ -1039,7 +1039,7 @@ namespace UI {
 
         if (!returnPlan.complete) {
             postStatus("Could not return the held Pokemon safely - custody retained.", 360);
-            return;
+            return false;
         }
 
         // Every carried Pokemon now has a unique, still-empty destination. The UI is single-threaded,
@@ -1057,6 +1057,7 @@ namespace UI {
             hasUnsavedChanges = crossStoreBaseline.workspaceDirtyBeforePickup;
         carriedCopyMode = false;
         clearCrossStoreMoveBaseline();
+        return true;
     }
 
     // Reference to a storage slot's unique_ptr (pane 0 = save boxes, 1 = bank). Callers must
@@ -2970,7 +2971,10 @@ namespace UI {
                 if (kDown & HidNpadButton_A) {
                     // A carried Pokemon lives outside both containers — return it before serializing
                     // so it isn't dropped from the save/bank.
-                    returnHeldToOrigin();
+                    if (!returnHeldToOrigin() || carrying()) {
+                        postStatus("Save blocked - held Pokemon custody could not be restored.", 480);
+                        return;
+                    }
 
                     // (The bank has its OWN persistence — it saves on storage-view exit / app exit,
                     // separate from this game-save, since it's a separate entity from the save file.)
