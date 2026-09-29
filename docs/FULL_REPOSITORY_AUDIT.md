@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 300 / 725
-- Fully read text files: 266 / 692
+- Audited tracked paths: 317 / 725
+- Fully read text files: 283 / 692
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -134,6 +134,14 @@ Status: IN PROGRESS
 - Gen III and Gen IX internal/National species mappings are bounded and carry compile-time boundary/field-report checks. The Gen IX divergent table covers exactly the National #917..#1025 range.
 - The current PKHeX `BattleForms` / `BattleMegas` source was rechecked against `FormInfo.cpp`, including the newer Z-A Mega set through Glimmora; no stale Mega-membership defect was found.
 - Two handwritten base-stat lookup layers failed independently: LGPE cannot reach the appended Meltan/Melmetal rows (AUDIT-027), while the modern form router has valid-form zero/wrong/OOB routes shared by SWSH/BDSP/PLA/SV/Z-A (AUDIT-028).
+
+### Generated Pokémon table checkpoint
+
+- Fully read the remaining generated Pokémon lookup/table files in this tranche: Gen IV DP/Pt/HGSS personal tables, PLA/SV/SWSH dex lookups, form-sprite mappings, the learnset API/placeholder source, and the Gen IV mutable header.
+- The Gen IV personal accessors reject species 0/out-of-range, fall back safely for unsupported forms, guard zero form-index redirects, and bounds-check alternate-form rows.
+- PLA's `MAX_FORM = 120` is an exclusive upper bound in the PKHeX oracle, so PokeBank's `form >= 120` rejection is correct; only the local comment describing it as the “highest form” is imprecise.
+- S/V form redirects are bounds-checked before indexing; SWSH species lookup is bounded by the generated table maximum.
+- `src/Pokemon/LearnsetTable.cpp` is currently an empty placeholder and no indexed repository reference to the declared lookup functions was found in this pass. This remains a completeness follow-up, not a confirmed production defect.
 
 ## Findings
 
