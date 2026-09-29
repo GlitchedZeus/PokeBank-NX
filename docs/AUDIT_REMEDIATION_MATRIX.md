@@ -51,7 +51,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 29 | AUDIT-034 | P3 | FIXED | HD sprite recovery/preflight can accept corrupt existing PNGs |
 | 30 | AUDIT-035 | P3 | FIXED | personal/learnset regeneration still searches the removed SPECIES_NAMES symbol |
 | 31 | AUDIT-044 | P3 | FIXED | Fontstash allocation failures can become null-pointer crashes during text rendering |
-| 32 | AUDIT-006 | P3 | OPEN | LeakSanitizer is disabled even where comments say CI keeps it enabled |
+| 32 | AUDIT-006 | P3 | FIXED | LeakSanitizer is disabled even where comments say CI keeps it enabled |
 | 33 | AUDIT-003 | P3 | OPEN | mutable native toolchain image |
 | 34 | AUDIT-036 | P3 | FIXED | Product Home Help overlay advertises stale controller actions |
 | 35 | AUDIT-011 | P3 | OPEN | Search preview vertical wrap changes columns and the test blesses it |
@@ -631,7 +631,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Run the affected workflow/target on the exact remediation head and assert the intended gate executes.
 - **Dependency / sequencing:** After higher-risk memory fixes; then enable/clarify LSan
 - **Proposed remediation order:** 32
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `Makefile.host.base` now keeps `detect_leaks=0` only as the explicit constrained local default and routes the sanitizer loop through configurable `ASAN_OPTIONS`. `.github/workflows/host-tests.yml` sets `ASAN_OPTIONS: detect_leaks=1` for unrestricted GitHub CI, and the focused RSE sanitizer inherits that policy instead of hard-coding leak detection off. `tests/test_ci_repository_safety_contract.py` pins both sides of the policy. Exact-head CI is still required before VERIFIED.
 
 ### 33. AUDIT-003 — mutable native toolchain image
 
