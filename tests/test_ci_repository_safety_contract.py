@@ -77,4 +77,16 @@ if "ASAN_OPTIONS ?= detect_leaks=0" not in make_text:
 if 'ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$test_bin' not in make_text:
     fail("AUDIT-006: sanitizer loop must use the configured ASAN_OPTIONS value")
 
+
+PINNED_DEVKITA64 = "devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282"
+for workflow_name in ("native-pr-build.yml", "product-ui-native.yml"):
+    workflow = WORKFLOWS / workflow_name
+    if not workflow.is_file():
+        fail(f"AUDIT-003: required native workflow missing: {workflow_name}")
+    workflow_text = workflow.read_text(encoding="utf-8")
+    if "devkitpro/devkita64:latest" in workflow_text:
+        fail(f"AUDIT-003: {workflow_name} still uses mutable devkita64:latest")
+    if PINNED_DEVKITA64 not in workflow_text:
+        fail(f"AUDIT-003: {workflow_name} does not use the tested immutable devkitA64 digest")
+
 print("CI repository safety contracts: PASS")
