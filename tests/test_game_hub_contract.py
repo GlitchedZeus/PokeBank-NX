@@ -119,7 +119,7 @@ require("selectCurrentTitle();" not in dock_activation.split("if (hubDockIndex =
 require("case 1: // Party" in source and "case 2: // Boxes" in source and
         "case 5: // Editor / Create" in source,
         "workspace implemented destinations must route through the validated existing game flow")
-require('"-: Help"' in source and '"+: Settings' in source,
+require("-: Help" in source and "+: Settings" in source,
         "Product Home footer must expose Help and Settings shortcuts")
 require("headerSettingsFocused" in source,
         "top-right Settings gear must participate in controller focus")
