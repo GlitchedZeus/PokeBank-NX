@@ -564,7 +564,7 @@ src/UI/Gen4SharedPokemonSurface.inc	blob	100644	87336	Gen IV shared View/Edit/Cr
 src/UI/Modals/Gen1PokemonDetailsModal.cpp	blob	100644	3945	Gen I details adapter	text	88	AUDITED			0	no
 src/UI/Modals/Gen2PokemonDetailsModal.cpp	blob	100644	14261	Gen II read-only details renderer	text	290	AUDITED			0	no
 src/UI/Modals/PokemonDetailsDispatcher.cpp	blob	100644	1195	generation details renderer dispatcher	text	35	AUDITED			0	yes
-src/UI/Modals/PokemonDetailsModal.cpp	blob	100644	34505		unknown		PENDING			0	
+src/UI/Modals/PokemonDetailsModal.cpp	blob	100644	34505	generic modern Pokémon details/edit presentation modal	text	571	AUDITED			0	yes
 src/UI/PKSEFramebuffer.cpp	blob	100644	27588	NanoVG framebuffer/rendering implementation	text	556	AUDITED			0	no
 src/UI/Panels/BoxPokemonPanel.cpp	blob	100644	22188	box grid and per-Pokémon summary/radar presentation	text	381	AUDITED			0	yes
 src/UI/Panels/HomeMenuPanel.cpp	blob	100644	8866	loaded-workspace home panel renderer	text	178	AUDITED			0	no
