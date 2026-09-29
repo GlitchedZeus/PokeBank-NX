@@ -18,6 +18,7 @@
 #include "Legality/Gen1CatchRateEvidence.h"
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen4PidIvCorrelation.h"
+#include "Legality/Gen4PokewalkerPid.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 
 #include <algorithm>
@@ -162,18 +163,35 @@ namespace Legality {
                     CheckIdentifier::PidRng);
             }
         } else if (sourceProfile && exactGeneration == 4) {
-            const std::array<uint8_t, 6> ivs{
-                pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
-            };
-            const auto correlation = Gen4PidIv::analyze(pk.pid(), ivs);
-            if (correlation.matched()) {
-                add(r, Severity::Info,
-                    "PID/IV spread matches normal Gen IV Method 1; wild lead-frame correlation is still partial",
-                    CheckIdentifier::PidRng);
+            const bool isHgss =
+                exactSourceGameId == "heartgold_nds" || exactSourceGameId == "soulsilver_nds";
+            if (isHgss && pk.metLocation() == 233) {
+                const uint8_t genderRatio =
+                    Pokemon::getPersonalInfo(species, pk.form()).genderRatio;
+                if (Gen4PokewalkerPid::matches(
+                        pk.pid(), pk.id32(), pk.nature(), pk.gender(), genderRatio)) {
+                    add(r, Severity::Info,
+                        "PID matches the Generation IV PokeWalker trainer/nature/gender formula",
+                        CheckIdentifier::PidRng);
+                } else {
+                    add(r, Severity::Info,
+                        "PokeWalker met location detected, but PID correlation is unresolved against the current species ratio; evolution/course provenance remains incomplete",
+                        CheckIdentifier::PidRng);
+                }
             } else {
-                add(r, Severity::Info,
-                    "No normal Gen IV Method-1 PID/IV match; Cute Charm, Chain Shiny, PokeWalker and event RNG classes remain incomplete",
-                    CheckIdentifier::PidRng);
+                const std::array<uint8_t, 6> ivs{
+                    pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
+                };
+                const auto correlation = Gen4PidIv::analyze(pk.pid(), ivs);
+                if (correlation.matched()) {
+                    add(r, Severity::Info,
+                        "PID/IV spread matches normal Gen IV Method 1; wild lead-frame correlation is still partial",
+                        CheckIdentifier::PidRng);
+                } else {
+                    add(r, Severity::Info,
+                        "No normal Gen IV Method-1 PID/IV match; Cute Charm, Chain Shiny and event RNG classes remain incomplete",
+                        CheckIdentifier::PidRng);
+                }
             }
         }
 
