@@ -495,7 +495,7 @@ namespace Pokemon {
          * total EXP, refreshes the cached party-level byte, then recalculates stats and
          * checksum. Implementations clamp to [1,100].
          */
-        virtual void setLevel(uint8_t level) noexcept {}   // default no-op; overridden where supported
+        virtual void setLevel(uint8_t level) noexcept { (void)level; }   // default no-op; overridden where supported
 
         /** Sets total EXP directly and re-derives the level; no-op where unwired. */
         virtual void setExp(uint32_t value) noexcept { (void)value; }
