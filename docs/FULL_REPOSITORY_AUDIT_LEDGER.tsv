@@ -232,7 +232,7 @@ include/Integration/Gen3/Gen3StagedInventoryEditor.h	blob	100644	2376	Gen III st
 include/Integration/Gen3/Gen3StagedPokemonEditor.h	blob	100644	7053	Gen III staged Pokémon editor API	text	183	AUDITED			0	yes
 include/Integration/Gen3/PKSMGen3Adapter.h	blob	100644	5080	Gen III immutable PKSM/native adapter API	text	161	AUDITED			0	no
 include/Integration/Gen4/Gen4AssignedSource.h	blob	100644	759	Gen IV assigned-source read-only API	text	19	AUDITED			0	no
-include/Integration/Gen4/Gen4ExactFormatEditorProvider.h	blob	100644	2446	Gen IV staged editor capability provider	text	58	AUDITED			0	no
+include/Integration/Gen4/Gen4ExactFormatEditorProvider.h	blob	100644	2446	Gen IV exact-format editor provider / move-compatibility bridge	text	63	AUDITED			0	no
 include/Integration/Gen4/Gen4ReadOnlySave.h	blob	100644	4491	Gen IV validated read-only save model	text	108	AUDITED			0	no
 include/Integration/Gen4/Gen4SourceDiscovery.h	blob	100644	4071	Gen IV source discovery/container contract	text	126	AUDITED			0	no
 include/Integration/Gen4/Gen4StagedPokemonEditor.h	blob	100644	3893	Gen IV staged editor transaction API	text	95	AUDITED			0	yes
@@ -560,7 +560,7 @@ src/UI/Gen2SharedSurfaceParity.inc	blob	100644	18969		unknown		PENDING			0
 src/UI/Gen2TrainerSessionOverlay.inc	blob	100644	2691		unknown		PENDING			0	
 src/UI/Gen2UnifiedPokemonWorkspace.inc	blob	100644	42404		unknown		PENDING			0	
 src/UI/Gen3SharedPokemonSurface.inc	blob	100644	78589		unknown		PENDING			0	
-src/UI/Gen4SharedPokemonSurface.inc	blob	100644	66353		unknown		PENDING			0	
+src/UI/Gen4SharedPokemonSurface.inc	blob	100644	66353	Gen IV shared View/Edit/Create surface	text	1759	AUDITED			1	yes
 src/UI/Modals/Gen1PokemonDetailsModal.cpp	blob	100644	3945		unknown		PENDING			0	
 src/UI/Modals/Gen2PokemonDetailsModal.cpp	blob	100644	14261		unknown		PENDING			0	
 src/UI/Modals/PokemonDetailsDispatcher.cpp	blob	100644	1195		unknown		PENDING			0	
@@ -637,7 +637,7 @@ tests/test_gen3_shared_pokemon_session.cpp	blob	100644	13289		unknown		PENDING		
 tests/test_gen3_shell_render.cpp	blob	100644	4563		unknown		PENDING			0	
 tests/test_gen3_staged_inventory.cpp	blob	100644	11182		unknown		PENDING			0	
 tests/test_gen3_staged_pokemon_editor.cpp	blob	100644	25703		unknown		PENDING			0	
-tests/test_gen4_exact_format_editor_provider.cpp	blob	100644	6726		unknown		PENDING			0	
+tests/test_gen4_exact_format_editor_provider.cpp	blob	100644	6726	Gen IV exact-format provider contract test	text	138	AUDITED			0	no
 tests/test_gen4_hardware_surface_contract.cpp	blob	100644	12367		unknown		PENDING			0	
 tests/test_gen4_mutable_pokemon.cpp	blob	100644	32148	Gen IV mutable PK4 semantic/legality regression suite	text	782	AUDITED			0	yes
 tests/test_gen4_readonly_foundation.cpp	blob	100644	56152	Gen IV strict parser/discovery/presentation foundation suite	text	1064	AUDITED			0	no
@@ -724,3 +724,9 @@ tools/recover_workspace.py	blob	100644	11689		unknown		PENDING			0
 tools/regenerate.py	blob	100755	7338		unknown		PENDING			0	
 tools/verify_embedded_romfs.py	blob	100644	3402		unknown		PENDING			0	
 vendor/PKSM-Core	commit	160000			unknown		PENDING			0
+include/Integration/Gen4/Gen4MoveCompatibility.h	blob	100644	301653	generated Gen IV exact-game move compatibility table	text	1609	AUDITED			0	no
+include/Names/MoveBattleStats.h	blob	100644	17304	generated Gen I-IV move Power/Accuracy/PP tables	text	199	AUDITED			1	yes
+include/UI/MovePickerPresentation.h	blob	100644	1019	shared move picker number/stat presentation	text	13	AUDITED			1	yes
+tests/test_move_picker_presentation.cpp	blob	100644	1707	shared move picker presentation contract test	text	13	AUDITED			0	yes
+tools/gen_gen4_move_compatibility.py	blob	100644	2420	Gen IV compatibility table generator	text	70	AUDITED			0	no
+tools/gen_move_battle_stats.py	blob	100755	4074	Gen I-IV move battle-stat generator	text	35	AUDITED			1	yes
