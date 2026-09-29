@@ -76,9 +76,9 @@ namespace {
     const std::vector<std::string>& sectionInfoLines(PokeBank::UIModel::AppShellSection section) {
         using PokeBank::UIModel::AppShellSection;
         static const std::vector<std::string> vault{
-            "Master Vault will be the central, app-owned Pokémon library across supported games.",
-            "This screen is a truthful product preview until the Vault persistence backend is ready.",
-            "No Pokémon records are fabricated and no source save is changed by opening this preview."
+            "Master Vault is coming in a future PokeBank NX update.",
+            "Your stored Pokémon and collections will appear here when Vault storage is ready.",
+            "Opening this page never changes any game or emulator save."
         };
         static const std::vector<std::string> fallback{
             "This destination is not available from the main menu yet."
@@ -373,7 +373,7 @@ void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
     fb.drawText(x + 28, y + 44, "Application Settings",
                 Colors::TextPrimary, TextStyle::Heading);
     fb.drawText(x + 28, y + 76,
-                "These are the same persisted preferences used inside a loaded workspace.",
+                "Changes here apply throughout PokeBank NX.",
                 Colors::TextSecondary, TextStyle::Caption);
 
     constexpr int rowH = 50, rowGap = 5;
@@ -381,8 +381,8 @@ void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
         "Auto-Backup on Load",
         "Theme",
         "Allow Illegal Values",
-        "Bank Storage LGPE Move Warning",
-        "Live Game Writes",
+        "Move Compatibility Warnings",
+        "Source Save Protection",
         "Enable Debug Logging",
         "Diagnostics / Build Info",
     };
@@ -501,18 +501,18 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
         drawPanelSurface(fb, bankX, bankY, bankW, bankH, false, 14);
         fb.drawText(bankX + 20, bankY + 18, "Named Banks", Colors::TextPrimary, TextStyle::Heading);
         fb.drawText(bankX + 20, bankY + 56, "No Banks Created", Colors::TextSecondary, TextStyle::Body);
-        fb.drawText(bankX + 20, bankY + 88, "0 Pokémon  /  0 persistent records",
+        fb.drawText(bankX + 20, bankY + 88, "Your Banks will appear here.",
                     Colors::TextMuted, TextStyle::Caption);
-        fb.drawText(bankX + 20, bankY + 132, "Future model", Colors::AccentPrimary, TextStyle::Caption);
-        fb.drawText(bankX + 20, bankY + 160, "• Bank names reference Vault IDs", Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(bankX + 20, bankY + 188, "• Bank deletion never implies entity deletion", Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(bankX + 20, bankY + 216, "• Origin and active location stay separate", Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(bankX + 20, bankY + 266, "Master Vault backend", Colors::TextMuted, TextStyle::Caption);
-        fb.drawText(bankX + 20, bankY + 294, "NOT IMPLEMENTED", Colors::Info, TextStyle::Body);
+        fb.drawText(bankX + 20, bankY + 142, "MASTER VAULT", Colors::AccentPrimary, TextStyle::Caption);
+        fb.drawText(bankX + 20, bankY + 170, "Coming Soon", Colors::TextPrimary, TextStyle::Heading);
+        fb.drawText(bankX + 20, bankY + 212,
+                    "Game saves stay protected while", Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(bankX + 20, bankY + 238,
+                    "PokeBank storage is being completed.", Colors::TextSecondary, TextStyle::Caption);
 
         const int gridX = bankX + bankW + 24, gridY = bankY, gridW = w - 28 - 28 - bankW - 24;
-        fb.drawText(gridX, gridY + 4, "Example Bank box layout", Colors::TextPrimary, TextStyle::Heading);
-        fb.drawText(gridX, gridY + 38, "UI-only empty boxes — not saved and not populated with demo Pokémon.",
+        fb.drawText(gridX, gridY + 4, "Bank Boxes", Colors::TextPrimary, TextStyle::Heading);
+        fb.drawText(gridX, gridY + 38, "Empty box placeholders — no Pokémon are stored here yet.",
                     Colors::TextMuted, TextStyle::Caption);
         constexpr int cols = 3;
         const int gap = 14;
@@ -572,9 +572,9 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
                         i == previewIndex ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(cx + 20, cy + 58, std::string(c.subtitle),
                         Colors::TextSecondary, TextStyle::Caption);
-            fb.drawText(cx + 20, cy + 94, "0 entries", Colors::TextMuted, TextStyle::Body);
+            fb.drawText(cx + 20, cy + 94, "Coming Soon", Colors::TextMuted, TextStyle::Body);
             fb.drawText(cx + 20, cy + 120,
-                        isPokedex ? "Available with Pokédex collection data" : "Available with Master Vault",
+                        isPokedex ? "Collection progress will appear here" : "Available with Master Vault",
                         Colors::TextMuted, TextStyle::Caption);
         }
     }
