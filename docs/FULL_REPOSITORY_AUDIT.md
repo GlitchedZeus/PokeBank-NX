@@ -736,7 +736,8 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Current tests: `tests/test_app_shell_model.cpp` validates the revised enum/navigation model but does not compile `AppShellScreen.cpp`, so it cannot catch this stale screen-level enum reference. `tests/test_game_hub_contract.py` is also text-contract based.
 - Recommended fix: remove the obsolete `AppShellSection::Collections` branch from `OrganizationPreview` handling or replace it with the intended `Pokedex` behavior, then run the native product-UI workflow and host contract tests at the exact PR head.
 - Risk of fix: low; the model now has only Pokédex/Banks/Search as previewable root sections.
-- Owner: sibling UI/QoL lane (PR #97). Do not merge into MAIN until its normal lane validation passes.
+- Current disposition: CURRENT in live MAIN PR #92 at `fb7b1d8c…`; the product-UI code that carried this finding is now integrated into MAIN. Historical sibling evidence remains valid.
+- Owner: MAIN / Product Home UI lane. Do not merge into MAIN until its normal lane validation passes.
 
 ### AUDIT-033 — Gen IV move-stat presentation uses HGSS values for Diamond/Pearl
 - Severity: P3
@@ -823,6 +824,7 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Test gap: no contract currently binds the Legacy Save Instances renderer's visible-row count to the input scroll-window count.
 - Recommended fix: define the visible-row count once and share it between draw and input, or derive scrolling from the same layout constant used by the renderer. Add a navigation test that walks across the fifth/sixth-row boundary and asserts the focused row remains rendered.
 - Risk of fix: low.
+- Current disposition: AUDIT-038 remains CURRENT at live MAIN `fb7b1d8c…`: input still uses `visibleRows = 6` while the Legacy Save Instances renderer still draws `visibleRows = 5`.
 - Owner: MAIN / SaveSelect source-picker UI lane.
 
 
@@ -839,3 +841,17 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: make `returnHeldToOrigin()` report success/failure, or explicitly test `carrying()` after the call. If custody remains, abort the save, keep the dialog/session active, and surface the custody-retained error. Add tests for both failed return => no save and successful return => save proceeds.
 - Risk of fix: low-to-medium; save-gating/recovery path only, but it must preserve the existing all-or-nothing custody rule.
 - Owner: MAIN / Storage + backup-save orchestration lane.
+
+
+### AUDIT-040 — RetroArch playlist auto-match can accept wrong-family game content with the same basename
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: MAIN Product Home / emulator game-launch shortcut
+- Files: `src/UI/GameLauncher.cpp`, `include/UI/GameLaunchModel.h`, `tests/test_game_launch_model.cpp`
+- Exact behavior: manual/stored launch linking calls `gameLaunchContentSupported(gameId, content)` before persisting a game file, and the in-app browser only lists compatible extensions. The automatic RetroArch playlist path instead matches an entry solely by `normalizedLaunchStem(content) == normalizedLaunchStem(sourcePath)`, then checks only that the content path is a regular file and that the playlist supplies a usable core. It never applies `gameLaunchContentSupported(gameId, content)` to the matched playlist entry.
+- Failure consequence: if a RetroArch playlist contains a regular file with the same normalized basename as the selected save but a different game-family extension, the resolver can mark that descriptor Ready and ZR can launch the wrong content for the selected Pokémon game card. The exact save/source identity remains unchanged and no source write occurs.
+- Scope: launch correctness only; this does not weaken emulator/source immutability, installed-title write locks, or cross-game Move policy.
+- Test gap: `test_game_launch_model.cpp` proves the pure extension helper rejects mismatched families (for example Platinum vs a `.gba` file) but no resolver-level test proves RetroArch playlist auto-match actually calls that helper before returning Ready.
+- Recommended fix: after normalizing the playlist path and before accepting it, require `gameLaunchContentSupported(gameId, content)`; skip incompatible same-stem entries and continue searching. Add a resolver fixture containing both a wrong-family same-stem entry and a correct one.
+- Risk of fix: low; narrows automatic matching only. Manual linking already enforces the same rule.
+- Owner: MAIN / game-launch integration lane.
