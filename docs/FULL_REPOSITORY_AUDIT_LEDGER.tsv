@@ -639,10 +639,10 @@ tests/test_gen3_staged_inventory.cpp	blob	100644	11182		unknown		PENDING			0
 tests/test_gen3_staged_pokemon_editor.cpp	blob	100644	25703		unknown		PENDING			0	
 tests/test_gen4_exact_format_editor_provider.cpp	blob	100644	6726		unknown		PENDING			0	
 tests/test_gen4_hardware_surface_contract.cpp	blob	100644	12367		unknown		PENDING			0	
-tests/test_gen4_mutable_pokemon.cpp	blob	100644	32148		unknown		PENDING			0	
-tests/test_gen4_readonly_foundation.cpp	blob	100644	56152		unknown		PENDING			0	
+tests/test_gen4_mutable_pokemon.cpp	blob	100644	32148	Gen IV mutable PK4 semantic/legality regression suite	text	782	AUDITED			0	yes
+tests/test_gen4_readonly_foundation.cpp	blob	100644	56152	Gen IV strict parser/discovery/presentation foundation suite	text	1064	AUDITED			0	no
 tests/test_gen4_safety_contract.py	blob	100755	5437		unknown		PENDING			0	
-tests/test_gen4_staged_pokemon_editor.cpp	blob	100644	19429		unknown		PENDING			0	
+tests/test_gen4_staged_pokemon_editor.cpp	blob	100644	19429	Gen IV staged mutation/CRC/footprint/rollback suite	text	467	AUDITED			0	no
 tests/test_gsc_discovery.cpp	blob	100644	7279		unknown		PENDING			0	
 tests/test_gsc_editor_surface_contract.cpp	blob	100644	22828		unknown		PENDING			0	
 tests/test_gsc_export_transaction.cpp	blob	100644	6751		unknown		PENDING			0	
