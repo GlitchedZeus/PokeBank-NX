@@ -102,14 +102,13 @@ namespace Save {
             // Runtime reads the active Beluga region from an authentic 1 MiB savedata.bin, while
             // several focused fixtures contain only that active region. Both are intentional
             // geometries; arbitrary intermediate/oversized files fail closed.
-            if (bytes.size() != SAVE_SIZE7_LGPE &&
-                bytes.size() != LGPE_FULL_FILE_SIZE) {
+            const auto activeRegion = Trainer::lgpeActiveRegion(bytes);
+            if (activeRegion.empty()) {
                 error = "Let's Go save size does not match the supported active/full-file layout";
                 return false;
             }
 
-            std::vector<uint8_t> active(
-                bytes.begin(), bytes.begin() + static_cast<std::ptrdiff_t>(SAVE_SIZE7_LGPE));
+            std::vector<uint8_t> active(activeRegion.begin(), activeRegion.end());
             const auto blocks = createBlocksFromSaveData7LGPE(active);
             if (blocks.size() != 7) {
                 error = "Let's Go save did not expose the complete supported block set";
