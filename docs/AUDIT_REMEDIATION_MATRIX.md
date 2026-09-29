@@ -56,7 +56,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 34 | AUDIT-036 | P3 | FIXED | Product Home Help overlay advertises stale controller actions |
 | 35 | AUDIT-011 | P3 | FIXED | Search preview vertical wrap changes columns and the test blesses it |
 | 36 | AUDIT-038 | P3 | FIXED | Legacy Save Instances scroll logic assumes one more visible row than the renderer draws |
-| 37 | AUDIT-041 | P3 | OPEN | Standalone runtime contract falsely says RetroArch is never invoked |
+| 37 | AUDIT-041 | P3 | FIXED | Standalone runtime contract falsely says RetroArch is never invoked |
 | 38 | AUDIT-010 | P3 | OPEN | canonical engineering authority chain points to obsolete work |
 | 39 | AUDIT-042 | P3 | OPEN | Active session/roadmap docs route work through obsolete project state |
 | 40 | AUDIT-004 | P4 | OPEN | stale theme choices in physical bug template |
@@ -720,7 +720,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Docs tranche after launch fixes
 - **Proposed remediation order:** 37
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `docs/STANDALONE_RUNTIME.md` now distinguishes RetroArch save discovery as a read-only external source from RetroArch executable/core launching as an optional, explicitly user-invoked game shortcut. It reiterates that launch capability grants no source-write permission and that RetroArch is not a runtime prerequisite. The CI repository safety contract rejects the obsolete `RetroArch is not invoked as a helper` claim and requires the new classification. Exact-head CI is still required before VERIFIED.
 
 ### 38. AUDIT-010 — canonical engineering authority chain points to obsolete work
 
