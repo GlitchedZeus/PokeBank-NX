@@ -570,7 +570,7 @@ src/UI/Panels/BoxPokemonPanel.cpp	blob	100644	22188	box grid and per-Pokémon su
 src/UI/Panels/HomeMenuPanel.cpp	blob	100644	8866	loaded-workspace home panel renderer	text	178	AUDITED			0	no
 src/UI/Panels/ItemsPanel.cpp	blob	100644	11918	inventory panel renderer	text	223	AUDITED			0	yes
 src/UI/Panels/PartyPokemonPanel.cpp	blob	100644	7898	party card/grid renderer	text	152	AUDITED			0	no
-src/UI/Panels/StoragePanel.cpp	blob	100644	35794		unknown		PENDING			0	
+src/UI/Panels/StoragePanel.cpp	blob	100644	35794	dual save/bank storage pane and confirmation presentation	text	628	AUDITED			0	yes
 src/UI/SaveSelectScreen.cpp	blob	100644	64968		unknown		PENDING			0	
 src/UI/SpriteManager.cpp	blob	100644	8162	Pokemon/type sprite cache implementation	text	219	AUDITED			0	no
 src/UI/SystemIcons.cpp	blob	100644	7450	profile/title/game-card icon cache implementation	text	182	AUDITED			0	no
