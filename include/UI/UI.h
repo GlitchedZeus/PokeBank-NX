@@ -46,6 +46,7 @@ namespace UI {
         SaveSelectScreen::MainMenuDestination handleSaveSelection();
         void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName,
                                    SaveSelectScreen::OpenIntent intent);
+        void handleItemsQuickOpen(AccountUid userUid, u64 titleId, const std::string& titleName);
         bool handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
                                const std::string& backupDir, bool loadedFromCart,
                                SaveSelectScreen::OpenIntent intent, std::string& error);
