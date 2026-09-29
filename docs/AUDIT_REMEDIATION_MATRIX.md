@@ -30,7 +30,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 8 | AUDIT-021 | P2 | FIXED | SWSH/SV/Z-A authenticate the SC container but do not validate required game layout |
 | 9 | AUDIT-017 | P2 | FIXED | FRLG mutable workspace selects rotating slot before checksum validation |
 | 10 | AUDIT-023 | P2 | FIXED | LGPE durable validator rejects the authentic 1 MiB save image |
-| 11 | AUDIT-018 | P2 | OPEN | LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity |
+| 11 | AUDIT-018 | P2 | FIXED | LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity |
 | 12 | AUDIT-022 | P3 | OPEN | BDSP pre-open validation ignores its stored whole-file MD5 |
 | 13 | AUDIT-024 | P2 | OPEN | Gen IX inventory decoder leaves persisted flags indeterminate |
 | 14 | AUDIT-039 | P2 | OPEN | Backup save can serialize while held-Pokémon rollback failed |
@@ -254,7 +254,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** corrupt one covered LGPE block while leaving the old footer CRC unchanged and require open to fail; verify an untouched valid fixture passes; prove save never repairs an invalid source merely as a side effect of ordinary editing.
 - **Dependency / sequencing:** Coordinate with AUDIT-023 size/layout constants
 - **Proposed remediation order:** 11
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `include/Save/LGPEReadValidation.h` now performs read-only CRC-16/ARC verification for every Beluga block consumed by PokeBank before mutable state exists. `validateTrainerSaveForOpen()` applies this preflight to Let's Go, and the direct `readTrainerInfoLetsGo()` path independently refuses invalid CRCs before constructing `Trainer7LGPE`. The durable validator also shares this preflight. `tests/test_lgpe_read_validation.cpp` proves untouched active/full files pass, covered-block corruption with the old CRC fails, footer corruption fails, and unsupported size fails; it is wired into Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 12. AUDIT-022 — BDSP pre-open validation ignores its stored whole-file MD5
 
