@@ -41,7 +41,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 19 | AUDIT-013 | P2 | FIXED | Legacy Bank migration skips checksum validation used by normal Bank load |
 | 20 | AUDIT-028 | P2 | FIXED | Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays |
 | 21 | AUDIT-027 | P2 | FIXED | LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0 |
-| 22 | AUDIT-014 | P2 | OPEN | Session-wide source read-only gate disables app-owned Bank mutation |
+| 22 | AUDIT-014 | P2 | FIXED | Session-wide source read-only gate disables app-owned Bank mutation |
 | 23 | AUDIT-019 | P3 | OPEN | modern encrypted blank slots are parsed as live species-0 objects |
 | 24 | AUDIT-012 | P3 | OPEN | Settings persistence truncates in place and ignores write/close failure |
 | 25 | AUDIT-040 | P3 | OPEN | RetroArch playlist auto-match can accept wrong-family game content with the same basename |
@@ -448,7 +448,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** immutable source + mutable Bank target; Bank rename/edit/sort during RetroArch/ExternalLegacy browsing; source-box mutation remains blocked; cross-store source-retiring Move remains blocked; copy/import into Bank must not imply source retirement.
 - **Dependency / sequencing:** Must preserve source-retiring Move locks
 - **Proposed remediation order:** 22
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** a new pure `UI/MutationTargetPolicy.h` resolves Party/SaveBox mutation capability from the session source but resolves Bank targets to `SourceKind::AppOwnedStorage`. TrainerView target gates now use that policy for Bank rename/edit/sort, storage pickup/drop and action-sheet Edit; the read-only defense layer preserves Bank details/release/group/save-discard modals instead of closing them on the next frame. SaveBox/Party mutations remain source-gated. `buildCrossStoreDescriptors()` still explicitly refuses read-only sessions, so enabling Bank-only mutation does not enable source-retiring True Move or emulator/live writes. `tests/test_source_mutation_policy.cpp` now proves immutable Party/SaveBox + mutable Bank capability for installed/RetroArch/external sources and asserts the cross-store source-readonly gate remains present. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 23. AUDIT-019 — modern encrypted blank slots are parsed as live species-0 objects
 
