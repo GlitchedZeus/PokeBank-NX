@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - integration/gen4-polish-hardware-20260928
+      - feature/gen4-full-editor-20260928
     paths:
       - 'include/UI/AppShellModel.h'
       - 'include/UI/AppShellScreen.h'

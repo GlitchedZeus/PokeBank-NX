@@ -8,6 +8,7 @@
 #include "UI/UIScreen.h"
 #include "UI/TouchInput.h"
 #include "UI/SaveSelectScreen.h"
+#include "UI/AppShellScreen.h"
 #include "UI/BackupSelectionScreen.h"
 #include "UI/TrainerViewScreen.h"
 #include "Legacy/RetroArchFRLGDiscovery.h"
@@ -37,15 +38,21 @@ namespace UI {
         bool running;
         PokeVault::Legacy::FRLGDiscoveryResult legacyFRLGSources;
         PokeVault::Legacy::LegacySourceBindings legacySourceBindings;
+        SaveSelectScreen::NavigationState productHomeNavigation{};
+        bool productHomeNavigationValid = false;
+        AppShellScreen::NavigationState appShellNavigation{};
+        bool appShellNavigationValid = false;
 
         SaveSelectScreen::MainMenuDestination handleSaveSelection();
-        void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName);
+        void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName,
+                                   SaveSelectScreen::OpenIntent intent);
         bool handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
                                const std::string& backupDir, bool loadedFromCart,
-                               std::string& error);
+                               SaveSelectScreen::OpenIntent intent, std::string& error);
         bool handleLegacyFRLGView(AccountUid userUid, size_t sourceIndex, const std::string& gameId,
-                                  std::string& error);
-        bool handleGen4View(AccountUid userUid, const std::string& gameId, std::string& error);
+                                  SaveSelectScreen::OpenIntent intent, std::string& error);
+        bool handleGen4View(AccountUid userUid, const std::string& gameId,
+                            SaveSelectScreen::OpenIntent intent, std::string& error);
     };
 }
 

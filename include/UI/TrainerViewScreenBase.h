@@ -87,6 +87,13 @@ namespace UI {
         void openPokemonActionSheet(PokeVault::UIModel::PokemonTarget target);
         Pokemon::Pokemon* actionSheetTargetPokemon();
         void openActionSheetTargetDetails(bool readOnly);
+        void openItemsShortcut() {
+            selectedMode = ViewMode::Items;
+            detailViewActive = true;
+            selectedCategory = 0;
+            selectedItemIndex = 0;
+            currentPage = 0;
+        }
 
         // --- HOME-style rectangle select + block carry (see moveMon below) ---
         int paneCols(int pane) const;      // grid columns (LGPE save boxes are 5 wide, everything else 6)

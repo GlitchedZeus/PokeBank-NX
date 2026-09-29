@@ -98,7 +98,7 @@ namespace UI {
             if (!running) break;
             if (destination == SaveSelectScreen::MainMenuDestination::None) continue;
 
-            AppShellScreen shell;
+            AppShellScreen shell(appShellNavigationValid ? &appShellNavigation : nullptr);
             using Dest = SaveSelectScreen::MainMenuDestination;
             using Section = PokeBank::UIModel::AppShellSection;
             switch (destination) {
@@ -106,6 +106,7 @@ namespace UI {
                 case Dest::Pokedex:     shell.openSection(Section::Pokedex); break;
                 case Dest::Banks:       shell.openSection(Section::Banks); break;
                 case Dest::Search:      shell.openSection(Section::Search); break;
+                case Dest::More:        shell.openSection(Section::More); break;
                 case Dest::Settings:    shell.openSection(Section::Settings); break;
                 case Dest::None:        break;
             }
@@ -119,6 +120,8 @@ namespace UI {
                 fb.drawFadeOverlay();
                 fb.flush();
             }
+            appShellNavigation = shell.navigationState();
+            appShellNavigationValid = true;
             fb.startFade();
         }
     }
@@ -126,7 +129,9 @@ namespace UI {
     // rebuilds it so newly-created saves stay visible; secondary destinations return here.
     SaveSelectScreen::MainMenuDestination UIManager::handleSaveSelection() {
         while (running) {
-            SaveSelectScreen selectScreen(legacyFRLGSources, legacySourceBindings);
+            SaveSelectScreen selectScreen(
+                legacyFRLGSources, legacySourceBindings,
+                productHomeNavigationValid ? &productHomeNavigation : nullptr);
             fb.startFade();
             bool rebuildPicker = false;
 
@@ -139,23 +144,28 @@ namespace UI {
                 fb.flush();
 
                 if (selectScreen.hasSelectedTitle()) {
+                    productHomeNavigation = selectScreen.navigationState();
+                    productHomeNavigationValid = true;
                     if (selectScreen.getSelectedSourceKind() ==
                         SaveSelectScreen::SelectedSourceKind::RetroArchFRLG) {
                         std::string error;
                         if (!handleLegacyFRLGView(selectScreen.getSelectedUser(),
                                                   selectScreen.getSelectedLegacySourceIndex(),
-                                                  selectScreen.getSelectedGameId(), error))
+                                                  selectScreen.getSelectedGameId(),
+                                                  selectScreen.getOpenIntent(), error))
                             logErrorToFile("Legacy emulator source refused open", error.c_str());
                     } else if (selectScreen.getSelectedSourceKind() ==
                                SaveSelectScreen::SelectedSourceKind::Gen4AssignedFile) {
                         std::string error;
                         if (!handleGen4View(selectScreen.getSelectedUser(),
-                                            selectScreen.getSelectedGameId(), error))
+                                            selectScreen.getSelectedGameId(),
+                                            selectScreen.getOpenIntent(), error))
                             logErrorToFile("Generation IV assigned source refused open", error.c_str());
                     } else {
                         handleBackupSelection(selectScreen.getSelectedUser(),
                                               selectScreen.getSelectedTitleId(),
-                                              selectScreen.getSelectedTitleName());
+                                              selectScreen.getSelectedTitleName(),
+                                              selectScreen.getOpenIntent());
                     }
                     rebuildPicker = true;
                     break;
@@ -167,13 +177,19 @@ namespace UI {
                 running = false;
                 return SaveSelectScreen::MainMenuDestination::None;
             }
-            if (selectScreen.shouldExit()) return selectScreen.getRequestedMainMenuDestination();
+            if (selectScreen.shouldExit()) {
+                productHomeNavigation = selectScreen.navigationState();
+                productHomeNavigationValid = true;
+                return selectScreen.getRequestedMainMenuDestination();
+            }
             if (!rebuildPicker) return SaveSelectScreen::MainMenuDestination::None;
         }
         return SaveSelectScreen::MainMenuDestination::None;
     }
 
-    void UIManager::handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName) {
+    void UIManager::handleBackupSelection(AccountUid userUid, u64 titleId,
+                                          const std::string& titleName,
+                                          SaveSelectScreen::OpenIntent intent) {
         BackupSelectionScreen backupScreen(userUid, titleId, titleName);
         fb.startFade();
 
@@ -199,7 +215,7 @@ namespace UI {
                         continue;
                     }
                     std::string error;
-                    if (!handleTrainerView(userUid, titleId, titleName, backupPath, true, error)) {
+                    if (!handleTrainerView(userUid, titleId, titleName, backupPath, true, intent, error)) {
                         backupScreen.reportFailure(error);
                         continue;
                     }
@@ -208,7 +224,7 @@ namespace UI {
                     logInfoToFile("Loading existing backup", backupScreen.getSelectedBackupPath().c_str());
                     std::string error;
                     if (!handleTrainerView(userUid, titleId, titleName,
-                                           backupScreen.getSelectedBackupPath(), false, error)) {
+                                           backupScreen.getSelectedBackupPath(), false, intent, error)) {
                         backupScreen.reportFailure(error);
                         continue;
                     }
@@ -220,7 +236,7 @@ namespace UI {
 
     bool UIManager::handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
                                       const std::string& backupDir, bool loadedFromCart,
-                                      std::string& error) {
+                                      SaveSelectScreen::OpenIntent intent, std::string& error) {
         logInfoToFile("Loading save from", backupDir.c_str());
 
         // A04b startup gate: reconcile any interrupted durable Move BEFORE parsing this workspace.
@@ -249,6 +265,8 @@ namespace UI {
                 loadedFromCart ? PokeVault::Safety::SourceKind::InstalledGame
                                : PokeVault::Safety::SourceKind::BackupOrStaged);
             trainerScreen.setMoveRecoveryState(moveRecovery.mutationLocked, moveRecovery.notice);
+            if (intent == SaveSelectScreen::OpenIntent::Items)
+                trainerScreen.openItemsShortcut();
             fb.startFade();
 
             while (appletMainLoop() && !trainerScreen.shouldExit() && !trainerScreen.hasRequestedExit()) {
@@ -266,7 +284,8 @@ namespace UI {
     }
 
     bool UIManager::handleLegacyFRLGView(
-        AccountUid userUid, size_t sourceIndex, const std::string& gameId, std::string& error) {
+        AccountUid userUid, size_t sourceIndex, const std::string& gameId,
+        SaveSelectScreen::OpenIntent intent, std::string& error) {
         error.clear();
         if (sourceIndex >= legacyFRLGSources.sources.size()) {
             error = "Emulator source selection is stale";
@@ -326,6 +345,8 @@ namespace UI {
             *trainer, "Pokemon " + std::string(identity->title), selected.path, 0, userUid,
             PokeVault::Safety::SourceKind::RetroArchLegacy, selected.gameId,
             selected.providerLabel);
+        if (intent == SaveSelectScreen::OpenIntent::Items)
+            trainerScreen.openItemsShortcut();
         fb.startFade();
         while (appletMainLoop() && !trainerScreen.shouldExit() &&
                !trainerScreen.hasRequestedExit()) {
@@ -340,7 +361,8 @@ namespace UI {
         return true;
     }
     bool UIManager::handleGen4View(
-        AccountUid userUid, const std::string& gameId, std::string& error) {
+        AccountUid userUid, const std::string& gameId,
+        SaveSelectScreen::OpenIntent intent, std::string& error) {
         error.clear();
         const auto* identity = PokeVault::Games::findGame(gameId);
         if (!identity || identity->platform != PokeVault::Games::Platform::NintendoDS ||
@@ -372,6 +394,8 @@ namespace UI {
             *trainer, "Pokemon " + std::string(identity->title), sourcePath, 0, userUid,
             PokeVault::Safety::SourceKind::ExternalLegacy, gameId,
             opened.source.binding.sourceType);
+        if (intent == SaveSelectScreen::OpenIntent::Items)
+            trainerScreen.openItemsShortcut();
         fb.startFade();
         while (appletMainLoop() && !trainerScreen.shouldExit() &&
                !trainerScreen.hasRequestedExit()) {

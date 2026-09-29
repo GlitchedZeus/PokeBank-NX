@@ -30,23 +30,41 @@ namespace UI {
             Gen4AssignedFile,
         };
 
+        enum class OpenIntent { Default, Items };
+
         enum class MainMenuDestination {
             None,
             MasterVault,
             Pokedex,
             Banks,
             Search,
+            More,
             Settings,
         };
 
+        struct NavigationState {
+            int userIndex = 0;
+            int titleIndex = 0;
+            int hubDockIndex = 0;
+            int hubFeatureIndex = -1;
+            int scrollRow = 0;
+            bool hubDockFocused = false;
+            bool classicGamesActive = false;
+        };
+
         SaveSelectScreen(PokeVault::Legacy::FRLGDiscoveryResult& legacySources,
-                         PokeVault::Legacy::LegacySourceBindings& legacyBindings);
+                         PokeVault::Legacy::LegacySourceBindings& legacyBindings,
+                         const NavigationState* resumeState = nullptr);
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return exitRequested; }
         bool hasRequestedAppExit() const { return appExitRequested; }
         MainMenuDestination getRequestedMainMenuDestination() const {
             return requestedMainMenuDestination;
+        }
+        [[nodiscard]] NavigationState navigationState() const {
+            return {userIndex, titleIndex, hubDockIndex, hubFeatureIndex, scrollRow,
+                    hubDockFocused, classicGamesActive};
         }
 
         bool hasSelectedTitle() const { return titleSelected; }
@@ -56,6 +74,7 @@ namespace UI {
         const std::string& getSelectedGameId() const { return selectedGameId; }
         SelectedSourceKind getSelectedSourceKind() const { return selectedSourceKind; }
         size_t getSelectedLegacySourceIndex() const { return selectedLegacySourceIndex; }
+        OpenIntent getOpenIntent() const { return openIntent; }
 
     private:
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
@@ -68,6 +87,10 @@ namespace UI {
             std::string sourceLabel = "LOCAL SAVE";
             std::string locationLabel;
             std::string artworkKey;
+            std::string trainerName;
+            uint16_t dexSeen = 0;
+            uint16_t dexCaught = 0;
+            uint16_t dexTotal = 0;
             std::vector<PokeVault::Legacy::FRLGSaveInstance> legacyInstances;
             SelectedSourceKind sourceKind = SelectedSourceKind::SwitchTitle;
         };
@@ -80,6 +103,8 @@ namespace UI {
         struct PartyPreviewSlot {
             uint16_t species = 0;
             uint8_t level = 0;
+            uint8_t form = 0;
+            bool shiny = false;
             std::string name;
         };
         struct LaunchFileEntry {
@@ -94,9 +119,15 @@ namespace UI {
         std::array<PartyPreviewSlot, 6> partyPreview{};
         std::string partyPreviewStatus;
         std::string previewTrainerName;
+        uint16_t previewDexSeen = 0;
+        uint16_t previewDexCaught = 0;
+        uint16_t previewDexTotal = 0;
         GameLaunchDescriptor launchDescriptor;
         std::string hubNotice;
         bool launchLegacyMode = false;
+        OpenIntent openIntent = OpenIntent::Default;
+        bool classicGamesActive = false;
+        bool helpReturnClassicGames = false;
 
         std::vector<LaunchFileEntry> launchFileEntries;
         std::string launchBrowsePath;
@@ -115,14 +146,17 @@ namespace UI {
         bool appExitRequested = false;  // explicit Options -> Exit PokeBank NX
         MainMenuDestination requestedMainMenuDestination = MainMenuDestination::None;
         bool hubDockFocused = false;
+        bool headerSettingsFocused = false;
         int hubDockIndex = 0;
         // Main product-home focus outside the persistent dock:
         // -1 = selected game card, 0 = Master Vault, 1 = Pokédex.
         int hubFeatureIndex = -1;
-        enum class Overlay { None, Options, Help, LegacyInstances, LegacyAssignment, LegacyDetails,
-                             Gen4Setup, Gen4Candidates, GameFilePicker };
+        enum class Overlay { None, Options, Help, GameWorkspace, LegacyInstances, LegacyAssignment,
+                             LegacyDetails, Gen4Setup, Gen4Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
+        Overlay helpReturnOverlay = Overlay::None;
         int optionsIndex = 0;
+        int gameWorkspaceIndex = 0;
         int legacyInstanceIndex = 0;
         int legacyInstanceScroll = 0;
         AccountUid selectedUserUid{};
@@ -165,6 +199,7 @@ namespace UI {
         std::vector<HitRect> dockRects;
 
         void activateHubDock();
+        void activateGameWorkspace();
         void loadUsers();
         void loadLegacySources(const PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
         void loadGen4Cards();
@@ -205,12 +240,16 @@ namespace UI {
         const UserEntry* currentUser() const;
         int titleColumns() const;      // grid columns for the current user's title count (<= 5)
         int titleRows() const;         // rows those tiles occupy
+        int classicTitleColumns() const;
+        int classicTitleRows() const;
+        void drawClassicGameSources(PKSEFramebuffer& fb);
 
         // Top row of the scroll window. Persistent STATE, not derived from the selection: it moves
         // only when the selected tile would otherwise fall outside the window, so the grid holds
         // still while the cursor moves within it instead of re-centring (which reads as paging).
         int scrollRow = 0;
         void scrollSelectionIntoView();
+        void scrollClassicSelectionIntoView();
     };
 }
 
