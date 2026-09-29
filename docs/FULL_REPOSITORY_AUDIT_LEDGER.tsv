@@ -217,13 +217,13 @@ include/Integration/Gen1/Gen1Shiny.h	blob	100644	2600		unknown		PENDING			0
 include/Integration/Gen1/Gen1StagedInventoryEditor.h	blob	100644	2602		unknown		PENDING			0	
 include/Integration/Gen1/Gen1StagedPokemonEditor.h	blob	100644	5690		unknown		PENDING			0	
 include/Integration/Gen2/Gen2BattleStats.h	blob	100644	2794		unknown		PENDING			0	
-include/Integration/Gen2/Gen2ExportTransaction.h	blob	100644	1995		unknown		PENDING			0	
+include/Integration/Gen2/Gen2ExportTransaction.h	blob	100644	1995	Gen II verified export transaction API	text	62	AUDITED			1	yes
 include/Integration/Gen2/Gen2HeldItems.h	blob	100644	1465		unknown		PENDING			0	
 include/Integration/Gen2/Gen2MoveCompatibility.h	blob	100644	998		unknown		PENDING			0	
 include/Integration/Gen2/Gen2PersonalData.h	blob	100644	1174		unknown		PENDING			0	
-include/Integration/Gen2/Gen2ReadOnlyInventory.h	blob	100644	1384		unknown		PENDING			0	
-include/Integration/Gen2/Gen2ReadOnlySave.h	blob	100644	4073		unknown		PENDING			0	
-include/Integration/Gen2/Gen2StagedEditor.h	blob	100644	8057		unknown		PENDING			0	
+include/Integration/Gen2/Gen2ReadOnlyInventory.h	blob	100644	1384	Gen II read-only inventory model	text	51	AUDITED			0	yes
+include/Integration/Gen2/Gen2ReadOnlySave.h	blob	100644	4073	Gen II strict read-only save model	text	134	AUDITED			0	no
+include/Integration/Gen2/Gen2StagedEditor.h	blob	100644	8057	Gen II staged editor/carry transaction API	text	185	AUDITED			1	yes
 include/Integration/Gen3/FRLGReadModel.h	blob	100644	1019		unknown		PENDING			0	
 include/Integration/Gen3/Gen3ExactFormatEditorProvider.h	blob	100644	3293	Gen III staged editor capability provider	text	74	AUDITED			0	no
 include/Integration/Gen3/Gen3LearnsetTable.h	blob	100644	325875		unknown		PENDING			0	
@@ -448,15 +448,15 @@ src/Integration/Gen1/Gen1ReadOnlyInventory.cpp	blob	100644	3960		unknown		PENDIN
 src/Integration/Gen1/Gen1ReadOnlySave.cpp	blob	100644	22773		unknown		PENDING			0	
 src/Integration/Gen1/Gen1StagedInventoryEditor.cpp	blob	100644	8558		unknown		PENDING			0	
 src/Integration/Gen1/Gen1StagedPokemonEditor.cpp	blob	100644	20016	Gen I in-memory staged Pokémon editor	text	322	AUDITED			0	no
-src/Integration/Gen2/Gen2ExportTransaction.cpp	blob	100644	10982		unknown		PENDING			0	
+src/Integration/Gen2/Gen2ExportTransaction.cpp	blob	100644	10982	Gen II verified staged export publisher	text	270	AUDITED			1	yes
 src/Integration/Gen2/Gen2MoveCompatibility.cpp	blob	100644	2758		unknown		PENDING			0	
 src/Integration/Gen2/Gen2MoveCompatibilityData.inc	blob	100644	99931		unknown		PENDING			0	
-src/Integration/Gen2/Gen2PackedMove.cpp	blob	100644	10207		unknown		PENDING			0	
+src/Integration/Gen2/Gen2PackedMove.cpp	blob	100644	10207	Gen II packed relocation/release engine	text	79	AUDITED			1	yes
 src/Integration/Gen2/Gen2PersonalData.cpp	blob	100644	13636		unknown		PENDING			0	
-src/Integration/Gen2/Gen2ReadOnlyInventory.cpp	blob	100644	11001		unknown		PENDING			0	
-src/Integration/Gen2/Gen2ReadOnlySave.cpp	blob	100644	16694		unknown		PENDING			0	
-src/Integration/Gen2/Gen2StagedEditor.cpp	blob	100644	53914		unknown		PENDING			0	
-src/Integration/Gen2/Gen2UniversalInventory.cpp	blob	100644	12249		unknown		PENDING			0	
+src/Integration/Gen2/Gen2ReadOnlyInventory.cpp	blob	100644	11001	Gen II inventory decoder/item labels	text	235	AUDITED			0	yes
+src/Integration/Gen2/Gen2ReadOnlySave.cpp	blob	100644	16694	Gen II strict save parser/layout validation	text	411	AUDITED			0	no
+src/Integration/Gen2/Gen2StagedEditor.cpp	blob	100644	53914	Gen II staged editor/finalization implementation	text	1182	AUDITED			1	yes
+src/Integration/Gen2/Gen2UniversalInventory.cpp	blob	100644	12249	Gen II universal staged inventory editor	text	274	AUDITED			0	no
 src/Integration/Gen3/FRLGReadModel.cpp	blob	100644	15298		unknown		PENDING			0	
 src/Integration/Gen3/Gen3StagedInventoryEditor.cpp	blob	100644	17301	Gen III in-memory staged inventory editor	text	394	AUDITED			0	no
 src/Integration/Gen3/Gen3StagedPokemonEditor.cpp	blob	100644	38706	Gen III staged Pokémon editor implementation	text	944	AUDITED			0	yes
