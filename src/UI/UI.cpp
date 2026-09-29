@@ -140,9 +140,14 @@ namespace UI {
                 padUpdate(&pad);
                 touch.update();
                 selectScreen.update(pad, touch);
-                selectScreen.draw(fb);
-                fb.drawFadeOverlay();
-                fb.flush();
+
+                // A screen that selected a destination or requested exit is already retired.
+                // Never paint one more stale frame after update() changes its terminal state.
+                if (!selectScreen.hasSelectedTitle() && !selectScreen.shouldExit()) {
+                    selectScreen.draw(fb);
+                    fb.drawFadeOverlay();
+                    fb.flush();
+                }
 
                 if (selectScreen.hasSelectedTitle()) {
                     productHomeNavigation = selectScreen.navigationState();
@@ -176,6 +181,7 @@ namespace UI {
                     rebuildPicker = true;
                     break;
                 }
+                if (selectScreen.shouldExit()) break;
             }
 
             if (!running) return SaveSelectScreen::MainMenuDestination::None;
@@ -221,9 +227,13 @@ namespace UI {
             padUpdate(&pad);
             touch.update();
             backupScreen.update(pad, touch);
-            backupScreen.draw(fb);
-            fb.drawFadeOverlay();
-            fb.flush();
+
+            // Selection/exit retires this chooser immediately; do not flash it again.
+            if (!backupScreen.shouldExit() && !backupScreen.hasSelectedBackup()) {
+                backupScreen.draw(fb);
+                fb.drawFadeOverlay();
+                fb.flush();
+            }
 
             if (backupScreen.hasSelectedBackup()) {
                 if (backupScreen.shouldCreateNewBackup()) {
@@ -255,6 +265,7 @@ namespace UI {
                 }
                 return;
             }
+            if (backupScreen.shouldExit()) break;
         }
     }
 
@@ -297,6 +308,7 @@ namespace UI {
                 padUpdate(&pad);
                 touch.update();
                 trainerScreen.update(pad, touch);
+                if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
                 trainerScreen.draw(fb);
                 fb.drawFadeOverlay();
                 fb.flush();
@@ -377,6 +389,7 @@ namespace UI {
             padUpdate(&pad);
             touch.update();
             trainerScreen.update(pad, touch);
+            if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
             trainerScreen.draw(fb);
             fb.drawFadeOverlay();
             fb.flush();
@@ -426,6 +439,7 @@ namespace UI {
             padUpdate(&pad);
             touch.update();
             trainerScreen.update(pad, touch);
+            if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
             trainerScreen.draw(fb);
             fb.drawFadeOverlay();
             fb.flush();
