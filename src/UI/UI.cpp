@@ -89,33 +89,41 @@ namespace UI {
     }
 
     void UIManager::run() {
-        AppShellScreen shell;
+        // The approved Games/product-home screen is now the app root. Secondary destinations
+        // reuse the existing AppShell overlays, then return directly to the product home.
         fb.startFade();
 
-        while (appletMainLoop() && running && !shell.shouldExit()) {
-            padUpdate(&pad);
-            touch.update();
-            shell.update(pad, touch);
-            shell.draw(fb);
-            fb.drawFadeOverlay();
-            fb.flush();
+        while (appletMainLoop() && running) {
+            const auto destination = handleSaveSelection();
+            if (!running) break;
+            if (destination == SaveSelectScreen::MainMenuDestination::None) continue;
 
-            if (shell.consumeAction() == AppShellScreen::Action::Games) {
-                const auto destination = handleSaveSelection();
-                if (running) {
-                    if (destination == SaveSelectScreen::MainMenuDestination::Banks)
-                        shell.openSection(PokeBank::UIModel::AppShellSection::Banks);
-                    else if (destination == SaveSelectScreen::MainMenuDestination::Settings)
-                        shell.openSection(PokeBank::UIModel::AppShellSection::Settings);
-                    fb.startFade();
-                }
+            AppShellScreen shell;
+            using Dest = SaveSelectScreen::MainMenuDestination;
+            using Section = PokeBank::UIModel::AppShellSection;
+            switch (destination) {
+                case Dest::MasterVault: shell.openSection(Section::MasterVault); break;
+                case Dest::Pokedex:     shell.openSection(Section::Pokedex); break;
+                case Dest::Banks:       shell.openSection(Section::Banks); break;
+                case Dest::Search:      shell.openSection(Section::Search); break;
+                case Dest::Settings:    shell.openSection(Section::Settings); break;
+                case Dest::None:        break;
             }
-        }
 
-        if (shell.shouldExit()) running = false;
+            fb.startFade();
+            while (appletMainLoop() && running && shell.hasOverlay()) {
+                padUpdate(&pad);
+                touch.update();
+                shell.update(pad, touch);
+                shell.draw(fb);
+                fb.drawFadeOverlay();
+                fb.flush();
+            }
+            fb.startFade();
+        }
     }
-    // Games opens the HOME-style profile/game hub. Returning from a loaded backup/trainer
-    // rebuilds the hub so newly-created saves stay visible; B returns to the Main Menu.
+    // Product Home owns game/profile/save selection. Returning from a loaded backup/trainer
+    // rebuilds it so newly-created saves stay visible; secondary destinations return here.
     SaveSelectScreen::MainMenuDestination UIManager::handleSaveSelection() {
         while (running) {
             SaveSelectScreen selectScreen(legacyFRLGSources, legacySourceBindings);
