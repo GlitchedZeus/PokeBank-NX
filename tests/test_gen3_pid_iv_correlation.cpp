@@ -22,5 +22,17 @@ int main() {
     // One IV changed from the known Method 1 vector: no handheld 1/2/3/4 correlation.
     assert(analyze(0xE97E0000u, {17,19,21,16,13,12}).method == Method::None);
 
-    std::cout << "Gen III PID/IV handheld LCRNG correlation: PASS\n";
+    // Deterministic Gen III truncated-roamer vector.
+    // Origin seed 0x12345678 => PID 0x84EA0B71, generated IV32 low byte 0x8A.
+    const auto roamer =
+        Legality::Gen3PidIv::analyzeRoamer(0x84EA0B71u, {10,4,0,0,0,0});
+    assert(roamer.method == Method::Method1Roamer);
+    assert(roamer.originSeed == 0x12345678u);
+    assert(Legality::Gen3PidIv::analyzeRoamer(
+               0x84EA0B71u, {10,4,1,0,0,0}).method == Method::None);
+    assert(Legality::Gen3PidIv::isRoamerSpecies(243));
+    assert(Legality::Gen3PidIv::isRoamerSpecies(381));
+    assert(!Legality::Gen3PidIv::isRoamerSpecies(150));
+
+    std::cout << "Gen III PID/IV handheld + roamer LCRNG correlation: PASS\n";
 }

@@ -187,9 +187,20 @@ namespace Legality {
                     "PID/IV spread matches Gen III " +
                     std::string(Gen3PidIv::methodName(correlation.method)),
                     CheckIdentifier::PidRng);
+            } else if (Gen3PidIv::isRoamerSpecies(species)) {
+                const auto roamer = Gen3PidIv::analyzeRoamer(pk.pid(), ivs);
+                if (roamer.matched()) {
+                    add(r, Severity::Info,
+                        "PID/IV spread matches the Gen III truncated-roamer Method 1 class used by Ruby/Sapphire and FireRed/LeafGreen roamers",
+                        CheckIdentifier::PidRng);
+                } else {
+                    add(r, Severity::Info,
+                        "No handheld Method 1/2/3/4 or truncated-roamer PID/IV match; special/event/GC RNG classes are not fully covered",
+                        CheckIdentifier::PidRng);
+                }
             } else {
                 add(r, Severity::Info,
-                    "No handheld Method 1/2/3/4 PID/IV match; special/event/roamer/GC RNG classes are not fully covered",
+                    "No handheld Method 1/2/3/4 PID/IV match; special/event/GC RNG classes are not fully covered",
                     CheckIdentifier::PidRng);
             }
         } else if (sourceProfile && exactGeneration == 4) {

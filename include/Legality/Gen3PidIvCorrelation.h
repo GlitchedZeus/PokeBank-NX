@@ -16,6 +16,7 @@ enum class Method : uint8_t {
     Method2Unown,
     Method3Unown,
     Method4Unown,
+    Method1Roamer,
 };
 
 struct Result {
@@ -35,6 +36,7 @@ constexpr const char* methodName(Method method) noexcept {
         case Method::Method2Unown: return "Method 2 (Unown)";
         case Method::Method3Unown: return "Method 3 (Unown)";
         case Method::Method4Unown: return "Method 4 (Unown)";
+        case Method::Method1Roamer: return "Method 1 (Roamer truncated IVs)";
         case Method::None: break;
     }
     return "No handheld LCRNG match";
@@ -151,6 +153,39 @@ constexpr Result scanMethod3(uint32_t first, uint32_t third,
 // This intentionally recognizes only the normal GBA handheld LCRNG Method 1/2/3/4 family.
 // Channel, Colosseum/XD, roamers, BACD/event distributions and other special classes are
 // separate legality layers; Method::None therefore means "unresolved", not "illegal".
+constexpr Result analyzeRoamer(uint32_t pid,
+                               const std::array<uint8_t, 6>& ivs) noexcept {
+    // Ruby/Sapphire and FR/LG roaming encounters have the classic Gen III save bug:
+    // only the low 8 bits of the generated IV32 survive. Emerald roamers use normal
+    // Method 1 and should be checked with analyze() instead.
+    const uint32_t iv1 = static_cast<uint32_t>(ivs[0])
+                       | (static_cast<uint32_t>(ivs[1]) << 5)
+                       | (static_cast<uint32_t>(ivs[2]) << 10);
+    const uint32_t iv2 = static_cast<uint32_t>(ivs[3])
+                       | (static_cast<uint32_t>(ivs[4]) << 5)
+                       | (static_cast<uint32_t>(ivs[5]) << 10);
+    const uint32_t iv32 = iv1 | (iv2 << 15);
+    if (iv32 > 0xFFu)
+        return {};
+
+    const uint32_t top = pid & 0xFFFF0000u;
+    const uint32_t bottom = pid << 16;
+    const Detail::Seeds seeds = Detail::reverseAdjacent(bottom, top);
+    for (std::size_t i = 0; i < seeds.count; ++i) {
+        const uint32_t seed = seeds.values[i];
+        const uint32_t ivByte =
+            (Detail::next3(seed) >> 16) & 0xFFu;
+        if (ivByte == iv32)
+            return {Method::Method1Roamer, seed};
+    }
+    return {};
+}
+
+constexpr bool isRoamerSpecies(uint16_t species) noexcept {
+    return species == 243 || species == 244 || species == 245 ||
+           species == 380 || species == 381;
+}
+
 constexpr Result analyze(uint32_t pid, const std::array<uint8_t, 6>& ivs,
                          bool unown = false) noexcept {
     const uint32_t iv1 = static_cast<uint32_t>(ivs[0])
