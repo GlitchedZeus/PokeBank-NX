@@ -545,7 +545,7 @@ src/UI/Dialogs/StatEditDialog.cpp	blob	100644	4325	stat edit dialog renderer	tex
 src/UI/Gen1PokemonDetailsPresentation.cpp	blob	100644	12921	Gen I read-only details presentation renderer	text	258	AUDITED			0	no
 src/UI/Gen1PokemonEditorFoundationHardwareFix.inc	blob	100644	20578	Gen I fullscreen shared-workspace hardware presentation/picker ownership fix	text	367	AUDITED			0	yes
 src/UI/Gen1PokemonEditorOverlay.cpp	blob	100644	48396		unknown		PENDING			0	
-src/UI/Gen1PokemonEditorOverlayFoundation.inc	blob	100644	31073		unknown		PENDING			0	
+src/UI/Gen1PokemonEditorOverlayFoundation.inc	blob	100644	31073	Gen I foundation workspace input/edit/exit-guard presentation layer	text	636	AUDITED			0	yes
 src/UI/Gen1PokemonEditorOverlayUX.inc	blob	100644	50586		unknown		PENDING			0	
 src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc	blob	100644	56095		unknown		PENDING			0	
 src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc	blob	100644	35382		unknown		PENDING			0	
