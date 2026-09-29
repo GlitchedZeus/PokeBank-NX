@@ -42,7 +42,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 20 | AUDIT-028 | P2 | FIXED | Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays |
 | 21 | AUDIT-027 | P2 | FIXED | LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0 |
 | 22 | AUDIT-014 | P2 | FIXED | Session-wide source read-only gate disables app-owned Bank mutation |
-| 23 | AUDIT-019 | P3 | OPEN | modern encrypted blank slots are parsed as live species-0 objects |
+| 23 | AUDIT-019 | P3 | FIXED | modern encrypted blank slots are parsed as live species-0 objects |
 | 24 | AUDIT-012 | P3 | OPEN | Settings persistence truncates in place and ignores write/close failure |
 | 25 | AUDIT-040 | P3 | OPEN | RetroArch playlist auto-match can accept wrong-family game content with the same basename |
 | 26 | AUDIT-016 | P3 | OPEN | RetroArch launch matching is basename-only and first-match wins |
@@ -466,7 +466,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** a native party with two real Pokémon plus four encrypted blanks must parse to two real party entries; native encrypted empty box slots must become null/empty model cells; Y on a visually empty box cell must remain a no-op; round-trip must preserve valid native blank bytes/count semantics.
 - **Dependency / sequencing:** Best after layout validators (AUDIT-021)
 - **Proposed remediation order:** 23
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** SWSH, PLA, SV and Z-A party/box parsers now construct/decrypt each native entity before deciding logical occupancy. Party vectors keep only `speciesID()!=0` Pokémon and box species-zero blanks become null model cells, matching the writers' encrypted-blank semantics. The direct Boxes Y/swap path now remains species-aware as defense in depth. `test_conversion_entity_golden.cpp` proves valid encrypted blanks for all four modern entity families decrypt to species 0, while `test_modern_trainer_blank_slots.cpp` binds all four Trainer parser paths and the Boxes swap UI to species-aware occupancy; both normal Host Tests and sanitizer suites cover the new contract. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 24. AUDIT-012 — Settings persistence truncates in place and ignores write/close failure
 
