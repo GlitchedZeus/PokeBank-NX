@@ -1569,6 +1569,8 @@ namespace UI {
         // to prove that physical source diagnostics stay out of the normal product presentation.
         const bool gameFocused = !hubDockFocused && !headerSettingsFocused && hubFeatureIndex < 0;
         drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, 18);
+        if (gameFocused)
+            fb.drawRoundedRect(DETAIL_X, HUB_Y, DETAIL_W, HUB_H, 18, Colors::Info, 3);
 
         if (u && titleIndex >= 0 && titleIndex < count) {
             const auto& title = u->titles[static_cast<size_t>(titleIndex)];
@@ -1608,9 +1610,9 @@ namespace UI {
 
             fb.drawFilledRoundedRect(infoX, HUB_Y + 172, DETAIL_W - (infoX - DETAIL_X) - 24,
                                      2, 1, Colors::Divider);
-            fb.drawText(infoX, HUB_Y + 191, "Pokédex Progress",
+            fb.drawText(infoX, HUB_Y + 191, "Pokédex",
                         Colors::TextSecondary, TextStyle::Body);
-            fb.drawText(infoX, HUB_Y + 218, "Pokédex progress is not available for this save yet.",
+            fb.drawText(infoX, HUB_Y + 218, "Progress tracking  •  Coming Soon",
                         Colors::TextMuted, TextStyle::Caption);
 
             const int partyX = DETAIL_X + 22;
@@ -1675,7 +1677,7 @@ namespace UI {
                             Colors::PanelAlt, Colors::TextPrimary);
             if (gameFocused)
                 fb.drawRoundedRect(DETAIL_X + 22, buttonY, 322, 58, 8,
-                                   Colors::FocusBorder, 3);
+                                   Colors::Info, 3);
             drawGlyphButton(fb, DETAIL_X + 366, buttonY, 332, 58, "ZR", launchLabel,
                             launchActionable ? Colors::AccentPrimary : Colors::PanelAlt,
                             launchActionable ? Colors::White : Colors::TextMuted);
@@ -1801,17 +1803,19 @@ namespace UI {
 
             int lw = 0, lh = 0;
             fb.measureText(dockLabels[i], lw, lh, TextStyle::Caption);
-            const Color labelColor = focused ? Colors::FocusBorder
-                                   : i == 0 ? Colors::AccentPrimary
+            const Color labelColor = focused ? Colors::Info
+                                   : i == 0 ? Colors::Info
                                             : Colors::TextMuted;
             fb.drawText(dx + (PRODUCT_DOCK_SIZE - lw) / 2, PRODUCT_DOCK_Y + 47,
                         dockLabels[i], labelColor, TextStyle::Caption);
             if (i == 0)
                 fb.drawFilledRoundedRect(dx - 4, PRODUCT_DOCK_Y + 67,
-                                         PRODUCT_DOCK_SIZE + 8, 3, 2, Colors::AccentPrimary);
+                                         PRODUCT_DOCK_SIZE + 8, 3, 2, Colors::Info);
         }
 
-        auto homeHints = std::string("L/R: Change Game | A: Select | ZR: Launch | -: Help | +: Settings | B: Exit");
+        auto homeHints = hubDockFocused && hubDockIndex == 0
+            ? std::string("A: Game Workspace | L/R: Change Game | -: Help | +: Settings | B: Exit")
+            : std::string("L/R: Change Game | A: Select | ZR: Launch | -: Help | +: Settings | B: Exit");
         if (users.size() > 1) homeHints = "ZL: Profile | " + homeHints;
         drawNavHints(fb, 565, fb.getWidth() - 565, PRODUCT_DOCK_Y + 24, homeHints);
 
