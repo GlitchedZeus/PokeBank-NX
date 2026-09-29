@@ -279,7 +279,7 @@ include/Pokemon/PersonalInfo4HGSS.h	blob	100644	1144		unknown		PENDING			0
 include/Pokemon/PersonalInfo4PT.h	blob	100644	1126		unknown		PENDING			0	
 include/Pokemon/PersonalInfoTable.h	blob	100644	5654		unknown		PENDING			0	
 include/Pokemon/PersonalRecord.h	blob	100644	632		unknown		PENDING			0	
-include/Pokemon/Pokemon.h	blob	100644	26295		unknown		PENDING			0	
+include/Pokemon/Pokemon.h	blob	100644	26295	base Pokémon ownership/edit interface	text	645	AUDITED			1	yes
 include/Pokemon/Pokemon1ReadOnly.h	blob	100644	6742		unknown		PENDING			0	
 include/Pokemon/Pokemon2ReadOnly.h	blob	100644	8049		unknown		PENDING			0	
 include/Pokemon/Pokemon3FRLG.h	blob	100644	17892		unknown		PENDING			0	
@@ -306,8 +306,8 @@ include/Save/GetSaveFileContents.h	blob	100644	8252	save open/build/persist orch
 include/Save/PLAReadValidation.h	blob	100644	2426	PLA structural/checksum read gate	text	49	AUDITED			0	no
 include/Save/RtcFooter.h	blob	100644	582	legacy RTC footer sizing helper	text	15	AUDITED			0	no
 include/Source/SaveInstance.h	blob	100644	7242	provider-neutral source instance/identity/access model	text	187	AUDITED			0	no
-include/Trainer/Bank.h	blob	100644	5839		unknown		PENDING			0	
-include/Trainer/BankFormatPolicy.h	blob	100644	711		unknown		PENDING			0	
+include/Trainer/Bank.h	blob	100644	5839	unified Bank storage API	text	110	AUDITED			0	yes
+include/Trainer/BankFormatPolicy.h	blob	100644	711	Bank box-count compatibility policy	text	27	AUDITED			0	no
 include/Trainer/Inventory.h	blob	100644	234	shared inventory item model	text	15	AUDITED			0	no
 include/Trainer/Inventory3FRLG.h	blob	100644	2616	FRLG inventory pouch geometry	text	54	AUDITED			0	no
 include/Trainer/Inventory7LGPE.h	blob	100644	4802	LGPE inventory record codec/pouch geometry	text	97	AUDITED			0	no
