@@ -6,9 +6,9 @@ Status: IN PROGRESS
 
 - Repository: GlitchedZeus/PokeBank-NX
 - Audit branch: `audit/full-repository-line-by-line-20260928`
-- Primary MAIN tree audited: PR #92 head `f792a498aaa41793a86c137c0ff74c7a0c2205a3`
+- Primary MAIN tree audited: PR #92 head `a86c8d039209bc17ac613524c6631f03309037a0`
 - PR #92 branch: `feature/gen4-full-editor-20260928`
-- Sibling UI overlay baseline: PR #97 head `5f19fd14628c182db135038864036b6eb1b86c49`; latest one-commit seven-file delta inspected in this checkpoint
+- Sibling UI overlay coverage baseline remains `5f19fd14628c182db135038864036b6eb1b86c49`; live PR #97 is now `3831989f7b320797068e752321ae0c36c2216f49`, with its forward delta tracked separately from the MAIN denominator
 - Integration parent: PR #90 head `8b3bcc16c804247bfe8d1314b686974ce73051d8`
 - Hardening parent: PR #79 head `00ee7a6ed7ac1b5a93c43246d70c252e135acec0`
 - Default branch main: `aca2bf41c83d81084886a46d53195f6cead81ccc`
@@ -31,7 +31,7 @@ Status: IN PROGRESS
 
 ## Current checkpoint — live MAIN catch-up
 
-- PR #92 remains audited through live head `f792a498aaa41793a86c137c0ff74c7a0c2205a3`.
+- PR #92 catch-up is reconciled through live head `a86c8d039209bc17ac613524c6631f03309037a0`. The four changed paths that already carried AUDITED status (`include/Integration/Gen4/Gen4StagedPokemonEditor.h`, `src/Integration/Gen4/Gen4StagedPokemonEditor.cpp`, `src/UI/Gen4SharedPokemonSurface.inc`, `tests/test_gen4_staged_pokemon_editor.cpp`) were fully re-read at that head; the other two changed paths were already PENDING and remain PENDING.
 - Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 482 paths are now accounted for and 448 text files have been fully read.
 - The entire Names tranche is now closed: no `include/Names` or `src/Names` file remains PENDING. Generated species tables contain 1,026 entries in each of nine languages; the modern item-name table contains ids 0..2684; Gen III direct item names cover ids 0..376.
 - MovePresence's unknown-group/id-0 behavior contradicts its comment, but all audited real game-group callers are routed through known groups; kept as a hardening follow-up, not a numbered defect.
@@ -45,6 +45,7 @@ Status: IN PROGRESS
 - Delta from PR #90: 6 commits / 18 changed paths.
 - Fully read so far: 9 / 18 changed paths, including the complete 582-line `src/UI/AppShellScreen.cpp`, new app-shell/organization model headers, native UI workflow/build fragment, and their focused tests.
 - This overlay count is intentionally separate from the 731-path PR #92 MAIN ledger.
+- Live sibling head `3831989f7b320797068e752321ae0c36c2216f49` is four commits ahead of the previous handoff endpoint `9f0b5c252e24e0743303b5a131c8ddb2694399a6`; the current 10-path forward delta remains outside the MAIN denominator. `AppShellModel.h`, `AppShellScreen.cpp`, `test_app_shell_model.cpp`, and `test_game_hub_contract.py` were inspected in this checkpoint to revalidate AUDIT-032; complete sibling-delta line-by-line closure remains pending.
 
 
 ### Save-safety checkpoint — write-path trace
@@ -192,7 +193,7 @@ Status: IN PROGRESS
 - Inspected the exact one-commit delta from `af4d2450983f837706be92a1d83c28fe308444e9` to live PR #97 head `5f19fd14628c182db135038864036b6eb1b86c49`: `AppShellModel.h`, `AppShellScreen.h/.cpp`, `SaveSelectScreen.cpp`, `UI.cpp`, and the two app-shell/game-hub contract tests.
 - The delta replaces the prior developer-dashboard-style root with a dedicated Main Menu, makes Games a destination instead of the application root, routes B from Games back to Main Menu, and moves Diagnostics under Settings. Future Vault/Pokédex/Banks/Search surfaces remain explicitly non-backend previews.
 - The changed navigation/touch/action flow was traced through the current source, not inferred from the model test alone.
-- One compile-blocking stale enum reference remains and is recorded as AUDIT-032. The product UI workflow performs a clean devkitA64 `make -j1`, so this is on the native build path rather than dead presentation code.
+- Historical AUDIT-032 was revalidated against live PR #97 head `3831989f7b320797068e752321ae0c36c2216f49`: the stale `AppShellSection::Collections` reference is gone, so the compile blocker is FIXED in newer sibling-lane commits. The finding remains in history because it was valid at the audited older head.
 
 ## Findings
 
@@ -629,6 +630,7 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Owner: MAIN / encryption-integrity lane.
 
 ### AUDIT-032 — PR #97 removes AppShellSection::Collections but still references it
+- Current disposition: FIXED at live PR #97 head `3831989f7b320797068e752321ae0c36c2216f49`. `AppShellSection` now contains `MasterVault`, `Pokedex`, `Banks`, `Settings`, and `Games`, and `AppShellScreen::update()` maps the Pokédex preview without referencing the removed `Collections` member. Historical evidence below remains valid for head `5f19fd14628c182db135038864036b6eb1b86c49`.
 - Severity: P1
 - Confidence: CONFIRMED
 - Area: sibling PR #97 / native Main Menu build
