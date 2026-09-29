@@ -558,7 +558,7 @@ src/UI/Gen2PokemonPickerOverlay.inc	blob	100644	12400	Gen II named species/move/
 src/UI/Gen2SharedPokemonSurface.inc	blob	100644	29899	Gen II shared actions/clone/review/provenance surface	text	608	AUDITED			0	no
 src/UI/Gen2SharedSurfaceParity.inc	blob	100644	18969	Gen II shared-surface parity/action input adapter	text	343	AUDITED			0	no
 src/UI/Gen2TrainerSessionOverlay.inc	blob	100644	2691	Gen II staged trainer-session overlay	text	59	AUDITED			0	no
-src/UI/Gen2UnifiedPokemonWorkspace.inc	blob	100644	42404		unknown		PENDING			0	
+src/UI/Gen2UnifiedPokemonWorkspace.inc	blob	100644	42404	Gen II unified shared workspace and Crystal caught-history editing layer	text	834	AUDITED			1	yes
 src/UI/Gen3SharedPokemonSurface.inc	blob	100644	78589		unknown		PENDING			0	
 src/UI/Gen4SharedPokemonSurface.inc	blob	100644	87916	Gen IV shared View/Edit/Create surface	text	1982	AUDITED			1	yes
 src/UI/Modals/Gen1PokemonDetailsModal.cpp	blob	100644	3945	Gen I details adapter	text	88	AUDITED			0	no
