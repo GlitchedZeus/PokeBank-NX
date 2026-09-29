@@ -346,7 +346,7 @@ include/UI/ExactFormatEditorProvider.h	blob	100644	5158	exact-format editor/sour
 include/UI/ExactSaveCapabilities.h	blob	100644	7867	exact save-format UI capability matrix	text	136	AUDITED			0	no
 include/UI/Gen1PokemonDetailsPresentation.h	blob	100644	2144	Gen I Pokemon details presentation model	text	56	AUDITED			0	no
 include/UI/Gen1PokemonEditorOverlay.h	blob	100644	578	Gen I Pokemon editor overlay interface	text	21	AUDITED			0	no
-include/UI/Gen1PokemonEditorUIContract.h	blob	100644	9292	Gen I editor UX/action/footer contract	text	239	AUDITED			0	no
+include/UI/Gen1PokemonEditorUIContract.h	blob	100644	9703	Gen I editor UX/action/footer contract	text	245	AUDITED			0	no
 include/UI/Gen1PokemonEditorUX3Contract.h	blob	100644	3475	Gen I cleanup-3 editor UX contract	text	89	AUDITED			0	no
 include/UI/Gen1PokemonPresentation.h	blob	100644	1784	Gen I shared presentation projection	text	38	AUDITED			0	no
 include/UI/Gen2HeldItemPicker.h	blob	100644	1885	Gen II shared held-item picker model/presentation	text	42	AUDITED			0	yes
@@ -379,7 +379,7 @@ include/UI/PokemonViewActions.h	blob	100644	1350	passive/Gen II Pokemon view act
 include/UI/SaveSelectScreen.h	blob	100644	7259	MAIN profile/game/source selection screen state	text	154	AUDITED			0	no
 include/UI/ScreenChrome.h	blob	100644	23745	shared HOME chrome/controller/touch rendering	text	450	AUDITED			0	no
 include/UI/SharedHeldItemPicker.h	blob	100644	1420	cross-generation held-item grid model	text	36	AUDITED			0	no
-include/UI/SharedPokemonEditorContract.h	blob	100644	25200	cross-generation shared editor/navigation contract	text	651	AUDITED			0	no
+include/UI/SharedPokemonEditorContract.h	blob	100644	25229	cross-generation shared editor/navigation contract	text	650	AUDITED			0	no
 include/UI/SharedPokemonShell.h	blob	100644	8429	shared Pokemon editor shell/presentation helpers	text	160	AUDITED			0	no
 include/UI/SharedSpeciesPicker.h	blob	100644	6009	shared species picker layout/behavior	text	135	AUDITED			0	no
 include/UI/SpeciesChangeLevelPolicy.h	blob	100644	671	encounter-aware species default-level policy	text	21	AUDITED			0	no
@@ -485,14 +485,14 @@ src/Names/ItemNames.cpp	blob	100644	102371	modern plus Gen I/III item-name table
 src/Names/ItemPouches.cpp	blob	100644	31323	generated per-game item-pouch legal ID catalogs/router	text	524	AUDITED			0	no
 src/Names/ItemPresence.cpp	blob	100644	13455	generated held-item presence bitsets/dispatch	text	176	AUDITED			0	no
 src/Names/LocationNames.cpp	blob	100644	142717	generated Gen III-IX met-location tables and bank router	text	4304	AUDITED			0	no
-src/Names/MachineDisplay.cpp	blob	100644	5972	machine descriptor/search presentation logic	text	132	AUDITED			0	no
+src/Names/MachineDisplay.cpp	blob	100644	6486	machine descriptor/search presentation logic	text	146	AUDITED			0	no
 src/Names/MoveInfo.cpp	blob	100644	23722	per-game move PP tables/lookup	text	326	AUDITED			0	no
 src/Names/MoveNames.cpp	blob	100644	21346	generated move-ID display names	text	938	AUDITED			0	no
 src/Names/MovePresence.cpp	blob	100644	6678	generated per-game move-presence bitmaps/router	text	116	AUDITED			0	yes
 src/Names/NatureNames.cpp	blob	100644	1039	nature-name lookup table	text	42	AUDITED			0	no
 src/Names/RibbonNames.cpp	blob	100644	15624	ribbon/mark bitfield display extraction	text	360	AUDITED			0	no
 src/Names/SpeciesNames.cpp	blob	100644	199465	generated localized species-name tables and lookup	text	9308	AUDITED			0	no
-src/Names/TMMoves.cpp	blob	100644	14364	TM/HM/TR item-to-move mappings	text	273	AUDITED			0	no
+src/Names/TMMoves.cpp	blob	100644	16463	TM/HM/TR item-to-move mappings	text	314	AUDITED			0	no
 src/Names/TypeNames.cpp	blob	100644	1098	type-name lookup table	text	42	AUDITED			0	no
 src/Pokemon/AbilityInfo.cpp	blob	100644	1169	ability-slot lookup implementation	text	28	AUDITED			0	no
 src/Pokemon/BaseStatsGen7.cpp	blob	100644	2304	LGPE base-stat lookup	text	70	AUDITED			1	yes
@@ -551,16 +551,16 @@ src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc	blob	100644	56095		unknown		PENDIN
 src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc	blob	100644	35382		unknown		PENDING			0	
 src/UI/Gen1PokemonEditorPassiveView.inc	blob	100644	1145	Gen I passive read-only workspace adapter	text	30	AUDITED			0	no
 src/UI/Gen2HardwareFinalFix.inc	blob	100644	19308	Gen II final hardware fullscreen presentation adapter	text	348	AUDITED			0	no
-src/UI/Gen2HardwarePickerFix.inc	blob	100644	5789	Gen II hardware move-picker compatibility adapter	text	126	AUDITED			0	no
+src/UI/Gen2HardwarePickerFix.inc	blob	100644	5836	Gen II hardware move-picker compatibility adapter	text	126	AUDITED			0	no
 src/UI/Gen2HardwareWorkspaceFix.inc	blob	100644	4629	Gen II hardware workspace focus/presentation adapter	text	108	AUDITED			0	no
 src/UI/Gen2PokemonEditorFoundation.inc	blob	100644	39358		unknown		PENDING			0	
 src/UI/Gen2PokemonPickerOverlay.inc	blob	100644	12400	Gen II named species/move/location picker overlay	text	264	AUDITED			0	no
-src/UI/Gen2SharedPokemonSurface.inc	blob	100644	29650	Gen II shared actions/clone/review/provenance surface	text	605	AUDITED			0	no
+src/UI/Gen2SharedPokemonSurface.inc	blob	100644	29899	Gen II shared actions/clone/review/provenance surface	text	608	AUDITED			0	no
 src/UI/Gen2SharedSurfaceParity.inc	blob	100644	18969	Gen II shared-surface parity/action input adapter	text	343	AUDITED			0	no
 src/UI/Gen2TrainerSessionOverlay.inc	blob	100644	2691	Gen II staged trainer-session overlay	text	59	AUDITED			0	no
 src/UI/Gen2UnifiedPokemonWorkspace.inc	blob	100644	42404		unknown		PENDING			0	
 src/UI/Gen3SharedPokemonSurface.inc	blob	100644	78589		unknown		PENDING			0	
-src/UI/Gen4SharedPokemonSurface.inc	blob	100644	87336	Gen IV shared View/Edit/Create surface	text	1972	AUDITED			1	yes
+src/UI/Gen4SharedPokemonSurface.inc	blob	100644	87916	Gen IV shared View/Edit/Create surface	text	1982	AUDITED			1	yes
 src/UI/Modals/Gen1PokemonDetailsModal.cpp	blob	100644	3945	Gen I details adapter	text	88	AUDITED			0	no
 src/UI/Modals/Gen2PokemonDetailsModal.cpp	blob	100644	14261	Gen II read-only details renderer	text	290	AUDITED			0	no
 src/UI/Modals/PokemonDetailsDispatcher.cpp	blob	100644	1195	generation details renderer dispatcher	text	35	AUDITED			0	yes
