@@ -202,10 +202,10 @@ include/Encryption/Encryption8LA.h	blob	100644	4348	Pokémon/save encryption API
 include/Encryption/Encryption8SWSH.h	blob	100644	4274	Pokémon/save encryption API	text	115	AUDITED			0	yes
 include/Encryption/Encryption9LZA.h	blob	100644	5007	Pokémon/save encryption API	text	135	AUDITED			0	yes
 include/Encryption/Encryption9SV.h	blob	100644	4988	Pokémon/save encryption API	text	135	AUDITED			0	yes
-include/Enums/Ball.h	blob	100644	3262		unknown		PENDING			0	
-include/Enums/GameVersion.h	blob	100644	16083		unknown		PENDING			0	
-include/Enums/LanguageID.h	blob	100644	2448		unknown		PENDING			0	
-include/Enums/SCTypeCode.h	blob	100644	738		unknown		PENDING			0	
+include/Enums/Ball.h	blob	100644	3262	ball IDs, names and per-game picker availability	text	93	AUDITED			0	no
+include/Enums/GameVersion.h	blob	100644	16083	exact game/version/group/title-id and origin helpers	text	374	AUDITED			0	no
+include/Enums/LanguageID.h	blob	100644	2448	language IDs and per-group availability	text	73	AUDITED			0	no
+include/Enums/SCTypeCode.h	blob	100644	738	SC block scalar type enum/API	text	38	AUDITED			0	no
 include/Games/GameIdentity.h	blob	100644	1562	game/source identity descriptor API	text	48	AUDITED			0	no
 include/Globals.h	blob	100644	3371		unknown		PENDING			0	
 include/Integration/Encounter/EncounterGuardrails.h	blob	100644	7503	encounter guardrail query/provenance helpers	text	192	AUDITED			0	yes
@@ -437,7 +437,7 @@ src/Encryption/Encryption8LA.cpp	blob	100644	6790	PLA entity shuffle/encryption 
 src/Encryption/Encryption8SWSH.cpp	blob	100644	6839	SWSH entity shuffle/encryption codec	text	163	AUDITED			1	yes
 src/Encryption/Encryption9LZA.cpp	blob	100644	7011	Legends Z-A entity shuffle/encryption codec	text	167	AUDITED			1	yes
 src/Encryption/Encryption9SV.cpp	blob	100644	6987	Scarlet/Violet entity shuffle/encryption codec	text	167	AUDITED			1	yes
-src/Enums/SCTypeCode.cpp	blob	100644	1798		unknown		PENDING			0	
+src/Enums/SCTypeCode.cpp	blob	100644	1798	SC block fixed-width scalar sizing	text	37	AUDITED			0	no
 src/Games/GameIdentity.cpp	blob	100644	6303	game/source identity registry	text	101	AUDITED			0	no
 src/Integration/Gen1/Gen1BattleStats.cpp	blob	100644	2213	Gen I battle-stat implementation/personal-table consumer	text	52	AUDITED			0	no
 src/Integration/Gen1/Gen1MoveCompatibility.cpp	blob	100644	1699	Gen I move compatibility implementation	text	46	AUDITED			0	no
