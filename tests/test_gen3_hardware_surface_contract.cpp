@@ -201,7 +201,7 @@ int main() {
     contains(surface, "Keep these move details");
     contains(surface, "Discard these move details");
     contains(surface, "\"Move — Generation III\"");
-    contains(surface, "\"Empty + compatible moves only • exact current game\"");
+    contains(surface, "\"Empty + compatible moves only • exact Gen III Acc / Pwr / PP\"");
     contains(surface, "Gen3::Learnset::directlyLearnable");
     contains(surface, "target != PickerTarget::Ability && target != PickerTarget::Move");
     const auto valuePickerBegin = surface.find("void drawValuePicker(");
