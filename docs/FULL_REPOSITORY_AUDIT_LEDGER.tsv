@@ -237,17 +237,17 @@ include/Integration/Gen4/Gen4ReadOnlySave.h	blob	100644	4491	Gen IV validated re
 include/Integration/Gen4/Gen4SourceDiscovery.h	blob	100644	4071	Gen IV source discovery/container contract	text	126	AUDITED			0	no
 include/Integration/Gen4/Gen4StagedPokemonEditor.h	blob	100644	3893	Gen IV staged editor transaction API	text	95	AUDITED			0	yes
 include/Inventory/ClassicInventoryCatalog.h	blob	100644	1530		unknown		PENDING			0	
-include/Legacy/FRLGReadOnlyTrainer.h	blob	100644	2870		unknown		PENDING			0	
+include/Legacy/FRLGReadOnlyTrainer.h	blob	100644	2870	Gen III strict read-only Trainer bridge API	text	53	AUDITED			0	no
 include/Legacy/FRLGSourceBrowser.h	blob	100644	2122	classic source-card browser contract	text	48	AUDITED			0	no
-include/Legacy/GSCReadOnlyTrainer.h	blob	100644	3081		unknown		PENDING			0	
+include/Legacy/GSCReadOnlyTrainer.h	blob	100644	3081	Gen II strict read-only Trainer bridge API	text	70	AUDITED			0	yes
 include/Legacy/GSCSourceBrowser.h	blob	100644	810	Gen II source browser contract	text	27	AUDITED			0	no
-include/Legacy/Gen4ReadOnlyTrainer.h	blob	100644	2823		unknown		PENDING			0	
-include/Legacy/LegacySourceBindings.h	blob	100644	4373		unknown		PENDING			0	
-include/Legacy/RBYReadOnlyTrainer.h	blob	100644	3202		unknown		PENDING			0	
+include/Legacy/Gen4ReadOnlyTrainer.h	blob	100644	2823	Gen IV strict read-only Trainer bridge API	text	69	AUDITED			0	no
+include/Legacy/LegacySourceBindings.h	blob	100644	4373	persistent legacy source/profile/game binding API	text	85	AUDITED			0	no
+include/Legacy/RBYReadOnlyTrainer.h	blob	100644	3202	Gen I strict read-only Trainer bridge API	text	66	AUDITED			0	yes
 include/Legacy/RBYSourceBrowser.h	blob	100644	1076	Gen I source browser contract	text	27	AUDITED			0	no
-include/Legacy/RetroArchFRLGDiscovery.h	blob	100644	5404		unknown		PENDING			0	
-include/Legacy/RetroArchGSCDiscovery.h	blob	100644	1986		unknown		PENDING			0	
-include/Legacy/RetroArchRBYDiscovery.h	blob	100644	2363		unknown		PENDING			0	
+include/Legacy/RetroArchFRLGDiscovery.h	blob	100644	5404	bounded legacy Gen I-III emulator discovery contract	text	104	AUDITED			0	no
+include/Legacy/RetroArchGSCDiscovery.h	blob	100644	1986	bounded Gen II emulator discovery contract	text	70	AUDITED			0	no
+include/Legacy/RetroArchRBYDiscovery.h	blob	100644	2363	bounded Gen I emulator discovery contract	text	74	AUDITED			0	no
 include/Legality/Legality.h	blob	100644	2255		unknown		PENDING			0	
 include/Libs/stb_image.h	blob	100644	283010		unknown		PENDING			0	
 include/Names/FormNames.h	blob	100644	1631	form display-name API	text	43	AUDITED			0	no
@@ -467,13 +467,13 @@ src/Integration/Gen4/Gen4ReadOnlySave.cpp	blob	100644	13359	Gen IV partition/CRC
 src/Integration/Gen4/Gen4SourceDiscovery.cpp	blob	100644	22450	bounded Gen IV emulator/manual source discovery	text	556	AUDITED			0	no
 src/Integration/Gen4/Gen4StagedPokemonEditor.cpp	blob	100644	17352	Gen IV staged save mutation/rollback	text	486	AUDITED			0	no
 src/Inventory/ClassicInventoryCatalog.cpp	blob	100644	15510		unknown		PENDING			0	
-src/Legacy/FRLGReadOnlyTrainer.cpp	blob	100644	9585		unknown		PENDING			0	
+src/Legacy/FRLGReadOnlyTrainer.cpp	blob	100644	9585	Gen III strict read-only presentation/staged bridge	text	207	AUDITED			0	no
 src/Legacy/FRLGSourceBrowser.cpp	blob	100644	9438	Gen I-III source-card construction/resolution	text	190	AUDITED			0	no
-src/Legacy/GSCReadOnlyTrainer.cpp	blob	100644	7735		unknown		PENDING			0	
+src/Legacy/GSCReadOnlyTrainer.cpp	blob	100644	7735	Gen II strict read-only presentation/staged bridge	text	185	AUDITED			0	yes
 src/Legacy/GSCSourceBrowser.cpp	blob	100644	5810	Gen II source-card construction/resolution	text	126	AUDITED			0	no
-src/Legacy/Gen4ReadOnlyTrainer.cpp	blob	100644	7162		unknown		PENDING			0	
-src/Legacy/LegacySourceBindings.cpp	blob	100644	23027		unknown		PENDING			0	
-src/Legacy/RBYReadOnlyTrainer.cpp	blob	100644	7963		unknown		PENDING			0	
+src/Legacy/Gen4ReadOnlyTrainer.cpp	blob	100644	7162	Gen IV strict read-only presentation/staged bridge	text	167	AUDITED			0	no
+src/Legacy/LegacySourceBindings.cpp	blob	100644	23027	legacy source binding durable metadata store	text	492	AUDITED			0	no
+src/Legacy/RBYReadOnlyTrainer.cpp	blob	100644	7963	Gen I strict read-only presentation/staged bridge	text	192	AUDITED			0	yes
 src/Legacy/RBYSourceBrowser.cpp	blob	100644	6041	Gen I source-card construction/resolution	text	131	AUDITED			0	no
 src/Legacy/RetroArchFRLGDiscovery.cpp	blob	100644	29302	bounded RetroArch/mGBA/Tico Gen I-III discovery	text	616	AUDITED			0	no
 src/Legacy/RetroArchGSCDiscovery.cpp	blob	100644	8308	bounded RetroArch Gen II discovery	text	46	AUDITED			0	yes
