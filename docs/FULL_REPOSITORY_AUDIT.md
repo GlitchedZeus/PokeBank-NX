@@ -33,14 +33,15 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 721 / 746
-- Fully read text files: 687 / 713
+- Audited tracked paths: 735 / 746
+- Fully read text files: 701 / 713
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — integrated Product Home / launch delta
 
 - Preservation/research documentation tranche fully read at current MAIN `fb7b1d8c…`: Bank→HOME capture/public corpus, power-loss durability, legacy recovery/GameCube/Stadium, official transfer corpus, and ribbon/event preservation references. All six are explicitly dated research/reference documents, retain source immutability/live-write gates, and require local hash/parse validation before promoting external binaries to fixtures. No new numbered defect was confirmed.
 - Remaining dated research corpus fully read at `fb7b1d8c…`: save revisions/profile/container normalization, source manifest, transfer/provenance fixtures, Vault/data/events/performance, event-rights/performance, and the Gen II format oracle. These documents preserve explicit future-scope/read-only boundaries and do not authorize Master Vault, live writes, or unsupported wrapper normalization. No new numbered defect was confirmed.
+- Remaining project/documentation tranche fully read at `fb7b1d8c…`: historical session logs, safe-replace research, Trainer Plaza/v2 future vision, transfer model, UI flow/style/ownership contracts, UPR-ZX/upstream audits, v1 polish audit, and v1/v2 roadmaps. Dated historical/research/future-only files are scoped correctly. The live-state/UI-contract drift is the same documentation-authority problem already tracked by AUDIT-042, whose file/evidence scope was expanded rather than creating a duplicate finding.
 
 - MAIN PR #92 `491476b3… → fb7b1d8c…` (56 commits / 27 changed paths) is fully reconciled. All 15 newly tracked product-UI/launch paths were read in full, and all 12 modified previously-audited paths were re-read before status was restored.
 - The integrated Product Home keeps source previews read-only, source opening revalidates snapshots, Gen IV candidate selection re-inspects the physical file, stored launch metadata cannot choose arbitrary executable/core paths, and launch-binding writes use temp + fsync + read-back parse verification + backup/rename.
@@ -892,8 +893,8 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Severity: P3
 - Confidence: CONFIRMED
 - Area: operational documentation / engineering handoff
-- Files: `docs/SESSION_RUNBOOK.md`, `docs/V1_ROADMAP.md`, `docs/UPSTREAM_AUDIT.md`, `docs/RETROARCH_SOURCE_NAMING.md`
-- Exact behavior: these non-archive documents still present old state as current: the runbook instructs work and pushes on `feature/pokebank-playable`; the v1 roadmap says Gen II is current/hardware-pending and Gen III is next; the upstream audit's current-context block still describes the early 23-identity/second-device stage; and the RetroArch naming note describes the immediate FRLG blocker/current FRLG-only production scope. Live GitHub instead has the active MAIN development lane in PR #92 at `fb7b1d8c…`, device-accepted Gen I–III work, provider-neutral Save Instances, active Gen IV work, and integrated Product Home/launch UI.
+- Files: `docs/SESSION_RUNBOOK.md`, `docs/V1_ROADMAP.md`, `docs/UPSTREAM_AUDIT.md`, `docs/RETROARCH_SOURCE_NAMING.md`, `docs/UI_FLOW.md`, `docs/UI_STYLE_GUIDE.md`, `docs/UI_OWNERSHIP_STATUS.md`
+- Exact behavior: these non-archive documents still present old state as current: the runbook instructs work and pushes on `feature/pokebank-playable`; the v1 roadmap says Gen II is current/hardware-pending and Gen III is next; the upstream audit's current-context block still describes the early 23-identity/second-device stage; the RetroArch naming note describes the immediate FRLG blocker/current FRLG-only production scope; `UI_FLOW.md` still describes Home primarily as a source-card list and its old top-level Vault shell; `UI_STYLE_GUIDE.md` still treats the pre-Product-Home Select Game grid/source-badge design as the target Home direction; and `UI_OWNERSHIP_STATUS.md` still describes Home/Game selection as mixed/incomplete. Live GitHub instead has the active MAIN development lane in PR #92 at `fb7b1d8c…`, device-accepted Gen I–III work, provider-neutral Save Instances, active Gen IV work, and integrated Product Home/launch UI.
 - Why it matters: unlike files under `docs/history/`, these are named as current runbook/roadmap/reference contracts. A new coding agent following them literally can select a stale branch, regress scope, or waste work repeating completed milestones.
 - Safety scope: no source-save corruption is caused directly; this is workflow/state-authority drift.
 - Recommended fix: either refresh the live-state/routing sections to current lanes and milestones or explicitly mark the files historical/reference-only and point to the current authority. Preserve dated research conclusions separately from mutable project status.
