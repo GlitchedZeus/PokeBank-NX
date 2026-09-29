@@ -139,11 +139,21 @@ int main() {
     assert(surface.find("move choice read-only in G4-03") == std::string::npos);
 
     // G4-04 keeps accepted View/Edit and adds native Create for empty PC slots.
-    contains(surface, "result.values[result.count++] = Shared::Action::View");
-    contains(surface, "result.values[result.count++] = Shared::Action::Edit");
-    contains(surface, "result.values[result.count++] = Shared::Action::Add");
-    contains(surface, "case Shared::Action::Add");
+    // The current action builder also preserves Gen I-III presentation parity while
+    // keeping intentionally locked Party actions visible but disabled.
+    contains(surface, "MenuActionSet gen4Actions(");
+    contains(surface, "add(MenuAction::View, \"View\", true);");
+    contains(surface, "add(MenuAction::Edit, \"Edit\", stagedAvailable);");
+    contains(surface, "add(MenuAction::Add, \"Add Pokemon\", stagedAvailable);");
+    contains(surface, "case MenuAction::Add:");
     contains(surface, "beginCreate(screen)");
+    contains(surface, "add(MenuAction::Clone, \"Clone\", stagedAvailable);");
+    contains(surface, "add(MenuAction::Release, \"Release\", stagedAvailable);");
+    contains(surface, "add(MenuAction::AddMasterVault, \"Add to Master Vault\", false);");
+    contains(surface, "add(MenuAction::AddBank, \"Add to Bank...\", false);");
+    contains(surface, "add(MenuAction::TransferGame, \"Transfer to Game...\", false);");
+    contains(surface, "add(MenuAction::Clone, \"Clone\", false);");
+    contains(surface, "add(MenuAction::MakeShiny, \"Make Shiny\", false);");
     contains(surface, "PickerTarget::Species");
     assert(surface.find("createSpeciesInitialized") == std::string::npos);
     contains(surface, "state.session.working->setSpecies(value)");
