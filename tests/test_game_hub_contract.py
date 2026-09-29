@@ -123,5 +123,15 @@ require("-: Help" in source and "+: Settings" in source,
         "Product Home footer must expose Help and Settings shortcuts")
 require("headerSettingsFocused" in source,
         "top-right Settings gear must participate in controller focus")
+require('kSettingsCategories' in shell_source and
+        '"User", "Look", "System", "Data", "Update", "Developer", "Info"' in shell_source,
+        "Settings must use the approved two-pane category model")
+require("settingsCategoryFocused" in shell_source and "settingsOptionCount" in shell_source,
+        "Settings must keep independent category/option focus")
+require('"Left/Right", "Pane"' in shell_source,
+        "Settings footer must explain two-pane navigation")
+require('"Source Save Protection", "LOCKED"' in shell_source and
+        '"Update Support", "Coming Soon"' in shell_source,
+        "Settings must expose truthful Data and Update states without fake backends")
 require('"Mystery Gifts"' in shell_source and '"Clone Lineage"' in shell_source,
         "More screen must reserve truthful future-feature modules")

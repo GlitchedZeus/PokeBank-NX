@@ -22,7 +22,9 @@ namespace UI {
 
         struct NavigationState {
             int selectedIndex = 0;
+            int settingsCategory = 0;
             int settingsIndex = 0;
+            bool settingsCategoryFocused = true;
             int previewIndex = 0;
             int moreIndex = 0;
         };
@@ -35,7 +37,8 @@ namespace UI {
 
         Action consumeAction();
         [[nodiscard]] NavigationState navigationState() const {
-            return {selectedIndex, settingsIndex, previewIndex, moreIndex};
+            return {selectedIndex, settingsCategory, settingsIndex,
+                    settingsCategoryFocused, previewIndex, moreIndex};
         }
         void openSection(PokeBank::UIModel::AppShellSection section);
         bool hasOverlay() const { return overlay != Overlay::None; }
@@ -61,7 +64,9 @@ namespace UI {
 
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
         int selectedIndex = 0;
+        int settingsCategory = 0;
         int settingsIndex = 0;
+        bool settingsCategoryFocused = true;
         int previewIndex = 0;
         int moreIndex = 0;
         bool exitRequested = false;
@@ -70,6 +75,7 @@ namespace UI {
         PokeBank::UIModel::AppShellSection infoSection =
             PokeBank::UIModel::AppShellSection::Games;
         std::array<HitRect, 8> cardRects{};
+        std::array<HitRect, 7> settingsCategoryRects{};
         std::array<HitRect, 7> settingsRects{};
         std::string statusMessage;
         int statusFrames = 0;
