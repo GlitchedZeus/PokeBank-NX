@@ -25,14 +25,14 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 514 / 731
-- Fully read text files: 480 / 698
+- Audited tracked paths: 548 / 731
+- Fully read text files: 514 / 698
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
 
 - PR #92 catch-up is reconciled through live head `a86c8d039209bc17ac613524c6631f03309037a0`. The four changed paths that already carried AUDITED status (`include/Integration/Gen4/Gen4StagedPokemonEditor.h`, `src/Integration/Gen4/Gen4StagedPokemonEditor.cpp`, `src/UI/Gen4SharedPokemonSurface.inc`, `tests/test_gen4_staged_pokemon_editor.cpp`) were fully re-read at that head; the other two changed paths were already PENDING and remain PENDING.
-- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 514 paths are now accounted for and 480 text files have been fully read.
+- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 548 paths are now accounted for and 514 text files have been fully read.
 - The entire Names tranche is now closed: no `include/Names` or `src/Names` file remains PENDING. Generated species tables contain 1,026 entries in each of nine languages; the modern item-name table contains ids 0..2684; Gen III direct item names cover ids 0..376.
 - MovePresence's unknown-group/id-0 behavior contradicts its comment, but all audited real game-group callers are routed through known groups; kept as a hardening follow-up, not a numbered defect.
 - Recovery/package/source-pin tooling is now substantially audited. Supported CI invokes `verify_embedded_romfs.py` with normal `python3`; its assert-based checks are therefore live today, while replacing asserts with explicit failures remains a robustness follow-up.
@@ -56,6 +56,15 @@ Status: IN PROGRESS
 - No new confirmed defect was produced by this tranche. A suspected Gen III Create SID/origin loss was explicitly disproved: the backend reconstructs SID from the validated trainer, derives origin from the exact source game, and includes origin in its strict semantic reparse verification.
 - `ClassicSpeciesLevelPolicy.h` remains a follow-up-only compatibility shim because it intentionally returns the fallback level and directs new code to `SpeciesChangeLevelPolicy`; no live production caller defect was established in this pass.
 - A few older foundation booleans are stale-looking relative to newer product capabilities, but without a reachable consumer contradiction they remain caller-trace/hardening questions rather than findings.
+
+
+### UI header tranche closure
+
+- Closed the remaining 34 PENDING `include/UI` files at live PR #92 head `a86c8d039209bc17ac613524c6631f03309037a0`. The primary-tree `include/UI` tranche is now 0 PENDING.
+- The remaining pass covered Gen I/II presentation/picker helpers, Gen II native caught-data/Pokérus state, Gen III encounter-picker helpers, generic modal/panel interfaces, sprite/cache contracts, touch/controller chrome, theme palettes, framebuffer interface, the shared Pokémon shell and stat-radar renderer, plus the MAIN SaveSelect/UI manager interfaces.
+- `Color::toRGBA8()` in `include/UI/Common.h` performs left shifts after integral promotion to signed `int`; an alpha such as 255 shifted by 24 is a latent undefined-behavior API hazard. No live call site was found in the audited renderer path, so this is recorded as hardening/follow-up rather than a numbered production defect.
+- MAIN's Gen II held-item helper still has the older outline/text presentation while sibling PR #97 carries the selected-surface/SelectedText readability cleanup. Without a proven current MAIN production caller contradiction, this is tracked as UI integration follow-up rather than a separate finding.
+- No source-write or staged-save safety invariant was weakened by the audited header code.
 
 
 ### Save-safety checkpoint — write-path trace
