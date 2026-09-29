@@ -46,6 +46,7 @@ jobs:
       - name: Syntax-check device/recovery tools
         run: |
           python3 -m py_compile tools/check_device_assets.py
+          python3 -m py_compile tools/png_asset_validation.py
           python3 -m py_compile tools/package_device_build.py
           python3 -m py_compile tools/recover_workspace.py
           python3 -m py_compile tools/check_recovery_contract.py
@@ -63,6 +64,9 @@ jobs:
 
       - name: Verify v1 polish contracts
         run: python3 tests/test_v1_polish_contract.py
+
+      - name: Verify device PNG validation contract
+        run: python3 tests/test_device_asset_png_validation.py
 
       - name: Clean host build
         run: make -f Makefile.host host-clean
