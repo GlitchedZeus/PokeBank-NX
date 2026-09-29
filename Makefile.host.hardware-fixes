@@ -56,6 +56,23 @@ $(STORAGE_CUSTODY_SANITIZE): tests/test_storage_custody_contract.cpp src/UI/Trai
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_storage_custody_contract.cpp -o $@
 
+# AUDIT-037: group pickup must roll backend custody back if presentation refresh fails.
+CLASSIC_PACKED_RECOVERY_TEST := $(HOST_BUILD)/test_classic_packed_move_recovery_contract
+CLASSIC_PACKED_RECOVERY_SANITIZE := $(HOST_BUILD)/test_classic_packed_move_recovery_contract_sanitize
+
+HOST_TESTS += $(CLASSIC_PACKED_RECOVERY_TEST)
+HOST_SANITIZE_TESTS += $(CLASSIC_PACKED_RECOVERY_SANITIZE)
+host-test: $(CLASSIC_PACKED_RECOVERY_TEST)
+host-sanitize: $(CLASSIC_PACKED_RECOVERY_SANITIZE)
+
+$(CLASSIC_PACKED_RECOVERY_TEST): tests/test_classic_packed_move_recovery_contract.cpp src/UI/ClassicPackedMoveOverlay.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) tests/test_classic_packed_move_recovery_contract.cpp -o $@
+
+$(CLASSIC_PACKED_RECOVERY_SANITIZE): tests/test_classic_packed_move_recovery_contract.cpp src/UI/ClassicPackedMoveOverlay.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) tests/test_classic_packed_move_recovery_contract.cpp -o $@
+
 # Audit-phase malformed-input regression: BDSP must reject a short flat blob before
 # any fixed-offset parser touches PARTY_COUNT / MyStatus / hash fields.
 BDSP_LAYOUT_GUARD_TEST := $(HOST_BUILD)/test_bdsp_layout_guard
