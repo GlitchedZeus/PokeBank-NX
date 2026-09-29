@@ -100,13 +100,92 @@ namespace {
             case AppShellSection::MasterVault: return vault;
             default:                           return fallback;
         }
-    }}
+    }
+
+    constexpr std::array<const char*, 7> kSettingsCategories{{
+        "User", "Look", "System", "Data", "Update", "Developer", "Info"
+    }};
+
+    int settingsOptionCount(int category) {
+        switch (category) {
+            case 0: return 1;
+            case 1: return 1;
+            case 2: return 3;
+            case 3: return 2;
+            case 4: return 2;
+            case 5: return 2;
+            case 6: return 2;
+            default: return 1;
+        }
+    }
+
+    struct SettingsRow {
+        std::string label;
+        std::string value;
+        std::string detail;
+        bool actionable = false;
+    };
+
+    std::vector<SettingsRow> settingsRows(int category) {
+        switch (category) {
+            case 0:
+                return {{"Profile", "Switch User",
+                         "Profile identity follows the selected Nintendo Switch user.", false}};
+            case 1:
+                return {{"Theme", std::string(themeModeName(g_themeMode)),
+                         "Change the visual theme used throughout PokeBank NX.", true}};
+            case 2:
+                return {
+                    {"Auto-Backup", g_autoBackupEnabled ? "On" : "Off",
+                     "Create or reuse the established working backup before supported edits.", true},
+                    {"Move Compatibility Warnings", g_moveWarn ? "On" : "Off",
+                     "Warn when a move is unusual for the selected generation or species.", true},
+                    {"Allow Illegal Values", g_allowIllegalEdits ? "On" : "Off",
+                     "Permit explicitly supported out-of-range editor values.", true},
+                };
+            case 3:
+                return {
+                    {"Source Save Protection", "LOCKED",
+                     "Original emulator and installed-title sources are never edited live.", false},
+                    {"Backup / Staging", "App-owned",
+                     "Edits continue through PokeBank-owned backup and staging workflows.", false},
+                };
+            case 4:
+                return {
+                    {"Installed Version", VERSION_STRING,
+                     "Current PokeBank NX application version.", false},
+                    {"Update Support", "Coming Soon",
+                     "In-app update delivery is not enabled in this build.", false},
+                };
+            case 5:
+                return {
+                    {"Debug Logging", g_debugLogging ? "On" : "Off",
+                     "Write diagnostic logs under sdmc:/switch/PokeBank-NX/logs/.", true},
+                    {"Diagnostics / Build Info", "Open",
+                     "Open read-only runtime and build diagnostics.", true},
+                };
+            case 6:
+                return {
+                    {"Version", VERSION_STRING,
+                     "Installed application version.", false},
+                    {"Build SHA", BUILD_COMMIT,
+                     "Exact source revision embedded in this build.", false},
+                };
+            default:
+                return {};
+        }
+    }
+}
 
 AppShellScreen::AppShellScreen(const NavigationState* resumeState) {
     if (!resumeState) return;
     selectedIndex = std::clamp(
         resumeState->selectedIndex, 0, PokeBank::UIModel::appShellEntryCount() - 1);
-    settingsIndex = std::clamp(resumeState->settingsIndex, 0, 6);
+    settingsCategory = std::clamp(resumeState->settingsCategory, 0,
+                                  static_cast<int>(kSettingsCategories.size()) - 1);
+    settingsIndex = std::clamp(resumeState->settingsIndex, 0,
+                               settingsOptionCount(settingsCategory) - 1);
+    settingsCategoryFocused = resumeState->settingsCategoryFocused;
     previewIndex = std::max(0, resumeState->previewIndex);
     moreIndex = std::clamp(resumeState->moreIndex, 0, 5);
 }
@@ -155,47 +234,57 @@ void AppShellScreen::activateSelected() {
 }
 
 void AppShellScreen::activateSetting() {
-    bool changed = true;
-    switch (settingsIndex) {
-        case 0:
+    bool changed = false;
+
+    if (settingsCategory == 1 && settingsIndex == 0) {
+        applyTheme(nextThemeMode(g_themeMode));
+        setStatus("Theme changed to " + std::string(themeModeName(g_themeMode)) + ".");
+        changed = true;
+    } else if (settingsCategory == 2) {
+        if (settingsIndex == 0) {
             g_autoBackupEnabled = !g_autoBackupEnabled;
             setStatus(g_autoBackupEnabled
                 ? "Auto-backup enabled for supported installed-title workflows."
                 : "Auto-backup disabled; supported workflows reuse their working copy.");
-            break;
-        case 1:
-            applyTheme(nextThemeMode(g_themeMode));
-            setStatus("Theme changed to " + std::string(themeModeName(g_themeMode)) + ".");
-            break;
-        case 2:
+            changed = true;
+        } else if (settingsIndex == 1) {
+            g_moveWarn = !g_moveWarn;
+            setStatus(g_moveWarn ? "Move compatibility warnings enabled."
+                                 : "Move compatibility warnings disabled.");
+            changed = true;
+        } else if (settingsIndex == 2) {
             g_allowIllegalEdits = !g_allowIllegalEdits;
             setStatus(g_allowIllegalEdits
                 ? "Illegal-value editing enabled for fields that explicitly support it."
                 : "Legal value caps restored.");
-            break;
-        case 3:
-            g_moveWarn = !g_moveWarn;
-            setStatus(g_moveWarn ? "Move compatibility warnings enabled."
-                                 : "Move compatibility warnings disabled.");
-            break;
-        case 4:
-            changed = false;
-            setStatus("Locked: ordinary editing never writes emulator or installed-game sources.");
-            break;
-        case 5:
+            changed = true;
+        }
+    } else if (settingsCategory == 3) {
+        setStatus(settingsIndex == 0
+            ? "Locked: ordinary editing never writes emulator or installed-game sources."
+            : "Backup and staging remain app-owned; source files stay protected.");
+    } else if (settingsCategory == 4) {
+        setStatus(settingsIndex == 0
+            ? "This is the installed PokeBank NX version."
+            : "Update support is Coming Soon.");
+    } else if (settingsCategory == 5) {
+        if (settingsIndex == 0) {
             g_debugLogging = !g_debugLogging;
             setStatus(g_debugLogging
                 ? "Debug logging enabled under sdmc:/switch/PokeBank-NX/logs/."
                 : "Debug logging disabled; no new log files will be written.");
-            break;
-        case 6:
-            changed = false;
+            changed = true;
+        } else {
             overlay = Overlay::Diagnostics;
-            break;
-        default:
-            changed = false;
-            break;
+        }
+    } else if (settingsCategory == 0) {
+        setStatus("Profile identity follows the selected Nintendo Switch user.");
+    } else if (settingsCategory == 6) {
+        setStatus(settingsIndex == 0
+            ? "Installed version information."
+            : "Exact build revision embedded in this application.");
     }
+
     if (changed) Utils::saveSettings();
 }
 
@@ -267,9 +356,19 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
 
     if (overlay == Overlay::Settings) {
         if (touch.justPressed()) {
+            for (const HitRect& rect : settingsCategoryRects) {
+                if (contains(rect, touch.x(), touch.y())) {
+                    settingsCategory = rect.index;
+                    settingsIndex = std::min(settingsIndex,
+                                             settingsOptionCount(settingsCategory) - 1);
+                    settingsCategoryFocused = true;
+                    return;
+                }
+            }
             for (const HitRect& rect : settingsRects) {
                 if (contains(rect, touch.x(), touch.y())) {
                     settingsIndex = rect.index;
+                    settingsCategoryFocused = false;
                     kDown |= HidNpadButton_A;
                     break;
                 }
@@ -281,11 +380,32 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
             statusFrames = 0;
             return;
         }
-        if (kDown & HidNpadButton_Up)
-            settingsIndex = (settingsIndex + 6) % 7;
-        if (kDown & HidNpadButton_Down)
-            settingsIndex = (settingsIndex + 1) % 7;
-        if (kDown & HidNpadButton_A) activateSetting();
+        if (kDown & HidNpadButton_Left) {
+            settingsCategoryFocused = true;
+            return;
+        }
+        if (kDown & HidNpadButton_Right) {
+            settingsCategoryFocused = false;
+            settingsIndex = std::min(settingsIndex,
+                                     settingsOptionCount(settingsCategory) - 1);
+            return;
+        }
+        if (settingsCategoryFocused) {
+            const int count = static_cast<int>(kSettingsCategories.size());
+            if (kDown & HidNpadButton_Up)
+                settingsCategory = (settingsCategory + count - 1) % count;
+            if (kDown & HidNpadButton_Down)
+                settingsCategory = (settingsCategory + 1) % count;
+            settingsIndex = std::min(settingsIndex,
+                                     settingsOptionCount(settingsCategory) - 1);
+        } else {
+            const int count = settingsOptionCount(settingsCategory);
+            if (kDown & HidNpadButton_Up)
+                settingsIndex = (settingsIndex + count - 1) % count;
+            if (kDown & HidNpadButton_Down)
+                settingsIndex = (settingsIndex + 1) % count;
+            if (kDown & HidNpadButton_A) activateSetting();
+        }
         return;
     }
 
@@ -410,6 +530,12 @@ void AppShellScreen::drawHome(PKSEFramebuffer& fb) {
 
 void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
     constexpr int x = 52, y = 82, w = 1176, h = 544;
+    constexpr int leftW = 248;
+    constexpr int gap = 18;
+    constexpr int contentY = 108;
+    constexpr int contentH = 374;
+    constexpr int categoryRowH = 46;
+    constexpr int optionRowH = 76;
 
     drawPanelSurface(fb, x, y, w, h, true, 18);
     fb.drawText(x + 28, y + 18, "SETTINGS",
@@ -417,66 +543,81 @@ void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
     fb.drawText(x + 28, y + 44, "Application Settings",
                 Colors::TextPrimary, TextStyle::Heading);
     fb.drawText(x + 28, y + 76,
-                "Changes here apply throughout PokeBank NX.",
+                "Categories on the left. Current options on the right.",
                 Colors::TextSecondary, TextStyle::Caption);
 
-    constexpr int rowH = 50, rowGap = 5;
-    const char* labels[7] = {
-        "Auto-Backup on Load",
-        "Theme",
-        "Allow Illegal Values",
-        "Move Compatibility Warnings",
-        "Source Save Protection",
-        "Enable Debug Logging",
-        "Diagnostics / Build Info",
-    };
-    std::string values[7] = {
-        g_autoBackupEnabled ? "On" : "Off",
-        std::string(themeModeName(g_themeMode)),
-        g_allowIllegalEdits ? "On" : "Off",
-        g_moveWarn ? "On" : "Off",
-        "Locked",
-        g_debugLogging ? "On" : "Off",
-        "Open",
-    };
+    const int leftX = x + 24;
+    const int rightX = leftX + leftW + gap;
+    const int rightW = w - 48 - leftW - gap;
 
-    int rowY = y + 108;
-    for (int index = 0; index < 7; ++index) {
-        const bool focused = settingsIndex == index;
-        drawFocusedCard(fb, x + 26, rowY, w - 52, rowH, focused, 12);
-        fb.drawText(x + 48, rowY + 18, labels[index],
-                    focused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Body);
+    drawPanelSurface(fb, leftX, y + contentY, leftW, contentH, false, 14);
+    drawPanelSurface(fb, rightX, y + contentY, rightW, contentH, false, 14);
+
+    int categoryY = y + contentY + 14;
+    for (int index = 0; index < static_cast<int>(kSettingsCategories.size()); ++index) {
+        const bool selected = settingsCategory == index;
+        const bool focused = selected && settingsCategoryFocused;
+        drawFocusedCard(fb, leftX + 12, categoryY, leftW - 24, categoryRowH,
+                        focused, 10);
+        if (selected && !focused)
+            fb.drawRoundedRect(leftX + 12, categoryY, leftW - 24, categoryRowH,
+                               10, Colors::AccentPrimary, 2);
+        fb.drawText(leftX + 28, categoryY + 14, kSettingsCategories[index],
+                    focused ? Colors::SelectedText
+                            : selected ? Colors::TextPrimary : Colors::TextSecondary,
+                    TextStyle::Body);
+        settingsCategoryRects[static_cast<std::size_t>(index)] =
+            {leftX + 12, categoryY, leftW - 24, categoryRowH, index};
+        categoryY += categoryRowH + 2;
+    }
+
+    const auto rows = settingsRows(settingsCategory);
+    fb.drawText(rightX + 22, y + contentY + 18,
+                kSettingsCategories[static_cast<std::size_t>(settingsCategory)],
+                Colors::AccentPrimary, TextStyle::Caption);
+
+    for (auto& rect : settingsRects) rect = {};
+
+    int rowY = y + contentY + 48;
+    for (int index = 0; index < static_cast<int>(rows.size()); ++index) {
+        const auto& row = rows[static_cast<std::size_t>(index)];
+        const bool focused = !settingsCategoryFocused && settingsIndex == index;
+        drawFocusedCard(fb, rightX + 14, rowY, rightW - 28, optionRowH,
+                        focused, 12);
+
+        fb.drawText(rightX + 32, rowY + 12, row.label,
+                    focused ? Colors::SelectedText : Colors::TextPrimary,
+                    TextStyle::Body);
+        fb.drawText(rightX + 32, rowY + 42, row.detail,
+                    focused ? Colors::SelectedText : Colors::TextMuted,
+                    TextStyle::Caption);
 
         int valueW = 0, valueH = 0;
-        fb.measureText(values[index], valueW, valueH, TextStyle::Caption);
-        const int pillW = valueW + 28;
-        const int pillH = 30;
-        const int pillX = x + w - 48 - pillW;
-        const int pillY = rowY + (rowH - pillH) / 2;
-
-        Color pillColor = Colors::TextMuted;
-        if (index == 4) pillColor = Colors::Info;
-        else if ((index == 0 && g_autoBackupEnabled) ||
-                 (index == 3 && g_moveWarn) ||
-                 (index == 5 && g_debugLogging)) pillColor = Colors::AccentPrimary;
-        else if (index == 2 && g_allowIllegalEdits) pillColor = Colors::Warning;
-        else if (index == 1 || index == 6) pillColor = Colors::FocusBorder;
-
-        fb.drawPill(pillX, pillY, pillW, pillH, withAlpha(pillColor, 40));
-        fb.drawPillBorder(pillX, pillY, pillW, pillH, pillColor, 1);
-        fb.drawText(pillX + (pillW - valueW) / 2, pillY + (pillH - valueH) / 2,
-                    values[index], pillColor, TextStyle::Caption);
+        fb.measureText(row.value, valueW, valueH, TextStyle::Caption);
+        const int pillW = std::min(230, valueW + 26);
+        const int pillX = rightX + rightW - pillW - 28;
+        Color pillColor = row.actionable ? Colors::AccentPrimary : Colors::TextMuted;
+        if (row.value == "LOCKED") pillColor = Colors::Info;
+        if (row.value == "Coming Soon") pillColor = Colors::TextMuted;
+        if (row.label == "Allow Illegal Values" && g_allowIllegalEdits)
+            pillColor = Colors::Warning;
+        fb.drawPill(pillX, rowY + 10, pillW, 28, withAlpha(pillColor, 38));
+        fb.drawPillBorder(pillX, rowY + 10, pillW, 28, pillColor, 1);
+        fb.drawText(pillX + 12, rowY + 17,
+                    row.value.size() > 28 ? row.value.substr(0, 25) + "..." : row.value,
+                    pillColor, TextStyle::Caption);
 
         settingsRects[static_cast<std::size_t>(index)] =
-            {x + 26, rowY, w - 52, rowH, index};
-        rowY += rowH + rowGap;
+            {rightX + 14, rowY, rightW - 28, optionRowH, index};
+        rowY += optionRowH + 10;
     }
 
     if (statusFrames > 0 && !statusMessage.empty())
-        fb.drawText(x + 30, y + h - 54, statusMessage.substr(0, 100),
+        fb.drawText(x + 30, y + h - 42, statusMessage.substr(0, 110),
                     Colors::TextMuted, TextStyle::Caption);
 
-    drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Change"}, {"B", "Close"}});
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"Left/Right", "Pane"},
+                    {"A", "Change/Open"}, {"B", "Close"}});
 }
 
 void AppShellScreen::drawDiagnostics(PKSEFramebuffer& fb) {
