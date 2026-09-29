@@ -129,6 +129,20 @@ require("case 1: // Party" in source and "case 2: // Boxes" in source and
         "workspace implemented destinations must route through the validated existing game flow")
 require("-: Help" in source and "+: Settings" in source,
         "Product Home footer must expose Help and Settings shortcuts")
+update_start = source.index("void SaveSelectScreen::update")
+classic_input = source.index("if (classicGamesActive)", update_start)
+root_exit = source.index("appExitRequested = true;", update_start)
+require(classic_input < root_exit,
+        "Classic Games controls must run before Product Home B-exit handling")
+require('{"-","Help"}' in source and '"-   Help / Controls"' in source,
+        "Classic Games must visibly expose contextual Minus Help")
+require("GameLaunchState::LauncherOnly" in launcher and
+        "Direct selected-ROM handoff is not supported by this DraStic build." in launcher,
+        "DraStic launch must be truthful launcher-only until its frontend supports ROM argv")
+require("descriptor.state != GameLaunchState::LauncherOnly" in launcher,
+        "launcher-only emulators must never receive a falsely linked ROM argument")
+require("GameLaunchProviderKind::MelonDS" in launcher,
+        "melonDS provider-aware direct content launch support must remain present")
 require("headerSettingsFocused" in source,
         "top-right Settings gear must participate in controller focus")
 require('kSettingsCategories' in shell_source and

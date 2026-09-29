@@ -1674,44 +1674,6 @@ namespace UI {
             return;
         }
 
-        if (kDown & HidNpadButton_B) {
-            // Games is now the app root, so Back exits just as the former root Home did.
-            appExitRequested = true;
-            exitRequested = true;
-            return;
-        }
-        if (kDown & HidNpadButton_ZR) {
-            launchCurrentTitle();
-            return;
-        }
-        if (kDown & HidNpadButton_Plus) {
-            requestedMainMenuDestination = MainMenuDestination::Settings;
-            exitRequested = true;
-            return;
-        }
-        if (kDown & HidNpadButton_Minus) {
-            helpReturnOverlay = Overlay::None;
-            overlay = Overlay::Help;
-            return;
-        }
-        {
-            const UserEntry* current = currentUser();
-            if ((kDown & HidNpadButton_Y) && current && titleIndex >= 0 &&
-                titleIndex < static_cast<int>(current->titles.size()) &&
-                current->titles[titleIndex].sourceKind == SelectedSourceKind::Gen4AssignedFile) {
-                openGen4Setup(current->titles[titleIndex].gameId,
-                              "Add, repair, or forget a remembered source for this game.");
-                return;
-            }
-        }
-        if ((kDown & HidNpadButton_X) && !unassignedLegacySources.empty()) {
-            overlay = Overlay::LegacyAssignment;
-            legacyAssignmentIndex = 0;
-            legacyAssignmentScroll = 0;
-            legacyNotice.clear();
-            return;
-        }
-
         if (classicGamesActive) {
             if (kDown & HidNpadButton_B) {
                 classicGamesActive = false;
@@ -1753,6 +1715,44 @@ namespace UI {
                 scrollClassicSelectionIntoView();
                 refreshHubPreview();
             }
+            return;
+        }
+
+        if (kDown & HidNpadButton_B) {
+            // Games is now the app root, so Back exits just as the former root Home did.
+            appExitRequested = true;
+            exitRequested = true;
+            return;
+        }
+        if (kDown & HidNpadButton_ZR) {
+            launchCurrentTitle();
+            return;
+        }
+        if (kDown & HidNpadButton_Plus) {
+            requestedMainMenuDestination = MainMenuDestination::Settings;
+            exitRequested = true;
+            return;
+        }
+        if (kDown & HidNpadButton_Minus) {
+            helpReturnOverlay = Overlay::None;
+            overlay = Overlay::Help;
+            return;
+        }
+        {
+            const UserEntry* current = currentUser();
+            if ((kDown & HidNpadButton_Y) && current && titleIndex >= 0 &&
+                titleIndex < static_cast<int>(current->titles.size()) &&
+                current->titles[titleIndex].sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+                openGen4Setup(current->titles[titleIndex].gameId,
+                              "Add, repair, or forget a remembered source for this game.");
+                return;
+            }
+        }
+        if ((kDown & HidNpadButton_X) && !unassignedLegacySources.empty()) {
+            overlay = Overlay::LegacyAssignment;
+            legacyAssignmentIndex = 0;
+            legacyAssignmentScroll = 0;
+            legacyNotice.clear();
             return;
         }
 
@@ -1938,7 +1938,8 @@ namespace UI {
         }
 
         drawNavBar(fb, {{"D-pad/Stick","Choose Game"},{"A","Open"},
-                        {"L/R","Switch User"},{"ZR","Launch"},{"+","Settings"},{"B","Back"}});
+                        {"L/R","Switch User"},{"ZR","Launch"},{"+","Settings"},
+                        {"-","Help"},{"B","Back"}});
     }
 
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {
@@ -1953,8 +1954,9 @@ namespace UI {
                     "D-pad / Left Stick   Choose a game source",
                     "A   Open the selected game source",
                     "L / R   Switch user",
-                    "ZR   Launch selected game",
+                    "ZR   Launch selected game / emulator",
                     "+   Settings",
+                    "-   Help / Controls",
                     "B   Back to Product Home"
                 });
             }
