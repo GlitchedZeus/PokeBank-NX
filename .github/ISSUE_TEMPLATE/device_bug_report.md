@@ -90,8 +90,8 @@ Atmosphère crash report available: yes/no
 ## UI/theme state if relevant
 
 ```text
-Theme: OLED Black / Dark / Light
-Screen: Select Game / Party / Boxes / Action Sheet / Summary / Help / other
+Theme (exact name shown in app):
+Screen: Product Home / Game Sources / Settings / Items / Trainer / Party / Boxes / Pokémon View/Edit/Create / picker / dialog / other
 Focus visible: yes/no
 Bottom hints correct: yes/no
 Theme persisted after restart: yes/no/not relevant

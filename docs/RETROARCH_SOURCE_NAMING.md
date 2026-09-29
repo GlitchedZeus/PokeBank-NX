@@ -86,7 +86,7 @@ BACKUP              separately stored backup/copy when intentionally supported
 MANUAL_IMPORT       user-selected external file
 ```
 
-Current FRLG production support is **BATTERY_SAVE only** (`.sav` / `.srm`). Save-state support is future work and must not be added merely to fix the current duplicate-card bug.
+Current legacy production support uses validated **BATTERY_SAVE** sources (`.sav` / `.srm`) across the implemented Gen I–III provider model. Save-state parsing remains future work and must only be added through an audited adapter.
 
 RetroArch save states are emulator/core snapshots rather than ordinary Pokémon save files, so they require audited extraction/validation before PokeBank NX may expose their Pokémon data.
 
@@ -202,9 +202,9 @@ A RetroArch save state is not automatically equivalent to a `.sav` / `.srm` file
 
 Do not parse arbitrary core-state memory as a Pokémon save without an audited adapter.
 
-## Current FRLG blocker semantics
+## Current battery-save / SaveInstance semantics
 
-For the immediate FRLG profile/grouping/artwork/refresh fix:
+For the current provider-neutral battery-save / SaveInstance model:
 
 - keep scanning `.sav` / `.srm` only;
 - make legacy file sources app-global rather than Nintendo-user scoped;

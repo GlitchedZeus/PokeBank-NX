@@ -2,104 +2,73 @@
 
 Last updated: **2026-09-29**
 
-Status: **CONTINUE ON PR #92, FINISH INTEGRATED CI/LAUNCH, PRODUCE ONE FINAL HARDWARE NRO**
+Status: **CONTINUE ON PR #92, FINISH EXACT-HEAD CI/LAUNCH, PRODUCE ONE INTEGRATED HARDWARE NRO**
 
 ## Recover live state first
 
 Repository:
 `GlitchedZeus/PokeBank-NX`
 
-Active PR:
+Active MAIN PR:
 **#92 — G4-04: complete Gen IV shared editor — Create + field parity**
 
 Branch:
 `feature/gen4-full-editor-20260928`
 
-Last verified head:
-`58a56f8d3b8350283f34fcc4d8dafc495b6515f2`
+Application checkpoint incorporated by this documentation refresh:
+`710cf37a33ba7a9f29b09953c5d8aa224268e4fd`
 
-PR #100 Product UI polish is already **merged into PR #92**.
+PR #100 Product UI work is already **merged into PR #92**.
 
-GitHub is authoritative. Re-fetch before modifying anything. Preserve every newer commit.
+GitHub is authoritative. Re-fetch before modifying anything and preserve every newer commit.
 
-## What is already true
+## Already integrated
 
 ### Gen I–III
-
 The current shared read/editor foundation is physically accepted.
 
 ### Gen IV
-
-The first safe Party/Box View/Edit milestone is hardware accepted.
-
-PR #92 carries the active G4-04 shared editor with Create, additional native fields, species/form/move handling, action parity, rollback and source immutability.
+The first safe Party/Box View/Edit milestone is hardware accepted. PR #92 carries the active G4-04 editor with Create, native fields, species/form/move handling, trainer identity work, rollback and source immutability.
 
 ### Product UI
+PR #92 includes the modern Product Home, real Party sprites, real Gen I–IV Pokédex progress, Gen IV trainer names, grounded trainer portraits, Classic Game Sources, cursor-memory infrastructure, Backpack/Items quick intent, compact Items/Settings actions, two-pane Settings, and truthful current launch/control presentation.
 
-PR #92 now includes:
+### Forensic audit
+Repository coverage is complete at evidence head `143c5e5c341d4f85af30e013808a37d6719560fe`.
 
-- modern Product Home;
-- Party sprite presentation;
-- distinct Vault/Pokédex presentation;
-- real Gen I–IV Pokédex progress;
-- Gen IV trainer-name propagation;
-- game/gender-aware trainer portraits;
-- cursor-memory foundation;
-- Classic Game Sources;
-- Backpack/Items quick intent;
-- compact Items/Settings quick actions;
-- two-pane Settings with remembered category/option cursor.
+Remediation lane: `fix/full-audit-remediation-20260929`.
+
+Do not restart repository coverage. Continue remediation from the existing matrix and preserve MAIN.
 
 ## Immediate first action
 
 1. Re-fetch PR #92 live head and exact-head Actions.
-2. Let Host Tests #1684, Product UI Native #55 and Gen IV Gate #131 resolve.
-3. Fix any failure forward without reverting integrated editor/UI work.
+2. Let Host Tests, Product UI Native and Gen IV Candidate Gate resolve.
+3. Fix any remaining failure forward without reverting integrated editor/UI work.
 
 ## Remaining integration work
 
-### Classic Games / Backpack / Settings
-
-Hardware-check the integrated flows:
-
-- Games opens familiar Game Sources;
-- trainer name / portrait / Dex summary are coherent;
-- Backpack enters the selected game’s Items flow through normal source/backup safety;
-- Settings opens the two-pane category/options UI;
-- backing out restores the remembered cursor.
+### Product navigation
+Hardware-check Games → Classic Game Sources, trainer/Dex presentation, Backpack → Items, two-pane Settings, and remembered cursor/focus.
 
 ### Emulator launch
+Verify direct-launch handoff for DraStic and melonDS. Reuse current GameLauncher/provider/linking architecture. If emulator + content cannot be proven, keep **Link Game File** and store the mapping only in PokeBank-owned configuration. Never infer a ROM solely from a save path.
 
-Verify the actual direct-launch handoff for:
-
-- DraStic;
-- melonDS.
-
-Reuse existing GameLauncher/provider/linking architecture.
-
-If emulator + content cannot be proven, keep **Link Game File** and store the mapping only in PokeBank-owned configuration.
-
-Never infer a ROM solely from a save path.
+### Audit remediation
+Keep the forensic evidence branch frozen. Apply remediation forward in risk order without weakening source immutability, staged editing, launch/write separation, or fail-closed source validation.
 
 ## CI and hardware stop condition
 
-The final integrated candidate must have:
-
-- Host Tests green;
-- sanitizer/regression gates green where configured;
-- Gen IV Candidate Gate green;
-- Product UI Native/devkitA64 green;
-- one exact Actions artifact;
-- one exact NRO + SHA-256.
+The final integrated candidate must have Host Tests green, sanitizer/regression gates green where configured, Gen IV Candidate Gate green, Product UI Native/devkitA64 green, one exact Actions artifact, and one exact NRO + SHA-256.
 
 Then STOP.
 
-Do not call the new integrated candidate device accepted until that exact NRO is tested on the real Switch.
+Do not call the candidate device accepted until that exact NRO is physically tested.
 
 ## After hardware acceptance
 
-The next major frontend tranche is:
+Next major frontend tranche:
 
 **FULL APP-WIDE TOUCH CONTROLS**
 
-Do not start Gen V, Master Vault persistence, cross-game True Move, or live source writes before the integrated UI candidate is accepted.
+Do not begin Gen V, Master Vault persistence, cross-game True Move, or live source writes before the integrated candidate is accepted.

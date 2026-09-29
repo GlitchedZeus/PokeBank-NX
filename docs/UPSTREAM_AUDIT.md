@@ -1,6 +1,6 @@
 # PokeBank NX — Upstream Reuse Audit
 
-Last reviewed: 2026-09-02
+Last reviewed: 2026-09-29
 
 This is the permanent research map for external projects that can accelerate PokeBank NX. Before writing a major Pokémon-format, save-parser, legality, conversion, Pokédex, generated-Pokémon, bank, or transfer subsystem from scratch, check this file and the companion bank-project audit first.
 
@@ -22,35 +22,30 @@ The pins below are **research pins**, not permanent dependency versions. Any fut
 
 # Current PokeBank NX context
 
-```text
-Repository: GlitchedZeus/PokeBank-NX
-Development branch: feature/pokebank-playable
-Version: 0.1.0-alpha
-Live installed-game writing: HARD DISABLED / not approved
-Stable release/platform identities: 23
-First exact physical .nro test: COMPLETE / PARTIAL PASS
-Current useful UI/analog source: 361c6f55...
-Second device artifact: PENDING safety/crash finish
-```
+This file is a **research/reuse map**, not current project-state authority.
 
-First exact device-tested source:
+For live state use:
 
-```text
-3be4de6b0b1ce00d5fe369cff9795c3fffbfa31a
-PokeBank-NX-UI-Theme-3be4de6.nro
-SHA-256 df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
-DEVICE TESTED — PARTIAL PASS / KNOWN FAILURES
-```
+1. `CURRENT_STATUS.md`
+2. `PROJECT_STATUS.md`
+3. `docs/NEXT_SESSION_PLAN.md`
 
-Do not use upstream capability as proof that PokeBank NX meets its read-only/provenance/write-safety contract. The extended hardware test proved inherited mutation UI remains reachable and is now explicitly audited under #23.
+Current direction at the 2026-09-29 refresh:
 
----
+- Gen I–III shared editors are hardware accepted;
+- Gen IV is in active full-editor/Product UI integration;
+- original source saves remain immutable and live writes remain disabled;
+- Product Home / Classic Game Sources are integrated;
+- full repository forensic coverage is complete and remediation is tracked separately.
+
+Historical device notes and early branch names below remain evidence only. They are not instructions to reset or resume an obsolete lane.
+
 
 # 1. PKSE
 
-Repository: `https://github.com/kiasta/PKSE`  
-Pinned research commit: `1133aedffeeffb5862f35162597e249233903597` (PKSE 1.1.3)  
-Language: C++  
+Repository: `https://github.com/kiasta/PKSE`
+Pinned research commit: `1133aedffeeffb5862f35162597e249233903597` (PKSE 1.1.3)
+Language: C++
 License: **AGPLv3**
 
 ## Role
@@ -80,9 +75,9 @@ Original upstream foundation already inherited into PokeBank NX:
 
 # 2. PKSM-Core
 
-Repository: `https://github.com/FlagBrew/PKSM-Core`  
-Pinned research commit: `aa22d7a4f87c0351baf7da5962ba5acd01039a7c`  
-Language: C++  
+Repository: `https://github.com/FlagBrew/PKSM-Core`
+Pinned research commit: `aa22d7a4f87c0351baf7da5962ba5acd01039a7c`
+Language: C++
 License: **GPLv3**
 
 ## Role
@@ -125,9 +120,9 @@ First target: **Gen III / PK3 / Sav3 / FireRed-LeafGreen GBA** under #4.
 
 # 3. FlagBrew/PKSM — full application
 
-Repository: `https://github.com/FlagBrew/PKSM`  
-Research pin inspected: `47d060ad80bcd55ed5c154d40ded0462d2448d21`  
-Language: C++ / Nintendo 3DS  
+Repository: `https://github.com/FlagBrew/PKSM`
+Research pin inspected: `47d060ad80bcd55ed5c154d40ded0462d2448d21`
+Language: C++ / Nintendo 3DS
 License: **GPLv3 with additional 7.b / 7.c attribution/origin terms**
 
 ## Role
@@ -162,9 +157,9 @@ Full notes: `BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`.
 
 # 4. Universal-Team/pkmn-chest
 
-Repository: `https://github.com/Universal-Team/pkmn-chest`  
-Research pin inspected: `a847bb63a021a39375a5cb6673b2ed3f24195a2f`  
-Language: C++ / Nintendo DS(i)  
+Repository: `https://github.com/Universal-Team/pkmn-chest`
+Research pin inspected: `a847bb63a021a39375a5cb6673b2ed3f24195a2f`
+Language: C++ / Nintendo DS(i)
 License: **GPLv3**
 
 ## Role
@@ -192,10 +187,10 @@ Full notes: `BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`.
 
 # 5. gocario/PHBank
 
-Repository: `https://github.com/gocario/PHBank`  
-Research pin inspected: `a956ab39060148c8dafdb1f472c96632b22dcc65`  
-State: archived/historical  
-Language: C/C++ / Nintendo 3DS  
+Repository: `https://github.com/gocario/PHBank`
+Research pin inspected: `a956ab39060148c8dafdb1f472c96632b22dcc65`
+State: archived/historical
+Language: C/C++ / Nintendo 3DS
 License: **GPLv3**
 
 ## Role
@@ -221,9 +216,9 @@ Full notes: `BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`.
 
 # 6. 0xb01u/PHBankGBC
 
-Repository: `https://github.com/0xb01u/PHBankGBC`  
-Research pin inspected: `9baf997c470b3eaf26c97a9867e35f6acecf527b`  
-Default research branch inspected: `GEN2`  
+Repository: `https://github.com/0xb01u/PHBankGBC`
+Research pin inspected: `9baf997c470b3eaf26c97a9867e35f6acecf527b`
+Default research branch inspected: `GEN2`
 Language: C / Nintendo 3DS
 
 ## Role
@@ -248,9 +243,9 @@ Full notes: `BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`.
 
 # 7. PKHeX
 
-Repository: `https://github.com/kwsch/PKHeX`  
-Pinned research commit: `e15d2467b32da7bc26ce7cc8e5c4ede32740e20a`  
-Language: C#  
+Repository: `https://github.com/kwsch/PKHeX`
+Pinned research commit: `e15d2467b32da7bc26ce7cc8e5c4ede32740e20a`
+Language: C#
 License: **GPLv3**
 
 ## Role
@@ -287,9 +282,9 @@ Issue: #5.
 
 # 8. Auto Legality / PKHeX-Plugins
 
-Repository: `https://github.com/santacrab2/PKHeX-Plugins`  
-Pinned research commit: `90410f2681a0a72680d12280a1e0f14715e67dff`  
-Language: C#  
+Repository: `https://github.com/santacrab2/PKHeX-Plugins`
+Pinned research commit: `90410f2681a0a72680d12280a1e0f14715e67dff`
+Language: C#
 License at pinned repo: **MIT**
 
 ## Role
@@ -313,9 +308,9 @@ Never use it to forge HOME tracker/history or to promise guaranteed online accep
 
 # 9. pkHouse
 
-Repository: `https://github.com/Insektaure/pkHouse`  
-Pinned research commit: `4e288f4a66acf2e58822ad1bb372a6803d3c46dd`  
-Language: C++ / Nintendo Switch homebrew  
+Repository: `https://github.com/Insektaure/pkHouse`
+Pinned research commit: `4e288f4a66acf2e58822ad1bb372a6803d3c46dd`
+Language: C++ / Nintendo Switch homebrew
 License: **GPLv2**
 
 ## Role
@@ -344,9 +339,9 @@ Issue: #11.
 
 # 10. pkDex
 
-Repository: `https://github.com/Insektaure/pkDex`  
-Pinned research commit: `c7a1f8debf4e70643464cf939d06f8e167839a15`  
-Language: C++ / Switch homebrew  
+Repository: `https://github.com/Insektaure/pkDex`
+Pinned research commit: `c7a1f8debf4e70643464cf939d06f8e167839a15`
+Language: C++ / Switch homebrew
 License: **GPLv2**
 
 ## Role
@@ -371,9 +366,9 @@ Issue: #7.
 
 # 11. PKForge
 
-Repository: `https://github.com/sofianeelhor/PKForge`  
-Pinned research commit: `ded13d9cfb75f94df7c2d88b4621866cfd55e499`  
-Language: C# / .NET MAUI  
+Repository: `https://github.com/sofianeelhor/PKForge`
+Pinned research commit: `ded13d9cfb75f94df7c2d88b4621866cfd55e499`
+Language: C# / .NET MAUI
 License: **GPLv3**
 
 ## Role

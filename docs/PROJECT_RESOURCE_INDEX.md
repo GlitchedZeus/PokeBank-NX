@@ -1,6 +1,6 @@
 # PokeBank NX — AI / Codex Resource Map
 
-Last updated: 2026-09-09
+Last updated: 2026-09-29
 
 > **Navigation only. This file does not define active scope.**
 >
@@ -45,8 +45,10 @@ then act
 Writable development target:
 
 ```text
-origin/feature/pokebank-playable
+the live branch named by CURRENT_STATUS.md
 ```
+
+As of 2026-09-29 the active MAIN lane is PR #92 / `feature/gen4-full-editor-20260928`, but this index is intentionally branch-agnostic: always re-fetch live GitHub before modifying anything.
 
 Never push custom PokeBank NX code upstream to PKSE.
 
