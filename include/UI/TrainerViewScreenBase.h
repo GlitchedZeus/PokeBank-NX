@@ -11,6 +11,7 @@
 #include "Globals.h"
 #include "Safety/WritePolicy.h"
 #include "UI/ActionSheetModel.h"
+#include "UI/MutationTargetPolicy.h"
 #include "Safety/SourceMutationPolicy.h"
 #include "UI/NavigationRepeat.h"
 #include "Utils/MoveTransactionProduction.h"
@@ -317,18 +318,41 @@ namespace UI {
             return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy
                 ? "RETROARCH" : "EXTERNAL";
         }
-        bool requireMutableWorkspace() {
+        bool requireMutationKind(PokeVault::Safety::SourceKind targetKind,
+                                 PokeVault::Safety::SourceMutation mutation) {
             if (moveRecoveryLocked) {
                 postStatus(moveRecoveryNotice.empty()
                     ? "Pokemon Move recovery is required. Storage changes are locked."
                     : moveRecoveryNotice, 480);
                 return false;
             }
-            if (!sourceReadOnly()) return true;
+            if (PokeVault::Safety::canPerform(targetKind, mutation)) return true;
             postStatus(legacyReadOnlySource()
                 ? "External source is read-only. Editing this file is disabled."
                 : "Installed source is read-only. Open a backup workspace explicitly to edit.", 300);
             return false;
+        }
+        bool requireMutableWorkspace(
+            PokeVault::Safety::SourceMutation mutation = PokeVault::Safety::SourceMutation::Edit) {
+            return requireMutationKind(sourceKind, mutation);
+        }
+        bool requireMutableStoragePane(
+            int pane,
+            PokeVault::Safety::SourceMutation mutation = PokeVault::Safety::SourceMutation::Edit) {
+            return requireMutationKind(
+                PokeBank::UIModel::mutationSourceForStoragePane(sourceKind, pane), mutation);
+        }
+        bool pokemonTargetMutable(
+            const PokeVault::UIModel::PokemonTarget& target,
+            PokeVault::Safety::SourceMutation mutation = PokeVault::Safety::SourceMutation::Edit) const {
+            return PokeBank::UIModel::canPerformOnTarget(
+                sourceKind, target.location, mutation);
+        }
+        bool requireMutablePokemonTarget(
+            const PokeVault::UIModel::PokemonTarget& target,
+            PokeVault::Safety::SourceMutation mutation = PokeVault::Safety::SourceMutation::Edit) {
+            return requireMutationKind(
+                PokeBank::UIModel::mutationSourceForTarget(sourceKind, target.location), mutation);
         }
 
         /// Cursor into the visible, backup-only destination list.
