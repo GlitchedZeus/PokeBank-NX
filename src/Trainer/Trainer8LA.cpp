@@ -267,8 +267,8 @@ namespace Trainer {
          * validates it, so a zeroed slot decrypts to garbage and renders a BAD EGG. This path
          * used to memset(0) and corrupted the party into Bad Eggs on any save (even a box-name
          * edit, since the party is re-serialized unconditionally). The PartyCount byte at
-         * 6*0x178 is deliberately left untouched: empty slots load as species-0 "ghosts" that
-         * inflate party.size(), so the save's own count is authoritative, not party.size().
+         * 6*0x178 is deliberately left untouched: the save's own count remains authoritative,
+         * while parsePartyBlock now excludes decrypted species-0 blanks from the logical vector.
          */
         for (auto& block : blocks) {
             if (block.key == PARTY8_LA) {
