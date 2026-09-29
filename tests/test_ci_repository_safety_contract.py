@@ -60,4 +60,21 @@ for required in (
     if required not in native_text:
         fail(f"AUDIT-002: native PR gate is missing required compile/link contract: {required}")
 
+
+HOST_WORKFLOW = WORKFLOWS / "host-tests.yml"
+if not HOST_WORKFLOW.is_file():
+    fail("AUDIT-006: host test workflow is missing")
+
+host_text = HOST_WORKFLOW.read_text(encoding="utf-8")
+if not re.search(r"(?m)^\s*ASAN_OPTIONS:\s*detect_leaks=1\s*$", host_text):
+    fail("AUDIT-006: unrestricted CI must enable LeakSanitizer")
+if 'ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=0}"' not in host_text:
+    fail("AUDIT-006: focused sanitizer regression must inherit the CI leak policy")
+
+make_text = (ROOT / "Makefile.host.base").read_text(encoding="utf-8")
+if "ASAN_OPTIONS ?= detect_leaks=0" not in make_text:
+    fail("AUDIT-006: constrained local default must remain explicit")
+if 'ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$test_bin' not in make_text:
+    fail("AUDIT-006: sanitizer loop must use the configured ASAN_OPTIONS value")
+
 print("CI repository safety contracts: PASS")
