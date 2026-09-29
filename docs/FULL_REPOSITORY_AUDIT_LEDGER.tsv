@@ -633,7 +633,7 @@ tests/test_gen3_hardware_surface_contract.cpp	blob	100644	18549	Gen III shared-s
 tests/test_gen3_legality_context.cpp	blob	100644	2273	exact-source Gen III legality-context contract	text	65	AUDITED			0	yes
 tests/test_gen3_party_record.cpp	blob	100644	1308	Gen III party-tail fidelity/initialization contract	text	26	AUDITED			0	yes
 tests/test_gen3_pid_search_fail_closed.cpp	blob	100644	1915	Gen III PID trait-preservation fail-closed contract	text	51	AUDITED			0	yes
-tests/test_gen3_shared_pokemon_session.cpp	blob	100644	13289		unknown		PENDING			0	
+tests/test_gen3_shared_pokemon_session.cpp	blob	100644	13289	Gen III shared editor draft/session identity/progression contract	text	297	AUDITED			0	yes
 tests/test_gen3_shell_render.cpp	blob	100644	4559	shared Gen III shell renderer bounds contract	text	83	AUDITED			0	yes
 tests/test_gen3_staged_inventory.cpp	blob	100644	11182	Gen III exact-game staged inventory/sector-preservation contract	text	243	AUDITED			0	yes
 tests/test_gen3_staged_pokemon_editor.cpp	blob	100644	25703		unknown		PENDING			0	
@@ -688,7 +688,7 @@ tests/test_rse_open_regression.cpp	blob	100644	9281	RSE save-open optional-inven
 tests/test_runtime_dependency_contract.cpp	blob	100644	1077	runtime path/branding textual dependency contract	text	30	AUDITED			0	yes
 tests/test_save_instance_architecture_contract.py	blob	100644	5437	provider-neutral Save Instances architecture/static routing contract	text	96	AUDITED			0	yes
 tests/test_save_instance_model.cpp	blob	100644	5311	provider-neutral SaveInstance dedupe/profile/snapshot contract	text	123	AUDITED			0	yes
-tests/test_shared_editor_heading_contract.cpp	blob	100644	12864		unknown		PENDING			0	
+tests/test_shared_editor_heading_contract.cpp	blob	100644	12856	shared Gen I/II fullscreen heading/type/focus hardware contract	text	210	AUDITED			0	yes
 tests/test_shared_pokemon_editor_contract.cpp	blob	100644	16432	shared Pokémon editor architecture/navigation contract test	text	275	AUDITED			0	yes
 tests/test_shared_species_picker_surface_contract.cpp	blob	100644	2643	shared species picker source contract test	text	70	AUDITED			0	no
 tests/test_source_mutation_policy.cpp	blob	100644	1841	source mutation policy/action-sheet regression	text	38	AUDITED			1	yes
