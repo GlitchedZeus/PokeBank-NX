@@ -23,8 +23,10 @@ require("hubDockFocused" in source and "hubFeatureIndex" in source and "activate
         "approved home destinations must be controller-focusable, not decorative")
 require("HidNpadButton_L" in source and "HidNpadButton_R" in source,
         "L/R must switch the selected game")
-require('"Pokédex"' in source and '"Progress tracking  •  Coming Soon"' in source,
-        "selected-game card must use the compact honest Pokédex Coming Soon presentation")
+require('"Pokédex Progress"' in source and
+        "previewDexSeen" in source and "previewDexCaught" in source and
+        '"   •   Owned "' in source,
+        "selected-game card must show real parsed Pokédex Seen/Owned progress when supported")
 require('"Trainer"' in source,
         "selected-game card must expose trainer information")
 require("PROFILE_AVATAR" in source and "SystemIcons::userIcon" in source,
@@ -101,32 +103,27 @@ require("containSprite" in source,
         "party sprites must preserve aspect ratio")
 require("MainMenuDestination::More" in source and "Dest::More" in ui_manager,
         "More must be a real routed product destination")
-require('"Games   Open the selected game\'s PKSE-style workspace"' in source,
-        "Help must explain that Games enters the existing game workspace")
-require("helpReturnOverlay = Overlay::GameWorkspace;" in source and
-        '"Game Workspace Controls"' in source,
-        "Minus from Game Workspace must open contextual Help and return there cleanly")
-require('"B   Back to Product Home"' in source and
-        '"ZR   Launch the selected game"' in source,
-        "workspace Help must explain its contextual Back and Launch controls")
-require("Overlay::GameWorkspace" in source and "gameWorkspaceIndex" in header,
-        "Games dock must open a real selected-game workspace instead of duplicating OPEN")
-require('static constexpr const char* labels[8]' in source,
-        "game workspace must expose the approved practical destination grid")
-for label in ("Overview", "Party", "Boxes", "Pokédex", "Trainer",
-              "Editor / Create", "Backups", "Source / Game File"):
-    require(f'"{label}"' in source,
-            f"game workspace is missing {label}")
+require('"Games   Open the familiar Game Sources grid"' in source,
+        "Product Home Help must explain that Games opens Classic Game Sources")
+require("classicGamesActive" in source and "drawClassicGameSources" in source,
+        "Games must retain the familiar Classic Game Sources interface")
+require('"Game Sources Controls"' in source and
+        '"B   Back to Product Home"' in source,
+        "Classic Game Sources must expose contextual controls and return Home")
 activate_start = source.index("void SaveSelectScreen::activateHubDock()")
 activate_end = source.index("void SaveSelectScreen::activateGameWorkspace()", activate_start)
 dock_activation = source[activate_start:activate_end]
-require("overlay = Overlay::GameWorkspace;" in dock_activation,
-        "Games dock must enter Game Workspace")
+require("classicGamesActive = true;" in dock_activation,
+        "Games dock must enter Classic Game Sources")
 require("selectCurrentTitle();" not in dock_activation.split("if (hubDockIndex == 0)", 1)[1].split("else if (hubDockIndex == 1)", 1)[0],
         "Games dock must not duplicate the fast OPEN route")
-require("case 1: // Party" in source and "case 2: // Boxes" in source and
-        "case 5: // Editor / Create" in source,
-        "workspace implemented destinations must route through the validated existing game flow")
+require('"D-pad/Stick","Choose Game"' in source and
+        '"L/R","Switch User"' in source and
+        '"ZR","Launch"' in source,
+        "Classic Game Sources must retain controller navigation and launch controls")
+require("title.trainerName.empty() ? title.sourceLabel : title.trainerName" in source and
+        "title.dexCaught" in source and "title.dexTotal" in source,
+        "Classic Game Sources cards must show real trainer/dex metadata when available")
 require("-: Help" in source and "+: Settings" in source,
         "Product Home footer must expose Help and Settings shortcuts")
 update_start = source.index("void SaveSelectScreen::update")
@@ -143,6 +140,10 @@ require("descriptor.state != GameLaunchState::LauncherOnly" in launcher,
         "launcher-only emulators must never receive a falsely linked ROM argument")
 require("GameLaunchProviderKind::MelonDS" in launcher,
         "melonDS provider-aware direct content launch support must remain present")
+require("OpenIntent::Items" in source and "hubDockIndex == 5" in source,
+        "Backpack/Items quick control must create the safe Items open intent")
+require("openIntent = OpenIntent::Items;" in source and "selectCurrentTitle();" in source,
+        "Backpack must reuse the normal validated source/open flow instead of bypassing it")
 require("headerSettingsFocused" in source,
         "top-right Settings gear must participate in controller focus")
 require('kSettingsCategories' in shell_source and
