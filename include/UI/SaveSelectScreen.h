@@ -1,6 +1,7 @@
 #ifndef UI_SAVE_SELECT_SCREEN_H
 #define UI_SAVE_SELECT_SCREEN_H
 
+#include <array>
 #include <vector>
 #include <string>
 
@@ -9,6 +10,7 @@
 #include "UI/UIScreen.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/GameLaunchModel.h"
 #include "Legacy/FRLGSourceBrowser.h"
 #include "Legacy/LegacySourceBindings.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
@@ -28,11 +30,24 @@ namespace UI {
             Gen4AssignedFile,
         };
 
+        enum class MainMenuDestination {
+            None,
+            MasterVault,
+            Pokedex,
+            Banks,
+            Search,
+            Settings,
+        };
+
         SaveSelectScreen(PokeVault::Legacy::FRLGDiscoveryResult& legacySources,
                          PokeVault::Legacy::LegacySourceBindings& legacyBindings);
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return exitRequested; }
+        bool hasRequestedAppExit() const { return appExitRequested; }
+        MainMenuDestination getRequestedMainMenuDestination() const {
+            return requestedMainMenuDestination;
+        }
 
         bool hasSelectedTitle() const { return titleSelected; }
         AccountUid getSelectedUser() const { return selectedUserUid; }
@@ -62,15 +77,50 @@ namespace UI {
             std::vector<TitleEntry> titles;
         };
         struct HitRect { int x, y, w, h, idx; };
+        struct PartyPreviewSlot {
+            uint16_t species = 0;
+            uint8_t level = 0;
+            std::string name;
+        };
+        struct LaunchFileEntry {
+            std::string name;
+            std::string path;
+            bool directory = false;
+        };
 
         std::vector<UserEntry> users;
         int userIndex = 0;
         int titleIndex = 0;
+        std::array<PartyPreviewSlot, 6> partyPreview{};
+        std::string partyPreviewStatus;
+        std::string previewTrainerName;
+        GameLaunchDescriptor launchDescriptor;
+        std::string hubNotice;
+        bool launchLegacyMode = false;
+
+        std::vector<LaunchFileEntry> launchFileEntries;
+        std::string launchBrowsePath;
+        std::string launchBrowseRoot;
+        std::string launchLinkBindingKey;
+        std::string launchLinkGameId;
+        std::string launchLinkProviderId;
+        std::string launchLinkSourcePath;
+        std::string launchFileNotice;
+        int launchFileIndex = 0;
+        int launchFileScroll = 0;
+        bool launchFileReturnToLegacy = false;
 
         bool titleSelected = false;
-        bool exitRequested = false;
+        bool exitRequested = false;     // return from Games & Sources to product Home
+        bool appExitRequested = false;  // explicit Options -> Exit PokeBank NX
+        MainMenuDestination requestedMainMenuDestination = MainMenuDestination::None;
+        bool hubDockFocused = false;
+        int hubDockIndex = 0;
+        // Main product-home focus outside the persistent dock:
+        // -1 = selected game card, 0 = Master Vault, 1 = Pokédex.
+        int hubFeatureIndex = -1;
         enum class Overlay { None, Options, Help, LegacyInstances, LegacyAssignment, LegacyDetails,
-                             Gen4Setup, Gen4Candidates };
+                             Gen4Setup, Gen4Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
         int optionsIndex = 0;
         int legacyInstanceIndex = 0;
@@ -112,7 +162,9 @@ namespace UI {
         // Tap targets captured during draw(), hit-tested on the next update().
         std::vector<HitRect> titleRects;
         std::vector<HitRect> userRects;
+        std::vector<HitRect> dockRects;
 
+        void activateHubDock();
         void loadUsers();
         void loadLegacySources(const PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
         void loadGen4Cards();
@@ -129,6 +181,18 @@ namespace UI {
         void loadTitlesForUser(UserEntry& user);
         static bool scanSaveSpace(UserEntry& user, int spaceId, int& scanned, int& forUser);
         void setUser(int idx);
+        void refreshHubPreview();
+        bool launchCurrentTitle();
+        bool launchCurrentLegacyInstance();
+        bool beginLaunchLinkForCurrentTitle();
+        void openGameFilePicker(const std::string& gameId,
+                                const std::string& providerId,
+                                const std::string& sourcePath,
+                                const std::string& bindingKey,
+                                bool returnToLegacy);
+        void refreshGameFilePicker();
+        void activateGameFilePicker();
+        void browseGameFileParent();
         void selectCurrentTitle();
         void selectCurrentLegacyInstance();
         void openGen4Setup(const std::string& gameId, std::string notice = {});
