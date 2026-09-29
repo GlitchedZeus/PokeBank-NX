@@ -308,14 +308,14 @@ include/Save/RtcFooter.h	blob	100644	582	legacy RTC footer sizing helper	text	15
 include/Source/SaveInstance.h	blob	100644	7242	provider-neutral source instance/identity/access model	text	187	AUDITED			0	no
 include/Trainer/Bank.h	blob	100644	5839		unknown		PENDING			0	
 include/Trainer/BankFormatPolicy.h	blob	100644	711		unknown		PENDING			0	
-include/Trainer/Inventory.h	blob	100644	234		unknown		PENDING			0	
-include/Trainer/Inventory3FRLG.h	blob	100644	2616		unknown		PENDING			0	
-include/Trainer/Inventory7LGPE.h	blob	100644	4802		unknown		PENDING			0	
-include/Trainer/Inventory8BDSP.h	blob	100644	6834		unknown		PENDING			0	
-include/Trainer/Inventory8LA.h	blob	100644	2075		unknown		PENDING			0	
-include/Trainer/Inventory8SWSH.h	blob	100644	2333		unknown		PENDING			0	
-include/Trainer/Inventory9LZA.h	blob	100644	3630		unknown		PENDING			0	
-include/Trainer/Inventory9SV.h	blob	100644	4041		unknown		PENDING			0	
+include/Trainer/Inventory.h	blob	100644	234	shared inventory item model	text	15	AUDITED			0	no
+include/Trainer/Inventory3FRLG.h	blob	100644	2616	FRLG inventory pouch geometry	text	54	AUDITED			0	no
+include/Trainer/Inventory7LGPE.h	blob	100644	4802	LGPE inventory record codec/pouch geometry	text	97	AUDITED			0	no
+include/Trainer/Inventory8BDSP.h	blob	100644	6834	BDSP inventory catalog/record geometry	text	162	AUDITED			0	no
+include/Trainer/Inventory8LA.h	blob	100644	2075	PLA inventory pouch geometry	text	46	AUDITED			0	no
+include/Trainer/Inventory8SWSH.h	blob	100644	2333	SWSH inventory record codec/pouch geometry	text	68	AUDITED			0	no
+include/Trainer/Inventory9LZA.h	blob	100644	3630	Legends Z-A inventory record codec/pouch model	text	102	AUDITED			1	yes
+include/Trainer/Inventory9SV.h	blob	100644	4041	Scarlet/Violet inventory record codec/pouch model	text	107	AUDITED			1	yes
 include/Trainer/Trainer.h	blob	100644	23219	shared mutable Trainer model/API	text	508	AUDITED			0	no
 include/Trainer/Trainer3FRLG.h	blob	100644	5993	FRLG mutable trainer/save serializer API	text	109	AUDITED			1	yes
 include/Trainer/Trainer7LGPE.h	blob	100644	14302	LGPE mutable trainer/save serializer API	text	340	AUDITED			1	yes
