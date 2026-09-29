@@ -6,9 +6,9 @@ Status: IN PROGRESS
 
 - Repository: GlitchedZeus/PokeBank-NX
 - Audit branch: `audit/full-repository-line-by-line-20260928`
-- Primary MAIN tree audited: PR #92 head `09c168ddfd4493ed5d06a33066c0ba56cdc9dff8`
+- Primary MAIN tree audited: PR #92 head `6e45edd8b038d0be15272605846fa3fe2e4339d6`
 - PR #92 branch: `feature/gen4-full-editor-20260928`
-- Sibling UI overlay baseline: PR #97 head `c63ce48ad6952128cabe94aaeaba627a460b04bd`; live head `af4d2450983f837706be92a1d83c28fe308444e9` has a bounded catch-up delta audited separately (latest delta only touches `src/UI/SaveSelectScreen.cpp`, `src/UI/UI.cpp`, and `tests/test_game_hub_contract.py`)
+- Sibling UI overlay baseline: PR #97 head `af4d2450983f837706be92a1d83c28fe308444e9`; live head `5f19fd14628c182db135038864036b6eb1b86c49` adds one 7-file app-shell/game-hub delta still pending overlay reconciliation
 - Integration parent: PR #90 head `8b3bcc16c804247bfe8d1314b686974ce73051d8`
 - Hardening parent: PR #79 head `00ee7a6ed7ac1b5a93c43246d70c252e135acec0`
 - Default branch main: `aca2bf41c83d81084886a46d53195f6cead81ccc`
@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 360 / 725
-- Fully read text files: 326 / 692
+- Audited tracked paths: 440 / 725
+- Fully read text files: 406 / 692
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -173,6 +173,17 @@ Status: IN PROGRESS
 - Existing backup-copy durability behavior remains covered by AUDIT-015; `src/Utils/FileUtilities.cpp` itself was already audited, so this tranche did not duplicate that finding.
 - MD5 and CRC16 implementations did not expose a new defect in this pass. Owned-path helpers reject traversal components and constrain generated backup/export components as intended in the reviewed paths.
 - The SHA-256 message schedule contains signed left-shift undefined behavior on ordinary high-bit input bytes. Because that hash authenticates SC-container saves, this is recorded as AUDIT-031.
+
+## Checkpoint — Names, legacy bridges, enums, and safety tests
+
+- Rebased audit attention onto live PR #92 head `6e45edd8b038d0be15272605846fa3fe2e4339d6`. Its delta from the prior audited head is confined to move-picker/shared-editor UI and tests; the Names/Legacy/Enums files completed in this checkpoint are unchanged across that delta.
+- Completed 20 Names logic/API files covering per-game move PP, TM/HM/TR machine mapping, held-item presence, language routing, ribbons/marks, ability/nature/type names, and Gen IV held-item structural presence. No new defect was confirmed in this logic tranche.
+- Upstream PKHeX was checked through the GitHub connector for current Legends: Z-A ability bounds: `MaxAbilityID_9a` still resolves to `Ability.PoisonPuppeteer`, matching PokeBank NX's ability table through ID 310.
+- Completed 13 Legacy source bridge/binding files. Source-facing Trainer mutation entry points remain no-op; staged editors own separate byte clones; exact Gen IV assignment is revalidated; binding persistence is bounded, validates temp/target images, and rolls back on promotion failures. No independent new Legacy finding was added. Gen I/II finalization follow-ups remain covered by the existing active-carry findings rather than duplicated.
+- Completed all five pending Enums/SCType files. SC scalar sizes are fixed-width and current Gen IV language/version grouping behavior is explicit.
+- Completed the durable Move fault matrix, journal, production integration, conversion-fidelity golden, BDSP layout-guard, PLA read-validation, legacy-binding recovery, and three major Gen IV safety suites. These tests support the existing classifications: PLA's semantic read validation is comparatively strong; BDSP still lacks an MD5-mismatch test; cross-game true Move is intentionally still locked; Gen IV staged writes prove a narrow mutation footprint plus CRC refresh and immutable source preservation.
+- Ledger is authoritative at this checkpoint: 406 text paths AUDITED + 34 non-text paths INSPECTED_INDIRECTLY = 440 / 725 accounted, with 285 pending.
+- PR #97 advanced to `5f19fd14628c182db135038864036b6eb1b86c49` during this pass. The one-commit delta from the prior live overlay head touches seven app-shell/game-hub files and remains explicitly pending rather than silently inherited as audited.
 
 ## Findings
 
