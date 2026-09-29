@@ -1307,8 +1307,8 @@ namespace UI {
         if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
 
         // Snapshot the selected identity before any source refresh. Never keep a list index across
-        // discovery: discovery can legitimately reorder cards, and using that stale index caused
-        // "Platinum -> Crystal" style cross-opens on hardware.
+        // discovery: discovery can legitimately reorder cards. Hardware also showed the old grid
+        // visibly reshuffling while an A-open blocked, so identity must survive any refresh.
         const TitleEntry selected = user->titles[static_cast<size_t>(titleIndex)];
         const std::string selectedGameId = selected.gameId;
         const std::string profile = currentProfileIdentity();
@@ -1862,24 +1862,39 @@ namespace UI {
                 launchCurrentTitle();
                 return;
             }
+
+            const int beforeUser = userIndex;
+            const int beforeTitle = titleIndex;
             if (users.size() > 1) {
                 if (kDown & HidNpadButton_L) setUser(userIndex - 1);
                 if (kDown & HidNpadButton_R) setUser(userIndex + 1);
             }
+
             const UserEntry* classicUser = currentUser();
             const int classicCount = classicUser ? static_cast<int>(classicUser->titles.size()) : 0;
             if (classicCount > 0) {
                 const int cols = classicTitleColumns();
-                if (kDown & HidNpadButton_Left) titleIndex = (titleIndex - 1 + classicCount) % classicCount;
-                if (kDown & HidNpadButton_Right) titleIndex = (titleIndex + 1) % classicCount;
-                if ((kDown & HidNpadButton_Up) && titleIndex - cols >= 0) titleIndex -= cols;
-                if ((kDown & HidNpadButton_Down) && titleIndex + cols < classicCount) titleIndex += cols;
+                if (kDown & HidNpadButton_Left)
+                    titleIndex = (titleIndex - 1 + classicCount) % classicCount;
+                if (kDown & HidNpadButton_Right)
+                    titleIndex = (titleIndex + 1) % classicCount;
+                if ((kDown & HidNpadButton_Up) && titleIndex - cols >= 0)
+                    titleIndex -= cols;
+                if ((kDown & HidNpadButton_Down) && titleIndex + cols < classicCount)
+                    titleIndex += cols;
+
                 if (kDown & HidNpadButton_A) {
                     openIntent = OpenIntent::Default;
                     selectCurrentTitle();
+                    // Do not mount/reparse the selected save again on the same input frame.
+                    // The outer UI loop must observe titleSelected/overlay immediately.
+                    return;
                 }
-                scrollClassicSelectionIntoView();
-                refreshHubPreview();
+
+                if (userIndex != beforeUser || titleIndex != beforeTitle) {
+                    scrollClassicSelectionIntoView();
+                    refreshHubPreview();
+                }
             }
             return;
         }

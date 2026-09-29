@@ -171,5 +171,20 @@ require("candidate.gameId == selectedGameId" in stable_open and
         "legacy open must re-map by gameId + source identity after refresh, never stale list index")
 require("openAssignedSource" in stable_open and "discoverGen4Candidates();" not in stable_open,
         "remembered Gen IV saves must open the exact assigned game directly instead of re-entering the candidate grid")
-require('"Platinum -> Crystal"' in stable_open,
-        "source must document and guard the hardware-observed cross-open regression")
+
+classic_start = source.index("if (classicGamesActive)")
+classic_end = source.index("if (kDown & HidNpadButton_B)", classic_start + 1)
+classic_block = source[classic_start:classic_end]
+# The old grid used to call refreshHubPreview() unconditionally every frame, which could mount/read
+# Switch saves or reopen Gen IV files dozens of times per second and made A-open look hung.
+update_start = source.index("void SaveSelectScreen::update")
+classic_runtime = source.index("if (classicGamesActive)", update_start)
+root_runtime = source.index("if (kDown & HidNpadButton_B)", classic_runtime)
+classic_runtime_block = source[classic_runtime:root_runtime]
+require("if (userIndex != beforeUser || titleIndex != beforeTitle)" in classic_runtime_block,
+        "Classic grid preview work must run only when profile/game selection actually changes")
+require("selectCurrentTitle();\n                    // Do not mount/reparse" in classic_runtime_block and
+        "return;" in classic_runtime_block,
+        "A-open must hand off immediately instead of doing another heavy preview refresh")
+require(classic_runtime_block.count("refreshHubPreview();") <= 2,
+        "Classic grid must not refresh heavyweight save previews on every rendered frame")
