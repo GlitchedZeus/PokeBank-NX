@@ -286,12 +286,12 @@ include/Pokemon/Pokemon3FRLG.h	blob	100644	17892		unknown		PENDING			0
 include/Pokemon/Pokemon4Mutable.h	blob	100644	5262		unknown		PENDING			0	
 include/Pokemon/Pokemon4ReadOnly.h	blob	100644	4058		unknown		PENDING			0	
 include/Pokemon/Pokemon4ReadOnlyView.h	blob	100644	4569		unknown		PENDING			0	
-include/Pokemon/Pokemon7LGPE.h	blob	100644	38973		unknown		PENDING			0	
-include/Pokemon/Pokemon8BDSP.h	blob	100644	38629		unknown		PENDING			0	
-include/Pokemon/Pokemon8LA.h	blob	100644	41226		unknown		PENDING			0	
-include/Pokemon/Pokemon8SWSH.h	blob	100644	38413		unknown		PENDING			0	
-include/Pokemon/Pokemon9LZA.h	blob	100644	38592		unknown		PENDING			0	
-include/Pokemon/Pokemon9SV.h	blob	100644	39132		unknown		PENDING			0	
+include/Pokemon/Pokemon7LGPE.h	blob	100644	38973	LGPE entity parser/editor and ownership	text	856	AUDITED			2	yes
+include/Pokemon/Pokemon8BDSP.h	blob	100644	38629	BDSP PB8 entity parser/editor and ownership	text	916	AUDITED			2	yes
+include/Pokemon/Pokemon8LA.h	blob	100644	41226	PLA PA8 entity parser/editor and ownership	text	949	AUDITED			2	yes
+include/Pokemon/Pokemon8SWSH.h	blob	100644	38413	SWSH PK8 entity parser/editor and ownership	text	913	AUDITED			2	yes
+include/Pokemon/Pokemon9LZA.h	blob	100644	38592	Legends Z-A PA9 entity parser/editor and ownership	text	904	AUDITED			2	yes
+include/Pokemon/Pokemon9SV.h	blob	100644	39132	Scarlet/Violet PK9 entity parser/editor and ownership	text	914	AUDITED			2	yes
 include/Pokemon/PokemonTypes.h	blob	100644	2693		unknown		PENDING			0	
 include/Pokemon/SVDexTable.h	blob	100644	1761		unknown		PENDING			0	
 include/Pokemon/SWSHDexTable.h	blob	100644	1544		unknown		PENDING			0	
@@ -428,15 +428,15 @@ recovery/assets_snapshot/romfs-recovery.tar.part000	blob	100644	83886080	asset/r
 recovery/assets_snapshot/romfs-recovery.tar.part001	blob	100644	69765120	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 src/Conversion/Convert.cpp	blob	100644	91547	cross-generation entity conversion implementation	text	1451	AUDITED			0	yes
 src/Conversion/RouteEvidence.cpp	blob	100644	31361	cross-game evidence persistence/retirement authorization	text	761	AUDITED			0	yes
-src/Encryption/Encryption.cpp	blob	100644	5023	Pokémon/save encryption implementation	text	137	AUDITED			0	yes
+src/Encryption/Encryption.cpp	blob	100644	5023	shared save/entity encryption helpers	text	137	AUDITED			1	yes
 src/Encryption/Encryption3FRLG.cpp	blob	100644	4663	Pokémon/save encryption implementation	text	95	AUDITED			0	no
 src/Encryption/Encryption4.cpp	blob	100644	4196	Pokémon/save encryption implementation	text	103	AUDITED			0	no
-src/Encryption/Encryption7LGPE.cpp	blob	100644	10799	Pokémon/save encryption implementation	text	248	AUDITED			0	yes
-src/Encryption/Encryption8BDSP.cpp	blob	100644	6845	Pokémon/save encryption implementation	text	163	AUDITED			0	yes
-src/Encryption/Encryption8LA.cpp	blob	100644	6790	Pokémon/save encryption implementation	text	163	AUDITED			0	yes
-src/Encryption/Encryption8SWSH.cpp	blob	100644	6839	Pokémon/save encryption implementation	text	163	AUDITED			0	yes
-src/Encryption/Encryption9LZA.cpp	blob	100644	7011	Pokémon/save encryption implementation	text	167	AUDITED			0	yes
-src/Encryption/Encryption9SV.cpp	blob	100644	6987	Pokémon/save encryption implementation	text	167	AUDITED			0	yes
+src/Encryption/Encryption7LGPE.cpp	blob	100644	10799	LGPE entity shuffle/encryption codec	text	248	AUDITED			1	yes
+src/Encryption/Encryption8BDSP.cpp	blob	100644	6845	BDSP entity shuffle/encryption codec	text	163	AUDITED			1	yes
+src/Encryption/Encryption8LA.cpp	blob	100644	6790	PLA entity shuffle/encryption codec	text	163	AUDITED			1	yes
+src/Encryption/Encryption8SWSH.cpp	blob	100644	6839	SWSH entity shuffle/encryption codec	text	163	AUDITED			1	yes
+src/Encryption/Encryption9LZA.cpp	blob	100644	7011	Legends Z-A entity shuffle/encryption codec	text	167	AUDITED			1	yes
+src/Encryption/Encryption9SV.cpp	blob	100644	6987	Scarlet/Violet entity shuffle/encryption codec	text	167	AUDITED			1	yes
 src/Enums/SCTypeCode.cpp	blob	100644	1798		unknown		PENDING			0	
 src/Games/GameIdentity.cpp	blob	100644	6303	game/source identity registry	text	101	AUDITED			0	no
 src/Integration/Gen1/Gen1BattleStats.cpp	blob	100644	2213		unknown		PENDING			0	
@@ -513,12 +513,12 @@ src/Pokemon/Pokemon3FRLG.cpp	blob	100644	19608		unknown		PENDING			0
 src/Pokemon/Pokemon4Mutable.cpp	blob	100644	37332	Gen IV mutable PK4 serialization/edit core	text	994	AUDITED			0	yes
 src/Pokemon/Pokemon4ReadOnly.cpp	blob	100644	7726		unknown		PENDING			0	
 src/Pokemon/Pokemon4ReadOnlyView.cpp	blob	100644	8598		unknown		PENDING			0	
-src/Pokemon/Pokemon7LGPE.cpp	blob	100644	13067		unknown		PENDING			0	
-src/Pokemon/Pokemon8BDSP.cpp	blob	100644	18491		unknown		PENDING			0	
-src/Pokemon/Pokemon8LA.cpp	blob	100644	18198		unknown		PENDING			0	
-src/Pokemon/Pokemon8SWSH.cpp	blob	100644	18139		unknown		PENDING			0	
-src/Pokemon/Pokemon9LZA.cpp	blob	100644	18075		unknown		PENDING			0	
-src/Pokemon/Pokemon9SV.cpp	blob	100644	18058		unknown		PENDING			0	
+src/Pokemon/Pokemon7LGPE.cpp	blob	100644	13067	LGPE entity stat/PID implementation	text	281	AUDITED			0	no
+src/Pokemon/Pokemon8BDSP.cpp	blob	100644	18491	BDSP PB8 stat/PID implementation	text	455	AUDITED			1	yes
+src/Pokemon/Pokemon8LA.cpp	blob	100644	18198	PLA PA8 stat/PID implementation	text	449	AUDITED			0	no
+src/Pokemon/Pokemon8SWSH.cpp	blob	100644	18139	SWSH PK8 stat/PID implementation	text	449	AUDITED			1	yes
+src/Pokemon/Pokemon9LZA.cpp	blob	100644	18075	Legends Z-A PA9 stat/PID implementation	text	448	AUDITED			1	yes
+src/Pokemon/Pokemon9SV.cpp	blob	100644	18058	Scarlet/Violet PK9 stat/PID implementation	text	448	AUDITED			1	yes
 src/Pokemon/PokemonTypes.cpp	blob	100644	1613		unknown		PENDING			0	
 src/Pokemon/SVDexTable.cpp	blob	100644	47312		unknown		PENDING			0	
 src/Pokemon/SWSHDexTable.cpp	blob	100644	25413		unknown		PENDING			0	
