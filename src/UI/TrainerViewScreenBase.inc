@@ -4439,7 +4439,11 @@ namespace UI {
                     if (!requireMutableWorkspace()) return;
                     bool inRange = selectedBoxIndex >= 0 && selectedBoxIndex < static_cast<int>(trainer.boxes.size()) &&
                                    selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(BOX_SLOTS);
-                    bool cursorOccupied = inRange && trainer.boxes[selectedBoxIndex][selectedItemIndex] != nullptr;
+                    bool cursorOccupied = false;
+                    if (inRange) {
+                        const auto& cursorPokemon = trainer.boxes[selectedBoxIndex][selectedItemIndex];
+                        cursorOccupied = cursorPokemon && cursorPokemon->speciesID() != 0;
+                    }
 
                     if (!swapActive) {
                         if (cursorOccupied) {
