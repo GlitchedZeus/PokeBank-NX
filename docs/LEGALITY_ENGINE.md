@@ -24,7 +24,8 @@ The first legality-engine tranche adds:
 - structured check identifiers;
 - coverage-aware reports and an explicit Incomplete verdict;
 - conservative exact-game encounter evidence where audited data already exists;
-- preservation of the existing exact-game Gen III move context.
+- preservation of the existing exact-game Gen III move context;
+- Gen III handheld PID/IV correlation for Methods 1, 2, 3 and 4, including Unown's reversed-half variants.
 
 Current encounter coverage is **partial** for R/B/Y, Crystal, the five Gen III games, and all five Gen IV games. Gen I now checks exact-game PK1 catch-rate evidence and Time Capsule held-item-byte compatibility without pretending PK1 stores met location/level. Gen IV now has pinned wild-slot evidence for D/P/Pt/HG/SS, but static/gift/trade/event templates are still missing, so a wild-slot non-match is not treated as illegal. Gen I static/gift/trade and full pre-evolution catch-rate provenance are still incomplete, so unmatched catch-rate evidence remains unknown rather than illegal.
 
@@ -34,7 +35,7 @@ Current encounter coverage is **partial** for R/B/Y, Crystal, the five Gen III g
 2. **Internal consistency** — level/EXP, names, gender, ability, forms and stats.
 3. **Exact-game move legality** — compatibility tables are wired now; event/tutor chronology and full tradeback provenance remain to be completed.
 4. **Encounter provenance** — species, location, level, method, time and version restrictions.
-5. **PID/RNG correlation** — Gen III/IV method constraints, nature, ability, gender and shiny correlation.
+5. **PID/RNG correlation** — Gen III handheld Methods 1/2/3/4 are recognized now; Channel, Colosseum/XD, roamer, BACD/event and Gen IV method/lead correlations remain separate incomplete evidence.
 6. **Egg / breeding legality** — hatch level/location, inherited moves and generation-specific breeding rules.
 7. **Event / gift legality** — fixed trainer data, fateful flags, ribbons, dates and distribution records.
 8. **Transfer legality** — legitimate movement between generations.

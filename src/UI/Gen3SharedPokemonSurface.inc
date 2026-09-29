@@ -1622,7 +1622,8 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     fb.drawText(x + 270, y + 256, coverageText(report.coverage.encounter),
                 coverageColor(report.coverage.encounter));
     fb.drawText(x + 34, y + 294, "PID / RNG correlation", Colors::TextDim);
-    fb.drawText(x + 270, y + 294, "Not covered", Colors::TextMuted);
+    fb.drawText(x + 270, y + 294, coverageText(report.coverage.pidRng),
+                coverageColor(report.coverage.pidRng));
     fb.drawText(x + 34, y + 332, "Source mutation", Colors::TextDim);
     fb.drawText(x + 270, y + 332, "HARD DISABLED", Colors::Accent);
 

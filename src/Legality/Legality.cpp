@@ -14,6 +14,7 @@
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
 #include "Legality/Gen4WildEncounter.h"
 #include "Legality/Gen1CatchRateEvidence.h"
+#include "Legality/Gen3PidIvCorrelation.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 
 #include <algorithm>
@@ -137,6 +138,26 @@ namespace Legality {
             // Internal mechanics are intentionally still partial until DV/Stat-Exp and
             // generation-specific PID/RNG rules have dedicated verifiers.
             r.coverage.internal = CoverageLevel::Partial;
+            if (exactGeneration == 3)
+                r.coverage.pidRng = CoverageLevel::Partial;
+        }
+
+        if (sourceProfile && exactGeneration == 3) {
+            const std::array<uint8_t, 6> ivs{
+                pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
+            };
+            const auto correlation =
+                Gen3PidIv::analyze(pk.pid(), ivs, species == 201);
+            if (correlation.matched()) {
+                add(r, Severity::Info,
+                    "PID/IV spread matches Gen III " +
+                    std::string(Gen3PidIv::methodName(correlation.method)),
+                    CheckIdentifier::PidRng);
+            } else {
+                add(r, Severity::Info,
+                    "No handheld Method 1/2/3/4 PID/IV match; special/event/roamer/GC RNG classes are not fully covered",
+                    CheckIdentifier::PidRng);
+            }
         }
 
         const bool hasStatNature =

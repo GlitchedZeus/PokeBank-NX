@@ -39,6 +39,7 @@ namespace Legality {
         Items,
         Origin,
         Encounter,
+        PidRng,
         Trainer,
         Checksum,
         Misc,
@@ -62,6 +63,7 @@ namespace Legality {
         CoverageLevel internal = CoverageLevel::Partial;
         CoverageLevel moves = CoverageLevel::Partial;
         CoverageLevel encounter = CoverageLevel::None;
+        CoverageLevel pidRng = CoverageLevel::None;
     };
 
     struct Report {
@@ -89,7 +91,8 @@ namespace Legality {
                 coverage.sourceGame == CoverageLevel::Complete &&
                 coverage.internal == CoverageLevel::Complete &&
                 coverage.moves == CoverageLevel::Complete &&
-                coverage.encounter == CoverageLevel::Complete;
+                coverage.encounter == CoverageLevel::Complete &&
+                coverage.pidRng == CoverageLevel::Complete;
             return complete && problemCount() == 0
                 ? Verdict::NoProblemsFound
                 : Verdict::Incomplete;
