@@ -38,7 +38,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 16 | AUDIT-029 | P2 | FIXED | Gen II finalization can serialize an in-progress packed move with carried Pokémon omitted |
 | 17 | AUDIT-030 | P2 | FIXED | Gen I finalization can serialize an in-progress packed move |
 | 18 | AUDIT-037 | P2 | FIXED | Gen I/II group pickup can strand an active staged move after presentation-refresh failure |
-| 19 | AUDIT-013 | P2 | OPEN | Legacy Bank migration skips checksum validation used by normal Bank load |
+| 19 | AUDIT-013 | P2 | FIXED | Legacy Bank migration skips checksum validation used by normal Bank load |
 | 20 | AUDIT-028 | P2 | OPEN | Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays |
 | 21 | AUDIT-027 | P2 | OPEN | LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0 |
 | 22 | AUDIT-014 | P2 | OPEN | Session-wide source read-only gate disables app-owned Bank mutation |
@@ -394,7 +394,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** corrupted-checksum legacy record is skipped, valid record migrates, mixed valid/corrupt legacy records preserve only valid entries, and migration never mutates the legacy source file.
 - **Dependency / sequencing:** None
 - **Proposed remediation order:** 19
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** normal unified Bank load and legacy per-group migration now share `Trainer::BankRecordValidation::accept()`, which rejects species 0 and requires stored checksum equality with the calculated checksum. Legacy migration separately counts/logs corrupt rejected records instead of conflating them with capacity drops. `tests/test_bank_record_validation.cpp` proves the acceptance predicate and binds both production paths to the same gate; it is wired into Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 20. AUDIT-028 — Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays
 
