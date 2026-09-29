@@ -139,6 +139,24 @@ namespace PokeVault::Integration::Gen3 {
         return impl_->original;
     }
 
+
+    DexProgress ReadOnlySave::dexProgress() const noexcept {
+        DexProgress out{};
+        if (!impl_) return out;
+        // PKSM-Core Sav3: PokeDex starts at logical sector 0 + 0x18.
+        // Caught flags begin at +0x10; the canonical Seen flags begin at +0x44.
+        const auto caught = impl_->readLogical(0, 0x28, 49);
+        const auto seen = impl_->readLogical(0, 0x5C, 49);
+        if (caught.size() != 49 || seen.size() != 49) return out;
+        for (uint16_t species = 1; species <= out.total; ++species) {
+            const uint16_t index = static_cast<uint16_t>(species - 1);
+            const uint8_t mask = static_cast<uint8_t>(1u << (index & 7));
+            if (seen[index >> 3] & mask) ++out.seen;
+            if (caught[index >> 3] & mask) ++out.caught;
+        }
+        return out;
+    }
+
     std::vector<PokemonRecord> ReadOnlySave::party() const {
         impl_->enumerationError = SaveError::None;
         std::vector<PokemonRecord> result;

@@ -280,6 +280,43 @@ std::string decodeGen2String(std::span<const uint8_t> bytes, RegionLayout region
     return decodeGen2Bytes(bytes, region == RegionLayout::Japanese);
 }
 
+
+DexProgress ReadOnlySave::dexProgress() const noexcept {
+    std::size_t caughtOffset = 0;
+    std::size_t seenOffset = 0;
+    if (metadata_.region == RegionLayout::Japanese) {
+        if (metadata_.family == VersionFamily::Crystal) {
+            caughtOffset = 0x29AA;
+            seenOffset = 0x29CA;
+        } else {
+            caughtOffset = 0x29CE;
+            seenOffset = 0x29EE;
+        }
+    } else {
+        if (metadata_.family == VersionFamily::Crystal) {
+            caughtOffset = 0x2A27;
+            seenOffset = 0x2A47;
+        } else {
+            caughtOffset = 0x2A4C;
+            seenOffset = 0x2A6C;
+        }
+    }
+
+    DexProgress out{};
+    out.total = 251;
+    const auto payload = payloadBytes();
+    if (payload.size() <= seenOffset + 31 || payload.size() <= caughtOffset + 31)
+        return out;
+
+    for (uint16_t species = 1; species <= out.total; ++species) {
+        const uint16_t index = static_cast<uint16_t>(species - 1);
+        const uint8_t mask = static_cast<uint8_t>(1u << (index & 7));
+        if (payload[seenOffset + (index >> 3)] & mask) ++out.seen;
+        if (payload[caughtOffset + (index >> 3)] & mask) ++out.caught;
+    }
+    return out;
+}
+
 const char* sourceGameId(SourceGame game) noexcept {
     switch (game) {
         case SourceGame::Gold: return "gold_gbc";
