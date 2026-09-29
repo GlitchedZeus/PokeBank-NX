@@ -362,6 +362,14 @@ namespace UI {
         if (!subtitle.empty())
             fb.drawText(nxX + 56, 23, subtitle, Colors::TextSecondary, TextStyle::Caption);
 
+        constexpr int badgeW = 112, badgeH = 26;
+        const int badgeX = fb.getWidth() - badgeW - 22;
+        fb.drawFilledRoundedRect(badgeX, 18, badgeW, badgeH, 10,
+                                 withAlpha(Colors::Info, 45));
+        fb.drawRoundedRect(badgeX, 18, badgeW, badgeH, 10, Colors::Info, 1);
+        int roW, roH; fb.measureText("LIVE LOCKED", roW, roH, TextStyle::Caption);
+        fb.drawText(badgeX + (badgeW - roW) / 2, 18 + (badgeH - roH) / 2,
+                    "LIVE LOCKED", Colors::Info, TextStyle::Caption);
     }
 
     // Bottom nav bar: a sheet that curves along its top edge, carrying the controller badges.
