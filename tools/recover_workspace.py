@@ -29,6 +29,8 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
+from png_asset_validation import is_valid_png
+
 ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH = ROOT / "recovery" / "RECOVERY_STATE.json"
 ROMFS = ROOT / "romfs"
@@ -176,14 +178,17 @@ def ensure_pillow() -> None:
 def png_count(path: Path) -> int:
     if not path.is_dir():
         return 0
-    return sum(1 for p in path.iterdir() if p.is_file() and p.suffix.lower() == ".png")
+    return sum(
+        1 for p in path.iterdir()
+        if p.is_file() and p.suffix.lower() == ".png" and is_valid_png(p)
+    )
 
 
 def restore_hd_sprites(state: dict, force: bool) -> None:
     info = state["pokemon_hd"]
     expected = int(info["expected_png_count"])
     current = png_count(HD_DIR)
-    print(f"HD renders before recovery: {current}/{expected}")
+    print(f"Valid HD renders before recovery: {current}/{expected}")
 
     if force or current != expected:
         ensure_pillow()
@@ -195,7 +200,7 @@ def restore_hd_sprites(state: dict, force: bool) -> None:
     current = png_count(HD_DIR)
     if current != expected:
         die("restore pinned HD Pokémon renders", f"expected {expected} PNGs, found {current}")
-    print(f"HD renders restored: {current}/{expected}")
+    print(f"Valid HD renders restored: {current}/{expected}")
 
 
 def restore_type_icons(state: dict, force: bool) -> None:
