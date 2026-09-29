@@ -9,7 +9,7 @@ int main() {
 
     const auto* red = sourceGameProfile("red_gb");
     assert(red && red->generation == 1 && red->maxSpecies == 151 && red->maxMove == 165);
-    assert(red->encounterCoverage == CoverageLevel::None);
+    assert(red->encounterCoverage == CoverageLevel::Partial);
 
     const auto* crystal = sourceGameProfile("crystal_gbc");
     assert(crystal && crystal->generation == 2 && crystal->maxSpecies == 251 &&

@@ -21,9 +21,9 @@ struct SourceGameProfile {
 };
 
 inline constexpr std::array<SourceGameProfile, 16> kSourceGameProfiles{{
-    {"red_gb",         1, 151, 165, CoverageLevel::None},
-    {"blue_gb",        1, 151, 165, CoverageLevel::None},
-    {"yellow_gb",      1, 151, 165, CoverageLevel::None},
+    {"red_gb",         1, 151, 165, CoverageLevel::Partial},
+    {"blue_gb",        1, 151, 165, CoverageLevel::Partial},
+    {"yellow_gb",      1, 151, 165, CoverageLevel::Partial},
     {"gold_gbc",       2, 251, 251, CoverageLevel::None},
     {"silver_gbc",     2, 251, 251, CoverageLevel::None},
     {"crystal_gbc",    2, 251, 251, CoverageLevel::Partial},

@@ -13,6 +13,8 @@
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
 #include "Legality/Gen4WildEncounter.h"
+#include "Legality/Gen1CatchRateEvidence.h"
+#include "Pokemon/Pokemon1ReadOnly.h"
 
 #include <algorithm>
 #include <array>
@@ -105,6 +107,28 @@ namespace Legality {
 
         const auto* sourceProfile = sourceGameProfile(exactSourceGameId);
         const uint8_t exactGeneration = sourceProfile ? sourceProfile->generation : 0;
+
+        if (sourceProfile && exactGeneration == 1 &&
+            pk.getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup) {
+            const auto& gen1 = static_cast<const Pokemon::Pokemon1ReadOnly&>(pk);
+            const uint8_t catchRate = gen1.strictRecord().catchRate;
+            using Evidence = Gen1CatchRate::Evidence;
+            const auto evidence = Gen1CatchRate::classify(
+                exactSourceGameId, gen1.speciesID(), catchRate);
+            if (evidence == Evidence::NativeSpeciesRate) {
+                add(r, Severity::Info,
+                    "PK1 catch-rate byte matches this exact Generation I game",
+                    CheckIdentifier::Encounter);
+            } else if (evidence == Evidence::PossibleTimeCapsuleHeldItem) {
+                add(r, Severity::Info,
+                    "PK1 catch-rate byte is compatible with a Generation II held item after Time Capsule tradeback",
+                    CheckIdentifier::Encounter);
+            } else {
+                add(r, Severity::Info,
+                    "PK1 catch-rate provenance is unresolved; pre-evolution/static/trade evidence is not complete",
+                    CheckIdentifier::Encounter);
+            }
+        }
         if (sourceProfile) {
             r.coverage.sourceGame = CoverageLevel::Complete;
             r.coverage.encounter = sourceProfile->encounterCoverage;

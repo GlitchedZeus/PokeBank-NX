@@ -137,6 +137,8 @@ HOST_TESTS += $(HOST_BUILD)/test_legality_legacy_move_context
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_legacy_move_context_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_wild_encounter_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_wild_encounter_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen1_catch_rate_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_catch_rate_evidence_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -203,6 +205,14 @@ $(HOST_BUILD)/test_gen4_wild_encounter_evidence: tests/test_gen4_wild_encounter_
 $(HOST_BUILD)/test_gen4_wild_encounter_evidence_sanitize: tests/test_gen4_wild_encounter_evidence.cpp include/Legality/Gen4WildEncounter.h include/Legality/Gen4WildEncounterData.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_wild_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen1_catch_rate_evidence: tests/test_gen1_catch_rate_evidence.cpp include/Legality/Gen1CatchRateEvidence.h include/Legality/Gen1CatchRateData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen1_catch_rate_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen1_catch_rate_evidence_sanitize: tests/test_gen1_catch_rate_evidence.cpp include/Legality/Gen1CatchRateEvidence.h include/Legality/Gen1CatchRateData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen1_catch_rate_evidence.cpp -o $@
 
 $(HOST_BUILD)/test_source_mutation_policy: tests/test_source_mutation_policy.cpp
 	@mkdir -p $(HOST_BUILD)
