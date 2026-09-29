@@ -29,6 +29,14 @@ require('"Trainer"' in source,
         "selected-game card must expose trainer information")
 require("PROFILE_AVATAR" in source and "SystemIcons::userIcon" in source,
         "product header must expose the current profile identity")
+require("trainerPortraitForGame" in source and "drawTrainerPortrait" in source,
+        "Product Home must use the grounded trainer portrait model")
+for trainer in ("Brendan", "May", "Red", "Leaf", "Lucas", "Dawn", "Ethan", "Lyra", "Kris"):
+    require(f'"{trainer}"' in source, f"trainer portrait mapping is missing {trainer}")
+require("trainerGenderKnown" in header and "previewTrainerGenderKnown" in header,
+        "trainer portraits must distinguish proven gender from unknown appearance")
+require("opened.save->trainer().gender" in source,
+        "Gen IV portrait identity must use the parsed save gender")
 
 # Safe preview and launch boundaries remain unchanged.
 require("requestGameLaunch" in source, "launch shortcut must route through the shared launcher")
