@@ -47,6 +47,32 @@ namespace {
         return Colors::TextMuted;
     }
 
+    void drawRootDockIcon(PKSEFramebuffer& fb,
+                          PokeBank::UIModel::AppShellSection section,
+                          int x, int y, int size, bool focused) {
+        using PokeBank::UIModel::AppShellSection;
+        const Color ink = focused ? Colors::SelectedText : Colors::TextPrimary;
+        const int cx = x + size / 2;
+        const int cy = y + size / 2;
+
+        if (section == AppShellSection::Banks) {
+            fb.drawRoundedRect(cx - 23, cy - 18, 46, 28, 7, ink, 2);
+            fb.drawRoundedRect(cx - 17, cy - 8, 34, 28, 6, ink, 2);
+        } else if (section == AppShellSection::Settings) {
+            fb.drawFilledCircle(cx, cy, 10, ink);
+            fb.drawFilledRoundedRect(cx - 3, cy - 27, 6, 12, 3, ink);
+            fb.drawFilledRoundedRect(cx - 3, cy + 15, 6, 12, 3, ink);
+            fb.drawFilledRoundedRect(cx - 27, cy - 3, 12, 6, 3, ink);
+            fb.drawFilledRoundedRect(cx + 15, cy - 3, 12, 6, 3, ink);
+        } else if (section == AppShellSection::Games) {
+            fb.drawRoundedRect(cx - 28, cy - 17, 56, 34, 15, ink, 2);
+            fb.drawFilledRoundedRect(cx - 18, cy - 2, 15, 4, 2, ink);
+            fb.drawFilledRoundedRect(cx - 12, cy - 8, 4, 16, 2, ink);
+            fb.drawFilledCircle(cx + 12, cy - 4, 4, ink);
+            fb.drawFilledCircle(cx + 20, cy + 5, 4, ink);
+        }
+    }
+
     const std::vector<std::string>& sectionInfoLines(PokeBank::UIModel::AppShellSection section) {
         using PokeBank::UIModel::AppShellSection;
         static const std::vector<std::string> vault{
@@ -54,24 +80,12 @@ namespace {
             "This screen is a truthful product preview until the Vault persistence backend is ready.",
             "No Pokémon records are fabricated and no source save is changed by opening this preview."
         };
-        static const std::vector<std::string> storage{
-            "Legacy Storage remains app-owned and available from loaded game workspaces.",
-            "It is deliberately separate from the future Master Vault identity model.",
-            "Open Games, choose a save, then use its workspace to access current Storage."
-        };
-        static const std::vector<std::string> backups{
-            "Backups are currently scoped to the selected game and profile.",
-            "Open Games, select a game, then enter its Save Backups workflow.",
-            "Restore / Inject remains locked until its dedicated safety workflow is complete."
-        };
         static const std::vector<std::string> fallback{
             "This destination is not available from the main menu yet."
         };
 
         switch (section) {
             case AppShellSection::MasterVault: return vault;
-            case AppShellSection::Storage:     return storage;
-            case AppShellSection::Backups:     return backups;
             default:                           return fallback;
         }
     }}
@@ -80,6 +94,16 @@ AppShellScreen::Action AppShellScreen::consumeAction() {
     const Action result = pendingAction;
     pendingAction = Action::None;
     return result;
+}
+
+void AppShellScreen::openSection(PokeBank::UIModel::AppShellSection section) {
+    for (int i = 0; i < PokeBank::UIModel::appShellEntryCount(); ++i) {
+        if (PokeBank::UIModel::appShellEntry(i).section == section) {
+            selectedIndex = i;
+            activateSelected();
+            return;
+        }
+    }
 }
 
 void AppShellScreen::setStatus(std::string message, int frames) {
@@ -170,9 +194,7 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
     if (overlay == Overlay::OrganizationPreview) {
         using PokeBank::UIModel::OrganizationPreviewKind;
         OrganizationPreviewKind kind = OrganizationPreviewKind::Banks;
-        if (infoSection == PokeBank::UIModel::AppShellSection::Search)
-            kind = OrganizationPreviewKind::Search;
-        else if (infoSection == PokeBank::UIModel::AppShellSection::Pokedex)
+        if (infoSection == PokeBank::UIModel::AppShellSection::Pokedex)
             kind = OrganizationPreviewKind::Collections;
 
         const int count = PokeBank::UIModel::previewCount(kind);
@@ -305,32 +327,28 @@ void AppShellScreen::drawHome(PKSEFramebuffer& fb) {
     fb.drawText(kPrimaryX, kDockY - 32, "QUICK ACCESS",
                 Colors::TextMuted, TextStyle::Caption);
 
-    // Six compact app destinations. Settings is the small gear-equivalent destination; Games is
-    // the emphasized entry that opens the full profile/game/party/Launch hub.
-    static constexpr const char* symbols[6] = {"ST", "BK", "BU", "SR", "SET", "G"};
+    // Three compact console-style destinations. Storage/Backups/Search/Diagnostics are nested
+    // under the product areas that own them instead of becoming developer-dashboard root cards.
+    const int dockSpan = PokeBank::UIModel::APP_SHELL_DOCK_COUNT * kDockSize +
+                         (PokeBank::UIModel::APP_SHELL_DOCK_COUNT - 1) * kDockGap;
+    const int dockStartX = kPrimaryX + (kPrimaryW - dockSpan) / 2;
     for (int dock = 0; dock < PokeBank::UIModel::APP_SHELL_DOCK_COUNT; ++dock) {
         const int index = PokeBank::UIModel::APP_SHELL_PRIMARY_COUNT + dock;
         const auto& entry = appShellEntry(index);
-        const int x = kPrimaryX + dock * (kDockSize + kDockGap);
+        const int x = dockStartX + dock * (kDockSize + kDockGap);
         const bool focused = selectedIndex == index;
 
         drawFocusedCard(fb, x, kDockY, kDockSize, kDockSize, focused, kDockSize / 2);
         cardRects[static_cast<std::size_t>(index)] =
             {x, kDockY, kDockSize, kDockSize, index};
+        drawRootDockIcon(fb, entry.section, x, kDockY, kDockSize, focused);
 
-        int sw = 0, sh = 0;
-        fb.measureText(symbols[dock], sw, sh, TextStyle::Body);
-        fb.drawText(x + (kDockSize - sw) / 2, kDockY + 27, symbols[dock],
-                    focused ? Colors::SelectedText
-                            : (index == 7 ? Colors::AccentPrimary : Colors::TextPrimary),
-                    TextStyle::Body);
-
-        int tw = 0, th = 0;
-        fb.measureText(std::string(entry.title), tw, th, TextStyle::Caption);
-        fb.drawText(x + (kDockSize - tw) / 2, kDockY + kDockSize + 10,
-                    std::string(entry.title),
-                    focused ? Colors::FocusBorder : Colors::TextSecondary,
-                    TextStyle::Caption);
+        if (focused) {
+            int tw = 0, th = 0;
+            fb.measureText(std::string(entry.title), tw, th, TextStyle::Caption);
+            fb.drawText(x + (kDockSize - tw) / 2, kDockY + kDockSize + 10,
+                        std::string(entry.title), Colors::FocusBorder, TextStyle::Caption);
+        }
     }
 
     const auto& focusedEntry = appShellEntry(selectedIndex);
@@ -457,15 +475,12 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
     drawModalSurface(fb, x, y, w, h);
 
     const bool isBanks = infoSection == AppShellSection::Banks;
-    const bool isSearch = infoSection == AppShellSection::Search;
+    const bool isSearch = false;
     const bool isPokedex = infoSection == AppShellSection::Pokedex;
-    const char* title = isBanks ? "Banks & Boxes"
-        : (isSearch ? "Search & Filters" : "Pokédex & Collections");
+    const char* title = isBanks ? "Banks & Boxes" : "Pokédex & Collections";
     const char* subtitle = isBanks
         ? "Presentation preview only — no Bank or Master Vault data is stored yet."
-        : (isSearch
-            ? "Presentation preview only — the global Vault/search index is not connected."
-            : "Pokédex, forms, cries, Living Dex and Shiny Dex presentation foundation.");
+        : "Pokédex, forms, cries, Living Dex and Shiny Dex presentation foundation.";
 
     fb.drawText(x + 28, y + 18, "POKEBANK NX  /  UI PREVIEW  /  NO BACKEND",
                 Colors::Info, TextStyle::Caption);

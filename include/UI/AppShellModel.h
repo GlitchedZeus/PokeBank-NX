@@ -10,10 +10,7 @@ namespace PokeBank::UIModel {
     enum class AppShellSection {
         MasterVault,
         Pokedex,
-        Storage,
         Banks,
-        Backups,
-        Search,
         Settings,
         Games,
     };
@@ -35,26 +32,17 @@ namespace PokeBank::UIModel {
     };
 
     inline constexpr int APP_SHELL_PRIMARY_COUNT = 2;
-    inline constexpr int APP_SHELL_DOCK_COUNT = 6;
+    inline constexpr int APP_SHELL_DOCK_COUNT = 3;
 
-    inline constexpr std::array<AppShellEntry, 8> APP_SHELL_ENTRIES{{
+    inline constexpr std::array<AppShellEntry, 5> APP_SHELL_ENTRIES{{
         {AppShellSection::MasterVault, "Master Vault",
          "Your central Pokémon library", "FOUNDATION",
          AppShellAvailability::FutureBackend, false},
         {AppShellSection::Pokedex, "Pokédex",
          "Species, forms, cries and collection progress", "PREVIEW",
          AppShellAvailability::FutureBackend, false},
-        {AppShellSection::Storage, "Storage",
-         "Legacy app-owned storage", "WORKSPACE",
-         AppShellAvailability::WorkspaceRequired, false},
         {AppShellSection::Banks, "Banks",
          "Named Banks and Boxes", "PREVIEW",
-         AppShellAvailability::FutureBackend, false},
-        {AppShellSection::Backups, "Backups",
-         "Per-game backup history", "PER GAME",
-         AppShellAvailability::WorkspaceRequired, false},
-        {AppShellSection::Search, "Search",
-         "Search, filters and collections", "PREVIEW",
          AppShellAvailability::FutureBackend, false},
         {AppShellSection::Settings, "Settings",
          "Themes, safety and app preferences", "READY",
@@ -72,10 +60,12 @@ namespace PokeBank::UIModel {
         return APP_SHELL_ENTRIES[static_cast<std::size_t>(index)];
     }
 
-    // Professional HOME-style layout:
+    // Professional console-home hierarchy:
     //   0 Master Vault
     //   1 Pokédex
-    //   2..7 circular dock (Storage, Banks, Backups, Search, Settings, Games)
+    //   2..4 compact dock (Banks, Settings, Games)
+    // Storage, Backups, Search, Collections and Diagnostics live inside the destinations
+    // that own them instead of becoming equal-sized root dashboard cards.
     constexpr int appShellMoveSelection(int current, int dx, int dy) {
         if (current < 0 || current >= appShellEntryCount()) current = 0;
 
@@ -95,8 +85,7 @@ namespace PokeBank::UIModel {
 
     constexpr bool appShellPreviewable(AppShellSection section) {
         return section == AppShellSection::Pokedex ||
-               section == AppShellSection::Banks ||
-               section == AppShellSection::Search;
+               section == AppShellSection::Banks;
     }
 
     constexpr bool appShellRootActionable(AppShellSection section) {

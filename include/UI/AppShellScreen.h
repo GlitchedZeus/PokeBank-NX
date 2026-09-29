@@ -25,6 +25,7 @@ namespace UI {
         bool shouldExit() const override { return exitRequested; }
 
         Action consumeAction();
+        void openSection(PokeBank::UIModel::AppShellSection section);
 
     private:
         enum class Overlay {
@@ -53,7 +54,7 @@ namespace UI {
         Overlay overlay = Overlay::None;
         PokeBank::UIModel::AppShellSection infoSection =
             PokeBank::UIModel::AppShellSection::Games;
-        std::array<HitRect, 8> cardRects{};
+        std::array<HitRect, 5> cardRects{};
         std::array<HitRect, 7> settingsRects{};
         std::string statusMessage;
         int statusFrames = 0;
