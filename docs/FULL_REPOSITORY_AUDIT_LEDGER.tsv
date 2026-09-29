@@ -599,7 +599,7 @@ src/main.cpp	blob	100644	4227	Switch application startup/service/runtime orchest
 tests/fixtures/gen4/README.md	blob	100644	791	Gen IV canonical fixture provenance/regeneration notes	text	18	AUDITED			0	yes
 tests/fixtures/gen4/blank-party.hex	blob	100644	473	canonical encrypted Gen IV party blank oracle	text	1	AUDITED			0	yes
 tests/fixtures/gen4/blank-stored.hex	blob	100644	273	canonical encrypted Gen IV stored blank oracle	text	1	AUDITED			0	yes
-tests/fixtures/gsc_pokemon_fixture.h	blob	100644	5749		unknown		PENDING			0	
+tests/fixtures/gsc_pokemon_fixture.h	blob	100644	5749	shared Gen II save/Pokémon fixture builder	text	115	AUDITED			0	yes
 tests/fixtures/main_workspace_move_focus.h	blob	100644	2354	shared move-row focus regression fixture	text	42	AUDITED			0	yes
 tests/test_action_sheet_model.cpp	blob	100644	3297	Pokemon action-sheet mutation-free/unsupported-action contract	text	89	AUDITED			0	yes
 tests/test_backup_namespace_contract.cpp	blob	100644	7520	backup namespace/path ownership contract	text	140	AUDITED			1	yes
@@ -645,7 +645,7 @@ tests/test_gen4_safety_contract.py	blob	100755	5435	Gen IV external-source read-
 tests/test_gen4_staged_pokemon_editor.cpp	blob	100644	21798	Gen IV staged mutation/CRC/footprint/rollback suite	text	522	AUDITED			0	no
 tests/test_gsc_discovery.cpp	blob	100644	7279		unknown		PENDING			0	
 tests/test_gsc_editor_surface_contract.cpp	blob	100644	23647	Gen II shared-editor hardware/regression contract	text	307	AUDITED			0	yes
-tests/test_gsc_export_transaction.cpp	blob	100644	6751		unknown		PENDING			0	
+tests/test_gsc_export_transaction.cpp	blob	100644	6751	Gen II verified staged export transaction contract	text	145	AUDITED			0	yes
 tests/test_gsc_gen2_adapter.cpp	blob	100644	7559		unknown		PENDING			0	
 tests/test_gsc_gen2_personal.cpp	blob	100644	2276	Gen II personal/gender oracle contract	text	51	AUDITED			0	yes
 tests/test_gsc_inventory.cpp	blob	100644	3650	Gen II inventory decode/display fail-closed contract	text	90	AUDITED			0	yes
@@ -656,9 +656,9 @@ tests/test_gsc_pokemon_session.cpp	blob	100644	22201		unknown		PENDING			0
 tests/test_gsc_readonly_bridge.cpp	blob	100644	11847		unknown		PENDING			0	
 tests/test_gsc_runtime_catalog.cpp	blob	100644	4861	Gen II shared runtime source catalog refresh contract	text	54	AUDITED			0	yes
 tests/test_gsc_shared_editor_parity.cpp	blob	100644	12654		unknown		PENDING			0	
-tests/test_gsc_source_browser.cpp	blob	100644	6606		unknown		PENDING			0	
+tests/test_gsc_source_browser.cpp	blob	100644	6606	Gen II source-card/profile/snapshot resolution contract	text	134	AUDITED			0	yes
 tests/test_gsc_staged_editor.cpp	blob	100644	10831		unknown		PENDING			0	
-tests/test_gsc_ui_rules.cpp	blob	100644	6658		unknown		PENDING			0	
+tests/test_gsc_ui_rules.cpp	blob	100644	6658	Gen II shared-editor capability/UI rules contract	text	106	AUDITED			0	yes
 tests/test_gsc_universal_inventory.cpp	blob	100644	7825		unknown		PENDING			0	
 tests/test_gsc_workspace_render.cpp	blob	100644	10542		unknown		PENDING			0	
 tests/test_inventory_ui_contract.cpp	blob	100644	6977		unknown		PENDING			0	
@@ -681,12 +681,12 @@ tests/test_rby_inventory.cpp	blob	100644	4740	RBY strict read-only inventory dec
 tests/test_rby_pokemon_editor.cpp	blob	100644	13599		unknown		PENDING			0	
 tests/test_rby_readonly_bridge.cpp	blob	100644	8106		unknown		PENDING			0	
 tests/test_rby_source_browser.cpp	blob	100644	2894	RBY source card/profile binding contract	text	44	AUDITED			0	yes
-tests/test_rby_staged_inventory.cpp	blob	100644	6678		unknown		PENDING			0	
+tests/test_rby_staged_inventory.cpp	blob	100644	6678	RBY staged inventory mutation/finalization contract	text	136	AUDITED			0	yes
 tests/test_retroarch_frlg_discovery.cpp	blob	100644	17720		unknown		PENDING			0	
 tests/test_rse_gen3_adapter.cpp	blob	100644	25892		unknown		PENDING			0	
 tests/test_rse_open_regression.cpp	blob	100644	9281		unknown		PENDING			0	
 tests/test_runtime_dependency_contract.cpp	blob	100644	1077	runtime path/branding textual dependency contract	text	30	AUDITED			0	yes
-tests/test_save_instance_architecture_contract.py	blob	100644	5437		unknown		PENDING			0	
+tests/test_save_instance_architecture_contract.py	blob	100644	5437	provider-neutral Save Instances architecture/static routing contract	text	96	AUDITED			0	yes
 tests/test_save_instance_model.cpp	blob	100644	5311	provider-neutral SaveInstance dedupe/profile/snapshot contract	text	123	AUDITED			0	yes
 tests/test_shared_editor_heading_contract.cpp	blob	100644	12864		unknown		PENDING			0	
 tests/test_shared_pokemon_editor_contract.cpp	blob	100644	16432	shared Pokémon editor architecture/navigation contract test	text	275	AUDITED			0	yes
