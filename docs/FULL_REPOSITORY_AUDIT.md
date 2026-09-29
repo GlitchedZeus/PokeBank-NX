@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 317 / 725
-- Fully read text files: 283 / 692
+- Audited tracked paths: 325 / 725
+- Fully read text files: 291 / 692
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -142,6 +142,14 @@ Status: IN PROGRESS
 - PLA's `MAX_FORM = 120` is an exclusive upper bound in the PKHeX oracle, so PokeBank's `form >= 120` rejection is correct; only the local comment describing it as the “highest form” is imprecise.
 - S/V form redirects are bounds-checked before indexing; SWSH species lookup is bounded by the generated table maximum.
 - `src/Pokemon/LearnsetTable.cpp` is currently an empty placeholder and no indexed repository reference to the declared lookup functions was found in this pass. This remains a completeness follow-up, not a confirmed production defect.
+
+### Gen III/IV staged-save integration checkpoint
+
+- Fully read the remaining Gen IV assigned-source/read-only parser interfaces and implementation plus the pending Gen III sector validator and staged Pokémon editor at live PR #92 head `084ab83547d8d2f49b9ad414e37d351d00fe069d`.
+- Gen IV source opening is fail-closed: assignment resolution is read-only, actual DP/Pt/HGSS layout is detected from CRC-valid bytes rather than trusted assignment metadata, multiple valid layouts are rejected as ambiguous, and exact family/assignment mismatches require explicit reassignment.
+- Gen IV raw parsing requires the exact 0x80000 save length, CRC-valid General and Storage candidates, bounded trainer/party/box/name fields, party count <= 6, current box < 18, and valid HG/SS ROM identity. No new correctness defect was confirmed in that boundary.
+- The Gen III staged editor validates rotating sectors/checksums and exact save family before construction, mutates only the active logical slot, repairs touched sector checksums, proves the inactive slot byte-identical, and strictly reparses edits/Create/Clone/Release/Sparse Move operations before accepting them.
+- Gen III Experience editing through the current UI is bounded to the exact level-100 maximum. Although the lower-level staged edit API would inherit `Pokemon3FRLG::setExp()` clamping for a direct oversized caller, no current UI path can supply that value, so this remains API hardening rather than a finding.
 
 ## Findings
 
