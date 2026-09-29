@@ -33,15 +33,16 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 735 / 746
-- Fully read text files: 701 / 713
-- Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
+- Audited tracked paths: 741 / 746
+- Fully read text files: 706 / 711
+- Binary/non-text inspected: 35 / 35 (34 binary assets + 1 gitlink) currently identified by exact extension/manifest scan
 
 ## Current checkpoint — integrated Product Home / launch delta
 
 - Preservation/research documentation tranche fully read at current MAIN `fb7b1d8c…`: Bank→HOME capture/public corpus, power-loss durability, legacy recovery/GameCube/Stadium, official transfer corpus, and ribbon/event preservation references. All six are explicitly dated research/reference documents, retain source immutability/live-write gates, and require local hash/parse validation before promoting external binaries to fixtures. No new numbered defect was confirmed.
 - Remaining dated research corpus fully read at `fb7b1d8c…`: save revisions/profile/container normalization, source manifest, transfer/provenance fixtures, Vault/data/events/performance, event-rights/performance, and the Gen II format oracle. These documents preserve explicit future-scope/read-only boundaries and do not authorize Master Vault, live writes, or unsupported wrapper normalization. No new numbered defect was confirmed.
 - Remaining project/documentation tranche fully read at `fb7b1d8c…`: historical session logs, safe-replace research, Trainer Plaza/v2 future vision, transfer model, UI flow/style/ownership contracts, UPR-ZX/upstream audits, v1 polish audit, and v1/v2 roadmaps. Dated historical/research/future-only files are scoped correctly. The live-state/UI-contract drift is the same documentation-authority problem already tracked by AUDIT-042, whose file/evidence scope was expanded rather than creating a duplicate finding.
+- Repository-tail classification reconciled against the ledger: `vendor/PKSM-Core` is a gitlink pinned to `aa22d7a4f87c0351baf7da5962ba5acd01039a7c` and was inspected as metadata, not falsely line-read. `nanovg_gl_impl.c`, `nanovg_gl_utils.h`, and `nanovg.h` were fully read as vendored rendering code. This corrects the text/non-text denominator to 711 text + 34 binary + 1 gitlink = 746 tracked paths.
 
 - MAIN PR #92 `491476b3… → fb7b1d8c…` (56 commits / 27 changed paths) is fully reconciled. All 15 newly tracked product-UI/launch paths were read in full, and all 12 modified previously-audited paths were re-read before status was restored.
 - The integrated Product Home keeps source previews read-only, source opening revalidates snapshots, Gen IV candidate selection re-inspects the physical file, stored launch metadata cannot choose arbitrary executable/core paths, and launch-binding writes use temp + fsync + read-back parse verification + backup/rename.
