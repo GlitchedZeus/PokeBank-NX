@@ -63,6 +63,7 @@ int main() {
     assert(goBack && !saveConfirmActive && !exitingWithUnsavedChanges);
 
     const auto surface = read("src/UI/Gen4SharedPokemonSurface.inc");
+    const auto moveCompatibility = read("include/Integration/Gen4/Gen4MoveCompatibility.h");
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     const auto bridge = read("src/Legacy/Gen4ReadOnlyTrainer.cpp");
     const auto staged = read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
@@ -114,9 +115,27 @@ int main() {
     contains(surface, "state.moveBaseline = state.session.working->moves()");
     contains(surface, "state.session.working->setMove(slot, state.moveBaseline)");
     contains(surface, "PickerTarget::Move");
-    contains(surface, "Names::isMovePresent");
-    contains(surface, "move <= 467");
-    contains(surface, "Native Gen IV move catalog");
+    contains(surface, "#include \"Integration/Gen4/Gen4MoveCompatibility.h\"");
+    contains(surface, "PokeVault::Integration::Gen4MoveCompatibility::selectableMoves(");
+    contains(surface, "screen.sourceGameId, state.session.working->species()");
+    contains(surface, "state.session.working->form(), state.session.working->moves()");
+    contains(surface, "MoveUI::rowLabel(value, bridge(screen).sourceSave().rawFamily())");
+    contains(surface, "Empty + compatible moves only • exact Gen IV Acc / Pwr / PP");
+    contains(moveCompatibility, "inline constexpr uint16_t MaxMove = 467;");
+    contains(moveCompatibility, "result.push_back(0);");
+    contains(moveCompatibility, "const auto availability = classify(exactGameId, species, form, move, false);");
+    contains(moveCompatibility, "availability == Availability::Direct || availability == Availability::Transfer");
+    contains(moveCompatibility, "if (existingSourceMove) return Availability::Preserved;");
+    contains(surface, "MoveResult::Compatible");
+    contains(surface, "status = \"OK\"");
+    contains(surface, "statusColor = Colors::Success");
+    contains(surface, "MoveResult::PreserveExisting");
+    contains(surface, "status = \"Preserved\"");
+    contains(surface, "MoveResult::Unsupported");
+    contains(surface, "status = \"Transfer\"");
+    contains(surface, "Gen IV move compatibility • event/encounter legality is not fully checked");
+    assert(surface.find("Names::isMovePresent") == std::string::npos);
+    assert(surface.find("Native Gen IV move catalog") == std::string::npos);
     assert(surface.find("move choice read-only in G4-03") == std::string::npos);
 
     // G4-04 keeps accepted View/Edit and adds native Create for empty PC slots.

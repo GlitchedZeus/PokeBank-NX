@@ -1542,7 +1542,7 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state
     fb.drawText(x + 24, y + 18, "Move " + std::to_string(state.moveEditorSlot + 1),
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                "Native Gen IV move catalog • encounter/learnset legality checked separately",
+                "Gen IV move compatibility • event/encounter legality is not fully checked",
                 Colors::TextDim, TextStyle::Caption);
     const std::array<std::pair<std::string,std::string>,5> rows{{
         {"Move", move == 0 ? "Empty" : std::string(Names::getMoveName(move))},
