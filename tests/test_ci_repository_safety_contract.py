@@ -38,4 +38,26 @@ for path in sorted(list(WORKFLOWS.glob("*.yml")) + list(WORKFLOWS.glob("*.yaml")
             "and push it directly to main"
         )
 
-print("CI repository safety contract: PASS")
+
+NATIVE_GATE = WORKFLOWS / "native-pr-build.yml"
+if not NATIVE_GATE.is_file():
+    fail("AUDIT-002: unfiltered native PR gate is missing")
+
+native_text = NATIVE_GATE.read_text(encoding="utf-8")
+trigger_block = native_text.split("permissions:", 1)[0]
+if not re.search(r"(?m)^\s*pull_request:\s*$", trigger_block):
+    fail("AUDIT-002: native PR gate must run on pull_request")
+if re.search(r"(?m)^\s+branches:\s*$", trigger_block):
+    fail("AUDIT-002: native PR gate must not be branch-filtered")
+if re.search(r"(?m)^\s+paths:\s*$", trigger_block):
+    fail("AUDIT-002: native PR gate must not be path-filtered")
+for required in (
+    "devkitpro/devkita64:",
+    "make -j1",
+    "test -s PokeBankNX.elf",
+    "test -s PokeBankNX.nro",
+):
+    if required not in native_text:
+        fail(f"AUDIT-002: native PR gate is missing required compile/link contract: {required}")
+
+print("CI repository safety contracts: PASS")
