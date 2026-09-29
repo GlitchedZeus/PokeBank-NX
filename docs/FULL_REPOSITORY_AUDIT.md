@@ -6,7 +6,7 @@ Status: IN PROGRESS
 
 - Repository: GlitchedZeus/PokeBank-NX
 - Audit branch: `audit/full-repository-line-by-line-20260928`
-- Primary MAIN tree audited: PR #92 head `6e45edd8b038d0be15272605846fa3fe2e4339d6`
+- Primary MAIN tree audited: PR #92 head `f792a498aaa41793a86c137c0ff74c7a0c2205a3`
 - PR #92 branch: `feature/gen4-full-editor-20260928`
 - Sibling UI overlay baseline: PR #97 head `5f19fd14628c182db135038864036b6eb1b86c49`; latest one-commit seven-file delta inspected in this checkpoint
 - Integration parent: PR #90 head `8b3bcc16c804247bfe8d1314b686974ce73051d8`
@@ -16,8 +16,8 @@ Status: IN PROGRESS
 ## Inventory
 
 - Git tree truncated: false
-- Tracked non-directory paths: 725
-- Text/unknown candidates: 692
+- Tracked non-directory paths: 731
+- Text/unknown candidates: 698
 - Binary candidates: 32
 - Symlinks: 0
 - Submodule entries: 1
@@ -25,24 +25,27 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 440 / 725
-- Fully read text files: 406 / 692
+- Audited tracked paths: 448 / 731
+- Fully read text files: 414 / 698
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
 
-- PR #92 advanced two commits beyond the prior frozen audit snapshot `dc8a64158f2ebaf22a7b456e52eb8ee320e9c1f4`.
-- The live catch-up delta is bounded to five files: `src/Names/LocationNames.cpp`, `src/UI/Gen4SharedPokemonSurface.inc`, `src/UI/Panels/ItemsPanel.cpp`, `tests/test_gen4_hardware_surface_contract.cpp`, and `tools/gen_locations.py`.
-- Fully read in this checkpoint: `include/Utils/DurableFile.h`, `src/Utils/DurableFile.cpp`, `src/Integration/Gen4/Gen4StagedPokemonEditor.cpp`, `src/Pokemon/Pokemon4Mutable.cpp`, `tests/test_durable_file.cpp`, and `tools/gen_locations.py`.
-- The Gen IV staged editor currently preserves immutable source bytes, mutates a separate staged image, refreshes the affected save CRC, reparses the staged save, exact-verifies the serialized PK4, and rolls back the staged buffer on verification failure.
-- The Gen IV UI bounds Current PP to the move-specific maximum and clamps PP when PP Ups decrease. The lower-level `Pokemon4Mutable::setPP` API itself does not enforce that semantic bound; this remains a follow-up/API-hardening question until whole-repository callers are traced, not a classified finding yet.
-- `DurableFile` deliberately documents Switch SD directory-entry durability as a separate hardware gate; absence of a directory fsync in this primitive is therefore not being misreported as a newly discovered hidden guarantee violation.
+- PR #92 is audited through live head `f792a498aaa41793a86c137c0ff74c7a0c2205a3`.
+- The newest one-commit delta adds the generated `Gen4MoveCompatibility.h` table/generator and updates the exact-format provider, Gen IV shared surface, and provider test.
+- The live tree contains 731 tracked non-directory paths. Six text files had been added since the original 725-path ledger snapshot; all six are now present in the ledger and fully read/audited.
+- The generated Gen IV compatibility table was mechanically checked for complete shape: Diamond/Pearl, Platinum, and HeartGold/SoulSilver each contain exactly 494 species rows (0..493) and eight 64-bit words per row, covering moves 0..467.
+- Transfer-only Gen IV moves are intentionally surfaced as warnings rather than native-teachable moves: the picker includes them because they can be legal possessions after same-generation trade, while the provider labels them `Unsupported`/“Transfer” rather than `Compatible`/“OK”.
+- The shared move-stat generator has one confirmed exact-game fidelity defect: it uses a single HGSS move table for DP/PT/HGSS even though Hypnosis is 70% accurate in Diamond/Pearl and 60% in Platinum/HGSS. Recorded as AUDIT-033.
+- The Gen IV staged editor still preserves immutable source bytes, mutates a separate staged image, refreshes the affected save CRC, reparses the staged save, exact-verifies serialized PK4, and rolls back staged bytes on verification failure.
+- `DurableFile` continues to document Switch SD directory-entry durability as a separate hardware gate; absence of directory fsync in this primitive is not being misreported as a hidden guarantee violation.
+
 
 ## Sibling PR #97 overlay coverage
 
 - Delta from PR #90: 6 commits / 18 changed paths.
 - Fully read so far: 9 / 18 changed paths, including the complete 582-line `src/UI/AppShellScreen.cpp`, new app-shell/organization model headers, native UI workflow/build fragment, and their focused tests.
-- This overlay count is intentionally separate from the 725-path PR #92 MAIN ledger.
+- This overlay count is intentionally separate from the 731-path PR #92 MAIN ledger.
 
 
 ### Save-safety checkpoint — write-path trace
@@ -639,3 +642,17 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: remove the obsolete `AppShellSection::Collections` branch from `OrganizationPreview` handling or replace it with the intended `Pokedex` behavior, then run the native product-UI workflow and host contract tests at the exact PR head.
 - Risk of fix: low; the model now has only Pokédex/Banks/Search as previewable root sections.
 - Owner: sibling UI/QoL lane (PR #97). Do not merge into MAIN until its normal lane validation passes.
+
+### AUDIT-033 — Gen IV move-stat presentation uses HGSS values for Diamond/Pearl
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: Gen IV move picker / exact battle-stat display
+- Files: `include/Names/MoveBattleStats.h`, `include/UI/MovePickerPresentation.h`, `tools/gen_move_battle_stats.py`, `src/UI/Gen4SharedPokemonSurface.inc`
+- Exact symbols: generated `MoveBattleStatsData::Gen4`, `getMoveBattleStats()`, `MovePickerPresentation::statsLabel()/rowLabel()`.
+- Problem: the generator sources one Generation IV move table exclusively from pinned `pret/pokeheartgold` and `getMoveBattleStats()` returns that same table for Diamond/Pearl, Platinum and HGSS. Generation IV is not fully uniform across those releases.
+- Concrete verified example: Hypnosis (move 95) is generated as accuracy 60 and therefore displayed as 60% in Diamond/Pearl. Diamond/Pearl use 70% accuracy; Platinum changed it back to 60%, which HGSS retains.
+- Why it matters: the user-facing picker explicitly claims “exact Gen IV Acc / Pwr / PP”. For Diamond/Pearl, that claim is false for at least Hypnosis, so move quality information can be wrong even though no Pokémon/save bytes are corrupted.
+- Current test gap: `test_move_picker_presentation.cpp` checks cross-generation differences but treats all Gen IV games as one table and has no within-Gen-IV DP-vs-Pt regression.
+- Recommended fix: generate distinct DP and Pt/HGSS move-stat tables (or patch the known intra-generation differences explicitly), dispatch by exact game/version rather than only `GameVersion::DP/PT/HGSS` to one common array, and add a Hypnosis regression asserting DP=70 and Pt/HGSS=60.
+- Risk of fix: low; presentation-only data, but exact-game routing must remain deterministic.
+- Owner: MAIN / move presentation data lane.
