@@ -14,6 +14,7 @@
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
 #include "Legality/Gen4WildEncounter.h"
 #include "Legality/Gen4StaticEncounter.h"
+#include "Legality/Gen4TradeEvidence.h"
 #include "Legality/Gen1CatchRateEvidence.h"
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen4PidIvCorrelation.h"
@@ -447,10 +448,21 @@ namespace Legality {
                     add(r, Severity::Info,
                         "Met data matches an audited Generation IV static/gift encounter",
                         CheckIdentifier::Encounter);
-                } else if (Legality::Gen4Wild::hasSpecies(exactSourceGameId, species) ||
-                           Legality::Gen4Static::hasSpecies(exactSourceGameId, species)) {
+                } else if (Legality::Gen4Trade::matches(
+                               exactSourceGameId, species, pk.pid(), pk.id32(),
+                               pk.gender(), pk.otGender(),
+                               std::array<uint8_t, 6>{
+                                   pk.ivHP(), pk.ivATK(), pk.ivDEF(),
+                                   pk.ivSPE(), pk.ivSPA(), pk.ivSPD()},
+                               pk.metLocation(), pk.metLevel())) {
                     add(r, Severity::Info,
-                        "No matching Gen IV wild/static/gift evidence; trade/event/PokeWalker evidence is incomplete",
+                        "Trainer/PID/IV/met data matches an audited Generation IV in-game trade",
+                        CheckIdentifier::Encounter);
+                } else if (Legality::Gen4Wild::hasSpecies(exactSourceGameId, species) ||
+                           Legality::Gen4Static::hasSpecies(exactSourceGameId, species) ||
+                           Legality::Gen4Trade::hasSpecies(exactSourceGameId, species)) {
+                    add(r, Severity::Info,
+                        "No matching Gen IV wild/static/gift/trade evidence; external event/PokeWalker evidence is incomplete",
                         CheckIdentifier::Encounter);
                 }
             } else {

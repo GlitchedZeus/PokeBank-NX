@@ -27,14 +27,14 @@ The first legality-engine tranche adds:
 - preservation of the existing exact-game Gen III move context;
 - Gen III handheld PID/IV correlation for Methods 1, 2, 3 and 4, including Unown's reversed-half variants.
 
-Current encounter coverage is **partial** for R/B/Y, Crystal, the five Gen III games, and all five Gen IV games. Gen I now checks exact-game PK1 catch-rate evidence and Time Capsule held-item-byte compatibility without pretending PK1 stores met location/level. Gen IV now has pinned wild-slot plus static/gift evidence for D/P/Pt/HG/SS. Trade, external event and PokeWalker templates are still incomplete, so an encounter non-match is not treated as illegal. Gen I static/gift/trade and full pre-evolution catch-rate provenance are still incomplete, so unmatched catch-rate evidence remains unknown rather than illegal.
+Current encounter coverage is **partial** for R/B/Y, Crystal, the five Gen III games, and all five Gen IV games. Gen I now checks exact-game PK1 catch-rate evidence and Time Capsule held-item-byte compatibility without pretending PK1 stores met location/level. Gen IV now has pinned wild-slot, static/gift, and fixed in-game trade evidence for D/P/Pt/HG/SS. External event and PokeWalker templates are still incomplete, so an encounter non-match is not treated as illegal. Gen I static/gift/trade and full pre-evolution catch-rate provenance are still incomplete, so unmatched catch-rate evidence remains unknown rather than illegal.
 
 ## Planned layers
 
 1. **Format / structure** — ids, checksums, field ranges and format invariants.
 2. **Internal consistency** — level/EXP, names, gender, ability, forms and stats.
 3. **Exact-game move legality** — compatibility tables are wired now; event/tutor chronology and full tradeback provenance remain to be completed.
-4. **Encounter provenance** — Gen IV wild + static/gift evidence is imported; trade, event, PokeWalker, evolution provenance and remaining per-method restrictions are still incomplete.
+4. **Encounter provenance** — Gen IV wild, static/gift, and fixed in-game trade evidence is imported; external events, PokeWalker, evolution provenance and remaining per-method restrictions are still incomplete.
 5. **PID/RNG correlation** — Gen III handheld Methods 1/2/3/4 and the normal Gen IV Method-1 PID/IV relationship are recognized. Gen IV Method J/K lead frames, Cute Charm, Chain Shiny, PokeWalker, Mystery Gift anti-shiny, plus Gen III Channel/Colosseum/XD/roamer/BACD classes remain incomplete.
 6. **Egg / breeding legality** — hatch level/location, inherited moves and generation-specific breeding rules.
 7. **Event / gift legality** — fixed trainer data, fateful flags, ribbons, dates and distribution records.
