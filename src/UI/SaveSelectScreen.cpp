@@ -52,6 +52,16 @@ namespace UI {
             return value.substr(0, std::min(length, value.size()));
         }
 
+        std::string productSourceLabel(std::string_view raw) {
+            if (raw == "LOCAL SAVE") return "System save";
+            if (raw == "REMEMBERED") return "Linked save";
+            if (raw == "CHOOSE SAVE") return "Choose save";
+            if (raw == "MISSING") return "Missing source";
+            if (raw == "INVALID") return "Invalid source";
+            if (raw == "AMBIGUOUS") return "Needs attention";
+            return std::string(raw);
+        }
+
         std::string providerSummary(
             const std::vector<PokeVault::Legacy::FRLGSaveInstance>& instances) {
             std::vector<std::string> providers;
@@ -139,9 +149,10 @@ namespace UI {
                 fb.drawRoundedRect(cx - 17, cy - 13, 34, 22, 5, ink, 2);
                 fb.drawRoundedRect(cx - 12, cy - 5, 24, 22, 5, ink, 2);
             } else if (index == 2) {
-                // Backups.
-                fb.drawRoundedRect(cx - 16, cy - 13, 26, 25, 4, ink, 2);
-                fb.drawRoundedRect(cx - 9, cy - 7, 26, 25, 4, ink, 2);
+                // Backpack / Items replaces the old Backups root shortcut.
+                fb.drawRoundedRect(cx - 15, cy - 10, 30, 24, 7, ink, 2);
+                fb.drawRoundedRect(cx - 9, cy - 17, 18, 12, 7, ink, 2);
+                fb.drawFilledRoundedRect(cx - 10, cy - 2, 20, 4, 2, ink);
             } else if (index == 3) {
                 // Search.
                 fb.drawCircle(cx - 3, cy - 3, 9, ink, 2);
@@ -154,13 +165,8 @@ namespace UI {
                 fb.drawFilledRoundedRect(cx + gap / 2, cy - tile - gap / 2, tile, tile, 2, ink);
                 fb.drawFilledRoundedRect(cx - tile - gap / 2, cy + gap / 2, tile, tile, 2, ink);
                 fb.drawFilledRoundedRect(cx + gap / 2, cy + gap / 2, tile, tile, 2, ink);
-            } else if (index == 5) {
-                // Backpack / Items.
-                fb.drawRoundedRect(cx - 15, cy - 10, 30, 24, 7, ink, 2);
-                fb.drawRoundedRect(cx - 9, cy - 17, 18, 12, 7, ink, 2);
-                fb.drawFilledRoundedRect(cx - 10, cy - 2, 20, 4, 2, ink);
             } else {
-                // Compact Settings gear.
+                // The only visible Settings gear lives in the bottom dock.
                 fb.drawFilledCircle(cx, cy, 7, ink);
                 fb.drawFilledRoundedRect(cx - 2, cy - 18, 4, 8, 2, ink);
                 fb.drawFilledRoundedRect(cx - 2, cy + 10, 4, 8, 2, ink);
@@ -171,6 +177,7 @@ namespace UI {
 
     struct TrainerPortraitPresentation {
         const char* label = "Trainer";
+        const char* assetKey = "";
         bool female = false;
         bool specific = false;
     };
@@ -180,35 +187,35 @@ namespace UI {
         const bool female = genderKnown && gender == 1;
 
         if (gameId == "red_gb" || gameId == "blue_gb" || gameId == "yellow_gb")
-            return {"Red", false, true};
+            return {"Red", "red", false, true};
         if (gameId == "gold_gbc" || gameId == "silver_gbc")
-            return {"Gold", false, true};
+            return {"Gold", "gold", false, true};
         if (gameId == "crystal_gbc")
             return genderKnown
-                ? TrainerPortraitPresentation{female ? "Kris" : "Gold", female, true}
-                : TrainerPortraitPresentation{"Crystal Trainer", false, false};
+                ? TrainerPortraitPresentation{female ? "Kris" : "Gold", female ? "kris" : "gold", female, true}
+                : TrainerPortraitPresentation{"Crystal Trainer", "", false, false};
 
         if (gameId == "ruby_gba" || gameId == "sapphire_gba" || gameId == "emerald_gba")
             return genderKnown
-                ? TrainerPortraitPresentation{female ? "May" : "Brendan", female, true}
-                : TrainerPortraitPresentation{"Hoenn Trainer", false, false};
+                ? TrainerPortraitPresentation{female ? "May" : "Brendan", female ? "may" : "brendan", female, true}
+                : TrainerPortraitPresentation{"Hoenn Trainer", "", false, false};
         if (gameId == "firered_gba" || gameId == "leafgreen_gba")
             return genderKnown
-                ? TrainerPortraitPresentation{female ? "Leaf" : "Red", female, true}
-                : TrainerPortraitPresentation{"Kanto Trainer", false, false};
+                ? TrainerPortraitPresentation{female ? "Leaf" : "Red", female ? "leaf" : "red", female, true}
+                : TrainerPortraitPresentation{"Kanto Trainer", "", false, false};
 
         if (gameId == "diamond_nds" || gameId == "pearl_nds" || gameId == "platinum_nds")
             return genderKnown
-                ? TrainerPortraitPresentation{female ? "Dawn" : "Lucas", female, true}
-                : TrainerPortraitPresentation{"Sinnoh Trainer", false, false};
+                ? TrainerPortraitPresentation{female ? "Dawn" : "Lucas", female ? "dawn" : "lucas", female, true}
+                : TrainerPortraitPresentation{"Sinnoh Trainer", "", false, false};
         if (gameId == "heartgold_nds" || gameId == "soulsilver_nds")
             return genderKnown
-                ? TrainerPortraitPresentation{female ? "Lyra" : "Ethan", female, true}
-                : TrainerPortraitPresentation{"Johto Trainer", false, false};
+                ? TrainerPortraitPresentation{female ? "Lyra" : "Ethan", female ? "lyra" : "ethan", female, true}
+                : TrainerPortraitPresentation{"Johto Trainer", "", false, false};
 
         // Later customizable protagonists deliberately stay generic until appearance reconstruction
         // is backed by the exact save-format model. Never pretend a base portrait is exact.
-        return {"Trainer", false, false};
+        return {"Trainer", "", false, false};
     }
 
     void drawTrainerPortrait(PKSEFramebuffer& fb, int x, int y, int w, int h,
@@ -217,27 +224,23 @@ namespace UI {
         const Color accent = Colors::Info;
         drawPanelSurface(fb, x, y, w, h, false, std::min(14, w / 5));
 
-        const int cx = x + w / 2;
-        const int headY = y + std::max(16, h / 4);
-        const int headR = std::max(9, std::min(w, h) / 7);
-        fb.drawFilledCircle(cx, headY, headR, withAlpha(Colors::TextPrimary, 210));
-
-        // Original project-drawn trainer mark: cap/hair + torso. It conveys player identity
-        // without bundling copied character artwork.
-        fb.drawFilledRoundedRect(cx - headR - 3, headY - headR - 5,
-                                 headR * 2 + 6, 7, 3, accent);
-        fb.drawFilledRoundedRect(cx - headR - 8, headY - headR,
-                                 headR + 10, 4, 2, accent);
-        if (portrait.female) {
-            fb.drawFilledRoundedRect(cx - headR - 5, headY + 2,
-                                     5, headR + 8, 2, withAlpha(Colors::TextPrimary, 180));
-            fb.drawFilledRoundedRect(cx + headR, headY + 2,
-                                     5, headR + 8, 2, withAlpha(Colors::TextPrimary, 180));
+        const IconImage& art = SystemIcons::trainerPortrait(portrait.assetKey);
+        const int labelReserve = showLabel ? 24 : 4;
+        if (art.valid()) {
+            const auto rect = PokeBank::UIModel::containSprite(
+                x + 4, y + 4, w - 8, h - labelReserve - 4, art.width, art.height);
+            if (rect.width > 0 && rect.height > 0)
+                fb.drawImageScaled(rect.x, rect.y, art.width, art.height,
+                                   rect.width, rect.height, art.data, 4);
+        } else {
+            // Truthful fallback: a Poké Ball identity badge, never a fake "character portrait".
+            const int cx = x + w / 2;
+            const int cy = y + (h - labelReserve) / 2;
+            const int r = std::max(13, std::min(w, h - labelReserve) / 4);
+            fb.drawCircle(cx, cy, r, withAlpha(accent, 190), 3);
+            fb.drawFilledRect(cx - r, cy - 2, r * 2, 4, withAlpha(accent, 150));
+            fb.drawFilledCircle(cx, cy, std::max(4, r / 4), accent);
         }
-        const int bodyY = headY + headR + 7;
-        fb.drawFilledRoundedRect(cx - std::max(12, w / 5), bodyY,
-                                 std::max(24, (w * 2) / 5),
-                                 std::max(13, h / 5), 7, withAlpha(accent, 135));
 
         if (showLabel) {
             std::string label = portrait.label;
@@ -291,7 +294,7 @@ namespace UI {
                 ? static_cast<int>(resumedUser->titles.size()) : 0;
             titleIndex = titleCount > 0
                 ? std::clamp(resumeState->titleIndex, 0, titleCount - 1) : 0;
-            hubDockIndex = std::clamp(resumeState->hubDockIndex, 0, 6);
+            hubDockIndex = std::clamp(resumeState->hubDockIndex, 0, 5);
             classicGamesActive = resumeState->classicGamesActive;
             hubFeatureIndex = std::clamp(resumeState->hubFeatureIndex, -1, 1);
             scrollRow = std::max(0, resumeState->scrollRow);
@@ -1323,6 +1326,99 @@ namespace UI {
         titleSelected = true;
     }
 
+    void SaveSelectScreen::selectCurrentTitleForItems() {
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) {
+            hubNotice = "Choose a game before opening Items.";
+            return;
+        }
+
+        const auto title = user->titles[static_cast<size_t>(titleIndex)];
+        openIntent = OpenIntent::Items;
+
+        if (title.sourceKind == SelectedSourceKind::SwitchTitle) {
+            selectedUserUid = user->uid;
+            selectedTitleId = title.titleId;
+            selectedTitleName = title.name;
+            selectedGameId = title.gameId;
+            selectedSourceKind = title.sourceKind;
+            titleSelected = true;
+            return;
+        }
+
+        if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+            if (!legacyBindings) {
+                hubNotice = "Items needs a remembered validated save for this game.";
+                return;
+            }
+            const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
+                *legacyBindings, currentProfileIdentity(), title.gameId);
+            if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready || !opened.save) {
+                hubNotice = "The remembered save no longer validates. Re-link it from Game Sources.";
+                return;
+            }
+            selectedUserUid = user->uid;
+            selectedTitleId = 0;
+            selectedTitleName = title.name;
+            selectedGameId = title.gameId;
+            selectedSourceKind = title.sourceKind;
+            titleSelected = true;
+            return;
+        }
+
+        if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+            if (!legacyCatalog || title.legacyInstances.size() != 1) {
+                hubNotice = title.legacyInstances.empty()
+                    ? "Items needs one validated save for this game."
+                    : "Multiple saves exist. Open Game Sources once to choose the exact save.";
+                return;
+            }
+
+            const auto shown = title.legacyInstances.front();
+            auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
+            *legacyCatalog = std::move(refreshed);
+            loadLegacySources(*legacyCatalog);
+
+            user = currentUser();
+            if (!user) {
+                hubNotice = "The selected save is no longer available.";
+                return;
+            }
+            const auto parent = std::find_if(user->titles.begin(), user->titles.end(),
+                [&](const auto& candidate) {
+                    return candidate.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                           candidate.gameId == title.gameId;
+                });
+            if (parent == user->titles.end()) {
+                hubNotice = "The selected save is no longer available.";
+                refreshHubPreview();
+                return;
+            }
+            titleIndex = static_cast<int>(std::distance(user->titles.begin(), parent));
+            const auto instance = std::find_if(parent->legacyInstances.begin(), parent->legacyInstances.end(),
+                [&](const auto& candidate) {
+                    return candidate.sourceIdentity == shown.sourceIdentity;
+                });
+            if (instance == parent->legacyInstances.end() ||
+                !PokeVault::Source::sameValidatedSnapshot(shown, *instance)) {
+                hubNotice = "That save changed. Nothing was opened.";
+                refreshHubPreview();
+                return;
+            }
+
+            selectedUserUid = user->uid;
+            selectedTitleId = 0;
+            selectedTitleName = parent->name;
+            selectedGameId = parent->gameId;
+            selectedSourceKind = parent->sourceKind;
+            selectedLegacySourceIndex = instance->sourceIndex;
+            titleSelected = true;
+            return;
+        }
+
+        hubNotice = "Items is unavailable for this selected source.";
+    }
+
     void SaveSelectScreen::selectCurrentLegacyInstance() {
         const UserEntry* u = currentUser();
         if (!u || titleIndex < 0 || titleIndex >= static_cast<int>(u->titles.size())) return;
@@ -1373,30 +1469,16 @@ namespace UI {
             exitRequested = true;
         } else if (hubDockIndex == 2) {
             if (!hasGame) {
-                hubNotice = "Choose a game before opening Backups.";
+                hubNotice = "Choose a game before opening Items.";
                 return;
             }
-            if (user->titles[static_cast<size_t>(titleIndex)].sourceKind ==
-                SelectedSourceKind::SwitchTitle) {
-                hubDockFocused = false;
-                hubFeatureIndex = -1;
-                selectCurrentTitle();
-            } else {
-                hubNotice = "Backups for emulator sources are managed through their staged game workspace.";
-            }
+            selectCurrentTitleForItems();
         } else if (hubDockIndex == 3) {
             requestedMainMenuDestination = MainMenuDestination::Search;
             exitRequested = true;
         } else if (hubDockIndex == 4) {
             requestedMainMenuDestination = MainMenuDestination::More;
             exitRequested = true;
-        } else if (hubDockIndex == 5) {
-            if (!hasGame) {
-                hubNotice = "Choose a game before opening Items.";
-                return;
-            }
-            openIntent = OpenIntent::Items;
-            selectCurrentTitle();
         } else {
             requestedMainMenuDestination = MainMenuDestination::Settings;
             exitRequested = true;
@@ -1800,30 +1882,16 @@ namespace UI {
             }
         }
 
-        if (headerSettingsFocused) {
-            if (kDown & (HidNpadButton_Down | HidNpadButton_Left)) {
-                headerSettingsFocused = false;
-                hubFeatureIndex = -1;
-                return;
-            }
-            if (kDown & HidNpadButton_A) {
-                requestedMainMenuDestination = MainMenuDestination::Settings;
-                exitRequested = true;
-            }
-            return;
-        }
-
         if (hubDockFocused) {
             if (kDown & HidNpadButton_Up) {
                 hubDockFocused = false;
-                headerSettingsFocused = false;
                 hubFeatureIndex = -1;
                 return;
             }
             if (kDown & HidNpadButton_Left)
-                hubDockIndex = (hubDockIndex + 6) % 7;
+                hubDockIndex = (hubDockIndex + 5) % 6;
             if (kDown & HidNpadButton_Right)
-                hubDockIndex = (hubDockIndex + 1) % 7;
+                hubDockIndex = (hubDockIndex + 1) % 6;
             if (kDown & HidNpadButton_A) activateHubDock();
             return;
         }
@@ -1853,9 +1921,7 @@ namespace UI {
         }
 
         if (kDown & HidNpadButton_Up) {
-            headerSettingsFocused = true;
-            hubDockFocused = false;
-            hubFeatureIndex = -1;
+            // Product Home has no duplicate header Settings target; keep focus on the game card.
             return;
         }
         if (kDown & HidNpadButton_Right) {
@@ -1928,7 +1994,8 @@ namespace UI {
             fb.drawText(x + (CLASSIC_TILE_W-lw)/2, y + 146, label,
                         focused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Caption);
 
-            std::string meta = title.trainerName.empty() ? title.sourceLabel : title.trainerName;
+            std::string meta = title.trainerName.empty()
+                ? productSourceLabel(title.sourceLabel) : title.trainerName;
             if (title.dexTotal > 0)
                 meta += "  •  " + std::to_string(title.dexCaught) + "/" + std::to_string(title.dexTotal);
             if (meta.size() > 24) meta = meta.substr(0, 23) + "…";
@@ -1969,7 +2036,7 @@ namespace UI {
         const UserEntry* u = currentUser();
         const int count = u ? static_cast<int>(u->titles.size()) : 0;
 
-        // Header right: current profile and a compact Settings gear, matching the approved mockup.
+        // Header right: current profile only. Settings has one canonical bottom-dock control (+ remains global).
         if (u) {
             const int avatarX = 1010, avatarY = 10;
             const IconImage* avatar =
@@ -1988,21 +2055,12 @@ namespace UI {
             fb.drawText(avatarX + PROFILE_AVATAR + 12, 19, profileName,
                         Colors::TextPrimary, TextStyle::Heading);
 
-            const int gearCx = 1239, gearCy = 32;
-            const Color gearInk = headerSettingsFocused ? Colors::Info : Colors::TextPrimary;
-            if (headerSettingsFocused)
-                fb.drawRoundedRect(1214, 8, 50, 48, 16, Colors::Info, 3);
-            fb.drawFilledCircle(gearCx, gearCy, 7, gearInk);
-            fb.drawFilledRoundedRect(gearCx - 2, gearCy - 18, 4, 8, 2, gearInk);
-            fb.drawFilledRoundedRect(gearCx - 2, gearCy + 10, 4, 8, 2, gearInk);
-            fb.drawFilledRoundedRect(gearCx - 18, gearCy - 2, 8, 4, 2, gearInk);
-            fb.drawFilledRoundedRect(gearCx + 10, gearCy - 2, 8, 4, 2, gearInk);
         }
 
         // Right: selected-game hero card.
         // Historical wording is retained because the cross-lane polish contract uses this boundary
         // to prove that physical source diagnostics stay out of the normal product presentation.
-        const bool gameFocused = !hubDockFocused && !headerSettingsFocused && hubFeatureIndex < 0;
+        const bool gameFocused = !hubDockFocused && hubFeatureIndex < 0;
         drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, 18);
         if (gameFocused)
             fb.drawRoundedRect(DETAIL_X, HUB_Y, DETAIL_W, HUB_H, 18, Colors::Info, 3);
@@ -2041,7 +2099,7 @@ namespace UI {
             drawTrainerPortrait(fb, infoX + 334, HUB_Y + 66, 94, 108, portrait, true);
 
             std::string sourceLine = title.platformLabel;
-            if (!title.sourceLabel.empty()) sourceLine += "  •  " + title.sourceLabel;
+            if (!title.sourceLabel.empty()) sourceLine += "  •  " + productSourceLabel(title.sourceLabel);
             if (sourceLine.size() > 38) sourceLine = sourceLine.substr(0, 37) + "…";
             fb.drawText(infoX, HUB_Y + 139, sourceLine,
                         Colors::TextSecondary, TextStyle::Body);
@@ -2084,19 +2142,19 @@ namespace UI {
             const int slotW = (DETAIL_W - 44 - slotGap * 5) / 6;
             for (int i = 0; i < 6; ++i) {
                 const int sx = partyX + i * (slotW + slotGap);
-                drawPanelSurface(fb, sx, slotY, slotW, 104, false, 10);
+                drawPanelSurface(fb, sx, slotY, slotW, 118, false, 10);
                 const auto& p = partyPreview[static_cast<size_t>(i)];
                 if (p.species != 0) {
                     Sprite* sprite = SpriteManager::getIconSprite(p.species, p.form, p.shiny);
                     if (sprite && sprite->data) {
                         const auto rect = PokeBank::UIModel::containSprite(
-                            sx + 8, slotY + 5, slotW - 16, 48, sprite->width, sprite->height);
+                            sx + 6, slotY + 4, slotW - 12, 66, sprite->width, sprite->height);
                         if (rect.width > 0 && rect.height > 0)
                             fb.drawImageScaled(rect.x, rect.y, sprite->width, sprite->height,
                                                rect.width, rect.height, sprite->data, sprite->channels);
                     } else {
                         const int cx = sx + slotW / 2;
-                        const int cy = slotY + 28;
+                        const int cy = slotY + 34;
                         fb.drawCircle(cx, cy, 17, withAlpha(Colors::Info, 150), 2);
                         fb.drawFilledRect(cx - 17, cy - 2, 34, 4, withAlpha(Colors::Info, 110));
                         fb.drawFilledCircle(cx, cy, 6, Colors::Info);
@@ -2107,20 +2165,20 @@ namespace UI {
                     if (name.size() > 10) name = name.substr(0, 9) + "…";
                     int nw = 0, nh = 0;
                     fb.measureText(name, nw, nh, TextStyle::Caption);
-                    fb.drawText(sx + std::max(6, (slotW - nw) / 2), slotY + 58,
+                    fb.drawText(sx + std::max(5, (slotW - nw) / 2), slotY + 73,
                                 name, Colors::TextPrimary, TextStyle::Caption);
                     if (p.level > 0) {
                         const std::string level = "Lv. " + std::to_string(p.level);
                         int lw = 0, lh = 0;
                         fb.measureText(level, lw, lh, TextStyle::Caption);
-                        fb.drawText(sx + (slotW - lw) / 2, slotY + 80,
+                        fb.drawText(sx + (slotW - lw) / 2, slotY + 96,
                                     level, Colors::TextSecondary, TextStyle::Caption);
                     }
                 } else {
-                    fb.drawFilledCircle(sx + slotW / 2, slotY + 36, 16, Colors::PanelAlt);
+                    fb.drawFilledCircle(sx + slotW / 2, slotY + 43, 18, Colors::PanelAlt);
                     int ew = 0, eh = 0;
                     fb.measureText("Empty", ew, eh, TextStyle::Caption);
-                    fb.drawText(sx + (slotW - ew) / 2, slotY + 72,
+                    fb.drawText(sx + (slotW - ew) / 2, slotY + 82,
                                 "Empty", Colors::TextMuted, TextStyle::Caption);
                 }
             }
@@ -2174,7 +2232,7 @@ namespace UI {
         fb.drawFilledCircle(vaultLogoX + 18, vaultLogoY + 18, 7, vaultAccent);
         fb.drawText(RIGHT_X + 78, HUB_Y + 26, "MASTER VAULT",
                     vaultFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
-        fb.drawText(RIGHT_X + 78, HUB_Y + 60, "Your central Pokémon library",
+        fb.drawText(RIGHT_X + 78, HUB_Y + 60, "Pokémon storage, transfer & lineage",
                     Colors::TextSecondary, TextStyle::Body);
         const int vaultArrowX = RIGHT_X + RIGHT_W - 42;
         fb.drawCircle(vaultArrowX, HUB_Y + 42, 17,
@@ -2186,23 +2244,20 @@ namespace UI {
         if (vaultFocused)
             fb.drawRoundedRect(RIGHT_X, HUB_Y, RIGHT_W, featureH, 18, vaultAccent, 3);
         const int vaultCx = RIGHT_X + RIGHT_W / 2;
-        const int vaultCy = HUB_Y + 164;
-        fb.drawFilledRoundedRect(RIGHT_X + 56, HUB_Y + 112, RIGHT_W - 112, 108, 28,
-                                 withAlpha(vaultAccent, 22));
+        const int vaultCy = HUB_Y + 166;
+        fb.drawFilledRoundedRect(RIGHT_X + 40, HUB_Y + 104, RIGHT_W - 80, 122, 30,
+                                 withAlpha(vaultAccent, 20));
         for (int i = -2; i <= 2; ++i) {
-            const int distance = i < 0 ? -i : i;
-            const int podX = vaultCx + i * 62;
-            const int podH = 48 + (2 - distance) * 8;
-            fb.drawRoundedRect(podX - 22, HUB_Y + 140 - podH / 4, 44, podH, 12,
-                               withAlpha(vaultAccent, 92), 2);
-            fb.drawFilledCircle(podX, HUB_Y + 168, 8 + (i == 0 ? 4 : 0),
-                                withAlpha(vaultAccent, i == 0 ? 188 : 88));
+            const int podX = vaultCx + i * 68;
+            const int r = i == 0 ? 27 : 22;
+            fb.drawFilledCircle(podX, vaultCy, r, withAlpha(Colors::PanelAlt, 230));
+            fb.drawCircle(podX, vaultCy, r, withAlpha(vaultAccent, i == 0 ? 230 : 135), 3);
+            fb.drawFilledRect(podX - r, vaultCy - 2, r * 2, 4,
+                              withAlpha(vaultAccent, i == 0 ? 210 : 120));
+            fb.drawFilledCircle(podX, vaultCy, i == 0 ? 8 : 6,
+                                i == 0 ? vaultAccent : withAlpha(vaultAccent, 155));
         }
-        fb.drawCircle(vaultCx, vaultCy, 58, withAlpha(vaultAccent, 150), 7);
-        fb.drawCircle(vaultCx, vaultCy, 39, withAlpha(vaultAccent, 215), 4);
-        fb.drawFilledRoundedRect(vaultCx - 30, vaultCy - 5, 60, 10, 5,
-                                 withAlpha(vaultAccent, 155));
-        fb.drawFilledCircle(vaultCx, vaultCy, 14, vaultAccent);
+        fb.drawCircle(vaultCx, vaultCy, 48, withAlpha(vaultAccent, 85), 3);
         fb.drawFilledRoundedRect(RIGHT_X + 78, HUB_Y + 220, RIGHT_W - 156, 3, 2,
                                  withAlpha(vaultAccent, 120));
         fb.drawText(RIGHT_X + 28, HUB_Y + featureH - 52,
@@ -2218,7 +2273,7 @@ namespace UI {
         fb.drawFilledRoundedRect(dexLogoX + 18, dexLogoY + 4, 4, 28, 2, dexAccent);
         fb.drawText(RIGHT_X + 82, dexY + 26, "POKÉDEX",
                     dexFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
-        fb.drawText(RIGHT_X + 82, dexY + 60, "Species, forms and cries",
+        fb.drawText(RIGHT_X + 82, dexY + 60, "Research species, forms & collection",
                     Colors::TextSecondary, TextStyle::Body);
         const int dexArrowX = RIGHT_X + RIGHT_W - 42;
         fb.drawCircle(dexArrowX, dexY + 42, 17,
@@ -2229,22 +2284,29 @@ namespace UI {
 
         if (dexFocused)
             fb.drawRoundedRect(RIGHT_X, dexY, RIGHT_W, featureH, 18, dexAccent, 3);
-        const int bookX = RIGHT_X + 36, bookY = dexY + 110;
-        fb.drawFilledRoundedRect(RIGHT_X + 24, dexY + 98, RIGHT_W - 48, 126, 22,
-                                 withAlpha(dexAccent, 18));
-        fb.drawRoundedRect(bookX, bookY, 76, 62, 10, dexAccent, 3);
-        fb.drawFilledRoundedRect(bookX + 36, bookY + 4, 4, 54, 2, dexAccent);
+        const int deviceX = RIGHT_X + 30, deviceY = dexY + 100;
+        fb.drawFilledRoundedRect(deviceX, deviceY, RIGHT_W - 60, 124, 20,
+                                 withAlpha(dexAccent, 24));
+        fb.drawRoundedRect(deviceX + 8, deviceY + 8, 112, 106, 16, dexAccent, 3);
+        fb.drawFilledCircle(deviceX + 32, deviceY + 31, 11, withAlpha(dexAccent, 210));
+        fb.drawCircle(deviceX + 32, deviceY + 31, 17, withAlpha(dexAccent, 95), 3);
+        fb.drawRoundedRect(deviceX + 54, deviceY + 24, 54, 54, 8,
+                           withAlpha(dexAccent, 180), 2);
+        fb.drawFilledRect(deviceX + 59, deviceY + 49, 44, 4, withAlpha(dexAccent, 130));
         for (int i = 0; i < 5; ++i) {
-            const int cx = RIGHT_X + 154 + i * 58;
-            const int baseY = dexY + 153;
-            const int r = 15 + (i % 3) * 4;
-            const Color silhouette = i == 2 ? withAlpha(dexAccent, 150)
-                                             : withAlpha(dexAccent, 82);
-            fb.drawFilledCircle(cx, baseY, r, silhouette);
-            fb.drawFilledRoundedRect(cx - r + 3, baseY + r - 4,
-                                     std::max(12, r * 2 - 6), 18 + (i % 2) * 7,
+            const int cx = deviceX + 158 + i * 53;
+            const int cy = deviceY + 58;
+            const int r = 15 + (i % 3) * 3;
+            const Color silhouette = i == 2 ? withAlpha(dexAccent, 185)
+                                             : withAlpha(dexAccent, 95);
+            fb.drawFilledCircle(cx, cy, r, silhouette);
+            fb.drawFilledRoundedRect(cx - r + 4, cy + r - 4,
+                                     std::max(12, r * 2 - 8), 20 + (i % 2) * 5,
                                      8, silhouette);
         }
+        for (int i = 0; i < 3; ++i)
+            fb.drawFilledCircle(deviceX + 160 + i * 18, deviceY + 98, 4,
+                                withAlpha(dexAccent, 120 + i * 35));
         fb.drawText(RIGHT_X + 28, dexY + featureH - 52,
                     "Species  •  Forms  •  Cries  •  Living Dex", dexAccent, TextStyle::Caption);
         fb.drawText(RIGHT_X + 28, dexY + featureH - 30,
@@ -2255,12 +2317,11 @@ namespace UI {
                           fb.getHeight() - (PRODUCT_DOCK_Y - 12), Colors::Panel);
         fb.drawFilledRect(0, PRODUCT_DOCK_Y - 12, fb.getWidth(), 1, Colors::Divider);
 
-        static constexpr const char* dockLabels[7] =
-            {"Games", "Banks", "Backups", "Search", "More", "Items", "Settings"};
+        static constexpr const char* dockLabels[6] =
+            {"Games", "Banks", "Items", "Search", "More", "Settings"};
         const int dockStartX = 42;
-        for (int i = 0; i < 7; ++i) {
-            const int dx = i < 5 ? dockStartX + i * PRODUCT_DOCK_STEP
-                                 : (i == 5 ? 1092 : 1176);
+        for (int i = 0; i < 6; ++i) {
+            const int dx = i < 5 ? dockStartX + i * PRODUCT_DOCK_STEP : 1176;
             const bool focused = hubDockFocused && hubDockIndex == i;
             drawFocusedCard(fb, dx, PRODUCT_DOCK_Y, PRODUCT_DOCK_SIZE, PRODUCT_DOCK_SIZE,
                             focused, PRODUCT_DOCK_SIZE / 2);
@@ -2347,7 +2408,7 @@ namespace UI {
                         TextStyle::Body);
             fb.drawText(x + 30, metaY + 34, "Source", Colors::TextMuted, TextStyle::Caption);
             fb.drawText(x + 122, metaY + 34,
-                        title.sourceLabel.empty() ? "Validated source" : title.sourceLabel,
+                        title.sourceLabel.empty() ? "Validated source" : productSourceLabel(title.sourceLabel),
                         Colors::TextSecondary, TextStyle::Body);
             fb.drawText(x + 30, metaY + 68, "Save", Colors::TextMuted, TextStyle::Caption);
             fb.drawText(x + 122, metaY + 68,

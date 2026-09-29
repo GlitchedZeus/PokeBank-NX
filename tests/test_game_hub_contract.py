@@ -140,12 +140,15 @@ require("descriptor.state != GameLaunchState::LauncherOnly" in launcher,
         "launcher-only emulators must never receive a falsely linked ROM argument")
 require("GameLaunchProviderKind::MelonDS" in launcher,
         "melonDS provider-aware direct content launch support must remain present")
-require("OpenIntent::Items" in source and "hubDockIndex == 5" in source,
-        "Backpack/Items quick control must create the safe Items open intent")
-require("openIntent = OpenIntent::Items;" in source and "selectCurrentTitle();" in source,
-        "Backpack must reuse the normal validated source/open flow instead of bypassing it")
-require("headerSettingsFocused" in source,
-        "top-right Settings gear must participate in controller focus")
+require("OpenIntent::Items" in source and "hubDockIndex == 2" in source,
+        "Backpack/Items must replace the old Backups root slot")
+require("selectCurrentTitleForItems" in source and
+        "sameValidatedSnapshot" in source and
+        "openAssignedSource" in source,
+        "Backpack must revalidate the already-selected source without opening a chooser")
+require("const int gearCx = 1239" not in source and
+        '{"Games", "Banks", "Items", "Search", "More", "Settings"}' in source,
+        "Product Home must render exactly one Settings gear")
 require('kSettingsCategories' in shell_source and
         '"User", "Look", "System", "Data", "Update", "Developer", "Info"' in shell_source,
         "Settings must use the approved two-pane category model")
@@ -158,3 +161,21 @@ require('"Source Save Protection", "LOCKED"' in shell_source and
         "Settings must expose truthful Data and Update states without fake backends")
 require('"Mystery Gifts"' in shell_source and '"Clone Lineage"' in shell_source,
         "More screen must reserve truthful future-feature modules")
+
+require("handleItemsQuickOpen" in ui_manager and "backupSaveData" in ui_manager,
+        "Switch Backpack quick-open must create the normal protected backup before Items")
+require("if (!shell.hasOverlay()) break;" in ui_manager,
+        "closing a secondary shell must not draw the retired shell for one stale frame")
+require("slotW - 12, 66" in source and "slotY + 96" in source,
+        "Product Home party sprites and level text must use the enlarged readable layout")
+
+require("SystemIcons::trainerPortrait" in source and "portrait.assetKey" in source,
+        "trainer presentation must load optional real portrait artwork when packaged")
+require('"red"' in source and '"dawn"' in source and '"lucas"' in source and
+        '"ethan"' in source and '"lyra"' in source,
+        "trainer portrait mapping must reserve canonical Gen I-IV asset keys")
+require("productSourceLabel" in source and '"System save"' in source and '"Linked save"' in source,
+        "Product Home must translate raw source-state diagnostics into consumer-facing labels")
+require('"Pokémon storage, transfer & lineage"' in source and
+        '"Research species, forms & collection"' in source,
+        "Vault and Pokédex cards must carry distinct Pokémon-specific product identities")

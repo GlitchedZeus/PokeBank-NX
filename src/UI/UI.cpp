@@ -116,6 +116,7 @@ namespace UI {
                 padUpdate(&pad);
                 touch.update();
                 shell.update(pad, touch);
+                if (!shell.hasOverlay()) break;
                 shell.draw(fb);
                 fb.drawFadeOverlay();
                 fb.flush();
@@ -162,10 +163,15 @@ namespace UI {
                                             selectScreen.getOpenIntent(), error))
                             logErrorToFile("Generation IV assigned source refused open", error.c_str());
                     } else {
-                        handleBackupSelection(selectScreen.getSelectedUser(),
-                                              selectScreen.getSelectedTitleId(),
-                                              selectScreen.getSelectedTitleName(),
-                                              selectScreen.getOpenIntent());
+                        if (selectScreen.getOpenIntent() == SaveSelectScreen::OpenIntent::Items)
+                            handleItemsQuickOpen(selectScreen.getSelectedUser(),
+                                                 selectScreen.getSelectedTitleId(),
+                                                 selectScreen.getSelectedTitleName());
+                        else
+                            handleBackupSelection(selectScreen.getSelectedUser(),
+                                                  selectScreen.getSelectedTitleId(),
+                                                  selectScreen.getSelectedTitleName(),
+                                                  selectScreen.getOpenIntent());
                     }
                     rebuildPicker = true;
                     break;
@@ -185,6 +191,24 @@ namespace UI {
             if (!rebuildPicker) return SaveSelectScreen::MainMenuDestination::None;
         }
         return SaveSelectScreen::MainMenuDestination::None;
+    }
+
+    void UIManager::handleItemsQuickOpen(AccountUid userUid, u64 titleId,
+                                         const std::string& titleName) {
+        logInfoToFile("Items quick-open: creating protected working backup first",
+                      titleName.c_str());
+        const std::string backupPath =
+            backupSaveData(userUid, titleId, titleName, g_autoBackupEnabled);
+        if (backupPath.empty()) {
+            logErrorToFile("Items quick-open refused: backup creation failed",
+                           titleName.c_str());
+            return;
+        }
+        std::string error;
+        if (!handleTrainerView(userUid, titleId, titleName, backupPath, true,
+                               SaveSelectScreen::OpenIntent::Items, error)) {
+            logErrorToFile("Items quick-open failed after backup", error.c_str());
+        }
     }
 
     void UIManager::handleBackupSelection(AccountUid userUid, u64 titleId,
