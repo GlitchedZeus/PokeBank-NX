@@ -6,13 +6,13 @@ This file tracks the visible product layer separately from proven save/editor ba
 
 | Surface | Current ownership | Backend retained | Remaining visible work |
 |---|---|---|---|
-| Product Home | **POKEBANK-OWNED** | profile/title/source state, launch model | integrated hardware acceptance, touch parity |
+| Product Home | **POKEBANK-OWNED** | profile/title/source state, launch model, real per-save Dex/party data | integrated hardware acceptance, touch parity |
 | Classic Game Sources | **POKEBANK-OWNED / RESTORED WORKFLOW** | current provider/source model | hardware validation, touch parity |
-| Settings | **POKEBANK-OWNED** | persisted settings model | hardware validation, touch |
+| Settings | **POKEBANK-OWNED** | persisted settings model | two-pane UI + remembered category/option cursor implemented; hardware validation + touch remain |
 | Trainer | MIXED → PokeBank presentation | proven trainer/save models | touch and remaining legacy chrome |
 | Party | MIXED → PokeBank presentation | party model + Pokémon entities | touch parity and remaining shared-screen polish |
 | Boxes | MIXED | proven box models / staged move safety | PokeBank-owned storage/box presentation over time |
-| Inventory / Items | MIXED | proven per-game pouch/item models | Backpack quick-entry hardware validation + touch |
+| Inventory / Items | MIXED | proven per-game pouch/item models | bottom Backpack quick-entry uses normal safe open flow; hardware validation + touch remain |
 | Pokémon Summary | MIXED | proven parsing / move / compatibility data | finish unified product presentation |
 | Pokémon Editor | POKEBANK SHARED SHELL + PROVEN BACKENDS | generation-native staged adapters | Gen IV integrated acceptance, touch parity |
 | Backups | MIXED | proven backup-copy plumbing | polished backup/recovery browser |
@@ -41,6 +41,10 @@ Product Home
 Games
   └─ Classic Game Sources
        └─ proven existing game/editor flows
+
+Bottom quick actions
+  ├─ Backpack / Items
+  └─ Settings gear
 
 Settings
   └─ category list + option pane
