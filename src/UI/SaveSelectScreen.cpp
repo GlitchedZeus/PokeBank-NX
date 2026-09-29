@@ -146,14 +146,26 @@ namespace UI {
                 // Search.
                 fb.drawCircle(cx - 3, cy - 3, 9, ink, 2);
                 fb.drawFilledRoundedRect(cx + 5, cy + 5, 13, 4, 2, ink);
-            } else {
-                // More. Settings lives in the product header instead of consuming a dock slot.
+            } else if (index == 4) {
+                // More.
                 constexpr int tile = 8;
                 constexpr int gap = 5;
                 fb.drawFilledRoundedRect(cx - tile - gap / 2, cy - tile - gap / 2, tile, tile, 2, ink);
                 fb.drawFilledRoundedRect(cx + gap / 2, cy - tile - gap / 2, tile, tile, 2, ink);
                 fb.drawFilledRoundedRect(cx - tile - gap / 2, cy + gap / 2, tile, tile, 2, ink);
                 fb.drawFilledRoundedRect(cx + gap / 2, cy + gap / 2, tile, tile, 2, ink);
+            } else if (index == 5) {
+                // Backpack / Items.
+                fb.drawRoundedRect(cx - 15, cy - 10, 30, 24, 7, ink, 2);
+                fb.drawRoundedRect(cx - 9, cy - 17, 18, 12, 7, ink, 2);
+                fb.drawFilledRoundedRect(cx - 10, cy - 2, 20, 4, 2, ink);
+            } else {
+                // Compact Settings gear.
+                fb.drawFilledCircle(cx, cy, 7, ink);
+                fb.drawFilledRoundedRect(cx - 2, cy - 18, 4, 8, 2, ink);
+                fb.drawFilledRoundedRect(cx - 2, cy + 10, 4, 8, 2, ink);
+                fb.drawFilledRoundedRect(cx - 18, cy - 2, 8, 4, 2, ink);
+                fb.drawFilledRoundedRect(cx + 10, cy - 2, 8, 4, 2, ink);
             }
         }
 
@@ -173,6 +185,13 @@ namespace UI {
     constexpr int PRODUCT_DOCK_Y = 648;
     constexpr int PRODUCT_DOCK_SIZE = 42;
     constexpr int PRODUCT_DOCK_STEP = 106;
+    constexpr int CLASSIC_TILE_W = 184;
+    constexpr int CLASSIC_TILE_H = 208;
+    constexpr int CLASSIC_ICON = 126;
+    constexpr int CLASSIC_GAP = 16;
+    constexpr int CLASSIC_MAX_COLS = 5;
+    constexpr int CLASSIC_GRID_Y = 216;
+    constexpr int CLASSIC_VISIBLE_ROWS = 2;
 
     SaveSelectScreen::SaveSelectScreen(
         PokeVault::Legacy::FRLGDiscoveryResult& legacySources,
@@ -191,7 +210,8 @@ namespace UI {
                 ? static_cast<int>(resumedUser->titles.size()) : 0;
             titleIndex = titleCount > 0
                 ? std::clamp(resumeState->titleIndex, 0, titleCount - 1) : 0;
-            hubDockIndex = std::clamp(resumeState->hubDockIndex, 0, 4);
+            hubDockIndex = std::clamp(resumeState->hubDockIndex, 0, 6);
+            classicGamesActive = resumeState->classicGamesActive;
             hubFeatureIndex = std::clamp(resumeState->hubFeatureIndex, -1, 1);
             scrollRow = std::max(0, resumeState->scrollRow);
             hubDockFocused = resumeState->hubDockFocused;
@@ -569,6 +589,26 @@ namespace UI {
     int SaveSelectScreen::titleRows() const {
         const UserEntry* u = currentUser();
         return u ? static_cast<int>(u->titles.size()) : 0;
+    }
+
+    int SaveSelectScreen::classicTitleColumns() const {
+        return std::max(1, std::min(CLASSIC_MAX_COLS, titleRows()));
+    }
+
+    int SaveSelectScreen::classicTitleRows() const {
+        const int count = titleRows();
+        const int cols = classicTitleColumns();
+        return count <= 0 ? 0 : (count + cols - 1) / cols;
+    }
+
+    void SaveSelectScreen::scrollClassicSelectionIntoView() {
+        const int rows = classicTitleRows();
+        if (rows <= CLASSIC_VISIBLE_ROWS) { scrollRow = 0; return; }
+        const int selectedRow = titleIndex / classicTitleColumns();
+        if (selectedRow < scrollRow) scrollRow = selectedRow;
+        else if (selectedRow >= scrollRow + CLASSIC_VISIBLE_ROWS)
+            scrollRow = selectedRow - CLASSIC_VISIBLE_ROWS + 1;
+        scrollRow = std::clamp(scrollRow, 0, std::max(0, rows - CLASSIC_VISIBLE_ROWS));
     }
 
     /**
@@ -1221,13 +1261,10 @@ namespace UI {
             titleIndex < static_cast<int>(user->titles.size());
 
         if (hubDockIndex == 0) {
-            if (!hasGame) {
-                hubNotice = "Choose a game before opening its workspace.";
-                return;
-            }
-            gameWorkspaceIndex = 0;
+            classicGamesActive = true;
+            scrollRow = 0;
             hubNotice.clear();
-            overlay = Overlay::GameWorkspace;
+            overlay = Overlay::None;
         } else if (hubDockIndex == 1) {
             requestedMainMenuDestination = MainMenuDestination::Banks;
             exitRequested = true;
@@ -1247,8 +1284,18 @@ namespace UI {
         } else if (hubDockIndex == 3) {
             requestedMainMenuDestination = MainMenuDestination::Search;
             exitRequested = true;
-        } else {
+        } else if (hubDockIndex == 4) {
             requestedMainMenuDestination = MainMenuDestination::More;
+            exitRequested = true;
+        } else if (hubDockIndex == 5) {
+            if (!hasGame) {
+                hubNotice = "Choose a game before opening Items.";
+                return;
+            }
+            openIntent = OpenIntent::Items;
+            selectCurrentTitle();
+        } else {
+            requestedMainMenuDestination = MainMenuDestination::Settings;
             exitRequested = true;
         }
     }
@@ -1562,6 +1609,50 @@ namespace UI {
             return;
         }
 
+        if (classicGamesActive) {
+            if (kDown & HidNpadButton_B) {
+                classicGamesActive = false;
+                scrollRow = 0;
+                refreshHubPreview();
+                return;
+            }
+            if (kDown & HidNpadButton_Plus) {
+                requestedMainMenuDestination = MainMenuDestination::Settings;
+                exitRequested = true;
+                return;
+            }
+            if (kDown & HidNpadButton_Minus) {
+                helpReturnClassicGames = true;
+                helpReturnOverlay = Overlay::None;
+                overlay = Overlay::Help;
+                return;
+            }
+            if (kDown & HidNpadButton_ZR) {
+                launchCurrentTitle();
+                return;
+            }
+            if (users.size() > 1) {
+                if (kDown & HidNpadButton_L) setUser(userIndex - 1);
+                if (kDown & HidNpadButton_R) setUser(userIndex + 1);
+            }
+            const UserEntry* classicUser = currentUser();
+            const int classicCount = classicUser ? static_cast<int>(classicUser->titles.size()) : 0;
+            if (classicCount > 0) {
+                const int cols = classicTitleColumns();
+                if (kDown & HidNpadButton_Left) titleIndex = (titleIndex - 1 + classicCount) % classicCount;
+                if (kDown & HidNpadButton_Right) titleIndex = (titleIndex + 1) % classicCount;
+                if ((kDown & HidNpadButton_Up) && titleIndex - cols >= 0) titleIndex -= cols;
+                if ((kDown & HidNpadButton_Down) && titleIndex + cols < classicCount) titleIndex += cols;
+                if (kDown & HidNpadButton_A) {
+                    openIntent = OpenIntent::Default;
+                    selectCurrentTitle();
+                }
+                scrollClassicSelectionIntoView();
+                refreshHubPreview();
+            }
+            return;
+        }
+
         // A single shoulder changes profile without stealing L/R from the approved Change Game flow.
         if ((kDown & HidNpadButton_ZL) && users.size() > 1) {
             setUser(userIndex + 1);
@@ -1627,9 +1718,9 @@ namespace UI {
                 return;
             }
             if (kDown & HidNpadButton_Left)
-                hubDockIndex = (hubDockIndex + 4) % 5;
+                hubDockIndex = (hubDockIndex + 6) % 7;
             if (kDown & HidNpadButton_Right)
-                hubDockIndex = (hubDockIndex + 1) % 5;
+                hubDockIndex = (hubDockIndex + 1) % 7;
             if (kDown & HidNpadButton_A) activateHubDock();
             return;
         }
@@ -1675,14 +1766,92 @@ namespace UI {
             return;
         }
 
-        if (homeGameCount > 0 && (kDown & HidNpadButton_A))
+        if (homeGameCount > 0 && (kDown & HidNpadButton_A)) {
+            openIntent = OpenIntent::Default;
             selectCurrentTitle();
+        }
+    }
+
+    void SaveSelectScreen::drawClassicGameSources(PKSEFramebuffer& fb) {
+        drawAppBackdrop(fb);
+        drawTitleBar(fb, "Game Sources  /  v" + VERSION_STRING + "  /  " + BUILD_COMMIT);
+        const UserEntry* u = currentUser();
+        drawPanelSurface(fb, 24, 82, fb.getWidth() - 48, 104, true);
+
+        if (u) {
+            const IconImage* avatar = u->name == "Game Sources" ? nullptr : &SystemIcons::userIcon(u->uid);
+            if (avatar && avatar->valid())
+                fb.drawImageScaled(44, 92, avatar->width, avatar->height, 84, 84, avatar->data, 4);
+            else
+                fb.drawFilledRoundedRect(44, 92, 84, 84, 12, Colors::PanelAlt);
+            fb.drawRoundedRect(44, 92, 84, 84, 12, Colors::Info, 2);
+            fb.drawText(148, 103, u->name, Colors::TextPrimary, TextStyle::Title);
+            fb.drawText(148, 144, std::to_string(u->titles.size()) + " available game sources",
+                        Colors::TextMuted, TextStyle::Caption);
+        }
+
+        const int count = u ? static_cast<int>(u->titles.size()) : 0;
+        const int cols = classicTitleColumns();
+        const int gridW = cols * CLASSIC_TILE_W + (cols - 1) * CLASSIC_GAP;
+        const int startX = std::max(40, (fb.getWidth() - gridW) / 2);
+        const int first = scrollRow * cols;
+        const int last = std::min(count, first + CLASSIC_VISIBLE_ROWS * cols);
+        for (int i = first; i < last; ++i) {
+            const int col = i % cols;
+            const int row = (i / cols) - scrollRow;
+            const int x = startX + col * (CLASSIC_TILE_W + CLASSIC_GAP);
+            const int y = CLASSIC_GRID_Y + row * (CLASSIC_TILE_H + CLASSIC_GAP);
+            const bool focused = i == titleIndex;
+            const auto& title = u->titles[static_cast<size_t>(i)];
+
+            drawFocusedCard(fb, x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, focused, 16);
+            const IconImage& art = SystemIcons::gameCardIcon(
+                title.sourceKind == SelectedSourceKind::RetroArchFRLG ? title.artworkKey : title.gameId,
+                title.titleId);
+            if (art.valid())
+                fb.drawImageScaled(x + 29, y + 14, art.width, art.height,
+                                   CLASSIC_ICON, CLASSIC_ICON, art.data, 4);
+            else
+                fb.drawFilledRoundedRect(x + 29, y + 14, CLASSIC_ICON, CLASSIC_ICON, 12, Colors::PanelAlt);
+
+            std::string label = title.label;
+            if (label.size() > 18) label = label.substr(0, 17) + "…";
+            int lw=0,lh=0; fb.measureText(label,lw,lh,TextStyle::Caption);
+            fb.drawText(x + (CLASSIC_TILE_W-lw)/2, y + 146, label,
+                        focused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Caption);
+
+            std::string meta = title.trainerName.empty() ? title.sourceLabel : title.trainerName;
+            if (title.dexTotal > 0)
+                meta += "  •  " + std::to_string(title.dexCaught) + "/" + std::to_string(title.dexTotal);
+            if (meta.size() > 24) meta = meta.substr(0, 23) + "…";
+            int mw=0,mh=0; fb.measureText(meta,mw,mh,TextStyle::Caption);
+            fb.drawText(x + (CLASSIC_TILE_W-mw)/2, y + 172, meta,
+                        Colors::TextMuted, TextStyle::Caption);
+        }
+
+        drawNavBar(fb, {{"D-pad/Stick","Choose Game"},{"A","Open"},
+                        {"L/R","Switch User"},{"ZR","Launch"},{"+","Settings"},{"B","Back"}});
     }
 
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {
         titleRects.clear();
         userRects.clear();
         dockRects.clear();
+
+        if (classicGamesActive) {
+            drawClassicGameSources(fb);
+            if (overlay == Overlay::Help) {
+                drawInfoOverlay(fb, "Game Sources Controls", {
+                    "D-pad / Left Stick   Choose a game source",
+                    "A   Open the selected game source",
+                    "L / R   Switch user",
+                    "ZR   Launch selected game",
+                    "+   Settings",
+                    "B   Back to Product Home"
+                });
+            }
+            return;
+        }
 
         drawAppBackdrop(fb);
         drawProductTitleBar(fb);
@@ -1973,11 +2142,12 @@ namespace UI {
                           fb.getHeight() - (PRODUCT_DOCK_Y - 12), Colors::Panel);
         fb.drawFilledRect(0, PRODUCT_DOCK_Y - 12, fb.getWidth(), 1, Colors::Divider);
 
-        static constexpr const char* dockLabels[5] =
-            {"Games", "Banks", "Backups", "Search", "More"};
+        static constexpr const char* dockLabels[7] =
+            {"Games", "Banks", "Backups", "Search", "More", "Items", "Settings"};
         const int dockStartX = 42;
-        for (int i = 0; i < 5; ++i) {
-            const int dx = dockStartX + i * PRODUCT_DOCK_STEP;
+        for (int i = 0; i < 7; ++i) {
+            const int dx = i < 5 ? dockStartX + i * PRODUCT_DOCK_STEP
+                                 : (i == 5 ? 1092 : 1176);
             const bool focused = hubDockFocused && hubDockIndex == i;
             drawFocusedCard(fb, dx, PRODUCT_DOCK_Y, PRODUCT_DOCK_SIZE, PRODUCT_DOCK_SIZE,
                             focused, PRODUCT_DOCK_SIZE / 2);
@@ -1997,7 +2167,7 @@ namespace UI {
         }
 
         auto homeHints = hubDockFocused && hubDockIndex == 0
-            ? std::string("A: Game Workspace | L/R: Change Game | -: Help | +: Settings | B: Exit")
+            ? std::string("A: Game Sources | L/R: Change Game | -: Help | +: Settings | B: Exit")
             : std::string("L/R: Change Game | A: Select | ZR: Launch | -: Help | +: Settings | B: Exit");
         if (users.size() > 1) homeHints = "ZL: Profile | " + homeHints;
         drawNavHints(fb, 565, fb.getWidth() - 565, PRODUCT_DOCK_Y + 24, homeHints);
@@ -2297,7 +2467,7 @@ namespace UI {
                     "L / R   Previous / next game",
                     "ZL   Change profile when multiple profiles are available",
                     "ZR   Launch, choose a source, or link a game file",
-                    "Games   Open the selected game's PKSE-style workspace",
+                    "Games   Open the familiar Game Sources grid",
                     "+   Settings",
                     "-   Help / Controls",
                     "B   Exit PokeBank NX from Product Home"

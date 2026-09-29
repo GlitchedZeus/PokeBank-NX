@@ -49,6 +49,7 @@ namespace UI {
             int hubFeatureIndex = -1;
             int scrollRow = 0;
             bool hubDockFocused = false;
+            bool classicGamesActive = false;
         };
 
         SaveSelectScreen(PokeVault::Legacy::FRLGDiscoveryResult& legacySources,
@@ -62,7 +63,8 @@ namespace UI {
             return requestedMainMenuDestination;
         }
         [[nodiscard]] NavigationState navigationState() const {
-            return {userIndex, titleIndex, hubDockIndex, hubFeatureIndex, scrollRow, hubDockFocused};
+            return {userIndex, titleIndex, hubDockIndex, hubFeatureIndex, scrollRow,
+                    hubDockFocused, classicGamesActive};
         }
 
         bool hasSelectedTitle() const { return titleSelected; }
@@ -124,6 +126,8 @@ namespace UI {
         std::string hubNotice;
         bool launchLegacyMode = false;
         OpenIntent openIntent = OpenIntent::Default;
+        bool classicGamesActive = false;
+        bool helpReturnClassicGames = false;
 
         std::vector<LaunchFileEntry> launchFileEntries;
         std::string launchBrowsePath;
@@ -236,12 +240,16 @@ namespace UI {
         const UserEntry* currentUser() const;
         int titleColumns() const;      // grid columns for the current user's title count (<= 5)
         int titleRows() const;         // rows those tiles occupy
+        int classicTitleColumns() const;
+        int classicTitleRows() const;
+        void drawClassicGameSources(PKSEFramebuffer& fb);
 
         // Top row of the scroll window. Persistent STATE, not derived from the selection: it moves
         // only when the selected tile would otherwise fall outside the window, so the grid holds
         // still while the cursor moves within it instead of re-centring (which reads as paging).
         int scrollRow = 0;
         void scrollSelectionIntoView();
+        void scrollClassicSelectionIntoView();
     };
 }
 
