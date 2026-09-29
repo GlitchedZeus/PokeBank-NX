@@ -255,7 +255,7 @@ include/Names/Gen4HeldItemCatalog.h	blob	100644	1365	Gen IV held-item structural
 include/Names/ItemNames.h	blob	100644	1226	item-name and Gen3-modern item mapping API	text	28	AUDITED			0	no
 include/Names/ItemPouches.h	blob	100644	1195	per-game item-pouch catalog API	text	33	AUDITED			0	no
 include/Names/ItemPresence.h	blob	100644	1033	held-item presence API	text	28	AUDITED			0	no
-include/Names/LocationNames.h	blob	100644	3135		unknown		PENDING			0	
+include/Names/LocationNames.h	blob	100644	3135	origin-version-aware met-location lookup API	text	72	AUDITED			0	no
 include/Names/MachineDisplay.h	blob	100644	1157	machine descriptor/display API	text	36	AUDITED			0	no
 include/Names/MoveInfo.h	blob	100644	1596	per-game move PP API	text	35	AUDITED			0	no
 include/Names/MoveNames.h	blob	100644	410	move-name lookup API	text	15	AUDITED			0	no
@@ -484,7 +484,7 @@ src/Names/FormNames.cpp	blob	100644	30424		unknown		PENDING			0
 src/Names/ItemNames.cpp	blob	100644	102371		unknown		PENDING			0	
 src/Names/ItemPouches.cpp	blob	100644	31323	generated per-game item-pouch legal ID catalogs/router	text	524	AUDITED			0	no
 src/Names/ItemPresence.cpp	blob	100644	13455	generated held-item presence bitsets/dispatch	text	176	AUDITED			0	no
-src/Names/LocationNames.cpp	blob	100644	142717		unknown		PENDING			0	
+src/Names/LocationNames.cpp	blob	100644	142717	generated Gen III-IX met-location tables and bank router	text	4304	AUDITED			0	no
 src/Names/MachineDisplay.cpp	blob	100644	5972	machine descriptor/search presentation logic	text	132	AUDITED			0	no
 src/Names/MoveInfo.cpp	blob	100644	23722	per-game move PP tables/lookup	text	326	AUDITED			0	no
 src/Names/MoveNames.cpp	blob	100644	21346		unknown		PENDING			0	
