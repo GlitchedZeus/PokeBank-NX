@@ -68,6 +68,9 @@ jobs:
       - name: Verify device PNG validation contract
         run: python3 tests/test_device_asset_png_validation.py
 
+      - name: Verify generated species-name consumers
+        run: python3 tests/test_generated_species_name_contract.py
+
       - name: Clean host build
         run: make -f Makefile.host host-clean
 
