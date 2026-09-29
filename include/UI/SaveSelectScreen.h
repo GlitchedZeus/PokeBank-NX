@@ -32,7 +32,10 @@ namespace UI {
 
         enum class MainMenuDestination {
             None,
+            MasterVault,
+            Pokedex,
             Banks,
+            Search,
             Settings,
         };
 
@@ -113,6 +116,9 @@ namespace UI {
         MainMenuDestination requestedMainMenuDestination = MainMenuDestination::None;
         bool hubDockFocused = false;
         int hubDockIndex = 0;
+        // Main product-home focus outside the persistent dock:
+        // -1 = selected game card, 0 = Master Vault, 1 = Pokédex.
+        int hubFeatureIndex = -1;
         enum class Overlay { None, Options, Help, LegacyInstances, LegacyAssignment, LegacyDetails,
                              Gen4Setup, Gen4Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
