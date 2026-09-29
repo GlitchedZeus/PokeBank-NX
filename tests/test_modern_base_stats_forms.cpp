@@ -76,6 +76,11 @@ int main() {
     expectEmpty(774, 14);
 
     // Base + one-row dedicated forms must not raw-index past the dedicated array.
+    expectStats(898, 0, 100, 80, 80, 80, 80, 80);
+    expectStats(898, 1, 100, 165, 150, 85, 130, 50);
+    expectStats(898, 2, 100, 85, 80, 165, 100, 150);
+    expectEmpty(898, 3);
+
     expectStats(901, 0, 130, 140, 105, 45, 80, 50);
     expectStats(901, 1, 113, 70, 120, 135, 65, 52);
     expectEmpty(901, 2);
@@ -94,6 +99,8 @@ int main() {
     const auto* zacianCrowned = Pokemon::getBaseStatsSWSH(888, 1);
     assert(zacianHero->atk == 130 && zacianHero->spe == 138);
     assert(zacianCrowned->atk == 170 && zacianCrowned->spe == 148);
+    const auto* invalidZacian = Pokemon::getBaseStatsSWSH(888, 2);
+    assert(invalidZacian && invalidZacian->id == 0 && invalidZacian->hp == 0);
     expectEmpty(888, 2);
 
     std::cout << "Modern base-stat form routing: PASS\n";
