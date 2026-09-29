@@ -20,6 +20,7 @@ The first legality-engine tranche adds:
 
 - exact source-game profiles for R/B/Y, G/S/C, R/S/E/FR/LG and D/P/Pt/HG/SS;
 - generation-correct species and move ceilings;
+- exact-game Gen I, II, III and IV move-pool checks using the editor's audited compatibility tables;
 - structured check identifiers;
 - coverage-aware reports and an explicit Incomplete verdict;
 - conservative exact-game encounter evidence where audited data already exists;
@@ -31,7 +32,7 @@ Current encounter-table coverage is **partial** for Crystal and the five Gen III
 
 1. **Format / structure** — ids, checksums, field ranges and format invariants.
 2. **Internal consistency** — level/EXP, names, gender, ability, forms and stats.
-3. **Exact-game move legality** — level-up, TM/HM, tutor, egg, pre-evolution and transfer history.
+3. **Exact-game move legality** — compatibility tables are wired now; event/tutor chronology and full tradeback provenance remain to be completed.
 4. **Encounter provenance** — species, location, level, method, time and version restrictions.
 5. **PID/RNG correlation** — Gen III/IV method constraints, nature, ability, gender and shiny correlation.
 6. **Egg / breeding legality** — hatch level/location, inherited moves and generation-specific breeding rules.

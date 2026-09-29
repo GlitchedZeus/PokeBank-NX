@@ -9,6 +9,9 @@
 
 #include "Legality/Legality.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "Integration/Gen1/Gen1MoveCompatibility.h"
+#include "Integration/Gen2/Gen2MoveCompatibility.h"
+#include "Integration/Gen4/Gen4MoveCompatibility.h"
 
 #include <algorithm>
 #include <array>
@@ -53,6 +56,24 @@ namespace Legality {
         // PK3 is one binary entity format, but the five GBA games do not share one native
         // move pool. Keep the container/save identity separate from Pokemon::getGameGroup()
         // so generic format capabilities can stay FRLG without pretending a Ruby save is FRLG.
+        bool exactGen1Source(std::string_view id,
+                             PokeVault::Integration::Gen1::SourceGame& game) noexcept {
+            using SourceGame = PokeVault::Integration::Gen1::SourceGame;
+            if (id == "red_gb")    { game = SourceGame::Red;    return true; }
+            if (id == "blue_gb")   { game = SourceGame::Blue;   return true; }
+            if (id == "yellow_gb") { game = SourceGame::Yellow; return true; }
+            return false;
+        }
+
+        bool exactGen2Source(std::string_view id,
+                             PokeVault::Integration::Gen2::SourceGame& game) noexcept {
+            using SourceGame = PokeVault::Integration::Gen2::SourceGame;
+            if (id == "gold_gbc")    { game = SourceGame::Gold;    return true; }
+            if (id == "silver_gbc")  { game = SourceGame::Silver;  return true; }
+            if (id == "crystal_gbc") { game = SourceGame::Crystal; return true; }
+            return false;
+        }
+
         bool exactGen3Source(std::string_view id,
                              PokeVault::Integration::Gen3::SourceGame& game) noexcept {
             using SourceGame = PokeVault::Integration::Gen3::SourceGame;
@@ -69,8 +90,14 @@ namespace Legality {
         const auto originGroup = context.originGroup;
         const auto exactSourceGameId = context.exactSourceGameId;
         Report r;
+        PokeVault::Integration::Gen1::SourceGame gen1Source =
+            PokeVault::Integration::Gen1::SourceGame::Red;
+        PokeVault::Integration::Gen2::SourceGame gen2Source =
+            PokeVault::Integration::Gen2::SourceGame::Gold;
         PokeVault::Integration::Gen3::SourceGame gen3Source =
             PokeVault::Integration::Gen3::SourceGame::FireRedGBA;
+        const bool hasExactGen1Source = exactGen1Source(exactSourceGameId, gen1Source);
+        const bool hasExactGen2Source = exactGen2Source(exactSourceGameId, gen2Source);
         const bool hasExactGen3Source = exactGen3Source(exactSourceGameId, gen3Source);
         const uint16_t species = pk.speciesID();
         if (species == 0) return r;  // empty slot — nothing to validate
@@ -210,36 +237,83 @@ namespace Legality {
         // express *when* a move was legal (move tutors that came and went, event moves, trade-backs).
         // All seven games have a table now, but keep the nullptr guard honest -- if a group ever lacks one,
         // getLearnableBits() returns nullptr meaning "unknown", which must not be reported as illegal.
-        if (hasExactGen3Source) {
-            // The staged Gen III editor already owns exact Ruby/Sapphire/Emerald/FRLG tables.
-            // Reuse those instead of laundering every PK3 through the FRLG generic group.
+        if (hasExactGen1Source) {
+            for (int i = 0; i < 4; ++i) {
+                const uint16_t moveId = pk.move(i);
+                if (moveId != 0 &&
+                    !PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(
+                        gen1Source, species, moveId)) {
+                    add(r, Severity::Warning,
+                        "Move is outside the audited move pool for this exact Gen I game: " +
+                        std::string(Names::getMoveName(moveId)),
+                        CheckIdentifier::Moves);
+                }
+            }
+        } else if (hasExactGen2Source) {
+            for (int i = 0; i < 4; ++i) {
+                const uint16_t moveId = pk.move(i);
+                if (moveId != 0 &&
+                    !PokeVault::Integration::Gen2::MoveCompatibility::canLearnMove(
+                        gen2Source, species, moveId)) {
+                    add(r, Severity::Warning,
+                        "Move is outside the audited native/Time Capsule pool for this exact Gen II game: " +
+                        std::string(Names::getMoveName(moveId)),
+                        CheckIdentifier::Moves);
+                }
+            }
+        } else if (hasExactGen3Source) {
             const std::array<uint16_t, 4> sourceMoves{
                 pk.move(0), pk.move(1), pk.move(2), pk.move(3)
             };
-            for (const uint16_t m : sourceMoves) {
-                if (m == 0) continue;
+            for (const uint16_t moveId : sourceMoves) {
+                if (moveId == 0) continue;
                 const auto availability =
                     PokeVault::Integration::Gen3::Learnset::classify(
-                        gen3Source, species, m, sourceMoves);
+                        gen3Source, species, moveId, sourceMoves);
                 using Availability = PokeVault::Integration::Gen3::Learnset::Availability;
                 if (availability == Availability::Transfer) {
                     add(r, Severity::Warning,
                         "Move is not native to this exact Gen III game (transfer required): " +
-                        std::string(Names::getMoveName(m)));
+                        std::string(Names::getMoveName(moveId)),
+                        CheckIdentifier::Moves);
                 } else if (availability == Availability::Preserved) {
                     add(r, Severity::Warning,
                         "Move is preserved but not in the audited Gen III native/transfer pool: " +
-                        std::string(Names::getMoveName(m)));
+                        std::string(Names::getMoveName(moveId)),
+                        CheckIdentifier::Moves);
                 } else if (availability == Availability::Invalid) {
                     add(r, Severity::Warning,
-                        "Move may not be learnable: " + std::string(Names::getMoveName(m)));
+                        "Move may not be learnable: " + std::string(Names::getMoveName(moveId)),
+                        CheckIdentifier::Moves);
+                }
+            }
+        } else if (sourceProfile && exactGeneration == 4) {
+            using namespace PokeVault::Integration::Gen4MoveCompatibility;
+            for (int i = 0; i < 4; ++i) {
+                const uint16_t moveId = pk.move(i);
+                if (moveId == 0) continue;
+                const auto availability =
+                    classify(exactSourceGameId, species, pk.form(), moveId, true);
+                if (availability == Availability::Transfer) {
+                    add(r, Severity::Info,
+                        "Move requires another Generation IV game/source: " +
+                        std::string(Names::getMoveName(moveId)),
+                        CheckIdentifier::Moves);
+                } else if (availability == Availability::Preserved ||
+                           availability == Availability::Invalid) {
+                    add(r, Severity::Warning,
+                        "Move is outside the audited direct/transfer pool for this exact Gen IV game: " +
+                        std::string(Names::getMoveName(moveId)),
+                        CheckIdentifier::Moves);
                 }
             }
         } else if (Pokemon::getLearnableBits(species, pk.form(), originGroup) != nullptr) {
             for (int i = 0; i < 4; ++i) {
-                const uint16_t m = pk.move(i);
-                if (m != 0 && !Pokemon::isLearnable(species, pk.form(), originGroup, m))
-                    add(r, Severity::Warning, "Move may not be learnable: " + std::string(Names::getMoveName(m)));
+                const uint16_t moveId = pk.move(i);
+                if (moveId != 0 && !Pokemon::isLearnable(species, pk.form(), originGroup, moveId))
+                    add(r, Severity::Warning,
+                        "Move may not be learnable: " + std::string(Names::getMoveName(moveId)),
+                        CheckIdentifier::Moves);
             }
         }
 
