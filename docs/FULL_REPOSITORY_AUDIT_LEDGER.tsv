@@ -230,7 +230,7 @@ include/Legacy/RetroArchFRLGDiscovery.h	blob	100644	5404	bounded legacy Gen I-II
 include/Legacy/RetroArchGSCDiscovery.h	blob	100644	1986	bounded Gen II emulator discovery contract	text	70	AUDITED			0	no
 include/Legacy/RetroArchRBYDiscovery.h	blob	100644	2363	bounded Gen I emulator discovery contract	text	74	AUDITED			0	no
 include/Legality/Legality.h	blob	100644	2255	informational legality report public contract	text	59	AUDITED			0	yes
-include/Libs/stb_image.h	blob	100644	283010		unknown		PENDING			0	
+include/Libs/stb_image.h	blob	100644	283010	vendored stb_image multi-format image decoder	text	7988	AUDITED			0	no
 include/Names/FormNames.h	blob	100644	1631	form display-name API	text	43	AUDITED			0	no
 include/Names/Gen4HeldItemCatalog.h	blob	100644	1365	Gen IV held-item structural presence helper	text	51	AUDITED			0	no
 include/Names/ItemNames.h	blob	100644	1226	item-name and Gen3-modern item mapping API	text	28	AUDITED			0	no
