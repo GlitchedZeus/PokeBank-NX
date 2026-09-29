@@ -1518,6 +1518,9 @@ namespace UI {
             fb.drawFilledRoundedRect(gearCx + 10, gearCy - 2, 8, 4, 2, Colors::TextPrimary);
         }
 
+        // Right: selected-game hero card.
+        // Historical wording is retained because the cross-lane polish contract uses this boundary
+        // to prove that physical source diagnostics stay out of the normal product presentation.
         const bool gameFocused = !hubDockFocused && hubFeatureIndex < 0;
         drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, 18);
 
@@ -1553,7 +1556,6 @@ namespace UI {
 
             std::string sourceLine = title.platformLabel;
             if (!title.sourceLabel.empty()) sourceLine += "  •  " + title.sourceLabel;
-            if (!title.locationLabel.empty()) sourceLine += "  •  " + title.locationLabel;
             if (sourceLine.size() > 38) sourceLine = sourceLine.substr(0, 37) + "…";
             fb.drawText(infoX, HUB_Y + 139, sourceLine,
                         Colors::TextSecondary, TextStyle::Body);
@@ -1704,9 +1706,9 @@ namespace UI {
                                          PRODUCT_DOCK_SIZE + 8, 3, 2, Colors::AccentPrimary);
         }
 
-        std::string hint = "L/R: Change Game | A: Select | ZR: Launch | B: Exit";
-        if (users.size() > 1) hint = "ZL: Profile | " + hint;
-        drawNavHints(fb, 565, fb.getWidth() - 565, PRODUCT_DOCK_Y + 24, hint);
+        auto homeHints = std::string("L/R: Change Game | A: Select | ZR: Launch | B: Exit");
+        if (users.size() > 1) homeHints = "ZL: Profile | " + homeHints;
+        drawNavHints(fb, 565, fb.getWidth() - 565, PRODUCT_DOCK_Y + 24, homeHints);
 
         if (overlay == Overlay::GameFilePicker) {
             constexpr int w = 900, h = 560, rowH = 54, visibleRows = 7;
