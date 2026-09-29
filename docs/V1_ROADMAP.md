@@ -74,13 +74,13 @@ PokeBank NX v1 should be a stable native Switch application that can:
 - [x] Master Vault / Pokédex visual identities
 - [x] real Gen I–IV per-save Pokédex progress
 - [x] Gen IV trainer-name propagation
-- [x] classic Game Sources alternate workflow
-- [x] cursor-memory foundation
-- [x] Backpack / Items quick-open intent foundation
+- [x] Classic Game Sources alternate workflow backed by the current source model
+- [x] cursor-memory state across reconstructed Product Home / shell navigation
+- [x] Backpack / Items quick-open intent through the normal safe source/backup flow
 - [x] compact Items / Settings quick actions
 - [x] two-pane Settings organization + cursor memory
 - [x] grounded trainer portraits for Gen I–IV game/gender identities
-- [ ] finish exact-head CI
+- [ ] finish the remaining exact-head Host Tests/sanitizer gate on the integrated head
 - [ ] finish/verify DraStic and melonDS direct launch handoff
 - [ ] integrated UI hardware acceptance
 

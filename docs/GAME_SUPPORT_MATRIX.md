@@ -94,7 +94,7 @@ Current G4-04 implementation includes:
 - strict save reparse/checksum/rollback;
 - external source immutability.
 
-The integrated Product UI carries real Gen IV trainer-name propagation, real Gen IV Pokédex progress, and game/gender-aware Lucas/Dawn or Ethan/Lyra presentation where the save proves gender.
+The integrated Product UI carries real Gen IV trainer-name propagation, real Gen IV Pokédex progress, game/gender-aware Lucas/Dawn or Ethan/Lyra presentation where the save proves gender, Classic Game Sources, remembered navigation state, and the safe Backpack/Items shortcut.
 
 The full combined G4-04 + Product UI build is **not yet device accepted**.
 
@@ -102,7 +102,7 @@ The full combined G4-04 + Product UI build is **not yet device accepted**.
 
 Discovery and launching are separate from write authorization.
 
-Current provider-aware work includes RetroArch, DraStic, melonDS and manual/remembered bindings. Game launch metadata is stored by PokeBank NX rather than written into emulator save directories.
+Current provider-aware work includes RetroArch, DraStic, melonDS and manual/remembered bindings. Game launch metadata is stored by PokeBank NX rather than written into emulator save directories. The UI now reports launch readiness truthfully; direct DraStic/melonDS content handoff still requires final hardware verification.
 
 If a ROM/content target cannot be proven, the UI must request an explicit **Link Game File** rather than infer it from the save path.
 

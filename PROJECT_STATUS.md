@@ -11,7 +11,7 @@ For exact active head and CI status, read `CURRENT_STATUS.md` first.
 - Platform: Nintendo Switch homebrew
 - Current state: active alpha
 - Active MAIN implementation lane: **PR #92**
-- PR #100 Product UI polish: **MERGED INTO PR #92**
+- PR #100 Product UI polish: **content integrated into PR #92; PR #100 closed**
 - PR #92 remains **OPEN / DRAFT / NOT MERGED**
 
 GitHub is authoritative. Checkpoint SHAs document evidence; they are never instructions to move a branch backward.
@@ -44,9 +44,9 @@ PR #92
 Branch: `feature/gen4-full-editor-20260928`
 
 Last verified head:
-`58a56f8d3b8350283f34fcc4d8dafc495b6515f2`
+`710cf37a33ba7a9f29b09953c5d8aa224268e4fd`
 
-At the time of this update, exact-head Host Tests and Product UI Native were running and the Gen IV Candidate Gate was queued.
+At the time of this update, Product UI Native #61 and Gen IV Shared Editor Candidate Gate #137 are green on the exact head. Host Tests #1701 is still running.
 
 ## Generation status
 
@@ -87,13 +87,11 @@ Master Vault and global Pokédex/collection systems may be previewed in the UI b
 
 Before the next hardware candidate:
 
-- finish exact-head CI cleanup;
-- verify cursor-memory behavior across the intended navigation surfaces;
-- verify Backpack/Items quick entry;
-- verify DraStic/melonDS direct launch handoff;
-- keep explicit Link Game File as the fail-closed fallback;
-- run full host/sanitizer/native regression gates;
-- ship one exact Actions-built NRO for owner hardware testing.
+- finish the remaining exact-head Host Tests/sanitizer gate without regressing the already-green native Product UI and Gen IV candidate gates;
+- hardware-check the integrated Gen IV editor, real trainer names/portraits, real Gen I–IV Pokédex progress, Classic Game Sources, cursor memory, Backpack/Items quick entry, and two-pane Settings;
+- verify DraStic/melonDS direct launch handoff using the existing app-owned binding model;
+- keep explicit Link Game File as the fail-closed fallback whenever content identity cannot be proven;
+- ship one exact Actions-built NRO with a recorded artifact ID and SHA-256 for owner hardware testing.
 
 After hardware acceptance:
 
