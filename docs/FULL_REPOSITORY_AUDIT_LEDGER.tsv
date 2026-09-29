@@ -535,14 +535,14 @@ src/Trainer/Trainer9LZA.cpp	blob	100644	45084	Legends Z-A trainer/save parser/se
 src/Trainer/Trainer9SV.cpp	blob	100644	40540	Scarlet/Violet trainer/save parser/serializer	text	819	AUDITED			3	yes
 src/UI/BackupSelectionScreen.cpp	blob	100644	14155	profile/game backup browser/delete UI	text	313	AUDITED			1	yes
 src/UI/ClassicInventoryOverlay.cpp	blob	100644	40334		unknown		PENDING			0	
-src/UI/ClassicInventoryUIModel.cpp	blob	100644	3480		unknown		PENDING			0	
+src/UI/ClassicInventoryUIModel.cpp	blob	100644	3480	classic inventory UI model implementation	text	87	AUDITED			0	no
 src/UI/ClassicPackedMoveOverlay.inc	blob	100644	27633		unknown		PENDING			0	
 src/UI/ClassicReleaseActionFix.inc	blob	100644	15493		unknown		PENDING			0	
-src/UI/Dialogs/ItemEditDialog.cpp	blob	100644	6297		unknown		PENDING			0	
-src/UI/Dialogs/PickerDialog.cpp	blob	100644	11567		unknown		PENDING			0	
-src/UI/Dialogs/SaveConfirmDialog.cpp	blob	100644	5520		unknown		PENDING			0	
-src/UI/Dialogs/StatEditDialog.cpp	blob	100644	4325		unknown		PENDING			0	
-src/UI/Gen1PokemonDetailsPresentation.cpp	blob	100644	12921		unknown		PENDING			0	
+src/UI/Dialogs/ItemEditDialog.cpp	blob	100644	6297	item edit/remove dialog renderer	text	114	AUDITED			0	no
+src/UI/Dialogs/PickerDialog.cpp	blob	100644	11567	generic picker dialog renderer	text	196	AUDITED			0	no
+src/UI/Dialogs/SaveConfirmDialog.cpp	blob	100644	5520	save/exit confirmation renderer	text	107	AUDITED			0	no
+src/UI/Dialogs/StatEditDialog.cpp	blob	100644	4325	stat edit dialog renderer	text	89	AUDITED			0	no
+src/UI/Gen1PokemonDetailsPresentation.cpp	blob	100644	12921	Gen I read-only details presentation renderer	text	258	AUDITED			0	no
 src/UI/Gen1PokemonEditorFoundationHardwareFix.inc	blob	100644	20578		unknown		PENDING			0	
 src/UI/Gen1PokemonEditorOverlay.cpp	blob	100644	48396		unknown		PENDING			0	
 src/UI/Gen1PokemonEditorOverlayFoundation.inc	blob	100644	31073		unknown		PENDING			0	
@@ -561,24 +561,24 @@ src/UI/Gen2TrainerSessionOverlay.inc	blob	100644	2691		unknown		PENDING			0
 src/UI/Gen2UnifiedPokemonWorkspace.inc	blob	100644	42404		unknown		PENDING			0	
 src/UI/Gen3SharedPokemonSurface.inc	blob	100644	78589		unknown		PENDING			0	
 src/UI/Gen4SharedPokemonSurface.inc	blob	100644	87336	Gen IV shared View/Edit/Create surface	text	1972	AUDITED			1	yes
-src/UI/Modals/Gen1PokemonDetailsModal.cpp	blob	100644	3945		unknown		PENDING			0	
-src/UI/Modals/Gen2PokemonDetailsModal.cpp	blob	100644	14261		unknown		PENDING			0	
-src/UI/Modals/PokemonDetailsDispatcher.cpp	blob	100644	1195		unknown		PENDING			0	
+src/UI/Modals/Gen1PokemonDetailsModal.cpp	blob	100644	3945	Gen I details adapter	text	88	AUDITED			0	no
+src/UI/Modals/Gen2PokemonDetailsModal.cpp	blob	100644	14261	Gen II read-only details renderer	text	290	AUDITED			0	no
+src/UI/Modals/PokemonDetailsDispatcher.cpp	blob	100644	1195	generation details renderer dispatcher	text	35	AUDITED			0	yes
 src/UI/Modals/PokemonDetailsModal.cpp	blob	100644	34505		unknown		PENDING			0	
-src/UI/PKSEFramebuffer.cpp	blob	100644	27588		unknown		PENDING			0	
+src/UI/PKSEFramebuffer.cpp	blob	100644	27588	NanoVG framebuffer/rendering implementation	text	556	AUDITED			0	no
 src/UI/Panels/BoxPokemonPanel.cpp	blob	100644	21845		unknown		PENDING			0	
-src/UI/Panels/HomeMenuPanel.cpp	blob	100644	8866		unknown		PENDING			0	
+src/UI/Panels/HomeMenuPanel.cpp	blob	100644	8866	loaded-workspace home panel renderer	text	178	AUDITED			0	no
 src/UI/Panels/ItemsPanel.cpp	blob	100644	11918		unknown		PENDING			0	
 src/UI/Panels/PartyPokemonPanel.cpp	blob	100644	7898		unknown		PENDING			0	
 src/UI/Panels/StoragePanel.cpp	blob	100644	35794		unknown		PENDING			0	
 src/UI/SaveSelectScreen.cpp	blob	100644	64968		unknown		PENDING			0	
-src/UI/SpriteManager.cpp	blob	100644	8162		unknown		PENDING			0	
-src/UI/SystemIcons.cpp	blob	100644	7450		unknown		PENDING			0	
-src/UI/TouchInput.cpp	blob	100644	744		unknown		PENDING			0	
-src/UI/TrainerViewScreen.cpp	blob	100644	2102		unknown		PENDING			0	
+src/UI/SpriteManager.cpp	blob	100644	8162	Pokemon/type sprite cache implementation	text	219	AUDITED			0	no
+src/UI/SystemIcons.cpp	blob	100644	7450	profile/title/game-card icon cache implementation	text	182	AUDITED			0	no
+src/UI/TouchInput.cpp	blob	100644	744	touch polling/edge implementation	text	24	AUDITED			0	no
+src/UI/TrainerViewScreen.cpp	blob	100644	2102	legacy TrainerView implementation composition TU	text	65	AUDITED			0	yes
 src/UI/TrainerViewScreenBase.inc	blob	100644	295298		unknown		PENDING			0	
 src/UI/TrainerViewScreenCompositeOverlay.cpp	blob	100644	12096		unknown		PENDING			0	
-src/UI/TrainerViewScreenGSCOverlay.cpp	blob	100644	430		unknown		PENDING			0	
+src/UI/TrainerViewScreenGSCOverlay.cpp	blob	100644	430	historical Gen II overlay shim TU	text	7	AUDITED			0	no
 src/UI/TrainerViewScreenGSCOverlay.inc	blob	100644	34758		unknown		PENDING			0	
 src/UI/UI.cpp	blob	100644	15976		unknown		PENDING			0	
 src/Utils/DurableFile.cpp	blob	100644	14493	durable file replacement/recovery	text	383	AUDITED			0	yes
