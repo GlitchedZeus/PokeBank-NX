@@ -34,7 +34,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 12 | AUDIT-022 | P3 | FIXED | BDSP pre-open validation ignores its stored whole-file MD5 |
 | 13 | AUDIT-024 | P2 | FIXED | Gen IX inventory decoder leaves persisted flags indeterminate |
 | 14 | AUDIT-039 | P2 | FIXED | Backup save can serialize while held-Pokémon rollback failed |
-| 15 | AUDIT-015 | P2 | OPEN | Failed backup creation can leave a partial folder surfaced as a backup |
+| 15 | AUDIT-015 | P2 | FIXED | Failed backup creation can leave a partial folder surfaced as a backup |
 | 16 | AUDIT-029 | P2 | OPEN | Gen II finalization can serialize an in-progress packed move with carried Pokémon omitted |
 | 17 | AUDIT-030 | P2 | OPEN | Gen I finalization can serialize an in-progress packed move |
 | 18 | AUDIT-037 | P2 | OPEN | Gen I/II group pickup can strand an active staged move after presentation-refresh failure |
@@ -326,7 +326,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** ENOSPC/short-write/read/close failure while copying; timestamped and named backup failure cleanup/quarantine; incomplete backup excluded from picker; Working-copy recovery semantics; multi-file backup completeness checks.
 - **Dependency / sequencing:** Useful durable temp/promote primitive for AUDIT-012
 - **Proposed remediation order:** 15
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** backup creation now uses `copyDirectoryTransactional()`: every file copy must write, flush/close, and pass byte-for-byte readback inside a unique `.incomplete.*` sibling before promotion. Failed copies are retained only under non-browsable `.failed.*`/`.incomplete.*` evidence names. Reusable `Working` is rotated to `.previous.*` until the completed copy promotes, with rollback on promotion failure; successful old generations are deleted best-effort and remain non-browsable if cleanup fails. Automatic/timestamped and user-named backup creation both use this primitive, while `listBackupDirectories()` excludes all transaction artifact markers. Timestamp collisions receive a distinct workspace name rather than overwriting prior history. `test_backup_namespace_contract.cpp` and `test_backup_workspace_durability.cpp` bind the temp/promote, marker filtering, close/readback, and named/automatic routing contracts. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 16. AUDIT-029 — Gen II finalization can serialize an in-progress packed move with carried Pokémon omitted
 
