@@ -268,7 +268,11 @@ int main() {
     assert(pickerFix.find("hardwareMoveAllowed") != std::string::npos);
     assert(pickerFix.find("MoveCompatibility::canLearnMove") != std::string::npos);
     assert(pickerFix.find("choices.push_back(0)") != std::string::npos);
-    assert(pickerFix.find("constexpr int panelW = 1000, panelH = 568") != std::string::npos);
+    assert(pickerFix.find("constexpr auto layout = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout()") != std::string::npos);
+    assert(pickerFix.find("constexpr int panelW = layout.width, panelH = layout.height") != std::string::npos);
+    assert(pickerFix.find("constexpr int visible = layout.visibleRows") != std::string::npos);
+    assert(pickerFix.find("layout.rowStep") != std::string::npos);
+    assert(pickerFix.find("TextStyle::Body") != std::string::npos);
     assert(pickerFix.find("Empty + compatible moves only • exact Gen II Acc / Pwr / PP") != std::string::npos);
     assert(pickerFix.find("MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC)") != std::string::npos);
     assert(pickerFix.find("Needs correction") == std::string::npos);

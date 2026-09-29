@@ -217,7 +217,11 @@ int main() {
     contains(surface, "HeldItemGrid::move");
     contains(surface, "HeldItemGrid::columns");
     contains(surface, "HeldItemGrid::pageSize");
-    contains(surface, "heldItems ? 520 : movePicker ? 568 : 560");
+    contains(surface, "constexpr auto moveLayout = MoveUI::compactPickerLayout()");
+    contains(surface, "movePicker ? moveLayout.width");
+    contains(surface, "movePicker ? moveLayout.height");
+    contains(surface, "constexpr int visible = moveLayout.visibleRows");
+    contains(surface, "moveLayout.rowStep");
     contains(surface, "Held Item — Generation III");
     contains(surface, "Names::machineDisplayLabel(Enums::GameVersion::FRLG");
     contains(surface, "{\"D-pad/Stick\", \"Navigate\"}, {\"L/R\", \"Page\"}");

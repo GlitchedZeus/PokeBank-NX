@@ -228,7 +228,11 @@ int main() {
     // Gen IV picker/action chrome follows the accepted shared layout instead of the cramped G4-04 prototype.
     contains(surface, "HeldItemGrid::move");
     contains(surface, "const int w = heldItems ? 1040");
-    contains(surface, "heldItems ? 520 : movePicker ? 568 : 560");
+    contains(surface, "constexpr auto moveLayout = MoveUI::compactPickerLayout()");
+    contains(surface, "movePicker ? moveLayout.width");
+    contains(surface, "movePicker ? moveLayout.height");
+    contains(surface, "constexpr int visible = moveLayout.visibleRows");
+    contains(surface, "moveLayout.rowStep");
     contains(surface, "Held Item — Generation IV");
     contains(surface, "Names::machineDisplayLabel(bridge(screen).sourceSave().rawFamily()");
     contains(surface, "constexpr int w = 560;");
@@ -236,6 +240,9 @@ int main() {
     contains(surface, "static_cast<int>(actions.count) * geometry.rowStep + 62");
     contains(surface, "state.target == TargetKind::Party");
     contains(surface, "Master Vault is intentionally not started");
+    contains(surface, "const Color disabledColor(");
+    contains(surface, "Colors::TextSecondary");
+    contains(surface, "Colors::TextDim.b, 105");
     contains(surface, "Live source writes remain hard disabled");
     contains(surface, "drawLegality");
     contains(surface, "drawReleaseConfirm");
