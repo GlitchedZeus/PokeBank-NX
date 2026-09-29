@@ -5,6 +5,7 @@
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
+#include "Legality/Legality.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/Gen2NativePresentation.h"
 #include "Names/MoveNames.h"
@@ -229,7 +230,27 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     compactRow(fb, rightX + 18, contentY + 235, "Move compatibility",
                compatible ? "OK" : "Unusual preserved", 300,
                compatible ? Colors::Success : Colors::Warning);
-    compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300, Colors::TextDim);
+
+    const auto legality =
+        Legality::analyze(p, p.getGameGroup(), std::string_view(screen.sourceGameId));
+    std::string legalityText;
+    Color legalityColor = Colors::TextMuted;
+    if (legality.verdict() == Legality::Verdict::Invalid) {
+        legalityText = "Invalid";
+        legalityColor = Colors::Error;
+    } else if (legality.verdict() == Legality::Verdict::NoProblemsFound) {
+        legalityText = "No problems found";
+        legalityColor = Colors::Success;
+    } else if (legality.problemCount() > 0) {
+        legalityText = std::to_string(legality.problemCount()) + " issue(s) • partial";
+        legalityColor = Colors::Warning;
+    } else {
+        legalityText = screen.sourceGameId == "crystal_gbc"
+            ? "No problems • partial encounter data"
+            : "No problems • incomplete coverage";
+        legalityColor = Colors::TextMuted;
+    }
+    compactRow(fb, rightX + 18, contentY + 261, "Legality", legalityText, 300, legalityColor);
 
     // Native exact-format data + six-axis battle radar.
     constexpr int splitY = contentY + 288, splitH = 216, inset = 12, gap = 10;
