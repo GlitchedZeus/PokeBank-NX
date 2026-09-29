@@ -14,17 +14,37 @@
 #include "Encryption/Encryption9SV.h"
 #include "Enums/GameVersion.h"
 #include "Save/Block.h"
-#include "Trainer/Inventory9LZA.h"
-#include "Trainer/Inventory9SV.h"
-#include "Trainer/Trainer8SWSH.h"
-#include "Trainer/Trainer9LZA.h"
-#include "Trainer/Trainer9SV.h"
 #include "Utils/HelperUtilities.h"
 
 namespace Save {
 namespace SCReadValidation {
 
 enum class PokemonFamily : uint8_t { SWSH, SV, ZA };
+
+// Exact SC block identities consumed by the supported trainer models. Keeping these tiny layout
+// facts here avoids coupling the preflight validator to the full Trainer class headers.
+inline constexpr uint32_t SWSH_MY_STATUS = 0xF25C070E;
+inline constexpr uint32_t SWSH_PARTY = 0x2985FE5D;
+inline constexpr uint32_t SWSH_MONEY = 0x1B882B09;
+inline constexpr uint32_t SWSH_ITEMS = 0x1177C2C4;
+inline constexpr uint32_t SWSH_BOX = 0x0D66012C;
+inline constexpr uint32_t SWSH_BOX_LAYOUT = 0x19722C89;
+inline constexpr uint32_t SWSH_CURRENT_BOX = 0x017C3CBB;
+
+inline constexpr uint32_t GEN9_MY_STATUS = 0xE3E89BD1;
+inline constexpr uint32_t GEN9_PARTY = 0x3AA1A9AD;
+inline constexpr uint32_t GEN9_MONEY = 0x4F35D0DD;
+inline constexpr uint32_t GEN9_ITEMS = 0x21C9BD44;
+inline constexpr uint32_t GEN9_BOX = 0x0D66012C;
+inline constexpr uint32_t GEN9_BOX_LAYOUT = 0x19722C89;
+inline constexpr uint32_t GEN9_CURRENT_BOX = 0x017C3CBB;
+inline constexpr uint32_t ZA_SAVE_REVISION = 0x0926555A;
+
+inline constexpr std::size_t BOX_COUNT = 32;
+inline constexpr std::size_t BOX_SLOTS = 30;
+inline constexpr std::size_t BOX_NAME_BYTES = 0x22;
+inline constexpr std::size_t GEN9_ITEM_BLOCK_BYTES = 0xBB80;
+inline constexpr std::size_t SWSH_ITEM_BLOCK_BYTES = 4600 + 64 * 4;
 
 inline const Block* findRequired(const std::vector<Block>& blocks,
                                  uint32_t key,
@@ -114,29 +134,29 @@ inline std::string_view validateSWSH(const std::vector<Block>& blocks) {
     constexpr std::size_t partySize =
         6 * Encryption::SIZE_PARTY8_SWSH;
     constexpr std::size_t boxSize =
-        Trainer::BOX_COUNT8_SWSH * 30 * Encryption::SIZE_PARTY8_SWSH;
+        BOX_COUNT * BOX_SLOTS * Encryption::SIZE_PARTY8_SWSH;
     constexpr std::size_t boxLayoutSize =
-        Trainer::BOX_COUNT8_SWSH * Trainer::BOX_NAME_LENGTH8_SWSH;
+        BOX_COUNT * BOX_NAME_BYTES;
     // Final SWSH pouch is Key Items: offset 4600, 64 entries, four bytes each.
     constexpr std::size_t itemSize = 4600 + 64 * 4;
 
-    const Block* myStatus = findRequired(
-        blocks, Trainer::MY_STATUS8_SWSH, Enums::SCTypeCode::Object, 0xB0 + 0x1A, error);
-    if (!myStatus) return error;
-    const Block* party = findRequired(
-        blocks, Trainer::PARTY8_SWSH, Enums::SCTypeCode::Object, partySize, error);
-    if (!party) return error;
-    if (!findRequired(blocks, Trainer::MONEY8_SWSH, Enums::SCTypeCode::Object, 8, error))
+    if (!findRequired(
+            blocks, SWSH_MY_STATUS, Enums::SCTypeCode::Object, 0xB0 + 0x1A, error))
         return error;
-    if (!findRequired(blocks, Trainer::ITEM8_SWSH, Enums::SCTypeCode::Object, itemSize, error))
+    const Block* party = findRequired(
+        blocks, SWSH_PARTY, Enums::SCTypeCode::Object, partySize, error);
+    if (!party) return error;
+    if (!findRequired(blocks, SWSH_MONEY, Enums::SCTypeCode::Object, 8, error))
+        return error;
+    if (!findRequired(blocks, SWSH_ITEMS, Enums::SCTypeCode::Object, itemSize, error))
         return error;
     const Block* box = findRequired(
-        blocks, Trainer::BOX8_SWSH, Enums::SCTypeCode::Object, boxSize, error);
+        blocks, SWSH_BOX, Enums::SCTypeCode::Object, boxSize, error);
     if (!box) return error;
-    if (!findRequired(blocks, Trainer::BOX_LAYOUT8_SWSH, Enums::SCTypeCode::Object,
+    if (!findRequired(blocks, SWSH_BOX_LAYOUT, Enums::SCTypeCode::Object,
                       boxLayoutSize, error))
         return error;
-    if (!findRequired(blocks, Trainer::CURRENT_BOX8_SWSH, Enums::SCTypeCode::UInt32, 4, error))
+    if (!findRequired(blocks, SWSH_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error))
         return error;
 
     if (const auto e = validatePokemonRecords(
@@ -147,7 +167,7 @@ inline std::string_view validateSWSH(const std::vector<Block>& blocks) {
     if (const auto e = validatePokemonRecords(
             *box, PokemonFamily::SWSH,
             Encryption::SIZE_PARTY8_SWSH, Encryption::SIZE_PARTY8_SWSH,
-            Trainer::BOX_COUNT8_SWSH * 30, Encryption::SIZE_STORED8_SWSH); !e.empty())
+            BOX_COUNT * 30, Encryption::SIZE_STORED8_SWSH); !e.empty())
         return e;
     return {};
 }
@@ -159,28 +179,28 @@ inline std::string_view validateSV(const std::vector<Block>& blocks) {
     std::string_view error;
     constexpr std::size_t partySize = 6 * Encryption::SIZE_PARTY9_SV;
     constexpr std::size_t boxSize =
-        Trainer::BOX_COUNT9_SV * 30 * Encryption::SIZE_PARTY9_SV;
+        BOX_COUNT * BOX_SLOTS * Encryption::SIZE_PARTY9_SV;
     constexpr std::size_t boxLayoutSize =
-        Trainer::BOX_COUNT9_SV * Trainer::BOX_NAME_LENGTH9_SV;
+        BOX_COUNT * BOX_NAME_BYTES;
 
-    const Block* myStatus = findRequired(
-        blocks, Trainer::MY_STATUS9_SV, Enums::SCTypeCode::Object, 0x10 + 0x1A, error);
-    if (!myStatus) return error;
-    const Block* party = findRequired(
-        blocks, Trainer::PARTY9_SV, Enums::SCTypeCode::Object, partySize, error);
-    if (!party) return error;
-    if (!findRequired(blocks, Trainer::MONEY9_SV, Enums::SCTypeCode::UInt32, 4, error))
+    if (!findRequired(
+            blocks, GEN9_MY_STATUS, Enums::SCTypeCode::Object, 0x10 + 0x1A, error))
         return error;
-    if (!findRequired(blocks, Trainer::ITEM9_SV, Enums::SCTypeCode::Object,
-                      Trainer::ITEM_BLOCK_SIZE9_SV, error))
+    const Block* party = findRequired(
+        blocks, GEN9_PARTY, Enums::SCTypeCode::Object, partySize, error);
+    if (!party) return error;
+    if (!findRequired(blocks, GEN9_MONEY, Enums::SCTypeCode::UInt32, 4, error))
+        return error;
+    if (!findRequired(blocks, GEN9_ITEMS, Enums::SCTypeCode::Object,
+                      GEN9_ITEM_BLOCK_BYTES, error))
         return error;
     const Block* box = findRequired(
-        blocks, Trainer::BOX9_SV, Enums::SCTypeCode::Object, boxSize, error);
+        blocks, GEN9_BOX, Enums::SCTypeCode::Object, boxSize, error);
     if (!box) return error;
-    if (!findRequired(blocks, Trainer::BOX_LAYOUT9_SV, Enums::SCTypeCode::Object,
+    if (!findRequired(blocks, GEN9_BOX_LAYOUT, Enums::SCTypeCode::Object,
                       boxLayoutSize, error))
         return error;
-    if (!findRequired(blocks, Trainer::CURRENT_BOX9_SV, Enums::SCTypeCode::UInt32, 4, error))
+    if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error))
         return error;
 
     if (const auto e = validatePokemonRecords(
@@ -191,7 +211,7 @@ inline std::string_view validateSV(const std::vector<Block>& blocks) {
     if (const auto e = validatePokemonRecords(
             *box, PokemonFamily::SV,
             Encryption::SIZE_PARTY9_SV, Encryption::SIZE_PARTY9_SV,
-            Trainer::BOX_COUNT9_SV * 30, Encryption::SIZE_STORED9_SV); !e.empty())
+            BOX_COUNT * 30, Encryption::SIZE_STORED9_SV); !e.empty())
         return e;
     return {};
 }
@@ -203,30 +223,30 @@ inline std::string_view validateZA(const std::vector<Block>& blocks) {
     std::string_view error;
     constexpr std::size_t partySize = 6 * Encryption::PARTY_SLOT_SIZE9_LZA;
     constexpr std::size_t boxSize =
-        Trainer::BOX_COUNT9_LZA * 30 * Encryption::BOX_SLOT_SIZE9_LZA;
+        BOX_COUNT * BOX_SLOTS * Encryption::BOX_SLOT_SIZE9_LZA;
     constexpr std::size_t boxLayoutSize =
-        Trainer::BOX_COUNT9_LZA * Trainer::BOX_NAME_LENGTH9_LZA;
+        BOX_COUNT * BOX_NAME_BYTES;
 
-    const Block* myStatus = findRequired(
-        blocks, Trainer::MY_STATUS9_LZA, Enums::SCTypeCode::Object, 0x10 + 0x1A, error);
-    if (!myStatus) return error;
-    const Block* party = findRequired(
-        blocks, Trainer::PARTY9_LZA, Enums::SCTypeCode::Object, partySize, error);
-    if (!party) return error;
-    if (!findRequired(blocks, Trainer::MONEY9_LZA, Enums::SCTypeCode::UInt32, 4, error))
+    if (!findRequired(
+            blocks, GEN9_MY_STATUS, Enums::SCTypeCode::Object, 0x10 + 0x1A, error))
         return error;
-    if (!findRequired(blocks, Trainer::ITEM9_LZA, Enums::SCTypeCode::Object,
-                      Trainer::ITEM_BLOCK_SIZE9_LZA, error))
+    const Block* party = findRequired(
+        blocks, GEN9_PARTY, Enums::SCTypeCode::Object, partySize, error);
+    if (!party) return error;
+    if (!findRequired(blocks, GEN9_MONEY, Enums::SCTypeCode::UInt32, 4, error))
+        return error;
+    if (!findRequired(blocks, GEN9_ITEMS, Enums::SCTypeCode::Object,
+                      GEN9_ITEM_BLOCK_BYTES, error))
         return error;
     const Block* box = findRequired(
-        blocks, Trainer::BOX9_LZA, Enums::SCTypeCode::Object, boxSize, error);
+        blocks, GEN9_BOX, Enums::SCTypeCode::Object, boxSize, error);
     if (!box) return error;
-    if (!findRequired(blocks, Trainer::BOX_LAYOUT9_LZA, Enums::SCTypeCode::Object,
+    if (!findRequired(blocks, GEN9_BOX_LAYOUT, Enums::SCTypeCode::Object,
                       boxLayoutSize, error))
         return error;
-    if (!findRequired(blocks, Trainer::CURRENT_BOX9_LZA, Enums::SCTypeCode::UInt32, 4, error))
+    if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error))
         return error;
-    if (!findRequired(blocks, Trainer::SAVE_REVISION9_LZA, Enums::SCTypeCode::UInt64, 8, error))
+    if (!findRequired(blocks, ZA_SAVE_REVISION, Enums::SCTypeCode::UInt64, 8, error))
         return error;
 
     if (const auto e = validatePokemonRecords(
@@ -237,7 +257,7 @@ inline std::string_view validateZA(const std::vector<Block>& blocks) {
     if (const auto e = validatePokemonRecords(
             *box, PokemonFamily::ZA,
             Encryption::SIZE_PARTY9_LZA, Encryption::BOX_SLOT_SIZE9_LZA,
-            Trainer::BOX_COUNT9_LZA * 30, Encryption::SIZE_STORED9_LZA); !e.empty())
+            BOX_COUNT * 30, Encryption::SIZE_STORED9_LZA); !e.empty())
         return e;
     return {};
 }
