@@ -393,27 +393,27 @@ include/UI/TrainerViewScreen.h	blob	100644	1398		unknown		PENDING			0
 include/UI/TrainerViewScreenBase.h	blob	100644	29588	trainer/storage UI state and source mutation gate	text	449	AUDITED			1	yes
 include/UI/UI.h	blob	100644	2003		unknown		PENDING			0	
 include/UI/UIScreen.h	blob	100644	405		unknown		PENDING			0	
-include/Utils/CRC16.h	blob	100644	3316		unknown		PENDING			0	
+include/Utils/CRC16.h	blob	100644	3316	Gen IV/LGPE checksum helpers	text	75	AUDITED			0	no
 include/Utils/DurableFile.h	blob	100644	3140	C++ header	text	87	AUDITED			0	yes
-include/Utils/EventLog.h	blob	100644	4263		unknown		PENDING			0	
-include/Utils/FileUtilities.h	blob	100644	2143		unknown		PENDING			0	
+include/Utils/EventLog.h	blob	100644	4263	structured Pokémon/item event-log formatter API	text	75	AUDITED			0	no
+include/Utils/FileUtilities.h	blob	100644	2143	filesystem/backup utility API	text	37	AUDITED			0	yes
 include/Utils/Gen2Text.h	blob	100644	7534		unknown		PENDING			0	
 include/Utils/Gen3Text.h	blob	100644	13472		unknown		PENDING			0	
 include/Utils/Gen4Text.h	blob	100644	30571		unknown		PENDING			0	
 include/Utils/Gen4TextCodec.h	blob	100644	3244		unknown		PENDING			0	
-include/Utils/HelperUtilities.h	blob	100644	1610		unknown		PENDING			0	
+include/Utils/HelperUtilities.h	blob	100644	1610	byte-order/random/title helper API	text	43	AUDITED			0	no
 include/Utils/Keyboard.h	blob	100644	2731		unknown		PENDING			0	
-include/Utils/Logger.h	blob	100644	2342		unknown		PENDING			0	
-include/Utils/MD5.h	blob	100644	1003		unknown		PENDING			0	
+include/Utils/Logger.h	blob	100644	2342	debug/event logging API	text	51	AUDITED			0	no
+include/Utils/MD5.h	blob	100644	1003	BDSP MD5 API	text	32	AUDITED			0	no
 include/Utils/MoveTransaction.h	blob	100644	5850	true-Move transaction API/state machine	text	206	AUDITED			0	no
 include/Utils/MoveTransactionProduction.h	blob	100644	3904	production true-Move store/resolver API	text	123	AUDITED			0	no
 include/Utils/NXTypes.h	blob	100644	1368		unknown		PENDING			0	
 include/Utils/PhysicalMoveAudit.h	blob	100644	529		unknown		PENDING			0	
-include/Utils/PokeBankPaths.h	blob	100644	7508		unknown		PENDING			0	
-include/Utils/SCXorShift32.h	blob	100644	1690		unknown		PENDING			0	
-include/Utils/SHA256.h	blob	100644	555		unknown		PENDING			0	
+include/Utils/PokeBankPaths.h	blob	100644	7508	owned-path construction/sanitization	text	201	AUDITED			0	yes
+include/Utils/SCXorShift32.h	blob	100644	1690	SC container xor stream PRNG	text	64	AUDITED			0	no
+include/Utils/SHA256.h	blob	100644	555	SC save SHA-256 API	text	28	AUDITED			1	yes
 include/Utils/Settings.h	blob	100644	611		unknown		PENDING			0	
-include/Utils/StringHelpers.h	blob	100644	1848		unknown		PENDING			0	
+include/Utils/StringHelpers.h	blob	100644	1848	modern UTF/string helper API	text	44	AUDITED			0	yes
 nanovg/fontstash.h	blob	100644	48977		unknown		PENDING			0	
 nanovg/nanovg.c	blob	100644	77637		unknown		PENDING			0	
 nanovg/nanovg.h	blob	100644	28603		unknown		PENDING			0	
@@ -582,19 +582,19 @@ src/UI/TrainerViewScreenGSCOverlay.cpp	blob	100644	430		unknown		PENDING			0
 src/UI/TrainerViewScreenGSCOverlay.inc	blob	100644	34758		unknown		PENDING			0	
 src/UI/UI.cpp	blob	100644	15976		unknown		PENDING			0	
 src/Utils/DurableFile.cpp	blob	100644	14493	durable file replacement/recovery	text	383	AUDITED			0	yes
-src/Utils/EventLog.cpp	blob	100644	9765		unknown		PENDING			0	
+src/Utils/EventLog.cpp	blob	100644	9765	structured Pokémon/item event-log formatting	text	204	AUDITED			0	no
 src/Utils/FileUtilities.cpp	blob	100644	16963	filesystem copy/backup/restore utilities	text	418	AUDITED			1	yes
-src/Utils/HelperUtilities.cpp	blob	100644	4249		unknown		PENDING			0	
+src/Utils/HelperUtilities.cpp	blob	100644	4249	byte-order/random/title helpers	text	109	AUDITED			0	no
 src/Utils/Keyboard.cpp	blob	100644	3770		unknown		PENDING			0	
-src/Utils/Logger.cpp	blob	100644	8442		unknown		PENDING			0	
-src/Utils/MD5.cpp	blob	100644	5471		unknown		PENDING			0	
+src/Utils/Logger.cpp	blob	100644	8442	debug/event logging implementation	text	210	AUDITED			0	no
+src/Utils/MD5.cpp	blob	100644	5471	BDSP MD5 implementation	text	145	AUDITED			0	no
 src/Utils/MoveTransaction.cpp	blob	100644	36711	true-Move journal/recovery engine	text	828	AUDITED			0	yes
 src/Utils/MoveTransactionProduction.cpp	blob	100644	11383	production true-Move store resolver/recovery	text	323	AUDITED			0	no
 src/Utils/PhysicalMoveAudit.cpp	blob	100644	22286		unknown		PENDING			0	
-src/Utils/ReadAllBytes.cpp	blob	100644	922		unknown		PENDING			0	
-src/Utils/SHA256.cpp	blob	100644	4770		unknown		PENDING			0	
+src/Utils/ReadAllBytes.cpp	blob	100644	922	whole-file read helper	text	22	AUDITED			0	no
+src/Utils/SHA256.cpp	blob	100644	4770	SC save SHA-256 implementation	text	146	AUDITED			1	yes
 src/Utils/Settings.cpp	blob	100644	3133	application settings persistence	text	78	AUDITED			1	yes
-src/Utils/StringHelpers.cpp	blob	100644	8121		unknown		PENDING			0	
+src/Utils/StringHelpers.cpp	blob	100644	8121	modern UTF/string helper implementation	text	195	AUDITED			0	yes
 src/main.cpp	blob	100644	4227		unknown		PENDING			0	
 tests/fixtures/gen4/README.md	blob	100644	791		unknown		PENDING			0	
 tests/fixtures/gen4/blank-party.hex	blob	100644	473		unknown		PENDING			0	
