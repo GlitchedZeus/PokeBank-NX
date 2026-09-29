@@ -25,14 +25,14 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 482 / 731
-- Fully read text files: 448 / 698
+- Audited tracked paths: 514 / 731
+- Fully read text files: 480 / 698
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
 
 - PR #92 catch-up is reconciled through live head `a86c8d039209bc17ac613524c6631f03309037a0`. The four changed paths that already carried AUDITED status (`include/Integration/Gen4/Gen4StagedPokemonEditor.h`, `src/Integration/Gen4/Gen4StagedPokemonEditor.cpp`, `src/UI/Gen4SharedPokemonSurface.inc`, `tests/test_gen4_staged_pokemon_editor.cpp`) were fully re-read at that head; the other two changed paths were already PENDING and remain PENDING.
-- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 482 paths are now accounted for and 448 text files have been fully read.
+- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 514 paths are now accounted for and 480 text files have been fully read.
 - The entire Names tranche is now closed: no `include/Names` or `src/Names` file remains PENDING. Generated species tables contain 1,026 entries in each of nine languages; the modern item-name table contains ids 0..2684; Gen III direct item names cover ids 0..376.
 - MovePresence's unknown-group/id-0 behavior contradicts its comment, but all audited real game-group callers are routed through known groups; kept as a hardening follow-up, not a numbered defect.
 - Recovery/package/source-pin tooling is now substantially audited. Supported CI invokes `verify_embedded_romfs.py` with normal `python3`; its assert-based checks are therefore live today, while replacing asserts with explicit failures remains a robustness follow-up.
@@ -42,10 +42,20 @@ Status: IN PROGRESS
 
 ## Sibling PR #97 overlay coverage
 
-- Delta from PR #90: 6 commits / 18 changed paths.
-- Fully read so far: 9 / 18 changed paths, including the complete 582-line `src/UI/AppShellScreen.cpp`, new app-shell/organization model headers, native UI workflow/build fragment, and their focused tests.
-- This overlay count is intentionally separate from the 731-path PR #92 MAIN ledger.
-- Live sibling head `3831989f7b320797068e752321ae0c36c2216f49` is four commits ahead of the previous handoff endpoint `9f0b5c252e24e0743303b5a131c8ddb2694399a6`; the current 10-path forward delta remains outside the MAIN denominator. `AppShellModel.h`, `AppShellScreen.cpp`, `test_app_shell_model.cpp`, and `test_game_hub_contract.py` were inspected in this checkpoint to revalidate AUDIT-032; complete sibling-delta line-by-line closure remains pending.
+- Current live sibling head: `3831989f7b320797068e752321ae0c36c2216f49`.
+- Exact delta from PR #90 `8b3bcc16c804247bfe8d1314b686974ce73051d8`: 21 commits / 26 changed paths.
+- The forward delta from the previously audited sibling head `5f19fd14628c182db135038864036b6eb1b86c49` to the live head is 4 commits / 10 changed paths, and all 10 current-head files in that forward delta were fully read in this checkpoint.
+- The sibling overlay remains intentionally outside the 731-path PR #92 MAIN denominator. Full line-by-line coverage of all 26 sibling-overlay changed paths is still incomplete and is not claimed here.
+- Historical AUDIT-032 is FIXED at the live sibling head: the removed `AppShellSection::Collections` member is no longer referenced by `AppShellScreen.cpp`.
+
+
+
+### Shared UI header tranche
+
+- Fully read 32 previously PENDING `include/UI` paths at live PR #92 head `a86c8d039209bc17ac613524c6631f03309037a0`, covering action-sheet models, backup-selection interfaces, classic inventory/picker helpers, dialog contracts, exact-save capability mapping, controller/analog repeat, shared exit policy, Gen I/II/III/IV editor session state machines, and the shared editor/foundation navigation contracts.
+- No new confirmed defect was produced by this tranche. A suspected Gen III Create SID/origin loss was explicitly disproved: the backend reconstructs SID from the validated trainer, derives origin from the exact source game, and includes origin in its strict semantic reparse verification.
+- `ClassicSpeciesLevelPolicy.h` remains a follow-up-only compatibility shim because it intentionally returns the fallback level and directs new code to `SpeciesChangeLevelPolicy`; no live production caller defect was established in this pass.
+- A few older foundation booleans are stale-looking relative to newer product capabilities, but without a reachable consumer contradiction they remain caller-trace/hardening questions rather than findings.
 
 
 ### Save-safety checkpoint — write-path trace
