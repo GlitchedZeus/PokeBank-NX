@@ -13,6 +13,7 @@
 #include "Save/Block.h"
 #include "Save/PLAReadValidation.h"
 #include "Save/SCReadValidation.h"
+#include "Save/LGPEReadValidation.h"
 #include "Save/BDSPReadValidation.h"
 #include "Save/GetSaveFileContents.h"
 #include "Utils/FileUtilities.h"
@@ -102,12 +103,12 @@ namespace Save {
             // Runtime reads the active Beluga region from an authentic 1 MiB savedata.bin, while
             // several focused fixtures contain only that active region. Both are intentional
             // geometries; arbitrary intermediate/oversized files fail closed.
-            const auto activeRegion = Trainer::lgpeActiveRegion(bytes);
-            if (activeRegion.empty()) {
-                error = "Let's Go save size does not match the supported active/full-file layout";
+            const auto integrityError = LGPEReadValidation::validate(bytes);
+            if (!integrityError.empty()) {
+                error = std::string(integrityError);
                 return false;
             }
-
+            const auto activeRegion = LGPEReadValidation::activeRegion(bytes);
             std::vector<uint8_t> active(activeRegion.begin(), activeRegion.end());
             const auto blocks = createBlocksFromSaveData7LGPE(active);
             if (blocks.size() != 7) {
@@ -387,6 +388,26 @@ namespace Save {
         error.clear();
         const GameVersion group = getGameGroup(getGameVersion(titleId));
 
+        if (group == GameVersion::GG) {
+            char savePath[512];
+            snprintf(savePath, sizeof(savePath), "%s/savedata.bin", backupDir);
+            size_t fileSize = 0;
+            uint8_t* file = readAllBytes(savePath, &fileSize);
+            if (!file) {
+                error = "Let's Go save file could not be read.";
+                return false;
+            }
+            const auto integrityError = LGPEReadValidation::validate(
+                std::span<const uint8_t>(file, fileSize));
+            delete[] file;
+            if (!integrityError.empty()) {
+                error = "Let's Go save not opened: " + std::string(integrityError) +
+                        ". Nothing was changed.";
+                return false;
+            }
+            return true;
+        }
+
         if (group == GameVersion::FRLG) {
             const std::string fileName = findGen3SaveFile(backupDir);
             if (fileName.empty()) {
@@ -613,7 +634,15 @@ namespace Save {
             return Trainer7LGPE(std::vector<Block>());
         }
 
-        // Extract the active save area (first SAVE_SIZE7_LGPE bytes)
+        const auto integrityError = LGPEReadValidation::validate(
+            std::span<const uint8_t>(file, fileSize));
+        if (!integrityError.empty()) {
+            logErrorToFile("Let's Go save failed block CRC preflight", std::string(integrityError).c_str());
+            delete[] file;
+            return Trainer7LGPE(std::vector<Block>());
+        }
+
+        // Extract the active save area only after existing block CRCs have been proven valid.
         std::vector<uint8_t> saveData(file, file + SAVE_SIZE7_LGPE);
 
         std::vector<Block> blocks = createBlocksFromSaveData7LGPE(saveData);
