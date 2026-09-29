@@ -906,7 +906,7 @@ These are kept separate from corruption/safety findings unless a current impleme
 - **Trainer portrait:** Gen I-IV may use canonical game/gender portraits as an initial truthful fallback. Later customizable generations must not claim to show the player's actual appearance from gender alone; exact-avatar presentation requires per-game parsing of the save's appearance/customization fields and a deterministic renderer/asset mapping. Until that exists, label/use a generic game/gender portrait rather than a reconstructed-avatar claim.
 - **DS/3DS launch discovery:** current launch code already has a DraStic adapter with known NRO paths (`sdmc:/switch/DrasticDS.nro`, `sdmc:/switch/drastic/DrasticDS.nro`) and bounded ROM matching under `sdmc:/switch/drastic/games`. Preferred future 3DS launcher is Dekopon, using the same provider-bound, bounded-search, recomputed-executable safety model. Current launch model has no Dekopon provider or 3DS content family yet; do not broaden this audit into a new generation implementation.
 
-### AUDIT-041 — Device-observed Gen IV save rows can lose trainer-name presentation despite synthetic parser coverage
+### AUDIT-043 — Device-observed Gen IV save rows can lose trainer-name presentation despite synthetic parser coverage
 - Severity: P3
 - Confidence: DEVICE-OBSERVED / CODE-PATH CONFIRMED, root cause not yet isolated
 - Area: Gen IV source discovery / Save Instances trainer identity
