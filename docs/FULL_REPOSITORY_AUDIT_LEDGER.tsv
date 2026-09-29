@@ -419,11 +419,11 @@ Makefile.host.shared-editor	blob	100644	2994	repository/build metadata	text		AUD
 Makefile.host.source-instances	blob	100644	1095	repository/build metadata	text		AUDITED			0	
 Makefile.host.standalone	blob	100644	1457	repository/build metadata	text		AUDITED			0	
 nanovg/fontstash.h	blob	100644	48977		unknown		PENDING			0	
-nanovg/nanovg_gl_impl.c	blob	100644	315		unknown		PENDING			0	
-nanovg/nanovg_gl_utils.h	blob	100644	4807		unknown		PENDING			0	
+nanovg/nanovg_gl_impl.c	blob	100644	315	NanoVG GL3 backend implementation translation unit	text	7	AUDITED			0	no
+nanovg/nanovg_gl_utils.h	blob	100644	4807	vendored NanoVG framebuffer utility	text	154	AUDITED			0	no
 nanovg/nanovg_gl.h	blob	100644	46912		unknown		PENDING			0	
 nanovg/nanovg.c	blob	100644	77637		unknown		PENDING			0	
-nanovg/nanovg.h	blob	100644	28603		unknown		PENDING			0	
+nanovg/nanovg.h	blob	100644	28603	vendored NanoVG public API	text	697	AUDITED			0	no
 nanovg/stb_truetype.h	blob	100644	195646		unknown		PENDING			0	
 PHILOSOPHY.md	blob	100644	1093	repository/build metadata	text		AUDITED			0	
 PKSE.sln	blob	100644	1032	repository/build metadata	text		AUDITED			1	yes
@@ -744,4 +744,4 @@ tools/pkhex_source.py	blob	100644	3041	pinned PKHeX source/resource fetch/cache 
 tools/recover_workspace.py	blob	100644	11689	GitHub snapshot/pinned-asset workspace recovery orchestrator	text	317	AUDITED			1	yes
 tools/regenerate.py	blob	100755	7338	multi-generator reproducibility orchestration	text	194	AUDITED			0	yes
 tools/verify_embedded_romfs.py	blob	100644	3402	embedded NRO RomFS byte-for-byte verifier	text	65	AUDITED			0	yes
-vendor/PKSM-Core	commit	160000			unknown		PENDING			0
+vendor/PKSM-Core	commit	160000		PKSM-Core pinned git submodule	gitlink		INSPECTED_INDIRECTLY			0	no
