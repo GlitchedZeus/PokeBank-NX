@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 335 / 725
-- Fully read text files: 301 / 692
+- Audited tracked paths: 343 / 725
+- Fully read text files: 309 / 692
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -158,6 +158,14 @@ Status: IN PROGRESS
 - International staged editing is deliberately fail-closed. Pokémon edits are semantically reparsed, the current-box retail cache is synchronized, finalization repairs primary/secondary checksums and mirror regions, RTC footer bytes are required to remain identical, and the export publisher fsyncs/readbacks/hashes both original and edited images before publishing a temporary directory by rename.
 - The read-only inventory decoder uses a local 26-slot Key Items bound while pret's retail constant is 25. Because the following Balls list also has to validate, a 26th key item cannot yield an available inventory, so this is recorded as cleanup/hardening rather than a standalone corruption finding.
 - The packed relocation engine does expose a finalization gap: beginning a carry removes/compacts the source bytes immediately, while `finalizedBytes()` does not reject an active carry. That is recorded as AUDIT-029.
+
+### Gen I save/edit checkpoint
+
+- Fully read the Gen I strict read-only save parser, inventory decoder/editor, boxed Pokémon editor and packed relocation engine at live PR #92 head `084ab83547d8d2f49b9ad414e37d351d00fe069d`.
+- The parser requires exact 0x8000 bytes, unique International/Japanese checksum+list validation, Red/Blue-vs-Yellow evidence agreement where available, packed-BCD money, party/list marker agreement, and box-bank/per-box checksums whenever stored banks are initialized.
+- Inventory editing remains sidecar-only until finalization, validates exact classic catalog/range rules, round-trips the rewritten inventory list, repairs the main checksum and strictly reparses before returning a save image.
+- Boxed Pokémon edits/Create/Clone/Remove repair and reparse after every commit and preserve untouched/reverted box bytes where possible.
+- The packed relocation engine repeats the Gen II transaction-boundary problem: pickup immediately stages removals, while finalization has no active-carry guard. This is recorded as AUDIT-030.
 
 ## Findings
 
@@ -563,3 +571,17 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: make `finalizedBytes()` fail closed whenever `packedMove_.active` is true, with a clear “place or cancel carried Pokémon first” error. Also consider rejecting unrelated staged mutations while a carry is active, matching the Gen III transaction boundary.
 - Risk of fix: low.
 - Owner: MAIN / Gen II staged-edit lane.
+
+### AUDIT-030 — Gen I finalization can serialize an in-progress packed move
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: Generation I staged relocation / export safety
+- Files: `include/Integration/Gen1/Gen1StagedPokemonEditor.h`, `src/Integration/Gen1/Gen1PackedMove.cpp`, `src/Integration/Gen1/Gen1StagedPokemonEditor.cpp`
+- Exact symbols: `beginPackedGroupMove()`, `placePackedGroupMove()`, `cancelPackedMove()`, `finalizedBytes()`.
+- Problem: `beginPackedGroupMove()` saves the pre-carry bytes, then implements pickup by calling `stageRemove()` for each selected slot. Those removals are immediately committed into the staged view and rebuild the pending-change list. The carried Pokémon exist only in `packedMove_.beforeBytes` plus source-slot metadata until placement/cancel. `finalizedBytes()` never checks `packedMove_.active`.
+- Why it matters: while a carry is active, `hasPendingChanges()` is already true because pickup itself staged removals. Finalization can therefore checksum and strictly reparse a structurally valid save in which the carried Pokémon are absent. A caller that exports those bytes gets an internally valid but semantically incomplete edited save.
+- Comparison: Gen III explicitly blocks finalization while carrying a sparse move. Gen II has the same missing guard recorded in AUDIT-029.
+- Missing tests: begin single/group carry and require `finalizedBytes()` failure before placement/cancel; ensure cancel restores byte-identical pre-carry bytes and pending changes; ensure successful placement allows finalization and preserves exact carried records.
+- Recommended fix: fail closed at the top of `finalizedBytes()` when `packedMove_.active`, and consider blocking unrelated staged mutations while a carry is active. Apply the same transaction invariant to Gen I and II.
+- Risk of fix: low.
+- Owner: MAIN / Gen I staged-edit lane.
