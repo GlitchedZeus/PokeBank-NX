@@ -10,6 +10,7 @@
 #include "Enums/GameVersion.h"
 #include "Enums/LanguageID.h"
 #include "Names/ItemNames.h"
+#include "Names/MachineDisplay.h"
 #include "Names/LocationNames.h"
 #include "Names/MoveInfo.h"
 #include "Names/MoveNames.h"
@@ -440,7 +441,10 @@ void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelC
 
 std::string pickerValueLabel(const State& state, uint16_t value) {
     switch (state.pickerTarget) {
-        case PickerTarget::HeldItem: return Names::getItemNameG3(value);
+        case PickerTarget::HeldItem:
+            return value == 0 ? "None" :
+                Names::machineDisplayLabel(Enums::GameVersion::FRLG, value,
+                                           Names::getItemNameG3(value));
         case PickerTarget::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
         case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
         case PickerTarget::Nature: return Trainer::getNatureName(static_cast<uint8_t>(value));
@@ -1073,8 +1077,12 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
     std::string error;
     const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                 static_cast<std::size_t>(state.slot), error).has_value();
-    const auto actions = Shared::actionsForSlot(occupied, {/*clone*/true, /*remove*/true, /*legality*/true}, !staged->pendingChanges().empty());
+    const auto actions = Shared::actionsForSlot(
+        occupied, {/*clone*/true, /*remove*/true, /*legality*/true},
+        !staged->pendingChanges().empty());
     if (actions.count == 0) return true;
+    state.actionRow = std::clamp(
+        state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
     if (down & HidNpadButton_Up)
         state.actionRow = (state.actionRow - 1 + static_cast<int>(actions.count)) %
                           static_cast<int>(actions.count);
@@ -1201,7 +1209,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
     const bool movePicker = state.pickerTarget == PickerTarget::Move;
     const int w = heldItems ? 1040 : movePicker ? 1000 : 680;
-    const int h = movePicker ? 568 : 560;
+    const int h = heldItems ? 520 : movePicker ? 568 : 560;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - h) / 2;
 
@@ -1232,7 +1240,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         return;
     }
 
-    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget), Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 28, y + 20,
+                heldItems ? "Held Item — Generation III" : pickerTitle(state.pickerTarget),
+                Colors::Text, TextStyle::Heading);
     const int count = static_cast<int>(state.pickerValues.size());
 
     if (heldItems) {
@@ -1579,10 +1589,11 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 105));
     const int w = occupied ? 650 : 560;
-    const int h = occupied ? 500 : 350;
+    const auto geometry = Shared::actionMenuGeometry();
+    const int h = geometry.rowStart +
+                  static_cast<int>(actions.count) * geometry.rowStep + 62;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    const auto geometry = Shared::actionMenuGeometry();
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
     fb.drawText(x + 24, y + 18, occupied ? "Pokemon Actions" : "Empty Slot",

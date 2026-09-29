@@ -161,6 +161,23 @@ namespace Names {
          15, 19, 57, 70,148,250,127,
     };
 
+    // Diamond/Pearl/Platinum/HeartGold/SoulSilver
+    // PKHeX PersonalInfo4.MachineMovesTechnical / MachineMovesHiddenDPPt / MachineMovesHiddenHGSS.
+    // TM01..TM92 == items 328..419; HM01..HM08 == items 420..427.
+    static const uint16_t GEN4_TM_MOVES[] = {
+        264,337,352,347,46,92,258,339,331,237,241,269,58,59,63,113,182,240,202,219,
+        218,76,231,85,87,89,216,91,94,247,280,104,115,351,53,188,201,126,317,332,
+        259,263,290,156,213,168,211,285,289,315,355,411,412,206,362,374,451,203,406,409,
+        261,318,373,153,421,371,278,416,397,148,444,419,86,360,14,446,244,445,399,157,
+        404,214,363,398,138,447,207,365,369,164,430,433,
+    };
+    static const uint16_t GEN4_HM_DPPt_MOVES[] = {
+        15,19,57,70,432,249,127,431,
+    };
+    static const uint16_t GEN4_HM_HGSS_MOVES[] = {
+        15,19,57,70,250,249,127,431,
+    };
+
     // FireRed/LeafGreen  (PKHeX PersonalInfo3.MachineMovesTechnical / MachineMovesHidden)
     // Gen 3 predates the 328.. item block: TM01..TM50 == items 289..338 and
     // HM01..HM08 == items 339..346. The same 50/8 ordering indexes the 58 TM/HM
@@ -201,6 +218,30 @@ namespace Names {
                 constexpr size_t NH = sizeof(FRLG_HM_MOVES) / sizeof(FRLG_HM_MOVES[0]);
                 if (itemId >= 289 && itemId <= 338) return idxMove(FRLG_TM_MOVES, NT, itemId - 289);  // TM01-50
                 if (itemId >= 339 && itemId <= 346) return idxMove(FRLG_HM_MOVES, NH, itemId - 339);  // HM01-08
+                return 0;
+            }
+
+            // ---- Diamond/Pearl/Platinum ----
+            case GameVersion::D:
+            case GameVersion::P:
+            case GameVersion::DP:
+            case GameVersion::Pt:
+            case GameVersion::PT: {
+                constexpr size_t NT = sizeof(GEN4_TM_MOVES) / sizeof(GEN4_TM_MOVES[0]);
+                constexpr size_t NH = sizeof(GEN4_HM_DPPt_MOVES) / sizeof(GEN4_HM_DPPt_MOVES[0]);
+                if (itemId >= 328 && itemId <= 419) return idxMove(GEN4_TM_MOVES, NT, itemId - 328);
+                if (itemId >= 420 && itemId <= 427) return idxMove(GEN4_HM_DPPt_MOVES, NH, itemId - 420);
+                return 0;
+            }
+
+            // ---- HeartGold/SoulSilver ----
+            case GameVersion::HG:
+            case GameVersion::SS:
+            case GameVersion::HGSS: {
+                constexpr size_t NT = sizeof(GEN4_TM_MOVES) / sizeof(GEN4_TM_MOVES[0]);
+                constexpr size_t NH = sizeof(GEN4_HM_HGSS_MOVES) / sizeof(GEN4_HM_HGSS_MOVES[0]);
+                if (itemId >= 328 && itemId <= 419) return idxMove(GEN4_TM_MOVES, NT, itemId - 328);
+                if (itemId >= 420 && itemId <= 427) return idxMove(GEN4_HM_HGSS_MOVES, NH, itemId - 420);
                 return 0;
             }
 

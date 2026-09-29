@@ -217,6 +217,9 @@ int main() {
     contains(surface, "HeldItemGrid::move");
     contains(surface, "HeldItemGrid::columns");
     contains(surface, "HeldItemGrid::pageSize");
+    contains(surface, "heldItems ? 520 : movePicker ? 568 : 560");
+    contains(surface, "Held Item — Generation III");
+    contains(surface, "Names::machineDisplayLabel(Enums::GameVersion::FRLG");
     contains(surface, "{\"D-pad/Stick\", \"Navigate\"}, {\"L/R\", \"Page\"}");
     assert(surface.find("Add Pokemon") != std::string::npos); // Box action still exists.
     const auto moveEditorBegin = surface.find("void drawMoveEditor(");
@@ -232,7 +235,8 @@ int main() {
     assert(actionsBody.find("screen.drawGSCOverlay(fb)") != std::string::npos);
     assert(actionsBody.find("Colors::Background") == std::string::npos);
     assert(actionsBody.find("const int w = occupied ? 650 : 560") != std::string::npos);
-    assert(actionsBody.find("const int h = occupied ? 500 : 350") != std::string::npos);
+    assert(actionsBody.find("static_cast<int>(actions.count) * geometry.rowStep + 62") != std::string::npos);
+    assert(actionsBody.find("const int h = occupied ? 500 : 350") == std::string::npos);
     assert(actionsBody.find("Shared::actionMenuGeometry()") != std::string::npos);
     assert(actionsBody.find("Colors::Divider, 1") != std::string::npos);
     assert(actionsBody.find("Colors::FocusBorder, 2") == std::string::npos);

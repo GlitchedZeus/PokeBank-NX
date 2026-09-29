@@ -4,6 +4,7 @@
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
 #include "Names/ItemNames.h"
+#include "Names/MachineDisplay.h"
 #include "Names/Gen4HeldItemCatalog.h"
 #include "Names/LocationNames.h"
 #include "Names/MoveInfo.h"
@@ -1366,7 +1367,9 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
     if (state.pickerTarget == PickerTarget::Species)
         return gen4DexLabel(value);
     if (state.pickerTarget == PickerTarget::HeldItem)
-        return value == 0 ? "(none)" : Names::getItemName(value);
+        return value == 0 ? "(none)" :
+            Names::machineDisplayLabel(bridge(screen).sourceSave().rawFamily(), value,
+                                       Names::getItemName(value));
     if (state.pickerTarget == PickerTarget::Language)
         return Enums::getLanguageName(static_cast<uint8_t>(value));
     if (state.pickerTarget == PickerTarget::Ball)
@@ -1424,7 +1427,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const bool movePicker = state.pickerTarget == PickerTarget::Move;
     const bool speciesPicker = state.pickerTarget == PickerTarget::Species;
     const int w = heldItems ? 1040 : movePicker ? 1000 : speciesPicker ? 760 : 680;
-    const int h = movePicker ? 568 : 560;
+    const int h = heldItems ? 520 : movePicker ? 568 : 560;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - h) / 2;
 
@@ -1481,7 +1484,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         return;
     }
 
-    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget),
+    fb.drawText(x + 28, y + 20,
+                heldItems ? "Held Item — Generation IV" : pickerTitle(state.pickerTarget),
                 Colors::Text, TextStyle::Heading);
     const int count = static_cast<int>(state.pickerValues.size());
 

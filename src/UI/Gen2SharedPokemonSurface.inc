@@ -283,7 +283,12 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     legacy.pokemonRow = std::clamp(legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
 
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    constexpr int x = 250, y = 72, w = 780, h = 560;
+    constexpr int w = 780;
+    const auto geometry = SharedEditor::actionMenuGeometry();
+    const int h = geometry.rowStart +
+                  static_cast<int>(actions.count) * geometry.rowStep + 62;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - 48 - h) / 2;
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawText(x + 28, y + 20, SharedEditor::titleFor(SharedEditor::Surface::Actions), Colors::Text, TextStyle::Heading);
     fb.drawText(x + 28, y + 54,
@@ -292,7 +297,6 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 "   •   Source save immutable",
                 Colors::TextDim, TextStyle::Caption);
 
-    const auto geometry = SharedEditor::actionMenuGeometry();
     int yy = y + geometry.rowStart;
     for (std::size_t i = 0; i < actions.count; ++i) {
         const bool selected = legacy.pokemonRow == static_cast<int>(i);
