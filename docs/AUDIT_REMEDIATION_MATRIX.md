@@ -29,7 +29,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 7 | AUDIT-026 | P3 | FIXED | Gen III and modern entity constructors do not fully enforce/normalize native record length |
 | 8 | AUDIT-021 | P2 | FIXED | SWSH/SV/Z-A authenticate the SC container but do not validate required game layout |
 | 9 | AUDIT-017 | P2 | FIXED | FRLG mutable workspace selects rotating slot before checksum validation |
-| 10 | AUDIT-023 | P2 | OPEN | LGPE durable validator rejects the authentic 1 MiB save image |
+| 10 | AUDIT-023 | P2 | FIXED | LGPE durable validator rejects the authentic 1 MiB save image |
 | 11 | AUDIT-018 | P2 | OPEN | LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity |
 | 12 | AUDIT-022 | P3 | OPEN | BDSP pre-open validation ignores its stored whole-file MD5 |
 | 13 | AUDIT-024 | P2 | OPEN | Gen IX inventory decoder leaves persisted flags indeterminate |
@@ -236,7 +236,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** full `0x100000` LGPE fixture must validate after block patching while preserving bytes `0xB8800..0xFFFFF` exactly; active-region checksum corruption must fail; define explicitly whether cropped `0xB8800` images are supported or rejected rather than conflating active-region size with physical-file size.
 - **Dependency / sequencing:** Do before/with AUDIT-018 to establish correct sizes
 - **Proposed remediation order:** 10
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** the LGPE workspace validator now accepts only the intentional `0xB8800` active-region fixture geometry or the authentic `0x100000` full `savedata.bin` geometry. Full files expose exactly the first active region for the existing block/CRC round-trip check, so trailing bytes are preserved and excluded from Beluga CRC validation. `tests/test_lgpe_workspace_geometry.cpp` proves active/full acceptance, arbitrary intermediate/oversized rejection, and exact active-region slicing; it is wired into normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 11. AUDIT-018 — LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity
 
