@@ -600,7 +600,7 @@ tests/fixtures/gen4/README.md	blob	100644	791	Gen IV canonical fixture provenanc
 tests/fixtures/gen4/blank-party.hex	blob	100644	473	canonical encrypted Gen IV party blank oracle	text	1	AUDITED			0	yes
 tests/fixtures/gen4/blank-stored.hex	blob	100644	273	canonical encrypted Gen IV stored blank oracle	text	1	AUDITED			0	yes
 tests/fixtures/gsc_pokemon_fixture.h	blob	100644	5749		unknown		PENDING			0	
-tests/fixtures/main_workspace_move_focus.h	blob	100644	2354		unknown		PENDING			0	
+tests/fixtures/main_workspace_move_focus.h	blob	100644	2354	shared move-row focus regression fixture	text	42	AUDITED			0	yes
 tests/test_action_sheet_model.cpp	blob	100644	3297	Pokemon action-sheet mutation-free/unsupported-action contract	text	89	AUDITED			0	yes
 tests/test_backup_namespace_contract.cpp	blob	100644	7520	backup namespace/path ownership contract	text	140	AUDITED			1	yes
 tests/test_backup_workspace_durability.cpp	blob	100644	2801	workspace image durable-write source contract	text	62	AUDITED			0	yes
@@ -624,8 +624,8 @@ tests/test_gen1_battle_stats.cpp	blob	100644	1603	Gen I five-stat battle calcula
 tests/test_gen1_cleanup3_staged_semantics.cpp	blob	100644	9777		unknown		PENDING			0	
 tests/test_gen1_move_compatibility.cpp	blob	100644	3500	R/B/Y exact move compatibility fixtures	text	66	AUDITED			0	yes
 tests/test_gen1_pokemon_editor_ui_contract.cpp	blob	100644	17099		unknown		PENDING			0	
-tests/test_gen1_pokemon_editor_ux3_contract.cpp	blob	100644	3584		unknown		PENDING			0	
-tests/test_gen1_radar_render.cpp	blob	100644	2353		unknown		PENDING			0	
+tests/test_gen1_pokemon_editor_ux3_contract.cpp	blob	100644	3584	Gen I shared editor UX contract	text	73	AUDITED			0	yes
+tests/test_gen1_radar_render.cpp	blob	100644	2353	Gen I production radar bounded-layout regression	text	46	AUDITED			0	yes
 tests/test_gen1_shiny.cpp	blob	100644	2136	Gen I shiny DV rules/toggle contract	text	51	AUDITED			0	yes
 tests/test_gen1_summary_presentation.cpp	blob	100644	4985		unknown		PENDING			0	
 tests/test_gen3_exact_format_editor_provider.cpp	blob	100644	7349		unknown		PENDING			0	
@@ -647,9 +647,9 @@ tests/test_gsc_discovery.cpp	blob	100644	7279		unknown		PENDING			0
 tests/test_gsc_editor_surface_contract.cpp	blob	100644	23647	Gen II shared-editor hardware/regression contract	text	307	AUDITED			0	yes
 tests/test_gsc_export_transaction.cpp	blob	100644	6751		unknown		PENDING			0	
 tests/test_gsc_gen2_adapter.cpp	blob	100644	7559		unknown		PENDING			0	
-tests/test_gsc_gen2_personal.cpp	blob	100644	2276		unknown		PENDING			0	
-tests/test_gsc_inventory.cpp	blob	100644	3654		unknown		PENDING			0	
-tests/test_gsc_move_compatibility.cpp	blob	100644	3662		unknown		PENDING			0	
+tests/test_gsc_gen2_personal.cpp	blob	100644	2276	Gen II personal/gender oracle contract	text	51	AUDITED			0	yes
+tests/test_gsc_inventory.cpp	blob	100644	3650	Gen II inventory decode/display fail-closed contract	text	90	AUDITED			0	yes
+tests/test_gsc_move_compatibility.cpp	blob	100644	3662	Gold/Silver/Crystal exact move compatibility contract	text	73	AUDITED			0	yes
 tests/test_gsc_native_presentation.cpp	blob	100644	7335		unknown		PENDING			0	
 tests/test_gsc_pokemon_editor.cpp	blob	100644	16135		unknown		PENDING			0	
 tests/test_gsc_pokemon_session.cpp	blob	100644	22201		unknown		PENDING			0	
@@ -664,15 +664,15 @@ tests/test_gsc_workspace_render.cpp	blob	100644	10542		unknown		PENDING			0
 tests/test_inventory_ui_contract.cpp	blob	100644	6977		unknown		PENDING			0	
 tests/test_legacy_frlg_browse.cpp	blob	100644	16034		unknown		PENDING			0	
 tests/test_legacy_source_bindings.cpp	blob	100644	10555	legacy source-binding rollback/recovery/isolation test	text	216	AUDITED			0	no
-tests/test_machine_display.cpp	blob	100644	2649		unknown		PENDING			0	
+tests/test_machine_display.cpp	blob	100644	3553	generation-aware TM/HM/TR presentation contract	text	66	AUDITED			0	yes
 tests/test_move_transaction_fault_matrix.cpp	blob	100644	10475	durable Move interruption/restart matrix	text	278	AUDITED			0	no
 tests/test_move_transaction_journal.cpp	blob	100644	25640	Move journal state/recovery contract	text	569	AUDITED			0	no
 tests/test_move_transaction_production.cpp	blob	100644	10842	production true-Move integration contract	text	244	AUDITED			0	no
-tests/test_navigation_repeat.cpp	blob	100644	3439		unknown		PENDING			0	
+tests/test_navigation_repeat.cpp	blob	100644	3439	D-pad/analog held-repeat navigation contract	text	70	AUDITED			0	yes
 tests/test_passive_pokemon_view_contract.cpp	blob	100644	5186		unknown		PENDING			0	
 tests/test_pksm_gen3_adapter.cpp	blob	100644	20829		unknown		PENDING			0	
 tests/test_pla_read_validation.cpp	blob	100644	4047	PLA SC-container/layout/checksum read validation test	text	82	AUDITED			0	no
-tests/test_pokebank_paths.cpp	blob	100644	2516		unknown		PENDING			0	
+tests/test_pokebank_paths.cpp	blob	100644	2516	PokeBank path ownership/safe-component contract	text	58	AUDITED			0	yes
 tests/test_pokemon_editor_foundation_contract.cpp	blob	100644	9301		unknown		PENDING			0	
 tests/test_pre_gen3_reuse_guard.cpp	blob	100644	4218		unknown		PENDING			0	
 tests/test_rby_discovery.cpp	blob	100644	11942		unknown		PENDING			0	
@@ -680,7 +680,7 @@ tests/test_rby_gen1_adapter.cpp	blob	100644	13736		unknown		PENDING			0
 tests/test_rby_inventory.cpp	blob	100644	4740		unknown		PENDING			0	
 tests/test_rby_pokemon_editor.cpp	blob	100644	13599		unknown		PENDING			0	
 tests/test_rby_readonly_bridge.cpp	blob	100644	8106		unknown		PENDING			0	
-tests/test_rby_source_browser.cpp	blob	100644	2894		unknown		PENDING			0	
+tests/test_rby_source_browser.cpp	blob	100644	2894	RBY source card/profile binding contract	text	44	AUDITED			0	yes
 tests/test_rby_staged_inventory.cpp	blob	100644	6678		unknown		PENDING			0	
 tests/test_retroarch_frlg_discovery.cpp	blob	100644	17720		unknown		PENDING			0	
 tests/test_rse_gen3_adapter.cpp	blob	100644	25892		unknown		PENDING			0	
