@@ -57,8 +57,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 35 | AUDIT-011 | P3 | FIXED | Search preview vertical wrap changes columns and the test blesses it |
 | 36 | AUDIT-038 | P3 | FIXED | Legacy Save Instances scroll logic assumes one more visible row than the renderer draws |
 | 37 | AUDIT-041 | P3 | FIXED | Standalone runtime contract falsely says RetroArch is never invoked |
-| 38 | AUDIT-010 | P3 | OPEN | canonical engineering authority chain points to obsolete work |
-| 39 | AUDIT-042 | P3 | OPEN | Active session/roadmap docs route work through obsolete project state |
+| 38 | AUDIT-010 | P3 | FIXED | canonical engineering authority chain points to obsolete work |
+| 39 | AUDIT-042 | P3 | FIXED | Active session/roadmap docs route work through obsolete project state |
 | 40 | AUDIT-004 | P4 | OPEN | stale theme choices in physical bug template |
 | 41 | AUDIT-005 | P4 | OPEN | historical branch-specific workflows remain tracked |
 | 42 | AUDIT-007 | P4 | FIXED | top-level README materially understates current Gen IV implementation |
@@ -738,7 +738,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Refresh after functional remediation order is established
 - **Proposed remediation order:** 38
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `docs/ENGINEERING_AUTHORITY.md` is now the small live routing authority: GitHub must be re-fetched first; PR #92 is the live MAIN lane; PR #101 is the draft remediation lane; and the completed audit branch is frozen evidence. The former CODEX/NEXT prompt authority chain is explicitly historical or navigation-only, and recovery has a branch-agnostic authority override. `tests/test_engineering_authority_contract.py` pins the routing. Exact-head CI is still required before VERIFIED.
 
 ### 39. AUDIT-042 — Active session/roadmap docs route work through obsolete project state
 
@@ -754,7 +756,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Docs tranche late
 - **Proposed remediation order:** 39
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** The stale runbook and older UI/reference documents now identify themselves as historical/reference material and point to `docs/ENGINEERING_AUTHORITY.md`; the already-refreshed `V1_ROADMAP.md` and `UI_OWNERSHIP_STATUS.md` remain current dated snapshots but explicitly not branch authority. `tests/test_engineering_authority_contract.py` ensures the affected docs retain that classification. Exact-head CI is still required before VERIFIED.
 
 ### 40. AUDIT-004 — stale theme choices in physical bug template
 
