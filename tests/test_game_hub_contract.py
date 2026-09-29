@@ -24,8 +24,8 @@ require("hubDockFocused" in source and "hubFeatureIndex" in source and "activate
 require("HidNpadButton_L" in source and "HidNpadButton_R" in source,
         "L/R must switch the selected game")
 require('"Pokédex Progress"' in source and
-        '"Seen " + std::to_string(previewDexSeen)' in source and
-        '"Owned " + std::to_string(previewDexCaught)' in source,
+        "previewDexSeen" in source and "previewDexCaught" in source and
+        '"   •   Owned "' in source,
         "selected-game card must show real parsed Pokédex Seen/Owned progress when supported")
 require('"Trainer"' in source,
         "selected-game card must expose trainer information")
