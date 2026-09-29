@@ -65,7 +65,7 @@ namespace UI {
 
         // Storage (bank) view input + helpers (Phase 3.3b). Called from update().
         void handleStorageInput(u64 kDown);
-        void returnHeldToOrigin();
+        bool returnHeldToOrigin();
         std::unique_ptr<Pokemon::Pokemon>& storageSlot(int pane, int box, int slot);  // pane 0=save,1=bank
         bool storageSlotLocked(int pane, int box, int slot);   // LGPE party members (save pane) are locked
         struct PreparedPlacement {
