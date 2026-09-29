@@ -60,8 +60,8 @@ CppProperties.json	blob	100644	1122	repository/build metadata	text		AUDITED			1	
 CURRENT_STATUS.md	blob	100644	4217	repository/build metadata	text		AUDITED			0	
 docs/ARCHITECTURE.md	blob	100644	11613	documentation	text		AUDITED			0	
 docs/AUDIT_STATUS_2026-09-23.md	blob	100644	145052	documentation	text		AUDITED			0	
-docs/audit/G4-01-READONLY-FOUNDATION.md	blob	100644	11009		unknown		PENDING			0	
-docs/audit/ISSUE85-SAVE-INSTANCES.md	blob	100644	6372		unknown		PENDING			0	
+docs/audit/G4-01-READONLY-FOUNDATION.md	blob	100644	11009	Gen IV strict read-only foundation audit evidence	text	155	AUDITED			0	yes
+docs/audit/ISSUE85-SAVE-INSTANCES.md	blob	100644	6372	provider-neutral Save Instances audit/hardware gate evidence	text	91	AUDITED			0	yes
 docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md	blob	100644	14081	documentation	text		AUDITED			0	
 docs/BUILD_BLOCKER_92bde34d_2026-09-09.md	blob	100644	2890	documentation	text		AUDITED			0	
 docs/BUILD_RECORD.md	blob	100644	5482	documentation	text		AUDITED			0	
@@ -94,10 +94,10 @@ docs/GEN1_SUMMARY_RADAR_RETEST.md	blob	100644	3713	documentation	text		AUDITED		
 docs/GEN1_UX_CLEANUP3_HARDWARE_FOLLOWUP_2026-09-13.md	blob	100644	2670	documentation	text		AUDITED			0	
 docs/GEN1_UX_CLEANUP3_MODEL_CHECKPOINT.md	blob	100644	1197	documentation	text		AUDITED			0	
 docs/GEN2_AUDIT_RESEARCH.md	blob	100644	7964	documentation	text		AUDITED			0	
-docs/history/CURRENT_STATUS_PRE_LEAFGREEN_2026-09-09.md	blob	100644	9727		unknown		PENDING			0	
-docs/history/NEXT_CODEX_PROMPT_PRE_LEAFGREEN_2026-09-09.md	blob	100644	8091		unknown		PENDING			0	
-docs/history/PROJECT_RESOURCE_INDEX_PRE_CHUNKS_2026-09-09.md	blob	100644	14195		unknown		PENDING			0	
-docs/history/README.md	blob	100644	1355		unknown		PENDING			0	
+docs/history/CURRENT_STATUS_PRE_LEAFGREEN_2026-09-09.md	blob	100644	9727	archived pre-LeafGreen engineering status/recovery evidence	text	253	AUDITED			0	yes
+docs/history/NEXT_CODEX_PROMPT_PRE_LEAFGREEN_2026-09-09.md	blob	100644	8091	archived pre-LeafGreen exact artifact packaging prompt	text	238	AUDITED			0	yes
+docs/history/PROJECT_RESOURCE_INDEX_PRE_CHUNKS_2026-09-09.md	blob	100644	14195	archived engineering/resource navigation index	text	540	AUDITED			0	yes
+docs/history/README.md	blob	100644	1355	engineering-history archive authority notice	text	21	AUDITED			0	yes
 docs/HOME_BRIDGE_HISTORICAL_TRANSFER_RESEARCH_2026-09-03.md	blob	100644	10473	documentation	text		AUDITED			0	
 docs/ISSUE71_UNIVERSAL_EDITOR_REUSE_FREEZE.md	blob	100644	19265	documentation	text		AUDITED			0	
 docs/MASTER_VAULT_SPEC.md	blob	100644	12759	documentation	text		AUDITED			0	
