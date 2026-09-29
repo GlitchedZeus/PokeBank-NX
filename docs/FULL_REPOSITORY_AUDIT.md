@@ -8,15 +8,15 @@ Status: IN PROGRESS
 - PR #92 advanced from the last reconciled MAIN checkpoint `491476b392ef78f7bc70b4dad7dd669d26f9361f` to live head `fb7b1d8cd3f3847aec8646104716e390060cfcc8`.
 - The forward delta is 56 commits / 27 changed paths: 15 newly tracked text paths plus 12 modifications to paths that had already been audited.
 - Recursive live-tree inventory at `fb7b1d8c…`: 746 tracked paths, 713 text/unknown paths, 32 binary/non-text paths, and 1 submodule. Binary/non-text count is unchanged.
-- The 15 new paths were inserted into the ledger as PENDING. The 12 changed previously-AUDITED paths were demoted to PENDING until their current blobs are fully re-read. Historical findings/follow-up flags were preserved.
-- The report therefore does **not** yet promote the Primary MAIN audited head to `fb7b1d8c…`; `491476b3…` remains the last fully reconciled MAIN checkpoint while this delta is inspected forward.
+- All 27 changed paths have now been completely read at `fb7b1d8c…`: the 15 new paths are incorporated into the ledger and the 12 changed previously-AUDITED paths were re-audited at their current blobs. Historical findings/follow-up flags were preserved.
+- The Primary MAIN audited head is therefore promoted to `fb7b1d8cd3f3847aec8646104716e390060cfcc8`. Product-UI integration was already present in live GitHub state; the audit did not merge or modify a development branch.
 
 
 - Repository: GlitchedZeus/PokeBank-NX
 - Audit branch: `audit/full-repository-line-by-line-20260928`
-- Primary MAIN tree audited: PR #92 head `491476b392ef78f7bc70b4dad7dd669d26f9361f`
+- Primary MAIN tree audited: PR #92 head `fb7b1d8cd3f3847aec8646104716e390060cfcc8`
 - PR #92 branch: `feature/gen4-full-editor-20260928`
-- Sibling UI overlay coverage baseline remains `5f19fd14628c182db135038864036b6eb1b86c49`; live PR #97 is now `068fb5e101780037e79d0f17f457574cdcc800b7`, with its forward delta tracked separately from the MAIN denominator
+- Product-UI sibling PR #97 is at `5e4cf038787557e631197e55dda83ce12bef9419` and is now an ancestor of audited MAIN PR #92; its integrated files are counted in the MAIN denominator. Earlier sibling-only audit evidence remains historical context.
 - Integration parent: PR #90 head `8b3bcc16c804247bfe8d1314b686974ce73051d8`
 - Hardening parent: PR #79 head `00ee7a6ed7ac1b5a93c43246d70c252e135acec0`
 - Default branch main: `aca2bf41c83d81084886a46d53195f6cead81ccc`
@@ -24,8 +24,8 @@ Status: IN PROGRESS
 ## Inventory
 
 - Git tree truncated: false
-- Tracked non-directory paths: 731
-- Text/unknown candidates: 698
+- Tracked non-directory paths: 746
+- Text/unknown candidates: 713
 - Binary candidates: 32
 - Symlinks: 0
 - Submodule entries: 1
@@ -33,9 +33,16 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 653 / 746
-- Fully read text files: 619 / 713
+- Audited tracked paths: 680 / 746
+- Fully read text files: 646 / 713
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
+
+## Current checkpoint — integrated Product Home / launch delta
+
+- MAIN PR #92 `491476b3… → fb7b1d8c…` (56 commits / 27 changed paths) is fully reconciled. All 15 newly tracked product-UI/launch paths were read in full, and all 12 modified previously-audited paths were re-read before status was restored.
+- The integrated Product Home keeps source previews read-only, source opening revalidates snapshots, Gen IV candidate selection re-inspects the physical file, stored launch metadata cannot choose arbitrary executable/core paths, and launch-binding writes use temp + fsync + read-back parse verification + backup/rename.
+- Existing AUDIT-036 and AUDIT-038 remain current after integration. AUDIT-040 was added for RetroArch playlist auto-match accepting a same-stem wrong-family content file because that resolver path does not apply the content-family extension guard used by manual/stored linking.
+- No development branch was modified by this reconciliation and no PR was merged by the audit lane.
 
 ## Current checkpoint — live MAIN catch-up
 
@@ -63,7 +70,7 @@ Status: IN PROGRESS
 - `src/UI/Modals/PokemonDetailsModal.cpp` was also fully read at `85762adc…` (571 lines / 34,505 bytes) and is now AUDITED. It is the generic modern summary/edit presentation path; Gen I is explicitly routed to its native modal first, while legality source identity is left empty for Bank targets rather than borrowing the currently-open save. No new confirmed defect was found in this file.
 
 - PR #92 catch-up is reconciled through live head `a86c8d039209bc17ac613524c6631f03309037a0`. The four changed paths that already carried AUDITED status (`include/Integration/Gen4/Gen4StagedPokemonEditor.h`, `src/Integration/Gen4/Gen4StagedPokemonEditor.cpp`, `src/UI/Gen4SharedPokemonSurface.inc`, `tests/test_gen4_staged_pokemon_editor.cpp`) were fully re-read at that head; the other two changed paths were already PENDING and remain PENDING.
-- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 653 paths are currently reconciled at the live-tree inventory level and 619 text files are fully read at their current audited blobs.
+- Live tracked inventory is 746 non-directory paths / 713 text-or-unknown candidates; 680 paths are currently reconciled and 646 text files are fully read at their current audited blobs.
 - The entire Names tranche is now closed: no `include/Names` or `src/Names` file remains PENDING. Generated species tables contain 1,026 entries in each of nine languages; the modern item-name table contains ids 0..2684; Gen III direct item names cover ids 0..376.
 - MovePresence's unknown-group/id-0 behavior contradicts its comment, but all audited real game-group callers are routed through known groups; kept as a hardening follow-up, not a numbered defect.
 - Recovery/package/source-pin tooling is now substantially audited. Supported CI invokes `verify_embedded_romfs.py` with normal `python3`; its assert-based checks are therefore live today, while replacing asserts with explicit failures remains a robustness follow-up.
