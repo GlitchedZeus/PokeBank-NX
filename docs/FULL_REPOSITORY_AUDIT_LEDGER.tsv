@@ -131,9 +131,9 @@ docs/PROMPT_SESSION3_PKSM_CORE.md	blob	100644	6535	documentation	text		AUDITED		
 docs/RECOVERY_CONTRACT.md	blob	100644	8216	documentation	text		AUDITED			0	
 docs/RELEASE_CHECKLIST.md	blob	100644	10095	documentation	text		AUDITED			0	
 docs/RESEARCH_CURRENT_INDEX.md	blob	100644	10950	documentation	text		AUDITED			0	
-docs/RESEARCH_INTAKE_2026-09-09.md	blob	100644	3567		unknown		PENDING			0	
+docs/RESEARCH_INTAKE_2026-09-09.md	blob	100644	3567	research intake/router and permanent architecture conclusions	text	109	AUDITED			0	yes
 docs/RESEARCH_REFERENCE_INDEX.md	blob	100644	12271	documentation	text		AUDITED			0	
-docs/RESEARCH_REFERENCE_MATRIX.md	blob	100644	20148		unknown		PENDING			0	
+docs/RESEARCH_REFERENCE_MATRIX.md	blob	100644	20148	external reference/license/feature research matrix	text	594	AUDITED			0	yes
 docs/RESEARCH_STATUS_2026-09-13.md	blob	100644	8376	documentation	text		AUDITED			0	
 docs/research/2026-09-09/BANK_HOME_PRESERVATION_CAPTURE_PLAN.md	blob	100644	8114		unknown		PENDING			0	
 docs/research/2026-09-09/BANK_HOME_PUBLIC_CORPUS_AUDIT.md	blob	100644	10406		unknown		PENDING			0	
@@ -147,16 +147,16 @@ docs/research/2026-09-09/TRANSFER_FIXTURES_PROVENANCE.md	blob	100644	12005		unkn
 docs/research/2026-09-09/VAULT_DATA_EVENTS_PERFORMANCE.md	blob	100644	11906		unknown		PENDING			0	
 docs/research/2026-09-09/VAULT_PERFORMANCE_EVENT_RIGHTS_AUDIT.md	blob	100644	5181		unknown		PENDING			0	
 docs/research/2026-09-11/GSC_FORMAT_ORACLE.md	blob	100644	5618		unknown		PENDING			0	
-docs/RETROARCH_SOURCE_NAMING.md	blob	100644	9545		unknown		PENDING			0	
+docs/RETROARCH_SOURCE_NAMING.md	blob	100644	9545	RetroArch source grouping/identity/refresh product semantics	text	220	AUDITED			0	yes
 docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md	blob	100644	11211	documentation	text		AUDITED			0	
 docs/SAVE_FORMAT_EDGE_CASE_RESEARCH_2026-09-13.md	blob	100644	16092	documentation	text		AUDITED			0	
-docs/SAVE_SAFETY.md	blob	100644	9108		unknown		PENDING			0	
-docs/SAVE_STORAGE_DISCOVERY_RESEARCH_2026-09-13.md	blob	100644	18028		unknown		PENDING			0	
+docs/SAVE_SAFETY.md	blob	100644	9108	save mutation/live-write safety contract	text	369	AUDITED			0	yes
+docs/SAVE_STORAGE_DISCOVERY_RESEARCH_2026-09-13.md	blob	100644	18028	save revision/emulator discovery/fixture/Vault research	text	572	AUDITED			0	yes
 docs/SESSION_LOG_2026-09-01.md	blob	100644	5059		unknown		PENDING			0	
 docs/SESSION_LOG_2026-09-02.md	blob	100644	9199		unknown		PENDING			0	
-docs/SESSION_RUNBOOK.md	blob	100644	4624		unknown		PENDING			0	
-docs/SESSION2_6_SAFETY_IMPLEMENTATION.md	blob	100644	4629		unknown		PENDING			0	
-docs/STANDALONE_RUNTIME.md	blob	100644	2498		unknown		PENDING			0	
+docs/SESSION_RUNBOOK.md	blob	100644	4624	coding-session recovery/testing/safety runbook	text	173	AUDITED			0	yes
+docs/SESSION2_6_SAFETY_IMPLEMENTATION.md	blob	100644	4629	historical source-state and PLA safety implementation record	text	65	AUDITED			0	yes
+docs/STANDALONE_RUNTIME.md	blob	100644	2498	standalone runtime ownership/dependency contract	text	39	AUDITED			0	yes
 docs/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md	blob	100644	8767		unknown		PENDING			0	
 docs/TRAINER_PLAZA_VISION.md	blob	100644	15642		unknown		PENDING			0	
 docs/TRANSFER_MODEL.md	blob	100644	12593		unknown		PENDING			0	
