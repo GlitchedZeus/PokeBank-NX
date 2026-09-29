@@ -475,7 +475,7 @@ src/Integration/Gen3/PKSMGen3Adapter.cpp	blob	100644	13703	host PKSM-Core-backed
 src/Integration/Gen3/PKSMGen3NativeAdapter.cpp	blob	100644	11997	Switch-native Gen III read-only adapter	text	239	AUDITED			0	no
 src/Integration/Gen4/Gen4AssignedSource.cpp	blob	100644	3011	Gen IV assigned-source open/identity gate	text	62	AUDITED			0	no
 src/Integration/Gen4/Gen4ReadOnlySave.cpp	blob	100644	13359	Gen IV partition/CRC parser	text	304	AUDITED			0	no
-src/Integration/Gen4/Gen4SourceDiscovery.cpp	blob	100644	22450	bounded Gen IV emulator/manual source discovery	text	556	AUDITED			0	no
+src/Integration/Gen4/Gen4SourceDiscovery.cpp	blob	100644	22450	bounded Gen IV emulator/manual source discovery	text	556	AUDITED			1	yes
 src/Integration/Gen4/Gen4StagedPokemonEditor.cpp	blob	100644	21183	Gen IV staged save mutation/rollback	text	590	AUDITED			0	no
 src/Inventory/ClassicInventoryCatalog.cpp	blob	100644	15510	Gen I-III pocket/item/machine inventory catalog	text	348	AUDITED			0	yes
 src/Legacy/FRLGReadOnlyTrainer.cpp	blob	100644	9585	Gen III strict read-only presentation/staged bridge	text	207	AUDITED			0	no
