@@ -212,7 +212,7 @@ def load_species_names():
     """Parse the generated English SPECIES_NAMES_EN[] table from SpeciesNames.cpp."""
     with open(SPECIES_NAMES_SRC, encoding="utf-8") as fh:
         text = fh.read()
-    m = re.search(r"SPECIES_NAMES_EN\\[\\]\s*=\s*\{(.*?)\};", text, re.S)
+    m = re.search(r"SPECIES_NAMES_EN\[\]\s*=\s*\{(.*?)\};", text, re.S)
     if not m:
         raise SystemExit("could not locate SPECIES_NAMES_EN[] in " + SPECIES_NAMES_SRC)
     names = re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))
