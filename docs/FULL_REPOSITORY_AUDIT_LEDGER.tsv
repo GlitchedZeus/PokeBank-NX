@@ -652,7 +652,7 @@ tests/test_gen3_pid_search_fail_closed.cpp	blob	100644	1915	Gen III PID trait-pr
 tests/test_gen3_shared_pokemon_session.cpp	blob	100644	13289	Gen III shared editor draft/session identity/progression contract	text	297	AUDITED			0	yes
 tests/test_gen3_shell_render.cpp	blob	100644	4559	shared Gen III shell renderer bounds contract	text	83	AUDITED			0	yes
 tests/test_gen3_staged_inventory.cpp	blob	100644	11182	Gen III exact-game staged inventory/sector-preservation contract	text	243	AUDITED			0	yes
-tests/test_gen3_staged_pokemon_editor.cpp	blob	100644	25703		unknown		PENDING			0	
+tests/test_gen3_staged_pokemon_editor.cpp	blob	100644	25697	Gen III staged sparse editor/create/clone/release/PID-correlation contract	text	543	AUDITED			0	no
 tests/test_gen4_exact_format_editor_provider.cpp	blob	100644	6726	Gen IV exact-format provider contract test	text	138	AUDITED			0	no
 tests/test_gen4_hardware_surface_contract.cpp	blob	100644	19119	Gen IV shared-surface hardware regression contract	text	325	AUDITED			0	yes
 tests/test_gen4_mutable_pokemon.cpp	blob	100644	32148	Gen IV mutable PK4 semantic/legality regression suite	text	782	AUDITED			0	yes
@@ -668,7 +668,7 @@ tests/test_gsc_inventory.cpp	blob	100644	3650	Gen II inventory decode/display fa
 tests/test_gsc_move_compatibility.cpp	blob	100644	3662	Gold/Silver/Crystal exact move compatibility contract	text	73	AUDITED			0	yes
 tests/test_gsc_native_presentation.cpp	blob	100644	7334	Gen II Crystal caught-data/party/Pokerus presentation contract	text	135	AUDITED			0	yes
 tests/test_gsc_pokemon_editor.cpp	blob	100644	16135	Gen II boxed Pokémon staged semantic/round-trip editor contract	text	250	AUDITED			0	no
-tests/test_gsc_pokemon_session.cpp	blob	100644	22201		unknown		PENDING			0	
+tests/test_gsc_pokemon_session.cpp	blob	100644	22200	Gen II shared UI session/picker/progression/passive mutation-gate contract	text	354	AUDITED			0	no
 tests/test_gsc_readonly_bridge.cpp	blob	100644	11847	Gen II read-only trainer/party/box + staged presentation bridge contract	text	210	AUDITED			0	yes
 tests/test_gsc_runtime_catalog.cpp	blob	100644	4861	Gen II shared runtime source catalog refresh contract	text	54	AUDITED			0	yes
 tests/test_gsc_shared_editor_parity.cpp	blob	100644	12654	Gen II shared editor Create/Edit/Trainer parity and source-safety contract	text	250	AUDITED			0	yes
@@ -688,7 +688,7 @@ tests/test_move_transaction_production.cpp	blob	100644	10842	production true-Mov
 tests/test_navigation_repeat.cpp	blob	100644	3439	D-pad/analog held-repeat navigation contract	text	70	AUDITED			0	yes
 tests/test_organization_preview_model.cpp	blob	100644	1621	organization preview navigation model contract	text	39	AUDITED			0	no
 tests/test_passive_pokemon_view_contract.cpp	blob	100644	5183	Gen I-III passive view non-mutation surface contract	text	85	AUDITED			0	yes
-tests/test_pksm_gen3_adapter.cpp	blob	100644	20829		unknown		PENDING			0	
+tests/test_pksm_gen3_adapter.cpp	blob	100644	20828	PKSM-Core-backed Gen III strict adapter/checksum/entity oracle contract	text	421	AUDITED			0	no
 tests/test_pla_read_validation.cpp	blob	100644	4047	PLA SC-container/layout/checksum read validation test	text	82	AUDITED			0	no
 tests/test_pokebank_paths.cpp	blob	100644	2516	PokeBank path ownership/safe-component contract	text	58	AUDITED			0	yes
 tests/test_pokemon_editor_foundation_contract.cpp	blob	100644	9301	shared Pokémon editor foundation/focus/capability contract	text	150	AUDITED			0	yes
@@ -702,7 +702,7 @@ tests/test_rby_source_browser.cpp	blob	100644	2894	RBY source card/profile bindi
 tests/test_rby_staged_inventory.cpp	blob	100644	6678	RBY staged inventory mutation/finalization contract	text	136	AUDITED			0	yes
 tests/test_reachable_ui_consistency.py	blob	100644	1313	reachable product/classic UI consistency static contract	text	36	AUDITED			0	no
 tests/test_retroarch_frlg_discovery.cpp	blob	100644	17720	RetroArch/mGBA/Tico bounded FRLG discovery/dedupe/refresh contract	text	351	AUDITED			0	no
-tests/test_rse_gen3_adapter.cpp	blob	100644	25892		unknown		PENDING			0	
+tests/test_rse_gen3_adapter.cpp	blob	100644	25890	RSE strict parser/inventory/rotating-slot/discovery contract	text	525	AUDITED			0	no
 tests/test_rse_open_regression.cpp	blob	100644	9281	RSE save-open optional-inventory regression contract	text	214	AUDITED			0	yes
 tests/test_runtime_dependency_contract.cpp	blob	100644	1077	runtime path/branding textual dependency contract	text	30	AUDITED			0	yes
 tests/test_save_instance_architecture_contract.py	blob	100644	5437	provider-neutral Save Instances architecture/static routing contract	text	96	AUDITED			0	yes
