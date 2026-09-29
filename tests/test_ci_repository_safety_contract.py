@@ -98,4 +98,27 @@ for required in ("READ-ONLY SAVE SOURCE", "OPTIONAL USER-INVOKED GAME-LAUNCH TAR
     if required not in standalone_text:
         fail(f"AUDIT-041: standalone runtime classification missing: {required}")
 
+
+
+HISTORICAL_MANUAL_WORKFLOWS = (
+    "gen1-cleanup3-candidate.yml",
+    "gen1-cleanup3-focused.yml",
+    "gen1-editor-candidate.yml",
+    "gen2-audit-candidate.yml",
+    "gen2-compat-data.yml",
+    "gen3-shared-editor-candidate.yml",
+    "inventory-hardware-retest.yml",
+    "leafgreen-device-build.yml",
+    "recovery-snapshot.yml",
+)
+for workflow_name in HISTORICAL_MANUAL_WORKFLOWS:
+    workflow_text = (WORKFLOWS / workflow_name).read_text(encoding="utf-8")
+    trigger = workflow_text.split("permissions:", 1)[0]
+    if not workflow_text.startswith("name: HISTORICAL / MANUAL"):
+        fail(f"AUDIT-005: {workflow_name} is not clearly labeled historical/manual")
+    if "workflow_dispatch:" not in trigger:
+        fail(f"AUDIT-005: {workflow_name} lost its explicit manual trigger")
+    if re.search(r"(?m)^\s*(pull_request|push):", trigger):
+        fail(f"AUDIT-005: {workflow_name} must not auto-run on historical branches")
+
 print("CI repository safety contracts: PASS")
