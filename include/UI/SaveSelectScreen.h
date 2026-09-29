@@ -30,12 +30,21 @@ namespace UI {
             Gen4AssignedFile,
         };
 
+        enum class MainMenuDestination {
+            None,
+            Banks,
+            Settings,
+        };
+
         SaveSelectScreen(PokeVault::Legacy::FRLGDiscoveryResult& legacySources,
                          PokeVault::Legacy::LegacySourceBindings& legacyBindings);
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return exitRequested; }
         bool hasRequestedAppExit() const { return appExitRequested; }
+        MainMenuDestination getRequestedMainMenuDestination() const {
+            return requestedMainMenuDestination;
+        }
 
         bool hasSelectedTitle() const { return titleSelected; }
         AccountUid getSelectedUser() const { return selectedUserUid; }
@@ -101,6 +110,9 @@ namespace UI {
         bool titleSelected = false;
         bool exitRequested = false;     // return from Games & Sources to product Home
         bool appExitRequested = false;  // explicit Options -> Exit PokeBank NX
+        MainMenuDestination requestedMainMenuDestination = MainMenuDestination::None;
+        bool hubDockFocused = false;
+        int hubDockIndex = 0;
         enum class Overlay { None, Options, Help, LegacyInstances, LegacyAssignment, LegacyDetails,
                              Gen4Setup, Gen4Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
@@ -144,7 +156,9 @@ namespace UI {
         // Tap targets captured during draw(), hit-tested on the next update().
         std::vector<HitRect> titleRects;
         std::vector<HitRect> userRects;
+        std::vector<HitRect> dockRects;
 
+        void activateHubDock();
         void loadUsers();
         void loadLegacySources(const PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
         void loadGen4Cards();

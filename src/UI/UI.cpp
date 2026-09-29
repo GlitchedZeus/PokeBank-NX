@@ -101,8 +101,14 @@ namespace UI {
             fb.flush();
 
             if (shell.consumeAction() == AppShellScreen::Action::Games) {
-                handleSaveSelection();
-                if (running) fb.startFade();
+                const auto destination = handleSaveSelection();
+                if (running) {
+                    if (destination == SaveSelectScreen::MainMenuDestination::Banks)
+                        shell.openSection(PokeBank::UIModel::AppShellSection::Banks);
+                    else if (destination == SaveSelectScreen::MainMenuDestination::Settings)
+                        shell.openSection(PokeBank::UIModel::AppShellSection::Settings);
+                    fb.startFade();
+                }
             }
         }
 
@@ -110,7 +116,7 @@ namespace UI {
     }
     // Games opens the HOME-style profile/game hub. Returning from a loaded backup/trainer
     // rebuilds the hub so newly-created saves stay visible; B returns to the Main Menu.
-    void UIManager::handleSaveSelection() {
+    SaveSelectScreen::MainMenuDestination UIManager::handleSaveSelection() {
         while (running) {
             SaveSelectScreen selectScreen(legacyFRLGSources, legacySourceBindings);
             fb.startFade();
@@ -148,14 +154,15 @@ namespace UI {
                 }
             }
 
-            if (!running) return;
+            if (!running) return SaveSelectScreen::MainMenuDestination::None;
             if (selectScreen.hasRequestedAppExit()) {
                 running = false;
-                return;
+                return SaveSelectScreen::MainMenuDestination::None;
             }
-            if (selectScreen.shouldExit()) return;  // B exits the root hub/application.
-            if (!rebuildPicker) return;
+            if (selectScreen.shouldExit()) return selectScreen.getRequestedMainMenuDestination();
+            if (!rebuildPicker) return SaveSelectScreen::MainMenuDestination::None;
         }
+        return SaveSelectScreen::MainMenuDestination::None;
     }
 
     void UIManager::handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName) {

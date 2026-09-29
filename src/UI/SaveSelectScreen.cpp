@@ -118,6 +118,35 @@ namespace UI {
         }
     }
 
+        void drawHubDockIcon(PKSEFramebuffer& fb, int index,
+                             int x, int y, int size, bool focused) {
+            const Color ink = focused ? Colors::SelectedText : Colors::TextPrimary;
+            const int cx = x + size / 2;
+            const int cy = y + size / 2;
+            if (index == 0) {
+                fb.drawRoundedRect(cx - 18, cy - 17, 36, 13, 4, ink, 2);
+                fb.drawRoundedRect(cx - 18, cy - 2, 36, 13, 4, ink, 2);
+                fb.drawRoundedRect(cx - 18, cy + 13, 36, 13, 4, ink, 2);
+            } else if (index == 1) {
+                fb.drawRoundedRect(cx - 20, cy - 15, 40, 25, 6, ink, 2);
+                fb.drawRoundedRect(cx - 14, cy - 6, 28, 25, 5, ink, 2);
+            } else if (index == 2) {
+                fb.drawRoundedRect(cx - 18, cy - 15, 30, 28, 5, ink, 2);
+                fb.drawRoundedRect(cx - 10, cy - 8, 30, 28, 5, ink, 2);
+            } else if (index == 3) {
+                fb.drawFilledRoundedRect(cx - 22, cy - 9, 31, 5, 2, ink);
+                fb.drawFilledRoundedRect(cx + 3, cy + 6, 19, 5, 2, ink);
+                fb.drawFilledRoundedRect(cx + 5, cy - 14, 5, 15, 2, ink);
+                fb.drawFilledRoundedRect(cx - 10, cy + 1, 5, 15, 2, ink);
+            } else {
+                fb.drawFilledCircle(cx, cy, 8, ink);
+                fb.drawFilledRoundedRect(cx - 3, cy - 22, 6, 10, 3, ink);
+                fb.drawFilledRoundedRect(cx - 3, cy + 12, 6, 10, 3, ink);
+                fb.drawFilledRoundedRect(cx - 22, cy - 3, 10, 6, 3, ink);
+                fb.drawFilledRoundedRect(cx + 12, cy - 3, 10, 6, 3, ink);
+            }
+        }
+
     // HOME-style game hub layout (1280x720).
     constexpr int HUB_Y = 82;
     constexpr int HUB_H = 570;
@@ -1097,6 +1126,41 @@ namespace UI {
         titleSelected = true;
     }
 
+    void SaveSelectScreen::activateHubDock() {
+        const UserEntry* user = currentUser();
+        const bool hasGame = user && titleIndex >= 0 &&
+            titleIndex < static_cast<int>(user->titles.size());
+
+        if (hubDockIndex == 0) {
+            if (!hasGame) {
+                hubNotice = "Choose a game before opening Storage.";
+                return;
+            }
+            hubDockFocused = false;
+            selectCurrentTitle();
+        } else if (hubDockIndex == 1) {
+            requestedMainMenuDestination = MainMenuDestination::Banks;
+            exitRequested = true;
+        } else if (hubDockIndex == 2) {
+            if (!hasGame) {
+                hubNotice = "Choose a game before opening Backups.";
+                return;
+            }
+            if (user->titles[static_cast<size_t>(titleIndex)].sourceKind ==
+                SelectedSourceKind::SwitchTitle) {
+                hubDockFocused = false;
+                selectCurrentTitle();
+            } else {
+                hubNotice = "Emulator sources stay staged/read-only; open the game to manage its working copy.";
+            }
+        } else if (hubDockIndex == 3) {
+            hubNotice = "Trade is not implemented yet.";
+        } else {
+            requestedMainMenuDestination = MainMenuDestination::Settings;
+            exitRequested = true;
+        }
+    }
+
     void SaveSelectScreen::update(const PadState& pad, const TouchInput& touch) {
         // A tap on a nav-bar badge becomes that button's press, so every handler below is
         // reached identically whether the user pressed the button or tapped its on-screen badge.
@@ -1311,10 +1375,35 @@ namespace UI {
             return;
         }
 
+        if (hubDockFocused) {
+            if (kDown & HidNpadButton_Up) {
+                hubDockFocused = false;
+                return;
+            }
+            if (kDown & HidNpadButton_Left)
+                hubDockIndex = (hubDockIndex + 4) % 5;
+            if (kDown & HidNpadButton_Right)
+                hubDockIndex = (hubDockIndex + 1) % 5;
+            if (kDown & HidNpadButton_A) activateHubDock();
+            return;
+        }
+        if (kDown & HidNpadButton_Right) {
+            hubDockFocused = true;
+            return;
+        }
+
         // Touch (tap targets were captured last draw()).
         if (touch.justPressed()) {
             const int tx = touch.x(), ty = touch.y();
             bool handled = false;
+            for (const auto& r : dockRects) {
+                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
+                    hubDockFocused = true;
+                    hubDockIndex = r.idx;
+                    activateHubDock();
+                    return;
+                }
+            }
             for (const auto& r : userRects) {
                 if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
                     setUser(r.idx); handled = true; break;
@@ -1357,6 +1446,7 @@ namespace UI {
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {
         titleRects.clear();
         userRects.clear();
+        dockRects.clear();
 
         drawAppBackdrop(fb);
         drawTitleBar(fb, "Games  /  v" + VERSION_STRING + "  /  " + BUILD_COMMIT);
@@ -1412,7 +1502,7 @@ namespace UI {
             int rowY = HUB_Y + 130;
             for (int i = first; i < last; ++i) {
                 const auto& title = u->titles[static_cast<size_t>(i)];
-                const bool selected = i == titleIndex;
+                const bool selected = i == titleIndex && !hubDockFocused;
                 drawFocusedCard(fb, 32, rowY, PROFILE_W - 24, GAME_ROW_H - 6, selected, 10);
 
                 const bool legacy = title.sourceKind == SelectedSourceKind::RetroArchFRLG;
@@ -1509,28 +1599,56 @@ namespace UI {
                 }
             }
 
-            fb.drawText(artX, HUB_Y + 470, "GAME WORKSPACE",
-                        Colors::TextMuted, TextStyle::Caption);
-            fb.drawText(artX, HUB_Y + 494,
-                        "Open/Edit keeps you in PokeBank NX. Launch starts the selected game.",
-                        Colors::TextSecondary, TextStyle::Caption);
-
             if (!hubNotice.empty())
-                fb.drawText(artX, HUB_Y + 534, hubNotice.substr(0, 104),
+                fb.drawText(artX, HUB_Y + 452, hubNotice.substr(0, 96),
                             Colors::Info, TextStyle::Caption);
         }
 
-        auto homeHints = std::vector<ControllerHint>{
-            {"D-pad/Stick", "Choose Game"},
-            {"A", "Open / Edit"},
-            {"ZR", gameLaunchActionLabel(launchDescriptor.state)},
-            {"B", "Main Menu"}
-        };
-        if (users.size() > 1) homeHints.insert(homeHints.begin() + 1, {"L/R", "Profile"});
-        if (!unassignedLegacySources.empty()) homeHints.push_back({"X", "Assign Save"});
-        if (u && titleIndex >= 0 && titleIndex < count &&
-            u->titles[static_cast<size_t>(titleIndex)].sourceKind == SelectedSourceKind::Gen4AssignedFile)
-            homeHints.push_back({"Y", "Source Setup"});
+        static constexpr const char* dockLabels[5] =
+            {"Storage", "Banks", "Backups", "Trade", "Settings"};
+        const int dockAreaX = DETAIL_X + 28;
+        const int dockAreaW = DETAIL_W - 56;
+        const int dockSize = 50;
+        const int dockGap = 28;
+        const int dockSpan = 5 * dockSize + 4 * dockGap;
+        const int dockStartX = dockAreaX + (dockAreaW - dockSpan) / 2;
+        const int dockY = HUB_Y + 496;
+        fb.drawText(dockAreaX, HUB_Y + 470, "QUICK ACCESS",
+                    Colors::TextMuted, TextStyle::Caption);
+        for (int i = 0; i < 5; ++i) {
+            const int dx = dockStartX + i * (dockSize + dockGap);
+            const bool focused = hubDockFocused && hubDockIndex == i;
+            drawFocusedCard(fb, dx, dockY, dockSize, dockSize, focused, dockSize / 2);
+            drawHubDockIcon(fb, i, dx, dockY, dockSize, focused);
+            dockRects.push_back({dx, dockY, dockSize, dockSize, i});
+            if (focused) {
+                int lw = 0, lh = 0;
+                fb.measureText(dockLabels[i], lw, lh, TextStyle::Caption);
+                fb.drawText(dx + (dockSize - lw) / 2, dockY + dockSize + 7,
+                            dockLabels[i], Colors::FocusBorder, TextStyle::Caption);
+            }
+        }
+
+        std::vector<ControllerHint> homeHints;
+        if (hubDockFocused) {
+            homeHints = {
+                {"D-pad/Stick", "Quick Access"},
+                {"A", "Open"},
+                {"B", "Main Menu"}
+            };
+        } else {
+            homeHints = {
+                {"D-pad/Stick", "Choose Game / Quick Access"},
+                {"A", "Open / Edit"},
+                {"ZR", gameLaunchActionLabel(launchDescriptor.state)},
+                {"B", "Main Menu"}
+            };
+            if (users.size() > 1) homeHints.insert(homeHints.begin() + 1, {"L/R", "Profile"});
+            if (!unassignedLegacySources.empty()) homeHints.push_back({"X", "Assign Save"});
+            if (u && titleIndex >= 0 && titleIndex < count &&
+                u->titles[static_cast<size_t>(titleIndex)].sourceKind == SelectedSourceKind::Gen4AssignedFile)
+                homeHints.push_back({"Y", "Source Setup"});
+        }
         drawNavBar(fb, homeHints);
 
         if (overlay == Overlay::GameFilePicker) {
