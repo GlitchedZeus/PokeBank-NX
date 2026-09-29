@@ -54,7 +54,7 @@ namespace UI {
         PokeBank::UIModel::AppShellSection infoSection =
             PokeBank::UIModel::AppShellSection::Games;
         std::array<HitRect, 8> cardRects{};
-        std::array<HitRect, 6> settingsRects{};
+        std::array<HitRect, 7> settingsRects{};
         std::string statusMessage;
         int statusFrames = 0;
 

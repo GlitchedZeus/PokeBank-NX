@@ -1277,7 +1277,6 @@ namespace UI {
         }
 
         if (kDown & HidNpadButton_B) {
-            appExitRequested = true;
             exitRequested = true;
             return;
         }
@@ -1360,7 +1359,7 @@ namespace UI {
         userRects.clear();
 
         drawAppBackdrop(fb);
-        drawTitleBar(fb, "PokeBank NX  /  v" + VERSION_STRING + "  /  " + BUILD_COMMIT);
+        drawTitleBar(fb, "Games  /  v" + VERSION_STRING + "  /  " + BUILD_COMMIT);
 
         const UserEntry* u = currentUser();
         const int count = u ? static_cast<int>(u->titles.size()) : 0;
@@ -1510,20 +1509,14 @@ namespace UI {
                 }
             }
 
-            // HOME-style secondary dock. The profile/game hub itself is the app root.
-            fb.drawText(artX, HUB_Y + 458, "POKEBANK NX", Colors::TextMuted, TextStyle::Caption);
-            const char* dock[] = {"Storage", "Banks", "Backups", "Search", "Settings"};
-            int dx = artX;
-            for (const char* item : dock) {
-                int tw = 0, th = 0;
-                fb.measureText(item, tw, th, TextStyle::Caption);
-                drawPanelSurface(fb, dx, HUB_Y + 486, tw + 26, 42, false, 12);
-                fb.drawText(dx + 13, HUB_Y + 498, item, Colors::TextSecondary, TextStyle::Caption);
-                dx += tw + 36;
-            }
+            fb.drawText(artX, HUB_Y + 470, "GAME WORKSPACE",
+                        Colors::TextMuted, TextStyle::Caption);
+            fb.drawText(artX, HUB_Y + 494,
+                        "Open/Edit keeps you in PokeBank NX. Launch starts the selected game.",
+                        Colors::TextSecondary, TextStyle::Caption);
 
             if (!hubNotice.empty())
-                fb.drawText(artX, HUB_Y + 538, hubNotice.substr(0, 104),
+                fb.drawText(artX, HUB_Y + 534, hubNotice.substr(0, 104),
                             Colors::Info, TextStyle::Caption);
         }
 
@@ -1531,7 +1524,7 @@ namespace UI {
             {"D-pad/Stick", "Choose Game"},
             {"A", "Open / Edit"},
             {"ZR", gameLaunchActionLabel(launchDescriptor.state)},
-            {"B", "Exit"}
+            {"B", "Main Menu"}
         };
         if (users.size() > 1) homeHints.insert(homeHints.begin() + 1, {"L/R", "Profile"});
         if (!unassignedLegacySources.empty()) homeHints.push_back({"X", "Assign Save"});
@@ -1728,7 +1721,7 @@ namespace UI {
                 "Y   Add or repair sources for the focused Gen IV game",
                 "+   Options and appearance",
                 "-   Help for the current screen",
-                "B   Return to PokeBank NX Home"
+                "B   Return to the PokeBank NX Main Menu"
             });
         } else if (overlay == Overlay::Options) {
             constexpr int w = 560, h = 326, rowH = 64;

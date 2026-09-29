@@ -24,14 +24,16 @@ require("restoreBackupToTitle" not in source,
         "game hub preview must never restore/inject a save")
 require("PartyPreviewSlot" in header, "game hub party preview model must be explicit")
 
-require("AppShellScreen shell" not in ui_manager,
-        "the old 8-card developer dashboard must never sit in front of the game hub")
+require("AppShellScreen shell" in ui_manager,
+        "the professional main menu must be the app root")
 require("handleSaveSelection();" in ui_manager,
-        "PokeBank NX must boot directly into the profile/game hub")
-require('"PokeBank NX  /  v"' in source,
-        "the root hub must present itself as PokeBank NX, not a Games sub-screen")
-require('{"B", "Home"}' not in source and '{"B", "Exit"}' in source,
-        "root hub must not navigate back to the removed dashboard")
+        "Games destination must open the existing profile/game hub")
+require('"Games  /  v"' in source,
+        "the profile/game hub must present itself as the Games destination")
+require('{"B", "Main Menu"}' in source,
+        "B from Games must return to the professional main menu")
+require('"Exit PokeBank NX"' in source,
+        "the game hub must retain an explicit full-app exit action")
 
 require("GameFilePicker" in header and "Overlay::GameFilePicker" in source,
         "game hub must provide an in-app game-file browser")

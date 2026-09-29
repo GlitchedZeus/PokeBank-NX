@@ -16,11 +16,18 @@
 
 namespace UI {
 namespace {
-    constexpr int kCardMarginX = 28;
-    constexpr int kCardTop = 112;
-    constexpr int kCardGapX = 18;
-    constexpr int kCardGapY = 12;
-    constexpr int kCardH = 126;
+    constexpr int kHeroX = 28;
+    constexpr int kHeroY = 112;
+    constexpr int kHeroW = 472;
+    constexpr int kHeroH = 438;
+    constexpr int kPrimaryX = 532;
+    constexpr int kPrimaryY = 132;
+    constexpr int kPrimaryW = 714;
+    constexpr int kPrimaryH = 98;
+    constexpr int kPrimaryGap = 18;
+    constexpr int kDockY = 398;
+    constexpr int kDockSize = 88;
+    constexpr int kDockGap = 26;
 
     template <typename Rect>
     bool contains(const Rect& rect, int x, int y) {
@@ -42,45 +49,32 @@ namespace {
 
     const std::vector<std::string>& sectionInfoLines(PokeBank::UIModel::AppShellSection section) {
         using PokeBank::UIModel::AppShellSection;
-        static const std::vector<std::string> storage{
-            "Legacy Storage is app-owned and persistent, but it is not the Master Vault.",
-            "Open Games & Sources, then enter a save workspace to use Legacy Storage.",
-            "A global Storage browser will arrive only when its backend can be represented honestly."
+        static const std::vector<std::string> vault{
+            "Master Vault will be the central, app-owned Pokémon library across supported games.",
+            "This screen is a truthful product preview until the Vault persistence backend is ready.",
+            "No Pokémon records are fabricated and no source save is changed by opening this preview."
         };
-        static const std::vector<std::string> banks{
-            "Named Banks are an organization layer planned for the future Master Vault.",
-            "Master Vault persistence is not implemented in this UI lane.",
-            "No Pokemon or Bank records are fabricated by this screen."
+        static const std::vector<std::string> storage{
+            "Legacy Storage remains app-owned and available from loaded game workspaces.",
+            "It is deliberately separate from the future Master Vault identity model.",
+            "Open Games, choose a save, then use its workspace to access current Storage."
         };
         static const std::vector<std::string> backups{
-            "PokeBank backups are currently scoped to the selected game and profile.",
-            "Open Games & Sources, select a game, then use its Save Backups screen.",
-            "Inject / Restore is not available here; Issue #89 owns that future workflow."
-        };
-        static const std::vector<std::string> search{
-            "Global Search needs the future Vault/search index before it can return real results.",
-            "This lane will build filtering and no-results UI without reordering external save boxes.",
-            "No source save is mutated by search, filter, sort, Favorites, or Recent presentation."
-        };
-        static const std::vector<std::string> collections{
-            "Living Dex, Shiny Living Dex, Favorites and Recent are planned collection views.",
-            "Collection persistence depends on the future Master Vault / Bank model.",
-            "This shell exposes the product destination without pretending the data exists today."
+            "Backups are currently scoped to the selected game and profile.",
+            "Open Games, select a game, then enter its Save Backups workflow.",
+            "Restore / Inject remains locked until its dedicated safety workflow is complete."
         };
         static const std::vector<std::string> fallback{
-            "This destination is not available from the root shell yet."
+            "This destination is not available from the main menu yet."
         };
 
         switch (section) {
+            case AppShellSection::MasterVault: return vault;
             case AppShellSection::Storage:     return storage;
-            case AppShellSection::Banks:       return banks;
             case AppShellSection::Backups:     return backups;
-            case AppShellSection::Search:      return search;
-            case AppShellSection::Collections: return collections;
             default:                           return fallback;
         }
-    }
-}
+    }}
 
 AppShellScreen::Action AppShellScreen::consumeAction() {
     const Action result = pendingAction;
@@ -103,8 +97,6 @@ void AppShellScreen::activateSelected() {
         statusMessage.clear();
         statusFrames = 0;
         overlay = Overlay::Settings;
-    } else if (section == AppShellSection::Diagnostics) {
-        overlay = Overlay::Diagnostics;
     } else if (PokeBank::UIModel::appShellPreviewable(section)) {
         infoSection = section;
         previewIndex = 0;
@@ -148,6 +140,10 @@ void AppShellScreen::activateSetting() {
             setStatus(g_debugLogging
                 ? "Debug logging enabled under sdmc:/switch/PokeBank-NX/logs/."
                 : "Debug logging disabled; no new log files will be written.");
+            break;
+        case 6:
+            changed = false;
+            overlay = Overlay::Diagnostics;
             break;
         default:
             changed = false;
@@ -215,9 +211,9 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
             return;
         }
         if (kDown & HidNpadButton_Up)
-            settingsIndex = (settingsIndex + 5) % 6;
+            settingsIndex = (settingsIndex + 6) % 7;
         if (kDown & HidNpadButton_Down)
-            settingsIndex = (settingsIndex + 1) % 6;
+            settingsIndex = (settingsIndex + 1) % 7;
         if (kDown & HidNpadButton_A) activateSetting();
         return;
     }
@@ -258,59 +254,96 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
 }
 
 void AppShellScreen::drawHome(PKSEFramebuffer& fb) {
-    const int contentW = fb.getWidth() - kCardMarginX * 2;
-    const int cardW = (contentW - kCardGapX) / 2;
+    using PokeBank::UIModel::appShellEntry;
 
-    fb.drawText(kCardMarginX, 76, "PokeBank NX Home", Colors::TextPrimary, TextStyle::Heading);
-    fb.drawText(kCardMarginX, 98,
-                "Sources, app-owned storage and future organization tools",
+    // Left hero panel: one visual identity surface instead of a developer dashboard.
+    drawPanelSurface(fb, kHeroX, kHeroY, kHeroW, kHeroH, true, 22);
+    fb.drawText(kHeroX + 28, kHeroY + 24, "POKEBANK NX", Colors::AccentPrimary, TextStyle::Caption);
+    fb.drawText(kHeroX + 28, kHeroY + 56, "Your Pokémon.", Colors::TextPrimary, TextStyle::Title);
+    fb.drawText(kHeroX + 28, kHeroY + 96, "One place.", Colors::TextPrimary, TextStyle::Title);
+
+    const int markX = kHeroX + kHeroW / 2;
+    const int markY = kHeroY + 226;
+    fb.drawFilledCircle(markX, markY, 86, withAlpha(Colors::AccentPrimary, 30));
+    fb.drawFilledCircle(markX, markY, 52, Colors::PanelAlt);
+    fb.drawFilledRect(markX - 86, markY - 8, 172, 16, withAlpha(Colors::AccentPrimary, 46));
+    fb.drawFilledCircle(markX, markY, 20, Colors::AccentPrimary);
+    fb.drawFilledCircle(markX, markY, 10, Colors::Panel);
+
+    fb.drawText(kHeroX + 28, kHeroY + 334,
+                "Manage games, Banks, Pokédex and backups",
+                Colors::TextSecondary, TextStyle::Body);
+    fb.drawText(kHeroX + 28, kHeroY + 366,
+                "from one console-style home.",
+                Colors::TextSecondary, TextStyle::Body);
+    fb.drawText(kHeroX + 28, kHeroY + 404,
+                "Source saves stay protected.", Colors::Info, TextStyle::Caption);
+
+    // Two large primary destinations, matching the HOME / Champions hierarchy.
+    for (int index = 0; index < PokeBank::UIModel::APP_SHELL_PRIMARY_COUNT; ++index) {
+        const int y = kPrimaryY + index * (kPrimaryH + kPrimaryGap);
+        const auto& entry = appShellEntry(index);
+        const bool focused = selectedIndex == index;
+        drawFocusedCard(fb, kPrimaryX, y, kPrimaryW, kPrimaryH, focused, 26);
+        cardRects[static_cast<std::size_t>(index)] =
+            {kPrimaryX, y, kPrimaryW, kPrimaryH, index};
+
+        fb.drawText(kPrimaryX + 30, y + 17, std::string(entry.title),
+                    focused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
+        fb.drawText(kPrimaryX + 30, y + 52, std::string(entry.subtitle),
+                    focused ? Colors::SelectedText : Colors::TextSecondary, TextStyle::Caption);
+
+        int badgeW = 0, badgeH = 0;
+        fb.measureText(std::string(entry.badge), badgeW, badgeH, TextStyle::Caption);
+        const int px = kPrimaryX + kPrimaryW - badgeW - 48;
+        const Color badge = badgeColor(entry.availability);
+        fb.drawPill(px, y + 34, badgeW + 24, 30, withAlpha(badge, 36));
+        fb.drawPillBorder(px, y + 34, badgeW + 24, 30, badge, 1);
+        fb.drawText(px + 12, y + 42, std::string(entry.badge), badge, TextStyle::Caption);
+    }
+
+    fb.drawText(kPrimaryX, kDockY - 32, "QUICK ACCESS",
                 Colors::TextMuted, TextStyle::Caption);
 
-    for (int index = 0; index < PokeBank::UIModel::appShellEntryCount(); ++index) {
-        const int row = index / PokeBank::UIModel::APP_SHELL_COLUMNS;
-        const int col = index % PokeBank::UIModel::APP_SHELL_COLUMNS;
-        const int x = kCardMarginX + col * (cardW + kCardGapX);
-        const int y = kCardTop + row * (kCardH + kCardGapY);
-        const bool focused = index == selectedIndex;
-        const auto& entry = PokeBank::UIModel::appShellEntry(index);
+    // Six compact app destinations. Settings is the small gear-equivalent destination; Games is
+    // the emphasized entry that opens the full profile/game/party/Launch hub.
+    static constexpr const char* symbols[6] = {"ST", "BK", "BU", "SR", "SET", "G"};
+    for (int dock = 0; dock < PokeBank::UIModel::APP_SHELL_DOCK_COUNT; ++dock) {
+        const int index = PokeBank::UIModel::APP_SHELL_PRIMARY_COUNT + dock;
+        const auto& entry = appShellEntry(index);
+        const int x = kPrimaryX + dock * (kDockSize + kDockGap);
+        const bool focused = selectedIndex == index;
 
-        drawFocusedCard(fb, x, y, cardW, kCardH, focused, 16);
-        cardRects[static_cast<std::size_t>(index)] = {x, y, cardW, kCardH, index};
+        drawFocusedCard(fb, x, kDockY, kDockSize, kDockSize, focused, kDockSize / 2);
+        cardRects[static_cast<std::size_t>(index)] =
+            {x, kDockY, kDockSize, kDockSize, index};
 
-        fb.drawText(x + 22, y + 18, std::string(entry.title),
-                    focused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
-        fb.drawText(x + 22, y + 58, std::string(entry.subtitle),
-                    Colors::TextSecondary, TextStyle::Caption);
+        int sw = 0, sh = 0;
+        fb.measureText(symbols[dock], sw, sh, TextStyle::Body);
+        fb.drawText(x + (kDockSize - sw) / 2, kDockY + 27, symbols[dock],
+                    focused ? Colors::SelectedText
+                            : (index == 7 ? Colors::AccentPrimary : Colors::TextPrimary),
+                    TextStyle::Body);
 
-        const Color badge = badgeColor(entry.availability);
-        int bwText = 0, bhText = 0;
-        fb.measureText(std::string(entry.badge), bwText, bhText, TextStyle::Caption);
-        const int badgeW = bwText + 24;
-        const int badgeH = 28;
-        const int badgeX = x + cardW - badgeW - 18;
-        const int badgeY = y + 16;
-        fb.drawPill(badgeX, badgeY, badgeW, badgeH, withAlpha(badge, 42));
-        fb.drawPillBorder(badgeX, badgeY, badgeW, badgeH, badge, 1);
-        fb.drawText(badgeX + (badgeW - bwText) / 2,
-                    badgeY + (badgeH - bhText) / 2,
-                    std::string(entry.badge), badge, TextStyle::Caption);
-
-        if (focused) {
-            const std::string action = entry.rootActionable
-                ? "Open"
-                : (PokeBank::UIModel::appShellPreviewable(entry.section)
-                    ? "Preview UI"
-                    : "View availability");
-            fb.drawText(x + 22, y + 91, action, Colors::FocusBorder, TextStyle::Caption);
-        }
+        int tw = 0, th = 0;
+        fb.measureText(std::string(entry.title), tw, th, TextStyle::Caption);
+        fb.drawText(x + (kDockSize - tw) / 2, kDockY + kDockSize + 10,
+                    std::string(entry.title),
+                    focused ? Colors::FocusBorder : Colors::TextSecondary,
+                    TextStyle::Caption);
     }
+
+    const auto& focusedEntry = appShellEntry(selectedIndex);
+    fb.drawText(kPrimaryX, kDockY + 142,
+                std::string(focusedEntry.subtitle),
+                Colors::TextMuted, TextStyle::Caption);
 
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Open"},
                     {"+", "Settings"}, {"-", "Help"}, {"B", "Exit"}});
 }
 
 void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
-    constexpr int w = 820, h = 574;
+    constexpr int w = 820, h = 608;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - h) / 2;
 
@@ -323,26 +356,28 @@ void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
                 "These are the same persisted preferences used inside a loaded workspace.",
                 Colors::TextSecondary, TextStyle::Caption);
 
-    constexpr int rowH = 58, rowGap = 7;
-    const char* labels[6] = {
+    constexpr int rowH = 50, rowGap = 5;
+    const char* labels[7] = {
         "Auto-Backup on Load",
         "Theme",
         "Allow Illegal Values",
         "Bank Storage LGPE Move Warning",
         "Live Game Writes",
         "Enable Debug Logging",
+        "Diagnostics / Build Info",
     };
-    std::string values[6] = {
+    std::string values[7] = {
         g_autoBackupEnabled ? "On" : "Off",
         std::string(themeModeName(g_themeMode)),
         g_allowIllegalEdits ? "On" : "Off",
         g_moveWarn ? "On" : "Off",
         "Locked",
         g_debugLogging ? "On" : "Off",
+        "Open",
     };
 
     int rowY = y + 108;
-    for (int index = 0; index < 6; ++index) {
+    for (int index = 0; index < 7; ++index) {
         const bool focused = settingsIndex == index;
         drawFocusedCard(fb, x + 26, rowY, w - 52, rowH, focused, 12);
         fb.drawText(x + 48, rowY + 18, labels[index],
@@ -361,7 +396,7 @@ void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
                  (index == 3 && g_moveWarn) ||
                  (index == 5 && g_debugLogging)) pillColor = Colors::AccentPrimary;
         else if (index == 2 && g_allowIllegalEdits) pillColor = Colors::Warning;
-        else if (index == 1) pillColor = Colors::FocusBorder;
+        else if (index == 1 || index == 6) pillColor = Colors::FocusBorder;
 
         fb.drawPill(pillX, pillY, pillW, pillH, withAlpha(pillColor, 40));
         fb.drawPillBorder(pillX, pillY, pillW, pillH, pillColor, 1);
@@ -423,12 +458,14 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
 
     const bool isBanks = infoSection == AppShellSection::Banks;
     const bool isSearch = infoSection == AppShellSection::Search;
-    const char* title = isBanks ? "Banks & Boxes" : (isSearch ? "Search & Filters" : "Collections");
+    const bool isPokedex = infoSection == AppShellSection::Pokedex;
+    const char* title = isBanks ? "Banks & Boxes"
+        : (isSearch ? "Search & Filters" : "Pokédex & Collections");
     const char* subtitle = isBanks
         ? "Presentation preview only — no Bank or Master Vault data is stored yet."
         : (isSearch
             ? "Presentation preview only — the global Vault/search index is not connected."
-            : "Presentation preview only — collection persistence needs the future Master Vault.");
+            : "Pokédex, forms, cries, Living Dex and Shiny Dex presentation foundation.");
 
     fb.drawText(x + 28, y + 18, "POKEBANK NX  /  UI PREVIEW  /  NO BACKEND",
                 Colors::Info, TextStyle::Caption);
@@ -513,7 +550,9 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
             fb.drawText(cx + 20, cy + 58, std::string(c.subtitle),
                         Colors::TextSecondary, TextStyle::Caption);
             fb.drawText(cx + 20, cy + 94, "0 entries", Colors::TextMuted, TextStyle::Body);
-            fb.drawText(cx + 20, cy + 120, "Vault backend required", Colors::Info, TextStyle::Caption);
+            fb.drawText(cx + 20, cy + 120,
+                        isPokedex ? "Pokédex backend required" : "Vault backend required",
+                        Colors::Info, TextStyle::Caption);
         }
     }
 
@@ -555,7 +594,7 @@ void AppShellScreen::drawSectionInfo(PKSEFramebuffer& fb) {
 
 void AppShellScreen::draw(PKSEFramebuffer& fb) {
     drawAppBackdrop(fb);
-    drawTitleBar(fb, "Home  /  v" + VERSION_STRING);
+    drawTitleBar(fb, "Main Menu  /  v" + VERSION_STRING);
 
     drawHome(fb);
 
@@ -568,13 +607,13 @@ void AppShellScreen::draw(PKSEFramebuffer& fb) {
     } else if (overlay == Overlay::SectionInfo) {
         drawSectionInfo(fb);
     } else if (overlay == Overlay::Help) {
-        drawInfoOverlay(fb, "Home & Product Areas", {
-            "D-pad / Left Stick   Move between product areas",
-            "A   Open an available area or review its current availability",
-            "+   Open application Settings from anywhere on Home",
-            "-   Show this help",
-            "B   Exit PokeBank NX from Home",
-            "WORKSPACE / COMING SOON cards never fabricate backend support"
+        drawInfoOverlay(fb, "PokeBank NX Main Menu", {
+            "D-pad / Left Stick   Move between menu destinations",
+            "A   Open the focused destination",
+            "Games   Profiles, saves, active party, editing and Launch shortcut",
+            "Settings   Themes, safety preferences and Diagnostics",
+            "+   Open Settings from anywhere on the Main Menu",
+            "B   Exit PokeBank NX"
         });
     }
 }

@@ -8,14 +8,14 @@
 namespace PokeBank::UIModel {
 
     enum class AppShellSection {
-        Games,
+        MasterVault,
+        Pokedex,
         Storage,
         Banks,
         Backups,
         Search,
-        Collections,
         Settings,
-        Diagnostics,
+        Games,
     };
 
     enum class AppShellAvailability {
@@ -34,34 +34,34 @@ namespace PokeBank::UIModel {
         bool rootActionable;
     };
 
-    inline constexpr int APP_SHELL_COLUMNS = 2;
-    inline constexpr int APP_SHELL_ROWS = 4;
+    inline constexpr int APP_SHELL_PRIMARY_COUNT = 2;
+    inline constexpr int APP_SHELL_DOCK_COUNT = 6;
 
     inline constexpr std::array<AppShellEntry, 8> APP_SHELL_ENTRIES{{
-        {AppShellSection::Games, "Games & Sources",
-         "Validated saves and source instances", "READY",
-         AppShellAvailability::Ready, true},
+        {AppShellSection::MasterVault, "Master Vault",
+         "Your central Pokémon library", "FOUNDATION",
+         AppShellAvailability::FutureBackend, false},
+        {AppShellSection::Pokedex, "Pokédex",
+         "Species, forms, cries and collection progress", "PREVIEW",
+         AppShellAvailability::FutureBackend, false},
         {AppShellSection::Storage, "Storage",
-         "App-owned Legacy Storage inside a workspace", "WORKSPACE",
+         "Legacy app-owned storage", "WORKSPACE",
          AppShellAvailability::WorkspaceRequired, false},
         {AppShellSection::Banks, "Banks",
-         "Named Banks and Box organization foundation", "UI PREVIEW",
+         "Named Banks and Boxes", "PREVIEW",
          AppShellAvailability::FutureBackend, false},
         {AppShellSection::Backups, "Backups",
-         "PokeBank backups are currently game-scoped", "PER GAME",
+         "Per-game backup history", "PER GAME",
          AppShellAvailability::WorkspaceRequired, false},
         {AppShellSection::Search, "Search",
-         "Filter and sort presentation foundation", "UI PREVIEW",
-         AppShellAvailability::FutureBackend, false},
-        {AppShellSection::Collections, "Collections",
-         "Living Dex, Shiny Dex, Favorites and Recent", "UI PREVIEW",
+         "Search, filters and collections", "PREVIEW",
          AppShellAvailability::FutureBackend, false},
         {AppShellSection::Settings, "Settings",
-         "Themes, backups and safety preferences", "READY",
+         "Themes, safety and app preferences", "READY",
          AppShellAvailability::Ready, true},
-        {AppShellSection::Diagnostics, "Diagnostics",
-         "Build identity and safety state", "READ ONLY",
-         AppShellAvailability::ReadOnly, true},
+        {AppShellSection::Games, "Games",
+         "Profiles, saves, party, edit and launch", "READY",
+         AppShellAvailability::Ready, true},
     }};
 
     constexpr int appShellEntryCount() {
@@ -72,26 +72,36 @@ namespace PokeBank::UIModel {
         return APP_SHELL_ENTRIES[static_cast<std::size_t>(index)];
     }
 
+    // Professional HOME-style layout:
+    //   0 Master Vault
+    //   1 Pokédex
+    //   2..7 circular dock (Storage, Banks, Backups, Search, Settings, Games)
     constexpr int appShellMoveSelection(int current, int dx, int dy) {
         if (current < 0 || current >= appShellEntryCount()) current = 0;
-        int row = current / APP_SHELL_COLUMNS;
-        int col = current % APP_SHELL_COLUMNS;
 
-        col = (col + (dx % APP_SHELL_COLUMNS) + APP_SHELL_COLUMNS) % APP_SHELL_COLUMNS;
-        row = (row + (dy % APP_SHELL_ROWS) + APP_SHELL_ROWS) % APP_SHELL_ROWS;
-        return row * APP_SHELL_COLUMNS + col;
+        if (current < APP_SHELL_PRIMARY_COUNT) {
+            if (dy < 0) return current == 0 ? 0 : 0;
+            if (dy > 0) return current == 0 ? 1 : APP_SHELL_PRIMARY_COUNT;
+            return current;
+        }
+
+        const int dockFirst = APP_SHELL_PRIMARY_COUNT;
+        const int dockLast = appShellEntryCount() - 1;
+        if (dy < 0) return 1;
+        if (dx < 0) return current == dockFirst ? dockLast : current - 1;
+        if (dx > 0) return current == dockLast ? dockFirst : current + 1;
+        return current;
     }
 
     constexpr bool appShellPreviewable(AppShellSection section) {
-        return section == AppShellSection::Banks ||
-               section == AppShellSection::Search ||
-               section == AppShellSection::Collections;
+        return section == AppShellSection::Pokedex ||
+               section == AppShellSection::Banks ||
+               section == AppShellSection::Search;
     }
 
     constexpr bool appShellRootActionable(AppShellSection section) {
-        return section == AppShellSection::Games ||
-               section == AppShellSection::Settings ||
-               section == AppShellSection::Diagnostics;
+        return section == AppShellSection::Settings ||
+               section == AppShellSection::Games;
     }
 
 } // namespace PokeBank::UIModel

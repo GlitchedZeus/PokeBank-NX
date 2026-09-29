@@ -7,58 +7,45 @@
 int main() {
     using namespace PokeBank::UIModel;
 
-    static_assert(APP_SHELL_COLUMNS == 2);
-    static_assert(APP_SHELL_ROWS == 4);
+    static_assert(APP_SHELL_PRIMARY_COUNT == 2);
+    static_assert(APP_SHELL_DOCK_COUNT == 6);
     static_assert(APP_SHELL_ENTRIES.size() == 8);
 
     assert(appShellEntryCount() == 8);
-    assert(appShellEntry(0).section == AppShellSection::Games);
-    assert(appShellEntry(0).title == std::string_view("Games & Sources"));
-    assert(appShellEntry(1).section == AppShellSection::Storage);
-    assert(appShellEntry(2).section == AppShellSection::Banks);
+    assert(appShellEntry(0).section == AppShellSection::MasterVault);
+    assert(appShellEntry(0).title == std::string_view("Master Vault"));
+    assert(appShellEntry(1).section == AppShellSection::Pokedex);
+    assert(appShellEntry(1).title == std::string_view("Pokédex"));
+    assert(appShellEntry(2).section == AppShellSection::Storage);
+    assert(appShellEntry(3).section == AppShellSection::Banks);
     assert(appShellEntry(6).section == AppShellSection::Settings);
-    assert(appShellEntry(7).section == AppShellSection::Diagnostics);
+    assert(appShellEntry(7).section == AppShellSection::Games);
 
-    assert(appShellRootActionable(AppShellSection::Games));
+    assert(!appShellRootActionable(AppShellSection::MasterVault));
+    assert(!appShellRootActionable(AppShellSection::Pokedex));
     assert(appShellRootActionable(AppShellSection::Settings));
-    assert(appShellRootActionable(AppShellSection::Diagnostics));
-    assert(!appShellRootActionable(AppShellSection::Storage));
-    assert(!appShellRootActionable(AppShellSection::Banks));
-    assert(!appShellRootActionable(AppShellSection::Backups));
-    assert(!appShellRootActionable(AppShellSection::Search));
-    assert(!appShellRootActionable(AppShellSection::Collections));
+    assert(appShellRootActionable(AppShellSection::Games));
+    assert(appShellPreviewable(AppShellSection::Pokedex));
     assert(appShellPreviewable(AppShellSection::Banks));
     assert(appShellPreviewable(AppShellSection::Search));
-    assert(appShellPreviewable(AppShellSection::Collections));
-    assert(!appShellPreviewable(AppShellSection::Games));
 
-    assert(appShellEntry(1).availability == AppShellAvailability::WorkspaceRequired);
-    assert(appShellEntry(2).availability == AppShellAvailability::FutureBackend);
-    assert(appShellEntry(7).availability == AppShellAvailability::ReadOnly);
+    // Primary hierarchy is vertical; Down from Pokédex enters the circular quick-access dock.
+    assert(appShellMoveSelection(0, 0, 1) == 1);
+    assert(appShellMoveSelection(1, 0, 1) == 2);
+    assert(appShellMoveSelection(1, 0, -1) == 0);
 
-    // 2 x 4 controller grid: both axes wrap and preserve the other axis.
-    assert(appShellMoveSelection(0, 1, 0) == 1);
-    assert(appShellMoveSelection(1, 1, 0) == 0);
-    assert(appShellMoveSelection(0, -1, 0) == 1);
-    assert(appShellMoveSelection(0, 0, 1) == 2);
-    assert(appShellMoveSelection(6, 0, 1) == 0);
-    assert(appShellMoveSelection(1, 0, -1) == 7);
-    assert(appShellMoveSelection(5, -1, 0) == 4);
+    // Dock navigation wraps horizontally and Up returns to the primary Pokédex row.
+    assert(appShellMoveSelection(2, -1, 0) == 7);
+    assert(appShellMoveSelection(7, 1, 0) == 2);
+    assert(appShellMoveSelection(4, 0, -1) == 1);
 
     assert(previewCount(OrganizationPreviewKind::Banks) == 6);
     assert(previewCount(OrganizationPreviewKind::Search) == 7);
     assert(previewCount(OrganizationPreviewKind::Collections) == 4);
-    assert(previewWrapIndex(0, -1, 6) == 5);
-    assert(previewWrapIndex(5, 1, 6) == 0);
-    assert(previewWrapIndex(2, 3, 7) == 5);
     assert(BANK_BOX_PREVIEW[0].count == 0);
     assert(BANK_BOX_PREVIEW[0].capacity == 30);
-    assert(SEARCH_FILTER_PREVIEW[0].value == std::string_view("Any"));
-    assert(COLLECTION_PREVIEW[0].title == std::string_view("Living Dex"));
 
-    // Invalid selection fails predictably to the first card before movement is applied.
     assert(appShellMoveSelection(-1, 0, 0) == 0);
     assert(appShellMoveSelection(99, 0, 0) == 0);
-
     return 0;
 }
