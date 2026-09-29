@@ -7,7 +7,7 @@ The forensic audit is closed: 746/746 tracked paths accounted, 711/711 text file
 ## Baseline and invariants
 
 - Original severity counts: P1 2, P2 17, P3 20, P4 5.
-- Current MAIN reconciliation point: PR #92 branch `feature/gen4-full-editor-20260928` at `ea6e9079bd8c5278ecd27fd9f81c18279d7c807d`. PR #101 preserves its existing remediation history; the one newer MAIN delta was documentation-only and its exact file contents were synced forward without reset/rebase.
+- Current MAIN reconciliation point: PR #92 branch `feature/gen4-full-editor-20260928` at `2b58c2e6e3eebc82c164c2d76fcc2f60d89f4acc`. PR #101 preserves its remediation history; the newer MAIN delta is Product Home / SaveSelect / UI glue only and is not preemptively cherry-picked into remediation.
 - Frozen evidence branch remains untouched at `143c5e5c341d4f85af30e013808a37d6719560fe`.
 - Current baseline CI note: upstream MAIN `58a56f8d…` still has Product UI Native red before remediation; Host Tests were in progress and the Gen IV gate was cancelled by newer lane movement when this ledger was refreshed. Treat this as pre-existing UI-lane drift, not a new audit finding.
 - Source saves remain immutable. Emulator/installed-title live writes remain disabled. Cross-game True Move and source injection remain locked. No Gen V or Master Vault backend work is in scope.
@@ -46,8 +46,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 24 | AUDIT-012 | P3 | FIXED | Settings persistence truncates in place and ignores write/close failure |
 | 25 | AUDIT-040 | P3 | FIXED | RetroArch playlist auto-match can accept wrong-family game content with the same basename |
 | 26 | AUDIT-016 | P3 | FIXED | RetroArch launch matching is basename-only and first-match wins |
-| 27 | AUDIT-043 | P3 | OPEN | Device-observed Gen IV save rows can lose trainer-name presentation despite synthetic parser coverage |
-| 28 | AUDIT-033 | P3 | OPEN | Gen IV move-stat presentation uses HGSS values for Diamond/Pearl |
+| 27 | AUDIT-043 | P3 | DEFERRED WITH JUSTIFICATION | Device-observed Gen IV save rows can lose trainer-name presentation despite synthetic parser coverage |
+| 28 | AUDIT-033 | P3 | FIXED | Gen IV move-stat presentation uses HGSS values for Diamond/Pearl |
 | 29 | AUDIT-034 | P3 | OPEN | HD sprite recovery/preflight can accept corrupt existing PNGs |
 | 30 | AUDIT-035 | P3 | OPEN | personal/learnset regeneration still searches the removed SPECIES_NAMES symbol |
 | 31 | AUDIT-044 | P3 | OPEN | Fontstash allocation failures can become null-pointer crashes during text rendering |
@@ -538,8 +538,12 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Add a focused regression reproducing the original failure, then run the nearest broader host/native suite.
 - **Dependency / sequencing:** Evidence-first; requires failing disposable fixture before code change
 - **Proposed remediation order:** 27
-- **Status:** OPEN
+- **Status:** DEFERRED WITH JUSTIFICATION
 - **Evidence gate:** do not patch by filename fallback. First preserve/reproduce the failing real Gen IV layout and convert it into a sanitized regression fixture.
+
+- **Current blocker:** the historical notes and device evidence are recoverable, but the raw disposable `Pokemon - Platinum Version (USA) (Rev 1).dsv` bytes are not available in the current conversation/library. The repository also intentionally does not contain the user's personal save. Without the failing bytes, the General-block/name-decoding discrepancy cannot be isolated safely.
+- **Production safety while deferred:** presentation/identity only; Gen IV external sources remain read-only and source mutation boundaries are unchanged. Do not substitute filename-derived trainer identity.
+- **Prerequisite to resume:** regain a disposable failing `.dsv` copy, hash it read-only, trace the selected General block/name bytes, then derive a sanitized minimal regression fixture rather than committing the personal save.
 
 ### 28. AUDIT-033 — Gen IV move-stat presentation uses HGSS values for Diamond/Pearl
 
@@ -555,7 +559,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Add a focused regression reproducing the original failure, then run the nearest broader host/native suite.
 - **Dependency / sequencing:** Gen IV correctness tranche
 - **Proposed remediation order:** 28
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `MoveBattleStatsData::Gen4` remains the Platinum/HGSS table. A generator-owned Diamond/Pearl override now routes Hypnosis (move 95) to 70 accuracy while Platinum/HGSS remain 60. `tests/test_move_picker_presentation.cpp` pins DP/D/P = 70 and Pt/HGSS = 60. Implementation exists; exact-head validation is still required before VERIFIED.
 
 ### 29. AUDIT-034 — HD sprite recovery/preflight can accept corrupt existing PNGs
 
