@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 256 / 725
-- Fully read text files: 222 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 259 / 725
+- Fully read text files: 225 / 692 (text/unknown classification remains provisional until content inspection completes)
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -103,6 +103,13 @@ Status: IN PROGRESS
 - FRLG/LGPE/SWSH record layouts initialize every common item field they later persist; BDSP/PLA headers are primarily geometry/catalog definitions and did not introduce a new codec defect in this tranche.
 - Scarlet/Violet and Z-A share a distinct decoder bug: their derived item records decode raw flags but never initialize the inherited common `isNew` / `isFavorite` fields before the object is copied into the base inventory vector. The writer later branches on `isNew`, making the indeterminate state observable in save bytes. This is recorded as AUDIT-024.
 - No dedicated Gen IX inventory round-trip tests were found in the current test tree; existing inventory tests cover classic-generation/UI contracts rather than this native record decoder.
+
+### Pokémon ownership / Bank API checkpoint
+
+- Fully read the 645-line abstract Pokémon ownership/edit interface plus the unified Bank API and its box-count compatibility policy.
+- Unified Bank v1 records are reconstructed from fixed native record spans and checksum-rejected before entering live Bank storage. The already-recorded legacy migration checksum gap remains AUDIT-013; no separate unified-Bank format defect was added here.
+- The base Pokémon class owns its decrypted buffer as a raw allocation but defaults move construction/assignment. Six modern concrete formats explicitly default their own move operations as “Allow moving for efficient transfers,” so the broken base ownership transfer is publicly exposed. Those large concrete headers remain PENDING until their complete line-by-line reads, but the exact move declarations were directly verified for LGPE/SWSH/BDSP/PLA/SV/Z-A.
+- Current production containers predominantly move `unique_ptr<Pokemon>`, so this is recorded as a latent P3 memory-safety API defect rather than evidence of an already-triggered crash.
 
 ## Findings
 
@@ -425,3 +432,18 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: value-initialize the record (`InventoryItem9SV item{}` / `InventoryItem9LZA item{}`), decode flags into `isNew` and `isFavorite` explicitly, and replace manual signed-shift assembly with `readUInt32LittleEndian()` or `static_cast<uint32_t>(data[n]) << shift`. Add exact byte round-trip tests for both games.
 - Risk of fix: low; the corrected decoder should make no-byte-change round trips deterministic.
 - Owner: MAIN / Gen IX inventory lane.
+
+### AUDIT-025 — defaulted Pokémon move operations duplicate raw-buffer ownership
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: Pokémon entity ownership / C++ memory safety
+- Files: `include/Pokemon/Pokemon.h`; directly verified declarations in `Pokemon7LGPE.h`, `Pokemon8SWSH.h`, `Pokemon8BDSP.h`, `Pokemon8LA.h`, `Pokemon9SV.h`, `Pokemon9LZA.h`
+- Exact symbols: `Pokemon(Pokemon&&) noexcept = default`, `Pokemon::operator=(Pokemon&&) noexcept = default`, and the corresponding defaulted concrete-format move operations.
+- Problem: `Pokemon` owns `buffer` as a raw `std::byte*` and its destructor executes `delete[] buffer`. A compiler-generated move of a raw pointer copies the pointer value; it does not null the source. The defaulted move also copies the `std::span`, so after a move both source and destination refer to the same allocation.
+- Why it matters: moving any of these concrete Pokémon objects by value leaves the destination pointing at storage still owned by the moved-from object. Destruction of the source creates a dangling destination; destruction of both produces a double free. Move assignment additionally risks leaking/overwriting the destination's prior allocation before the later double-free condition.
+- Reachability: current audited storage paths overwhelmingly traffic in `std::unique_ptr<Pokemon>`, so no present production crash path was confirmed in this tranche. However the move constructors/assignments are public and explicitly documented as supported, making this a real latent ownership defect rather than dead code.
+- Evidence: the base class destructor owns/frees `buffer`; its move operations are defaulted. LGPE, SWSH, BDSP, PLA, SV and Z-A each explicitly default their derived move constructor and move assignment.
+- Missing tests: move-construct and move-assign each concrete format under ASan; destroy the moved-from object before reading the moved-to object; verify data remains valid and exactly one owner frees the allocation.
+- Recommended fix: implement custom base move construction/assignment that transfers `buffer`, rebuilds `data` to the transferred allocation, copies `dataSize`, and clears the source's pointer/span/size. Alternatively replace the raw allocation with `std::unique_ptr<std::byte[]>` and still ensure the span is rebound after moves.
+- Risk of fix: low to medium; move assignment must safely release any existing destination allocation and rebind spans.
+- Owner: MAIN / Pokémon core lane.
