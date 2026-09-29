@@ -700,15 +700,15 @@ tests/test_v1_polish_contract.py	blob	100644	7989		unknown		PENDING			0
 tests/test_write_policy.cpp	blob	100644	1007		unknown		PENDING			0	
 tools/check_device_assets.py	blob	100755	8842		unknown		PENDING			0	
 tools/check_recovery_contract.py	blob	100644	2978		unknown		PENDING			0	
-tools/gen_gen2_move_compatibility.py	blob	100644	8295		unknown		PENDING			0	
+tools/gen_gen2_move_compatibility.py	blob	100644	8295	pinned Gen II move-compatibility table generator	text	195	AUDITED			0	no
 tools/gen_gen4_personal.py	blob	100644	11443		unknown		PENDING			0	
 tools/gen_gen4text.py	blob	100644	9944		unknown		PENDING			0	
 tools/gen_hdsprites.py	blob	100644	7465		unknown		PENDING			0	
 tools/gen_itempouches.py	blob	100644	10609	item-pouch generator from PKHeX storage spans	text	243	AUDITED			0	no
-tools/gen_itempresence.py	blob	100644	10167		unknown		PENDING			0	
+tools/gen_itempresence.py	blob	100644	10167	held-item presence generator from PKHeX ItemStorage sources	text	245	AUDITED			0	no
 tools/gen_learnsets.py	blob	100644	39706		unknown		PENDING			0	
 tools/gen_locations.py	blob	100644	11256	generated location table generator	text	214	AUDITED			0	no
-tools/gen_moveinfo.py	blob	100644	8818		unknown		PENDING			0	
+tools/gen_moveinfo.py	blob	100644	8818	per-game move base-PP generator from PKHeX MoveInfo tables	text	204	AUDITED			0	no
 tools/gen_movenames.py	blob	100644	2884	move-name generator from PKHeX text resource	text	76	AUDITED			0	no
 tools/gen_movepresence.py	blob	100644	6427	move-presence generator from pinned PKHeX source	text	170	AUDITED			0	yes
 tools/gen_personal.py	blob	100644	25652		unknown		PENDING			0	
