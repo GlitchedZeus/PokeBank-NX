@@ -55,7 +55,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 33 | AUDIT-003 | P3 | FIXED | mutable native toolchain image |
 | 34 | AUDIT-036 | P3 | FIXED | Product Home Help overlay advertises stale controller actions |
 | 35 | AUDIT-011 | P3 | FIXED | Search preview vertical wrap changes columns and the test blesses it |
-| 36 | AUDIT-038 | P3 | OPEN | Legacy Save Instances scroll logic assumes one more visible row than the renderer draws |
+| 36 | AUDIT-038 | P3 | FIXED | Legacy Save Instances scroll logic assumes one more visible row than the renderer draws |
 | 37 | AUDIT-041 | P3 | OPEN | Standalone runtime contract falsely says RetroArch is never invoked |
 | 38 | AUDIT-010 | P3 | OPEN | canonical engineering authority chain points to obsolete work |
 | 39 | AUDIT-042 | P3 | OPEN | Active session/roadmap docs route work through obsolete project state |
@@ -702,8 +702,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** no contract currently binds the Legacy Save Instances renderer's visible-row count to the input scroll-window count.
 - **Dependency / sequencing:** UI navigation tranche
 - **Proposed remediation order:** 36
-- **Status:** OPEN
-- **Current-code reconciliation:** still CURRENT at `4bdb82db247f9d0d6bc4393624c40db32a923b40`: input uses six visible rows while the renderer draws five.
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `src/UI/SaveSelectScreen.cpp` now defines one `LEGACY_INSTANCE_VISIBLE_ROWS = 5` constant and uses it in both Legacy Save Instances input scrolling and rendering. `tests/test_save_instance_architecture_contract.py` requires the shared constant at both call sites. This file overlaps the newer Product UI lane, so final integration must preserve the same constant-based fix rather than cherry-picking unrelated UI work into remediation. Exact-head CI is still required before VERIFIED.
 
 ### 37. AUDIT-041 — Standalone runtime contract falsely says RetroArch is never invoked
 
