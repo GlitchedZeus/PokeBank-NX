@@ -151,8 +151,15 @@ void runGen1(G1::SourceGame game) {
         const auto before = staged(*editor);
         const std::array<std::size_t,3> selected{1,2,3};
         assert(editor->beginPackedGroupMove(2, selected, error));
+        const auto blocked = editor->finalizedBytes(error);
+        assert(blocked.empty());
+        assert(error.find("Place or cancel carried Pokemon") != std::string::npos);
+        assert(editor->packedMoveActive());
+        error.clear();
         assert(editor->cancelPackedMove(error)); assert(staged(*editor) == before);
         assert((gen1Order(*editor, 2) == std::vector<std::string>{"PIKA","B","C","D","E","F"}));
+        const auto finalized = editor->finalizedBytes(error);
+        assert(!finalized.empty() && error.empty());
     }
     {
         auto editor = makeGen1Editor(raw, game); setupGen1Six(*editor);
@@ -269,8 +276,16 @@ void runGen2(const L& layout, G2::SourceGame game) {
     {
         auto editor=makeGen2Editor(raw,game); setupGen2Six(*editor); const auto before=staged(*editor);
         const std::array<std::size_t,3> selected{1,2,3};
-        assert(editor->beginPackedGroupMove(0,selected,error)); assert(editor->cancelPackedMove(error));
+        assert(editor->beginPackedGroupMove(0,selected,error));
+        const auto blocked=editor->finalizedBytes(error);
+        assert(blocked.empty());
+        assert(error.find("Place or cancel carried Pokemon")!=std::string::npos);
+        assert(editor->packedMoveActive());
+        error.clear();
+        assert(editor->cancelPackedMove(error));
         assert(staged(*editor)==before); assertOriginal(*editor,raw);
+        const auto finalized=editor->finalizedBytes(error);
+        assert(!finalized.empty() && G2::parse(finalized,game));
     }
     {
         auto editor=makeGen2Editor(raw,game); setupGen2Six(*editor); const auto total=gen2Total(*editor);
