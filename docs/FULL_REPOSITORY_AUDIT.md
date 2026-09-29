@@ -478,3 +478,18 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: make entity length an enforced boundary before decryption. Accept only documented native stored/party sizes (or an explicitly justified superset), and normalize valid stored entities to an owned party-sized buffer before any party-stat API is exposed. Return failure/invalid state for malformed lengths instead of relying on callers to be perfect.
 - Risk of fix: medium because clone/Bank/encryption code currently preserves `dataSize`; normalize carefully so box serialization still writes only the intended native prefix where the save format genuinely stores stored-size entities.
 - Owner: MAIN / Pokémon core + encryption lane.
+
+### AUDIT-027 — LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: Let's Go Pokémon stats / entity editing
+- Files: `include/Pokemon/BaseStatsGen7.h`, `src/Pokemon/BaseStatsGen7.cpp`, `src/Pokemon/Pokemon7LGPE.cpp`, `include/Pokemon/Pokemon7LGPE.h`
+- Exact symbols: `BASE_STATS_TABLE_GEN7`, `BASE_STATS_COUNT_GEN7`, `getBaseStatsGen7()`, `Pokemon7LGPE::baseHP/baseATK/baseDEF/baseSPE/baseSPA/baseSPD()`, `computeStat()`, `recalculateStats()`.
+- Problem: the LGPE base-stat table is mostly a dense 0..151 array, then appends Meltan (#808) and Melmetal (#809) as the final two records. The getter does not search by the record's `id`; after regional-form handling it rejects any `speciesId >= BASE_STATS_COUNT_GEN7` and otherwise indexes `BASE_STATS_TABLE_GEN7[speciesId]`. The array count is therefore only the number of rows, not the highest supported species id. Species 808/809 always return the all-zero fallback and the appended rows are unreachable.
+- Why it matters: LGPE stat display and mutation share this lookup. `Pokemon7LGPE::computeStat()` derives all six battle stats from these base stats, and `recalculateStats()` writes Level/current HP/max HP/ATK/DEF/SPE/SPA/SPD plus Combat Power into the PB7 party tail that the game reads. Species, form, level, EXP, nature, IV and AV edits invoke this recalculation. Editing Meltan or Melmetal can therefore persist a structurally valid PB7 whose party stat tail was calculated from base stat 0.
+- Encoding confirmation: current PKHeX `PB7.Species` reads/writes the u16 at `0x08` directly and its personal lookup indexes `PersonalTable.GG.GetFormEntry(Species, Form)`; there is no LGPE-local species numbering that maps Meltan/Melmetal to dense rows 152/153.
+- Tests: no Meltan/Melmetal or LGPE base-stat regression test was found by filename in the current test tree.
+- Missing tests: `getBaseStatsGen7(808,0)` and `(809,0)` must return the native Meltan/Melmetal rows; editing Level/IV/AV on fixture PB7s must produce the same party stats/CP as PKHeX and must not collapse them toward base-0 results.
+- Recommended fix: stop treating this sparse table as a dense dex-indexed array. Either special-case/search sparse IDs, split the 0..151 dense table from Meltan/Melmetal, or generate a true id-indexed table large enough for 809. Add explicit compile-time/runtime coverage for 808/809.
+- Risk of fix: low; Pikachu/Eevee/Alolan dense lookups can remain unchanged while sparse IDs are resolved explicitly.
+- Owner: MAIN / LGPE Pokémon/stat-data lane.
