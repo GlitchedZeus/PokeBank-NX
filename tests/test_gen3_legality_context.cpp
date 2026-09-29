@@ -53,9 +53,20 @@ int main() {
     // but it is direct in FireRed/LeafGreen. The old generic path treated every PK3 as FRLG.
     const auto ruby = Legality::analyze(p, Enums::GameVersion::FRLG, "ruby_gba");
     assert(hasText(ruby, "not native to this exact Gen III game"));
+    assert(ruby.coverage.sourceGame == Legality::CoverageLevel::Complete);
+    assert(ruby.coverage.encounter == Legality::CoverageLevel::Partial);
+    assert(ruby.verdict() == Legality::Verdict::Incomplete);
 
     const auto fireRed = Legality::analyze(p, Enums::GameVersion::FRLG, "firered_gba");
     assert(!hasText(fireRed, "not native to this exact Gen III game"));
+
+    // A later-generation move id stored in a PK3 must fail the exact-format ceiling even if
+    // the global move-name table knows that id.
+    p.setMove(1, 467);
+    const auto impossible = Legality::analyze(p, Enums::GameVersion::FRLG, "ruby_gba");
+    assert(hasText(impossible, "cannot exist in a Generation 3 save"));
+    assert(impossible.hasInvalid());
+    assert(impossible.verdict() == Legality::Verdict::Invalid);
 
     // No exact container context is intentional for Bank records; retain generic-format behavior.
     const auto bank = Legality::analyze(p, Enums::GameVersion::FRLG);

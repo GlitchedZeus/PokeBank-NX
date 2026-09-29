@@ -8,7 +8,9 @@
  */
 
 #include "Legality/Legality.h"
+#include "Integration/Encounter/EncounterGuardrails.h"
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <string_view>
@@ -27,8 +29,9 @@
 namespace Legality {
 
     namespace {
-        void add(Report& r, Severity sev, std::string text) {
-            r.issues.push_back(Issue{sev, std::move(text)});
+        void add(Report& r, Severity sev, std::string text,
+                 CheckIdentifier identifier = CheckIdentifier::Misc) {
+            r.issues.push_back(Issue{sev, std::move(text), identifier});
         }
         const char* statName(int i) {
             static const char* const kNames[6] = { "HP", "Atk", "Def", "Spe", "SpA", "SpD" };
@@ -62,8 +65,9 @@ namespace Legality {
         }
     }
 
-    Report analyze(const Pokemon::Pokemon& pk, Enums::GameVersion originGroup,
-                   std::string_view exactSourceGameId) {
+    Report analyze(const Pokemon::Pokemon& pk, const Context& context) {
+        const auto originGroup = context.originGroup;
+        const auto exactSourceGameId = context.exactSourceGameId;
         Report r;
         PokeVault::Integration::Gen3::SourceGame gen3Source =
             PokeVault::Integration::Gen3::SourceGame::FireRedGBA;
@@ -71,20 +75,57 @@ namespace Legality {
         const uint16_t species = pk.speciesID();
         if (species == 0) return r;  // empty slot — nothing to validate
 
-        // LGPE (group GG) is the only pre-Gen8 supported group; the rest have mint/stat nature.
-        const bool gen8plus = (originGroup != Enums::GameVersion::GG);
+        const auto* sourceProfile = sourceGameProfile(exactSourceGameId);
+        const uint8_t exactGeneration = sourceProfile ? sourceProfile->generation : 0;
+        if (sourceProfile) {
+            r.coverage.sourceGame = CoverageLevel::Complete;
+            r.coverage.encounter = sourceProfile->encounterCoverage;
+            // Exact-game move pools exist, but event/tradeback chronology is not complete yet.
+            r.coverage.moves = CoverageLevel::Partial;
+            // Internal mechanics are intentionally still partial until DV/Stat-Exp and
+            // generation-specific PID/RNG rules have dedicated verifiers.
+            r.coverage.internal = CoverageLevel::Partial;
+        }
+
+        const bool hasStatNature =
+            originGroup == Enums::GameVersion::SWSH ||
+            originGroup == Enums::GameVersion::BDSP ||
+            originGroup == Enums::GameVersion::PLA ||
+            originGroup == Enums::GameVersion::SV ||
+            originGroup == Enums::GameVersion::ZA;
 
         // Species/form personal data (abilities / gender ratio / per-game presence) for the L2 checks.
         const Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, pk.form());
 
         // ---- L1: species id known (name-table sentinel = "Unknown") ----
         if (std::string(Trainer::getSpeciesName(species)) == "Unknown")
-            add(r, Severity::Invalid, "Unknown species id " + std::to_string(species));
+            add(r, Severity::Invalid, "Unknown species id " + std::to_string(species),
+                CheckIdentifier::Species);
+
+        if (sourceProfile && species > sourceProfile->maxSpecies) {
+            add(r, Severity::Invalid,
+                "Species " + std::to_string(species) +
+                " cannot exist in a Generation " + std::to_string(sourceProfile->generation) +
+                " save (maximum species id " + std::to_string(sourceProfile->maxSpecies) + ")",
+                CheckIdentifier::SourceGame);
+        }
+
+        for (int slot = 0; sourceProfile && slot < 4; ++slot) {
+            const uint16_t moveId = pk.move(slot);
+            if (moveId > sourceProfile->maxMove) {
+                add(r, Severity::Invalid,
+                    "Move id " + std::to_string(moveId) +
+                    " cannot exist in a Generation " +
+                    std::to_string(sourceProfile->generation) +
+                    " save (maximum move id " + std::to_string(sourceProfile->maxMove) + ")",
+                    CheckIdentifier::Moves);
+            }
+        }
 
         // ---- L1: nature range (+ stat/mint nature on Gen8+) ----
         if (pk.nature() > 24)
             add(r, Severity::Invalid, "Nature out of range (" + std::to_string(pk.nature()) + ")");
-        if (gen8plus && pk.statNature() > 24)
+        if (hasStatNature && pk.statNature() > 24)
             add(r, Severity::Invalid, "Stat nature out of range (" + std::to_string(pk.statNature()) + ")");
 
         // ---- L1: EVs ----
@@ -135,7 +176,7 @@ namespace Legality {
         }
 
         // ---- L1/L2: ability slot valid + ability id legal for the species/form ----
-        {
+        if (!sourceProfile || exactGeneration >= 3) {
             const uint8_t an = pk.abilityNumber();
             if (an != 1 && an != 2 && an != 4)
                 add(r, Severity::Warning, "Unusual ability slot (" + std::to_string(an) + ")");
@@ -205,7 +246,7 @@ namespace Legality {
         // ---- L1: held item is a known id (skip when none) ----
         // Resolve through the id space the mon's own game uses -- a Gen 3 held item checked against
         // the modern table would either name the wrong item or be reported "unknown" when it is fine.
-        if (pk.heldItem() != 0) {
+        if (pk.heldItem() != 0 && (!sourceProfile || exactGeneration >= 3)) {
             const char* heldName = (hasExactGen3Source || originGroup == Enums::GameVersion::FRLG)
                                  ? Names::getItemNameG3(pk.heldItem())
                                  : Trainer::getItemName(pk.heldItem());
@@ -235,8 +276,44 @@ namespace Legality {
                                           " above current level " + std::to_string(effLevel));
         }
 
+        // ---- L3 foundation: exact encounter evidence where audited tables exist ----
+        if (sourceProfile && sourceProfile->encounterCoverage != CoverageLevel::None &&
+            pk.metLocation() != 0 && pk.metLevel() != 0) {
+            using namespace PokeVault::Integration::EncounterGuardrails;
+            if (exactGeneration == 3) {
+                const auto candidates =
+                    forGameSpeciesWithGen3Provenance(exactSourceGameId, species);
+                if (!candidates.empty()) {
+                    const bool match = std::any_of(
+                        candidates.begin(), candidates.end(), [&](const auto& choice) {
+                            return choice.encounter.location == pk.metLocation() &&
+                                   choice.encounter.containsLevel(pk.metLevel());
+                        });
+                    if (!match)
+                        add(r, Severity::Warning,
+                            "Met location/level does not match the audited encounter table for " +
+                            std::string(exactSourceGameId),
+                            CheckIdentifier::Encounter);
+                }
+            } else {
+                const auto candidates = forGameSpecies(exactSourceGameId, species);
+                if (!candidates.empty()) {
+                    const bool match = std::any_of(
+                        candidates.begin(), candidates.end(), [&](const auto& encounter) {
+                            return encounter.location == pk.metLocation() &&
+                                   encounter.containsLevel(pk.metLevel());
+                        });
+                    if (!match)
+                        add(r, Severity::Warning,
+                            "Met location/level does not match the audited encounter table for " +
+                            std::string(exactSourceGameId),
+                            CheckIdentifier::Encounter);
+                }
+            }
+        }
+
         // ---- L2: gender vs the species gender ratio (255 genderless / 254 female-only / 0 male-only) ----
-        {
+        if (!sourceProfile || exactGeneration >= 2) {
             const uint8_t g = pk.gender();
             if (g > 2)
                 add(r, Severity::Invalid, "Gender value out of range (" + std::to_string(g) + ")");
@@ -290,5 +367,10 @@ namespace Legality {
             add(r, Severity::Warning, "Stored checksum is invalid");
 
         return r;
+    }
+
+    Report analyze(const Pokemon::Pokemon& pk, Enums::GameVersion originGroup,
+                   std::string_view exactSourceGameId) {
+        return analyze(pk, Context{originGroup, exactSourceGameId});
     }
 }
