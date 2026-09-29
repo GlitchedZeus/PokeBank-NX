@@ -52,6 +52,16 @@ namespace UI {
             return value.substr(0, std::min(length, value.size()));
         }
 
+        std::string productSourceLabel(std::string_view raw) {
+            if (raw == "LOCAL SAVE") return "System save";
+            if (raw == "REMEMBERED") return "Linked save";
+            if (raw == "CHOOSE SAVE") return "Choose save";
+            if (raw == "MISSING") return "Missing source";
+            if (raw == "INVALID") return "Invalid source";
+            if (raw == "AMBIGUOUS") return "Needs attention";
+            return std::string(raw);
+        }
+
         std::string providerSummary(
             const std::vector<PokeVault::Legacy::FRLGSaveInstance>& instances) {
             std::vector<std::string> providers;
@@ -167,6 +177,7 @@ namespace UI {
 
     struct TrainerPortraitPresentation {
         const char* label = "Trainer";
+        const char* assetKey = "";
         bool female = false;
         bool specific = false;
     };
@@ -176,35 +187,35 @@ namespace UI {
         const bool female = genderKnown && gender == 1;
 
         if (gameId == "red_gb" || gameId == "blue_gb" || gameId == "yellow_gb")
-            return {"Red", false, true};
+            return {"Red", "red", false, true};
         if (gameId == "gold_gbc" || gameId == "silver_gbc")
-            return {"Gold", false, true};
+            return {"Gold", "gold", false, true};
         if (gameId == "crystal_gbc")
             return genderKnown
-                ? TrainerPortraitPresentation{female ? "Kris" : "Gold", female, true}
-                : TrainerPortraitPresentation{"Crystal Trainer", false, false};
+                ? TrainerPortraitPresentation{female ? "Kris" : "Gold", female ? "kris" : "gold", female, true}
+                : TrainerPortraitPresentation{"Crystal Trainer", "", false, false};
 
         if (gameId == "ruby_gba" || gameId == "sapphire_gba" || gameId == "emerald_gba")
             return genderKnown
-                ? TrainerPortraitPresentation{female ? "May" : "Brendan", female, true}
-                : TrainerPortraitPresentation{"Hoenn Trainer", false, false};
+                ? TrainerPortraitPresentation{female ? "May" : "Brendan", female ? "may" : "brendan", female, true}
+                : TrainerPortraitPresentation{"Hoenn Trainer", "", false, false};
         if (gameId == "firered_gba" || gameId == "leafgreen_gba")
             return genderKnown
-                ? TrainerPortraitPresentation{female ? "Leaf" : "Red", female, true}
-                : TrainerPortraitPresentation{"Kanto Trainer", false, false};
+                ? TrainerPortraitPresentation{female ? "Leaf" : "Red", female ? "leaf" : "red", female, true}
+                : TrainerPortraitPresentation{"Kanto Trainer", "", false, false};
 
         if (gameId == "diamond_nds" || gameId == "pearl_nds" || gameId == "platinum_nds")
             return genderKnown
-                ? TrainerPortraitPresentation{female ? "Dawn" : "Lucas", female, true}
-                : TrainerPortraitPresentation{"Sinnoh Trainer", false, false};
+                ? TrainerPortraitPresentation{female ? "Dawn" : "Lucas", female ? "dawn" : "lucas", female, true}
+                : TrainerPortraitPresentation{"Sinnoh Trainer", "", false, false};
         if (gameId == "heartgold_nds" || gameId == "soulsilver_nds")
             return genderKnown
-                ? TrainerPortraitPresentation{female ? "Lyra" : "Ethan", female, true}
-                : TrainerPortraitPresentation{"Johto Trainer", false, false};
+                ? TrainerPortraitPresentation{female ? "Lyra" : "Ethan", female ? "lyra" : "ethan", female, true}
+                : TrainerPortraitPresentation{"Johto Trainer", "", false, false};
 
         // Later customizable protagonists deliberately stay generic until appearance reconstruction
         // is backed by the exact save-format model. Never pretend a base portrait is exact.
-        return {"Trainer", false, false};
+        return {"Trainer", "", false, false};
     }
 
     void drawTrainerPortrait(PKSEFramebuffer& fb, int x, int y, int w, int h,
@@ -213,27 +224,23 @@ namespace UI {
         const Color accent = Colors::Info;
         drawPanelSurface(fb, x, y, w, h, false, std::min(14, w / 5));
 
-        const int cx = x + w / 2;
-        const int headY = y + std::max(16, h / 4);
-        const int headR = std::max(9, std::min(w, h) / 7);
-        fb.drawFilledCircle(cx, headY, headR, withAlpha(Colors::TextPrimary, 210));
-
-        // Original project-drawn trainer mark: cap/hair + torso. It conveys player identity
-        // without bundling copied character artwork.
-        fb.drawFilledRoundedRect(cx - headR - 3, headY - headR - 5,
-                                 headR * 2 + 6, 7, 3, accent);
-        fb.drawFilledRoundedRect(cx - headR - 8, headY - headR,
-                                 headR + 10, 4, 2, accent);
-        if (portrait.female) {
-            fb.drawFilledRoundedRect(cx - headR - 5, headY + 2,
-                                     5, headR + 8, 2, withAlpha(Colors::TextPrimary, 180));
-            fb.drawFilledRoundedRect(cx + headR, headY + 2,
-                                     5, headR + 8, 2, withAlpha(Colors::TextPrimary, 180));
+        const IconImage& art = SystemIcons::trainerPortrait(portrait.assetKey);
+        const int labelReserve = showLabel ? 24 : 4;
+        if (art.valid()) {
+            const auto rect = PokeBank::UIModel::containSprite(
+                x + 4, y + 4, w - 8, h - labelReserve - 4, art.width, art.height);
+            if (rect.width > 0 && rect.height > 0)
+                fb.drawImageScaled(rect.x, rect.y, art.width, art.height,
+                                   rect.width, rect.height, art.data, 4);
+        } else {
+            // Truthful fallback: a Poké Ball identity badge, never a fake "character portrait".
+            const int cx = x + w / 2;
+            const int cy = y + (h - labelReserve) / 2;
+            const int r = std::max(13, std::min(w, h - labelReserve) / 4);
+            fb.drawCircle(cx, cy, r, withAlpha(accent, 190), 3);
+            fb.drawFilledRect(cx - r, cy - 2, r * 2, 4, withAlpha(accent, 150));
+            fb.drawFilledCircle(cx, cy, std::max(4, r / 4), accent);
         }
-        const int bodyY = headY + headR + 7;
-        fb.drawFilledRoundedRect(cx - std::max(12, w / 5), bodyY,
-                                 std::max(24, (w * 2) / 5),
-                                 std::max(13, h / 5), 7, withAlpha(accent, 135));
 
         if (showLabel) {
             std::string label = portrait.label;
@@ -1987,7 +1994,8 @@ namespace UI {
             fb.drawText(x + (CLASSIC_TILE_W-lw)/2, y + 146, label,
                         focused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Caption);
 
-            std::string meta = title.trainerName.empty() ? title.sourceLabel : title.trainerName;
+            std::string meta = title.trainerName.empty()
+                ? productSourceLabel(title.sourceLabel) : title.trainerName;
             if (title.dexTotal > 0)
                 meta += "  •  " + std::to_string(title.dexCaught) + "/" + std::to_string(title.dexTotal);
             if (meta.size() > 24) meta = meta.substr(0, 23) + "…";
@@ -2091,7 +2099,7 @@ namespace UI {
             drawTrainerPortrait(fb, infoX + 334, HUB_Y + 66, 94, 108, portrait, true);
 
             std::string sourceLine = title.platformLabel;
-            if (!title.sourceLabel.empty()) sourceLine += "  •  " + title.sourceLabel;
+            if (!title.sourceLabel.empty()) sourceLine += "  •  " + productSourceLabel(title.sourceLabel);
             if (sourceLine.size() > 38) sourceLine = sourceLine.substr(0, 37) + "…";
             fb.drawText(infoX, HUB_Y + 139, sourceLine,
                         Colors::TextSecondary, TextStyle::Body);
@@ -2224,7 +2232,7 @@ namespace UI {
         fb.drawFilledCircle(vaultLogoX + 18, vaultLogoY + 18, 7, vaultAccent);
         fb.drawText(RIGHT_X + 78, HUB_Y + 26, "MASTER VAULT",
                     vaultFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
-        fb.drawText(RIGHT_X + 78, HUB_Y + 60, "Your central Pokémon library",
+        fb.drawText(RIGHT_X + 78, HUB_Y + 60, "Pokémon storage, transfer & lineage",
                     Colors::TextSecondary, TextStyle::Body);
         const int vaultArrowX = RIGHT_X + RIGHT_W - 42;
         fb.drawCircle(vaultArrowX, HUB_Y + 42, 17,
@@ -2236,23 +2244,20 @@ namespace UI {
         if (vaultFocused)
             fb.drawRoundedRect(RIGHT_X, HUB_Y, RIGHT_W, featureH, 18, vaultAccent, 3);
         const int vaultCx = RIGHT_X + RIGHT_W / 2;
-        const int vaultCy = HUB_Y + 164;
-        fb.drawFilledRoundedRect(RIGHT_X + 56, HUB_Y + 112, RIGHT_W - 112, 108, 28,
-                                 withAlpha(vaultAccent, 22));
+        const int vaultCy = HUB_Y + 166;
+        fb.drawFilledRoundedRect(RIGHT_X + 40, HUB_Y + 104, RIGHT_W - 80, 122, 30,
+                                 withAlpha(vaultAccent, 20));
         for (int i = -2; i <= 2; ++i) {
-            const int distance = i < 0 ? -i : i;
-            const int podX = vaultCx + i * 62;
-            const int podH = 48 + (2 - distance) * 8;
-            fb.drawRoundedRect(podX - 22, HUB_Y + 140 - podH / 4, 44, podH, 12,
-                               withAlpha(vaultAccent, 92), 2);
-            fb.drawFilledCircle(podX, HUB_Y + 168, 8 + (i == 0 ? 4 : 0),
-                                withAlpha(vaultAccent, i == 0 ? 188 : 88));
+            const int podX = vaultCx + i * 68;
+            const int r = i == 0 ? 27 : 22;
+            fb.drawFilledCircle(podX, vaultCy, r, withAlpha(Colors::PanelAlt, 230));
+            fb.drawCircle(podX, vaultCy, r, withAlpha(vaultAccent, i == 0 ? 230 : 135), 3);
+            fb.drawFilledRect(podX - r, vaultCy - 2, r * 2, 4,
+                              withAlpha(vaultAccent, i == 0 ? 210 : 120));
+            fb.drawFilledCircle(podX, vaultCy, i == 0 ? 8 : 6,
+                                i == 0 ? vaultAccent : withAlpha(vaultAccent, 155));
         }
-        fb.drawCircle(vaultCx, vaultCy, 58, withAlpha(vaultAccent, 150), 7);
-        fb.drawCircle(vaultCx, vaultCy, 39, withAlpha(vaultAccent, 215), 4);
-        fb.drawFilledRoundedRect(vaultCx - 30, vaultCy - 5, 60, 10, 5,
-                                 withAlpha(vaultAccent, 155));
-        fb.drawFilledCircle(vaultCx, vaultCy, 14, vaultAccent);
+        fb.drawCircle(vaultCx, vaultCy, 48, withAlpha(vaultAccent, 85), 3);
         fb.drawFilledRoundedRect(RIGHT_X + 78, HUB_Y + 220, RIGHT_W - 156, 3, 2,
                                  withAlpha(vaultAccent, 120));
         fb.drawText(RIGHT_X + 28, HUB_Y + featureH - 52,
@@ -2268,7 +2273,7 @@ namespace UI {
         fb.drawFilledRoundedRect(dexLogoX + 18, dexLogoY + 4, 4, 28, 2, dexAccent);
         fb.drawText(RIGHT_X + 82, dexY + 26, "POKÉDEX",
                     dexFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
-        fb.drawText(RIGHT_X + 82, dexY + 60, "Species, forms and cries",
+        fb.drawText(RIGHT_X + 82, dexY + 60, "Research species, forms & collection",
                     Colors::TextSecondary, TextStyle::Body);
         const int dexArrowX = RIGHT_X + RIGHT_W - 42;
         fb.drawCircle(dexArrowX, dexY + 42, 17,
@@ -2279,22 +2284,29 @@ namespace UI {
 
         if (dexFocused)
             fb.drawRoundedRect(RIGHT_X, dexY, RIGHT_W, featureH, 18, dexAccent, 3);
-        const int bookX = RIGHT_X + 36, bookY = dexY + 110;
-        fb.drawFilledRoundedRect(RIGHT_X + 24, dexY + 98, RIGHT_W - 48, 126, 22,
-                                 withAlpha(dexAccent, 18));
-        fb.drawRoundedRect(bookX, bookY, 76, 62, 10, dexAccent, 3);
-        fb.drawFilledRoundedRect(bookX + 36, bookY + 4, 4, 54, 2, dexAccent);
+        const int deviceX = RIGHT_X + 30, deviceY = dexY + 100;
+        fb.drawFilledRoundedRect(deviceX, deviceY, RIGHT_W - 60, 124, 20,
+                                 withAlpha(dexAccent, 24));
+        fb.drawRoundedRect(deviceX + 8, deviceY + 8, 112, 106, 16, dexAccent, 3);
+        fb.drawFilledCircle(deviceX + 32, deviceY + 31, 11, withAlpha(dexAccent, 210));
+        fb.drawCircle(deviceX + 32, deviceY + 31, 17, withAlpha(dexAccent, 95), 3);
+        fb.drawRoundedRect(deviceX + 54, deviceY + 24, 54, 54, 8,
+                           withAlpha(dexAccent, 180), 2);
+        fb.drawFilledRect(deviceX + 59, deviceY + 49, 44, 4, withAlpha(dexAccent, 130));
         for (int i = 0; i < 5; ++i) {
-            const int cx = RIGHT_X + 154 + i * 58;
-            const int baseY = dexY + 153;
-            const int r = 15 + (i % 3) * 4;
-            const Color silhouette = i == 2 ? withAlpha(dexAccent, 150)
-                                             : withAlpha(dexAccent, 82);
-            fb.drawFilledCircle(cx, baseY, r, silhouette);
-            fb.drawFilledRoundedRect(cx - r + 3, baseY + r - 4,
-                                     std::max(12, r * 2 - 6), 18 + (i % 2) * 7,
+            const int cx = deviceX + 158 + i * 53;
+            const int cy = deviceY + 58;
+            const int r = 15 + (i % 3) * 3;
+            const Color silhouette = i == 2 ? withAlpha(dexAccent, 185)
+                                             : withAlpha(dexAccent, 95);
+            fb.drawFilledCircle(cx, cy, r, silhouette);
+            fb.drawFilledRoundedRect(cx - r + 4, cy + r - 4,
+                                     std::max(12, r * 2 - 8), 20 + (i % 2) * 5,
                                      8, silhouette);
         }
+        for (int i = 0; i < 3; ++i)
+            fb.drawFilledCircle(deviceX + 160 + i * 18, deviceY + 98, 4,
+                                withAlpha(dexAccent, 120 + i * 35));
         fb.drawText(RIGHT_X + 28, dexY + featureH - 52,
                     "Species  •  Forms  •  Cries  •  Living Dex", dexAccent, TextStyle::Caption);
         fb.drawText(RIGHT_X + 28, dexY + featureH - 30,
@@ -2396,7 +2408,7 @@ namespace UI {
                         TextStyle::Body);
             fb.drawText(x + 30, metaY + 34, "Source", Colors::TextMuted, TextStyle::Caption);
             fb.drawText(x + 122, metaY + 34,
-                        title.sourceLabel.empty() ? "Validated source" : title.sourceLabel,
+                        title.sourceLabel.empty() ? "Validated source" : productSourceLabel(title.sourceLabel),
                         Colors::TextSecondary, TextStyle::Body);
             fb.drawText(x + 30, metaY + 68, "Save", Colors::TextMuted, TextStyle::Caption);
             fb.drawText(x + 122, metaY + 68,

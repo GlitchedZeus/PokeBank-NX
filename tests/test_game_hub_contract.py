@@ -168,3 +168,14 @@ require("if (!shell.hasOverlay()) break;" in ui_manager,
         "closing a secondary shell must not draw the retired shell for one stale frame")
 require("slotW - 12, 66" in source and "slotY + 96" in source,
         "Product Home party sprites and level text must use the enlarged readable layout")
+
+require("SystemIcons::trainerPortrait" in source and "portrait.assetKey" in source,
+        "trainer presentation must load optional real portrait artwork when packaged")
+require('"red"' in source and '"dawn"' in source and '"lucas"' in source and
+        '"ethan"' in source and '"lyra"' in source,
+        "trainer portrait mapping must reserve canonical Gen I-IV asset keys")
+require("productSourceLabel" in source and '"System save"' in source and '"Linked save"' in source,
+        "Product Home must translate raw source-state diagnostics into consumer-facing labels")
+require('"Pokémon storage, transfer & lineage"' in source and
+        '"Research species, forms & collection"' in source,
+        "Vault and Pokédex cards must carry distinct Pokémon-specific product identities")
