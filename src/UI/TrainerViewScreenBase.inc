@@ -4552,7 +4552,9 @@ namespace UI {
                             ? "Debug logging on. Logs are written to sdmc:/switch/PokeBank-NX/logs."
                             : "Debug logging off. No new log files will be written.", 300);
                     }
-                    Utils::saveSettings();   // persist the change to settings.cfg
+                    if (!Utils::saveSettings()) {
+                        postStatus("Couldn't save settings. Your previous settings file was kept.", 360);
+                    }
                 }
             }
 
