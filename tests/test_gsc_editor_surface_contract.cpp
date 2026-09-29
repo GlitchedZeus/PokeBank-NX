@@ -268,8 +268,12 @@ int main() {
     assert(pickerFix.find("hardwareMoveAllowed") != std::string::npos);
     assert(pickerFix.find("MoveCompatibility::canLearnMove") != std::string::npos);
     assert(pickerFix.find("choices.push_back(0)") != std::string::npos);
-    assert(pickerFix.find("Empty + compatible moves only") != std::string::npos);
+    assert(pickerFix.find("constexpr int panelW = 1000, panelH = 568") != std::string::npos);
+    assert(pickerFix.find("Empty + compatible moves only • exact Gen II Acc / Pwr / PP") != std::string::npos);
+    assert(pickerFix.find("MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC)") != std::string::npos);
     assert(pickerFix.find("Needs correction") == std::string::npos);
+    assert(shared.find("!editor->pendingChanges().empty()") != std::string::npos);
+    assert(shared.find("static_cast<int>(actions.count) * geometry.rowStep + 62") != std::string::npos);
 
     // Empty move rows cannot focus PP/Ups and their meaningless numeric cells are hidden.
     assert(workspaceFix.find("normalizeHardwareMoveRowFocus") != std::string::npos);
