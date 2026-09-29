@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 343 / 725
-- Fully read text files: 309 / 692
+- Audited tracked paths: 360 / 725
+- Fully read text files: 326 / 692
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -166,6 +166,13 @@ Status: IN PROGRESS
 - Inventory editing remains sidecar-only until finalization, validates exact classic catalog/range rules, round-trips the rewritten inventory list, repairs the main checksum and strictly reparses before returning a save image.
 - Boxed Pokémon edits/Create/Clone/Remove repair and reparse after every commit and preserve untouched/reverted box bytes where possible.
 - The packed relocation engine repeats the Gen II transaction-boundary problem: pickup immediately stages removals, while finalization has no active-carry guard. This is recorded as AUDIT-030.
+
+### Core utility integrity checkpoint
+
+- Fully read the core unaudited utility layer at live PR #92 head `6e45edd8b038d0be15272605846fa3fe2e4339d6`: owned-path construction, byte-order helpers, whole-file reads, MD5, SHA-256, UTF/string helpers, debug/event logging, CRC16 and the SC xor stream helper.
+- Existing backup-copy durability behavior remains covered by AUDIT-015; `src/Utils/FileUtilities.cpp` itself was already audited, so this tranche did not duplicate that finding.
+- MD5 and CRC16 implementations did not expose a new defect in this pass. Owned-path helpers reject traversal components and constrain generated backup/export components as intended in the reviewed paths.
+- The SHA-256 message schedule contains signed left-shift undefined behavior on ordinary high-bit input bytes. Because that hash authenticates SC-container saves, this is recorded as AUDIT-031.
 
 ## Findings
 
@@ -585,3 +592,18 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: fail closed at the top of `finalizedBytes()` when `packedMove_.active`, and consider blocking unrelated staged mutations while a carry is active. Apply the same transaction invariant to Gen I and II.
 - Risk of fix: low.
 - Owner: MAIN / Gen I staged-edit lane.
+
+### AUDIT-031 — SC SHA-256 message decoding uses signed-shift undefined behavior
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: modern SC-container integrity primitive
+- Files: `src/Utils/SHA256.cpp`, `include/Utils/SHA256.h`; consumed by the SC save encryption/decryption layer.
+- Exact symbol: `SHA256::transform()`.
+- Problem: the first sixteen message-schedule words are assembled with expressions such as `buffer[i * 4] << 24`. Each `buffer[]` element is a `uint8_t`, which undergoes integer promotion to signed `int` before the shift. For a first byte >= 0x80, shifting that promoted positive int by 24 produces a value outside the representable signed-int range, which is undefined behavior in C++.
+- Why it matters: this SHA implementation is the integrity primitive used by the authenticated SC save containers. Real save/hash input naturally contains arbitrary high-bit bytes, so the undefined operation is not limited to malformed input. Current GCC/Clang targets will commonly emit the intended bit pattern, but the language contract does not guarantee it; optimizer/sanitizer/toolchain changes can make save hashes nondeterministic or wrong.
+- Contrast: the MD5 and little-endian helper code in the same repository explicitly widens bytes to `uint32_t` before high shifts and does not have this problem.
+- Current tests: no focused SHA-256 known-answer or high-bit input test was found in the current test tree.
+- Missing tests: standard SHA-256 vectors (empty string, `abc`, multi-block input), a block containing bytes >= 0x80 in every word position, and a captured SC-container hash fixture under UBSan/host CI.
+- Recommended fix: cast every byte to `uint32_t` before shifting, e.g. `(static_cast<uint32_t>(buffer[n]) << 24)`, or centralize through an unsigned big-endian 32-bit reader. Add known-answer tests and a real SC fixture.
+- Risk of fix: low; intended output is unchanged, while behavior becomes defined.
+- Owner: MAIN / encryption-integrity lane.
