@@ -895,3 +895,24 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: either refresh the live-state/routing sections to current lanes and milestones or explicitly mark the files historical/reference-only and point to the current authority. Preserve dated research conclusions separately from mutable project status.
 - Risk of fix: documentation only.
 - Owner: project-management / documentation lane.
+
+
+## User-raised product/state requirements — 2026-09-29
+
+These are kept separate from corruption/safety findings unless a current implemented path demonstrably violates its own contract.
+
+- **Current-save Pokédex progress:** Product Home currently renders Pokédex as a static FutureBackend/Coming Soon preview and does not derive seen/caught completion from the selected save. Requirement: when a validated save is selected, Pokédex progress must be computed from that exact current save snapshot and refreshed whenever the selected source is refreshed/reopened. Do not show stale progress from a previously selected save/profile.
+- **Trainer portrait:** Gen I-IV may use canonical game/gender portraits as an initial truthful fallback. Later customizable generations must not claim to show the player's actual appearance from gender alone; exact-avatar presentation requires per-game parsing of the save's appearance/customization fields and a deterministic renderer/asset mapping. Until that exists, label/use a generic game/gender portrait rather than a reconstructed-avatar claim.
+- **DS/3DS launch discovery:** current launch code already has a DraStic adapter with known NRO paths (`sdmc:/switch/DrasticDS.nro`, `sdmc:/switch/drastic/DrasticDS.nro`) and bounded ROM matching under `sdmc:/switch/drastic/games`. Preferred future 3DS launcher is Dekopon, using the same provider-bound, bounded-search, recomputed-executable safety model. Current launch model has no Dekopon provider or 3DS content family yet; do not broaden this audit into a new generation implementation.
+
+### AUDIT-041 — Device-observed Gen IV save rows can lose trainer-name presentation despite synthetic parser coverage
+- Severity: P3
+- Confidence: DEVICE-OBSERVED / CODE-PATH CONFIRMED, root cause not yet isolated
+- Area: Gen IV source discovery / Save Instances trainer identity
+- Files: `src/Integration/Gen4/Gen4SourceDiscovery.cpp`, `src/Integration/Gen4/Gen4ReadOnlySave.cpp`, `src/Legacy/Gen4ReadOnlyTrainer.cpp`
+- Current code path: strict Gen IV parsing decodes the selected General block's trainer name and `inspectSourceFile()` copies it into `SourceCandidate::trainerName`; `toSaveInstance()` then copies that into the visible SaveInstance and source label. Synthetic tests cover DP/Pt/HGSS names across multiple languages and the read-only Trainer bridge asserts an expected name.
+- Observed product behavior: physical/user Gen IV saves can validate and expose trainer/save content while the Save Instances / trainer presentation does not find or display the trainer name.
+- Audit interpretation: the implementation contract and synthetic fixtures say the name should be present, so an empty real-device name is not an intentional unsupported state. The current test corpus is missing at least one real DraStic/retail-layout case that reproduces the discrepancy.
+- Safety impact: identity/presentation only; this does not by itself weaken source immutability.
+- Required remediation evidence: retain a disposable failing Gen IV source, trace selected General partition/layout/language/name bytes through `decodeGen4Field`, and add a regression fixture from the failing structure (sanitized if needed). Do not paper over the failure by substituting the filename as trainer name.
+- Owner: MAIN / Gen IV discovery + read-only trainer integration.
