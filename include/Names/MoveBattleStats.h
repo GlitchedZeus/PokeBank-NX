@@ -182,6 +182,7 @@ inline constexpr std::array<MoveBattleStats, 468> Gen4{{
     {0,80,10}, {120,85,5}, {60,100,5}, {120,100,5},
 }};
 
+inline constexpr MoveBattleStats Gen4DPHypnosis{0,70,20}; // Diamond/Pearl only; Platinum/HGSS use 60 accuracy.
 } // namespace MoveBattleStatsData
 inline const MoveBattleStats* getMoveBattleStats(uint16_t moveId, Enums::GameVersion version) noexcept {
     using Enums::GameVersion;
@@ -191,7 +192,10 @@ inline const MoveBattleStats* getMoveBattleStats(uint16_t moveId, Enums::GameVer
         case GameVersion::RBY: return moveId<MoveBattleStatsData::Gen1.size()?&MoveBattleStatsData::Gen1[moveId]:nullptr;
         case GameVersion::GSC: return moveId<MoveBattleStatsData::Gen2.size()?&MoveBattleStatsData::Gen2[moveId]:nullptr;
         case GameVersion::FRLG: return moveId<MoveBattleStatsData::Gen3.size()?&MoveBattleStatsData::Gen3[moveId]:nullptr;
-        case GameVersion::DP: case GameVersion::PT: case GameVersion::HGSS: return moveId<MoveBattleStatsData::Gen4.size()?&MoveBattleStatsData::Gen4[moveId]:nullptr;
+        case GameVersion::DP:
+            if (moveId == 95) return &MoveBattleStatsData::Gen4DPHypnosis;
+            return moveId<MoveBattleStatsData::Gen4.size()?&MoveBattleStatsData::Gen4[moveId]:nullptr;
+        case GameVersion::PT: case GameVersion::HGSS: return moveId<MoveBattleStatsData::Gen4.size()?&MoveBattleStatsData::Gen4[moveId]:nullptr;
         default: return nullptr;
     }
 }
