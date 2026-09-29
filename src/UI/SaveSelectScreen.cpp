@@ -1161,10 +1161,9 @@ namespace UI {
                 hubNotice = "Choose a game before opening its workspace.";
                 return;
             }
-            hubDockFocused = false;
-            headerSettingsFocused = false;
-            hubFeatureIndex = -1;
-            selectCurrentTitle();
+            gameWorkspaceIndex = 0;
+            hubNotice.clear();
+            overlay = Overlay::GameWorkspace;
         } else if (hubDockIndex == 1) {
             requestedMainMenuDestination = MainMenuDestination::Banks;
             exitRequested = true;
@@ -1190,6 +1189,58 @@ namespace UI {
         }
     }
 
+    void SaveSelectScreen::activateGameWorkspace() {
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) {
+            hubNotice = "Choose a game before opening a workspace destination.";
+            overlay = Overlay::None;
+            return;
+        }
+
+        const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+        switch (gameWorkspaceIndex) {
+            case 0: // Overview
+            case 1: // Party
+            case 2: // Boxes
+            case 4: // Trainer
+            case 5: // Editor / Create
+                // These destinations already live inside the validated existing game workspace.
+                // Open the exact selected source; the editor/back-end remains owned by MAIN.
+                overlay = Overlay::None;
+                selectCurrentTitle();
+                return;
+            case 3: // Pokédex
+                requestedMainMenuDestination = MainMenuDestination::Pokedex;
+                exitRequested = true;
+                return;
+            case 6: // Backups
+                if (title.sourceKind == SelectedSourceKind::SwitchTitle) {
+                    overlay = Overlay::None;
+                    selectCurrentTitle();
+                } else {
+                    hubNotice = "External emulator sources stay read-only; staged/export history is managed inside the game workspace.";
+                }
+                return;
+            case 7: // Source / Game File
+                if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+                    legacyInstanceIndex = 0;
+                    legacyInstanceScroll = 0;
+                    legacyNotice.clear();
+                    overlay = Overlay::LegacyInstances;
+                } else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+                    openGen4Setup(title.gameId,
+                        "Review or change this game's remembered read-only save source.");
+                } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
+                    beginLaunchLinkForCurrentTitle();
+                } else {
+                    hubNotice = "Nintendo save data is console-managed. Use Launch if a separate game file needs linking.";
+                }
+                return;
+            default:
+                return;
+        }
+    }
+
     void SaveSelectScreen::update(const PadState& pad, const TouchInput& touch) {
         // A tap on a nav-bar badge becomes that button's press, so every handler below is
         // reached identically whether the user pressed the button or tapped its on-screen badge.
@@ -1198,6 +1249,38 @@ namespace UI {
             padGetButtonsDown(&pad), padGetButtons(&pad), stick.x, stick.y,
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
             | navTouchButton(touch);
+
+        if (overlay == Overlay::GameWorkspace) {
+            constexpr int count = 8;
+            constexpr int columns = 2;
+            if (kDown & HidNpadButton_B) {
+                overlay = Overlay::None;
+                hubNotice.clear();
+                return;
+            }
+            if (kDown & HidNpadButton_ZR) {
+                launchCurrentTitle();
+                return;
+            }
+            if (kDown & HidNpadButton_Plus) {
+                requestedMainMenuDestination = MainMenuDestination::Settings;
+                exitRequested = true;
+                return;
+            }
+            const int row = gameWorkspaceIndex / columns;
+            const int col = gameWorkspaceIndex % columns;
+            if (kDown & HidNpadButton_Left)
+                gameWorkspaceIndex = row * columns + (col + columns - 1) % columns;
+            if (kDown & HidNpadButton_Right)
+                gameWorkspaceIndex = row * columns + (col + 1) % columns;
+            if (kDown & HidNpadButton_Up)
+                gameWorkspaceIndex = ((row + 3) % 4) * columns + col;
+            if (kDown & HidNpadButton_Down)
+                gameWorkspaceIndex = ((row + 1) % 4) * columns + col;
+            gameWorkspaceIndex = std::clamp(gameWorkspaceIndex, 0, count - 1);
+            if (kDown & HidNpadButton_A) activateGameWorkspace();
+            return;
+        }
 
         if (overlay == Overlay::GameFilePicker) {
             const int count = static_cast<int>(launchFileEntries.size());
@@ -1829,7 +1912,105 @@ namespace UI {
         if (users.size() > 1) homeHints = "ZL: Profile | " + homeHints;
         drawNavHints(fb, 565, fb.getWidth() - 565, PRODUCT_DOCK_Y + 24, homeHints);
 
-        if (overlay == Overlay::GameFilePicker) {
+        if (overlay == Overlay::GameWorkspace && u && titleIndex >= 0 &&
+            titleIndex < static_cast<int>(u->titles.size())) {
+            const auto& title = u->titles[static_cast<size_t>(titleIndex)];
+            constexpr int x = 86, y = 82, w = 1108, h = 536;
+            constexpr int art = 210;
+            constexpr int gridX = x + 322;
+            constexpr int gridY = y + 116;
+            constexpr int cardW = 352;
+            constexpr int cardH = 82;
+            constexpr int gapX = 18;
+            constexpr int gapY = 16;
+            static constexpr const char* labels[8] = {
+                "Overview", "Party", "Boxes", "Pokédex",
+                "Trainer", "Editor / Create", "Backups", "Source / Game File"
+            };
+            static constexpr const char* subtitles[8] = {
+                "Open the existing game workspace",
+                "Open the real parsed party view",
+                "Open the real storage / boxes view",
+                "Game research and collection",
+                "Open trainer information",
+                "Use the existing safe staged editor",
+                "Backup / staged history where supported",
+                "Save instances, source and launch link"
+            };
+
+            fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH,
+                              Color(0, 0, 0, 118));
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 28, y + 18, "GAME WORKSPACE",
+                        Colors::Info, TextStyle::Caption);
+            fb.drawText(x + 28, y + 45,
+                        title.name.empty() ? title.label : title.name,
+                        Colors::TextPrimary, TextStyle::Title);
+
+            const IconImage& artImage = SystemIcons::gameCardIcon(
+                title.sourceKind == SelectedSourceKind::RetroArchFRLG
+                    ? title.artworkKey : title.gameId,
+                title.titleId);
+            if (artImage.valid())
+                fb.drawImageScaled(x + 30, y + 102, artImage.width, artImage.height,
+                                   art, art, artImage.data, 4);
+            else {
+                fb.drawFilledRoundedRect(x + 30, y + 102, art, art, 18, Colors::PanelAlt);
+                fb.drawCircle(x + 30 + art / 2, y + 102 + art / 2, 54,
+                              withAlpha(Colors::Info, 120), 8);
+                fb.drawFilledCircle(x + 30 + art / 2, y + 102 + art / 2, 15, Colors::Info);
+            }
+            fb.drawRoundedRect(x + 30, y + 102, art, art, 18, Colors::Divider, 1);
+
+            const int metaY = y + 332;
+            fb.drawText(x + 30, metaY, "Trainer", Colors::TextMuted, TextStyle::Caption);
+            fb.drawText(x + 122, metaY,
+                        previewTrainerName.empty() ? "—" : previewTrainerName,
+                        previewTrainerName.empty() ? Colors::TextMuted : Colors::TextPrimary,
+                        TextStyle::Body);
+            fb.drawText(x + 30, metaY + 34, "Source", Colors::TextMuted, TextStyle::Caption);
+            fb.drawText(x + 122, metaY + 34,
+                        title.sourceLabel.empty() ? "Validated source" : title.sourceLabel,
+                        Colors::TextSecondary, TextStyle::Body);
+            fb.drawText(x + 30, metaY + 68, "Save", Colors::TextMuted, TextStyle::Caption);
+            fb.drawText(x + 122, metaY + 68,
+                        title.locationLabel.empty() ? "Ready" : title.locationLabel,
+                        Colors::TextSecondary, TextStyle::Body);
+            fb.drawText(x + 30, metaY + 102, "Profile", Colors::TextMuted, TextStyle::Caption);
+            fb.drawText(x + 122, metaY + 102, u->name,
+                        Colors::TextSecondary, TextStyle::Body);
+
+            for (int i = 0; i < 8; ++i) {
+                const int col = i % 2;
+                const int row = i / 2;
+                const int cx = gridX + col * (cardW + gapX);
+                const int cy = gridY + row * (cardH + gapY);
+                const bool focused = gameWorkspaceIndex == i;
+                const bool unavailableBackup =
+                    i == 6 && title.sourceKind != SelectedSourceKind::SwitchTitle;
+                drawFocusedCard(fb, cx, cy, cardW, cardH, focused, 14);
+                fb.drawText(cx + 20, cy + 14, labels[i],
+                            focused ? Colors::SelectedText
+                                    : unavailableBackup ? Colors::TextMuted
+                                                        : Colors::TextPrimary,
+                            TextStyle::Heading);
+                fb.drawText(cx + 20, cy + 47,
+                            unavailableBackup ? "READ-ONLY SOURCE" : subtitles[i],
+                            unavailableBackup ? Colors::TextMuted : Colors::TextSecondary,
+                            TextStyle::Caption);
+                if (i == 3)
+                    fb.drawText(cx + cardW - 104, cy + 16, "COMING SOON",
+                                Colors::TextMuted, TextStyle::Caption);
+            }
+
+            if (!hubNotice.empty()) {
+                std::string notice = hubNotice;
+                if (notice.size() > 104) notice = notice.substr(0, 103) + "…";
+                fb.drawText(gridX, y + h - 42, notice, Colors::Info, TextStyle::Caption);
+            }
+            drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Open"},
+                            {"ZR", "Launch"}, {"+", "Settings"}, {"B", "Home"}});
+        } else if (overlay == Overlay::GameFilePicker) {
             constexpr int w = 900, h = 560, rowH = 54, visibleRows = 7;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);

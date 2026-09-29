@@ -95,6 +95,24 @@ require("MainMenuDestination::More" in source and "Dest::More" in ui_manager,
         "More must be a real routed product destination")
 require('"Games   Open the selected game\'s PKSE-style workspace"' in source,
         "Help must explain that Games enters the existing game workspace")
+require("Overlay::GameWorkspace" in source and "gameWorkspaceIndex" in header,
+        "Games dock must open a real selected-game workspace instead of duplicating OPEN")
+require('static constexpr const char* labels[8]' in source,
+        "game workspace must expose the approved practical destination grid")
+for label in ("Overview", "Party", "Boxes", "Pokédex", "Trainer",
+              "Editor / Create", "Backups", "Source / Game File"):
+    require(f'"{label}"' in source,
+            f"game workspace is missing {label}")
+activate_start = source.index("void SaveSelectScreen::activateHubDock()")
+activate_end = source.index("void SaveSelectScreen::activateGameWorkspace()", activate_start)
+dock_activation = source[activate_start:activate_end]
+require("overlay = Overlay::GameWorkspace;" in dock_activation,
+        "Games dock must enter Game Workspace")
+require("selectCurrentTitle();" not in dock_activation.split("if (hubDockIndex == 0)", 1)[1].split("else if (hubDockIndex == 1)", 1)[0],
+        "Games dock must not duplicate the fast OPEN route")
+require("case 1: // Party" in source and "case 2: // Boxes" in source and
+        "case 5: // Editor / Create" in source,
+        "workspace implemented destinations must route through the validated existing game flow")
 require('"-: Help"' in source and '"+: Settings' in source,
         "Product Home footer must expose Help and Settings shortcuts")
 require("headerSettingsFocused" in source,

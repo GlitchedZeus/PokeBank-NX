@@ -123,10 +123,11 @@ namespace UI {
         // Main product-home focus outside the persistent dock:
         // -1 = selected game card, 0 = Master Vault, 1 = Pokédex.
         int hubFeatureIndex = -1;
-        enum class Overlay { None, Options, Help, LegacyInstances, LegacyAssignment, LegacyDetails,
-                             Gen4Setup, Gen4Candidates, GameFilePicker };
+        enum class Overlay { None, Options, Help, GameWorkspace, LegacyInstances, LegacyAssignment,
+                             LegacyDetails, Gen4Setup, Gen4Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
         int optionsIndex = 0;
+        int gameWorkspaceIndex = 0;
         int legacyInstanceIndex = 0;
         int legacyInstanceScroll = 0;
         AccountUid selectedUserUid{};
@@ -169,6 +170,7 @@ namespace UI {
         std::vector<HitRect> dockRects;
 
         void activateHubDock();
+        void activateGameWorkspace();
         void loadUsers();
         void loadLegacySources(const PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
         void loadGen4Cards();
