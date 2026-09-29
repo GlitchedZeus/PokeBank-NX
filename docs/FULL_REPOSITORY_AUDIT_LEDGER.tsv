@@ -629,7 +629,7 @@ tests/test_gen1_radar_render.cpp	blob	100644	2353		unknown		PENDING			0
 tests/test_gen1_shiny.cpp	blob	100644	2136		unknown		PENDING			0	
 tests/test_gen1_summary_presentation.cpp	blob	100644	4985		unknown		PENDING			0	
 tests/test_gen3_exact_format_editor_provider.cpp	blob	100644	7349		unknown		PENDING			0	
-tests/test_gen3_hardware_surface_contract.cpp	blob	100644	17981		unknown		PENDING			0	
+tests/test_gen3_hardware_surface_contract.cpp	blob	100644	18549	Gen III shared-surface hardware regression contract	text	280	AUDITED			0	yes
 tests/test_gen3_legality_context.cpp	blob	100644	2273		unknown		PENDING			0	
 tests/test_gen3_party_record.cpp	blob	100644	1308		unknown		PENDING			0	
 tests/test_gen3_pid_search_fail_closed.cpp	blob	100644	1915		unknown		PENDING			0	
@@ -638,13 +638,13 @@ tests/test_gen3_shell_render.cpp	blob	100644	4563		unknown		PENDING			0
 tests/test_gen3_staged_inventory.cpp	blob	100644	11182		unknown		PENDING			0	
 tests/test_gen3_staged_pokemon_editor.cpp	blob	100644	25703		unknown		PENDING			0	
 tests/test_gen4_exact_format_editor_provider.cpp	blob	100644	6726	Gen IV exact-format provider contract test	text	138	AUDITED			0	no
-tests/test_gen4_hardware_surface_contract.cpp	blob	100644	12367		unknown		PENDING			0	
+tests/test_gen4_hardware_surface_contract.cpp	blob	100644	19119	Gen IV shared-surface hardware regression contract	text	325	AUDITED			0	yes
 tests/test_gen4_mutable_pokemon.cpp	blob	100644	32148	Gen IV mutable PK4 semantic/legality regression suite	text	782	AUDITED			0	yes
 tests/test_gen4_readonly_foundation.cpp	blob	100644	56152	Gen IV strict parser/discovery/presentation foundation suite	text	1064	AUDITED			0	no
 tests/test_gen4_safety_contract.py	blob	100755	5437		unknown		PENDING			0	
 tests/test_gen4_staged_pokemon_editor.cpp	blob	100644	21798	Gen IV staged mutation/CRC/footprint/rollback suite	text	522	AUDITED			0	no
 tests/test_gsc_discovery.cpp	blob	100644	7279		unknown		PENDING			0	
-tests/test_gsc_editor_surface_contract.cpp	blob	100644	22828		unknown		PENDING			0	
+tests/test_gsc_editor_surface_contract.cpp	blob	100644	23647	Gen II shared-editor hardware/regression contract	text	307	AUDITED			0	yes
 tests/test_gsc_export_transaction.cpp	blob	100644	6751		unknown		PENDING			0	
 tests/test_gsc_gen2_adapter.cpp	blob	100644	7559		unknown		PENDING			0	
 tests/test_gsc_gen2_personal.cpp	blob	100644	2276		unknown		PENDING			0	
@@ -689,7 +689,7 @@ tests/test_runtime_dependency_contract.cpp	blob	100644	1077		unknown		PENDING			
 tests/test_save_instance_architecture_contract.py	blob	100644	5437		unknown		PENDING			0	
 tests/test_save_instance_model.cpp	blob	100644	5311		unknown		PENDING			0	
 tests/test_shared_editor_heading_contract.cpp	blob	100644	12864		unknown		PENDING			0	
-tests/test_shared_pokemon_editor_contract.cpp	blob	100644	15519		unknown		PENDING			0	
+tests/test_shared_pokemon_editor_contract.cpp	blob	100644	16432	shared Pokémon editor architecture/navigation contract test	text	275	AUDITED			0	yes
 tests/test_shared_species_picker_surface_contract.cpp	blob	100644	2643	shared species picker source contract test	text	70	AUDITED			0	no
 tests/test_source_mutation_policy.cpp	blob	100644	1841	source mutation policy/action-sheet regression	text	38	AUDITED			1	yes
 tests/test_sprite_layout.cpp	blob	100644	1051		unknown		PENDING			0	
@@ -727,6 +727,6 @@ vendor/PKSM-Core	commit	160000			unknown		PENDING			0
 include/Integration/Gen4/Gen4MoveCompatibility.h	blob	100644	301653	generated Gen IV exact-game move compatibility table	text	1609	AUDITED			0	no
 include/Names/MoveBattleStats.h	blob	100644	17304	generated Gen I-IV move Power/Accuracy/PP tables	text	199	AUDITED			1	yes
 include/UI/MovePickerPresentation.h	blob	100644	1273	shared move picker number/stat presentation	text	24	AUDITED			1	yes
-tests/test_move_picker_presentation.cpp	blob	100644	1707	shared move picker presentation contract test	text	13	AUDITED			0	yes
+tests/test_move_picker_presentation.cpp	blob	100644	1896	shared move picker presentation contract test	text	14	AUDITED			0	yes
 tools/gen_gen4_move_compatibility.py	blob	100644	2420	Gen IV compatibility table generator	text	70	AUDITED			0	no
 tools/gen_move_battle_stats.py	blob	100755	4074	Gen I-IV move battle-stat generator	text	35	AUDITED			1	yes
