@@ -9,6 +9,7 @@
 #include <dirent.h>
 
 #include "Globals.h"
+#include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Save/Block.h"
 #include "Save/PLAReadValidation.h"
 #include "Save/SCReadValidation.h"
@@ -381,6 +382,49 @@ namespace Save {
     bool validateTrainerSaveForOpen(const char* backupDir, u64 titleId, std::string& error) {
         error.clear();
         const GameVersion group = getGameGroup(getGameVersion(titleId));
+
+        if (group == GameVersion::FRLG) {
+            const std::string fileName = findGen3SaveFile(backupDir);
+            if (fileName.empty()) {
+                error = "FRLG save file is missing.";
+                return false;
+            }
+
+            char savePath[1024];
+            snprintf(savePath, sizeof(savePath), "%s/%s", backupDir, fileName.c_str());
+            size_t fileSize = 0;
+            uint8_t* file = readAllBytes(savePath, &fileSize);
+            if (!file) {
+                error = "FRLG save file could not be read.";
+                return false;
+            }
+            const auto bytes = std::span<const uint8_t>(file, fileSize);
+            if (fileSize < Trainer::FRLG_SAVE_SIZE) {
+                delete[] file;
+                error = "FRLG save is truncated; it was not opened or changed.";
+                return false;
+            }
+
+            using namespace PokeVault::Integration::Gen3;
+            const Detail::SlotValidation slots[2] = {
+                Detail::validateSlot(bytes, 0),
+                Detail::validateSlot(bytes, 1),
+            };
+            if (!slots[0].valid && !slots[1].valid) {
+                delete[] file;
+                error = "FRLG save has no checksum-valid rotating slot; it was not opened or changed.";
+                return false;
+            }
+            const uint8_t active = Detail::selectActiveSlot(slots);
+            const bool familyOk = slots[active].valid &&
+                Detail::detectFamily(bytes, slots[active]) == Detail::SaveFamily::FireRedLeafGreen;
+            delete[] file;
+            if (!familyOk) {
+                error = "FRLG save layout does not match FireRed/LeafGreen; it was not opened or changed.";
+                return false;
+            }
+            return true;
+        }
 
         if (group == GameVersion::BDSP) {
             char path[512];
