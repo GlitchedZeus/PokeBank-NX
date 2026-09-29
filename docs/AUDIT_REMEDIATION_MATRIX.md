@@ -1,13 +1,13 @@
 # Full Audit Remediation Matrix
 
-Created from frozen forensic evidence `143c5e5c341d4f85af30e013808a37d6719560fe` and reconciled forward to live MAIN / PR #92 head `4bdb82db247f9d0d6bc4393624c40db32a923b40`.
+Created from frozen forensic evidence `143c5e5c341d4f85af30e013808a37d6719560fe` and reconciled forward to live MAIN / PR #92 head `ea6e9079bd8c5278ecd27fd9f81c18279d7c807d`.
 
 The forensic audit is closed: 746/746 tracked paths accounted, 711/711 text files fully read, 35/35 non-text entries inspected, 0 pending ledger entries. This file is a remediation ledger, not a continuation of repository coverage.
 
 ## Baseline and invariants
 
 - Original severity counts: P1 2, P2 17, P3 20, P4 5.
-- Remediation base: PR #92 branch `feature/gen4-full-editor-20260928` at `710cf37a33ba7a9f29b09953c5d8aa224268e4fd`.
+- Current MAIN reconciliation point: PR #92 branch `feature/gen4-full-editor-20260928` at `ea6e9079bd8c5278ecd27fd9f81c18279d7c807d`. PR #101 preserves its existing remediation history; the one newer MAIN delta was documentation-only and its exact file contents were synced forward without reset/rebase.
 - Frozen evidence branch remains untouched at `143c5e5c341d4f85af30e013808a37d6719560fe`.
 - Current baseline CI note: upstream MAIN `58a56f8d…` still has Product UI Native red before remediation; Host Tests were in progress and the Gen IV gate was cancelled by newer lane movement when this ledger was refreshed. Treat this as pre-existing UI-lane drift, not a new audit finding.
 - Source saves remain immutable. Emulator/installed-title live writes remain disabled. Cross-game True Move and source injection remain locked. No Gen V or Master Vault backend work is in scope.
@@ -26,7 +26,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 4 | AUDIT-020 | P2 | FIXED | SV/Z-A MyStatus size guard permits an out-of-bounds gender read |
 | 5 | AUDIT-031 | P2 | FIXED | SC SHA-256 message decoding uses signed-shift undefined behavior |
 | 6 | AUDIT-025 | P3 | FIXED | defaulted Pokémon move operations duplicate raw-buffer ownership |
-| 7 | AUDIT-026 | P3 | OPEN | Gen III and modern entity constructors do not fully enforce/normalize native record length |
+| 7 | AUDIT-026 | P3 | FIXED | Gen III and modern entity constructors do not fully enforce/normalize native record length |
 | 8 | AUDIT-021 | P2 | OPEN | SWSH/SV/Z-A authenticate the SC container but do not validate required game layout |
 | 9 | AUDIT-017 | P2 | OPEN | FRLG mutable workspace selects rotating slot before checksum validation |
 | 10 | AUDIT-023 | P2 | OPEN | LGPE durable validator rejects the authentic 1 MiB save image |
@@ -61,7 +61,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 39 | AUDIT-042 | P3 | OPEN | Active session/roadmap docs route work through obsolete project state |
 | 40 | AUDIT-004 | P4 | OPEN | stale theme choices in physical bug template |
 | 41 | AUDIT-005 | P4 | OPEN | historical branch-specific workflows remain tracked |
-| 42 | AUDIT-007 | P4 | OPEN | top-level README materially understates current Gen IV implementation |
+| 42 | AUDIT-007 | P4 | FIXED | top-level README materially understates current Gen IV implementation |
 | 43 | AUDIT-008 | P4 | OPEN | checked-in Visual Studio metadata is stale PKSE-era configuration |
 | 44 | AUDIT-009 | P4 | OPEN | recovery metadata still describes the repository as private / old production branch |
 
@@ -183,7 +183,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Gen III and every modern entity constructor should reject spans shorter than the native stored size without exposing a usable entity; exact stored-size and exact party-size records should construct deterministically; SWSH/BDSP/SV/Z-A stored-size objects should support level/stat getters and stat-affecting edits under ASan without an out-of-bounds access; unexpected intermediate/oversized lengths should have an explicit policy.
 - **Dependency / sequencing:** Pairs naturally with sanitizer tranche after AUDIT-025
 - **Proposed remediation order:** 7
-- **Status:** OPEN
+- **Status:** FIXED
+- **Current-code reconciliation:** affected Gen III/modern constructors now accept only their documented stored/party record sizes, reject malformed lengths into an explicitly invalid full-sized safe buffer, and modern stored records normalize into owned party-sized buffers before party-stat APIs are exposed. `Encryption::cryptPokemon()` now bounds-checks its fixed block region before taking a subspan. Commit `d183fa5b172678cb9d4d3d44247b3154a84e716c` adds `fixture entity-native-length-boundary` to the existing conversion-entity golden suite, covering Gen III plus LGPE/SWSH/BDSP/PLA/SV/Z-A malformed/intermediate/oversized rejection, valid stored/party construction, stored-to-party normalization, representative stat reads, stat-affecting edits, and the short-buffer crypto guard. That target is already wired to Host Tests and ASan/UBSan. Exact-head workflows are queued, so this is not VERIFIED yet.
 
 ### 8. AUDIT-021 — SWSH/SV/Z-A authenticate the SC container but do not validate required game layout
 
@@ -746,7 +747,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Do late after remediation state stabilizes
 - **Proposed remediation order:** 42
-- **Status:** OPEN
+- **Status:** FIXED
+- **Current-code reconciliation:** live MAIN now states active Gen IV Diamond/Pearl/Platinum/HeartGold/SoulSilver staged Party/Box editing, Create, native fields, move/form support, checksum repair, strict reparse and rollback. That current human-facing README was synced unchanged into PR #101 while preserving remediation history. Documentation consistency still needs exact-head review before VERIFIED.
 
 ### 43. AUDIT-008 — checked-in Visual Studio metadata is stale PKSE-era configuration
 
