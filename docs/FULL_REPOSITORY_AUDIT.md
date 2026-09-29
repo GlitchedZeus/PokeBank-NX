@@ -46,12 +46,12 @@ Status: IN PROGRESS
 
 ## Sibling PR #97 overlay coverage
 
-- Current live sibling head: `068fb5e101780037e79d0f17f457574cdcc800b7`.
-- Exact delta from PR #90 `8b3bcc16c804247bfe8d1314b686974ce73051d8`: 21 commits / 26 changed paths.
-- The forward delta from the previously audited sibling head `5f19fd14628c182db135038864036b6eb1b86c49` to the live head is 4 commits / 10 changed paths, and all 10 current-head files in that forward delta were fully read in this checkpoint.
-- The sibling overlay remains intentionally outside the 731-path PR #92 MAIN denominator. Full line-by-line coverage of all 26 sibling-overlay changed paths is still incomplete and is not claimed here.
-- Since the prior sibling checkpoint `3831989f7b320797068e752321ae0c36c2216f49`, PR #97 advanced by 8 commits touching 7 paths (`include/UI/AppShellModel.h`, `include/UI/AppShellScreen.h`, `include/UI/SaveSelectScreen.h`, `include/UI/ScreenChrome.h`, `src/UI/AppShellScreen.cpp`, `src/UI/SaveSelectScreen.cpp`, `src/UI/UI.cpp`). This newer sibling delta is preserved but not yet line-by-line closed, so no current-head sibling coverage claim is made for it.
-- Historical AUDIT-032 is FIXED at the live sibling head: the removed `AppShellSection::Collections` member is no longer referenced by `AppShellScreen.cpp`.
+- Current live sibling head: `456a493771bc25ba49b7b9c27269477eec835a07`.
+- Exact delta from PR #90 `8b3bcc16c804247bfe8d1314b686974ce73051d8`: 35 commits / 27 changed paths.
+- The sibling overlay remains intentionally outside the 731-path PR #92 MAIN denominator. Full line-by-line coverage of all 27 sibling-overlay changed paths is still incomplete and is not claimed here.
+- The forward delta from checkpoint `3831989f7b320797068e752321ae0c36c2216f49` to live head `456a493771bc25ba49b7b9c27269477eec835a07` is 14 commits / 9 changed paths. All nine current-head files in that forward delta were fully read: `include/UI/AppShellModel.h`, `include/UI/AppShellScreen.h`, `include/UI/SaveSelectScreen.h`, `include/UI/ScreenChrome.h`, `src/UI/AppShellScreen.cpp`, `src/UI/SaveSelectScreen.cpp`, `src/UI/UI.cpp`, `tests/test_app_shell_model.cpp`, and `tests/test_game_hub_contract.py`.
+- Historical AUDIT-032 remains FIXED at the live sibling head: the removed `AppShellSection::Collections` member is no longer referenced by `AppShellScreen.cpp`.
+- Current sibling Product Home is `SaveSelectScreen`; its inline nav hint truthfully says `ZL: Profile`, `L/R: Change Game`, and `B: Exit`, but the reachable Help overlay still advertises `L / R` as profile switching and `B` as returning to a Main Menu. This is recorded as AUDIT-036.
 
 
 
@@ -683,7 +683,7 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Owner: MAIN / encryption-integrity lane.
 
 ### AUDIT-032 — PR #97 removes AppShellSection::Collections but still references it
-- Current disposition: FIXED at live PR #97 head `3831989f7b320797068e752321ae0c36c2216f49`. `AppShellSection` now contains `MasterVault`, `Pokedex`, `Banks`, `Settings`, and `Games`, and `AppShellScreen::update()` maps the Pokédex preview without referencing the removed `Collections` member. Historical evidence below remains valid for head `5f19fd14628c182db135038864036b6eb1b86c49`.
+- Current disposition: FIXED at live PR #97 head `456a493771bc25ba49b7b9c27269477eec835a07`. `AppShellSection` now contains `MasterVault`, `Pokedex`, `Banks`, `Settings`, and `Games`, and `AppShellScreen::update()` maps the Pokédex preview without referencing the removed `Collections` member. Historical evidence below remains valid for head `5f19fd14628c182db135038864036b6eb1b86c49`.
 - Severity: P1
 - Confidence: CONFIRMED
 - Area: sibling PR #97 / native Main Menu build
@@ -740,3 +740,17 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: make both generators consume the shared language helper/current English symbol explicitly (or better, consume PKHeX's source species resource directly rather than reparsing another generated C++ file). Update the asset preflight's parser at the same time. Add a regeneration smoke test so future symbol refactors cannot silently break the generator chain.
 - Risk of fix: low; generator-only parsing change, but regenerated table diffs must still be reviewed before commit.
 - Owner: MAIN / generated-data reproducibility lane.
+
+### AUDIT-036 — Product Home Help overlay advertises stale controller actions
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: sibling PR #97 / Product Home control guidance
+- File: `src/UI/SaveSelectScreen.cpp`
+- Exact behavior: the live Product Home input handler uses `ZL` to switch profile when multiple users exist, `L/R` to change the selected game, and `B` to set both `appExitRequested` and `exitRequested`, exiting PokeBank NX. The normal bottom hint matches that behavior: `ZL: Profile | L/R: Change Game | ... | B: Exit`.
+- Problem: the reachable Help overlay opened with Minus still says `L / R   Previous or next Switch user` and `B   Return to the PokeBank NX Main Menu`. Those instructions describe an older navigation model and contradict the live handler on the same screen.
+- Why it matters: a user following Help can change the wrong thing when trying to switch profiles and can exit the application when expecting only to go back one screen.
+- Test gap: `tests/test_game_hub_contract.py` proves that L/R exists for game switching but does not assert that Help copy matches the handler/nav hint, so this drift can remain test-green.
+- Recommended fix: make Help use `ZL` for profile switching, `L/R` for game switching, and `B` for Exit; add a contract assertion tying the visible Help strings to those current actions.
+- Risk of fix: low; user-facing copy/test only.
+- Owner: sibling UI/QoL lane (PR #97).
+
