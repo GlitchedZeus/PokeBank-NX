@@ -33,7 +33,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 11 | AUDIT-018 | P2 | FIXED | LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity |
 | 12 | AUDIT-022 | P3 | FIXED | BDSP pre-open validation ignores its stored whole-file MD5 |
 | 13 | AUDIT-024 | P2 | FIXED | Gen IX inventory decoder leaves persisted flags indeterminate |
-| 14 | AUDIT-039 | P2 | OPEN | Backup save can serialize while held-Pokémon rollback failed |
+| 14 | AUDIT-039 | P2 | FIXED | Backup save can serialize while held-Pokémon rollback failed |
 | 15 | AUDIT-015 | P2 | OPEN | Failed backup creation can leave a partial folder surfaced as a backup |
 | 16 | AUDIT-029 | P2 | OPEN | Gen II finalization can serialize an in-progress packed move with carried Pokémon omitted |
 | 17 | AUDIT-030 | P2 | OPEN | Gen I finalization can serialize an in-progress packed move |
@@ -308,7 +308,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** there is no regression test that exhausts/locks all return destinations, leaves custody active, then attempts a game backup save and proves serialization is refused.
 - **Dependency / sequencing:** Fix before backup durability work or in same safety checkpoint
 - **Proposed remediation order:** 14
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `returnHeldToOrigin()` now returns a success result while preserving its existing all-or-nothing custody plan. Failure leaves `moveMon` untouched and returns false; success clears custody and returns true. The regular game-save confirmation path now requires a successful return and additionally checks `carrying()` before any destination/write logic; otherwise it posts `Save blocked - held Pokemon custody could not be restored.` and returns with the save dialog/session active. `tests/test_storage_custody_contract.cpp` binds the failure-return semantics and proves the custody gate appears before `performSave(destDir)`. The existing test is already part of normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 15. AUDIT-015 — Failed backup creation can leave a partial folder surfaced as a backup
 
