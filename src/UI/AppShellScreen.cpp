@@ -11,6 +11,7 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/OrganizationPreviewModel.h"
 #include "UI/ScreenChrome.h"
+#include "UI/ProductChrome.h"
 #include "UI/TouchInput.h"
 #include "Utils/Settings.h"
 
@@ -617,7 +618,7 @@ void AppShellScreen::drawSectionInfo(PKSEFramebuffer& fb) {
 
 void AppShellScreen::draw(PKSEFramebuffer& fb) {
     drawAppBackdrop(fb);
-    drawTitleBar(fb, "");
+    drawProductTitleBar(fb);
 
     // The approved selected-game screen is the product root. Secondary destinations reuse these
     // overlays without flashing the retired dashboard behind them.
