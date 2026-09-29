@@ -35,21 +35,27 @@ int main() {
     static_assert(ExitGuard::requiresConfirmation(ExitGuard::SessionKind::Edit, false));
 
     const auto occupied = actionsForSlot(true);
-    assert(occupied.count == 7);
+    assert(occupied.count == 6);
     assert(occupied[0] == Action::View);
     assert(occupied[1] == Action::Edit);
     assert(occupied[2] == Action::Clone);
     assert(occupied[3] == Action::Remove);
     assert(occupied[4] == Action::LegalityProvenance);
-    assert(occupied[5] == Action::ReviewPendingChanges);
-    assert(occupied[6] == Action::Cancel);
+    assert(occupied[5] == Action::Cancel);
+    const auto occupiedDirty = actionsForSlot(true, true);
+    assert(occupiedDirty.count == 7);
+    assert(occupiedDirty[5] == Action::ReviewPendingChanges);
+    assert(occupiedDirty[6] == Action::Cancel);
 
     const auto empty = actionsForSlot(false);
-    assert(empty.count == 4);
+    assert(empty.count == 2);
     assert(empty[0] == Action::AddPokemon);
-    assert(empty[1] == Action::ReviewPendingChanges);
-    assert(empty[2] == Action::LegalityProvenance);
-    assert(empty[3] == Action::Cancel);
+    assert(empty[1] == Action::Cancel);
+    const auto emptyDirty = actionsForSlot(false, true);
+    assert(emptyDirty.count == 3);
+    assert(emptyDirty[0] == Action::AddPokemon);
+    assert(emptyDirty[1] == Action::ReviewPendingChanges);
+    assert(emptyDirty[2] == Action::Cancel);
     static_assert(emptySlotUsesCompactDialog());
     static_assert(smallConfirmationUsesCompactDialog());
 

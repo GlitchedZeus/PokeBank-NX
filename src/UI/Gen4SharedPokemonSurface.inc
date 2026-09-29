@@ -1176,7 +1176,8 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
     return true;
 }
 
-MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailable) {
+MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailable,
+                          bool hasPendingChanges) {
     MenuActionSet result{};
     const auto add = [&](MenuAction action, const char* label, bool enabled = true) {
         result.values[result.count++] = {action, label, enabled};
@@ -1185,7 +1186,7 @@ MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailabl
     if (!occupied) {
         if (state.target == TargetKind::Box)
             add(MenuAction::Add, "Add Pokemon", stagedAvailable);
-        add(MenuAction::Review, "Review Pending Changes", true);
+        if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
         add(MenuAction::Close, "Cancel", true);
         return result;
     }
@@ -1201,7 +1202,7 @@ MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailabl
         add(MenuAction::Clone, "Clone", false);
         add(MenuAction::MakeShiny, "Make Shiny", false);
         add(MenuAction::Legality, "Legality & Provenance", true);
-        add(MenuAction::Review, "Review Pending Changes", true);
+        if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
         add(MenuAction::Close, "Cancel", true);
         return result;
     }
@@ -1211,7 +1212,7 @@ MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailabl
     add(MenuAction::Clone, "Clone", stagedAvailable);
     add(MenuAction::Release, "Release", stagedAvailable);
     add(MenuAction::Legality, "Legality & Provenance", true);
-    add(MenuAction::Review, "Review Pending Changes", true);
+    if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
     add(MenuAction::Close, "Cancel", true);
     return result;
 }
@@ -1221,7 +1222,10 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
     std::string error;
     const bool occupied = selectedRecord(screen, state, error).has_value();
     auto* staged = editor(screen);
-    const auto actions = gen4Actions(state, occupied, staged != nullptr);
+    const auto actions = gen4Actions(
+        state, occupied, staged != nullptr, staged && staged->hasChanges());
+    state.actionRow = std::clamp(
+        state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
     if (actions.count == 0) return true;
     if (down & HidNpadButton_Up)
         state.actionRow = (state.actionRow - 1 + static_cast<int>(actions.count)) %
@@ -1762,7 +1766,9 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     std::string error;
     const bool occupied = selectedRecord(screen, state, error).has_value();
-    const auto actions = gen4Actions(state, occupied, editor(screen) != nullptr);
+    auto* staged = editor(screen);
+    const auto actions = gen4Actions(
+        state, occupied, staged != nullptr, staged && staged->hasChanges());
 
     screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,105));

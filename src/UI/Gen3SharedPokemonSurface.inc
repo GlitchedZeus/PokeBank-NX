@@ -1073,7 +1073,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
     std::string error;
     const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                 static_cast<std::size_t>(state.slot), error).has_value();
-    const auto actions = Shared::actionsForSlot(occupied, {/*clone*/true, /*remove*/true, /*legality*/true});
+    const auto actions = Shared::actionsForSlot(occupied, {/*clone*/true, /*remove*/true, /*legality*/true}, !staged->pendingChanges().empty());
     if (actions.count == 0) return true;
     if (down & HidNpadButton_Up)
         state.actionRow = (state.actionRow - 1 + static_cast<int>(actions.count)) %
@@ -1572,7 +1572,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     std::string error;
     const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                 static_cast<std::size_t>(state.slot), error).has_value();
-    const auto actions = Shared::actionsForSlot(occupied, {true, true, true});
+    const auto actions = Shared::actionsForSlot(occupied, {true, true, true}, !staged->pendingChanges().empty());
 
     // Match the accepted Gen I/Yellow box action sheet: keep the box visible,
     // dim it, then draw one compact neutral modal on top.

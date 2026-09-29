@@ -59,7 +59,8 @@ struct ActionSet {
     }
 };
 
-constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilities = {}) noexcept {
+constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilities = {},
+                                   bool hasPendingChanges = false) noexcept {
     ActionSet result{};
     const auto append = [&result](Action action) constexpr {
         result.values[result.count++] = action;
@@ -67,8 +68,7 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
 
     if (!occupied) {
         append(Action::Add);
-        append(Action::Review);
-        if (capabilities.hasLegalityProvenance) append(Action::LegalityProvenance);
+        if (hasPendingChanges) append(Action::Review);
         append(Action::Close);
         return result;
     }
@@ -78,7 +78,7 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
     if (capabilities.canClone) append(Action::Clone);
     if (capabilities.canRemove) append(Action::Remove);
     if (capabilities.hasLegalityProvenance) append(Action::LegalityProvenance);
-    append(Action::Review);
+    if (hasPendingChanges) append(Action::Review);
     append(Action::Close);
     return result;
 }

@@ -112,7 +112,7 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
     auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                         static_cast<std::size_t>(legacy.pokemonSlot), error);
     const bool occupied = pokemon.has_value();
-    const auto actions = SharedEditor::actionsForSlot(occupied, gen2ActionCapabilities());
+    const auto actions = SharedEditor::actionsForSlot(occupied, gen2ActionCapabilities(), !editor->pendingChanges().empty());
     if (actions.count == 0) return true;
 
     const uint64_t nav = screen.controllerNavigation.apply(
@@ -279,7 +279,7 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                         static_cast<std::size_t>(legacy.pokemonSlot), error);
     const bool occupied = pokemon.has_value();
-    const auto actions = SharedEditor::actionsForSlot(occupied, gen2ActionCapabilities());
+    const auto actions = SharedEditor::actionsForSlot(occupied, gen2ActionCapabilities(), !editor->pendingChanges().empty());
     legacy.pokemonRow = std::clamp(legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
 
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
