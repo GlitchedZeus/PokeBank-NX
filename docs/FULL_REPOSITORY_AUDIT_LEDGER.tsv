@@ -271,7 +271,7 @@ include/Pokemon/BaseStatsGen89.h	blob	100644	86010		unknown		PENDING			0
 include/Pokemon/Experience.h	blob	100644	2751		unknown		PENDING			0	
 include/Pokemon/FormInfo.h	blob	100644	6818		unknown		PENDING			0	
 include/Pokemon/FormSpriteMapping.h	blob	100644	1559		unknown		PENDING			0	
-include/Pokemon/Gen3PartyRecord.h	blob	100644	2023		unknown		PENDING			0	
+include/Pokemon/Gen3PartyRecord.h	blob	100644	2023	Gen III stored/party tail helpers	text	41	AUDITED			0	no
 include/Pokemon/LearnsetTable.h	blob	100644	1829		unknown		PENDING			0	
 include/Pokemon/PLADexTable.h	blob	100644	1623		unknown		PENDING			0	
 include/Pokemon/PersonalInfo4DP.h	blob	100644	1126		unknown		PENDING			0	
@@ -280,12 +280,12 @@ include/Pokemon/PersonalInfo4PT.h	blob	100644	1126		unknown		PENDING			0
 include/Pokemon/PersonalInfoTable.h	blob	100644	5654		unknown		PENDING			0	
 include/Pokemon/PersonalRecord.h	blob	100644	632		unknown		PENDING			0	
 include/Pokemon/Pokemon.h	blob	100644	26295	base Pokémon ownership/edit interface	text	645	AUDITED			1	yes
-include/Pokemon/Pokemon1ReadOnly.h	blob	100644	6742		unknown		PENDING			0	
-include/Pokemon/Pokemon2ReadOnly.h	blob	100644	8049		unknown		PENDING			0	
-include/Pokemon/Pokemon3FRLG.h	blob	100644	17892		unknown		PENDING			0	
+include/Pokemon/Pokemon1ReadOnly.h	blob	100644	6742	Gen I immutable Pokémon presentation wrapper	text	128	AUDITED			1	yes
+include/Pokemon/Pokemon2ReadOnly.h	blob	100644	8049	Gen II immutable Pokémon presentation wrapper	text	148	AUDITED			1	yes
+include/Pokemon/Pokemon3FRLG.h	blob	100644	17892	FRLG PK3 entity parser/editor and ownership	text	270	AUDITED			2	yes
 include/Pokemon/Pokemon4Mutable.h	blob	100644	5262		unknown		PENDING			0	
-include/Pokemon/Pokemon4ReadOnly.h	blob	100644	4058		unknown		PENDING			0	
-include/Pokemon/Pokemon4ReadOnlyView.h	blob	100644	4569		unknown		PENDING			0	
+include/Pokemon/Pokemon4ReadOnly.h	blob	100644	4058	strict immutable PK4 model	text	92	AUDITED			0	no
+include/Pokemon/Pokemon4ReadOnlyView.h	blob	100644	4569	PK4 immutable shared-UI bridge	text	109	AUDITED			0	no
 include/Pokemon/Pokemon7LGPE.h	blob	100644	38973	LGPE entity parser/editor and ownership	text	856	AUDITED			2	yes
 include/Pokemon/Pokemon8BDSP.h	blob	100644	38629	BDSP PB8 entity parser/editor and ownership	text	916	AUDITED			2	yes
 include/Pokemon/Pokemon8LA.h	blob	100644	41226	PLA PA8 entity parser/editor and ownership	text	949	AUDITED			2	yes
@@ -507,12 +507,12 @@ src/Pokemon/PersonalInfo4HGSS.cpp	blob	100644	53074		unknown		PENDING			0
 src/Pokemon/PersonalInfo4PT.cpp	blob	100644	53056		unknown		PENDING			0	
 src/Pokemon/PersonalInfoTable.cpp	blob	100644	190049		unknown		PENDING			0	
 src/Pokemon/PersonalRecord4.cpp	blob	100644	109		unknown		PENDING			0	
-src/Pokemon/Pokemon1ReadOnly.cpp	blob	100644	975		unknown		PENDING			0	
-src/Pokemon/Pokemon2ReadOnly.cpp	blob	100644	1478		unknown		PENDING			0	
-src/Pokemon/Pokemon3FRLG.cpp	blob	100644	19608		unknown		PENDING			0	
+src/Pokemon/Pokemon1ReadOnly.cpp	blob	100644	975	Gen I immutable wrapper construction/text	text	37	AUDITED			0	no
+src/Pokemon/Pokemon2ReadOnly.cpp	blob	100644	1478	Gen II immutable wrapper construction/personal data	text	46	AUDITED			0	no
+src/Pokemon/Pokemon3FRLG.cpp	blob	100644	19608	FRLG PK3 derived stats/text/PID editing	text	359	AUDITED			0	no
 src/Pokemon/Pokemon4Mutable.cpp	blob	100644	37332	Gen IV mutable PK4 serialization/edit core	text	994	AUDITED			0	yes
-src/Pokemon/Pokemon4ReadOnly.cpp	blob	100644	7726		unknown		PENDING			0	
-src/Pokemon/Pokemon4ReadOnlyView.cpp	blob	100644	8598		unknown		PENDING			0	
+src/Pokemon/Pokemon4ReadOnly.cpp	blob	100644	7726	strict PK4 validation/decode implementation	text	137	AUDITED			0	no
+src/Pokemon/Pokemon4ReadOnlyView.cpp	blob	100644	8598	PK4 immutable UI projection/stat derivation	text	167	AUDITED			0	no
 src/Pokemon/Pokemon7LGPE.cpp	blob	100644	13067	LGPE entity stat/PID implementation	text	281	AUDITED			0	no
 src/Pokemon/Pokemon8BDSP.cpp	blob	100644	18491	BDSP PB8 stat/PID implementation	text	455	AUDITED			1	yes
 src/Pokemon/Pokemon8LA.cpp	blob	100644	18198	PLA PA8 stat/PID implementation	text	449	AUDITED			0	no
