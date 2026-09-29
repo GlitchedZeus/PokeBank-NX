@@ -40,7 +40,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 18 | AUDIT-037 | P2 | FIXED | Gen I/II group pickup can strand an active staged move after presentation-refresh failure |
 | 19 | AUDIT-013 | P2 | FIXED | Legacy Bank migration skips checksum validation used by normal Bank load |
 | 20 | AUDIT-028 | P2 | FIXED | Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays |
-| 21 | AUDIT-027 | P2 | OPEN | LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0 |
+| 21 | AUDIT-027 | P2 | FIXED | LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0 |
 | 22 | AUDIT-014 | P2 | OPEN | Session-wide source read-only gate disables app-owned Bank mutation |
 | 23 | AUDIT-019 | P3 | OPEN | modern encrypted blank slots are parsed as live species-0 objects |
 | 24 | AUDIT-012 | P3 | OPEN | Settings persistence truncates in place and ignores write/close failure |
@@ -430,7 +430,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** `getBaseStatsGen7(808,0)` and `(809,0)` must return the native Meltan/Melmetal rows; editing Level/IV/AV on fixture PB7s must produce the same party stats/CP as PKHeX and must not collapse them toward base-0 results.
 - **Dependency / sequencing:** After table/form routing AUDIT-028 if shared generator work helps
 - **Proposed remediation order:** 21
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `getBaseStatsGen7()` now treats only dex IDs 0..151 as dense and resolves later rows by their stored record ID, making Meltan #808 and Melmetal #809 reachable while preventing unsupported #152/#153 from aliasing those appended records. Sparse forms are accepted only for form 0. `Pokemon7LGPE::recalculateStats()` now verifies that the resolved base-stat record matches the current species and has a nonzero HP base before writing Level/stat/CP party-tail fields; unresolved records preserve the existing tail. `tests/test_lgpe_base_stats.cpp` covers Kanto, Alolan, Meltan/Melmetal, the historical 152/153 alias, malformed sparse forms, and the writeback guard; it runs in Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 22. AUDIT-014 — Session-wide source read-only gate disables app-owned Bank mutation
 
