@@ -33,8 +33,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 744 / 746
-- Fully read text files: 709 / 711
+- Audited tracked paths: 745 / 746
+- Fully read text files: 710 / 711
 - Binary/non-text inspected: 35 / 35 (34 binary assets + 1 gitlink) currently identified by exact extension/manifest scan
 
 ## Current checkpoint — integrated Product Home / launch delta
@@ -941,3 +941,5 @@ These are kept separate from corruption/safety findings unless a current impleme
 - Owner: rendering/runtime hardening lane.
 
 - `nanovg/nanovg.c` (2,949 lines / 77,637 bytes) was fully read. Geometry/draw-buffer growth generally fails closed. Its Fontstash atlas-resize caller confirms additional AUDIT-044 evidence but no separate numbered defect was added.
+
+- `nanovg/stb_truetype.h` (5,010 lines / 195,646 bytes) was fully read. Its upstream no-untrusted-font guarantee is not exposed as a PokeBank user-input surface in the current tree; normal bundled/runtime font parsing adds no new numbered repository defect.
