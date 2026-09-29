@@ -324,48 +324,48 @@ include/Trainer/Trainer8LA.h	blob	100644	11080	Legends Arceus trainer/save seria
 include/Trainer/Trainer8SWSH.h	blob	100644	9892	Sword/Shield trainer/save serializer API	text	263	AUDITED			2	yes
 include/Trainer/Trainer9LZA.h	blob	100644	10108	Legends Z-A trainer/save serializer API	text	265	AUDITED			3	yes
 include/Trainer/Trainer9SV.h	blob	100644	10575	Scarlet/Violet trainer/save serializer API	text	265	AUDITED			3	yes
-include/UI/ActionSheetModel.h	blob	100644	4742		unknown		PENDING			0	
-include/UI/BackupSelectionScreen.h	blob	100644	2962		unknown		PENDING			0	
-include/UI/BattleStatRadarModel.h	blob	100644	2187		unknown		PENDING			0	
-include/UI/ClassicDefaultNickname.h	blob	100644	929		unknown		PENDING			0	
-include/UI/ClassicGameContext.h	blob	100644	3038		unknown		PENDING			0	
-include/UI/ClassicInventoryOverlay.h	blob	100644	875		unknown		PENDING			0	
-include/UI/ClassicInventoryUIModel.h	blob	100644	2093		unknown		PENDING			0	
-include/UI/ClassicPackedMultiSelect.h	blob	100644	2015		unknown		PENDING			0	
-include/UI/ClassicSpeciesLevelPolicy.h	blob	100644	490		unknown		PENDING			0	
-include/UI/ClassicTypeBadges.h	blob	100644	1788		unknown		PENDING			0	
+include/UI/ActionSheetModel.h	blob	100644	4742	contextual Pokemon action-sheet model	text	143	AUDITED			0	no
+include/UI/BackupSelectionScreen.h	blob	100644	2962	backup selection/browser screen interface	text	78	AUDITED			0	no
+include/UI/BattleStatRadarModel.h	blob	100644	2187	shared battle-stat radar normalization model	text	51	AUDITED			0	no
+include/UI/ClassicDefaultNickname.h	blob	100644	929	classic default-nickname/species-change policy	text	25	AUDITED			0	no
+include/UI/ClassicGameContext.h	blob	100644	3038	classic exact-game/mode/type presentation context	text	84	AUDITED			0	no
+include/UI/ClassicInventoryOverlay.h	blob	100644	875	staged classic inventory overlay API	text	25	AUDITED			0	no
+include/UI/ClassicInventoryUIModel.h	blob	100644	2093	classic inventory UI adapter model	text	43	AUDITED			0	no
+include/UI/ClassicPackedMultiSelect.h	blob	100644	2015	classic packed box rectangle/cursor model	text	59	AUDITED			0	no
+include/UI/ClassicSpeciesLevelPolicy.h	blob	100644	490	legacy classic species-level compatibility shim	text	18	AUDITED			0	yes
+include/UI/ClassicTypeBadges.h	blob	100644	1788	classic type-badge sprite rendering helper	text	47	AUDITED			0	no
 include/UI/Common.h	blob	100644	23705		unknown		PENDING			0	
-include/UI/ControllerModel.h	blob	100644	3636		unknown		PENDING			0	
-include/UI/Dialogs/DialogFrame.h	blob	100644	2036		unknown		PENDING			0	
-include/UI/Dialogs/EditControls.h	blob	100644	2824		unknown		PENDING			0	
-include/UI/Dialogs/ItemEditDialog.h	blob	100644	496		unknown		PENDING			0	
-include/UI/Dialogs/PickerDialog.h	blob	100644	2308		unknown		PENDING			0	
-include/UI/Dialogs/SaveConfirmDialog.h	blob	100644	316		unknown		PENDING			0	
-include/UI/Dialogs/StatEditDialog.h	blob	100644	525		unknown		PENDING			0	
+include/UI/ControllerModel.h	blob	100644	3636	controller hint/binding presentation model	text	86	AUDITED			0	no
+include/UI/Dialogs/DialogFrame.h	blob	100644	2036	shared modal frame/footer drawing helper	text	44	AUDITED			0	no
+include/UI/Dialogs/EditControls.h	blob	100644	2824	shared edit-dialog controller/touch controls	text	53	AUDITED			0	no
+include/UI/Dialogs/ItemEditDialog.h	blob	100644	496	item edit/remove dialog interface	text	19	AUDITED			0	no
+include/UI/Dialogs/PickerDialog.h	blob	100644	2308	generic picker kind/label/draw contract	text	52	AUDITED			0	no
+include/UI/Dialogs/SaveConfirmDialog.h	blob	100644	316	save-confirm dialog interface	text	17	AUDITED			0	no
+include/UI/Dialogs/StatEditDialog.h	blob	100644	525	stat-edit dialog mode/interface	text	23	AUDITED			0	no
 include/UI/ExactFormatEditorProvider.h	blob	100644	5158	exact-format editor/source capability bridge	text	148	AUDITED			1	yes
-include/UI/ExactSaveCapabilities.h	blob	100644	7867		unknown		PENDING			0	
-include/UI/Gen1PokemonDetailsPresentation.h	blob	100644	2144		unknown		PENDING			0	
-include/UI/Gen1PokemonEditorOverlay.h	blob	100644	578		unknown		PENDING			0	
-include/UI/Gen1PokemonEditorUIContract.h	blob	100644	9292		unknown		PENDING			0	
+include/UI/ExactSaveCapabilities.h	blob	100644	7867	exact save-format UI capability matrix	text	136	AUDITED			0	no
+include/UI/Gen1PokemonDetailsPresentation.h	blob	100644	2144	Gen I Pokemon details presentation model	text	56	AUDITED			0	no
+include/UI/Gen1PokemonEditorOverlay.h	blob	100644	578	Gen I Pokemon editor overlay interface	text	21	AUDITED			0	no
+include/UI/Gen1PokemonEditorUIContract.h	blob	100644	9292	Gen I editor UX/action/footer contract	text	239	AUDITED			0	no
 include/UI/Gen1PokemonEditorUX3Contract.h	blob	100644	3475		unknown		PENDING			0	
 include/UI/Gen1PokemonPresentation.h	blob	100644	1784		unknown		PENDING			0	
 include/UI/Gen2HeldItemPicker.h	blob	100644	1885		unknown		PENDING			0	
 include/UI/Gen2NativePresentation.h	blob	100644	8843		unknown		PENDING			0	
-include/UI/Gen2PokemonEditorRules.h	blob	100644	2972		unknown		PENDING			0	
+include/UI/Gen2PokemonEditorRules.h	blob	100644	2972	Gen II move/item editor rules	text	92	AUDITED			0	no
 include/UI/Gen2PokemonPickerModel.h	blob	100644	5534		unknown		PENDING			0	
-include/UI/Gen2PokemonSession.h	blob	100644	9998		unknown		PENDING			0	
+include/UI/Gen2PokemonSession.h	blob	100644	9998	Gen II shared editor session/request state machine	text	194	AUDITED			0	no
 include/UI/Gen2StagedAccess.h	blob	100644	1123		unknown		PENDING			0	
 include/UI/Gen2TrainerSession.h	blob	100644	1240		unknown		PENDING			0	
 include/UI/Gen2WorkspacePresentation.h	blob	100644	3603		unknown		PENDING			0	
 include/UI/Gen3EncounterPickerModel.h	blob	100644	1582		unknown		PENDING			0	
-include/UI/Gen3SharedPokemonSession.h	blob	100644	11301		unknown		PENDING			0	
-include/UI/Gen4SharedPokemonSession.h	blob	100644	4796		unknown		PENDING			0	
+include/UI/Gen3SharedPokemonSession.h	blob	100644	11301	Gen III shared editor session/request state machine	text	282	AUDITED			0	no
+include/UI/Gen4SharedPokemonSession.h	blob	100644	4796	Gen IV shared editor session/commit state machine	text	144	AUDITED			0	no
 include/UI/InventoryUIContract.h	blob	100644	4867		unknown		PENDING			0	
 include/UI/LegacyPresentationRules.h	blob	100644	1370		unknown		PENDING			0	
 include/UI/Modals/Gen1PokemonDetailsModal.h	blob	100644	705		unknown		PENDING			0	
 include/UI/Modals/Gen2PokemonDetailsModal.h	blob	100644	693		unknown		PENDING			0	
 include/UI/Modals/PokemonDetailsModal.h	blob	100644	1061		unknown		PENDING			0	
-include/UI/NavigationRepeat.h	blob	100644	5729		unknown		PENDING			0	
+include/UI/NavigationRepeat.h	blob	100644	5729	D-pad/analog navigation repeat model	text	142	AUDITED			0	no
 include/UI/PKSEFramebuffer.h	blob	100644	10020		unknown		PENDING			0	
 include/UI/Panels/BoxPokemonPanel.h	blob	100644	556		unknown		PENDING			0	
 include/UI/Panels/CarriedSprite.h	blob	100644	1962		unknown		PENDING			0	
@@ -373,26 +373,26 @@ include/UI/Panels/HomeMenuPanel.h	blob	100644	583		unknown		PENDING			0
 include/UI/Panels/ItemsPanel.h	blob	100644	718		unknown		PENDING			0	
 include/UI/Panels/PartyPokemonPanel.h	blob	100644	480		unknown		PENDING			0	
 include/UI/Panels/StoragePanel.h	blob	100644	2154		unknown		PENDING			0	
-include/UI/PokemonEditorExitGuard.h	blob	100644	1325		unknown		PENDING			0	
-include/UI/PokemonEditorFoundationContract.h	blob	100644	12255		unknown		PENDING			0	
+include/UI/PokemonEditorExitGuard.h	blob	100644	1325	shared Pokemon editor exit-confirmation policy	text	37	AUDITED			0	no
+include/UI/PokemonEditorFoundationContract.h	blob	100644	12255	shared editor foundation focus/capability contract	text	281	AUDITED			0	yes
 include/UI/PokemonViewActions.h	blob	100644	1350		unknown		PENDING			0	
 include/UI/SaveSelectScreen.h	blob	100644	7259		unknown		PENDING			0	
 include/UI/ScreenChrome.h	blob	100644	23745		unknown		PENDING			0	
 include/UI/SharedHeldItemPicker.h	blob	100644	1420		unknown		PENDING			0	
-include/UI/SharedPokemonEditorContract.h	blob	100644	25200		unknown		PENDING			0	
+include/UI/SharedPokemonEditorContract.h	blob	100644	25200	cross-generation shared editor/navigation contract	text	651	AUDITED			0	no
 include/UI/SharedPokemonShell.h	blob	100644	8429		unknown		PENDING			0	
 include/UI/SharedSpeciesPicker.h	blob	100644	6009	shared species picker layout/behavior	text	135	AUDITED			0	no
-include/UI/SpeciesChangeLevelPolicy.h	blob	100644	671		unknown		PENDING			0	
+include/UI/SpeciesChangeLevelPolicy.h	blob	100644	671	encounter-aware species default-level policy	text	21	AUDITED			0	no
 include/UI/SpriteLayout.h	blob	100644	1266		unknown		PENDING			0	
 include/UI/SpriteManager.h	blob	100644	4079		unknown		PENDING			0	
 include/UI/StatsRadar.h	blob	100644	8426		unknown		PENDING			0	
-include/UI/StoragePlacementCommit.h	blob	100644	1096		unknown		PENDING			0	
+include/UI/StoragePlacementCommit.h	blob	100644	1096	ownership-safe storage placement commit helpers	text	32	AUDITED			0	no
 include/UI/SystemIcons.h	blob	100644	1456		unknown		PENDING			0	
 include/UI/TouchInput.h	blob	100644	1581		unknown		PENDING			0	
 include/UI/TrainerViewScreen.h	blob	100644	1398		unknown		PENDING			0	
 include/UI/TrainerViewScreenBase.h	blob	100644	29588	trainer/storage UI state and source mutation gate	text	449	AUDITED			1	yes
 include/UI/UI.h	blob	100644	2003		unknown		PENDING			0	
-include/UI/UIScreen.h	blob	100644	405		unknown		PENDING			0	
+include/UI/UIScreen.h	blob	100644	405	abstract UI screen interface	text	20	AUDITED			0	no
 include/Utils/CRC16.h	blob	100644	3316	Gen IV/LGPE checksum helpers	text	75	AUDITED			0	no
 include/Utils/DurableFile.h	blob	100644	3140	C++ header	text	87	AUDITED			0	yes
 include/Utils/EventLog.h	blob	100644	4263	structured Pokémon/item event-log formatter API	text	75	AUDITED			0	no
