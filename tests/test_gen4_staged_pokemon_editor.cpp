@@ -387,6 +387,60 @@ void testEmptySlotCreateTransaction() {
     }
 }
 
+void testCloneAndReleaseTransactions() {
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum,
+                              Layout::HeartGoldSoulSilver}) {
+        auto source = makeSave(layout);
+        const auto original = source;
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(
+            source, layout, gameId(layout), &error);
+        assert(editor && error.empty());
+
+        const auto sourceRecord = editor->boxedPokemon(0, 0, &error);
+        assert(sourceRecord && error.empty());
+        const auto sourceBytes = sourceRecord->originalEncryptedBytes();
+
+        assert(editor->stageCloneBoxPokemon(0, 0, 0, 1, &error));
+        assert(error.empty());
+        assert(editor->hasChanges());
+        assert(source == original);
+
+        const auto clone = editor->boxedPokemon(0, 1, &error);
+        assert(clone && error.empty());
+        assert(std::equal(clone->originalEncryptedBytes().begin(),
+                          clone->originalEncryptedBytes().end(), sourceBytes.begin()));
+
+        // Clone cannot silently overwrite an occupied slot.
+        const auto beforeRefusal = editor->stagedBytes();
+        assert(!editor->stageCloneBoxPokemon(0, 0, 0, 1, &error));
+        assert(!error.empty());
+        assert(editor->stagedBytes() == beforeRefusal);
+        error.clear();
+
+        // Release zeroes only the staged stored-PK4 slot and leaves the clone intact.
+        assert(editor->stageReleaseBoxPokemon(0, 0, &error));
+        assert(error.empty());
+        assert(!editor->boxedPokemon(0, 0, &error));
+        error.clear();
+        const auto cloneAfterRelease = editor->boxedPokemon(0, 1, &error);
+        assert(cloneAfterRelease && error.empty());
+
+        const auto finalBytes = editor->finalizedBytes(&error);
+        assert(!finalBytes.empty() && error.empty());
+        const auto reparsed = Gen4ReadOnlySave::parse(
+            finalBytes, layout, gameId(layout), &error);
+        assert(reparsed && error.empty());
+        assert(reparsed->box(0, 0).valid() && reparsed->box(0, 0).empty());
+        assert(reparsed->box(0, 1).valid() && !reparsed->box(0, 1).empty());
+        assert(source == original);
+
+        editor->discard();
+        assert(!editor->hasChanges());
+        assert(editor->finalizedBytes(&error) == original);
+    }
+}
+
 void testNoOpAndFailureRollback() {
     auto source = makeSave(Layout::Platinum);
     auto editor = Gen4StagedPokemonEditor::create(
@@ -459,6 +513,7 @@ int main() {
     testLayout(Layout::HeartGoldSoulSilver, 8, true);
     testMixedPartitionMutationFootprint();
     testEmptySlotCreateTransaction();
+    testCloneAndReleaseTransactions();
     testNoOpAndFailureRollback();
     testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();

@@ -55,6 +55,14 @@ public:
                                const Pokemon::Pokemon4Mutable& pokemon,
                                std::string* error = nullptr);
 
+    // Box-only convenience actions. Both mutate only the app-owned staged image,
+    // refresh the Storage CRC, strictly reparse, and roll back atomically on failure.
+    bool stageCloneBoxPokemon(size_t sourceBox, size_t sourceSlot,
+                              size_t destinationBox, size_t destinationSlot,
+                              std::string* error = nullptr);
+    bool stageReleaseBoxPokemon(size_t box, size_t slot,
+                                std::string* error = nullptr);
+
     [[nodiscard]] std::optional<Pokemon::Pokemon4ReadOnly> partyPokemon(
         size_t slot, std::string* error = nullptr) const;
 
