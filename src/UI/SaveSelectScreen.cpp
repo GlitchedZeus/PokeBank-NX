@@ -1891,7 +1891,7 @@ namespace UI {
                     return;
                 }
 
-                if (userIndex != beforeUser || titleIndex != beforeTitle) {
+                if (userIndex == beforeUser && titleIndex != beforeTitle) {
                     scrollClassicSelectionIntoView();
                     refreshHubPreview();
                 }
