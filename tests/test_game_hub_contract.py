@@ -26,7 +26,7 @@ require("PartyPreviewSlot" in header, "game hub party preview model must be expl
 
 require("AppShellScreen shell" in ui_manager,
         "the professional main menu must be the app root")
-require("handleSaveSelection();" in ui_manager,
+require("handleSaveSelection()" in ui_manager,
         "Games destination must open the existing profile/game hub")
 require('"Games  /  v"' in source,
         "the profile/game hub must present itself as the Games destination")
@@ -51,3 +51,18 @@ require("result.launcherPath = defaultLauncherPath" in launcher,
         "stored launch metadata must not choose an arbitrary launcher NRO")
 require("result.corePath = defaultRetroArchCore" in launcher,
         "stored launch metadata must not choose an arbitrary RetroArch core")
+
+require('"QUICK ACCESS"' in source,
+        "game hub must expose the compact quick-access dock")
+require('{"Storage", "Banks", "Backups", "Trade", "Settings"}' in source,
+        "game hub dock must present Storage, Banks, Backups, future Trade and Settings")
+require("hubDockFocused" in source and "activateHubDock" in source,
+        "game hub quick-access dock must be controller-focusable, not decorative")
+require("MainMenuDestination::Banks" in source and "MainMenuDestination::Settings" in source,
+        "Banks and Settings dock actions must route back through the root product shell")
+require('"Trade is not implemented yet."' in source,
+        "future Trade must remain explicitly unavailable")
+require("shell.openSection(PokeBank::UIModel::AppShellSection::Banks)" in ui_manager,
+        "Banks quick access must land on the root Banks destination")
+require("shell.openSection(PokeBank::UIModel::AppShellSection::Settings)" in ui_manager,
+        "Settings quick access must land on the real root Settings destination")

@@ -1629,7 +1629,7 @@ namespace UI {
             }
         }
 
-        std::vector<ControllerHint> homeHints;
+        auto homeHints = std::vector<ControllerHint>{};
         if (hubDockFocused) {
             homeHints = {
                 {"D-pad/Stick", "Quick Access"},

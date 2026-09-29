@@ -19,6 +19,7 @@ on:
       - 'src/UI/Dialogs/SaveConfirmDialog.cpp'
       - 'src/UI/UI.cpp'
       - 'include/UI/SaveSelectScreen.h'
+      - 'include/UI/UI.h'
       - 'src/UI/SaveSelectScreen.cpp'
       - 'include/Utils/PokeBankPaths.h'
       - 'Makefile.host'
