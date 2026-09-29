@@ -224,13 +224,13 @@ include/Integration/Gen2/Gen2PersonalData.h	blob	100644	1174		unknown		PENDING		
 include/Integration/Gen2/Gen2ReadOnlyInventory.h	blob	100644	1384	Gen II read-only inventory model	text	51	AUDITED			0	yes
 include/Integration/Gen2/Gen2ReadOnlySave.h	blob	100644	4073	Gen II strict read-only save model	text	134	AUDITED			0	no
 include/Integration/Gen2/Gen2StagedEditor.h	blob	100644	8057	Gen II staged editor/carry transaction API	text	185	AUDITED			1	yes
-include/Integration/Gen3/FRLGReadModel.h	blob	100644	1019		unknown		PENDING			0	
+include/Integration/Gen3/FRLGReadModel.h	blob	100644	1019	Gen III trainer/inventory read-model API	text	31	AUDITED			0	no
 include/Integration/Gen3/Gen3ExactFormatEditorProvider.h	blob	100644	3293	Gen III staged editor capability provider	text	74	AUDITED			0	no
 include/Integration/Gen3/Gen3LearnsetTable.h	blob	100644	325875		unknown		PENDING			0	
 include/Integration/Gen3/Gen3SaveValidation.h	blob	100644	6786	Gen III sector/save validation primitives	text	168	AUDITED			0	no
-include/Integration/Gen3/Gen3StagedInventoryEditor.h	blob	100644	2376		unknown		PENDING			0	
+include/Integration/Gen3/Gen3StagedInventoryEditor.h	blob	100644	2376	Gen III staged inventory editor API	text	65	AUDITED			0	no
 include/Integration/Gen3/Gen3StagedPokemonEditor.h	blob	100644	7053	Gen III staged Pokémon editor API	text	183	AUDITED			0	yes
-include/Integration/Gen3/PKSMGen3Adapter.h	blob	100644	5080		unknown		PENDING			0	
+include/Integration/Gen3/PKSMGen3Adapter.h	blob	100644	5080	Gen III immutable PKSM/native adapter API	text	161	AUDITED			0	no
 include/Integration/Gen4/Gen4AssignedSource.h	blob	100644	759	Gen IV assigned-source read-only API	text	19	AUDITED			0	no
 include/Integration/Gen4/Gen4ExactFormatEditorProvider.h	blob	100644	2446	Gen IV staged editor capability provider	text	58	AUDITED			0	no
 include/Integration/Gen4/Gen4ReadOnlySave.h	blob	100644	4491	Gen IV validated read-only save model	text	108	AUDITED			0	no
@@ -457,11 +457,11 @@ src/Integration/Gen2/Gen2ReadOnlyInventory.cpp	blob	100644	11001	Gen II inventor
 src/Integration/Gen2/Gen2ReadOnlySave.cpp	blob	100644	16694	Gen II strict save parser/layout validation	text	411	AUDITED			0	no
 src/Integration/Gen2/Gen2StagedEditor.cpp	blob	100644	53914	Gen II staged editor/finalization implementation	text	1182	AUDITED			1	yes
 src/Integration/Gen2/Gen2UniversalInventory.cpp	blob	100644	12249	Gen II universal staged inventory editor	text	274	AUDITED			0	no
-src/Integration/Gen3/FRLGReadModel.cpp	blob	100644	15298		unknown		PENDING			0	
+src/Integration/Gen3/FRLGReadModel.cpp	blob	100644	15298	Gen III FRLG/RSE immutable trainer/inventory read model	text	301	AUDITED			0	no
 src/Integration/Gen3/Gen3StagedInventoryEditor.cpp	blob	100644	17301	Gen III in-memory staged inventory editor	text	394	AUDITED			0	no
 src/Integration/Gen3/Gen3StagedPokemonEditor.cpp	blob	100644	38706	Gen III staged Pokémon editor implementation	text	944	AUDITED			0	yes
-src/Integration/Gen3/PKSMGen3Adapter.cpp	blob	100644	13703		unknown		PENDING			0	
-src/Integration/Gen3/PKSMGen3NativeAdapter.cpp	blob	100644	11997		unknown		PENDING			0	
+src/Integration/Gen3/PKSMGen3Adapter.cpp	blob	100644	13703	host PKSM-Core-backed Gen III read-only adapter	text	279	AUDITED			0	no
+src/Integration/Gen3/PKSMGen3NativeAdapter.cpp	blob	100644	11997	Switch-native Gen III read-only adapter	text	239	AUDITED			0	no
 src/Integration/Gen4/Gen4AssignedSource.cpp	blob	100644	3011	Gen IV assigned-source open/identity gate	text	62	AUDITED			0	no
 src/Integration/Gen4/Gen4ReadOnlySave.cpp	blob	100644	13359	Gen IV partition/CRC parser	text	304	AUDITED			0	no
 src/Integration/Gen4/Gen4SourceDiscovery.cpp	blob	100644	22450	bounded Gen IV emulator/manual source discovery	text	556	AUDITED			0	no
