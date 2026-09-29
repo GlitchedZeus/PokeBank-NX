@@ -868,3 +868,29 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: after normalizing the playlist path and before accepting it, require `gameLaunchContentSupported(gameId, content)`; skip incompatible same-stem entries and continue searching. Add a resolver fixture containing both a wrong-family same-stem entry and a correct one.
 - Risk of fix: low; narrows automatic matching only. Manual linking already enforces the same rule.
 - Owner: MAIN / game-launch integration lane.
+
+
+### AUDIT-041 — Standalone runtime contract falsely says RetroArch is never invoked
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: active runtime documentation / emulator launch integration
+- Files: `docs/STANDALONE_RUNTIME.md`, `src/UI/GameLauncher.cpp`
+- Exact behavior: the active standalone-runtime contract classifies RetroArch only as an external SAVE SOURCE and states `RetroArch is not invoked as a helper`. Current MAIN deliberately supports RetroArch game shortcuts: `GameLauncher` resolves the known RetroArch executable/core, prepares content, and requests launch from Product Home.
+- Why it matters: this is now a false runtime/dependency statement in a document presented as the standalone product contract. It can mislead support, security review, packaging, and future engineering sessions about which external executable PokeBank NX intentionally launches.
+- Safety scope: the save-source side remains read-only; this finding does not imply emulator save mutation. Launching RetroArch is a separate opt-in shortcut path.
+- Recommended fix: update the runtime classification to distinguish `RetroArch save discovery = external read-only source` from `RetroArch executable = optional user-invoked game-launch target`; retain the statement that PokeBank NX does not require RetroArch for normal standalone operation.
+- Risk of fix: documentation only.
+- Owner: MAIN documentation / product-launch lane.
+
+
+### AUDIT-042 — Active session/roadmap docs route work through obsolete project state
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: operational documentation / engineering handoff
+- Files: `docs/SESSION_RUNBOOK.md`, `docs/V1_ROADMAP.md`, `docs/UPSTREAM_AUDIT.md`, `docs/RETROARCH_SOURCE_NAMING.md`
+- Exact behavior: these non-archive documents still present old state as current: the runbook instructs work and pushes on `feature/pokebank-playable`; the v1 roadmap says Gen II is current/hardware-pending and Gen III is next; the upstream audit's current-context block still describes the early 23-identity/second-device stage; and the RetroArch naming note describes the immediate FRLG blocker/current FRLG-only production scope. Live GitHub instead has the active MAIN development lane in PR #92 at `fb7b1d8c…`, device-accepted Gen I–III work, provider-neutral Save Instances, active Gen IV work, and integrated Product Home/launch UI.
+- Why it matters: unlike files under `docs/history/`, these are named as current runbook/roadmap/reference contracts. A new coding agent following them literally can select a stale branch, regress scope, or waste work repeating completed milestones.
+- Safety scope: no source-save corruption is caused directly; this is workflow/state-authority drift.
+- Recommended fix: either refresh the live-state/routing sections to current lanes and milestones or explicitly mark the files historical/reference-only and point to the current authority. Preserve dated research conclusions separately from mutable project status.
+- Risk of fix: documentation only.
+- Owner: project-management / documentation lane.
