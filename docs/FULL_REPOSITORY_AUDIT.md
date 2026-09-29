@@ -25,14 +25,14 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 572 / 731
-- Fully read text files: 538 / 698
+- Audited tracked paths: 577 / 731
+- Fully read text files: 543 / 698
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
 
 - PR #92 catch-up is reconciled through live head `a86c8d039209bc17ac613524c6631f03309037a0`. The four changed paths that already carried AUDITED status (`include/Integration/Gen4/Gen4StagedPokemonEditor.h`, `src/Integration/Gen4/Gen4StagedPokemonEditor.cpp`, `src/UI/Gen4SharedPokemonSurface.inc`, `tests/test_gen4_staged_pokemon_editor.cpp`) were fully re-read at that head; the other two changed paths were already PENDING and remain PENDING.
-- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 572 paths are now accounted for and 538 text files have been fully read.
+- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 577 paths are now accounted for and 543 text files have been fully read.
 - The entire Names tranche is now closed: no `include/Names` or `src/Names` file remains PENDING. Generated species tables contain 1,026 entries in each of nine languages; the modern item-name table contains ids 0..2684; Gen III direct item names cover ids 0..376.
 - MovePresence's unknown-group/id-0 behavior contradicts its comment, but all audited real game-group callers are routed through known groups; kept as a hardening follow-up, not a numbered defect.
 - Recovery/package/source-pin tooling is now substantially audited. Supported CI invokes `verify_embedded_romfs.py` with normal `python3`; its assert-based checks are therefore live today, while replacing asserts with explicit failures remains a robustness follow-up.
@@ -83,6 +83,17 @@ Status: IN PROGRESS
 - MAIN source-opening orchestration still constructs external Gen I-IV emulator sources under read-only source kinds, routes installed-title editing through app-owned backup workspaces, and performs pending durable-Move recovery before parsing a mutable backup workspace.
 - A suspected Items-panel pre-guard pouch-index risk was traced through `TrainerViewScreenBase.h`: `selectedCategory` is default-initialized to zero and every normal category transition wraps through the exact generation-specific pouch count. Several low-level `getPouchInfo*` helpers remain unbounded for arbitrary enum inputs, but no production UI-state route to an invalid value was established; retained as API hardening only.
 - No new numbered finding was confirmed in this tranche.
+
+
+
+### Gen II parity / staged-action tranche
+
+- Fully read the remaining current Gen II picker/parity/shared-action and classic Release layers: `Gen2PokemonPickerOverlay.inc`, `Gen2HardwareFinalFix.inc`, `Gen2SharedSurfaceParity.inc`, `Gen2SharedPokemonSurface.inc`, and `ClassicReleaseActionFix.inc`.
+- Species/Move/Crystal encounter pickers update only the in-memory working draft until explicit commit; the hardware Move layer narrows choices to Empty plus exact-game-compatible Gen II moves.
+- Shared Box/Storage action input is consumed before the inherited source-write guards can see the same A/X press. Clone and Release call only the staged Gen II editor, and Release remains behind an explicit confirmation surface.
+- A suspected Clone destination mismatch was disproved: Gen II boxes are compact lists, so the UI's first empty slot is the backend's current count/destination slot. The backend copies native body/OT/nickname bytes, synchronizes the current-box mirror, and verifies the staged result.
+- The passive View footer in one final repaint still says `D-pad` rather than `D-pad/Stick` despite controller parity; this is UI-consistency follow-up only.
+- No new numbered finding was confirmed.
 
 
 ### Save-safety checkpoint — write-path trace
