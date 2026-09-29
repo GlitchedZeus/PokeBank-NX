@@ -25,7 +25,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 3 | AUDIT-002 | P2 | OPEN | no general unfiltered native PR compile gate |
 | 4 | AUDIT-020 | P2 | FIXED | SV/Z-A MyStatus size guard permits an out-of-bounds gender read |
 | 5 | AUDIT-031 | P2 | FIXED | SC SHA-256 message decoding uses signed-shift undefined behavior |
-| 6 | AUDIT-025 | P3 | OPEN | defaulted Pokémon move operations duplicate raw-buffer ownership |
+| 6 | AUDIT-025 | P3 | FIXED | defaulted Pokémon move operations duplicate raw-buffer ownership |
 | 7 | AUDIT-026 | P3 | OPEN | Gen III and modern entity constructors do not fully enforce/normalize native record length |
 | 8 | AUDIT-021 | P2 | OPEN | SWSH/SV/Z-A authenticate the SC container but do not validate required game layout |
 | 9 | AUDIT-017 | P2 | OPEN | FRLG mutable workspace selects rotating slot before checksum validation |
@@ -165,7 +165,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** move-construct and move-assign each concrete format under ASan; destroy the moved-from object before reading the moved-to object; verify data remains valid and exactly one owner frees the allocation.
 - **Dependency / sequencing:** Fix early before broad sanitizer verification
 - **Proposed remediation order:** 6
-- **Status:** OPEN
+- **Status:** FIXED
+- **Current-code reconciliation:** the base `Pokemon` move constructor/assignment now transfer sole `buffer` ownership, rebuild the span, release any prior destination allocation, and clear the moved-from object. `dataSize` now defaults to zero for non-buffer wrappers. `tests/test_pokemon_move_ownership.cpp` exercises move-construction after source destruction, move-assignment over an existing allocation, and self-move under normal and sanitizer suites. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 7. AUDIT-026 — Gen III and modern entity constructors do not fully enforce/normalize native record length
 
