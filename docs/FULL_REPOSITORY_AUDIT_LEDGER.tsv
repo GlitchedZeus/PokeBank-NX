@@ -576,7 +576,7 @@ src/UI/SpriteManager.cpp	blob	100644	8162	Pokemon/type sprite cache implementati
 src/UI/SystemIcons.cpp	blob	100644	7450	profile/title/game-card icon cache implementation	text	182	AUDITED			0	no
 src/UI/TouchInput.cpp	blob	100644	744	touch polling/edge implementation	text	24	AUDITED			0	no
 src/UI/TrainerViewScreen.cpp	blob	100644	2102	legacy TrainerView implementation composition TU	text	65	AUDITED			0	yes
-src/UI/TrainerViewScreenBase.inc	blob	100644	295298		unknown		PENDING			0	
+src/UI/TrainerViewScreenBase.inc	blob	100644	295298	main trainer/browser input, save, details, storage and mutation orchestration	text	5070	AUDITED			1	yes
 src/UI/TrainerViewScreenCompositeOverlay.cpp	blob	100644	12096	composite Gen I-IV TrainerView dispatch/runtime layering	text	289	AUDITED			0	yes
 src/UI/TrainerViewScreenGSCOverlay.cpp	blob	100644	430	historical Gen II overlay shim TU	text	7	AUDITED			0	no
 src/UI/TrainerViewScreenGSCOverlay.inc	blob	100644	34758	validated Gen II staged-editor/export overlay and GSC input shim	text	787	AUDITED			0	yes
