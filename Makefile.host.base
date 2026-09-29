@@ -7,10 +7,12 @@ HOST_TESTS := $(HOST_BUILD)/test_game_identity $(HOST_BUILD)/test_write_policy $
 HOST_SANITIZE_TESTS := $(HOST_BUILD)/test_game_identity_sanitize $(HOST_BUILD)/test_write_policy_sanitize $(HOST_BUILD)/test_action_sheet_model_sanitize $(HOST_BUILD)/test_theme_sanitize $(HOST_BUILD)/test_navigation_repeat_sanitize $(HOST_BUILD)/test_controller_model_sanitize $(HOST_BUILD)/test_sprite_layout_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_source_mutation_policy $(HOST_BUILD)/test_pla_read_validation \
 	$(HOST_BUILD)/test_gen3_party_record $(HOST_BUILD)/test_gen9_my_status_guard $(HOST_BUILD)/test_sha256 \
-	$(HOST_BUILD)/test_pokemon_move_ownership $(HOST_BUILD)/test_frlg_mutable_slot_validation $(HOST_BUILD)/test_lgpe_workspace_geometry $(HOST_BUILD)/test_lgpe_read_validation $(HOST_BUILD)/test_gen9_inventory_decode
+	$(HOST_BUILD)/test_pokemon_move_ownership $(HOST_BUILD)/test_frlg_mutable_slot_validation $(HOST_BUILD)/test_lgpe_workspace_geometry $(HOST_BUILD)/test_lgpe_read_validation $(HOST_BUILD)/test_gen9_inventory_decode \
+	$(HOST_BUILD)/test_bank_record_validation
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_source_mutation_policy_sanitize $(HOST_BUILD)/test_pla_read_validation_sanitize \
 	$(HOST_BUILD)/test_gen3_party_record_sanitize $(HOST_BUILD)/test_gen9_my_status_guard_sanitize $(HOST_BUILD)/test_sha256_sanitize \
-	$(HOST_BUILD)/test_pokemon_move_ownership_sanitize $(HOST_BUILD)/test_frlg_mutable_slot_validation_sanitize $(HOST_BUILD)/test_lgpe_workspace_geometry_sanitize $(HOST_BUILD)/test_lgpe_read_validation_sanitize $(HOST_BUILD)/test_gen9_inventory_decode_sanitize
+	$(HOST_BUILD)/test_pokemon_move_ownership_sanitize $(HOST_BUILD)/test_frlg_mutable_slot_validation_sanitize $(HOST_BUILD)/test_lgpe_workspace_geometry_sanitize $(HOST_BUILD)/test_lgpe_read_validation_sanitize $(HOST_BUILD)/test_gen9_inventory_decode_sanitize \
+	$(HOST_BUILD)/test_bank_record_validation_sanitize
 PLA_TEST_SOURCES := tests/test_pla_read_validation.cpp src/Save/Block.cpp \
 	src/Encryption/Encryption.cpp src/Encryption/Encryption8LA.cpp \
 	src/Encryption/Encryption8SWSH.cpp src/Encryption/Encryption9SV.cpp src/Encryption/Encryption9LZA.cpp \
@@ -222,6 +224,14 @@ $(HOST_BUILD)/test_gen9_inventory_decode: tests/test_gen9_inventory_decode.cpp i
 $(HOST_BUILD)/test_gen9_inventory_decode_sanitize: tests/test_gen9_inventory_decode.cpp include/Trainer/Inventory.h include/Trainer/Inventory9SV.h include/Trainer/Inventory9LZA.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen9_inventory_decode.cpp -o $@
+
+$(HOST_BUILD)/test_bank_record_validation: tests/test_bank_record_validation.cpp include/Trainer/BankRecordValidation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_bank_record_validation.cpp -o $@
+
+$(HOST_BUILD)/test_bank_record_validation_sanitize: tests/test_bank_record_validation.cpp include/Trainer/BankRecordValidation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bank_record_validation.cpp -o $@
 
 $(HOST_BUILD)/test_gen3_legality_context: $(GEN3_LEGALITY_CONTEXT_SOURCES)
 	@mkdir -p $(HOST_BUILD)
