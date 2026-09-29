@@ -698,12 +698,12 @@ tests/test_storage_custody_contract.cpp	blob	100644	1531	storage custody rollbac
 tests/test_theme.cpp	blob	100644	13980		unknown		PENDING			0	
 tests/test_v1_polish_contract.py	blob	100644	7989		unknown		PENDING			0	
 tests/test_write_policy.cpp	blob	100644	1007		unknown		PENDING			0	
-tools/check_device_assets.py	blob	100755	8842		unknown		PENDING			0	
-tools/check_recovery_contract.py	blob	100644	2978		unknown		PENDING			0	
+tools/check_device_assets.py	blob	100755	8842	offline device-build asset preflight	text	218	AUDITED			1	yes
+tools/check_recovery_contract.py	blob	100644	2978	tracked recovery-state contract checker	text	75	AUDITED			0	no
 tools/gen_gen2_move_compatibility.py	blob	100644	8295	pinned Gen II move-compatibility table generator	text	195	AUDITED			0	no
 tools/gen_gen4_personal.py	blob	100644	11443		unknown		PENDING			0	
 tools/gen_gen4text.py	blob	100644	9944		unknown		PENDING			0	
-tools/gen_hdsprites.py	blob	100644	7465		unknown		PENDING			0	
+tools/gen_hdsprites.py	blob	100644	7465	pinned PokeAPI HOME sprite mirror/downscaler	text	189	AUDITED			1	yes
 tools/gen_itempouches.py	blob	100644	10609	item-pouch generator from PKHeX storage spans	text	243	AUDITED			0	no
 tools/gen_itempresence.py	blob	100644	10167	held-item presence generator from PKHeX ItemStorage sources	text	245	AUDITED			0	no
 tools/gen_learnsets.py	blob	100644	39706		unknown		PENDING			0	
@@ -716,13 +716,13 @@ tools/gen_pladex.py	blob	100644	8089		unknown		PENDING			0
 tools/gen_speciesnames.py	blob	100755	5414	localized species-name generator from PKHeX resources	text	104	AUDITED			0	no
 tools/gen_svdex.py	blob	100644	7622		unknown		PENDING			0	
 tools/gen_swshdex.py	blob	100644	6501		unknown		PENDING			0	
-tools/name_languages.py	blob	100755	3774		unknown		PENDING			0	
-tools/pack_recovery_snapshot.py	blob	100644	3971		unknown		PENDING			0	
-tools/package_device_build.py	blob	100644	6974		unknown		PENDING			0	
-tools/pkhex_source.py	blob	100644	3041		unknown		PENDING			0	
-tools/recover_workspace.py	blob	100644	11689		unknown		PENDING			0	
-tools/regenerate.py	blob	100755	7338		unknown		PENDING			0	
-tools/verify_embedded_romfs.py	blob	100644	3402		unknown		PENDING			0	
+tools/name_languages.py	blob	100755	3774	shared generated-name language ordering/emitter	text	73	AUDITED			0	no
+tools/pack_recovery_snapshot.py	blob	100644	3971	deterministic RomFS recovery snapshot packer	text	119	AUDITED			0	yes
+tools/package_device_build.py	blob	100644	6974	source-addressed NRO device-test packager	text	189	AUDITED			0	no
+tools/pkhex_source.py	blob	100644	3041	pinned PKHeX source/resource fetch/cache helper	text	73	AUDITED			0	no
+tools/recover_workspace.py	blob	100644	11689	GitHub snapshot/pinned-asset workspace recovery orchestrator	text	317	AUDITED			1	yes
+tools/regenerate.py	blob	100755	7338	multi-generator reproducibility orchestration	text	194	AUDITED			0	yes
+tools/verify_embedded_romfs.py	blob	100644	3402	embedded NRO RomFS byte-for-byte verifier	text	65	AUDITED			0	yes
 vendor/PKSM-Core	commit	160000			unknown		PENDING			0
 include/Integration/Gen4/Gen4MoveCompatibility.h	blob	100644	301653	generated Gen IV exact-game move compatibility table	text	1609	AUDITED			0	no
 include/Names/MoveBattleStats.h	blob	100644	17304	generated Gen I-IV move Power/Accuracy/PP tables	text	199	AUDITED			1	yes
