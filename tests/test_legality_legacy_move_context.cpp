@@ -49,7 +49,7 @@ int main() {
         const auto report = Legality::analyze(p, Enums::GameVersion::FRLG, "red_gb");
         assert(hasText(report, "exact Gen I game"));
         assert(report.coverage.sourceGame == Legality::CoverageLevel::Complete);
-        assert(report.coverage.encounter == Legality::CoverageLevel::None);
+        assert(report.coverage.encounter == Legality::CoverageLevel::Partial);
         assert(report.verdict() == Legality::Verdict::Incomplete);
     }
 
@@ -68,7 +68,7 @@ int main() {
         const auto report = Legality::analyze(p, Enums::GameVersion::FRLG, "platinum_nds");
         assert(hasText(report, "exact Gen IV game"));
         assert(report.coverage.sourceGame == Legality::CoverageLevel::Complete);
-        assert(report.coverage.encounter == Legality::CoverageLevel::None);
+        assert(report.coverage.encounter == Legality::CoverageLevel::Partial);
         assert(report.verdict() == Legality::Verdict::Incomplete);
     }
 
