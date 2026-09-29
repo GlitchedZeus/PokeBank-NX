@@ -201,11 +201,11 @@ $(HOST_BUILD)/test_frlg_mutable_slot_validation_sanitize: tests/test_frlg_mutabl
 
 $(HOST_BUILD)/test_lgpe_workspace_geometry: tests/test_lgpe_workspace_geometry.cpp include/Trainer/Trainer7LGPE.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_lgpe_workspace_geometry.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude tests/test_lgpe_workspace_geometry.cpp -o $@
 
 $(HOST_BUILD)/test_lgpe_workspace_geometry_sanitize: tests/test_lgpe_workspace_geometry.cpp include/Trainer/Trainer7LGPE.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_lgpe_workspace_geometry.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude tests/test_lgpe_workspace_geometry.cpp -o $@
 
 $(HOST_BUILD)/test_lgpe_read_validation: tests/test_lgpe_read_validation.cpp include/Save/LGPEReadValidation.h
 	@mkdir -p $(HOST_BUILD)
