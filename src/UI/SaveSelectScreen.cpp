@@ -10,6 +10,7 @@
 #include "UI/SaveSelectScreen.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
+#include "UI/ProductChrome.h"
 #include "UI/SystemIcons.h"
 #include "UI/GameLauncher.h"
 #include "UI/TouchInput.h"
@@ -1491,7 +1492,7 @@ namespace UI {
         dockRects.clear();
 
         drawAppBackdrop(fb);
-        drawTitleBar(fb, "");
+        drawProductTitleBar(fb);
 
         const UserEntry* u = currentUser();
         const int count = u ? static_cast<int>(u->titles.size()) : 0;
