@@ -95,6 +95,12 @@ require("MainMenuDestination::More" in source and "Dest::More" in ui_manager,
         "More must be a real routed product destination")
 require('"Games   Open the selected game\'s PKSE-style workspace"' in source,
         "Help must explain that Games enters the existing game workspace")
+require("helpReturnOverlay = Overlay::GameWorkspace;" in source and
+        '"Game Workspace Controls"' in source,
+        "Minus from Game Workspace must open contextual Help and return there cleanly")
+require('"B   Back to Product Home"' in source and
+        '"ZR   Launch the selected game"' in source,
+        "workspace Help must explain its contextual Back and Launch controls")
 require("Overlay::GameWorkspace" in source and "gameWorkspaceIndex" in header,
         "Games dock must open a real selected-game workspace instead of duplicating OPEN")
 require('static constexpr const char* labels[8]' in source,

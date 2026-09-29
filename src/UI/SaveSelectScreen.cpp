@@ -1267,6 +1267,11 @@ namespace UI {
                 exitRequested = true;
                 return;
             }
+            if (kDown & HidNpadButton_Minus) {
+                helpReturnOverlay = Overlay::GameWorkspace;
+                overlay = Overlay::Help;
+                return;
+            }
             const int row = gameWorkspaceIndex / columns;
             const int col = gameWorkspaceIndex % columns;
             if (kDown & HidNpadButton_Left)
@@ -1312,7 +1317,10 @@ namespace UI {
             return;
         }
         if (overlay == Overlay::Help) {
-            if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) overlay = Overlay::None;
+            if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) {
+                overlay = helpReturnOverlay;
+                helpReturnOverlay = Overlay::None;
+            }
             return;
         }
         if (overlay == Overlay::LegacyDetails) {
@@ -1468,6 +1476,7 @@ namespace UI {
             return;
         }
         if (kDown & HidNpadButton_Minus) {
+            helpReturnOverlay = Overlay::None;
             overlay = Overlay::Help;
             return;
         }
@@ -2189,17 +2198,30 @@ namespace UI {
             drawNavBar(fb, {{"D-pad/Stick", "Choose Save"}, {"A", "Open Read Only"},
                             {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
-            drawInfoOverlay(fb, "PokeBank NX Controls", {
-                "D-pad / Left Stick   Navigate (hold to scroll)",
-                "A   Select / Open",
-                "L / R   Previous / next game",
-                "ZL   Change profile when multiple profiles are available",
-                "ZR   Launch, choose a source, or link a game file",
-                "Games   Open the selected game's PKSE-style workspace",
-                "+   Settings",
-                "-   Help / Controls",
-                "B   Exit PokeBank NX from Product Home"
-            });
+            if (helpReturnOverlay == Overlay::GameWorkspace) {
+                drawInfoOverlay(fb, "Game Workspace Controls", {
+                    "D-pad / Left Stick   Navigate workspace destinations",
+                    "A   Open the focused destination",
+                    "B   Back to Product Home",
+                    "ZR   Launch the selected game",
+                    "+   Settings",
+                    "-   Close Help / Controls",
+                    "Party / Boxes / Trainer / Editor route to the existing safe game screens",
+                    "Backups and Source / Game File stay source-aware and fail closed"
+                });
+            } else {
+                drawInfoOverlay(fb, "PokeBank NX Controls", {
+                    "D-pad / Left Stick   Navigate (hold to scroll)",
+                    "A   Select / Open",
+                    "L / R   Previous / next game",
+                    "ZL   Change profile when multiple profiles are available",
+                    "ZR   Launch, choose a source, or link a game file",
+                    "Games   Open the selected game's PKSE-style workspace",
+                    "+   Settings",
+                    "-   Help / Controls",
+                    "B   Exit PokeBank NX from Product Home"
+                });
+            }
         } else if (overlay == Overlay::Options) {
             constexpr int w = 560, h = 326, rowH = 64;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;

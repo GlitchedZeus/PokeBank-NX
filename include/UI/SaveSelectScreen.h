@@ -126,6 +126,7 @@ namespace UI {
         enum class Overlay { None, Options, Help, GameWorkspace, LegacyInstances, LegacyAssignment,
                              LegacyDetails, Gen4Setup, Gen4Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
+        Overlay helpReturnOverlay = Overlay::None;
         int optionsIndex = 0;
         int gameWorkspaceIndex = 0;
         int legacyInstanceIndex = 0;
