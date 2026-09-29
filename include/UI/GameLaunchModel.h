@@ -18,6 +18,7 @@ enum class GameLaunchBackend : uint8_t {
 
 enum class GameLaunchState : uint8_t {
     Ready,
+    LauncherOnly,
     ChooseSource,
     NeedsContentLink,
     LauncherMissing,
@@ -43,7 +44,10 @@ struct GameLaunchDescriptor {
     std::string corePath;
     std::string detail;
 
-    [[nodiscard]] bool ready() const noexcept { return state == GameLaunchState::Ready; }
+    [[nodiscard]] bool ready() const noexcept {
+        return state == GameLaunchState::Ready ||
+               state == GameLaunchState::LauncherOnly;
+    }
 };
 
 inline std::string normalizedLaunchStem(std::string_view path) {
@@ -81,6 +85,14 @@ inline GameLaunchProviderKind gameLaunchProviderKind(std::string_view providerId
 
 inline bool launchProviderIsRetroArch(std::string_view providerId) {
     return gameLaunchProviderKind(providerId) == GameLaunchProviderKind::RetroArch;
+}
+
+inline bool gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind kind) noexcept {
+    // Current DraSticDS_nx boots ROMs from its own Drastic/RomPath configuration and exposes
+    // main(void), so passing a linked ROM as argv would falsely imply selected-game launch.
+    // melonDS, mGBA, RetroArch and the existing Tico adapters accept content arguments.
+    return kind != GameLaunchProviderKind::Unknown &&
+           kind != GameLaunchProviderKind::DraStic;
 }
 
 inline std::string lowerLaunchExtension(std::string_view path) {
@@ -124,6 +136,7 @@ inline std::string gameLaunchBindingKey(std::string_view profileIdentity,
 inline const char* gameLaunchActionLabel(GameLaunchState state) noexcept {
     switch (state) {
         case GameLaunchState::Ready:            return "Launch";
+        case GameLaunchState::LauncherOnly:     return "Launch Emulator";
         case GameLaunchState::ChooseSource:     return "Choose & Launch";
         case GameLaunchState::NeedsContentLink: return "Link Game File";
         case GameLaunchState::LauncherMissing:  return "Launcher Missing";

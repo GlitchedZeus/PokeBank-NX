@@ -524,6 +524,29 @@ GameLaunchDescriptor resolveKnownHomebrew(GameLaunchProviderKind kind,
                                           std::string_view providerId,
                                           std::string_view sourcePath,
                                           std::string_view bindingKey) {
+    if (kind == GameLaunchProviderKind::DraStic) {
+        GameLaunchDescriptor result;
+        result.backend = GameLaunchBackend::HomebrewNro;
+        result.providerId = std::string(providerId);
+        result.launcherPath = defaultLauncherPath(kind, gameId, sourcePath);
+        if (result.launcherPath.empty() || !regularFile(result.launcherPath)) {
+            result.state = GameLaunchState::LauncherMissing;
+            result.detail = "DraStic is not installed at a known PokeBank NX launch path.";
+            return result;
+        }
+
+        // NaGaa95/DrasticDS_nx currently uses main(void) and reads Drastic/RomPath from its own
+        // preferences. Do not append the PokeBank-linked .nds path and pretend the selected game
+        // will boot. Launching the emulator itself is safe and truthful; the user chooses the ROM
+        // inside DraStic until that frontend exposes a verified per-launch content handoff.
+        result.state = GameLaunchState::LauncherOnly;
+        result.contentPath.clear();
+        result.detail =
+            "Launch DraStic, then choose this game inside the emulator. "
+            "Direct selected-ROM handoff is not supported by this DraStic build.";
+        return result;
+    }
+
     StoredLaunchBinding stored;
     if (loadStoredBinding(bindingKey, providerId, stored))
         return descriptorFromStored(gameId, providerId, stored);
@@ -661,6 +684,12 @@ bool saveGameLaunchBinding(std::string_view bindingKey,
         error = "This source provider does not have a launch adapter.";
         return false;
     }
+    if (kind == GameLaunchProviderKind::DraStic) {
+        error =
+            "This DraStic build does not expose a verified direct-ROM launch argument. "
+            "Use Launch Emulator and choose the game inside DraStic.";
+        return false;
+    }
 
     const std::string content = switchPath(std::string(contentPath));
     if (!regularFile(content)) {
@@ -767,9 +796,11 @@ bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& erro
         }
 
         std::string argv = quoted(descriptor.launcherPath);
-        if (!descriptor.corePath.empty())
+        if (descriptor.state != GameLaunchState::LauncherOnly &&
+            !descriptor.corePath.empty())
             argv += " -L " + quoted(descriptor.corePath);
-        if (!descriptor.contentPath.empty())
+        if (descriptor.state != GameLaunchState::LauncherOnly &&
+            !descriptor.contentPath.empty())
             argv += " " + quoted(descriptor.contentPath);
 
         const Result rc = envSetNextLoad(descriptor.launcherPath.c_str(), argv.c_str());

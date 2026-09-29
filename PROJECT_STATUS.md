@@ -40,7 +40,7 @@ The next milestone is **one combined Gen I–IV + Product UI NRO** for real Swit
 
 ## Active MAIN lane
 
-PR #92  
+PR #92
 Branch: `feature/gen4-full-editor-20260928`
 
 Last verified head:

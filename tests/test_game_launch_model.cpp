@@ -21,6 +21,10 @@ int main() {
     assert(gameLaunchProviderKind("Tico") == GameLaunchProviderKind::Tico);
     assert(gameLaunchProviderKind("DraStic") == GameLaunchProviderKind::DraStic);
     assert(gameLaunchProviderKind("melonDS") == GameLaunchProviderKind::MelonDS);
+    assert(!gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind::DraStic));
+    assert(gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind::MelonDS));
+    assert(gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind::MGBA));
+    assert(gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind::RetroArch));
     assert(gameLaunchProviderKind("Manual") == GameLaunchProviderKind::Unknown);
 
     assert(gameLaunchContentSupported("yellow_gb", "/roms/Pokemon Yellow.gb"));
@@ -34,6 +38,7 @@ int main() {
     assert(gameLaunchBindingKey("", "emerald_gba", "source").empty());
 
     assert(std::string(gameLaunchActionLabel(GameLaunchState::Ready)) == "Launch");
+    assert(std::string(gameLaunchActionLabel(GameLaunchState::LauncherOnly)) == "Launch Emulator");
     assert(std::string(gameLaunchActionLabel(GameLaunchState::ChooseSource)) == "Choose & Launch");
     assert(std::string(gameLaunchActionLabel(GameLaunchState::NeedsContentLink)) == "Link Game File");
     assert(std::string(gameLaunchActionLabel(GameLaunchState::LauncherMissing)) == "Launcher Missing");
@@ -42,6 +47,8 @@ int main() {
     GameLaunchDescriptor descriptor;
     assert(!descriptor.ready());
     descriptor.state = GameLaunchState::Ready;
+    assert(descriptor.ready());
+    descriptor.state = GameLaunchState::LauncherOnly;
     assert(descriptor.ready());
     return 0;
 }
