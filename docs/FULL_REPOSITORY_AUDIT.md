@@ -8,7 +8,7 @@ Status: IN PROGRESS
 - Audit branch: `audit/full-repository-line-by-line-20260928`
 - Primary MAIN tree audited: PR #92 head `6e45edd8b038d0be15272605846fa3fe2e4339d6`
 - PR #92 branch: `feature/gen4-full-editor-20260928`
-- Sibling UI overlay baseline: PR #97 head `af4d2450983f837706be92a1d83c28fe308444e9`; live head `5f19fd14628c182db135038864036b6eb1b86c49` adds one 7-file app-shell/game-hub delta still pending overlay reconciliation
+- Sibling UI overlay baseline: PR #97 head `5f19fd14628c182db135038864036b6eb1b86c49`; latest one-commit seven-file delta inspected in this checkpoint
 - Integration parent: PR #90 head `8b3bcc16c804247bfe8d1314b686974ce73051d8`
 - Hardening parent: PR #79 head `00ee7a6ed7ac1b5a93c43246d70c252e135acec0`
 - Default branch main: `aca2bf41c83d81084886a46d53195f6cead81ccc`
@@ -184,6 +184,13 @@ Status: IN PROGRESS
 - Completed the durable Move fault matrix, journal, production integration, conversion-fidelity golden, BDSP layout-guard, PLA read-validation, legacy-binding recovery, and three major Gen IV safety suites. These tests support the existing classifications: PLA's semantic read validation is comparatively strong; BDSP still lacks an MD5-mismatch test; cross-game true Move is intentionally still locked; Gen IV staged writes prove a narrow mutation footprint plus CRC refresh and immutable source preservation.
 - Ledger is authoritative at this checkpoint: 406 text paths AUDITED + 34 non-text paths INSPECTED_INDIRECTLY = 440 / 725 accounted, with 285 pending.
 - PR #97 advanced to `5f19fd14628c182db135038864036b6eb1b86c49` during this pass. The one-commit delta from the prior live overlay head touches seven app-shell/game-hub files and remains explicitly pending rather than silently inherited as audited.
+
+### PR #97 main-menu overlay catch-up
+
+- Inspected the exact one-commit delta from `af4d2450983f837706be92a1d83c28fe308444e9` to live PR #97 head `5f19fd14628c182db135038864036b6eb1b86c49`: `AppShellModel.h`, `AppShellScreen.h/.cpp`, `SaveSelectScreen.cpp`, `UI.cpp`, and the two app-shell/game-hub contract tests.
+- The delta replaces the prior developer-dashboard-style root with a dedicated Main Menu, makes Games a destination instead of the application root, routes B from Games back to Main Menu, and moves Diagnostics under Settings. Future Vault/Pokédex/Banks/Search surfaces remain explicitly non-backend previews.
+- The changed navigation/touch/action flow was traced through the current source, not inferred from the model test alone.
+- One compile-blocking stale enum reference remains and is recorded as AUDIT-032. The product UI workflow performs a clean devkitA64 `make -j1`, so this is on the native build path rather than dead presentation code.
 
 ## Findings
 
@@ -618,3 +625,17 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: cast every byte to `uint32_t` before shifting, e.g. `(static_cast<uint32_t>(buffer[n]) << 24)`, or centralize through an unsigned big-endian 32-bit reader. Add known-answer tests and a real SC fixture.
 - Risk of fix: low; intended output is unchanged, while behavior becomes defined.
 - Owner: MAIN / encryption-integrity lane.
+
+### AUDIT-032 — PR #97 removes AppShellSection::Collections but still references it
+- Severity: P1
+- Confidence: CONFIRMED
+- Area: sibling PR #97 / native Main Menu build
+- Files: `include/UI/AppShellModel.h`, `src/UI/AppShellScreen.cpp`, `.github/workflows/product-ui-native.yml`
+- Exact symbols: `enum class AppShellSection`, `AppShellScreen::update()`.
+- Problem: PR #97 head `5f19fd14628c182db135038864036b6eb1b86c49` removes `Collections` from `AppShellSection` when replacing the old eight-area dashboard, but `AppShellScreen::update()` still contains `infoSection == PokeBank::UIModel::AppShellSection::Collections` while selecting an organization-preview kind.
+- Why it matters: this is a compile-time reference to a nonexistent enum member. The new native Main Menu cannot be considered a buildable hardware candidate at this head until the stale branch is removed or updated.
+- Reachability: `src/UI/AppShellScreen.cpp` is explicitly part of the product-UI native workflow path, and that workflow performs a clean devkitA64 `make -j1` followed by required `.elf` and `.nro` existence checks.
+- Current tests: `tests/test_app_shell_model.cpp` validates the revised enum/navigation model but does not compile `AppShellScreen.cpp`, so it cannot catch this stale screen-level enum reference. `tests/test_game_hub_contract.py` is also text-contract based.
+- Recommended fix: remove the obsolete `AppShellSection::Collections` branch from `OrganizationPreview` handling or replace it with the intended `Pokedex` behavior, then run the native product-UI workflow and host contract tests at the exact PR head.
+- Risk of fix: low; the model now has only Pokédex/Banks/Search as previewable root sections.
+- Owner: sibling UI/QoL lane (PR #97). Do not merge into MAIN until its normal lane validation passes.
