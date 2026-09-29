@@ -1617,7 +1617,7 @@ namespace UI {
 
             const int partyX = DETAIL_X + 22;
             const int partyY = HUB_Y + 278;
-            fb.drawText(partyX, partyY, "PARTY", Colors::AccentPrimary, TextStyle::Caption);
+            fb.drawText(partyX, partyY, "PARTY", Colors::Info, TextStyle::Caption);
             if (!partyPreviewStatus.empty()) {
                 std::string status = partyPreviewStatus;
                 if (status.size() > 62) status = status.substr(0, 61) + "…";
@@ -1681,7 +1681,7 @@ namespace UI {
                 fb.drawRoundedRect(DETAIL_X + 22, buttonY, 322, 58, 8,
                                    Colors::Info, 3);
             drawGlyphButton(fb, DETAIL_X + 366, buttonY, 332, 58, "ZR", launchLabel,
-                            launchActionable ? Colors::AccentPrimary : Colors::PanelAlt,
+                            launchActionable ? Colors::Info : Colors::PanelAlt,
                             launchActionable ? Colors::White : Colors::TextMuted);
 
             if (!hubNotice.empty()) {
@@ -1710,8 +1710,8 @@ namespace UI {
         const bool vaultFocused = !hubDockFocused && hubFeatureIndex == 0;
         const bool dexFocused = !hubDockFocused && hubFeatureIndex == 1;
 
-        drawFocusedCard(fb, RIGHT_X, HUB_Y, RIGHT_W, featureH, vaultFocused, 18);
         const Color vaultAccent(72, 194, 238);
+        drawFocusedCard(fb, RIGHT_X, HUB_Y, RIGHT_W, featureH, vaultFocused, 18);
         const int vaultLogoX = RIGHT_X + 28, vaultLogoY = HUB_Y + 22;
         fb.drawRoundedRect(vaultLogoX, vaultLogoY, 36, 36, 9, vaultAccent, 2);
         fb.drawFilledRoundedRect(vaultLogoX + 7, vaultLogoY + 15, 22, 6, 3,
@@ -1723,7 +1723,7 @@ namespace UI {
                     Colors::TextSecondary, TextStyle::Body);
         const int vaultArrowX = RIGHT_X + RIGHT_W - 42;
         fb.drawCircle(vaultArrowX, HUB_Y + 42, 17,
-                      vaultFocused ? Colors::FocusBorder : Colors::Divider, 2);
+                      vaultFocused ? vaultAccent : Colors::Divider, 2);
         fb.drawText(vaultArrowX - 5, HUB_Y + 29, ">",
                     vaultFocused ? Colors::SelectedText : Colors::TextSecondary,
                     TextStyle::Heading);
@@ -1756,8 +1756,8 @@ namespace UI {
                     "Coming Soon", Colors::TextMuted, TextStyle::Caption);
 
         const int dexY = HUB_Y + featureH + featureGap;
-        drawFocusedCard(fb, RIGHT_X, dexY, RIGHT_W, featureH, dexFocused, 18);
         const Color dexAccent(244, 132, 74);
+        drawFocusedCard(fb, RIGHT_X, dexY, RIGHT_W, featureH, dexFocused, 18);
         const int dexLogoX = RIGHT_X + 28, dexLogoY = dexY + 22;
         fb.drawRoundedRect(dexLogoX, dexLogoY, 40, 36, 8, dexAccent, 2);
         fb.drawFilledRoundedRect(dexLogoX + 18, dexLogoY + 4, 4, 28, 2, dexAccent);
@@ -1767,7 +1767,7 @@ namespace UI {
                     Colors::TextSecondary, TextStyle::Body);
         const int dexArrowX = RIGHT_X + RIGHT_W - 42;
         fb.drawCircle(dexArrowX, dexY + 42, 17,
-                      dexFocused ? Colors::FocusBorder : Colors::Divider, 2);
+                      dexFocused ? dexAccent : Colors::Divider, 2);
         fb.drawText(dexArrowX - 5, dexY + 29, ">",
                     dexFocused ? Colors::SelectedText : Colors::TextSecondary,
                     TextStyle::Heading);
