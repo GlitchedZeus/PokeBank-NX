@@ -50,7 +50,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 28 | AUDIT-033 | P3 | FIXED | Gen IV move-stat presentation uses HGSS values for Diamond/Pearl |
 | 29 | AUDIT-034 | P3 | FIXED | HD sprite recovery/preflight can accept corrupt existing PNGs |
 | 30 | AUDIT-035 | P3 | FIXED | personal/learnset regeneration still searches the removed SPECIES_NAMES symbol |
-| 31 | AUDIT-044 | P3 | OPEN | Fontstash allocation failures can become null-pointer crashes during text rendering |
+| 31 | AUDIT-044 | P3 | FIXED | Fontstash allocation failures can become null-pointer crashes during text rendering |
 | 32 | AUDIT-006 | P3 | OPEN | LeakSanitizer is disabled even where comments say CI keeps it enabled |
 | 33 | AUDIT-003 | P3 | OPEN | mutable native toolchain image |
 | 34 | AUDIT-036 | P3 | FIXED | Product Home Help overlay advertises stale controller actions |
@@ -613,7 +613,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** no constrained-allocation/fault-injection regression covers Fontstash glyph-cache growth.
 - **Dependency / sequencing:** Bounded vendor/call-boundary fix only; no renderer rewrite
 - **Proposed remediation order:** 31
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** Fontstash glyph-array growth now uses a temporary `realloc` result, preserves ownership/capacity on failure, and `fons__getGlyph()` returns safely when allocation fails. `fonsResetAtlas()` now allocates CPU texture storage before mutating renderer/atlas metadata and preserves a valid allocation on failure. NanoVG propagates `fonsResetAtlas()` failure and rolls back `fontImageIdx` instead of claiming success. `tests/test_fontstash_allocation_contract.py` pins these failure guards in Host Tests. This is targeted coverage of the confirmed allocation paths, not a claim of full process-wide OOM resilience. Exact-head CI is still required before VERIFIED.
 
 ### 32. AUDIT-006 — LeakSanitizer is disabled even where comments say CI keeps it enabled
 
