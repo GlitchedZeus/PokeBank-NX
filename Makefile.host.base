@@ -143,6 +143,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen1_catch_rate_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_catch_rate_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen3_pid_iv_correlation
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_pid_iv_correlation_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_pid_iv_correlation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_pid_iv_correlation_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -233,6 +235,14 @@ $(HOST_BUILD)/test_gen3_pid_iv_correlation: tests/test_gen3_pid_iv_correlation.c
 $(HOST_BUILD)/test_gen3_pid_iv_correlation_sanitize: tests/test_gen3_pid_iv_correlation.cpp include/Legality/Gen3PidIvCorrelation.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_pid_iv_correlation: tests/test_gen4_pid_iv_correlation.cpp include/Legality/Gen4PidIvCorrelation.h include/Legality/Gen3PidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_pid_iv_correlation_sanitize: tests/test_gen4_pid_iv_correlation.cpp include/Legality/Gen4PidIvCorrelation.h include/Legality/Gen3PidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_pid_iv_correlation.cpp -o $@
 
 $(HOST_BUILD)/test_source_mutation_policy: tests/test_source_mutation_policy.cpp
 	@mkdir -p $(HOST_BUILD)

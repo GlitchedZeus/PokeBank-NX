@@ -35,7 +35,7 @@ Current encounter coverage is **partial** for R/B/Y, Crystal, the five Gen III g
 2. **Internal consistency** — level/EXP, names, gender, ability, forms and stats.
 3. **Exact-game move legality** — compatibility tables are wired now; event/tutor chronology and full tradeback provenance remain to be completed.
 4. **Encounter provenance** — Gen IV wild + static/gift evidence is imported; trade, event, PokeWalker, evolution provenance and remaining per-method restrictions are still incomplete.
-5. **PID/RNG correlation** — Gen III handheld Methods 1/2/3/4 are recognized now; Channel, Colosseum/XD, roamer, BACD/event and Gen IV method/lead correlations remain separate incomplete evidence.
+5. **PID/RNG correlation** — Gen III handheld Methods 1/2/3/4 and the normal Gen IV Method-1 PID/IV relationship are recognized. Gen IV Method J/K lead frames, Cute Charm, Chain Shiny, PokeWalker, Mystery Gift anti-shiny, plus Gen III Channel/Colosseum/XD/roamer/BACD classes remain incomplete.
 6. **Egg / breeding legality** — hatch level/location, inherited moves and generation-specific breeding rules.
 7. **Event / gift legality** — fixed trainer data, fateful flags, ribbons, dates and distribution records.
 8. **Transfer legality** — legitimate movement between generations.

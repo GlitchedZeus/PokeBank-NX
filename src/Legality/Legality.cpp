@@ -16,6 +16,7 @@
 #include "Legality/Gen4StaticEncounter.h"
 #include "Legality/Gen1CatchRateEvidence.h"
 #include "Legality/Gen3PidIvCorrelation.h"
+#include "Legality/Gen4PidIvCorrelation.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 
 #include <algorithm>
@@ -139,7 +140,7 @@ namespace Legality {
             // Internal mechanics are intentionally still partial until DV/Stat-Exp and
             // generation-specific PID/RNG rules have dedicated verifiers.
             r.coverage.internal = CoverageLevel::Partial;
-            if (exactGeneration == 3)
+            if (exactGeneration == 3 || exactGeneration == 4)
                 r.coverage.pidRng = CoverageLevel::Partial;
         }
 
@@ -157,6 +158,20 @@ namespace Legality {
             } else {
                 add(r, Severity::Info,
                     "No handheld Method 1/2/3/4 PID/IV match; special/event/roamer/GC RNG classes are not fully covered",
+                    CheckIdentifier::PidRng);
+            }
+        } else if (sourceProfile && exactGeneration == 4) {
+            const std::array<uint8_t, 6> ivs{
+                pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
+            };
+            const auto correlation = Gen4PidIv::analyze(pk.pid(), ivs);
+            if (correlation.matched()) {
+                add(r, Severity::Info,
+                    "PID/IV spread matches normal Gen IV Method 1; wild lead-frame correlation is still partial",
+                    CheckIdentifier::PidRng);
+            } else {
+                add(r, Severity::Info,
+                    "No normal Gen IV Method-1 PID/IV match; Cute Charm, Chain Shiny, PokeWalker and event RNG classes remain incomplete",
                     CheckIdentifier::PidRng);
             }
         }
