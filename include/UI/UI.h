@@ -8,6 +8,7 @@
 #include "UI/UIScreen.h"
 #include "UI/TouchInput.h"
 #include "UI/SaveSelectScreen.h"
+#include "UI/AppShellScreen.h"
 #include "UI/BackupSelectionScreen.h"
 #include "UI/TrainerViewScreen.h"
 #include "Legacy/RetroArchFRLGDiscovery.h"
@@ -37,6 +38,10 @@ namespace UI {
         bool running;
         PokeVault::Legacy::FRLGDiscoveryResult legacyFRLGSources;
         PokeVault::Legacy::LegacySourceBindings legacySourceBindings;
+        SaveSelectScreen::NavigationState productHomeNavigation{};
+        bool productHomeNavigationValid = false;
+        AppShellScreen::NavigationState appShellNavigation{};
+        bool appShellNavigationValid = false;
 
         SaveSelectScreen::MainMenuDestination handleSaveSelection();
         void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName);

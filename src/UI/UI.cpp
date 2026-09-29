@@ -98,7 +98,7 @@ namespace UI {
             if (!running) break;
             if (destination == SaveSelectScreen::MainMenuDestination::None) continue;
 
-            AppShellScreen shell;
+            AppShellScreen shell(appShellNavigationValid ? &appShellNavigation : nullptr);
             using Dest = SaveSelectScreen::MainMenuDestination;
             using Section = PokeBank::UIModel::AppShellSection;
             switch (destination) {
@@ -120,6 +120,8 @@ namespace UI {
                 fb.drawFadeOverlay();
                 fb.flush();
             }
+            appShellNavigation = shell.navigationState();
+            appShellNavigationValid = true;
             fb.startFade();
         }
     }
@@ -127,7 +129,9 @@ namespace UI {
     // rebuilds it so newly-created saves stay visible; secondary destinations return here.
     SaveSelectScreen::MainMenuDestination UIManager::handleSaveSelection() {
         while (running) {
-            SaveSelectScreen selectScreen(legacyFRLGSources, legacySourceBindings);
+            SaveSelectScreen selectScreen(
+                legacyFRLGSources, legacySourceBindings,
+                productHomeNavigationValid ? &productHomeNavigation : nullptr);
             fb.startFade();
             bool rebuildPicker = false;
 
@@ -140,6 +144,8 @@ namespace UI {
                 fb.flush();
 
                 if (selectScreen.hasSelectedTitle()) {
+                    productHomeNavigation = selectScreen.navigationState();
+                    productHomeNavigationValid = true;
                     if (selectScreen.getSelectedSourceKind() ==
                         SaveSelectScreen::SelectedSourceKind::RetroArchFRLG) {
                         std::string error;
@@ -168,7 +174,11 @@ namespace UI {
                 running = false;
                 return SaveSelectScreen::MainMenuDestination::None;
             }
-            if (selectScreen.shouldExit()) return selectScreen.getRequestedMainMenuDestination();
+            if (selectScreen.shouldExit()) {
+                productHomeNavigation = selectScreen.navigationState();
+                productHomeNavigationValid = true;
+                return selectScreen.getRequestedMainMenuDestination();
+            }
             if (!rebuildPicker) return SaveSelectScreen::MainMenuDestination::None;
         }
         return SaveSelectScreen::MainMenuDestination::None;

@@ -176,11 +176,27 @@ namespace UI {
 
     SaveSelectScreen::SaveSelectScreen(
         PokeVault::Legacy::FRLGDiscoveryResult& legacySources,
-        PokeVault::Legacy::LegacySourceBindings& bindings)
+        PokeVault::Legacy::LegacySourceBindings& bindings,
+        const NavigationState* resumeState)
         : legacyCatalog(&legacySources), legacyBindings(&bindings) {
         loadUsers();
         loadLegacySources(legacySources);
         loadGen4Cards();
+
+        if (resumeState && !users.empty()) {
+            userIndex = std::clamp(resumeState->userIndex, 0,
+                                   static_cast<int>(users.size()) - 1);
+            const auto* resumedUser = currentUser();
+            const int titleCount = resumedUser
+                ? static_cast<int>(resumedUser->titles.size()) : 0;
+            titleIndex = titleCount > 0
+                ? std::clamp(resumeState->titleIndex, 0, titleCount - 1) : 0;
+            hubDockIndex = std::clamp(resumeState->hubDockIndex, 0, 4);
+            hubFeatureIndex = std::clamp(resumeState->hubFeatureIndex, -1, 1);
+            scrollRow = std::max(0, resumeState->scrollRow);
+            hubDockFocused = resumeState->hubDockFocused;
+            scrollSelectionIntoView();
+        }
         refreshHubPreview();
     }
 

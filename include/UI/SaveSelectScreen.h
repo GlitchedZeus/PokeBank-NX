@@ -40,14 +40,27 @@ namespace UI {
             Settings,
         };
 
+        struct NavigationState {
+            int userIndex = 0;
+            int titleIndex = 0;
+            int hubDockIndex = 0;
+            int hubFeatureIndex = -1;
+            int scrollRow = 0;
+            bool hubDockFocused = false;
+        };
+
         SaveSelectScreen(PokeVault::Legacy::FRLGDiscoveryResult& legacySources,
-                         PokeVault::Legacy::LegacySourceBindings& legacyBindings);
+                         PokeVault::Legacy::LegacySourceBindings& legacyBindings,
+                         const NavigationState* resumeState = nullptr);
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return exitRequested; }
         bool hasRequestedAppExit() const { return appExitRequested; }
         MainMenuDestination getRequestedMainMenuDestination() const {
             return requestedMainMenuDestination;
+        }
+        [[nodiscard]] NavigationState navigationState() const {
+            return {userIndex, titleIndex, hubDockIndex, hubFeatureIndex, scrollRow, hubDockFocused};
         }
 
         bool hasSelectedTitle() const { return titleSelected; }

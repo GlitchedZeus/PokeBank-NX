@@ -20,11 +20,23 @@ namespace UI {
             Games,
         };
 
+        struct NavigationState {
+            int selectedIndex = 0;
+            int settingsIndex = 0;
+            int previewIndex = 0;
+            int moreIndex = 0;
+        };
+
+        explicit AppShellScreen(const NavigationState* resumeState = nullptr);
+
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return exitRequested; }
 
         Action consumeAction();
+        [[nodiscard]] NavigationState navigationState() const {
+            return {selectedIndex, settingsIndex, previewIndex, moreIndex};
+        }
         void openSection(PokeBank::UIModel::AppShellSection section);
         bool hasOverlay() const { return overlay != Overlay::None; }
 

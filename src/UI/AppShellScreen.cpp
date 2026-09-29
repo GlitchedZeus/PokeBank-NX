@@ -102,6 +102,15 @@ namespace {
         }
     }}
 
+AppShellScreen::AppShellScreen(const NavigationState* resumeState) {
+    if (!resumeState) return;
+    selectedIndex = std::clamp(
+        resumeState->selectedIndex, 0, PokeBank::UIModel::appShellEntryCount() - 1);
+    settingsIndex = std::clamp(resumeState->settingsIndex, 0, 6);
+    previewIndex = std::max(0, resumeState->previewIndex);
+    moreIndex = std::clamp(resumeState->moreIndex, 0, 5);
+}
+
 AppShellScreen::Action AppShellScreen::consumeAction() {
     const Action result = pendingAction;
     pendingAction = Action::None;
@@ -129,18 +138,15 @@ void AppShellScreen::activateSelected() {
     if (section == AppShellSection::Games) {
         pendingAction = Action::Games;
     } else if (section == AppShellSection::More) {
-        moreIndex = 0;
         statusMessage.clear();
         statusFrames = 0;
         overlay = Overlay::More;
     } else if (section == AppShellSection::Settings) {
-        settingsIndex = 0;
         statusMessage.clear();
         statusFrames = 0;
         overlay = Overlay::Settings;
     } else if (PokeBank::UIModel::appShellPreviewable(section)) {
         infoSection = section;
-        previewIndex = 0;
         overlay = Overlay::OrganizationPreview;
     } else {
         infoSection = section;
@@ -284,7 +290,6 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
     }
 
     if (kDown & HidNpadButton_Plus) {
-        settingsIndex = 0;
         overlay = Overlay::Settings;
         return;
     }
