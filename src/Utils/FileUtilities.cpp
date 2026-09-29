@@ -291,9 +291,17 @@ namespace Utils {
 
         const std::string gameDirectory =
             PokeBank::Paths::exactGameBackupsRoot(userUid, identity->id);
-        const std::string folderName = timestamped ? getTimestamp() : std::string("Working");
-        const std::string backupDirectory =
+        std::string folderName = timestamped ? getTimestamp() : std::string("Working");
+        std::string backupDirectory =
             PokeBank::Paths::workspaceBackupPath(userUid, identity->id, folderName);
+        if (timestamped && !backupDirectory.empty() && pathExists(backupDirectory)) {
+            const std::string base = folderName;
+            for (int n = 2; n < 1000 && pathExists(backupDirectory); ++n) {
+                folderName = base + "-" + std::to_string(n);
+                backupDirectory =
+                    PokeBank::Paths::workspaceBackupPath(userUid, identity->id, folderName);
+            }
+        }
         if (gameDirectory.empty() || backupDirectory.empty()) {
             logErrorToFile("Refusing backup without a valid profile/exact-game namespace");
             return "";
@@ -312,11 +320,6 @@ namespace Utils {
             logErrorToFile("Failed to create profile/exact-game backup directory", pathError.c_str());
             return "";
         }
-        if (!PokeBank::Paths::ensureDirectoryTree(backupDirectory, &pathError)) {
-            logErrorToFile("Failed to create backup workspace directory", pathError.c_str());
-            return "";
-        }
-
         char buffer[LOG_BUFFER_SIZE];
 
         Result result = fsdevMountSaveData("save", titleId, userUid);
@@ -329,7 +332,8 @@ namespace Utils {
 
         logInfoToFile("Successfully mounted save:/");
 
-        bool copySuccess = copyDirectory("save:/", backupDirectory.c_str());
+        const bool copySuccess =
+            copyDirectoryTransactional("save:/", backupDirectory.c_str());
 
         fsdevUnmountDevice("save");
 
@@ -489,6 +493,12 @@ namespace Utils {
         struct dirent* entry;
         while ((entry = readdir(dir)) != NULL) {
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                continue;
+            }
+
+            // Incomplete/failed/previous transaction generations are evidence/recovery state,
+            // never editable backups. They stay invisible even when legacy Working is requested.
+            if (isBackupTransactionArtifactName(entry->d_name)) {
                 continue;
             }
 
