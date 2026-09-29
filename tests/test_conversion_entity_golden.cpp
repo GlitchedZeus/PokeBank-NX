@@ -390,6 +390,18 @@ void assertModernStoredNormalization(const Pokemon::Pokemon& source,
 int main() {
     using namespace Conversion;
 
+    // AUDIT-019: native encrypted blanks are non-zero records that decrypt to species 0.
+    // Trainer parsers must decide logical occupancy from the decrypted entity, not raw bytes.
+    {
+        auto swshBlank = blankSWSH(0xA0190001u);
+        auto plaBlank  = blankPLA(0xA0190002u);
+        auto svBlank   = blankSV(0xA0190003u);
+        auto zaBlank   = blankZA(0xA0190004u);
+        assert(swshBlank->speciesID() == 0 && swshBlank->checksumValid());
+        assert(plaBlank->speciesID() == 0 && plaBlank->checksumValid());
+        assert(svBlank->speciesID() == 0 && svBlank->checksumValid());
+        assert(zaBlank->speciesID() == 0 && zaBlank->checksumValid());
+    }
 
     // AUDIT-026: entity constructors enforce documented native lengths before decryption.
     // Modern stored records are normalized to party-sized owned buffers before any party-stat API.
