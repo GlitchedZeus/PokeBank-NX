@@ -141,12 +141,12 @@ docs/research/2026-09-09/LEGACY_RECOVERY_GAMECUBE_STADIUM.md	blob	100644	8737	le
 docs/research/2026-09-09/OFFICIAL_PATH_TRANSFER_CORPUS_AUDIT.md	blob	100644	5406	official-path transfer corpus research audit	text	188	AUDITED			0	yes
 docs/research/2026-09-09/POWERLOSS_DURABILITY_TEST_PLAN.md	blob	100644	4500	future Switch/sdmc power-loss durability test plan	text	154	AUDITED			0	yes
 docs/research/2026-09-09/RIBBON_BANK_EVENT_PRESERVATION_REFERENCES.md	blob	100644	5206	ribbon/event/Bank preservation reference notes	text	130	AUDITED			0	yes
-docs/research/2026-09-09/SAVE_FORMATS_PROFILES_CONTAINERS.md	blob	100644	11253		unknown		PENDING			0	
-docs/research/2026-09-09/SOURCE_MANIFEST.md	blob	100644	6761		unknown		PENDING			0	
-docs/research/2026-09-09/TRANSFER_FIXTURES_PROVENANCE.md	blob	100644	12005		unknown		PENDING			0	
-docs/research/2026-09-09/VAULT_DATA_EVENTS_PERFORMANCE.md	blob	100644	11906		unknown		PENDING			0	
-docs/research/2026-09-09/VAULT_PERFORMANCE_EVENT_RIGHTS_AUDIT.md	blob	100644	5181		unknown		PENDING			0	
-docs/research/2026-09-11/GSC_FORMAT_ORACLE.md	blob	100644	5618		unknown		PENDING			0	
+docs/research/2026-09-09/SAVE_FORMATS_PROFILES_CONTAINERS.md	blob	100644	11253	save revision/profile/container/localization research	text	495	AUDITED			0	yes
+docs/research/2026-09-09/SOURCE_MANIFEST.md	blob	100644	6761	September 9 research source manifest	text	156	AUDITED			0	yes
+docs/research/2026-09-09/TRANSFER_FIXTURES_PROVENANCE.md	blob	100644	12005	transfer/provenance/golden-fixture research	text	581	AUDITED			0	yes
+docs/research/2026-09-09/VAULT_DATA_EVENTS_PERFORMANCE.md	blob	100644	11906	Vault/data/events/performance/fuzzing research	text	566	AUDITED			0	yes
+docs/research/2026-09-09/VAULT_PERFORMANCE_EVENT_RIGHTS_AUDIT.md	blob	100644	5181	Vault performance/event rights audit	text	210	AUDITED			0	yes
+docs/research/2026-09-11/GSC_FORMAT_ORACLE.md	blob	100644	5618	Gen II format/read-only oracle	text	78	AUDITED			0	yes
 docs/RETROARCH_SOURCE_NAMING.md	blob	100644	9545	RetroArch source grouping/identity/refresh product semantics	text	220	AUDITED			0	yes
 docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md	blob	100644	11211	documentation	text		AUDITED			0	
 docs/SAVE_FORMAT_EDGE_CASE_RESEARCH_2026-09-13.md	blob	100644	16092	documentation	text		AUDITED			0	
