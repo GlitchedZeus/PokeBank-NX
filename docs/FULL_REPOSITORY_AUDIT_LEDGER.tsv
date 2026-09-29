@@ -627,7 +627,7 @@ tests/test_classic_picker_type_contract.cpp	blob	100644	2070	Gen I/II native spe
 tests/test_clean_install_runtime.cpp	blob	100644	1793	clean-install PokeBank-owned filesystem contract	text	45	AUDITED			0	yes
 tests/test_controller_model.cpp	blob	100644	1405	context-sensitive controller binding contract	text	27	AUDITED			0	yes
 tests/test_conversion_entity_golden.cpp	blob	100644	179590		unknown		PENDING			0	
-tests/test_conversion_evidence.cpp	blob	100644	38044		unknown		PENDING			0	
+tests/test_conversion_evidence.cpp	blob	100644	38044	cross-game fidelity evidence/acknowledgement/provenance/recovery gate contract	text	774	AUDITED			0	no
 tests/test_conversion_fidelity_golden.cpp	blob	100644	7766	F05-F13 conversion-fidelity policy goldens	text	181	AUDITED			0	no
 tests/test_durable_file.cpp	blob	100644	4129	durable replacement host regression test	text	106	AUDITED			0	no
 tests/test_encounter_guardrails.cpp	blob	100644	5955	exact-game Gen II/III encounter guardrail fixtures	text	110	AUDITED			0	yes
