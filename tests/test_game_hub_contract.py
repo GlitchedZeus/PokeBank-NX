@@ -148,6 +148,15 @@ require("handleItemsQuickOpen" in ui_manager and "backupSaveData" in ui_manager,
         "Switch Backpack quick-open must create the normal protected backup before Items")
 require("if (!shell.hasOverlay()) break;" in ui_manager,
         "closing a secondary shell must not draw the retired shell for one stale frame")
+require("!selectScreen.hasSelectedTitle() && !selectScreen.shouldExit()" in ui_manager and
+        "if (selectScreen.shouldExit()) break;" in ui_manager,
+        "Product Home must stop drawing immediately after selection or exit")
+require("!backupScreen.shouldExit() && !backupScreen.hasSelectedBackup()" in ui_manager and
+        "if (backupScreen.shouldExit()) break;" in ui_manager,
+        "backup chooser must stop drawing immediately after selection or exit")
+require(ui_manager.count(
+            "if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;") >= 3,
+        "trainer/game loops must retire before draw on every supported source path")
 require("slotW - 12, 66" in source and "slotY + 96" in source,
         "Product Home party sprites and level text must use the enlarged readable layout")
 
