@@ -551,7 +551,7 @@ src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc	blob	100644	56299	Gen I logical-wo
 src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc	blob	100644	35411	Gen I Cleanup3 shiny/exact-move/joystick wrapper layer	text	725	AUDITED			0	yes
 src/UI/Gen1PokemonEditorPassiveView.inc	blob	100644	1145	Gen I passive read-only workspace adapter	text	30	AUDITED			0	no
 src/UI/Gen2HardwareFinalFix.inc	blob	100644	19308	Gen II final hardware fullscreen presentation adapter	text	348	AUDITED			0	no
-src/UI/Gen2HardwarePickerFix.inc	blob	100644	5836	Gen II hardware move-picker compatibility adapter	text	126	AUDITED			0	no
+src/UI/Gen2HardwarePickerFix.inc	blob	100644	6154	Gen II hardware move-picker compatibility adapter	text	130	AUDITED			0	no
 src/UI/Gen2HardwareWorkspaceFix.inc	blob	100644	4629	Gen II hardware workspace focus/presentation adapter	text	108	AUDITED			0	no
 src/UI/Gen2PokemonEditorFoundation.inc	blob	100644	39358	Gen II local-session DETAILS/VALUES/MOVES foundation editor	text	875	AUDITED			0	yes
 src/UI/Gen2PokemonPickerOverlay.inc	blob	100644	12400	Gen II named species/move/location picker overlay	text	264	AUDITED			0	no
@@ -560,7 +560,7 @@ src/UI/Gen2SharedSurfaceParity.inc	blob	100644	18969	Gen II shared-surface parit
 src/UI/Gen2TrainerSessionOverlay.inc	blob	100644	2691	Gen II staged trainer-session overlay	text	59	AUDITED			0	no
 src/UI/Gen2UnifiedPokemonWorkspace.inc	blob	100644	42404	Gen II unified shared workspace and Crystal caught-history editing layer	text	834	AUDITED			1	yes
 src/UI/Gen3SharedPokemonSurface.inc	blob	100644	78589		unknown		PENDING			0	
-src/UI/Gen4SharedPokemonSurface.inc	blob	100644	87916	Gen IV shared View/Edit/Create surface	text	1982	AUDITED			1	yes
+src/UI/Gen4SharedPokemonSurface.inc	blob	100644	88208	Gen IV shared View/Edit/Create surface	text	1986	AUDITED			1	yes
 src/UI/Modals/Gen1PokemonDetailsModal.cpp	blob	100644	3945	Gen I details adapter	text	88	AUDITED			0	no
 src/UI/Modals/Gen2PokemonDetailsModal.cpp	blob	100644	14261	Gen II read-only details renderer	text	290	AUDITED			0	no
 src/UI/Modals/PokemonDetailsDispatcher.cpp	blob	100644	1195	generation details renderer dispatcher	text	35	AUDITED			0	yes
@@ -726,7 +726,7 @@ tools/verify_embedded_romfs.py	blob	100644	3402	embedded NRO RomFS byte-for-byte
 vendor/PKSM-Core	commit	160000			unknown		PENDING			0
 include/Integration/Gen4/Gen4MoveCompatibility.h	blob	100644	301653	generated Gen IV exact-game move compatibility table	text	1609	AUDITED			0	no
 include/Names/MoveBattleStats.h	blob	100644	17304	generated Gen I-IV move Power/Accuracy/PP tables	text	199	AUDITED			1	yes
-include/UI/MovePickerPresentation.h	blob	100644	1019	shared move picker number/stat presentation	text	13	AUDITED			1	yes
+include/UI/MovePickerPresentation.h	blob	100644	1273	shared move picker number/stat presentation	text	24	AUDITED			1	yes
 tests/test_move_picker_presentation.cpp	blob	100644	1707	shared move picker presentation contract test	text	13	AUDITED			0	yes
 tools/gen_gen4_move_compatibility.py	blob	100644	2420	Gen IV compatibility table generator	text	70	AUDITED			0	no
 tools/gen_move_battle_stats.py	blob	100755	4074	Gen I-IV move battle-stat generator	text	35	AUDITED			1	yes
