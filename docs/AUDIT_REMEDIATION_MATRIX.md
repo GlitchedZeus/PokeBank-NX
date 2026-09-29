@@ -39,7 +39,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 17 | AUDIT-030 | P2 | FIXED | Gen I finalization can serialize an in-progress packed move |
 | 18 | AUDIT-037 | P2 | FIXED | Gen I/II group pickup can strand an active staged move after presentation-refresh failure |
 | 19 | AUDIT-013 | P2 | FIXED | Legacy Bank migration skips checksum validation used by normal Bank load |
-| 20 | AUDIT-028 | P2 | OPEN | Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays |
+| 20 | AUDIT-028 | P2 | FIXED | Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays |
 | 21 | AUDIT-027 | P2 | OPEN | LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0 |
 | 22 | AUDIT-014 | P2 | OPEN | Session-wide source read-only gate disables app-owned Bank mutation |
 | 23 | AUDIT-019 | P3 | OPEN | modern encrypted blank slots are parsed as live species-0 objects |
@@ -412,7 +412,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** iterate every `PersonalInfo` species/form pair present in each supported game and require a nonzero, correct base-stat record with matching species id; compare representative alternate forms against the corresponding game personal table; run every form under bounds sanitizers; verify stat-affecting edit round-trips for the affected valid forms.
 - **Dependency / sequencing:** Prefer generated personal/base-stat routing
 - **Proposed remediation order:** 20
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `getBaseStatsGen89()` now validates the generated species/form domain before handwritten routing, every remaining dedicated-array access goes through a bounds-checked helper, and the proven irregular mappings are explicit: Kanto/Paldean Tauros, all four Darmanitan forms, Tornadus/Thundurus/Landorus offsets, Zygarde state aliases, Aegislash, Wishiwashi, Minior, Eiscue, Morpeko, Eternatus, Calyrex, Ursaluna, Palafin and Terapagos. The SWSH Zacian/Zamazenta historical overrides no longer accept arbitrary invalid forms. `Pokemon8SWSH`, `Pokemon8BDSP`, `Pokemon8LA`, `Pokemon9SV` and `Pokemon9LZA` now fail closed in `recalculateStats()` when no trustworthy base-stat record exists, preserving the existing party-stat tail instead of writing zero-based values. `tests/test_modern_base_stats_forms.cpp` covers the audited valid-form failures and malformed bounds and runs in Host Tests plus ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 21. AUDIT-027 — LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0
 
