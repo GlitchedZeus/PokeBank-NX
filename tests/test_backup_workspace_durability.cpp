@@ -58,5 +58,23 @@ int main() {
 
     assert(source.find("fopen(savePath, \"wb\")") == std::string::npos);
 
+    // AUDIT-015: ordinary backup creation must not expose a partial final directory.
+    const auto files = read("src/Utils/FileUtilities.cpp");
+    assert(files.find("bool copyDirectoryTransactional(") != std::string::npos);
+    assert(files.find(".incomplete.") != std::string::npos);
+    assert(files.find(".failed.") != std::string::npos);
+    assert(files.find(".previous.") != std::string::npos);
+    assert(files.find("rename(incomplete.c_str(), final.c_str())") != std::string::npos);
+    assert(files.find("verifyCopiedFile(destFilePath, data, size)") != std::string::npos);
+    assert(files.find("fflush(out)") != std::string::npos);
+    assert(files.find("fclose(out) != 0") != std::string::npos);
+    const auto txBegin = files.find("bool copyDirectoryTransactional(");
+    const auto backupBegin = files.find("std::string backupSaveData(", txBegin);
+    assert(txBegin != std::string::npos && backupBegin != std::string::npos);
+    const auto txBody = files.substr(txBegin, backupBegin - txBegin);
+    const auto copy = txBody.find("copyDirectory(srcPath, incomplete.c_str())");
+    const auto promote = txBody.find("rename(incomplete.c_str(), final.c_str())");
+    assert(copy != std::string::npos && promote != std::string::npos && copy < promote);
+
     std::cout << "Mutable backup workspace durability contract: PASS\n";
 }
