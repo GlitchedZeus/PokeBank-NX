@@ -26,7 +26,7 @@ The first legality-engine tranche adds:
 - conservative exact-game encounter evidence where audited data already exists;
 - preservation of the existing exact-game Gen III move context.
 
-Current encounter-table coverage is **partial** for Crystal and the five Gen III games. Gen I and Gen IV encounter provenance remain explicitly uncovered until their encounter datasets are imported and independently verified.
+Current encounter coverage is **partial** for Crystal, the five Gen III games, and all five Gen IV games. Gen IV now has pinned wild-slot evidence for D/P/Pt/HG/SS, but static/gift/trade/event templates are still missing, so a wild-slot non-match is not treated as illegal. Gen I remains explicitly uncovered because PK1 does not store met location/level and requires a catch-rate/tradeback-specific verifier instead of a Gen IV-style location check.
 
 ## Planned layers
 

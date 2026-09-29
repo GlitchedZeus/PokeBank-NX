@@ -32,11 +32,11 @@ inline constexpr std::array<SourceGameProfile, 16> kSourceGameProfiles{{
     {"emerald_gba",    3, 386, 354, CoverageLevel::Partial},
     {"firered_gba",    3, 386, 354, CoverageLevel::Partial},
     {"leafgreen_gba",  3, 386, 354, CoverageLevel::Partial},
-    {"diamond_nds",    4, 493, 467, CoverageLevel::None},
-    {"pearl_nds",      4, 493, 467, CoverageLevel::None},
-    {"platinum_nds",   4, 493, 467, CoverageLevel::None},
-    {"heartgold_nds",  4, 493, 467, CoverageLevel::None},
-    {"soulsilver_nds", 4, 493, 467, CoverageLevel::None},
+    {"diamond_nds",    4, 493, 467, CoverageLevel::Partial},
+    {"pearl_nds",      4, 493, 467, CoverageLevel::Partial},
+    {"platinum_nds",   4, 493, 467, CoverageLevel::Partial},
+    {"heartgold_nds",  4, 493, 467, CoverageLevel::Partial},
+    {"soulsilver_nds", 4, 493, 467, CoverageLevel::Partial},
 }};
 
 constexpr const SourceGameProfile* sourceGameProfile(std::string_view id) noexcept {

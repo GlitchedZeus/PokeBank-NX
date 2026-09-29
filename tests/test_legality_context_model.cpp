@@ -24,7 +24,7 @@ int main() {
     const auto* platinum = sourceGameProfile("platinum_nds");
     assert(platinum && platinum->generation == 4 && platinum->maxSpecies == 493 &&
            platinum->maxMove == 467);
-    assert(platinum->encounterCoverage == CoverageLevel::None);
+    assert(platinum->encounterCoverage == CoverageLevel::Partial);
 
     assert(sourceGameProfile("black_nds") == nullptr);
     assert(Legality::sourceGeneration("heartgold_nds") == 4);

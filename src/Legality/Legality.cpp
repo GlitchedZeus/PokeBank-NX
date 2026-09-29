@@ -12,6 +12,7 @@
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
+#include "Legality/Gen4WildEncounter.h"
 
 #include <algorithm>
 #include <array>
@@ -368,6 +369,21 @@ namespace Legality {
                             "Met location/level does not match the audited encounter table for " +
                             std::string(exactSourceGameId),
                             CheckIdentifier::Encounter);
+                }
+            } else if (exactGeneration == 4) {
+                // Gen IV wild-slot evidence is complete for the five retail games, but the overall
+                // encounter layer remains Partial until static/gift/trade/event templates are added.
+                // A positive match is useful evidence. A non-match is intentionally NOT an error yet,
+                // because the Pokemon may come from one of those still-unimported encounter classes.
+                if (Legality::Gen4Wild::matches(
+                        exactSourceGameId, species, pk.metLocation(), pk.metLevel(), pk.form())) {
+                    add(r, Severity::Info,
+                        "Met data matches an audited Generation IV wild encounter slot",
+                        CheckIdentifier::Encounter);
+                } else if (Legality::Gen4Wild::hasSpecies(exactSourceGameId, species)) {
+                    add(r, Severity::Info,
+                        "No matching Gen IV wild slot; static/gift/trade/event evidence is not fully imported",
+                        CheckIdentifier::Encounter);
                 }
             } else {
                 const auto candidates = forGameSpecies(exactSourceGameId, species);

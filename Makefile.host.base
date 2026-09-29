@@ -135,6 +135,8 @@ HOST_TESTS += $(HOST_BUILD)/test_legality_context_model
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_context_model_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_legality_legacy_move_context
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_legacy_move_context_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_wild_encounter_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_wild_encounter_evidence_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -193,6 +195,14 @@ $(HOST_BUILD)/test_legality_legacy_move_context: $(LEGACY_LEGALITY_CONTEXT_SOURC
 $(HOST_BUILD)/test_legality_legacy_move_context_sanitize: $(LEGACY_LEGALITY_CONTEXT_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gen4_wild_encounter_evidence: tests/test_gen4_wild_encounter_evidence.cpp include/Legality/Gen4WildEncounter.h include/Legality/Gen4WildEncounterData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_wild_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_wild_encounter_evidence_sanitize: tests/test_gen4_wild_encounter_evidence.cpp include/Legality/Gen4WildEncounter.h include/Legality/Gen4WildEncounterData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_wild_encounter_evidence.cpp -o $@
 
 $(HOST_BUILD)/test_source_mutation_policy: tests/test_source_mutation_policy.cpp
 	@mkdir -p $(HOST_BUILD)
