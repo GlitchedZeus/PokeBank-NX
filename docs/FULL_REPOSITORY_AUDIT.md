@@ -33,8 +33,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 745 / 746
-- Fully read text files: 710 / 711
+- Audited tracked paths: 746 / 746
+- Fully read text files: 711 / 711
 - Binary/non-text inspected: 35 / 35 (34 binary assets + 1 gitlink) currently identified by exact extension/manifest scan
 
 ## Current checkpoint — integrated Product Home / launch delta
@@ -943,3 +943,5 @@ These are kept separate from corruption/safety findings unless a current impleme
 - `nanovg/nanovg.c` (2,949 lines / 77,637 bytes) was fully read. Geometry/draw-buffer growth generally fails closed. Its Fontstash atlas-resize caller confirms additional AUDIT-044 evidence but no separate numbered defect was added.
 
 - `nanovg/stb_truetype.h` (5,010 lines / 195,646 bytes) was fully read. Its upstream no-untrusted-font guarantee is not exposed as a PokeBank user-input surface in the current tree; normal bundled/runtime font parsing adds no new numbered repository defect.
+
+- `include/Libs/stb_image.h` (7,988 lines / 283,010 bytes, stb_image v2.30) was fully read, completing the tracked-tree pass. Its size/overflow/allocation guards fail cleanly on the PokeBank-relevant image paths. A malformed-PIC vendor edge case was traced to the only compiled `stbi_load()` caller, which loads fixed bundled `romfs:/sprites/...` assets rather than a user/external image path, so it was not promoted to a PokeBank finding. No new numbered defect was confirmed in the final file.
