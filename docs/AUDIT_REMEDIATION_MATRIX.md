@@ -22,7 +22,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 |---:|---|:---:|---|---|
 | 1 | AUDIT-001 | P1 | FIXED | destructive mutable PKSE import workflow |
 | 2 | AUDIT-032 | P1 | FIXED | PR #97 removes AppShellSection::Collections but still references it |
-| 3 | AUDIT-002 | P2 | OPEN | no general unfiltered native PR compile gate |
+| 3 | AUDIT-002 | P2 | FIXED | no general unfiltered native PR compile gate |
 | 4 | AUDIT-020 | P2 | FIXED | SV/Z-A MyStatus size guard permits an out-of-bounds gender read |
 | 5 | AUDIT-031 | P2 | FIXED | SC SHA-256 message decoding uses signed-shift undefined behavior |
 | 6 | AUDIT-025 | P3 | FIXED | defaulted Pokémon move operations duplicate raw-buffer ownership |
@@ -115,7 +115,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Run the affected workflow/target on the exact remediation head and assert the intended gate executes.
 - **Dependency / sequencing:** Do early so later C++ fixes get native coverage
 - **Proposed remediation order:** 3
-- **Status:** OPEN
+- **Status:** FIXED
+- **Current-code reconciliation:** PR #101 adds `.github/workflows/native-pr-build.yml`, triggered on every pull request with no path filter, and it performs a clean devkitA64 compile/link of the exact PR application head. Exact-head Native PR Gate is running, so this is not VERIFIED yet.
 
 ### 4. AUDIT-020 — SV/Z-A MyStatus size guard permits an out-of-bounds gender read
 
