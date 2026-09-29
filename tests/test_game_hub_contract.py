@@ -9,34 +9,51 @@ def require(cond: bool, message: str) -> None:
     if not cond:
         raise SystemExit(message)
 
-require('"ACTIVE PARTY"' in source, "game hub must expose the active party strip")
-require('"A", "Open / Edit"' in source, "game hub must expose an Open/Edit primary action")
-require('{"ZR", gameLaunchActionLabel(launchDescriptor.state)}' in source,
-        "game hub must expose the dynamic Launch / Link Game File shortcut")
+# Approved product-home hierarchy.
+require('"MASTER VAULT"' in source, "product home must expose Master Vault")
+require('"POKÉDEX"' in source, "product home must expose Pokédex")
+require('"PARTY"' in source, "product home must expose the real party strip")
+require('"A", "OPEN"' in source, "selected-game card must expose the Open action")
+require('"ZR", launchLabel' in source,
+        "selected-game card must expose the dynamic Launch / Link Game File action")
+require('{"Games", "Banks", "Backups", "Search", "Settings"}' in source,
+        "persistent dock must match the approved five destinations")
+require("hubDockFocused" in source and "hubFeatureIndex" in source and "activateHubDock" in source,
+        "approved home destinations must be controller-focusable, not decorative")
+require("HidNpadButton_L" in source and "HidNpadButton_R" in source,
+        "L/R must switch the selected game")
+require('"Pokédex Progress"' in source,
+        "selected-game card must reserve honest Pokédex progress presentation")
+require('"Trainer"' in source,
+        "selected-game card must expose trainer information")
+require("PROFILE_AVATAR" in source and "SystemIcons::userIcon" in source,
+        "product header must expose the current profile identity")
+
+# Safe preview and launch boundaries remain unchanged.
 require("requestGameLaunch" in source, "launch shortcut must route through the shared launcher")
 require('fsdevMountSaveData("pbpreview"' in source,
         "native party preview must use an explicit read-only preview mount boundary")
 require('fsdevUnmountDevice("pbpreview")' in source,
         "native party preview must always leave the preview mount")
 require("fsdevCommitDevice" not in source,
-        "game hub preview must never commit a live source save")
+        "product-home preview must never commit a live source save")
 require("restoreBackupToTitle" not in source,
-        "game hub preview must never restore/inject a save")
-require("PartyPreviewSlot" in header, "game hub party preview model must be explicit")
+        "product-home preview must never restore/inject a save")
+require("PartyPreviewSlot" in header, "party preview model must remain explicit")
 
-require("AppShellScreen shell" in ui_manager,
-        "the professional main menu must be the app root")
-require("handleSaveSelection()" in ui_manager,
-        "Games destination must open the existing profile/game hub")
-require('"Games  /  v"' in source,
-        "the profile/game hub must present itself as the Games destination")
-require('{"B", "Main Menu"}' in source,
-        "B from Games must return to the professional main menu")
-require('"Exit PokeBank NX"' in source,
-        "the game hub must retain an explicit full-app exit action")
+# Product Home, not the retired dashboard, is the app root.
+require("const auto destination = handleSaveSelection();" in ui_manager,
+        "approved Games/product-home screen must be the app root")
+require("shell.hasOverlay()" in ui_manager,
+        "secondary destinations must return directly to product home")
+require("Dest::MasterVault" in ui_manager and "Dest::Pokedex" in ui_manager,
+        "right-side feature cards must route through the secondary shell")
+require("Dest::Banks" in ui_manager and "Dest::Search" in ui_manager and "Dest::Settings" in ui_manager,
+        "dock destinations must route through the secondary shell")
 
+# In-app launch linking remains app-owned and path-safe.
 require("GameFilePicker" in header and "Overlay::GameFilePicker" in source,
-        "game hub must provide an in-app game-file browser")
+        "product home must retain the in-app game-file browser")
 require("saveGameLaunchBinding" in source,
         "Link Game File must persist app-owned launch metadata")
 require('"Y", "Up Folder"' in source,
@@ -52,17 +69,8 @@ require("result.launcherPath = defaultLauncherPath" in launcher,
 require("result.corePath = defaultRetroArchCore" in launcher,
         "stored launch metadata must not choose an arbitrary RetroArch core")
 
-require('"QUICK ACCESS"' in source,
-        "game hub must expose the compact quick-access dock")
-require('{"Storage", "Banks", "Backups", "Trade", "Settings"}' in source,
-        "game hub dock must present Storage, Banks, Backups, future Trade and Settings")
-require("hubDockFocused" in source and "activateHubDock" in source,
-        "game hub quick-access dock must be controller-focusable, not decorative")
-require("MainMenuDestination::Banks" in source and "MainMenuDestination::Settings" in source,
-        "Banks and Settings dock actions must route back through the root product shell")
-require('"Trade is not implemented yet."' in source,
-        "future Trade must remain explicitly unavailable")
-require("shell.openSection(PokeBank::UIModel::AppShellSection::Banks)" in ui_manager,
-        "Banks quick access must land on the root Banks destination")
-require("shell.openSection(PokeBank::UIModel::AppShellSection::Settings)" in ui_manager,
-        "Settings quick access must land on the real root Settings destination")
+# Developer-dashboard language and the rejected Trade dock must not return to Product Home.
+require('"QUICK ACCESS"' not in source,
+        "approved Product Home must not restore the old Quick Access sub-dock")
+require('"Trade is not implemented yet."' not in source,
+        "approved dock must not restore the rejected Trade destination")
