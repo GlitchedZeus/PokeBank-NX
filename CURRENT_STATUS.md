@@ -12,17 +12,17 @@ GitHub is authoritative. Recorded SHAs are checkpoints only: always re-fetch bef
 
 - Branch: `feature/gen4-full-editor-20260928`
 - State: **OPEN / DRAFT / NOT MERGED**
-- Last verified head: `58a56f8d3b8350283f34fcc4d8dafc495b6515f2`
-- Latest changes: two-pane Settings with cursor memory + grounded trainer portraits
-- PR #100 Product UI polish: **MERGED INTO THIS LANE**
+- Last verified head: `710cf37a33ba7a9f29b09953c5d8aa224268e4fd`
+- Latest integrated changes: Classic Game Sources, safe Backpack/Items intent, cursor-memory state, real Gen I–IV Pokédex progress, Gen IV trainer-name propagation, grounded trainer portraits, two-pane Settings, and truthful emulator-launch/help presentation
+- PR #100 Product UI polish: **CONTENT INTEGRATED INTO THIS LANE; PR #100 CLOSED**
 
 Current exact-head CI boundary at the time of this update:
 
-- Host Tests #1684 — **RUNNING**
-- Gen IV Shared Editor Candidate Gate #131 — **PENDING**
-- Product UI Native #55 — **RUNNING**
+- Product UI Native #61 — **PASS** — run `36531602414`
+- Gen IV Shared Editor Candidate Gate #137 — **PASS** — run `36531602291`
+- Host Tests #1701 — **RUNNING** — run `36531602274`
 
-Therefore the current integrated head is **not yet a hardware candidate**.
+The current integrated head is **not yet hardware accepted**. It becomes a hardware candidate only when the remaining exact-head host/sanitizer gate is green and one exact Actions-built NRO is selected for physical testing.
 
 ## Hardware-accepted foundation
 
@@ -178,15 +178,14 @@ Issue #89 remains the separate future backup → working copy → explicit Injec
 
 Continue directly on PR #92:
 
-1. re-fetch the live PR #92 head;
-2. resolve any exact-head CI failure forward;
-3. preserve current Gen I–IV editor behavior;
-4. verify cursor-memory behavior across the intended surfaces;
-5. verify Backpack/Items quick entry;
-6. verify DraStic/melonDS direct launch handoff while retaining Link Game File as the fail-closed fallback;
-7. run full host/sanitizer/Gen-IV/native gates on one exact head;
-8. produce one combined Actions-built NRO;
-9. stop for physical Switch testing.
+1. re-fetch the live PR #92 head and preserve anything newer than `710cf37a…`;
+2. let exact-head Host Tests #1701 finish and fix any failure forward;
+3. preserve the now-green Product UI Native #61 and Gen IV Gate #137 behavior;
+4. hardware-check Product Home, Classic Game Sources, real trainer/Dex presentation, Settings cursor memory, and Backpack/Items quick entry;
+5. verify DraStic/melonDS direct launch handoff while retaining Link Game File as the fail-closed fallback;
+6. keep source saves immutable and launch/write authorization separate;
+7. produce one combined Actions-built NRO with its exact artifact ID and SHA-256;
+8. stop for physical Switch testing.
 
 After that integrated UI candidate passes hardware, the next major frontend tranche is **full app-wide touch controls**.
 
