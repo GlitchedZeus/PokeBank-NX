@@ -6,7 +6,7 @@ Status: IN PROGRESS
 
 - Repository: GlitchedZeus/PokeBank-NX
 - Audit branch: `audit/full-repository-line-by-line-20260928`
-- Primary MAIN tree audited: PR #92 head `85762adce4a1ce6f30763a0d76b3b11735da7d49`
+- Primary MAIN tree audited: PR #92 head `491476b392ef78f7bc70b4dad7dd669d26f9361f`
 - PR #92 branch: `feature/gen4-full-editor-20260928`
 - Sibling UI overlay coverage baseline remains `5f19fd14628c182db135038864036b6eb1b86c49`; live PR #97 is now `068fb5e101780037e79d0f17f457574cdcc800b7`, with its forward delta tracked separately from the MAIN denominator
 - Integration parent: PR #90 head `8b3bcc16c804247bfe8d1314b686974ce73051d8`
@@ -30,6 +30,9 @@ Status: IN PROGRESS
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
+
+- PR #92 advanced from `85762adce4a1ce6f30763a0d76b3b11735da7d49` to `491476b392ef78f7bc70b4dad7dd669d26f9361f` (2 commits / 8 changed paths). Every changed path that previously carried AUDITED status was completely re-read at the new head: `include/UI/MovePickerPresentation.h`, `src/UI/Gen2HardwarePickerFix.inc`, and `src/UI/Gen4SharedPokemonSurface.inc`. Their ledger line/byte metadata was refreshed. The other five changed paths were already PENDING and remain catch-up work rather than being promoted without a full read.
+- This delta centralizes the compact move-picker geometry and applies it to Gen II/IV while preserving exact-game move-stat lookup and compatible-move filtering. No new numbered defect was confirmed in the re-read audited files; staged/source immutability remains unchanged.
 
 - PR #92 live-head catch-up is now reconciled through `85762adce4a1ce6f30763a0d76b3b11735da7d49` (4 commits / 16 changed paths beyond `a86c8d039209bc17ac613524c6631f03309037a0`). Every path in that delta that already carried AUDITED status was fully re-read at the new head: `include/UI/Gen1PokemonEditorUIContract.h`, `include/UI/SharedPokemonEditorContract.h`, `src/Names/MachineDisplay.cpp`, `src/Names/TMMoves.cpp`, `src/UI/Gen2HardwarePickerFix.inc`, `src/UI/Gen2SharedPokemonSurface.inc`, and `src/UI/Gen4SharedPokemonSurface.inc`. The remaining changed paths were already PENDING and stay PENDING. No new numbered defect was confirmed from this catch-up; staged/source immutability and row-level move focus semantics remain intact.
 - UI tranche progress: `src/UI/Panels/BoxPokemonPanel.cpp` was fully read at `85762adc…` (381 lines / 22,188 bytes) and is now AUDITED. The file renders native box grids, carried-slot presentation, quick summary fields, and generation-aware stat radars. No new correctness or source-mutation defect was confirmed in this file.
