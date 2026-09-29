@@ -23,8 +23,8 @@ require("hubDockFocused" in source and "hubFeatureIndex" in source and "activate
         "approved home destinations must be controller-focusable, not decorative")
 require("HidNpadButton_L" in source and "HidNpadButton_R" in source,
         "L/R must switch the selected game")
-require('"Pokédex Progress"' in source,
-        "selected-game card must reserve honest Pokédex progress presentation")
+require('"Pokédex"' in source and '"Progress tracking  •  Coming Soon"' in source,
+        "selected-game card must use the compact honest Pokédex Coming Soon presentation")
 require('"Trainer"' in source,
         "selected-game card must expose trainer information")
 require("PROFILE_AVATAR" in source and "SystemIcons::userIcon" in source,
