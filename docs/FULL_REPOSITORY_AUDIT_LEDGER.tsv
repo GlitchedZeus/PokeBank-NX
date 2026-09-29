@@ -571,7 +571,7 @@ src/UI/Panels/HomeMenuPanel.cpp	blob	100644	8866	loaded-workspace home panel ren
 src/UI/Panels/ItemsPanel.cpp	blob	100644	11918	inventory panel renderer	text	223	AUDITED			0	yes
 src/UI/Panels/PartyPokemonPanel.cpp	blob	100644	7898	party card/grid renderer	text	152	AUDITED			0	no
 src/UI/Panels/StoragePanel.cpp	blob	100644	35794	dual save/bank storage pane and confirmation presentation	text	628	AUDITED			0	yes
-src/UI/SaveSelectScreen.cpp	blob	100644	64968		unknown		PENDING			0	
+src/UI/SaveSelectScreen.cpp	blob	100644	64968	game/source picker, profile assignment and save-instance overlays	text	1278	AUDITED			1	yes
 src/UI/SpriteManager.cpp	blob	100644	8162	Pokemon/type sprite cache implementation	text	219	AUDITED			0	no
 src/UI/SystemIcons.cpp	blob	100644	7450	profile/title/game-card icon cache implementation	text	182	AUDITED			0	no
 src/UI/TouchInput.cpp	blob	100644	744	touch polling/edge implementation	text	24	AUDITED			0	no
