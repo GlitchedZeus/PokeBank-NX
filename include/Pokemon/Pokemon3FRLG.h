@@ -30,6 +30,14 @@ namespace Pokemon {
     class Pokemon3FRLG final : public Pokemon {
     public:
         explicit Pokemon3FRLG(std::span<const std::byte> raw) {
+            if (raw.size() != Encryption::SIZE_STORED3_FRLG &&
+                raw.size() != Encryption::SIZE_PARTY3_FRLG) {
+                inputShapeValid = false;
+                dataSize = Encryption::SIZE_PARTY3_FRLG;
+                buffer = new std::byte[dataSize]();
+                data = std::span<std::byte>(buffer, dataSize);
+                return;
+            }
             buffer = Encryption::decryptArray3FRLG(raw);   // decrypt + un-shuffle to canonical G/A/E/M
             dataSize = raw.size();
             data = std::span<std::byte>(buffer, dataSize);
@@ -204,7 +212,7 @@ namespace Pokemon {
         uint16_t checksum() const noexcept override { return rd16(0x1C); }
         uint16_t calculateChecksum() const noexcept override { return Encryption::checksum3FRLG(std::span<const std::byte>(data.data(), dataSize)); }
         void refreshChecksum() noexcept override { wr16(0x1C, calculateChecksum()); }
-        bool checksumValid() const noexcept override { return checksum() == calculateChecksum(); }
+        bool checksumValid() const noexcept override { return inputShapeValid && checksum() == calculateChecksum(); }
 
         // ---- editable setters (direct fields; PID-derived fields regenerate the PID) ----
         void setSpecies(uint16_t national) noexcept override {
