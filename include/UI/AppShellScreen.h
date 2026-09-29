@@ -34,6 +34,7 @@ namespace UI {
             Settings,
             Diagnostics,
             OrganizationPreview,
+            More,
             SectionInfo,
             Help,
         };
@@ -50,12 +51,13 @@ namespace UI {
         int selectedIndex = 0;
         int settingsIndex = 0;
         int previewIndex = 0;
+        int moreIndex = 0;
         bool exitRequested = false;
         Action pendingAction = Action::None;
         Overlay overlay = Overlay::None;
         PokeBank::UIModel::AppShellSection infoSection =
             PokeBank::UIModel::AppShellSection::Games;
-        std::array<HitRect, 6> cardRects{};
+        std::array<HitRect, 7> cardRects{};
         std::array<HitRect, 7> settingsRects{};
         std::string statusMessage;
         int statusFrames = 0;
@@ -66,6 +68,7 @@ namespace UI {
         void drawSettings(PKSEFramebuffer& fb);
         void drawDiagnostics(PKSEFramebuffer& fb);
         void drawOrganizationPreview(PKSEFramebuffer& fb);
+        void drawMore(PKSEFramebuffer& fb);
         void drawSectionInfo(PKSEFramebuffer& fb);
         void setStatus(std::string message, int frames = 300);
     };

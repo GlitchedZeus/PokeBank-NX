@@ -106,6 +106,7 @@ namespace UI {
                 case Dest::Pokedex:     shell.openSection(Section::Pokedex); break;
                 case Dest::Banks:       shell.openSection(Section::Banks); break;
                 case Dest::Search:      shell.openSection(Section::Search); break;
+                case Dest::More:        shell.openSection(Section::More); break;
                 case Dest::Settings:    shell.openSection(Section::Settings); break;
                 case Dest::None:        break;
             }

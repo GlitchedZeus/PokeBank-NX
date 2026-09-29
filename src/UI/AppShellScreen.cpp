@@ -59,6 +59,10 @@ namespace {
         if (section == AppShellSection::Banks) {
             fb.drawRoundedRect(cx - 23, cy - 18, 46, 28, 7, ink, 2);
             fb.drawRoundedRect(cx - 17, cy - 8, 34, 28, 6, ink, 2);
+        } else if (section == AppShellSection::More) {
+            for (int oy : {-10, 10})
+                for (int ox : {-10, 10})
+                    fb.drawFilledRoundedRect(cx + ox - 4, cy + oy - 4, 8, 8, 2, ink);
         } else if (section == AppShellSection::Settings) {
             fb.drawFilledCircle(cx, cy, 10, ink);
             fb.drawFilledRoundedRect(cx - 3, cy - 27, 6, 12, 3, ink);
@@ -117,6 +121,11 @@ void AppShellScreen::activateSelected() {
     const auto section = PokeBank::UIModel::appShellEntry(selectedIndex).section;
     if (section == AppShellSection::Games) {
         pendingAction = Action::Games;
+    } else if (section == AppShellSection::More) {
+        moreIndex = 0;
+        statusMessage.clear();
+        statusFrames = 0;
+        overlay = Overlay::More;
     } else if (section == AppShellSection::Settings) {
         settingsIndex = 0;
         statusMessage.clear();
@@ -192,6 +201,27 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
     }
     if (overlay == Overlay::Help || overlay == Overlay::SectionInfo) {
         if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) overlay = Overlay::None;
+        return;
+    }
+
+    if (overlay == Overlay::More) {
+        constexpr int moreCount = 6;
+        if (kDown & HidNpadButton_B) {
+            overlay = Overlay::None;
+            statusMessage.clear();
+            statusFrames = 0;
+            return;
+        }
+        if (kDown & HidNpadButton_Left)
+            moreIndex = (moreIndex + moreCount - 1) % moreCount;
+        if (kDown & HidNpadButton_Right)
+            moreIndex = (moreIndex + 1) % moreCount;
+        if (kDown & HidNpadButton_Up)
+            moreIndex = (moreIndex + moreCount - 2) % moreCount;
+        if (kDown & HidNpadButton_Down)
+            moreIndex = (moreIndex + 2) % moreCount;
+        if (kDown & HidNpadButton_A)
+            setStatus("Coming Soon — this module does not change save data.", 240);
         return;
     }
 
@@ -585,6 +615,54 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
     drawNavBar(fb, {{"D-pad/Stick", "Preview navigation"}, {"A", "Explain"}, {"B", "Back"}});
 }
 
+
+void AppShellScreen::drawMore(PKSEFramebuffer& fb) {
+    constexpr int x = 24, y = 78, w = 1232, h = 548;
+    drawPanelSurface(fb, x, y, w, h, true, 18);
+
+    fb.drawText(x + 28, y + 18, "MORE", Colors::AccentPrimary, TextStyle::Caption);
+    fb.drawText(x + 28, y + 46, "Future PokeBank NX Features",
+                Colors::TextPrimary, TextStyle::Heading);
+    fb.drawText(x + 28, y + 80,
+                "Post-v1.0 destinations live here without pretending unfinished backends are available.",
+                Colors::TextSecondary, TextStyle::Caption);
+
+    struct FutureModule { const char* title; const char* subtitle; };
+    static constexpr FutureModule modules[6] = {
+        {"Mystery Gifts", "Event distributions and gift library"},
+        {"Legality", "Validation and encounter review"},
+        {"Transfer History", "Where Pokémon moved and when"},
+        {"Clone Lineage", "Original / Clone / Legit Clone relationships"},
+        {"Collections", "Living Dex, Shiny Living Dex and Favorites"},
+        {"Trade & Gifting", "Future exchange features"},
+    };
+
+    constexpr int gapX = 18, gapY = 14;
+    const int gridX = x + 28;
+    const int gridY = y + 120;
+    const int cardW = (w - 56 - gapX) / 2;
+    const int cardH = 112;
+    for (int i = 0; i < 6; ++i) {
+        const int cx = gridX + (i % 2) * (cardW + gapX);
+        const int cy = gridY + (i / 2) * (cardH + gapY);
+        const bool focused = i == moreIndex;
+        drawFocusedCard(fb, cx, cy, cardW, cardH, focused, 14);
+        fb.drawText(cx + 20, cy + 16, modules[i].title,
+                    focused ? Colors::SelectedText : Colors::TextPrimary,
+                    TextStyle::Heading);
+        fb.drawText(cx + 20, cy + 53, modules[i].subtitle,
+                    Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(cx + 20, cy + 79, "Coming Soon",
+                    Colors::Info, TextStyle::Caption);
+    }
+
+    if (statusFrames > 0 && !statusMessage.empty())
+        fb.drawText(x + 30, y + h - 28, statusMessage,
+                    Colors::TextMuted, TextStyle::Caption);
+
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Details"}, {"B", "Back"}});
+}
+
 void AppShellScreen::drawSectionInfo(PKSEFramebuffer& fb) {
     const auto& entry = PokeBank::UIModel::APP_SHELL_ENTRIES[
         static_cast<std::size_t>(infoSection)];
@@ -627,6 +705,8 @@ void AppShellScreen::draw(PKSEFramebuffer& fb) {
         drawDiagnostics(fb);
     } else if (overlay == Overlay::OrganizationPreview) {
         drawOrganizationPreview(fb);
+    } else if (overlay == Overlay::More) {
+        drawMore(fb);
     } else if (overlay == Overlay::SectionInfo) {
         drawSectionInfo(fb);
     } else if (overlay == Overlay::Help) {

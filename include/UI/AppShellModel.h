@@ -12,6 +12,7 @@ namespace PokeBank::UIModel {
         Pokedex,
         Banks,
         Search,
+        More,
         Settings,
         Games,
     };
@@ -33,9 +34,9 @@ namespace PokeBank::UIModel {
     };
 
     inline constexpr int APP_SHELL_PRIMARY_COUNT = 2;
-    inline constexpr int APP_SHELL_DOCK_COUNT = 4;
+    inline constexpr int APP_SHELL_DOCK_COUNT = 5;
 
-    inline constexpr std::array<AppShellEntry, 6> APP_SHELL_ENTRIES{{
+    inline constexpr std::array<AppShellEntry, 7> APP_SHELL_ENTRIES{{
         {AppShellSection::MasterVault, "Master Vault",
          "Your central Pokémon library", "COMING SOON",
          AppShellAvailability::FutureBackend, false},
@@ -48,6 +49,9 @@ namespace PokeBank::UIModel {
         {AppShellSection::Search, "Search",
          "Find Pokémon across the future Vault index", "NO INDEX YET",
          AppShellAvailability::FutureBackend, false},
+        {AppShellSection::More, "More",
+         "Future PokeBank NX features", "COMING SOON",
+         AppShellAvailability::FutureBackend, true},
         {AppShellSection::Settings, "Settings",
          "Themes, safety and app preferences", "",
          AppShellAvailability::Ready, true},
@@ -67,7 +71,7 @@ namespace PokeBank::UIModel {
     // Professional console-home hierarchy:
     //   0 Master Vault
     //   1 Pokédex
-    //   2..5 compact dock (Banks, Search, Settings, Games)
+    //   2..6 compact dock (Banks, Search, More, Settings, Games)
     // Storage, Backups, Search, Collections and Diagnostics live inside the destinations
     // that own them instead of becoming equal-sized root dashboard cards.
     constexpr int appShellMoveSelection(int current, int dx, int dy) {
@@ -94,7 +98,8 @@ namespace PokeBank::UIModel {
     }
 
     constexpr bool appShellRootActionable(AppShellSection section) {
-        return section == AppShellSection::Settings ||
+        return section == AppShellSection::More ||
+               section == AppShellSection::Settings ||
                section == AppShellSection::Games;
     }
 

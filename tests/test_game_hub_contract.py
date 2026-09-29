@@ -17,8 +17,8 @@ require('"PARTY"' in source, "product home must expose the real party strip")
 require('"A", "OPEN"' in source, "selected-game card must expose the Open action")
 require('"ZR", launchLabel' in source,
         "selected-game card must expose the dynamic Launch / Link Game File action")
-require('{"Games", "Banks", "Backups", "Search", "Settings"}' in source,
-        "persistent dock must match the approved five destinations")
+require('{"Games", "Banks", "Backups", "Search", "More"}' in source,
+        "persistent dock must reserve Settings for the header and More for future features")
 require("hubDockFocused" in source and "hubFeatureIndex" in source and "activateHubDock" in source,
         "approved home destinations must be controller-focusable, not decorative")
 require("HidNpadButton_L" in source and "HidNpadButton_R" in source,
@@ -85,3 +85,19 @@ require('"Coming Soon — no save data was changed."' in shell_source,
         "future destinations must use product-facing unavailable copy")
 require("Colors::FocusBorder, 3" in source,
         "selected game OPEN action must carry the approved focus treatment")
+
+# Pokémon identity and future navigation.
+require('"UI/SpriteManager.h"' in source and "SpriteManager::getIconSprite" in source,
+        "Product Home party must use the existing Pokémon sprite pipeline")
+require("containSprite" in source,
+        "party sprites must preserve aspect ratio")
+require("MainMenuDestination::More" in source and "Dest::More" in ui_manager,
+        "More must be a real routed product destination")
+require('"Games   Open the selected game\'s PKSE-style workspace"' in source,
+        "Help must explain that Games enters the existing game workspace")
+require('"-: Help"' in source and '"+: Settings' in source,
+        "Product Home footer must expose Help and Settings shortcuts")
+require("headerSettingsFocused" in source,
+        "top-right Settings gear must participate in controller focus")
+require('"Mystery Gifts"' in shell_source and '"Clone Lineage"' in shell_source,
+        "More screen must reserve truthful future-feature modules")

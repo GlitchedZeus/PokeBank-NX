@@ -12,6 +12,8 @@
 #include "UI/ScreenChrome.h"
 #include "UI/ProductChrome.h"
 #include "UI/SystemIcons.h"
+#include "UI/SpriteManager.h"
+#include "UI/SpriteLayout.h"
 #include "UI/GameLauncher.h"
 #include "UI/TouchInput.h"
 #include "Enums/GameVersion.h"
@@ -144,12 +146,13 @@ namespace UI {
                 fb.drawCircle(cx - 3, cy - 3, 9, ink, 2);
                 fb.drawFilledRoundedRect(cx + 5, cy + 5, 13, 4, 2, ink);
             } else {
-                // Settings.
-                fb.drawFilledCircle(cx, cy, 7, ink);
-                fb.drawFilledRoundedRect(cx - 2, cy - 18, 4, 8, 2, ink);
-                fb.drawFilledRoundedRect(cx - 2, cy + 10, 4, 8, 2, ink);
-                fb.drawFilledRoundedRect(cx - 18, cy - 2, 8, 4, 2, ink);
-                fb.drawFilledRoundedRect(cx + 10, cy - 2, 8, 4, 2, ink);
+                // More. Settings lives in the product header instead of consuming a dock slot.
+                constexpr int tile = 8;
+                constexpr int gap = 5;
+                fb.drawFilledRoundedRect(cx - tile - gap / 2, cy - tile - gap / 2, tile, tile, 2, ink);
+                fb.drawFilledRoundedRect(cx + gap / 2, cy - tile - gap / 2, tile, tile, 2, ink);
+                fb.drawFilledRoundedRect(cx - tile - gap / 2, cy + gap / 2, tile, tile, 2, ink);
+                fb.drawFilledRoundedRect(cx + gap / 2, cy + gap / 2, tile, tile, 2, ink);
             }
         }
 
@@ -545,6 +548,7 @@ namespace UI {
         titleIndex = 0;
         scrollRow  = 0;
         hubDockFocused = false;
+        headerSettingsFocused = false;
         hubFeatureIndex = -1;
         refreshHubPreview();
     }
@@ -591,10 +595,13 @@ namespace UI {
         launchDescriptor = resolveGameLaunch(
             title.titleId, title.gameId, providerId, sourcePath, bindingKey);
 
-        auto addParty = [&](size_t index, uint16_t species, uint8_t level) {
+        auto addParty = [&](size_t index, uint16_t species, uint8_t level,
+                            uint8_t form, bool shiny) {
             if (index >= partyPreview.size() || species == 0) return;
             partyPreview[index].species = species;
             partyPreview[index].level = level;
+            partyPreview[index].form = form;
+            partyPreview[index].shiny = shiny;
             const char* speciesName = Trainer::getSpeciesName(species);
             partyPreview[index].name = speciesName ? speciesName : "Unknown";
         };
@@ -613,8 +620,11 @@ namespace UI {
                     previewTrainerName = parsed.trainerName;
                     const size_t count = std::min<size_t>(parsed.party.size(), partyPreview.size());
                     for (size_t i = 0; i < count; ++i) {
-                        if (parsed.party[i])
-                            addParty(i, parsed.party[i]->speciesID(), parsed.party[i]->level());
+                        if (parsed.party[i]) {
+                            const auto* pokemon = parsed.party[i].get();
+                            addParty(i, pokemon->speciesID(), pokemon->level(), pokemon->form(),
+                                     pokemon->isShiny(pokemon->id32(), pokemon->species()));
+                        }
                     }
                     partyPreviewStatus = count == 0 ? "No active party Pokémon." : "Current save party";
                 }, trainer);
@@ -651,18 +661,18 @@ namespace UI {
             if (source.isGen1()) {
                 const auto& party = source.gen1Save->party();
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                    addParty(i, party[i].species, party[i].level);
+                    addParty(i, party[i].species, party[i].level, 0, false);
             } else if (source.isGen2()) {
                 const auto& party = source.gen2Save->party();
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                    addParty(i, party[i].species, party[i].level);
+                    addParty(i, party[i].species, party[i].level, 0, false);
             } else if (source.isGen3()) {
                 const auto party = source.save->party();
                 // The strict Gen III read-only record intentionally exposes experience rather than
                 // a cached level. Do not invent a growth-curve conversion in presentation code:
                 // species is authoritative here and the level line stays omitted for this preview.
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                    addParty(i, party[i].species, 0);
+                    addParty(i, party[i].species, 0, 0, false);
             }
             partyPreviewStatus = "Validated read-only source party";
             return;
@@ -675,7 +685,8 @@ namespace UI {
                 const auto party = opened.save->party();
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i) {
                     if (party[i].valid())
-                        addParty(i, party[i].species(), party[i].partyLevel());
+                        addParty(i, party[i].species(), party[i].partyLevel(),
+                                 party[i].form(), false);
                 }
                 partyPreviewStatus = "Remembered read-only source party";
             } else {
@@ -1146,9 +1157,14 @@ namespace UI {
             titleIndex < static_cast<int>(user->titles.size());
 
         if (hubDockIndex == 0) {
-            // Games is the product home itself.
+            if (!hasGame) {
+                hubNotice = "Choose a game before opening its workspace.";
+                return;
+            }
             hubDockFocused = false;
+            headerSettingsFocused = false;
             hubFeatureIndex = -1;
+            selectCurrentTitle();
         } else if (hubDockIndex == 1) {
             requestedMainMenuDestination = MainMenuDestination::Banks;
             exitRequested = true;
@@ -1169,7 +1185,7 @@ namespace UI {
             requestedMainMenuDestination = MainMenuDestination::Search;
             exitRequested = true;
         } else {
-            requestedMainMenuDestination = MainMenuDestination::Settings;
+            requestedMainMenuDestination = MainMenuDestination::More;
             exitRequested = true;
         }
     }
@@ -1434,9 +1450,23 @@ namespace UI {
             }
         }
 
+        if (headerSettingsFocused) {
+            if (kDown & (HidNpadButton_Down | HidNpadButton_Left)) {
+                headerSettingsFocused = false;
+                hubFeatureIndex = -1;
+                return;
+            }
+            if (kDown & HidNpadButton_A) {
+                requestedMainMenuDestination = MainMenuDestination::Settings;
+                exitRequested = true;
+            }
+            return;
+        }
+
         if (hubDockFocused) {
             if (kDown & HidNpadButton_Up) {
                 hubDockFocused = false;
+                headerSettingsFocused = false;
                 hubFeatureIndex = -1;
                 return;
             }
@@ -1472,7 +1502,14 @@ namespace UI {
             return;
         }
 
+        if (kDown & HidNpadButton_Up) {
+            headerSettingsFocused = true;
+            hubDockFocused = false;
+            hubFeatureIndex = -1;
+            return;
+        }
         if (kDown & HidNpadButton_Right) {
+            headerSettingsFocused = false;
             hubFeatureIndex = 0;
             return;
         }
@@ -1517,17 +1554,20 @@ namespace UI {
                         Colors::TextPrimary, TextStyle::Heading);
 
             const int gearCx = 1239, gearCy = 32;
-            fb.drawFilledCircle(gearCx, gearCy, 7, Colors::TextPrimary);
-            fb.drawFilledRoundedRect(gearCx - 2, gearCy - 18, 4, 8, 2, Colors::TextPrimary);
-            fb.drawFilledRoundedRect(gearCx - 2, gearCy + 10, 4, 8, 2, Colors::TextPrimary);
-            fb.drawFilledRoundedRect(gearCx - 18, gearCy - 2, 8, 4, 2, Colors::TextPrimary);
-            fb.drawFilledRoundedRect(gearCx + 10, gearCy - 2, 8, 4, 2, Colors::TextPrimary);
+            const Color gearInk = headerSettingsFocused ? Colors::Info : Colors::TextPrimary;
+            if (headerSettingsFocused)
+                fb.drawRoundedRect(1214, 8, 50, 48, 16, Colors::Info, 3);
+            fb.drawFilledCircle(gearCx, gearCy, 7, gearInk);
+            fb.drawFilledRoundedRect(gearCx - 2, gearCy - 18, 4, 8, 2, gearInk);
+            fb.drawFilledRoundedRect(gearCx - 2, gearCy + 10, 4, 8, 2, gearInk);
+            fb.drawFilledRoundedRect(gearCx - 18, gearCy - 2, 8, 4, 2, gearInk);
+            fb.drawFilledRoundedRect(gearCx + 10, gearCy - 2, 8, 4, 2, gearInk);
         }
 
         // Right: selected-game hero card.
         // Historical wording is retained because the cross-lane polish contract uses this boundary
         // to prove that physical source diagnostics stay out of the normal product presentation.
-        const bool gameFocused = !hubDockFocused && hubFeatureIndex < 0;
+        const bool gameFocused = !hubDockFocused && !headerSettingsFocused && hubFeatureIndex < 0;
         drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, 18);
 
         if (u && titleIndex >= 0 && titleIndex < count) {
@@ -1590,10 +1630,20 @@ namespace UI {
                 drawPanelSurface(fb, sx, slotY, slotW, 104, false, 10);
                 const auto& p = partyPreview[static_cast<size_t>(i)];
                 if (p.species != 0) {
-                    fb.drawFilledCircle(sx + slotW / 2, slotY + 31, 19,
-                                        withAlpha(Colors::AccentPrimary, 44));
-                    fb.drawCircle(sx + slotW / 2, slotY + 31, 19,
-                                  withAlpha(Colors::FocusBorder, 150), 2);
+                    Sprite* sprite = SpriteManager::getIconSprite(p.species, p.form, p.shiny);
+                    if (sprite && sprite->data) {
+                        const auto rect = PokeBank::UIModel::containSprite(
+                            sx + 8, slotY + 5, slotW - 16, 48, sprite->width, sprite->height);
+                        if (rect.width > 0 && rect.height > 0)
+                            fb.drawImageScaled(rect.x, rect.y, sprite->width, sprite->height,
+                                               rect.width, rect.height, sprite->data, sprite->channels);
+                    } else {
+                        const int cx = sx + slotW / 2;
+                        const int cy = slotY + 28;
+                        fb.drawCircle(cx, cy, 17, withAlpha(Colors::Info, 150), 2);
+                        fb.drawFilledRect(cx - 17, cy - 2, 34, 4, withAlpha(Colors::Info, 110));
+                        fb.drawFilledCircle(cx, cy, 6, Colors::Info);
+                    }
                     std::string name = p.name;
                     if (name.size() > 10) name = name.substr(0, 9) + "…";
                     int nw = 0, nh = 0;
@@ -1668,29 +1718,33 @@ namespace UI {
                     vaultFocused ? Colors::SelectedText : Colors::TextSecondary,
                     TextStyle::Heading);
 
+        const Color vaultAccent(72, 194, 238);
+        if (vaultFocused)
+            fb.drawRoundedRect(RIGHT_X, HUB_Y, RIGHT_W, featureH, 18, vaultAccent, 3);
         const int vaultCx = RIGHT_X + RIGHT_W / 2;
         const int vaultCy = HUB_Y + 164;
         fb.drawFilledRoundedRect(RIGHT_X + 56, HUB_Y + 112, RIGHT_W - 112, 108, 28,
-                                 withAlpha(Colors::AccentSecondary, 22));
+                                 withAlpha(vaultAccent, 22));
         for (int i = -2; i <= 2; ++i) {
             const int distance = i < 0 ? -i : i;
             const int podX = vaultCx + i * 62;
             const int podH = 48 + (2 - distance) * 8;
             fb.drawRoundedRect(podX - 22, HUB_Y + 140 - podH / 4, 44, podH, 12,
-                               withAlpha(Colors::AccentSecondary, 90), 2);
+                               withAlpha(vaultAccent, 92), 2);
             fb.drawFilledCircle(podX, HUB_Y + 168, 8 + (i == 0 ? 4 : 0),
-                                withAlpha(Colors::AccentPrimary, i == 0 ? 150 : 72));
+                                withAlpha(vaultAccent, i == 0 ? 188 : 88));
         }
-        fb.drawCircle(vaultCx, vaultCy, 58, withAlpha(Colors::AccentPrimary, 120), 7);
-        fb.drawCircle(vaultCx, vaultCy, 39, withAlpha(Colors::FocusBorder, 160), 4);
+        fb.drawCircle(vaultCx, vaultCy, 58, withAlpha(vaultAccent, 150), 7);
+        fb.drawCircle(vaultCx, vaultCy, 39, withAlpha(vaultAccent, 215), 4);
         fb.drawFilledRoundedRect(vaultCx - 30, vaultCy - 5, 60, 10, 5,
-                                 withAlpha(Colors::AccentPrimary, 110));
-        fb.drawFilledCircle(vaultCx, vaultCy, 14, Colors::AccentPrimary);
+                                 withAlpha(vaultAccent, 155));
+        fb.drawFilledCircle(vaultCx, vaultCy, 14, vaultAccent);
         fb.drawFilledRoundedRect(RIGHT_X + 78, HUB_Y + 220, RIGHT_W - 156, 3, 2,
-                                 withAlpha(Colors::FocusBorder, 90));
-        fb.drawText(RIGHT_X + 28, HUB_Y + featureH - 36,
-                    "Coming Soon",
-                    Colors::TextMuted, TextStyle::Caption);
+                                 withAlpha(vaultAccent, 120));
+        fb.drawText(RIGHT_X + 28, HUB_Y + featureH - 52,
+                    "Storage  •  Transfer  •  Clone  •  History", vaultAccent, TextStyle::Caption);
+        fb.drawText(RIGHT_X + 28, HUB_Y + featureH - 30,
+                    "Coming Soon", Colors::TextMuted, TextStyle::Caption);
 
         const int dexY = HUB_Y + featureH + featureGap;
         drawFocusedCard(fb, RIGHT_X, dexY, RIGHT_W, featureH, dexFocused, 18);
@@ -1705,26 +1759,29 @@ namespace UI {
                     dexFocused ? Colors::SelectedText : Colors::TextSecondary,
                     TextStyle::Heading);
 
+        const Color dexAccent(244, 132, 74);
+        if (dexFocused)
+            fb.drawRoundedRect(RIGHT_X, dexY, RIGHT_W, featureH, 18, dexAccent, 3);
         const int bookX = RIGHT_X + 36, bookY = dexY + 110;
         fb.drawFilledRoundedRect(RIGHT_X + 24, dexY + 98, RIGHT_W - 48, 126, 22,
-                                 withAlpha(Colors::AccentSecondary, 18));
-        fb.drawRoundedRect(bookX, bookY, 76, 62, 10, Colors::AccentSecondary, 3);
-        fb.drawFilledRoundedRect(bookX + 36, bookY + 4, 4, 54, 2, Colors::AccentSecondary);
+                                 withAlpha(dexAccent, 18));
+        fb.drawRoundedRect(bookX, bookY, 76, 62, 10, dexAccent, 3);
+        fb.drawFilledRoundedRect(bookX + 36, bookY + 4, 4, 54, 2, dexAccent);
         for (int i = 0; i < 5; ++i) {
             const int cx = RIGHT_X + 154 + i * 58;
             const int baseY = dexY + 153;
             const int r = 15 + (i % 3) * 4;
-            const Color silhouette =
-                i == 2 ? withAlpha(Colors::BrandAccent, 92)
-                       : withAlpha(Colors::AccentPrimary, 76);
+            const Color silhouette = i == 2 ? withAlpha(dexAccent, 150)
+                                             : withAlpha(dexAccent, 82);
             fb.drawFilledCircle(cx, baseY, r, silhouette);
             fb.drawFilledRoundedRect(cx - r + 3, baseY + r - 4,
                                      std::max(12, r * 2 - 6), 18 + (i % 2) * 7,
                                      8, silhouette);
         }
-        fb.drawText(RIGHT_X + 28, dexY + featureH - 36,
-                    "Collection progress will appear here when available.",
-                    Colors::TextMuted, TextStyle::Caption);
+        fb.drawText(RIGHT_X + 28, dexY + featureH - 52,
+                    "Species  •  Forms  •  Cries  •  Living Dex", dexAccent, TextStyle::Caption);
+        fb.drawText(RIGHT_X + 28, dexY + featureH - 30,
+                    "Coming Soon", Colors::TextMuted, TextStyle::Caption);
 
         // Persistent product dock. Games remains the active destination even when focus is above it.
         fb.drawFilledRect(0, PRODUCT_DOCK_Y - 12, fb.getWidth(),
@@ -1732,7 +1789,7 @@ namespace UI {
         fb.drawFilledRect(0, PRODUCT_DOCK_Y - 12, fb.getWidth(), 1, Colors::Divider);
 
         static constexpr const char* dockLabels[5] =
-            {"Games", "Banks", "Backups", "Search", "Settings"};
+            {"Games", "Banks", "Backups", "Search", "More"};
         const int dockStartX = 42;
         for (int i = 0; i < 5; ++i) {
             const int dx = dockStartX + i * PRODUCT_DOCK_STEP;
@@ -1754,7 +1811,7 @@ namespace UI {
                                          PRODUCT_DOCK_SIZE + 8, 3, 2, Colors::AccentPrimary);
         }
 
-        auto homeHints = std::string("L/R: Change Game | A: Select | ZR: Launch | B: Exit");
+        auto homeHints = std::string("L/R: Change Game | A: Select | ZR: Launch | -: Help | +: Settings | B: Exit");
         if (users.size() > 1) homeHints = "ZL: Profile | " + homeHints;
         drawNavHints(fb, 565, fb.getWidth() - 565, PRODUCT_DOCK_Y + 24, homeHints);
 
@@ -1937,16 +1994,16 @@ namespace UI {
             drawNavBar(fb, {{"D-pad/Stick", "Choose Save"}, {"A", "Open Read Only"},
                             {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
-            drawInfoOverlay(fb, "Game Sources & Controls", {
+            drawInfoOverlay(fb, "PokeBank NX Controls", {
                 "D-pad / Left Stick   Navigate (hold to scroll)",
-                "A   Open/edit the focused game and choose a save instance when needed",
-                "ZR   Launch, choose a source, or link a game file for the focused game",
-                "L / R   Previous or next Switch user",
-                "X   Assign an unassigned legacy save to this profile",
-                "Y   Add or repair sources for the focused Gen IV game",
-                "+   Options and appearance",
-                "-   Help for the current screen",
-                "B   Return to the PokeBank NX Main Menu"
+                "A   Select / Open",
+                "L / R   Previous / next game",
+                "ZL   Change profile when multiple profiles are available",
+                "ZR   Launch, choose a source, or link a game file",
+                "Games   Open the selected game's PKSE-style workspace",
+                "+   Settings",
+                "-   Help / Controls",
+                "B   Exit PokeBank NX from Product Home"
             });
         } else if (overlay == Overlay::Options) {
             constexpr int w = 560, h = 326, rowH = 64;

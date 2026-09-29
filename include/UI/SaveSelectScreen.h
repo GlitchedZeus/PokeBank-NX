@@ -36,6 +36,7 @@ namespace UI {
             Pokedex,
             Banks,
             Search,
+            More,
             Settings,
         };
 
@@ -80,6 +81,8 @@ namespace UI {
         struct PartyPreviewSlot {
             uint16_t species = 0;
             uint8_t level = 0;
+            uint8_t form = 0;
+            bool shiny = false;
             std::string name;
         };
         struct LaunchFileEntry {
@@ -115,6 +118,7 @@ namespace UI {
         bool appExitRequested = false;  // explicit Options -> Exit PokeBank NX
         MainMenuDestination requestedMainMenuDestination = MainMenuDestination::None;
         bool hubDockFocused = false;
+        bool headerSettingsFocused = false;
         int hubDockIndex = 0;
         // Main product-home focus outside the persistent dock:
         // -1 = selected game card, 0 = Master Vault, 1 = Pokédex.
