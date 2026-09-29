@@ -37,7 +37,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 15 | AUDIT-015 | P2 | FIXED | Failed backup creation can leave a partial folder surfaced as a backup |
 | 16 | AUDIT-029 | P2 | FIXED | Gen II finalization can serialize an in-progress packed move with carried Pokémon omitted |
 | 17 | AUDIT-030 | P2 | FIXED | Gen I finalization can serialize an in-progress packed move |
-| 18 | AUDIT-037 | P2 | OPEN | Gen I/II group pickup can strand an active staged move after presentation-refresh failure |
+| 18 | AUDIT-037 | P2 | FIXED | Gen I/II group pickup can strand an active staged move after presentation-refresh failure |
 | 19 | AUDIT-013 | P2 | OPEN | Legacy Bank migration skips checksum validation used by normal Bank load |
 | 20 | AUDIT-028 | P2 | OPEN | Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays |
 | 21 | AUDIT-027 | P2 | OPEN | LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0 |
@@ -376,7 +376,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** backend tests cover begin/place/cancel and failed destination placement, but there is no UI/bridge fault-injection test proving that a failed post-pickup refresh rolls the group transaction back.
 - **Dependency / sequencing:** Do after AUDIT-029/030 finalization gate
 - **Proposed remediation order:** 18
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `beginSelectedGroup()` now treats post-pickup presentation refresh as part of the packed-move transaction for both Gen I and Gen II. If refresh fails after `beginPackedGroupMove()`, it preserves the first refresh failure for diagnostics, calls `cancelPackedMove()`, and refreshes again from the restored staged bytes. If backend cancellation itself fails, the overlay deliberately keeps `state.active`, the attempted generation, carried visuals, and holding presentation so B can retry rather than forgetting backend custody. Existing backend packed-move tests already prove cancel restores pre-carry bytes; `tests/test_classic_packed_move_recovery_contract.cpp` binds both UI rollback paths and the retained-custody fallback and runs in Host Tests/ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 19. AUDIT-013 — Legacy Bank migration skips checksum validation used by normal Bank load
 
