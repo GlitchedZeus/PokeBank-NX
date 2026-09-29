@@ -11,6 +11,7 @@
 #include "Globals.h"
 #include "Save/Block.h"
 #include "Save/PLAReadValidation.h"
+#include "Save/SCReadValidation.h"
 #include "Save/BDSPReadValidation.h"
 #include "Save/GetSaveFileContents.h"
 #include "Utils/FileUtilities.h"
@@ -54,7 +55,9 @@ namespace Save {
             return "The save format is not supported by this build.";
         }
 
-        bool validateSCWorkspace(std::span<const uint8_t> bytes, std::string& error) {
+        bool validateSCWorkspace(std::span<const uint8_t> bytes,
+                                 GameVersion group,
+                                 std::string& error) {
             if (bytes.empty() || bytes.size() > MAX_SC_SAVE_BYTES) {
                 error = "save container size is empty, unexpectedly large, or unsupported";
                 return false;
@@ -64,6 +67,11 @@ namespace Save {
             const auto status = Encryption::tryDecrypt(bytes.data(), bytes.size(), blocks);
             if (status != Encryption::DecryptStatus::Ok) {
                 error = decryptFailureMessage(status);
+                return false;
+            }
+            const auto layoutError = validateSCReadLayout(blocks, group);
+            if (!layoutError.empty()) {
+                error = std::string("SC layout validation failed: ") + std::string(layoutError);
                 return false;
             }
             return true;
@@ -183,9 +191,9 @@ namespace Save {
     bool validateWorkspaceImage(u64 titleId, std::span<const uint8_t> bytes, std::string& error) {
         switch (getGameGroup(getGameVersion(titleId))) {
             case GameVersion::GG:   return validateLGPEWorkspace(bytes, error);
-            case GameVersion::SWSH:
-            case GameVersion::ZA:
-            case GameVersion::SV:   return validateSCWorkspace(bytes, error);
+            case GameVersion::SWSH: return validateSCWorkspace(bytes, GameVersion::SWSH, error);
+            case GameVersion::ZA:   return validateSCWorkspace(bytes, GameVersion::ZA, error);
+            case GameVersion::SV:   return validateSCWorkspace(bytes, GameVersion::SV, error);
             case GameVersion::PLA:  return validatePLAWorkspace(bytes, error);
             case GameVersion::FRLG: return validateFRLGWorkspace(bytes, error);
             case GameVersion::BDSP:
@@ -385,6 +393,47 @@ namespace Save {
             if (!PokeBank::SaveValidation::BDSP::hasMinimumLayout(
                     static_cast<std::size_t>(st.st_size))) {
                 error = "BDSP save is truncated or unsupported; it was not opened or changed.";
+                return false;
+            }
+            return true;
+        }
+
+        if (group == GameVersion::SWSH || group == GameVersion::SV || group == GameVersion::ZA) {
+            char mainPath[512];
+            snprintf(mainPath, sizeof(mainPath), "%s/main", backupDir);
+
+            struct stat st{};
+            if (stat(mainPath, &st) != 0 || !S_ISREG(st.st_mode)) {
+                error = "SC save file 'main' is missing.";
+                return false;
+            }
+            if (st.st_size <= static_cast<off_t>(SIZE_HASH_IN_BYTES)) {
+                error = "SC save is truncated; it was not opened or changed.";
+                return false;
+            }
+            if (static_cast<uint64_t>(st.st_size) > MAX_SC_SAVE_BYTES) {
+                error = "SC save is unexpectedly large or unsupported.";
+                return false;
+            }
+
+            size_t fileSize = 0;
+            uint8_t* file = readAllBytes(mainPath, &fileSize);
+            if (!file) {
+                error = "SC save file could not be read.";
+                return false;
+            }
+            std::vector<Block> blocks;
+            const Encryption::DecryptStatus status = Encryption::tryDecrypt(file, fileSize, blocks);
+            delete[] file;
+            if (status != Encryption::DecryptStatus::Ok) {
+                error = std::string("SC save not opened: ") +
+                        decryptFailureMessage(status) + " Nothing was changed.";
+                return false;
+            }
+            const auto layoutError = validateSCReadLayout(blocks, group);
+            if (!layoutError.empty()) {
+                error = "SC save not opened: " + std::string(layoutError) +
+                        " Nothing was changed.";
                 return false;
             }
             return true;
