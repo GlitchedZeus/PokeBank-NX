@@ -118,18 +118,11 @@ namespace Trainer {
             // Check if slot has valid Pokemon data (non-zero species)
             // The species ID is at offset 0x08 after decryption, but we can check
             // for an all-zero slot to skip empty slots
-            bool isEmptySlot = true;
-            for (size_t i = 0; i < SIZE_PARTY9_LZA && i < slotSpan.size(); ++i) {
-                if (slotSpan[i] != std::byte{0}) {
-                    isEmptySlot = false;
-                    break;
-                }
-            }
-
-            if (!isEmptySlot) {
-                // Decrypt and create Pokemon9LZA object as unique_ptr
-                // Pokemon9LZA constructor handles decryption automatically
-                party.push_back(std::make_unique<Pokemon9LZA>(slotSpan));
+            // Native empty slots are encrypted, non-zero records whose decrypted species is 0.
+            // Construct/decrypt first; only logical Pokemon belong in the party vector.
+            auto parsed = std::make_unique<Pokemon9LZA>(slotSpan);
+            if (parsed->speciesID() != 0) {
+                party.push_back(std::move(parsed));
             }
         }
     }
@@ -232,21 +225,10 @@ namespace Trainer {
                 std::span<const std::byte> slotSpan = blockSpan.subspan(offset, SIZE_PARTY9_LZA);
 
                 // Check if slot has a Pokemon (non-zero data)
-                bool isEmptySlot = true;
-                for (size_t i = 0; i < SIZE_PARTY9_LZA && i < slotSpan.size(); ++i) {
-                    if (slotSpan[i] != std::byte{0}) {
-                        isEmptySlot = false;
-                        break;
-                    }
-                }
-
-                if (!isEmptySlot) {
-                    // Decrypt and create Pokemon9LZA object
-                    boxes[boxIndex][slot] = std::make_unique<Pokemon9LZA>(slotSpan);
-                } else {
-                    // Empty slot
-                    boxes[boxIndex][slot] = nullptr;
-                }
+                // Native encrypted blanks are non-zero on disk but decrypt to species 0.
+                auto parsed = std::make_unique<Pokemon9LZA>(slotSpan);
+                boxes[boxIndex][slot] =
+                    parsed->speciesID() != 0 ? std::move(parsed) : nullptr;
             }
         }
     }
