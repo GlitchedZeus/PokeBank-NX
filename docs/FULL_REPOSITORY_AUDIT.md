@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 579 / 731
-- Fully read text files: 545 / 698
+- Audited tracked paths: 580 / 731
+- Fully read text files: 546 / 698
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -36,7 +36,7 @@ Status: IN PROGRESS
 - `src/UI/Modals/PokemonDetailsModal.cpp` was also fully read at `85762adc…` (571 lines / 34,505 bytes) and is now AUDITED. It is the generic modern summary/edit presentation path; Gen I is explicitly routed to its native modal first, while legality source identity is left empty for Bank targets rather than borrowing the currently-open save. No new confirmed defect was found in this file.
 
 - PR #92 catch-up is reconciled through live head `a86c8d039209bc17ac613524c6631f03309037a0`. The four changed paths that already carried AUDITED status (`include/Integration/Gen4/Gen4StagedPokemonEditor.h`, `src/Integration/Gen4/Gen4StagedPokemonEditor.cpp`, `src/UI/Gen4SharedPokemonSurface.inc`, `tests/test_gen4_staged_pokemon_editor.cpp`) were fully re-read at that head; the other two changed paths were already PENDING and remain PENDING.
-- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 579 paths are now accounted for and 545 text files have been fully read.
+- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 580 paths are now accounted for and 546 text files have been fully read.
 - The entire Names tranche is now closed: no `include/Names` or `src/Names` file remains PENDING. Generated species tables contain 1,026 entries in each of nine languages; the modern item-name table contains ids 0..2684; Gen III direct item names cover ids 0..376.
 - MovePresence's unknown-group/id-0 behavior contradicts its comment, but all audited real game-group callers are routed through known groups; kept as a hardening follow-up, not a numbered defect.
 - Recovery/package/source-pin tooling is now substantially audited. Supported CI invokes `verify_embedded_romfs.py` with normal `python3`; its assert-based checks are therefore live today, while replacing asserts with explicit failures remains a robustness follow-up.
@@ -74,6 +74,8 @@ Status: IN PROGRESS
 
 
 ### Core UI runtime tranche
+
+- `src/UI/ClassicPackedMoveOverlay.inc` was fully read at PR #92 head `85762adce4a1ce6f30763a0d76b3b11735da7d49` (650 lines / 27,633 bytes). Its normal single-pickup rollback path is sound, but the multi-select Gen I/II pickup path does not cancel the backend packed-group transaction if the post-pickup presentation refresh fails. Backend tracing confirmed that the selected records have already been removed from staged bytes and `cancelPackedMove()` is the intended rollback. Recorded as AUDIT-037.
 
 - Fully read 16 previously PENDING `src/UI` implementation paths at live PR #92 head `a86c8d039209bc17ac613524c6631f03309037a0`: classic inventory model logic; item/picker/save/stat dialogs; Gen I/II details renderers and dispatcher; loaded-workspace home rendering; NanoVG framebuffer; sprite and system-icon caches; touch polling; and the TrainerView composition/shim translation units.
 - No new numbered finding was confirmed. The renderer does not call the latent `Color::toRGBA8()` helper; it converts colors directly through NanoVG's unsigned-channel API, which supports keeping the signed-shift issue as hardening rather than a production-path defect.
@@ -754,3 +756,18 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Risk of fix: low; user-facing copy/test only.
 - Owner: sibling UI/QoL lane (PR #97).
 
+
+
+### AUDIT-037 — Gen I/II group pickup can strand an active staged move after presentation-refresh failure
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: classic Gen I/II multi-select box move / staged transaction recovery
+- Files: `src/UI/ClassicPackedMoveOverlay.inc`, `src/Integration/Gen1/Gen1PackedMove.cpp`, `src/Integration/Gen2/Gen2PackedMove.cpp`, `src/Legacy/RBYReadOnlyTrainer.cpp`, `src/Legacy/GSCReadOnlyTrainer.cpp`
+- Exact path: `beginSelectedGroup()` calls `beginPackedGroupMove()`, then calls the generation-specific presentation refresh. If refresh returns false, the function only posts an error and calls `clearTransientSelection()`; unlike `beginGen1()` and `beginGen2()`, it does not call `cancelPackedMove()`.
+- Backend evidence: both packed-group implementations make the carry transaction active and remove the selected Pokémon from staged box bytes before returning success. Their `cancelPackedMove()` implementations restore the saved pre-pickup staged state. The Gen I/II backend multi-move tests explicitly assert that cancel restores the pre-pickup bytes, confirming rollback is part of the transaction contract.
+- Failure consequence: if the subsequent bridge/presentation refresh fails, the UI clears its multi-select/carry state while the backend still owns an active packed move and staged boxes remain in the post-removal state. A later pickup is rejected as “already being carried”; the normal B-cancel route is no longer reachable through this overlay. The original source remains immutable, but the app-owned working copy can be left missing the carried records until a broader discard/reopen path restores it.
+- Export risk: both generations can construct finalized staged bytes from their current staged state; the incomplete carry is not itself a hard export prohibition. A refresh failure therefore must not be treated as a harmless display-only failure.
+- Test gap: backend tests cover begin/place/cancel and failed destination placement, but there is no UI/bridge fault-injection test proving that a failed post-pickup refresh rolls the group transaction back.
+- Recommended fix: mirror the single-Pokémon pickup path: on Gen I/II group refresh failure, call `cancelPackedMove()`, refresh presentation again from the restored staged state, preserve the first failure for diagnostics, and only clear UI state after rollback has been attempted. Add a fault-injection contract test for both generations.
+- Risk of fix: low-to-medium; recovery-path-only change, but test both rollback success and rollback-refresh failure without weakening source immutability.
+- Owner: MAIN / classic staged move transaction lane.
