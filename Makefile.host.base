@@ -11,7 +11,11 @@ HOST_TESTS += $(HOST_BUILD)/test_source_mutation_policy $(HOST_BUILD)/test_pla_r
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_source_mutation_policy_sanitize $(HOST_BUILD)/test_pla_read_validation_sanitize \
 	$(HOST_BUILD)/test_gen3_party_record_sanitize $(HOST_BUILD)/test_gen9_my_status_guard_sanitize $(HOST_BUILD)/test_sha256_sanitize \
 	$(HOST_BUILD)/test_pokemon_move_ownership_sanitize
-PLA_TEST_SOURCES := tests/test_pla_read_validation.cpp src/Save/Block.cpp src/Encryption/Encryption.cpp src/Encryption/Encryption8LA.cpp src/Enums/SCTypeCode.cpp src/Utils/HelperUtilities.cpp src/Utils/StringHelpers.cpp src/Utils/SHA256.cpp src/Utils/ReadAllBytes.cpp
+PLA_TEST_SOURCES := tests/test_pla_read_validation.cpp src/Save/Block.cpp \
+	src/Encryption/Encryption.cpp src/Encryption/Encryption8LA.cpp \
+	src/Encryption/Encryption8SWSH.cpp src/Encryption/Encryption9SV.cpp src/Encryption/Encryption9LZA.cpp \
+	src/Enums/SCTypeCode.cpp src/Utils/HelperUtilities.cpp src/Utils/StringHelpers.cpp \
+	src/Utils/SHA256.cpp src/Utils/ReadAllBytes.cpp
 PKSM_CORE_ROOT := vendor/PKSM-Core
 PKSM_CORE_SOURCES := $(shell find $(PKSM_CORE_ROOT)/source $(PKSM_CORE_ROOT)/memecrypto -type f \( -name '*.cpp' -o -name '*.c' \) -print)
 PKSM_CORE_INCLUDES := $(shell find $(PKSM_CORE_ROOT)/include $(PKSM_CORE_ROOT)/memecrypto $(PKSM_CORE_ROOT)/pcg-cpp -type d -printf ' -I%p')
