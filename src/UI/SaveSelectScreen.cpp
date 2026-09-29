@@ -1646,6 +1646,8 @@ namespace UI {
                         fb.drawFilledRect(cx - 17, cy - 2, 34, 4, withAlpha(Colors::Info, 110));
                         fb.drawFilledCircle(cx, cy, 6, Colors::Info);
                     }
+                    if (p.shiny)
+                        fb.drawShinyMark(sx + slotW - 18, slotY + 5, 12, Colors::ShinyStar);
                     std::string name = p.name;
                     if (name.size() > 10) name = name.substr(0, 9) + "…";
                     int nw = 0, nh = 0;
@@ -1709,9 +1711,15 @@ namespace UI {
         const bool dexFocused = !hubDockFocused && hubFeatureIndex == 1;
 
         drawFocusedCard(fb, RIGHT_X, HUB_Y, RIGHT_W, featureH, vaultFocused, 18);
-        fb.drawText(RIGHT_X + 28, HUB_Y + 26, "MASTER VAULT",
+        const Color vaultAccent(72, 194, 238);
+        const int vaultLogoX = RIGHT_X + 28, vaultLogoY = HUB_Y + 22;
+        fb.drawRoundedRect(vaultLogoX, vaultLogoY, 36, 36, 9, vaultAccent, 2);
+        fb.drawFilledRoundedRect(vaultLogoX + 7, vaultLogoY + 15, 22, 6, 3,
+                                 withAlpha(vaultAccent, 140));
+        fb.drawFilledCircle(vaultLogoX + 18, vaultLogoY + 18, 7, vaultAccent);
+        fb.drawText(RIGHT_X + 78, HUB_Y + 26, "MASTER VAULT",
                     vaultFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
-        fb.drawText(RIGHT_X + 28, HUB_Y + 60, "Your central Pokémon library",
+        fb.drawText(RIGHT_X + 78, HUB_Y + 60, "Your central Pokémon library",
                     Colors::TextSecondary, TextStyle::Body);
         const int vaultArrowX = RIGHT_X + RIGHT_W - 42;
         fb.drawCircle(vaultArrowX, HUB_Y + 42, 17,
@@ -1720,7 +1728,6 @@ namespace UI {
                     vaultFocused ? Colors::SelectedText : Colors::TextSecondary,
                     TextStyle::Heading);
 
-        const Color vaultAccent(72, 194, 238);
         if (vaultFocused)
             fb.drawRoundedRect(RIGHT_X, HUB_Y, RIGHT_W, featureH, 18, vaultAccent, 3);
         const int vaultCx = RIGHT_X + RIGHT_W / 2;
@@ -1750,9 +1757,13 @@ namespace UI {
 
         const int dexY = HUB_Y + featureH + featureGap;
         drawFocusedCard(fb, RIGHT_X, dexY, RIGHT_W, featureH, dexFocused, 18);
-        fb.drawText(RIGHT_X + 28, dexY + 26, "POKÉDEX",
+        const Color dexAccent(244, 132, 74);
+        const int dexLogoX = RIGHT_X + 28, dexLogoY = dexY + 22;
+        fb.drawRoundedRect(dexLogoX, dexLogoY, 40, 36, 8, dexAccent, 2);
+        fb.drawFilledRoundedRect(dexLogoX + 18, dexLogoY + 4, 4, 28, 2, dexAccent);
+        fb.drawText(RIGHT_X + 82, dexY + 26, "POKÉDEX",
                     dexFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
-        fb.drawText(RIGHT_X + 28, dexY + 60, "Species, forms and cries",
+        fb.drawText(RIGHT_X + 82, dexY + 60, "Species, forms and cries",
                     Colors::TextSecondary, TextStyle::Body);
         const int dexArrowX = RIGHT_X + RIGHT_W - 42;
         fb.drawCircle(dexArrowX, dexY + 42, 17,
@@ -1761,7 +1772,6 @@ namespace UI {
                     dexFocused ? Colors::SelectedText : Colors::TextSecondary,
                     TextStyle::Heading);
 
-        const Color dexAccent(244, 132, 74);
         if (dexFocused)
             fb.drawRoundedRect(RIGHT_X, dexY, RIGHT_W, featureH, 18, dexAccent, 3);
         const int bookX = RIGHT_X + 36, bookY = dexY + 110;
