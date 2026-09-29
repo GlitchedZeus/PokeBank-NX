@@ -196,6 +196,8 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         OrganizationPreviewKind kind = OrganizationPreviewKind::Banks;
         if (infoSection == PokeBank::UIModel::AppShellSection::Pokedex)
             kind = OrganizationPreviewKind::Collections;
+        else if (infoSection == PokeBank::UIModel::AppShellSection::Search)
+            kind = OrganizationPreviewKind::Search;
 
         const int count = PokeBank::UIModel::previewCount(kind);
         if (kDown & HidNpadButton_B) {
@@ -475,15 +477,22 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
     drawModalSurface(fb, x, y, w, h);
 
     const bool isBanks = infoSection == AppShellSection::Banks;
-    const bool isSearch = false;
+    const bool isSearch = infoSection == AppShellSection::Search;
     const bool isPokedex = infoSection == AppShellSection::Pokedex;
-    const char* title = isBanks ? "Banks & Boxes" : "Pokédex & Collections";
+    const char* title = isBanks ? "Banks & Boxes"
+                      : isSearch ? "Search"
+                                 : "Pokédex & Collections";
     const char* subtitle = isBanks
-        ? "Presentation preview only — no Bank or Master Vault data is stored yet."
-        : "Pokédex, forms, cries, Living Dex and Shiny Dex presentation foundation.";
+        ? "No Banks Created — your future Banks will appear here."
+        : isSearch
+            ? "Search will become available when the Master Vault index is ready."
+            : "Species, forms, cries, Living Dex and Shiny Dex.";
 
-    fb.drawText(x + 28, y + 18, "POKEBANK NX  /  UI PREVIEW  /  NO BACKEND",
-                Colors::Info, TextStyle::Caption);
+    const std::string sectionLabel = isBanks ? "POKEBANK NX  /  BANKS"
+        : isSearch ? "POKEBANK NX  /  SEARCH"
+                   : "POKEBANK NX  /  POKÉDEX";
+    fb.drawText(x + 28, y + 18, sectionLabel,
+                Colors::AccentPrimary, TextStyle::Caption);
     fb.drawText(x + 28, y + 46, title, Colors::TextPrimary, TextStyle::Heading);
     fb.drawText(x + 28, y + 80, subtitle, Colors::TextSecondary, TextStyle::Caption);
 
@@ -525,8 +534,8 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
         const int qx = x + 28, qy = y + 120, qw = w - 56;
         drawPanelSurface(fb, qx, qy, qw, 66, false, 12);
         fb.drawText(qx + 18, qy + 14, "Search Pokémon", Colors::TextPrimary, TextStyle::Body);
-        fb.drawText(qx + 190, qy + 14, "No Vault index connected", Colors::TextMuted, TextStyle::Body);
-        fb.drawText(qx + 18, qy + 40, "Keyboard/query execution will connect when the real index exists.",
+        fb.drawText(qx + 190, qy + 14, "Search is not available yet", Colors::TextMuted, TextStyle::Body);
+        fb.drawText(qx + 18, qy + 40, "Your search filters will appear here when Master Vault search is ready.",
                     Colors::TextMuted, TextStyle::Caption);
 
         fb.drawText(qx, qy + 92, "Filter / organization controls", Colors::TextPrimary, TextStyle::Heading);
@@ -548,8 +557,7 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
         }
 
         const int emptyY = qy + 132 + 4 * (filterH + gapY) + 2;
-        fb.drawText(qx, emptyY, "No results to display — no real Vault/index backend is connected.",
-                    Colors::Info, TextStyle::Caption);
+        fb.drawText(qx, emptyY, "No results yet.", Colors::TextMuted, TextStyle::Caption);
     } else {
         const int gx = x + 28, gy = y + 126;
         const int gap = 18;
@@ -566,8 +574,8 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
                         Colors::TextSecondary, TextStyle::Caption);
             fb.drawText(cx + 20, cy + 94, "0 entries", Colors::TextMuted, TextStyle::Body);
             fb.drawText(cx + 20, cy + 120,
-                        isPokedex ? "Pokédex backend required" : "Vault backend required",
-                        Colors::Info, TextStyle::Caption);
+                        isPokedex ? "Available with Pokédex collection data" : "Available with Master Vault",
+                        Colors::TextMuted, TextStyle::Caption);
         }
     }
 
@@ -589,14 +597,14 @@ void AppShellScreen::drawSectionInfo(PKSEFramebuffer& fb) {
     drawModalSurface(fb, x, y, w, h);
 
     fb.drawText(x + 28, y + 18,
-                "POKEBANK NX  /  " + std::string(entry.badge),
-                badgeColor(entry.availability), TextStyle::Caption);
+                "POKEBANK NX  /  " + std::string(entry.title),
+                Colors::AccentPrimary, TextStyle::Caption);
     fb.drawText(x + 28, y + 44, std::string(entry.title),
                 Colors::TextPrimary, TextStyle::Heading);
     fb.drawText(x + 28, y + 76, std::string(entry.subtitle),
                 Colors::TextSecondary, TextStyle::Caption);
     fb.drawFilledRoundedRect(x + 28, y + 104, w - 56, 3, 2,
-                             badgeColor(entry.availability));
+                             Colors::AccentPrimary);
 
     int lineY = y + 132;
     for (const std::string& line : lines) {
