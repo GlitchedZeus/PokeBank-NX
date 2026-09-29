@@ -24,7 +24,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 2 | AUDIT-032 | P1 | FIXED | PR #97 removes AppShellSection::Collections but still references it |
 | 3 | AUDIT-002 | P2 | OPEN | no general unfiltered native PR compile gate |
 | 4 | AUDIT-020 | P2 | FIXED | SV/Z-A MyStatus size guard permits an out-of-bounds gender read |
-| 5 | AUDIT-031 | P2 | OPEN | SC SHA-256 message decoding uses signed-shift undefined behavior |
+| 5 | AUDIT-031 | P2 | FIXED | SC SHA-256 message decoding uses signed-shift undefined behavior |
 | 6 | AUDIT-025 | P3 | OPEN | defaulted Pokémon move operations duplicate raw-buffer ownership |
 | 7 | AUDIT-026 | P3 | OPEN | Gen III and modern entity constructors do not fully enforce/normalize native record length |
 | 8 | AUDIT-021 | P2 | OPEN | SWSH/SV/Z-A authenticate the SC container but do not validate required game layout |
@@ -148,7 +148,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** standard SHA-256 vectors (empty string, `abc`, multi-block input), a block containing bytes >= 0x80 in every word position, and a captured SC-container hash fixture under UBSan/host CI.
 - **Dependency / sequencing:** Fix very early; verify with UBSan and known vectors
 - **Proposed remediation order:** 5
-- **Status:** OPEN
+- **Status:** FIXED
+- **Current-code reconciliation:** `SHA256::transform()` casts each schedule byte to `uint32_t` before left shifting. `tests/test_sha256.cpp` covers standard known-answer vectors plus a 64-byte high-bit vector and is wired into normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 6. AUDIT-025 — defaulted Pokémon move operations duplicate raw-buffer ownership
 
