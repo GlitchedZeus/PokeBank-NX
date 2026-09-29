@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 325 / 725
-- Fully read text files: 291 / 692
+- Audited tracked paths: 335 / 725
+- Fully read text files: 301 / 692
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -150,6 +150,14 @@ Status: IN PROGRESS
 - Gen IV raw parsing requires the exact 0x80000 save length, CRC-valid General and Storage candidates, bounded trainer/party/box/name fields, party count <= 6, current box < 18, and valid HG/SS ROM identity. No new correctness defect was confirmed in that boundary.
 - The Gen III staged editor validates rotating sectors/checksums and exact save family before construction, mutates only the active logical slot, repairs touched sector checksums, proves the inactive slot byte-identical, and strictly reparses edits/Create/Clone/Release/Sparse Move operations before accepting them.
 - Gen III Experience editing through the current UI is bounded to the exact level-100 maximum. Although the lower-level staged edit API would inherit `Pokemon3FRLG::setExp()` clamping for a direct oversized caller, no current UI path can supply that value, so this remains API hardening rather than a finding.
+
+### Gen II save/edit/export checkpoint
+
+- Fully read the strict Gen II read-only parser, staged editor, packed-move engine, inventory decoder/editor, and verified export transaction at live PR #92 head `084ab83547d8d2f49b9ad414e37d351d00fe069d`.
+- The read path accepts only 32/64 KiB payloads plus recognized RTC footers, requires a unique checksum+structure-valid layout, enforces GS-vs-Crystal source-family agreement, validates party/box list markers and bodies, and rejects invalid retail trainer values.
+- International staged editing is deliberately fail-closed. Pokémon edits are semantically reparsed, the current-box retail cache is synchronized, finalization repairs primary/secondary checksums and mirror regions, RTC footer bytes are required to remain identical, and the export publisher fsyncs/readbacks/hashes both original and edited images before publishing a temporary directory by rename.
+- The read-only inventory decoder uses a local 26-slot Key Items bound while pret's retail constant is 25. Because the following Balls list also has to validate, a 26th key item cannot yield an available inventory, so this is recorded as cleanup/hardening rather than a standalone corruption finding.
+- The packed relocation engine does expose a finalization gap: beginning a carry removes/compacts the source bytes immediately, while `finalizedBytes()` does not reject an active carry. That is recorded as AUDIT-029.
 
 ## Findings
 
@@ -540,3 +548,18 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: retire the handwritten form-routing table in favor of generated per-game personal/base-stat data using the same form-index redirection model already used by `PersonalInfo`. If a compatibility helper remains, every lookup must first validate `form < formCount` and every dedicated array must have explicit, tested mapping rather than raw-form arithmetic. Preserve SWSH's historical stat differences from later generations through per-game generated data, not ad-hoc post-fixes.
 - Risk of fix: medium because this helper is shared across five entity formats; golden fixtures should prove both unchanged ordinary species and corrected alternate forms before merge.
 - Owner: MAIN / Pokémon personal-data + stat-calculation lane.
+
+### AUDIT-029 — Gen II finalization can serialize an in-progress packed move with carried Pokémon omitted
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: Generation II staged relocation / verified export safety
+- Files: `include/Integration/Gen2/Gen2StagedEditor.h`, `src/Integration/Gen2/Gen2PackedMove.cpp`, `src/Integration/Gen2/Gen2StagedEditor.cpp`, `src/Integration/Gen2/Gen2ExportTransaction.cpp`
+- Exact symbols: `beginPackedGroupMove()`, `placePackedGroupMove()`, `cancelPackedMove()`, `finalizedBytes()`, `publishVerifiedStagedEditorExport()`.
+- Problem: beginning a packed move immediately removes the selected Pokémon from its source box and compacts the staged retail list, while keeping the removed records only in the in-memory `packedMove_.carried` state. `finalizedBytes()` does not test `packedMove_.active`; it repairs checksums/mirrors and strictly reparses the already-compacted bytes. The export transaction then accepts those bytes because the file is structurally valid.
+- Why it matters: finalization during an in-progress carry can produce a valid edited `.srm` that simply omits the carried Pokémon. If there is an unrelated pending change, the normal export wrapper's `hasPendingChanges()` check is already satisfied even though the carry itself has not yet been placed. The verified-export hash/reparse checks cannot detect the semantic omission because the resulting save is internally consistent.
+- Recovery context: the export bundle also includes the immutable original backup, so this does not destroy the authoritative source save. It can still generate an incorrect edited image and violates the staged move transaction contract.
+- Comparison: the Gen III staged editor explicitly refuses `finalizedBytes()` while `carryingSparseMove()` is true.
+- Missing tests: begin a packed move with another unrelated pending edit, call `finalizedBytes()` / `publishVerifiedStagedEditorExport()`, and require failure until place or cancel; verify cancel restores byte-identical pre-carry staged state and placement enables finalization.
+- Recommended fix: make `finalizedBytes()` fail closed whenever `packedMove_.active` is true, with a clear “place or cancel carried Pokémon first” error. Also consider rejecting unrelated staged mutations while a carry is active, matching the Gen III transaction boundary.
+- Risk of fix: low.
+- Owner: MAIN / Gen II staged-edit lane.
