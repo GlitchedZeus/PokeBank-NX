@@ -250,21 +250,21 @@ include/Legacy/RetroArchGSCDiscovery.h	blob	100644	1986		unknown		PENDING			0
 include/Legacy/RetroArchRBYDiscovery.h	blob	100644	2363		unknown		PENDING			0	
 include/Legality/Legality.h	blob	100644	2255		unknown		PENDING			0	
 include/Libs/stb_image.h	blob	100644	283010		unknown		PENDING			0	
-include/Names/FormNames.h	blob	100644	1631		unknown		PENDING			0	
-include/Names/Gen4HeldItemCatalog.h	blob	100644	1365		unknown		PENDING			0	
-include/Names/ItemNames.h	blob	100644	1226		unknown		PENDING			0	
+include/Names/FormNames.h	blob	100644	1631	form display-name API	text	43	AUDITED			0	no
+include/Names/Gen4HeldItemCatalog.h	blob	100644	1365	Gen IV held-item structural presence helper	text	51	AUDITED			0	no
+include/Names/ItemNames.h	blob	100644	1226	item-name and Gen3-modern item mapping API	text	28	AUDITED			0	no
 include/Names/ItemPouches.h	blob	100644	1195		unknown		PENDING			0	
-include/Names/ItemPresence.h	blob	100644	1033		unknown		PENDING			0	
+include/Names/ItemPresence.h	blob	100644	1033	held-item presence API	text	28	AUDITED			0	no
 include/Names/LocationNames.h	blob	100644	3135		unknown		PENDING			0	
-include/Names/MachineDisplay.h	blob	100644	1157		unknown		PENDING			0	
-include/Names/MoveInfo.h	blob	100644	1596		unknown		PENDING			0	
-include/Names/MoveNames.h	blob	100644	410		unknown		PENDING			0	
+include/Names/MachineDisplay.h	blob	100644	1157	machine descriptor/display API	text	36	AUDITED			0	no
+include/Names/MoveInfo.h	blob	100644	1596	per-game move PP API	text	35	AUDITED			0	no
+include/Names/MoveNames.h	blob	100644	410	move-name lookup API	text	15	AUDITED			0	no
 include/Names/MovePresence.h	blob	100644	949		unknown		PENDING			0	
-include/Names/NameLanguage.h	blob	100644	2030		unknown		PENDING			0	
-include/Names/RibbonNames.h	blob	100644	2705		unknown		PENDING			0	
-include/Names/SpeciesNames.h	blob	100644	286		unknown		PENDING			0	
-include/Names/TMMoves.h	blob	100644	1592		unknown		PENDING			0	
-include/Names/TypeNames.h	blob	100644	595		unknown		PENDING			0	
+include/Names/NameLanguage.h	blob	100644	2030	entity-language to generated-name-table mapping	text	50	AUDITED			0	no
+include/Names/RibbonNames.h	blob	100644	2705	ribbon/mark display extraction API	text	56	AUDITED			0	no
+include/Names/SpeciesNames.h	blob	100644	286	species-name lookup API	text	12	AUDITED			0	no
+include/Names/TMMoves.h	blob	100644	1592	TM/HM/TR item-to-move mapping API	text	41	AUDITED			0	no
+include/Names/TypeNames.h	blob	100644	595	type-name lookup API	text	28	AUDITED			0	no
 include/Pokemon/AbilityInfo.h	blob	100644	2463	ability-slot lookup API	text	57	AUDITED			0	no
 include/Pokemon/BaseStatsGen7.h	blob	100644	12156	LGPE base-stat data tables	text	214	AUDITED			1	yes
 include/Pokemon/BaseStatsGen89.h	blob	100644	86010	modern base-stat/form tables	text	1493	AUDITED			1	yes
@@ -479,21 +479,21 @@ src/Legacy/RetroArchFRLGDiscovery.cpp	blob	100644	29302	bounded RetroArch/mGBA/T
 src/Legacy/RetroArchGSCDiscovery.cpp	blob	100644	8308	bounded RetroArch Gen II discovery	text	46	AUDITED			0	yes
 src/Legacy/RetroArchRBYDiscovery.cpp	blob	100644	14619	bounded RetroArch Gen I discovery	text	362	AUDITED			0	no
 src/Legality/Legality.cpp	blob	100644	16500		unknown		PENDING			0	
-src/Names/AbilityNames.cpp	blob	100644	11612		unknown		PENDING			0	
+src/Names/AbilityNames.cpp	blob	100644	11612	ability-name lookup table	text	329	AUDITED			0	no
 src/Names/FormNames.cpp	blob	100644	30424		unknown		PENDING			0	
 src/Names/ItemNames.cpp	blob	100644	102371		unknown		PENDING			0	
 src/Names/ItemPouches.cpp	blob	100644	31323		unknown		PENDING			0	
-src/Names/ItemPresence.cpp	blob	100644	13455		unknown		PENDING			0	
+src/Names/ItemPresence.cpp	blob	100644	13455	generated held-item presence bitsets/dispatch	text	176	AUDITED			0	no
 src/Names/LocationNames.cpp	blob	100644	142717		unknown		PENDING			0	
-src/Names/MachineDisplay.cpp	blob	100644	5972		unknown		PENDING			0	
-src/Names/MoveInfo.cpp	blob	100644	23722		unknown		PENDING			0	
+src/Names/MachineDisplay.cpp	blob	100644	5972	machine descriptor/search presentation logic	text	132	AUDITED			0	no
+src/Names/MoveInfo.cpp	blob	100644	23722	per-game move PP tables/lookup	text	326	AUDITED			0	no
 src/Names/MoveNames.cpp	blob	100644	21346		unknown		PENDING			0	
 src/Names/MovePresence.cpp	blob	100644	6678		unknown		PENDING			0	
-src/Names/NatureNames.cpp	blob	100644	1039		unknown		PENDING			0	
-src/Names/RibbonNames.cpp	blob	100644	15624		unknown		PENDING			0	
+src/Names/NatureNames.cpp	blob	100644	1039	nature-name lookup table	text	42	AUDITED			0	no
+src/Names/RibbonNames.cpp	blob	100644	15624	ribbon/mark bitfield display extraction	text	360	AUDITED			0	no
 src/Names/SpeciesNames.cpp	blob	100644	199465		unknown		PENDING			0	
-src/Names/TMMoves.cpp	blob	100644	14364		unknown		PENDING			0	
-src/Names/TypeNames.cpp	blob	100644	1098		unknown		PENDING			0	
+src/Names/TMMoves.cpp	blob	100644	14364	TM/HM/TR item-to-move mappings	text	273	AUDITED			0	no
+src/Names/TypeNames.cpp	blob	100644	1098	type-name lookup table	text	42	AUDITED			0	no
 src/Pokemon/AbilityInfo.cpp	blob	100644	1169	ability-slot lookup implementation	text	28	AUDITED			0	no
 src/Pokemon/BaseStatsGen7.cpp	blob	100644	2304	LGPE base-stat lookup	text	70	AUDITED			1	yes
 src/Pokemon/BaseStatsGen89.cpp	blob	100644	15361	modern base-stat/form routing	text	386	AUDITED			1	yes
