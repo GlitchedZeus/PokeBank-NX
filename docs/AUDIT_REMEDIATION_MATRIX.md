@@ -35,8 +35,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 13 | AUDIT-024 | P2 | FIXED | Gen IX inventory decoder leaves persisted flags indeterminate |
 | 14 | AUDIT-039 | P2 | FIXED | Backup save can serialize while held-Pokémon rollback failed |
 | 15 | AUDIT-015 | P2 | FIXED | Failed backup creation can leave a partial folder surfaced as a backup |
-| 16 | AUDIT-029 | P2 | OPEN | Gen II finalization can serialize an in-progress packed move with carried Pokémon omitted |
-| 17 | AUDIT-030 | P2 | OPEN | Gen I finalization can serialize an in-progress packed move |
+| 16 | AUDIT-029 | P2 | FIXED | Gen II finalization can serialize an in-progress packed move with carried Pokémon omitted |
+| 17 | AUDIT-030 | P2 | FIXED | Gen I finalization can serialize an in-progress packed move |
 | 18 | AUDIT-037 | P2 | OPEN | Gen I/II group pickup can strand an active staged move after presentation-refresh failure |
 | 19 | AUDIT-013 | P2 | OPEN | Legacy Bank migration skips checksum validation used by normal Bank load |
 | 20 | AUDIT-028 | P2 | OPEN | Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays |
@@ -344,9 +344,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** begin a packed move with another unrelated pending edit, call `finalizedBytes()` / `publishVerifiedStagedEditorExport()`, and require failure until place or cancel; verify cancel restores byte-identical pre-carry staged state and placement enables finalization.
 - **Dependency / sequencing:** Close with AUDIT-030 shared invariant, before UI recovery AUDIT-037
 - **Proposed remediation order:** 16
-- **Status:** OPEN
+- **Status:** FIXED
 
-### 17. AUDIT-030 — Gen I finalization can serialize an in-progress packed move
+- **Current-code reconciliation:** `Gen2::StagedEditor::finalizedBytes()` now fails closed while a packed move is active, with a clear place-or-cancel error before any checksum repair/export bytes are produced. The shared `tests/test_gen12_packed_multimove.cpp` behavior test starts an active group carry, requires finalization failure while custody is out of the packed box list, cancels and proves the pre-carry bytes are restored, then proves finalization succeeds again. Existing successful placement/finalization coverage remains. This is one shared invariant fix across AUDIT-029 and AUDIT-030. Exact-head CI is pending, so this is not VERIFIED yet.\n\n### 17. AUDIT-030 — Gen I finalization can serialize an in-progress packed move
 
 - **Severity:** P2
 - **Confidence:** CONFIRMED
@@ -360,9 +360,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** begin single/group carry and require `finalizedBytes()` failure before placement/cancel; ensure cancel restores byte-identical pre-carry bytes and pending changes; ensure successful placement allows finalization and preserves exact carried records.
 - **Dependency / sequencing:** Close with AUDIT-029 shared invariant
 - **Proposed remediation order:** 17
-- **Status:** OPEN
+- **Status:** FIXED
 
-### 18. AUDIT-037 — Gen I/II group pickup can strand an active staged move after presentation-refresh failure
+- **Current-code reconciliation:** `Gen1::StagedPokemonEditor::finalizedBytes()` now fails closed while a packed move is active, with a clear place-or-cancel error before any checksum repair/export bytes are produced. The shared `tests/test_gen12_packed_multimove.cpp` behavior test starts an active group carry, requires finalization failure while custody is out of the packed box list, cancels and proves the pre-carry bytes are restored, then proves finalization succeeds again. Existing successful placement/finalization coverage remains. This is one shared invariant fix across AUDIT-029 and AUDIT-030. Exact-head CI is pending, so this is not VERIFIED yet.\n\n### 18. AUDIT-037 — Gen I/II group pickup can strand an active staged move after presentation-refresh failure
 
 - **Severity:** P2
 - **Confidence:** CONFIRMED
