@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 580 / 731
-- Fully read text files: 546 / 698
+- Audited tracked paths: 582 / 731
+- Fully read text files: 548 / 698
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -36,7 +36,7 @@ Status: IN PROGRESS
 - `src/UI/Modals/PokemonDetailsModal.cpp` was also fully read at `85762adc…` (571 lines / 34,505 bytes) and is now AUDITED. It is the generic modern summary/edit presentation path; Gen I is explicitly routed to its native modal first, while legality source identity is left empty for Bank targets rather than borrowing the currently-open save. No new confirmed defect was found in this file.
 
 - PR #92 catch-up is reconciled through live head `a86c8d039209bc17ac613524c6631f03309037a0`. The four changed paths that already carried AUDITED status (`include/Integration/Gen4/Gen4StagedPokemonEditor.h`, `src/Integration/Gen4/Gen4StagedPokemonEditor.cpp`, `src/UI/Gen4SharedPokemonSurface.inc`, `tests/test_gen4_staged_pokemon_editor.cpp`) were fully re-read at that head; the other two changed paths were already PENDING and remain PENDING.
-- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 580 paths are now accounted for and 546 text files have been fully read.
+- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 582 paths are now accounted for and 548 text files have been fully read.
 - The entire Names tranche is now closed: no `include/Names` or `src/Names` file remains PENDING. Generated species tables contain 1,026 entries in each of nine languages; the modern item-name table contains ids 0..2684; Gen III direct item names cover ids 0..376.
 - MovePresence's unknown-group/id-0 behavior contradicts its comment, but all audited real game-group callers are routed through known groups; kept as a hardening follow-up, not a numbered defect.
 - Recovery/package/source-pin tooling is now substantially audited. Supported CI invokes `verify_embedded_romfs.py` with normal `python3`; its assert-based checks are therefore live today, while replacing asserts with explicit failures remains a robustness follow-up.
@@ -46,12 +46,13 @@ Status: IN PROGRESS
 
 ## Sibling PR #97 overlay coverage
 
-- Current live sibling head: `456a493771bc25ba49b7b9c27269477eec835a07`.
+- Last fully reconciled sibling checkpoint: `456a493771bc25ba49b7b9c27269477eec835a07`; newer live PR #97 head observed: `cf28531af5f9c23467d938083ad1a88e55bd042e`.
 - Exact delta from PR #90 `8b3bcc16c804247bfe8d1314b686974ce73051d8`: 35 commits / 27 changed paths.
 - The sibling overlay remains intentionally outside the 731-path PR #92 MAIN denominator. Full line-by-line coverage of all 27 sibling-overlay changed paths is still incomplete and is not claimed here.
 - The forward delta from checkpoint `3831989f7b320797068e752321ae0c36c2216f49` to live head `456a493771bc25ba49b7b9c27269477eec835a07` is 14 commits / 9 changed paths. All nine current-head files in that forward delta were fully read: `include/UI/AppShellModel.h`, `include/UI/AppShellScreen.h`, `include/UI/SaveSelectScreen.h`, `include/UI/ScreenChrome.h`, `src/UI/AppShellScreen.cpp`, `src/UI/SaveSelectScreen.cpp`, `src/UI/UI.cpp`, `tests/test_app_shell_model.cpp`, and `tests/test_game_hub_contract.py`.
 - Historical AUDIT-032 remains FIXED at the live sibling head: the removed `AppShellSection::Collections` member is no longer referenced by `AppShellScreen.cpp`.
 - Current sibling Product Home is `SaveSelectScreen`; its inline nav hint truthfully says `ZL: Profile`, `L/R: Change Game`, and `B: Exit`, but the reachable Help overlay still advertises `L / R` as profile switching and `B` as returning to a Main Menu. This is recorded as AUDIT-036.
+- The newer `456a4937… -> cf28531a…` sibling delta is 2 commits / 2 changed files (`src/UI/AppShellScreen.cpp`, `src/UI/SaveSelectScreen.cpp`) and is not yet claimed as fully line-by-line reconciled. AUDIT-036 was specifically revalidated against `cf28531a…` and still reproduces in the live Help copy.
 
 
 
@@ -74,6 +75,9 @@ Status: IN PROGRESS
 
 
 ### Core UI runtime tranche
+
+- `src/UI/Gen1PokemonEditorFoundationHardwareFix.inc` was fully read at PR #92 head `85762adce4a1ce6f30763a0d76b3b11735da7d49` (367 lines / 20,578 bytes). It is fullscreen Gen I presentation/focus/picker ownership code; native unified Special, derived HP DV, row-level move focus, exact-game context, and truthful unsupported-legality labeling remain intact. No new defect was confirmed.
+- `src/UI/ClassicInventoryOverlay.cpp` was fully read at the same MAIN head (915 lines / 40,334 bytes). Gen I-III inventory edits remain staged; export writes only app-owned backup/edited-copy/manifest artifacts and explicitly keeps live emulator/source writes disabled. A presentation-refresh failure after a completed inventory mutation can leave the old UI snapshot visible, but the refresh uses build-then-swap semantics and the backend mutation is a completed staged edit rather than an open transaction; no new integrity finding was assigned.
 
 - `src/UI/ClassicPackedMoveOverlay.inc` was fully read at PR #92 head `85762adce4a1ce6f30763a0d76b3b11735da7d49` (650 lines / 27,633 bytes). Its normal single-pickup rollback path is sound, but the multi-select Gen I/II pickup path does not cancel the backend packed-group transaction if the post-pickup presentation refresh fails. Backend tracing confirmed that the selected records have already been removed from staged bytes and `cancelPackedMove()` is the intended rollback. Recorded as AUDIT-037.
 
