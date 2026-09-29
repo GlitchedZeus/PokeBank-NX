@@ -16,6 +16,7 @@
 #include "Legality/Gen4StaticEncounter.h"
 #include "Legality/Gen4TradeEvidence.h"
 #include "Legality/Gen1CatchRateEvidence.h"
+#include "Legality/Gen1EncounterEvidence.h"
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
@@ -138,8 +139,29 @@ namespace Legality {
                     CheckIdentifier::Encounter);
             } else {
                 add(r, Severity::Info,
-                    "PK1 catch-rate provenance is unresolved; static/gift/trade/Stadium evidence is not complete",
+                    "PK1 catch-rate provenance is unresolved; event/Stadium evidence is not complete",
                     CheckIdentifier::Encounter);
+            }
+
+            const bool tradeOT = gen1.strictRecord().originalTrainer == "*";
+            const auto trade = Gen1Encounter::matchTrade(
+                exactSourceGameId, gen1.speciesID(), gen1.level(), catchRate, tradeOT);
+            if (trade.matched) {
+                add(r, Severity::Info,
+                    trade.nativeToContainer
+                        ? "PK1 data is compatible with a released native in-game trade template"
+                        : "PK1 data is compatible with a released R/B/Y in-game trade template from another link-compatible version",
+                    CheckIdentifier::Encounter);
+            } else {
+                const auto fixed = Gen1Encounter::matchStatic(
+                    exactSourceGameId, gen1.speciesID(), gen1.level(), catchRate);
+                if (fixed.matched) {
+                    add(r, Severity::Info,
+                        fixed.nativeToContainer
+                            ? "PK1 data is compatible with a released native static/gift/Game Corner template"
+                            : "PK1 data is compatible with a released R/B/Y static/gift/Game Corner template from another link-compatible version",
+                        CheckIdentifier::Encounter);
+                }
             }
         }
         if (sourceProfile) {
