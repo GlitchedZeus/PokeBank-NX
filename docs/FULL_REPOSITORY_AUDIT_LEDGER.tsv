@@ -566,7 +566,7 @@ src/UI/Modals/Gen2PokemonDetailsModal.cpp	blob	100644	14261	Gen II read-only det
 src/UI/Modals/PokemonDetailsDispatcher.cpp	blob	100644	1195	generation details renderer dispatcher	text	35	AUDITED			0	yes
 src/UI/Modals/PokemonDetailsModal.cpp	blob	100644	34505		unknown		PENDING			0	
 src/UI/PKSEFramebuffer.cpp	blob	100644	27588	NanoVG framebuffer/rendering implementation	text	556	AUDITED			0	no
-src/UI/Panels/BoxPokemonPanel.cpp	blob	100644	21845		unknown		PENDING			0	
+src/UI/Panels/BoxPokemonPanel.cpp	blob	100644	22188	box grid and per-Pokémon summary/radar presentation	text	381	AUDITED			0	yes
 src/UI/Panels/HomeMenuPanel.cpp	blob	100644	8866	loaded-workspace home panel renderer	text	178	AUDITED			0	no
 src/UI/Panels/ItemsPanel.cpp	blob	100644	11918	inventory panel renderer	text	223	AUDITED			0	yes
 src/UI/Panels/PartyPokemonPanel.cpp	blob	100644	7898	party card/grid renderer	text	152	AUDITED			0	no
