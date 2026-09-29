@@ -1747,26 +1747,30 @@ int fonsExpandAtlas(FONScontext* stash, int width, int height)
 int fonsResetAtlas(FONScontext* stash, int width, int height)
 {
 	int i, j;
+	unsigned char* newTexData;
 	if (stash == NULL) return 0;
 
-	// Flush pending glyphs.
+	// PokeBank NX hardening (AUDIT-044): allocate before mutating renderer/atlas state.
+	// realloc failure leaves the existing CPU atlas allocation and all dimensions intact.
+	newTexData = (unsigned char*)realloc(stash->texData, width * height);
+	if (newTexData == NULL) return 0;
+
+	// Flush pending glyphs only after the CPU allocation is known to be available.
 	fons__flush(stash);
 
-	// Create new texture
+	// Create/resize the renderer texture. If this fails, the enlarged CPU allocation is still
+	// safe to use with the old dimensions; no atlas metadata has been reset yet.
 	if (stash->params.renderResize != NULL) {
-		if (stash->params.renderResize(stash->params.userPtr, width, height) == 0)
+		if (stash->params.renderResize(stash->params.userPtr, width, height) == 0) {
+			stash->texData = newTexData;
 			return 0;
+		}
 	}
 
-	// Reset atlas
+	stash->texData = newTexData;
+
+	// Reset atlas only after both allocation boundaries succeeded.
 	fons__atlasReset(stash->atlas, width, height);
-
-	// Clear texture data. Preserve the previous allocation if growth fails.
-	{
-		unsigned char* newTexData = (unsigned char*)realloc(stash->texData, width * height);
-		if (newTexData == NULL) return 0;
-		stash->texData = newTexData;
-	}
 	memset(stash->texData, 0, width * height);
 
 	// Reset dirty rect
