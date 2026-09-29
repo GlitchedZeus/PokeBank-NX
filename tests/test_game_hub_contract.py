@@ -177,9 +177,11 @@ require('"Pokémon storage, transfer & lineage"' in source and
 require("padGetButtonsDown(&pad)" in source and
         "padGetButtons(&pad) & HidNpadButton_A" not in source,
         "action buttons must remain edge-triggered while held input is reserved for navigation repeat")
-require('"Multiple saves exist. Open Game Sources once to choose the exact save."' in source and
+require('"Multiple saves exist. Open Source / Game File once to choose the exact save."' in source and
         '"That save changed while opening. Nothing was opened."' in source,
         "ambiguous or changed legacy sources must fail closed instead of guessing")
+require("preferGameSourceAndSave(" in source and "preferredLegacySourceIndex(" in source,
+        "choosing one of multiple classic saves must persist and reuse the exact source identity")
 
 select_start = source.index("void SaveSelectScreen::selectCurrentTitle()")
 select_end = source.index("void SaveSelectScreen::selectCurrentTitleForItems()", select_start)

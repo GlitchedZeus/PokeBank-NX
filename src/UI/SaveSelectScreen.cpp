@@ -82,6 +82,22 @@ namespace UI {
             return summary;
         }
 
+        int preferredLegacySourceIndex(
+            const std::vector<PokeVault::Legacy::FRLGSaveInstance>& instances,
+            const PokeVault::Legacy::LegacySourceBindings* bindings,
+            std::string_view profileIdentity, std::string_view gameIdentity) {
+            if (!bindings) return -1;
+            int preferred = -1;
+            for (size_t index = 0; index < instances.size(); ++index) {
+                if (!bindings->isPreferredGameSource(
+                        instances[index], profileIdentity, gameIdentity))
+                    continue;
+                if (preferred >= 0) return -2; // Corrupt/ambiguous metadata: never guess.
+                preferred = static_cast<int>(index);
+            }
+            return preferred;
+        }
+
         std::string joinBrowsePath(const std::string& root, const std::string& name) {
             if (root.empty() || root.back() == '/') return root + name;
             return root + "/" + name;
@@ -1321,16 +1337,22 @@ namespace UI {
                 return;
             }
 
-            // Multiple physical saves are genuinely ambiguous and still require an explicit choice.
+            int sourceIndex = 0;
             if (selected.legacyInstances.size() > 1) {
-                legacyInstanceIndex = 0;
-                legacyInstanceScroll = 0;
-                legacyNotice = "Choose the exact validated save for " + selected.label + ".";
-                overlay = Overlay::LegacyInstances;
-                return;
+                sourceIndex = preferredLegacySourceIndex(
+                    selected.legacyInstances, legacyBindings, profile, selectedGameId);
+                if (sourceIndex < 0) {
+                    legacyInstanceIndex = 0;
+                    legacyInstanceScroll = 0;
+                    legacyNotice = sourceIndex == -2
+                        ? "The remembered save choice is ambiguous. Choose the exact save again."
+                        : "Choose the exact validated save for " + selected.label + " once.";
+                    overlay = Overlay::LegacyInstances;
+                    return;
+                }
             }
 
-            const auto shown = selected.legacyInstances.front();
+            const auto shown = selected.legacyInstances[static_cast<size_t>(sourceIndex)];
             auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
             *legacyCatalog = std::move(refreshed);
             loadLegacySources(*legacyCatalog);
@@ -1450,14 +1472,24 @@ namespace UI {
         }
 
         if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-            if (!legacyCatalog || title.legacyInstances.size() != 1) {
-                hubNotice = title.legacyInstances.empty()
-                    ? "Items needs one validated save for this game."
-                    : "Multiple saves exist. Open Game Sources once to choose the exact save.";
+            if (!legacyCatalog || title.legacyInstances.empty()) {
+                hubNotice = "Items needs one validated save for this game.";
                 return;
             }
 
-            const auto shown = title.legacyInstances.front();
+            int sourceIndex = 0;
+            if (title.legacyInstances.size() > 1) {
+                sourceIndex = preferredLegacySourceIndex(
+                    title.legacyInstances, legacyBindings, currentProfileIdentity(), title.gameId);
+                if (sourceIndex < 0) {
+                    hubNotice = sourceIndex == -2
+                        ? "The remembered save choice is ambiguous. Re-select it from Source / Game File."
+                        : "Multiple saves exist. Open Source / Game File once to choose the exact save.";
+                    return;
+                }
+            }
+
+            const auto shown = title.legacyInstances[static_cast<size_t>(sourceIndex)];
             auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
             *legacyCatalog = std::move(refreshed);
             loadLegacySources(*legacyCatalog);
@@ -1524,6 +1556,12 @@ namespace UI {
         const auto& freshInstance = refreshedTitle.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
         if (!PokeVault::Source::sameValidatedSnapshot(shownInstance, freshInstance)) {
             legacyNotice = "That save changed. Review the refreshed list before opening.";
+            overlay = Overlay::LegacyInstances;
+            return;
+        }
+        if (!legacyBindings || !legacyBindings->preferGameSourceAndSave(
+                freshInstance, currentProfileIdentity(), refreshedTitle.gameId)) {
+            legacyNotice = "Couldn't remember that exact save choice. Nothing was opened.";
             overlay = Overlay::LegacyInstances;
             return;
         }

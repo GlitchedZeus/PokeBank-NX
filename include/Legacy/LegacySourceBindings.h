@@ -61,6 +61,14 @@ namespace PokeVault::Legacy {
                                                        std::string_view gameIdentity) const;
         void applyClaims(Source::SaveInstance& instance) const;
         [[nodiscard]] bool claimInstanceAndSave(const Source::SaveInstance& instance, std::string_view profile);
+        // Remember one exact validated classic source for a profile/game while preserving ownership
+        // of the other discovered saves. This metadata never mutates the source save itself.
+        [[nodiscard]] bool preferGameSourceAndSave(const Source::SaveInstance& instance,
+                                                   std::string_view profileIdentity,
+                                                   std::string_view gameIdentity);
+        [[nodiscard]] bool isPreferredGameSource(const Source::SaveInstance& instance,
+                                                 std::string_view profileIdentity,
+                                                 std::string_view gameIdentity) const;
         [[nodiscard]] const std::string& lastError() const noexcept { return lastError_; }
         [[nodiscard]] bool unassign(std::string_view sourceIdentity);
         [[nodiscard]] bool unassignAndSave(std::string_view sourceIdentity);

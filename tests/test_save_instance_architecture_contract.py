@@ -99,6 +99,10 @@ for adapter in ("FRLG", "RBY", "GSC"):
     require(body, "applyClaims(instance)", f"{adapter} drops alias ownership")
 require(ui, "sameValidatedSnapshot(shownInstance, freshInstance)", "stale source snapshot opens silently")
 require(ui, "claimInstanceAndSave(entry.instance, profile)", "classic claim drops source aliases")
+require(ui, "preferGameSourceAndSave(",
+        "classic exact-source choice is no longer persisted for choose-once reopening")
+require(ui, "preferredLegacySourceIndex(",
+        "classic direct open no longer resolves the remembered exact physical source")
 require(text(".github/workflows/audit-hardening-native.yml"), "include/Source/**", "shared source model changes skip native CI")
 
 print("Provider-neutral Save Instances architecture contract: PASS")
