@@ -345,23 +345,80 @@ bool beginSelectedGroup(TrainerViewScreen& screen, CarryState& state) {
 
     std::string error;
     bool ok = false;
+    bool rollbackFailed = false;
+    CarryGeneration attemptedGeneration = CarryGeneration::None;
     if (isGen1(screen)) {
+        attemptedGeneration = CarryGeneration::Gen1;
         auto& trainer = static_cast<PokeVault::Legacy::RBYReadOnlyTrainer&>(screen.trainer);
         if (auto* editor = trainer.stagedPokemon()) {
-            ok = editor->beginPackedGroupMove(static_cast<std::size_t>(state.selectionBox), slots, error);
-            if (ok) ok = refreshGen1(screen, error);
+            const bool began =
+                editor->beginPackedGroupMove(static_cast<std::size_t>(state.selectionBox), slots, error);
+            if (began) {
+                std::string refreshError;
+                if (refreshGen1(screen, refreshError)) {
+                    ok = true;
+                } else {
+                    const std::string firstFailure = refreshError;
+                    std::string cancelError;
+                    const bool cancelled = editor->cancelPackedMove(cancelError);
+                    std::string restoreError;
+                    const bool restored = cancelled && refreshGen1(screen, restoreError);
+                    error = firstFailure;
+                    if (!cancelled) {
+                        rollbackFailed = true;
+                        if (!cancelError.empty()) error += " / rollback: " + cancelError;
+                    } else if (!restored && !restoreError.empty()) {
+                        error += " / restored bytes; presentation refresh: " + restoreError;
+                    }
+                }
+            }
         }
         if (ok) state.generation = CarryGeneration::Gen1;
     } else {
+        attemptedGeneration = CarryGeneration::Gen2;
         auto& trainer = static_cast<PokeVault::Legacy::GSCReadOnlyTrainer&>(screen.trainer);
         if (auto* editor = trainer.stagedEditor()) {
-            ok = editor->beginPackedGroupMove(static_cast<std::size_t>(state.selectionBox), slots, error);
-            if (ok) ok = refreshGen2(screen, error);
+            const bool began =
+                editor->beginPackedGroupMove(static_cast<std::size_t>(state.selectionBox), slots, error);
+            if (began) {
+                std::string refreshError;
+                if (refreshGen2(screen, refreshError)) {
+                    ok = true;
+                } else {
+                    const std::string firstFailure = refreshError;
+                    std::string cancelError;
+                    const bool cancelled = editor->cancelPackedMove(cancelError);
+                    std::string restoreError;
+                    const bool restored = cancelled && refreshGen2(screen, restoreError);
+                    error = firstFailure;
+                    if (!cancelled) {
+                        rollbackFailed = true;
+                        if (!cancelError.empty()) error += " / rollback: " + cancelError;
+                    } else if (!restored && !restoreError.empty()) {
+                        error += " / restored bytes; presentation refresh: " + restoreError;
+                    }
+                }
+            }
         }
         if (ok) state.generation = CarryGeneration::Gen2;
     }
 
     if (!ok) {
+        if (rollbackFailed) {
+            // Backend custody is still active. Keep the overlay in carry mode so B can retry
+            // cancelPackedMove(); never forget a transaction the backend still owns.
+            state.active = true;
+            state.generation = attemptedGeneration;
+            state.sourceBox = state.selectionBox;
+            state.sourceSlot = state.selectionAnchor;
+            state.visuals = std::move(visuals);
+            clearTransientSelection(screen, state);
+            setLegacyHoldingPresentation(screen, true);
+            screen.postStatus(error.empty()
+                ? "Pickup refresh failed and rollback could not complete - B retries restore"
+                : error, 420);
+            return true;
+        }
         screen.postStatus(error.empty() ? "Could not pick up the selected Pokemon" : error, 320);
         clearTransientSelection(screen, state);
         return true;
