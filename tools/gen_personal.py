@@ -209,12 +209,12 @@ class Table:
 
 
 def load_species_names():
-    """Parse the flat SPECIES_NAMES[] string array out of PKSE's SpeciesNames.cpp."""
+    """Parse the generated English SPECIES_NAMES_EN[] table from SpeciesNames.cpp."""
     with open(SPECIES_NAMES_SRC, encoding="utf-8") as fh:
         text = fh.read()
     m = re.search(r"SPECIES_NAMES\[\]\s*=\s*\{(.*?)\};", text, re.S)
     if not m:
-        raise SystemExit("could not locate SPECIES_NAMES[] in " + SPECIES_NAMES_SRC)
+        raise SystemExit("could not locate SPECIES_NAMES_EN[] in " + SPECIES_NAMES_SRC)
     names = re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))
     if len(names) <= MAX_SPECIES:
         raise SystemExit(f"SpeciesNames only has {len(names)} entries; need > {MAX_SPECIES}")
