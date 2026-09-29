@@ -182,6 +182,10 @@ require('"Multiple saves exist. Open Source / Game File once to choose the exact
         "ambiguous or changed legacy sources must fail closed instead of guessing")
 require("preferGameSourceAndSave(" in source and "preferredLegacySourceIndex(" in source,
         "choosing one of multiple classic saves must persist and reuse the exact source identity")
+require('users.front().name = "Game Sources";' not in source and
+        '"Re-link it from Game Sources."' not in source and
+        '"Re-link it from Source / Game File."' in source,
+        "reachable Product Home copy must not expose the retired Game Sources presentation")
 
 select_start = source.index("void SaveSelectScreen::selectCurrentTitle()")
 select_end = source.index("void SaveSelectScreen::selectCurrentTitleForItems()", select_start)

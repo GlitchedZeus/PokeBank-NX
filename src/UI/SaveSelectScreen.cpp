@@ -330,7 +330,7 @@ namespace UI {
         }
         if (users.size() == 1 && users.front().titles.empty() &&
             users.front().name == "No users found") {
-            users.front().name = "Game Sources";
+            users.front().name = "Pokémon Saves";
         }
 
         // Discovery is app-global; normal visibility is not. A filesystem source has no intrinsic
@@ -1459,7 +1459,7 @@ namespace UI {
             const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
                 *legacyBindings, currentProfileIdentity(), title.gameId);
             if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready || !opened.save) {
-                hubNotice = "The remembered save no longer validates. Re-link it from Game Sources.";
+                hubNotice = "The remembered save no longer validates. Re-link it from Source / Game File.";
                 return;
             }
             selectedUserUid = user->uid;
@@ -2087,7 +2087,7 @@ namespace UI {
         drawPanelSurface(fb, 24, 82, fb.getWidth() - 48, 104, true);
 
         if (u) {
-            const IconImage* avatar = u->name == "Game Sources" ? nullptr : &SystemIcons::userIcon(u->uid);
+            const IconImage* avatar = u->name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(u->uid);
             if (avatar && avatar->valid())
                 fb.drawImageScaled(44, 92, avatar->width, avatar->height, 84, 84, avatar->data, 4);
             else
@@ -2179,7 +2179,7 @@ namespace UI {
         if (u) {
             const int avatarX = 1010, avatarY = 10;
             const IconImage* avatar =
-                u->name == "Game Sources" ? nullptr : &SystemIcons::userIcon(u->uid);
+                u->name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(u->uid);
             if (avatar && avatar->valid())
                 fb.drawImageScaled(avatarX, avatarY, avatar->width, avatar->height,
                                    PROFILE_AVATAR, PROFILE_AVATAR, avatar->data, 4);
@@ -2346,7 +2346,7 @@ namespace UI {
             titleRects.push_back({DETAIL_X, HUB_Y, DETAIL_W, HUB_H, titleIndex});
         } else {
             const std::string emptyHeading =
-                (!u || u->name == "Game Sources")
+                (!u || u->name == "Pokémon Saves")
                     ? "No validated Pokémon game sources found"
                     : "No Pokémon saves found for this profile";
             fb.drawText(DETAIL_X + 34, HUB_Y + 42, emptyHeading,
