@@ -621,7 +621,7 @@ tests/test_game_identity.cpp	blob	100644	6450	game identity/platform/card-art ca
 tests/test_gen12_packed_move.cpp	blob	100644	16995		unknown		PENDING			0	
 tests/test_gen12_packed_multimove.cpp	blob	100644	15806		unknown		PENDING			0	
 tests/test_gen1_battle_stats.cpp	blob	100644	1603	Gen I five-stat battle calculation fixtures	text	33	AUDITED			0	yes
-tests/test_gen1_cleanup3_staged_semantics.cpp	blob	100644	9777		unknown		PENDING			0	
+tests/test_gen1_cleanup3_staged_semantics.cpp	blob	100644	9777	Gen I staged edit/create/clone preservation semantics contract	text	192	AUDITED			0	yes
 tests/test_gen1_move_compatibility.cpp	blob	100644	3500	R/B/Y exact move compatibility fixtures	text	66	AUDITED			0	yes
 tests/test_gen1_pokemon_editor_ui_contract.cpp	blob	100644	17099		unknown		PENDING			0	
 tests/test_gen1_pokemon_editor_ux3_contract.cpp	blob	100644	3584	Gen I shared editor UX contract	text	73	AUDITED			0	yes
@@ -673,18 +673,18 @@ tests/test_passive_pokemon_view_contract.cpp	blob	100644	5183	Gen I-III passive 
 tests/test_pksm_gen3_adapter.cpp	blob	100644	20829		unknown		PENDING			0	
 tests/test_pla_read_validation.cpp	blob	100644	4047	PLA SC-container/layout/checksum read validation test	text	82	AUDITED			0	no
 tests/test_pokebank_paths.cpp	blob	100644	2516	PokeBank path ownership/safe-component contract	text	58	AUDITED			0	yes
-tests/test_pokemon_editor_foundation_contract.cpp	blob	100644	9301		unknown		PENDING			0	
+tests/test_pokemon_editor_foundation_contract.cpp	blob	100644	9301	shared Pokémon editor foundation/focus/capability contract	text	150	AUDITED			0	yes
 tests/test_pre_gen3_reuse_guard.cpp	blob	100644	4218	pre-Gen III shared-editor/source-mutation reuse guard	text	94	AUDITED			0	yes
 tests/test_rby_discovery.cpp	blob	100644	11942		unknown		PENDING			0	
 tests/test_rby_gen1_adapter.cpp	blob	100644	13736		unknown		PENDING			0	
 tests/test_rby_inventory.cpp	blob	100644	4740	RBY strict read-only inventory decode contract	text	130	AUDITED			0	yes
 tests/test_rby_pokemon_editor.cpp	blob	100644	13599		unknown		PENDING			0	
-tests/test_rby_readonly_bridge.cpp	blob	100644	8106		unknown		PENDING			0	
+tests/test_rby_readonly_bridge.cpp	blob	100644	8106	RBY read-only trainer/party/box bridge contract	text	130	AUDITED			0	yes
 tests/test_rby_source_browser.cpp	blob	100644	2894	RBY source card/profile binding contract	text	44	AUDITED			0	yes
 tests/test_rby_staged_inventory.cpp	blob	100644	6678	RBY staged inventory mutation/finalization contract	text	136	AUDITED			0	yes
 tests/test_retroarch_frlg_discovery.cpp	blob	100644	17720		unknown		PENDING			0	
 tests/test_rse_gen3_adapter.cpp	blob	100644	25892		unknown		PENDING			0	
-tests/test_rse_open_regression.cpp	blob	100644	9281		unknown		PENDING			0	
+tests/test_rse_open_regression.cpp	blob	100644	9281	RSE save-open optional-inventory regression contract	text	214	AUDITED			0	yes
 tests/test_runtime_dependency_contract.cpp	blob	100644	1077	runtime path/branding textual dependency contract	text	30	AUDITED			0	yes
 tests/test_save_instance_architecture_contract.py	blob	100644	5437	provider-neutral Save Instances architecture/static routing contract	text	96	AUDITED			0	yes
 tests/test_save_instance_model.cpp	blob	100644	5311	provider-neutral SaveInstance dedupe/profile/snapshot contract	text	123	AUDITED			0	yes
