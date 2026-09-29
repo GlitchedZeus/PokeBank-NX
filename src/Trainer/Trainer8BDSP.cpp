@@ -35,6 +35,13 @@ namespace Trainer {
             boxNames.assign(BDSP_BOX_COUNT, std::string{});
             return;
         }
+        if (!PokeBank::SaveValidation::BDSP::wholeFileHashValid(saveData)) {
+            logErrorToFile("BDSP save whole-file MD5 is invalid; refusing mutable parse");
+            boxes.clear();
+            boxes.resize(BDSP_BOX_COUNT);
+            boxNames.assign(BDSP_BOX_COUNT, std::string{});
+            return;
+        }
 
         parseMyStatus();
         parseParty();
