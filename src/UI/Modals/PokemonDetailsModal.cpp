@@ -63,6 +63,15 @@ namespace Modals {
                 ? std::string_view{} : std::string_view(screen.sourceGameId);
         const Legality::Report legalityRep =
             Legality::analyze(*p, p->getGameGroup(), legalitySource);
+        const auto coverageLabel = [](Legality::CoverageLevel level) -> const char* {
+            switch (level) {
+                case Legality::CoverageLevel::Complete: return "Checked";
+                case Legality::CoverageLevel::Partial:  return "Partial";
+                case Legality::CoverageLevel::None:     return "Not covered";
+            }
+            return "Unknown";
+        };
+        const auto legalityVerdict = legalityRep.verdict();
 
         screen.touchButtons.clear();
 
@@ -300,14 +309,19 @@ namespace Modals {
         // Legality summary pinned at the bottom of the left pane (R / tap opens the full issue list).
         {
             const int ly = colY + colH - legalityH + 6;
-            if (legalityRep.ok()) {
-                fb.drawText(Lx + 18, ly, "Legality: no problems found", Color(120, 205, 140), TextStyle::Caption);
+            if (legalityVerdict == Legality::Verdict::NoProblemsFound) {
+                fb.drawText(Lx + 18, ly, "Legality: no problems found",
+                            Color(120, 205, 140), TextStyle::Caption);
             } else {
-                const std::string label = "Legality: " + std::to_string(legalityRep.problemCount())
-                                        + " issue(s)  -  R / tap to view";
-                fb.drawText(Lx + 18, ly, label, Color(235, 100, 100), TextStyle::Caption);
+                const std::string label = legalityRep.problemCount() == 0
+                    ? "Legality: no problems found • incomplete coverage  -  R / tap"
+                    : "Legality: " + std::to_string(legalityRep.problemCount()) +
+                      " issue(s)  -  R / tap to view";
+                const Color summaryColor = legalityRep.hasInvalid()
+                    ? Color(235, 100, 100) : Colors::Warning;
+                fb.drawText(Lx + 18, ly, label, summaryColor, TextStyle::Caption);
                 int lw, lh; fb.measureText(label, lw, lh, TextStyle::Caption);
-                screen.touchButtons.push_back({ 95, Lx + 14, ly - 4, lw + 8, lh + 8 });  // id 95: open legality overlay
+                screen.touchButtons.push_back({ 95, Lx + 14, ly - 4, lw + 8, lh + 8 });
             }
         }
 
@@ -494,7 +508,9 @@ namespace Modals {
             std::string navHint;
             // Y opens ribbons; R opens the legality list -- but only when there ARE issues, so a clean
             // mon simply omits R: Legality (the button is disabled / nothing to view).
-            const std::string legalSeg = legalityRep.ok() ? "" : "R: Legality  |  ";
+            const std::string legalSeg =
+                legalityVerdict == Legality::Verdict::NoProblemsFound
+                    ? "" : "R: Legality  |  ";
             // A freshly-created mon has no "save" -- every field is an unsaved edit until committed, so
             // X reads KEEP (commit + close); Discard still lives on the B Keep/Discard prompt.
             const std::string saveSeg = screen.creator.editing ? "X: Keep" : "X: Save";
@@ -511,26 +527,58 @@ namespace Modals {
         // Legality issue overlay — opened via Y or by tapping the legality summary; any tap / B closes.
         if (screen.details.legalityOverlay) {
             fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 170));
-            const int rowsN = static_cast<int>(legalityRep.issues.size());
-            const int ow = 760, oh = std::min(H - 60, 96 + std::max(1, rowsN) * 30);
+            const bool incomplete = legalityVerdict == Legality::Verdict::Incomplete;
+            const int rowsN = static_cast<int>(legalityRep.issues.size()) + (incomplete ? 5 : 0);
+            const int ow = 820, oh = std::min(H - 60, 112 + std::max(1, rowsN) * 28);
             const int ox = (W - ow) / 2, oy = (H - oh) / 2;
             fb.drawFilledRoundedRect(ox, oy, ow, oh, 16, Colors::Panel);
             fb.drawRoundedRect(ox, oy, ow, oh, 16, Colors::Border, 1);
-            fb.drawText(ox + 24, oy + 20, "Legality", Colors::Text, TextStyle::Heading);
+            fb.drawText(ox + 24, oy + 20, "Legality Report", Colors::Text, TextStyle::Heading);
             { const char* h = "B / tap: close"; int hw, hh; fb.measureText(h, hw, hh, TextStyle::Caption);
               fb.drawText(ox + ow - 24 - hw, oy + 28, h, Colors::TextDim, TextStyle::Caption); }
             int ly = oy + 66;
-            if (legalityRep.ok()) {
-                fb.drawText(ox + 28, ly, "No problems found.", Color(120, 205, 140), TextStyle::Body);
-            } else {
-                for (const auto& is : legalityRep.issues) {
-                    if (is.severity == Legality::Severity::Info) continue;
-                    if (ly > oy + oh - 30) break;
-                    const Color c = (is.severity == Legality::Severity::Invalid) ? Color(235, 100, 100) : Colors::Orange;
-                    const char* tag = (is.severity == Legality::Severity::Invalid) ? "[illegal]  " : "[warning]  ";
-                    fb.drawText(ox + 28, ly, std::string(tag) + is.text, c, TextStyle::Caption);
-                    ly += 30;
-                }
+
+            if (legalityVerdict == Legality::Verdict::NoProblemsFound) {
+                fb.drawText(ox + 28, ly, "No problems found by complete checks.",
+                            Color(120, 205, 140), TextStyle::Body);
+                ly += 30;
+            } else if (legalityRep.problemCount() == 0) {
+                fb.drawText(ox + 28, ly,
+                            "No problems found by the checks that ran. Coverage is incomplete.",
+                            Colors::Warning, TextStyle::Caption);
+                ly += 32;
+            }
+
+            if (incomplete) {
+                const auto coverageRow = [&](const char* name, Legality::CoverageLevel level) {
+                    fb.drawText(ox + 36, ly, name, Colors::TextDim, TextStyle::Caption);
+                    fb.drawText(ox + 250, ly, coverageLabel(level),
+                                level == Legality::CoverageLevel::Complete
+                                    ? Colors::Success
+                                    : level == Legality::CoverageLevel::Partial
+                                        ? Colors::Warning : Colors::TextMuted,
+                                TextStyle::Caption);
+                    ly += 26;
+                };
+                coverageRow("Exact source", legalityRep.coverage.sourceGame);
+                coverageRow("Internal checks", legalityRep.coverage.internal);
+                coverageRow("Moves", legalityRep.coverage.moves);
+                coverageRow("Encounter", legalityRep.coverage.encounter);
+                ly += 4;
+            }
+
+            for (const auto& is : legalityRep.issues) {
+                if (is.severity == Legality::Severity::Info) continue;
+                if (ly > oy + oh - 30) break;
+                const Color issueColor =
+                    is.severity == Legality::Severity::Invalid
+                        ? Color(235, 100, 100) : Colors::Orange;
+                const char* tag =
+                    is.severity == Legality::Severity::Invalid
+                        ? "[illegal]  " : "[warning]  ";
+                fb.drawText(ox + 28, ly, std::string(tag) + is.text,
+                            issueColor, TextStyle::Caption);
+                ly += 28;
             }
             // id 96: tap anywhere closes -- but NOT over the nav bar, whose badges are themselves
             // tappable. Overlapping them would fire both the badge's button and this close.

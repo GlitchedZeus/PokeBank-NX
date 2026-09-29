@@ -26,6 +26,7 @@ classic_release = read("src/UI/ClassicReleaseActionFix.inc")
 gen1_ux = read("src/UI/Gen1PokemonEditorOverlayUX.inc")
 gen1_ux2 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc")
 gen1_ux3 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc")
+pokemon_details = read("src/UI/Modals/PokemonDetailsModal.cpp")
 
 # Settings owns build/safety identity; the global nav bar owns controls.
 require("A: toggle / info" not in trainer,
@@ -151,6 +152,16 @@ require('centred("LS", lsX, lsW, ink)' in chrome,
         "shared navigation glyph must communicate Left Stick parity")
 require('btn == "D-pad/Stick"' in chrome and 'btn == "D-pad"' in chrome,
         "shared navigation glyph must accept legacy D-pad token aliases")
+
+# Legality must distinguish "no issue detected" from complete legality.
+require("Legality::Verdict::Incomplete" in pokemon_details,
+        "details UI must expose incomplete legality coverage")
+require("incomplete coverage" in pokemon_details,
+        "details UI must not label partially-checked Pokemon as fully legal")
+require("legalityRep.coverage.encounter" in pokemon_details,
+        "legality report must show encounter coverage")
+require("std::string_view(sourceGameId)" in trainer,
+        "legality input must carry the exact open-save identity")
 
 # User-visible NRO metadata is PokeBank NX-owned. Internal compatibility symbols may retain
 # historical names; this contract intentionally checks only the metadata fields.

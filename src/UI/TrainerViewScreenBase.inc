@@ -3235,8 +3235,15 @@ namespace UI {
             // when the mon actually has issues. A clean mon has nothing to show, so the button is
             // disabled (greyed in the guide) and this does nothing.
             if ((kDown & HidNpadButton_R) || tb == 95) {
-                if (pokemon && !Legality::analyze(*pokemon, pokemon->getGameGroup()).ok())
-                    details.legalityOverlay = true;
+                if (pokemon) {
+                    const std::string_view legalitySource =
+                        details.source == EditSource::Bank
+                            ? std::string_view{} : std::string_view(sourceGameId);
+                    const auto report =
+                        Legality::analyze(*pokemon, pokemon->getGameGroup(), legalitySource);
+                    if (report.verdict() != Legality::Verdict::NoProblemsFound)
+                        details.legalityOverlay = true;
+                }
                 return;
             }
             // View is a genuinely read-only summary. Keep navigation, ribbons, legality, and B/close,
