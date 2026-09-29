@@ -122,7 +122,15 @@ namespace Legality {
                 exactSourceGameId, gen1.speciesID(), catchRate);
             if (evidence == Evidence::NativeSpeciesRate) {
                 add(r, Severity::Info,
-                    "PK1 catch-rate byte matches this exact Generation I game",
+                    "PK1 catch-rate byte matches the current species in this exact Generation I game",
+                    CheckIdentifier::Encounter);
+            } else if (evidence == Evidence::Gen1SpeciesOrPreEvolutionRate) {
+                add(r, Severity::Info,
+                    "PK1 catch-rate byte matches R/B/Y species or pre-evolution provenance",
+                    CheckIdentifier::Encounter);
+            } else if (evidence == Evidence::AmbiguousGen1OrTimeCapsuleHeldItem) {
+                add(r, Severity::Info,
+                    "PK1 catch-rate byte matches Gen I species/pre-evolution provenance and a valid Gen II held-item byte; Time Capsule history is indeterminate",
                     CheckIdentifier::Encounter);
             } else if (evidence == Evidence::PossibleTimeCapsuleHeldItem) {
                 add(r, Severity::Info,
@@ -130,7 +138,7 @@ namespace Legality {
                     CheckIdentifier::Encounter);
             } else {
                 add(r, Severity::Info,
-                    "PK1 catch-rate provenance is unresolved; pre-evolution/static/trade evidence is not complete",
+                    "PK1 catch-rate provenance is unresolved; static/gift/trade/Stadium evidence is not complete",
                     CheckIdentifier::Encounter);
             }
         }

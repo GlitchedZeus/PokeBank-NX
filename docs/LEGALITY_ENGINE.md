@@ -27,7 +27,7 @@ The first legality-engine tranche adds:
 - preservation of the existing exact-game Gen III move context;
 - Gen III handheld PID/IV correlation for Methods 1, 2, 3 and 4, including Unown's reversed-half variants.
 
-Current encounter coverage is **partial** for R/B/Y, Crystal, the five Gen III games, and all five Gen IV games. Gen I now checks exact-game PK1 catch-rate evidence and Time Capsule held-item-byte compatibility without pretending PK1 stores met location/level. Gen IV now has pinned wild-slot, static/gift, and fixed in-game trade evidence for D/P/Pt/HG/SS. External event and PokeWalker templates are still incomplete, so an encounter non-match is not treated as illegal. Gen I static/gift/trade and full pre-evolution catch-rate provenance are still incomplete, so unmatched catch-rate evidence remains unknown rather than illegal.
+Current encounter coverage is **partial** for R/B/Y, Crystal, the five Gen III games, and all five Gen IV games. Gen I now checks exact-game PK1 catch rates, R/B/Y pre-evolution catch-rate provenance, and Time Capsule held-item-byte compatibility, including ambiguous bytes that can represent either history, without pretending PK1 stores met location/level. Gen IV now has pinned wild-slot, static/gift, and fixed in-game trade evidence for D/P/Pt/HG/SS. External event and PokeWalker templates are still incomplete, so an encounter non-match is not treated as illegal. Gen I static/gift/trade/Stadium encounter templates remain incomplete, so unmatched catch-rate evidence remains unknown rather than illegal.
 
 ## Planned layers
 

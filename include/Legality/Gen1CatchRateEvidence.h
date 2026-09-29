@@ -9,6 +9,8 @@ namespace Legality::Gen1CatchRate {
 enum class Evidence : uint8_t {
     Unknown,
     NativeSpeciesRate,
+    Gen1SpeciesOrPreEvolutionRate,
+    AmbiguousGen1OrTimeCapsuleHeldItem,
     PossibleTimeCapsuleHeldItem,
 };
 
@@ -41,13 +43,40 @@ constexpr bool isPossibleTimeCapsuleHeldItem(uint8_t rate) noexcept {
             static_cast<uint8_t>(1u << (rate & 7u))) != 0;
 }
 
+constexpr uint8_t evolutionStage(uint16_t species) noexcept {
+    return species < kEvolutionStage.size() ? kEvolutionStage[species] : 0;
+}
+
+constexpr bool matchesGen1SpeciesOrPreEvolutionRate(
+    uint16_t species, uint8_t catchRate) noexcept {
+    if (species == 0 || species > 151)
+        return false;
+    const uint16_t base = static_cast<uint16_t>(species - evolutionStage(species));
+    for (uint16_t s = base; s <= species; ++s) {
+        if (catchRate == kCatchRateRB[s] || catchRate == kCatchRateY[s])
+            return true;
+    }
+    return false;
+}
+
 constexpr Evidence classify(std::string_view exactGameId, uint16_t species,
                             uint8_t catchRate) noexcept {
     if (!isGen1Game(exactGameId) || species == 0 || species > 151)
         return Evidence::Unknown;
-    if (catchRate == expectedRate(exactGameId, species))
+
+    const bool native = catchRate == expectedRate(exactGameId, species);
+    const bool gen1Rate = matchesGen1SpeciesOrPreEvolutionRate(species, catchRate);
+    const bool item = isPossibleTimeCapsuleHeldItem(catchRate);
+
+    // The catch-rate byte alone cannot distinguish these cases. Mirror that ambiguity
+    // instead of claiming the Pokemon definitely was or was not traded through Gen II.
+    if (gen1Rate && item)
+        return Evidence::AmbiguousGen1OrTimeCapsuleHeldItem;
+    if (native)
         return Evidence::NativeSpeciesRate;
-    if (isPossibleTimeCapsuleHeldItem(catchRate))
+    if (gen1Rate)
+        return Evidence::Gen1SpeciesOrPreEvolutionRate;
+    if (item)
         return Evidence::PossibleTimeCapsuleHeldItem;
     return Evidence::Unknown;
 }
