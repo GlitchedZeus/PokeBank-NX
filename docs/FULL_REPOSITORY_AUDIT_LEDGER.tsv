@@ -537,7 +537,7 @@ src/UI/BackupSelectionScreen.cpp	blob	100644	14155	profile/game backup browser/d
 src/UI/ClassicInventoryOverlay.cpp	blob	100644	40334		unknown		PENDING			0	
 src/UI/ClassicInventoryUIModel.cpp	blob	100644	3480	classic inventory UI model implementation	text	87	AUDITED			0	no
 src/UI/ClassicPackedMoveOverlay.inc	blob	100644	27633		unknown		PENDING			0	
-src/UI/ClassicReleaseActionFix.inc	blob	100644	15493		unknown		PENDING			0	
+src/UI/ClassicReleaseActionFix.inc	blob	100644	15493	Gen I/II staged Release action and confirmation layer	text	347	AUDITED			0	no
 src/UI/Dialogs/ItemEditDialog.cpp	blob	100644	6297	item edit/remove dialog renderer	text	114	AUDITED			0	no
 src/UI/Dialogs/PickerDialog.cpp	blob	100644	11567	generic picker dialog renderer	text	196	AUDITED			0	no
 src/UI/Dialogs/SaveConfirmDialog.cpp	blob	100644	5520	save/exit confirmation renderer	text	107	AUDITED			0	no
@@ -550,13 +550,13 @@ src/UI/Gen1PokemonEditorOverlayUX.inc	blob	100644	50586		unknown		PENDING			0
 src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc	blob	100644	56095		unknown		PENDING			0	
 src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc	blob	100644	35382		unknown		PENDING			0	
 src/UI/Gen1PokemonEditorPassiveView.inc	blob	100644	1145	Gen I passive read-only workspace adapter	text	30	AUDITED			0	no
-src/UI/Gen2HardwareFinalFix.inc	blob	100644	19308		unknown		PENDING			0	
+src/UI/Gen2HardwareFinalFix.inc	blob	100644	19308	Gen II final hardware fullscreen presentation adapter	text	348	AUDITED			0	no
 src/UI/Gen2HardwarePickerFix.inc	blob	100644	5789	Gen II hardware move-picker compatibility adapter	text	126	AUDITED			0	no
 src/UI/Gen2HardwareWorkspaceFix.inc	blob	100644	4629	Gen II hardware workspace focus/presentation adapter	text	108	AUDITED			0	no
 src/UI/Gen2PokemonEditorFoundation.inc	blob	100644	39358		unknown		PENDING			0	
-src/UI/Gen2PokemonPickerOverlay.inc	blob	100644	12400		unknown		PENDING			0	
-src/UI/Gen2SharedPokemonSurface.inc	blob	100644	29650		unknown		PENDING			0	
-src/UI/Gen2SharedSurfaceParity.inc	blob	100644	18969		unknown		PENDING			0	
+src/UI/Gen2PokemonPickerOverlay.inc	blob	100644	12400	Gen II named species/move/location picker overlay	text	264	AUDITED			0	no
+src/UI/Gen2SharedPokemonSurface.inc	blob	100644	29650	Gen II shared actions/clone/review/provenance surface	text	605	AUDITED			0	no
+src/UI/Gen2SharedSurfaceParity.inc	blob	100644	18969	Gen II shared-surface parity/action input adapter	text	343	AUDITED			0	no
 src/UI/Gen2TrainerSessionOverlay.inc	blob	100644	2691	Gen II staged trainer-session overlay	text	59	AUDITED			0	no
 src/UI/Gen2UnifiedPokemonWorkspace.inc	blob	100644	42404		unknown		PENDING			0	
 src/UI/Gen3SharedPokemonSurface.inc	blob	100644	78589		unknown		PENDING			0	
