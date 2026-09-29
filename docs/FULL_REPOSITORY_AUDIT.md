@@ -25,20 +25,19 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 448 / 731
-- Fully read text files: 414 / 698
+- Audited tracked paths: 475 / 731
+- Fully read text files: 441 / 698
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
 
-- PR #92 is audited through live head `f792a498aaa41793a86c137c0ff74c7a0c2205a3`.
-- The newest one-commit delta adds the generated `Gen4MoveCompatibility.h` table/generator and updates the exact-format provider, Gen IV shared surface, and provider test.
-- The live tree contains 731 tracked non-directory paths. Six text files had been added since the original 725-path ledger snapshot; all six are now present in the ledger and fully read/audited.
-- The generated Gen IV compatibility table was mechanically checked for complete shape: Diamond/Pearl, Platinum, and HeartGold/SoulSilver each contain exactly 494 species rows (0..493) and eight 64-bit words per row, covering moves 0..467.
-- Transfer-only Gen IV moves are intentionally surfaced as warnings rather than native-teachable moves: the picker includes them because they can be legal possessions after same-generation trade, while the provider labels them `Unsupported`/“Transfer” rather than `Compatible`/“OK”.
-- The shared move-stat generator has one confirmed exact-game fidelity defect: it uses a single HGSS move table for DP/PT/HGSS even though Hypnosis is 70% accurate in Diamond/Pearl and 60% in Platinum/HGSS. Recorded as AUDIT-033.
-- The Gen IV staged editor still preserves immutable source bytes, mutates a separate staged image, refreshes the affected save CRC, reparses the staged save, exact-verifies serialized PK4, and rolls back staged bytes on verification failure.
-- `DurableFile` continues to document Switch SD directory-entry durability as a separate hardware gate; absence of directory fsync in this primitive is not being misreported as a hidden guarantee violation.
+- PR #92 remains audited through live head `f792a498aaa41793a86c137c0ff74c7a0c2205a3`.
+- Live tracked inventory is 731 non-directory paths / 698 text-or-unknown candidates; 475 paths are now accounted for and 441 text files have been fully read.
+- The entire Names tranche is now closed: no `include/Names` or `src/Names` file remains PENDING. Generated species tables contain 1,026 entries in each of nine languages; the modern item-name table contains ids 0..2684; Gen III direct item names cover ids 0..376.
+- MovePresence's unknown-group/id-0 behavior contradicts its comment, but all audited real game-group callers are routed through known groups; kept as a hardening follow-up, not a numbered defect.
+- Recovery/package/source-pin tooling is now substantially audited. Supported CI invokes `verify_embedded_romfs.py` with normal `python3`; its assert-based checks are therefore live today, while replacing asserts with explicit failures remains a robustness follow-up.
+- HD sprite recovery/preflight currently proves filenames/counts more strongly than file validity. A corrupt or zero-byte existing sprite can survive count-based recovery and presence-only preflight. Recorded as AUDIT-034.
+- Exact-game Gen IV move-stat presentation defect remains AUDIT-033: Diamond/Pearl are currently shown the shared HGSS values for at least Hypnosis.
 
 
 ## Sibling PR #97 overlay coverage
@@ -656,3 +655,18 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: generate distinct DP and Pt/HGSS move-stat tables (or patch the known intra-generation differences explicitly), dispatch by exact game/version rather than only `GameVersion::DP/PT/HGSS` to one common array, and add a Hypnosis regression asserting DP=70 and Pt/HGSS=60.
 - Risk of fix: low; presentation-only data, but exact-game routing must remain deterministic.
 - Owner: MAIN / move presentation data lane.
+
+### AUDIT-034 — HD sprite recovery/preflight can accept corrupt existing PNGs
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: device-artifact/recovery visual integrity
+- Files: `tools/gen_hdsprites.py`, `tools/check_device_assets.py`, `tools/recover_workspace.py`; final packaging consumes the preflight in `tools/package_device_build.py`.
+- Exact symbols: `gen_hdsprites._one()`, `check_device_assets.main()`, `recover_workspace.png_count()/restore_hd_sprites()`.
+- Problem: an existing HD sprite is considered reusable by `gen_hdsprites.py` solely because its path exists. Recovery decides the HD tree is complete primarily from the number of `.png` filenames. The device asset preflight likewise builds a filename set and checks required names; it reports directory size totals but does not require each PNG to be non-empty or decodable.
+- Concrete failure mode: replace a required file such as `romfs/sprites/pokemon_hd/25.png` with a zero-byte or otherwise invalid PNG while keeping the filename. If the directory still contains the expected number of PNG filenames, normal recovery need not invoke regeneration; even if the generator runs without `--force`, it returns `have` for that existing file. The preflight's required-name and representative-file checks can still pass it.
+- Why it matters: `package_device_build.py` treats the asset preflight as the visual-acceptance packaging gate. The final NRO can therefore be source-addressed and byte-verified against the intended RomFS tree while that intended tree itself contains an unreadable sprite. This can create missing/broken Pokémon art on hardware despite a nominal asset PASS.
+- Scope: visual/artifact integrity only. No save-data corruption path is created by this defect.
+- Missing tests: zero-byte required HD sprite; non-PNG bytes under a `.png` name; truncated PNG; recovery with correct filename count but one corrupt required file; preflight must fail all of them.
+- Recommended fix: validate every required HD asset as a non-empty decodable PNG (at minimum PNG signature + dimensions; preferably Pillow verification where available), and have recovery regenerate any invalid file rather than using filename count as completeness. The final preflight should independently repeat the validity check before packaging.
+- Risk of fix: low; runtime assets only, with increased preflight cost.
+- Owner: MAIN / device artifact + recovery lane.
