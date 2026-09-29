@@ -16,6 +16,7 @@
 #include "UI/Common.h"
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/Gen4SharedPokemonSession.h"
+#include "UI/MovePickerPresentation.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
@@ -40,6 +41,7 @@ namespace HeldItemGrid = PokeBank::UIModel::SharedHeldItemPicker;
 namespace SessionModel = PokeBank::UIModel::Gen4SharedEditor;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
 namespace Gen4 = PokeVault::Integration::Gen4;
+namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 
 enum class PickerTarget : uint8_t {
     None, Species, HeldItem, Language, Ball, MetLocation, Pokerus, Form, Move, Nature, Ability
@@ -1269,7 +1271,7 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
         return gen4FormLabel(species, static_cast<uint8_t>(value));
     }
     if (state.pickerTarget == PickerTarget::Move)
-        return value == 0 ? "Empty" : std::string(Names::getMoveName(value));
+        return MoveUI::rowLabel(value, bridge(screen).sourceSave().rawFamily());
     if (state.pickerTarget == PickerTarget::Nature)
         return Trainer::getNatureName(static_cast<uint8_t>(value));
     if (state.session.working) {
@@ -1304,7 +1306,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
     const bool movePicker = state.pickerTarget == PickerTarget::Move;
     const bool speciesPicker = state.pickerTarget == PickerTarget::Species;
-    const int w = heldItems ? 1040 : (movePicker || speciesPicker) ? 760 : 680;
+    const int w = heldItems ? 1040 : movePicker ? 1000 : speciesPicker ? 760 : 680;
     const int h = movePicker ? 568 : 560;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - h) / 2;
@@ -1342,7 +1344,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     if (movePicker) {
         fb.drawText(x + 24, y + 18, "Move — Generation IV", Colors::Text, TextStyle::Heading);
         fb.drawText(x + 24, y + 52,
-                    "Empty + native moves only • exact current Generation IV game",
+                    "Empty + native moves only • exact Gen IV Acc / Pwr / PP",
                     Colors::TextDim, TextStyle::Caption);
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = 13;

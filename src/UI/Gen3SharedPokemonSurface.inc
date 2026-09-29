@@ -21,6 +21,7 @@
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/Gen3SharedPokemonSession.h"
 #include "UI/Gen3EncounterPickerModel.h"
+#include "UI/MovePickerPresentation.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedSpeciesPicker.h"
@@ -44,6 +45,7 @@ namespace Gen3 = PokeVault::Integration::Gen3;
 namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 namespace EncounterPicker = PokeBank::UIModel::Gen3EncounterPicker;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
+namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 
 enum class PickerTarget : uint8_t {
     None,
@@ -468,7 +470,7 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
             return label;
         }
         case PickerTarget::Move:
-            return value == 0 ? "Empty" : std::string(Names::getMoveName(value));
+            return MoveUI::rowLabel(value, Enums::GameVersion::FRLG);
         default: return {};
     }
 }
@@ -1198,7 +1200,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     if (!state.valuePicker || state.pickerValues.empty()) return;
     const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
     const bool movePicker = state.pickerTarget == PickerTarget::Move;
-    const int w = heldItems ? 1040 : movePicker ? 760 : 680;
+    const int w = heldItems ? 1040 : movePicker ? 1000 : 680;
     const int h = movePicker ? 568 : 560;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - h) / 2;
@@ -1211,7 +1213,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     if (movePicker) {
         fb.drawText(x + 24, y + 18, "Move — Generation III", Colors::Text, TextStyle::Heading);
         fb.drawText(x + 24, y + 52,
-                    "Empty + compatible moves only • exact current game",
+                    "Empty + compatible moves only • exact Gen III Acc / Pwr / PP",
                     Colors::TextDim, TextStyle::Caption);
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = 13;

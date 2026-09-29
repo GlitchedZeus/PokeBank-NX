@@ -3,6 +3,7 @@
 // overlay model; the Gen2PokemonSession changes only when A explicitly applies a selected value.
 
 #include "UI/Gen2PokemonPickerModel.h"
+#include "UI/MovePickerPresentation.h"
 #include "Utils/Keyboard.h"
 
 namespace UI::Gen2PokemonEditor {
@@ -11,6 +12,7 @@ namespace {
 namespace Gen2Picker = PokeBank::UIModel::Gen2PokemonPicker;
 namespace Gen2Native = PokeBank::UIModel::Gen2Native;
 namespace Encounter = PokeVault::Integration::EncounterGuardrails;
+namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 
 struct PickerOverlayState {
     const TrainerViewScreen* owner = nullptr;
@@ -98,6 +100,7 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
 }
 
 const char* movePickerStatus(const TrainerViewScreen& screen, const State& state, uint16_t move) {
+    if (move == 0) return "Empty";
     const auto game = Rules::exactGameFromSourceId(screen.sourceGameId);
     if (game && Gen2::MoveCompatibility::canLearnMove(*game, state.working.species, move)) return "Compatible";
     const auto slot = pickerStateFor(screen).model.moveSlot;
@@ -110,6 +113,7 @@ const char* movePickerStatus(const TrainerViewScreen& screen, const State& state
 Color movePickerStatusColor(const char* status) {
     const std::string value(status);
     if (value == "Compatible") return Colors::Success;
+    if (value == "Empty") return Colors::TextDim;
     if (value == "Unusual preserved") return Colors::Warning;
     return Colors::Error;
 }
@@ -139,7 +143,8 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
         return;
     }
     const int W = fb.getWidth(), H = fb.getHeight();
-    constexpr int panelW = 760, panelH = 568;
+    constexpr int panelH = 568;
+    const int panelW = model.kind == Gen2Picker::Kind::Move ? 1080 : 760;
     const int x = (W - panelW) / 2, y = (H - panelH) / 2;
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
@@ -150,7 +155,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
                 location ? "Species-valid Crystal encounters • time shown when relevant • Met Level defaults to encounter minimum" : species ? "#001–#251 • browsing does not change the staged Pokemon"
-                        : "Empty + moves 1–251 • compatibility shown for this exact game",
+                        : "Empty + moves 1–251 • exact Gen II Acc / Pwr / PP • compatibility at right",
                 Colors::TextDim, TextStyle::Caption);
 
     const int count = location ? model.locationCount() : species ? 251 : 252;
@@ -179,7 +184,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
                           "#" + number + "  " + Names::getSpeciesName(dex), selected);
         } else {
             const uint16_t move = static_cast<uint16_t>(i);
-            const std::string name = move == 0 ? "Empty" : std::string(Names::getMoveName(move));
+            const auto name = MoveUI::rowLabel(move, Enums::GameVersion::GSC);
             drawPickerRow(fb, x + 20, yy, panelW - 40, name, selected);
             const char* status = movePickerStatus(screen, state, move);
             int sw = 0, sh = 0;
