@@ -424,7 +424,7 @@ nanovg/nanovg_gl_utils.h	blob	100644	4807	vendored NanoVG framebuffer utility	te
 nanovg/nanovg_gl.h	blob	100644	46912	vendored NanoVG OpenGL backend	text	1660	AUDITED			0	no
 nanovg/nanovg.c	blob	100644	77637	vendored NanoVG core renderer/text integration	text	2949	AUDITED			1	yes
 nanovg/nanovg.h	blob	100644	28603	vendored NanoVG public API	text	697	AUDITED			0	no
-nanovg/stb_truetype.h	blob	100644	195646		unknown		PENDING			0	
+nanovg/stb_truetype.h	blob	100644	195646	vendored stb_truetype font parser/rasterizer	text	5010	AUDITED			0	no
 PHILOSOPHY.md	blob	100644	1093	repository/build metadata	text		AUDITED			0	
 PKSE.sln	blob	100644	1032	repository/build metadata	text		AUDITED			1	yes
 PKSE.vcxproj	blob	100644	14698	repository/build metadata	text		AUDITED			1	yes
