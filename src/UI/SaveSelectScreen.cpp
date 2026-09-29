@@ -1418,6 +1418,21 @@ namespace UI {
             }
         }
 
+        // L/R changes the selected game from anywhere on Product Home, matching the footer.
+        const UserEntry* homeUser = currentUser();
+        const int homeGameCount = homeUser ? static_cast<int>(homeUser->titles.size()) : 0;
+        if (homeGameCount > 0) {
+            const int before = titleIndex;
+            if (kDown & HidNpadButton_L)
+                titleIndex = (titleIndex - 1 + homeGameCount) % homeGameCount;
+            if (kDown & HidNpadButton_R)
+                titleIndex = (titleIndex + 1) % homeGameCount;
+            if (titleIndex != before) {
+                scrollSelectionIntoView();
+                refreshHubPreview();
+            }
+        }
+
         if (hubDockFocused) {
             if (kDown & HidNpadButton_Up) {
                 hubDockFocused = false;
@@ -1466,18 +1481,8 @@ namespace UI {
             return;
         }
 
-        const UserEntry* u = currentUser();
-        const int count = u ? static_cast<int>(u->titles.size()) : 0;
-        if (count > 0) {
-            const int before = titleIndex;
-            if (kDown & HidNpadButton_L) titleIndex = (titleIndex - 1 + count) % count;
-            if (kDown & HidNpadButton_R) titleIndex = (titleIndex + 1) % count;
-            if (titleIndex != before) {
-                scrollSelectionIntoView();
-                refreshHubPreview();
-            }
-            if (kDown & HidNpadButton_A) selectCurrentTitle();
-        }
+        if (homeGameCount > 0 && (kDown & HidNpadButton_A))
+            selectCurrentTitle();
     }
 
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {
