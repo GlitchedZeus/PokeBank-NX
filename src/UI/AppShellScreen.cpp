@@ -59,6 +59,13 @@ namespace {
         if (section == AppShellSection::Banks) {
             fb.drawRoundedRect(cx - 23, cy - 18, 46, 28, 7, ink, 2);
             fb.drawRoundedRect(cx - 17, cy - 8, 34, 28, 6, ink, 2);
+        } else if (section == AppShellSection::Backups) {
+            fb.drawRoundedRect(cx - 24, cy - 18, 48, 36, 7, ink, 2);
+            fb.drawFilledRoundedRect(cx - 12, cy - 25, 24, 8, 3, ink);
+            fb.drawFilledRoundedRect(cx - 14, cy + 2, 28, 4, 2, ink);
+        } else if (section == AppShellSection::Search) {
+            fb.drawCircle(cx - 5, cy - 5, 15, ink, 2);
+            fb.drawFilledRoundedRect(cx + 7, cy + 8, 22, 5, 2, ink);
         } else if (section == AppShellSection::More) {
             for (int oy : {-10, 10})
                 for (int ox : {-10, 10})
@@ -360,11 +367,11 @@ void AppShellScreen::drawHome(PKSEFramebuffer& fb) {
         fb.drawText(px + 12, y + 42, std::string(entry.badge), badge, TextStyle::Caption);
     }
 
-    fb.drawText(kPrimaryX, kDockY - 32, "QUICK ACCESS",
+    fb.drawText(kPrimaryX, kDockY - 32, "NAVIGATION",
                 Colors::TextMuted, TextStyle::Caption);
 
-    // Three compact console-style destinations. Storage/Backups/Search/Diagnostics are nested
-    // under the product areas that own them instead of becoming developer-dashboard root cards.
+    // Compact product dock mirrors Product Home: Games / Banks / Backups / Search / More.
+    // Settings remains a header/+ destination and is intentionally excluded here.
     const int dockSpan = PokeBank::UIModel::APP_SHELL_DOCK_COUNT * kDockSize +
                          (PokeBank::UIModel::APP_SHELL_DOCK_COUNT - 1) * kDockGap;
     const int dockStartX = kPrimaryX + (kPrimaryW - dockSpan) / 2;
@@ -464,7 +471,7 @@ void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
         fb.drawText(x + 30, y + h - 54, statusMessage.substr(0, 100),
                     Colors::TextMuted, TextStyle::Caption);
 
-    drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Change"}, {"B", "Close"}});
+    drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Change"}, {"B", "Close"}});
 }
 
 void AppShellScreen::drawDiagnostics(PKSEFramebuffer& fb) {
@@ -493,8 +500,8 @@ void AppShellScreen::drawDiagnostics(PKSEFramebuffer& fb) {
     line("Debug logging", g_debugLogging ? "On" : "Off", Colors::TextPrimary);
     line("External source writes", "LOCKED", Colors::Info);
     line("Cross-game True Move", "LOCKED", Colors::Info);
-    line("Master Vault backend", "Not implemented", Colors::TextSecondary);
-    line("Global search index", "Not implemented", Colors::TextSecondary);
+    line("Master Vault backend", "Coming Soon", Colors::TextSecondary);
+    line("Global search index", "Coming Soon", Colors::TextSecondary);
     line("Legacy Storage", "App-owned / not Master Vault", Colors::TextSecondary);
 
     drawNavBar(fb, {{"B", "Close"}});

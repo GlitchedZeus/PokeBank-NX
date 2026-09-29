@@ -10,11 +10,12 @@ namespace PokeBank::UIModel {
     enum class AppShellSection {
         MasterVault,
         Pokedex,
+        Games,
         Banks,
+        Backups,
         Search,
         More,
         Settings,
-        Games,
     };
 
     enum class AppShellAvailability {
@@ -36,27 +37,30 @@ namespace PokeBank::UIModel {
     inline constexpr int APP_SHELL_PRIMARY_COUNT = 2;
     inline constexpr int APP_SHELL_DOCK_COUNT = 5;
 
-    inline constexpr std::array<AppShellEntry, 7> APP_SHELL_ENTRIES{{
+    inline constexpr std::array<AppShellEntry, 8> APP_SHELL_ENTRIES{{
         {AppShellSection::MasterVault, "Master Vault",
          "Your central Pokémon library", "COMING SOON",
          AppShellAvailability::FutureBackend, false},
         {AppShellSection::Pokedex, "Pokédex",
          "Species, forms, cries and collection progress", "COMING SOON",
          AppShellAvailability::FutureBackend, false},
+        {AppShellSection::Games, "Games",
+         "Selected-game workspace, party, boxes and editor", "",
+         AppShellAvailability::Ready, true},
         {AppShellSection::Banks, "Banks",
          "Named Banks and Boxes", "NO BANKS YET",
          AppShellAvailability::FutureBackend, false},
+        {AppShellSection::Backups, "Backups",
+         "Backup history for supported selected games", "GAME WORKSPACE",
+         AppShellAvailability::WorkspaceRequired, false},
         {AppShellSection::Search, "Search",
-         "Find Pokémon across the future Vault index", "NO INDEX YET",
+         "Find Pokémon across the future Vault index", "COMING SOON",
          AppShellAvailability::FutureBackend, false},
         {AppShellSection::More, "More",
          "Future PokeBank NX features", "COMING SOON",
          AppShellAvailability::FutureBackend, true},
         {AppShellSection::Settings, "Settings",
          "Themes, safety and app preferences", "",
-         AppShellAvailability::Ready, true},
-        {AppShellSection::Games, "Games",
-         "Profiles, saves, party, edit and launch", "",
          AppShellAvailability::Ready, true},
     }};
 
@@ -68,12 +72,12 @@ namespace PokeBank::UIModel {
         return APP_SHELL_ENTRIES[static_cast<std::size_t>(index)];
     }
 
-    // Professional console-home hierarchy:
+    // Product hierarchy:
     //   0 Master Vault
     //   1 Pokédex
-    //   2..6 compact dock (Banks, Search, More, Settings, Games)
-    // Storage, Backups, Search, Collections and Diagnostics live inside the destinations
-    // that own them instead of becoming equal-sized root dashboard cards.
+    //   2..6 compact dock (Games, Banks, Backups, Search, More)
+    //   7 Settings (header / + shortcut, never part of the bottom dock).
+    // Backups remain selected-game context; future destinations stay truthful scaffolding.
     constexpr int appShellMoveSelection(int current, int dx, int dy) {
         if (current < 0 || current >= appShellEntryCount()) current = 0;
 
@@ -84,7 +88,8 @@ namespace PokeBank::UIModel {
         }
 
         const int dockFirst = APP_SHELL_PRIMARY_COUNT;
-        const int dockLast = appShellEntryCount() - 1;
+        const int dockLast = APP_SHELL_PRIMARY_COUNT + APP_SHELL_DOCK_COUNT - 1;
+        if (current > dockLast) return 0;
         if (dy < 0) return 1;
         if (dx < 0) return current == dockFirst ? dockLast : current - 1;
         if (dx > 0) return current == dockLast ? dockFirst : current + 1;
@@ -98,9 +103,9 @@ namespace PokeBank::UIModel {
     }
 
     constexpr bool appShellRootActionable(AppShellSection section) {
-        return section == AppShellSection::More ||
-               section == AppShellSection::Settings ||
-               section == AppShellSection::Games;
+        return section == AppShellSection::Games ||
+               section == AppShellSection::More ||
+               section == AppShellSection::Settings;
     }
 
 } // namespace PokeBank::UIModel
