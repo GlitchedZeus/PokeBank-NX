@@ -43,7 +43,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 21 | AUDIT-027 | P2 | FIXED | LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0 |
 | 22 | AUDIT-014 | P2 | FIXED | Session-wide source read-only gate disables app-owned Bank mutation |
 | 23 | AUDIT-019 | P3 | FIXED | modern encrypted blank slots are parsed as live species-0 objects |
-| 24 | AUDIT-012 | P3 | OPEN | Settings persistence truncates in place and ignores write/close failure |
+| 24 | AUDIT-012 | P3 | FIXED | Settings persistence truncates in place and ignores write/close failure |
 | 25 | AUDIT-040 | P3 | OPEN | RetroArch playlist auto-match can accept wrong-family game content with the same basename |
 | 26 | AUDIT-016 | P3 | OPEN | RetroArch launch matching is basename-only and first-match wins |
 | 27 | AUDIT-043 | P3 | OPEN | Device-observed Gen IV save rows can lose trainer-name presentation despite synthetic parser coverage |
@@ -484,7 +484,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** injected write failure, close failure, interrupted/truncated file recovery, and successful round-trip of all current keys.
 - **Dependency / sequencing:** Can reuse durable replace primitive from AUDIT-015 if generalized
 - **Proposed remediation order:** 24
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** settings are now serialized fully in memory and persisted through `Utils::AtomicTextFile::replace()`: a sibling temp is written, flushed, closed, read back byte-for-byte, the prior authoritative file is rotated, and only the verified temp is promoted. Promotion failure restores the prior generation, and startup recovers a rotated `.previous` file only when `settings.cfg` itself is absent. `saveSettings()` now returns `bool`; the Settings UI surfaces failure and explicitly tells the user the previous settings file was retained. `test_atomic_text_file.cpp` injects write, flush, close and promotion failures plus interrupted-rotation recovery, while `test_settings_persistence_contract.cpp` binds production settings/UI to the durable helper. Both run in Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 25. AUDIT-040 — RetroArch playlist auto-match can accept wrong-family game content with the same basename
 
