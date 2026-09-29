@@ -27,7 +27,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 5 | AUDIT-031 | P2 | FIXED | SC SHA-256 message decoding uses signed-shift undefined behavior |
 | 6 | AUDIT-025 | P3 | FIXED | defaulted Pokémon move operations duplicate raw-buffer ownership |
 | 7 | AUDIT-026 | P3 | FIXED | Gen III and modern entity constructors do not fully enforce/normalize native record length |
-| 8 | AUDIT-021 | P2 | OPEN | SWSH/SV/Z-A authenticate the SC container but do not validate required game layout |
+| 8 | AUDIT-021 | P2 | FIXED | SWSH/SV/Z-A authenticate the SC container but do not validate required game layout |
 | 9 | AUDIT-017 | P2 | OPEN | FRLG mutable workspace selects rotating slot before checksum validation |
 | 10 | AUDIT-023 | P2 | OPEN | LGPE durable validator rejects the authentic 1 MiB save image |
 | 11 | AUDIT-018 | P2 | OPEN | LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity |
@@ -200,7 +200,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** duplicate required keys; missing required blocks; short Party/Box/MyStatus blocks with a valid outer hash; unsupported block type for a required key; all must fail before Trainer construction and before any serializer mutation.
 - **Dependency / sequencing:** Build after immediate OOB fix; validator covers several downstream paths
 - **Proposed remediation order:** 8
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** PR #101 now provides `include/Save/SCReadValidation.h` with unique-key checks, required block type/size checks, and checksum/basic-domain validation for occupied SWSH/SV/Z-A party/box records. `validateTrainerSaveForOpen()` and durable `validateSCWorkspace()` both call the same semantic layout validator. `tests/test_pla_read_validation.cpp` covers valid layouts plus duplicate keys, missing required blocks, truncation, wrong type, and corrupted Pokémon records, and the target is wired into Host Tests and ASan/UBSan. Exact-head Host Tests are still running and the Native PR Gate is red, so this is not VERIFIED yet.
 
 ### 9. AUDIT-017 — FRLG mutable workspace selects rotating slot before checksum validation
 
