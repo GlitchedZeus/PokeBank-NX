@@ -32,7 +32,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 10 | AUDIT-023 | P2 | FIXED | LGPE durable validator rejects the authentic 1 MiB save image |
 | 11 | AUDIT-018 | P2 | FIXED | LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity |
 | 12 | AUDIT-022 | P3 | FIXED | BDSP pre-open validation ignores its stored whole-file MD5 |
-| 13 | AUDIT-024 | P2 | OPEN | Gen IX inventory decoder leaves persisted flags indeterminate |
+| 13 | AUDIT-024 | P2 | FIXED | Gen IX inventory decoder leaves persisted flags indeterminate |
 | 14 | AUDIT-039 | P2 | OPEN | Backup save can serialize while held-Pokémon rollback failed |
 | 15 | AUDIT-015 | P2 | OPEN | Failed backup creation can leave a partial folder surfaced as a backup |
 | 16 | AUDIT-029 | P2 | OPEN | Gen II finalization can serialize an in-progress packed move with carried Pokémon omitted |
@@ -290,7 +290,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** native records with NEW clear/set and FAVORITE clear/set must decode deterministically; parse→write with no edits must be byte-identical; repeated runs under UBSan/ASan-compatible host builds must not depend on stack contents; high-bit 32-bit fields must decode using defined unsigned operations.
 - **Dependency / sequencing:** Run under UBSan; coordinate with AUDIT-021 fixtures
 - **Proposed remediation order:** 13
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `InventoryItem` now has deterministic zero/false defaults. Both `InventoryItem9SV::fromBytes()` and `InventoryItem9LZA::fromBytes()` value-initialize their records, assemble native 32-bit fields with defined unsigned shifts, and map flags bit 0/1 into `isNew`/`isFavorite` before slicing into `Trainer::items`. `tests/test_gen9_inventory_decode.cpp` exercises all NEW/FAVORITE combinations, high-bit pouch/count/flag values, and base slicing for both games; it runs in normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 14. AUDIT-039 — Backup save can serialize while held-Pokémon rollback failed
 
