@@ -11,90 +11,42 @@ No current adapter is approved for direct live writing to an installed-game save
 | I | Red / Blue / Yellow | RetroArch + validated legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
 | II | Gold / Silver / Crystal | RetroArch + validated legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
 | III | Ruby / Sapphire / Emerald / FireRed / LeafGreen | RetroArch / provider-aware legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
-| IV | Diamond / Pearl / Platinum / HeartGold / SoulSilver | DraStic / melonDS / remembered/manual assignment foundation | Party + Box View/Edit, Create, native field/move/form work | Base milestone accepted; full G4-04 **HARDWARE PENDING** |
+| IV | Diamond / Pearl / Platinum / HeartGold / SoulSilver | DraStic / melonDS / remembered/manual assignment | Party + Box View/Edit, Create and native field/move/form work | Base milestone accepted; full integrated G4-04 **HARDWARE PENDING** |
 | V | Black / White / Black 2 / White 2 | Not started | Not started | NOT SUPPORTED |
-| 3DS | X/Y, ORAS, SM/USUM | Provider/research planning only | Not started | NOT SUPPORTED |
-| Modern Switch | LGPE, SWSH, BDSP, PLA, SV, Z-A and other tracked identities | validation/source foundation varies by title | production editor/write support not advertised | NOT GENERALLY ACCEPTED |
+| 3DS | X/Y, ORAS, SM/USUM | Research/provider planning only | Not started | NOT SUPPORTED |
+| Modern Switch | LGPE, SWSH, BDSP, PLA, SV, Z-A and tracked identities | validation/source foundation varies by title | production editor/write support not generally advertised | NOT GENERALLY ACCEPTED |
 
-FireRed/LeafGreen GBA and any separately tracked Switch release identities remain distinct game/platform identities.
+FireRed/LeafGreen GBA and separately tracked Switch release identities remain distinct game/platform identities.
 
 ## Generation I
 
-Hardware-accepted current foundation includes:
+Hardware-accepted foundation includes Trainer / Party / Boxes, generation-correct Pokémon data, Bag/PC Items, strict source validation, shared View/Create/Edit, exact-game move handling and source immutability.
 
-- Trainer / Party / Boxes;
-- generation-correct Pokémon data;
-- Bag/PC Items;
-- strict source validation;
-- staged shared View/Create/Edit;
-- exact-game move handling;
-- source immutability.
-
-Current integrated development also exposes real per-save Pokédex progress and grounded trainer presentation in the Product Home path. That newer presentation still requires integrated hardware testing.
+The integrated Product UI now exposes real Gen I Pokédex progress and trainer presentation; that newer shell is part of the combined hardware-pending candidate.
 
 ## Generation II
 
-Hardware-accepted current foundation includes:
+Hardware-accepted foundation includes Trainer / Party / Boxes, Held Item, Friendship, Pokérus, DVs / Stat Exp, native gender/shiny semantics, Crystal-only fields where stored, shared View/Create/Edit, inventory and source immutability.
 
-- Trainer / Party / Boxes;
-- Held Item, Friendship and Pokérus;
-- DVs / Stat Exp;
-- gender/shiny semantics;
-- Crystal-specific native fields;
-- staged shared View/Create/Edit;
-- inventory;
-- source immutability.
-
-Gold/Silver do not fabricate a modern SID. Crystal-specific data is only shown where the exact format stores it.
+Gold/Silver do not fabricate a modern SID. The integrated Product UI exposes real Gen II Pokédex progress.
 
 ## Generation III
 
-Hardware-accepted current foundation includes:
+Hardware-accepted foundation includes rotating-sector validation, Trainer / Party / Boxes, PK3 browsing/editing, inventory, Gen III-native fields, shared View/Create/Edit and source immutability.
 
-- strict rotating-sector validation;
-- Trainer / Party / Boxes;
-- PK3 browsing/editing;
-- inventory;
-- exact Gen III-native fields;
-- staged shared View/Create/Edit;
-- source immutability.
-
-Current integrated development adds real per-save Pokédex progress and game/gender-aware trainer presentation to the Product Home layer.
+The integrated Product UI exposes real Gen III Pokédex progress and game/gender-aware trainer presentation.
 
 ## Generation IV
 
-Supported identities:
+Supported identities: Diamond, Pearl, Platinum, HeartGold, SoulSilver.
 
-- Diamond
-- Pearl
-- Platinum
-- HeartGold
-- SoulSilver
-
-Source/provider foundation includes:
-
-- DraStic;
-- melonDS;
-- remembered/manual source assignment;
-- fail-closed validation before assignment/open.
+Source/provider foundation includes DraStic, melonDS and remembered/manual assignment with strict validation before open.
 
 The first staged Party/Box View/Edit milestone is physically accepted.
 
-Current G4-04 implementation includes:
+Current G4-04 implementation includes Party/Box View/Edit, empty Box Add/Create, native Held Item/Language/Ball/Pokérus/Met Location handling, native move selection with species compatibility, exact PP behavior, Species mutation, supported Form editing, trainer identity handling, strict save reparse/checksum/rollback, and external source immutability.
 
-- Party / Box View/Edit;
-- empty Box Add/Create;
-- native Held Item / Language / Ball / Pokérus / Met Location;
-- native Gen IV move picker with species compatibility;
-- exact base PP and PP Up reset behavior on move replacement;
-- Species mutation and dependent state reconciliation;
-- supported Form editing and exact-game restrictions;
-- editable OT / Trainer ID where currently supported;
-- trainer/origin inspection;
-- strict save reparse/checksum/rollback;
-- external source immutability.
-
-The integrated Product UI carries real Gen IV trainer-name propagation, real Gen IV Pokédex progress, and game/gender-aware Lucas/Dawn or Ethan/Lyra presentation where the save proves gender.
+The integrated Product UI carries real Gen IV trainer names, real Gen IV Pokédex progress, Party sprites, and game/gender-grounded trainer portraits.
 
 The full combined G4-04 + Product UI build is **not yet device accepted**.
 
@@ -102,9 +54,11 @@ The full combined G4-04 + Product UI build is **not yet device accepted**.
 
 Discovery and launching are separate from write authorization.
 
-Current provider-aware work includes RetroArch, DraStic, melonDS and manual/remembered bindings. Game launch metadata is stored by PokeBank NX rather than written into emulator save directories.
+Current provider-aware work includes RetroArch, DraStic, melonDS and manual/remembered bindings. Launch metadata is stored in PokeBank-owned configuration rather than emulator save directories.
 
-If a ROM/content target cannot be proven, the UI must request an explicit **Link Game File** rather than infer it from the save path.
+If a ROM/content target cannot be proven, the UI requests **Link Game File** instead of inferring it from the save path.
+
+Direct DraStic/melonDS launch handoff remains an integration-verification item for the combined hardware candidate.
 
 ## Permanent safety policy
 

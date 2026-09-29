@@ -4,7 +4,7 @@ Last updated: **2026-09-29**
 
 Repository: `GlitchedZeus/PokeBank-NX`
 
-GitHub is authoritative. Recorded SHAs are checkpoints only: always re-fetch before modifying a lane, preserve newer commits, and never reset/rebase backward or force-push over newer work.
+GitHub is authoritative. Recorded SHAs are evidence checkpoints only. Always re-fetch live GitHub, preserve newer commits, and never reset/rebase backward or force-push over newer work.
 
 ## Active MAIN lane
 
@@ -12,150 +12,90 @@ GitHub is authoritative. Recorded SHAs are checkpoints only: always re-fetch bef
 
 - Branch: `feature/gen4-full-editor-20260928`
 - State: **OPEN / DRAFT / NOT MERGED**
-- Last verified head: `58a56f8d3b8350283f34fcc4d8dafc495b6515f2`
-- Latest changes: two-pane Settings with cursor memory + grounded trainer portraits
-- PR #100 Product UI polish: **MERGED INTO THIS LANE**
+- Application checkpoint incorporated by this documentation refresh: `710cf37a33ba7a9f29b09953c5d8aa224268e4fd`
+- PR #100 Product UI polish: **MERGED INTO PR #92**
 
-Current exact-head CI boundary at the time of this update:
+The integrated application now includes the modern Product Home, Classic Game Sources, real Party sprites, real Gen I–IV Pokédex progress, Gen IV trainer-name propagation, grounded trainer portraits, Backpack/Items quick entry, cursor restoration, two-pane Settings, and current emulator-launch/control cleanup.
 
-- Host Tests #1684 — **RUNNING**
-- Gen IV Shared Editor Candidate Gate #131 — **PENDING**
-- Product UI Native #55 — **RUNNING**
+### Current CI boundary
 
-Therefore the current integrated head is **not yet a hardware candidate**.
+For application checkpoint `710cf37a...`:
+
+- Host Tests #1701 — **RUNNING** when this status was written.
+- Product UI Native #61 — **RUNNING**.
+- Gen IV Shared Editor Candidate Gate #137 — **QUEUED**.
+
+Earlier Product UI failures at this stage were stale text/navigation contracts, not evidence of native compile failure. The current contracts now follow real Pokédex progress, Classic Game Sources, and the seven-item Product Home dock. Exact-head CI remains authoritative.
 
 ## Hardware-accepted foundation
 
 ### Generation I
 
-Red / Blue / Yellow:
-
-- read support;
-- Trainer / Party / Boxes;
-- generation-correct Pokémon details;
-- staged inventory editing;
-- shared View / Create / Edit;
-- exact-game move handling;
-- controller navigation and source immutability.
-
-**Current Gen I shared-editor foundation is device accepted.**
+Red / Blue / Yellow read support, Trainer / Party / Boxes, generation-correct Pokémon details, staged inventory, shared View/Create/Edit, exact-game move handling, and source immutability are device accepted.
 
 ### Generation II
 
-Gold / Silver / Crystal:
-
-- read support;
-- Trainer / Party / Boxes;
-- Held Item, Friendship, Pokérus and native Gen II fields;
-- staged shared View / Create / Edit;
-- exact G/S vs Crystal behavior;
-- DVs / Stat Exp / shiny and gender semantics;
-- current shared-editor UX physically accepted.
-
-**Current Gen II shared-editor foundation is device accepted.**
+Gold / Silver / Crystal read support, Trainer / Party / Boxes, Held Item, Friendship, Pokérus, DVs / Stat Exp, generation-native shiny/gender behavior, shared View/Create/Edit, and source immutability are device accepted.
 
 ### Generation III
 
-Ruby / Sapphire / Emerald / FireRed / LeafGreen:
-
-- rotating-sector save validation;
-- Trainer / Party / Boxes;
-- inventory;
-- staged shared View / Create / Edit;
-- Gen III-native fields, moves and compatibility-aware presentation;
-- source immutability.
-
-**Current Gen III shared-editor foundation is device accepted.**
+Ruby / Sapphire / Emerald / FireRed / LeafGreen rotating-sector validation, Trainer / Party / Boxes, inventory, shared View/Create/Edit, generation-native fields/moves, and source immutability are device accepted.
 
 ## Generation IV — active full editor
 
-Generation IV has moved well beyond the original read-only preview.
+Supported identities: Diamond, Pearl, Platinum, HeartGold, SoulSilver.
 
-Supported identities:
+The first safe Gen IV Party/Box View/Edit milestone was physically accepted on real hardware at application checkpoint `84dae170deb2756d9b80aec32bf8ad512ce17c31`. That acceptance applies only to that milestone.
 
-- Diamond
-- Pearl
-- Platinum
-- HeartGold
-- SoulSilver
+Current G4-04 work includes Party/Box View/Edit, empty Box Add/Create, trainer-bound PK4 Create drafts, DP/Pt/HGSS coverage, Held Item, Language, Ball, Pokérus, Met Location, native move selection, species-compatible move filtering, exact PP/PP-Up behavior, Species mutation, gender/ability/growth/stat reconciliation, exact-game Form handling, trainer/origin inspection, action parity, strict reparse/checksum/rollback, and unchanged external emulator sources.
 
-### Hardware-accepted Gen IV base
+The full G4-04 + Product UI combination is **hardware pending**.
 
-The first safe Gen IV Party/Box View/Edit milestone was physically accepted on real hardware.
+## Integrated Product UI
 
-Accepted application checkpoint:
+Current integrated UI includes:
 
-`84dae170deb2756d9b80aec32bf8ad512ce17c31`
-
-That acceptance remains historical evidence for that exact milestone only.
-
-### G4-04 current implementation
-
-PR #92 currently carries:
-
-- Party and Box View/Edit;
-- empty Box Add/Create;
-- deterministic trainer-bound PK4 Create drafts;
-- DP / Platinum / HGSS coverage;
-- Held Item editing;
-- Language editing with text-preservation checks;
-- exact-game Ball domains;
-- Pokérus None / Cured / Infected mapping;
-- named exact-game Met Location handling;
-- native Gen IV move picker;
-- species-compatible move filtering;
-- exact Gen IV base PP with coherent PP/PP Up reset on move replacement;
-- transactional Species mutation;
-- gender, ability, growth-rate and Party-stat reconciliation;
-- Form editing with exact-game/storage restrictions;
-- Giratina / Arceus item-driven form coherence;
-- boxed Shaymin Sky fail-closed handling;
-- editable OT name / Trainer ID where currently supported;
-- read-only SID / PID / deeper origin inspection;
-- Box/Party action parity with earlier generations;
-- compact move-picker parity and cleaner unavailable-action behavior;
-- strict full-save reparse, checksum refresh and rollback;
-- unchanged external emulator source.
-
-G4-04 is **not device accepted yet**. It requires one exact integrated green Actions-built NRO and physical testing.
-
-## Integrated Product UI state
-
-The old equal-card developer-dashboard direction has been retired.
-
-The current integrated application includes:
-
-- selected game as the Product Home focus;
-- real profile/avatar context;
-- game art and source/provider information;
-- Party preview using the existing Pokémon sprite pipeline;
-- real trainer names and game-appropriate trainer portraits based on proven game/gender data;
+- selected game as Product Home focus;
+- profile/avatar context;
+- game artwork and source/provider state;
+- real Party sprites through the existing sprite pipeline;
+- real trainer names;
+- game/gender-grounded trainer portraits;
+- real Gen I–IV per-save Pokédex progress;
 - Open and Launch actions;
-- distinct Master Vault and Pokédex feature cards;
-- teal/cyan non-destructive product focus;
-- player-facing copy instead of engineering-status badges;
-- real Gen I–IV per-save Pokédex progress plumbing;
-- remembered Product Home / shell cursor state across reconstructed menus;
-- familiar Classic Game Sources;
-- safe Backpack/Items open intent through the normal backup/source flow;
-- compact Items and Settings quick actions;
+- distinct Master Vault and Pokédex feature identities;
+- teal/cyan non-destructive interaction focus;
+- Classic Game Sources;
+- remembered navigation/cursor state;
+- safe Backpack/Items quick intent through normal source/backup flow;
+- compact Items and Settings shortcuts;
 - two-pane Settings with remembered category/option cursor.
 
-Later customizable protagonists deliberately remain generic until exact appearance reconstruction is backed by real save-format data.
+Later customizable protagonists remain generic until exact appearance reconstruction is backed by real save-format data.
 
 ## Source discovery and launch
 
-Current source architecture is provider-aware and keeps discovery separate from write permission.
+Current provider-aware source work includes RetroArch, DraStic, melonDS, remembered/manual Gen IV assignment, and native Switch title identities.
 
-Implemented/foundation providers include:
+Game launching is separate from save-writing authorization. PokeBank-owned game-file links are used when content cannot be proven automatically.
 
-- RetroArch;
-- DraStic;
-- melonDS;
-- manual/remembered Gen IV assignments;
-- native Switch title identities.
+Current emulator-launch cleanup keeps visible controls truthful and retains fail-closed linking. Direct DraStic/melonDS content handoff still needs exact integrated hardware verification.
 
-Launch infrastructure already supports app-owned binding metadata and game-file linking. Direct DraStic/melonDS content handoff still needs exact integration verification; ambiguous ROM/content mapping must continue to fail closed and request an explicit link.
+## Full forensic repository audit
+
+The tracked-repository forensic review is complete on frozen evidence branch `audit/full-repository-line-by-line-20260928` at `143c5e5c341d4f85af30e013808a37d6719560fe`.
+
+Coverage:
+
+- **746 / 746** tracked paths accounted;
+- **711 / 711** text files fully read;
+- **35 / 35** non-text entries inspected;
+- **0** pending ledger entries;
+- **0** duplicate finding IDs.
+
+The audit is closed as a coverage exercise. Remediation is tracked separately on `fix/full-audit-remediation-20260929`, last observed at `31a2c742aef5d89d84165a0629e9de05a7373eee` before this refresh.
+
+The remediation matrix records **44 findings**: 2 P1, 17 P2, 20 P3, and 5 P4. Early remediation has already retired the destructive legacy PKSE import workflow and reconciled the historical Product UI compile blocker. Remaining fixes must be applied forward without weakening current safety invariants.
 
 ## Permanent safety invariants
 
@@ -174,20 +114,20 @@ MASTER VAULT PERSISTENCE: NOT STARTED
 
 Issue #89 remains the separate future backup → working copy → explicit Inject Save architecture.
 
-## Next integration boundary
+## Immediate integration boundary
 
-Continue directly on PR #92:
+Continue on live PR #92:
 
-1. re-fetch the live PR #92 head;
-2. resolve any exact-head CI failure forward;
-3. preserve current Gen I–IV editor behavior;
-4. verify cursor-memory behavior across the intended surfaces;
-5. verify Backpack/Items quick entry;
-6. verify DraStic/melonDS direct launch handoff while retaining Link Game File as the fail-closed fallback;
-7. run full host/sanitizer/Gen-IV/native gates on one exact head;
-8. produce one combined Actions-built NRO;
+1. re-fetch the exact head and Actions;
+2. keep the merged Product UI and current Gen IV editor intact;
+3. resolve any exact-head CI failure forward;
+4. verify cursor restoration and Backpack/Items quick entry;
+5. verify DraStic/melonDS launch handoff while keeping Link Game File fail-closed;
+6. reconcile high-priority audit remediation without resetting MAIN;
+7. run full host/sanitizer/Gen-IV/native gates;
+8. produce one exact combined Actions-built NRO;
 9. stop for physical Switch testing.
 
-After that integrated UI candidate passes hardware, the next major frontend tranche is **full app-wide touch controls**.
+After that integrated candidate passes hardware, the next major frontend tranche is **full app-wide touch controls**.
 
-**ACTIVE PRODUCT PRIORITY: one integrated Gen I–IV + Product UI hardware candidate before touch controls, Gen V, Master Vault persistence, or live source writes.**
+**ACTIVE PRODUCT PRIORITY: one integrated Gen I–IV + Product UI hardware candidate, while audit remediation proceeds forward without weakening save safety.**

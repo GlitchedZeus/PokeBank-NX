@@ -2,39 +2,30 @@
 
 Last updated: **2026-09-29**
 
-`CURRENT_STATUS.md` is authoritative for exact live state. This roadmap describes product direction, not branch ownership.
+`CURRENT_STATUS.md` is authoritative for exact live state. This roadmap describes product direction.
 
 ## v1 target
 
-PokeBank NX v1 should be a stable native Switch application that can:
+PokeBank NX v1 should be a stable native Switch application that can safely discover supported Pokémon saves, browse Trainer / Party / Boxes / inventory, stage generation-aware edits, provide a coherent Product Home and Classic Game Sources workflow, preserve Pokémon in a PokeBank-owned Master Vault, organize Banks/collections, launch proven game targets, and eventually write back only through individually approved source transactions.
 
-- discover supported Pokémon save sources safely;
-- browse Trainer / Party / Boxes / inventory;
-- stage generation-aware Pokémon edits;
-- present one coherent Product Home and classic game workflow;
-- preserve Pokémon in a PokeBank-owned Master Vault;
-- organize named Banks and collection views;
-- provide provenance, Pokédex, search and validation tooling;
-- launch linked games/emulators where the target can be proven;
-- use touch and controller input across the full application;
-- only perform source writeback through individually approved transaction adapters.
-
-## Phase 0 — repository / safety / native foundation — COMPLETE
+## Phase 0 — repository / safety / native foundation — COMPLETE / REMEDIATION ACTIVE
 
 - [x] native `.nro` build
 - [x] controller-first runtime
 - [x] hard source-write locks
 - [x] stable game/platform identities
 - [x] source immutability discipline
-- [x] host regression / sanitizer / native CI gates
+- [x] host regression / sanitizer / native CI foundation
+- [x] full tracked-repository forensic audit
+- [ ] complete audit remediation matrix
 
-## Phase 1 — Gen I–III read + inventory foundation — COMPLETE / DEVICE ACCEPTED
+## Phase 1 — Gen I–III read + inventory — COMPLETE / DEVICE ACCEPTED
 
 - [x] Red / Blue / Yellow
 - [x] Gold / Silver / Crystal
 - [x] Ruby / Sapphire / Emerald / FireRed / LeafGreen
 - [x] Trainer / Party / Boxes
-- [x] generation-appropriate details
+- [x] generation-native details
 - [x] inventory
 - [x] bounded legacy discovery
 - [x] physical Switch acceptance
@@ -45,8 +36,8 @@ PokeBank NX v1 should be a stable native Switch application that can:
 - [x] staged transactional mutation
 - [x] exact-game move behavior
 - [x] generation-native values only
-- [x] controller navigation and editor parity
-- [x] physical hardware acceptance across the current Gen I–III foundation
+- [x] controller navigation/editor parity
+- [x] physical hardware acceptance
 
 ## Phase 3 — Generation IV shared editor — ACTIVE
 
@@ -65,35 +56,36 @@ PokeBank NX v1 should be a stable native Switch application that can:
 - [ ] one fully integrated G4-04 + Product UI green candidate
 - [ ] physical acceptance of that exact candidate
 
-## Phase 4 — product UI / source / launch integration — ACTIVE
+## Phase 4 — Product UI / source / launch integration — ACTIVE
 
 - [x] modern Product Home
 - [x] selected-game Open / Launch flow
 - [x] profile/game/source presentation
-- [x] Party sprite presentation
+- [x] Party sprites
 - [x] Master Vault / Pokédex visual identities
 - [x] real Gen I–IV per-save Pokédex progress
 - [x] Gen IV trainer-name propagation
-- [x] classic Game Sources alternate workflow
+- [x] game/gender-grounded trainer portraits
+- [x] Classic Game Sources alternate workflow
 - [x] cursor-memory foundation
-- [x] Backpack / Items quick-open intent foundation
+- [x] Backpack / Items quick-open intent
 - [x] compact Items / Settings quick actions
 - [x] two-pane Settings organization + cursor memory
-- [x] grounded trainer portraits for Gen I–IV game/gender identities
-- [ ] finish exact-head CI
-- [ ] finish/verify DraStic and melonDS direct launch handoff
+- [x] truthful current emulator-launch/control presentation
+- [ ] exact-head CI green
+- [ ] verify DraStic and melonDS direct-launch handoff on hardware
 - [ ] integrated UI hardware acceptance
 
 ## Phase 5 — full touch controls
 
-This starts **after** the integrated UI candidate is physically accepted.
+Starts **after** the integrated UI candidate is physically accepted.
 
 - [ ] Product Home
 - [ ] Classic Games
 - [ ] Settings
 - [ ] Trainer / Inventory / Party / Boxes
 - [ ] Pokémon View/Create/Edit
-- [ ] species/move/item pickers
+- [ ] species / move / item pickers
 - [ ] dialogs and numeric/keyboard flows
 - [ ] scrolling / back / cancel
 - [ ] controller + touch coexistence
@@ -109,29 +101,27 @@ This starts **after** the integrated UI candidate is physically accepted.
 - [ ] Legit Clone lineage
 - [ ] journal/recovery
 - [ ] profile-aware ownership
-- [ ] named Banks / logical collection views
+- [ ] named Banks / logical collections
 
-## Phase 7 — universal provider expansion
+## Phase 7 — provider expansion
 
 - [x] RetroArch foundation
 - [x] DraStic Gen IV source foundation
 - [x] melonDS Gen IV source foundation
-- [ ] Tico generalized adapter
-- [ ] mGBA generalized adapter
+- [ ] generalized Tico adapter
+- [ ] generalized mGBA adapter
 - [ ] broader manual/custom folders
 - [ ] Azahar
-- [ ] other supported 3DS provider wrappers
+- [ ] other supported 3DS wrappers
 - [ ] source-change detection before any future approved write
 
 ## Phase 8 — later DS / 3DS
 
 ### DS
-
 - [x] Gen IV foundation
 - [ ] Black / White / Black 2 / White 2
 
 ### 3DS
-
 - [ ] X / Y
 - [ ] Omega Ruby / Alpha Sapphire
 - [ ] Sun / Moon / Ultra Sun / Ultra Moon
@@ -157,9 +147,9 @@ This starts **after** the integrated UI candidate is physically accepted.
 - [ ] legality/validation state
 - [ ] cries where appropriate
 
-## Phase 11 — conversion / legality / transfer workspace
+## Phase 11 — conversion / legality / transfers
 
-- [ ] host oracle/golden fixture corpus
+- [ ] golden fixture corpus
 - [ ] generation-aware conversion
 - [ ] legality/provenance validation
 - [ ] controlled creation safeguards
@@ -183,6 +173,7 @@ There is no global unsafe-write switch.
 
 ## Phase 13 — release hardening
 
+- [ ] finish all audit remediation or explicitly defer with justification
 - [ ] diagnostics/privacy-safe export
 - [ ] constrained-memory handling
 - [ ] bounded caches / large-grid virtualization
@@ -199,7 +190,8 @@ There is no global unsafe-write switch.
 ```text
 Gen I–III shared editor            DEVICE ACCEPTED
 Gen IV full shared editor          ACTIVE
-Product UI / source integration    ACTIVE
+Product UI/source integration      ACTIVE
+Audit remediation                  ACTIVE IN PARALLEL
         ↓
 one integrated hardware candidate
         ↓
@@ -209,7 +201,7 @@ Master Vault + Banks
         ↓
 provider / later-generation expansion
         ↓
-collection / provenance / search
+collections / provenance / search
         ↓
 conversion / legality / transfers
         ↓
