@@ -265,11 +265,11 @@ include/Names/RibbonNames.h	blob	100644	2705		unknown		PENDING			0
 include/Names/SpeciesNames.h	blob	100644	286		unknown		PENDING			0	
 include/Names/TMMoves.h	blob	100644	1592		unknown		PENDING			0	
 include/Names/TypeNames.h	blob	100644	595		unknown		PENDING			0	
-include/Pokemon/AbilityInfo.h	blob	100644	2463		unknown		PENDING			0	
-include/Pokemon/BaseStatsGen7.h	blob	100644	12156		unknown		PENDING			0	
-include/Pokemon/BaseStatsGen89.h	blob	100644	86010		unknown		PENDING			0	
-include/Pokemon/Experience.h	blob	100644	2751		unknown		PENDING			0	
-include/Pokemon/FormInfo.h	blob	100644	6818		unknown		PENDING			0	
+include/Pokemon/AbilityInfo.h	blob	100644	2463	ability-slot lookup API	text	57	AUDITED			0	no
+include/Pokemon/BaseStatsGen7.h	blob	100644	12156	LGPE base-stat data tables	text	214	AUDITED			1	yes
+include/Pokemon/BaseStatsGen89.h	blob	100644	86010	modern base-stat/form tables	text	1493	AUDITED			1	yes
+include/Pokemon/Experience.h	blob	100644	2751	growth-rate/experience lookup API	text	67	AUDITED			0	no
+include/Pokemon/FormInfo.h	blob	100644	6818	form legality/persistence helper API	text	125	AUDITED			0	no
 include/Pokemon/FormSpriteMapping.h	blob	100644	1559		unknown		PENDING			0	
 include/Pokemon/Gen3PartyRecord.h	blob	100644	2023	Gen III stored/party tail helpers	text	41	AUDITED			0	no
 include/Pokemon/LearnsetTable.h	blob	100644	1829		unknown		PENDING			0	
@@ -277,8 +277,8 @@ include/Pokemon/PLADexTable.h	blob	100644	1623		unknown		PENDING			0
 include/Pokemon/PersonalInfo4DP.h	blob	100644	1126		unknown		PENDING			0	
 include/Pokemon/PersonalInfo4HGSS.h	blob	100644	1144		unknown		PENDING			0	
 include/Pokemon/PersonalInfo4PT.h	blob	100644	1126		unknown		PENDING			0	
-include/Pokemon/PersonalInfoTable.h	blob	100644	5654		unknown		PENDING			0	
-include/Pokemon/PersonalRecord.h	blob	100644	632		unknown		PENDING			0	
+include/Pokemon/PersonalInfoTable.h	blob	100644	5654	generated cross-game personal/form metadata API	text	109	AUDITED			0	no
+include/Pokemon/PersonalRecord.h	blob	100644	632	Gen IV personal-record data model	text	27	AUDITED			0	no
 include/Pokemon/Pokemon.h	blob	100644	26295	base Pokémon ownership/edit interface	text	645	AUDITED			1	yes
 include/Pokemon/Pokemon1ReadOnly.h	blob	100644	6742	Gen I immutable Pokémon presentation wrapper	text	128	AUDITED			1	yes
 include/Pokemon/Pokemon2ReadOnly.h	blob	100644	8049	Gen II immutable Pokémon presentation wrapper	text	148	AUDITED			1	yes
@@ -292,11 +292,11 @@ include/Pokemon/Pokemon8LA.h	blob	100644	41226	PLA PA8 entity parser/editor and 
 include/Pokemon/Pokemon8SWSH.h	blob	100644	38413	SWSH PK8 entity parser/editor and ownership	text	913	AUDITED			2	yes
 include/Pokemon/Pokemon9LZA.h	blob	100644	38592	Legends Z-A PA9 entity parser/editor and ownership	text	904	AUDITED			2	yes
 include/Pokemon/Pokemon9SV.h	blob	100644	39132	Scarlet/Violet PK9 entity parser/editor and ownership	text	914	AUDITED			2	yes
-include/Pokemon/PokemonTypes.h	blob	100644	2693		unknown		PENDING			0	
+include/Pokemon/PokemonTypes.h	blob	100644	2693	type-id/name helpers	text	74	AUDITED			0	no
 include/Pokemon/SVDexTable.h	blob	100644	1761		unknown		PENDING			0	
 include/Pokemon/SWSHDexTable.h	blob	100644	1544		unknown		PENDING			0	
-include/Pokemon/SpeciesConverter3.h	blob	100644	7432		unknown		PENDING			0	
-include/Pokemon/SpeciesConverter9.h	blob	100644	4959		unknown		PENDING			0	
+include/Pokemon/SpeciesConverter3.h	blob	100644	7432	Gen III internal/National species mapping	text	120	AUDITED			0	no
+include/Pokemon/SpeciesConverter9.h	blob	100644	4959	Gen IX internal/National species mapping	text	89	AUDITED			0	no
 include/Safety/SourceMutationPolicy.h	blob	100644	987	source mutation capability gate	text	35	AUDITED			0	no
 include/Safety/WritePolicy.h	blob	100644	1060	low-level live save write policy	text	34	AUDITED			0	no
 include/Save/BDSPReadValidation.h	blob	100644	832	BDSP minimum-layout read gate	text	23	AUDITED			0	no
@@ -494,19 +494,19 @@ src/Names/RibbonNames.cpp	blob	100644	15624		unknown		PENDING			0
 src/Names/SpeciesNames.cpp	blob	100644	199465		unknown		PENDING			0	
 src/Names/TMMoves.cpp	blob	100644	14364		unknown		PENDING			0	
 src/Names/TypeNames.cpp	blob	100644	1098		unknown		PENDING			0	
-src/Pokemon/AbilityInfo.cpp	blob	100644	1169		unknown		PENDING			0	
-src/Pokemon/BaseStatsGen7.cpp	blob	100644	2304		unknown		PENDING			0	
-src/Pokemon/BaseStatsGen89.cpp	blob	100644	15361		unknown		PENDING			0	
-src/Pokemon/Experience.cpp	blob	100644	12628		unknown		PENDING			0	
-src/Pokemon/FormInfo.cpp	blob	100644	11480		unknown		PENDING			0	
+src/Pokemon/AbilityInfo.cpp	blob	100644	1169	ability-slot lookup implementation	text	28	AUDITED			0	no
+src/Pokemon/BaseStatsGen7.cpp	blob	100644	2304	LGPE base-stat lookup	text	70	AUDITED			1	yes
+src/Pokemon/BaseStatsGen89.cpp	blob	100644	15361	modern base-stat/form routing	text	386	AUDITED			1	yes
+src/Pokemon/Experience.cpp	blob	100644	12628	six growth curves and species growth-rate mapping	text	229	AUDITED			0	no
+src/Pokemon/FormInfo.cpp	blob	100644	11480	form legality/persistence rules	text	214	AUDITED			0	no
 src/Pokemon/FormSpriteMapping.cpp	blob	100644	34055		unknown		PENDING			0	
 src/Pokemon/LearnsetTable.cpp	blob	100644	3172672		unknown		PENDING			0	
 src/Pokemon/PLADexTable.cpp	blob	100644	12203		unknown		PENDING			0	
 src/Pokemon/PersonalInfo4DP.cpp	blob	100644	52279		unknown		PENDING			0	
 src/Pokemon/PersonalInfo4HGSS.cpp	blob	100644	53074		unknown		PENDING			0	
 src/Pokemon/PersonalInfo4PT.cpp	blob	100644	53056		unknown		PENDING			0	
-src/Pokemon/PersonalInfoTable.cpp	blob	100644	190049		unknown		PENDING			0	
-src/Pokemon/PersonalRecord4.cpp	blob	100644	109		unknown		PENDING			0	
+src/Pokemon/PersonalInfoTable.cpp	blob	100644	190049	generated cross-game personal/form metadata + Gen III table	text	1927	AUDITED			0	no
+src/Pokemon/PersonalRecord4.cpp	blob	100644	109	Gen IV empty personal-record sentinel	text	5	AUDITED			0	no
 src/Pokemon/Pokemon1ReadOnly.cpp	blob	100644	975	Gen I immutable wrapper construction/text	text	37	AUDITED			0	no
 src/Pokemon/Pokemon2ReadOnly.cpp	blob	100644	1478	Gen II immutable wrapper construction/personal data	text	46	AUDITED			0	no
 src/Pokemon/Pokemon3FRLG.cpp	blob	100644	19608	FRLG PK3 derived stats/text/PID editing	text	359	AUDITED			0	no
@@ -519,7 +519,7 @@ src/Pokemon/Pokemon8LA.cpp	blob	100644	18198	PLA PA8 stat/PID implementation	tex
 src/Pokemon/Pokemon8SWSH.cpp	blob	100644	18139	SWSH PK8 stat/PID implementation	text	449	AUDITED			1	yes
 src/Pokemon/Pokemon9LZA.cpp	blob	100644	18075	Legends Z-A PA9 stat/PID implementation	text	448	AUDITED			1	yes
 src/Pokemon/Pokemon9SV.cpp	blob	100644	18058	Scarlet/Violet PK9 stat/PID implementation	text	448	AUDITED			1	yes
-src/Pokemon/PokemonTypes.cpp	blob	100644	1613		unknown		PENDING			0	
+src/Pokemon/PokemonTypes.cpp	blob	100644	1613	type-id/name implementation	text	35	AUDITED			0	no
 src/Pokemon/SVDexTable.cpp	blob	100644	47312		unknown		PENDING			0	
 src/Pokemon/SWSHDexTable.cpp	blob	100644	25413		unknown		PENDING			0	
 src/Save/Block.cpp	blob	100644	7048	SC block parser/serializer	text	199	AUDITED			0	yes
