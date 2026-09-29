@@ -22,12 +22,18 @@ int main() {
     assert(!matches("platinum_nds", 487, 117, 47, 0, 0));
 
     // D/P Riolu egg requires its exact egg-location evidence.
-    assert(matches("diamond_nds", 447, 0, 1, 0, 2010));
-    assert(!matches("diamond_nds", 447, 0, 1, 0, 0));
+    assert(matches("diamond_nds", 447, 40, 0, 0, 2010));
+    assert(!matches("diamond_nds", 447, 40, 0, 0, 0));
+    assert(!matches("diamond_nds", 447, 40, 1, 0, 2010));
 
     // HG/SS Spiky-eared Pichu is form 1 at Ilex Forest.
     assert(matches("heartgold_nds", 172, 214, 30, 1, 0));
     assert(!matches("heartgold_nds", 172, 214, 30, 0, 0));
+
+    // Roamers use a permitted route set rather than one fixed met location.
+    assert(matches("platinum_nds", 481, 20, 50, 0, 0));
+    assert(!matches("platinum_nds", 481, 100, 50, 0, 0));
+    assert(matches("heartgold_nds", 243, 180, 40, 0, 0));
 
     // Version-exclusive cover legends.
     assert(matches("heartgold_nds", 250, 205, 45, 0, 0));
