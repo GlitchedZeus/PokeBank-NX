@@ -89,4 +89,13 @@ for workflow_name in ("native-pr-build.yml", "product-ui-native.yml"):
     if PINNED_DEVKITA64 not in workflow_text:
         fail(f"AUDIT-003: {workflow_name} does not use the tested immutable devkitA64 digest")
 
+
+standalone_text = (ROOT / "docs" / "STANDALONE_RUNTIME.md").read_text(encoding="utf-8")
+if "RetroArch is not invoked as a helper" in standalone_text:
+    fail("AUDIT-041: standalone runtime docs still deny the supported RetroArch launch path")
+for required in ("READ-ONLY SAVE SOURCE", "OPTIONAL USER-INVOKED GAME-LAUNCH TARGET",
+                 "launching does not change that boundary"):
+    if required not in standalone_text:
+        fail(f"AUDIT-041: standalone runtime classification missing: {required}")
+
 print("CI repository safety contracts: PASS")
