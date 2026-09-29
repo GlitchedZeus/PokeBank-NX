@@ -1478,7 +1478,7 @@ namespace UI {
             }
             if (kDown & HidNpadButton_A) selectCurrentTitle();
         }
-
+    }
 
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {
         titleRects.clear();
