@@ -63,6 +63,11 @@ namespace Pokemon {
          */
         size_t dataSize = 0;
 
+        // False when a concrete entity constructor was given a malformed native record length.
+        // Constructors still provide a full-sized zero buffer so accidental inspection is memory-safe,
+        // but checksumValid() must fail closed for structurally invalid input.
+        bool inputShapeValid = true;
+
     public:
         // Virtual destructor to ensure proper cleanup in derived classes
         virtual ~Pokemon() {
@@ -82,10 +87,12 @@ namespace Pokemon {
             : buffer(other.buffer),
               data(other.buffer ? std::span<std::byte>(other.buffer, other.dataSize)
                                 : std::span<std::byte>{}),
-              dataSize(other.dataSize) {
+              dataSize(other.dataSize),
+              inputShapeValid(other.inputShapeValid) {
             other.buffer = nullptr;
             other.data = {};
             other.dataSize = 0;
+            other.inputShapeValid = false;
         }
 
         Pokemon& operator=(Pokemon&& other) noexcept {
@@ -94,12 +101,14 @@ namespace Pokemon {
             delete[] buffer;
             buffer = other.buffer;
             dataSize = other.dataSize;
+            inputShapeValid = other.inputShapeValid;
             data = buffer ? std::span<std::byte>(buffer, dataSize)
                           : std::span<std::byte>{};
 
             other.buffer = nullptr;
             other.data = {};
             other.dataSize = 0;
+            other.inputShapeValid = false;
             return *this;
         }
 
@@ -641,6 +650,9 @@ namespace Pokemon {
          * @return Data size in bytes
          */
         size_t getDataSize() const noexcept { return dataSize; }
+
+        /** Whether the constructor received one of this format's supported native record lengths. */
+        bool inputValid() const noexcept { return inputShapeValid; }
 
         /**
          * Gets direct access to the decrypted data buffer.
