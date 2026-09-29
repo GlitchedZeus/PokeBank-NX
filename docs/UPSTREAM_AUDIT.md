@@ -1,6 +1,6 @@
 # PokeBank NX — Upstream Reuse Audit
 
-Last reviewed: 2026-09-02
+Last reviewed: 2026-09-29
 
 This is the permanent research map for external projects that can accelerate PokeBank NX. Before writing a major Pokémon-format, save-parser, legality, conversion, Pokédex, generated-Pokémon, bank, or transfer subsystem from scratch, check this file and the companion bank-project audit first.
 
@@ -22,29 +22,24 @@ The pins below are **research pins**, not permanent dependency versions. Any fut
 
 # Current PokeBank NX context
 
-```text
-Repository: GlitchedZeus/PokeBank-NX
-Development branch: feature/pokebank-playable
-Version: 0.1.0-alpha
-Live installed-game writing: HARD DISABLED / not approved
-Stable release/platform identities: 23
-First exact physical .nro test: COMPLETE / PARTIAL PASS
-Current useful UI/analog source: 361c6f55...
-Second device artifact: PENDING safety/crash finish
-```
+This file is a **research/reuse map**, not current project-state authority.
 
-First exact device-tested source:
+For live state use:
 
-```text
-3be4de6b0b1ce00d5fe369cff9795c3fffbfa31a
-PokeBank-NX-UI-Theme-3be4de6.nro
-SHA-256 df7199c528c11b8792cccb483e15d5b2fa742d4d895b8df78b12f329dc90694a
-DEVICE TESTED — PARTIAL PASS / KNOWN FAILURES
-```
+1. `CURRENT_STATUS.md`
+2. `PROJECT_STATUS.md`
+3. `docs/NEXT_SESSION_PLAN.md`
 
-Do not use upstream capability as proof that PokeBank NX meets its read-only/provenance/write-safety contract. The extended hardware test proved inherited mutation UI remains reachable and is now explicitly audited under #23.
+Current direction at the 2026-09-29 refresh:
 
----
+- Gen I–III shared editors are hardware accepted;
+- Gen IV is in active full-editor/Product UI integration;
+- original source saves remain immutable and live writes remain disabled;
+- Product Home / Classic Game Sources are integrated;
+- full repository forensic coverage is complete and remediation is tracked separately.
+
+Historical device notes and early branch names below remain evidence only. They are not instructions to reset or resume an obsolete lane.
+
 
 # 1. PKSE
 
