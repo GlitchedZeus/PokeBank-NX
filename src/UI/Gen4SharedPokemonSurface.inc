@@ -1426,8 +1426,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
     const bool movePicker = state.pickerTarget == PickerTarget::Move;
     const bool speciesPicker = state.pickerTarget == PickerTarget::Species;
-    const int w = heldItems ? 1040 : movePicker ? 1000 : speciesPicker ? 760 : 680;
-    const int h = heldItems ? 520 : movePicker ? 568 : 560;
+    constexpr auto moveLayout = MoveUI::compactPickerLayout();
+    const int w = heldItems ? 1040 : movePicker ? moveLayout.width : speciesPicker ? 760 : 680;
+    const int h = heldItems ? 520 : movePicker ? moveLayout.height : 560;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - h) / 2;
 
@@ -1467,16 +1468,17 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     "Empty + compatible moves only • exact Gen IV Acc / Pwr / PP",
                     Colors::TextDim, TextStyle::Caption);
         const int count = static_cast<int>(state.pickerValues.size());
-        constexpr int visible = 13;
+        constexpr int visible = moveLayout.visibleRows;
         const int first = std::clamp(
             state.pickerRow - visible / 2, 0, std::max(0, count - visible));
         const int last = std::min(count, first + visible);
         for (int i = first; i < last; ++i) {
-            const int yy = y + 88 + (i - first) * 33;
+            const int yy = y + moveLayout.rowStart + (i - first) * moveLayout.rowStep;
             const bool selected = i == state.pickerRow;
-            if (selected) fb.drawSelectionHighlight(x + 20, yy - 3, w - 40, 30);
+            if (selected)
+                fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
             const auto value = state.pickerValues[static_cast<size_t>(i)];
-            fb.drawText(x + 32, yy + 3, pickerValueLabel(screen, state, value),
+            fb.drawText(x + 40, yy + 8, pickerValueLabel(screen, state, value),
                         selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
         }
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
@@ -1796,9 +1798,11 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
         const bool selected = static_cast<int>(i) == state.actionRow;
         if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, geometry.rowHeight);
         const auto& entry = actions[i];
+        const Color disabledColor(
+            Colors::TextDim.r, Colors::TextDim.g, Colors::TextDim.b, 105);
         const Color rowColor = entry.enabled
-            ? (selected ? Colors::Text : Colors::TextDim)
-            : Colors::TextDim;
+            ? (selected ? Colors::Text : Colors::TextSecondary)
+            : disabledColor;
         fb.drawText(x + 38, yy + 10, entry.label, rowColor);
         yy += geometry.rowStep;
     }
