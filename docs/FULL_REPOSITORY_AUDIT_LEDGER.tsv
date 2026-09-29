@@ -16,35 +16,12 @@ path	git_type	mode	bytes	role	readability	line_count	audit_status	references_in	
 .github/workflows/import-pkse.yml	blob	100644	1147	GitHub Actions workflow	text		AUDITED			1	yes
 .github/workflows/inventory-hardware-retest.yml	blob	100644	18446	GitHub Actions workflow	text		AUDITED			2	yes
 .github/workflows/leafgreen-device-build.yml	blob	100644	10590	GitHub Actions workflow	text		AUDITED			2	yes
+.github/workflows/product-ui-native.yml	blob	100644	4334	product UI native CI workflow	text		PENDING			0	
 .github/workflows/recovery-snapshot.yml	blob	100644	4942	GitHub Actions workflow	text		AUDITED			0	no
 .github/workflows/v1-polish-native.yml	blob	100644	7136	GitHub Actions workflow	text		AUDITED			2	yes
 .gitignore	blob	100644	730	repository/build metadata	text		AUDITED			0	
 .gitmodules	blob	100644	105	repository/build metadata	text		AUDITED			0	
-CURRENT_STATUS.md	blob	100644	4217	repository/build metadata	text		AUDITED			0	
-CppProperties.json	blob	100644	1122	repository/build metadata	text		AUDITED			1	yes
-LICENSE	blob	100644	34523	repository/build metadata	text		AUDITED			0	
-Makefile	blob	100644	17683	repository/build metadata	text		AUDITED			0	
-Makefile.host	blob	100644	409	repository/build metadata	text		AUDITED			0	
-Makefile.host.base	blob	100644	19259	repository/build metadata	text		AUDITED			1	yes
-Makefile.host.classic_inventory	blob	100644	1880	repository/build metadata	text		AUDITED			0	
-Makefile.host.cleanup3	blob	100644	6680	repository/build metadata	text		AUDITED			0	
-Makefile.host.editor	blob	100644	13297	repository/build metadata	text		AUDITED			0	
-Makefile.host.gen4	blob	100644	6863	repository/build metadata	text		AUDITED			0	
-Makefile.host.gsc	blob	100644	8509	repository/build metadata	text		AUDITED			0	
-Makefile.host.hardware-fixes	blob	100644	20142	repository/build metadata	text		AUDITED			0	
-Makefile.host.machine	blob	100644	760	repository/build metadata	text		AUDITED			0	
-Makefile.host.shared-editor	blob	100644	2994	repository/build metadata	text		AUDITED			0	
-Makefile.host.source-instances	blob	100644	1095	repository/build metadata	text		AUDITED			0	
-Makefile.host.standalone	blob	100644	1457	repository/build metadata	text		AUDITED			0	
-PHILOSOPHY.md	blob	100644	1093	repository/build metadata	text		AUDITED			0	
-PKSE.sln	blob	100644	1032	repository/build metadata	text		AUDITED			1	yes
-PKSE.vcxproj	blob	100644	14698	repository/build metadata	text		AUDITED			1	yes
-PKSE.vcxproj.filters	blob	100644	23567	repository/build metadata	text		AUDITED			1	yes
-PKSE.vcxproj.user	blob	100644	165	repository/build metadata	text		AUDITED			0	
-PROJECT_STATUS.md	blob	100644	4030	repository/build metadata	text		AUDITED			0	
-README.md	blob	100644	13599	repository/build metadata	text		AUDITED			1	yes
 assets/banner.png	blob	100644	714084	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
-assets/game_cards/README.md	blob	100644	2883	asset provenance	text		AUDITED			0	
 assets/game_cards/blue_gb.png	blob	100644	570913	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 assets/game_cards/crystal_gbc.png	blob	100644	427867	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 assets/game_cards/diamond_nds.png	blob	100644	344416	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
@@ -56,6 +33,7 @@ assets/game_cards/leafgreen_gba.png	blob	100644	519106	asset/recovery binary	bin
 assets/game_cards/manifest.json	blob	100644	4892	asset provenance	text		AUDITED			0	
 assets/game_cards/pearl_nds.png	blob	100644	347156	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 assets/game_cards/platinum_nds.png	blob	100644	369346	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+assets/game_cards/README.md	blob	100644	2883	asset provenance	text		AUDITED			0	
 assets/game_cards/red_gb.png	blob	100644	478309	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 assets/game_cards/ruby_gba.png	blob	100644	455614	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 assets/game_cards/sapphire_gba.png	blob	100644	479223	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
@@ -78,8 +56,12 @@ assets/screenshots/6.jpg	blob	100644	95780	asset/recovery binary	binary		INSPECT
 assets/screenshots/7.jpg	blob	100644	103257	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 assets/screenshots/8.jpg	blob	100644	83436	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 assets/screenshots/9.jpg	blob	100644	93360	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+CppProperties.json	blob	100644	1122	repository/build metadata	text		AUDITED			1	yes
+CURRENT_STATUS.md	blob	100644	4217	repository/build metadata	text		AUDITED			0	
 docs/ARCHITECTURE.md	blob	100644	11613	documentation	text		AUDITED			0	
 docs/AUDIT_STATUS_2026-09-23.md	blob	100644	145052	documentation	text		AUDITED			0	
+docs/audit/G4-01-READONLY-FOUNDATION.md	blob	100644	11009		unknown		PENDING			0	
+docs/audit/ISSUE85-SAVE-INSTANCES.md	blob	100644	6372		unknown		PENDING			0	
 docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md	blob	100644	14081	documentation	text		AUDITED			0	
 docs/BUILD_BLOCKER_92bde34d_2026-09-09.md	blob	100644	2890	documentation	text		AUDITED			0	
 docs/BUILD_RECORD.md	blob	100644	5482	documentation	text		AUDITED			0	
@@ -92,8 +74,8 @@ docs/CREATE_POKEMON_VISION.md	blob	100644	11178	documentation	text		AUDITED			0
 docs/DATA_REGENERATION.md	blob	100644	2804	documentation	text		AUDITED			0	
 docs/DEVICE_ARTIFACT_PACKAGING.md	blob	100644	2142	documentation	text		AUDITED			0	
 docs/DEVICE_BUILD_ASSET_GATE.md	blob	100644	3613	documentation	text		AUDITED			0	
-docs/DEVICE_TEST_CHECKLIST.md	blob	100644	16160	documentation	text		AUDITED			0	
 docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md	blob	100644	10950	documentation	text		AUDITED			0	
+docs/DEVICE_TEST_CHECKLIST.md	blob	100644	16160	documentation	text		AUDITED			0	
 docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md	blob	100644	7790	documentation	text		AUDITED			0	
 docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md	blob	100644	12334	documentation	text		AUDITED			0	
 docs/DEVICE_TEST_REPORT_2026-09-01.md	blob	100644	4371	documentation	text		AUDITED			0	
@@ -102,8 +84,8 @@ docs/FEATURE_FEASIBILITY_MATRIX.md	blob	100644	16923	documentation	text		AUDITED
 docs/FINAL_HANDOFF_2026-09-03.md	blob	100644	9428	documentation	text		AUDITED			0	
 docs/FUTURE_LEGAL_POKEMON_GENERATOR.md	blob	100644	2244	documentation	text		AUDITED			0	
 docs/FUTURE_PRODUCT_VISION.md	blob	100644	19374	documentation	text		AUDITED			0	
-docs/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md	blob	100644	6342	documentation	text		AUDITED			0	
 docs/GAME_SUPPORT_MATRIX.md	blob	100644	6132	documentation	text		AUDITED			0	
+docs/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md	blob	100644	6342	documentation	text		AUDITED			0	
 docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md	blob	100644	3112	documentation	text		AUDITED			0	
 docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md	blob	100644	5652	documentation	text		AUDITED			0	
 docs/GEN1_MOVE_COMPATIBILITY_REFERENCE.md	blob	100644	2603	documentation	text		AUDITED			0	
@@ -112,6 +94,10 @@ docs/GEN1_SUMMARY_RADAR_RETEST.md	blob	100644	3713	documentation	text		AUDITED		
 docs/GEN1_UX_CLEANUP3_HARDWARE_FOLLOWUP_2026-09-13.md	blob	100644	2670	documentation	text		AUDITED			0	
 docs/GEN1_UX_CLEANUP3_MODEL_CHECKPOINT.md	blob	100644	1197	documentation	text		AUDITED			0	
 docs/GEN2_AUDIT_RESEARCH.md	blob	100644	7964	documentation	text		AUDITED			0	
+docs/history/CURRENT_STATUS_PRE_LEAFGREEN_2026-09-09.md	blob	100644	9727		unknown		PENDING			0	
+docs/history/NEXT_CODEX_PROMPT_PRE_LEAFGREEN_2026-09-09.md	blob	100644	8091		unknown		PENDING			0	
+docs/history/PROJECT_RESOURCE_INDEX_PRE_CHUNKS_2026-09-09.md	blob	100644	14195		unknown		PENDING			0	
+docs/history/README.md	blob	100644	1355		unknown		PENDING			0	
 docs/HOME_BRIDGE_HISTORICAL_TRANSFER_RESEARCH_2026-09-03.md	blob	100644	10473	documentation	text		AUDITED			0	
 docs/ISSUE71_UNIVERSAL_EDITOR_REUSE_FREEZE.md	blob	100644	19265	documentation	text		AUDITED			0	
 docs/MASTER_VAULT_SPEC.md	blob	100644	12759	documentation	text		AUDITED			0	
@@ -149,15 +135,27 @@ docs/RESEARCH_INTAKE_2026-09-09.md	blob	100644	3567		unknown		PENDING			0
 docs/RESEARCH_REFERENCE_INDEX.md	blob	100644	12271	documentation	text		AUDITED			0	
 docs/RESEARCH_REFERENCE_MATRIX.md	blob	100644	20148		unknown		PENDING			0	
 docs/RESEARCH_STATUS_2026-09-13.md	blob	100644	8376	documentation	text		AUDITED			0	
+docs/research/2026-09-09/BANK_HOME_PRESERVATION_CAPTURE_PLAN.md	blob	100644	8114		unknown		PENDING			0	
+docs/research/2026-09-09/BANK_HOME_PUBLIC_CORPUS_AUDIT.md	blob	100644	10406		unknown		PENDING			0	
+docs/research/2026-09-09/LEGACY_RECOVERY_GAMECUBE_STADIUM.md	blob	100644	8737		unknown		PENDING			0	
+docs/research/2026-09-09/OFFICIAL_PATH_TRANSFER_CORPUS_AUDIT.md	blob	100644	5406		unknown		PENDING			0	
+docs/research/2026-09-09/POWERLOSS_DURABILITY_TEST_PLAN.md	blob	100644	4500		unknown		PENDING			0	
+docs/research/2026-09-09/RIBBON_BANK_EVENT_PRESERVATION_REFERENCES.md	blob	100644	5206		unknown		PENDING			0	
+docs/research/2026-09-09/SAVE_FORMATS_PROFILES_CONTAINERS.md	blob	100644	11253		unknown		PENDING			0	
+docs/research/2026-09-09/SOURCE_MANIFEST.md	blob	100644	6761		unknown		PENDING			0	
+docs/research/2026-09-09/TRANSFER_FIXTURES_PROVENANCE.md	blob	100644	12005		unknown		PENDING			0	
+docs/research/2026-09-09/VAULT_DATA_EVENTS_PERFORMANCE.md	blob	100644	11906		unknown		PENDING			0	
+docs/research/2026-09-09/VAULT_PERFORMANCE_EVENT_RIGHTS_AUDIT.md	blob	100644	5181		unknown		PENDING			0	
+docs/research/2026-09-11/GSC_FORMAT_ORACLE.md	blob	100644	5618		unknown		PENDING			0	
 docs/RETROARCH_SOURCE_NAMING.md	blob	100644	9545		unknown		PENDING			0	
 docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md	blob	100644	11211	documentation	text		AUDITED			0	
 docs/SAVE_FORMAT_EDGE_CASE_RESEARCH_2026-09-13.md	blob	100644	16092	documentation	text		AUDITED			0	
 docs/SAVE_SAFETY.md	blob	100644	9108		unknown		PENDING			0	
 docs/SAVE_STORAGE_DISCOVERY_RESEARCH_2026-09-13.md	blob	100644	18028		unknown		PENDING			0	
-docs/SESSION2_6_SAFETY_IMPLEMENTATION.md	blob	100644	4629		unknown		PENDING			0	
 docs/SESSION_LOG_2026-09-01.md	blob	100644	5059		unknown		PENDING			0	
 docs/SESSION_LOG_2026-09-02.md	blob	100644	9199		unknown		PENDING			0	
 docs/SESSION_RUNBOOK.md	blob	100644	4624		unknown		PENDING			0	
+docs/SESSION2_6_SAFETY_IMPLEMENTATION.md	blob	100644	4629		unknown		PENDING			0	
 docs/STANDALONE_RUNTIME.md	blob	100644	2498		unknown		PENDING			0	
 docs/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md	blob	100644	8767		unknown		PENDING			0	
 docs/TRAINER_PLAZA_VISION.md	blob	100644	15642		unknown		PENDING			0	
@@ -171,24 +169,6 @@ docs/V1_POLISH_AUDIT_2026-09-28.md	blob	100644	3258		unknown		PENDING			0
 docs/V1_ROADMAP.md	blob	100644	7787		unknown		PENDING			0	
 docs/V2_PLATFORM_VISION.md	blob	100644	8970		unknown		PENDING			0	
 docs/V2_ROADMAP.md	blob	100644	9882		unknown		PENDING			0	
-docs/audit/G4-01-READONLY-FOUNDATION.md	blob	100644	11009		unknown		PENDING			0	
-docs/audit/ISSUE85-SAVE-INSTANCES.md	blob	100644	6372		unknown		PENDING			0	
-docs/history/CURRENT_STATUS_PRE_LEAFGREEN_2026-09-09.md	blob	100644	9727		unknown		PENDING			0	
-docs/history/NEXT_CODEX_PROMPT_PRE_LEAFGREEN_2026-09-09.md	blob	100644	8091		unknown		PENDING			0	
-docs/history/PROJECT_RESOURCE_INDEX_PRE_CHUNKS_2026-09-09.md	blob	100644	14195		unknown		PENDING			0	
-docs/history/README.md	blob	100644	1355		unknown		PENDING			0	
-docs/research/2026-09-09/BANK_HOME_PRESERVATION_CAPTURE_PLAN.md	blob	100644	8114		unknown		PENDING			0	
-docs/research/2026-09-09/BANK_HOME_PUBLIC_CORPUS_AUDIT.md	blob	100644	10406		unknown		PENDING			0	
-docs/research/2026-09-09/LEGACY_RECOVERY_GAMECUBE_STADIUM.md	blob	100644	8737		unknown		PENDING			0	
-docs/research/2026-09-09/OFFICIAL_PATH_TRANSFER_CORPUS_AUDIT.md	blob	100644	5406		unknown		PENDING			0	
-docs/research/2026-09-09/POWERLOSS_DURABILITY_TEST_PLAN.md	blob	100644	4500		unknown		PENDING			0	
-docs/research/2026-09-09/RIBBON_BANK_EVENT_PRESERVATION_REFERENCES.md	blob	100644	5206		unknown		PENDING			0	
-docs/research/2026-09-09/SAVE_FORMATS_PROFILES_CONTAINERS.md	blob	100644	11253		unknown		PENDING			0	
-docs/research/2026-09-09/SOURCE_MANIFEST.md	blob	100644	6761		unknown		PENDING			0	
-docs/research/2026-09-09/TRANSFER_FIXTURES_PROVENANCE.md	blob	100644	12005		unknown		PENDING			0	
-docs/research/2026-09-09/VAULT_DATA_EVENTS_PERFORMANCE.md	blob	100644	11906		unknown		PENDING			0	
-docs/research/2026-09-09/VAULT_PERFORMANCE_EVENT_RIGHTS_AUDIT.md	blob	100644	5181		unknown		PENDING			0	
-docs/research/2026-09-11/GSC_FORMAT_ORACLE.md	blob	100644	5618		unknown		PENDING			0	
 include/Conversion/Convert.h	blob	100644	8740	conversion API / route policy	text	125	AUDITED			0	no
 include/Conversion/Fidelity.h	blob	100644	5970	conversion fidelity loss/adaptation model	text	143	AUDITED			0	no
 include/Conversion/Gen3PidSearch.h	blob	100644	3299	Gen III PID trait-preservation search	text	74	AUDITED			0	no
@@ -233,15 +213,16 @@ include/Integration/Gen3/Gen3StagedPokemonEditor.h	blob	100644	7053	Gen III stag
 include/Integration/Gen3/PKSMGen3Adapter.h	blob	100644	5080	Gen III immutable PKSM/native adapter API	text	161	AUDITED			0	no
 include/Integration/Gen4/Gen4AssignedSource.h	blob	100644	759	Gen IV assigned-source read-only API	text	19	AUDITED			0	no
 include/Integration/Gen4/Gen4ExactFormatEditorProvider.h	blob	100644	2446	Gen IV exact-format editor provider / move-compatibility bridge	text	63	AUDITED			0	no
+include/Integration/Gen4/Gen4MoveCompatibility.h	blob	100644	301653	generated Gen IV exact-game move compatibility table	text	1609	AUDITED			0	no
 include/Integration/Gen4/Gen4ReadOnlySave.h	blob	100644	4491	Gen IV validated read-only save model	text	108	AUDITED			0	no
 include/Integration/Gen4/Gen4SourceDiscovery.h	blob	100644	4071	Gen IV source discovery/container contract	text	126	AUDITED			0	no
 include/Integration/Gen4/Gen4StagedPokemonEditor.h	blob	100644	4388	Gen IV staged editor transaction API	text	103	AUDITED			0	yes
 include/Inventory/ClassicInventoryCatalog.h	blob	100644	1530	classic inventory catalog public contract	text	49	AUDITED			0	yes
 include/Legacy/FRLGReadOnlyTrainer.h	blob	100644	2870	Gen III strict read-only Trainer bridge API	text	53	AUDITED			0	no
 include/Legacy/FRLGSourceBrowser.h	blob	100644	2122	classic source-card browser contract	text	48	AUDITED			0	no
+include/Legacy/Gen4ReadOnlyTrainer.h	blob	100644	2823	Gen IV strict read-only Trainer bridge API	text	69	AUDITED			0	no
 include/Legacy/GSCReadOnlyTrainer.h	blob	100644	3081	Gen II strict read-only Trainer bridge API	text	70	AUDITED			0	yes
 include/Legacy/GSCSourceBrowser.h	blob	100644	810	Gen II source browser contract	text	27	AUDITED			0	no
-include/Legacy/Gen4ReadOnlyTrainer.h	blob	100644	2823	Gen IV strict read-only Trainer bridge API	text	69	AUDITED			0	no
 include/Legacy/LegacySourceBindings.h	blob	100644	4373	persistent legacy source/profile/game binding API	text	85	AUDITED			0	no
 include/Legacy/RBYReadOnlyTrainer.h	blob	100644	3202	Gen I strict read-only Trainer bridge API	text	66	AUDITED			0	yes
 include/Legacy/RBYSourceBrowser.h	blob	100644	1076	Gen I source browser contract	text	27	AUDITED			0	no
@@ -257,6 +238,7 @@ include/Names/ItemPouches.h	blob	100644	1195	per-game item-pouch catalog API	tex
 include/Names/ItemPresence.h	blob	100644	1033	held-item presence API	text	28	AUDITED			0	no
 include/Names/LocationNames.h	blob	100644	3135	origin-version-aware met-location lookup API	text	72	AUDITED			0	no
 include/Names/MachineDisplay.h	blob	100644	1157	machine descriptor/display API	text	36	AUDITED			0	no
+include/Names/MoveBattleStats.h	blob	100644	17304	generated Gen I-IV move Power/Accuracy/PP tables	text	199	AUDITED			1	yes
 include/Names/MoveInfo.h	blob	100644	1596	per-game move PP API	text	35	AUDITED			0	no
 include/Names/MoveNames.h	blob	100644	410	move-name lookup API	text	15	AUDITED			0	no
 include/Names/MovePresence.h	blob	100644	949	move-presence API contract	text	25	AUDITED			0	yes
@@ -273,12 +255,12 @@ include/Pokemon/FormInfo.h	blob	100644	6818	form legality/persistence helper API
 include/Pokemon/FormSpriteMapping.h	blob	100644	1559	form sprite lookup API	text	39	AUDITED			0	no
 include/Pokemon/Gen3PartyRecord.h	blob	100644	2023	Gen III stored/party tail helpers	text	41	AUDITED			0	no
 include/Pokemon/LearnsetTable.h	blob	100644	1829	generated learnset lookup API	text	39	AUDITED			0	yes
-include/Pokemon/PLADexTable.h	blob	100644	1623	PLA dex lookup API	text	37	AUDITED			0	no
 include/Pokemon/PersonalInfo4DP.h	blob	100644	1126	Gen IV DP personal-table API	text	26	AUDITED			0	no
 include/Pokemon/PersonalInfo4HGSS.h	blob	100644	1144	Gen IV HGSS personal-table API	text	26	AUDITED			0	no
 include/Pokemon/PersonalInfo4PT.h	blob	100644	1126	Gen IV Platinum personal-table API	text	26	AUDITED			0	no
 include/Pokemon/PersonalInfoTable.h	blob	100644	5654	generated cross-game personal/form metadata API	text	109	AUDITED			0	no
 include/Pokemon/PersonalRecord.h	blob	100644	632	Gen IV personal-record data model	text	27	AUDITED			0	no
+include/Pokemon/PLADexTable.h	blob	100644	1623	PLA dex lookup API	text	37	AUDITED			0	no
 include/Pokemon/Pokemon.h	blob	100644	26295	base Pokémon ownership/edit interface	text	645	AUDITED			1	yes
 include/Pokemon/Pokemon1ReadOnly.h	blob	100644	6742	Gen I immutable Pokémon presentation wrapper	text	128	AUDITED			1	yes
 include/Pokemon/Pokemon2ReadOnly.h	blob	100644	8049	Gen II immutable Pokémon presentation wrapper	text	148	AUDITED			1	yes
@@ -293,10 +275,10 @@ include/Pokemon/Pokemon8SWSH.h	blob	100644	38413	SWSH PK8 entity parser/editor a
 include/Pokemon/Pokemon9LZA.h	blob	100644	38592	Legends Z-A PA9 entity parser/editor and ownership	text	904	AUDITED			2	yes
 include/Pokemon/Pokemon9SV.h	blob	100644	39132	Scarlet/Violet PK9 entity parser/editor and ownership	text	914	AUDITED			2	yes
 include/Pokemon/PokemonTypes.h	blob	100644	2693	type-id/name helpers	text	74	AUDITED			0	no
-include/Pokemon/SVDexTable.h	blob	100644	1761	SV regional dex lookup API	text	39	AUDITED			0	no
-include/Pokemon/SWSHDexTable.h	blob	100644	1544	SWSH dex lookup API	text	37	AUDITED			0	no
 include/Pokemon/SpeciesConverter3.h	blob	100644	7432	Gen III internal/National species mapping	text	120	AUDITED			0	no
 include/Pokemon/SpeciesConverter9.h	blob	100644	4959	Gen IX internal/National species mapping	text	89	AUDITED			0	no
+include/Pokemon/SVDexTable.h	blob	100644	1761	SV regional dex lookup API	text	39	AUDITED			0	no
+include/Pokemon/SWSHDexTable.h	blob	100644	1544	SWSH dex lookup API	text	37	AUDITED			0	no
 include/Safety/SourceMutationPolicy.h	blob	100644	987	source mutation capability gate	text	35	AUDITED			0	no
 include/Safety/WritePolicy.h	blob	100644	1060	low-level live save write policy	text	34	AUDITED			0	no
 include/Save/BDSPReadValidation.h	blob	100644	832	BDSP minimum-layout read gate	text	23	AUDITED			0	no
@@ -325,6 +307,8 @@ include/Trainer/Trainer8SWSH.h	blob	100644	9892	Sword/Shield trainer/save serial
 include/Trainer/Trainer9LZA.h	blob	100644	10108	Legends Z-A trainer/save serializer API	text	265	AUDITED			3	yes
 include/Trainer/Trainer9SV.h	blob	100644	10575	Scarlet/Violet trainer/save serializer API	text	265	AUDITED			3	yes
 include/UI/ActionSheetModel.h	blob	100644	4742	contextual Pokemon action-sheet model	text	143	AUDITED			0	no
+include/UI/AppShellModel.h	blob	100644	3477	product app-shell navigation model	text		PENDING			0	
+include/UI/AppShellScreen.h	blob	100644	2084	product app-shell screen interface	text		PENDING			0	
 include/UI/BackupSelectionScreen.h	blob	100644	2962	backup selection/browser screen interface	text	78	AUDITED			0	no
 include/UI/BattleStatRadarModel.h	blob	100644	2187	shared battle-stat radar normalization model	text	51	AUDITED			0	no
 include/UI/ClassicDefaultNickname.h	blob	100644	929	classic default-nickname/species-change policy	text	25	AUDITED			0	no
@@ -344,12 +328,14 @@ include/UI/Dialogs/SaveConfirmDialog.h	blob	100644	316	save-confirm dialog inter
 include/UI/Dialogs/StatEditDialog.h	blob	100644	525	stat-edit dialog mode/interface	text	23	AUDITED			0	no
 include/UI/ExactFormatEditorProvider.h	blob	100644	5158	exact-format editor/source capability bridge	text	148	AUDITED			1	yes
 include/UI/ExactSaveCapabilities.h	blob	100644	7867	exact save-format UI capability matrix	text	136	AUDITED			0	no
+include/UI/GameLauncher.h	blob	100644	1169	emulator/game launcher interface	text		PENDING			0	
+include/UI/GameLaunchModel.h	blob	100644	4833	emulator/game launch eligibility model	text		PENDING			0	
 include/UI/Gen1PokemonDetailsPresentation.h	blob	100644	2144	Gen I Pokemon details presentation model	text	56	AUDITED			0	no
 include/UI/Gen1PokemonEditorOverlay.h	blob	100644	578	Gen I Pokemon editor overlay interface	text	21	AUDITED			0	no
 include/UI/Gen1PokemonEditorUIContract.h	blob	100644	9703	Gen I editor UX/action/footer contract	text	245	AUDITED			0	no
 include/UI/Gen1PokemonEditorUX3Contract.h	blob	100644	3475	Gen I cleanup-3 editor UX contract	text	89	AUDITED			0	no
 include/UI/Gen1PokemonPresentation.h	blob	100644	1784	Gen I shared presentation projection	text	38	AUDITED			0	no
-include/UI/Gen2HeldItemPicker.h	blob	100644	1885	Gen II shared held-item picker model/presentation	text	42	AUDITED			0	yes
+include/UI/Gen2HeldItemPicker.h	blob	100644	2080	Gen II shared held-item picker model/presentation	text	42	PENDING			0	yes
 include/UI/Gen2NativePresentation.h	blob	100644	8843	Gen II native caught/status/Pokerus presentation	text	216	AUDITED			0	no
 include/UI/Gen2PokemonEditorRules.h	blob	100644	2972	Gen II move/item editor rules	text	92	AUDITED			0	no
 include/UI/Gen2PokemonPickerModel.h	blob	100644	5534	Gen II species/move/location picker model	text	135	AUDITED			0	no
@@ -365,18 +351,21 @@ include/UI/LegacyPresentationRules.h	blob	100644	1370	legacy Pokemon/inventory p
 include/UI/Modals/Gen1PokemonDetailsModal.h	blob	100644	705	Gen I details modal interface	text	16	AUDITED			0	no
 include/UI/Modals/Gen2PokemonDetailsModal.h	blob	100644	693	Gen II details modal interface	text	16	AUDITED			0	no
 include/UI/Modals/PokemonDetailsModal.h	blob	100644	1061	Pokemon details dispatcher macro interface	text	29	AUDITED			0	yes
+include/UI/MovePickerPresentation.h	blob	100644	1273	shared move picker number/stat presentation	text	24	AUDITED			1	yes
 include/UI/NavigationRepeat.h	blob	100644	5729	D-pad/analog navigation repeat model	text	142	AUDITED			0	no
-include/UI/PKSEFramebuffer.h	blob	100644	10020	NanoVG framebuffer/rendering interface	text	161	AUDITED			0	no
+include/UI/OrganizationPreviewModel.h	blob	100644	3077	bank/Pokédex organization preview model	text		PENDING			0	
 include/UI/Panels/BoxPokemonPanel.h	blob	100644	556	box Pokemon panel interface	text	19	AUDITED			0	no
 include/UI/Panels/CarriedSprite.h	blob	100644	1962	shared carried-Pokemon sprite helper	text	45	AUDITED			0	no
 include/UI/Panels/HomeMenuPanel.h	blob	100644	583	trainer workspace home panel interface	text	20	AUDITED			0	no
 include/UI/Panels/ItemsPanel.h	blob	100644	718	items panel interface	text	26	AUDITED			0	no
 include/UI/Panels/PartyPokemonPanel.h	blob	100644	480	party panel interface	text	26	AUDITED			0	no
 include/UI/Panels/StoragePanel.h	blob	100644	2154	storage/action dialog panel interfaces	text	38	AUDITED			0	no
+include/UI/PKSEFramebuffer.h	blob	100644	10020	NanoVG framebuffer/rendering interface	text	161	AUDITED			0	no
 include/UI/PokemonEditorExitGuard.h	blob	100644	1325	shared Pokemon editor exit-confirmation policy	text	37	AUDITED			0	no
 include/UI/PokemonEditorFoundationContract.h	blob	100644	12255	shared editor foundation focus/capability contract	text	281	AUDITED			0	yes
 include/UI/PokemonViewActions.h	blob	100644	1350	passive/Gen II Pokemon view action model	text	28	AUDITED			0	yes
-include/UI/SaveSelectScreen.h	blob	100644	7259	MAIN profile/game/source selection screen state	text	154	AUDITED			0	no
+include/UI/ProductChrome.h	blob	100644	1954	product-shell shared chrome	text		PENDING			0	
+include/UI/SaveSelectScreen.h	blob	100644	9781	MAIN profile/game/source selection screen state	text	154	PENDING			0	no
 include/UI/ScreenChrome.h	blob	100644	23745	shared HOME chrome/controller/touch rendering	text	450	AUDITED			0	no
 include/UI/SharedHeldItemPicker.h	blob	100644	1420	cross-generation held-item grid model	text	36	AUDITED			0	no
 include/UI/SharedPokemonEditorContract.h	blob	100644	25229	cross-generation shared editor/navigation contract	text	650	AUDITED			0	no
@@ -391,7 +380,7 @@ include/UI/SystemIcons.h	blob	100644	1456	system/profile/game icon cache interfa
 include/UI/TouchInput.h	blob	100644	1581	touch edge/drag input model	text	35	AUDITED			0	no
 include/UI/TrainerViewScreen.h	blob	100644	1398	TrainerViewScreen overlay composition wrapper	text	36	AUDITED			0	yes
 include/UI/TrainerViewScreenBase.h	blob	100644	29588	trainer/storage UI state and source mutation gate	text	449	AUDITED			1	yes
-include/UI/UI.h	blob	100644	2003	MAIN UI manager/lifecycle interface	text	59	AUDITED			0	no
+include/UI/UI.h	blob	100644	1469	MAIN UI manager/lifecycle interface	text	59	PENDING			0	no
 include/UI/UIScreen.h	blob	100644	405	abstract UI screen interface	text	20	AUDITED			0	no
 include/Utils/CRC16.h	blob	100644	3316	Gen IV/LGPE checksum helpers	text	75	AUDITED			0	no
 include/Utils/DurableFile.h	blob	100644	3140	C++ header	text	87	AUDITED			0	yes
@@ -409,23 +398,45 @@ include/Utils/MoveTransaction.h	blob	100644	5850	true-Move transaction API/state
 include/Utils/MoveTransactionProduction.h	blob	100644	3904	production true-Move store/resolver API	text	123	AUDITED			0	no
 include/Utils/NXTypes.h	blob	100644	1368	host/libnx scalar compatibility types	text	38	AUDITED			0	no
 include/Utils/PhysicalMoveAudit.h	blob	100644	529	disposable physical transaction audit API	text	16	AUDITED			0	no
-include/Utils/PokeBankPaths.h	blob	100644	7508	owned-path construction/sanitization	text	201	AUDITED			0	yes
+include/Utils/PokeBankPaths.h	blob	100644	7607	owned-path construction/sanitization	text	201	PENDING			0	yes
 include/Utils/SCXorShift32.h	blob	100644	1690	SC container xor stream PRNG	text	64	AUDITED			0	no
-include/Utils/SHA256.h	blob	100644	555	SC save SHA-256 API	text	28	AUDITED			1	yes
 include/Utils/Settings.h	blob	100644	611	runtime settings API	text	17	AUDITED			0	yes
+include/Utils/SHA256.h	blob	100644	555	SC save SHA-256 API	text	28	AUDITED			1	yes
 include/Utils/StringHelpers.h	blob	100644	1848	modern UTF/string helper API	text	44	AUDITED			0	yes
+LICENSE	blob	100644	34523	repository/build metadata	text		AUDITED			0	
+Makefile	blob	100644	17683	repository/build metadata	text		AUDITED			0	
+Makefile.host	blob	100644	442	repository/build metadata	text		PENDING			0	
+Makefile.host.base	blob	100644	19259	repository/build metadata	text		AUDITED			1	yes
+Makefile.host.classic_inventory	blob	100644	1880	repository/build metadata	text		AUDITED			0	
+Makefile.host.cleanup3	blob	100644	6680	repository/build metadata	text		AUDITED			0	
+Makefile.host.editor	blob	100644	13297	repository/build metadata	text		AUDITED			0	
+Makefile.host.gen4	blob	100644	6863	repository/build metadata	text		AUDITED			0	
+Makefile.host.gsc	blob	100644	8509	repository/build metadata	text		AUDITED			0	
+Makefile.host.hardware-fixes	blob	100644	20142	repository/build metadata	text		AUDITED			0	
+Makefile.host.machine	blob	100644	760	repository/build metadata	text		AUDITED			0	
+Makefile.host.product-ui	blob	100644	2465	product UI host-test build target	text		PENDING			0	
+Makefile.host.shared-editor	blob	100644	2994	repository/build metadata	text		AUDITED			0	
+Makefile.host.source-instances	blob	100644	1095	repository/build metadata	text		AUDITED			0	
+Makefile.host.standalone	blob	100644	1457	repository/build metadata	text		AUDITED			0	
 nanovg/fontstash.h	blob	100644	48977		unknown		PENDING			0	
-nanovg/nanovg.c	blob	100644	77637		unknown		PENDING			0	
-nanovg/nanovg.h	blob	100644	28603		unknown		PENDING			0	
-nanovg/nanovg_gl.h	blob	100644	46912		unknown		PENDING			0	
 nanovg/nanovg_gl_impl.c	blob	100644	315		unknown		PENDING			0	
 nanovg/nanovg_gl_utils.h	blob	100644	4807		unknown		PENDING			0	
+nanovg/nanovg_gl.h	blob	100644	46912		unknown		PENDING			0	
+nanovg/nanovg.c	blob	100644	77637		unknown		PENDING			0	
+nanovg/nanovg.h	blob	100644	28603		unknown		PENDING			0	
 nanovg/stb_truetype.h	blob	100644	195646		unknown		PENDING			0	
-recovery/RECOVERY_STATE.json	blob	100644	2658	recovery metadata	text		AUDITED			1	yes
-recovery/assets_snapshot/README.md	blob	100644	989	recovery metadata	text		AUDITED			1	yes
+PHILOSOPHY.md	blob	100644	1093	repository/build metadata	text		AUDITED			0	
+PKSE.sln	blob	100644	1032	repository/build metadata	text		AUDITED			1	yes
+PKSE.vcxproj	blob	100644	14698	repository/build metadata	text		AUDITED			1	yes
+PKSE.vcxproj.filters	blob	100644	23567	repository/build metadata	text		AUDITED			1	yes
+PKSE.vcxproj.user	blob	100644	165	repository/build metadata	text		AUDITED			0	
+PROJECT_STATUS.md	blob	100644	4030	repository/build metadata	text		AUDITED			0	
+README.md	blob	100644	13599	repository/build metadata	text		AUDITED			1	yes
 recovery/assets_snapshot/manifest.json	blob	100644	1218	recovery metadata	text		AUDITED			0	
+recovery/assets_snapshot/README.md	blob	100644	989	recovery metadata	text		AUDITED			1	yes
 recovery/assets_snapshot/romfs-recovery.tar.part000	blob	100644	83886080	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
 recovery/assets_snapshot/romfs-recovery.tar.part001	blob	100644	69765120	asset/recovery binary	binary		INSPECTED_INDIRECTLY			0	
+recovery/RECOVERY_STATE.json	blob	100644	2658	recovery metadata	text		AUDITED			1	yes
 src/Conversion/Convert.cpp	blob	100644	91547	cross-generation entity conversion implementation	text	1451	AUDITED			0	yes
 src/Conversion/RouteEvidence.cpp	blob	100644	31361	cross-game evidence persistence/retirement authorization	text	761	AUDITED			0	yes
 src/Encryption/Encryption.cpp	blob	100644	5023	shared save/entity encryption helpers	text	137	AUDITED			1	yes
@@ -469,9 +480,9 @@ src/Integration/Gen4/Gen4StagedPokemonEditor.cpp	blob	100644	21183	Gen IV staged
 src/Inventory/ClassicInventoryCatalog.cpp	blob	100644	15510	Gen I-III pocket/item/machine inventory catalog	text	348	AUDITED			0	yes
 src/Legacy/FRLGReadOnlyTrainer.cpp	blob	100644	9585	Gen III strict read-only presentation/staged bridge	text	207	AUDITED			0	no
 src/Legacy/FRLGSourceBrowser.cpp	blob	100644	9438	Gen I-III source-card construction/resolution	text	190	AUDITED			0	no
+src/Legacy/Gen4ReadOnlyTrainer.cpp	blob	100644	7162	Gen IV strict read-only presentation/staged bridge	text	167	AUDITED			0	no
 src/Legacy/GSCReadOnlyTrainer.cpp	blob	100644	7735	Gen II strict read-only presentation/staged bridge	text	185	AUDITED			0	yes
 src/Legacy/GSCSourceBrowser.cpp	blob	100644	5810	Gen II source-card construction/resolution	text	126	AUDITED			0	no
-src/Legacy/Gen4ReadOnlyTrainer.cpp	blob	100644	7162	Gen IV strict read-only presentation/staged bridge	text	167	AUDITED			0	no
 src/Legacy/LegacySourceBindings.cpp	blob	100644	23027	legacy source binding durable metadata store	text	492	AUDITED			0	no
 src/Legacy/RBYReadOnlyTrainer.cpp	blob	100644	7963	Gen I strict read-only presentation/staged bridge	text	192	AUDITED			0	yes
 src/Legacy/RBYSourceBrowser.cpp	blob	100644	6041	Gen I source-card construction/resolution	text	131	AUDITED			0	no
@@ -479,6 +490,7 @@ src/Legacy/RetroArchFRLGDiscovery.cpp	blob	100644	29302	bounded RetroArch/mGBA/T
 src/Legacy/RetroArchGSCDiscovery.cpp	blob	100644	8308	bounded RetroArch Gen II discovery	text	46	AUDITED			0	yes
 src/Legacy/RetroArchRBYDiscovery.cpp	blob	100644	14619	bounded RetroArch Gen I discovery	text	362	AUDITED			0	no
 src/Legality/Legality.cpp	blob	100644	16500	informational structural/internal-consistency legality checks	text	294	AUDITED			0	yes
+src/main.cpp	blob	100644	4227	Switch application startup/service/runtime orchestration	text	117	AUDITED			0	yes
 src/Names/AbilityNames.cpp	blob	100644	11612	ability-name lookup table	text	329	AUDITED			0	no
 src/Names/FormNames.cpp	blob	100644	30424	hand-maintained species/form display labels	text	751	AUDITED			0	yes
 src/Names/ItemNames.cpp	blob	100644	102371	modern plus Gen I/III item-name tables and conversion lookup	text	3313	AUDITED			0	no
@@ -501,12 +513,12 @@ src/Pokemon/Experience.cpp	blob	100644	12628	six growth curves and species growt
 src/Pokemon/FormInfo.cpp	blob	100644	11480	form legality/persistence rules	text	214	AUDITED			0	no
 src/Pokemon/FormSpriteMapping.cpp	blob	100644	34055	form sprite lookup mappings	text	1052	AUDITED			0	yes
 src/Pokemon/LearnsetTable.cpp	blob	100644	3172672	generated learnset implementation placeholder	text	1	AUDITED			0	yes
-src/Pokemon/PLADexTable.cpp	blob	100644	12203	PLA dex generated lookup tables	text	159	AUDITED			0	no
 src/Pokemon/PersonalInfo4DP.cpp	blob	100644	52279	Gen IV DP personal table	text	536	AUDITED			0	no
 src/Pokemon/PersonalInfo4HGSS.cpp	blob	100644	53074	Gen IV HGSS personal table	text	543	AUDITED			0	no
 src/Pokemon/PersonalInfo4PT.cpp	blob	100644	53056	Gen IV Platinum personal table	text	543	AUDITED			0	no
 src/Pokemon/PersonalInfoTable.cpp	blob	100644	190049	generated cross-game personal/form metadata + Gen III table	text	1927	AUDITED			0	no
 src/Pokemon/PersonalRecord4.cpp	blob	100644	109	Gen IV empty personal-record sentinel	text	5	AUDITED			0	no
+src/Pokemon/PLADexTable.cpp	blob	100644	12203	PLA dex generated lookup tables	text	159	AUDITED			0	no
 src/Pokemon/Pokemon1ReadOnly.cpp	blob	100644	975	Gen I immutable wrapper construction/text	text	37	AUDITED			0	no
 src/Pokemon/Pokemon2ReadOnly.cpp	blob	100644	1478	Gen II immutable wrapper construction/personal data	text	46	AUDITED			0	no
 src/Pokemon/Pokemon3FRLG.cpp	blob	100644	19608	FRLG PK3 derived stats/text/PID editing	text	359	AUDITED			0	no
@@ -533,6 +545,7 @@ src/Trainer/Trainer8LA.cpp	blob	100644	36866	Legends Arceus trainer/save parser/
 src/Trainer/Trainer8SWSH.cpp	blob	100644	40486	Sword/Shield trainer/save parser/serializer	text	852	AUDITED			2	yes
 src/Trainer/Trainer9LZA.cpp	blob	100644	45084	Legends Z-A trainer/save parser/serializer	text	911	AUDITED			3	yes
 src/Trainer/Trainer9SV.cpp	blob	100644	40540	Scarlet/Violet trainer/save parser/serializer	text	819	AUDITED			3	yes
+src/UI/AppShellScreen.cpp	blob	100644	28625	product app-shell implementation	text		PENDING			0	
 src/UI/BackupSelectionScreen.cpp	blob	100644	14155	profile/game backup browser/delete UI	text	313	AUDITED			1	yes
 src/UI/ClassicInventoryOverlay.cpp	blob	100644	40334	classic Gen I-III staged inventory edit/review/export overlay	text	915	AUDITED			0	yes
 src/UI/ClassicInventoryUIModel.cpp	blob	100644	3480	classic inventory UI model implementation	text	87	AUDITED			0	no
@@ -540,8 +553,9 @@ src/UI/ClassicPackedMoveOverlay.inc	blob	100644	27633	classic Gen I-III staged p
 src/UI/ClassicReleaseActionFix.inc	blob	100644	15493	Gen I/II staged Release action and confirmation layer	text	347	AUDITED			0	no
 src/UI/Dialogs/ItemEditDialog.cpp	blob	100644	6297	item edit/remove dialog renderer	text	114	AUDITED			0	no
 src/UI/Dialogs/PickerDialog.cpp	blob	100644	11567	generic picker dialog renderer	text	196	AUDITED			0	no
-src/UI/Dialogs/SaveConfirmDialog.cpp	blob	100644	5520	save/exit confirmation renderer	text	107	AUDITED			0	no
+src/UI/Dialogs/SaveConfirmDialog.cpp	blob	100644	5524	save/exit confirmation renderer	text	107	PENDING			0	no
 src/UI/Dialogs/StatEditDialog.cpp	blob	100644	4325	stat edit dialog renderer	text	89	AUDITED			0	no
+src/UI/GameLauncher.cpp	blob	100644	32448	bounded emulator/game launch implementation	text		PENDING			0	
 src/UI/Gen1PokemonDetailsPresentation.cpp	blob	100644	12921	Gen I read-only details presentation renderer	text	258	AUDITED			0	no
 src/UI/Gen1PokemonEditorFoundationHardwareFix.inc	blob	100644	20578	Gen I fullscreen shared-workspace hardware presentation/picker ownership fix	text	367	AUDITED			0	yes
 src/UI/Gen1PokemonEditorOverlay.cpp	blob	100644	48396	legacy Gen I staged editor overlay implementation (superseded at runtime by composite UX/foundation chain)	text	1095	AUDITED			0	yes
@@ -554,24 +568,24 @@ src/UI/Gen2HardwareFinalFix.inc	blob	100644	19308	Gen II final hardware fullscre
 src/UI/Gen2HardwarePickerFix.inc	blob	100644	6154	Gen II hardware move-picker compatibility adapter	text	130	AUDITED			0	no
 src/UI/Gen2HardwareWorkspaceFix.inc	blob	100644	4629	Gen II hardware workspace focus/presentation adapter	text	108	AUDITED			0	no
 src/UI/Gen2PokemonEditorFoundation.inc	blob	100644	39358	Gen II local-session DETAILS/VALUES/MOVES foundation editor	text	875	AUDITED			0	yes
-src/UI/Gen2PokemonPickerOverlay.inc	blob	100644	12400	Gen II named species/move/location picker overlay	text	264	AUDITED			0	no
+src/UI/Gen2PokemonPickerOverlay.inc	blob	100644	12648	Gen II named species/move/location picker overlay	text	264	PENDING			0	no
 src/UI/Gen2SharedPokemonSurface.inc	blob	100644	29899	Gen II shared actions/clone/review/provenance surface	text	608	AUDITED			0	no
-src/UI/Gen2SharedSurfaceParity.inc	blob	100644	18969	Gen II shared-surface parity/action input adapter	text	343	AUDITED			0	no
+src/UI/Gen2SharedSurfaceParity.inc	blob	100644	18975	Gen II shared-surface parity/action input adapter	text	343	PENDING			0	no
 src/UI/Gen2TrainerSessionOverlay.inc	blob	100644	2691	Gen II staged trainer-session overlay	text	59	AUDITED			0	no
-src/UI/Gen2UnifiedPokemonWorkspace.inc	blob	100644	42404	Gen II unified shared workspace and Crystal caught-history editing layer	text	834	AUDITED			1	yes
+src/UI/Gen2UnifiedPokemonWorkspace.inc	blob	100644	42414	Gen II unified shared workspace and Crystal caught-history editing layer	text	834	PENDING			1	yes
 src/UI/Gen3SharedPokemonSurface.inc	blob	100644	79423	Gen III shared View/Edit/Create/actions/pickers surface	text	1751	AUDITED			0	yes
 src/UI/Gen4SharedPokemonSurface.inc	blob	100644	88208	Gen IV shared View/Edit/Create surface	text	1986	AUDITED			1	yes
 src/UI/Modals/Gen1PokemonDetailsModal.cpp	blob	100644	3945	Gen I details adapter	text	88	AUDITED			0	no
 src/UI/Modals/Gen2PokemonDetailsModal.cpp	blob	100644	14261	Gen II read-only details renderer	text	290	AUDITED			0	no
 src/UI/Modals/PokemonDetailsDispatcher.cpp	blob	100644	1195	generation details renderer dispatcher	text	35	AUDITED			0	yes
 src/UI/Modals/PokemonDetailsModal.cpp	blob	100644	34505	generic modern Pokémon details/edit presentation modal	text	571	AUDITED			0	yes
-src/UI/PKSEFramebuffer.cpp	blob	100644	27588	NanoVG framebuffer/rendering implementation	text	556	AUDITED			0	no
 src/UI/Panels/BoxPokemonPanel.cpp	blob	100644	22188	box grid and per-Pokémon summary/radar presentation	text	381	AUDITED			0	yes
 src/UI/Panels/HomeMenuPanel.cpp	blob	100644	8866	loaded-workspace home panel renderer	text	178	AUDITED			0	no
 src/UI/Panels/ItemsPanel.cpp	blob	100644	11918	inventory panel renderer	text	223	AUDITED			0	yes
 src/UI/Panels/PartyPokemonPanel.cpp	blob	100644	7898	party card/grid renderer	text	152	AUDITED			0	no
 src/UI/Panels/StoragePanel.cpp	blob	100644	35794	dual save/bank storage pane and confirmation presentation	text	628	AUDITED			0	yes
-src/UI/SaveSelectScreen.cpp	blob	100644	64968	game/source picker, profile assignment and save-instance overlays	text	1278	AUDITED			1	yes
+src/UI/PKSEFramebuffer.cpp	blob	100644	27588	NanoVG framebuffer/rendering implementation	text	556	AUDITED			0	no
+src/UI/SaveSelectScreen.cpp	blob	100644	98265	game/source picker, profile assignment and save-instance overlays	text	1278	PENDING			1	yes
 src/UI/SpriteManager.cpp	blob	100644	8162	Pokemon/type sprite cache implementation	text	219	AUDITED			0	no
 src/UI/SystemIcons.cpp	blob	100644	7450	profile/title/game-card icon cache implementation	text	182	AUDITED			0	no
 src/UI/TouchInput.cpp	blob	100644	744	touch polling/edge implementation	text	24	AUDITED			0	no
@@ -580,7 +594,7 @@ src/UI/TrainerViewScreenBase.inc	blob	100644	295298	main trainer/browser input, 
 src/UI/TrainerViewScreenCompositeOverlay.cpp	blob	100644	12096	composite Gen I-IV TrainerView dispatch/runtime layering	text	289	AUDITED			0	yes
 src/UI/TrainerViewScreenGSCOverlay.cpp	blob	100644	430	historical Gen II overlay shim TU	text	7	AUDITED			0	no
 src/UI/TrainerViewScreenGSCOverlay.inc	blob	100644	34758	validated Gen II staged-editor/export overlay and GSC input shim	text	787	AUDITED			0	yes
-src/UI/UI.cpp	blob	100644	15976	MAIN UI lifecycle/source-opening orchestration	text	351	AUDITED			0	no
+src/UI/UI.cpp	blob	100644	18000	MAIN UI lifecycle/source-opening orchestration	text	351	PENDING			0	no
 src/Utils/DurableFile.cpp	blob	100644	14493	durable file replacement/recovery	text	383	AUDITED			0	yes
 src/Utils/EventLog.cpp	blob	100644	9765	structured Pokémon/item event-log formatting	text	204	AUDITED			0	no
 src/Utils/FileUtilities.cpp	blob	100644	16963	filesystem copy/backup/restore utilities	text	418	AUDITED			1	yes
@@ -592,16 +606,16 @@ src/Utils/MoveTransaction.cpp	blob	100644	36711	true-Move journal/recovery engin
 src/Utils/MoveTransactionProduction.cpp	blob	100644	11383	production true-Move store resolver/recovery	text	323	AUDITED			0	no
 src/Utils/PhysicalMoveAudit.cpp	blob	100644	22286	disposable physical interruption/recovery harness	text	612	AUDITED			0	no
 src/Utils/ReadAllBytes.cpp	blob	100644	922	whole-file read helper	text	22	AUDITED			0	no
-src/Utils/SHA256.cpp	blob	100644	4770	SC save SHA-256 implementation	text	146	AUDITED			1	yes
 src/Utils/Settings.cpp	blob	100644	3133	application settings persistence	text	78	AUDITED			1	yes
+src/Utils/SHA256.cpp	blob	100644	4770	SC save SHA-256 implementation	text	146	AUDITED			1	yes
 src/Utils/StringHelpers.cpp	blob	100644	8121	modern UTF/string helper implementation	text	195	AUDITED			0	yes
-src/main.cpp	blob	100644	4227	Switch application startup/service/runtime orchestration	text	117	AUDITED			0	yes
-tests/fixtures/gen4/README.md	blob	100644	791	Gen IV canonical fixture provenance/regeneration notes	text	18	AUDITED			0	yes
 tests/fixtures/gen4/blank-party.hex	blob	100644	473	canonical encrypted Gen IV party blank oracle	text	1	AUDITED			0	yes
 tests/fixtures/gen4/blank-stored.hex	blob	100644	273	canonical encrypted Gen IV stored blank oracle	text	1	AUDITED			0	yes
+tests/fixtures/gen4/README.md	blob	100644	791	Gen IV canonical fixture provenance/regeneration notes	text	18	AUDITED			0	yes
 tests/fixtures/gsc_pokemon_fixture.h	blob	100644	5749	shared Gen II save/Pokémon fixture builder	text	115	AUDITED			0	yes
 tests/fixtures/main_workspace_move_focus.h	blob	100644	2354	shared move-row focus regression fixture	text	42	AUDITED			0	yes
 tests/test_action_sheet_model.cpp	blob	100644	3297	Pokemon action-sheet mutation-free/unsupported-action contract	text	89	AUDITED			0	yes
+tests/test_app_shell_model.cpp	blob	100644	2144	app-shell navigation model contract	text		PENDING			0	
 tests/test_backup_namespace_contract.cpp	blob	100644	7520	backup namespace/path ownership contract	text	140	AUDITED			1	yes
 tests/test_backup_workspace_durability.cpp	blob	100644	2801	workspace image durable-write source contract	text	62	AUDITED			0	yes
 tests/test_bank_format_policy.cpp	blob	100644	1274	Bank format fail-closed source-contract test	text	34	AUDITED			0	yes
@@ -617,9 +631,9 @@ tests/test_conversion_evidence.cpp	blob	100644	38044		unknown		PENDING			0
 tests/test_conversion_fidelity_golden.cpp	blob	100644	7766	F05-F13 conversion-fidelity policy goldens	text	181	AUDITED			0	no
 tests/test_durable_file.cpp	blob	100644	4129	durable replacement host regression test	text	106	AUDITED			0	no
 tests/test_encounter_guardrails.cpp	blob	100644	5955	exact-game Gen II/III encounter guardrail fixtures	text	110	AUDITED			0	yes
+tests/test_game_hub_contract.py	blob	100644	5126	Product Home/game-hub static contract	text		PENDING			0	
 tests/test_game_identity.cpp	blob	100644	6450	game identity/platform/card-art catalog contract	text	114	AUDITED			0	yes
-tests/test_gen12_packed_move.cpp	blob	100644	16995		unknown		PENDING			0	
-tests/test_gen12_packed_multimove.cpp	blob	100644	15806		unknown		PENDING			0	
+tests/test_game_launch_model.cpp	blob	100644	2315	game launch eligibility model contract	text		PENDING			0	
 tests/test_gen1_battle_stats.cpp	blob	100644	1603	Gen I five-stat battle calculation fixtures	text	33	AUDITED			0	yes
 tests/test_gen1_cleanup3_staged_semantics.cpp	blob	100644	9777	Gen I staged edit/create/clone preservation semantics contract	text	192	AUDITED			0	yes
 tests/test_gen1_move_compatibility.cpp	blob	100644	3500	R/B/Y exact move compatibility fixtures	text	66	AUDITED			0	yes
@@ -628,6 +642,8 @@ tests/test_gen1_pokemon_editor_ux3_contract.cpp	blob	100644	3584	Gen I shared ed
 tests/test_gen1_radar_render.cpp	blob	100644	2353	Gen I production radar bounded-layout regression	text	46	AUDITED			0	yes
 tests/test_gen1_shiny.cpp	blob	100644	2136	Gen I shiny DV rules/toggle contract	text	51	AUDITED			0	yes
 tests/test_gen1_summary_presentation.cpp	blob	100644	4985	Gen I summary/shiny/radar presentation contract	text	93	AUDITED			0	yes
+tests/test_gen12_packed_move.cpp	blob	100644	16995		unknown		PENDING			0	
+tests/test_gen12_packed_multimove.cpp	blob	100644	15806		unknown		PENDING			0	
 tests/test_gen3_exact_format_editor_provider.cpp	blob	100644	7349	Gen III exact-format shared-editor provider/table pin contract	text	124	AUDITED			0	yes
 tests/test_gen3_hardware_surface_contract.cpp	blob	100644	18549	Gen III shared-surface hardware regression contract	text	280	AUDITED			0	yes
 tests/test_gen3_legality_context.cpp	blob	100644	2273	exact-source Gen III legality-context contract	text	65	AUDITED			0	yes
@@ -665,10 +681,12 @@ tests/test_inventory_ui_contract.cpp	blob	100644	6977	shared inventory action/fo
 tests/test_legacy_frlg_browse.cpp	blob	100644	16034		unknown		PENDING			0	
 tests/test_legacy_source_bindings.cpp	blob	100644	10555	legacy source-binding rollback/recovery/isolation test	text	216	AUDITED			0	no
 tests/test_machine_display.cpp	blob	100644	3553	generation-aware TM/HM/TR presentation contract	text	66	AUDITED			0	yes
+tests/test_move_picker_presentation.cpp	blob	100644	1896	shared move picker presentation contract test	text	14	AUDITED			0	yes
 tests/test_move_transaction_fault_matrix.cpp	blob	100644	10475	durable Move interruption/restart matrix	text	278	AUDITED			0	no
 tests/test_move_transaction_journal.cpp	blob	100644	25640	Move journal state/recovery contract	text	569	AUDITED			0	no
 tests/test_move_transaction_production.cpp	blob	100644	10842	production true-Move integration contract	text	244	AUDITED			0	no
 tests/test_navigation_repeat.cpp	blob	100644	3439	D-pad/analog held-repeat navigation contract	text	70	AUDITED			0	yes
+tests/test_organization_preview_model.cpp	blob	100644	1621	organization preview model contract	text		PENDING			0	
 tests/test_passive_pokemon_view_contract.cpp	blob	100644	5183	Gen I-III passive view non-mutation surface contract	text	85	AUDITED			0	yes
 tests/test_pksm_gen3_adapter.cpp	blob	100644	20829		unknown		PENDING			0	
 tests/test_pla_read_validation.cpp	blob	100644	4047	PLA SC-container/layout/checksum read validation test	text	82	AUDITED			0	no
@@ -682,6 +700,7 @@ tests/test_rby_pokemon_editor.cpp	blob	100644	13599		unknown		PENDING			0
 tests/test_rby_readonly_bridge.cpp	blob	100644	8106	RBY read-only trainer/party/box bridge contract	text	130	AUDITED			0	yes
 tests/test_rby_source_browser.cpp	blob	100644	2894	RBY source card/profile binding contract	text	44	AUDITED			0	yes
 tests/test_rby_staged_inventory.cpp	blob	100644	6678	RBY staged inventory mutation/finalization contract	text	136	AUDITED			0	yes
+tests/test_reachable_ui_consistency.py	blob	100644	1313	reachable product UI consistency static contract	text		PENDING			0	
 tests/test_retroarch_frlg_discovery.cpp	blob	100644	17720		unknown		PENDING			0	
 tests/test_rse_gen3_adapter.cpp	blob	100644	25892		unknown		PENDING			0	
 tests/test_rse_open_regression.cpp	blob	100644	9281	RSE save-open optional-inventory regression contract	text	214	AUDITED			0	yes
@@ -696,11 +715,12 @@ tests/test_sprite_layout.cpp	blob	100644	1051	deterministic sprite contain-layou
 tests/test_storage_conversion_custody_contract.cpp	blob	100644	8891	conversion custody/commit-order regression	text	185	AUDITED			0	no
 tests/test_storage_custody_contract.cpp	blob	100644	1531	storage custody rollback regression	text	40	AUDITED			0	no
 tests/test_theme.cpp	blob	100644	13980		unknown		PENDING			0	
-tests/test_v1_polish_contract.py	blob	100644	7981	V1 shared controls/artwork/metadata polish static contract	text	162	AUDITED			0	yes
+tests/test_v1_polish_contract.py	blob	100755	8194	V1 shared controls/artwork/metadata polish static contract	text	162	PENDING			0	yes
 tests/test_write_policy.cpp	blob	100644	1007	write-policy hard lock regression	text	26	AUDITED			0	yes
 tools/check_device_assets.py	blob	100755	8842	offline device-build asset preflight	text	218	AUDITED			1	yes
 tools/check_recovery_contract.py	blob	100644	2978	tracked recovery-state contract checker	text	75	AUDITED			0	no
 tools/gen_gen2_move_compatibility.py	blob	100644	8295	pinned Gen II move-compatibility table generator	text	195	AUDITED			0	no
+tools/gen_gen4_move_compatibility.py	blob	100644	2420	Gen IV compatibility table generator	text	70	AUDITED			0	no
 tools/gen_gen4_personal.py	blob	100644	11443	Gen IV DP/Pt/HGSS personal-table generator	text	219	AUDITED			0	no
 tools/gen_gen4text.py	blob	100644	9944	Gen IV code-page text table generator	text	200	AUDITED			0	no
 tools/gen_hdsprites.py	blob	100644	7465	pinned PokeAPI HOME sprite mirror/downscaler	text	189	AUDITED			1	yes
@@ -708,6 +728,7 @@ tools/gen_itempouches.py	blob	100644	10609	item-pouch generator from PKHeX stora
 tools/gen_itempresence.py	blob	100644	10167	held-item presence generator from PKHeX ItemStorage sources	text	245	AUDITED			0	no
 tools/gen_learnsets.py	blob	100644	39706	cross-game learnability bitset generator	text	918	AUDITED			1	yes
 tools/gen_locations.py	blob	100644	11256	generated location table generator	text	214	AUDITED			0	no
+tools/gen_move_battle_stats.py	blob	100755	4074	Gen I-IV move battle-stat generator	text	35	AUDITED			1	yes
 tools/gen_moveinfo.py	blob	100644	8818	per-game move base-PP generator from PKHeX MoveInfo tables	text	204	AUDITED			0	no
 tools/gen_movenames.py	blob	100644	2884	move-name generator from PKHeX text resource	text	76	AUDITED			0	no
 tools/gen_movepresence.py	blob	100644	6427	move-presence generator from pinned PKHeX source	text	170	AUDITED			0	yes
@@ -724,9 +745,3 @@ tools/recover_workspace.py	blob	100644	11689	GitHub snapshot/pinned-asset worksp
 tools/regenerate.py	blob	100755	7338	multi-generator reproducibility orchestration	text	194	AUDITED			0	yes
 tools/verify_embedded_romfs.py	blob	100644	3402	embedded NRO RomFS byte-for-byte verifier	text	65	AUDITED			0	yes
 vendor/PKSM-Core	commit	160000			unknown		PENDING			0
-include/Integration/Gen4/Gen4MoveCompatibility.h	blob	100644	301653	generated Gen IV exact-game move compatibility table	text	1609	AUDITED			0	no
-include/Names/MoveBattleStats.h	blob	100644	17304	generated Gen I-IV move Power/Accuracy/PP tables	text	199	AUDITED			1	yes
-include/UI/MovePickerPresentation.h	blob	100644	1273	shared move picker number/stat presentation	text	24	AUDITED			1	yes
-tests/test_move_picker_presentation.cpp	blob	100644	1896	shared move picker presentation contract test	text	14	AUDITED			0	yes
-tools/gen_gen4_move_compatibility.py	blob	100644	2420	Gen IV compatibility table generator	text	70	AUDITED			0	no
-tools/gen_move_battle_stats.py	blob	100755	4074	Gen I-IV move battle-stat generator	text	35	AUDITED			1	yes
