@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 271 / 725
-- Fully read text files: 237 / 692
+- Audited tracked paths: 282 / 725
+- Fully read text files: 248 / 692
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -118,6 +118,14 @@ Status: IN PROGRESS
 - SWSH/BDSP/SV/Z-A constructors explicitly document support for both 0x148 stored and 0x158 party entities yet retain the supplied size. Their `level()`/battle-stat APIs and `setLevel()`/`setExp()`/`recalculateStats()` assume the party tail exists. Current Trainer box models and unified Bank deliberately pass party-sized records, so no current production corruption path was proven; the public entity API itself remains unsafe for a documented stored-size input.
 - PLA already follows the safer normalization pattern: a stored 0x168 PA8 is copied into a zero-padded 0x178 party-sized buffer before party-stat access. Current PKHeX PK9/PA9 likewise normalizes stored entities to party size, which supports applying the same pattern to the other modern classes.
 - A suspected current-HP offset issue was explicitly disproved rather than logged: current PKHeX confirms `Stat_HPCurrent` at `0x8A` for PK8/PK9/PA9 and `0x92` for PA8, matching PokeBank NX.
+
+### Legacy Pokémon entity checkpoint
+
+- Fully read the Gen I and Gen II immutable presentation wrappers, the Gen III FRLG PK3 entity and stored/party helpers, and the strict Gen IV read-only model plus its shared-UI projection.
+- Gen I/II consume typed records produced by their strict save readers and copy only bounded raw-body bytes. Their mutation APIs are inert by design.
+- Gen III correctly distinguishes 80-byte stored PK3 from 100-byte party PK3: party-tail reads/writes are guarded by `dataSize`, and its crypto implementation returns a short copied buffer rather than overrunning if called with less than 0x50 bytes. However the resulting entity's ordinary fixed-offset accessors assume a native record, so constructing `Pokemon3FRLG` from an arbitrary short span remains unsafe at the entity boundary.
+- Gen IV is the strongest legacy entity boundary: `Encryption4` rejects any size other than exact 0x88 stored or 0xEC party records before decrypting; the immutable parser additionally requires valid size, sanity and checksum before exposing semantic fields.
+- The raw-buffer move-ownership defect from AUDIT-025 also reaches Gen I/II wrappers through implicitly generated moves and Gen III through explicitly defaulted moves.
 
 ## Findings
 
@@ -445,28 +453,28 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Severity: P3
 - Confidence: CONFIRMED
 - Area: Pokémon entity ownership / C++ memory safety
-- Files: `include/Pokemon/Pokemon.h`; directly verified declarations in `Pokemon7LGPE.h`, `Pokemon8SWSH.h`, `Pokemon8BDSP.h`, `Pokemon8LA.h`, `Pokemon9SV.h`, `Pokemon9LZA.h`
-- Exact symbols: `Pokemon(Pokemon&&) noexcept = default`, `Pokemon::operator=(Pokemon&&) noexcept = default`, and the corresponding defaulted concrete-format move operations.
+- Files: `include/Pokemon/Pokemon.h`; `Pokemon1ReadOnly.h`, `Pokemon2ReadOnly.h`, `Pokemon3FRLG.h`; directly verified modern declarations in `Pokemon7LGPE.h`, `Pokemon8SWSH.h`, `Pokemon8BDSP.h`, `Pokemon8LA.h`, `Pokemon9SV.h`, `Pokemon9LZA.h`
+- Exact symbols: `Pokemon(Pokemon&&) noexcept = default`, `Pokemon::operator=(Pokemon&&) noexcept = default`, the explicit defaulted moves in Gen III and modern concrete formats, and the implicitly generated Gen I/II wrapper moves.
 - Problem: `Pokemon` owns `buffer` as a raw `std::byte*` and its destructor executes `delete[] buffer`. A compiler-generated move of a raw pointer copies the pointer value; it does not null the source. The defaulted move also copies the `std::span`, so after a move both source and destination refer to the same allocation.
 - Why it matters: moving any of these concrete Pokémon objects by value leaves the destination pointing at storage still owned by the moved-from object. Destruction of the source creates a dangling destination; destruction of both produces a double free. Move assignment additionally risks leaking/overwriting the destination's prior allocation before the later double-free condition.
 - Reachability: current audited storage paths overwhelmingly traffic in `std::unique_ptr<Pokemon>`, so no present production crash path was confirmed in this tranche. However the move constructors/assignments are public and explicitly documented as supported, making this a real latent ownership defect rather than dead code.
-- Evidence: the base class destructor owns/frees `buffer`; its move operations are defaulted. LGPE, SWSH, BDSP, PLA, SV and Z-A each explicitly default their derived move constructor and move assignment.
+- Evidence: the base class destructor owns/frees `buffer`; its move operations are defaulted. `Pokemon3FRLG` and LGPE/SWSH/BDSP/PLA/SV/Z-A explicitly default their derived moves. Gen I/II wrappers own the same base buffer and declare no copy/move/destructor that would supply safe ownership transfer, so their implicitly generated move path inherits the broken base semantics.
 - Missing tests: move-construct and move-assign each concrete format under ASan; destroy the moved-from object before reading the moved-to object; verify data remains valid and exactly one owner frees the allocation.
 - Recommended fix: implement custom base move construction/assignment that transfers `buffer`, rebuilds `data` to the transferred allocation, copies `dataSize`, and clears the source's pointer/span/size. Alternatively replace the raw allocation with `std::unique_ptr<std::byte[]>` and still ensure the span is rebound after moves.
 - Risk of fix: low to medium; move assignment must safely release any existing destination allocation and rebind spans.
 - Owner: MAIN / Pokémon core lane.
 
-### AUDIT-026 — modern entity constructors/decryptors do not enforce or normalize native record length
+### AUDIT-026 — Gen III and modern entity constructors do not fully enforce/normalize native record length
 - Severity: P3
 - Confidence: CONFIRMED
-- Area: modern Pokémon entity parsing / memory safety
-- Files: `include/Pokemon/Pokemon7LGPE.h`, `include/Pokemon/Pokemon8SWSH.h`, `include/Pokemon/Pokemon8BDSP.h`, `include/Pokemon/Pokemon8LA.h`, `include/Pokemon/Pokemon9SV.h`, `include/Pokemon/Pokemon9LZA.h`; corresponding entity encryption implementations; shared `src/Encryption/Encryption.cpp`; stat implementations for SWSH/BDSP/SV/Z-A.
+- Area: Gen III + modern Pokémon entity parsing / memory safety
+- Files: `include/Pokemon/Pokemon3FRLG.h`; `include/Pokemon/Pokemon7LGPE.h`, `include/Pokemon/Pokemon8SWSH.h`, `include/Pokemon/Pokemon8BDSP.h`, `include/Pokemon/Pokemon8LA.h`, `include/Pokemon/Pokemon9SV.h`, `include/Pokemon/Pokemon9LZA.h`; corresponding entity encryption implementations; shared `src/Encryption/Encryption.cpp`; stat implementations for SWSH/BDSP/SV/Z-A.
 - Exact symbols: each concrete span constructor, each `decryptArray*` / `shuffleArray*`, `cryptPokemon()`, and SWSH/BDSP/SV/Z-A party-stat getters/recalculation methods.
-- Problem: entity constructors accept an arbitrary `std::span<const std::byte>` and the decryptors immediately read the first four bytes and then operate on a fixed header + four-block region without verifying that the supplied span actually contains that region. `cryptPokemon()` similarly forms a fixed `subspan(8, blockSize * blockCount)`. A truncated entity can therefore trigger out-of-bounds access / violated span preconditions before checksum validation can reject it.
+- Problem: the modern entity constructors accept an arbitrary `std::span<const std::byte>` and their decryptors immediately read the first four bytes and then operate on a fixed header + four-block region without verifying that the supplied span contains it. `cryptPokemon()` likewise forms a fixed `subspan(8, blockSize * blockCount)`. Gen III's decryptor is safer and returns a copied short buffer when input is below 0x50, but `Pokemon3FRLG` still binds that short result as a live entity and its ordinary fixed-offset accessors then assume the native header/data region exists. Truncated entity input can therefore reach out-of-bounds access before checksum validation rejects it.
 - Documented stored-size subcase: SWSH, BDSP, SV and Z-A explicitly document 0x148 stored records as valid constructor input and retain `dataSize = raw.size()`, but their `level()`, battle-stat accessors, `setLevel()`, `setExp()`, and `recalculateStats()` use offsets 0x148 through 0x154. A valid 0x148 stored record therefore creates an object whose advertised API reads/writes beyond its allocation.
 - Current reachability: audited live Trainer box paths for SWSH/BDSP/SV/Z-A use party-sized entity payloads, and unified Bank `recordSizeFor()` also uses party size for every modern group. No current save/Bank path was found constructing those four classes from 0x148 stored entities. This limits present severity, but the constructors publicly claim that input is supported.
 - Safer existing pattern: `Pokemon8LA` accepts a true stored-size 0x168 PA8 from PLA boxes, then normalizes it into a zero-initialized 0x178 party-sized owned buffer before exposing party-stat APIs. Current PKHeX PK9/PA9 performs the same stored→party padding in `DecryptParty()`.
-- Missing tests: every entity decoder should reject spans shorter than the native stored size without touching memory; exact stored-size and exact party-size records should construct deterministically; SWSH/BDSP/SV/Z-A stored-size objects should support level/stat getters and stat-affecting edits under ASan without an out-of-bounds access; unexpected intermediate/oversized lengths should have an explicit policy.
+- Missing tests: Gen III and every modern entity constructor should reject spans shorter than the native stored size without exposing a usable entity; exact stored-size and exact party-size records should construct deterministically; SWSH/BDSP/SV/Z-A stored-size objects should support level/stat getters and stat-affecting edits under ASan without an out-of-bounds access; unexpected intermediate/oversized lengths should have an explicit policy.
 - Recommended fix: make entity length an enforced boundary before decryption. Accept only documented native stored/party sizes (or an explicitly justified superset), and normalize valid stored entities to an owned party-sized buffer before any party-stat API is exposed. Return failure/invalid state for malformed lengths instead of relying on callers to be perfect.
 - Risk of fix: medium because clone/Bank/encryption code currently preserves `dataSize`; normalize carefully so box serialization still writes only the intended native prefix where the save format genuinely stores stored-size entities.
 - Owner: MAIN / Pokémon core + encryption lane.
