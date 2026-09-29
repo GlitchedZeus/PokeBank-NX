@@ -1707,12 +1707,8 @@ namespace UI {
             unique = leaf + "-" + std::to_string(n);
 
         const std::string destDir = gameDir + "/" + unique;
-        if (mkdir(destDir.c_str(), 0777) != 0 && errno != EEXIST) {
-            Utils::logErrorToFile("Failed to create named backup directory", destDir.c_str());
-            return "";
-        }
-        if (!Utils::copyDirectory(backupDir.c_str(), destDir.c_str())) {
-            Utils::logErrorToFile("Failed to seed named backup from", backupDir.c_str());
+        if (!Utils::copyDirectoryTransactional(backupDir.c_str(), destDir.c_str())) {
+            Utils::logErrorToFile("Failed to seed named backup transactionally from", backupDir.c_str());
             return "";
         }
         return destDir;
