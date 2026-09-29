@@ -547,7 +547,7 @@ src/UI/Gen1PokemonEditorFoundationHardwareFix.inc	blob	100644	20578	Gen I fullsc
 src/UI/Gen1PokemonEditorOverlay.cpp	blob	100644	48396	legacy Gen I staged editor overlay implementation (superseded at runtime by composite UX/foundation chain)	text	1095	AUDITED			0	yes
 src/UI/Gen1PokemonEditorOverlayFoundation.inc	blob	100644	31073	Gen I foundation workspace input/edit/exit-guard presentation layer	text	636	AUDITED			0	yes
 src/UI/Gen1PokemonEditorOverlayUX.inc	blob	100644	50626	Gen I first-generation UX overlay/base layer for staged editor	text	1172	AUDITED			0	yes
-src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc	blob	100644	56095		unknown		PENDING			0	
+src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc	blob	100644	56299	Gen I logical-workspace/contextual-subeditor Cleanup2 layer	text	1192	AUDITED			0	yes
 src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc	blob	100644	35382		unknown		PENDING			0	
 src/UI/Gen1PokemonEditorPassiveView.inc	blob	100644	1145	Gen I passive read-only workspace adapter	text	30	AUDITED			0	no
 src/UI/Gen2HardwareFinalFix.inc	blob	100644	19308	Gen II final hardware fullscreen presentation adapter	text	348	AUDITED			0	no
