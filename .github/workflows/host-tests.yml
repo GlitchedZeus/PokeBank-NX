@@ -58,6 +58,9 @@ jobs:
       - name: Verify GitHub recovery contract
         run: python3 tools/check_recovery_contract.py
 
+      - name: Verify CI repository safety contract
+        run: python3 tests/test_ci_repository_safety_contract.py
+
       - name: Verify v1 polish contracts
         run: python3 tests/test_v1_polish_contract.py
 
