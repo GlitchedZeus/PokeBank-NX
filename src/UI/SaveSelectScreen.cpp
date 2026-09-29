@@ -1630,7 +1630,11 @@ namespace UI {
             // The whole selected-game panel remains one safe A/Open touch target for now.
             titleRects.push_back({DETAIL_X, HUB_Y, DETAIL_W, HUB_H, titleIndex});
         } else {
-            fb.drawText(DETAIL_X + 34, HUB_Y + 42, "No Pokémon games found",
+            const std::string emptyHeading =
+                (!u || u->name == "Game Sources")
+                    ? "No validated Pokémon game sources found"
+                    : "No Pokémon saves found for this profile";
+            fb.drawText(DETAIL_X + 34, HUB_Y + 42, emptyHeading,
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(DETAIL_X + 34, HUB_Y + 82,
                         "Assign an emulator save or create a supported Switch save to begin.",
