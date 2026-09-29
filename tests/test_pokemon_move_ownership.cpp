@@ -122,7 +122,8 @@ int main() {
 
     // Self-move must retain ownership and bytes.
     const std::byte* beforeSelfMove = assigned.getData().data();
-    assigned = std::move(assigned);
+    TestPokemon* self = &assigned;
+    assigned = std::move(*self);
     assert(assigned.getData().data() == beforeSelfMove);
     expectBytes(assigned, {0x01, 0x02, 0xFE, 0xFD, 0xFC});
 
