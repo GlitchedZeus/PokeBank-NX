@@ -1483,7 +1483,7 @@ namespace UI {
     // empty name means "use the default", and the keyboard starts from the raw stored name (blank by
     // default) rather than from the "Bank N" label.
     void TrainerViewScreen::renameBankBox(int box) {
-        if (!requireMutableWorkspace()) return;
+        if (!requireMutableStoragePane(1, PokeVault::Safety::SourceMutation::Rename)) return;
         if (!bank || box < 0 || box >= static_cast<int>(Trainer::Bank::BANK_BOX_COUNT)) return;
         const std::string current = bank->boxNames[box];
         const Utils::KeyboardResult res =
@@ -1799,7 +1799,7 @@ namespace UI {
 
     // Open the details modal on a storage slot (reuses the Box path for the save pane).
     void TrainerViewScreen::openStorageEditor(int pane, int box, int slot) {
-        if (!requireMutableWorkspace()) return;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::Edit)) return;
         if (pane == 1) {
             details.source = EditSource::Bank;
             details.bankBox = box;
@@ -1850,10 +1850,10 @@ namespace UI {
     }
 
     void TrainerViewScreen::openActionSheetTargetDetails(bool readOnly) {
-        readOnly = readOnly || sourceReadOnly();
-        if (!actionSheetTargetPokemon()) return;
-
         const auto& target = actionSheet.target();
+        readOnly = readOnly || !pokemonTargetMutable(
+            target, PokeVault::Safety::SourceMutation::Edit);
+        if (!actionSheetTargetPokemon()) return;
         using PokeVault::UIModel::PokemonLocation;
         if (target.location == PokemonLocation::Party) {
             details.source = EditSource::Party;
@@ -1923,9 +1923,9 @@ namespace UI {
     // Move mode: lift the slot under the cursor as a 1x1 block. Single and multi carry share one
     // representation, so every later step (drawing, bounds, put-down, B-to-return) is written once.
     void TrainerViewScreen::pickupSingle() {
-        if (!requireMutableWorkspace()) return;
         if (!bank) return;
         const int pane = storageFocusPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int box = (pane == 0) ? stSaveBox : stBankBox;
         const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
         if (slot < 0 || slot >= paneSlots(pane)) return;
@@ -1944,8 +1944,8 @@ namespace UI {
 
     // Multi mode: the first A anchors the rectangle at the cursor, the second grabs it.
     void TrainerViewScreen::pickupMulti() {
-        if (!requireMutableWorkspace()) return;
         const int pane = storageFocusPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
         if (slot < 0 || slot >= paneSlots(pane)) return;
         if (currentlySelecting) {
@@ -1962,9 +1962,9 @@ namespace UI {
     // Lift (remove = true) or copy (remove = false) every slot inside the anchored rectangle into
     // moveMon, then snap the cursor to the rectangle's top-left so the block sits under the pointer.
     void TrainerViewScreen::grabSelection(bool remove) {
-        if (!requireMutableWorkspace()) return;
         if (!currentlySelecting || !bank) return;
         const int pane = selectPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int box = selectBox;
         const int cols = paneCols(pane);
         const int slots = paneSlots(pane);
@@ -2100,9 +2100,9 @@ namespace UI {
     // conversion route into this save -- stay in the block and stay untouched, so one blocker never
     // strands the rest of the group.
     void TrainerViewScreen::putDownBlock() {
-        if (!requireMutableWorkspace()) return;
         if (!carrying() || !bank) return;
         const int pane = storageFocusPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int box = (pane == 0) ? stSaveBox : stBankBox;
         const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
         const int cols = paneCols(pane);
@@ -2246,7 +2246,7 @@ namespace UI {
     // relocating such a slot would silently repoint a party member at a different Pokemon. The
     // occupant stays exactly where it is and the sort flows around it.
     void TrainerViewScreen::sortStorageBox(int pane, int box) {
-        if (!requireMutableWorkspace()) return;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int slots = (pane == 0) ? static_cast<int>(trainer.getSlotsPerBox())
                                       : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
         std::vector<int> freeIdx;                                   // slots the sort may write to
@@ -2280,8 +2280,9 @@ namespace UI {
 
     void TrainerViewScreen::handleStorageInput(u64 kDown) {
         if (!bank) return;
-        if (sourceReadOnly() && (kDown & (HidNpadButton_X | HidNpadButton_Y))) {
-            requireMutableWorkspace();
+        if (storageFocusPane == 0 && sourceReadOnly() &&
+            (kDown & (HidNpadButton_X | HidNpadButton_Y))) {
+            requireMutableStoragePane(0, PokeVault::Safety::SourceMutation::DirectMove);
             kDown &= ~(HidNpadButton_X | HidNpadButton_Y);
         }
 
@@ -3839,12 +3840,15 @@ namespace UI {
                 return;
             }
             if (kDown & HidNpadButton_A) {
-                switch (actionSheet.activate(!sourceReadOnly())) {
+                const bool allowEdit = pokemonTargetMutable(
+                    actionSheet.target(), PokeVault::Safety::SourceMutation::Edit);
+                switch (actionSheet.activate(allowEdit)) {
                     case PokeVault::UIModel::ActionResult::OpenView:
                         openActionSheetTargetDetails(true);
                         break;
                     case PokeVault::UIModel::ActionResult::OpenEditor:
-                        if (!requireMutableWorkspace()) break;
+                        if (!requireMutablePokemonTarget(
+                                actionSheet.target(), PokeVault::Safety::SourceMutation::Edit)) break;
                         openActionSheetTargetDetails(false);
                         break;
                     case PokeVault::UIModel::ActionResult::NotYetSupported:
