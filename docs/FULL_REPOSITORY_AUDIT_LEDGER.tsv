@@ -579,7 +579,7 @@ src/UI/TrainerViewScreen.cpp	blob	100644	2102	legacy TrainerView implementation 
 src/UI/TrainerViewScreenBase.inc	blob	100644	295298		unknown		PENDING			0	
 src/UI/TrainerViewScreenCompositeOverlay.cpp	blob	100644	12096	composite Gen I-IV TrainerView dispatch/runtime layering	text	289	AUDITED			0	yes
 src/UI/TrainerViewScreenGSCOverlay.cpp	blob	100644	430	historical Gen II overlay shim TU	text	7	AUDITED			0	no
-src/UI/TrainerViewScreenGSCOverlay.inc	blob	100644	34758		unknown		PENDING			0	
+src/UI/TrainerViewScreenGSCOverlay.inc	blob	100644	34758	validated Gen II staged-editor/export overlay and GSC input shim	text	787	AUDITED			0	yes
 src/UI/UI.cpp	blob	100644	15976	MAIN UI lifecycle/source-opening orchestration	text	351	AUDITED			0	no
 src/Utils/DurableFile.cpp	blob	100644	14493	durable file replacement/recovery	text	383	AUDITED			0	yes
 src/Utils/EventLog.cpp	blob	100644	9765	structured Pokémon/item event-log formatting	text	204	AUDITED			0	no
