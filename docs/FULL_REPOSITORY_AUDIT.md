@@ -33,8 +33,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 743 / 746
-- Fully read text files: 708 / 711
+- Audited tracked paths: 744 / 746
+- Fully read text files: 709 / 711
 - Binary/non-text inspected: 35 / 35 (34 binary assets + 1 gitlink) currently identified by exact extension/manifest scan
 
 ## Current checkpoint — integrated Product Home / launch delta
@@ -926,16 +926,18 @@ These are kept separate from corruption/safety findings unless a current impleme
 - Vendored rendering tranche: `nanovg/fontstash.h` (1,792 lines) and `nanovg/nanovg_gl.h` (1,660 lines) were fully read. The GL backend's dynamic draw-buffer allocators fail closed by abandoning the affected call. Fontstash has one reachable allocation-failure null dereference, recorded as AUDIT-044.
 
 
-### AUDIT-044 — Fontstash glyph-cache growth can dereference NULL after allocation failure
+### AUDIT-044 — Fontstash allocation failures can become null-pointer crashes during text rendering
 - Severity: P3
 - Confidence: CONFIRMED
 - Area: vendored NanoVG/Fontstash text rendering robustness
-- File: `nanovg/fontstash.h`
-- Exact behavior: `fons__allocGlyph()` returns `NULL` if its glyph-array `realloc` fails. `fons__getGlyph()` calls it when a glyph is not cached and immediately writes `glyph->codepoint`, `glyph->size`, and related fields without checking the returned pointer.
+- Files: `nanovg/fontstash.h`, `nanovg/nanovg.c`
+- Exact behavior: (1) `fons__allocGlyph()` returns `NULL` if its glyph-array `realloc` fails, but `fons__getGlyph()` immediately writes through that pointer without checking it. (2) `fonsResetAtlas()` assigns `realloc()` directly back to `stash->texData` and returns 0 on failure, while NanoVG's `nvg__allocTextAtlas()` ignores that return and reports success before the text iterator retries against the failed atlas state.
 - Reachability: `nanovg/nanovg.c` defines `FONTSTASH_IMPLEMENTATION` and includes this header, so this is the Fontstash implementation compiled into PokeBank NX. Normal text drawing reaches `fons__getGlyph()` for uncached glyphs.
 - Failure consequence: under memory pressure, glyph-cache expansion can turn a recoverable allocation failure into a null-pointer crash while rendering text.
 - Safety scope: availability/UI robustness only; no save/source mutation or ownership invariant is weakened.
-- Recommended fix: check the `fons__allocGlyph()` result before dereference and return `NULL` on failure so the existing higher-level glyph/draw paths can skip the glyph. Prefer preserving the vendored-source attribution/patch marker.
+- Recommended fix: check the `fons__allocGlyph()` result before dereference; preserve the old atlas pointer across `realloc`; propagate `fonsResetAtlas()` failure through `nvg__allocTextAtlas()`; and let the existing higher-level text paths skip/fail the draw. Preserve vendored-source attribution/patch marking.
 - Test gap: no constrained-allocation/fault-injection regression covers Fontstash glyph-cache growth.
 - Risk of fix: low.
 - Owner: rendering/runtime hardening lane.
+
+- `nanovg/nanovg.c` (2,949 lines / 77,637 bytes) was fully read. Geometry/draw-buffer growth generally fails closed. Its Fontstash atlas-resize caller confirms additional AUDIT-044 evidence but no separate numbered defect was added.
