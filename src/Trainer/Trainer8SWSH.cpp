@@ -375,9 +375,9 @@ namespace Trainer {
          * party was not.
          *
          * The party-count tail after the six slots (the block is 2068 bytes, not 6*344 = 2064) is
-         * deliberately left untouched: parsePartyBlock treats an encrypted blank as occupied, so
-         * empty slots load as species-0 "ghosts" that inflate party.size(). The save's own count is
-         * authoritative, not party.size(). Same reasoning as Trainer8LA.
+         * deliberately left untouched: the save's own party-count tail remains authoritative.
+         * parsePartyBlock now drops decrypted species-0 blanks from the logical party vector, but
+         * preserving this native count avoids manufacturing count bytes during unrelated edits.
          */
         for (auto& block : blocks) {
             if (block.key == PARTY8_SWSH) {
