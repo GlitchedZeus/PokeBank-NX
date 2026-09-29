@@ -52,7 +52,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 30 | AUDIT-035 | P3 | FIXED | personal/learnset regeneration still searches the removed SPECIES_NAMES symbol |
 | 31 | AUDIT-044 | P3 | FIXED | Fontstash allocation failures can become null-pointer crashes during text rendering |
 | 32 | AUDIT-006 | P3 | FIXED | LeakSanitizer is disabled even where comments say CI keeps it enabled |
-| 33 | AUDIT-003 | P3 | OPEN | mutable native toolchain image |
+| 33 | AUDIT-003 | P3 | FIXED | mutable native toolchain image |
 | 34 | AUDIT-036 | P3 | FIXED | Product Home Help overlay advertises stale controller actions |
 | 35 | AUDIT-011 | P3 | OPEN | Search preview vertical wrap changes columns and the test blesses it |
 | 36 | AUDIT-038 | P3 | OPEN | Legacy Save Instances scroll logic assumes one more visible row than the renderer draws |
@@ -649,7 +649,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Run the affected workflow/target on the exact remediation head and assert the intended gate executes.
 - **Dependency / sequencing:** After core correctness; coordinate with CI pin update
 - **Proposed remediation order:** 33
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** both active native workflows now pin `devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282`, the exact digest recorded by prior Native PR Gate and Product UI Native job logs when `:latest` was pulled. `tests/test_ci_repository_safety_contract.py` rejects `devkita64:latest` and requires that immutable digest in both workflows. Exact-head native runs are still required before VERIFIED.
 
 ### 34. AUDIT-036 — Product Home Help overlay advertises stale controller actions
 
