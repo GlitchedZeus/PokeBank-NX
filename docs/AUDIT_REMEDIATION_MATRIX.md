@@ -28,7 +28,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 6 | AUDIT-025 | P3 | FIXED | defaulted Pokémon move operations duplicate raw-buffer ownership |
 | 7 | AUDIT-026 | P3 | FIXED | Gen III and modern entity constructors do not fully enforce/normalize native record length |
 | 8 | AUDIT-021 | P2 | FIXED | SWSH/SV/Z-A authenticate the SC container but do not validate required game layout |
-| 9 | AUDIT-017 | P2 | OPEN | FRLG mutable workspace selects rotating slot before checksum validation |
+| 9 | AUDIT-017 | P2 | FIXED | FRLG mutable workspace selects rotating slot before checksum validation |
 | 10 | AUDIT-023 | P2 | OPEN | LGPE durable validator rejects the authentic 1 MiB save image |
 | 11 | AUDIT-018 | P2 | OPEN | LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity |
 | 12 | AUDIT-022 | P3 | OPEN | BDSP pre-open validation ignores its stored whole-file MD5 |
@@ -218,7 +218,9 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** corrupt newest/valid older slot must select the older valid slot; both invalid slots must refuse open; no mutation may occur merely to make an invalid selected slot checksum-valid.
 - **Dependency / sequencing:** Share checksum-aware Gen III slot policy
 - **Proposed remediation order:** 9
-- **Status:** OPEN
+- **Status:** FIXED
+
+- **Current-code reconciliation:** `Trainer3FRLG::selectActiveSlot()` now uses the shared checksum/signature/counter-aware `Gen3SaveValidation::Detail::validateSlot()` policy and only accepts a checksum-valid FireRed/LeafGreen slot. `validateTrainerSaveForOpen()` now applies the same fail-closed policy before mutable FRLG construction. `tests/test_frlg_mutable_slot_validation.cpp` synthesizes both rotating slots and proves valid-newest selection, corrupt-newest fallback to the older valid slot, and both-corrupt refusal; it is wired into normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 10. AUDIT-023 — LGPE durable validator rejects the authentic 1 MiB save image
 
