@@ -152,23 +152,23 @@ docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md	blob	100644	11211	documentation	t
 docs/SAVE_FORMAT_EDGE_CASE_RESEARCH_2026-09-13.md	blob	100644	16092	documentation	text		AUDITED			0	
 docs/SAVE_SAFETY.md	blob	100644	9108	save mutation/live-write safety contract	text	369	AUDITED			0	yes
 docs/SAVE_STORAGE_DISCOVERY_RESEARCH_2026-09-13.md	blob	100644	18028	save revision/emulator discovery/fixture/Vault research	text	572	AUDITED			0	yes
-docs/SESSION_LOG_2026-09-01.md	blob	100644	5059		unknown		PENDING			0	
-docs/SESSION_LOG_2026-09-02.md	blob	100644	9199		unknown		PENDING			0	
+docs/SESSION_LOG_2026-09-01.md	blob	100644	5059	historical 2026-09-01 session log	text	184	AUDITED			0	yes
+docs/SESSION_LOG_2026-09-02.md	blob	100644	9199	historical 2026-09-02 session log	text	359	AUDITED			0	yes
 docs/SESSION_RUNBOOK.md	blob	100644	4624	coding-session recovery/testing/safety runbook	text	173	AUDITED			0	yes
 docs/SESSION2_6_SAFETY_IMPLEMENTATION.md	blob	100644	4629	historical source-state and PLA safety implementation record	text	65	AUDITED			0	yes
 docs/STANDALONE_RUNTIME.md	blob	100644	2498	standalone runtime ownership/dependency contract	text	39	AUDITED			0	yes
-docs/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md	blob	100644	8767		unknown		PENDING			0	
-docs/TRAINER_PLAZA_VISION.md	blob	100644	15642		unknown		PENDING			0	
-docs/TRANSFER_MODEL.md	blob	100644	12593		unknown		PENDING			0	
-docs/UI_FLOW.md	blob	100644	9539		unknown		PENDING			0	
-docs/UI_OWNERSHIP_STATUS.md	blob	100644	1804		unknown		PENDING			0	
-docs/UI_STYLE_GUIDE.md	blob	100644	14711		unknown		PENDING			0	
-docs/UPR_ZX_REFERENCE_AUDIT_2026-09-03.md	blob	100644	5186		unknown		PENDING			0	
-docs/UPSTREAM_AUDIT.md	blob	100644	13541		unknown		PENDING			0	
-docs/V1_POLISH_AUDIT_2026-09-28.md	blob	100644	3258		unknown		PENDING			0	
-docs/V1_ROADMAP.md	blob	100644	7787		unknown		PENDING			0	
-docs/V2_PLATFORM_VISION.md	blob	100644	8970		unknown		PENDING			0	
-docs/V2_ROADMAP.md	blob	100644	9882		unknown		PENDING			0	
+docs/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md	blob	100644	8767	Switch safe SD-file replacement research	text	255	AUDITED			0	yes
+docs/TRAINER_PLAZA_VISION.md	blob	100644	15642	future Trainer Plaza product vision	text	557	AUDITED			0	yes
+docs/TRANSFER_MODEL.md	blob	100644	12593	copy/move/clone/provenance transfer design specification	text	502	AUDITED			0	yes
+docs/UI_FLOW.md	blob	100644	9539	controller/UI target flow contract	text	525	AUDITED			0	yes
+docs/UI_OWNERSHIP_STATUS.md	blob	100644	1804	UI ownership/migration status	text	18	AUDITED			0	yes
+docs/UI_STYLE_GUIDE.md	blob	100644	14711	visual UI target style contract	text	549	AUDITED			0	yes
+docs/UPR_ZX_REFERENCE_AUDIT_2026-09-03.md	blob	100644	5186	UPR-ZX reference audit	text	208	AUDITED			0	yes
+docs/UPSTREAM_AUDIT.md	blob	100644	13541	upstream reuse/reference audit	text	486	AUDITED			0	yes
+docs/V1_POLISH_AUDIT_2026-09-28.md	blob	100644	3258	v1 polish lane audit/reconciliation	text	79	AUDITED			0	yes
+docs/V1_ROADMAP.md	blob	100644	7787	v1 roadmap	text	248	AUDITED			0	yes
+docs/V2_PLATFORM_VISION.md	blob	100644	8970	post-v1/v2 platform vision	text	371	AUDITED			0	yes
+docs/V2_ROADMAP.md	blob	100644	9882	future v2 Connected roadmap	text	260	AUDITED			0	yes
 include/Conversion/Convert.h	blob	100644	8740	conversion API / route policy	text	125	AUDITED			0	no
 include/Conversion/Fidelity.h	blob	100644	5970	conversion fidelity loss/adaptation model	text	143	AUDITED			0	no
 include/Conversion/Gen3PidSearch.h	blob	100644	3299	Gen III PID trait-preservation search	text	74	AUDITED			0	no
