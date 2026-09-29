@@ -83,8 +83,8 @@ require("constexpr int x = 24, y = 78, w = 1232, h = 548;" in shell_source,
         "Banks/Search/Pokédex must use the wide product destination surface")
 require('"Coming Soon — no save data was changed."' in shell_source,
         "future destinations must use product-facing unavailable copy")
-require("Colors::FocusBorder, 3" in source,
-        "selected game OPEN action must carry the approved focus treatment")
+require("if (gameFocused)" in source and "Colors::Info, 3" in source,
+        "selected game OPEN action must carry the approved teal/cyan focus treatment")
 
 # Pokémon identity and future navigation.
 require('"UI/SpriteManager.h"' in source and "SpriteManager::getIconSprite" in source,
