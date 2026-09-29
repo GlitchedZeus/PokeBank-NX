@@ -172,7 +172,7 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         OrganizationPreviewKind kind = OrganizationPreviewKind::Banks;
         if (infoSection == PokeBank::UIModel::AppShellSection::Search)
             kind = OrganizationPreviewKind::Search;
-        else if (infoSection == PokeBank::UIModel::AppShellSection::Collections)
+        else if (infoSection == PokeBank::UIModel::AppShellSection::Pokedex)
             kind = OrganizationPreviewKind::Collections;
 
         const int count = PokeBank::UIModel::previewCount(kind);
