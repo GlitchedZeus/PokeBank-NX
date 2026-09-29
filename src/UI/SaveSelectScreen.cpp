@@ -1564,7 +1564,7 @@ namespace UI {
                                      2, 1, Colors::Divider);
             fb.drawText(infoX, HUB_Y + 191, "Pokédex Progress",
                         Colors::TextSecondary, TextStyle::Body);
-            fb.drawText(infoX, HUB_Y + 218, "Progress appears when this save exposes verified data.",
+            fb.drawText(infoX, HUB_Y + 218, "Pokédex progress is not available for this save yet.",
                         Colors::TextMuted, TextStyle::Caption);
 
             const int partyX = DETAIL_X + 22;
@@ -1656,7 +1656,7 @@ namespace UI {
                                  withAlpha(Colors::AccentPrimary, 100));
         fb.drawFilledCircle(vaultCx, vaultCy, 14, Colors::AccentPrimary);
         fb.drawText(RIGHT_X + 28, HUB_Y + featureH - 36,
-                    "Coming Soon — no Vault Pokémon are being fabricated.",
+                    "Coming Soon",
                     Colors::TextMuted, TextStyle::Caption);
 
         const int dexY = HUB_Y + featureH + featureGap;
@@ -1675,7 +1675,7 @@ namespace UI {
                                 withAlpha(i == 1 ? Colors::BrandAccent : Colors::AccentPrimary, 80));
         }
         fb.drawText(RIGHT_X + 28, dexY + featureH - 36,
-                    "Collection progress appears only when verified data is available.",
+                    "Collection progress will appear here when available.",
                     Colors::TextMuted, TextStyle::Caption);
 
         // Persistent product dock. Games remains the active destination even when focus is above it.
