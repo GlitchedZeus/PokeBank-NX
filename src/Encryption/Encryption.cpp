@@ -118,9 +118,12 @@ namespace Encryption {
 
     void cryptPokemon(std::span<std::byte> data, uint32_t partyValue, size_t blockSize, size_t blockCount)
     {
-        constexpr int start = 8; // Skip first 8 bytes (encryption constant + checksum)
-        const int blocksEndValue = blockSize * blockCount;
-        const int blocksEnd = start + blocksEndValue; // End of the 4 shuffled blocks
+        constexpr size_t start = 8; // Skip first 8 bytes (encryption constant + checksum)
+        if (data.size() < start || blockCount == 0 || blockSize > (data.size() - start) / blockCount)
+            return;
+
+        const size_t blocksEndValue = blockSize * blockCount;
+        const size_t blocksEnd = start + blocksEndValue; // End of the 4 shuffled blocks
 
         // Decrypt the 4 data blocks (Growth, Attacks, EVs, Misc)
         auto blocksSpan = data.subspan(start, blocksEndValue);
@@ -128,7 +131,7 @@ namespace Encryption {
 
         // If there's party data, decrypt it too
         // Party data includes battle stats and is only present for party Pokemon
-        if (data.size() > static_cast<size_t>(blocksEnd))
+        if (data.size() > blocksEnd)
         {
             auto partySpan = data.subspan(blocksEnd);
             cryptArray(partySpan, partyValue);
