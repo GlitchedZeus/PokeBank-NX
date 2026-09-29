@@ -8,16 +8,16 @@
 
 The project is built around one rule: **the original save is never treated as a disposable working copy**. PokeBank NX reads supported sources, stages edits inside the app, validates what it can prove, and keeps live source writes locked until a source-specific write path has been separately designed and accepted.
 
-> Current state: **active alpha development**. Gen I–III workflows are hardware accepted; Generation IV and the current product UI are in active integration and hardware-test preparation.
+> Current state: **active alpha development**. Gen I–III workflows are hardware accepted. Generation IV now has a staged shared editor and is integrated with the current Product Home, Classic Game Sources, trainer/Dex presentation, and launch/source architecture; that combined build is awaiting its next physical hardware acceptance pass.
 
 ## What PokeBank NX does today
 
 - Native Switch `.nro` application with controller-first navigation.
 - Hardware-accepted Gen I, II, and III save browsing and shared Pokémon editing.
-- Active Gen IV support for Diamond, Pearl, Platinum, HeartGold, and SoulSilver.
-- Trainer, Party, Boxes, Pokémon details, inventory, Create/Edit workflows, and staged mutation where supported.
+- Active Gen IV support for Diamond, Pearl, Platinum, HeartGold, and SoulSilver, including staged Party/Box editing, Create, generation-native fields, moves/forms, checksum repair, strict reparse, and rollback.
+- Trainer, Party, Boxes, Pokémon details, inventory, Create/Edit workflows, and staged mutation where supported across the current Gen I–IV foundation.
 - Generation-aware fields, move compatibility, forms, items, Pokérus, met data, and exact-format presentation.
-- Product Home with selected game, trainer/source information, trainer portrait, Party preview, Open/Launch actions, Master Vault preview, and Pokédex preview.
+- Product Home with selected game, trainer/source information, grounded game/gender trainer portrait, real Gen I–IV Pokédex progress, Party sprites, Open/Launch actions, Master Vault preview, and Pokédex preview.
 - Familiar **Game Sources** view for users who prefer the classic game-first workflow.
 - Compact Items and Settings shortcuts, plus a category-based two-pane Settings screen.
 - Provider-aware save discovery and assignment for sources including RetroArch, DraStic, melonDS, and manual files.
@@ -68,7 +68,7 @@ Current development includes:
 - distinct visual identities for the future **Master Vault** and **Pokédex**;
 - cursor/focus restoration when returning from rebuilt menus where the underlying selection still exists.
 
-The next major UI milestone after the integrated hardware candidate is **full app-wide touch control parity**.
+The immediate release-engineering target is one exact, fully green Gen I–IV + Product UI NRO for physical Switch testing. After that integrated candidate is accepted, the next major UI milestone is **full app-wide touch control parity**.
 
 ## Master Vault and Banks
 
