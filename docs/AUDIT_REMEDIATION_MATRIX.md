@@ -7,9 +7,9 @@ The forensic audit is closed: 746/746 tracked paths accounted, 711/711 text file
 ## Baseline and invariants
 
 - Original severity counts: P1 2, P2 17, P3 20, P4 5.
-- Remediation base: PR #92 branch `feature/gen4-full-editor-20260928` at `4bdb82db247f9d0d6bc4393624c40db32a923b40`.
+- Remediation base: PR #92 branch `feature/gen4-full-editor-20260928` at `58a56f8d3b8350283f34fcc4d8dafc495b6515f2`.
 - Frozen evidence branch remains untouched at `143c5e5c341d4f85af30e013808a37d6719560fe`.
-- Current baseline CI note: exact-head Product UI Native is red before remediation because `tests/test_game_hub_contract.py` reports `persistent dock must reserve Settings for the header and More for future features`. This is treated as pre-existing UI-lane drift, not a new audit finding. Host Tests / Gen IV gate were still running when this matrix was created.
+- Current baseline CI note: upstream MAIN `58a56f8d…` still has Product UI Native red before remediation; Host Tests were in progress and the Gen IV gate was cancelled by newer lane movement when this ledger was refreshed. Treat this as pre-existing UI-lane drift, not a new audit finding.
 - Source saves remain immutable. Emulator/installed-title live writes remain disabled. Cross-game True Move and source injection remain locked. No Gen V or Master Vault backend work is in scope.
 
 Status semantics: **OPEN** = not implemented; **IN PROGRESS** = active fix; **FIXED** = implementation exists but exact-head validation is incomplete; **VERIFIED** = focused + relevant broader validation proves the fix; **DEFERRED WITH JUSTIFICATION** = explicit blocker/prerequisite recorded.
@@ -20,7 +20,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 
 | Order | Finding | Sev | Status | Short title |
 |---:|---|:---:|---|---|
-| 1 | AUDIT-001 | P1 | OPEN | destructive mutable PKSE import workflow |
+| 1 | AUDIT-001 | P1 | FIXED | destructive mutable PKSE import workflow |
 | 2 | AUDIT-032 | P1 | FIXED | PR #97 removes AppShellSection::Collections but still references it |
 | 3 | AUDIT-002 | P2 | OPEN | no general unfiltered native PR compile gate |
 | 4 | AUDIT-020 | P2 | OPEN | SV/Z-A MyStatus size guard permits an out-of-bounds gender read |
@@ -81,7 +81,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Run the affected workflow/target on the exact remediation head and assert the intended gate executes.
 - **Dependency / sequencing:** None
 - **Proposed remediation order:** 1
-- **Status:** OPEN
+- **Status:** FIXED
+- **Current-code reconciliation:** `.github/workflows/import-pkse.yml` is retired on PR #101; `tests/test_ci_repository_safety_contract.py` is wired into Host Tests to block reintroduction of the destructive import/direct-main-push pattern. Exact-head Host Tests are still running, so this is not VERIFIED yet.
 
 ### 2. AUDIT-032 — PR #97 removes AppShellSection::Collections but still references it
 
