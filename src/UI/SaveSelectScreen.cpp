@@ -1156,7 +1156,9 @@ namespace UI {
         }
 
         // A manually chosen source may live outside every known emulator root. Keep the remembered
-        // assignment as one candidate in the chooser, but never let it skip the chooser.
+        // assignment available in the provider-neutral chooser for source setup/replacement. Normal
+        // Product Home open may use the exact remembered binding directly, but only through the
+        // strict read-only openAssignedSource() revalidation path.
         if (legacyBindings) {
             const auto remembered = legacyBindings->resolveFileForGame(
                 currentProfileIdentity(), gen4TargetGameId);
