@@ -8,7 +8,7 @@ Status: IN PROGRESS
 - Audit branch: `audit/full-repository-line-by-line-20260928`
 - Primary MAIN tree audited: PR #92 head `09c168ddfd4493ed5d06a33066c0ba56cdc9dff8`
 - PR #92 branch: `feature/gen4-full-editor-20260928`
-- Sibling UI overlay baseline: PR #97 head `c63ce48ad6952128cabe94aaeaba627a460b04bd`; live head `ec3ddbcd566353040255007ddb9c5ecf02fcbb8e` has a bounded 7-file catch-up delta still audited separately
+- Sibling UI overlay baseline: PR #97 head `c63ce48ad6952128cabe94aaeaba627a460b04bd`; live head `af4d2450983f837706be92a1d83c28fe308444e9` has a bounded catch-up delta audited separately (latest delta only touches `src/UI/SaveSelectScreen.cpp`, `src/UI/UI.cpp`, and `tests/test_game_hub_contract.py`)
 - Integration parent: PR #90 head `8b3bcc16c804247bfe8d1314b686974ce73051d8`
 - Hardening parent: PR #79 head `00ee7a6ed7ac1b5a93c43246d70c252e135acec0`
 - Default branch main: `aca2bf41c83d81084886a46d53195f6cead81ccc`
@@ -25,8 +25,8 @@ Status: IN PROGRESS
 
 ## Coverage
 
-- Audited tracked paths: 259 / 725
-- Fully read text files: 225 / 692 (text/unknown classification remains provisional until content inspection completes)
+- Audited tracked paths: 271 / 725
+- Fully read text files: 237 / 692
 - Binary/non-text inspected: 34 / 34 currently identified by exact extension/manifest scan
 
 ## Current checkpoint — live MAIN catch-up
@@ -110,6 +110,14 @@ Status: IN PROGRESS
 - Unified Bank v1 records are reconstructed from fixed native record spans and checksum-rejected before entering live Bank storage. The already-recorded legacy migration checksum gap remains AUDIT-013; no separate unified-Bank format defect was added here.
 - The base Pokémon class owns its decrypted buffer as a raw allocation but defaults move construction/assignment. Six modern concrete formats explicitly default their own move operations as “Allow moving for efficient transfers,” so the broken base ownership transfer is publicly exposed. Those large concrete headers remain PENDING until their complete line-by-line reads, but the exact move declarations were directly verified for LGPE/SWSH/BDSP/PLA/SV/Z-A.
 - Current production containers predominantly move `unique_ptr<Pokemon>`, so this is recorded as a latent P3 memory-safety API defect rather than evidence of an already-triggered crash.
+
+### Modern Pokémon entity checkpoint
+
+- Fully read the LGPE, Sword/Shield, BDSP, Legends: Arceus, Scarlet/Violet and Legends: Z-A concrete Pokémon headers and implementation files at live PR #92 head `09c168ddfd4493ed5d06a33066c0ba56cdc9dff8`.
+- Re-read the associated modern entity decryptors and the shared `cryptPokemon()` boundary. Their fixed block geometry is correct for valid native records, but no decoder enforces a minimum native entity length before reading the EC and fixed block region.
+- SWSH/BDSP/SV/Z-A constructors explicitly document support for both 0x148 stored and 0x158 party entities yet retain the supplied size. Their `level()`/battle-stat APIs and `setLevel()`/`setExp()`/`recalculateStats()` assume the party tail exists. Current Trainer box models and unified Bank deliberately pass party-sized records, so no current production corruption path was proven; the public entity API itself remains unsafe for a documented stored-size input.
+- PLA already follows the safer normalization pattern: a stored 0x168 PA8 is copied into a zero-padded 0x178 party-sized buffer before party-stat access. Current PKHeX PK9/PA9 likewise normalizes stored entities to party size, which supports applying the same pattern to the other modern classes.
+- A suspected current-HP offset issue was explicitly disproved rather than logged: current PKHeX confirms `Stat_HPCurrent` at `0x8A` for PK8/PK9/PA9 and `0x92` for PA8, matching PokeBank NX.
 
 ## Findings
 
@@ -447,3 +455,18 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: implement custom base move construction/assignment that transfers `buffer`, rebuilds `data` to the transferred allocation, copies `dataSize`, and clears the source's pointer/span/size. Alternatively replace the raw allocation with `std::unique_ptr<std::byte[]>` and still ensure the span is rebound after moves.
 - Risk of fix: low to medium; move assignment must safely release any existing destination allocation and rebind spans.
 - Owner: MAIN / Pokémon core lane.
+
+### AUDIT-026 — modern entity constructors/decryptors do not enforce or normalize native record length
+- Severity: P3
+- Confidence: CONFIRMED
+- Area: modern Pokémon entity parsing / memory safety
+- Files: `include/Pokemon/Pokemon7LGPE.h`, `include/Pokemon/Pokemon8SWSH.h`, `include/Pokemon/Pokemon8BDSP.h`, `include/Pokemon/Pokemon8LA.h`, `include/Pokemon/Pokemon9SV.h`, `include/Pokemon/Pokemon9LZA.h`; corresponding entity encryption implementations; shared `src/Encryption/Encryption.cpp`; stat implementations for SWSH/BDSP/SV/Z-A.
+- Exact symbols: each concrete span constructor, each `decryptArray*` / `shuffleArray*`, `cryptPokemon()`, and SWSH/BDSP/SV/Z-A party-stat getters/recalculation methods.
+- Problem: entity constructors accept an arbitrary `std::span<const std::byte>` and the decryptors immediately read the first four bytes and then operate on a fixed header + four-block region without verifying that the supplied span actually contains that region. `cryptPokemon()` similarly forms a fixed `subspan(8, blockSize * blockCount)`. A truncated entity can therefore trigger out-of-bounds access / violated span preconditions before checksum validation can reject it.
+- Documented stored-size subcase: SWSH, BDSP, SV and Z-A explicitly document 0x148 stored records as valid constructor input and retain `dataSize = raw.size()`, but their `level()`, battle-stat accessors, `setLevel()`, `setExp()`, and `recalculateStats()` use offsets 0x148 through 0x154. A valid 0x148 stored record therefore creates an object whose advertised API reads/writes beyond its allocation.
+- Current reachability: audited live Trainer box paths for SWSH/BDSP/SV/Z-A use party-sized entity payloads, and unified Bank `recordSizeFor()` also uses party size for every modern group. No current save/Bank path was found constructing those four classes from 0x148 stored entities. This limits present severity, but the constructors publicly claim that input is supported.
+- Safer existing pattern: `Pokemon8LA` accepts a true stored-size 0x168 PA8 from PLA boxes, then normalizes it into a zero-initialized 0x178 party-sized owned buffer before exposing party-stat APIs. Current PKHeX PK9/PA9 performs the same stored→party padding in `DecryptParty()`.
+- Missing tests: every entity decoder should reject spans shorter than the native stored size without touching memory; exact stored-size and exact party-size records should construct deterministically; SWSH/BDSP/SV/Z-A stored-size objects should support level/stat getters and stat-affecting edits under ASan without an out-of-bounds access; unexpected intermediate/oversized lengths should have an explicit policy.
+- Recommended fix: make entity length an enforced boundary before decryption. Accept only documented native stored/party sizes (or an explicitly justified superset), and normalize valid stored entities to an owned party-sized buffer before any party-stat API is exposed. Return failure/invalid state for malformed lengths instead of relying on callers to be perfect.
+- Risk of fix: medium because clone/Bank/encryption code currently preserves `dataSize`; normalize carefully so box serialization still writes only the intended native prefix where the save format genuinely stores stored-size entities.
+- Owner: MAIN / Pokémon core + encryption lane.
