@@ -61,7 +61,7 @@ namespace Pokemon {
          * - Gen 7 LGP/E (PK7): 260 bytes
          * - Gen 9 (PK9): varies by format
          */
-        size_t dataSize;
+        size_t dataSize = 0;
 
     public:
         // Virtual destructor to ensure proper cleanup in derived classes
@@ -76,9 +76,32 @@ namespace Pokemon {
         Pokemon(const Pokemon&) = delete;
         Pokemon& operator=(const Pokemon&) = delete;
 
-        // Allow move operations for efficient transfers
-        Pokemon(Pokemon&&) noexcept = default;
-        Pokemon& operator=(Pokemon&&) noexcept = default;
+        // Transfer sole ownership of the raw allocation. A defaulted move would only copy
+        // the raw pointer/span, leaving both objects to delete the same buffer.
+        Pokemon(Pokemon&& other) noexcept
+            : buffer(other.buffer),
+              data(other.buffer ? std::span<std::byte>(other.buffer, other.dataSize)
+                                : std::span<std::byte>{}),
+              dataSize(other.dataSize) {
+            other.buffer = nullptr;
+            other.data = {};
+            other.dataSize = 0;
+        }
+
+        Pokemon& operator=(Pokemon&& other) noexcept {
+            if (this == &other) return *this;
+
+            delete[] buffer;
+            buffer = other.buffer;
+            dataSize = other.dataSize;
+            data = buffer ? std::span<std::byte>(buffer, dataSize)
+                          : std::span<std::byte>{};
+
+            other.buffer = nullptr;
+            other.data = {};
+            other.dataSize = 0;
+            return *this;
+        }
 
         // ========================================
         // Core Data Properties (Pure Virtual)
