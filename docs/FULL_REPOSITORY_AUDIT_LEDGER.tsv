@@ -534,7 +534,7 @@ src/Trainer/Trainer8SWSH.cpp	blob	100644	40486	Sword/Shield trainer/save parser/
 src/Trainer/Trainer9LZA.cpp	blob	100644	45084	Legends Z-A trainer/save parser/serializer	text	911	AUDITED			3	yes
 src/Trainer/Trainer9SV.cpp	blob	100644	40540	Scarlet/Violet trainer/save parser/serializer	text	819	AUDITED			3	yes
 src/UI/BackupSelectionScreen.cpp	blob	100644	14155	profile/game backup browser/delete UI	text	313	AUDITED			1	yes
-src/UI/ClassicInventoryOverlay.cpp	blob	100644	40334		unknown		PENDING			0	
+src/UI/ClassicInventoryOverlay.cpp	blob	100644	40334	classic Gen I-III staged inventory edit/review/export overlay	text	915	AUDITED			0	yes
 src/UI/ClassicInventoryUIModel.cpp	blob	100644	3480	classic inventory UI model implementation	text	87	AUDITED			0	no
 src/UI/ClassicPackedMoveOverlay.inc	blob	100644	27633	classic Gen I-III staged packed/sparse box move and multi-select overlay	text	650	AUDITED			1	yes
 src/UI/ClassicReleaseActionFix.inc	blob	100644	15493	Gen I/II staged Release action and confirmation layer	text	347	AUDITED			0	no
