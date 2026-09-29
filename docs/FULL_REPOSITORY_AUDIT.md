@@ -493,3 +493,26 @@ Confirmed findings below are recorded only when supported by direct evidence fro
 - Recommended fix: stop treating this sparse table as a dense dex-indexed array. Either special-case/search sparse IDs, split the 0..151 dense table from Meltan/Melmetal, or generate a true id-indexed table large enough for 809. Add explicit compile-time/runtime coverage for 808/809.
 - Risk of fix: low; Pikachu/Eevee/Alolan dense lookups can remain unchanged while sparse IDs are resolved explicitly.
 - Owner: MAIN / LGPE Pokémon/stat-data lane.
+
+### AUDIT-028 — Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays
+- Severity: P2
+- Confidence: CONFIRMED
+- Area: modern Pokémon base stats / form handling / stat writeback
+- Files: `include/Pokemon/BaseStatsGen89.h`, `src/Pokemon/BaseStatsGen89.cpp`, and consumers `src/Pokemon/Pokemon8SWSH.cpp`, `Pokemon8BDSP.cpp`, `Pokemon8LA.cpp`, `Pokemon9SV.cpp`, `Pokemon9LZA.cpp`
+- Exact symbol: `getBaseStatsGen89()` (and `getBaseStatsSWSH()` through fallback).
+- Problem: the modern base-stat table deliberately places all-zero placeholders in the dense species array for many form-driven species and relies on `getBaseStatsGen89()` to redirect them into dedicated form arrays. That handwritten routing is incomplete and contains wrong offsets/raw-form indexing.
+- Confirmed valid-form examples:
+  - Tauros has four supported forms. The dedicated array has only the three Paldean breeds, but the main switch indexes it with raw `form`. Kanto Tauros form 0 therefore receives Combat Breed stats instead of its dense base row, and Paldean form 3 indexes one past the three-row array.
+  - Thundurus form 0 falls through to an intentional all-zero dense placeholder; form 1 is routed to index 1 of the combined Tornadus/Thundurus/Landorus array, which is **Tornadus-Therian**, not Thundurus-Therian.
+  - Landorus form 0 likewise returns an all-zero placeholder; form 1 is routed to combined-array index 2, which is **Thundurus-Incarnate**, not Landorus-Therian.
+  - Ursaluna's dedicated array contains only one row, Bloodmoon. The code indexes it with raw form, so base Ursaluna form 0 gets Bloodmoon stats and legitimate Bloodmoon form 1 indexes past the one-row array.
+  - The dense table contains zero placeholders for Aegislash, Wishiwashi, Minior, Eiscue, Morpeko and Palafin, but the switch has no cases for those species at all. Valid base/out-of-battle forms therefore receive zero base stats.
+  - Darmanitan has a complete four-form table declared but that table is never referenced; the dense row is a zero placeholder and the separate regional branch only handles one raw form. Several legitimate Darmanitan forms therefore resolve through zero/wrong data.
+- Additional incomplete coverage: declared Mega, Primal, Ash-Greninja, Aegislash, Wishiwashi, Minior, Eiscue, Morpeko, Eternatus and Palafin form arrays are never referenced by `getBaseStatsGen89()`. Some of these are battle-only states, but the entity layer can still display/recalculate party records that contain them.
+- Why it matters: all five modern mutable entity implementations obtain base stats through this helper (SWSH via `getBaseStatsSWSH()`) and their Level/EXP/IV/EV/species/form/nature edits call `recalculateStats()`. Wrong/zero/OOB lookup results therefore feed the party-stat tail written back into otherwise checksum-valid Pokémon. Valid Bloodmoon Ursaluna / Paldean Tauros cases can take the out-of-range path without malformed input.
+- Source-data cross-check: the generated `PersonalInfo` table independently reports the expected form counts (for example Tauros 4 and Ursaluna 2), and a structural audit of all 1,491 generated rows found no form-redirection, bounds, presence or type-domain errors. The routing defect is in the handwritten base-stat helper, not in that generated form metadata.
+- Tests: no focused base-stat/form tests for Tauros, Ursaluna, Thundurus, Landorus, Aegislash, Wishiwashi, Minior, Eiscue, Morpeko, Palafin or Darmanitan were found by filename.
+- Missing tests: iterate every `PersonalInfo` species/form pair present in each supported game and require a nonzero, correct base-stat record with matching species id; compare representative alternate forms against the corresponding game personal table; run every form under bounds sanitizers; verify stat-affecting edit round-trips for the affected valid forms.
+- Recommended fix: retire the handwritten form-routing table in favor of generated per-game personal/base-stat data using the same form-index redirection model already used by `PersonalInfo`. If a compatibility helper remains, every lookup must first validate `form < formCount` and every dedicated array must have explicit, tested mapping rather than raw-form arithmetic. Preserve SWSH's historical stat differences from later generations through per-game generated data, not ad-hoc post-fixes.
+- Risk of fix: medium because this helper is shared across five entity formats; golden fixtures should prove both unchanged ordinary species and corrected alternate forms before merge.
+- Owner: MAIN / Pokémon personal-data + stat-calculation lane.
