@@ -17,8 +17,8 @@ require('"PARTY"' in source, "product home must expose the real party strip")
 require('"A", "OPEN"' in source, "selected-game card must expose the Open action")
 require('"ZR", launchLabel' in source,
         "selected-game card must expose the dynamic Launch / Link Game File action")
-require('{"Games", "Banks", "Backups", "Search", "More", "Items", "Settings"}' in source,
-        "persistent dock must expose approved Games/Banks/Backups/Search/More plus Items and Settings quick controls")
+require('{"Games", "Banks", "Items", "Search", "More", "Settings"}' in source,
+        "persistent dock must expose one Backpack/Items slot and one Settings slot")
 require("hubDockFocused" in source and "hubFeatureIndex" in source and "activateHubDock" in source,
         "approved home destinations must be controller-focusable, not decorative")
 require("HidNpadButton_L" in source and "HidNpadButton_R" in source,
@@ -103,36 +103,16 @@ require("containSprite" in source,
         "party sprites must preserve aspect ratio")
 require("MainMenuDestination::More" in source and "Dest::More" in ui_manager,
         "More must be a real routed product destination")
-require('"Games   Open the familiar Game Sources grid"' in source,
-        "Product Home Help must explain that Games opens Classic Game Sources")
-require("classicGamesActive" in source and "drawClassicGameSources" in source,
-        "Games must retain the familiar Classic Game Sources interface")
-require('"Game Sources Controls"' in source and
-        '"B   Back to Product Home"' in source,
-        "Classic Game Sources must expose contextual controls and return Home")
+require('"Games   Open the selected game\'s workspace"' in source,
+        "Product Home Help must explain that Games opens the selected-game workspace")
 activate_start = source.index("void SaveSelectScreen::activateHubDock()")
 activate_end = source.index("void SaveSelectScreen::activateGameWorkspace()", activate_start)
 dock_activation = source[activate_start:activate_end]
-require("classicGamesActive = true;" in dock_activation,
-        "Games dock must enter Classic Game Sources")
-require("selectCurrentTitle();" not in dock_activation.split("if (hubDockIndex == 0)", 1)[1].split("else if (hubDockIndex == 1)", 1)[0],
-        "Games dock must not duplicate the fast OPEN route")
-require('"D-pad/Stick","Choose Game"' in source and
-        '"L/R","Switch User"' in source and
-        '"ZR","Launch"' in source,
-        "Classic Game Sources must retain controller navigation and launch controls")
-require("title.trainerName.empty() ? title.sourceLabel : title.trainerName" in source and
-        "title.dexCaught" in source and "title.dexTotal" in source,
-        "Classic Game Sources cards must show real trainer/dex metadata when available")
+require("overlay = Overlay::GameWorkspace;" in dock_activation and
+        "classicGamesActive = true;" not in dock_activation,
+        "Games dock must enter the new stable Game Workspace, not the retired source grid")
 require("-: Help" in source and "+: Settings" in source,
         "Product Home footer must expose Help and Settings shortcuts")
-update_start = source.index("void SaveSelectScreen::update")
-classic_input = source.index("if (classicGamesActive)", update_start)
-root_exit = source.index("// Games is now the app root", update_start)
-require(classic_input < root_exit,
-        "Classic Games controls must run before Product Home B-exit handling")
-require('{"-","Help"}' in source and '"-   Help / Controls"' in source,
-        "Classic Games must visibly expose contextual Minus Help")
 require("GameLaunchState::LauncherOnly" in launcher and
         "Direct selected-ROM handoff is not supported by this DraStic build." in launcher,
         "DraStic launch must be truthful launcher-only until its frontend supports ROM argv")
@@ -179,3 +159,29 @@ require("productSourceLabel" in source and '"System save"' in source and '"Linke
 require('"Pokémon storage, transfer & lineage"' in source and
         '"Research species, forms & collection"' in source,
         "Vault and Pokédex cards must carry distinct Pokémon-specific product identities")
+
+select_start = source.index("void SaveSelectScreen::selectCurrentTitle()")
+select_end = source.index("void SaveSelectScreen::selectCurrentTitleForItems()", select_start)
+stable_open = source[select_start:select_end]
+require("const TitleEntry selected =" in stable_open and
+        "const std::string selectedGameId = selected.gameId;" in stable_open,
+        "game open must snapshot stable game identity before refreshing source discovery")
+require("candidate.gameId == selectedGameId" in stable_open and
+        "candidate.sourceIdentity == shown.sourceIdentity" in stable_open,
+        "legacy open must re-map by gameId + source identity after refresh, never stale list index")
+require("openAssignedSource" in stable_open and "discoverGen4Candidates();" not in stable_open,
+        "remembered Gen IV saves must open the exact assigned game directly instead of re-entering the candidate grid")
+
+# The old grid used to call refreshHubPreview() unconditionally every frame, which could mount/read
+# Switch saves or reopen Gen IV files dozens of times per second and made A-open look hung.
+update_start = source.index("void SaveSelectScreen::update")
+classic_runtime = source.index("if (classicGamesActive)", update_start)
+root_runtime = source.index("// Games is now the app root", classic_runtime)
+classic_runtime_block = source[classic_runtime:root_runtime]
+require("if (userIndex == beforeUser && titleIndex != beforeTitle)" in classic_runtime_block,
+        "Classic grid preview work must run only when the selected game actually changes")
+require("selectCurrentTitle();\n                    // Do not mount/reparse" in classic_runtime_block and
+        "return;" in classic_runtime_block,
+        "A-open must hand off immediately instead of doing another heavy preview refresh")
+require("scrollClassicSelectionIntoView();\n                    refreshHubPreview();" in classic_runtime_block,
+        "Classic grid may refresh preview only inside the explicit selection-change guard")

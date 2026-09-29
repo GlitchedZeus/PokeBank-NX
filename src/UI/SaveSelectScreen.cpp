@@ -1303,26 +1303,107 @@ namespace UI {
     }
 
     void SaveSelectScreen::selectCurrentTitle() {
-        const UserEntry* u = currentUser();
-        if (!u || titleIndex < 0 || titleIndex >= (int)u->titles.size()) return;
-        const auto& title = u->titles[titleIndex];
-        if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-            const std::string gameId = title.gameId;
-            refreshLegacySources(gameId);
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
+
+        // Snapshot the selected identity before any source refresh. Never keep a list index across
+        // discovery: discovery can legitimately reorder cards. Hardware also showed the old grid
+        // visibly reshuffling while an A-open blocked, so identity must survive any refresh.
+        const TitleEntry selected = user->titles[static_cast<size_t>(titleIndex)];
+        const std::string selectedGameId = selected.gameId;
+        const std::string profile = currentProfileIdentity();
+
+        if (selected.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+            if (!legacyCatalog || selected.legacyInstances.empty()) {
+                hubNotice = "No validated save is available for this game.";
+                return;
+            }
+
+            // Multiple physical saves are genuinely ambiguous and still require an explicit choice.
+            if (selected.legacyInstances.size() > 1) {
+                legacyInstanceIndex = 0;
+                legacyInstanceScroll = 0;
+                legacyNotice = "Choose the exact validated save for " + selected.label + ".";
+                overlay = Overlay::LegacyInstances;
+                return;
+            }
+
+            const auto shown = selected.legacyInstances.front();
+            auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
+            *legacyCatalog = std::move(refreshed);
+            loadLegacySources(*legacyCatalog);
+
+            user = currentUser();
+            if (!user) {
+                hubNotice = "The selected save is no longer available.";
+                return;
+            }
+
+            const auto parent = std::find_if(user->titles.begin(), user->titles.end(),
+                [&](const auto& candidate) {
+                    return candidate.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                           candidate.gameId == selectedGameId;
+                });
+            if (parent == user->titles.end()) {
+                hubNotice = "The selected game no longer has a validated save.";
+                refreshHubPreview();
+                return;
+            }
+
+            // Re-map by stable game/source identity after refresh; never by the old titleIndex.
+            titleIndex = static_cast<int>(std::distance(user->titles.begin(), parent));
+            const auto instance = std::find_if(parent->legacyInstances.begin(),
+                parent->legacyInstances.end(), [&](const auto& candidate) {
+                    return candidate.sourceIdentity == shown.sourceIdentity;
+                });
+            if (instance == parent->legacyInstances.end() ||
+                !PokeVault::Source::sameValidatedSnapshot(shown, *instance)) {
+                hubNotice = "That save changed while opening. Nothing was opened.";
+                refreshHubPreview();
+                return;
+            }
+
+            selectedUserUid = user->uid;
+            selectedTitleId = 0;
+            selectedTitleName = parent->name;
+            this->selectedGameId = parent->gameId;
+            selectedSourceKind = parent->sourceKind;
+            selectedLegacySourceIndex = instance->sourceIndex;
+            titleSelected = true;
             return;
         }
-        if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
-            // Never auto-open a remembered adapter path. Gen IV now matches the classic source UX:
-            // game identity first, then an explicit validated Save Instances choice every time.
-            gen4TargetGameId = title.gameId;
-            discoverGen4Candidates();
+
+        if (selected.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+            if (!legacyBindings) {
+                openGen4Setup(selectedGameId, "Choose a validated read-only save for this game.");
+                return;
+            }
+            const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
+                *legacyBindings, profile, selectedGameId);
+            if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready || !opened.save) {
+                openGen4Setup(selectedGameId,
+                    opened.diagnostic.empty()
+                        ? "The remembered save no longer validates."
+                        : opened.diagnostic);
+                return;
+            }
+
+            // The remembered binding already names the exact source. Open that exact game directly;
+            // do not re-enter the old candidate grid and do not let a refreshed index pick a neighbor.
+            selectedUserUid = user->uid;
+            selectedTitleId = 0;
+            selectedTitleName = selected.name;
+            this->selectedGameId = selectedGameId;
+            selectedSourceKind = selected.sourceKind;
+            titleSelected = true;
             return;
         }
-        selectedUserUid  = u->uid;
-        selectedTitleId  = title.titleId;
-        selectedTitleName = title.name;
-        selectedGameId = title.gameId;
-        selectedSourceKind = title.sourceKind;
+
+        selectedUserUid  = user->uid;
+        selectedTitleId  = selected.titleId;
+        selectedTitleName = selected.name;
+        this->selectedGameId = selectedGameId;
+        selectedSourceKind = selected.sourceKind;
         titleSelected = true;
     }
 
@@ -1460,10 +1541,13 @@ namespace UI {
             titleIndex < static_cast<int>(user->titles.size());
 
         if (hubDockIndex == 0) {
-            classicGamesActive = true;
-            scrollRow = 0;
+            if (!hasGame) {
+                hubNotice = "Choose a game before opening Games.";
+                return;
+            }
+            gameWorkspaceIndex = 0;
             hubNotice.clear();
-            overlay = Overlay::None;
+            overlay = Overlay::GameWorkspace;
         } else if (hubDockIndex == 1) {
             requestedMainMenuDestination = MainMenuDestination::Banks;
             exitRequested = true;
@@ -1778,24 +1862,39 @@ namespace UI {
                 launchCurrentTitle();
                 return;
             }
+
+            const int beforeUser = userIndex;
+            const int beforeTitle = titleIndex;
             if (users.size() > 1) {
                 if (kDown & HidNpadButton_L) setUser(userIndex - 1);
                 if (kDown & HidNpadButton_R) setUser(userIndex + 1);
             }
+
             const UserEntry* classicUser = currentUser();
             const int classicCount = classicUser ? static_cast<int>(classicUser->titles.size()) : 0;
             if (classicCount > 0) {
                 const int cols = classicTitleColumns();
-                if (kDown & HidNpadButton_Left) titleIndex = (titleIndex - 1 + classicCount) % classicCount;
-                if (kDown & HidNpadButton_Right) titleIndex = (titleIndex + 1) % classicCount;
-                if ((kDown & HidNpadButton_Up) && titleIndex - cols >= 0) titleIndex -= cols;
-                if ((kDown & HidNpadButton_Down) && titleIndex + cols < classicCount) titleIndex += cols;
+                if (kDown & HidNpadButton_Left)
+                    titleIndex = (titleIndex - 1 + classicCount) % classicCount;
+                if (kDown & HidNpadButton_Right)
+                    titleIndex = (titleIndex + 1) % classicCount;
+                if ((kDown & HidNpadButton_Up) && titleIndex - cols >= 0)
+                    titleIndex -= cols;
+                if ((kDown & HidNpadButton_Down) && titleIndex + cols < classicCount)
+                    titleIndex += cols;
+
                 if (kDown & HidNpadButton_A) {
                     openIntent = OpenIntent::Default;
                     selectCurrentTitle();
+                    // Do not mount/reparse the selected save again on the same input frame.
+                    // The outer UI loop must observe titleSelected/overlay immediately.
+                    return;
                 }
-                scrollClassicSelectionIntoView();
-                refreshHubPreview();
+
+                if (userIndex == beforeUser && titleIndex != beforeTitle) {
+                    scrollClassicSelectionIntoView();
+                    refreshHubPreview();
+                }
             }
             return;
         }
@@ -2341,7 +2440,7 @@ namespace UI {
         }
 
         auto homeHints = hubDockFocused && hubDockIndex == 0
-            ? std::string("A: Game Sources | L/R: Change Game | -: Help | +: Settings | B: Exit")
+            ? std::string("A: Game Workspace | L/R: Change Game | -: Help | +: Settings | B: Exit")
             : std::string("L/R: Change Game | A: Select | ZR: Launch | -: Help | +: Settings | B: Exit");
         if (users.size() > 1) homeHints = "ZL: Profile | " + homeHints;
         drawNavHints(fb, 565, fb.getWidth() - 565, PRODUCT_DOCK_Y + 24, homeHints);
@@ -2645,7 +2744,7 @@ namespace UI {
                     "L / R   Previous / next game",
                     "ZL   Change profile when multiple profiles are available",
                     "ZR   Launch, choose a source, or link a game file",
-                    "Games   Open the familiar Game Sources grid",
+                    "Games   Open the selected game's workspace",
                     "+   Settings",
                     "-   Help / Controls",
                     "B   Exit PokeBank NX from Product Home"

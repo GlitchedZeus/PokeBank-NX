@@ -233,6 +233,7 @@ namespace UI {
         void activateGameFilePicker();
         void browseGameFileParent();
         void selectCurrentTitle();
+        void selectCurrentTitleForItems();
         void selectCurrentLegacyInstance();
         void openGen4Setup(const std::string& gameId, std::string notice = {});
         void discoverGen4Candidates();
