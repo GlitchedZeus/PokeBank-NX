@@ -418,10 +418,10 @@ Makefile.host.product-ui	blob	100644	2465	product UI host/sanitizer test build f
 Makefile.host.shared-editor	blob	100644	2994	repository/build metadata	text		AUDITED			0	
 Makefile.host.source-instances	blob	100644	1095	repository/build metadata	text		AUDITED			0	
 Makefile.host.standalone	blob	100644	1457	repository/build metadata	text		AUDITED			0	
-nanovg/fontstash.h	blob	100644	48977		unknown		PENDING			0	
+nanovg/fontstash.h	blob	100644	48977	vendored Fontstash font atlas/text renderer	text	1792	AUDITED			1	yes
 nanovg/nanovg_gl_impl.c	blob	100644	315	NanoVG GL3 backend implementation translation unit	text	7	AUDITED			0	no
 nanovg/nanovg_gl_utils.h	blob	100644	4807	vendored NanoVG framebuffer utility	text	154	AUDITED			0	no
-nanovg/nanovg_gl.h	blob	100644	46912		unknown		PENDING			0	
+nanovg/nanovg_gl.h	blob	100644	46912	vendored NanoVG OpenGL backend	text	1660	AUDITED			0	no
 nanovg/nanovg.c	blob	100644	77637		unknown		PENDING			0	
 nanovg/nanovg.h	blob	100644	28603	vendored NanoVG public API	text	697	AUDITED			0	no
 nanovg/stb_truetype.h	blob	100644	195646		unknown		PENDING			0	
