@@ -169,6 +169,87 @@ namespace UI {
             }
         }
 
+    struct TrainerPortraitPresentation {
+        const char* label = "Trainer";
+        bool female = false;
+        bool specific = false;
+    };
+
+    TrainerPortraitPresentation trainerPortraitForGame(
+        const std::string& gameId, bool genderKnown, uint8_t gender) {
+        const bool female = genderKnown && gender == 1;
+
+        if (gameId == "red_gb" || gameId == "blue_gb" || gameId == "yellow_gb")
+            return {"Red", false, true};
+        if (gameId == "gold_gbc" || gameId == "silver_gbc")
+            return {"Gold", false, true};
+        if (gameId == "crystal_gbc")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Kris" : "Gold", female, true}
+                : TrainerPortraitPresentation{"Crystal Trainer", false, false};
+
+        if (gameId == "ruby_gba" || gameId == "sapphire_gba" || gameId == "emerald_gba")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "May" : "Brendan", female, true}
+                : TrainerPortraitPresentation{"Hoenn Trainer", false, false};
+        if (gameId == "firered_gba" || gameId == "leafgreen_gba")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Leaf" : "Red", female, true}
+                : TrainerPortraitPresentation{"Kanto Trainer", false, false};
+
+        if (gameId == "diamond_nds" || gameId == "pearl_nds" || gameId == "platinum_nds")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Dawn" : "Lucas", female, true}
+                : TrainerPortraitPresentation{"Sinnoh Trainer", false, false};
+        if (gameId == "heartgold_nds" || gameId == "soulsilver_nds")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Lyra" : "Ethan", female, true}
+                : TrainerPortraitPresentation{"Johto Trainer", false, false};
+
+        // Later customizable protagonists deliberately stay generic until appearance reconstruction
+        // is backed by the exact save-format model. Never pretend a base portrait is exact.
+        return {"Trainer", false, false};
+    }
+
+    void drawTrainerPortrait(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                             const TrainerPortraitPresentation& portrait,
+                             bool showLabel) {
+        const Color accent = Colors::Info;
+        drawPanelSurface(fb, x, y, w, h, false, std::min(14, w / 5));
+
+        const int cx = x + w / 2;
+        const int headY = y + std::max(16, h / 4);
+        const int headR = std::max(9, std::min(w, h) / 7);
+        fb.drawFilledCircle(cx, headY, headR, withAlpha(Colors::TextPrimary, 210));
+
+        // Original project-drawn trainer mark: cap/hair + torso. It conveys player identity
+        // without bundling copied character artwork.
+        fb.drawFilledRoundedRect(cx - headR - 3, headY - headR - 5,
+                                 headR * 2 + 6, 7, 3, accent);
+        fb.drawFilledRoundedRect(cx - headR - 8, headY - headR,
+                                 headR + 10, 4, 2, accent);
+        if (portrait.female) {
+            fb.drawFilledRoundedRect(cx - headR - 5, headY + 2,
+                                     5, headR + 8, 2, withAlpha(Colors::TextPrimary, 180));
+            fb.drawFilledRoundedRect(cx + headR, headY + 2,
+                                     5, headR + 8, 2, withAlpha(Colors::TextPrimary, 180));
+        }
+        const int bodyY = headY + headR + 7;
+        fb.drawFilledRoundedRect(cx - std::max(12, w / 5), bodyY,
+                                 std::max(24, (w * 2) / 5),
+                                 std::max(13, h / 5), 7, withAlpha(accent, 135));
+
+        if (showLabel) {
+            std::string label = portrait.label;
+            if (label.size() > 14) label = label.substr(0, 13) + "…";
+            int tw = 0, th = 0;
+            fb.measureText(label, tw, th, TextStyle::Caption);
+            fb.drawText(x + std::max(4, (w - tw) / 2), y + h - 20,
+                        label, portrait.specific ? Colors::TextPrimary : Colors::TextMuted,
+                        TextStyle::Caption);
+        }
+    }
+
     // Approved product-home layout (1280x720): selected game is the visual anchor,
     // Master Vault / Pokédex sit beside it, and the persistent dock stays compact.
     constexpr int HUB_Y = 78;
@@ -264,16 +345,30 @@ namespace UI {
                             entry.dexSeen = dex.seen;
                             entry.dexCaught = dex.caught;
                             entry.dexTotal = dex.total;
+                            // Gen I has no selectable player gender; Red is fixed by the game.
+                            entry.trainerGender = 0;
+                            entry.trainerGenderKnown = true;
                         } else if (source.isGen2() && source.gen2Save) {
                             const auto dex = source.gen2Save->dexProgress();
                             entry.dexSeen = dex.seen;
                             entry.dexCaught = dex.caught;
                             entry.dexTotal = dex.total;
+                            const auto gender = source.gen2Save->trainer().gender;
+                            if (gender) {
+                                entry.trainerGender = *gender;
+                                entry.trainerGenderKnown = true;
+                            } else if (entry.gameId == "gold_gbc" || entry.gameId == "silver_gbc") {
+                                // Gold/Silver have a fixed male player character.
+                                entry.trainerGender = 0;
+                                entry.trainerGenderKnown = true;
+                            }
                         } else if (source.isGen3() && source.save) {
                             const auto dex = source.save->dexProgress();
                             entry.dexSeen = dex.seen;
                             entry.dexCaught = dex.caught;
                             entry.dexTotal = dex.total;
+                            entry.trainerGender = source.save->trainer().gender;
+                            entry.trainerGenderKnown = true;
                         }
                     }
                 }
@@ -317,6 +412,8 @@ namespace UI {
                             if (opened.status == PokeVault::Integration::Gen4::OpenStatus::Ready &&
                                 opened.save) {
                                 entry.trainerName = Utils::utf16ToUtf8(opened.save->trainer().name);
+                                entry.trainerGender = opened.save->trainer().gender;
+                                entry.trainerGenderKnown = true;
                                 const auto dex = opened.save->dexProgress();
                                 entry.dexSeen = dex.seen;
                                 entry.dexCaught = dex.caught;
@@ -649,6 +746,8 @@ namespace UI {
         partyPreview = {};
         partyPreviewStatus.clear();
         previewTrainerName.clear();
+        previewTrainerGender = 0;
+        previewTrainerGenderKnown = false;
         previewDexSeen = 0;
         previewDexCaught = 0;
         previewDexTotal = 0;
@@ -662,6 +761,8 @@ namespace UI {
         }
         const auto& title = user->titles[static_cast<size_t>(titleIndex)];
         previewTrainerName = title.trainerName;
+        previewTrainerGender = title.trainerGender;
+        previewTrainerGenderKnown = title.trainerGenderKnown;
         previewDexSeen = title.dexSeen;
         previewDexCaught = title.dexCaught;
         previewDexTotal = title.dexTotal;
@@ -782,6 +883,8 @@ namespace UI {
                 *legacyBindings, currentProfileIdentity(), title.gameId);
             if (opened.status == PokeVault::Integration::Gen4::OpenStatus::Ready && opened.save) {
                 previewTrainerName = Utils::utf16ToUtf8(opened.save->trainer().name);
+                previewTrainerGender = opened.save->trainer().gender;
+                previewTrainerGenderKnown = true;
                 const auto dex = opened.save->dexProgress();
                 previewDexSeen = dex.seen;
                 previewDexCaught = dex.caught;
@@ -1814,6 +1917,11 @@ namespace UI {
             else
                 fb.drawFilledRoundedRect(x + 29, y + 14, CLASSIC_ICON, CLASSIC_ICON, 12, Colors::PanelAlt);
 
+            const auto portrait = trainerPortraitForGame(
+                title.gameId, title.trainerGenderKnown, title.trainerGender);
+            drawTrainerPortrait(fb, x + CLASSIC_TILE_W - 58, y + 18, 48, 58,
+                                portrait, false);
+
             std::string label = title.label;
             if (label.size() > 18) label = label.substr(0, 17) + "…";
             int lw=0,lh=0; fb.measureText(label,lw,lh,TextStyle::Caption);
@@ -1926,6 +2034,9 @@ namespace UI {
                         previewTrainerName.empty() ? "—" : previewTrainerName,
                         previewTrainerName.empty() ? Colors::TextMuted : Colors::TextPrimary,
                         TextStyle::Heading);
+            const auto portrait = trainerPortraitForGame(
+                title.gameId, previewTrainerGenderKnown, previewTrainerGender);
+            drawTrainerPortrait(fb, infoX + 334, HUB_Y + 66, 94, 108, portrait, true);
 
             std::string sourceLine = title.platformLabel;
             if (!title.sourceLabel.empty()) sourceLine += "  •  " + title.sourceLabel;
@@ -2221,6 +2332,10 @@ namespace UI {
                 fb.drawFilledCircle(x + 30 + art / 2, y + 102 + art / 2, 15, Colors::Info);
             }
             fb.drawRoundedRect(x + 30, y + 102, art, art, 18, Colors::Divider, 1);
+            const auto workspacePortrait = trainerPortraitForGame(
+                title.gameId, previewTrainerGenderKnown, previewTrainerGender);
+            drawTrainerPortrait(fb, x + 30 + art - 78, y + 102 + art - 90,
+                                72, 84, workspacePortrait, false);
 
             const int metaY = y + 332;
             fb.drawText(x + 30, metaY, "Trainer", Colors::TextMuted, TextStyle::Caption);
