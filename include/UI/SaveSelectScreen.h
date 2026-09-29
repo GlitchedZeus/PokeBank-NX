@@ -69,6 +69,10 @@ namespace UI {
             std::string sourceLabel = "LOCAL SAVE";
             std::string locationLabel;
             std::string artworkKey;
+            std::string trainerName;
+            uint16_t dexSeen = 0;
+            uint16_t dexCaught = 0;
+            uint16_t dexTotal = 0;
             std::vector<PokeVault::Legacy::FRLGSaveInstance> legacyInstances;
             SelectedSourceKind sourceKind = SelectedSourceKind::SwitchTitle;
         };
@@ -97,6 +101,9 @@ namespace UI {
         std::array<PartyPreviewSlot, 6> partyPreview{};
         std::string partyPreviewStatus;
         std::string previewTrainerName;
+        uint16_t previewDexSeen = 0;
+        uint16_t previewDexCaught = 0;
+        uint16_t previewDexTotal = 0;
         GameLaunchDescriptor launchDescriptor;
         std::string hubNotice;
         bool launchLegacyMode = false;

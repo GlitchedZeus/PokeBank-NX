@@ -25,6 +25,7 @@
 #include "Utils/Keyboard.h"
 #include "Utils/Logger.h"
 #include "Utils/Settings.h"
+#include "Utils/StringHelpers.h"
 
 using namespace Utils;
 using namespace Enums;
@@ -216,6 +217,30 @@ namespace UI {
                 entry.artworkKey = card.artworkKey;
                 entry.legacyInstances = card.instances;
                 entry.sourceKind = SelectedSourceKind::RetroArchFRLG;
+                if (card.instances.size() == 1) {
+                    const auto& instance = card.instances.front();
+                    entry.trainerName = instance.trainerName;
+                    const size_t handle = instance.sourceIndex;
+                    if (handle < legacySources.sources.size()) {
+                        const auto& source = legacySources.sources[handle];
+                        if (source.isGen1() && source.gen1Save) {
+                            const auto dex = source.gen1Save->dexProgress();
+                            entry.dexSeen = dex.seen;
+                            entry.dexCaught = dex.caught;
+                            entry.dexTotal = dex.total;
+                        } else if (source.isGen2() && source.gen2Save) {
+                            const auto dex = source.gen2Save->dexProgress();
+                            entry.dexSeen = dex.seen;
+                            entry.dexCaught = dex.caught;
+                            entry.dexTotal = dex.total;
+                        } else if (source.isGen3() && source.save) {
+                            const auto dex = source.save->dexProgress();
+                            entry.dexSeen = dex.seen;
+                            entry.dexCaught = dex.caught;
+                            entry.dexTotal = dex.total;
+                        }
+                    }
+                }
                 user.titles.push_back(std::move(entry));
             }
         }
@@ -248,10 +273,21 @@ namespace UI {
                 } else {
                     const auto assigned = legacyBindings->resolveFileForGame(profile, game.id);
                     switch (assigned.status) {
-                        case PokeVault::Legacy::AssignedFileStatus::Ready:
+                        case PokeVault::Legacy::AssignedFileStatus::Ready: {
                             entry.sourceLabel = "REMEMBERED";
                             entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
+                            const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
+                                *legacyBindings, profile, game.id);
+                            if (opened.status == PokeVault::Integration::Gen4::OpenStatus::Ready &&
+                                opened.save) {
+                                entry.trainerName = Utils::utf16ToUtf8(opened.save->trainer().name);
+                                const auto dex = opened.save->dexProgress();
+                                entry.dexSeen = dex.seen;
+                                entry.dexCaught = dex.caught;
+                                entry.dexTotal = dex.total;
+                            }
                             break;
+                        }
                         case PokeVault::Legacy::AssignedFileStatus::Missing:
                             entry.sourceLabel = "MISSING";
                             entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
@@ -557,6 +593,9 @@ namespace UI {
         partyPreview = {};
         partyPreviewStatus.clear();
         previewTrainerName.clear();
+        previewDexSeen = 0;
+        previewDexCaught = 0;
+        previewDexTotal = 0;
         hubNotice.clear();
         launchDescriptor = {};
 
@@ -566,6 +605,10 @@ namespace UI {
             return;
         }
         const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+        previewTrainerName = title.trainerName;
+        previewDexSeen = title.dexSeen;
+        previewDexCaught = title.dexCaught;
+        previewDexTotal = title.dexTotal;
 
         std::string providerId;
         std::string sourcePath;
@@ -682,6 +725,11 @@ namespace UI {
             const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
                 *legacyBindings, currentProfileIdentity(), title.gameId);
             if (opened.status == PokeVault::Integration::Gen4::OpenStatus::Ready && opened.save) {
+                previewTrainerName = Utils::utf16ToUtf8(opened.save->trainer().name);
+                const auto dex = opened.save->dexProgress();
+                previewDexSeen = dex.seen;
+                previewDexCaught = dex.caught;
+                previewDexTotal = dex.total;
                 const auto party = opened.save->party();
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i) {
                     if (party[i].valid())
@@ -1702,10 +1750,27 @@ namespace UI {
 
             fb.drawFilledRoundedRect(infoX, HUB_Y + 172, DETAIL_W - (infoX - DETAIL_X) - 24,
                                      2, 1, Colors::Divider);
-            fb.drawText(infoX, HUB_Y + 191, "Pokédex",
+            fb.drawText(infoX, HUB_Y + 191, "Pokédex Progress",
                         Colors::TextSecondary, TextStyle::Body);
-            fb.drawText(infoX, HUB_Y + 218, "Progress tracking  •  Coming Soon",
-                        Colors::TextMuted, TextStyle::Caption);
+            if (previewDexTotal > 0) {
+                const std::string dexLine =
+                    "Seen " + std::to_string(previewDexSeen) + " / " +
+                    std::to_string(previewDexTotal) + "   •   Owned " +
+                    std::to_string(previewDexCaught) + " / " +
+                    std::to_string(previewDexTotal);
+                fb.drawText(infoX, HUB_Y + 218, dexLine,
+                            Colors::TextPrimary, TextStyle::Caption);
+                const int barW = 360;
+                const int fillW = static_cast<int>(
+                    (static_cast<uint32_t>(barW) * previewDexCaught) / previewDexTotal);
+                fb.drawFilledRoundedRect(infoX, HUB_Y + 246, barW, 7, 3,
+                                         withAlpha(Colors::TextMuted, 38));
+                if (fillW > 0)
+                    fb.drawFilledRoundedRect(infoX, HUB_Y + 246, fillW, 7, 3, Colors::Info);
+            } else {
+                fb.drawText(infoX, HUB_Y + 218, "Progress unavailable for this save format.",
+                            Colors::TextMuted, TextStyle::Caption);
+            }
 
             const int partyX = DETAIL_X + 22;
             const int partyY = HUB_Y + 278;
