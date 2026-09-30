@@ -2082,7 +2082,7 @@ namespace UI {
 
     void SaveSelectScreen::drawClassicGameSources(PKSEFramebuffer& fb) {
         drawAppBackdrop(fb);
-        drawTitleBar(fb, "Game Sources  /  v" + VERSION_STRING + "  /  " + BUILD_COMMIT);
+        drawTitleBar(fb, "Manage Game Sources");
         const UserEntry* u = currentUser();
         drawPanelSurface(fb, 24, 82, fb.getWidth() - 48, 104, true);
 
@@ -2094,7 +2094,7 @@ namespace UI {
                 fb.drawFilledRoundedRect(44, 92, 84, 84, 12, Colors::PanelAlt);
             fb.drawRoundedRect(44, 92, 84, 84, 12, Colors::Info, 2);
             fb.drawText(148, 103, u->name, Colors::TextPrimary, TextStyle::Title);
-            fb.drawText(148, 144, std::to_string(u->titles.size()) + " available game sources",
+            fb.drawText(148, 144, std::to_string(u->titles.size()) + " available save sources",
                         Colors::TextMuted, TextStyle::Caption);
         }
 
@@ -2156,9 +2156,9 @@ namespace UI {
         if (classicGamesActive) {
             drawClassicGameSources(fb);
             if (overlay == Overlay::Help) {
-                drawInfoOverlay(fb, "Game Sources Controls", {
-                    "D-pad / Left Stick   Choose a game source",
-                    "A   Open the selected game source",
+                drawInfoOverlay(fb, "Manage Game Sources", {
+                    "D-pad / Left Stick   Choose a save source",
+                    "A   Open the selected save source",
                     "L / R   Switch user",
                     "ZR   Launch selected game / emulator",
                     "+   Settings",
