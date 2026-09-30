@@ -1,15 +1,15 @@
 # Full Audit Remediation Matrix
 
-Created from frozen forensic evidence `143c5e5c341d4f85af30e013808a37d6719560fe` and reconciled forward to live MAIN / PR #92 head `ea6e9079bd8c5278ecd27fd9f81c18279d7c807d`.
+Created from frozen forensic evidence `143c5e5c341d4f85af30e013808a37d6719560fe` and reconciled forward to live MAIN / PR #92 head `f328096c2625587e52c7c480ce71c0a77c161faf`.
 
 The forensic audit is closed: 746/746 tracked paths accounted, 711/711 text files fully read, 35/35 non-text entries inspected, 0 pending ledger entries. This file is a remediation ledger, not a continuation of repository coverage.
 
 ## Baseline and invariants
 
 - Original severity counts: P1 2, P2 17, P3 20, P4 5.
-- Current MAIN reconciliation point: PR #92 branch `feature/gen4-full-editor-20260928` at `b503e89bfe7f4f9f4af5e3b21f745abde6c5f9e7`. The five commits since the previous reconciliation point touch LegacySourceBindings/Product Home/SaveSelect/UI tests only; PR #101 remains mergeable against that live base and preserves them for integration.
+- Current MAIN reconciliation point: PR #92 branch `feature/gen4-full-editor-20260928` at `f328096c2625587e52c7c480ce71c0a77c161faf`. PR #101 is based on this exact live head and preserves all newer MAIN work.
 - Frozen evidence branch remains untouched at `143c5e5c341d4f85af30e013808a37d6719560fe`.
-- Current baseline CI note: upstream MAIN `58a56f8d…` still has Product UI Native red before remediation; Host Tests were in progress and the Gen IV gate was cancelled by newer lane movement when this ledger was refreshed. Treat this as pre-existing UI-lane drift, not a new audit finding.
+- Exact-head remediation CI at `9e26aea28c82362a8d08ba9b680f864efa09ab0c`: Native PR Gate PASS; Product UI Native PASS; Gen I/II Packed Move Focused PASS; Gen I/II Packed Multi-Move Focused PASS; full Host Tests still running. No finding is promoted to VERIFIED until its required exact-head validation is complete.
 - Source saves remain immutable. Emulator/installed-title live writes remain disabled. Cross-game True Move and source injection remain locked. No Gen V or Master Vault backend work is in scope.
 
 Status semantics: **OPEN** = not implemented; **IN PROGRESS** = active fix; **FIXED** = implementation exists but exact-head validation is incomplete; **VERIFIED** = focused + relevant broader validation proves the fix; **DEFERRED WITH JUSTIFICATION** = explicit blocker/prerequisite recorded.
