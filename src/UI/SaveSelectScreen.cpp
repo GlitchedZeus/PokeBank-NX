@@ -2776,7 +2776,7 @@ namespace UI {
 
                 const int totalRows = (static_cast<int>(u->titles.size()) + cols - 1) / cols;
                 if (totalRows > visibleRows)
-                    drawScrollbar(fb, x + w - 8, 108, visibleRows * (tileH + gap) - gap,
+                    drawScrollbar(fb, x + w - 8, gridY, visibleRows * (tileH + gap) - gap,
                                   totalRows * (tileH + gap) - gap,
                                   gamesDrawerScroll * (tileH + gap));
             } else {
