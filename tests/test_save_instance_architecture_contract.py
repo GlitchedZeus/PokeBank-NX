@@ -37,10 +37,13 @@ require(shared, "visibleToProfile", "shared profile visibility helper missing")
 require(ui, "std::vector<PokeVault::Source::SaveInstance>& instances",
         "Save Instances row renderer is not provider-neutral")
 require(ui, "drawSaveInstanceRows(fb, parent.legacyInstances",
-require(ui, "constexpr int LEGACY_INSTANCE_VISIBLE_ROWS = 5;", "legacy instance row count must have one shared source")
-require(ui, "legacyInstanceScroll + LEGACY_INSTANCE_VISIBLE_ROWS", "legacy instance scrolling must use renderer row count")
-require(ui, "rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true", "legacy instance renderer must use shared row count")
         "classic Save Instances no longer use the shared row renderer")
+require(ui, "constexpr int LEGACY_INSTANCE_VISIBLE_ROWS = 5;",
+        "legacy instance row count must have one shared source")
+require(ui, "legacyInstanceScroll + LEGACY_INSTANCE_VISIBLE_ROWS",
+        "legacy instance scrolling must use renderer row count")
+require(ui, "rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true",
+        "legacy instance renderer must use shared row count")
 require(ui, "drawSaveInstanceRows(fb, gen4Instances",
         "Gen IV Save Instances no longer use the shared row renderer")
 require(ui, "appendDeduplicated(gen4Instances",
@@ -56,18 +59,26 @@ require(ui, "discoverConfiguredLegacySaves()",
 require(ui, "discoverKnownSources()",
         "Gen IV refresh is no longer provider-complete")
 
-# A remembered Gen IV source is additive to the chooser and may never bypass Save Instances.
+# A remembered Gen IV binding names one exact source and may open directly only after strict
+# read-only revalidation. Save Instances remains the provider-neutral source-management chooser for
+# discovery, replacement, ambiguity, and manually chosen sources outside known roots.
 select_start = ui.index("void SaveSelectScreen::selectCurrentTitle()")
 select_end = ui.index("void SaveSelectScreen::selectCurrentLegacyInstance()", select_start)
 select_body = ui[select_start:select_end]
-require(select_body, "discoverGen4Candidates();",
-        "Gen IV game card no longer routes through Save Instances")
-if "selectAssignedGen4Title();" in select_body:
-    raise AssertionError("remembered Gen IV source can bypass Save Instances")
+require(select_body, "openAssignedSource(",
+        "remembered Gen IV open no longer revalidates the exact assigned source")
+require(select_body, "OpenStatus::Ready",
+        "remembered Gen IV open no longer fails closed on validation status")
+require(select_body, "openGen4Setup(",
+        "invalid remembered Gen IV source no longer routes to safe source setup")
+if "discoverGen4Candidates();" in select_body:
+    raise AssertionError("normal remembered Gen IV open regressed into the candidate grid")
 require(ui, "remembered.binding.sourcePath",
         "remembered/manual Gen IV source outside known roots is no longer folded into chooser")
 require(ui, "appendReady(std::move(candidate), true);",
         "remembered/manual Gen IV source is not tagged in shared metadata")
+require(ui, "drawSaveInstanceRows(fb, gen4Instances",
+        "Gen IV source-management chooser lost provider-neutral Save Instances")
 
 # Provider boundaries: configured mGBA only, exact Tico classic children only, no invented DS path.
 require(legacy, '"savegamePath"', "mGBA discovery is no longer tied to configured battery storage")
@@ -94,6 +105,10 @@ for adapter in ("FRLG", "RBY", "GSC"):
     require(body, "applyClaims(instance)", f"{adapter} drops alias ownership")
 require(ui, "sameValidatedSnapshot(shownInstance, freshInstance)", "stale source snapshot opens silently")
 require(ui, "claimInstanceAndSave(entry.instance, profile)", "classic claim drops source aliases")
+require(ui, "preferGameSourceAndSave(",
+        "classic exact-source choice is no longer persisted for choose-once reopening")
+require(ui, "preferredLegacySourceIndex(",
+        "classic direct open no longer resolves the remembered exact physical source")
 require(text(".github/workflows/audit-hardening-native.yml"), "include/Source/**", "shared source model changes skip native CI")
 
 print("Provider-neutral Save Instances architecture contract: PASS")
