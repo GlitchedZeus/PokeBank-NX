@@ -18,6 +18,7 @@
 #include "Legality/Gen1CatchRateEvidence.h"
 #include "Legality/Gen1EncounterEvidence.h"
 #include "Legality/Gen3PidIvCorrelation.h"
+#include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
 #include "Legality/Gen4CuteCharmPid.h"
@@ -197,14 +198,28 @@ namespace Legality {
                         "PID/IV spread matches the Gen III truncated-roamer Method 1 class used by Ruby/Sapphire and FireRed/LeafGreen roamers",
                         CheckIdentifier::PidRng);
                 } else {
-                    add(r, Severity::Info,
-                        "No handheld Method 1/2/3/4 or truncated-roamer PID/IV match; special/event/GC RNG classes are not fully covered",
-                        CheckIdentifier::PidRng);
+                    const auto cxd = Gen3CxdPidIv::analyze(pk.pid(), ivs);
+                    if (cxd.matched) {
+                        add(r, Severity::Info,
+                            "PID/IV spread matches the standard Pokemon Colosseum/XD XDRNG class; exact encounter and shadow-team provenance remain incomplete",
+                            CheckIdentifier::PidRng);
+                    } else {
+                        add(r, Severity::Info,
+                            "No handheld Method 1/2/3/4, truncated-roamer, or standard Colosseum/XD PID/IV match; Channel/BACD/event classes remain incomplete",
+                            CheckIdentifier::PidRng);
+                    }
                 }
             } else {
-                add(r, Severity::Info,
-                    "No handheld Method 1/2/3/4 PID/IV match; special/event/GC RNG classes are not fully covered",
-                    CheckIdentifier::PidRng);
+                const auto cxd = Gen3CxdPidIv::analyze(pk.pid(), ivs);
+                if (cxd.matched) {
+                    add(r, Severity::Info,
+                        "PID/IV spread matches the standard Pokemon Colosseum/XD XDRNG class; exact encounter and shadow-team provenance remain incomplete",
+                        CheckIdentifier::PidRng);
+                } else {
+                    add(r, Severity::Info,
+                        "No handheld Method 1/2/3/4 or standard Colosseum/XD PID/IV match; Channel/BACD/event classes remain incomplete",
+                        CheckIdentifier::PidRng);
+                }
             }
         } else if (sourceProfile && exactGeneration == 4) {
             const bool isHgss =
