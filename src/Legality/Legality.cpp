@@ -20,6 +20,7 @@
 #include "Legality/Gen12TimeCapsuleEvidence.h"
 #include "Legality/Gen2StaticEncounter.h"
 #include "Legality/Gen2TradeEvidence.h"
+#include "Legality/Gen2WildEncounter.h"
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3ChannelPidIvCorrelation.h"
@@ -220,6 +221,24 @@ namespace Legality {
                     "PK2 trainer/DV/caught-data is compatible with a pinned Generation II in-game trade; nickname/OT language proof remains incomplete",
                     CheckIdentifier::Encounter);
             }
+            if (gen2.caughtData() != 0 && exactSourceGameId == "crystal_gbc") {
+                if (Gen2Wild::matchesCrystalCaughtData(gen2.speciesID(), gen2.caughtData())) {
+                    add(r, Severity::Info,
+                        "PK2 caught-data location/level/time matches a pinned Crystal wild encounter slot",
+                        CheckIdentifier::Encounter);
+                } else if (Gen2Wild::hasSpecies(exactSourceGameId, gen2.speciesID())) {
+                    add(r, Severity::Info,
+                        "Species has Crystal wild-slot evidence, but the stored caught-data fields do not directly match a pinned slot; evolution/trade/headbutt provenance remains incomplete",
+                        CheckIdentifier::Encounter);
+                }
+            } else if (gen2.caughtData() == 0 &&
+                       (exactSourceGameId == "gold_gbc" || exactSourceGameId == "silver_gbc") &&
+                       Gen2Wild::hasSpecies(exactSourceGameId, gen2.speciesID())) {
+                add(r, Severity::Info,
+                    "Species has pinned Gold/Silver wild-slot provenance; those formats do not retain Crystal-style met location/level/time",
+                    CheckIdentifier::Encounter);
+            }
+
         }
 
         if (sourceProfile) {
