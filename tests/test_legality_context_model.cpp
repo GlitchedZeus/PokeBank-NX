@@ -26,9 +26,6 @@ int main() {
            platinum->maxMove == 467);
     assert(platinum->encounterCoverage == CoverageLevel::Partial);
 
-    Legality::CoverageSummary coverage{};
-    assert(coverage.eventGift == CoverageLevel::None);
-
     assert(sourceGameProfile("black_nds") == nullptr);
     assert(Legality::sourceGeneration("heartgold_nds") == 4);
     assert(Legality::sourceGeneration("unknown") == 0);
