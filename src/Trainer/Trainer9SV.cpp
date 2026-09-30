@@ -654,6 +654,58 @@ namespace Trainer {
         }
     }
 
+    PokedexProgress Trainer9SV::pokedexProgress() const
+    {
+        const std::vector<uint8_t>* paldea = nullptr;
+        const std::vector<uint8_t>* kitakami = nullptr;
+        for (const auto& block : blocks) {
+            if      (block.key == ZUKAN9_SV_PALDEA)   paldea = &block.data;
+            else if (block.key == ZUKAN9_SV_KITAKAMI) kitakami = &block.data;
+        }
+        const bool useKitakami = kitakami && !kitakami->empty();
+        const std::vector<uint8_t>* dex = useKitakami ? kitakami : paldea;
+        if (!dex || dex->empty()) return {};
+        const size_t entrySize = useKitakami ? SV_ENTRY_KITAKAMI : SV_ENTRY_PALDEA;
+
+        PokedexProgress progress{};
+        for (uint16_t species = 1; species <= ::Pokemon::SV_DEX_MAX_SPECIES; ++species) {
+            const auto& baseInfo = ::Pokemon::getPersonalInfo(species, 0);
+            const uint8_t formCount = std::max<uint8_t>(1, baseInfo.formCount);
+            bool inCurrentDex = false;
+            for (uint8_t form = 0; form < formCount; ++form) {
+                const auto& regional = ::Pokemon::getSVDexEntry(species, form);
+                if (regional.paldea != 0 ||
+                    (saveRevision >= 1 && regional.kitakami != 0) ||
+                    (saveRevision >= 2 && regional.blueberry != 0)) {
+                    inCurrentDex = true;
+                    break;
+                }
+            }
+            if (!inCurrentDex) continue;
+            ++progress.total;
+
+            const uint16_t internalId = ::Pokemon::gen9NationalToInternal(species);
+            const size_t base = static_cast<size_t>(internalId) * entrySize;
+            if (base + entrySize > dex->size()) continue;
+
+            bool seen = false;
+            bool caught = false;
+            if (useKitakami) {
+                const uint32_t obtainedForms = rdU32(*dex, base + 0x00);
+                const uint32_t seenForms = rdU32(*dex, base + 0x04);
+                caught = obtainedForms != 0;
+                seen = seenForms != 0 || caught;
+            } else {
+                const uint32_t state = rdU32(*dex, base + 0x00);
+                seen = state >= 2;
+                caught = state >= 3;
+            }
+            if (seen) ++progress.seen;
+            if (caught) ++progress.caught;
+        }
+        return progress;
+    }
+
     void Trainer9SV::updatePokedexBlock()
     {
         std::vector<uint8_t>* paldea = nullptr;
