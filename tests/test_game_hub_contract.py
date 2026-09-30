@@ -104,17 +104,19 @@ require("containSprite" in source,
 require("MainMenuDestination::More" in source and "Dest::More" in ui_manager,
         "More must be a real routed product destination")
 require("drawProductHelpOverlay" in source and
-        '"Games opens the game/save drawer. Profile and Settings use the top-right controls."' in source,
-        "Product Home Help must use shared controller glyphs and explain the new game/profile/settings navigation")
+        '"Games opens the full artwork browser. Profile and Settings use the top-right controls."' in source and
+        '"Open the quick right-side artwork browser"' in source,
+        "Product Home Help must explain the full Games browser, Y quick drawer, Profile and Settings")
 activate_start = source.index("void SaveSelectScreen::activateHubDock()")
 activate_end = source.index("void SaveSelectScreen::activateGameWorkspace()", activate_start)
 dock_activation = source[activate_start:activate_end]
-require("overlay = Overlay::GamesDrawer;" in dock_activation and
-        "overlay = Overlay::GameWorkspace;" not in dock_activation and
-        "classicGamesActive = true;" not in dock_activation,
-        "Games dock must enter the stable game/save drawer, not workspace or retired source grid")
-require("classicGamesActive = true;" not in source,
-        "retired Classic Game Sources grid must have no reachable activation path")
+require("classicGamesActive = true;" in dock_activation and
+        "overlay = Overlay::GamesDrawer;" not in dock_activation and
+        "overlay = Overlay::GameWorkspace;" not in dock_activation,
+        "Games must open the restored full-screen artwork browser")
+require('"Pokémon Games"' in source and "CLASSIC_ICON" in source and
+        "SystemIcons::gameCardIcon" in source,
+        "the restored Games browser must retain the PKSE-style artwork grid")
 require("+: Current Game" in source and "+: Settings" not in source,
         "Plus must open Current Game tools and must never be a Settings shortcut")
 require("HidNpadButton_ZL" not in source,
@@ -136,12 +138,21 @@ require("headerRects.push_back" in source and
         "drawHubDockIcon(fb, 5, settingsX, settingsY, PROFILE_AVATAR, settingsFocused)" in source and
         '{"Games", "Banks", "Items", "Search", "More"}' in source,
         "Product Home must render one selectable header Settings gear and no dock Settings")
+require("headerActionIndex = hubFeatureIndex == 0 ? 0 : 1;" in source,
+        "Up from Master Vault/Pokédex must reach Profile/Settings instead of getting trapped")
+require("const int navY = HUB_Y + featureH + 16;" in source and
+        "Five product destinations occupy the former large Pokédex area" in source,
+        "Games/Banks/Items/Search/More must live in the right-side panel under compact Vault/Pokédex cards")
+require('drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"}' in source,
+        "Product Home footer must expose Y Quick Games without repeating ZR Launch")
 require("ProfilePicker" in header and "profilePickerIndex" in source and
-        "setUser(profilePickerIndex)" in source,
-        "the profile avatar must open a real controller-selectable user picker")
-require("GamesDrawer" in header and '"Your Pokémon Games"' in source and
-        '{"X", "Assign Save"}' in source and '{"Y", "Manage Source"}' in source,
-        "Games must expose the product-style game list with save assignment/source management")
+        "setUser(profilePickerIndex)" in source and
+        '"SWITCH PROFILE"' in source and '"Choose Profile"' in source and '"CURRENT"' in source,
+        "the profile avatar must open the centered professional profile chooser")
+require("GamesDrawer" in header and '"QUICK GAMES"' in source and
+        "constexpr int cols = 3;" in source and
+        '{"Y", "Close"}' in source and '{"X", "Save / Source"}' in source,
+        "Y quick Games must be a three-column right-side artwork browser with source management")
 require("openGen4Setup(game.gameId, \"Assign, repair, or change this game's save source.\", true)" in source and
         "Overlay::LegacyAssignment" in source,
         "Games save assignment must cover Gen IV linking and unassigned Gen I-III sources")
@@ -149,8 +160,9 @@ require("gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None" in sou
         "gen4SetupFromGamesDrawer = false;" in source,
         "Gen IV source setup must return cleanly to Games when launched from the drawer")
 require('kSettingsCategories' in shell_source and
-        '"User", "Look", "System", "Data", "Update", "Developer", "Info"' in shell_source,
-        "Settings must use the approved two-pane category model")
+        '"Look", "System", "Data", "Update", "Developer", "Info"' in shell_source and
+        '"User", "Look"' not in shell_source and '"Profile", "Switch User"' not in shell_source,
+        "Settings must omit the non-functional User category and keep the useful two-pane categories")
 require("settingsCategoryFocused" in shell_source and "settingsOptionCount" in shell_source,
         "Settings must keep independent category/option focus")
 require('"Left/Right", "Pane"' in shell_source,
@@ -219,8 +231,8 @@ require('users.front().name = "Game Sources";' not in source and
         '"Re-link it from Game Sources."' not in source and
         'Re-link it from Source / Game File.' in source and
         '"Game Sources  /  v"' not in source and
-        '"Manage Game Sources"' in source,
-        "reachable Product Home copy must retire the developer Game Sources presentation")
+        '"Manage Game Sources"' not in source and '"Pokémon Games"' in source,
+        "reachable Games copy must use the consumer-facing Pokémon Games presentation")
 
 select_start = source.index("void SaveSelectScreen::selectCurrentTitle()")
 select_end = source.index("void SaveSelectScreen::selectCurrentTitleForItems()", select_start)
