@@ -62,6 +62,18 @@ int main() {
     static_assert(kf.method == Method::MethodKFishingNoLead);
     static_assert(kf.slot == 0);
 
+    // The same deterministic Method K seed maps Headbutt's 23% slot roll to slot 0
+    // and the preceding level roll to level 8.
+    constexpr uint64_t headbutt = makeRow(6, 0, 5, 10);
+    constexpr auto kh = matchNoLeadRow(true, headbutt, fishingKSeed, fishingKPid, 8);
+    static_assert(kh.method == Method::MethodKHeadbuttNoLead);
+    static_assert(kh.slot == 0);
+    constexpr uint64_t headbuttSpecial = makeRow(7, 0, 5, 10);
+    static_assert(matchNoLeadRow(true, headbuttSpecial,
+                                 fishingKSeed, fishingKPid, 8).matched());
+    static_assert(!matchNoLeadRow(false, headbutt,
+                                  fishingKSeed, fishingKPid, 8).matched());
+
     // Feebas fishing remains fail-closed until the Mt. Coronet tile branch is modeled.
     constexpr uint64_t feebasFishing =
         fishingJ | static_cast<uint64_t>(349u);

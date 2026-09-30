@@ -14,6 +14,7 @@ enum class Method : uint8_t {
     MethodKNoLead,
     MethodJFishingNoLead,
     MethodKFishingNoLead,
+    MethodKHeadbuttNoLead,
 };
 
 struct Result {
@@ -65,6 +66,20 @@ constexpr uint8_t superRodSlotK(uint32_t roll) noexcept {
 
 constexpr bool isFishing(uint8_t type) noexcept {
     return type >= 2 && type <= 4;
+}
+
+constexpr bool isHeadbutt(uint8_t type) noexcept {
+    return type == 6 || type == 7;
+}
+
+constexpr uint8_t headbuttSlot(uint16_t rand16) noexcept {
+    const uint32_t roll = rand16 % 100u;
+    return roll < 50 ? 0 :
+           roll < 65 ? 1 :
+           roll < 80 ? 2 :
+           roll < 90 ? 3 :
+           roll < 95 ? 4 :
+           roll < 100 ? 5 : 0xFF;
 }
 
 constexpr uint8_t fishingSlot(bool hgss, uint8_t type, uint16_t rand16) noexcept {
@@ -140,7 +155,9 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                                 uint32_t prePidSeed, uint32_t pid,
                                 uint8_t metLevel) noexcept {
     const uint8_t type = Gen4Wild::method(row);
-    if (type > 4)
+    if (type > 7 || type == 5)
+        return {};
+    if (isHeadbutt(type) && !hgss)
         return {};
 
     // Mt. Coronet Feebas fishing has an additional tile-replacement RNG branch.
@@ -171,8 +188,10 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                 rolledSlot = hgss ? methodKSlot(type, prev1) : methodJSlot(type, prev1);
             } else if (type == 1) {
                 rolledSlot = hgss ? methodKSlot(type, prev2) : methodJSlot(type, prev2);
-            } else {
+            } else if (isFishing(type)) {
                 rolledSlot = fishingSlot(hgss, type, prev2);
+            } else if (isHeadbutt(type)) {
+                rolledSlot = headbuttSlot(prev2);
             }
 
             if (rolledSlot == Gen4Wild::slot(row)) {
@@ -189,6 +208,9 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                     if (type == 1)
                         return {hgss ? Method::MethodKNoLead : Method::MethodJNoLead,
                                 candidate, rolledSlot};
+
+                    if (isHeadbutt(type))
+                        return {Method::MethodKHeadbuttNoLead, candidate, rolledSlot};
 
                     const uint32_t prev3Seed =
                         Gen3PidIv::Detail::prev(Gen3PidIv::Detail::prev(
@@ -244,6 +266,7 @@ constexpr const char* methodName(Method method) noexcept {
         case Method::MethodKNoLead: return "Method K (no lead)";
         case Method::MethodJFishingNoLead: return "Method J fishing (no lead)";
         case Method::MethodKFishingNoLead: return "Method K fishing (no lead)";
+        case Method::MethodKHeadbuttNoLead: return "Method K Headbutt (no lead)";
         case Method::None: break;
     }
     return "No no-lead Method J/K match";
