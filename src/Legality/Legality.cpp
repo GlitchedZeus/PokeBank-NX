@@ -19,6 +19,7 @@
 #include "Legality/Gen1EncounterEvidence.h"
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen3CxdPidIvCorrelation.h"
+#include "Legality/Gen3ChannelPidIvCorrelation.h"
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
 #include "Legality/Gen4CuteCharmPid.h"
@@ -204,9 +205,17 @@ namespace Legality {
                             "PID/IV spread matches the standard Pokemon Colosseum/XD XDRNG class; exact encounter and shadow-team provenance remain incomplete",
                             CheckIdentifier::PidRng);
                     } else {
-                        add(r, Severity::Info,
-                            "No handheld Method 1/2/3/4, truncated-roamer, or standard Colosseum/XD PID/IV match; Channel/BACD/event classes remain incomplete",
-                            CheckIdentifier::PidRng);
+                        const auto channel = Gen3ChannelPidIv::analyze(
+                            pk.pid(), ivs, pk.sid16(), pk.originGame(), pk.otGender());
+                        if (channel.matched) {
+                            add(r, Severity::Info,
+                                "PID/IV spread matches the Pokemon Channel Jirachi XDRNG class; fixed distribution-template provenance remains separate",
+                                CheckIdentifier::PidRng);
+                        } else {
+                            add(r, Severity::Info,
+                                "No handheld Method 1/2/3/4, truncated-roamer, standard Colosseum/XD, or Channel Jirachi PID/IV match; BACD/event classes remain incomplete",
+                                CheckIdentifier::PidRng);
+                        }
                     }
                 }
             } else {
@@ -216,9 +225,17 @@ namespace Legality {
                         "PID/IV spread matches the standard Pokemon Colosseum/XD XDRNG class; exact encounter and shadow-team provenance remain incomplete",
                         CheckIdentifier::PidRng);
                 } else {
-                    add(r, Severity::Info,
-                        "No handheld Method 1/2/3/4 or standard Colosseum/XD PID/IV match; Channel/BACD/event classes remain incomplete",
-                        CheckIdentifier::PidRng);
+                    const auto channel = Gen3ChannelPidIv::analyze(
+                        pk.pid(), ivs, pk.sid16(), pk.originGame(), pk.otGender());
+                    if (channel.matched) {
+                        add(r, Severity::Info,
+                            "PID/IV spread matches the Pokemon Channel Jirachi XDRNG class; fixed distribution-template provenance remains separate",
+                            CheckIdentifier::PidRng);
+                    } else {
+                        add(r, Severity::Info,
+                            "No handheld Method 1/2/3/4, standard Colosseum/XD, or Channel Jirachi PID/IV match; BACD/event classes remain incomplete",
+                            CheckIdentifier::PidRng);
+                    }
                 }
             }
         } else if (sourceProfile && exactGeneration == 4) {
