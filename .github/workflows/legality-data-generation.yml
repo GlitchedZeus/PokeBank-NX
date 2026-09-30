@@ -11,7 +11,7 @@ on:
       - .github/workflows/legality-data-generation.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   gen4-wild:
@@ -43,3 +43,4 @@ jobs:
           path: include/Legality/Gen4WildEncounterData.inc
           if-no-files-found: error
           retention-days: 7
+\n      - name: Commit deterministic generated table\n        if: github.event_name == 'push'\n        run: |\n          set -euo pipefail\n          if git diff --quiet -- include/Legality/Gen4WildEncounterData.inc; then\n            echo "Generated table already matches the branch."\n            exit 0\n          fi\n          git config user.name "github-actions[bot]"\n          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"\n          git add include/Legality/Gen4WildEncounterData.inc\n          git commit -m "legality: regenerate Gen IV wild slot evidence"\n          git push origin "HEAD:${GITHUB_REF_NAME}"\n
