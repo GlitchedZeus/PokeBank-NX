@@ -7,12 +7,14 @@ The forensic audit is closed: 746/746 tracked paths accounted, 711/711 text file
 ## Baseline and invariants
 
 - Original severity counts: P1 2, P2 17, P3 20, P4 5.
-- Current MAIN reconciliation point: PR #92 branch `feature/gen4-full-editor-20260928` at `2b58c2e6e3eebc82c164c2d76fcc2f60d89f4acc`. PR #101 preserves its remediation history; the newer MAIN delta is Product Home / SaveSelect / UI glue only and is not preemptively cherry-picked into remediation.
+- Current MAIN reconciliation point: PR #92 branch `feature/gen4-full-editor-20260928` at `b503e89bfe7f4f9f4af5e3b21f745abde6c5f9e7`. The five commits since the previous reconciliation point touch LegacySourceBindings/Product Home/SaveSelect/UI tests only; PR #101 remains mergeable against that live base and preserves them for integration.
 - Frozen evidence branch remains untouched at `143c5e5c341d4f85af30e013808a37d6719560fe`.
 - Current baseline CI note: upstream MAIN `58a56f8d…` still has Product UI Native red before remediation; Host Tests were in progress and the Gen IV gate was cancelled by newer lane movement when this ledger was refreshed. Treat this as pre-existing UI-lane drift, not a new audit finding.
 - Source saves remain immutable. Emulator/installed-title live writes remain disabled. Cross-game True Move and source injection remain locked. No Gen V or Master Vault backend work is in scope.
 
 Status semantics: **OPEN** = not implemented; **IN PROGRESS** = active fix; **FIXED** = implementation exists but exact-head validation is incomplete; **VERIFIED** = focused + relevant broader validation proves the fix; **DEFERRED WITH JUSTIFICATION** = explicit blocker/prerequisite recorded.
+
+Current disposition: 43 FIXED, 1 DEFERRED WITH JUSTIFICATION (AUDIT-043), 0 OPEN.
 
 ## Proposed remediation order
 
