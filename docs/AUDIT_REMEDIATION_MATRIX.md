@@ -14,7 +14,7 @@ The forensic audit is closed: 746/746 tracked paths accounted, 711/711 text file
 
 Status semantics: **OPEN** = not implemented; **IN PROGRESS** = active fix; **FIXED** = implementation exists but exact-head validation is incomplete; **VERIFIED** = focused + relevant broader validation proves the fix; **DEFERRED WITH JUSTIFICATION** = explicit blocker/prerequisite recorded.
 
-Current disposition: 43 FIXED, 1 DEFERRED WITH JUSTIFICATION (AUDIT-043), 0 OPEN.
+Current disposition: 43 VERIFIED, 1 DEFERRED WITH JUSTIFICATION (AUDIT-043), 0 OPEN.
 
 ## Proposed remediation order
 
@@ -22,50 +22,50 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 
 | Order | Finding | Sev | Status | Short title |
 |---:|---|:---:|---|---|
-| 1 | AUDIT-001 | P1 | FIXED | destructive mutable PKSE import workflow |
-| 2 | AUDIT-032 | P1 | FIXED | PR #97 removes AppShellSection::Collections but still references it |
-| 3 | AUDIT-002 | P2 | FIXED | no general unfiltered native PR compile gate |
-| 4 | AUDIT-020 | P2 | FIXED | SV/Z-A MyStatus size guard permits an out-of-bounds gender read |
-| 5 | AUDIT-031 | P2 | FIXED | SC SHA-256 message decoding uses signed-shift undefined behavior |
-| 6 | AUDIT-025 | P3 | FIXED | defaulted Pokémon move operations duplicate raw-buffer ownership |
-| 7 | AUDIT-026 | P3 | FIXED | Gen III and modern entity constructors do not fully enforce/normalize native record length |
-| 8 | AUDIT-021 | P2 | FIXED | SWSH/SV/Z-A authenticate the SC container but do not validate required game layout |
-| 9 | AUDIT-017 | P2 | FIXED | FRLG mutable workspace selects rotating slot before checksum validation |
-| 10 | AUDIT-023 | P2 | FIXED | LGPE durable validator rejects the authentic 1 MiB save image |
-| 11 | AUDIT-018 | P2 | FIXED | LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity |
-| 12 | AUDIT-022 | P3 | FIXED | BDSP pre-open validation ignores its stored whole-file MD5 |
-| 13 | AUDIT-024 | P2 | FIXED | Gen IX inventory decoder leaves persisted flags indeterminate |
-| 14 | AUDIT-039 | P2 | FIXED | Backup save can serialize while held-Pokémon rollback failed |
-| 15 | AUDIT-015 | P2 | FIXED | Failed backup creation can leave a partial folder surfaced as a backup |
-| 16 | AUDIT-029 | P2 | FIXED | Gen II finalization can serialize an in-progress packed move with carried Pokémon omitted |
-| 17 | AUDIT-030 | P2 | FIXED | Gen I finalization can serialize an in-progress packed move |
-| 18 | AUDIT-037 | P2 | FIXED | Gen I/II group pickup can strand an active staged move after presentation-refresh failure |
-| 19 | AUDIT-013 | P2 | FIXED | Legacy Bank migration skips checksum validation used by normal Bank load |
-| 20 | AUDIT-028 | P2 | FIXED | Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays |
-| 21 | AUDIT-027 | P2 | FIXED | LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0 |
-| 22 | AUDIT-014 | P2 | FIXED | Session-wide source read-only gate disables app-owned Bank mutation |
-| 23 | AUDIT-019 | P3 | FIXED | modern encrypted blank slots are parsed as live species-0 objects |
-| 24 | AUDIT-012 | P3 | FIXED | Settings persistence truncates in place and ignores write/close failure |
-| 25 | AUDIT-040 | P3 | FIXED | RetroArch playlist auto-match can accept wrong-family game content with the same basename |
-| 26 | AUDIT-016 | P3 | FIXED | RetroArch launch matching is basename-only and first-match wins |
+| 1 | AUDIT-001 | P1 | VERIFIED | destructive mutable PKSE import workflow |
+| 2 | AUDIT-032 | P1 | VERIFIED | PR #97 removes AppShellSection::Collections but still references it |
+| 3 | AUDIT-002 | P2 | VERIFIED | no general unfiltered native PR compile gate |
+| 4 | AUDIT-020 | P2 | VERIFIED | SV/Z-A MyStatus size guard permits an out-of-bounds gender read |
+| 5 | AUDIT-031 | P2 | VERIFIED | SC SHA-256 message decoding uses signed-shift undefined behavior |
+| 6 | AUDIT-025 | P3 | VERIFIED | defaulted Pokémon move operations duplicate raw-buffer ownership |
+| 7 | AUDIT-026 | P3 | VERIFIED | Gen III and modern entity constructors do not fully enforce/normalize native record length |
+| 8 | AUDIT-021 | P2 | VERIFIED | SWSH/SV/Z-A authenticate the SC container but do not validate required game layout |
+| 9 | AUDIT-017 | P2 | VERIFIED | FRLG mutable workspace selects rotating slot before checksum validation |
+| 10 | AUDIT-023 | P2 | VERIFIED | LGPE durable validator rejects the authentic 1 MiB save image |
+| 11 | AUDIT-018 | P2 | VERIFIED | LGPE mutable workspace rewrites CRCs before validating pre-existing block integrity |
+| 12 | AUDIT-022 | P3 | VERIFIED | BDSP pre-open validation ignores its stored whole-file MD5 |
+| 13 | AUDIT-024 | P2 | VERIFIED | Gen IX inventory decoder leaves persisted flags indeterminate |
+| 14 | AUDIT-039 | P2 | VERIFIED | Backup save can serialize while held-Pokémon rollback failed |
+| 15 | AUDIT-015 | P2 | VERIFIED | Failed backup creation can leave a partial folder surfaced as a backup |
+| 16 | AUDIT-029 | P2 | VERIFIED | Gen II finalization can serialize an in-progress packed move with carried Pokémon omitted |
+| 17 | AUDIT-030 | P2 | VERIFIED | Gen I finalization can serialize an in-progress packed move |
+| 18 | AUDIT-037 | P2 | VERIFIED | Gen I/II group pickup can strand an active staged move after presentation-refresh failure |
+| 19 | AUDIT-013 | P2 | VERIFIED | Legacy Bank migration skips checksum validation used by normal Bank load |
+| 20 | AUDIT-028 | P2 | VERIFIED | Gen VIII/IX base-stat form routing returns zero/wrong rows and can index beyond valid arrays |
+| 21 | AUDIT-027 | P2 | VERIFIED | LGPE Meltan/Melmetal base-stat rows are unreachable and edits rewrite party stats from base 0 |
+| 22 | AUDIT-014 | P2 | VERIFIED | Session-wide source read-only gate disables app-owned Bank mutation |
+| 23 | AUDIT-019 | P3 | VERIFIED | modern encrypted blank slots are parsed as live species-0 objects |
+| 24 | AUDIT-012 | P3 | VERIFIED | Settings persistence truncates in place and ignores write/close failure |
+| 25 | AUDIT-040 | P3 | VERIFIED | RetroArch playlist auto-match can accept wrong-family game content with the same basename |
+| 26 | AUDIT-016 | P3 | VERIFIED | RetroArch launch matching is basename-only and first-match wins |
 | 27 | AUDIT-043 | P3 | DEFERRED WITH JUSTIFICATION | Device-observed Gen IV save rows can lose trainer-name presentation despite synthetic parser coverage |
-| 28 | AUDIT-033 | P3 | FIXED | Gen IV move-stat presentation uses HGSS values for Diamond/Pearl |
-| 29 | AUDIT-034 | P3 | FIXED | HD sprite recovery/preflight can accept corrupt existing PNGs |
-| 30 | AUDIT-035 | P3 | FIXED | personal/learnset regeneration still searches the removed SPECIES_NAMES symbol |
-| 31 | AUDIT-044 | P3 | FIXED | Fontstash allocation failures can become null-pointer crashes during text rendering |
-| 32 | AUDIT-006 | P3 | FIXED | LeakSanitizer is disabled even where comments say CI keeps it enabled |
-| 33 | AUDIT-003 | P3 | FIXED | mutable native toolchain image |
-| 34 | AUDIT-036 | P3 | FIXED | Product Home Help overlay advertises stale controller actions |
-| 35 | AUDIT-011 | P3 | FIXED | Search preview vertical wrap changes columns and the test blesses it |
-| 36 | AUDIT-038 | P3 | FIXED | Legacy Save Instances scroll logic assumes one more visible row than the renderer draws |
-| 37 | AUDIT-041 | P3 | FIXED | Standalone runtime contract falsely says RetroArch is never invoked |
-| 38 | AUDIT-010 | P3 | FIXED | canonical engineering authority chain points to obsolete work |
-| 39 | AUDIT-042 | P3 | FIXED | Active session/roadmap docs route work through obsolete project state |
-| 40 | AUDIT-004 | P4 | FIXED | stale theme choices in physical bug template |
-| 41 | AUDIT-005 | P4 | FIXED | historical branch-specific workflows remain tracked |
-| 42 | AUDIT-007 | P4 | FIXED | top-level README materially understates current Gen IV implementation |
-| 43 | AUDIT-008 | P4 | FIXED | checked-in Visual Studio metadata is stale PKSE-era configuration |
-| 44 | AUDIT-009 | P4 | FIXED | recovery metadata still describes the repository as private / old production branch |
+| 28 | AUDIT-033 | P3 | VERIFIED | Gen IV move-stat presentation uses HGSS values for Diamond/Pearl |
+| 29 | AUDIT-034 | P3 | VERIFIED | HD sprite recovery/preflight can accept corrupt existing PNGs |
+| 30 | AUDIT-035 | P3 | VERIFIED | personal/learnset regeneration still searches the removed SPECIES_NAMES symbol |
+| 31 | AUDIT-044 | P3 | VERIFIED | Fontstash allocation failures can become null-pointer crashes during text rendering |
+| 32 | AUDIT-006 | P3 | VERIFIED | LeakSanitizer is disabled even where comments say CI keeps it enabled |
+| 33 | AUDIT-003 | P3 | VERIFIED | mutable native toolchain image |
+| 34 | AUDIT-036 | P3 | VERIFIED | Product Home Help overlay advertises stale controller actions |
+| 35 | AUDIT-011 | P3 | VERIFIED | Search preview vertical wrap changes columns and the test blesses it |
+| 36 | AUDIT-038 | P3 | VERIFIED | Legacy Save Instances scroll logic assumes one more visible row than the renderer draws |
+| 37 | AUDIT-041 | P3 | VERIFIED | Standalone runtime contract falsely says RetroArch is never invoked |
+| 38 | AUDIT-010 | P3 | VERIFIED | canonical engineering authority chain points to obsolete work |
+| 39 | AUDIT-042 | P3 | VERIFIED | Active session/roadmap docs route work through obsolete project state |
+| 40 | AUDIT-004 | P4 | VERIFIED | stale theme choices in physical bug template |
+| 41 | AUDIT-005 | P4 | VERIFIED | historical branch-specific workflows remain tracked |
+| 42 | AUDIT-007 | P4 | VERIFIED | top-level README materially understates current Gen IV implementation |
+| 43 | AUDIT-008 | P4 | VERIFIED | checked-in Visual Studio metadata is stale PKSE-era configuration |
+| 44 | AUDIT-009 | P4 | VERIFIED | recovery metadata still describes the repository as private / old production branch |
 
 ## Detailed finding ledger
 
@@ -83,7 +83,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Run the affected workflow/target on the exact remediation head and assert the intended gate executes.
 - **Dependency / sequencing:** None
 - **Proposed remediation order:** 1
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** `.github/workflows/import-pkse.yml` is retired on PR #101; `tests/test_ci_repository_safety_contract.py` is wired into Host Tests to block reintroduction of the destructive import/direct-main-push pattern. Exact-head Host Tests are still running, so this is not VERIFIED yet.
 
 ### 2. AUDIT-032 — PR #97 removes AppShellSection::Collections but still references it
@@ -100,7 +100,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** `tests/test_app_shell_model.cpp` validates the revised enum/navigation model but does not compile `AppShellScreen.cpp`, so it cannot catch this stale screen-level enum reference. `tests/test_game_hub_contract.py` is also text-contract based.
 - **Dependency / sequencing:** Verification-only; current Product UI Native is red for unrelated dock contract
 - **Proposed remediation order:** 2
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** live MAIN has no `AppShellSection::Collections` reference. Exact-head Product UI Native did not reach native compile because an unrelated dock contract failed first, so this is not VERIFIED yet.
 
 ### 3. AUDIT-002 — no general unfiltered native PR compile gate
@@ -117,7 +117,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Run the affected workflow/target on the exact remediation head and assert the intended gate executes.
 - **Dependency / sequencing:** Do early so later C++ fixes get native coverage
 - **Proposed remediation order:** 3
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** PR #101 adds `.github/workflows/native-pr-build.yml`, triggered on every pull request with no path filter, and it performs a clean devkitA64 compile/link of the exact PR application head. Exact-head Native PR Gate is running, so this is not VERIFIED yet.
 
 ### 4. AUDIT-020 — SV/Z-A MyStatus size guard permits an out-of-bounds gender read
@@ -134,7 +134,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** authenticated SC fixtures with MyStatus sizes 4 and 5 must be rejected cleanly without constructing a Trainer; size 6 must not read beyond bounds; full expected native MyStatus geometry should pass.
 - **Dependency / sequencing:** Defense-in-depth with AUDIT-021, but fix independently first
 - **Proposed remediation order:** 4
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** both `Trainer9SV::parseMyStatusBlock()` and `Trainer9LZA::parseMyStatusBlock()` now use shared `Gen9MyStatus::hasCoreFields()` and reject blocks shorter than six bytes before the unconditional gender read. `tests/test_gen9_my_status_guard.cpp` is included in normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 5. AUDIT-031 — SC SHA-256 message decoding uses signed-shift undefined behavior
@@ -151,7 +151,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** standard SHA-256 vectors (empty string, `abc`, multi-block input), a block containing bytes >= 0x80 in every word position, and a captured SC-container hash fixture under UBSan/host CI.
 - **Dependency / sequencing:** Fix very early; verify with UBSan and known vectors
 - **Proposed remediation order:** 5
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** `SHA256::transform()` casts each schedule byte to `uint32_t` before left shifting. `tests/test_sha256.cpp` covers standard known-answer vectors plus a 64-byte high-bit vector and is wired into normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 6. AUDIT-025 — defaulted Pokémon move operations duplicate raw-buffer ownership
@@ -168,7 +168,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** move-construct and move-assign each concrete format under ASan; destroy the moved-from object before reading the moved-to object; verify data remains valid and exactly one owner frees the allocation.
 - **Dependency / sequencing:** Fix early before broad sanitizer verification
 - **Proposed remediation order:** 6
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** the base `Pokemon` move constructor/assignment now transfer sole `buffer` ownership, rebuild the span, release any prior destination allocation, and clear the moved-from object. `dataSize` now defaults to zero for non-buffer wrappers. `tests/test_pokemon_move_ownership.cpp` exercises move-construction after source destruction, move-assignment over an existing allocation, and self-move under normal and sanitizer suites. Exact-head CI is pending, so this is not VERIFIED yet.
 
 ### 7. AUDIT-026 — Gen III and modern entity constructors do not fully enforce/normalize native record length
@@ -185,7 +185,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Gen III and every modern entity constructor should reject spans shorter than the native stored size without exposing a usable entity; exact stored-size and exact party-size records should construct deterministically; SWSH/BDSP/SV/Z-A stored-size objects should support level/stat getters and stat-affecting edits under ASan without an out-of-bounds access; unexpected intermediate/oversized lengths should have an explicit policy.
 - **Dependency / sequencing:** Pairs naturally with sanitizer tranche after AUDIT-025
 - **Proposed remediation order:** 7
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** affected Gen III/modern constructors now accept only their documented stored/party record sizes, reject malformed lengths into an explicitly invalid full-sized safe buffer, and modern stored records normalize into owned party-sized buffers before party-stat APIs are exposed. `Encryption::cryptPokemon()` now bounds-checks its fixed block region before taking a subspan. Commit `d183fa5b172678cb9d4d3d44247b3154a84e716c` adds `fixture entity-native-length-boundary` to the existing conversion-entity golden suite, covering Gen III plus LGPE/SWSH/BDSP/PLA/SV/Z-A malformed/intermediate/oversized rejection, valid stored/party construction, stored-to-party normalization, representative stat reads, stat-affecting edits, and the short-buffer crypto guard. That target is already wired to Host Tests and ASan/UBSan. Exact-head workflows are queued, so this is not VERIFIED yet.
 
 ### 8. AUDIT-021 — SWSH/SV/Z-A authenticate the SC container but do not validate required game layout
@@ -202,7 +202,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** duplicate required keys; missing required blocks; short Party/Box/MyStatus blocks with a valid outer hash; unsupported block type for a required key; all must fail before Trainer construction and before any serializer mutation.
 - **Dependency / sequencing:** Build after immediate OOB fix; validator covers several downstream paths
 - **Proposed remediation order:** 8
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** PR #101 now provides `include/Save/SCReadValidation.h` with unique-key checks, required block type/size checks, and checksum/basic-domain validation for occupied SWSH/SV/Z-A party/box records. `validateTrainerSaveForOpen()` and durable `validateSCWorkspace()` both call the same semantic layout validator. `tests/test_pla_read_validation.cpp` covers valid layouts plus duplicate keys, missing required blocks, truncation, wrong type, and corrupted Pokémon records, and the target is wired into Host Tests and ASan/UBSan. Exact-head Host Tests are still running and the Native PR Gate is red, so this is not VERIFIED yet.
 
@@ -220,7 +220,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** corrupt newest/valid older slot must select the older valid slot; both invalid slots must refuse open; no mutation may occur merely to make an invalid selected slot checksum-valid.
 - **Dependency / sequencing:** Share checksum-aware Gen III slot policy
 - **Proposed remediation order:** 9
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `Trainer3FRLG::selectActiveSlot()` now uses the shared checksum/signature/counter-aware `Gen3SaveValidation::Detail::validateSlot()` policy and only accepts a checksum-valid FireRed/LeafGreen slot. `validateTrainerSaveForOpen()` now applies the same fail-closed policy before mutable FRLG construction. `tests/test_frlg_mutable_slot_validation.cpp` synthesizes both rotating slots and proves valid-newest selection, corrupt-newest fallback to the older valid slot, and both-corrupt refusal; it is wired into normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -238,7 +238,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** full `0x100000` LGPE fixture must validate after block patching while preserving bytes `0xB8800..0xFFFFF` exactly; active-region checksum corruption must fail; define explicitly whether cropped `0xB8800` images are supported or rejected rather than conflating active-region size with physical-file size.
 - **Dependency / sequencing:** Do before/with AUDIT-018 to establish correct sizes
 - **Proposed remediation order:** 10
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** the LGPE workspace validator now accepts only the intentional `0xB8800` active-region fixture geometry or the authentic `0x100000` full `savedata.bin` geometry. Full files expose exactly the first active region for the existing block/CRC round-trip check, so trailing bytes are preserved and excluded from Beluga CRC validation. `tests/test_lgpe_workspace_geometry.cpp` proves active/full acceptance, arbitrary intermediate/oversized rejection, and exact active-region slicing; it is wired into normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -256,7 +256,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** corrupt one covered LGPE block while leaving the old footer CRC unchanged and require open to fail; verify an untouched valid fixture passes; prove save never repairs an invalid source merely as a side effect of ordinary editing.
 - **Dependency / sequencing:** Coordinate with AUDIT-023 size/layout constants
 - **Proposed remediation order:** 11
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `include/Save/LGPEReadValidation.h` now performs read-only CRC-16/ARC verification for every Beluga block consumed by PokeBank before mutable state exists. `validateTrainerSaveForOpen()` applies this preflight to Let's Go, and the direct `readTrainerInfoLetsGo()` path independently refuses invalid CRCs before constructing `Trainer7LGPE`. The durable validator also shares this preflight. `tests/test_lgpe_read_validation.cpp` proves untouched active/full files pass, covered-block corruption with the old CRC fails, footer corruption fails, and unsupported size fails; it is wired into Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -274,7 +274,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** flip one covered byte in a valid BDSP fixture without updating its stored digest and require open refusal; confirm a correct digest passes; confirm the validator itself does not mutate the candidate while checking.
 - **Dependency / sequencing:** Independent; keep BDSP writeback disabled
 - **Proposed remediation order:** 12
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `BDSPReadValidation::wholeFileHashValid()` now copies the candidate, preserves the stored 16-byte digest, zeroes only the copy's hash field, computes MD5 over the complete flat file with the same convention as `Trainer8BDSP::recomputeHash()`, and compares without mutating input. Both `validateTrainerSaveForOpen()` and the `Trainer8BDSP` constructor require a valid stored MD5 before parsing fixed-offset state. `tests/test_bdsp_layout_guard.cpp` now builds a valid digest fixture, proves validation is non-mutating, flips a covered byte to require failure, and asserts both production gates precede parsing; normal and sanitizer targets link the real MD5 implementation. BDSP writeback remains blocked. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -292,7 +292,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** native records with NEW clear/set and FAVORITE clear/set must decode deterministically; parse→write with no edits must be byte-identical; repeated runs under UBSan/ASan-compatible host builds must not depend on stack contents; high-bit 32-bit fields must decode using defined unsigned operations.
 - **Dependency / sequencing:** Run under UBSan; coordinate with AUDIT-021 fixtures
 - **Proposed remediation order:** 13
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `InventoryItem` now has deterministic zero/false defaults. Both `InventoryItem9SV::fromBytes()` and `InventoryItem9LZA::fromBytes()` value-initialize their records, assemble native 32-bit fields with defined unsigned shifts, and map flags bit 0/1 into `isNew`/`isFavorite` before slicing into `Trainer::items`. `tests/test_gen9_inventory_decode.cpp` exercises all NEW/FAVORITE combinations, high-bit pouch/count/flag values, and base slicing for both games; it runs in normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -310,7 +310,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** there is no regression test that exhausts/locks all return destinations, leaves custody active, then attempts a game backup save and proves serialization is refused.
 - **Dependency / sequencing:** Fix before backup durability work or in same safety checkpoint
 - **Proposed remediation order:** 14
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `returnHeldToOrigin()` now returns a success result while preserving its existing all-or-nothing custody plan. Failure leaves `moveMon` untouched and returns false; success clears custody and returns true. The regular game-save confirmation path now requires a successful return and additionally checks `carrying()` before any destination/write logic; otherwise it posts `Save blocked - held Pokemon custody could not be restored.` and returns with the save dialog/session active. `tests/test_storage_custody_contract.cpp` binds the failure-return semantics and proves the custody gate appears before `performSave(destDir)`. The existing test is already part of normal Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -328,7 +328,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** ENOSPC/short-write/read/close failure while copying; timestamped and named backup failure cleanup/quarantine; incomplete backup excluded from picker; Working-copy recovery semantics; multi-file backup completeness checks.
 - **Dependency / sequencing:** Useful durable temp/promote primitive for AUDIT-012
 - **Proposed remediation order:** 15
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** backup creation now uses `copyDirectoryTransactional()`: every file copy must write, flush/close, and pass byte-for-byte readback inside a unique `.incomplete.*` sibling before promotion. Failed copies are retained only under non-browsable `.failed.*`/`.incomplete.*` evidence names. Reusable `Working` is rotated to `.previous.*` until the completed copy promotes, with rollback on promotion failure; successful old generations are deleted best-effort and remain non-browsable if cleanup fails. Automatic/timestamped and user-named backup creation both use this primitive, while `listBackupDirectories()` excludes all transaction artifact markers. Timestamp collisions receive a distinct workspace name rather than overwriting prior history. `test_backup_namespace_contract.cpp` and `test_backup_workspace_durability.cpp` bind the temp/promote, marker filtering, close/readback, and named/automatic routing contracts. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -346,7 +346,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** begin a packed move with another unrelated pending edit, call `finalizedBytes()` / `publishVerifiedStagedEditorExport()`, and require failure until place or cancel; verify cancel restores byte-identical pre-carry staged state and placement enables finalization.
 - **Dependency / sequencing:** Close with AUDIT-030 shared invariant, before UI recovery AUDIT-037
 - **Proposed remediation order:** 16
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `Gen2::StagedEditor::finalizedBytes()` now fails closed while a packed move is active, with a clear place-or-cancel error before any checksum repair/export bytes are produced. The shared `tests/test_gen12_packed_multimove.cpp` behavior test starts an active group carry, requires finalization failure while custody is out of the packed box list, cancels and proves the pre-carry bytes are restored, then proves finalization succeeds again. Existing successful placement/finalization coverage remains. This is one shared invariant fix across AUDIT-029 and AUDIT-030. Exact-head CI is pending, so this is not VERIFIED yet.\n\n### 17. AUDIT-030 — Gen I finalization can serialize an in-progress packed move
 
@@ -362,7 +362,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** begin single/group carry and require `finalizedBytes()` failure before placement/cancel; ensure cancel restores byte-identical pre-carry bytes and pending changes; ensure successful placement allows finalization and preserves exact carried records.
 - **Dependency / sequencing:** Close with AUDIT-029 shared invariant
 - **Proposed remediation order:** 17
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `Gen1::StagedPokemonEditor::finalizedBytes()` now fails closed while a packed move is active, with a clear place-or-cancel error before any checksum repair/export bytes are produced. The shared `tests/test_gen12_packed_multimove.cpp` behavior test starts an active group carry, requires finalization failure while custody is out of the packed box list, cancels and proves the pre-carry bytes are restored, then proves finalization succeeds again. Existing successful placement/finalization coverage remains. This is one shared invariant fix across AUDIT-029 and AUDIT-030. Exact-head CI is pending, so this is not VERIFIED yet.\n\n### 18. AUDIT-037 — Gen I/II group pickup can strand an active staged move after presentation-refresh failure
 
@@ -378,7 +378,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** backend tests cover begin/place/cancel and failed destination placement, but there is no UI/bridge fault-injection test proving that a failed post-pickup refresh rolls the group transaction back.
 - **Dependency / sequencing:** Do after AUDIT-029/030 finalization gate
 - **Proposed remediation order:** 18
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `beginSelectedGroup()` now treats post-pickup presentation refresh as part of the packed-move transaction for both Gen I and Gen II. If refresh fails after `beginPackedGroupMove()`, it preserves the first refresh failure for diagnostics, calls `cancelPackedMove()`, and refreshes again from the restored staged bytes. If backend cancellation itself fails, the overlay deliberately keeps `state.active`, the attempted generation, carried visuals, and holding presentation so B can retry rather than forgetting backend custody. Existing backend packed-move tests already prove cancel restores pre-carry bytes; `tests/test_classic_packed_move_recovery_contract.cpp` binds both UI rollback paths and the retained-custody fallback and runs in Host Tests/ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -396,7 +396,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** corrupted-checksum legacy record is skipped, valid record migrates, mixed valid/corrupt legacy records preserve only valid entries, and migration never mutates the legacy source file.
 - **Dependency / sequencing:** None
 - **Proposed remediation order:** 19
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** normal unified Bank load and legacy per-group migration now share `Trainer::BankRecordValidation::accept()`, which rejects species 0 and requires stored checksum equality with the calculated checksum. Legacy migration separately counts/logs corrupt rejected records instead of conflating them with capacity drops. `tests/test_bank_record_validation.cpp` proves the acceptance predicate and binds both production paths to the same gate; it is wired into Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -414,7 +414,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** iterate every `PersonalInfo` species/form pair present in each supported game and require a nonzero, correct base-stat record with matching species id; compare representative alternate forms against the corresponding game personal table; run every form under bounds sanitizers; verify stat-affecting edit round-trips for the affected valid forms.
 - **Dependency / sequencing:** Prefer generated personal/base-stat routing
 - **Proposed remediation order:** 20
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `getBaseStatsGen89()` now validates the generated species/form domain before handwritten routing, every remaining dedicated-array access goes through a bounds-checked helper, and the proven irregular mappings are explicit: Kanto/Paldean Tauros, all four Darmanitan forms, Tornadus/Thundurus/Landorus offsets, Zygarde state aliases, Aegislash, Wishiwashi, Minior, Eiscue, Morpeko, Eternatus, Calyrex, Ursaluna, Palafin and Terapagos. The SWSH Zacian/Zamazenta historical overrides no longer accept arbitrary invalid forms. `Pokemon8SWSH`, `Pokemon8BDSP`, `Pokemon8LA`, `Pokemon9SV` and `Pokemon9LZA` now fail closed in `recalculateStats()` when no trustworthy base-stat record exists, preserving the existing party-stat tail instead of writing zero-based values. `tests/test_modern_base_stats_forms.cpp` covers the audited valid-form failures and malformed bounds and runs in Host Tests plus ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -432,7 +432,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** `getBaseStatsGen7(808,0)` and `(809,0)` must return the native Meltan/Melmetal rows; editing Level/IV/AV on fixture PB7s must produce the same party stats/CP as PKHeX and must not collapse them toward base-0 results.
 - **Dependency / sequencing:** After table/form routing AUDIT-028 if shared generator work helps
 - **Proposed remediation order:** 21
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `getBaseStatsGen7()` now treats only dex IDs 0..151 as dense and resolves later rows by their stored record ID, making Meltan #808 and Melmetal #809 reachable while preventing unsupported #152/#153 from aliasing those appended records. Sparse forms are accepted only for form 0. `Pokemon7LGPE::recalculateStats()` now verifies that the resolved base-stat record matches the current species and has a nonzero HP base before writing Level/stat/CP party-tail fields; unresolved records preserve the existing tail. `tests/test_lgpe_base_stats.cpp` covers Kanto, Alolan, Meltan/Melmetal, the historical 152/153 alias, malformed sparse forms, and the writeback guard; it runs in Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -450,7 +450,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** immutable source + mutable Bank target; Bank rename/edit/sort during RetroArch/ExternalLegacy browsing; source-box mutation remains blocked; cross-store source-retiring Move remains blocked; copy/import into Bank must not imply source retirement.
 - **Dependency / sequencing:** Must preserve source-retiring Move locks
 - **Proposed remediation order:** 22
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** a new pure `UI/MutationTargetPolicy.h` resolves Party/SaveBox mutation capability from the session source but resolves Bank targets to `SourceKind::AppOwnedStorage`. TrainerView target gates now use that policy for Bank rename/edit/sort, storage pickup/drop and action-sheet Edit; the read-only defense layer preserves Bank details/release/group/save-discard modals instead of closing them on the next frame. SaveBox/Party mutations remain source-gated. `buildCrossStoreDescriptors()` still explicitly refuses read-only sessions, so enabling Bank-only mutation does not enable source-retiring True Move or emulator/live writes. `tests/test_source_mutation_policy.cpp` now proves immutable Party/SaveBox + mutable Bank capability for installed/RetroArch/external sources and asserts the cross-store source-readonly gate remains present. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -468,7 +468,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** a native party with two real Pokémon plus four encrypted blanks must parse to two real party entries; native encrypted empty box slots must become null/empty model cells; Y on a visually empty box cell must remain a no-op; round-trip must preserve valid native blank bytes/count semantics.
 - **Dependency / sequencing:** Best after layout validators (AUDIT-021)
 - **Proposed remediation order:** 23
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** SWSH, PLA, SV and Z-A party/box parsers now construct/decrypt each native entity before deciding logical occupancy. Party vectors keep only `speciesID()!=0` Pokémon and box species-zero blanks become null model cells, matching the writers' encrypted-blank semantics. The direct Boxes Y/swap path now remains species-aware as defense in depth. `test_conversion_entity_golden.cpp` proves valid encrypted blanks for all four modern entity families decrypt to species 0, while `test_modern_trainer_blank_slots.cpp` binds all four Trainer parser paths and the Boxes swap UI to species-aware occupancy; both normal Host Tests and sanitizer suites cover the new contract. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -486,7 +486,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** injected write failure, close failure, interrupted/truncated file recovery, and successful round-trip of all current keys.
 - **Dependency / sequencing:** Can reuse durable replace primitive from AUDIT-015 if generalized
 - **Proposed remediation order:** 24
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** settings are now serialized fully in memory and persisted through `Utils::AtomicTextFile::replace()`: a sibling temp is written, flushed, closed, read back byte-for-byte, the prior authoritative file is rotated, and only the verified temp is promoted. Promotion failure restores the prior generation, and startup recovers a rotated `.previous` file only when `settings.cfg` itself is absent. `saveSettings()` now returns `bool`; the Settings UI surfaces failure and explicitly tells the user the previous settings file was retained. `test_atomic_text_file.cpp` injects write, flush, close and promotion failures plus interrupted-rotation recovery, while `test_settings_persistence_contract.cpp` binds production settings/UI to the durable helper. Both run in Host Tests and ASan/UBSan. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -504,7 +504,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** `test_game_launch_model.cpp` proves the pure extension helper rejects mismatched families (for example Platinum vs a `.gba` file) but no resolver-level test proves RetroArch playlist auto-match actually calls that helper before returning Ready.
 - **Dependency / sequencing:** Pair with AUDIT-016 resolver hardening
 - **Proposed remediation order:** 25
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `resolveRetroArch()` now applies `gameLaunchContentSupported(gameId, content)` before accepting a same-stem playlist entry, so a Platinum save cannot auto-resolve to a `.gba` content file merely because the basename matches. The new host resolver fixture proves a wrong-family same-stem entry is skipped in favor of the unique compatible NDS entry and that wrong-family-only input remains `NeedsContentLink`. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -522,7 +522,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** two valid playlist entries with the same normalized stem but different paths; ambiguity must not silently select one.
 - **Dependency / sequencing:** Pair with AUDIT-040 in one resolver tranche if tests prove shared root
 - **Proposed remediation order:** 26
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `resolveRetroArch()` now gathers all viable playlist `{content, core}` matches, sorts/deduplicates them, and auto-launches only when exactly one unique match remains. Multiple compatible same-stem entries fail closed to `NeedsContentLink` with an explicit exact-link message instead of picking by playlist/directory order. `test_retroarch_launch_resolution.cpp` exercises two distinct same-stem NDS files and proves no automatic selection occurs. Exact-head CI is pending, so this is not VERIFIED yet.
 
@@ -561,7 +561,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Add a focused regression reproducing the original failure, then run the nearest broader host/native suite.
 - **Dependency / sequencing:** Gen IV correctness tranche
 - **Proposed remediation order:** 28
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `MoveBattleStatsData::Gen4` remains the Platinum/HGSS table. A generator-owned Diamond/Pearl override now routes Hypnosis (move 95) to 70 accuracy while Platinum/HGSS remain 60. `tests/test_move_picker_presentation.cpp` pins DP/D/P = 70 and Pt/HGSS = 60. Implementation exists; exact-head validation is still required before VERIFIED.
 
@@ -579,7 +579,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** zero-byte required HD sprite; non-PNG bytes under a `.png` name; truncated PNG; recovery with correct filename count but one corrupt required file; preflight must fail all of them.
 - **Dependency / sequencing:** Tooling tranche
 - **Proposed remediation order:** 29
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** added `tools/png_asset_validation.py`, a stdlib structural PNG validator that checks signature, IHDR geometry, chunk bounds/CRCs, IDAT presence and terminal IEND. `check_device_assets.py` now fails corrupt HD sprites, `recover_workspace.py` counts only valid PNGs, and `gen_hdsprites.py` re-fetches an existing invalid file instead of treating existence as success. `tests/test_device_asset_png_validation.py` covers valid, zero-byte, non-PNG, truncated and bad-CRC cases and is wired into Host Tests. Exact-head CI is still required before VERIFIED.
 
@@ -597,7 +597,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** run every discovered table generator against the current tree in a pinned/offline-cache CI job; at minimum invoke both `gen_personal.py` and `gen_learnsets.py` after regenerating species names and require successful no-drift output.
 - **Dependency / sequencing:** Tooling tranche; pair with generated-data CI
 - **Proposed remediation order:** 30
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `gen_personal.py` and `gen_learnsets.py` now parse the generated English `SPECIES_NAMES_EN[]` table rather than the removed `SPECIES_NAMES[]` symbol. `check_device_assets.py` uses the same current symbol for Gen I diagnostic names. `tests/test_generated_species_name_contract.py` imports all three consumers, requires Bulbasaur/Pikachu to resolve from the real generated table, and is wired into Host Tests. Exact-head CI is still required before VERIFIED.
 
@@ -615,7 +615,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** no constrained-allocation/fault-injection regression covers Fontstash glyph-cache growth.
 - **Dependency / sequencing:** Bounded vendor/call-boundary fix only; no renderer rewrite
 - **Proposed remediation order:** 31
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** Fontstash glyph-array growth now uses a temporary `realloc` result, preserves ownership/capacity on failure, and `fons__getGlyph()` returns safely when allocation fails. `fonsResetAtlas()` now allocates CPU texture storage before mutating renderer/atlas metadata and preserves a valid allocation on failure. NanoVG propagates `fonsResetAtlas()` failure and rolls back `fontImageIdx` instead of claiming success. `tests/test_fontstash_allocation_contract.py` pins these failure guards in Host Tests. This is targeted coverage of the confirmed allocation paths, not a claim of full process-wide OOM resilience. Exact-head CI is still required before VERIFIED.
 
@@ -633,7 +633,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Run the affected workflow/target on the exact remediation head and assert the intended gate executes.
 - **Dependency / sequencing:** After higher-risk memory fixes; then enable/clarify LSan
 - **Proposed remediation order:** 32
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `Makefile.host.base` now keeps `detect_leaks=0` only as the explicit constrained local default and routes the sanitizer loop through configurable `ASAN_OPTIONS`. `.github/workflows/host-tests.yml` sets `ASAN_OPTIONS: detect_leaks=1` for unrestricted GitHub CI, and the focused RSE sanitizer inherits that policy instead of hard-coding leak detection off. `tests/test_ci_repository_safety_contract.py` pins both sides of the policy. Exact-head CI is still required before VERIFIED.
 
@@ -651,7 +651,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Run the affected workflow/target on the exact remediation head and assert the intended gate executes.
 - **Dependency / sequencing:** After core correctness; coordinate with CI pin update
 - **Proposed remediation order:** 33
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** both active native workflows now pin `devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282`, the exact digest recorded by prior Native PR Gate and Product UI Native job logs when `:latest` was pulled. `tests/test_ci_repository_safety_contract.py` rejects `devkita64:latest` and requires that immutable digest in both workflows. Exact-head native runs are still required before VERIFIED.
 
@@ -669,7 +669,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** `tests/test_game_hub_contract.py` proves that L/R exists for game switching but does not assert that Help copy matches the handler/nav hint, so this drift can remain test-green.
 - **Dependency / sequencing:** Verification-only; add contract assertion
 - **Proposed remediation order:** 34
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** live MAIN now displays `L / R Previous / next game` and `B Exit PokeBank NX from Product Home`; a dedicated help-copy contract is still missing, so this is not VERIFIED yet.
 
 ### 35. AUDIT-011 — Search preview vertical wrap changes columns and the test blesses it
@@ -686,7 +686,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** column-preserving wrap for incomplete rows, including Search 0 + Up and 6 + Down.
 - **Dependency / sequencing:** UI tranche; current MAIN reproduces it
 - **Proposed remediation order:** 35
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `previewMoveSelection()` now computes vertical wrap within the current geometric column instead of applying flat-index modulo arithmetic. Search bottom-left index 6 wraps to top-left 0, top-left wraps back to 6, and the right column 5 ↔ 1 behaves independently. `tests/test_organization_preview_model.cpp` pins all four incomplete-row wrap cases. Exact-head CI is still required before VERIFIED.
 
@@ -704,7 +704,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** no contract currently binds the Legacy Save Instances renderer's visible-row count to the input scroll-window count.
 - **Dependency / sequencing:** UI navigation tranche
 - **Proposed remediation order:** 36
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `src/UI/SaveSelectScreen.cpp` now defines one `LEGACY_INSTANCE_VISIBLE_ROWS = 5` constant and uses it in both Legacy Save Instances input scrolling and rendering. `tests/test_save_instance_architecture_contract.py` requires the shared constant at both call sites. This file overlaps the newer Product UI lane, so final integration must preserve the same constant-based fix rather than cherry-picking unrelated UI work into remediation. Exact-head CI is still required before VERIFIED.
 
@@ -722,7 +722,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Docs tranche after launch fixes
 - **Proposed remediation order:** 37
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `docs/STANDALONE_RUNTIME.md` now distinguishes RetroArch save discovery as a read-only external source from RetroArch executable/core launching as an optional, explicitly user-invoked game shortcut. It reiterates that launch capability grants no source-write permission and that RetroArch is not a runtime prerequisite. The CI repository safety contract rejects the obsolete `RetroArch is not invoked as a helper` claim and requires the new classification. Exact-head CI is still required before VERIFIED.
 
@@ -740,7 +740,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Refresh after functional remediation order is established
 - **Proposed remediation order:** 38
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** `docs/ENGINEERING_AUTHORITY.md` is now the small live routing authority: GitHub must be re-fetched first; PR #92 is the live MAIN lane; PR #101 is the draft remediation lane; and the completed audit branch is frozen evidence. The former CODEX/NEXT prompt authority chain is explicitly historical or navigation-only, and recovery has a branch-agnostic authority override. `tests/test_engineering_authority_contract.py` pins the routing. Exact-head CI is still required before VERIFIED.
 
@@ -758,7 +758,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Docs tranche late
 - **Proposed remediation order:** 39
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 - **Current-code reconciliation:** The stale runbook and older UI/reference documents now identify themselves as historical/reference material and point to `docs/ENGINEERING_AUTHORITY.md`; the already-refreshed `V1_ROADMAP.md` and `UI_OWNERSHIP_STATUS.md` remain current dated snapshots but explicitly not branch authority. `tests/test_engineering_authority_contract.py` ensures the affected docs retain that classification. Exact-head CI is still required before VERIFIED.
 
@@ -776,7 +776,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** None
 - **Proposed remediation order:** 40
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** `.github/ISSUE_TEMPLATE/device_bug_report.md` now asks for the exact theme name shown in Settings as free-form text instead of limiting reporters to the obsolete OLED Black / Dark / Light list. No runtime behavior is affected.
 
 ### 41. AUDIT-005 — historical branch-specific workflows remain tracked
@@ -793,7 +793,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Run the affected workflow/target on the exact remediation head and assert the intended gate executes.
 - **Dependency / sequencing:** After active CI remediation
 - **Proposed remediation order:** 41
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** the retained Gen I/II/III candidate/retest/recovery workflows are explicitly named `HISTORICAL / MANUAL`, use `workflow_dispatch` only, and state that they must never auto-run on current development. They remain as frozen reproducibility evidence rather than active branch-routing CI.
 
 ### 42. AUDIT-007 — top-level README materially understates current Gen IV implementation
@@ -810,7 +810,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Do late after remediation state stabilizes
 - **Proposed remediation order:** 42
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** live MAIN now states active Gen IV Diamond/Pearl/Platinum/HeartGold/SoulSilver staged Party/Box editing, Create, native fields, move/form support, checksum repair, strict reparse and rollback. That current human-facing README was synced unchanged into PR #101 while preserving remediation history. Documentation consistency still needs exact-head review before VERIFIED.
 
 ### 43. AUDIT-008 — checked-in Visual Studio metadata is stale PKSE-era configuration
@@ -827,7 +827,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Cleanup-only
 - **Proposed remediation order:** 43
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** the non-authoritative PKSE-era Visual Studio metadata (`CppProperties.json`, `PKSE.sln`, `PKSE.vcxproj`, `PKSE.vcxproj.filters`) has been removed. The authoritative project build remains the Makefile/devkitA64 workflow, avoiding a second stale pseudo-build description.
 
 ### 44. AUDIT-009 — recovery metadata still describes the repository as private / old production branch
@@ -844,8 +844,25 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Docs cleanup
 - **Proposed remediation order:** 44
-- **Status:** FIXED
+- **Status:** VERIFIED
 - **Current-code reconciliation:** recovery metadata now names `feature/pokebank-playable` only as `historical_snapshot_branch`, records the repository as public, and explicitly requires live-GitHub/current-reviewed-branch publishing. The snapshot README and recovery pack/recover messages no longer instruct direct pushes to the historical branch or describe the repository as private. Historical snapshot/application SHAs remain untouched as provenance.
+
+
+## Exact-head verification checkpoint — 2026-09-30
+
+Validated application/remediation head: `27eda0c522934e39e041969ed67c87607e1cc887`.
+
+The 43 implemented findings above are promoted from **FIXED** to **VERIFIED** on that exact head. AUDIT-043 remains **DEFERRED WITH JUSTIFICATION** because its device-observed Gen IV trainer-name failure still lacks a reproducing real-save fixture/root-cause proof; the source remains read-only and this is identity/presentation-only.
+
+Exact-head GitHub Actions evidence:
+
+- **PokeBank NX Host Tests** run `36678271250`: success. Includes repository-safety/docs/generated-data contracts, clean host build/tests, focused RSE save-open bridge regression, and **ASan + UBSan**.
+- **PokeBank NX Native PR Gate** run `36678271277`: success. Exact-head checkout, recovered RomFS/asset preflight, clean unfiltered **devkitA64 compile + link**.
+- **PokeBank NX Product UI Native** run `36678271205`: success. Exact-head product-shell validation, asset preflight, clean devkitA64 compile/link, and NRO packaging.
+- **Gen I/II Packed Move Focused** run `36678271135`: success, including focused ASan + UBSan.
+- **Gen I/II Packed Multi-Move Focused** run `36678271197`: success, including focused ASan + UBSan.
+
+Safety invariants remain unchanged: original external/emulator saves are immutable; installed-title live writes remain disabled; cross-game True Move remains locked; source injection remains locked; BDSP unsupported writeback remains blocked; no Gen V or Master Vault backend work is introduced by remediation.
 
 ## Checkpoints
 
