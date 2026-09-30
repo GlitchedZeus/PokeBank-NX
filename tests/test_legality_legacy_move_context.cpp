@@ -69,7 +69,10 @@ int main() {
         assert(hasText(report, "exact Gen IV game"));
         assert(report.coverage.sourceGame == Legality::CoverageLevel::Complete);
         assert(report.coverage.encounter == Legality::CoverageLevel::Partial);
-        assert(report.verdict() == Legality::Verdict::Incomplete);
+        // This focused test deliberately reuses a PK3 wrapper to exercise the exact-game
+        // move tables. The newer transfer verifier can therefore flag the synthetic entity
+        // as an invalid Gen III -> IV transfer; do not use the global verdict here.
+        assert(!hasText(report, "Move id 467 cannot exist in a Generation 4 save"));
     }
 
     {
