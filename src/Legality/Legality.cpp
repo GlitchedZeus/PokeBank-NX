@@ -17,6 +17,7 @@
 #include "Legality/Gen4TradeEvidence.h"
 #include "Legality/Gen1CatchRateEvidence.h"
 #include "Legality/Gen1EncounterEvidence.h"
+#include "Legality/Gen12TimeCapsuleEvidence.h"
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3ChannelPidIvCorrelation.h"
@@ -31,6 +32,7 @@
 #include "Legality/Gen34EggMoveEvidence.h"
 #include "Legality/Gen4TransferEvidence.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
+#include "Pokemon/Pokemon2ReadOnly.h"
 
 #include <algorithm>
 #include <array>
@@ -142,11 +144,11 @@ namespace Legality {
             } else if (evidence == Evidence::AmbiguousGen1OrTimeCapsuleHeldItem) {
                 add(r, Severity::Info,
                     "PK1 catch-rate byte matches Gen I species/pre-evolution provenance and a valid Gen II held-item byte; Time Capsule history is indeterminate",
-                    CheckIdentifier::Encounter);
+                    CheckIdentifier::Transfer);
             } else if (evidence == Evidence::PossibleTimeCapsuleHeldItem) {
                 add(r, Severity::Info,
                     "PK1 catch-rate byte is compatible with a Generation II held item after Time Capsule tradeback",
-                    CheckIdentifier::Encounter);
+                    CheckIdentifier::Transfer);
             } else {
                 add(r, Severity::Info,
                     "PK1 catch-rate provenance is unresolved; event/Stadium evidence is not complete",
@@ -174,6 +176,26 @@ namespace Legality {
                 }
             }
         }
+        if (sourceProfile && exactGeneration == 2 &&
+            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup) {
+            const auto& gen2 = static_cast<const Pokemon::Pokemon2ReadOnly&>(pk);
+            const std::array<uint16_t, 4> moves{
+                gen2.move(0), gen2.move(1), gen2.move(2), gen2.move(3)
+            };
+            if (Gen12TimeCapsule::couldOriginateGen1(
+                    gen2.speciesID(), gen2.isEgg(), gen2.caughtData())) {
+                add(r, Severity::Info,
+                    "PK2 structure is compatible with a possible Generation I origin through Time Capsule; this does not prove the transfer occurred",
+                    CheckIdentifier::Transfer);
+            }
+            if (Gen12TimeCapsule::canCurrentlyTradeToGen1(
+                    gen2.speciesID(), gen2.isEgg(), moves)) {
+                add(r, Severity::Info,
+                    "Current PK2 species/moves are compatible with a Gen II -> Gen I Time Capsule trade",
+                    CheckIdentifier::Transfer);
+            }
+        }
+
         if (sourceProfile) {
             r.coverage.sourceGame = CoverageLevel::Complete;
             r.coverage.encounter = sourceProfile->encounterCoverage;
