@@ -7,6 +7,7 @@ on:
       - feature/legality-engine-gen1-4-20260929
     paths:
       - tools/gen_legality_gen4_wild.py
+      - tools/gen_legality_gen34_egg_moves.py
       - tools/pkhex_source.py
       - .github/workflows/legality-data-generation.yml
 
@@ -26,21 +27,26 @@ jobs:
       - name: Python info
         run: python3 --version
 
-      - name: Regenerate from pinned PKHeX resources
-        run: python3 tools/gen_legality_gen4_wild.py
+      - name: Regenerate from pinned upstream resources
+        run: |
+          python3 tools/gen_legality_gen4_wild.py
+          python3 tools/gen_legality_gen34_egg_moves.py
 
       - name: Show deterministic diff and digest
         run: |
           set -euo pipefail
-          git diff -- include/Legality/Gen4WildEncounterData.inc
+          git diff -- include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc
           sha256sum include/Legality/Gen4WildEncounterData.inc
+          sha256sum include/Legality/Gen34EggMoveData.inc
           git diff --check
 
       - name: Upload generated table
         uses: actions/upload-artifact@v4
         with:
-          name: legality-gen4-wild-slot-table
-          path: include/Legality/Gen4WildEncounterData.inc
+          name: legality-generated-evidence
+          path: |
+            include/Legality/Gen4WildEncounterData.inc
+            include/Legality/Gen34EggMoveData.inc
           if-no-files-found: error
           retention-days: 7
 
@@ -48,12 +54,12 @@ jobs:
         if: github.event_name == 'push'
         run: |
           set -euo pipefail
-          if git diff --quiet -- include/Legality/Gen4WildEncounterData.inc; then
-            echo "Generated table already matches the branch."
+          if git diff --quiet -- include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc; then
+            echo "Generated tables already match the branch."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add include/Legality/Gen4WildEncounterData.inc
-          git commit -m "legality: regenerate Gen IV wild slot evidence"
+          git add include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc
+          git commit -m "legality: regenerate pinned encounter and egg-move evidence"
           git push origin "HEAD:${GITHUB_REF_NAME}"
