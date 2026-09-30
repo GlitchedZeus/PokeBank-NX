@@ -121,4 +121,34 @@ for workflow_name in HISTORICAL_MANUAL_WORKFLOWS:
     if re.search(r"(?m)^\s*(pull_request|push):", trigger):
         fail(f"AUDIT-005: {workflow_name} must not auto-run on historical branches")
 
+
+
+DEVICE_BUG_TEMPLATE = ROOT / ".github" / "ISSUE_TEMPLATE" / "device_bug_report.md"
+device_bug_text = DEVICE_BUG_TEMPLATE.read_text(encoding="utf-8")
+if "Theme (exact name shown in Settings):" not in device_bug_text:
+    fail("AUDIT-004: device bug template must accept the exact current theme name")
+if "OLED Black / Dark / Light" in device_bug_text:
+    fail("AUDIT-004: device bug template still hard-codes the obsolete three-theme list")
+
+for stale_vs_path in ("CppProperties.json", "PKSE.sln", "PKSE.vcxproj", "PKSE.vcxproj.filters"):
+    if (ROOT / stale_vs_path).exists():
+        fail(f"AUDIT-008: stale PKSE Visual Studio metadata is still tracked: {stale_vs_path}")
+
+import json
+recovery_state = json.loads((ROOT / "recovery" / "RECOVERY_STATE.json").read_text(encoding="utf-8"))
+if "branch" in recovery_state:
+    fail("AUDIT-009: recovery state still presents a historical branch as a current branch")
+if recovery_state.get("historical_snapshot_branch") != "feature/pokebank-playable":
+    fail("AUDIT-009: historical snapshot provenance branch is missing")
+if recovery_state.get("repository_visibility") != "public":
+    fail("AUDIT-009: recovery state still has stale repository visibility")
+snapshot_readme = (ROOT / "recovery" / "assets_snapshot" / "README.md").read_text(encoding="utf-8")
+if "The project repository is private." in snapshot_readme:
+    fail("AUDIT-009: recovery README still describes the repository as private")
+if "git push origin feature/pokebank-playable" in snapshot_readme:
+    fail("AUDIT-009: recovery README still instructs direct pushes to the historical branch")
+packer_text = (ROOT / "tools" / "pack_recovery_snapshot.py").read_text(encoding="utf-8")
+if "private repository" in packer_text:
+    fail("AUDIT-009: recovery packer still describes the repository as private")
+
 print("CI repository safety contracts: PASS")
