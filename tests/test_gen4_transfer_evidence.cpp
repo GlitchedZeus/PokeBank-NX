@@ -6,6 +6,7 @@
 int main() {
     using Legality::Gen4Transfer::Evidence;
     using Legality::Gen4Transfer::classify;
+    using Legality::Gen4Transfer::classifyStoredFields;
     using Legality::Gen4Transfer::invalid;
 
     assert(classify(4, 0, false) == Evidence::NotApplicable);
@@ -16,6 +17,20 @@ int main() {
     assert(invalid(Evidence::InvalidEggTransfer));
     assert(invalid(Evidence::InvalidMissingPalParkMarker));
     assert(!invalid(Evidence::PalParkMarker));
+
+    assert(classifyStoredFields(4, 0, 0, false) == Evidence::NotApplicable);
+    assert(classifyStoredFields(3, 0x37, 0, false) ==
+           Evidence::PalParkDiamondPearlFields);
+    assert(classifyStoredFields(3, 0x37, 0x37, false) ==
+           Evidence::PalParkPtHgssFields);
+    assert(classifyStoredFields(3, 0x37, 0x37, true) ==
+           Evidence::InvalidEggTransfer);
+    assert(classifyStoredFields(3, 0x36, 0, false) ==
+           Evidence::InvalidMissingPalParkMarker);
+    assert(classifyStoredFields(3, 0x37, 0x36, false) ==
+           Evidence::InvalidSplitLocationFields);
+    assert(classifyStoredFields(3, 0x36, 0x37, false) ==
+           Evidence::InvalidSplitLocationFields);
 
     std::cout << "Gen III -> IV Pal Park transfer evidence: PASS\n";
 }

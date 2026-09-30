@@ -83,6 +83,18 @@ uint16_t Pokemon4ReadOnlyView::metLocation() const noexcept {
         return source_.metLocationExtended();
     return source_.metLocationDP();
 }
+uint16_t Pokemon4ReadOnlyView::gen4MetLocationDP() const noexcept {
+    return source_.metLocationDP();
+}
+uint16_t Pokemon4ReadOnlyView::gen4MetLocationExtended() const noexcept {
+    return source_.metLocationExtended();
+}
+uint8_t Pokemon4ReadOnlyView::gen4BallDPPt() const noexcept {
+    return source_.ballDPPt();
+}
+uint8_t Pokemon4ReadOnlyView::gen4BallHGSS() const noexcept {
+    return source_.ballHGSS();
+}
 uint8_t Pokemon4ReadOnlyView::metLevel() const noexcept { return source_.metLevel(); }
 uint16_t Pokemon4ReadOnlyView::eggLocation() const noexcept {
     if (source_.eggLocationExtended() != 0)

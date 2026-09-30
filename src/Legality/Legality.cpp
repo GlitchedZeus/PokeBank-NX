@@ -226,11 +226,13 @@ namespace Legality {
                     CheckIdentifier::Transfer);
                 r.coverage.transfer = CoverageLevel::Partial;
             } else if (originGeneration == 3) {
-                const auto transfer =
-                    Gen4Transfer::classify(3, pk.metLocation(), pk.isEgg());
-                if (transfer == Gen4Transfer::Evidence::PalParkMarker) {
+                const auto transfer = Gen4Transfer::classifyStoredFields(
+                    3, pk.gen4MetLocationDP(), pk.gen4MetLocationExtended(), pk.isEgg());
+                if (transfer == Gen4Transfer::Evidence::PalParkDiamondPearlFields ||
+                    transfer == Gen4Transfer::Evidence::PalParkPtHgssFields) {
                     add(r, Severity::Info,
-                        "Gen III origin carries the required Pal Park transfer met location; DP/Pt/HGSS split-field provenance remains partial",
+                        std::string(Gen4Transfer::evidenceName(transfer)) +
+                        "; split-ball and external-event provenance remain partial",
                         CheckIdentifier::Transfer);
                     r.coverage.transfer = CoverageLevel::Partial;
                 } else if (Gen4Transfer::invalid(transfer)) {

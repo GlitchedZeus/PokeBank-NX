@@ -361,6 +361,16 @@ namespace Pokemon {
         virtual uint16_t metLocation() const noexcept { return 0; }
         virtual void setMetLocation(uint16_t value) noexcept { (void)value; }
 
+        /**
+         * Gen IV stores parallel D/P and Pt/HGSS location/ball fields. These read-only
+         * accessors default to zero outside PK4 so legality can inspect the actual stored
+         * transfer evidence without RTTI or mutation.
+         */
+        virtual uint16_t gen4MetLocationDP() const noexcept { return 0; }
+        virtual uint16_t gen4MetLocationExtended() const noexcept { return 0; }
+        virtual uint8_t gen4BallDPPt() const noexcept { return 0; }
+        virtual uint8_t gen4BallHGSS() const noexcept { return 0; }
+
         /** Met level (level at which the Pokemon was met). */
         virtual uint8_t metLevel() const noexcept { return 0; }
         virtual void setMetLevel(uint8_t value) noexcept { (void)value; }
