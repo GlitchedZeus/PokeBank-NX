@@ -409,10 +409,6 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         return;
     }
 
-    if (kDown & HidNpadButton_Plus) {
-        overlay = Overlay::Settings;
-        return;
-    }
     if (kDown & HidNpadButton_Minus) {
         overlay = Overlay::Help;
         return;
@@ -495,8 +491,8 @@ void AppShellScreen::drawHome(PKSEFramebuffer& fb) {
     fb.drawText(kPrimaryX, kDockY - 32, "NAVIGATION",
                 Colors::TextMuted, TextStyle::Caption);
 
-    // Compact product dock mirrors Product Home: Games / Banks / Backups / Search / More.
-    // Settings remains a header/+ destination and is intentionally excluded here.
+    // Compact secondary shell dock mirrors the non-settings Product Home destinations.
+    // Settings is intentionally reachable only from Product Home's header gear.
     const int dockSpan = PokeBank::UIModel::APP_SHELL_DOCK_COUNT * kDockSize +
                          (PokeBank::UIModel::APP_SHELL_DOCK_COUNT - 1) * kDockGap;
     const int dockStartX = kPrimaryX + (kPrimaryW - dockSpan) / 2;
@@ -525,7 +521,7 @@ void AppShellScreen::drawHome(PKSEFramebuffer& fb) {
                 Colors::TextMuted, TextStyle::Caption);
 
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Open"},
-                    {"+", "Settings"}, {"-", "Help"}, {"B", "Exit"}});
+                    {"-", "Help"}, {"B", "Exit"}});
 }
 
 void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
