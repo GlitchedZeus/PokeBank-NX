@@ -310,7 +310,7 @@ namespace UI {
                 ? static_cast<int>(resumedUser->titles.size()) : 0;
             titleIndex = titleCount > 0
                 ? std::clamp(resumeState->titleIndex, 0, titleCount - 1) : 0;
-            hubDockIndex = std::clamp(resumeState->hubDockIndex, 0, 5);
+            hubDockIndex = std::clamp(resumeState->hubDockIndex, 0, 4);
             classicGamesActive = resumeState->classicGamesActive;
             hubFeatureIndex = std::clamp(resumeState->hubFeatureIndex, -1, 1);
             scrollRow = std::max(0, resumeState->scrollRow);
@@ -1581,13 +1581,10 @@ namespace UI {
             titleIndex < static_cast<int>(user->titles.size());
 
         if (hubDockIndex == 0) {
-            if (!hasGame) {
-                hubNotice = "Choose a game before opening Games.";
-                return;
-            }
-            gameWorkspaceIndex = 0;
+            gamesDrawerIndex = hasGame ? titleIndex : 0;
+            gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
             hubNotice.clear();
-            overlay = Overlay::GameWorkspace;
+            overlay = Overlay::GamesDrawer;
         } else if (hubDockIndex == 1) {
             requestedMainMenuDestination = MainMenuDestination::Banks;
             exitRequested = true;
@@ -1600,11 +1597,8 @@ namespace UI {
         } else if (hubDockIndex == 3) {
             requestedMainMenuDestination = MainMenuDestination::Search;
             exitRequested = true;
-        } else if (hubDockIndex == 4) {
-            requestedMainMenuDestination = MainMenuDestination::More;
-            exitRequested = true;
         } else {
-            requestedMainMenuDestination = MainMenuDestination::Settings;
+            requestedMainMenuDestination = MainMenuDestination::More;
             exitRequested = true;
         }
     }
@@ -1635,6 +1629,7 @@ namespace UI {
                 return;
             case 6: // Backups
                 if (title.sourceKind == SelectedSourceKind::SwitchTitle) {
+                    openIntent = OpenIntent::Backups;
                     overlay = Overlay::None;
                     selectCurrentTitle();
                 } else {
@@ -1670,6 +1665,92 @@ namespace UI {
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
             | navTouchButton(touch);
 
+        if (overlay == Overlay::GamesDrawer) {
+            const UserEntry* drawerUser = currentUser();
+            const int count = drawerUser ? static_cast<int>(drawerUser->titles.size()) : 0;
+            if (kDown & HidNpadButton_B) {
+                overlay = Overlay::None;
+                return;
+            }
+            if (kDown & HidNpadButton_X) {
+                // Explicit save assignment lives in Games. Gen IV assignments are game-specific;
+                // Gen I-III unclaimed saves use the existing profile-claim flow.
+                if (drawerUser && gamesDrawerIndex >= 0 && gamesDrawerIndex < count &&
+                    drawerUser->titles[static_cast<size_t>(gamesDrawerIndex)].sourceKind ==
+                        SelectedSourceKind::Gen4AssignedFile) {
+                    const auto& game = drawerUser->titles[static_cast<size_t>(gamesDrawerIndex)];
+                    titleIndex = gamesDrawerIndex;
+                    openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.");
+                } else if (!unassignedLegacySources.empty()) {
+                    legacyAssignmentIndex = 0;
+                    legacyAssignmentScroll = 0;
+                    legacyNotice.clear();
+                    overlay = Overlay::LegacyAssignment;
+                } else {
+                    hubNotice = "No unassigned Gen I-III saves are currently available.";
+                }
+                return;
+            }
+            if (kDown & HidNpadButton_Y) {
+                if (drawerUser && gamesDrawerIndex >= 0 && gamesDrawerIndex < count) {
+                    titleIndex = gamesDrawerIndex;
+                    const auto& game = drawerUser->titles[static_cast<size_t>(gamesDrawerIndex)];
+                    if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+                        legacyInstanceIndex = 0;
+                        legacyInstanceScroll = 0;
+                        legacyNotice.clear();
+                        overlay = Overlay::LegacyInstances;
+                    } else if (game.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+                        openGen4Setup(game.gameId, "Review or change this game's remembered save source.");
+                    } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
+                        beginLaunchLinkForCurrentTitle();
+                    } else {
+                        hubNotice = "This Nintendo Switch save is managed by the console.";
+                    }
+                }
+                return;
+            }
+            if (count > 0) {
+                if (kDown & HidNpadButton_Up)
+                    gamesDrawerIndex = (gamesDrawerIndex - 1 + count) % count;
+                if (kDown & HidNpadButton_Down)
+                    gamesDrawerIndex = (gamesDrawerIndex + 1) % count;
+                constexpr int visibleRows = 7;
+                if (gamesDrawerIndex < gamesDrawerScroll)
+                    gamesDrawerScroll = gamesDrawerIndex;
+                else if (gamesDrawerIndex >= gamesDrawerScroll + visibleRows)
+                    gamesDrawerScroll = gamesDrawerIndex - visibleRows + 1;
+                if (kDown & HidNpadButton_A) {
+                    titleIndex = gamesDrawerIndex;
+                    scrollSelectionIntoView();
+                    refreshHubPreview();
+                    overlay = Overlay::None;
+                }
+            }
+            return;
+        }
+
+        if (overlay == Overlay::ProfilePicker) {
+            const int count = static_cast<int>(users.size());
+            if (kDown & HidNpadButton_B) {
+                overlay = Overlay::None;
+                return;
+            }
+            if (count > 0) {
+                if (kDown & HidNpadButton_Up)
+                    profilePickerIndex = (profilePickerIndex - 1 + count) % count;
+                if (kDown & HidNpadButton_Down)
+                    profilePickerIndex = (profilePickerIndex + 1) % count;
+                if (kDown & HidNpadButton_A) {
+                    setUser(profilePickerIndex);
+                    gamesDrawerIndex = titleIndex;
+                    overlay = Overlay::None;
+                    headerActionIndex = -1;
+                }
+            }
+            return;
+        }
+
         if (overlay == Overlay::GameWorkspace) {
             constexpr int count = 8;
             constexpr int columns = 2;
@@ -1683,8 +1764,7 @@ namespace UI {
                 return;
             }
             if (kDown & HidNpadButton_Plus) {
-                requestedMainMenuDestination = MainMenuDestination::Settings;
-                exitRequested = true;
+                overlay = Overlay::None;
                 return;
             }
             if (kDown & HidNpadButton_Minus) {
@@ -1887,11 +1967,6 @@ namespace UI {
                 refreshHubPreview();
                 return;
             }
-            if (kDown & HidNpadButton_Plus) {
-                requestedMainMenuDestination = MainMenuDestination::Settings;
-                exitRequested = true;
-                return;
-            }
             if (kDown & HidNpadButton_Minus) {
                 helpReturnClassicGames = true;
                 helpReturnOverlay = Overlay::None;
@@ -1950,8 +2025,15 @@ namespace UI {
             return;
         }
         if (kDown & HidNpadButton_Plus) {
-            requestedMainMenuDestination = MainMenuDestination::Settings;
-            exitRequested = true;
+            const UserEntry* current = currentUser();
+            if (current && titleIndex >= 0 &&
+                titleIndex < static_cast<int>(current->titles.size())) {
+                gameWorkspaceIndex = 0;
+                hubNotice.clear();
+                overlay = Overlay::GameWorkspace;
+            } else {
+                hubNotice = "Choose a game before opening the Current Game menu.";
+            }
             return;
         }
         if (kDown & HidNpadButton_Minus) {
@@ -1977,16 +2059,25 @@ namespace UI {
             return;
         }
 
-        // A single shoulder changes profile without stealing L/R from the approved Change Game flow.
-        if ((kDown & HidNpadButton_ZL) && users.size() > 1) {
-            setUser(userIndex + 1);
-            return;
-        }
-
         // Touch uses the same actions as controller focus. Fine-grained app-wide touch parity is
         // intentionally a later tranche; these existing primary hit targets remain safe now.
         if (touch.justPressed()) {
             const int tx = touch.x(), ty = touch.y();
+            for (const auto& r : headerRects) {
+                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
+                    headerActionIndex = r.idx;
+                    hubDockFocused = false;
+                    hubFeatureIndex = -1;
+                    if (headerActionIndex == 0) {
+                        profilePickerIndex = userIndex;
+                        overlay = Overlay::ProfilePicker;
+                    } else {
+                        requestedMainMenuDestination = MainMenuDestination::Settings;
+                        exitRequested = true;
+                    }
+                    return;
+                }
+            }
             for (const auto& r : dockRects) {
                 if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
                     hubDockFocused = true;
@@ -2021,6 +2112,25 @@ namespace UI {
             }
         }
 
+        if (headerActionIndex >= 0) {
+            if (kDown & (HidNpadButton_Left | HidNpadButton_Right))
+                headerActionIndex = headerActionIndex == 0 ? 1 : 0;
+            if (kDown & HidNpadButton_Down) {
+                headerActionIndex = -1;
+                return;
+            }
+            if (kDown & HidNpadButton_A) {
+                if (headerActionIndex == 0) {
+                    profilePickerIndex = userIndex;
+                    overlay = Overlay::ProfilePicker;
+                } else {
+                    requestedMainMenuDestination = MainMenuDestination::Settings;
+                    exitRequested = true;
+                }
+            }
+            return;
+        }
+
         if (hubDockFocused) {
             if (kDown & HidNpadButton_Up) {
                 hubDockFocused = false;
@@ -2028,9 +2138,9 @@ namespace UI {
                 return;
             }
             if (kDown & HidNpadButton_Left)
-                hubDockIndex = (hubDockIndex + 5) % 6;
+                hubDockIndex = (hubDockIndex + 4) % 5;
             if (kDown & HidNpadButton_Right)
-                hubDockIndex = (hubDockIndex + 1) % 6;
+                hubDockIndex = (hubDockIndex + 1) % 5;
             if (kDown & HidNpadButton_A) activateHubDock();
             return;
         }
@@ -2060,11 +2170,10 @@ namespace UI {
         }
 
         if (kDown & HidNpadButton_Up) {
-            // Product Home has no duplicate header Settings target; keep focus on the game card.
+            headerActionIndex = 0;
             return;
         }
         if (kDown & HidNpadButton_Right) {
-            headerSettingsFocused = false;
             hubFeatureIndex = 0;
             return;
         }
