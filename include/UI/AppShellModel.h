@@ -76,7 +76,7 @@ namespace PokeBank::UIModel {
     //   0 Master Vault
     //   1 Pokédex
     //   2..6 compact dock (Games, Banks, Backups, Search, More)
-    //   7 Settings (header / + shortcut, never part of the bottom dock).
+    //   7 Settings (opened only from Product Home's header gear, never from the bottom dock).
     // Backups remain selected-game context; future destinations stay truthful scaffolding.
     constexpr int appShellMoveSelection(int current, int dx, int dy) {
         if (current < 0 || current >= appShellEntryCount()) current = 0;
