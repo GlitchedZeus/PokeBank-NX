@@ -62,7 +62,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 40 | AUDIT-004 | P4 | FIXED | stale theme choices in physical bug template |
 | 41 | AUDIT-005 | P4 | FIXED | historical branch-specific workflows remain tracked |
 | 42 | AUDIT-007 | P4 | FIXED | top-level README materially understates current Gen IV implementation |
-| 43 | AUDIT-008 | P4 | OPEN | checked-in Visual Studio metadata is stale PKSE-era configuration |
+| 43 | AUDIT-008 | P4 | FIXED | checked-in Visual Studio metadata is stale PKSE-era configuration |
 | 44 | AUDIT-009 | P4 | OPEN | recovery metadata still describes the repository as private / old production branch |
 
 ## Detailed finding ledger
@@ -825,7 +825,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Cleanup-only
 - **Proposed remediation order:** 43
-- **Status:** OPEN
+- **Status:** FIXED
+- **Current-code reconciliation:** the non-authoritative PKSE-era Visual Studio metadata (`CppProperties.json`, `PKSE.sln`, `PKSE.vcxproj`, `PKSE.vcxproj.filters`) has been removed. The authoritative project build remains the Makefile/devkitA64 workflow, avoiding a second stale pseudo-build description.
 
 ### 44. AUDIT-009 — recovery metadata still describes the repository as private / old production branch
 
