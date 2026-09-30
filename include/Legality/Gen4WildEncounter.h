@@ -33,6 +33,7 @@ constexpr Game gameForId(std::string_view id) noexcept {
 //   form     [35..42] (8 bits; >=30 is PKHeX dynamic/random form sentinel)
 //   game     [43..45] (3 bits)
 //   slot     [46..49] (4 bits; original EncounterSlot4.SlotNumber)
+//   rate     [50..57] (8 bits; EncounterArea4.Rate)
 #include "Legality/Gen4WildEncounterData.inc"
 
 constexpr uint16_t species(uint64_t v) noexcept {
@@ -58,6 +59,9 @@ constexpr Game game(uint64_t v) noexcept {
 }
 constexpr uint8_t slot(uint64_t v) noexcept {
     return static_cast<uint8_t>((v >> 46) & 0x0Fu);
+}
+constexpr uint8_t rate(uint64_t v) noexcept {
+    return static_cast<uint8_t>((v >> 50) & 0xFFu);
 }
 constexpr bool formMatches(uint8_t encounterForm, uint8_t pokemonForm) noexcept {
     // PKHeX EncounterUtil.FormDynamic=30 and FormRandom=31 on the pinned reference.

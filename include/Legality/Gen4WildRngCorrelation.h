@@ -16,6 +16,7 @@ enum class Method : uint8_t {
     MethodKFishingNoLead,
     MethodKHeadbuttNoLead,
     MethodJHoneyTreeNoLead,
+    MethodKRockSmashNoLead,
 };
 
 struct Result {
@@ -80,6 +81,16 @@ constexpr bool isHoneyTree(uint8_t type) noexcept {
 constexpr uint8_t honeyTreeLevel(uint16_t rand16) noexcept {
     // PKHeX MethodJ.GetHoneyTreeLevel: 5 + rand / 0x1745.
     return static_cast<uint8_t>(5u + (rand16 / 0x1745u));
+}
+
+constexpr uint8_t rockSmashSlot(uint16_t rand16) noexcept {
+    return (rand16 % 100u) < 80u ? 0 : 1;
+}
+
+constexpr bool rockSmashActivation(uint8_t areaRate, uint16_t rand16) noexcept {
+    // Positive no-lead evidence only. PKHeX Method K can also accept an Illuminate
+    // lead when roll < rate*2; that special-lead path remains intentionally unresolved.
+    return areaRate != 0 && (rand16 % 100u) < areaRate;
 }
 
 constexpr uint8_t headbuttSlot(uint16_t rand16) noexcept {
@@ -165,7 +176,7 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                                 uint32_t prePidSeed, uint32_t pid,
                                 uint8_t metLevel) noexcept {
     const uint8_t type = Gen4Wild::method(row);
-    if (type > 9 || type == 5 || type == 8)
+    if (type > 9 || type == 8)
         return {};
     if (isHeadbutt(type) && !hgss)
         return {};
@@ -202,6 +213,8 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                 rolledSlot = hgss ? methodKSlot(type, prev2) : methodJSlot(type, prev2);
             } else if (isFishing(type)) {
                 rolledSlot = fishingSlot(hgss, type, prev2);
+            } else if (type == 5) {
+                rolledSlot = rockSmashSlot(prev2);
             } else if (isHeadbutt(type)) {
                 rolledSlot = headbuttSlot(prev2);
             } else if (isHoneyTree(type)) {
@@ -224,6 +237,18 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                     if (type == 1)
                         return {hgss ? Method::MethodKNoLead : Method::MethodJNoLead,
                                 candidate, rolledSlot};
+
+                    if (type == 5) {
+                        const uint32_t prev3Seed =
+                            Gen3PidIv::Detail::prev(Gen3PidIv::Detail::prev(
+                                Gen3PidIv::Detail::prev(candidate)));
+                        if (rockSmashActivation(
+                                Gen4Wild::rate(row),
+                                static_cast<uint16_t>(prev3Seed >> 16))) {
+                            return {Method::MethodKRockSmashNoLead, candidate, rolledSlot};
+                        }
+                        continue;
+                    }
 
                     if (isHeadbutt(type))
                         return {Method::MethodKHeadbuttNoLead, candidate, rolledSlot};
@@ -290,6 +315,7 @@ constexpr const char* methodName(Method method) noexcept {
         case Method::MethodKFishingNoLead: return "Method K fishing (no lead)";
         case Method::MethodKHeadbuttNoLead: return "Method K Headbutt (no lead)";
         case Method::MethodJHoneyTreeNoLead: return "Method J Honey Tree (no lead)";
+        case Method::MethodKRockSmashNoLead: return "Method K Rock Smash (no lead)";
         case Method::None: break;
     }
     return "No no-lead Method J/K match";
