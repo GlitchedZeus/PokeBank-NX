@@ -106,7 +106,7 @@ RBY_SOURCE_BROWSER_SOURCES := tests/test_rby_source_browser.cpp \
 RBY_BRIDGE_SOURCES := tests/test_rby_readonly_bridge.cpp \
 	src/Legacy/RBYReadOnlyTrainer.cpp src/Pokemon/Pokemon1ReadOnly.cpp \
 	src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1ReadOnlyInventory.cpp \
-	src/Pokemon/BaseStatsGen89.cpp \
+	src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
 	src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp src/Names/NatureNames.cpp \
 	src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
 	$(GEN1_STAGED_INVENTORY_LINK_SOURCES)
