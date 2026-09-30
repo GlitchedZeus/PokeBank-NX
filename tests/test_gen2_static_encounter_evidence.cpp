@@ -10,12 +10,12 @@ int main() {
     assert(countForGame("silver_gbc") > 20);
     assert(countForGame("crystal_gbc") > 30);
 
-    // Gold Ho-Oh and Lugia levels are version-specific.
-    assert(matches("gold_gbc", 250, 70, 0, false, false) == false);
-    assert(matches("gold_gbc", 250, 40, 0, false, false));
-    assert(matches("gold_gbc", 249, 70, 0, false, false));
-    assert(!matches("silver_gbc", 249, 70, 0, false, false));
-    assert(matches("silver_gbc", 249, 40, 0, false, false));
+    // Gold/Silver do not preserve original encounter level. Use a current level
+    // between the version-specific encounter levels so compatibility remains truthful.
+    assert(matches("gold_gbc", 250, 50, 0, false, false));   // Ho-Oh starts at 40.
+    assert(!matches("silver_gbc", 250, 50, 0, false, false)); // Silver Ho-Oh starts at 70.
+    assert(!matches("gold_gbc", 249, 50, 0, false, false));   // Gold Lugia starts at 70.
+    assert(matches("silver_gbc", 249, 50, 0, false, false));  // Silver Lugia starts at 40.
 
     // Crystal Suicune at Tin Tower: caught data stores met level/location.
     const uint16_t suicuneCaught = static_cast<uint16_t>((40u << 8) | 23u);
