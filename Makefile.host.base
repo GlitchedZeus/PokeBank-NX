@@ -157,6 +157,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen12_time_capsule_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen12_time_capsule_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen2_static_encounter_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_static_encounter_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen2_trade_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_trade_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen3_pid_iv_correlation
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_pid_iv_correlation_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation
@@ -327,6 +329,14 @@ $(HOST_BUILD)/test_gen2_static_encounter_evidence: tests/test_gen2_static_encoun
 $(HOST_BUILD)/test_gen2_static_encounter_evidence_sanitize: tests/test_gen2_static_encounter_evidence.cpp include/Legality/Gen2StaticEncounter.h include/Legality/Gen2StaticEncounterData.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen2_static_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen2_trade_evidence: tests/test_gen2_trade_evidence.cpp include/Legality/Gen2TradeEvidence.h include/Legality/Gen2TradeEvidenceData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen2_trade_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen2_trade_evidence_sanitize: tests/test_gen2_trade_evidence.cpp include/Legality/Gen2TradeEvidence.h include/Legality/Gen2TradeEvidenceData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen2_trade_evidence.cpp -o $@
 
 $(HOST_BUILD)/test_gen3_pid_iv_correlation: tests/test_gen3_pid_iv_correlation.cpp include/Legality/Gen3PidIvCorrelation.h
 	@mkdir -p $(HOST_BUILD)

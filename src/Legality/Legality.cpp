@@ -19,6 +19,7 @@
 #include "Legality/Gen1EncounterEvidence.h"
 #include "Legality/Gen12TimeCapsuleEvidence.h"
 #include "Legality/Gen2StaticEncounter.h"
+#include "Legality/Gen2TradeEvidence.h"
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3ChannelPidIvCorrelation.h"
@@ -206,6 +207,16 @@ namespace Legality {
             } else if (Gen2Static::hasSpecies(exactSourceGameId, gen2.speciesID())) {
                 add(r, Severity::Info,
                     "No matching Gen II static/gift evidence; wild/trade/event provenance remains incomplete",
+                    CheckIdentifier::Encounter);
+            }
+
+            if (Gen2Trade::matches(
+                    exactSourceGameId, gen2.speciesID(), gen2.level(), gen2.tid16(),
+                    std::array<uint8_t,5>{gen2.dvHP(), gen2.dvATK(), gen2.dvDEF(),
+                                          gen2.dvSPE(), gen2.dvSpecial()},
+                    gen2.caughtData())) {
+                add(r, Severity::Info,
+                    "PK2 trainer/DV/caught-data is compatible with a pinned Generation II in-game trade; nickname/OT language proof remains incomplete",
                     CheckIdentifier::Encounter);
             }
         }
