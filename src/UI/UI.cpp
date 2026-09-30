@@ -168,15 +168,20 @@ namespace UI {
                                             selectScreen.getOpenIntent(), error))
                             logErrorToFile("Generation IV assigned source refused open", error.c_str());
                     } else {
-                        if (selectScreen.getOpenIntent() == SaveSelectScreen::OpenIntent::Items)
+                        if (selectScreen.getOpenIntent() == SaveSelectScreen::OpenIntent::Items) {
                             handleItemsQuickOpen(selectScreen.getSelectedUser(),
                                                  selectScreen.getSelectedTitleId(),
                                                  selectScreen.getSelectedTitleName());
-                        else
+                        } else if (selectScreen.getOpenIntent() == SaveSelectScreen::OpenIntent::Backups) {
                             handleBackupSelection(selectScreen.getSelectedUser(),
                                                   selectScreen.getSelectedTitleId(),
                                                   selectScreen.getSelectedTitleName(),
                                                   selectScreen.getOpenIntent());
+                        } else {
+                            handleDefaultQuickOpen(selectScreen.getSelectedUser(),
+                                                   selectScreen.getSelectedTitleId(),
+                                                   selectScreen.getSelectedTitleName());
+                        }
                     }
                     rebuildPicker = true;
                     break;
@@ -197,6 +202,27 @@ namespace UI {
             if (!rebuildPicker) return SaveSelectScreen::MainMenuDestination::None;
         }
         return SaveSelectScreen::MainMenuDestination::None;
+    }
+
+    void UIManager::handleDefaultQuickOpen(AccountUid userUid, u64 titleId,
+                                           const std::string& titleName) {
+        // Product Home Open is intentionally frictionless: create the same protected app-owned
+        // backup/working copy first, then enter the player/game workspace. Backup history is only
+        // shown when the user explicitly opens Current Game -> Backups.
+        logInfoToFile("Direct game open: creating protected backup/working copy first",
+                      titleName.c_str());
+        const std::string backupPath =
+            backupSaveData(userUid, titleId, titleName, g_autoBackupEnabled);
+        if (backupPath.empty()) {
+            logErrorToFile("Direct game open refused: backup creation failed",
+                           titleName.c_str());
+            return;
+        }
+        std::string error;
+        if (!handleTrainerView(userUid, titleId, titleName, backupPath, true,
+                               SaveSelectScreen::OpenIntent::Default, error)) {
+            logErrorToFile("Direct game open failed after backup", error.c_str());
+        }
     }
 
     void UIManager::handleItemsQuickOpen(AccountUid userUid, u64 titleId,
