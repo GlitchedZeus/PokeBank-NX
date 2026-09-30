@@ -456,11 +456,11 @@ namespace Legality {
                         add(r, Severity::Info,
                             "PID/IV spread and wild slot match Generation IV " +
                             std::string(Gen4WildRng::methodName(wildRng.method)) +
-                            "; special-lead and activation branches remain incomplete",
+                            "; uncovered special-lead and method-specific branches remain incomplete",
                             CheckIdentifier::PidRng);
                     } else {
                         add(r, Severity::Info,
-                            "PID/IV spread matches normal Gen IV Method 1; no-lead Grass/Surf Method J/K slot correlation was not proven, and special-lead/activation branches remain incomplete",
+                            "PID/IV spread matches normal Gen IV Method 1; current no-lead Method J/K wild-slot correlation was not proven for this encounter, and special-lead/method branches remain incomplete",
                             CheckIdentifier::PidRng);
                     }
                 } else {
