@@ -7,7 +7,7 @@
 int main() {
     using namespace Legality::Gen4RangerManaphy;
 
-    Candidate egg{
+    constexpr Candidate egg{
         490, 2, 2, true,
         LocationRanger4, 0, BallPoke, true
     };
@@ -32,7 +32,7 @@ int main() {
 
     auto wrongBall = egg;
     wrongBall.ball = 16;
-    static_assert(!analyzePidIv(wrongBall, pid, ivs, 12345, 54321).matched());
+    assert(!analyzePidIv(wrongBall, pid, ivs, 12345, 54321).matched());
 
     std::cout << "Gen IV Ranger Manaphy PID/IV evidence: PASS\n";
 }
