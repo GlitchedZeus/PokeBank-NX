@@ -184,8 +184,10 @@ require("preferGameSourceAndSave(" in source and "preferredLegacySourceIndex(" i
         "choosing one of multiple classic saves must persist and reuse the exact source identity")
 require('users.front().name = "Game Sources";' not in source and
         '"Re-link it from Game Sources."' not in source and
-        '"Re-link it from Source / Game File."' in source,
-        "reachable Product Home copy must not expose the retired Game Sources presentation")
+        'Re-link it from Source / Game File.' in source and
+        '"Game Sources  /  v"' not in source and
+        '"Manage Game Sources"' in source,
+        "reachable Product Home copy must retire the developer Game Sources presentation")
 
 select_start = source.index("void SaveSelectScreen::selectCurrentTitle()")
 select_end = source.index("void SaveSelectScreen::selectCurrentTitleForItems()", select_start)
