@@ -171,6 +171,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen4_pid_iv_correlation
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_pid_iv_correlation_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_pokewalker_pid
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_pokewalker_pid_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_pokewalker_encounter_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_pokewalker_encounter_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_cute_charm_pid
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_cute_charm_pid_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_chain_shiny
@@ -385,6 +387,15 @@ $(HOST_BUILD)/test_gen4_pokewalker_pid: tests/test_gen4_pokewalker_pid.cpp inclu
 $(HOST_BUILD)/test_gen4_pokewalker_pid_sanitize: tests/test_gen4_pokewalker_pid.cpp include/Legality/Gen4PokewalkerPid.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_pokewalker_pid.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_pokewalker_encounter_evidence: tests/test_gen4_pokewalker_encounter_evidence.cpp include/Legality/Gen4PokewalkerEncounter.h include/Legality/Gen4PokewalkerEncounterData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_pokewalker_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_pokewalker_encounter_evidence_sanitize: tests/test_gen4_pokewalker_encounter_evidence.cpp include/Legality/Gen4PokewalkerEncounter.h include/Legality/Gen4PokewalkerEncounterData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_pokewalker_encounter_evidence.cpp -o $@
+
 
 $(HOST_BUILD)/test_gen4_cute_charm_pid: tests/test_gen4_cute_charm_pid.cpp include/Legality/Gen4CuteCharmPid.h
 	@mkdir -p $(HOST_BUILD)

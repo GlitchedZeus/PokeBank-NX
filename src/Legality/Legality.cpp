@@ -26,6 +26,7 @@
 #include "Legality/Gen3BacdPidIvCorrelation.h"
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
+#include "Legality/Gen4PokewalkerEncounter.h"
 #include "Legality/Gen4CuteCharmPid.h"
 #include "Legality/Gen4ChainShiny.h"
 #include "Legality/Gen4MysteryGiftPid.h"
@@ -390,6 +391,27 @@ namespace Legality {
             const bool isHgss =
                 exactSourceGameId == "heartgold_nds" || exactSourceGameId == "soulsilver_nds";
             if (isHgss && pk.metLocation() == 233) {
+                const std::array<uint16_t, 4> currentMoves{
+                    pk.move(0), pk.move(1), pk.move(2), pk.move(3)
+                };
+                const auto walkerEncounter = Gen4PokewalkerEncounter::match(
+                    species, pk.metLevel(), pk.gender(), currentMoves);
+                if (walkerEncounter.matched) {
+                    add(r, Severity::Info,
+                        "Species/level/gender/moves are compatible with pinned PokeWalker course " +
+                        std::to_string(walkerEncounter.course) + " slot " +
+                        std::to_string(walkerEncounter.slot),
+                        CheckIdentifier::Encounter);
+                } else if (Gen4PokewalkerEncounter::hasSpecies(species)) {
+                    add(r, Severity::Info,
+                        "PokeWalker species is known, but exact course-slot evidence is unresolved after current level/gender/move checks",
+                        CheckIdentifier::Encounter);
+                } else {
+                    add(r, Severity::Info,
+                        "PokeWalker met location detected; current species is not a direct course species, so evolution/course provenance remains unresolved",
+                        CheckIdentifier::Encounter);
+                }
+
                 const uint8_t genderRatio =
                     Pokemon::getPersonalInfo(species, pk.form()).genderRatio;
                 if (Gen4PokewalkerPid::matches(
