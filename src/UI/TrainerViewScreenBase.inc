@@ -2614,9 +2614,9 @@ namespace UI {
             return;
         }
 
-        // Plus is More / Options. On a Pokémon summary it reports the reserved compatibility action;
-        // while carrying it opens the existing carried-block menu; elsewhere it opens Settings.
-        // None of these paths writes an installed-game save.
+        // Product Home owns Settings and the Current Game tools menu. Inside a loaded game,
+        // Plus remains contextual only for an active carried group or Pokémon summary; it never
+        // opens Settings or creates a second application-level navigation path.
         if (kDown & HidNpadButton_Plus) {
             if (blockingOverlay) return;
             if (carrying()) {
@@ -2628,8 +2628,7 @@ namespace UI {
                 postStatus("Transfer compatibility is not yet supported in this build.", 240);
                 return;
             }
-            selectedMode = ViewMode::Settings;
-            detailViewActive = true;
+            postStatus("Current Game tools are on Product Home. Press B to return.", 240);
             return;
         }
 
@@ -3231,9 +3230,8 @@ namespace UI {
                 details.ribbonOverlay = true;
                 return;
             }
-            // Open the legality issue list: R, or tapping the legality summary (id 95) -- but ONLY
-            // when the mon actually has issues. A clean mon has nothing to show, so the button is
-            // disabled (greyed in the guide) and this does nothing.
+            // Open the legality report: incomplete coverage is meaningful too, so an entity
+            // with no detected problems can still expose which evidence layers remain unchecked.
             if ((kDown & HidNpadButton_R) || tb == 95) {
                 if (pokemon) {
                     const std::string_view legalitySource =
@@ -4561,8 +4559,8 @@ namespace UI {
         }
 
         // HOME main menu navigation. Pills (0 Pokemon, 1 Party, 2 Storage) are a vertical column;
-        // the icons (3 Items, 4 Trainer, 5 Settings) are a horizontal row below. Up/Down move the
-        // column and step into/out of the row; Left/Right move within the row (matching the layout).
+        // the icons (3 Items, 4 Trainer) are a horizontal row below. Application Settings lives only
+        // on Product Home, so there is no loaded-game Settings destination.
         if (kDown & HidNpadButton_Up) {
             if (homeMenuIndex >= 3)      homeMenuIndex = 2;   // icon row -> Storage pill
             else if (homeMenuIndex > 0)  homeMenuIndex--;     // up the pill column
@@ -4572,35 +4570,33 @@ namespace UI {
             else if (homeMenuIndex == 2) homeMenuIndex = 3;   // Storage pill -> icon row
         }
         if (homeMenuIndex >= 3) {                             // horizontal icon row
-            if (kDown & HidNpadButton_Left)  homeMenuIndex = (homeMenuIndex == 3) ? 5 : homeMenuIndex - 1;
-            if (kDown & HidNpadButton_Right) homeMenuIndex = (homeMenuIndex == 5) ? 3 : homeMenuIndex + 1;
-            kDown &= ~(HidNpadButton_Left | HidNpadButton_Right);  // consume L/R (don't also scroll the box preview)
+            if (kDown & (HidNpadButton_Left | HidNpadButton_Right))
+                homeMenuIndex = homeMenuIndex == 3 ? 4 : 3;
+            kDown &= ~(HidNpadButton_Left | HidNpadButton_Right);
         }
         switch (homeMenuIndex) {
-            case 0: selectedMode = ViewMode::Boxes;    break;
-            case 1: selectedMode = ViewMode::Party;    break;
-            case 2: selectedMode = ViewMode::Storage;  break;
-            case 3: selectedMode = ViewMode::Items;    break;
-            case 4: selectedMode = ViewMode::Trainer;  break;
-            case 5: selectedMode = ViewMode::Settings; break;
+            case 0: selectedMode = ViewMode::Boxes;   break;
+            case 1: selectedMode = ViewMode::Party;   break;
+            case 2: selectedMode = ViewMode::Storage; break;
+            case 3: selectedMode = ViewMode::Items;   break;
+            case 4: selectedMode = ViewMode::Trainer; break;
         }
 
-        // Touch: tapping a menu pill/icon (ids 100-105) focuses it and acts like A.
+        // Touch: tapping a menu pill/icon (ids 100-104) focuses it and acts like A.
         int homeTap = touchedButtonId(touch);
-        if (homeTap >= 100 && homeTap <= 105) {
+        if (homeTap >= 100 && homeTap <= 104) {
             homeMenuIndex = homeTap - 100;
             switch (homeMenuIndex) {
-                case 0: selectedMode = ViewMode::Boxes;    break;
-                case 1: selectedMode = ViewMode::Party;    break;
-                case 2: selectedMode = ViewMode::Storage;  break;
-                case 3: selectedMode = ViewMode::Items;    break;
-                case 4: selectedMode = ViewMode::Trainer;  break;
-                case 5: selectedMode = ViewMode::Settings; break;
+                case 0: selectedMode = ViewMode::Boxes;   break;
+                case 1: selectedMode = ViewMode::Party;   break;
+                case 2: selectedMode = ViewMode::Storage; break;
+                case 3: selectedMode = ViewMode::Items;   break;
+                case 4: selectedMode = ViewMode::Trainer; break;
             }
             kDown |= HidNpadButton_A;
         }
 
-        // A / tap: activate the focused destination (enter the mode, or toggle theme for Settings).
+        // A / tap: activate the focused loaded-game destination.
         if (kDown & HidNpadButton_A) {
             switch (homeMenuIndex) {
                 case 0:  // Pokemon (Boxes)
@@ -4620,9 +4616,6 @@ namespace UI {
                     break;
                 case 4:  // Trainer info
                     detailViewActive = true;
-                    break;
-                case 5:  // Settings screen (auto-backup + theme)
-                    detailViewActive = true; settingsSelectedRow = 0;
                     break;
             }
         }
@@ -4987,12 +4980,13 @@ namespace UI {
             const std::string oldExit = "+: Exit App";
             for (std::size_t pos = instructions.find(oldExit); pos != std::string::npos;
                  pos = instructions.find(oldExit, pos)) {
-                instructions.replace(pos, oldExit.size(),
-                                     details.active ? "+: Compatibility" : "+: Options");
+                if (details.active)
+                    instructions.replace(pos, oldExit.size(), "+: Compatibility");
+                else
+                    instructions.erase(pos, oldExit.size());
             }
-            const bool settingsAlreadyOpen = detailViewActive && selectedMode == ViewMode::Settings;
-            if (!settingsAlreadyOpen && instructions.find("+: ") == std::string::npos)
-                instructions += details.active ? "  |  +: Compatibility" : "  |  +: Options";
+            if (details.active && instructions.find("+: ") == std::string::npos)
+                instructions += "  |  +: Compatibility";
             if (instructions.find("-: ") == std::string::npos)
                 instructions += "  |  -: Help";
         }

@@ -102,19 +102,18 @@ namespace {
         }
     }
 
-    constexpr std::array<const char*, 7> kSettingsCategories{{
-        "User", "Look", "System", "Data", "Update", "Developer", "Info"
+    constexpr std::array<const char*, 6> kSettingsCategories{{
+        "Look", "System", "Data", "Update", "Developer", "Info"
     }};
 
     int settingsOptionCount(int category) {
         switch (category) {
             case 0: return 1;
-            case 1: return 1;
-            case 2: return 3;
+            case 1: return 3;
+            case 2: return 2;
             case 3: return 2;
             case 4: return 2;
             case 5: return 2;
-            case 6: return 2;
             default: return 1;
         }
     }
@@ -129,12 +128,9 @@ namespace {
     std::vector<SettingsRow> settingsRows(int category) {
         switch (category) {
             case 0:
-                return {{"Profile", "Switch User",
-                         "Profile identity follows the selected Nintendo Switch user.", false}};
-            case 1:
                 return {{"Theme", std::string(themeModeName(g_themeMode)),
                          "Change the visual theme used throughout PokeBank NX.", true}};
-            case 2:
+            case 1:
                 return {
                     {"Auto-Backup", g_autoBackupEnabled ? "On" : "Off",
                      "Create or reuse the established working backup before supported edits.", true},
@@ -143,28 +139,28 @@ namespace {
                     {"Allow Illegal Values", g_allowIllegalEdits ? "On" : "Off",
                      "Permit explicitly supported out-of-range editor values.", true},
                 };
-            case 3:
+            case 2:
                 return {
                     {"Source Save Protection", "LOCKED",
                      "Original emulator and installed-title sources are never edited live.", false},
                     {"Backup / Staging", "App-owned",
                      "Edits continue through PokeBank-owned backup and staging workflows.", false},
                 };
-            case 4:
+            case 3:
                 return {
                     {"Installed Version", VERSION_STRING,
                      "Current PokeBank NX application version.", false},
                     {"Update Support", "Coming Soon",
                      "In-app update delivery is not enabled in this build.", false},
                 };
-            case 5:
+            case 4:
                 return {
                     {"Debug Logging", g_debugLogging ? "On" : "Off",
                      "Write diagnostic logs under sdmc:/switch/PokeBank-NX/logs/.", true},
                     {"Diagnostics / Build Info", "Open",
                      "Open read-only runtime and build diagnostics.", true},
                 };
-            case 6:
+            case 5:
                 return {
                     {"Version", VERSION_STRING,
                      "Installed application version.", false},
@@ -236,11 +232,11 @@ void AppShellScreen::activateSelected() {
 void AppShellScreen::activateSetting() {
     bool changed = false;
 
-    if (settingsCategory == 1 && settingsIndex == 0) {
+    if (settingsCategory == 0 && settingsIndex == 0) {
         applyTheme(nextThemeMode(g_themeMode));
         setStatus("Theme changed to " + std::string(themeModeName(g_themeMode)) + ".");
         changed = true;
-    } else if (settingsCategory == 2) {
+    } else if (settingsCategory == 1) {
         if (settingsIndex == 0) {
             g_autoBackupEnabled = !g_autoBackupEnabled;
             setStatus(g_autoBackupEnabled
@@ -259,15 +255,15 @@ void AppShellScreen::activateSetting() {
                 : "Legal value caps restored.");
             changed = true;
         }
-    } else if (settingsCategory == 3) {
+    } else if (settingsCategory == 2) {
         setStatus(settingsIndex == 0
             ? "Locked: ordinary editing never writes emulator or installed-game sources."
             : "Backup and staging remain app-owned; source files stay protected.");
-    } else if (settingsCategory == 4) {
+    } else if (settingsCategory == 3) {
         setStatus(settingsIndex == 0
             ? "This is the installed PokeBank NX version."
             : "Update support is Coming Soon.");
-    } else if (settingsCategory == 5) {
+    } else if (settingsCategory == 4) {
         if (settingsIndex == 0) {
             g_debugLogging = !g_debugLogging;
             setStatus(g_debugLogging
@@ -277,9 +273,7 @@ void AppShellScreen::activateSetting() {
         } else {
             overlay = Overlay::Diagnostics;
         }
-    } else if (settingsCategory == 0) {
-        setStatus("Profile identity follows the selected Nintendo Switch user.");
-    } else if (settingsCategory == 6) {
+    } else if (settingsCategory == 5) {
         setStatus(settingsIndex == 0
             ? "Installed version information."
             : "Exact build revision embedded in this application.");
@@ -409,10 +403,6 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         return;
     }
 
-    if (kDown & HidNpadButton_Plus) {
-        overlay = Overlay::Settings;
-        return;
-    }
     if (kDown & HidNpadButton_Minus) {
         overlay = Overlay::Help;
         return;
@@ -495,8 +485,8 @@ void AppShellScreen::drawHome(PKSEFramebuffer& fb) {
     fb.drawText(kPrimaryX, kDockY - 32, "NAVIGATION",
                 Colors::TextMuted, TextStyle::Caption);
 
-    // Compact product dock mirrors Product Home: Games / Banks / Backups / Search / More.
-    // Settings remains a header/+ destination and is intentionally excluded here.
+    // Compact secondary shell dock mirrors the non-settings Product Home destinations.
+    // Settings is intentionally reachable only from Product Home's header gear.
     const int dockSpan = PokeBank::UIModel::APP_SHELL_DOCK_COUNT * kDockSize +
                          (PokeBank::UIModel::APP_SHELL_DOCK_COUNT - 1) * kDockGap;
     const int dockStartX = kPrimaryX + (kPrimaryW - dockSpan) / 2;
@@ -525,7 +515,7 @@ void AppShellScreen::drawHome(PKSEFramebuffer& fb) {
                 Colors::TextMuted, TextStyle::Caption);
 
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Open"},
-                    {"+", "Settings"}, {"-", "Help"}, {"B", "Exit"}});
+                    {"-", "Help"}, {"B", "Exit"}});
 }
 
 void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {

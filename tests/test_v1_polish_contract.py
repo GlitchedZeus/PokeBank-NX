@@ -41,7 +41,7 @@ require("Cross-game True Move: LOCKED" in trainer,
 # Game artwork stays clean. The HOME-style list may identify the source family beside the game
 # name, but physical provider/count/path detail remains inside Save Instances.
 start = save_select.index("// Right: selected-game hero card.")
-end = save_select.index("auto homeHints", start)
+end = save_select.index("// Right side: compact Vault/Pokédex row", start)
 hero_draw = save_select[start:end]
 require("locationLabel" not in hero_draw,
         "selected-game hero must not mix physical source paths/counts into cover presentation")
@@ -152,6 +152,7 @@ require('centred("LS", lsX, lsW, ink)' in chrome,
         "shared navigation glyph must communicate Left Stick parity")
 require('btn == "D-pad/Stick"' in chrome and 'btn == "D-pad"' in chrome,
         "shared navigation glyph must accept legacy D-pad token aliases")
+
 
 # Legality must distinguish "no issue detected" from complete legality.
 require("Legality::Verdict::Incomplete" in pokemon_details,

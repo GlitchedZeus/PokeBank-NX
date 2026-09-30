@@ -82,6 +82,22 @@ namespace UI {
             return summary;
         }
 
+        int preferredLegacySourceIndex(
+            const std::vector<PokeVault::Legacy::FRLGSaveInstance>& instances,
+            const PokeVault::Legacy::LegacySourceBindings* bindings,
+            std::string_view profileIdentity, std::string_view gameIdentity) {
+            if (!bindings) return -1;
+            int preferred = -1;
+            for (size_t index = 0; index < instances.size(); ++index) {
+                if (!bindings->isPreferredGameSource(
+                        instances[index], profileIdentity, gameIdentity))
+                    continue;
+                if (preferred >= 0) return -2; // Corrupt/ambiguous metadata: never guess.
+                preferred = static_cast<int>(index);
+            }
+            return preferred;
+        }
+
         std::string joinBrowsePath(const std::string& root, const std::string& name) {
             if (root.empty() || root.back() == '/') return root + name;
             return root + "/" + name;
@@ -129,6 +145,45 @@ namespace UI {
                             TextStyle::Caption);
                 rowY += rowHeight;
             }
+        }
+
+        void drawProductHelpOverlay(
+            PKSEFramebuffer& fb, const std::string& title,
+            std::initializer_list<ControllerHint> rows,
+            const std::string& note = {}) {
+            constexpr int w = 850;
+            constexpr int rowH = 48;
+            const int count = static_cast<int>(rows.size());
+            const int h = std::min(580, 126 + count * rowH + (note.empty() ? 0 : 42));
+            const int x = (fb.getWidth() - w) / 2;
+            const int y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+
+            fb.drawText(x + 28, y + 18, "POKEBANK NX / HELP",
+                        Colors::Info, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44, title,
+                        Colors::TextPrimary, TextStyle::Heading);
+            fb.drawFilledRoundedRect(x + 28, y + 80, w - 56, 2, 1, Colors::Divider);
+
+            int rowY = y + 100;
+            for (const auto& row : rows) {
+                const int glyphW = buttonGlyphWidth(fb, row.button);
+                if (glyphW > 0) {
+                    buttonGlyph(fb, x + 34, rowY + rowH / 2, row.button, false);
+                    fb.drawText(x + 34 + glyphW + 18, rowY + 12, row.label,
+                                Colors::TextPrimary, TextStyle::Body);
+                } else {
+                    fb.drawText(x + 34, rowY + 12,
+                                row.button.empty() ? row.label : row.button + "   " + row.label,
+                                Colors::TextSecondary, TextStyle::Body);
+                }
+                rowY += rowH;
+            }
+
+            if (!note.empty())
+                fb.drawText(x + 34, y + h - 38, note,
+                            Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"B", "Close"}});
         }
     }
 
@@ -266,9 +321,6 @@ namespace UI {
     constexpr int GAME_ROW_H = 56;       // retained for legacy list/scroll helpers
     constexpr int HUB_VISIBLE_TITLES = 7;
     constexpr int DETAIL_ART = 210;
-    constexpr int PRODUCT_DOCK_Y = 648;
-    constexpr int PRODUCT_DOCK_SIZE = 42;
-    constexpr int PRODUCT_DOCK_STEP = 106;
     constexpr int CLASSIC_TILE_W = 184;
     constexpr int CLASSIC_TILE_H = 208;
     constexpr int CLASSIC_ICON = 126;
@@ -294,7 +346,7 @@ namespace UI {
                 ? static_cast<int>(resumedUser->titles.size()) : 0;
             titleIndex = titleCount > 0
                 ? std::clamp(resumeState->titleIndex, 0, titleCount - 1) : 0;
-            hubDockIndex = std::clamp(resumeState->hubDockIndex, 0, 5);
+            hubDockIndex = std::clamp(resumeState->hubDockIndex, 0, 4);
             classicGamesActive = resumeState->classicGamesActive;
             hubFeatureIndex = std::clamp(resumeState->hubFeatureIndex, -1, 1);
             scrollRow = std::max(0, resumeState->scrollRow);
@@ -314,7 +366,7 @@ namespace UI {
         }
         if (users.size() == 1 && users.front().titles.empty() &&
             users.front().name == "No users found") {
-            users.front().name = "Game Sources";
+            users.front().name = "Pokémon Saves";
         }
 
         // Discovery is app-global; normal visibility is not. A filesystem source has no intrinsic
@@ -481,15 +533,29 @@ namespace UI {
         const std::string profile = currentProfileIdentity();
         if (profile.empty()) return false;
         const auto& entry = unassignedLegacySources[static_cast<size_t>(legacyAssignmentIndex)];
+        const std::string assignedGameId = entry.gameId;
+        const std::string assignedLeaf = sourceLeafName(entry.instance.location);
         if (!legacyBindings->claimInstanceAndSave(entry.instance, profile)) {
             logErrorToFile("Legacy binding assignment failed", legacyBindings->lastError().c_str());
             legacyNotice = "Assignment could not be saved; source remains unassigned.";
             return false;
         }
-        legacyNotice = sourceLeafName(entry.instance.location) + " assigned to this profile.";
         loadLegacySources(*legacyCatalog);
-        overlay = Overlay::None;
-        titleIndex = 0;
+        const UserEntry* user = currentUser();
+        if (user) {
+            const auto found = std::find_if(user->titles.begin(), user->titles.end(),
+                [&](const auto& title) {
+                    return title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                           title.gameId == assignedGameId;
+                });
+            if (found != user->titles.end())
+                titleIndex = static_cast<int>(std::distance(user->titles.begin(), found));
+        }
+        gamesDrawerIndex = titleIndex;
+        gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+        legacyNotice = assignedLeaf + " assigned to this profile.";
+        hubNotice = legacyNotice;
+        overlay = Overlay::GamesDrawer;
         scrollSelectionIntoView();
         refreshHubPreview();
         return true;
@@ -740,7 +806,7 @@ namespace UI {
         titleIndex = 0;
         scrollRow  = 0;
         hubDockFocused = false;
-        headerSettingsFocused = false;
+        headerActionIndex = -1;
         hubFeatureIndex = -1;
         refreshHubPreview();
     }
@@ -1112,9 +1178,11 @@ namespace UI {
         return true;
     }
 
-    void SaveSelectScreen::openGen4Setup(const std::string& gameId, std::string notice) {
+    void SaveSelectScreen::openGen4Setup(const std::string& gameId, std::string notice,
+                                         bool returnToGamesDrawer) {
         gen4TargetGameId = gameId;
         gen4Notice = std::move(notice);
+        gen4SetupFromGamesDrawer = returnToGamesDrawer;
         gen4Candidates.clear();
         gen4Instances.clear();
         gen4SetupIndex = 0;
@@ -1156,7 +1224,9 @@ namespace UI {
         }
 
         // A manually chosen source may live outside every known emulator root. Keep the remembered
-        // assignment as one candidate in the chooser, but never let it skip the chooser.
+        // assignment available in the provider-neutral chooser for source setup/replacement. Normal
+        // Product Home open may use the exact remembered binding directly, but only through the
+        // strict read-only openAssignedSource() revalidation path.
         if (legacyBindings) {
             const auto remembered = legacyBindings->resolveFileForGame(
                 currentProfileIdentity(), gen4TargetGameId);
@@ -1232,9 +1302,28 @@ namespace UI {
         }
 
         loadGen4Cards();
-        overlay = Overlay::None;
         gen4Notice.clear();
+        const UserEntry* user = currentUser();
+        if (user) {
+            const auto found = std::find_if(user->titles.begin(), user->titles.end(),
+                [&](const auto& title) {
+                    return title.sourceKind == SelectedSourceKind::Gen4AssignedFile &&
+                           title.gameId == gen4TargetGameId;
+                });
+            if (found != user->titles.end())
+                titleIndex = static_cast<int>(std::distance(user->titles.begin(), found));
+        }
+        scrollSelectionIntoView();
         refreshHubPreview();
+        if (gen4SetupFromGamesDrawer) {
+            gamesDrawerIndex = titleIndex;
+            gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+            hubNotice = "Save linked to this game.";
+            overlay = Overlay::GamesDrawer;
+            gen4SetupFromGamesDrawer = false;
+            return true;
+        }
+        overlay = Overlay::None;
         selectAssignedGen4Title();
         return titleSelected;
     }
@@ -1319,16 +1408,22 @@ namespace UI {
                 return;
             }
 
-            // Multiple physical saves are genuinely ambiguous and still require an explicit choice.
+            int sourceIndex = 0;
             if (selected.legacyInstances.size() > 1) {
-                legacyInstanceIndex = 0;
-                legacyInstanceScroll = 0;
-                legacyNotice = "Choose the exact validated save for " + selected.label + ".";
-                overlay = Overlay::LegacyInstances;
-                return;
+                sourceIndex = preferredLegacySourceIndex(
+                    selected.legacyInstances, legacyBindings, profile, selectedGameId);
+                if (sourceIndex < 0) {
+                    legacyInstanceIndex = 0;
+                    legacyInstanceScroll = 0;
+                    legacyNotice = sourceIndex == -2
+                        ? "The remembered save choice is ambiguous. Choose the exact save again."
+                        : "Choose the exact validated save for " + selected.label + " once.";
+                    overlay = Overlay::LegacyInstances;
+                    return;
+                }
             }
 
-            const auto shown = selected.legacyInstances.front();
+            const auto shown = selected.legacyInstances[static_cast<size_t>(sourceIndex)];
             auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
             *legacyCatalog = std::move(refreshed);
             loadLegacySources(*legacyCatalog);
@@ -1435,7 +1530,7 @@ namespace UI {
             const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
                 *legacyBindings, currentProfileIdentity(), title.gameId);
             if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready || !opened.save) {
-                hubNotice = "The remembered save no longer validates. Re-link it from Game Sources.";
+                hubNotice = "The remembered save no longer validates. Re-link it from Source / Game File.";
                 return;
             }
             selectedUserUid = user->uid;
@@ -1448,14 +1543,24 @@ namespace UI {
         }
 
         if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-            if (!legacyCatalog || title.legacyInstances.size() != 1) {
-                hubNotice = title.legacyInstances.empty()
-                    ? "Items needs one validated save for this game."
-                    : "Multiple saves exist. Open Game Sources once to choose the exact save.";
+            if (!legacyCatalog || title.legacyInstances.empty()) {
+                hubNotice = "Items needs one validated save for this game.";
                 return;
             }
 
-            const auto shown = title.legacyInstances.front();
+            int sourceIndex = 0;
+            if (title.legacyInstances.size() > 1) {
+                sourceIndex = preferredLegacySourceIndex(
+                    title.legacyInstances, legacyBindings, currentProfileIdentity(), title.gameId);
+                if (sourceIndex < 0) {
+                    hubNotice = sourceIndex == -2
+                        ? "The remembered save choice is ambiguous. Re-select it from Source / Game File."
+                        : "Multiple saves exist. Open Source / Game File once to choose the exact save.";
+                    return;
+                }
+            }
+
+            const auto shown = title.legacyInstances[static_cast<size_t>(sourceIndex)];
             auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
             *legacyCatalog = std::move(refreshed);
             loadLegacySources(*legacyCatalog);
@@ -1525,6 +1630,12 @@ namespace UI {
             overlay = Overlay::LegacyInstances;
             return;
         }
+        if (!legacyBindings || !legacyBindings->preferGameSourceAndSave(
+                freshInstance, currentProfileIdentity(), refreshedTitle.gameId)) {
+            legacyNotice = "Couldn't remember that exact save choice. Nothing was opened.";
+            overlay = Overlay::LegacyInstances;
+            return;
+        }
         selectedUserUid = u->uid;
         selectedTitleId = 0;
         selectedTitleName = refreshedTitle.name;
@@ -1541,13 +1652,12 @@ namespace UI {
             titleIndex < static_cast<int>(user->titles.size());
 
         if (hubDockIndex == 0) {
-            if (!hasGame) {
-                hubNotice = "Choose a game before opening Games.";
-                return;
-            }
-            gameWorkspaceIndex = 0;
+            classicGamesActive = true;
+            overlay = Overlay::None;
             hubNotice.clear();
-            overlay = Overlay::GameWorkspace;
+            hubDockFocused = false;
+            hubFeatureIndex = -1;
+            scrollClassicSelectionIntoView();
         } else if (hubDockIndex == 1) {
             requestedMainMenuDestination = MainMenuDestination::Banks;
             exitRequested = true;
@@ -1560,11 +1670,8 @@ namespace UI {
         } else if (hubDockIndex == 3) {
             requestedMainMenuDestination = MainMenuDestination::Search;
             exitRequested = true;
-        } else if (hubDockIndex == 4) {
-            requestedMainMenuDestination = MainMenuDestination::More;
-            exitRequested = true;
         } else {
-            requestedMainMenuDestination = MainMenuDestination::Settings;
+            requestedMainMenuDestination = MainMenuDestination::More;
             exitRequested = true;
         }
     }
@@ -1595,6 +1702,7 @@ namespace UI {
                 return;
             case 6: // Backups
                 if (title.sourceKind == SelectedSourceKind::SwitchTitle) {
+                    openIntent = OpenIntent::Backups;
                     overlay = Overlay::None;
                     selectCurrentTitle();
                 } else {
@@ -1630,6 +1738,97 @@ namespace UI {
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
             | navTouchButton(touch);
 
+        if (overlay == Overlay::GamesDrawer) {
+            const UserEntry* drawerUser = currentUser();
+            const int count = drawerUser ? static_cast<int>(drawerUser->titles.size()) : 0;
+            if (kDown & (HidNpadButton_B | HidNpadButton_Y)) {
+                overlay = Overlay::None;
+                return;
+            }
+            if (kDown & HidNpadButton_X) {
+                if (drawerUser && gamesDrawerIndex >= 0 && gamesDrawerIndex < count) {
+                    titleIndex = gamesDrawerIndex;
+                    scrollSelectionIntoView();
+                    refreshHubPreview();
+                    const auto& game = drawerUser->titles[static_cast<size_t>(gamesDrawerIndex)];
+                    if (game.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+                        openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.", true);
+                    } else if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+                        legacyInstanceIndex = 0;
+                        legacyInstanceScroll = 0;
+                        legacyNotice.clear();
+                        overlay = Overlay::LegacyInstances;
+                    } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
+                        beginLaunchLinkForCurrentTitle();
+                    } else if (!unassignedLegacySources.empty()) {
+                        legacyAssignmentIndex = 0;
+                        legacyAssignmentScroll = 0;
+                        legacyNotice.clear();
+                        overlay = Overlay::LegacyAssignment;
+                    } else {
+                        hubNotice = "This save source is already managed by the console.";
+                    }
+                }
+                return;
+            }
+            if (count > 0) {
+                constexpr int cols = 3;
+                const int row = gamesDrawerIndex / cols;
+                const int col = gamesDrawerIndex % cols;
+                if (kDown & HidNpadButton_Left) {
+                    if (gamesDrawerIndex > 0) --gamesDrawerIndex;
+                }
+                if (kDown & HidNpadButton_Right) {
+                    if (gamesDrawerIndex + 1 < count) ++gamesDrawerIndex;
+                }
+                if (kDown & HidNpadButton_Up) {
+                    if (row > 0) gamesDrawerIndex -= cols;
+                }
+                if (kDown & HidNpadButton_Down) {
+                    const int candidate = gamesDrawerIndex + cols;
+                    if (candidate < count) gamesDrawerIndex = candidate;
+                    else {
+                        const int lastRowFirst = ((count - 1) / cols) * cols;
+                        gamesDrawerIndex = std::min(count - 1, lastRowFirst + col);
+                    }
+                }
+                constexpr int visibleRows = 3;
+                const int selectedRow = gamesDrawerIndex / cols;
+                if (selectedRow < gamesDrawerScroll)
+                    gamesDrawerScroll = selectedRow;
+                else if (selectedRow >= gamesDrawerScroll + visibleRows)
+                    gamesDrawerScroll = selectedRow - visibleRows + 1;
+                if (kDown & HidNpadButton_A) {
+                    titleIndex = gamesDrawerIndex;
+                    scrollSelectionIntoView();
+                    refreshHubPreview();
+                    overlay = Overlay::None;
+                }
+            }
+            return;
+        }
+
+        if (overlay == Overlay::ProfilePicker) {
+            const int count = static_cast<int>(users.size());
+            if (kDown & HidNpadButton_B) {
+                overlay = Overlay::None;
+                return;
+            }
+            if (count > 0) {
+                if (kDown & HidNpadButton_Up)
+                    profilePickerIndex = (profilePickerIndex - 1 + count) % count;
+                if (kDown & HidNpadButton_Down)
+                    profilePickerIndex = (profilePickerIndex + 1) % count;
+                if (kDown & HidNpadButton_A) {
+                    setUser(profilePickerIndex);
+                    gamesDrawerIndex = titleIndex;
+                    overlay = Overlay::None;
+                    headerActionIndex = -1;
+                }
+            }
+            return;
+        }
+
         if (overlay == Overlay::GameWorkspace) {
             constexpr int count = 8;
             constexpr int columns = 2;
@@ -1643,8 +1842,7 @@ namespace UI {
                 return;
             }
             if (kDown & HidNpadButton_Plus) {
-                requestedMainMenuDestination = MainMenuDestination::Settings;
-                exitRequested = true;
+                overlay = Overlay::None;
                 return;
             }
             if (kDown & HidNpadButton_Minus) {
@@ -1709,7 +1907,7 @@ namespace UI {
         }
         if (overlay == Overlay::LegacyAssignment) {
             const int count = static_cast<int>(unassignedLegacySources.size());
-            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_B) { overlay = Overlay::GamesDrawer; return; }
             if (kDown & HidNpadButton_X) {
                 if (legacyCatalog) {
                     *legacyCatalog = PokeVault::Legacy::discoverConfiguredLegacySaves();
@@ -1717,10 +1915,10 @@ namespace UI {
                     refreshHubPreview();
                     legacyNotice = "Unassigned source list refreshed.";
                 }
-                if (unassignedLegacySources.empty()) overlay = Overlay::None;
+                if (unassignedLegacySources.empty()) overlay = Overlay::GamesDrawer;
                 return;
             }
-            if (count == 0) { overlay = Overlay::None; return; }
+            if (count == 0) { overlay = Overlay::GamesDrawer; return; }
             if (kDown & HidNpadButton_Up)
                 legacyAssignmentIndex = (legacyAssignmentIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
@@ -1734,24 +1932,48 @@ namespace UI {
             return;
         }
         if (overlay == Overlay::Gen4Setup) {
-            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_B) {
+                overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
+                if (overlay == Overlay::GamesDrawer) {
+                    gamesDrawerIndex = titleIndex;
+                    gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+                }
+                gen4SetupFromGamesDrawer = false;
+                return;
+            }
             if (kDown & HidNpadButton_Up) gen4SetupIndex = (gen4SetupIndex + 3) % 4;
             if (kDown & HidNpadButton_Down) gen4SetupIndex = (gen4SetupIndex + 1) % 4;
             if (kDown & HidNpadButton_A) {
                 if (gen4SetupIndex == 0) discoverGen4Candidates();
                 else if (gen4SetupIndex == 1) chooseGen4ManualFile();
                 else if (gen4SetupIndex == 2) unassignCurrentGen4Game();
-                else overlay = Overlay::None;
+                else {
+                    overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
+                    if (overlay == Overlay::GamesDrawer) {
+                        gamesDrawerIndex = titleIndex;
+                        gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+                    }
+                    gen4SetupFromGamesDrawer = false;
+                }
             }
             return;
         }
         if (overlay == Overlay::Gen4Candidates) {
             const int count = static_cast<int>(gen4Instances.size());
-            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_B) {
+                overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
+                if (overlay == Overlay::GamesDrawer) {
+                    gamesDrawerIndex = titleIndex;
+                    gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+                }
+                gen4SetupFromGamesDrawer = false;
+                return;
+            }
             if (kDown & HidNpadButton_X) { discoverGen4Candidates(); return; }
             if (kDown & HidNpadButton_Y) {
                 openGen4Setup(gen4TargetGameId,
-                    "Add, repair, or forget a remembered source. Opening still happens from Save Instances.");
+                    "Add, repair, or forget a remembered source. Opening still happens from Save Instances.",
+                    gen4SetupFromGamesDrawer);
                 return;
             }
             if (count == 0) { overlay = Overlay::Gen4Setup; return; }
@@ -1847,11 +2069,6 @@ namespace UI {
                 refreshHubPreview();
                 return;
             }
-            if (kDown & HidNpadButton_Plus) {
-                requestedMainMenuDestination = MainMenuDestination::Settings;
-                exitRequested = true;
-                return;
-            }
             if (kDown & HidNpadButton_Minus) {
                 helpReturnClassicGames = true;
                 helpReturnOverlay = Overlay::None;
@@ -1862,7 +2079,6 @@ namespace UI {
                 launchCurrentTitle();
                 return;
             }
-
             const int beforeUser = userIndex;
             const int beforeTitle = titleIndex;
             if (users.size() > 1) {
@@ -1910,8 +2126,24 @@ namespace UI {
             return;
         }
         if (kDown & HidNpadButton_Plus) {
-            requestedMainMenuDestination = MainMenuDestination::Settings;
-            exitRequested = true;
+            const UserEntry* current = currentUser();
+            if (current && titleIndex >= 0 &&
+                titleIndex < static_cast<int>(current->titles.size())) {
+                gameWorkspaceIndex = 0;
+                hubNotice.clear();
+                overlay = Overlay::GameWorkspace;
+            } else {
+                hubNotice = "Choose a game before opening the Current Game menu.";
+            }
+            return;
+        }
+        if (kDown & HidNpadButton_Y) {
+            const UserEntry* quickUser = currentUser();
+            const int quickCount = quickUser ? static_cast<int>(quickUser->titles.size()) : 0;
+            gamesDrawerIndex = quickCount > 0 ? titleIndex : 0;
+            gamesDrawerScroll = std::max(0, gamesDrawerIndex / 3 - 1);
+            hubNotice.clear();
+            overlay = Overlay::GamesDrawer;
             return;
         }
         if (kDown & HidNpadButton_Minus) {
@@ -1919,34 +2151,25 @@ namespace UI {
             overlay = Overlay::Help;
             return;
         }
-        {
-            const UserEntry* current = currentUser();
-            if ((kDown & HidNpadButton_Y) && current && titleIndex >= 0 &&
-                titleIndex < static_cast<int>(current->titles.size()) &&
-                current->titles[titleIndex].sourceKind == SelectedSourceKind::Gen4AssignedFile) {
-                openGen4Setup(current->titles[titleIndex].gameId,
-                              "Add, repair, or forget a remembered source for this game.");
-                return;
-            }
-        }
-        if ((kDown & HidNpadButton_X) && !unassignedLegacySources.empty()) {
-            overlay = Overlay::LegacyAssignment;
-            legacyAssignmentIndex = 0;
-            legacyAssignmentScroll = 0;
-            legacyNotice.clear();
-            return;
-        }
-
-        // A single shoulder changes profile without stealing L/R from the approved Change Game flow.
-        if ((kDown & HidNpadButton_ZL) && users.size() > 1) {
-            setUser(userIndex + 1);
-            return;
-        }
-
         // Touch uses the same actions as controller focus. Fine-grained app-wide touch parity is
         // intentionally a later tranche; these existing primary hit targets remain safe now.
         if (touch.justPressed()) {
             const int tx = touch.x(), ty = touch.y();
+            for (const auto& r : headerRects) {
+                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
+                    headerActionIndex = r.idx;
+                    hubDockFocused = false;
+                    hubFeatureIndex = -1;
+                    if (headerActionIndex == 0) {
+                        profilePickerIndex = userIndex;
+                        overlay = Overlay::ProfilePicker;
+                    } else {
+                        requestedMainMenuDestination = MainMenuDestination::Settings;
+                        exitRequested = true;
+                    }
+                    return;
+                }
+            }
             for (const auto& r : dockRects) {
                 if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
                     hubDockFocused = true;
@@ -1981,33 +2204,73 @@ namespace UI {
             }
         }
 
-        if (hubDockFocused) {
-            if (kDown & HidNpadButton_Up) {
-                hubDockFocused = false;
-                hubFeatureIndex = -1;
+        if (headerActionIndex >= 0) {
+            if (kDown & (HidNpadButton_Left | HidNpadButton_Right))
+                headerActionIndex = headerActionIndex == 0 ? 1 : 0;
+            if (kDown & HidNpadButton_Down) {
+                hubFeatureIndex = headerActionIndex == 0 ? 0 : 1;
+                headerActionIndex = -1;
                 return;
             }
-            if (kDown & HidNpadButton_Left)
-                hubDockIndex = (hubDockIndex + 5) % 6;
-            if (kDown & HidNpadButton_Right)
-                hubDockIndex = (hubDockIndex + 1) % 6;
+            if (kDown & HidNpadButton_A) {
+                if (headerActionIndex == 0) {
+                    profilePickerIndex = userIndex;
+                    overlay = Overlay::ProfilePicker;
+                } else {
+                    requestedMainMenuDestination = MainMenuDestination::Settings;
+                    exitRequested = true;
+                }
+            }
+            return;
+        }
+
+        if (hubDockFocused) {
+            if (kDown & HidNpadButton_Left) {
+                if (hubDockIndex == 0) hubDockIndex = 2;
+                else if (hubDockIndex == 3) hubDockIndex = 4;
+                else --hubDockIndex;
+            }
+            if (kDown & HidNpadButton_Right) {
+                if (hubDockIndex == 2) hubDockIndex = 0;
+                else if (hubDockIndex == 4) hubDockIndex = 3;
+                else ++hubDockIndex;
+            }
+            if (kDown & HidNpadButton_Up) {
+                if (hubDockIndex >= 3) hubDockIndex -= 3;
+                else {
+                    hubFeatureIndex = hubDockIndex <= 1 ? 0 : 1;
+                    hubDockFocused = false;
+                }
+                return;
+            }
+            if (kDown & HidNpadButton_Down) {
+                if (hubDockIndex < 3)
+                    hubDockIndex = hubDockIndex <= 1 ? hubDockIndex + 3 : 4;
+                return;
+            }
             if (kDown & HidNpadButton_A) activateHubDock();
             return;
         }
 
         if (hubFeatureIndex >= 0) {
             if (kDown & HidNpadButton_Left) {
+                if (hubFeatureIndex == 1) hubFeatureIndex = 0;
+                else hubFeatureIndex = -1;
+                return;
+            }
+            if (kDown & HidNpadButton_Right) {
+                if (hubFeatureIndex == 0) hubFeatureIndex = 1;
+                return;
+            }
+            if (kDown & HidNpadButton_Up) {
+                headerActionIndex = hubFeatureIndex == 0 ? 0 : 1;
                 hubFeatureIndex = -1;
                 return;
             }
-            if (kDown & HidNpadButton_Up) hubFeatureIndex = 0;
             if (kDown & HidNpadButton_Down) {
-                if (hubFeatureIndex == 0) hubFeatureIndex = 1;
-                else {
-                    hubFeatureIndex = -1;
-                    hubDockFocused = true;
-                    hubDockIndex = 0;
-                }
+                hubDockFocused = true;
+                hubDockIndex = hubFeatureIndex == 0 ? 0 : 3;
+                hubFeatureIndex = -1;
                 return;
             }
             if (kDown & HidNpadButton_A) {
@@ -2020,11 +2283,10 @@ namespace UI {
         }
 
         if (kDown & HidNpadButton_Up) {
-            // Product Home has no duplicate header Settings target; keep focus on the game card.
+            headerActionIndex = 0;
             return;
         }
         if (kDown & HidNpadButton_Right) {
-            headerSettingsFocused = false;
             hubFeatureIndex = 0;
             return;
         }
@@ -2042,19 +2304,19 @@ namespace UI {
 
     void SaveSelectScreen::drawClassicGameSources(PKSEFramebuffer& fb) {
         drawAppBackdrop(fb);
-        drawTitleBar(fb, "Game Sources  /  v" + VERSION_STRING + "  /  " + BUILD_COMMIT);
+        drawTitleBar(fb, "Pokémon Games");
         const UserEntry* u = currentUser();
         drawPanelSurface(fb, 24, 82, fb.getWidth() - 48, 104, true);
 
         if (u) {
-            const IconImage* avatar = u->name == "Game Sources" ? nullptr : &SystemIcons::userIcon(u->uid);
+            const IconImage* avatar = u->name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(u->uid);
             if (avatar && avatar->valid())
                 fb.drawImageScaled(44, 92, avatar->width, avatar->height, 84, 84, avatar->data, 4);
             else
                 fb.drawFilledRoundedRect(44, 92, 84, 84, 12, Colors::PanelAlt);
             fb.drawRoundedRect(44, 92, 84, 84, 12, Colors::Info, 2);
             fb.drawText(148, 103, u->name, Colors::TextPrimary, TextStyle::Title);
-            fb.drawText(148, 144, std::to_string(u->titles.size()) + " available game sources",
+            fb.drawText(148, 144, std::to_string(u->titles.size()) + " available save sources",
                         Colors::TextMuted, TextStyle::Caption);
         }
 
@@ -2104,7 +2366,7 @@ namespace UI {
         }
 
         drawNavBar(fb, {{"D-pad/Stick","Choose Game"},{"A","Open"},
-                        {"L/R","Switch User"},{"ZR","Launch"},{"+","Settings"},
+                        {"L/R","Switch User"},{"ZR","Launch"},
                         {"-","Help"},{"B","Back"}});
     }
 
@@ -2112,19 +2374,19 @@ namespace UI {
         titleRects.clear();
         userRects.clear();
         dockRects.clear();
+        headerRects.clear();
 
         if (classicGamesActive) {
             drawClassicGameSources(fb);
             if (overlay == Overlay::Help) {
-                drawInfoOverlay(fb, "Game Sources Controls", {
-                    "D-pad / Left Stick   Choose a game source",
-                    "A   Open the selected game source",
-                    "L / R   Switch user",
-                    "ZR   Launch selected game / emulator",
-                    "+   Settings",
-                    "-   Help / Controls",
-                    "B   Back to Product Home"
-                });
+                drawProductHelpOverlay(fb, "Pokémon Games", {
+                    {"D-pad/Stick", "Choose a game"},
+                    {"A", "Open the selected game"},
+                    {"L/R", "Switch profile"},
+                    {"ZR", "Launch the selected game or emulator"},
+                    {"-", "Close Help / Controls"},
+                    {"B", "Back to Product Home"}
+                }, "This is the full artwork game browser. Press Y on Product Home for the quick drawer.");
             }
             return;
         }
@@ -2135,11 +2397,16 @@ namespace UI {
         const UserEntry* u = currentUser();
         const int count = u ? static_cast<int>(u->titles.size()) : 0;
 
-        // Header right: current profile only. Settings has one canonical bottom-dock control (+ remains global).
+        // Header right owns the only Profile and Settings destinations.
         if (u) {
-            const int avatarX = 1010, avatarY = 10;
+            const int avatarX = 1000, avatarY = 10;
+            const bool profileFocused = headerActionIndex == 0;
+            const bool settingsFocused = headerActionIndex == 1;
             const IconImage* avatar =
-                u->name == "Game Sources" ? nullptr : &SystemIcons::userIcon(u->uid);
+                u->name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(u->uid);
+
+            if (profileFocused)
+                fb.drawFilledRoundedRect(avatarX - 10, 6, 176, 54, 24, Colors::PanelAlt);
             if (avatar && avatar->valid())
                 fb.drawImageScaled(avatarX, avatarY, avatar->width, avatar->height,
                                    PROFILE_AVATAR, PROFILE_AVATAR, avatar->data, 4);
@@ -2147,19 +2414,28 @@ namespace UI {
                 fb.drawFilledRoundedRect(avatarX, avatarY, PROFILE_AVATAR, PROFILE_AVATAR,
                                          PROFILE_AVATAR / 2, Colors::PanelAlt);
             fb.drawRoundedRect(avatarX, avatarY, PROFILE_AVATAR, PROFILE_AVATAR,
-                               PROFILE_AVATAR / 2, Colors::FocusBorder, 2);
+                               PROFILE_AVATAR / 2,
+                               profileFocused ? Colors::FocusBorder : Colors::Divider,
+                               profileFocused ? 3 : 2);
 
             std::string profileName = u->name;
-            if (profileName.size() > 16) profileName = profileName.substr(0, 15) + "…";
-            fb.drawText(avatarX + PROFILE_AVATAR + 12, 19, profileName,
-                        Colors::TextPrimary, TextStyle::Heading);
+            if (profileName.size() > 12) profileName = profileName.substr(0, 11) + "…";
+            fb.drawText(avatarX + PROFILE_AVATAR + 10, 19, profileName,
+                        profileFocused ? Colors::SelectedText : Colors::TextPrimary,
+                        TextStyle::Heading);
+            headerRects.push_back({avatarX - 10, 6, 176, 54, 0});
 
+            const int settingsX = 1200, settingsY = 10;
+            drawFocusedCard(fb, settingsX, settingsY, PROFILE_AVATAR, PROFILE_AVATAR,
+                            settingsFocused, PROFILE_AVATAR / 2);
+            drawHubDockIcon(fb, 5, settingsX, settingsY, PROFILE_AVATAR, settingsFocused);
+            headerRects.push_back({settingsX, settingsY, PROFILE_AVATAR, PROFILE_AVATAR, 1});
         }
 
         // Right: selected-game hero card.
         // Historical wording is retained because the cross-lane polish contract uses this boundary
         // to prove that physical source diagnostics stay out of the normal product presentation.
-        const bool gameFocused = !hubDockFocused && hubFeatureIndex < 0;
+        const bool gameFocused = !hubDockFocused && hubFeatureIndex < 0 && headerActionIndex < 0;
         drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, 18);
         if (gameFocused)
             fb.drawRoundedRect(DETAIL_X, HUB_Y, DETAIL_W, HUB_H, 18, Colors::Info, 3);
@@ -2306,7 +2582,7 @@ namespace UI {
             titleRects.push_back({DETAIL_X, HUB_Y, DETAIL_W, HUB_H, titleIndex});
         } else {
             const std::string emptyHeading =
-                (!u || u->name == "Game Sources")
+                (!u || u->name == "Pokémon Saves")
                     ? "No validated Pokémon game sources found"
                     : "No Pokémon saves found for this profile";
             fb.drawText(DETAIL_X + 34, HUB_Y + 42, emptyHeading,
@@ -2316,136 +2592,240 @@ namespace UI {
                         Colors::TextMuted, TextStyle::Body);
         }
 
-        // Right column: the two approved primary destinations.
-        const int featureGap = 16;
-        const int featureH = (HUB_H - featureGap) / 2;
+        // Right side: compact Vault/Pokédex row above the five primary navigation buttons.
+        // The selected game remains the large left anchor; the old full-width bottom dock is gone.
+        constexpr int featureGap = 14;
+        constexpr int featureH = 168;
+        const int featureW = (RIGHT_W - featureGap) / 2;
         const bool vaultFocused = !hubDockFocused && hubFeatureIndex == 0;
         const bool dexFocused = !hubDockFocused && hubFeatureIndex == 1;
-
         const Color vaultAccent(72, 194, 238);
-        drawFocusedCard(fb, RIGHT_X, HUB_Y, RIGHT_W, featureH, vaultFocused, 18);
-        const int vaultLogoX = RIGHT_X + 28, vaultLogoY = HUB_Y + 22;
-        fb.drawRoundedRect(vaultLogoX, vaultLogoY, 36, 36, 9, vaultAccent, 2);
-        fb.drawFilledRoundedRect(vaultLogoX + 7, vaultLogoY + 15, 22, 6, 3,
-                                 withAlpha(vaultAccent, 140));
-        fb.drawFilledCircle(vaultLogoX + 18, vaultLogoY + 18, 7, vaultAccent);
-        fb.drawText(RIGHT_X + 78, HUB_Y + 26, "MASTER VAULT",
-                    vaultFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
-        fb.drawText(RIGHT_X + 78, HUB_Y + 60, "Pokémon storage, transfer & lineage",
-                    Colors::TextSecondary, TextStyle::Body);
-        const int vaultArrowX = RIGHT_X + RIGHT_W - 42;
-        fb.drawCircle(vaultArrowX, HUB_Y + 42, 17,
-                      vaultFocused ? vaultAccent : Colors::Divider, 2);
-        fb.drawText(vaultArrowX - 5, HUB_Y + 29, ">",
-                    vaultFocused ? Colors::SelectedText : Colors::TextSecondary,
-                    TextStyle::Heading);
-
-        if (vaultFocused)
-            fb.drawRoundedRect(RIGHT_X, HUB_Y, RIGHT_W, featureH, 18, vaultAccent, 3);
-        const int vaultCx = RIGHT_X + RIGHT_W / 2;
-        const int vaultCy = HUB_Y + 166;
-        fb.drawFilledRoundedRect(RIGHT_X + 40, HUB_Y + 104, RIGHT_W - 80, 122, 30,
-                                 withAlpha(vaultAccent, 20));
-        for (int i = -2; i <= 2; ++i) {
-            const int podX = vaultCx + i * 68;
-            const int r = i == 0 ? 27 : 22;
-            fb.drawFilledCircle(podX, vaultCy, r, withAlpha(Colors::PanelAlt, 230));
-            fb.drawCircle(podX, vaultCy, r, withAlpha(vaultAccent, i == 0 ? 230 : 135), 3);
-            fb.drawFilledRect(podX - r, vaultCy - 2, r * 2, 4,
-                              withAlpha(vaultAccent, i == 0 ? 210 : 120));
-            fb.drawFilledCircle(podX, vaultCy, i == 0 ? 8 : 6,
-                                i == 0 ? vaultAccent : withAlpha(vaultAccent, 155));
-        }
-        fb.drawCircle(vaultCx, vaultCy, 48, withAlpha(vaultAccent, 85), 3);
-        fb.drawFilledRoundedRect(RIGHT_X + 78, HUB_Y + 220, RIGHT_W - 156, 3, 2,
-                                 withAlpha(vaultAccent, 120));
-        fb.drawText(RIGHT_X + 28, HUB_Y + featureH - 52,
-                    "Storage  •  Transfer  •  Clone  •  History", vaultAccent, TextStyle::Caption);
-        fb.drawText(RIGHT_X + 28, HUB_Y + featureH - 30,
-                    "Coming Soon", Colors::TextMuted, TextStyle::Caption);
-
-        const int dexY = HUB_Y + featureH + featureGap;
         const Color dexAccent(244, 132, 74);
-        drawFocusedCard(fb, RIGHT_X, dexY, RIGHT_W, featureH, dexFocused, 18);
-        const int dexLogoX = RIGHT_X + 28, dexLogoY = dexY + 22;
-        fb.drawRoundedRect(dexLogoX, dexLogoY, 40, 36, 8, dexAccent, 2);
-        fb.drawFilledRoundedRect(dexLogoX + 18, dexLogoY + 4, 4, 28, 2, dexAccent);
-        fb.drawText(RIGHT_X + 82, dexY + 26, "POKÉDEX",
-                    dexFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
-        fb.drawText(RIGHT_X + 82, dexY + 60, "Research species, forms & collection",
-                    Colors::TextSecondary, TextStyle::Body);
-        const int dexArrowX = RIGHT_X + RIGHT_W - 42;
-        fb.drawCircle(dexArrowX, dexY + 42, 17,
-                      dexFocused ? dexAccent : Colors::Divider, 2);
-        fb.drawText(dexArrowX - 5, dexY + 29, ">",
-                    dexFocused ? Colors::SelectedText : Colors::TextSecondary,
-                    TextStyle::Heading);
 
+        const int vaultX = RIGHT_X;
+        const int dexX = RIGHT_X + featureW + featureGap;
+        drawFocusedCard(fb, vaultX, HUB_Y, featureW, featureH, vaultFocused, 18);
+        drawFocusedCard(fb, dexX, HUB_Y, featureW, featureH, dexFocused, 18);
+        if (vaultFocused)
+            fb.drawRoundedRect(vaultX, HUB_Y, featureW, featureH, 18, vaultAccent, 3);
         if (dexFocused)
-            fb.drawRoundedRect(RIGHT_X, dexY, RIGHT_W, featureH, 18, dexAccent, 3);
-        const int deviceX = RIGHT_X + 30, deviceY = dexY + 100;
-        fb.drawFilledRoundedRect(deviceX, deviceY, RIGHT_W - 60, 124, 20,
-                                 withAlpha(dexAccent, 24));
-        fb.drawRoundedRect(deviceX + 8, deviceY + 8, 112, 106, 16, dexAccent, 3);
-        fb.drawFilledCircle(deviceX + 32, deviceY + 31, 11, withAlpha(dexAccent, 210));
-        fb.drawCircle(deviceX + 32, deviceY + 31, 17, withAlpha(dexAccent, 95), 3);
-        fb.drawRoundedRect(deviceX + 54, deviceY + 24, 54, 54, 8,
-                           withAlpha(dexAccent, 180), 2);
-        fb.drawFilledRect(deviceX + 59, deviceY + 49, 44, 4, withAlpha(dexAccent, 130));
+            fb.drawRoundedRect(dexX, HUB_Y, featureW, featureH, 18, dexAccent, 3);
+
+        fb.drawRoundedRect(vaultX + 18, HUB_Y + 18, 38, 38, 10, vaultAccent, 2);
+        fb.drawFilledRect(vaultX + 25, HUB_Y + 35, 24, 4, withAlpha(vaultAccent, 160));
+        fb.drawFilledCircle(vaultX + 37, HUB_Y + 37, 7, vaultAccent);
+        fb.drawText(vaultX + 68, HUB_Y + 20, "MASTER VAULT",
+                    vaultFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Body);
+        fb.drawText(vaultX + 18, HUB_Y + 70, "Pokémon storage",
+                    Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(vaultX + 18, HUB_Y + 91, "Transfer & lineage",
+                    Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(vaultX + 18, HUB_Y + 126, "Coming Soon",
+                    Colors::TextMuted, TextStyle::Caption);
+
+        fb.drawRoundedRect(dexX + 18, HUB_Y + 18, 40, 38, 9, dexAccent, 2);
+        fb.drawFilledRoundedRect(dexX + 36, HUB_Y + 23, 4, 28, 2, dexAccent);
+        fb.drawText(dexX + 70, HUB_Y + 20, "POKÉDEX",
+                    dexFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Body);
+        fb.drawText(dexX + 18, HUB_Y + 70, "Species & forms",
+                    Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(dexX + 18, HUB_Y + 91, "Research & collection",
+                    Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(dexX + 18, HUB_Y + 126, "Coming Soon",
+                    Colors::TextMuted, TextStyle::Caption);
+
+        // Five product destinations occupy the former large Pokédex area.
+        const int navY = HUB_Y + featureH + 16;
+        const int navH = HUB_H - featureH - 16;
+        drawPanelSurface(fb, RIGHT_X, navY, RIGHT_W, navH, true, 18);
+        fb.drawText(RIGHT_X + 20, navY + 16, "POKEBANK NX",
+                    Colors::Info, TextStyle::Caption);
+
+        static constexpr const char* dockLabels[5] =
+            {"Games", "Banks", "Items", "Search", "More"};
+        constexpr int navGap = 12;
+        const int innerW = RIGHT_W - 32;
+        const int cardW = (innerW - navGap * 2) / 3;
+        constexpr int cardH = 112;
+        const int row1Y = navY + 48;
+        const int row2Y = row1Y + cardH + navGap;
+        const int pairW = cardW * 2 + navGap;
+        const int pairX = RIGHT_X + (RIGHT_W - pairW) / 2;
+
         for (int i = 0; i < 5; ++i) {
-            const int cx = deviceX + 158 + i * 53;
-            const int cy = deviceY + 58;
-            const int r = 15 + (i % 3) * 3;
-            const Color silhouette = i == 2 ? withAlpha(dexAccent, 185)
-                                             : withAlpha(dexAccent, 95);
-            fb.drawFilledCircle(cx, cy, r, silhouette);
-            fb.drawFilledRoundedRect(cx - r + 4, cy + r - 4,
-                                     std::max(12, r * 2 - 8), 20 + (i % 2) * 5,
-                                     8, silhouette);
-        }
-        for (int i = 0; i < 3; ++i)
-            fb.drawFilledCircle(deviceX + 160 + i * 18, deviceY + 98, 4,
-                                withAlpha(dexAccent, 120 + i * 35));
-        fb.drawText(RIGHT_X + 28, dexY + featureH - 52,
-                    "Species  •  Forms  •  Cries  •  Living Dex", dexAccent, TextStyle::Caption);
-        fb.drawText(RIGHT_X + 28, dexY + featureH - 30,
-                    "Coming Soon", Colors::TextMuted, TextStyle::Caption);
-
-        // Persistent product dock. Games remains the active destination even when focus is above it.
-        fb.drawFilledRect(0, PRODUCT_DOCK_Y - 12, fb.getWidth(),
-                          fb.getHeight() - (PRODUCT_DOCK_Y - 12), Colors::Panel);
-        fb.drawFilledRect(0, PRODUCT_DOCK_Y - 12, fb.getWidth(), 1, Colors::Divider);
-
-        static constexpr const char* dockLabels[6] =
-            {"Games", "Banks", "Items", "Search", "More", "Settings"};
-        const int dockStartX = 42;
-        for (int i = 0; i < 6; ++i) {
-            const int dx = i < 5 ? dockStartX + i * PRODUCT_DOCK_STEP : 1176;
+            const int bx = i < 3
+                ? RIGHT_X + 16 + i * (cardW + navGap)
+                : pairX + (i - 3) * (cardW + navGap);
+            const int by = i < 3 ? row1Y : row2Y;
             const bool focused = hubDockFocused && hubDockIndex == i;
-            drawFocusedCard(fb, dx, PRODUCT_DOCK_Y, PRODUCT_DOCK_SIZE, PRODUCT_DOCK_SIZE,
-                            focused, PRODUCT_DOCK_SIZE / 2);
-            drawHubDockIcon(fb, i, dx, PRODUCT_DOCK_Y, PRODUCT_DOCK_SIZE, focused);
-            dockRects.push_back({dx, PRODUCT_DOCK_Y, PRODUCT_DOCK_SIZE, PRODUCT_DOCK_SIZE, i});
+            drawFocusedCard(fb, bx, by, cardW, cardH, focused, 14);
+            const int iconSize = 44;
+            const int iconX = bx + (cardW - iconSize) / 2;
+            drawHubDockIcon(fb, i, iconX, by + 14, iconSize, focused);
+            dockRects.push_back({bx, by, cardW, cardH, i});
 
             int lw = 0, lh = 0;
             fb.measureText(dockLabels[i], lw, lh, TextStyle::Caption);
-            const Color labelColor = focused ? Colors::Info
-                                   : i == 0 ? Colors::Info
-                                            : Colors::TextMuted;
-            fb.drawText(dx + (PRODUCT_DOCK_SIZE - lw) / 2, PRODUCT_DOCK_Y + 47,
-                        dockLabels[i], labelColor, TextStyle::Caption);
-            if (i == 0)
-                fb.drawFilledRoundedRect(dx - 4, PRODUCT_DOCK_Y + 67,
-                                         PRODUCT_DOCK_SIZE + 8, 3, 2, Colors::Info);
+            fb.drawText(bx + (cardW - lw) / 2, by + 70, dockLabels[i],
+                        focused ? Colors::SelectedText
+                                : i == 0 ? Colors::Info : Colors::TextSecondary,
+                        TextStyle::Caption);
         }
 
-        auto homeHints = hubDockFocused && hubDockIndex == 0
-            ? std::string("A: Game Workspace | L/R: Change Game | -: Help | +: Settings | B: Exit")
-            : std::string("L/R: Change Game | A: Select | ZR: Launch | -: Help | +: Settings | B: Exit");
-        if (users.size() > 1) homeHints = "ZL: Profile | " + homeHints;
-        drawNavHints(fb, 565, fb.getWidth() - 565, PRODUCT_DOCK_Y + 24, homeHints);
+        // The hero card already carries the big Launch button, so the global footer does not
+        // repeat a ZR Launch hint.
+        drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"},
+                        {"+", "Current Game"}, {"-", "Help"}, {"B", "Exit"}});
 
-        if (overlay == Overlay::GameWorkspace && u && titleIndex >= 0 &&
+        if (overlay == Overlay::GamesDrawer) {
+            constexpr int w = 680;
+            const int x = fb.getWidth() - w;
+            const int h = fb.getHeight();
+            constexpr int cols = 3;
+            constexpr int visibleRows = 3;
+            constexpr int gap = 12;
+            constexpr int margin = 18;
+            constexpr int tileH = 166;
+            const int tileW = (w - margin * 2 - gap * 2) / cols;
+
+            // Full-height right-edge sheet with no top/right/bottom gutter.
+            fb.drawFilledRect(0, 0, x, h, Color(0, 0, 0, 92));
+            fb.drawFilledRect(x, 0, w, h, Colors::SurfaceRaised);
+            fb.drawFilledRect(x, 0, 2, h, Colors::FocusBorder);
+
+            fb.drawText(x + 22, 18, "QUICK GAMES",
+                        Colors::Info, TextStyle::Caption);
+            fb.drawText(x + 22, 44, "Choose a Pokémon Game",
+                        Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 22, 75,
+                        "Artwork browser • open Games for the full-screen browser",
+                        Colors::TextSecondary, TextStyle::Caption);
+
+            if (u && !u->titles.empty()) {
+                const int first = gamesDrawerScroll * cols;
+                const int last = std::min<int>(
+                    static_cast<int>(u->titles.size()), first + visibleRows * cols);
+                const int gridY = 108;
+                for (int i = first; i < last; ++i) {
+                    const int local = i - first;
+                    const int col = local % cols;
+                    const int row = local / cols;
+                    const int bx = x + margin + col * (tileW + gap);
+                    const int by = gridY + row * (tileH + gap);
+                    const bool selected = i == gamesDrawerIndex;
+                    const auto& title = u->titles[static_cast<size_t>(i)];
+
+                    drawFocusedCard(fb, bx, by, tileW, tileH, selected, 14);
+                    const IconImage& art = SystemIcons::gameCardIcon(
+                        title.sourceKind == SelectedSourceKind::RetroArchFRLG
+                            ? title.artworkKey : title.gameId,
+                        title.titleId);
+                    constexpr int artSize = 104;
+                    if (art.valid())
+                        fb.drawImageScaled(bx + (tileW - artSize) / 2, by + 10,
+                                           art.width, art.height, artSize, artSize, art.data, 4);
+                    else {
+                        fb.drawFilledRoundedRect(bx + (tileW - artSize) / 2, by + 10,
+                                                 artSize, artSize, 12, Colors::PanelAlt);
+                        fb.drawCircle(bx + tileW / 2, by + 62, 28,
+                                      withAlpha(Colors::Info, 120), 3);
+                    }
+
+                    std::string label = title.label;
+                    if (label.size() > 18) label = label.substr(0, 17) + "…";
+                    int lw = 0, lh = 0;
+                    fb.measureText(label, lw, lh, TextStyle::Caption);
+                    fb.drawText(bx + std::max(8, (tileW - lw) / 2), by + 120, label,
+                                selected ? Colors::SelectedText : Colors::TextPrimary,
+                                TextStyle::Caption);
+
+                    std::string meta = title.trainerName.empty()
+                        ? productSourceLabel(title.sourceLabel) : title.trainerName;
+                    if (meta.size() > 20) meta = meta.substr(0, 19) + "…";
+                    int mw = 0, mh = 0;
+                    fb.measureText(meta, mw, mh, TextStyle::Caption);
+                    fb.drawText(bx + std::max(8, (tileW - mw) / 2), by + 142, meta,
+                                Colors::TextMuted, TextStyle::Caption);
+                }
+
+                const int totalRows = (static_cast<int>(u->titles.size()) + cols - 1) / cols;
+                if (totalRows > visibleRows)
+                    drawScrollbar(fb, x + w - 8, 108, visibleRows * (tileH + gap) - gap,
+                                  totalRows * (tileH + gap) - gap,
+                                  gamesDrawerScroll * (tileH + gap));
+            } else {
+                fb.drawText(x + 28, 150, "No Pokémon games found for this profile.",
+                            Colors::TextMuted, TextStyle::Body);
+            }
+
+            fb.drawText(x + 22, h - 72,
+                        "X: Save / Source   •   Y or B: Close",
+                        Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Select"},
+                            {"X", "Save / Source"}, {"Y", "Close"}, {"B", "Close"}});
+        } else if (overlay == Overlay::ProfilePicker) {
+            constexpr int w = 780;
+            constexpr int h = 560;
+            constexpr int rowH = 88;
+            constexpr int visibleRows = 4;
+            const int x = (fb.getWidth() - w) / 2;
+            const int y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+
+            fb.drawText(x + 30, y + 20, "SWITCH PROFILE",
+                        Colors::Info, TextStyle::Caption);
+            fb.drawText(x + 30, y + 48, "Choose Profile",
+                        Colors::TextPrimary, TextStyle::Title);
+            fb.drawText(x + 30, y + 86,
+                        "Select the Switch user whose Pokémon saves PokeBank NX should show.",
+                        Colors::TextSecondary, TextStyle::Caption);
+            fb.drawFilledRect(x + 28, y + 118, w - 56, 1, Colors::Divider);
+
+            const int count = static_cast<int>(users.size());
+            const int first = std::clamp(profilePickerIndex - 1, 0, std::max(0, count - visibleRows));
+            const int last = std::min(count, first + visibleRows);
+            int rowY = y + 136;
+            for (int i = first; i < last; ++i) {
+                const auto& user = users[static_cast<size_t>(i)];
+                const bool selected = i == profilePickerIndex;
+                const bool current = i == userIndex;
+                drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 8, selected, 14);
+
+                const IconImage* avatar =
+                    user.name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(user.uid);
+                if (avatar && avatar->valid())
+                    fb.drawImageScaled(x + 42, rowY + 9, avatar->width, avatar->height,
+                                       62, 62, avatar->data, 4);
+                else {
+                    fb.drawFilledCircle(x + 73, rowY + 40, 30, Colors::PanelAlt);
+                    fb.drawCircle(x + 73, rowY + 40, 30, Colors::Divider, 2);
+                }
+
+                fb.drawText(x + 126, rowY + 16, user.name,
+                            selected ? Colors::SelectedText : Colors::TextPrimary,
+                            TextStyle::Heading);
+                fb.drawText(x + 126, rowY + 48,
+                            std::to_string(user.titles.size()) + " Pokémon games",
+                            Colors::TextMuted, TextStyle::Caption);
+
+                if (current) {
+                    constexpr int pillW = 92;
+                    fb.drawPill(x + w - 142, rowY + 24, pillW, 30,
+                                withAlpha(Colors::Info, 38));
+                    fb.drawPillBorder(x + w - 142, rowY + 24, pillW, 30,
+                                      Colors::Info, 1);
+                    fb.drawText(x + w - 124, rowY + 32, "CURRENT",
+                                Colors::Info, TextStyle::Caption);
+                }
+                rowY += rowH;
+            }
+
+            fb.drawText(x + 30, y + h - 42,
+                        "Changing profile changes only which saves are shown; it never modifies save data.",
+                        Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"D-pad/Stick", "Choose Profile"},
+                            {"A", "Use Profile"}, {"B", "Cancel"}});
+        } else if (overlay == Overlay::GameWorkspace && u && titleIndex >= 0 &&
             titleIndex < static_cast<int>(u->titles.size())) {
             const auto& title = u->titles[static_cast<size_t>(titleIndex)];
             constexpr int x = 86, y = 82, w = 1108, h = 536;
@@ -2546,7 +2926,7 @@ namespace UI {
                 fb.drawText(gridX, y + h - 42, notice, Colors::Info, TextStyle::Caption);
             }
             drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Open"},
-                            {"ZR", "Launch"}, {"+", "Settings"}, {"B", "Home"}});
+                            {"ZR", "Launch"}, {"+", "Close Menu"}, {"B", "Home"}});
         } else if (overlay == Overlay::GameFilePicker) {
             constexpr int w = 900, h = 560, rowH = 54, visibleRows = 7;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
@@ -2727,28 +3107,24 @@ namespace UI {
                             {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
             if (helpReturnOverlay == Overlay::GameWorkspace) {
-                drawInfoOverlay(fb, "Game Workspace Controls", {
-                    "D-pad / Left Stick   Navigate workspace destinations",
-                    "A   Open the focused destination",
-                    "B   Back to Product Home",
-                    "ZR   Launch the selected game",
-                    "+   Settings",
-                    "-   Close Help / Controls",
-                    "Party / Boxes / Trainer / Editor route to the existing safe game screens",
-                    "Backups and Source / Game File stay source-aware and fail closed"
-                });
+                drawProductHelpOverlay(fb, "Current Game Controls", {
+                    {"D-pad/Stick", "Navigate Overview / Party / Boxes / Trainer / Backups"},
+                    {"A", "Open the focused game tool"},
+                    {"ZR", "Launch the selected game"},
+                    {"+", "Close the Current Game menu"},
+                    {"-", "Close Help / Controls"},
+                    {"B", "Back to Product Home"}
+                }, "Backup history appears only when you explicitly choose Backups.");
             } else {
-                drawInfoOverlay(fb, "PokeBank NX Controls", {
-                    "D-pad / Left Stick   Navigate (hold to scroll)",
-                    "A   Select / Open",
-                    "L / R   Previous / next game",
-                    "ZL   Change profile when multiple profiles are available",
-                    "ZR   Launch, choose a source, or link a game file",
-                    "Games   Open the selected game's workspace",
-                    "+   Settings",
-                    "-   Help / Controls",
-                    "B   Exit PokeBank NX from Product Home"
-                });
+                drawProductHelpOverlay(fb, "PokeBank NX Controls", {
+                    {"D-pad/Stick", "Navigate Product Home"},
+                    {"A", "Open the selected game or focused control"},
+                    {"L/R", "Previous / next game"},
+                    {"Y", "Open the quick right-side artwork browser"},
+                    {"+", "Current Game tools: Overview / Party / Boxes / Trainer / Backups"},
+                    {"-", "Help / Controls"},
+                    {"B", "Exit PokeBank NX from Product Home"}
+                }, "Games opens the full artwork browser. Profile and Settings use the top-right controls.");
             }
         } else if (overlay == Overlay::Options) {
             constexpr int w = 560, h = 326, rowH = 64;

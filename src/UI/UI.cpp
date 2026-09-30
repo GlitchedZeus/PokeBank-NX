@@ -140,9 +140,14 @@ namespace UI {
                 padUpdate(&pad);
                 touch.update();
                 selectScreen.update(pad, touch);
-                selectScreen.draw(fb);
-                fb.drawFadeOverlay();
-                fb.flush();
+
+                // A screen that selected a destination or requested exit is already retired.
+                // Never paint one more stale frame after update() changes its terminal state.
+                if (!selectScreen.hasSelectedTitle() && !selectScreen.shouldExit()) {
+                    selectScreen.draw(fb);
+                    fb.drawFadeOverlay();
+                    fb.flush();
+                }
 
                 if (selectScreen.hasSelectedTitle()) {
                     productHomeNavigation = selectScreen.navigationState();
@@ -163,19 +168,25 @@ namespace UI {
                                             selectScreen.getOpenIntent(), error))
                             logErrorToFile("Generation IV assigned source refused open", error.c_str());
                     } else {
-                        if (selectScreen.getOpenIntent() == SaveSelectScreen::OpenIntent::Items)
+                        if (selectScreen.getOpenIntent() == SaveSelectScreen::OpenIntent::Items) {
                             handleItemsQuickOpen(selectScreen.getSelectedUser(),
                                                  selectScreen.getSelectedTitleId(),
                                                  selectScreen.getSelectedTitleName());
-                        else
+                        } else if (selectScreen.getOpenIntent() == SaveSelectScreen::OpenIntent::Backups) {
                             handleBackupSelection(selectScreen.getSelectedUser(),
                                                   selectScreen.getSelectedTitleId(),
                                                   selectScreen.getSelectedTitleName(),
                                                   selectScreen.getOpenIntent());
+                        } else {
+                            handleDefaultQuickOpen(selectScreen.getSelectedUser(),
+                                                   selectScreen.getSelectedTitleId(),
+                                                   selectScreen.getSelectedTitleName());
+                        }
                     }
                     rebuildPicker = true;
                     break;
                 }
+                if (selectScreen.shouldExit()) break;
             }
 
             if (!running) return SaveSelectScreen::MainMenuDestination::None;
@@ -191,6 +202,27 @@ namespace UI {
             if (!rebuildPicker) return SaveSelectScreen::MainMenuDestination::None;
         }
         return SaveSelectScreen::MainMenuDestination::None;
+    }
+
+    void UIManager::handleDefaultQuickOpen(AccountUid userUid, u64 titleId,
+                                           const std::string& titleName) {
+        // Product Home Open is intentionally frictionless: create the same protected app-owned
+        // backup/working copy first, then enter the player/game workspace. Backup history is only
+        // shown when the user explicitly opens Current Game -> Backups.
+        logInfoToFile("Direct game open: creating protected backup/working copy first",
+                      titleName.c_str());
+        const std::string backupPath =
+            backupSaveData(userUid, titleId, titleName, g_autoBackupEnabled);
+        if (backupPath.empty()) {
+            logErrorToFile("Direct game open refused: backup creation failed",
+                           titleName.c_str());
+            return;
+        }
+        std::string error;
+        if (!handleTrainerView(userUid, titleId, titleName, backupPath, true,
+                               SaveSelectScreen::OpenIntent::Default, error)) {
+            logErrorToFile("Direct game open failed after backup", error.c_str());
+        }
     }
 
     void UIManager::handleItemsQuickOpen(AccountUid userUid, u64 titleId,
@@ -221,9 +253,13 @@ namespace UI {
             padUpdate(&pad);
             touch.update();
             backupScreen.update(pad, touch);
-            backupScreen.draw(fb);
-            fb.drawFadeOverlay();
-            fb.flush();
+
+            // Selection/exit retires this chooser immediately; do not flash it again.
+            if (!backupScreen.shouldExit() && !backupScreen.hasSelectedBackup()) {
+                backupScreen.draw(fb);
+                fb.drawFadeOverlay();
+                fb.flush();
+            }
 
             if (backupScreen.hasSelectedBackup()) {
                 if (backupScreen.shouldCreateNewBackup()) {
@@ -255,6 +291,7 @@ namespace UI {
                 }
                 return;
             }
+            if (backupScreen.shouldExit()) break;
         }
     }
 
@@ -297,6 +334,7 @@ namespace UI {
                 padUpdate(&pad);
                 touch.update();
                 trainerScreen.update(pad, touch);
+                if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
                 trainerScreen.draw(fb);
                 fb.drawFadeOverlay();
                 fb.flush();
@@ -377,6 +415,7 @@ namespace UI {
             padUpdate(&pad);
             touch.update();
             trainerScreen.update(pad, touch);
+            if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
             trainerScreen.draw(fb);
             fb.drawFadeOverlay();
             fb.flush();
@@ -426,6 +465,7 @@ namespace UI {
             padUpdate(&pad);
             touch.update();
             trainerScreen.update(pad, touch);
+            if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
             trainerScreen.draw(fb);
             fb.drawFadeOverlay();
             fb.flush();
