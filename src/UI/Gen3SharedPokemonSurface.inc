@@ -1627,11 +1627,14 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     fb.drawText(x + 34, y + 332, "Egg / breeding", Colors::TextDim);
     fb.drawText(x + 270, y + 332, coverageText(report.coverage.eggBreeding),
                 coverageColor(report.coverage.eggBreeding));
-    fb.drawText(x + 34, y + 370, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 270, y + 370, "HARD DISABLED", Colors::Accent);
+    fb.drawText(x + 34, y + 370, "Transfer evidence", Colors::TextDim);
+    fb.drawText(x + 270, y + 370, coverageText(report.coverage.transfer),
+                coverageColor(report.coverage.transfer));
+    fb.drawText(x + 34, y + 408, "Source mutation", Colors::TextDim);
+    fb.drawText(x + 270, y + 408, "HARD DISABLED", Colors::Accent);
 
     if (report.problemCount() == 0 && report.verdict() == Legality::Verdict::Incomplete)
-        fb.drawText(x + 34, y + 420,
+        fb.drawText(x + 34, y + 448,
                     "No problem was found by completed checks; this is not proof of full legality.",
                     Colors::Warning, TextStyle::Caption);
 

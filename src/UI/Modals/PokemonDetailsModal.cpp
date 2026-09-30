@@ -528,7 +528,7 @@ namespace Modals {
         if (screen.details.legalityOverlay) {
             fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 170));
             const bool incomplete = legalityVerdict == Legality::Verdict::Incomplete;
-            const int rowsN = static_cast<int>(legalityRep.issues.size()) + (incomplete ? 6 : 0);
+            const int rowsN = static_cast<int>(legalityRep.issues.size()) + (incomplete ? 7 : 0);
             const int ow = 820, oh = std::min(H - 60, 112 + std::max(1, rowsN) * 28);
             const int ox = (W - ow) / 2, oy = (H - oh) / 2;
             fb.drawFilledRoundedRect(ox, oy, ow, oh, 16, Colors::Panel);
@@ -566,6 +566,7 @@ namespace Modals {
                 coverageRow("Encounter", legalityRep.coverage.encounter);
                 coverageRow("PID / RNG", legalityRep.coverage.pidRng);
                 coverageRow("Egg / Breeding", legalityRep.coverage.eggBreeding);
+                coverageRow("Transfer", legalityRep.coverage.transfer);
                 ly += 4;
             }
 
