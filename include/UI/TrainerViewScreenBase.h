@@ -164,10 +164,10 @@ namespace UI {
         int selectedItemIndex = 0;  // Selected item/pokemon index in detail view (item for Items, slot for Boxes)
 
         // HOME main menu focus (shown when NOT entered). 0 Pokemon(Boxes), 1 Party, 2 Storage (pills);
-        // 3 Items, 4 Trainer, 5 Settings (circular icons). Replaces the old left mode-selector.
+        // 3 Items, 4 Trainer (circular icons). Product Home owns Settings.
         int homeMenuIndex = 0;
 
-        // Selected row in the Settings view (0-4); reached from the menu's Settings icon.
+        // Selected row in the retained internal Settings renderer (not reachable from loaded-game navigation).
         int settingsSelectedRow = 0;
 
         // Trainer info view: the focused editable row (0 Name, 1 Money) and a
