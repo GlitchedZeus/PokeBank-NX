@@ -136,15 +136,18 @@ require("headerRects.push_back" in source and
         "drawHubDockIcon(fb, 5, settingsX, settingsY, PROFILE_AVATAR, settingsFocused)" in source and
         '{"Games", "Banks", "Items", "Search", "More"}' in source,
         "Product Home must render one selectable header Settings gear and no dock Settings")
-require("Overlay::ProfilePicker" in header and "profilePickerIndex" in source and
+require("ProfilePicker" in header and "profilePickerIndex" in source and
         "setUser(profilePickerIndex)" in source,
         "the profile avatar must open a real controller-selectable user picker")
-require("Overlay::GamesDrawer" in header and '"Your Pokémon Games"' in source and
+require("GamesDrawer" in header and '"Your Pokémon Games"' in source and
         '{"X", "Assign Save"}' in source and '{"Y", "Manage Source"}' in source,
         "Games must expose the product-style game list with save assignment/source management")
 require("openGen4Setup(game.gameId, \"Assign, repair, or change this game's save source.\", true)" in source and
         "Overlay::LegacyAssignment" in source,
         "Games save assignment must cover Gen IV linking and unassigned Gen I-III sources")
+require("gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None" in source and
+        "gen4SetupFromGamesDrawer = false;" in source,
+        "Gen IV source setup must return cleanly to Games when launched from the drawer")
 require('kSettingsCategories' in shell_source and
         '"User", "Look", "System", "Data", "Update", "Developer", "Info"' in shell_source,
         "Settings must use the approved two-pane category model")
