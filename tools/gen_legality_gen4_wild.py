@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Generate compact Gen IV wild-encounter legality evidence from pinned PKHeX data."""
+"""Generate compact Gen IV wild-encounter legality evidence from pinned PKHeX data.
+
+Slot numbers are retained so Method J/K frame correlation can prove the selected wild slot.
+"""
 
 from __future__ import annotations
 
