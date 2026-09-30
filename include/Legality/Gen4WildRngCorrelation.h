@@ -229,10 +229,14 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                         return {hgss ? Method::MethodKNoLead : Method::MethodJNoLead,
                                 candidate, rolledSlot};
                 } else {
-                    const uint8_t level =
-                        randomLevel(Gen4Wild::minLevel(row), Gen4Wild::maxLevel(row), prev1);
-                    if (level != metLevel)
+                    const uint8_t level = isHoneyTree(type)
+                        ? honeyTreeLevel(prev1)
+                        : randomLevel(Gen4Wild::minLevel(row), Gen4Wild::maxLevel(row), prev1);
+                    if (level != metLevel) {
+                        candidate = Gen3PidIv::Detail::prev(
+                            Gen3PidIv::Detail::prev(candidate));
                         continue;
+                    }
 
                     if (type == 1)
                         return {hgss ? Method::MethodKNoLead : Method::MethodJNoLead,
@@ -253,11 +257,8 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                     if (isHeadbutt(type))
                         return {Method::MethodKHeadbuttNoLead, candidate, rolledSlot};
 
-                    if (isHoneyTree(type)) {
-                        if (honeyTreeLevel(prev1) == metLevel)
-                            return {Method::MethodJHoneyTreeNoLead, candidate, rolledSlot};
-                        continue;
-                    }
+                    if (isHoneyTree(type))
+                        return {Method::MethodJHoneyTreeNoLead, candidate, rolledSlot};
 
                     const uint32_t prev3Seed =
                         Gen3PidIv::Detail::prev(Gen3PidIv::Detail::prev(
