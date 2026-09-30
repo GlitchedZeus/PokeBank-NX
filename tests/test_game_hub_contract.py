@@ -174,8 +174,10 @@ require("ProfilePicker" in header and "profilePickerIndex" in source and
 require("GamesDrawer" in header and '"QUICK GAMES"' in source and
         "constexpr int cols = 3;" in source and "constexpr int visibleRows = 4;" in source and
         "constexpr int w = 520;" in source and
+        "gamesDrawerIndex = std::clamp(" in source and
+        "gamesDrawerScroll = std::clamp(" in source and
         '{"Y", "Close"}' in source and '{"X", "Save / Source"}' in source,
-        "Y quick Games must be a compact four-row, three-column right-side artwork browser with source management")
+        "Y quick Games must be a compact four-row, three-column artwork browser that normalizes stale selection/scroll state")
 require("openGen4Setup(game.gameId, \"Assign, repair, or change this game's save source.\", true)" in source and
         "Overlay::LegacyAssignment" in source,
         "Games save assignment must cover Gen IV linking and unassigned Gen I-III sources")
