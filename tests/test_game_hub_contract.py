@@ -117,17 +117,22 @@ require("classicGamesActive = true;" in dock_activation and
 require('"Pokémon Games"' in source and "CLASSIC_ICON" in source and
         "SystemIcons::gameCardIcon" in source,
         "the restored Games browser must retain the PKSE-style artwork grid")
+classic_draw = source[source.index("if (classicGamesActive) {", source.index("void SaveSelectScreen::draw(")):
+                      source.index("drawAppBackdrop(fb);", source.index("void SaveSelectScreen::draw("))]
+require("scrollClassicSelectionIntoView();" in classic_draw and "std::clamp(titleIndex" in classic_draw,
+        "the full Games artwork browser must normalize selection/scroll immediately after save/source changes")
 require('{"+", "Current Game"}' in source,
         "Plus must open Current Game tools")
 require("+: Settings" not in source and '{"+" , "Settings"}' not in source and '{"+" , "Settings"}' not in shell_source,
         "Plus must never be a Settings shortcut")
 require("HidNpadButton_ZL" not in source,
         "Product Home must not retain the old ZL profile shortcut")
-require("GameLaunchState::LauncherOnly" in launcher and
-        "Direct selected-ROM handoff is not supported by this DraStic build." in launcher,
-        "DraStic launch must be truthful launcher-only until its frontend supports ROM argv")
+require("kind == GameLaunchProviderKind::DraStic" in launcher and
+        'findContentMatches({"sdmc:/switch/drastic/games"}' in launcher and
+        "Direct selected-ROM handoff is not supported by this DraStic build." not in launcher,
+        "current DraStic integration must resolve/link a real DS game path instead of launcher-only mode")
 require("descriptor.state != GameLaunchState::LauncherOnly" in launcher,
-        "launcher-only emulators must never receive a falsely linked ROM argument")
+        "launcher-only fallbacks must never receive a falsely linked ROM argument")
 require("GameLaunchProviderKind::MelonDS" in launcher,
         "melonDS provider-aware direct content launch support must remain present")
 require("OpenIntent::Items" in source and "hubDockIndex == 2" in source,
@@ -142,9 +147,10 @@ require("headerRects.push_back" in source and
         "Product Home must render one selectable header Settings gear and no dock Settings")
 require("headerActionIndex = hubFeatureIndex == 0 ? 0 : 1;" in source,
         "Up from Master Vault/Pokédex must reach Profile/Settings instead of getting trapped")
-require("const int navY = HUB_Y + featureH + 16;" in source and
-        "Five product destinations occupy the former large Pokédex area" in source,
-        "Games/Banks/Items/Search/More must live in the right-side panel under compact Vault/Pokédex cards")
+require("constexpr int featureH = 190;" in source and
+        "constexpr int buttonD = 74;" in source and
+        "fb.drawFilledCircle(cx, cy, buttonD / 2, Colors::SurfaceRaised);" in source,
+        "Vault/Pokédex must be slightly larger and Games/Banks/Items/Search/More must use round logo navigation")
 require('drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"}' in source,
         "Product Home footer must expose Y Quick Games without repeating ZR Launch")
 require("ProfilePicker" in header and "profilePickerIndex" in source and
@@ -152,9 +158,10 @@ require("ProfilePicker" in header and "profilePickerIndex" in source and
         '"SWITCH PROFILE"' in source and '"Choose Profile"' in source and '"CURRENT"' in source,
         "the profile avatar must open the centered professional profile chooser")
 require("GamesDrawer" in header and '"QUICK GAMES"' in source and
-        "constexpr int cols = 3;" in source and
+        "constexpr int cols = 3;" in source and "constexpr int visibleRows = 4;" in source and
+        "constexpr int w = 520;" in source and
         '{"Y", "Close"}' in source and '{"X", "Save / Source"}' in source,
-        "Y quick Games must be a three-column right-side artwork browser with source management")
+        "Y quick Games must be a compact four-row, three-column right-side artwork browser with source management")
 require("openGen4Setup(game.gameId, \"Assign, repair, or change this game's save source.\", true)" in source and
         "Overlay::LegacyAssignment" in source,
         "Games save assignment must cover Gen IV linking and unassigned Gen I-III sources")
@@ -186,6 +193,12 @@ require("if (kDown & HidNpadButton_Plus) {\n        overlay = Overlay::Settings;
         "secondary menus must not expose a Plus-to-Settings shortcut")
 home_menu = (ROOT / "src/UI/Panels/HomeMenuPanel.cpp").read_text(encoding="utf-8")
 trainer_base = (ROOT / "src/UI/TrainerViewScreenBase.inc").read_text(encoding="utf-8")
+trainer_header = (ROOT / "include/UI/TrainerViewScreenBase.h").read_text(encoding="utf-8")
+require("itemsShortcutActive = true;" in trainer_header and
+        "selectedMode == ViewMode::Items && itemsShortcutActive" in trainer_base and
+        "exitAfterSave = true;" in trainer_base and
+        "goBack = true;" in trainer_base,
+        "Product Home Items must exit directly to Product Home and save staged changes before leaving")
 require('{ "Settings", "S", 5 }' not in home_menu and
         'Icon icons[2]' in home_menu,
         "loaded-game home must not expose a Settings icon")
