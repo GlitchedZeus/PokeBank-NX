@@ -219,7 +219,7 @@ namespace UI {
             return;
         }
         std::string error;
-        if (!handleTrainerView(userUid, titleId, titleName, backupPath, true,
+        if (!handleTrainerView(userUid, titleId, titleName, backupPath, false,
                                SaveSelectScreen::OpenIntent::Default, error)) {
             logErrorToFile("Direct game open failed after backup", error.c_str());
         }
@@ -237,7 +237,7 @@ namespace UI {
             return;
         }
         std::string error;
-        if (!handleTrainerView(userUid, titleId, titleName, backupPath, true,
+        if (!handleTrainerView(userUid, titleId, titleName, backupPath, false,
                                SaveSelectScreen::OpenIntent::Items, error)) {
             logErrorToFile("Items quick-open failed after backup", error.c_str());
         }
@@ -275,7 +275,7 @@ namespace UI {
                         continue;
                     }
                     std::string error;
-                    if (!handleTrainerView(userUid, titleId, titleName, backupPath, true, intent, error)) {
+                    if (!handleTrainerView(userUid, titleId, titleName, backupPath, false, intent, error)) {
                         backupScreen.reportFailure(error);
                         continue;
                     }
