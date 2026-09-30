@@ -2616,18 +2616,22 @@ namespace UI {
         fb.drawFilledCircle(vaultX + 37, HUB_Y + 37, 7, vaultAccent);
         fb.drawText(vaultX + 68, HUB_Y + 20, "MASTER VAULT",
                     vaultFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Body);
-        fb.drawText(vaultX + 18, HUB_Y + 70, "Pokémon storage, transfer & lineage",
+        fb.drawText(vaultX + 18, HUB_Y + 70, "Pokémon storage",
                     Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(vaultX + 18, HUB_Y + 106, "Coming Soon",
+        fb.drawText(vaultX + 18, HUB_Y + 91, "Transfer & lineage",
+                    Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(vaultX + 18, HUB_Y + 126, "Coming Soon",
                     Colors::TextMuted, TextStyle::Caption);
 
         fb.drawRoundedRect(dexX + 18, HUB_Y + 18, 40, 38, 9, dexAccent, 2);
         fb.drawFilledRoundedRect(dexX + 36, HUB_Y + 23, 4, 28, 2, dexAccent);
         fb.drawText(dexX + 70, HUB_Y + 20, "POKÉDEX",
                     dexFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Body);
-        fb.drawText(dexX + 18, HUB_Y + 70, "Research species, forms & collection",
+        fb.drawText(dexX + 18, HUB_Y + 70, "Species & forms",
                     Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(dexX + 18, HUB_Y + 106, "Coming Soon",
+        fb.drawText(dexX + 18, HUB_Y + 91, "Research & collection",
+                    Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(dexX + 18, HUB_Y + 126, "Coming Soon",
                     Colors::TextMuted, TextStyle::Caption);
 
         // Five product destinations occupy the former large Pokédex area.
@@ -2761,7 +2765,7 @@ namespace UI {
                             {"X", "Save / Source"}, {"Y", "Close"}, {"B", "Close"}});
         } else if (overlay == Overlay::ProfilePicker) {
             constexpr int w = 780;
-            constexpr int h = 500;
+            constexpr int h = 560;
             constexpr int rowH = 88;
             constexpr int visibleRows = 4;
             const int x = (fb.getWidth() - w) / 2;
