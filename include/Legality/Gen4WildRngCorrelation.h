@@ -12,6 +12,8 @@ enum class Method : uint8_t {
     None,
     MethodJNoLead,
     MethodKNoLead,
+    MethodJFishingNoLead,
+    MethodKFishingNoLead,
 };
 
 struct Result {
@@ -43,6 +45,44 @@ constexpr uint8_t surfSlot(uint32_t roll) noexcept {
            roll < 95 ? 2 :
            roll < 99 ? 3 :
            roll == 99 ? 4 : 0xFF;
+}
+
+constexpr uint8_t superRodSlotJ(uint32_t roll) noexcept {
+    return roll < 40 ? 0 :
+           roll < 80 ? 1 :
+           roll < 95 ? 2 :
+           roll < 99 ? 3 :
+           roll == 99 ? 4 : 0xFF;
+}
+
+constexpr uint8_t superRodSlotK(uint32_t roll) noexcept {
+    return roll < 40 ? 0 :
+           roll < 70 ? 1 :
+           roll < 85 ? 2 :
+           roll < 95 ? 3 :
+           roll < 100 ? 4 : 0xFF;
+}
+
+constexpr bool isFishing(uint8_t type) noexcept {
+    return type >= 2 && type <= 4;
+}
+
+constexpr uint8_t fishingSlot(bool hgss, uint8_t type, uint16_t rand16) noexcept {
+    if (!isFishing(type)) return 0xFF;
+    if (hgss)
+        return superRodSlotK(rand16 % 100u);
+
+    const uint32_t roll = rand16 / 656u;
+    return type == 2 ? surfSlot(roll) : superRodSlotJ(roll);
+}
+
+constexpr bool fishingActivation(bool hgss, uint8_t type, uint16_t rand16) noexcept {
+    if (!isFishing(type)) return false;
+    uint32_t rate = type == 2 ? 25u : type == 3 ? 50u : 75u;
+    if (hgss)
+        rate += 50u; // PKHeX Method K best-case following-Pokemon bonus; no lead ability required.
+    const uint32_t roll = hgss ? (rand16 % 100u) : (rand16 / 656u);
+    return roll < rate;
 }
 
 constexpr uint32_t sequentialPid(uint32_t seed) noexcept {
@@ -100,7 +140,12 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                                 uint32_t prePidSeed, uint32_t pid,
                                 uint8_t metLevel) noexcept {
     const uint8_t type = Gen4Wild::method(row);
-    if (type > 1)
+    if (type > 4)
+        return {};
+
+    // Mt. Coronet Feebas fishing has an additional tile-replacement RNG branch.
+    // Keep it unresolved until that area-specific activation state is represented.
+    if (!hgss && isFishing(type) && Gen4Wild::species(row) == 349)
         return {};
 
     const uint8_t nature = static_cast<uint8_t>(pid % 25u);
@@ -121,9 +166,15 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
             const uint16_t prev1 = static_cast<uint16_t>(seed1 >> 16);
             const uint16_t prev2 = static_cast<uint16_t>(seed2 >> 16);
 
-            const uint8_t rolledSlot = hgss
-                ? methodKSlot(type, type == 0 ? prev1 : prev2)
-                : methodJSlot(type, type == 0 ? prev1 : prev2);
+            uint8_t rolledSlot = 0xFF;
+            if (type == 0) {
+                rolledSlot = hgss ? methodKSlot(type, prev1) : methodJSlot(type, prev1);
+            } else if (type == 1) {
+                rolledSlot = hgss ? methodKSlot(type, prev2) : methodJSlot(type, prev2);
+            } else {
+                rolledSlot = fishingSlot(hgss, type, prev2);
+            }
+
             if (rolledSlot == Gen4Wild::slot(row)) {
                 if (type == 0) {
                     if (Gen4Wild::levelMatches(row, metLevel))
@@ -132,9 +183,22 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                 } else {
                     const uint8_t level =
                         randomLevel(Gen4Wild::minLevel(row), Gen4Wild::maxLevel(row), prev1);
-                    if (level == metLevel)
+                    if (level != metLevel)
+                        continue;
+
+                    if (type == 1)
                         return {hgss ? Method::MethodKNoLead : Method::MethodJNoLead,
                                 candidate, rolledSlot};
+
+                    const uint32_t prev3Seed =
+                        Gen3PidIv::Detail::prev(Gen3PidIv::Detail::prev(
+                            Gen3PidIv::Detail::prev(candidate)));
+                    if (fishingActivation(hgss, type,
+                                          static_cast<uint16_t>(prev3Seed >> 16))) {
+                        return {hgss ? Method::MethodKFishingNoLead
+                                     : Method::MethodJFishingNoLead,
+                                candidate, rolledSlot};
+                    }
                 }
             }
         }
@@ -178,6 +242,8 @@ constexpr const char* methodName(Method method) noexcept {
     switch (method) {
         case Method::MethodJNoLead: return "Method J (no lead)";
         case Method::MethodKNoLead: return "Method K (no lead)";
+        case Method::MethodJFishingNoLead: return "Method J fishing (no lead)";
+        case Method::MethodKFishingNoLead: return "Method K fishing (no lead)";
         case Method::None: break;
     }
     return "No no-lead Method J/K match";

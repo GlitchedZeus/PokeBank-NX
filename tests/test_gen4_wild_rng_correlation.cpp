@@ -43,9 +43,30 @@ int main() {
     constexpr uint64_t kWrong = makeRow(0, 5, 5, 5);
     static_assert(!matchNoLeadRow(true, kWrong, methodKSeed, methodKPid, 5).matched());
 
-    // The conservative first tranche deliberately refuses unsupported encounter types.
-    constexpr uint64_t fishing = makeRow(2, 0, 5, 10);
-    static_assert(!matchNoLeadRow(false, fishing, methodJSeed, methodJPid, 5).matched());
+    // D/P/Pt Old Rod positive vector: pre-PID seed 331 rolls slot 0, level 7,
+    // and passes the 25% rod activation frame.
+    constexpr uint32_t fishingJSeed = 331u;
+    constexpr uint32_t fishingJPid = sequentialPid(fishingJSeed);
+    constexpr uint64_t fishingJ = makeRow(2, 0, 5, 10);
+    constexpr auto jf = matchNoLeadRow(false, fishingJ, fishingJSeed, fishingJPid, 7);
+    static_assert(jf.method == Method::MethodJFishingNoLead);
+    static_assert(jf.slot == 0);
+    static_assert(!matchNoLeadRow(false, fishingJ, fishingJSeed, fishingJPid, 8).matched());
+
+    // HG/SS Old Rod positive vector: pre-PID seed 26 rolls slot 0, level 8,
+    // and passes the normal/following-Pokemon rod activation path without a lead ability.
+    constexpr uint32_t fishingKSeed = 26u;
+    constexpr uint32_t fishingKPid = sequentialPid(fishingKSeed);
+    constexpr uint64_t fishingK = makeRow(2, 0, 5, 10);
+    constexpr auto kf = matchNoLeadRow(true, fishingK, fishingKSeed, fishingKPid, 8);
+    static_assert(kf.method == Method::MethodKFishingNoLead);
+    static_assert(kf.slot == 0);
+
+    // Feebas fishing remains fail-closed until the Mt. Coronet tile branch is modeled.
+    constexpr uint64_t feebasFishing =
+        fishingJ | static_cast<uint64_t>(349u);
+    static_assert(!matchNoLeadRow(false, feebasFishing,
+                                  fishingJSeed, fishingJPid, 7).matched());
 
     // The packed wild table reader must retain slot bits emitted by the generator.
     constexpr uint64_t packedSample = 0x20000060c260aULL;
