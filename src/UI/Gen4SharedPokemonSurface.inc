@@ -1898,15 +1898,18 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     fb.drawText(x + 34, y + 294, "PID / RNG correlation", Colors::TextDim);
     fb.drawText(x + 250, y + 294, coverageText(report.coverage.pidRng),
                 coverageColor(report.coverage.pidRng));
-    fb.drawText(x + 34, y + 332, "Detected issues", Colors::TextDim);
-    fb.drawText(x + 250, y + 332, std::to_string(report.problemCount()),
+    fb.drawText(x + 34, y + 332, "Egg / breeding", Colors::TextDim);
+    fb.drawText(x + 250, y + 332, coverageText(report.coverage.eggBreeding),
+                coverageColor(report.coverage.eggBreeding));
+    fb.drawText(x + 34, y + 370, "Detected issues", Colors::TextDim);
+    fb.drawText(x + 250, y + 370, std::to_string(report.problemCount()),
                 report.hasInvalid() ? Colors::Error :
                     report.problemCount() ? Colors::Warning : Colors::Success);
-    fb.drawText(x + 34, y + 370, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 250, y + 370, "HARD DISABLED", Colors::Accent);
+    fb.drawText(x + 34, y + 408, "Source mutation", Colors::TextDim);
+    fb.drawText(x + 250, y + 408, "HARD DISABLED", Colors::Accent);
 
     if (report.problemCount() == 0 && report.verdict() == Legality::Verdict::Incomplete)
-        fb.drawText(x + 34, y + 420,
+        fb.drawText(x + 34, y + 448,
                     "No problem was found by completed checks; encounter/RNG legality is still incomplete.",
                     Colors::Warning, TextStyle::Caption);
 

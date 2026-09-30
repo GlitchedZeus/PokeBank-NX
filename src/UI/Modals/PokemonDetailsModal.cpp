@@ -565,6 +565,7 @@ namespace Modals {
                 coverageRow("Moves", legalityRep.coverage.moves);
                 coverageRow("Encounter", legalityRep.coverage.encounter);
                 coverageRow("PID / RNG", legalityRep.coverage.pidRng);
+                coverageRow("Egg / Breeding", legalityRep.coverage.eggBreeding);
                 ly += 4;
             }
 

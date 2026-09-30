@@ -160,6 +160,8 @@ require("incomplete coverage" in pokemon_details,
         "details UI must not label partially-checked Pokemon as fully legal")
 require("legalityRep.coverage.encounter" in pokemon_details,
         "legality report must show encounter coverage")
+require("legalityRep.coverage.eggBreeding" in pokemon_details,
+        "legality report must show egg/breeding coverage")
 require("std::string_view(sourceGameId)" in trainer,
         "legality input must carry the exact open-save identity")
 
