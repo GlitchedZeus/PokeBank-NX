@@ -29,6 +29,7 @@
 #include "Legality/Gen4WildRngCorrelation.h"
 #include "Legality/Gen34EggState.h"
 #include "Legality/Gen34EggMoveEvidence.h"
+#include "Legality/Gen4TransferEvidence.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 
 #include <algorithm>
@@ -184,6 +185,42 @@ namespace Legality {
             if (exactGeneration == 3 || exactGeneration == 4) {
                 r.coverage.pidRng = CoverageLevel::Partial;
                 r.coverage.eggBreeding = CoverageLevel::Partial;
+            }
+            // Gen I/III containers cannot carry an earlier-generation entity history.
+            // Gen II Time Capsule history is only partially recoverable from PK1/PK2 data.
+            if (exactGeneration == 1 || exactGeneration == 3)
+                r.coverage.transfer = CoverageLevel::Complete;
+            else if (exactGeneration == 2)
+                r.coverage.transfer = CoverageLevel::Partial;
+            else if (exactGeneration == 4)
+                r.coverage.transfer = CoverageLevel::Complete;
+        }
+
+        if (sourceProfile && exactGeneration == 4) {
+            const int originGeneration = Enums::getVersionGeneration(pk.originGame());
+            if (originGeneration == 0) {
+                add(r, Severity::Warning,
+                    "PK4 origin game could not be mapped to a known generation",
+                    CheckIdentifier::Transfer);
+                r.coverage.transfer = CoverageLevel::Partial;
+            } else if (originGeneration == 3) {
+                const auto transfer =
+                    Gen4Transfer::classify(3, pk.metLocation(), pk.isEgg());
+                if (transfer == Gen4Transfer::Evidence::PalParkMarker) {
+                    add(r, Severity::Info,
+                        "Gen III origin carries the required Pal Park transfer met location; DP/Pt/HGSS split-field provenance remains partial",
+                        CheckIdentifier::Transfer);
+                    r.coverage.transfer = CoverageLevel::Partial;
+                } else if (Gen4Transfer::invalid(transfer)) {
+                    add(r, Severity::Invalid,
+                        std::string(Gen4Transfer::evidenceName(transfer)),
+                        CheckIdentifier::Transfer);
+                }
+            } else if (originGeneration != 4) {
+                add(r, Severity::Invalid,
+                    "Origin generation " + std::to_string(originGeneration) +
+                    " cannot be stored directly in a retail Generation IV PK4",
+                    CheckIdentifier::Transfer);
             }
         }
 
