@@ -782,7 +782,9 @@ namespace Save {
         if (!persistWorkspaceFile(
                 "Sword/Shield", savePath,
                 std::span<const uint8_t>(encryptedData.data(), encryptedData.size()),
-                validateSCWorkspace)) {
+                [](std::span<const uint8_t> bytes, std::string& error) {
+                    return validateSCWorkspace(bytes, GameVersion::SWSH, error);
+                })) {
             return false;
         }
 
@@ -957,7 +959,9 @@ namespace Save {
         if (!persistWorkspaceFile(
                 "Legends: Z-A", savePath,
                 std::span<const uint8_t>(encryptedData.data(), encryptedData.size()),
-                validateSCWorkspace)) {
+                [](std::span<const uint8_t> bytes, std::string& error) {
+                    return validateSCWorkspace(bytes, GameVersion::ZA, error);
+                })) {
             return false;
         }
 
@@ -998,7 +1002,9 @@ namespace Save {
         if (!persistWorkspaceFile(
                 "Scarlet/Violet", savePath,
                 std::span<const uint8_t>(encryptedData.data(), encryptedData.size()),
-                validateSCWorkspace)) {
+                [](std::span<const uint8_t> bytes, std::string& error) {
+                    return validateSCWorkspace(bytes, GameVersion::SV, error);
+                })) {
             return false;
         }
 
