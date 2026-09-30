@@ -31,6 +31,7 @@
 #include "Legality/Gen4CuteCharmPid.h"
 #include "Legality/Gen4ChainShiny.h"
 #include "Legality/Gen4MysteryGiftPid.h"
+#include "Legality/Gen4RangerManaphy.h"
 #include "Legality/Gen4EventTemplate.h"
 #include "Legality/Gen4WildRngCorrelation.h"
 #include "Legality/Gen34EggState.h"
@@ -266,6 +267,23 @@ namespace Legality {
 
         bool directGen4EventTemplate = false;
         if (sourceProfile && exactGeneration == 4) {
+            const bool rangerManaphy = Gen4RangerManaphy::matches({
+                species,
+                pk.language(),
+                pk.gender(),
+                pk.isEgg(),
+                pk.eggLocation(),
+                pk.metLocation(),
+                pk.ball(),
+                pk.isFatefulEncounter()
+            });
+            if (rangerManaphy) {
+                r.coverage.eventGift = CoverageLevel::Partial;
+                add(r, Severity::Info,
+                    "PK4 has positive Pokémon Ranger Manaphy PGT provenance; exact hatch/trade history and PID anti-shiny recipient correlation remain partially recoverable",
+                    CheckIdentifier::EventGift);
+            }
+
             const auto eventMatch = Gen4EventTemplate::matchDirect({
                 species,
                 pk.tid16(),
