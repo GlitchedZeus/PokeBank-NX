@@ -202,7 +202,7 @@ namespace Legality {
             if (Gen2Static::matches(
                     exactSourceGameId, gen2.speciesID(), gen2.level(),
                     gen2.caughtData(), gen2.isEgg(),
-                    gen2.isShiny(gen2.id32(), gen2.species()))) {
+                    gen2.isShiny(gen2.id32(), {}))) {
                 add(r, Severity::Info,
                     "PK2 data is compatible with a pinned Generation II static/gift encounter",
                     CheckIdentifier::Encounter);
