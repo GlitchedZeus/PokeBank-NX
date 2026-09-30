@@ -843,7 +843,9 @@ namespace Legality {
                         CheckIdentifier::Encounter);
                 } else if (Legality::Gen4Static::matches(
                                exactSourceGameId, species, pk.metLocation(), pk.metLevel(),
-                               pk.form(), pk.eggLocation(), pk.ball())) {
+                               pk.form(), pk.eggLocation(), pk.ball(),
+                               pk.gender(), pk.nature(),
+                               pk.isShiny(pk.id32(), {}), pk.isFatefulEncounter())) {
                     add(r, Severity::Info,
                         "Met data matches an audited Generation IV static/gift encounter",
                         CheckIdentifier::Encounter);
