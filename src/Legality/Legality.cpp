@@ -18,6 +18,7 @@
 #include "Legality/Gen1CatchRateEvidence.h"
 #include "Legality/Gen1EncounterEvidence.h"
 #include "Legality/Gen12TimeCapsuleEvidence.h"
+#include "Legality/Gen2StaticEncounter.h"
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3ChannelPidIvCorrelation.h"
@@ -193,6 +194,19 @@ namespace Legality {
                 add(r, Severity::Info,
                     "Current PK2 species/moves are compatible with a Gen II -> Gen I Time Capsule trade",
                     CheckIdentifier::Transfer);
+            }
+
+            if (Gen2Static::matches(
+                    exactSourceGameId, gen2.speciesID(), gen2.level(),
+                    gen2.caughtData(), gen2.isEgg(),
+                    gen2.isShiny(gen2.id32(), gen2.species()))) {
+                add(r, Severity::Info,
+                    "PK2 data is compatible with a pinned Generation II static/gift encounter",
+                    CheckIdentifier::Encounter);
+            } else if (Gen2Static::hasSpecies(exactSourceGameId, gen2.speciesID())) {
+                add(r, Severity::Info,
+                    "No matching Gen II static/gift evidence; wild/trade/event provenance remains incomplete",
+                    CheckIdentifier::Encounter);
             }
         }
 
