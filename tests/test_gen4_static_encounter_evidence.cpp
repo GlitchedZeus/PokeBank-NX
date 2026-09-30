@@ -21,10 +21,16 @@ int main() {
     assert(matches("platinum_nds", 487, 117, 47, 1, 0));
     assert(!matches("platinum_nds", 487, 117, 47, 0, 0));
 
-    // D/P Riolu egg requires its exact egg-location evidence.
+    // D/P Riolu egg requires its exact egg-location evidence and fixed Poke Ball.
+    assert(matches("diamond_nds", 447, 40, 0, 0, 2010, 4));
+    assert(!matches("diamond_nds", 447, 40, 0, 0, 2010, 2));
     assert(matches("diamond_nds", 447, 40, 0, 0, 2010));
     assert(!matches("diamond_nds", 447, 40, 0, 0, 0));
     assert(!matches("diamond_nds", 447, 40, 1, 0, 2010));
+
+    // Diamond gift Eevee is fixed to a Poke Ball.
+    assert(matches("diamond_nds", 133, 10, 5, 0, 0, 4));
+    assert(!matches("diamond_nds", 133, 10, 5, 0, 0, 1));
 
     // HG/SS Spiky-eared Pichu is form 1 at Ilex Forest.
     assert(matches("heartgold_nds", 172, 214, 30, 1, 0));

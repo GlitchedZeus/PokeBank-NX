@@ -674,7 +674,7 @@ namespace Legality {
 
         // ---- L3 foundation: exact encounter evidence where audited tables exist ----
         if (sourceProfile && sourceProfile->encounterCoverage != CoverageLevel::None &&
-            pk.metLocation() != 0 && pk.metLevel() != 0) {
+            (exactGeneration == 4 || (pk.metLocation() != 0 && pk.metLevel() != 0))) {
             using namespace PokeVault::Integration::EncounterGuardrails;
             if (exactGeneration == 3) {
                 const auto candidates =
@@ -696,14 +696,14 @@ namespace Legality {
                 // encounter layer remains Partial until static/gift/trade/event templates are added.
                 // A positive match is useful evidence. A non-match is intentionally NOT an error yet,
                 // because the Pokemon may come from one of those still-unimported encounter classes.
-                if (Legality::Gen4Wild::matches(
+                if (pk.metLevel() != 0 && Legality::Gen4Wild::matches(
                         exactSourceGameId, species, pk.metLocation(), pk.metLevel(), pk.form())) {
                     add(r, Severity::Info,
                         "Met data matches an audited Generation IV wild encounter slot",
                         CheckIdentifier::Encounter);
                 } else if (Legality::Gen4Static::matches(
                                exactSourceGameId, species, pk.metLocation(), pk.metLevel(),
-                               pk.form(), pk.eggLocation())) {
+                               pk.form(), pk.eggLocation(), pk.ball())) {
                     add(r, Severity::Info,
                         "Met data matches an audited Generation IV static/gift encounter",
                         CheckIdentifier::Encounter);

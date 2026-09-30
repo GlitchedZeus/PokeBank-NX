@@ -16,6 +16,7 @@ namespace Legality::Gen4Static {
 //   egg location [36..47] (12 bits)
 //   roaming      [48]     (1 bit)
 //   game         [49..51] (3 bits; Gen4Wild::Game)
+//   fixed ball   [52..56] (5 bits; 0 = unrestricted)
 #include "Legality/Gen4StaticEncounterData.inc"
 
 constexpr uint16_t species(uint64_t v) noexcept {
@@ -38,6 +39,9 @@ constexpr bool roaming(uint64_t v) noexcept {
 }
 constexpr Gen4Wild::Game game(uint64_t v) noexcept {
     return static_cast<Gen4Wild::Game>((v >> 49) & 0x07u);
+}
+constexpr uint8_t fixedBall(uint64_t v) noexcept {
+    return static_cast<uint8_t>((v >> 52) & 0x1Fu);
 }
 
 constexpr bool roamerLocationAllowed(uint16_t originLocation, uint16_t metLocation) noexcept {
@@ -73,12 +77,16 @@ inline bool hasSpecies(std::string_view exactGameId, uint16_t speciesId) noexcep
 
 inline bool matches(std::string_view exactGameId, uint16_t speciesId,
                     uint16_t metLocation, uint8_t metLevel, uint8_t pokemonForm,
-                    uint16_t pokemonEggLocation) noexcept {
+                    uint16_t pokemonEggLocation, uint8_t pokemonBall = 0xFF) noexcept {
     const auto wanted = Gen4Wild::gameForId(exactGameId);
     if (wanted == Gen4Wild::Game::Invalid || speciesId == 0)
         return false;
     for (const uint64_t row : kPackedGen4StaticEncounters) {
         if (game(row) != wanted || species(row) != speciesId || form(row) != pokemonForm)
+            continue;
+
+        const uint8_t requiredBall = fixedBall(row);
+        if (requiredBall != 0 && pokemonBall != 0xFF && pokemonBall != requiredBall)
             continue;
 
         const uint16_t expectedEgg = eggLocation(row);
