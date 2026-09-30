@@ -17,7 +17,9 @@ def ordered(text: str, *parts: str) -> bool:
 
 
 def function_body(text: str, signature: str) -> str:
-    start = text.index(signature)
+    # Headers may contain a prototype before the implementation; use the last
+    # matching signature so ordering checks inspect the actual function body.
+    start = text.rindex(signature)
     brace = text.index("{", start)
     depth = 0
     for i in range(brace, len(text)):
