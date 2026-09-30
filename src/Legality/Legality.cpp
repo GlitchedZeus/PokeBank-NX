@@ -204,12 +204,20 @@ namespace Legality {
 
             for (int slotIndex = 0; slotIndex < 4; ++slotIndex) {
                 const uint16_t moveId = pk.move(slotIndex);
-                if (Gen34EggMove::isEggMove(exactSourceGameId, species, moveId)) {
-                    add(r, Severity::Info,
-                        "Move has positive egg-move evidence for this exact generation/game: " +
-                        std::string(Names::getMoveName(moveId)),
-                        CheckIdentifier::Egg);
-                }
+                const auto eggMove =
+                    Gen34EggMove::classify(exactSourceGameId, species, moveId);
+                if (!eggMove.matched())
+                    continue;
+
+                std::string detail =
+                    "Move has positive " +
+                    std::string(Gen34EggMove::evidenceName(eggMove.evidence)) +
+                    " evidence for this exact generation/game: " +
+                    std::string(Names::getMoveName(moveId));
+                if (eggMove.evidence == Gen34EggMove::MoveEvidence::PreEvolutionEggMove)
+                    detail += " (ancestor species " +
+                              std::to_string(eggMove.sourceSpecies) + ")";
+                add(r, Severity::Info, std::move(detail), CheckIdentifier::Egg);
             }
         }
 

@@ -18,10 +18,22 @@ int main() {
     static_assert(isEggMove("firered_gba", 1, 345)); // Magical Leaf
     static_assert(!isEggMove("ruby_gba", 1, 57)); // Surf is not egg evidence.
 
+    static_assert(preEvolution("ruby_gba", 2) == 1); // Ivysaur -> Bulbasaur
+    static_assert(preEvolution("ruby_gba", 3) == 2); // Venusaur -> Ivysaur
+    constexpr auto ivysaurPetal = classify("ruby_gba", 2, 80);
+    static_assert(ivysaurPetal.evidence == MoveEvidence::PreEvolutionEggMove);
+    static_assert(ivysaurPetal.sourceSpecies == 1);
+    constexpr auto venusaurPetal = classify("ruby_gba", 3, 80);
+    static_assert(venusaurPetal.evidence == MoveEvidence::PreEvolutionEggMove);
+    static_assert(venusaurPetal.sourceSpecies == 1);
+
     // Gen IV DP egg pool contains the inherited Gen III set plus Gen IV additions.
     static_assert(isEggMove("diamond_nds", 1, 80));
     static_assert(isEggMove("diamond_nds", 1, 437)); // Leaf Storm
     static_assert(!isEggMove("diamond_nds", 1, 57));
+    constexpr auto ivysaurLeafStorm = classify("diamond_nds", 2, 437);
+    static_assert(ivysaurLeafStorm.evidence == MoveEvidence::PreEvolutionEggMove);
+    static_assert(ivysaurLeafStorm.sourceSpecies == 1);
 
     static_assert(speciesHasEggMoves("platinum_nds", 1));
     static_assert(!speciesHasEggMoves("unknown", 1));

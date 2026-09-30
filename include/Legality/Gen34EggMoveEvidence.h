@@ -14,6 +14,21 @@ enum class Group : uint8_t {
     HeartGoldSoulSilver,
 };
 
+enum class MoveEvidence : uint8_t {
+    None,
+    DirectEggMove,
+    PreEvolutionEggMove,
+};
+
+struct MoveResult {
+    MoveEvidence evidence = MoveEvidence::None;
+    uint16_t sourceSpecies = 0;
+
+    constexpr bool matched() const noexcept {
+        return evidence != MoveEvidence::None;
+    }
+};
+
 constexpr Group groupForId(std::string_view id) noexcept {
     if (id == "ruby_gba" || id == "sapphire_gba" || id == "emerald_gba" ||
         id == "firered_gba" || id == "leafgreen_gba")
@@ -52,6 +67,45 @@ constexpr bool isEggMove(std::string_view exactGameId, uint16_t species,
                          uint16_t move) noexcept {
     const auto* row = rowFor(groupForId(exactGameId), species);
     return row && bit(*row, move);
+}
+
+constexpr uint16_t preEvolution(std::string_view exactGameId,
+                                uint16_t species) noexcept {
+    if (species == 0 || species > 493)
+        return 0;
+    const Group group = groupForId(exactGameId);
+    if (group == Group::Gen3)
+        return kPreEvolutionGen3[species];
+    if (group == Group::DiamondPearl || group == Group::Platinum ||
+        group == Group::HeartGoldSoulSilver)
+        return kPreEvolutionGen4[species];
+    return 0;
+}
+
+constexpr MoveResult classify(std::string_view exactGameId, uint16_t species,
+                              uint16_t move) noexcept {
+    if (isEggMove(exactGameId, species, move))
+        return {MoveEvidence::DirectEggMove, species};
+
+    uint16_t ancestor = preEvolution(exactGameId, species);
+    for (int depth = 0; ancestor != 0 && depth < 8; ++depth) {
+        if (isEggMove(exactGameId, ancestor, move))
+            return {MoveEvidence::PreEvolutionEggMove, ancestor};
+        const uint16_t next = preEvolution(exactGameId, ancestor);
+        if (next == ancestor)
+            break;
+        ancestor = next;
+    }
+    return {};
+}
+
+constexpr const char* evidenceName(MoveEvidence evidence) noexcept {
+    switch (evidence) {
+        case MoveEvidence::DirectEggMove: return "direct egg move";
+        case MoveEvidence::PreEvolutionEggMove: return "retained pre-evolution egg move";
+        case MoveEvidence::None: break;
+    }
+    return "no egg-move evidence";
 }
 
 constexpr bool speciesHasEggMoves(std::string_view exactGameId,
