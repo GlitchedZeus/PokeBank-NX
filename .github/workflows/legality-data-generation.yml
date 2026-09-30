@@ -8,6 +8,7 @@ on:
     paths:
       - tools/gen_legality_gen4_wild.py
       - tools/gen_legality_gen34_egg_moves.py
+      - tools/gen_legality_gen4_events.py
       - tools/pkhex_source.py
       - .github/workflows/legality-data-generation.yml
 
@@ -31,13 +32,15 @@ jobs:
         run: |
           python3 tools/gen_legality_gen4_wild.py
           python3 tools/gen_legality_gen34_egg_moves.py
+          python3 tools/gen_legality_gen4_events.py
 
       - name: Show deterministic diff and digest
         run: |
           set -euo pipefail
-          git diff -- include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc
+          git diff -- include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc
           sha256sum include/Legality/Gen4WildEncounterData.inc
           sha256sum include/Legality/Gen34EggMoveData.inc
+          sha256sum include/Legality/Gen4EventTemplateData.inc
           git diff --check
 
       - name: Upload generated table
@@ -47,6 +50,7 @@ jobs:
           path: |
             include/Legality/Gen4WildEncounterData.inc
             include/Legality/Gen34EggMoveData.inc
+            include/Legality/Gen4EventTemplateData.inc
           if-no-files-found: error
           retention-days: 7
 
@@ -54,12 +58,12 @@ jobs:
         if: github.event_name == 'push'
         run: |
           set -euo pipefail
-          git add include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc
+          git add include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc
           if git diff --cached --quiet; then
             echo "Generated tables already match the branch."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "legality: regenerate pinned encounter and egg-move evidence"
+          git commit -m "legality: regenerate pinned encounter, egg-move and event evidence"
           git push origin "HEAD:${GITHUB_REF_NAME}"
