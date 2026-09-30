@@ -137,6 +137,8 @@ HOST_TESTS += $(HOST_BUILD)/test_legality_legacy_move_context
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_legacy_move_context_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen34_egg_state
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_egg_state_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_wild_rng_correlation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_wild_rng_correlation_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_wild_encounter_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_wild_encounter_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_static_encounter_evidence
@@ -231,6 +233,18 @@ $(HOST_BUILD)/test_gen34_egg_state: tests/test_gen34_egg_state.cpp include/Legal
 $(HOST_BUILD)/test_gen34_egg_state_sanitize: tests/test_gen34_egg_state.cpp include/Legality/Gen34EggState.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen34_egg_state.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_wild_rng_correlation: tests/test_gen4_wild_rng_correlation.cpp \
+		include/Legality/Gen4WildRngCorrelation.h include/Legality/Gen4WildEncounter.h \
+		include/Legality/Gen4WildEncounterData.inc include/Legality/Gen3PidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_wild_rng_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_wild_rng_correlation_sanitize: tests/test_gen4_wild_rng_correlation.cpp \
+		include/Legality/Gen4WildRngCorrelation.h include/Legality/Gen4WildEncounter.h \
+		include/Legality/Gen4WildEncounterData.inc include/Legality/Gen3PidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_wild_rng_correlation.cpp -o $@
 
 $(HOST_BUILD)/test_gen4_wild_encounter_evidence: tests/test_gen4_wild_encounter_evidence.cpp include/Legality/Gen4WildEncounter.h include/Legality/Gen4WildEncounterData.inc
 	@mkdir -p $(HOST_BUILD)

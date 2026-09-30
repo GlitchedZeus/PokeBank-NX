@@ -26,6 +26,7 @@
 #include "Legality/Gen4CuteCharmPid.h"
 #include "Legality/Gen4ChainShiny.h"
 #include "Legality/Gen4MysteryGiftPid.h"
+#include "Legality/Gen4WildRngCorrelation.h"
 #include "Legality/Gen34EggState.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 
@@ -302,9 +303,20 @@ namespace Legality {
                 };
                 const auto correlation = Gen4PidIv::analyze(pk.pid(), ivs);
                 if (correlation.matched()) {
-                    add(r, Severity::Info,
-                        "PID/IV spread matches normal Gen IV Method 1; wild lead-frame correlation is still partial",
-                        CheckIdentifier::PidRng);
+                    const auto wildRng = Gen4WildRng::analyzeNoLead(
+                        exactSourceGameId, species, pk.metLocation(), pk.metLevel(),
+                        pk.form(), correlation.originSeed, pk.pid());
+                    if (wildRng.matched()) {
+                        add(r, Severity::Info,
+                            "PID/IV spread and wild slot match Generation IV " +
+                            std::string(Gen4WildRng::methodName(wildRng.method)) +
+                            "; special-lead and activation branches remain incomplete",
+                            CheckIdentifier::PidRng);
+                    } else {
+                        add(r, Severity::Info,
+                            "PID/IV spread matches normal Gen IV Method 1; no-lead Grass/Surf Method J/K slot correlation was not proven, and special-lead/activation branches remain incomplete",
+                            CheckIdentifier::PidRng);
+                    }
                 } else {
                     const auto identity =
                         Gen4CuteCharmPid::remapEncounterIdentity(
