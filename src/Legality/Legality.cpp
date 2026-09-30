@@ -28,6 +28,7 @@
 #include "Legality/Gen4MysteryGiftPid.h"
 #include "Legality/Gen4WildRngCorrelation.h"
 #include "Legality/Gen34EggState.h"
+#include "Legality/Gen34EggMoveEvidence.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 
 #include <algorithm>
@@ -199,6 +200,16 @@ namespace Legality {
                         ? "PK3 unhatched egg state has the native met-level-0 structure; exact hatch-location and inherited-move evidence remain incomplete"
                         : "PK4 egg-origin state has native met-level-0 structure and egg-location evidence; exact hatch-location and inherited-move evidence remain incomplete",
                     CheckIdentifier::Egg);
+            }
+
+            for (int slotIndex = 0; slotIndex < 4; ++slotIndex) {
+                const uint16_t moveId = pk.move(slotIndex);
+                if (Gen34EggMove::isEggMove(exactSourceGameId, species, moveId)) {
+                    add(r, Severity::Info,
+                        "Move has positive egg-move evidence for this exact generation/game: " +
+                        std::string(Names::getMoveName(moveId)),
+                        CheckIdentifier::Egg);
+                }
             }
         }
 
