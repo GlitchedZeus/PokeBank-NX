@@ -2253,7 +2253,7 @@ namespace UI {
         }
 
         drawNavBar(fb, {{"D-pad/Stick","Choose Game"},{"A","Open"},
-                        {"L/R","Switch User"},{"ZR","Launch"},{"+","Settings"},
+                        {"L/R","Switch User"},{"ZR","Launch"},
                         {"-","Help"},{"B","Back"}});
     }
 
@@ -2261,6 +2261,7 @@ namespace UI {
         titleRects.clear();
         userRects.clear();
         dockRects.clear();
+        headerRects.clear();
 
         if (classicGamesActive) {
             drawClassicGameSources(fb);
@@ -2284,11 +2285,16 @@ namespace UI {
         const UserEntry* u = currentUser();
         const int count = u ? static_cast<int>(u->titles.size()) : 0;
 
-        // Header right: current profile only. Settings has one canonical bottom-dock control (+ remains global).
+        // Header right owns the only Profile and Settings destinations.
         if (u) {
-            const int avatarX = 1010, avatarY = 10;
+            const int avatarX = 1000, avatarY = 10;
+            const bool profileFocused = headerActionIndex == 0;
+            const bool settingsFocused = headerActionIndex == 1;
             const IconImage* avatar =
                 u->name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(u->uid);
+
+            if (profileFocused)
+                fb.drawFilledRoundedRect(avatarX - 10, 6, 176, 54, 24, Colors::PanelAlt);
             if (avatar && avatar->valid())
                 fb.drawImageScaled(avatarX, avatarY, avatar->width, avatar->height,
                                    PROFILE_AVATAR, PROFILE_AVATAR, avatar->data, 4);
@@ -2296,19 +2302,28 @@ namespace UI {
                 fb.drawFilledRoundedRect(avatarX, avatarY, PROFILE_AVATAR, PROFILE_AVATAR,
                                          PROFILE_AVATAR / 2, Colors::PanelAlt);
             fb.drawRoundedRect(avatarX, avatarY, PROFILE_AVATAR, PROFILE_AVATAR,
-                               PROFILE_AVATAR / 2, Colors::FocusBorder, 2);
+                               PROFILE_AVATAR / 2,
+                               profileFocused ? Colors::FocusBorder : Colors::Divider,
+                               profileFocused ? 3 : 2);
 
             std::string profileName = u->name;
-            if (profileName.size() > 16) profileName = profileName.substr(0, 15) + "…";
-            fb.drawText(avatarX + PROFILE_AVATAR + 12, 19, profileName,
-                        Colors::TextPrimary, TextStyle::Heading);
+            if (profileName.size() > 12) profileName = profileName.substr(0, 11) + "…";
+            fb.drawText(avatarX + PROFILE_AVATAR + 10, 19, profileName,
+                        profileFocused ? Colors::SelectedText : Colors::TextPrimary,
+                        TextStyle::Heading);
+            headerRects.push_back({avatarX - 10, 6, 176, 54, 0});
 
+            const int settingsX = 1200, settingsY = 10;
+            drawFocusedCard(fb, settingsX, settingsY, PROFILE_AVATAR, PROFILE_AVATAR,
+                            settingsFocused, PROFILE_AVATAR / 2);
+            drawHubDockIcon(fb, 5, settingsX, settingsY, PROFILE_AVATAR, settingsFocused);
+            headerRects.push_back({settingsX, settingsY, PROFILE_AVATAR, PROFILE_AVATAR, 1});
         }
 
         // Right: selected-game hero card.
         // Historical wording is retained because the cross-lane polish contract uses this boundary
         // to prove that physical source diagnostics stay out of the normal product presentation.
-        const bool gameFocused = !hubDockFocused && hubFeatureIndex < 0;
+        const bool gameFocused = !hubDockFocused && hubFeatureIndex < 0 && headerActionIndex < 0;
         drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, 18);
         if (gameFocused)
             fb.drawRoundedRect(DETAIL_X, HUB_Y, DETAIL_W, HUB_H, 18, Colors::Info, 3);
@@ -2565,11 +2580,11 @@ namespace UI {
                           fb.getHeight() - (PRODUCT_DOCK_Y - 12), Colors::Panel);
         fb.drawFilledRect(0, PRODUCT_DOCK_Y - 12, fb.getWidth(), 1, Colors::Divider);
 
-        static constexpr const char* dockLabels[6] =
-            {"Games", "Banks", "Items", "Search", "More", "Settings"};
+        static constexpr const char* dockLabels[5] =
+            {"Games", "Banks", "Items", "Search", "More"};
         const int dockStartX = 42;
-        for (int i = 0; i < 6; ++i) {
-            const int dx = i < 5 ? dockStartX + i * PRODUCT_DOCK_STEP : 1176;
+        for (int i = 0; i < 5; ++i) {
+            const int dx = dockStartX + i * PRODUCT_DOCK_STEP;
             const bool focused = hubDockFocused && hubDockIndex == i;
             drawFocusedCard(fb, dx, PRODUCT_DOCK_Y, PRODUCT_DOCK_SIZE, PRODUCT_DOCK_SIZE,
                             focused, PRODUCT_DOCK_SIZE / 2);
@@ -2588,13 +2603,104 @@ namespace UI {
                                          PRODUCT_DOCK_SIZE + 8, 3, 2, Colors::Info);
         }
 
-        auto homeHints = hubDockFocused && hubDockIndex == 0
-            ? std::string("A: Game Workspace | L/R: Change Game | -: Help | +: Settings | B: Exit")
-            : std::string("L/R: Change Game | A: Select | ZR: Launch | -: Help | +: Settings | B: Exit");
-        if (users.size() > 1) homeHints = "ZL: Profile | " + homeHints;
+        const auto homeHints = hubDockFocused && hubDockIndex == 0
+            ? std::string("A: Games | L/R: Change Game | +: Current Game | -: Help | B: Exit")
+            : std::string("L/R: Change Game | A: Open | ZR: Launch | +: Current Game | -: Help | B: Exit");
         drawNavHints(fb, 565, fb.getWidth() - 565, PRODUCT_DOCK_Y + 24, homeHints);
 
-        if (overlay == Overlay::GameWorkspace && u && titleIndex >= 0 &&
+        if (overlay == Overlay::GamesDrawer) {
+            fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH,
+                              Color(0, 0, 0, 118));
+            constexpr int x = 24, y = 72, w = 540, h = 554;
+            constexpr int rowH = 62, visibleRows = 7;
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 26, y + 18, "GAMES", Colors::Info, TextStyle::Caption);
+            fb.drawText(x + 26, y + 44, "Your Pokémon Games",
+                        Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 26, y + 76,
+                        "Select a game or assign / manage its save source.",
+                        Colors::TextSecondary, TextStyle::Caption);
+
+            fb.drawText(x + 34, y + 110, "GAME", Colors::TextMuted, TextStyle::Caption);
+            fb.drawText(x + 282, y + 110, "SYSTEM", Colors::TextMuted, TextStyle::Caption);
+            fb.drawText(x + 414, y + 110, "SAVE", Colors::TextMuted, TextStyle::Caption);
+
+            if (u) {
+                const int first = gamesDrawerScroll;
+                const int last = std::min<int>(
+                    static_cast<int>(u->titles.size()), first + visibleRows);
+                int rowY = y + 132;
+                for (int i = first; i < last; ++i) {
+                    const auto& title = u->titles[static_cast<size_t>(i)];
+                    const bool selected = i == gamesDrawerIndex;
+                    drawFocusedCard(fb, x + 18, rowY, w - 36, rowH - 6, selected, 10);
+                    fb.drawFilledCircle(x + 38, rowY + 26, 5,
+                                        selected ? Colors::FocusBorder : Colors::AccentPrimary);
+
+                    std::string name = title.label;
+                    if (name.size() > 24) name = name.substr(0, 23) + "…";
+                    fb.drawText(x + 54, rowY + 10, name,
+                                selected ? Colors::SelectedText : Colors::TextPrimary,
+                                TextStyle::Body);
+                    fb.drawText(x + 54, rowY + 34,
+                                title.trainerName.empty() ? productSourceLabel(title.sourceLabel)
+                                                          : title.trainerName,
+                                Colors::TextMuted, TextStyle::Caption);
+
+                    std::string platform = title.platformLabel;
+                    if (platform.size() > 15) platform = platform.substr(0, 14) + "…";
+                    fb.drawText(x + 282, rowY + 20, platform,
+                                Colors::TextSecondary, TextStyle::Caption);
+
+                    std::string saveCount = "1";
+                    if (title.sourceKind == SelectedSourceKind::RetroArchFRLG)
+                        saveCount = std::to_string(title.legacyInstances.size());
+                    else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile &&
+                             title.sourceLabel == "CHOOSE SAVE")
+                        saveCount = "—";
+                    fb.drawText(x + 438, rowY + 20, saveCount,
+                                Colors::TextSecondary, TextStyle::Caption);
+                    rowY += rowH;
+                }
+                drawScrollbar(fb, x + w - 12, y + 132, visibleRows * rowH,
+                              static_cast<int>(u->titles.size()) * rowH,
+                              gamesDrawerScroll * rowH);
+            }
+
+            if (!hubNotice.empty())
+                fb.drawText(x + 26, y + h - 36, hubNotice.substr(0, 72),
+                            Colors::Info, TextStyle::Caption);
+            drawNavBar(fb, {{"D-pad/Stick", "Choose Game"}, {"A", "Select Game"},
+                            {"X", "Assign Save"}, {"Y", "Manage Source"}, {"B", "Close"}});
+        } else if (overlay == Overlay::ProfilePicker) {
+            fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH,
+                              Color(0, 0, 0, 118));
+            constexpr int w = 470, rowH = 70;
+            const int h = std::min(500, 128 + static_cast<int>(users.size()) * rowH);
+            const int x = fb.getWidth() - w - 28, y = 74;
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 26, y + 18, "PROFILE", Colors::Info, TextStyle::Caption);
+            fb.drawText(x + 26, y + 44, "Switch User",
+                        Colors::TextPrimary, TextStyle::Heading);
+            int rowY = y + 90;
+            for (int i = 0; i < static_cast<int>(users.size()); ++i) {
+                const bool selected = i == profilePickerIndex;
+                drawFocusedCard(fb, x + 18, rowY, w - 36, rowH - 8, selected, 12);
+                const auto& user = users[static_cast<size_t>(i)];
+                const IconImage* avatar =
+                    user.name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(user.uid);
+                if (avatar && avatar->valid())
+                    fb.drawImageScaled(x + 34, rowY + 8, avatar->width, avatar->height,
+                                       44, 44, avatar->data, 4);
+                else
+                    fb.drawFilledCircle(x + 56, rowY + 30, 20, Colors::PanelAlt);
+                fb.drawText(x + 96, rowY + 18, user.name,
+                            selected ? Colors::SelectedText : Colors::TextPrimary,
+                            TextStyle::Body);
+                rowY += rowH;
+            }
+            drawNavBar(fb, {{"D-pad/Stick", "Choose User"}, {"A", "Switch"}, {"B", "Close"}});
+        } else if (overlay == Overlay::GameWorkspace && u && titleIndex >= 0 &&
             titleIndex < static_cast<int>(u->titles.size())) {
             const auto& title = u->titles[static_cast<size_t>(titleIndex)];
             constexpr int x = 86, y = 82, w = 1108, h = 536;
@@ -2695,7 +2801,7 @@ namespace UI {
                 fb.drawText(gridX, y + h - 42, notice, Colors::Info, TextStyle::Caption);
             }
             drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Open"},
-                            {"ZR", "Launch"}, {"+", "Settings"}, {"B", "Home"}});
+                            {"ZR", "Launch"}, {"+", "Close Menu"}, {"B", "Home"}});
         } else if (overlay == Overlay::GameFilePicker) {
             constexpr int w = 900, h = 560, rowH = 54, visibleRows = 7;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
@@ -2876,25 +2982,26 @@ namespace UI {
                             {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
             if (helpReturnOverlay == Overlay::GameWorkspace) {
-                drawInfoOverlay(fb, "Game Workspace Controls", {
-                    "D-pad / Left Stick   Navigate workspace destinations",
+                drawInfoOverlay(fb, "Current Game Controls", {
+                    "D-pad / Left Stick   Navigate game tools",
                     "A   Open the focused destination",
                     "B   Back to Product Home",
                     "ZR   Launch the selected game",
-                    "+   Settings",
+                    "+   Close the Current Game menu",
                     "-   Close Help / Controls",
-                    "Party / Boxes / Trainer / Editor route to the existing safe game screens",
-                    "Backups and Source / Game File stay source-aware and fail closed"
+                    "Overview / Party / Boxes / Trainer / Editor use the protected working copy",
+                    "Backups opens backup history only when you explicitly choose it"
                 });
             } else {
                 drawInfoOverlay(fb, "PokeBank NX Controls", {
                     "D-pad / Left Stick   Navigate (hold to scroll)",
-                    "A   Select / Open",
+                    "A   Open the selected game / focused control",
                     "L / R   Previous / next game",
-                    "ZL   Change profile when multiple profiles are available",
-                    "ZR   Launch, choose a source, or link a game file",
-                    "Games   Open the selected game's workspace",
-                    "+   Settings",
+                    "ZR   Launch or link the selected game",
+                    "Games   Open the game list and save assignment menu",
+                    "+   Current Game tools: Overview, Party, Boxes, Trainer, Backups",
+                    "Profile icon   Change Switch user",
+                    "Settings gear   Application settings",
                     "-   Help / Controls",
                     "B   Exit PokeBank NX from Product Home"
                 });
