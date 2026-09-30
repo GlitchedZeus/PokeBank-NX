@@ -23,6 +23,7 @@ namespace UI {
         std::map<UidKey, IconImage> s_userCache;
         std::map<u64, IconImage>    s_titleCache;
         std::map<std::string, IconImage> s_gameCardCache;
+        std::map<std::string, IconImage> s_trainerPortraitCache;
 
         // Decode a JPEG blob to a session-owned RGBA IconImage (invalid on failure).
         IconImage decodeToRGBA(const unsigned char* jpg, int len) {
@@ -170,12 +171,29 @@ namespace UI {
         return s_gameCardCache.emplace(key, img).first->second;
     }
 
+    const IconImage& SystemIcons::trainerPortrait(std::string_view assetKey) {
+        const std::string key(assetKey);
+        auto it = s_trainerPortraitCache.find(key);
+        if (it != s_trainerPortraitCache.end()) return it->second;
+
+        IconImage img;
+        if (!key.empty()) {
+            const std::string path = "romfs:/trainer_portraits/" + key + ".png";
+            img = decodeFileToRGBA(path);
+            if (!img.valid())
+                logInfoToFile("SystemIcons: optional trainer portrait not packaged", key.c_str());
+        }
+        return s_trainerPortraitCache.emplace(key, img).first->second;
+    }
+
     void SystemIcons::cleanup() {
         for (auto& kv : s_userCache)  if (kv.second.data) stbi_image_free(kv.second.data);
         for (auto& kv : s_titleCache) if (kv.second.data) stbi_image_free(kv.second.data);
         for (auto& kv : s_gameCardCache) if (kv.second.data) stbi_image_free(kv.second.data);
+        for (auto& kv : s_trainerPortraitCache) if (kv.second.data) stbi_image_free(kv.second.data);
         s_userCache.clear();
         s_titleCache.clear();
         s_gameCardCache.clear();
+        s_trainerPortraitCache.clear();
     }
 }
