@@ -117,8 +117,10 @@ require("classicGamesActive = true;" in dock_activation and
 require('"Pokémon Games"' in source and "CLASSIC_ICON" in source and
         "SystemIcons::gameCardIcon" in source,
         "the restored Games browser must retain the PKSE-style artwork grid")
-require("+: Current Game" in source and "+: Settings" not in source,
-        "Plus must open Current Game tools and must never be a Settings shortcut")
+require('{"+"', "Current Game"}' in source or '{"+" , "Current Game"}' in source,
+        "Plus must open Current Game tools")
+require("+: Settings" not in source and '{"+" , "Settings"}' not in source and '{"+" , "Settings"}' not in shell_source,
+        "Plus must never be a Settings shortcut")
 require("HidNpadButton_ZL" not in source,
         "Product Home must not retain the old ZL profile shortcut")
 require("GameLaunchState::LauncherOnly" in launcher and
