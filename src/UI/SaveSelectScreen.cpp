@@ -259,7 +259,8 @@ namespace UI {
                 ? TrainerPortraitPresentation{female ? "Leaf" : "Red", female ? "leaf" : "red", female, true}
                 : TrainerPortraitPresentation{"Kanto Trainer", "", false, false};
 
-        if (gameId == "diamond_nds" || gameId == "pearl_nds" || gameId == "platinum_nds")
+        if (gameId == "diamond_nds" || gameId == "pearl_nds" || gameId == "platinum_nds" ||
+            gameId == "brilliant_diamond_switch" || gameId == "shining_pearl_switch")
             return genderKnown
                 ? TrainerPortraitPresentation{female ? "Dawn" : "Lucas", female ? "dawn" : "lucas", female, true}
                 : TrainerPortraitPresentation{"Sinnoh Trainer", "", false, false};
@@ -887,6 +888,12 @@ namespace UI {
                 auto trainer = Save::readTrainerInfo("pbpreview:", title.titleId);
                 std::visit([&](auto& parsed) {
                     previewTrainerName = parsed.trainerName;
+                    previewTrainerGender = parsed.trainerGender;
+                    previewTrainerGenderKnown = true;
+                    const auto dex = parsed.pokedexProgress();
+                    previewDexSeen = dex.seen;
+                    previewDexCaught = dex.caught;
+                    previewDexTotal = dex.total;
                     const size_t count = std::min<size_t>(parsed.party.size(), partyPreview.size());
                     for (size_t i = 0; i < count; ++i) {
                         if (parsed.party[i]) {
