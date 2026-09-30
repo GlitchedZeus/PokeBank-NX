@@ -39,6 +39,7 @@ namespace Legality {
         Items,
         Origin,
         Encounter,
+        EventGift,
         PidRng,
         Egg,
         Transfer,
@@ -65,6 +66,7 @@ namespace Legality {
         CoverageLevel internal = CoverageLevel::Partial;
         CoverageLevel moves = CoverageLevel::Partial;
         CoverageLevel encounter = CoverageLevel::None;
+        CoverageLevel eventGift = CoverageLevel::None;
         CoverageLevel pidRng = CoverageLevel::None;
         CoverageLevel eggBreeding = CoverageLevel::None;
         CoverageLevel transfer = CoverageLevel::None;
@@ -96,6 +98,7 @@ namespace Legality {
                 coverage.internal == CoverageLevel::Complete &&
                 coverage.moves == CoverageLevel::Complete &&
                 coverage.encounter == CoverageLevel::Complete &&
+                coverage.eventGift == CoverageLevel::Complete &&
                 coverage.pidRng == CoverageLevel::Complete &&
                 coverage.eggBreeding == CoverageLevel::Complete &&
                 coverage.transfer == CoverageLevel::Complete;

@@ -1621,17 +1621,20 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     fb.drawText(x + 34, y + 256, "Encounter evidence", Colors::TextDim);
     fb.drawText(x + 270, y + 256, coverageText(report.coverage.encounter),
                 coverageColor(report.coverage.encounter));
-    fb.drawText(x + 34, y + 294, "PID / RNG correlation", Colors::TextDim);
-    fb.drawText(x + 270, y + 294, coverageText(report.coverage.pidRng),
+    fb.drawText(x + 34, y + 294, "Event / Gift", Colors::TextDim);
+    fb.drawText(x + 270, y + 294, coverageText(report.coverage.eventGift),
+                coverageColor(report.coverage.eventGift));
+    fb.drawText(x + 34, y + 326, "PID / RNG correlation", Colors::TextDim);
+    fb.drawText(x + 270, y + 326, coverageText(report.coverage.pidRng),
                 coverageColor(report.coverage.pidRng));
-    fb.drawText(x + 34, y + 332, "Egg / breeding", Colors::TextDim);
-    fb.drawText(x + 270, y + 332, coverageText(report.coverage.eggBreeding),
+    fb.drawText(x + 34, y + 358, "Egg / breeding", Colors::TextDim);
+    fb.drawText(x + 270, y + 358, coverageText(report.coverage.eggBreeding),
                 coverageColor(report.coverage.eggBreeding));
-    fb.drawText(x + 34, y + 370, "Transfer evidence", Colors::TextDim);
-    fb.drawText(x + 270, y + 370, coverageText(report.coverage.transfer),
+    fb.drawText(x + 34, y + 390, "Transfer evidence", Colors::TextDim);
+    fb.drawText(x + 270, y + 390, coverageText(report.coverage.transfer),
                 coverageColor(report.coverage.transfer));
-    fb.drawText(x + 34, y + 408, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 270, y + 408, "HARD DISABLED", Colors::Accent);
+    fb.drawText(x + 34, y + 422, "Source mutation", Colors::TextDim);
+    fb.drawText(x + 270, y + 422, "HARD DISABLED", Colors::Accent);
 
     if (report.problemCount() == 0 && report.verdict() == Legality::Verdict::Incomplete)
         fb.drawText(x + 34, y + 448,

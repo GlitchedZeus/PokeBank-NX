@@ -11,7 +11,8 @@ PokeBank NX already had an informational structural/internal checker. The legali
 - Every analysis area tracks coverage. Missing evidence is reported as incomplete coverage rather than silently treated as legal.
 - Exact save identity matters. Ruby, Emerald and FireRed share the PK3 entity format but do not share every legal move or encounter.
 - Historical mechanics stay historical. Gen I/II DV + Stat Experience rules are not replaced with modern IV/EV assumptions.
-- Encounter, move, PID/RNG, event, egg, trade and transfer legality are separate evidence layers.
+- Encounter, move, PID/RNG, event/gift, egg, trade and transfer legality are separate evidence layers.
+- Event/gift coverage is tracked separately from retail static encounters: recognizing a Mystery Gift PID pattern does not prove an exact distribution template.
 - Legality never changes save-write authorization.
 
 ## First Gen I-IV milestone
@@ -49,7 +50,7 @@ Current encounter coverage is **partial** for R/B/Y, Gold/Silver/Crystal (now in
 4. **Encounter provenance** — Gen I released R/B/Y static/trade templates, Gen II Gold/Silver/Crystal static/gift and fixed in-game trade evidence, and Gen IV wild, static/gift, and fixed in-game trade evidence are imported; Stadium/external events, Japanese Blue, PokéWalker course-slot data is now pinned as positive species/level/gender/move evidence; course unlock/language history and evolved-species reconstruction, and remaining per-method restrictions are still incomplete.
 5. **PID/RNG correlation** — Gen III handheld Methods 1/2/3/4 plus the truncated R/S/FRLG roamer class, normal Gen IV Method-1 PID/IV, deterministic PokéWalker PID plus pinned 27-course/162-slot encounter evidence, Cute Charm buffered-PID surfaces, Chain Shiny PID/IV/trainer-ID correlation, Gen IV Mystery Gift anti-shiny ARNG rerolls, and positive no-lead Method J/K Grass/Surf and Old/Good/Super Rod slot+level+activation correlation, plus HG/SS Headbutt, HG/SS Rock Smash no-lead activation, and D/P/Pt Honey Tree level correlation, are recognized. Bug Contest/Safari activation, Mt. Coronet Feebas tiles, Rock Smash Illuminate-lead paths, special-lead branches, PokéWalker IV/course provenance, radar-slot proof for Chain Shiny, exact Gen IV event-template linkage, plus Gen III BA-CD different-OT/template restrictions, CXD shadow-team locks/anti-shiny variants, and exact Channel/event template linkage remain incomplete.
 6. **Egg / breeding legality** — native Gen III/IV egg-state structure, exact-generation/game egg moves and generation-filtered pre-evolution retention are checked now. The egg-move table is positive evidence only; exact parent-pair feasibility, hatch-location tables, Masuda PID rerolls and event-egg templates remain incomplete.
-7. **Event / gift legality** — fixed trainer data, fateful flags, ribbons, dates and distribution records.
+7. **Event / gift legality** — now tracked as its own coverage dimension. Exact Gen IV WC4/PCD/PGT template indexing is the next data milestone; fixed trainer data, fateful flags, ribbons, dates and distribution restrictions remain incomplete until that generated index is verified.
 8. **Transfer legality** — Gen III -> IV Pal Park marker/state validation, D/P versus Pt/HGSS split-location patterns, and Gen I/II Time Capsule compatibility/origin evidence are active. Split-ball/external-event provenance, exact historical Time Capsule direction where data is ambiguous, and later transfer chains remain incomplete.
 9. **Bulk/provenance checks** — duplicate identities, clone lineage and Vault history once the Vault backend exists.
 
