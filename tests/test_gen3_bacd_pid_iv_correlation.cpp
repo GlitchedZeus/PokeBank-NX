@@ -48,5 +48,20 @@ int main() {
     assert(!analyzeWithTrainer(
         0xBD3DF676u, {0, 15, 5, 4, 21, 6}, 80, 0).matched());
 
+    // Canonical PKHeX Berry Fix Zigzagoon: forced-shiny BA-CD_S, seed 0x20.
+    const auto berryFix = analyzeWithTrainer(
+        0x38CA4EA0u, {0, 20, 28, 11, 19, 0}, 30317, 0);
+    assert(berryFix.matched());
+    assert(berryFix.variant == Variant::ForceShiny);
+    assert(berryFix.originSeed == 0x20u);
+    assert(berryFix.restrictedSeed);
+
+    // Restricted regular BACD example from PKHeX should expose the 16-bit seed class.
+    const auto restricted = analyzeWithTrainer(
+        0x0000E97Eu, {17, 19, 20, 16, 13, 12}, 0, 0);
+    assert(restricted.matched());
+    assert(restricted.variant == Variant::Regular);
+    assert(restricted.restrictedSeed);
+
     std::cout << "Gen III BA-CD event PID/IV correlation variants: PASS\n";
 }

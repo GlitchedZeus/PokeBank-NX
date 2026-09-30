@@ -11,11 +11,13 @@ enum class Variant : uint8_t {
     Regular,
     RegularAntiShiny,
     ForceAntiShiny,
+    ForceShiny,
 };
 
 struct Result {
     Variant variant = Variant::None;
     uint32_t originSeed = 0;
+    bool restrictedSeed = false;
 
     constexpr bool matched() const noexcept { return variant != Variant::None; }
 };
@@ -25,6 +27,7 @@ constexpr const char* variantName(Variant variant) noexcept {
         case Variant::Regular:          return "regular BA-CD";
         case Variant::RegularAntiShiny: return "regular anti-shiny BA-CD_A";
         case Variant::ForceAntiShiny:   return "forced anti-shiny BA-CD_AX";
+        case Variant::ForceShiny:       return "forced-shiny BA-CD_S";
         case Variant::None:             break;
     }
     return "unresolved BA-CD";
@@ -91,6 +94,10 @@ constexpr uint32_t forceAntiShiny(uint32_t a16, uint32_t b16, uint32_t idXor) no
     return ((a16 ^ (idXor ^ b16)) << 16) | b16;
 }
 
+constexpr uint32_t forceShiny(uint32_t x16, uint32_t b16, uint32_t idXor) noexcept {
+    return (x16 << 16) | (((idXor ^ x16) & 0xFFF8u) | (b16 & 0x7u));
+}
+
 } // namespace Detail
 
 // Positive recognition for regular and anti-shiny BA-CD Gen III event RNG classes.
@@ -114,16 +121,23 @@ constexpr Result analyzeWithTrainer(uint32_t pid, const std::array<uint8_t, 6>& 
         const uint32_t a16 = seed >> 16;
         const uint32_t expectedPid = (a16 << 16) | b16;
         const uint32_t origin = Detail::prev(seed);
+        const bool restricted = origin <= 0xFFFFu;
         if (expectedPid == pid)
-            return {Variant::Regular, origin};
+            return {Variant::Regular, origin, restricted};
 
         const uint32_t idXor = static_cast<uint32_t>(tid16 ^ sid16);
         if (Detail::regularAntiShiny(expectedPid, idXor) == pid &&
             expectedPid != pid)
-            return {Variant::RegularAntiShiny, origin};
+            return {Variant::RegularAntiShiny, origin, restricted};
 
         if (Detail::forceAntiShiny(a16, b16, idXor) == pid)
-            return {Variant::ForceAntiShiny, origin};
+            return {Variant::ForceAntiShiny, origin, restricted};
+
+        const uint32_t xState = Detail::prev(seed);
+        const uint32_t x16 = xState >> 16;
+        if (Detail::forceShiny(x16, b16, idXor) == pid)
+            return {Variant::ForceShiny, Detail::prev(xState),
+                    Detail::prev(xState) <= 0xFFFFu};
     }
     return {};
 }
