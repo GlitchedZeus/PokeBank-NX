@@ -1913,10 +1913,10 @@ namespace UI {
                     refreshHubPreview();
                     legacyNotice = "Unassigned source list refreshed.";
                 }
-                if (unassignedLegacySources.empty()) overlay = Overlay::None;
+                if (unassignedLegacySources.empty()) overlay = Overlay::GamesDrawer;
                 return;
             }
-            if (count == 0) { overlay = Overlay::None; return; }
+            if (count == 0) { overlay = Overlay::GamesDrawer; return; }
             if (kDown & HidNpadButton_Up)
                 legacyAssignmentIndex = (legacyAssignmentIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
@@ -1945,7 +1945,14 @@ namespace UI {
                 if (gen4SetupIndex == 0) discoverGen4Candidates();
                 else if (gen4SetupIndex == 1) chooseGen4ManualFile();
                 else if (gen4SetupIndex == 2) unassignCurrentGen4Game();
-                else overlay = Overlay::None;
+                else {
+                    overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
+                    if (overlay == Overlay::GamesDrawer) {
+                        gamesDrawerIndex = titleIndex;
+                        gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+                    }
+                    gen4SetupFromGamesDrawer = false;
+                }
             }
             return;
         }
@@ -1963,7 +1970,8 @@ namespace UI {
             if (kDown & HidNpadButton_X) { discoverGen4Candidates(); return; }
             if (kDown & HidNpadButton_Y) {
                 openGen4Setup(gen4TargetGameId,
-                    "Add, repair, or forget a remembered source. Opening still happens from Save Instances.");
+                    "Add, repair, or forget a remembered source. Opening still happens from Save Instances.",
+                    gen4SetupFromGamesDrawer);
                 return;
             }
             if (count == 0) { overlay = Overlay::Gen4Setup; return; }
@@ -2736,9 +2744,11 @@ namespace UI {
                                 Colors::TextSecondary, TextStyle::Caption);
                     rowY += rowH;
                 }
-                drawScrollbar(fb, x + w - 12, y + 132, visibleRows * rowH,
-                              static_cast<int>(u->titles.size()) * rowH,
-                              gamesDrawerScroll * rowH);
+                if (static_cast<int>(u->titles.size()) > visibleRows) {
+                    drawScrollbar(fb, x + w - 12, y + 132, visibleRows * rowH,
+                                  static_cast<int>(u->titles.size()) * rowH,
+                                  gamesDrawerScroll * rowH);
+                }
             }
 
             if (!hubNotice.empty())
