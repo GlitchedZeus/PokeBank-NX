@@ -181,6 +181,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen4_chain_shiny
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_chain_shiny_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_mystery_gift_pid
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_mystery_gift_pid_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_event_template
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_event_template_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -431,6 +433,14 @@ $(HOST_BUILD)/test_gen4_mystery_gift_pid: tests/test_gen4_mystery_gift_pid.cpp i
 $(HOST_BUILD)/test_gen4_mystery_gift_pid_sanitize: tests/test_gen4_mystery_gift_pid.cpp include/Legality/Gen4MysteryGiftPid.h include/Legality/Gen3PidIvCorrelation.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_mystery_gift_pid.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_event_template: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_event_template.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_event_template_sanitize: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_event_template.cpp -o $@
 
 $(HOST_BUILD)/test_source_mutation_policy: tests/test_source_mutation_policy.cpp
 	@mkdir -p $(HOST_BUILD)

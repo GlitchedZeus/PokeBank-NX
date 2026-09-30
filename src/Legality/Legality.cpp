@@ -31,6 +31,7 @@
 #include "Legality/Gen4CuteCharmPid.h"
 #include "Legality/Gen4ChainShiny.h"
 #include "Legality/Gen4MysteryGiftPid.h"
+#include "Legality/Gen4EventTemplate.h"
 #include "Legality/Gen4WildRngCorrelation.h"
 #include "Legality/Gen34EggState.h"
 #include "Legality/Gen34EggMoveEvidence.h"
@@ -263,7 +264,33 @@ namespace Legality {
                 r.coverage.transfer = CoverageLevel::Complete;
         }
 
+        bool directGen4EventTemplate = false;
         if (sourceProfile && exactGeneration == 4) {
+            const auto eventMatch = Gen4EventTemplate::matchDirect({
+                species,
+                pk.tid16(),
+                pk.sid16(),
+                pk.pid(),
+                pk.metLevel(),
+                pk.ball(),
+                pk.form(),
+                pk.language(),
+                pk.originGame(),
+                pk.otGender(),
+                pk.isFatefulEncounter()
+            });
+            if (eventMatch.matched) {
+                directGen4EventTemplate = true;
+                r.coverage.eventGift = CoverageLevel::Partial;
+                add(r, Severity::Info,
+                    "PK4 invariant fields match a pinned Gen IV WC4/PCD Pokémon template" +
+                    (eventMatch.cardId
+                        ? " (card " + std::to_string(eventMatch.cardId) + ")"
+                        : "") +
+                    "; OT text, ribbons, dates, evolution history, and trash-byte evidence remain incomplete",
+                    CheckIdentifier::EventGift);
+            }
+
             const int originGeneration = Enums::getVersionGeneration(pk.originGame());
             if (originGeneration == 0) {
                 add(r, Severity::Warning,
@@ -492,9 +519,11 @@ namespace Legality {
                                 add(r, Severity::Info,
                                     "PID/IV spread matches a Gen IV Mystery Gift anti-shiny ARNG reroll class; exact event-template provenance remains incomplete",
                                     CheckIdentifier::PidRng);
-                                add(r, Severity::Info,
-                                    "Generation IV gift-generation evidence is present, but no exact WC4/PCD/PGT distribution template has been proven",
-                                    CheckIdentifier::EventGift);
+                                if (!directGen4EventTemplate) {
+                                    add(r, Severity::Info,
+                                        "Generation IV gift-generation evidence is present, but no pinned direct WC4/PCD template candidate matched; evolved-event and exact distribution provenance remain incomplete",
+                                        CheckIdentifier::EventGift);
+                                }
                             } else {
                                 add(r, Severity::Info,
                                     "No normal Gen IV Method-1, Cute Charm, Chain Shiny, or Mystery Gift anti-shiny RNG match; other event RNG classes remain incomplete",
