@@ -1792,7 +1792,7 @@ namespace UI {
                         gamesDrawerIndex = std::min(count - 1, lastRowFirst + col);
                     }
                 }
-                constexpr int visibleRows = 3;
+                constexpr int visibleRows = 4;
                 const int selectedRow = gamesDrawerIndex / cols;
                 if (selectedRow < gamesDrawerScroll)
                     gamesDrawerScroll = selectedRow;
@@ -2377,6 +2377,12 @@ namespace UI {
         headerRects.clear();
 
         if (classicGamesActive) {
+            const UserEntry* classicUser = currentUser();
+            if (classicUser && !classicUser->titles.empty())
+                titleIndex = std::clamp(titleIndex, 0, static_cast<int>(classicUser->titles.size()) - 1);
+            else
+                titleIndex = 0;
+            scrollClassicSelectionIntoView();
             drawClassicGameSources(fb);
             if (overlay == Overlay::Help) {
                 drawProductHelpOverlay(fb, "Pokémon Games", {
@@ -2595,7 +2601,7 @@ namespace UI {
         // Right side: compact Vault/Pokédex row above the five primary navigation buttons.
         // The selected game remains the large left anchor; the old full-width bottom dock is gone.
         constexpr int featureGap = 14;
-        constexpr int featureH = 168;
+        constexpr int featureH = 190;
         const int featureW = (RIGHT_W - featureGap) / 2;
         const bool vaultFocused = !hubDockFocused && hubFeatureIndex == 0;
         const bool dexFocused = !hubDockFocused && hubFeatureIndex == 1;
@@ -2634,39 +2640,43 @@ namespace UI {
         fb.drawText(dexX + 18, HUB_Y + 126, "Coming Soon",
                     Colors::TextMuted, TextStyle::Caption);
 
-        // Five product destinations occupy the former large Pokédex area.
-        const int navY = HUB_Y + featureH + 16;
-        const int navH = HUB_H - featureH - 16;
-        drawPanelSurface(fb, RIGHT_X, navY, RIGHT_W, navH, true, 18);
-        fb.drawText(RIGHT_X + 20, navY + 16, "POKEBANK NX",
-                    Colors::Info, TextStyle::Caption);
-
+        // Five primary destinations use the compact round logo treatment from the old bottom dock.
+        // No individual rectangular cards: the selected-game hero remains the visual anchor.
+        const int navY = HUB_Y + featureH + 18;
         static constexpr const char* dockLabels[5] =
             {"Games", "Banks", "Items", "Search", "More"};
-        constexpr int navGap = 12;
-        const int innerW = RIGHT_W - 32;
-        const int cardW = (innerW - navGap * 2) / 3;
-        constexpr int cardH = 112;
-        const int row1Y = navY + 48;
-        const int row2Y = row1Y + cardH + navGap;
-        const int pairW = cardW * 2 + navGap;
-        const int pairX = RIGHT_X + (RIGHT_W - pairW) / 2;
+        constexpr int buttonD = 74;
+        constexpr int hitW = 126;
+        constexpr int hitH = 112;
+        const int topCellW = RIGHT_W / 3;
+        const int bottomCellW = RIGHT_W / 2;
+        const int topCy = navY + 54;
+        const int bottomCy = navY + 182;
 
         for (int i = 0; i < 5; ++i) {
-            const int bx = i < 3
-                ? RIGHT_X + 16 + i * (cardW + navGap)
-                : pairX + (i - 3) * (cardW + navGap);
-            const int by = i < 3 ? row1Y : row2Y;
+            const bool topRow = i < 3;
+            const int slot = topRow ? i : i - 3;
+            const int cellW = topRow ? topCellW : bottomCellW;
+            const int cx = RIGHT_X + slot * cellW + cellW / 2;
+            const int cy = topRow ? topCy : bottomCy;
             const bool focused = hubDockFocused && hubDockIndex == i;
-            drawFocusedCard(fb, bx, by, cardW, cardH, focused, 14);
-            const int iconSize = 44;
-            const int iconX = bx + (cardW - iconSize) / 2;
-            drawHubDockIcon(fb, i, iconX, by + 14, iconSize, focused);
-            dockRects.push_back({bx, by, cardW, cardH, i});
+
+            fb.drawFilledCircle(cx, cy, buttonD / 2, Colors::SurfaceRaised);
+            fb.drawCircle(cx, cy, buttonD / 2,
+                          focused ? Colors::FocusBorder : Colors::Divider,
+                          focused ? 3 : 2);
+            if (focused)
+                fb.drawCircle(cx, cy, buttonD / 2 + 6, Colors::FocusBorder, 2);
+
+            const int iconSize = 46;
+            drawHubDockIcon(fb, i, cx - iconSize / 2, cy - iconSize / 2,
+                            iconSize, focused);
+            dockRects.push_back({cx - hitW / 2, cy - buttonD / 2 - 8,
+                                 hitW, hitH, i});
 
             int lw = 0, lh = 0;
             fb.measureText(dockLabels[i], lw, lh, TextStyle::Caption);
-            fb.drawText(bx + (cardW - lw) / 2, by + 70, dockLabels[i],
+            fb.drawText(cx - lw / 2, cy + buttonD / 2 + 10, dockLabels[i],
                         focused ? Colors::SelectedText
                                 : i == 0 ? Colors::Info : Colors::TextSecondary,
                         TextStyle::Caption);
@@ -2678,14 +2688,14 @@ namespace UI {
                         {"+", "Current Game"}, {"-", "Help"}, {"B", "Exit"}});
 
         if (overlay == Overlay::GamesDrawer) {
-            constexpr int w = 680;
+            constexpr int w = 520;
             const int x = fb.getWidth() - w;
             const int h = fb.getHeight();
             constexpr int cols = 3;
-            constexpr int visibleRows = 3;
-            constexpr int gap = 12;
-            constexpr int margin = 18;
-            constexpr int tileH = 166;
+            constexpr int visibleRows = 4;
+            constexpr int gap = 7;
+            constexpr int margin = 10;
+            constexpr int tileH = 124;
             const int tileW = (w - margin * 2 - gap * 2) / cols;
 
             // Full-height right-edge sheet with no top/right/bottom gutter.
@@ -2697,15 +2707,15 @@ namespace UI {
                         Colors::Info, TextStyle::Caption);
             fb.drawText(x + 22, 44, "Choose a Pokémon Game",
                         Colors::TextPrimary, TextStyle::Heading);
-            fb.drawText(x + 22, 75,
-                        "Artwork browser • open Games for the full-screen browser",
+            fb.drawText(x + 22, 70,
+                        "Artwork + game + save  •  Games opens the full browser",
                         Colors::TextSecondary, TextStyle::Caption);
 
             if (u && !u->titles.empty()) {
                 const int first = gamesDrawerScroll * cols;
                 const int last = std::min<int>(
                     static_cast<int>(u->titles.size()), first + visibleRows * cols);
-                const int gridY = 108;
+                const int gridY = 88;
                 for (int i = first; i < last; ++i) {
                     const int local = i - first;
                     const int col = local % cols;
@@ -2720,31 +2730,40 @@ namespace UI {
                         title.sourceKind == SelectedSourceKind::RetroArchFRLG
                             ? title.artworkKey : title.gameId,
                         title.titleId);
-                    constexpr int artSize = 104;
+                    constexpr int artSize = 78;
                     if (art.valid())
-                        fb.drawImageScaled(bx + (tileW - artSize) / 2, by + 10,
+                        fb.drawImageScaled(bx + (tileW - artSize) / 2, by + 6,
                                            art.width, art.height, artSize, artSize, art.data, 4);
                     else {
-                        fb.drawFilledRoundedRect(bx + (tileW - artSize) / 2, by + 10,
-                                                 artSize, artSize, 12, Colors::PanelAlt);
-                        fb.drawCircle(bx + tileW / 2, by + 62, 28,
+                        fb.drawFilledRoundedRect(bx + (tileW - artSize) / 2, by + 6,
+                                                 artSize, artSize, 10, Colors::PanelAlt);
+                        fb.drawCircle(bx + tileW / 2, by + 45, 22,
                                       withAlpha(Colors::Info, 120), 3);
                     }
 
                     std::string label = title.label;
-                    if (label.size() > 18) label = label.substr(0, 17) + "…";
+                    if (label.size() > 16) label = label.substr(0, 15) + "…";
                     int lw = 0, lh = 0;
                     fb.measureText(label, lw, lh, TextStyle::Caption);
-                    fb.drawText(bx + std::max(8, (tileW - lw) / 2), by + 120, label,
+                    fb.drawText(bx + std::max(6, (tileW - lw) / 2), by + 87, label,
                                 selected ? Colors::SelectedText : Colors::TextPrimary,
                                 TextStyle::Caption);
 
-                    std::string meta = title.trainerName.empty()
-                        ? productSourceLabel(title.sourceLabel) : title.trainerName;
-                    if (meta.size() > 20) meta = meta.substr(0, 19) + "…";
+                    std::string saveName;
+                    if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                        title.legacyInstances.size() == 1) {
+                        saveName = sourceLeafName(title.legacyInstances.front().path());
+                    } else if (!title.locationLabel.empty()) {
+                        saveName = title.locationLabel;
+                    } else if (title.sourceKind == SelectedSourceKind::SwitchTitle) {
+                        saveName = "System save";
+                    } else {
+                        saveName = productSourceLabel(title.sourceLabel);
+                    }
+                    if (saveName.size() > 18) saveName = saveName.substr(0, 17) + "…";
                     int mw = 0, mh = 0;
-                    fb.measureText(meta, mw, mh, TextStyle::Caption);
-                    fb.drawText(bx + std::max(8, (tileW - mw) / 2), by + 142, meta,
+                    fb.measureText(saveName, mw, mh, TextStyle::Caption);
+                    fb.drawText(bx + std::max(6, (tileW - mw) / 2), by + 105, saveName,
                                 Colors::TextMuted, TextStyle::Caption);
                 }
 
