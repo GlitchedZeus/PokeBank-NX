@@ -15,6 +15,7 @@ enum class Method : uint8_t {
     MethodJFishingNoLead,
     MethodKFishingNoLead,
     MethodKHeadbuttNoLead,
+    MethodJHoneyTreeNoLead,
 };
 
 struct Result {
@@ -70,6 +71,15 @@ constexpr bool isFishing(uint8_t type) noexcept {
 
 constexpr bool isHeadbutt(uint8_t type) noexcept {
     return type == 6 || type == 7;
+}
+
+constexpr bool isHoneyTree(uint8_t type) noexcept {
+    return type == 9;
+}
+
+constexpr uint8_t honeyTreeLevel(uint16_t rand16) noexcept {
+    // PKHeX MethodJ.GetHoneyTreeLevel: 5 + rand / 0x1745.
+    return static_cast<uint8_t>(5u + (rand16 / 0x1745u));
 }
 
 constexpr uint8_t headbuttSlot(uint16_t rand16) noexcept {
@@ -155,9 +165,11 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                                 uint32_t prePidSeed, uint32_t pid,
                                 uint8_t metLevel) noexcept {
     const uint8_t type = Gen4Wild::method(row);
-    if (type > 7 || type == 5)
+    if (type > 9 || type == 5 || type == 8)
         return {};
     if (isHeadbutt(type) && !hgss)
+        return {};
+    if (isHoneyTree(type) && hgss)
         return {};
 
     // Mt. Coronet Feebas fishing has an additional tile-replacement RNG branch.
@@ -192,6 +204,10 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                 rolledSlot = fishingSlot(hgss, type, prev2);
             } else if (isHeadbutt(type)) {
                 rolledSlot = headbuttSlot(prev2);
+            } else if (isHoneyTree(type)) {
+                // Honey Tree species/slot is chosen before the normal Method J slot routine.
+                // PKHeX treats the ESV check as pre-determined.
+                rolledSlot = Gen4Wild::slot(row);
             }
 
             if (rolledSlot == Gen4Wild::slot(row)) {
@@ -211,6 +227,12 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
 
                     if (isHeadbutt(type))
                         return {Method::MethodKHeadbuttNoLead, candidate, rolledSlot};
+
+                    if (isHoneyTree(type)) {
+                        if (honeyTreeLevel(prev1) == metLevel)
+                            return {Method::MethodJHoneyTreeNoLead, candidate, rolledSlot};
+                        continue;
+                    }
 
                     const uint32_t prev3Seed =
                         Gen3PidIv::Detail::prev(Gen3PidIv::Detail::prev(
@@ -267,6 +289,7 @@ constexpr const char* methodName(Method method) noexcept {
         case Method::MethodJFishingNoLead: return "Method J fishing (no lead)";
         case Method::MethodKFishingNoLead: return "Method K fishing (no lead)";
         case Method::MethodKHeadbuttNoLead: return "Method K Headbutt (no lead)";
+        case Method::MethodJHoneyTreeNoLead: return "Method J Honey Tree (no lead)";
         case Method::None: break;
     }
     return "No no-lead Method J/K match";

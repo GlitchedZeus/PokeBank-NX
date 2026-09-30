@@ -74,6 +74,17 @@ int main() {
     static_assert(!matchNoLeadRow(false, headbutt,
                                   fishingKSeed, fishingKPid, 8).matched());
 
+    // D/P/Pt Honey Trees do not use the ordinary encounter-slot roll.
+    // Seed 331 has Prev1 high16=46232, producing level 12 via 5 + rand/0x1745.
+    constexpr uint64_t honeyTree = makeRow(9, 0, 5, 15);
+    constexpr auto jh = matchNoLeadRow(false, honeyTree,
+                                       fishingJSeed, fishingJPid, 12);
+    static_assert(jh.method == Method::MethodJHoneyTreeNoLead);
+    static_assert(!matchNoLeadRow(false, honeyTree,
+                                  fishingJSeed, fishingJPid, 11).matched());
+    static_assert(!matchNoLeadRow(true, honeyTree,
+                                  fishingJSeed, fishingJPid, 12).matched());
+
     // Feebas fishing remains fail-closed until the Mt. Coronet tile branch is modeled.
     constexpr uint64_t feebasFishing =
         fishingJ | static_cast<uint64_t>(349u);
