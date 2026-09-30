@@ -810,7 +810,7 @@ namespace UI {
         titleIndex = 0;
         scrollRow  = 0;
         hubDockFocused = false;
-        headerSettingsFocused = false;
+        headerActionIndex = -1;
         hubFeatureIndex = -1;
         refreshHubPreview();
     }
