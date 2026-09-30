@@ -444,11 +444,11 @@ $(HOST_BUILD)/test_gen4_event_template_sanitize: tests/test_gen4_event_template.
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_event_template.cpp -o $@
 
-$(HOST_BUILD)/test_gen4_ranger_manaphy: tests/test_gen4_ranger_manaphy.cpp include/Legality/Gen4RangerManaphy.h
+$(HOST_BUILD)/test_gen4_ranger_manaphy: tests/test_gen4_ranger_manaphy.cpp include/Legality/Gen4RangerManaphy.h include/Legality/Gen4PidIvCorrelation.h include/Legality/Gen4MysteryGiftPid.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_ranger_manaphy.cpp -o $@
 
-$(HOST_BUILD)/test_gen4_ranger_manaphy_sanitize: tests/test_gen4_ranger_manaphy.cpp include/Legality/Gen4RangerManaphy.h
+$(HOST_BUILD)/test_gen4_ranger_manaphy_sanitize: tests/test_gen4_ranger_manaphy.cpp include/Legality/Gen4RangerManaphy.h include/Legality/Gen4PidIvCorrelation.h include/Legality/Gen4MysteryGiftPid.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_ranger_manaphy.cpp -o $@
 

@@ -279,9 +279,32 @@ namespace Legality {
             });
             if (rangerManaphy) {
                 r.coverage.eventGift = CoverageLevel::Partial;
-                add(r, Severity::Info,
-                    "PK4 has positive Pokémon Ranger Manaphy PGT provenance; exact hatch/trade history and PID anti-shiny recipient correlation remain partially recoverable",
-                    CheckIdentifier::EventGift);
+                const std::array<uint8_t, 6> rangerIvs{
+                    pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
+                };
+                const auto rangerPid = Gen4RangerManaphy::analyzePidIv(
+                    {
+                        species,
+                        pk.language(),
+                        pk.gender(),
+                        pk.isEgg(),
+                        pk.eggLocation(),
+                        pk.metLocation(),
+                        pk.ball(),
+                        pk.isFatefulEncounter()
+                    },
+                    pk.pid(), rangerIvs, pk.tid16(), pk.sid16());
+                if (rangerPid.matched()) {
+                    add(r, Severity::Info,
+                        "PK4 has positive Pokémon Ranger Manaphy PGT provenance and " +
+                        std::string(Gen4RangerManaphy::pidEvidenceName(rangerPid.evidence)) +
+                        " PID/IV evidence",
+                        CheckIdentifier::EventGift);
+                } else {
+                    add(r, Severity::Info,
+                        "PK4 has positive Pokémon Ranger Manaphy PGT structural provenance; exact PID/recipient history remains incomplete",
+                        CheckIdentifier::EventGift);
+                }
             }
 
             const auto eventMatch = Gen4EventTemplate::matchDirect({
