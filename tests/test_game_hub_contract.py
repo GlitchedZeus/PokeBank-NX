@@ -164,7 +164,7 @@ require('"Mystery Gifts"' in shell_source and '"Clone Lineage"' in shell_source,
 require("handleDefaultQuickOpen" in ui_manager and "backupSaveData" in ui_manager and
         "SaveSelectScreen::OpenIntent::Backups" in ui_manager,
         "normal Switch Open must auto-create a protected backup/working copy while Backups stays explicit")
-require("OpenIntent::Backups" in header and "openIntent = OpenIntent::Backups;" in source,
+require("Backups" in header and source.count("openIntent = OpenIntent::Backups;") == 1,
         "Current Game -> Backups must be the only normal route into backup history")
 require("handleItemsQuickOpen" in ui_manager and "backupSaveData" in ui_manager,
         "Switch Backpack quick-open must create the normal protected backup before Items")
