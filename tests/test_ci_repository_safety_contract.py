@@ -52,7 +52,7 @@ if re.search(r"(?m)^\s+branches:\s*$", trigger_block):
 if re.search(r"(?m)^\s+paths:\s*$", trigger_block):
     fail("AUDIT-002: native PR gate must not be path-filtered")
 for required in (
-    "devkitpro/devkita64:",
+    "devkitpro/devkita64@sha256:",
     "make -j1",
     "test -s PokeBankNX.elf",
     "test -s PokeBankNX.nro",
