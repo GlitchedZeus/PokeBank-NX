@@ -2082,32 +2082,6 @@ namespace UI {
                 launchCurrentTitle();
                 return;
             }
-            if (kDown & HidNpadButton_X) {
-                const UserEntry* classicUser = currentUser();
-                if (classicUser && titleIndex >= 0 &&
-                    titleIndex < static_cast<int>(classicUser->titles.size())) {
-                    const auto& game = classicUser->titles[static_cast<size_t>(titleIndex)];
-                    if (game.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
-                        openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.");
-                    } else if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-                        legacyInstanceIndex = 0;
-                        legacyInstanceScroll = 0;
-                        legacyNotice.clear();
-                        overlay = Overlay::LegacyInstances;
-                    } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
-                        beginLaunchLinkForCurrentTitle();
-                    } else if (!unassignedLegacySources.empty()) {
-                        legacyAssignmentIndex = 0;
-                        legacyAssignmentScroll = 0;
-                        legacyNotice.clear();
-                        overlay = Overlay::LegacyAssignment;
-                    } else {
-                        hubNotice = "This save source is already managed by the console.";
-                    }
-                }
-                return;
-            }
-
             const int beforeUser = userIndex;
             const int beforeTitle = titleIndex;
             if (users.size() > 1) {
