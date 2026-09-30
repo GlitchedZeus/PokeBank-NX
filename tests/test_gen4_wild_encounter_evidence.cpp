@@ -35,5 +35,15 @@ int main() {
     assert(!hasSpecies("unknown", 396));
     assert(countForGame("unknown") == 0);
 
+    // The generator retains EncounterArea4.Rate so rate-dependent Method K
+    // activation checks (Rock Smash / Bug Contest) never rely on guessed constants.
+    std::size_t rockSmashRows = 0;
+    for (const uint64_t row : kPackedGen4WildEncounters) {
+        if (method(row) != 5) continue;
+        ++rockSmashRows;
+        assert(rate(row) != 0);
+    }
+    assert(rockSmashRows > 0);
+
     std::cout << "Gen IV wild encounter evidence: PASS\n";
 }
