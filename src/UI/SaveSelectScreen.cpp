@@ -497,15 +497,29 @@ namespace UI {
         const std::string profile = currentProfileIdentity();
         if (profile.empty()) return false;
         const auto& entry = unassignedLegacySources[static_cast<size_t>(legacyAssignmentIndex)];
+        const std::string assignedGameId = entry.gameId;
+        const std::string assignedLeaf = sourceLeafName(entry.instance.location);
         if (!legacyBindings->claimInstanceAndSave(entry.instance, profile)) {
             logErrorToFile("Legacy binding assignment failed", legacyBindings->lastError().c_str());
             legacyNotice = "Assignment could not be saved; source remains unassigned.";
             return false;
         }
-        legacyNotice = sourceLeafName(entry.instance.location) + " assigned to this profile.";
         loadLegacySources(*legacyCatalog);
-        overlay = Overlay::None;
-        titleIndex = 0;
+        const UserEntry* user = currentUser();
+        if (user) {
+            const auto found = std::find_if(user->titles.begin(), user->titles.end(),
+                [&](const auto& title) {
+                    return title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                           title.gameId == assignedGameId;
+                });
+            if (found != user->titles.end())
+                titleIndex = static_cast<int>(std::distance(user->titles.begin(), found));
+        }
+        gamesDrawerIndex = titleIndex;
+        gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+        legacyNotice = assignedLeaf + " assigned to this profile.";
+        hubNotice = legacyNotice;
+        overlay = Overlay::GamesDrawer;
         scrollSelectionIntoView();
         refreshHubPreview();
         return true;
@@ -1128,9 +1142,11 @@ namespace UI {
         return true;
     }
 
-    void SaveSelectScreen::openGen4Setup(const std::string& gameId, std::string notice) {
+    void SaveSelectScreen::openGen4Setup(const std::string& gameId, std::string notice,
+                                         bool returnToGamesDrawer) {
         gen4TargetGameId = gameId;
         gen4Notice = std::move(notice);
+        gen4SetupFromGamesDrawer = returnToGamesDrawer;
         gen4Candidates.clear();
         gen4Instances.clear();
         gen4SetupIndex = 0;
@@ -1250,9 +1266,28 @@ namespace UI {
         }
 
         loadGen4Cards();
-        overlay = Overlay::None;
         gen4Notice.clear();
+        const UserEntry* user = currentUser();
+        if (user) {
+            const auto found = std::find_if(user->titles.begin(), user->titles.end(),
+                [&](const auto& title) {
+                    return title.sourceKind == SelectedSourceKind::Gen4AssignedFile &&
+                           title.gameId == gen4TargetGameId;
+                });
+            if (found != user->titles.end())
+                titleIndex = static_cast<int>(std::distance(user->titles.begin(), found));
+        }
+        scrollSelectionIntoView();
         refreshHubPreview();
+        if (gen4SetupFromGamesDrawer) {
+            gamesDrawerIndex = titleIndex;
+            gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+            hubNotice = "Save linked to this game.";
+            overlay = Overlay::GamesDrawer;
+            gen4SetupFromGamesDrawer = false;
+            return true;
+        }
+        overlay = Overlay::None;
         selectAssignedGen4Title();
         return titleSelected;
     }
@@ -1680,7 +1715,7 @@ namespace UI {
                         SelectedSourceKind::Gen4AssignedFile) {
                     const auto& game = drawerUser->titles[static_cast<size_t>(gamesDrawerIndex)];
                     titleIndex = gamesDrawerIndex;
-                    openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.");
+                    openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.", true);
                 } else if (!unassignedLegacySources.empty()) {
                     legacyAssignmentIndex = 0;
                     legacyAssignmentScroll = 0;
@@ -1694,6 +1729,8 @@ namespace UI {
             if (kDown & HidNpadButton_Y) {
                 if (drawerUser && gamesDrawerIndex >= 0 && gamesDrawerIndex < count) {
                     titleIndex = gamesDrawerIndex;
+                    scrollSelectionIntoView();
+                    refreshHubPreview();
                     const auto& game = drawerUser->titles[static_cast<size_t>(gamesDrawerIndex)];
                     if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
                         legacyInstanceIndex = 0;
@@ -1701,7 +1738,7 @@ namespace UI {
                         legacyNotice.clear();
                         overlay = Overlay::LegacyInstances;
                     } else if (game.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
-                        openGen4Setup(game.gameId, "Review or change this game's remembered save source.");
+                        openGen4Setup(game.gameId, "Review or change this game's remembered save source.", true);
                     } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
                         beginLaunchLinkForCurrentTitle();
                     } else {
@@ -1829,7 +1866,7 @@ namespace UI {
         }
         if (overlay == Overlay::LegacyAssignment) {
             const int count = static_cast<int>(unassignedLegacySources.size());
-            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_B) { overlay = Overlay::GamesDrawer; return; }
             if (kDown & HidNpadButton_X) {
                 if (legacyCatalog) {
                     *legacyCatalog = PokeVault::Legacy::discoverConfiguredLegacySaves();
@@ -1854,7 +1891,15 @@ namespace UI {
             return;
         }
         if (overlay == Overlay::Gen4Setup) {
-            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_B) {
+                overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
+                if (overlay == Overlay::GamesDrawer) {
+                    gamesDrawerIndex = titleIndex;
+                    gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+                }
+                gen4SetupFromGamesDrawer = false;
+                return;
+            }
             if (kDown & HidNpadButton_Up) gen4SetupIndex = (gen4SetupIndex + 3) % 4;
             if (kDown & HidNpadButton_Down) gen4SetupIndex = (gen4SetupIndex + 1) % 4;
             if (kDown & HidNpadButton_A) {
@@ -1867,7 +1912,15 @@ namespace UI {
         }
         if (overlay == Overlay::Gen4Candidates) {
             const int count = static_cast<int>(gen4Instances.size());
-            if (kDown & HidNpadButton_B) { overlay = Overlay::None; return; }
+            if (kDown & HidNpadButton_B) {
+                overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
+                if (overlay == Overlay::GamesDrawer) {
+                    gamesDrawerIndex = titleIndex;
+                    gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+                }
+                gen4SetupFromGamesDrawer = false;
+                return;
+            }
             if (kDown & HidNpadButton_X) { discoverGen4Candidates(); return; }
             if (kDown & HidNpadButton_Y) {
                 openGen4Setup(gen4TargetGameId,
@@ -2041,24 +2094,6 @@ namespace UI {
             overlay = Overlay::Help;
             return;
         }
-        {
-            const UserEntry* current = currentUser();
-            if ((kDown & HidNpadButton_Y) && current && titleIndex >= 0 &&
-                titleIndex < static_cast<int>(current->titles.size()) &&
-                current->titles[titleIndex].sourceKind == SelectedSourceKind::Gen4AssignedFile) {
-                openGen4Setup(current->titles[titleIndex].gameId,
-                              "Add, repair, or forget a remembered source for this game.");
-                return;
-            }
-        }
-        if ((kDown & HidNpadButton_X) && !unassignedLegacySources.empty()) {
-            overlay = Overlay::LegacyAssignment;
-            legacyAssignmentIndex = 0;
-            legacyAssignmentScroll = 0;
-            legacyNotice.clear();
-            return;
-        }
-
         // Touch uses the same actions as controller focus. Fine-grained app-wide touch parity is
         // intentionally a later tranche; these existing primary hit targets remain safe now.
         if (touch.justPressed()) {
