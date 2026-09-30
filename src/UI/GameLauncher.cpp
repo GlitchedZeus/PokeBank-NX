@@ -632,6 +632,7 @@ GameLaunchDescriptor resolveKnownHomebrew(GameLaunchProviderKind kind,
     return result;
 }
 
+#ifdef __SWITCH__
 std::string quoted(std::string_view value) {
     std::string out = "\"";
     for (char c : value) {
@@ -641,6 +642,7 @@ std::string quoted(std::string_view value) {
     out.push_back('"');
     return out;
 }
+#endif
 
 } // namespace
 
