@@ -2700,6 +2700,22 @@ namespace UI {
             const int h = fb.getHeight();
             constexpr int cols = 3;
             constexpr int visibleRows = 4;
+            if (u && !u->titles.empty()) {
+                gamesDrawerIndex = std::clamp(
+                    gamesDrawerIndex, 0, static_cast<int>(u->titles.size()) - 1);
+                const int totalRows =
+                    (static_cast<int>(u->titles.size()) + cols - 1) / cols;
+                gamesDrawerScroll = std::clamp(
+                    gamesDrawerScroll, 0, std::max(0, totalRows - visibleRows));
+                const int selectedRow = gamesDrawerIndex / cols;
+                if (selectedRow < gamesDrawerScroll)
+                    gamesDrawerScroll = selectedRow;
+                else if (selectedRow >= gamesDrawerScroll + visibleRows)
+                    gamesDrawerScroll = selectedRow - visibleRows + 1;
+            } else {
+                gamesDrawerIndex = 0;
+                gamesDrawerScroll = 0;
+            }
             constexpr int gap = 7;
             constexpr int margin = 10;
             constexpr int tileH = 124;
