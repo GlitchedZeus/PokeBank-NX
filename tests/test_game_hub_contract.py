@@ -103,8 +103,9 @@ require("containSprite" in source,
         "party sprites must preserve aspect ratio")
 require("MainMenuDestination::More" in source and "Dest::More" in ui_manager,
         "More must be a real routed product destination")
-require('"Games   Open the game list and save assignment menu"' in source,
-        "Product Home Help must explain that Games opens the game/save selector")
+require("drawProductHelpOverlay" in source and
+        '"Games opens the game/save drawer. Profile and Settings use the top-right controls."' in source,
+        "Product Home Help must use shared controller glyphs and explain the new game/profile/settings navigation")
 activate_start = source.index("void SaveSelectScreen::activateHubDock()")
 activate_end = source.index("void SaveSelectScreen::activateGameWorkspace()", activate_start)
 dock_activation = source[activate_start:activate_end]
