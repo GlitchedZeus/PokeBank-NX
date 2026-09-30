@@ -39,12 +39,16 @@ def parse_game(path: str, game_index: int):
     with open(pkhex_source.pkhex_path(path), "rb") as handle:
         data = handle.read()
     rows = set()
-    for area in entries(data):
-        if len(area) < 6 or (len(area) - 6) % 10:
-            raise ValueError("unexpected Gen IV encounter-area size")
+    for area_index, area in enumerate(entries(data)):
+        if len(area) < 6:
+            raise ValueError("truncated Gen IV encounter area %d" % area_index)
         location = area[0]
         method = area[2]
-        for offset in range(6, len(area), 10):
+        # Mirror PKHeX EncounterArea4.ReadRegularSlots exactly: it integer-divides
+        # the post-header length by 10 and ignores any trailing container bytes.
+        slot_count = (len(area) - 6) // 10
+        for slot_index in range(slot_count):
+            offset = 6 + slot_index * 10
             species = struct.unpack_from("<H", area, offset)[0]
             form = area[offset + 2]
             slot = area[offset + 3]

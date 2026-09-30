@@ -13,7 +13,8 @@ int main() {
     // 50/50 species: buffered male Hardy base is 150; nature 10 => PID 160.
     assert(expectedMalePid(0x7F, 10) == 160);
     assert(matchesSurface(160, 0, 0x7F));
-    assert(!matchesSurface(159, 0, 0x7F));
+    // 159 is also valid (nature 9 => buffered base 150 + 9). Use 149 as a real miss.
+    assert(!matchesSurface(149, 0, 0x7F));
 
     // Azurill's 75% female ratio buffers male PIDs into 200..224.
     assert(isAzurillBufferedMale(205));
