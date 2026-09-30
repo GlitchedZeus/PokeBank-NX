@@ -1655,10 +1655,12 @@ namespace UI {
             titleIndex < static_cast<int>(user->titles.size());
 
         if (hubDockIndex == 0) {
-            gamesDrawerIndex = hasGame ? titleIndex : 0;
-            gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+            classicGamesActive = true;
+            overlay = Overlay::None;
             hubNotice.clear();
-            overlay = Overlay::GamesDrawer;
+            hubDockFocused = false;
+            hubFeatureIndex = -1;
+            scrollClassicSelectionIntoView();
         } else if (hubDockIndex == 1) {
             requestedMainMenuDestination = MainMenuDestination::Banks;
             exitRequested = true;
@@ -1742,60 +1744,63 @@ namespace UI {
         if (overlay == Overlay::GamesDrawer) {
             const UserEntry* drawerUser = currentUser();
             const int count = drawerUser ? static_cast<int>(drawerUser->titles.size()) : 0;
-            if (kDown & HidNpadButton_B) {
+            if (kDown & (HidNpadButton_B | HidNpadButton_Y)) {
                 overlay = Overlay::None;
                 return;
             }
             if (kDown & HidNpadButton_X) {
-                // Explicit save assignment lives in Games. Gen IV assignments are game-specific;
-                // Gen I-III unclaimed saves use the existing profile-claim flow.
-                if (drawerUser && gamesDrawerIndex >= 0 && gamesDrawerIndex < count &&
-                    drawerUser->titles[static_cast<size_t>(gamesDrawerIndex)].sourceKind ==
-                        SelectedSourceKind::Gen4AssignedFile) {
-                    const auto& game = drawerUser->titles[static_cast<size_t>(gamesDrawerIndex)];
-                    titleIndex = gamesDrawerIndex;
-                    openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.", true);
-                } else if (!unassignedLegacySources.empty()) {
-                    legacyAssignmentIndex = 0;
-                    legacyAssignmentScroll = 0;
-                    legacyNotice.clear();
-                    overlay = Overlay::LegacyAssignment;
-                } else {
-                    hubNotice = "No unassigned Gen I-III saves are currently available.";
-                }
-                return;
-            }
-            if (kDown & HidNpadButton_Y) {
                 if (drawerUser && gamesDrawerIndex >= 0 && gamesDrawerIndex < count) {
                     titleIndex = gamesDrawerIndex;
                     scrollSelectionIntoView();
                     refreshHubPreview();
                     const auto& game = drawerUser->titles[static_cast<size_t>(gamesDrawerIndex)];
-                    if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+                    if (game.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+                        openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.", true);
+                    } else if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
                         legacyInstanceIndex = 0;
                         legacyInstanceScroll = 0;
                         legacyNotice.clear();
                         overlay = Overlay::LegacyInstances;
-                    } else if (game.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
-                        openGen4Setup(game.gameId, "Review or change this game's remembered save source.", true);
                     } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
                         beginLaunchLinkForCurrentTitle();
+                    } else if (!unassignedLegacySources.empty()) {
+                        legacyAssignmentIndex = 0;
+                        legacyAssignmentScroll = 0;
+                        legacyNotice.clear();
+                        overlay = Overlay::LegacyAssignment;
                     } else {
-                        hubNotice = "This Nintendo Switch save is managed by the console.";
+                        hubNotice = "This save source is already managed by the console.";
                     }
                 }
                 return;
             }
             if (count > 0) {
-                if (kDown & HidNpadButton_Up)
-                    gamesDrawerIndex = (gamesDrawerIndex - 1 + count) % count;
-                if (kDown & HidNpadButton_Down)
-                    gamesDrawerIndex = (gamesDrawerIndex + 1) % count;
-                constexpr int visibleRows = 7;
-                if (gamesDrawerIndex < gamesDrawerScroll)
-                    gamesDrawerScroll = gamesDrawerIndex;
-                else if (gamesDrawerIndex >= gamesDrawerScroll + visibleRows)
-                    gamesDrawerScroll = gamesDrawerIndex - visibleRows + 1;
+                constexpr int cols = 3;
+                const int row = gamesDrawerIndex / cols;
+                const int col = gamesDrawerIndex % cols;
+                if (kDown & HidNpadButton_Left) {
+                    if (gamesDrawerIndex > 0) --gamesDrawerIndex;
+                }
+                if (kDown & HidNpadButton_Right) {
+                    if (gamesDrawerIndex + 1 < count) ++gamesDrawerIndex;
+                }
+                if (kDown & HidNpadButton_Up) {
+                    if (row > 0) gamesDrawerIndex -= cols;
+                }
+                if (kDown & HidNpadButton_Down) {
+                    const int candidate = gamesDrawerIndex + cols;
+                    if (candidate < count) gamesDrawerIndex = candidate;
+                    else {
+                        const int lastRowFirst = ((count - 1) / cols) * cols;
+                        gamesDrawerIndex = std::min(count - 1, lastRowFirst + col);
+                    }
+                }
+                constexpr int visibleRows = 3;
+                const int selectedRow = gamesDrawerIndex / cols;
+                if (selectedRow < gamesDrawerScroll)
+                    gamesDrawerScroll = selectedRow;
+                else if (selectedRow >= gamesDrawerScroll + visibleRows)
+                    gamesDrawerScroll = selectedRow - visibleRows + 1;
                 if (kDown & HidNpadButton_A) {
                     titleIndex = gamesDrawerIndex;
                     scrollSelectionIntoView();
@@ -2077,6 +2082,31 @@ namespace UI {
                 launchCurrentTitle();
                 return;
             }
+            if (kDown & HidNpadButton_X) {
+                const UserEntry* classicUser = currentUser();
+                if (classicUser && titleIndex >= 0 &&
+                    titleIndex < static_cast<int>(classicUser->titles.size())) {
+                    const auto& game = classicUser->titles[static_cast<size_t>(titleIndex)];
+                    if (game.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+                        openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.");
+                    } else if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+                        legacyInstanceIndex = 0;
+                        legacyInstanceScroll = 0;
+                        legacyNotice.clear();
+                        overlay = Overlay::LegacyInstances;
+                    } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
+                        beginLaunchLinkForCurrentTitle();
+                    } else if (!unassignedLegacySources.empty()) {
+                        legacyAssignmentIndex = 0;
+                        legacyAssignmentScroll = 0;
+                        legacyNotice.clear();
+                        overlay = Overlay::LegacyAssignment;
+                    } else {
+                        hubNotice = "This save source is already managed by the console.";
+                    }
+                }
+                return;
+            }
 
             const int beforeUser = userIndex;
             const int beforeTitle = titleIndex;
@@ -2134,6 +2164,13 @@ namespace UI {
             } else {
                 hubNotice = "Choose a game before opening the Current Game menu.";
             }
+            return;
+        }
+        if (kDown & HidNpadButton_Y) {
+            gamesDrawerIndex = homeGameCount > 0 ? titleIndex : 0;
+            gamesDrawerScroll = std::max(0, gamesDrawerIndex / 3 - 1);
+            hubNotice.clear();
+            overlay = Overlay::GamesDrawer;
             return;
         }
         if (kDown & HidNpadButton_Minus) {
@@ -2198,6 +2235,7 @@ namespace UI {
             if (kDown & (HidNpadButton_Left | HidNpadButton_Right))
                 headerActionIndex = headerActionIndex == 0 ? 1 : 0;
             if (kDown & HidNpadButton_Down) {
+                hubFeatureIndex = headerActionIndex == 0 ? 0 : 1;
                 headerActionIndex = -1;
                 return;
             }
@@ -2214,32 +2252,52 @@ namespace UI {
         }
 
         if (hubDockFocused) {
+            if (kDown & HidNpadButton_Left) {
+                if (hubDockIndex == 0) hubDockIndex = 2;
+                else if (hubDockIndex == 3) hubDockIndex = 4;
+                else --hubDockIndex;
+            }
+            if (kDown & HidNpadButton_Right) {
+                if (hubDockIndex == 2) hubDockIndex = 0;
+                else if (hubDockIndex == 4) hubDockIndex = 3;
+                else ++hubDockIndex;
+            }
             if (kDown & HidNpadButton_Up) {
-                hubDockFocused = false;
-                hubFeatureIndex = -1;
+                if (hubDockIndex >= 3) hubDockIndex -= 3;
+                else {
+                    hubFeatureIndex = hubDockIndex <= 1 ? 0 : 1;
+                    hubDockFocused = false;
+                }
                 return;
             }
-            if (kDown & HidNpadButton_Left)
-                hubDockIndex = (hubDockIndex + 4) % 5;
-            if (kDown & HidNpadButton_Right)
-                hubDockIndex = (hubDockIndex + 1) % 5;
+            if (kDown & HidNpadButton_Down) {
+                if (hubDockIndex < 3)
+                    hubDockIndex = hubDockIndex <= 1 ? hubDockIndex + 3 : 4;
+                return;
+            }
             if (kDown & HidNpadButton_A) activateHubDock();
             return;
         }
 
         if (hubFeatureIndex >= 0) {
             if (kDown & HidNpadButton_Left) {
+                if (hubFeatureIndex == 1) hubFeatureIndex = 0;
+                else hubFeatureIndex = -1;
+                return;
+            }
+            if (kDown & HidNpadButton_Right) {
+                if (hubFeatureIndex == 0) hubFeatureIndex = 1;
+                return;
+            }
+            if (kDown & HidNpadButton_Up) {
+                headerActionIndex = hubFeatureIndex == 0 ? 0 : 1;
                 hubFeatureIndex = -1;
                 return;
             }
-            if (kDown & HidNpadButton_Up) hubFeatureIndex = 0;
             if (kDown & HidNpadButton_Down) {
-                if (hubFeatureIndex == 0) hubFeatureIndex = 1;
-                else {
-                    hubFeatureIndex = -1;
-                    hubDockFocused = true;
-                    hubDockIndex = 0;
-                }
+                hubDockFocused = true;
+                hubDockIndex = hubFeatureIndex == 0 ? 0 : 3;
+                hubFeatureIndex = -1;
                 return;
             }
             if (kDown & HidNpadButton_A) {
