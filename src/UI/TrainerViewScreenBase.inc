@@ -1651,6 +1651,11 @@ namespace UI {
             // A new backup becomes the session's working copy, so a second save goes to the same
             // place instead of silently forking another folder off the original.
             backupDir = destDir;
+            if (exitAfterSave) {
+                exitAfterSave = false;
+                itemsShortcutActive = false;
+                goBack = true;
+            }
         } else {
             // A failed save used to be INDISTINGUISHABLE from a successful one.
             postStatus("SAVE FAILED - your changes are still unsaved. Nothing was written.", 480);
@@ -2993,8 +2998,9 @@ namespace UI {
                     return;
                 }
                 if (kDown & HidNpadButton_B) {
-                    // User cancelled save - just close the dialog
+                    // User cancelled save - just close the dialog and stay in the shortcut/view.
                     saveConfirmActive = false;
+                    exitAfterSave = false;
                     return;
                 }
             }
@@ -3945,6 +3951,29 @@ namespace UI {
         // Handle detail view exit
         if (detailViewActive) {
             if (kDown & HidNpadButton_B) {
+                // Product Home -> Items is a quick action, not a gateway into the old PKSE home.
+                // Leave the whole game view when the user backs out. If a mutable staged workspace
+                // is dirty, use the normal backup-only save dialog and return Home only after the
+                // save succeeds. Read-only sources keep the existing discard/cancel safety prompt.
+                if (selectedMode == ViewMode::Items && itemsShortcutActive) {
+                    if (hasUnsavedChanges || trainer.hasStagedChanges()) {
+                        if (sourceReadOnly()) {
+                            exitingWithUnsavedChanges = true;
+                            exitingViaPlus = false;
+                            saveConfirmActive = true;
+                            return;
+                        }
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = true;
+                        saveDestIndex = defaultSaveDestRow();
+                        saveConfirmActive = true;
+                        return;
+                    }
+                    itemsShortcutActive = false;
+                    goBack = true;
+                    return;
+                }
                 if (selectedMode == ViewMode::Storage) {
                     // B unwinds one step: abandon a rectangle being drawn, then put a carried block
                     // back where it came from, then leave the view.
