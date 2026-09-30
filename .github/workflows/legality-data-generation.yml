@@ -1,0 +1,45 @@
+name: PokeBank NX Legality Data Generation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/legality-engine-gen1-4-20260929
+    paths:
+      - tools/gen_legality_gen4_wild.py
+      - tools/pkhex_source.py
+      - .github/workflows/legality-data-generation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  gen4-wild:
+    name: Regenerate pinned Gen IV wild legality table
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+
+      - name: Python info
+        run: python3 --version
+
+      - name: Regenerate from pinned PKHeX resources
+        run: python3 tools/gen_legality_gen4_wild.py
+
+      - name: Show deterministic diff and digest
+        run: |
+          set -euo pipefail
+          git diff -- include/Legality/Gen4WildEncounterData.inc
+          sha256sum include/Legality/Gen4WildEncounterData.inc
+          git diff --check
+
+      - name: Upload generated table
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-gen4-wild-slot-table
+          path: include/Legality/Gen4WildEncounterData.inc
+          if-no-files-found: error
+          retention-days: 7
