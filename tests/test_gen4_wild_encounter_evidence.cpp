@@ -6,19 +6,19 @@
 int main() {
     using namespace Legality::Gen4Wild;
 
-    // Slot number is part of the evidence identity now. The pinned resource contains
-    // 18,826 distinct Gen IV wild-slot rows across the five games.
+    // Slot number and encounter-area rate are part of the evidence identity now.
+    // The pinned PKHeX resource currently yields 19,270 distinct wild-slot rows.
     const auto diamond = countForGame("diamond_nds");
     const auto pearl = countForGame("pearl_nds");
     const auto platinum = countForGame("platinum_nds");
     const auto heartgold = countForGame("heartgold_nds");
     const auto soulsilver = countForGame("soulsilver_nds");
-    assert(diamond > 1800);
-    assert(pearl > 1800);
-    assert(platinum > 1800);
-    assert(heartgold > 2500);
-    assert(soulsilver > 2500);
-    assert(diamond + pearl + platinum + heartgold + soulsilver == 18826);
+    assert(diamond == 2778);
+    assert(pearl == 2763);
+    assert(platinum == 2544);
+    assert(heartgold == 5585);
+    assert(soulsilver == 5600);
+    assert(diamond + pearl + platinum + heartgold + soulsilver == 19270);
 
     // Platinum Route 201 Starly.
     assert(matches("platinum_nds", 396, 16, 2, 0));
