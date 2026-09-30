@@ -742,6 +742,13 @@ namespace Trainer {
         }
     }
 
+    PokedexProgress Trainer9LZA::pokedexProgress() const
+    {
+        // Z-A's save block is readable, but the exact base-vs-Mega-Dimension species denominator
+        // is not modeled yet. Returning unavailable is safer than presenting a false completion %.
+        return {};
+    }
+
     void Trainer9LZA::updatePokedexBlock()
     {
         std::vector<uint8_t>* dex = nullptr;

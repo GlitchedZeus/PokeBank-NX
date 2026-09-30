@@ -553,29 +553,6 @@ GameLaunchDescriptor resolveKnownHomebrew(GameLaunchProviderKind kind,
                                           std::string_view providerId,
                                           std::string_view sourcePath,
                                           std::string_view bindingKey) {
-    if (kind == GameLaunchProviderKind::DraStic) {
-        GameLaunchDescriptor result;
-        result.backend = GameLaunchBackend::HomebrewNro;
-        result.providerId = std::string(providerId);
-        result.launcherPath = defaultLauncherPath(kind, gameId, sourcePath);
-        if (result.launcherPath.empty() || !regularFile(result.launcherPath)) {
-            result.state = GameLaunchState::LauncherMissing;
-            result.detail = "DraStic is not installed at a known PokeBank NX launch path.";
-            return result;
-        }
-
-        // NaGaa95/DrasticDS_nx currently uses main(void) and reads Drastic/RomPath from its own
-        // preferences. Do not append the PokeBank-linked .nds path and pretend the selected game
-        // will boot. Launching the emulator itself is safe and truthful; the user chooses the ROM
-        // inside DraStic until that frontend exposes a verified per-launch content handoff.
-        result.state = GameLaunchState::LauncherOnly;
-        result.contentPath.clear();
-        result.detail =
-            "Launch DraStic, then choose this game inside the emulator. "
-            "Direct selected-ROM handoff is not supported by this DraStic build.";
-        return result;
-    }
-
     StoredLaunchBinding stored;
     if (loadStoredBinding(bindingKey, providerId, stored))
         return descriptorFromStored(gameId, providerId, stored);
@@ -606,7 +583,7 @@ GameLaunchDescriptor resolveKnownHomebrew(GameLaunchProviderKind kind,
                 matches = findContentMatches({root}, wanted, gameId, 4, 512);
         } else if (kind == GameLaunchProviderKind::DraStic) {
             matches = findContentMatches({"sdmc:/switch/drastic/games"},
-                                         wanted, gameId, 4, 512);
+                                         wanted, gameId, 5, 1024);
         } else if (kind == GameLaunchProviderKind::MelonDS) {
             matches = findContentMatches({"sdmc:/switch/melonds", "sdmc:/melonds"},
                                          wanted, gameId, 3, 512);
@@ -715,13 +692,6 @@ bool saveGameLaunchBinding(std::string_view bindingKey,
         error = "This source provider does not have a launch adapter.";
         return false;
     }
-    if (kind == GameLaunchProviderKind::DraStic) {
-        error =
-            "This DraStic build does not expose a verified direct-ROM launch argument. "
-            "Use Launch Emulator and choose the game inside DraStic.";
-        return false;
-    }
-
     const std::string content = switchPath(std::string(contentPath));
     if (!regularFile(content)) {
         error = "That game file does not exist.";

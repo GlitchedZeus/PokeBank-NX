@@ -661,6 +661,45 @@ namespace Trainer {
         }
     }
 
+    PokedexProgress Trainer8SWSH::pokedexProgress() const
+    {
+        const std::vector<uint8_t>* galar = nullptr;
+        const std::vector<uint8_t>* armor = nullptr;
+        const std::vector<uint8_t>* crown = nullptr;
+        for (const auto& block : blocks) {
+            if      (block.key == SAVE_REVISION8_SWSH)    galar = &block.data;
+            else if (block.key == SAVE_REVISION8_R1_SWSH) armor = &block.data;
+            else if (block.key == SAVE_REVISION8_R2_SWSH) crown = &block.data;
+        }
+
+        PokedexProgress progress{};
+        auto addDex = [&](const std::vector<uint8_t>* dex, uint16_t count) {
+            if (!dex || dex->size() != static_cast<size_t>(count) * ::Pokemon::SWSH_DEX_ENTRY_SIZE)
+                return;
+            progress.total = static_cast<uint16_t>(progress.total + count);
+            for (uint16_t i = 0; i < count; ++i) {
+                const size_t base = static_cast<size_t>(i) * ::Pokemon::SWSH_DEX_ENTRY_SIZE;
+                bool seen = false;
+                for (size_t b = 0; b < 4 * SWSH_SEEN_REGION; ++b) {
+                    if ((*dex)[base + b] != 0) { seen = true; break; }
+                }
+                const size_t c = base + SWSH_OFS_CAUGHT;
+                const uint32_t flags = static_cast<uint32_t>((*dex)[c])
+                    | (static_cast<uint32_t>((*dex)[c + 1]) << 8)
+                    | (static_cast<uint32_t>((*dex)[c + 2]) << 16)
+                    | (static_cast<uint32_t>((*dex)[c + 3]) << 24);
+                const bool caught = (flags & 1u) != 0;
+                if (seen || caught) ++progress.seen;
+                if (caught) ++progress.caught;
+            }
+        };
+
+        addDex(galar, ::Pokemon::SWSH_DEX_GALAR_COUNT);
+        addDex(armor, ::Pokemon::SWSH_DEX_ARMOR_COUNT);
+        addDex(crown, ::Pokemon::SWSH_DEX_CROWN_COUNT);
+        return progress;
+    }
+
     void Trainer8SWSH::updatePokedexBlock()
     {
         // The three dex blocks. The DLC ones are absent (or empty) on a save without that DLC --

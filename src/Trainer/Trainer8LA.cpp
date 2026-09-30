@@ -538,6 +538,51 @@ namespace Trainer {
         }
     }
 
+    PokedexProgress Trainer8LA::pokedexProgress() const
+    {
+        const std::vector<uint8_t>* dex = nullptr;
+        for (const auto& block : blocks) {
+            if (block.key == POKEDEX8_LA) { dex = &block.data; break; }
+        }
+        if (!dex || dex->size() < PLA_BLOCK_SIZE) return {};
+
+        PokedexProgress progress{};
+        for (uint16_t species = 1; species <= ::Pokemon::PLA_MAX_SPECIES; ++species) {
+            bool hasDexEntry = false;
+            bool seen = false;
+            bool obtained = false;
+
+            for (uint16_t form = 0; form <= ::Pokemon::PLA_MAX_FORM; ++form) {
+                const uint16_t statIdx =
+                    ::Pokemon::getPLAStatisticsIndex(species, static_cast<uint8_t>(form));
+                if (statIdx == ::Pokemon::PLA_NO_STAT_ENTRY) continue;
+                hasDexEntry = true;
+                const size_t stats =
+                    PLA_STATS_BASE + static_cast<size_t>(statIdx) * PLA_STATS_SIZE;
+                if (stats + PLA_STATS_SIZE > dex->size()) continue;
+                if ((*dex)[stats + 0x04] != 0 || (*dex)[stats + 0x05] != 0 ||
+                    (*dex)[stats + 0x06] != 0)
+                    seen = true;
+                if ((*dex)[stats + 0x05] != 0)
+                    obtained = true;
+            }
+            if (!hasDexEntry) continue;
+            ++progress.total;
+
+            const size_t research =
+                PLA_RESEARCH_BASE + static_cast<size_t>(species) * PLA_RESEARCH_SIZE;
+            if (research + PLA_RESEARCH_SIZE <= dex->size()) {
+                const uint32_t flags = rdU32(*dex, research + 0x00);
+                const uint16_t numObtained = rdU16(*dex, research + 0x0A);
+                seen = seen || (flags & 0x01u) != 0 || numObtained != 0;
+                obtained = obtained || numObtained != 0;
+            }
+            if (seen) ++progress.seen;
+            if (obtained) ++progress.caught;
+        }
+        return progress;
+    }
+
     void Trainer8LA::updatePokedexBlock()
     {
         std::vector<uint8_t>* dex = nullptr;

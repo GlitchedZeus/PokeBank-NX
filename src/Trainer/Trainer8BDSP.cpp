@@ -326,6 +326,21 @@ namespace Trainer {
         }
     }
 
+    PokedexProgress Trainer8BDSP::pokedexProgress() const
+    {
+        if (saveData.size() < BDSP_DEX + BDSP_DEX_SIZE) return {};
+
+        PokedexProgress progress{};
+        progress.total = BDSP_MAX_SPECIES;
+        for (uint16_t species = 1; species <= BDSP_MAX_SPECIES; ++species) {
+            const size_t rel = OFS_STATE + static_cast<size_t>(species - 1) * 4;
+            const uint32_t state = readUInt32LittleEndian(&saveData[BDSP_DEX + rel]);
+            if (state >= 2) ++progress.seen;
+            if (state >= ZUKAN_CAUGHT) ++progress.caught;
+        }
+        return progress;
+    }
+
     void Trainer8BDSP::updatePokedexBlock()
     {
         if (saveData.size() < BDSP_DEX + BDSP_DEX_SIZE) return;   // not a layout we recognise

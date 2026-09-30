@@ -21,7 +21,7 @@ int main() {
     assert(gameLaunchProviderKind("Tico") == GameLaunchProviderKind::Tico);
     assert(gameLaunchProviderKind("DraStic") == GameLaunchProviderKind::DraStic);
     assert(gameLaunchProviderKind("melonDS") == GameLaunchProviderKind::MelonDS);
-    assert(!gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind::DraStic));
+    assert(gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind::DraStic));
     assert(gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind::MelonDS));
     assert(gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind::MGBA));
     assert(gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind::RetroArch));
@@ -31,6 +31,8 @@ int main() {
     assert(gameLaunchContentSupported("crystal_gbc", "/roms/Pokemon Crystal.gbc"));
     assert(gameLaunchContentSupported("emerald_gba", "/roms/Pokemon Emerald.gba"));
     assert(gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.nds"));
+    assert(gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.zip"));
+    assert(gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.rar"));
     assert(!gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.gba"));
 
     assert(gameLaunchBindingKey("profile", "emerald_gba", "source") ==
