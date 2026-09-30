@@ -146,6 +146,45 @@ namespace UI {
                 rowY += rowHeight;
             }
         }
+
+        void drawProductHelpOverlay(
+            PKSEFramebuffer& fb, const std::string& title,
+            std::initializer_list<ControllerHint> rows,
+            const std::string& note = {}) {
+            constexpr int w = 850;
+            constexpr int rowH = 48;
+            const int count = static_cast<int>(rows.size());
+            const int h = std::min(580, 126 + count * rowH + (note.empty() ? 0 : 42));
+            const int x = (fb.getWidth() - w) / 2;
+            const int y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+
+            fb.drawText(x + 28, y + 18, "POKEBANK NX / HELP",
+                        Colors::Info, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44, title,
+                        Colors::TextPrimary, TextStyle::Heading);
+            fb.drawFilledRoundedRect(x + 28, y + 80, w - 56, 2, 1, Colors::Divider);
+
+            int rowY = y + 100;
+            for (const auto& row : rows) {
+                const int glyphW = buttonGlyphWidth(fb, row.button);
+                if (glyphW > 0) {
+                    buttonGlyph(fb, x + 34, rowY + rowH / 2, row.button, false);
+                    fb.drawText(x + 34 + glyphW + 18, rowY + 12, row.label,
+                                Colors::TextPrimary, TextStyle::Body);
+                } else {
+                    fb.drawText(x + 34, rowY + 12,
+                                row.button.empty() ? row.label : row.button + "   " + row.label,
+                                Colors::TextSecondary, TextStyle::Body);
+                }
+                rowY += rowH;
+            }
+
+            if (!note.empty())
+                fb.drawText(x + 34, y + h - 38, note,
+                            Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"B", "Close"}});
+        }
     }
 
         void drawHubDockIcon(PKSEFramebuffer& fb, int index,
@@ -3017,29 +3056,24 @@ namespace UI {
                             {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
             if (helpReturnOverlay == Overlay::GameWorkspace) {
-                drawInfoOverlay(fb, "Current Game Controls", {
-                    "D-pad / Left Stick   Navigate game tools",
-                    "A   Open the focused destination",
-                    "B   Back to Product Home",
-                    "ZR   Launch the selected game",
-                    "+   Close the Current Game menu",
-                    "-   Close Help / Controls",
-                    "Overview / Party / Boxes / Trainer / Editor use the protected working copy",
-                    "Backups opens backup history only when you explicitly choose it"
-                });
+                drawProductHelpOverlay(fb, "Current Game Controls", {
+                    {"D-pad/Stick", "Navigate Overview / Party / Boxes / Trainer / Backups"},
+                    {"A", "Open the focused game tool"},
+                    {"ZR", "Launch the selected game"},
+                    {"+", "Close the Current Game menu"},
+                    {"-", "Close Help / Controls"},
+                    {"B", "Back to Product Home"}
+                }, "Backup history appears only when you explicitly choose Backups.");
             } else {
-                drawInfoOverlay(fb, "PokeBank NX Controls", {
-                    "D-pad / Left Stick   Navigate (hold to scroll)",
-                    "A   Open the selected game / focused control",
-                    "L / R   Previous / next game",
-                    "ZR   Launch or link the selected game",
-                    "Games   Open the game list and save assignment menu",
-                    "+   Current Game tools: Overview, Party, Boxes, Trainer, Backups",
-                    "Profile icon   Change Switch user",
-                    "Settings gear   Application settings",
-                    "-   Help / Controls",
-                    "B   Exit PokeBank NX from Product Home"
-                });
+                drawProductHelpOverlay(fb, "PokeBank NX Controls", {
+                    {"D-pad/Stick", "Navigate the Product Home controls"},
+                    {"A", "Open the selected game or focused control"},
+                    {"L/R", "Previous / next game"},
+                    {"ZR", "Launch or link the selected game"},
+                    {"+", "Current Game tools: Overview / Party / Boxes / Trainer / Backups"},
+                    {"-", "Help / Controls"},
+                    {"B", "Exit PokeBank NX from Product Home"}
+                }, "Games opens the game/save drawer. Profile and Settings use the top-right controls.");
             }
         } else if (overlay == Overlay::Options) {
             constexpr int w = 560, h = 326, rowH = 64;
