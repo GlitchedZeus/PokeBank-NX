@@ -90,6 +90,7 @@ namespace UI {
         void openItemsShortcut() {
             selectedMode = ViewMode::Items;
             detailViewActive = true;
+            itemsShortcutActive = true;
             selectedCategory = 0;
             selectedItemIndex = 0;
             currentPage = 0;
@@ -358,6 +359,8 @@ namespace UI {
         bool hasUnsavedChanges = false;
         bool exitingWithUnsavedChanges = false;
         bool exitingViaPlus = false;  // True when exiting via + button (exit app) vs B button (go back)
+        bool itemsShortcutActive = false; // Product Home Items opened directly into this view.
+        bool exitAfterSave = false;       // Save-confirm success should return to Product Home.
 
         // Stat editor (IV / EV / AV + shiny). Original* is the value on dialog entry; Current* is the
         // in-progress edit, preserved when switching between the IV/EV/AV modes.
