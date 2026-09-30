@@ -59,8 +59,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 37 | AUDIT-041 | P3 | FIXED | Standalone runtime contract falsely says RetroArch is never invoked |
 | 38 | AUDIT-010 | P3 | FIXED | canonical engineering authority chain points to obsolete work |
 | 39 | AUDIT-042 | P3 | FIXED | Active session/roadmap docs route work through obsolete project state |
-| 40 | AUDIT-004 | P4 | OPEN | stale theme choices in physical bug template |
-| 41 | AUDIT-005 | P4 | OPEN | historical branch-specific workflows remain tracked |
+| 40 | AUDIT-004 | P4 | FIXED | stale theme choices in physical bug template |
+| 41 | AUDIT-005 | P4 | FIXED | historical branch-specific workflows remain tracked |
 | 42 | AUDIT-007 | P4 | FIXED | top-level README materially understates current Gen IV implementation |
 | 43 | AUDIT-008 | P4 | OPEN | checked-in Visual Studio metadata is stale PKSE-era configuration |
 | 44 | AUDIT-009 | P4 | OPEN | recovery metadata still describes the repository as private / old production branch |
@@ -774,7 +774,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** None
 - **Proposed remediation order:** 40
-- **Status:** OPEN
+- **Status:** FIXED
+- **Current-code reconciliation:** `.github/ISSUE_TEMPLATE/device_bug_report.md` now asks for the exact theme name shown in Settings as free-form text instead of limiting reporters to the obsolete OLED Black / Dark / Light list. No runtime behavior is affected.
 
 ### 41. AUDIT-005 — historical branch-specific workflows remain tracked
 
@@ -790,7 +791,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Run the affected workflow/target on the exact remediation head and assert the intended gate executes.
 - **Dependency / sequencing:** After active CI remediation
 - **Proposed remediation order:** 41
-- **Status:** OPEN
+- **Status:** FIXED
+- **Current-code reconciliation:** the retained Gen I/II/III candidate/retest/recovery workflows are explicitly named `HISTORICAL / MANUAL`, use `workflow_dispatch` only, and state that they must never auto-run on current development. They remain as frozen reproducibility evidence rather than active branch-routing CI.
 
 ### 42. AUDIT-007 — top-level README materially understates current Gen IV implementation
 
