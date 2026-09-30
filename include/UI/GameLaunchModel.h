@@ -88,11 +88,9 @@ inline bool launchProviderIsRetroArch(std::string_view providerId) {
 }
 
 inline bool gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind kind) noexcept {
-    // Current DraSticDS_nx boots ROMs from its own Drastic/RomPath configuration and exposes
-    // main(void), so passing a linked ROM as argv would falsely imply selected-game launch.
-    // melonDS, mGBA, RetroArch and the existing Tico adapters accept content arguments.
-    return kind != GameLaunchProviderKind::Unknown &&
-           kind != GameLaunchProviderKind::DraStic;
+    // DrasticDS_nx 1.1.0+ accepts a direct ROM/archive path as argv[1], matching the content
+    // handoff already used by melonDS, mGBA, RetroArch and Tico.
+    return kind != GameLaunchProviderKind::Unknown;
 }
 
 inline std::string lowerLaunchExtension(std::string_view path) {
@@ -115,7 +113,7 @@ inline bool gameLaunchContentSupported(std::string_view gameId, std::string_view
     if (suffix("_gb"))  return ext == ".gb"  || ext == ".zip" || ext == ".7z";
     if (suffix("_gbc")) return ext == ".gbc" || ext == ".zip" || ext == ".7z";
     if (suffix("_gba")) return ext == ".gba" || ext == ".zip" || ext == ".7z";
-    if (suffix("_nds")) return ext == ".nds";
+    if (suffix("_nds")) return ext == ".nds" || ext == ".zip" || ext == ".rar";
     return false;
 }
 
