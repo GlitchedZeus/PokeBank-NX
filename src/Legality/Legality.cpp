@@ -488,9 +488,13 @@ namespace Legality {
                             const auto gift =
                                 Gen4MysteryGiftPid::analyze(pk.pid(), ivs);
                             if (gift.matched) {
+                                r.coverage.eventGift = CoverageLevel::Partial;
                                 add(r, Severity::Info,
                                     "PID/IV spread matches a Gen IV Mystery Gift anti-shiny ARNG reroll class; exact event-template provenance remains incomplete",
                                     CheckIdentifier::PidRng);
+                                add(r, Severity::Info,
+                                    "Generation IV gift-generation evidence is present, but no exact WC4/PCD/PGT distribution template has been proven",
+                                    CheckIdentifier::EventGift);
                             } else {
                                 add(r, Severity::Info,
                                     "No normal Gen IV Method-1, Cute Charm, Chain Shiny, or Mystery Gift anti-shiny RNG match; other event RNG classes remain incomplete",

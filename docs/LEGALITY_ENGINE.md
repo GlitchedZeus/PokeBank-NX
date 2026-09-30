@@ -13,6 +13,7 @@ PokeBank NX already had an informational structural/internal checker. The legali
 - Historical mechanics stay historical. Gen I/II DV + Stat Experience rules are not replaced with modern IV/EV assumptions.
 - Encounter, move, PID/RNG, event/gift, egg, trade and transfer legality are separate evidence layers.
 - Event/gift coverage is tracked separately from retail static encounters: recognizing a Mystery Gift PID pattern does not prove an exact distribution template.
+- A recognized Gen IV Mystery Gift anti-shiny PID/IV class raises Event/Gift coverage to **Partial**; it stays incomplete until a specific WC4/PCD/PGT template matches.
 - Legality never changes save-write authorization.
 
 ## First Gen I-IV milestone
