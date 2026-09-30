@@ -30,7 +30,7 @@ namespace UI {
             Gen4AssignedFile,
         };
 
-        enum class OpenIntent { Default, Items };
+        enum class OpenIntent { Default, Items, Backups };
 
         enum class MainMenuDestination {
             None,
@@ -150,13 +150,17 @@ namespace UI {
         bool appExitRequested = false;  // explicit Options -> Exit PokeBank NX
         MainMenuDestination requestedMainMenuDestination = MainMenuDestination::None;
         bool hubDockFocused = false;
-        bool headerSettingsFocused = false;
+        int headerActionIndex = -1; // -1 = none, 0 = profile, 1 = settings
         int hubDockIndex = 0;
+        int gamesDrawerIndex = 0;
+        int gamesDrawerScroll = 0;
+        int profilePickerIndex = 0;
         // Main product-home focus outside the persistent dock:
         // -1 = selected game card, 0 = Master Vault, 1 = Pokédex.
         int hubFeatureIndex = -1;
-        enum class Overlay { None, Options, Help, GameWorkspace, LegacyInstances, LegacyAssignment,
-                             LegacyDetails, Gen4Setup, Gen4Candidates, GameFilePicker };
+        enum class Overlay { None, Options, Help, GamesDrawer, ProfilePicker, GameWorkspace,
+                             LegacyInstances, LegacyAssignment, LegacyDetails, Gen4Setup,
+                             Gen4Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
         int optionsIndex = 0;
@@ -201,6 +205,7 @@ namespace UI {
         std::vector<HitRect> titleRects;
         std::vector<HitRect> userRects;
         std::vector<HitRect> dockRects;
+        std::vector<HitRect> headerRects;
 
         void activateHubDock();
         void activateGameWorkspace();
