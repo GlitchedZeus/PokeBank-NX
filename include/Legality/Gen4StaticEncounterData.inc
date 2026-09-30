@@ -2,6 +2,7 @@
 // Source: PKHeX @ 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
 // Sources: Encounters4DPPt.cs and Encounters4HGSS.cs static/gift tables.
 // FixedBall is preserved when specified by the source template; 0 means unrestricted.
+// Source-proven fixed gender/nature/shiny/fateful constraints are emitted separately.
 // Trades, external events and PokeWalker encounters are separate evidence layers.
 inline constexpr uint64_t kPackedGen4StaticEncounters[] = {
     0x0040000000a01485ULL, 0x004000000280bc8aULL, 0x004000000280bc8cULL, 0x004000000280bc8eULL, 0x004000000280bd59ULL,
@@ -44,4 +45,12 @@ inline constexpr uint64_t kPackedGen4StaticEncounters[] = {
     0x0048000000a12902ULL, 0x0048000002811959ULL, 0x004800000281195bULL, 0x000800000501197cULL, 0x0009000004612b7dULL,
     0x000800000641d17fULL, 0x000800000641d180ULL, 0x0048000002811998ULL, 0x004800000281199aULL, 0x004800000021cfe3ULL,
     0x004800000021cfe4ULL, 0x004800001021cfe7ULL
+};
+
+inline constexpr StaticConstraint kGen4StaticConstraints[] = {
+    {0x0004000003c07fecULL, 3, 25, 0, true},
+    {0x0006000003c10e82ULL, 3, 25, 2, false},
+    {0x0006000013c1acacULL, 1, 4, 1, false},
+    {0x0008000003c10e82ULL, 3, 25, 2, false},
+    {0x0008000013c1acacULL, 1, 4, 1, false},
 };
