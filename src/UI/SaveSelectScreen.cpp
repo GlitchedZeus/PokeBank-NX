@@ -321,9 +321,6 @@ namespace UI {
     constexpr int GAME_ROW_H = 56;       // retained for legacy list/scroll helpers
     constexpr int HUB_VISIBLE_TITLES = 7;
     constexpr int DETAIL_ART = 210;
-    constexpr int PRODUCT_DOCK_Y = 648;
-    constexpr int PRODUCT_DOCK_SIZE = 42;
-    constexpr int PRODUCT_DOCK_STEP = 106;
     constexpr int CLASSIC_TILE_W = 184;
     constexpr int CLASSIC_TILE_H = 208;
     constexpr int CLASSIC_ICON = 126;
