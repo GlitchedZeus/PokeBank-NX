@@ -91,8 +91,9 @@ int main() {
                                   fishingKSeed, fishingKPid, 8).matched());
 
     // D/P/Pt Honey Trees do not use the ordinary encounter-slot roll.
-    // Seed 409 has Prev1 high16=28990, producing level 9 via 5 + rand/0x1745.
-    constexpr uint32_t honeySeed = 409u;
+    // Deterministic Method J vector: seed 29 has a single valid nature-reversal
+    // candidate whose Honey Tree level roll is 9 (5 + 26507 / 0x1745).
+    constexpr uint32_t honeySeed = 29u;
     constexpr uint32_t honeyPid = sequentialPid(honeySeed);
     constexpr uint64_t honeyTree = makeRow(9, 0, 5, 15);
     constexpr auto jh = matchNoLeadRow(false, honeyTree,
