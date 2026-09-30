@@ -216,9 +216,9 @@ require("productSourceLabel" in source and '"System save"' in source and '"Linke
 require('Truthful fallback: a Poké Ball identity badge' in source and
         'fake "character portrait"' in source,
         "missing trainer art must fall back to a truthful Poké Ball identity, never fake human art")
-require('"Pokémon storage, transfer & lineage"' in source and
-        '"Research species, forms & collection"' in source,
-        "Vault and Pokédex cards must carry distinct Pokémon-specific product identities")
+require('"Pokémon storage"' in source and '"Transfer & lineage"' in source and
+        '"Species & forms"' in source and '"Research & collection"' in source,
+        "compact Vault and Pokédex cards must retain distinct Pokémon-specific identities")
 require("padGetButtonsDown(&pad)" in source and
         "padGetButtons(&pad) & HidNpadButton_A" not in source,
         "action buttons must remain edge-triggered while held input is reserved for navigation repeat")
