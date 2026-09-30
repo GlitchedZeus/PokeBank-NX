@@ -63,7 +63,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 | 41 | AUDIT-005 | P4 | FIXED | historical branch-specific workflows remain tracked |
 | 42 | AUDIT-007 | P4 | FIXED | top-level README materially understates current Gen IV implementation |
 | 43 | AUDIT-008 | P4 | FIXED | checked-in Visual Studio metadata is stale PKSE-era configuration |
-| 44 | AUDIT-009 | P4 | OPEN | recovery metadata still describes the repository as private / old production branch |
+| 44 | AUDIT-009 | P4 | FIXED | recovery metadata still describes the repository as private / old production branch |
 
 ## Detailed finding ledger
 
@@ -842,7 +842,8 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **Regression-test strategy:** Docs/source consistency check against current branch hierarchy and supported behavior; no runtime claim beyond reviewed text.
 - **Dependency / sequencing:** Docs cleanup
 - **Proposed remediation order:** 44
-- **Status:** OPEN
+- **Status:** FIXED
+- **Current-code reconciliation:** recovery metadata now names `feature/pokebank-playable` only as `historical_snapshot_branch`, records the repository as public, and explicitly requires live-GitHub/current-reviewed-branch publishing. The snapshot README and recovery pack/recover messages no longer instruct direct pushes to the historical branch or describe the repository as private. Historical snapshot/application SHAs remain untouched as provenance.
 
 ## Checkpoints
 
