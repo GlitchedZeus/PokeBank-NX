@@ -76,8 +76,11 @@ def load_gen3():
 
 
 def csv_rows(name: str):
+    # Materialize while the HTTP response is open. Returning a lazy DictReader backed
+    # by TextIOWrapper would leave it pointing at a closed response.
     with urllib.request.urlopen(f"{POKEAPI_BASE}/{name}", timeout=60) as response:
-        return csv.DictReader(io.TextIOWrapper(response, encoding="utf-8"))
+        text = response.read().decode("utf-8")
+    return list(csv.DictReader(io.StringIO(text)))
 
 
 def load_gen4():
