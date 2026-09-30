@@ -17,6 +17,14 @@ namespace Legality::Gen4Static {
 //   roaming      [48]     (1 bit)
 //   game         [49..51] (3 bits; Gen4Wild::Game)
 //   fixed ball   [52..56] (5 bits; 0 = unrestricted)
+struct StaticConstraint {
+    uint64_t encounter = 0;
+    uint8_t gender = 3; // FixedGenderUtil.GenderRandom
+    uint8_t nature = 25; // Nature::Random
+    uint8_t shiny = 0; // Shiny::Random / Never / Always
+    bool fateful = false;
+};
+
 #include "Legality/Gen4StaticEncounterData.inc"
 
 constexpr uint16_t species(uint64_t v) noexcept {
@@ -42,6 +50,27 @@ constexpr Gen4Wild::Game game(uint64_t v) noexcept {
 }
 constexpr uint8_t fixedBall(uint64_t v) noexcept {
     return static_cast<uint8_t>((v >> 52) & 0x1Fu);
+}
+
+inline bool constraintsMatch(uint64_t encounter,
+                             uint8_t pokemonGender,
+                             uint8_t pokemonNature,
+                             bool pokemonShiny,
+                             bool pokemonFateful) noexcept {
+    for (const auto& constraint : kGen4StaticConstraints) {
+        if (constraint.encounter != encounter)
+            continue;
+        if (constraint.gender != 3 && pokemonGender != constraint.gender)
+            return false;
+        if (constraint.nature != 25 && pokemonNature != constraint.nature)
+            return false;
+        if (constraint.shiny == 1 && pokemonShiny)
+            return false;
+        if (constraint.shiny == 2 && !pokemonShiny)
+            return false;
+        return pokemonFateful == constraint.fateful;
+    }
+    return true;
 }
 
 constexpr bool roamerLocationAllowed(uint16_t originLocation, uint16_t metLocation) noexcept {
@@ -77,7 +106,9 @@ inline bool hasSpecies(std::string_view exactGameId, uint16_t speciesId) noexcep
 
 inline bool matches(std::string_view exactGameId, uint16_t speciesId,
                     uint16_t metLocation, uint8_t metLevel, uint8_t pokemonForm,
-                    uint16_t pokemonEggLocation, uint8_t pokemonBall = 0xFF) noexcept {
+                    uint16_t pokemonEggLocation, uint8_t pokemonBall,
+                    uint8_t pokemonGender, uint8_t pokemonNature,
+                    bool pokemonShiny, bool pokemonFateful) noexcept {
     const auto wanted = Gen4Wild::gameForId(exactGameId);
     if (wanted == Gen4Wild::Game::Invalid || speciesId == 0)
         return false;
@@ -108,6 +139,10 @@ inline bool matches(std::string_view exactGameId, uint16_t speciesId,
         } else if (location(row) != metLocation) {
             continue;
         }
+
+        if (!constraintsMatch(
+                row, pokemonGender, pokemonNature, pokemonShiny, pokemonFateful))
+            continue;
         return true;
     }
     return false;
