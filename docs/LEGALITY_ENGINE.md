@@ -29,6 +29,7 @@ The first legality-engine tranche adds:
 - Gen III truncated-roamer PID/IV correlation for the Ruby/Sapphire and FireRed/LeafGreen roamer bug class;
 - standard Pokémon Colosseum/XD XDRNG PID/IV correlation, with shadow-team locks and anti-shiny variants kept separate;
 - Pokémon Channel Jirachi XDRNG correlation using PID, IVs, SID, Ruby/Sapphire origin and OT gender, with the fixed distribution template kept separate;
+- regular Gen III BA-CD event PID/IV correlation, while anti-shiny/restricted/forced-shiny event variants remain separate;
 - Gen IV Cute Charm buffered-PID surface recognition, including Gen IV evolution/gender-ratio edge cases;
 - Gen IV Poké Radar Chain Shiny PID/IV/trainer-ID correlation, with radar-slot provenance kept explicitly partial;
 - Gen IV Mystery Gift anti-shiny ARNG reroll correlation, with exact distribution-template provenance kept separate.
@@ -41,7 +42,7 @@ Current encounter coverage is **partial** for R/B/Y, Crystal, the five Gen III g
 2. **Internal consistency** — level/EXP, names, gender, ability, forms and stats.
 3. **Exact-game move legality** — compatibility tables are wired now; event/tutor chronology and full tradeback provenance remain to be completed.
 4. **Encounter provenance** — Gen I released R/B/Y static/trade templates and Gen IV wild, static/gift, and fixed in-game trade evidence are imported; Stadium/external events, Japanese Blue, full PokéWalker course data, and remaining per-method restrictions are still incomplete.
-5. **PID/RNG correlation** — Gen III handheld Methods 1/2/3/4 plus the truncated R/S/FRLG roamer class, normal Gen IV Method-1 PID/IV, deterministic PokéWalker PID, Cute Charm buffered-PID surfaces, Chain Shiny PID/IV/trainer-ID correlation, and Gen IV Mystery Gift anti-shiny ARNG rerolls are recognized. PokéWalker IV/course provenance, full Gen IV Method J/K lead frames, radar-slot proof for Chain Shiny, exact Gen IV event-template linkage, plus Gen III BACD/event classes, CXD shadow-team locks/anti-shiny variants, and exact Channel/event template linkage remain incomplete.
+5. **PID/RNG correlation** — Gen III handheld Methods 1/2/3/4 plus the truncated R/S/FRLG roamer class, normal Gen IV Method-1 PID/IV, deterministic PokéWalker PID, Cute Charm buffered-PID surfaces, Chain Shiny PID/IV/trainer-ID correlation, and Gen IV Mystery Gift anti-shiny ARNG rerolls are recognized. PokéWalker IV/course provenance, full Gen IV Method J/K lead frames, radar-slot proof for Chain Shiny, exact Gen IV event-template linkage, plus Gen III BA-CD anti-shiny/restricted variants, CXD shadow-team locks/anti-shiny variants, and exact Channel/event template linkage remain incomplete.
 6. **Egg / breeding legality** — hatch level/location, inherited moves and generation-specific breeding rules.
 7. **Event / gift legality** — fixed trainer data, fateful flags, ribbons, dates and distribution records.
 8. **Transfer legality** — legitimate movement between generations.

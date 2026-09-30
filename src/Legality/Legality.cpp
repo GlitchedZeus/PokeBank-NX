@@ -20,6 +20,7 @@
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3ChannelPidIvCorrelation.h"
+#include "Legality/Gen3BacdPidIvCorrelation.h"
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
 #include "Legality/Gen4CuteCharmPid.h"
@@ -212,9 +213,16 @@ namespace Legality {
                                 "PID/IV spread matches the Pokemon Channel Jirachi XDRNG class; fixed distribution-template provenance remains separate",
                                 CheckIdentifier::PidRng);
                         } else {
-                            add(r, Severity::Info,
-                                "No handheld Method 1/2/3/4, truncated-roamer, standard Colosseum/XD, or Channel Jirachi PID/IV match; BACD/event classes remain incomplete",
-                                CheckIdentifier::PidRng);
+                            const auto bacd = Gen3BacdPidIv::analyze(pk.pid(), ivs);
+                            if (bacd.matched) {
+                                add(r, Severity::Info,
+                                    "PID/IV spread matches the regular Gen III BA-CD event RNG class; exact distribution-template provenance remains separate",
+                                    CheckIdentifier::PidRng);
+                            } else {
+                                add(r, Severity::Info,
+                                    "No handheld Method 1/2/3/4, truncated-roamer, standard Colosseum/XD, Channel Jirachi, or regular BA-CD PID/IV match; anti-shiny/restricted event variants remain incomplete",
+                                    CheckIdentifier::PidRng);
+                            }
                         }
                     }
                 }
@@ -232,9 +240,16 @@ namespace Legality {
                             "PID/IV spread matches the Pokemon Channel Jirachi XDRNG class; fixed distribution-template provenance remains separate",
                             CheckIdentifier::PidRng);
                     } else {
-                        add(r, Severity::Info,
-                            "No handheld Method 1/2/3/4, standard Colosseum/XD, or Channel Jirachi PID/IV match; BACD/event classes remain incomplete",
-                            CheckIdentifier::PidRng);
+                        const auto bacd = Gen3BacdPidIv::analyze(pk.pid(), ivs);
+                        if (bacd.matched) {
+                            add(r, Severity::Info,
+                                "PID/IV spread matches the regular Gen III BA-CD event RNG class; exact distribution-template provenance remains separate",
+                                CheckIdentifier::PidRng);
+                        } else {
+                            add(r, Severity::Info,
+                                "No handheld Method 1/2/3/4, standard Colosseum/XD, Channel Jirachi, or regular BA-CD PID/IV match; anti-shiny/restricted event variants remain incomplete",
+                                CheckIdentifier::PidRng);
+                        }
                     }
                 }
             }
