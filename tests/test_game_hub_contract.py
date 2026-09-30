@@ -27,6 +27,20 @@ require('"Pokédex Progress"' in source and
         "previewDexSeen" in source and "previewDexCaught" in source and
         '"   •   Owned "' in source,
         "selected-game card must show real parsed Pokédex Seen/Owned progress when supported")
+require("parsed.pokedexProgress()" in source and
+        "previewDexSeen = dex.seen;" in source and
+        "previewDexCaught = dex.caught;" in source and
+        "previewDexTotal = dex.total;" in source,
+        "installed Switch titles must populate Product Home from the trainer's authoritative Pokédex reader")
+for dex_reader in (
+    "src/Trainer/Trainer7LGPE.cpp",
+    "src/Trainer/Trainer8BDSP.cpp",
+    "src/Trainer/Trainer8SWSH.cpp",
+    "src/Trainer/Trainer8LA.cpp",
+    "src/Trainer/Trainer9SV.cpp",
+):
+    require("pokedexProgress() const" in (ROOT / dex_reader).read_text(encoding="utf-8"),
+            f"missing authoritative Pokédex progress reader: {dex_reader}")
 require('"Trainer"' in source,
         "selected-game card must expose trainer information")
 require("PROFILE_AVATAR" in source and "SystemIcons::userIcon" in source,
