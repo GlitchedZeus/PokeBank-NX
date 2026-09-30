@@ -286,7 +286,8 @@ def main() -> int:
 
     print("PokeBank NX deterministic workspace recovery")
     print(f"Repository: {state['repository']}")
-    print(f"Branch: {state['branch']}")
+    print(f"Historical snapshot branch: {state.get('historical_snapshot_branch', state.get('branch', 'unknown'))}")
+    print("Publishing target: re-fetch live GitHub state; use the current reviewed branch/PR")
     print(f"Application source checkpoint: {state['application_source']}")
     print(f"Recovery state: {STATE_PATH.relative_to(ROOT)}")
 
