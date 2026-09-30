@@ -45,9 +45,9 @@ int main() {
     constexpr uint64_t kWrong = makeRow(0, 5, 5, 5);
     static_assert(!matchNoLeadRow(true, kWrong, methodKSeed, methodKPid, 5).matched());
 
-    // D/P/Pt Old Rod positive vector: pre-PID seed 331 rolls slot 0, level 7,
-    // and passes the 25% rod activation frame.
-    constexpr uint32_t fishingJSeed = 331u;
+    // D/P/Pt Old Rod positive vector for the current reversal-window interpretation:
+    // pre-PID seed 69 rolls slot 0, level 7, and passes the 25% rod activation frame.
+    constexpr uint32_t fishingJSeed = 69u;
     constexpr uint32_t fishingJPid = sequentialPid(fishingJSeed);
     constexpr uint64_t fishingJ = makeRow(2, 0, 5, 10);
     constexpr auto jf = matchNoLeadRow(false, fishingJ, fishingJSeed, fishingJPid, 7);
@@ -55,9 +55,10 @@ int main() {
     static_assert(jf.slot == 0);
     static_assert(!matchNoLeadRow(false, fishingJ, fishingJSeed, fishingJPid, 8).matched());
 
-    // HG/SS Old Rod positive vector: pre-PID seed 26 rolls slot 0, level 8,
-    // and passes the normal/following-Pokemon rod activation path without a lead ability.
-    constexpr uint32_t fishingKSeed = 26u;
+    // HG/SS Old Rod positive vector for the current reversal-window interpretation:
+    // pre-PID seed 20 rolls slot 0, level 8, and passes the normal/following-Pokemon
+    // rod activation path without a lead ability.
+    constexpr uint32_t fishingKSeed = 20u;
     constexpr uint32_t fishingKPid = sequentialPid(fishingKSeed);
     constexpr uint64_t fishingK = makeRow(2, 0, 5, 10);
     constexpr auto kf = matchNoLeadRow(true, fishingK, fishingKSeed, fishingKPid, 8);
@@ -77,7 +78,7 @@ int main() {
                                   fishingKSeed, fishingKPid, 8).matched());
 
     // HG/SS Rock Smash requires the area encounter rate in addition to slot + level.
-    // Seed 26 yields slot 0 and level 8; rate 100 guarantees the normal no-lead trigger.
+    // Seed 20 yields slot 0 and level 8; rate 100 guarantees the normal no-lead trigger.
     constexpr uint64_t rockSmash = makeRow(5, 0, 5, 10, 100);
     constexpr auto kr = matchNoLeadRow(true, rockSmash,
                                        fishingKSeed, fishingKPid, 8);
@@ -90,15 +91,17 @@ int main() {
                                   fishingKSeed, fishingKPid, 8).matched());
 
     // D/P/Pt Honey Trees do not use the ordinary encounter-slot roll.
-    // Seed 331 has Prev1 high16=46232, producing level 12 via 5 + rand/0x1745.
+    // Seed 409 has Prev1 high16=28990, producing level 9 via 5 + rand/0x1745.
+    constexpr uint32_t honeySeed = 409u;
+    constexpr uint32_t honeyPid = sequentialPid(honeySeed);
     constexpr uint64_t honeyTree = makeRow(9, 0, 5, 15);
     constexpr auto jh = matchNoLeadRow(false, honeyTree,
-                                       fishingJSeed, fishingJPid, 12);
+                                       honeySeed, honeyPid, 9);
     static_assert(jh.method == Method::MethodJHoneyTreeNoLead);
     static_assert(!matchNoLeadRow(false, honeyTree,
-                                  fishingJSeed, fishingJPid, 11).matched());
+                                  honeySeed, honeyPid, 10).matched());
     static_assert(!matchNoLeadRow(true, honeyTree,
-                                  fishingJSeed, fishingJPid, 12).matched());
+                                  honeySeed, honeyPid, 9).matched());
 
     // Feebas fishing remains fail-closed until the Mt. Coronet tile branch is modeled.
     constexpr uint64_t feebasFishing =
