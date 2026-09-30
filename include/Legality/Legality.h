@@ -40,6 +40,7 @@ namespace Legality {
         Origin,
         Encounter,
         PidRng,
+        Egg,
         Trainer,
         Checksum,
         Misc,
@@ -64,6 +65,7 @@ namespace Legality {
         CoverageLevel moves = CoverageLevel::Partial;
         CoverageLevel encounter = CoverageLevel::None;
         CoverageLevel pidRng = CoverageLevel::None;
+        CoverageLevel eggBreeding = CoverageLevel::None;
     };
 
     struct Report {
@@ -92,7 +94,8 @@ namespace Legality {
                 coverage.internal == CoverageLevel::Complete &&
                 coverage.moves == CoverageLevel::Complete &&
                 coverage.encounter == CoverageLevel::Complete &&
-                coverage.pidRng == CoverageLevel::Complete;
+                coverage.pidRng == CoverageLevel::Complete &&
+                coverage.eggBreeding == CoverageLevel::Complete;
             return complete && problemCount() == 0
                 ? Verdict::NoProblemsFound
                 : Verdict::Incomplete;

@@ -26,6 +26,7 @@
 #include "Legality/Gen4CuteCharmPid.h"
 #include "Legality/Gen4ChainShiny.h"
 #include "Legality/Gen4MysteryGiftPid.h"
+#include "Legality/Gen34EggState.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 
 #include <algorithm>
@@ -178,8 +179,26 @@ namespace Legality {
             // Internal mechanics are intentionally still partial until DV/Stat-Exp and
             // generation-specific PID/RNG rules have dedicated verifiers.
             r.coverage.internal = CoverageLevel::Partial;
-            if (exactGeneration == 3 || exactGeneration == 4)
+            if (exactGeneration == 3 || exactGeneration == 4) {
                 r.coverage.pidRng = CoverageLevel::Partial;
+                r.coverage.eggBreeding = CoverageLevel::Partial;
+            }
+        }
+
+        if (sourceProfile && (exactGeneration == 3 || exactGeneration == 4)) {
+            const auto eggState = Gen34EggState::analyze(
+                exactGeneration, pk.isEgg(), pk.eggLocation(), pk.metLevel());
+            if (eggState.invalid()) {
+                add(r, Severity::Invalid,
+                    std::string(Gen34EggState::evidenceName(eggState.evidence)),
+                    CheckIdentifier::Egg);
+            } else if (eggState.applies()) {
+                add(r, Severity::Info,
+                    exactGeneration == 3
+                        ? "PK3 unhatched egg state has the native met-level-0 structure; exact hatch-location and inherited-move evidence remain incomplete"
+                        : "PK4 egg-origin state has native met-level-0 structure and egg-location evidence; exact hatch-location and inherited-move evidence remain incomplete",
+                    CheckIdentifier::Egg);
+            }
         }
 
         if (sourceProfile && exactGeneration == 3) {
