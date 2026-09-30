@@ -6,10 +6,29 @@
 
 namespace Legality::Gen3BacdPidIv {
 
-struct Result {
-    bool matched = false;
-    uint32_t originSeed = 0;
+enum class Variant : uint8_t {
+    None,
+    Regular,
+    RegularAntiShiny,
+    ForceAntiShiny,
 };
+
+struct Result {
+    Variant variant = Variant::None;
+    uint32_t originSeed = 0;
+
+    constexpr bool matched() const noexcept { return variant != Variant::None; }
+};
+
+constexpr const char* variantName(Variant variant) noexcept {
+    switch (variant) {
+        case Variant::Regular:          return "regular BA-CD";
+        case Variant::RegularAntiShiny: return "regular anti-shiny BA-CD_A";
+        case Variant::ForceAntiShiny:   return "forced anti-shiny BA-CD_AX";
+        case Variant::None:             break;
+    }
+    return "unresolved BA-CD";
+}
 
 namespace Detail {
 inline constexpr uint32_t Mult = 0x41C64E6Du;
@@ -56,11 +75,28 @@ constexpr Seeds reverseIvs(uint32_t first, uint32_t second) noexcept {
     return out;
 }
 
+constexpr bool isShiny(uint32_t pid, uint32_t idXor) noexcept {
+    return ((pid >> 16) ^ (pid & 0xFFFFu) ^ idXor) < 8u;
+}
+
+constexpr uint32_t regularAntiShiny(uint32_t expectedPid, uint32_t idXor) noexcept {
+    if (!isShiny(expectedPid, idXor))
+        return expectedPid;
+    return (expectedPid + 8u) & 0xFFFFFFF8u;
+}
+
+constexpr uint32_t forceAntiShiny(uint32_t a16, uint32_t b16, uint32_t idXor) noexcept {
+    if ((a16 & ~0x7u) == 0)
+        return 0xFFFFFFFFu;
+    return ((a16 ^ (idXor ^ b16)) << 16) | b16;
+}
+
 } // namespace Detail
 
-// Positive recognition for the regular BA-CD Gen III event RNG class.
-// Anti-shiny, forced-shiny, restricted-seed and other event variants are separate.
-constexpr Result analyze(uint32_t pid, const std::array<uint8_t, 6>& ivs) noexcept {
+// Positive recognition for regular and anti-shiny BA-CD Gen III event RNG classes.
+// Forced-shiny, restricted-seed and exact event-template checks remain separate.
+constexpr Result analyzeWithTrainer(uint32_t pid, const std::array<uint8_t, 6>& ivs,
+                                    uint16_t tid16, uint16_t sid16) noexcept {
     const uint32_t iv1 =
         static_cast<uint32_t>(ivs[0]) |
         (static_cast<uint32_t>(ivs[1]) << 5) |
@@ -77,10 +113,25 @@ constexpr Result analyze(uint32_t pid, const std::array<uint8_t, 6>& ivs) noexce
         seed = Detail::prev(seed);
         const uint32_t a16 = seed >> 16;
         const uint32_t expectedPid = (a16 << 16) | b16;
+        const uint32_t origin = Detail::prev(seed);
         if (expectedPid == pid)
-            return {true, Detail::prev(seed)};
+            return {Variant::Regular, origin};
+
+        const uint32_t idXor = static_cast<uint32_t>(tid16 ^ sid16);
+        if (Detail::regularAntiShiny(expectedPid, idXor) == pid &&
+            expectedPid != pid)
+            return {Variant::RegularAntiShiny, origin};
+
+        if (Detail::forceAntiShiny(a16, b16, idXor) == pid)
+            return {Variant::ForceAntiShiny, origin};
     }
     return {};
+}
+
+constexpr Result analyze(uint32_t pid, const std::array<uint8_t, 6>& ivs) noexcept {
+    // Backward-compatible base matcher: impossible IDs disable anti-shiny variants.
+    const auto result = analyzeWithTrainer(pid, ivs, 0xFFFFu, 0xFFFFu);
+    return result.variant == Variant::Regular ? result : Result{};
 }
 
 } // namespace Legality::Gen3BacdPidIv

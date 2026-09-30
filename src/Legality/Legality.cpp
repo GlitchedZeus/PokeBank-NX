@@ -213,14 +213,17 @@ namespace Legality {
                                 "PID/IV spread matches the Pokemon Channel Jirachi XDRNG class; fixed distribution-template provenance remains separate",
                                 CheckIdentifier::PidRng);
                         } else {
-                            const auto bacd = Gen3BacdPidIv::analyze(pk.pid(), ivs);
-                            if (bacd.matched) {
+                            const auto bacd = Gen3BacdPidIv::analyzeWithTrainer(
+                                pk.pid(), ivs, pk.tid16(), pk.sid16());
+                            if (bacd.matched()) {
                                 add(r, Severity::Info,
-                                    "PID/IV spread matches the regular Gen III BA-CD event RNG class; exact distribution-template provenance remains separate",
+                                    "PID/IV spread matches the Gen III " +
+                                    std::string(Gen3BacdPidIv::variantName(bacd.variant)) +
+                                    " event RNG class; exact distribution-template provenance remains separate",
                                     CheckIdentifier::PidRng);
                             } else {
                                 add(r, Severity::Info,
-                                    "No handheld Method 1/2/3/4, truncated-roamer, standard Colosseum/XD, Channel Jirachi, or regular BA-CD PID/IV match; anti-shiny/restricted event variants remain incomplete",
+                                    "No handheld Method 1/2/3/4, truncated-roamer, standard Colosseum/XD, Channel Jirachi, or regular/anti-shiny BA-CD PID/IV match; forced-shiny/restricted event variants remain incomplete",
                                     CheckIdentifier::PidRng);
                             }
                         }
@@ -240,14 +243,17 @@ namespace Legality {
                             "PID/IV spread matches the Pokemon Channel Jirachi XDRNG class; fixed distribution-template provenance remains separate",
                             CheckIdentifier::PidRng);
                     } else {
-                        const auto bacd = Gen3BacdPidIv::analyze(pk.pid(), ivs);
-                        if (bacd.matched) {
+                        const auto bacd = Gen3BacdPidIv::analyzeWithTrainer(
+                            pk.pid(), ivs, pk.tid16(), pk.sid16());
+                        if (bacd.matched()) {
                             add(r, Severity::Info,
-                                "PID/IV spread matches the regular Gen III BA-CD event RNG class; exact distribution-template provenance remains separate",
+                                "PID/IV spread matches the Gen III " +
+                                std::string(Gen3BacdPidIv::variantName(bacd.variant)) +
+                                " event RNG class; exact distribution-template provenance remains separate",
                                 CheckIdentifier::PidRng);
                         } else {
                             add(r, Severity::Info,
-                                "No handheld Method 1/2/3/4, standard Colosseum/XD, Channel Jirachi, or regular BA-CD PID/IV match; anti-shiny/restricted event variants remain incomplete",
+                                "No handheld Method 1/2/3/4, standard Colosseum/XD, Channel Jirachi, or regular/anti-shiny BA-CD PID/IV match; forced-shiny/restricted event variants remain incomplete",
                                 CheckIdentifier::PidRng);
                         }
                     }

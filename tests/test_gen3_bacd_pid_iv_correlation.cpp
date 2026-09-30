@@ -4,11 +4,14 @@
 #include <iostream>
 
 int main() {
+    using Legality::Gen3BacdPidIv::Variant;
     using Legality::Gen3BacdPidIv::analyze;
+    using Legality::Gen3BacdPidIv::analyzeWithTrainer;
 
     // Canonical PKHeX unrestricted regular BACD event vector.
     const auto bacd = analyze(0x67DBFC33u, {12, 25, 27, 30, 2, 31});
-    assert(bacd.matched);
+    assert(bacd.matched());
+    assert(bacd.variant == Variant::Regular);
 
     // Replay from the recovered origin: A/B generate PID, C/D generate IV halves.
     uint32_t seed = bacd.originSeed;
@@ -28,7 +31,22 @@ int main() {
     assert(iv1 == (12u | (25u << 5) | (27u << 10)));
     assert(iv2 == (30u | (2u << 5) | (31u << 10)));
 
-    assert(!analyze(0x67DBFC33u, {12, 25, 27, 30, 3, 31}).matched);
+    assert(!analyze(0x67DBFC33u, {12, 25, 27, 30, 3, 31}).matched());
 
-    std::cout << "Gen III regular BACD event PID/IV correlation: PASS\n";
+    // Canonical PKHeX unrestricted regular-antishiny event vector.
+    const auto anti = analyzeWithTrainer(
+        0x67DBFC38u, {12, 25, 27, 30, 2, 31}, 1337, 40657);
+    assert(anti.matched());
+    assert(anti.variant == Variant::RegularAntiShiny);
+
+    // Canonical PKHeX unrestricted force-antishiny event vector.
+    const auto forced = analyzeWithTrainer(
+        0xBD3DF676u, {0, 15, 5, 4, 21, 5}, 80, 0);
+    assert(forced.matched());
+    assert(forced.variant == Variant::ForceAntiShiny);
+
+    assert(!analyzeWithTrainer(
+        0xBD3DF676u, {0, 15, 5, 4, 21, 6}, 80, 0).matched());
+
+    std::cout << "Gen III BA-CD event PID/IV correlation variants: PASS\n";
 }
