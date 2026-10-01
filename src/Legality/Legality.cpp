@@ -690,15 +690,23 @@ namespace Legality {
                         const auto chain =
                             Gen4ChainShiny::analyze(pk.pid(), pk.id32(), ivs);
                         if (chain.matched) {
-                            const bool radarEncounter =
-                                Gen4Wild::hasRadarEligibleMatch(
+                            const auto radar =
+                                Gen4Wild::radarEvidence(
                                     gen4EncounterGameId, species,
                                     pk.metLocation(), pk.metLevel(), pk.form());
-                            add(r, Severity::Info,
-                                radarEncounter
-                                    ? "PID/IV/trainer IDs match the Gen IV Poké Radar Chain Shiny RNG class and the exact wild encounter is Radar-capable"
-                                    : "PID/IV/trainer IDs match the Gen IV Poké Radar Chain Shiny RNG class, but no Radar-capable direct wild encounter row was proven; evolved/event provenance remains incomplete",
-                                CheckIdentifier::PidRng);
+                            if (radar.matched) {
+                                std::string detail =
+                                    "PID/IV/trainer IDs match the Gen IV Poké Radar Chain Shiny RNG class and a Radar-capable wild encounter";
+                                if (radar.evolved)
+                                    detail += " via captured ancestor species " +
+                                              std::to_string(radar.sourceSpecies);
+                                add(r, Severity::Info, std::move(detail),
+                                    CheckIdentifier::PidRng);
+                            } else {
+                                add(r, Severity::Info,
+                                    "PID/IV/trainer IDs match the Gen IV Poké Radar Chain Shiny RNG class, but no Radar-capable direct or base-form ancestor wild encounter row was proven; event/form-specific evolution provenance remains incomplete",
+                                    CheckIdentifier::PidRng);
+                            }
                         } else {
                             const auto gift =
                                 Gen4MysteryGiftPid::analyze(pk.pid(), ivs);
