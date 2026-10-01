@@ -202,6 +202,16 @@ namespace Legality {
         const std::string_view gen4EncounterGameId = exactGeneration == 4
             ? Gen4Origin::exactRetailGameId(pk.originGame())
             : std::string_view{};
+        std::string_view eggEvidenceGameId = exactSourceGameId;
+        if (exactGeneration == 4) {
+            if (!gen4EncounterGameId.empty()) {
+                eggEvidenceGameId = gen4EncounterGameId;
+            } else if (storedGen4OriginKind == Gen4Origin::Kind::Gen3Handheld) {
+                eggEvidenceGameId = Gen4Origin::exactGen3GameId(pk.originGame());
+            } else {
+                eggEvidenceGameId = {};
+            }
+        }
 
         if (sourceProfile && exactGeneration == 1 &&
             pk.getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup) {
@@ -511,8 +521,9 @@ namespace Legality {
 
             for (int slotIndex = 0; slotIndex < 4; ++slotIndex) {
                 const uint16_t moveId = pk.move(slotIndex);
-                const auto eggMove =
-                    Gen34EggMove::classify(exactSourceGameId, species, moveId);
+                const auto eggMove = eggEvidenceGameId.empty()
+                    ? Gen34EggMove::MoveResult{}
+                    : Gen34EggMove::classify(eggEvidenceGameId, species, moveId);
                 if (!eggMove.matched())
                     continue;
 
