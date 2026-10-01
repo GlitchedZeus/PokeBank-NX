@@ -23,6 +23,12 @@ on:
       - 'include/UI/SaveSelectScreen.h'
       - 'include/UI/UI.h'
       - 'src/UI/SaveSelectScreen.cpp'
+      - 'src/UI/SystemIcons.cpp'
+      - 'include/UI/SystemIcons.h'
+      - 'src/Games/GameIdentity.cpp'
+      - 'include/Games/GameIdentity.h'
+      - 'romfs/trainer_portraits/**'
+      - 'romfs/region_backdrops/**'
       - 'include/Utils/PokeBankPaths.h'
       - 'Makefile.host'
       - 'Makefile.host.product-ui'
@@ -79,8 +85,27 @@ jobs:
           set -euo pipefail
           test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
           (cd recovery-work && python3 tools/recover_workspace.py)
+
+          # Recovery supplies the large immutable baseline RomFS. Preserve presentation assets
+          # that intentionally live on the active application branch before replacing that tree.
+          rm -rf branch-romfs-overrides
+          mkdir -p branch-romfs-overrides
+          for d in trainer_portraits region_backdrops; do
+            if [ -d "romfs/$d" ]; then
+              cp -a "romfs/$d" "branch-romfs-overrides/$d"
+            fi
+          done
+
           rm -rf romfs
           cp -a recovery-work/romfs romfs
+          for d in trainer_portraits region_backdrops; do
+            if [ -d "branch-romfs-overrides/$d" ]; then
+              rm -rf "romfs/$d"
+              cp -a "branch-romfs-overrides/$d" "romfs/$d"
+            fi
+          done
+          test -s romfs/trainer_portraits/atlas.png
+
           for f in gold_gbc silver_gbc crystal_gbc diamond_nds pearl_nds platinum_nds heartgold_nds soulsilver_nds; do
             test -s "assets/game_cards/$f.png"
             cp "assets/game_cards/$f.png" "romfs/game_cards/$f.png"
