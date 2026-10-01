@@ -117,16 +117,24 @@ inline bool gameLaunchContentSupported(std::string_view gameId, std::string_view
     return false;
 }
 
-inline std::string gameLaunchBindingKey(std::string_view profileIdentity,
-                                        std::string_view gameId,
-                                        std::string_view sourceIdentity) {
-    if (profileIdentity.empty() || gameId.empty() || sourceIdentity.empty()) return {};
+inline std::string gameLaunchBindingFamilyPrefix(std::string_view profileIdentity,
+                                                  std::string_view gameId) {
+    if (profileIdentity.empty() || gameId.empty()) return {};
     std::string out;
-    out.reserve(profileIdentity.size() + gameId.size() + sourceIdentity.size() + 2);
+    out.reserve(profileIdentity.size() + gameId.size() + 2);
     out.append(profileIdentity);
     out.push_back('|');
     out.append(gameId);
     out.push_back('|');
+    return out;
+}
+
+inline std::string gameLaunchBindingKey(std::string_view profileIdentity,
+                                        std::string_view gameId,
+                                        std::string_view sourceIdentity) {
+    if (sourceIdentity.empty()) return {};
+    std::string out = gameLaunchBindingFamilyPrefix(profileIdentity, gameId);
+    if (out.empty()) return {};
     out.append(sourceIdentity);
     return out;
 }
