@@ -17,6 +17,9 @@ enum class Method : uint8_t {
     MethodKHeadbuttNoLead,
     MethodJHoneyTreeNoLead,
     MethodKRockSmashNoLead,
+    MethodKBugContestNoLead,
+    MethodKSafariNoLead,
+    MethodKSafariFishingNoLead,
 };
 
 struct Result {
@@ -66,8 +69,16 @@ constexpr uint8_t superRodSlotK(uint32_t roll) noexcept {
            roll < 100 ? 4 : 0xFF;
 }
 
+constexpr bool isSafari(uint8_t type) noexcept {
+    return type >= 10 && type <= 14;
+}
+
+constexpr bool isSafariFishing(uint8_t type) noexcept {
+    return type >= 12 && type <= 14;
+}
+
 constexpr bool isFishing(uint8_t type) noexcept {
-    return type >= 2 && type <= 4;
+    return (type >= 2 && type <= 4) || isSafariFishing(type);
 }
 
 constexpr bool isHeadbutt(uint8_t type) noexcept {
@@ -103,6 +114,45 @@ constexpr uint8_t headbuttSlot(uint16_t rand16) noexcept {
            roll < 100 ? 5 : 0xFF;
 }
 
+constexpr uint8_t bugContestSlot(uint16_t rand16) noexcept {
+    const uint32_t roll = rand16 % 100u;
+    return roll < 5 ? 9 :
+           roll < 10 ? 8 :
+           roll < 15 ? 7 :
+           roll < 20 ? 6 :
+           roll < 30 ? 5 :
+           roll < 40 ? 4 :
+           roll < 50 ? 3 :
+           roll < 60 ? 2 :
+           roll < 80 ? 1 :
+           roll < 100 ? 0 : 0xFF;
+}
+
+constexpr uint8_t safariSlot(uint16_t rand16) noexcept {
+    return static_cast<uint8_t>(rand16 % 10u);
+}
+
+constexpr bool hasAny31IvWord(uint16_t word) noexcept {
+    return (word & 0x1Fu) == 31u ||
+           ((word >> 5) & 0x1Fu) == 31u ||
+           ((word >> 10) & 0x1Fu) == 31u;
+}
+
+constexpr bool directMinimum31Satisfied(uint32_t prePidSeed) noexcept {
+    // HG/SS Bug Contest and Safari encounters reroll the entire candidate up to
+    // four times when none of the six IVs is 31. A current candidate with any
+    // 31 IV is therefore directly acceptable. A no-31 candidate can still be
+    // legal only as the exhausted fourth attempt; that historical chain remains
+    // unresolved rather than being treated as invalid.
+    uint32_t seed = Gen3PidIv::Detail::next(
+        Gen3PidIv::Detail::next(prePidSeed));
+    seed = Gen3PidIv::Detail::next(seed);
+    const uint16_t iv1 = static_cast<uint16_t>((seed >> 16) & 0x7FFFu);
+    seed = Gen3PidIv::Detail::next(seed);
+    const uint16_t iv2 = static_cast<uint16_t>((seed >> 16) & 0x7FFFu);
+    return hasAny31IvWord(iv1) || hasAny31IvWord(iv2);
+}
+
 constexpr uint8_t fishingSlot(bool hgss, uint8_t type, uint16_t rand16) noexcept {
     if (!isFishing(type)) return 0xFF;
     if (hgss)
@@ -114,7 +164,9 @@ constexpr uint8_t fishingSlot(bool hgss, uint8_t type, uint16_t rand16) noexcept
 
 constexpr bool fishingActivation(bool hgss, uint8_t type, uint16_t rand16) noexcept {
     if (!isFishing(type)) return false;
-    uint32_t rate = type == 2 ? 25u : type == 3 ? 50u : 75u;
+    const bool oldRod = type == 2 || type == 12;
+    const bool goodRod = type == 3 || type == 13;
+    uint32_t rate = oldRod ? 25u : goodRod ? 50u : 75u;
     if (hgss)
         rate += 50u; // PKHeX Method K best-case following-Pokemon bonus; no lead ability required.
     const uint32_t roll = hgss ? (rand16 % 100u) : (rand16 / 656u);
@@ -166,22 +218,28 @@ constexpr uint8_t randomLevel(uint8_t minimum, uint8_t maximum,
     return static_cast<uint8_t>((rand16 % width) + minimum);
 }
 
-// Conservative positive matcher for the straightforward no-lead wild paths only.
+// Conservative positive matcher for audited no-lead / Sweet-Scent-compatible paths.
 // Supported now:
-//   D/P/Pt Method J: Grass, Surf
-//   HG/SS  Method K: Grass, Surf
-// Fishing/Honey Tree/Rock Smash/Headbutt/BCC/Safari and all lead-ability branches
-// deliberately return unresolved rather than pretending to be invalid.
+//   D/P/Pt Method J: Grass, Surf, fishing, Honey Tree
+//   HG/SS  Method K: Grass, Surf, fishing, Headbutt, Rock Smash,
+//                     Bug Contest, Safari Grass/Surf/fishing
+// Bug Contest/Safari direct proof requires the current Method-1 candidate to have
+// at least one 31 IV. Exhausted fourth-attempt no-31 reroll chains and special-lead
+// branches remain unresolved rather than pretending to be invalid.
 constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                                 uint32_t prePidSeed, uint32_t pid,
                                 uint8_t metLevel) noexcept {
     const uint8_t type = Gen4Wild::method(row);
-    if (type > 9 || type == 8)
+    if (type > 14)
         return {};
-    if (isHeadbutt(type) && !hgss)
+    if ((isHeadbutt(type) || type == 8 || isSafari(type)) && !hgss)
         return {};
     if (isHoneyTree(type) && hgss)
         return {};
+
+    const bool requiresMinimum31 = type == 8 || isSafari(type);
+    const bool directMinimum31 =
+        !requiresMinimum31 || directMinimum31Satisfied(prePidSeed);
 
     // Mt. Coronet Feebas fishing has an additional tile-replacement RNG branch.
     // Keep it unresolved until that area-specific activation state is represented.
@@ -211,12 +269,17 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                 rolledSlot = hgss ? methodKSlot(type, prev1) : methodJSlot(type, prev1);
             } else if (type == 1) {
                 rolledSlot = hgss ? methodKSlot(type, prev2) : methodJSlot(type, prev2);
+            } else if (isSafari(type)) {
+                // HG/SS Safari uses rand % 10 and has no random level frame.
+                rolledSlot = safariSlot(prev1);
             } else if (isFishing(type)) {
                 rolledSlot = fishingSlot(hgss, type, prev2);
             } else if (type == 5) {
                 rolledSlot = rockSmashSlot(prev2);
             } else if (isHeadbutt(type)) {
                 rolledSlot = headbuttSlot(prev2);
+            } else if (type == 8) {
+                rolledSlot = bugContestSlot(prev2);
             } else if (isHoneyTree(type)) {
                 // Honey Tree species/slot is chosen before the normal Method J slot routine.
                 // PKHeX treats the ESV check as pre-determined.
@@ -228,6 +291,24 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                     if (Gen4Wild::levelMatches(row, metLevel))
                         return {hgss ? Method::MethodKNoLead : Method::MethodJNoLead,
                                 candidate, rolledSlot};
+                } else if (isSafari(type)) {
+                    if (!Gen4Wild::levelMatches(row, metLevel) || !directMinimum31) {
+                        candidate = Gen3PidIv::Detail::prev(
+                            Gen3PidIv::Detail::prev(candidate));
+                        continue;
+                    }
+
+                    if (isSafariFishing(type)) {
+                        // No random level call: activation is immediately before ESV.
+                        if (!fishingActivation(hgss, type, prev2)) {
+                            candidate = Gen3PidIv::Detail::prev(
+                                Gen3PidIv::Detail::prev(candidate));
+                            continue;
+                        }
+                        return {Method::MethodKSafariFishingNoLead,
+                                candidate, rolledSlot};
+                    }
+                    return {Method::MethodKSafariNoLead, candidate, rolledSlot};
                 } else {
                     const uint8_t level = isHoneyTree(type)
                         ? honeyTreeLevel(prev1)
@@ -241,6 +322,16 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                     if (type == 1)
                         return {hgss ? Method::MethodKNoLead : Method::MethodJNoLead,
                                 candidate, rolledSlot};
+
+                    if (type == 8) {
+                        // LeadRequired.None can enter Bug Contest encounters via
+                        // Sweet Scent. Non-Sweet-Scent deadlock histories remain
+                        // a separate special-lead branch.
+                        if (directMinimum31)
+                            return {Method::MethodKBugContestNoLead,
+                                    candidate, rolledSlot};
+                        continue;
+                    }
 
                     if (type == 5) {
                         const uint32_t prev3Seed =
@@ -317,6 +408,9 @@ constexpr const char* methodName(Method method) noexcept {
         case Method::MethodKHeadbuttNoLead: return "Method K Headbutt (no lead)";
         case Method::MethodJHoneyTreeNoLead: return "Method J Honey Tree (no lead)";
         case Method::MethodKRockSmashNoLead: return "Method K Rock Smash (no lead)";
+        case Method::MethodKBugContestNoLead: return "Method K Bug Contest (no lead / Sweet Scent)";
+        case Method::MethodKSafariNoLead: return "Method K Safari (no lead)";
+        case Method::MethodKSafariFishingNoLead: return "Method K Safari fishing (no lead)";
         case Method::None: break;
     }
     return "No no-lead Method J/K match";
