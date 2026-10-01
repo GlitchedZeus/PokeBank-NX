@@ -26,6 +26,7 @@ namespace UI {
         std::map<UidKey, IconImage> s_userCache;
         std::map<u64, IconImage>    s_titleCache;
         std::map<std::string, IconImage> s_gameCardCache;
+        std::map<std::string, bool> s_gameCardSpecificCache;
         std::map<std::string, IconImage> s_regionBackdropCache;
         std::map<std::string, IconImage> s_trainerPortraitCache;
         IconImage s_trainerPortraitAtlas;
@@ -52,11 +53,20 @@ namespace UI {
             return img;
         }
 
-        IconImage decodeFileToRGBA(std::string_view path) {
+        IconImage decodeFileToRGBA(std::string_view path, bool logFailure = false) {
             IconImage img;
             int w = 0, h = 0, comp = 0;
-            unsigned char* rgba = stbi_load(std::string(path).c_str(), &w, &h, &comp, 4);
-            if (!rgba) return img;
+            const std::string pathString(path);
+            unsigned char* rgba = stbi_load(pathString.c_str(), &w, &h, &comp, 4);
+            if (!rgba) {
+                if (logFailure) {
+                    const char* reason = stbi_failure_reason();
+                    const std::string detail = pathString + " :: " +
+                        (reason ? reason : "unknown stb_image failure");
+                    logErrorToFile("SystemIcons: image decode failed", detail.c_str());
+                }
+                return img;
+            }
             img.data = rgba;
             img.width = w;
             img.height = h;
@@ -76,18 +86,24 @@ namespace UI {
 
             if (!s_trainerPortraitAtlas.valid()) {
                 s_trainerPortraitAtlas =
-                    decodeFileToRGBA("romfs:/trainer_portraits/atlas.png");
+                    decodeFileToRGBA("romfs:/trainer_portraits/atlas.png", true);
                 if (!s_trainerPortraitAtlas.valid()) {
-                    logInfoToFile("SystemIcons: trainer portrait atlas not packaged");
+                    logErrorToFile("SystemIcons: trainer portrait atlas unavailable at exact RomFS path");
                     return out;
                 }
+                logInfoToFile("SystemIcons: trainer portrait atlas decoded from RomFS");
             }
 
             const int expectedW = TRAINER_ATLAS_COLS * TRAINER_ATLAS_CELL_W;
             const int expectedH = TRAINER_ATLAS_ROWS * TRAINER_ATLAS_CELL_H;
             if (s_trainerPortraitAtlas.width != expectedW ||
                 s_trainerPortraitAtlas.height != expectedH) {
-                logErrorToFile("SystemIcons: trainer portrait atlas dimensions are invalid");
+                const std::string detail =
+                    std::to_string(s_trainerPortraitAtlas.width) + "x" +
+                    std::to_string(s_trainerPortraitAtlas.height) + " expected " +
+                    std::to_string(expectedW) + "x" + std::to_string(expectedH);
+                logErrorToFile("SystemIcons: trainer portrait atlas dimensions are invalid",
+                               detail.c_str());
                 return out;
             }
 
@@ -346,6 +362,26 @@ namespace UI {
         return s_gameCardCache.emplace(key, img).first->second;
     }
 
+    bool SystemIcons::gameCardHasSpecificArtwork(std::string_view gameId, u64 titleId) {
+        const std::string cacheKey = std::string(gameId) + "#" + std::to_string(titleId);
+        const auto cached = s_gameCardSpecificCache.find(cacheKey);
+        if (cached != s_gameCardSpecificCache.end()) return cached->second;
+
+        bool specific = false;
+        if (titleId != 0 && titleIcon(titleId).valid()) {
+            specific = true;
+        } else {
+            const std::string_view path = PokeVault::Games::gameCardArtworkPath(gameId);
+            if (!path.empty()) {
+                int w = 0, h = 0, comp = 0;
+                specific = stbi_info(std::string(path).c_str(), &w, &h, &comp) != 0 &&
+                           w > 0 && h > 0;
+            }
+        }
+        s_gameCardSpecificCache.emplace(cacheKey, specific);
+        return specific;
+    }
+
     const IconImage& SystemIcons::regionBackdrop(std::string_view regionKey) {
         const std::string key(regionKey);
         auto it = s_regionBackdropCache.find(key);
@@ -355,8 +391,11 @@ namespace UI {
         if (!key.empty()) {
             const std::string path = "romfs:/region_backdrops/" + key + ".png";
             img = decodeFileToRGBA(path);
-            if (!img.valid() && key == "sinnoh")
+            if (!img.valid() && key == "sinnoh") {
                 img = makeSinnohBackdrop();
+                if (img.valid())
+                    logInfoToFile("SystemIcons: using deterministic Sinnoh backdrop fallback");
+            }
         }
         return s_regionBackdropCache.emplace(key, img).first->second;
     }
@@ -388,6 +427,7 @@ namespace UI {
         s_userCache.clear();
         s_titleCache.clear();
         s_gameCardCache.clear();
+        s_gameCardSpecificCache.clear();
         s_regionBackdropCache.clear();
         s_trainerPortraitCache.clear();
     }
