@@ -2,7 +2,9 @@
 
 #include <Libs/stb_image.h>   // implementation lives in SpriteManager.cpp; we only need the decls
 
+#include <array>
 #include <cstdlib>
+#include <cstring>
 #include <map>
 #include <string>
 #include <vector>
@@ -24,6 +26,17 @@ namespace UI {
         std::map<u64, IconImage>    s_titleCache;
         std::map<std::string, IconImage> s_gameCardCache;
         std::map<std::string, IconImage> s_trainerPortraitCache;
+        IconImage s_trainerPortraitAtlas;
+
+        constexpr int TRAINER_ATLAS_COLS = 3;
+        constexpr int TRAINER_ATLAS_ROWS = 3;
+        constexpr int TRAINER_ATLAS_CELL_W = 96;
+        constexpr int TRAINER_ATLAS_CELL_H = 160;
+        constexpr std::array<std::string_view, 9> TRAINER_ATLAS_KEYS{{
+            "red", "gold", "kris",
+            "brendan", "may", "lucas",
+            "dawn", "ethan", "lyra",
+        }};
 
         // Decode a JPEG blob to a session-owned RGBA IconImage (invalid on failure).
         IconImage decodeToRGBA(const unsigned char* jpg, int len) {
@@ -46,6 +59,80 @@ namespace UI {
             img.width = w;
             img.height = h;
             return img;
+        }
+
+        IconImage trainerPortraitFromAtlas(std::string_view key) {
+            IconImage out;
+            int index = -1;
+            for (int i = 0; i < static_cast<int>(TRAINER_ATLAS_KEYS.size()); ++i) {
+                if (TRAINER_ATLAS_KEYS[static_cast<size_t>(i)] == key) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index < 0) return out;
+
+            if (!s_trainerPortraitAtlas.valid()) {
+                s_trainerPortraitAtlas =
+                    decodeFileToRGBA("romfs:/trainer_portraits/atlas.png");
+                if (!s_trainerPortraitAtlas.valid()) {
+                    logInfoToFile("SystemIcons: trainer portrait atlas not packaged");
+                    return out;
+                }
+            }
+
+            const int expectedW = TRAINER_ATLAS_COLS * TRAINER_ATLAS_CELL_W;
+            const int expectedH = TRAINER_ATLAS_ROWS * TRAINER_ATLAS_CELL_H;
+            if (s_trainerPortraitAtlas.width != expectedW ||
+                s_trainerPortraitAtlas.height != expectedH) {
+                logErrorToFile("SystemIcons: trainer portrait atlas dimensions are invalid");
+                return out;
+            }
+
+            const int cellX = (index % TRAINER_ATLAS_COLS) * TRAINER_ATLAS_CELL_W;
+            const int cellY = (index / TRAINER_ATLAS_COLS) * TRAINER_ATLAS_CELL_H;
+
+            // Tight-crop each transparent atlas cell at runtime so the portrait fills the
+            // Product Home card instead of inheriting unused cell padding.
+            int minX = TRAINER_ATLAS_CELL_W, minY = TRAINER_ATLAS_CELL_H;
+            int maxX = -1, maxY = -1;
+            for (int y = 0; y < TRAINER_ATLAS_CELL_H; ++y) {
+                for (int x = 0; x < TRAINER_ATLAS_CELL_W; ++x) {
+                    const size_t p = static_cast<size_t>(
+                        ((cellY + y) * s_trainerPortraitAtlas.width + cellX + x) * 4);
+                    if (s_trainerPortraitAtlas.data[p + 3] == 0) continue;
+                    minX = std::min(minX, x);
+                    minY = std::min(minY, y);
+                    maxX = std::max(maxX, x);
+                    maxY = std::max(maxY, y);
+                }
+            }
+            if (maxX < minX || maxY < minY) return out;
+
+            minX = std::max(0, minX - 2);
+            minY = std::max(0, minY - 2);
+            maxX = std::min(TRAINER_ATLAS_CELL_W - 1, maxX + 2);
+            maxY = std::min(TRAINER_ATLAS_CELL_H - 1, maxY + 2);
+
+            const int w = maxX - minX + 1;
+            const int h = maxY - minY + 1;
+            auto* rgba = static_cast<unsigned char*>(
+                std::malloc(static_cast<size_t>(w * h * 4)));
+            if (!rgba) return out;
+
+            for (int y = 0; y < h; ++y) {
+                const size_t src = static_cast<size_t>(
+                    ((cellY + minY + y) * s_trainerPortraitAtlas.width +
+                     cellX + minX) * 4);
+                const size_t dst = static_cast<size_t>(y * w * 4);
+                std::memcpy(rgba + dst, s_trainerPortraitAtlas.data + src,
+                            static_cast<size_t>(w * 4));
+            }
+
+            out.data = rgba;
+            out.width = w;
+            out.height = h;
+            return out;
         }
 
         // Deliberate last-resort card art for optional/missing resources. The surrounding game card
@@ -180,6 +267,7 @@ namespace UI {
         if (!key.empty()) {
             const std::string path = "romfs:/trainer_portraits/" + key + ".png";
             img = decodeFileToRGBA(path);
+            if (!img.valid()) img = trainerPortraitFromAtlas(key);
             if (!img.valid())
                 logInfoToFile("SystemIcons: optional trainer portrait not packaged", key.c_str());
         }
@@ -191,6 +279,8 @@ namespace UI {
         for (auto& kv : s_titleCache) if (kv.second.data) stbi_image_free(kv.second.data);
         for (auto& kv : s_gameCardCache) if (kv.second.data) stbi_image_free(kv.second.data);
         for (auto& kv : s_trainerPortraitCache) if (kv.second.data) stbi_image_free(kv.second.data);
+        if (s_trainerPortraitAtlas.data) stbi_image_free(s_trainerPortraitAtlas.data);
+        s_trainerPortraitAtlas = {};
         s_userCache.clear();
         s_titleCache.clear();
         s_gameCardCache.clear();
