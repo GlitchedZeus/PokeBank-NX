@@ -302,14 +302,14 @@ require("17.0f,  // Caption / secondary information" in framebuffer and
 require("SystemIcons::trainerPortrait" in source and "portrait.assetKey" in source,
         "trainer presentation must load optional real portrait artwork when packaged")
 require("branch-romfs-overrides" in product_workflow and
-        "test -s "romfs/trainer_portraits/$f.png"" in product_workflow and
+        'test -s "romfs/trainer_portraits/$f.png"' in product_workflow and
         "'romfs/trainer_portraits/**'" in product_workflow and
         "'romfs/region_backdrops/**'" in product_workflow and
         "exact PNG bytes are missing from final NRO RomFS" in product_workflow and
         "region backdrop runtime path is missing from final NRO" in product_workflow,
         "Product UI native packaging must preserve and verify trainer/region presentation payload in the final NRO")
 require("branch-romfs-overrides" in gen4_workflow and
-        "test -s "application/romfs/trainer_portraits/$f.png"" in gen4_workflow and
+        'test -s "application/romfs/trainer_portraits/$f.png"' in gen4_workflow and
         "'romfs/trainer_portraits/**'" in gen4_workflow and
         "'romfs/region_backdrops/**'" in gen4_workflow and
         "exact PNG bytes are missing from final NRO RomFS" in gen4_workflow and
