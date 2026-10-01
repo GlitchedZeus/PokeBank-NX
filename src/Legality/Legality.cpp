@@ -349,6 +349,7 @@ namespace Legality {
                     pk.metLocation(),
                     pk.ball(),
                     pk.form(),
+                    pk.gender(),
                     pk.language(),
                     pk.originGame(),
                     pk.otGender(),
