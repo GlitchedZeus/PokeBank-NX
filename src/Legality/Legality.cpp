@@ -1021,15 +1021,21 @@ namespace Legality {
                         add(r, Severity::Info,
                             "Met data matches an audited Generation IV static/gift encounter for the stored origin game",
                             CheckIdentifier::Encounter);
-                    } else if (Legality::Gen4Trade::matches(
-                                   gen4EncounterGameId, species, pk.pid(), pk.id32(),
-                                   pk.gender(), pk.otGender(), pk.abilityNumber(),
-                                   std::array<uint8_t, 6>{
-                                       pk.ivHP(), pk.ivATK(), pk.ivDEF(),
-                                       pk.ivSPE(), pk.ivSPA(), pk.ivSPD()},
-                                   pk.metLocation(), pk.metLevel())) {
-                        add(r, Severity::Info,
-                            "Trainer/PID/IV/ability/met data matches an audited Generation IV in-game trade for the stored origin game",
+                    } else if (const auto trade =
+                                   Legality::Gen4Trade::matchEvolutionLine(
+                                       gen4EncounterGameId, species, pk.pid(), pk.id32(),
+                                       pk.gender(), pk.otGender(), pk.abilityNumber(),
+                                       std::array<uint8_t, 6>{
+                                           pk.ivHP(), pk.ivATK(), pk.ivDEF(),
+                                           pk.ivSPE(), pk.ivSPA(), pk.ivSPD()},
+                                       pk.metLocation(), pk.metLevel());
+                               trade.matched) {
+                        std::string detail =
+                            "Trainer/PID/IV/ability/met data matches an audited Generation IV in-game trade for the stored origin game";
+                        if (trade.evolved)
+                            detail += " via captured source species " +
+                                      std::to_string(trade.sourceSpecies);
+                        add(r, Severity::Info, std::move(detail),
                             CheckIdentifier::Encounter);
                     } else if (Legality::Gen4Wild::hasSpecies(gen4EncounterGameId, species) ||
                                Legality::Gen4Static::hasSpecies(gen4EncounterGameId, species) ||
