@@ -45,6 +45,14 @@ def parse_game(path: str, game_index: int):
         location = area[0]
         method = area[2]
         rate = area[3]
+        ground_tile = struct.unpack_from("<H", area, 4)[0]
+        # PKHeX EncounterSlot4.CanUseRadar at the pinned reference:
+        # D/P/Pt only, Grass ground tile allowed, and never the Great Marsh.
+        radar_capable = (
+            game_index <= 2
+            and (ground_tile & (1 << 2)) != 0
+            and location != 52
+        )
         # Mirror PKHeX EncounterArea4.ReadRegularSlots exactly: it integer-divides
         # the post-header length by 10 and ignores any trailing container bytes.
         slot_count = (len(area) - 6) // 10
@@ -55,12 +63,15 @@ def parse_game(path: str, game_index: int):
             slot = area[offset + 3]
             minimum = area[offset + 4]
             maximum = area[offset + 5]
-            rows.add((game_index, species, location, minimum, maximum, method, form, slot, rate))
+            rows.add((
+                game_index, species, location, minimum, maximum,
+                method, form, slot, rate, radar_capable
+            ))
     return rows
 
 
 def pack(row):
-    game, species, location, minimum, maximum, method, form, slot, rate = row
+    game, species, location, minimum, maximum, method, form, slot, rate, radar_capable = row
     if slot > 0x0F:
         raise ValueError("Gen IV wild slot number exceeds packed 4-bit field")
     return (
@@ -73,6 +84,7 @@ def pack(row):
         | (game << 43)
         | (slot << 46)
         | (rate << 50)
+        | (int(radar_capable) << 58)
     )
 
 
@@ -87,7 +99,8 @@ def main() -> int:
         "// Source: PKHeX @ %s" % pkhex_source._REF,
         "// Resources: encounter_d/p/pt/hg/ss.pkl (BinLinker Gen IV wild slots).",
         "// Packed layout: species[0:8], location[9:16], min[17:23], max[24:30],",
-        "// method[31:34], form[35:42], game[43:45], slot[46:49], rate[50:57].",
+        "// method[31:34], form[35:42], game[43:45], slot[46:49], rate[50:57],",
+        "// radar-capable[58] (pinned EncounterSlot4.CanUseRadar positive evidence).",
         "// This is wild-slot evidence only. Static/gift/trade/event encounters are separate,",
         "// so absence from this table MUST NOT be interpreted as illegal.",
         "inline constexpr uint64_t kPackedGen4WildEncounters[] = {",
