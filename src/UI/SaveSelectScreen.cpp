@@ -2528,42 +2528,68 @@ namespace UI {
             const int slotY = partyY + 26;
             const int slotGap = 8;
             const int slotW = (DETAIL_W - 44 - slotGap * 5) / 6;
+            constexpr int partyCardH = 118;
+            constexpr int partySpriteBottom = 80;
+            constexpr int partySpriteH = 82;
             for (int i = 0; i < 6; ++i) {
                 const int sx = partyX + i * (slotW + slotGap);
-                drawPanelSurface(fb, sx, slotY, slotW, 118, false, 10);
+
+                // Keep the party strip visually lighter than a grid of heavy boxes. The Pokémon
+                // carries the card; the surrounding surface is only a quiet framing device.
+                fb.drawFilledRoundedRect(sx, slotY, slotW, partyCardH, 10,
+                                         withAlpha(Colors::PanelAlt, 104));
+                fb.drawRoundedRect(sx, slotY, slotW, partyCardH, 10,
+                                   withAlpha(Colors::Divider, 150), 1);
+
                 const auto& p = partyPreview[static_cast<size_t>(i)];
                 if (p.species != 0) {
+                    // A consistent ground shadow gives every species the same visual foot line.
+                    fb.drawFilledEllipse(sx + slotW / 2, slotY + partySpriteBottom - 1,
+                                         std::max(19, slotW / 3), 6,
+                                         withAlpha(Colors::TextMuted, 28));
+
                     Sprite* sprite = SpriteManager::getIconSprite(p.species, p.form, p.shiny);
                     if (sprite && sprite->data) {
-                        const auto rect = PokeBank::UIModel::containSprite(
-                            sx + 6, slotY + 4, slotW - 12, 66, sprite->width, sprite->height);
-                        if (rect.width > 0 && rect.height > 0)
+                        auto rect = PokeBank::UIModel::containSprite(
+                            sx + 3, slotY + 1, slotW - 6, partySpriteH,
+                            sprite->width, sprite->height);
+                        if (rect.width > 0 && rect.height > 0) {
+                            // containSprite centers vertically by default; bottom-aligning the
+                            // result makes feet sit consistently while still preserving aspect.
+                            rect.y = slotY + partySpriteBottom - rect.height;
+                            rect.y = std::max(slotY + 1, rect.y);
                             fb.drawImageScaled(rect.x, rect.y, sprite->width, sprite->height,
-                                               rect.width, rect.height, sprite->data, sprite->channels);
+                                               rect.width, rect.height,
+                                               sprite->data, sprite->channels);
+                        }
                     } else {
                         const int cx = sx + slotW / 2;
-                        const int cy = slotY + 34;
-                        fb.drawCircle(cx, cy, 17, withAlpha(Colors::Info, 150), 2);
-                        fb.drawFilledRect(cx - 17, cy - 2, 34, 4, withAlpha(Colors::Info, 110));
+                        const int cy = slotY + 41;
+                        fb.drawCircle(cx, cy, 18, withAlpha(Colors::Info, 150), 2);
+                        fb.drawFilledRect(cx - 18, cy - 2, 36, 4, withAlpha(Colors::Info, 110));
                         fb.drawFilledCircle(cx, cy, 6, Colors::Info);
                     }
+
+                    // Shiny has one reserved corner and never competes with the name/level.
                     if (p.shiny)
-                        fb.drawShinyMark(sx + slotW - 18, slotY + 5, 12, Colors::ShinyStar);
+                        fb.drawShinyMark(sx + slotW - 19, slotY + 6, 13, Colors::ShinyStar);
+
                     std::string name = p.name;
                     if (name.size() > 10) name = name.substr(0, 9) + "…";
                     int nw = 0, nh = 0;
                     fb.measureText(name, nw, nh, TextStyle::Caption);
-                    fb.drawText(sx + std::max(5, (slotW - nw) / 2), slotY + 73,
+                    fb.drawText(sx + std::max(5, (slotW - nw) / 2), slotY + 79,
                                 name, Colors::TextPrimary, TextStyle::Caption);
                     if (p.level > 0) {
                         const std::string level = "Lv. " + std::to_string(p.level);
                         int lw = 0, lh = 0;
                         fb.measureText(level, lw, lh, TextStyle::Caption);
-                        fb.drawText(sx + (slotW - lw) / 2, slotY + 96,
+                        fb.drawText(sx + (slotW - lw) / 2, slotY + 99,
                                     level, Colors::TextSecondary, TextStyle::Caption);
                     }
                 } else {
-                    fb.drawFilledCircle(sx + slotW / 2, slotY + 43, 18, Colors::PanelAlt);
+                    fb.drawFilledCircle(sx + slotW / 2, slotY + 45, 18,
+                                        withAlpha(Colors::PanelAlt, 170));
                     int ew = 0, eh = 0;
                     fb.measureText("Empty", ew, eh, TextStyle::Caption);
                     fb.drawText(sx + (slotW - ew) / 2, slotY + 82,

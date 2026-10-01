@@ -25,6 +25,9 @@ namespace UI {
         // Shared release-aware card-art resolver. Installed titles use control data; file-based
         // games use a packaged RomFS artwork path keyed by exact game identity.
         const IconImage& gameCardIcon(std::string_view gameId, u64 titleId = 0);
+        // Region-scene image for the Product Home hero card. Packaged art is preferred; the
+        // initial Sinnoh implementation has a safe generated scene so BDSP/DP/Pt never go blank.
+        const IconImage& regionBackdrop(std::string_view regionKey);
         // Optional packaged trainer portrait from romfs:/trainer_portraits/<assetKey>.png.
         // Missing art is allowed and falls back to a truthful project-drawn placeholder.
         const IconImage& trainerPortrait(std::string_view assetKey);

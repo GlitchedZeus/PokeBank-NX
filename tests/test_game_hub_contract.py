@@ -6,6 +6,7 @@ header = (ROOT / "include/UI/SaveSelectScreen.h").read_text(encoding="utf-8")
 ui_manager = (ROOT / "src/UI/UI.cpp").read_text(encoding="utf-8")
 shell_source = (ROOT / "src/UI/AppShellScreen.cpp").read_text(encoding="utf-8")
 system_icons = (ROOT / "src/UI/SystemIcons.cpp").read_text(encoding="utf-8")
+framebuffer = (ROOT / "src/UI/PKSEFramebuffer.cpp").read_text(encoding="utf-8")
 
 def require(cond: bool, message: str) -> None:
     if not cond:
@@ -234,8 +235,19 @@ require("!backupScreen.shouldExit() && !backupScreen.hasSelectedBackup()" in ui_
 require(ui_manager.count(
             "if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;") >= 3,
         "trainer/game loops must retire before draw on every supported source path")
-require("slotW - 12, 66" in source and "slotY + 96" in source,
-        "Product Home party sprites and level text must use the enlarged readable layout")
+require("partySpriteH = 82" in source and
+        "partySpriteBottom = 80" in source and
+        "rect.y = slotY + partySpriteBottom - rect.height" in source and
+        "slotY + 99" in source and
+        "drawShinyMark(sx + slotW - 19, slotY + 6, 13" in source,
+        "Product Home party must use larger bottom-aligned sprites, readable levels and a reserved shiny corner")
+
+require("17.0f,  // Caption / secondary information" in framebuffer and
+        "20.0f,  // Body / normal labels" in framebuffer and
+        "28.0f,  // Heading" in framebuffer and
+        "32.0f,  // Title" in framebuffer and
+        "style == TextStyle::Body" in framebuffer and "x + 0.30f" in framebuffer,
+        "handheld typography must use the readable 17/20/28/32 Nunito scale with a medium body-weight pass")
 
 require("SystemIcons::trainerPortrait" in source and "portrait.assetKey" in source,
         "trainer presentation must load optional real portrait artwork when packaged")
