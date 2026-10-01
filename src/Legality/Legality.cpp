@@ -37,6 +37,7 @@
 #include "Legality/Gen34EggState.h"
 #include "Legality/Gen34EggMoveEvidence.h"
 #include "Legality/Gen4TransferEvidence.h"
+#include "Legality/Gen4ReleaseEvidence.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 
@@ -274,9 +275,16 @@ namespace Legality {
                 pk.form(), pk.eggLocation(), pk.ball(),
                 pk.gender(), pk.nature(),
                 pk.isShiny(pk.id32(), {}), pk.isFatefulEncounter());
-            if (directGen4StaticRow)
+            if (directGen4StaticRow) {
                 directGen4StaticPidCategory =
                     Gen4Static::pidCategoryForRow(*directGen4StaticRow);
+                if (Gen4Release::staticEncounterUnreleased(
+                        species, pk.language())) {
+                    add(r, Severity::Invalid,
+                        "Generation IV Shaymin static encounter was never released for Korean-language games",
+                        CheckIdentifier::Encounter);
+                }
+            }
 
             const bool rangerManaphy = Gen4RangerManaphy::matches({
                 species,
@@ -384,6 +392,14 @@ namespace Legality {
                     exactGeneration == 3
                         ? "PK3 unhatched egg state has the native met-level-0 structure; exact hatch-location and inherited-move evidence remain incomplete"
                         : "PK4 egg-origin state has native met-level-0 structure and egg-location evidence; exact hatch-location and inherited-move evidence remain incomplete",
+                    CheckIdentifier::Egg);
+            }
+
+            if (exactGeneration == 4 && eggState.eggOrigin &&
+                Gen4Release::eggHatchLocationUnreleased(
+                    pk.language(), pk.metLocation())) {
+                add(r, Severity::Invalid,
+                    "Korean Generation IV egg-origin Pokemon cannot use Seabreak Path or Flower Paradise as a hatch location because the enabling Shaymin event was never distributed there",
                     CheckIdentifier::Egg);
             }
 
