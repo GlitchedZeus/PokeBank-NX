@@ -59,6 +59,30 @@ constexpr uint8_t fixedBall(uint64_t v) noexcept {
     return static_cast<uint8_t>((v >> 52) & 0x1Fu);
 }
 
+// Pinned PKHeX FormInfo.FormChange species that can exist in Generation IV.
+// A static origin form remains valid after one of these same-species form changes.
+// Future-generation-only form-change species are intentionally omitted here.
+constexpr bool formChangeableSpecies(uint16_t speciesId) noexcept {
+    switch (speciesId) {
+        case 386: // Deoxys
+        case 412: // Burmy
+        case 479: // Rotom
+        case 483: // Dialga
+        case 484: // Palkia
+        case 487: // Giratina
+        case 492: // Shaymin
+        case 493: // Arceus
+            return true;
+        default:
+            return false;
+    }
+}
+
+constexpr bool formCompatible(uint16_t speciesId, uint8_t encounterForm,
+                              uint8_t currentForm) noexcept {
+    return encounterForm == currentForm || formChangeableSpecies(speciesId);
+}
+
 inline bool constraintsMatch(uint64_t encounter,
                              uint8_t pokemonGender,
                              uint8_t pokemonNature,
@@ -122,7 +146,8 @@ inline const uint64_t* findMatch(
         return nullptr;
 
     for (const uint64_t& row : kPackedGen4StaticEncounters) {
-        if (game(row) != wanted || species(row) != speciesId || form(row) != pokemonForm)
+        if (game(row) != wanted || species(row) != speciesId ||
+            !formCompatible(speciesId, form(row), pokemonForm))
             continue;
 
         const uint8_t requiredBall = fixedBall(row);
