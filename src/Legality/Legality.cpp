@@ -447,10 +447,17 @@ namespace Legality {
                     3, pk.gen4MetLocationDP(), pk.gen4MetLocationExtended(), pk.isEgg());
                 if (transfer == Gen4Transfer::Evidence::PalParkDiamondPearlFields ||
                     transfer == Gen4Transfer::Evidence::PalParkPtHgssFields) {
-                    add(r, Severity::Info,
-                        std::string(Gen4Transfer::evidenceName(transfer)) +
-                        "; split-ball and external-event provenance remain partial",
-                        CheckIdentifier::Transfer);
+                    if (!Gen4Transfer::validPalParkBallFields(
+                            transfer, pk.gen4BallDPPt(), pk.gen4BallHGSS())) {
+                        add(r, Severity::Invalid,
+                            "Gen III -> IV Pal Park split-ball fields are inconsistent with a Generation III source ball",
+                            CheckIdentifier::Ball);
+                    } else {
+                        add(r, Severity::Info,
+                            std::string(Gen4Transfer::evidenceName(transfer)) +
+                            "; split-ball fields are compatible with a Generation III source ball, while exact Pt/HGSS trash-byte provenance remains incomplete",
+                            CheckIdentifier::Transfer);
+                    }
                     r.coverage.transfer = CoverageLevel::Partial;
                 } else if (Gen4Transfer::invalid(transfer)) {
                     add(r, Severity::Invalid,
