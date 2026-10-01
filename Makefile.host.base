@@ -143,6 +143,8 @@ HOST_TESTS += $(HOST_BUILD)/test_legality_legacy_move_context
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_legacy_move_context_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen34_egg_state
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_egg_state_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_hatch_location_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_hatch_location_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen34_egg_moves
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_egg_moves_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_wild_rng_correlation
@@ -259,6 +261,14 @@ $(HOST_BUILD)/test_gen34_egg_state: tests/test_gen34_egg_state.cpp include/Legal
 $(HOST_BUILD)/test_gen34_egg_state_sanitize: tests/test_gen34_egg_state.cpp include/Legality/Gen34EggState.h include/Legality/Gen4ReleaseEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen34_egg_state.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_hatch_location_evidence: tests/test_gen4_hatch_location_evidence.cpp include/Legality/Gen4HatchLocationEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_hatch_location_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_hatch_location_evidence_sanitize: tests/test_gen4_hatch_location_evidence.cpp include/Legality/Gen4HatchLocationEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_hatch_location_evidence.cpp -o $@
 
 $(HOST_BUILD)/test_gen34_egg_moves: tests/test_gen34_egg_moves.cpp \
 		include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
