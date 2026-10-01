@@ -24,6 +24,7 @@ public:
     uint32_t id32() const noexcept override;
     uint32_t exp() const noexcept override;
     uint16_t ability() const noexcept override;
+    uint8_t abilityNumber() const noexcept override;
     uint8_t nature() const noexcept override;
     uint8_t statNature() const noexcept override;
     uint8_t level() const noexcept override;
