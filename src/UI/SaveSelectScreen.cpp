@@ -1767,6 +1767,7 @@ namespace UI {
             hubNotice.clear();
             hubDockFocused = false;
             hubFeatureIndex = -1;
+            headerActionIndex = -1;
             scrollClassicSelectionIntoView();
         } else if (hubDockIndex == 1) {
             requestedMainMenuDestination = MainMenuDestination::Banks;
@@ -1851,7 +1852,9 @@ namespace UI {
         if (overlay == Overlay::GamesDrawer) {
             const UserEntry* drawerUser = currentUser();
             const int count = drawerUser ? static_cast<int>(drawerUser->titles.size()) : 0;
-            if (kDown & (HidNpadButton_B | HidNpadButton_Y)) {
+            // Product Home owns Y = Open Quick Games. Once open, Y is deliberately inert;
+            // B is the only close/back control so repeated Y presses cannot dismiss the sheet.
+            if (kDown & HidNpadButton_B) {
                 overlay = Overlay::None;
                 return;
             }
@@ -2189,6 +2192,17 @@ namespace UI {
                 launchCurrentTitle();
                 return;
             }
+            if (headerActionIndex == 0) {
+                if (kDown & HidNpadButton_Down) {
+                    headerActionIndex = -1;
+                    return;
+                }
+                if (kDown & HidNpadButton_A) {
+                    profilePickerIndex = userIndex;
+                    overlay = Overlay::ProfilePicker;
+                }
+                return;
+            }
             const int beforeUser = userIndex;
             const int beforeTitle = titleIndex;
             if (users.size() > 1) {
@@ -2204,8 +2218,14 @@ namespace UI {
                     titleIndex = (titleIndex - 1 + classicCount) % classicCount;
                 if (kDown & HidNpadButton_Right)
                     titleIndex = (titleIndex + 1) % classicCount;
-                if ((kDown & HidNpadButton_Up) && titleIndex - cols >= 0)
-                    titleIndex -= cols;
+                if (kDown & HidNpadButton_Up) {
+                    if (titleIndex - cols >= 0)
+                        titleIndex -= cols;
+                    else {
+                        headerActionIndex = 0;
+                        return;
+                    }
+                }
                 if ((kDown & HidNpadButton_Down) && titleIndex + cols < classicCount)
                     titleIndex += cols;
 
