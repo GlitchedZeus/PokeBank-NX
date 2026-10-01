@@ -15,6 +15,7 @@ struct Entry {
     uint8_t level;
     uint8_t gender;
     uint8_t otGender;
+    uint8_t abilityNumber;
     uint8_t gameMask;
 };
 
@@ -48,7 +49,7 @@ inline bool hasSpecies(std::string_view exactGameId, uint16_t speciesId) noexcep
 
 inline bool matches(std::string_view exactGameId, uint16_t speciesId,
                     uint32_t pid, uint32_t id32, uint8_t gender, uint8_t otGender,
-                    const std::array<uint8_t, 6>& ivs,
+                    uint8_t abilityNumber, const std::array<uint8_t, 6>& ivs,
                     uint16_t metLocation, uint8_t metLevel) noexcept {
     const uint8_t mask = gameMaskForId(exactGameId);
     if (mask == 0 || speciesId == 0) return false;
@@ -57,7 +58,8 @@ inline bool matches(std::string_view exactGameId, uint16_t speciesId,
         if ((row.gameMask & mask) == 0 || row.species != speciesId)
             continue;
         if (row.pid != pid || row.id32 != id32 || row.gender != gender ||
-            row.otGender != otGender || row.ivPack != packedIVs)
+            row.otGender != otGender || row.abilityNumber != abilityNumber ||
+            row.ivPack != packedIVs)
             continue;
         if (row.metLocation == 2001) {
             if (metLocation != 2001 || metLevel < row.level)
