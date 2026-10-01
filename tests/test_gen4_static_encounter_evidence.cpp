@@ -1,4 +1,5 @@
 #include "Legality/Gen4StaticEncounter.h"
+#include "Legality/Gen4ReleaseEvidence.h"
 
 #include <cassert>
 #include <iostream>
@@ -46,9 +47,13 @@ int main() {
     assert(match("diamond_nds", 133, 10, 5, 0, 0, 4));
     assert(!match("diamond_nds", 133, 10, 5, 0, 0, 1));
 
-    // Platinum Shaymin's released static template is fateful.
+    // Platinum Shaymin's released static template is fateful. The encounter itself
+    // was never released for Korean-language games.
     assert(match("platinum_nds", 492, 63, 30, 0, 0, 4, 0, 0, false, true));
     assert(!match("platinum_nds", 492, 63, 30, 0, 0, 4, 0, 0, false, false));
+    static_assert(Legality::Gen4Release::staticEncounterUnreleased(492, 8));
+    static_assert(!Legality::Gen4Release::staticEncounterUnreleased(492, 2));
+    static_assert(!Legality::Gen4Release::staticEncounterUnreleased(491, 8));
 
     // Lake of Rage Gyarados is forced shiny and therefore uses Chain Shiny PID evidence.
     assert(match("heartgold_nds", 130, 135, 30, 0, 0, 4, 0, 0, true, false));
