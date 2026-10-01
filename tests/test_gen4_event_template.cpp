@@ -29,6 +29,31 @@ int main() {
     wrongPid.pid ^= 1u;
     assert(!matchDirect(wrongPid).matched);
 
+    auto wrongForm = pikachu;
+    wrongForm.form = 1;
+    assert(!matchDirect(wrongForm).matched);
+
+    bool sawFormChangeableEvent = false;
+    for (const auto& t : kGen4EventTemplates) {
+        if (t.species != 492 || t.form != 0)
+            continue;
+        uint32_t candidatePid = t.pid;
+        if (candidatePid == 1) {
+            candidatePid = 2;
+            while (shinyForTrainer(candidatePid, t.tid, t.sid))
+                ++candidatePid;
+        }
+        Candidate candidate{
+            t.species, t.tid, t.sid, candidatePid,
+            t.metLevel, t.metLocation, t.ball, 1, t.language, t.version,
+            t.otGender, t.fateful
+        };
+        assert(matchDirect(candidate).matched);
+        sawFormChangeableEvent = true;
+        break;
+    }
+    assert(sawFormChangeableEvent);
+
     bool sawRandomAntiShiny = false;
     for (const auto& t : kGen4EventTemplates) {
         if (t.pid != 1)
