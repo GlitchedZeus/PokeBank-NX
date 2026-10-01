@@ -5,6 +5,7 @@ source = (ROOT / "src/UI/SaveSelectScreen.cpp").read_text(encoding="utf-8")
 header = (ROOT / "include/UI/SaveSelectScreen.h").read_text(encoding="utf-8")
 ui_manager = (ROOT / "src/UI/UI.cpp").read_text(encoding="utf-8")
 shell_source = (ROOT / "src/UI/AppShellScreen.cpp").read_text(encoding="utf-8")
+system_icons = (ROOT / "src/UI/SystemIcons.cpp").read_text(encoding="utf-8")
 
 def require(cond: bool, message: str) -> None:
     if not cond:
@@ -238,6 +239,20 @@ require("slotW - 12, 66" in source and "slotY + 96" in source,
 
 require("SystemIcons::trainerPortrait" in source and "portrait.assetKey" in source,
         "trainer presentation must load optional real portrait artwork when packaged")
+require((ROOT / "romfs/trainer_portraits/atlas.png").is_file(),
+        "the supplied Gen I-IV trainer portrait atlas must be packaged in RomFS")
+require('"romfs:/trainer_portraits/atlas.png"' in system_icons and
+        "TRAINER_ATLAS_COLS = 3" in system_icons and
+        "TRAINER_ATLAS_ROWS = 3" in system_icons and
+        "TRAINER_ATLAS_CELL_W = 96" in system_icons and
+        "TRAINER_ATLAS_CELL_H = 160" in system_icons,
+        "trainer portrait loader must use the packaged 3x3 atlas with its exact cell geometry")
+for portrait_key in ("red", "gold", "kris", "brendan", "may",
+                     "lucas", "dawn", "ethan", "lyra"):
+    require(f'"{portrait_key}"' in system_icons,
+            f"trainer portrait atlas must reserve supplied asset key: {portrait_key}")
+require('"leaf"' not in system_icons,
+        "do not package or pretend a Leaf portrait until an actual Leaf asset is supplied")
 require('"red"' in source and '"dawn"' in source and '"lucas"' in source and
         '"ethan"' in source and '"lyra"' in source,
         "trainer portrait mapping must reserve canonical Gen I-IV asset keys")
