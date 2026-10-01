@@ -170,6 +170,32 @@ jobs:
           ' 2>&1 | tee native-build.log
           test -s application/PokeBankNX.nro
 
+      - name: Verify presentation payload in final NRO
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+
+          nro = Path("application/PokeBankNX.nro").read_bytes()
+          atlas = Path("application/romfs/trainer_portraits/atlas.png").read_bytes()
+          if atlas not in nro:
+              raise SystemExit("trainer portrait atlas bytes are missing from final NRO RomFS")
+          if b"romfs:/trainer_portraits/atlas.png" not in nro:
+              raise SystemExit("trainer portrait runtime path is missing from final NRO")
+          if b"romfs:/region_backdrops/" not in nro:
+              raise SystemExit("region backdrop runtime path is missing from final NRO")
+          if atlas[:8] != b"\x89PNG\r\n\x1a\n":
+              raise SystemExit("trainer portrait atlas is not PNG")
+          width, height = struct.unpack(">II", atlas[16:24])
+          if (width, height) != (288, 480):
+              raise SystemExit(f"trainer portrait atlas geometry changed: {width}x{height}")
+          sinnoh = Path("application/romfs/region_backdrops/sinnoh.png")
+          if sinnoh.is_file() and sinnoh.read_bytes() not in nro:
+              raise SystemExit("packaged Sinnoh backdrop bytes are missing from final NRO RomFS")
+          print("final NRO presentation payload verified")
+          PY
+
       - name: Package exact Gen IV shared-editor candidate
         run: |
           set -euo pipefail
