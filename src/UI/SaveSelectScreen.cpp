@@ -1905,7 +1905,7 @@ namespace UI {
                         gamesDrawerIndex = std::min(count - 1, lastRowFirst + col);
                     }
                 }
-                constexpr int visibleRows = 4;
+                constexpr int visibleRows = 3;
                 const int selectedRow = gamesDrawerIndex / cols;
                 if (selectedRow < gamesDrawerScroll)
                     gamesDrawerScroll = selectedRow;
@@ -2912,7 +2912,7 @@ namespace UI {
             const int x = fb.getWidth() - w;
             const int h = fb.getHeight();
             constexpr int cols = 3;
-            constexpr int visibleRows = 4;
+            constexpr int visibleRows = 3;
             if (u && !u->titles.empty()) {
                 gamesDrawerIndex = std::clamp(
                     gamesDrawerIndex, 0, static_cast<int>(u->titles.size()) - 1);
@@ -2931,20 +2931,20 @@ namespace UI {
             }
             constexpr int gap = 7;
             constexpr int margin = 10;
-            constexpr int tileH = 124;
+            constexpr int tileH = 160;
             const int tileW = (w - margin * 2 - gap * 2) / cols;
 
-            // Full-height right-edge sheet with no top/right/bottom gutter.
+            // Full-height right-side sheet. No colored edge stripe: the sheet boundary is
+            // intentionally quiet so it never looks like a cropped/faulty window on hardware.
             fb.drawFilledRect(0, 0, x, h, Color(0, 0, 0, 92));
             fb.drawFilledRect(x, 0, w, h, Colors::SurfaceRaised);
-            fb.drawFilledRect(x, 0, 2, h, Colors::FocusBorder);
 
             fb.drawText(x + 22, 18, "QUICK GAMES",
                         Colors::Info, TextStyle::Caption);
             fb.drawText(x + 22, 44, "Choose a Pokémon Game",
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 22, 70,
-                        "Artwork + game + save  •  Games opens the full browser",
+                        "Artwork + saves  •  Games opens the full browser",
                         Colors::TextSecondary, TextStyle::Caption);
 
             if (u && !u->titles.empty()) {
@@ -2962,45 +2962,51 @@ namespace UI {
                     const auto& title = u->titles[static_cast<size_t>(i)];
 
                     drawFocusedCard(fb, bx, by, tileW, tileH, selected, 14);
-                    const IconImage& art = SystemIcons::gameCardIcon(
+                    const std::string_view artKey =
                         title.sourceKind == SelectedSourceKind::RetroArchFRLG
-                            ? title.artworkKey : title.gameId,
-                        title.titleId);
-                    constexpr int artSize = 78;
+                            ? std::string_view(title.artworkKey) : std::string_view(title.gameId);
+                    const bool specificArt =
+                        SystemIcons::gameCardHasSpecificArtwork(artKey, title.titleId);
+                    const IconImage& art =
+                        SystemIcons::gameCardIcon(artKey, title.titleId);
+
+                    // Artwork defines the tile. Titles are intentionally omitted when real cover
+                    // art is available because the cover already identifies the game.
+                    constexpr int artSize = 126;
                     if (art.valid())
-                        fb.drawImageScaled(bx + (tileW - artSize) / 2, by + 6,
+                        fb.drawImageScaled(bx + (tileW - artSize) / 2, by + 5,
                                            art.width, art.height, artSize, artSize, art.data, 4);
                     else {
-                        fb.drawFilledRoundedRect(bx + (tileW - artSize) / 2, by + 6,
-                                                 artSize, artSize, 10, Colors::PanelAlt);
-                        fb.drawCircle(bx + tileW / 2, by + 45, 22,
+                        fb.drawFilledRoundedRect(bx + (tileW - artSize) / 2, by + 5,
+                                                 artSize, artSize, 12, Colors::PanelAlt);
+                        fb.drawCircle(bx + tileW / 2, by + 68, 30,
                                       withAlpha(Colors::Info, 120), 3);
                     }
 
-                    std::string label = title.label;
-                    if (label.size() > 16) label = label.substr(0, 15) + "…";
-                    int lw = 0, lh = 0;
-                    fb.measureText(label, lw, lh, TextStyle::Caption);
-                    fb.drawText(bx + std::max(6, (tileW - lw) / 2), by + 87, label,
-                                selected ? Colors::SelectedText : Colors::TextPrimary,
-                                TextStyle::Caption);
+                    int saveCount = 1;
+                    if (title.sourceKind == SelectedSourceKind::RetroArchFRLG)
+                        saveCount = static_cast<int>(title.legacyInstances.size());
+                    else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile)
+                        saveCount = title.sourceLabel == "REMEMBERED" ? 1 : 0;
+                    const std::string saveLine = saveCount == 1
+                        ? "1 save"
+                        : saveCount > 1 ? std::to_string(saveCount) + " saves" : "Choose save";
 
-                    std::string saveName;
-                    if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
-                        title.legacyInstances.size() == 1) {
-                        saveName = sourceLeafName(title.legacyInstances.front().path());
-                    } else if (!title.locationLabel.empty()) {
-                        saveName = title.locationLabel;
-                    } else if (title.sourceKind == SelectedSourceKind::SwitchTitle) {
-                        saveName = "System save";
-                    } else {
-                        saveName = productSourceLabel(title.sourceLabel);
+                    int sw = 0, sh = 0;
+                    fb.measureText(saveLine, sw, sh, TextStyle::Caption);
+                    fb.drawText(bx + std::max(5, (tileW - sw) / 2),
+                                by + (specificArt ? 136 : 143),
+                                saveLine, Colors::TextMuted, TextStyle::Caption);
+
+                    if (!specificArt) {
+                        std::string label = title.label.empty() ? title.name : title.label;
+                        if (label.size() > 18) label = label.substr(0, 17) + "…";
+                        int lw = 0, lh = 0;
+                        fb.measureText(label, lw, lh, TextStyle::Caption);
+                        fb.drawText(bx + std::max(5, (tileW - lw) / 2), by + 124, label,
+                                    selected ? Colors::SelectedText : Colors::TextPrimary,
+                                    TextStyle::Caption);
                     }
-                    if (saveName.size() > 18) saveName = saveName.substr(0, 17) + "…";
-                    int mw = 0, mh = 0;
-                    fb.measureText(saveName, mw, mh, TextStyle::Caption);
-                    fb.drawText(bx + std::max(6, (tileW - mw) / 2), by + 105, saveName,
-                                Colors::TextMuted, TextStyle::Caption);
                 }
 
                 const int totalRows = (static_cast<int>(u->titles.size()) + cols - 1) / cols;
@@ -3014,10 +3020,10 @@ namespace UI {
             }
 
             fb.drawText(x + 22, h - 72,
-                        "X: Save / Source   •   Y or B: Close",
+                        "X: Save / Source   •   B: Close",
                         Colors::TextMuted, TextStyle::Caption);
             drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Select"},
-                            {"X", "Save / Source"}, {"Y", "Close"}, {"B", "Close"}});
+                            {"X", "Save / Source"}, {"B", "Close"}});
         } else if (overlay == Overlay::ProfilePicker) {
             constexpr int w = 780;
             constexpr int h = 560;
