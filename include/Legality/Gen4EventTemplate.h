@@ -16,6 +16,7 @@ struct EventTemplate {
     uint16_t metLocation;
     uint8_t ball;
     uint8_t form;
+    uint8_t gender;
     uint8_t language; // 0 = unrestricted
     uint8_t version;
     uint8_t otGender;
@@ -34,6 +35,7 @@ struct Candidate {
     uint16_t metLocation = 0;
     uint8_t ball = 0;
     uint8_t form = 0;
+    uint8_t gender = 0;
     uint8_t language = 0;
     uint8_t version = 0;
     uint8_t otGender = 0;
@@ -64,7 +66,7 @@ constexpr bool matches(const EventTemplate& t, const Candidate& c) noexcept {
         return false;
 
     if (t.pid > 1)
-        return c.pid == t.pid;
+        return c.pid == t.pid && c.gender == t.gender;
 
     // PID=1 wondercards generate a random PID and reject shiny outcomes.
     if (t.pid == 1)
