@@ -25,6 +25,13 @@ int main() {
     assert(matches("platinum_nds", 396, 16, 2, 0));
     assert(!matches("platinum_nds", 396, 16, 50, 0));
     assert(hasRadarEligibleMatch("platinum_nds", 396, 16, 2, 0));
+    const auto evolvedRadar =
+        radarEvidence("platinum_nds", 397, 16, 2, 0);
+    assert(evolvedRadar.matched);
+    assert(evolvedRadar.evolved);
+    assert(evolvedRadar.sourceSpecies == 396);
+    assert(radarEvidence("platinum_nds", 398, 16, 2, 0).sourceSpecies == 396);
+    assert(!radarEvidence("platinum_nds", 398, 16, 50, 0).matched);
     assert(!hasRadarEligibleMatch("diamond_nds", 24, 52, 20, 0));
     assert(!hasRadarEligibleMatch("heartgold_nds", 16, 149, 2, 0));
 
