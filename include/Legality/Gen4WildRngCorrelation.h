@@ -14,12 +14,15 @@ enum class Method : uint8_t {
     MethodKNoLead,
     MethodJFishingNoLead,
     MethodKFishingNoLead,
+    MethodKFishingSuctionCups,
     MethodKHeadbuttNoLead,
     MethodJHoneyTreeNoLead,
     MethodKRockSmashNoLead,
+    MethodKRockSmashIlluminate,
     MethodKBugContestNoLead,
     MethodKSafariNoLead,
     MethodKSafariFishingNoLead,
+    MethodKSafariFishingSuctionCups,
 };
 
 struct Result {
@@ -104,10 +107,19 @@ constexpr bool feebasTileReplacement(uint16_t rand16) noexcept {
     return (rand16 >> 15) == 1u;
 }
 
+constexpr Activation rockSmashActivationKind(uint8_t areaRate,
+                                                uint16_t rand16) noexcept {
+    if (areaRate == 0) return Activation::None;
+    const uint32_t roll = rand16 % 100u;
+    if (roll < areaRate)
+        return Activation::Normal;
+    if (roll < static_cast<uint32_t>(areaRate) * 2u)
+        return Activation::Illuminate;
+    return Activation::None;
+}
+
 constexpr bool rockSmashActivation(uint8_t areaRate, uint16_t rand16) noexcept {
-    // Positive no-lead evidence only. PKHeX Method K can also accept an Illuminate
-    // lead when roll < rate*2; that special-lead path remains intentionally unresolved.
-    return areaRate != 0 && (rand16 % 100u) < areaRate;
+    return rockSmashActivationKind(areaRate, rand16) != Activation::None;
 }
 
 constexpr uint8_t headbuttSlot(uint16_t rand16) noexcept {
@@ -168,15 +180,36 @@ constexpr uint8_t fishingSlot(bool hgss, uint8_t type, uint16_t rand16) noexcept
     return type == 2 ? surfSlot(roll) : superRodSlotJ(roll);
 }
 
-constexpr bool fishingActivation(bool hgss, uint8_t type, uint16_t rand16) noexcept {
-    if (!isFishing(type)) return false;
+enum class Activation : uint8_t {
+    None,
+    Normal,
+    SuctionCups,
+    Illuminate,
+};
+
+constexpr Activation fishingActivationKind(bool hgss, uint8_t type,
+                                           uint16_t rand16) noexcept {
+    if (!isFishing(type)) return Activation::None;
     const bool oldRod = type == 2 || type == 12;
     const bool goodRod = type == 3 || type == 13;
     uint32_t rate = oldRod ? 25u : goodRod ? 50u : 75u;
     if (hgss)
-        rate += 50u; // PKHeX Method K best-case following-Pokemon bonus; no lead ability required.
+        rate += 50u; // Following Pokemon friendship bonus; PKHeX assumes best case.
     const uint32_t roll = hgss ? (rand16 % 100u) : (rand16 / 656u);
-    return roll < rate;
+    if (roll < rate)
+        return Activation::Normal;
+
+    // HG/SS can compound Suction Cups / Sticky Hold after the following-Pokemon
+    // bonus. In practice only Old Rod can reach this branch because Good/Super
+    // Rod are already >=100 after the +50 bonus.
+    if (hgss && roll < rate * 2u)
+        return Activation::SuctionCups;
+    return Activation::None;
+}
+
+constexpr bool fishingActivation(bool hgss, uint8_t type,
+                                 uint16_t rand16) noexcept {
+    return fishingActivationKind(hgss, type, rand16) != Activation::None;
 }
 
 constexpr uint32_t sequentialPid(uint32_t seed) noexcept {
@@ -301,13 +334,19 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
 
                     if (isSafariFishing(type)) {
                         // No random level call: activation is immediately before ESV.
-                        if (!fishingActivation(hgss, type, prev2)) {
+                        const auto activation =
+                            fishingActivationKind(hgss, type, prev2);
+                        if (activation == Activation::None) {
                             candidate = Gen3PidIv::Detail::prev(
                                 Gen3PidIv::Detail::prev(candidate));
                             continue;
                         }
-                        return {Method::MethodKSafariFishingNoLead,
-                                candidate, rolledSlot};
+                        return {
+                            activation == Activation::SuctionCups
+                                ? Method::MethodKSafariFishingSuctionCups
+                                : Method::MethodKSafariFishingNoLead,
+                            candidate, rolledSlot
+                        };
                     }
                     return {Method::MethodKSafariNoLead, candidate, rolledSlot};
                 } else {
@@ -338,10 +377,17 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                         const uint32_t prev3Seed =
                             Gen3PidIv::Detail::prev(Gen3PidIv::Detail::prev(
                                 Gen3PidIv::Detail::prev(candidate)));
-                        if (rockSmashActivation(
+                        const auto activation =
+                            rockSmashActivationKind(
                                 Gen4Wild::rate(row),
-                                static_cast<uint16_t>(prev3Seed >> 16))) {
-                            return {Method::MethodKRockSmashNoLead, candidate, rolledSlot};
+                                static_cast<uint16_t>(prev3Seed >> 16));
+                        if (activation != Activation::None) {
+                            return {
+                                activation == Activation::Illuminate
+                                    ? Method::MethodKRockSmashIlluminate
+                                    : Method::MethodKRockSmashNoLead,
+                                candidate, rolledSlot
+                            };
                         }
                         continue;
                     }
@@ -371,11 +417,17 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                             Gen3PidIv::Detail::prev(activationSeed);
                     }
 
-                    if (fishingActivation(hgss, type,
-                                          static_cast<uint16_t>(activationSeed >> 16))) {
-                        return {hgss ? Method::MethodKFishingNoLead
-                                     : Method::MethodJFishingNoLead,
-                                candidate, rolledSlot};
+                    const auto activation =
+                        fishingActivationKind(
+                            hgss, type,
+                            static_cast<uint16_t>(activationSeed >> 16));
+                    if (activation != Activation::None) {
+                        const Method method = !hgss
+                            ? Method::MethodJFishingNoLead
+                            : activation == Activation::SuctionCups
+                                ? Method::MethodKFishingSuctionCups
+                                : Method::MethodKFishingNoLead;
+                        return {method, candidate, rolledSlot};
                     }
                 }
             }
@@ -422,12 +474,15 @@ constexpr const char* methodName(Method method) noexcept {
         case Method::MethodKNoLead: return "Method K (no lead)";
         case Method::MethodJFishingNoLead: return "Method J fishing (no lead)";
         case Method::MethodKFishingNoLead: return "Method K fishing (no lead)";
+        case Method::MethodKFishingSuctionCups: return "Method K fishing (Suction Cups / Sticky Hold)";
         case Method::MethodKHeadbuttNoLead: return "Method K Headbutt (no lead)";
         case Method::MethodJHoneyTreeNoLead: return "Method J Honey Tree (no lead)";
         case Method::MethodKRockSmashNoLead: return "Method K Rock Smash (no lead)";
+        case Method::MethodKRockSmashIlluminate: return "Method K Rock Smash (Illuminate)";
         case Method::MethodKBugContestNoLead: return "Method K Bug Contest (no lead / Sweet Scent)";
         case Method::MethodKSafariNoLead: return "Method K Safari (no lead)";
         case Method::MethodKSafariFishingNoLead: return "Method K Safari fishing (no lead)";
+        case Method::MethodKSafariFishingSuctionCups: return "Method K Safari fishing (Suction Cups / Sticky Hold)";
         case Method::None: break;
     }
     return "No no-lead Method J/K match";
