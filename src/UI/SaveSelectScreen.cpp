@@ -326,8 +326,8 @@ namespace UI {
     constexpr int CLASSIC_TILE_H = 208;
     constexpr int CLASSIC_ICON = 126;
     constexpr int CLASSIC_GAP = 16;
-    constexpr int CLASSIC_MAX_COLS = 5;
-    constexpr int CLASSIC_GRID_Y = 216;
+    constexpr int CLASSIC_MAX_COLS = 6;
+    constexpr int CLASSIC_GRID_Y = 126;
     constexpr int CLASSIC_VISIBLE_ROWS = 2;
 
     SaveSelectScreen::SaveSelectScreen(
@@ -340,19 +340,74 @@ namespace UI {
         loadGen4Cards();
 
         if (resumeState && !users.empty()) {
-            userIndex = std::clamp(resumeState->userIndex, 0,
-                                   static_cast<int>(users.size()) - 1);
+            bool restoredProfile = false;
+            if (!resumeState->profileIdentity.empty()) {
+                for (size_t i = 0; i < users.size(); ++i) {
+                    if (profileIdentity(users[i].uid) == resumeState->profileIdentity) {
+                        userIndex = static_cast<int>(i);
+                        restoredProfile = true;
+                        break;
+                    }
+                }
+            }
+            if (!restoredProfile) {
+                userIndex = std::clamp(resumeState->userIndex, 0,
+                                       static_cast<int>(users.size()) - 1);
+            }
+
             const auto* resumedUser = currentUser();
             const int titleCount = resumedUser
                 ? static_cast<int>(resumedUser->titles.size()) : 0;
-            titleIndex = titleCount > 0
-                ? std::clamp(resumeState->titleIndex, 0, titleCount - 1) : 0;
+            bool restoredTitle = false;
+            if (resumedUser && !resumeState->gameId.empty()) {
+                for (int i = 0; i < titleCount; ++i) {
+                    const auto& title = resumedUser->titles[static_cast<size_t>(i)];
+                    if (title.gameId != resumeState->gameId) continue;
+                    if (resumeState->sourceKind != SelectedSourceKind::None &&
+                        title.sourceKind != resumeState->sourceKind) continue;
+                    if (resumeState->titleId != 0 && title.titleId != resumeState->titleId)
+                        continue;
+
+                    bool sourceMatches = resumeState->sourceIdentity.empty();
+                    if (!sourceMatches &&
+                        title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+                        for (size_t source = 0; source < title.legacyInstances.size(); ++source) {
+                            if (title.legacyInstances[source].sourceIdentity ==
+                                resumeState->sourceIdentity) {
+                                legacyInstanceIndex = static_cast<int>(source);
+                                sourceMatches = true;
+                                break;
+                            }
+                        }
+                    } else if (!sourceMatches &&
+                               title.sourceKind == SelectedSourceKind::Gen4AssignedFile &&
+                               legacyBindings) {
+                        const auto assigned = legacyBindings->resolveFileForGame(
+                            profileIdentity(resumedUser->uid), title.gameId);
+                        sourceMatches =
+                            assigned.status == PokeVault::Legacy::AssignedFileStatus::Ready &&
+                            assigned.sourceIdentity == resumeState->sourceIdentity;
+                    }
+
+                    if (!sourceMatches) continue;
+                    titleIndex = i;
+                    restoredTitle = true;
+                    break;
+                }
+            }
+            if (!restoredTitle) {
+                titleIndex = titleCount > 0
+                    ? std::clamp(resumeState->titleIndex, 0, titleCount - 1) : 0;
+            }
+
             hubDockIndex = std::clamp(resumeState->hubDockIndex, 0, 4);
             classicGamesActive = resumeState->classicGamesActive;
             hubFeatureIndex = std::clamp(resumeState->hubFeatureIndex, -1, 1);
             scrollRow = std::max(0, resumeState->scrollRow);
             hubDockFocused = resumeState->hubDockFocused;
+            gamesDrawerIndex = titleIndex;
             scrollSelectionIntoView();
+            if (classicGamesActive) scrollClassicSelectionIntoView();
         }
         refreshHubPreview();
     }
@@ -516,6 +571,54 @@ namespace UI {
     std::string SaveSelectScreen::currentProfileIdentity() const {
         const UserEntry* user = currentUser();
         return user ? profileIdentity(user->uid) : std::string{};
+    }
+
+    std::string SaveSelectScreen::currentSourceIdentity() const {
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size()))
+            return {};
+
+        const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+        if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+            if (titleSelected && selectedSourceKind == SelectedSourceKind::RetroArchFRLG) {
+                for (const auto& instance : title.legacyInstances)
+                    if (instance.sourceIndex == selectedLegacySourceIndex)
+                        return instance.sourceIdentity;
+            }
+            if (title.legacyInstances.size() == 1)
+                return title.legacyInstances.front().sourceIdentity;
+            return {};
+        }
+
+        if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile && legacyBindings) {
+            const auto assigned = legacyBindings->resolveFileForGame(
+                currentProfileIdentity(), title.gameId);
+            if (assigned.status == PokeVault::Legacy::AssignedFileStatus::Ready)
+                return assigned.sourceIdentity;
+        }
+        return {};
+    }
+
+    SaveSelectScreen::NavigationState SaveSelectScreen::navigationState() const {
+        NavigationState state;
+        state.userIndex = userIndex;
+        state.titleIndex = titleIndex;
+        state.hubDockIndex = hubDockIndex;
+        state.hubFeatureIndex = hubFeatureIndex;
+        state.scrollRow = scrollRow;
+        state.hubDockFocused = hubDockFocused;
+        state.classicGamesActive = classicGamesActive;
+        state.profileIdentity = currentProfileIdentity();
+
+        const UserEntry* user = currentUser();
+        if (user && titleIndex >= 0 && titleIndex < static_cast<int>(user->titles.size())) {
+            const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+            state.gameId = title.gameId;
+            state.sourceIdentity = currentSourceIdentity();
+            state.sourceKind = title.sourceKind;
+            state.titleId = title.titleId;
+        }
+        return state;
     }
 
     const PokeVault::Legacy::FRLGSaveInstance* SaveSelectScreen::currentLegacyInstance() const {
