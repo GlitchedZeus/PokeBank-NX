@@ -38,7 +38,7 @@ def entries(data: bytes):
 def parse_game(path: str, game_index: int):
     with open(pkhex_source.pkhex_path(path), "rb") as handle:
         data = handle.read()
-    rows = set()
+    rows = {}
     for area_index, area in enumerate(entries(data)):
         if len(area) < 6:
             raise ValueError("truncated Gen IV encounter area %d" % area_index)
@@ -63,11 +63,16 @@ def parse_game(path: str, game_index: int):
             slot = area[offset + 3]
             minimum = area[offset + 4]
             maximum = area[offset + 5]
-            rows.add((
+            key = (
                 game_index, species, location, minimum, maximum,
-                method, form, slot, rate, radar_capable
-            ))
-    return rows
+                method, form, slot, rate
+            )
+            # Multiple PKHeX area records can collapse to the same persisted
+            # encounter identity while differing only in permitted ground tiles.
+            # Preserve one canonical row and OR positive Radar capability across
+            # those aliases; ground tile itself is not stored in PK4 encounter data.
+            rows[key] = rows.get(key, False) or radar_capable
+    return {key + (radar_capable,) for key, radar_capable in rows.items()}
 
 
 def pack(row):
