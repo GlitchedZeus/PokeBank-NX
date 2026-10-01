@@ -52,6 +52,29 @@ constexpr Evidence classifyStoredFields(uint8_t originGeneration,
     return Evidence::InvalidSplitLocationFields;
 }
 
+constexpr bool isGen3Ball(uint8_t ball) noexcept {
+    // Retail Gen III handheld balls are Master through Premier (IDs 1..12).
+    return ball >= 1 && ball <= 12;
+}
+
+constexpr bool validPalParkBallFields(Evidence evidence,
+                                      uint8_t ballDPPt,
+                                      uint8_t ballHGSS) noexcept {
+    if (evidence != Evidence::PalParkDiamondPearlFields &&
+        evidence != Evidence::PalParkPtHgssFields)
+        return true;
+
+    if (!isGen3Ball(ballDPPt))
+        return false;
+
+    if (evidence == Evidence::PalParkDiamondPearlFields)
+        return ballHGSS == 0;
+
+    // Pt leaves the HGSS byte unset; HGSS copies the original Gen III ball.
+    // Trash-byte provenance is required to distinguish Pt from HGSS exactly.
+    return ballHGSS == 0 || ballHGSS == ballDPPt;
+}
+
 constexpr bool invalid(Evidence evidence) noexcept {
     return evidence == Evidence::InvalidEggTransfer ||
            evidence == Evidence::InvalidMissingPalParkMarker ||
