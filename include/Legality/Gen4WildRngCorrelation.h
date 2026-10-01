@@ -33,6 +33,13 @@ struct Result {
     constexpr bool matched() const noexcept { return method != Method::None; }
 };
 
+enum class Activation : uint8_t {
+    None,
+    Normal,
+    SuctionCups,
+    Illuminate,
+};
+
 constexpr uint8_t regularSlot(uint32_t roll) noexcept {
     return roll < 20 ? 0 :
            roll < 40 ? 1 :
@@ -181,13 +188,6 @@ constexpr uint8_t fishingSlot(bool hgss, uint8_t type, uint16_t rand16) noexcept
     const uint32_t roll = rand16 / 656u;
     return type == 2 ? surfSlot(roll) : superRodSlotJ(roll);
 }
-
-enum class Activation : uint8_t {
-    None,
-    Normal,
-    SuctionCups,
-    Illuminate,
-};
 
 constexpr Activation fishingActivationKind(bool hgss, uint8_t type,
                                            uint16_t rand16) noexcept {
