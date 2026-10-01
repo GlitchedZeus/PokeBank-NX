@@ -98,6 +98,12 @@ constexpr uint8_t rockSmashSlot(uint16_t rand16) noexcept {
     return (rand16 % 100u) < 80u ? 0 : 1;
 }
 
+constexpr bool feebasTileReplacement(uint16_t rand16) noexcept {
+    // PKHeX MethodJ.IsFeebasChance: upper bit set means the Coronet tile
+    // replacement branch can produce Feebas when the player is on a valid tile.
+    return (rand16 >> 15) == 1u;
+}
+
 constexpr bool rockSmashActivation(uint8_t areaRate, uint16_t rand16) noexcept {
     // Positive no-lead evidence only. PKHeX Method K can also accept an Illuminate
     // lead when roll < rate*2; that special-lead path remains intentionally unresolved.
@@ -241,11 +247,6 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
     const bool directMinimum31 =
         !requiresMinimum31 || directMinimum31Satisfied(prePidSeed);
 
-    // Mt. Coronet Feebas fishing has an additional tile-replacement RNG branch.
-    // Keep it unresolved until that area-specific activation state is represented.
-    if (!hgss && isFishing(type) && Gen4Wild::species(row) == 349)
-        return {};
-
     const uint8_t nature = static_cast<uint8_t>(pid % 25u);
     const int frames = reversalWindow(prePidSeed, nature);
     if (frames < 0)
@@ -351,11 +352,27 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                     if (isHoneyTree(type))
                         return {Method::MethodJHoneyTreeNoLead, candidate, rolledSlot};
 
-                    const uint32_t prev3Seed =
+                    uint32_t activationSeed =
                         Gen3PidIv::Detail::prev(Gen3PidIv::Detail::prev(
                             Gen3PidIv::Detail::prev(candidate)));
+
+                    if (!hgss && Gen4Wild::rate(row) == 0xFFu) {
+                        // Mt. Coronet B1F always consumes a tile-replacement RNG call
+                        // between the rod activation and encounter-slot rolls. Regular
+                        // species can be obtained from a non-Feebas tile; Feebas itself
+                        // additionally requires the 50% replacement roll to pass.
+                        const uint16_t tileRand =
+                            static_cast<uint16_t>(activationSeed >> 16);
+                        if (Gen4Wild::species(row) == 349 &&
+                            !feebasTileReplacement(tileRand)) {
+                            continue;
+                        }
+                        activationSeed =
+                            Gen3PidIv::Detail::prev(activationSeed);
+                    }
+
                     if (fishingActivation(hgss, type,
-                                          static_cast<uint16_t>(prev3Seed >> 16))) {
+                                          static_cast<uint16_t>(activationSeed >> 16))) {
                         return {hgss ? Method::MethodKFishingNoLead
                                      : Method::MethodJFishingNoLead,
                                 candidate, rolledSlot};
