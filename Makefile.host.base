@@ -52,6 +52,8 @@ GEN3_LEGALITY_CONTEXT_SOURCES := tests/test_gen3_legality_context.cpp \
 	src/Integration/Gen1/Gen1MoveCompatibility.cpp \
 	src/Integration/Gen2/Gen2MoveCompatibility.cpp \
 	src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
+	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp \
+	src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp \
 	src/Integration/Gen2/Gen2PersonalData.cpp src/Encryption/Encryption3FRLG.cpp \
 	src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
 	src/Pokemon/AbilityInfo.cpp src/Pokemon/FormInfo.cpp src/Pokemon/LearnsetTable.cpp \
@@ -59,6 +61,9 @@ GEN3_LEGALITY_CONTEXT_SOURCES := tests/test_gen3_legality_context.cpp \
 	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp \
 	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
 GEN3_LEGALITY_CONTEXT_FLAGS := -Wno-unused-parameter
+GEN4_FORM_EVIDENCE_SOURCES := tests/test_gen4_form_evidence.cpp \
+	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp \
+	src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp
 LEGACY_LEGALITY_CONTEXT_SOURCES := tests/test_legality_legacy_move_context.cpp \
 	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES))
 GEN1_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \
@@ -146,6 +151,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen4_wild_encounter_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_wild_encounter_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_static_encounter_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_static_encounter_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_form_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_form_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_trade_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_trade_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_transfer_evidence
@@ -290,6 +297,14 @@ $(HOST_BUILD)/test_gen4_static_encounter_evidence: tests/test_gen4_static_encoun
 $(HOST_BUILD)/test_gen4_static_encounter_evidence_sanitize: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h include/Legality/Gen4ReleaseEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_static_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_form_evidence: $(GEN4_FORM_EVIDENCE_SOURCES) include/Legality/Gen4FormEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_FORM_EVIDENCE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_form_evidence_sanitize: $(GEN4_FORM_EVIDENCE_SOURCES) include/Legality/Gen4FormEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_FORM_EVIDENCE_SOURCES) -o $@
 
 $(HOST_BUILD)/test_gen4_trade_evidence: tests/test_gen4_trade_evidence.cpp include/Legality/Gen4TradeEvidence.h include/Legality/Gen4TradeEvidenceData.inc
 	@mkdir -p $(HOST_BUILD)
