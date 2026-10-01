@@ -803,7 +803,8 @@ namespace Legality {
                 Pokemon::getAbilitySlots(pk.speciesID(), pk.form(), pk.getGameGroup());
             if (!Pokemon::isAbilityLegal(slots, pk.ability())) {
                 add(r, Severity::Invalid, "Ability not legal for this species");
-            } else if (sourceProfile && exactGeneration == 4) {
+            } else if (sourceProfile && exactGeneration == 4 &&
+                       storedGen4OriginKind == Gen4Origin::Kind::Gen4Retail) {
                 const uint8_t slotIndex = static_cast<uint8_t>(pk.pid() & 1u);
                 uint16_t expectedAbility = slots.slot[slotIndex];
                 if (expectedAbility == 0)
