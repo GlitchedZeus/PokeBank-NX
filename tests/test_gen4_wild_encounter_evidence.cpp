@@ -28,6 +28,23 @@ int main() {
     assert(!hasRadarEligibleMatch("diamond_nds", 24, 52, 20, 0));
     assert(!hasRadarEligibleMatch("heartgold_nds", 16, 149, 2, 0));
 
+    // PKHeX HoneyTreeUtil trainer-ID restriction for Munchlax group-C trees.
+    constexpr auto zeroTrees = munchlaxTreeIndices(0);
+    static_assert(zeroTrees[0] == 0 && zeroTrees[1] == 1 &&
+                  zeroTrees[2] == 2 && zeroTrees[3] == 3);
+    constexpr auto documentedTrees = munchlaxTreeIndices(1935328924u);
+    static_assert(documentedTrees[0] == 10 && documentedTrees[1] == 6 &&
+                  documentedTrees[2] == 9 && documentedTrees[3] == 10);
+    static_assert(isMunchlaxTreeLocation(0, 20));
+    static_assert(isMunchlaxTreeLocation(0, 21));
+    static_assert(isMunchlaxTreeLocation(0, 22));
+    static_assert(!isMunchlaxTreeLocation(0, 23));
+
+    // Raw table presence is broad, but positive provenance is trainer-ID-specific.
+    assert(matches("diamond_nds", 446, 23, 5, 0));
+    assert(matchesWithTrainerId("diamond_nds", 446, 20, 5, 0, 0));
+    assert(!matchesWithTrainerId("diamond_nds", 446, 23, 5, 0, 0));
+
     // HeartGold Route 29 Pidgey.
     assert(matches("heartgold_nds", 16, 149, 2, 0));
 
