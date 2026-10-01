@@ -8,6 +8,7 @@ int main() {
     using Legality::Gen4Transfer::classify;
     using Legality::Gen4Transfer::classifyStoredFields;
     using Legality::Gen4Transfer::invalid;
+    using Legality::Gen4Transfer::validPalParkBallFields;
 
     assert(classify(4, 0, false) == Evidence::NotApplicable);
     assert(classify(3, 0x37, false) == Evidence::PalParkMarker);
@@ -31,6 +32,16 @@ int main() {
            Evidence::InvalidSplitLocationFields);
     assert(classifyStoredFields(3, 0x36, 0x37, false) ==
            Evidence::InvalidSplitLocationFields);
+
+    assert(validPalParkBallFields(Evidence::PalParkDiamondPearlFields, 4, 0));
+    assert(!validPalParkBallFields(Evidence::PalParkDiamondPearlFields, 4, 4));
+    assert(!validPalParkBallFields(Evidence::PalParkDiamondPearlFields, 13, 0));
+
+    // Platinum leaves the HGSS ball byte at zero; HGSS copies the Gen III ball.
+    assert(validPalParkBallFields(Evidence::PalParkPtHgssFields, 4, 0));
+    assert(validPalParkBallFields(Evidence::PalParkPtHgssFields, 4, 4));
+    assert(!validPalParkBallFields(Evidence::PalParkPtHgssFields, 4, 3));
+    assert(!validPalParkBallFields(Evidence::PalParkPtHgssFields, 17, 17));
 
     std::cout << "Gen III -> IV Pal Park transfer evidence: PASS\n";
 }
