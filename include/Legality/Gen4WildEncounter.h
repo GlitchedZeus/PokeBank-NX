@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -75,6 +76,47 @@ constexpr bool levelMatches(uint64_t v, uint8_t level) noexcept {
     return level >= minLevel(v) && level <= maxLevel(v);
 }
 
+// PKHeX HoneyTreeUtil / EncounterArea4 source-proven Munchlax restriction.
+// The save's 32-bit trainer ID selects four of the 21 Honey Trees. The game has
+// a known overlap-adjustment quirk, so the four indices are not always unique.
+inline constexpr std::array<uint8_t, 21> kHoneyTreeLocationIds{
+    20, 20, 21, 22, 23, 24, 25, 25, 26, 27, 27,
+    28, 29, 30, 33, 36, 37, 47, 48, 49, 58
+};
+
+constexpr std::array<uint8_t, 4> munchlaxTreeIndices(uint32_t id32) noexcept {
+    std::array<uint8_t, 4> result{
+        static_cast<uint8_t>((id32 >> 24) & 0xFFu),
+        static_cast<uint8_t>((id32 >> 16) & 0xFFu),
+        static_cast<uint8_t>((id32 >> 8) & 0xFFu),
+        static_cast<uint8_t>(id32 & 0xFFu),
+    };
+    for (auto& value : result)
+        value = static_cast<uint8_t>(value % 21u);
+
+    // Mirror the retail overlap-adjustment bug exactly: after an increment, the
+    // inner loop continues instead of restarting from the first prior tree.
+    for (std::size_t i = 1; i < result.size(); ++i) {
+        for (std::size_t j = 0; j < i; ++j) {
+            if (result[i] != result[j])
+                continue;
+            result[i] = static_cast<uint8_t>(result[i] + 1u);
+            if (result[i] >= 21u)
+                result[i] = 0;
+        }
+    }
+    return result;
+}
+
+constexpr bool isMunchlaxTreeLocation(uint32_t id32,
+                                      uint16_t metLocation) noexcept {
+    for (const uint8_t index : munchlaxTreeIndices(id32)) {
+        if (kHoneyTreeLocationIds[index] == metLocation)
+            return true;
+    }
+    return false;
+}
+
 inline bool hasSpecies(std::string_view exactGameId, uint16_t speciesId) noexcept {
     const Game wanted = gameForId(exactGameId);
     if (wanted == Game::Invalid || speciesId == 0) return false;
@@ -96,6 +138,31 @@ inline bool matches(std::string_view exactGameId, uint16_t speciesId,
             continue;
         if (formMatches(form(row), pokemonForm))
             return true;
+    }
+    return false;
+}
+
+inline bool matchesWithTrainerId(std::string_view exactGameId,
+                                 uint16_t speciesId,
+                                 uint16_t metLocation,
+                                 uint8_t metLevel,
+                                 uint8_t pokemonForm,
+                                 uint32_t id32) noexcept {
+    const Game wanted = gameForId(exactGameId);
+    if (wanted == Game::Invalid || speciesId == 0 ||
+        metLocation > 0xFF || metLevel == 0)
+        return false;
+    for (const uint64_t row : kPackedGen4WildEncounters) {
+        if (game(row) != wanted || species(row) != speciesId ||
+            location(row) != metLocation || !levelMatches(row, metLevel) ||
+            !formMatches(form(row), pokemonForm))
+            continue;
+        // Munchlax is Honey Tree group C: only the save-specific four tree
+        // indices can produce it. Other Honey Tree species are unrestricted.
+        if (speciesId == 446 && method(row) == 9 &&
+            !isMunchlaxTreeLocation(id32, metLocation))
+            continue;
+        return true;
     }
     return false;
 }
