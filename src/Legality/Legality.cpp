@@ -266,7 +266,18 @@ namespace Legality {
         }
 
         bool directGen4EventTemplate = false;
+        const uint64_t* directGen4StaticRow = nullptr;
+        auto directGen4StaticPidCategory = Gen4Static::PidCategory::None;
         if (sourceProfile && exactGeneration == 4) {
+            directGen4StaticRow = Gen4Static::findMatch(
+                exactSourceGameId, species, pk.metLocation(), pk.metLevel(),
+                pk.form(), pk.eggLocation(), pk.ball(),
+                pk.gender(), pk.nature(),
+                pk.isShiny(pk.id32(), {}), pk.isFatefulEncounter());
+            if (directGen4StaticRow)
+                directGen4StaticPidCategory =
+                    Gen4Static::pidCategoryForRow(*directGen4StaticRow);
+
             const bool rangerManaphy = Gen4RangerManaphy::matches({
                 species,
                 pk.language(),
@@ -477,6 +488,10 @@ namespace Legality {
         } else if (sourceProfile && exactGeneration == 4) {
             const bool isHgss =
                 exactSourceGameId == "heartgold_nds" || exactSourceGameId == "soulsilver_nds";
+            const std::array<uint8_t, 6> ivs{
+                pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
+            };
+
             if (isHgss && pk.metLocation() == 233) {
                 const std::array<uint16_t, 4> currentMoves{
                     pk.move(0), pk.move(1), pk.move(2), pk.move(3)
@@ -511,10 +526,58 @@ namespace Legality {
                         "PokeWalker met location detected, but PID correlation is unresolved against the current species ratio; evolution/course provenance remains incomplete",
                         CheckIdentifier::PidRng);
                 }
+            } else if (directGen4StaticPidCategory == Gen4Static::PidCategory::Pokewalker) {
+                const uint8_t genderRatio =
+                    Pokemon::getPersonalInfo(species, pk.form()).genderRatio;
+                if (Gen4PokewalkerPid::matches(
+                        pk.pid(), pk.id32(), pk.nature(), pk.gender(), genderRatio)) {
+                    add(r, Severity::Info,
+                        "Audited Gen IV static identity and PID match the required Pokewalker trainer/nature/gender formula",
+                        CheckIdentifier::PidRng);
+                } else {
+                    add(r, Severity::Info,
+                        "Audited Gen IV static identity requires the Pokewalker PID class, but that PID correlation was not proven; legality remains incomplete",
+                        CheckIdentifier::PidRng);
+                }
+            } else if (directGen4StaticPidCategory == Gen4Static::PidCategory::ChainShiny) {
+                const auto chain =
+                    Gen4ChainShiny::analyze(pk.pid(), pk.id32(), ivs);
+                if (chain.matched) {
+                    add(r, Severity::Info,
+                        "Audited forced-shiny Gen IV static identity and PID/IV/trainer IDs match the Chain Shiny RNG class",
+                        CheckIdentifier::PidRng);
+                } else {
+                    add(r, Severity::Info,
+                        "Audited forced-shiny Gen IV static identity requires the Chain Shiny RNG class, but the PID/IV correlation was not proven; legality remains incomplete",
+                        CheckIdentifier::PidRng);
+                }
+            } else if (directGen4StaticPidCategory == Gen4Static::PidCategory::Method1OrCuteCharm) {
+                const auto correlation = Gen4PidIv::analyze(pk.pid(), ivs);
+                if (correlation.matched()) {
+                    add(r, Severity::Info,
+                        "Audited Gen IV static/gift identity and PID/IV spread match normal Method 1",
+                        CheckIdentifier::PidRng);
+                } else {
+                    const auto identity =
+                        Gen4CuteCharmPid::remapEncounterIdentity(
+                            species, pk.gender(), pk.pid());
+                    const uint8_t ratio =
+                        Pokemon::getPersonalInfo(identity.species, 0).genderRatio;
+                    const uint8_t cuteGender = identity.deriveGenderFromPid
+                        ? Gen4CuteCharmPid::genderFromPid(pk.pid(), ratio)
+                        : identity.gender;
+                    if (Gen4CuteCharmPid::matchesSurface(
+                            pk.pid(), cuteGender, ratio)) {
+                        add(r, Severity::Info,
+                            "Audited Gen IV static/gift identity has a compatible Cute Charm buffered PID surface; exact lead-frame eligibility remains incomplete",
+                            CheckIdentifier::PidRng);
+                    } else {
+                        add(r, Severity::Info,
+                            "Audited Gen IV static/gift identity matched, but Method 1 or compatible Cute Charm PID correlation was not proven; legality remains incomplete",
+                            CheckIdentifier::PidRng);
+                    }
+                }
             } else {
-                const std::array<uint8_t, 6> ivs{
-                    pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
-                };
                 const auto correlation = Gen4PidIv::analyze(pk.pid(), ivs);
                 if (correlation.matched()) {
                     const auto wildRng = Gen4WildRng::analyzeNoLead(
@@ -841,11 +904,7 @@ namespace Legality {
                     add(r, Severity::Info,
                         "Met data matches an audited Generation IV wild encounter slot",
                         CheckIdentifier::Encounter);
-                } else if (Legality::Gen4Static::matches(
-                               exactSourceGameId, species, pk.metLocation(), pk.metLevel(),
-                               pk.form(), pk.eggLocation(), pk.ball(),
-                               pk.gender(), pk.nature(),
-                               pk.isShiny(pk.id32(), {}), pk.isFatefulEncounter())) {
+                } else if (directGen4StaticRow != nullptr) {
                     add(r, Severity::Info,
                         "Met data matches an audited Generation IV static/gift encounter",
                         CheckIdentifier::Encounter);
