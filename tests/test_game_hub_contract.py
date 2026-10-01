@@ -241,9 +241,12 @@ require(ui_manager.count(
 require("partySpriteH = 82" in source and
         "partySpriteBottom = 80" in source and
         "rect.y = slotY + partySpriteBottom - rect.height" in source and
-        "slotY + 99" in source and
+        "fb.measureText(name, nw, nh, TextStyle::Body);" in source and
+        "name, Colors::TextPrimary, TextStyle::Body" in source and
+        "slotY + 101" in source and
+        "level, Colors::TextSecondary, TextStyle::Caption" in source and
         "drawShinyMark(sx + slotW - 19, slotY + 6, 13" in source,
-        "Product Home party must use larger bottom-aligned sprites, readable levels and a reserved shiny corner")
+        "Product Home party must use larger bottom-aligned sprites, 20px names, secondary levels and a reserved shiny corner")
 
 require("gameRegionBackdropKey(title.gameId)" in source and
         "SystemIcons::regionBackdrop(regionKey)" in source and
