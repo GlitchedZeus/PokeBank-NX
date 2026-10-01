@@ -3,6 +3,9 @@
  */
 #include "Pokemon/AbilityInfo.h"
 #include "Pokemon/PersonalInfoTable.h"
+#include "Pokemon/PersonalInfo4DP.h"
+#include "Pokemon/PersonalInfo4PT.h"
+#include "Pokemon/PersonalInfo4HGSS.h"
 
 namespace Pokemon {
 
@@ -11,6 +14,15 @@ namespace Pokemon {
             // Gen 3: two slots, no hidden ability. Forms share one row.
             const PersonalInfoG3& g3 = getPersonalInfoG3(species);
             return AbilitySlots{ { g3.ability1, g3.ability2, 0 }, 2 };
+        }
+        if (group == Enums::GameVersion::DP ||
+            group == Enums::GameVersion::PT ||
+            group == Enums::GameVersion::HGSS) {
+            const PersonalRecord& g4 =
+                group == Enums::GameVersion::DP ? getPersonalInfo4DP(species, form) :
+                group == Enums::GameVersion::PT ? getPersonalInfo4PT(species, form) :
+                                                  getPersonalInfo4HGSS(species, form);
+            return AbilitySlots{ { g4.ability1, g4.ability2, 0 }, 2 };
         }
         const PersonalInfo& pi = getPersonalInfo(species, form);
         return AbilitySlots{ { pi.ability1, pi.ability2, pi.abilityHidden }, 3 };
