@@ -173,6 +173,8 @@ constexpr bool directMinimum31Satisfied(uint32_t prePidSeed) noexcept {
 
 constexpr uint8_t fishingSlot(bool hgss, uint8_t type, uint16_t rand16) noexcept {
     if (!isFishing(type)) return 0xFF;
+    if (isSafari(type))
+        return hgss ? safariSlot(rand16) : 0xFF;
     if (hgss)
         return superRodSlotK(rand16 % 100u);
 
