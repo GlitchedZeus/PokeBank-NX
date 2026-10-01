@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Legality/Gen4FormEvidence.h"
+
 #include <cstddef>
 #include <cstdint>
 
@@ -52,7 +54,9 @@ constexpr bool matches(const EventTemplate& t, const Candidate& c) noexcept {
     if (t.species != c.species || t.tid != c.tid || t.sid != c.sid)
         return false;
     if (t.metLevel != c.metLevel || t.metLocation != c.metLocation ||
-        t.ball != c.ball || t.form != c.form)
+        t.ball != c.ball)
+        return false;
+    if (!Gen4Form::formCompatible(t.species, t.form, c.form))
         return false;
     if (t.language != 0 && t.language != c.language)
         return false;
