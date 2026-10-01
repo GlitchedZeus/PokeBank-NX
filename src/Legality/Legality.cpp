@@ -682,7 +682,7 @@ namespace Legality {
                 "Pal Park preserves the Generation III PID/IV relationship; native Generation IV PID methods are not applicable",
                 CheckIdentifier::Transfer);
             addGen3PidEvidence(r, pk, species);
-
+        }
 
         const bool hasStatNature =
             originGroup == Enums::GameVersion::SWSH ||
