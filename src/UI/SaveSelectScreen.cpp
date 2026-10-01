@@ -2567,7 +2567,7 @@ namespace UI {
                 const auto& p = partyPreview[static_cast<size_t>(i)];
                 if (p.species != 0) {
                     // A consistent ground shadow gives every species the same visual foot line.
-                    fb.drawFilledEllipse(sx + slotW / 2, slotY + partySpriteBottom - 1,
+                    fb.drawFilledEllipse(sx + slotW / 2, slotY + partySpriteBottom - 4,
                                          std::max(19, slotW / 3), 6,
                                          withAlpha(Colors::TextMuted, 28));
 
@@ -2600,14 +2600,14 @@ namespace UI {
                     std::string name = p.name;
                     if (name.size() > 10) name = name.substr(0, 9) + "…";
                     int nw = 0, nh = 0;
-                    fb.measureText(name, nw, nh, TextStyle::Caption);
-                    fb.drawText(sx + std::max(5, (slotW - nw) / 2), slotY + 79,
-                                name, Colors::TextPrimary, TextStyle::Caption);
+                    fb.measureText(name, nw, nh, TextStyle::Body);
+                    fb.drawText(sx + std::max(4, (slotW - nw) / 2), slotY + 79,
+                                name, Colors::TextPrimary, TextStyle::Body);
                     if (p.level > 0) {
                         const std::string level = "Lv. " + std::to_string(p.level);
                         int lw = 0, lh = 0;
                         fb.measureText(level, lw, lh, TextStyle::Caption);
-                        fb.drawText(sx + (slotW - lw) / 2, slotY + 99,
+                        fb.drawText(sx + (slotW - lw) / 2, slotY + 101,
                                     level, Colors::TextSecondary, TextStyle::Caption);
                     }
                 } else {
