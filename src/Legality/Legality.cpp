@@ -40,6 +40,7 @@
 #include "Legality/Gen4ReleaseEvidence.h"
 #include "Legality/Gen4FormEvidence.h"
 #include "Legality/Gen4HatchLocationEvidence.h"
+#include "Legality/Gen4OriginEvidence.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 
@@ -134,6 +135,12 @@ namespace Legality {
 
         const auto* sourceProfile = sourceGameProfile(exactSourceGameId);
         const uint8_t exactGeneration = sourceProfile ? sourceProfile->generation : 0;
+        const auto storedGen4OriginKind = exactGeneration == 4
+            ? Gen4Origin::kind(pk.originGame())
+            : Gen4Origin::Kind::Unknown;
+        const std::string_view gen4EncounterGameId = exactGeneration == 4
+            ? Gen4Origin::exactRetailGameId(pk.originGame())
+            : std::string_view{};
 
         if (sourceProfile && exactGeneration == 1 &&
             pk.getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup) {
@@ -280,9 +287,9 @@ namespace Legality {
                     "Form " + std::to_string(pk.form()) +
                     " is not available in this exact Generation IV game",
                     CheckIdentifier::Species);
-            } else {
+            } else if (!gen4EncounterGameId.empty()) {
                 directGen4StaticRow = Gen4Static::findMatch(
-                    exactSourceGameId, species, pk.metLocation(), pk.metLevel(),
+                    gen4EncounterGameId, species, pk.metLocation(), pk.metLevel(),
                     pk.form(), pk.eggLocation(), pk.ball(),
                     pk.gender(), pk.nature(),
                     pk.isShiny(pk.id32(), {}), pk.isFatefulEncounter());
@@ -532,9 +539,10 @@ namespace Legality {
                     }
                 }
             }
-        } else if (sourceProfile && exactGeneration == 4) {
+        } else if (sourceProfile && exactGeneration == 4 &&
+                   storedGen4OriginKind == Gen4Origin::Kind::Gen4Retail) {
             const bool isHgss =
-                exactSourceGameId == "heartgold_nds" || exactSourceGameId == "soulsilver_nds";
+                gen4EncounterGameId == "heartgold_nds" || gen4EncounterGameId == "soulsilver_nds";
             const std::array<uint8_t, 6> ivs{
                 pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
             };
@@ -628,7 +636,7 @@ namespace Legality {
                 const auto correlation = Gen4PidIv::analyze(pk.pid(), ivs);
                 if (correlation.matched()) {
                     const auto wildRng = Gen4WildRng::analyzeNoLead(
-                        exactSourceGameId, species, pk.metLocation(), pk.metLevel(),
+                        gen4EncounterGameId, species, pk.metLocation(), pk.metLevel(),
                         pk.form(), correlation.originSeed, pk.pid());
                     if (wildRng.matched()) {
                         add(r, Severity::Info,
@@ -953,34 +961,44 @@ namespace Legality {
                             CheckIdentifier::Encounter);
                 }
             } else if (exactGeneration == 4) {
-                // Gen IV wild-slot evidence is complete for the five retail games, but the overall
-                // encounter layer remains Partial until static/gift/trade/event templates are added.
-                // A positive match is useful evidence. A non-match is intentionally NOT an error yet,
-                // because the Pokemon may come from one of those still-unimported encounter classes.
-                if (pk.metLevel() != 0 && Legality::Gen4Wild::matches(
-                        exactSourceGameId, species, pk.metLocation(), pk.metLevel(), pk.form())) {
+                // Encounter provenance follows the Pokemon's stored origin version, not the
+                // current save container. A D-origin PK4 traded into Platinum must still be
+                // checked against Diamond encounter data. Pal Park/PBR origins are separate.
+                if (!gen4EncounterGameId.empty()) {
+                    if (pk.metLevel() != 0 && Legality::Gen4Wild::matches(
+                            gen4EncounterGameId, species, pk.metLocation(), pk.metLevel(), pk.form())) {
+                        add(r, Severity::Info,
+                            "Met data matches an audited Generation IV wild encounter slot for the stored origin game",
+                            CheckIdentifier::Encounter);
+                    } else if (directGen4StaticRow != nullptr) {
+                        add(r, Severity::Info,
+                            "Met data matches an audited Generation IV static/gift encounter for the stored origin game",
+                            CheckIdentifier::Encounter);
+                    } else if (Legality::Gen4Trade::matches(
+                                   gen4EncounterGameId, species, pk.pid(), pk.id32(),
+                                   pk.gender(), pk.otGender(),
+                                   std::array<uint8_t, 6>{
+                                       pk.ivHP(), pk.ivATK(), pk.ivDEF(),
+                                       pk.ivSPE(), pk.ivSPA(), pk.ivSPD()},
+                                   pk.metLocation(), pk.metLevel())) {
+                        add(r, Severity::Info,
+                            "Trainer/PID/IV/met data matches an audited Generation IV in-game trade for the stored origin game",
+                            CheckIdentifier::Encounter);
+                    } else if (Legality::Gen4Wild::hasSpecies(gen4EncounterGameId, species) ||
+                               Legality::Gen4Static::hasSpecies(gen4EncounterGameId, species) ||
+                               Legality::Gen4Trade::hasSpecies(gen4EncounterGameId, species)) {
+                        add(r, Severity::Info,
+                            "No matching Gen IV wild/static/gift/trade evidence for the stored origin game; external event/PokeWalker evidence is incomplete",
+                            CheckIdentifier::Encounter);
+                    }
+                } else if (storedGen4OriginKind == Gen4Origin::Kind::Gen3Handheld ||
+                           storedGen4OriginKind == Gen4Origin::Kind::Gen3GameCube) {
                     add(r, Severity::Info,
-                        "Met data matches an audited Generation IV wild encounter slot",
+                        "PK4 has a Gen III stored origin; native Gen IV encounter tables are not applicable after Pal Park",
                         CheckIdentifier::Encounter);
-                } else if (directGen4StaticRow != nullptr) {
+                } else if (storedGen4OriginKind == Gen4Origin::Kind::Gen4BattleRevolution) {
                     add(r, Severity::Info,
-                        "Met data matches an audited Generation IV static/gift encounter",
-                        CheckIdentifier::Encounter);
-                } else if (Legality::Gen4Trade::matches(
-                               exactSourceGameId, species, pk.pid(), pk.id32(),
-                               pk.gender(), pk.otGender(),
-                               std::array<uint8_t, 6>{
-                                   pk.ivHP(), pk.ivATK(), pk.ivDEF(),
-                                   pk.ivSPE(), pk.ivSPA(), pk.ivSPD()},
-                               pk.metLocation(), pk.metLevel())) {
-                    add(r, Severity::Info,
-                        "Trainer/PID/IV/met data matches an audited Generation IV in-game trade",
-                        CheckIdentifier::Encounter);
-                } else if (Legality::Gen4Wild::hasSpecies(exactSourceGameId, species) ||
-                           Legality::Gen4Static::hasSpecies(exactSourceGameId, species) ||
-                           Legality::Gen4Trade::hasSpecies(exactSourceGameId, species)) {
-                    add(r, Severity::Info,
-                        "No matching Gen IV wild/static/gift/trade evidence; external event/PokeWalker evidence is incomplete",
+                        "PK4 has a Battle Revolution stored origin; retail D/P/Pt/HG/SS encounter tables are not applicable",
                         CheckIdentifier::Encounter);
                 }
             } else {
