@@ -452,13 +452,20 @@ constexpr Result matchSynchronizeRow(bool hgss, uint64_t row,
                                      uint32_t prePidSeed, uint32_t pid,
                                      uint8_t metLevel) noexcept {
     const uint8_t type = Gen4Wild::method(row);
-    if (type > 1)
+    if (type > 9 || type == 8 || isSafari(type))
+        return {};
+    if ((type == 5 || isHeadbutt(type)) && !hgss)
+        return {};
+    if (isHoneyTree(type) && hgss)
         return {};
 
     const uint8_t nature = static_cast<uint8_t>(pid % 25u);
     const int frames = reversalWindow(prePidSeed, nature);
     if (frames < 0)
         return {};
+
+    const Method syncMethod =
+        hgss ? Method::MethodKSynchronize : Method::MethodJSynchronize;
 
     uint32_t candidate = prePidSeed;
     for (int i = 0; i <= frames; ++i) {
@@ -476,23 +483,79 @@ constexpr Result matchSynchronizeRow(bool hgss, uint64_t row,
             const uint16_t prev1 = static_cast<uint16_t>(seed1 >> 16);
             const uint16_t prev2 = static_cast<uint16_t>(seed2 >> 16);
 
-            const uint8_t rolledSlot = type == 0
-                ? (hgss ? methodKSlot(type, prev1) : methodJSlot(type, prev1))
-                : (hgss ? methodKSlot(type, prev2) : methodJSlot(type, prev2));
+            uint8_t rolledSlot = 0xFF;
+            if (type == 0) {
+                rolledSlot = hgss ? methodKSlot(type, prev1)
+                                  : methodJSlot(type, prev1);
+            } else if (type == 1) {
+                rolledSlot = hgss ? methodKSlot(type, prev2)
+                                  : methodJSlot(type, prev2);
+            } else if (isFishing(type)) {
+                rolledSlot = fishingSlot(hgss, type, prev2);
+            } else if (type == 5) {
+                rolledSlot = rockSmashSlot(prev2);
+            } else if (isHeadbutt(type)) {
+                rolledSlot = headbuttSlot(prev2);
+            } else if (isHoneyTree(type)) {
+                // Honey Tree species/slot is selected before Method J's normal
+                // slot routine, so ESV is already determined by encounter data.
+                rolledSlot = Gen4Wild::slot(row);
+            }
 
             if (rolledSlot == Gen4Wild::slot(row)) {
                 if (type == 0) {
                     if (Gen4Wild::levelMatches(row, metLevel))
-                        return {hgss ? Method::MethodKSynchronize
-                                     : Method::MethodJSynchronize,
-                                candidate, rolledSlot};
+                        return {syncMethod, candidate, rolledSlot};
                 } else {
-                    const uint8_t level = randomLevel(
-                        Gen4Wild::minLevel(row), Gen4Wild::maxLevel(row), prev1);
-                    if (level == metLevel)
-                        return {hgss ? Method::MethodKSynchronize
-                                     : Method::MethodJSynchronize,
-                                candidate, rolledSlot};
+                    const uint8_t level = isHoneyTree(type)
+                        ? honeyTreeLevel(prev1)
+                        : randomLevel(
+                            Gen4Wild::minLevel(row), Gen4Wild::maxLevel(row), prev1);
+                    if (level != metLevel) {
+                        candidate = Gen3PidIv::Detail::prev(
+                            Gen3PidIv::Detail::prev(candidate));
+                        continue;
+                    }
+
+                    if (type == 1 || isHeadbutt(type) || isHoneyTree(type))
+                        return {syncMethod, candidate, rolledSlot};
+
+                    uint32_t activationSeed =
+                        Gen3PidIv::Detail::prev(seed2);
+
+                    if (type == 5) {
+                        // Synchronize and Illuminate are mutually exclusive leads.
+                        // Only the normal Rock Smash activation path can prove sync.
+                        if (rockSmashActivationKind(
+                                Gen4Wild::rate(row),
+                                static_cast<uint16_t>(activationSeed >> 16)) ==
+                            Activation::Normal) {
+                            return {syncMethod, candidate, rolledSlot};
+                        }
+                        continue;
+                    }
+
+                    if (isFishing(type)) {
+                        if (!hgss && Gen4Wild::rate(row) == 0xFFu) {
+                            const uint16_t tileRand =
+                                static_cast<uint16_t>(activationSeed >> 16);
+                            if (Gen4Wild::species(row) == 349 &&
+                                !feebasTileReplacement(tileRand)) {
+                                continue;
+                            }
+                            activationSeed =
+                                Gen3PidIv::Detail::prev(activationSeed);
+                        }
+
+                        // Synchronize cannot simultaneously be the Suction Cups /
+                        // Sticky Hold lead, so only normal fishing activation proves it.
+                        if (fishingActivationKind(
+                                hgss, type,
+                                static_cast<uint16_t>(activationSeed >> 16)) ==
+                            Activation::Normal) {
+                            return {syncMethod, candidate, rolledSlot};
+                        }
+                    }
                 }
             }
         }
