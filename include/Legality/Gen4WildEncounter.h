@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Legality/Gen34EggMoveEvidence.h"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
