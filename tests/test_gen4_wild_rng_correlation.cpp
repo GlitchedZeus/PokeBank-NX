@@ -128,6 +128,15 @@ int main() {
     static_assert(!matchNoLeadRow(true, honeyTree,
                                   honeySeed, honeyPid, 9).matched());
 
+    // Actual D/P Honey Tree Munchlax rows additionally require one of the
+    // trainer-ID-selected group-C trees. ID32=0 allows locations 20/21/22,
+    // but not location 23.
+    const auto munchlaxAllowed = analyzeNoLead(
+        "diamond_nds", 446, 20, 9, 0, 0u, honeySeed, honeyPid);
+    assert(munchlaxAllowed.method == Method::MethodJHoneyTreeNoLead);
+    assert(!analyzeNoLead(
+        "diamond_nds", 446, 23, 9, 0, 0u, honeySeed, honeyPid).matched());
+
     // HG/SS Bug Catching Contest: slot table is reversed and the accepted
     // current candidate must contain at least one 31 IV unless the full four-attempt
     // exhaustion history is proven. Seed 8 has a direct 31-IV Method-1 candidate.
