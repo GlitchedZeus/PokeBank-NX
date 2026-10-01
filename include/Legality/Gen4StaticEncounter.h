@@ -25,6 +25,13 @@ struct StaticConstraint {
     bool fateful = false;
 };
 
+enum class PidCategory : uint8_t {
+    None,
+    Method1OrCuteCharm,
+    Pokewalker,
+    ChainShiny,
+};
+
 #include "Legality/Gen4StaticEncounterData.inc"
 
 constexpr uint16_t species(uint64_t v) noexcept {
@@ -104,15 +111,17 @@ inline bool hasSpecies(std::string_view exactGameId, uint16_t speciesId) noexcep
     return false;
 }
 
-inline bool matches(std::string_view exactGameId, uint16_t speciesId,
+inline const uint64_t* findMatch(
+                    std::string_view exactGameId, uint16_t speciesId,
                     uint16_t metLocation, uint8_t metLevel, uint8_t pokemonForm,
                     uint16_t pokemonEggLocation, uint8_t pokemonBall,
                     uint8_t pokemonGender, uint8_t pokemonNature,
                     bool pokemonShiny, bool pokemonFateful) noexcept {
     const auto wanted = Gen4Wild::gameForId(exactGameId);
     if (wanted == Gen4Wild::Game::Invalid || speciesId == 0)
-        return false;
-    for (const uint64_t row : kPackedGen4StaticEncounters) {
+        return nullptr;
+
+    for (const uint64_t& row : kPackedGen4StaticEncounters) {
         if (game(row) != wanted || species(row) != speciesId || form(row) != pokemonForm)
             continue;
 
@@ -127,25 +136,50 @@ inline bool matches(std::string_view exactGameId, uint16_t speciesId,
             // Location=0 is not an exact met-location constraint after hatching.
             if (metLevel != 0 || pokemonEggLocation != expectedEgg)
                 continue;
-            return true;
-        }
-
-        if (metLevel != level(row))
-            continue;
-
-        if (roaming(row)) {
-            if (!roamerLocationAllowed(location(row), metLocation))
+        } else {
+            if (metLevel != level(row))
                 continue;
-        } else if (location(row) != metLocation) {
-            continue;
+
+            if (roaming(row)) {
+                if (!roamerLocationAllowed(location(row), metLocation))
+                    continue;
+            } else if (location(row) != metLocation) {
+                continue;
+            }
         }
 
         if (!constraintsMatch(
                 row, pokemonGender, pokemonNature, pokemonShiny, pokemonFateful))
             continue;
-        return true;
+        return &row;
     }
-    return false;
+    return nullptr;
+}
+
+inline bool matches(std::string_view exactGameId, uint16_t speciesId,
+                    uint16_t metLocation, uint8_t metLevel, uint8_t pokemonForm,
+                    uint16_t pokemonEggLocation, uint8_t pokemonBall,
+                    uint8_t pokemonGender, uint8_t pokemonNature,
+                    bool pokemonShiny, bool pokemonFateful) noexcept {
+    return findMatch(
+        exactGameId, speciesId, metLocation, metLevel, pokemonForm,
+        pokemonEggLocation, pokemonBall, pokemonGender, pokemonNature,
+        pokemonShiny, pokemonFateful) != nullptr;
+}
+
+inline PidCategory pidCategoryForRow(uint64_t row) noexcept {
+    // Pinned PKHeX EncounterStatic4 correlation contract:
+    // Pichu uses the Pokewalker PID formula, forced-shiny statics use
+    // Chain Shiny, and ordinary statics prefer Method 1 while permitting
+    // compatible Cute Charm PID surfaces as a separate class.
+    if (species(row) == 172)
+        return PidCategory::Pokewalker;
+
+    for (const auto& constraint : kGen4StaticConstraints)
+        if (constraint.encounter == row && constraint.shiny == 2)
+            return PidCategory::ChainShiny;
+
+    return PidCategory::Method1OrCuteCharm;
 }
 
 inline std::size_t countForGame(std::string_view exactGameId) noexcept {
