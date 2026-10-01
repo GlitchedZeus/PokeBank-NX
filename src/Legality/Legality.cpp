@@ -684,7 +684,9 @@ namespace Legality {
                             if (gift.matched) {
                                 r.coverage.eventGift = CoverageLevel::Partial;
                                 add(r, Severity::Info,
-                                    "PID/IV spread matches a Gen IV Mystery Gift anti-shiny ARNG reroll class; exact event-template provenance remains incomplete",
+                                    directGen4EventTemplate
+                                        ? "PID/IV spread matches a Gen IV Mystery Gift anti-shiny ARNG reroll class and the invariant fields match a pinned WC4/PCD template; remaining distribution-history evidence is incomplete"
+                                        : "PID/IV spread matches a Gen IV Mystery Gift anti-shiny ARNG reroll class; exact event-template provenance remains incomplete",
                                     CheckIdentifier::PidRng);
                                 if (!directGen4EventTemplate) {
                                     add(r, Severity::Info,
