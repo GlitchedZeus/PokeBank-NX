@@ -37,6 +37,21 @@ int main() {
     wrongGender.gender = 1;
     assert(!matchDirect(wrongGender).matched);
 
+    // Evolution must not erase event provenance. The fixed-PID Pikachu can
+    // evolve into Raichu while retaining trainer/PID/met/ball/event fields.
+    auto evolvedRaichu = pikachu;
+    evolvedRaichu.species = 26;
+    const auto evolved = matchEvolutionLine(evolvedRaichu);
+    assert(evolved.matched);
+    assert(evolved.evolved);
+    assert(evolved.sourceSpecies == 25);
+    assert(evolved.cardId == match.cardId);
+    assert(evolved.fixedPid);
+
+    auto unrelated = pikachu;
+    unrelated.species = 27;
+    assert(!matchEvolutionLine(unrelated).matched);
+
     bool sawFormChangeableEvent = false;
     for (const auto& t : kGen4EventTemplates) {
         if (t.species != 492 || t.form != 0)
