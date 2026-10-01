@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import struct
 import sys
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -73,23 +75,41 @@ def png_size(data: bytes) -> tuple[int, int]:
 
 
 def fetch(url: str, destination: Path) -> None:
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(request, timeout=45) as response:
-        data = response.read()
-    width, height = png_size(data)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    tmp = destination.with_suffix(destination.suffix + ".tmp")
-    tmp.write_bytes(data)
-    tmp.replace(destination)
-    print(f"FETCHED {destination.relative_to(ROOT)} {width}x{height} {len(data)} bytes")
+    # Public art CDNs can briefly return 429 while several exact-head Actions jobs start together.
+    # Retry the same immutable URL with bounded exponential backoff; never fall back to fake art.
+    last_error: Exception | None = None
+    for attempt in range(6):
+        try:
+            request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            with urllib.request.urlopen(request, timeout=45) as response:
+                data = response.read()
+            width, height = png_size(data)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            tmp = destination.with_suffix(destination.suffix + ".tmp")
+            tmp.write_bytes(data)
+            tmp.replace(destination)
+            print(f"FETCHED {destination.relative_to(ROOT)} {width}x{height} {len(data)} bytes")
+            return
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
+            last_error = exc
+            retryable = not isinstance(exc, urllib.error.HTTPError) or exc.code in (408, 429, 500, 502, 503, 504)
+            if not retryable or attempt == 5:
+                break
+            delay = min(30, 2 ** (attempt + 1))
+            print(f"RETRY {destination.name} in {delay}s after {exc}", file=sys.stderr)
+            time.sleep(delay)
+    raise RuntimeError(f"could not fetch {destination.name}: {last_error}")
 
 
 def main() -> int:
     try:
         for name, url in TRAINER_URLS.items():
             fetch(url, TRAINERS / name)
+        # Space the Commons requests slightly as well as retrying 429s. These files are immutable
+        # originals, so waiting is preferable to substituting anything generated.
         for name, url in REGION_URLS.items():
             fetch(url, REGIONS / name)
+            time.sleep(1)
     except Exception as exc:
         print(f"PRODUCT ART FETCH FAILED: {exc}", file=sys.stderr)
         return 1
