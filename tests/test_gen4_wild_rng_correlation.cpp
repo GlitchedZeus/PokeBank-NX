@@ -82,6 +82,61 @@ int main() {
         matchSynchronizeRow(true, syncKSurf, syncJSeed, syncJPid, 8);
     static_assert(syncKS.method == Method::MethodKSynchronize);
 
+    // D/P/Pt Old Rod Synchronize: seed 1 reaches slot 0 / level 6 and the
+    // 25% hook activation succeeds. The no-lead branch does not prove it.
+    constexpr uint64_t syncJOldRod = makeRow(2, 0, 5, 10);
+    static_assert(!matchNoLeadRow(false, syncJOldRod,
+                                  syncKSeed, syncKPid, 6).matched());
+    static_assert(matchSynchronizeRow(false, syncJOldRod,
+                                      syncKSeed, syncKPid, 6).method ==
+                  Method::MethodJSynchronize);
+
+    // HG/SS Old Rod seed 0 reaches slot 2 / level 8 on the normal activation
+    // path; Synchronize cannot claim the separate Suction Cups fallback.
+    constexpr uint64_t syncKOldRod = makeRow(2, 2, 5, 10);
+    static_assert(!matchNoLeadRow(true, syncKOldRod,
+                                  syncJSeed, syncJPid, 8).matched());
+    static_assert(matchSynchronizeRow(true, syncKOldRod,
+                                      syncJSeed, syncJPid, 8).method ==
+                  Method::MethodKSynchronize);
+
+    // HG/SS normal Rock Smash activation is compatible with Synchronize.
+    // Seed 6's activation roll is 9 against rate 20, so Illuminate is not needed.
+    constexpr uint32_t syncRockSeed = 6u;
+    constexpr uint32_t syncRockPid = sequentialPid(syncRockSeed);
+    static_assert(syncRockPid == 0x794E8AA6u);
+    constexpr uint64_t syncRock = makeRow(5, 0, 5, 10, 20);
+    static_assert(!matchNoLeadRow(true, syncRock,
+                                  syncRockSeed, syncRockPid, 5).matched());
+    static_assert(matchSynchronizeRow(true, syncRock,
+                                      syncRockSeed, syncRockPid, 5).method ==
+                  Method::MethodKSynchronize);
+
+    // Headbutt has no additional encounter-activation proc after slot+level.
+    constexpr uint64_t syncHeadbutt = makeRow(6, 2, 5, 10);
+    static_assert(!matchNoLeadRow(true, syncHeadbutt,
+                                  syncJSeed, syncJPid, 8).matched());
+    static_assert(matchSynchronizeRow(true, syncHeadbutt,
+                                      syncJSeed, syncJPid, 8).method ==
+                  Method::MethodKSynchronize);
+
+    // Honey Tree ESV is pre-determined; Synchronize only adds the nature proc
+    // around the existing Method J level frame.
+    constexpr uint64_t syncHoney = makeRow(9, 0, 5, 15);
+    static_assert(!matchNoLeadRow(false, syncHoney,
+                                  syncJSeed, syncJPid, 5).matched());
+    static_assert(matchSynchronizeRow(false, syncHoney,
+                                      syncJSeed, syncJPid, 5).method ==
+                  Method::MethodJSynchronize);
+
+    // Keep unsupported reroll/special-combination branches fail-closed.
+    constexpr uint64_t syncContestUnsupported = makeRow(8, 0, 7, 18, 25);
+    static_assert(!matchSynchronizeRow(true, syncContestUnsupported,
+                                       syncJSeed, syncJPid, 8).matched());
+    constexpr uint64_t syncSafariUnsupported = makeRow(10, 0, 15, 15, 6);
+    static_assert(!matchSynchronizeRow(true, syncSafariUnsupported,
+                                       syncJSeed, syncJPid, 15).matched());
+
     // D/P/Pt Old Rod positive vector for the current reversal-window interpretation:
     // pre-PID seed 69 rolls slot 0, level 7, and passes the 25% rod activation frame.
     constexpr uint32_t fishingJSeed = 69u;
