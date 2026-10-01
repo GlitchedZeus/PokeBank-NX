@@ -11,7 +11,7 @@ int main() {
     // Pinned first Pokémon PCD in wc4.pkl: fixed-PID level-50 Pikachu.
     Candidate pikachu{
         25, 8107, 20846, 0x246e13afu,
-        50, 3060, 16, 0, 2, 10, 0, true
+        50, 3060, 16, 0, 0, 2, 10, 0, true
     };
     const auto match = matchDirect(pikachu);
     assert(match.matched);
@@ -33,6 +33,10 @@ int main() {
     wrongForm.form = 1;
     assert(!matchDirect(wrongForm).matched);
 
+    auto wrongGender = pikachu;
+    wrongGender.gender = 1;
+    assert(!matchDirect(wrongGender).matched);
+
     bool sawFormChangeableEvent = false;
     for (const auto& t : kGen4EventTemplates) {
         if (t.species != 492 || t.form != 0)
@@ -45,7 +49,7 @@ int main() {
         }
         Candidate candidate{
             t.species, t.tid, t.sid, candidatePid,
-            t.metLevel, t.metLocation, t.ball, 1, t.language, t.version,
+            t.metLevel, t.metLocation, t.ball, 1, t.gender, t.language, t.version,
             t.otGender, t.fateful
         };
         assert(matchDirect(candidate).matched);
@@ -63,8 +67,9 @@ int main() {
             ++candidatePid;
         Candidate candidate{
             t.species, t.tid, t.sid, candidatePid,
-            t.metLevel, t.metLocation, t.ball, t.form, t.language, t.version,
-            t.otGender, t.fateful
+            t.metLevel, t.metLocation, t.ball, t.form,
+            static_cast<uint8_t>((t.gender + 1u) % 3u),
+            t.language, t.version, t.otGender, t.fateful
         };
         assert(matchDirect(candidate).matched);
         sawRandomAntiShiny = true;
