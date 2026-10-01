@@ -159,6 +159,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen4_static_encounter_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_static_encounter_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_form_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_form_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_origin_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_origin_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_ability_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_ability_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_trade_evidence
@@ -313,6 +315,14 @@ $(HOST_BUILD)/test_gen4_static_encounter_evidence: tests/test_gen4_static_encoun
 $(HOST_BUILD)/test_gen4_static_encounter_evidence_sanitize: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h include/Legality/Gen4ReleaseEvidence.h include/Legality/Gen4FormEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_static_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_origin_evidence: tests/test_gen4_origin_evidence.cpp include/Legality/Gen4OriginEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_origin_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_origin_evidence_sanitize: tests/test_gen4_origin_evidence.cpp include/Legality/Gen4OriginEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_origin_evidence.cpp -o $@
 
 $(HOST_BUILD)/test_gen4_form_evidence: $(GEN4_FORM_EVIDENCE_SOURCES) include/Legality/Gen4FormEvidence.h
 	@mkdir -p $(HOST_BUILD)
