@@ -50,6 +50,14 @@ namespace UI {
             int scrollRow = 0;
             bool hubDockFocused = false;
             bool classicGamesActive = false;
+
+            // Stable identity survives title/source refreshes that can reorder the visible list.
+            // Indices remain only as a last-resort fallback when a source genuinely disappears.
+            std::string profileIdentity;
+            std::string gameId;
+            std::string sourceIdentity;
+            SelectedSourceKind sourceKind = SelectedSourceKind::None;
+            u64 titleId = 0;
         };
 
         SaveSelectScreen(PokeVault::Legacy::FRLGDiscoveryResult& legacySources,
@@ -62,10 +70,7 @@ namespace UI {
         MainMenuDestination getRequestedMainMenuDestination() const {
             return requestedMainMenuDestination;
         }
-        [[nodiscard]] NavigationState navigationState() const {
-            return {userIndex, titleIndex, hubDockIndex, hubFeatureIndex, scrollRow,
-                    hubDockFocused, classicGamesActive};
-        }
+        [[nodiscard]] NavigationState navigationState() const;
 
         bool hasSelectedTitle() const { return titleSelected; }
         AccountUid getSelectedUser() const { return selectedUserUid; }
@@ -216,6 +221,7 @@ namespace UI {
         void rebuildUnassignedLegacySources();
         bool assignCurrentLegacySource();
         [[nodiscard]] std::string currentProfileIdentity() const;
+        [[nodiscard]] std::string currentSourceIdentity() const;
         [[nodiscard]] const PokeVault::Legacy::FRLGSaveInstance* currentLegacyInstance() const;
         bool refreshLegacySources(const std::string& gameId,
                                   const std::string& preferredSourceIdentity = {},
