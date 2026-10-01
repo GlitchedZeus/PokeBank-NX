@@ -443,8 +443,8 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
 
 inline Result analyzeNoLead(std::string_view exactGameId, uint16_t speciesId,
                             uint16_t metLocation, uint8_t metLevel,
-                            uint8_t pokemonForm, uint32_t prePidSeed,
-                            uint32_t pid) noexcept {
+                            uint8_t pokemonForm, uint32_t id32,
+                            uint32_t prePidSeed, uint32_t pid) noexcept {
     const auto wanted = Gen4Wild::gameForId(exactGameId);
     if (wanted == Gen4Wild::Game::Invalid || speciesId == 0 ||
         metLocation > 0xFF || metLevel == 0)
@@ -460,6 +460,9 @@ inline Result analyzeNoLead(std::string_view exactGameId, uint16_t speciesId,
             Gen4Wild::location(row) != metLocation ||
             !Gen4Wild::levelMatches(row, metLevel) ||
             !Gen4Wild::formMatches(Gen4Wild::form(row), pokemonForm))
+            continue;
+        if (speciesId == 446 && Gen4Wild::method(row) == 9 &&
+            !Gen4Wild::isMunchlaxTreeLocation(id32, metLocation))
             continue;
 
         const auto result = matchNoLeadRow(
