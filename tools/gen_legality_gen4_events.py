@@ -59,6 +59,7 @@ def main() -> int:
             pk4_location(pk, 0x44, 0x7E) + 3000,
             max(pk[0x83], pk[0x86]),
             pk[0x40] >> 3,
+            (pk[0x40] >> 1) & 0x3,
             pk[0x17],
             pk[0x5F],
             pk[0x84] >> 7,
@@ -78,11 +79,11 @@ def main() -> int:
         "inline constexpr EventTemplate kGen4EventTemplates[] = {",
     ]
     for row in rows:
-        species, tid, sid, pid, level, met_location, ball, form, language, version, ot_gender, fateful, card_id = row
+        species, tid, sid, pid, level, met_location, ball, form, gender, language, version, ot_gender, fateful, card_id = row
         lines.append(
-            "    {%d, %d, %d, 0x%08xu, %d, %d, %d, %d, %d, %d, %d, %s, %d},"
-            % (species, tid, sid, pid, level, met_location, ball, form, language,
-               version, ot_gender, "true" if fateful else "false", card_id)
+            "    {%d, %d, %d, 0x%08xu, %d, %d, %d, %d, %d, %d, %d, %d, %s, %d},"
+            % (species, tid, sid, pid, level, met_location, ball, form, gender,
+               language, version, ot_gender, "true" if fateful else "false", card_id)
         )
     lines.append("};")
     lines.append("")
