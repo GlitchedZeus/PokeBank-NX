@@ -6,6 +6,8 @@ header = (ROOT / "include/UI/SaveSelectScreen.h").read_text(encoding="utf-8")
 ui_manager = (ROOT / "src/UI/UI.cpp").read_text(encoding="utf-8")
 shell_source = (ROOT / "src/UI/AppShellScreen.cpp").read_text(encoding="utf-8")
 system_icons = (ROOT / "src/UI/SystemIcons.cpp").read_text(encoding="utf-8")
+product_workflow = (ROOT / ".github/workflows/product-ui-native.yml").read_text(encoding="utf-8")
+gen4_workflow = (ROOT / ".github/workflows/gen4-shared-editor-candidate.yml").read_text(encoding="utf-8")
 framebuffer = (ROOT / "src/UI/PKSEFramebuffer.cpp").read_text(encoding="utf-8")
 game_identity = (ROOT / "src/Games/GameIdentity.cpp").read_text(encoding="utf-8")
 
@@ -267,6 +269,16 @@ require("SystemIcons::trainerPortrait" in source and "portrait.assetKey" in sour
         "trainer presentation must load optional real portrait artwork when packaged")
 require((ROOT / "romfs/trainer_portraits/atlas.png").is_file(),
         "the supplied Gen I-IV trainer portrait atlas must be packaged in RomFS")
+require("branch-romfs-overrides" in product_workflow and
+        "test -s romfs/trainer_portraits/atlas.png" in product_workflow and
+        "'romfs/trainer_portraits/**'" in product_workflow and
+        "'romfs/region_backdrops/**'" in product_workflow,
+        "Product UI native packaging must preserve branch-owned trainer/region assets across RomFS recovery")
+require("branch-romfs-overrides" in gen4_workflow and
+        "test -s application/romfs/trainer_portraits/atlas.png" in gen4_workflow and
+        "'romfs/trainer_portraits/**'" in gen4_workflow and
+        "'romfs/region_backdrops/**'" in gen4_workflow,
+        "Gen IV candidate packaging must preserve branch-owned trainer/region assets across RomFS recovery")
 require('"romfs:/trainer_portraits/atlas.png"' in system_icons and
         "TRAINER_ATLAS_COLS = 3" in system_icons and
         "TRAINER_ATLAS_ROWS = 3" in system_icons and
