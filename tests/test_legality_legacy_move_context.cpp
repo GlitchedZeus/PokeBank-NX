@@ -86,15 +86,16 @@ int main() {
 
     {
         // Container/save identity and encounter origin are different concepts.
-        // Diamond Dialga is Lv.47 at Spear Pillar; Platinum's native Dialga is Lv.70.
-        // A Diamond-origin entity traded into a Platinum save must retain Diamond
-        // encounter provenance instead of being checked against Platinum's table.
+        // The pinned Diamond gift Eevee is Lv.5 at location 10, while Platinum's
+        // gift Eevee at the same location is Lv.20. Eevee is Gen-III-representable,
+        // so this focused compatibility wrapper can prove stored-origin routing
+        // without fabricating a post-Gen-III species inside a PK3.
         auto p = baseMon();
-        p.setSpecies(483);
+        p.setSpecies(133);
         p.setOriginGame(10); // Diamond
-        p.setMetLocation(51);
-        p.setMetLevel(47);
-        p.setLevel(47);
+        p.setMetLocation(10);
+        p.setMetLevel(5);
+        p.setLevel(5);
         p.setMove(0, 0);
         const auto report = Legality::analyze(p, Enums::GameVersion::FRLG, "platinum_nds");
         assert(hasText(report, "static/gift encounter for the stored origin game"));
