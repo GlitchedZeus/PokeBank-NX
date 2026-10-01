@@ -785,8 +785,19 @@ namespace Legality {
             // so that set collapses naturally.
             const Pokemon::AbilitySlots slots =
                 Pokemon::getAbilitySlots(pk.speciesID(), pk.form(), pk.getGameGroup());
-            if (!Pokemon::isAbilityLegal(slots, pk.ability()))
+            if (!Pokemon::isAbilityLegal(slots, pk.ability())) {
                 add(r, Severity::Invalid, "Ability not legal for this species");
+            } else if (sourceProfile && exactGeneration == 4) {
+                const uint8_t slotIndex = static_cast<uint8_t>(pk.pid() & 1u);
+                uint16_t expectedAbility = slots.slot[slotIndex];
+                if (expectedAbility == 0)
+                    expectedAbility = slots.slot[0];
+                if (expectedAbility != 0 && pk.ability() != expectedAbility) {
+                    add(r, Severity::Invalid,
+                        "Ability does not match the Generation IV PID-selected native slot",
+                        CheckIdentifier::Ability);
+                }
+            }
         }
 
         // ---- L1: moves are known ids + no duplicates ----
