@@ -45,6 +45,43 @@ int main() {
     constexpr uint64_t kWrong = makeRow(0, 5, 5, 5);
     static_assert(!matchNoLeadRow(true, kWrong, methodKSeed, methodKPid, 5).matched());
 
+    // Successful Synchronize is a separate frame branch: the ordinary nature roll
+    // does not equal the PID nature, but the 50% Synchronize proc passes.
+    constexpr uint32_t syncJSeed = 0u;
+    constexpr uint32_t syncJPid = sequentialPid(syncJSeed);
+    static_assert(syncJPid == 0xE97E0000u);
+    constexpr uint64_t syncJGrass = makeRow(0, 0, 5, 5);
+    static_assert(!matchNoLeadRow(false, syncJGrass,
+                                  syncJSeed, syncJPid, 5).matched());
+    constexpr auto syncJ =
+        matchSynchronizeRow(false, syncJGrass, syncJSeed, syncJPid, 5);
+    static_assert(syncJ.method == Method::MethodJSynchronize);
+    static_assert(syncJ.slot == 0);
+
+    constexpr uint32_t syncKSeed = 1u;
+    constexpr uint32_t syncKPid = sequentialPid(syncKSeed);
+    static_assert(syncKPid == 0xAC2141C6u);
+    constexpr uint64_t syncKGrass = makeRow(0, 1, 5, 5);
+    static_assert(!matchNoLeadRow(true, syncKGrass,
+                                  syncKSeed, syncKPid, 5).matched());
+    constexpr auto syncK =
+        matchSynchronizeRow(true, syncKGrass, syncKSeed, syncKPid, 5);
+    static_assert(syncK.method == Method::MethodKSynchronize);
+    static_assert(syncK.slot == 1);
+
+    // Surf adds the random-level frame while retaining the same Synchronize proc.
+    constexpr uint64_t syncJSurf = makeRow(1, 0, 5, 10);
+    constexpr auto syncJS =
+        matchSynchronizeRow(false, syncJSurf, syncJSeed, syncJPid, 8);
+    static_assert(syncJS.method == Method::MethodJSynchronize);
+    static_assert(!matchSynchronizeRow(false, syncJSurf,
+                                       syncJSeed, syncJPid, 7).matched());
+
+    constexpr uint64_t syncKSurf = makeRow(1, 1, 5, 10);
+    constexpr auto syncKS =
+        matchSynchronizeRow(true, syncKSurf, syncJSeed, syncJPid, 8);
+    static_assert(syncKS.method == Method::MethodKSynchronize);
+
     // D/P/Pt Old Rod positive vector for the current reversal-window interpretation:
     // pre-PID seed 69 rolls slot 0, level 7, and passes the 25% rod activation frame.
     constexpr uint32_t fishingJSeed = 69u;
