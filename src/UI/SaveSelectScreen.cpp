@@ -2456,6 +2456,29 @@ namespace UI {
         if (u && titleIndex >= 0 && titleIndex < count) {
             const auto& title = u->titles[static_cast<size_t>(titleIndex)];
             const bool legacy = title.sourceKind == SelectedSourceKind::RetroArchFRLG;
+
+            // Region scene belongs only to the information/header half of the selected-game card.
+            // The party strip keeps its quiet Product Home surface so Pokémon remain the focus.
+            const std::string_view regionKey =
+                PokeVault::Games::gameRegionBackdropKey(title.gameId);
+            const IconImage& regionBackdrop = SystemIcons::regionBackdrop(regionKey);
+            if (regionBackdrop.valid()) {
+                constexpr int regionH = 270;
+                fb.setClipRect(DETAIL_X + 2, HUB_Y + 2, DETAIL_W - 4, regionH - 2);
+                fb.drawImageScaled(DETAIL_X + 2, HUB_Y + 2,
+                                   regionBackdrop.width, regionBackdrop.height,
+                                   DETAIL_W - 4, regionH - 2,
+                                   regionBackdrop.data, 4);
+                // A dark glass scrim keeps title/trainer/source text readable in handheld mode.
+                fb.drawFilledRect(DETAIL_X + 2, HUB_Y + 2,
+                                  DETAIL_W - 4, regionH - 2,
+                                  Color(5, 14, 30, 132));
+                fb.clearClip();
+                fb.drawFilledRoundedRect(DETAIL_X + 12, HUB_Y + regionH - 2,
+                                         DETAIL_W - 24, 2, 1,
+                                         withAlpha(Colors::Divider, 180));
+            }
+
             const int artX = DETAIL_X + 22;
             const int artY = HUB_Y + 24;
             const IconImage& art = SystemIcons::gameCardIcon(

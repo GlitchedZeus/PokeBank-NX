@@ -26,6 +26,7 @@ namespace UI {
         std::map<UidKey, IconImage> s_userCache;
         std::map<u64, IconImage>    s_titleCache;
         std::map<std::string, IconImage> s_gameCardCache;
+        std::map<std::string, IconImage> s_regionBackdropCache;
         std::map<std::string, IconImage> s_trainerPortraitCache;
         IconImage s_trainerPortraitAtlas;
 
@@ -189,6 +190,92 @@ namespace UI {
             img.height = h;
             return img;
         }
+
+        IconImage makeSinnohBackdrop() {
+            // Compact, deterministic Mt.-Coronet-inspired fallback. A real packaged
+            // romfs:/region_backdrops/sinnoh.png automatically overrides this when supplied.
+            IconImage img;
+            constexpr int w = 720, h = 270;
+            auto* rgba = static_cast<unsigned char*>(
+                std::malloc(static_cast<size_t>(w * h * 4)));
+            if (!rgba) return img;
+
+            auto ridgeY = [](int x, int x0, int xp, int x1, int base, int peak) {
+                if (x < x0 || x > x1) return base + 1000;
+                if (x <= xp) {
+                    const int dx = std::max(1, xp - x0);
+                    return base - ((base - peak) * (x - x0)) / dx;
+                }
+                const int dx = std::max(1, x1 - xp);
+                return peak + ((base - peak) * (x - xp)) / dx;
+            };
+
+            for (int y = 0; y < h; ++y) {
+                for (int x = 0; x < w; ++x) {
+                    const int skyT = std::min(255, (y * 255) / 210);
+                    int r = 25 + (72 - 25) * skyT / 255;
+                    int g = 72 + (128 - 72) * skyT / 255;
+                    int b = 126 + (168 - 126) * skyT / 255;
+
+                    const int far1 = ridgeY(x, -80, 100, 290, 212, 116);
+                    const int far2 = ridgeY(x, 170, 360, 550, 216, 100);
+                    const int far3 = ridgeY(x, 430, 620, 790, 214, 118);
+                    const int far = std::min(far1, std::min(far2, far3));
+                    if (y >= far) {
+                        r = 56; g = 82; b = 111;
+                    }
+
+                    const int main1 = ridgeY(x, 140, 340, 500, 238, 68);
+                    const int main2 = ridgeY(x, 360, 500, 660, 240, 42);
+                    const int main3 = ridgeY(x, 520, 640, 760, 238, 98);
+                    const int main = std::min(main1, std::min(main2, main3));
+                    if (y >= main) {
+                        r = 29; g = 51; b = 78;
+
+                        // Snow cap near the ridge line on the highest Sinnoh peaks.
+                        const int capDepth = 27;
+                        if (main < 132 && y < main + capDepth) {
+                            r = 220; g = 233; b = 243;
+                        }
+                    }
+
+                    // Cool mist / lowland lake.
+                    if (y > 205) {
+                        const int mix = std::min(165, (y - 205) * 3);
+                        r = (r * (255 - mix) + 17 * mix) / 255;
+                        g = (g * (255 - mix) + 44 * mix) / 255;
+                        b = (b * (255 - mix) + 64 * mix) / 255;
+                    }
+
+                    // Dark evergreen silhouettes along the low edge.
+                    const int pineBand = 224 + ((x * 17 + 29) % 23);
+                    if (y >= pineBand) {
+                        r = std::min(r, 12);
+                        g = std::min(g, 35);
+                        b = std::min(b, 39);
+                    }
+
+                    // Gentle edge vignette keeps white Product Home text readable.
+                    const int edge = std::min(std::min(x, w - 1 - x),
+                                              std::min(y, h - 1 - y));
+                    const int dark = edge < 42 ? (42 - edge) * 2 : 0;
+                    r = std::max(0, r - dark);
+                    g = std::max(0, g - dark);
+                    b = std::max(0, b - dark);
+
+                    const size_t p = static_cast<size_t>((y * w + x) * 4);
+                    rgba[p + 0] = static_cast<unsigned char>(r);
+                    rgba[p + 1] = static_cast<unsigned char>(g);
+                    rgba[p + 2] = static_cast<unsigned char>(b);
+                    rgba[p + 3] = 255;
+                }
+            }
+
+            img.data = rgba;
+            img.width = w;
+            img.height = h;
+            return img;
+        }
     }
 
     const IconImage& SystemIcons::userIcon(AccountUid uid) {
@@ -259,6 +346,21 @@ namespace UI {
         return s_gameCardCache.emplace(key, img).first->second;
     }
 
+    const IconImage& SystemIcons::regionBackdrop(std::string_view regionKey) {
+        const std::string key(regionKey);
+        auto it = s_regionBackdropCache.find(key);
+        if (it != s_regionBackdropCache.end()) return it->second;
+
+        IconImage img;
+        if (!key.empty()) {
+            const std::string path = "romfs:/region_backdrops/" + key + ".png";
+            img = decodeFileToRGBA(path);
+            if (!img.valid() && key == "sinnoh")
+                img = makeSinnohBackdrop();
+        }
+        return s_regionBackdropCache.emplace(key, img).first->second;
+    }
+
     const IconImage& SystemIcons::trainerPortrait(std::string_view assetKey) {
         const std::string key(assetKey);
         auto it = s_trainerPortraitCache.find(key);
@@ -279,12 +381,14 @@ namespace UI {
         for (auto& kv : s_userCache)  if (kv.second.data) stbi_image_free(kv.second.data);
         for (auto& kv : s_titleCache) if (kv.second.data) stbi_image_free(kv.second.data);
         for (auto& kv : s_gameCardCache) if (kv.second.data) stbi_image_free(kv.second.data);
+        for (auto& kv : s_regionBackdropCache) if (kv.second.data) stbi_image_free(kv.second.data);
         for (auto& kv : s_trainerPortraitCache) if (kv.second.data) stbi_image_free(kv.second.data);
         if (s_trainerPortraitAtlas.data) stbi_image_free(s_trainerPortraitAtlas.data);
         s_trainerPortraitAtlas = {};
         s_userCache.clear();
         s_titleCache.clear();
         s_gameCardCache.clear();
+        s_regionBackdropCache.clear();
         s_trainerPortraitCache.clear();
     }
 }
