@@ -11,6 +11,7 @@ struct EventTemplate {
     uint16_t sid;
     uint32_t pid; // 1 = random anti-shiny; >1 = fixed PID
     uint8_t metLevel;
+    uint16_t metLocation;
     uint8_t ball;
     uint8_t form;
     uint8_t language; // 0 = unrestricted
@@ -28,6 +29,7 @@ struct Candidate {
     uint16_t sid = 0;
     uint32_t pid = 0;
     uint8_t metLevel = 0;
+    uint16_t metLocation = 0;
     uint8_t ball = 0;
     uint8_t form = 0;
     uint8_t language = 0;
@@ -49,7 +51,8 @@ constexpr bool shinyForTrainer(uint32_t pid, uint16_t tid, uint16_t sid) noexcep
 constexpr bool matches(const EventTemplate& t, const Candidate& c) noexcept {
     if (t.species != c.species || t.tid != c.tid || t.sid != c.sid)
         return false;
-    if (t.metLevel != c.metLevel || t.ball != c.ball || t.form != c.form)
+    if (t.metLevel != c.metLevel || t.metLocation != c.metLocation ||
+        t.ball != c.ball || t.form != c.form)
         return false;
     if (t.language != 0 && t.language != c.language)
         return false;
