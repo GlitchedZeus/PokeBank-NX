@@ -461,7 +461,7 @@ namespace Legality {
                             transfer, pk.gen4BallDPPt(), pk.gen4BallHGSS())) {
                         add(r, Severity::Invalid,
                             "Gen III -> IV Pal Park split-ball fields are inconsistent with a Generation III source ball",
-                            CheckIdentifier::Ball);
+                            CheckIdentifier::Items);
                     } else {
                         add(r, Severity::Info,
                             std::string(Gen4Transfer::evidenceName(transfer)) +
