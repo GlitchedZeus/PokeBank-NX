@@ -658,18 +658,18 @@ namespace Legality {
             } else {
                 const auto correlation = Gen4PidIv::analyze(pk.pid(), ivs);
                 if (correlation.matched()) {
-                    const auto wildRng = Gen4WildRng::analyzeNoLead(
+                    const auto wildRng = Gen4WildRng::analyzeSupported(
                         gen4EncounterGameId, species, pk.metLocation(), pk.metLevel(),
                         pk.form(), pk.id32(), correlation.originSeed, pk.pid());
                     if (wildRng.matched()) {
                         add(r, Severity::Info,
                             "PID/IV spread and wild slot match Generation IV " +
                             std::string(Gen4WildRng::methodName(wildRng.method)) +
-                            "; uncovered special-lead and method-specific branches remain incomplete",
+                            "; uncovered lead and method-specific branches remain incomplete",
                             CheckIdentifier::PidRng);
                     } else {
                         add(r, Severity::Info,
-                            "PID/IV spread matches normal Gen IV Method 1; current no-lead Method J/K wild-slot correlation was not proven for this encounter, and special-lead/method branches remain incomplete",
+                            "PID/IV spread matches normal Gen IV Method 1; current supported Method J/K wild-slot correlation was not proven for this encounter, and additional lead/method branches remain incomplete",
                             CheckIdentifier::PidRng);
                     }
                 } else {
