@@ -1023,13 +1023,13 @@ namespace Legality {
                             CheckIdentifier::Encounter);
                     } else if (Legality::Gen4Trade::matches(
                                    gen4EncounterGameId, species, pk.pid(), pk.id32(),
-                                   pk.gender(), pk.otGender(),
+                                   pk.gender(), pk.otGender(), pk.abilityNumber(),
                                    std::array<uint8_t, 6>{
                                        pk.ivHP(), pk.ivATK(), pk.ivDEF(),
                                        pk.ivSPE(), pk.ivSPA(), pk.ivSPD()},
                                    pk.metLocation(), pk.metLevel())) {
                         add(r, Severity::Info,
-                            "Trainer/PID/IV/met data matches an audited Generation IV in-game trade for the stored origin game",
+                            "Trainer/PID/IV/ability/met data matches an audited Generation IV in-game trade for the stored origin game",
                             CheckIdentifier::Encounter);
                     } else if (Legality::Gen4Wild::hasSpecies(gen4EncounterGameId, species) ||
                                Legality::Gen4Static::hasSpecies(gen4EncounterGameId, species) ||
