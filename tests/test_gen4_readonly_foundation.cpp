@@ -274,6 +274,13 @@ void testCryptoAndEntity() {
     assert(view.ball() == 17);
     assert(view.metLocation() == 2001);
     assert(view.eggLocation() == 3001);
+    assert(view.abilityNumber() == 1); // even PID -> native ability slot 1
+
+    Pokemon::Pokemon4ReadOnly oddAbility(
+        makeEntity(false, 0x12345679u), Enums::GameVersion::DP);
+    assert(oddAbility.valid());
+    Pokemon::Pokemon4ReadOnlyView oddAbilityView(oddAbility);
+    assert(oddAbilityView.abilityNumber() == 2); // odd PID -> native ability slot 2
 
     auto badRaw = partyRaw;
     badRaw[0x08] ^= std::byte{1}; // Corrupt ciphertext, not the encryptor's input checksum.
