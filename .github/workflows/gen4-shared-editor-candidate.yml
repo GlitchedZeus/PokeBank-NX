@@ -21,6 +21,12 @@ on:
       - 'include/UI/SharedPokemonEditorContract.h'
       - 'include/UI/SharedPokemonShell.h'
       - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
+      - 'src/UI/SystemIcons.cpp'
+      - 'include/UI/SystemIcons.h'
+      - 'src/Games/GameIdentity.cpp'
+      - 'include/Games/GameIdentity.h'
+      - 'romfs/trainer_portraits/**'
+      - 'romfs/region_backdrops/**'
       - 'tests/test_gen4*'
       - 'Makefile'
       - 'Makefile.host.gen4'
@@ -125,8 +131,26 @@ jobs:
           echo "tree=$(git -C application rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
           echo "short=$(git -C application rev-parse --short=8 HEAD)" >> "$GITHUB_OUTPUT"
           (cd recovery-work && python3 tools/recover_workspace.py)
+
+          # Keep branch-owned UI presentation assets while restoring the permanent base RomFS.
+          rm -rf branch-romfs-overrides
+          mkdir -p branch-romfs-overrides
+          for d in trainer_portraits region_backdrops; do
+            if [ -d "application/romfs/$d" ]; then
+              cp -a "application/romfs/$d" "branch-romfs-overrides/$d"
+            fi
+          done
+
           rm -rf application/romfs
           cp -a recovery-work/romfs application/romfs
+          for d in trainer_portraits region_backdrops; do
+            if [ -d "branch-romfs-overrides/$d" ]; then
+              rm -rf "application/romfs/$d"
+              cp -a "branch-romfs-overrides/$d" "application/romfs/$d"
+            fi
+          done
+          test -s application/romfs/trainer_portraits/atlas.png
+
           for f in gold_gbc silver_gbc crystal_gbc diamond_nds pearl_nds platinum_nds heartgold_nds soulsilver_nds; do
             test -s "application/assets/game_cards/$f.png"
             cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
