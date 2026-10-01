@@ -40,7 +40,7 @@ require("Cross-game True Move: LOCKED" in trainer,
 # Game artwork stays clean. The HOME-style list may identify the source family beside the game
 # name, but physical provider/count/path detail remains inside Save Instances.
 start = save_select.index("// Right: selected-game hero card.")
-end = save_select.index("// Right side: compact Vault/Pokédex row", start)
+end = save_select.index("// Right side: larger full-width feature cards", start)
 hero_draw = save_select[start:end]
 require("locationLabel" not in hero_draw,
         "selected-game hero must not mix physical source paths/counts into cover presentation")
