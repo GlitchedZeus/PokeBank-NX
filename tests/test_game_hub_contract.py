@@ -98,6 +98,9 @@ require("result.launcherPath = defaultLauncherPath" in launcher,
         "stored launch metadata must not choose an arbitrary launcher NRO")
 require("result.corePath = defaultRetroArchCore" in launcher,
         "stored launch metadata must not choose an arbitrary RetroArch core")
+require("familyPrefix" in launcher and "const StoredLaunchBinding* unique = nullptr;" in launcher and
+        "if (unique) return false;" in launcher and "regularFile(stored.contentPath)" in launcher,
+        "launch binding compatibility must recover exactly one valid old source identity and fail closed on ambiguity")
 
 # Developer-dashboard language and the rejected Trade dock must not return to Product Home.
 require('"QUICK ACCESS"' not in source,
@@ -134,8 +137,10 @@ require("classicGamesActive = true;" in dock_activation and
         "overlay = Overlay::GameWorkspace;" not in dock_activation,
         "Games must open the restored full-screen artwork browser")
 require('"Pokémon Games"' in source and "CLASSIC_ICON" in source and
-        "SystemIcons::gameCardIcon" in source,
-        "the restored Games browser must retain the PKSE-style artwork grid")
+        "SystemIcons::gameCardIcon" in source and
+        "CLASSIC_MAX_COLS = 6" in source and
+        "constexpr int avatarSize = 44;" in source,
+        "the restored Games browser must use the PKSE-style six-column artwork grid with compact top-right profile control")
 classic_draw = source[source.index("if (classicGamesActive) {", source.index("void SaveSelectScreen::draw(")):
                       source.index("drawAppBackdrop(fb);", source.index("void SaveSelectScreen::draw("))]
 require("scrollClassicSelectionIntoView();" in classic_draw and "std::clamp(titleIndex" in classic_draw,
@@ -164,12 +169,15 @@ require("headerRects.push_back" in source and
         "drawHubDockIcon(fb, 5, settingsX, settingsY, PROFILE_AVATAR, settingsFocused)" in source and
         '{"Games", "Banks", "Items", "Search", "More"}' in source,
         "Product Home must render one selectable header Settings gear and no dock Settings")
-require("headerActionIndex = hubFeatureIndex == 0 ? 0 : 1;" in source,
-        "Up from Master Vault/Pokédex must reach Profile/Settings instead of getting trapped")
-require("constexpr int featureH = 190;" in source and
+require("The right-side feature cards are stacked" in source and
+        "Explicit spatial navigation keeps the five round controls predictable" in source and
+        "headerActionIndex = 0;" in source,
+        "Product Home right-side focus must use explicit stacked spatial navigation and keep the header reachable")
+require("constexpr int featureH = 132;" in source and
+        "const int navY = dexY + featureH + 20;" in source and
         "constexpr int buttonD = 74;" in source and
         "fb.drawFilledCircle(cx, cy, buttonD / 2, Colors::SurfaceRaised);" in source,
-        "Vault/Pokédex must be slightly larger and Games/Banks/Items/Search/More must use round logo navigation")
+        "Vault/Pokédex must use larger stacked cards while Games/Banks/Items/Search/More stay lower round logos")
 require('drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"}' in source,
         "Product Home footer must expose Y Quick Games without repeating ZR Launch")
 require("ProfilePicker" in header and "profilePickerIndex" in source and
@@ -177,12 +185,17 @@ require("ProfilePicker" in header and "profilePickerIndex" in source and
         '"SWITCH PROFILE"' in source and '"Choose Profile"' in source and '"CURRENT"' in source,
         "the profile avatar must open the centered professional profile chooser")
 require("GamesDrawer" in header and '"QUICK GAMES"' in source and
-        "constexpr int cols = 3;" in source and "constexpr int visibleRows = 4;" in source and
+        "constexpr int cols = 3;" in source and "constexpr int visibleRows = 3;" in source and
         "constexpr int w = 520;" in source and
         "gamesDrawerIndex = std::clamp(" in source and
         "gamesDrawerScroll = std::clamp(" in source and
-        '{"Y", "Close"}' in source and '{"X", "Save / Source"}' in source,
-        "Y quick Games must be a compact four-row, three-column artwork browser that normalizes stale selection/scroll state")
+        "gameCardHasSpecificArtwork" in source and '"1 save"' in source and '" saves"' in source and
+        '{"Y", "Close"}' not in source and '{"X", "Save / Source"}' in source,
+        "Y Quick Games must be a three-row/three-column artwork-first browser with save counts and no Y-close hint")
+require("if (kDown & (HidNpadButton_B | HidNpadButton_Y))" not in source and
+        "// B is the only close/back control" in source and
+        "fb.drawFilledRect(x, 0, 2, h, Colors::FocusBorder);" not in source,
+        "Quick Games Y must be inert, B-only close, and the colored drawer edge stripe must stay removed")
 require("openGen4Setup(game.gameId, \"Assign, repair, or change this game's save source.\", true)" in source and
         "Overlay::LegacyAssignment" in source,
         "Games save assignment must cover Gen IV linking and unassigned Gen I-III sources")
@@ -251,8 +264,8 @@ require("partySpriteH = 82" in source and
 require("gameRegionBackdropKey(title.gameId)" in source and
         "SystemIcons::regionBackdrop(regionKey)" in source and
         "regionH = 270" in source and
-        "Color(5, 14, 30, 132)" in source,
-        "selected-game Product Home card must support a readable region-scene backdrop")
+        "Color(5, 14, 30, 96)" in source,
+        "selected-game Product Home card must support a visible region-scene backdrop with a readability scrim")
 require('"brilliant_diamond_switch"' in game_identity and
         '"shining_pearl_switch"' in game_identity and
         'return "sinnoh";' in game_identity and
@@ -275,13 +288,17 @@ require((ROOT / "romfs/trainer_portraits/atlas.png").is_file(),
 require("branch-romfs-overrides" in product_workflow and
         "test -s romfs/trainer_portraits/atlas.png" in product_workflow and
         "'romfs/trainer_portraits/**'" in product_workflow and
-        "'romfs/region_backdrops/**'" in product_workflow,
-        "Product UI native packaging must preserve branch-owned trainer/region assets across RomFS recovery")
+        "'romfs/region_backdrops/**'" in product_workflow and
+        "trainer portrait atlas bytes are missing from final NRO RomFS" in product_workflow and
+        "region backdrop runtime path is missing from final NRO" in product_workflow,
+        "Product UI native packaging must preserve and verify trainer/region presentation payload in the final NRO")
 require("branch-romfs-overrides" in gen4_workflow and
         "test -s application/romfs/trainer_portraits/atlas.png" in gen4_workflow and
         "'romfs/trainer_portraits/**'" in gen4_workflow and
-        "'romfs/region_backdrops/**'" in gen4_workflow,
-        "Gen IV candidate packaging must preserve branch-owned trainer/region assets across RomFS recovery")
+        "'romfs/region_backdrops/**'" in gen4_workflow and
+        "trainer portrait atlas bytes are missing from final NRO RomFS" in gen4_workflow and
+        "region backdrop runtime path is missing from final NRO" in gen4_workflow,
+        "Gen IV candidate packaging must preserve and verify trainer/region presentation payload in the final NRO")
 require('"romfs:/trainer_portraits/atlas.png"' in system_icons and
         "TRAINER_ATLAS_COLS = 3" in system_icons and
         "TRAINER_ATLAS_ROWS = 3" in system_icons and
@@ -330,6 +347,17 @@ require("const TitleEntry selected =" in stable_open and
 require("candidate.gameId == selectedGameId" in stable_open and
         "candidate.sourceIdentity == shown.sourceIdentity" in stable_open,
         "legacy open must re-map by gameId + source identity after refresh, never stale list index")
+require("profileIdentity" in header and "sourceIdentity" in header and "sourceKind" in header and
+        "titleId" in header and "currentSourceIdentity()" in header,
+        "Product Home navigation state must retain stable profile/game/source identity rather than numeric indices alone")
+constructor_start = source.index("SaveSelectScreen::SaveSelectScreen(")
+constructor_end = source.index("void SaveSelectScreen::loadLegacySources", constructor_start)
+constructor_block = source[constructor_start:constructor_end]
+require("resumeState->profileIdentity" in constructor_block and
+        "title.gameId != resumeState->gameId" in constructor_block and
+        "assigned.sourceIdentity == resumeState->sourceIdentity" in constructor_block and
+        "if (!restoredTitle)" in constructor_block,
+        "Product Home resume must restore exact stable identity first and fall back to an index only when it disappeared")
 require("openAssignedSource" in stable_open and "discoverGen4Candidates();" not in stable_open,
         "remembered Gen IV saves must open the exact assigned game directly instead of re-entering the candidate grid")
 
@@ -346,3 +374,15 @@ require("selectCurrentTitle();\n                    // Do not mount/reparse" in 
         "A-open must hand off immediately instead of doing another heavy preview refresh")
 require("scrollClassicSelectionIntoView();\n                    refreshHubPreview();" in classic_runtime_block,
         "Classic grid may refresh preview only inside the explicit selection-change guard")
+
+# Hardware-regression contracts added after the 941ac9d7 failure report.
+draw_start = source.index("void SaveSelectScreen::draw(PKSEFramebuffer& fb)")
+draw_block = source[draw_start:]
+require("Blocking overlays are shared by Product Home and the classic artwork browser." in draw_block and
+        "if (overlay == Overlay::GameFilePicker)" in draw_block,
+        "classic Games launch/source overlays must render above the classic surface instead of becoming invisible input blockers")
+require("stbi_failure_reason()" in system_icons and
+        "trainer portrait atlas decoded from RomFS" in system_icons,
+        "trainer atlas runtime failures/success must leave hardware-useful diagnostics")
+require("gameLaunchBindingFamilyPrefix" in (ROOT / "include/UI/GameLaunchModel.h").read_text(encoding="utf-8"),
+        "launch model must expose the stable profile+game binding family used for compatibility lookup")
