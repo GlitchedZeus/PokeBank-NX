@@ -14,31 +14,31 @@ int main() {
     static_assert(groupForId("unknown") == Group::None);
 
     // Bulbasaur Gen III egg moves from PKHeX eggmove_rs.pkl.
-    static_assert(isEggMove("ruby_gba", 1, 80));   // Petal Dance
-    static_assert(isEggMove("firered_gba", 1, 345)); // Magical Leaf
-    static_assert(!isEggMove("ruby_gba", 1, 57)); // Surf is not egg evidence.
+    assert(isEggMove("ruby_gba", 1, 80));      // Petal Dance
+    assert(isEggMove("firered_gba", 1, 345)); // Magical Leaf
+    assert(!isEggMove("ruby_gba", 1, 57));    // Surf is not egg evidence.
 
     static_assert(preEvolution("ruby_gba", 2) == 1); // Ivysaur -> Bulbasaur
     static_assert(preEvolution("ruby_gba", 3) == 2); // Venusaur -> Ivysaur
-    constexpr auto ivysaurPetal = classify("ruby_gba", 2, 80);
-    static_assert(ivysaurPetal.evidence == MoveEvidence::PreEvolutionEggMove);
-    static_assert(ivysaurPetal.sourceSpecies == 1);
-    constexpr auto venusaurPetal = classify("ruby_gba", 3, 80);
-    static_assert(venusaurPetal.evidence == MoveEvidence::PreEvolutionEggMove);
-    static_assert(venusaurPetal.sourceSpecies == 1);
+    const auto ivysaurPetal = classify("ruby_gba", 2, 80);
+    assert(ivysaurPetal.evidence == MoveEvidence::PreEvolutionEggMove);
+    assert(ivysaurPetal.sourceSpecies == 1);
+    const auto venusaurPetal = classify("ruby_gba", 3, 80);
+    assert(venusaurPetal.evidence == MoveEvidence::PreEvolutionEggMove);
+    assert(venusaurPetal.sourceSpecies == 1);
 
     // Gen IV DP egg pool contains the inherited Gen III set plus Gen IV additions.
-    static_assert(isEggMove("diamond_nds", 1, 80));
-    static_assert(isEggMove("diamond_nds", 1, 437)); // Leaf Storm
-    static_assert(!isEggMove("diamond_nds", 1, 57));
-    constexpr auto ivysaurLeafStorm = classify("diamond_nds", 2, 437);
-    static_assert(ivysaurLeafStorm.evidence == MoveEvidence::PreEvolutionEggMove);
-    static_assert(ivysaurLeafStorm.sourceSpecies == 1);
+    assert(isEggMove("diamond_nds", 1, 80));
+    assert(isEggMove("diamond_nds", 1, 437)); // Leaf Storm
+    assert(!isEggMove("diamond_nds", 1, 57));
+    const auto ivysaurLeafStorm = classify("diamond_nds", 2, 437);
+    assert(ivysaurLeafStorm.evidence == MoveEvidence::PreEvolutionEggMove);
+    assert(ivysaurLeafStorm.sourceSpecies == 1);
 
-    static_assert(speciesHasEggMoves("platinum_nds", 1));
-    static_assert(!speciesHasEggMoves("unknown", 1));
-    static_assert(!isEggMove("platinum_nds", 494, 80));
-    static_assert(!isEggMove("platinum_nds", 1, 468));
+    assert(speciesHasEggMoves("platinum_nds", 1));
+    assert(!speciesHasEggMoves("unknown", 1));
+    assert(!isEggMove("platinum_nds", 494, 80));
+    assert(!isEggMove("platinum_nds", 1, 468));
 
     std::cout << "Gen III/IV egg-move legality evidence: PASS\n";
 }
