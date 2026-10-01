@@ -34,6 +34,7 @@ constexpr Game gameForId(std::string_view id) noexcept {
 //   game     [43..45] (3 bits)
 //   slot     [46..49] (4 bits; original EncounterSlot4.SlotNumber)
 //   rate     [50..57] (8 bits; EncounterArea4.Rate)
+//   radar    [58]     (1 bit; pinned EncounterSlot4.CanUseRadar positive evidence)
 #include "Legality/Gen4WildEncounterData.inc"
 
 constexpr uint16_t species(uint64_t v) noexcept {
@@ -62,6 +63,9 @@ constexpr uint8_t slot(uint64_t v) noexcept {
 }
 constexpr uint8_t rate(uint64_t v) noexcept {
     return static_cast<uint8_t>((v >> 50) & 0xFFu);
+}
+constexpr bool radarCapable(uint64_t v) noexcept {
+    return ((v >> 58) & 0x01u) != 0;
 }
 constexpr bool formMatches(uint8_t encounterForm, uint8_t pokemonForm) noexcept {
     // PKHeX EncounterUtil.FormDynamic=30 and FormRandom=31 on the pinned reference.
@@ -92,6 +96,26 @@ inline bool matches(std::string_view exactGameId, uint16_t speciesId,
             continue;
         if (formMatches(form(row), pokemonForm))
             return true;
+    }
+    return false;
+}
+
+inline bool hasRadarEligibleMatch(std::string_view exactGameId,
+                                       uint16_t speciesId,
+                                       uint16_t metLocation,
+                                       uint8_t metLevel,
+                                       uint8_t pokemonForm) noexcept {
+    const Game wanted = gameForId(exactGameId);
+    if (wanted == Game::Invalid || speciesId == 0 ||
+        metLocation > 0xFF || metLevel == 0)
+        return false;
+    for (const uint64_t row : kPackedGen4WildEncounters) {
+        if (!radarCapable(row) || game(row) != wanted ||
+            species(row) != speciesId || location(row) != metLocation ||
+            !levelMatches(row, metLevel) ||
+            !formMatches(form(row), pokemonForm))
+            continue;
+        return true;
     }
     return false;
 }
