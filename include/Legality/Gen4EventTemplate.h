@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Legality/Gen4FormEvidence.h"
+#include "Legality/Gen34EggMoveEvidence.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -46,6 +47,8 @@ struct MatchResult {
     bool matched = false;
     uint16_t cardId = 0;
     bool fixedPid = false;
+    uint16_t sourceSpecies = 0;
+    bool evolved = false;
 };
 
 constexpr bool shinyForTrainer(uint32_t pid, uint16_t tid, uint16_t sid) noexcept {
@@ -78,7 +81,68 @@ constexpr bool matches(const EventTemplate& t, const Candidate& c) noexcept {
 constexpr MatchResult matchDirect(const Candidate& c) noexcept {
     for (const auto& t : kGen4EventTemplates) {
         if (matches(t, c))
-            return {true, t.cardId, t.pid > 1};
+            return {true, t.cardId, t.pid > 1, t.species, false};
+    }
+    return {};
+}
+
+constexpr bool evolvedFrom(uint16_t speciesId, uint16_t sourceSpecies) noexcept {
+    if (speciesId == 0 || sourceSpecies == 0 || speciesId == sourceSpecies)
+        return false;
+
+    uint16_t ancestor =
+        Gen34EggMove::preEvolution("heartgold_nds", speciesId);
+    for (int depth = 0; ancestor != 0 && depth < 8; ++depth) {
+        if (ancestor == sourceSpecies)
+            return true;
+        const uint16_t next =
+            Gen34EggMove::preEvolution("heartgold_nds", ancestor);
+        if (next == ancestor)
+            break;
+        ancestor = next;
+    }
+    return false;
+}
+
+constexpr bool matchesEvolved(const EventTemplate& t,
+                              const Candidate& c) noexcept {
+    if (!evolvedFrom(c.species, t.species))
+        return false;
+
+    // Form-specific source-event reconstruction is deliberately separate.
+    // Only ordinary form-0 source templates are promoted through evolution.
+    if (t.form != 0)
+        return false;
+
+    if (t.tid != c.tid || t.sid != c.sid)
+        return false;
+    if (t.metLevel != c.metLevel || t.metLocation != c.metLocation ||
+        t.ball != c.ball)
+        return false;
+    if (t.language != 0 && t.language != c.language)
+        return false;
+    if (t.version != c.version || t.otGender != c.otGender ||
+        t.fateful != c.fateful)
+        return false;
+
+    // PID is persistent. Current gender is not compared for evolved fixed-PID
+    // templates because Gen IV gender ratios can differ across an evolution line.
+    if (t.pid > 1)
+        return c.pid == t.pid;
+
+    if (t.pid == 1)
+        return c.pid > 1 && !shinyForTrainer(c.pid, t.tid, t.sid);
+
+    return false;
+}
+
+constexpr MatchResult matchEvolutionLine(const Candidate& c) noexcept {
+    if (const auto direct = matchDirect(c); direct.matched)
+        return direct;
+
+    for (const auto& t : kGen4EventTemplates) {
+        if (matchesEvolved(t, c))
+            return {true, t.cardId, t.pid > 1, t.species, true};
     }
     return {};
 }
