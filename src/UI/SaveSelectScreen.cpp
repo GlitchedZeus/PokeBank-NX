@@ -2851,7 +2851,7 @@ namespace UI {
         fb.drawText(dexX + 80, dexY + 15, "POKÉDEX",
                     dexFocused ? Colors::SelectedText : Colors::TextPrimary,
                     TextStyle::Heading);
-        fb.drawText(dexX + 80, dexY + 52, "Species, forms  •  Research & collection",
+        fb.drawText(dexX + 80, dexY + 52, "Species & forms  •  Research & collection",
                     Colors::TextSecondary, TextStyle::Caption);
         fb.drawText(dexX + 80, dexY + 82, "Coming Soon",
                     Colors::TextMuted, TextStyle::Caption);
