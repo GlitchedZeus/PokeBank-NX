@@ -980,8 +980,9 @@ namespace Legality {
                 // current save container. A D-origin PK4 traded into Platinum must still be
                 // checked against Diamond encounter data. Pal Park/PBR origins are separate.
                 if (!gen4EncounterGameId.empty()) {
-                    if (pk.metLevel() != 0 && Legality::Gen4Wild::matches(
-                            gen4EncounterGameId, species, pk.metLocation(), pk.metLevel(), pk.form())) {
+                    if (pk.metLevel() != 0 && Legality::Gen4Wild::matchesWithTrainerId(
+                            gen4EncounterGameId, species, pk.metLocation(), pk.metLevel(),
+                            pk.form(), pk.id32())) {
                         add(r, Severity::Info,
                             "Met data matches an audited Generation IV wild encounter slot for the stored origin game",
                             CheckIdentifier::Encounter);
