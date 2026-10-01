@@ -170,9 +170,11 @@ require("headerRects.push_back" in source and
         '{"Games", "Banks", "Items", "Search", "More"}' in source,
         "Product Home must render one selectable header Settings gear and no dock Settings")
 require("The right-side feature cards are stacked" in source and
-        "Explicit spatial navigation keeps the five round controls predictable" in source and
+        "The round-logo strip behaves like an ordinary horizontal control row." in source and
+        "if (hubDockIndex > 0)" in source and "--hubDockIndex;" in source and
+        "if (hubDockIndex < 4) ++hubDockIndex;" in source and
         "headerActionIndex = 0;" in source,
-        "Product Home right-side focus must use explicit stacked spatial navigation and keep the header reachable")
+        "Product Home right-side focus must keep header reachability while dock Left/Right moves exactly one logo at a time")
 require("constexpr int featureH = 132;" in source and
         "const int navY = dexY + featureH + 20;" in source and
         "constexpr int buttonD = 74;" in source and
@@ -234,11 +236,18 @@ require("if (kDown & HidNpadButton_Plus) {\n        overlay = Overlay::Settings;
 home_menu = (ROOT / "src/UI/Panels/HomeMenuPanel.cpp").read_text(encoding="utf-8")
 trainer_base = (ROOT / "src/UI/TrainerViewScreenBase.inc").read_text(encoding="utf-8")
 trainer_header = (ROOT / "include/UI/TrainerViewScreenBase.h").read_text(encoding="utf-8")
+save_confirm = (ROOT / "src/UI/Dialogs/SaveConfirmDialog.cpp").read_text(encoding="utf-8")
 require("itemsShortcutActive = true;" in trainer_header and
         "selectedMode == ViewMode::Items && itemsShortcutActive" in trainer_base and
-        "exitAfterSave = true;" in trainer_base and
-        "goBack = true;" in trainer_base,
-        "Product Home Items must exit directly to Product Home and save staged changes before leaving")
+        "Product Home -> Items has a dedicated escape-safe contract" in trainer_base and
+        "A: Save Working Copy & Home" in trainer_base and
+        "Y: Discard & Home" in trainer_base and
+        "B: Keep Editing" in trainer_base and
+        "if (!goBack) exitAfterSave = false;" in trainer_base and
+        '"Save Copy & Home"' in save_confirm and
+        '"Discard & Home"' in save_confirm and
+        '"Keep Editing"' in save_confirm,
+        "dirty Product Home Items must always offer save-working-copy, discard-to-home and keep-editing without trapping the user")
 require('{ "Settings", "S", 5 }' not in home_menu and
         'Icon icons[2]' in home_menu,
         "loaded-game home must not expose a Settings icon")
@@ -272,13 +281,15 @@ require("gameRegionBackdropKey(title.gameId)" in source and
         "regionH = 270" in source and
         "Color(5, 14, 30, 96)" in source,
         "selected-game Product Home card must support a visible region-scene backdrop with a readability scrim")
+region_loader = system_icons[system_icons.index("const IconImage& SystemIcons::regionBackdrop"):
+                             system_icons.index("const IconImage& SystemIcons::trainerPortrait")]
 require('"brilliant_diamond_switch"' in game_identity and
         '"shining_pearl_switch"' in game_identity and
         'return "sinnoh";' in game_identity and
-        '"romfs:/region_backdrops/" + key + ".png"' in system_icons and
-        'key == "sinnoh"' in system_icons and
-        "makeSinnohBackdrop()" in system_icons,
-        "Sinnoh titles must resolve to a safe Sinnoh backdrop with packaged-art override support")
+        '"romfs:/region_backdrops/" + key + ".png"' in region_loader and
+        "makeSinnohBackdrop()" not in region_loader and
+        "real region backdrop not packaged" in region_loader,
+        "region heroes must use real packaged artwork only and never substitute generated Sinnoh scenery")
 
 require("17.0f,  // Caption / secondary information" in framebuffer and
         "20.0f,  // Body / normal labels" in framebuffer and

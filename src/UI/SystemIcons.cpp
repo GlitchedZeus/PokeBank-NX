@@ -390,12 +390,9 @@ namespace UI {
         IconImage img;
         if (!key.empty()) {
             const std::string path = "romfs:/region_backdrops/" + key + ".png";
-            img = decodeFileToRGBA(path);
-            if (!img.valid() && key == "sinnoh") {
-                img = makeSinnohBackdrop();
-                if (img.valid())
-                    logInfoToFile("SystemIcons: using deterministic Sinnoh backdrop fallback");
-            }
+            img = decodeFileToRGBA(path, true);
+            if (!img.valid())
+                logInfoToFile("SystemIcons: real region backdrop not packaged", key.c_str());
         }
         return s_regionBackdropCache.emplace(key, img).first->second;
     }

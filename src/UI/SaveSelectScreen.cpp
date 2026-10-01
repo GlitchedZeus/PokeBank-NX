@@ -2357,18 +2357,20 @@ namespace UI {
         }
 
         if (hubDockFocused) {
-            // Explicit spatial navigation keeps the five round controls predictable. Left is
-            // always the fastest route back to the selected-game hero.
+            // The round-logo strip behaves like an ordinary horizontal control row.
+            // Left/Right move exactly one logo. Only Left from the first (Games) logo returns
+            // to the selected-game hero; never fling focus across the screen from the middle.
             if (kDown & HidNpadButton_Left) {
-                hubDockFocused = false;
-                hubFeatureIndex = -1;
+                if (hubDockIndex > 0) {
+                    --hubDockIndex;
+                } else {
+                    hubDockFocused = false;
+                    hubFeatureIndex = -1;
+                }
                 return;
             }
             if (kDown & HidNpadButton_Right) {
-                if (hubDockIndex <= 2)
-                    hubDockIndex = hubDockIndex == 2 ? 0 : hubDockIndex + 1;
-                else
-                    hubDockIndex = hubDockIndex == 4 ? 3 : 4;
+                if (hubDockIndex < 4) ++hubDockIndex;
                 return;
             }
             if (kDown & HidNpadButton_Up) {
@@ -2625,9 +2627,21 @@ namespace UI {
             if (regionBackdrop.valid()) {
                 constexpr int regionH = 270;
                 fb.setClipRect(DETAIL_X + 2, HUB_Y + 2, DETAIL_W - 4, regionH - 2);
-                fb.drawImageScaled(DETAIL_X + 2, HUB_Y + 2,
+                // Region art is real packaged artwork, so preserve its aspect ratio.
+                // Scale-to-cover under the existing card clip instead of stretching the image.
+                const int regionW = DETAIL_W - 4;
+                const int regionDrawH = regionH - 2;
+                int drawW = regionW;
+                int drawH = std::max(1, regionBackdrop.height * drawW / regionBackdrop.width);
+                if (drawH < regionDrawH) {
+                    drawH = regionDrawH;
+                    drawW = std::max(1, regionBackdrop.width * drawH / regionBackdrop.height);
+                }
+                const int drawX = DETAIL_X + 2 + (regionW - drawW) / 2;
+                const int drawY = HUB_Y + 2 + (regionDrawH - drawH) / 2;
+                fb.drawImageScaled(drawX, drawY,
                                    regionBackdrop.width, regionBackdrop.height,
-                                   DETAIL_W - 4, regionH - 2,
+                                   drawW, drawH,
                                    regionBackdrop.data, 4);
                 // A dark glass scrim keeps title/trainer/source text readable in handheld mode.
                 fb.drawFilledRect(DETAIL_X + 2, HUB_Y + 2,

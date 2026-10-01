@@ -29,8 +29,8 @@ namespace UI {
         // generated missing-art fallback. Quick Games uses this to decide whether the title text
         // is redundant or required for identity.
         bool gameCardHasSpecificArtwork(std::string_view gameId, u64 titleId = 0);
-        // Region-scene image for the Product Home hero card. Packaged art is preferred; the
-        // initial Sinnoh implementation has a safe generated scene so BDSP/DP/Pt never go blank.
+        // Region-scene image for the Product Home hero card. Only real packaged artwork
+        // is accepted. Missing art leaves the normal card surface visible; never synthesize scenery.
         const IconImage& regionBackdrop(std::string_view regionKey);
         // Optional packaged trainer portrait from romfs:/trainer_portraits/<assetKey>.png.
         // Missing art is allowed and falls back to a truthful project-drawn placeholder.

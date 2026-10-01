@@ -2930,6 +2930,51 @@ namespace UI {
         // Handle save confirmation dialog
         if (saveConfirmActive) {
             if (exitingWithUnsavedChanges) {
+                // Product Home -> Items has a dedicated escape-safe contract:
+                // mutable app-owned working copy: A saves that copy + Home, Y discards + Home,
+                // B keeps editing. Immutable external source: A discards + Home, B keeps editing.
+                // Neither discard path writes the live/source save.
+                if (itemsShortcutActive) {
+                    const bool canSaveWorkingCopy = !sourceReadOnly();
+                    const int td = touchedButtonId(touch);
+                    if (td == 0) kDown |= HidNpadButton_B;
+                    else if (canSaveWorkingCopy && td == 1) kDown |= HidNpadButton_Y;
+                    else if ((canSaveWorkingCopy && td == 2) ||
+                             (!canSaveWorkingCopy && td == 1)) kDown |= HidNpadButton_A;
+
+                    if (canSaveWorkingCopy && (kDown & HidNpadButton_A)) {
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = true;
+                        performSave(backupDir);
+                        // performSave clears exitAfterSave only on success. A failed working-copy
+                        // save must leave the user in Items, not arm a surprise exit on a later save.
+                        if (!goBack) exitAfterSave = false;
+                        return;
+                    }
+
+                    const bool discardAndHome =
+                        (canSaveWorkingCopy && (kDown & HidNpadButton_Y)) ||
+                        (!canSaveWorkingCopy && (kDown & HidNpadButton_A));
+                    if (discardAndHome) {
+                        saveConfirmActive = false;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = false;
+                        itemsShortcutActive = false;
+                        goBack = true;
+                        return;
+                    }
+
+                    if (kDown & HidNpadButton_B) {
+                        saveConfirmActive = false;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = false;
+                        return;
+                    }
+                    return;
+                }
                 // Exiting with unsaved changes - different button logic
                 // A: Discard changes and exit
                 // B: Cancel exit (stay on screen)
@@ -3952,21 +3997,14 @@ namespace UI {
         if (detailViewActive) {
             if (kDown & HidNpadButton_B) {
                 // Product Home -> Items is a quick action, not a gateway into the old PKSE home.
-                // Leave the whole game view when the user backs out. If a mutable staged workspace
-                // is dirty, use the normal backup-only save dialog and return Home only after the
-                // save succeeds. Read-only sources keep the existing discard/cancel safety prompt.
+                // A dirty shortcut exit owns its own confirmation. Never route through the generic
+                // destination picker: that can leave the user trapped when live/source writes are
+                // intentionally locked. The Items prompt always has a no-write Discard & Home path.
                 if (selectedMode == ViewMode::Items && itemsShortcutActive) {
                     if (hasUnsavedChanges || trainer.hasStagedChanges()) {
-                        if (sourceReadOnly()) {
-                            exitingWithUnsavedChanges = true;
-                            exitingViaPlus = false;
-                            saveConfirmActive = true;
-                            return;
-                        }
-                        exitingWithUnsavedChanges = false;
+                        exitingWithUnsavedChanges = true;
                         exitingViaPlus = false;
-                        exitAfterSave = true;
-                        saveDestIndex = defaultSaveDestRow();
+                        exitAfterSave = false;
                         saveConfirmActive = true;
                         return;
                     }
@@ -4838,7 +4876,13 @@ namespace UI {
         } else if (itemRemoveConfirmActive) {
             instructions = "A: Remove  |  B: Cancel";
         } else if (saveConfirmActive) {
-            instructions = "A: Save Changes  |  B: Cancel";
+            if (exitingWithUnsavedChanges && itemsShortcutActive) {
+                instructions = sourceReadOnly()
+                    ? "A: Discard & Home  |  B: Keep Editing"
+                    : "A: Save Working Copy & Home  |  Y: Discard & Home  |  B: Keep Editing";
+            } else {
+                instructions = "A: Save Changes  |  B: Cancel";
+            }
         } else if (releaseConfirmActive) {
             instructions = "A: Release  |  B: Cancel";
         } else if (details.active) {
