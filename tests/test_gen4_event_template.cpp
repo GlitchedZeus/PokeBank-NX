@@ -11,7 +11,7 @@ int main() {
     // Pinned first Pokémon PCD in wc4.pkl: fixed-PID level-50 Pikachu.
     Candidate pikachu{
         25, 8107, 20846, 0x246e13afu,
-        50, 16, 0, 2, 10, 0, true
+        50, 3060, 16, 0, 2, 10, 0, true
     };
     const auto match = matchDirect(pikachu);
     assert(match.matched);
@@ -20,6 +20,10 @@ int main() {
     auto wrongLevel = pikachu;
     wrongLevel.metLevel = 51;
     assert(!matchDirect(wrongLevel).matched);
+
+    auto wrongLocation = pikachu;
+    wrongLocation.metLocation = 3059;
+    assert(!matchDirect(wrongLocation).matched);
 
     auto wrongPid = pikachu;
     wrongPid.pid ^= 1u;
@@ -34,7 +38,7 @@ int main() {
             ++candidatePid;
         Candidate candidate{
             t.species, t.tid, t.sid, candidatePid,
-            t.metLevel, t.ball, t.form, t.language, t.version,
+            t.metLevel, t.metLocation, t.ball, t.form, t.language, t.version,
             t.otGender, t.fateful
         };
         assert(matchDirect(candidate).matched);
