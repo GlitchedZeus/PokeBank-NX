@@ -38,6 +38,7 @@
 #include "Legality/Gen34EggMoveEvidence.h"
 #include "Legality/Gen4TransferEvidence.h"
 #include "Legality/Gen4ReleaseEvidence.h"
+#include "Legality/Gen4FormEvidence.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 
@@ -269,12 +270,22 @@ namespace Legality {
         bool directGen4EventTemplate = false;
         const uint64_t* directGen4StaticRow = nullptr;
         auto directGen4StaticPidCategory = Gen4Static::PidCategory::None;
+        bool exactGen4FormValid = true;
         if (sourceProfile && exactGeneration == 4) {
-            directGen4StaticRow = Gen4Static::findMatch(
-                exactSourceGameId, species, pk.metLocation(), pk.metLevel(),
-                pk.form(), pk.eggLocation(), pk.ball(),
-                pk.gender(), pk.nature(),
-                pk.isShiny(pk.id32(), {}), pk.isFatefulEncounter());
+            exactGen4FormValid =
+                Gen4Form::isFormValid(exactSourceGameId, species, pk.form());
+            if (!exactGen4FormValid) {
+                add(r, Severity::Invalid,
+                    "Form " + std::to_string(pk.form()) +
+                    " is not available in this exact Generation IV game",
+                    CheckIdentifier::Species);
+            } else {
+                directGen4StaticRow = Gen4Static::findMatch(
+                    exactSourceGameId, species, pk.metLocation(), pk.metLevel(),
+                    pk.form(), pk.eggLocation(), pk.ball(),
+                    pk.gender(), pk.nature(),
+                    pk.isShiny(pk.id32(), {}), pk.isFatefulEncounter());
+            }
             if (directGen4StaticRow) {
                 directGen4StaticPidCategory =
                     Gen4Static::pidCategoryForRow(*directGen4StaticRow);
