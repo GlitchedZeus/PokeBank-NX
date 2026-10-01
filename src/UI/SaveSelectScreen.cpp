@@ -2814,51 +2814,51 @@ namespace UI {
                         Colors::TextMuted, TextStyle::Body);
         }
 
-        // Right side: compact Vault/Pokédex row above the five primary navigation buttons.
-        // The selected game remains the large left anchor; the old full-width bottom dock is gone.
-        constexpr int featureGap = 14;
-        constexpr int featureH = 190;
-        const int featureW = (RIGHT_W - featureGap) / 2;
+        // Right side: larger full-width feature cards use the space intentionally, followed by
+        // the round-logo navigation group lower on the 720p canvas.
+        constexpr int featureGap = 12;
+        constexpr int featureH = 132;
+        constexpr int featureW = RIGHT_W;
         const bool vaultFocused = !hubDockFocused && hubFeatureIndex == 0;
         const bool dexFocused = !hubDockFocused && hubFeatureIndex == 1;
         const Color vaultAccent(72, 194, 238);
         const Color dexAccent(244, 132, 74);
 
         const int vaultX = RIGHT_X;
-        const int dexX = RIGHT_X + featureW + featureGap;
-        drawFocusedCard(fb, vaultX, HUB_Y, featureW, featureH, vaultFocused, 18);
-        drawFocusedCard(fb, dexX, HUB_Y, featureW, featureH, dexFocused, 18);
+        const int vaultY = HUB_Y;
+        const int dexX = RIGHT_X;
+        const int dexY = vaultY + featureH + featureGap;
+        drawFocusedCard(fb, vaultX, vaultY, featureW, featureH, vaultFocused, 18);
+        drawFocusedCard(fb, dexX, dexY, featureW, featureH, dexFocused, 18);
         if (vaultFocused)
-            fb.drawRoundedRect(vaultX, HUB_Y, featureW, featureH, 18, vaultAccent, 3);
+            fb.drawRoundedRect(vaultX, vaultY, featureW, featureH, 18, vaultAccent, 3);
         if (dexFocused)
-            fb.drawRoundedRect(dexX, HUB_Y, featureW, featureH, 18, dexAccent, 3);
+            fb.drawRoundedRect(dexX, dexY, featureW, featureH, 18, dexAccent, 3);
 
-        fb.drawRoundedRect(vaultX + 18, HUB_Y + 18, 38, 38, 10, vaultAccent, 2);
-        fb.drawFilledRect(vaultX + 25, HUB_Y + 35, 24, 4, withAlpha(vaultAccent, 160));
-        fb.drawFilledCircle(vaultX + 37, HUB_Y + 37, 7, vaultAccent);
-        fb.drawText(vaultX + 68, HUB_Y + 20, "MASTER VAULT",
-                    vaultFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Body);
-        fb.drawText(vaultX + 18, HUB_Y + 70, "Pokémon storage",
+        fb.drawRoundedRect(vaultX + 18, vaultY + 18, 42, 42, 11, vaultAccent, 2);
+        fb.drawFilledRect(vaultX + 26, vaultY + 37, 26, 4, withAlpha(vaultAccent, 170));
+        fb.drawFilledCircle(vaultX + 39, vaultY + 39, 8, vaultAccent);
+        fb.drawText(vaultX + 78, vaultY + 15, "MASTER VAULT",
+                    vaultFocused ? Colors::SelectedText : Colors::TextPrimary,
+                    TextStyle::Heading);
+        fb.drawText(vaultX + 78, vaultY + 52, "Pokémon storage  •  Transfer & lineage",
                     Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(vaultX + 18, HUB_Y + 91, "Transfer & lineage",
-                    Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(vaultX + 18, HUB_Y + 126, "Coming Soon",
+        fb.drawText(vaultX + 78, vaultY + 82, "Coming Soon",
                     Colors::TextMuted, TextStyle::Caption);
 
-        fb.drawRoundedRect(dexX + 18, HUB_Y + 18, 40, 38, 9, dexAccent, 2);
-        fb.drawFilledRoundedRect(dexX + 36, HUB_Y + 23, 4, 28, 2, dexAccent);
-        fb.drawText(dexX + 70, HUB_Y + 20, "POKÉDEX",
-                    dexFocused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Body);
-        fb.drawText(dexX + 18, HUB_Y + 70, "Species & forms",
+        fb.drawRoundedRect(dexX + 18, dexY + 18, 44, 42, 10, dexAccent, 2);
+        fb.drawFilledRoundedRect(dexX + 38, dexY + 24, 4, 30, 2, dexAccent);
+        fb.drawText(dexX + 80, dexY + 15, "POKÉDEX",
+                    dexFocused ? Colors::SelectedText : Colors::TextPrimary,
+                    TextStyle::Heading);
+        fb.drawText(dexX + 80, dexY + 52, "Species, forms  •  Research & collection",
                     Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(dexX + 18, HUB_Y + 91, "Research & collection",
-                    Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(dexX + 18, HUB_Y + 126, "Coming Soon",
+        fb.drawText(dexX + 80, dexY + 82, "Coming Soon",
                     Colors::TextMuted, TextStyle::Caption);
 
-        // Five primary destinations use the compact round logo treatment from the old bottom dock.
-        // No individual rectangular cards: the selected-game hero remains the visual anchor.
-        const int navY = HUB_Y + featureH + 18;
+        // Five primary destinations stay as floating round logos. Their entire group is moved
+        // down roughly 80 px from the previous hardware build without entering the footer.
+        const int navY = dexY + featureH + 20;
         static constexpr const char* dockLabels[5] =
             {"Games", "Banks", "Items", "Search", "More"};
         constexpr int buttonD = 74;
@@ -2866,8 +2866,8 @@ namespace UI {
         constexpr int hitH = 112;
         const int topCellW = RIGHT_W / 3;
         const int bottomCellW = RIGHT_W / 2;
-        const int topCy = navY + 54;
-        const int bottomCy = navY + 182;
+        const int topCy = navY + 44;
+        const int bottomCy = navY + 156;
 
         for (int i = 0; i < 5; ++i) {
             const bool topRow = i < 3;
