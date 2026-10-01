@@ -2841,9 +2841,11 @@ namespace UI {
         fb.drawText(vaultX + 78, vaultY + 15, "MASTER VAULT",
                     vaultFocused ? Colors::SelectedText : Colors::TextPrimary,
                     TextStyle::Heading);
-        fb.drawText(vaultX + 78, vaultY + 52, "Pokémon storage  •  Transfer & lineage",
+        fb.drawText(vaultX + 78, vaultY + 50, "Pokémon storage",
                     Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(vaultX + 78, vaultY + 82, "Coming Soon",
+        fb.drawText(vaultX + 78, vaultY + 72, "Transfer & lineage",
+                    Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(vaultX + 78, vaultY + 96, "Coming Soon",
                     Colors::TextMuted, TextStyle::Caption);
 
         fb.drawRoundedRect(dexX + 18, dexY + 18, 44, 42, 10, dexAccent, 2);
@@ -2851,9 +2853,11 @@ namespace UI {
         fb.drawText(dexX + 80, dexY + 15, "POKÉDEX",
                     dexFocused ? Colors::SelectedText : Colors::TextPrimary,
                     TextStyle::Heading);
-        fb.drawText(dexX + 80, dexY + 52, "Species & forms  •  Research & collection",
+        fb.drawText(dexX + 80, dexY + 50, "Species & forms",
                     Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(dexX + 80, dexY + 82, "Coming Soon",
+        fb.drawText(dexX + 80, dexY + 72, "Research & collection",
+                    Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(dexX + 80, dexY + 96, "Coming Soon",
                     Colors::TextMuted, TextStyle::Caption);
 
         // Five primary destinations stay as floating round logos. Their entire group is moved
