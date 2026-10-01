@@ -486,11 +486,11 @@ $(HOST_BUILD)/test_gen4_mystery_gift_pid_sanitize: tests/test_gen4_mystery_gift_
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_mystery_gift_pid.cpp -o $@
 
-$(HOST_BUILD)/test_gen4_event_template: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc include/Legality/Gen4FormEvidence.h
+$(HOST_BUILD)/test_gen4_event_template: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc include/Legality/Gen4FormEvidence.h include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_event_template.cpp -o $@
 
-$(HOST_BUILD)/test_gen4_event_template_sanitize: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc include/Legality/Gen4FormEvidence.h
+$(HOST_BUILD)/test_gen4_event_template_sanitize: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc include/Legality/Gen4FormEvidence.h include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_event_template.cpp -o $@
 
