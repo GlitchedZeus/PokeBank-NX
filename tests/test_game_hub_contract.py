@@ -401,7 +401,7 @@ require("Blocking overlays are shared by Product Home and the classic artwork br
         "if (overlay == Overlay::GameFilePicker)" in draw_block,
         "classic Games launch/source overlays must render above the classic surface instead of becoming invisible input blockers")
 require("stbi_failure_reason()" in system_icons and
-        "trainer portrait atlas decoded from RomFS" in system_icons,
-        "trainer atlas runtime failures/success must leave hardware-useful diagnostics")
+        "real trainer portrait missing or invalid" in system_icons,
+        "trainer portrait runtime decode failures must leave hardware-useful diagnostics")
 require("gameLaunchBindingFamilyPrefix" in (ROOT / "include/UI/GameLaunchModel.h").read_text(encoding="utf-8"),
         "launch model must expose the stable profile+game binding family used for compatibility lookup")
