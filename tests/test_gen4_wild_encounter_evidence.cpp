@@ -20,9 +20,13 @@ int main() {
     assert(soulsilver == 5600);
     assert(diamond + pearl + platinum + heartgold + soulsilver == 19270);
 
-    // Platinum Route 201 Starly.
+    // Platinum Route 201 Starly is a grass-ground encounter and therefore
+    // positive Poké Radar evidence. Great Marsh and HG/SS never are.
     assert(matches("platinum_nds", 396, 16, 2, 0));
     assert(!matches("platinum_nds", 396, 16, 50, 0));
+    assert(hasRadarEligibleMatch("platinum_nds", 396, 16, 2, 0));
+    assert(!hasRadarEligibleMatch("diamond_nds", 24, 52, 20, 0));
+    assert(!hasRadarEligibleMatch("heartgold_nds", 16, 149, 2, 0));
 
     // HeartGold Route 29 Pidgey.
     assert(matches("heartgold_nds", 16, 149, 2, 0));
@@ -44,6 +48,21 @@ int main() {
         assert(rate(row) != 0);
     }
     assert(rockSmashRows > 0);
+
+    // Radar capability is generated from the pinned area ground-tile flags,
+    // OR-merged across otherwise-identical area aliases so row identity stays stable.
+    std::size_t radarDiamond = 0, radarPearl = 0, radarPlatinum = 0;
+    for (const uint64_t row : kPackedGen4WildEncounters) {
+        if (!radarCapable(row)) continue;
+        assert(game(row) != Game::HeartGold && game(row) != Game::SoulSilver);
+        assert(location(row) != 52); // Great Marsh
+        if (game(row) == Game::Diamond) ++radarDiamond;
+        if (game(row) == Game::Pearl) ++radarPearl;
+        if (game(row) == Game::Platinum) ++radarPlatinum;
+    }
+    assert(radarDiamond == 986);
+    assert(radarPearl == 986);
+    assert(radarPlatinum == 921);
 
     std::cout << "Gen IV wild encounter evidence: PASS\n";
 }
