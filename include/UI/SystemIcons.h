@@ -25,6 +25,10 @@ namespace UI {
         // Shared release-aware card-art resolver. Installed titles use control data; file-based
         // games use a packaged RomFS artwork path keyed by exact game identity.
         const IconImage& gameCardIcon(std::string_view gameId, u64 titleId = 0);
+        // True only when the resolver can identify actual title/packaged artwork rather than the
+        // generated missing-art fallback. Quick Games uses this to decide whether the title text
+        // is redundant or required for identity.
+        bool gameCardHasSpecificArtwork(std::string_view gameId, u64 titleId = 0);
         // Region-scene image for the Product Home hero card. Packaged art is preferred; the
         // initial Sinnoh implementation has a safe generated scene so BDSP/DP/Pt never go blank.
         const IconImage& regionBackdrop(std::string_view regionKey);
