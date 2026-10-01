@@ -403,7 +403,7 @@ namespace Legality {
                 add(r, Severity::Info,
                     exactGeneration == 3
                         ? "PK3 unhatched egg state has the native met-level-0 structure; exact hatch-location and inherited-move evidence remain incomplete"
-                        : "PK4 egg-origin state has native met-level-0 structure and egg-location evidence; exact hatch-location and inherited-move evidence remain incomplete",
+                        : "PK4 egg-origin state has native met-level-0 structure and egg-location evidence; hatch-location evidence is checked separately for hatched records and inherited-move evidence remains incomplete",
                     CheckIdentifier::Egg);
             }
 
