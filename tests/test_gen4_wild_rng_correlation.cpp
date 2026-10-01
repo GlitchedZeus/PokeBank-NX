@@ -143,6 +143,11 @@ int main() {
     static_assert(!matchNoLeadRow(true, wrongContestSlot,
                                   contestSeed, contestPid, 14).matched());
 
+    // Shared slot helper must preserve the Safari modulo-10 rule too,
+    // even though matchNoLeadRow handles Safari before the generic fishing branch.
+    static_assert(fishingSlot(true, 12, 28111) == 1);
+    static_assert(fishingSlot(false, 12, 28111) == 0xFF);
+
     // HG/SS Safari uses rand % 10 for all five Safari method types and does not
     // consume a random-level frame. The pinned resource stores fixed levels.
     constexpr uint64_t safariGrass = makeRow(10, 1, 15, 15, 6);
