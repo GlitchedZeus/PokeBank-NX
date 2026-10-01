@@ -2632,7 +2632,7 @@ namespace UI {
                 // A dark glass scrim keeps title/trainer/source text readable in handheld mode.
                 fb.drawFilledRect(DETAIL_X + 2, HUB_Y + 2,
                                   DETAIL_W - 4, regionH - 2,
-                                  Color(5, 14, 30, 132));
+                                  Color(5, 14, 30, 96));
                 fb.clearClip();
                 fb.drawFilledRoundedRect(DETAIL_X + 12, HUB_Y + regionH - 2,
                                          DETAIL_W - 24, 2, 1,
