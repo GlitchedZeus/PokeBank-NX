@@ -300,11 +300,11 @@ $(HOST_BUILD)/test_gen4_wild_encounter_evidence_sanitize: tests/test_gen4_wild_e
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_wild_encounter_evidence.cpp -o $@
 
-$(HOST_BUILD)/test_gen4_static_encounter_evidence: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h include/Legality/Gen4ReleaseEvidence.h
+$(HOST_BUILD)/test_gen4_static_encounter_evidence: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h include/Legality/Gen4ReleaseEvidence.h include/Legality/Gen4FormEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_static_encounter_evidence.cpp -o $@
 
-$(HOST_BUILD)/test_gen4_static_encounter_evidence_sanitize: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h include/Legality/Gen4ReleaseEvidence.h
+$(HOST_BUILD)/test_gen4_static_encounter_evidence_sanitize: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h include/Legality/Gen4ReleaseEvidence.h include/Legality/Gen4FormEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_static_encounter_evidence.cpp -o $@
 
@@ -462,11 +462,11 @@ $(HOST_BUILD)/test_gen4_mystery_gift_pid_sanitize: tests/test_gen4_mystery_gift_
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_mystery_gift_pid.cpp -o $@
 
-$(HOST_BUILD)/test_gen4_event_template: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc
+$(HOST_BUILD)/test_gen4_event_template: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc include/Legality/Gen4FormEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_event_template.cpp -o $@
 
-$(HOST_BUILD)/test_gen4_event_template_sanitize: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc
+$(HOST_BUILD)/test_gen4_event_template_sanitize: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc include/Legality/Gen4FormEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_event_template.cpp -o $@
 
