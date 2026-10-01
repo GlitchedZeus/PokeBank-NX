@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Legality/Gen34EggMoveEvidence.h"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -15,6 +17,8 @@ struct Evidence {
     bool matched = false;
     uint8_t course = 0;
     uint8_t slot = 0;
+    uint16_t sourceSpecies = 0;
+    bool evolved = false;
 };
 
 constexpr uint16_t species(uint64_t v) noexcept { return static_cast<uint16_t>(v & 0x1FFu); }
@@ -59,7 +63,50 @@ inline Evidence match(uint16_t speciesId, uint8_t metLevel, uint8_t pokemonGende
         if (templateHasMove && currentHasMove && !sharesMove)
             continue;
 
-        return {true, course(row), slot(row)};
+        return {true, course(row), slot(row), speciesId, false};
+    }
+    return {};
+}
+
+inline uint16_t sourceSpeciesInEvolutionLine(uint16_t speciesId) noexcept {
+    if (hasSpecies(speciesId))
+        return speciesId;
+
+    uint16_t ancestor =
+        Gen34EggMove::preEvolution("heartgold_nds", speciesId);
+    for (int depth = 0; ancestor != 0 && depth < 8; ++depth) {
+        if (hasSpecies(ancestor))
+            return ancestor;
+        const uint16_t next =
+            Gen34EggMove::preEvolution("heartgold_nds", ancestor);
+        if (next == ancestor)
+            break;
+        ancestor = next;
+    }
+    return 0;
+}
+
+inline Evidence matchEvolutionLine(
+    uint16_t speciesId, uint8_t metLevel, uint8_t pokemonGender,
+    const std::array<uint16_t, 4>& moves) noexcept {
+    if (const auto direct = match(speciesId, metLevel, pokemonGender, moves);
+        direct.matched)
+        return direct;
+
+    uint16_t ancestor =
+        Gen34EggMove::preEvolution("heartgold_nds", speciesId);
+    for (int depth = 0; ancestor != 0 && depth < 8; ++depth) {
+        if (auto evidence = match(ancestor, metLevel, pokemonGender, moves);
+            evidence.matched) {
+            evidence.sourceSpecies = ancestor;
+            evidence.evolved = true;
+            return evidence;
+        }
+        const uint16_t next =
+            Gen34EggMove::preEvolution("heartgold_nds", ancestor);
+        if (next == ancestor)
+            break;
+        ancestor = next;
     }
     return {};
 }
