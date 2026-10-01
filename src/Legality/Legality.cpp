@@ -338,20 +338,23 @@ namespace Legality {
                 }
             }
 
-            const auto eventMatch = Gen4EventTemplate::matchDirect({
-                species,
-                pk.tid16(),
-                pk.sid16(),
-                pk.pid(),
-                pk.metLevel(),
-                pk.metLocation(),
-                pk.ball(),
-                pk.form(),
-                pk.language(),
-                pk.originGame(),
-                pk.otGender(),
-                pk.isFatefulEncounter()
-            });
+            Gen4EventTemplate::MatchResult eventMatch{};
+            if (exactGen4FormValid) {
+                eventMatch = Gen4EventTemplate::matchDirect({
+                    species,
+                    pk.tid16(),
+                    pk.sid16(),
+                    pk.pid(),
+                    pk.metLevel(),
+                    pk.metLocation(),
+                    pk.ball(),
+                    pk.form(),
+                    pk.language(),
+                    pk.originGame(),
+                    pk.otGender(),
+                    pk.isFatefulEncounter()
+                });
+            }
             if (eventMatch.matched) {
                 directGen4EventTemplate = true;
                 r.coverage.eventGift = CoverageLevel::Partial;
