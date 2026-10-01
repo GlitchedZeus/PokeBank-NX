@@ -7,6 +7,7 @@ ui_manager = (ROOT / "src/UI/UI.cpp").read_text(encoding="utf-8")
 shell_source = (ROOT / "src/UI/AppShellScreen.cpp").read_text(encoding="utf-8")
 system_icons = (ROOT / "src/UI/SystemIcons.cpp").read_text(encoding="utf-8")
 framebuffer = (ROOT / "src/UI/PKSEFramebuffer.cpp").read_text(encoding="utf-8")
+game_identity = (ROOT / "src/Games/GameIdentity.cpp").read_text(encoding="utf-8")
 
 def require(cond: bool, message: str) -> None:
     if not cond:
@@ -241,6 +242,19 @@ require("partySpriteH = 82" in source and
         "slotY + 99" in source and
         "drawShinyMark(sx + slotW - 19, slotY + 6, 13" in source,
         "Product Home party must use larger bottom-aligned sprites, readable levels and a reserved shiny corner")
+
+require("gameRegionBackdropKey(title.gameId)" in source and
+        "SystemIcons::regionBackdrop(regionKey)" in source and
+        "regionH = 270" in source and
+        "Color(5, 14, 30, 132)" in source,
+        "selected-game Product Home card must support a readable region-scene backdrop")
+require('"brilliant_diamond_switch"' in game_identity and
+        '"shining_pearl_switch"' in game_identity and
+        'return "sinnoh";' in game_identity and
+        '"romfs:/region_backdrops/" + key + ".png"' in system_icons and
+        'key == "sinnoh"' in system_icons and
+        "makeSinnohBackdrop()" in system_icons,
+        "Sinnoh titles must resolve to a safe Sinnoh backdrop with packaged-art override support")
 
 require("17.0f,  // Caption / secondary information" in framebuffer and
         "20.0f,  // Body / normal labels" in framebuffer and
