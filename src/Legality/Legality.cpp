@@ -344,6 +344,7 @@ namespace Legality {
                 pk.sid16(),
                 pk.pid(),
                 pk.metLevel(),
+                pk.metLocation(),
                 pk.ball(),
                 pk.form(),
                 pk.language(),
@@ -359,7 +360,7 @@ namespace Legality {
                     (eventMatch.cardId
                         ? " (card " + std::to_string(eventMatch.cardId) + ")"
                         : "") +
-                    "; OT text, ribbons, dates, evolution history, and trash-byte evidence remain incomplete",
+                    "; exact native met location is proven, while OT text, ribbons, dates, evolution history, and trash-byte evidence remain incomplete",
                     CheckIdentifier::EventGift);
             }
 
