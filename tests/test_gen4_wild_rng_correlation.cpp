@@ -155,11 +155,36 @@ int main() {
     static_assert(!matchNoLeadRow(true, no31Safari,
                                   no31Seed, no31Pid, 15).matched());
 
-    // Feebas fishing remains fail-closed until the Mt. Coronet tile branch is modeled.
+    // Mt. Coronet B1F consumes an extra tile-check RNG frame for every
+    // fishing encounter. Seed 7 proves both the regular-species path and Feebas's
+    // additional 50% replacement branch using the pinned rate=255 sentinel.
+    constexpr uint32_t coronetSeed = 7u;
+    constexpr uint32_t coronetPid = sequentialPid(coronetSeed);
+    static_assert(coronetPid == 0x3BF0CC6Cu);
+
+    constexpr uint64_t coronetRegular =
+        makeRow(3, 1, 15, 20, 0xFF) | static_cast<uint64_t>(129u);
+    constexpr auto jrCoronet =
+        matchNoLeadRow(false, coronetRegular, coronetSeed, coronetPid, 17);
+    static_assert(jrCoronet.method == Method::MethodJFishingNoLead);
+    static_assert(jrCoronet.slot == 1);
+
     constexpr uint64_t feebasFishing =
-        fishingJ | static_cast<uint64_t>(349u);
-    static_assert(!matchNoLeadRow(false, feebasFishing,
-                                  fishingJSeed, fishingJPid, 7).matched());
+        makeRow(3, 1, 10, 20, 0xFF) | static_cast<uint64_t>(349u);
+    constexpr auto jfCoronet =
+        matchNoLeadRow(false, feebasFishing, coronetSeed, coronetPid, 18);
+    static_assert(jfCoronet.method == Method::MethodJFishingNoLead);
+    static_assert(jfCoronet.slot == 1);
+
+    // Seed 9 reaches a valid Good Rod slot/level and hook roll, but its tile
+    // replacement bit is clear, so it cannot positively prove Feebas.
+    constexpr uint32_t badTileSeed = 9u;
+    constexpr uint32_t badTilePid = sequentialPid(badTileSeed);
+    static_assert(badTilePid == 0xC1354FF9u);
+    constexpr uint64_t badTileFeebas =
+        makeRow(3, 0, 10, 20, 0xFF) | static_cast<uint64_t>(349u);
+    static_assert(!matchNoLeadRow(false, badTileFeebas,
+                                  badTileSeed, badTilePid, 16).matched());
 
     // The packed wild table reader must retain slot bits emitted by the generator.
     constexpr uint64_t packedSample = 0x20000060c260aULL;
