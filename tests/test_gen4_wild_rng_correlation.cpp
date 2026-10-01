@@ -106,47 +106,52 @@ int main() {
 
     // HG/SS Bug Catching Contest: slot table is reversed and the accepted
     // current candidate must contain at least one 31 IV unless the full four-attempt
-    // exhaustion history is proven. Seed 231 has a direct 31-IV Method-1 candidate.
-    constexpr uint32_t contestSeed = 231u;
+    // exhaustion history is proven. Seed 8 has a direct 31-IV Method-1 candidate.
+    constexpr uint32_t contestSeed = 8u;
     constexpr uint32_t contestPid = sequentialPid(contestSeed);
-    static_assert(contestPid == 0x8A3759F1u);
+    static_assert(contestPid == 0xFE930E32u);
     static_assert(directMinimum31Satisfied(contestSeed));
-    constexpr uint64_t bugContest = makeRow(8, 7, 7, 18, 25);
-    constexpr auto kb = matchNoLeadRow(true, bugContest, contestSeed, contestPid, 7);
+    constexpr uint64_t bugContest = makeRow(8, 0, 7, 18, 25);
+    constexpr auto kb = matchNoLeadRow(true, bugContest, contestSeed, contestPid, 14);
     static_assert(kb.method == Method::MethodKBugContestNoLead);
-    static_assert(kb.slot == 7);
-    constexpr uint64_t wrongContestSlot = makeRow(8, 6, 7, 18, 25);
+    static_assert(kb.slot == 0);
+    constexpr uint64_t wrongContestSlot = makeRow(8, 1, 7, 18, 25);
     static_assert(!matchNoLeadRow(true, wrongContestSlot,
-                                  contestSeed, contestPid, 7).matched());
+                                  contestSeed, contestPid, 14).matched());
 
     // HG/SS Safari uses rand % 10 for all five Safari method types and does not
     // consume a random-level frame. The pinned resource stores fixed levels.
-    constexpr uint64_t safariGrass = makeRow(10, 8, 15, 15, 6);
+    constexpr uint64_t safariGrass = makeRow(10, 1, 15, 15, 6);
     constexpr auto ks = matchNoLeadRow(true, safariGrass,
                                        contestSeed, contestPid, 15);
     static_assert(ks.method == Method::MethodKSafariNoLead);
-    static_assert(ks.slot == 8);
+    static_assert(ks.slot == 1);
     static_assert(!matchNoLeadRow(true, safariGrass,
                                   contestSeed, contestPid, 16).matched());
 
     // Safari Old Rod uses the same fixed-level Safari slot frame; activation is
     // immediately before the ESV because there is no random-level call.
-    constexpr uint64_t safariOldRod = makeRow(12, 8, 12, 12, 5);
+    constexpr uint32_t safariFishingSeed = 22u;
+    constexpr uint32_t safariFishingPid = sequentialPid(safariFishingSeed);
+    static_assert(safariFishingPid == 0xA377A70Bu);
+    static_assert(directMinimum31Satisfied(safariFishingSeed));
+    constexpr uint64_t safariOldRod = makeRow(12, 3, 12, 12, 5);
     constexpr auto ksf = matchNoLeadRow(true, safariOldRod,
-                                        contestSeed, contestPid, 12);
+                                        safariFishingSeed, safariFishingPid, 12);
     static_assert(ksf.method == Method::MethodKSafariFishingNoLead);
-    static_assert(ksf.slot == 8);
+    static_assert(ksf.slot == 3);
 
-    // Seed 26 has no 31 IV. Such a result can be legal only as the exhausted
-    // fourth reroll; until that prior three-attempt chain is proven, stay unresolved.
-    constexpr uint32_t no31Seed = 26u;
+    // Seed 12 has no 31 IV but otherwise reaches a valid Bug Contest slot+level
+    // and Safari slot. Such a result can be legal only as the exhausted fourth
+    // reroll; until that prior three-attempt chain is proven, stay unresolved.
+    constexpr uint32_t no31Seed = 12u;
     constexpr uint32_t no31Pid = sequentialPid(no31Seed);
-    static_assert(no31Pid == 0xAE02AE24u);
+    static_assert(no31Pid == 0x091D154Cu);
     static_assert(!directMinimum31Satisfied(no31Seed));
-    constexpr uint64_t no31Contest = makeRow(8, 5, 7, 18, 25);
+    constexpr uint64_t no31Contest = makeRow(8, 4, 7, 18, 25);
     static_assert(!matchNoLeadRow(true, no31Contest,
-                                  no31Seed, no31Pid, 10).matched());
-    constexpr uint64_t no31Safari = makeRow(10, 1, 15, 15, 6);
+                                  no31Seed, no31Pid, 15).matched());
+    constexpr uint64_t no31Safari = makeRow(10, 0, 15, 15, 6);
     static_assert(!matchNoLeadRow(true, no31Safari,
                                   no31Seed, no31Pid, 15).matched());
 
