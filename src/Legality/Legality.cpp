@@ -639,7 +639,7 @@ namespace Legality {
                 if (correlation.matched()) {
                     const auto wildRng = Gen4WildRng::analyzeNoLead(
                         gen4EncounterGameId, species, pk.metLocation(), pk.metLevel(),
-                        pk.form(), correlation.originSeed, pk.pid());
+                        pk.form(), pk.id32(), correlation.originSeed, pk.pid());
                     if (wildRng.matched()) {
                         add(r, Severity::Info,
                             "PID/IV spread and wild slot match Generation IV " +
