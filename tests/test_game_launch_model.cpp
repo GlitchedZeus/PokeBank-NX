@@ -35,6 +35,9 @@ int main() {
     assert(gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.rar"));
     assert(!gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.gba"));
 
+    assert(gameLaunchBindingFamilyPrefix("profile", "emerald_gba") ==
+           "profile|emerald_gba|");
+    assert(gameLaunchBindingFamilyPrefix("", "emerald_gba").empty());
     assert(gameLaunchBindingKey("profile", "emerald_gba", "source") ==
            "profile|emerald_gba|source");
     assert(gameLaunchBindingKey("", "emerald_gba", "source").empty());
