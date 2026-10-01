@@ -1,15 +1,15 @@
 # Full Audit Remediation Matrix
 
-Created from frozen forensic evidence `143c5e5c341d4f85af30e013808a37d6719560fe` and reconciled forward to live MAIN / PR #92 head `fd94251f48de0a18d236ccf97f0c29f55e91572f`.
+Created from frozen forensic evidence `143c5e5c341d4f85af30e013808a37d6719560fe` and reconciled forward to live MAIN / PR #92 head `c95c788180dae4d0f66514f07ddf0724eef348fc`.
 
 The forensic audit is closed: 746/746 tracked paths accounted, 711/711 text files fully read, 35/35 non-text entries inspected, 0 pending ledger entries. This file is a remediation ledger, not a continuation of repository coverage.
 
 ## Baseline and invariants
 
 - Original severity counts: P1 2, P2 17, P3 20, P4 5.
-- Current MAIN reconciliation point: PR #92 branch `feature/gen4-full-editor-20260928` at `fd94251f48de0a18d236ccf97f0c29f55e91572f`. PR #101 contains this exact live head as an ancestor and preserves all newer MAIN work.
+- Current MAIN reconciliation point: PR #92 branch `feature/gen4-full-editor-20260928` at `c95c788180dae4d0f66514f07ddf0724eef348fc`. PR #101 application/reconciliation head `e691a881bcdb4a2fe99f7459e2eccbb9199ae94d` contains this exact live head as an ancestor and preserves all newer MAIN work.
 - Frozen evidence branch remains untouched at `143c5e5c341d4f85af30e013808a37d6719560fe`.
-- Exact-head remediation validation at application/reconciliation head `29c8276ae5412806ffb762eab10f427b4b743a24` is fully green: Host Tests run `36747533921` PASS (including ASan + UBSan, generated-data, source-safety, save-open bridge and v1 polish contracts); Native PR Gate run `36747533901` PASS; Product UI Native run `36747534097` PASS; Gen I/II Packed Move Focused run `36747533931` PASS (including ASan + UBSan); Gen I/II Packed Multi-Move Focused run `36747533886` PASS (including ASan + UBSan).
+- Exact-head remediation validation at application/reconciliation head `e691a881bcdb4a2fe99f7459e2eccbb9199ae94d` is fully green: Host Tests run `36820745745` PASS (including ASan + UBSan, generated-data, source-safety, save-open bridge and v1 polish contracts); Native PR Gate run `36820745731` PASS; Product UI Native run `36820745788` PASS with clean devkitA64 compile/link + NRO packaging; Gen I/II Packed Move Focused run `36820745751` PASS (including ASan + UBSan); Gen I/II Packed Multi-Move Focused run `36820745732` PASS (including ASan + UBSan).
 - Source saves remain immutable. Emulator/installed-title live writes remain disabled. Cross-game True Move and source injection remain locked. No Gen V or Master Vault backend work is in scope.
 
 Status semantics: **OPEN** = not implemented; **IN PROGRESS** = active fix; **FIXED** = implementation exists but exact-head validation is incomplete; **VERIFIED** = focused + relevant broader validation proves the fix; **DEFERRED WITH JUSTIFICATION** = explicit blocker/prerequisite recorded.
