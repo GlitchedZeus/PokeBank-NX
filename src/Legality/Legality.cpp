@@ -553,34 +553,51 @@ namespace Legality {
                 const std::array<uint16_t, 4> currentMoves{
                     pk.move(0), pk.move(1), pk.move(2), pk.move(3)
                 };
-                const auto walkerEncounter = Gen4PokewalkerEncounter::match(
-                    species, pk.metLevel(), pk.gender(), currentMoves);
+                const auto walkerEncounter =
+                    Gen4PokewalkerEncounter::matchEvolutionLine(
+                        species, pk.metLevel(), pk.gender(), currentMoves);
+                const uint16_t walkerSourceSpecies = walkerEncounter.matched
+                    ? walkerEncounter.sourceSpecies
+                    : Gen4PokewalkerEncounter::sourceSpeciesInEvolutionLine(species);
+
                 if (walkerEncounter.matched) {
-                    add(r, Severity::Info,
+                    std::string detail =
                         "Species/level/gender/moves are compatible with pinned PokeWalker course " +
                         std::to_string(walkerEncounter.course) + " slot " +
-                        std::to_string(walkerEncounter.slot),
+                        std::to_string(walkerEncounter.slot);
+                    if (walkerEncounter.evolved)
+                        detail += " via captured ancestor species " +
+                                  std::to_string(walkerEncounter.sourceSpecies);
+                    add(r, Severity::Info, std::move(detail),
                         CheckIdentifier::Encounter);
-                } else if (Gen4PokewalkerEncounter::hasSpecies(species)) {
+                } else if (walkerSourceSpecies != 0) {
                     add(r, Severity::Info,
-                        "PokeWalker species is known, but exact course-slot evidence is unresolved after current level/gender/move checks",
+                        walkerSourceSpecies == species
+                            ? "PokeWalker species is known, but exact course-slot evidence is unresolved after current level/gender/move checks"
+                            : "PokeWalker met location and evolution line reach a pinned course species, but exact course-slot evidence is unresolved after current level/gender/move checks",
                         CheckIdentifier::Encounter);
                 } else {
                     add(r, Severity::Info,
-                        "PokeWalker met location detected; current species is not a direct course species, so evolution/course provenance remains unresolved",
+                        "PokeWalker met location detected; no direct or pre-evolution course species was proven",
                         CheckIdentifier::Encounter);
                 }
 
+                const uint16_t pidSpecies =
+                    walkerSourceSpecies != 0 ? walkerSourceSpecies : species;
                 const uint8_t genderRatio =
-                    Pokemon::getPersonalInfo(species, pk.form()).genderRatio;
+                    Pokemon::getPersonalInfo(pidSpecies, 0).genderRatio;
                 if (Gen4PokewalkerPid::matches(
                         pk.pid(), pk.id32(), pk.nature(), pk.gender(), genderRatio)) {
                     add(r, Severity::Info,
-                        "PID matches the Generation IV PokeWalker trainer/nature/gender formula",
+                        pidSpecies == species
+                            ? "PID matches the Generation IV PokeWalker trainer/nature/gender formula"
+                            : "PID matches the Generation IV PokeWalker trainer/nature/gender formula using the captured ancestor species ratio",
                         CheckIdentifier::PidRng);
                 } else {
                     add(r, Severity::Info,
-                        "PokeWalker met location detected, but PID correlation is unresolved against the current species ratio; evolution/course provenance remains incomplete",
+                        pidSpecies == species
+                            ? "PokeWalker met location detected, but PID correlation is unresolved against the current species ratio"
+                            : "PokeWalker evolution provenance was found, but PID correlation is unresolved against the captured ancestor species ratio",
                         CheckIdentifier::PidRng);
                 }
             } else if (directGen4StaticPidCategory == Gen4Static::PidCategory::Pokewalker) {
