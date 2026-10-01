@@ -669,8 +669,14 @@ namespace Legality {
                         const auto chain =
                             Gen4ChainShiny::analyze(pk.pid(), pk.id32(), ivs);
                         if (chain.matched) {
+                            const bool radarEncounter =
+                                Gen4Wild::hasRadarEligibleMatch(
+                                    gen4EncounterGameId, species,
+                                    pk.metLocation(), pk.metLevel(), pk.form());
                             add(r, Severity::Info,
-                                "PID/IV/trainer IDs match the Gen IV Poké Radar Chain Shiny RNG class; radar-capable encounter-slot provenance remains incomplete",
+                                radarEncounter
+                                    ? "PID/IV/trainer IDs match the Gen IV Poké Radar Chain Shiny RNG class and the exact wild encounter is Radar-capable"
+                                    : "PID/IV/trainer IDs match the Gen IV Poké Radar Chain Shiny RNG class, but no Radar-capable direct wild encounter row was proven; evolved/event provenance remains incomplete",
                                 CheckIdentifier::PidRng);
                         } else {
                             const auto gift =
