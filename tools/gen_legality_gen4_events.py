@@ -23,6 +23,12 @@ def u32(data: bytes, off: int) -> int:
     return struct.unpack_from("<I", data, off)[0]
 
 
+def pk4_location(data: bytes, extended_off: int, dp_off: int) -> int:
+    """Mirror G4PKM location selection: prefer the Pt/HGSS extended field."""
+    extended = u16(data, extended_off)
+    return extended if extended != 0 else u16(data, dp_off)
+
+
 def main() -> int:
     with open(pkhex_source.pkhex_path(RESOURCE), "rb") as fh:
         raw = fh.read()
@@ -50,6 +56,7 @@ def main() -> int:
             u16(pk, 0x0E),
             u32(pk, 0x00),
             pk[0x84] & 0x7F,
+            pk4_location(pk, 0x44, 0x7E) + 3000,
             max(pk[0x83], pk[0x86]),
             pk[0x40] >> 3,
             pk[0x17],
@@ -71,11 +78,11 @@ def main() -> int:
         "inline constexpr EventTemplate kGen4EventTemplates[] = {",
     ]
     for row in rows:
-        species, tid, sid, pid, level, ball, form, language, version, ot_gender, fateful, card_id = row
+        species, tid, sid, pid, level, met_location, ball, form, language, version, ot_gender, fateful, card_id = row
         lines.append(
-            "    {%d, %d, %d, 0x%08xu, %d, %d, %d, %d, %d, %d, %s, %d},"
-            % (species, tid, sid, pid, level, ball, form, language, version,
-               ot_gender, "true" if fateful else "false", card_id)
+            "    {%d, %d, %d, 0x%08xu, %d, %d, %d, %d, %d, %d, %d, %s, %d},"
+            % (species, tid, sid, pid, level, met_location, ball, form, language,
+               version, ot_gender, "true" if fateful else "false", card_id)
         )
     lines.append("};")
     lines.append("")
