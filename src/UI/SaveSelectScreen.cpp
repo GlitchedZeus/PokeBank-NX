@@ -2436,17 +2436,37 @@ namespace UI {
         drawAppBackdrop(fb);
         drawTitleBar(fb, "Pokémon Games");
         const UserEntry* u = currentUser();
-        drawPanelSurface(fb, 24, 82, fb.getWidth() - 48, 104, true);
 
+        // The classic artwork browser no longer spends a full-width banner on profile identity.
+        // Reuse the small Product Home avatar treatment and give the recovered width to six covers.
         if (u) {
-            const IconImage* avatar = u->name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(u->uid);
+            constexpr int avatarSize = 44;
+            const int avatarX = fb.getWidth() - avatarSize - 28;
+            const int avatarY = 10;
+            const bool profileFocused = headerActionIndex == 0;
+            const IconImage* avatar =
+                u->name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(u->uid);
+
             if (avatar && avatar->valid())
-                fb.drawImageScaled(44, 92, avatar->width, avatar->height, 84, 84, avatar->data, 4);
+                fb.drawImageScaled(avatarX, avatarY, avatar->width, avatar->height,
+                                   avatarSize, avatarSize, avatar->data, 4);
             else
-                fb.drawFilledRoundedRect(44, 92, 84, 84, 12, Colors::PanelAlt);
-            fb.drawRoundedRect(44, 92, 84, 84, 12, Colors::Info, 2);
-            fb.drawText(148, 103, u->name, Colors::TextPrimary, TextStyle::Title);
-            fb.drawText(148, 144, std::to_string(u->titles.size()) + " available save sources",
+                fb.drawFilledRoundedRect(avatarX, avatarY, avatarSize, avatarSize,
+                                         avatarSize / 2, Colors::PanelAlt);
+            fb.drawRoundedRect(avatarX, avatarY, avatarSize, avatarSize, avatarSize / 2,
+                               profileFocused ? Colors::FocusBorder : Colors::Divider,
+                               profileFocused ? 3 : 2);
+            headerRects.push_back({avatarX - 8, avatarY - 6, avatarSize + 16, avatarSize + 12, 0});
+
+            std::string profileName = u->name;
+            if (profileName.size() > 18) profileName = profileName.substr(0, 17) + "…";
+            int pw = 0, ph = 0;
+            fb.measureText(profileName, pw, ph, TextStyle::Caption);
+            fb.drawText(std::max(760, avatarX - pw - 12), 22, profileName,
+                        profileFocused ? Colors::SelectedText : Colors::TextSecondary,
+                        TextStyle::Caption);
+            fb.drawText(30, 82,
+                        std::to_string(u->titles.size()) + " available Pokémon games",
                         Colors::TextMuted, TextStyle::Caption);
         }
 
@@ -2506,6 +2526,9 @@ namespace UI {
         dockRects.clear();
         headerRects.clear();
 
+        const UserEntry* u = currentUser();
+        const int count = u ? static_cast<int>(u->titles.size()) : 0;
+
         if (classicGamesActive) {
             const UserEntry* classicUser = currentUser();
             if (classicUser && !classicUser->titles.empty())
@@ -2523,15 +2546,11 @@ namespace UI {
                     {"-", "Close Help / Controls"},
                     {"B", "Back to Product Home"}
                 }, "This is the full artwork game browser. Press Y on Product Home for the quick drawer.");
+                return;
             }
-            return;
-        }
-
-        drawAppBackdrop(fb);
-        drawProductTitleBar(fb);
-
-        const UserEntry* u = currentUser();
-        const int count = u ? static_cast<int>(u->titles.size()) : 0;
+        } else {
+            drawAppBackdrop(fb);
+            drawProductTitleBar(fb);
 
         // Header right owns the only Profile and Settings destinations.
         if (u) {
@@ -2865,7 +2884,11 @@ namespace UI {
         // repeat a ZR Launch hint.
         drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"},
                         {"+", "Current Game"}, {"-", "Help"}, {"B", "Exit"}});
+        }
 
+        // Blocking overlays are shared by Product Home and the classic artwork browser.
+        // Keeping this renderer outside the classic base prevents invisible modals that capture
+        // input and look like a frozen application until B is pressed.
         if (overlay == Overlay::GamesDrawer) {
             constexpr int w = 520;
             const int x = fb.getWidth() - w;
