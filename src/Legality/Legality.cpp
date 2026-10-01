@@ -346,7 +346,7 @@ namespace Legality {
                 r.coverage.transfer = CoverageLevel::Complete;
         }
 
-        bool directGen4EventTemplate = false;
+        bool matchedGen4EventTemplate = false;
         const uint64_t* directGen4StaticRow = nullptr;
         auto directGen4StaticPidCategory = Gen4Static::PidCategory::None;
         bool exactGen4FormValid = true;
@@ -418,7 +418,7 @@ namespace Legality {
 
             Gen4EventTemplate::MatchResult eventMatch{};
             if (exactGen4FormValid) {
-                eventMatch = Gen4EventTemplate::matchDirect({
+                eventMatch = Gen4EventTemplate::matchEvolutionLine({
                     species,
                     pk.tid16(),
                     pk.sid16(),
@@ -435,14 +435,18 @@ namespace Legality {
                 });
             }
             if (eventMatch.matched) {
-                directGen4EventTemplate = true;
+                matchedGen4EventTemplate = true;
                 r.coverage.eventGift = CoverageLevel::Partial;
-                add(r, Severity::Info,
-                    "PK4 invariant fields match a pinned Gen IV WC4/PCD Pokémon template" +
-                    (eventMatch.cardId
-                        ? " (card " + std::to_string(eventMatch.cardId) + ")"
-                        : "") +
-                    "; exact native met location is proven, while OT text, ribbons, dates, evolution history, and trash-byte evidence remain incomplete",
+                std::string eventDetail = eventMatch.evolved
+                    ? "PK4 persistent invariant fields match a pinned Gen IV WC4/PCD Pokémon template after evolution from source species " +
+                      std::to_string(eventMatch.sourceSpecies)
+                    : "PK4 invariant fields match a pinned Gen IV WC4/PCD Pokémon template";
+                if (eventMatch.cardId)
+                    eventDetail += " (card " + std::to_string(eventMatch.cardId) + ")";
+                eventDetail += eventMatch.evolved
+                    ? "; exact native event provenance survives evolution, while OT text, ribbons, dates, form-specific source evolution, and trash-byte evidence remain incomplete"
+                    : "; exact native met location is proven, while OT text, ribbons, dates, and trash-byte evidence remain incomplete";
+                add(r, Severity::Info, std::move(eventDetail),
                     CheckIdentifier::EventGift);
             }
 
@@ -701,11 +705,11 @@ namespace Legality {
                             if (gift.matched) {
                                 r.coverage.eventGift = CoverageLevel::Partial;
                                 add(r, Severity::Info,
-                                    directGen4EventTemplate
+                                    matchedGen4EventTemplate
                                         ? "PID/IV spread matches a Gen IV Mystery Gift anti-shiny ARNG reroll class and the invariant fields match a pinned WC4/PCD template; remaining distribution-history evidence is incomplete"
                                         : "PID/IV spread matches a Gen IV Mystery Gift anti-shiny ARNG reroll class; exact event-template provenance remains incomplete",
                                     CheckIdentifier::PidRng);
-                                if (!directGen4EventTemplate) {
+                                if (!matchedGen4EventTemplate) {
                                     add(r, Severity::Info,
                                         "Generation IV gift-generation evidence is present, but no pinned direct WC4/PCD template candidate matched; evolved-event and exact distribution provenance remain incomplete",
                                         CheckIdentifier::EventGift);
