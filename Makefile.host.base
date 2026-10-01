@@ -245,11 +245,11 @@ $(HOST_BUILD)/test_legality_legacy_move_context_sanitize: $(LEGACY_LEGALITY_CONT
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
-$(HOST_BUILD)/test_gen34_egg_state: tests/test_gen34_egg_state.cpp include/Legality/Gen34EggState.h
+$(HOST_BUILD)/test_gen34_egg_state: tests/test_gen34_egg_state.cpp include/Legality/Gen34EggState.h include/Legality/Gen4ReleaseEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen34_egg_state.cpp -o $@
 
-$(HOST_BUILD)/test_gen34_egg_state_sanitize: tests/test_gen34_egg_state.cpp include/Legality/Gen34EggState.h
+$(HOST_BUILD)/test_gen34_egg_state_sanitize: tests/test_gen34_egg_state.cpp include/Legality/Gen34EggState.h include/Legality/Gen4ReleaseEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen34_egg_state.cpp -o $@
 
@@ -283,11 +283,11 @@ $(HOST_BUILD)/test_gen4_wild_encounter_evidence_sanitize: tests/test_gen4_wild_e
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_wild_encounter_evidence.cpp -o $@
 
-$(HOST_BUILD)/test_gen4_static_encounter_evidence: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h
+$(HOST_BUILD)/test_gen4_static_encounter_evidence: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h include/Legality/Gen4ReleaseEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_static_encounter_evidence.cpp -o $@
 
-$(HOST_BUILD)/test_gen4_static_encounter_evidence_sanitize: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h
+$(HOST_BUILD)/test_gen4_static_encounter_evidence_sanitize: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h include/Legality/Gen4ReleaseEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_static_encounter_evidence.cpp -o $@
 
