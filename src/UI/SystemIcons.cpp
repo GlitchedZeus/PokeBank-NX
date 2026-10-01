@@ -2,6 +2,7 @@
 
 #include <Libs/stb_image.h>   // implementation lives in SpriteManager.cpp; we only need the decls
 
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <cstring>
