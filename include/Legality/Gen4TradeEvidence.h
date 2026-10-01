@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Legality/Gen34EggMoveEvidence.h"
+
 #include <array>
 #include <cstdint>
 #include <string_view>
@@ -47,29 +49,92 @@ inline bool hasSpecies(std::string_view exactGameId, uint16_t speciesId) noexcep
     return false;
 }
 
+struct Evidence {
+    bool matched = false;
+    uint16_t sourceSpecies = 0;
+    bool evolved = false;
+};
+
+constexpr bool matchesPersistentFields(const Entry& row, uint8_t mask,
+                                       uint32_t pid, uint32_t id32,
+                                       uint8_t gender, uint8_t otGender,
+                                       uint8_t abilityNumber, uint32_t packedIVs,
+                                       uint16_t metLocation,
+                                       uint8_t metLevel) noexcept {
+    if ((row.gameMask & mask) == 0)
+        return false;
+    if (row.pid != pid || row.id32 != id32 || row.gender != gender ||
+        row.otGender != otGender || row.abilityNumber != abilityNumber ||
+        row.ivPack != packedIVs)
+        return false;
+    if (row.metLocation == 2001)
+        return metLocation == 2001 && metLevel >= row.level;
+    return metLocation == row.metLocation && metLevel == row.level;
+}
+
+inline Evidence matchDirect(std::string_view exactGameId, uint16_t speciesId,
+                            uint32_t pid, uint32_t id32,
+                            uint8_t gender, uint8_t otGender,
+                            uint8_t abilityNumber,
+                            const std::array<uint8_t, 6>& ivs,
+                            uint16_t metLocation,
+                            uint8_t metLevel) noexcept {
+    const uint8_t mask = gameMaskForId(exactGameId);
+    if (mask == 0 || speciesId == 0)
+        return {};
+    const uint32_t packedIVs = packIVs(ivs);
+    for (const auto& row : kEntries) {
+        if (row.species != speciesId)
+            continue;
+        if (matchesPersistentFields(
+                row, mask, pid, id32, gender, otGender, abilityNumber,
+                packedIVs, metLocation, metLevel))
+            return {true, row.species, false};
+    }
+    return {};
+}
+
+inline Evidence matchEvolutionLine(
+    std::string_view exactGameId, uint16_t speciesId,
+    uint32_t pid, uint32_t id32, uint8_t gender, uint8_t otGender,
+    uint8_t abilityNumber, const std::array<uint8_t, 6>& ivs,
+    uint16_t metLocation, uint8_t metLevel) noexcept {
+    if (const auto direct = matchDirect(
+            exactGameId, speciesId, pid, id32, gender, otGender,
+            abilityNumber, ivs, metLocation, metLevel);
+        direct.matched)
+        return direct;
+
+    const uint8_t mask = gameMaskForId(exactGameId);
+    if (mask == 0 || speciesId == 0)
+        return {};
+    const uint32_t packedIVs = packIVs(ivs);
+
+    uint16_t ancestor = Gen34EggMove::preEvolution(exactGameId, speciesId);
+    for (int depth = 0; ancestor != 0 && depth < 8; ++depth) {
+        for (const auto& row : kEntries) {
+            if (row.species != ancestor)
+                continue;
+            if (matchesPersistentFields(
+                    row, mask, pid, id32, gender, otGender, abilityNumber,
+                    packedIVs, metLocation, metLevel))
+                return {true, row.species, true};
+        }
+        const uint16_t next =
+            Gen34EggMove::preEvolution(exactGameId, ancestor);
+        if (next == ancestor)
+            break;
+        ancestor = next;
+    }
+    return {};
+}
+
 inline bool matches(std::string_view exactGameId, uint16_t speciesId,
                     uint32_t pid, uint32_t id32, uint8_t gender, uint8_t otGender,
                     uint8_t abilityNumber, const std::array<uint8_t, 6>& ivs,
                     uint16_t metLocation, uint8_t metLevel) noexcept {
-    const uint8_t mask = gameMaskForId(exactGameId);
-    if (mask == 0 || speciesId == 0) return false;
-    const uint32_t packedIVs = packIVs(ivs);
-    for (const auto& row : kEntries) {
-        if ((row.gameMask & mask) == 0 || row.species != speciesId)
-            continue;
-        if (row.pid != pid || row.id32 != id32 || row.gender != gender ||
-            row.otGender != otGender || row.abilityNumber != abilityNumber ||
-            row.ivPack != packedIVs)
-            continue;
-        if (row.metLocation == 2001) {
-            if (metLocation != 2001 || metLevel < row.level)
-                continue;
-        } else if (metLocation != row.metLocation || metLevel != row.level) {
-            continue;
-        }
-        return true;
-    }
-    return false;
+    return matchDirect(exactGameId, speciesId, pid, id32, gender, otGender,
+                       abilityNumber, ivs, metLocation, metLevel).matched;
 }
 
 } // namespace Legality::Gen4Trade
