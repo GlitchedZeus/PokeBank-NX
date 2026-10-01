@@ -13,7 +13,7 @@ inline constexpr uint16_t LinkTrade4 = 2002;
 
 // Pinned PKHeX EggHatchLocation4.LocationPermitted4 table.
 // Each entry is a bitmask: DP=1, Pt=2, HGSS=4.
-inline constexpr std::array<uint8_t, 225> LocationPermitted = {
+inline constexpr std::array<uint8_t, 235> LocationPermitted = {
     0, 3, 3, 3, 3, 3, 3, 3, 3, 3,
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
