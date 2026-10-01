@@ -1,6 +1,6 @@
 # PokeBank NX — Game Support / Verification Matrix
 
-Last updated: **2026-09-29**
+Last updated: **2026-10-01**
 
 This matrix separates implemented support from physical device acceptance.
 
@@ -96,13 +96,13 @@ Current G4-04 implementation includes:
 
 The integrated Product UI carries real Gen IV trainer-name propagation, real Gen IV Pokédex progress, and game/gender-aware Lucas/Dawn or Ethan/Lyra presentation where the save proves gender.
 
-The full combined G4-04 + Product UI build is **not yet device accepted**.
+The current combined G4-04 + Product UI head is **automated-green but not yet device accepted**. Current finishing work includes region-aware hero presentation, grounded trainer artwork, stronger handheld typography, and larger/clearer Party presentation.
 
 ## Source and launch policy
 
 Discovery and launching are separate from write authorization.
 
-Current provider-aware work includes RetroArch, DraStic, melonDS and manual/remembered bindings. Game launch metadata is stored by PokeBank NX rather than written into emulator save directories.
+Current provider-aware work includes RetroArch, DraStic, melonDS and manual/remembered bindings. Direct DraStic/melonDS launch handoff remains a hardware-verification item. Game launch metadata is stored by PokeBank NX rather than written into emulator save directories.
 
 If a ROM/content target cannot be proven, the UI must request an explicit **Link Game File** rather than infer it from the save path.
 

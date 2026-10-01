@@ -1,6 +1,6 @@
 # PokeBank NX — v1.0 Roadmap
 
-Last updated: **2026-09-29**
+Last updated: **2026-10-01**
 
 `CURRENT_STATUS.md` is authoritative for exact live state. This roadmap describes product direction, not branch ownership.
 
@@ -62,7 +62,7 @@ PokeBank NX v1 should be a stable native Switch application that can:
 - [x] Form editing with exact-game restrictions
 - [x] trainer/origin inspection
 - [x] Box/Party action parity
-- [ ] one fully integrated G4-04 + Product UI green candidate
+- [x] one fully integrated G4-04 + Product UI automated-green candidate
 - [ ] physical acceptance of that exact candidate
 
 ## Phase 4 — product UI / source / launch integration — ACTIVE
@@ -198,8 +198,8 @@ There is no global unsafe-write switch.
 
 ```text
 Gen I–III shared editor            DEVICE ACCEPTED
-Gen IV full shared editor          ACTIVE
-Product UI / source integration    ACTIVE
+Gen IV full shared editor          AUTOMATED GREEN / HARDWARE PENDING
+Product UI / source integration    FINISHING POLISH / HARDWARE PENDING
         ↓
 one integrated hardware candidate
         ↓

@@ -6,126 +6,181 @@
 
 **PokeBank NX** is a native Nintendo Switch homebrew application for browsing, editing, organizing, and preserving Pokémon across multiple generations.
 
-The project is built around one rule: **the original save is never treated as a disposable working copy**. PokeBank NX reads supported sources, stages edits inside the app, validates what it can prove, and keeps live source writes locked until a source-specific write path has been separately designed and accepted.
+It is being built as an offline, controller-friendly Pokémon bank and save-management front end for CFW Switch systems, with one non-negotiable rule:
 
-> Current state: **active alpha development**. Gen I–III workflows are hardware accepted; Generation IV and the current product UI are in active integration and hardware-test preparation.
+> **Your original save is not the working copy.**
 
-## What PokeBank NX does today
+Supported sources are discovered and validated, edits are staged inside PokeBank NX, and live source writes stay locked until a source-specific write path has been separately designed, validated, and approved.
 
-- Native Switch `.nro` application with controller-first navigation.
+> **Project status:** active alpha development. Gen I–III are hardware accepted. Gen IV and the modern Product UI are feature-complete enough for the next integrated hardware pass, with final UI polish still in progress.
+
+## ✨ What works today
+
+- Native Nintendo Switch `.nro` application built with devkitA64/libnx.
 - Hardware-accepted Gen I, II, and III save browsing and shared Pokémon editing.
-- Active Gen IV support for Diamond, Pearl, Platinum, HeartGold, and SoulSilver.
-- Trainer, Party, Boxes, Pokémon details, inventory, Create/Edit workflows, and staged mutation where supported.
-- Generation-aware fields, move compatibility, forms, items, Pokérus, met data, and exact-format presentation.
-- Product Home with selected game, trainer/source information, trainer portrait, Party preview, Open/Launch actions, Master Vault preview, and Pokédex preview.
-- Familiar **Game Sources** view for users who prefer the classic game-first workflow.
-- Compact Items and Settings shortcuts, plus a category-based two-pane Settings screen.
-- Provider-aware save discovery and assignment for sources including RetroArch, DraStic, melonDS, and manual files.
-- App-owned game-launch/link metadata so emulator launch support can grow without modifying emulator save folders.
-- Themes, D-pad/left-stick navigation, held-navigation repeat, contextual help, and ongoing UI polish.
+- Staged Gen IV support for Diamond, Pearl, Platinum, HeartGold, and SoulSilver.
+- Trainer, Party, Boxes, inventory, Pokémon details, View/Create/Edit, and generation-aware fields where supported.
+- Native move pickers, compatibility-aware move presentation, forms, held items, Pokérus, met data, and exact-format handling.
+- Modern **Product Home** with selected game, trainer/source information, Party preview, Pokédex progress, Open/Launch actions, and future-feature entry points.
+- **Classic Game Sources** for users who prefer the familiar game-first workflow.
+- Provider-aware source discovery for RetroArch, DraStic, melonDS, and manual/remembered assignments.
+- App-owned launch/link metadata so emulator launching does not require writing into emulator save folders.
+- Themes, D-pad + left-stick navigation, held-input repeat, cursor memory, contextual help, and continuing handheld readability polish.
 
-## Supported generations
+## 🎮 Generation support
 
 | Generation | Games | Current state |
 |---|---|---|
-| I | Red, Blue, Yellow | **Hardware accepted** read + staged shared editor |
-| II | Gold, Silver, Crystal | **Hardware accepted** read + staged shared editor |
-| III | Ruby, Sapphire, Emerald, FireRed, LeafGreen | **Hardware accepted** read + staged shared editor |
-| IV | Diamond, Pearl, Platinum, HeartGold, SoulSilver | Read + staged editor implemented; current full-editor/UI integration is **hardware pending** |
-| V+ | Later DS / 3DS / Switch families | Planned or validation foundation only; not advertised as complete |
+| I | Red, Blue, Yellow | ✅ **Hardware accepted** read + staged shared editor |
+| II | Gold, Silver, Crystal | ✅ **Hardware accepted** read + staged shared editor |
+| III | Ruby, Sapphire, Emerald, FireRed, LeafGreen | ✅ **Hardware accepted** read + staged shared editor |
+| IV | Diamond, Pearl, Platinum, HeartGold, SoulSilver | 🧪 Read + staged full-editor foundation implemented; integrated hardware pass pending |
+| V+ | Later DS / 3DS / Switch families | 🚧 Planned, research, or validation foundation only |
 
-PokeBank NX exposes fields according to the **actual save format**. It does not invent modern fields for older games.
+PokeBank NX exposes fields according to the **real save format**. Older games are not padded with modern data that does not exist in the source.
 
-## Safe by design
+## 🖥️ Current UI direction
 
-The safety model is deliberately conservative:
+The project has moved away from developer-style diagnostic screens toward a single Switch-native product experience.
 
-- original external saves remain immutable;
-- emulator source files remain read-only by default;
-- live installed-game writing is disabled;
-- edits are staged before serialization;
-- malformed or ambiguous sources fail closed;
-- launch permission is separate from write permission;
-- source selection is explicit and provenance-aware;
-- destructive actions require deliberate confirmation;
-- a feature is not called hardware accepted until the exact built artifact is tested on a real Switch.
+Current Product UI work includes:
 
-The long-term write architecture is **backup → staged working copy → strict validation → source-specific approved write path**. There is no global unsafe-write switch.
+- a game-focused **Product Home** rather than an equal-card dashboard;
+- region-aware hero backdrops for supported games;
+- grounded Gen I–IV trainer portraits using proven game/gender identity;
+- larger Party presentation and stronger handheld text hierarchy;
+- real per-save Gen I–IV Pokédex progress;
+- clear Open / Launch actions;
+- compact Items and Settings access;
+- a two-pane Settings screen with remembered cursor state;
+- clean game/source/provider presentation;
+- improved asset packaging so trainer/region artwork is carried into native hardware builds;
+- remembered focus when returning from reconstructed screens.
 
-## Current interface direction
+The remaining work here is mostly **finishing polish + physical Switch acceptance**, not another UI rewrite.
 
-PokeBank NX is moving toward one consistent Switch-native product shell rather than a collection of developer screens.
+## 🔒 Safe by design
 
-Current development includes:
+PokeBank NX is deliberately conservative around save data.
 
-- a modern **Product Home** centered on the selected Pokémon game;
-- real Party Pokémon presentation using the existing sprite pipeline;
-- trainer names and game-appropriate trainer portraits using only proven game/gender information;
-- per-save Pokédex progress where supported;
-- a classic **Game Sources** view for direct game-first navigation;
-- compact quick access to Games, Banks, Backups, Search, future features, Items, and Settings;
-- a two-pane Settings screen organized around user-facing categories;
-- distinct visual identities for the future **Master Vault** and **Pokédex**;
-- cursor/focus restoration when returning from rebuilt menus where the underlying selection still exists.
+- ✅ Original external saves remain immutable.
+- ✅ Emulator source files remain read-only.
+- ✅ Installed-title live writes remain disabled.
+- ✅ Edits are staged before serialization.
+- ✅ Unknown or ambiguous sources fail closed.
+- ✅ Launch permission is separate from save-write permission.
+- ✅ Destructive operations require deliberate confirmation.
+- ✅ Hardware acceptance is tied to an exact build tested on a real Switch.
+- ❌ No global unsafe-write switch.
+- ❌ Cross-game True Move is not broadly enabled.
+- ❌ Source injection is not enabled.
 
-The next major UI milestone after the integrated hardware candidate is **full app-wide touch control parity**.
+The long-term write model is:
 
-## Master Vault and Banks
+`backup → app-owned working copy → staged mutation → strict validation → explicit source-specific write → readback / recovery`
 
-The future Master Vault is intended to become the authoritative PokeBank-owned Pokémon library.
+Each write adapter will be approved independently.
 
-Planned capabilities include:
+## 🧰 Gen IV status
 
-- stable Vault IDs and immutable original payloads;
-- source game/save/platform provenance;
-- transfer history;
-- byte-for-byte Clone;
-- Legit Clone lineage with parent relationships;
-- named Banks and collection views;
-- Living Dex / Shiny Living Dex organization;
-- recovery/journal behavior.
+The Gen IV implementation now covers substantially more than the original read-only milestone:
 
-These systems are intentionally shown as **Coming Soon** until their persistence model is ready. The UI does not fabricate Vault records or counts.
+- Party and Box View/Edit;
+- empty Box Add/Create;
+- DP / Platinum / HGSS handling;
+- Held Item, Language, Ball, Pokérus, Met Location;
+- native Gen IV move selection and PP handling;
+- species-compatible move filtering;
+- Species mutation with dependent-state reconciliation;
+- generation/game-aware Form handling;
+- trainer/origin inspection;
+- Box/Party action parity;
+- checksum refresh, strict reparse, and rollback;
+- external emulator-source immutability.
 
-## Save sources and launching
+The current Gen IV + Product UI head is green under host tests, native Switch compilation, and the Gen IV candidate gate. The next meaningful milestone is **physical acceptance of one exact integrated NRO** after the remaining UI finishing touches.
 
-PokeBank NX uses provider-aware source discovery rather than assuming every save came from the same emulator.
+## 🛡️ Engineering hardening
 
-Current work covers or is actively integrating:
+The repository has also completed a full forensic review and remediation pass.
+
+The current remediation package has:
+
+- **43 findings verified**
+- **1 finding deferred with justification**
+- **0 open remediation findings**
+
+That work strengthens parser boundaries, memory safety, backup/custody behavior, source-mutation policy, native build coverage, sanitizer coverage, and regression testing. It is intentionally kept separate from feature work until the current UI/hardware checkpoint is ready to integrate.
+
+## 💾 Save sources and launching
+
+PokeBank NX uses provider-aware discovery rather than assuming every save came from the same emulator.
+
+Current foundation includes:
 
 - RetroArch;
 - DraStic;
 - melonDS;
-- manual/remembered source assignment;
-- native Switch title identities;
-- app-owned ROM/game-file links for launch workflows.
+- manual / remembered source assignments;
+- native Switch game identities;
+- app-owned ROM/game-file launch bindings.
 
-A save path alone is **not** treated as proof of a ROM path. When a launch target cannot be proven, PokeBank NX asks the user to link the game file instead of guessing.
+A save path is **not** treated as proof of a ROM path. If the content target cannot be proven, PokeBank NX asks for an explicit **Link Game File** instead of guessing.
 
-## Development
+Direct DraStic/melonDS launch handoff is still being verified on hardware.
 
-This repository is under active development and is tested with host regression suites, sanitizers, devkitA64 native builds, source-immutability checks, and physical Switch testing.
+## 🗺️ Road to v1.0
 
-For current engineering state, exact active branches, CI boundaries, and hardware checkpoints, see:
+Near-term order:
 
-- [CURRENT_STATUS.md](CURRENT_STATUS.md)
-- [PROJECT_STATUS.md](PROJECT_STATUS.md)
+1. finish current Product UI polish;
+2. build one exact Gen I–IV + Product UI hardware candidate;
+3. physically accept that candidate on Switch;
+4. integrate the completed remediation package;
+5. add full app-wide touch parity;
+6. build Master Vault + named Banks;
+7. expand providers and later generations;
+8. finish collection, provenance, legality, transfer, and approved write workflows;
+9. release hardening and v1.0.
+
+Gen V and Master Vault persistence are **not** being started as side effects of the current Gen IV/UI work.
+
+## 🏗️ Development
+
+GitHub is authoritative for active engineering state. Development uses:
+
+- host regression tests;
+- ASan / UBSan sanitizer runs;
+- source-immutability and custody contracts;
+- generated-data and asset validation;
+- clean devkitA64 compile/link gates;
+- native `.nro` packaging;
+- physical Switch testing.
+
+For deeper engineering detail:
+
+- [Current Status](CURRENT_STATUS.md)
+- [Project Status](PROJECT_STATUS.md)
 - [Game Support Matrix](docs/GAME_SUPPORT_MATRIX.md)
 - [v1.0 Roadmap](docs/V1_ROADMAP.md)
 - [UI Ownership Status](docs/UI_OWNERSHIP_STATUS.md)
 
-Those files carry the implementation detail so this README can stay focused on the product.
+The README stays intentionally product-facing; branch SHAs, CI evidence, and audit details belong in the engineering documents.
 
-## Building
+## 🔧 Building
 
-PokeBank NX targets Nintendo Switch homebrew using devkitA64/libnx. GitHub Actions is used for repeatable host validation and native artifact builds.
+PokeBank NX targets Nintendo Switch homebrew using **devkitA64 / libnx**.
 
-Development builds are not automatically considered release builds. Hardware acceptance is tied to an exact application commit and exact NRO hash.
+Development artifacts are not automatically release builds. A feature becomes hardware accepted only when the exact application commit and exact built NRO are physically tested on a real Switch.
 
-## License and acknowledgements
+## 📜 License and acknowledgements
 
-PokeBank NX is licensed under **AGPL-3.0**. The project builds on years of Pokémon save-format research and open-source work across the community; third-party code and reference projects retain their own licenses and attribution.
+PokeBank NX is licensed under **AGPL-3.0**.
 
-## Disclaimer
+The project builds on years of Pokémon save-format research and open-source work across the community. Third-party code, research, and reference projects retain their own licenses and attribution.
 
-PokeBank NX is an unofficial fan-made homebrew project and is not affiliated with or endorsed by Nintendo, The Pokémon Company, GAME FREAK, or Creatures Inc. Pokémon and related trademarks and game assets are property of their respective owners.
+## ⚠️ Disclaimer
+
+PokeBank NX is an unofficial fan-made homebrew project and is not affiliated with or endorsed by Nintendo, The Pokémon Company, GAME FREAK, or Creatures Inc.
+
+Pokémon and related trademarks and game assets are property of their respective owners.

@@ -1,122 +1,120 @@
 # PokeBank NX Project Status
 
-Last updated: **2026-09-29**
+Last updated: **2026-10-01**
 
-For exact active head and CI status, read `CURRENT_STATUS.md` first.
+For exact active heads and CI evidence, read `CURRENT_STATUS.md` first.
 
 ## Project identity
 
 - Product: **PokeBank NX**
 - Repository: `GlitchedZeus/PokeBank-NX`
 - Platform: Nintendo Switch homebrew
-- Current state: active alpha
-- Active MAIN implementation lane: **PR #92**
-- PR #100 Product UI polish: **MERGED INTO PR #92**
-- PR #92 remains **OPEN / DRAFT / NOT MERGED**
+- State: active alpha
+- MAIN development lane: **PR #92**
+- Audit remediation lane: **PR #101**
+- Both remain **OPEN / DRAFT / NOT MERGED**
 
-GitHub is authoritative. Checkpoint SHAs document evidence; they are never instructions to move a branch backward.
+GitHub is authoritative. Checkpoint SHAs are evidence, never instructions to move a branch backward.
 
 ## Headline
 
-PokeBank NX has passed its original Gen I–III foundation stage.
+PokeBank NX now has a hardware-accepted Gen I–III foundation, a substantially complete staged Gen IV editor, a modern Switch-style Product UI, and a fully validated audit-remediation package ready for later integration.
 
-Today the project has:
+The project is currently in **finishing-polish / integrated-hardware-candidate** territory.
 
-- hardware-accepted Gen I–III shared editor workflows;
-- a real staged Gen IV Party/Box editor with Create and field parity work;
-- provider-aware Gen IV source discovery/assignment;
-- the modern Product Home integrated into the MAIN Gen IV lane;
-- real Party sprite presentation;
-- real Gen I–IV Pokédex progress plumbing;
-- Gen IV trainer-name propagation;
-- game-appropriate trainer portraits driven by proven game/gender data;
+## What is already solid
+
+### ✅ Gen I–III
+
+Red/Blue/Yellow, Gold/Silver/Crystal, and Ruby/Sapphire/Emerald/FireRed/LeafGreen have hardware-accepted browsing and staged shared-editor workflows.
+
+### 🧪 Gen IV
+
+Diamond/Pearl/Platinum/HeartGold/SoulSilver currently support the staged full-editor foundation:
+
+- Party / Boxes;
+- View / Create / Edit;
+- native Gen IV fields;
+- move compatibility and PP handling;
+- Species mutation;
+- supported Form editing;
+- trainer/origin inspection;
+- checksum/reparse/rollback behavior;
+- immutable external source saves.
+
+The earlier safe Party/Box milestone is hardware accepted. The full G4-04 + current Product UI combination still needs its exact physical acceptance pass.
+
+### ✨ Product experience
+
+Current MAIN includes:
+
+- game-focused Product Home;
+- region-aware hero presentation;
+- grounded trainer portraits;
+- larger Party presentation;
+- stronger handheld typography and Party-name hierarchy;
+- real Gen I–IV Pokédex progress;
+- Open / Launch actions;
 - Classic Game Sources;
-- cursor-memory infrastructure;
-- Backpack/Items quick navigation through the existing safe open flow;
-- compact quick Items/Settings controls;
-- a two-pane Settings screen with remembered cursor state.
+- cursor-memory state;
+- Backpack/Items quick entry;
+- compact Settings access;
+- two-pane Settings.
 
-The next milestone is **one combined Gen I–IV + Product UI NRO** for real Switch testing.
+Current PR #92 head is automated-green under Host Tests, the Gen IV candidate gate, and native Product UI build/package validation.
 
-## Active MAIN lane
+## Audit / hardening
 
-PR #92  
-Branch: `feature/gen4-full-editor-20260928`
+The forensic audit itself is frozen and complete.
 
-Last verified head:
-`58a56f8d3b8350283f34fcc4d8dafc495b6515f2`
+The remediation lane currently records:
 
-At the time of this update, exact-head Host Tests and Product UI Native were running and the Gen IV Candidate Gate was queued.
+- **43 VERIFIED**
+- **1 DEFERRED WITH JUSTIFICATION**
+- **0 OPEN**
 
-## Generation status
+The validated remediation application head passes Host Tests, ASan/UBSan, native devkitA64 compile/link, Product UI packaging, and focused Gen I/II regression suites.
 
-### Gen I — accepted
+This work improves parser boundaries, memory safety, source-mutation policy, backup/custody behavior, regression coverage, generated-data checks, and native build confidence.
 
-Red / Blue / Yellow read, inventory and shared Pokémon editor workflows are hardware accepted.
+## Current milestone
 
-### Gen II — accepted
+The next milestone is:
 
-Gold / Silver / Crystal read, inventory and shared Pokémon editor workflows are hardware accepted.
+> **One polished, automated-green Gen I–IV + Product UI NRO that passes physical Switch testing.**
 
-### Gen III — accepted
+Before that candidate is accepted:
 
-Ruby / Sapphire / Emerald / FireRed / LeafGreen read, inventory and shared Pokémon editor workflows are hardware accepted.
-
-### Gen IV — active
-
-Diamond / Pearl / Platinum / HeartGold / SoulSilver have a working staged editor foundation.
-
-The first Party/Box View/Edit milestone is already physically accepted. G4-04 extends that foundation with Create, additional native fields, forms, species mutation, move handling, action parity, and current Product UI integration.
-
-The full G4-04 + Product UI combination is **hardware pending**.
-
-## Product experience
-
-The intended top-level UX is now stable:
-
-1. **Product Home** for the selected game, trainer identity, Party, Pokédex progress, Open/Launch and high-level features.
-2. **Classic Game Sources** for users who prefer the familiar direct game grid.
-3. Existing proven Party / Boxes / Trainer / Inventory / editor flows underneath.
-4. Compact access to Backups, Search, future features, Items and Settings.
-5. Two-pane Settings and contextual help.
-6. Remembered navigation state across rebuilt menus.
-
-Master Vault and global Pokédex/collection systems may be previewed in the UI but remain non-persistent until their backends are ready.
-
-## Current technical priorities
-
-Before the next hardware candidate:
-
-- finish exact-head CI cleanup;
-- verify cursor-memory behavior across the intended navigation surfaces;
-- verify Backpack/Items quick entry;
+- finish the remaining UI polish;
+- preserve current Gen IV behavior;
+- keep source writes locked;
+- verify trainer/region/Party presentation;
+- verify Classic Game Sources and Settings/Items flows;
 - verify DraStic/melonDS direct launch handoff;
-- keep explicit Link Game File as the fail-closed fallback;
-- run full host/sanitizer/native regression gates;
-- ship one exact Actions-built NRO for owner hardware testing.
+- retain explicit **Link Game File** fallback whenever content identity is ambiguous.
 
-After hardware acceptance:
+After that exact hardware pass:
 
-- full app-wide touch control parity;
-- then Master Vault / Banks and later-generation expansion according to the roadmap.
+1. integrate the completed remediation package into the MAIN development lane;
+2. begin full app-wide touch-control parity;
+3. proceed to Master Vault / named Banks;
+4. expand providers and later generations according to the roadmap.
 
 ## Safety / scope locks
 
 - original source saves stay immutable;
 - external emulator saves remain read-only;
 - installed-game live writes remain disabled;
-- staged editing remains app-owned;
+- staged editing stays app-owned;
 - Launch never grants write permission;
 - ambiguous source/content matching fails closed;
 - cross-game True Move remains locked;
+- source injection remains locked;
 - Gen V is not started;
-- Master Vault persistence is not started;
-- future Inject Save work remains separate.
+- Master Vault persistence is not started.
 
 ## Hardware acceptance rule
 
-A feature is not device accepted because CI is green or because a neighboring SHA passed previously.
+CI green is necessary, but it is not hardware acceptance.
 
-Acceptance requires the **exact Actions-built NRO** for the exact application commit to be physically tested on a real Switch.
-
-That rule remains in force for the upcoming integrated Gen IV + Product UI candidate.
+A feature becomes device accepted only when the **exact Actions-built NRO for the exact application commit** is physically tested on a real Switch.
