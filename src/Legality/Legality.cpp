@@ -39,6 +39,7 @@
 #include "Legality/Gen4TransferEvidence.h"
 #include "Legality/Gen4ReleaseEvidence.h"
 #include "Legality/Gen4FormEvidence.h"
+#include "Legality/Gen4HatchLocationEvidence.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 
@@ -407,11 +408,25 @@ namespace Legality {
             }
 
             if (exactGeneration == 4 && eggState.eggOrigin &&
-                Gen4Release::eggHatchLocationUnreleased(
-                    pk.language(), pk.metLocation())) {
-                add(r, Severity::Invalid,
-                    "Korean Generation IV egg-origin Pokemon cannot use Seabreak Path or Flower Paradise as a hatch location because the enabling Shaymin event was never distributed there",
-                    CheckIdentifier::Egg);
+                !eggState.invalid() && !pk.isEgg()) {
+                if (Gen4Release::eggHatchLocationUnreleased(
+                        pk.language(), pk.metLocation())) {
+                    add(r, Severity::Invalid,
+                        "Korean Generation IV egg-origin Pokemon cannot use Seabreak Path or Flower Paradise as a hatch location because the enabling Shaymin event was never distributed there",
+                        CheckIdentifier::Egg);
+                } else if (!Gen4Hatch::isValidHatchedEgg(
+                               pk.originGame(), pk.eggLocation(),
+                               pk.metLocation())) {
+                    add(r, Severity::Invalid,
+                        "Hatch location is not valid for this Generation IV egg origin",
+                        CheckIdentifier::Egg);
+                } else {
+                    add(r, Severity::Info,
+                        pk.eggLocation() == Gen4Hatch::LinkTrade4
+                            ? "PK4 traded-egg hatch location is valid in a Generation IV game"
+                            : "PK4 hatch location is valid for its stored Generation IV origin game",
+                        CheckIdentifier::Egg);
+                }
             }
 
             for (int slotIndex = 0; slotIndex < 4; ++slotIndex) {
