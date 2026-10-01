@@ -33,9 +33,15 @@ int main() {
     assert(dialga != nullptr);
     assert(pidCategoryForRow(*dialga) == PidCategory::Method1OrCuteCharm);
 
-    // Platinum Distortion World Giratina is Origin Forme.
+    // Form-changeable statics retain provenance after a legitimate same-species
+    // form change. Distortion World Giratina may later be Altered, and Rotom may
+    // change appliances. Spiky-eared Pichu remains fixed and is tested below.
     assert(match("platinum_nds", 487, 117, 47, 1, 0));
-    assert(!match("platinum_nds", 487, 117, 47, 0, 0));
+    assert(match("platinum_nds", 487, 117, 47, 0, 0));
+    assert(match("platinum_nds", 479, 70, 20, 1, 0));
+    static_assert(formChangeableSpecies(487));
+    static_assert(formChangeableSpecies(479));
+    static_assert(!formChangeableSpecies(172));
 
     // D/P Riolu egg requires its exact egg-location evidence and fixed Poke Ball.
     assert(match("diamond_nds", 447, 40, 0, 0, 2010, 4));
