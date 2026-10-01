@@ -9,6 +9,30 @@
 
 namespace Legality::Gen4Form {
 
+// Pinned PKHeX FormInfo.FormChange species that can change form while retaining
+// the same encounter identity. Future-generation form indices are still blocked
+// separately by the exact-game native formCount check below.
+constexpr bool formChangeableSpecies(uint16_t speciesId) noexcept {
+    switch (speciesId) {
+        case 386: // Deoxys
+        case 412: // Burmy
+        case 479: // Rotom
+        case 483: // Dialga
+        case 484: // Palkia
+        case 487: // Giratina
+        case 492: // Shaymin
+        case 493: // Arceus
+            return true;
+        default:
+            return false;
+    }
+}
+
+constexpr bool formCompatible(uint16_t speciesId, uint8_t encounterForm,
+                              uint8_t currentForm) noexcept {
+    return encounterForm == currentForm || formChangeableSpecies(speciesId);
+}
+
 inline const Pokemon::PersonalRecord* basePersonal(
     std::string_view exactGameId, uint16_t species) noexcept {
     if (species == 0 || species > 493)
