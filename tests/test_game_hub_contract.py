@@ -192,9 +192,12 @@ require("GamesDrawer" in header and '"QUICK GAMES"' in source and
         "gameCardHasSpecificArtwork" in source and '"1 save"' in source and '" saves"' in source and
         '{"Y", "Close"}' not in source and '{"X", "Save / Source"}' in source,
         "Y Quick Games must be a three-row/three-column artwork-first browser with save counts and no Y-close hint")
+drawer_draw_start = source.index("if (overlay == Overlay::GamesDrawer)", source.index("void SaveSelectScreen::draw("))
+drawer_draw_end = source.index("} else if (overlay == Overlay::ProfilePicker)", drawer_draw_start)
+drawer_draw = source[drawer_draw_start:drawer_draw_end]
 require("if (kDown & (HidNpadButton_B | HidNpadButton_Y))" not in source and
         "// B is the only close/back control" in source and
-        "fb.drawFilledRect(x, 0, 2, h, Colors::FocusBorder);" not in source,
+        "fb.drawFilledRect(x, 0, 2, h, Colors::FocusBorder);" not in drawer_draw,
         "Quick Games Y must be inert, B-only close, and the colored drawer edge stripe must stay removed")
 require("openGen4Setup(game.gameId, \"Assign, repair, or change this game's save source.\", true)" in source and
         "Overlay::LegacyAssignment" in source,
