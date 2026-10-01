@@ -296,11 +296,33 @@ bool loadStoredBinding(std::string_view key, std::string_view providerId,
     if (key.empty()) return false;
     BindingMap bindings;
     loadBindings(bindings);
+
+    const std::string expectedProvider = compactLaunchProvider(providerId);
     const auto found = bindings.find(std::string(key));
-    if (found == bindings.end()) return false;
-    if (compactLaunchProvider(found->second.providerId) != compactLaunchProvider(providerId))
-        return false;
-    binding = found->second;
+    if (found != bindings.end()) {
+        if (compactLaunchProvider(found->second.providerId) != expectedProvider)
+            return false;
+        binding = found->second;
+        return true;
+    }
+
+    // Source identities have been tightened over time. Preserve a user's already-linked ROM when
+    // the profile + game are unchanged and exactly one valid binding from that family/provider
+    // remains. Ambiguity still fails closed and returns to the explicit link flow.
+    const size_t sourceSeparator = key.rfind('|');
+    if (sourceSeparator == std::string_view::npos) return false;
+    const std::string familyPrefix(key.substr(0, sourceSeparator + 1));
+
+    const StoredLaunchBinding* unique = nullptr;
+    for (const auto& [storedKey, stored] : bindings) {
+        if (storedKey.rfind(familyPrefix, 0) != 0) continue;
+        if (compactLaunchProvider(stored.providerId) != expectedProvider) continue;
+        if (!regularFile(stored.contentPath)) continue;
+        if (unique) return false;
+        unique = &stored;
+    }
+    if (!unique) return false;
+    binding = *unique;
     return true;
 }
 
