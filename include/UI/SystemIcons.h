@@ -32,8 +32,9 @@ namespace UI {
         // Region-scene image for the Product Home hero card. Only real packaged artwork
         // is accepted. Missing art leaves the normal card surface visible; never synthesize scenery.
         const IconImage& regionBackdrop(std::string_view regionKey);
-        // Optional packaged trainer portrait from romfs:/trainer_portraits/<assetKey>.png.
-        // Missing art is allowed and falls back to a truthful project-drawn placeholder.
+        // Real packaged trainer portrait from romfs:/trainer_portraits/<assetKey>.png.
+        // Missing/invalid art is reported and the caller may show a neutral identity placeholder;
+        // the loader never substitutes another trainer or a generated human portrait.
         const IconImage& trainerPortrait(std::string_view assetKey);
         // Free every cached buffer. Call once at shutdown.
         void cleanup();

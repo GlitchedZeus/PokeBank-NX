@@ -6,6 +6,7 @@ header = (ROOT / "include/UI/SaveSelectScreen.h").read_text(encoding="utf-8")
 ui_manager = (ROOT / "src/UI/UI.cpp").read_text(encoding="utf-8")
 shell_source = (ROOT / "src/UI/AppShellScreen.cpp").read_text(encoding="utf-8")
 system_icons = (ROOT / "src/UI/SystemIcons.cpp").read_text(encoding="utf-8")
+product_art_fetch = (ROOT / "tools/fetch_product_art.py").read_text(encoding="utf-8")
 product_workflow = (ROOT / ".github/workflows/product-ui-native.yml").read_text(encoding="utf-8")
 gen4_workflow = (ROOT / ".github/workflows/gen4-shared-editor-candidate.yml").read_text(encoding="utf-8")
 framebuffer = (ROOT / "src/UI/PKSEFramebuffer.cpp").read_text(encoding="utf-8")
@@ -300,34 +301,35 @@ require("17.0f,  // Caption / secondary information" in framebuffer and
 
 require("SystemIcons::trainerPortrait" in source and "portrait.assetKey" in source,
         "trainer presentation must load optional real portrait artwork when packaged")
-require((ROOT / "romfs/trainer_portraits/atlas.png").is_file(),
-        "the supplied Gen I-IV trainer portrait atlas must be packaged in RomFS")
 require("branch-romfs-overrides" in product_workflow and
-        "test -s romfs/trainer_portraits/atlas.png" in product_workflow and
+        "test -s "romfs/trainer_portraits/$f.png"" in product_workflow and
         "'romfs/trainer_portraits/**'" in product_workflow and
         "'romfs/region_backdrops/**'" in product_workflow and
-        "trainer portrait atlas bytes are missing from final NRO RomFS" in product_workflow and
+        "exact PNG bytes are missing from final NRO RomFS" in product_workflow and
         "region backdrop runtime path is missing from final NRO" in product_workflow,
         "Product UI native packaging must preserve and verify trainer/region presentation payload in the final NRO")
 require("branch-romfs-overrides" in gen4_workflow and
-        "test -s application/romfs/trainer_portraits/atlas.png" in gen4_workflow and
+        "test -s "application/romfs/trainer_portraits/$f.png"" in gen4_workflow and
         "'romfs/trainer_portraits/**'" in gen4_workflow and
         "'romfs/region_backdrops/**'" in gen4_workflow and
-        "trainer portrait atlas bytes are missing from final NRO RomFS" in gen4_workflow and
+        "exact PNG bytes are missing from final NRO RomFS" in gen4_workflow and
         "region backdrop runtime path is missing from final NRO" in gen4_workflow,
         "Gen IV candidate packaging must preserve and verify trainer/region presentation payload in the final NRO")
-require('"romfs:/trainer_portraits/atlas.png"' in system_icons and
-        "TRAINER_ATLAS_COLS = 3" in system_icons and
-        "TRAINER_ATLAS_ROWS = 3" in system_icons and
-        "TRAINER_ATLAS_CELL_W = 96" in system_icons and
-        "TRAINER_ATLAS_CELL_H = 160" in system_icons,
-        "trainer portrait loader must use the packaged 3x3 atlas with its exact cell geometry")
+require('"romfs:/trainer_portraits/" + key + ".png"' in system_icons and
+        "trainerPortraitFromAtlas" not in system_icons and
+        "real trainer portrait missing or invalid" in system_icons,
+        "trainer portraits must load individual real PNG assets and never depend on the corrupted atlas")
 for portrait_key in ("red", "gold", "kris", "brendan", "may",
                      "lucas", "dawn", "ethan", "lyra"):
-    require(f'"{portrait_key}"' in system_icons,
-            f"trainer portrait atlas must reserve supplied asset key: {portrait_key}")
-require('"leaf"' not in system_icons,
+    require(f'"{portrait_key}.png"' in product_art_fetch,
+            f"hardware product-art fetch must include trainer asset: {portrait_key}")
+require('"leaf.png"' not in product_art_fetch,
         "do not package or pretend a Leaf portrait until an actual Leaf asset is supplied")
+for region_key in ("hoenn.png", "sinnoh.png", "kalos.png"):
+    require(f'"{region_key}"' in product_art_fetch,
+            f"hardware product-art fetch must include real region artwork: {region_key}")
+require("truncated PNG chunk" in product_art_fetch and "PNG has no complete IEND" in product_art_fetch,
+        "product-art preflight must reject structurally truncated PNGs before packaging")
 require('"red"' in source and '"dawn"' in source and '"lucas"' in source and
         '"ethan"' in source and '"lyra"' in source,
         "trainer portrait mapping must reserve canonical Gen I-IV asset keys")

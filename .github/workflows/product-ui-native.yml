@@ -29,6 +29,7 @@ on:
       - 'include/Games/GameIdentity.h'
       - 'romfs/trainer_portraits/**'
       - 'romfs/region_backdrops/**'
+      - 'tools/fetch_product_art.py'
       - 'include/Utils/PokeBankPaths.h'
       - 'Makefile.host'
       - 'Makefile.host.product-ui'
@@ -84,6 +85,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          python3 tools/fetch_product_art.py
           (cd recovery-work && python3 tools/recover_workspace.py)
 
           # Recovery supplies the large immutable baseline RomFS. Preserve presentation assets
@@ -104,7 +106,12 @@ jobs:
               cp -a "branch-romfs-overrides/$d" "romfs/$d"
             fi
           done
-          test -s romfs/trainer_portraits/atlas.png
+          for f in red gold kris brendan may lucas dawn ethan lyra; do
+            test -s "romfs/trainer_portraits/$f.png"
+          done
+          for f in hoenn sinnoh kalos; do
+            test -s "romfs/region_backdrops/$f.png"
+          done
 
           for f in gold_gbc silver_gbc crystal_gbc diamond_nds pearl_nds platinum_nds heartgold_nds soulsilver_nds; do
             test -s "assets/game_cards/$f.png"
@@ -133,21 +140,44 @@ jobs:
           import struct
 
           nro = Path("PokeBankNX.nro").read_bytes()
-          atlas = Path("romfs/trainer_portraits/atlas.png").read_bytes()
-          if atlas not in nro:
-              raise SystemExit("trainer portrait atlas bytes are missing from final NRO RomFS")
-          if b"romfs:/trainer_portraits/atlas.png" not in nro:
+
+          def verify_png(path: Path):
+              data = path.read_bytes()
+              if len(data) < 33 or data[:8] != b"\\x89PNG\\r\\n\\x1a\\n" or data[12:16] != b"IHDR":
+                  raise SystemExit(f"{path}: invalid PNG header")
+              width, height = struct.unpack(">II", data[16:24])
+              offset = 8
+              saw_iend = False
+              while offset + 12 <= len(data):
+                  length = struct.unpack(">I", data[offset:offset+4])[0]
+                  end = offset + 12 + length
+                  if end > len(data):
+                      raise SystemExit(f"{path}: truncated PNG chunk")
+                  kind = data[offset+4:offset+8]
+                  offset = end
+                  if kind == b"IEND":
+                      saw_iend = True
+                      break
+              if not saw_iend:
+                  raise SystemExit(f"{path}: PNG has no complete IEND")
+              if width <= 0 or height <= 0:
+                  raise SystemExit(f"{path}: invalid dimensions")
+              if data not in nro:
+                  raise SystemExit(f"{path}: exact PNG bytes are missing from final NRO RomFS")
+              return width, height
+
+          trainer_dir = Path("romfs/trainer_portraits")
+          for name in ("red", "gold", "kris", "brendan", "may", "lucas", "dawn", "ethan", "lyra"):
+              verify_png(trainer_dir / f"{name}.png")
+
+          region_dir = Path("romfs/region_backdrops")
+          for name in ("hoenn", "sinnoh", "kalos"):
+              verify_png(region_dir / f"{name}.png")
+
+          if b"romfs:/trainer_portraits/" not in nro:
               raise SystemExit("trainer portrait runtime path is missing from final NRO")
           if b"romfs:/region_backdrops/" not in nro:
               raise SystemExit("region backdrop runtime path is missing from final NRO")
-          if atlas[:8] != b"\x89PNG\r\n\x1a\n":
-              raise SystemExit("trainer portrait atlas is not PNG")
-          width, height = struct.unpack(">II", atlas[16:24])
-          if (width, height) != (288, 480):
-              raise SystemExit(f"trainer portrait atlas geometry changed: {width}x{height}")
-          sinnoh = Path("romfs/region_backdrops/sinnoh.png")
-          if sinnoh.is_file() and sinnoh.read_bytes() not in nro:
-              raise SystemExit("packaged Sinnoh backdrop bytes are missing from final NRO RomFS")
           print("final NRO presentation payload verified")
           PY
 
