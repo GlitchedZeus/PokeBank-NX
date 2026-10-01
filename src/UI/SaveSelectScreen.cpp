@@ -2338,7 +2338,9 @@ namespace UI {
             if (kDown & (HidNpadButton_Left | HidNpadButton_Right))
                 headerActionIndex = headerActionIndex == 0 ? 1 : 0;
             if (kDown & HidNpadButton_Down) {
-                hubFeatureIndex = headerActionIndex == 0 ? 0 : 1;
+                // The right-side feature cards are stacked, so both header controls enter
+                // through the top Master Vault card instead of jumping past it.
+                hubFeatureIndex = 0;
                 headerActionIndex = -1;
                 return;
             }
@@ -2355,27 +2357,36 @@ namespace UI {
         }
 
         if (hubDockFocused) {
+            // Explicit spatial navigation keeps the five round controls predictable. Left is
+            // always the fastest route back to the selected-game hero.
             if (kDown & HidNpadButton_Left) {
-                if (hubDockIndex == 0) hubDockIndex = 2;
-                else if (hubDockIndex == 3) hubDockIndex = 4;
-                else --hubDockIndex;
+                hubDockFocused = false;
+                hubFeatureIndex = -1;
+                return;
             }
             if (kDown & HidNpadButton_Right) {
-                if (hubDockIndex == 2) hubDockIndex = 0;
-                else if (hubDockIndex == 4) hubDockIndex = 3;
-                else ++hubDockIndex;
+                if (hubDockIndex <= 2)
+                    hubDockIndex = hubDockIndex == 2 ? 0 : hubDockIndex + 1;
+                else
+                    hubDockIndex = hubDockIndex == 4 ? 3 : 4;
+                return;
             }
             if (kDown & HidNpadButton_Up) {
-                if (hubDockIndex >= 3) hubDockIndex -= 3;
+                if (hubDockIndex >= 3)
+                    hubDockIndex = hubDockIndex == 3 ? 0 : 2;
                 else {
-                    hubFeatureIndex = hubDockIndex <= 1 ? 0 : 1;
+                    hubFeatureIndex = 1;
                     hubDockFocused = false;
                 }
                 return;
             }
             if (kDown & HidNpadButton_Down) {
                 if (hubDockIndex < 3)
-                    hubDockIndex = hubDockIndex <= 1 ? hubDockIndex + 3 : 4;
+                    hubDockIndex = hubDockIndex <= 1 ? 3 : 4;
+                else {
+                    hubDockFocused = false;
+                    hubFeatureIndex = -1;
+                }
                 return;
             }
             if (kDown & HidNpadButton_A) activateHubDock();
@@ -2384,23 +2395,30 @@ namespace UI {
 
         if (hubFeatureIndex >= 0) {
             if (kDown & HidNpadButton_Left) {
-                if (hubFeatureIndex == 1) hubFeatureIndex = 0;
-                else hubFeatureIndex = -1;
+                hubFeatureIndex = -1;
                 return;
             }
             if (kDown & HidNpadButton_Right) {
-                if (hubFeatureIndex == 0) hubFeatureIndex = 1;
+                hubFeatureIndex = hubFeatureIndex == 0 ? 1 : 0;
                 return;
             }
             if (kDown & HidNpadButton_Up) {
-                headerActionIndex = hubFeatureIndex == 0 ? 0 : 1;
-                hubFeatureIndex = -1;
+                if (hubFeatureIndex == 1) {
+                    hubFeatureIndex = 0;
+                } else {
+                    headerActionIndex = 0;
+                    hubFeatureIndex = -1;
+                }
                 return;
             }
             if (kDown & HidNpadButton_Down) {
-                hubDockFocused = true;
-                hubDockIndex = hubFeatureIndex == 0 ? 0 : 3;
-                hubFeatureIndex = -1;
+                if (hubFeatureIndex == 0) {
+                    hubFeatureIndex = 1;
+                } else {
+                    hubDockFocused = true;
+                    hubDockIndex = 0;
+                    hubFeatureIndex = -1;
+                }
                 return;
             }
             if (kDown & HidNpadButton_A) {
