@@ -189,6 +189,59 @@ inline bool hasRadarEligibleMatch(std::string_view exactGameId,
     return false;
 }
 
+struct RadarEvidence {
+    bool matched = false;
+    uint16_t sourceSpecies = 0;
+    bool evolved = false;
+};
+
+inline bool hasRadarBaseFormSource(std::string_view exactGameId,
+                                   uint16_t sourceSpecies,
+                                   uint16_t metLocation,
+                                   uint8_t metLevel) noexcept {
+    const Game wanted = gameForId(exactGameId);
+    if (wanted == Game::Invalid || sourceSpecies == 0 ||
+        metLocation > 0xFF || metLevel == 0)
+        return false;
+
+    for (const uint64_t row : kPackedGen4WildEncounters) {
+        if (!radarCapable(row) || game(row) != wanted ||
+            species(row) != sourceSpecies || location(row) != metLocation ||
+            !levelMatches(row, metLevel))
+            continue;
+
+        // Form-specific ancestor reconstruction is deliberately separate.
+        if (form(row) == 0)
+            return true;
+    }
+    return false;
+}
+
+inline RadarEvidence radarEvidence(std::string_view exactGameId,
+                                   uint16_t speciesId,
+                                   uint16_t metLocation,
+                                   uint8_t metLevel,
+                                   uint8_t pokemonForm) noexcept {
+    if (hasRadarEligibleMatch(
+            exactGameId, speciesId, metLocation, metLevel, pokemonForm))
+        return {true, speciesId, false};
+
+    uint16_t ancestor =
+        Gen34EggMove::preEvolution(exactGameId, speciesId);
+    for (int depth = 0; ancestor != 0 && depth < 8; ++depth) {
+        if (hasRadarBaseFormSource(
+                exactGameId, ancestor, metLocation, metLevel))
+            return {true, ancestor, true};
+
+        const uint16_t next =
+            Gen34EggMove::preEvolution(exactGameId, ancestor);
+        if (next == ancestor)
+            break;
+        ancestor = next;
+    }
+    return {};
+}
+
 inline std::size_t countForGame(std::string_view exactGameId) noexcept {
     const Game wanted = gameForId(exactGameId);
     if (wanted == Game::Invalid) return 0;
