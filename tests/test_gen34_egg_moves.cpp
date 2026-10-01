@@ -31,6 +31,13 @@ int main() {
     assert(isEggMove("diamond_nds", 1, 80));
     assert(isEggMove("diamond_nds", 1, 437)); // Leaf Storm
     assert(!isEggMove("diamond_nds", 1, 57));
+
+    // HG/SS added egg options that D/P/Pt did not have. Stored origin identity,
+    // not the current Gen IV save container, must choose this evidence group.
+    assert(!isEggMove("diamond_nds", 1, 124));
+    assert(!isEggMove("platinum_nds", 1, 124));
+    assert(isEggMove("heartgold_nds", 1, 124));
+
     const auto ivysaurLeafStorm = classify("diamond_nds", 2, 437);
     assert(ivysaurLeafStorm.evidence == MoveEvidence::PreEvolutionEggMove);
     assert(ivysaurLeafStorm.sourceSpecies == 1);
