@@ -23,6 +23,8 @@ enum class Method : uint8_t {
     MethodKSafariNoLead,
     MethodKSafariFishingNoLead,
     MethodKSafariFishingSuctionCups,
+    MethodJSynchronize,
+    MethodKSynchronize,
 };
 
 struct Result {
@@ -441,6 +443,66 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
     return {};
 }
 
+constexpr bool synchronizePass(bool hgss, uint16_t rand16) noexcept {
+    return hgss ? ((rand16 & 1u) == 0u)
+                : ((rand16 >> 15) == 0u);
+}
+
+constexpr Result matchSynchronizeRow(bool hgss, uint64_t row,
+                                     uint32_t prePidSeed, uint32_t pid,
+                                     uint8_t metLevel) noexcept {
+    const uint8_t type = Gen4Wild::method(row);
+    if (type > 1)
+        return {};
+
+    const uint8_t nature = static_cast<uint8_t>(pid % 25u);
+    const int frames = reversalWindow(prePidSeed, nature);
+    if (frames < 0)
+        return {};
+
+    uint32_t candidate = prePidSeed;
+    for (int i = 0; i <= frames; ++i) {
+        const uint16_t natureRand = static_cast<uint16_t>(candidate >> 16);
+        const uint32_t rolledNature = hgss
+            ? (natureRand % 25u)
+            : (natureRand / 0x0A3Eu);
+
+        // PKHeX tries the regular/no-lead path first when the nature roll already
+        // equals the PID nature. Successful Synchronize evidence is the distinct
+        // branch where that regular nature roll fails but the 50% sync check passes.
+        if (rolledNature != nature && synchronizePass(hgss, natureRand)) {
+            const uint32_t seed1 = Gen3PidIv::Detail::prev(candidate);
+            const uint32_t seed2 = Gen3PidIv::Detail::prev(seed1);
+            const uint16_t prev1 = static_cast<uint16_t>(seed1 >> 16);
+            const uint16_t prev2 = static_cast<uint16_t>(seed2 >> 16);
+
+            const uint8_t rolledSlot = type == 0
+                ? (hgss ? methodKSlot(type, prev1) : methodJSlot(type, prev1))
+                : (hgss ? methodKSlot(type, prev2) : methodJSlot(type, prev2));
+
+            if (rolledSlot == Gen4Wild::slot(row)) {
+                if (type == 0) {
+                    if (Gen4Wild::levelMatches(row, metLevel))
+                        return {hgss ? Method::MethodKSynchronize
+                                     : Method::MethodJSynchronize,
+                                candidate, rolledSlot};
+                } else {
+                    const uint8_t level = randomLevel(
+                        Gen4Wild::minLevel(row), Gen4Wild::maxLevel(row), prev1);
+                    if (level == metLevel)
+                        return {hgss ? Method::MethodKSynchronize
+                                     : Method::MethodJSynchronize,
+                                candidate, rolledSlot};
+                }
+            }
+        }
+
+        candidate = Gen3PidIv::Detail::prev(
+            Gen3PidIv::Detail::prev(candidate));
+    }
+    return {};
+}
+
 inline Result analyzeNoLead(std::string_view exactGameId, uint16_t speciesId,
                             uint16_t metLocation, uint8_t metLevel,
                             uint8_t pokemonForm, uint32_t id32,
@@ -473,6 +535,47 @@ inline Result analyzeNoLead(std::string_view exactGameId, uint16_t speciesId,
     return {};
 }
 
+inline Result analyzeSupported(std::string_view exactGameId,
+                               uint16_t speciesId,
+                               uint16_t metLocation,
+                               uint8_t metLevel,
+                               uint8_t pokemonForm,
+                               uint32_t id32,
+                               uint32_t prePidSeed,
+                               uint32_t pid) noexcept {
+    const auto wanted = Gen4Wild::gameForId(exactGameId);
+    if (wanted == Gen4Wild::Game::Invalid || speciesId == 0 ||
+        metLocation > 0xFF || metLevel == 0)
+        return {};
+
+    const bool hgss =
+        wanted == Gen4Wild::Game::HeartGold ||
+        wanted == Gen4Wild::Game::SoulSilver;
+
+    for (const uint64_t row : Gen4Wild::kPackedGen4WildEncounters) {
+        if (Gen4Wild::game(row) != wanted ||
+            Gen4Wild::species(row) != speciesId ||
+            Gen4Wild::location(row) != metLocation ||
+            !Gen4Wild::levelMatches(row, metLevel) ||
+            !Gen4Wild::formMatches(Gen4Wild::form(row), pokemonForm))
+            continue;
+        if (speciesId == 446 && Gen4Wild::method(row) == 9 &&
+            !Gen4Wild::isMunchlaxTreeLocation(id32, metLocation))
+            continue;
+
+        if (const auto noLead =
+                matchNoLeadRow(hgss, row, prePidSeed, pid, metLevel);
+            noLead.matched())
+            return noLead;
+
+        if (const auto sync =
+                matchSynchronizeRow(hgss, row, prePidSeed, pid, metLevel);
+            sync.matched())
+            return sync;
+    }
+    return {};
+}
+
 constexpr const char* methodName(Method method) noexcept {
     switch (method) {
         case Method::MethodJNoLead: return "Method J (no lead)";
@@ -488,9 +591,11 @@ constexpr const char* methodName(Method method) noexcept {
         case Method::MethodKSafariNoLead: return "Method K Safari (no lead)";
         case Method::MethodKSafariFishingNoLead: return "Method K Safari fishing (no lead)";
         case Method::MethodKSafariFishingSuctionCups: return "Method K Safari fishing (Suction Cups / Sticky Hold)";
+        case Method::MethodJSynchronize: return "Method J (Synchronize)";
+        case Method::MethodKSynchronize: return "Method K (Synchronize)";
         case Method::None: break;
     }
-    return "No no-lead Method J/K match";
+    return "No supported Method J/K match";
 }
 
 } // namespace Legality::Gen4WildRng
