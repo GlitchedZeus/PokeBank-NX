@@ -98,7 +98,7 @@ Order is risk-based, not numeric: repository-integrity/native-CI guardrails firs
 - **User-visible impact:** Would block native Product UI build; code fix already exists
 - **Recommended fix:** remove the obsolete `AppShellSection::Collections` branch from `OrganizationPreview` handling or replace it with the intended `Pokedex` behavior, then run the native product-UI workflow and host contract tests at the exact PR head.
 - **Regression-test strategy:** `tests/test_app_shell_model.cpp` validates the revised enum/navigation model but does not compile `AppShellScreen.cpp`, so it cannot catch this stale screen-level enum reference. `tests/test_game_hub_contract.py` is also text-contract based.
-- **Dependency / sequencing:** Verification-only; current Product UI Native is red for unrelated dock contract
+- **Dependency / sequencing:** Verification-only; exact-head Product UI Native is green at the validated reconciliation checkpoint.
 - **Proposed remediation order:** 2
 - **Status:** VERIFIED
 - **Current-code reconciliation:** live MAIN has no `AppShellSection::Collections` reference. Verified by the fully green exact-head validation suite at `29c8276ae5412806ffb762eab10f427b4b743a24` summarized above.
