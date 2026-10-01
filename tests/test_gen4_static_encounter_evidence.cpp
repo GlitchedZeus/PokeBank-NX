@@ -27,6 +27,10 @@ int main() {
     assert(match("diamond_nds", 483, 51, 47, 0, 0));
     assert(!match("pearl_nds", 483, 51, 47, 0, 0));
     assert(match("pearl_nds", 484, 51, 47, 0, 0));
+    const auto* dialga = findMatch(
+        "diamond_nds", 483, 51, 47, 0, 0, 4, 0, 0, false, false);
+    assert(dialga != nullptr);
+    assert(pidCategoryForRow(*dialga) == PidCategory::Method1OrCuteCharm);
 
     // Platinum Distortion World Giratina is Origin Forme.
     assert(match("platinum_nds", 487, 117, 47, 1, 0));
@@ -46,16 +50,25 @@ int main() {
     assert(match("platinum_nds", 492, 63, 30, 0, 0, 4, 0, 0, false, true));
     assert(!match("platinum_nds", 492, 63, 30, 0, 0, 4, 0, 0, false, false));
 
-    // Lake of Rage Gyarados is forced shiny.
+    // Lake of Rage Gyarados is forced shiny and therefore uses Chain Shiny PID evidence.
     assert(match("heartgold_nds", 130, 135, 30, 0, 0, 4, 0, 0, true, false));
     assert(match("soulsilver_nds", 130, 135, 30, 0, 0, 4, 0, 0, true, false));
     assert(!match("heartgold_nds", 130, 135, 30, 0, 0, 4, 0, 0, false, false));
+    const auto* redGyarados = findMatch(
+        "heartgold_nds", 130, 135, 30, 0, 0, 4, 0, 0, true, false);
+    assert(redGyarados != nullptr);
+    assert(pidCategoryForRow(*redGyarados) == PidCategory::ChainShiny);
 
-    // HG/SS Spiky-eared Pichu is fixed female, Naughty, non-shiny, form 1.
+    // HG/SS Spiky-eared Pichu is fixed female, Naughty, non-shiny, form 1 and uses
+    // the Pokewalker PID formula even though it is an in-game static encounter.
     assert(match("heartgold_nds", 172, 214, 30, 1, 0, 4, 1, 4, false, false));
     assert(!match("heartgold_nds", 172, 214, 30, 1, 0, 4, 0, 4, false, false));
     assert(!match("heartgold_nds", 172, 214, 30, 1, 0, 4, 1, 3, false, false));
     assert(!match("heartgold_nds", 172, 214, 30, 1, 0, 4, 1, 4, true, false));
+    const auto* spikyPichu = findMatch(
+        "heartgold_nds", 172, 214, 30, 1, 0, 4, 1, 4, false, false);
+    assert(spikyPichu != nullptr);
+    assert(pidCategoryForRow(*spikyPichu) == PidCategory::Pokewalker);
 
     // Roamers use a permitted route set rather than one fixed met location.
     assert(match("platinum_nds", 481, 20, 50, 0, 0));
