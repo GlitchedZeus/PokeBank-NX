@@ -84,5 +84,22 @@ int main() {
         assert(report.verdict() == Legality::Verdict::Invalid);
     }
 
+    {
+        // Container/save identity and encounter origin are different concepts.
+        // Diamond Dialga is Lv.47 at Spear Pillar; Platinum's native Dialga is Lv.70.
+        // A Diamond-origin entity traded into a Platinum save must retain Diamond
+        // encounter provenance instead of being checked against Platinum's table.
+        auto p = baseMon();
+        p.setSpecies(483);
+        p.setOriginGame(10); // Diamond
+        p.setMetLocation(51);
+        p.setMetLevel(47);
+        p.setLevel(47);
+        p.setMove(0, 0);
+        const auto report = Legality::analyze(p, Enums::GameVersion::FRLG, "platinum_nds");
+        assert(hasText(report, "static/gift encounter for the stored origin game"));
+        assert(!hasText(report, "No matching Gen IV wild/static/gift/trade evidence for the stored origin game"));
+    }
+
     std::cout << "Gen I/II/IV exact-source legality context: PASS\n";
 }
