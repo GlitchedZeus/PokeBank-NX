@@ -115,6 +115,67 @@ namespace Legality {
             if (id == "leafgreen_gba") { game = SourceGame::LeafGreenGBA; return true; }
             return false;
         }
+
+        void addGen3PidEvidence(Report& r, const Pokemon::Pokemon& pk,
+                                uint16_t species) {
+            const std::array<uint8_t, 6> ivs{
+                pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
+            };
+            const auto correlation =
+                Gen3PidIv::analyze(pk.pid(), ivs, species == 201);
+            if (correlation.matched()) {
+                add(r, Severity::Info,
+                    "PID/IV spread matches Gen III " +
+                    std::string(Gen3PidIv::methodName(correlation.method)),
+                    CheckIdentifier::PidRng);
+                return;
+            }
+
+            if (Gen3PidIv::isRoamerSpecies(species)) {
+                const auto roamer = Gen3PidIv::analyzeRoamer(pk.pid(), ivs);
+                if (roamer.matched()) {
+                    add(r, Severity::Info,
+                        "PID/IV spread matches the Gen III truncated-roamer Method 1 class used by Ruby/Sapphire and FireRed/LeafGreen roamers",
+                        CheckIdentifier::PidRng);
+                    return;
+                }
+            }
+
+            const auto cxd = Gen3CxdPidIv::analyze(pk.pid(), ivs);
+            if (cxd.matched) {
+                add(r, Severity::Info,
+                    "PID/IV spread matches the standard Pokemon Colosseum/XD XDRNG class; exact encounter and shadow-team provenance remain incomplete",
+                    CheckIdentifier::PidRng);
+                return;
+            }
+
+            const auto channel = Gen3ChannelPidIv::analyze(
+                pk.pid(), ivs, pk.sid16(), pk.originGame(), pk.otGender());
+            if (channel.matched) {
+                add(r, Severity::Info,
+                    "PID/IV spread matches the Pokemon Channel Jirachi XDRNG class; fixed distribution-template provenance remains separate",
+                    CheckIdentifier::PidRng);
+                return;
+            }
+
+            const auto bacd = Gen3BacdPidIv::analyzeWithTrainer(
+                pk.pid(), ivs, pk.tid16(), pk.sid16());
+            if (bacd.matched()) {
+                add(r, Severity::Info,
+                    "PID/IV spread matches the Gen III " +
+                    std::string(Gen3BacdPidIv::variantName(bacd.variant)) +
+                    (bacd.restrictedSeed ? " restricted-seed" : "") +
+                    " event RNG class; exact distribution-template provenance remains separate",
+                    CheckIdentifier::PidRng);
+                return;
+            }
+
+            add(r, Severity::Info,
+                Gen3PidIv::isRoamerSpecies(species)
+                    ? "No handheld Method 1/2/3/4, truncated-roamer, standard Colosseum/XD, Channel Jirachi, or regular/anti-shiny BA-CD PID/IV match; different-OT/restricted-template event variants remain incomplete"
+                    : "No handheld Method 1/2/3/4, standard Colosseum/XD, Channel Jirachi, or regular/anti-shiny BA-CD PID/IV match; different-OT/restricted-template event variants remain incomplete",
+                CheckIdentifier::PidRng);
+        }
     }
 
     Report analyze(const Pokemon::Pokemon& pk, const Context& context) {
@@ -461,84 +522,7 @@ namespace Legality {
         }
 
         if (sourceProfile && exactGeneration == 3) {
-            const std::array<uint8_t, 6> ivs{
-                pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
-            };
-            const auto correlation =
-                Gen3PidIv::analyze(pk.pid(), ivs, species == 201);
-            if (correlation.matched()) {
-                add(r, Severity::Info,
-                    "PID/IV spread matches Gen III " +
-                    std::string(Gen3PidIv::methodName(correlation.method)),
-                    CheckIdentifier::PidRng);
-            } else if (Gen3PidIv::isRoamerSpecies(species)) {
-                const auto roamer = Gen3PidIv::analyzeRoamer(pk.pid(), ivs);
-                if (roamer.matched()) {
-                    add(r, Severity::Info,
-                        "PID/IV spread matches the Gen III truncated-roamer Method 1 class used by Ruby/Sapphire and FireRed/LeafGreen roamers",
-                        CheckIdentifier::PidRng);
-                } else {
-                    const auto cxd = Gen3CxdPidIv::analyze(pk.pid(), ivs);
-                    if (cxd.matched) {
-                        add(r, Severity::Info,
-                            "PID/IV spread matches the standard Pokemon Colosseum/XD XDRNG class; exact encounter and shadow-team provenance remain incomplete",
-                            CheckIdentifier::PidRng);
-                    } else {
-                        const auto channel = Gen3ChannelPidIv::analyze(
-                            pk.pid(), ivs, pk.sid16(), pk.originGame(), pk.otGender());
-                        if (channel.matched) {
-                            add(r, Severity::Info,
-                                "PID/IV spread matches the Pokemon Channel Jirachi XDRNG class; fixed distribution-template provenance remains separate",
-                                CheckIdentifier::PidRng);
-                        } else {
-                            const auto bacd = Gen3BacdPidIv::analyzeWithTrainer(
-                                pk.pid(), ivs, pk.tid16(), pk.sid16());
-                            if (bacd.matched()) {
-                                add(r, Severity::Info,
-                                    "PID/IV spread matches the Gen III " +
-                                    std::string(Gen3BacdPidIv::variantName(bacd.variant)) +
-                                    (bacd.restrictedSeed ? " restricted-seed" : "") +
-                                    " event RNG class; exact distribution-template provenance remains separate",
-                                    CheckIdentifier::PidRng);
-                            } else {
-                                add(r, Severity::Info,
-                                    "No handheld Method 1/2/3/4, truncated-roamer, standard Colosseum/XD, Channel Jirachi, or regular/anti-shiny BA-CD PID/IV match; different-OT/restricted-template event variants remain incomplete",
-                                    CheckIdentifier::PidRng);
-                            }
-                        }
-                    }
-                }
-            } else {
-                const auto cxd = Gen3CxdPidIv::analyze(pk.pid(), ivs);
-                if (cxd.matched) {
-                    add(r, Severity::Info,
-                        "PID/IV spread matches the standard Pokemon Colosseum/XD XDRNG class; exact encounter and shadow-team provenance remain incomplete",
-                        CheckIdentifier::PidRng);
-                } else {
-                    const auto channel = Gen3ChannelPidIv::analyze(
-                        pk.pid(), ivs, pk.sid16(), pk.originGame(), pk.otGender());
-                    if (channel.matched) {
-                        add(r, Severity::Info,
-                            "PID/IV spread matches the Pokemon Channel Jirachi XDRNG class; fixed distribution-template provenance remains separate",
-                            CheckIdentifier::PidRng);
-                    } else {
-                        const auto bacd = Gen3BacdPidIv::analyzeWithTrainer(
-                            pk.pid(), ivs, pk.tid16(), pk.sid16());
-                        if (bacd.matched()) {
-                            add(r, Severity::Info,
-                                "PID/IV spread matches the Gen III " +
-                                std::string(Gen3BacdPidIv::variantName(bacd.variant)) +
-                                (bacd.restrictedSeed ? " restricted-seed" : "") +
-                                " event RNG class; exact distribution-template provenance remains separate",
-                                CheckIdentifier::PidRng);
-                        } else {
-                            add(r, Severity::Info,
-                                "No handheld Method 1/2/3/4, standard Colosseum/XD, Channel Jirachi, or regular/anti-shiny BA-CD PID/IV match; different-OT/restricted-template event variants remain incomplete",
-                                CheckIdentifier::PidRng);
-                        }
-                    }
-                }
-            }
+            addGen3PidEvidence(r, pk, species);
         } else if (sourceProfile && exactGeneration == 4 &&
                    storedGen4OriginKind == Gen4Origin::Kind::Gen4Retail) {
             const bool isHgss =
@@ -692,7 +676,13 @@ namespace Legality {
                     }
                 }
             }
-        }
+        } else if (sourceProfile && exactGeneration == 4 &&
+                   Gen4Origin::isPalParkOrigin(pk.originGame())) {
+            add(r, Severity::Info,
+                "Pal Park preserves the Generation III PID/IV relationship; native Generation IV PID methods are not applicable",
+                CheckIdentifier::Transfer);
+            addGen3PidEvidence(r, pk, species);
+
 
         const bool hasStatNature =
             originGroup == Enums::GameVersion::SWSH ||
