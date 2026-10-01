@@ -65,6 +65,18 @@ int main() {
     static_assert(kf.method == Method::MethodKFishingNoLead);
     static_assert(kf.slot == 0);
 
+    // HG/SS Old Rod can require Suction Cups / Sticky Hold after the
+    // following-Pokemon +50 rate bonus. Seed 0 reaches slot 0 / level 6, but
+    // its activation roll is 87: normal Old Rod (75%) fails and Suction Cups passes.
+    constexpr uint32_t suctionSeed = 0u;
+    constexpr uint32_t suctionPid = sequentialPid(suctionSeed);
+    static_assert(suctionPid == 0xE97E0000u);
+    constexpr uint64_t suctionFishing = makeRow(2, 0, 5, 10);
+    constexpr auto kfs = matchNoLeadRow(true, suctionFishing,
+                                        suctionSeed, suctionPid, 6);
+    static_assert(kfs.method == Method::MethodKFishingSuctionCups);
+    static_assert(kfs.slot == 0);
+
     // The same deterministic Method K seed maps Headbutt's 23% slot roll to slot 0
     // and the preceding level roll to level 8.
     constexpr uint64_t headbutt = makeRow(6, 0, 5, 10);
@@ -89,6 +101,18 @@ int main() {
                                   fishingKSeed, fishingKPid, 8).matched());
     static_assert(!matchNoLeadRow(false, rockSmash,
                                   fishingKSeed, fishingKPid, 8).matched());
+
+    // HG/SS Rock Smash can use Illuminate when the normal area-rate roll
+    // fails but remains below twice the encounter rate. Seed 13 gives roll 33
+    // against rate 20, so this is positive Illuminate-only evidence.
+    constexpr uint32_t illuminateSeed = 13u;
+    constexpr uint32_t illuminatePid = sequentialPid(illuminateSeed);
+    static_assert(illuminatePid == 0xCBC05712u);
+    constexpr uint64_t illuminateRock = makeRow(5, 0, 5, 10, 20);
+    constexpr auto kri = matchNoLeadRow(true, illuminateRock,
+                                        illuminateSeed, illuminatePid, 5);
+    static_assert(kri.method == Method::MethodKRockSmashIlluminate);
+    static_assert(kri.slot == 0);
 
     // D/P/Pt Honey Trees do not use the ordinary encounter-slot roll.
     // Deterministic Method J vector: seed 29 has a single valid nature-reversal
@@ -140,6 +164,15 @@ int main() {
                                         safariFishingSeed, safariFishingPid, 12);
     static_assert(ksf.method == Method::MethodKSafariFishingNoLead);
     static_assert(ksf.slot == 3);
+
+    // Safari Old Rod can hit the same Suction Cups / Sticky Hold branch.
+    // Seed 8's activation roll is 88, above the normal 75% path but below the
+    // compounded threshold; Safari still uses the fixed-level / rand%10 slot layout.
+    constexpr uint64_t safariSuctionRod = makeRow(12, 1, 12, 12, 5);
+    constexpr auto ksfs = matchNoLeadRow(true, safariSuctionRod,
+                                         contestSeed, contestPid, 12);
+    static_assert(ksfs.method == Method::MethodKSafariFishingSuctionCups);
+    static_assert(ksfs.slot == 1);
 
     // Seed 12 has no 31 IV but otherwise reaches a valid Bug Contest slot+level
     // and Safari slot. Such a result can be legal only as the exhausted fourth
