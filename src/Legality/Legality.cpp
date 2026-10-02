@@ -29,6 +29,7 @@
 #include "Legality/Gen3WishmkrEventTemplate.h"
 #include "Legality/Gen3BerryFixEventTemplate.h"
 #include "Legality/Gen3BacdRaEventTemplate.h"
+#include "Legality/Gen3MystryMewEvidence.h"
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
 #include "Legality/Gen4PokewalkerEncounter.h"
@@ -186,6 +187,16 @@ namespace Legality {
                     " event RNG class",
                     CheckIdentifier::PidRng);
 
+                const bool mystryMew =
+                    Gen3MystryMew::matches(
+                        {
+                            species, pk.tid16(), pk.sid16(), pk.originGame(),
+                            pk.language(), pk.otGender(), pk.metLevel(),
+                            pk.metLocation(), pk.ball(), pk.isEgg(),
+                            pk.isFatefulEncounter(),
+                            pk.isShiny(pk.id32(), {}), pk.otName()
+                        },
+                        bacd);
                 const bool wishmkr =
                     bacd.variant == Gen3BacdPidIv::Variant::Regular &&
                     bacd.restrictedSeed &&
@@ -212,7 +223,12 @@ namespace Legality {
                             pk.isShiny(pk.id32(), {}), pk.otName()
                         },
                         bacd);
-                if (wishmkr) {
+                if (mystryMew) {
+                    r.coverage.eventGift = CoverageLevel::Partial;
+                    add(r, Severity::Info,
+                        "Regular BA-CD RNG, released MYSTRY seed provenance, and persistent fields match the pinned MYSTRY Mew distribution template",
+                        CheckIdentifier::EventGift);
+                } else if (wishmkr) {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
                         "Restricted BA-CD RNG and persistent fields match the pinned WISHMKR Jirachi distribution template",
