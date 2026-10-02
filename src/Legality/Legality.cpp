@@ -28,6 +28,7 @@
 #include "Legality/Gen3BacdPidIvCorrelation.h"
 #include "Legality/Gen3WishmkrEventTemplate.h"
 #include "Legality/Gen3BerryFixEventTemplate.h"
+#include "Legality/Gen3NegaiBoshiEventTemplate.h"
 #include "Legality/Gen3BacdRaEventTemplate.h"
 #include "Legality/Gen3MystryMewEvidence.h"
 #include "Legality/Gen4PidIvCorrelation.h"
@@ -223,6 +224,16 @@ namespace Legality {
                             pk.isShiny(pk.id32(), {}), pk.otName()
                         },
                         bacd);
+                const bool negaiBoshi =
+                    Gen3NegaiBoshiEvent::matches(
+                        {
+                            species, pk.tid16(), pk.sid16(), pk.originGame(),
+                            pk.language(), pk.otGender(), pk.metLevel(),
+                            pk.metLocation(), pk.ball(), pk.isEgg(),
+                            pk.isFatefulEncounter(),
+                            pk.isShiny(pk.id32(), {}), pk.otName()
+                        },
+                        bacd);
                 if (mystryMew) {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
@@ -237,6 +248,11 @@ namespace Legality {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
                         "Forced-shiny BA-CD RNG, RTC-derived seed range, and persistent fields match a pinned Berry Fix Zigzagoon distribution template",
+                        CheckIdentifier::EventGift);
+                } else if (negaiBoshi) {
+                    r.coverage.eventGift = CoverageLevel::Partial;
+                    add(r, Severity::Info,
+                        "Forced anti-shiny BA-CD RNG and persistent fields match the pinned Japanese Negai Boshi Jirachi distribution template",
                         CheckIdentifier::EventGift);
                 } else if (restrictedAntiEvent.matched) {
                     r.coverage.eventGift = CoverageLevel::Partial;
