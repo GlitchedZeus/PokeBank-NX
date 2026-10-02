@@ -43,6 +43,7 @@ struct Candidate {
     uint8_t ball = 0;
     bool isEgg = false;
     bool fateful = false;
+    bool shiny = false;
     std::u16string_view otName{};
 };
 
@@ -100,7 +101,7 @@ constexpr bool rngCompatible(const Gen3BacdPidIv::Result& rng) noexcept {
 constexpr bool persistentFieldsMatch(const Entry& row, const Candidate& c,
                                      uint32_t originSeed) noexcept {
     // Every pinned BACD_R_A row is a Ruby-origin, non-egg event gift.
-    if (c.originGame != 2 || c.isEgg || c.metLocation != 255 ||
+    if (c.originGame != 2 || c.isEgg || c.shiny || c.metLocation != 255 ||
         c.ball != 4)
         return false;
     if (row.species != c.species || row.tid != c.tid || row.sid != c.sid ||
