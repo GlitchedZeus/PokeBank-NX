@@ -5,6 +5,12 @@
 
 namespace Legality::Gen3BerryFixEvent {
 
+constexpr bool validOriginSeed(uint32_t originSeed) noexcept {
+    // Pinned CommonEvent3Checker::IsBerryFixShiny: Binary Coded Decimal
+    // timestamp digit-sum seeds below 3 or above 213 are impossible.
+    return originSeed >= 3u && originSeed <= 213u;
+}
+
 constexpr bool matchesTemplate(uint16_t species, uint16_t tid16, uint16_t sid16,
                                uint8_t originGame, uint8_t language,
                                uint8_t otGender, uint8_t metLevel,
