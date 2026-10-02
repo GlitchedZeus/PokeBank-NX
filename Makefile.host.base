@@ -185,6 +185,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen3_bacd_ra_event_template
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_bacd_ra_event_template_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_mystry_mew_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_mystry_mew_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen3_channel_pid_iv_correlation
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_channel_pid_iv_correlation_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen3_cxd_pid_iv_correlation
@@ -430,6 +432,14 @@ $(HOST_BUILD)/test_gen3_bacd_ra_event_template: tests/test_gen3_bacd_ra_event_te
 $(HOST_BUILD)/test_gen3_bacd_ra_event_template_sanitize: tests/test_gen3_bacd_ra_event_template.cpp include/Legality/Gen3BacdRaEventTemplate.h include/Legality/Gen3BacdRaEventTemplateData.inc include/Legality/Gen3BacdPidIvCorrelation.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_bacd_ra_event_template.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_mystry_mew_evidence: tests/test_gen3_mystry_mew_evidence.cpp include/Legality/Gen3MystryMewEvidence.h include/Legality/Gen3BacdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_mystry_mew_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_mystry_mew_evidence_sanitize: tests/test_gen3_mystry_mew_evidence.cpp include/Legality/Gen3MystryMewEvidence.h include/Legality/Gen3BacdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_mystry_mew_evidence.cpp -o $@
 
 $(HOST_BUILD)/test_gen3_channel_pid_iv_correlation: tests/test_gen3_channel_pid_iv_correlation.cpp include/Legality/Gen3ChannelPidIvCorrelation.h include/Legality/Gen3ChannelEventTemplate.h
 	@mkdir -p $(HOST_BUILD)
