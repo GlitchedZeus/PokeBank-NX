@@ -2036,6 +2036,23 @@ namespace UI {
             titleIndex < static_cast<int>(user->titles.size());
 
         if (hubDockIndex == 0) {
+            // Warm the small set of game-card / trainer assets before the full grid becomes
+            // interactive. The caches make later entries effectively free, and row-to-row
+            // navigation no longer stalls on first-use PNG/control-icon decoding.
+            if (user) {
+                for (const auto& title : user->titles) {
+                    const std::string_view artKey =
+                        title.sourceKind == SelectedSourceKind::RetroArchFRLG
+                            ? std::string_view(title.artworkKey)
+                            : std::string_view(title.gameId);
+                    (void)SystemIcons::gameCardIcon(artKey, title.titleId);
+                    const auto portrait = trainerPortraitForGame(
+                        title.gameId, title.trainerGenderKnown, title.trainerGender);
+                    if (portrait.assetKey && portrait.assetKey[0] != '\0')
+                        (void)SystemIcons::trainerPortrait(portrait.assetKey);
+                }
+            }
+
             classicGamesActive = true;
             overlay = Overlay::None;
             hubNotice.clear();
