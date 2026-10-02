@@ -163,8 +163,8 @@ namespace Legality {
                     CheckIdentifier::PidRng);
 
                 if (Gen3ChannelEvent::matchesTemplate(
-                        species, pk.tid16(), pk.originGame(), pk.metLevel(),
-                        pk.metLocation(), pk.ball(), pk.isEgg(),
+                        species, pk.tid16(), pk.originGame(), pk.language(),
+                        pk.metLevel(), pk.metLocation(), pk.ball(), pk.isEgg(),
                         pk.isFatefulEncounter(), pk.otName())) {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
