@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ROMFS = ROOT / "romfs"
 TRAINERS = ROMFS / "trainer_portraits"
 REGIONS = ROMFS / "region_backdrops"
-USER_AGENT = "PokeBank-NX-hardware-build/1.0"
+USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 PokeBank-NX-hardware-build/1.0"
 
 TRAINER_URLS = {
     "red.png": "https://play.pokemonshowdown.com/sprites/trainers/red.png",
@@ -96,7 +96,13 @@ def fetch(url: str, destination: Path) -> None:
     last_error: Exception | None = None
     for attempt in range(6):
         try:
-            request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            headers = {"User-Agent": USER_AGENT}
+            # Bulbagarden Archives rejects anonymous hotlink-style clients. These are fixed file
+            # URLs chosen above, so send its own site as Referer rather than weakening validation.
+            if "archives.bulbagarden.net/" in url:
+                headers["Referer"] = "https://archives.bulbagarden.net/"
+                headers["Accept"] = "image/avif,image/webp,image/apng,image/png,image/*,*/*;q=0.8"
+            request = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(request, timeout=45) as response:
                 data = response.read()
             width, height = png_size(data)
