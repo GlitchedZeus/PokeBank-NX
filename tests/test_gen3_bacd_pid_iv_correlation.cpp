@@ -4,6 +4,7 @@
 #include "Legality/Gen3NegaiBoshiEventTemplate.h"
 #include "Legality/Gen3PokeParkEggEventTemplate.h"
 #include "Legality/Gen3PcjpFifthEggEventTemplate.h"
+#include "Legality/Gen3PokemonBoxEggEventTemplate.h"
 
 #include <cassert>
 #include <iostream>
@@ -165,6 +166,31 @@ int main() {
     auto pokeParkWrongSpecies = pokeParkEgg;
     pokeParkWrongSpecies.species = 55;
     assert(!PokeParkEgg::matches(pokeParkWrongSpecies, pokeParkEggRng));
+
+    // Pokémon Box recipient eggs use unrestricted regular BACD_U and fixed
+    // unhatched event moves/trainer fields, but no fixed TID/SID.
+    namespace BoxEgg = Legality::Gen3PokemonBoxEggEvent;
+    auto boxSwablu = BoxEgg::Candidate{
+        333, 2, 1, 0, 255, 4, true, false,
+        u"ＡＺＵＳＡ", {64, 45, 206, 0}
+    };
+    assert(BoxEgg::matches(boxSwablu, bacd));
+
+    auto boxSurfPichu = BoxEgg::Candidate{
+        172, 5, 1, 0, 255, 4, true, false,
+        u"ＡＺＵＳＡ", {84, 204, 57, 0}
+    };
+    assert(BoxEgg::matches(boxSurfPichu, bacd));
+
+    auto boxWrongOt = boxSwablu;
+    boxWrongOt.otName = u"オヤＮＡＭＥ";
+    assert(!BoxEgg::matches(boxWrongOt, bacd));
+    auto boxHatched = boxSwablu;
+    boxHatched.isEgg = false;
+    assert(!BoxEgg::matches(boxHatched, bacd));
+    auto boxWrongMoves = boxSurfPichu;
+    boxWrongMoves.moves = {84, 204, 273, 0};
+    assert(!BoxEgg::matches(boxWrongMoves, bacd));
 
     // PCJP Fifth Anniversary event eggs use a weighted table chosen two RNG
     // calls before the BA-CD sequence. Seed 0 selects non-shiny Ralts / Charm.
