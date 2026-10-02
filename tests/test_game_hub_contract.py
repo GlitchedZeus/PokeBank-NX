@@ -159,6 +159,21 @@ require("GameSortMode::MostPlayed" in source and "GameSortMode::RecentlyPlayed" 
 require('"Sort: ") + gameSortModeLabel()' in source and
         '"\\xE2\\x99\\xA5"' in source,
         "Games surfaces must show the active sort and a small heart for favorites")
+require('if (id == "red_gb") return 199602270;' in source and
+        'if (id == "letsgo_pikachu_switch") return 201811160;' in source and
+        'if (ad != bd) return ad < bd;' in source and
+        '"lets_go_pikachu_switch"' not in source,
+        "Release Date sort must be oldest-to-newest with the real Lets Go identities")
+require("Horizontal movement never spills into" in source and
+        "Six-column browser navigation is spatial" in source and
+        "col + 1 < cols" in source and
+        "nextRow < classicCount" in source,
+        "Quick Games and full Games must use row-bounded spatial grid navigation")
+require("Color(3, 10, 24, 184)" in source and
+        "const Color heroText(248, 251, 255, 255);" in source and
+        "titleFavorite(*u, title)" in source and
+        'fb.drawSymbol(heartX, heartY, "\\xE2\\x99\\xA5"' in source,
+        "Product Home must keep region text readable and show the selected game's favorite heart")
 require('{"+", "Current Game"}' in source,
         "Plus must open Current Game tools")
 require("+: Settings" not in source and '{"+" , "Settings"}' not in source and '{"+" , "Settings"}' not in shell_source,
@@ -328,7 +343,7 @@ require("17.0f,  // Caption / secondary information" in framebuffer and
 require("SystemIcons::trainerPortrait" in source and "portrait.assetKey" in source,
         "trainer presentation must load optional real portrait artwork when packaged")
 require("branch-romfs-overrides" in product_workflow and
-        "kanto johto hoenn sinnoh unova kalos alola galar" in product_workflow and
+        "kanto johto hoenn sinnoh unova kalos alola galar hisui paldea" in product_workflow and
         'test -s "romfs/trainer_portraits/$f.png"' in product_workflow and
         "'romfs/trainer_portraits/**'" in product_workflow and
         "'romfs/region_backdrops/**'" in product_workflow and
@@ -336,7 +351,7 @@ require("branch-romfs-overrides" in product_workflow and
         "region backdrop runtime path is missing from final NRO" in product_workflow,
         "Product UI native packaging must preserve and verify trainer/region presentation payload in the final NRO")
 require("branch-romfs-overrides" in gen4_workflow and
-        "kanto johto hoenn sinnoh unova kalos alola galar" in gen4_workflow and
+        "kanto johto hoenn sinnoh unova kalos alola galar hisui paldea" in gen4_workflow and
         'test -s "application/romfs/trainer_portraits/$f.png"' in gen4_workflow and
         "'romfs/trainer_portraits/**'" in gen4_workflow and
         "'romfs/region_backdrops/**'" in gen4_workflow and
@@ -347,24 +362,33 @@ require('"romfs:/trainer_portraits/" + key + ".png"' in system_icons and
         "trainerPortraitFromAtlas" not in system_icons and
         "real trainer portrait missing or invalid" in system_icons,
         "trainer portraits must load individual real PNG assets and never depend on the corrupted atlas")
-for portrait_key in ("red", "gold", "kris", "brendan", "may",
-                     "lucas", "dawn", "ethan", "lyra"):
+for portrait_key in ("red", "leaf", "gold", "kris", "brendan", "may",
+                     "lucas", "dawn", "ethan", "lyra", "chase", "elaine",
+                     "victor", "gloria", "rei", "akari", "florian", "juliana",
+                     "paxton", "harmony"):
     require(f'"{portrait_key}.png"' in product_art_fetch,
             f"hardware product-art fetch must include trainer asset: {portrait_key}")
-require('"leaf.png"' not in product_art_fetch,
-        "do not package or pretend a Leaf portrait until an actual Leaf asset is supplied")
 for region_key in ("kanto.png", "johto.png", "hoenn.png", "sinnoh.png",
                    "unova.png", "kalos.png", "alola.png", "galar.png"):
     require(f'"{region_key}"' in product_art_fetch,
-            f"hardware product-art preflight must require branch-owned region artwork: {region_key}")
-require("REGION_URLS" not in product_art_fetch and "upload.wikimedia.org" not in product_art_fetch and
-        "Region art is intentionally NOT fetched" in product_art_fetch,
-        "hardware builds must preserve the supplied PokeBank NX region art instead of downloading substitute maps")
+            f"hardware product-art preflight must preserve branch-owned region artwork: {region_key}")
+for region_key in ("hisui.png", "paldea.png"):
+    require(f'"{region_key}"' in product_art_fetch,
+            f"hardware product-art fetch must add real later-region artwork: {region_key}")
+require("REGION_URLS" in product_art_fetch and
+        "archives.bulbagarden.net/media/upload/5/5b/Hisui.png" in product_art_fetch and
+        "archives.bulbagarden.net/media/upload/f/fd/Paldea_artwork.png" in product_art_fetch and
+        "never generates fake scenery" in product_art_fetch,
+        "Hisui and Paldea must use fixed real-region artwork while supplied Kanto-Galar art stays branch-owned")
 require("truncated PNG chunk" in product_art_fetch and "PNG has no complete IEND" in product_art_fetch,
         "product-art preflight must reject structurally truncated PNGs before packaging")
-require('"red"' in source and '"dawn"' in source and '"lucas"' in source and
-        '"ethan"' in source and '"lyra"' in source,
-        "trainer portrait mapping must reserve canonical Gen I-IV asset keys")
+require('"red"' in source and '"leaf"' in source and '"dawn"' in source and
+        '"lucas"' in source and '"ethan"' in source and '"lyra"' in source and
+        '"chase"' in source and '"elaine"' in source and '"victor"' in source and
+        '"gloria"' in source and '"rei"' in source and '"akari"' in source and
+        '"florian"' in source and '"juliana"' in source and '"paxton"' in source and
+        '"harmony"' in source,
+        "trainer portrait mapping must cover classic and supported Switch protagonists")
 require("productSourceLabel" in source and '"System save"' in source and '"Linked save"' in source and
         '"Choose save"' in source and '"Needs attention"' in source,
         "Product Home must translate raw source-state diagnostics into consumer-facing labels")
