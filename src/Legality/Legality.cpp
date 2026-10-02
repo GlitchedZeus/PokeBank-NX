@@ -28,6 +28,7 @@
 #include "Legality/Gen3BacdPidIvCorrelation.h"
 #include "Legality/Gen3WishmkrEventTemplate.h"
 #include "Legality/Gen3BerryFixEventTemplate.h"
+#include "Legality/Gen3BacdRaEventTemplate.h"
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
 #include "Legality/Gen4PokewalkerEncounter.h"
@@ -201,6 +202,15 @@ namespace Legality {
                         pk.language(), pk.otGender(), pk.metLevel(),
                         pk.metLocation(), pk.ball(), pk.isEgg(),
                         pk.isFatefulEncounter(), pk.otName());
+                const auto restrictedAntiEvent =
+                    Gen3BacdRaEvent::match(
+                        {
+                            species, pk.tid16(), pk.sid16(), pk.originGame(),
+                            pk.language(), pk.otGender(), pk.metLevel(),
+                            pk.metLocation(), pk.ball(), pk.isEgg(),
+                            pk.isFatefulEncounter(), pk.otName()
+                        },
+                        bacd);
                 if (wishmkr) {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
@@ -210,6 +220,11 @@ namespace Legality {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
                         "Forced-shiny BA-CD RNG, RTC-derived seed range, and persistent fields match a pinned Berry Fix Zigzagoon distribution template",
+                        CheckIdentifier::EventGift);
+                } else if (restrictedAntiEvent.matched) {
+                    r.coverage.eventGift = CoverageLevel::Partial;
+                    add(r, Severity::Info,
+                        "Restricted anti-shiny BA-CD RNG and persistent fields match a pinned Gen III BACD_R_A distribution template",
                         CheckIdentifier::EventGift);
                 } else {
                     add(r, Severity::Info,
