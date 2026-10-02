@@ -468,6 +468,11 @@ require("Warm the small set of game-card / trainer assets" in activate_block and
         "SystemIcons::gameCardIcon" in activate_block and
         "SystemIcons::trainerPortrait" in activate_block,
         "full Games must prewarm artwork caches before interactive scrolling")
+set_user_start = source.index("void SaveSelectScreen::setUser")
+set_user_end = source.index("void SaveSelectScreen::refreshHubPreview", set_user_start)
+set_user_block = source[set_user_start:set_user_end]
+require("if (!classicGamesActive) refreshHubPreview();" in set_user_block,
+        "profile switching inside full Games must not rebuild the hidden Product Home preview")
 
 # Hardware-regression contracts added after the 941ac9d7 failure report.
 draw_start = source.index("void SaveSelectScreen::draw(PKSEFramebuffer& fb)")
