@@ -1,6 +1,7 @@
 #include "Legality/Gen3BacdPidIvCorrelation.h"
 #include "Legality/Gen3WishmkrEventTemplate.h"
 #include "Legality/Gen3BerryFixEventTemplate.h"
+#include "Legality/Gen3NegaiBoshiEventTemplate.h"
 
 #include <cassert>
 #include <iostream>
@@ -49,6 +50,39 @@ int main() {
 
     assert(!analyzeWithTrainer(
         0xBD3DF676u, {0, 15, 5, 4, 21, 6}, 80, 0).matched());
+
+    // Negai Boshi Jirachi uses the unrestricted BACD_U_AX forced-antishiny
+    // method with fixed Japanese distribution fields. This vector is generated from
+    // origin seed 0x12345678 using the same A/B/C/D LCRNG sequence.
+    const auto negaiRng = analyzeWithTrainer(
+        0xF86484EAu, {10, 12, 22, 0, 7, 29}, 30719, 0);
+    assert(negaiRng.matched());
+    assert(negaiRng.variant == Variant::ForceAntiShiny);
+    assert(negaiRng.originSeed == 0x12345678u);
+
+    namespace Negai = Legality::Gen3NegaiBoshiEvent;
+    Negai::Candidate negai{
+        385, 30719, 0, 2, 1, 0,
+        5, 255, 4, false, false, false, u"ネガイボシ"
+    };
+    assert(Negai::matches(negai, negaiRng));
+
+    auto negaiSapphire = negai;
+    negaiSapphire.originGame = 1;
+    negaiSapphire.otGender = 1; // recipient OT gender can be either value.
+    assert(Negai::matches(negaiSapphire, negaiRng));
+
+    auto negaiWrongLanguage = negai;
+    negaiWrongLanguage.language = 2;
+    assert(!Negai::matches(negaiWrongLanguage, negaiRng));
+
+    auto negaiWrongOt = negai;
+    negaiWrongOt.otName = u"WISHMKR";
+    assert(!Negai::matches(negaiWrongOt, negaiRng));
+
+    auto negaiWrongRng = negaiRng;
+    negaiWrongRng.variant = Variant::RegularAntiShiny;
+    assert(!Negai::matches(negai, negaiWrongRng));
 
     // Canonical PKHeX Berry Fix Zigzagoon: forced-shiny BA-CD_S, seed 0x20.
     const auto berryFix = analyzeWithTrainer(
