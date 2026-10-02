@@ -31,7 +31,7 @@ The first legality-engine tranche adds:
 - Gen III truncated-roamer PID/IV correlation for the Ruby/Sapphire and FireRed/LeafGreen roamer bug class;
 - standard Pokémon Colosseum/XD XDRNG PID/IV correlation, with shadow-team locks and anti-shiny variants kept separate;
 - Pokémon Channel Jirachi XDRNG correlation using PID, IVs, SID, Ruby/Sapphire origin and OT gender, linked to the pinned fixed distribution template for species/TID/OT/origin/met/ball evidence;
-- Gen III regular BA-CD, regular anti-shiny BA-CD_A, force anti-shiny BA-CD_AX, and forced-shiny BA-CD_S event PID/IV correlation, including recovered restricted 16-bit seed evidence and exact WISHMKR Jirachi linkage for the restricted regular class;
+- Gen III regular BA-CD, regular anti-shiny BA-CD_A, force anti-shiny BA-CD_AX, and forced-shiny BA-CD_S event PID/IV correlation, including recovered restricted 16-bit seed evidence, exact WISHMKR Jirachi linkage for the restricted regular class, and exact English/Japanese Berry Fix Zigzagoon linkage for the RTC-derived forced-shiny seed range;
 - Gen IV Cute Charm buffered-PID surface recognition, including Gen IV evolution/gender-ratio edge cases;
 - Gen IV Poké Radar Chain Shiny PID/IV/trainer-ID correlation plus generated D/P/Pt Radar-capable wild-slot provenance from pinned ground-tile metadata;
 - Gen IV Mystery Gift anti-shiny ARNG reroll correlation;
