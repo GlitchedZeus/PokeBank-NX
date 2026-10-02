@@ -57,7 +57,12 @@ int main() {
     assert(berryFix.variant == Variant::ForceShiny);
     assert(berryFix.originSeed == 0x20u);
     assert(berryFix.restrictedSeed);
-    assert(berryFix.originSeed <= 213u);
+    assert(Legality::Gen3BerryFixEvent::validOriginSeed(berryFix.originSeed));
+    static_assert(!Legality::Gen3BerryFixEvent::validOriginSeed(0u));
+    static_assert(!Legality::Gen3BerryFixEvent::validOriginSeed(2u));
+    static_assert(Legality::Gen3BerryFixEvent::validOriginSeed(3u));
+    static_assert(Legality::Gen3BerryFixEvent::validOriginSeed(213u));
+    static_assert(!Legality::Gen3BerryFixEvent::validOriginSeed(214u));
 
     namespace BerryFix = Legality::Gen3BerryFixEvent;
     assert(BerryFix::matchesTemplate(
