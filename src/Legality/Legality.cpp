@@ -26,6 +26,7 @@
 #include "Legality/Gen3ChannelPidIvCorrelation.h"
 #include "Legality/Gen3ChannelEventTemplate.h"
 #include "Legality/Gen3BacdPidIvCorrelation.h"
+#include "Legality/Gen3WishmkrEventTemplate.h"
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
 #include "Legality/Gen4PokewalkerEncounter.h"
@@ -180,8 +181,27 @@ namespace Legality {
                     "PID/IV spread matches the Gen III " +
                     std::string(Gen3BacdPidIv::variantName(bacd.variant)) +
                     (bacd.restrictedSeed ? " restricted-seed" : "") +
-                    " event RNG class; exact distribution-template provenance remains separate",
+                    " event RNG class",
                     CheckIdentifier::PidRng);
+
+                const bool wishmkr =
+                    bacd.variant == Gen3BacdPidIv::Variant::Regular &&
+                    bacd.restrictedSeed &&
+                    Gen3WishmkrEvent::matchesTemplate(
+                        species, pk.tid16(), pk.sid16(), pk.originGame(),
+                        pk.language(), pk.otGender(), pk.metLevel(),
+                        pk.metLocation(), pk.ball(), pk.isEgg(),
+                        pk.isFatefulEncounter(), pk.otName());
+                if (wishmkr) {
+                    r.coverage.eventGift = CoverageLevel::Partial;
+                    add(r, Severity::Info,
+                        "Restricted BA-CD RNG and persistent fields match the pinned WISHMKR Jirachi distribution template",
+                        CheckIdentifier::EventGift);
+                } else {
+                    add(r, Severity::Info,
+                        "BA-CD event RNG evidence is present, but no supported exact Gen III distribution template was proven; distribution provenance remains incomplete",
+                        CheckIdentifier::EventGift);
+                }
                 return;
             }
 
