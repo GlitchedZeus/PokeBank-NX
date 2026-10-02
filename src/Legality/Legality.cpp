@@ -195,7 +195,7 @@ namespace Legality {
                         pk.isFatefulEncounter(), pk.otName());
                 const bool berryFix =
                     bacd.variant == Gen3BacdPidIv::Variant::ForceShiny &&
-                    bacd.originSeed <= 213u &&
+                    Gen3BerryFixEvent::validOriginSeed(bacd.originSeed) &&
                     Gen3BerryFixEvent::matchesTemplate(
                         species, pk.tid16(), pk.sid16(), pk.originGame(),
                         pk.language(), pk.otGender(), pk.metLevel(),
