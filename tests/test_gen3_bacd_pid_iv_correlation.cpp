@@ -84,6 +84,30 @@ int main() {
     negaiWrongRng.variant = Variant::RegularAntiShiny;
     assert(!Negai::matches(negai, negaiWrongRng));
 
+    // The other pinned Negai Boshi Jirachi path is BACD_TA: the normal
+    // BA-CD origin is exactly two RNG calls after a restricted 16-bit table seed.
+    const auto negaiTableRng = analyzeWithTrainer(
+        0x4340FFF1u, {25, 16, 16, 30, 13, 26}, 30719, 0);
+    assert(negaiTableRng.matched());
+    assert(negaiTableRng.variant == Variant::Regular);
+    assert(Negai::table2OriginSeed(negaiTableRng) == 0x1234u);
+
+    auto negaiTable = negai;
+    negaiTable.originGame = 2;
+    negaiTable.otGender = 0;
+    assert(Negai::matchesRestrictedTable2(negaiTable, negaiTableRng));
+    assert(Negai::matches(negaiTable, negaiTableRng));
+
+    auto negaiTableSapphire = negaiTable;
+    negaiTableSapphire.originGame = 1;
+    assert(!Negai::matchesRestrictedTable2(
+        negaiTableSapphire, negaiTableRng));
+
+    auto negaiTableFemaleOt = negaiTable;
+    negaiTableFemaleOt.otGender = 1;
+    assert(!Negai::matchesRestrictedTable2(
+        negaiTableFemaleOt, negaiTableRng));
+
     // Canonical PKHeX Berry Fix Zigzagoon: forced-shiny BA-CD_S, seed 0x20.
     const auto berryFix = analyzeWithTrainer(
         0x38CA4EA0u, {0, 20, 28, 11, 19, 0}, 30317, 0);
