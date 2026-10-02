@@ -417,11 +417,11 @@ $(HOST_BUILD)/test_gen3_pid_iv_correlation_sanitize: tests/test_gen3_pid_iv_corr
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_pid_iv_correlation.cpp -o $@
 
-$(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation: tests/test_gen3_bacd_pid_iv_correlation.cpp include/Legality/Gen3BacdPidIvCorrelation.h include/Legality/Gen3WishmkrEventTemplate.h include/Legality/Gen3BerryFixEventTemplate.h include/Legality/Gen3NegaiBoshiEventTemplate.h include/Legality/Gen3PokeParkEggEventTemplate.h include/Legality/Gen3PcjpFifthEggEventTemplate.h include/Legality/Gen3PokemonBoxEggEventTemplate.h
+$(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation: tests/test_gen3_bacd_pid_iv_correlation.cpp include/Legality/Gen3BacdPidIvCorrelation.h include/Legality/Gen3WishmkrEventTemplate.h include/Legality/Gen3BerryFixEventTemplate.h include/Legality/Gen3NegaiBoshiEventTemplate.h include/Legality/Gen3PokeParkEggEventTemplate.h include/Legality/Gen3PcjpFifthEggEventTemplate.h include/Legality/Gen3PokemonBoxEggEventTemplate.h include/Legality/Gen3PcjpMachineEventTemplate.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_bacd_pid_iv_correlation.cpp -o $@
 
-$(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation_sanitize: tests/test_gen3_bacd_pid_iv_correlation.cpp include/Legality/Gen3BacdPidIvCorrelation.h include/Legality/Gen3WishmkrEventTemplate.h include/Legality/Gen3BerryFixEventTemplate.h include/Legality/Gen3NegaiBoshiEventTemplate.h include/Legality/Gen3PokeParkEggEventTemplate.h include/Legality/Gen3PcjpFifthEggEventTemplate.h include/Legality/Gen3PokemonBoxEggEventTemplate.h
+$(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation_sanitize: tests/test_gen3_bacd_pid_iv_correlation.cpp include/Legality/Gen3BacdPidIvCorrelation.h include/Legality/Gen3WishmkrEventTemplate.h include/Legality/Gen3BerryFixEventTemplate.h include/Legality/Gen3NegaiBoshiEventTemplate.h include/Legality/Gen3PokeParkEggEventTemplate.h include/Legality/Gen3PcjpFifthEggEventTemplate.h include/Legality/Gen3PokemonBoxEggEventTemplate.h include/Legality/Gen3PcjpMachineEventTemplate.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_bacd_pid_iv_correlation.cpp -o $@
 
