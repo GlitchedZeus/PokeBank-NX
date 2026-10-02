@@ -25,6 +25,7 @@
 #include "Legality/Gen3WondercardEggEventTemplate.h"
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3XdShadowEncounter.h"
+#include "Legality/Gen3XdShadowTeamLock.h"
 #include "Legality/Gen3ChannelPidIvCorrelation.h"
 #include "Legality/Gen3ChannelEventTemplate.h"
 #include "Legality/Gen3BacdPidIvCorrelation.h"
@@ -180,11 +181,23 @@ namespace Legality {
                     pk.isShiny(pk.id32(), {})
                 });
                 if (xdShadow.matched) {
-                    add(r, Severity::Info,
-                        xdShadow.rebattleLocation
-                            ? "CXD PID/IV evidence and persistent fields match a pinned Pokemon XD shadow encounter row through a source-supported Miror B. rebattle location; recursive shadow-team RNG history remains incomplete"
-                            : "CXD PID/IV evidence and persistent fields match a pinned Pokemon XD shadow encounter row; recursive shadow-team RNG history remains incomplete",
-                        CheckIdentifier::Encounter);
+                    const auto teamLock = Gen3XdShadowTeamLock::validateXd(
+                        xdShadow.index, cxd.originSeed, pk.tid16(), pk.sid16());
+                    if (teamLock == Gen3XdShadowTeamLock::Result::Matched) {
+                        add(r, Severity::Info,
+                            xdShadow.rebattleLocation
+                                ? "CXD PID/IV evidence, persistent fields and recursive Pokemon XD shadow-team/anti-shiny history match pinned source data through a source-supported Miror B. rebattle location"
+                                : "CXD PID/IV evidence, persistent fields and recursive Pokemon XD shadow-team/anti-shiny history match pinned source data",
+                            CheckIdentifier::Encounter);
+                    } else if (teamLock == Gen3XdShadowTeamLock::Result::SearchLimit) {
+                        add(r, Severity::Info,
+                            "Pinned Pokemon XD shadow identity matches, but bounded recursive team-lock search reached its safety limit; team/shiny-skip provenance remains incomplete",
+                            CheckIdentifier::Encounter);
+                    } else {
+                        add(r, Severity::Info,
+                            "Pinned Pokemon XD shadow identity matches, but no recursive team-lock history was proven for this CXD origin seed; team/shiny-skip provenance remains incomplete",
+                            CheckIdentifier::Encounter);
+                    }
                 } else {
                     add(r, Severity::Info,
                         "Exact Colosseum/XD encounter and recursive shadow-team provenance remain incomplete",

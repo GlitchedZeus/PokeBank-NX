@@ -193,6 +193,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen3_cxd_pid_iv_correlation
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_cxd_pid_iv_correlation_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen3_xd_shadow_encounter
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_xd_shadow_encounter_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_xd_shadow_team_lock
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_xd_shadow_team_lock_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_pid_iv_correlation
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_pid_iv_correlation_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_pokewalker_pid
@@ -466,6 +468,14 @@ $(HOST_BUILD)/test_gen3_xd_shadow_encounter: tests/test_gen3_xd_shadow_encounter
 $(HOST_BUILD)/test_gen3_xd_shadow_encounter_sanitize: tests/test_gen3_xd_shadow_encounter.cpp include/Legality/Gen3XdShadowEncounter.h include/Legality/Gen3XdShadowEncounterData.inc include/Legality/Gen3CxdPidIvCorrelation.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_xd_shadow_encounter.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_xd_shadow_team_lock: tests/test_gen3_xd_shadow_team_lock.cpp include/Legality/Gen3XdShadowTeamLock.h include/Legality/Gen3XdShadowTeamLockData.inc include/Legality/Gen3CxdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_xd_shadow_team_lock.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_xd_shadow_team_lock_sanitize: tests/test_gen3_xd_shadow_team_lock.cpp include/Legality/Gen3XdShadowTeamLock.h include/Legality/Gen3XdShadowTeamLockData.inc include/Legality/Gen3CxdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_xd_shadow_team_lock.cpp -o $@
 
 $(HOST_BUILD)/test_gen4_pid_iv_correlation: tests/test_gen4_pid_iv_correlation.cpp include/Legality/Gen4PidIvCorrelation.h include/Legality/Gen3PidIvCorrelation.h
 	@mkdir -p $(HOST_BUILD)
