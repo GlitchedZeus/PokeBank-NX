@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
-"""Fetch Product Home presentation art used by hardware builds.
+"""Prepare Product Home presentation art used by hardware builds.
 
-No generated trainer/region substitutes are allowed here. A missing or invalid download is a
-hard build failure so hardware can never silently receive fake scenery or a Poké Ball in place of
-a trainer whose real asset is expected.
-
-Region maps are own-work CC0 recreations from Wikimedia Commons by Ztash:
-  Hoenn:  https://commons.wikimedia.org/wiki/File:Hoenn_Map.png
-  Sinnoh: https://commons.wikimedia.org/wiki/File:Sinnoh_Map.png
-  Kalos:  https://commons.wikimedia.org/wiki/File:Kalos_Map.png
-
-Trainer sprites are the named Pokemon Showdown trainer sprite resources. Gold intentionally uses
-the Generation II Ethan/Gold sprite and Kris uses the Generation II Kris sprite; HGSS Ethan/Lyra
-remain separate keys.
+Trainer sprites are fetched from the named Pokemon Showdown resources. Region backdrops are
+project-owned presentation assets supplied for PokeBank NX and MUST already be present in RomFS.
+The build validates those exact files and never downloads, generates, or substitutes different
+region scenery behind the user's back.
 """
 from __future__ import annotations
 
@@ -41,11 +33,16 @@ TRAINER_URLS = {
     "lyra.png": "https://play.pokemonshowdown.com/sprites/trainers/lyra.png",
 }
 
-REGION_URLS = {
-    "hoenn.png": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Hoenn_Map.png",
-    "sinnoh.png": "https://upload.wikimedia.org/wikipedia/commons/8/85/Sinnoh_Map.png",
-    "kalos.png": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Kalos_Map.png",
-}
+REQUIRED_REGIONS = (
+    "kanto.png",
+    "johto.png",
+    "hoenn.png",
+    "sinnoh.png",
+    "unova.png",
+    "kalos.png",
+    "alola.png",
+    "galar.png",
+)
 
 
 def png_size(data: bytes) -> tuple[int, int]:
@@ -105,17 +102,19 @@ def main() -> int:
     try:
         for name, url in TRAINER_URLS.items():
             fetch(url, TRAINERS / name)
-        # Space the Commons requests slightly as well as retrying 429s. These files are immutable
-        # originals, so waiting is preferable to substituting anything generated.
-        for name, url in REGION_URLS.items():
-            fetch(url, REGIONS / name)
-            time.sleep(1)
+        # Region art is intentionally NOT fetched. Validate the exact branch-owned assets that
+        # Product Home is expected to show on hardware.
+        for name in REQUIRED_REGIONS:
+            path = REGIONS / name
+            data = path.read_bytes()
+            width, height = png_size(data)
+            print(f"VERIFIED {path.relative_to(ROOT)} {width}x{height} {len(data)} bytes")
     except Exception as exc:
         print(f"PRODUCT ART FETCH FAILED: {exc}", file=sys.stderr)
         return 1
 
     expected_trainers = set(TRAINER_URLS)
-    expected_regions = set(REGION_URLS)
+    expected_regions = set(REQUIRED_REGIONS)
     if not expected_trainers.issubset({p.name for p in TRAINERS.glob("*.png")}):
         print("PRODUCT ART FETCH FAILED: trainer set incomplete", file=sys.stderr)
         return 1

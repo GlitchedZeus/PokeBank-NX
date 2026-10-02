@@ -2,6 +2,8 @@
 #define UI_SAVE_SELECT_SCREEN_H
 
 #include <array>
+#include <cstdint>
+#include <map>
 #include <vector>
 #include <string>
 
@@ -120,6 +122,20 @@ namespace UI {
             bool directory = false;
         };
 
+        enum class GameSortMode : uint8_t {
+            ReleaseDate = 0,
+            MostPlayed,
+            RecentlyPlayed,
+            RecentlyAdded,
+            Favorites,
+        };
+        struct GameHubRecord {
+            bool favorite = false;
+            uint32_t launchCount = 0;
+            int64_t lastPlayed = 0;
+            int64_t firstSeen = 0;
+        };
+
         std::vector<UserEntry> users;
         int userIndex = 0;
         int titleIndex = 0;
@@ -137,6 +153,8 @@ namespace UI {
         OpenIntent openIntent = OpenIntent::Default;
         bool classicGamesActive = false;
         bool helpReturnClassicGames = false;
+        GameSortMode gameSortMode = GameSortMode::ReleaseDate;
+        std::map<std::string, GameHubRecord> gameHubRecords;
 
         std::vector<LaunchFileEntry> launchFileEntries;
         std::string launchBrowsePath;
@@ -199,6 +217,7 @@ namespace UI {
         std::string gen4TargetGameId;
         std::string gen4Notice;
         bool gen4SetupFromGamesDrawer = false;
+        bool gen4SetupFromClassicGames = false;
         // Generation-specific candidates stay as opaque validation handles; the chooser itself
         // consumes the same provider-neutral SaveInstance rows used by Gen I-III.
         std::vector<PokeVault::Integration::Gen4::SourceCandidate> gen4Candidates;
@@ -215,6 +234,15 @@ namespace UI {
 
         void activateHubDock();
         void activateGameWorkspace();
+        void openSaveSourceForCurrentTitle(bool fromGamesDrawer, bool fromClassicGames);
+        void loadGameHubState();
+        void saveGameHubState() const;
+        void sortGamesPreservingSelection();
+        void cycleGameSortMode();
+        void toggleCurrentFavorite();
+        void recordCurrentLaunch();
+        [[nodiscard]] bool titleFavorite(const UserEntry& user, const TitleEntry& title) const;
+        [[nodiscard]] const char* gameSortModeLabel() const;
         void loadUsers();
         void loadLegacySources(const PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
         void loadGen4Cards();
@@ -247,7 +275,8 @@ namespace UI {
         void selectCurrentTitle();
         void selectCurrentTitleForItems();
         void selectCurrentLegacyInstance();
-        void openGen4Setup(const std::string& gameId, std::string notice = {}, bool returnToGamesDrawer = false);
+        void openGen4Setup(const std::string& gameId, std::string notice = {},
+                           bool returnToGamesDrawer = false, bool returnToClassicGames = false);
         void discoverGen4Candidates();
         bool assignGen4Candidate(const PokeVault::Integration::Gen4::SourceCandidate& candidate);
         void chooseGen4ManualFile();

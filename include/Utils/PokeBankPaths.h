@@ -46,6 +46,7 @@ inline std::string legacyBankRoot() { return banksRoot() + "/legacy-pkse"; }
 inline std::string settingsFile() { return configRoot() + "/settings.cfg"; }
 inline std::string legacySourceBindingsFile() { return configRoot() + "/legacy_source_bindings.cfg"; }
 inline std::string gameLaunchBindingsFile() { return configRoot() + "/game_launch_bindings.cfg"; }
+inline std::string gameHubStateFile() { return configRoot() + "/game_hub_state.cfg"; }
 inline std::string traceFile() { return logsRoot() + "/trace.log"; }
 
 inline bool isSafeTimestamp(std::string_view value) noexcept {

@@ -117,6 +117,34 @@ inline bool gameLaunchContentSupported(std::string_view gameId, std::string_view
     return false;
 }
 
+inline bool gameLaunchCandidateStemMatches(std::string_view gameId,
+                                            std::string_view savePath,
+                                            std::string_view contentPath) {
+    const std::string wanted = normalizedLaunchStem(savePath);
+    const std::string candidate = normalizedLaunchStem(contentPath);
+    if (candidate.empty()) return false;
+    if (!wanted.empty() && candidate == wanted) return true;
+
+    // Emulator saves often add/remove words such as "Pokemon", "Version", region tags, or archive
+    // suffixes. Accept a containment match only for a reasonably distinctive stem; the caller still
+    // requires EXACTLY ONE filesystem match before launching, so ambiguity remains fail-closed.
+    if (wanted.size() >= 5 &&
+        (candidate.find(wanted) != std::string::npos ||
+         wanted.find(candidate) != std::string::npos))
+        return true;
+
+    // Exact game identity is a second bounded hint when save and ROM basenames differ completely.
+    // Strip the platform suffix and punctuation (platinum_nds -> platinum). Short names like red/gold
+    // are deliberately ignored to avoid accidental FireRed/HeartGold matches.
+    const size_t underscore = gameId.find('_');
+    const std::string_view identity = gameId.substr(0, underscore);
+    std::string compact;
+    compact.reserve(identity.size());
+    for (unsigned char c : identity)
+        if (std::isalnum(c)) compact.push_back(static_cast<char>(std::tolower(c)));
+    return compact.size() >= 5 && candidate.find(compact) != std::string::npos;
+}
+
 inline std::string gameLaunchBindingFamilyPrefix(std::string_view profileIdentity,
                                                   std::string_view gameId) {
     if (profileIdentity.empty() || gameId.empty()) return {};

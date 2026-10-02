@@ -146,6 +146,19 @@ classic_draw = source[source.index("if (classicGamesActive) {", source.index("vo
                       source.index("drawAppBackdrop(fb);", source.index("void SaveSelectScreen::draw("))]
 require("scrollClassicSelectionIntoView();" in classic_draw and "std::clamp(titleIndex" in classic_draw,
         "the full Games artwork browser must normalize selection/scroll immediately after save/source changes")
+require('drawProductTitleBar(fb, "Pokémon Games")' in source and
+        'drawTitleBar(fb, "Pokémon Games")' not in source,
+        "the full Games browser must use clean product chrome so profile controls cannot overlap safety diagnostics")
+require('{"X","Save / Source"}' in source and '{"Y","Sort"}' in source and
+        '{"+","Favorite"}' in source,
+        "the full Games browser footer must expose source assignment, sort and favorite actions")
+require("GameSortMode::MostPlayed" in source and "GameSortMode::RecentlyPlayed" in source and
+        "GameSortMode::RecentlyAdded" in source and "GameSortMode::Favorites" in source and
+        "gameHubStateFile()" in source,
+        "game ordering/favorites must be persistent and shared by Product Home, Quick Games and full Games")
+require('"Sort: ") + gameSortModeLabel()' in source and
+        '"\\xE2\\x99\\xA5"' in source,
+        "Games surfaces must show the active sort and a small heart for favorites")
 require('{"+", "Current Game"}' in source,
         "Plus must open Current Game tools")
 require("+: Settings" not in source and '{"+" , "Settings"}' not in source and '{"+" , "Settings"}' not in shell_source,
@@ -153,9 +166,13 @@ require("+: Settings" not in source and '{"+" , "Settings"}' not in source and '
 require("HidNpadButton_ZL" not in source,
         "Product Home must not retain the old ZL profile shortcut")
 require("kind == GameLaunchProviderKind::DraStic" in launcher and
-        'findContentMatches({"sdmc:/switch/drastic/games"}' in launcher and
+        '"sdmc:/switch/drastic/games"' in launcher and
+        '"sdmc:/switch/drastic/roms"' in launcher and
+        '"sdmc:/roms/nds"' in launcher and
+        "gameLaunchCandidateStemMatches" in launcher and
+        "providerKindForSourcePath" in launcher and
         "Direct selected-ROM handoff is not supported by this DraStic build." not in launcher,
-        "current DraStic integration must resolve/link a real DS game path instead of launcher-only mode")
+        "DraStic launch must infer its provider from bounded source paths, tolerate save/ROM basename differences and still require a unique match")
 require("descriptor.state != GameLaunchState::LauncherOnly" in launcher,
         "launcher-only fallbacks must never receive a falsely linked ROM argument")
 require("GameLaunchProviderKind::MelonDS" in launcher,
@@ -172,10 +189,11 @@ require("headerRects.push_back" in source and
         "Product Home must render one selectable header Settings gear and no dock Settings")
 require("The right-side feature cards are stacked" in source and
         "The round-logo strip behaves like an ordinary horizontal control row." in source and
-        "if (hubDockIndex > 0)" in source and "--hubDockIndex;" in source and
+        "if (hubDockIndex == 0 || hubDockIndex == 3)" in source and
+        "else if (hubDockIndex > 0)" in source and "--hubDockIndex;" in source and
         "if (hubDockIndex < 4) ++hubDockIndex;" in source and
         "headerActionIndex = 0;" in source,
-        "Product Home right-side focus must keep header reachability while dock Left/Right moves exactly one logo at a time")
+        "Product Home right-side focus must keep header reachability, move one logo at a time, and let Search-Left return to the hero")
 require("constexpr int featureH = 132;" in source and
         "const int navY = dexY + featureH + 20;" in source and
         "constexpr int buttonD = 74;" in source and
@@ -187,6 +205,9 @@ require("ProfilePicker" in header and "profilePickerIndex" in source and
         "setUser(profilePickerIndex)" in source and
         '"SWITCH PROFILE"' in source and '"Choose Profile"' in source and '"CURRENT"' in source,
         "the profile avatar must open the centered professional profile chooser")
+require("profileRadius = 10" in source and "pickerAvatarRadius = 12" in source and
+        "avatarRadius = 10" in source,
+        "profile pictures must use rounded-square frames instead of circular framing")
 require("GamesDrawer" in header and '"QUICK GAMES"' in source and
         "constexpr int cols = 3;" in source and "constexpr int visibleRows = 3;" in source and
         "constexpr int w = 520;" in source and
@@ -205,12 +226,17 @@ require("if (kDown & (HidNpadButton_B | HidNpadButton_Y))" not in drawer_update 
         "// B is the only close/back control" in drawer_update and
         "fb.drawFilledRect(x, 0, 2, h, Colors::FocusBorder);" not in drawer_draw,
         "Quick Games Y must be inert, B-only close, and the colored drawer edge stripe must stay removed")
-require("openGen4Setup(game.gameId, \"Assign, repair, or change this game's save source.\", true)" in source and
-        "Overlay::LegacyAssignment" in source,
-        "Games save assignment must cover Gen IV linking and unassigned Gen I-III sources")
+require('"X: Save / Source   •   B: Close"' not in drawer_draw,
+        "Quick Games must rely on the footer for controls instead of repeating X/B instructions inside the drawer")
+require("openSaveSourceForCurrentTitle(true, false)" in source and
+        "openSaveSourceForCurrentTitle(false, true)" in source and
+        "Overlay::LegacyAssignment" in source and
+        "gen4SetupFromClassicGames" in source,
+        "Quick Games and the full Games browser must both expose X Save/Source assignment without forcing an editor open")
 require("gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None" in source and
-        "gen4SetupFromGamesDrawer = false;" in source,
-        "Gen IV source setup must return cleanly to Games when launched from the drawer")
+        "gen4SetupFromGamesDrawer = false;" in source and
+        "gen4SetupFromClassicGames = false;" in source,
+        "Gen IV source setup must return cleanly to whichever Games surface launched it")
 require('kSettingsCategories' in shell_source and
         '"Look", "System", "Data", "Update", "Developer", "Info"' in shell_source and
         '"User", "Look"' not in shell_source and '"Profile", "Switch User"' not in shell_source,
@@ -302,6 +328,7 @@ require("17.0f,  // Caption / secondary information" in framebuffer and
 require("SystemIcons::trainerPortrait" in source and "portrait.assetKey" in source,
         "trainer presentation must load optional real portrait artwork when packaged")
 require("branch-romfs-overrides" in product_workflow and
+        "kanto johto hoenn sinnoh unova kalos alola galar" in product_workflow and
         'test -s "romfs/trainer_portraits/$f.png"' in product_workflow and
         "'romfs/trainer_portraits/**'" in product_workflow and
         "'romfs/region_backdrops/**'" in product_workflow and
@@ -309,6 +336,7 @@ require("branch-romfs-overrides" in product_workflow and
         "region backdrop runtime path is missing from final NRO" in product_workflow,
         "Product UI native packaging must preserve and verify trainer/region presentation payload in the final NRO")
 require("branch-romfs-overrides" in gen4_workflow and
+        "kanto johto hoenn sinnoh unova kalos alola galar" in gen4_workflow and
         'test -s "application/romfs/trainer_portraits/$f.png"' in gen4_workflow and
         "'romfs/trainer_portraits/**'" in gen4_workflow and
         "'romfs/region_backdrops/**'" in gen4_workflow and
@@ -325,9 +353,13 @@ for portrait_key in ("red", "gold", "kris", "brendan", "may",
             f"hardware product-art fetch must include trainer asset: {portrait_key}")
 require('"leaf.png"' not in product_art_fetch,
         "do not package or pretend a Leaf portrait until an actual Leaf asset is supplied")
-for region_key in ("hoenn.png", "sinnoh.png", "kalos.png"):
+for region_key in ("kanto.png", "johto.png", "hoenn.png", "sinnoh.png",
+                   "unova.png", "kalos.png", "alola.png", "galar.png"):
     require(f'"{region_key}"' in product_art_fetch,
-            f"hardware product-art fetch must include real region artwork: {region_key}")
+            f"hardware product-art preflight must require branch-owned region artwork: {region_key}")
+require("REGION_URLS" not in product_art_fetch and "upload.wikimedia.org" not in product_art_fetch and
+        "Region art is intentionally NOT fetched" in product_art_fetch,
+        "hardware builds must preserve the supplied PokeBank NX region art instead of downloading substitute maps")
 require("truncated PNG chunk" in product_art_fetch and "PNG has no complete IEND" in product_art_fetch,
         "product-art preflight must reject structurally truncated PNGs before packaging")
 require('"red"' in source and '"dawn"' in source and '"lucas"' in source and

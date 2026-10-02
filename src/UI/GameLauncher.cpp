@@ -264,7 +264,10 @@ std::string defaultLauncherPath(GameLaunchProviderKind kind,
                                   "sdmc:/switch/mgba/mgba.nro"});
         case GameLaunchProviderKind::DraStic:
             return firstExisting({"sdmc:/switch/DrasticDS.nro",
-                                  "sdmc:/switch/drastic/DrasticDS.nro"});
+                                  "sdmc:/switch/drastic/DrasticDS.nro",
+                                  "sdmc:/switch/DrasticDS_nx.nro",
+                                  "sdmc:/switch/drastic/DrasticDS_nx.nro",
+                                  "sdmc:/switch/drastic/drastic.nro"});
         case GameLaunchProviderKind::MelonDS:
             return firstExisting({"sdmc:/switch/melonds/melonDS.nro",
                                   "sdmc:/switch/melonDS.nro"});
@@ -289,6 +292,41 @@ std::string defaultRetroArchCore(std::string_view gameId) {
         return firstExisting({"sdmc:/retroarch/cores/gambatte_libretro_libnx.nro",
                               "sdmc:/retroarch/cores/mgba_libretro_libnx.nro"});
     return {};
+}
+
+GameLaunchProviderKind providerKindForSourcePath(std::string_view providerId,
+                                                std::string_view sourcePath) {
+    GameLaunchProviderKind kind = gameLaunchProviderKind(providerId);
+    if (kind != GameLaunchProviderKind::Unknown) return kind;
+
+    std::string path(sourcePath);
+    std::transform(path.begin(), path.end(), path.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    if (path.find("/switch/drastic/") != std::string::npos)
+        return GameLaunchProviderKind::DraStic;
+    if (path.find("/switch/melonds/") != std::string::npos ||
+        path.find("/melonds/") != std::string::npos)
+        return GameLaunchProviderKind::MelonDS;
+    if (path.find("/retroarch/") != std::string::npos)
+        return GameLaunchProviderKind::RetroArch;
+    if (path.find("/mgba/") != std::string::npos)
+        return GameLaunchProviderKind::MGBA;
+    if (path.find("/tico/") != std::string::npos)
+        return GameLaunchProviderKind::Tico;
+    return GameLaunchProviderKind::Unknown;
+}
+
+std::string providerIdForKind(GameLaunchProviderKind kind, std::string_view fallback) {
+    switch (kind) {
+        case GameLaunchProviderKind::RetroArch: return "retroarch";
+        case GameLaunchProviderKind::MGBA:      return "mgba";
+        case GameLaunchProviderKind::Tico:      return "tico";
+        case GameLaunchProviderKind::DraStic:   return "drastic";
+        case GameLaunchProviderKind::MelonDS:   return "melonds";
+        case GameLaunchProviderKind::Unknown:   return std::string(fallback);
+    }
+    return std::string(fallback);
 }
 
 bool loadStoredBinding(std::string_view key, std::string_view providerId,
@@ -326,7 +364,7 @@ bool loadStoredBinding(std::string_view key, std::string_view providerId,
     return true;
 }
 
-void collectContentMatches(const std::string& root, std::string_view wantedStem,
+void collectContentMatches(const std::string& root, std::string_view sourcePath,
                            std::string_view gameId, size_t depth, size_t maxDepth,
                            size_t& examined, size_t maxFiles, std::set<std::string>& visited,
                            std::vector<std::string>& matches) {
@@ -356,19 +394,19 @@ void collectContentMatches(const std::string& root, std::string_view wantedStem,
         if (::stat(path.c_str(), &st) != 0) continue;
         if (S_ISDIR(st.st_mode)) {
             if (depth < maxDepth)
-                collectContentMatches(path, wantedStem, gameId, depth + 1, maxDepth,
+                collectContentMatches(path, sourcePath, gameId, depth + 1, maxDepth,
                                       examined, maxFiles, visited, matches);
             continue;
         }
         if (!S_ISREG(st.st_mode) || !gameLaunchContentSupported(gameId, path)) continue;
         ++examined;
-        if (normalizedLaunchStem(path) == wantedStem)
+        if (gameLaunchCandidateStemMatches(gameId, sourcePath, path))
             matches.push_back(path);
     }
 }
 
 std::vector<std::string> findContentMatches(std::initializer_list<std::string> roots,
-                                            std::string_view wantedStem,
+                                            std::string_view sourcePath,
                                             std::string_view gameId,
                                             size_t maxDepth = 3,
                                             size_t maxFiles = 512) {
@@ -376,7 +414,7 @@ std::vector<std::string> findContentMatches(std::initializer_list<std::string> r
     std::set<std::string> visited;
     size_t examined = 0;
     for (const auto& root : roots) {
-        collectContentMatches(root, wantedStem, gameId, 0, maxDepth,
+        collectContentMatches(root, sourcePath, gameId, 0, maxDepth,
                               examined, maxFiles, visited, matches);
         if (examined >= maxFiles) break;
     }
@@ -573,17 +611,28 @@ GameLaunchDescriptor resolveKnownHomebrew(GameLaunchProviderKind kind,
             else if (gameId.size() >= 3 && gameId.substr(gameId.size() - 3) == "_gb")
                 root = "sdmc:/tico/roms/gb";
             if (!root.empty())
-                matches = findContentMatches({root}, wanted, gameId, 4, 512);
+                matches = findContentMatches({root}, sourcePath, gameId, 4, 512);
         } else if (kind == GameLaunchProviderKind::DraStic) {
-            matches = findContentMatches({"sdmc:/switch/drastic/games"},
-                                         wanted, gameId, 5, 1024);
+            matches = findContentMatches({
+                                             "sdmc:/switch/drastic/games",
+                                             "sdmc:/switch/drastic/roms",
+                                             "sdmc:/switch/drastic",
+                                             "sdmc:/roms/nds",
+                                             "sdmc:/roms/NDS"
+                                         },
+                                         sourcePath, gameId, 6, 2048);
         } else if (kind == GameLaunchProviderKind::MelonDS) {
-            matches = findContentMatches({"sdmc:/switch/melonds", "sdmc:/melonds"},
-                                         wanted, gameId, 3, 512);
+            matches = findContentMatches({
+                                             "sdmc:/switch/melonds",
+                                             "sdmc:/melonds",
+                                             "sdmc:/roms/nds",
+                                             "sdmc:/roms/NDS"
+                                         },
+                                         sourcePath, gameId, 5, 1536);
         } else if (kind == GameLaunchProviderKind::MGBA) {
             const std::string saveDir = parentPath(std::string(sourcePath));
             const std::string nearby = parentPath(saveDir);
-            matches = findContentMatches({saveDir, nearby}, wanted, gameId, 2, 384);
+            matches = findContentMatches({saveDir, nearby}, sourcePath, gameId, 2, 384);
         }
     }
 
@@ -649,14 +698,15 @@ GameLaunchDescriptor resolveGameLaunch(uint64_t titleId,
         return result;
     }
 
-    const GameLaunchProviderKind kind = gameLaunchProviderKind(providerId);
+    const GameLaunchProviderKind kind = providerKindForSourcePath(providerId, sourcePath);
+    const std::string resolvedProvider = providerIdForKind(kind, providerId);
     if (kind == GameLaunchProviderKind::RetroArch)
         return resolveRetroArch(gameId, sourcePath, bindingKey);
     if (kind == GameLaunchProviderKind::MGBA ||
         kind == GameLaunchProviderKind::Tico ||
         kind == GameLaunchProviderKind::DraStic ||
         kind == GameLaunchProviderKind::MelonDS)
-        return resolveKnownHomebrew(kind, gameId, providerId, sourcePath, bindingKey);
+        return resolveKnownHomebrew(kind, gameId, resolvedProvider, sourcePath, bindingKey);
 
     GameLaunchDescriptor result;
     result.backend = GameLaunchBackend::HomebrewNro;
@@ -678,7 +728,8 @@ bool saveGameLaunchBinding(std::string_view bindingKey,
         error = "No exact source identity is available for this launch link.";
         return false;
     }
-    const GameLaunchProviderKind kind = gameLaunchProviderKind(providerId);
+    const GameLaunchProviderKind kind = providerKindForSourcePath(providerId, contentPath);
+    const std::string resolvedProvider = providerIdForKind(kind, providerId);
     if (kind == GameLaunchProviderKind::Unknown) {
         error = "This source provider does not have a launch adapter.";
         return false;
@@ -694,7 +745,7 @@ bool saveGameLaunchBinding(std::string_view bindingKey,
     }
 
     StoredLaunchBinding binding;
-    binding.providerId = compactLaunchProvider(providerId);
+    binding.providerId = compactLaunchProvider(resolvedProvider);
     binding.launcherPath = defaultLauncherPath(kind, gameId, content);
     binding.contentPath = content;
     if (kind == GameLaunchProviderKind::RetroArch) {
@@ -723,7 +774,7 @@ bool forgetGameLaunchBinding(std::string_view bindingKey, std::string& error) {
 std::string suggestedGameLaunchBrowseRoot(std::string_view gameId,
                                           std::string_view providerId,
                                           std::string_view sourcePath) {
-    const GameLaunchProviderKind kind = gameLaunchProviderKind(providerId);
+    const GameLaunchProviderKind kind = providerKindForSourcePath(providerId, sourcePath);
     std::string candidate;
     switch (kind) {
         case GameLaunchProviderKind::Tico:

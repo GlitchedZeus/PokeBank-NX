@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
+#include <ctime>
 #include <iomanip>
 #include <sstream>
 #include <dirent.h>
@@ -24,6 +26,7 @@
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
 #include "Utils/Keyboard.h"
 #include "Utils/Logger.h"
+#include "Utils/PokeBankPaths.h"
 #include "Utils/Settings.h"
 #include "Utils/StringHelpers.h"
 
@@ -60,6 +63,29 @@ namespace UI {
             if (raw == "INVALID") return "Invalid source";
             if (raw == "AMBIGUOUS") return "Needs attention";
             return std::string(raw);
+        }
+
+        int gameReleaseDateKey(std::string_view id) noexcept {
+            // Stable release ordering for every game identity currently surfaced by Product Home.
+            // Newer releases sort first; unknown/future identities remain deterministic at the end.
+            if (id == "legends_za_switch") return 20251016;
+            if (id == "scarlet_switch" || id == "violet_switch") return 20221118;
+            if (id == "legends_arceus_switch") return 20220128;
+            if (id == "brilliant_diamond_switch" || id == "shining_pearl_switch") return 20211119;
+            if (id == "sword_switch" || id == "shield_switch") return 20191115;
+            if (id == "lets_go_pikachu_switch" || id == "lets_go_eevee_switch") return 20181116;
+            if (id == "heartgold_nds" || id == "soulsilver_nds") return 20090912;
+            if (id == "platinum_nds") return 20080913;
+            if (id == "diamond_nds" || id == "pearl_nds") return 20060928;
+            if (id == "emerald_gba") return 20040916;
+            if (id == "firered_gba" || id == "leafgreen_gba" ||
+                id == "firered_switch" || id == "leafgreen_switch") return 20040129;
+            if (id == "ruby_gba" || id == "sapphire_gba") return 20021121;
+            if (id == "crystal_gbc") return 20001214;
+            if (id == "gold_gbc" || id == "silver_gbc") return 19991121;
+            if (id == "yellow_gb") return 19980912;
+            if (id == "red_gb" || id == "blue_gb") return 19960227;
+            return 0;
         }
 
         std::string providerSummary(
@@ -330,11 +356,218 @@ namespace UI {
     constexpr int CLASSIC_GRID_Y = 126;
     constexpr int CLASSIC_VISIBLE_ROWS = 2;
 
+    void SaveSelectScreen::loadGameHubState() {
+        gameHubRecords.clear();
+        gameSortMode = GameSortMode::ReleaseDate;
+
+        FILE* file = std::fopen(PokeBank::Paths::gameHubStateFile().c_str(), "rb");
+        if (!file) return;
+
+        char line[1024];
+        while (std::fgets(line, sizeof(line), file)) {
+            std::string row(line);
+            while (!row.empty() && (row.back() == '\n' || row.back() == '\r'))
+                row.pop_back();
+            if (row.rfind("sort=", 0) == 0) {
+                const int value = std::atoi(row.c_str() + 5);
+                if (value >= 0 && value <= static_cast<int>(GameSortMode::Favorites))
+                    gameSortMode = static_cast<GameSortMode>(value);
+                continue;
+            }
+            if (row.rfind("record\t", 0) != 0) continue;
+
+            std::array<std::string, 5> fields{};
+            size_t pos = 7;
+            bool valid = true;
+            for (size_t i = 0; i < fields.size(); ++i) {
+                const size_t tab = row.find('\t', pos);
+                if (i + 1 < fields.size()) {
+                    if (tab == std::string::npos) { valid = false; break; }
+                    fields[i] = row.substr(pos, tab - pos);
+                    pos = tab + 1;
+                } else {
+                    fields[i] = row.substr(pos);
+                }
+            }
+            if (!valid || fields[0].empty()) continue;
+
+            GameHubRecord record;
+            record.favorite = fields[1] == "1";
+            record.launchCount = static_cast<uint32_t>(std::strtoul(fields[2].c_str(), nullptr, 10));
+            record.lastPlayed = static_cast<int64_t>(std::strtoll(fields[3].c_str(), nullptr, 10));
+            record.firstSeen = static_cast<int64_t>(std::strtoll(fields[4].c_str(), nullptr, 10));
+            gameHubRecords[fields[0]] = record;
+        }
+        std::fclose(file);
+    }
+
+    void SaveSelectScreen::saveGameHubState() const {
+        std::string error;
+        if (!PokeBank::Paths::ensureConfigRoot(&error)) {
+            logErrorToFile("Game Hub state: could not initialize config root", error.c_str());
+            return;
+        }
+        const std::string target = PokeBank::Paths::gameHubStateFile();
+        const std::string temp = target + ".tmp";
+        FILE* file = std::fopen(temp.c_str(), "wb");
+        if (!file) {
+            logErrorToFile("Game Hub state: could not create temporary file");
+            return;
+        }
+        std::fprintf(file, "sort=%d\n", static_cast<int>(gameSortMode));
+        for (const auto& [key, record] : gameHubRecords) {
+            std::fprintf(file, "record\t%s\t%d\t%u\t%lld\t%lld\n",
+                         key.c_str(), record.favorite ? 1 : 0, record.launchCount,
+                         static_cast<long long>(record.lastPlayed),
+                         static_cast<long long>(record.firstSeen));
+        }
+        const bool ok = std::fflush(file) == 0 && std::fclose(file) == 0;
+        if (!ok) {
+            std::remove(temp.c_str());
+            logErrorToFile("Game Hub state: temporary write failed");
+            return;
+        }
+        if (std::rename(temp.c_str(), target.c_str()) != 0) {
+            std::remove(temp.c_str());
+            logErrorToFile("Game Hub state: could not install updated state");
+        }
+    }
+
+    const char* SaveSelectScreen::gameSortModeLabel() const {
+        switch (gameSortMode) {
+            case GameSortMode::ReleaseDate:    return "Release Date";
+            case GameSortMode::MostPlayed:     return "Most Played";
+            case GameSortMode::RecentlyPlayed: return "Recently Played";
+            case GameSortMode::RecentlyAdded:  return "Recently Added";
+            case GameSortMode::Favorites:      return "Favorites";
+        }
+        return "Release Date";
+    }
+
+    bool SaveSelectScreen::titleFavorite(const UserEntry& user, const TitleEntry& title) const {
+        const std::string key = profileIdentity(user.uid) + "|" + title.gameId;
+        const auto found = gameHubRecords.find(key);
+        return found != gameHubRecords.end() && found->second.favorite;
+    }
+
+    void SaveSelectScreen::sortGamesPreservingSelection() {
+        std::string selectedProfile;
+        std::string selectedGame;
+        SelectedSourceKind selectedKind = SelectedSourceKind::None;
+        u64 selectedTitle = 0;
+        if (const UserEntry* selectedUser = currentUser()) {
+            selectedProfile = profileIdentity(selectedUser->uid);
+            if (titleIndex >= 0 && titleIndex < static_cast<int>(selectedUser->titles.size())) {
+                const auto& title = selectedUser->titles[static_cast<size_t>(titleIndex)];
+                selectedGame = title.gameId;
+                selectedKind = title.sourceKind;
+                selectedTitle = title.titleId;
+            }
+        }
+
+        const int64_t now = static_cast<int64_t>(std::time(nullptr));
+        bool stateChanged = false;
+        for (auto& user : users) {
+            const std::string profile = profileIdentity(user.uid);
+            for (const auto& title : user.titles) {
+                const std::string key = profile + "|" + title.gameId;
+                auto [it, inserted] = gameHubRecords.try_emplace(key);
+                if (inserted || it->second.firstSeen <= 0) {
+                    it->second.firstSeen = now;
+                    stateChanged = true;
+                }
+            }
+
+            auto recordFor = [&](const TitleEntry& title) -> GameHubRecord {
+                const auto found = gameHubRecords.find(profile + "|" + title.gameId);
+                return found == gameHubRecords.end() ? GameHubRecord{} : found->second;
+            };
+            std::stable_sort(user.titles.begin(), user.titles.end(),
+                [&](const TitleEntry& a, const TitleEntry& b) {
+                    const GameHubRecord ar = recordFor(a);
+                    const GameHubRecord br = recordFor(b);
+                    if (gameSortMode == GameSortMode::Favorites && ar.favorite != br.favorite)
+                        return ar.favorite > br.favorite;
+                    if (gameSortMode == GameSortMode::MostPlayed &&
+                        ar.launchCount != br.launchCount)
+                        return ar.launchCount > br.launchCount;
+                    if (gameSortMode == GameSortMode::RecentlyPlayed &&
+                        ar.lastPlayed != br.lastPlayed)
+                        return ar.lastPlayed > br.lastPlayed;
+                    if (gameSortMode == GameSortMode::RecentlyAdded &&
+                        ar.firstSeen != br.firstSeen)
+                        return ar.firstSeen > br.firstSeen;
+                    if (gameSortMode == GameSortMode::MostPlayed &&
+                        ar.lastPlayed != br.lastPlayed)
+                        return ar.lastPlayed > br.lastPlayed;
+                    const int ad = gameReleaseDateKey(a.gameId);
+                    const int bd = gameReleaseDateKey(b.gameId);
+                    if (ad != bd) return ad > bd;
+                    return a.gameId < b.gameId;
+                });
+        }
+
+        if (stateChanged) saveGameHubState();
+
+        if (!selectedProfile.empty() && userIndex >= 0 && userIndex < static_cast<int>(users.size()) &&
+            profileIdentity(users[static_cast<size_t>(userIndex)].uid) == selectedProfile) {
+            const auto& titles = users[static_cast<size_t>(userIndex)].titles;
+            const auto found = std::find_if(titles.begin(), titles.end(), [&](const TitleEntry& title) {
+                return title.gameId == selectedGame && title.sourceKind == selectedKind &&
+                       (selectedTitle == 0 || title.titleId == selectedTitle);
+            });
+            if (found != titles.end())
+                titleIndex = static_cast<int>(std::distance(titles.begin(), found));
+            else
+                titleIndex = titles.empty() ? 0 : std::clamp(titleIndex, 0, static_cast<int>(titles.size()) - 1);
+        }
+
+        gamesDrawerIndex = titleIndex;
+        scrollSelectionIntoView();
+        if (classicGamesActive) scrollClassicSelectionIntoView();
+    }
+
+    void SaveSelectScreen::cycleGameSortMode() {
+        const int next = (static_cast<int>(gameSortMode) + 1) % 5;
+        gameSortMode = static_cast<GameSortMode>(next);
+        saveGameHubState();
+        sortGamesPreservingSelection();
+        hubNotice = std::string("Sorted by ") + gameSortModeLabel() + ".";
+    }
+
+    void SaveSelectScreen::toggleCurrentFavorite() {
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
+        const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+        const std::string key = profileIdentity(user->uid) + "|" + title.gameId;
+        auto& record = gameHubRecords[key];
+        if (record.firstSeen <= 0) record.firstSeen = static_cast<int64_t>(std::time(nullptr));
+        record.favorite = !record.favorite;
+        const bool favorite = record.favorite;
+        saveGameHubState();
+        sortGamesPreservingSelection();
+        hubNotice = favorite ? "Added to Favorites." : "Removed from Favorites.";
+    }
+
+    void SaveSelectScreen::recordCurrentLaunch() {
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
+        const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+        const std::string key = profileIdentity(user->uid) + "|" + title.gameId;
+        auto& record = gameHubRecords[key];
+        const int64_t now = static_cast<int64_t>(std::time(nullptr));
+        if (record.firstSeen <= 0) record.firstSeen = now;
+        if (record.launchCount < 0xFFFFFFFFu) ++record.launchCount;
+        record.lastPlayed = now;
+        saveGameHubState();
+    }
+
     SaveSelectScreen::SaveSelectScreen(
         PokeVault::Legacy::FRLGDiscoveryResult& legacySources,
         PokeVault::Legacy::LegacySourceBindings& bindings,
         const NavigationState* resumeState)
         : legacyCatalog(&legacySources), legacyBindings(&bindings) {
+        loadGameHubState();
         loadUsers();
         loadLegacySources(legacySources);
         loadGen4Cards();
@@ -487,6 +720,7 @@ namespace UI {
             }
         }
         rebuildUnassignedLegacySources();
+        sortGamesPreservingSelection();
     }
 
     void SaveSelectScreen::loadGen4Cards() {
@@ -551,6 +785,7 @@ namespace UI {
                 user.titles.push_back(std::move(entry));
             }
         }
+        sortGamesPreservingSelection();
     }
 
     void SaveSelectScreen::rebuildUnassignedLegacySources() {
@@ -659,7 +894,7 @@ namespace UI {
         gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
         legacyNotice = assignedLeaf + " assigned to this profile.";
         hubNotice = legacyNotice;
-        overlay = Overlay::GamesDrawer;
+        overlay = classicGamesActive ? Overlay::None : Overlay::GamesDrawer;
         scrollSelectionIntoView();
         refreshHubPreview();
         return true;
@@ -1247,6 +1482,7 @@ namespace UI {
             legacyNotice = error;
             return false;
         }
+        recordCurrentLaunch();
         appExitRequested = true;
         exitRequested = true;
         return true;
@@ -1283,16 +1519,18 @@ namespace UI {
             hubNotice = error;
             return false;
         }
+        recordCurrentLaunch();
         appExitRequested = true;
         exitRequested = true;
         return true;
     }
 
     void SaveSelectScreen::openGen4Setup(const std::string& gameId, std::string notice,
-                                         bool returnToGamesDrawer) {
+                                         bool returnToGamesDrawer, bool returnToClassicGames) {
         gen4TargetGameId = gameId;
         gen4Notice = std::move(notice);
         gen4SetupFromGamesDrawer = returnToGamesDrawer;
+        gen4SetupFromClassicGames = returnToClassicGames;
         gen4Candidates.clear();
         gen4Instances.clear();
         gen4SetupIndex = 0;
@@ -1425,12 +1663,13 @@ namespace UI {
         }
         scrollSelectionIntoView();
         refreshHubPreview();
-        if (gen4SetupFromGamesDrawer) {
+        if (gen4SetupFromGamesDrawer || gen4SetupFromClassicGames) {
             gamesDrawerIndex = titleIndex;
-            gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+            gamesDrawerScroll = std::max(0, gamesDrawerIndex / 3 - 1);
             hubNotice = "Save linked to this game.";
-            overlay = Overlay::GamesDrawer;
+            overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
             gen4SetupFromGamesDrawer = false;
+            gen4SetupFromClassicGames = false;
             return true;
         }
         overlay = Overlay::None;
@@ -1787,6 +2026,34 @@ namespace UI {
         }
     }
 
+    void SaveSelectScreen::openSaveSourceForCurrentTitle(
+        bool fromGamesDrawer, bool fromClassicGames) {
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) {
+            hubNotice = "Choose a game before changing its save/source.";
+            return;
+        }
+        const auto& game = user->titles[static_cast<size_t>(titleIndex)];
+        if (game.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+            openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.",
+                          fromGamesDrawer, fromClassicGames);
+        } else if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+            legacyInstanceIndex = 0;
+            legacyInstanceScroll = 0;
+            legacyNotice.clear();
+            overlay = Overlay::LegacyInstances;
+        } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
+            beginLaunchLinkForCurrentTitle();
+        } else if (!unassignedLegacySources.empty()) {
+            legacyAssignmentIndex = 0;
+            legacyAssignmentScroll = 0;
+            legacyNotice.clear();
+            overlay = Overlay::LegacyAssignment;
+        } else {
+            hubNotice = "This save source is already managed by the console.";
+        }
+    }
+
     void SaveSelectScreen::activateGameWorkspace() {
         const UserEntry* user = currentUser();
         if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) {
@@ -1863,24 +2130,7 @@ namespace UI {
                     titleIndex = gamesDrawerIndex;
                     scrollSelectionIntoView();
                     refreshHubPreview();
-                    const auto& game = drawerUser->titles[static_cast<size_t>(gamesDrawerIndex)];
-                    if (game.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
-                        openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.", true);
-                    } else if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-                        legacyInstanceIndex = 0;
-                        legacyInstanceScroll = 0;
-                        legacyNotice.clear();
-                        overlay = Overlay::LegacyInstances;
-                    } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
-                        beginLaunchLinkForCurrentTitle();
-                    } else if (!unassignedLegacySources.empty()) {
-                        legacyAssignmentIndex = 0;
-                        legacyAssignmentScroll = 0;
-                        legacyNotice.clear();
-                        overlay = Overlay::LegacyAssignment;
-                    } else {
-                        hubNotice = "This save source is already managed by the console.";
-                    }
+                    openSaveSourceForCurrentTitle(true, false);
                 }
                 return;
             }
@@ -2020,7 +2270,10 @@ namespace UI {
         }
         if (overlay == Overlay::LegacyAssignment) {
             const int count = static_cast<int>(unassignedLegacySources.size());
-            if (kDown & HidNpadButton_B) { overlay = Overlay::GamesDrawer; return; }
+            if (kDown & HidNpadButton_B) {
+                overlay = classicGamesActive ? Overlay::None : Overlay::GamesDrawer;
+                return;
+            }
             if (kDown & HidNpadButton_X) {
                 if (legacyCatalog) {
                     *legacyCatalog = PokeVault::Legacy::discoverConfiguredLegacySaves();
@@ -2028,10 +2281,14 @@ namespace UI {
                     refreshHubPreview();
                     legacyNotice = "Unassigned source list refreshed.";
                 }
-                if (unassignedLegacySources.empty()) overlay = Overlay::GamesDrawer;
+                if (unassignedLegacySources.empty())
+                    overlay = classicGamesActive ? Overlay::None : Overlay::GamesDrawer;
                 return;
             }
-            if (count == 0) { overlay = Overlay::GamesDrawer; return; }
+            if (count == 0) {
+                overlay = classicGamesActive ? Overlay::None : Overlay::GamesDrawer;
+                return;
+            }
             if (kDown & HidNpadButton_Up)
                 legacyAssignmentIndex = (legacyAssignmentIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
@@ -2049,9 +2306,10 @@ namespace UI {
                 overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
                 if (overlay == Overlay::GamesDrawer) {
                     gamesDrawerIndex = titleIndex;
-                    gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+                    gamesDrawerScroll = std::max(0, gamesDrawerIndex / 3 - 1);
                 }
                 gen4SetupFromGamesDrawer = false;
+                gen4SetupFromClassicGames = false;
                 return;
             }
             if (kDown & HidNpadButton_Up) gen4SetupIndex = (gen4SetupIndex + 3) % 4;
@@ -2064,9 +2322,10 @@ namespace UI {
                     overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
                     if (overlay == Overlay::GamesDrawer) {
                         gamesDrawerIndex = titleIndex;
-                        gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+                        gamesDrawerScroll = std::max(0, gamesDrawerIndex / 3 - 1);
                     }
                     gen4SetupFromGamesDrawer = false;
+                    gen4SetupFromClassicGames = false;
                 }
             }
             return;
@@ -2077,16 +2336,17 @@ namespace UI {
                 overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
                 if (overlay == Overlay::GamesDrawer) {
                     gamesDrawerIndex = titleIndex;
-                    gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+                    gamesDrawerScroll = std::max(0, gamesDrawerIndex / 3 - 1);
                 }
                 gen4SetupFromGamesDrawer = false;
+                gen4SetupFromClassicGames = false;
                 return;
             }
             if (kDown & HidNpadButton_X) { discoverGen4Candidates(); return; }
             if (kDown & HidNpadButton_Y) {
                 openGen4Setup(gen4TargetGameId,
                     "Add, repair, or forget a remembered source. Opening still happens from Save Instances.",
-                    gen4SetupFromGamesDrawer);
+                    gen4SetupFromGamesDrawer, gen4SetupFromClassicGames);
                 return;
             }
             if (count == 0) { overlay = Overlay::Gen4Setup; return; }
@@ -2190,6 +2450,18 @@ namespace UI {
             }
             if (kDown & HidNpadButton_ZR) {
                 launchCurrentTitle();
+                return;
+            }
+            if (kDown & HidNpadButton_X) {
+                openSaveSourceForCurrentTitle(false, true);
+                return;
+            }
+            if (kDown & HidNpadButton_Y) {
+                cycleGameSortMode();
+                return;
+            }
+            if (kDown & HidNpadButton_Plus) {
+                toggleCurrentFavorite();
                 return;
             }
             if (headerActionIndex == 0) {
@@ -2361,11 +2633,13 @@ namespace UI {
             // Left/Right move exactly one logo. Only Left from the first (Games) logo returns
             // to the selected-game hero; never fling focus across the screen from the middle.
             if (kDown & HidNpadButton_Left) {
-                if (hubDockIndex > 0) {
-                    --hubDockIndex;
-                } else {
+                // Search is the left edge of the second row: Left returns naturally to the hero
+                // instead of jumping diagonally up to Items. The top row still steps one logo.
+                if (hubDockIndex == 0 || hubDockIndex == 3) {
                     hubDockFocused = false;
                     hubFeatureIndex = -1;
+                } else if (hubDockIndex > 0) {
+                    --hubDockIndex;
                 }
                 return;
             }
@@ -2454,7 +2728,7 @@ namespace UI {
 
     void SaveSelectScreen::drawClassicGameSources(PKSEFramebuffer& fb) {
         drawAppBackdrop(fb);
-        drawTitleBar(fb, "Pokémon Games");
+        drawProductTitleBar(fb, "Pokémon Games");
         const UserEntry* u = currentUser();
 
         // The classic artwork browser no longer spends a full-width banner on profile identity.
@@ -2467,13 +2741,17 @@ namespace UI {
             const IconImage* avatar =
                 u->name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(u->uid);
 
+            constexpr int avatarRadius = 10;
+            fb.drawFilledRoundedRect(avatarX - 3, avatarY - 3, avatarSize + 6, avatarSize + 6,
+                                     avatarRadius + 2, Colors::SurfaceRaised);
             if (avatar && avatar->valid())
                 fb.drawImageScaled(avatarX, avatarY, avatar->width, avatar->height,
                                    avatarSize, avatarSize, avatar->data, 4);
             else
                 fb.drawFilledRoundedRect(avatarX, avatarY, avatarSize, avatarSize,
-                                         avatarSize / 2, Colors::PanelAlt);
-            fb.drawRoundedRect(avatarX, avatarY, avatarSize, avatarSize, avatarSize / 2,
+                                         avatarRadius, Colors::PanelAlt);
+            fb.drawRoundedRect(avatarX - 3, avatarY - 3, avatarSize + 6, avatarSize + 6,
+                               avatarRadius + 2,
                                profileFocused ? Colors::FocusBorder : Colors::Divider,
                                profileFocused ? 3 : 2);
             headerRects.push_back({avatarX - 8, avatarY - 6, avatarSize + 16, avatarSize + 12, 0});
@@ -2488,6 +2766,8 @@ namespace UI {
             fb.drawText(30, 82,
                         std::to_string(u->titles.size()) + " available Pokémon games",
                         Colors::TextMuted, TextStyle::Caption);
+            fb.drawText(30, 104, std::string("Sort: ") + gameSortModeLabel(),
+                        Colors::TextSecondary, TextStyle::Caption);
         }
 
         const int count = u ? static_cast<int>(u->titles.size()) : 0;
@@ -2505,6 +2785,8 @@ namespace UI {
             const auto& title = u->titles[static_cast<size_t>(i)];
 
             drawFocusedCard(fb, x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, focused, 16);
+            if (titleFavorite(*u, title))
+                fb.drawSymbol(x + 10, y + 8, "\xE2\x99\xA5", Colors::Error, TextStyle::Body);
             const IconImage& art = SystemIcons::gameCardIcon(
                 title.sourceKind == SelectedSourceKind::RetroArchFRLG ? title.artworkKey : title.gameId,
                 title.titleId);
@@ -2535,9 +2817,9 @@ namespace UI {
                         Colors::TextMuted, TextStyle::Caption);
         }
 
-        drawNavBar(fb, {{"D-pad/Stick","Choose Game"},{"A","Open"},
-                        {"L/R","Switch User"},{"ZR","Launch"},
-                        {"-","Help"},{"B","Back"}});
+        drawNavBar(fb, {{"D-pad/Stick","Choose"},{"A","Open"},
+                        {"X","Save / Source"},{"Y","Sort"},{"+","Favorite"},
+                        {"ZR","Launch"},{"B","Back"}});
     }
 
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {
@@ -2561,6 +2843,9 @@ namespace UI {
                 drawProductHelpOverlay(fb, "Pokémon Games", {
                     {"D-pad/Stick", "Choose a game"},
                     {"A", "Open the selected game"},
+                    {"X", "Assign / change save source"},
+                    {"Y", "Cycle game sort"},
+                    {"+", "Toggle favorite"},
                     {"L/R", "Switch profile"},
                     {"ZR", "Launch the selected game or emulator"},
                     {"-", "Close Help / Controls"},
@@ -2581,15 +2866,20 @@ namespace UI {
                 u->name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(u->uid);
 
             if (profileFocused)
-                fb.drawFilledRoundedRect(avatarX - 10, 6, 176, 54, 24, Colors::PanelAlt);
+                fb.drawFilledRoundedRect(avatarX - 10, 6, 176, 54, 14, Colors::PanelAlt);
+            constexpr int profileRadius = 10;
+            fb.drawFilledRoundedRect(avatarX - 3, avatarY - 3,
+                                     PROFILE_AVATAR + 6, PROFILE_AVATAR + 6,
+                                     profileRadius + 2, Colors::SurfaceRaised);
             if (avatar && avatar->valid())
                 fb.drawImageScaled(avatarX, avatarY, avatar->width, avatar->height,
                                    PROFILE_AVATAR, PROFILE_AVATAR, avatar->data, 4);
             else
                 fb.drawFilledRoundedRect(avatarX, avatarY, PROFILE_AVATAR, PROFILE_AVATAR,
-                                         PROFILE_AVATAR / 2, Colors::PanelAlt);
-            fb.drawRoundedRect(avatarX, avatarY, PROFILE_AVATAR, PROFILE_AVATAR,
-                               PROFILE_AVATAR / 2,
+                                         profileRadius, Colors::PanelAlt);
+            fb.drawRoundedRect(avatarX - 3, avatarY - 3,
+                               PROFILE_AVATAR + 6, PROFILE_AVATAR + 6,
+                               profileRadius + 2,
                                profileFocused ? Colors::FocusBorder : Colors::Divider,
                                profileFocused ? 3 : 2);
 
@@ -2962,7 +3252,8 @@ namespace UI {
             fb.drawText(x + 22, 44, "Choose a Pokémon Game",
                         Colors::TextPrimary, TextStyle::Heading);
             fb.drawText(x + 22, 70,
-                        "Artwork + saves  •  Games opens the full browser",
+                        std::string("Sort: ") + gameSortModeLabel() +
+                            "  •  Games opens the full browser",
                         Colors::TextSecondary, TextStyle::Caption);
 
             if (u && !u->titles.empty()) {
@@ -2980,6 +3271,8 @@ namespace UI {
                     const auto& title = u->titles[static_cast<size_t>(i)];
 
                     drawFocusedCard(fb, bx, by, tileW, tileH, selected, 14);
+                    if (titleFavorite(*u, title))
+                        fb.drawSymbol(bx + 8, by + 6, "\xE2\x99\xA5", Colors::Error, TextStyle::Body);
                     const std::string_view artKey =
                         title.sourceKind == SelectedSourceKind::RetroArchFRLG
                             ? std::string_view(title.artworkKey) : std::string_view(title.gameId);
@@ -3037,9 +3330,6 @@ namespace UI {
                             Colors::TextMuted, TextStyle::Body);
             }
 
-            fb.drawText(x + 22, h - 72,
-                        "X: Save / Source   •   B: Close",
-                        Colors::TextMuted, TextStyle::Caption);
             drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Select"},
                             {"X", "Save / Source"}, {"B", "Close"}});
         } else if (overlay == Overlay::ProfilePicker) {
@@ -3072,13 +3362,19 @@ namespace UI {
 
                 const IconImage* avatar =
                     user.name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(user.uid);
+                constexpr int pickerAvatarRadius = 12;
+                fb.drawFilledRoundedRect(x + 39, rowY + 6, 68, 68,
+                                         pickerAvatarRadius + 2, Colors::SurfaceRaised);
                 if (avatar && avatar->valid())
                     fb.drawImageScaled(x + 42, rowY + 9, avatar->width, avatar->height,
                                        62, 62, avatar->data, 4);
-                else {
-                    fb.drawFilledCircle(x + 73, rowY + 40, 30, Colors::PanelAlt);
-                    fb.drawCircle(x + 73, rowY + 40, 30, Colors::Divider, 2);
-                }
+                else
+                    fb.drawFilledRoundedRect(x + 42, rowY + 9, 62, 62,
+                                             pickerAvatarRadius, Colors::PanelAlt);
+                fb.drawRoundedRect(x + 39, rowY + 6, 68, 68,
+                                   pickerAvatarRadius + 2,
+                                   selected ? Colors::FocusBorder : Colors::Divider,
+                                   selected ? 3 : 1);
 
                 fb.drawText(x + 126, rowY + 16, user.name,
                             selected ? Colors::SelectedText : Colors::TextPrimary,

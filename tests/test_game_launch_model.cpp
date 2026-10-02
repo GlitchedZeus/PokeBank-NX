@@ -33,6 +33,18 @@ int main() {
     assert(gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.nds"));
     assert(gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.zip"));
     assert(gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.rar"));
+    assert(gameLaunchCandidateStemMatches(
+        "platinum_nds",
+        "sdmc:/switch/drastic/user/backup/Pokemon Platinum.dsv",
+        "sdmc:/switch/drastic/games/Pokemon Platinum Version (USA).nds"));
+    assert(gameLaunchCandidateStemMatches(
+        "heartgold_nds",
+        "sdmc:/switch/drastic/user/backup/main.dsv",
+        "sdmc:/roms/nds/Pokemon HeartGold Version.nds"));
+    assert(!gameLaunchCandidateStemMatches(
+        "platinum_nds",
+        "sdmc:/switch/drastic/user/backup/main.dsv",
+        "sdmc:/roms/nds/Pokemon Pearl Version.nds"));
     assert(!gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.gba"));
 
     assert(gameLaunchBindingFamilyPrefix("profile", "emerald_gba") ==
