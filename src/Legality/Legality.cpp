@@ -1025,13 +1025,13 @@ namespace Legality {
                                    Legality::Gen4Trade::matchEvolutionLine(
                                        gen4EncounterGameId, species, pk.pid(), pk.id32(),
                                        pk.gender(), pk.otGender(), pk.abilityNumber(),
-                                       std::array<uint8_t, 6>{
+                                       pk.language(), std::array<uint8_t, 6>{
                                            pk.ivHP(), pk.ivATK(), pk.ivDEF(),
                                            pk.ivSPE(), pk.ivSPA(), pk.ivSPD()},
                                        pk.metLocation(), pk.metLevel());
                                trade.matched) {
                         std::string detail =
-                            "Trainer/PID/IV/ability/met data matches an audited Generation IV in-game trade for the stored origin game";
+                            "Trainer/PID/IV/ability/language/met data matches an audited Generation IV in-game trade for the stored origin game";
                         if (trade.evolved)
                             detail += " via captured source species " +
                                       std::to_string(trade.sourceSpecies);
