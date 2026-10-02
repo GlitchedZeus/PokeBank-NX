@@ -2551,8 +2551,11 @@ namespace UI {
                 }
 
                 if (userIndex == beforeUser && titleIndex != beforeTitle) {
+                    // The full Games browser renders only cached card metadata. Do NOT mount,
+                    // reopen, or parse a save just because focus moved to another tile; that made
+                    // held-stick / D-pad scrolling hitch on every game. Product Home refreshes the
+                    // selected trainer/party/save preview once when B leaves this browser.
                     scrollClassicSelectionIntoView();
-                    refreshHubPreview();
                 }
             }
             return;
