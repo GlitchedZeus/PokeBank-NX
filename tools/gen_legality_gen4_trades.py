@@ -79,7 +79,8 @@ def main() -> int:
         "// Source: PKHeX @ %s" % pkhex_source._REF,
         "// Tables: TradeGift_DPPtIngame and TradeGift_HGSS.",
         "// Fixed first/second ability slot is persistent Gen IV trade evidence.",
-        "// Nickname/language localization quirks remain separate evidence layers.",
+        "// Source-species/game language-ID quirks are enforced by Gen4TradeEvidence.h.",
+        "// Localized nickname/OT string matching remains a separate evidence layer.",
         "inline constexpr std::array<Entry, 16> kEntries{{",
     ]
     for pid, id32, iv_pack, species, met_location, level, gender, ot_gender, ability_number, mask in rows:
