@@ -174,6 +174,8 @@ require("Color(3, 10, 24, 184)" in source and
         "titleFavorite(*u, title)" in source and
         'fb.drawSymbol(heartX, heartY, "\\xE2\\x99\\xA5"' in source,
         "Product Home must keep region text readable and show the selected game's favorite heart")
+require('std::string("Order: ") + gameSortModeLabel()' in source,
+        "Product Home must show the active game order so L/R navigation never looks random")
 require('{"+", "Current Game"}' in source,
         "Plus must open Current Game tools")
 require("+: Settings" not in source and '{"+" , "Settings"}' not in source and '{"+" , "Settings"}' not in shell_source,
