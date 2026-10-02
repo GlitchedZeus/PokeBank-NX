@@ -22,6 +22,7 @@
 #include "Legality/Gen2TradeEvidence.h"
 #include "Legality/Gen2WildEncounter.h"
 #include "Legality/Gen3PidIvCorrelation.h"
+#include "Legality/Gen3WondercardEggEventTemplate.h"
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3ChannelPidIvCorrelation.h"
 #include "Legality/Gen3ChannelEventTemplate.h"
@@ -137,6 +138,20 @@ namespace Legality {
                     "PID/IV spread matches Gen III " +
                     std::string(Gen3PidIv::methodName(correlation.method)),
                     CheckIdentifier::PidRng);
+
+                if (Gen3WondercardEggEvent::matches(
+                        {
+                            species, pk.originGame(), pk.metLevel(),
+                            pk.metLocation(), pk.ball(), pk.isEgg(),
+                            pk.isFatefulEncounter(),
+                            {pk.move(0), pk.move(1), pk.move(2), pk.move(3)}
+                        },
+                        correlation)) {
+                    r.coverage.eventGift = CoverageLevel::Partial;
+                    add(r, Severity::Info,
+                        "Handheld Method 1/2/4 PID/IV correlation, fateful unhatched egg fields and event moves match a pinned Gen III Wondercard egg template; post-hatch reconstruction remains incomplete",
+                        CheckIdentifier::EventGift);
+                }
                 return;
             }
 
