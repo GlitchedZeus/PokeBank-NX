@@ -65,6 +65,23 @@ namespace UI {
             return std::string(raw);
         }
 
+        int gamePlatformSortKey(std::string_view id) noexcept {
+            if (const auto* game = PokeVault::Games::findGame(id)) {
+                using PokeVault::Games::Platform;
+                switch (game->platform) {
+                    case Platform::GameBoy: return 0;
+                    case Platform::GameBoyColor: return 1;
+                    case Platform::GameBoyAdvance: return 2;
+                    case Platform::NintendoDS: return 3;
+                    case Platform::NintendoSwitch: return 5;
+                }
+            }
+            // Reserve the 3DS slot even before those identities are exposed by the current catalog.
+            if (id.ends_with("_3ds")) return 4;
+            if (id.ends_with("_switch")) return 5;
+            return 6;
+        }
+
         int gameReleaseDateKey(std::string_view id) noexcept {
             // "Release Date" means oldest -> newest, matching the natural hardware progression:
             // GB -> GBC -> GBA -> DS -> 3DS (when surfaced) -> Switch. Paired versions get a
@@ -85,6 +102,14 @@ namespace UI {
             if (id == "platinum_nds") return 200809130;
             if (id == "heartgold_nds") return 200909120;
             if (id == "soulsilver_nds") return 200909121;
+            if (id == "x_3ds") return 201310120;
+            if (id == "y_3ds") return 201310121;
+            if (id == "omega_ruby_3ds") return 201411210;
+            if (id == "alpha_sapphire_3ds") return 201411211;
+            if (id == "sun_3ds") return 201611180;
+            if (id == "moon_3ds") return 201611181;
+            if (id == "ultra_sun_3ds") return 201711170;
+            if (id == "ultra_moon_3ds") return 201711171;
             // Current product identities use "letsgo_*", not the stale "lets_go_*" spelling.
             if (id == "letsgo_pikachu_switch") return 201811160;
             if (id == "letsgo_eevee_switch") return 201811161;
@@ -535,6 +560,9 @@ namespace UI {
                     if (gameSortMode == GameSortMode::MostPlayed &&
                         ar.lastPlayed != br.lastPlayed)
                         return ar.lastPlayed > br.lastPlayed;
+                    const int ap = gamePlatformSortKey(a.gameId);
+                    const int bp = gamePlatformSortKey(b.gameId);
+                    if (ap != bp) return ap < bp;
                     const int ad = gameReleaseDateKey(a.gameId);
                     const int bd = gameReleaseDateKey(b.gameId);
                     if (ad != bd) return ad < bd;
