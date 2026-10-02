@@ -19,6 +19,7 @@ struct Candidate {
     uint16_t tid = 0;
     uint16_t sid = 0;
     uint8_t originGame = 0;
+    uint8_t language = 0;
     uint8_t otGender = 0;
     uint8_t metLevel = 0;
     uint16_t metLocation = 0;
@@ -38,8 +39,8 @@ constexpr bool isPinnedSpecies(uint16_t species) noexcept {
 constexpr bool matches(const Candidate& c,
                        const Gen3BacdPidIv::Result& rng) noexcept {
     // Pinned PKHeX EncountersWC3 PokéPark DS Download eggs:
-    // Ruby origin, unhatched level/met-level 5 event egg, event location 255,
-    // TID 50318 / SID 0, OT "ポケパーク", male OT, Poke Ball.
+    // Ruby origin, Japanese-language unhatched level/met-level 5 event egg,
+    // event location 255, TID 50318 / SID 0, OT "ポケパーク", male OT, Poke Ball.
     // They use restricted regular BACD_R. Once hatched, Gen III replaces the
     // trainer/met fields, so this matcher deliberately proves unhatched state only.
     return rng.variant == Gen3BacdPidIv::Variant::Regular &&
@@ -47,6 +48,7 @@ constexpr bool matches(const Candidate& c,
            isPinnedSpecies(c.species) &&
            c.tid == 50318 && c.sid == 0 &&
            c.originGame == 2 &&
+           c.language == 1 &&
            c.otGender == 0 &&
            c.metLevel == 5 &&
            c.metLocation == 255 &&

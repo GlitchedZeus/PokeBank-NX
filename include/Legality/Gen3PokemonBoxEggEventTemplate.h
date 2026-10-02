@@ -11,6 +11,7 @@ namespace Legality::Gen3PokemonBoxEggEvent {
 struct Candidate {
     uint16_t species = 0;
     uint8_t originGame = 0;
+    uint8_t language = 0;
     uint8_t otGender = 0;
     uint8_t metLevel = 0;
     uint16_t metLocation = 0;
@@ -40,11 +41,12 @@ constexpr bool matches(const Candidate& c,
                        const Gen3BacdPidIv::Result& rng) noexcept {
     // Pinned PKHeX Pokémon Box recipient eggs:
     // unrestricted regular BACD_U, any valid Gen III stored origin,
-    // unhatched level/met-level 0 event egg, event location 255,
+    // Japanese-language unhatched egg with stored met-level 0, event location 255,
     // female OT "ＡＺＵＳＡ", Poke Ball, and one of four fixed movesets.
-    // TID/SID and language are recipient-derived/unspecified and are not constrained.
+    // TID/SID are recipient-derived/unspecified and are not constrained.
     return rng.variant == Gen3BacdPidIv::Variant::Regular &&
            isGen3Origin(c.originGame) &&
+           c.language == 1 &&
            c.otGender == 1 &&
            c.metLevel == 0 &&
            c.metLocation == 255 &&

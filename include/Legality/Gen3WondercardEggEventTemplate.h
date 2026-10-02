@@ -53,6 +53,7 @@ inline constexpr std::array<Entry, 25> kEntries{{
 struct Candidate {
     uint16_t species = 0;
     uint8_t originGame = 0;
+    uint8_t language = 0;
     uint8_t metLevel = 0;
     uint16_t metLocation = 0;
     uint8_t ball = 0;
@@ -81,6 +82,7 @@ constexpr bool allowedMethod(Gen3PidIv::Method method) noexcept {
 constexpr bool matches(const Candidate& c,
                        const Gen3PidIv::Result& rng) noexcept {
     if (!allowedMethod(rng.method) ||
+        c.language != 1 ||
         c.metLevel != 0 ||
         c.metLocation != 255 ||
         c.ball != 4 ||

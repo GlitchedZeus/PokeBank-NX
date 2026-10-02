@@ -96,11 +96,12 @@ constexpr uint32_t tableSeed(const Gen3BacdPidIv::Result& rng) noexcept {
 }
 
 constexpr bool commonFields(const Candidate& c) noexcept {
-    // Pinned PKHeX PCJP Fifth Anniversary eggs are Ruby-origin, unhatched
-    // event eggs with male OT "オヤＮＡＭＥ", event location 255 and Poke Ball.
+    // Pinned PKHeX PCJP Fifth Anniversary eggs are Ruby-origin, Japanese-language
+    // unhatched event eggs with male OT "オヤＮＡＭＥ", event location 255 and Poke Ball.
     // TID/SID are unspecified by the source template and must not be constrained.
     return speciesIndex(c.species) != 0xFF &&
            c.originGame == 2 &&
+           c.language == 1 &&
            c.otGender == 0 &&
            c.metLevel == 0 &&
            c.metLocation == 255 &&

@@ -28,14 +28,14 @@ int main() {
     const auto m4 = analyze(0x31B05271u, {2,18,3,5,30,11});
 
     WcEgg::Candidate farfetchd{
-        83, 4, 0, 255, 4, true, true, {281, 273, 0, 0}
+        83, 4, 1, 0, 255, 4, true, true, {281, 273, 0, 0}
     };
     assert(WcEgg::matches(farfetchd, m1));
     assert(WcEgg::matches(farfetchd, m2));
     assert(WcEgg::matches(farfetchd, m4));
 
     WcEgg::Candidate pokeParkPichu{
-        172, 3, 0, 255, 4, true, true, {84, 204, 266, 0}
+        172, 3, 1, 0, 255, 4, true, true, {84, 204, 266, 0}
     };
     assert(WcEgg::matches(pokeParkPichu, m2));
 
@@ -48,6 +48,9 @@ int main() {
     auto notFateful = pokeParkPichu;
     notFateful.fateful = false;
     assert(!WcEgg::matches(notFateful, m2));
+    auto wrongLanguage = farfetchd;
+    wrongLanguage.language = 2;
+    assert(!WcEgg::matches(wrongLanguage, m2));
 
     // One IV changed from the known Method 1 vector: no handheld 1/2/3/4 correlation.
     assert(analyze(0xE97E0000u, {17,19,21,16,13,12}).method == Method::None);

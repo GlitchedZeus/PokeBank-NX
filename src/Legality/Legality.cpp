@@ -144,8 +144,8 @@ namespace Legality {
 
                 if (Gen3WondercardEggEvent::matches(
                         {
-                            species, pk.originGame(), pk.metLevel(),
-                            pk.metLocation(), pk.ball(), pk.isEgg(),
+                            species, pk.originGame(), pk.language(),
+                            pk.metLevel(), pk.metLocation(), pk.ball(), pk.isEgg(),
                             pk.isFatefulEncounter(),
                             {pk.move(0), pk.move(1), pk.move(2), pk.move(3)}
                         },
@@ -279,7 +279,7 @@ namespace Legality {
                     Gen3PokeParkEggEvent::matches(
                         {
                             species, pk.tid16(), pk.sid16(), pk.originGame(),
-                            pk.otGender(), pk.metLevel(), pk.metLocation(),
+                            pk.language(), pk.otGender(), pk.metLevel(), pk.metLocation(),
                             pk.ball(), pk.isEgg(), pk.isFatefulEncounter(),
                             pk.otName()
                         },
@@ -297,7 +297,7 @@ namespace Legality {
                 const bool pokemonBoxEgg =
                     Gen3PokemonBoxEggEvent::matches(
                         {
-                            species, pk.originGame(), pk.otGender(),
+                            species, pk.originGame(), pk.language(), pk.otGender(),
                             pk.metLevel(), pk.metLocation(), pk.ball(),
                             pk.isEgg(), pk.isFatefulEncounter(), pk.otName(),
                             {pk.move(0), pk.move(1), pk.move(2), pk.move(3)}

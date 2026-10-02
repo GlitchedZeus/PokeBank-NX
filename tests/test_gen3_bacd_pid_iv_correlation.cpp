@@ -159,7 +159,7 @@ int main() {
 
     namespace PokeParkEgg = Legality::Gen3PokeParkEggEvent;
     PokeParkEgg::Candidate pokeParkEgg{
-        54, 50318, 0, 2, 0, 5, 255, 4, true, false, u"ポケパーク"
+        54, 50318, 0, 2, 1, 0, 5, 255, 4, true, false, u"ポケパーク"
     };
     assert(PokeParkEgg::matches(pokeParkEgg, pokeParkEggRng));
     auto pokeParkHatched = pokeParkEgg;
@@ -168,6 +168,9 @@ int main() {
     auto pokeParkWrongSpecies = pokeParkEgg;
     pokeParkWrongSpecies.species = 55;
     assert(!PokeParkEgg::matches(pokeParkWrongSpecies, pokeParkEggRng));
+    auto pokeParkWrongLanguage = pokeParkEgg;
+    pokeParkWrongLanguage.language = 2;
+    assert(!PokeParkEgg::matches(pokeParkWrongLanguage, pokeParkEggRng));
 
     // PCJP machine gifts use regular BA-CD plus a fixed distribution
     // TID/species/city-OT table and an RNG-derived OT gender.
@@ -239,13 +242,13 @@ int main() {
     // unhatched event moves/trainer fields, but no fixed TID/SID.
     namespace BoxEgg = Legality::Gen3PokemonBoxEggEvent;
     auto boxSwablu = BoxEgg::Candidate{
-        333, 2, 1, 0, 255, 4, true, false,
+        333, 2, 1, 1, 0, 255, 4, true, false,
         u"ＡＺＵＳＡ", {64, 45, 206, 0}
     };
     assert(BoxEgg::matches(boxSwablu, bacd));
 
     auto boxSurfPichu = BoxEgg::Candidate{
-        172, 5, 1, 0, 255, 4, true, false,
+        172, 5, 1, 1, 0, 255, 4, true, false,
         u"ＡＺＵＳＡ", {84, 204, 57, 0}
     };
     assert(BoxEgg::matches(boxSurfPichu, bacd));
@@ -259,6 +262,9 @@ int main() {
     auto boxWrongMoves = boxSurfPichu;
     boxWrongMoves.moves = {84, 204, 273, 0};
     assert(!BoxEgg::matches(boxWrongMoves, bacd));
+    auto boxWrongLanguage = boxSwablu;
+    boxWrongLanguage.language = 2;
+    assert(!BoxEgg::matches(boxWrongLanguage, bacd));
 
     // PCJP Fifth Anniversary event eggs use a weighted table chosen two RNG
     // calls before the BA-CD sequence. Seed 0 selects non-shiny Ralts / Charm.
@@ -273,6 +279,9 @@ int main() {
         u"オヤＮＡＭＥ", {45, 204, 0, 0}
     };
     assert(Pcjp5::matches(pcjpRalts, pcjpRaltsRng));
+    auto pcjpWrongLanguage = pcjpRalts;
+    pcjpWrongLanguage.language = 2;
+    assert(!Pcjp5::matches(pcjpWrongLanguage, pcjpRaltsRng));
 
     // Seed 79 selects the shiny Pichu / Wish table slice.
     const auto pcjpShinyPichuRng = analyzeWithTrainer(
