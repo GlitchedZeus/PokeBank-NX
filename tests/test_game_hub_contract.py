@@ -438,19 +438,36 @@ require("resumeState->profileIdentity" in constructor_block and
 require("openAssignedSource" in stable_open and "discoverGen4Candidates();" not in stable_open,
         "remembered Gen IV saves must open the exact assigned game directly instead of re-entering the candidate grid")
 
-# The old grid used to call refreshHubPreview() unconditionally every frame, which could mount/read
-# Switch saves or reopen Gen IV files dozens of times per second and made A-open look hung.
+# Full Games navigation is a presentation-only path. Moving focus must never mount/reopen/parse
+# saves; Product Home refreshes the expensive trainer/party preview only when B leaves the browser.
 update_start = source.index("void SaveSelectScreen::update")
 classic_runtime = source.index("if (classicGamesActive)", update_start)
 root_runtime = source.index("// Games is now the app root", classic_runtime)
 classic_runtime_block = source[classic_runtime:root_runtime]
-require("if (userIndex == beforeUser && titleIndex != beforeTitle)" in classic_runtime_block,
-        "Classic grid preview work must run only when the selected game actually changes")
+require("if (userIndex == beforeUser && titleIndex != beforeTitle)" in classic_runtime_block and
+        "scrollClassicSelectionIntoView();" in classic_runtime_block,
+        "Classic grid movement must update only grid selection/scroll state")
+selection_change_start = classic_runtime_block.index(
+    "if (userIndex == beforeUser && titleIndex != beforeTitle)")
+selection_change_end = classic_runtime_block.index("}", selection_change_start)
+require("refreshHubPreview();" not in classic_runtime_block[selection_change_start:selection_change_end],
+        "Classic grid focus changes must not perform expensive save preview parsing")
+require("classicGamesActive = false;" in classic_runtime_block and
+        "refreshHubPreview();" in classic_runtime_block[
+            classic_runtime_block.index("if (kDown & HidNpadButton_B)"):
+            classic_runtime_block.index("if (kDown & HidNpadButton_Minus)")],
+        "leaving full Games must refresh the selected Product Home preview exactly at the boundary")
 require("selectCurrentTitle();\n                    // Do not mount/reparse" in classic_runtime_block and
         "return;" in classic_runtime_block,
         "A-open must hand off immediately instead of doing another heavy preview refresh")
-require("scrollClassicSelectionIntoView();\n                    refreshHubPreview();" in classic_runtime_block,
-        "Classic grid may refresh preview only inside the explicit selection-change guard")
+
+activate_start = source.index("void SaveSelectScreen::activateHubDock()")
+activate_end = source.index("void SaveSelectScreen::openSaveSourceForCurrentTitle", activate_start)
+activate_block = source[activate_start:activate_end]
+require("Warm the small set of game-card / trainer assets" in activate_block and
+        "SystemIcons::gameCardIcon" in activate_block and
+        "SystemIcons::trainerPortrait" in activate_block,
+        "full Games must prewarm artwork caches before interactive scrolling")
 
 # Hardware-regression contracts added after the 941ac9d7 failure report.
 draw_start = source.index("void SaveSelectScreen::draw(PKSEFramebuffer& fb)")
