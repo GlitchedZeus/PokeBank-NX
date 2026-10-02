@@ -29,6 +29,7 @@
 #include "Legality/Gen3WishmkrEventTemplate.h"
 #include "Legality/Gen3BerryFixEventTemplate.h"
 #include "Legality/Gen3NegaiBoshiEventTemplate.h"
+#include "Legality/Gen3PokeParkEggEventTemplate.h"
 #include "Legality/Gen3BacdRaEventTemplate.h"
 #include "Legality/Gen3MystryMewEvidence.h"
 #include "Legality/Gen4PidIvCorrelation.h"
@@ -237,6 +238,15 @@ namespace Legality {
                 const bool negaiTable2 =
                     Gen3NegaiBoshiEvent::matchesRestrictedTable2(
                         negaiCandidate, bacd);
+                const bool pokeParkEgg =
+                    Gen3PokeParkEggEvent::matches(
+                        {
+                            species, pk.tid16(), pk.sid16(), pk.originGame(),
+                            pk.otGender(), pk.metLevel(), pk.metLocation(),
+                            pk.ball(), pk.isEgg(), pk.isFatefulEncounter(),
+                            pk.otName()
+                        },
+                        bacd);
                 if (mystryMew) {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
@@ -261,6 +271,11 @@ namespace Legality {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
                         "Forced anti-shiny BA-CD RNG and persistent fields match the pinned Japanese Negai Boshi Jirachi distribution template",
+                        CheckIdentifier::EventGift);
+                } else if (pokeParkEgg) {
+                    r.coverage.eventGift = CoverageLevel::Partial;
+                    add(r, Severity::Info,
+                        "Restricted regular BA-CD RNG and persistent egg fields match a pinned PokePark DS Download event egg template; post-hatch trainer/location history is intentionally not inferred",
                         CheckIdentifier::EventGift);
                 } else if (restrictedAntiEvent.matched) {
                     r.coverage.eventGift = CoverageLevel::Partial;
