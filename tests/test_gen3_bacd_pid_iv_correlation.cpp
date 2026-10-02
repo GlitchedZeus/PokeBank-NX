@@ -59,20 +59,20 @@ int main() {
     assert(berryFix.restrictedSeed);
     assert(berryFix.originSeed <= 213u);
 
-    using Legality::Gen3BerryFixEvent::matchesTemplate;
-    assert(matchesTemplate(
+    namespace BerryFix = Legality::Gen3BerryFixEvent;
+    assert(BerryFix::matchesTemplate(
         263, 30317, 0, 1, 2, 1, 5, 255, 4, false, false, u"RUBY"));
-    assert(matchesTemplate(
+    assert(BerryFix::matchesTemplate(
         263, 30317, 0, 1, 2, 0, 5, 255, 4, false, false, u"SAPHIRE"));
-    assert(matchesTemplate(
+    assert(BerryFix::matchesTemplate(
         263, 21121, 0, 1, 1, 1, 5, 255, 4, false, false, u"ルビー"));
-    assert(matchesTemplate(
+    assert(BerryFix::matchesTemplate(
         263, 21121, 0, 1, 1, 0, 5, 255, 4, false, false, u"サファイア"));
-    assert(!matchesTemplate(
+    assert(!BerryFix::matchesTemplate(
         263, 30317, 0, 2, 2, 1, 5, 255, 4, false, false, u"RUBY"));
-    assert(!matchesTemplate(
+    assert(!BerryFix::matchesTemplate(
         263, 30317, 0, 1, 2, 0, 5, 255, 4, false, false, u"RUBY"));
-    assert(!matchesTemplate(
+    assert(!BerryFix::matchesTemplate(
         263, 30317, 0, 1, 1, 1, 5, 255, 4, false, false, u"RUBY"));
 
     // Restricted regular BACD example from PKHeX should expose the 16-bit seed class.
@@ -84,20 +84,20 @@ int main() {
 
     // WISHMKR Jirachi is a restricted-seed BACD_R event with fixed
     // persistent distribution fields in the pinned PKHeX table.
-    using Legality::Gen3WishmkrEvent::matchesTemplate;
-    assert(matchesTemplate(
+    namespace Wishmkr = Legality::Gen3WishmkrEvent;
+    assert(Wishmkr::matchesTemplate(
         385, 20043, 0, 2, 2, 0, 5, 255, 4, false, false, u"WISHMKR"));
-    assert(!matchesTemplate(
+    assert(!Wishmkr::matchesTemplate(
         385, 20043, 0, 1, 2, 0, 5, 255, 4, false, false, u"WISHMKR"));
-    assert(!matchesTemplate(
+    assert(!Wishmkr::matchesTemplate(
         385, 20043, 0, 2, 1, 0, 5, 255, 4, false, false, u"WISHMKR"));
-    assert(!matchesTemplate(
+    assert(!Wishmkr::matchesTemplate(
         385, 20043, 0, 2, 2, 1, 5, 255, 4, false, false, u"WISHMKR"));
-    assert(!matchesTemplate(
+    assert(!Wishmkr::matchesTemplate(
         385, 20043, 0, 2, 2, 0, 0, 255, 4, false, false, u"WISHMKR"));
-    assert(!matchesTemplate(
+    assert(!Wishmkr::matchesTemplate(
         385, 20043, 0, 2, 2, 0, 5, 0, 4, false, false, u"WISHMKR"));
-    assert(!matchesTemplate(
+    assert(!Wishmkr::matchesTemplate(
         385, 20043, 0, 2, 2, 0, 5, 255, 4, false, false, u"CHANNEL"));
 
     std::cout << "Gen III BA-CD event PID/IV correlation variants: PASS\n";
