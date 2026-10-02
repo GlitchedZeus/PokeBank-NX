@@ -376,10 +376,10 @@ for region_key in ("hisui.png", "paldea.png"):
     require(f'"{region_key}"' in product_art_fetch,
             f"hardware product-art fetch must add real later-region artwork: {region_key}")
 require("REGION_URLS" in product_art_fetch and
-        "archives.bulbagarden.net/media/upload/5/5b/Hisui.png" in product_art_fetch and
-        "archives.bulbagarden.net/media/upload/f/fd/Paldea_artwork.png" in product_art_fetch and
+        "raw.githubusercontent.com/pokeclicker/pokeclicker/develop/src/assets/images/hisui.png" in product_art_fetch and
+        "raw.githubusercontent.com/pokeclicker/pokeclicker/develop/src/assets/images/paldea.png" in product_art_fetch and
         "never generates fake scenery" in product_art_fetch,
-        "Hisui and Paldea must use fixed real-region artwork while supplied Kanto-Galar art stays branch-owned")
+        "Hisui and Paldea must use fixed real-region map assets while supplied Kanto-Galar art stays branch-owned")
 require("truncated PNG chunk" in product_art_fetch and "PNG has no complete IEND" in product_art_fetch,
         "product-art preflight must reject structurally truncated PNGs before packaging")
 require('"red"' in source and '"leaf"' in source and '"dawn"' in source and
