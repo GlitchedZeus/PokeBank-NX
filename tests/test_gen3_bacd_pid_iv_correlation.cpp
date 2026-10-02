@@ -1,4 +1,5 @@
 #include "Legality/Gen3BacdPidIvCorrelation.h"
+#include "Legality/Gen3WishmkrEventTemplate.h"
 
 #include <cassert>
 #include <iostream>
@@ -62,6 +63,24 @@ int main() {
     assert(restricted.matched());
     assert(restricted.variant == Variant::Regular);
     assert(restricted.restrictedSeed);
+
+    // WISHMKR Jirachi is a restricted-seed BACD_R event with fixed
+    // persistent distribution fields in the pinned PKHeX table.
+    using Legality::Gen3WishmkrEvent::matchesTemplate;
+    assert(matchesTemplate(
+        385, 20043, 0, 2, 2, 0, 5, 255, 4, false, false, u"WISHMKR"));
+    assert(!matchesTemplate(
+        385, 20043, 0, 1, 2, 0, 5, 255, 4, false, false, u"WISHMKR"));
+    assert(!matchesTemplate(
+        385, 20043, 0, 2, 1, 0, 5, 255, 4, false, false, u"WISHMKR"));
+    assert(!matchesTemplate(
+        385, 20043, 0, 2, 2, 1, 5, 255, 4, false, false, u"WISHMKR"));
+    assert(!matchesTemplate(
+        385, 20043, 0, 2, 2, 0, 0, 255, 4, false, false, u"WISHMKR"));
+    assert(!matchesTemplate(
+        385, 20043, 0, 2, 2, 0, 5, 0, 4, false, false, u"WISHMKR"));
+    assert(!matchesTemplate(
+        385, 20043, 0, 2, 2, 0, 5, 255, 4, false, false, u"CHANNEL"));
 
     std::cout << "Gen III BA-CD event PID/IV correlation variants: PASS\n";
 }
