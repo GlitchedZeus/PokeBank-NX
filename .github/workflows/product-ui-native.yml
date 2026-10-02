@@ -106,10 +106,10 @@ jobs:
               cp -a "branch-romfs-overrides/$d" "romfs/$d"
             fi
           done
-          for f in red gold kris brendan may lucas dawn ethan lyra; do
+          for f in red leaf gold kris brendan may lucas dawn ethan lyra chase elaine victor gloria rei akari florian juliana paxton harmony; do
             test -s "romfs/trainer_portraits/$f.png"
           done
-          for f in kanto johto hoenn sinnoh unova kalos alola galar; do
+          for f in kanto johto hoenn sinnoh unova kalos alola galar hisui paldea; do
             test -s "romfs/region_backdrops/$f.png"
           done
 
@@ -167,11 +167,11 @@ jobs:
               return width, height
 
           trainer_dir = Path("romfs/trainer_portraits")
-          for name in ("red", "gold", "kris", "brendan", "may", "lucas", "dawn", "ethan", "lyra"):
+          for name in ("red", "leaf", "gold", "kris", "brendan", "may", "lucas", "dawn", "ethan", "lyra", "chase", "elaine", "victor", "gloria", "rei", "akari", "florian", "juliana", "paxton", "harmony"):
               verify_png(trainer_dir / f"{name}.png")
 
           region_dir = Path("romfs/region_backdrops")
-          for name in ("kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar"):
+          for name in ("kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar", "hisui", "paldea"):
               verify_png(region_dir / f"{name}.png")
 
           if b"romfs:/trainer_portraits/" not in nro:
