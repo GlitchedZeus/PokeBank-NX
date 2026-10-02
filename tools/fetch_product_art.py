@@ -57,8 +57,8 @@ BRANCH_OWNED_REGIONS = (
 
 REGION_URLS = {
     # Real in-game / official-region artwork, not generated substitutes.
-    "hisui.png": "https://raw.githubusercontent.com/pokeclicker/pokeclicker/develop/src/assets/images/hisui.png",
-    "paldea.png": "https://raw.githubusercontent.com/pokeclicker/pokeclicker/develop/src/assets/images/paldea.png",
+    "hisui.png": "https://raw.githubusercontent.com/pokeclicker/pokeclicker/a3062f11fdcf4c22e6a9a7d4747e5bb6614f44ab/src/assets/images/hisui.png",
+    "paldea.png": "https://raw.githubusercontent.com/pokeclicker/pokeclicker/a3062f11fdcf4c22e6a9a7d4747e5bb6614f44ab/src/assets/images/paldea.png",
 }
 
 REQUIRED_REGIONS = BRANCH_OWNED_REGIONS + tuple(REGION_URLS)
