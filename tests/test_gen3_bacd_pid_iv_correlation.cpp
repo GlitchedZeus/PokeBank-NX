@@ -3,6 +3,7 @@
 #include "Legality/Gen3BerryFixEventTemplate.h"
 #include "Legality/Gen3NegaiBoshiEventTemplate.h"
 #include "Legality/Gen3PokeParkEggEventTemplate.h"
+#include "Legality/Gen3PcjpFifthEggEventTemplate.h"
 
 #include <cassert>
 #include <iostream>
@@ -164,6 +165,39 @@ int main() {
     auto pokeParkWrongSpecies = pokeParkEgg;
     pokeParkWrongSpecies.species = 55;
     assert(!PokeParkEgg::matches(pokeParkWrongSpecies, pokeParkEggRng));
+
+    // PCJP Fifth Anniversary event eggs use a weighted table chosen two RNG
+    // calls before the BA-CD sequence. Seed 0 selects non-shiny Ralts / Charm.
+    const auto pcjpRaltsRng = analyzeWithTrainer(
+        0x527131B0u, {2, 18, 3, 12, 22, 24}, 12345, 54321);
+    assert(pcjpRaltsRng.matched());
+    assert(pcjpRaltsRng.variant == Variant::Regular);
+    namespace Pcjp5 = Legality::Gen3PcjpFifthEggEvent;
+    assert(Pcjp5::tableSeed(pcjpRaltsRng) == 0u);
+    auto pcjpRalts = Pcjp5::Candidate{
+        280, 2, 1, 0, 0, 255, 4, true, false, false,
+        u"オヤＮＡＭＥ", {45, 204, 0, 0}
+    };
+    assert(Pcjp5::matches(pcjpRalts, pcjpRaltsRng));
+
+    // Seed 79 selects the shiny Pichu / Wish table slice.
+    const auto pcjpShinyPichuRng = analyzeWithTrainer(
+        0xF93E1D37u, {11, 30, 16, 26, 9, 5}, 12345, 54321);
+    assert(pcjpShinyPichuRng.matched());
+    assert(pcjpShinyPichuRng.variant == Variant::ForceShiny);
+    assert(Pcjp5::tableSeed(pcjpShinyPichuRng) == 79u);
+    auto pcjpPichu = Pcjp5::Candidate{
+        172, 2, 1, 0, 0, 255, 4, true, false, true,
+        u"オヤＮＡＭＥ", {84, 204, 273, 0}
+    };
+    assert(Pcjp5::matches(pcjpPichu, pcjpShinyPichuRng));
+
+    auto pcjpWrongMove = pcjpPichu;
+    pcjpWrongMove.moves = {84, 204, 298, 0};
+    assert(!Pcjp5::matches(pcjpWrongMove, pcjpShinyPichuRng));
+    auto pcjpHatched = pcjpRalts;
+    pcjpHatched.isEgg = false;
+    assert(!Pcjp5::matches(pcjpHatched, pcjpRaltsRng));
 
     // WISHMKR Jirachi is a restricted-seed BACD_R event with fixed
     // persistent distribution fields in the pinned PKHeX table.
