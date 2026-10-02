@@ -1182,7 +1182,9 @@ namespace UI {
         hubDockFocused = false;
         headerActionIndex = -1;
         hubFeatureIndex = -1;
-        refreshHubPreview();
+        // Full Games does not display the heavy trainer/party preview. Keep profile switching
+        // inside that browser lightweight and rebuild Product Home only when it is visible again.
+        if (!classicGamesActive) refreshHubPreview();
     }
 
     void SaveSelectScreen::refreshHubPreview() {
