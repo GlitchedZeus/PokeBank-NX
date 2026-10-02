@@ -5,6 +5,7 @@
 #include "Legality/Gen3PokeParkEggEventTemplate.h"
 #include "Legality/Gen3PcjpFifthEggEventTemplate.h"
 #include "Legality/Gen3PokemonBoxEggEventTemplate.h"
+#include "Legality/Gen3PcjpMachineEventTemplate.h"
 
 #include <cassert>
 #include <iostream>
@@ -166,6 +167,38 @@ int main() {
     auto pokeParkWrongSpecies = pokeParkEgg;
     pokeParkWrongSpecies.species = 55;
     assert(!PokeParkEgg::matches(pokeParkWrongSpecies, pokeParkEggRng));
+
+    // PCJP machine gifts use regular BA-CD plus a fixed distribution
+    // TID/species/city-OT table and an RNG-derived OT gender.
+    namespace PcjpMachine = Legality::Gen3PcjpMachineEvent;
+    static_assert(PcjpMachine::kEventCount == 58);
+    const auto pcjpRng = analyzeWithTrainer(
+        0x67DBFC33u, {12, 25, 27, 30, 2, 31}, 51126, 0);
+    assert(pcjpRng.matched());
+    assert(pcjpRng.variant == Variant::Regular);
+
+    PcjpMachine::Candidate pcjpTreecko{
+        252, 51126, 0, 2, 1,
+        PcjpMachine::expectedOtGender(pcjpRng.originSeed),
+        10, 255, 4, false, false, u"トウキョー"
+    };
+    assert(PcjpMachine::matches(pcjpTreecko, pcjpRng));
+
+    auto pcjpWrongSpecies = pcjpTreecko;
+    pcjpWrongSpecies.species = 152;
+    assert(!PcjpMachine::matches(pcjpWrongSpecies, pcjpRng));
+
+    auto pcjpWrongGender = pcjpTreecko;
+    pcjpWrongGender.otGender ^= 1;
+    assert(!PcjpMachine::matches(pcjpWrongGender, pcjpRng));
+
+    auto pcjpSixth = pcjpTreecko;
+    pcjpSixth.species = 25;
+    pcjpSixth.tid = 60505;
+    pcjpSixth.otName = u"トウキョー";
+    assert(PcjpMachine::matches(pcjpSixth, pcjpRng));
+    pcjpSixth.otName = u"サッポロ";
+    assert(!PcjpMachine::matches(pcjpSixth, pcjpRng));
 
     // Pokémon Box recipient eggs use unrestricted regular BACD_U and fixed
     // unhatched event moves/trainer fields, but no fixed TID/SID.
