@@ -32,6 +32,36 @@ constexpr uint8_t gameMaskForId(std::string_view id) noexcept {
     return 0;
 }
 
+constexpr bool isRetailGen4Language(uint8_t language) noexcept {
+    return (language >= 1 && language <= 5) || language == 7 || language == 8;
+}
+
+constexpr bool languageCompatible(std::string_view exactGameId,
+                                  uint16_t sourceSpecies,
+                                  uint8_t language) noexcept {
+    if (!isRetailGen4Language(language))
+        return false;
+
+    // Pinned PKHeX EncounterTrade4PID language quirks:
+    // - Meister's Magikarp is German for every origin except German -> English.
+    // - Other Diamond/Pearl NPC trades map an English-origin receive to Japanese.
+    // - Lt. Surge's HG/SS Pikachu is English for every origin except English -> French.
+    if (sourceSpecies == 129 &&
+        (exactGameId == "diamond_nds" || exactGameId == "pearl_nds" ||
+         exactGameId == "platinum_nds"))
+        return language == 2 || language == 5;
+
+    if ((exactGameId == "diamond_nds" || exactGameId == "pearl_nds") &&
+        sourceSpecies != 129)
+        return language != 2;
+
+    if (sourceSpecies == 25 &&
+        (exactGameId == "heartgold_nds" || exactGameId == "soulsilver_nds"))
+        return language == 2 || language == 3;
+
+    return true;
+}
+
 constexpr uint32_t packIVs(const std::array<uint8_t, 6>& ivs) noexcept {
     return (static_cast<uint32_t>(ivs[0] & 31u)      ) |
            (static_cast<uint32_t>(ivs[1] & 31u) <<  5) |
@@ -55,17 +85,19 @@ struct Evidence {
     bool evolved = false;
 };
 
-constexpr bool matchesPersistentFields(const Entry& row, uint8_t mask,
-                                       uint32_t pid, uint32_t id32,
+constexpr bool matchesPersistentFields(const Entry& row, std::string_view exactGameId,
+                                       uint8_t mask, uint32_t pid, uint32_t id32,
                                        uint8_t gender, uint8_t otGender,
-                                       uint8_t abilityNumber, uint32_t packedIVs,
-                                       uint16_t metLocation,
+                                       uint8_t abilityNumber, uint8_t language,
+                                       uint32_t packedIVs, uint16_t metLocation,
                                        uint8_t metLevel) noexcept {
     if ((row.gameMask & mask) == 0)
         return false;
     if (row.pid != pid || row.id32 != id32 || row.gender != gender ||
         row.otGender != otGender || row.abilityNumber != abilityNumber ||
         row.ivPack != packedIVs)
+        return false;
+    if (!languageCompatible(exactGameId, row.species, language))
         return false;
     if (row.metLocation == 2001)
         return metLocation == 2001 && metLevel >= row.level;
@@ -75,7 +107,7 @@ constexpr bool matchesPersistentFields(const Entry& row, uint8_t mask,
 inline Evidence matchDirect(std::string_view exactGameId, uint16_t speciesId,
                             uint32_t pid, uint32_t id32,
                             uint8_t gender, uint8_t otGender,
-                            uint8_t abilityNumber,
+                            uint8_t abilityNumber, uint8_t language,
                             const std::array<uint8_t, 6>& ivs,
                             uint16_t metLocation,
                             uint8_t metLevel) noexcept {
@@ -87,8 +119,8 @@ inline Evidence matchDirect(std::string_view exactGameId, uint16_t speciesId,
         if (row.species != speciesId)
             continue;
         if (matchesPersistentFields(
-                row, mask, pid, id32, gender, otGender, abilityNumber,
-                packedIVs, metLocation, metLevel))
+                row, exactGameId, mask, pid, id32, gender, otGender,
+                abilityNumber, language, packedIVs, metLocation, metLevel))
             return {true, row.species, false};
     }
     return {};
@@ -97,11 +129,12 @@ inline Evidence matchDirect(std::string_view exactGameId, uint16_t speciesId,
 inline Evidence matchEvolutionLine(
     std::string_view exactGameId, uint16_t speciesId,
     uint32_t pid, uint32_t id32, uint8_t gender, uint8_t otGender,
-    uint8_t abilityNumber, const std::array<uint8_t, 6>& ivs,
+    uint8_t abilityNumber, uint8_t language,
+    const std::array<uint8_t, 6>& ivs,
     uint16_t metLocation, uint8_t metLevel) noexcept {
     if (const auto direct = matchDirect(
             exactGameId, speciesId, pid, id32, gender, otGender,
-            abilityNumber, ivs, metLocation, metLevel);
+            abilityNumber, language, ivs, metLocation, metLevel);
         direct.matched)
         return direct;
 
@@ -116,8 +149,8 @@ inline Evidence matchEvolutionLine(
             if (row.species != ancestor)
                 continue;
             if (matchesPersistentFields(
-                    row, mask, pid, id32, gender, otGender, abilityNumber,
-                    packedIVs, metLocation, metLevel))
+                    row, exactGameId, mask, pid, id32, gender, otGender,
+                    abilityNumber, language, packedIVs, metLocation, metLevel))
                 return {true, row.species, true};
         }
         const uint16_t next =
@@ -131,10 +164,11 @@ inline Evidence matchEvolutionLine(
 
 inline bool matches(std::string_view exactGameId, uint16_t speciesId,
                     uint32_t pid, uint32_t id32, uint8_t gender, uint8_t otGender,
-                    uint8_t abilityNumber, const std::array<uint8_t, 6>& ivs,
+                    uint8_t abilityNumber, uint8_t language,
+                    const std::array<uint8_t, 6>& ivs,
                     uint16_t metLocation, uint8_t metLevel) noexcept {
     return matchDirect(exactGameId, speciesId, pid, id32, gender, otGender,
-                       abilityNumber, ivs, metLocation, metLevel).matched;
+                       abilityNumber, language, ivs, metLocation, metLevel).matched;
 }
 
 } // namespace Legality::Gen4Trade
