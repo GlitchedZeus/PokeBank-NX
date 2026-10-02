@@ -2,7 +2,8 @@
 // Source: PKHeX @ 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
 // Tables: TradeGift_DPPtIngame and TradeGift_HGSS.
 // Fixed first/second ability slot is persistent Gen IV trade evidence.
-// Nickname/language localization quirks remain separate evidence layers.
+// Source-species/game language-ID quirks are enforced by Gen4TradeEvidence.h.
+// Localized nickname/OT string matching remains a separate evidence layer.
 inline constexpr std::array<Entry, 16> kEntries{{
     {0x0000008eu, 0x0000642bu, 0x339a3defu, 63, 2001, 1, 0, 1, 1, 0x07},
     {0x00000867u, 0x0000ac6eu, 0x1f9cbe8fu, 441, 2001, 1, 1, 0, 2, 0x07},
