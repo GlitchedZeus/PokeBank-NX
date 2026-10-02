@@ -159,11 +159,20 @@ require("GameSortMode::MostPlayed" in source and "GameSortMode::RecentlyPlayed" 
 require('"Sort: ") + gameSortModeLabel()' in source and
         '"\\xE2\\x99\\xA5"' in source,
         "Games surfaces must show the active sort and a small heart for favorites")
-require('if (id == "red_gb") return 199602270;' in source and
+require("gamePlatformSortKey" in source and
+        "case Platform::GameBoy: return 0;" in source and
+        "case Platform::GameBoyColor: return 1;" in source and
+        "case Platform::GameBoyAdvance: return 2;" in source and
+        "case Platform::NintendoDS: return 3;" in source and
+        'if (id.ends_with("_3ds")) return 4;' in source and
+        "case Platform::NintendoSwitch: return 5;" in source and
+        'if (id == "red_gb") return 199602270;' in source and
+        'if (id == "x_3ds") return 201310120;' in source and
         'if (id == "letsgo_pikachu_switch") return 201811160;' in source and
+        'if (ap != bp) return ap < bp;' in source and
         'if (ad != bd) return ad < bd;' in source and
         '"lets_go_pikachu_switch"' not in source,
-        "Release Date sort must be oldest-to-newest with the real Lets Go identities")
+        "Release Date sort must be platform-first GB/GBC/GBA/DS/3DS/Switch, then oldest-to-newest")
 require("Horizontal movement never spills into" in source and
         "Six-column browser navigation is spatial" in source and
         "col + 1 < cols" in source and
