@@ -66,26 +66,38 @@ namespace UI {
         }
 
         int gameReleaseDateKey(std::string_view id) noexcept {
-            // Stable release ordering for every game identity currently surfaced by Product Home.
-            // Newer releases sort first; unknown/future identities remain deterministic at the end.
-            if (id == "legends_za_switch") return 20251016;
-            if (id == "scarlet_switch" || id == "violet_switch") return 20221118;
-            if (id == "legends_arceus_switch") return 20220128;
-            if (id == "brilliant_diamond_switch" || id == "shining_pearl_switch") return 20211119;
-            if (id == "sword_switch" || id == "shield_switch") return 20191115;
-            if (id == "lets_go_pikachu_switch" || id == "lets_go_eevee_switch") return 20181116;
-            if (id == "heartgold_nds" || id == "soulsilver_nds") return 20090912;
-            if (id == "platinum_nds") return 20080913;
-            if (id == "diamond_nds" || id == "pearl_nds") return 20060928;
-            if (id == "emerald_gba") return 20040916;
-            if (id == "firered_gba" || id == "leafgreen_gba" ||
-                id == "firered_switch" || id == "leafgreen_switch") return 20040129;
-            if (id == "ruby_gba" || id == "sapphire_gba") return 20021121;
-            if (id == "crystal_gbc") return 20001214;
-            if (id == "gold_gbc" || id == "silver_gbc") return 19991121;
-            if (id == "yellow_gb") return 19980912;
-            if (id == "red_gb" || id == "blue_gb") return 19960227;
-            return 0;
+            // "Release Date" means oldest -> newest, matching the natural hardware progression:
+            // GB -> GBC -> GBA -> DS -> 3DS (when surfaced) -> Switch. Paired versions get a
+            // deterministic within-day suffix so Red precedes Blue, Gold precedes Silver, etc.
+            if (id == "red_gb") return 199602270;
+            if (id == "blue_gb") return 199602271;
+            if (id == "yellow_gb") return 199809120;
+            if (id == "gold_gbc") return 199911210;
+            if (id == "silver_gbc") return 199911211;
+            if (id == "crystal_gbc") return 200012140;
+            if (id == "ruby_gba") return 200211210;
+            if (id == "sapphire_gba") return 200211211;
+            if (id == "firered_gba" || id == "firered_switch") return 200401290;
+            if (id == "leafgreen_gba" || id == "leafgreen_switch") return 200401291;
+            if (id == "emerald_gba") return 200409160;
+            if (id == "diamond_nds") return 200609280;
+            if (id == "pearl_nds") return 200609281;
+            if (id == "platinum_nds") return 200809130;
+            if (id == "heartgold_nds") return 200909120;
+            if (id == "soulsilver_nds") return 200909121;
+            // Current product identities use "letsgo_*", not the stale "lets_go_*" spelling.
+            if (id == "letsgo_pikachu_switch") return 201811160;
+            if (id == "letsgo_eevee_switch") return 201811161;
+            if (id == "sword_switch") return 201911150;
+            if (id == "shield_switch") return 201911151;
+            if (id == "brilliant_diamond_switch") return 202111190;
+            if (id == "shining_pearl_switch") return 202111191;
+            if (id == "legends_arceus_switch") return 202201280;
+            if (id == "scarlet_switch") return 202211180;
+            if (id == "violet_switch") return 202211181;
+            if (id == "legends_za_switch") return 202510160;
+            // Unknown/future identities sort after known releases instead of jumping in front.
+            return 999999999;
         }
 
         std::string providerSummary(
@@ -280,23 +292,46 @@ namespace UI {
             return genderKnown
                 ? TrainerPortraitPresentation{female ? "May" : "Brendan", female ? "may" : "brendan", female, true}
                 : TrainerPortraitPresentation{"Hoenn Trainer", "", false, false};
-        if (gameId == "firered_gba" || gameId == "leafgreen_gba")
+        if (gameId == "firered_gba" || gameId == "leafgreen_gba" ||
+            gameId == "firered_switch" || gameId == "leafgreen_switch")
             return genderKnown
                 ? TrainerPortraitPresentation{female ? "Leaf" : "Red", female ? "leaf" : "red", female, true}
-                : TrainerPortraitPresentation{"Kanto Trainer", "", false, false};
+                : TrainerPortraitPresentation{"Kanto Trainer", "red", false, true};
 
         if (gameId == "diamond_nds" || gameId == "pearl_nds" || gameId == "platinum_nds" ||
             gameId == "brilliant_diamond_switch" || gameId == "shining_pearl_switch")
             return genderKnown
                 ? TrainerPortraitPresentation{female ? "Dawn" : "Lucas", female ? "dawn" : "lucas", female, true}
-                : TrainerPortraitPresentation{"Sinnoh Trainer", "", false, false};
+                : TrainerPortraitPresentation{"Sinnoh Trainer", "lucas", false, true};
         if (gameId == "heartgold_nds" || gameId == "soulsilver_nds")
             return genderKnown
                 ? TrainerPortraitPresentation{female ? "Lyra" : "Ethan", female ? "lyra" : "ethan", female, true}
-                : TrainerPortraitPresentation{"Johto Trainer", "", false, false};
+                : TrainerPortraitPresentation{"Johto Trainer", "ethan", false, true};
 
-        // Later customizable protagonists deliberately stay generic until appearance reconstruction
-        // is backed by the exact save-format model. Never pretend a base portrait is exact.
+        // Later games still use the save-backed gender when available, but now show the real
+        // default protagonist art instead of an empty Poké Ball placeholder.
+        if (gameId == "letsgo_pikachu_switch" || gameId == "letsgo_eevee_switch")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Elaine" : "Chase", female ? "elaine" : "chase", female, true}
+                : TrainerPortraitPresentation{"Let's Go Trainer", "chase", false, true};
+        if (gameId == "sword_switch" || gameId == "shield_switch")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Gloria" : "Victor", female ? "gloria" : "victor", female, true}
+                : TrainerPortraitPresentation{"Galar Trainer", "victor", false, true};
+        if (gameId == "legends_arceus_switch")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Akari" : "Rei", female ? "akari" : "rei", female, true}
+                : TrainerPortraitPresentation{"Hisui Trainer", "rei", false, true};
+        if (gameId == "scarlet_switch" || gameId == "violet_switch")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Juliana" : "Florian", female ? "juliana" : "florian", female, true}
+                : TrainerPortraitPresentation{"Paldea Trainer", "florian", false, true};
+        if (gameId == "legends_za_switch")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Z-A Trainer" : "Z-A Trainer",
+                                              female ? "harmony" : "paxton", female, true}
+                : TrainerPortraitPresentation{"Z-A Trainer", "paxton", false, true};
+
         return {"Trainer", "", false, false};
     }
 
@@ -502,7 +537,7 @@ namespace UI {
                         return ar.lastPlayed > br.lastPlayed;
                     const int ad = gameReleaseDateKey(a.gameId);
                     const int bd = gameReleaseDateKey(b.gameId);
-                    if (ad != bd) return ad > bd;
+                    if (ad != bd) return ad < bd;
                     return a.gameId < b.gameId;
                 });
         }
@@ -2138,22 +2173,19 @@ namespace UI {
                 constexpr int cols = 3;
                 const int row = gamesDrawerIndex / cols;
                 const int col = gamesDrawerIndex % cols;
-                if (kDown & HidNpadButton_Left) {
-                    if (gamesDrawerIndex > 0) --gamesDrawerIndex;
-                }
-                if (kDown & HidNpadButton_Right) {
-                    if (gamesDrawerIndex + 1 < count) ++gamesDrawerIndex;
-                }
-                if (kDown & HidNpadButton_Up) {
-                    if (row > 0) gamesDrawerIndex -= cols;
-                }
+                // Treat Quick Games as a real 2-D grid. Horizontal movement never spills into
+                // another row, and vertical movement keeps the same column (or nearest valid tile).
+                if ((kDown & HidNpadButton_Left) && col > 0)
+                    --gamesDrawerIndex;
+                if ((kDown & HidNpadButton_Right) && col + 1 < cols &&
+                    gamesDrawerIndex + 1 < count)
+                    ++gamesDrawerIndex;
+                if ((kDown & HidNpadButton_Up) && row > 0)
+                    gamesDrawerIndex = std::min(count - 1, (row - 1) * cols + col);
                 if (kDown & HidNpadButton_Down) {
-                    const int candidate = gamesDrawerIndex + cols;
-                    if (candidate < count) gamesDrawerIndex = candidate;
-                    else {
-                        const int lastRowFirst = ((count - 1) / cols) * cols;
-                        gamesDrawerIndex = std::min(count - 1, lastRowFirst + col);
-                    }
+                    const int nextRow = (row + 1) * cols;
+                    if (nextRow < count)
+                        gamesDrawerIndex = std::min(count - 1, nextRow + col);
                 }
                 constexpr int visibleRows = 3;
                 const int selectedRow = gamesDrawerIndex / cols;
@@ -2486,20 +2518,29 @@ namespace UI {
             const int classicCount = classicUser ? static_cast<int>(classicUser->titles.size()) : 0;
             if (classicCount > 0) {
                 const int cols = classicTitleColumns();
-                if (kDown & HidNpadButton_Left)
-                    titleIndex = (titleIndex - 1 + classicCount) % classicCount;
-                if (kDown & HidNpadButton_Right)
-                    titleIndex = (titleIndex + 1) % classicCount;
+                const int row = titleIndex / cols;
+                const int col = titleIndex % cols;
+                // Six-column browser navigation is spatial, not a flat cyclic list. Left/Right
+                // stay inside the current row; Up/Down preserve the column and clamp only when
+                // the final row is incomplete.
+                if ((kDown & HidNpadButton_Left) && col > 0)
+                    --titleIndex;
+                if ((kDown & HidNpadButton_Right) && col + 1 < cols &&
+                    titleIndex + 1 < classicCount)
+                    ++titleIndex;
                 if (kDown & HidNpadButton_Up) {
-                    if (titleIndex - cols >= 0)
-                        titleIndex -= cols;
+                    if (row > 0)
+                        titleIndex = std::min(classicCount - 1, (row - 1) * cols + col);
                     else {
                         headerActionIndex = 0;
                         return;
                     }
                 }
-                if ((kDown & HidNpadButton_Down) && titleIndex + cols < classicCount)
-                    titleIndex += cols;
+                if (kDown & HidNpadButton_Down) {
+                    const int nextRow = (row + 1) * cols;
+                    if (nextRow < classicCount)
+                        titleIndex = std::min(classicCount - 1, nextRow + col);
+                }
 
                 if (kDown & HidNpadButton_A) {
                     openIntent = OpenIntent::Default;
@@ -2960,14 +3001,36 @@ namespace UI {
             fb.drawRoundedRect(artX, artY, DETAIL_ART, DETAIL_ART, 16, Colors::Divider, 1);
 
             const int infoX = artX + DETAIL_ART + 26;
+            // Region artwork is intentionally vivid. Put identity/progress text on a dark glass
+            // surface so it stays readable without hiding the scenery.
+            const int glassX = infoX - 14;
+            const int glassY = HUB_Y + 14;
+            const int glassW = DETAIL_X + DETAIL_W - glassX - 16;
+            constexpr int glassH = 250;
+            fb.drawFilledRoundedRect(glassX, glassY, glassW, glassH, 16,
+                                     Color(3, 10, 24, 184));
+            fb.drawRoundedRect(glassX, glassY, glassW, glassH, 16,
+                               Color(220, 232, 248, 72), 1);
+            const Color heroText(248, 251, 255, 255);
+            const Color heroSecondary(214, 224, 240, 255);
+            const Color heroMuted(177, 192, 214, 255);
+
             std::string gameTitle = title.name.empty() ? title.label : title.name;
             if (gameTitle.size() > 27) gameTitle = gameTitle.substr(0, 26) + "…";
-            fb.drawText(infoX, HUB_Y + 26, gameTitle, Colors::TextPrimary, TextStyle::Title);
+            fb.drawText(infoX, HUB_Y + 26, gameTitle, heroText, TextStyle::Title);
 
-            fb.drawText(infoX, HUB_Y + 76, "Trainer", Colors::TextMuted, TextStyle::Caption);
+            if (titleFavorite(*u, title)) {
+                const int heartX = DETAIL_X + DETAIL_W - 52;
+                const int heartY = HUB_Y + 24;
+                fb.drawFilledRoundedRect(heartX - 8, heartY - 7, 36, 36, 18,
+                                         Color(3, 10, 24, 196));
+                fb.drawSymbol(heartX, heartY, "\xE2\x99\xA5", Colors::Error, TextStyle::Heading);
+            }
+
+            fb.drawText(infoX, HUB_Y + 76, "Trainer", heroMuted, TextStyle::Caption);
             fb.drawText(infoX, HUB_Y + 99,
                         previewTrainerName.empty() ? "—" : previewTrainerName,
-                        previewTrainerName.empty() ? Colors::TextMuted : Colors::TextPrimary,
+                        previewTrainerName.empty() ? heroMuted : heroText,
                         TextStyle::Heading);
             const auto portrait = trainerPortraitForGame(
                 title.gameId, previewTrainerGenderKnown, previewTrainerGender);
@@ -2977,12 +3040,12 @@ namespace UI {
             if (!title.sourceLabel.empty()) sourceLine += "  •  " + productSourceLabel(title.sourceLabel);
             if (sourceLine.size() > 38) sourceLine = sourceLine.substr(0, 37) + "…";
             fb.drawText(infoX, HUB_Y + 139, sourceLine,
-                        Colors::TextSecondary, TextStyle::Body);
+                        heroSecondary, TextStyle::Body);
 
             fb.drawFilledRoundedRect(infoX, HUB_Y + 172, DETAIL_W - (infoX - DETAIL_X) - 24,
                                      2, 1, Colors::Divider);
             fb.drawText(infoX, HUB_Y + 191, "Pokédex Progress",
-                        Colors::TextSecondary, TextStyle::Body);
+                        heroSecondary, TextStyle::Body);
             if (previewDexTotal > 0) {
                 const std::string dexLine =
                     "Seen " + std::to_string(previewDexSeen) + " / " +
@@ -2990,7 +3053,7 @@ namespace UI {
                     std::to_string(previewDexCaught) + " / " +
                     std::to_string(previewDexTotal);
                 fb.drawText(infoX, HUB_Y + 218, dexLine,
-                            Colors::TextPrimary, TextStyle::Caption);
+                            heroText, TextStyle::Caption);
                 const int barW = 360;
                 const int fillW = static_cast<int>(
                     (static_cast<uint32_t>(barW) * previewDexCaught) / previewDexTotal);
@@ -3000,7 +3063,7 @@ namespace UI {
                     fb.drawFilledRoundedRect(infoX, HUB_Y + 246, fillW, 7, 3, Colors::Info);
             } else {
                 fb.drawText(infoX, HUB_Y + 218, "Progress unavailable for this save format.",
-                            Colors::TextMuted, TextStyle::Caption);
+                            heroMuted, TextStyle::Caption);
             }
 
             const int partyX = DETAIL_X + 22;
