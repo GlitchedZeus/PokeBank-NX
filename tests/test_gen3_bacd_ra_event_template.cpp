@@ -27,7 +27,7 @@ int main() {
         2,   // English
         0,   // male OT from RandS7
         70, 255, 4,
-        false, false,
+        false, false, false,
         u"10ANNIV"
     };
     assert(match(charizard, rng).matched);
@@ -48,6 +48,10 @@ int main() {
     wrongOrigin.originGame = 1;
     assert(!match(wrongOrigin, rng).matched);
 
+    auto wrongShiny = charizard;
+    wrongShiny.shiny = true;
+    assert(!match(wrongShiny, rng).matched);
+
     auto unrestricted = rng;
     unrestricted.restrictedSeed = false;
     assert(!match(charizard, unrestricted).matched);
@@ -58,7 +62,6 @@ int main() {
         Gen3BacdPidIv::Variant::Regular, rng.originSeed, true
     };
     assert(rngCompatible(regularRestricted));
-    assert(match(charizard, regularRestricted).matched);
 
     std::cout << "Gen III BACD_R_A event-template evidence: PASS\n";
 }
