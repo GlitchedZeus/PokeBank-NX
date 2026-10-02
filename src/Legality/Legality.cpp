@@ -27,6 +27,7 @@
 #include "Legality/Gen3ChannelEventTemplate.h"
 #include "Legality/Gen3BacdPidIvCorrelation.h"
 #include "Legality/Gen3WishmkrEventTemplate.h"
+#include "Legality/Gen3BerryFixEventTemplate.h"
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
 #include "Legality/Gen4PokewalkerEncounter.h"
@@ -192,10 +193,23 @@ namespace Legality {
                         pk.language(), pk.otGender(), pk.metLevel(),
                         pk.metLocation(), pk.ball(), pk.isEgg(),
                         pk.isFatefulEncounter(), pk.otName());
+                const bool berryFix =
+                    bacd.variant == Gen3BacdPidIv::Variant::ForceShiny &&
+                    bacd.originSeed <= 213u &&
+                    Gen3BerryFixEvent::matchesTemplate(
+                        species, pk.tid16(), pk.sid16(), pk.originGame(),
+                        pk.language(), pk.otGender(), pk.metLevel(),
+                        pk.metLocation(), pk.ball(), pk.isEgg(),
+                        pk.isFatefulEncounter(), pk.otName());
                 if (wishmkr) {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
                         "Restricted BA-CD RNG and persistent fields match the pinned WISHMKR Jirachi distribution template",
+                        CheckIdentifier::EventGift);
+                } else if (berryFix) {
+                    r.coverage.eventGift = CoverageLevel::Partial;
+                    add(r, Severity::Info,
+                        "Forced-shiny BA-CD RNG, RTC-derived seed range, and persistent fields match a pinned Berry Fix Zigzagoon distribution template",
                         CheckIdentifier::EventGift);
                 } else {
                     add(r, Severity::Info,
