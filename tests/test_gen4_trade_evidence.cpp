@@ -31,7 +31,7 @@ int main() {
     // HG/SS Webster's Spearow has an explicit met location and level.
     assert(matches("heartgold_nds", 21, 0x00006B5Eu, 1001u, 1, 0, 1, 2,
                    std::array<uint8_t,6>{15,20,15,20,20,20}, 183, 20));
-    assert(!matches("heartgold_nds", 21, 0x00006B5Eu, 1001u, 1, 0, 1,
+    assert(!matches("heartgold_nds", 21, 0x00006B5Eu, 1001u, 1, 0, 1, 2,
                     std::array<uint8_t,6>{15,20,15,20,20,20}, 2001, 20));
     const auto evolvedFearow = matchEvolutionLine(
         "heartgold_nds", 22, 0x00006B5Eu, 1001u, 1, 0, 1, 2,
