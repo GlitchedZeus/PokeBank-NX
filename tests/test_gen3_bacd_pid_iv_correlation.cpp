@@ -6,6 +6,7 @@
 #include "Legality/Gen3PcjpFifthEggEventTemplate.h"
 #include "Legality/Gen3PokemonBoxEggEventTemplate.h"
 #include "Legality/Gen3PcjpMachineEventTemplate.h"
+#include "Legality/Gen3PcnyEventTemplate.h"
 
 #include <cassert>
 #include <iostream>
@@ -199,6 +200,40 @@ int main() {
     assert(PcjpMachine::matches(pcjpSixth, pcjpRng));
     pcjpSixth.otName = u"サッポロ";
     assert(!PcjpMachine::matches(pcjpSixth, pcjpRng));
+
+    // PCNY machine gifts come from the pinned 50-row binary table and use
+    // unrestricted forced anti-shiny BA-CD. Distribution selection itself is a
+    // separate RNG, so only persistent row identity is proven from the PK3.
+    namespace Pcny = Legality::Gen3PcnyEvent;
+    static_assert(Pcny::kEventCount == 50);
+    Pcny::Candidate pcnyPikachu{
+        25, 80, 0, 2, 2, 50, 255, 4, false, false, u"PCNYb"
+    };
+    assert(Pcny::matches(pcnyPikachu, forced));
+
+    auto pcnyEvolutionC = pcnyPikachu;
+    pcnyEvolutionC.otName = u"PCNYc";
+    assert(Pcny::matches(pcnyEvolutionC, forced));
+    auto pcnyEvolutionD = pcnyPikachu;
+    pcnyEvolutionD.otName = u"PCNYd";
+    assert(!Pcny::matches(pcnyEvolutionD, forced));
+
+    auto pcnyJapanese = pcnyPikachu;
+    pcnyJapanese.language = 1;
+    assert(!Pcny::matches(pcnyJapanese, forced));
+    auto pcnyBadTid = pcnyPikachu;
+    pcnyBadTid.tid = 3000;
+    assert(!Pcny::matches(pcnyBadTid, forced));
+    auto pcnyWrongLevel = pcnyPikachu;
+    pcnyWrongLevel.metLevel = 49;
+    assert(!Pcny::matches(pcnyWrongLevel, forced));
+
+    Pcny::Candidate pcnySixthMachamp{
+        68, 80, 0, 1, 2, 30, 255, 4, false, false, u"PCNYd"
+    };
+    assert(Pcny::matches(pcnySixthMachamp, forced));
+    pcnySixthMachamp.otName = u"PCNYc";
+    assert(!Pcny::matches(pcnySixthMachamp, forced));
 
     // Pokémon Box recipient eggs use unrestricted regular BACD_U and fixed
     // unhatched event moves/trainer fields, but no fixed TID/SID.
