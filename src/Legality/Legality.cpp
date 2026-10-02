@@ -24,6 +24,7 @@
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3ChannelPidIvCorrelation.h"
+#include "Legality/Gen3ChannelEventTemplate.h"
 #include "Legality/Gen3BacdPidIvCorrelation.h"
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4PokewalkerPid.h"
@@ -153,8 +154,22 @@ namespace Legality {
                 pk.pid(), ivs, pk.sid16(), pk.originGame(), pk.otGender());
             if (channel.matched) {
                 add(r, Severity::Info,
-                    "PID/IV spread matches the Pokemon Channel Jirachi XDRNG class; fixed distribution-template provenance remains separate",
+                    "PID/IV spread matches the Pokemon Channel Jirachi XDRNG class",
                     CheckIdentifier::PidRng);
+
+                if (Gen3ChannelEvent::matchesTemplate(
+                        species, pk.tid16(), pk.originGame(), pk.metLevel(),
+                        pk.metLocation(), pk.ball(), pk.isEgg(),
+                        pk.isFatefulEncounter(), pk.otName())) {
+                    r.coverage.eventGift = CoverageLevel::Partial;
+                    add(r, Severity::Info,
+                        "Persistent fields match the pinned Pokemon Channel Jirachi distribution template (TID/OT/origin/met/ball); SID and OT gender are also consistent with the Channel RNG",
+                        CheckIdentifier::EventGift);
+                } else {
+                    add(r, Severity::Info,
+                        "Channel-like PID/IV correlation is present, but the pinned Channel Jirachi distribution fields do not all match; exact event provenance remains incomplete",
+                        CheckIdentifier::EventGift);
+                }
                 return;
             }
 
