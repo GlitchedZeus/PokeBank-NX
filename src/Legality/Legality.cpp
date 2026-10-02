@@ -31,6 +31,7 @@
 #include "Legality/Gen3NegaiBoshiEventTemplate.h"
 #include "Legality/Gen3PokeParkEggEventTemplate.h"
 #include "Legality/Gen3PcjpFifthEggEventTemplate.h"
+#include "Legality/Gen3PokemonBoxEggEventTemplate.h"
 #include "Legality/Gen3BacdRaEventTemplate.h"
 #include "Legality/Gen3MystryMewEvidence.h"
 #include "Legality/Gen4PidIvCorrelation.h"
@@ -258,6 +259,15 @@ namespace Legality {
                             {pk.move(0), pk.move(1), pk.move(2), pk.move(3)}
                         },
                         bacd);
+                const bool pokemonBoxEgg =
+                    Gen3PokemonBoxEggEvent::matches(
+                        {
+                            species, pk.originGame(), pk.otGender(),
+                            pk.metLevel(), pk.metLocation(), pk.ball(),
+                            pk.isEgg(), pk.isFatefulEncounter(), pk.otName(),
+                            {pk.move(0), pk.move(1), pk.move(2), pk.move(3)}
+                        },
+                        bacd);
                 if (mystryMew) {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
@@ -292,6 +302,11 @@ namespace Legality {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
                         "Weighted BACD_TA/BACD_TS table seed, fixed unhatched egg fields and event moves match a pinned Pokemon Center Japan 5th Anniversary egg template; post-hatch reconstruction remains incomplete",
+                        CheckIdentifier::EventGift);
+                } else if (pokemonBoxEgg) {
+                    r.coverage.eventGift = CoverageLevel::Partial;
+                    add(r, Severity::Info,
+                        "Unrestricted regular BA-CD RNG, fixed unhatched egg fields and event moves match a pinned Pokemon Box recipient egg template; post-hatch reconstruction remains incomplete",
                         CheckIdentifier::EventGift);
                 } else if (restrictedAntiEvent.matched) {
                     r.coverage.eventGift = CoverageLevel::Partial;
