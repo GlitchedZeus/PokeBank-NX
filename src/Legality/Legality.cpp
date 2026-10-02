@@ -224,16 +224,19 @@ namespace Legality {
                             pk.isShiny(pk.id32(), {}), pk.otName()
                         },
                         bacd);
-                const bool negaiBoshi =
-                    Gen3NegaiBoshiEvent::matches(
-                        {
-                            species, pk.tid16(), pk.sid16(), pk.originGame(),
-                            pk.language(), pk.otGender(), pk.metLevel(),
-                            pk.metLocation(), pk.ball(), pk.isEgg(),
-                            pk.isFatefulEncounter(),
-                            pk.isShiny(pk.id32(), {}), pk.otName()
-                        },
-                        bacd);
+                const Gen3NegaiBoshiEvent::Candidate negaiCandidate{
+                    species, pk.tid16(), pk.sid16(), pk.originGame(),
+                    pk.language(), pk.otGender(), pk.metLevel(),
+                    pk.metLocation(), pk.ball(), pk.isEgg(),
+                    pk.isFatefulEncounter(),
+                    pk.isShiny(pk.id32(), {}), pk.otName()
+                };
+                const bool negaiForceAnti =
+                    Gen3NegaiBoshiEvent::matchesForceAntiShiny(
+                        negaiCandidate, bacd);
+                const bool negaiTable2 =
+                    Gen3NegaiBoshiEvent::matchesRestrictedTable2(
+                        negaiCandidate, bacd);
                 if (mystryMew) {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
@@ -249,7 +252,12 @@ namespace Legality {
                     add(r, Severity::Info,
                         "Forced-shiny BA-CD RNG, RTC-derived seed range, and persistent fields match a pinned Berry Fix Zigzagoon distribution template",
                         CheckIdentifier::EventGift);
-                } else if (negaiBoshi) {
+                } else if (negaiTable2) {
+                    r.coverage.eventGift = CoverageLevel::Partial;
+                    add(r, Severity::Info,
+                        "Restricted BACD_TA table seed and persistent fields match the pinned Japanese Negai Boshi Jirachi distribution template",
+                        CheckIdentifier::EventGift);
+                } else if (negaiForceAnti) {
                     r.coverage.eventGift = CoverageLevel::Partial;
                     add(r, Severity::Info,
                         "Forced anti-shiny BA-CD RNG and persistent fields match the pinned Japanese Negai Boshi Jirachi distribution template",
