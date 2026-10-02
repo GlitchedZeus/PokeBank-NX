@@ -2,6 +2,7 @@
 #include "Legality/Gen3WishmkrEventTemplate.h"
 #include "Legality/Gen3BerryFixEventTemplate.h"
 #include "Legality/Gen3NegaiBoshiEventTemplate.h"
+#include "Legality/Gen3PokeParkEggEventTemplate.h"
 
 #include <cassert>
 #include <iostream>
@@ -144,6 +145,25 @@ int main() {
     assert(restricted.matched());
     assert(restricted.variant == Variant::Regular);
     assert(restricted.restrictedSeed);
+
+    // PokePark DS Download eggs are restricted regular BACD_R events.
+    const auto pokeParkEggRng = analyzeWithTrainer(
+        0x0000E97Eu, {17, 19, 20, 16, 13, 12}, 50318, 0);
+    assert(pokeParkEggRng.matched());
+    assert(pokeParkEggRng.variant == Variant::Regular);
+    assert(pokeParkEggRng.restrictedSeed);
+
+    namespace PokeParkEgg = Legality::Gen3PokeParkEggEvent;
+    PokeParkEgg::Candidate pokeParkEgg{
+        54, 50318, 0, 2, 0, 5, 255, 4, true, false, u"ポケパーク"
+    };
+    assert(PokeParkEgg::matches(pokeParkEgg, pokeParkEggRng));
+    auto pokeParkHatched = pokeParkEgg;
+    pokeParkHatched.isEgg = false;
+    assert(!PokeParkEgg::matches(pokeParkHatched, pokeParkEggRng));
+    auto pokeParkWrongSpecies = pokeParkEgg;
+    pokeParkWrongSpecies.species = 55;
+    assert(!PokeParkEgg::matches(pokeParkWrongSpecies, pokeParkEggRng));
 
     // WISHMKR Jirachi is a restricted-seed BACD_R event with fixed
     // persistent distribution fields in the pinned PKHeX table.
