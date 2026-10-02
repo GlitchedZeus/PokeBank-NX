@@ -24,6 +24,7 @@
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen3WondercardEggEventTemplate.h"
 #include "Legality/Gen3CxdPidIvCorrelation.h"
+#include "Legality/Gen3XdShadowEncounter.h"
 #include "Legality/Gen3ChannelPidIvCorrelation.h"
 #include "Legality/Gen3ChannelEventTemplate.h"
 #include "Legality/Gen3BacdPidIvCorrelation.h"
@@ -170,8 +171,25 @@ namespace Legality {
             const auto cxd = Gen3CxdPidIv::analyze(pk.pid(), ivs);
             if (cxd.matched) {
                 add(r, Severity::Info,
-                    "PID/IV spread matches the standard Pokemon Colosseum/XD XDRNG class; exact encounter and shadow-team provenance remain incomplete",
+                    "PID/IV spread matches the standard Pokemon Colosseum/XD XDRNG class",
                     CheckIdentifier::PidRng);
+
+                const auto xdShadow = Gen3XdShadowEncounter::match({
+                    species, pk.originGame(), pk.metLevel(), pk.metLocation(),
+                    pk.ball(), pk.isEgg(), pk.isFatefulEncounter(),
+                    pk.isShiny(pk.id32(), {})
+                });
+                if (xdShadow.matched) {
+                    add(r, Severity::Info,
+                        xdShadow.rebattleLocation
+                            ? "CXD PID/IV evidence and persistent fields match a pinned Pokemon XD shadow encounter row through a source-supported Miror B. rebattle location; recursive shadow-team RNG history remains incomplete"
+                            : "CXD PID/IV evidence and persistent fields match a pinned Pokemon XD shadow encounter row; recursive shadow-team RNG history remains incomplete",
+                        CheckIdentifier::Encounter);
+                } else {
+                    add(r, Severity::Info,
+                        "Exact Colosseum/XD encounter and recursive shadow-team provenance remain incomplete",
+                        CheckIdentifier::Encounter);
+                }
                 return;
             }
 
