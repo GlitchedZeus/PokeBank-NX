@@ -421,11 +421,11 @@ $(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation_sanitize: tests/test_gen3_bacd_p
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_bacd_pid_iv_correlation.cpp -o $@
 
-$(HOST_BUILD)/test_gen3_channel_pid_iv_correlation: tests/test_gen3_channel_pid_iv_correlation.cpp include/Legality/Gen3ChannelPidIvCorrelation.h
+$(HOST_BUILD)/test_gen3_channel_pid_iv_correlation: tests/test_gen3_channel_pid_iv_correlation.cpp include/Legality/Gen3ChannelPidIvCorrelation.h include/Legality/Gen3ChannelEventTemplate.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_channel_pid_iv_correlation.cpp -o $@
 
-$(HOST_BUILD)/test_gen3_channel_pid_iv_correlation_sanitize: tests/test_gen3_channel_pid_iv_correlation.cpp include/Legality/Gen3ChannelPidIvCorrelation.h
+$(HOST_BUILD)/test_gen3_channel_pid_iv_correlation_sanitize: tests/test_gen3_channel_pid_iv_correlation.cpp include/Legality/Gen3ChannelPidIvCorrelation.h include/Legality/Gen3ChannelEventTemplate.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_channel_pid_iv_correlation.cpp -o $@
 
