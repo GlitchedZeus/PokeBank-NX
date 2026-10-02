@@ -1,5 +1,6 @@
 #include "Legality/Gen3BacdPidIvCorrelation.h"
 #include "Legality/Gen3WishmkrEventTemplate.h"
+#include "Legality/Gen3BerryFixEventTemplate.h"
 
 #include <cassert>
 #include <iostream>
@@ -56,6 +57,23 @@ int main() {
     assert(berryFix.variant == Variant::ForceShiny);
     assert(berryFix.originSeed == 0x20u);
     assert(berryFix.restrictedSeed);
+    assert(berryFix.originSeed <= 213u);
+
+    using Legality::Gen3BerryFixEvent::matchesTemplate;
+    assert(matchesTemplate(
+        263, 30317, 0, 1, 2, 1, 5, 255, 4, false, false, u"RUBY"));
+    assert(matchesTemplate(
+        263, 30317, 0, 1, 2, 0, 5, 255, 4, false, false, u"SAPHIRE"));
+    assert(matchesTemplate(
+        263, 21121, 0, 1, 1, 1, 5, 255, 4, false, false, u"ルビー"));
+    assert(matchesTemplate(
+        263, 21121, 0, 1, 1, 0, 5, 255, 4, false, false, u"サファイア"));
+    assert(!matchesTemplate(
+        263, 30317, 0, 2, 2, 1, 5, 255, 4, false, false, u"RUBY"));
+    assert(!matchesTemplate(
+        263, 30317, 0, 1, 2, 0, 5, 255, 4, false, false, u"RUBY"));
+    assert(!matchesTemplate(
+        263, 30317, 0, 1, 1, 1, 5, 255, 4, false, false, u"RUBY"));
 
     // Restricted regular BACD example from PKHeX should expose the 16-bit seed class.
     const auto restricted = analyzeWithTrainer(
