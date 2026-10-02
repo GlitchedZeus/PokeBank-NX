@@ -3165,6 +3165,10 @@ namespace UI {
                 std::string notice = hubNotice;
                 if (notice.size() > 92) notice = notice.substr(0, 91) + "…";
                 fb.drawText(DETAIL_X + 24, HUB_Y + 505, notice, Colors::Info, TextStyle::Caption);
+            } else {
+                fb.drawText(DETAIL_X + 24, HUB_Y + 505,
+                            std::string("Order: ") + gameSortModeLabel(),
+                            Colors::TextMuted, TextStyle::Caption);
             }
 
             // The whole selected-game panel remains one safe A/Open touch target for now.
