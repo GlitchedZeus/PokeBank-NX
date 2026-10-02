@@ -12,7 +12,8 @@ constexpr bool isRubySapphireOrigin(uint8_t originGame) noexcept {
 }
 
 constexpr bool matchesTemplate(uint16_t species, uint16_t tid16,
-                               uint8_t originGame, uint8_t metLevel,
+                               uint8_t originGame, uint8_t language,
+                               uint8_t metLevel,
                                uint16_t metLocation, uint8_t ball,
                                bool isEgg, bool fateful,
                                std::u16string_view otName) noexcept {
@@ -20,10 +21,12 @@ constexpr bool matchesTemplate(uint16_t species, uint16_t tid16,
     // species 385, level-5 distribution with stored met level 0,
     // event met location 255, TID 40122, OT "CHANNEL", Ruby/Sapphire,
     // Poke Ball, non-egg, non-fateful. SID and OT gender are RNG-derived
-    // and are checked by Gen3ChannelPidIvCorrelation.
+    // and are checked by Gen3ChannelPidIvCorrelation. The source template has
+    // recipient-language semantics, but PKHeX explicitly rejects Japanese.
     return species == 385 &&
            tid16 == 40122 &&
            isRubySapphireOrigin(originGame) &&
+           language != 1 &&
            metLevel == 0 &&
            metLocation == 255 &&
            ball == 4 &&
