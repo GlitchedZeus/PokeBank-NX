@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Prepare Product Home presentation art used by hardware builds.
 
-Trainer sprites are fetched from the named Pokemon Showdown resources. Region backdrops are
-project-owned presentation assets supplied for PokeBank NX and MUST already be present in RomFS.
-The build validates those exact files and never downloads, generates, or substitutes different
-region scenery behind the user's back.
+Trainer sprites are fetched from named Pokemon Showdown resources. The eight user-supplied
+Kanto-through-Galar backdrops remain branch-owned presentation assets. Hisui and Paldea are fetched
+from fixed real-region artwork URLs because those later-region assets were not supplied with that set.
+The build never generates fake scenery.
 """
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ USER_AGENT = "PokeBank-NX-hardware-build/1.0"
 
 TRAINER_URLS = {
     "red.png": "https://play.pokemonshowdown.com/sprites/trainers/red.png",
+    "leaf.png": "https://play.pokemonshowdown.com/sprites/trainers/leaf-gen3.png",
     "gold.png": "https://play.pokemonshowdown.com/sprites/trainers/ethan-gen2.png",
     "kris.png": "https://play.pokemonshowdown.com/sprites/trainers/kris-gen2.png",
     "brendan.png": "https://play.pokemonshowdown.com/sprites/trainers/brendan.png",
@@ -31,9 +32,19 @@ TRAINER_URLS = {
     "dawn.png": "https://play.pokemonshowdown.com/sprites/trainers/dawn.png",
     "ethan.png": "https://play.pokemonshowdown.com/sprites/trainers/ethan.png",
     "lyra.png": "https://play.pokemonshowdown.com/sprites/trainers/lyra.png",
+    "chase.png": "https://play.pokemonshowdown.com/sprites/trainers/chase.png",
+    "elaine.png": "https://play.pokemonshowdown.com/sprites/trainers/elaine.png",
+    "victor.png": "https://play.pokemonshowdown.com/sprites/trainers/victor.png",
+    "gloria.png": "https://play.pokemonshowdown.com/sprites/trainers/gloria.png",
+    "rei.png": "https://play.pokemonshowdown.com/sprites/trainers/rei.png",
+    "akari.png": "https://play.pokemonshowdown.com/sprites/trainers/akari.png",
+    "florian.png": "https://play.pokemonshowdown.com/sprites/trainers/florian-s.png",
+    "juliana.png": "https://play.pokemonshowdown.com/sprites/trainers/juliana-s.png",
+    "paxton.png": "https://play.pokemonshowdown.com/sprites/trainers/paxton.png",
+    "harmony.png": "https://play.pokemonshowdown.com/sprites/trainers/harmony.png",
 }
 
-REQUIRED_REGIONS = (
+BRANCH_OWNED_REGIONS = (
     "kanto.png",
     "johto.png",
     "hoenn.png",
@@ -43,6 +54,14 @@ REQUIRED_REGIONS = (
     "alola.png",
     "galar.png",
 )
+
+REGION_URLS = {
+    # Real in-game / official-region artwork, not generated substitutes.
+    "hisui.png": "https://archives.bulbagarden.net/media/upload/5/5b/Hisui.png",
+    "paldea.png": "https://archives.bulbagarden.net/media/upload/f/fd/Paldea_artwork.png",
+}
+
+REQUIRED_REGIONS = BRANCH_OWNED_REGIONS + tuple(REGION_URLS)
 
 
 def png_size(data: bytes) -> tuple[int, int]:
@@ -102,13 +121,18 @@ def main() -> int:
     try:
         for name, url in TRAINER_URLS.items():
             fetch(url, TRAINERS / name)
-        # Region art is intentionally NOT fetched. Validate the exact branch-owned assets that
-        # Product Home is expected to show on hardware.
-        for name in REQUIRED_REGIONS:
+
+        # Preserve the exact branch-owned region set supplied for Kanto through Galar.
+        for name in BRANCH_OWNED_REGIONS:
             path = REGIONS / name
             data = path.read_bytes()
             width, height = png_size(data)
             print(f"VERIFIED {path.relative_to(ROOT)} {width}x{height} {len(data)} bytes")
+
+        # Hisui and Paldea were missing from that set. Fetch fixed real-region artwork instead of
+        # synthesizing scenery or reusing Sinnoh/Kalos as misleading substitutes.
+        for name, url in REGION_URLS.items():
+            fetch(url, REGIONS / name)
     except Exception as exc:
         print(f"PRODUCT ART FETCH FAILED: {exc}", file=sys.stderr)
         return 1
