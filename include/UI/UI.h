@@ -13,6 +13,7 @@
 #include "UI/TrainerViewScreen.h"
 #include "Legacy/RetroArchFRLGDiscovery.h"
 #include "Legacy/LegacySourceBindings.h"
+#include "Utils/Keyboard.h"
 
 namespace Trainer {
     class Trainer;
@@ -36,12 +37,16 @@ namespace UI {
         PadState pad;
         TouchInput touch;
         bool running;
+        UIScreen* keyboardBackdrop = nullptr;
         PokeVault::Legacy::FRLGDiscoveryResult legacyFRLGSources;
         PokeVault::Legacy::LegacySourceBindings legacySourceBindings;
         SaveSelectScreen::NavigationState productHomeNavigation{};
         bool productHomeNavigationValid = false;
         AppShellScreen::NavigationState appShellNavigation{};
         bool appShellNavigationValid = false;
+
+        Utils::KeyboardResult runKeyboard(const Utils::KeyboardRequest& request);
+        void drawKeyboardBackdrop();
 
         SaveSelectScreen::MainMenuDestination handleSaveSelection();
         void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName,

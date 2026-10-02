@@ -75,6 +75,9 @@ namespace UI {
         // filling a size×size box whose top-left is (x,y), so it drops into existing marker
         // rows the same way drawSymbol did. Replaces the old ★ glyph everywhere shiny is shown.
         void drawShinyMark(int x, int y, int size, Color color);
+        // Function-key icons used by the in-app keyboard.
+        void drawBackspaceIcon(int iconX, int iconY, int size, Color color);
+        void drawShiftIcon(int iconX, int iconY, int size, Color color, bool filled);
         // Storage-grid cursor: a wide arrowhead pointing straight down, no shaft. Its POINT lands on
         // (tipX, tipY) with the head above, symmetric about that x. `headHeight` sizes the head --
         // the visible arrow; the mitred outline runs on below it to the point at tipY, adding ~27%

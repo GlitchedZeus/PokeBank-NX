@@ -11,6 +11,7 @@
 #include "UI/SaveSelectScreen.h"
 #include "UI/BackupSelectionScreen.h"
 #include "UI/TrainerViewScreen.h"
+#include "UI/Dialogs/KeyboardDialog.h"
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
 #include "Utils/FileUtilities.h"
@@ -45,6 +46,7 @@ namespace UI {
         padConfigureInput(1, HidNpadStyleSet_NpadStandard);
         padInitializeDefault(&pad);
         hidInitializeTouchScreen();  // enable the touchscreen alongside the gamepad
+        Utils::setKeyboardPresenter([this](const Utils::KeyboardRequest& request) { return runKeyboard(request); });
 
         std::string pathError;
         if (!PokeBank::Paths::ensureConfigRoot(&pathError))
@@ -86,6 +88,45 @@ namespace UI {
     }
 
     UIManager::~UIManager() {
+        Utils::setKeyboardPresenter(nullptr);
+    }
+
+    void UIManager::drawKeyboardBackdrop() {
+        if (keyboardBackdrop)
+            keyboardBackdrop->draw(fb);
+        else
+            fb.clear(Colors::Background);
+    }
+
+    Utils::KeyboardResult UIManager::runKeyboard(const Utils::KeyboardRequest& request) {
+        Dialogs::KeyboardState keyboard;
+        keyboard.open(request, fb.getWidth(), fb.getHeight());
+        Dialogs::setActiveKeyboard(&keyboard);
+        while (!keyboard.finished && appletMainLoop()) {
+            padUpdate(&pad);
+            touch.update();
+            keyboard.update(pad, touch);
+            if (keyboard.finished) break;
+            drawKeyboardBackdrop();
+            Dialogs::drawKeyboard(keyboard, fb);
+            fb.flush();
+        }
+        Dialogs::setActiveKeyboard(nullptr);
+
+        constexpr u64 answeringButtons = HidNpadButton_A | HidNpadButton_B | HidNpadButton_X | HidNpadButton_Y |
+                                         HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR |
+                                         HidNpadButton_Plus | HidNpadButton_Minus | HidNpadButton_Up |
+                                         HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right;
+        constexpr int releaseFrameLimit = 60;
+        for (int releaseFrame = 0; releaseFrame < releaseFrameLimit && appletMainLoop(); ++releaseFrame) {
+            drawKeyboardBackdrop();
+            fb.flush();
+            padUpdate(&pad);
+            touch.update();
+            const bool buttonStillMoving = ((padGetButtons(&pad) | padGetButtonsUp(&pad)) & answeringButtons) != 0;
+            if (!buttonStillMoving && !touch.isDown() && !touch.justReleased()) break;
+        }
+        return keyboard.result();
     }
 
     void UIManager::run() {
@@ -139,6 +180,7 @@ namespace UI {
             while (appletMainLoop() && running && !selectScreen.shouldExit()) {
                 padUpdate(&pad);
                 touch.update();
+                keyboardBackdrop = &selectScreen;
                 selectScreen.update(pad, touch);
 
                 // A screen that selected a destination or requested exit is already retired.
@@ -336,6 +378,7 @@ namespace UI {
             while (appletMainLoop() && !trainerScreen.shouldExit() && !trainerScreen.hasRequestedExit()) {
                 padUpdate(&pad);
                 touch.update();
+                keyboardBackdrop = &trainerScreen;
                 trainerScreen.update(pad, touch);
                 if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
                 trainerScreen.draw(fb);
