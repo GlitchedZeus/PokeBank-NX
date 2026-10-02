@@ -57,8 +57,8 @@ BRANCH_OWNED_REGIONS = (
 
 REGION_URLS = {
     # Real in-game / official-region artwork, not generated substitutes.
-    "hisui.png": "https://archives.bulbagarden.net/media/upload/5/5b/Hisui.png",
-    "paldea.png": "https://archives.bulbagarden.net/media/upload/f/fd/Paldea_artwork.png",
+    "hisui.png": "https://raw.githubusercontent.com/pokeclicker/pokeclicker/develop/src/assets/images/hisui.png",
+    "paldea.png": "https://raw.githubusercontent.com/pokeclicker/pokeclicker/develop/src/assets/images/paldea.png",
 }
 
 REQUIRED_REGIONS = BRANCH_OWNED_REGIONS + tuple(REGION_URLS)
@@ -97,11 +97,6 @@ def fetch(url: str, destination: Path) -> None:
     for attempt in range(6):
         try:
             headers = {"User-Agent": USER_AGENT}
-            # Bulbagarden Archives rejects anonymous hotlink-style clients. These are fixed file
-            # URLs chosen above, so send its own site as Referer rather than weakening validation.
-            if "archives.bulbagarden.net/" in url:
-                headers["Referer"] = "https://archives.bulbagarden.net/"
-                headers["Accept"] = "image/avif,image/webp,image/apng,image/png,image/*,*/*;q=0.8"
             request = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(request, timeout=45) as response:
                 data = response.read()
