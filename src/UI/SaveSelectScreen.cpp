@@ -926,7 +926,7 @@ namespace UI {
                 titleIndex = static_cast<int>(std::distance(user->titles.begin(), found));
         }
         gamesDrawerIndex = titleIndex;
-        gamesDrawerScroll = std::max(0, gamesDrawerIndex - 3);
+        gamesDrawerScroll = std::max(0, gamesDrawerIndex / 3 - 1);
         legacyNotice = assignedLeaf + " assigned to this profile.";
         hubNotice = legacyNotice;
         overlay = classicGamesActive ? Overlay::None : Overlay::GamesDrawer;
