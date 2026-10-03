@@ -9,6 +9,7 @@ on:
       - tools/gen_legality_gen4_wild.py
       - tools/gen_legality_gen34_egg_moves.py
       - tools/gen_legality_gen4_events.py
+      - tools/gen_legality_gen3_colo_shadows.py
       - tools/pkhex_source.py
       - .github/workflows/legality-data-generation.yml
 
@@ -17,7 +18,7 @@ permissions:
 
 jobs:
   gen4-wild:
-    name: Regenerate pinned Gen IV wild legality table
+    name: Regenerate pinned legality tables
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -33,14 +34,16 @@ jobs:
           python3 tools/gen_legality_gen4_wild.py
           python3 tools/gen_legality_gen34_egg_moves.py
           python3 tools/gen_legality_gen4_events.py
+          python3 tools/gen_legality_gen3_colo_shadows.py
 
       - name: Show deterministic diff and digest
         run: |
           set -euo pipefail
-          git diff -- include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc
+          git diff -- include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc
           sha256sum include/Legality/Gen4WildEncounterData.inc
           sha256sum include/Legality/Gen34EggMoveData.inc
           sha256sum include/Legality/Gen4EventTemplateData.inc
+          sha256sum include/Legality/Gen3ColoShadowEncounterData.inc
           git diff --check
 
       - name: Upload generated table
@@ -51,6 +54,7 @@ jobs:
             include/Legality/Gen4WildEncounterData.inc
             include/Legality/Gen34EggMoveData.inc
             include/Legality/Gen4EventTemplateData.inc
+            include/Legality/Gen3ColoShadowEncounterData.inc
           if-no-files-found: error
           retention-days: 7
 
@@ -58,7 +62,7 @@ jobs:
         if: github.event_name == 'push'
         run: |
           set -euo pipefail
-          git add include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc
+          git add include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc
           if git diff --cached --quiet; then
             echo "Generated tables already match the branch."
             exit 0
