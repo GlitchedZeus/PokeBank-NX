@@ -58,6 +58,9 @@ BRANCH_OWNED_REGIONS = (
 # These pinned mirrors carry the same full-region artwork selected for the app:
 # Legends_Arceus_Hisui.png for Hisui and Paldea_artwork.png for Scarlet/Violet.
 # Pin the source commit so a future upstream change cannot silently alter hardware artwork.
+# Replaced simplified assets, retained only as provenance (never fetched):
+# https://raw.githubusercontent.com/pokeclicker/pokeclicker/a3062f11fdcf4c22e6a9a7d4747e5bb6614f44ab/src/assets/images/hisui.png
+# https://raw.githubusercontent.com/pokeclicker/pokeclicker/a3062f11fdcf4c22e6a9a7d4747e5bb6614f44ab/src/assets/images/paldea.png
 REGION_URLS = {
     "hisui.png": "https://raw.githubusercontent.com/sjhmichael/pokedex-app/bd971e8ea9b5b6d02d6169afe90d7b05bf0b958b/src/assets/Regions/Legends_Arceus_Hisui.png",
     "paldea.png": "https://raw.githubusercontent.com/sjhmichael/pokedex-app/bd971e8ea9b5b6d02d6169afe90d7b05bf0b958b/src/assets/Regions/Paldea_artwork.png",
