@@ -2,6 +2,7 @@
 #include "Legality/Gen3XdShadowTeamLock.h"
 #include "Legality/Gen3ColoShadowTeamLock.h"
 #include "Legality/Gen3ColoShadowEncounter.h"
+#include "Legality/Gen3GameCubeShadowEvidence.h"
 
 #include <array>
 #include <cassert>
@@ -13,6 +14,7 @@ int main() {
     namespace Lock = Legality::Gen3XdShadowTeamLock;
     namespace Colo = Legality::Gen3ColoShadowTeamLock;
     namespace ColoEncounter = Legality::Gen3ColoShadowEncounter;
+    namespace Cube = Legality::Gen3GameCubeShadowEvidence;
 
     static_assert(Lock::kTeamSetCount == 72);
     static_assert(Lock::kTeamVariantCount == 113);
@@ -176,5 +178,73 @@ int main() {
     static_assert(!ColoEncounter::match({296, 15, 30, 5, true, false}).matched());
     static_assert(!ColoEncounter::match({296, 15, 30, 5, false, true}).matched());
 
-    std::cout << "Gen III XD + normal Colosseum recursive shadow team-lock and identity evidence: PASS\n";
+    // Family-aware routing: normal Colosseum accepts standard CXD only.
+    Cube::Candidate coloCandidate{};
+    coloCandidate.species = 296;
+    coloCandidate.originGame = 15;
+    coloCandidate.metLevel = 30;
+    coloCandidate.metLocation = 5;
+    coloCandidate.pid = 0xC252FEBAu;
+    coloCandidate.ivs = {15, 9, 17, 16, 24, 22};
+    const auto coloEvidence = Cube::analyze(coloCandidate);
+    assert(coloEvidence.family == Cube::Family::Colosseum);
+    assert(coloEvidence.identityMatched);
+    assert(coloEvidence.identityCandidateCount == 1);
+    assert(coloEvidence.correlation.matched);
+    assert(coloEvidence.correlation.variant == CXD::Variant::Standard);
+    assert(coloEvidence.history == Cube::HistoryResult::Matched);
+
+    // A valid XD CXDAnti correlation must not be accepted when persistent fields
+    // identify a normal Colosseum shadow encounter.
+    Cube::Candidate antiOnColo = coloCandidate;
+    antiOnColo.pid = 0xB7951831u;
+    antiOnColo.ivs = {9, 31, 12, 31, 25, 22};
+    antiOnColo.tid = 12345;
+    antiOnColo.sid = 35598;
+    const auto rejectedAntiColo = Cube::analyze(antiOnColo);
+    assert(rejectedAntiColo.family == Cube::Family::Colosseum);
+    assert(rejectedAntiColo.identityMatched);
+    assert(!rejectedAntiColo.correlation.matched);
+    assert(rejectedAntiColo.history == Cube::HistoryResult::None);
+
+    // Standard XD routing preserves player/CPU anti-shiny team-history evidence.
+    Cube::Candidate xdStandard{};
+    xdStandard.species = 303;
+    xdStandard.originGame = 15;
+    xdStandard.metLevel = 22;
+    xdStandard.metLocation = 111;
+    xdStandard.ball = 4;
+    xdStandard.fateful = true;
+    xdStandard.tid = 12345;
+    xdStandard.sid = 51882;
+    xdStandard.pid = 0x049F2F05u;
+    xdStandard.ivs = {31, 30, 29, 31, 23, 27};
+    const auto xdStandardEvidence = Cube::analyze(xdStandard);
+    assert(xdStandardEvidence.family == Cube::Family::XD);
+    assert(xdStandardEvidence.identityMatched);
+    assert(xdStandardEvidence.correlation.matched);
+    assert(xdStandardEvidence.correlation.variant == CXD::Variant::Standard);
+    assert(xdStandardEvidence.history == Cube::HistoryResult::Matched);
+
+    // Deterministic CXDAnti fixture on XD index 1 (empty First team) isolates the
+    // target-PID reroll policy from recursive prior-team history.
+    Cube::Candidate xdAnti{};
+    xdAnti.species = 216;
+    xdAnti.originGame = 15;
+    xdAnti.metLevel = 11;
+    xdAnti.metLocation = 143;
+    xdAnti.ball = 4;
+    xdAnti.fateful = true;
+    xdAnti.tid = 12345;
+    xdAnti.sid = 35598;
+    xdAnti.pid = 0xB7951831u;
+    xdAnti.ivs = {9, 31, 12, 31, 25, 22};
+    const auto xdAntiEvidence = Cube::analyze(xdAnti);
+    assert(xdAntiEvidence.family == Cube::Family::XD);
+    assert(xdAntiEvidence.identityMatched);
+    assert(xdAntiEvidence.correlation.matched);
+    assert(xdAntiEvidence.correlation.variant == CXD::Variant::AntiShiny);
+    assert(xdAntiEvidence.history == Cube::HistoryResult::Matched);
+
+    std::cout << "Gen III GameCube shadow family, identity and recursive RNG evidence: PASS\n";
 }
