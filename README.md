@@ -18,13 +18,13 @@
   <img alt="Platform: Nintendo Switch" src="https://img.shields.io/badge/platform-Nintendo%20Switch-E60012?style=for-the-badge&logo=nintendo-switch&logoColor=white">
   <img alt="Version: 0.1.0-alpha" src="https://img.shields.io/badge/version-0.1.0--alpha-0ea5e9?style=for-the-badge">
   <img alt="Status: Active Alpha" src="https://img.shields.io/badge/status-active%20alpha-f59e0b?style=for-the-badge">
-  <img alt="C++" src="https://img.shields.io/badge/C%2B%2B-20-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white">
+  <img alt="C++20" src="https://img.shields.io/badge/C%2B%2B-20-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white">
 </p>
 
 <p align="center">
-  <a href="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/host-tests.yml"><img alt="Host Tests" src="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/host-tests.yml/badge.svg?branch=feature%2Fgen4-full-editor-20260928"></a>
-  <a href="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/product-ui-native.yml"><img alt="Product UI Native" src="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/product-ui-native.yml/badge.svg?branch=feature%2Fgen4-full-editor-20260928"></a>
-  <a href="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/gen4-shared-editor-candidate.yml"><img alt="Gen IV Candidate Gate" src="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/gen4-shared-editor-candidate.yml/badge.svg?branch=feature%2Fgen4-full-editor-20260928"></a>
+  <a href="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/host-tests.yml"><img alt="Host Tests: passing" src="https://img.shields.io/badge/Host%20Tests-passing-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
+  <a href="https://github.com/GlitchedZeus/PokeBank-NX/pull/92"><img alt="Product UI Native: passing" src="https://img.shields.io/badge/Product%20UI%20Native-passing-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
+  <a href="https://github.com/GlitchedZeus/PokeBank-NX/pull/92"><img alt="Gen IV Candidate Gate: passing" src="https://img.shields.io/badge/Gen%20IV%20Gate-passing-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -243,7 +243,7 @@ GitHub is authoritative. Old handoff documents and historical branch SHAs are ev
 
 ## Building
 
-PokeBank NX targets Nintendo Switch homebrew using **devkitPro / devkitA64 / libnx**.
+PokeBank NX targets Nintendo Switch homebrew using **C++20**, **devkitPro / devkitA64 / libnx**, **SDL2** for platform/window/input support, and **NanoVG/OpenGL** for the current renderer.
 
 ### Requirements
 
@@ -333,19 +333,10 @@ The README is intentionally product-facing. Exact branch checkpoints, CI run IDs
 
 ## License
 
-PokeBank NX is licensed under the **GNU Affero General Public License v3.0**.
+PokeBank NX is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
 
-See [LICENSE](LICENSE) for the complete license text.
-
-```text
-PokeBank NX
-Copyright (C) PokeBank NX contributors
-
-This program is free software: you can redistribute it and/or modify it
-under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-```
+> [!NOTE]
+> The complete license terms are in [LICENSE](LICENSE). The README is not a substitute for the license text.
 
 Third-party code, data, research, and reference projects retain their own licenses and attribution requirements.
 
