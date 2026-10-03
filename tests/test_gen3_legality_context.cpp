@@ -44,6 +44,38 @@ Pokemon::Pokemon3FRLG bulbasaurWithSwordsDance() {
     p.setMovePP(0, 30);
     return p;
 }
+
+Pokemon::Pokemon3FRLG xdTeddiursaWithStoredFatefulFlag() {
+    std::array<uint8_t, 80> raw{};
+    Pokemon::Pokemon3FRLG p(std::span<const std::byte>(
+        reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
+
+    // Deterministic standard CXD vector from origin 0x12345678.
+    p.setPID(0xE0A15B96u);
+    p.setTID16(1);
+    p.setSID16(2);
+    p.setLanguage(2);
+    p.setSpecies(216);      // Teddiursa: pinned XD shadow index 1
+    p.setOTName(u"MICHAEL");
+    p.setNickname(u"TEDDIURSA");
+    p.setOriginGame(15);    // CXD
+    p.setBall(4);           // fixed Poke Ball for this pinned XD row
+    p.setMetLevel(11);
+    p.setMetLocation(143);
+    p.setLevel(11);
+    p.setIV(0, 9);
+    p.setIV(1, 31);
+    p.setIV(2, 12);
+    p.setIV(3, 31);
+    p.setIV(4, 25);
+    p.setIV(5, 22);
+
+    assert(!p.isFatefulEncounter());
+    p.wr32(0x4C, p.rd32(0x4C) | 0x80000000u);
+    p.refreshChecksum();
+    assert(p.isFatefulEncounter());
+    return p;
+}
 }
 
 int main() {
@@ -71,6 +103,17 @@ int main() {
     // No exact container context is intentional for Bank records; retain generic-format behavior.
     const auto bank = Legality::analyze(p, Enums::GameVersion::FRLG);
     assert(!hasText(bank, "not native to this exact Gen III game"));
+
+    // PK3 persists the Gen III fateful/obedience flag in the ribbons word. XD shadow
+    // transfers set it; the legality path must read the stored bit instead of the base
+    // Pokemon default false value.
+    auto teddiursa = xdTeddiursaWithStoredFatefulFlag();
+    assert(teddiursa.checksumValid());
+    const auto xd = Legality::analyze(
+        teddiursa, Enums::GameVersion::FRLG, "firered_gba");
+    assert(hasText(
+        xd,
+        "recursive Pokemon XD shadow-team/anti-shiny history match pinned source data"));
 
     std::cout << "Gen III exact-source legality context: PASS\n";
 }
