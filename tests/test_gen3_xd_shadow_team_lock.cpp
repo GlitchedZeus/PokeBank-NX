@@ -1,6 +1,7 @@
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3XdShadowTeamLock.h"
 #include "Legality/Gen3ColoShadowTeamLock.h"
+#include "Legality/Gen3ColoShadowEncounter.h"
 
 #include <array>
 #include <cassert>
@@ -11,6 +12,7 @@ int main() {
     namespace CXD = Legality::Gen3CxdPidIv;
     namespace Lock = Legality::Gen3XdShadowTeamLock;
     namespace Colo = Legality::Gen3ColoShadowTeamLock;
+    namespace ColoEncounter = Legality::Gen3ColoShadowEncounter;
 
     static_assert(Lock::kTeamSetCount == 72);
     static_assert(Lock::kTeamVariantCount == 113);
@@ -142,5 +144,37 @@ int main() {
                           boundedColo.originSeed, 1) ==
            Colo::Result::SearchLimit);
 
-    std::cout << "Gen III XD + normal Colosseum recursive shadow team-lock evidence: PASS\n";
+    // Normal Colosseum encounter identity is source-row based rather than index
+    // keyed. The one duplicate persistent tuple must retain both valid histories.
+    static_assert(ColoEncounter::kEncounterCount == 80);
+    constexpr auto makuhitaIdentity = ColoEncounter::match(
+        {296, 15, 30, 5, false, false});
+    static_assert(makuhitaIdentity.count == 1);
+    static_assert(makuhitaIdentity.entries[0]->shadowIndex == 1);
+    static_assert(makuhitaIdentity.entries[0]->teamSet ==
+                  static_cast<uint8_t>(Colo::TeamSet::ColoMakuhita));
+
+    constexpr auto firstIdentity = ColoEncounter::match(
+        {153, 15, 30, 3, false, false});
+    static_assert(firstIdentity.count == 1);
+    static_assert(ColoEncounter::teamSet(*firstIdentity.entries[0]) ==
+                  Colo::TeamSet::First);
+
+    constexpr auto murkrowIdentity = ColoEncounter::match(
+        {198, 15, 43, 67, false, false});
+    static_assert(murkrowIdentity.count == 2);
+    static_assert(murkrowIdentity.entries[0]->shadowIndex == 29);
+    static_assert(ColoEncounter::teamSet(*murkrowIdentity.entries[0]) ==
+                  Colo::TeamSet::Murkrow);
+    static_assert(murkrowIdentity.entries[1]->shadowIndex == 37);
+    static_assert(ColoEncounter::teamSet(*murkrowIdentity.entries[1]) ==
+                  Colo::TeamSet::First);
+
+    static_assert(!ColoEncounter::match({296, 2, 30, 5, false, false}).matched());
+    static_assert(!ColoEncounter::match({296, 15, 31, 5, false, false}).matched());
+    static_assert(!ColoEncounter::match({296, 15, 30, 6, false, false}).matched());
+    static_assert(!ColoEncounter::match({296, 15, 30, 5, true, false}).matched());
+    static_assert(!ColoEncounter::match({296, 15, 30, 5, false, true}).matched());
+
+    std::cout << "Gen III XD + normal Colosseum recursive shadow team-lock and identity evidence: PASS\n";
 }
