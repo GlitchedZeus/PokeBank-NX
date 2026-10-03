@@ -2,11 +2,19 @@
 // Sources: Encounters3ColoTeams.cs, Encounters3ColoShadow.cs.
 // Normal Colosseum prior-team locks only; Japanese E-Reader teams are intentionally excluded.
 inline constexpr std::array<LockEntry, 13> kLocks{{
-    {24, 0, 127}, {0, 1, 127},
-    {12, 0, 127}, {6, 1, 191}, {18, 0, 127},
-    {6, 0, 127}, {12, 1, 127}, {18, 0, 127},
-    {0, 0, 127}, {0, 1, 127},
-    {20, 1, 63}, {16, 0, 31}, {21, 1, 127},
+    {24, 0, 127},
+    {0, 1, 127},
+    {12, 0, 127},
+    {6, 1, 191},
+    {18, 0, 127},
+    {6, 0, 127},
+    {12, 1, 127},
+    {18, 0, 127},
+    {0, 0, 127},
+    {0, 1, 127},
+    {20, 1, 63},
+    {16, 0, 31},
+    {21, 1, 127},
 }};
 
 inline constexpr std::array<VariantEntry, 5> kVariants{{
