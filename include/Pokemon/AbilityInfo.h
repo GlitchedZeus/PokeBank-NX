@@ -11,7 +11,8 @@
  *     with the modern table for 101 of its 386 species, and a PK3 stores only a BIT
  *     that the game resolves through its OWN table -- so a modern id written to a Gen 3
  *     mon displays as whatever that game's slot holds instead.
- *   - everything else    -> PersonalInfo (Scarlet/Violet-sourced; three slots).
+ *   - D/P/Pt/HG/SS      -> native Generation IV personal tables (two slots, no Hidden).
+ *   - later games        -> PersonalInfo (modern table; three slots).
  *
  * PKHeX's ability NUMBER encoding is kept throughout: 1 = slot 1, 2 = slot 2, 4 = Hidden.
  */

@@ -48,13 +48,28 @@ GEN3_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen3/Gen3StagedInventoryEd
 GEN3_STAGED_POKEMON_LINK_SOURCES := src/Integration/Gen3/Gen3StagedPokemonEditor.cpp \
 	src/Names/MoveInfo.cpp
 GEN3_LEGALITY_CONTEXT_SOURCES := tests/test_gen3_legality_context.cpp \
-	src/Legality/Legality.cpp src/Pokemon/Pokemon3FRLG.cpp src/Encryption/Encryption3FRLG.cpp \
+	src/Legality/Legality.cpp \
+	src/Integration/Gen1/Gen1MoveCompatibility.cpp \
+	src/Integration/Gen2/Gen2MoveCompatibility.cpp \
+	src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
+	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp \
+	src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp \
+	src/Integration/Gen2/Gen2PersonalData.cpp src/Encryption/Encryption3FRLG.cpp \
 	src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
 	src/Pokemon/AbilityInfo.cpp src/Pokemon/FormInfo.cpp src/Pokemon/LearnsetTable.cpp \
 	src/Names/MoveNames.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
 	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp \
 	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
 GEN3_LEGALITY_CONTEXT_FLAGS := -Wno-unused-parameter
+GEN4_FORM_EVIDENCE_SOURCES := tests/test_gen4_form_evidence.cpp \
+	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp \
+	src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp
+GEN4_ABILITY_EVIDENCE_SOURCES := tests/test_gen4_ability_evidence.cpp \
+	src/Pokemon/AbilityInfo.cpp src/Pokemon/PersonalInfoTable.cpp \
+	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp \
+	src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp
+LEGACY_LEGALITY_CONTEXT_SOURCES := tests/test_legality_legacy_move_context.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES))
 GEN1_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \
 	$(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES)
 CLASSIC_UI_MODEL_SOURCES := tests/test_classic_inventory_ui_model.cpp \
@@ -126,6 +141,76 @@ HOST_TESTS += $(HOST_BUILD)/test_classic_inventory_ui_model $(HOST_BUILD)/test_i
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_inventory_ui_model_sanitize $(HOST_BUILD)/test_inventory_ui_contract_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen3_legality_context
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_legality_context_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_legality_context_model
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_context_model_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_legality_legacy_move_context
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_legacy_move_context_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen34_egg_state
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_egg_state_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_hatch_location_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_hatch_location_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen34_egg_moves
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_egg_moves_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_wild_rng_correlation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_wild_rng_correlation_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_wild_encounter_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_wild_encounter_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_static_encounter_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_static_encounter_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_form_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_form_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_origin_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_origin_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_ability_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_ability_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_trade_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_trade_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_transfer_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_transfer_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen1_catch_rate_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_catch_rate_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen1_encounter_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_encounter_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen12_time_capsule_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen12_time_capsule_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen2_static_encounter_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_static_encounter_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen2_wild_encounter_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_wild_encounter_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen2_trade_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_trade_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_pid_iv_correlation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_pid_iv_correlation_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_bacd_ra_event_template
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_bacd_ra_event_template_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_mystry_mew_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_mystry_mew_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_channel_pid_iv_correlation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_channel_pid_iv_correlation_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_cxd_pid_iv_correlation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_cxd_pid_iv_correlation_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_xd_shadow_encounter
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_xd_shadow_encounter_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen3_xd_shadow_team_lock
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_xd_shadow_team_lock_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_pid_iv_correlation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_pid_iv_correlation_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_pokewalker_pid
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_pokewalker_pid_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_pokewalker_encounter_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_pokewalker_encounter_evidence_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_cute_charm_pid
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_cute_charm_pid_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_chain_shiny
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_chain_shiny_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_mystery_gift_pid
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_mystery_gift_pid_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_event_template
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_event_template_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_gen4_ranger_manaphy
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_ranger_manaphy_sanitize
 
 .PHONY: host-test host-sanitize host-clean
 
@@ -168,6 +253,294 @@ $(HOST_BUILD)/test_gen3_legality_context: $(GEN3_LEGALITY_CONTEXT_SOURCES)
 $(HOST_BUILD)/test_gen3_legality_context_sanitize: $(GEN3_LEGALITY_CONTEXT_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_legality_context_model: tests/test_legality_context_model.cpp include/Legality/LegalityContext.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_legality_context_model.cpp -o $@
+
+$(HOST_BUILD)/test_legality_context_model_sanitize: tests/test_legality_context_model.cpp include/Legality/LegalityContext.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_legality_context_model.cpp -o $@
+
+$(HOST_BUILD)/test_legality_legacy_move_context: $(LEGACY_LEGALITY_CONTEXT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_legality_legacy_move_context_sanitize: $(LEGACY_LEGALITY_CONTEXT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gen34_egg_state: tests/test_gen34_egg_state.cpp include/Legality/Gen34EggState.h include/Legality/Gen4ReleaseEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen34_egg_state.cpp -o $@
+
+$(HOST_BUILD)/test_gen34_egg_state_sanitize: tests/test_gen34_egg_state.cpp include/Legality/Gen34EggState.h include/Legality/Gen4ReleaseEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen34_egg_state.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_hatch_location_evidence: tests/test_gen4_hatch_location_evidence.cpp include/Legality/Gen4HatchLocationEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_hatch_location_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_hatch_location_evidence_sanitize: tests/test_gen4_hatch_location_evidence.cpp include/Legality/Gen4HatchLocationEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_hatch_location_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen34_egg_moves: tests/test_gen34_egg_moves.cpp \
+		include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen34_egg_moves.cpp -o $@
+
+$(HOST_BUILD)/test_gen34_egg_moves_sanitize: tests/test_gen34_egg_moves.cpp \
+		include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen34_egg_moves.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_wild_rng_correlation: tests/test_gen4_wild_rng_correlation.cpp \
+		include/Legality/Gen4WildRngCorrelation.h include/Legality/Gen4WildEncounter.h \
+		include/Legality/Gen4WildEncounterData.inc include/Legality/Gen3PidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_wild_rng_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_wild_rng_correlation_sanitize: tests/test_gen4_wild_rng_correlation.cpp \
+		include/Legality/Gen4WildRngCorrelation.h include/Legality/Gen4WildEncounter.h \
+		include/Legality/Gen4WildEncounterData.inc include/Legality/Gen3PidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_wild_rng_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_wild_encounter_evidence: tests/test_gen4_wild_encounter_evidence.cpp include/Legality/Gen4WildEncounter.h include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_wild_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_wild_encounter_evidence_sanitize: tests/test_gen4_wild_encounter_evidence.cpp include/Legality/Gen4WildEncounter.h include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_wild_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_static_encounter_evidence: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h include/Legality/Gen4ReleaseEvidence.h include/Legality/Gen4FormEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_static_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_static_encounter_evidence_sanitize: tests/test_gen4_static_encounter_evidence.cpp include/Legality/Gen4StaticEncounter.h include/Legality/Gen4StaticEncounterData.inc include/Legality/Gen4WildEncounter.h include/Legality/Gen4ReleaseEvidence.h include/Legality/Gen4FormEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_static_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_origin_evidence: tests/test_gen4_origin_evidence.cpp include/Legality/Gen4OriginEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_origin_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_origin_evidence_sanitize: tests/test_gen4_origin_evidence.cpp include/Legality/Gen4OriginEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_origin_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_form_evidence: $(GEN4_FORM_EVIDENCE_SOURCES) include/Legality/Gen4FormEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_FORM_EVIDENCE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_form_evidence_sanitize: $(GEN4_FORM_EVIDENCE_SOURCES) include/Legality/Gen4FormEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_FORM_EVIDENCE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_ability_evidence: $(GEN4_ABILITY_EVIDENCE_SOURCES) include/Pokemon/AbilityInfo.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_ABILITY_EVIDENCE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_ability_evidence_sanitize: $(GEN4_ABILITY_EVIDENCE_SOURCES) include/Pokemon/AbilityInfo.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_ABILITY_EVIDENCE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_trade_evidence: tests/test_gen4_trade_evidence.cpp include/Legality/Gen4TradeEvidence.h include/Legality/Gen4TradeEvidenceData.inc include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_trade_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_trade_evidence_sanitize: tests/test_gen4_trade_evidence.cpp include/Legality/Gen4TradeEvidence.h include/Legality/Gen4TradeEvidenceData.inc include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_trade_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_transfer_evidence: tests/test_gen4_transfer_evidence.cpp include/Legality/Gen4TransferEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_transfer_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_transfer_evidence_sanitize: tests/test_gen4_transfer_evidence.cpp include/Legality/Gen4TransferEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_transfer_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen1_catch_rate_evidence: tests/test_gen1_catch_rate_evidence.cpp include/Legality/Gen1CatchRateEvidence.h include/Legality/Gen1CatchRateData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen1_catch_rate_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen1_catch_rate_evidence_sanitize: tests/test_gen1_catch_rate_evidence.cpp include/Legality/Gen1CatchRateEvidence.h include/Legality/Gen1CatchRateData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen1_catch_rate_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen1_encounter_evidence: tests/test_gen1_encounter_evidence.cpp include/Legality/Gen1EncounterEvidence.h include/Legality/Gen1EncounterEvidenceData.inc include/Legality/Gen1CatchRateEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen1_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen1_encounter_evidence_sanitize: tests/test_gen1_encounter_evidence.cpp include/Legality/Gen1EncounterEvidence.h include/Legality/Gen1EncounterEvidenceData.inc include/Legality/Gen1CatchRateEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen1_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen12_time_capsule_evidence: tests/test_gen12_time_capsule_evidence.cpp include/Legality/Gen12TimeCapsuleEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen12_time_capsule_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen12_time_capsule_evidence_sanitize: tests/test_gen12_time_capsule_evidence.cpp include/Legality/Gen12TimeCapsuleEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen12_time_capsule_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen2_static_encounter_evidence: tests/test_gen2_static_encounter_evidence.cpp include/Legality/Gen2StaticEncounter.h include/Legality/Gen2StaticEncounterData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen2_static_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen2_static_encounter_evidence_sanitize: tests/test_gen2_static_encounter_evidence.cpp include/Legality/Gen2StaticEncounter.h include/Legality/Gen2StaticEncounterData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen2_static_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen2_wild_encounter_evidence: tests/test_gen2_wild_encounter_evidence.cpp include/Legality/Gen2WildEncounter.h include/Legality/Gen2WildEncounterData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen2_wild_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen2_wild_encounter_evidence_sanitize: tests/test_gen2_wild_encounter_evidence.cpp include/Legality/Gen2WildEncounter.h include/Legality/Gen2WildEncounterData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen2_wild_encounter_evidence.cpp -o $@
+
+
+$(HOST_BUILD)/test_gen2_trade_evidence: tests/test_gen2_trade_evidence.cpp include/Legality/Gen2TradeEvidence.h include/Legality/Gen2TradeEvidenceData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen2_trade_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen2_trade_evidence_sanitize: tests/test_gen2_trade_evidence.cpp include/Legality/Gen2TradeEvidence.h include/Legality/Gen2TradeEvidenceData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen2_trade_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_pid_iv_correlation: tests/test_gen3_pid_iv_correlation.cpp include/Legality/Gen3PidIvCorrelation.h include/Legality/Gen3WondercardEggEventTemplate.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_pid_iv_correlation_sanitize: tests/test_gen3_pid_iv_correlation.cpp include/Legality/Gen3PidIvCorrelation.h include/Legality/Gen3WondercardEggEventTemplate.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation: tests/test_gen3_bacd_pid_iv_correlation.cpp include/Legality/Gen3BacdPidIvCorrelation.h include/Legality/Gen3WishmkrEventTemplate.h include/Legality/Gen3BerryFixEventTemplate.h include/Legality/Gen3NegaiBoshiEventTemplate.h include/Legality/Gen3PokeParkEggEventTemplate.h include/Legality/Gen3PcjpFifthEggEventTemplate.h include/Legality/Gen3PokemonBoxEggEventTemplate.h include/Legality/Gen3PcjpMachineEventTemplate.h include/Legality/Gen3PcnyEventTemplate.h include/Legality/Gen3PcnyEventTemplateData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_bacd_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_bacd_pid_iv_correlation_sanitize: tests/test_gen3_bacd_pid_iv_correlation.cpp include/Legality/Gen3BacdPidIvCorrelation.h include/Legality/Gen3WishmkrEventTemplate.h include/Legality/Gen3BerryFixEventTemplate.h include/Legality/Gen3NegaiBoshiEventTemplate.h include/Legality/Gen3PokeParkEggEventTemplate.h include/Legality/Gen3PcjpFifthEggEventTemplate.h include/Legality/Gen3PokemonBoxEggEventTemplate.h include/Legality/Gen3PcjpMachineEventTemplate.h include/Legality/Gen3PcnyEventTemplate.h include/Legality/Gen3PcnyEventTemplateData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_bacd_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_bacd_ra_event_template: tests/test_gen3_bacd_ra_event_template.cpp include/Legality/Gen3BacdRaEventTemplate.h include/Legality/Gen3BacdRaEventTemplateData.inc include/Legality/Gen3BacdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_bacd_ra_event_template.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_bacd_ra_event_template_sanitize: tests/test_gen3_bacd_ra_event_template.cpp include/Legality/Gen3BacdRaEventTemplate.h include/Legality/Gen3BacdRaEventTemplateData.inc include/Legality/Gen3BacdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_bacd_ra_event_template.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_mystry_mew_evidence: tests/test_gen3_mystry_mew_evidence.cpp include/Legality/Gen3MystryMewEvidence.h include/Legality/Gen3BacdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_mystry_mew_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_mystry_mew_evidence_sanitize: tests/test_gen3_mystry_mew_evidence.cpp include/Legality/Gen3MystryMewEvidence.h include/Legality/Gen3BacdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_mystry_mew_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_channel_pid_iv_correlation: tests/test_gen3_channel_pid_iv_correlation.cpp include/Legality/Gen3ChannelPidIvCorrelation.h include/Legality/Gen3ChannelEventTemplate.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_channel_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_channel_pid_iv_correlation_sanitize: tests/test_gen3_channel_pid_iv_correlation.cpp include/Legality/Gen3ChannelPidIvCorrelation.h include/Legality/Gen3ChannelEventTemplate.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_channel_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_cxd_pid_iv_correlation: tests/test_gen3_cxd_pid_iv_correlation.cpp include/Legality/Gen3CxdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_cxd_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_cxd_pid_iv_correlation_sanitize: tests/test_gen3_cxd_pid_iv_correlation.cpp include/Legality/Gen3CxdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_cxd_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_xd_shadow_encounter: tests/test_gen3_xd_shadow_encounter.cpp include/Legality/Gen3XdShadowEncounter.h include/Legality/Gen3XdShadowEncounterData.inc include/Legality/Gen3CxdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_xd_shadow_encounter.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_xd_shadow_encounter_sanitize: tests/test_gen3_xd_shadow_encounter.cpp include/Legality/Gen3XdShadowEncounter.h include/Legality/Gen3XdShadowEncounterData.inc include/Legality/Gen3CxdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_xd_shadow_encounter.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_xd_shadow_team_lock: tests/test_gen3_xd_shadow_team_lock.cpp include/Legality/Gen3XdShadowTeamLock.h include/Legality/Gen3XdShadowTeamLockData.inc include/Legality/Gen3CxdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_xd_shadow_team_lock.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_xd_shadow_team_lock_sanitize: tests/test_gen3_xd_shadow_team_lock.cpp include/Legality/Gen3XdShadowTeamLock.h include/Legality/Gen3XdShadowTeamLockData.inc include/Legality/Gen3CxdPidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_xd_shadow_team_lock.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_pid_iv_correlation: tests/test_gen4_pid_iv_correlation.cpp include/Legality/Gen4PidIvCorrelation.h include/Legality/Gen3PidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_pid_iv_correlation_sanitize: tests/test_gen4_pid_iv_correlation.cpp include/Legality/Gen4PidIvCorrelation.h include/Legality/Gen3PidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_pid_iv_correlation.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_pokewalker_pid: tests/test_gen4_pokewalker_pid.cpp include/Legality/Gen4PokewalkerPid.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_pokewalker_pid.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_pokewalker_pid_sanitize: tests/test_gen4_pokewalker_pid.cpp include/Legality/Gen4PokewalkerPid.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_pokewalker_pid.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_pokewalker_encounter_evidence: tests/test_gen4_pokewalker_encounter_evidence.cpp include/Legality/Gen4PokewalkerEncounter.h include/Legality/Gen4PokewalkerEncounterData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_pokewalker_encounter_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_pokewalker_encounter_evidence_sanitize: tests/test_gen4_pokewalker_encounter_evidence.cpp include/Legality/Gen4PokewalkerEncounter.h include/Legality/Gen4PokewalkerEncounterData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_pokewalker_encounter_evidence.cpp -o $@
+
+
+$(HOST_BUILD)/test_gen4_cute_charm_pid: tests/test_gen4_cute_charm_pid.cpp include/Legality/Gen4CuteCharmPid.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_cute_charm_pid.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_cute_charm_pid_sanitize: tests/test_gen4_cute_charm_pid.cpp include/Legality/Gen4CuteCharmPid.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_cute_charm_pid.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_chain_shiny: tests/test_gen4_chain_shiny.cpp include/Legality/Gen4ChainShiny.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_chain_shiny.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_chain_shiny_sanitize: tests/test_gen4_chain_shiny.cpp include/Legality/Gen4ChainShiny.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_chain_shiny.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_mystery_gift_pid: tests/test_gen4_mystery_gift_pid.cpp include/Legality/Gen4MysteryGiftPid.h include/Legality/Gen3PidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_mystery_gift_pid.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_mystery_gift_pid_sanitize: tests/test_gen4_mystery_gift_pid.cpp include/Legality/Gen4MysteryGiftPid.h include/Legality/Gen3PidIvCorrelation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_mystery_gift_pid.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_event_template: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc include/Legality/Gen4FormEvidence.h include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_event_template.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_event_template_sanitize: tests/test_gen4_event_template.cpp include/Legality/Gen4EventTemplate.h include/Legality/Gen4EventTemplateData.inc include/Legality/Gen4FormEvidence.h include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_event_template.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_ranger_manaphy: tests/test_gen4_ranger_manaphy.cpp include/Legality/Gen4RangerManaphy.h include/Legality/Gen4PidIvCorrelation.h include/Legality/Gen4MysteryGiftPid.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_ranger_manaphy.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_ranger_manaphy_sanitize: tests/test_gen4_ranger_manaphy.cpp include/Legality/Gen4RangerManaphy.h include/Legality/Gen4PidIvCorrelation.h include/Legality/Gen4MysteryGiftPid.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_ranger_manaphy.cpp -o $@
 
 $(HOST_BUILD)/test_source_mutation_policy: tests/test_source_mutation_policy.cpp
 	@mkdir -p $(HOST_BUILD)

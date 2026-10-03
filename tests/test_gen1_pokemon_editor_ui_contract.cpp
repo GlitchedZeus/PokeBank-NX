@@ -249,7 +249,9 @@ int main() {
         assert(readFile(path).find("view.setMoveCompatibility(") != std::string::npos);
     const auto passivePresentation = readFile("src/UI/Gen1PokemonDetailsPresentation.cpp");
     assert(passivePresentation.find("p.moveCompatible[i] ? \"OK\" : \"Unusual\"") != std::string::npos);
-    assert(passivePresentation.find("Encounter legality\", \"Not checked") != std::string::npos);
+    assert(passivePresentation.find("\"Legality\"") != std::string::npos);
+    assert(passivePresentation.find("p.legalityLabel") != std::string::npos);
+    assert(passivePresentation.find("p.legalityInvalid") != std::string::npos);
 
     const auto hardware = readFile("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
     assert(hardware.find("Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r)") != std::string::npos);

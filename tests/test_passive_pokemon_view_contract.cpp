@@ -61,8 +61,11 @@ int main() {
     // Gen II View is informational only and the final repaint owns passive Party/Box details.
     assert(gen2Modal.find("Move compatibility") != std::string::npos);
     assert(gen2Modal.find("Unusual preserved") != std::string::npos);
-    assert(gen2Modal.find("Encounter legality") != std::string::npos);
-    assert(gen2Modal.find("Not checked") != std::string::npos);
+    assert(gen2Modal.find("\"Legality\"") != std::string::npos);
+    assert(gen2Modal.find("Legality::Verdict::Invalid") != std::string::npos);
+    assert(gen2Modal.find("incomplete coverage") != std::string::npos);
+    assert(gen2Modal.find("Encounter legality") == std::string::npos);
+    assert(gen2Modal.find("Not checked") == std::string::npos);
     assert(gen2Modal.find("Needs correction") == std::string::npos);
     assert(gen2Modal.find("{\"B\", \"Back\"}") != std::string::npos);
     assert(gen2Modal.find("drawSelectionHighlight(") == std::string::npos);

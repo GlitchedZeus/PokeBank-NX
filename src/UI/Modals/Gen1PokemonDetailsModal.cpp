@@ -1,6 +1,7 @@
 #include "UI/Modals/Gen1PokemonDetailsModal.h"
 
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
+#include "Legality/Legality.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
 #include "UI/Gen1PokemonPresentation.h"
@@ -66,6 +67,19 @@ void drawGen1PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     if (const auto game = sourceGame(screen.sourceGameId)) {
         view.setMoveCompatibility(*game);
     }
+
+    const auto legality =
+        Legality::analyze(p, p.getGameGroup(), std::string_view(screen.sourceGameId));
+    view.legalityInvalid = legality.hasInvalid();
+    view.legalityWarning = legality.problemCount() > 0;
+    if (legality.verdict() == Legality::Verdict::Invalid)
+        view.legalityLabel = "Invalid";
+    else if (legality.verdict() == Legality::Verdict::NoProblemsFound)
+        view.legalityLabel = "No problems found";
+    else if (legality.problemCount() > 0)
+        view.legalityLabel = std::to_string(legality.problemCount()) + " issue(s) • partial";
+    else
+        view.legalityLabel = "No problems • incomplete";
 
     if (p.isPartyRecord()) {
         // Party records physically store their battle stats. Show exactly those values.

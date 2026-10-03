@@ -231,7 +231,7 @@ int main() {
     assert(moveEditorBegin != std::string::npos && workspaceBegin > moveEditorBegin);
     contains(surface, "state.session.editable() &&");
     contains(surface, "screen.drawGSCOverlay(fb)");
-    contains(surface, "Game/species/location/level constrained");
+    contains(surface, "Exact-game checks are active • uncovered evidence stays explicitly incomplete");
     const auto actionsBegin = surface.find("void drawActions(");
     const auto actionsEnd = surface.find("void drawReview(", actionsBegin);
     assert(actionsBegin != std::string::npos && actionsEnd != std::string::npos && actionsEnd > actionsBegin);

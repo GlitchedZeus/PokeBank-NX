@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "Enums/GameVersion.h"
+#include "Legality/LegalityContext.h"
 
 namespace Pokemon { class Pokemon; }  // fwd decl — no heavy include
 
@@ -28,13 +29,52 @@ namespace Legality {
 
     enum class Severity : uint8_t { Info, Warning, Invalid };
 
+    enum class CheckIdentifier : uint8_t {
+        Structure,
+        SourceGame,
+        Species,
+        Stats,
+        Ability,
+        Moves,
+        Items,
+        Origin,
+        Encounter,
+        EventGift,
+        PidRng,
+        Egg,
+        Transfer,
+        Trainer,
+        Checksum,
+        Misc,
+    };
+
+    enum class Verdict : uint8_t {
+        Invalid,
+        NoProblemsFound,
+        Incomplete,
+    };
+
     struct Issue {
         Severity severity;
         std::string text;
+        CheckIdentifier identifier = CheckIdentifier::Misc;
+    };
+
+    struct CoverageSummary {
+        CoverageLevel structure = CoverageLevel::Complete;
+        CoverageLevel sourceGame = CoverageLevel::None;
+        CoverageLevel internal = CoverageLevel::Partial;
+        CoverageLevel moves = CoverageLevel::Partial;
+        CoverageLevel encounter = CoverageLevel::None;
+        CoverageLevel eventGift = CoverageLevel::None;
+        CoverageLevel pidRng = CoverageLevel::None;
+        CoverageLevel eggBreeding = CoverageLevel::None;
+        CoverageLevel transfer = CoverageLevel::None;
     };
 
     struct Report {
         std::vector<Issue> issues;
+        CoverageSummary coverage{};
 
         /// Number of Warning+Invalid issues (Info notes are not counted as problems).
         int problemCount() const noexcept {
@@ -43,7 +83,38 @@ namespace Legality {
             return n;
         }
         bool ok() const noexcept { return problemCount() == 0; }
+
+        bool hasInvalid() const noexcept {
+            for (const auto& i : issues)
+                if (i.severity == Severity::Invalid) return true;
+            return false;
+        }
+
+        Verdict verdict() const noexcept {
+            if (hasInvalid()) return Verdict::Invalid;
+            const bool complete =
+                coverage.structure == CoverageLevel::Complete &&
+                coverage.sourceGame == CoverageLevel::Complete &&
+                coverage.internal == CoverageLevel::Complete &&
+                coverage.moves == CoverageLevel::Complete &&
+                coverage.encounter == CoverageLevel::Complete &&
+                coverage.eventGift == CoverageLevel::Complete &&
+                coverage.pidRng == CoverageLevel::Complete &&
+                coverage.eggBreeding == CoverageLevel::Complete &&
+                coverage.transfer == CoverageLevel::Complete;
+            return complete && problemCount() == 0
+                ? Verdict::NoProblemsFound
+                : Verdict::Incomplete;
+        }
     };
+
+    struct Context {
+        Enums::GameVersion originGroup;
+        std::string_view exactSourceGameId{};
+    };
+
+    /// Preferred context-aware API for the Gen I-IV legality engine.
+    Report analyze(const Pokemon::Pokemon& pk, const Context& context);
 
     /// Analyze a decrypted Pokemon and return its legality issues (informational).
     /// originGroup = the save's format group (Trainer::getGameGroup()). Returns an

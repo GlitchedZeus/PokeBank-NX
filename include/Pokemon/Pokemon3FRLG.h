@@ -173,6 +173,10 @@ namespace Pokemon {
         bool hasPokerus() const noexcept override { return true; }
 
         bool isEgg() const noexcept override { return ((iv32() >> 30) & 1) != 0; }
+        // PK3 stores the fateful/obedience flag in bit 31 of the ribbons word @0x4C.
+        // XD shadow transfers set this bit when converted to PK3; keep this read-only
+        // in the legality lane so event/shadow evidence sees the persisted source flag.
+        bool isFatefulEncounter() const noexcept override { return (rd32(0x4C) & 0x80000000u) != 0; }
         bool isShiny(uint32_t trainerID32, std::string) const noexcept override {
             const uint32_t p = pid();
             const uint16_t tsv = static_cast<uint16_t>((trainerID32 & 0xFFFF) ^ (trainerID32 >> 16));
@@ -247,7 +251,7 @@ namespace Pokemon {
         void recalculateStats() noexcept override;
 
     private:
-        static constexpr const char16_t* EGG_NICKNAME_JAPANESE = u"\u30bf\u30de\u30b4"; // タマゴ
+        static constexpr const char16_t* EGG_NICKNAME_JAPANESE = u"タマゴ"; // タマゴ
         uint8_t saveLanguage = static_cast<uint8_t>(Enums::LanguageID::English);
         // Compute a battle stat (0=HP..5=SPD) from base/IV/EV/level/nature (Gen3 formula).
         uint16_t computeStat(int idx) const noexcept;

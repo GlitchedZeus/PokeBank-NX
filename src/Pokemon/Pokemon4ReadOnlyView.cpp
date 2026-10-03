@@ -22,6 +22,9 @@ uint16_t Pokemon4ReadOnlyView::heldItem() const noexcept { return source_.heldIt
 uint32_t Pokemon4ReadOnlyView::id32() const noexcept { return source_.id32(); }
 uint32_t Pokemon4ReadOnlyView::exp() const noexcept { return source_.experience(); }
 uint16_t Pokemon4ReadOnlyView::ability() const noexcept { return source_.ability(); }
+uint8_t Pokemon4ReadOnlyView::abilityNumber() const noexcept {
+    return static_cast<uint8_t>(1u << (source_.pid() & 1u));
+}
 uint8_t Pokemon4ReadOnlyView::nature() const noexcept { return static_cast<uint8_t>(source_.pid() % 25u); }
 uint8_t Pokemon4ReadOnlyView::statNature() const noexcept { return nature(); }
 uint8_t Pokemon4ReadOnlyView::level() const noexcept {
@@ -82,6 +85,18 @@ uint16_t Pokemon4ReadOnlyView::metLocation() const noexcept {
     if (source_.metLocationExtended() != 0)
         return source_.metLocationExtended();
     return source_.metLocationDP();
+}
+uint16_t Pokemon4ReadOnlyView::gen4MetLocationDP() const noexcept {
+    return source_.metLocationDP();
+}
+uint16_t Pokemon4ReadOnlyView::gen4MetLocationExtended() const noexcept {
+    return source_.metLocationExtended();
+}
+uint8_t Pokemon4ReadOnlyView::gen4BallDPPt() const noexcept {
+    return source_.ballDPPt();
+}
+uint8_t Pokemon4ReadOnlyView::gen4BallHGSS() const noexcept {
+    return source_.ballHGSS();
 }
 uint8_t Pokemon4ReadOnlyView::metLevel() const noexcept { return source_.metLevel(); }
 uint16_t Pokemon4ReadOnlyView::eggLocation() const noexcept {

@@ -24,6 +24,7 @@ public:
     uint32_t id32() const noexcept override;
     uint32_t exp() const noexcept override;
     uint16_t ability() const noexcept override;
+    uint8_t abilityNumber() const noexcept override;
     uint8_t nature() const noexcept override;
     uint8_t statNature() const noexcept override;
     uint8_t level() const noexcept override;
@@ -60,6 +61,10 @@ public:
     uint8_t language() const noexcept override;
     uint8_t ball() const noexcept override;
     uint16_t metLocation() const noexcept override;
+    uint16_t gen4MetLocationDP() const noexcept override;
+    uint16_t gen4MetLocationExtended() const noexcept override;
+    uint8_t gen4BallDPPt() const noexcept override;
+    uint8_t gen4BallHGSS() const noexcept override;
     uint8_t metLevel() const noexcept override;
     uint16_t eggLocation() const noexcept override;
     int getMaxNicknameLength() const noexcept override { return 10; }

@@ -35,6 +35,9 @@ struct Gen1PokemonDetailsPresentation {
     uint8_t catchRate = 0;
     bool moveCompatibilityChecked = false;
     bool moveCompatibilityCompatible = false;
+    std::string legalityLabel = "Incomplete coverage";
+    bool legalityInvalid = false;
+    bool legalityWarning = false;
     std::string sourceGameLabel = "Gen I";
     std::string recordLabel;
     std::string sourceStateLabel = "READ ONLY";

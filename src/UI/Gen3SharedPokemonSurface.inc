@@ -5,6 +5,8 @@
 #include "Integration/Gen3/Gen3ExactFormatEditorProvider.h"
 #include "Integration/Gen3/Gen3LearnsetTable.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "Legality/Legality.h"
+#include "Pokemon/Pokemon3FRLG.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Enums/Ball.h"
 #include "Enums/GameVersion.h"
@@ -32,6 +34,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -1563,21 +1566,83 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
     fb.drawText(x + 24, y + 18, "Legality & Provenance", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, "Editor guardrails active • full legality checker is a later milestone",
+    fb.drawText(x + 24, y + 52,
+                "Exact-game checks are active • uncovered evidence stays explicitly incomplete",
                 Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 34, y + 112, "Exact source", Colors::TextDim);
-    fb.drawText(x + 270, y + 112, std::string(Context::exactGameName(screen.sourceGameId)), Colors::Text);
-    fb.drawText(x + 34, y + 158, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 270, y + 158, "HARD DISABLED", Colors::Accent);
-    fb.drawText(x + 34, y + 204, "Encounter guardrails", Colors::TextDim);
-    fb.drawText(x + 270, y + 204, "Game/species/location/level constrained", Colors::Text);
-    fb.drawText(x + 34, y + 250, "PID-linked fields", Colors::TextDim);
-    fb.drawText(x + 270, y + 250, "READ ONLY", Colors::Text);
-    fb.drawText(x + 34, y + 296, "Deep encounter legality", Colors::TextDim);
-    fb.drawText(x + 270, y + 296, "Not checked", Colors::Warning);
+
+    Gen3::StagedPokemonRecord record;
+    std::string error;
+    if (!selectedRecord(screen, record, error)) {
+        fb.drawText(x + 34, y + 112,
+                    error.empty() ? "No valid Pokemon selected" : error,
+                    Colors::Warning, TextStyle::Body);
+        drawNavBar(fb, {{"B", "Back"}});
+        return;
+    }
+
+    Pokemon::Pokemon3FRLG pokemon(std::span<const std::byte>(
+        reinterpret_cast<const std::byte*>(record.encryptedBytes.data()),
+        record.encryptedBytes.size()));
+    const auto report =
+        Legality::analyze(pokemon, pokemon.getGameGroup(), std::string_view(screen.sourceGameId));
+
+    auto coverageText = [](Legality::CoverageLevel level) -> const char* {
+        if (level == Legality::CoverageLevel::Complete) return "Checked";
+        if (level == Legality::CoverageLevel::Partial) return "Partial";
+        return "Not covered";
+    };
+    auto coverageColor = [](Legality::CoverageLevel level) {
+        if (level == Legality::CoverageLevel::Complete) return Colors::Success;
+        if (level == Legality::CoverageLevel::Partial) return Colors::Warning;
+        return Colors::TextMuted;
+    };
+
+    const char* verdict = report.verdict() == Legality::Verdict::Invalid
+        ? "INVALID"
+        : report.verdict() == Legality::Verdict::NoProblemsFound
+            ? "NO PROBLEMS FOUND" : "INCOMPLETE";
+    const Color verdictColor = report.verdict() == Legality::Verdict::Invalid
+        ? Colors::Error
+        : report.verdict() == Legality::Verdict::NoProblemsFound
+            ? Colors::Success : Colors::Warning;
+
+    fb.drawText(x + 34, y + 104, "Exact source", Colors::TextDim);
+    fb.drawText(x + 270, y + 104,
+                std::string(Context::exactGameName(screen.sourceGameId)), Colors::Text);
+    fb.drawText(x + 34, y + 142, "Verdict", Colors::TextDim);
+    fb.drawText(x + 270, y + 142, verdict, verdictColor);
+    fb.drawText(x + 34, y + 180, "Detected issues", Colors::TextDim);
+    fb.drawText(x + 270, y + 180, std::to_string(report.problemCount()),
+                report.hasInvalid() ? Colors::Error :
+                    report.problemCount() ? Colors::Warning : Colors::Success);
+    fb.drawText(x + 34, y + 218, "Move evidence", Colors::TextDim);
+    fb.drawText(x + 270, y + 218, coverageText(report.coverage.moves),
+                coverageColor(report.coverage.moves));
+    fb.drawText(x + 34, y + 256, "Encounter evidence", Colors::TextDim);
+    fb.drawText(x + 270, y + 256, coverageText(report.coverage.encounter),
+                coverageColor(report.coverage.encounter));
+    fb.drawText(x + 34, y + 294, "Event / Gift", Colors::TextDim);
+    fb.drawText(x + 270, y + 294, coverageText(report.coverage.eventGift),
+                coverageColor(report.coverage.eventGift));
+    fb.drawText(x + 34, y + 326, "PID / RNG correlation", Colors::TextDim);
+    fb.drawText(x + 270, y + 326, coverageText(report.coverage.pidRng),
+                coverageColor(report.coverage.pidRng));
+    fb.drawText(x + 34, y + 358, "Egg / breeding", Colors::TextDim);
+    fb.drawText(x + 270, y + 358, coverageText(report.coverage.eggBreeding),
+                coverageColor(report.coverage.eggBreeding));
+    fb.drawText(x + 34, y + 390, "Transfer evidence", Colors::TextDim);
+    fb.drawText(x + 270, y + 390, coverageText(report.coverage.transfer),
+                coverageColor(report.coverage.transfer));
+    fb.drawText(x + 34, y + 422, "Source mutation", Colors::TextDim);
+    fb.drawText(x + 270, y + 422, "HARD DISABLED", Colors::Accent);
+
+    if (report.problemCount() == 0 && report.verdict() == Legality::Verdict::Incomplete)
+        fb.drawText(x + 34, y + 448,
+                    "No problem was found by completed checks; this is not proof of full legality.",
+                    Colors::Warning, TextStyle::Caption);
+
     drawNavBar(fb, {{"B", "Back"}});
 }
-
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     auto* staged = editor(screen);
     if (!staged) return;
