@@ -1,5 +1,6 @@
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3XdShadowTeamLock.h"
+#include "Legality/Gen3ColoShadowTeamLock.h"
 
 #include <array>
 #include <cassert>
@@ -9,6 +10,7 @@
 int main() {
     namespace CXD = Legality::Gen3CxdPidIv;
     namespace Lock = Legality::Gen3XdShadowTeamLock;
+    namespace Colo = Legality::Gen3ColoShadowTeamLock;
 
     static_assert(Lock::kTeamSetCount == 72);
     static_assert(Lock::kTeamVariantCount == 113);
@@ -109,5 +111,36 @@ int main() {
                           Lock::kNoTrainerShinyValue, 1) ==
            Lock::Result::SearchLimit);
 
-    std::cout << "Gen III XD recursive shadow team-lock evidence: PASS\n";
+    // Normal Colosseum prior-team evidence is a separate policy from XD:
+    // no player-TSV anti-shiny restriction and no shadow/seen lock states.
+    static_assert(Colo::kTeamSetCount == 6);
+    static_assert(Colo::kTeamVariantCount == 5);
+    static_assert(Colo::kLockCount == 13);
+    assert(Colo::validate(Colo::TeamSet::First, 0x12345678u) ==
+           Colo::Result::Matched);
+
+    struct ColoVector {
+        uint32_t pid;
+        std::array<uint8_t, 6> ivs;
+    };
+    constexpr std::array<ColoVector, 3> coloMakuhita{{
+        {0xC252FEBAu, {15, 9, 17, 16, 24, 22}},
+        {0x61C676FCu, {20, 28, 21, 18, 9, 1}},
+        {0x3B27608Du, {7, 12, 5, 19, 3, 7}},
+    }};
+    for (const auto& vector : coloMakuhita) {
+        const auto cxd = CXD::analyze(vector.pid, vector.ivs);
+        assert(cxd.matched);
+        assert(Colo::validate(Colo::TeamSet::ColoMakuhita, cxd.originSeed) ==
+               Colo::Result::Matched);
+    }
+
+    const auto boundedColo = CXD::analyze(
+        0xC252FEBAu, {15, 9, 17, 16, 24, 22});
+    assert(boundedColo.matched);
+    assert(Colo::validate(Colo::TeamSet::ColoMakuhita,
+                          boundedColo.originSeed, 1) ==
+           Colo::Result::SearchLimit);
+
+    std::cout << "Gen III XD + normal Colosseum recursive shadow team-lock evidence: PASS\n";
 }
