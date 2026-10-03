@@ -31,6 +31,20 @@ int main() {
     auto swLeaf = Names::getMachineDescriptor(GameVersion::SW, 1145);
     assert(swLeaf && swLeaf.kind == MachineKind::TR && swLeaf.number == 15 && swLeaf.moveId == 126);
 
+    // Generation IV keeps TM01-TM92 at items 328-419. HM05 differs:
+    // Defog in D/P/Pt, Whirlpool in HG/SS.
+    assert(Names::getTMMove(GameVersion::DP, 328) == 264);
+    assert(Names::getTMMove(GameVersion::PT, 419) == 433);
+    assert(Names::getTMMove(GameVersion::DP, 424) == 432);
+    assert(Names::getTMMove(GameVersion::HGSS, 424) == 250);
+    auto tm01g4 = Names::getMachineDescriptor(GameVersion::PT, 328);
+    assert(tm01g4 && tm01g4.kind == MachineKind::TM && tm01g4.number == 1 && tm01g4.moveId == 264);
+    auto hm05dp = Names::getMachineDescriptor(GameVersion::DP, 424);
+    assert(hm05dp && hm05dp.kind == MachineKind::HM && hm05dp.number == 5 && hm05dp.moveId == 432);
+    const std::string tm53g4 = Names::machineDisplayLabel(GameVersion::PT, 380, "TM53");
+    assert(tm53g4.find("TM53") != std::string::npos);
+    assert(tm53g4.find(Names::getMoveName(412)) != std::string::npos);
+
     // Existing reliable project mappings remain available through the global descriptor layer.
     auto tr15 = Names::getMachineDescriptor(GameVersion::SWSH, 1145);
     assert(tr15 && tr15.kind == MachineKind::TR && tr15.number == 15 && tr15.moveId == 126);

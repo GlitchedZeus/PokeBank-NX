@@ -8,6 +8,7 @@
 #include "UI/UIScreen.h"
 #include "UI/TouchInput.h"
 #include "UI/SaveSelectScreen.h"
+#include "UI/AppShellScreen.h"
 #include "UI/BackupSelectionScreen.h"
 #include "UI/TrainerViewScreen.h"
 #include "Legacy/RetroArchFRLGDiscovery.h"
@@ -35,23 +36,25 @@ namespace UI {
         PadState pad;
         TouchInput touch;
         bool running;
-        // The application lifecycle owns the read-only legacy-source catalog. Keeping the
-        // validated adapter results here both avoids reparsing during one app session and makes
-        // the discovered Party/Boxes model available to the existing source browser when its
-        // legacy-card routing is added. Nothing in this catalog exposes a write operation.
         PokeVault::Legacy::FRLGDiscoveryResult legacyFRLGSources;
         PokeVault::Legacy::LegacySourceBindings legacySourceBindings;
+        SaveSelectScreen::NavigationState productHomeNavigation{};
+        bool productHomeNavigationValid = false;
+        AppShellScreen::NavigationState appShellNavigation{};
+        bool appShellNavigationValid = false;
 
-        void handleSaveSelection();
-        void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName);
-        // loadedFromCart records source provenance only. Installed game saves remain read-only;
-        // edits are written to the automatically created working backup or a new named backup.
+        SaveSelectScreen::MainMenuDestination handleSaveSelection();
+        void handleBackupSelection(AccountUid userUid, u64 titleId, const std::string& titleName,
+                                   SaveSelectScreen::OpenIntent intent);
+        void handleDefaultQuickOpen(AccountUid userUid, u64 titleId, const std::string& titleName);
+        void handleItemsQuickOpen(AccountUid userUid, u64 titleId, const std::string& titleName);
         bool handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
                                const std::string& backupDir, bool loadedFromCart,
-                               std::string& error);
+                               SaveSelectScreen::OpenIntent intent, std::string& error);
         bool handleLegacyFRLGView(AccountUid userUid, size_t sourceIndex, const std::string& gameId,
-                                  std::string& error);
-        bool handleGen4View(AccountUid userUid, const std::string& gameId, std::string& error);
+                                  SaveSelectScreen::OpenIntent intent, std::string& error);
+        bool handleGen4View(AccountUid userUid, const std::string& gameId,
+                            SaveSelectScreen::OpenIntent intent, std::string& error);
     };
 }
 

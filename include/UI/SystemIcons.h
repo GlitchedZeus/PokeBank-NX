@@ -25,6 +25,17 @@ namespace UI {
         // Shared release-aware card-art resolver. Installed titles use control data; file-based
         // games use a packaged RomFS artwork path keyed by exact game identity.
         const IconImage& gameCardIcon(std::string_view gameId, u64 titleId = 0);
+        // True only when the resolver can identify actual title/packaged artwork rather than the
+        // generated missing-art fallback. Quick Games uses this to decide whether the title text
+        // is redundant or required for identity.
+        bool gameCardHasSpecificArtwork(std::string_view gameId, u64 titleId = 0);
+        // Region-scene image for the Product Home hero card. Only real packaged artwork
+        // is accepted. Missing art leaves the normal card surface visible; never synthesize scenery.
+        const IconImage& regionBackdrop(std::string_view regionKey);
+        // Real packaged trainer portrait from romfs:/trainer_portraits/<assetKey>.png.
+        // Missing/invalid art is reported and the caller may show a neutral identity placeholder;
+        // the loader never substitutes another trainer or a generated human portrait.
+        const IconImage& trainerPortrait(std::string_view assetKey);
         // Free every cached buffer. Call once at shutdown.
         void cleanup();
     }

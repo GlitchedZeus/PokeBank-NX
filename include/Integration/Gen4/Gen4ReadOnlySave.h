@@ -33,6 +33,12 @@ struct ReadDiagnostics {
     size_t invalidBoxRecords = 0;
 };
 
+struct DexProgress {
+    uint16_t seen = 0;
+    uint16_t caught = 0;
+    uint16_t total = 493;
+};
+
 struct TrainerReadOnly {
     std::u16string name;
     uint16_t tid = 0;
@@ -67,6 +73,7 @@ public:
     }
 
     [[nodiscard]] const TrainerReadOnly& trainer() const noexcept { return trainer_; }
+    [[nodiscard]] DexProgress dexProgress() const noexcept;
     [[nodiscard]] const ReadDiagnostics& diagnostics() const noexcept { return diagnostics_; }
     [[nodiscard]] std::span<const Pokemon::Pokemon4ReadOnly> party() const noexcept { return std::span<const Pokemon::Pokemon4ReadOnly>(party_).first(partyCount_); }
     [[nodiscard]] uint8_t partyCount() const noexcept { return partyCount_; }

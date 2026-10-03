@@ -8,5 +8,6 @@ include Makefile.host.shared-editor
 include Makefile.host.hardware-fixes
 include Makefile.host.gen4
 include Makefile.host.source-instances
+include Makefile.host.product-ui
 
 include Makefile.host.machine

@@ -40,7 +40,7 @@ namespace UI {
             Items,
             Storage,  // HOME-style dual-pane: save boxes (left) <-> bank (right)
             Trainer,  // trainer info card (reached from the HOME main menu)
-            Settings  // settings screen (auto-backup + theme)
+            Settings  // internal legacy renderer; Product Home owns the only Settings navigation
         };
 
         // Cursor modes for the Storage view (cycled with Y). Colors: red / blue / green -- the same
@@ -87,6 +87,14 @@ namespace UI {
         void openPokemonActionSheet(PokeVault::UIModel::PokemonTarget target);
         Pokemon::Pokemon* actionSheetTargetPokemon();
         void openActionSheetTargetDetails(bool readOnly);
+        void openItemsShortcut() {
+            selectedMode = ViewMode::Items;
+            detailViewActive = true;
+            itemsShortcutActive = true;
+            selectedCategory = 0;
+            selectedItemIndex = 0;
+            currentPage = 0;
+        }
 
         // --- HOME-style rectangle select + block carry (see moveMon below) ---
         int paneCols(int pane) const;      // grid columns (LGPE save boxes are 5 wide, everything else 6)
@@ -140,7 +148,7 @@ namespace UI {
         u64 titleId;
         AccountUid userUid;
         bool goBack = false;
-        bool exitRequested = false;  // True when user presses + to close app
+        bool exitRequested = false;  // Explicit app-exit request; Product Home owns app-level navigation
 
         // This block is public + mutable BY DESIGN: the panels/dialogs/modals read and write it
         // directly (immediate-mode UI). The biggest cohesive clusters are grouped into nested structs
@@ -156,10 +164,10 @@ namespace UI {
         int selectedItemIndex = 0;  // Selected item/pokemon index in detail view (item for Items, slot for Boxes)
 
         // HOME main menu focus (shown when NOT entered). 0 Pokemon(Boxes), 1 Party, 2 Storage (pills);
-        // 3 Items, 4 Trainer, 5 Settings (circular icons). Replaces the old left mode-selector.
+        // 3 Items, 4 Trainer (circular icons). Product Home owns Settings.
         int homeMenuIndex = 0;
 
-        // Selected row in the Settings view (0-4); reached from the menu's Settings icon.
+        // Selected row in the retained internal Settings renderer (not reachable from loaded-game navigation).
         int settingsSelectedRow = 0;
 
         // Trainer info view: the focused editable row (0 Name, 1 Money) and a
@@ -351,6 +359,8 @@ namespace UI {
         bool hasUnsavedChanges = false;
         bool exitingWithUnsavedChanges = false;
         bool exitingViaPlus = false;  // True when exiting via + button (exit app) vs B button (go back)
+        bool itemsShortcutActive = false; // Product Home Items opened directly into this view.
+        bool exitAfterSave = false;       // Save-confirm success should return to Product Home.
 
         // Stat editor (IV / EV / AV + shiny). Original* is the value on dialog entry; Current* is the
         // in-progress edit, preserved when switching between the IV/EV/AV modes.

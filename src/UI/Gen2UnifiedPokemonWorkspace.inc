@@ -766,7 +766,7 @@ void drawProgressionEditor(PKSEFramebuffer& fb, const State& state, const Unifie
                     unified.progressionRow == i ? Colors::Text : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 250, yy + 5, rows[static_cast<std::size_t>(i)].second, Colors::Text, TextStyle::Caption);
     }
-    drawNavBar(fb, {{"Up/Down", "Field"}, {"A", "Edit/Apply"}, {"B", "Cancel"}});
+    drawNavBar(fb, {{"D-pad/Stick", "Field"}, {"A", "Edit/Apply"}, {"B", "Cancel"}});
 }
 
 void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -796,7 +796,7 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (view) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
-        drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
     } else if (create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel Draft"}});

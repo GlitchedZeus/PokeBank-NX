@@ -37,18 +37,19 @@ require("External writes: LOCKED" in trainer,
 require("Cross-game True Move: LOCKED" in trainer,
         "Settings must surface the cross-game True Move lock")
 
-# Game-card art stays clean. Save Instances owns provider/count/path detail.
-start = save_select.index("for (int i = firstIdx; i < count && i < lastIdx; i++)")
-end = save_select.index("titleRects.push_back", start)
-card_draw = save_select[start:end]
-require("tileY + 8, TILE_W - 24, 5" not in card_draw,
-        "game cards must not restore the thin accent strip")
-require("const std::string& sourceLabel" not in card_draw,
-        "game cards must not overlay source labels on artwork")
-require("locationLabel" not in card_draw,
-        "game cards must not mix source-count/path metadata conventions")
-require("Save Instances owns source count, provider and path metadata" in card_draw,
-        "Save Instances must remain the documented metadata owner")
+# Game artwork stays clean. The HOME-style list may identify the source family beside the game
+# name, but physical provider/count/path detail remains inside Save Instances.
+start = save_select.index("// Right: selected-game hero card.")
+end = save_select.index("// Right side: larger full-width feature cards", start)
+hero_draw = save_select[start:end]
+require("locationLabel" not in hero_draw,
+        "selected-game hero must not mix physical source paths/counts into cover presentation")
+require("normalizedPath" not in hero_draw and "sourceIdentity" not in hero_draw,
+        "selected-game hero must not expose source diagnostics over normal game presentation")
+require("SAVE INSTANCES / " in save_select and "providerSummary(parent.legacyInstances)" in save_select,
+        "Save Instances must remain the detailed physical-source presentation")
+require("title.sourceLabel" in save_select,
+        "HOME-style game list should still identify the source family without covering artwork")
 
 # Source-browser wording must distinguish the synthetic Game Sources view from a Switch user.
 require("No validated Pokémon game sources found" in save_select,

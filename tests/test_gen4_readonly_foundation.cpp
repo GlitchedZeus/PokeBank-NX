@@ -12,6 +12,7 @@
 #include "Enums/LanguageID.h"
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
+#include "Pokemon/Pokemon4ReadOnlyView.h"
 #include "Utils/CRC16.h"
 #include "Utils/Gen4TextCodec.h"
 
@@ -266,6 +267,13 @@ void testCryptoAndEntity() {
     assert(p.battleStats()[2]==55);
     assert(p.nickname()==u"PIKA" && p.originalTrainerName()==u"ASH");
     assert(p.personal().hp==35);
+
+    // Presentation must show the canonical PK4 extended fields regardless of the
+    // compatible save container currently holding the record.
+    Pokemon::Pokemon4ReadOnlyView view(p);
+    assert(view.ball() == 17);
+    assert(view.metLocation() == 2001);
+    assert(view.eggLocation() == 3001);
 
     auto badRaw = partyRaw;
     badRaw[0x08] ^= std::byte{1}; // Corrupt ciphertext, not the encryptor's input checksum.

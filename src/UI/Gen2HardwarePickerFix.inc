@@ -49,27 +49,32 @@ void stepHardwareMovePicker(const TrainerViewScreen& screen, const State& state,
 void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
                             const PokeBank::UIModel::Gen2PokemonPicker::Model& model) {
     const int W = fb.getWidth(), H = fb.getHeight();
-    constexpr int panelW = 760, panelH = 568;
+    constexpr auto layout = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout();
+    constexpr int panelW = layout.width, panelH = layout.height;
     const int x = (W - panelW) / 2, y = (H - panelH) / 2;
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
     fb.drawText(x + 24, y + 18, "Move — Generation II", Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                "Empty + compatible moves only • exact current game",
+                "Empty + compatible moves only • exact Gen II Acc / Pwr / PP",
                 Colors::TextDim, TextStyle::Caption);
 
     const auto choices = hardwareCompatibleMoveChoices(screen, state);
     const int count = static_cast<int>(choices.size());
-    constexpr int visible = 13;
+    constexpr int visible = layout.visibleRows;
     const int selectedPos = hardwareMoveChoicePosition(choices, model.moveChoice());
     const int first = std::clamp(selectedPos - visible / 2, 0, std::max(0, count - visible));
     const int last = std::min(count, first + visible);
     for (int i = first; i < last; ++i) {
-        const int yy = y + 88 + (i - first) * 33;
+        const int yy = y + layout.rowStart + (i - first) * layout.rowStep;
         const uint16_t move = choices[static_cast<std::size_t>(i)];
         const bool selected = i == selectedPos;
-        const std::string name = move == 0 ? "Empty" : std::string(Names::getMoveName(move));
-        drawPickerRow(fb, x + 20, yy, panelW - 40, name, selected);
+        const std::string label =
+            PokeBank::UIModel::MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC);
+        if (selected)
+            fb.drawSelectionHighlight(x + 24, yy, panelW - 48, layout.highlightHeight);
+        fb.drawText(x + 40, yy + 8, label,
+                    selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
     }
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Select"}, {"B", "Cancel"}});

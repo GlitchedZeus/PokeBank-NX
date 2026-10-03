@@ -345,6 +345,26 @@ std::string decodeGen1String(std::span<const uint8_t> bytes, RegionLayout region
     return out;
 }
 
+
+DexProgress ReadOnlySave::dexProgress() const noexcept {
+    const std::size_t caughtOffset =
+        metadata_.region == RegionLayout::Japanese ? 0x259E : 0x25A3;
+    const std::size_t seenOffset =
+        metadata_.region == RegionLayout::Japanese ? 0x25B1 : 0x25B6;
+    DexProgress out{};
+    out.total = 151;
+    if (sourceBytes_.size() <= seenOffset + 18 || sourceBytes_.size() <= caughtOffset + 18)
+        return out;
+
+    for (uint16_t species = 1; species <= out.total; ++species) {
+        const uint16_t index = static_cast<uint16_t>(species - 1);
+        const uint8_t mask = static_cast<uint8_t>(1u << (index & 7));
+        if (sourceBytes_[seenOffset + (index >> 3)] & mask) ++out.seen;
+        if (sourceBytes_[caughtOffset + (index >> 3)] & mask) ++out.caught;
+    }
+    return out;
+}
+
 const char* sourceGameId(SourceGame game) noexcept {
     switch (game) {
         case SourceGame::Red: return "red_gb";

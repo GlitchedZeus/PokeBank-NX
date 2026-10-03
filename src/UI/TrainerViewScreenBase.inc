@@ -1651,6 +1651,11 @@ namespace UI {
             // A new backup becomes the session's working copy, so a second save goes to the same
             // place instead of silently forking another folder off the original.
             backupDir = destDir;
+            if (exitAfterSave) {
+                exitAfterSave = false;
+                itemsShortcutActive = false;
+                goBack = true;
+            }
         } else {
             // A failed save used to be INDISTINGUISHABLE from a successful one.
             postStatus("SAVE FAILED - your changes are still unsaved. Nothing was written.", 480);
@@ -2614,9 +2619,9 @@ namespace UI {
             return;
         }
 
-        // Plus is More / Options. On a Pokémon summary it reports the reserved compatibility action;
-        // while carrying it opens the existing carried-block menu; elsewhere it opens Settings.
-        // None of these paths writes an installed-game save.
+        // Product Home owns Settings and the Current Game tools menu. Inside a loaded game,
+        // Plus remains contextual only for an active carried group or Pokémon summary; it never
+        // opens Settings or creates a second application-level navigation path.
         if (kDown & HidNpadButton_Plus) {
             if (blockingOverlay) return;
             if (carrying()) {
@@ -2628,8 +2633,7 @@ namespace UI {
                 postStatus("Transfer compatibility is not yet supported in this build.", 240);
                 return;
             }
-            selectedMode = ViewMode::Settings;
-            detailViewActive = true;
+            postStatus("Current Game tools are on Product Home. Press B to return.", 240);
             return;
         }
 
@@ -2926,6 +2930,51 @@ namespace UI {
         // Handle save confirmation dialog
         if (saveConfirmActive) {
             if (exitingWithUnsavedChanges) {
+                // Product Home -> Items has a dedicated escape-safe contract:
+                // mutable app-owned working copy: A saves that copy + Home, Y discards + Home,
+                // B keeps editing. Immutable external source: A discards + Home, B keeps editing.
+                // Neither discard path writes the live/source save.
+                if (itemsShortcutActive) {
+                    const bool canSaveWorkingCopy = !sourceReadOnly();
+                    const int td = touchedButtonId(touch);
+                    if (td == 0) kDown |= HidNpadButton_B;
+                    else if (canSaveWorkingCopy && td == 1) kDown |= HidNpadButton_Y;
+                    else if ((canSaveWorkingCopy && td == 2) ||
+                             (!canSaveWorkingCopy && td == 1)) kDown |= HidNpadButton_A;
+
+                    if (canSaveWorkingCopy && (kDown & HidNpadButton_A)) {
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = true;
+                        performSave(backupDir);
+                        // performSave clears exitAfterSave only on success. A failed working-copy
+                        // save must leave the user in Items, not arm a surprise exit on a later save.
+                        if (!goBack) exitAfterSave = false;
+                        return;
+                    }
+
+                    const bool discardAndHome =
+                        (canSaveWorkingCopy && (kDown & HidNpadButton_Y)) ||
+                        (!canSaveWorkingCopy && (kDown & HidNpadButton_A));
+                    if (discardAndHome) {
+                        saveConfirmActive = false;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = false;
+                        itemsShortcutActive = false;
+                        goBack = true;
+                        return;
+                    }
+
+                    if (kDown & HidNpadButton_B) {
+                        saveConfirmActive = false;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = false;
+                        return;
+                    }
+                    return;
+                }
                 // Exiting with unsaved changes - different button logic
                 // A: Discard changes and exit
                 // B: Cancel exit (stay on screen)
@@ -2994,8 +3043,9 @@ namespace UI {
                     return;
                 }
                 if (kDown & HidNpadButton_B) {
-                    // User cancelled save - just close the dialog
+                    // User cancelled save - just close the dialog and stay in the shortcut/view.
                     saveConfirmActive = false;
+                    exitAfterSave = false;
                     return;
                 }
             }
@@ -3946,6 +3996,22 @@ namespace UI {
         // Handle detail view exit
         if (detailViewActive) {
             if (kDown & HidNpadButton_B) {
+                // Product Home -> Items is a quick action, not a gateway into the old PKSE home.
+                // A dirty shortcut exit owns its own confirmation. Never route through the generic
+                // destination picker: that can leave the user trapped when live/source writes are
+                // intentionally locked. The Items prompt always has a no-write Discard & Home path.
+                if (selectedMode == ViewMode::Items && itemsShortcutActive) {
+                    if (hasUnsavedChanges || trainer.hasStagedChanges()) {
+                        exitingWithUnsavedChanges = true;
+                        exitingViaPlus = false;
+                        exitAfterSave = false;
+                        saveConfirmActive = true;
+                        return;
+                    }
+                    itemsShortcutActive = false;
+                    goBack = true;
+                    return;
+                }
                 if (selectedMode == ViewMode::Storage) {
                     // B unwinds one step: abandon a rectangle being drawn, then put a carried block
                     // back where it came from, then leave the view.
@@ -4554,8 +4620,8 @@ namespace UI {
         }
 
         // HOME main menu navigation. Pills (0 Pokemon, 1 Party, 2 Storage) are a vertical column;
-        // the icons (3 Items, 4 Trainer, 5 Settings) are a horizontal row below. Up/Down move the
-        // column and step into/out of the row; Left/Right move within the row (matching the layout).
+        // the icons (3 Items, 4 Trainer) are a horizontal row below. Application Settings lives only
+        // on Product Home, so there is no loaded-game Settings destination.
         if (kDown & HidNpadButton_Up) {
             if (homeMenuIndex >= 3)      homeMenuIndex = 2;   // icon row -> Storage pill
             else if (homeMenuIndex > 0)  homeMenuIndex--;     // up the pill column
@@ -4565,35 +4631,33 @@ namespace UI {
             else if (homeMenuIndex == 2) homeMenuIndex = 3;   // Storage pill -> icon row
         }
         if (homeMenuIndex >= 3) {                             // horizontal icon row
-            if (kDown & HidNpadButton_Left)  homeMenuIndex = (homeMenuIndex == 3) ? 5 : homeMenuIndex - 1;
-            if (kDown & HidNpadButton_Right) homeMenuIndex = (homeMenuIndex == 5) ? 3 : homeMenuIndex + 1;
-            kDown &= ~(HidNpadButton_Left | HidNpadButton_Right);  // consume L/R (don't also scroll the box preview)
+            if (kDown & (HidNpadButton_Left | HidNpadButton_Right))
+                homeMenuIndex = homeMenuIndex == 3 ? 4 : 3;
+            kDown &= ~(HidNpadButton_Left | HidNpadButton_Right);
         }
         switch (homeMenuIndex) {
-            case 0: selectedMode = ViewMode::Boxes;    break;
-            case 1: selectedMode = ViewMode::Party;    break;
-            case 2: selectedMode = ViewMode::Storage;  break;
-            case 3: selectedMode = ViewMode::Items;    break;
-            case 4: selectedMode = ViewMode::Trainer;  break;
-            case 5: selectedMode = ViewMode::Settings; break;
+            case 0: selectedMode = ViewMode::Boxes;   break;
+            case 1: selectedMode = ViewMode::Party;   break;
+            case 2: selectedMode = ViewMode::Storage; break;
+            case 3: selectedMode = ViewMode::Items;   break;
+            case 4: selectedMode = ViewMode::Trainer; break;
         }
 
-        // Touch: tapping a menu pill/icon (ids 100-105) focuses it and acts like A.
+        // Touch: tapping a menu pill/icon (ids 100-104) focuses it and acts like A.
         int homeTap = touchedButtonId(touch);
-        if (homeTap >= 100 && homeTap <= 105) {
+        if (homeTap >= 100 && homeTap <= 104) {
             homeMenuIndex = homeTap - 100;
             switch (homeMenuIndex) {
-                case 0: selectedMode = ViewMode::Boxes;    break;
-                case 1: selectedMode = ViewMode::Party;    break;
-                case 2: selectedMode = ViewMode::Storage;  break;
-                case 3: selectedMode = ViewMode::Items;    break;
-                case 4: selectedMode = ViewMode::Trainer;  break;
-                case 5: selectedMode = ViewMode::Settings; break;
+                case 0: selectedMode = ViewMode::Boxes;   break;
+                case 1: selectedMode = ViewMode::Party;   break;
+                case 2: selectedMode = ViewMode::Storage; break;
+                case 3: selectedMode = ViewMode::Items;   break;
+                case 4: selectedMode = ViewMode::Trainer; break;
             }
             kDown |= HidNpadButton_A;
         }
 
-        // A / tap: activate the focused destination (enter the mode, or toggle theme for Settings).
+        // A / tap: activate the focused loaded-game destination.
         if (kDown & HidNpadButton_A) {
             switch (homeMenuIndex) {
                 case 0:  // Pokemon (Boxes)
@@ -4613,9 +4677,6 @@ namespace UI {
                     break;
                 case 4:  // Trainer info
                     detailViewActive = true;
-                    break;
-                case 5:  // Settings screen (auto-backup + theme)
-                    detailViewActive = true; settingsSelectedRow = 0;
                     break;
             }
         }
@@ -4815,7 +4876,13 @@ namespace UI {
         } else if (itemRemoveConfirmActive) {
             instructions = "A: Remove  |  B: Cancel";
         } else if (saveConfirmActive) {
-            instructions = "A: Save Changes  |  B: Cancel";
+            if (exitingWithUnsavedChanges && itemsShortcutActive) {
+                instructions = sourceReadOnly()
+                    ? "A: Discard & Home  |  B: Keep Editing"
+                    : "A: Save Working Copy & Home  |  Y: Discard & Home  |  B: Keep Editing";
+            } else {
+                instructions = "A: Save Changes  |  B: Cancel";
+            }
         } else if (releaseConfirmActive) {
             instructions = "A: Release  |  B: Cancel";
         } else if (details.active) {
@@ -4980,12 +5047,13 @@ namespace UI {
             const std::string oldExit = "+: Exit App";
             for (std::size_t pos = instructions.find(oldExit); pos != std::string::npos;
                  pos = instructions.find(oldExit, pos)) {
-                instructions.replace(pos, oldExit.size(),
-                                     details.active ? "+: Compatibility" : "+: Options");
+                if (details.active)
+                    instructions.replace(pos, oldExit.size(), "+: Compatibility");
+                else
+                    instructions.erase(pos, oldExit.size());
             }
-            const bool settingsAlreadyOpen = detailViewActive && selectedMode == ViewMode::Settings;
-            if (!settingsAlreadyOpen && instructions.find("+: ") == std::string::npos)
-                instructions += details.active ? "  |  +: Compatibility" : "  |  +: Options";
+            if (details.active && instructions.find("+: ") == std::string::npos)
+                instructions += "  |  +: Compatibility";
             if (instructions.find("-: ") == std::string::npos)
                 instructions += "  |  -: Help";
         }

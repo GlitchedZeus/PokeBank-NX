@@ -24,12 +24,14 @@ namespace UI {
     static constexpr const char* kSymPath  = "romfs:/fonts/NotoSansSymbols.ttf";
     static constexpr const char* kSym2Path = "romfs:/fonts/NotoSansSymbols2.ttf";
 
-    // Nunito point size per TextStyle (Body matches the old single-size text).
+    // Handheld-first Nunito scale for the 1280x720 Switch screen.
+    // Caption is secondary information, Body is the normal UI label size, and the display
+    // styles stay large without consuming the compact Product Home card layouts.
     static constexpr float kFontSizes[static_cast<int>(TextStyle::Count)] = {
-        15.0f,  // Caption
-        19.0f,  // Body
-        26.0f,  // Heading
-        34.0f,  // Title
+        17.0f,  // Caption / secondary information
+        20.0f,  // Body / normal labels
+        28.0f,  // Heading
+        32.0f,  // Title
     };
 
     static inline NVGcolor toNVG(Color c) { return nvgRGBA(c.r, c.g, c.b, c.a); }
@@ -409,9 +411,15 @@ namespace UI {
         nvgTextAlign(vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
         nvgFillColor(vg, toNVG(color));
         nvgText(vg, (float)x, (float)y, text.c_str(), nullptr);
-        // Faux-bold for the display styles (Nunito is loaded regular; re-stroke slightly offset).
-        if (style == TextStyle::Heading || style == TextStyle::Title)
-            nvgText(vg, x + 0.6f, (float)y, text.c_str(), nullptr);
+        // The bundled face is regular Nunito. Give body text a subtle medium-weight pass and
+        // headings a stronger semibold-style pass so handheld text does not look hairline-thin.
+        // The sub-pixel offset preserves the rounded Nunito shapes without widening layouts.
+        if (style == TextStyle::Caption)
+            nvgText(vg, x + 0.18f, (float)y, text.c_str(), nullptr);
+        else if (style == TextStyle::Body)
+            nvgText(vg, x + 0.30f, (float)y, text.c_str(), nullptr);
+        else if (style == TextStyle::Heading || style == TextStyle::Title)
+            nvgText(vg, x + 0.62f, (float)y, text.c_str(), nullptr);
     }
 
     void PKSEFramebuffer::drawSymbol(int x, int y, const std::string& symbol, Color color, TextStyle style) {
