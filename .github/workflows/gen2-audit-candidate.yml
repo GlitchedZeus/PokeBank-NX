@@ -1,43 +1,8 @@
-name: Gen II Shared Editor Candidate Gate
+name: HISTORICAL / MANUAL — Gen II Shared Editor Candidate Gate
 
+
+# Frozen evidence workflow retained for reproducibility. It must never auto-run on current development.
 on:
-  pull_request:
-    branches: [feature/pokebank-playable]
-    paths:
-      - 'include/UI/Common.h'
-      - 'Makefile'
-      - 'Makefile.host*'
-      - 'include/UI/SharedSpeciesPicker.h'
-      - 'include/Integration/Gen2/**'
-      - 'include/Integration/Encounter/**'
-      - 'include/UI/Gen2*'
-      - 'include/UI/SharedPokemonEditorContract.h'
-      - 'include/UI/ExactSaveCapabilities.h'
-      - 'include/UI/PokemonViewActions.h'
-      - 'include/UI/PokemonEditorFoundationContract.h'
-      - 'include/Pokemon/Pokemon2ReadOnly.h'
-      - 'src/Integration/Gen2/**'
-      - 'src/Legacy/GSC*'
-      - 'src/Legacy/RetroArchGSCDiscovery.cpp'
-      - 'src/Pokemon/Pokemon2ReadOnly.cpp'
-      - 'src/UI/Gen2*'
-      - 'src/UI/Modals/Gen2*'
-      - 'src/UI/TrainerViewScreenGSCOverlay.inc'
-      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
-      - 'tests/test_gsc*'
-      - 'tests/test_encounter_guardrails.cpp'
-      - 'tests/test_shared_pokemon_editor_contract.cpp'
-      - 'tests/test_passive_pokemon_view_contract.cpp'
-      - 'tests/test_source_mutation_policy.cpp'
-      - 'tests/test_write_policy.cpp'
-      - 'tools/check_device_assets.py'
-      - 'tools/package_device_build.py'
-      - 'tools/gen_gen2_move_compatibility.py'
-      - 'CURRENT_STATUS.md'
-      - 'PROJECT_STATUS.md'
-      - 'NEXT_SESSION_PLAN.md'
-      - 'docs/GEN2_AUDIT_RESEARCH.md'
-      - '.github/workflows/gen2-audit-candidate.yml'
   workflow_dispatch:
 
 permissions:

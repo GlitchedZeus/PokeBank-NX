@@ -19,6 +19,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from png_asset_validation import validate_png
+
 ROOT = Path(__file__).resolve().parent.parent
 ROMFS = ROOT / "romfs"
 HD_DIR = ROMFS / "sprites" / "pokemon_hd"
@@ -60,7 +62,7 @@ def gen1_species_names() -> list[str]:
     """Read the same generated species-name table the C++ UI uses; no second hand-written list."""
     try:
         text = SPECIES_NAMES_CPP.read_text(encoding="utf-8")
-        marker = "static const char* const SPECIES_NAMES[] = {"
+        marker = "static const char* const SPECIES_NAMES_EN[] = {"
         block = text.split(marker, 1)[1].split("};", 1)[0]
         names = re.findall(r'"([^"\\]*(?:\\.[^"\\]*)*)"', block)
         if len(names) > GEN1_DEX_MAX:
@@ -129,7 +131,22 @@ def main() -> int:
         total_bytes = sum(p.stat().st_size for p in pngs)
         ok(f"HD sprite directory exists ({len(pngs)} PNGs, {total_bytes / (1024 * 1024):.1f} MiB)")
 
-        file_names = {p.name for p in pngs}
+        invalid_pngs = []
+        valid_file_names = set()
+        for p in pngs:
+            valid, reason, dimensions = validate_png(p)
+            if valid:
+                valid_file_names.add(p.name)
+            else:
+                invalid_pngs.append(f"{p.name}: {reason}")
+        if invalid_pngs:
+            preview = "; ".join(invalid_pngs[:10])
+            suffix = " ..." if len(invalid_pngs) > 10 else ""
+            fail(errors, f"{len(invalid_pngs)} HD sprite PNG(s) are corrupt/invalid: {preview}{suffix}")
+        else:
+            ok("all HD sprite PNGs pass signature/chunk/CRC/IEND validation")
+
+        file_names = valid_file_names
         missing_base = [n for n in range(1, DEX_MAX + 1) if f"{n}.png" not in file_names]
         if missing_base:
             preview = ", ".join(str(n) for n in missing_base[:20])

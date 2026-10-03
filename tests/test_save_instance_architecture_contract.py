@@ -38,6 +38,12 @@ require(ui, "std::vector<PokeVault::Source::SaveInstance>& instances",
         "Save Instances row renderer is not provider-neutral")
 require(ui, "drawSaveInstanceRows(fb, parent.legacyInstances",
         "classic Save Instances no longer use the shared row renderer")
+require(ui, "constexpr int LEGACY_INSTANCE_VISIBLE_ROWS = 5;",
+        "legacy instance row count must have one shared source")
+require(ui, "legacyInstanceScroll + LEGACY_INSTANCE_VISIBLE_ROWS",
+        "legacy instance scrolling must use renderer row count")
+require(ui, "rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true",
+        "legacy instance renderer must use shared row count")
 require(ui, "drawSaveInstanceRows(fb, gen4Instances",
         "Gen IV Save Instances no longer use the shared row renderer")
 require(ui, "appendDeduplicated(gen4Instances",

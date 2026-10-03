@@ -122,7 +122,7 @@ jobs:
       - name: Clean devkitA64 compile and link
         run: |
           set -euo pipefail
-          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -lc '
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282 bash -lc '
             set -euo pipefail
             : "${DEVKITPRO:?DEVKITPRO is not set}"
             git config --global --add safe.directory /work

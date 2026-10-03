@@ -87,10 +87,12 @@ namespace PokeBank::UIModel {
         if (dx != 0) return previewWrapIndex(current, dx, count);
 
         if (dy != 0) {
-            int next = current + dy * cols;
-            while (next < 0) next += count;
-            while (next >= count) next -= count;
-            return next;
+            const int col = current % cols;
+            const int row = current / cols;
+            const int rowsInColumn = ((count - 1 - col) / cols) + 1;
+            const int normalized = dy % rowsInColumn;
+            const int nextRow = (row + normalized + rowsInColumn) % rowsInColumn;
+            return nextRow * cols + col;
         }
         return current;
     }

@@ -28,12 +28,13 @@ Existing `/PKSE/` data is not silently moved, deleted, overwritten, or required.
 - PKHeX: DEVELOPER/TEST ORACLE — OK, not an end-user runtime requirement;
 - pkDex and pkHouse: DEVELOPER/RESEARCH REFERENCES — OK;
 - JKSV and Checkpoint: save-lifecycle/reference/optional user tooling only — not required;
-- RetroArch paths: external SAVE SOURCE discovery — allowed; RetroArch is not invoked as a helper;
+- RetroArch save paths: external READ-ONLY SAVE SOURCE discovery — allowed; PokeBank NX never gains write permission from discovering them;
+- RetroArch executable/core: OPTIONAL USER-INVOKED GAME-LAUNCH TARGET — Product Home may launch a configured/known RetroArch game shortcut when the user explicitly requests it. RetroArch is not required for normal standalone PokeBank NX operation, and launch capability does not authorize save mutation;
 - `/PKSE/` runtime writes: FOREIGN APP-OWNED WRITE PATH — removed from normal runtime;
 - visible PokeVault wording in the staged Gen II exporter: USER-VISIBLE LEGACY BRANDING — removed.
 
 ## Safety boundary
 
-Standalone ownership does not authorize direct source mutation. Live installed-title writes and live RetroArch writes remain hard-disabled by policy. The Generation II staged editor continues to preserve original bytes, edit an independent buffer, repair checksum/mirrors, strict-reload, preserve supported RTC footer bytes, and export a separate edited save plus original backup and manifest.
+Standalone ownership does not authorize direct source mutation. Live installed-title writes and live emulator-source writes (including RetroArch) remain hard-disabled by policy. Optional game launching does not change that boundary. The Generation II staged editor continues to preserve original bytes, edit an independent buffer, repair checksum/mirrors, strict-reload, preserve supported RTC footer bytes, and export a separate edited save plus original backup and manifest.
 
 Japanese Generation II remains read-only.

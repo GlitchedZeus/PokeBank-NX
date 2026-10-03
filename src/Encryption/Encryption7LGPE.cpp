@@ -98,6 +98,9 @@ namespace Encryption {
 
     void shuffleArray7LGPE(std::span<const std::byte> data, std::span<std::byte> result, uint32_t shuffleValue, size_t blockSize)
     {
+        if (blockSize != SIZE_BLOCK7_LGPE ||
+            data.size() < SIZE_STORED7_LGPE ||
+            result.size() < data.size()) return;
         /**
          * Unshuffles the 4 data blocks based on the shuffle value.
          * Gen 7 block size (56 bytes instead of 80 bytes).
@@ -143,6 +146,8 @@ namespace Encryption {
 
     std::byte* decryptArray7LGPE(std::span<const std::byte> encryptedData)
     {
+        if (encryptedData.size() != SIZE_STORED7_LGPE &&
+            encryptedData.size() != SIZE_PARTY7_LGPE) return nullptr;
         /**
          * Main decryption function for Generation 7 Pokemon data.
          *
@@ -189,6 +194,8 @@ namespace Encryption {
 
     std::byte* encryptArray7LGPE(std::span<const std::byte> decryptedData, uint32_t personalityValue)
     {
+        if (decryptedData.size() != SIZE_STORED7_LGPE &&
+            decryptedData.size() != SIZE_PARTY7_LGPE) return nullptr;
         /**
          * Main encryption function for Generation 7 Pokemon data.
          *

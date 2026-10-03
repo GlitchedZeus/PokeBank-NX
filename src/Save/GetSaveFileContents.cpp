@@ -9,8 +9,11 @@
 #include <dirent.h>
 
 #include "Globals.h"
+#include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Save/Block.h"
 #include "Save/PLAReadValidation.h"
+#include "Save/SCReadValidation.h"
+#include "Save/LGPEReadValidation.h"
 #include "Save/BDSPReadValidation.h"
 #include "Save/GetSaveFileContents.h"
 #include "Utils/FileUtilities.h"
@@ -54,7 +57,9 @@ namespace Save {
             return "The save format is not supported by this build.";
         }
 
-        bool validateSCWorkspace(std::span<const uint8_t> bytes, std::string& error) {
+        bool validateSCWorkspace(std::span<const uint8_t> bytes,
+                                 GameVersion group,
+                                 std::string& error) {
             if (bytes.empty() || bytes.size() > MAX_SC_SAVE_BYTES) {
                 error = "save container size is empty, unexpectedly large, or unsupported";
                 return false;
@@ -64,6 +69,11 @@ namespace Save {
             const auto status = Encryption::tryDecrypt(bytes.data(), bytes.size(), blocks);
             if (status != Encryption::DecryptStatus::Ok) {
                 error = decryptFailureMessage(status);
+                return false;
+            }
+            const auto layoutError = validateSCReadLayout(blocks, group);
+            if (!layoutError.empty()) {
+                error = std::string("SC layout validation failed: ") + std::string(layoutError);
                 return false;
             }
             return true;
@@ -90,21 +100,25 @@ namespace Save {
         }
 
         bool validateLGPEWorkspace(std::span<const uint8_t> bytes, std::string& error) {
-            if (bytes.size() != SAVE_SIZE7_LGPE) {
-                error = "Let's Go save size does not match the supported layout";
+            // Runtime reads the active Beluga region from an authentic 1 MiB savedata.bin, while
+            // several focused fixtures contain only that active region. Both are intentional
+            // geometries; arbitrary intermediate/oversized files fail closed.
+            const auto integrityError = LGPEReadValidation::validate(bytes);
+            if (!integrityError.empty()) {
+                error = std::string(integrityError);
                 return false;
             }
-
-            std::vector<uint8_t> candidate(bytes.begin(), bytes.end());
-            const auto blocks = createBlocksFromSaveData7LGPE(candidate);
+            const auto activeRegion = LGPEReadValidation::activeRegion(bytes);
+            std::vector<uint8_t> active(activeRegion.begin(), activeRegion.end());
+            const auto blocks = createBlocksFromSaveData7LGPE(active);
             if (blocks.size() != 7) {
                 error = "Let's Go save did not expose the complete supported block set";
                 return false;
             }
 
-            auto checksumProbe = candidate;
+            auto checksumProbe = active;
             writeBlocksToSaveData7LGPE(checksumProbe, blocks);
-            if (checksumProbe != candidate) {
+            if (checksumProbe != active) {
                 error = "Let's Go block checksum verification failed";
                 return false;
             }
@@ -183,9 +197,9 @@ namespace Save {
     bool validateWorkspaceImage(u64 titleId, std::span<const uint8_t> bytes, std::string& error) {
         switch (getGameGroup(getGameVersion(titleId))) {
             case GameVersion::GG:   return validateLGPEWorkspace(bytes, error);
-            case GameVersion::SWSH:
-            case GameVersion::ZA:
-            case GameVersion::SV:   return validateSCWorkspace(bytes, error);
+            case GameVersion::SWSH: return validateSCWorkspace(bytes, GameVersion::SWSH, error);
+            case GameVersion::ZA:   return validateSCWorkspace(bytes, GameVersion::ZA, error);
+            case GameVersion::SV:   return validateSCWorkspace(bytes, GameVersion::SV, error);
             case GameVersion::PLA:  return validatePLAWorkspace(bytes, error);
             case GameVersion::FRLG: return validateFRLGWorkspace(bytes, error);
             case GameVersion::BDSP:
@@ -374,6 +388,69 @@ namespace Save {
         error.clear();
         const GameVersion group = getGameGroup(getGameVersion(titleId));
 
+        if (group == GameVersion::GG) {
+            char savePath[512];
+            snprintf(savePath, sizeof(savePath), "%s/savedata.bin", backupDir);
+            size_t fileSize = 0;
+            uint8_t* file = readAllBytes(savePath, &fileSize);
+            if (!file) {
+                error = "Let's Go save file could not be read.";
+                return false;
+            }
+            const auto integrityError = LGPEReadValidation::validate(
+                std::span<const uint8_t>(file, fileSize));
+            delete[] file;
+            if (!integrityError.empty()) {
+                error = "Let's Go save not opened: " + std::string(integrityError) +
+                        ". Nothing was changed.";
+                return false;
+            }
+            return true;
+        }
+
+        if (group == GameVersion::FRLG) {
+            const std::string fileName = findGen3SaveFile(backupDir);
+            if (fileName.empty()) {
+                error = "FRLG save file is missing.";
+                return false;
+            }
+
+            char savePath[1024];
+            snprintf(savePath, sizeof(savePath), "%s/%s", backupDir, fileName.c_str());
+            size_t fileSize = 0;
+            uint8_t* file = readAllBytes(savePath, &fileSize);
+            if (!file) {
+                error = "FRLG save file could not be read.";
+                return false;
+            }
+            const auto bytes = std::span<const uint8_t>(file, fileSize);
+            if (fileSize < Trainer::FRLG_SAVE_SIZE) {
+                delete[] file;
+                error = "FRLG save is truncated; it was not opened or changed.";
+                return false;
+            }
+
+            using namespace PokeVault::Integration::Gen3;
+            const Detail::SlotValidation slots[2] = {
+                Detail::validateSlot(bytes, 0),
+                Detail::validateSlot(bytes, 1),
+            };
+            if (!slots[0].valid && !slots[1].valid) {
+                delete[] file;
+                error = "FRLG save has no checksum-valid rotating slot; it was not opened or changed.";
+                return false;
+            }
+            const uint8_t active = Detail::selectActiveSlot(slots);
+            const bool familyOk = slots[active].valid &&
+                Detail::detectFamily(bytes, slots[active]) == Detail::SaveFamily::FireRedLeafGreen;
+            delete[] file;
+            if (!familyOk) {
+                error = "FRLG save layout does not match FireRed/LeafGreen; it was not opened or changed.";
+                return false;
+            }
+            return true;
+        }
+
         if (group == GameVersion::BDSP) {
             char path[512];
             snprintf(path, sizeof(path), "%s/SaveData.bin", backupDir);
@@ -385,6 +462,61 @@ namespace Save {
             if (!PokeBank::SaveValidation::BDSP::hasMinimumLayout(
                     static_cast<std::size_t>(st.st_size))) {
                 error = "BDSP save is truncated or unsupported; it was not opened or changed.";
+                return false;
+            }
+
+            size_t fileSize = 0;
+            uint8_t* file = readAllBytes(path, &fileSize);
+            if (!file) {
+                error = "BDSP save file could not be read.";
+                return false;
+            }
+            const bool hashValid = PokeBank::SaveValidation::BDSP::wholeFileHashValid(
+                std::span<const uint8_t>(file, fileSize));
+            delete[] file;
+            if (!hashValid) {
+                error = "BDSP save whole-file MD5 does not match; it was not opened or changed.";
+                return false;
+            }
+            return true;
+        }
+
+        if (group == GameVersion::SWSH || group == GameVersion::SV || group == GameVersion::ZA) {
+            char mainPath[512];
+            snprintf(mainPath, sizeof(mainPath), "%s/main", backupDir);
+
+            struct stat st{};
+            if (stat(mainPath, &st) != 0 || !S_ISREG(st.st_mode)) {
+                error = "SC save file 'main' is missing.";
+                return false;
+            }
+            if (st.st_size <= static_cast<off_t>(SIZE_HASH_IN_BYTES)) {
+                error = "SC save is truncated; it was not opened or changed.";
+                return false;
+            }
+            if (static_cast<uint64_t>(st.st_size) > MAX_SC_SAVE_BYTES) {
+                error = "SC save is unexpectedly large or unsupported.";
+                return false;
+            }
+
+            size_t fileSize = 0;
+            uint8_t* file = readAllBytes(mainPath, &fileSize);
+            if (!file) {
+                error = "SC save file could not be read.";
+                return false;
+            }
+            std::vector<Block> blocks;
+            const Encryption::DecryptStatus status = Encryption::tryDecrypt(file, fileSize, blocks);
+            delete[] file;
+            if (status != Encryption::DecryptStatus::Ok) {
+                error = std::string("SC save not opened: ") +
+                        decryptFailureMessage(status) + " Nothing was changed.";
+                return false;
+            }
+            const auto layoutError = validateSCReadLayout(blocks, group);
+            if (!layoutError.empty()) {
+                error = "SC save not opened: " + std::string(layoutError) +
+                        " Nothing was changed.";
                 return false;
             }
             return true;
@@ -516,7 +648,15 @@ namespace Save {
             return Trainer7LGPE(std::vector<Block>());
         }
 
-        // Extract the active save area (first SAVE_SIZE7_LGPE bytes)
+        const auto integrityError = LGPEReadValidation::validate(
+            std::span<const uint8_t>(file, fileSize));
+        if (!integrityError.empty()) {
+            logErrorToFile("Let's Go save failed block CRC preflight", std::string(integrityError).c_str());
+            delete[] file;
+            return Trainer7LGPE(std::vector<Block>());
+        }
+
+        // Extract the active save area only after existing block CRCs have been proven valid.
         std::vector<uint8_t> saveData(file, file + SAVE_SIZE7_LGPE);
 
         std::vector<Block> blocks = createBlocksFromSaveData7LGPE(saveData);
@@ -642,7 +782,9 @@ namespace Save {
         if (!persistWorkspaceFile(
                 "Sword/Shield", savePath,
                 std::span<const uint8_t>(encryptedData.data(), encryptedData.size()),
-                validateSCWorkspace)) {
+                [](std::span<const uint8_t> bytes, std::string& error) {
+                    return validateSCWorkspace(bytes, GameVersion::SWSH, error);
+                })) {
             return false;
         }
 
@@ -817,7 +959,9 @@ namespace Save {
         if (!persistWorkspaceFile(
                 "Legends: Z-A", savePath,
                 std::span<const uint8_t>(encryptedData.data(), encryptedData.size()),
-                validateSCWorkspace)) {
+                [](std::span<const uint8_t> bytes, std::string& error) {
+                    return validateSCWorkspace(bytes, GameVersion::ZA, error);
+                })) {
             return false;
         }
 
@@ -858,7 +1002,9 @@ namespace Save {
         if (!persistWorkspaceFile(
                 "Scarlet/Violet", savePath,
                 std::span<const uint8_t>(encryptedData.data(), encryptedData.size()),
-                validateSCWorkspace)) {
+                [](std::span<const uint8_t> bytes, std::string& error) {
+                    return validateSCWorkspace(bytes, GameVersion::SV, error);
+                })) {
             return false;
         }
 

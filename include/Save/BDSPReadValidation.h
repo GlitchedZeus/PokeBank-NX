@@ -1,7 +1,14 @@
 #ifndef SAVE_BDSP_READ_VALIDATION_H
 #define SAVE_BDSP_READ_VALIDATION_H
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
+#include <cstdint>
+#include <span>
+#include <vector>
+
+#include "Utils/MD5.h"
 
 namespace PokeBank::SaveValidation::BDSP {
 
@@ -16,6 +23,22 @@ inline constexpr std::size_t minimumLayoutBytes = hashOffset + hashBytes;
 
 [[nodiscard]] constexpr bool hasMinimumLayout(std::size_t bytes) noexcept {
     return bytes >= minimumLayoutBytes;
+}
+
+[[nodiscard]] inline bool wholeFileHashValid(std::span<const uint8_t> bytes) {
+    if (!hasMinimumLayout(bytes.size())) return false;
+
+    std::array<uint8_t, hashBytes> stored{};
+    std::copy_n(bytes.begin() + static_cast<std::ptrdiff_t>(hashOffset),
+                hashBytes, stored.begin());
+
+    std::vector<uint8_t> probe(bytes.begin(), bytes.end());
+    std::fill_n(probe.begin() + static_cast<std::ptrdiff_t>(hashOffset),
+                hashBytes, uint8_t{0});
+
+    std::array<uint8_t, hashBytes> computed{};
+    Utils::md5(probe.data(), probe.size(), computed.data());
+    return computed == stored;
 }
 
 } // namespace PokeBank::SaveValidation::BDSP

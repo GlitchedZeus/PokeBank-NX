@@ -974,10 +974,10 @@ namespace UI {
     // Put the whole carried block back where it was lifted from. Each cell prefers its own original
     // slot; if something has since filled that slot, it falls back to any empty slot in the origin
     // pane, because a carried Pokemon must never be dropped on the floor.
-    void TrainerViewScreen::returnHeldToOrigin() {
-        if (!carrying()) return;
+    bool TrainerViewScreen::returnHeldToOrigin() {
+        if (!carrying()) return true;
         const int pane = heldPane;
-        if (pane == 1 && !bank) return;
+        if (pane == 1 && !bank) return false;
         const int slots = (pane == 0) ? static_cast<int>(trainer.getSlotsPerBox())
                                       : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
         const int boxCount = (pane == 0) ? static_cast<int>(trainer.getBoxCount())
@@ -1039,7 +1039,7 @@ namespace UI {
 
         if (!returnPlan.complete) {
             postStatus("Could not return the held Pokemon safely - custody retained.", 360);
-            return;
+            return false;
         }
 
         // Every carried Pokemon now has a unique, still-empty destination. The UI is single-threaded,
@@ -1057,6 +1057,7 @@ namespace UI {
             hasUnsavedChanges = crossStoreBaseline.workspaceDirtyBeforePickup;
         carriedCopyMode = false;
         clearCrossStoreMoveBaseline();
+        return true;
     }
 
     // Reference to a storage slot's unique_ptr (pane 0 = save boxes, 1 = bank). Callers must
@@ -1482,7 +1483,7 @@ namespace UI {
     // empty name means "use the default", and the keyboard starts from the raw stored name (blank by
     // default) rather than from the "Bank N" label.
     void TrainerViewScreen::renameBankBox(int box) {
-        if (!requireMutableWorkspace()) return;
+        if (!requireMutableStoragePane(1, PokeVault::Safety::SourceMutation::Rename)) return;
         if (!bank || box < 0 || box >= static_cast<int>(Trainer::Bank::BANK_BOX_COUNT)) return;
         const std::string current = bank->boxNames[box];
         const Utils::KeyboardResult res =
@@ -1711,12 +1712,8 @@ namespace UI {
             unique = leaf + "-" + std::to_string(n);
 
         const std::string destDir = gameDir + "/" + unique;
-        if (mkdir(destDir.c_str(), 0777) != 0 && errno != EEXIST) {
-            Utils::logErrorToFile("Failed to create named backup directory", destDir.c_str());
-            return "";
-        }
-        if (!Utils::copyDirectory(backupDir.c_str(), destDir.c_str())) {
-            Utils::logErrorToFile("Failed to seed named backup from", backupDir.c_str());
+        if (!Utils::copyDirectoryTransactional(backupDir.c_str(), destDir.c_str())) {
+            Utils::logErrorToFile("Failed to seed named backup transactionally from", backupDir.c_str());
             return "";
         }
         return destDir;
@@ -1807,7 +1804,7 @@ namespace UI {
 
     // Open the details modal on a storage slot (reuses the Box path for the save pane).
     void TrainerViewScreen::openStorageEditor(int pane, int box, int slot) {
-        if (!requireMutableWorkspace()) return;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::Edit)) return;
         if (pane == 1) {
             details.source = EditSource::Bank;
             details.bankBox = box;
@@ -1858,10 +1855,10 @@ namespace UI {
     }
 
     void TrainerViewScreen::openActionSheetTargetDetails(bool readOnly) {
-        readOnly = readOnly || sourceReadOnly();
-        if (!actionSheetTargetPokemon()) return;
-
         const auto& target = actionSheet.target();
+        readOnly = readOnly || !pokemonTargetMutable(
+            target, PokeVault::Safety::SourceMutation::Edit);
+        if (!actionSheetTargetPokemon()) return;
         using PokeVault::UIModel::PokemonLocation;
         if (target.location == PokemonLocation::Party) {
             details.source = EditSource::Party;
@@ -1931,9 +1928,9 @@ namespace UI {
     // Move mode: lift the slot under the cursor as a 1x1 block. Single and multi carry share one
     // representation, so every later step (drawing, bounds, put-down, B-to-return) is written once.
     void TrainerViewScreen::pickupSingle() {
-        if (!requireMutableWorkspace()) return;
         if (!bank) return;
         const int pane = storageFocusPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int box = (pane == 0) ? stSaveBox : stBankBox;
         const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
         if (slot < 0 || slot >= paneSlots(pane)) return;
@@ -1952,8 +1949,8 @@ namespace UI {
 
     // Multi mode: the first A anchors the rectangle at the cursor, the second grabs it.
     void TrainerViewScreen::pickupMulti() {
-        if (!requireMutableWorkspace()) return;
         const int pane = storageFocusPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
         if (slot < 0 || slot >= paneSlots(pane)) return;
         if (currentlySelecting) {
@@ -1970,9 +1967,9 @@ namespace UI {
     // Lift (remove = true) or copy (remove = false) every slot inside the anchored rectangle into
     // moveMon, then snap the cursor to the rectangle's top-left so the block sits under the pointer.
     void TrainerViewScreen::grabSelection(bool remove) {
-        if (!requireMutableWorkspace()) return;
         if (!currentlySelecting || !bank) return;
         const int pane = selectPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int box = selectBox;
         const int cols = paneCols(pane);
         const int slots = paneSlots(pane);
@@ -2108,9 +2105,9 @@ namespace UI {
     // conversion route into this save -- stay in the block and stay untouched, so one blocker never
     // strands the rest of the group.
     void TrainerViewScreen::putDownBlock() {
-        if (!requireMutableWorkspace()) return;
         if (!carrying() || !bank) return;
         const int pane = storageFocusPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int box = (pane == 0) ? stSaveBox : stBankBox;
         const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
         const int cols = paneCols(pane);
@@ -2254,7 +2251,7 @@ namespace UI {
     // relocating such a slot would silently repoint a party member at a different Pokemon. The
     // occupant stays exactly where it is and the sort flows around it.
     void TrainerViewScreen::sortStorageBox(int pane, int box) {
-        if (!requireMutableWorkspace()) return;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int slots = (pane == 0) ? static_cast<int>(trainer.getSlotsPerBox())
                                       : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
         std::vector<int> freeIdx;                                   // slots the sort may write to
@@ -2288,8 +2285,9 @@ namespace UI {
 
     void TrainerViewScreen::handleStorageInput(u64 kDown) {
         if (!bank) return;
-        if (sourceReadOnly() && (kDown & (HidNpadButton_X | HidNpadButton_Y))) {
-            requireMutableWorkspace();
+        if (storageFocusPane == 0 && sourceReadOnly() &&
+            (kDown & (HidNpadButton_X | HidNpadButton_Y))) {
+            requireMutableStoragePane(0, PokeVault::Safety::SourceMutation::DirectMove);
             kDown &= ~(HidNpadButton_X | HidNpadButton_Y);
         }
 
@@ -2550,31 +2548,44 @@ namespace UI {
         // forever. update() runs every frame in every view, which is what a timer needs.
         if (storageStatusFrames > 0) --storageStatusFrames;
 
-        // Defense in depth: inherited modal flags must never create a writable path in an
-        // installed-source session, including touch/deferred entry points. Browse/View is kept.
+        // Defense in depth: immutable source sessions still block source-owned mutators, but
+        // Bank targets are PokeBank-owned AppOwnedStorage and remain independently mutable.
         if (sourceReadOnly()) {
+            const bool bankDetails = details.active && details.source == EditSource::Bank;
+            const bool bankRelease = releaseConfirmActive &&
+                ((releaseGroup && carrying() && heldPane == 1) ||
+                 (!releaseGroup && releasePane == 1));
+            const bool bankGroupMenu = groupMenuActive && carrying() && heldPane == 1;
+
             // A dirty-session exit confirmation is safe on an immutable source: it does not write
             // the source, it only asks whether to abandon staged app-owned work or keep editing.
-            // All ordinary Save/write dialogs stay blocked.
             const bool exitOnlySaveConfirm = saveConfirmActive && exitingWithUnsavedChanges;
-            const bool blocked = pickerActive || itemEditDialogActive || itemRemoveConfirmActive ||
-                statEdit.dialogActive ||
+            const bool blocked =
+                (pickerActive && !bankDetails) ||
+                itemEditDialogActive || itemRemoveConfirmActive ||
+                (statEdit.dialogActive && !bankDetails) ||
                 PokeBank::UIModel::SharedPokemonEditor::immutableSourceBlocksSaveDialog(
                     saveConfirmActive, exitingWithUnsavedChanges) ||
-                releaseConfirmActive || creator.active || creator.editing || groupMenuActive ||
-                storageExitConfirmActive || gen3ConvertConfirmActive || lgpeTransferConfirmActive;
+                (releaseConfirmActive && !bankRelease) ||
+                creator.active || creator.editing ||
+                (groupMenuActive && !bankGroupMenu) ||
+                gen3ConvertConfirmActive || lgpeTransferConfirmActive;
             if (blocked) {
-                pickerActive = itemEditDialogActive = itemRemoveConfirmActive = false;
-                statEdit.dialogActive = false;
+                if (!bankDetails) {
+                    pickerActive = false;
+                    statEdit.dialogActive = false;
+                }
+                itemEditDialogActive = itemRemoveConfirmActive = false;
                 if (!exitOnlySaveConfirm) saveConfirmActive = false;
-                releaseConfirmActive = false;
+                if (!bankRelease) releaseConfirmActive = false;
                 creator.active = creator.editing = creator.keepConfirmActive = false;
-                groupMenuActive = false;
-                storageExitConfirmActive = gen3ConvertConfirmActive = lgpeTransferConfirmActive = false;
+                if (!bankGroupMenu) groupMenuActive = false;
+                gen3ConvertConfirmActive = lgpeTransferConfirmActive = false;
                 requireMutableWorkspace();
                 return;
             }
-            if (details.active) details.readOnly = true;
+            if (details.active && !bankDetails) details.readOnly = true;
+            // storageExitConfirmActive is Bank persistence only and intentionally remains available.
         }
 
         // A box-name pill was tapped last frame: the header highlight has now been drawn once, so it
@@ -3019,7 +3030,10 @@ namespace UI {
                 if (kDown & HidNpadButton_A) {
                     // A carried Pokemon lives outside both containers — return it before serializing
                     // so it isn't dropped from the save/bank.
-                    returnHeldToOrigin();
+                    if (!returnHeldToOrigin() || carrying()) {
+                        postStatus("Save blocked - held Pokemon custody could not be restored.", 480);
+                        return;
+                    }
 
                     // (The bank has its OWN persistence — it saves on storage-view exit / app exit,
                     // separate from this game-save, since it's a separate entity from the save file.)
@@ -3889,12 +3903,15 @@ namespace UI {
                 return;
             }
             if (kDown & HidNpadButton_A) {
-                switch (actionSheet.activate(!sourceReadOnly())) {
+                const bool allowEdit = pokemonTargetMutable(
+                    actionSheet.target(), PokeVault::Safety::SourceMutation::Edit);
+                switch (actionSheet.activate(allowEdit)) {
                     case PokeVault::UIModel::ActionResult::OpenView:
                         openActionSheetTargetDetails(true);
                         break;
                     case PokeVault::UIModel::ActionResult::OpenEditor:
-                        if (!requireMutableWorkspace()) break;
+                        if (!requireMutablePokemonTarget(
+                                actionSheet.target(), PokeVault::Safety::SourceMutation::Edit)) break;
                         openActionSheetTargetDetails(false);
                         break;
                     case PokeVault::UIModel::ActionResult::NotYetSupported:
@@ -4488,7 +4505,11 @@ namespace UI {
                     if (!requireMutableWorkspace()) return;
                     bool inRange = selectedBoxIndex >= 0 && selectedBoxIndex < static_cast<int>(trainer.boxes.size()) &&
                                    selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(BOX_SLOTS);
-                    bool cursorOccupied = inRange && trainer.boxes[selectedBoxIndex][selectedItemIndex] != nullptr;
+                    bool cursorOccupied = false;
+                    if (inRange) {
+                        const auto& cursorPokemon = trainer.boxes[selectedBoxIndex][selectedItemIndex];
+                        cursorOccupied = cursorPokemon && cursorPokemon->speciesID() != 0;
+                    }
 
                     if (!swapActive) {
                         if (cursorOccupied) {
@@ -4597,7 +4618,9 @@ namespace UI {
                             ? "Debug logging on. Logs are written to sdmc:/switch/PokeBank-NX/logs."
                             : "Debug logging off. No new log files will be written.", 300);
                     }
-                    Utils::saveSettings();   // persist the change to settings.cfg
+                    if (!Utils::saveSettings()) {
+                        postStatus("Couldn't save settings. Your previous settings file was kept.", 360);
+                    }
                 }
             }
 

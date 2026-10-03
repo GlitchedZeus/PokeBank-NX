@@ -1,5 +1,8 @@
 # PokeBank NX — Next Session Plan
 
+> **DATED PLAN SNAPSHOT:** Use only after reading `docs/ENGINEERING_AUTHORITY.md` and re-fetching the live PR state. GitHub wins if any SHA, PR relationship, CI status, or integration note below has advanced.
+
+
 Last updated: **2026-09-29**
 
 Status: **CONTINUE ON PR #92, FINISH INTEGRATED CI/LAUNCH, PRODUCE ONE FINAL HARDWARE NRO**

@@ -1,5 +1,8 @@
 # PokeBank NX UI Ownership Status
 
+> **CURRENT UI SNAPSHOT, NOT BRANCH AUTHORITY:** Re-fetch GitHub before acting on this dated ownership table. Active lane/task routing is defined by `docs/ENGINEERING_AUTHORITY.md` plus the owner's current handoff.
+
+
 Last updated: **2026-09-29**
 
 This file tracks the visible product layer separately from proven save/editor backends.
