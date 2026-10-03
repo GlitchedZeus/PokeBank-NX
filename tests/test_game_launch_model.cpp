@@ -27,6 +27,16 @@ int main() {
     assert(gameLaunchProviderAcceptsContentArgument(GameLaunchProviderKind::RetroArch));
     assert(gameLaunchProviderKind("Manual") == GameLaunchProviderKind::Unknown);
 
+    // DraStic accepted a selected ROM/archive as positional argv[1] starting in 1.1.0. Keep the
+    // product launch model from regressing to the older behavior where the NRO opens successfully
+    // but ignores the selected game and shows DraStic's own file chooser.
+    assert(!drasticDirectLaunchVersionSupportsPositionalRom("1.0.9"));
+    assert(!drasticDirectLaunchVersionSupportsPositionalRom("v1.0.99"));
+    assert(drasticDirectLaunchVersionSupportsPositionalRom("1.1.0"));
+    assert(drasticDirectLaunchVersionSupportsPositionalRom("v1.1.2"));
+    assert(drasticDirectLaunchVersionSupportsPositionalRom("2.0.0"));
+    assert(!drasticDirectLaunchVersionSupportsPositionalRom("unknown"));
+
     assert(gameLaunchContentSupported("yellow_gb", "/roms/Pokemon Yellow.gb"));
     assert(gameLaunchContentSupported("crystal_gbc", "/roms/Pokemon Crystal.gbc"));
     assert(gameLaunchContentSupported("emerald_gba", "/roms/Pokemon Emerald.gba"));
