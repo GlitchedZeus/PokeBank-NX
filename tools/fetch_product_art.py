@@ -2,9 +2,9 @@
 """Prepare Product Home presentation art used by hardware builds.
 
 Trainer sprites are fetched from named Pokemon Showdown resources. The eight user-supplied
-Kanto-through-Galar backdrops remain branch-owned presentation assets. Hisui and Paldea are fetched
-from fixed real-region artwork URLs because those later-region assets were not supplied with that set.
-The build never generates fake scenery.
+Kanto-through-Galar backdrops remain branch-owned presentation assets. Hisui and Paldea use the
+exact official-style region artwork selected for Product Home rather than the simplified map assets
+that were previously packaged. The build never generates fake scenery.
 """
 from __future__ import annotations
 
@@ -55,10 +55,12 @@ BRANCH_OWNED_REGIONS = (
     "galar.png",
 )
 
+# These pinned mirrors carry the same full-region artwork selected for the app:
+# Legends_Arceus_Hisui.png for Hisui and Paldea_artwork.png for Scarlet/Violet.
+# Pin the source commit so a future upstream change cannot silently alter hardware artwork.
 REGION_URLS = {
-    # Real in-game / official-region artwork, not generated substitutes.
-    "hisui.png": "https://raw.githubusercontent.com/pokeclicker/pokeclicker/a3062f11fdcf4c22e6a9a7d4747e5bb6614f44ab/src/assets/images/hisui.png",
-    "paldea.png": "https://raw.githubusercontent.com/pokeclicker/pokeclicker/a3062f11fdcf4c22e6a9a7d4747e5bb6614f44ab/src/assets/images/paldea.png",
+    "hisui.png": "https://raw.githubusercontent.com/sjhmichael/pokedex-app/bd971e8ea9b5b6d02d6169afe90d7b05bf0b958b/src/assets/Regions/Legends_Arceus_Hisui.png",
+    "paldea.png": "https://raw.githubusercontent.com/sjhmichael/pokedex-app/bd971e8ea9b5b6d02d6169afe90d7b05bf0b958b/src/assets/Regions/Paldea_artwork.png",
 }
 
 REQUIRED_REGIONS = BRANCH_OWNED_REGIONS + tuple(REGION_URLS)
@@ -130,8 +132,8 @@ def main() -> int:
             width, height = png_size(data)
             print(f"VERIFIED {path.relative_to(ROOT)} {width}x{height} {len(data)} bytes")
 
-        # Hisui and Paldea were missing from that set. Fetch fixed real-region artwork instead of
-        # synthesizing scenery or reusing Sinnoh/Kalos as misleading substitutes.
+        # Hisui and Paldea were missing from the original set. Fetch the selected full-region art
+        # instead of synthesizing scenery or substituting simplified map tiles.
         for name, url in REGION_URLS.items():
             fetch(url, REGIONS / name)
     except Exception as exc:
