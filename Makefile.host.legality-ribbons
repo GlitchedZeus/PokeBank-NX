@@ -1,7 +1,10 @@
 # Focused persisted Gen III Event3 ribbon-reader regression.
 # Reuse the already-proven Gen III legality link graph, replacing its test main.
+# Legality.cpp's diagnostic helpers call the thin Trainer -> Names wrappers, so
+# include Trainer.cpp explicitly rather than leaving unresolved wrapper symbols.
 GEN3_EVENT_RIBBON_BITS_SOURCES := tests/test_gen3_event_ribbon_bits.cpp \
-	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES))
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) \
+	src/Trainer/Trainer.cpp
 
 GEN3_EVENT_RIBBON_BITS_HOST_TESTS := $(HOST_BUILD)/test_gen3_event_ribbon_bits
 GEN3_EVENT_RIBBON_BITS_SANITIZE_TESTS := $(HOST_BUILD)/test_gen3_event_ribbon_bits_sanitize
