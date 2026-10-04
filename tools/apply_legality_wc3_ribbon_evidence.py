@@ -169,6 +169,46 @@ def main() -> int:
 ''',
     )
 
+    # Keep the deterministic generator as the single source of truth for all
+    # 114 BACD_R_A rows. The migration teaches it to retain RibbonNational.
+    replace_once(
+        "tools/gen_legality_gen3_bacd_ra_events.py",
+        '''            bool(re.search(r"\\bFatefulEncounter\\s*=\\s*true", fields)),
+            ot_match.group(1),
+            moves,
+''',
+        '''            bool(re.search(r"\\bFatefulEncounter\\s*=\\s*true", fields)),
+            bool(re.search(r"\\bRibbonNational\\s*=\\s*true", fields)),
+            ot_match.group(1),
+            moves,
+''',
+    )
+    replace_once(
+        "tools/gen_legality_gen3_bacd_ra_events.py",
+        '''    for species, tid, sid, level, language, gender_rule, fateful, ot, moves in rows:
+        lines.append(
+            "    {%d, %d, %d, %d, %d, %d, %s, %s, {%d, %d, %d, %d}}," %
+            (species, tid, sid, level, language, gender_rule,
+             "true" if fateful else "false", cxx_u16(ot), *moves)
+        )
+''',
+        '''    for species, tid, sid, level, language, gender_rule, fateful, ribbon_national, ot, moves in rows:
+        lines.append(
+            "    {%d, %d, %d, %d, %d, %d, %s, %s, %s, {%d, %d, %d, %d}}," %
+            (species, tid, sid, level, language, gender_rule,
+             "true" if fateful else "false",
+             "true" if ribbon_national else "false", cxx_u16(ot), *moves)
+        )
+''',
+    )
+    replace_once(
+        "tools/gen_legality_gen3_bacd_ra_events.py",
+        '''    print("wrote %d BACD_R_A event rows with moves to %s" % (len(rows), OUT))
+''',
+        '''    print("wrote %d BACD_R_A event rows with moves and National Ribbon state to %s" % (len(rows), OUT))
+''',
+    )
+
     print("applied guarded WC3 National Ribbon legality integration")
     return 0
 
