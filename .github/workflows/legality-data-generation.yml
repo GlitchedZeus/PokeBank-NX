@@ -10,8 +10,10 @@ on:
       - tools/gen_legality_gen34_egg_moves.py
       - tools/gen_legality_gen4_events.py
       - tools/gen_legality_gen3_colo_shadows.py
+      - tools/gen_legality_gen3_bacd_ra_events.py
       - tools/apply_legality_gamecube_integration.py
       - tools/apply_legality_cxd_ot_order.py
+      - tools/apply_legality_bacd_ra_moves.py
       - tools/pkhex_source.py
       - .github/workflows/legality-data-generation.yml
 
@@ -35,6 +37,7 @@ jobs:
         run: |
           python3 tools/apply_legality_gamecube_integration.py
           python3 tools/apply_legality_cxd_ot_order.py
+          python3 tools/apply_legality_bacd_ra_moves.py
 
       - name: Regenerate from pinned upstream resources
         run: |
@@ -42,15 +45,17 @@ jobs:
           python3 tools/gen_legality_gen34_egg_moves.py
           python3 tools/gen_legality_gen4_events.py
           python3 tools/gen_legality_gen3_colo_shadows.py
+          python3 tools/gen_legality_gen3_bacd_ra_events.py
 
       - name: Show deterministic diff and digest
         run: |
           set -euo pipefail
-          git diff -- src/Legality/Legality.cpp include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc
+          git diff -- src/Legality/Legality.cpp include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
           sha256sum include/Legality/Gen4WildEncounterData.inc
           sha256sum include/Legality/Gen34EggMoveData.inc
           sha256sum include/Legality/Gen4EventTemplateData.inc
           sha256sum include/Legality/Gen3ColoShadowEncounterData.inc
+          sha256sum include/Legality/Gen3BacdRaEventTemplateData.inc
           git diff --check
 
       - name: Upload generated table
@@ -62,6 +67,7 @@ jobs:
             include/Legality/Gen34EggMoveData.inc
             include/Legality/Gen4EventTemplateData.inc
             include/Legality/Gen3ColoShadowEncounterData.inc
+            include/Legality/Gen3BacdRaEventTemplateData.inc
           if-no-files-found: error
           retention-days: 7
 
@@ -69,12 +75,12 @@ jobs:
         if: github.event_name == 'push'
         run: |
           set -euo pipefail
-          git add src/Legality/Legality.cpp include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc
+          git add src/Legality/Legality.cpp include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
           if git diff --cached --quiet; then
             echo "Legality source and generated tables already match the branch."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "legality: apply guarded GameCube routing and regenerate evidence"
+          git commit -m "legality: regenerate pinned legality evidence"
           git push origin "HEAD:${GITHUB_REF_NAME}"
