@@ -1,0 +1,111 @@
+name: One-time audit + behavior-preserving performance integration
+
+on:
+  push:
+    branches:
+      - staging/product-home-perf-audit-20261004
+    paths:
+      - .github/workflows/one-time-audit-perf-integration.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          ref: staging/product-home-perf-audit-20261004
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Configure Git
+        run: |
+          git config user.name "PokeBank NX Integration Bot"
+          git config user.email "actions@users.noreply.github.com"
+
+      - name: Verify preserved MAIN ancestry
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 564bb3ed55b1e46f4177500d1c0cbe0994bda6ed HEAD
+          echo "staging head: $(git rev-parse HEAD)"
+
+      - name: Merge completed audit remediation forward
+        run: |
+          set -euo pipefail
+          git fetch origin fix/full-audit-remediation-20260929
+          git merge --no-ff -X ours origin/fix/full-audit-remediation-20260929 \
+            -m "merge: integrate completed audit remediation into current MAIN"
+          test -f docs/AUDIT_REMEDIATION_MATRIX.md
+          git merge-base --is-ancestor 408a56446f9dda611732c8186d6ce4148100d65f HEAD
+          git merge-base --is-ancestor 564bb3ed55b1e46f4177500d1c0cbe0994bda6ed HEAD
+          echo "audit integration: $(git rev-parse HEAD)"
+
+      - name: Apply behavior-preserving performance pass
+        run: |
+          set -euo pipefail
+          python3 tools/apply_behavior_preserving_perf_pass.py
+          git diff --check
+          git add src/main.cpp src/UI/GameLauncher.cpp src/UI/SaveSelectScreen.cpp \
+                  include/UI/SaveSelectScreen.h tests/test_game_hub_contract.py
+          git commit -m "perf(ui): remove redundant startup and navigation I/O"
+          echo "performance head: $(git rev-parse HEAD)"
+
+      - name: Product UI contract gate
+        run: python3 tests/test_game_hub_contract.py
+
+      - name: V1 polish and recovery contracts
+        run: |
+          python3 tests/test_v1_polish_contract.py
+          python3 tools/check_recovery_contract.py
+          python3 tools/regenerate.py --list --repo . --tables
+
+      - name: Clean host tests
+        run: |
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+
+      - name: ASan + UBSan host tests
+        run: make -f Makefile.host host-sanitize
+
+      - name: Record forward audit integration
+        run: |
+          set -euo pipefail
+          PERF_SHA="$(git rev-parse HEAD)"
+          export PERF_SHA
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p = Path('docs/AUDIT_REMEDIATION_MATRIX.md')
+          text = p.read_text()
+          marker = '# Full Audit Remediation Matrix\n'
+          note = f'''# Full Audit Remediation Matrix\n\n## Forward integration checkpoint — 2026-10-04\n\n- Completed remediation/documentation head `408a56446f9dda611732c8186d6ce4148100d65f` has been merged forward from PR #101 into the current PR #92 development line without rebasing, resetting, or force-pushing.\n- Integration started from preserved PR #92 hardware-fix head `564bb3ed55b1e46f4177500d1c0cbe0994bda6ed`; current MAIN-side code wins textual conflicts so newer Product Home/hardware fixes are never rolled backward.\n- Behavior-preserving performance application head: `{os.environ['PERF_SHA']}`. This pass removes duplicate system enumeration and unnecessary navigation/startup I/O only; UI, controls, save workflow, launch workflow, safety policy, and displayed Product Home content remain unchanged.\n- The forensic audit disposition remains **43 VERIFIED / 1 DEFERRED WITH JUSTIFICATION / 0 OPEN**. AUDIT-043 still requires the real failing disposable Gen IV `.dsv`; no synthetic evidence was introduced.\n- Original exact-head remediation evidence at `7b7c2b77c28695c1bf16c3e3004e293edf0d47e4` remains recorded below. The forward-integrated application is re-running current validation before any hardware acceptance or merge decision.\n\n'''
+          if '## Forward integration checkpoint — 2026-10-04' not in text:
+              if not text.startswith(marker):
+                  raise SystemExit('unexpected audit matrix heading')
+              text = note + text[len(marker):].lstrip('\n')
+              p.write_text(text)
+          PY
+          git add docs/AUDIT_REMEDIATION_MATRIX.md
+          git commit -m "docs: reconcile completed audit into current MAIN"
+
+      - name: Retire one-time staging harness
+        run: |
+          set -euo pipefail
+          rm -f tools/apply_behavior_preserving_perf_pass.py
+          rm -f .github/workflows/one-time-audit-perf-integration.yml
+          git add -A
+          git commit -m "chore: retire one-time audit/performance integration harness"
+
+      - name: Verify final ancestry and push staging result
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 564bb3ed55b1e46f4177500d1c0cbe0994bda6ed HEAD
+          git merge-base --is-ancestor 408a56446f9dda611732c8186d6ce4148100d65f HEAD
+          git diff --check HEAD^ HEAD
+          echo "FINAL_SHA=$(git rev-parse HEAD)"
+          echo "FINAL_TREE=$(git rev-parse 'HEAD^{tree}')"
+          git push origin HEAD:staging/product-home-perf-audit-20261004
