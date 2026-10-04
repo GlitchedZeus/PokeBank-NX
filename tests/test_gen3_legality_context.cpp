@@ -1,4 +1,5 @@
 #include "Legality/Legality.h"
+#include "Legality/Gen3XdPokeSpotEvidence.h"
 #include "Names/ItemNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
@@ -29,6 +30,12 @@ Pokemon::Pokemon3FRLG blankPk3() {
     std::array<uint8_t, 80> raw{};
     return Pokemon::Pokemon3FRLG(std::span<const std::byte>(
         reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
+}
+
+void setStoredFateful(Pokemon::Pokemon3FRLG& p) {
+    p.wr32(0x4C, p.rd32(0x4C) | 0x80000000u);
+    p.refreshChecksum();
+    assert(p.isFatefulEncounter());
 }
 
 Pokemon::Pokemon3FRLG bulbasaurWithSwordsDance() {
@@ -73,9 +80,7 @@ Pokemon::Pokemon3FRLG xdTeddiursaWithStoredFatefulFlag() {
     p.setIV(5, 22);
 
     assert(!p.isFatefulEncounter());
-    p.wr32(0x4C, p.rd32(0x4C) | 0x80000000u);
-    p.refreshChecksum();
-    assert(p.isFatefulEncounter());
+    setStoredFateful(p);
     return p;
 }
 
@@ -161,6 +166,54 @@ Pokemon::Pokemon3FRLG coloEReaderTogepi() {
     return p;
 }
 
+Pokemon::Pokemon3FRLG xdPokeSpotZubat() {
+    auto p = blankPk3();
+    // Deterministic vector derived directly from pinned MethodPokeSpot/XDRNG:
+    // PID activation and IV/level animation histories are independently valid.
+    p.setPID(0x002D7220u);
+    p.setTID16(1);
+    p.setSID16(2);
+    p.setLanguage(2);
+    p.setSpecies(41);       // Cave Poke Spot slot 0: Zubat
+    p.setOTName(u"MICHAEL");
+    p.setNickname(u"ZUBAT");
+    p.setOriginGame(15);
+    p.setBall(4);
+    p.setMetLevel(13);
+    p.setMetLocation(92);   // Cave Poke Spot
+    p.setLevel(13);
+    p.setIV(0, 13);
+    p.setIV(1, 1);
+    p.setIV(2, 0);
+    p.setIV(3, 0);
+    p.setIV(4, 17);
+    p.setIV(5, 28);
+    setStoredFateful(p);
+    return p;
+}
+
+Pokemon::Pokemon3FRLG method1CxdFemaleCollision() {
+    auto p = blankPk3();
+    // Pinned PKHeX Method 1 vector. The CXD OT-gender invariant must still run
+    // before the handheld PID method causes addGen3PidEvidence to return early.
+    p.setPID(0xE97E0000u);
+    p.setTID16(1);
+    p.setSID16(2);
+    p.setLanguage(2);
+    p.setSpecies(1);
+    p.setOriginGame(15);
+    p.setMetLevel(5);
+    p.setLevel(5);
+    p.setIV(0, 17);
+    p.setIV(1, 19);
+    p.setIV(2, 20);
+    p.setIV(3, 16);
+    p.setIV(4, 13);
+    p.setIV(5, 12);
+    p.refreshChecksum();
+    return p;
+}
+
 void forceFemaleOt(Pokemon::Pokemon3FRLG& p) {
     p.wr16(0x46, static_cast<uint16_t>(p.origins() | 0x8000u));
     p.refreshChecksum();
@@ -237,6 +290,49 @@ int main() {
     assert(hasText(eReader, "fixed-zero-IV history match the Japanese Pokemon Colosseum e-Reader shadow generation path"));
     assert(hasText(eReader, "e-Reader shadow identity and recursive prior-team history match pinned source data"));
 
+    // Pinned MethodPokeSpot evidence: PID activation and IV/level animation are
+    // independent histories and must both be proven for the same encounter slot.
+    namespace Spot = Legality::Gen3XdPokeSpotEvidence;
+    constexpr Spot::Candidate zubatCandidate{
+        41, 15, 2, 0, 13, 92, false, true, true,
+        0x002D7220u, {13, 1, 0, 0, 17, 28}
+    };
+    constexpr auto zubatEvidence = Spot::analyze(zubatCandidate);
+    static_assert(zubatEvidence.identityMatched);
+    static_assert(zubatEvidence.pidMatched);
+    static_assert(zubatEvidence.ivMatched);
+    static_assert(zubatEvidence.slot == 0);
+    static_assert(zubatEvidence.generatedLevel == 13);
+    static_assert(zubatEvidence.setup == Spot::Setup::Munchlax);
+    static_assert(zubatEvidence.pidOriginSeed == 0xEA585929u);
+    static_assert(zubatEvidence.ivOriginSeed == 0x234CE543u);
+
+    auto wrongLevel = zubatCandidate;
+    wrongLevel.metLevel = 14;
+    const auto wrongLevelEvidence = Spot::analyze(wrongLevel);
+    assert(wrongLevelEvidence.identityMatched);
+    assert(wrongLevelEvidence.pidMatched);
+    assert(!wrongLevelEvidence.ivMatched);
+
+    auto wrongIvs = zubatCandidate;
+    wrongIvs.ivs[0] = 14;
+    const auto wrongIvEvidence = Spot::analyze(wrongIvs);
+    assert(wrongIvEvidence.identityMatched);
+    assert(!wrongIvEvidence.ivMatched);
+
+    auto wrongSlot = zubatCandidate;
+    wrongSlot.species = 304; // Cave slot 1 Aron; PID activation belongs to slot 0.
+    const auto wrongSlotEvidence = Spot::analyze(wrongSlot);
+    assert(wrongSlotEvidence.identityMatched);
+    assert(!wrongSlotEvidence.pidMatched);
+    assert(wrongSlotEvidence.ivMatched);
+
+    auto spotZubat = xdPokeSpotZubat();
+    const auto spot = Legality::analyze(
+        spotZubat, Enums::GameVersion::FRLG, "firered_gba");
+    assert(hasText(spot, "PID activation and IV/level animation histories match the Pokemon XD Poke Spot RNG path"));
+    assert(hasText(spot, "Species/location/level match a pinned Pokemon XD Poke Spot slot"));
+
     // Pinned PKHeX CXDVerifier invariant: GameCube-origin PK3 cannot have a female OT.
     auto badOt = coloMakuhita();
     forceFemaleOt(badOt);
@@ -245,5 +341,15 @@ int main() {
     assert(femaleOt.hasInvalid());
     assert(hasText(femaleOt, "Colosseum/XD-origin PK3 cannot have a female OT gender"));
 
-    std::cout << "Gen III exact-source + central GameCube legality routing: PASS\n";
+    // The same invariant must survive an early handheld Method 1 correlation match.
+    // This is the regression for the former ordering bug.
+    auto collision = method1CxdFemaleCollision();
+    forceFemaleOt(collision);
+    const auto collisionReport = Legality::analyze(
+        collision, Enums::GameVersion::FRLG, "firered_gba");
+    assert(collisionReport.hasInvalid());
+    assert(hasText(collisionReport, "Colosseum/XD-origin PK3 cannot have a female OT gender"));
+    assert(hasText(collisionReport, "PID/IV spread matches Gen III Method 1"));
+
+    std::cout << "Gen III exact-source + central GameCube/Poke Spot legality routing: PASS\n";
 }
