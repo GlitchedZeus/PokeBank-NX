@@ -178,7 +178,7 @@ require("Horizontal movement never spills into" in source and
         "col + 1 < cols" in source and
         "nextRow < classicCount" in source,
         "Quick Games and full Games must use row-bounded spatial grid navigation")
-require("Color(3, 10, 24, 132)" in source and
+require("Color(3, 10, 24, 104)" in source and
         "const Color heroText(248, 251, 255, 255);" in source and
         "titleFavorite(*u, title)" in source and
         'fb.drawSymbol(heartX, heartY, "\\xE2\\x99\\xA5"' in source,
@@ -223,7 +223,7 @@ require("The right-side feature cards are stacked" in source and
 require("constexpr int featureH = 132;" in source and
         "const int navY = dexY + featureH + 20;" in source and
         "constexpr int buttonD = 74;" in source and
-        "fb.drawFilledCircle(cx, cy, buttonD / 2, Colors::SurfaceRaised);" in source,
+        "focused ? withAlpha(Colors::Info, 46) : Colors::PanelAlt" in source,
         "Vault/Pokédex must use larger stacked cards while Games/Banks/Items/Search/More stay lower round logos")
 require('drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"}' in source,
         "Product Home footer must expose Y Quick Games without repeating ZR Launch")
@@ -332,7 +332,7 @@ require("partySpriteH = 82" in source and
 require("gameRegionBackdropKey(title.gameId)" in source and
         "SystemIcons::regionBackdrop(regionKey)" in source and
         "regionH = 270" in source and
-        "Color(5, 14, 30, 54)" in source,
+        "Color(5, 14, 30, 40)" in source,
         "selected-game Product Home card must support a visible region-scene backdrop with a readability scrim")
 region_loader = system_icons[system_icons.index("const IconImage& SystemIcons::regionBackdrop"):
                              system_icons.index("const IconImage& SystemIcons::trainerPortrait")]
@@ -503,7 +503,7 @@ require("drawTrainerPortrait" not in classic_fn,
 require("focused ? Colors::Info : Colors::TextSecondary" in source and
         ": i == 0 ? Colors::Info" not in source,
         "Games/Banks/Items/Search/More must turn blue only when focused")
-require("Color(5, 14, 30, 54)" in source and "Color(3, 10, 24, 132)" in source,
+require("Color(5, 14, 30, 40)" in source and "Color(3, 10, 24, 104)" in source,
         "Product Home region artwork must remain visible under lighter glass")
 require("return beginLaunchLinkForCurrentTitle();" not in source and
         "Direct launch could not resolve this game's ROM" in source,
@@ -518,3 +518,12 @@ require("installedGameForwarderTitle" in launcher and
 require("configuredDraSticLibraryRoots" in launcher and
         '"sdmc:/switch/drastic/launcher.ini"' in launcher,
         "DraStic launch must consume configured SD library roots")
+
+require("drawTrainerPortrait" not in classic_draw,
+        "the PKSE/full Games browser must not show trainer portraits")
+require("installedForwarderNameMatches" in launcher and 'gameId == "platinum_nds"' in launcher and
+        'gameId == "emerald_gba"' in launcher,
+        "installed HOME forwarders must be matched by exact release identity before emulator fallback")
+require("Choose a validated save to assign to this profile." in source and
+        "entry.gameId != game.gameId" in source,
+        "Games X must offer unassigned saves for the selected game/profile")

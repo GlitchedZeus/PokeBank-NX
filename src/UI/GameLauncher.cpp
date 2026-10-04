@@ -86,9 +86,54 @@ bool readTextFile(const std::string& path, std::string& out, size_t maxSize = 4 
 std::string compactGameTitle(std::string_view value) {
     std::string out;
     out.reserve(value.size());
-    for (unsigned char c : value)
-        if (std::isalnum(c)) out.push_back(static_cast<char>(std::tolower(c)));
+    for (size_t i = 0; i < value.size(); ++i) {
+        const unsigned char c = static_cast<unsigned char>(value[i]);
+        // HOME forwarders commonly use the official “Pokémon” spelling. Normalize UTF-8 é/É
+        // instead of dropping it and turning the identity word into “pokmon”.
+        if (c == 0xC3 && i + 1 < value.size()) {
+            const unsigned char next = static_cast<unsigned char>(value[i + 1]);
+            if (next == 0xA9 || next == 0x89) {
+                out.push_back('e');
+                ++i;
+                continue;
+            }
+        }
+        if (c < 0x80 && std::isalnum(c))
+            out.push_back(static_cast<char>(std::tolower(c)));
+    }
     return out;
+}
+
+bool installedForwarderNameMatches(std::string_view gameId, std::string_view normalizedName) {
+    auto shaped = [&](std::string_view token) {
+        const std::string plain(token);
+        const std::string version = plain + "version";
+        const std::string pokemon = "pokemon" + plain;
+        const std::string pokemonVersion = pokemon + "version";
+        return normalizedName == plain || normalizedName == version ||
+               normalizedName == pokemon || normalizedName == pokemonVersion ||
+               normalizedName.rfind(pokemon, 0) == 0;
+    };
+
+    // Release-specific matching avoids collisions such as Red/FireRed, Gold/HeartGold and
+    // Diamond/Brilliant Diamond while accepting both plain and official Pokémon forwarder names.
+    if (gameId == "red_gb") return shaped("red");
+    if (gameId == "blue_gb") return shaped("blue");
+    if (gameId == "yellow_gb") return shaped("yellow");
+    if (gameId == "gold_gbc") return shaped("gold");
+    if (gameId == "silver_gbc") return shaped("silver");
+    if (gameId == "crystal_gbc") return shaped("crystal");
+    if (gameId == "ruby_gba") return shaped("ruby");
+    if (gameId == "sapphire_gba") return shaped("sapphire");
+    if (gameId == "firered_gba") return shaped("firered");
+    if (gameId == "leafgreen_gba") return shaped("leafgreen");
+    if (gameId == "emerald_gba") return shaped("emerald");
+    if (gameId == "diamond_nds") return shaped("diamond");
+    if (gameId == "pearl_nds") return shaped("pearl");
+    if (gameId == "platinum_nds") return shaped("platinum");
+    if (gameId == "heartgold_nds") return shaped("heartgold");
+    if (gameId == "soulsilver_nds") return shaped("soulsilver");
+    return false;
 }
 
 #ifdef __SWITCH__
@@ -97,10 +142,7 @@ uint64_t installedGameForwarderTitle(std::string_view gameId) {
     const std::string key(gameId);
     if (const auto found = cache.find(key); found != cache.end()) return found->second;
 
-    const auto* game = PokeVault::Games::findGame(gameId);
-    if (!game) { cache[key] = 0; return 0; }
-    const std::string wanted = compactGameTitle(game->title);
-    if (wanted.size() < 4) { cache[key] = 0; return 0; }
+    if (!PokeVault::Games::findGame(gameId)) { cache[key] = 0; return 0; }
 
     uint64_t unique = 0;
     int matches = 0;
@@ -121,8 +163,7 @@ uint64_t installedGameForwarderTitle(std::string_view gameId) {
                 NacpLanguageEntry* language = nullptr;
                 if (R_SUCCEEDED(nacpGetLanguageEntry(&control->nacp, &language)) && language) {
                     const std::string name = compactGameTitle(language->name);
-                    if (name.find("pokemon") != std::string::npos &&
-                        name.find(wanted) != std::string::npos) {
+                    if (installedForwarderNameMatches(gameId, name)) {
                         unique = records[i].application_id;
                         ++matches;
                     }

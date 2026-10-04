@@ -2121,10 +2121,24 @@ namespace UI {
             openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.",
                           fromGamesDrawer, fromClassicGames);
         } else if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-            legacyInstanceIndex = 0;
-            legacyInstanceScroll = 0;
-            legacyNotice.clear();
-            overlay = Overlay::LegacyInstances;
+            // Full Games / Quick Games X is the profile-assignment surface. Offer a still-unclaimed
+            // validated save for this exact release before falling back to already assigned instances.
+            rebuildUnassignedLegacySources();
+            unassignedLegacySources.erase(
+                std::remove_if(unassignedLegacySources.begin(), unassignedLegacySources.end(),
+                    [&](const LegacyAssignmentEntry& entry) { return entry.gameId != game.gameId; }),
+                unassignedLegacySources.end());
+            if (!unassignedLegacySources.empty()) {
+                legacyAssignmentIndex = 0;
+                legacyAssignmentScroll = 0;
+                legacyNotice = "Choose a validated save to assign to this profile.";
+                overlay = Overlay::LegacyAssignment;
+            } else {
+                legacyInstanceIndex = 0;
+                legacyInstanceScroll = 0;
+                legacyNotice.clear();
+                overlay = Overlay::LegacyInstances;
+            }
         } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
             beginLaunchLinkForCurrentTitle();
         } else if (!unassignedLegacySources.empty()) {
@@ -3023,7 +3037,7 @@ namespace UI {
                 // A dark glass scrim keeps title/trainer/source text readable in handheld mode.
                 fb.drawFilledRect(DETAIL_X + 2, HUB_Y + 2,
                                   DETAIL_W - 4, regionH - 2,
-                                  Color(5, 14, 30, 54));
+                                  Color(5, 14, 30, 40));
                 fb.clearClip();
                 fb.drawFilledRoundedRect(DETAIL_X + 12, HUB_Y + regionH - 2,
                                          DETAIL_W - 24, 2, 1,
@@ -3054,7 +3068,7 @@ namespace UI {
             const int glassW = DETAIL_X + DETAIL_W - glassX - 16;
             constexpr int glassH = 250;
             fb.drawFilledRoundedRect(glassX, glassY, glassW, glassH, 16,
-                                     Color(3, 10, 24, 132));
+                                     Color(3, 10, 24, 104));
             fb.drawRoundedRect(glassX, glassY, glassW, glassH, 16,
                                Color(220, 232, 248, 92), 1);
             const Color heroText(248, 251, 255, 255);
@@ -3300,7 +3314,8 @@ namespace UI {
             const int cy = topRow ? topCy : bottomCy;
             const bool focused = hubDockFocused && hubDockIndex == i;
 
-            fb.drawFilledCircle(cx, cy, buttonD / 2, Colors::SurfaceRaised);
+            fb.drawFilledCircle(cx, cy, buttonD / 2,
+                                focused ? withAlpha(Colors::Info, 46) : Colors::PanelAlt);
             fb.drawCircle(cx, cy, buttonD / 2,
                           focused ? Colors::FocusBorder : Colors::Divider,
                           focused ? 3 : 2);
