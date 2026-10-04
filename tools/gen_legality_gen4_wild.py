@@ -2,6 +2,8 @@
 """Generate compact Gen IV wild-encounter legality evidence from pinned PKHeX data.
 
 Slot numbers are retained so Method J/K frame correlation can prove the selected wild slot.
+Static / Magnet Pull eligible-slot index/count metadata is retained in a parallel table so
+lead-ability RNG paths can be reconstructed without changing the packed encounter-row ABI.
 """
 
 from __future__ import annotations
@@ -63,20 +65,45 @@ def parse_game(path: str, game_index: int):
             slot = area[offset + 3]
             minimum = area[offset + 4]
             maximum = area[offset + 5]
+            magnet_index = area[offset + 6]
+            magnet_count = area[offset + 7]
+            static_index = area[offset + 8]
+            static_count = area[offset + 9]
             key = (
                 game_index, species, location, minimum, maximum,
                 method, form, slot, rate
+            )
+            lead_meta = (
+                magnet_index, magnet_count, static_index, static_count
             )
             # Multiple PKHeX area records can collapse to the same persisted
             # encounter identity while differing only in permitted ground tiles.
             # Preserve one canonical row and OR positive Radar capability across
             # those aliases; ground tile itself is not stored in PK4 encounter data.
-            rows[key] = rows.get(key, False) or radar_capable
-    return {key + (radar_capable,) for key, radar_capable in rows.items()}
+            # Static/Magnet metadata, however, changes the source RNG slot table.
+            # If aliases ever disagree, fail generation rather than silently choose
+            # one history and create false-negative legality evidence.
+            if key in rows:
+                old_radar, old_lead_meta = rows[key]
+                if old_lead_meta != lead_meta:
+                    raise ValueError(
+                        "Gen IV persisted encounter aliases disagree on Static/Magnet metadata: %r"
+                        % (key,)
+                    )
+                rows[key] = (old_radar or radar_capable, old_lead_meta)
+            else:
+                rows[key] = (radar_capable, lead_meta)
+    return {
+        key + (radar_capable,) + lead_meta
+        for key, (radar_capable, lead_meta) in rows.items()
+    }
 
 
 def pack(row):
-    game, species, location, minimum, maximum, method, form, slot, rate, radar_capable = row
+    (
+        game, species, location, minimum, maximum, method, form, slot, rate,
+        radar_capable, _magnet_index, _magnet_count, _static_index, _static_count,
+    ) = row
     if slot > 0x0F:
         raise ValueError("Gen IV wild slot number exceeds packed 4-bit field")
     return (
@@ -93,6 +120,16 @@ def pack(row):
     )
 
 
+def pack_lead_meta(row):
+    magnet_index, magnet_count, static_index, static_count = row[-4:]
+    return (
+        magnet_index
+        | (magnet_count << 8)
+        | (static_index << 16)
+        | (static_count << 24)
+    )
+
+
 def main() -> int:
     rows = set()
     for _name, path, game in GAMES:
@@ -106,6 +143,8 @@ def main() -> int:
         "// Packed layout: species[0:8], location[9:16], min[17:23], max[24:30],",
         "// method[31:34], form[35:42], game[43:45], slot[46:49], rate[50:57],",
         "// radar-capable[58] (pinned EncounterSlot4.CanUseRadar positive evidence).",
+        "// Parallel lead metadata layout: MagnetPullIndex[0:7], MagnetPullCount[8:15],",
+        "// StaticIndex[16:23], StaticCount[24:31] from EncounterArea4.ReadRegularSlot.",
         "// This is wild-slot evidence only. Static/gift/trade/event encounters are separate,",
         "// so absence from this table MUST NOT be interpreted as illegal.",
         "inline constexpr uint64_t kPackedGen4WildEncounters[] = {",
@@ -119,10 +158,23 @@ def main() -> int:
     lines.append("};")
     lines.append("")
 
+    lines.append("inline constexpr uint32_t kPackedGen4WildLeadMeta[] = {")
+    lead_meta = [pack_lead_meta(row) for row in ordered]
+    for i in range(0, len(lead_meta), 8):
+        chunk = ", ".join("0x%08xU" % value for value in lead_meta[i:i + 8])
+        if i + 8 < len(lead_meta):
+            chunk += ","
+        lines.append("    " + chunk)
+    lines.append("};")
+    lines.append("")
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8", newline="\n") as handle:
         handle.write("\n".join(lines))
-    print("wrote %d unique Gen IV wild encounter rows to %s" % (len(ordered), OUT))
+    print(
+        "wrote %d unique Gen IV wild encounter rows plus Static/Magnet metadata to %s"
+        % (len(ordered), OUT)
+    )
     return 0
 
 
