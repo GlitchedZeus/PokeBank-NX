@@ -9,6 +9,15 @@ int main() {
     using namespace Legality::Gen3BacdRaEvent;
 
     static_assert(kEventCount == 114);
+    static_assert(speciesCompatible(1, 1));
+    static_assert(speciesCompatible(1, 2));
+    static_assert(speciesCompatible(1, 3));
+    static_assert(speciesCompatible(25, 26));
+    static_assert(speciesCompatible(52, 53));
+    static_assert(speciesCompatible(375, 376));
+    static_assert(!speciesCompatible(1, 4));
+    static_assert(!speciesCompatible(375, 374));
+    static_assert(!speciesCompatible(386, 386 + 1));
 
     // Restricted anti-shiny 10ANNIV vector reconstructed from the pinned BA-CD
     // algorithm. Origin seed 0x04A4 yields a RandS7 OT-gender result of male.
@@ -104,6 +113,17 @@ int main() {
             row.otName
         };
         assert(persistentFieldsMatch(row, metang, 0));
+
+        // Species is mutable after receipt. A FESTA/ROCKS Metang can legally
+        // evolve to Metagross while all source-persistent event evidence stays.
+        auto metagross = metang;
+        metagross.species = 376;
+        assert(persistentFieldsMatch(row, metagross, 0));
+
+        auto impossiblePreEvolution = metang;
+        impossiblePreEvolution.species = 374;
+        assert(!persistentFieldsMatch(row, impossiblePreEvolution, 0));
+
         metang.ribbonNational = false;
         assert(!persistentFieldsMatch(row, metang, 0));
     }
@@ -116,5 +136,5 @@ int main() {
     };
     assert(rngCompatible(regularRestricted));
 
-    std::cout << "Gen III BACD_R_A event-template + initial-move + fixed Event3 ribbon evidence: PASS\n";
+    std::cout << "Gen III BACD_R_A event-template + evolved-origin + initial-move + fixed Event3 ribbon evidence: PASS\n";
 }
