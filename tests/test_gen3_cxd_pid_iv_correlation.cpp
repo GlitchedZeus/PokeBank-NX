@@ -1,5 +1,6 @@
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3ColoEReaderShadowEvidence.h"
+#include "Legality/Gen3GameCubeStarterCorrelation.h"
 
 #include <cassert>
 #include <iostream>
@@ -9,6 +10,7 @@ int main() {
     using Legality::Gen3CxdPidIv::analyze;
     using Legality::Gen3CxdPidIv::analyzeWithTrainer;
     namespace EReader = Legality::Gen3ColoEReaderShadowEvidence;
+    namespace Starter = Legality::Gen3GameCubeStarterCorrelation;
 
     const auto cxd = analyze(0x0985A297u, {6, 1, 0, 7, 17, 7});
     assert(cxd.matched);
@@ -88,6 +90,59 @@ int main() {
     assert(!analyzeWithTrainer(
         0xB7951831u, {9, 31, 12, 31, 25, 21}, antiTid, antiSid).matched);
 
+    // Colosseum starters have their own correlation. Origin 0x12345678 produces
+    // TID/SID 46057/23359, then Umbreon first and Espeon second. Both starters
+    // are male and non-shiny; their IVs live at different frames.
+    constexpr uint16_t starterTid = 46057;
+    constexpr uint16_t starterSid = 23359;
+    const auto umbreon = Starter::analyzeColosseum(
+        197, 0xC7047D49u, {22, 28, 22, 21, 28, 13},
+        starterTid, starterSid);
+    assert(umbreon.matched);
+    assert(!umbreon.searchLimited);
+    assert(umbreon.variant == Starter::Variant::ColosseumUmbreon);
+    assert(umbreon.originSeed == 0x12345678u);
+
+    const auto espeon = Starter::analyzeColosseum(
+        196, 0x0D09CC6Fu, {1, 11, 11, 3, 4, 2},
+        starterTid, starterSid);
+    assert(espeon.matched);
+    assert(!espeon.searchLimited);
+    assert(espeon.variant == Starter::Variant::ColosseumEspeon);
+    assert(espeon.originSeed == 0x12345678u);
+
+    // XD Eevee uses the same TID/SID -> fake PID -> IV -> ability call layout,
+    // but unlike Colosseum it does not apply the male/non-shiny starter reroll.
+    const auto xdEevee = Starter::analyzeXdEevee(
+        133, 0xC7047D49u, {22, 28, 22, 21, 28, 13},
+        starterTid, starterSid);
+    assert(xdEevee.matched);
+    assert(!xdEevee.searchLimited);
+    assert(xdEevee.variant == Starter::Variant::XdEevee);
+    assert(xdEevee.originSeed == 0x12345678u);
+
+    // Starter proofs are trainer-, IV-, PID- and species-specific.
+    assert(!Starter::analyzeColosseum(
+        197, 0xC7047D49u, {22, 28, 22, 21, 28, 13},
+        starterTid, static_cast<uint16_t>(starterSid + 1)).matched);
+    assert(!Starter::analyzeColosseum(
+        197, 0xC7047D49u, {22, 28, 22, 21, 28, 12},
+        starterTid, starterSid).matched);
+    assert(!Starter::analyzeColosseum(
+        133, 0xC7047D49u, {22, 28, 22, 21, 28, 13},
+        starterTid, starterSid).matched);
+    assert(!Starter::analyzeXdEevee(
+        197, 0xC7047D49u, {22, 28, 22, 21, 28, 13},
+        starterTid, starterSid).matched);
+
+    // A deliberately tiny reroll bound must fail closed as SearchLimit instead
+    // of hanging or being misreported as an impossible/invalid correlation.
+    const auto boundedEspeon = Starter::analyzeColosseum(
+        196, 0x0D09CC6Fu, {1, 11, 11, 3, 4, 2},
+        starterTid, starterSid, 0);
+    assert(!boundedEspeon.matched);
+    assert(boundedEspeon.searchLimited);
+
     // Japanese Colosseum e-Reader shadows use a separate path: all IVs are 0,
     // the stored PID is reversed with XDRNG.GetSeeds, then Next4(seed) is fed
     // into the four-lock Colosseum team-history validator. These deterministic
@@ -156,5 +211,5 @@ int main() {
     wrongLocation.metLocation = 127;
     assert(!EReader::analyze(wrongLocation).identityMatched);
 
-    std::cout << "Gen III Colosseum/XD standard + CXDAnti + Colosseum e-Reader evidence: PASS\n";
+    std::cout << "Gen III GameCube standard + CXDAnti + starter + Colosseum e-Reader evidence: PASS\n";
 }
