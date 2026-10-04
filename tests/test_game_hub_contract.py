@@ -178,7 +178,7 @@ require("Horizontal movement never spills into" in source and
         "col + 1 < cols" in source and
         "nextRow < classicCount" in source,
         "Quick Games and full Games must use row-bounded spatial grid navigation")
-require("Color(3, 10, 24, 184)" in source and
+require("Color(3, 10, 24, 132)" in source and
         "const Color heroText(248, 251, 255, 255);" in source and
         "titleFavorite(*u, title)" in source and
         'fb.drawSymbol(heartX, heartY, "\\xE2\\x99\\xA5"' in source,
@@ -332,7 +332,7 @@ require("partySpriteH = 82" in source and
 require("gameRegionBackdropKey(title.gameId)" in source and
         "SystemIcons::regionBackdrop(regionKey)" in source and
         "regionH = 270" in source and
-        "Color(5, 14, 30, 96)" in source,
+        "Color(5, 14, 30, 54)" in source,
         "selected-game Product Home card must support a visible region-scene backdrop with a readability scrim")
 region_loader = system_icons[system_icons.index("const IconImage& SystemIcons::regionBackdrop"):
                              system_icons.index("const IconImage& SystemIcons::trainerPortrait")]
@@ -473,9 +473,8 @@ require("selectCurrentTitle();\n                    // Do not mount/reparse" in 
 activate_start = source.index("void SaveSelectScreen::activateHubDock()")
 activate_end = source.index("void SaveSelectScreen::openSaveSourceForCurrentTitle", activate_start)
 activate_block = source[activate_start:activate_end]
-require("Warm the small set of game-card / trainer assets" in activate_block and
-        "SystemIcons::gameCardIcon" in activate_block and
-        "SystemIcons::trainerPortrait" in activate_block,
+require("Warm only game-card artwork" in activate_block and
+        "SystemIcons::gameCardIcon" in activate_block,
         "full Games must prewarm artwork caches before interactive scrolling")
 set_user_start = source.index("void SaveSelectScreen::setUser")
 set_user_end = source.index("void SaveSelectScreen::refreshHubPreview", set_user_start)
@@ -494,3 +493,28 @@ require("stbi_failure_reason()" in system_icons and
         "trainer portrait runtime decode failures must leave hardware-useful diagnostics")
 require("gameLaunchBindingFamilyPrefix" in (ROOT / "include/UI/GameLaunchModel.h").read_text(encoding="utf-8"),
         "launch model must expose the stable profile+game binding family used for compatibility lookup")
+
+
+# Hardware regression: Games is assignment-first; trainer art belongs to Product Home/workspace.
+classic_fn = source[source.index("void SaveSelectScreen::drawClassicGameSources"):
+                    source.index("void SaveSelectScreen::draw(PKSEFramebuffer&", source.index("void SaveSelectScreen::drawClassicGameSources"))]
+require("drawTrainerPortrait" not in classic_fn,
+        "full Games assignment browser must not render trainer portraits")
+require("focused ? Colors::Info : Colors::TextSecondary" in source and
+        ": i == 0 ? Colors::Info" not in source,
+        "Games/Banks/Items/Search/More must turn blue only when focused")
+require("Color(5, 14, 30, 54)" in source and "Color(3, 10, 24, 132)" in source,
+        "Product Home region artwork must remain visible under lighter glass")
+require("return beginLaunchLinkForCurrentTitle();" not in source and
+        "Direct launch could not resolve this game's ROM" in source,
+        "ZR Launch must never become an automatic ROM-file browser")
+require('argv += " -L "' not in launcher and
+        "envSetNextLoad(target.c_str(), argv.c_str())" in launcher and
+        "result.launcherPath = result.corePath;" in launcher,
+        "RetroArch games must chain directly into the core NRO with the ROM argument")
+require("installedGameForwarderTitle" in launcher and
+        '"Launch the installed HOME forwarder for this exact game."' in launcher,
+        "emulator games must prefer an already-installed exact-game HOME forwarder")
+require("configuredDraSticLibraryRoots" in launcher and
+        '"sdmc:/switch/drastic/launcher.ini"' in launcher,
+        "DraStic launch must consume configured SD library roots")

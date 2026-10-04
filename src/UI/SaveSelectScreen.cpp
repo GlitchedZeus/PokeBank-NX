@@ -252,7 +252,7 @@ namespace UI {
 
         void drawHubDockIcon(PKSEFramebuffer& fb, int index,
                              int x, int y, int size, bool focused) {
-            const Color ink = focused ? Colors::SelectedText : Colors::TextPrimary;
+            const Color ink = focused ? Colors::Info : Colors::TextPrimary;
             const int cx = x + size / 2;
             const int cy = y + size / 2;
             if (index == 0) {
@@ -1535,7 +1535,9 @@ namespace UI {
         const auto descriptor = resolveGameLaunch(
             0, title.gameId, provider, instance.path(), key);
         if (descriptor.state == GameLaunchState::NeedsContentLink) {
-            openGameFilePicker(title.gameId, provider, instance.path(), key, true);
+            legacyNotice = descriptor.detail.empty()
+                ? "Direct launch could not resolve this game's ROM. Use X / Save-Source to set it up."
+                : descriptor.detail;
             return false;
         }
         if (!descriptor.ready()) {
@@ -1569,8 +1571,12 @@ namespace UI {
             return false;
         }
 
-        if (launchDescriptor.state == GameLaunchState::NeedsContentLink)
-            return beginLaunchLinkForCurrentTitle();
+        if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
+            hubNotice = launchDescriptor.detail.empty()
+                ? "Direct launch could not resolve this game's ROM. Use X / Save-Source to set it up."
+                : launchDescriptor.detail;
+            return false;
+        }
 
         if (!launchDescriptor.ready()) {
             hubNotice = launchDescriptor.detail.empty()
@@ -2066,9 +2072,8 @@ namespace UI {
             titleIndex < static_cast<int>(user->titles.size());
 
         if (hubDockIndex == 0) {
-            // Warm the small set of game-card / trainer assets before the full grid becomes
-            // interactive. The caches make later entries effectively free, and row-to-row
-            // navigation no longer stalls on first-use PNG/control-icon decoding.
+            // Warm only game-card artwork before the full assignment browser becomes
+            // interactive. Trainer portraits belong on Product Home/workspace, not this grid.
             if (user) {
                 for (const auto& title : user->titles) {
                     const std::string_view artKey =
@@ -2076,10 +2081,6 @@ namespace UI {
                             ? std::string_view(title.artworkKey)
                             : std::string_view(title.gameId);
                     (void)SystemIcons::gameCardIcon(artKey, title.titleId);
-                    const auto portrait = trainerPortraitForGame(
-                        title.gameId, title.trainerGenderKnown, title.trainerGender);
-                    if (portrait.assetKey && portrait.assetKey[0] != '\0')
-                        (void)SystemIcons::trainerPortrait(portrait.assetKey);
                 }
             }
 
@@ -2887,11 +2888,6 @@ namespace UI {
             else
                 fb.drawFilledRoundedRect(x + 29, y + 14, CLASSIC_ICON, CLASSIC_ICON, 12, Colors::PanelAlt);
 
-            const auto portrait = trainerPortraitForGame(
-                title.gameId, title.trainerGenderKnown, title.trainerGender);
-            drawTrainerPortrait(fb, x + CLASSIC_TILE_W - 58, y + 18, 48, 58,
-                                portrait, false);
-
             std::string label = title.label;
             if (label.size() > 18) label = label.substr(0, 17) + "…";
             int lw=0,lh=0; fb.measureText(label,lw,lh,TextStyle::Caption);
@@ -3027,7 +3023,7 @@ namespace UI {
                 // A dark glass scrim keeps title/trainer/source text readable in handheld mode.
                 fb.drawFilledRect(DETAIL_X + 2, HUB_Y + 2,
                                   DETAIL_W - 4, regionH - 2,
-                                  Color(5, 14, 30, 96));
+                                  Color(5, 14, 30, 54));
                 fb.clearClip();
                 fb.drawFilledRoundedRect(DETAIL_X + 12, HUB_Y + regionH - 2,
                                          DETAIL_W - 24, 2, 1,
@@ -3058,9 +3054,9 @@ namespace UI {
             const int glassW = DETAIL_X + DETAIL_W - glassX - 16;
             constexpr int glassH = 250;
             fb.drawFilledRoundedRect(glassX, glassY, glassW, glassH, 16,
-                                     Color(3, 10, 24, 184));
+                                     Color(3, 10, 24, 132));
             fb.drawRoundedRect(glassX, glassY, glassW, glassH, 16,
-                               Color(220, 232, 248, 72), 1);
+                               Color(220, 232, 248, 92), 1);
             const Color heroText(248, 251, 255, 255);
             const Color heroSecondary(214, 224, 240, 255);
             const Color heroMuted(177, 192, 214, 255);
@@ -3197,9 +3193,11 @@ namespace UI {
                 }
             }
 
-            const std::string launchLabel = gameLaunchActionLabel(launchDescriptor.state);
+            const std::string launchLabel =
+                launchDescriptor.state == GameLaunchState::NeedsContentLink
+                    ? std::string("Setup Required")
+                    : std::string(gameLaunchActionLabel(launchDescriptor.state));
             const bool launchActionable = launchDescriptor.ready() ||
-                launchDescriptor.state == GameLaunchState::NeedsContentLink ||
                 launchDescriptor.state == GameLaunchState::ChooseSource;
             const int buttonY = HUB_Y + 432;
             drawGlyphButton(fb, DETAIL_X + 22, buttonY, 322, 58, "A", "OPEN",
@@ -3318,8 +3316,7 @@ namespace UI {
             int lw = 0, lh = 0;
             fb.measureText(dockLabels[i], lw, lh, TextStyle::Caption);
             fb.drawText(cx - lw / 2, cy + buttonD / 2 + 10, dockLabels[i],
-                        focused ? Colors::SelectedText
-                                : i == 0 ? Colors::Info : Colors::TextSecondary,
+                        focused ? Colors::Info : Colors::TextSecondary,
                         TextStyle::Caption);
         }
 
