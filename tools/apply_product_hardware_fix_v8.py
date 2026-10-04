@@ -147,6 +147,7 @@ source_path.write_text(source, encoding="utf-8")
 
 tests_path = Path("tests/test_game_hub_contract.py")
 tests = tests_path.read_text(encoding="utf-8")
+tests = tests.replace("Color(5, 14, 30, 54)", "Color(5, 14, 30, 40)")
 tests = tests.replace("Color(3, 10, 24, 132)", "Color(3, 10, 24, 104)")
 tests = tests.replace(
     '"fb.drawFilledCircle(cx, cy, buttonD / 2, Colors::SurfaceRaised);" in source,',
