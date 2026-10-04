@@ -11,6 +11,9 @@ product_workflow = (ROOT / ".github/workflows/product-ui-native.yml").read_text(
 gen4_workflow = (ROOT / ".github/workflows/gen4-shared-editor-candidate.yml").read_text(encoding="utf-8")
 framebuffer = (ROOT / "src/UI/PKSEFramebuffer.cpp").read_text(encoding="utf-8")
 game_identity = (ROOT / "src/Games/GameIdentity.cpp").read_text(encoding="utf-8")
+trainer3_header = (ROOT / "include/Trainer/Trainer3FRLG.h").read_text(encoding="utf-8")
+trainer3_source = (ROOT / "src/Trainer/Trainer3FRLG.cpp").read_text(encoding="utf-8")
+save_reader = (ROOT / "src/Save/GetSaveFileContents.cpp").read_text(encoding="utf-8")
 
 def require(cond: bool, message: str) -> None:
     if not cond:
@@ -29,6 +32,13 @@ require("hubDockFocused" in source and "hubFeatureIndex" in source and "activate
         "approved home destinations must be controller-focusable, not decorative")
 require("HidNpadButton_L" in source and "HidNpadButton_R" in source,
         "L/R must switch the selected game")
+require('readTrainerInfoFRLG("pbpreview:", true)' in source,
+        "Product Home native FRLG preview must use the lightweight parser")
+require("bool previewOnly = false" in trainer3_header and "if (previewOnly) return;" in trainer3_source,
+        "FRLG parser must keep a lightweight trainer+party presentation mode")
+require("group == GameVersion::FRLG" in save_reader and
+        "readTrainerInfoFRLG(backupDir, true)" in save_reader,
+        "FRLG common open preflight must validate the active sector table before full parsing")
 require('"Pokédex Progress"' in source and
         "previewDexSeen" in source and "previewDexCaught" in source and
         '"   •   Owned "' in source,
@@ -169,6 +179,9 @@ require("gamePlatformSortKey" in source and
         'if (id == "red_gb") return 199602270;' in source and
         'if (id == "x_3ds") return 201310120;' in source and
         'if (id == "letsgo_pikachu_switch") return 201811160;' in source and
+        'if (id == "firered_switch") return 202602270;' in source and
+        'if (id == "leafgreen_switch") return 202602271;' in source and
+        'firered_gba" || id == "firered_switch' not in source and
         'if (ap != bp) return ap < bp;' in source and
         'if (ad != bd) return ad < bd;' in source and
         '"lets_go_pikachu_switch"' not in source,

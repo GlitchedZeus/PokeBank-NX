@@ -94,8 +94,8 @@ namespace UI {
             if (id == "crystal_gbc") return 200012140;
             if (id == "ruby_gba") return 200211210;
             if (id == "sapphire_gba") return 200211211;
-            if (id == "firered_gba" || id == "firered_switch") return 200401290;
-            if (id == "leafgreen_gba" || id == "leafgreen_switch") return 200401291;
+            if (id == "firered_gba") return 200401290;
+            if (id == "leafgreen_gba") return 200401291;
             if (id == "emerald_gba") return 200409160;
             if (id == "diamond_nds") return 200609280;
             if (id == "pearl_nds") return 200609281;
@@ -121,6 +121,8 @@ namespace UI {
             if (id == "scarlet_switch") return 202211180;
             if (id == "violet_switch") return 202211181;
             if (id == "legends_za_switch") return 202510160;
+            if (id == "firered_switch") return 202602270;
+            if (id == "leafgreen_switch") return 202602271;
             // Unknown/future identities sort after known releases instead of jumping in front.
             return 999999999;
         }
@@ -1283,6 +1285,28 @@ namespace UI {
             const Result mount = fsdevMountSaveData("pbpreview", title.titleId, user->uid);
             if (R_FAILED(mount)) {
                 partyPreviewStatus = "Party preview unavailable while this save cannot be mounted.";
+                return;
+            }
+
+            const GameVersion previewGroup = getGameGroup(getGameVersion(title.titleId));
+            if (previewGroup == GameVersion::FRLG) {
+                auto parsed = Save::readTrainerInfoFRLG("pbpreview:", true);
+                if (parsed.isValid()) {
+                    previewTrainerName = parsed.trainerName;
+                    previewTrainerGender = parsed.trainerGender;
+                    previewTrainerGenderKnown = true;
+                    const size_t count = std::min<size_t>(parsed.party.size(), partyPreview.size());
+                    for (size_t i = 0; i < count; ++i) {
+                        if (!parsed.party[i]) continue;
+                        const auto* pokemon = parsed.party[i].get();
+                        addParty(i, pokemon->speciesID(), pokemon->level(), pokemon->form(),
+                                 pokemon->isShiny(pokemon->id32(), pokemon->species()));
+                    }
+                    partyPreviewStatus = count == 0 ? "No active party Pokémon." : "Current save party";
+                } else {
+                    partyPreviewStatus = "FireRed/LeafGreen preview could not validate this save.";
+                }
+                fsdevUnmountDevice("pbpreview");
                 return;
             }
 

@@ -390,6 +390,15 @@ namespace Save {
             return true;
         }
 
+        if (group == GameVersion::FRLG) {
+            auto preview = readTrainerInfoFRLG(backupDir, true);
+            if (!preview.isValid()) {
+                error = "FireRed/LeafGreen save is missing, truncated, or has an invalid active sector table.";
+                return false;
+            }
+            return true;
+        }
+
         if (group != GameVersion::PLA) return true;
 
         char mainPath[512];
@@ -911,7 +920,7 @@ namespace Save {
         return !best.empty() ? best : anySav;
     }
 
-    Trainer3FRLG readTrainerInfoFRLG(const char* backupDir) {
+    Trainer3FRLG readTrainerInfoFRLG(const char* backupDir, bool previewOnly) {
         std::string fileName = findGen3SaveFile(backupDir);
         if (fileName.empty()) {
             logErrorToFile("No FRLG save (128 KiB / *.sav) found in backup dir", backupDir);
@@ -935,7 +944,7 @@ namespace Save {
         snprintf(szBuf, sizeof(szBuf), "0x%zX", fileSize);
         logInfoToFile("FRLG filesize", szBuf);
 
-        return Trainer3FRLG(std::move(data), fileName);
+        return Trainer3FRLG(std::move(data), fileName, previewOnly);
     }
 
     bool saveTrainerInfoFRLG(Trainer3FRLG& trainer, const char* backupDir, u64 titleId, AccountUid userUid, bool injectToTitle) {

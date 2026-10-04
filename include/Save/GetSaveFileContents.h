@@ -179,7 +179,7 @@ namespace Save {
 
     /** Reads a GBA FireRed/LeafGreen (SAV3FRLG) 128 KiB save into a Trainer3FRLG (scans the dir for the
      *  128 KiB / *.sav file so Checkpoint exports like "FireRed_e.sav" are found automatically). */
-    Trainer3FRLG readTrainerInfoFRLG(const char* backupDir);
+    Trainer3FRLG readTrainerInfoFRLG(const char* backupDir, bool previewOnly = false);
     /** Saves an FRLG save: re-encrypt party/boxes/items in place + recompute all 14 sector checksums. */
     bool saveTrainerInfoFRLG(Trainer3FRLG& trainer, const char* backupDir, u64 titleId, AccountUid userUid, bool injectToTitle);
 }

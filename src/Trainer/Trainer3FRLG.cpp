@@ -83,7 +83,7 @@ namespace Trainer {
         }
     }
 
-    Trainer3FRLG::Trainer3FRLG(std::vector<uint8_t> data, std::string fileName)
+    Trainer3FRLG::Trainer3FRLG(std::vector<uint8_t> data, std::string fileName, bool previewOnly)
         : Trainer(std::vector<Block>{}), saveData(std::move(data)), m_fileName(std::move(fileName))
     {
         // Always leave the containers in a consistent shape, even for a bad save.
@@ -103,6 +103,10 @@ namespace Trainer {
         }
         parseTrainer();
         parseParty();
+        // Product Home only needs identity + active party. Parsing all 420 box slots on the UI
+        // input thread made L/R appear frozen on the native Switch FRLG wrappers. Full editor opens
+        // keep the default path and still parse boxes, names and inventory.
+        if (previewOnly) return;
         parseBoxes();
         parseBoxNames();
         parseItems();
