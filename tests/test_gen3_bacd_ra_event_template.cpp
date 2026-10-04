@@ -28,9 +28,14 @@ int main() {
         0,   // male OT from RandS7
         70, 255, 4,
         false, false, false,
-        u"10ANNIV"
+        u"10ANNIV",
+        {17, 163, 82, 83}
     };
     assert(match(charizard, rng).matched);
+
+    auto wrongMove = charizard;
+    wrongMove.moves[0] = 18;
+    assert(!match(wrongMove, rng).matched);
 
     auto wrongGender = charizard;
     wrongGender.otGender = 1;
@@ -63,5 +68,5 @@ int main() {
     };
     assert(rngCompatible(regularRestricted));
 
-    std::cout << "Gen III BACD_R_A event-template evidence: PASS\n";
+    std::cout << "Gen III BACD_R_A event-template + moveset evidence: PASS\n";
 }
