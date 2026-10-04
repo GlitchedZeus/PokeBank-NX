@@ -28,6 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sed -i 's/rep(provider_anchor, forwarder_hook + provider_anchor, 2)/rep(provider_anchor, forwarder_hook + provider_anchor, 1)/' tools/one_time_product_direct_launch_fix.py
           python3 tools/one_time_product_direct_launch_fix.py
       - name: Run focused contracts
         shell: bash
