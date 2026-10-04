@@ -406,7 +406,8 @@ namespace Legality {
                             pk.language(), pk.otGender(), pk.metLevel(),
                             pk.metLocation(), pk.ball(), pk.isEgg(),
                             pk.isFatefulEncounter(),
-                            pk.isShiny(pk.id32(), {}), pk.otName()
+                            pk.isShiny(pk.id32(), {}), pk.otName(),
+                            {pk.move(0), pk.move(1), pk.move(2), pk.move(3)}
                         },
                         bacd);
                 const Gen3NegaiBoshiEvent::Candidate negaiCandidate{
