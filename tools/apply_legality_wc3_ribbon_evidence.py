@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Apply guarded WC3 National Ribbon legality integration.
+"""Apply guarded WC3 BACD_R_A event-ribbon legality integration.
 
 This migration is intentionally narrow. PKHeX's pinned EncounterGift3 catalog and
-RibbonVerifierEvent3 require the National Ribbon state to match WC3 templates.
-PokeBank NX already reads the Gen III ribbons word for fateful; expose bit 24 as
-read-only legality evidence and thread it through BACD_R_A matching.
+RibbonVerifierEvent3 require the fixed Gen III event-ribbon state to match WC3
+templates. PokeBank NX already reads the Gen III ribbons word for fateful; expose
+the fixed Event3 ribbon bits as read-only legality evidence and thread them through
+BACD_R_A matching. Earth Ribbon is intentionally not fixed here because it can be
+earned later through supported Gen III GameCube cross-transfer history.
 """
 
 from __future__ import annotations
@@ -26,6 +28,8 @@ def replace_once(path: str, old: str, new: str) -> None:
 
 
 def main() -> int:
+    # Original National Ribbon migration. These guarded replacements are kept so
+    # a fresh checkout can still deterministically reproduce the full tranche.
     replace_once(
         "include/Pokemon/Pokemon.h",
         '''        /** Fateful-encounter ("obtained in a fateful encounter") flag; false / no-op where unwired. */
@@ -225,7 +229,173 @@ def main() -> int:
 ''',
     )
 
-    print("applied guarded WC3 National Ribbon legality integration")
+    # Extend the already-wired National Ribbon evidence to the other fixed
+    # IRibbonSetEvent3 fields used by PKHeX's pinned EncounterGift3 verifier.
+    # These four ribbons are false for the entire pinned BACD_R_A catalog. They
+    # are event-distribution state, unlike Earth Ribbon which can be earned later.
+    replace_once(
+        "include/Pokemon/Pokemon.h",
+        '''        /** Gen III National Ribbon persistent state; false where the format/accessor is unwired. */
+        virtual bool ribbonNational() const noexcept { return false; }
+''',
+        '''        /** Gen III National Ribbon persistent state; false where the format/accessor is unwired. */
+        virtual bool ribbonNational() const noexcept { return false; }
+
+        /** Additional fixed Gen III event-ribbon states used by WC3 legality evidence. */
+        virtual bool ribbonChampionBattle() const noexcept { return false; }
+        virtual bool ribbonChampionRegional() const noexcept { return false; }
+        virtual bool ribbonChampionNational() const noexcept { return false; }
+        virtual bool ribbonCountry() const noexcept { return false; }
+''',
+    )
+
+    replace_once(
+        "include/Pokemon/Pokemon3FRLG.h",
+        '''        // PK3 National Ribbon is bit 24 of the same persisted ribbon word.
+        bool ribbonNational() const noexcept override { return (rd32(0x4C) & 0x01000000u) != 0; }
+''',
+        '''        // PK3 event-ribbon bits 20-24 of the same persisted ribbon word.
+        bool ribbonChampionBattle() const noexcept override { return (rd32(0x4C) & 0x00100000u) != 0; }
+        bool ribbonChampionRegional() const noexcept override { return (rd32(0x4C) & 0x00200000u) != 0; }
+        bool ribbonChampionNational() const noexcept override { return (rd32(0x4C) & 0x00400000u) != 0; }
+        bool ribbonCountry() const noexcept override { return (rd32(0x4C) & 0x00800000u) != 0; }
+        bool ribbonNational() const noexcept override { return (rd32(0x4C) & 0x01000000u) != 0; }
+''',
+    )
+
+    replace_once(
+        "include/Legality/Gen3BacdRaEventTemplate.h",
+        '''    bool fateful = false;
+    bool ribbonNational = false;
+    bool shiny = false;
+''',
+        '''    bool fateful = false;
+    bool ribbonNational = false;
+    bool ribbonCountry = false;
+    bool ribbonChampionBattle = false;
+    bool ribbonChampionRegional = false;
+    bool ribbonChampionNational = false;
+    bool shiny = false;
+''',
+    )
+
+    replace_once(
+        "include/Legality/Gen3BacdRaEventTemplate.h",
+        '''        row.level != c.metLevel || row.fateful != c.fateful ||
+        row.ribbonNational != c.ribbonNational || row.otName != c.otName)
+''',
+        '''        row.level != c.metLevel || row.fateful != c.fateful ||
+        row.ribbonNational != c.ribbonNational || c.ribbonCountry ||
+        c.ribbonChampionBattle || c.ribbonChampionRegional ||
+        c.ribbonChampionNational || row.otName != c.otName)
+''',
+    )
+
+    replace_once(
+        "src/Legality/Legality.cpp",
+        '''                            pk.metLocation(), pk.ball(), pk.isEgg(),
+                            pk.isFatefulEncounter(), pk.ribbonNational(),
+                            pk.isShiny(pk.id32(), {}), pk.otName()
+''',
+        '''                            pk.metLocation(), pk.ball(), pk.isEgg(),
+                            pk.isFatefulEncounter(), pk.ribbonNational(),
+                            pk.ribbonCountry(), pk.ribbonChampionBattle(),
+                            pk.ribbonChampionRegional(), pk.ribbonChampionNational(),
+                            pk.isShiny(pk.id32(), {}), pk.otName()
+''',
+    )
+
+    replace_once(
+        "tests/test_gen3_bacd_ra_event_template.cpp",
+        '''        70, 255, 4,
+        false, false, false, false,
+        u"10ANNIV"
+''',
+        '''        70, 255, 4,
+        false, false, false,
+        false, false, false, false,
+        false,
+        u"10ANNIV"
+''',
+    )
+
+    replace_once(
+        "tests/test_gen3_bacd_ra_event_template.cpp",
+        '''    auto wrongOrigin = charizard;
+    wrongOrigin.originGame = 1;
+    assert(!match(wrongOrigin, rng).matched);
+
+    auto wrongShiny = charizard;
+''',
+        '''    auto wrongOrigin = charizard;
+    wrongOrigin.originGame = 1;
+    assert(!match(wrongOrigin, rng).matched);
+
+    // The pinned EncounterGift3 templates have no Country/Champion event ribbons.
+    // Unlike Earth Ribbon, these cannot be acquired later through normal Gen III
+    // gameplay, so their presence contradicts a direct BACD_R_A template match.
+    auto countryRibbon = charizard;
+    countryRibbon.ribbonCountry = true;
+    assert(!match(countryRibbon, rng).matched);
+
+    auto battleRibbon = charizard;
+    battleRibbon.ribbonChampionBattle = true;
+    assert(!match(battleRibbon, rng).matched);
+
+    auto regionalRibbon = charizard;
+    regionalRibbon.ribbonChampionRegional = true;
+    assert(!match(regionalRibbon, rng).matched);
+
+    auto championNationalRibbon = charizard;
+    championNationalRibbon.ribbonChampionNational = true;
+    assert(!match(championNationalRibbon, rng).matched);
+
+    auto wrongShiny = charizard;
+''',
+    )
+
+    replace_once(
+        "tests/test_gen3_bacd_ra_event_template.cpp",
+        '''            row.level, 255, 4,
+            false, row.fateful, true, false,
+            row.otName
+''',
+        '''            row.level, 255, 4,
+            false, row.fateful, true,
+            false, false, false, false,
+            false,
+            row.otName
+''',
+    )
+
+    replace_once(
+        "tests/test_gen3_bacd_ra_event_template.cpp",
+        '''    std::cout << "Gen III BACD_R_A event-template + initial-move + National Ribbon evidence: PASS\\n";
+''',
+        '''    std::cout << "Gen III BACD_R_A event-template + initial-move + fixed Event3 ribbon evidence: PASS\\n";
+''',
+    )
+
+    replace_once(
+        "docs/LEGALITY_WC3_PROGRESS.md",
+        '''- National Ribbon state (including the required FESTA/ROCKS Metang ribbon)
+- the exact four-move distribution-time payload
+''',
+        '''- National Ribbon state (including the required FESTA/ROCKS Metang ribbon)
+- absence of Country / Champion Battle / Champion Regional / Champion National ribbons for the pinned `BACD_R_A` gifts
+- the exact four-move distribution-time payload
+''',
+    )
+
+    replace_once(
+        "docs/LEGALITY_WC3_PROGRESS.md",
+        '''The remaining WC3 parity work is increasingly about template depth and historical constraints rather than simply recognizing another PID method: the remaining source ribbon classes beyond the now-wired National Ribbon, mutable-vs-immutable move provenance, held-item derivation where applicable, evolved-event reconstruction, recipient/trade history, and other fields that can still be proven from a surviving Pokémon.
+''',
+        '''The remaining WC3 parity work is increasingly about template depth and historical constraints rather than simply recognizing another PID method: extending fixed event-ribbon parity beyond the now-covered `BACD_R_A` family, mutable-vs-immutable move provenance, held-item derivation where applicable, evolved-event reconstruction, recipient/trade history, and other fields that can still be proven from a surviving Pokémon. Earth Ribbon remains separate because a Gen III Pokémon can acquire it later through GameCube cross-transfer history.
+''',
+    )
+
+    print("applied guarded WC3 BACD_R_A fixed event-ribbon legality integration")
     return 0
 
 
