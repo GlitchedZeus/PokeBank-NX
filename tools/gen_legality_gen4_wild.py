@@ -40,6 +40,13 @@ def entries(data: bytes):
 def parse_game(path: str, game_index: int):
     with open(pkhex_source.pkhex_path(path), "rb") as handle:
         data = handle.read()
+
+    # A persisted PK4 identity does not retain EncounterArea4's ground-tile/source
+    # area identity. Multiple source areas can therefore collapse to the same saved
+    # species/location/level/method/slot tuple while carrying different Static or
+    # Magnet Pull eligible-slot tables. Preserve every distinct lead-history tuple;
+    # choosing one would create false negatives. Radar capability is positive-only
+    # evidence, so it is ORed across all indistinguishable aliases.
     rows = {}
     for area_index, area in enumerate(entries(data)):
         if len(area) < 6:
@@ -76,27 +83,15 @@ def parse_game(path: str, game_index: int):
             lead_meta = (
                 magnet_index, magnet_count, static_index, static_count
             )
-            # Multiple PKHeX area records can collapse to the same persisted
-            # encounter identity while differing only in permitted ground tiles.
-            # Preserve one canonical row and OR positive Radar capability across
-            # those aliases; ground tile itself is not stored in PK4 encounter data.
-            # Static/Magnet metadata, however, changes the source RNG slot table.
-            # If aliases ever disagree, fail generation rather than silently choose
-            # one history and create false-negative legality evidence.
-            if key in rows:
-                old_radar, old_lead_meta = rows[key]
-                if old_lead_meta != lead_meta:
-                    raise ValueError(
-                        "Gen IV persisted encounter aliases disagree on Static/Magnet metadata: %r"
-                        % (key,)
-                    )
-                rows[key] = (old_radar or radar_capable, old_lead_meta)
-            else:
-                rows[key] = (radar_capable, lead_meta)
-    return {
-        key + (radar_capable,) + lead_meta
-        for key, (radar_capable, lead_meta) in rows.items()
-    }
+            state = rows.setdefault(key, {"radar": False, "lead": set()})
+            state["radar"] = state["radar"] or radar_capable
+            state["lead"].add(lead_meta)
+
+    out = set()
+    for key, state in rows.items():
+        for lead_meta in state["lead"]:
+            out.add(key + (state["radar"],) + lead_meta)
+    return out
 
 
 def pack(row):
@@ -145,6 +140,8 @@ def main() -> int:
         "// radar-capable[58] (pinned EncounterSlot4.CanUseRadar positive evidence).",
         "// Parallel lead metadata layout: MagnetPullIndex[0:7], MagnetPullCount[8:15],",
         "// StaticIndex[16:23], StaticCount[24:31] from EncounterArea4.ReadRegularSlot.",
+        "// Persisted-identity aliases with different lead tables are intentionally repeated,",
+        "// because PK4 does not retain the source EncounterArea4/ground-tile identity.",
         "// This is wild-slot evidence only. Static/gift/trade/event encounters are separate,",
         "// so absence from this table MUST NOT be interpreted as illegal.",
         "inline constexpr uint64_t kPackedGen4WildEncounters[] = {",
@@ -172,7 +169,7 @@ def main() -> int:
     with open(OUT, "w", encoding="utf-8", newline="\n") as handle:
         handle.write("\n".join(lines))
     print(
-        "wrote %d unique Gen IV wild encounter rows plus Static/Magnet metadata to %s"
+        "wrote %d Gen IV persisted-identity/lead-history rows to %s"
         % (len(ordered), OUT)
     )
     return 0
