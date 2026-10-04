@@ -260,6 +260,7 @@ namespace UI {
         void loadTitlesForUser(UserEntry& user);
         static bool scanSaveSpace(UserEntry& user, int spaceId, int& scanned, int& forUser);
         void setUser(int idx);
+        void refreshHubSelectionFromCache();
         void refreshHubPreview();
         bool launchCurrentTitle();
         bool launchCurrentLegacyInstance();

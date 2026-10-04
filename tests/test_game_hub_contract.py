@@ -32,6 +32,26 @@ require("hubDockFocused" in source and "hubFeatureIndex" in source and "activate
         "approved home destinations must be controller-focusable, not decorative")
 require("HidNpadButton_L" in source and "HidNpadButton_R" in source,
         "L/R must switch the selected game")
+require("refreshHubSelectionFromCache" in header and "refreshHubSelectionFromCache" in source,
+        "Product Home must have an explicit cached-only game-selection refresh")
+lr_start = source.index("// L/R changes the selected game from anywhere on Product Home")
+lr_end = source.index("if (headerActionIndex >= 0)", lr_start)
+lr_block = source[lr_start:lr_end]
+require("refreshHubSelectionFromCache();" in lr_block and "refreshHubPreview();" not in lr_block,
+        "Product Home L/R must not run the full save/launch preview on the input frame")
+cache_start = source.index("void SaveSelectScreen::refreshHubSelectionFromCache()")
+cache_end = source.index("void SaveSelectScreen::refreshHubPreview()", cache_start)
+cache_block = source[cache_start:cache_end]
+for forbidden in ("resolveGameLaunch", "fsdevMountSaveData", "openAssignedSource",
+                  "readTrainerInfoFRLG", "discoverConfiguredLegacySaves"):
+    require(forbidden not in cache_block,
+            f"cached Product Home selection refresh must not perform I/O: {forbidden}")
+launch_start = source.index("bool SaveSelectScreen::launchCurrentTitle()")
+launch_end = source.index("void SaveSelectScreen::openGen4Setup", launch_start)
+launch_block = source[launch_start:launch_end]
+require("refreshHubPreview();" in launch_block and
+        launch_block.index("refreshHubPreview();") < launch_block.index("launchDescriptor.state"),
+        "explicit Launch must resolve the exact target before using launchDescriptor")
 require('readTrainerInfoFRLG("pbpreview:", true)' in source,
         "Product Home native FRLG preview must use the lightweight parser")
 require("bool previewOnly = false" in trainer3_header and "if (previewOnly) return;" in trainer3_source,

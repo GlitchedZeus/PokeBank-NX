@@ -1217,6 +1217,49 @@ namespace UI {
         if (!classicGamesActive) refreshHubPreview();
     }
 
+    void SaveSelectScreen::refreshHubSelectionFromCache() {
+        partyPreview = {};
+        partyPreviewStatus.clear();
+        previewTrainerName.clear();
+        previewTrainerGender = 0;
+        previewTrainerGenderKnown = false;
+        previewDexSeen = 0;
+        previewDexCaught = 0;
+        previewDexTotal = 0;
+        hubNotice.clear();
+        launchDescriptor = {};
+
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) {
+            partyPreviewStatus = "No game selected";
+            return;
+        }
+
+        const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+        previewTrainerName = title.trainerName;
+        previewTrainerGender = title.trainerGender;
+        previewTrainerGenderKnown = title.trainerGenderKnown;
+        previewDexSeen = title.dexSeen;
+        previewDexCaught = title.dexCaught;
+        previewDexTotal = title.dexTotal;
+
+        // Keep the selected card responsive. This is deliberately presentation-only: no save mount,
+        // parser, provider discovery, HOME application enumeration, or ROM filesystem scan belongs on
+        // the L/R input frame. ZR/A perform exact validation when the user actually requests work.
+        if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+            title.legacyInstances.size() > 1) {
+            launchDescriptor.backend = GameLaunchBackend::HomebrewNro;
+            launchDescriptor.state = GameLaunchState::ChooseSource;
+            launchDescriptor.providerId = "source-choice";
+            launchDescriptor.detail = "Choose the exact validated save/source to launch.";
+            partyPreviewStatus = "Choose a Save Instance to refresh the active party.";
+        } else {
+            launchDescriptor.state = GameLaunchState::Ready;
+            launchDescriptor.detail = "Launch target resolves when requested.";
+            partyPreviewStatus = "Open or launch to refresh the active party.";
+        }
+    }
+
     void SaveSelectScreen::refreshHubPreview() {
         partyPreview = {};
         partyPreviewStatus.clear();
@@ -1584,6 +1627,10 @@ namespace UI {
         if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size()))
             return false;
         const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+
+        // L/R keeps only cached presentation state. Resolve and validate the exact launch target now,
+        // on the explicit launch action, before consulting launchDescriptor.
+        refreshHubPreview();
 
         if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
             title.legacyInstances.size() > 1) {
@@ -2732,7 +2779,7 @@ namespace UI {
                 titleIndex = (titleIndex + 1) % homeGameCount;
             if (titleIndex != before) {
                 scrollSelectionIntoView();
-                refreshHubPreview();
+                refreshHubSelectionFromCache();
             }
         }
 
