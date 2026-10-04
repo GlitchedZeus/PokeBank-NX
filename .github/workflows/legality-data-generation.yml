@@ -10,6 +10,7 @@ on:
       - tools/gen_legality_gen34_egg_moves.py
       - tools/gen_legality_gen4_events.py
       - tools/gen_legality_gen3_colo_shadows.py
+      - tools/apply_legality_gamecube_integration.py
       - tools/pkhex_source.py
       - .github/workflows/legality-data-generation.yml
 
@@ -29,6 +30,10 @@ jobs:
       - name: Python info
         run: python3 --version
 
+      - name: Apply guarded legality integration migrations
+        run: |
+          python3 tools/apply_legality_gamecube_integration.py
+
       - name: Regenerate from pinned upstream resources
         run: |
           python3 tools/gen_legality_gen4_wild.py
@@ -39,7 +44,7 @@ jobs:
       - name: Show deterministic diff and digest
         run: |
           set -euo pipefail
-          git diff -- include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc
+          git diff -- src/Legality/Legality.cpp include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc
           sha256sum include/Legality/Gen4WildEncounterData.inc
           sha256sum include/Legality/Gen34EggMoveData.inc
           sha256sum include/Legality/Gen4EventTemplateData.inc
@@ -58,16 +63,16 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Commit deterministic generated table
+      - name: Commit deterministic legality maintenance output
         if: github.event_name == 'push'
         run: |
           set -euo pipefail
-          git add include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc
+          git add src/Legality/Legality.cpp include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc
           if git diff --cached --quiet; then
-            echo "Generated tables already match the branch."
+            echo "Legality source and generated tables already match the branch."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "legality: regenerate pinned encounter, egg-move and event evidence"
+          git commit -m "legality: apply guarded GameCube routing and regenerate evidence"
           git push origin "HEAD:${GITHUB_REF_NAME}"
