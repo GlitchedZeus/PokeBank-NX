@@ -1,0 +1,66 @@
+name: One-time audit/perf host-test diagnostic
+
+on:
+  push:
+    branches:
+      - staging/product-home-perf-audit-20261004
+    paths:
+      - .github/workflows/one-time-audit-perf-diagnostic.yml
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging/product-home-perf-audit-20261004
+          fetch-depth: 0
+          submodules: recursive
+      - run: |
+          git config user.name "PokeBank NX Integration Bot"
+          git config user.email "actions@users.noreply.github.com"
+      - name: Reproduce integrated tree
+        run: |
+          set -euo pipefail
+          BASE="$(git rev-parse HEAD)"
+          echo "$BASE" > /tmp/base_sha
+          git fetch origin fix/full-audit-remediation-20260929
+          git merge --no-ff -X ours origin/fix/full-audit-remediation-20260929 -m "diagnostic merge"
+          python3 tools/apply_behavior_preserving_perf_pass.py
+          git add src/main.cpp src/UI/GameLauncher.cpp src/UI/SaveSelectScreen.cpp include/UI/SaveSelectScreen.h tests/test_game_hub_contract.py
+          git commit -m "diagnostic perf tree"
+      - name: Capture host test output
+        shell: bash
+        run: |
+          set +e
+          make -f Makefile.host host-clean > /tmp/host-test.log 2>&1
+          rc1=$?
+          make -f Makefile.host host-test >> /tmp/host-test.log 2>&1
+          rc2=$?
+          rc=$rc1
+          if [ "$rc2" -ne 0 ]; then rc=$rc2; fi
+          echo "HOST_TEST_EXIT=$rc" >> /tmp/host-test.log
+          cat /tmp/host-test.log
+          echo "$rc" > /tmp/host_rc
+          exit 0
+      - name: Publish diagnostic log when failing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rc="$(cat /tmp/host_rc)"
+          test "$rc" != "0" || exit 0
+          BASE="$(cat /tmp/base_sha)"
+          cp /tmp/host-test.log /tmp/staging_host_test_failure.txt
+          git reset --hard "$BASE"
+          cp /tmp/staging_host_test_failure.txt tools/staging_host_test_failure.txt
+          git add tools/staging_host_test_failure.txt
+          git commit -m "chore(staging): capture integrated host-test failure"
+          git push origin HEAD:staging/product-home-perf-audit-20261004
+      - name: Fail diagnostic if host tests failed
+        run: |
+          rc="$(cat /tmp/host_rc)"
+          if [ "$rc" != "0" ]; then exit "$rc"; fi
