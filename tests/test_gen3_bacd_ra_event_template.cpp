@@ -28,14 +28,15 @@ int main() {
         0,   // male OT from RandS7
         70, 255, 4,
         false, false, false,
-        u"10ANNIV",
-        {17, 163, 82, 83}
+        u"10ANNIV"
     };
-    assert(match(charizard, rng).matched);
+    const auto matched = match(charizard, rng);
+    assert(matched.matched);
+    assert((matched.initialMoves == std::array<uint16_t, 4>{17, 163, 82, 83}));
 
-    auto wrongMove = charizard;
-    wrongMove.moves[0] = 18;
-    assert(!match(wrongMove, rng).matched);
+    // EncounterGift3.IsMatchExact does not require a non-egg gift's current
+    // moves to remain at its distribution-time payload. The source moves above
+    // are retained as provenance metadata, not an immutable encounter field.
 
     auto wrongGender = charizard;
     wrongGender.otGender = 1;
@@ -68,5 +69,5 @@ int main() {
     };
     assert(rngCompatible(regularRestricted));
 
-    std::cout << "Gen III BACD_R_A event-template + moveset evidence: PASS\n";
+    std::cout << "Gen III BACD_R_A event-template + initial-move metadata evidence: PASS\n";
 }
