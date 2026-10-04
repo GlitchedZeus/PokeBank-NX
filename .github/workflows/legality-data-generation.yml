@@ -11,6 +11,7 @@ on:
       - tools/gen_legality_gen4_events.py
       - tools/gen_legality_gen3_colo_shadows.py
       - tools/apply_legality_gamecube_integration.py
+      - tools/apply_legality_cxd_ot_order.py
       - tools/pkhex_source.py
       - .github/workflows/legality-data-generation.yml
 
@@ -33,6 +34,7 @@ jobs:
       - name: Apply guarded legality integration migrations
         run: |
           python3 tools/apply_legality_gamecube_integration.py
+          python3 tools/apply_legality_cxd_ot_order.py
 
       - name: Regenerate from pinned upstream resources
         run: |
