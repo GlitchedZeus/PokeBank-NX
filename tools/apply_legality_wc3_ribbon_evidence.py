@@ -85,15 +85,31 @@ def main() -> int:
 ''',
     )
 
+    # Scope the runtime replacement to Gen3BacdRaEvent::match so the similar
+    # Negai candidate initializer cannot be mistaken for the WC3 event path.
     replace_once(
         "src/Legality/Legality.cpp",
-        '''                            pk.metLocation(), pk.ball(), pk.isEgg(),
+        '''                const auto restrictedAntiEvent =
+                    Gen3BacdRaEvent::match(
+                        {
+                            species, pk.tid16(), pk.sid16(), pk.originGame(),
+                            pk.language(), pk.otGender(), pk.metLevel(),
+                            pk.metLocation(), pk.ball(), pk.isEgg(),
                             pk.isFatefulEncounter(),
                             pk.isShiny(pk.id32(), {}), pk.otName()
+                        },
+                        bacd);
 ''',
-        '''                            pk.metLocation(), pk.ball(), pk.isEgg(),
+        '''                const auto restrictedAntiEvent =
+                    Gen3BacdRaEvent::match(
+                        {
+                            species, pk.tid16(), pk.sid16(), pk.originGame(),
+                            pk.language(), pk.otGender(), pk.metLevel(),
+                            pk.metLocation(), pk.ball(), pk.isEgg(),
                             pk.isFatefulEncounter(), pk.ribbonNational(),
                             pk.isShiny(pk.id32(), {}), pk.otName()
+                        },
+                        bacd);
 ''',
     )
 
