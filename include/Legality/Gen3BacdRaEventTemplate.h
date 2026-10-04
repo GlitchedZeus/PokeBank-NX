@@ -27,6 +27,7 @@ struct Entry {
     uint8_t otGenderRule;
     bool fateful;
     std::u16string_view otName;
+    std::array<uint16_t, 4> moves{};
 };
 
 #include "Legality/Gen3BacdRaEventTemplateData.inc"
@@ -45,6 +46,7 @@ struct Candidate {
     bool fateful = false;
     bool shiny = false;
     std::u16string_view otName{};
+    std::array<uint16_t, 4> moves{};
 };
 
 struct MatchResult {
@@ -106,7 +108,7 @@ constexpr bool persistentFieldsMatch(const Entry& row, const Candidate& c,
         return false;
     if (row.species != c.species || row.tid != c.tid || row.sid != c.sid ||
         row.level != c.metLevel || row.fateful != c.fateful ||
-        row.otName != c.otName)
+        row.otName != c.otName || row.moves != c.moves)
         return false;
     if (row.language != 0 && row.language != c.language)
         return false;
