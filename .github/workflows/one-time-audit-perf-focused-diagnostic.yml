@@ -1,0 +1,91 @@
+name: One-time audit/perf focused diagnostic
+
+on:
+  push:
+    branches:
+      - staging/product-home-perf-audit-20261004
+    paths:
+      - .github/workflows/one-time-audit-perf-focused-diagnostic.yml
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging/product-home-perf-audit-20261004
+          fetch-depth: 0
+          submodules: recursive
+      - run: |
+          git config user.name "PokeBank NX Integration Bot"
+          git config user.email "actions@users.noreply.github.com"
+      - name: Reproduce integrated tree
+        run: |
+          set -euo pipefail
+          BASE="$(git rev-parse HEAD)"
+          echo "$BASE" > /tmp/base_sha
+          git fetch origin fix/full-audit-remediation-20260929
+          git merge --no-ff -X ours origin/fix/full-audit-remediation-20260929 -m "diagnostic merge"
+          python3 tools/apply_behavior_preserving_perf_pass.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/UI/GameLauncher.cpp')
+          text = p.read_text()
+          text = text.replace('std::string compactGameTitle(std::string_view value) {', '[[maybe_unused]] std::string compactGameTitle(std::string_view value) {', 1)
+          text = text.replace('bool installedForwarderNameMatches(std::string_view gameId, std::string_view normalizedName) {', '[[maybe_unused]] bool installedForwarderNameMatches(std::string_view gameId, std::string_view normalizedName) {', 1)
+          p.write_text(text)
+          PY
+      - name: Capture focused gates
+        shell: bash
+        run: |
+          set +e
+          : > /tmp/focused.log
+          run_cmd() {
+            label="$1"; shift
+            echo "=== $label ===" | tee -a /tmp/focused.log
+            "$@" >> /tmp/focused.log 2>&1
+            rc=$?
+            echo "EXIT=$rc" | tee -a /tmp/focused.log
+            return $rc
+          }
+          rc=0
+          run_cmd game_hub python3 tests/test_game_hub_contract.py || rc=$?
+          run_cmd v1_polish python3 tests/test_v1_polish_contract.py || rc=$?
+          run_cmd recovery python3 tools/check_recovery_contract.py || rc=$?
+          run_cmd generated python3 tools/regenerate.py --list --repo . --tables || rc=$?
+          echo "=== launcher compile ===" >> /tmp/focused.log
+          mkdir -p build-host
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_retroarch_launch_resolution.cpp src/UI/GameLauncher.cpp \
+            -o build-host/test_retroarch_launch_resolution >> /tmp/focused.log 2>&1
+          rcc=$?
+          echo "EXIT=$rcc" >> /tmp/focused.log
+          if [ "$rcc" -ne 0 ]; then rc=$rcc; fi
+          if [ "$rcc" -eq 0 ]; then
+            echo "=== launcher test ===" >> /tmp/focused.log
+            ./build-host/test_retroarch_launch_resolution >> /tmp/focused.log 2>&1
+            rct=$?
+            echo "EXIT=$rct" >> /tmp/focused.log
+            if [ "$rct" -ne 0 ]; then rc=$rct; fi
+          fi
+          echo "$rc" > /tmp/focused_rc
+          cat /tmp/focused.log
+          exit 0
+      - name: Publish diagnostic
+        run: |
+          set -euo pipefail
+          BASE="$(cat /tmp/base_sha)"
+          cp /tmp/focused.log /tmp/focused_failure.txt
+          git reset --hard "$BASE"
+          cp /tmp/focused_failure.txt tools/staging_focused_failure.txt
+          git add tools/staging_focused_failure.txt
+          git commit -m "chore(staging): capture focused integration failure"
+          git push origin HEAD:staging/product-home-perf-audit-20261004
+      - name: Fail if focused gate failed
+        run: |
+          rc="$(cat /tmp/focused_rc)"
+          if [ "$rc" != "0" ]; then exit "$rc"; fi
