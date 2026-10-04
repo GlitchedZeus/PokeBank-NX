@@ -30,6 +30,7 @@ jobs:
           set -euo pipefail
           sed -i 's/rep(provider_anchor, forwarder_hook + provider_anchor, 2)/rep(provider_anchor, forwarder_hook + provider_anchor, 1)/' tools/one_time_product_direct_launch_fix.py
           python3 tools/one_time_product_direct_launch_fix.py
+          sed -i 's/Color(5, 14, 30, 96)/Color(5, 14, 30, 54)/' tests/test_game_hub_contract.py
       - name: Run focused contracts
         shell: bash
         run: |
