@@ -108,16 +108,35 @@ constexpr bool rngCompatible(const Gen3BacdPidIv::Result& rng) noexcept {
             rng.variant == Gen3BacdPidIv::Variant::RegularAntiShiny);
 }
 
+// EncounterGift3 templates describe the distributed species, while legality is
+// evaluated against the surviving Pokemon. Evolution is a legal post-receipt
+// mutation and must not erase otherwise persistent event provenance. Among the
+// pinned BACD_R_A catalog, exactly these distributed species can evolve in Gen III.
+// Keep this deliberately source-table-scoped rather than pretending to be a
+// generic evolution engine.
+constexpr bool speciesCompatible(uint16_t distributed,
+                                 uint16_t current) noexcept {
+    if (distributed == current)
+        return true;
+    switch (distributed) {
+        case 1:   return current == 2 || current == 3;   // Bulbasaur -> Ivysaur/Venusaur
+        case 25:  return current == 26;                  // Pikachu -> Raichu
+        case 52:  return current == 53;                  // Meowth -> Persian
+        case 375: return current == 376;                 // Metang -> Metagross
+        default:  return false;
+    }
+}
+
 constexpr bool persistentFieldsMatch(const Entry& row, const Candidate& c,
                                      uint32_t originSeed) noexcept {
     // Every pinned BACD_R_A row is a Ruby-origin, non-egg event gift.
     if (c.originGame != 2 || c.isEgg || c.shiny || c.metLocation != 255 ||
         c.ball != 4)
         return false;
-    if (row.species != c.species || row.tid != c.tid || row.sid != c.sid ||
-        row.level != c.metLevel || row.fateful != c.fateful ||
-        row.ribbonNational != c.ribbonNational || c.ribbonCountry ||
-        c.ribbonChampionBattle || c.ribbonChampionRegional ||
+    if (!speciesCompatible(row.species, c.species) || row.tid != c.tid ||
+        row.sid != c.sid || row.level != c.metLevel ||
+        row.fateful != c.fateful || row.ribbonNational != c.ribbonNational ||
+        c.ribbonCountry || c.ribbonChampionBattle || c.ribbonChampionRegional ||
         c.ribbonChampionNational || row.otName != c.otName)
         return false;
     if (row.language != 0 && row.language != c.language)
