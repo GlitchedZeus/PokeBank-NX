@@ -14,6 +14,7 @@ on:
       - tools/apply_legality_gamecube_integration.py
       - tools/apply_legality_cxd_ot_order.py
       - tools/apply_legality_bacd_ra_moves.py
+      - tools/apply_legality_wc3_ribbon_evidence.py
       - tools/pkhex_source.py
       - .github/workflows/legality-data-generation.yml
 
@@ -38,6 +39,7 @@ jobs:
           python3 tools/apply_legality_gamecube_integration.py
           python3 tools/apply_legality_cxd_ot_order.py
           python3 tools/apply_legality_bacd_ra_moves.py
+          python3 tools/apply_legality_wc3_ribbon_evidence.py
 
       - name: Regenerate from pinned upstream resources
         run: |
@@ -50,7 +52,7 @@ jobs:
       - name: Show deterministic diff and digest
         run: |
           set -euo pipefail
-          git diff -- src/Legality/Legality.cpp include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
+          git diff -- src/Legality/Legality.cpp include/Pokemon/Pokemon.h include/Pokemon/Pokemon3FRLG.h include/Legality/Gen3BacdRaEventTemplate.h tests/test_gen3_bacd_ra_event_template.cpp docs/LEGALITY_WC3_PROGRESS.md tools/gen_legality_gen3_bacd_ra_events.py include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
           sha256sum include/Legality/Gen4WildEncounterData.inc
           sha256sum include/Legality/Gen34EggMoveData.inc
           sha256sum include/Legality/Gen4EventTemplateData.inc
@@ -75,7 +77,7 @@ jobs:
         if: github.event_name == 'push'
         run: |
           set -euo pipefail
-          git add src/Legality/Legality.cpp include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
+          git add src/Legality/Legality.cpp include/Pokemon/Pokemon.h include/Pokemon/Pokemon3FRLG.h include/Legality/Gen3BacdRaEventTemplate.h tests/test_gen3_bacd_ra_event_template.cpp docs/LEGALITY_WC3_PROGRESS.md tools/gen_legality_gen3_bacd_ra_events.py include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
           if git diff --cached --quiet; then
             echo "Legality source and generated tables already match the branch."
             exit 0
