@@ -1,5 +1,6 @@
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen3WondercardEggEventTemplate.h"
+#include "Legality/Gen3MethodHSlot.h"
 
 #include <array>
 #include <cassert>
@@ -67,5 +68,57 @@ int main() {
     assert(Legality::Gen3PidIv::isRoamerSpecies(381));
     assert(!Legality::Gen3PidIv::isRoamerSpecies(150));
 
-    std::cout << "Gen III PID/IV handheld + roamer LCRNG correlation: PASS\n";
+    // Pinned PKHeX SlotMethodH probabilities. Test every roll so boundary edits
+    // cannot silently change wild encounter-slot provenance.
+    namespace HSlot = Legality::Gen3MethodHSlot;
+    struct SlotShape {
+        HSlot::Type type;
+        std::array<uint8_t, 12> expected{};
+        uint8_t count = 0;
+    };
+    constexpr std::array<SlotShape, 6> shapes{{
+        {HSlot::Type::Grass,     {20,20,10,10,10,10,5,5,4,4,1,1}, 12},
+        {HSlot::Type::Surf,      {60,30,5,4,1}, 5},
+        {HSlot::Type::OldRod,    {70,30}, 2},
+        {HSlot::Type::GoodRod,   {60,20,20}, 3},
+        {HSlot::Type::SuperRod,  {40,30,25,4,1}, 5},
+        {HSlot::Type::RockSmash, {60,30,5,4,1}, 5},
+    }};
+
+    for (const auto& shape : shapes) {
+        std::array<uint8_t, 12> counts{};
+        for (uint32_t roll = 0; roll < 100; ++roll) {
+            const uint8_t slot = HSlot::get(shape.type, roll);
+            assert(slot != HSlot::kInvalid);
+            assert(slot < shape.count);
+            ++counts[slot];
+            assert(HSlot::range(shape.type, slot).contains(
+                static_cast<uint8_t>(roll)));
+        }
+        for (uint8_t slot = 0; slot < shape.count; ++slot)
+            assert(counts[slot] == shape.expected[slot]);
+        assert(!HSlot::range(shape.type, shape.count).valid());
+    }
+
+    for (const auto type : {HSlot::Type::SwarmFish50,
+                            HSlot::Type::SwarmGrass50}) {
+        for (uint32_t roll = 0; roll < 100; ++roll) {
+            const uint8_t slot = HSlot::get(type, roll);
+            if (roll < 50)
+                assert(slot == 0);
+            else
+                assert(slot == HSlot::kInvalid);
+        }
+        assert(HSlot::range(type, 0).min == 0);
+        assert(HSlot::range(type, 0).max == 49);
+        assert(!HSlot::range(type, 1).valid());
+    }
+
+    // SlotMethodH consumes the raw upper RNG half modulo 100, not a pre-reduced
+    // byte. Exercise values beyond 99 to lock that source behavior.
+    assert(HSlot::get(HSlot::Type::Grass, 100) == 0);
+    assert(HSlot::get(HSlot::Type::Grass, 199) == 11);
+    assert(HSlot::get(HSlot::Type::SuperRod, 170) == 2);
+
+    std::cout << "Gen III PID/IV handheld + roamer + Method H slot evidence: PASS\n";
 }
