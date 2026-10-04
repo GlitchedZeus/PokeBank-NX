@@ -56,8 +56,12 @@ def main() -> int:
         gender_match = re.search(
             r"\bOriginalTrainerGender\s*=\s*([A-Za-z0-9_]+)", fields
         )
-        if not id_match or not ot_match or not gender_match:
-            raise ValueError("BACD_R_A row is missing fixed ID/OT/gender evidence")
+        moves_match = re.search(
+            r"\bMoves\s*=\s*new\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)",
+            fields,
+        )
+        if not id_match or not ot_match or not gender_match or not moves_match:
+            raise ValueError("BACD_R_A row is missing fixed ID/OT/gender/moves evidence")
 
         gender_name = gender_match.group(1)
         if gender_name not in GENDER_RULE:
@@ -74,6 +78,7 @@ def main() -> int:
             language = LANGUAGE[language_name]
 
         id32 = int(id_match.group(1))
+        moves = tuple(int(value) for value in moves_match.groups())
         rows.append((
             int(species),
             id32 & 0xFFFF,
@@ -83,6 +88,7 @@ def main() -> int:
             GENDER_RULE[gender_name],
             bool(re.search(r"\bFatefulEncounter\s*=\s*true", fields)),
             ot_match.group(1),
+            moves,
         ))
 
     if len(rows) != 114:
@@ -94,20 +100,21 @@ def main() -> int:
         "// Source: PKHeX @ %s" % pkhex_source._REF,
         "// Source table: EncountersWC3.cs rows using PIDType.BACD_R_A.",
         "// All rows are Ruby-origin event gifts with restricted 16-bit BA-CD seeds.",
+        "// Exact four-move distribution payloads are retained as positive event evidence.",
         "inline constexpr std::array<Entry, 114> kEntries{{",
     ]
-    for species, tid, sid, level, language, gender_rule, fateful, ot in rows:
+    for species, tid, sid, level, language, gender_rule, fateful, ot, moves in rows:
         lines.append(
-            "    {%d, %d, %d, %d, %d, %d, %s, %s}," %
+            "    {%d, %d, %d, %d, %d, %d, %s, %s, {%d, %d, %d, %d}}," %
             (species, tid, sid, level, language, gender_rule,
-             "true" if fateful else "false", cxx_u16(ot))
+             "true" if fateful else "false", cxx_u16(ot), *moves)
         )
     lines.extend(["}};", ""])
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8", newline="\n") as handle:
         handle.write("\n".join(lines))
-    print("wrote %d BACD_R_A event rows to %s" % (len(rows), OUT))
+    print("wrote %d BACD_R_A event rows with moves to %s" % (len(rows), OUT))
     return 0
 
 
