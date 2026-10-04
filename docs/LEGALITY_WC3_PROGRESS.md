@@ -6,7 +6,7 @@ PokeBank NX treats PKHeX's pinned `EncountersWC3.cs` catalog as source evidence,
 
 The current generated `Gen3BacdRaEventTemplateData.inc` contains all **114** pinned `PIDType.BACD_R_A` rows from PKHeX commit `6501f0ab46e8f8ca048539dbaf8cae8cb104e722`.
 
-Each generated row now retains and validates:
+Each generated row retains:
 
 - species
 - TID/SID
@@ -15,14 +15,16 @@ Each generated row now retains and validates:
 - source OT name
 - source OT-gender rule reconstructed from the BA-CD origin seed
 - fateful flag
-- Ruby origin / event location / Poké Ball / non-egg / non-shiny invariants
-- restricted 16-bit BA-CD RNG compatibility
-- the exact four-move distribution payload
+- the exact four-move distribution-time payload
 
-A candidate with the correct PID/IV seed, trainer identity and event metadata but a different move in the four stored move slots no longer receives positive direct `BACD_R_A` event provenance.
+Direct encounter matching validates the persistent identity fields plus Ruby origin / event location / Poké Ball / non-egg / non-shiny invariants and restricted 16-bit BA-CD RNG compatibility.
 
-This is still **positive-only evidence**. A non-match does not by itself prove that the Pokémon is illegal because `EncountersWC3.cs` contains additional Gen III distribution families and some historical distribution/recipient state is not reconstructable from a surviving PK3. Those gaps remain **Incomplete** until their individual source contracts are implemented.
+The four source moves are deliberately **not** treated as immutable current fields. PKHeX's pinned `EncounterGift3.IsMatchExact()` does not compare current moves for non-egg gifts: a player can legally replace moves after receiving the event. PokeBank NX therefore keeps the initial moves in the generated row and exposes them through the positive match result as provenance metadata without rejecting an otherwise matching event whose current moves changed legally.
 
-## Next WC3 parity work
+This is still **positive-only evidence**. A non-match does not by itself prove that the Pokémon is illegal because some historical distribution/recipient state is not reconstructable from a surviving PK3. Those gaps remain **Incomplete** until their individual source contracts are implemented.
 
-Continue inventorying the remaining pinned `EncountersWC3.cs` method families against the already implemented MYSTRY Mew, WISHMKR, Channel, Berry Fix, Negai Boshi, event-egg, PCJP/PCNY machine-gift and `BACD_R_A` paths. Add each uncovered family with source-derived template fields and regression vectors rather than broad permissive event matching.
+## WC3 parity direction
+
+The pinned WC3 method inventory is already represented by dedicated engine paths: MYSTRY Mew (`BACD_M`), WISHMKR (`BACD_R`), Channel, Berry Fix (`BACD_RBCD`), Negai Boshi (`BACD_TA` / `BACD_U_AX`), `BACD_R_A`, Pokémon Box (`BACD_U`), PCJP 5th Anniversary (`BACD_TA` / `BACD_TS`), Wondercard event eggs (`Method_2` with source-supported Method 1/4 outcomes), PokéPark DS Download (`BACD_R`), plus PCJP/PCNY machine gifts.
+
+The remaining WC3 parity work is increasingly about template depth and historical constraints rather than simply recognizing another PID method: source ribbons, mutable-vs-immutable move provenance, held-item derivation where applicable, evolved-event reconstruction, recipient/trade history, and other fields that can still be proven from a surviving Pokémon.
