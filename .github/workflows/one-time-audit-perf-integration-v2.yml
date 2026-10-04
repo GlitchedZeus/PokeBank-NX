@@ -1,0 +1,105 @@
+name: One-time audit + performance integration v2
+
+on:
+  push:
+    branches:
+      - staging/product-home-perf-audit-20261004
+    paths:
+      - .github/workflows/one-time-audit-perf-integration-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging/product-home-perf-audit-20261004
+          fetch-depth: 0
+          submodules: recursive
+      - name: Configure Git
+        run: |
+          git config user.name "PokeBank NX Integration Bot"
+          git config user.email "actions@users.noreply.github.com"
+      - name: Merge completed audit remediation forward
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 564bb3ed55b1e46f4177500d1c0cbe0994bda6ed HEAD
+          git fetch origin fix/full-audit-remediation-20260929
+          git merge --no-ff -X ours origin/fix/full-audit-remediation-20260929 \
+            -m "merge: integrate completed audit remediation into current MAIN"
+          test -f docs/AUDIT_REMEDIATION_MATRIX.md
+          git merge-base --is-ancestor 408a56446f9dda611732c8186d6ce4148100d65f HEAD
+      - name: Apply behavior-preserving performance pass
+        run: |
+          set -euo pipefail
+          python3 tools/apply_behavior_preserving_perf_pass.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/UI/GameLauncher.cpp')
+          text = p.read_text()
+          old1 = 'std::string compactGameTitle(std::string_view value) {'
+          old2 = 'bool installedForwarderNameMatches(std::string_view gameId, std::string_view normalizedName) {'
+          if text.count(old1) != 1 or text.count(old2) != 1:
+              raise SystemExit('forwarder helper signatures changed unexpectedly')
+          text = text.replace(old1, '[[maybe_unused]] std::string compactGameTitle(std::string_view value) {', 1)
+          text = text.replace(old2, '[[maybe_unused]] bool installedForwarderNameMatches(std::string_view gameId, std::string_view normalizedName) {', 1)
+          p.write_text(text)
+          PY
+          git diff --check
+          git add src/main.cpp src/UI/GameLauncher.cpp src/UI/SaveSelectScreen.cpp \
+                  include/UI/SaveSelectScreen.h tests/test_game_hub_contract.py
+          git commit -m "perf(ui): remove redundant startup and navigation I/O"
+          echo "PERFORMANCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Product UI contract gate
+        run: python3 tests/test_game_hub_contract.py
+      - name: V1/recovery/generated-data contracts
+        run: |
+          python3 tests/test_v1_polish_contract.py
+          python3 tools/check_recovery_contract.py
+          python3 tools/regenerate.py --list --repo . --tables
+      - name: Clean host tests
+        run: |
+          make -f Makefile.host host-clean
+          make -f Makefile.host host-test
+      - name: ASan + UBSan host tests
+        run: make -f Makefile.host host-sanitize
+      - name: Record audit forward-integration checkpoint
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p = Path('docs/AUDIT_REMEDIATION_MATRIX.md')
+          text = p.read_text()
+          heading = '# Full Audit Remediation Matrix\n'
+          note = f'''# Full Audit Remediation Matrix\n\n## Forward integration checkpoint — 2026-10-04\n\n- Completed remediation/documentation head `408a56446f9dda611732c8186d6ce4148100d65f` is merged forward into the current PR #92 development line without rebasing, resetting, or force-pushing.\n- Integration preserves PR #92 hardware-fix head `564bb3ed55b1e46f4177500d1c0cbe0994bda6ed` as an ancestor; newer MAIN-side code wins textual conflicts so Product Home/hardware fixes are not rolled backward.\n- Behavior-preserving performance application head: `{os.environ['PERFORMANCE_SHA']}`. The pass removes duplicate system enumeration and unnecessary startup/navigation I/O only; UI, controls, save workflow, launch workflow, displayed Product Home content and safety policy remain unchanged.\n- Forward-integration host tests, Product UI contracts, v1/recovery/generated-data contracts, ASan and UBSan all passed before this documentation-only checkpoint. Native Switch CI still runs on the resulting PR #92 exact head before hardware acceptance.\n- Forensic disposition remains **43 VERIFIED / 1 DEFERRED WITH JUSTIFICATION / 0 OPEN**. AUDIT-043 still waits for the real failing disposable Gen IV `.dsv`; no synthetic evidence was introduced.\n\n'''
+          if '## Forward integration checkpoint — 2026-10-04' not in text:
+              if not text.startswith(heading):
+                  raise SystemExit('unexpected audit matrix heading')
+              text = note + text[len(heading):].lstrip('\n')
+              p.write_text(text)
+          PY
+          git add docs/AUDIT_REMEDIATION_MATRIX.md
+          git commit -m "docs: reconcile completed audit into current MAIN"
+      - name: Remove staging-only harness debris
+        run: |
+          set -euo pipefail
+          rm -f tools/apply_behavior_preserving_perf_pass.py tools/staging_host_test_failure.txt
+          rm -f .github/workflows/one-time-audit-perf-integration.yml
+          rm -f .github/workflows/one-time-audit-perf-diagnostic.yml
+          rm -f .github/workflows/one-time-audit-perf-integration-v2.yml
+          git add -A
+          git commit -m "chore: retire audit/performance staging harness"
+      - name: Verify ancestry and push validated staging head
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 564bb3ed55b1e46f4177500d1c0cbe0994bda6ed HEAD
+          git merge-base --is-ancestor 408a56446f9dda611732c8186d6ce4148100d65f HEAD
+          git diff --check HEAD^ HEAD
+          echo "FINAL_SHA=$(git rev-parse HEAD)"
+          echo "FINAL_TREE=$(git rev-parse 'HEAD^{tree}')"
+          git push origin HEAD:staging/product-home-perf-audit-20261004
