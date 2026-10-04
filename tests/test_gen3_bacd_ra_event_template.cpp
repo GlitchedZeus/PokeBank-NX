@@ -27,7 +27,7 @@ int main() {
         2,   // English
         0,   // male OT from RandS7
         70, 255, 4,
-        false, false, false,
+        false, false, false, false,
         u"10ANNIV"
     };
     const auto matched = match(charizard, rng);
@@ -62,6 +62,30 @@ int main() {
     unrestricted.restrictedSeed = false;
     assert(!match(charizard, unrestricted).matched);
 
+    // PKHeX RibbonVerifierEvent3 requires National Ribbon to exactly match the
+    // WC3 template. The pinned BACD_R_A catalog has exactly two such rows:
+    // Japanese FESTA Metang and English ROCKS Metang (both TID 02005).
+    std::size_t nationalRibbonRows = 0;
+    for (const auto& row : kEntries) {
+        if (!row.ribbonNational)
+            continue;
+        ++nationalRibbonRows;
+        assert(row.species == 375);
+        assert(row.tid == 2005);
+
+        Candidate metang{
+            row.species, row.tid, row.sid,
+            2, row.language, 0,
+            row.level, 255, 4,
+            false, row.fateful, true, false,
+            row.otName
+        };
+        assert(persistentFieldsMatch(row, metang, 0));
+        metang.ribbonNational = false;
+        assert(!persistentFieldsMatch(row, metang, 0));
+    }
+    assert(nationalRibbonRows == 2);
+
     // BACD_R_A also permits the unmodified regular BA-CD outcome when the
     // raw PID was already non-shiny; the seed restriction still applies.
     const Gen3BacdPidIv::Result regularRestricted{
@@ -69,5 +93,5 @@ int main() {
     };
     assert(rngCompatible(regularRestricted));
 
-    std::cout << "Gen III BACD_R_A event-template + initial-move metadata evidence: PASS\n";
+    std::cout << "Gen III BACD_R_A event-template + initial-move + National Ribbon evidence: PASS\n";
 }

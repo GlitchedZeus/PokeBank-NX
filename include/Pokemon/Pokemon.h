@@ -421,6 +421,9 @@ namespace Pokemon {
         virtual bool isFatefulEncounter() const noexcept { return false; }
         virtual void setFatefulEncounter(bool value) noexcept { (void)value; }
 
+        /** Gen III National Ribbon persistent state; false where the format/accessor is unwired. */
+        virtual bool ribbonNational() const noexcept { return false; }
+
         /** Original Trainer name (UTF-16; empty if unwired). */
         virtual std::u16string otName() const { return std::u16string(); }
         virtual void setOTName(const std::u16string& value) noexcept { (void)value; }

@@ -15,6 +15,7 @@ Each generated row retains:
 - source OT name
 - source OT-gender rule reconstructed from the BA-CD origin seed
 - fateful flag
+- National Ribbon state (including the required FESTA/ROCKS Metang ribbon)
 - the exact four-move distribution-time payload
 
 Direct encounter matching validates the persistent identity fields plus Ruby origin / event location / Poké Ball / non-egg / non-shiny invariants and restricted 16-bit BA-CD RNG compatibility.
@@ -27,4 +28,4 @@ This is still **positive-only evidence**. A non-match does not by itself prove t
 
 The pinned WC3 method inventory is already represented by dedicated engine paths: MYSTRY Mew (`BACD_M`), WISHMKR (`BACD_R`), Channel, Berry Fix (`BACD_RBCD`), Negai Boshi (`BACD_TA` / `BACD_U_AX`), `BACD_R_A`, Pokémon Box (`BACD_U`), PCJP 5th Anniversary (`BACD_TA` / `BACD_TS`), Wondercard event eggs (`Method_2` with source-supported Method 1/4 outcomes), PokéPark DS Download (`BACD_R`), plus PCJP/PCNY machine gifts.
 
-The remaining WC3 parity work is increasingly about template depth and historical constraints rather than simply recognizing another PID method: source ribbons, mutable-vs-immutable move provenance, held-item derivation where applicable, evolved-event reconstruction, recipient/trade history, and other fields that can still be proven from a surviving Pokémon.
+The remaining WC3 parity work is increasingly about template depth and historical constraints rather than simply recognizing another PID method: the remaining source ribbon classes beyond the now-wired National Ribbon, mutable-vs-immutable move provenance, held-item derivation where applicable, evolved-event reconstruction, recipient/trade history, and other fields that can still be proven from a surviving Pokémon.

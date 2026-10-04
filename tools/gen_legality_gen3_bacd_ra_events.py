@@ -87,6 +87,7 @@ def main() -> int:
             language,
             GENDER_RULE[gender_name],
             bool(re.search(r"\bFatefulEncounter\s*=\s*true", fields)),
+            bool(re.search(r"\bRibbonNational\s*=\s*true", fields)),
             ot_match.group(1),
             moves,
         ))
@@ -103,18 +104,19 @@ def main() -> int:
         "// Exact four-move distribution payloads are retained as positive event evidence.",
         "inline constexpr std::array<Entry, 114> kEntries{{",
     ]
-    for species, tid, sid, level, language, gender_rule, fateful, ot, moves in rows:
+    for species, tid, sid, level, language, gender_rule, fateful, ribbon_national, ot, moves in rows:
         lines.append(
-            "    {%d, %d, %d, %d, %d, %d, %s, %s, {%d, %d, %d, %d}}," %
+            "    {%d, %d, %d, %d, %d, %d, %s, %s, %s, {%d, %d, %d, %d}}," %
             (species, tid, sid, level, language, gender_rule,
-             "true" if fateful else "false", cxx_u16(ot), *moves)
+             "true" if fateful else "false",
+             "true" if ribbon_national else "false", cxx_u16(ot), *moves)
         )
     lines.extend(["}};", ""])
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8", newline="\n") as handle:
         handle.write("\n".join(lines))
-    print("wrote %d BACD_R_A event rows with moves to %s" % (len(rows), OUT))
+    print("wrote %d BACD_R_A event rows with moves and National Ribbon state to %s" % (len(rows), OUT))
     return 0
 
 

@@ -405,7 +405,7 @@ namespace Legality {
                             species, pk.tid16(), pk.sid16(), pk.originGame(),
                             pk.language(), pk.otGender(), pk.metLevel(),
                             pk.metLocation(), pk.ball(), pk.isEgg(),
-                            pk.isFatefulEncounter(),
+                            pk.isFatefulEncounter(), pk.ribbonNational(),
                             pk.isShiny(pk.id32(), {}), pk.otName()
                         },
                         bacd);

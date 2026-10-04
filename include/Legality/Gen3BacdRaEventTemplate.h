@@ -26,6 +26,7 @@ struct Entry {
     uint8_t language; // 0 = unrestricted recipient language
     uint8_t otGenderRule;
     bool fateful;
+    bool ribbonNational;
     std::u16string_view otName;
     // Distribution-time moves are source metadata. Non-egg event gifts may
     // legally replace current moves after receipt, matching PKHeX IsMatchExact.
@@ -46,6 +47,7 @@ struct Candidate {
     uint8_t ball = 0;
     bool isEgg = false;
     bool fateful = false;
+    bool ribbonNational = false;
     bool shiny = false;
     std::u16string_view otName{};
 };
@@ -110,7 +112,7 @@ constexpr bool persistentFieldsMatch(const Entry& row, const Candidate& c,
         return false;
     if (row.species != c.species || row.tid != c.tid || row.sid != c.sid ||
         row.level != c.metLevel || row.fateful != c.fateful ||
-        row.otName != c.otName)
+        row.ribbonNational != c.ribbonNational || row.otName != c.otName)
         return false;
     if (row.language != 0 && row.language != c.language)
         return false;
