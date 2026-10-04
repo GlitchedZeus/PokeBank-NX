@@ -139,6 +139,12 @@ namespace Legality {
             const std::array<uint8_t, 6> ivs{
                 pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
             };
+            if (pk.originGame() == 15 && pk.otGender() != 0) {
+                add(r, Severity::Invalid,
+                    "Pokemon Colosseum/XD-origin PK3 cannot have a female OT gender",
+                    CheckIdentifier::Trainer);
+            }
+
             const auto correlation =
                 Gen3PidIv::analyze(pk.pid(), ivs, species == 201);
             if (correlation.matched()) {
@@ -176,12 +182,6 @@ namespace Legality {
             // GameCube-origin PK3 records use source-family-specific rules. PK3 stores
             // Colosseum and XD with the same origin value (15), so persistent encounter
             // identity must choose the family before selecting RNG semantics.
-            if (pk.originGame() == 15 && pk.otGender() != 0) {
-                add(r, Severity::Invalid,
-                    "Pokemon Colosseum/XD-origin PK3 cannot have a female OT gender",
-                    CheckIdentifier::Trainer);
-            }
-
             const bool gen3Shiny = pk.isShiny(pk.id32(), {});
 
             // Japanese Colosseum e-Reader shadows are a special fixed-zero-IV path
