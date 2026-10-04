@@ -1,0 +1,21 @@
+=== game_hub ===
+EXIT=0
+=== v1_polish ===
+v1 polish contract PASS
+EXIT=0
+=== recovery ===
+RECOVERY CONTRACT: PASS
+sprite ref: 8dfa3d97e953caaafaafd4963eff7621811af08e
+verified baseline: 3260 HD / 1025 base / 18 types / 3 fonts
+snapshot status: COMMITTED
+EXIT=0
+=== generated ===
+checkouts:
+  /home/runner/work/PokeBank-NX/PokeBank-NX
+    17 generator(s): gen_gen2_move_compatibility.py, gen_gen4_move_compatibility.py, gen_gen4_personal.py, gen_gen4text.py, gen_itempouches.py, gen_itempresence.py, gen_learnsets.py, gen_locations.py, gen_move_battle_stats.py, gen_moveinfo.py, gen_movenames.py, gen_movepresence.py, gen_personal.py, gen_pladex.py, gen_speciesnames.py, gen_svdex.py, gen_swshdex.py
+EXIT=0
+=== launcher compile ===
+EXIT=0
+=== launcher test ===
+test_retroarch_launch_resolution: tests/test_retroarch_launch_resolution.cpp:57: int main(): Assertion `d.state == GameLaunchState::Ready' failed.
+EXIT=134
