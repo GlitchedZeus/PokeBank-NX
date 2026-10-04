@@ -1,4 +1,4 @@
-name: Apply Product Home hardware patch v8
+name: Apply Product Home hardware patch v8 retry
 
 on:
   push:
