@@ -68,8 +68,8 @@ int main() {
     assert(Legality::Gen3PidIv::isRoamerSpecies(381));
     assert(!Legality::Gen3PidIv::isRoamerSpecies(150));
 
-    // Pinned PKHeX SlotMethodH probabilities. Test every roll so boundary edits
-    // cannot silently change wild encounter-slot provenance.
+    // Pinned PKHeX SlotMethodH probabilities, with Super Rod resolved against
+    // decompiled Emerald encounter data because PKHeX's inverse helper is stale.
     namespace HSlot = Legality::Gen3MethodHSlot;
     struct SlotShape {
         HSlot::Type type;
@@ -81,7 +81,7 @@ int main() {
         {HSlot::Type::Surf,      {60,30,5,4,1}, 5},
         {HSlot::Type::OldRod,    {70,30}, 2},
         {HSlot::Type::GoodRod,   {60,20,20}, 3},
-        {HSlot::Type::SuperRod,  {40,30,25,4,1}, 5},
+        {HSlot::Type::SuperRod,  {40,40,15,4,1}, 5},
         {HSlot::Type::RockSmash, {60,30,5,4,1}, 5},
     }};
 
@@ -118,7 +118,8 @@ int main() {
     // byte. Exercise values beyond 99 to lock that source behavior.
     assert(HSlot::get(HSlot::Type::Grass, 100) == 0);
     assert(HSlot::get(HSlot::Type::Grass, 199) == 11);
-    assert(HSlot::get(HSlot::Type::SuperRod, 170) == 2);
+    assert(HSlot::get(HSlot::Type::SuperRod, 170) == 1);
+    assert(HSlot::get(HSlot::Type::SuperRod, 180) == 2);
 
     std::cout << "Gen III PID/IV handheld + roamer + Method H slot evidence: PASS\n";
 }

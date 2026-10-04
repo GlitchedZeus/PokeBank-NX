@@ -63,7 +63,7 @@ constexpr uint8_t goodRod(uint32_t roll) noexcept {
 
 constexpr uint8_t superRod(uint32_t roll) noexcept {
     return roll < 40 ? 0 :
-           roll < 70 ? 1 :
+           roll < 80 ? 1 :
            roll < 95 ? 2 :
            roll < 99 ? 3 :
            roll == 99 ? 4 : kInvalid;
@@ -132,19 +132,22 @@ constexpr Range goodRodRange(uint8_t slot) noexcept {
     }
 }
 
+// PKHeX's pinned GetRangeSuperRod table/comments say 40/30/25/4/1, but its
+// forward GetSuperRod function says 40/40/15/4/1. The decompiled Emerald
+// encounter data independently confirms 40/40/15/4/1, so these inverse ranges
+// intentionally follow the game and the forward function rather than the stale
+// inverse helper.
 constexpr Range superRodRange(uint8_t slot) noexcept {
     switch (slot) {
         case 0: return {0, 39};
-        case 1: return {40, 69};
-        case 2: return {70, 94};
+        case 1: return {40, 79};
+        case 2: return {80, 94};
         case 3: return {95, 98};
         case 4: return {99, 99};
         default: return {};
     }
 }
 
-// Mirrors pinned PKHeX SlotMethodH.GetRange. Rock Smash shares Surf slot odds;
-// the two 50% swarm slot types have only slot zero.
 constexpr Range range(Type type, uint8_t slot) noexcept {
     switch (type) {
         case Type::Grass:        return grassRange(slot);
