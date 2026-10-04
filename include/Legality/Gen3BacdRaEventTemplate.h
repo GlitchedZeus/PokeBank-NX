@@ -27,6 +27,8 @@ struct Entry {
     uint8_t otGenderRule;
     bool fateful;
     std::u16string_view otName;
+    // Distribution-time moves are source metadata. Non-egg event gifts may
+    // legally replace current moves after receipt, matching PKHeX IsMatchExact.
     std::array<uint16_t, 4> moves{};
 };
 
@@ -46,13 +48,13 @@ struct Candidate {
     bool fateful = false;
     bool shiny = false;
     std::u16string_view otName{};
-    std::array<uint16_t, 4> moves{};
 };
 
 struct MatchResult {
     bool matched = false;
     uint16_t species = 0;
     uint16_t tid = 0;
+    std::array<uint16_t, 4> initialMoves{};
 };
 
 constexpr uint32_t postIvSeed(uint32_t originSeed) noexcept {
@@ -108,7 +110,7 @@ constexpr bool persistentFieldsMatch(const Entry& row, const Candidate& c,
         return false;
     if (row.species != c.species || row.tid != c.tid || row.sid != c.sid ||
         row.level != c.metLevel || row.fateful != c.fateful ||
-        row.otName != c.otName || row.moves != c.moves)
+        row.otName != c.otName)
         return false;
     if (row.language != 0 && row.language != c.language)
         return false;
@@ -121,7 +123,7 @@ constexpr MatchResult match(const Candidate& c,
         return {};
     for (const auto& row : kEntries) {
         if (persistentFieldsMatch(row, c, rng.originSeed))
-            return {true, row.species, row.tid};
+            return {true, row.species, row.tid, row.moves};
     }
     return {};
 }
