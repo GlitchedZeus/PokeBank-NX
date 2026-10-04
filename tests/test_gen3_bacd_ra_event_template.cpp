@@ -27,7 +27,9 @@ int main() {
         2,   // English
         0,   // male OT from RandS7
         70, 255, 4,
+        false, false, false,
         false, false, false, false,
+        false,
         u"10ANNIV"
     };
     const auto matched = match(charizard, rng);
@@ -54,6 +56,25 @@ int main() {
     wrongOrigin.originGame = 1;
     assert(!match(wrongOrigin, rng).matched);
 
+    // The pinned EncounterGift3 templates have no Country/Champion event ribbons.
+    // Unlike Earth Ribbon, these cannot be acquired later through normal Gen III
+    // gameplay, so their presence contradicts a direct BACD_R_A template match.
+    auto countryRibbon = charizard;
+    countryRibbon.ribbonCountry = true;
+    assert(!match(countryRibbon, rng).matched);
+
+    auto battleRibbon = charizard;
+    battleRibbon.ribbonChampionBattle = true;
+    assert(!match(battleRibbon, rng).matched);
+
+    auto regionalRibbon = charizard;
+    regionalRibbon.ribbonChampionRegional = true;
+    assert(!match(regionalRibbon, rng).matched);
+
+    auto championNationalRibbon = charizard;
+    championNationalRibbon.ribbonChampionNational = true;
+    assert(!match(championNationalRibbon, rng).matched);
+
     auto wrongShiny = charizard;
     wrongShiny.shiny = true;
     assert(!match(wrongShiny, rng).matched);
@@ -77,7 +98,9 @@ int main() {
             row.species, row.tid, row.sid,
             2, row.language, 0,
             row.level, 255, 4,
-            false, row.fateful, true, false,
+            false, row.fateful, true,
+            false, false, false, false,
+            false,
             row.otName
         };
         assert(persistentFieldsMatch(row, metang, 0));
@@ -93,5 +116,5 @@ int main() {
     };
     assert(rngCompatible(regularRestricted));
 
-    std::cout << "Gen III BACD_R_A event-template + initial-move + National Ribbon evidence: PASS\n";
+    std::cout << "Gen III BACD_R_A event-template + initial-move + fixed Event3 ribbon evidence: PASS\n";
 }

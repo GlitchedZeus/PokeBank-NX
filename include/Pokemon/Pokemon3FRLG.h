@@ -177,7 +177,11 @@ namespace Pokemon {
         // XD shadow transfers set this bit when converted to PK3; keep this read-only
         // in the legality lane so event/shadow evidence sees the persisted source flag.
         bool isFatefulEncounter() const noexcept override { return (rd32(0x4C) & 0x80000000u) != 0; }
-        // PK3 National Ribbon is bit 24 of the same persisted ribbon word.
+        // PK3 event-ribbon bits 20-24 of the same persisted ribbon word.
+        bool ribbonChampionBattle() const noexcept override { return (rd32(0x4C) & 0x00100000u) != 0; }
+        bool ribbonChampionRegional() const noexcept override { return (rd32(0x4C) & 0x00200000u) != 0; }
+        bool ribbonChampionNational() const noexcept override { return (rd32(0x4C) & 0x00400000u) != 0; }
+        bool ribbonCountry() const noexcept override { return (rd32(0x4C) & 0x00800000u) != 0; }
         bool ribbonNational() const noexcept override { return (rd32(0x4C) & 0x01000000u) != 0; }
         bool isShiny(uint32_t trainerID32, std::string) const noexcept override {
             const uint32_t p = pid();

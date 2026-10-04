@@ -406,6 +406,8 @@ namespace Legality {
                             pk.language(), pk.otGender(), pk.metLevel(),
                             pk.metLocation(), pk.ball(), pk.isEgg(),
                             pk.isFatefulEncounter(), pk.ribbonNational(),
+                            pk.ribbonCountry(), pk.ribbonChampionBattle(),
+                            pk.ribbonChampionRegional(), pk.ribbonChampionNational(),
                             pk.isShiny(pk.id32(), {}), pk.otName()
                         },
                         bacd);

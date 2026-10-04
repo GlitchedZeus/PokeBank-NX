@@ -48,6 +48,10 @@ struct Candidate {
     bool isEgg = false;
     bool fateful = false;
     bool ribbonNational = false;
+    bool ribbonCountry = false;
+    bool ribbonChampionBattle = false;
+    bool ribbonChampionRegional = false;
+    bool ribbonChampionNational = false;
     bool shiny = false;
     std::u16string_view otName{};
 };
@@ -112,7 +116,9 @@ constexpr bool persistentFieldsMatch(const Entry& row, const Candidate& c,
         return false;
     if (row.species != c.species || row.tid != c.tid || row.sid != c.sid ||
         row.level != c.metLevel || row.fateful != c.fateful ||
-        row.ribbonNational != c.ribbonNational || row.otName != c.otName)
+        row.ribbonNational != c.ribbonNational || c.ribbonCountry ||
+        c.ribbonChampionBattle || c.ribbonChampionRegional ||
+        c.ribbonChampionNational || row.otName != c.otName)
         return false;
     if (row.language != 0 && row.language != c.language)
         return false;

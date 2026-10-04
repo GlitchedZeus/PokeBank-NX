@@ -424,6 +424,12 @@ namespace Pokemon {
         /** Gen III National Ribbon persistent state; false where the format/accessor is unwired. */
         virtual bool ribbonNational() const noexcept { return false; }
 
+        /** Additional fixed Gen III event-ribbon states used by WC3 legality evidence. */
+        virtual bool ribbonChampionBattle() const noexcept { return false; }
+        virtual bool ribbonChampionRegional() const noexcept { return false; }
+        virtual bool ribbonChampionNational() const noexcept { return false; }
+        virtual bool ribbonCountry() const noexcept { return false; }
+
         /** Original Trainer name (UTF-16; empty if unwired). */
         virtual std::u16string otName() const { return std::u16string(); }
         virtual void setOTName(const std::u16string& value) noexcept { (void)value; }
