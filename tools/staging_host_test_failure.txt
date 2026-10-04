@@ -1,0 +1,34 @@
+rm -rf build-host
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_game_identity.cpp src/Games/GameIdentity.cpp -o build-host/test_game_identity
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_write_policy.cpp -o build-host/test_write_policy
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_action_sheet_model.cpp -o build-host/test_action_sheet_model
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_theme.cpp -o build-host/test_theme
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_navigation_repeat.cpp -o build-host/test_navigation_repeat
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_controller_model.cpp -o build-host/test_controller_model
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_sprite_layout.cpp -o build-host/test_sprite_layout
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_source_mutation_policy.cpp -o build-host/test_source_mutation_policy
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_pla_read_validation.cpp src/Save/Block.cpp src/Encryption/Encryption.cpp src/Encryption/Encryption8LA.cpp src/Encryption/Encryption8SWSH.cpp src/Encryption/Encryption9SV.cpp src/Encryption/Encryption9LZA.cpp src/Enums/SCTypeCode.cpp src/Utils/HelperUtilities.cpp src/Utils/StringHelpers.cpp src/Utils/SHA256.cpp src/Utils/ReadAllBytes.cpp -o build-host/test_pla_read_validation
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_gen3_party_record.cpp -o build-host/test_gen3_party_record
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_gen9_my_status_guard.cpp -o build-host/test_gen9_my_status_guard
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_sha256.cpp src/Utils/SHA256.cpp -o build-host/test_sha256
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_pokemon_move_ownership.cpp -o build-host/test_pokemon_move_ownership
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_frlg_mutable_slot_validation.cpp -o build-host/test_frlg_mutable_slot_validation
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Wno-unused-parameter -Iinclude tests/test_lgpe_workspace_geometry.cpp -o build-host/test_lgpe_workspace_geometry
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_lgpe_read_validation.cpp -o build-host/test_lgpe_read_validation
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_gen9_inventory_decode.cpp -o build-host/test_gen9_inventory_decode
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_bank_record_validation.cpp -o build-host/test_bank_record_validation
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_modern_base_stats_forms.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp -o build-host/test_modern_base_stats_forms
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_lgpe_base_stats.cpp src/Pokemon/BaseStatsGen7.cpp -o build-host/test_lgpe_base_stats
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_modern_trainer_blank_slots.cpp -o build-host/test_modern_trainer_blank_slots
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_atomic_text_file.cpp -o build-host/test_atomic_text_file
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_settings_persistence_contract.cpp -o build-host/test_settings_persistence_contract
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude tests/test_retroarch_launch_resolution.cpp src/UI/GameLauncher.cpp -o build-host/test_retroarch_launch_resolution
+src/UI/GameLauncher.cpp:107:6: error: ‘bool UI::{anonymous}::installedForwarderNameMatches(std::string_view, std::string_view)’ defined but not used [-Werror=unused-function]
+  107 | bool installedForwarderNameMatches(std::string_view gameId, std::string_view normalizedName) {
+      |      ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/UI/GameLauncher.cpp:86:13: error: ‘std::string UI::{anonymous}::compactGameTitle(std::string_view)’ defined but not used [-Werror=unused-function]
+   86 | std::string compactGameTitle(std::string_view value) {
+      |             ^~~~~~~~~~~~~~~~
+cc1plus: all warnings being treated as errors
+make: *** [Makefile.host.base:280: build-host/test_retroarch_launch_resolution] Error 1
+HOST_TEST_EXIT=2
