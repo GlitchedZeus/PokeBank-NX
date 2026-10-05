@@ -283,9 +283,33 @@ inline bool gameLaunchCandidateStemMatches(std::string_view gameId,
          wanted.find(candidate) != std::string::npos))
         return true;
 
-    // Exact game identity is a second bounded hint when save and ROM basenames differ completely.
-    // Strip the platform suffix and punctuation (platinum_nds -> platinum). Short names like red/gold
-    // are deliberately ignored to avoid accidental FireRed/HeartGold matches.
+    // Release-specific official-name prefixes make short identities safe too.
+    // "pokemonred..." cannot collide with "pokemonfirered..."; likewise Gold/HeartGold and
+    // Diamond/Brilliant Diamond remain distinct. Region/revision tags may follow the prefix.
+    auto officialRelease = [&](std::string_view token) {
+        const std::string plain(token);
+        const std::string pokemon = "pokemon" + plain;
+        return candidate == plain ||
+               candidate.rfind(plain + "version", 0) == 0 ||
+               candidate.rfind(pokemon, 0) == 0;
+    };
+    if (gameId == "red_gb") return officialRelease("red");
+    if (gameId == "blue_gb") return officialRelease("blue");
+    if (gameId == "yellow_gb") return officialRelease("yellow");
+    if (gameId == "gold_gbc") return officialRelease("gold");
+    if (gameId == "silver_gbc") return officialRelease("silver");
+    if (gameId == "crystal_gbc") return officialRelease("crystal");
+    if (gameId == "ruby_gba") return officialRelease("ruby");
+    if (gameId == "sapphire_gba") return officialRelease("sapphire");
+    if (gameId == "firered_gba") return officialRelease("firered");
+    if (gameId == "leafgreen_gba") return officialRelease("leafgreen");
+    if (gameId == "emerald_gba") return officialRelease("emerald");
+    if (gameId == "diamond_nds") return officialRelease("diamond");
+    if (gameId == "pearl_nds") return officialRelease("pearl");
+    if (gameId == "platinum_nds") return officialRelease("platinum");
+    if (gameId == "heartgold_nds") return officialRelease("heartgold");
+    if (gameId == "soulsilver_nds") return officialRelease("soulsilver");
+
     const size_t underscore = gameId.find('_');
     const std::string_view identity = gameId.substr(0, underscore);
     std::string compact;
