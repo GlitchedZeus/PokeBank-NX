@@ -148,6 +148,57 @@ constexpr bool directMinimum31Satisfied(uint32_t prePidSeed) noexcept {
     return hasAny31IvWord(iv1) || hasAny31IvWord(iv2);
 }
 
+// HG/SS Bug Contest and Safari generate PID+IV attempts back-to-back when the
+// minimum-31 rule rejects an attempt. Entering the next attempt's nature/sync
+// frame, the immediately preceding RNG calls are IV2, IV1, PID-high, PID-low,
+// then the previous attempt's nature/sync frame. This mirrors pinned PKHeX
+// MethodK::RecurseReject without claiming that the earlier lead path is proven.
+constexpr uint16_t previousRerollIv2Word(uint32_t nextNatureSeed) noexcept {
+    const uint32_t seed = Gen3PidIv::Detail::prev(nextNatureSeed);
+    return static_cast<uint16_t>((seed >> 16) & 0x7FFFu);
+}
+
+constexpr uint16_t previousRerollIv1Word(uint32_t nextNatureSeed) noexcept {
+    uint32_t seed = Gen3PidIv::Detail::prev(nextNatureSeed);
+    seed = Gen3PidIv::Detail::prev(seed);
+    return static_cast<uint16_t>((seed >> 16) & 0x7FFFu);
+}
+
+constexpr bool previousRerollAttemptRejected(
+        uint32_t nextNatureSeed) noexcept {
+    return !hasAny31IvWord(previousRerollIv1Word(nextNatureSeed)) &&
+           !hasAny31IvWord(previousRerollIv2Word(nextNatureSeed));
+}
+
+constexpr uint32_t previousRerollNatureSeed(
+        uint32_t nextNatureSeed) noexcept {
+    uint32_t seed = nextNatureSeed;
+    for (int i = 0; i < 5; ++i)
+        seed = Gen3PidIv::Detail::prev(seed);
+    return seed;
+}
+
+// IV-gate-only reconstruction for one of the four HG/SS minimum-31 attempts.
+// depth=0 means the first attempt, depth=3 the fourth/final attempt. Earlier
+// attempts must all have lacked a 31 IV. A final attempt that also lacks a 31
+// is legal only at depth 3 after all three prior attempts were rejected.
+// This helper deliberately does not prove nature/lead/slot activation history;
+// callers must reconstruct those separately before returning positive evidence.
+constexpr bool minimum31IvChainAllows(uint32_t finalNatureSeed,
+                                      uint8_t depth) noexcept {
+    if (depth > 3)
+        return false;
+
+    uint32_t seed = finalNatureSeed;
+    for (uint8_t i = 0; i < depth; ++i) {
+        if (!previousRerollAttemptRejected(seed))
+            return false;
+        seed = previousRerollNatureSeed(seed);
+    }
+
+    return directMinimum31Satisfied(finalNatureSeed) || depth == 3;
+}
+
 constexpr uint8_t fishingSlot(bool hgss, uint8_t type,
                               uint16_t rand16) noexcept {
     if (!isFishing(type))
