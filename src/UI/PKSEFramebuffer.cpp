@@ -242,6 +242,83 @@ namespace UI {
         nvgFillColor(vg, toNVG(color)); nvgFill(vg);
     }
 
+void PKSEFramebuffer::drawBackspaceIcon(int iconX, int iconY, int size, Color color)
+    {
+        // A 16x16 art box scaled to `size`. The tag spans x 1.2..14.8 and y 3.2..12.8, symmetric
+        // about the box's centre; the cross sits in the middle of the tag's square body, not of the
+        // box, or it crowds the point.
+        if (size <= 3 || !ensureFrame())
+            return;
+        const float unitScale = size / 16.0f;
+        const float strokeWidth = std::max(1.5f, 1.6f * unitScale);
+        const float bodyLeft = iconX + 5.4f * unitScale;
+        const float bodyRight = iconX + 14.8f * unitScale;
+        const float bodyTop = iconY + 3.2f * unitScale;
+        const float bodyBottom = iconY + 12.8f * unitScale;
+        const float centerY = iconY + 8.0f * unitScale;
+
+        nvgLineJoin(vg, NVG_ROUND);
+        nvgBeginPath(vg);
+        nvgMoveTo(vg, iconX + 1.2f * unitScale, centerY); // the point
+        nvgLineTo(vg, bodyLeft, bodyTop);
+        nvgLineTo(vg, bodyRight, bodyTop);
+        nvgLineTo(vg, bodyRight, bodyBottom);
+        nvgLineTo(vg, bodyLeft, bodyBottom);
+        nvgClosePath(vg);
+        nvgStrokeColor(vg, toNVG(color));
+        nvgStrokeWidth(vg, strokeWidth);
+        nvgStroke(vg);
+
+        const float crossCenterX = (bodyLeft + bodyRight) * 0.5f;
+        const float crossReach = 2.1f * unitScale;
+        nvgLineCap(vg, NVG_ROUND);
+        nvgBeginPath(vg);
+        nvgMoveTo(vg, crossCenterX - crossReach, centerY - crossReach);
+        nvgLineTo(vg, crossCenterX + crossReach, centerY + crossReach);
+        nvgMoveTo(vg, crossCenterX + crossReach, centerY - crossReach);
+        nvgLineTo(vg, crossCenterX - crossReach, centerY + crossReach);
+        nvgStroke(vg);
+        // Nothing in this file wraps its state in nvgSave/nvgRestore, so the next stroke drawn this
+        // frame would inherit both.
+        nvgLineCap(vg, NVG_BUTT);
+        nvgLineJoin(vg, NVG_MITER);
+    }
+
+void PKSEFramebuffer::drawShiftIcon(int iconX, int iconY, int size, Color color, bool filled)
+    {
+        // A 16x16 art box scaled to `size`: the arrow runs x 1.8..14.2 and y 1.8..14.2. One path, so
+        // the outline has no seam where the head meets the shaft.
+        if (size <= 3 || !ensureFrame())
+            return;
+        const float unitScale = size / 16.0f;
+        const float centerX = iconX + 8.0f * unitScale;
+        const float headBaseY = iconY + 8.4f * unitScale;
+        const float halfShaft = 2.8f * unitScale;
+        const float shaftBottomY = iconY + 14.2f * unitScale;
+
+        nvgLineJoin(vg, NVG_ROUND);
+        nvgBeginPath(vg);
+        nvgMoveTo(vg, centerX, iconY + 1.8f * unitScale); // apex
+        nvgLineTo(vg, iconX + 14.2f * unitScale, headBaseY);
+        nvgLineTo(vg, centerX + halfShaft, headBaseY);
+        nvgLineTo(vg, centerX + halfShaft, shaftBottomY);
+        nvgLineTo(vg, centerX - halfShaft, shaftBottomY);
+        nvgLineTo(vg, centerX - halfShaft, headBaseY);
+        nvgLineTo(vg, iconX + 1.8f * unitScale, headBaseY);
+        nvgClosePath(vg);
+        if (filled)
+        {
+            nvgFillColor(vg, toNVG(color));
+            nvgFill(vg);
+        }
+        // Stroked in both states: the fill alone would sit half a stroke inside the outline's
+        // extents, and the arrow would visibly shrink when shift came on.
+        nvgStrokeColor(vg, toNVG(color));
+        nvgStrokeWidth(vg, std::max(1.5f, 1.6f * unitScale));
+        nvgStroke(vg);
+        nvgLineJoin(vg, NVG_MITER);
+    }
+
     void PKSEFramebuffer::drawPointerCursor(int tipX, int tipY, int headHeight, Color color) {
         // The storage grid's cursor: a slim arrowhead, pointing straight down at the slot, with no
         // shaft. Four corners, in art units 18 wide by 26 tall with the point at (0, 0).
