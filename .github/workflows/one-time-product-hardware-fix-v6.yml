@@ -13,126 +13,18 @@ jobs:
         with:
           ref: feature/gen4-full-editor-20260928
           fetch-depth: 0
-      - name: Patch exact live source
+      - name: Verify exact live head
         run: |
           set -euo pipefail
           git fetch origin feature/gen4-full-editor-20260928
           test "$(git rev-parse origin/feature/gen4-full-editor-20260928)" = "$GITHUB_SHA"
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          def sub1(text, pattern, repl, label, flags=0):
-              out,n=re.subn(pattern,repl,text,count=1,flags=flags)
-              if n != 1: raise SystemExit(f'{label}: expected 1 match, got {n}')
-              return out
-
-          lp=Path('src/UI/GameLauncher.cpp'); s=lp.read_text()
-          s=sub1(s,
-            r'''std::string compactGameTitle\(std::string_view value\) \{.*?\n\}\n''',
-            '''std::string compactGameTitle(std::string_view value) {
-    std::string out;
-    out.reserve(value.size());
-    for (size_t i = 0; i < value.size(); ++i) {
-        const unsigned char c = static_cast<unsigned char>(value[i]);
-        if (c == 0xC3 && i + 1 < value.size()) {
-            const unsigned char next = static_cast<unsigned char>(value[i + 1]);
-            if (next == 0xA9 || next == 0x89) { out.push_back('e'); ++i; continue; }
-        }
-        if (c < 0x80 && std::isalnum(c))
-            out.push_back(static_cast<char>(std::tolower(c)));
-    }
-    return out;
-}
-
-bool installedForwarderNameMatches(std::string_view gameId, std::string_view normalizedName) {
-    auto shaped = [&](std::string_view token) {
-        const std::string plain(token);
-        const std::string version = plain + "version";
-        const std::string pokemon = "pokemon" + plain;
-        const std::string pokemonVersion = pokemon + "version";
-        return normalizedName == plain || normalizedName == version ||
-               normalizedName == pokemon || normalizedName == pokemonVersion ||
-               normalizedName.rfind(pokemon, 0) == 0;
-    };
-    if (gameId == "red_gb") return shaped("red");
-    if (gameId == "blue_gb") return shaped("blue");
-    if (gameId == "yellow_gb") return shaped("yellow");
-    if (gameId == "gold_gbc") return shaped("gold");
-    if (gameId == "silver_gbc") return shaped("silver");
-    if (gameId == "crystal_gbc") return shaped("crystal");
-    if (gameId == "ruby_gba") return shaped("ruby");
-    if (gameId == "sapphire_gba") return shaped("sapphire");
-    if (gameId == "firered_gba") return shaped("firered");
-    if (gameId == "leafgreen_gba") return shaped("leafgreen");
-    if (gameId == "emerald_gba") return shaped("emerald");
-    if (gameId == "diamond_nds") return shaped("diamond");
-    if (gameId == "pearl_nds") return shaped("pearl");
-    if (gameId == "platinum_nds") return shaped("platinum");
-    if (gameId == "heartgold_nds") return shaped("heartgold");
-    if (gameId == "soulsilver_nds") return shaped("soulsilver");
-    return false;
-}
-''','forwarder helpers',re.S)
-          s=sub1(s,
-            r'''\s*const auto\* game = PokeVault::Games::findGame\(gameId\);\n\s*if \(!game\) \{ cache\[key\] = 0; return 0; \}\n\s*const std::string wanted = compactGameTitle\(game->title\);\n\s*if \(wanted.size\(\) < 4\) \{ cache\[key\] = 0; return 0; \}\n''',
-            '''
-    if (!PokeVault::Games::findGame(gameId)) { cache[key] = 0; return 0; }
-''','forwarder setup')
-          s=sub1(s,
-            r'''if \(name\.find\("pokemon"\) != std::string::npos &&\s*name\.find\(wanted\) != std::string::npos\) \{''',
-            '''if (installedForwarderNameMatches(gameId, name)) {''','forwarder matcher')
-          lp.write_text(s)
-
-          sp=Path('src/UI/SaveSelectScreen.cpp'); s=sp.read_text()
-          for old,new,label in [
-              ('Color(5, 14, 30, 54)','Color(5, 14, 30, 40)','region scrim'),
-              ('Color(3, 10, 24, 132)','Color(3, 10, 24, 104)','hero glass'),
-              ('fb.drawFilledCircle(cx, cy, buttonD / 2, Colors::SurfaceRaised);',
-               'fb.drawFilledCircle(cx, cy, buttonD / 2,\n                                focused ? withAlpha(Colors::Info, 46) : Colors::PanelAlt);','dock fill')]:
-              if s.count(old)!=1: raise SystemExit(f'{label}: expected 1 match, got {s.count(old)}')
-              s=s.replace(old,new,1)
-          s=sub1(s,
-            r'''(void SaveSelectScreen::openSaveSourceForCurrentTitle\(.*?\n)(.*?)(\n    void SaveSelectScreen::activateGameWorkspace\(\))''',
-            lambda m: m.group(1)+re.sub(
-                r'''\} else if \(game\.sourceKind == SelectedSourceKind::RetroArchFRLG\) \{\s*legacyInstanceIndex = 0;\s*legacyInstanceScroll = 0;\s*legacyNotice\.clear\(\);\s*overlay = Overlay::LegacyInstances;''',
-                '''} else if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-            rebuildUnassignedLegacySources();
-            unassignedLegacySources.erase(
-                std::remove_if(unassignedLegacySources.begin(), unassignedLegacySources.end(),
-                    [&](const LegacyAssignmentEntry& entry) { return entry.gameId != game.gameId; }),
-                unassignedLegacySources.end());
-            if (!unassignedLegacySources.empty()) {
-                legacyAssignmentIndex = 0;
-                legacyAssignmentScroll = 0;
-                legacyNotice = "Choose a validated save to assign to this profile.";
-                overlay = Overlay::LegacyAssignment;
-            } else {
-                legacyInstanceIndex = 0;
-                legacyInstanceScroll = 0;
-                legacyNotice.clear();
-                overlay = Overlay::LegacyInstances;
-            }''',m.group(2),count=1,flags=re.S)+m.group(3),
-            'openSaveSource function',re.S)
-          if 'Choose a validated save to assign to this profile.' not in s:
-              raise SystemExit('legacy assignment inner replacement failed')
-          sp.write_text(s)
-
-          tp=Path('tests/test_game_hub_contract.py'); t=tp.read_text()
-          t=t.replace('Color(3, 10, 24, 132)','Color(3, 10, 24, 104)')
-          t=t.replace('"fb.drawFilledCircle(cx, cy, buttonD / 2, Colors::SurfaceRaised);" in source,',
-                      '"focused ? withAlpha(Colors::Info, 46) : Colors::PanelAlt" in source,')
-          inject='''\nrequire("drawTrainerPortrait" not in classic_draw,\n        "the PKSE/full Games browser must not show trainer portraits")\nrequire("installedForwarderNameMatches" in launcher and 'gameId == "platinum_nds"' in launcher and\n        'gameId == "emerald_gba"' in launcher,\n        "installed HOME forwarders must be matched by release identity before emulator fallback")\nrequire("Choose a validated save to assign to this profile." in source and\n        "entry.gameId != game.gameId" in source,\n        "Games X must offer unassigned saves for the selected game/profile")\n'''
-          if inject.strip() not in t:
-              t += inject
-          tp.write_text(t)
-          PY
-      - name: Focused validation
+      - name: Apply guarded hardware hotpath patch
+        run: python3 tools/one_time_hardware_hotpath_fix_20261005.py
+      - name: Verify patch
         run: |
           set -euo pipefail
-          python3 tests/test_game_hub_contract.py
-          g++ -std=c++20 -Iinclude tests/test_game_launch_model.cpp -o /tmp/test_game_launch_model
-          /tmp/test_game_launch_model
+          git diff --check
+          git diff --stat
       - name: Commit forward
         run: |
           set -euo pipefail
@@ -140,6 +32,6 @@ bool installedForwarderNameMatches(std::string_view gameId, std::string_view nor
           test "$(git rev-parse origin/feature/gen4-full-editor-20260928)" = "$GITHUB_SHA"
           git config user.name GlitchedZeus
           git config user.email user91746@protonmail.com
-          git add src/UI/GameLauncher.cpp src/UI/SaveSelectScreen.cpp tests/test_game_hub_contract.py
-          git commit -m "fix(ui): launch installed forwarders and refine game assignment"
+          git add src/UI/SaveSelectScreen.cpp src/UI/GameLauncher.cpp
+          git commit -m "fix(ui): remove hardware launch and legacy-open stalls"
           git push origin HEAD:feature/gen4-full-editor-20260928
