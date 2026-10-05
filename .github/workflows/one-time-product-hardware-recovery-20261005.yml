@@ -28,6 +28,18 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/apply_focused_product_recovery_20261005.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tests/test_game_hub_contract.py')
+          s = p.read_text(encoding='utf-8')
+          old = '''require("if (!classicGamesActive) refreshHubPreview();" in set_user_block,
+                  "profile switching inside full Games must not rebuild the hidden Product Home preview")'''
+          new = '''require("if (!classicGamesActive) refreshHubPreview(false);" in set_user_block,
+                  "profile switching inside full Games must not rebuild the hidden Product Home preview")'''
+          if s.count(old) != 1:
+              raise SystemExit('setUser guarded-preview contract anchor changed')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
           git diff --check
 
       - name: Run focused contracts
