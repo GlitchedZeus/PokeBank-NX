@@ -43,6 +43,27 @@ int main() {
     assert(gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.nds"));
     assert(gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.zip"));
     assert(gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.rar"));
+
+    // Hardware regression: Red and Blue saves can have generic/short save names while the
+    // RetroArch playlist uses full No-Intro-style ROM names. These short release identities must
+    // still resolve, without colliding with later releases such as FireRed.
+    assert(gameLaunchCandidateStemMatches(
+        "red_gb",
+        "sdmc:/retroarch/cores/savefiles/main.srm",
+        "sdmc:/roms/gb/Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb"));
+    assert(gameLaunchCandidateStemMatches(
+        "blue_gb",
+        "sdmc:/retroarch/cores/savefiles/main.srm",
+        "sdmc:/roms/gb/Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb"));
+    assert(!gameLaunchCandidateStemMatches(
+        "red_gb",
+        "sdmc:/retroarch/cores/savefiles/main.srm",
+        "sdmc:/roms/gba/Pokemon - FireRed Version (USA).gba"));
+    assert(!gameLaunchCandidateStemMatches(
+        "gold_gbc",
+        "sdmc:/retroarch/cores/savefiles/main.srm",
+        "sdmc:/roms/nds/Pokemon - HeartGold Version (USA).nds"));
+
     assert(gameLaunchCandidateStemMatches(
         "platinum_nds",
         "sdmc:/switch/drastic/user/backup/Pokemon Platinum.dsv",
