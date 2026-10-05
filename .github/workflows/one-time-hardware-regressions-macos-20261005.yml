@@ -1,0 +1,62 @@
+name: ONE-TIME repair keyboard and launch hardware regressions (macOS)
+
+on:
+  push:
+    branches:
+      - feature/gen4-full-editor-20260928
+    paths:
+      - '.github/workflows/one-time-hardware-regressions-macos-20261005.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout guarded staging head
+        uses: actions/checkout@v4
+        with:
+          ref: feature/gen4-full-editor-20260928
+          fetch-depth: 0
+
+      - name: Verify exact parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "587b346f8494e5aee36ac84720b50ef30d0d434f"
+
+      - name: Reuse guarded repair payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, sys, textwrap
+
+          workflow = Path('.github/workflows/one-time-hardware-regressions-20261005.yml').read_text().splitlines()
+          start = next(i for i, line in enumerate(workflow) if line.strip() == "python3 - <<'PY'") + 1
+          end = next(i for i in range(start, len(workflow)) if workflow[i].strip() == 'PY')
+          payload = textwrap.dedent('\n'.join(workflow[start:end])) + '\n'
+          Path('/tmp/pokebank-hardware-repair.py').write_text(payload)
+          subprocess.check_call([sys.executable, '/tmp/pokebank-hardware-repair.py'])
+          PY
+
+          git diff --check
+          test "$(grep -c 'keyboardBackdrop = &trainerScreen' src/UI/UI.cpp)" -eq 3
+          grep -q 'SystemKeyboard, "System"' src/UI/Dialogs/KeyboardDialog.cpp
+          grep -q 'drawNavBar(framebuffer, keyboard.navHint())' src/UI/Dialogs/KeyboardDialog.cpp
+          grep -q 'gameId == "red_gb"' include/UI/GameLaunchModel.h
+          grep -q 'gameId == "blue_gb"' include/UI/GameLaunchModel.h
+          grep -q 'findContentMatches(roots, sourcePath, gameId, 1, 512)' src/UI/GameLauncher.cpp
+          grep -q ' -L ' src/UI/GameLauncher.cpp
+
+      - name: Commit and push repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'PokeBank NX CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/UI/UI.cpp src/UI/Dialogs/KeyboardDialog.cpp include/UI/GameLaunchModel.h src/UI/GameLauncher.cpp
+          git commit -m 'fix(ui): repair keyboard backdrop and launch regressions'
+          git push origin HEAD:feature/gen4-full-editor-20260928
