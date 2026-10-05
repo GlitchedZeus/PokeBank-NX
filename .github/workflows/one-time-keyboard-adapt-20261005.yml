@@ -1,0 +1,98 @@
+name: ONE-TIME adapt PKSE keyboard to PokeBank UI
+
+on:
+  push:
+    branches:
+      - feature/gen4-full-editor-20260928
+    paths:
+      - '.github/workflows/one-time-keyboard-adapt-20261005.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  adapt-keyboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout live branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/gen4-full-editor-20260928
+          fetch-depth: 0
+
+      - name: Adapt keyboard to current PokeBank UI API
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              return text.replace(old, new, 1)
+
+          dialog_path = Path('src/UI/Dialogs/KeyboardDialog.cpp')
+          dialog = dialog_path.read_text()
+          replacements = [
+              ('NAV_BAR_HEIGHT', 'kNavBarH', 'nav bar height'),
+              ('const AnalogNavigationSample analog =', 'const PokeBank::UIModel::AnalogNavigationSample analog =', 'analog sample namespace'),
+              ('pressTint.alpha = 110;', 'pressTint.a = 110;', 'Color alpha field'),
+              ('CHROME_CORNER_RADIUS', 'kChromeRadius', 'chrome radius'),
+          ]
+          for old, new, label in replacements:
+              dialog = replace_once(dialog, old, new, label)
+          dialog_path.write_text(dialog)
+
+          header_path = Path('include/UI/PKSEFramebuffer.h')
+          header = header_path.read_text()
+          if 'textYCenteredOn(' not in header:
+              marker = '        int  lineHeight(TextStyle style = TextStyle::Body) const;\n'
+              addition = marker + '        // Draw-text y coordinate that centers capital letters on a row/badge midpoint.\n        int  textYCenteredOn(int centerY, TextStyle style = TextStyle::Body) const;\n'
+              header = replace_once(header, marker, addition, 'framebuffer text centering declaration')
+              header_path.write_text(header)
+
+          source_path = Path('src/UI/PKSEFramebuffer.cpp')
+          source = source_path.read_text()
+          if 'kNunitoCapHeightPerEm' not in source:
+              marker = '    static constexpr float kFontSizes[static_cast<int>(TextStyle::Count)] = {\n        17.0f,  // Caption / secondary information\n        20.0f,  // Body / normal labels\n        28.0f,  // Heading\n        32.0f,  // Title\n    };\n'
+              addition = marker + '\n    // Nunito OS/2 sCapHeight 705 / unitsPerEm 1000; used to center visible capitals, not the line box.\n    static constexpr float kNunitoCapHeightPerEm = 0.705f;\n'
+              source = replace_once(source, marker, addition, 'Nunito cap-height constant')
+
+          if 'PKSEFramebuffer::textYCenteredOn(' not in source:
+              marker = '    int PKSEFramebuffer::lineHeight(TextStyle style) const {'
+              start = source.find(marker)
+              if start < 0:
+                  raise SystemExit('lineHeight implementation not found')
+              brace = source.find('{', start)
+              depth = 0
+              end = None
+              for i in range(brace, len(source)):
+                  if source[i] == '{': depth += 1
+                  elif source[i] == '}':
+                      depth -= 1
+                      if depth == 0:
+                          end = i + 1
+                          break
+              if end is None:
+                  raise SystemExit('lineHeight implementation is unclosed')
+              impl = '''\n\n    int PKSEFramebuffer::textYCenteredOn(int centerY, TextStyle style) const {\n        if (!vg) return centerY;\n        applyTextStyle(style);\n        float ascender = 0.0f, descender = 0.0f, lineHeightPixels = 0.0f;\n        nvgTextMetrics(vg, &ascender, &descender, &lineHeightPixels);\n        const float capitalHeight = kFontSizes[static_cast<int>(style)] * kNunitoCapHeightPerEm;\n        return static_cast<int>(std::lround(static_cast<float>(centerY) - ascender + capitalHeight / 2.0f));\n    }'''
+              source = source[:end] + impl + source[end:]
+          source_path.write_text(source)
+          PY
+
+          git diff --check
+          grep -q 'PokeBank::UIModel::AnalogNavigationSample' src/UI/Dialogs/KeyboardDialog.cpp
+          grep -q 'kNavBarH' src/UI/Dialogs/KeyboardDialog.cpp
+          grep -q 'pressTint.a = 110' src/UI/Dialogs/KeyboardDialog.cpp
+          grep -q 'kChromeRadius' src/UI/Dialogs/KeyboardDialog.cpp
+          grep -q 'PKSEFramebuffer::textYCenteredOn' src/UI/PKSEFramebuffer.cpp
+
+      - name: Commit and push
+        run: |
+          git config user.name 'PokeBank NX CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add include/UI/PKSEFramebuffer.h src/UI/PKSEFramebuffer.cpp src/UI/Dialogs/KeyboardDialog.cpp
+          git commit -m 'fix(ui): adapt in-app keyboard to current UI API'
+          git push origin HEAD:feature/gen4-full-editor-20260928
