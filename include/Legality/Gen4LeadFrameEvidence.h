@@ -65,6 +65,9 @@ constexpr bool isFishing(uint8_t type) noexcept {
 constexpr bool isHeadbutt(uint8_t type) noexcept {
     return type == 6 || type == 7;
 }
+constexpr bool isBugContest(uint8_t type) noexcept {
+    return type == 8;
+}
 constexpr bool isHoneyTree(uint8_t type) noexcept {
     return type == 9;
 }
@@ -113,6 +116,16 @@ constexpr uint8_t bugContestSlot(uint16_t rand16) noexcept {
            roll < 60 ? 2 :
            roll < 80 ? 1 :
            roll < 100 ? 0 : 0xFF;
+}
+
+constexpr bool bugContestActivationAllows(uint8_t areaRate,
+                                           uint32_t activationSeed,
+                                           bool canSweetScent) noexcept {
+    if (canSweetScent)
+        return true;
+    if (areaRate == 0)
+        return false;
+    return ((activationSeed >> 16) % 100u) < areaRate;
 }
 
 constexpr uint8_t safariSlot(uint16_t rand16) noexcept {
