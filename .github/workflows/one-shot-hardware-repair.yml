@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/one-shot-hardware-repair.yml'
       - 'tools/one_shot_hardware_repair.py'
+      - 'tools/one_shot_hardware_contract_repair.py'
 
 permissions:
   contents: write
@@ -27,6 +28,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/one_shot_hardware_repair.py
+          python3 tools/one_shot_hardware_contract_repair.py
           git diff --check
           make -f Makefile.host build-host/test_game_launch_model
           ./build-host/test_game_launch_model
@@ -36,7 +38,8 @@ jobs:
       - name: Commit repair and remove helpers
         run: |
           set -euo pipefail
-          rm -f .github/workflows/one-shot-hardware-repair.yml tools/one_shot_hardware_repair.py
+          rm -f .github/workflows/one-shot-hardware-repair.yml
+          rm -f tools/one_shot_hardware_repair.py tools/one_shot_hardware_contract_repair.py
           git diff --check
           git config user.name 'GlitchedZeus'
           git config user.email 'user91746@protonmail.com'
