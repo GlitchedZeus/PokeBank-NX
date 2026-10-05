@@ -780,16 +780,35 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
 
         std::sort(matches.begin(), matches.end());
         matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
-        if (matches.size() == 1) {
-            result.contentPath = std::move(matches.front().content);
-            result.corePath = std::move(matches.front().core);
-            result.state = GameLaunchState::Ready;
-            result.detail = "RetroArch playlist matched this save to its game file and core.";
-            return result;
+        if (!matches.empty()) {
+            int bestScore = -1;
+            size_t bestIndex = 0;
+            bool tiedContent = false;
+            for (size_t i = 0; i < matches.size(); ++i) {
+                int score = gameLaunchCandidateScore(gameId, sourcePath, matches[i].content);
+                if (matches[i].core == result.corePath) score += 25;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestIndex = i;
+                    tiedContent = false;
+                } else if (score == bestScore &&
+                           matches[i].content != matches[bestIndex].content) {
+                    tiedContent = true;
+                }
+            }
+            if (bestScore >= 0 && !tiedContent) {
+                result.contentPath = matches[bestIndex].content;
+                result.corePath = matches[bestIndex].core;
+                result.state = GameLaunchState::Ready;
+                result.detail = matches.size() == 1
+                    ? "RetroArch playlist matched this save to its game file and core."
+                    : "Selected the strongest exact-release RetroArch playlist match.";
+                return result;
+            }
         }
         if (matches.size() > 1) {
             result.detail =
-                "More than one matching RetroArch game/core entry was found; link the exact game file.";
+                "More than one equally strong RetroArch game match remains; choose the exact game file.";
         } else if (sawFamilyCompatibleContent) {
             result.detail = "The matching playlist has no usable core; link the game file once.";
         } else if (sawStemMatch) {
@@ -861,6 +880,25 @@ GameLaunchDescriptor resolveKnownHomebrew(GameLaunchProviderKind kind,
         return directDescriptor(kind, gameId, providerId, launcher, matches.front(),
                                 "Matched the validated save to its game file.");
 
+    if (matches.size() > 1) {
+        int bestScore = -1;
+        size_t bestIndex = 0;
+        bool tied = false;
+        for (size_t i = 0; i < matches.size(); ++i) {
+            const int score = gameLaunchCandidateScore(gameId, sourcePath, matches[i]);
+            if (score > bestScore) {
+                bestScore = score;
+                bestIndex = i;
+                tied = false;
+            } else if (score == bestScore && matches[i] != matches[bestIndex]) {
+                tied = true;
+            }
+        }
+        if (bestScore >= 0 && !tied)
+            return directDescriptor(kind, gameId, providerId, launcher, matches[bestIndex],
+                                    "Selected the strongest exact-release game-file match.");
+    }
+
     GameLaunchDescriptor result;
     result.backend = GameLaunchBackend::HomebrewNro;
     result.providerId = std::string(providerId);
@@ -931,8 +969,24 @@ GameLaunchDescriptor resolveGameLaunch(uint64_t titleId,
     // scan. Installed HOME forwarders remain a fallback only when there is no provider adapter.
     const GameLaunchProviderKind kind = providerKindForSourcePath(providerId, sourcePath);
     const std::string resolvedProvider = providerIdForKind(kind, providerId);
-    if (kind == GameLaunchProviderKind::RetroArch)
-        return resolveRetroArch(gameId, sourcePath, bindingKey);
+    if (kind == GameLaunchProviderKind::RetroArch) {
+        auto resolved = resolveRetroArch(gameId, sourcePath, bindingKey);
+#ifdef __SWITCH__
+        if (resolved.state == GameLaunchState::NeedsContentLink) {
+            if (const uint64_t forwarderTitle = installedGameForwarderTitle(gameId);
+                forwarderTitle != 0) {
+                GameLaunchDescriptor forwarder;
+                forwarder.backend = GameLaunchBackend::SwitchTitle;
+                forwarder.titleId = forwarderTitle;
+                forwarder.providerId = std::string(providerId);
+                forwarder.state = GameLaunchState::Ready;
+                forwarder.detail = "Launch the installed HOME forwarder for this exact game.";
+                return forwarder;
+            }
+        }
+#endif
+        return resolved;
+    }
     if (kind == GameLaunchProviderKind::MGBA ||
         kind == GameLaunchProviderKind::Tico ||
         kind == GameLaunchProviderKind::DraStic ||
@@ -1091,6 +1145,17 @@ bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& erro
             error = "The linked game ROM is missing.";
             return false;
         }
+        if (descriptor.state != GameLaunchState::LauncherOnly &&
+            !descriptor.corePath.empty()) {
+            std::string coreArgv = quoted(descriptor.corePath);
+            if (!descriptor.contentPath.empty())
+                coreArgv += " " + quoted(descriptor.contentPath);
+            const Result directRc = envSetNextLoad(descriptor.corePath.c_str(), coreArgv.c_str());
+            if (R_SUCCEEDED(directRc)) return true;
+        }
+
+        // Compatibility fallback: some hbloader/RetroArch combinations prefer entering through
+        // the frontend and selecting the libretro core with -L.
         std::string argv = quoted(descriptor.launcherPath);
         if (descriptor.state != GameLaunchState::LauncherOnly && !descriptor.corePath.empty())
             argv += " -L " + quoted(descriptor.corePath);

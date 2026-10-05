@@ -1728,9 +1728,14 @@ namespace UI {
         }
 
         if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
-            hubNotice = launchDescriptor.detail.empty()
-                ? "Direct launch could not resolve this game's ROM. Use X / Save-Source to set it up."
+            const std::string launchProblem = launchDescriptor.detail.empty()
+                ? "Direct launch could not prove one exact game file. Choose it once."
                 : launchDescriptor.detail;
+            if (beginLaunchLinkForCurrentTitle()) {
+                launchFileNotice = launchProblem;
+                return false;
+            }
+            hubNotice = launchProblem;
             return false;
         }
 
@@ -2381,10 +2386,11 @@ namespace UI {
                 if (kDown & HidNpadButton_A) {
                     titleIndex = gamesDrawerIndex;
                     scrollSelectionIntoView();
-                    // Quick Games is selection/navigation only. Never mount a save, parse a
-                    // provider, scan HOME applications, or resolve ROMs on the A-button frame.
+                    // Keep launch discovery off the A-button frame, but hydrate the selected
+                    // game's real trainer/dex/party presentation just like Product Home L/R.
                     refreshHubSelectionFromCache();
                     overlay = Overlay::None;
+                    refreshHubPreview(false);
                 }
             }
             return;
