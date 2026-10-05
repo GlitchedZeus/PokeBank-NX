@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   patch-touch:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
