@@ -77,6 +77,7 @@ namespace UI {
         std::array<HitRect, 8> cardRects{};
         std::array<HitRect, 7> settingsCategoryRects{};
         std::array<HitRect, 7> settingsRects{};
+        std::array<HitRect, 8> overlayRects{};
         std::string statusMessage;
         int statusFrames = 0;
 

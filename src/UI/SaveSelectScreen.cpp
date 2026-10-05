@@ -2345,6 +2345,31 @@ namespace UI {
             return -1;
         };
 
+        if (touch.justTouchedDown()) {
+            const int tx = touch.x(), ty = touch.y();
+            if (classicGamesActive && overlay == Overlay::None) {
+                for (const auto& r : titleRects)
+                    if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { titleIndex = r.idx; headerActionIndex = -1; break; }
+            } else {
+                for (const auto& r : overlayRects) {
+                    if (!(tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h)) continue;
+                    switch (overlay) {
+                        case Overlay::GamesDrawer: gamesDrawerIndex = r.idx; break;
+                        case Overlay::ProfilePicker: profilePickerIndex = r.idx; break;
+                        case Overlay::GameWorkspace: gameWorkspaceIndex = r.idx; break;
+                        case Overlay::GameFilePicker: launchFileIndex = r.idx; break;
+                        case Overlay::LegacyInstances: legacyInstanceIndex = r.idx; break;
+                        case Overlay::LegacyAssignment: legacyAssignmentIndex = r.idx; break;
+                        case Overlay::Gen4Setup: gen4SetupIndex = r.idx; break;
+                        case Overlay::Gen4Candidates: gen4CandidateIndex = r.idx; break;
+                        case Overlay::Options: optionsIndex = r.idx; break;
+                        default: break;
+                    }
+                    break;
+                }
+            }
+        }
+
         if (touch.justTapped()) {
             if (classicGamesActive && overlay == Overlay::None) {
                 const int idx = tappedRect(titleRects);
@@ -2822,9 +2847,14 @@ namespace UI {
             overlay = Overlay::Help;
             return;
         }
-        // Touch uses the same actions as controller focus. Fine-grained app-wide touch parity is
-        // intentionally a later tranche; these existing primary hit targets remain safe now.
-        if (touch.justPressed()) {
+        // Native Product Home touch: contact updates focus immediately; stationary release activates.
+        if (touch.justTouchedDown()) {
+            const int tx = touch.x(), ty = touch.y();
+            for (const auto& r : headerRects) if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { headerActionIndex = r.idx; hubDockFocused = false; hubFeatureIndex = -1; break; }
+            for (const auto& r : dockRects) if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { hubDockFocused = true; hubFeatureIndex = -1; hubDockIndex = r.idx; headerActionIndex = -1; break; }
+            for (const auto& r : featureRects) if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { hubDockFocused = false; headerActionIndex = -1; hubFeatureIndex = r.idx; break; }
+        }
+        if (touch.justTapped()) {
             const int tx = touch.x(), ty = touch.y();
             for (const auto& r : headerRects) {
                 if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {

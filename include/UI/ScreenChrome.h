@@ -25,21 +25,13 @@ namespace UI {
     constexpr int kHeaderH      = 64;
     constexpr int kNavBarH      = 46;
 
-    struct TouchCardHit {
-        int x, y, w, h;
-        bool focused;
-    };
     struct TouchGlyphHit {
         int x, y, w, h;
         std::string glyph;
     };
 
-    // drawFocusedCard()/drawGlyphButton() collect geometry while the screen is being rendered.
-    // drawNavHints() snapshots the geometry that belongs to the ACTIVE footer. That detail matters:
-    // Product Home may draw first and then a modal on top; the modal footer is drawn last and therefore
-    // replaces the background hit map instead of leaving invisible controls alive behind it.
-    inline std::vector<TouchCardHit> g_touchCardAccum;
-    inline std::vector<TouchCardHit> g_touchCardHits;
+    // Visible controller glyph buttons collect geometry while the screen is rendered.
+    // Content cards/rows are owned by the screen that draws them.
     inline std::vector<TouchGlyphHit> g_touchGlyphAccum;
     inline std::vector<TouchGlyphHit> g_touchGlyphHits;
 
@@ -51,7 +43,6 @@ namespace UI {
     // low-alpha archive rings; the background now extends cleanly to the left edge.
     inline void drawAppBackdrop(PKSEFramebuffer& fb) {
         // Beginning a normal screen frame also begins a fresh direct-touch geometry pass.
-        g_touchCardAccum.clear();
         g_touchGlyphAccum.clear();
         const int w = fb.getWidth();
         fb.clear(Colors::Background);
@@ -99,7 +90,6 @@ namespace UI {
 
     inline void drawFocusedCard(PKSEFramebuffer& fb, int x, int y, int w, int h,
                                 bool focused, int radius = 14) {
-        g_touchCardAccum.push_back({x, y, w, h, focused});
         if (focused) fb.drawSoftShadow(x, y, w, h, radius);
         // Focus never changes the card fill: teal outline + readable text carries selection.
         fb.drawFilledRoundedRect(x, y, w, h, radius, Colors::Surface);
@@ -253,14 +243,11 @@ namespace UI {
     inline int g_navContentBottom = 0;
     inline uint64_t g_contentSwipeMask = 0;
     inline bool g_quickGamesDrawerSwipe = false;
-    inline bool g_productHomeCardTap = false;
     inline uint64_t g_rightEdgeSwipeButton = 0;
     inline bool g_contentDragActive = false;
     inline bool g_contentDragMoved = false;
     inline int g_contentDragLastX = 0;
     inline int g_contentDragLastY = 0;
-    inline std::vector<uint64_t> g_cardTapQueue;
-    inline std::size_t g_cardTapQueueIndex = 0;
 
     inline uint64_t navButtonFor(const std::string& btn) {
         if (btn == "A") return HidNpadButton_A;
@@ -294,83 +281,11 @@ namespace UI {
         return px >= x && px < x + w && py >= y && py < y + h;
     }
 
-    inline uint64_t emitQueuedCardTap() {
-        if (g_cardTapQueueIndex >= g_cardTapQueue.size()) {
-            g_cardTapQueue.clear();
-            g_cardTapQueueIndex = 0;
-            return 0;
-        }
-        const uint64_t out = g_cardTapQueue[g_cardTapQueueIndex++];
-        if (g_cardTapQueueIndex >= g_cardTapQueue.size()) {
-            g_cardTapQueue.clear();
-            g_cardTapQueueIndex = 0;
-        }
-        return out;
-    }
-
-    inline int coordinateRank(const std::vector<int>& values, int value) {
-        std::vector<int> unique = values;
-        std::sort(unique.begin(), unique.end());
-        unique.erase(std::unique(unique.begin(), unique.end()), unique.end());
-        const auto found = std::find(unique.begin(), unique.end(), value);
-        return found == unique.end() ? -1 : static_cast<int>(std::distance(unique.begin(), found));
-    }
-
-    // Queue the controller-navigation path from the currently focused visible card to the tapped
-    // visible card, then A. These screens already own spatial D-pad semantics; feeding that same path
-    // means direct touch cannot invent a second save/open implementation. At 60 Hz even a seven-row
-    // list reaches the target in a fraction of a second while visibly moving focus to the touched row.
-    inline bool queueSpatialCardTap(std::size_t focusIndex, std::size_t targetIndex) {
-        if (focusIndex >= g_touchCardHits.size() || targetIndex >= g_touchCardHits.size()) return false;
-        if (focusIndex == targetIndex) {
-            g_cardTapQueue = {HidNpadButton_A};
-            g_cardTapQueueIndex = 0;
-            return true;
-        }
-
-        std::vector<int> xs, ys;
-        xs.reserve(g_touchCardHits.size());
-        ys.reserve(g_touchCardHits.size());
-        for (const auto& card : g_touchCardHits) {
-            xs.push_back(card.x + card.w / 2);
-            ys.push_back(card.y + card.h / 2);
-        }
-        const auto& focus = g_touchCardHits[focusIndex];
-        const auto& target = g_touchCardHits[targetIndex];
-        const int fx = coordinateRank(xs, focus.x + focus.w / 2);
-        const int fy = coordinateRank(ys, focus.y + focus.h / 2);
-        const int tx = coordinateRank(xs, target.x + target.w / 2);
-        const int ty = coordinateRank(ys, target.y + target.h / 2);
-        if (fx < 0 || fy < 0 || tx < 0 || ty < 0) return false;
-
-        const int dy = ty - fy;
-        const int dx = tx - fx;
-        const uint64_t vButton = dy < 0 ? HidNpadButton_Up : HidNpadButton_Down;
-        const uint64_t hButton = dx < 0 ? HidNpadButton_Left : HidNpadButton_Right;
-        if (dy != 0 && !(g_contentSwipeMask & vButton)) return false;
-        if (dx != 0 && !(g_contentSwipeMask & hButton)) return false;
-
-        g_cardTapQueue.clear();
-        g_cardTapQueueIndex = 0;
-        for (int i = 0; i < (dy < 0 ? -dy : dy); ++i) g_cardTapQueue.push_back(vButton);
-        for (int i = 0; i < (dx < 0 ? -dx : dx); ++i) g_cardTapQueue.push_back(hButton);
-        g_cardTapQueue.push_back(HidNpadButton_A);
-        return true;
-    }
-
     // Hit-test the badges captured during the PREVIOUS frame's draw. Footer buttons resolve on
     // release, browser/list content can step live as the finger crosses row-sized distances, and a
     // stationary tap on a visible card follows the same spatial navigation path before pressing A.
     // Storage/editor surfaces are deliberately excluded from the generic card/swipe registry.
     inline uint64_t navTouchButton(const TouchInput& touch) {
-        // A new touch always cancels an older queued card activation; the user's newest gesture wins.
-        if (touch.justTouchedDown()) {
-            g_cardTapQueue.clear();
-            g_cardTapQueueIndex = 0;
-        } else if (!touch.isDown() && !touch.justReleased() && !g_cardTapQueue.empty()) {
-            return emitQueuedCardTap();
-        }
-
         const bool startsInContent = g_contentSwipeMask != 0 && g_navContentBottom > 0 &&
             touch.startX() >= g_navSurfaceX && touch.startX() < g_navSurfaceX + g_navSurfaceW &&
             touch.startY() >= kHeaderH && touch.startY() < g_navContentBottom;
@@ -437,76 +352,6 @@ namespace UI {
                     navContains(touch.x(), touch.y(), button.x, button.y, button.w, button.h)) {
                     const uint64_t mapped = navButtonFor(button.glyph);
                     if (mapped) return mapped;
-                }
-            }
-
-            // Proper direct card taps for the browser/list surfaces that explicitly opted into safe
-            // content navigation. Identify the touched visible row/card and the currently focused one,
-            // then feed the existing spatial navigation handler until that exact card receives A.
-            if (g_contentSwipeMask != 0 && !g_touchCardHits.empty()) {
-                std::size_t target = g_touchCardHits.size();
-                std::size_t focus = g_touchCardHits.size();
-                for (std::size_t i = 0; i < g_touchCardHits.size(); ++i) {
-                    const auto& card = g_touchCardHits[i];
-                    if (card.focused) focus = i;
-                    if (navContains(touch.startX(), touch.startY(), card.x, card.y, card.w, card.h) &&
-                        navContains(touch.x(), touch.y(), card.x, card.y, card.w, card.h))
-                        target = i;
-                }
-                if (target < g_touchCardHits.size() && focus < g_touchCardHits.size() &&
-                    queueSpatialCardTap(focus, target))
-                    return emitQueuedCardTap();
-            }
-
-            // Product Home uses a hero plus two vertically stacked feature cards rather than a
-            // rectangular D-pad grid. Give those three visible cards native tap behavior with the
-            // exact controller path that Product Home already defines.
-            if (g_productHomeCardTap && !g_touchCardHits.empty()) {
-                std::size_t target = g_touchCardHits.size();
-                std::size_t focus = g_touchCardHits.size();
-                std::size_t hero = g_touchCardHits.size();
-                int largestArea = -1;
-                std::vector<std::size_t> features;
-                for (std::size_t i = 0; i < g_touchCardHits.size(); ++i) {
-                    const auto& card = g_touchCardHits[i];
-                    if (card.y < kHeaderH) continue; // profile/settings remain owned by their direct hitboxes
-                    const int area = card.w * card.h;
-                    if (area > largestArea) { largestArea = area; hero = i; }
-                    if (card.focused) focus = i;
-                    if (navContains(touch.startX(), touch.startY(), card.x, card.y, card.w, card.h) &&
-                        navContains(touch.x(), touch.y(), card.x, card.y, card.w, card.h))
-                        target = i;
-                }
-                if (hero < g_touchCardHits.size()) {
-                    for (std::size_t i = 0; i < g_touchCardHits.size(); ++i)
-                        if (i != hero && g_touchCardHits[i].y >= kHeaderH)
-                            features.push_back(i);
-                    std::sort(features.begin(), features.end(), [](std::size_t a, std::size_t b) {
-                        return g_touchCardHits[a].y < g_touchCardHits[b].y;
-                    });
-                }
-                if (target < g_touchCardHits.size() && focus < g_touchCardHits.size()) {
-                    g_cardTapQueue.clear();
-                    g_cardTapQueueIndex = 0;
-                    if (target == focus) {
-                        g_cardTapQueue.push_back(HidNpadButton_A);
-                    } else if (target == hero) {
-                        if (focus != hero) g_cardTapQueue.push_back(HidNpadButton_Left);
-                        g_cardTapQueue.push_back(HidNpadButton_A);
-                    } else if (features.size() >= 2 && target == features[0]) {
-                        if (focus == hero) g_cardTapQueue.push_back(HidNpadButton_Right);
-                        else if (focus == features[1]) g_cardTapQueue.push_back(HidNpadButton_Up);
-                        g_cardTapQueue.push_back(HidNpadButton_A);
-                    } else if (features.size() >= 2 && target == features[1]) {
-                        if (focus == hero) {
-                            g_cardTapQueue.push_back(HidNpadButton_Right);
-                            g_cardTapQueue.push_back(HidNpadButton_Down);
-                        } else if (focus == features[0]) {
-                            g_cardTapQueue.push_back(HidNpadButton_Down);
-                        }
-                        g_cardTapQueue.push_back(HidNpadButton_A);
-                    }
-                    if (!g_cardTapQueue.empty()) return emitQueuedCardTap();
                 }
             }
 
@@ -627,8 +472,6 @@ namespace UI {
         // The footer drawn last owns both controller hints and direct-content hit geometry.
         // Card activation belongs to the screen that owns the card. Never synthesize
         // multi-frame D-pad walks from a touchscreen tap.
-        g_touchCardHits.clear();
-        g_touchCardAccum.clear();
         g_touchGlyphHits = g_touchGlyphAccum;
         g_touchGlyphAccum.clear();
 
@@ -639,19 +482,12 @@ namespace UI {
         g_navContentBottom = cy - TouchTargetMin / 2 - 8;
         g_contentSwipeMask = 0;
         g_quickGamesDrawerSwipe = false;
-        g_productHomeCardTap = false;
         g_rightEdgeSwipeButton = 0;
 
         const uint64_t allDirections = HidNpadButton_Up | HidNpadButton_Down |
                                        HidNpadButton_Left | HidNpadButton_Right;
         const uint64_t verticalDirections = HidNpadButton_Up | HidNpadButton_Down;
 
-        // Product Home has a hero plus two feature cards. Direct card tapping is handled separately
-        // from generic grid swipes because its controller graph is intentionally asymmetric.
-        if (hint.find("L/R: Change Game") != std::string::npos &&
-            hint.find("Y: Quick Games") != std::string::npos &&
-            hint.find("+: Current Game") != std::string::npos)
-            g_productHomeCardTap = true;
 
         // Quick Games: three-column drawer with no competing content drag handler.
         if (hint.find("D-pad/Stick: Choose") != std::string::npos &&

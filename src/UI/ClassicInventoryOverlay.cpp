@@ -595,6 +595,16 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
     if (!isClassicSource(screen)) return false;
     auto& state = stateFor(screen);
     const int touchId = screen.touchedButtonId(touch);
+    if (touch.justTouchedDown()) {
+        const int tx = touch.x(), ty = touch.y();
+        for (const auto& hit : screen.touchButtons) {
+            if (tx < hit.x || tx >= hit.x + hit.w || ty < hit.y || ty >= hit.y + hit.h) continue;
+            if (state.pickerActive && hit.id >= 0 && hit.id < static_cast<int>(state.pickerItems.size())) state.pickerRow = hit.id;
+            else if (state.optionsActive && hit.id >= 0 && hit.id < 4) state.optionsRow = hit.id;
+            else if (state.reviewActive && hit.id >= 0) state.reviewRow = hit.id;
+            break;
+        }
+    }
     if ((state.pickerActive || state.optionsActive || state.reviewActive) &&
         touch.justReleased() && touch.dragged()) {
         const int dx = touch.deltaX(), dy = touch.deltaY();
