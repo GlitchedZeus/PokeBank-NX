@@ -53,8 +53,10 @@ constexpr bool staticMagnetFailureAllows(bool hgss,
 }
 
 constexpr bool supportedType(bool hgss, uint8_t type) noexcept {
-    if (type == 8 || Gen4LeadFrame::isSafari(type))
+    if (Gen4LeadFrame::isSafari(type))
         return false;
+    if (Gen4LeadFrame::isBugContest(type))
+        return hgss;
     if (type > 9)
         return false;
     if ((type == 5 || Gen4LeadFrame::isHeadbutt(type)) && !hgss)
@@ -85,6 +87,8 @@ constexpr uint8_t rolledSlot(bool hgss, uint64_t row,
         return Gen4LeadFrame::rockSmashSlot(rand16);
     if (Gen4LeadFrame::isHeadbutt(type))
         return Gen4LeadFrame::headbuttSlot(rand16);
+    if (Gen4LeadFrame::isBugContest(type))
+        return hgss ? Gen4LeadFrame::bugContestSlot(rand16) : 0xFF;
     if (Gen4LeadFrame::isHoneyTree(type))
         return Gen4Wild::slot(row);
     return 0xFF;
@@ -97,12 +101,23 @@ constexpr uint8_t rolledLevel(uint64_t row, uint16_t rand16) noexcept {
             Gen4Wild::minLevel(row), Gen4Wild::maxLevel(row), rand16);
 }
 
+constexpr bool failureCanSweetScent(Lead lead) noexcept {
+    return lead == Lead::PressureHustleVitalSpirit ||
+           lead == Lead::IntimidateKeenEye;
+}
+
 constexpr bool normalActivationAllows(bool hgss, uint64_t row,
-                                      uint32_t activationSeed) noexcept {
+                                      uint32_t activationSeed,
+                                      bool bugContestCanSweetScent = true) noexcept {
     const uint8_t type = Gen4Wild::method(row);
     if (type == 0 || type == 1 || Gen4LeadFrame::isHeadbutt(type) ||
         Gen4LeadFrame::isHoneyTree(type))
         return true;
+
+    if (Gen4LeadFrame::isBugContest(type)) {
+        return hgss && Gen4LeadFrame::bugContestActivationAllows(
+            Gen4Wild::rate(row), activationSeed, bugContestCanSweetScent);
+    }
 
     if (type == 5) {
         return Gen4LeadFrame::rockSmashActivationKind(
@@ -150,7 +165,7 @@ constexpr Result matchStaticMagnetFailure(bool hgss, uint64_t row,
             return {};
 
         const uint32_t activationSeed = Gen3PidIv::Detail::prev(seed3);
-        if (!normalActivationAllows(hgss, row, activationSeed))
+        if (!normalActivationAllows(hgss, row, activationSeed, false))
             return {};
         return {Lead::StaticMagnetPull, candidate, slot};
     }
@@ -193,7 +208,8 @@ constexpr Result matchPostNatureFailure(bool hgss, uint64_t row,
         return {};
 
     const uint32_t activationSeed = Gen3PidIv::Detail::prev(slotSeed);
-    if (!normalActivationAllows(hgss, row, activationSeed))
+    if (!normalActivationAllows(
+            hgss, row, activationSeed, failureCanSweetScent(lead)))
         return {};
     return {lead, candidate, slot};
 }
@@ -203,6 +219,9 @@ constexpr Result matchRow(bool hgss, uint64_t row,
                           uint8_t metLevel, Lead lead) noexcept {
     const uint8_t type = Gen4Wild::method(row);
     if (lead == Lead::None || !supportedType(hgss, type))
+        return {};
+    if (Gen4LeadFrame::isBugContest(type) &&
+        !Gen4LeadFrame::directMinimum31Satisfied(prePidSeed))
         return {};
 
     const uint8_t nature = static_cast<uint8_t>(pid % 25u);
