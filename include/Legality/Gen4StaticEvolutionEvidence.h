@@ -60,4 +60,23 @@ inline MatchResult matchEvolutionLine(
         pokemonShiny, pokemonFateful);
 }
 
+inline MatchResult matchEvolutionLineWithEggState(
+        std::string_view exactGameId,
+        uint16_t currentSpecies,
+        uint16_t metLocation,
+        uint8_t metLevel,
+        uint8_t pokemonForm,
+        uint16_t pokemonEggLocation,
+        uint8_t pokemonBall,
+        uint8_t pokemonGender,
+        uint8_t pokemonNature,
+        bool pokemonShiny,
+        bool pokemonFateful,
+        bool pokemonIsEgg) noexcept {
+    return Gen4Static::matchEvolutionLineWithEggState(
+        exactGameId, currentSpecies, metLocation, metLevel, pokemonForm,
+        pokemonEggLocation, pokemonBall, pokemonGender, pokemonNature,
+        pokemonShiny, pokemonFateful, pokemonIsEgg);
+}
+
 } // namespace Legality::Gen4StaticEvolution
